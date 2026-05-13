@@ -181,6 +181,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-security" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/dashboard.sh" >/dev/null

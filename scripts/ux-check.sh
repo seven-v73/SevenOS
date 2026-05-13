@@ -160,6 +160,12 @@ else
   fail "Terminal country signal failed"
 fi
 
+if "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null; then
+  ok "Seven Hub doctor works"
+else
+  fail "Seven Hub doctor failed"
+fi
+
 if grep -q 'seven ecosystem' "$ROOT_DIR/branding/motd" &&
    grep -q 'African first intelligent Linux ecosystem' "$ROOT_DIR/branding/issue" &&
    grep -q 'seven ecosystem' "$ROOT_DIR/archiso/profile/airootfs/etc/motd"; then

@@ -95,6 +95,16 @@ command_check() {
       warn_item "$command_name missing"
     fi
   done
+
+  if command -v seven-hub >/dev/null 2>&1; then
+    if seven-hub doctor >/dev/null 2>&1; then
+      ok_item "seven-hub doctor"
+    else
+      warn_item "seven-hub exists but fails its doctor check"
+      printf '  run: ./install.sh hub\n'
+      printf '  if /usr/local/bin shadows the user wrapper, run: command -v seven-hub\n'
+    fi
+  fi
 }
 
 group_check() {

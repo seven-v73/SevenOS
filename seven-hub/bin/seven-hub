@@ -1,8 +1,32 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SEVEN_HUB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-SEVENOS_ROOT="${SEVENOS_ROOT:-$(cd -- "$SEVEN_HUB_DIR/.." && pwd)}"
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/install.sh" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+  for candidate in \
+    "$script_dir/../.." \
+    "$script_dir/.." \
+    "/opt/SevenOS" \
+    "$HOME/SevenOS" \
+    "$HOME/Code/OS/SevenOS"; do
+    if [[ -x "$candidate/install.sh" && -d "$candidate/seven-hub" ]]; then
+      cd -- "$candidate" && pwd
+      return 0
+    fi
+  done
+
+  printf 'Seven Hub: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+SEVENOS_ROOT="$(resolve_root)"
 INSTALLER="$SEVENOS_ROOT/install.sh"
 
 title="Seven Hub"
@@ -23,7 +47,53 @@ actions=()
 
 die() {
   printf 'Seven Hub: %s\n' "$*" >&2
+  if command -v notify-send >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    notify-send "Seven Hub" "$*" || true
+  fi
   exit 1
+}
+
+usage() {
+  cat <<'EOF'
+Seven Hub
+
+Usage:
+  seven-hub [category]
+  seven-hub doctor
+  seven-hub --help
+
+Categories:
+  Dashboard
+  Profiles
+  Cyber
+  Desktop
+  VM & Windows
+  Server & Deploy
+  Ecosystem
+  Installer
+  Apps
+EOF
+}
+
+doctor() {
+  printf 'Seven Hub Doctor\n'
+  printf '================\n'
+  printf 'command:      %s\n' "$(command -v seven-hub 2>/dev/null || printf 'missing')"
+  printf 'script:       %s\n' "${BASH_SOURCE[0]}"
+  printf 'root:         %s\n' "$SEVENOS_ROOT"
+  printf 'installer:    %s\n' "$INSTALLER"
+  printf 'rofi:         %s\n' "$(command -v rofi 2>/dev/null || printf 'missing')"
+  printf 'kitty:        %s\n' "$(command -v kitty 2>/dev/null || printf 'missing')"
+  printf 'display:      %s\n' "${WAYLAND_DISPLAY:-${DISPLAY:-none}}"
+  printf 'theme:        %s\n' "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi"
+
+  [[ -x "$INSTALLER" ]] || die "installer not executable: $INSTALLER"
+  [[ -f "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" ]] || die "Rofi theme missing"
+
+  if command -v rofi >/dev/null 2>&1; then
+    rofi -no-config -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
+    printf 'rofi theme:   OK\n'
+  fi
 }
 
 run_in_terminal() {
@@ -393,6 +463,17 @@ main() {
   local category selected item label action
 
   category="${1:-}"
+  case "$category" in
+    -h|--help|help)
+      usage
+      exit 0
+      ;;
+    doctor|--doctor|status|--status)
+      doctor
+      exit 0
+      ;;
+  esac
+
   if [[ -z "$category" ]]; then
     category="$(select_category)"
   fi
