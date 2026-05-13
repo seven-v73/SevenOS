@@ -8,7 +8,8 @@ require_arch
 require_command pacman
 
 log_info "Checking shell syntax..."
-bash -n "$ROOT_DIR/install.sh" "$ROOT_DIR/bootstrap.sh" "$ROOT_DIR"/profiles/*.sh "$ROOT_DIR/scripts/lib.sh"
+bash -n "$ROOT_DIR/install.sh" "$ROOT_DIR/bootstrap.sh" "$ROOT_DIR"/profiles/*.sh "$ROOT_DIR/scripts/lib.sh" "$ROOT_DIR/scripts/doctor.sh"
+bash -n "$ROOT_DIR/security/hardening.sh"
 
 log_info "Checking package names against pacman metadata..."
 missing=0

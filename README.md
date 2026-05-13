@@ -44,6 +44,7 @@ SevenOS/
 │   ├── dev.sh
 │   ├── cybersecurity.sh
 │   ├── creation.sh
+│   ├── windows.sh
 │   └── all.sh
 ├── hyprland/
 │   ├── hyprland.conf
@@ -94,6 +95,13 @@ Install a profile:
 ./install.sh cybersecurity
 ./install.sh creation
 ./install.sh windows
+./install.sh security
+```
+
+Check whether the current host is ready for SevenOS features:
+
+```bash
+./install.sh doctor
 ```
 
 Install everything:
@@ -137,6 +145,14 @@ DaVinci Resolve is not installed automatically because it is not distributed thr
 Installs compatibility tools such as Wine, Winetricks, Lutris, Flatpak, QEMU, and Virt Manager.
 
 Bottles is expected to be installed later through Flatpak or an AUR workflow.
+
+The installer configures Flathub, installs Bottles through Flatpak when possible, enables `libvirtd`, and adds the current user to the `libvirt` group.
+
+### SECURITY
+
+Installs a base hardening layer with UFW, Firejail, Bubblewrap, OpenSSH, GnuPG, KeePassXC, rkhunter, and Lynis.
+
+The installer enables UFW with denied incoming traffic and allowed outgoing traffic by default.
 
 Windows VM provisioning and GPU passthrough will be handled in later phases.
 

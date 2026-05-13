@@ -1,0 +1,10 @@
+# SevenOS base security layer
+ufw
+firejail
+bubblewrap
+openssh
+gnupg
+pass
+keepassxc
+rkhunter
+lynis

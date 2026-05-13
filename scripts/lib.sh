@@ -20,6 +20,16 @@ is_dry_run() {
   [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
 }
 
+run_cmd() {
+  if is_dry_run; then
+    printf '%q ' "$@"
+    printf '\n'
+    return 0
+  fi
+
+  "$@"
+}
+
 require_command() {
   local command_name="$1"
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -32,6 +42,31 @@ require_arch() {
   if [[ ! -f /etc/arch-release ]]; then
     log_error "SevenOS Phase 1 expects Arch Linux or an Arch-based system."
     exit 1
+  fi
+}
+
+enable_service() {
+  local service="$1"
+  log_info "Enabling service: $service"
+  run_cmd sudo systemctl enable --now "$service"
+}
+
+add_user_to_group() {
+  local group="$1"
+  local user="${2:-$USER}"
+
+  if is_dry_run; then
+    printf 'sudo usermod -aG %q %q\n' "$group" "$user"
+    return 0
+  fi
+
+  if getent group "$group" >/dev/null 2>&1; then
+    if ! groups "$user" | grep -qw "$group"; then
+      sudo usermod -aG "$group" "$user"
+      log_warn "Log out and back in for the '$group' group membership to apply."
+    fi
+  else
+    log_warn "Group not found, skipping membership update: $group"
   fi
 }
 
@@ -73,11 +108,18 @@ copy_config_dir() {
 
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$target_dir"
+    if [[ -e "$target_dir" ]]; then
+      printf 'cp -a %q %q\n' "$target_dir" "$target_dir.sevenos.bak"
+    fi
     printf 'cp -r %q/. %q/\n' "$source_dir" "$target_dir"
     return 0
   fi
 
   mkdir -p "$target_dir"
+  if [[ -e "$target_dir" && ! -e "$target_dir.sevenos.bak" ]]; then
+    cp -a "$target_dir" "$target_dir.sevenos.bak"
+    log_warn "Existing config backed up to $target_dir.sevenos.bak"
+  fi
   cp -r "$source_dir"/. "$target_dir"/
 }
 
@@ -96,10 +138,29 @@ copy_config_file() {
 
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$target_dir"
+    if [[ -e "$target_file" ]]; then
+      printf 'cp -a %q %q\n' "$target_file" "$target_file.sevenos.bak"
+    fi
     printf 'cp %q %q\n' "$source_file" "$target_file"
     return 0
   fi
 
   mkdir -p "$target_dir"
+  if [[ -e "$target_file" && ! -e "$target_file.sevenos.bak" ]]; then
+    cp -a "$target_file" "$target_file.sevenos.bak"
+    log_warn "Existing config backed up to $target_file.sevenos.bak"
+  fi
   cp "$source_file" "$target_file"
+}
+
+install_flatpak_app() {
+  local remote="$1"
+  local app_id="$2"
+
+  if ! is_dry_run; then
+    require_command flatpak
+  fi
+
+  log_info "Installing Flatpak app: $app_id"
+  run_cmd flatpak install -y "$remote" "$app_id"
 }

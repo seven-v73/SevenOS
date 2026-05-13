@@ -17,6 +17,8 @@ Targets:
   cybersecurity    Install cybersecurity profile
   creation         Install creation profile
   windows          Install Windows compatibility layer
+  security         Apply base security hardening
+  doctor           Check host readiness
   all              Install base layer and all profiles
 
 Options:
@@ -40,12 +42,14 @@ if [[ -z "$TARGET" || "$TARGET" == "--dry-run" ]]; then
   exit 1
 fi
 
-require_arch
-require_command sudo
-require_command pacman
-
 export SEVENOS_ROOT="$ROOT_DIR"
 export SEVENOS_DRY_RUN="$DRY_RUN"
+
+if [[ "$TARGET" != "doctor" ]]; then
+  require_arch
+  require_command sudo
+  require_command pacman
+fi
 
 case "$TARGET" in
   base)
@@ -61,7 +65,13 @@ case "$TARGET" in
     "$ROOT_DIR/profiles/creation.sh"
     ;;
   windows)
-    install_package_file "$ROOT_DIR/scripts/packages-windows.txt"
+    "$ROOT_DIR/profiles/windows.sh"
+    ;;
+  security)
+    "$ROOT_DIR/security/hardening.sh"
+    ;;
+  doctor)
+    "$ROOT_DIR/scripts/doctor.sh"
     ;;
   all)
     "$ROOT_DIR/profiles/all.sh"
