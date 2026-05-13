@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -f "$SEVENOS_ROOT/identity/assets/wallpaper-sevenos.svg" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -f "$script_dir/../identity/assets/wallpaper-sevenos.svg" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -f "$candidate/identity/assets/wallpaper-sevenos.svg" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-wallpaper: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
+SOURCE_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
+TARGET_SVG="$WALLPAPER_DIR/wallpaper-sevenos.svg"
+TARGET_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
+
+render_wallpaper() {
+  mkdir -p "$WALLPAPER_DIR"
+  cp "$SOURCE_SVG" "$TARGET_SVG"
+  rm -f "$TARGET_PNG"
+
+  if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w 1920 -h 1080 "$SOURCE_SVG" -o "$TARGET_PNG"
+  elif command -v magick >/dev/null 2>&1; then
+    magick "$SOURCE_SVG" -resize 1920x1080! "$TARGET_PNG"
+  else
+    printf 'seven-wallpaper: missing SVG renderer. Install librsvg or imagemagick.\n' >&2
+    exit 1
+  fi
+}
+
+restart_hyprpaper() {
+  mkdir -p "$CONFIG_HOME/hypr"
+  cp "$ROOT_DIR/hyprland/hyprpaper.conf" "$CONFIG_HOME/hypr/hyprpaper.conf"
+
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    pkill -x hyprpaper >/dev/null 2>&1 || true
+    if command -v hyprpaper >/dev/null 2>&1; then
+      hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &
+    fi
+  fi
+}
+
+case "${1:-refresh}" in
+  render)
+    render_wallpaper
+    printf '%s\n' "$TARGET_PNG"
+    ;;
+  refresh)
+    render_wallpaper
+    restart_hyprpaper
+    printf 'SevenOS wallpaper refreshed: %s\n' "$TARGET_PNG"
+    ;;
+  path)
+    printf '%s\n' "$TARGET_PNG"
+    ;;
+  *)
+    printf 'Usage: seven-wallpaper [refresh|render|path]\n' >&2
+    exit 1
+    ;;
+esac

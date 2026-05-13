@@ -134,6 +134,19 @@ pkill waybar || true
 waybar &
 ```
 
+If the wallpaper does not change after a theme update:
+
+```bash
+seven-wallpaper refresh
+```
+
+If that reports a missing SVG renderer:
+
+```bash
+sudo pacman -S --needed librsvg
+seven-wallpaper refresh
+```
+
 If you accidentally installed with `sudo ./install.sh ...`, recover as your
 normal user:
 

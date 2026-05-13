@@ -8,6 +8,8 @@ source "$ROOT_DIR/scripts/lib.sh"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 SHELL_HOOK="$CONFIG_HOME/sevenos/shell/terminal-country.sh"
+WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
+WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
 
 install_shell_hook() {
   local rc_file="$1"
@@ -70,6 +72,27 @@ reload_desktop_session() {
   fi
 }
 
+render_wallpaper() {
+  log_info "Rendering SevenOS Royal Kente wallpaper..."
+
+  if is_dry_run; then
+    printf 'rm -f %q\n' "$WALLPAPER_PNG"
+    printf 'rsvg-convert -w 1920 -h 1080 %q -o %q\n' "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$WALLPAPER_PNG"
+    return 0
+  fi
+
+  rm -f "$WALLPAPER_PNG"
+  if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w 1920 -h 1080 "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" -o "$WALLPAPER_PNG"
+  elif command -v magick >/dev/null 2>&1; then
+    magick "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" -resize 1920x1080! "$WALLPAPER_PNG"
+  else
+    log_warn "No SVG renderer found. Install librsvg or imagemagick to generate the PNG wallpaper."
+    log_warn "Run: sudo pacman -S --needed librsvg"
+    return 1
+  fi
+}
+
 log_info "Applying SevenOS African first theme..."
 copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.conf"
 copy_config_file "$ROOT_DIR/hyprland/hyprpaper.conf" "$CONFIG_HOME/hypr/hyprpaper.conf"
@@ -79,18 +102,11 @@ copy_config_dir "$ROOT_DIR/hyprland/mako" "$CONFIG_HOME/mako"
 copy_config_dir "$ROOT_DIR/hyprland/kitty" "$CONFIG_HOME/kitty"
 copy_config_file "$ROOT_DIR/branding/shell/terminal-country.sh" "$SHELL_HOOK"
 
-run_cmd mkdir -p "$DATA_HOME/sevenos/wallpapers" "$DATA_HOME/sevenos/countries" "$DATA_HOME/icons/hicolor/scalable/apps"
-run_cmd cp "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$DATA_HOME/sevenos/wallpapers/wallpaper-sevenos.svg"
+run_cmd mkdir -p "$WALLPAPER_DIR" "$DATA_HOME/sevenos/countries" "$DATA_HOME/icons/hicolor/scalable/apps"
+run_cmd cp "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$WALLPAPER_DIR/wallpaper-sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$DATA_HOME/icons/hicolor/scalable/apps/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/countries/africa.tsv" "$DATA_HOME/sevenos/countries/africa.tsv"
-
-if command -v rsvg-convert >/dev/null 2>&1; then
-  run_cmd rsvg-convert -w 1920 -h 1080 "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" -o "$DATA_HOME/sevenos/wallpapers/wallpaper-sevenos.png"
-elif command -v magick >/dev/null 2>&1; then
-  run_cmd magick "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$DATA_HOME/sevenos/wallpapers/wallpaper-sevenos.png"
-else
-  log_warn "No SVG renderer found. Install librsvg or imagemagick to generate the PNG wallpaper."
-fi
+render_wallpaper
 
 install_shell_hook "$HOME/.bashrc"
 install_shell_hook "$HOME/.zshrc"

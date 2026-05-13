@@ -33,6 +33,7 @@ bash -n \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/seven-country" \
   "$ROOT_DIR/bin/seven-help" \
+  "$ROOT_DIR/bin/seven-wallpaper" \
   "$ROOT_DIR/bin/seven-power" \
   "$ROOT_DIR/bin/seven-welcome" \
   "$ROOT_DIR/bin/seven-waybar-profile" \
@@ -176,6 +177,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-security" >/dev/null

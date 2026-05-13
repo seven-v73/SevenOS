@@ -14,6 +14,7 @@ pipewire-jack
 wireplumber
 hyprland
 hyprpaper
+librsvg
 xdg-desktop-portal-hyprland
 waybar
 rofi

@@ -67,6 +67,7 @@ require_executable "bin/sevenpkg"
 require_executable "seven-hub/bin/seven-hub"
 require_executable "bin/seven-country"
 require_executable "bin/seven-help"
+require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
 require_executable "bin/seven-waybar-profile"
@@ -81,6 +82,7 @@ package_manifest_contains "libnotify" "scripts/packages-base.txt"
 package_manifest_contains "swaylock" "scripts/packages-base.txt"
 package_manifest_contains "swayidle" "scripts/packages-base.txt"
 package_manifest_contains "hyprpaper" "scripts/packages-base.txt"
+package_manifest_contains "librsvg" "scripts/packages-base.txt"
 package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
 package_manifest_contains "kitty" "scripts/packages-base.txt"
 
@@ -132,6 +134,12 @@ if grep -Eq '^[[:space:]]*pseudotile[[:space:]]*=|togglesplit' "$ROOT_DIR/hyprla
   fail "Hyprland config contains options removed in Hyprland 0.55"
 else
   ok "Hyprland config avoids removed 0.55 options"
+fi
+
+if grep -q 'wallpaper-sevenos-royal-kente.png' "$ROOT_DIR/hyprland/hyprpaper.conf"; then
+  ok "Hyprpaper uses Royal Kente wallpaper target"
+else
+  fail "Hyprpaper should use the Royal Kente wallpaper target"
 fi
 
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
