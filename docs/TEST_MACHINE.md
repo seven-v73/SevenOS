@@ -115,6 +115,25 @@ hyprctl reload
 
 If it still does not change, log out and back into Hyprland.
 
+Expected desktop controls after the UX repair:
+
+```text
+Super+Space  Seven Hub
+Super+A      Apps launcher
+Super+D      Apps launcher
+Super+/      SevenOS help
+Super+Enter  Terminal
+Super+Shift+P Power menu
+```
+
+Waybar should expose visible `SevenOS`, `Apps`, `Hub`, `Help`, and `Power`
+buttons. If the bar is missing, run:
+
+```bash
+pkill waybar || true
+waybar &
+```
+
 If you accidentally installed with `sudo ./install.sh ...`, recover as your
 normal user:
 

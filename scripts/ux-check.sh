@@ -66,6 +66,7 @@ require_executable "bin/seven"
 require_executable "bin/sevenpkg"
 require_executable "seven-hub/bin/seven-hub"
 require_executable "bin/seven-country"
+require_executable "bin/seven-help"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
 require_executable "bin/seven-waybar-profile"
@@ -95,6 +96,12 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
+if jq -e '."custom/apps".format == "Apps" and (."custom/apps"."on-click" | contains("rofi -show drun"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar exposes visible Apps launcher"
+else
+  fail "Waybar visible Apps launcher missing"
+fi
+
 if jq -e '."custom/power"."on-click" == "seven-power"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar power opens seven-power"
 else
@@ -105,6 +112,14 @@ if grep -q 'exec-once = mako' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland starts mako"
 else
   fail "Hyprland does not start mako"
+fi
+
+if grep -q 'bind = $mod, SPACE, exec, seven-hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf"; then
+  ok "Hyprland exposes discoverable Hub, Apps and Help shortcuts"
+else
+  fail "Hyprland discoverable desktop shortcuts missing"
 fi
 
 if grep -q 'exec-once = swayidle' "$ROOT_DIR/hyprland/hyprland.conf"; then

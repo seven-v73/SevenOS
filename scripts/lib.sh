@@ -121,7 +121,7 @@ copy_config_dir() {
     exit 1
   fi
 
-  log_info "Copying config: ${source_dir#$SEVENOS_ROOT/} -> $target_dir"
+  log_info "Copying config: ${source_dir#${SEVENOS_ROOT:-}/} -> $target_dir"
 
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$target_dir"
@@ -153,7 +153,7 @@ copy_config_file() {
   fi
 
   target_dir="$(dirname -- "$target_file")"
-  log_info "Copying config: ${source_file#$SEVENOS_ROOT/} -> $target_file"
+  log_info "Copying config: ${source_file#${SEVENOS_ROOT:-}/} -> $target_file"
 
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$target_dir"

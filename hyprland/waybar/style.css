@@ -41,7 +41,9 @@ window#waybar {
 #custom-profile,
 #custom-security,
 #custom-sevenos,
+#custom-apps,
 #custom-hub,
+#custom-help,
 #custom-power {
   padding: 0 10px;
   margin: 5px 3px;
@@ -54,6 +56,13 @@ window#waybar {
   background: linear-gradient(90deg, #d6a84f, #b8883e);
   font-weight: 700;
   padding: 0 14px;
+}
+
+#custom-apps {
+  color: #e8dcc3;
+  background: rgba(36, 24, 15, 0.82);
+  border-bottom: 2px solid #d6a84f;
+  font-weight: 700;
 }
 
 #clock {
@@ -100,10 +109,18 @@ window#waybar {
   color: #e8dcc3;
   background: linear-gradient(90deg, #9b4a2f, #26344f);
   padding: 0 12px;
+  font-weight: 700;
+}
+
+#custom-help {
+  color: #e8dcc3;
+  background: rgba(69, 107, 79, 0.62);
+  border-bottom: 2px solid #d6a84f;
 }
 
 #custom-power {
   color: #0b0b0a;
   background: #d6a84f;
   padding: 0 12px;
+  font-weight: 700;
 }

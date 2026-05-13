@@ -3,19 +3,25 @@
   "position": "top",
   "height": 34,
   "spacing": 8,
-  "modules-left": ["custom/sevenos", "hyprland/workspaces", "custom/profile"],
+  "modules-left": ["custom/sevenos", "custom/apps", "custom/hub", "hyprland/workspaces", "custom/profile"],
   "modules-center": ["clock"],
-  "modules-right": ["cpu", "memory", "custom/security", "network", "pulseaudio", "battery", "custom/hub", "custom/power", "tray"],
+  "modules-right": ["cpu", "memory", "custom/security", "network", "pulseaudio", "battery", "custom/help", "custom/power", "tray"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
   },
   "custom/sevenos": {
-    "format": "󰣇 SevenOS",
+    "format": "SevenOS",
     "tooltip": true,
-    "tooltip-format": "African first Linux workspace",
+    "tooltip-format": "SevenOS desktop. Click for dashboard, right-click for welcome.",
     "on-click": "seven-hub Dashboard",
     "on-click-right": "seven-welcome"
+  },
+  "custom/apps": {
+    "format": "Apps",
+    "tooltip": true,
+    "tooltip-format": "Open application launcher",
+    "on-click": "rofi -show drun -show-icons -theme ~/.config/rofi/sevenos.rasi"
   },
   "custom/profile": {
     "exec": "bash -lc 'seven-waybar-profile'",
@@ -56,13 +62,19 @@
     "format-charging": "󰂄 {capacity}%"
   },
   "custom/hub": {
-    "format": "󰒓",
+    "format": "Hub",
     "tooltip": true,
     "tooltip-format": "Seven Hub control center",
     "on-click": "seven-hub"
   },
+  "custom/help": {
+    "format": "Help",
+    "tooltip": true,
+    "tooltip-format": "Open SevenOS shortcut and repair help",
+    "on-click": "seven-help"
+  },
   "custom/power": {
-    "format": "󰐥",
+    "format": "Power",
     "tooltip": true,
     "tooltip-format": "Power menu",
     "on-click": "seven-power"

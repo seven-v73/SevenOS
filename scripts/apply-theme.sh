@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+export SEVENOS_ROOT="$ROOT_DIR"
 source "$ROOT_DIR/scripts/lib.sh"
 
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
@@ -36,6 +37,39 @@ install_shell_hook() {
   } >> "$rc_file"
 }
 
+reload_desktop_session() {
+  if is_dry_run; then
+    printf 'hyprctl reload\n'
+    printf 'pkill -x waybar hyprpaper mako || true\n'
+    printf 'waybar >/tmp/sevenos-waybar.log 2>&1 &\n'
+    printf 'hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &\n'
+    printf 'mako >/tmp/sevenos-mako.log 2>&1 &\n'
+    return 0
+  fi
+
+  if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
+
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    pkill -x waybar >/dev/null 2>&1 || true
+    pkill -x hyprpaper >/dev/null 2>&1 || true
+    pkill -x mako >/dev/null 2>&1 || true
+    if command -v waybar >/dev/null 2>&1; then
+      waybar >/tmp/sevenos-waybar.log 2>&1 &
+    fi
+    if command -v hyprpaper >/dev/null 2>&1; then
+      hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &
+    fi
+    if command -v mako >/dev/null 2>&1; then
+      mako >/tmp/sevenos-mako.log 2>&1 &
+    fi
+    if command -v notify-send >/dev/null 2>&1; then
+      notify-send "SevenOS desktop refreshed" "Use Super+Space for Hub, Super+A for Apps, Super+/ for Help" || true
+    fi
+  fi
+}
+
 log_info "Applying SevenOS African first theme..."
 copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.conf"
 copy_config_file "$ROOT_DIR/hyprland/hyprpaper.conf" "$CONFIG_HOME/hypr/hyprpaper.conf"
@@ -60,7 +94,8 @@ fi
 
 install_shell_hook "$HOME/.bashrc"
 install_shell_hook "$HOME/.zshrc"
+reload_desktop_session
 
 log_success "SevenOS theme applied."
-log_info "Reload Hyprland or restart Hyprpaper/Waybar/Rofi/Kitty to see every change."
+log_info "Use Super+Space for Seven Hub, Super+A for apps, and Super+/ for desktop help."
 log_info "Disable terminal country signals with: export SEVENOS_TERMINAL_COUNTRY=0"
