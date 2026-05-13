@@ -96,4 +96,40 @@ else
   status_warn "BlackArch bridge disabled; this is recommended until specialized tools are needed"
 fi
 
+printf '\nDesktop UX readiness:\n'
+for command_name in seven sevenpkg seven-welcome seven-power; do
+  if command -v "$command_name" >/dev/null 2>&1; then
+    status_ok "$command_name available"
+  else
+    status_warn "$command_name missing; run './install.sh cli'"
+  fi
+done
+
+if command -v seven-hub >/dev/null 2>&1; then
+  status_ok "seven-hub available"
+else
+  status_warn "seven-hub missing; run './install.sh hub'"
+fi
+
+for command_name in mako swaylock swayidle hyprpaper waybar rofi; do
+  if command -v "$command_name" >/dev/null 2>&1; then
+    status_ok "$command_name available"
+  else
+    status_warn "$command_name missing; run './install.sh base'"
+  fi
+done
+
+if [[ -f "$HOME/.config/hypr/hyprland.conf" && -f "$HOME/.config/waybar/config.jsonc" && -f "$HOME/.config/mako/config" ]]; then
+  status_ok "SevenOS desktop configs installed"
+else
+  status_warn "SevenOS desktop configs incomplete; run './install.sh theme'"
+fi
+
+printf '\nOS criteria readiness:\n'
+if [[ -x "$ROOT_DIR/scripts/readiness.sh" ]]; then
+  "$ROOT_DIR/scripts/readiness.sh" 2>/dev/null | sed -n '/== Summary ==/,$p' || true
+else
+  status_warn "Readiness scorecard unavailable"
+fi
+
 log_success "Doctor checks completed."

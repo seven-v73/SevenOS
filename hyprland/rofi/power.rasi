@@ -1,0 +1,14 @@
+@theme "sevenos.rasi"
+
+window {
+  width: 28%;
+  border-color: #9b4a2f;
+}
+
+listview {
+  lines: 5;
+}
+
+entry {
+  placeholder: "Power";
+}

@@ -36,12 +36,16 @@ Open an isolated lab:
 
 ```bash
 ./install.sh cyber-lab --name webapp
+./install.sh cyber-lab --preset web
 ```
 
 Open an offline lab:
 
 ```bash
 ./install.sh cyber-lab --name reversing --offline
+./install.sh cyber-lab --preset forensics
+./install.sh cyber-lab --preset reversing
+./install.sh cyber-lab --preset offline
 ```
 
 Use BlackArch only when SevenOS Cyber Core does not cover a tool:

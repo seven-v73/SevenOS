@@ -32,12 +32,17 @@ window#waybar {
 }
 
 #clock,
+#cpu,
+#memory,
 #network,
 #pulseaudio,
 #battery,
 #tray,
+#custom-profile,
+#custom-security,
 #custom-sevenos,
-#custom-hub {
+#custom-hub,
+#custom-power {
   padding: 0 10px;
   margin: 5px 3px;
   border-radius: 999px;
@@ -61,6 +66,26 @@ window#waybar {
   border-bottom: 2px solid #456b4f;
 }
 
+#custom-profile {
+  color: #e8dcc3;
+  border-bottom: 2px solid #d6a84f;
+}
+
+#cpu {
+  color: #e8dcc3;
+  border-bottom: 2px solid #9b4a2f;
+}
+
+#memory {
+  color: #b7a98a;
+  border-bottom: 2px solid #26344f;
+}
+
+#custom-security {
+  color: #e8dcc3;
+  border-bottom: 2px solid #456b4f;
+}
+
 #pulseaudio {
   color: #e8dcc3;
   border-bottom: 2px solid #26344f;
@@ -74,5 +99,11 @@ window#waybar {
 #custom-hub {
   color: #e8dcc3;
   background: linear-gradient(90deg, #9b4a2f, #26344f);
+  padding: 0 12px;
+}
+
+#custom-power {
+  color: #0b0b0a;
+  background: #d6a84f;
   padding: 0 12px;
 }

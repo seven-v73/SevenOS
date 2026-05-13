@@ -7,6 +7,12 @@ SevenOS uses two complementary commands:
 
 This keeps system operations separate from software installation.
 
+The vocabulary and product rules for these commands live in:
+
+- `docs/VISION.md`
+- `docs/PRODUCT_STRATEGY.md`
+- `docs/VOCABULARY.md`
+
 ## seven
 
 `seven` orchestrates SevenOS profiles, security, VM helpers, status checks, and

@@ -20,6 +20,10 @@ is_dry_run() {
   [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
 }
 
+assume_yes() {
+  [[ "${SEVENOS_YES:-0}" == "1" ]]
+}
+
 backup_path() {
   local path="$1"
   printf '%s.sevenos.bak.%s' "$path" "$(date +%Y%m%d-%H%M%S)"
@@ -93,11 +97,19 @@ install_package_file() {
   log_info "Installing packages from ${package_file#$SEVENOS_ROOT/}"
 
   if is_dry_run; then
-    printf 'sudo pacman -S --needed %s\n' "${packages[*]}"
+    if assume_yes; then
+      printf 'sudo pacman -S --needed --noconfirm %s\n' "${packages[*]}"
+    else
+      printf 'sudo pacman -S --needed %s\n' "${packages[*]}"
+    fi
     return 0
   fi
 
-  sudo pacman -S --needed "${packages[@]}"
+  if assume_yes; then
+    sudo pacman -S --needed --noconfirm "${packages[@]}"
+  else
+    sudo pacman -S --needed "${packages[@]}"
+  fi
 }
 
 copy_config_dir() {

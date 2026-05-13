@@ -48,6 +48,10 @@ def sevenpkg(args, *extra):
     run([str(ROOT_DIR / "bin" / "sevenpkg"), *extra], args)
 
 
+def run_script(args, relative_path, *extra):
+    run([str(ROOT_DIR / relative_path), *extra], args)
+
+
 def handle_profile(args):
     profile_map = {
         "forge": "forge",
@@ -99,6 +103,10 @@ def handle_vm(args):
         sys.exit(1)
 
 
+def handle_windows(args):
+    install_target("windows-mode", args, [args.action, *args.extra])
+
+
 def main():
     dry_run_requested = "--dry-run" in sys.argv[1:]
     if dry_run_requested:
@@ -109,6 +117,15 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
 
     subparsers.add_parser("update", help="update SevenOS packages")
+    subparsers.add_parser("welcome", help="show SevenOS onboarding overview")
+    subparsers.add_parser("dashboard", help="show SevenOS dashboard")
+    readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
+    readiness_parser.add_argument("--json", action="store_true", help="print machine-readable score output")
+    readiness_parser.add_argument("--record", action="store_true", help="append the score to the local readiness history")
+    improve_parser = subparsers.add_parser("improve", help="show or apply improvements by OS choice criterion")
+    improve_parser.add_argument("criterion", nargs="?", default="all")
+    improve_parser.add_argument("--apply", action="store_true", help="execute the improvement plan")
+    improve_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
     subparsers.add_parser("doctor", help="check host readiness")
     subparsers.add_parser("status", help="show SevenOS status")
     subparsers.add_parser("hub", help="launch Seven Hub")
@@ -124,10 +141,32 @@ def main():
     vm_parser.add_argument("action")
     vm_parser.add_argument("name", nargs="?")
 
+    windows_parser = subparsers.add_parser("windows", help="guided Windows Mode controls")
+    windows_parser.add_argument("action", nargs="?", default="status")
+    windows_parser.add_argument("extra", nargs=argparse.REMAINDER)
+
     args = parser.parse_args()
 
     if args.command == "update":
         sevenpkg(args, "update")
+    elif args.command == "welcome":
+        run_script(args, "bin/seven-welcome")
+    elif args.command == "dashboard":
+        run_script(args, "scripts/dashboard.sh")
+    elif args.command == "readiness":
+        extra = []
+        if args.json:
+            extra.append("--json")
+        if args.record:
+            extra.append("--record")
+        run_script(args, "scripts/readiness.sh", *extra)
+    elif args.command == "improve":
+        extra = [args.criterion]
+        if args.apply:
+            extra.append("--apply")
+        if args.yes:
+            extra.append("--yes")
+        run_script(args, "scripts/improve.sh", *extra)
     elif args.command == "doctor":
         install_target("doctor", args)
     elif args.command == "status":
@@ -140,6 +179,8 @@ def main():
         handle_shield(args)
     elif args.command == "vm":
         handle_vm(args)
+    elif args.command == "windows":
+        handle_windows(args)
     else:
         parser.print_help()
 

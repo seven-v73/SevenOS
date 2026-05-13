@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+title="Seven Power"
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/hyprland/rofi" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -d "$script_dir/../hyprland/rofi" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -d "$candidate/hyprland/rofi" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf '%s\n' "$HOME/Code/OS/SevenOS"
+}
+
+ROOT_DIR="$(resolve_root)"
+
+run_action() {
+  local action="$1"
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%s\n' "$action"
+    return 0
+  fi
+
+  case "$action" in
+    lock)
+      if command -v swaylock >/dev/null 2>&1; then
+        swaylock -f -c 0b0b0a
+      else
+        printf 'seven-power: swaylock is not installed\n' >&2
+        exit 1
+      fi
+      ;;
+    logout)
+      if command -v hyprctl >/dev/null 2>&1; then
+        hyprctl dispatch exit
+      else
+        loginctl terminate-session "${XDG_SESSION_ID:-self}"
+      fi
+      ;;
+    suspend)
+      systemctl suspend
+      ;;
+    reboot)
+      systemctl reboot
+      ;;
+    poweroff)
+      systemctl poweroff
+      ;;
+    *)
+      printf 'seven-power: unknown action: %s\n' "$action" >&2
+      exit 1
+      ;;
+  esac
+}
+
+select_action() {
+  local menu
+  menu=$'Lock    Keep session private\nSuspend    Sleep this machine\nLogout    Exit Hyprland session\nReboot    Restart system\nPower Off    Shut down system'
+
+  if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    printf '%s\n' "$menu" | rofi -dmenu -i -p "$title" -mesg "SevenOS power controls" -theme "$ROOT_DIR/hyprland/rofi/power.rasi" 2>/dev/null || true
+  else
+    printf '%s\n' "$menu" >&2
+    printf 'Choose action: ' >&2
+    read -r selected
+    printf '%s\n' "$selected"
+  fi
+}
+
+selected="${1:-}"
+if [[ -z "$selected" ]]; then
+  selected="$(select_action)"
+  selected="${selected%%    *}"
+fi
+
+case "$selected" in
+  Lock|lock) run_action lock ;;
+  Suspend|suspend) run_action suspend ;;
+  Logout|logout) run_action logout ;;
+  Reboot|reboot) run_action reboot ;;
+  "Power Off"|poweroff|shutdown) run_action poweroff ;;
+  "") exit 0 ;;
+  *) printf 'seven-power: unknown selection: %s\n' "$selected" >&2; exit 1 ;;
+esac

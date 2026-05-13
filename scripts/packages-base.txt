@@ -18,6 +18,8 @@ xdg-desktop-portal-hyprland
 waybar
 rofi
 kitty
+mako
+libnotify
 polkit-kde-agent
 grim
 slurp

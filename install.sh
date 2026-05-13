@@ -9,7 +9,7 @@ usage() {
 SevenOS installer
 
 Usage:
-  ./install.sh <target> [--dry-run]
+  ./install.sh <target> [--dry-run] [--yes]
 
 Targets:
   base             Install base SevenOS desktop layer
@@ -36,6 +36,7 @@ Targets:
   vm-check         Check KVM/libvirt readiness
   vm-network       Start and autostart libvirt default network
   vm-windows       Create a Windows VM with virt-install
+  windows-mode     Guided Windows compatibility and VM workflow
   installer-plan   Create a non-destructive install plan
   installer-check  Validate an install plan
   installer-script Generate non-destructive install step script
@@ -43,16 +44,19 @@ Targets:
 
 Options:
   --dry-run         Show actions without installing packages or copying configs
+  --yes             Run package installs non-interactively where supported
   -h, --help        Show this help
 EOF
 }
 
 TARGET="${1:-}"
 DRY_RUN=0
+YES=0
 
 for arg in "$@"; do
   case "$arg" in
     --dry-run) DRY_RUN=1 ;;
+    --yes) YES=1 ;;
     -h|--help) usage; exit 0 ;;
   esac
 done
@@ -64,6 +68,7 @@ fi
 
 export SEVENOS_ROOT="$ROOT_DIR"
 export SEVENOS_DRY_RUN="$DRY_RUN"
+export SEVENOS_YES="$YES"
 
 if [[ "$TARGET" != "doctor" && "$TARGET" != "status" ]]; then
   require_arch
@@ -137,6 +142,9 @@ case "$TARGET" in
     ;;
   vm-windows)
     "$ROOT_DIR/vm/windows-vm.sh" "${@:2}"
+    ;;
+  windows-mode)
+    "$ROOT_DIR/vm/windows-mode.sh" "${@:2}"
     ;;
   installer-plan)
     "$ROOT_DIR/installer/plan.sh" "${@:2}"

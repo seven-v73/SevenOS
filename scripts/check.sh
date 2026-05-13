@@ -18,8 +18,16 @@ bash -n \
   "$ROOT_DIR/scripts/install-cli.sh" \
   "$ROOT_DIR/scripts/apply-theme.sh" \
   "$ROOT_DIR/scripts/build-iso.sh" \
+  "$ROOT_DIR/scripts/dashboard.sh" \
+  "$ROOT_DIR/scripts/readiness.sh" \
+  "$ROOT_DIR/scripts/improve.sh" \
+  "$ROOT_DIR/scripts/ux-check.sh" \
   "$ROOT_DIR/branding/apply-branding.sh" \
   "$ROOT_DIR/bin/seven" \
+  "$ROOT_DIR/bin/seven-power" \
+  "$ROOT_DIR/bin/seven-welcome" \
+  "$ROOT_DIR/bin/seven-waybar-profile" \
+  "$ROOT_DIR/bin/seven-waybar-security" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
   "$ROOT_DIR/security/hardening.sh" \
@@ -28,6 +36,7 @@ bash -n \
   "$ROOT_DIR/security/blackarch.sh" \
   "$ROOT_DIR/vm/check.sh" \
   "$ROOT_DIR/vm/network.sh" \
+  "$ROOT_DIR/vm/windows-mode.sh" \
   "$ROOT_DIR/vm/windows-vm.sh" \
   "$ROOT_DIR/installer/plan.sh" \
   "$ROOT_DIR/installer/validate-plan.sh" \
@@ -37,8 +46,15 @@ bash -n \
 bash -n "$ROOT_DIR/security/hardening.sh"
 
 log_info "Checking desktop config syntax..."
-python -m py_compile "$ROOT_DIR/bin/seven" "$ROOT_DIR/bin/sevenpkg"
+PYTHONDONTWRITEBYTECODE=1 python -m py_compile "$ROOT_DIR/bin/seven" "$ROOT_DIR/bin/sevenpkg"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
+
+for doc in VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md; do
+  if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
+    log_error "Missing product direction document: docs/$doc"
+    exit 1
+  fi
+done
 
 if command -v jq >/dev/null 2>&1; then
   jq empty "$ROOT_DIR/hyprland/waybar/config.jsonc"
@@ -51,6 +67,7 @@ fi
 
 if command -v rofi >/dev/null 2>&1; then
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
+  rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/power.rasi" -dump-theme >/dev/null
 else
   log_warn "rofi not found; skipping Rofi theme check."
 fi
@@ -113,6 +130,18 @@ log_info "Checking installer dry-run..."
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" all --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-security" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/dashboard.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" --record >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/improve.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/improve.sh" security >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/improve.sh" security --apply --yes >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ux-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" meta >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" sources >/dev/null
@@ -124,19 +153,33 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run remove nmap hashcat >/dev/n
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" info shield >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile list >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run dashboard >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --record >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run improve security >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run improve security --apply --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile shield >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield audit >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run vm start windows >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows start >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" branding --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" security --dry-run --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" theme --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" iso --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-network --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --virtio-iso /tmp/virtio.iso --os win10 --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode status --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode start --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cybersecurity core --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cybersecurity sandbox --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-audit --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --name check --offline --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset web --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset forensics --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" blackarch-setup --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" blackarch-category webapp --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" blackarch-tool feroxbuster --dry-run >/dev/null

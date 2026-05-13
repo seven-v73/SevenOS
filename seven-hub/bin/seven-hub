@@ -7,39 +7,17 @@ INSTALLER="$SEVENOS_ROOT/install.sh"
 
 title="Seven Hub"
 
-actions=(
-  "System Status|status|Show installed profiles and services"
-  "Doctor|doctor|Check host readiness"
-  "SevenPkg Meta|sevenpkg:meta|List SevenOS meta-packages"
-  "SevenPkg Status|sevenpkg:status|Show meta-package installation status"
-  "SevenPkg Sources|sevenpkg:sources|Show package sources"
-  "Seven Update|seven:update|Update pacman and AUR packages"
-  "Profile Forge|seven:profile forge|Install development workspace"
-  "Profile Shield|seven:profile shield|Install cybersecurity workspace"
-  "Profile Studio|seven:profile studio|Install creative workspace"
-  "Apply Branding|branding|Install SevenOS system identity"
-  "Apply Theme|theme|Apply African first desktop identity"
-  "Install Base|base|Install Hyprland desktop layer"
-  "Install DEV|dev|Install development profile"
-  "Install CYBERSECURITY|cybersecurity|Install security tooling profile"
-  "Install CYBER Core|cybersecurity core|Install core security tools only"
-  "Install CYBER Sandbox|cybersecurity sandbox|Install lab isolation helpers"
-  "Cyber Audit|cyber-audit|Review security tools and isolation readiness"
-  "Cyber Lab|cyber-lab|Open isolated SevenOS cyber shell"
-  "BlackArch Setup|blackarch-setup --dry-run|Preview optional BlackArch bridge"
-  "Install CREATION|creation|Install creative production profile"
-  "Install WINDOWS|windows|Install Wine, Lutris, QEMU, Bottles"
-  "VM Check|vm-check|Check KVM and libvirt readiness"
-  "VM Network|vm-network|Start libvirt default network"
-  "Installer Plan|installer-plan|Create non-destructive install plan"
-  "Installer Check|installer-check|Validate install plan"
-  "Installer Script|installer-script|Generate install preview script"
-  "Apply SECURITY|security|Apply base firewall and hardening"
-  "Install ALL|all|Install every SevenOS layer"
-  "Dry Run ALL|all --dry-run|Preview full installation"
-  "Open Virt Manager|app:virt-manager|Launch VM manager"
-  "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"
+categories=(
+  "Dashboard|category:Dashboard|System overview and common actions"
+  "Profiles|category:Profiles|Forge, Shield, Studio and SevenPkg status"
+  "Cyber|category:Cyber|Cyber audit, labs and BlackArch bridge"
+  "Desktop|category:Desktop|Theme, branding, power and session controls"
+  "VM & Windows|category:VM & Windows|Windows compatibility and libvirt"
+  "Installer|category:Installer|ISO and installation planning"
+  "Apps|category:Apps|External desktop applications"
 )
+
+actions=()
 
 die() {
   printf 'Seven Hub: %s\n' "$*" >&2
@@ -100,9 +78,99 @@ run_action() {
       local seven_command="${action#seven:}"
       run_in_terminal "cd '$SEVENOS_ROOT' && ./bin/seven $seven_command"
       ;;
+    dashboard:*)
+      run_in_terminal "cd '$SEVENOS_ROOT' && ./scripts/dashboard.sh"
+      ;;
     *)
       [[ -x "$INSTALLER" ]] || die "installer not executable: $INSTALLER"
       run_in_terminal "cd '$SEVENOS_ROOT' && ./install.sh $action"
+      ;;
+  esac
+}
+
+load_actions() {
+  local category="$1"
+
+  case "$category" in
+    "Dashboard")
+      actions=(
+        "Welcome|seven:welcome|Show onboarding and next steps"
+        "System Dashboard|dashboard:system|Open SevenOS overview"
+        "Readiness Score|seven:readiness|Score SevenOS against OS choice criteria"
+        "Improve Plan|seven:improve|Plan improvements for all OS criteria"
+        "Improve Security|seven:improve security|Plan trust and hardening improvements"
+        "Improve Compatibility|seven:improve compatibility|Plan Windows and app compatibility improvements"
+        "Improve Workspaces|seven:improve target|Plan Forge, Shield and Studio completion"
+        "System Status|status|Show installed profiles and services"
+        "Doctor|doctor|Check host readiness"
+        "Seven Update|seven:update|Update pacman and AUR packages"
+        "Dry Run ALL|all --dry-run|Preview full installation"
+      )
+      ;;
+    "Profiles")
+      actions=(
+        "SevenPkg Meta|sevenpkg:meta|List SevenOS meta-packages"
+        "SevenPkg Status|sevenpkg:status|Show meta-package installation status"
+        "SevenPkg Sources|sevenpkg:sources|Show package sources"
+        "Profile Forge|seven:profile forge|Install development workspace"
+        "Profile Shield|seven:profile shield|Install cybersecurity workspace"
+        "Profile Studio|seven:profile studio|Install creative workspace"
+        "Install Base|base|Install Hyprland desktop layer"
+        "Install ALL|all|Install every SevenOS layer"
+      )
+      ;;
+    "Cyber")
+      actions=(
+        "Install CYBERSECURITY|cybersecurity|Install security tooling profile"
+        "Install CYBER Core|cybersecurity core|Install core security tools only"
+        "Install CYBER Sandbox|cybersecurity sandbox|Install lab isolation helpers"
+        "Cyber Audit|cyber-audit|Review security tools and isolation readiness"
+        "Cyber Lab Web|cyber-lab --preset web|Open web testing lab"
+        "Cyber Lab Forensics|cyber-lab --preset forensics|Open forensic lab"
+        "Cyber Lab Offline|cyber-lab --preset offline|Open offline lab"
+        "Apply SECURITY|security|Apply base firewall and hardening"
+        "BlackArch Setup|blackarch-setup --dry-run|Preview optional BlackArch bridge"
+      )
+      ;;
+    "Desktop")
+      actions=(
+        "Apply Branding|branding|Install SevenOS system identity"
+        "Apply Theme|theme|Apply African first desktop identity"
+        "Power Menu|app:seven-power|Open power controls"
+        "Lock Session|app:seven-power lock|Lock the desktop"
+      )
+      ;;
+    "VM & Windows")
+      actions=(
+        "Windows Mode Status|windows-mode status|Show Windows compatibility readiness"
+        "Windows Mode Start|windows-mode start|Start SevenOS Windows VM"
+        "Windows Mode Console|windows-mode console|Open SevenOS Windows VM console"
+        "Install WINDOWS|windows|Install Wine, Lutris, QEMU, Bottles"
+        "VM Check|vm-check|Check KVM and libvirt readiness"
+        "VM Network|vm-network|Start libvirt default network"
+        "Open Virt Manager|app:virt-manager|Launch VM manager"
+        "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"
+      )
+      ;;
+    "Installer")
+      actions=(
+        "ISO Tools|iso-tools|Install ISO build tooling"
+        "Build ISO Dry Run|iso --dry-run|Preview ISO build"
+        "Installer Plan|installer-plan|Create non-destructive install plan"
+        "Installer Check|installer-check|Validate install plan"
+        "Installer Script|installer-script|Generate install preview script"
+      )
+      ;;
+    "Apps")
+      actions=(
+        "Open Virt Manager|app:virt-manager|Launch VM manager"
+        "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"
+        "SevenPkg Meta|sevenpkg:meta|List SevenOS meta-packages"
+        "SevenPkg Status|sevenpkg:status|Show meta-package installation status"
+      )
+      ;;
+    *)
+      die "unknown category: $category"
       ;;
   esac
 }
@@ -171,7 +239,8 @@ action_badge() {
   local label="$1"
 
   case "$label" in
-    "System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL") printf 'RUN' ;;
+    "Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Installer"|"Apps") printf 'OPEN' ;;
+    "Welcome"|"System Dashboard"|"Readiness Score"|"Improve Plan"|"Improve Security"|"Improve Compatibility"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console") printf 'RUN' ;;
     "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
     "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
     "Profile Studio") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
@@ -183,7 +252,7 @@ action_badge() {
     "Install CYBER Core") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
     "Install CYBER Sandbox") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity-sandbox.txt" ;;
     "Cyber Audit") printf 'RUN' ;;
-    "Cyber Lab") app_state firejail ;;
+    "Cyber Lab Web"|"Cyber Lab Forensics"|"Cyber Lab Offline") app_state firejail ;;
     "BlackArch Setup") blackarch_state ;;
     "Install CREATION") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
     "Install WINDOWS") package_file_state "$SEVENOS_ROOT/scripts/packages-windows.txt" ;;
@@ -198,6 +267,7 @@ action_badge() {
       fi
       ;;
     "Installer Plan"|"Installer Check"|"Installer Script") printf 'RUN' ;;
+    "ISO Tools") package_file_state "$SEVENOS_ROOT/scripts/packages-iso.txt" ;;
     "Open Virt Manager") app_state virt-manager ;;
     "Open Bottles")
       if command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
@@ -211,6 +281,8 @@ action_badge() {
 }
 
 select_with_rofi() {
+  local menu_title="$1"
+  local message="$2"
   local menu=""
   local item label description badge
 
@@ -220,14 +292,15 @@ select_with_rofi() {
     menu+="$label    [$badge] $description"$'\n'
   done
 
-  printf '%s' "$menu" | rofi -dmenu -i -p "$title" -mesg "Seven Hub · African first control center" -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -theme-str 'window { width: 44%; }'
+  printf '%s' "$menu" | rofi -dmenu -i -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -theme-str 'window { width: 44%; }'
 }
 
 select_with_terminal() {
+  local menu_title="$1"
   local index=1
   local item label description choice badge
 
-  printf '%s\n\n' "$title" >&2
+  printf '%s\n\n' "$menu_title" >&2
   for item in "${actions[@]}"; do
     IFS='|' read -r label _ description <<<"$item"
     badge="$(action_badge "$label")"
@@ -244,15 +317,44 @@ select_with_terminal() {
   fi
 }
 
-main() {
-  local selected item label action
+select_category() {
+  actions=("${categories[@]}")
 
   if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
-    selected="$(select_with_rofi || true)"
+    local selected
+    selected="$(select_with_rofi "$title" "Choose a focused SevenOS workspace" || true)"
     selected="${selected%%    *}"
+    printf '%s\n' "$selected"
   else
-    selected="$(select_with_terminal)"
+    select_with_terminal "$title"
   fi
+}
+
+select_action() {
+  local category="$1"
+  load_actions "$category"
+
+  if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    local selected
+    selected="$(select_with_rofi "$category" "Seven Hub · $category" || true)"
+    selected="${selected%%    *}"
+    printf '%s\n' "$selected"
+  else
+    select_with_terminal "$category"
+  fi
+}
+
+main() {
+  local category selected item label action
+
+  category="${1:-}"
+  if [[ -z "$category" ]]; then
+    category="$(select_category)"
+  fi
+
+  [[ -n "$category" ]] || exit 0
+
+  selected="$(select_action "$category")"
 
   [[ -n "$selected" ]] || exit 0
 

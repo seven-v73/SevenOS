@@ -2,7 +2,17 @@
 
 Seven Hub is the lightweight control center for SevenOS Phase 2.
 
-The current implementation is a Rofi-powered launcher with a terminal fallback. It exposes the existing SevenOS installer workflows through a single menu while the future full GUI is designed.
+The current implementation is a Rofi-powered control center with a terminal fallback. It groups workflows into focused spaces while the future full GUI is designed.
+
+Current spaces:
+
+- Dashboard
+- Profiles
+- Cyber
+- Desktop
+- VM & Windows
+- Installer
+- Apps
 
 ## Features
 

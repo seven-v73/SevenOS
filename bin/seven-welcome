@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/install.sh" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/../install.sh" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -x "$candidate/install.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-welcome: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+
+command_state() {
+  local command_name="$1"
+  if command -v "$command_name" >/dev/null 2>&1; then
+    printf 'OK'
+  elif [[ -x "$ROOT_DIR/bin/$command_name" ]]; then
+    printf 'TREE'
+  else
+    printf 'MISS'
+  fi
+}
+
+service_state() {
+  local service="$1"
+  if systemctl is-active --quiet "$service" 2>/dev/null; then
+    printf 'OK'
+  elif systemctl is-enabled --quiet "$service" 2>/dev/null; then
+    printf 'PART'
+  else
+    printf 'MISS'
+  fi
+}
+
+print_next_steps() {
+  printf '\nNext steps\n'
+
+  if [[ "$(command_state seven)" == "MISS" || "$(command_state sevenpkg)" == "MISS" ]]; then
+    printf '  ./install.sh cli          Install SevenOS commands\n'
+  fi
+
+  if [[ ! -f "$HOME/.config/hypr/hyprland.conf" ]]; then
+    printf '  ./install.sh theme        Apply SevenOS desktop identity\n'
+  fi
+
+  if [[ "$(service_state ufw.service)" == "MISS" ]]; then
+    printf '  ./install.sh security     Enable base hardening\n'
+  fi
+
+  printf '  seven profile status      Inspect Forge, Shield, Studio and more\n'
+  printf '  seven improve             Plan improvements by OS criteria\n'
+  printf '  seven hub                 Open Seven Hub\n'
+  printf '  sevenpkg meta             List SevenOS meta-packages\n'
+}
+
+printf 'SevenOS Welcome\n'
+printf '===============\n\n'
+printf 'African first Linux ecosystem for creation, security, development, and sovereignty.\n\n'
+
+printf 'Repository\n'
+printf '  %s\n\n' "$ROOT_DIR"
+
+printf 'Core commands\n'
+printf '  seven       %s\n' "$(command_state seven)"
+printf '  sevenpkg    %s\n' "$(command_state sevenpkg)"
+printf '  seven-hub   %s\n' "$(command_state seven-hub)"
+printf '  seven-power %s\n' "$(command_state seven-power)"
+
+printf '\nServices\n'
+printf '  NetworkManager %s\n' "$(service_state NetworkManager.service)"
+printf '  libvirtd       %s\n' "$(service_state libvirtd.service)"
+printf '  ufw            %s\n' "$(service_state ufw.service)"
+
+printf '\nProfiles\n'
+if command -v sevenpkg >/dev/null 2>&1; then
+  sevenpkg status 2>/dev/null || true
+elif [[ -x "$ROOT_DIR/bin/sevenpkg" ]]; then
+  "$ROOT_DIR/bin/sevenpkg" status 2>/dev/null || true
+else
+  printf '  sevenpkg not available yet\n'
+fi
+
+printf '\nReadiness\n'
+if [[ -x "$ROOT_DIR/scripts/readiness.sh" ]]; then
+  "$ROOT_DIR/scripts/readiness.sh" 2>/dev/null | sed -n '/== Summary ==/,$p' || true
+else
+  printf '  readiness check unavailable\n'
+fi
+
+print_next_steps

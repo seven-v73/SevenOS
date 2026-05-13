@@ -27,12 +27,17 @@ pipewire-alsa
 pipewire-pulse
 wireplumber
 hyprland
+hyprpaper
 xdg-desktop-portal-hyprland
 waybar
 rofi
 kitty
+mako
+libnotify
 grim
 slurp
 wl-clipboard
+swaylock
+swayidle
 fastfetch
 ttf-jetbrains-mono-nerd

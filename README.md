@@ -1,10 +1,18 @@
 # SevenOS
 
-SevenOS is an experimental Arch Linux based system layer focused on a modern Hyprland desktop, modular work profiles, security tooling, creative production, and Windows compatibility.
+SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, modular work profiles, security tooling, creative production, Windows compatibility, and an African first product identity.
 
 This repository currently contains foundations for **Phase 1, Phase 2, and Phase 3**: post-install setup, a lightweight Seven Hub control center, VM helpers, identity assets, and an early Archiso live profile. It is not yet a complete installable distribution.
 
 ## Vision
+
+SevenOS aims to become an afro-futurist Linux ecosystem for productivity, creation, cybersecurity, Windows compatibility, and digital sovereignty.
+
+It is built around three pillars:
+
+- `seven` as the system controller
+- `sevenpkg` as the package and application manager
+- Seven Hub as the user-facing control center
 
 SevenOS aims to provide:
 
@@ -12,8 +20,9 @@ SevenOS aims to provide:
 - a Wayland desktop based on Hyprland
 - modular profiles for development, cybersecurity, and creation
 - Windows application compatibility through Wine, Bottles, Lutris, and later KVM/QEMU
-- a future Seven Hub control center
+- a Seven Hub control center
 - an African first visual identity with obsidian, ancestral gold, clay, baobab green, and indigo accents
+- a vocabulary and workflow model that makes Linux easier to live with
 
 ## Current Status
 
@@ -25,6 +34,8 @@ Implemented:
 - package manifests
 - starter Hyprland, Waybar, and Rofi configuration
 - Seven Hub MVP
+- `seven` system controller
+- `sevenpkg` package/application manager
 - initial Archiso profile and ISO build script
 - African first identity foundation
 - placeholders for advanced VM work
@@ -66,6 +77,11 @@ SevenOS/
 │   └── packages-windows.txt
 ├── vm/
 ├── security/
+├── docs/
+│   ├── VISION.md
+│   ├── PRODUCT_STRATEGY.md
+│   ├── UX_PRINCIPLES.md
+│   └── VOCABULARY.md
 ├── seven-hub/
 │   ├── bin/
 │   ├── install.sh
@@ -82,6 +98,21 @@ SevenOS/
 - internet connection
 - 8 GB RAM minimum, 16 GB recommended
 - CPU virtualization support for future VM workflows
+
+## Product Direction
+
+Start here before making strategic changes:
+
+- `docs/VISION.md`
+- `docs/PRODUCT_STRATEGY.md`
+- `docs/UX_PRINCIPLES.md`
+- `docs/VOCABULARY.md`
+- `docs/OS_CRITERIA.md`
+
+SevenOS is guided by one product question:
+
+> Does this make Linux more sovereign, more fluid, more culturally coherent,
+> and easier to live with every day?
 
 ## Usage
 
@@ -136,6 +167,12 @@ Show the current SevenOS installation status:
 ```bash
 ./install.sh status
 seven status
+seven welcome
+seven dashboard
+seven readiness
+seven improve
+seven improve security --apply --yes
+seven windows status
 sevenosctl status
 ```
 
@@ -222,11 +259,16 @@ SevenOS provides `sevenosctl`, a small CLI for daily system control:
 
 ```bash
 seven status
+seven welcome
+seven dashboard
+seven readiness
+seven improve
 seven doctor
 seven profile forge
 seven profile list
 seven profile status
 seven shield audit
+seven-power
 sevenpkg meta
 sevenpkg status
 sevenpkg info shield
@@ -241,6 +283,17 @@ sevenosctl branding
 `seven` is the main SevenOS system controller. `sevenpkg` is the package and
 application manager over pacman, paru, SevenOS meta-packages, and future
 SevenRepo packages. See `docs/package-manager.md`.
+
+Desktop controls:
+
+```bash
+seven-hub
+seven-power
+seven-power lock
+```
+
+Seven Hub is organized into focused spaces: Dashboard, Profiles, Cyber, Desktop,
+VM & Windows, Installer, and Apps.
 
 Apply only the desktop theme:
 

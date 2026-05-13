@@ -3,19 +3,43 @@
   "position": "top",
   "height": 34,
   "spacing": 8,
-  "modules-left": ["custom/sevenos", "hyprland/workspaces"],
+  "modules-left": ["custom/sevenos", "hyprland/workspaces", "custom/profile"],
   "modules-center": ["clock"],
-  "modules-right": ["network", "pulseaudio", "battery", "custom/hub", "tray"],
+  "modules-right": ["cpu", "memory", "custom/security", "network", "pulseaudio", "battery", "custom/hub", "custom/power", "tray"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
   },
   "custom/sevenos": {
     "format": "󰣇 SevenOS",
-    "tooltip": false
+    "tooltip": true,
+    "tooltip-format": "African first Linux workspace",
+    "on-click": "seven-hub Dashboard",
+    "on-click-right": "seven-welcome"
+  },
+  "custom/profile": {
+    "exec": "bash -lc 'seven-waybar-profile'",
+    "interval": 60,
+    "format": "󰆧 {}",
+    "tooltip": true,
+    "on-click": "seven profile status"
   },
   "clock": {
     "format": "󰥔 {:%a %d %b  %H:%M}"
+  },
+  "cpu": {
+    "format": "󰍛 {usage}%"
+  },
+  "memory": {
+    "format": "󰘚 {}%",
+    "tooltip-format": "{used:0.1f}G / {total:0.1f}G"
+  },
+  "custom/security": {
+    "exec": "bash -lc 'seven-waybar-security'",
+    "interval": 30,
+    "format": "󰒃 {}",
+    "tooltip": true,
+    "on-click": "seven shield audit"
   },
   "network": {
     "format-wifi": "󰤨 {signalStrength}%",
@@ -34,7 +58,13 @@
   "custom/hub": {
     "format": "󰒓",
     "tooltip": true,
-    "tooltip-format": "Seven Hub",
+    "tooltip-format": "Seven Hub control center",
     "on-click": "seven-hub"
+  },
+  "custom/power": {
+    "format": "󰐥",
+    "tooltip": true,
+    "tooltip-format": "Power menu",
+    "on-click": "seven-power"
   }
 }

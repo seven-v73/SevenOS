@@ -12,6 +12,7 @@ copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.
 copy_config_file "$ROOT_DIR/hyprland/hyprpaper.conf" "$CONFIG_HOME/hypr/hyprpaper.conf"
 copy_config_dir "$ROOT_DIR/hyprland/waybar" "$CONFIG_HOME/waybar"
 copy_config_dir "$ROOT_DIR/hyprland/rofi" "$CONFIG_HOME/rofi"
+copy_config_dir "$ROOT_DIR/hyprland/mako" "$CONFIG_HOME/mako"
 
 run_cmd mkdir -p "$DATA_HOME/sevenos/wallpapers" "$DATA_HOME/icons/hicolor/scalable/apps"
 run_cmd cp "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$DATA_HOME/sevenos/wallpapers/wallpaper-sevenos.svg"

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+firewall="MISS"
+if systemctl is-active --quiet ufw.service 2>/dev/null; then
+  firewall="OK"
+fi
+
+lab="MISS"
+if command -v firejail >/dev/null 2>&1; then
+  lab="OK"
+fi
+
+printf 'Shield %s Lab %s\n' "$firewall" "$lab"

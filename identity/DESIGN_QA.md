@@ -28,6 +28,7 @@ Use this checklist before shipping visual changes.
 ```bash
 jq empty hyprland/waybar/config.jsonc
 rofi -no-config -theme hyprland/rofi/sevenos.rasi -dump-theme
+rofi -no-config -theme hyprland/rofi/power.rasi -dump-theme
 python3 - <<'PY'
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -37,3 +38,10 @@ for path in Path("identity/assets").glob("*.svg"):
 PY
 ./scripts/check.sh
 ```
+
+## UX Checks
+
+- Seven Hub opens first-level categories before action lists.
+- Waybar shows profile and security status without crowding the bar.
+- Power actions live in `seven-power`, not behind a misleading icon.
+- Cyber Lab presets create predictable private workspaces.

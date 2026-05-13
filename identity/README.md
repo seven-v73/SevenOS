@@ -4,6 +4,12 @@ SevenOS uses an **African first** visual identity: modern, grounded, technical, 
 
 This is not an ornament layer. The identity should guide the whole system: colors, naming, rhythm, surfaces, spacing, boot messages, documentation, and future UI.
 
+The broader product direction lives in:
+
+- `docs/VISION.md`
+- `docs/UX_PRINCIPLES.md`
+- `docs/VOCABULARY.md`
+
 ## Design Direction
 
 - dark graphite base for focus and low eye strain
@@ -51,8 +57,12 @@ Use names that feel native to SevenOS:
 ## Current Implementation
 
 - Hyprland border colors and behavior
+- Hyprland idle lock and power controls
 - Waybar colors and workspace states
+- Waybar SevenOS profile/security/system indicators
 - Rofi launcher theme
+- Rofi power theme
+- Mako notification theme
 - SevenOS live ISO welcome message
 - SVG logo, wallpaper, and mode icon foundations in `identity/assets/`
 - documentation language and branding direction

@@ -13,6 +13,8 @@ Identity:
 
 Start here:
   cd /opt/SevenOS
+  seven welcome
+  seven dashboard
   seven doctor
   seven status
   sevenpkg meta

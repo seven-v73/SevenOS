@@ -11,6 +11,8 @@ Useful commands:
   seven status
   seven doctor
   sevenpkg meta
+  sevenpkg status
+  seven-power
   sevenosctl status
   sevenosctl doctor
   cd /opt/SevenOS
