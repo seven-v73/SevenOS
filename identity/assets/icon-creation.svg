@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">SevenOS Creation Icon</title>
   <desc id="desc">SevenOS creation mode icon.</desc>
-  <rect width="256" height="256" rx="48" fill="#0b0b0a"/>
-  <rect x="48" y="48" width="160" height="160" rx="28" fill="#15130f" stroke="#d6a84f" stroke-width="8"/>
-  <circle cx="112" cy="112" r="38" fill="#24180f" stroke="#e8dcc3" stroke-width="8"/>
-  <circle cx="98" cy="105" r="7" fill="#9b4a2f"/>
-  <circle cx="118" cy="96" r="7" fill="#456b4f"/>
-  <circle cx="126" cy="120" r="7" fill="#d6a84f"/>
-  <path d="M142 144l42 42" stroke="#d6a84f" stroke-width="14" stroke-linecap="round"/>
-  <path d="M158 130l30 30" stroke="#26344f" stroke-width="10" stroke-linecap="round"/>
+  <rect width="256" height="256" rx="48" fill="#050611"/>
+  <rect x="48" y="48" width="160" height="160" rx="28" fill="#10142a" stroke="#f5b83d" stroke-width="8"/>
+  <circle cx="112" cy="112" r="38" fill="#1a1134" stroke="#fff4dd" stroke-width="8"/>
+  <circle cx="98" cy="105" r="7" fill="#ff6b35"/>
+  <circle cx="118" cy="96" r="7" fill="#18a058"/>
+  <circle cx="126" cy="120" r="7" fill="#f5b83d"/>
+  <path d="M142 144l42 42" stroke="#f5b83d" stroke-width="14" stroke-linecap="round"/>
+  <path d="M158 130l30 30" stroke="#00b8c8" stroke-width="10" stroke-linecap="round"/>
 </svg>

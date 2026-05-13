@@ -12,42 +12,46 @@ The broader product direction lives in:
 
 ## Design Direction
 
-- dark graphite base for focus and low eye strain
-- gold accents for action and attention
-- red clay and earth tones for warmth
-- deep green for continuity, growth, and system health
-- liquid glass surfaces: translucent, calm, rounded, and readable
-- subtle line patterns inspired by African textile rhythm and carved geometry
-- minimal surfaces, no heavy decoration, no generic neon sci-fi look
+- royal midnight base for depth, focus, and cinematic contrast
+- Kente gold for primary action, prestige, and system identity
+- sunfire orange and hibiscus for energy, alerts, creative motion, and warmth
+- Nile cyan for technology, networking, windows, and active flow
+- emerald for health, security, stability, and growth
+- ivory and raffia text for high readability and crafted warmth
+- liquid glass surfaces: translucent, layered, luminous, and readable
+- dimensional linework inspired by woven geometry, carved panels, architecture, and light
+- premium richness over flat minimalism: every surface should feel designed, not merely themed
 
 ## Palette
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `obsidian` | `#0b0b0a` | primary background |
-| `charcoal` | `#15130f` | elevated surfaces |
-| `soil` | `#24180f` | selected surface |
-| `clay` | `#9b4a2f` | warm secondary accent |
-| `gold` | `#d6a84f` | primary accent |
-| `sand` | `#e8dcc3` | primary text |
-| `raffia` | `#b7a98a` | muted text |
-| `baobab` | `#456b4f` | success and system health |
-| `indigo` | `#26344f` | cool contrast |
+| `void` | `#070a18` | cinematic base |
+| `midnight` | `#10142a` | elevated surface |
+| `palace` | `#1a1134` | glass depth and selected surface |
+| `kente-gold` | `#f5b83d` | primary action and brand |
+| `sunfire` | `#ff6b35` | energy, warnings, motion |
+| `hibiscus` | `#d7266a` | creative accent and high emphasis |
+| `nile` | `#00b8c8` | technology, flow, windows, network |
+| `emerald` | `#18a058` | security, health, success |
+| `ivory` | `#fff4dd` | primary text |
+| `raffia` | `#d8bf8a` | secondary text |
 
 ## Naming
 
 Use names that feel native to SevenOS:
 
-- `Ancestral Gold` for primary action
-- `Clay Signal` for warnings and secondary emphasis
-- `Baobab Green` for success and stable system state
-- `Obsidian Shell` for dark backgrounds
-- `Raffia Text` for muted information
+- `Kente Gold` for primary action and SevenOS identity
+- `Sunfire` for warnings, motion, and high-energy actions
+- `Hibiscus` for creative emphasis and Studio surfaces
+- `Nile Cyan` for technology, networking, VM, and Windows Mode
+- `Emerald` for Shield, health, and trusted system state
+- `Royal Midnight` for the cinematic shell
 
 ## UI Rules
 
-- Keep layouts calm and functional.
-- Use pattern as a fine border or background texture, never as visual noise.
+- Keep layouts highly functional, but visually deliberate and premium.
+- Use pattern as dimensional structure, woven rhythm, glass edge, or background architecture.
 - Do not use generic purple cyberpunk gradients.
 - Do not use flags as the visual system. Country colors can appear as subtle accents only when a context specifically calls for it.
 - Do not reduce African identity to random motifs. The style should feel intentional, architectural, and useful.

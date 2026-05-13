@@ -1,8 +1,8 @@
 @theme "sevenos.rasi"
 
 window {
-  width: 28%;
-  border-color: #9b4a2f;
+  width: 34%;
+  border-color: #ff6b35;
 }
 
 listview {
@@ -10,5 +10,10 @@ listview {
 }
 
 entry {
-  placeholder: "Power";
+  placeholder: "Seven Power";
+}
+
+message {
+  background-color: #1a1134e8;
+  border-color: #ff6b3566;
 }

@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">SevenOS DEV Icon</title>
   <desc id="desc">SevenOS development mode icon.</desc>
-  <rect width="256" height="256" rx="48" fill="#0b0b0a"/>
-  <rect x="48" y="48" width="160" height="160" rx="28" fill="#15130f" stroke="#d6a84f" stroke-width="8"/>
-  <path d="M76 78h104" stroke="#9b4a2f" stroke-width="8" stroke-linecap="round"/>
-  <path d="M92 112l-28 22 28 22M164 112l28 22-28 22" fill="none" stroke="#e8dcc3" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M140 102l-24 70" stroke="#456b4f" stroke-width="12" stroke-linecap="round"/>
+  <rect width="256" height="256" rx="48" fill="#050611"/>
+  <rect x="48" y="48" width="160" height="160" rx="28" fill="#10142a" stroke="#f5b83d" stroke-width="8"/>
+  <path d="M76 78h104" stroke="#ff6b35" stroke-width="8" stroke-linecap="round"/>
+  <path d="M92 112l-28 22 28 22M164 112l28 22-28 22" fill="none" stroke="#fff4dd" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M140 102l-24 70" stroke="#18a058" stroke-width="12" stroke-linecap="round"/>
 </svg>

@@ -134,9 +134,10 @@ else
   ok "Hyprland config avoids removed 0.55 options"
 fi
 
-if grep -q 'background_opacity 0.91' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'active_tab_background #d6a84f' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
-  ok "Kitty uses SevenOS premium palette"
+if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'active_tab_background #f5b83d' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'cursor #00b8c8' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
+  ok "Kitty uses SevenOS Royal Kente palette"
 else
   fail "Kitty palette is not aligned with SevenOS identity"
 fi

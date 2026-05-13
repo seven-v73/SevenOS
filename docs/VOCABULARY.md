@@ -28,12 +28,13 @@ This document keeps SevenOS language consistent across commands, UI, and docs.
 
 | Token | Meaning |
 | --- | --- |
-| Obsidian Shell | dark system foundation |
-| Ancestral Gold | primary action and attention |
-| Clay Signal | warning, warmth, and secondary emphasis |
-| Baobab Green | health, continuity, and success |
+| Royal Midnight | cinematic system foundation |
+| Kente Gold | primary action, prestige, and SevenOS identity |
+| Sunfire | warning, motion, and high-energy actions |
+| Hibiscus | creative emphasis and expressive surfaces |
+| Nile Cyan | technology, flow, networking, and Windows Mode |
+| Emerald Trust | health, continuity, security, and success |
 | Raffia Text | muted information |
-| Indigo Depth | cool contrast and technical depth |
 
 ## UX Phrases
 

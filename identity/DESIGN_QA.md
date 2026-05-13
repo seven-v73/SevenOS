@@ -7,18 +7,18 @@ Use this checklist before shipping visual changes.
 - African first, not generic cyberpunk.
 - Cultural references are structural, subtle, and respectful.
 - Flags are not used as the default design system.
-- Palette stays close to obsidian, gold, clay, baobab, raffia, sand, and indigo.
+- Palette follows Royal Kente: void, midnight, palace, Kente gold, sunfire, hibiscus, Nile cyan, emerald, ivory, and raffia.
 
 ## Readability
 
-- Primary text uses `sand` or another high-contrast color.
-- `clay` and `baobab` are used mostly as accents, borders, or large elements.
+- Primary text uses `ivory` or another high-contrast color.
+- Kente gold, Nile cyan, hibiscus, sunfire, and emerald are used as purposeful accents by function.
 - Small Waybar text remains readable at 13px.
 - Buttons and labels do not overflow their containers.
 
 ## Premium Feel
 
-- Surfaces are calm, translucent, and purposeful.
+- Surfaces are dimensional, translucent, luminous, and purposeful.
 - Corners stay consistent.
 - Icon weight is consistent across the profile set.
 - Wallpaper does not fight app windows or status bars.
