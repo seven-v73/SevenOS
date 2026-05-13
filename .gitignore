@@ -1,0 +1,14 @@
+# Runtime and local state
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Build outputs
+out/
+work/
+iso/
+
+# Editor state
+.idea/
+.vscode/

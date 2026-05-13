@@ -1,0 +1,20 @@
+# SevenOS Windows compatibility layer
+wine
+wine-mono
+wine-gecko
+winetricks
+lutris
+flatpak
+gamemode
+vulkan-icd-loader
+qemu-full
+virt-manager
+virt-viewer
+dnsmasq
+vde2
+openbsd-netcat
+edk2-ovmf
+
+# Optional, depending on your repositories:
+# bottles is commonly installed through Flatpak or AUR.
+# lib32-gamemode and lib32-vulkan-icd-loader require the Arch multilib repo.

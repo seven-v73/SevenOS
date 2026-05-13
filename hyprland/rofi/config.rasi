@@ -1,0 +1,8 @@
+configuration {
+  modi: "drun,run,window";
+  show-icons: true;
+  terminal: "kitty";
+  drun-display-format: "{name}";
+}
+
+@theme "sevenos"

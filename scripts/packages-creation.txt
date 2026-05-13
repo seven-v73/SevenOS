@@ -1,0 +1,16 @@
+# SevenOS CREATION profile
+gimp
+krita
+inkscape
+blender
+kdenlive
+obs-studio
+audacity
+ardour
+lmms
+darktable
+rawtherapee
+scribus
+imagemagick
+ffmpeg
+handbrake

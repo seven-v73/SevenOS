@@ -1,0 +1,52 @@
+* {
+  background: #10100f;
+  foreground: #e7dec7;
+  muted: #9d927d;
+  accent: #d1a84f;
+  selected: #241d16;
+}
+
+window {
+  width: 38%;
+  border: 1px;
+  border-color: @accent;
+  border-radius: 6px;
+  background-color: @background;
+}
+
+mainbox {
+  padding: 12px;
+}
+
+inputbar {
+  padding: 8px;
+  border: 1px;
+  border-color: #3a3022;
+  background-color: #151410;
+}
+
+entry {
+  text-color: @foreground;
+  placeholder: "SevenOS";
+  placeholder-color: @muted;
+}
+
+listview {
+  lines: 8;
+  fixed-height: true;
+  margin: 8px 0 0 0;
+}
+
+element {
+  padding: 8px;
+}
+
+element selected {
+  background-color: @selected;
+  text-color: @accent;
+}
+
+element-text,
+element-icon {
+  text-color: inherit;
+}

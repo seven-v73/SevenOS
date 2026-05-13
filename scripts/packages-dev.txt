@@ -1,0 +1,27 @@
+# SevenOS DEV profile
+git
+github-cli
+nodejs
+npm
+pnpm
+python
+python-pip
+python-pipx
+rust
+go
+jdk-openjdk
+docker
+docker-compose
+helix
+neovim
+code
+tmux
+make
+cmake
+ninja
+gcc
+clang
+lldb
+sqlite
+postgresql
+valkey
