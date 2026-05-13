@@ -13,7 +13,7 @@ SevenOS aims to provide:
 - modular profiles for development, cybersecurity, and creation
 - Windows application compatibility through Wine, Bottles, Lutris, and later KVM/QEMU
 - a future Seven Hub control center
-- an afro-futurist visual identity with dark, gold, and earth-tone accents
+- an African first visual identity with obsidian, ancestral gold, clay, baobab green, and indigo accents
 
 ## Current Status
 
@@ -24,12 +24,15 @@ Implemented:
 - modular profile scripts
 - package manifests
 - starter Hyprland, Waybar, and Rofi configuration
-- placeholders for VM, security, Seven Hub, and ISO work
+- Seven Hub MVP
+- initial Archiso profile and ISO build script
+- African first identity foundation
+- placeholders for advanced VM work
 
 Not implemented yet:
 
 - full Arch installation automation
-- ISO generation
+- final ISO installer flow
 - Seven Hub GUI
 - automated Windows VM provisioning
 - GPU passthrough automation
@@ -50,6 +53,10 @@ SevenOS/
 │   ├── hyprland.conf
 │   ├── waybar/
 │   └── rofi/
+├── identity/
+│   ├── README.md
+│   ├── palette.sh
+│   └── wallpaper/
 ├── scripts/
 │   ├── lib.sh
 │   ├── packages-base.txt
@@ -60,7 +67,11 @@ SevenOS/
 ├── vm/
 ├── security/
 ├── seven-hub/
+│   ├── bin/
+│   ├── install.sh
+│   └── seven-hub.desktop
 └── archiso/
+    └── profile/
 ```
 
 ## Requirements
@@ -96,12 +107,23 @@ Install a profile:
 ./install.sh creation
 ./install.sh windows
 ./install.sh security
+./install.sh theme
+./install.sh hub
+./install.sh iso-tools
+./install.sh vm-check
+./install.sh vm-network
 ```
 
 Check whether the current host is ready for SevenOS features:
 
 ```bash
 ./install.sh doctor
+```
+
+Show the current SevenOS installation status:
+
+```bash
+./install.sh status
 ```
 
 Install everything:
@@ -120,6 +142,55 @@ Run local checks:
 
 ```bash
 ./scripts/check.sh
+```
+
+Build a live ISO:
+
+```bash
+./install.sh iso-tools
+./install.sh iso
+```
+
+Preview the ISO build commands:
+
+```bash
+./install.sh iso --dry-run
+```
+
+Check VM readiness:
+
+```bash
+./install.sh vm-check
+```
+
+Start the libvirt default network:
+
+```bash
+./install.sh vm-network
+```
+
+Preview a Windows VM creation command:
+
+```bash
+./install.sh vm-windows --iso /path/to/windows.iso --dry-run
+```
+
+Launch Seven Hub after installing it:
+
+```bash
+seven-hub
+```
+
+## Identity
+
+SevenOS uses an African first identity system: dark graphite surfaces, ancestral gold for action, clay for signal, baobab green for system health, and restrained geometric rhythm inspired by African material culture.
+
+The identity source of truth lives in `identity/README.md`.
+
+Apply only the desktop theme:
+
+```bash
+./install.sh theme
 ```
 
 ## Profiles
@@ -148,11 +219,23 @@ Bottles is expected to be installed later through Flatpak or an AUR workflow.
 
 The installer configures Flathub, installs Bottles through Flatpak when possible, enables `libvirtd`, and adds the current user to the `libvirt` group.
 
+Windows VM helpers:
+
+```bash
+./install.sh vm-check
+./install.sh vm-network
+./install.sh vm-windows --iso /path/to/windows.iso
+```
+
 ### SECURITY
 
 Installs a base hardening layer with UFW, Firejail, Bubblewrap, OpenSSH, GnuPG, KeePassXC, rkhunter, and Lynis.
 
 The installer enables UFW with denied incoming traffic and allowed outgoing traffic by default.
+
+### SEVEN HUB
+
+Installs a lightweight Rofi-based control center with terminal fallback. Seven Hub exposes the same installer targets as the CLI: status, doctor, base, profiles, Windows compatibility, security hardening, and dry-run preview.
 
 Windows VM provisioning and GPU passthrough will be handled in later phases.
 
@@ -168,15 +251,15 @@ Windows VM provisioning and GPU passthrough will be handled in later phases.
 
 ### Phase 2
 
-- Seven Hub GUI
-- profile toggles
-- software management UI
-- theme management
+- Seven Hub MVP
+- profile launch actions
+- Windows and VM launch actions
+- dry-run installation preview
 
 ### Phase 3
 
 - Archiso integration
-- bootable SevenOS ISO
+- live SevenOS ISO profile
 - installer flow
 
 ### Phase 4

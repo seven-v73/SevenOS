@@ -8,7 +8,21 @@ require_arch
 require_command pacman
 
 log_info "Checking shell syntax..."
-bash -n "$ROOT_DIR/install.sh" "$ROOT_DIR/bootstrap.sh" "$ROOT_DIR"/profiles/*.sh "$ROOT_DIR/scripts/lib.sh" "$ROOT_DIR/scripts/doctor.sh"
+bash -n \
+  "$ROOT_DIR/install.sh" \
+  "$ROOT_DIR/bootstrap.sh" \
+  "$ROOT_DIR"/profiles/*.sh \
+  "$ROOT_DIR/scripts/lib.sh" \
+  "$ROOT_DIR/scripts/doctor.sh" \
+  "$ROOT_DIR/scripts/status.sh" \
+  "$ROOT_DIR/scripts/apply-theme.sh" \
+  "$ROOT_DIR/scripts/build-iso.sh" \
+  "$ROOT_DIR/security/hardening.sh" \
+  "$ROOT_DIR/vm/check.sh" \
+  "$ROOT_DIR/vm/network.sh" \
+  "$ROOT_DIR/vm/windows-vm.sh" \
+  "$ROOT_DIR/seven-hub/install.sh" \
+  "$ROOT_DIR/seven-hub/bin/seven-hub"
 bash -n "$ROOT_DIR/security/hardening.sh"
 
 log_info "Checking package names against pacman metadata..."
@@ -35,5 +49,10 @@ fi
 
 log_info "Checking installer dry-run..."
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" all --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" theme --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" iso --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-network --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --dry-run >/dev/null
 
 log_success "All checks passed."

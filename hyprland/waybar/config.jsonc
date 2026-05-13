@@ -3,12 +3,16 @@
   "position": "top",
   "height": 32,
   "spacing": 8,
-  "modules-left": ["hyprland/workspaces"],
+  "modules-left": ["custom/sevenos", "hyprland/workspaces"],
   "modules-center": ["clock"],
   "modules-right": ["network", "pulseaudio", "battery", "tray"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
+  },
+  "custom/sevenos": {
+    "format": "SevenOS",
+    "tooltip": false
   },
   "clock": {
     "format": "{:%a %d %b  %H:%M}"

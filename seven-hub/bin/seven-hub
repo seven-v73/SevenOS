@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+SEVEN_HUB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+SEVENOS_ROOT="${SEVENOS_ROOT:-$(cd -- "$SEVEN_HUB_DIR/.." && pwd)}"
+INSTALLER="$SEVENOS_ROOT/install.sh"
+
+title="Seven Hub"
+
+actions=(
+  "System Status|status|Show installed profiles and services"
+  "Doctor|doctor|Check host readiness"
+  "Apply Theme|theme|Apply African first desktop identity"
+  "Install Base|base|Install Hyprland desktop layer"
+  "Install DEV|dev|Install development profile"
+  "Install CYBERSECURITY|cybersecurity|Install security tooling profile"
+  "Install CREATION|creation|Install creative production profile"
+  "Install WINDOWS|windows|Install Wine, Lutris, QEMU, Bottles"
+  "VM Check|vm-check|Check KVM and libvirt readiness"
+  "VM Network|vm-network|Start libvirt default network"
+  "Apply SECURITY|security|Apply base firewall and hardening"
+  "Install ALL|all|Install every SevenOS layer"
+  "Dry Run ALL|all --dry-run|Preview full installation"
+  "Open Virt Manager|app:virt-manager|Launch VM manager"
+  "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"
+)
+
+die() {
+  printf 'Seven Hub: %s\n' "$*" >&2
+  exit 1
+}
+
+run_in_terminal() {
+  local command="$1"
+  local terminal="${TERMINAL:-}"
+
+  if [[ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    bash -lc "$command"
+    return 0
+  fi
+
+  if [[ -z "$terminal" ]]; then
+    if command -v kitty >/dev/null 2>&1; then
+      terminal="kitty"
+    elif command -v foot >/dev/null 2>&1; then
+      terminal="foot"
+    elif command -v alacritty >/dev/null 2>&1; then
+      terminal="alacritty"
+    elif command -v xterm >/dev/null 2>&1; then
+      terminal="xterm"
+    fi
+  fi
+
+  if [[ -n "$terminal" ]]; then
+    case "$(basename "$terminal")" in
+      kitty)
+        "$terminal" --title "$title" bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
+        ;;
+      foot|alacritty|xterm)
+        "$terminal" -e bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
+        ;;
+      *)
+        "$terminal" -e bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
+        ;;
+    esac
+  else
+    bash -lc "$command"
+  fi
+}
+
+run_action() {
+  local action="$1"
+
+  case "$action" in
+    app:*)
+      local app_command="${action#app:}"
+      run_in_terminal "$app_command"
+      ;;
+    *)
+      [[ -x "$INSTALLER" ]] || die "installer not executable: $INSTALLER"
+      run_in_terminal "cd '$SEVENOS_ROOT' && ./install.sh $action"
+      ;;
+  esac
+}
+
+select_with_rofi() {
+  local menu=""
+  local item label description
+
+  for item in "${actions[@]}"; do
+    IFS='|' read -r label _ description <<<"$item"
+    menu+="$label    $description"$'\n'
+  done
+
+  printf '%s' "$menu" | rofi -dmenu -i -p "$title" -theme-str 'window { width: 44%; }'
+}
+
+select_with_terminal() {
+  local index=1
+  local item label description choice
+
+  printf '%s\n\n' "$title" >&2
+  for item in "${actions[@]}"; do
+    IFS='|' read -r label _ description <<<"$item"
+    printf '%2d. %-18s %s\n' "$index" "$label" "$description" >&2
+    index=$((index + 1))
+  done
+
+  printf '\nChoose an action: ' >&2
+  read -r choice
+
+  if [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#actions[@]} )); then
+    IFS='|' read -r label _ _ <<<"${actions[$((choice - 1))]}"
+    printf '%s\n' "$label"
+  fi
+}
+
+main() {
+  local selected item label action
+
+  if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    selected="$(select_with_rofi || true)"
+    selected="${selected%%    *}"
+  else
+    selected="$(select_with_terminal)"
+  fi
+
+  [[ -n "$selected" ]] || exit 0
+
+  for item in "${actions[@]}"; do
+    IFS='|' read -r label action _ <<<"$item"
+    if [[ "$label" == "$selected" ]]; then
+      run_action "$action"
+      exit 0
+    fi
+  done
+
+  die "unknown action: $selected"
+}
+
+main "$@"

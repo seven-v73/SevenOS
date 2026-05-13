@@ -1,14 +1,17 @@
 * {
-  background: #10100f;
-  foreground: #e7dec7;
-  muted: #9d927d;
-  accent: #d1a84f;
-  selected: #241d16;
+  background: #0b0b0a;
+  surface: #15130f;
+  foreground: #e8dcc3;
+  muted: #b7a98a;
+  accent: #d6a84f;
+  clay: #9b4a2f;
+  baobab: #456b4f;
+  selected: #24180f;
 }
 
 window {
-  width: 38%;
-  border: 1px;
+  width: 40%;
+  border: 2px;
   border-color: @accent;
   border-radius: 6px;
   background-color: @background;
@@ -21,13 +24,13 @@ mainbox {
 inputbar {
   padding: 8px;
   border: 1px;
-  border-color: #3a3022;
-  background-color: #151410;
+  border-color: @clay;
+  background-color: @surface;
 }
 
 entry {
   text-color: @foreground;
-  placeholder: "SevenOS";
+  placeholder: "SevenOS - African first";
   placeholder-color: @muted;
 }
 
@@ -44,6 +47,8 @@ element {
 element selected {
   background-color: @selected;
   text-color: @accent;
+  border: 0px 0px 0px 3px;
+  border-color: @baobab;
 }
 
 element-text,

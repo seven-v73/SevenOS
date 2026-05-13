@@ -19,6 +19,14 @@ Targets:
   windows          Install Windows compatibility layer
   security         Apply base security hardening
   doctor           Check host readiness
+  status           Show SevenOS installation status
+  theme            Apply SevenOS African first theme
+  hub              Install Seven Hub launcher
+  iso-tools        Install ISO build tooling
+  iso              Build SevenOS live ISO
+  vm-check         Check KVM/libvirt readiness
+  vm-network       Start and autostart libvirt default network
+  vm-windows       Create a Windows VM with virt-install
   all              Install base layer and all profiles
 
 Options:
@@ -45,7 +53,7 @@ fi
 export SEVENOS_ROOT="$ROOT_DIR"
 export SEVENOS_DRY_RUN="$DRY_RUN"
 
-if [[ "$TARGET" != "doctor" ]]; then
+if [[ "$TARGET" != "doctor" && "$TARGET" != "status" ]]; then
   require_arch
   require_command sudo
   require_command pacman
@@ -72,6 +80,30 @@ case "$TARGET" in
     ;;
   doctor)
     "$ROOT_DIR/scripts/doctor.sh"
+    ;;
+  status)
+    "$ROOT_DIR/scripts/status.sh"
+    ;;
+  theme)
+    "$ROOT_DIR/scripts/apply-theme.sh"
+    ;;
+  hub)
+    "$ROOT_DIR/seven-hub/install.sh"
+    ;;
+  iso-tools)
+    install_package_file "$ROOT_DIR/scripts/packages-iso.txt"
+    ;;
+  iso)
+    "$ROOT_DIR/scripts/build-iso.sh" "${@:2}"
+    ;;
+  vm-check)
+    "$ROOT_DIR/vm/check.sh"
+    ;;
+  vm-network)
+    "$ROOT_DIR/vm/network.sh"
+    ;;
+  vm-windows)
+    "$ROOT_DIR/vm/windows-vm.sh" "${@:2}"
     ;;
   all)
     "$ROOT_DIR/profiles/all.sh"

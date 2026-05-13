@@ -7,29 +7,55 @@
 }
 
 window#waybar {
-  background: #10100f;
-  color: #e7dec7;
-  border-bottom: 1px solid #3a3022;
+  background: #0b0b0a;
+  color: #e8dcc3;
+  border-bottom: 1px solid #3b2a18;
 }
 
 #workspaces button {
-  color: #9d927d;
+  color: #b7a98a;
   padding: 0 10px;
+  border-bottom: 2px solid transparent;
 }
 
 #workspaces button.active {
-  color: #d1a84f;
-  background: #241d16;
+  color: #d6a84f;
+  background: #24180f;
+  border-bottom-color: #9b4a2f;
+}
+
+#workspaces button.urgent {
+  color: #e8dcc3;
+  background: #9b4a2f;
 }
 
 #clock,
 #network,
 #pulseaudio,
 #battery,
-#tray {
+#tray,
+#custom-sevenos {
   padding: 0 10px;
 }
 
+#custom-sevenos {
+  color: #0b0b0a;
+  background: #d6a84f;
+  font-weight: 700;
+}
+
 #clock {
-  color: #d1a84f;
+  color: #d6a84f;
+}
+
+#network {
+  color: #456b4f;
+}
+
+#pulseaudio {
+  color: #e8dcc3;
+}
+
+#battery {
+  color: #b7a98a;
 }

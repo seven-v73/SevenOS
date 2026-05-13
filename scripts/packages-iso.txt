@@ -1,0 +1,6 @@
+# SevenOS ISO build tooling
+archiso
+libisoburn
+squashfs-tools
+dosfstools
+mtools

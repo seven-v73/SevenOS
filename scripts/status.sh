@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/scripts/lib.sh"
+
+ok() {
+  printf '[OK] %s\n' "$*"
+}
+
+warn() {
+  printf '[WARN] %s\n' "$*"
+}
+
+missing() {
+  printf '[MISS] %s\n' "$*"
+}
+
+section() {
+  printf '\n== %s ==\n' "$*"
+}
+
+package_installed() {
+  pacman -Q "$1" >/dev/null 2>&1
+}
+
+flatpak_installed() {
+  command -v flatpak >/dev/null 2>&1 && flatpak info "$1" >/dev/null 2>&1
+}
+
+service_active() {
+  systemctl is-active --quiet "$1" >/dev/null 2>&1
+}
+
+service_enabled() {
+  systemctl is-enabled --quiet "$1" >/dev/null 2>&1
+}
+
+group_member() {
+  local group="$1"
+  groups "$USER" | grep -qw "$group"
+}
+
+profile_status() {
+  local name="$1"
+  local package_file="$2"
+  local installed=0
+  local total=0
+  local package
+
+  while IFS= read -r package; do
+    package="${package%%#*}"
+    package="${package//[[:space:]]/}"
+    [[ -z "$package" ]] && continue
+
+    total=$((total + 1))
+    if package_installed "$package"; then
+      installed=$((installed + 1))
+    fi
+  done < "$package_file"
+
+  if [[ "$total" -eq 0 ]]; then
+    warn "$name: no packages declared"
+  elif [[ "$installed" -eq "$total" ]]; then
+    ok "$name: installed ($installed/$total packages)"
+  elif [[ "$installed" -gt 0 ]]; then
+    warn "$name: partial ($installed/$total packages)"
+  else
+    missing "$name: not installed (0/$total packages)"
+  fi
+}
+
+service_status() {
+  local service="$1"
+
+  if service_active "$service"; then
+    ok "$service: active"
+  elif service_enabled "$service"; then
+    warn "$service: enabled but not active"
+  else
+    missing "$service: inactive"
+  fi
+}
+
+package_status() {
+  local package="$1"
+  local label="${2:-$1}"
+
+  if package_installed "$package"; then
+    ok "$label"
+  else
+    missing "$label"
+  fi
+}
+
+log_info "SevenOS system status"
+
+section "Profiles"
+profile_status "Base desktop" "$ROOT_DIR/scripts/packages-base.txt"
+profile_status "DEV" "$ROOT_DIR/scripts/packages-dev.txt"
+profile_status "CYBERSECURITY" "$ROOT_DIR/scripts/packages-cybersecurity.txt"
+profile_status "CREATION" "$ROOT_DIR/scripts/packages-creation.txt"
+profile_status "WINDOWS" "$ROOT_DIR/scripts/packages-windows.txt"
+profile_status "SECURITY" "$ROOT_DIR/scripts/packages-security.txt"
+
+section "Services"
+service_status "NetworkManager.service"
+service_status "docker.service"
+service_status "libvirtd.service"
+service_status "ufw.service"
+
+section "User Groups"
+if group_member docker; then ok "$USER is in docker"; else missing "$USER is not in docker"; fi
+if group_member libvirt; then ok "$USER is in libvirt"; else missing "$USER is not in libvirt"; fi
+if group_member wireshark; then ok "$USER is in wireshark"; else missing "$USER is not in wireshark"; fi
+
+section "Windows Compatibility"
+package_status wine "Wine"
+package_status lutris "Lutris"
+package_status virt-manager "Virt Manager"
+package_status qemu-full "QEMU"
+if flatpak_installed com.usebottles.bottles; then
+  ok "Bottles Flatpak"
+else
+  missing "Bottles Flatpak"
+fi
+
+section "Security"
+if command -v ufw >/dev/null 2>&1; then
+  ufw_status="$(sudo -n ufw status 2>/dev/null | head -n 1 || true)"
+  if [[ "$ufw_status" == *"active"* ]]; then
+    ok "UFW: $ufw_status"
+  else
+    warn "UFW: ${ufw_status:-status unavailable}"
+  fi
+else
+  missing "UFW command"
+fi
+package_status firejail "Firejail"
+package_status bubblewrap "Bubblewrap"
+package_status keepassxc "KeePassXC"
+
+section "Desktop"
+if [[ -n "${XDG_CURRENT_DESKTOP:-}" ]]; then
+  ok "Desktop: $XDG_CURRENT_DESKTOP"
+else
+  warn "Desktop session unknown"
+fi
+if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+  ok "Wayland display: $WAYLAND_DISPLAY"
+else
+  warn "Wayland display not detected"
+fi
+
+log_success "Status report completed."

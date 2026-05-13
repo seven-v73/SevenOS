@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cat <<'EOF'
+SevenOS Live
+African first Linux environment
+
+Repository:
+  /opt/SevenOS
+
+Identity:
+  Obsidian shell, ancestral gold, clay signal, baobab green.
+
+Start here:
+  cd /opt/SevenOS
+  ./install.sh doctor
+  ./install.sh status
+  ./install.sh base --dry-run
+
+Build status:
+  This is an early Archiso foundation, not the final installer.
+EOF
