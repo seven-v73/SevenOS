@@ -178,6 +178,8 @@ load_actions() {
       actions=(
         "Welcome|seven:welcome|Show onboarding and next steps"
         "System Dashboard|dashboard:system|Open SevenOS overview"
+        "Architecture Map|seven:architecture|Show SevenOS system architecture"
+        "Architecture Doctor|seven:architecture doctor|Validate product architecture"
         "Ecosystem Map|seven:ecosystem|Show all SevenOS ecosystem modules"
         "Readiness Score|seven:readiness|Score SevenOS against OS choice criteria"
         "Improve Plan|seven:improve|Plan improvements for all OS criteria"
@@ -351,7 +353,7 @@ action_badge() {
 
   case "$label" in
     "Control Center"|"Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
-    "Welcome"|"System Dashboard"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
+    "Welcome"|"System Dashboard"|"Architecture Map"|"Architecture Doctor"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
     "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
     "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
     "Profile Studio") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;

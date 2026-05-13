@@ -46,6 +46,11 @@ SevenOS should feel:
 
 ## The Three Pillars
 
+SevenOS is organized through the architecture documented in
+`docs/ARCHITECTURE.md`: System Core, Package Layer, Service Layer, UI Layer,
+Security Layer, Compatibility Layer, Deployment Layer, Identity Layer, and
+Installer Layer.
+
 ### `seven`
 
 The system controller. It manages status, profiles, security, virtual machines,

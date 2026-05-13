@@ -8,11 +8,12 @@ This repository currently contains foundations for **Phase 1, Phase 2, Phase 3, 
 
 SevenOS aims to become an afro-futurist Linux ecosystem for productivity, creation, cybersecurity, Windows compatibility, deployment, personal cloud workflows, and digital sovereignty.
 
-It is built around three pillars:
+It is built around foundation pillars:
 
 - `seven` as the system controller
 - `sevenpkg` as the package and application manager
 - Seven Hub as the user-facing control center
+- Seven Server and Seven Deploy as the service/deployment foundation
 - Seven Ecosystem as the roadmap for AI, cloud, marketplace, containers, automation, and identity modules
 
 SevenOS aims to provide:
@@ -39,6 +40,7 @@ Implemented:
 - Seven Hub MVP
 - `seven` system controller
 - `sevenpkg` package/application manager
+- `seven architecture` product/system architecture map
 - `seven repair` guided repair planner
 - `seven ecosystem` innovation roadmap
 - `seven-server` local API foundation
@@ -111,6 +113,7 @@ SevenOS/
 
 Start here before making strategic changes:
 
+- `docs/ARCHITECTURE.md`
 - `docs/VISION.md`
 - `docs/PRODUCT_STRATEGY.md`
 - `docs/UX_PRINCIPLES.md`
@@ -126,6 +129,13 @@ SevenOS is guided by one product question:
 
 > Does this make Linux more sovereign, more fluid, more culturally coherent,
 > and easier to live with every day?
+
+Its architecture is checked by:
+
+```bash
+seven architecture
+seven architecture doctor
+```
 
 ## Usage
 
@@ -201,6 +211,8 @@ seven post-install
 seven welcome
 seven hub
 seven dashboard
+seven architecture
+seven architecture doctor
 seven ecosystem
 seven ecosystem roadmap
 seven readiness
@@ -308,6 +320,8 @@ seven status
 seven welcome
 seven hub
 seven dashboard
+seven architecture
+seven architecture doctor
 seven readiness
 seven phase-gate
 seven ecosystem

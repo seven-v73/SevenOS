@@ -43,6 +43,7 @@ package_manifest_contains() {
 log_info "Running SevenOS UX coherence checks..."
 
 require_file "docs/VISION.md"
+require_file "docs/ARCHITECTURE.md"
 require_file "docs/UX_PRINCIPLES.md"
 require_file "docs/VOCABULARY.md"
 require_file "docs/PHASE_GATE.md"
@@ -82,6 +83,7 @@ require_executable "bin/seven-welcome"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "scripts/phase-gate.sh"
+require_executable "scripts/architecture.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/repair.sh"
 require_executable "scripts/post-install.sh"
@@ -229,6 +231,23 @@ if grep -q 'seven ecosystem' "$ROOT_DIR/branding/motd" &&
   ok "Branding exposes SevenOS ecosystem identity"
 else
   fail "Branding is not aligned with ecosystem identity"
+fi
+
+if "$ROOT_DIR/scripts/architecture.sh" doctor >/dev/null; then
+  ok "SevenOS architecture doctor works"
+else
+  fail "SevenOS architecture doctor failed"
+fi
+
+if grep -q 'System Core' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
+   grep -q 'Package Layer' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
+   grep -q 'Service Layer' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
+   grep -q 'UI Layer' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
+   grep -q 'Security Layer' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
+   grep -q 'Deployment Layer' "$ROOT_DIR/docs/ARCHITECTURE.md"; then
+  ok "Product architecture layers are documented"
+else
+  fail "Product architecture layers are incomplete"
 fi
 
 if grep -q '"Control Center|control:center' "$ROOT_DIR/seven-hub/bin/seven-hub"; then

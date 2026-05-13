@@ -20,6 +20,7 @@ bash -n \
   "$ROOT_DIR/scripts/apply-theme.sh" \
   "$ROOT_DIR/scripts/build-iso.sh" \
   "$ROOT_DIR/scripts/dashboard.sh" \
+  "$ROOT_DIR/scripts/architecture.sh" \
   "$ROOT_DIR/scripts/readiness.sh" \
   "$ROOT_DIR/scripts/improve.sh" \
   "$ROOT_DIR/scripts/repair.sh" \
@@ -64,7 +65,7 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
 
-for doc in VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
+for doc in ARCHITECTURE.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
   if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
     log_error "Missing product direction document: docs/$doc"
     exit 1
@@ -193,6 +194,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/nu
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-security" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/dashboard.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" map >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" layers >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" --json >/dev/null
@@ -230,6 +234,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run dashboard >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run architecture >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run architecture doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run post-install >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem roadmap >/dev/null

@@ -35,6 +35,7 @@ status() {
   printf '  %-20s %-8s %-10s %s\n' "------" "-----" "------" "-------"
   module_line "seven" "1-2" "active" "system controller"
   module_line "sevenpkg" "2" "active" "package and meta-package layer"
+  module_line "Architecture" "2" "active" "product and system layer contract"
   module_line "Seven Hub" "2-4" "preview" "control center"
   module_line "Windows Mode" "2-4" "preview" "Windows compatibility"
   module_line "seven-server" "3" "preview" "local API and monitoring"
@@ -75,6 +76,7 @@ doctor() {
 
   for path in \
     "docs/ECOSYSTEM.md" \
+    "docs/ARCHITECTURE.md" \
     "docs/VISION.md" \
     "docs/PRODUCT_STRATEGY.md" \
     "bin/seven" \
@@ -82,6 +84,7 @@ doctor() {
     "seven-hub/bin/seven-hub" \
     "server/seven-server.sh" \
     "server/seven-deploy.sh" \
+    "scripts/architecture.sh" \
     "scripts/readiness.sh" \
     "scripts/phase-gate.sh"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then

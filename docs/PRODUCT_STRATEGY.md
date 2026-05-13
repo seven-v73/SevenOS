@@ -81,6 +81,8 @@ SevenOS should be:
 
 ## Product Rules
 
+- Every feature belongs to a documented architecture layer.
+- Every user-facing feature must be reachable from `seven` or Seven Hub.
 - Do not expose raw complexity when SevenOS can give it a better name.
 - Do not hide Linux power from users who need it.
 - Keep the default system clean and daily-use friendly.
@@ -137,3 +139,4 @@ seven improve
 
 See `docs/OS_CRITERIA.md`.
 See also `docs/ECOSYSTEM.md`.
+See also `docs/ARCHITECTURE.md`.

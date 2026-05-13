@@ -128,6 +128,10 @@ def handle_ecosystem(args):
     run_script(args, "scripts/ecosystem.sh", args.action)
 
 
+def handle_architecture(args):
+    run_script(args, "scripts/architecture.sh", args.action)
+
+
 def handle_repair(args):
     extra = [args.area]
     if args.apply:
@@ -149,6 +153,8 @@ def main():
     subparsers.add_parser("update", help="update SevenOS packages")
     subparsers.add_parser("welcome", help="show SevenOS onboarding overview")
     subparsers.add_parser("dashboard", help="show SevenOS dashboard")
+    architecture_parser = subparsers.add_parser("architecture", help="show or validate SevenOS architecture")
+    architecture_parser.add_argument("action", nargs="?", default="map")
     ecosystem_parser = subparsers.add_parser("ecosystem", help="show SevenOS ecosystem modules and roadmap")
     ecosystem_parser.add_argument("action", nargs="?", default="status")
     subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
@@ -207,6 +213,8 @@ def main():
         run_script(args, "bin/seven-welcome")
     elif args.command == "dashboard":
         run_script(args, "seven-hub/bin/seven-control-center", "open")
+    elif args.command == "architecture":
+        handle_architecture(args)
     elif args.command == "ecosystem":
         handle_ecosystem(args)
     elif args.command == "phase-gate":
