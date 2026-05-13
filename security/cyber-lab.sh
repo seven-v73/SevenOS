@@ -79,9 +79,60 @@ Recommended workflow:
 Useful commands:
 
 \`\`\`bash
-seven shield audit
-sevenpkg info shield
+exit                         # leave the isolated lab
+pwd                          # show current private lab path
+ls                           # list lab files
 \`\`\`
+
+Important:
+
+This shell uses a private home through Firejail. Commands installed in your
+normal home, such as ~/.local/bin/seven, may not be available here.
+
+Leave the lab with:
+
+\`\`\`bash
+exit
+\`\`\`
+
+Then run SevenOS commands from your normal shell:
+
+\`\`\`bash
+seven status
+seven doctor
+seven readiness
+\`\`\`
+EOF
+}
+
+write_lab_shell_config() {
+  local bashrc="$LAB_ROOT/.bashrc"
+  local zshrc="$LAB_ROOT/.zshrc"
+
+  cat > "$bashrc" <<'EOF'
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PS1="[seven-lab:\h \W]$ "
+
+cat <<'MSG'
+SevenOS Cyber Lab
+You are inside an isolated Firejail home.
+Type 'exit' to return to your normal SevenOS shell.
+
+If SevenOS commands are missing here, run them after leaving the lab.
+MSG
+EOF
+
+  cat > "$zshrc" <<'EOF'
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PROMPT="[seven-lab:%m %1~]%# "
+
+cat <<'MSG'
+SevenOS Cyber Lab
+You are inside an isolated Firejail home.
+Type 'exit' to return to your normal SevenOS shell.
+
+If SevenOS commands are missing here, run them after leaving the lab.
+MSG
 EOF
 }
 
@@ -95,6 +146,7 @@ Network: $([[ "$OFFLINE" -eq 1 ]] && printf 'offline' || printf 'enabled')
 Home:    $LAB_ROOT
 
 Authorized work only.
+Type 'exit' to leave this isolated lab and return to your normal SevenOS shell.
 EOF
 }
 
@@ -164,6 +216,7 @@ fi
 require_command firejail
 mkdir -p "$LAB_ROOT"
 write_lab_readme
+write_lab_shell_config
 
 log_info "Opening SevenOS cyber lab: $LAB_NAME"
 if [[ "$OFFLINE" -eq 1 ]]; then

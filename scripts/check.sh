@@ -15,6 +15,7 @@ bash -n \
   "$ROOT_DIR/scripts/lib.sh" \
   "$ROOT_DIR/scripts/doctor.sh" \
   "$ROOT_DIR/scripts/status.sh" \
+  "$ROOT_DIR/scripts/post-install.sh" \
   "$ROOT_DIR/scripts/install-cli.sh" \
   "$ROOT_DIR/scripts/apply-theme.sh" \
   "$ROOT_DIR/scripts/build-iso.sh" \
@@ -169,6 +170,7 @@ fi
 log_info "Checking installer dry-run..."
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" all --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" post-install >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
@@ -176,6 +178,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-security" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/dashboard.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" --record >/dev/null
@@ -210,6 +213,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run dashboard >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run post-install >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem roadmap >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run phase-gate >/dev/null

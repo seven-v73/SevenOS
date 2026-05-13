@@ -19,3 +19,4 @@ fi
 run_cmd sudo ufw --force enable
 
 log_success "Base security hardening applied."
+log_info "Next check: ./install.sh post-install && seven readiness"

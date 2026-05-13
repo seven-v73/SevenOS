@@ -33,6 +33,26 @@ chmod +x install.sh bootstrap.sh profiles/*.sh scripts/*.sh bin/* server/*.sh se
 
 ## 3. Preview Before Installing
 
+Important:
+
+Do not run the SevenOS installer with `sudo`.
+
+Correct:
+
+```bash
+./install.sh base --yes
+```
+
+Wrong:
+
+```bash
+sudo ./install.sh base --yes
+```
+
+The scripts call `sudo` internally only for system operations. Running the whole
+installer as root installs user configs into `/root`, which leaves your normal
+Hyprland session unchanged.
+
 ```bash
 ./scripts/check.sh
 ./install.sh base --dry-run
@@ -52,6 +72,7 @@ If `seven` is not installed yet, use local paths:
 
 ```bash
 ./install.sh base --yes
+./install.sh post-install
 ```
 
 This installs:
@@ -65,6 +86,36 @@ This installs:
 - terminal country signal
 
 Log out and back in after install, especially if group membership changed.
+If `seven` is not found immediately after install:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
+seven post-install
+```
+
+If Hyprland still looks like the default/basic config:
+
+```bash
+seven repair ux --apply
+hyprctl reload
+```
+
+If it still does not change, log out and back into Hyprland.
+
+If you accidentally installed with `sudo ./install.sh ...`, recover as your
+normal user:
+
+```bash
+cd ~/SevenOS
+./install.sh cli
+./install.sh hub
+./install.sh theme
+./install.sh branding
+./install.sh post-install
+```
+
+Then log out and back into Hyprland.
 
 ## 5. Apply Or Reapply UX Only
 
@@ -97,6 +148,30 @@ Cybersecurity core and sandbox:
 ./install.sh cybersecurity core --yes
 ./install.sh cybersecurity sandbox --yes
 ./install.sh cyber-audit
+```
+
+Cyber Lab note:
+
+```bash
+./install.sh cyber-lab --name webapp
+```
+
+opens an isolated Firejail shell. Your prompt may show `sevenos-webapp`.
+That is normal. In this isolated home, some commands from your normal
+`~/.local/bin` may not be available.
+
+Leave the lab with:
+
+```bash
+exit
+```
+
+Then continue from the normal SevenOS shell:
+
+```bash
+cd ~/SevenOS
+seven status
+seven readiness
 ```
 
 Creative tools:
@@ -152,6 +227,7 @@ seven improve deployment
 ```bash
 seven status
 seven doctor
+seven post-install
 seven readiness
 seven phase-gate
 seven ecosystem

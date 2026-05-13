@@ -23,3 +23,4 @@ sudo virsh -c qemu:///system net-start default >/dev/null 2>&1 || true
 sudo virsh -c qemu:///system net-autostart default >/dev/null
 
 log_success "libvirt default network is configured."
+log_info "If VM commands still fail, run './install.sh post-install' and confirm libvirtd is active."

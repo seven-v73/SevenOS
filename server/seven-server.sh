@@ -189,6 +189,7 @@ EOF
   systemctl --user daemon-reload
   systemctl --user enable seven-server.service
   log_success "User service installed. Start it with: seven server start"
+  log_warn "If systemd user services are unavailable, log out and back in, then retry."
 }
 
 action="${1:-status}"

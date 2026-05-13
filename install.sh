@@ -27,6 +27,7 @@ Targets:
   blackarch-tool <pkg>
                    Install one BlackArch package
   doctor           Check host readiness
+  post-install     Check common post-install blockers
   status           Show SevenOS installation status
   branding         Apply SevenOS system branding
   cli              Install SevenOS CLI tools
@@ -64,6 +65,14 @@ done
 
 if [[ -z "$TARGET" || "$TARGET" == "--dry-run" ]]; then
   usage
+  exit 1
+fi
+
+if [[ "${EUID:-$(id -u)}" -eq 0 && "${SEVENOS_ALLOW_ROOT:-0}" != "1" ]]; then
+  log_error "Do not run SevenOS installer with sudo/root."
+  log_info "Run it as your normal user. The scripts ask sudo only when needed."
+  log_info "Correct: ./install.sh base --yes"
+  log_info "Wrong:   sudo ./install.sh base --yes"
   exit 1
 fi
 
@@ -116,6 +125,9 @@ case "$TARGET" in
     ;;
   doctor)
     "$ROOT_DIR/scripts/doctor.sh"
+    ;;
+  post-install)
+    "$ROOT_DIR/scripts/post-install.sh"
     ;;
   status)
     "$ROOT_DIR/scripts/status.sh"

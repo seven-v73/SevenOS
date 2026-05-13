@@ -12,6 +12,11 @@ log_info "Installing Seven Hub launcher..."
 run_cmd mkdir -p "$BIN_HOME" "$APP_HOME" "$ICON_HOME"
 run_cmd cp "$ROOT_DIR/seven-hub/bin/seven-hub" "$BIN_HOME/seven-hub"
 run_cmd chmod +x "$BIN_HOME/seven-hub"
+if is_dry_run; then
+  printf 'sudo install -Dm755 %q %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "/usr/local/bin/seven-hub"
+elif command -v sudo >/dev/null 2>&1; then
+  sudo install -Dm755 "$ROOT_DIR/seven-hub/bin/seven-hub" "/usr/local/bin/seven-hub"
+fi
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub.desktop" "$APP_HOME/seven-hub.desktop"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$ICON_HOME/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos-symbol.svg" "$ICON_HOME/sevenos-symbol.svg"

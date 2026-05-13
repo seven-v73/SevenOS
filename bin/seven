@@ -143,6 +143,7 @@ def main():
     ecosystem_parser = subparsers.add_parser("ecosystem", help="show SevenOS ecosystem modules and roadmap")
     ecosystem_parser.add_argument("action", nargs="?", default="status")
     subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
+    subparsers.add_parser("post-install", help="check common post-install blockers")
     readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
     readiness_parser.add_argument("--json", action="store_true", help="print machine-readable score output")
     readiness_parser.add_argument("--record", action="store_true", help="append the score to the local readiness history")
@@ -199,6 +200,8 @@ def main():
         handle_ecosystem(args)
     elif args.command == "phase-gate":
         run_script(args, "scripts/phase-gate.sh")
+    elif args.command == "post-install":
+        install_target("post-install", args)
     elif args.command == "readiness":
         extra = []
         if args.json:

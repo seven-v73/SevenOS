@@ -20,4 +20,6 @@ else
 fi
 
 log_warn "GPU passthrough is not automated in Phase 1. See vm/README.md for the planned path."
+log_warn "If libvirt group membership changed, log out and back in before using Windows Mode."
+log_info "Next checks: ./install.sh post-install && seven windows status"
 log_success "WINDOWS compatibility layer installed."

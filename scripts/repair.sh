@@ -141,5 +141,6 @@ esac
 
 printf '\nNext checks:\n'
 printf '  seven doctor\n'
+printf '  seven post-install\n'
 printf '  seven readiness\n'
 printf '  seven phase-gate\n'

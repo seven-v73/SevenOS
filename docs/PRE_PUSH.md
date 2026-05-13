@@ -8,6 +8,7 @@ Run this before pushing a SevenOS phase to GitHub.
 ./scripts/check.sh
 ./scripts/ux-check.sh
 ./scripts/readiness.sh --json
+./scripts/post-install.sh
 ./scripts/phase-gate.sh
 git status --short
 ```
@@ -48,3 +49,15 @@ git push origin main
 
 SevenOS is still a post-install layer and live ISO foundation. It is ready for
 test machines, but not yet a polished public installer distribution.
+
+## Test-Machine Warning
+
+Never document installation as `sudo ./install.sh ...`.
+
+The supported form is:
+
+```bash
+./install.sh base --yes
+```
+
+SevenOS handles privileged operations internally.

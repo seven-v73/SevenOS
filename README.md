@@ -155,6 +155,9 @@ chmod +x install.sh bootstrap.sh profiles/*.sh
 ./install.sh base
 ```
 
+Do not run `sudo ./install.sh ...`. The installer must run as your normal user;
+it asks for `sudo` internally only when needed.
+
 The base layer installs packages, SevenOS branding, `seven`, `sevenpkg`, the desktop theme, Kitty polish, terminal country signals, and the wallpaper.
 `sevenosctl` remains available only as a legacy compatibility helper.
 
@@ -186,6 +189,7 @@ Check whether the current host is ready for SevenOS features:
 
 ```bash
 ./install.sh doctor
+./install.sh post-install
 ```
 
 Show the current SevenOS installation status:
@@ -193,6 +197,7 @@ Show the current SevenOS installation status:
 ```bash
 ./install.sh status
 seven status
+seven post-install
 seven welcome
 seven dashboard
 seven ecosystem
@@ -200,6 +205,7 @@ seven ecosystem roadmap
 seven readiness
 seven phase-gate
 seven repair
+seven repair ux --apply
 seven doctor fix
 seven improve
 seven improve security --apply --yes
@@ -224,6 +230,7 @@ Run local checks:
 ./scripts/check.sh
 ./scripts/ux-check.sh
 ./scripts/phase-gate.sh
+./scripts/post-install.sh
 ```
 
 Build a live ISO:
@@ -371,6 +378,10 @@ Open an isolated lab shell:
 ./install.sh cyber-lab --name webapp
 ./install.sh cyber-lab --name reversing --offline
 ```
+
+The lab uses a private Firejail home and may show a prompt such as
+`sevenos-webapp`. Type `exit` to return to your normal SevenOS shell before
+running general `seven` commands.
 
 SevenOS also provides an optional BlackArch bridge for specialized tools:
 

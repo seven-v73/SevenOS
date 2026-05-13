@@ -73,6 +73,7 @@ require_executable "bin/seven-waybar-security"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/repair.sh"
+require_executable "scripts/post-install.sh"
 
 package_manifest_contains "mako" "scripts/packages-base.txt"
 package_manifest_contains "libnotify" "scripts/packages-base.txt"
@@ -110,6 +111,12 @@ if grep -q 'exec-once = swayidle' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland starts swayidle"
 else
   fail "Hyprland does not start swayidle"
+fi
+
+if grep -Eq '^[[:space:]]*pseudotile[[:space:]]*=|togglesplit' "$ROOT_DIR/hyprland/hyprland.conf"; then
+  fail "Hyprland config contains options removed in Hyprland 0.55"
+else
+  ok "Hyprland config avoids removed 0.55 options"
 fi
 
 if grep -q 'background_opacity 0.91' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
@@ -153,6 +160,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset offline --dry-run >/dev/null
 ok "interactive UX commands support dry-run"
 
