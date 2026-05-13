@@ -1,47 +1,49 @@
 * {
-  ink: #07090b;
-  graphite: #10161d;
-  surface: #17212b;
-  panel: #24313b;
-  brass: #d7b46a;
-  copper: #c47a3c;
+  shell: #07090b;
+  canvas: #e7dcc8;
+  canvas-soft: #d8cbb6;
+  card: #f3eadc;
+  card-alt: #e9decc;
+  text: #17212b;
+  muted: #58616a;
+  brass: #9c7130;
+  copper: #a85e32;
   malachite: #2e8b6d;
   cobalt: #2f5d8c;
-  ivory: #ede3d1;
-  raffia: #bca77d;
+  focus: #d7b46a;
 }
 
 window {
-  width: 56%;
+  width: 62%;
   border: 1px;
-  border-color: #d7b46a66;
-  border-radius: 16px;
-  background-color: #17212bf5;
+  border-color: #ede3d1cc;
+  border-radius: 22px;
+  background-color: #e7dcc8f4;
 }
 
 mainbox {
-  padding: 18px;
-  spacing: 12px;
+  padding: 20px;
+  spacing: 14px;
   background-color: transparent;
 }
 
 message {
   padding: 10px 12px;
   border: 0px 0px 1px 0px;
-  border-color: #d7b46a22;
-  background-color: #24313bcc;
+  border-color: #9c713033;
+  background-color: #d8cbb6cc;
 }
 
 textbox {
-  text-color: @raffia;
+  text-color: @muted;
 }
 
 inputbar {
-  padding: 13px 14px;
+  padding: 14px 16px;
   border: 1px;
-  border-color: #d7b46a55;
-  border-radius: 12px;
-  background-color: #2a3844e8;
+  border-color: #9c713055;
+  border-radius: 16px;
+  background-color: #f3eadcf8;
   children: [ prompt, textbox-prompt-colon, entry ];
 }
 
@@ -55,38 +57,38 @@ textbox-prompt-colon {
 }
 
 entry {
-  text-color: @ivory;
+  text-color: @text;
   placeholder: "Applications";
-  placeholder-color: @raffia;
+  placeholder-color: @muted;
   cursor-color: @brass;
 }
 
 listview {
-  lines: 9;
-  columns: 2;
+  lines: 8;
+  columns: 3;
   fixed-height: true;
   margin: 4px 0 0 0;
-  spacing: 8px;
+  spacing: 10px;
   background-color: transparent;
 }
 
 element {
   orientation: horizontal;
-  padding: 12px;
+  padding: 13px;
   border: 1px;
-  border-color: #ede3d112;
-  border-radius: 12px;
-  background-color: #1f2b35e8;
+  border-color: #17212b12;
+  border-radius: 16px;
+  background-color: @card;
 }
 
 element selected {
-  background-color: #31414ef6;
-  text-color: @ivory;
-  border-color: #d7b46ab8;
+  background-color: #fff8ec;
+  text-color: @text;
+  border-color: #9c7130cc;
 }
 
 element alternate {
-  background-color: #17212bd8;
+  background-color: @card-alt;
 }
 
 element-text,
@@ -96,6 +98,6 @@ element-icon {
 }
 
 element-icon {
-  size: 30px;
+  size: 34px;
   margin: 0 12px 0 0;
 }
