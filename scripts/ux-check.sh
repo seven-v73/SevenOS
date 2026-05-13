@@ -138,16 +138,16 @@ else
 fi
 
 if grep -q 'wallpaper-sevenos-royal-kente.png' "$ROOT_DIR/hyprland/hyprpaper.conf"; then
-  ok "Hyprpaper uses Royal Kente wallpaper target"
+  ok "Hyprpaper uses SevenOS wallpaper target"
 else
-  fail "Hyprpaper should use the Royal Kente wallpaper target"
+  fail "Hyprpaper should use the SevenOS wallpaper target"
 fi
 
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'active_tab_background #f5b83d' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'cursor #00b8c8' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'active_tab_background #d7b46a' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'cursor #d7b46a' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'symbol_map U+1F1E6-U+1F1FF Noto Color Emoji' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
-  ok "Kitty uses SevenOS Royal Kente palette"
+  ok "Kitty uses SevenOS Sovereign Graphite palette"
 else
   fail "Kitty palette is not aligned with SevenOS identity"
 fi

@@ -1,8 +1,8 @@
 font=JetBrainsMono Nerd Font 10.5
-background-color=#10142af2
-text-color=#fff4dd
-border-color=#f5b83d
-progress-color=over #00b8c8
+background-color=#10161df2
+text-color=#ede3d1
+border-color=#d7b46a
+progress-color=over #2f5d8c
 width=430
 height=138
 margin=18
@@ -15,6 +15,6 @@ max-icon-size=48
 layer=overlay
 
 [urgency=high]
-border-color=#ff6b35
-background-color=#1a1134f5
-text-color=#fff4dd
+border-color=#c47a3c
+background-color=#17212bf5
+text-color=#ede3d1

@@ -97,7 +97,7 @@ write_hyprpaper_config() {
 }
 
 render_wallpaper() {
-  log_info "Rendering SevenOS Royal Kente wallpaper..."
+  log_info "Rendering SevenOS Sovereign Graphite wallpaper..."
 
   if is_dry_run; then
     printf 'rm -f %q\n' "$WALLPAPER_PNG"

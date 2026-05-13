@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">SevenOS Logo</title>
-  <desc id="desc">African first geometric SevenOS mark with Royal Kente colors.</desc>
-  <rect width="512" height="512" rx="64" fill="#050611"/>
-  <path d="M112 118h288l-116 276h-70l92-216H112z" fill="#f5b83d"/>
-  <path d="M112 118h288l-34 60H112z" fill="#ff6b35"/>
-  <path d="M214 394h70l36-86h-70z" fill="#18a058"/>
-  <path d="M144 244h64m-38-38h64m-14 76h64" stroke="#fff4dd" stroke-width="14" stroke-linecap="round" opacity=".72"/>
-  <path d="M94 426h324" stroke="#00b8c8" stroke-width="16" stroke-linecap="round"/>
+  <desc id="desc">African first geometric SevenOS mark with Sovereign Graphite colors.</desc>
+  <rect width="512" height="512" rx="64" fill="#07090b"/>
+  <path d="M112 118h288l-116 276h-70l92-216H112z" fill="#d7b46a"/>
+  <path d="M112 118h288l-34 60H112z" fill="#c47a3c"/>
+  <path d="M214 394h70l36-86h-70z" fill="#2e8b6d"/>
+  <path d="M144 244h64m-38-38h64m-14 76h64" stroke="#ede3d1" stroke-width="14" stroke-linecap="round" opacity=".72"/>
+  <path d="M94 426h324" stroke="#2f5d8c" stroke-width="16" stroke-linecap="round"/>
 </svg>

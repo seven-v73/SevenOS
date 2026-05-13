@@ -7,39 +7,37 @@
 }
 
 window#waybar {
-  background: linear-gradient(90deg, rgba(5, 6, 17, 0.84), rgba(16, 20, 42, 0.78), rgba(26, 17, 52, 0.82), rgba(5, 6, 17, 0.84));
-  color: #fff4dd;
-  border-bottom: 1px solid rgba(245, 184, 61, 0.46);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.48);
+  background: rgba(7, 9, 11, 0.88);
+  color: #ede3d1;
+  border-bottom: 1px solid rgba(215, 180, 106, 0.24);
+  box-shadow: 0 14px 30px rgba(3, 4, 5, 0.42);
 }
 
 #workspaces {
   padding: 0 5px;
-  margin: 4px 4px;
-  border-radius: 999px;
-  background: rgba(7, 10, 24, 0.46);
-  border: 1px solid rgba(245, 184, 61, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(0, 184, 200, 0.08);
+  margin: 5px 4px;
+  border-radius: 8px;
+  background: rgba(23, 33, 43, 0.72);
+  border: 1px solid rgba(237, 227, 209, 0.07);
 }
 
 #workspaces button {
-  color: #d8bf8a;
-  padding: 0 11px;
-  margin: 4px 2px;
-  border-radius: 999px;
+  color: #bca77d;
+  padding: 0 10px;
+  margin: 3px 1px;
+  border-radius: 6px;
   background: transparent;
 }
 
 #workspaces button.active {
-  color: #050611;
-  background: linear-gradient(135deg, #fff4dd, #f5b83d 48%, #ff6b35);
-  box-shadow: inset 0 0 0 1px rgba(255, 244, 221, 0.34), 0 0 18px rgba(245, 184, 61, 0.22);
+  color: #07090b;
+  background: #d7b46a;
   font-weight: 800;
 }
 
 #workspaces button.urgent {
-  color: #fff4dd;
-  background: linear-gradient(135deg, #d7266a, #ff6b35);
+  color: #ede3d1;
+  background: #7a2e3a;
 }
 
 #clock,
@@ -56,97 +54,80 @@ window#waybar {
 #custom-hub,
 #custom-help,
 #custom-power {
-  padding: 0 12px;
+  padding: 0 11px;
   margin: 5px 3px;
-  border-radius: 999px;
-  background: rgba(16, 20, 42, 0.72);
-  border: 1px solid rgba(255, 244, 221, 0.10);
-  box-shadow: inset 0 0 0 1px rgba(245, 184, 61, 0.045);
+  border-radius: 8px;
+  background: rgba(23, 33, 43, 0.68);
+  border: 1px solid rgba(237, 227, 209, 0.06);
 }
 
 #custom-sevenos {
-  color: #050611;
-  background: linear-gradient(135deg, #fff4dd, #f5b83d 42%, #ff6b35 78%, #d7266a);
+  color: #07090b;
+  background: linear-gradient(135deg, #d7b46a, #c47a3c);
   font-weight: 900;
-  padding: 0 18px;
-  border-color: rgba(255, 244, 221, 0.44);
-  box-shadow: 0 0 22px rgba(245, 184, 61, 0.22);
+  padding: 0 16px;
 }
 
 #custom-apps {
-  color: #fff4dd;
-  background: linear-gradient(135deg, rgba(215, 38, 106, 0.88), rgba(255, 107, 53, 0.74));
-  border-color: rgba(255, 244, 221, 0.24);
+  color: #ede3d1;
+  background: rgba(31, 43, 53, 0.92);
+  border-color: rgba(215, 180, 106, 0.30);
   font-weight: 800;
 }
 
 #custom-hub {
-  color: #050611;
-  background: linear-gradient(135deg, #00b8c8, #18a058);
-  padding: 0 15px;
-  font-weight: 900;
-  border-color: rgba(255, 244, 221, 0.30);
+  color: #ede3d1;
+  background: rgba(47, 93, 140, 0.42);
+  border-color: rgba(47, 93, 140, 0.52);
+  font-weight: 800;
 }
 
 #clock {
-  color: #f5b83d;
-  background: rgba(26, 17, 52, 0.78);
-  border-color: rgba(245, 184, 61, 0.24);
-  font-weight: 700;
+  color: #d7b46a;
+  background: rgba(16, 22, 29, 0.74);
+  border-color: rgba(215, 180, 106, 0.18);
 }
 
 #custom-profile {
-  color: #fff4dd;
-  background: rgba(26, 17, 52, 0.70);
-  border-color: rgba(245, 184, 61, 0.46);
+  color: #ede3d1;
+  border-color: rgba(215, 180, 106, 0.28);
 }
 
 #custom-security {
-  color: #050611;
-  background: linear-gradient(135deg, #18a058, #00b8c8);
-  border-color: rgba(255, 244, 221, 0.30);
+  color: #ede3d1;
+  background: rgba(46, 139, 109, 0.36);
+  border-color: rgba(46, 139, 109, 0.48);
   font-weight: 800;
 }
 
 #network {
-  color: #fff4dd;
-  background: rgba(0, 184, 200, 0.26);
-  border-color: rgba(0, 184, 200, 0.60);
+  color: #ede3d1;
+  border-color: rgba(47, 93, 140, 0.50);
 }
 
 #cpu {
-  color: #fff4dd;
-  background: rgba(255, 107, 53, 0.24);
-  border-color: rgba(255, 107, 53, 0.56);
+  color: #ede3d1;
+  border-color: rgba(196, 122, 60, 0.44);
 }
 
 #memory {
-  color: #fff4dd;
-  background: rgba(215, 38, 106, 0.20);
-  border-color: rgba(215, 38, 106, 0.50);
+  color: #ede3d1;
+  border-color: rgba(122, 46, 58, 0.42);
 }
 
-#pulseaudio {
-  color: #d8bf8a;
-  border-color: rgba(245, 184, 61, 0.32);
-}
-
+#pulseaudio,
 #battery {
-  color: #fff4dd;
-  border-color: rgba(24, 160, 88, 0.52);
+  color: #bca77d;
 }
 
 #custom-help {
-  color: #fff4dd;
-  background: rgba(26, 17, 52, 0.76);
-  border-color: rgba(0, 184, 200, 0.42);
-  font-weight: 800;
+  color: #ede3d1;
+  border-color: rgba(47, 93, 140, 0.36);
+  font-weight: 700;
 }
 
 #custom-power {
-  color: #050611;
-  background: linear-gradient(135deg, #fff4dd, #f5b83d);
-  padding: 0 15px;
+  color: #07090b;
+  background: #d7b46a;
   font-weight: 900;
-  border-color: rgba(255, 244, 221, 0.44);
 }

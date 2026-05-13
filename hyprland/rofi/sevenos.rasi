@@ -1,37 +1,36 @@
 * {
-  void: #050611;
-  midnight: #10142a;
-  palace: #1a1134;
-  glass: #10142af2;
-  glass-strong: #1a1134f5;
-  ivory: #fff4dd;
-  raffia: #d8bf8a;
-  gold: #f5b83d;
-  sunfire: #ff6b35;
-  hibiscus: #d7266a;
-  nile: #00b8c8;
-  emerald: #18a058;
+  ink: #07090b;
+  graphite: #10161d;
+  surface: #17212b;
+  panel: #1f2b35;
+  brass: #d7b46a;
+  copper: #c47a3c;
+  malachite: #2e8b6d;
+  cobalt: #2f5d8c;
+  oxblood: #7a2e3a;
+  ivory: #ede3d1;
+  raffia: #bca77d;
 }
 
 window {
-  width: 58%;
-  border: 2px;
-  border-color: @gold;
-  border-radius: 24px;
-  background-color: @glass;
+  width: 50%;
+  border: 1px;
+  border-color: #d7b46a88;
+  border-radius: 14px;
+  background-color: #10161df4;
 }
 
 mainbox {
-  padding: 22px;
-  spacing: 16px;
+  padding: 18px;
+  spacing: 12px;
   background-color: transparent;
 }
 
 message {
-  padding: 14px 16px;
+  padding: 11px 12px;
   border: 0px 0px 1px 0px;
-  border-color: #f5b83d66;
-  background-color: #1a1134d8;
+  border-color: #d7b46a33;
+  background-color: #17212bd8;
 }
 
 textbox {
@@ -39,54 +38,54 @@ textbox {
 }
 
 inputbar {
-  padding: 16px 18px;
+  padding: 13px 14px;
   border: 1px;
-  border-color: #f5b83daa;
-  border-radius: 18px;
-  background-color: @glass-strong;
+  border-color: #d7b46a55;
+  border-radius: 10px;
+  background-color: #1f2b35e8;
   children: [ prompt, textbox-prompt-colon, entry ];
 }
 
 prompt {
-  text-color: @gold;
-  font: "JetBrainsMono Nerd Font Bold 14";
+  text-color: @brass;
+  font: "JetBrainsMono Nerd Font Bold 13";
 }
 
 textbox-prompt-colon {
-  text-color: @sunfire;
+  text-color: @copper;
 }
 
 entry {
   text-color: @ivory;
   placeholder: "Search SevenOS";
   placeholder-color: @raffia;
-  cursor-color: @nile;
+  cursor-color: @brass;
 }
 
 listview {
   lines: 10;
   fixed-height: true;
-  margin: 6px 0 0 0;
-  spacing: 9px;
+  margin: 3px 0 0 0;
+  spacing: 6px;
   background-color: transparent;
 }
 
 element {
-  padding: 14px 16px;
+  padding: 11px 12px;
   border: 1px;
-  border-color: #fff4dd12;
-  border-radius: 18px;
-  background-color: #10142ad8;
+  border-color: #ede3d10b;
+  border-radius: 10px;
+  background-color: #17212bc8;
 }
 
 element selected {
-  background-color: #2a1748f5;
+  background-color: #1f2b35f8;
   text-color: @ivory;
-  border-color: #f5b83dcc;
+  border-color: #d7b46aaa;
 }
 
 element alternate {
-  background-color: #070a18dc;
+  background-color: #10161dd8;
 }
 
 element-text,
@@ -96,6 +95,6 @@ element-icon {
 }
 
 element-icon {
-  size: 28px;
-  margin: 0 14px 0 0;
+  size: 22px;
+  margin: 0 12px 0 0;
 }

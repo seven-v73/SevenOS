@@ -3,7 +3,7 @@
 Future wallpapers should follow the SevenOS African first identity:
 
 - abstract geometry over literal symbols
-- royal midnight base with Kente gold, sunfire, hibiscus, Nile cyan, and emerald accents
+- graphite base with brass, copper, malachite, and cobalt accents
 - textile rhythm, carved linework, or architectural forms
 - no generic stock silhouettes
 - no generic neon cyberpunk gradients; color must feel luxurious, cultural, and intentional

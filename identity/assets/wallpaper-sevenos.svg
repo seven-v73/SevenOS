@@ -1,106 +1,68 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
-  <title id="title">SevenOS Royal Kente Immersive Wallpaper</title>
-  <desc id="desc">A premium afro-futurist SevenOS wallpaper with royal midnight depth, Kente gold, Nile cyan, hibiscus and emerald dimensional light.</desc>
+  <title id="title">SevenOS Sovereign Graphite Wallpaper</title>
+  <desc id="desc">A professional African first graphite wallpaper with architectural rhythm, brass/copper light, malachite and cobalt accents.</desc>
   <defs>
-    <linearGradient id="royalNight" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#050611"/>
-      <stop offset="28%" stop-color="#10142a"/>
-      <stop offset="58%" stop-color="#1a1134"/>
-      <stop offset="100%" stop-color="#070a18"/>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07090b"/>
+      <stop offset="42%" stop-color="#10161d"/>
+      <stop offset="100%" stop-color="#17212b"/>
     </linearGradient>
-    <radialGradient id="goldSun" cx="74%" cy="26%" r="42%">
-      <stop offset="0%" stop-color="#fff4dd" stop-opacity=".62"/>
-      <stop offset="18%" stop-color="#f5b83d" stop-opacity=".54"/>
-      <stop offset="52%" stop-color="#ff6b35" stop-opacity=".22"/>
-      <stop offset="100%" stop-color="#070a18" stop-opacity="0"/>
+    <radialGradient id="brassLight" cx="72%" cy="24%" r="48%">
+      <stop offset="0%" stop-color="#d7b46a" stop-opacity=".28"/>
+      <stop offset="42%" stop-color="#c47a3c" stop-opacity=".12"/>
+      <stop offset="100%" stop-color="#07090b" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="nileGlow" cx="20%" cy="70%" r="55%">
-      <stop offset="0%" stop-color="#00b8c8" stop-opacity=".36"/>
-      <stop offset="36%" stop-color="#18a058" stop-opacity=".18"/>
-      <stop offset="100%" stop-color="#070a18" stop-opacity="0"/>
+    <radialGradient id="coolDepth" cx="18%" cy="72%" r="52%">
+      <stop offset="0%" stop-color="#2f5d8c" stop-opacity=".22"/>
+      <stop offset="46%" stop-color="#2e8b6d" stop-opacity=".10"/>
+      <stop offset="100%" stop-color="#07090b" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="hibiscusGlow" cx="88%" cy="84%" r="34%">
-      <stop offset="0%" stop-color="#d7266a" stop-opacity=".34"/>
-      <stop offset="46%" stop-color="#ff6b35" stop-opacity=".16"/>
-      <stop offset="100%" stop-color="#070a18" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="kenteEdge" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fff4dd" stop-opacity=".72"/>
-      <stop offset="36%" stop-color="#f5b83d" stop-opacity=".96"/>
-      <stop offset="68%" stop-color="#ff6b35" stop-opacity=".72"/>
-      <stop offset="100%" stop-color="#00b8c8" stop-opacity=".62"/>
+    <linearGradient id="metalEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ede3d1" stop-opacity=".46"/>
+      <stop offset="44%" stop-color="#d7b46a" stop-opacity=".72"/>
+      <stop offset="100%" stop-color="#c47a3c" stop-opacity=".38"/>
     </linearGradient>
-    <linearGradient id="glassA" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fff4dd" stop-opacity=".18"/>
-      <stop offset="42%" stop-color="#00b8c8" stop-opacity=".13"/>
-      <stop offset="100%" stop-color="#d7266a" stop-opacity=".12"/>
-    </linearGradient>
-    <linearGradient id="wovenGold" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#f5b83d"/>
-      <stop offset="33%" stop-color="#ff6b35"/>
-      <stop offset="66%" stop-color="#d7266a"/>
-      <stop offset="100%" stop-color="#00b8c8"/>
-    </linearGradient>
-    <pattern id="kenteMicro" width="144" height="144" patternUnits="userSpaceOnUse">
-      <rect width="144" height="144" fill="none"/>
-      <path d="M0 36h144M0 72h144M0 108h144M36 0v144M72 0v144M108 0v144" stroke="#fff4dd" stroke-width="1" opacity=".055"/>
-      <path d="M18 18h36v36H18zM90 18h36v36H90zM54 90h36v36H54z" fill="none" stroke="#f5b83d" stroke-width="2" opacity=".12"/>
-      <path d="M18 126l36-36 36 36 36-36" fill="none" stroke="#00b8c8" stroke-width="2" opacity=".11"/>
-      <circle cx="72" cy="72" r="5" fill="#d7266a" opacity=".16"/>
+    <pattern id="architectural" width="160" height="160" patternUnits="userSpaceOnUse">
+      <path d="M0 40h160M0 80h160M0 120h160M40 0v160M80 0v160M120 0v160" stroke="#ede3d1" stroke-width="1" opacity=".045"/>
+      <path d="M20 20h48v48H20zM92 92h48v48H92z" fill="none" stroke="#d7b46a" stroke-width="2" opacity=".08"/>
+      <path d="M20 140l40-40 40 40 40-40" fill="none" stroke="#2f5d8c" stroke-width="2" opacity=".075"/>
     </pattern>
-    <filter id="shadow3d" x="-35%" y="-35%" width="170%" height="170%">
-      <feDropShadow dx="-18" dy="24" stdDeviation="20" flood-color="#000000" flood-opacity=".38"/>
-      <feDropShadow dx="18" dy="34" stdDeviation="34" flood-color="#000000" flood-opacity=".46"/>
-    </filter>
-    <filter id="bloom" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="7" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <filter id="panelShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#030405" flood-opacity=".42"/>
     </filter>
   </defs>
 
-  <rect width="1920" height="1080" fill="url(#royalNight)"/>
-  <rect width="1920" height="1080" fill="url(#goldSun)"/>
-  <rect width="1920" height="1080" fill="url(#nileGlow)"/>
-  <rect width="1920" height="1080" fill="url(#hibiscusGlow)"/>
-  <rect width="1920" height="1080" fill="url(#kenteMicro)" opacity=".78"/>
+  <rect width="1920" height="1080" fill="url(#base)"/>
+  <rect width="1920" height="1080" fill="url(#brassLight)"/>
+  <rect width="1920" height="1080" fill="url(#coolDepth)"/>
+  <rect width="1920" height="1080" fill="url(#architectural)" opacity=".82"/>
 
-  <g opacity=".48" filter="url(#bloom)">
-    <path d="M-40 850C260 640 502 695 740 805s464 180 820-20 544-228 720-146" fill="none" stroke="url(#wovenGold)" stroke-width="5" stroke-linecap="round"/>
-    <path d="M-20 922C310 740 540 760 812 900s552 146 902-82" fill="none" stroke="#00b8c8" stroke-width="2" opacity=".38"/>
+  <g opacity=".18" stroke="#ede3d1" stroke-width="1">
+    <path d="M0 760C300 650 520 688 760 782s520 168 820-12 478-168 620-106" fill="none"/>
+    <path d="M0 820C330 706 580 736 850 844s612 134 1070-100" fill="none" opacity=".55"/>
   </g>
 
-  <g transform="translate(1040 110) skewX(-14)" filter="url(#shadow3d)">
-    <path d="M0 0h610l-118 440H-118z" fill="url(#glassA)" stroke="url(#kenteEdge)" stroke-width="3"/>
-    <path d="M54 58h482l-72 266H-18z" fill="#050611" opacity=".24" stroke="#fff4dd" stroke-opacity=".18"/>
-    <path d="M96 104h300M72 158h386M48 212h320M28 266h420" stroke="#f5b83d" stroke-width="5" opacity=".28" stroke-linecap="round"/>
-    <path d="M470 60l-64 264M514 60l-64 264" stroke="#00b8c8" stroke-width="3" opacity=".32"/>
+  <g transform="translate(1050 150) skewX(-13)" filter="url(#panelShadow)">
+    <path d="M0 0h560l-104 392H-104z" fill="#1f2b35" opacity=".48" stroke="url(#metalEdge)" stroke-width="2"/>
+    <path d="M50 52h450l-68 256H-18z" fill="#07090b" opacity=".24" stroke="#ede3d1" stroke-opacity=".10"/>
+    <path d="M88 102h270M64 154h346M44 206h290M22 258h386" stroke="#d7b46a" stroke-width="4" opacity=".18" stroke-linecap="round"/>
+    <path d="M426 58l-70 258M472 58l-70 258" stroke="#2f5d8c" stroke-width="3" opacity=".24"/>
   </g>
 
-  <g transform="translate(1230 442)" filter="url(#bloom)">
-    <path d="M0 0h320l-128 306h-82l96-230H0z" fill="#f5b83d"/>
-    <path d="M0 0h320l-38 76H0z" fill="#ff6b35"/>
-    <path d="M110 306h82l38-92h-82z" fill="#18a058"/>
-    <path d="M206 76h76l-38 90h-76z" fill="#00b8c8" opacity=".88"/>
-    <path d="M0 0h320l-128 306h-82l96-230H0z" fill="none" stroke="#fff4dd" stroke-opacity=".52" stroke-width="3"/>
+  <g transform="translate(1260 448)" filter="url(#panelShadow)">
+    <path d="M0 0h278l-112 266h-70l84-200H0z" fill="#d7b46a"/>
+    <path d="M0 0h278l-32 66H0z" fill="#c47a3c"/>
+    <path d="M96 266h70l34-82h-70z" fill="#2e8b6d"/>
+    <path d="M180 66h66l-34 82h-66z" fill="#2f5d8c" opacity=".86"/>
+    <path d="M0 0h278l-112 266h-70l84-200H0z" fill="none" stroke="#ede3d1" stroke-opacity=".30" stroke-width="2"/>
   </g>
 
-  <g transform="translate(132 150)" filter="url(#shadow3d)">
-    <path d="M0 0h650l-100 386H-100z" fill="#10142a" opacity=".64" stroke="url(#kenteEdge)" stroke-opacity=".58" stroke-width="2"/>
-    <path d="M32 42h544l-72 274H-40z" fill="#050611" opacity=".32"/>
-    <path d="M74 92h104l-36 54H38zM202 92h104l-36 54H166zM330 92h104l-36 54H294zM458 92h104l-36 54H422z" fill="none" stroke="#f5b83d" stroke-opacity=".48" stroke-width="4"/>
-    <path d="M48 188h438M30 240h350M12 292h480" stroke="#fff4dd" stroke-width="2" opacity=".22" stroke-linecap="round"/>
-    <path d="M520 64l-78 280" stroke="#d7266a" stroke-width="5" opacity=".32"/>
+  <g opacity=".72">
+    <path d="M118 842h330" stroke="#d7b46a" stroke-width="6" stroke-linecap="round"/>
+    <path d="M118 862h190" stroke="#2f5d8c" stroke-width="3" stroke-linecap="round"/>
+    <text x="116" y="934" fill="#ede3d1" font-family="JetBrains Mono, monospace" font-size="64" font-weight="800">SevenOS</text>
+    <text x="119" y="982" fill="#bca77d" font-family="JetBrains Mono, monospace" font-size="24" font-weight="600">Sovereign Linux workbench</text>
   </g>
 
-  <g opacity=".74">
-    <path d="M116 828h390" stroke="url(#wovenGold)" stroke-width="8" stroke-linecap="round"/>
-    <path d="M116 850h230" stroke="#00b8c8" stroke-width="4" stroke-linecap="round"/>
-    <text x="116" y="928" fill="#fff4dd" font-family="JetBrains Mono, monospace" font-size="72" font-weight="800">SevenOS</text>
-    <text x="120" y="980" fill="#f5b83d" font-family="JetBrains Mono, monospace" font-size="26" font-weight="700">Royal Linux ecosystem. Built to create, defend, deploy.</text>
-  </g>
-
-  <rect x="14" y="14" width="1892" height="1052" rx="28" fill="none" stroke="url(#kenteEdge)" stroke-opacity=".20" stroke-width="3"/>
+  <rect x="18" y="18" width="1884" height="1044" rx="24" fill="none" stroke="url(#metalEdge)" stroke-opacity=".14" stroke-width="2"/>
 </svg>

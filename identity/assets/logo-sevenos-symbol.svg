@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">SevenOS Compact Symbol</title>
   <desc id="desc">Compact SevenOS mark for small icon sizes.</desc>
-  <rect width="256" height="256" rx="48" fill="#050611"/>
-  <path d="M52 58h152l-62 148h-38l48-112H52z" fill="#f5b83d"/>
-  <path d="M52 58h152l-18 36H52z" fill="#ff6b35"/>
-  <path d="M104 206h38l20-48h-38z" fill="#18a058"/>
-  <path d="M44 218h168" stroke="#00b8c8" stroke-width="10" stroke-linecap="round"/>
+  <rect width="256" height="256" rx="48" fill="#07090b"/>
+  <path d="M52 58h152l-62 148h-38l48-112H52z" fill="#d7b46a"/>
+  <path d="M52 58h152l-18 36H52z" fill="#c47a3c"/>
+  <path d="M104 206h38l20-48h-38z" fill="#2e8b6d"/>
+  <path d="M44 218h168" stroke="#2f5d8c" stroke-width="10" stroke-linecap="round"/>
 </svg>

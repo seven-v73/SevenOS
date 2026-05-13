@@ -1,8 +1,8 @@
 @theme "sevenos.rasi"
 
 window {
-  width: 34%;
-  border-color: #ff6b35;
+  width: 32%;
+  border-color: #c47a3c;
 }
 
 listview {
@@ -14,6 +14,6 @@ entry {
 }
 
 message {
-  background-color: #1a1134e8;
-  border-color: #ff6b3566;
+  background-color: #17212be8;
+  border-color: #c47a3c66;
 }

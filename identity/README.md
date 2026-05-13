@@ -12,47 +12,55 @@ The broader product direction lives in:
 
 ## Design Direction
 
-- royal midnight base for depth, focus, and cinematic contrast
-- Kente gold for primary action, prestige, and system identity
-- sunfire orange and hibiscus for energy, alerts, creative motion, and warmth
-- Nile cyan for technology, networking, windows, and active flow
-- emerald for health, security, stability, and growth
-- ivory and raffia text for high readability and crafted warmth
-- liquid glass surfaces: translucent, layered, luminous, and readable
-- dimensional linework inspired by woven geometry, carved panels, architecture, and light
-- premium richness over flat minimalism: every surface should feel designed, not merely themed
+SevenOS uses a **Sovereign Graphite** design language.
+
+The goal is not to look like a themed Arch rice. The system should feel like an
+independent professional OS: calm, precise, luxurious, and culturally rooted
+without becoming decorative.
+
+- graphite and ink foundations for serious daily work
+- brass and copper for identity, primary actions, and crafted warmth
+- malachite for trusted/security states
+- cobalt for network, VM, deployment, and technical flow
+- oxblood for destructive or urgent moments only
+- ivory and raffia for readable, warm text
+- architectural pattern, not surface decoration
+- glass is used as depth and hierarchy, not as a gimmick
+- color is functional: each accent has a job
 
 ## Palette
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `void` | `#070a18` | cinematic base |
-| `midnight` | `#10142a` | elevated surface |
-| `palace` | `#1a1134` | glass depth and selected surface |
-| `kente-gold` | `#f5b83d` | primary action and brand |
-| `sunfire` | `#ff6b35` | energy, warnings, motion |
-| `hibiscus` | `#d7266a` | creative accent and high emphasis |
-| `nile` | `#00b8c8` | technology, flow, windows, network |
-| `emerald` | `#18a058` | security, health, success |
-| `ivory` | `#fff4dd` | primary text |
-| `raffia` | `#d8bf8a` | secondary text |
+| `ink` | `#07090b` | deep system base |
+| `graphite` | `#10161d` | primary background |
+| `surface` | `#17212b` | elevated surface |
+| `panel` | `#1f2b35` | active glass panel |
+| `brass` | `#d7b46a` | identity and primary action |
+| `copper` | `#c47a3c` | warmth and secondary emphasis |
+| `malachite` | `#2e8b6d` | security, health, success |
+| `cobalt` | `#2f5d8c` | network, VM, deployment, technical flow |
+| `oxblood` | `#7a2e3a` | destructive or urgent state |
+| `ivory` | `#ede3d1` | primary text |
+| `raffia` | `#bca77d` | secondary text |
 
 ## Naming
 
 Use names that feel native to SevenOS:
 
-- `Kente Gold` for primary action and SevenOS identity
-- `Sunfire` for warnings, motion, and high-energy actions
-- `Hibiscus` for creative emphasis and Studio surfaces
-- `Nile Cyan` for technology, networking, VM, and Windows Mode
-- `Emerald` for Shield, health, and trusted system state
-- `Royal Midnight` for the cinematic shell
+- `Sovereign Graphite` for the system shell
+- `Brass Signal` for primary action and SevenOS identity
+- `Copper Warmth` for secondary emphasis and creative warmth
+- `Malachite Trust` for Shield, health, and success
+- `Cobalt Flow` for networking, VM, deployment, and technical states
+- `Oxblood Alert` for destructive or urgent moments
 
 ## UI Rules
 
 - Keep layouts highly functional, but visually deliberate and premium.
-- Use pattern as dimensional structure, woven rhythm, glass edge, or background architecture.
-- Do not use generic purple cyberpunk gradients.
+- Use pattern as architectural rhythm, not as wallpaper noise.
+- Do not use generic neon cyberpunk gradients or rainbow borders.
+- Do not let the wallpaper carry the identity alone.
 - Do not use flags as the visual system. Country colors can appear as subtle accents only when a context specifically calls for it.
 - Do not reduce African identity to random motifs. The style should feel intentional, architectural, and useful.
 - Prefer high contrast and readable text over decorative complexity.

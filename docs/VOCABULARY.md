@@ -29,11 +29,11 @@ This document keeps SevenOS language consistent across commands, UI, and docs.
 | Token | Meaning |
 | --- | --- |
 | Royal Midnight | cinematic system foundation |
-| Kente Gold | primary action, prestige, and SevenOS identity |
-| Sunfire | warning, motion, and high-energy actions |
-| Hibiscus | creative emphasis and expressive surfaces |
-| Nile Cyan | technology, flow, networking, and Windows Mode |
-| Emerald Trust | health, continuity, security, and success |
+| Brass Signal | primary action, prestige, and SevenOS identity |
+| Copper Warmth | secondary emphasis and creative warmth |
+| Cobalt Flow | technology, flow, networking, and Windows Mode |
+| Malachite Trust | health, continuity, security, and success |
+| Oxblood Alert | destructive or urgent moments |
 | Raffia Text | muted information |
 
 ## UX Phrases
