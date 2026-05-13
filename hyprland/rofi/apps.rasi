@@ -1,24 +1,25 @@
 * {
-  shell: #07090b;
-  canvas: #e7dcc8;
-  canvas-soft: #d8cbb6;
-  card: #f3eadc;
-  card-alt: #e9decc;
-  text: #17212b;
-  muted: #58616a;
-  brass: #9c7130;
-  copper: #a85e32;
+  ink: #07090b;
+  graphite: #10161d;
+  surface: #17212b;
+  panel: #1f2b35;
+  card: #243240;
+  card-alt: #1b2631;
+  text: #ede3d1;
+  muted: #bca77d;
+  brass: #d7b46a;
+  copper: #c47a3c;
   malachite: #2e8b6d;
   cobalt: #2f5d8c;
-  focus: #d7b46a;
+  oxblood: #7a2e3a;
 }
 
 window {
   width: 62%;
   border: 1px;
-  border-color: #ede3d1cc;
-  border-radius: 22px;
-  background-color: #e7dcc8f4;
+  border-color: #d7b46a99;
+  border-radius: 18px;
+  background-color: #10161df4;
 }
 
 mainbox {
@@ -30,8 +31,8 @@ mainbox {
 message {
   padding: 10px 12px;
   border: 0px 0px 1px 0px;
-  border-color: #9c713033;
-  background-color: #d8cbb6cc;
+  border-color: #d7b46a33;
+  background-color: #17212bd8;
 }
 
 textbox {
@@ -41,9 +42,9 @@ textbox {
 inputbar {
   padding: 14px 16px;
   border: 1px;
-  border-color: #9c713055;
-  border-radius: 16px;
-  background-color: #f3eadcf8;
+  border-color: #d7b46a55;
+  border-radius: 14px;
+  background-color: #1f2b35e8;
   children: [ prompt, textbox-prompt-colon, entry ];
 }
 
@@ -76,15 +77,15 @@ element {
   orientation: horizontal;
   padding: 13px;
   border: 1px;
-  border-color: #17212b12;
-  border-radius: 16px;
+  border-color: #ede3d112;
+  border-radius: 14px;
   background-color: @card;
 }
 
 element selected {
-  background-color: #fff8ec;
+  background-color: #1f2b35;
   text-color: @text;
-  border-color: #9c7130cc;
+  border-color: #d7b46acc;
 }
 
 element alternate {

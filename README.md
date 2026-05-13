@@ -297,6 +297,10 @@ The current desktop theme uses liquid glass surfaces, SevenOS SVG icons, and a r
 
 For the complete icon experience, install the base profile package set, which includes `ttf-jetbrains-mono-nerd`.
 
+The theme layer also writes GTK and Qt preferences so file manager windows,
+settings dialogs, Rofi, Waybar, Kitty, Mako, and Seven Hub stay on the same
+dark Sovereign Graphite identity instead of mixing white and black surfaces.
+
 SevenOS provides `seven`, the main CLI for daily system control:
 
 ```bash
@@ -345,6 +349,9 @@ seven-power lock
 keyboard-first command palette organized into focused spaces: Dashboard,
 Profiles, Cyber, Desktop, VM & Windows, Server & Deploy, Ecosystem, Installer,
 and Apps.
+
+If the graphical dashboard cannot open a browser, it prints the local URL and
+falls back to the `seven-hub` command palette.
 
 `seven files` opens the SevenOS file experience. It prefers Nautilus for a
 polished Wayland desktop and falls back to other file managers or `xdg-open`.

@@ -51,6 +51,7 @@ window#waybar {
 #custom-security,
 #custom-sevenos,
 #custom-apps,
+#custom-files,
 #custom-hub,
 #custom-help,
 #custom-power {
@@ -72,6 +73,13 @@ window#waybar {
   color: #ede3d1;
   background: rgba(31, 43, 53, 0.92);
   border-color: rgba(215, 180, 106, 0.30);
+  font-weight: 800;
+}
+
+#custom-files {
+  color: #ede3d1;
+  background: rgba(31, 43, 53, 0.78);
+  border-color: rgba(215, 180, 106, 0.24);
   font-weight: 800;
 }
 

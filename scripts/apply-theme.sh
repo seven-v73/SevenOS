@@ -118,6 +118,30 @@ configure_file_experience() {
   fi
 }
 
+configure_toolkit_theme() {
+  log_info "Configuring SevenOS GTK and Qt theme coherence..."
+
+  if is_dry_run; then
+    printf 'copy GTK and Qt SevenOS settings into %q\n' "$CONFIG_HOME"
+    printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-dark\n'
+    printf 'gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-dark\n'
+    printf 'gsettings set org.gnome.desktop.interface icon-theme Papirus-Dark\n'
+    return 0
+  fi
+
+  copy_config_dir "$ROOT_DIR/hyprland/gtk-3.0" "$CONFIG_HOME/gtk-3.0"
+  copy_config_dir "$ROOT_DIR/hyprland/gtk-4.0" "$CONFIG_HOME/gtk-4.0"
+  copy_config_dir "$ROOT_DIR/hyprland/qt5ct" "$CONFIG_HOME/qt5ct"
+  copy_config_dir "$ROOT_DIR/hyprland/qt6ct" "$CONFIG_HOME/qt6ct"
+
+  if command -v gsettings >/dev/null 2>&1; then
+    gsettings set org.gnome.desktop.interface color-scheme prefer-dark >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-dark >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface icon-theme Papirus-Dark >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic >/dev/null 2>&1 || true
+  fi
+}
+
 render_wallpaper() {
   log_info "Rendering SevenOS Sovereign Graphite wallpaper..."
 
@@ -145,6 +169,7 @@ copy_config_dir "$ROOT_DIR/hyprland/waybar" "$CONFIG_HOME/waybar"
 copy_config_dir "$ROOT_DIR/hyprland/rofi" "$CONFIG_HOME/rofi"
 copy_config_dir "$ROOT_DIR/hyprland/mako" "$CONFIG_HOME/mako"
 copy_config_dir "$ROOT_DIR/hyprland/kitty" "$CONFIG_HOME/kitty"
+configure_toolkit_theme
 copy_config_file "$ROOT_DIR/branding/shell/terminal-country.sh" "$SHELL_HOOK"
 
 run_cmd mkdir -p "$WALLPAPER_DIR" "$DATA_HOME/sevenos/countries" "$DATA_HOME/icons/hicolor/scalable/apps"

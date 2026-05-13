@@ -76,6 +76,33 @@ desktop_config_check() {
   fi
 }
 
+toolkit_theme_check() {
+  section "Toolkit Theme"
+  local path
+  for path in \
+    "$HOME/.config/gtk-3.0/settings.ini" \
+    "$HOME/.config/gtk-4.0/settings.ini" \
+    "$HOME/.config/qt5ct/qt5ct.conf" \
+    "$HOME/.config/qt6ct/qt6ct.conf"; do
+    if [[ -s "$path" ]]; then
+      ok_item "${path#$HOME/}"
+    else
+      warn_item "missing ${path#$HOME/}"
+    fi
+  done
+
+  if command -v gsettings >/dev/null 2>&1; then
+    local color_scheme
+    color_scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || true)"
+    if [[ "$color_scheme" == *prefer-dark* ]]; then
+      ok_item "GTK color-scheme prefer-dark"
+    else
+      warn_item "GTK color-scheme is not prefer-dark"
+      printf '  run: ./install.sh theme\n'
+    fi
+  fi
+}
+
 command_check() {
   section "SevenOS Commands"
   local command_name
@@ -103,6 +130,15 @@ command_check() {
       warn_item "seven-hub exists but fails its doctor check"
       printf '  run: ./install.sh hub\n'
       printf '  if /usr/local/bin shadows the user wrapper, run: command -v seven-hub\n'
+    fi
+  fi
+
+  if command -v seven-control-center >/dev/null 2>&1; then
+    if seven-control-center status >/dev/null 2>&1; then
+      ok_item "seven-control-center status"
+    else
+      warn_item "seven-control-center exists but status failed"
+      printf '  run: ./install.sh hub\n'
     fi
   fi
 }
@@ -198,6 +234,7 @@ root_check
 path_check
 command_check
 desktop_config_check
+toolkit_theme_check
 group_check
 service_check
 files_check

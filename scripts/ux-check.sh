@@ -62,6 +62,10 @@ require_file "hyprland/rofi/power.rasi"
 require_file "hyprland/mako/config"
 require_file "hyprland/kitty/kitty.conf"
 require_file "hyprland/waybar/config.jsonc"
+require_file "hyprland/gtk-3.0/settings.ini"
+require_file "hyprland/gtk-4.0/settings.ini"
+require_file "hyprland/qt5ct/qt5ct.conf"
+require_file "hyprland/qt6ct/qt6ct.conf"
 require_file "seven-hub/seven-files.desktop"
 
 require_executable "bin/seven"
@@ -99,6 +103,10 @@ package_manifest_contains "file-roller" "scripts/packages-base.txt"
 package_manifest_contains "sushi" "scripts/packages-base.txt"
 package_manifest_contains "xdg-user-dirs" "scripts/packages-base.txt"
 package_manifest_contains "xdg-utils" "scripts/packages-base.txt"
+package_manifest_contains "adw-gtk-theme" "scripts/packages-base.txt"
+package_manifest_contains "qt5ct" "scripts/packages-base.txt"
+package_manifest_contains "qt6ct" "scripts/packages-base.txt"
+package_manifest_contains "kvantum" "scripts/packages-base.txt"
 
 if jq -e '."custom/sevenos"."on-click" == "seven hub"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar SevenOS click opens dashboard"
@@ -118,6 +126,15 @@ else
   fail "Waybar visible Apps launcher missing"
 fi
 
+if grep -q 'background-color: #10161df4' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   ! grep -q 'background-color: #e7dcc8f4' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'gtk-application-prefer-dark-theme=true' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+   grep -q 'icon_theme=Papirus-Dark' "$ROOT_DIR/hyprland/qt6ct/qt6ct.conf"; then
+  ok "App launcher and toolkit themes use dark SevenOS identity"
+else
+  fail "Theme coherence is incomplete across launcher and toolkits"
+fi
+
 if jq -e '."custom/files".format == "Files" and ."custom/files"."on-click" == "seven-files" and ."custom/files"."on-click-right" == "seven-files menu"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes Seven Files"
 else
@@ -134,6 +151,13 @@ if grep -q 'exec-once = seven-session' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland starts SevenOS session"
 else
   fail "Hyprland should start seven-session"
+fi
+
+if grep -q 'env = GTK_THEME,adw-gtk3-dark' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'env = QT_QPA_PLATFORMTHEME,qt6ct' "$ROOT_DIR/hyprland/hyprland.conf"; then
+  ok "Hyprland exports GTK and Qt theme hints"
+else
+  fail "Hyprland missing GTK/Qt theme environment"
 fi
 
 if grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -191,6 +215,12 @@ if "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null; then
   ok "Seven Control Center status works"
 else
   fail "Seven Control Center status failed"
+fi
+
+if SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" open | grep -q 'xdg-open http://127.0.0.1:7787'; then
+  ok "Seven Control Center open dry-run works"
+else
+  fail "Seven Control Center open dry-run failed"
 fi
 
 if grep -q 'seven ecosystem' "$ROOT_DIR/branding/motd" &&

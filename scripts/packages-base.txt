@@ -34,6 +34,10 @@ file-roller
 sushi
 xdg-user-dirs
 xdg-utils
+adw-gtk-theme
+qt5ct
+qt6ct
+kvantum
 swaylock
 swayidle
 brightnessctl

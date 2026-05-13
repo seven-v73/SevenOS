@@ -59,4 +59,5 @@ run_cmd cp "$ROOT_DIR/identity/assets/icon-creation.svg" "$ICON_HOME/sevenos-cre
 run_cmd cp "$ROOT_DIR/identity/assets/icon-windows.svg" "$ICON_HOME/sevenos-windows.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-installer.svg" "$ICON_HOME/sevenos-installer.svg"
 
-log_success "Seven Hub installed. Launch it with: seven-hub"
+log_success "Seven Hub installed. Launch it with: seven hub"
+log_info "Command palette fallback: seven-hub"

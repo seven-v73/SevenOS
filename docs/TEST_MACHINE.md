@@ -115,6 +115,17 @@ hyprctl reload
 
 If it still does not change, log out and back into Hyprland.
 
+If some applications are dark while others are white:
+
+```bash
+./install.sh base --yes
+./install.sh theme
+hyprctl reload
+```
+
+SevenOS applies matching Rofi, GTK, Qt, Kitty, Mako and Waybar settings. Some
+already-running GTK/Qt applications may need to be closed and opened again.
+
 Expected desktop controls after the UX repair:
 
 ```text
@@ -193,6 +204,14 @@ If a browser does not open, start it explicitly:
 
 ```bash
 seven-control-center open
+```
+
+If the graphical dashboard still does not appear, use the keyboard command
+palette fallback:
+
+```bash
+seven-hub
+seven-hub doctor
 ```
 
 The legacy keyboard command palette is still available:
