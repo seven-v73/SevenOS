@@ -2,7 +2,7 @@
 Type=Application
 Name=Seven Hub
 Comment=SevenOS control center
-Exec=seven-hub
+Exec=seven-control-center open
 Icon=seven-hub
 Terminal=false
 Categories=System;Settings;

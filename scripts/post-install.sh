@@ -79,7 +79,7 @@ desktop_config_check() {
 command_check() {
   section "SevenOS Commands"
   local command_name
-  for command_name in seven sevenpkg seven-country seven-hub seven-power; do
+  for command_name in seven sevenpkg seven-country seven-hub seven-control-center seven-session seven-power; do
     if command -v "$command_name" >/dev/null 2>&1; then
       ok_item "$command_name available"
     elif [[ -x "$HOME/.local/bin/$command_name" ]]; then

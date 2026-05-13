@@ -65,3 +65,4 @@ log_warn "Use security tooling only on systems and networks where you have permi
 log_warn "For the larger BlackArch catalog, use './install.sh blackarch-setup' only when you explicitly need it."
 
 log_success "CYBERSECURITY profile installed."
+log_info "Shield workspace ready. Next: seven shield audit or seven shield lab --preset web"

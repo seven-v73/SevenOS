@@ -199,6 +199,7 @@ Show the current SevenOS installation status:
 seven status
 seven post-install
 seven welcome
+seven hub
 seven dashboard
 seven ecosystem
 seven ecosystem roadmap
@@ -281,8 +282,10 @@ The installer plan currently covers disk target, hostname, user, LUKS, filesyste
 Launch Seven Hub after installing it:
 
 ```bash
-seven-hub
+seven hub
 ```
+
+The Rofi command palette remains available as `seven-hub`.
 
 ## Identity
 
@@ -299,6 +302,7 @@ SevenOS provides `seven`, the main CLI for daily system control:
 ```bash
 seven status
 seven welcome
+seven hub
 seven dashboard
 seven readiness
 seven phase-gate
@@ -326,13 +330,17 @@ SevenRepo packages. See `docs/package-manager.md`.
 Desktop controls:
 
 ```bash
+seven hub
+seven-control-center open
 seven-hub
 seven-power
 seven-power lock
 ```
 
-Seven Hub is organized into focused spaces: Dashboard, Profiles, Cyber, Desktop,
-VM & Windows, Server & Deploy, Ecosystem, Installer, and Apps.
+`seven hub` opens the SevenOS Control Center dashboard. `seven-hub` opens the
+keyboard-first command palette organized into focused spaces: Dashboard,
+Profiles, Cyber, Desktop, VM & Windows, Server & Deploy, Ecosystem, Installer,
+and Apps.
 
 Apply only the desktop theme:
 
@@ -431,7 +439,10 @@ The installer enables UFW with denied incoming traffic and allowed outgoing traf
 
 ### SEVEN HUB
 
-Installs a lightweight Rofi-based control center with terminal fallback. Seven Hub exposes the same installer targets as the CLI: status, doctor, base, profiles, Windows compatibility, security hardening, and dry-run preview.
+Installs the SevenOS Control Center dashboard plus the Rofi command palette.
+Both expose the same installer and `seven` actions as the CLI: status, doctor,
+base, profiles, Windows compatibility, security hardening, deployment status,
+theme repair, and dry-run preview.
 
 Windows VM provisioning and GPU passthrough will be handled in later phases.
 

@@ -33,6 +33,7 @@ bash -n \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/seven-country" \
   "$ROOT_DIR/bin/seven-help" \
+  "$ROOT_DIR/bin/seven-session" \
   "$ROOT_DIR/bin/seven-wallpaper" \
   "$ROOT_DIR/bin/seven-power" \
   "$ROOT_DIR/bin/seven-welcome" \
@@ -56,7 +57,10 @@ bash -n \
 bash -n "$ROOT_DIR/security/hardening.sh"
 
 log_info "Checking desktop config syntax..."
-PYTHONDONTWRITEBYTECODE=1 python -m py_compile "$ROOT_DIR/bin/seven" "$ROOT_DIR/bin/sevenpkg"
+PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
+  "$ROOT_DIR/bin/seven" \
+  "$ROOT_DIR/bin/sevenpkg" \
+  "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
 
 for doc in VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
@@ -182,6 +186,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-security" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/dashboard.sh" >/dev/null

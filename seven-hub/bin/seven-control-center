@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+import html
+import json
+import os
+import socket
+import subprocess
+import sys
+import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs
+
+
+HOST = "127.0.0.1"
+PORT = int(os.environ.get("SEVENOS_CONTROL_CENTER_PORT", "7787"))
+
+
+def resolve_root() -> Path:
+    env = os.environ.get("SEVENOS_ROOT")
+    if env and Path(env, "install.sh").is_file():
+        return Path(env).resolve()
+    script = Path(__file__).resolve()
+    for candidate in (
+        script.parents[2],
+        Path("/opt/SevenOS"),
+        Path.home() / "SevenOS",
+        Path.home() / "Code/OS/SevenOS",
+    ):
+        if Path(candidate, "install.sh").is_file():
+            return Path(candidate).resolve()
+    print("seven-control-center: could not find SevenOS root", file=sys.stderr)
+    sys.exit(1)
+
+
+ROOT = resolve_root()
+
+
+def run_text(command, timeout=12):
+    result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, timeout=timeout, check=False)
+    return result.stdout.strip() if result.stdout.strip() else result.stderr.strip()
+
+
+def command_state(command):
+    return "OK" if subprocess.run(["bash", "-lc", f"command -v {command} >/dev/null"], check=False).returncode == 0 else "MISS"
+
+
+def service_state(service, user=False):
+    cmd = ["systemctl"]
+    if user:
+        cmd.append("--user")
+    cmd += ["is-active", "--quiet", service]
+    if subprocess.run(cmd, check=False).returncode == 0:
+        return "RUN"
+    return "MISS"
+
+
+def readiness_summary():
+    try:
+        payload = json.loads(run_text([str(ROOT / "scripts/readiness.sh"), "--json"], timeout=18))
+        return payload
+    except Exception:
+        return {"score": 0, "max": 1, "percent": 0, "categories": {}, "recommendations": []}
+
+
+def package_profile(path):
+    total = installed = 0
+    try:
+        for line in Path(path).read_text(encoding="utf-8").splitlines():
+            pkg = line.split("#", 1)[0].strip()
+            if not pkg:
+                continue
+            total += 1
+            if subprocess.run(["pacman", "-Q", pkg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0:
+                installed += 1
+    except FileNotFoundError:
+        return "MISS", "0/0"
+    if total == 0:
+        return "MISS", "0/0"
+    if installed == total:
+        return "OK", f"{installed}/{total}"
+    if installed:
+        return "PART", f"{installed}/{total}"
+    return "MISS", f"0/{total}"
+
+
+ACTIONS = {
+    "theme": ("Apply Theme", ["./install.sh", "theme"]),
+    "repair-ux": ("Repair UX", ["./bin/seven", "repair", "ux", "--apply"]),
+    "security-plan": ("Security Plan", ["./bin/seven", "improve", "security"]),
+    "security-apply": ("Apply Security", ["./bin/seven", "improve", "security", "--apply", "--yes"]),
+    "compatibility-plan": ("Compatibility Plan", ["./bin/seven", "improve", "compatibility"]),
+    "target-plan": ("Target Plan", ["./bin/seven", "improve", "target"]),
+    "deployment-plan": ("Deployment Plan", ["./bin/seven", "improve", "deployment"]),
+    "server-status": ("Server Status", ["./bin/seven", "server", "status"]),
+    "windows-status": ("Windows Status", ["./bin/seven", "windows", "status"]),
+    "phase-gate": ("Phase Gate", ["./bin/seven", "phase-gate"]),
+}
+
+
+def open_action(action_id):
+    label, command = ACTIONS[action_id]
+    shell_command = "cd " + subprocess.list2cmdline([str(ROOT)]) + " && " + subprocess.list2cmdline(command) + "; printf '\\nPress Enter to close...'; read -r"
+    if os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"):
+        for terminal in ("kitty", "foot", "alacritty", "xterm"):
+            if command_state(terminal) == "OK":
+                if terminal == "kitty":
+                    subprocess.Popen([terminal, "--title", f"SevenOS - {label}", "bash", "-lc", shell_command])
+                else:
+                    subprocess.Popen([terminal, "-e", "bash", "-lc", shell_command])
+                return
+    subprocess.Popen(["bash", "-lc", shell_command], cwd=ROOT)
+
+
+def card(title, status, detail, action=None):
+    status_class = status.lower()
+    button = f'<form method="post" action="/action"><input type="hidden" name="id" value="{html.escape(action)}"><button>Fix now</button></form>' if action else ""
+    return f"""
+    <section class="card">
+      <div class="card-head"><h2>{html.escape(title)}</h2><span class="badge {status_class}">{html.escape(status)}</span></div>
+      <p>{html.escape(detail)}</p>
+      {button}
+    </section>
+    """
+
+
+def render_dashboard():
+    readiness = readiness_summary()
+    forge = package_profile(ROOT / "scripts/packages-dev.txt")
+    shield = package_profile(ROOT / "scripts/packages-cybersecurity.txt")
+    studio = package_profile(ROOT / "scripts/packages-creation.txt")
+    windows = package_profile(ROOT / "scripts/packages-windows.txt")
+    horizon = package_profile(ROOT / "scripts/packages-server.txt")
+    ufw = "OK" if command_state("ufw") == "OK" else "MISS"
+    firewall = service_state("ufw.service")
+    api = service_state("seven-server.service", user=True)
+
+    cards = [
+        card("Readiness", f"{readiness.get('percent', 0)}%", f"{readiness.get('score', 0)}/{readiness.get('max', 0)} OS criteria covered.", "phase-gate"),
+        card("Security", "OK" if ufw == "OK" and firewall == "RUN" else "PART", f"UFW: {ufw}. Firewall: {firewall}.", "security-plan"),
+        card("Forge", forge[0], f"Development workspace packages: {forge[1]}.", "target-plan"),
+        card("Shield", shield[0], f"Cybersecurity workspace packages: {shield[1]}.", "security-plan"),
+        card("Studio", studio[0], f"Creative workspace packages: {studio[1]}.", "target-plan"),
+        card("Windows Mode", windows[0], f"Compatibility layer packages: {windows[1]}.", "windows-status"),
+        card("Server & Deploy", "OK" if api == "RUN" else horizon[0], f"Horizon packages: {horizon[1]}. Local API: {api}.", "deployment-plan"),
+        card("Theme & Session", "OK", "Sovereign Graphite desktop, wallpaper, Waybar, Rofi, Kitty and Mako.", "theme"),
+    ]
+
+    actions = "".join(
+        f'<form method="post" action="/action"><input type="hidden" name="id" value="{key}"><button>{html.escape(label)}</button></form>'
+        for key, (label, _) in ACTIONS.items()
+    )
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SevenOS Control Center</title>
+  <style>
+    :root {{
+      --ink:#07090b; --graphite:#10161d; --surface:#17212b; --panel:#1f2b35;
+      --brass:#d7b46a; --copper:#c47a3c; --malachite:#2e8b6d; --cobalt:#2f5d8c;
+      --oxblood:#7a2e3a; --ivory:#ede3d1; --raffia:#bca77d;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0; min-height: 100vh; color: var(--ivory);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 80% 12%, rgba(215,180,106,.18), transparent 34%),
+        radial-gradient(circle at 18% 70%, rgba(47,93,140,.18), transparent 36%),
+        linear-gradient(135deg, var(--ink), var(--graphite) 48%, var(--surface));
+    }}
+    main {{ max-width: 1180px; margin: 0 auto; padding: 34px 26px 44px; }}
+    header {{ display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 24px; }}
+    h1 {{ margin: 0; font-size: 34px; letter-spacing: 0; }}
+    .sub {{ color: var(--raffia); margin: 8px 0 0; }}
+    .score {{ color: var(--ink); background: var(--brass); border-radius: 12px; padding: 10px 14px; font-weight: 800; }}
+    .grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }}
+    .card {{
+      min-height: 156px; padding: 16px; border-radius: 14px;
+      background: rgba(31,43,53,.78); border: 1px solid rgba(237,227,209,.08);
+      box-shadow: 0 18px 40px rgba(3,4,5,.22);
+    }}
+    .card-head {{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }}
+    h2 {{ margin: 0; font-size: 15px; }}
+    p {{ color: var(--raffia); line-height: 1.45; min-height: 42px; }}
+    .badge {{ border-radius: 999px; padding: 5px 8px; font-size: 12px; font-weight: 800; color: var(--ink); background: var(--brass); }}
+    .badge.ok, .badge.run, .badge.100\\% {{ background: var(--malachite); }}
+    .badge.part, .badge.79\\% {{ background: var(--brass); }}
+    .badge.miss {{ background: var(--oxblood); color: var(--ivory); }}
+    .actions {{ display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }}
+    button {{
+      border: 1px solid rgba(215,180,106,.35); background: rgba(16,22,29,.86); color: var(--ivory);
+      border-radius: 10px; padding: 9px 11px; font-weight: 700; cursor: pointer;
+    }}
+    button:hover {{ background: var(--brass); color: var(--ink); }}
+    @media (max-width: 980px) {{ .grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }}
+    @media (max-width: 620px) {{ .grid {{ grid-template-columns: 1fr; }} header {{ display: block; }} }}
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div><h1>SevenOS Control Center</h1><p class="sub">System state, profiles, security, compatibility and deployment from one place.</p></div>
+      <div class="score">{readiness.get('percent', 0)}% ready</div>
+    </header>
+    <div class="grid">{''.join(cards)}</div>
+    <div class="actions">{actions}</div>
+  </main>
+</body>
+</html>"""
+
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path in ("/", "/index.html"):
+            body = render_dashboard().encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path == "/api/status":
+            payload = json.dumps(readiness_summary()).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(payload)))
+            self.end_headers()
+            self.wfile.write(payload)
+        else:
+            self.send_error(404)
+
+    def do_POST(self):
+        if self.path != "/action":
+            self.send_error(404)
+            return
+        length = int(self.headers.get("Content-Length", "0"))
+        data = parse_qs(self.rfile.read(length).decode())
+        action_id = data.get("id", [""])[0]
+        if action_id in ACTIONS:
+            open_action(action_id)
+        self.send_response(303)
+        self.send_header("Location", "/")
+        self.end_headers()
+
+    def log_message(self, fmt, *args):
+        print("seven-control-center:", fmt % args)
+
+
+def port_open():
+    with socket.socket() as sock:
+        return sock.connect_ex((HOST, PORT)) == 0
+
+
+def open_browser():
+    webbrowser.open(f"http://{HOST}:{PORT}")
+
+
+def serve():
+    print(f"SevenOS Control Center: http://{HOST}:{PORT}")
+    ThreadingHTTPServer((HOST, PORT), Handler).serve_forever()
+
+
+def main():
+    action = sys.argv[1] if len(sys.argv) > 1 else "open"
+    if os.environ.get("SEVENOS_DRY_RUN") == "1" and action == "open":
+        print(f"xdg-open http://{HOST}:{PORT}")
+        return
+    if action == "status":
+        print(f"http://{HOST}:{PORT} {'RUN' if port_open() else 'MISS'}")
+    elif action == "serve":
+        serve()
+    elif action == "open":
+        if port_open():
+            open_browser()
+            return
+        open_browser()
+        serve()
+    elif action in ("-h", "--help", "help"):
+        print("Usage: seven-control-center [open|serve|status]")
+    else:
+        print(f"unknown action: {action}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

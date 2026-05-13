@@ -24,15 +24,26 @@ log_info "Installing Seven Hub launcher..."
 run_cmd mkdir -p "$BIN_HOME" "$APP_HOME" "$ICON_HOME"
 if is_dry_run; then
   printf 'install Seven Hub wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "$BIN_HOME/seven-hub"
+  printf 'install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "$BIN_HOME/seven-control-center"
   printf 'sudo install Seven Hub wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "/usr/local/bin/seven-hub"
+  printf 'sudo install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "/usr/local/bin/seven-control-center"
 else
   write_command_wrapper "$BIN_HOME/seven-hub" "$ROOT_DIR/seven-hub/bin/seven-hub"
+  write_command_wrapper "$BIN_HOME/seven-control-center" "$ROOT_DIR/seven-hub/bin/seven-control-center"
   if command -v sudo >/dev/null 2>&1; then
     tmp_file="$(mktemp)"
     write_command_wrapper "$tmp_file" "$ROOT_DIR/seven-hub/bin/seven-hub"
     if ! sudo install -Dm755 "$tmp_file" "/usr/local/bin/seven-hub"; then
       log_warn "Could not install seven-hub into /usr/local/bin."
       log_warn "The user command is still available at $BIN_HOME/seven-hub."
+    fi
+    rm -f "$tmp_file"
+
+    tmp_file="$(mktemp)"
+    write_command_wrapper "$tmp_file" "$ROOT_DIR/seven-hub/bin/seven-control-center"
+    if ! sudo install -Dm755 "$tmp_file" "/usr/local/bin/seven-control-center"; then
+      log_warn "Could not install seven-control-center into /usr/local/bin."
+      log_warn "The user command is still available at $BIN_HOME/seven-control-center."
     fi
     rm -f "$tmp_file"
   fi

@@ -28,7 +28,7 @@ sudo pacman -S --needed git sudo pacman-contrib
 ```bash
 git clone https://github.com/seven-v73/SevenOS.git
 cd SevenOS
-chmod +x install.sh bootstrap.sh profiles/*.sh scripts/*.sh bin/* server/*.sh seven-hub/bin/seven-hub
+chmod +x install.sh bootstrap.sh profiles/*.sh scripts/*.sh bin/* server/*.sh seven-hub/bin/*
 ```
 
 ## 3. Preview Before Installing
@@ -118,7 +118,8 @@ If it still does not change, log out and back into Hyprland.
 Expected desktop controls after the UX repair:
 
 ```text
-Super+Space  Seven Hub
+Super+Space  SevenOS Control Center
+Super+H      Seven Hub command palette
 Super+A      Apps launcher
 Super+D      Apps launcher
 Super+/      SevenOS help
@@ -178,6 +179,24 @@ Then log out and back into Hyprland.
 ./install.sh branding
 ./install.sh theme
 ./install.sh hub
+```
+
+Open the main dashboard:
+
+```bash
+seven hub
+```
+
+If a browser does not open, start it explicitly:
+
+```bash
+seven-control-center open
+```
+
+The legacy keyboard command palette is still available:
+
+```bash
+seven-hub
 ```
 
 Open a new Kitty terminal to see the SevenOS terminal country signal.

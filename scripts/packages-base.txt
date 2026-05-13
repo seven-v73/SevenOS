@@ -30,6 +30,9 @@ swaylock
 swayidle
 brightnessctl
 playerctl
+ufw
+firejail
+bubblewrap
 fastfetch
 ttf-jetbrains-mono-nerd
 noto-fonts-emoji

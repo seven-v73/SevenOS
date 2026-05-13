@@ -53,15 +53,6 @@ def run_script(args, relative_path, *extra):
 
 
 def handle_profile(args):
-    profile_map = {
-        "forge": "forge",
-        "shield": "shield",
-        "studio": "studio",
-        "baobab": "baobab",
-        "horizon": "horizon",
-        "griot": "griot",
-    }
-
     if args.name == "list":
         sevenpkg(args, "meta")
         return
@@ -70,11 +61,29 @@ def handle_profile(args):
         sevenpkg(args, "status")
         return
 
-    meta = profile_map.get(args.name)
-    if not meta:
+    target_map = {
+        "forge": ("dev", []),
+        "dev": ("dev", []),
+        "shield": ("cybersecurity", []),
+        "security": ("cybersecurity", []),
+        "studio": ("creation", []),
+        "creation": ("creation", []),
+        "horizon": ("server", []),
+        "server": ("server", []),
+        "baobab": ("base", []),
+        "base": ("base", []),
+    }
+
+    if args.name == "griot":
+        sevenpkg(args, "install", "griot")
+        return
+
+    target = target_map.get(args.name)
+    if not target:
         print(f"seven: unknown profile: {args.name}", file=sys.stderr)
         sys.exit(1)
-    sevenpkg(args, "install", meta)
+
+    install_target(target[0], args, target[1])
 
 
 def handle_shield(args):
@@ -195,7 +204,7 @@ def main():
     elif args.command == "welcome":
         run_script(args, "bin/seven-welcome")
     elif args.command == "dashboard":
-        run_script(args, "scripts/dashboard.sh")
+        run_script(args, "seven-hub/bin/seven-control-center", "open")
     elif args.command == "ecosystem":
         handle_ecosystem(args)
     elif args.command == "phase-gate":
@@ -229,7 +238,7 @@ def main():
     elif args.command == "status":
         install_target("status", args)
     elif args.command == "hub":
-        run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-hub")], args)
+        run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-control-center"), "open"], args)
     elif args.command == "profile":
         handle_profile(args)
     elif args.command == "shield":

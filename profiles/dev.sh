@@ -16,3 +16,4 @@ else
 fi
 
 log_success "DEV profile installed."
+log_info "Forge workspace ready. Next: seven deploy ./my-project or sevenpkg status"

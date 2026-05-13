@@ -32,6 +32,7 @@ INSTALLER="$SEVENOS_ROOT/install.sh"
 title="Seven Hub"
 
 categories=(
+  "Control Center|control:center|Open the SevenOS dashboard"
   "Dashboard|category:Dashboard|System overview and common actions"
   "Profiles|category:Profiles|Forge, Shield, Studio and SevenPkg status"
   "Cyber|category:Cyber|Cyber audit, labs and BlackArch bridge"
@@ -152,6 +153,9 @@ run_action() {
       ;;
     dashboard:*)
       run_in_terminal "cd '$SEVENOS_ROOT' && ./scripts/dashboard.sh"
+      ;;
+    control:*)
+      "$SEVENOS_ROOT/seven-hub/bin/seven-control-center" open &
       ;;
     *)
       [[ -x "$INSTALLER" ]] || die "installer not executable: $INSTALLER"
@@ -338,7 +342,7 @@ action_badge() {
   local label="$1"
 
   case "$label" in
-    "Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
+    "Control Center"|"Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
     "Welcome"|"System Dashboard"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
     "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
     "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;

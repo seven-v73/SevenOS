@@ -9,3 +9,4 @@ install_package_file "$ROOT_DIR/scripts/packages-creation.txt"
 
 log_warn "DaVinci Resolve is intentionally not installed automatically. Add it later through an AUR workflow or manual package."
 log_success "CREATION profile installed."
+log_info "Studio workspace ready. Next: open Krita, Blender, Inkscape or GIMP from Apps."

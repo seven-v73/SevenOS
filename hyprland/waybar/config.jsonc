@@ -14,7 +14,7 @@
     "format": "SevenOS",
     "tooltip": true,
     "tooltip-format": "SevenOS desktop. Click for dashboard, right-click for welcome.",
-    "on-click": "seven-hub Dashboard",
+    "on-click": "seven hub",
     "on-click-right": "seven-welcome"
   },
   "custom/apps": {

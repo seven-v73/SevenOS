@@ -66,8 +66,10 @@ require_file "hyprland/waybar/config.jsonc"
 require_executable "bin/seven"
 require_executable "bin/sevenpkg"
 require_executable "seven-hub/bin/seven-hub"
+require_executable "seven-hub/bin/seven-control-center"
 require_executable "bin/seven-country"
 require_executable "bin/seven-help"
+require_executable "bin/seven-session"
 require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
@@ -88,7 +90,7 @@ package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
 package_manifest_contains "noto-fonts-emoji" "scripts/packages-base.txt"
 package_manifest_contains "kitty" "scripts/packages-base.txt"
 
-if jq -e '."custom/sevenos"."on-click" == "seven-hub Dashboard"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."custom/sevenos"."on-click" == "seven hub"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar SevenOS click opens dashboard"
 else
   fail "Waybar SevenOS click does not open dashboard"
@@ -112,13 +114,13 @@ else
   fail "Waybar power action missing"
 fi
 
-if grep -q 'exec-once = mako' "$ROOT_DIR/hyprland/hyprland.conf"; then
-  ok "Hyprland starts mako"
+if grep -q 'exec-once = seven-session' "$ROOT_DIR/hyprland/hyprland.conf"; then
+  ok "Hyprland starts SevenOS session"
 else
-  fail "Hyprland does not start mako"
+  fail "Hyprland should start seven-session"
 fi
 
-if grep -q 'bind = $mod, SPACE, exec, seven-hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
+if grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'apps.rasi' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf"; then
@@ -127,10 +129,12 @@ else
   fail "Hyprland discoverable desktop shortcuts missing"
 fi
 
-if grep -q 'exec-once = swayidle' "$ROOT_DIR/hyprland/hyprland.conf"; then
-  ok "Hyprland starts swayidle"
+if grep -q 'start_once mako' "$ROOT_DIR/bin/seven-session" &&
+   grep -q 'start_once waybar' "$ROOT_DIR/bin/seven-session" &&
+   grep -q 'seven-wallpaper' "$ROOT_DIR/bin/seven-session"; then
+  ok "SevenOS session supervises desktop components"
 else
-  fail "Hyprland does not start swayidle"
+  fail "seven-session should supervise desktop components"
 fi
 
 if grep -Eq '^[[:space:]]*pseudotile[[:space:]]*=|togglesplit' "$ROOT_DIR/hyprland/hyprland.conf"; then
@@ -166,12 +170,24 @@ else
   fail "Seven Hub doctor failed"
 fi
 
+if "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null; then
+  ok "Seven Control Center status works"
+else
+  fail "Seven Control Center status failed"
+fi
+
 if grep -q 'seven ecosystem' "$ROOT_DIR/branding/motd" &&
    grep -q 'African first intelligent Linux ecosystem' "$ROOT_DIR/branding/issue" &&
    grep -q 'seven ecosystem' "$ROOT_DIR/archiso/profile/airootfs/etc/motd"; then
   ok "Branding exposes SevenOS ecosystem identity"
 else
   fail "Branding is not aligned with ecosystem identity"
+fi
+
+if grep -q '"Control Center|control:center' "$ROOT_DIR/seven-hub/bin/seven-hub"; then
+  ok "Seven Hub opens Control Center"
+else
+  fail "Seven Hub Control Center entry missing"
 fi
 
 for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy" Ecosystem Installer Apps; do

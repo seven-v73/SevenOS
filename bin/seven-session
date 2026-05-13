@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/install.sh" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/../install.sh" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/SevenOS" "$HOME/Code/OS/SevenOS"; do
+    if [[ -x "$candidate/install.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-session: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+export SEVENOS_ROOT="$ROOT_DIR"
+
+log() {
+  printf '[seven-session] %s\n' "$*"
+}
+
+start_once() {
+  local process="$1"
+  shift
+
+  if pgrep -x "$process" >/dev/null 2>&1; then
+    log "$process already running"
+    return 0
+  fi
+
+  if command -v "$process" >/dev/null 2>&1; then
+    log "starting $process"
+    "$@" >/tmp/sevenos-"$process".log 2>&1 &
+  else
+    log "$process missing"
+  fi
+}
+
+if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+  dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE >/dev/null 2>&1 || true
+fi
+
+if command -v hyprctl >/dev/null 2>&1; then
+  hyprctl setcursor Bibata-Modern-Classic 24 >/dev/null 2>&1 || true
+fi
+
+if [[ -x "$ROOT_DIR/bin/seven-wallpaper" ]]; then
+  "$ROOT_DIR/bin/seven-wallpaper" refresh >/tmp/sevenos-wallpaper.log 2>&1 || log "wallpaper refresh failed"
+else
+  start_once hyprpaper hyprpaper
+fi
+
+start_once waybar waybar
+start_once mako mako
+
+if ! pgrep -f 'swayidle .*swaylock' >/dev/null 2>&1 && command -v swayidle >/dev/null 2>&1; then
+  log "starting swayidle"
+  swayidle -w timeout 600 'swaylock -f -c 07090b' timeout 900 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' >/tmp/sevenos-swayidle.log 2>&1 &
+fi
+
+if command -v /usr/lib/polkit-kde-authentication-agent-1 >/dev/null 2>&1 &&
+   ! pgrep -f polkit-kde-authentication-agent-1 >/dev/null 2>&1; then
+  /usr/lib/polkit-kde-authentication-agent-1 >/tmp/sevenos-polkit.log 2>&1 &
+fi
+
+if [[ -x "$ROOT_DIR/bin/seven-welcome" ]]; then
+  "$ROOT_DIR/bin/seven-welcome" --notify || true
+fi
+
+log "session ready"

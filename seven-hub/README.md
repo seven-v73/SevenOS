@@ -1,21 +1,34 @@
 # Seven Hub
 
-Seven Hub is the lightweight control center for SevenOS Phase 2.
+Seven Hub is the user-facing control surface for SevenOS Phase 2.
 
-The current implementation is a Rofi-powered control center with a terminal fallback. It groups workflows into focused spaces while the future full GUI is designed.
+The primary entrypoint is now the SevenOS Control Center, a local dashboard
+served on `127.0.0.1`. It shows system readiness, security state, profile
+coverage, Windows Mode, server/deploy status, theme/session actions, and
+contextual "Fix now" actions.
+
+The Rofi-powered Seven Hub remains available as a fast command palette for
+keyboard-first workflows.
 
 Current spaces:
 
+- Control Center
 - Dashboard
 - Profiles
 - Cyber
 - Desktop
 - VM & Windows
+- Server & Deploy
+- Ecosystem
 - Installer
 - Apps
 
 ## Features
 
+- local Control Center dashboard
+- readiness score overview
+- security, profile, compatibility, deployment and theme status cards
+- contextual actions that call the same `seven` and installer commands
 - host readiness check
 - installation status report
 - SevenOS branding action
@@ -41,10 +54,17 @@ From the repository root:
 Then launch:
 
 ```bash
+seven hub
+```
+
+Or launch the command palette directly:
+
+```bash
 seven-hub
 ```
 
-In Hyprland, the base config binds the launcher to `SUPER + H`.
+In Hyprland, the base config binds the Control Center to `SUPER + SPACE` and
+the command palette to `SUPER + H`.
 
 ## Notes
 
