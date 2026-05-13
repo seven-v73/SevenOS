@@ -9,6 +9,7 @@ install_package_file "$ROOT_DIR/scripts/packages-base.txt"
 
 "$ROOT_DIR/branding/apply-branding.sh"
 "$ROOT_DIR/scripts/install-cli.sh"
+"$ROOT_DIR/seven-hub/install.sh"
 "$ROOT_DIR/scripts/apply-theme.sh"
 
 log_success "Base desktop layer installed."

@@ -91,7 +91,19 @@ If `seven` is not found immediately after install:
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 hash -r
+./install.sh cli
 seven post-install
+```
+
+The CLI installer creates wrappers in `~/.local/bin` and, when sudo is
+available, `/usr/local/bin`. The wrappers keep `SEVENOS_ROOT` pointed at this
+repository, so `seven` can find the rest of the SevenOS modules after reboot.
+
+Check the command path with:
+
+```bash
+command -v seven
+head -n 3 "$(command -v seven)"
 ```
 
 If Hyprland still looks like the default/basic config:
