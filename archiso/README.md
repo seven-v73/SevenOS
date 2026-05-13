@@ -2,7 +2,7 @@
 
 This directory contains the first SevenOS live ISO profile.
 
-The profile is intentionally minimal: it creates a bootable Arch-based live environment, injects the SevenOS repository into `/opt/SevenOS`, and provides a small welcome command with the SevenOS African first identity.
+The profile is intentionally minimal: it creates a bootable Arch-based live environment, injects the SevenOS repository into `/opt/SevenOS`, and provides a small welcome command with the SevenOS African first ecosystem identity.
 
 ## Build
 
@@ -43,8 +43,10 @@ Inside the ISO:
 - `sevenos-welcome` prints the first commands to run
 - `seven` is installed in `/usr/local/bin`
 - `sevenpkg` is installed in `/usr/local/bin`
-- `sevenosctl` is installed in `/usr/local/bin`
+- `seven-country` is installed in `/usr/local/bin`
+- `sevenosctl` is still installed as a legacy compatibility helper
 - `/etc/os-release` identifies the live system as SevenOS
+- `seven ecosystem` exposes the innovation roadmap
 
 ## Current Scope
 

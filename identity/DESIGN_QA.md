@@ -22,6 +22,8 @@ Use this checklist before shipping visual changes.
 - Corners stay consistent.
 - Icon weight is consistent across the profile set.
 - Wallpaper does not fight app windows or status bars.
+- Terminal theme feels premium while keeping command output highly readable.
+- Terminal cultural signals are concise, random, and easy to disable.
 
 ## Technical Checks
 
@@ -29,6 +31,8 @@ Use this checklist before shipping visual changes.
 jq empty hyprland/waybar/config.jsonc
 rofi -no-config -theme hyprland/rofi/sevenos.rasi -dump-theme
 rofi -no-config -theme hyprland/rofi/power.rasi -dump-theme
+kitty +runpy 'from kitty.config import load_config; load_config("hyprland/kitty/kitty.conf")'
+bin/seven-country plain
 python3 - <<'PY'
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -45,3 +49,5 @@ PY
 - Waybar shows profile and security status without crowding the bar.
 - Power actions live in `seven-power`, not behind a misleading icon.
 - Cyber Lab presets create predictable private workspaces.
+- Kitty uses SevenOS colors, readable contrast, calm opacity, and ergonomic tabs.
+- Country facts appear on terminal open/close without taking over the prompt.

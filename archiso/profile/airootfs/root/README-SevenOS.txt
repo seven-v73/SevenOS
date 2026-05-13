@@ -1,5 +1,5 @@
 SevenOS Live ISO
-African first Linux environment
+African first intelligent Linux ecosystem
 
 This live environment contains the SevenOS repository at:
 
@@ -9,12 +9,15 @@ Useful commands:
 
   sevenos-welcome
   seven status
+  seven readiness
+  seven phase-gate
+  seven ecosystem
+  seven ecosystem roadmap
+  seven server status
+  seven deploy /opt/SevenOS
   seven doctor
   sevenpkg meta
   sevenpkg status
-  seven-power
-  sevenosctl status
-  sevenosctl doctor
   cd /opt/SevenOS
   ./install.sh doctor
   ./install.sh status

@@ -2,6 +2,12 @@
 
 SevenOS does not yet install itself to disk from the live ISO.
 
+For testing on an already installed Arch machine, follow:
+
+```text
+docs/TEST_MACHINE.md
+```
+
 The current ISO is a live environment that contains the SevenOS repository at:
 
 ```text
@@ -47,6 +53,16 @@ Possible later:
 ## Current Recommendation
 
 Build a scripted TUI installer first, then evaluate Calamares after the disk workflow is stable.
+
+Until then, SevenOS should be tested as a post-install layer:
+
+```bash
+git clone https://github.com/seven-v73/SevenOS.git
+cd SevenOS
+./install.sh base --dry-run
+./install.sh base --yes
+seven phase-gate
+```
 
 ## Minimum TUI Scope
 

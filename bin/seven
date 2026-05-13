@@ -107,6 +107,27 @@ def handle_windows(args):
     install_target("windows-mode", args, [args.action, *args.extra])
 
 
+def handle_server(args):
+    run_script(args, "server/seven-server.sh", args.action, *args.extra)
+
+
+def handle_deploy(args):
+    run_script(args, "server/seven-deploy.sh", args.action, *args.extra)
+
+
+def handle_ecosystem(args):
+    run_script(args, "scripts/ecosystem.sh", args.action)
+
+
+def handle_repair(args):
+    extra = [args.area]
+    if args.apply:
+        extra.append("--apply")
+    if args.yes:
+        extra.append("--yes")
+    run_script(args, "scripts/repair.sh", *extra)
+
+
 def main():
     dry_run_requested = "--dry-run" in sys.argv[1:]
     if dry_run_requested:
@@ -119,6 +140,9 @@ def main():
     subparsers.add_parser("update", help="update SevenOS packages")
     subparsers.add_parser("welcome", help="show SevenOS onboarding overview")
     subparsers.add_parser("dashboard", help="show SevenOS dashboard")
+    ecosystem_parser = subparsers.add_parser("ecosystem", help="show SevenOS ecosystem modules and roadmap")
+    ecosystem_parser.add_argument("action", nargs="?", default="status")
+    subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
     readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
     readiness_parser.add_argument("--json", action="store_true", help="print machine-readable score output")
     readiness_parser.add_argument("--record", action="store_true", help="append the score to the local readiness history")
@@ -126,7 +150,17 @@ def main():
     improve_parser.add_argument("criterion", nargs="?", default="all")
     improve_parser.add_argument("--apply", action="store_true", help="execute the improvement plan")
     improve_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
-    subparsers.add_parser("doctor", help="check host readiness")
+
+    repair_parser = subparsers.add_parser("repair", help="show or apply guided repair plans")
+    repair_parser.add_argument("area", nargs="?", default="all")
+    repair_parser.add_argument("--apply", action="store_true", help="execute the repair plan")
+    repair_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
+
+    doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
+    doctor_parser.add_argument("action", nargs="?", default="check")
+    doctor_parser.add_argument("area", nargs="?", default="all")
+    doctor_parser.add_argument("--apply", action="store_true", help="execute repair plan when using 'fix'")
+    doctor_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
     subparsers.add_parser("status", help="show SevenOS status")
     subparsers.add_parser("hub", help="launch Seven Hub")
 
@@ -145,6 +179,14 @@ def main():
     windows_parser.add_argument("action", nargs="?", default="status")
     windows_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
+    server_parser = subparsers.add_parser("server", help="SevenOS local server and API controls")
+    server_parser.add_argument("action", nargs="?", default="status")
+    server_parser.add_argument("extra", nargs=argparse.REMAINDER)
+
+    deploy_parser = subparsers.add_parser("deploy", help="detect and prepare project deployments")
+    deploy_parser.add_argument("action", nargs="?", default="plan")
+    deploy_parser.add_argument("extra", nargs=argparse.REMAINDER)
+
     args = parser.parse_args()
 
     if args.command == "update":
@@ -153,6 +195,10 @@ def main():
         run_script(args, "bin/seven-welcome")
     elif args.command == "dashboard":
         run_script(args, "scripts/dashboard.sh")
+    elif args.command == "ecosystem":
+        handle_ecosystem(args)
+    elif args.command == "phase-gate":
+        run_script(args, "scripts/phase-gate.sh")
     elif args.command == "readiness":
         extra = []
         if args.json:
@@ -167,8 +213,16 @@ def main():
         if args.yes:
             extra.append("--yes")
         run_script(args, "scripts/improve.sh", *extra)
+    elif args.command == "repair":
+        handle_repair(args)
     elif args.command == "doctor":
-        install_target("doctor", args)
+        if args.action in ("fix", "repair"):
+            handle_repair(args)
+        elif args.action == "check":
+            install_target("doctor", args)
+        else:
+            print("seven: supported doctor actions are check and fix", file=sys.stderr)
+            sys.exit(1)
     elif args.command == "status":
         install_target("status", args)
     elif args.command == "hub":
@@ -181,6 +235,10 @@ def main():
         handle_vm(args)
     elif args.command == "windows":
         handle_windows(args)
+    elif args.command == "server":
+        handle_server(args)
+    elif args.command == "deploy":
+        handle_deploy(args)
     else:
         parser.print_help()
 

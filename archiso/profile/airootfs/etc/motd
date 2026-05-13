@@ -1,10 +1,20 @@
 SevenOS Linux Live
 
 Repository: /opt/SevenOS
-Commands:
+Start:
+  seven welcome
+  seven dashboard
+  seven readiness
+  seven phase-gate
+
+Ecosystem:
+  seven ecosystem
+  seven ecosystem roadmap
+  seven server status
+  seven deploy /opt/SevenOS
+
+Packages:
   seven status
   seven doctor
   sevenpkg meta
-  sevenosctl status
-  sevenosctl doctor
   sevenos-welcome

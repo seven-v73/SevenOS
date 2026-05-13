@@ -21,9 +21,16 @@ bash -n \
   "$ROOT_DIR/scripts/dashboard.sh" \
   "$ROOT_DIR/scripts/readiness.sh" \
   "$ROOT_DIR/scripts/improve.sh" \
+  "$ROOT_DIR/scripts/repair.sh" \
   "$ROOT_DIR/scripts/ux-check.sh" \
+  "$ROOT_DIR/scripts/phase-gate.sh" \
+  "$ROOT_DIR/scripts/ecosystem.sh" \
+  "$ROOT_DIR/server/seven-server.sh" \
+  "$ROOT_DIR/server/seven-deploy.sh" \
+  "$ROOT_DIR/branding/shell/terminal-country.sh" \
   "$ROOT_DIR/branding/apply-branding.sh" \
   "$ROOT_DIR/bin/seven" \
+  "$ROOT_DIR/bin/seven-country" \
   "$ROOT_DIR/bin/seven-power" \
   "$ROOT_DIR/bin/seven-welcome" \
   "$ROOT_DIR/bin/seven-waybar-profile" \
@@ -49,7 +56,7 @@ log_info "Checking desktop config syntax..."
 PYTHONDONTWRITEBYTECODE=1 python -m py_compile "$ROOT_DIR/bin/seven" "$ROOT_DIR/bin/sevenpkg"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
 
-for doc in VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md; do
+for doc in VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
   if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
     log_error "Missing product direction document: docs/$doc"
     exit 1
@@ -64,6 +71,30 @@ if command -v jq >/dev/null 2>&1; then
 else
   log_warn "jq not found; skipping Waybar JSON check."
 fi
+
+if ! grep -q 'seven ecosystem' "$ROOT_DIR/branding/motd"; then
+  log_error "Branding MOTD must expose the SevenOS ecosystem entrypoint."
+  exit 1
+fi
+
+if grep -Eq 'sevenosctl (status|doctor|hub)' \
+  "$ROOT_DIR/branding/motd" \
+  "$ROOT_DIR/archiso/profile/airootfs/root/README-SevenOS.txt" \
+  "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-welcome" \
+  "$ROOT_DIR/archiso/profile/airootfs/etc/motd"; then
+  log_error "Branding/welcome files should prefer 'seven' over legacy 'sevenosctl'."
+  exit 1
+fi
+
+for live_branding in \
+  "$ROOT_DIR/archiso/profile/airootfs/etc/issue" \
+  "$ROOT_DIR/archiso/profile/airootfs/etc/sevenos-release" \
+  "$ROOT_DIR/archiso/profile/airootfs/etc/os-release"; do
+  if ! grep -q 'ecosystem' "$live_branding"; then
+    log_error "Live branding missing ecosystem identity: ${live_branding#$ROOT_DIR/}"
+    exit 1
+  fi
+done
 
 if command -v rofi >/dev/null 2>&1; then
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
@@ -81,6 +112,15 @@ if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}
   fi
 else
   log_warn "Hyprland session not detected; skipping live Hyprland config check."
+fi
+
+if command -v kitty >/dev/null 2>&1; then
+  kitty +runpy 'from kitty.config import load_config; load_config("hyprland/kitty/kitty.conf")' >/dev/null 2>&1 || {
+    log_error "Kitty config failed to parse."
+    exit 1
+  }
+else
+  log_warn "kitty not found; skipping Kitty config parse."
 fi
 
 log_info "Checking package names against pacman metadata..."
@@ -132,6 +172,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-security" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/dashboard.sh" >/dev/null
@@ -141,7 +182,20 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" --record >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/improve.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/improve.sh" security >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/improve.sh" security --apply --yes >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/improve.sh" deployment >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" security >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" deployment --apply --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ux-check.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" roadmap >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" doctor >/dev/null || true
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" install-user-service >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" detect "$ROOT_DIR" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" plan "$ROOT_DIR" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" meta >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" sources >/dev/null
@@ -154,12 +208,24 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" info shield >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile list >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run dashboard >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem roadmap >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run phase-gate >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --record >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run improve security >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run improve security --apply --yes >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run improve deployment >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run repair >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run repair security --apply --yes >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run doctor fix deployment >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run deploy detect "$ROOT_DIR" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run deploy plan "$ROOT_DIR" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile shield >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield audit >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run vm start windows >/dev/null
@@ -174,6 +240,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --dry
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --virtio-iso /tmp/virtio.iso --os win10 --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode status --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode start --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" server --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cybersecurity core --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cybersecurity sandbox --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-audit --dry-run >/dev/null

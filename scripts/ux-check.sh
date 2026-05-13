@@ -45,17 +45,34 @@ log_info "Running SevenOS UX coherence checks..."
 require_file "docs/VISION.md"
 require_file "docs/UX_PRINCIPLES.md"
 require_file "docs/VOCABULARY.md"
+require_file "docs/PHASE_GATE.md"
+require_file "docs/ECOSYSTEM.md"
+require_file "docs/TEST_MACHINE.md"
+require_file "docs/PRE_PUSH.md"
+require_file "branding/shell/terminal-country.sh"
+require_file "branding/motd"
+require_file "branding/issue"
+require_file "branding/sevenos-release"
+require_file "archiso/profile/airootfs/etc/motd"
+require_file "archiso/profile/airootfs/etc/issue"
+require_file "archiso/profile/airootfs/etc/sevenos-release"
+require_file "identity/countries/africa.tsv"
 require_file "hyprland/rofi/power.rasi"
 require_file "hyprland/mako/config"
+require_file "hyprland/kitty/kitty.conf"
 require_file "hyprland/waybar/config.jsonc"
 
 require_executable "bin/seven"
 require_executable "bin/sevenpkg"
 require_executable "seven-hub/bin/seven-hub"
+require_executable "bin/seven-country"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
+require_executable "scripts/phase-gate.sh"
+require_executable "scripts/ecosystem.sh"
+require_executable "scripts/repair.sh"
 
 package_manifest_contains "mako" "scripts/packages-base.txt"
 package_manifest_contains "libnotify" "scripts/packages-base.txt"
@@ -63,6 +80,7 @@ package_manifest_contains "swaylock" "scripts/packages-base.txt"
 package_manifest_contains "swayidle" "scripts/packages-base.txt"
 package_manifest_contains "hyprpaper" "scripts/packages-base.txt"
 package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
+package_manifest_contains "kitty" "scripts/packages-base.txt"
 
 if jq -e '."custom/sevenos"."on-click" == "seven-hub Dashboard"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar SevenOS click opens dashboard"
@@ -94,7 +112,28 @@ else
   fail "Hyprland does not start swayidle"
 fi
 
-for category in Dashboard Profiles Cyber Desktop "VM & Windows" Installer Apps; do
+if grep -q 'background_opacity 0.91' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'active_tab_background #d6a84f' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
+  ok "Kitty uses SevenOS premium palette"
+else
+  fail "Kitty palette is not aligned with SevenOS identity"
+fi
+
+if "$ROOT_DIR/bin/seven-country" plain | grep -q 'Capital:'; then
+  ok "Terminal country signal works"
+else
+  fail "Terminal country signal failed"
+fi
+
+if grep -q 'seven ecosystem' "$ROOT_DIR/branding/motd" &&
+   grep -q 'African first intelligent Linux ecosystem' "$ROOT_DIR/branding/issue" &&
+   grep -q 'seven ecosystem' "$ROOT_DIR/archiso/profile/airootfs/etc/motd"; then
+  ok "Branding exposes SevenOS ecosystem identity"
+else
+  fail "Branding is not aligned with ecosystem identity"
+fi
+
+for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy" Ecosystem Installer Apps; do
   if grep -q "\"$category|category:$category" "$ROOT_DIR/seven-hub/bin/seven-hub"; then
     ok "Seven Hub category: $category"
   else
@@ -112,6 +151,8 @@ fi
 
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset offline --dry-run >/dev/null
 ok "interactive UX commands support dry-run"
 

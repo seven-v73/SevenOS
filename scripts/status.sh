@@ -111,10 +111,13 @@ if command -v sevenpkg >/dev/null 2>&1; then
 else
   missing "sevenpkg command"
 fi
-if command -v sevenosctl >/dev/null 2>&1; then
-  ok "sevenosctl available"
+if command -v seven-country >/dev/null 2>&1; then
+  ok "seven-country available"
 else
-  missing "sevenosctl command"
+  missing "seven-country command"
+fi
+if command -v sevenosctl >/dev/null 2>&1; then
+  ok "sevenosctl legacy helper available"
 fi
 
 section "Profiles"

@@ -2,17 +2,18 @@
 
 SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, modular work profiles, security tooling, creative production, Windows compatibility, and an African first product identity.
 
-This repository currently contains foundations for **Phase 1, Phase 2, and Phase 3**: post-install setup, a lightweight Seven Hub control center, VM helpers, identity assets, and an early Archiso live profile. It is not yet a complete installable distribution.
+This repository currently contains foundations for **Phase 1, Phase 2, Phase 3, and early Phase 4**: post-install setup, Seven Hub, `seven`/`sevenpkg`, VM helpers, identity assets, server/deploy foundations, repair planning, and an early Archiso live profile. It is not yet a complete installable distribution.
 
 ## Vision
 
-SevenOS aims to become an afro-futurist Linux ecosystem for productivity, creation, cybersecurity, Windows compatibility, and digital sovereignty.
+SevenOS aims to become an afro-futurist Linux ecosystem for productivity, creation, cybersecurity, Windows compatibility, deployment, personal cloud workflows, and digital sovereignty.
 
 It is built around three pillars:
 
 - `seven` as the system controller
 - `sevenpkg` as the package and application manager
 - Seven Hub as the user-facing control center
+- Seven Ecosystem as the roadmap for AI, cloud, marketplace, containers, automation, and identity modules
 
 SevenOS aims to provide:
 
@@ -20,6 +21,8 @@ SevenOS aims to provide:
 - a Wayland desktop based on Hyprland
 - modular profiles for development, cybersecurity, and creation
 - Windows application compatibility through Wine, Bottles, Lutris, and later KVM/QEMU
+- local deployment through `seven-server` and `seven-deploy`
+- future intelligent modules such as SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow, and SevenIdentity
 - a Seven Hub control center
 - an African first visual identity with obsidian, ancestral gold, clay, baobab green, and indigo accents
 - a vocabulary and workflow model that makes Linux easier to live with
@@ -32,13 +35,17 @@ Implemented:
 - base installer entrypoint
 - modular profile scripts
 - package manifests
-- starter Hyprland, Waybar, and Rofi configuration
+- Hyprland, Waybar, Rofi, Kitty, Mako and Hyprpaper configuration
 - Seven Hub MVP
 - `seven` system controller
 - `sevenpkg` package/application manager
+- `seven repair` guided repair planner
+- `seven ecosystem` innovation roadmap
+- `seven-server` local API foundation
+- `seven-deploy` deployment planner
 - initial Archiso profile and ISO build script
 - African first identity foundation
-- placeholders for advanced VM work
+- Windows Mode helper workflow
 
 Not implemented yet:
 
@@ -47,6 +54,7 @@ Not implemented yet:
 - Seven Hub GUI
 - automated Windows VM provisioning
 - GPU passthrough automation
+- real SevenAI/SevenCloud/SevenStore implementations
 
 ## Repository Layout
 
@@ -108,6 +116,11 @@ Start here before making strategic changes:
 - `docs/UX_PRINCIPLES.md`
 - `docs/VOCABULARY.md`
 - `docs/OS_CRITERIA.md`
+- `docs/ECOSYSTEM.md`
+- `docs/DEPLOYMENT.md`
+- `docs/PHASE_GATE.md`
+- `docs/TEST_MACHINE.md`
+- `docs/PRE_PUSH.md`
 
 SevenOS is guided by one product question:
 
@@ -115,6 +128,18 @@ SevenOS is guided by one product question:
 > and easier to live with every day?
 
 ## Usage
+
+For a complete test-machine flow, use:
+
+```text
+docs/TEST_MACHINE.md
+```
+
+Before pushing a phase to GitHub, use:
+
+```text
+docs/PRE_PUSH.md
+```
 
 Clone the repository:
 
@@ -130,8 +155,8 @@ chmod +x install.sh bootstrap.sh profiles/*.sh
 ./install.sh base
 ```
 
-The base layer installs packages, SevenOS branding, `sevenosctl`, the desktop theme, and the wallpaper.
-It also installs the newer `seven` and `sevenpkg` commands.
+The base layer installs packages, SevenOS branding, `seven`, `sevenpkg`, the desktop theme, Kitty polish, terminal country signals, and the wallpaper.
+`sevenosctl` remains available only as a legacy compatibility helper.
 
 Install a profile:
 
@@ -154,6 +179,7 @@ Install a profile:
 ./install.sh installer-plan
 ./install.sh installer-check
 ./install.sh installer-script
+./install.sh server
 ```
 
 Check whether the current host is ready for SevenOS features:
@@ -169,11 +195,15 @@ Show the current SevenOS installation status:
 seven status
 seven welcome
 seven dashboard
+seven ecosystem
+seven ecosystem roadmap
 seven readiness
+seven phase-gate
+seven repair
+seven doctor fix
 seven improve
 seven improve security --apply --yes
 seven windows status
-sevenosctl status
 ```
 
 Install everything:
@@ -192,6 +222,8 @@ Run local checks:
 
 ```bash
 ./scripts/check.sh
+./scripts/ux-check.sh
+./scripts/phase-gate.sh
 ```
 
 Build a live ISO:
@@ -255,13 +287,18 @@ The current desktop theme uses liquid glass surfaces, SevenOS SVG icons, and a r
 
 For the complete icon experience, install the base profile package set, which includes `ttf-jetbrains-mono-nerd`.
 
-SevenOS provides `sevenosctl`, a small CLI for daily system control:
+SevenOS provides `seven`, the main CLI for daily system control:
 
 ```bash
 seven status
 seven welcome
 seven dashboard
 seven readiness
+seven phase-gate
+seven ecosystem
+seven ecosystem roadmap
+seven server status
+seven deploy ./my-project
 seven improve
 seven doctor
 seven profile forge
@@ -273,11 +310,6 @@ sevenpkg meta
 sevenpkg status
 sevenpkg info shield
 sevenpkg install forge
-sevenosctl status
-sevenosctl doctor
-sevenosctl hub
-sevenosctl theme
-sevenosctl branding
 ```
 
 `seven` is the main SevenOS system controller. `sevenpkg` is the package and
@@ -293,7 +325,7 @@ seven-power lock
 ```
 
 Seven Hub is organized into focused spaces: Dashboard, Profiles, Cyber, Desktop,
-VM & Windows, Installer, and Apps.
+VM & Windows, Server & Deploy, Ecosystem, Installer, and Apps.
 
 Apply only the desktop theme:
 

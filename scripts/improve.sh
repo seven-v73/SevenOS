@@ -26,6 +26,7 @@ Criteria:
   customization
   target
   ecosystem
+  deployment
 
 Default is a safe plan. Use --apply to execute the recommended install targets.
 Use --yes with --apply to run supported package installs non-interactively.
@@ -123,6 +124,13 @@ improve_ecosystem() {
   run_step "Validate installer plan" "$ROOT_DIR/install.sh" installer-check
 }
 
+improve_deployment() {
+  section "Deployment"
+  run_step "Install SevenOS server and deployment packages" "$ROOT_DIR/install.sh" server
+  run_step "Check local server readiness" "$ROOT_DIR/server/seven-server.sh" doctor
+  run_step "Preview deployment planner on this repository" "$ROOT_DIR/server/seven-deploy.sh" plan "$ROOT_DIR"
+}
+
 printf 'SevenOS Improve Plan\n'
 printf '====================\n'
 if [[ "$APPLY" -eq 1 ]]; then
@@ -149,6 +157,7 @@ case "$CRITERION" in
     improve_customization
     improve_target
     improve_ecosystem
+    improve_deployment
     ;;
   performance) improve_performance ;;
   ux) improve_ux ;;
@@ -158,6 +167,7 @@ case "$CRITERION" in
   customization) improve_customization ;;
   target) improve_target ;;
   ecosystem) improve_ecosystem ;;
+  deployment|server|deploy) improve_deployment ;;
   *)
     log_error "Unknown criterion: $CRITERION"
     usage

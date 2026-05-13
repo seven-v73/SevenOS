@@ -3,7 +3,7 @@ set -euo pipefail
 
 cat <<'EOF'
 SevenOS Live
-African first Linux environment
+African first intelligent Linux ecosystem
 
 Repository:
   /opt/SevenOS
@@ -17,9 +17,13 @@ Start here:
   seven dashboard
   seven doctor
   seven status
+  seven readiness
+  seven phase-gate
+  seven ecosystem
+  seven ecosystem roadmap
+  seven server status
+  seven deploy /opt/SevenOS
   sevenpkg meta
-  sevenosctl doctor
-  sevenosctl status
   ./install.sh doctor
   ./install.sh status
   ./install.sh installer-plan

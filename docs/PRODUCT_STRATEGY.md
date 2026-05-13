@@ -15,7 +15,8 @@ Current Linux distributions tend to specialize:
 - EndeavourOS simplifies Arch installation.
 
 SevenOS enters a different space: a culturally grounded Linux ecosystem for
-modern productivity, creation, cybersecurity, and Windows integration.
+modern productivity, creation, cybersecurity, Windows integration, deployment,
+and future AI-assisted personal cloud workflows.
 
 ## Strategic Position
 
@@ -60,6 +61,10 @@ SevenOS should be:
 - hardware validation
 - ISO release channel
 - default apps and recovery tools
+- SevenDoctor guided repair suggestions
+- SevenBox rootless container workflow
+- SevenAI provider-neutral command contract
+- Adaptive UI signals by active workflow
 
 ### Phase 5: Ecosystem
 
@@ -68,6 +73,11 @@ SevenOS should be:
 - regional accent packs
 - cloud and sync services
 - plugin system
+- SevenCloud backup and restore
+- SevenStore trust policy
+- SevenIdentity profiles
+- SevenFlow automation
+- SevenCluster private compute mesh
 
 ## Product Rules
 
@@ -88,6 +98,11 @@ SevenOS should be:
 | Griot | documentation, learning, and knowledge |
 | Baobab | base system and continuity |
 | Windows Mode | Windows compatibility and VM workflows |
+| SevenAI | system assistant and automation contract |
+| SevenCloud | backup, restore, and machine sync |
+| SevenStore | apps, themes, profiles, and modules |
+| SevenBox | rootless container runtime UX |
+| SevenFlow | no-code system automation |
 
 ## Near-Term Priorities
 
@@ -96,6 +111,7 @@ SevenOS should be:
 3. Improve Windows Mode from helper scripts into a guided workflow.
 4. Complete ISO installer planning into a real install path.
 5. Keep design QA strict so SevenOS remains coherent as it grows.
+6. Use `seven ecosystem` to keep innovation modules visible and honest.
 
 ## OS Choice Criteria
 
@@ -120,3 +136,4 @@ seven improve
 ```
 
 See `docs/OS_CRITERIA.md`.
+See also `docs/ECOSYSTEM.md`.

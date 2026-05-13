@@ -4,7 +4,9 @@ Users do not choose an operating system because of internals first. They choose
 one because it feels useful, reliable, compatible, fast, and aligned with their
 work.
 
-SevenOS tracks eight criteria.
+SevenOS tracks eight criteria. The deployment layer adds a ninth
+product-readiness dimension for users who want their OS to become a local
+server, deployment node or personal cloud.
 
 ## 1. Performance
 
@@ -190,6 +192,7 @@ This document is paired with:
 seven readiness
 seven readiness --json
 seven readiness --record
+seven phase-gate
 seven improve
 seven improve --apply --yes
 seven improve security --apply --yes
@@ -200,3 +203,11 @@ seven improve security --apply --yes
 `seven readiness` measures the current machine against the criteria.
 `seven readiness --record` stores score history under `out/readiness/`.
 `seven improve` turns missing criteria into an actionable improvement plan.
+
+Deployment-specific commands:
+
+```bash
+seven improve deployment
+seven server status
+seven deploy ./my-project
+```

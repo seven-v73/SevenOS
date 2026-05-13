@@ -17,6 +17,7 @@ Targets:
   cybersecurity    Install cybersecurity profile, optionally by category
   creation         Install creation profile
   windows          Install Windows compatibility layer
+  server           Install SevenOS server and deployment layer
   security         Apply base security hardening
   cyber-audit      Show cybersecurity profile readiness
   cyber-lab        Open an isolated cybersecurity lab shell
@@ -28,7 +29,7 @@ Targets:
   doctor           Check host readiness
   status           Show SevenOS installation status
   branding         Apply SevenOS system branding
-  cli              Install sevenosctl CLI
+  cli              Install SevenOS CLI tools
   theme            Apply SevenOS African first theme
   hub              Install Seven Hub launcher
   iso-tools        Install ISO build tooling
@@ -91,6 +92,9 @@ case "$TARGET" in
     ;;
   windows)
     "$ROOT_DIR/profiles/windows.sh"
+    ;;
+  server)
+    install_package_file "$ROOT_DIR/scripts/packages-server.txt"
     ;;
   security)
     "$ROOT_DIR/security/hardening.sh"

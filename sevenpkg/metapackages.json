@@ -36,14 +36,11 @@
     ]
   },
   "horizon": {
-    "description": "Cloud and network operations toolkit",
-    "kind": "pacman",
-    "packages": [
-      "rclone",
-      "kubectl",
-      "terraform",
-      "ansible",
-      "podman"
+    "description": "Cloud, server and deployment toolkit",
+    "kind": "sevenos-target",
+    "target": "server",
+    "package_files": [
+      "scripts/packages-server.txt"
     ]
   },
   "griot": {

@@ -13,6 +13,8 @@ categories=(
   "Cyber|category:Cyber|Cyber audit, labs and BlackArch bridge"
   "Desktop|category:Desktop|Theme, branding, power and session controls"
   "VM & Windows|category:VM & Windows|Windows compatibility and libvirt"
+  "Server & Deploy|category:Server & Deploy|Local API, personal cloud and project deploy"
+  "Ecosystem|category:Ecosystem|AI, cloud, store, containers and automation roadmap"
   "Installer|category:Installer|ISO and installation planning"
   "Apps|category:Apps|External desktop applications"
 )
@@ -96,10 +98,13 @@ load_actions() {
       actions=(
         "Welcome|seven:welcome|Show onboarding and next steps"
         "System Dashboard|dashboard:system|Open SevenOS overview"
+        "Ecosystem Map|seven:ecosystem|Show all SevenOS ecosystem modules"
         "Readiness Score|seven:readiness|Score SevenOS against OS choice criteria"
         "Improve Plan|seven:improve|Plan improvements for all OS criteria"
+        "Repair Plan|seven:repair|Show guided repair plan"
         "Improve Security|seven:improve security|Plan trust and hardening improvements"
         "Improve Compatibility|seven:improve compatibility|Plan Windows and app compatibility improvements"
+        "Improve Deployment|seven:improve deployment|Plan server and deployment improvements"
         "Improve Workspaces|seven:improve target|Plan Forge, Shield and Studio completion"
         "System Status|status|Show installed profiles and services"
         "Doctor|doctor|Check host readiness"
@@ -150,6 +155,30 @@ load_actions() {
         "VM Network|vm-network|Start libvirt default network"
         "Open Virt Manager|app:virt-manager|Launch VM manager"
         "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"
+      )
+      ;;
+    "Server & Deploy")
+      actions=(
+        "Server Status|seven:server status|Show SevenOS local API readiness"
+        "Server Doctor|seven:server doctor|Check deployment dependencies"
+        "Install Server Layer|server|Install server and deployment packages"
+        "Install User Service|seven:server install-user-service|Install seven-server user service"
+        "Start Server|seven:server start|Start local SevenOS API"
+        "Stop Server|seven:server stop|Stop local SevenOS API"
+        "Deploy Status|seven:deploy status|Show generated deployment plans"
+        "Deploy Current Project|seven:deploy .|Generate a plan for this repository"
+        "Improve Deployment|seven:improve deployment|Plan server and deploy improvements"
+      )
+      ;;
+    "Ecosystem")
+      actions=(
+        "Ecosystem Map|seven:ecosystem|Show modules and maturity"
+        "Ecosystem Roadmap|seven:ecosystem roadmap|Show Phase 4 and Phase 5 priorities"
+        "Ecosystem Doctor|seven:ecosystem doctor|Validate ecosystem foundation"
+        "Repair Plan|seven:repair|Show guided repair plan"
+        "Phase Gate|seven:phase-gate|Run next-phase checks"
+        "Readiness Score|seven:readiness|Score SevenOS criteria"
+        "Improve Plan|seven:improve|Plan system improvements"
       )
       ;;
     "Installer")
@@ -239,8 +268,8 @@ action_badge() {
   local label="$1"
 
   case "$label" in
-    "Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Installer"|"Apps") printf 'OPEN' ;;
-    "Welcome"|"System Dashboard"|"Readiness Score"|"Improve Plan"|"Improve Security"|"Improve Compatibility"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console") printf 'RUN' ;;
+    "Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
+    "Welcome"|"System Dashboard"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
     "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
     "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
     "Profile Studio") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
@@ -256,6 +285,22 @@ action_badge() {
     "BlackArch Setup") blackarch_state ;;
     "Install CREATION") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
     "Install WINDOWS") package_file_state "$SEVENOS_ROOT/scripts/packages-windows.txt" ;;
+    "Install Server Layer") package_file_state "$SEVENOS_ROOT/scripts/packages-server.txt" ;;
+    "Install User Service")
+      if systemctl --user is-enabled --quiet seven-server.service 2>/dev/null; then
+        printf 'OK'
+      else
+        printf 'MISS'
+      fi
+      ;;
+    "Start Server")
+      if systemctl --user is-active --quiet seven-server.service 2>/dev/null; then
+        printf 'OK'
+      else
+        printf 'MISS'
+      fi
+      ;;
+    "Stop Server") printf 'RUN' ;;
     "Apply SECURITY") package_file_state "$SEVENOS_ROOT/scripts/packages-security.txt" ;;
     "Install ALL") printf 'RUN' ;;
     "VM Check") service_state libvirtd.service ;;

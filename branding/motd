@@ -1,8 +1,19 @@
 SevenOS Linux
 
-Repository: /opt/SevenOS or ~/Code/OS/SevenOS
-Commands:
-  sevenosctl status
-  sevenosctl doctor
-  sevenosctl hub
+African first intelligent Linux ecosystem.
 
+Start:
+  seven welcome
+  seven dashboard
+  seven readiness
+  seven phase-gate
+
+Ecosystem:
+  seven ecosystem
+  seven ecosystem roadmap
+  seven server status
+  seven deploy ./my-project
+
+Packages:
+  sevenpkg meta
+  sevenpkg status

@@ -1,0 +1,10 @@
+# SevenOS server and deployment profile
+go
+podman
+buildah
+skopeo
+caddy
+jq
+git
+rsync
+openssh

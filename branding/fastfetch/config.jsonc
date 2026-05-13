@@ -19,6 +19,14 @@
     "gpu",
     "memory",
     "disk",
+    {
+      "type": "custom",
+      "format": "SevenOS  African first intelligent Linux ecosystem"
+    },
+    {
+      "type": "custom",
+      "format": "Flow     seven dashboard | seven ecosystem | seven phase-gate"
+    },
     "colors"
   ]
 }

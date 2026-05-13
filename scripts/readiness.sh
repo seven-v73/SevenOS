@@ -152,7 +152,7 @@ profile_check() {
 if [[ "$JSON_OUTPUT" -ne 1 ]]; then
   printf 'SevenOS Readiness Scorecard\n'
   printf '===========================\n'
-  printf 'Criteria: performance, UX/UI, compatibility, ease, security, customization, target use, ecosystem.\n'
+  printf 'Criteria: performance, UX/UI, compatibility, ease, security, customization, target use, ecosystem, deployment, innovation.\n'
 fi
 
 criterion "Performance"
@@ -206,8 +206,30 @@ criterion "Ecosystem"
 file_ready "$ROOT_DIR/docs/VISION.md" && pass "Vision documented" || miss "Vision missing"
 file_ready "$ROOT_DIR/docs/PRODUCT_STRATEGY.md" && pass "Product strategy documented" || miss "Product strategy missing"
 file_ready "$ROOT_DIR/docs/OS_CRITERIA.md" && pass "OS choice criteria documented" || miss "OS criteria missing"
+file_ready "$ROOT_DIR/docs/DEPLOYMENT.md" && pass "Deployment architecture documented" || miss "Deployment docs missing"
 file_ready "$ROOT_DIR/archiso/README.md" && pass "ISO path documented" || miss "ISO docs missing"
 file_ready "$ROOT_DIR/installer/README.md" && pass "Installer path documented" || miss "Installer docs missing"
+
+criterion "Deployment"
+file_ready "$ROOT_DIR/server/README.md" && pass "Server architecture documented" || miss "Server architecture missing"
+[[ -x "$ROOT_DIR/server/seven-server.sh" ]] && pass "seven-server available" || { miss "seven-server missing"; recommend "seven improve deployment" "restore local server backend"; }
+[[ -x "$ROOT_DIR/server/seven-deploy.sh" ]] && pass "seven-deploy available" || { miss "seven-deploy missing"; recommend "seven improve deployment" "restore deployment planner"; }
+profile_check "Horizon" "$ROOT_DIR/scripts/packages-server.txt" "seven improve deployment"
+if systemctl --user is-active --quiet seven-server.service 2>/dev/null; then
+  pass "SevenOS local API active"
+else
+  partial "SevenOS local API not active"
+  recommend "seven server install-user-service" "install the local API service"
+  recommend "seven server start" "start the local API service"
+fi
+
+criterion "Innovation"
+file_ready "$ROOT_DIR/docs/ECOSYSTEM.md" && pass "Ecosystem architecture documented" || miss "Ecosystem docs missing"
+[[ -x "$ROOT_DIR/scripts/ecosystem.sh" ]] && pass "Ecosystem command available" || miss "Ecosystem command missing"
+"$ROOT_DIR/scripts/ecosystem.sh" doctor >/dev/null 2>&1 && pass "Ecosystem foundation coherent" || partial "Ecosystem foundation needs review"
+[[ -x "$ROOT_DIR/scripts/repair.sh" ]] && pass "SevenDoctor repair planner available" || partial "SevenDoctor repair planner missing"
+grep -q 'SevenAI' "$ROOT_DIR/docs/ECOSYSTEM.md" && pass "SevenAI roadmap declared" || partial "SevenAI roadmap missing"
+grep -q 'SevenCloud' "$ROOT_DIR/docs/ECOSYSTEM.md" && pass "SevenCloud roadmap declared" || partial "SevenCloud roadmap missing"
 
 percent=$((score_total * 100 / score_max))
 

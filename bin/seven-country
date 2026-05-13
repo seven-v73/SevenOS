@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+DATA_FILE="${SEVENOS_COUNTRY_DATA:-}"
+
+usage() {
+  cat <<'EOF'
+SevenOS Country Signal
+
+Usage:
+  seven-country [open|close|plain]
+
+Environment:
+  SEVENOS_COUNTRY_DATA      Override country TSV path
+  SEVENOS_COUNTRY_NO_FLAG   Hide emoji flags when set to 1
+EOF
+}
+
+find_data_file() {
+  if [[ -n "$DATA_FILE" && -f "$DATA_FILE" ]]; then
+    printf '%s\n' "$DATA_FILE"
+    return 0
+  fi
+
+  local data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+  for candidate in \
+    "$data_home/sevenos/countries/africa.tsv" \
+    "$ROOT_DIR/identity/countries/africa.tsv" \
+    "/usr/share/sevenos/countries/africa.tsv"; do
+    if [[ -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+format_population() {
+  local population="$1"
+  awk -v n="$population" 'BEGIN {
+    s = sprintf("%d", n)
+    out = ""
+    while (length(s) > 3) {
+      out = "," substr(s, length(s) - 2) out
+      s = substr(s, 1, length(s) - 3)
+    }
+    print s out
+  }'
+}
+
+pick_country() {
+  local file="$1"
+  if command -v shuf >/dev/null 2>&1; then
+    grep -v '^#' "$file" | sed '/^[[:space:]]*$/d' | shuf -n 1
+  else
+    awk 'BEGIN{srand()} !/^#/ && NF {rows[++n]=$0} END{if(n) print rows[int(rand()*n)+1]}' "$file"
+  fi
+}
+
+print_country() {
+  local mode="$1"
+  local file line flag name capital population display_flag formatted_population
+
+  file="$(find_data_file)" || {
+    printf 'SevenOS: country data not found.\n' >&2
+    return 1
+  }
+
+  line="$(pick_country "$file")"
+  IFS=$'\t' read -r flag name capital population <<<"$line"
+  formatted_population="$(format_population "$population")"
+
+  if [[ "${SEVENOS_COUNTRY_NO_FLAG:-0}" == "1" ]]; then
+    display_flag=""
+  else
+    display_flag="$flag "
+  fi
+
+  case "$mode" in
+    open)
+      printf '\n'
+      printf 'SevenOS Country Signal\n'
+      printf '  %s%s\n' "$display_flag" "$name"
+      printf '  Capital: %s\n' "$capital"
+      printf '  Population: approx. %s\n' "$formatted_population"
+      printf '\n'
+      ;;
+    close)
+      printf '\nSevenOS closing signal: %s%s | %s | approx. %s people\n' "$display_flag" "$name" "$capital" "$formatted_population"
+      ;;
+    plain)
+      printf '%s%s | Capital: %s | Population: approx. %s\n' "$display_flag" "$name" "$capital" "$formatted_population"
+      ;;
+    *)
+      usage
+      return 1
+      ;;
+  esac
+}
+
+print_country "${1:-open}"

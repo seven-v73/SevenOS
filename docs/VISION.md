@@ -9,7 +9,7 @@ modern work.
 SevenOS aims to become:
 
 > an afro-futurist Linux ecosystem for productivity, creation, cybersecurity,
-> Windows compatibility, and digital sovereignty.
+> Windows compatibility, personal cloud deployment, and digital sovereignty.
 
 The goal is to combine:
 
@@ -29,8 +29,9 @@ SevenOS starts from a different premise:
 
 > an operating system is not just a tool; it is a digital living environment.
 
-SevenOS should help users code, create, secure, learn, and run Windows workflows
-without feeling like they are assembling a system by hand every day.
+SevenOS should help users code, create, secure, learn, run Windows workflows,
+and deploy projects without feeling like they are assembling a system by hand
+every day.
 
 ## Product Promise
 
@@ -41,6 +42,7 @@ SevenOS should feel:
 - expressive enough to have a recognizable soul
 - modular enough to adapt to different professions
 - sovereign enough to support local, open, and self-hosted futures
+- connected enough to become a private deployment node when the user chooses
 
 ## The Three Pillars
 
@@ -59,6 +61,22 @@ SevenOS meta-packages, and future SevenRepo packages.
 The user-facing control center. It should make SevenOS visible, navigable, and
 comfortable without hiding Linux power.
 
+### `seven-server`
+
+The local backend. It turns the machine into a controlled system API,
+monitoring surface, deployment node, and future personal cloud foundation.
+
+### `seven-deploy`
+
+The deployment planner. It detects project stacks and prepares reproducible
+deployment plans before later phases execute them through rootless containers.
+
+### Seven Ecosystem
+
+The innovation map for SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow,
+SevenIdentity and future cluster features. It keeps the ambition visible while
+marking every module as active, preview, or planned.
+
 ## Differentiators
 
 - African first identity without reducing culture to decoration
@@ -66,6 +84,8 @@ comfortable without hiding Linux power.
 - integrated Windows compatibility through Wine, Bottles, Lutris, and KVM
 - cybersecurity as a first-class workspace, not a separate live ISO only
 - creative production as a native workflow
+- local server and deployment architecture as a native OS capability
+- ecosystem roadmap for AI, cloud, marketplace, automation and identity modules
 - narrative UX that makes system operations understandable and memorable
 
 ## North Star
@@ -76,6 +96,7 @@ Every major change should answer yes to at least one of these questions:
 - Does it make Linux easier to live with?
 - Does it strengthen the African first identity in a useful way?
 - Does it improve creative, cyber, development, or Windows workflows?
+- Does it make self-hosting and deployment easier without weakening security?
 - Does it make the system feel more coherent and premium?
 
 SevenOS also tracks its ability to satisfy the practical OS choice criteria in
@@ -83,4 +104,5 @@ SevenOS also tracks its ability to satisfy the practical OS choice criteria in
 
 ```bash
 seven readiness
+seven ecosystem
 ```

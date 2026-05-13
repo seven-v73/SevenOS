@@ -39,3 +39,20 @@ Expected future candidates:
 ## Rule
 
 Core installation must remain usable with official repositories only. Flatpak is allowed for user apps. AUR must remain opt-in and documented.
+
+## Test Machine Install Order
+
+For a normal test machine, install in this order:
+
+```bash
+./install.sh base --yes
+./install.sh dev --yes
+./install.sh cybersecurity core --yes
+./install.sh cybersecurity sandbox --yes
+./install.sh windows --yes
+./install.sh server --yes
+seven phase-gate
+```
+
+Install larger profile groups only when the test machine is intended for that
+workflow.
