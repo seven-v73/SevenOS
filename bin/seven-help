@@ -53,7 +53,7 @@ selected="${selected%%    *}"
 
 case "$selected" in
   "Open Seven Hub") seven-hub ;;
-  "Open Apps") rofi -show drun -show-icons -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" ;;
+  "Open Apps") rofi -show drun -show-icons -theme "$ROOT_DIR/hyprland/rofi/apps.rasi" ;;
   "Open Terminal") kitty & ;;
   "Power Menu") seven-power ;;
   "Lock Screen") seven-power lock ;;

@@ -57,6 +57,7 @@ require_file "archiso/profile/airootfs/etc/motd"
 require_file "archiso/profile/airootfs/etc/issue"
 require_file "archiso/profile/airootfs/etc/sevenos-release"
 require_file "identity/countries/africa.tsv"
+require_file "hyprland/rofi/apps.rasi"
 require_file "hyprland/rofi/power.rasi"
 require_file "hyprland/mako/config"
 require_file "hyprland/kitty/kitty.conf"
@@ -99,7 +100,7 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."custom/apps".format == "Apps" and (."custom/apps"."on-click" | contains("rofi -show drun"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."custom/apps".format == "Apps" and (."custom/apps"."on-click" | contains("rofi -show drun")) and (."custom/apps"."on-click" | contains("apps.rasi"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes visible Apps launcher"
 else
   fail "Waybar visible Apps launcher missing"
@@ -119,6 +120,7 @@ fi
 
 if grep -q 'bind = $mod, SPACE, exec, seven-hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'apps.rasi' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland exposes discoverable Hub, Apps and Help shortcuts"
 else
@@ -175,6 +177,7 @@ for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy
 done
 
 if command -v rofi >/dev/null 2>&1; then
+  rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/apps.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/power.rasi" -dump-theme >/dev/null
   ok "Rofi themes parse"

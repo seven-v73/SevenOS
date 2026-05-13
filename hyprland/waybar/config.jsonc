@@ -21,7 +21,7 @@
     "format": "Apps",
     "tooltip": true,
     "tooltip-format": "Open application launcher",
-    "on-click": "rofi -show drun -show-icons -theme ~/.config/rofi/sevenos.rasi"
+    "on-click": "rofi -show drun -show-icons -theme ~/.config/rofi/apps.rasi"
   },
   "custom/profile": {
     "exec": "bash -lc 'seven-waybar-profile'",

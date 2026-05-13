@@ -1,0 +1,101 @@
+* {
+  ink: #07090b;
+  graphite: #10161d;
+  surface: #17212b;
+  panel: #24313b;
+  brass: #d7b46a;
+  copper: #c47a3c;
+  malachite: #2e8b6d;
+  cobalt: #2f5d8c;
+  ivory: #ede3d1;
+  raffia: #bca77d;
+}
+
+window {
+  width: 56%;
+  border: 1px;
+  border-color: #d7b46a66;
+  border-radius: 16px;
+  background-color: #17212bf5;
+}
+
+mainbox {
+  padding: 18px;
+  spacing: 12px;
+  background-color: transparent;
+}
+
+message {
+  padding: 10px 12px;
+  border: 0px 0px 1px 0px;
+  border-color: #d7b46a22;
+  background-color: #24313bcc;
+}
+
+textbox {
+  text-color: @raffia;
+}
+
+inputbar {
+  padding: 13px 14px;
+  border: 1px;
+  border-color: #d7b46a55;
+  border-radius: 12px;
+  background-color: #2a3844e8;
+  children: [ prompt, textbox-prompt-colon, entry ];
+}
+
+prompt {
+  text-color: @brass;
+  font: "JetBrainsMono Nerd Font Bold 13";
+}
+
+textbox-prompt-colon {
+  text-color: @copper;
+}
+
+entry {
+  text-color: @ivory;
+  placeholder: "Applications";
+  placeholder-color: @raffia;
+  cursor-color: @brass;
+}
+
+listview {
+  lines: 9;
+  columns: 2;
+  fixed-height: true;
+  margin: 4px 0 0 0;
+  spacing: 8px;
+  background-color: transparent;
+}
+
+element {
+  orientation: horizontal;
+  padding: 12px;
+  border: 1px;
+  border-color: #ede3d112;
+  border-radius: 12px;
+  background-color: #1f2b35e8;
+}
+
+element selected {
+  background-color: #31414ef6;
+  text-color: @ivory;
+  border-color: #d7b46ab8;
+}
+
+element alternate {
+  background-color: #17212bd8;
+}
+
+element-text,
+element-icon {
+  text-color: inherit;
+  background-color: transparent;
+}
+
+element-icon {
+  size: 30px;
+  margin: 0 12px 0 0;
+}
