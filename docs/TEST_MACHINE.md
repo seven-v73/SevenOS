@@ -137,6 +137,7 @@ waybar &
 If the wallpaper does not change after a theme update:
 
 ```bash
+seven-wallpaper status
 seven-wallpaper refresh
 ```
 
@@ -145,6 +146,15 @@ If that reports a missing SVG renderer:
 ```bash
 sudo pacman -S --needed librsvg
 seven-wallpaper refresh
+```
+
+If the paths are correct but the old image remains, force Hyprpaper to rebuild
+its in-memory cache:
+
+```bash
+pkill hyprpaper || true
+seven-wallpaper refresh
+cat ~/.config/hypr/hyprpaper.conf
 ```
 
 If you accidentally installed with `sudo ./install.sh ...`, recover as your

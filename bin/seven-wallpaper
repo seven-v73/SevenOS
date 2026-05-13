@@ -32,6 +32,7 @@ WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
 SOURCE_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
 TARGET_SVG="$WALLPAPER_DIR/wallpaper-sevenos.svg"
 TARGET_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
+HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
 
 render_wallpaper() {
   mkdir -p "$WALLPAPER_DIR"
@@ -50,13 +51,53 @@ render_wallpaper() {
 
 restart_hyprpaper() {
   mkdir -p "$CONFIG_HOME/hypr"
-  cp "$ROOT_DIR/hyprland/hyprpaper.conf" "$CONFIG_HOME/hypr/hyprpaper.conf"
+  {
+    printf 'ipc = on\n'
+    printf 'preload = %s\n' "$TARGET_PNG"
+    printf 'wallpaper = ,%s\n' "$TARGET_PNG"
+    printf 'splash = false\n'
+  } > "$HYPRPAPER_CONFIG"
 
   if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
     pkill -x hyprpaper >/dev/null 2>&1 || true
     if command -v hyprpaper >/dev/null 2>&1; then
       hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &
+      sleep 0.4
     fi
+
+    if command -v hyprctl >/dev/null 2>&1; then
+      hyprctl hyprpaper unload all >/dev/null 2>&1 || true
+      hyprctl hyprpaper preload "$TARGET_PNG" >/dev/null 2>&1 || true
+      hyprctl hyprpaper wallpaper ",$TARGET_PNG" >/dev/null 2>&1 || true
+    fi
+  fi
+}
+
+print_status() {
+  printf 'SevenOS wallpaper status\n'
+  printf '  repo svg:    %s\n' "$SOURCE_SVG"
+  printf '  copied svg:  %s\n' "$TARGET_SVG"
+  printf '  rendered png:%s\n' "$TARGET_PNG"
+  printf '  hypr config: %s\n' "$HYPRPAPER_CONFIG"
+
+  if [[ -f "$SOURCE_SVG" ]]; then
+    printf '  repo svg sha: '
+    sha256sum "$SOURCE_SVG" | awk '{print $1}'
+  fi
+  if [[ -f "$TARGET_PNG" ]]; then
+    printf '  png sha:      '
+    sha256sum "$TARGET_PNG" | awk '{print $1}'
+    file "$TARGET_PNG" | sed 's/^/  /'
+  else
+    printf '  png: missing\n'
+  fi
+  if [[ -f "$HYPRPAPER_CONFIG" ]]; then
+    printf '\nCurrent hyprpaper config:\n'
+    sed 's/^/  /' "$HYPRPAPER_CONFIG"
+  fi
+  if command -v pgrep >/dev/null 2>&1; then
+    printf '\nProcesses:\n'
+    pgrep -a hyprpaper 2>/dev/null | sed 's/^/  /' || printf '  hyprpaper not running\n'
   fi
 }
 
@@ -70,11 +111,14 @@ case "${1:-refresh}" in
     restart_hyprpaper
     printf 'SevenOS wallpaper refreshed: %s\n' "$TARGET_PNG"
     ;;
+  status)
+    print_status
+    ;;
   path)
     printf '%s\n' "$TARGET_PNG"
     ;;
   *)
-    printf 'Usage: seven-wallpaper [refresh|render|path]\n' >&2
+    printf 'Usage: seven-wallpaper [refresh|render|status|path]\n' >&2
     exit 1
     ;;
 esac

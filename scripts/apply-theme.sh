@@ -10,6 +10,7 @@ DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 SHELL_HOOK="$CONFIG_HOME/sevenos/shell/terminal-country.sh"
 WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
 WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
+HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
 
 install_shell_hook() {
   local rc_file="$1"
@@ -62,6 +63,12 @@ reload_desktop_session() {
     fi
     if command -v hyprpaper >/dev/null 2>&1; then
       hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &
+      sleep 0.4
+    fi
+    if command -v hyprctl >/dev/null 2>&1; then
+      hyprctl hyprpaper unload all >/dev/null 2>&1 || true
+      hyprctl hyprpaper preload "$WALLPAPER_PNG" >/dev/null 2>&1 || true
+      hyprctl hyprpaper wallpaper ",$WALLPAPER_PNG" >/dev/null 2>&1 || true
     fi
     if command -v mako >/dev/null 2>&1; then
       mako >/tmp/sevenos-mako.log 2>&1 &
@@ -70,6 +77,23 @@ reload_desktop_session() {
       notify-send "SevenOS desktop refreshed" "Use Super+Space for Hub, Super+A for Apps, Super+/ for Help" || true
     fi
   fi
+}
+
+write_hyprpaper_config() {
+  log_info "Writing Hyprpaper config with absolute SevenOS wallpaper path..."
+
+  if is_dry_run; then
+    printf 'write hyprpaper config %q using %q\n' "$HYPRPAPER_CONFIG" "$WALLPAPER_PNG"
+    return 0
+  fi
+
+  mkdir -p "$(dirname -- "$HYPRPAPER_CONFIG")"
+  {
+    printf 'ipc = on\n'
+    printf 'preload = %s\n' "$WALLPAPER_PNG"
+    printf 'wallpaper = ,%s\n' "$WALLPAPER_PNG"
+    printf 'splash = false\n'
+  } > "$HYPRPAPER_CONFIG"
 }
 
 render_wallpaper() {
@@ -95,7 +119,6 @@ render_wallpaper() {
 
 log_info "Applying SevenOS African first theme..."
 copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.conf"
-copy_config_file "$ROOT_DIR/hyprland/hyprpaper.conf" "$CONFIG_HOME/hypr/hyprpaper.conf"
 copy_config_dir "$ROOT_DIR/hyprland/waybar" "$CONFIG_HOME/waybar"
 copy_config_dir "$ROOT_DIR/hyprland/rofi" "$CONFIG_HOME/rofi"
 copy_config_dir "$ROOT_DIR/hyprland/mako" "$CONFIG_HOME/mako"
@@ -107,6 +130,7 @@ run_cmd cp "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$WALLPAPER_DIR/wal
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$DATA_HOME/icons/hicolor/scalable/apps/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/countries/africa.tsv" "$DATA_HOME/sevenos/countries/africa.tsv"
 render_wallpaper
+write_hyprpaper_config
 
 install_shell_hook "$HOME/.bashrc"
 install_shell_hook "$HOME/.zshrc"
