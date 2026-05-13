@@ -84,6 +84,7 @@ package_manifest_contains "swayidle" "scripts/packages-base.txt"
 package_manifest_contains "hyprpaper" "scripts/packages-base.txt"
 package_manifest_contains "librsvg" "scripts/packages-base.txt"
 package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
+package_manifest_contains "noto-fonts-emoji" "scripts/packages-base.txt"
 package_manifest_contains "kitty" "scripts/packages-base.txt"
 
 if jq -e '."custom/sevenos"."on-click" == "seven-hub Dashboard"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
@@ -144,7 +145,8 @@ fi
 
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'active_tab_background #f5b83d' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'cursor #00b8c8' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
+   grep -q 'cursor #00b8c8' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'symbol_map U+1F1E6-U+1F1FF Noto Color Emoji' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
   ok "Kitty uses SevenOS Royal Kente palette"
 else
   fail "Kitty palette is not aligned with SevenOS identity"

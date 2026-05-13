@@ -24,6 +24,7 @@ Use this checklist before shipping visual changes.
 - Wallpaper does not fight app windows or status bars.
 - Terminal theme feels premium while keeping command output highly readable.
 - Terminal cultural signals are concise, random, and easy to disable.
+- Terminal country flags require `noto-fonts-emoji` and Kitty maps regional indicator symbols to `Noto Color Emoji`.
 
 ## Technical Checks
 

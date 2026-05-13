@@ -182,6 +182,15 @@ Then log out and back into Hyprland.
 
 Open a new Kitty terminal to see the SevenOS terminal country signal.
 
+If country names appear but the flag is missing or rendered as empty boxes:
+
+```bash
+sudo pacman -S --needed noto-fonts-emoji
+./install.sh theme
+fc-cache -f
+kitty
+```
+
 Disable it temporarily with:
 
 ```bash
