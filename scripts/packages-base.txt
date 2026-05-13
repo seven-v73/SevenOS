@@ -26,6 +26,14 @@ grim
 slurp
 wl-clipboard
 swappy
+nautilus
+gvfs
+gvfs-mtp
+gvfs-smb
+file-roller
+sushi
+xdg-user-dirs
+xdg-utils
 swaylock
 swayidle
 brightnessctl

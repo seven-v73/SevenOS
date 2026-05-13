@@ -93,6 +93,8 @@ ACTIONS = {
     "deployment-plan": ("Deployment Plan", ["./bin/seven", "improve", "deployment"]),
     "server-status": ("Server Status", ["./bin/seven", "server", "status"]),
     "windows-status": ("Windows Status", ["./bin/seven", "windows", "status"]),
+    "files": ("Seven Files", ["./bin/seven", "files"]),
+    "files-menu": ("Seven Files Places", ["./bin/seven", "files", "menu"]),
     "phase-gate": ("Phase Gate", ["./bin/seven", "phase-gate"]),
 }
 
@@ -133,10 +135,13 @@ def render_dashboard():
     ufw = "OK" if command_state("ufw") == "OK" else "MISS"
     firewall = service_state("ufw.service")
     api = service_state("seven-server.service", user=True)
+    files = command_state("nautilus")
+    gvfs = command_state("gio")
 
     cards = [
         card("Readiness", f"{readiness.get('percent', 0)}%", f"{readiness.get('score', 0)}/{readiness.get('max', 0)} OS criteria covered.", "phase-gate"),
         card("Security", "OK" if ufw == "OK" and firewall == "RUN" else "PART", f"UFW: {ufw}. Firewall: {firewall}.", "security-plan"),
+        card("Seven Files", "OK" if files == "OK" and gvfs == "OK" else "PART", f"Nautilus: {files}. GVfs/GIO: {gvfs}.", "files"),
         card("Forge", forge[0], f"Development workspace packages: {forge[1]}.", "target-plan"),
         card("Shield", shield[0], f"Cybersecurity workspace packages: {shield[1]}.", "security-plan"),
         card("Studio", studio[0], f"Creative workspace packages: {studio[1]}.", "target-plan"),

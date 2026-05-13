@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Seven Files
+Comment=Open the SevenOS file manager
+Exec=seven-files
+Icon=org.gnome.Nautilus
+Terminal=false
+Categories=System;FileManager;Utility;
+StartupNotify=true

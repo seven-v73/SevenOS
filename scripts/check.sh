@@ -32,6 +32,7 @@ bash -n \
   "$ROOT_DIR/branding/apply-branding.sh" \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/seven-country" \
+  "$ROOT_DIR/bin/seven-files" \
   "$ROOT_DIR/bin/seven-help" \
   "$ROOT_DIR/bin/seven-session" \
   "$ROOT_DIR/bin/seven-wallpaper" \
@@ -185,6 +186,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
@@ -223,6 +226,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" info shield >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile list >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run dashboard >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run post-install >/dev/null

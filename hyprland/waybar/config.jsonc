@@ -3,7 +3,7 @@
   "position": "top",
   "height": 34,
   "spacing": 8,
-  "modules-left": ["custom/sevenos", "custom/apps", "custom/hub", "hyprland/workspaces", "custom/profile"],
+  "modules-left": ["custom/sevenos", "custom/apps", "custom/files", "custom/hub", "hyprland/workspaces", "custom/profile"],
   "modules-center": ["clock"],
   "modules-right": ["cpu", "memory", "custom/security", "network", "pulseaudio", "battery", "custom/help", "custom/power", "tray"],
   "hyprland/workspaces": {
@@ -22,6 +22,13 @@
     "tooltip": true,
     "tooltip-format": "Open application launcher",
     "on-click": "rofi -show drun -show-icons -theme ~/.config/rofi/apps.rasi"
+  },
+  "custom/files": {
+    "format": "Files",
+    "tooltip": true,
+    "tooltip-format": "Open Seven Files. Right-click for places.",
+    "on-click": "seven-files",
+    "on-click-right": "seven-files menu"
   },
   "custom/profile": {
     "exec": "bash -lc 'seven-waybar-profile'",

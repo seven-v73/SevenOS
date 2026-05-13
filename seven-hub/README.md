@@ -28,6 +28,7 @@ Current spaces:
 - local Control Center dashboard
 - readiness score overview
 - security, profile, compatibility, deployment and theme status cards
+- Seven Files status and quick launcher
 - contextual actions that call the same `seven` and installer commands
 - host readiness check
 - installation status report
@@ -40,6 +41,7 @@ Current spaces:
 - libvirt default network action
 - non-destructive installer planning action
 - full dry-run preview
+- Seven Files launcher
 - Virt Manager launcher
 - Bottles launcher
 

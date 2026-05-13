@@ -96,6 +96,28 @@ write_hyprpaper_config() {
   } > "$HYPRPAPER_CONFIG"
 }
 
+configure_file_experience() {
+  log_info "Configuring SevenOS file experience..."
+
+  if is_dry_run; then
+    printf 'xdg-user-dirs-update\n'
+    printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
+    printf 'xdg-mime default org.gnome.Nautilus.desktop inode/directory\n'
+    return 0
+  fi
+
+  if command -v xdg-user-dirs-update >/dev/null 2>&1; then
+    xdg-user-dirs-update >/dev/null 2>&1 || true
+  fi
+
+  mkdir -p "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
+
+  if command -v xdg-mime >/dev/null 2>&1 && command -v nautilus >/dev/null 2>&1; then
+    xdg-mime default org.gnome.Nautilus.desktop inode/directory >/dev/null 2>&1 || true
+    xdg-mime default org.gnome.Nautilus.desktop application/x-gnome-saved-search >/dev/null 2>&1 || true
+  fi
+}
+
 render_wallpaper() {
   log_info "Rendering SevenOS Sovereign Graphite wallpaper..."
 
@@ -131,6 +153,7 @@ run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$DATA_HOME/icons/hicolo
 run_cmd cp "$ROOT_DIR/identity/countries/africa.tsv" "$DATA_HOME/sevenos/countries/africa.tsv"
 render_wallpaper
 write_hyprpaper_config
+configure_file_experience
 
 install_shell_hook "$HOME/.bashrc"
 install_shell_hook "$HOME/.zshrc"

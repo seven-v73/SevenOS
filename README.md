@@ -316,6 +316,8 @@ seven profile forge
 seven profile list
 seven profile status
 seven shield audit
+seven files
+seven files menu
 seven-power
 sevenpkg meta
 sevenpkg status
@@ -333,6 +335,8 @@ Desktop controls:
 seven hub
 seven-control-center open
 seven-hub
+seven-files
+seven-files menu
 seven-power
 seven-power lock
 ```
@@ -341,6 +345,11 @@ seven-power lock
 keyboard-first command palette organized into focused spaces: Dashboard,
 Profiles, Cyber, Desktop, VM & Windows, Server & Deploy, Ecosystem, Installer,
 and Apps.
+
+`seven files` opens the SevenOS file experience. It prefers Nautilus for a
+polished Wayland desktop and falls back to other file managers or `xdg-open`.
+The base layer installs GVfs, archive support, network shares, phone mounting,
+recent files, trash support, and quick previews.
 
 Apply only the desktop theme:
 

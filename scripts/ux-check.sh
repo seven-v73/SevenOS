@@ -62,12 +62,14 @@ require_file "hyprland/rofi/power.rasi"
 require_file "hyprland/mako/config"
 require_file "hyprland/kitty/kitty.conf"
 require_file "hyprland/waybar/config.jsonc"
+require_file "seven-hub/seven-files.desktop"
 
 require_executable "bin/seven"
 require_executable "bin/sevenpkg"
 require_executable "seven-hub/bin/seven-hub"
 require_executable "seven-hub/bin/seven-control-center"
 require_executable "bin/seven-country"
+require_executable "bin/seven-files"
 require_executable "bin/seven-help"
 require_executable "bin/seven-session"
 require_executable "bin/seven-wallpaper"
@@ -89,6 +91,14 @@ package_manifest_contains "librsvg" "scripts/packages-base.txt"
 package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
 package_manifest_contains "noto-fonts-emoji" "scripts/packages-base.txt"
 package_manifest_contains "kitty" "scripts/packages-base.txt"
+package_manifest_contains "nautilus" "scripts/packages-base.txt"
+package_manifest_contains "gvfs" "scripts/packages-base.txt"
+package_manifest_contains "gvfs-mtp" "scripts/packages-base.txt"
+package_manifest_contains "gvfs-smb" "scripts/packages-base.txt"
+package_manifest_contains "file-roller" "scripts/packages-base.txt"
+package_manifest_contains "sushi" "scripts/packages-base.txt"
+package_manifest_contains "xdg-user-dirs" "scripts/packages-base.txt"
+package_manifest_contains "xdg-utils" "scripts/packages-base.txt"
 
 if jq -e '."custom/sevenos"."on-click" == "seven hub"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar SevenOS click opens dashboard"
@@ -108,6 +118,12 @@ else
   fail "Waybar visible Apps launcher missing"
 fi
 
+if jq -e '."custom/files".format == "Files" and ."custom/files"."on-click" == "seven-files" and ."custom/files"."on-click-right" == "seven-files menu"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar exposes Seven Files"
+else
+  fail "Waybar Seven Files launcher missing"
+fi
+
 if jq -e '."custom/power"."on-click" == "seven-power"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar power opens seven-power"
 else
@@ -122,6 +138,7 @@ fi
 
 if grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'apps.rasi' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland exposes discoverable Hub, Apps and Help shortcuts"
@@ -190,6 +207,13 @@ else
   fail "Seven Hub Control Center entry missing"
 fi
 
+if grep -q '"Seven Files|files:open' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
+   grep -q 'Exec=seven-files' "$ROOT_DIR/seven-hub/seven-files.desktop"; then
+  ok "Seven Files is exposed in Hub and app launcher"
+else
+  fail "Seven Files desktop integration missing"
+fi
+
 for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy" Ecosystem Installer Apps; do
   if grep -q "\"$category|category:$category" "$ROOT_DIR/seven-hub/bin/seven-hub"; then
     ok "Seven Hub category: $category"
@@ -208,6 +232,7 @@ else
 fi
 
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null

@@ -173,6 +173,8 @@ def main():
     doctor_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
     subparsers.add_parser("status", help="show SevenOS status")
     subparsers.add_parser("hub", help="launch Seven Hub")
+    files_parser = subparsers.add_parser("files", help="open Seven Files")
+    files_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     profile_parser = subparsers.add_parser("profile", help="list, inspect, or install a SevenOS profile")
     profile_parser.add_argument("name")
@@ -239,6 +241,8 @@ def main():
         install_target("status", args)
     elif args.command == "hub":
         run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-control-center"), "open"], args)
+    elif args.command == "files":
+        run_script(args, "bin/seven-files", *args.extra)
     elif args.command == "profile":
         handle_profile(args)
     elif args.command == "shield":

@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+usage() {
+  cat <<'EOF'
+Seven Files
+
+Usage:
+  seven-files [open|menu|home|downloads|documents|projects|pictures|videos|music|trash|recent] [path]
+
+Seven Files opens the preferred graphical file manager with SevenOS fallbacks.
+EOF
+}
+
+is_dry_run() {
+  [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
+}
+
+open_path() {
+  local target="$1"
+  local manager
+
+  if is_dry_run; then
+    printf 'open files %q\n' "$target"
+    return 0
+  fi
+
+  for manager in nautilus nemo thunar dolphin pcmanfm; do
+    if command -v "$manager" >/dev/null 2>&1; then
+      setsid -f "$manager" "$target" >/tmp/sevenos-files.log 2>&1
+      return 0
+    fi
+  done
+
+  if command -v xdg-open >/dev/null 2>&1; then
+    setsid -f xdg-open "$target" >/tmp/sevenos-files.log 2>&1
+    return 0
+  fi
+
+  printf 'seven-files: no graphical file manager found\n' >&2
+  printf 'Install the SevenOS base layer or run: sudo pacman -S --needed nautilus gvfs file-roller\n' >&2
+  return 1
+}
+
+ensure_dirs() {
+  local dir
+  is_dry_run && return 0
+
+  for dir in "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"; do
+    [[ -d "$dir" ]] || mkdir -p "$dir"
+  done
+}
+
+menu() {
+  local choice
+  local options
+
+  options=$(
+    cat <<EOF
+Home
+Projects
+Downloads
+Documents
+Pictures
+Videos
+Music
+Recent
+Trash
+Root
+SevenOS Repo
+EOF
+  )
+
+  if is_dry_run; then
+    printf 'rofi places menu\n'
+    return 0
+  fi
+
+  if command -v rofi >/dev/null 2>&1; then
+    choice="$(printf '%s\n' "$options" | rofi -dmenu -i -p "Seven Files" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi")"
+  else
+    printf '%s\n' "$options"
+    printf 'Choice: '
+    IFS= read -r choice
+  fi
+
+  case "$choice" in
+    Home) open_path "$HOME" ;;
+    Projects) open_path "$HOME/Projects" ;;
+    Downloads) open_path "$HOME/Downloads" ;;
+    Documents) open_path "$HOME/Documents" ;;
+    Pictures) open_path "$HOME/Pictures" ;;
+    Videos) open_path "$HOME/Videos" ;;
+    Music) open_path "$HOME/Music" ;;
+    Recent) open_path "recent:///" ;;
+    Trash) open_path "trash:///" ;;
+    Root) open_path "/" ;;
+    "SevenOS Repo")
+      if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT" ]]; then
+        open_path "$SEVENOS_ROOT"
+      else
+        open_path "$HOME"
+      fi
+      ;;
+    "") ;;
+    *) open_path "$choice" ;;
+  esac
+}
+
+ensure_dirs
+
+action="${1:-open}"
+target="${2:-}"
+
+case "$action" in
+  open)
+    open_path "${target:-$HOME}"
+    ;;
+  menu|places)
+    menu
+    ;;
+  home)
+    open_path "$HOME"
+    ;;
+  downloads)
+    open_path "$HOME/Downloads"
+    ;;
+  documents)
+    open_path "$HOME/Documents"
+    ;;
+  projects)
+    open_path "$HOME/Projects"
+    ;;
+  pictures)
+    open_path "$HOME/Pictures"
+    ;;
+  videos)
+    open_path "$HOME/Videos"
+    ;;
+  music)
+    open_path "$HOME/Music"
+    ;;
+  recent)
+    open_path "recent:///"
+    ;;
+  trash)
+    open_path "trash:///"
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    open_path "$action"
+    ;;
+esac

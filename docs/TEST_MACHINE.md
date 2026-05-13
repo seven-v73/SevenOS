@@ -122,12 +122,14 @@ Super+Space  SevenOS Control Center
 Super+H      Seven Hub command palette
 Super+A      Apps launcher
 Super+D      Apps launcher
+Super+E      Seven Files
+Super+Shift+E Seven Files places menu
 Super+/      SevenOS help
 Super+Enter  Terminal
 Super+Shift+P Power menu
 ```
 
-Waybar should expose visible `SevenOS`, `Apps`, `Hub`, `Help`, and `Power`
+Waybar should expose visible `SevenOS`, `Apps`, `Files`, `Hub`, `Help`, and `Power`
 buttons. If the bar is missing, run:
 
 ```bash
@@ -198,6 +200,18 @@ The legacy keyboard command palette is still available:
 ```bash
 seven-hub
 ```
+
+Open the file manager:
+
+```bash
+seven files
+seven files menu
+seven-files downloads
+```
+
+SevenOS uses Nautilus with GVfs integration by default so local files,
+removable drives, phone mounts, network shares, trash, recent files, previews,
+and archives feel like part of the desktop instead of separate Linux chores.
 
 Open a new Kitty terminal to see the SevenOS terminal country signal.
 

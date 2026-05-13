@@ -79,7 +79,7 @@ desktop_config_check() {
 command_check() {
   section "SevenOS Commands"
   local command_name
-  for command_name in seven sevenpkg seven-country seven-hub seven-control-center seven-session seven-power; do
+  for command_name in seven sevenpkg seven-country seven-files seven-hub seven-control-center seven-session seven-power; do
     if command -v "$command_name" >/dev/null 2>&1; then
       ok_item "$command_name available"
     elif [[ -x "$HOME/.local/bin/$command_name" ]]; then
@@ -145,6 +145,32 @@ service_check() {
   fi
 }
 
+files_check() {
+  section "Files Experience"
+  local command_name
+  local available=0
+
+  for command_name in nautilus nemo thunar dolphin pcmanfm xdg-open; do
+    if command -v "$command_name" >/dev/null 2>&1; then
+      ok_item "$command_name available"
+      available=1
+      break
+    fi
+  done
+
+  if [[ "$available" -eq 0 ]]; then
+    warn_item "no graphical file manager found"
+    printf '  run: ./install.sh base --yes\n'
+  fi
+
+  if command -v gio >/dev/null 2>&1; then
+    ok_item "GVfs/GIO available for trash, recent files and volumes"
+  else
+    warn_item "gio missing; removable drives and trash integration may be limited"
+    printf '  run: sudo pacman -S --needed gvfs\n'
+  fi
+}
+
 lab_check() {
   section "Cyber Lab Context"
   if [[ "${HOSTNAME:-}" == sevenos-* ]] || hostname 2>/dev/null | grep -q '^sevenos-'; then
@@ -174,6 +200,7 @@ command_check
 desktop_config_check
 group_check
 service_check
+files_check
 lab_check
 next_steps
 

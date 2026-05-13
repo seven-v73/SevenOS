@@ -157,6 +157,12 @@ run_action() {
     control:*)
       "$SEVENOS_ROOT/seven-hub/bin/seven-control-center" open &
       ;;
+    files:open)
+      "$SEVENOS_ROOT/bin/seven-files" &
+      ;;
+    files:menu)
+      "$SEVENOS_ROOT/bin/seven-files" menu &
+      ;;
     *)
       [[ -x "$INSTALLER" ]] || die "installer not executable: $INSTALLER"
       run_in_terminal "cd '$SEVENOS_ROOT' && ./install.sh $action"
@@ -215,6 +221,8 @@ load_actions() {
       actions=(
         "Apply Branding|branding|Install SevenOS system identity"
         "Apply Theme|theme|Apply African first desktop identity"
+        "Seven Files|files:open|Open the file manager"
+        "Seven Files Places|files:menu|Open quick places"
         "Power Menu|app:seven-power|Open power controls"
         "Lock Session|app:seven-power lock|Lock the desktop"
       )
@@ -343,7 +351,7 @@ action_badge() {
 
   case "$label" in
     "Control Center"|"Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
-    "Welcome"|"System Dashboard"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
+    "Welcome"|"System Dashboard"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
     "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
     "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
     "Profile Studio") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
