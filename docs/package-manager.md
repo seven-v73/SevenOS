@@ -1,0 +1,115 @@
+# SevenOS Package Manager
+
+SevenOS uses two complementary commands:
+
+- `seven` is the system controller.
+- `sevenpkg` is the package and application manager.
+
+This keeps system operations separate from software installation.
+
+## seven
+
+`seven` orchestrates SevenOS profiles, security, VM helpers, status checks, and
+high-level automation.
+
+Examples:
+
+```bash
+seven update
+seven doctor
+seven status
+seven hub
+seven profile forge
+seven profile shield
+seven profile studio
+seven shield enable
+seven shield audit
+seven vm start windows
+```
+
+## sevenpkg
+
+`sevenpkg` is a SevenOS layer over:
+
+- `pacman`
+- `paru`, when available
+- SevenOS meta-packages
+- future SevenRepo packages
+
+Examples:
+
+```bash
+sevenpkg install blender
+sevenpkg remove blender
+sevenpkg update
+sevenpkg search blender
+sevenpkg info forge
+sevenpkg meta
+sevenpkg status
+sevenpkg sources
+```
+
+Preview any command:
+
+```bash
+sevenpkg --dry-run install blender
+seven --dry-run profile shield
+```
+
+## Meta-Packages
+
+SevenOS meta-packages are declared in `sevenpkg/metapackages.json`.
+
+Current meta-packages:
+
+| Name | Role |
+| --- | --- |
+| `forge` | development workspace |
+| `shield` | cybersecurity workspace |
+| `studio` | creative production workspace |
+| `baobab` | base system and desktop layer |
+| `horizon` | cloud and network operations toolkit |
+| `griot` | documentation and knowledge toolkit |
+
+Examples:
+
+```bash
+sevenpkg install forge
+sevenpkg install shield
+sevenpkg install studio
+sevenpkg install horizon
+sevenpkg install griot
+sevenpkg status
+sevenpkg info shield
+```
+
+Install multiple ordinary packages:
+
+```bash
+sevenpkg install nmap hashcat wireshark-qt
+sevenpkg remove nmap hashcat
+```
+
+Pass profile-specific arguments to a SevenOS meta-package:
+
+```bash
+sevenpkg install shield core
+sevenpkg install shield sandbox
+```
+
+## Sources
+
+`sevenpkg install <package>` uses source `auto` by default:
+
+1. checks official Arch repositories through `pacman`
+2. checks AUR through `paru` when installed
+3. reports a clear miss if neither source has the package
+
+Force a source:
+
+```bash
+sevenpkg install blender --source pacman
+sevenpkg install visual-studio-code-bin --source aur
+```
+
+`sevenrepo` is reserved for the future SevenOS repository.

@@ -71,4 +71,29 @@ else
   status_warn "UEFI firmware path not detected"
 fi
 
+printf '\nCyber readiness:\n'
+if command -v firejail >/dev/null 2>&1; then
+  status_ok "Firejail available for SevenOS cyber labs"
+else
+  status_warn "Firejail missing; install './install.sh cybersecurity sandbox' for cyber labs"
+fi
+
+if command -v bwrap >/dev/null 2>&1; then
+  status_ok "Bubblewrap available"
+else
+  status_warn "Bubblewrap missing; sandbox isolation is incomplete"
+fi
+
+if id -nG "$USER" 2>/dev/null | tr ' ' '\n' | grep -qx wireshark; then
+  status_ok "$USER is in wireshark group"
+else
+  status_warn "$USER is not in wireshark group; packet capture may need elevated privileges"
+fi
+
+if pacman-conf --repo-list 2>/dev/null | grep -qx 'blackarch'; then
+  status_ok "BlackArch repository bridge enabled"
+else
+  status_warn "BlackArch bridge disabled; this is recommended until specialized tools are needed"
+fi
+
 log_success "Doctor checks completed."

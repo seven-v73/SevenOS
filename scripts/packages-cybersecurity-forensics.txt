@@ -1,0 +1,8 @@
+# SevenOS CYBERSECURITY forensics profile
+binwalk
+volatility3
+yara
+sleuthkit
+foremost
+testdisk
+perl-image-exiftool

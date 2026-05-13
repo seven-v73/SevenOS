@@ -1,22 +1,22 @@
-# SevenOS CYBERSECURITY profile
+# SevenOS CYBERSECURITY core profile
 nmap
 wireshark-qt
 tcpdump
 openbsd-netcat
 john
 hashcat
-aircrack-ng
 hydra
+medusa
 sqlmap
 nikto
 metasploit
-binwalk
-radare2
-gdb
-strace
-ltrace
+gobuster
+zaproxy
+masscan
+impacket
 whois
 bind
 traceroute
 openvpn
 wireguard-tools
+exploitdb

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Seven Hub Icon</title>
+  <desc id="desc">Seven Hub control center icon.</desc>
+  <rect width="256" height="256" rx="48" fill="#0b0b0a"/>
+  <rect x="48" y="48" width="160" height="160" rx="28" fill="#15130f" stroke="#d6a84f" stroke-width="8"/>
+  <circle cx="128" cy="128" r="44" fill="#24180f" stroke="#d6a84f" stroke-width="8"/>
+  <circle cx="128" cy="128" r="14" fill="#d6a84f"/>
+  <path d="M128 72v28M128 156v28M72 128h28M156 128h28" stroke="#e8dcc3" stroke-width="10" stroke-linecap="round"/>
+  <path d="M88 88l20 20M148 148l20 20M168 88l-20 20M108 148l-20 20" stroke="#456b4f" stroke-width="9" stroke-linecap="round"/>
+</svg>

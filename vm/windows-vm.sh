@@ -9,6 +9,8 @@ RAM_MB="8192"
 VCPUS="4"
 DISK_SIZE_GB="80"
 WINDOWS_ISO=""
+VIRTIO_ISO=""
+OS_VARIANT="win11"
 DRY_RUN="${SEVENOS_DRY_RUN:-0}"
 
 usage() {
@@ -20,6 +22,9 @@ Usage:
 
 Options:
   --iso PATH       Windows 10/11 ISO path
+  --virtio-iso PATH
+                   Optional VirtIO driver ISO path
+  --os win10|win11 OS variant, default: win11
   --name NAME      VM name, default: sevenos-windows
   --ram MB         RAM in MB, default: 8192
   --vcpus N        vCPU count, default: 4
@@ -29,6 +34,7 @@ Options:
 
 Notes:
   This creates a standard UEFI Windows VM through libvirt.
+  Use --virtio-iso for Windows storage and network drivers.
   GPU passthrough is intentionally not automated yet.
 EOF
 }
@@ -36,6 +42,14 @@ EOF
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     --iso) WINDOWS_ISO="${2:-}"; shift 2 ;;
+    --virtio-iso) VIRTIO_ISO="${2:-}"; shift 2 ;;
+    --os)
+      case "${2:-}" in
+        win10|win11) OS_VARIANT="$2" ;;
+        *) log_error "Unsupported OS variant: ${2:-}"; usage; exit 1 ;;
+      esac
+      shift 2
+      ;;
     --name) VM_NAME="${2:-}"; shift 2 ;;
     --ram) RAM_MB="${2:-}"; shift 2 ;;
     --vcpus) VCPUS="${2:-}"; shift 2 ;;
@@ -57,6 +71,11 @@ if [[ "$DRY_RUN" != "1" && ! -f "$WINDOWS_ISO" ]]; then
   exit 1
 fi
 
+if [[ -n "$VIRTIO_ISO" && "$DRY_RUN" != "1" && ! -f "$VIRTIO_ISO" ]]; then
+  log_error "VirtIO ISO not found: $VIRTIO_ISO"
+  exit 1
+fi
+
 if [[ "$DRY_RUN" != "1" ]]; then
   require_command virt-install
   require_command virsh
@@ -72,7 +91,7 @@ virt_args=(
   --cpu host-passthrough
   --machine q35
   --features kvm_hidden=on
-  --os-variant win11
+  --os-variant "$OS_VARIANT"
   --boot uefi
   --disk "path=${VM_DISK_PATH},size=${DISK_SIZE_GB},bus=virtio,format=qcow2"
   --cdrom "$WINDOWS_ISO"
@@ -84,8 +103,16 @@ virt_args=(
   --rng /dev/urandom
 )
 
+if [[ -n "$VIRTIO_ISO" ]]; then
+  virt_args+=(--disk "path=${VIRTIO_ISO},device=cdrom,readonly=on")
+fi
+
 log_info "Preparing Windows VM: $VM_NAME"
-log_warn "During Windows setup, VirtIO storage/network drivers may be needed for best performance."
+if [[ -n "$VIRTIO_ISO" ]]; then
+  log_info "VirtIO driver ISO attached: $VIRTIO_ISO"
+else
+  log_warn "No VirtIO driver ISO provided. Windows may not detect the disk or network device."
+fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
   printf 'virt-install'

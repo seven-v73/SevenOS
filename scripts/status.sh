@@ -95,10 +95,36 @@ package_status() {
 
 log_info "SevenOS system status"
 
+section "Identity"
+if [[ -f /etc/sevenos-release ]]; then
+  ok "$(head -n 1 /etc/sevenos-release)"
+else
+  missing "/etc/sevenos-release"
+fi
+if command -v seven >/dev/null 2>&1; then
+  ok "seven available"
+else
+  missing "seven command"
+fi
+if command -v sevenpkg >/dev/null 2>&1; then
+  ok "sevenpkg available"
+else
+  missing "sevenpkg command"
+fi
+if command -v sevenosctl >/dev/null 2>&1; then
+  ok "sevenosctl available"
+else
+  missing "sevenosctl command"
+fi
+
 section "Profiles"
 profile_status "Base desktop" "$ROOT_DIR/scripts/packages-base.txt"
 profile_status "DEV" "$ROOT_DIR/scripts/packages-dev.txt"
 profile_status "CYBERSECURITY" "$ROOT_DIR/scripts/packages-cybersecurity.txt"
+profile_status "CYBER FORENSICS" "$ROOT_DIR/scripts/packages-cybersecurity-forensics.txt"
+profile_status "CYBER REVERSING" "$ROOT_DIR/scripts/packages-cybersecurity-reversing.txt"
+profile_status "CYBER WIRELESS" "$ROOT_DIR/scripts/packages-cybersecurity-wireless.txt"
+profile_status "CYBER SANDBOX" "$ROOT_DIR/scripts/packages-cybersecurity-sandbox.txt"
 profile_status "CREATION" "$ROOT_DIR/scripts/packages-creation.txt"
 profile_status "WINDOWS" "$ROOT_DIR/scripts/packages-windows.txt"
 profile_status "SECURITY" "$ROOT_DIR/scripts/packages-security.txt"

@@ -1,0 +1,14 @@
+# SevenOS CYBERSECURITY reversing profile
+gdb
+strace
+ltrace
+radare2
+rizin
+cutter
+ghidra
+jadx
+afl++
+python-pwntools
+python-capstone
+python-unicorn
+python-keystone

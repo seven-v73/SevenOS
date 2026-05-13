@@ -8,4 +8,11 @@ Future wallpapers should follow the SevenOS African first identity:
 - no generic stock silhouettes
 - no overused neon cyberpunk gradients
 
-For now this folder documents the art direction. Generated or commissioned bitmap wallpapers can be added later.
+Current starter asset:
+
+```text
+identity/assets/wallpaper-sevenos.svg
+out/design/wallpaper-sevenos.png
+```
+
+Generated or commissioned bitmap wallpapers can be added later.

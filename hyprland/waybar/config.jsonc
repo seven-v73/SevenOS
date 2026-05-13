@@ -1,32 +1,40 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 32,
+  "height": 34,
   "spacing": 8,
   "modules-left": ["custom/sevenos", "hyprland/workspaces"],
   "modules-center": ["clock"],
-  "modules-right": ["network", "pulseaudio", "battery", "tray"],
+  "modules-right": ["network", "pulseaudio", "battery", "custom/hub", "tray"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
   },
   "custom/sevenos": {
-    "format": "SevenOS",
+    "format": "󰣇 SevenOS",
     "tooltip": false
   },
   "clock": {
-    "format": "{:%a %d %b  %H:%M}"
+    "format": "󰥔 {:%a %d %b  %H:%M}"
   },
   "network": {
-    "format-wifi": "Wi-Fi {signalStrength}%",
-    "format-ethernet": "LAN",
-    "format-disconnected": "Offline"
+    "format-wifi": "󰤨 {signalStrength}%",
+    "format-ethernet": "󰈀 LAN",
+    "format-disconnected": "󰤭 Offline",
+    "tooltip-format": "{ifname}"
   },
   "pulseaudio": {
-    "format": "VOL {volume}%",
-    "format-muted": "Muted"
+    "format": "󰕾 {volume}%",
+    "format-muted": "󰝟 Muted"
   },
   "battery": {
-    "format": "BAT {capacity}%"
+    "format": "󰁹 {capacity}%",
+    "format-charging": "󰂄 {capacity}%"
+  },
+  "custom/hub": {
+    "format": "󰒓",
+    "tooltip": true,
+    "tooltip-format": "Seven Hub",
+    "on-click": "seven-hub"
   }
 }

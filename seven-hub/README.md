@@ -8,11 +8,14 @@ The current implementation is a Rofi-powered launcher with a terminal fallback. 
 
 - host readiness check
 - installation status report
+- SevenOS branding action
 - African first theme application
+- dynamic `OK`, `PART`, `MISS`, and `RUN` badges in the action menu
 - base desktop installation
 - DEV, CYBERSECURITY, CREATION, WINDOWS, and SECURITY actions
 - KVM/libvirt readiness check
 - libvirt default network action
+- non-destructive installer planning action
 - full dry-run preview
 - Virt Manager launcher
 - Bottles launcher

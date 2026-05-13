@@ -1,0 +1,5 @@
+# SevenOS CYBERSECURITY wireless profile
+aircrack-ng
+bettercap
+ettercap-gtk
+macchanger

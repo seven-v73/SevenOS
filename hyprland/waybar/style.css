@@ -7,20 +7,22 @@
 }
 
 window#waybar {
-  background: #0b0b0a;
+  background: rgba(11, 11, 10, 0.78);
   color: #e8dcc3;
-  border-bottom: 1px solid #3b2a18;
+  border-bottom: 1px solid rgba(214, 168, 79, 0.28);
 }
 
 #workspaces button {
   color: #b7a98a;
-  padding: 0 10px;
+  padding: 0 9px;
+  margin: 5px 2px;
+  border-radius: 999px;
   border-bottom: 2px solid transparent;
 }
 
 #workspaces button.active {
   color: #d6a84f;
-  background: #24180f;
+  background: rgba(36, 24, 15, 0.86);
   border-bottom-color: #9b4a2f;
 }
 
@@ -34,28 +36,43 @@ window#waybar {
 #pulseaudio,
 #battery,
 #tray,
-#custom-sevenos {
+#custom-sevenos,
+#custom-hub {
   padding: 0 10px;
+  margin: 5px 3px;
+  border-radius: 999px;
+  background: rgba(21, 19, 15, 0.76);
 }
 
 #custom-sevenos {
   color: #0b0b0a;
-  background: #d6a84f;
+  background: linear-gradient(90deg, #d6a84f, #b8883e);
   font-weight: 700;
+  padding: 0 14px;
 }
 
 #clock {
   color: #d6a84f;
+  background: rgba(36, 24, 15, 0.72);
 }
 
 #network {
-  color: #456b4f;
+  color: #e8dcc3;
+  border-bottom: 2px solid #456b4f;
 }
 
 #pulseaudio {
   color: #e8dcc3;
+  border-bottom: 2px solid #26344f;
 }
 
 #battery {
   color: #b7a98a;
+  border-bottom: 2px solid #d6a84f;
+}
+
+#custom-hub {
+  color: #e8dcc3;
+  background: linear-gradient(90deg, #9b4a2f, #26344f);
+  padding: 0 12px;
 }

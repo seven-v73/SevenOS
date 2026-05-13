@@ -38,8 +38,13 @@ Inside the ISO:
 - hostname is `sevenos-live`
 - repository is available at `/opt/SevenOS`
 - user `seven` is created with passwordless sudo
-- NetworkManager and SSH are enabled
+- NetworkManager is enabled
+- SSH is installed but not enabled by default
 - `sevenos-welcome` prints the first commands to run
+- `seven` is installed in `/usr/local/bin`
+- `sevenpkg` is installed in `/usr/local/bin`
+- `sevenosctl` is installed in `/usr/local/bin`
+- `/etc/os-release` identifies the live system as SevenOS
 
 ## Current Scope
 

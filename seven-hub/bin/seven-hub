@@ -10,14 +10,30 @@ title="Seven Hub"
 actions=(
   "System Status|status|Show installed profiles and services"
   "Doctor|doctor|Check host readiness"
+  "SevenPkg Meta|sevenpkg:meta|List SevenOS meta-packages"
+  "SevenPkg Status|sevenpkg:status|Show meta-package installation status"
+  "SevenPkg Sources|sevenpkg:sources|Show package sources"
+  "Seven Update|seven:update|Update pacman and AUR packages"
+  "Profile Forge|seven:profile forge|Install development workspace"
+  "Profile Shield|seven:profile shield|Install cybersecurity workspace"
+  "Profile Studio|seven:profile studio|Install creative workspace"
+  "Apply Branding|branding|Install SevenOS system identity"
   "Apply Theme|theme|Apply African first desktop identity"
   "Install Base|base|Install Hyprland desktop layer"
   "Install DEV|dev|Install development profile"
   "Install CYBERSECURITY|cybersecurity|Install security tooling profile"
+  "Install CYBER Core|cybersecurity core|Install core security tools only"
+  "Install CYBER Sandbox|cybersecurity sandbox|Install lab isolation helpers"
+  "Cyber Audit|cyber-audit|Review security tools and isolation readiness"
+  "Cyber Lab|cyber-lab|Open isolated SevenOS cyber shell"
+  "BlackArch Setup|blackarch-setup --dry-run|Preview optional BlackArch bridge"
   "Install CREATION|creation|Install creative production profile"
   "Install WINDOWS|windows|Install Wine, Lutris, QEMU, Bottles"
   "VM Check|vm-check|Check KVM and libvirt readiness"
   "VM Network|vm-network|Start libvirt default network"
+  "Installer Plan|installer-plan|Create non-destructive install plan"
+  "Installer Check|installer-check|Validate install plan"
+  "Installer Script|installer-script|Generate install preview script"
   "Apply SECURITY|security|Apply base firewall and hardening"
   "Install ALL|all|Install every SevenOS layer"
   "Dry Run ALL|all --dry-run|Preview full installation"
@@ -76,6 +92,14 @@ run_action() {
       local app_command="${action#app:}"
       run_in_terminal "$app_command"
       ;;
+    sevenpkg:*)
+      local sevenpkg_command="${action#sevenpkg:}"
+      run_in_terminal "cd '$SEVENOS_ROOT' && ./bin/sevenpkg $sevenpkg_command"
+      ;;
+    seven:*)
+      local seven_command="${action#seven:}"
+      run_in_terminal "cd '$SEVENOS_ROOT' && ./bin/seven $seven_command"
+      ;;
     *)
       [[ -x "$INSTALLER" ]] || die "installer not executable: $INSTALLER"
       run_in_terminal "cd '$SEVENOS_ROOT' && ./install.sh $action"
@@ -83,26 +107,131 @@ run_action() {
   esac
 }
 
+package_file_state() {
+  local package_file="$1"
+  local installed=0
+  local total=0
+  local package
+
+  [[ -f "$package_file" ]] || { printf 'MISS'; return 0; }
+
+  while IFS= read -r package; do
+    package="${package%%#*}"
+    package="${package//[[:space:]]/}"
+    [[ -z "$package" ]] && continue
+
+    total=$((total + 1))
+    if pacman -Q "$package" >/dev/null 2>&1; then
+      installed=$((installed + 1))
+    fi
+  done < "$package_file"
+
+  if [[ "$total" -eq 0 ]]; then
+    printf 'MISS'
+  elif [[ "$installed" -eq "$total" ]]; then
+    printf 'OK'
+  elif [[ "$installed" -gt 0 ]]; then
+    printf 'PART'
+  else
+    printf 'MISS'
+  fi
+}
+
+service_state() {
+  local service="$1"
+  if systemctl is-active --quiet "$service" 2>/dev/null; then
+    printf 'OK'
+  elif systemctl is-enabled --quiet "$service" 2>/dev/null; then
+    printf 'PART'
+  else
+    printf 'MISS'
+  fi
+}
+
+app_state() {
+  local command_name="$1"
+  if command -v "$command_name" >/dev/null 2>&1; then
+    printf 'OK'
+  else
+    printf 'MISS'
+  fi
+}
+
+blackarch_state() {
+  if pacman-conf --repo-list 2>/dev/null | grep -qx 'blackarch'; then
+    printf 'OK'
+  elif grep -Eq '^\[blackarch\]' /etc/pacman.conf 2>/dev/null; then
+    printf 'PART'
+  else
+    printf 'MISS'
+  fi
+}
+
+action_badge() {
+  local label="$1"
+
+  case "$label" in
+    "System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL") printf 'RUN' ;;
+    "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
+    "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
+    "Profile Studio") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
+    "Apply Branding") [[ -f /etc/sevenos-release ]] && printf 'OK' || printf 'MISS' ;;
+    "Apply Theme") [[ -f "$HOME/.config/hypr/hyprland.conf" ]] && printf 'OK' || printf 'MISS' ;;
+    "Install Base") package_file_state "$SEVENOS_ROOT/scripts/packages-base.txt" ;;
+    "Install DEV") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
+    "Install CYBERSECURITY") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
+    "Install CYBER Core") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
+    "Install CYBER Sandbox") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity-sandbox.txt" ;;
+    "Cyber Audit") printf 'RUN' ;;
+    "Cyber Lab") app_state firejail ;;
+    "BlackArch Setup") blackarch_state ;;
+    "Install CREATION") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
+    "Install WINDOWS") package_file_state "$SEVENOS_ROOT/scripts/packages-windows.txt" ;;
+    "Apply SECURITY") package_file_state "$SEVENOS_ROOT/scripts/packages-security.txt" ;;
+    "Install ALL") printf 'RUN' ;;
+    "VM Check") service_state libvirtd.service ;;
+    "VM Network")
+      if command -v virsh >/dev/null 2>&1 && virsh -c qemu:///system net-info default 2>/dev/null | grep -q 'Active:.*yes'; then
+        printf 'OK'
+      else
+        printf 'MISS'
+      fi
+      ;;
+    "Installer Plan"|"Installer Check"|"Installer Script") printf 'RUN' ;;
+    "Open Virt Manager") app_state virt-manager ;;
+    "Open Bottles")
+      if command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
+        printf 'OK'
+      else
+        printf 'MISS'
+      fi
+      ;;
+    *) printf 'RUN' ;;
+  esac
+}
+
 select_with_rofi() {
   local menu=""
-  local item label description
+  local item label description badge
 
   for item in "${actions[@]}"; do
     IFS='|' read -r label _ description <<<"$item"
-    menu+="$label    $description"$'\n'
+    badge="$(action_badge "$label")"
+    menu+="$label    [$badge] $description"$'\n'
   done
 
-  printf '%s' "$menu" | rofi -dmenu -i -p "$title" -theme-str 'window { width: 44%; }'
+  printf '%s' "$menu" | rofi -dmenu -i -p "$title" -mesg "Seven Hub · African first control center" -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -theme-str 'window { width: 44%; }'
 }
 
 select_with_terminal() {
   local index=1
-  local item label description choice
+  local item label description choice badge
 
   printf '%s\n\n' "$title" >&2
   for item in "${actions[@]}"; do
     IFS='|' read -r label _ description <<<"$item"
-    printf '%2d. %-18s %s\n' "$index" "$label" "$description" >&2
+    badge="$(action_badge "$label")"
+    printf '%2d. %-18s [%s] %s\n' "$index" "$label" "$badge" "$description" >&2
     index=$((index + 1))
   done
 

@@ -14,12 +14,21 @@ Usage:
 Targets:
   base             Install base SevenOS desktop layer
   dev              Install development profile
-  cybersecurity    Install cybersecurity profile
+  cybersecurity    Install cybersecurity profile, optionally by category
   creation         Install creation profile
   windows          Install Windows compatibility layer
   security         Apply base security hardening
+  cyber-audit      Show cybersecurity profile readiness
+  cyber-lab        Open an isolated cybersecurity lab shell
+  blackarch-setup  Add the optional BlackArch repository bridge
+  blackarch-category <name>
+                   Install one BlackArch category, for example webapp
+  blackarch-tool <pkg>
+                   Install one BlackArch package
   doctor           Check host readiness
   status           Show SevenOS installation status
+  branding         Apply SevenOS system branding
+  cli              Install sevenosctl CLI
   theme            Apply SevenOS African first theme
   hub              Install Seven Hub launcher
   iso-tools        Install ISO build tooling
@@ -27,6 +36,9 @@ Targets:
   vm-check         Check KVM/libvirt readiness
   vm-network       Start and autostart libvirt default network
   vm-windows       Create a Windows VM with virt-install
+  installer-plan   Create a non-destructive install plan
+  installer-check  Validate an install plan
+  installer-script Generate non-destructive install step script
   all              Install base layer and all profiles
 
 Options:
@@ -67,7 +79,7 @@ case "$TARGET" in
     "$ROOT_DIR/profiles/dev.sh"
     ;;
   cybersecurity)
-    "$ROOT_DIR/profiles/cybersecurity.sh"
+    "$ROOT_DIR/profiles/cybersecurity.sh" "${@:2}"
     ;;
   creation)
     "$ROOT_DIR/profiles/creation.sh"
@@ -78,11 +90,32 @@ case "$TARGET" in
   security)
     "$ROOT_DIR/security/hardening.sh"
     ;;
+  cyber-audit)
+    "$ROOT_DIR/security/cyber-audit.sh"
+    ;;
+  cyber-lab)
+    "$ROOT_DIR/security/cyber-lab.sh" "${@:2}"
+    ;;
+  blackarch-setup)
+    "$ROOT_DIR/security/blackarch.sh" setup "${@:2}"
+    ;;
+  blackarch-category)
+    "$ROOT_DIR/security/blackarch.sh" category "${@:2}"
+    ;;
+  blackarch-tool)
+    "$ROOT_DIR/security/blackarch.sh" tool "${@:2}"
+    ;;
   doctor)
     "$ROOT_DIR/scripts/doctor.sh"
     ;;
   status)
     "$ROOT_DIR/scripts/status.sh"
+    ;;
+  branding)
+    "$ROOT_DIR/branding/apply-branding.sh"
+    ;;
+  cli)
+    "$ROOT_DIR/scripts/install-cli.sh"
     ;;
   theme)
     "$ROOT_DIR/scripts/apply-theme.sh"
@@ -104,6 +137,15 @@ case "$TARGET" in
     ;;
   vm-windows)
     "$ROOT_DIR/vm/windows-vm.sh" "${@:2}"
+    ;;
+  installer-plan)
+    "$ROOT_DIR/installer/plan.sh" "${@:2}"
+    ;;
+  installer-check)
+    "$ROOT_DIR/installer/validate-plan.sh" "${@:2}"
+    ;;
+  installer-script)
+    "$ROOT_DIR/installer/generate-script.sh" "${@:2}"
     ;;
   all)
     "$ROOT_DIR/profiles/all.sh"

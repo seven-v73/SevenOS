@@ -1,0 +1,373 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+PACKAGE_RE = re.compile(r"^[A-Za-z0-9@._+-]+$")
+
+
+def log(message):
+    print(f"[sevenpkg] {message}")
+
+
+def error(message):
+    print(f"[sevenpkg] ERROR: {message}", file=sys.stderr)
+
+
+def resolve_root():
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and Path(env_root, "install.sh").is_file():
+        return Path(env_root).resolve()
+
+    script_dir = Path(__file__).resolve().parent
+    candidate = script_dir.parent
+    if Path(candidate, "install.sh").is_file():
+        return candidate
+
+    for path in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if Path(path, "install.sh").is_file():
+            return path
+
+    error("could not find SevenOS repository root")
+    sys.exit(1)
+
+
+ROOT_DIR = resolve_root()
+MANIFEST_PATH = ROOT_DIR / "sevenpkg" / "metapackages.json"
+
+
+def is_dry_run(args):
+    return args.dry_run or os.environ.get("SEVENOS_DRY_RUN") == "1"
+
+
+def run(command, args, check=True):
+    if is_dry_run(args):
+        print(" ".join(shlex_quote(part) for part in command))
+        return subprocess.CompletedProcess(command, 0)
+    return subprocess.run(command, check=check)
+
+
+def shlex_quote(value):
+    import shlex
+
+    return shlex.quote(str(value))
+
+
+def command_exists(command):
+    return shutil.which(command) is not None
+
+
+def pacman_has(package):
+    return subprocess.run(["pacman", "-Si", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def package_installed(package):
+    return subprocess.run(["pacman", "-Q", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def paru_has(package):
+    if not command_exists("paru"):
+        return False
+    return subprocess.run(["paru", "-Si", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def validate_package_name(package):
+    if not PACKAGE_RE.match(package):
+        error(f"invalid package name: {package}")
+        sys.exit(1)
+
+
+def load_manifest():
+    if not MANIFEST_PATH.is_file():
+        return {}
+    with MANIFEST_PATH.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def read_package_file(relative_path):
+    package_file = ROOT_DIR / relative_path
+    packages = []
+
+    if not package_file.is_file():
+        return packages
+
+    with package_file.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            package = line.split("#", 1)[0].strip()
+            if package:
+                packages.append(package)
+
+    return packages
+
+
+def meta_packages(meta):
+    if meta.get("kind") == "pacman":
+        return list(meta.get("packages", []))
+
+    packages = []
+    for package_file in meta.get("package_files", []):
+        packages.extend(read_package_file(package_file))
+    return packages
+
+
+def meta_state(meta):
+    packages = meta_packages(meta)
+    if not packages:
+        return "RUN", 0, 0
+
+    installed = sum(1 for package in packages if package_installed(package))
+    if installed == len(packages):
+        state = "OK"
+    elif installed > 0:
+        state = "PART"
+    else:
+        state = "MISS"
+    return state, installed, len(packages)
+
+
+def install_meta(name, meta, args):
+    kind = meta.get("kind")
+    log(f"installing SevenOS meta-package: {name}")
+
+    if kind == "sevenos-target":
+        target = meta["target"]
+        run([str(ROOT_DIR / "install.sh"), target, *args.meta_args], args)
+        return
+
+    if kind == "pacman":
+        packages = meta.get("packages", [])
+        if not packages:
+            log(f"meta-package '{name}' has no packages")
+            return
+        run(["sudo", "pacman", "-S", "--needed", *packages], args)
+        return
+
+    error(f"unknown meta-package kind for {name}: {kind}")
+    sys.exit(1)
+
+
+def install_one(package, args):
+    validate_package_name(package)
+    manifest = load_manifest()
+
+    if package in manifest:
+        install_meta(package, manifest[package], args)
+        return
+
+    source = args.source
+    if source == "auto":
+        if pacman_has(package):
+            source = "pacman"
+        elif paru_has(package):
+            source = "aur"
+        else:
+            error(f"package not found in enabled pacman repos or AUR via paru: {package}")
+            sys.exit(1)
+
+    if source == "pacman":
+        run(["sudo", "pacman", "-S", "--needed", package], args)
+    elif source == "aur":
+        if not command_exists("paru"):
+            error("paru is required for AUR installs")
+            sys.exit(1)
+        run(["paru", "-S", "--needed", package], args)
+    elif source == "sevenrepo":
+        error("SevenRepo is planned but not enabled in this phase")
+        sys.exit(1)
+    else:
+        error(f"unknown source: {source}")
+        sys.exit(1)
+
+
+def install_packages(args):
+    manifest = load_manifest()
+    first_package = args.packages[0]
+
+    if first_package in manifest:
+        args.meta_args = args.packages[1:]
+        install_meta(first_package, manifest[first_package], args)
+        return
+
+    args.meta_args = []
+    pacman_packages = []
+    aur_packages = []
+
+    for package in args.packages:
+        validate_package_name(package)
+
+        source = args.source
+        if source == "auto":
+            if pacman_has(package):
+                source = "pacman"
+            elif paru_has(package):
+                source = "aur"
+            else:
+                error(f"package not found in enabled pacman repos or AUR via paru: {package}")
+                sys.exit(1)
+
+        if source == "pacman":
+            pacman_packages.append(package)
+        elif source == "aur":
+            if not command_exists("paru"):
+                error("paru is required for AUR installs")
+                sys.exit(1)
+            aur_packages.append(package)
+        elif source == "sevenrepo":
+            error("SevenRepo is planned but not enabled in this phase")
+            sys.exit(1)
+        else:
+            error(f"unknown source: {source}")
+            sys.exit(1)
+
+    if pacman_packages:
+        run(["sudo", "pacman", "-S", "--needed", *pacman_packages], args)
+    if aur_packages:
+        run(["paru", "-S", "--needed", *aur_packages], args)
+
+
+def remove_packages(args):
+    for package in args.packages:
+        validate_package_name(package)
+    run(["sudo", "pacman", "-Rns", *args.packages], args)
+
+
+def update_system(args):
+    run(["sudo", "pacman", "-Syu"], args)
+    if command_exists("paru"):
+        run(["paru", "-Sua"], args)
+    else:
+        log("paru not found; skipped AUR update")
+
+
+def search_package(query, args):
+    validate_package_name(query)
+    manifest = load_manifest()
+
+    for name, meta in manifest.items():
+        if query.lower() in name.lower() or query.lower() in meta.get("description", "").lower():
+            print(f"sevenos/{name} - {meta.get('description', '')}")
+
+    run(["pacman", "-Ss", query], args, check=False)
+    if command_exists("paru"):
+        run(["paru", "-Ss", query], args, check=False)
+
+
+def show_meta(_args):
+    manifest = load_manifest()
+    if not manifest:
+        log("no SevenOS meta-packages found")
+        return
+
+    for name in sorted(manifest):
+        print(f"{name:8} {manifest[name].get('description', '')}")
+
+
+def show_status(_args):
+    manifest = load_manifest()
+    if not manifest:
+        log("no SevenOS meta-packages found")
+        return
+
+    for name in sorted(manifest):
+        state, installed, total = meta_state(manifest[name])
+        print(f"{name:8} {state:4} {installed:>2}/{total:<2} {manifest[name].get('description', '')}")
+
+
+def show_info(name, args):
+    validate_package_name(name)
+    manifest = load_manifest()
+
+    if name in manifest:
+        meta = manifest[name]
+        print(f"Name:        {name}")
+        print(f"Description: {meta.get('description', '')}")
+        print(f"Kind:        {meta.get('kind', '')}")
+        if "target" in meta:
+            print(f"Target:      {meta['target']}")
+
+        packages = meta_packages(meta)
+        if packages:
+            state, installed, total = meta_state(meta)
+            print(f"Status:      {state} {installed}/{total}")
+            print("Packages:")
+            for package in packages:
+                marker = "OK" if package_installed(package) else "MISS"
+                print(f"  [{marker}] {package}")
+        return
+
+    if pacman_has(name):
+        run(["pacman", "-Si", name], args, check=False)
+        return
+
+    if paru_has(name):
+        run(["paru", "-Si", name], args, check=False)
+        return
+
+    error(f"package or meta-package not found: {name}")
+    sys.exit(1)
+
+
+def show_sources(_args):
+    print("pacman   Arch Linux repositories")
+    print("aur      AUR through paru, when installed")
+    print("sevenos  SevenOS meta-packages")
+    print("sevenrepo planned SevenOS repository")
+
+
+def main():
+    dry_run_requested = "--dry-run" in sys.argv[1:]
+    if dry_run_requested:
+        sys.argv = [sys.argv[0], *[arg for arg in sys.argv[1:] if arg != "--dry-run"]]
+
+    parser = argparse.ArgumentParser(prog="sevenpkg", description="SevenOS package and application manager")
+    parser.add_argument("--dry-run", action="store_true", default=dry_run_requested, help="show commands without changing the system")
+    subparsers = parser.add_subparsers(dest="command")
+
+    install_parser = subparsers.add_parser("install", help="install a package or SevenOS meta-package")
+    install_parser.add_argument("packages", nargs="+")
+    install_parser.add_argument("--source", choices=("auto", "pacman", "aur", "sevenrepo"), default="auto")
+
+    remove_parser = subparsers.add_parser("remove", help="remove a package")
+    remove_parser.add_argument("packages", nargs="+")
+
+    search_parser = subparsers.add_parser("search", help="search packages and meta-packages")
+    search_parser.add_argument("query")
+
+    info_parser = subparsers.add_parser("info", help="show package or meta-package details")
+    info_parser.add_argument("name")
+
+    subparsers.add_parser("update", help="update system packages")
+    subparsers.add_parser("meta", help="list SevenOS meta-packages")
+    subparsers.add_parser("status", help="show SevenOS meta-package installation status")
+    subparsers.add_parser("sources", help="show package sources")
+
+    args = parser.parse_args()
+
+    if args.command == "install":
+        install_packages(args)
+    elif args.command == "remove":
+        remove_packages(args)
+    elif args.command == "update":
+        update_system(args)
+    elif args.command == "search":
+        search_package(args.query, args)
+    elif args.command == "info":
+        show_info(args.name, args)
+    elif args.command == "meta":
+        show_meta(args)
+    elif args.command == "status":
+        show_status(args)
+    elif args.command == "sources":
+        show_sources(args)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

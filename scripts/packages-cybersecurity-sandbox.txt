@@ -1,0 +1,4 @@
+# SevenOS CYBERSECURITY isolation profile
+firejail
+bubblewrap
+bandit

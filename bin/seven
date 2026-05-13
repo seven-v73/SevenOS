@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+
+def resolve_root():
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and Path(env_root, "install.sh").is_file():
+        return Path(env_root).resolve()
+
+    script_dir = Path(__file__).resolve().parent
+    candidate = script_dir.parent
+    if Path(candidate, "install.sh").is_file():
+        return candidate
+
+    for path in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if Path(path, "install.sh").is_file():
+            return path
+
+    print("seven: could not find SevenOS repository root", file=sys.stderr)
+    sys.exit(1)
+
+
+ROOT_DIR = resolve_root()
+
+
+def is_dry_run(args):
+    return args.dry_run or os.environ.get("SEVENOS_DRY_RUN") == "1"
+
+
+def run(command, args):
+    if is_dry_run(args):
+        print(" ".join(shlex.quote(str(part)) for part in command))
+        return
+    subprocess.run(command, check=True)
+
+
+def install_target(target, args, extra=None):
+    extra = extra or []
+    run([str(ROOT_DIR / "install.sh"), target, *extra], args)
+
+
+def sevenpkg(args, *extra):
+    run([str(ROOT_DIR / "bin" / "sevenpkg"), *extra], args)
+
+
+def handle_profile(args):
+    profile_map = {
+        "forge": "forge",
+        "shield": "shield",
+        "studio": "studio",
+        "baobab": "baobab",
+        "horizon": "horizon",
+        "griot": "griot",
+    }
+
+    if args.name == "list":
+        sevenpkg(args, "meta")
+        return
+
+    if args.name == "status":
+        sevenpkg(args, "status")
+        return
+
+    meta = profile_map.get(args.name)
+    if not meta:
+        print(f"seven: unknown profile: {args.name}", file=sys.stderr)
+        sys.exit(1)
+    sevenpkg(args, "install", meta)
+
+
+def handle_shield(args):
+    if args.action == "enable":
+        install_target("security", args)
+    elif args.action == "audit":
+        install_target("cyber-audit", args)
+    elif args.action == "lab":
+        install_target("cyber-lab", args, args.extra)
+    else:
+        print(f"seven: unknown shield action: {args.action}", file=sys.stderr)
+        sys.exit(1)
+
+
+def handle_vm(args):
+    if args.action == "check":
+        install_target("vm-check", args)
+    elif args.action == "network":
+        install_target("vm-network", args)
+    elif args.action == "start" and args.name == "windows":
+        run(["virsh", "-c", "qemu:///system", "start", "sevenos-windows"], args)
+    elif args.action == "console" and args.name == "windows":
+        run(["virt-manager", "--connect", "qemu:///system", "--show-domain-console", "sevenos-windows"], args)
+    else:
+        print("seven: supported VM actions are check, network, start windows, console windows", file=sys.stderr)
+        sys.exit(1)
+
+
+def main():
+    dry_run_requested = "--dry-run" in sys.argv[1:]
+    if dry_run_requested:
+        sys.argv = [sys.argv[0], *[arg for arg in sys.argv[1:] if arg != "--dry-run"]]
+
+    parser = argparse.ArgumentParser(prog="seven", description="SevenOS system controller")
+    parser.add_argument("--dry-run", action="store_true", default=dry_run_requested, help="show commands without changing the system")
+    subparsers = parser.add_subparsers(dest="command")
+
+    subparsers.add_parser("update", help="update SevenOS packages")
+    subparsers.add_parser("doctor", help="check host readiness")
+    subparsers.add_parser("status", help="show SevenOS status")
+    subparsers.add_parser("hub", help="launch Seven Hub")
+
+    profile_parser = subparsers.add_parser("profile", help="list, inspect, or install a SevenOS profile")
+    profile_parser.add_argument("name")
+
+    shield_parser = subparsers.add_parser("shield", help="security and cyber controls")
+    shield_parser.add_argument("action", choices=("enable", "audit", "lab"))
+    shield_parser.add_argument("extra", nargs=argparse.REMAINDER)
+
+    vm_parser = subparsers.add_parser("vm", help="virtual machine controls")
+    vm_parser.add_argument("action")
+    vm_parser.add_argument("name", nargs="?")
+
+    args = parser.parse_args()
+
+    if args.command == "update":
+        sevenpkg(args, "update")
+    elif args.command == "doctor":
+        install_target("doctor", args)
+    elif args.command == "status":
+        install_target("status", args)
+    elif args.command == "hub":
+        run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-hub")], args)
+    elif args.command == "profile":
+        handle_profile(args)
+    elif args.command == "shield":
+        handle_shield(args)
+    elif args.command == "vm":
+        handle_vm(args)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

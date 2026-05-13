@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/install.sh" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/../install.sh" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -x "$candidate/install.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'sevenosctl: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+
+usage() {
+  cat <<'EOF'
+sevenosctl
+
+Usage:
+  sevenosctl <command> [args]
+
+Commands:
+  status             Show SevenOS status
+  doctor             Check host readiness
+  hub                Launch Seven Hub
+  theme              Apply SevenOS theme
+  branding           Apply SevenOS system branding
+  cyber-audit        Show cybersecurity readiness
+  cyber-lab          Open an isolated cybersecurity lab shell
+  blackarch-setup    Add optional BlackArch repository bridge
+  blackarch-category Install one BlackArch category
+  blackarch-tool     Install one BlackArch package
+  vm-check           Check KVM/libvirt readiness
+  vm-network         Start libvirt default network
+  installer-plan     Create install plan
+  installer-check    Validate install plan
+  installer-script   Generate install preview script
+  version            Show SevenOS version
+EOF
+}
+
+command_name="${1:-}"
+shift || true
+
+case "$command_name" in
+  status|doctor|theme|cyber-audit|cyber-lab|blackarch-setup|blackarch-category|blackarch-tool|vm-check|vm-network|installer-plan|installer-check|installer-script)
+    "$ROOT_DIR/install.sh" "$command_name" "$@"
+    ;;
+  branding)
+    "$ROOT_DIR/install.sh" branding "$@"
+    ;;
+  hub)
+    if command -v seven-hub >/dev/null 2>&1; then
+      seven-hub "$@"
+    else
+      "$ROOT_DIR/seven-hub/bin/seven-hub" "$@"
+    fi
+    ;;
+  version)
+    if [[ -f /etc/sevenos-release ]]; then
+      cat /etc/sevenos-release
+    else
+      printf 'SevenOS development tree\n'
+    fi
+    ;;
+  -h|--help|help|"")
+    usage
+    ;;
+  *)
+    printf 'sevenosctl: unknown command: %s\n' "$command_name" >&2
+    usage
+    exit 1
+    ;;
+esac

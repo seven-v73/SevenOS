@@ -1,0 +1,10 @@
+SevenOS Linux Live
+
+Repository: /opt/SevenOS
+Commands:
+  seven status
+  seven doctor
+  sevenpkg meta
+  sevenosctl status
+  sevenosctl doctor
+  sevenos-welcome

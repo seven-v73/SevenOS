@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">SevenOS African First Wallpaper</title>
+  <desc id="desc">Dark geometric wallpaper with SevenOS African first color rhythm.</desc>
+  <defs>
+    <radialGradient id="goldGlow" cx="78%" cy="72%" r="48%">
+      <stop offset="0%" stop-color="#d6a84f" stop-opacity=".18"/>
+      <stop offset="44%" stop-color="#9b4a2f" stop-opacity=".10"/>
+      <stop offset="100%" stop-color="#0b0b0a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="indigoGlow" cx="12%" cy="18%" r="46%">
+      <stop offset="0%" stop-color="#26344f" stop-opacity=".36"/>
+      <stop offset="100%" stop-color="#0b0b0a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#15130f"/>
+      <stop offset="52%" stop-color="#0b0b0a"/>
+      <stop offset="100%" stop-color="#24180f"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="#0b0b0a"/>
+  <rect width="1920" height="1080" fill="url(#surface)" opacity=".88"/>
+  <rect width="1920" height="1080" fill="url(#indigoGlow)"/>
+  <rect width="1920" height="1080" fill="url(#goldGlow)"/>
+  <g opacity=".18" stroke-width="3" fill="none">
+    <path d="M-80 180h360l-120 180H-80zM280 180h360L520 360H160zM640 180h360L880 360H520zM1000 180h360l-120 180H880zM1360 180h360l-120 180h-360zM1720 180h360l-120 180h-360z" stroke="#d6a84f"/>
+    <path d="M-80 540h360l-120 180H-80zM280 540h360L520 720H160zM640 540h360L880 720H520zM1000 540h360l-120 180H880zM1360 540h360l-120 180h-360zM1720 540h360l-120 180h-360z" stroke="#9b4a2f"/>
+    <path d="M100 360h360L340 540H-20zM460 360h360L700 540H340zM820 360h360l-120 180H700zM1180 360h360l-120 180h-360zM1540 360h360l-120 180h-360z" stroke="#456b4f"/>
+  </g>
+  <g opacity=".16" stroke="#e8dcc3" stroke-width="1">
+    <path d="M0 100h1920M0 220h1920M0 340h1920M0 460h1920M0 580h1920M0 700h1920M0 820h1920M0 940h1920"/>
+    <path d="M160 0v1080M320 0v1080M480 0v1080M640 0v1080M800 0v1080M960 0v1080M1120 0v1080M1280 0v1080M1440 0v1080M1600 0v1080M1760 0v1080"/>
+  </g>
+  <g transform="translate(1480 650)" filter="none">
+    <path d="M0 0h260l-104 250H92l82-194H0z" fill="#d6a84f"/>
+    <path d="M0 0h260l-30 56H0z" fill="#9b4a2f"/>
+    <path d="M92 250h64l32-76h-64z" fill="#456b4f"/>
+  </g>
+  <path d="M120 806h360" stroke="#d6a84f" stroke-width="6" stroke-linecap="round"/>
+  <text x="120" y="880" fill="#e8dcc3" font-family="JetBrains Mono, monospace" font-size="54" font-weight="700">SevenOS</text>
+  <text x="120" y="936" fill="#b7a98a" font-family="JetBrains Mono, monospace" font-size="24">African first Linux environment</text>
+</svg>

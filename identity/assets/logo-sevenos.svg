@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">SevenOS Logo</title>
+  <desc id="desc">African first geometric SevenOS mark with gold, clay, baobab green, and obsidian colors.</desc>
+  <rect width="512" height="512" rx="64" fill="#0b0b0a"/>
+  <path d="M112 118h288l-116 276h-70l92-216H112z" fill="#d6a84f"/>
+  <path d="M112 118h288l-34 60H112z" fill="#9b4a2f"/>
+  <path d="M214 394h70l36-86h-70z" fill="#456b4f"/>
+  <path d="M144 244h64m-38-38h64m-14 76h64" stroke="#e8dcc3" stroke-width="14" stroke-linecap="round" opacity=".72"/>
+  <path d="M94 426h324" stroke="#26344f" stroke-width="16" stroke-linecap="round"/>
+</svg>

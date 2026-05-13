@@ -1,0 +1,11 @@
+NAME="SevenOS"
+PRETTY_NAME="SevenOS Linux Live"
+ID=sevenos
+ID_LIKE=arch
+BUILD_ID=live
+ANSI_COLOR="0;33"
+HOME_URL="https://github.com/seven-v73/SevenOS"
+DOCUMENTATION_URL="https://github.com/seven-v73/SevenOS"
+SUPPORT_URL="https://github.com/seven-v73/SevenOS/issues"
+BUG_REPORT_URL="https://github.com/seven-v73/SevenOS/issues"
+LOGO=sevenos-symbol

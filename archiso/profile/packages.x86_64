@@ -5,6 +5,9 @@ amd-ucode
 intel-ucode
 arch-install-scripts
 archiso
+syslinux
+systemd
+efibootmgr
 sudo
 git
 rsync

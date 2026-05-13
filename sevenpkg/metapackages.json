@@ -1,0 +1,59 @@
+{
+  "forge": {
+    "description": "Development workspace",
+    "kind": "sevenos-target",
+    "target": "dev",
+    "package_files": [
+      "scripts/packages-dev.txt"
+    ]
+  },
+  "shield": {
+    "description": "Cybersecurity workspace",
+    "kind": "sevenos-target",
+    "target": "cybersecurity",
+    "package_files": [
+      "scripts/packages-cybersecurity.txt",
+      "scripts/packages-cybersecurity-forensics.txt",
+      "scripts/packages-cybersecurity-reversing.txt",
+      "scripts/packages-cybersecurity-wireless.txt",
+      "scripts/packages-cybersecurity-sandbox.txt"
+    ]
+  },
+  "studio": {
+    "description": "Creative production workspace",
+    "kind": "sevenos-target",
+    "target": "creation",
+    "package_files": [
+      "scripts/packages-creation.txt"
+    ]
+  },
+  "baobab": {
+    "description": "SevenOS base system and desktop layer",
+    "kind": "sevenos-target",
+    "target": "base",
+    "package_files": [
+      "scripts/packages-base.txt"
+    ]
+  },
+  "horizon": {
+    "description": "Cloud and network operations toolkit",
+    "kind": "pacman",
+    "packages": [
+      "rclone",
+      "kubectl",
+      "terraform",
+      "ansible",
+      "podman"
+    ]
+  },
+  "griot": {
+    "description": "Documentation and knowledge toolkit",
+    "kind": "pacman",
+    "packages": [
+      "man-db",
+      "tldr",
+      "tealdeer",
+      "zeal"
+    ]
+  }
+}

@@ -13,6 +13,7 @@ pipewire-pulse
 pipewire-jack
 wireplumber
 hyprland
+hyprpaper
 xdg-desktop-portal-hyprland
 waybar
 rofi

@@ -2,7 +2,7 @@
 
 SevenOS is an experimental Arch Linux based system layer focused on a modern Hyprland desktop, modular work profiles, security tooling, creative production, and Windows compatibility.
 
-This repository currently targets **Phase 1**: a reproducible post-install setup for an existing Arch Linux installation. It is not yet a complete ISO or standalone distribution.
+This repository currently contains foundations for **Phase 1, Phase 2, and Phase 3**: post-install setup, a lightweight Seven Hub control center, VM helpers, identity assets, and an early Archiso live profile. It is not yet a complete installable distribution.
 
 ## Vision
 
@@ -99,19 +99,30 @@ chmod +x install.sh bootstrap.sh profiles/*.sh
 ./install.sh base
 ```
 
+The base layer installs packages, SevenOS branding, `sevenosctl`, the desktop theme, and the wallpaper.
+It also installs the newer `seven` and `sevenpkg` commands.
+
 Install a profile:
 
 ```bash
 ./install.sh dev
 ./install.sh cybersecurity
+./install.sh cyber-audit
+./install.sh cyber-lab --name webapp
 ./install.sh creation
 ./install.sh windows
 ./install.sh security
+./install.sh cli
+./install.sh branding
 ./install.sh theme
 ./install.sh hub
 ./install.sh iso-tools
 ./install.sh vm-check
 ./install.sh vm-network
+./install.sh blackarch-setup --dry-run
+./install.sh installer-plan
+./install.sh installer-check
+./install.sh installer-script
 ```
 
 Check whether the current host is ready for SevenOS features:
@@ -124,6 +135,8 @@ Show the current SevenOS installation status:
 
 ```bash
 ./install.sh status
+seven status
+sevenosctl status
 ```
 
 Install everything:
@@ -172,8 +185,22 @@ Start the libvirt default network:
 Preview a Windows VM creation command:
 
 ```bash
-./install.sh vm-windows --iso /path/to/windows.iso --dry-run
+./install.sh vm-windows \
+  --iso /path/to/windows.iso \
+  --virtio-iso /path/to/virtio-win.iso \
+  --os win11 \
+  --dry-run
 ```
+
+Create a non-destructive installation plan:
+
+```bash
+./install.sh installer-plan
+./install.sh installer-check
+./install.sh installer-script
+```
+
+The installer plan currently covers disk target, hostname, user, LUKS, filesystem, bootloader, timezone, locale, keymap, swap strategy, and SevenOS profiles.
 
 Launch Seven Hub after installing it:
 
@@ -186,6 +213,34 @@ seven-hub
 SevenOS uses an African first identity system: dark graphite surfaces, ancestral gold for action, clay for signal, baobab green for system health, and restrained geometric rhythm inspired by African material culture.
 
 The identity source of truth lives in `identity/README.md`.
+
+The current desktop theme uses liquid glass surfaces, SevenOS SVG icons, and a rendered wallpaper applied through Hyprpaper.
+
+For the complete icon experience, install the base profile package set, which includes `ttf-jetbrains-mono-nerd`.
+
+SevenOS provides `sevenosctl`, a small CLI for daily system control:
+
+```bash
+seven status
+seven doctor
+seven profile forge
+seven profile list
+seven profile status
+seven shield audit
+sevenpkg meta
+sevenpkg status
+sevenpkg info shield
+sevenpkg install forge
+sevenosctl status
+sevenosctl doctor
+sevenosctl hub
+sevenosctl theme
+sevenosctl branding
+```
+
+`seven` is the main SevenOS system controller. `sevenpkg` is the package and
+application manager over pacman, paru, SevenOS meta-packages, and future
+SevenRepo packages. See `docs/package-manager.md`.
 
 Apply only the desktop theme:
 
@@ -201,7 +256,47 @@ Installs development tools such as Git, Node.js, Python, Rust, Docker, Helix, Ne
 
 ### CYBERSECURITY
 
-Installs security and network analysis tools such as Nmap, Wireshark, John the Ripper, Aircrack-ng, Metasploit, and related utilities.
+Installs a broad official Arch cybersecurity layer:
+
+- core network, web, cracking, and exploitation tools
+- forensic analysis tools
+- reverse engineering tools
+- wireless testing tools
+- sandbox and isolation helpers
+
+Audit the current machine:
+
+```bash
+./install.sh cyber-audit
+```
+
+Install by category when you do not want the full cyber layer:
+
+```bash
+./install.sh cybersecurity core
+./install.sh cybersecurity forensics
+./install.sh cybersecurity reversing
+./install.sh cybersecurity wireless
+./install.sh cybersecurity sandbox
+```
+
+Open an isolated lab shell:
+
+```bash
+./install.sh cyber-lab --name webapp
+./install.sh cyber-lab --name reversing --offline
+```
+
+SevenOS also provides an optional BlackArch bridge for specialized tools:
+
+```bash
+./install.sh blackarch-setup --dry-run
+./install.sh blackarch-setup --yes
+./install.sh blackarch-category webapp
+./install.sh blackarch-tool feroxbuster
+```
+
+BlackArch is opt-in because it adds an external package repository. SevenOS should stay stable for daily use, then scale up when deeper security work is needed.
 
 Use responsibly and only on systems and networks where you have permission.
 
@@ -224,8 +319,13 @@ Windows VM helpers:
 ```bash
 ./install.sh vm-check
 ./install.sh vm-network
-./install.sh vm-windows --iso /path/to/windows.iso
+./install.sh vm-windows \
+  --iso /path/to/windows.iso \
+  --virtio-iso /path/to/virtio-win.iso \
+  --os win11
 ```
+
+Use `--os win10` for a Windows 10 VM.
 
 ### SECURITY
 
@@ -260,6 +360,7 @@ Windows VM provisioning and GPU passthrough will be handled in later phases.
 
 - Archiso integration
 - live SevenOS ISO profile
+- non-destructive installer planning TUI
 - installer flow
 
 ### Phase 4
@@ -277,4 +378,4 @@ Windows VM provisioning and GPU passthrough will be handled in later phases.
 
 ## License
 
-License not selected yet.
+SevenOS is licensed under the MIT License. See `LICENSE`.

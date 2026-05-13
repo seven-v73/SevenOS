@@ -49,13 +49,20 @@ Start and autostart the default network:
 Preview the command first:
 
 ```bash
-./install.sh vm-windows --iso /path/to/windows.iso --dry-run
+./install.sh vm-windows \
+  --iso /path/to/windows.iso \
+  --virtio-iso /path/to/virtio-win.iso \
+  --os win11 \
+  --dry-run
 ```
 
 Launch VM creation:
 
 ```bash
-./install.sh vm-windows --iso /path/to/windows.iso
+./install.sh vm-windows \
+  --iso /path/to/windows.iso \
+  --virtio-iso /path/to/virtio-win.iso \
+  --os win11
 ```
 
 Defaults:
@@ -73,6 +80,8 @@ Customize:
 ```bash
 ./install.sh vm-windows \
   --iso /path/to/windows.iso \
+  --virtio-iso /path/to/virtio-win.iso \
+  --os win11 \
   --name sevenos-win11 \
   --ram 12288 \
   --vcpus 6 \
@@ -81,7 +90,9 @@ Customize:
 
 ## VirtIO Drivers
 
-Windows may need VirtIO drivers during installation to detect the disk or network device. The helper prepares a performant VirtIO VM, but driver ISO handling will be improved in a later phase.
+Windows may need VirtIO drivers during installation to detect the disk or network device. Use `--virtio-iso /path/to/virtio-win.iso` to attach the driver ISO as a second CD-ROM.
+
+Use `--os win10` or `--os win11` to select the libvirt OS variant.
 
 ## GPU Passthrough
 

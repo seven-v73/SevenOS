@@ -20,6 +20,11 @@ is_dry_run() {
   [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
 }
 
+backup_path() {
+  local path="$1"
+  printf '%s.sevenos.bak.%s' "$path" "$(date +%Y%m%d-%H%M%S)"
+}
+
 run_cmd() {
   if is_dry_run; then
     printf '%q ' "$@"
@@ -109,16 +114,18 @@ copy_config_dir() {
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$target_dir"
     if [[ -e "$target_dir" ]]; then
-      printf 'cp -a %q %q\n' "$target_dir" "$target_dir.sevenos.bak"
+      printf 'cp -a %q %q\n' "$target_dir" "$(backup_path "$target_dir")"
     fi
     printf 'cp -r %q/. %q/\n' "$source_dir" "$target_dir"
     return 0
   fi
 
   mkdir -p "$target_dir"
-  if [[ -e "$target_dir" && ! -e "$target_dir.sevenos.bak" ]]; then
-    cp -a "$target_dir" "$target_dir.sevenos.bak"
-    log_warn "Existing config backed up to $target_dir.sevenos.bak"
+  if [[ -e "$target_dir" ]]; then
+    local backup_dir
+    backup_dir="$(backup_path "$target_dir")"
+    cp -a "$target_dir" "$backup_dir"
+    log_warn "Existing config backed up to $backup_dir"
   fi
   cp -r "$source_dir"/. "$target_dir"/
 }
@@ -139,16 +146,18 @@ copy_config_file() {
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$target_dir"
     if [[ -e "$target_file" ]]; then
-      printf 'cp -a %q %q\n' "$target_file" "$target_file.sevenos.bak"
+      printf 'cp -a %q %q\n' "$target_file" "$(backup_path "$target_file")"
     fi
     printf 'cp %q %q\n' "$source_file" "$target_file"
     return 0
   fi
 
   mkdir -p "$target_dir"
-  if [[ -e "$target_file" && ! -e "$target_file.sevenos.bak" ]]; then
-    cp -a "$target_file" "$target_file.sevenos.bak"
-    log_warn "Existing config backed up to $target_file.sevenos.bak"
+  if [[ -e "$target_file" ]]; then
+    local backup_file
+    backup_file="$(backup_path "$target_file")"
+    cp -a "$target_file" "$backup_file"
+    log_warn "Existing config backed up to $backup_file"
   fi
   cp "$source_file" "$target_file"
 }

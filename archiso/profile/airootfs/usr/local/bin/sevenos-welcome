@@ -13,8 +13,14 @@ Identity:
 
 Start here:
   cd /opt/SevenOS
+  seven doctor
+  seven status
+  sevenpkg meta
+  sevenosctl doctor
+  sevenosctl status
   ./install.sh doctor
   ./install.sh status
+  ./install.sh installer-plan
   ./install.sh base --dry-run
 
 Build status:

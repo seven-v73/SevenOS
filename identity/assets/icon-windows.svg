@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">SevenOS Windows Icon</title>
+  <desc id="desc">SevenOS Windows compatibility mode icon.</desc>
+  <rect width="256" height="256" rx="48" fill="#0b0b0a"/>
+  <rect x="48" y="48" width="160" height="160" rx="28" fill="#15130f" stroke="#d6a84f" stroke-width="8"/>
+  <rect x="76" y="76" width="45" height="45" rx="8" fill="#24180f" stroke="#d6a84f" stroke-width="7"/>
+  <rect x="135" y="76" width="45" height="45" rx="8" fill="#24180f" stroke="#9b4a2f" stroke-width="7"/>
+  <rect x="76" y="135" width="45" height="45" rx="8" fill="#24180f" stroke="#456b4f" stroke-width="7"/>
+  <rect x="135" y="135" width="45" height="45" rx="8" fill="#24180f" stroke="#26344f" stroke-width="7"/>
+</svg>

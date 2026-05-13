@@ -1,6 +1,7 @@
 * {
   background: #0b0b0a;
   surface: #15130f;
+  glass: #15130fe6;
   foreground: #e8dcc3;
   muted: #b7a98a;
   accent: #d6a84f;
@@ -10,22 +11,43 @@
 }
 
 window {
-  width: 40%;
+  width: 42%;
   border: 2px;
   border-color: @accent;
-  border-radius: 6px;
-  background-color: @background;
+  border-radius: 10px;
+  background-color: @glass;
 }
 
 mainbox {
-  padding: 12px;
+  padding: 14px;
+  spacing: 10px;
+}
+
+message {
+  padding: 10px 12px;
+  border: 1px 0px 1px 0px;
+  border-color: #d6a84f22;
+  background-color: transparent;
+}
+
+textbox {
+  text-color: @muted;
 }
 
 inputbar {
-  padding: 8px;
+  padding: 10px 12px;
   border: 1px;
   border-color: @clay;
+  border-radius: 8px;
   background-color: @surface;
+}
+
+prompt {
+  text-color: @accent;
+}
+
+textbox-prompt-colon {
+  text-color: @clay;
 }
 
 entry {
@@ -35,13 +57,16 @@ entry {
 }
 
 listview {
-  lines: 8;
+  lines: 9;
   fixed-height: true;
-  margin: 8px 0 0 0;
+  margin: 4px 0 0 0;
+  spacing: 4px;
 }
 
 element {
-  padding: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background-color: transparent;
 }
 
 element selected {
@@ -54,4 +79,9 @@ element selected {
 element-text,
 element-icon {
   text-color: inherit;
+}
+
+element-icon {
+  size: 20px;
+  margin: 0 8px 0 0;
 }

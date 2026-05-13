@@ -1,0 +1,8 @@
+SevenOS Linux
+
+Repository: /opt/SevenOS or ~/Code/OS/SevenOS
+Commands:
+  sevenosctl status
+  sevenosctl doctor
+  sevenosctl hub
+
