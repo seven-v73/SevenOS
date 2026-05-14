@@ -97,6 +97,8 @@ install_user_command "$ROOT_DIR/bin/seven-power" seven-power
 install_user_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
 install_user_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_user_command "$ROOT_DIR/bin/seven-help" seven-help
+install_user_command "$ROOT_DIR/bin/seven-overview" seven-overview
+install_user_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
 install_user_command "$ROOT_DIR/bin/seven-files" seven-files
 install_user_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_user_command "$ROOT_DIR/bin/seven-session" seven-session
@@ -116,6 +118,8 @@ install_system_command "$ROOT_DIR/bin/seven-power" seven-power
 install_system_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
 install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_system_command "$ROOT_DIR/bin/seven-help" seven-help
+install_system_command "$ROOT_DIR/bin/seven-overview" seven-overview
+install_system_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
 install_system_command "$ROOT_DIR/bin/seven-files" seven-files
 install_system_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_system_command "$ROOT_DIR/bin/seven-session" seven-session

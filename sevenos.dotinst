@@ -42,6 +42,8 @@
         "bin/seven-session",
         "bin/seven-wallpaper",
         "bin/seven-power",
+        "bin/seven-overview",
+        "bin/seven-quick-settings",
         "bin/seven-files"
       ]
     },

@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/hyprland/rofi" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -d "$script_dir/../hyprland/rofi" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -d "$candidate/hyprland/rofi" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-overview: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+APP_THEME="$CONFIG_HOME/rofi/apps.rasi"
+SHELL_THEME="$CONFIG_HOME/rofi/sevenos.rasi"
+action="${1:-apps}"
+
+rofi_or_fallback() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%q ' "$@"
+    printf '\n'
+    return 0
+  fi
+
+  if ! command -v rofi >/dev/null 2>&1; then
+    printf 'seven-overview: rofi is required for overview mode\n' >&2
+    exit 1
+  fi
+
+  "$@"
+}
+
+case "$action" in
+  apps|app-grid|launchpad)
+    rofi_or_fallback rofi -show drun -show-icons -theme "$APP_THEME"
+    ;;
+  windows|overview|activities)
+    rofi_or_fallback rofi -show window -show-icons -theme "$SHELL_THEME"
+    ;;
+  search)
+    rofi_or_fallback rofi -show combi -show-icons -combi-modes "drun,window,run" -theme "$SHELL_THEME"
+    ;;
+  run)
+    rofi_or_fallback rofi -show run -theme "$SHELL_THEME"
+    ;;
+  *)
+    printf 'Usage: seven-overview [apps|windows|search|run]\n' >&2
+    exit 2
+    ;;
+esac

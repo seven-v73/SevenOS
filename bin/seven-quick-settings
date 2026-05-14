@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/hyprland/rofi" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -d "$script_dir/../hyprland/rofi" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -d "$candidate/hyprland/rofi" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+}
+
+ROOT_DIR="$(resolve_root)"
+THEME="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi"
+
+run_detached() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%q ' "$@"
+    printf '\n'
+    return 0
+  fi
+  setsid -f "$@" >/tmp/sevenos-quick-settings.log 2>&1 || true
+}
+
+run_terminal() {
+  local title="$1"
+  local command="$2"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'terminal %q %q\n' "$title" "$command"
+    return 0
+  fi
+
+  if command -v kitty >/dev/null 2>&1; then
+    run_detached kitty --title "$title" bash -lc "$command; printf '\nPress Enter to close...'; read -r"
+  else
+    bash -lc "$command"
+  fi
+}
+
+menu() {
+  cat <<'EOF'
+Open Control Center
+Open Apps Overview
+Open Window Overview
+Network Settings
+Audio Mixer
+Wallpaper Refresh
+Profile Workspace
+Migration Plan
+System Monitor
+Power Menu
+EOF
+}
+
+if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+  menu
+  exit 0
+fi
+
+if ! command -v rofi >/dev/null 2>&1; then
+  printf 'seven-quick-settings: rofi is required\n' >&2
+  exit 1
+fi
+
+selected="$(menu | rofi -dmenu -i -p "SevenOS" -mesg "Quick settings and shell controls" -theme "$THEME" 2>/dev/null || true)"
+
+case "$selected" in
+  "Open Control Center") run_detached seven hub ;;
+  "Open Apps Overview") run_detached seven-overview apps ;;
+  "Open Window Overview") run_detached seven-overview windows ;;
+  "Network Settings")
+    if command -v nm-connection-editor >/dev/null 2>&1; then
+      run_detached nm-connection-editor
+    else
+      run_terminal "SevenOS Network" "nmtui"
+    fi
+    ;;
+  "Audio Mixer")
+    if command -v pavucontrol >/dev/null 2>&1; then
+      run_detached pavucontrol
+    else
+      run_terminal "SevenOS Audio" "wpctl status"
+    fi
+    ;;
+  "Wallpaper Refresh") run_terminal "SevenOS Wallpaper" "seven-wallpaper refresh" ;;
+  "Profile Workspace") run_detached seven-files profile ;;
+  "Migration Plan") run_terminal "SevenOS Migration" "seven migrate plan" ;;
+  "System Monitor")
+    if command -v btop >/dev/null 2>&1; then
+      run_detached kitty --title "SevenOS Monitor" btop
+    else
+      run_terminal "SevenOS Monitor" "top"
+    fi
+    ;;
+  "Power Menu") run_detached seven-power ;;
+  "") exit 0 ;;
+esac

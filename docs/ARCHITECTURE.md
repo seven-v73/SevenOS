@@ -98,6 +98,7 @@ strategy is therefore split into prototype and native target.
 | Surface | Role | State |
 | --- | --- | --- |
 | Rofi Hub | fast command palette and fallback launcher | Active |
+| SevenOS Shell | GNOME-like overview, quick settings, scratchpad and polished Hyprland rules | Active |
 | Local web Control Center | simple local dashboard for diagnostics | Active |
 | Tauri Seven Hub | productization prototype, action workflow and JSON validation | Preview |
 | Native Seven Hub | long-term OS Control Center using GTK4 + libadwaita | Planned |
@@ -112,6 +113,10 @@ Rules:
   the frontend implementation.
 - Web technologies may remain for docs, local dashboards or marketplace
   previews, but core system control must move toward native Linux components.
+- Hyprland should feel like an OS shell, not raw tiling. SevenOS keeps an
+  Activities-like overview through `seven-overview`, a quick settings surface
+  through `seven-quick-settings`, and window rules that make dialogs, audio,
+  network and picture-in-picture windows behave predictably.
 
 Native Hub target modules:
 

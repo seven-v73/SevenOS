@@ -108,6 +108,8 @@ require_executable "seven-hub/bin/seven-control-center"
 require_executable "bin/seven-country"
 require_executable "bin/seven-files"
 require_executable "bin/seven-help"
+require_executable "bin/seven-overview"
+require_executable "bin/seven-quick-settings"
 require_executable "bin/seven-session"
 require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
@@ -254,13 +256,28 @@ fi
 
 if grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, TAB, exec, $overview' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, N, exec, $quicksettings' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod CTRL, E, exec, seven-files profile' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'apps.rasi' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'seven-overview apps' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland exposes discoverable Hub, Apps and Help shortcuts"
 else
   fail "Hyprland discoverable desktop shortcuts missing"
+fi
+
+overview_search_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" search)"
+quick_settings_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings")"
+if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'windowrulev2 = float, title:^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   [[ "$overview_search_output" == *"rofi"* ]] &&
+   [[ "$quick_settings_output" == *"Open Control Center"* ]]; then
+  ok "SevenOS Shell exposes GNOME-like overview, quick settings and polished window rules"
+else
+  fail "SevenOS Shell GNOME-like interface layer is incomplete"
 fi
 
 if grep -q 'start_once mako' "$ROOT_DIR/bin/seven-session" &&
@@ -495,6 +512,8 @@ else
 fi
 
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" apps >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
