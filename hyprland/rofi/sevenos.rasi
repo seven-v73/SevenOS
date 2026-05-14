@@ -4,11 +4,11 @@
   surface-1: #15151c;
   surface-2: #1c1c26;
   surface-3: #232330;
-  glass: #ffffff08;
-  glass-2: #ffffff0f;
-  glass-3: #ffffff18;
-  glass-border: #ffffff14;
-  glass-border-2: #ffffff22;
+  glass: #1c1c26;
+  glass-2: #232330;
+  glass-3: #2a2a38;
+  glass-border: #343446;
+  glass-border-2: #44445a;
   gold: #c8a96e;
   gold-bright: #e2c07a;
   gold-dim: #8a7048;
@@ -24,36 +24,37 @@
 }
 
 window {
-  width: 50%;
-  border: 1px;
-  border-color: @glass-border-2;
+  width: 58%;
+  border: 2px;
+  border-color: @gold-dim;
   border-radius: 22px;
-  background-color: #0f0f14f4;
+  background-color: @surface-1;
 }
 
 mainbox {
-  padding: 18px;
-  spacing: 12px;
-  background-color: transparent;
+  padding: 20px;
+  spacing: 14px;
+  background-color: @surface-1;
 }
 
 message {
-  padding: 11px 12px;
+  padding: 12px 14px;
   border: 0px 0px 1px 0px;
-  border-color: @glass-border;
-  background-color: @glass;
+  border-color: @gold-dim;
+  background-color: @surface-2;
 }
 
 textbox {
-  text-color: @text-2;
+  text-color: @gold-bright;
+  font: "DM Sans Medium 12";
 }
 
 inputbar {
-  padding: 13px 14px;
+  padding: 14px 15px;
   border: 1px;
   border-color: @glass-border-2;
   border-radius: 10px;
-  background-color: @glass-2;
+  background-color: @surface-3;
   children: [ prompt, textbox-prompt-colon, entry ];
 }
 
@@ -69,8 +70,9 @@ textbox-prompt-colon {
 entry {
   text-color: @text-1;
   placeholder: "Search SevenOS";
-  placeholder-color: @text-3;
+  placeholder-color: @text-2;
   cursor-color: @gold;
+  font: "DM Sans 13";
 }
 
 listview {
@@ -82,27 +84,33 @@ listview {
 }
 
 element {
-  padding: 11px 12px;
+  padding: 12px 13px;
   border: 1px;
   border-color: @glass-border;
   border-radius: 10px;
-  background-color: @glass;
+  background-color: @surface-2;
+  text-color: @text-1;
 }
 
 element selected {
-  background-color: @glass-3;
-  text-color: @text-1;
-  border-color: @gold-dim;
+  background-color: @gold;
+  text-color: @ebene;
+  border-color: @gold-bright;
 }
 
 element alternate {
-  background-color: @glass-2;
+  background-color: @surface-3;
+  text-color: @text-1;
 }
 
 element-text,
 element-icon {
   text-color: inherit;
   background-color: transparent;
+}
+
+element-text {
+  font: "DM Sans 13";
 }
 
 element-icon {

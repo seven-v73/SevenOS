@@ -1,40 +1,70 @@
 @theme "sevenos.rasi"
 
 window {
-  width: 62%;
-  border-radius: 22px;
+  width: 84%;
+  border-radius: 24px;
+  border-color: @gold;
+  background-color: @surface-1;
 }
 
 mainbox {
-  padding: 20px;
-  spacing: 14px;
+  padding: 26px;
+  spacing: 18px;
+  background-color: @surface-1;
+}
+
+inputbar {
+  padding: 15px 17px;
+  border-radius: 16px;
+  background-color: @surface-3;
+  border-color: @gold-dim;
 }
 
 entry {
-  placeholder: "Applications";
+  placeholder: "Applications SevenOS";
+  text-color: @text-1;
+}
+
+prompt {
+  text-color: @gold-bright;
+  font: "DM Sans Medium 13";
 }
 
 listview {
-  lines: 8;
-  columns: 3;
+  lines: 4;
+  columns: 4;
   fixed-height: true;
-  margin: 4px 0 0 0;
-  spacing: 10px;
+  margin: 6px 0 0 0;
+  spacing: 14px;
+  background-color: @surface-1;
 }
 
 element {
   orientation: horizontal;
-  padding: 13px;
+  padding: 15px;
   border-radius: 16px;
-  background-color: @glass-2;
+  background-color: @surface-2;
+  border-color: @glass-border-2;
+  text-color: @text-1;
 }
 
 element selected {
-  background-color: @glass-3;
-  border-color: @gold-dim;
+  background-color: @gold;
+  border-color: @gold-bright;
+  text-color: @ebene;
+}
+
+element alternate {
+  background-color: @surface-3;
+  text-color: @text-1;
+}
+
+element-text {
+  font: "DM Sans Medium 13";
+  text-color: inherit;
 }
 
 element-icon {
-  size: 34px;
-  margin: 0 12px 0 0;
+  size: 38px;
+  margin: 0 14px 0 0;
 }

@@ -434,7 +434,7 @@ select_with_rofi() {
     menu+="$label    [$badge] $description"$'\n'
   done
 
-  printf '%s' "$menu" | rofi -dmenu -i -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -theme-str 'window { width: 44%; }'
+  printf '%s' "$menu" | rofi -dmenu -i -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -theme-str 'window { width: 64%; } listview { lines: 9; }'
 }
 
 select_with_terminal() {

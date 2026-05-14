@@ -3,6 +3,7 @@
 window {
   width: 32%;
   border-color: #c4673a;
+  background-color: @surface-1;
 }
 
 listview {
@@ -14,6 +15,12 @@ entry {
 }
 
 message {
-  background-color: #1c1c26e8;
-  border-color: #c4673a66;
+  background-color: @surface-2;
+  border-color: @clay;
+}
+
+element selected {
+  background-color: @clay;
+  border-color: @clay;
+  text-color: @ebene;
 }
