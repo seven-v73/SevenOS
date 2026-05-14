@@ -170,6 +170,13 @@ def installer_plan_payload() -> dict:
         return {"schema": "sevenos.installer-plan.v1", "summary": {}, "next": []}
 
 
+def packages_plan_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "plan", "--json"))
+    except Exception:
+        return {"schema": "sevenos.packages-plan.v1", "summary": {}, "next": []}
+
+
 def control_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "control-plane.sh"), "--json"))
@@ -381,6 +388,7 @@ def run_gui() -> int:
                 windows_plan = windows_plan_payload()
                 installer = installer_payload()
                 installer_plan = installer_plan_payload()
+                packages_plan = packages_plan_payload()
                 control = control_payload()
                 events = events_payload()
                 insights = insights_payload()
@@ -407,6 +415,7 @@ def run_gui() -> int:
                     ("Windows plan", f"{windows_plan.get('summary', {}).get('total', 0)} compatibility actions · first: {(windows_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Installer", f"{installer.get('mode', 'foundation')} · ready: {str(installer.get('ready', False)).lower()}"),
                     ("Installer plan", f"{installer_plan.get('summary', {}).get('total', 0)} distribution actions · first: {(installer_plan.get('next') or [{}])[0].get('title', 'none')}"),
+                    ("Software plan", f"{packages_plan.get('summary', {}).get('total', 0)} app actions · first: {(packages_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Control Plane", f"{control.get('overall', 0)}% · {control.get('summary', {}).get('total', 0)} prioritized actions"),
                     ("Events", f"{events.get('total', 0)} recorded · {events.get('last', {}).get('type', 'none') if events.get('last') else 'no local history yet'}"),
                     ("Insights", f"phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open product items"),
@@ -541,6 +550,28 @@ def run_gui() -> int:
                         row.add_suffix(button)
                         installer_group.add(row)
                     dashboard.append(installer_group)
+
+                package_actions = packages_plan.get("next") or []
+                if package_actions:
+                    packages_group = Adw.PreferencesGroup(title="Software plan")
+                    for item in package_actions[:5]:
+                        row = make_row(
+                            item.get("title", item.get("key", "Software")),
+                            f"{item.get('severity', 'medium')} · {item.get('phase', 'apps')} · {item.get('reason', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("package-x-generic-symbolic")
+                        button.set_tooltip_text(item.get("command", "sevenpkg plan"))
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=item.get("command", "sevenpkg plan"), title_text=item.get("title", "Software Plan"): run_ecosystem_command(
+                                command,
+                                title=f"SevenOS Software - {title_text}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        packages_group.add(row)
+                    dashboard.append(packages_group)
 
                 insight_items = insights.get("insights") or []
                 if insight_items:

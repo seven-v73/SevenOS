@@ -416,6 +416,8 @@ seven files menu
 seven-power
 sevenpkg meta
 sevenpkg status
+sevenpkg plan
+sevenpkg plan --json
 sevenpkg info shield
 sevenpkg install forge
 ```

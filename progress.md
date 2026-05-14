@@ -171,6 +171,7 @@ Les piliers du projet sont :
 - Correction du contrat `seven windows status --json` : la sortie est maintenant du JSON strict, sans message humain ajoute par `install.sh`.
 - Ajout de `seven windows plan` / `seven windows plan --json` : plan de compatibilite Windows priorise pour Wine, Bottles, KVM/libvirt, reseau et creation VM, expose dans l'etat unifie, Seven Server, Insights, Control Plane et Hub natif.
 - Ajout de `seven installer plan` / `seven installer plan --json` : plan de readiness distribution pour Archinstall, Calamares, Archiso et ISO build, relie a `seven state`, Seven Server, Control Plane, Insights et Hub natif.
+- Ajout de `sevenpkg plan` / `sevenpkg plan --json` : plan logiciel central pour meta-packages SevenOS, Flatpak, Flathub et applications par defaut, relie a `seven state`, Seven Server, Control Plane, Insights et Hub natif.
 - `seven state --json` expose maintenant `active_profile` et `windows`, pour que le Hub natif puisse lire un etat OS complet sans parser des textes humains.
 - Renforcement Seven Ecosystem : ajout d'un process map all-in-one (`seven ecosystem processes`), d'un contrat JSON (`seven ecosystem --json`) et integration de l'ecosysteme dans `seven state --json`.
 - Le registre d'actions expose maintenant les actions Ecosystem Map, Process Map, Roadmap et Doctor pour Seven Hub et les futures surfaces natives.

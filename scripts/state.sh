@@ -96,6 +96,8 @@ json_to_file "$STATE_TMP/readiness.json" "$ROOT_DIR/scripts/readiness.sh" --json
 pid_readiness=$!
 json_to_file "$STATE_TMP/packages.json" "$ROOT_DIR/bin/sevenpkg" status --json &
 pid_packages=$!
+json_to_file "$STATE_TMP/packages_plan.json" "$ROOT_DIR/bin/sevenpkg" plan --json &
+pid_packages_plan=$!
 json_to_file "$STATE_TMP/manifest.json" "$ROOT_DIR/scripts/manifest.sh" summary-json &
 pid_manifest=$!
 json_to_file "$STATE_TMP/ecosystem.json" "$ROOT_DIR/scripts/ecosystem.sh" json &
@@ -110,7 +112,7 @@ json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
 pid_actions=$!
 
 wait "$pid_status" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" \
-  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
   "$pid_experience" "$pid_control" "$pid_events" "$pid_actions" || true
 
 printf '{'
@@ -161,6 +163,9 @@ cat "$STATE_TMP/readiness.json"
 printf ','
 printf '"packages":'
 cat "$STATE_TMP/packages.json"
+printf ','
+printf '"packages_plan":'
+cat "$STATE_TMP/packages_plan.json"
 printf ','
 printf '"manifest":'
 cat "$STATE_TMP/manifest.json"

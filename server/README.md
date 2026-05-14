@@ -61,6 +61,8 @@ curl http://127.0.0.1:7777/windows
 curl http://127.0.0.1:7777/windows-plan
 curl http://127.0.0.1:7777/installer
 curl http://127.0.0.1:7777/installer-plan
+curl http://127.0.0.1:7777/packages
+curl http://127.0.0.1:7777/packages-plan
 curl http://127.0.0.1:7777/monitor/system
 curl http://127.0.0.1:7777/readiness
 curl http://127.0.0.1:7777/manifest
@@ -88,6 +90,8 @@ GET  /windows
 GET  /windows-plan
 GET  /installer
 GET  /installer-plan
+GET  /packages
+GET  /packages-plan
 GET  /manifest
 GET  /actions
 GET  /experience

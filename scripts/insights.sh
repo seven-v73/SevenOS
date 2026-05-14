@@ -56,6 +56,7 @@ windows = state.get("windows") or {}
 windows_plan = state.get("windows_plan") or {}
 installer = state.get("installer") or {}
 installer_plan = state.get("installer_plan") or {}
+packages_plan = state.get("packages_plan") or {}
 profiles = state.get("profiles") or []
 profile_gaps = state.get("profile_gaps") or {}
 ecosystem = state.get("ecosystem") or {}
@@ -170,6 +171,19 @@ if not installer_ready:
         "installer",
     )
 
+package_actions = (packages_plan.get("summary") or {}).get("total", 0)
+if package_actions:
+    next_package = (packages_plan.get("next") or [{}])[0]
+    add(
+        "packages",
+        "high" if (packages_plan.get("summary") or {}).get("critical", 0) else "medium",
+        "Complete software layer",
+        f"{package_actions} software actions are open across SevenPkg, Flatpak and profile app delivery.",
+        next_package.get("command", "sevenpkg plan"),
+        "apps",
+        "packages",
+    )
+
 for profile in profile_gaps.get("profiles", profiles):
     profile_state = profile.get("state", "MISS")
     if profile_state == "OK":
@@ -228,6 +242,10 @@ signals = {
     "installer_plan": {
         "total": (installer_plan.get("summary") or {}).get("total", 0),
         "next": (installer_plan.get("next") or [{}])[0].get("command"),
+    },
+    "packages_plan": {
+        "total": (packages_plan.get("summary") or {}).get("total", 0),
+        "next": (packages_plan.get("next") or [{}])[0].get("command"),
     },
     "events": {"total": events.get("total", 0), "last": events.get("last")},
     "ecosystem": {

@@ -101,6 +101,9 @@ Rules:
 - `seven installer plan --json` is the distribution readiness contract. It
   exposes Archinstall, Calamares, Archiso and ISO build gaps before SevenOS
   graduates from post-install layer to installable OS.
+- `sevenpkg plan --json` is the software readiness contract. It links
+  SevenOS meta-packages, Flatpak, Flathub and future SevenRepo work into one
+  app installation plan.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.

@@ -52,6 +52,8 @@ sevenpkg search blender
 sevenpkg info forge
 sevenpkg meta
 sevenpkg status
+sevenpkg plan
+sevenpkg plan --json
 sevenpkg sources
 ```
 
@@ -86,8 +88,37 @@ sevenpkg install studio
 sevenpkg install horizon
 sevenpkg install griot
 sevenpkg status
+sevenpkg plan
 sevenpkg info shield
 ```
+
+## Software Plan
+
+`sevenpkg plan --json` is the machine-readable software readiness contract for
+Seven Hub, Seven Server and the Control Plane.
+
+It combines:
+
+- SevenOS meta-package completeness
+- pacman availability
+- optional `paru` / AUR availability
+- Flatpak and Flathub readiness
+- default Flatpak app gaps
+
+Human preview:
+
+```bash
+sevenpkg plan
+```
+
+Machine contract:
+
+```bash
+sevenpkg plan --json
+```
+
+SevenOS uses this plan to guide app installation without making users reason
+about pacman, AUR, Flatpak or future SevenRepo internals.
 
 Install multiple ordinary packages:
 

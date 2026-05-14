@@ -77,6 +77,7 @@ windows = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "stat
 windows_plan = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "plan", "--json"], {"next": []})
 installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
 installer_plan = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "plan", "--json"], {"next": []})
+packages_plan = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"next": []})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
@@ -154,6 +155,16 @@ for item in installer_plan.get("next", []):
         item.get("command", "seven installer plan"),
         item.get("reason", "Improve installer readiness"),
         item.get("impact", "safe"),
+    )
+
+for item in packages_plan.get("next", []):
+    add(
+        "packages",
+        item.get("severity", "medium"),
+        item.get("title", "Complete software layer"),
+        item.get("command", "sevenpkg plan"),
+        item.get("reason", "Improve software readiness"),
+        item.get("impact", "packages"),
     )
 
 for profile in profile_plan.get("next", []):

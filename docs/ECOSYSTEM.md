@@ -91,6 +91,7 @@ seven shield plan --json
 seven server status --json
 seven server plan --json
 seven installer plan --json
+sevenpkg plan --json
 ```
 
 `seven state --json` is the unified snapshot. It should contain profiles,
@@ -141,6 +142,10 @@ tooling gaps with commands Seven Hub can launch or preview.
 `seven installer plan --json` is the distribution readiness plan. It lists the
 missing pieces between SevenOS as a post-install layer and SevenOS as a bootable,
 installable operating system.
+
+`sevenpkg plan --json` is the software readiness plan. It combines SevenOS
+meta-packages, pacman/AUR availability, Flatpak/Flathub and default app gaps so
+Seven Hub can guide application setup without exposing package-manager details.
 
 ## Native Hub Integration
 
