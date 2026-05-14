@@ -59,6 +59,7 @@ bash -n \
   "$ROOT_DIR/installer/generate-script.sh" \
   "$ROOT_DIR/seven-hub/install.sh" \
   "$ROOT_DIR/seven-hub/gui-stack.sh" \
+  "$ROOT_DIR/seven-hub/gui/src-tauri/build.rs" \
   "$ROOT_DIR/seven-hub/bin/seven-hub"
 bash -n "$ROOT_DIR/security/hardening.sh"
 
