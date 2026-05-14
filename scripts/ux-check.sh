@@ -279,6 +279,8 @@ fi
 
 if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
    grep -q 'sevenpkg status --json' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
+   grep -q '"identifier": "os.seven.seven-hub"' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
+   grep -q '"active": false' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
    grep -q 'data-panel="dashboard"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'data-section="profiles"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'run_seven_command' "$ROOT_DIR/seven-hub/gui/src/main.js" &&

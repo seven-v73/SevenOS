@@ -62,3 +62,19 @@ Build command:
 ```bash
 ./seven-hub/gui-stack.sh build
 ```
+
+## Troubleshooting
+
+If `npm run tauri:dev` reports `proc macro panicked` around
+`tauri::generate_context!()`, clean the Rust target after pulling the latest
+configuration:
+
+```bash
+cd seven-hub/gui/src-tauri
+cargo clean
+cd ..
+npm run tauri:dev
+```
+
+Seven Hub keeps native bundling disabled during this phase. Packaging will be
+enabled after `.png` and `.ico` app icons are generated for Tauri.
