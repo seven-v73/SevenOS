@@ -258,12 +258,15 @@ profile_activate_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh
 profile_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json)"
 profile_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json)"
 profile_gaps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile gaps --json)"
+profile_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile plan --json)"
 profile_guide_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile guide)"
 profile_open_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" open forge)"
 if grep -q 'profile.json' <<<"$profile_activate_dry" &&
    grep -q '"apps"' <<<"$profile_status_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-gaps.v1"' <<<"$profile_gaps_json" &&
    grep -q '"missing_packages"' <<<"$profile_gaps_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-plan.v1"' <<<"$profile_plan_json" &&
+   grep -q '"next"' <<<"$profile_plan_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile current --json | python -m json.tool >/dev/null &&
    grep -q '"command"' <<<"$profile_apps_json" &&
    grep -q 'Recommended actions' <<<"$profile_guide_output" &&
@@ -457,6 +460,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def render_dashboard' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def profile_gaps_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def profile_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def experience_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def control_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def events_payload' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -508,6 +513,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile current --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile gaps --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile plan --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null &&
    python -m json.tool <<<"$ecosystem_json" >/dev/null &&
    python -m json.tool <<<"$experience_json" >/dev/null &&
@@ -527,7 +533,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","profile_gaps","windows","shield","server","ecosystem","experience","control","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","profile_gaps","profile_plan","windows","shield","server","ecosystem","experience","control","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -621,6 +627,7 @@ fi
 if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profile-gaps"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/profile-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
@@ -630,6 +637,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/insights"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/profile-gaps' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/profile-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/control' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/events' "$ROOT_DIR/server/README.md" &&

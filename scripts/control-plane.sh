@@ -72,6 +72,7 @@ experience = command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"
 shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"], {"posture": "unknown", "percent": 0, "checks": [], "recommendations": []})
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}, "recommendations": []})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
+profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
 
 actions_by_command = {item.get("command"): item for item in actions.get("actions", [])}
@@ -120,12 +121,18 @@ for rec in server.get("recommendations", []):
 for rec in readiness.get("recommendations", []):
     add("readiness", "medium", "Improve Readiness", rec.get("command", "seven readiness"), rec.get("reason", "Improve SevenOS readiness"), "changes")
 
-for profile in profiles:
-    if profile.get("state") == "OK":
-        continue
+for profile in profile_plan.get("next", []):
     key = profile.get("key", "profile")
     title = profile.get("title", key.title())
-    add("profiles", "medium", f"Complete {title}", f"seven profile install {key}", f"{title} workspace is {profile.get('state', 'partial')}", "packages")
+    severity = "critical" if profile.get("priority") == "critical" else "high" if profile.get("priority") == "high" else "medium"
+    add(
+        "profiles",
+        severity,
+        f"Complete {title}",
+        profile.get("command", f"seven profile install {key}"),
+        profile.get("reason", f"{title} workspace is {profile.get('state', 'partial')}"),
+        "packages",
+    )
 
 severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 items.sort(key=lambda item: (severity_rank.get(item["severity"], 9), item["source"], item["command"]))

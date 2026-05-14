@@ -80,6 +80,9 @@ Rules:
 - `seven profile gaps --json` is the profile completeness contract. It exposes
   missing packages, unavailable profile apps and install/open commands so
   profiles behave like real work modes.
+- `seven profile plan --json` is the prioritized work-mode completion plan.
+  Control Plane and Hub should use it when deciding which profile to complete
+  first.
 - `seven windows status --json` must stay strict JSON. Human success messages
   are forbidden on JSON contracts because Seven Hub and Seven Server depend on
   clean machine-readable output.

@@ -571,6 +571,77 @@ gaps_human() {
   done < <(profile_keys)
 }
 
+plan_json() {
+  local limit="${1:-6}"
+  PROFILE_GAPS_PAYLOAD="$(gaps_json)" PLAN_LIMIT="$limit" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["PROFILE_GAPS_PAYLOAD"])
+limit = int(os.environ.get("PLAN_LIMIT", "6"))
+rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
+items = []
+for profile in data.get("profiles", []):
+    if profile.get("state") == "OK":
+        continue
+    missing_packages = profile.get("missing_packages", [])
+    missing_apps = profile.get("missing_apps", [])
+    items.append({
+        "key": profile.get("key"),
+        "title": profile.get("title"),
+        "priority": profile.get("priority", "medium"),
+        "state": profile.get("state"),
+        "missing_count": profile.get("missing_count", 0),
+        "missing_app_count": profile.get("missing_app_count", 0),
+        "missing_packages_preview": missing_packages[:limit],
+        "missing_apps": missing_apps,
+        "command": profile.get("install_command"),
+        "open_command": profile.get("open_command"),
+        "reason": f"{profile.get('title')} is {profile.get('state')} with {profile.get('missing_count', 0)} missing packages",
+    })
+
+items.sort(key=lambda item: (rank.get(item["priority"], 9), -int(item.get("missing_count", 0)), item.get("key") or ""))
+
+print(json.dumps({
+    "schema": "sevenos.profile-plan.v1",
+    "summary": {
+        "total": len(items),
+        "critical": sum(1 for item in items if item["priority"] == "critical"),
+        "high": sum(1 for item in items if item["priority"] == "high"),
+        "medium": sum(1 for item in items if item["priority"] == "medium"),
+    },
+    "next": items[:limit],
+}, indent=2))
+PY
+}
+
+plan_human() {
+  local limit="${1:-6}"
+  PLAN_PAYLOAD="$(plan_json "$limit")" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["PLAN_PAYLOAD"])
+summary = data.get("summary", {})
+
+print("SevenOS Profile Plan")
+print("====================")
+print(
+    f"Open profiles: {summary.get('total', 0)} "
+    f"({summary.get('critical', 0)} critical, {summary.get('high', 0)} high, {summary.get('medium', 0)} medium)"
+)
+print()
+for item in data.get("next", []):
+    packages = ", ".join(item.get("missing_packages_preview", [])) or "none"
+    apps = ", ".join(item.get("missing_apps", [])) or "none"
+    print(f"{item.get('priority', '').upper():<8} {item.get('title')} ({item.get('state')})")
+    print(f"         missing packages: {item.get('missing_count')} · preview: {packages}")
+    print(f"         missing apps: {apps}")
+    print(f"         next: {item.get('command')}")
+PY
+}
+
 status_json() {
   local first=1
   local active
@@ -613,6 +684,7 @@ Usage:
   seven profile guide [profile]
   seven profile apps [profile] [--json]
   seven profile gaps [--json]
+  seven profile plan [--json] [--limit N]
   seven profile activate <profile>
   seven profile install <profile>
   seven profile open [profile]
@@ -669,6 +741,27 @@ case "$command" in
       gaps_json
     else
       gaps_human
+    fi
+    ;;
+  plan)
+    json_output=0
+    limit=6
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+        --json|json) json_output=1 ;;
+        --limit)
+          shift
+          limit="${1:-6}"
+          [[ "$limit" =~ ^[0-9]+$ ]] || { log_error "--limit expects a number."; exit 1; }
+          ;;
+        *) log_error "Unknown profile plan option: $1"; usage; exit 1 ;;
+      esac
+      shift
+    done
+    if [[ "$json_output" -eq 1 ]]; then
+      plan_json "$limit"
+    else
+      plan_human "$limit"
     fi
     ;;
   activate)

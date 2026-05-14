@@ -54,6 +54,7 @@ curl http://127.0.0.1:7777/state
 curl http://127.0.0.1:7777/status
 curl http://127.0.0.1:7777/profiles
 curl http://127.0.0.1:7777/profile-gaps
+curl http://127.0.0.1:7777/profile-plan
 curl http://127.0.0.1:7777/monitor/system
 curl http://127.0.0.1:7777/readiness
 curl http://127.0.0.1:7777/manifest
@@ -74,6 +75,7 @@ POST /deploy/project
 GET  /state
 GET  /profiles
 GET  /profile-gaps
+GET  /profile-plan
 GET  /manifest
 GET  /actions
 GET  /experience

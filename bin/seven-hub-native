@@ -79,6 +79,13 @@ def profile_gaps_payload() -> dict:
         return {"schema": "sevenos.profile-gaps.v1", "profiles": []}
 
 
+def profile_plan_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "plan", "--json"))
+    except Exception:
+        return {"schema": "sevenos.profile-plan.v1", "summary": {}, "next": []}
+
+
 def readiness_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "readiness.sh"), "--json"))
@@ -145,6 +152,7 @@ def insights_payload() -> dict:
 def status_text() -> str:
     profiles = profile_payload()
     profile_gaps = profile_gaps_payload()
+    profile_plan = profile_plan_payload()
     ecosystem = ecosystem_payload()
     experience = experience_payload()
     shield = shield_payload()
@@ -157,6 +165,7 @@ def status_text() -> str:
     partial = sum(1 for item in profiles if item.get("state") == "PART")
     missing = sum(1 for item in profiles if item.get("state") == "MISS")
     profile_gap_count = sum(1 for item in profile_gaps.get("profiles", []) if item.get("state") != "OK")
+    next_profile = (profile_plan.get("next") or [{}])[0].get("title", "none")
     active_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "active")
     preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
     return (
@@ -165,6 +174,7 @@ def status_text() -> str:
         f"Active profile: {active.get('title') if active else 'none'}\n"
         f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
         f"Profile gaps: {profile_gap_count} incomplete modes\n"
+        f"Next profile: {next_profile}\n"
         f"Ecosystem: {active_modules} active, {preview_modules} preview, {len(ecosystem.get('processes', []))} processes\n"
         f"Experience: {experience.get('percent', 0)}% ({experience.get('score', 0)}/{experience.get('max', 0)})\n"
         f"Shield: {shield.get('posture', 'unknown')} ({shield.get('percent', 0)}%)\n"
@@ -318,6 +328,7 @@ def run_gui() -> int:
                 readiness = readiness_payload()
                 profiles = profile_payload()
                 profile_gaps = profile_gaps_payload()
+                profile_plan = profile_plan_payload()
                 ecosystem = ecosystem_payload()
                 experience = experience_payload()
                 shield = shield_payload()
@@ -330,6 +341,7 @@ def run_gui() -> int:
                 partial = sum(1 for item in profiles if item.get("state") == "PART")
                 missing = sum(1 for item in profiles if item.get("state") == "MISS")
                 profile_gap_count = sum(1 for item in profile_gaps.get("profiles", []) if item.get("state") != "OK")
+                next_profile = (profile_plan.get("next") or [{}])[0].get("title", "none")
                 active_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "active")
                 preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
 
@@ -347,6 +359,7 @@ def run_gui() -> int:
                     ("Active profile", active.get("title") if active else "No active profile yet"),
                     ("Profiles", f"{ready} OK · {partial} PART · {missing} MISS"),
                     ("Profile gaps", f"{profile_gap_count} incomplete modes · install from Profiles"),
+                    ("Next profile", f"{next_profile} · prioritized completion plan"),
                     ("Ecosystem", f"{active_modules} active modules · {preview_modules} preview · {len(ecosystem.get('processes', []))} processes"),
                     ("Root", str(ROOT)),
                 ):
@@ -492,6 +505,29 @@ def run_gui() -> int:
                         row.add_suffix(button)
                         gap_group.add(row)
                     profiles_page.append(gap_group)
+
+                plan = profile_plan_payload()
+                plan_items = plan.get("next", [])
+                if plan_items:
+                    plan_group = Adw.PreferencesGroup(title="Completion plan")
+                    for item in plan_items[:5]:
+                        row = make_row(
+                            item.get("title", item.get("key", "Profile")),
+                            f"{item.get('priority', 'medium')} · {item.get('reason', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("media-playback-start-symbolic")
+                        button.set_tooltip_text(item.get("command", "seven profile plan"))
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=item.get("command", "seven profile plan"), title_text=item.get("title", "Profile Plan"): run_ecosystem_command(
+                                command,
+                                title=f"SevenOS Profile Plan - {title_text}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        plan_group.add(row)
+                    profiles_page.append(plan_group)
 
             def render_actions() -> None:
                 clear(actions_page)

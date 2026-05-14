@@ -80,6 +80,7 @@ seven ecosystem --json
 seven state --json
 seven actions --json
 seven profile gaps --json
+seven profile plan --json
 seven experience --json
 seven control --json
 seven events --json
@@ -96,6 +97,10 @@ without scraping terminal text.
 `seven profile gaps --json` is the work-mode completeness contract. It lists
 missing packages and missing app launch surfaces for Baobab, Forge, Shield,
 Studio, Windows and Horizon.
+
+`seven profile plan --json` sorts those gaps into a prioritized completion
+path, so Seven Hub and Control Plane can guide the user through real work-mode
+activation instead of dumping a static package list.
 
 `seven experience --json` is the coherence score. It exists to catch the exact
 problem SevenOS must avoid: many working pieces that still feel disconnected to

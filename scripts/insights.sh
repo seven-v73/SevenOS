@@ -52,6 +52,7 @@ shield = state.get("shield") or {}
 server = state.get("server") or {}
 windows = state.get("windows") or {}
 profiles = state.get("profiles") or []
+profile_gaps = state.get("profile_gaps") or {}
 ecosystem = state.get("ecosystem") or {}
 events = state.get("events") or {}
 
@@ -148,17 +149,18 @@ if not windows_ready:
         "windows",
     )
 
-for profile in profiles:
+for profile in profile_gaps.get("profiles", profiles):
     profile_state = profile.get("state", "MISS")
     if profile_state == "OK":
         continue
     title = profile.get("title") or profile.get("key", "Profile").title()
+    priority = profile.get("priority", "medium")
     add(
         "profiles",
-        "medium" if profile_state == "PART" else "high",
+        "critical" if priority == "critical" else "high" if priority == "high" else "medium" if profile_state == "PART" else "high",
         f"Complete {title}",
-        f"{title} is {profile_state} ({profile.get('installed', 0)}/{profile.get('total', 0)} packages). Profiles must be functional work modes, not decoration.",
-        f"seven profile install {profile.get('key', '')}".strip(),
+        f"{title} is {profile_state} with {profile.get('missing_count', max(profile.get('total', 0) - profile.get('installed', 0), 0))} missing packages. Profiles must be functional work modes, not decoration.",
+        profile.get("install_command") or f"seven profile install {profile.get('key', '')}".strip(),
         "workflow",
         "profiles",
     )

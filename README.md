@@ -400,6 +400,8 @@ seven profile list
 seven profile status
 seven profile gaps
 seven profile gaps --json
+seven profile plan
+seven profile plan --json
 seven shield status
 seven shield audit
 seven files
