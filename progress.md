@@ -171,6 +171,7 @@ Les piliers du projet sont :
 - Ajout de la vision Seven Server.
 - Ajout de `seven-server` comme fondation.
 - Ajout de `seven-deploy` comme moteur initial de deploiement.
+- Seven Server expose maintenant des endpoints locaux vivants : `/state`, `/status`, `/profiles`, `/readiness`, `/monitor/system`.
 - Documentation de la logique Personal Operating Cloud.
 - Fondation pour transformer SevenOS en OS + plateforme de deploiement.
 

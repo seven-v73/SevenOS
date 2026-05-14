@@ -367,6 +367,14 @@ else
   fail "SevenOS architecture doctor failed"
 fi
 
+if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md"; then
+  ok "Seven Server exposes live state API endpoints"
+else
+  fail "Seven Server should expose state and profile API endpoints"
+fi
+
 if "$ROOT_DIR/scripts/installer-stack.sh" doctor >/dev/null &&
    "$ROOT_DIR/seven-hub/gui-stack.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/flatpak.sh" list | grep -q 'com.usebottles.bottles'; then

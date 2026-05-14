@@ -137,6 +137,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health":
             self.send_json({"ok": True, "service": "seven-server", "bind": f"{HOST}:{PORT}"})
+        elif self.path == "/state":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/state.sh"), "--json"]))
+        elif self.path == "/status":
+            self.send_json(command_json([os.path.join(ROOT, "bin/seven"), "status", "--json"]))
+        elif self.path == "/profiles":
+            self.send_json(command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"]))
         elif self.path == "/monitor/system":
             self.send_json({
                 "ok": True,

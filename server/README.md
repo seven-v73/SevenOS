@@ -49,6 +49,9 @@ When running locally:
 
 ```bash
 curl http://127.0.0.1:7777/health
+curl http://127.0.0.1:7777/state
+curl http://127.0.0.1:7777/status
+curl http://127.0.0.1:7777/profiles
 curl http://127.0.0.1:7777/monitor/system
 curl http://127.0.0.1:7777/readiness
 ```
@@ -59,6 +62,8 @@ Planned future endpoints:
 POST /system/update
 POST /vm/start/windows
 POST /deploy/project
+GET  /state
+GET  /profiles
 GET  /monitor/system
 GET  /deploy/status
 ```
