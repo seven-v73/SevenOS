@@ -1,0 +1,13 @@
+[Unit]
+Description=SevenOS idle and lock policy
+PartOf=sevenos-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env swayidle -w timeout 600 'swaylock -f -c 09090d' timeout 900 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on'
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=sevenos-session.target

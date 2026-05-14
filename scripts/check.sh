@@ -47,6 +47,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-shell-panel" \
   "$ROOT_DIR/bin/seven-shell-preview" \
   "$ROOT_DIR/bin/seven-session" \
+  "$ROOT_DIR/bin/seven-session-status" \
   "$ROOT_DIR/bin/seven-wallpaper" \
   "$ROOT_DIR/bin/seven-power" \
   "$ROOT_DIR/bin/seven-welcome" \
@@ -238,6 +239,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-preview" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-session-status" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null

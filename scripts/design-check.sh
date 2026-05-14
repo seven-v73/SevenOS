@@ -63,6 +63,14 @@ else
   fail "Native shell panel should follow SevenOS Frost surface language"
 fi
 
+if [[ -s "$ROOT_DIR/session/sevenos.desktop" ]] &&
+   grep -q 'Name=SevenOS' "$ROOT_DIR/session/sevenos.desktop" &&
+   [[ -s "$ROOT_DIR/systemd/user/sevenos-session.target" ]]; then
+  ok "SevenOS exposes a named desktop session"
+else
+  fail "SevenOS should expose a named desktop session"
+fi
+
 if grep -q 'custom/quick' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    grep -q 'custom/notifications' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    [[ -s "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" ]]; then

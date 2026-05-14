@@ -50,6 +50,28 @@ start_once() {
   fi
 }
 
+start_systemd_session() {
+  if [[ "${SEVENOS_SESSION_NO_SYSTEMD:-0}" == "1" ]]; then
+    return 1
+  fi
+
+  if ! command -v systemctl >/dev/null 2>&1; then
+    return 1
+  fi
+
+  if [[ ! -f "$CONFIG_HOME/systemd/user/sevenos-session.target" ]]; then
+    return 1
+  fi
+
+  log "starting systemd user target"
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  if systemctl --user start sevenos-session.target >/dev/null 2>&1; then
+    return 0
+  fi
+
+  return 1
+}
+
 if command -v dbus-update-activation-environment >/dev/null 2>&1; then
   dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE >/dev/null 2>&1 || true
 fi
@@ -64,12 +86,14 @@ else
   start_once hyprpaper hyprpaper
 fi
 
-start_once waybar waybar -c "$CONFIG_HOME/waybar/config.jsonc" -s "$CONFIG_HOME/waybar/style.css"
-start_once mako mako
+if ! start_systemd_session; then
+  start_once waybar waybar -c "$CONFIG_HOME/waybar/config.jsonc" -s "$CONFIG_HOME/waybar/style.css"
+  start_once mako mako
 
-if ! pgrep -f 'swayidle .*swaylock' >/dev/null 2>&1 && command -v swayidle >/dev/null 2>&1; then
-  log "starting swayidle"
-  swayidle -w timeout 600 'swaylock -f -c 09090d' timeout 900 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' >/tmp/sevenos-swayidle.log 2>&1 &
+  if ! pgrep -f 'swayidle .*swaylock' >/dev/null 2>&1 && command -v swayidle >/dev/null 2>&1; then
+    log "starting swayidle"
+    swayidle -w timeout 600 'swaylock -f -c 09090d' timeout 900 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' >/tmp/sevenos-swayidle.log 2>&1 &
+  fi
 fi
 
 if command -v /usr/lib/polkit-kde-authentication-agent-1 >/dev/null 2>&1 &&

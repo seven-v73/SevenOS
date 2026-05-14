@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=SevenOS
+Comment=SevenOS Hyprland session
+Exec=Hyprland
+Type=Application
+DesktopNames=SevenOS;Hyprland

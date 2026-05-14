@@ -160,6 +160,7 @@ Les piliers du projet sont :
 - Ajout d'une surface Notifications dans Waybar : etat Mako, menu notification, test, restauration, dismissal, redemarrage du service et bascule Do Not Disturb via `seven-waybar-notifications`.
 - Refonte shell Frost : Waybar en groupes capsules flottants, dry-run transforme en langage produit `DRY-RUN > Surface > Action`, et ajout de `seven-shell-preview` pour auditer Waybar, Rofi, Mako, fonts et commandes shell.
 - Debut de sortie de Rofi pour les panneaux systeme : ajout de `seven-shell-panel` en GTK4/libadwaita pour Quick Settings et Notifications, avec fallback Rofi conserve si la stack native manque.
+- Productisation session : ajout de `session/sevenos.desktop`, services utilisateur systemd `sevenos-session.target`, Waybar, notifications, wallpaper et idle, plus `seven-session-status` pour verifier que SevenOS se comporte comme une vraie session OS installable.
 
 ### Gestion fichiers
 

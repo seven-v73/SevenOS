@@ -1,0 +1,6 @@
+[Unit]
+Description=SevenOS desktop session services
+Documentation=https://github.com/seven-v73/SevenOS
+
+[Install]
+WantedBy=default.target

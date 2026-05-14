@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+
+check_file() {
+  local label="$1"
+  local path="$2"
+  if [[ -s "$path" ]]; then
+    printf 'OK   %s\n' "$label"
+  else
+    printf 'MISS %s\n' "$label"
+  fi
+}
+
+check_service() {
+  local unit="$1"
+  if command -v systemctl >/dev/null 2>&1 && systemctl --user is-enabled --quiet "$unit" 2>/dev/null; then
+    if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+      printf 'RUN  %s\n' "$unit"
+    else
+      printf 'OK   %s enabled\n' "$unit"
+    fi
+  else
+    printf 'MISS %s\n' "$unit"
+  fi
+}
+
+printf 'SevenOS Session Status\n'
+printf '======================\n\n'
+
+printf 'Session Files\n'
+check_file "Wayland session entry" "$DATA_HOME/wayland-sessions/sevenos.desktop"
+check_file "User session target" "$CONFIG_HOME/systemd/user/sevenos-session.target"
+check_file "Waybar service" "$CONFIG_HOME/systemd/user/sevenos-waybar.service"
+check_file "Notifications service" "$CONFIG_HOME/systemd/user/sevenos-notifications.service"
+check_file "Wallpaper service" "$CONFIG_HOME/systemd/user/sevenos-wallpaper.service"
+printf '\n'
+
+printf 'User Services\n'
+check_service sevenos-session.target
+check_service sevenos-waybar.service
+check_service sevenos-notifications.service
+check_service sevenos-wallpaper.service
+check_service sevenos-idle.service

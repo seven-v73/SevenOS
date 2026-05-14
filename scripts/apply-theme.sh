@@ -11,6 +11,8 @@ SHELL_HOOK="$CONFIG_HOME/sevenos/shell/terminal-country.sh"
 WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
 WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
+SYSTEMD_USER_DIR="$CONFIG_HOME/systemd/user"
+WAYLAND_SESSION_DIR="$DATA_HOME/wayland-sessions"
 
 install_preserved_config_file() {
   local source_file="$1"
@@ -68,10 +70,7 @@ install_shell_hook() {
 reload_desktop_session() {
   if is_dry_run; then
     printf 'hyprctl reload\n'
-    printf 'pkill -x waybar hyprpaper mako || true\n'
-    printf 'waybar -c %q -s %q >/tmp/sevenos-waybar.log 2>&1 &\n' "$CONFIG_HOME/waybar/config.jsonc" "$CONFIG_HOME/waybar/style.css"
-    printf 'hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &\n'
-    printf 'mako >/tmp/sevenos-mako.log 2>&1 &\n'
+    printf 'systemctl --user start sevenos-session.target || seven-session\n'
     return 0
   fi
 
@@ -80,27 +79,38 @@ reload_desktop_session() {
   fi
 
   if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
-    pkill -x waybar >/dev/null 2>&1 || true
-    pkill -x hyprpaper >/dev/null 2>&1 || true
-    pkill -x mako >/dev/null 2>&1 || true
-    if command -v waybar >/dev/null 2>&1; then
-      waybar -c "$CONFIG_HOME/waybar/config.jsonc" -s "$CONFIG_HOME/waybar/style.css" >/tmp/sevenos-waybar.log 2>&1 &
-    fi
-    if command -v hyprpaper >/dev/null 2>&1; then
-      hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &
-      sleep 0.4
-    fi
-    if command -v hyprctl >/dev/null 2>&1; then
-      hyprctl hyprpaper unload all >/dev/null 2>&1 || true
-      hyprctl hyprpaper preload "$WALLPAPER_PNG" >/dev/null 2>&1 || true
-      hyprctl hyprpaper wallpaper ",$WALLPAPER_PNG" >/dev/null 2>&1 || true
-    fi
-    if command -v mako >/dev/null 2>&1; then
-      mako >/tmp/sevenos-mako.log 2>&1 &
+    if command -v systemctl >/dev/null 2>&1; then
+      systemctl --user start sevenos-session.target >/dev/null 2>&1 || "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
+    elif [[ -x "$ROOT_DIR/bin/seven-session" ]]; then
+      "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
     fi
     if command -v notify-send >/dev/null 2>&1; then
       notify-send "SevenOS desktop refreshed" "Use Super+Space for Hub, Super+A for Apps, Super+/ for Help" || true
     fi
+  fi
+}
+
+configure_user_session_services() {
+  log_info "Installing SevenOS user session services..."
+
+  if is_dry_run; then
+    printf 'mkdir -p %q %q\n' "$SYSTEMD_USER_DIR" "$WAYLAND_SESSION_DIR"
+    printf 'cp %q/*.service %q/\n' "$ROOT_DIR/systemd/user" "$SYSTEMD_USER_DIR"
+    printf 'cp %q/*.target %q/\n' "$ROOT_DIR/systemd/user" "$SYSTEMD_USER_DIR"
+    printf 'cp %q %q/\n' "$ROOT_DIR/session/sevenos.desktop" "$WAYLAND_SESSION_DIR"
+    printf 'systemctl --user daemon-reload\n'
+    printf 'systemctl --user enable sevenos-session.target\n'
+    return 0
+  fi
+
+  mkdir -p "$SYSTEMD_USER_DIR" "$WAYLAND_SESSION_DIR"
+  cp "$ROOT_DIR"/systemd/user/*.service "$SYSTEMD_USER_DIR"/
+  cp "$ROOT_DIR"/systemd/user/*.target "$SYSTEMD_USER_DIR"/
+  cp "$ROOT_DIR/session/sevenos.desktop" "$WAYLAND_SESSION_DIR"/
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user enable sevenos-session.target >/dev/null 2>&1 || true
   fi
 }
 
@@ -214,6 +224,7 @@ run_cmd cp -r "$ROOT_DIR/identity/patterns" "$DATA_HOME/sevenos/identity/pattern
 render_wallpaper
 write_hyprpaper_config
 configure_file_experience
+configure_user_session_services
 
 install_shell_hook "$HOME/.bashrc"
 install_shell_hook "$HOME/.zshrc"

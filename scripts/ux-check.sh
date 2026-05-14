@@ -115,6 +115,7 @@ require_executable "bin/seven-quick-settings"
 require_executable "bin/seven-shell-panel"
 require_executable "bin/seven-shell-preview"
 require_executable "bin/seven-session"
+require_executable "bin/seven-session-status"
 require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
@@ -322,10 +323,24 @@ fi
 
 if grep -q 'start_once mako' "$ROOT_DIR/bin/seven-session" &&
    grep -q 'start_once waybar' "$ROOT_DIR/bin/seven-session" &&
-   grep -q 'seven-wallpaper' "$ROOT_DIR/bin/seven-session"; then
+   grep -q 'seven-wallpaper' "$ROOT_DIR/bin/seven-session" &&
+   grep -q 'systemctl --user start sevenos-session.target' "$ROOT_DIR/bin/seven-session"; then
   ok "SevenOS session supervises desktop components"
 else
   fail "seven-session should supervise desktop components"
+fi
+
+session_status_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-session-status")"
+if [[ -s "$ROOT_DIR/systemd/user/sevenos-session.target" ]] &&
+   [[ -s "$ROOT_DIR/systemd/user/sevenos-waybar.service" ]] &&
+   [[ -s "$ROOT_DIR/systemd/user/sevenos-notifications.service" ]] &&
+   [[ -s "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" ]] &&
+   [[ -s "$ROOT_DIR/session/sevenos.desktop" ]] &&
+   grep -q 'configure_user_session_services' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'SevenOS Session Status' <<<"$session_status_output"; then
+  ok "SevenOS declares an installable session and user service layer"
+else
+  fail "SevenOS should declare an installable session and user service layer"
 fi
 
 if grep -Eq '^[[:space:]]*pseudotile[[:space:]]*=|togglesplit' "$ROOT_DIR/hyprland/hyprland.conf"; then
