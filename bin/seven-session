@@ -68,7 +68,7 @@ start_once mako mako
 
 if ! pgrep -f 'swayidle .*swaylock' >/dev/null 2>&1 && command -v swayidle >/dev/null 2>&1; then
   log "starting swayidle"
-  swayidle -w timeout 600 'swaylock -f -c 07090b' timeout 900 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' >/tmp/sevenos-swayidle.log 2>&1 &
+  swayidle -w timeout 600 'swaylock -f -c 09090d' timeout 900 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' >/tmp/sevenos-swayidle.log 2>&1 &
 fi
 
 if command -v /usr/lib/polkit-kde-authentication-agent-1 >/dev/null 2>&1 &&

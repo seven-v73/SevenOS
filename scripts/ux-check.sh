@@ -70,6 +70,15 @@ require_file "archiso/profile/airootfs/etc/motd"
 require_file "archiso/profile/airootfs/etc/issue"
 require_file "archiso/profile/airootfs/etc/sevenos-release"
 require_file "identity/countries/africa.tsv"
+require_file "identity/STYLE.md"
+require_file "identity/tokens.css"
+require_file "identity/patterns/kente.svg"
+require_file "identity/patterns/motif-concentric.svg"
+require_file "identity/patterns/motif-diamond.svg"
+require_file "identity/patterns/motif-grid.svg"
+require_file "identity/patterns/motif-triangle.svg"
+require_file "identity/patterns/motif-stripe.svg"
+require_file "identity/patterns/motif-cross.svg"
 require_file "hyprland/rofi/apps.rasi"
 require_file "hyprland/rofi/power.rasi"
 require_file "hyprland/mako/config"
@@ -110,6 +119,7 @@ package_manifest_contains "swayidle" "scripts/packages-base.txt"
 package_manifest_contains "hyprpaper" "scripts/packages-base.txt"
 package_manifest_contains "librsvg" "scripts/packages-base.txt"
 package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
+package_manifest_contains "ttf-cormorant" "scripts/packages-base.txt"
 package_manifest_contains "noto-fonts-emoji" "scripts/packages-base.txt"
 package_manifest_contains "kitty" "scripts/packages-base.txt"
 package_manifest_contains "nautilus" "scripts/packages-base.txt"
@@ -149,8 +159,8 @@ else
   fail "Waybar visible Apps launcher missing"
 fi
 
-if grep -q 'background-color: #10161df4' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   ! grep -q 'background-color: #e7dcc8f4' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'ebene: #09090d' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'gtk-application-prefer-dark-theme=true' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'icon_theme=Papirus-Dark' "$ROOT_DIR/hyprland/qt6ct/qt6ct.conf"; then
   ok "App launcher and toolkit themes use dark SevenOS identity"
@@ -214,12 +224,20 @@ else
 fi
 
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'active_tab_background #d7b46a' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'cursor #d7b46a' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'active_tab_background #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'cursor #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'symbol_map U+1F1E6-U+1F1FF Noto Color Emoji' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
-  ok "Kitty uses SevenOS Sovereign Graphite palette"
+  ok "Kitty uses SevenOS Design System v1 palette"
 else
   fail "Kitty palette is not aligned with SevenOS identity"
+fi
+
+if grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-display' "$ROOT_DIR/identity/tokens.css" &&
+   ! grep -R "box-shadow" "$ROOT_DIR/hyprland/waybar/style.css" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null; then
+  ok "Design tokens and no-shadow UI rule are enforced"
+else
+  fail "Design tokens or no-shadow UI rule failed"
 fi
 
 if "$ROOT_DIR/bin/seven-country" plain | grep -q 'Capital:'; then

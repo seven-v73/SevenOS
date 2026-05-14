@@ -2,7 +2,7 @@
 
 window {
   width: 32%;
-  border-color: #c47a3c;
+  border-color: #c4673a;
 }
 
 listview {
@@ -14,6 +14,6 @@ entry {
 }
 
 message {
-  background-color: #17212be8;
-  border-color: #c47a3c66;
+  background-color: #1c1c26e8;
+  border-color: #c4673a66;
 }

@@ -48,5 +48,6 @@ bubblewrap
 flatpak
 fastfetch
 ttf-jetbrains-mono-nerd
+ttf-cormorant
 noto-fonts-emoji
 papirus-icon-theme

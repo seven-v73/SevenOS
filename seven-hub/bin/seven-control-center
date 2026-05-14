@@ -151,7 +151,7 @@ def render_dashboard():
         card("Studio", studio[0], f"Creative workspace packages: {studio[1]}.", "target-plan"),
         card("Windows Mode", windows[0], f"Compatibility layer packages: {windows[1]}.", "windows-status"),
         card("Server & Deploy", "OK" if api == "RUN" else horizon[0], f"Horizon packages: {horizon[1]}. Local API: {api}.", "deployment-plan"),
-        card("Theme & Session", "OK", "Sovereign Graphite desktop, wallpaper, Waybar, Rofi, Kitty and Mako.", "theme"),
+        card("Theme & Session", "OK", "SevenOS Design System v1 across wallpaper, Waybar, Rofi, Kitty and Mako.", "theme"),
     ]
 
     actions = "".join(
@@ -167,43 +167,52 @@ def render_dashboard():
   <title>SevenOS Control Center</title>
   <style>
     :root {{
-      --ink:#07090b; --graphite:#10161d; --surface:#17212b; --panel:#1f2b35;
-      --brass:#d7b46a; --copper:#c47a3c; --malachite:#2e8b6d; --cobalt:#2f5d8c;
-      --oxblood:#7a2e3a; --ivory:#ede3d1; --raffia:#bca77d;
+      --ebene:#09090d; --surface-0:#0f0f14; --surface-1:#15151c; --surface-2:#1c1c26; --surface-3:#232330;
+      --glass:#ffffff08; --glass-2:#ffffff0f; --glass-3:#ffffff18; --glass-border:#ffffff14; --glass-border-2:#ffffff22;
+      --gold:#c8a96e; --gold-bright:#e2c07a; --gold-dim:#8a7048;
+      --clay:#c4673a; --clay-dim:#8a4525; --clay-pale:rgba(196,103,58,.14);
+      --baobab:#4a8c5c; --baobab-bright:#5aad72; --baobab-pale:rgba(74,140,92,.14);
+      --indigo:#5b7fa6; --indigo-bright:#7ba3cf; --indigo-pale:rgba(91,127,166,.14);
+      --text-1:#f0ede6; --text-2:#9e9b94; --text-3:#52504c;
+      --font-display:"Cormorant Garamond", Georgia, serif; --font-interface:"DM Sans", system-ui, sans-serif; --font-mono:"JetBrains Mono", monospace;
     }}
     * {{ box-sizing: border-box; }}
     body {{
-      margin: 0; min-height: 100vh; color: var(--ivory);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0; min-height: 100vh; color: var(--text-1);
+      font-family: var(--font-interface);
       background:
-        radial-gradient(circle at 80% 12%, rgba(215,180,106,.18), transparent 34%),
-        radial-gradient(circle at 18% 70%, rgba(47,93,140,.18), transparent 36%),
-        linear-gradient(135deg, var(--ink), var(--graphite) 48%, var(--surface));
+        linear-gradient(135deg, rgba(200,169,110,.08), transparent 30%),
+        linear-gradient(225deg, rgba(91,127,166,.10), transparent 34%),
+        linear-gradient(135deg, var(--ebene), var(--surface-0) 48%, var(--surface-1));
     }}
     main {{ max-width: 1180px; margin: 0 auto; padding: 34px 26px 44px; }}
     header {{ display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 24px; }}
-    h1 {{ margin: 0; font-size: 34px; letter-spacing: 0; }}
-    .sub {{ color: var(--raffia); margin: 8px 0 0; }}
-    .score {{ color: var(--ink); background: var(--brass); border-radius: 12px; padding: 10px 14px; font-weight: 800; }}
+    h1 {{ margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 300; font-size: 42px; letter-spacing: 0; line-height: 1.05; }}
+    .sub {{ color: var(--text-2); margin: 8px 0 0; }}
+    .score {{ color: #0f0e0a; background: var(--gold); border: 1px solid var(--gold-dim); border-radius: 10px; padding: 10px 14px; font-weight: 500; }}
     .grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }}
     .card {{
-      min-height: 156px; padding: 16px; border-radius: 14px;
-      background: rgba(31,43,53,.78); border: 1px solid rgba(237,227,209,.08);
-      box-shadow: 0 18px 40px rgba(3,4,5,.22);
+      min-height: 156px; padding: 16px; border-radius: 16px;
+      background: var(--glass); border: 1px solid var(--glass-border);
+      animation: card-in 350ms cubic-bezier(.4,0,.2,1) both;
     }}
     .card-head {{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }}
-    h2 {{ margin: 0; font-size: 15px; }}
-    p {{ color: var(--raffia); line-height: 1.45; min-height: 42px; }}
-    .badge {{ border-radius: 999px; padding: 5px 8px; font-size: 12px; font-weight: 800; color: var(--ink); background: var(--brass); }}
-    .badge.ok, .badge.run, .badge.100\\% {{ background: var(--malachite); }}
-    .badge.part, .badge.79\\% {{ background: var(--brass); }}
-    .badge.miss {{ background: var(--oxblood); color: var(--ivory); }}
+    h2 {{ margin: 0; font-size: 15px; font-weight: 500; }}
+    p {{ color: var(--text-2); line-height: 1.55; min-height: 42px; }}
+    .badge {{ border-radius: 999px; padding: 5px 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--gold-bright); background: rgba(200,169,110,.08); border: 1px solid var(--gold-dim); }}
+    .badge.ok, .badge.run, .badge.100\\% {{ color: var(--baobab-bright); background: var(--baobab-pale); border-color: var(--baobab); }}
+    .badge.part, .badge.79\\% {{ color: var(--gold-bright); background: rgba(200,169,110,.08); border-color: var(--gold-dim); }}
+    .badge.miss {{ color: var(--clay); background: var(--clay-pale); border-color: var(--clay-dim); }}
     .actions {{ display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }}
     button {{
-      border: 1px solid rgba(215,180,106,.35); background: rgba(16,22,29,.86); color: var(--ivory);
-      border-radius: 10px; padding: 9px 11px; font-weight: 700; cursor: pointer;
+      border: 1px solid var(--glass-border-2); background: var(--glass-2); color: var(--text-1);
+      border-radius: 10px; padding: 9px 11px; font-weight: 400; cursor: pointer;
+      transition: background 200ms cubic-bezier(.4,0,.2,1), border-color 200ms cubic-bezier(.4,0,.2,1), transform 120ms cubic-bezier(.4,0,.2,1);
     }}
-    button:hover {{ background: var(--brass); color: var(--ink); }}
+    button:hover {{ background: var(--glass-3); border-color: var(--gold-dim); }}
+    button:active {{ transform: scale(.97); }}
+    @keyframes card-in {{ from {{ opacity: 0; transform: translateY(8px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+    @media (prefers-reduced-motion: reduce) {{ *, *::before, *::after {{ animation-duration: .01ms !important; transition-duration: .01ms !important; }} }}
     @media (max-width: 980px) {{ .grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }}
     @media (max-width: 620px) {{ .grid {{ grid-template-columns: 1fr; }} header {{ display: block; }} }}
   </style>

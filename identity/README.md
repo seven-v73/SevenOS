@@ -12,18 +12,18 @@ The broader product direction lives in:
 
 ## Design Direction
 
-SevenOS uses a **Sovereign Graphite** design language.
+SevenOS uses **Design System v1: Sovereign by design**.
 
 The goal is not to look like a themed Arch rice. The system should feel like an
 independent professional OS: calm, precise, luxurious, and culturally rooted
 without becoming decorative.
 
-- graphite and ink foundations for serious daily work
-- brass and copper for identity, primary actions, and crafted warmth
-- malachite for trusted/security states
-- cobalt for network, VM, deployment, and technical flow
-- oxblood for destructive or urgent moments only
-- ivory and raffia for readable, warm text
+- ebene and dark surfaces for serious daily work
+- ancestral gold for identity and primary action
+- clay for warning, urgency and danger
+- baobab for trusted/security states
+- indigo for network, VM, deployment, and technical flow
+- warm text colors for readable dark-only UI
 - architectural pattern, not surface decoration
 - glass is used as depth and hierarchy, not as a gimmick
 - color is functional: each accent has a job
@@ -32,28 +32,28 @@ without becoming decorative.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `ink` | `#07090b` | deep system base |
-| `graphite` | `#10161d` | primary background |
-| `surface` | `#17212b` | elevated surface |
-| `panel` | `#1f2b35` | active glass panel |
-| `brass` | `#d7b46a` | identity and primary action |
-| `copper` | `#c47a3c` | warmth and secondary emphasis |
-| `malachite` | `#2e8b6d` | security, health, success |
-| `cobalt` | `#2f5d8c` | network, VM, deployment, technical flow |
-| `oxblood` | `#7a2e3a` | destructive or urgent state |
-| `ivory` | `#ede3d1` | primary text |
-| `raffia` | `#bca77d` | secondary text |
+| `ebene` | `#09090d` | zero surface |
+| `surface-0` | `#0f0f14` | page background |
+| `surface-1` | `#15151c` | cards and panels |
+| `surface-2` | `#1c1c26` | raised cards |
+| `surface-3` | `#232330` | modals and popovers |
+| `gold` | `#c8a96e` | identity and primary action |
+| `gold-bright` | `#e2c07a` | hover and active states |
+| `clay` | `#c4673a` | warning, danger and urgency |
+| `baobab` | `#4a8c5c` | security, health, success |
+| `indigo` | `#5b7fa6` | network, VM, deployment, technical flow |
+| `text-1` | `#f0ede6` | primary text |
+| `text-2` | `#9e9b94` | secondary text |
 
 ## Naming
 
 Use names that feel native to SevenOS:
 
-- `Sovereign Graphite` for the system shell
-- `Brass Signal` for primary action and SevenOS identity
-- `Copper Warmth` for secondary emphasis and creative warmth
-- `Malachite Trust` for Shield, health, and success
-- `Cobalt Flow` for networking, VM, deployment, and technical states
-- `Oxblood Alert` for destructive or urgent moments
+- `Ebene Base` for the system shell
+- `Ancestral Gold` for primary action and SevenOS identity
+- `Clay Signal` for warning and urgency
+- `Baobab Trust` for Shield, health, and success
+- `Indigo Flow` for networking, VM, deployment, and technical states
 
 ## UI Rules
 
@@ -78,6 +78,9 @@ Use names that feel native to SevenOS:
 - SevenOS live ISO welcome message
 - SVG logo, wallpaper, and mode icon foundations in `identity/assets/`
 - documentation language and branding direction
+- `identity/STYLE.md` as the design contract
+- `identity/tokens.css` as CSS token source
+- `identity/patterns/` for low-opacity geometric motifs
 
 ## Regional Accent Packs
 

@@ -1,67 +1,17 @@
-* {
-  ink: #07090b;
-  graphite: #10161d;
-  surface: #17212b;
-  panel: #1f2b35;
-  card: #243240;
-  card-alt: #1b2631;
-  text: #ede3d1;
-  muted: #bca77d;
-  brass: #d7b46a;
-  copper: #c47a3c;
-  malachite: #2e8b6d;
-  cobalt: #2f5d8c;
-  oxblood: #7a2e3a;
-}
+@theme "sevenos.rasi"
 
 window {
   width: 62%;
-  border: 1px;
-  border-color: #d7b46a99;
-  border-radius: 18px;
-  background-color: #10161df4;
+  border-radius: 22px;
 }
 
 mainbox {
   padding: 20px;
   spacing: 14px;
-  background-color: transparent;
-}
-
-message {
-  padding: 10px 12px;
-  border: 0px 0px 1px 0px;
-  border-color: #d7b46a33;
-  background-color: #17212bd8;
-}
-
-textbox {
-  text-color: @muted;
-}
-
-inputbar {
-  padding: 14px 16px;
-  border: 1px;
-  border-color: #d7b46a55;
-  border-radius: 14px;
-  background-color: #1f2b35e8;
-  children: [ prompt, textbox-prompt-colon, entry ];
-}
-
-prompt {
-  text-color: @brass;
-  font: "JetBrainsMono Nerd Font Bold 13";
-}
-
-textbox-prompt-colon {
-  text-color: @copper;
 }
 
 entry {
-  text-color: @text;
   placeholder: "Applications";
-  placeholder-color: @muted;
-  cursor-color: @brass;
 }
 
 listview {
@@ -70,32 +20,18 @@ listview {
   fixed-height: true;
   margin: 4px 0 0 0;
   spacing: 10px;
-  background-color: transparent;
 }
 
 element {
   orientation: horizontal;
   padding: 13px;
-  border: 1px;
-  border-color: #ede3d112;
-  border-radius: 14px;
-  background-color: @card;
+  border-radius: 16px;
+  background-color: @glass-2;
 }
 
 element selected {
-  background-color: #1f2b35;
-  text-color: @text;
-  border-color: #d7b46acc;
-}
-
-element alternate {
-  background-color: @card-alt;
-}
-
-element-text,
-element-icon {
-  text-color: inherit;
-  background-color: transparent;
+  background-color: @glass-3;
+  border-color: @gold-dim;
 }
 
 element-icon {

@@ -172,10 +172,12 @@ copy_config_dir "$ROOT_DIR/hyprland/kitty" "$CONFIG_HOME/kitty"
 configure_toolkit_theme
 copy_config_file "$ROOT_DIR/branding/shell/terminal-country.sh" "$SHELL_HOOK"
 
-run_cmd mkdir -p "$WALLPAPER_DIR" "$DATA_HOME/sevenos/countries" "$DATA_HOME/icons/hicolor/scalable/apps"
+run_cmd mkdir -p "$WALLPAPER_DIR" "$DATA_HOME/sevenos/countries" "$DATA_HOME/sevenos/identity" "$DATA_HOME/icons/hicolor/scalable/apps"
 run_cmd cp "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$WALLPAPER_DIR/wallpaper-sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$DATA_HOME/icons/hicolor/scalable/apps/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/countries/africa.tsv" "$DATA_HOME/sevenos/countries/africa.tsv"
+run_cmd cp "$ROOT_DIR/identity/tokens.css" "$DATA_HOME/sevenos/identity/tokens.css"
+run_cmd cp -r "$ROOT_DIR/identity/patterns" "$DATA_HOME/sevenos/identity/patterns"
 render_wallpaper
 write_hyprpaper_config
 configure_file_experience

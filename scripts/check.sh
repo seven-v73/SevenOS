@@ -70,6 +70,28 @@ python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/package.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" >/dev/null
 
+for identity_file in \
+  "$ROOT_DIR/identity/STYLE.md" \
+  "$ROOT_DIR/identity/tokens.css" \
+  "$ROOT_DIR/identity/patterns/kente.svg" \
+  "$ROOT_DIR/identity/patterns/motif-concentric.svg" \
+  "$ROOT_DIR/identity/patterns/motif-diamond.svg" \
+  "$ROOT_DIR/identity/patterns/motif-grid.svg" \
+  "$ROOT_DIR/identity/patterns/motif-triangle.svg" \
+  "$ROOT_DIR/identity/patterns/motif-stripe.svg" \
+  "$ROOT_DIR/identity/patterns/motif-cross.svg"; do
+  if [[ ! -s "$identity_file" ]]; then
+    log_error "Missing design-system file: ${identity_file#$ROOT_DIR/}"
+    exit 1
+  fi
+done
+
+if ! grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" ||
+   ! grep -q 'Sovereign by design' "$ROOT_DIR/identity/STYLE.md"; then
+  log_error "SevenOS design tokens are not aligned with Design System v1."
+  exit 1
+fi
+
 for doc in ARCHITECTURE.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
   if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
     log_error "Missing product direction document: docs/$doc"
