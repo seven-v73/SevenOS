@@ -67,6 +67,7 @@ require_file "seven-hub/gui/src-tauri/icons/icon.png"
 require_file "seven-hub/gui/src-tauri/tauri.conf.json"
 require_file "seven-hub/gui/src-tauri/src/main.rs"
 require_file "seven-hub/native/README.md"
+require_file "seven-hub/seven-hub-native.desktop"
 require_file "scripts/flatpak-apps.txt"
 require_file "branding/shell/terminal-country.sh"
 require_file "branding/motd"
@@ -107,6 +108,7 @@ require_executable "bin/seven-session"
 require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
+require_executable "bin/seven-hub-native"
 require_executable "bin/seven-waybar-action"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
@@ -307,7 +309,10 @@ fi
 if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -Fq 'Tauri is useful for fast iteration' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -Fq 'Seven Hub Native' "$ROOT_DIR/seven-hub/native/README.md" &&
-   grep -Fq 'seven profile status --json' "$ROOT_DIR/seven-hub/native/README.md"; then
+   grep -Fq 'seven profile status --json' "$ROOT_DIR/seven-hub/native/README.md" &&
+   "$ROOT_DIR/bin/seven-hub-native" status | grep -q 'Seven Hub Native' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" hub-native --dry-run | grep -q 'seven-hub-native open' &&
+   grep -q 'Exec=seven-hub-native' "$ROOT_DIR/seven-hub/seven-hub-native.desktop"; then
   ok "Seven Hub native UI strategy is documented"
 else
   fail "Seven Hub native UI strategy is missing or unclear"

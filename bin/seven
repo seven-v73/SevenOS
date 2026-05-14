@@ -101,6 +101,13 @@ def handle_hub_gui(args):
     run_script(args, "seven-hub/gui-stack.sh", args.action)
 
 
+def handle_hub_native(args):
+    extra = [args.action]
+    if args.dry_run_native:
+        extra.append("--dry-run")
+    run_script(args, "bin/seven-hub-native", *extra)
+
+
 def handle_flatpak(args):
     run_script(args, "scripts/flatpak.sh", args.action)
 
@@ -194,6 +201,9 @@ def main():
 
     hub_gui_parser = subparsers.add_parser("hub-gui", help="Seven Hub native GUI stack controls")
     hub_gui_parser.add_argument("action", nargs="?", default="status")
+    hub_native_parser = subparsers.add_parser("hub-native", help="open or inspect the native Seven Hub prototype")
+    hub_native_parser.add_argument("action", nargs="?", default="open", choices=("open", "status", "doctor"))
+    hub_native_parser.add_argument("--dry-run", dest="dry_run_native", action="store_true", help="show native Hub launch command")
 
     flatpak_parser = subparsers.add_parser("flatpak", help="SevenOS Flatpak bridge controls")
     flatpak_parser.add_argument("action", nargs="?", default="status")
@@ -266,6 +276,8 @@ def main():
         handle_installer(args)
     elif args.command == "hub-gui":
         handle_hub_gui(args)
+    elif args.command == "hub-native":
+        handle_hub_native(args)
     elif args.command == "flatpak":
         handle_flatpak(args)
     elif args.command == "deploy":

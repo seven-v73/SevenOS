@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and Path(env_root, "install.sh").is_file():
+        return Path(env_root).resolve()
+
+    script_dir = Path(__file__).resolve().parent
+    candidate = script_dir.parent
+    if Path(candidate, "install.sh").is_file():
+        return candidate
+
+    for path in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if Path(path, "install.sh").is_file():
+            return path
+
+    print("seven-hub-native: could not find SevenOS root", file=sys.stderr)
+    sys.exit(1)
+
+
+ROOT = resolve_root()
+
+
+def run_text(*command: str) -> str:
+    env = {**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_DRY_RUN": "0"}
+    output = subprocess.check_output(command, cwd=ROOT, text=True, env=env)
+    return output.strip()
+
+
+def profile_payload() -> list[dict]:
+    return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "status", "--json"))
+
+
+def status_text() -> str:
+    profiles = profile_payload()
+    active = next((item for item in profiles if item.get("active")), None)
+    ready = sum(1 for item in profiles if item.get("state") == "OK")
+    partial = sum(1 for item in profiles if item.get("state") == "PART")
+    missing = sum(1 for item in profiles if item.get("state") == "MISS")
+    return (
+        "Seven Hub Native\n"
+        f"Root: {ROOT}\n"
+        f"Active profile: {active.get('title') if active else 'none'}\n"
+        f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
+    )
+
+
+def run_profile_action(action: str, key: str) -> None:
+    subprocess.Popen(
+        [str(ROOT / "bin" / "seven"), "profile", action, key],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+    )
+
+
+def run_gui() -> int:
+    try:
+        import gi
+
+        gi.require_version("Gtk", "4.0")
+        gi.require_version("Adw", "1")
+        from gi.repository import Adw, Gio, Gtk
+    except Exception as error:
+        print("seven-hub-native: GTK4/libadwaita is not available yet.", file=sys.stderr)
+        print("Install the GUI stack with: seven hub-gui install", file=sys.stderr)
+        print(f"Details: {error}", file=sys.stderr)
+        return 1
+
+    class SevenHubNative(Adw.Application):
+        def __init__(self) -> None:
+            super().__init__(application_id="os.seven.SevenHubNative")
+            self.connect("activate", self.on_activate)
+
+        def on_activate(self, app: Adw.Application) -> None:
+            win = Adw.ApplicationWindow(application=app)
+            win.set_title("Seven Hub Native")
+            win.set_default_size(980, 680)
+
+            toolbar = Adw.HeaderBar()
+            title = Adw.WindowTitle(title="Seven Hub Native", subtitle="Profiles are live SevenOS state")
+            toolbar.set_title_widget(title)
+
+            refresh = Gtk.Button(label="Refresh")
+            toolbar.pack_end(refresh)
+
+            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+            content.set_margin_top(24)
+            content.set_margin_bottom(24)
+            content.set_margin_start(24)
+            content.set_margin_end(24)
+
+            scrolled = Gtk.ScrolledWindow()
+            scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            scrolled.set_child(content)
+
+            root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            root.append(toolbar)
+            root.append(scrolled)
+            win.set_content(root)
+
+            def render_profiles() -> None:
+                while child := content.get_first_child():
+                    content.remove(child)
+
+                heading = Gtk.Label()
+                heading.set_markup("<span size='22000' weight='500'>SevenOS Profiles</span>")
+                heading.set_xalign(0)
+                content.append(heading)
+
+                intro = Gtk.Label(label="Install, inspect and activate real SevenOS workspaces without opening a terminal.")
+                intro.set_xalign(0)
+                intro.add_css_class("dim-label")
+                intro.set_wrap(True)
+                content.append(intro)
+
+                for profile in profile_payload():
+                    row = Adw.ActionRow()
+                    row.set_title(profile.get("title", profile.get("key", "Profile")))
+                    row.set_subtitle(
+                        f"{profile.get('state')} · {profile.get('installed')}/{profile.get('total')} packages · {profile.get('workspace')}"
+                    )
+                    row.add_prefix(Gtk.Label(label="●" if profile.get("active") else "○"))
+
+                    details = Gtk.Button(label="Details")
+                    details.connect("clicked", lambda _button, key=profile["key"]: run_profile_action("show", key))
+                    row.add_suffix(details)
+
+                    action_label = "Active" if profile.get("active") else "Activate" if profile.get("state") == "OK" else "Install"
+                    action_name = "activate" if profile.get("state") == "OK" else "install"
+                    action = Gtk.Button(label=action_label)
+                    action.set_sensitive(not profile.get("active"))
+                    action.add_css_class("suggested-action")
+                    action.connect("clicked", lambda _button, name=action_name, key=profile["key"]: run_profile_action(name, key))
+                    row.add_suffix(action)
+
+                    content.append(row)
+
+            refresh.connect("clicked", lambda _button: render_profiles())
+            render_profiles()
+            win.present()
+
+    app = SevenHubNative()
+    return app.run(sys.argv)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-hub-native", description="Native SevenOS Control Center prototype")
+    parser.add_argument("action", nargs="?", default="open", choices=("open", "status", "doctor"))
+    parser.add_argument("--dry-run", action="store_true", help="show what would happen")
+    args = parser.parse_args()
+
+    if args.action in ("status", "doctor"):
+      print(status_text())
+      return 0
+
+    if args.dry_run or os.environ.get("SEVENOS_DRY_RUN") == "1":
+        print("seven-hub-native open")
+        return 0
+
+    return run_gui()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

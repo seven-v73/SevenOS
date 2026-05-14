@@ -62,9 +62,22 @@ diagnostics, documentation, marketplace previews or developer dashboards.
 
 1. Keep Tauri as the visible prototype.
 2. Harden JSON contracts in `seven` and `sevenpkg`.
-3. Build a small native Profiles view first.
+3. Build a small native Profiles view first. `bin/seven-hub-native` now starts
+   this path with live profile state from `seven profile status --json`.
 4. Add Dashboard and Security.
 5. Replace Tauri as the default Hub when native feature parity is good enough.
 
 The goal is not to throw away the current Hub. The goal is to make the frontend
 replaceable because the real system state lives in SevenOS itself.
+
+## Current Prototype
+
+Run:
+
+```bash
+seven hub-native
+seven hub-native status
+```
+
+The prototype is intentionally small: Profiles first, because profiles define
+how SevenOS becomes an adaptive OS instead of a static Arch theme.

@@ -177,6 +177,7 @@ load_actions() {
     "Dashboard")
       actions=(
         "Welcome|seven:welcome|Show onboarding and next steps"
+        "Native Hub Prototype|seven:hub-native open|Open GTK/libadwaita Seven Hub prototype"
         "System Dashboard|dashboard:system|Open SevenOS overview"
         "Architecture Map|seven:architecture|Show SevenOS system architecture"
         "Architecture Doctor|seven:architecture doctor|Validate product architecture"
@@ -287,6 +288,7 @@ load_actions() {
         "Flatpak Setup|seven:flatpak setup|Install Flatpak and add Flathub"
         "Install Default Flatpaks|seven:flatpak install-defaults|Install SevenOS app candidates"
         "Hub GUI Stack|seven:hub-gui status|Show native GUI readiness"
+        "Native Hub Status|seven:hub-native status|Inspect GTK/libadwaita Hub prototype"
         "Hub GUI Doctor|seven:hub-gui doctor|Validate Tauri scaffold"
         "Open Virt Manager|app:virt-manager|Launch VM manager"
         "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"

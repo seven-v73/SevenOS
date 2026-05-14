@@ -25,11 +25,14 @@ run_cmd mkdir -p "$BIN_HOME" "$APP_HOME" "$ICON_HOME"
 if is_dry_run; then
   printf 'install Seven Hub wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "$BIN_HOME/seven-hub"
   printf 'install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "$BIN_HOME/seven-control-center"
+  printf 'install Seven Hub Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-hub-native" "$BIN_HOME/seven-hub-native"
   printf 'sudo install Seven Hub wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "/usr/local/bin/seven-hub"
   printf 'sudo install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "/usr/local/bin/seven-control-center"
+  printf 'sudo install Seven Hub Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-hub-native" "/usr/local/bin/seven-hub-native"
 else
   write_command_wrapper "$BIN_HOME/seven-hub" "$ROOT_DIR/seven-hub/bin/seven-hub"
   write_command_wrapper "$BIN_HOME/seven-control-center" "$ROOT_DIR/seven-hub/bin/seven-control-center"
+  write_command_wrapper "$BIN_HOME/seven-hub-native" "$ROOT_DIR/bin/seven-hub-native"
   if command -v sudo >/dev/null 2>&1; then
     tmp_file="$(mktemp)"
     write_command_wrapper "$tmp_file" "$ROOT_DIR/seven-hub/bin/seven-hub"
@@ -46,9 +49,18 @@ else
       log_warn "The user command is still available at $BIN_HOME/seven-control-center."
     fi
     rm -f "$tmp_file"
+
+    tmp_file="$(mktemp)"
+    write_command_wrapper "$tmp_file" "$ROOT_DIR/bin/seven-hub-native"
+    if ! sudo install -Dm755 "$tmp_file" "/usr/local/bin/seven-hub-native"; then
+      log_warn "Could not install seven-hub-native into /usr/local/bin."
+      log_warn "The user command is still available at $BIN_HOME/seven-hub-native."
+    fi
+    rm -f "$tmp_file"
   fi
 fi
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub.desktop" "$APP_HOME/seven-hub.desktop"
+run_cmd cp "$ROOT_DIR/seven-hub/seven-hub-native.desktop" "$APP_HOME/seven-hub-native.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$APP_HOME/seven-files.desktop"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$ICON_HOME/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos-symbol.svg" "$ICON_HOME/sevenos-symbol.svg"

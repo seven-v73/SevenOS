@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Seven Hub Native
+Comment=Native SevenOS control center prototype
+Exec=seven-hub-native
+Icon=sevenos
+Terminal=false
+Categories=System;Settings;
+StartupNotify=true
