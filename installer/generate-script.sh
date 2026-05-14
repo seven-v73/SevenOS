@@ -31,7 +31,7 @@ while [[ "$#" -gt 0 ]]; do
   esac
 done
 
-if ! is_dry_run || [[ -f "$PLAN_FILE" ]]; then
+if ! is_dry_run; then
   "$ROOT_DIR/installer/validate-plan.sh" --plan "$PLAN_FILE"
 fi
 installer_source_plan_or_default "$PLAN_FILE"

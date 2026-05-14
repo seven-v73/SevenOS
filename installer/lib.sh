@@ -17,7 +17,7 @@ installer_default_plan() {
 installer_source_plan_or_default() {
   local plan_file="$1"
 
-  if is_dry_run && [[ ! -f "$plan_file" ]]; then
+  if is_dry_run; then
     installer_default_plan
     return 0
   fi

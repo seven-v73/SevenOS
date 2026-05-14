@@ -152,6 +152,8 @@ Les piliers du projet sont :
 - Ajout de `seven-hub-native`, prototype GTK/libadwaita centre sur Dashboard, Profiles et Actions, connecte a `seven readiness --json`, `seven profile status --json` et `seven actions --json`.
 - Integration de `seven hub-native`, du lanceur desktop `seven-hub-native.desktop` et des wrappers d'installation.
 - `seven-hub` devient la porte d'entree du Hub natif en session graphique, avec fallback menu/Rofi/terminal quand GTK n'est pas encore disponible.
+- Les actions du Hub natif ouvrent maintenant un terminal visible pour les details, installations et actions systeme, afin d'eviter les boutons silencieux qui semblent decoratifs.
+- `seven-hub doctor` audite le cablage des actions par categorie et detecte les entrees de menu qui ne menent a rien.
 
 ### Gestion fichiers
 

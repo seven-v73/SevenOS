@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -32,6 +33,39 @@ def run_text(*command: str) -> str:
     env = {**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_DRY_RUN": "0"}
     output = subprocess.check_output(command, cwd=ROOT, text=True, env=env)
     return output.strip()
+
+
+def command_exists(command: str) -> bool:
+    return subprocess.run(
+        ["bash", "-lc", f"command -v {shlex.quote(command)} >/dev/null 2>&1"],
+        check=False,
+    ).returncode == 0
+
+
+def run_visible(*command: str, title: str = "SevenOS Action") -> None:
+    env = {**os.environ, "SEVENOS_ROOT": str(ROOT)}
+    command_line = shlex.join(command)
+    wrapped = f"cd {shlex.quote(str(ROOT))} && {command_line}; printf '\\nPress Enter to close...'; read -r"
+
+    if os.environ.get("SEVENOS_DRY_RUN") == "1":
+        print(command_line)
+        return
+
+    if os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"):
+        if command_exists("kitty"):
+            subprocess.Popen(["kitty", "--title", title, "bash", "-lc", wrapped], cwd=ROOT, env=env)
+            return
+        if command_exists("foot"):
+            subprocess.Popen(["foot", "-e", "bash", "-lc", wrapped], cwd=ROOT, env=env)
+            return
+        if command_exists("alacritty"):
+            subprocess.Popen(["alacritty", "-e", "bash", "-lc", wrapped], cwd=ROOT, env=env)
+            return
+        if command_exists("xterm"):
+            subprocess.Popen(["xterm", "-e", "bash", "-lc", wrapped], cwd=ROOT, env=env)
+            return
+
+    subprocess.Popen(["bash", "-lc", wrapped], cwd=ROOT, env=env)
 
 
 def profile_payload() -> list[dict]:
@@ -67,19 +101,11 @@ def status_text() -> str:
 
 
 def run_profile_action(action: str, key: str) -> None:
-    subprocess.Popen(
-        [str(ROOT / "bin" / "seven"), "profile", action, key],
-        cwd=ROOT,
-        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
-    )
+    run_visible(str(ROOT / "bin" / "seven"), "profile", action, key, title=f"SevenOS Profile - {key}")
 
 
 def run_registered_action(action_id: str) -> None:
-    subprocess.Popen(
-        [str(ROOT / "bin" / "seven"), "actions", "run", action_id],
-        cwd=ROOT,
-        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
-    )
+    run_visible(str(ROOT / "bin" / "seven"), "actions", "run", action_id, title=f"SevenOS Action - {action_id}")
 
 
 def run_gui() -> int:

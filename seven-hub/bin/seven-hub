@@ -77,6 +77,9 @@ EOF
 }
 
 doctor() {
+  local failures=0
+  local category item label action description
+
   printf 'Seven Hub Doctor\n'
   printf '================\n'
   printf 'command:      %s\n' "$(command -v seven-hub 2>/dev/null || printf 'missing')"
@@ -95,6 +98,45 @@ doctor() {
     rofi -no-config -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
     printf 'rofi theme:   OK\n'
   fi
+
+  printf '\nAction wiring:\n'
+  for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy" Ecosystem Installer Apps; do
+    load_actions "$category"
+    for item in "${actions[@]}"; do
+      IFS='|' read -r label action description <<<"$item"
+      if validate_action "$action" >/dev/null 2>&1; then
+        printf '[OK]   %-18s %s\n' "$category" "$label"
+      else
+        printf '[MISS] %-18s %s -> %s\n' "$category" "$label" "$action"
+        failures=$((failures + 1))
+      fi
+    done
+  done
+
+  if [[ "$failures" -gt 0 ]]; then
+    die "$failures Hub action(s) are not wired correctly."
+  fi
+}
+
+validate_action() {
+  local action="$1"
+  local target
+
+  case "$action" in
+    app:*|dashboard:*|control:*|files:open|files:menu)
+      return 0
+      ;;
+    sevenpkg:*)
+      SEVENOS_DRY_RUN=1 "$SEVENOS_ROOT/bin/sevenpkg" --dry-run ${action#sevenpkg:} >/dev/null
+      ;;
+    seven:*)
+      SEVENOS_DRY_RUN=1 "$SEVENOS_ROOT/bin/seven" --dry-run ${action#seven:} >/dev/null
+      ;;
+    *)
+      target="${action%% *}"
+      grep -Eq "^[[:space:]]*$target\\)" "$SEVENOS_ROOT/install.sh"
+      ;;
+  esac
 }
 
 open_native_hub() {
@@ -211,7 +253,7 @@ load_actions() {
         "Improve Compatibility|seven:improve compatibility|Plan Windows and app compatibility improvements"
         "Improve Deployment|seven:improve deployment|Plan server and deployment improvements"
         "Improve Workspaces|seven:improve target|Plan Forge, Shield and Studio completion"
-        "System Status|status|Show installed profiles and services"
+        "System Status|seven:status|Show installed profiles and services"
         "Doctor|doctor|Check host readiness"
         "Seven Update|seven:update|Update pacman and AUR packages"
         "Dry Run ALL|all --dry-run|Preview full installation"
@@ -297,8 +339,8 @@ load_actions() {
         "ISO Tools|iso-tools|Install ISO build tooling"
         "Build ISO Dry Run|iso --dry-run|Preview ISO build"
         "Installer Plan|installer-plan|Create non-destructive install plan"
-        "Installer Check|installer-check|Validate install plan"
-        "Installer Script|installer-script|Generate install preview script"
+        "Installer Plan Preview|installer-plan --dry-run|Preview installer questions without writing a plan"
+        "Installer Script Preview|installer-script --dry-run|Preview install script generation without requiring an existing plan"
       )
       ;;
     "Apps")
@@ -428,7 +470,7 @@ action_badge() {
         printf 'MISS'
       fi
       ;;
-    "Installer Plan"|"Installer Check"|"Installer Script") printf 'RUN' ;;
+    "Installer Plan"|"Installer Plan Preview"|"Installer Script Preview") printf 'RUN' ;;
     "Install Installer Stack") package_file_state "$SEVENOS_ROOT/scripts/packages-installer.txt" ;;
     "ISO Tools") package_file_state "$SEVENOS_ROOT/scripts/packages-iso.txt" ;;
     "Open Virt Manager") app_state virt-manager ;;
