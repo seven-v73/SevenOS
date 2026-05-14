@@ -92,7 +92,7 @@ def handle_vm(args):
 
 
 def handle_windows(args):
-    install_target("windows-mode", args, [args.action, *args.extra])
+    run_script(args, "bin/seven-windows-assistant", args.action, *args.extra)
 
 
 def handle_server(args):

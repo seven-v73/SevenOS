@@ -86,6 +86,9 @@ Rules:
 - `seven windows status --json` must stay strict JSON. Human success messages
   are forbidden on JSON contracts because Seven Hub and Seven Server depend on
   clean machine-readable output.
+- `seven windows plan --json` is the compatibility remediation contract. It
+  orders Wine/Bottles, KVM/libvirt, networking and Windows VM creation into a
+  guided path for non-terminal users.
 - `seven shield status --json` and `seven server status --json` expose trust
   and local API readiness directly, so the Hub does not infer critical state
   from generic status text.
@@ -203,6 +206,8 @@ seven shield plan
 seven shield plan --json
 seven shield audit
 seven windows status
+seven windows plan
+seven windows plan --json
 seven windows guide
 seven windows apps
 seven windows vm

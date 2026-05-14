@@ -528,6 +528,8 @@ Windows Mode is exposed as a guided user flow:
 seven windows guide
 seven windows status
 seven windows status --json
+seven windows plan
+seven windows plan --json
 seven windows apps
 seven windows vm
 ```

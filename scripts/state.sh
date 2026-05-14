@@ -78,6 +78,8 @@ json_to_file "$STATE_TMP/active_profile.json" "$ROOT_DIR/bin/seven" profile curr
 pid_active_profile=$!
 json_to_file "$STATE_TMP/windows.json" "$ROOT_DIR/bin/seven-windows-assistant" status --json &
 pid_windows=$!
+json_to_file "$STATE_TMP/windows_plan.json" "$ROOT_DIR/bin/seven-windows-assistant" plan --json &
+pid_windows_plan=$!
 json_to_file "$STATE_TMP/shield.json" "$ROOT_DIR/security/shield-status.sh" --json &
 pid_shield=$!
 json_to_file "$STATE_TMP/shield_plan.json" "$ROOT_DIR/security/shield-status.sh" plan --json &
@@ -103,7 +105,7 @@ pid_events=$!
 json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
 pid_actions=$!
 
-wait "$pid_status" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_shield" "$pid_shield_plan" \
+wait "$pid_status" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" \
   "$pid_server" "$pid_server_plan" "$pid_readiness" "$pid_packages" "$pid_manifest" "$pid_ecosystem" \
   "$pid_experience" "$pid_control" "$pid_events" "$pid_actions" || true
 
@@ -128,6 +130,9 @@ cat "$STATE_TMP/active_profile.json"
 printf ','
 printf '"windows":'
 cat "$STATE_TMP/windows.json"
+printf ','
+printf '"windows_plan":'
+cat "$STATE_TMP/windows_plan.json"
 printf ','
 printf '"shield":'
 cat "$STATE_TMP/shield.json"

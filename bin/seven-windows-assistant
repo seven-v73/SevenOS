@@ -125,6 +125,194 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+plan_json() {
+  WINDOWS_STATUS="$(status_json)" python - <<'PY'
+import json
+import os
+
+status = json.loads(os.environ["WINDOWS_STATUS"])
+
+metadata = {
+    "wine": {
+        "title": "Install Wine compatibility",
+        "severity": "high",
+        "impact": "packages",
+        "phase": "apps",
+        "command": "seven profile install windows",
+        "reason": "Wine is the base layer for lightweight Windows applications.",
+    },
+    "lutris": {
+        "title": "Install Lutris app/game manager",
+        "severity": "medium",
+        "impact": "packages",
+        "phase": "apps",
+        "command": "seven profile install windows",
+        "reason": "Lutris gives SevenOS a friendlier Windows app and game workflow.",
+    },
+    "bottles_flatpak": {
+        "title": "Install Bottles",
+        "severity": "high",
+        "impact": "packages",
+        "phase": "apps",
+        "command": "seven flatpak install",
+        "reason": "Bottles is the accessible non-terminal surface for Windows apps.",
+    },
+    "cpu_virtualization": {
+        "title": "Enable CPU virtualization",
+        "severity": "critical",
+        "impact": "manual",
+        "phase": "vm",
+        "command": "seven vm check",
+        "reason": "KVM needs VT-x or AMD-V enabled in firmware.",
+    },
+    "kvm_device": {
+        "title": "Fix KVM device access",
+        "severity": "critical",
+        "impact": "changes",
+        "phase": "vm",
+        "command": "seven vm check",
+        "reason": "SevenOS needs /dev/kvm for performant Windows VM mode.",
+    },
+    "qemu": {
+        "title": "Install QEMU",
+        "severity": "critical",
+        "impact": "packages",
+        "phase": "vm",
+        "command": "seven profile install windows",
+        "reason": "QEMU is required for full Windows Desktop Mode.",
+    },
+    "virt_manager": {
+        "title": "Install Virt Manager",
+        "severity": "high",
+        "impact": "packages",
+        "phase": "vm",
+        "command": "seven profile install windows",
+        "reason": "Virt Manager is the graphical VM control surface for non-terminal users.",
+    },
+    "virt_install": {
+        "title": "Install virt-install",
+        "severity": "high",
+        "impact": "packages",
+        "phase": "vm",
+        "command": "seven profile install windows",
+        "reason": "The guided VM creator depends on virt-install.",
+    },
+    "virsh": {
+        "title": "Install libvirt clients",
+        "severity": "high",
+        "impact": "packages",
+        "phase": "vm",
+        "command": "seven profile install windows",
+        "reason": "SevenOS controls Windows VM state through libvirt.",
+    },
+    "libvirtd": {
+        "title": "Enable libvirt service",
+        "severity": "critical",
+        "impact": "changes",
+        "phase": "vm",
+        "command": "seven improve compatibility",
+        "reason": "Windows Desktop Mode needs libvirtd running.",
+    },
+    "libvirt_group": {
+        "title": "Add user to libvirt group",
+        "severity": "medium",
+        "impact": "changes",
+        "phase": "access",
+        "command": "seven improve compatibility",
+        "reason": "Users should open and manage Windows Mode without sudo prompts.",
+    },
+    "default_network": {
+        "title": "Prepare libvirt network",
+        "severity": "high",
+        "impact": "changes",
+        "phase": "network",
+        "command": "seven windows network",
+        "reason": "The Windows VM needs libvirt default networking.",
+    },
+    "windows_vm": {
+        "title": "Create Windows VM",
+        "severity": "medium",
+        "impact": "manual",
+        "phase": "install",
+        "command": "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso",
+        "reason": "A Windows ISO and VirtIO ISO are needed before SevenOS can launch full Windows Desktop Mode.",
+    },
+}
+
+rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+checks = [
+    "cpu_virtualization",
+    "kvm_device",
+    "wine",
+    "lutris",
+    "bottles_flatpak",
+    "qemu",
+    "virt_manager",
+    "virt_install",
+    "virsh",
+    "libvirtd",
+    "libvirt_group",
+    "default_network",
+    "windows_vm",
+]
+actions = []
+for key in checks:
+    state = status.get(key, "MISS")
+    if state in {"OK", "RUN"}:
+        continue
+    item = metadata[key]
+    actions.append({
+        "key": key,
+        "state": state,
+        "title": item["title"],
+        "severity": item["severity"],
+        "impact": item["impact"],
+        "phase": item["phase"],
+        "reason": item["reason"],
+        "command": item["command"],
+    })
+
+actions.sort(key=lambda item: (rank.get(item["severity"], 9), item["phase"], item["key"]))
+
+print(json.dumps({
+    "schema": "sevenos.windows-plan.v1",
+    "mode": status.get("mode", "setup-needed"),
+    "ready": bool(status.get("ready")),
+    "summary": {
+        "total": len(actions),
+        "critical": sum(1 for item in actions if item["severity"] == "critical"),
+        "high": sum(1 for item in actions if item["severity"] == "high"),
+        "medium": sum(1 for item in actions if item["severity"] == "medium"),
+    },
+    "next": actions,
+}, indent=2))
+PY
+}
+
+plan_human() {
+  WINDOWS_PLAN="$(plan_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["WINDOWS_PLAN"])
+summary = data.get("summary", {})
+
+print("SevenOS Windows Plan")
+print("====================")
+print(f"Mode: {data.get('mode', 'setup-needed')} · ready: {str(data.get('ready', False)).lower()}")
+print(
+    f"Open actions: {summary.get('total', 0)} "
+    f"({summary.get('critical', 0)} critical, {summary.get('high', 0)} high, {summary.get('medium', 0)} medium)"
+)
+print()
+print(f"{'Severity':<9} {'Phase':<9} {'Command'}")
+print(f"{'--------':<9} {'-----':<9} {'-------'}")
+for item in data.get("next", []):
+    print(f"{item.get('severity',''):<9} {item.get('phase',''):<9} {item.get('command','')}")
+    print(f"{'':<9} {'':<9} {item.get('reason','')}")
+PY
+}
+
 status_human() {
   printf 'SevenOS Windows Mode\n\n'
   printf '  %-20s %s\n' "CPU virtualization" "$(virt_cpu_state)"
@@ -232,6 +420,13 @@ case "$ACTION" in
       status_json
     else
       status_human
+    fi
+    ;;
+  plan)
+    if [[ "${1:-}" == "--json" ]]; then
+      plan_json
+    else
+      plan_human
     fi
     ;;
   guide|help)

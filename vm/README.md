@@ -26,6 +26,10 @@ After installation, log out and back in before using Virt Manager without elevat
 
 ```bash
 ./install.sh vm-check
+seven windows status
+seven windows status --json
+seven windows plan
+seven windows plan --json
 ```
 
 This checks:
@@ -37,6 +41,11 @@ This checks:
 - `libvirtd.service`
 - current user membership in `libvirt`
 - libvirt default network
+
+`seven windows plan --json` is the machine-readable setup plan consumed by
+Seven Hub, Seven Server and the Control Plane. It turns missing Wine/Bottles,
+KVM, libvirt network and VM creation steps into ordered actions instead of
+leaving the user to read raw VM diagnostics.
 
 Start and autostart the default network:
 

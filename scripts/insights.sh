@@ -53,6 +53,7 @@ shield_plan = state.get("shield_plan") or {}
 server = state.get("server") or {}
 server_plan = state.get("server_plan") or {}
 windows = state.get("windows") or {}
+windows_plan = state.get("windows_plan") or {}
 profiles = state.get("profiles") or []
 profile_gaps = state.get("profile_gaps") or {}
 ecosystem = state.get("ecosystem") or {}
@@ -143,12 +144,13 @@ if server_state != "RUN":
     )
 
 if not windows_ready:
+    next_windows = (windows_plan.get("next") or [{}])[0]
     add(
         "windows",
         "medium",
         "Complete Windows Mode",
         "Windows compatibility is not fully ready; guide Bottles/Wine/KVM through one accessible path.",
-        "seven windows guide",
+        next_windows.get("command", "seven windows plan"),
         "compatibility",
         "windows",
     )
@@ -203,6 +205,10 @@ signals = {
         "next": (server_plan.get("next") or [{}])[0].get("command"),
     },
     "windows": {"ready": windows_ready},
+    "windows_plan": {
+        "total": (windows_plan.get("summary") or {}).get("total", 0),
+        "next": (windows_plan.get("next") or [{}])[0].get("command"),
+    },
     "events": {"total": events.get("total", 0), "last": events.get("last")},
     "ecosystem": {
         "active": active_modules,

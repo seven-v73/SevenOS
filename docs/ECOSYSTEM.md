@@ -81,6 +81,7 @@ seven state --json
 seven actions --json
 seven profile gaps --json
 seven profile plan --json
+seven windows plan --json
 seven experience --json
 seven control --json
 seven events --json
@@ -92,9 +93,13 @@ seven server plan --json
 ```
 
 `seven state --json` is the unified snapshot. It should contain profiles,
-profile gaps, Windows Mode, Shield, Seven Server, Control Plane, actions,
-manifest and event history so the native Hub can become a real OS control plane
-without scraping terminal text.
+profile gaps, Windows Mode, Windows plan, Shield, Seven Server, Control Plane,
+actions, manifest and event history so the native Hub can become a real OS
+control plane without scraping terminal text.
+
+`seven windows plan --json` is the Windows compatibility plan. It translates
+Wine, Bottles, KVM, libvirt networking and VM creation gaps into a guided setup
+sequence for Seven Hub and Windows Mode.
 
 `seven profile gaps --json` is the work-mode completeness contract. It lists
 missing packages and missing app launch surfaces for Baobab, Forge, Shield,

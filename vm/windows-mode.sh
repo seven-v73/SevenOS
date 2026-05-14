@@ -17,6 +17,7 @@ Usage:
 
 Actions:
   status [--json]     Show Windows Mode readiness
+  plan [--json]       Show prioritized Windows Mode setup actions
   guide               Explain the friendly Windows setup path
   open                Open the best available Windows surface
   apps                Open Bottles for Windows applications
@@ -114,7 +115,7 @@ case "$ACTION" in
       status_action
     fi
     ;;
-  guide|open|apps|bottles|vm|virt-manager|network|check)
+  plan|guide|open|apps|bottles|vm|virt-manager|network|check)
     "$ROOT_DIR/bin/seven-windows-assistant" "$ACTION" "$@"
     ;;
   create)

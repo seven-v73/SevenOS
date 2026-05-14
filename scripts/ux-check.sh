@@ -472,6 +472,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def server_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def server_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Server plan' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def windows_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Windows plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -513,6 +515,7 @@ shield_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield status --json)"
 shield_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield plan --json)"
 server_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" server status --json)"
 server_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" server plan --json)"
+windows_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows plan --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
@@ -521,6 +524,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile gaps --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile plan --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null &&
+   python -m json.tool <<<"$windows_plan_json" >/dev/null &&
    python -m json.tool <<<"$ecosystem_json" >/dev/null &&
    python -m json.tool <<<"$experience_json" >/dev/null &&
    python -m json.tool <<<"$control_json" >/dev/null &&
@@ -538,12 +542,13 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema": "sevenos.shield-plan.v1"' <<<"$shield_plan_json" &&
    grep -q '"schema":"sevenos.server.v1"' <<<"$server_json" &&
    grep -q '"schema": "sevenos.server-plan.v1"' <<<"$server_plan_json" &&
+   grep -q '"schema": "sevenos.windows-plan.v1"' <<<"$windows_plan_json" &&
    grep -q '"processes"' <<<"$ecosystem_json" &&
    grep -q 'SevenOS All-In-One Process Map' <<<"$ecosystem_processes" &&
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","profile_gaps","profile_plan","windows","shield","shield_plan","server","server_plan","ecosystem","experience","control","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","ecosystem","experience","control","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -638,6 +643,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profile-gaps"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profile-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/windows-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
@@ -650,6 +656,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/profile-gaps' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/profile-plan' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/windows-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/shield-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/server-plan' "$ROOT_DIR/server/README.md" &&
@@ -662,16 +669,20 @@ else
 fi
 
 windows_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" status --json)"
+windows_plan="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" plan --json)"
 windows_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide)"
 windows_apps="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" apps)"
 windows_mode_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode guide --dry-run)"
 if python -m json.tool <<<"$windows_json" >/dev/null &&
+   python -m json.tool <<<"$windows_plan" >/dev/null &&
    grep -q '"schema": "sevenos.windows.v1"' <<<"$windows_json" &&
+   grep -q '"schema": "sevenos.windows-plan.v1"' <<<"$windows_plan" &&
    grep -q 'SevenOS Windows Mode guide' <<<"$windows_guide" &&
    grep -q 'DRY-RUN > Windows Mode > Open Bottles' <<<"$windows_apps" &&
    grep -q 'SevenOS Windows Mode guide' <<<"$windows_mode_guide" &&
    grep -q 'windows.guide' <<<"$actions_json" &&
-   grep -q 'windows.apps' <<<"$actions_json"; then
+   grep -q 'windows.apps' <<<"$actions_json" &&
+   grep -q 'windows.plan' <<<"$actions_json"; then
   ok "Windows Mode exposes a guided non-terminal assistant and shared actions"
 else
   fail "Windows Mode should expose status JSON, guide, app surface and actions"

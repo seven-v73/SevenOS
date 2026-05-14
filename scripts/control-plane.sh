@@ -73,6 +73,8 @@ shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"
 shield_plan = command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"], {"next": []})
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}, "recommendations": []})
 server_plan = command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"], {"next": []})
+windows = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "status", "--json"], {"ready": False, "mode": "setup-needed"})
+windows_plan = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "plan", "--json"], {"next": []})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
@@ -132,6 +134,16 @@ for item in server_plan.get("next", []):
 for rec in readiness.get("recommendations", []):
     add("readiness", "medium", "Improve Readiness", rec.get("command", "seven readiness"), rec.get("reason", "Improve SevenOS readiness"), "changes")
 
+for item in windows_plan.get("next", []):
+    add(
+        "windows",
+        item.get("severity", "medium"),
+        item.get("title", "Complete Windows Mode"),
+        item.get("command", "seven windows plan"),
+        item.get("reason", "Improve Windows compatibility"),
+        item.get("impact", "changes"),
+    )
+
 for profile in profile_plan.get("next", []):
     key = profile.get("key", "profile")
     title = profile.get("title", key.title())
@@ -153,8 +165,9 @@ scores = {
     "experience": experience.get("percent", 0),
     "shield": shield.get("percent", 0),
     "server": 100 if server.get("service", {}).get("state") == "RUN" else 50 if server.get("service", {}).get("state") == "READY" else 0,
+    "windows": 100 if windows.get("ready") else 60 if windows.get("mode") == "vm-ready" else 0,
 }
-overall = round((scores["readiness"] * 0.30) + (scores["experience"] * 0.30) + (scores["shield"] * 0.25) + (scores["server"] * 0.15))
+overall = round((scores["readiness"] * 0.25) + (scores["experience"] * 0.25) + (scores["shield"] * 0.20) + (scores["server"] * 0.15) + (scores["windows"] * 0.15))
 
 print(json.dumps({
     "schema": "sevenos.control.v1",

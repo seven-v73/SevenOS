@@ -35,6 +35,7 @@ insights.open	System	OS Insights	seven insights	safe	Show product-facing SevenOS
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 improve.security	System	Improve Security	seven improve security --apply	packages	Install or prepare the core security improvements.
 improve.deployment	System	Improve Deployment	seven improve deployment --apply	packages	Install or prepare server and deployment dependencies.
+improve.compatibility	System	Improve Compatibility	seven improve compatibility	packages	Install or prepare Windows compatibility improvements.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.
 profile.status	Profiles	Profile Status	seven profile status	safe	Show installed and active profile state.
@@ -60,6 +61,7 @@ security.plan	Security	Shield Plan	seven shield plan	safe	Show prioritized Shiel
 security.enable	Security	Enable Shield	seven shield enable	changes	Apply base SevenOS security hardening.
 security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
+windows.plan	Windows	Windows Plan	seven windows plan	safe	Show prioritized Windows Mode setup actions.
 windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Bottles, Wine and KVM Windows paths.
 windows.open	Windows	Open Windows Mode	seven windows open	safe	Open Bottles or Virt Manager depending on what is available.
 windows.apps	Windows	Windows Apps	seven windows apps	safe	Open Bottles for Windows applications.
@@ -73,6 +75,7 @@ server.start	Server	Start Server Service	seven server start	changes	Start the lo
 deploy.plan	Server	Deployment Plan	seven deploy plan .	safe	Detect and plan deployment for the current project.
 installer.status	Installer	Installer Status	seven installer status	safe	Check Calamares and ISO foundations.
 flatpak.status	Apps	Flatpak Status	seven flatpak status	safe	Check Flathub and Flatpak readiness.
+flatpak.install	Apps	Install Default Flatpaks	seven flatpak install	packages	Install default Flatpak apps including Bottles and creative tools.
 sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.
 ecosystem.status	Ecosystem	Ecosystem Map	seven ecosystem	safe	Show modules and maturity states.
 ecosystem.processes	Ecosystem	Process Map	seven ecosystem processes	safe	Show all-in-one SevenOS user flows.

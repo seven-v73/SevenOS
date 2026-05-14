@@ -169,6 +169,7 @@ Les piliers du projet sont :
 - `seven profile gaps --json` expose maintenant les paquets manquants, apps indisponibles, priorites et commandes d'installation pour transformer les profils en vrais modes metier pilotables.
 - `seven profile plan --json` priorise les profils incomplets et alimente maintenant Control Plane, Insights, Seven Server et Seven Hub Native.
 - Correction du contrat `seven windows status --json` : la sortie est maintenant du JSON strict, sans message humain ajoute par `install.sh`.
+- Ajout de `seven windows plan` / `seven windows plan --json` : plan de compatibilite Windows priorise pour Wine, Bottles, KVM/libvirt, reseau et creation VM, expose dans l'etat unifie, Seven Server, Insights, Control Plane et Hub natif.
 - `seven state --json` expose maintenant `active_profile` et `windows`, pour que le Hub natif puisse lire un etat OS complet sans parser des textes humains.
 - Renforcement Seven Ecosystem : ajout d'un process map all-in-one (`seven ecosystem processes`), d'un contrat JSON (`seven ecosystem --json`) et integration de l'ecosysteme dans `seven state --json`.
 - Le registre d'actions expose maintenant les actions Ecosystem Map, Process Map, Roadmap et Doctor pour Seven Hub et les futures surfaces natives.
