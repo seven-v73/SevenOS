@@ -312,6 +312,10 @@ printf 'SevenOS Welcome\n'
 printf '===============\n\n'
 printf 'African first Linux ecosystem for creation, security, development, and sovereignty.\n\n'
 
+printf 'African first\n'
+printf '  Sovereignty, transmission, creation, protection, community and resilience.\n'
+printf '  Profiles are cultural work modes: Baobab, Forge, Shield, Studio, Windows and Horizon.\n\n'
+
 printf 'Repository\n'
 printf '  %s\n\n' "$ROOT_DIR"
 

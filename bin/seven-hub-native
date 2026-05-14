@@ -114,6 +114,13 @@ def session_payload() -> dict:
         return {"schema": "sevenos.session.v1", "mode": "unknown", "percent": 0, "summary": {}, "checks": []}
 
 
+def identity_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "identity.sh"), "--json"))
+    except Exception:
+        return {"schema": "sevenos.identity.v1", "positioning": "African first SevenOS", "principles": [], "profiles": []}
+
+
 def actions_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "actions.sh"), "--json"))
@@ -223,6 +230,7 @@ def status_text() -> str:
     welcome = welcome_payload()
     welcome_plan = welcome_plan_payload()
     session = session_payload()
+    identity = identity_payload()
     profiles = profile_payload()
     profile_gaps = profile_gaps_payload()
     profile_plan = profile_plan_payload()
@@ -246,6 +254,7 @@ def status_text() -> str:
         f"Root: {ROOT}\n"
         f"First run: {welcome.get('mode', 'unknown')} · {welcome.get('percent', 0)}% · {welcome_plan.get('summary', {}).get('total', 0)} actions\n"
         f"Session: {session.get('mode', 'unknown')} · {session.get('percent', 0)}% · {session.get('summary', {}).get('running', 0)} running\n"
+        f"Identity: {identity.get('positioning', 'African first SevenOS')}\n"
         f"Active profile: {active.get('title') if active else 'none'}\n"
         f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
         f"Profile gaps: {profile_gap_count} incomplete modes\n"
@@ -403,6 +412,7 @@ def run_gui() -> int:
                 welcome = welcome_payload()
                 welcome_plan = welcome_plan_payload()
                 session = session_payload()
+                identity = identity_payload()
                 readiness = readiness_payload()
                 profiles = profile_payload()
                 profile_gaps = profile_gaps_payload()
@@ -431,6 +441,15 @@ def run_gui() -> int:
                 preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
 
                 heading(dashboard, "SevenOS Dashboard", "System state, readiness and common repair paths from native GTK.")
+
+                identity_group = Adw.PreferencesGroup(title="African first")
+                identity_group.add(make_row(
+                    "Sovereign by design",
+                    identity.get("positioning", "African first Linux ecosystem for sovereignty, creation, security and deployment."),
+                ))
+                principle_names = ", ".join(item.get("label", item.get("key", "")) for item in identity.get("principles", [])[:6])
+                identity_group.add(make_row("Product principles", principle_names or "Sovereignty, transmission, creation, protection, community, resilience"))
+                dashboard.append(identity_group)
 
                 group = Adw.PreferencesGroup(title="System overview")
                 for title_text, subtitle in (
@@ -683,7 +702,7 @@ def run_gui() -> int:
                     row = Adw.ActionRow()
                     row.set_title(profile.get("title", profile.get("key", "Profile")))
                     row.set_subtitle(
-                        f"{profile.get('state')} · {profile.get('installed')}/{profile.get('total')} packages · {profile.get('workspace')}"
+                        f"{profile.get('role', 'Workspace')} · {profile.get('accent', 'gold')} · {profile.get('state')} · {profile.get('installed')}/{profile.get('total')} packages · {profile.get('workspace')}"
                     )
                     row.add_prefix(Gtk.Label(label="●" if profile.get("active") else "○"))
 

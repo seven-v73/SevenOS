@@ -81,6 +81,7 @@ seven state --json
 seven welcome status --json
 seven welcome plan --json
 seven session status --json
+seven identity --json
 seven actions --json
 seven profile gaps --json
 seven profile plan --json
@@ -110,6 +111,11 @@ services and trust/compatibility blockers immediately after installation.
 `seven session status --json` is the shell runtime contract. It exposes the
 login session, user service files and running Waybar/notifications/wallpaper
 services as data for Seven Hub and Seven Server.
+
+`seven identity --json` is the African first contract. It turns sovereignty,
+transmission, creation, protection, community, resilience, profile roles and
+regional accent packs into data that Seven Hub can show instead of leaving
+identity as only wallpaper or README language.
 
 `seven windows plan --json` is the Windows compatibility plan. It translates
 Wine, Bottles, KVM, libvirt networking and VM creation gaps into a guided setup

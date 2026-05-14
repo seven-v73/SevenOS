@@ -36,12 +36,12 @@ profile_title() {
 
 profile_description() {
   case "$1" in
-    forge) printf 'Development workspace for code, containers, databases and deployment.' ;;
-    shield) printf 'Cybersecurity workspace with audit, sandbox, forensics, reversing and network tools.' ;;
-    studio) printf 'Creative workspace for image, vector, video, audio and 3D production.' ;;
-    windows) printf 'Compatibility workspace for Wine, Bottles, Lutris and KVM Windows Mode.' ;;
-    horizon) printf 'Server and deployment workspace for containers, reverse proxy and self-hosting.' ;;
-    baobab) printf 'SevenOS base desktop, shell, theme and system foundation.' ;;
+    forge) printf 'Builder workspace for code, learning, containers, databases and deployment.' ;;
+    shield) printf 'Guardian workspace with audit, sandbox, forensics, reversing and network tools.' ;;
+    studio) printf 'Maker workspace for image, vector, video, audio and 3D production.' ;;
+    windows) printf 'Bridge workspace for Wine, Bottles, Lutris and KVM Windows Mode.' ;;
+    horizon) printf 'Navigator workspace for containers, reverse proxy, self-hosting and personal cloud.' ;;
+    baobab) printf 'Roots workspace for SevenOS desktop, shell, theme and system foundation.' ;;
     *) printf 'SevenOS workspace.' ;;
   esac
 }
@@ -90,13 +90,61 @@ profile_workspace() {
 
 profile_accent() {
   case "$1" in
-    forge) printf 'indigo' ;;
-    shield) printf 'clay' ;;
-    studio) printf 'gold' ;;
+    forge) printf 'gold' ;;
+    shield) printf 'indigo' ;;
+    studio) printf 'clay' ;;
     windows) printf 'baobab' ;;
-    horizon) printf 'baobab' ;;
-    baobab) printf 'gold' ;;
+    horizon) printf 'indigo' ;;
+    baobab) printf 'baobab' ;;
     *) printf 'gold' ;;
+  esac
+}
+
+profile_role() {
+  case "$1" in
+    forge) printf 'Builder' ;;
+    shield) printf 'Guardian' ;;
+    studio) printf 'Maker' ;;
+    windows) printf 'Bridge' ;;
+    horizon) printf 'Navigator' ;;
+    baobab) printf 'Roots' ;;
+    *) printf 'Workspace' ;;
+  esac
+}
+
+profile_symbol() {
+  case "$1" in
+    forge) printf 'forge-profile-mark' ;;
+    shield) printf 'shield-profile-mark' ;;
+    studio) printf 'motif-diamond' ;;
+    windows) printf 'motif-cross' ;;
+    horizon) printf 'motif-stripe' ;;
+    baobab) printf 'baobab-system-mark' ;;
+    *) printf 'logo-sevenos-symbol' ;;
+  esac
+}
+
+profile_principle() {
+  case "$1" in
+    forge) printf 'creation through skill' ;;
+    shield) printf 'visible protection' ;;
+    studio) printf 'expressive production' ;;
+    windows) printf 'compatibility without surrender' ;;
+    horizon) printf 'deployment and reach' ;;
+    baobab) printf 'stability and roots' ;;
+    *) printf 'sovereign workflow' ;;
+  esac
+}
+
+profile_story() {
+  case "$1" in
+    forge) printf 'Build useful things, learn openly and turn Linux into a daily craft space.' ;;
+    shield) printf 'Protect the system with clarity: audit, isolate and document before acting.' ;;
+    studio) printf 'Make visual, audio and motion work without leaving an open creative environment.' ;;
+    windows) printf 'Bridge Windows applications into SevenOS while keeping Linux as the home base.' ;;
+    horizon) printf 'Navigate from local project to service, server and personal cloud deployment.' ;;
+    baobab) printf 'Keep the roots healthy: shell, identity, files, services and daily trust.' ;;
+    *) printf 'Use SevenOS as a coherent sovereign workspace.' ;;
   esac
 }
 
@@ -260,6 +308,10 @@ profile_json_object() {
   printf '"key":%s,' "$(printf '%s' "$key" | json_escape)"
   printf '"title":%s,' "$(profile_title "$key" | json_escape)"
   printf '"description":%s,' "$(profile_description "$key" | json_escape)"
+  printf '"role":%s,' "$(profile_role "$key" | json_escape)"
+  printf '"symbol":%s,' "$(profile_symbol "$key" | json_escape)"
+  printf '"principle":%s,' "$(profile_principle "$key" | json_escape)"
+  printf '"story":%s,' "$(profile_story "$key" | json_escape)"
   printf '"state":%s,' "$(printf '%s' "$state" | json_escape)"
   printf '"installed":%s,' "$installed"
   printf '"total":%s,' "$total"
@@ -408,6 +460,13 @@ write_workspace_readme() {
 
 $(profile_description "$key")
 
+Role: $(profile_role "$key")
+Principle: $(profile_principle "$key")
+Accent: $(profile_accent "$key")
+Symbol: $(profile_symbol "$key")
+
+$(profile_story "$key")
+
 Useful commands:
 
 - seven profile status
@@ -425,17 +484,21 @@ write_profile_json() {
     return 0
   fi
 
-  python - "$key" "$(profile_title "$key")" "$(profile_description "$key")" "$(profile_workspace "$key")" "$(profile_accent "$key")" "$(profile_apps "$key" | paste -sd ',')" <<'PY' > "$STATE_JSON"
+  python - "$key" "$(profile_title "$key")" "$(profile_description "$key")" "$(profile_workspace "$key")" "$(profile_accent "$key")" "$(profile_role "$key")" "$(profile_symbol "$key")" "$(profile_principle "$key")" "$(profile_story "$key")" "$(profile_apps "$key" | paste -sd ',')" <<'PY' > "$STATE_JSON"
 import json
 import sys
 
-key, title, description, workspace, accent, apps = sys.argv[1:]
+key, title, description, workspace, accent, role, symbol, principle, story, apps = sys.argv[1:]
 payload = {
     "key": key,
     "title": title,
     "description": description,
     "workspace": workspace,
     "accent": accent,
+    "role": role,
+    "symbol": symbol,
+    "principle": principle,
+    "story": story,
     "apps": [item for item in apps.split(",") if item],
 }
 print(json.dumps(payload, indent=2))
@@ -509,11 +572,15 @@ show_profile() {
 
   printf 'Name:        %s\n' "$(profile_title "$key")"
   printf 'Key:         %s\n' "$key"
+  printf 'Role:        %s\n' "$(profile_role "$key")"
+  printf 'Principle:   %s\n' "$(profile_principle "$key")"
+  printf 'Symbol:      %s\n' "$(profile_symbol "$key")"
   printf 'State:       %s %s/%s packages\n' "$state" "$installed" "$total"
   printf 'Active:      %s\n' "$([[ "$(active_profile)" == "$key" ]] && printf yes || printf no)"
   printf 'Workspace:   %s\n' "$(profile_workspace "$key")"
   printf 'Accent:      %s\n' "$(profile_accent "$key")"
   printf 'Description: %s\n' "$(profile_description "$key")"
+  printf 'Story:       %s\n' "$(profile_story "$key")"
   printf '\nPackage manifests:\n'
   profile_package_files "$key" | sed "s#^$ROOT_DIR/##; s#^#- #"
 }
@@ -523,7 +590,9 @@ guide_profile() {
   profile_target "$key" >/dev/null
 
   printf 'SevenOS %s profile\n\n' "$(profile_title "$key")"
+  printf '%s · %s · %s\n\n' "$(profile_role "$key")" "$(profile_accent "$key")" "$(profile_principle "$key")"
   printf '%s\n\n' "$(profile_description "$key")"
+  printf '%s\n\n' "$(profile_story "$key")"
   printf 'Workspace:\n'
   printf '  %s\n\n' "$(profile_workspace "$key")"
   printf 'Recommended actions:\n'

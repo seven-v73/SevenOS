@@ -6,6 +6,7 @@ This is not an ornament layer. The identity should guide the whole system: color
 
 The broader product direction lives in:
 
+- `identity/AFRICAN_FIRST.md`
 - `docs/VISION.md`
 - `docs/UX_PRINCIPLES.md`
 - `docs/VOCABULARY.md`
@@ -68,6 +69,10 @@ Use names that feel native to SevenOS:
 
 ## Current Implementation
 
+- `identity/AFRICAN_FIRST.md` as the African first product language
+- `scripts/identity.sh` / `seven identity --json` as the machine-readable identity contract
+- profile roles, symbols, principles and stories exposed through `seven profile status --json`
+- visual components in `identity/components/`
 - Hyprland border colors and behavior
 - Hyprland idle lock and power controls
 - Waybar colors and workspace states
@@ -81,6 +86,18 @@ Use names that feel native to SevenOS:
 - `identity/STYLE.md` as the design contract
 - `identity/tokens.css` as CSS token source
 - `identity/patterns/` for low-opacity geometric motifs
+
+## Components
+
+SevenOS uses small reusable identity components instead of relying on wallpaper
+alone:
+
+- `identity/components/kente-divider.svg`
+- `identity/components/adinkra-status-ok.svg`
+- `identity/components/baobab-system-mark.svg`
+- `identity/components/griot-doc-mark.svg`
+- `identity/components/forge-profile-mark.svg`
+- `identity/components/shield-profile-mark.svg`
 
 ## Regional Accent Packs
 

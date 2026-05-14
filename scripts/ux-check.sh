@@ -79,7 +79,14 @@ require_file "archiso/profile/airootfs/etc/issue"
 require_file "archiso/profile/airootfs/etc/sevenos-release"
 require_file "identity/countries/africa.tsv"
 require_file "identity/STYLE.md"
+require_file "identity/AFRICAN_FIRST.md"
 require_file "identity/tokens.css"
+require_file "identity/components/kente-divider.svg"
+require_file "identity/components/adinkra-status-ok.svg"
+require_file "identity/components/baobab-system-mark.svg"
+require_file "identity/components/griot-doc-mark.svg"
+require_file "identity/components/forge-profile-mark.svg"
+require_file "identity/components/shield-profile-mark.svg"
 require_file "identity/patterns/kente.svg"
 require_file "identity/patterns/motif-concentric.svg"
 require_file "identity/patterns/motif-diamond.svg"
@@ -133,6 +140,7 @@ require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
+require_executable "scripts/identity.sh"
 require_executable "scripts/experience.sh"
 require_executable "scripts/control-plane.sh"
 require_executable "scripts/events.sh"
@@ -263,6 +271,9 @@ profile_guide_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile guide)"
 profile_open_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" open forge)"
 if grep -q 'profile.json' <<<"$profile_activate_dry" &&
    grep -q '"apps"' <<<"$profile_status_json" &&
+   grep -q '"role"' <<<"$profile_status_json" &&
+   grep -q '"principle"' <<<"$profile_status_json" &&
+   grep -q '"story"' <<<"$profile_status_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-gaps.v1"' <<<"$profile_gaps_json" &&
    grep -q '"missing_packages"' <<<"$profile_gaps_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-plan.v1"' <<<"$profile_plan_json" &&
@@ -285,6 +296,7 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'sevenpkg.status' <<<"$actions_apps" &&
    grep -q 'welcome.plan' <<<"$actions_json" &&
    grep -q 'session.status' <<<"$actions_json" &&
+   grep -q 'identity.status' <<<"$actions_json" &&
    grep -q '"actions"' <<<"$state_json"; then
   ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
 else
@@ -475,6 +487,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'First-run plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def session_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Session:' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def identity_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'African first' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def shield_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def shield_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Shield plan' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -531,6 +545,7 @@ server_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" server plan --json)"
 welcome_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" welcome status --json)"
 welcome_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" welcome plan --json)"
 session_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" session status --json)"
+identity_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" identity --json)"
 windows_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows plan --json)"
 installer_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer status --json)"
 installer_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer plan --json)"
@@ -545,6 +560,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$welcome_json" >/dev/null &&
    python -m json.tool <<<"$welcome_plan_json" >/dev/null &&
    python -m json.tool <<<"$session_json" >/dev/null &&
+   python -m json.tool <<<"$identity_json" >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null &&
    python -m json.tool <<<"$windows_plan_json" >/dev/null &&
    python -m json.tool <<<"$ecosystem_json" >/dev/null &&
@@ -566,6 +582,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema": "sevenos.welcome.v1"' <<<"$welcome_json" &&
    grep -q '"schema": "sevenos.welcome-plan.v1"' <<<"$welcome_plan_json" &&
    grep -q '"schema": "sevenos.session.v1"' <<<"$session_json" &&
+   grep -q '"schema": "sevenos.identity.v1"' <<<"$identity_json" &&
+   grep -q '"profiles"' <<<"$identity_json" &&
    grep -q '"schema": "sevenos.shield.v1"' <<<"$shield_json" &&
    grep -q '"schema": "sevenos.shield-plan.v1"' <<<"$shield_plan_json" &&
    grep -q '"schema":"sevenos.server.v1"' <<<"$server_json" &&
@@ -579,7 +597,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","experience","control","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","experience","control","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -674,6 +692,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/welcome"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/welcome-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/session"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/identity"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profile-gaps"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profile-plan"' "$ROOT_DIR/server/seven-server.sh" &&
@@ -693,6 +712,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/welcome' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/welcome-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/session' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/identity' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/profile-gaps' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/profile-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/windows-plan' "$ROOT_DIR/server/README.md" &&

@@ -188,6 +188,7 @@ Les piliers du projet sont :
 - Ajout de `seven welcome status --json` et `seven welcome plan --json` : contrat de premiere ouverture qui detecte commandes, fichiers de session, services utilisateur, reseau, firewall et Windows VM apres reboot.
 - `seven state --json`, Seven Server, Control Plane, Insights et Seven Hub Native consomment maintenant le plan First Run, afin que SevenOS puisse guider l'utilisateur vers un environnement complet sans lire un README ni deviner les commandes.
 - Ajout de `seven session status --json` : contrat runtime de session SevenOS pour verifier entree de login, services utilisateur, Waybar, notifications, wallpaper et idle depuis Seven Hub, Seven Server et l'etat unifie.
+- Renforcement African First : ajout de `identity/AFRICAN_FIRST.md`, composants SVG reutilisables, `seven identity --json`, endpoint `/identity`, carte African first dans le Hub natif et profils enrichis avec role, symbole, principe et recit.
 
 ### Gestion fichiers
 

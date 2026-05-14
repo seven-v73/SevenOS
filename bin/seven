@@ -132,6 +132,13 @@ def handle_ecosystem(args):
     run_script(args, "scripts/ecosystem.sh", *extra)
 
 
+def handle_identity(args):
+    extra = [args.action]
+    if args.json:
+        extra = ["--json"]
+    run_script(args, "scripts/identity.sh", *extra)
+
+
 def handle_experience(args):
     extra = ["--json"] if args.json else []
     run_script(args, "scripts/experience.sh", *extra)
@@ -237,6 +244,9 @@ def main():
     ecosystem_parser = subparsers.add_parser("ecosystem", help="show SevenOS ecosystem modules and roadmap")
     ecosystem_parser.add_argument("action", nargs="?", default="status")
     ecosystem_parser.add_argument("--json", action="store_true", help="print machine-readable ecosystem map")
+    identity_parser = subparsers.add_parser("identity", help="show SevenOS African first identity language")
+    identity_parser.add_argument("action", nargs="?", default="status")
+    identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
     experience_parser = subparsers.add_parser("experience", help="audit whether SevenOS feels like a coherent OS")
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
     control_parser = subparsers.add_parser("control", help="show prioritized SevenOS control plane actions")
@@ -344,6 +354,8 @@ def main():
         handle_architecture(args)
     elif args.command == "ecosystem":
         handle_ecosystem(args)
+    elif args.command == "identity":
+        handle_identity(args)
     elif args.command == "experience":
         handle_experience(args)
     elif args.command == "control":

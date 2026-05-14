@@ -98,6 +98,8 @@ ecosystem.status	Ecosystem	Ecosystem Map	seven ecosystem	safe	Show modules and m
 ecosystem.processes	Ecosystem	Process Map	seven ecosystem processes	safe	Show all-in-one SevenOS user flows.
 ecosystem.roadmap	Ecosystem	Ecosystem Roadmap	seven ecosystem roadmap	safe	Show Phase 4 and Phase 5 priorities.
 ecosystem.doctor	Ecosystem	Ecosystem Doctor	seven ecosystem doctor	safe	Validate ecosystem foundation files.
+identity.status	Ecosystem	African First Identity	seven identity	safe	Show SevenOS African first product language.
+identity.doctor	Ecosystem	Identity Doctor	seven identity doctor	safe	Validate African first identity files and components.
 EOF
 }
 

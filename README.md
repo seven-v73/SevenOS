@@ -61,6 +61,36 @@ SevenOS keeps its own product direction:
 - Profiles for Forge, Shield, Studio, Windows and Horizon workflows.
 - Migration and packaging contracts through `sevenos.dotinst`.
 
+## Why African First?
+
+SevenOS treats African first as product architecture, not as decoration.
+
+The point is to build a Linux ecosystem shaped by sovereignty, transmission,
+creation, protection, community and resilience:
+
+- sovereignty: the system explains, repairs and owns its path instead of hiding
+  behind fragile manual steps
+- transmission: onboarding, Griot-style documentation and readable commands
+  make knowledge visible
+- creation: Forge and Studio are first-class work modes for building and making
+- protection: Shield makes trust posture visible, guided and respectful
+- community: profiles, future accent packs and SevenStore are designed for
+  shared extension
+- resilience: JSON contracts, repair plans, migration and backups make the OS
+  observable and survivable
+
+The visual language supports this direction through profile roles, reusable
+symbols, geometric rhythm and optional future regional accent packs. It should
+never become a collage of flags or motifs.
+
+Useful identity commands:
+
+```bash
+seven identity
+seven identity --json
+seven identity doctor
+```
+
 ## Current Status
 
 Implemented:

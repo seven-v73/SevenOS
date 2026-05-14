@@ -65,6 +65,9 @@ Rules:
   package boundaries, protected user paths and restore plans for upgrades.
 - `seven ecosystem --json` is the product ecosystem contract. It declares
   modules, maturity states and end-to-end user processes.
+- `seven identity --json` is the African first product language contract. It
+  declares principles, profile roles, symbols, stories and future regional
+  accent packs so identity can appear in Hub, onboarding and profiles.
 - `seven experience --json` is the OS coherence contract. It scores whether
   identity, shell, Hub, profiles, actions, Windows, security, server and
   installer feel connected enough for a normal user.
@@ -210,6 +213,7 @@ seven hub
 seven files
 seven state --json
 seven session status --json
+seven identity --json
 seven actions --json
 seven ecosystem processes
 seven ecosystem --json
