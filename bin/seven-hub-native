@@ -121,6 +121,13 @@ def shield_payload() -> dict:
         return {"schema": "sevenos.shield.v1", "posture": "unknown", "percent": 0, "checks": []}
 
 
+def shield_plan_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "security" / "shield-status.sh"), "plan", "--json"))
+    except Exception:
+        return {"schema": "sevenos.shield-plan.v1", "summary": {}, "next": []}
+
+
 def server_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "server" / "seven-server.sh"), "status", "--json"))
@@ -332,6 +339,7 @@ def run_gui() -> int:
                 ecosystem = ecosystem_payload()
                 experience = experience_payload()
                 shield = shield_payload()
+                shield_plan = shield_plan_payload()
                 server = server_payload()
                 control = control_payload()
                 events = events_payload()
@@ -352,6 +360,7 @@ def run_gui() -> int:
                     ("Readiness", f"{readiness.get('percent', 0)}% · {readiness.get('score', 0)}/{readiness.get('max', 0)} checks passed"),
                     ("Experience", f"{experience.get('percent', 0)}% · {experience.get('score', 0)}/{experience.get('max', 0)} coherence score"),
                     ("Shield", f"{shield.get('posture', 'unknown')} · {shield.get('percent', 0)}% trust posture"),
+                    ("Shield plan", f"{shield_plan.get('summary', {}).get('total', 0)} trust actions · first: {(shield_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Server", f"{server.get('service', {}).get('state', 'MISS')} · local API service"),
                     ("Control Plane", f"{control.get('overall', 0)}% · {control.get('summary', {}).get('total', 0)} prioritized actions"),
                     ("Events", f"{events.get('total', 0)} recorded · {events.get('last', {}).get('type', 'none') if events.get('last') else 'no local history yet'}"),
@@ -399,6 +408,28 @@ def run_gui() -> int:
                         row.add_suffix(button)
                         control_group.add(row)
                     dashboard.append(control_group)
+
+                shield_actions = shield_plan.get("next") or []
+                if shield_actions:
+                    shield_group = Adw.PreferencesGroup(title="Shield plan")
+                    for item in shield_actions[:5]:
+                        row = make_row(
+                            item.get("title", item.get("key", "Shield")),
+                            f"{item.get('severity', 'high')} · {item.get('phase', 'trust')} · {item.get('reason', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("security-high-symbolic")
+                        button.set_tooltip_text(item.get("command", "seven shield plan"))
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=item.get("command", "seven shield plan"), title_text=item.get("title", "Shield Plan"): run_ecosystem_command(
+                                command,
+                                title=f"SevenOS Shield - {title_text}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        shield_group.add(row)
+                    dashboard.append(shield_group)
 
                 insight_items = insights.get("insights") or []
                 if insight_items:

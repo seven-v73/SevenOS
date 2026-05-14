@@ -49,6 +49,7 @@ readiness = state.get("readiness") or {}
 experience = state.get("experience") or {}
 control = state.get("control") or {}
 shield = state.get("shield") or {}
+shield_plan = state.get("shield_plan") or {}
 server = state.get("server") or {}
 windows = state.get("windows") or {}
 profiles = state.get("profiles") or []
@@ -117,12 +118,13 @@ if experience_percent < 85:
     )
 
 if shield_percent < 75:
+    next_shield = (shield_plan.get("next") or [{}])[0]
     add(
         "security",
         "critical" if shield_percent < 45 else "high",
         "Improve trust posture",
         f"Shield posture is {shield.get('posture', 'unknown')} at {shield_percent}%. Security must be visible and default-safe.",
-        "seven shield status",
+        next_shield.get("command", "seven shield plan"),
         "trust",
         "shield",
     )
@@ -189,6 +191,10 @@ signals = {
     "experience": {"percent": experience_percent, "band": score_band(experience_percent)},
     "control": {"percent": control_percent, "band": score_band(control_percent)},
     "shield": {"percent": shield_percent, "band": score_band(shield_percent)},
+    "shield_plan": {
+        "total": (shield_plan.get("summary") or {}).get("total", 0),
+        "next": (shield_plan.get("next") or [{}])[0].get("command"),
+    },
     "server": {"state": server_state},
     "windows": {"ready": windows_ready},
     "events": {"total": events.get("total", 0), "last": events.get("last")},

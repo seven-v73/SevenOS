@@ -89,6 +89,9 @@ Rules:
 - `seven shield status --json` and `seven server status --json` expose trust
   and local API readiness directly, so the Hub does not infer critical state
   from generic status text.
+- `seven shield plan --json` is the trust remediation contract. It prioritizes
+  firewall, sandbox and audit tooling so Shield becomes an actionable OS layer
+  instead of a static security badge.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
@@ -193,6 +196,8 @@ seven control
 seven control --json
 seven profile forge
 seven shield status
+seven shield plan
+seven shield plan --json
 seven shield audit
 seven windows status
 seven windows guide

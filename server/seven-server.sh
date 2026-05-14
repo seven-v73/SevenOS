@@ -83,7 +83,7 @@ status() {
     printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
     printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
     printf '],'
-    printf '"endpoints":["/health","/state","/status","/profiles","/profile-gaps","/profile-plan","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/control","/events","/insights"],'
+    printf '"endpoints":["/health","/state","/status","/profiles","/profile-gaps","/profile-plan","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/shield-plan","/control","/events","/insights"],'
     printf '"recommendations":['
     local first=1
     if [[ "$service" != "RUN" ]]; then
@@ -218,6 +218,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"]))
         elif self.path == "/shield":
             self.send_json(command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"]))
+        elif self.path == "/shield-plan":
+            self.send_json(command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"]))
         elif self.path == "/control":
             self.send_json(command_json([os.path.join(ROOT, "scripts/control-plane.sh"), "--json"]))
         elif self.path == "/events":

@@ -54,6 +54,7 @@ profile.windows	Profiles	Install Windows Mode	seven profile install windows	pack
 profile.horizon	Profiles	Install Horizon	seven profile install horizon	packages	Install server and deployment tooling.
 security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, sandbox and cyber tooling.
 security.status	Security	Shield Status	seven shield status	safe	Show firewall, sandbox and Shield trust posture.
+security.plan	Security	Shield Plan	seven shield plan	safe	Show prioritized Shield hardening actions.
 security.enable	Security	Enable Shield	seven shield enable	changes	Apply base SevenOS security hardening.
 security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.

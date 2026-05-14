@@ -403,6 +403,8 @@ seven profile gaps --json
 seven profile plan
 seven profile plan --json
 seven shield status
+seven shield plan
+seven shield plan --json
 seven shield audit
 seven files
 seven files menu

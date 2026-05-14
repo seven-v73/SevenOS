@@ -237,6 +237,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" profile apps --json >/dev/null
 "$ROOT_DIR/bin/seven" profile gaps --json >/dev/null
 "$ROOT_DIR/bin/seven" profile plan --json >/dev/null
+"$ROOT_DIR/bin/seven" shield plan --json >/dev/null
 "$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenpkg" status --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" meta --json >/dev/null
@@ -317,6 +318,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" log --source check --type previe
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/insights.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/insights.sh" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/security/shield-status.sh" --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/security/shield-status.sh" plan --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" summary-json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" restore-plan >/dev/null
@@ -355,6 +357,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile guide >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile gaps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files menu >/dev/null

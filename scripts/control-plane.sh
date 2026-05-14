@@ -70,6 +70,7 @@ def command_json(command, fallback):
 readiness = command_json([os.path.join(ROOT, "scripts/readiness.sh"), "--json"], {"percent": 0, "recommendations": []})
 experience = command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"], {"percent": 0, "checks": [], "recommendations": []})
 shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"], {"posture": "unknown", "percent": 0, "checks": [], "recommendations": []})
+shield_plan = command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"], {"next": []})
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}, "recommendations": []})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
@@ -107,13 +108,15 @@ for check in experience.get("checks", []):
     severity = "high" if state == "MISS" else "medium"
     add("experience", severity, f"Fix {check.get('category', 'Experience')}", command, check.get("detail", "Improve SevenOS coherence"), "changes")
 
-for check in shield.get("checks", []):
-    state = check.get("state")
-    if state == "OK":
-        continue
-    command = check.get("command", "seven shield status")
-    severity = "critical" if check.get("key") == "firewall" and state == "MISS" else "high"
-    add("shield", severity, f"Secure {check.get('key', 'Shield')}", command, check.get("detail", "Improve Shield posture"), "changes")
+for item in shield_plan.get("next", []):
+    add(
+        "shield",
+        item.get("severity", "high"),
+        item.get("title", f"Secure {item.get('key', 'Shield')}"),
+        item.get("command", "seven shield plan"),
+        item.get("reason", item.get("detail", "Improve Shield posture")),
+        item.get("impact", "changes"),
+    )
 
 for rec in server.get("recommendations", []):
     add("server", "medium", "Prepare Seven Server", rec.get("command", "seven server status"), rec.get("reason", "Improve local API readiness"), "changes")

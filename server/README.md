@@ -61,6 +61,7 @@ curl http://127.0.0.1:7777/manifest
 curl http://127.0.0.1:7777/actions
 curl http://127.0.0.1:7777/experience
 curl http://127.0.0.1:7777/shield
+curl http://127.0.0.1:7777/shield-plan
 curl http://127.0.0.1:7777/control
 curl http://127.0.0.1:7777/events
 curl http://127.0.0.1:7777/insights
@@ -80,6 +81,7 @@ GET  /manifest
 GET  /actions
 GET  /experience
 GET  /shield
+GET  /shield-plan
 GET  /control
 GET  /events
 GET  /insights

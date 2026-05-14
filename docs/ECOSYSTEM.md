@@ -86,6 +86,7 @@ seven control --json
 seven events --json
 seven insights --json
 seven shield status --json
+seven shield plan --json
 seven server status --json
 ```
 
@@ -120,6 +121,11 @@ memory of previews, decisions and future executed actions.
 `seven insights --json` is the product diagnosis layer. It turns raw state,
 profiles, trust posture and Control Plane recommendations into a concise list
 of blockers with severity, impact and next command.
+
+`seven shield plan --json` is the trust remediation plan. It gives Seven Hub
+and Seven Server a clean list of firewall, sandbox and audit actions, ordered
+by severity, so security work becomes guided and visible instead of hidden in
+scripts.
 
 ## Native Hub Integration
 

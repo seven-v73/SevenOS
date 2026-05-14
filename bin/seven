@@ -62,9 +62,10 @@ def handle_profile(args):
 def handle_shield(args):
     shield_json = args.json or "--json" in args.extra or "json" in args.extra
     shield_extra = [item for item in args.extra if item not in ("--json", "json")]
-    if args.action == "status":
+    if args.action in ("status", "plan"):
+        shield_action = ["plan"] if args.action == "plan" else []
         extra = ["--json"] if shield_json else []
-        run_script(args, "security/shield-status.sh", *extra)
+        run_script(args, "security/shield-status.sh", *shield_action, *extra, *shield_extra)
     elif args.action == "enable":
         install_target("security", args)
     elif args.action == "audit":
@@ -269,8 +270,8 @@ def main():
     profile_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     shield_parser = subparsers.add_parser("shield", help="security and cyber controls")
-    shield_parser.add_argument("action", choices=("status", "enable", "audit", "lab"), nargs="?", default="status")
-    shield_parser.add_argument("--json", action="store_true", help="print machine-readable Shield posture for status")
+    shield_parser.add_argument("action", choices=("status", "plan", "enable", "audit", "lab"), nargs="?", default="status")
+    shield_parser.add_argument("--json", action="store_true", help="print machine-readable Shield posture or plan")
     shield_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     vm_parser = subparsers.add_parser("vm", help="virtual machine controls")
