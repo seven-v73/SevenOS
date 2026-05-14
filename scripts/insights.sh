@@ -54,6 +54,8 @@ server = state.get("server") or {}
 server_plan = state.get("server_plan") or {}
 windows = state.get("windows") or {}
 windows_plan = state.get("windows_plan") or {}
+installer = state.get("installer") or {}
+installer_plan = state.get("installer_plan") or {}
 profiles = state.get("profiles") or []
 profile_gaps = state.get("profile_gaps") or {}
 ecosystem = state.get("ecosystem") or {}
@@ -96,6 +98,7 @@ control_percent = control.get("overall", 0)
 shield_percent = shield.get("percent", 0)
 server_state = (server.get("service") or {}).get("state", "MISS")
 windows_ready = bool(windows.get("ready"))
+installer_ready = bool(installer.get("ready"))
 
 if readiness_percent < 80:
     add(
@@ -155,6 +158,18 @@ if not windows_ready:
         "windows",
     )
 
+if not installer_ready:
+    next_installer = (installer_plan.get("next") or [{}])[0]
+    add(
+        "installer",
+        "medium",
+        "Prepare installable SevenOS",
+        f"Installer mode is {installer.get('mode', 'foundation')}; SevenOS still needs a stronger path from live ISO to disk.",
+        next_installer.get("command", "seven installer plan"),
+        "distribution",
+        "installer",
+    )
+
 for profile in profile_gaps.get("profiles", profiles):
     profile_state = profile.get("state", "MISS")
     if profile_state == "OK":
@@ -209,6 +224,11 @@ signals = {
         "total": (windows_plan.get("summary") or {}).get("total", 0),
         "next": (windows_plan.get("next") or [{}])[0].get("command"),
     },
+    "installer": {"ready": installer_ready, "mode": installer.get("mode", "foundation")},
+    "installer_plan": {
+        "total": (installer_plan.get("summary") or {}).get("total", 0),
+        "next": (installer_plan.get("next") or [{}])[0].get("command"),
+    },
     "events": {"total": events.get("total", 0), "last": events.get("last")},
     "ecosystem": {
         "active": active_modules,
@@ -221,7 +241,7 @@ signals = {
 phase = "B2"
 if readiness_percent >= 85 and experience_percent >= 85 and shield_percent >= 75 and server_state in ("RUN", "READY"):
     phase = "B3"
-if readiness_percent >= 90 and experience_percent >= 90 and shield_percent >= 85 and server_state == "RUN" and windows_ready:
+if readiness_percent >= 90 and experience_percent >= 90 and shield_percent >= 85 and server_state == "RUN" and windows_ready and installer_ready:
     phase = "4-preview"
 
 print(json.dumps({

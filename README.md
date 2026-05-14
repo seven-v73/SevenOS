@@ -256,6 +256,9 @@ seven dashboard
 seven architecture
 seven architecture doctor
 seven installer status
+seven installer status --json
+seven installer plan
+seven installer plan --json
 seven installer doctor
 seven hub-gui status
 seven hub-gui doctor

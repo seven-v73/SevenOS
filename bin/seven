@@ -100,7 +100,10 @@ def handle_server(args):
 
 
 def handle_installer(args):
-    run_script(args, "scripts/installer-stack.sh", args.action)
+    extra = [args.action, *args.extra]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/installer-stack.sh", *extra)
 
 
 def handle_hub_gui(args):
@@ -288,6 +291,8 @@ def main():
 
     installer_parser = subparsers.add_parser("installer", help="SevenOS installer stack controls")
     installer_parser.add_argument("action", nargs="?", default="status")
+    installer_parser.add_argument("--json", action="store_true", help="print machine-readable installer status or plan")
+    installer_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     hub_gui_parser = subparsers.add_parser("hub-gui", help="Seven Hub native GUI stack controls")
     hub_gui_parser.add_argument("action", nargs="?", default="status")

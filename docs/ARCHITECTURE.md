@@ -98,6 +98,9 @@ Rules:
 - `seven server plan --json` is the local backend remediation contract. It
   prioritizes service installation, runtime startup, rootless containers and
   local-only API policy before SevenOS moves toward a personal operating cloud.
+- `seven installer plan --json` is the distribution readiness contract. It
+  exposes Archinstall, Calamares, Archiso and ISO build gaps before SevenOS
+  graduates from post-install layer to installable OS.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
@@ -215,6 +218,9 @@ seven server status
 seven server status --json
 seven server plan
 seven server plan --json
+seven installer status --json
+seven installer plan
+seven installer plan --json
 seven deploy plan .
 seven repair ux --apply
 ```

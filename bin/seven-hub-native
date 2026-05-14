@@ -156,6 +156,20 @@ def windows_plan_payload() -> dict:
         return {"schema": "sevenos.windows-plan.v1", "summary": {}, "next": []}
 
 
+def installer_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "installer-stack.sh"), "status", "--json"))
+    except Exception:
+        return {"schema": "sevenos.installer.v1", "ready": False, "mode": "foundation"}
+
+
+def installer_plan_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "installer-stack.sh"), "plan", "--json"))
+    except Exception:
+        return {"schema": "sevenos.installer-plan.v1", "summary": {}, "next": []}
+
+
 def control_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "control-plane.sh"), "--json"))
@@ -365,6 +379,8 @@ def run_gui() -> int:
                 server_plan = server_plan_payload()
                 windows = windows_payload()
                 windows_plan = windows_plan_payload()
+                installer = installer_payload()
+                installer_plan = installer_plan_payload()
                 control = control_payload()
                 events = events_payload()
                 insights = insights_payload()
@@ -389,6 +405,8 @@ def run_gui() -> int:
                     ("Server plan", f"{server_plan.get('summary', {}).get('total', 0)} backend actions · first: {(server_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Windows Mode", f"{windows.get('mode', 'setup-needed')} · ready: {str(windows.get('ready', False)).lower()}"),
                     ("Windows plan", f"{windows_plan.get('summary', {}).get('total', 0)} compatibility actions · first: {(windows_plan.get('next') or [{}])[0].get('title', 'none')}"),
+                    ("Installer", f"{installer.get('mode', 'foundation')} · ready: {str(installer.get('ready', False)).lower()}"),
+                    ("Installer plan", f"{installer_plan.get('summary', {}).get('total', 0)} distribution actions · first: {(installer_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Control Plane", f"{control.get('overall', 0)}% · {control.get('summary', {}).get('total', 0)} prioritized actions"),
                     ("Events", f"{events.get('total', 0)} recorded · {events.get('last', {}).get('type', 'none') if events.get('last') else 'no local history yet'}"),
                     ("Insights", f"phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open product items"),
@@ -501,6 +519,28 @@ def run_gui() -> int:
                         row.add_suffix(button)
                         windows_group.add(row)
                     dashboard.append(windows_group)
+
+                installer_actions = installer_plan.get("next") or []
+                if installer_actions:
+                    installer_group = Adw.PreferencesGroup(title="Installer plan")
+                    for item in installer_actions[:5]:
+                        row = make_row(
+                            item.get("title", item.get("key", "Installer")),
+                            f"{item.get('severity', 'medium')} · {item.get('phase', 'iso')} · {item.get('reason', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("drive-harddisk-symbolic")
+                        button.set_tooltip_text(item.get("command", "seven installer plan"))
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=item.get("command", "seven installer plan"), title_text=item.get("title", "Installer Plan"): run_ecosystem_command(
+                                command,
+                                title=f"SevenOS Installer - {title_text}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        installer_group.add(row)
+                    dashboard.append(installer_group)
 
                 insight_items = insights.get("insights") or []
                 if insight_items:

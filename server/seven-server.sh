@@ -85,7 +85,7 @@ status() {
     printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
     printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
     printf '],'
-    printf '"endpoints":["/health","/state","/status","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/shield-plan","/server-plan","/control","/events","/insights"],'
+    printf '"endpoints":["/health","/state","/status","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/shield-plan","/server-plan","/control","/events","/insights"],'
     printf '"recommendations":['
     local first=1
     if [[ "$service" != "RUN" ]]; then
@@ -351,6 +351,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "status", "--json"]))
         elif self.path == "/windows-plan":
             self.send_json(command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "plan", "--json"]))
+        elif self.path == "/installer":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"]))
+        elif self.path == "/installer-plan":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "plan", "--json"]))
         elif self.path == "/monitor/system":
             self.send_json({
                 "ok": True,

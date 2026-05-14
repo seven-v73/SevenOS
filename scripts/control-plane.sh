@@ -75,6 +75,8 @@ server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "
 server_plan = command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"], {"next": []})
 windows = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "status", "--json"], {"ready": False, "mode": "setup-needed"})
 windows_plan = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "plan", "--json"], {"next": []})
+installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
+installer_plan = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "plan", "--json"], {"next": []})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
@@ -144,6 +146,16 @@ for item in windows_plan.get("next", []):
         item.get("impact", "changes"),
     )
 
+for item in installer_plan.get("next", []):
+    add(
+        "installer",
+        item.get("severity", "medium"),
+        item.get("title", "Prepare installer"),
+        item.get("command", "seven installer plan"),
+        item.get("reason", "Improve installer readiness"),
+        item.get("impact", "safe"),
+    )
+
 for profile in profile_plan.get("next", []):
     key = profile.get("key", "profile")
     title = profile.get("title", key.title())
@@ -166,8 +178,9 @@ scores = {
     "shield": shield.get("percent", 0),
     "server": 100 if server.get("service", {}).get("state") == "RUN" else 50 if server.get("service", {}).get("state") == "READY" else 0,
     "windows": 100 if windows.get("ready") else 60 if windows.get("mode") == "vm-ready" else 0,
+    "installer": 100 if installer.get("ready") else 60 if installer.get("mode") in ("tui-ready", "graphical") else 35,
 }
-overall = round((scores["readiness"] * 0.25) + (scores["experience"] * 0.25) + (scores["shield"] * 0.20) + (scores["server"] * 0.15) + (scores["windows"] * 0.15))
+overall = round((scores["readiness"] * 0.22) + (scores["experience"] * 0.22) + (scores["shield"] * 0.18) + (scores["server"] * 0.13) + (scores["windows"] * 0.13) + (scores["installer"] * 0.12))
 
 print(json.dumps({
     "schema": "sevenos.control.v1",

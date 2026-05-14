@@ -59,6 +59,8 @@ curl http://127.0.0.1:7777/profile-gaps
 curl http://127.0.0.1:7777/profile-plan
 curl http://127.0.0.1:7777/windows
 curl http://127.0.0.1:7777/windows-plan
+curl http://127.0.0.1:7777/installer
+curl http://127.0.0.1:7777/installer-plan
 curl http://127.0.0.1:7777/monitor/system
 curl http://127.0.0.1:7777/readiness
 curl http://127.0.0.1:7777/manifest
@@ -84,6 +86,8 @@ GET  /profile-gaps
 GET  /profile-plan
 GET  /windows
 GET  /windows-plan
+GET  /installer
+GET  /installer-plan
 GET  /manifest
 GET  /actions
 GET  /experience

@@ -17,10 +17,18 @@ The current ISO is a live environment that contains the SevenOS repository at:
 The current installer implementation is a non-destructive planning TUI:
 
 ```bash
+seven installer status --json
+seven installer plan
+seven installer plan --json
 ./install.sh installer-plan
 ./install.sh installer-check
 ./install.sh installer-script
 ```
+
+`seven installer plan --json` is the machine-readable contract consumed by
+Seven Hub, Seven Server and the Control Plane. It tracks Archinstall,
+Calamares, Archiso and ISO build readiness before SevenOS becomes a public
+installable distribution.
 
 ## Options Under Review
 

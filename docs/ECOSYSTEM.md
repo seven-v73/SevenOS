@@ -90,12 +90,13 @@ seven shield status --json
 seven shield plan --json
 seven server status --json
 seven server plan --json
+seven installer plan --json
 ```
 
 `seven state --json` is the unified snapshot. It should contain profiles,
-profile gaps, Windows Mode, Windows plan, Shield, Seven Server, Control Plane,
-actions, manifest and event history so the native Hub can become a real OS
-control plane without scraping terminal text.
+profile gaps, Windows Mode, Windows plan, Shield, Seven Server, Installer,
+Control Plane, actions, manifest and event history so the native Hub can become
+a real OS control plane without scraping terminal text.
 
 `seven windows plan --json` is the Windows compatibility plan. It translates
 Wine, Bottles, KVM, libvirt networking and VM creation gaps into a guided setup
@@ -136,6 +137,10 @@ scripts.
 `seven server plan --json` is the backend remediation plan. It makes the local
 API layer actionable by listing service, rootless container, proxy and JSON
 tooling gaps with commands Seven Hub can launch or preview.
+
+`seven installer plan --json` is the distribution readiness plan. It lists the
+missing pieces between SevenOS as a post-install layer and SevenOS as a bootable,
+installable operating system.
 
 ## Native Hub Integration
 
