@@ -1,70 +1,112 @@
+/* SevenOS Launchpad - macOS-like app grid with SevenOS identity */
 @theme "sevenos.rasi"
 
+* {
+  launchpad-overlay: #09090d;
+  launchpad-panel: #15151c;
+  launchpad-search: #232330;
+  launchpad-search-border: #44445a;
+  launchpad-tile: #1c1c26;
+  launchpad-tile-hover: #2a2a38;
+  launchpad-accent: #c8a96e;
+  launchpad-accent-bright: #e2c07a;
+}
+
 window {
-  width: 84%;
-  border-radius: 24px;
-  border-color: @gold;
-  background-color: @surface-1;
+  fullscreen: true;
+  padding: 34px;
+  border: 0px;
+  border-radius: 0px;
+  background-color: @launchpad-overlay;
 }
 
 mainbox {
-  padding: 26px;
-  spacing: 18px;
-  background-color: @surface-1;
+  padding: 12px;
+  spacing: 0px;
+  background-color: transparent;
+}
+
+message {
+  enabled: false;
 }
 
 inputbar {
-  padding: 15px 17px;
-  border-radius: 16px;
-  background-color: @surface-3;
-  border-color: @gold-dim;
+  margin: 6px 41% 0px 41%;
+  padding: 8px 12px;
+  spacing: 8px;
+  border: 1px;
+  border-radius: 10px;
+  border-color: @launchpad-search-border;
+  background-color: @launchpad-search;
+  children: [ icon-search, entry ];
+}
+
+prompt,
+textbox-prompt-colon {
+  enabled: false;
+}
+
+icon-search {
+  expand: false;
+  filename: "search";
+  size: 15px;
+  vertical-align: 0.5;
 }
 
 entry {
-  placeholder: "Applications SevenOS";
+  placeholder: "Search";
+  placeholder-color: #9e9b94;
   text-color: @text-1;
-}
-
-prompt {
-  text-color: @gold-bright;
-  font: "DM Sans Medium 13";
+  cursor-color: @launchpad-accent;
+  font: "DM Sans 13";
 }
 
 listview {
-  lines: 4;
-  columns: 4;
+  margin: 64px 9% 0px 9%;
+  spacing: 34px;
+  lines: 3;
+  columns: 6;
   fixed-height: true;
-  margin: 6px 0 0 0;
-  spacing: 14px;
-  background-color: @surface-1;
+  fixed-columns: true;
+  background-color: transparent;
+}
+
+element,
+element-text,
+element-icon {
+  cursor: pointer;
 }
 
 element {
-  orientation: horizontal;
-  padding: 15px;
-  border-radius: 16px;
-  background-color: @surface-2;
-  border-color: @glass-border-2;
+  padding: 12px 10px;
+  spacing: 9px;
+  orientation: vertical;
+  border: 1px;
+  border-radius: 18px;
+  border-color: transparent;
+  background-color: transparent;
   text-color: @text-1;
 }
 
 element selected {
-  background-color: @gold;
-  border-color: @gold-bright;
-  text-color: @ebene;
-}
-
-element alternate {
-  background-color: @surface-3;
+  background-color: @launchpad-tile-hover;
+  border-color: @launchpad-accent;
   text-color: @text-1;
 }
 
-element-text {
-  font: "DM Sans Medium 13";
-  text-color: inherit;
+element alternate {
+  background-color: transparent;
+  text-color: @text-1;
 }
 
 element-icon {
-  size: 38px;
-  margin: 0 14px 0 0;
+  size: 70px;
+  horizontal-align: 0.5;
+  margin: 0px;
+}
+
+element-text {
+  horizontal-align: 0.5;
+  text-color: inherit;
+  font: "DM Sans Medium 12";
 }
