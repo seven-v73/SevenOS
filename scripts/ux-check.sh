@@ -284,12 +284,15 @@ if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
    grep -q '"active": false' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
    grep -q 'data-panel="dashboard"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'confirm-layer' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
+   grep -q 'nav-label' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'data-section="profiles"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'run_seven_command' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
    grep -q 'actionNeedsConfirmation' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
    grep -q 'summarizeResult' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
    grep -q 'data-impact' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
    grep -q 'seven-window' "$ROOT_DIR/seven-hub/gui/src/styles.css" &&
+   grep -q 'overflow-y: auto' "$ROOT_DIR/seven-hub/gui/src/styles.css" &&
+   grep -q 'scrollbar-color' "$ROOT_DIR/seven-hub/gui/src/styles.css" &&
    grep -q 'confirm-card' "$ROOT_DIR/seven-hub/gui/src/styles.css"; then
   ok "Seven Hub GUI behaves like a native Control Center foundation"
 else

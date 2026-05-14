@@ -116,6 +116,7 @@ Les piliers du projet sont :
 - Ajout d'un workflow d'actions plus proche d'un vrai OS : labels explicites, niveaux d'impact, confirmation avant les actions sensibles, et retours lisibles dans le panneau de sortie.
 - Les actions dangereuses ou modificatrices ne partent plus au clic direct : le Hub demande confirmation avant installation, activation, reparation ou changement de profil.
 - Le panneau de sortie distingue maintenant les etats `running`, `success` et `error`, avec un resume humain avant le detail technique.
+- Amelioration de la maniabilite du Hub : vraie zone de contenu scrollable, navigation laterale lisible avec labels, hauteur adaptee au viewport, scrollbars integrees au design et changement de section plus naturel.
 
 ### Gestion fichiers
 
@@ -181,7 +182,7 @@ Les piliers du projet sont :
 | Desktop Hyprland | 75% | Fonctionnel, Waybar actionnable, session plus robuste |
 | Seven commands | 70% | Base solide, besoin de plus de robustesse |
 | SevenPkg | 65% | Wrapper utile, sorties JSON ajoutees, pas encore vrai package manager |
-| Seven Hub | 72% | GUI Tauri structuree, dashboard natif, backend snapshot, donnees JSON et workflow d'actions confirmees |
+| Seven Hub | 74% | GUI Tauri structuree, dashboard natif, backend snapshot, donnees JSON, workflow d'actions confirmees et navigation scrollable |
 | Profils metiers | 55% | Concept clair, installation encore partielle |
 | Securite | 55% | Bonne direction, hardening a renforcer |
 | Windows Mode | 50% | Base technique, UX guidee manquante |

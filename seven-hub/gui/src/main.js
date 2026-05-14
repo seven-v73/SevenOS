@@ -120,6 +120,7 @@ const stateClass = {
 
 const panels = document.querySelectorAll("[data-panel]");
 const navItems = document.querySelectorAll(".nav-item");
+const content = document.querySelector(".content");
 const refresh = document.querySelector("#refresh");
 const score = document.querySelector("#readiness-score");
 const scoreDetail = document.querySelector("#readiness-detail");
@@ -159,6 +160,7 @@ function setPanel(name) {
   for (const item of navItems) {
     item.classList.toggle("active", item.dataset.section === name);
   }
+  content.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function renderStatus(snapshot) {
