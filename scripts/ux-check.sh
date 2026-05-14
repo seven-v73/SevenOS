@@ -364,6 +364,8 @@ else
 fi
 
 if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
+   grep -q 'get_action_registry' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
+   grep -q 'run_seven_action' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
    grep -q 'seven profile status --json' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
    grep -q '"identifier": "os.seven.seven-hub"' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
    grep -q '"active": false' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
@@ -371,7 +373,10 @@ if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
    grep -q 'confirm-layer' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'nav-label' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'data-section="profiles"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
+   grep -q 'get_action_registry' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
+   grep -q 'data-action-id' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
    grep -q 'run_seven_command' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
+   grep -q 'run_seven_action' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
    grep -q 'actionNeedsConfirmation' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
    grep -q 'summarizeResult' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
    grep -q 'data-impact' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
@@ -382,6 +387,12 @@ if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
   ok "Seven Hub GUI behaves like a native Control Center foundation"
 else
   fail "Seven Hub GUI should expose dashboard, profiles, confirmations, readable actions and native backend snapshot"
+fi
+
+if grep -q 'javascriptcoregtk-4.1' "$ROOT_DIR/seven-hub/gui-stack.sh"; then
+  ok "Seven Hub GUI stack reports WebKit and JavaScriptCore native prerequisites"
+else
+  fail "Seven Hub GUI stack should report WebKit and JavaScriptCore native prerequisites"
 fi
 
 if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&

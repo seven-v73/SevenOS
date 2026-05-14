@@ -18,97 +18,26 @@ const fallbackSnapshot = {
   recommendations: []
 };
 
-const actions = {
-  security: [
-    {
-      title: "Security Audit",
-      command: "seven shield audit",
-      description: "Review firewall, sandbox and cyber tooling.",
-      label: "Audit",
-      impact: "safe"
-    },
-    {
-      title: "Enable Shield",
-      command: "seven shield enable",
-      description: "Apply the base security profile.",
-      label: "Enable",
-      impact: "changes"
-    },
-    {
-      title: "Repair Security",
-      command: "seven repair security",
-      description: "Generate a guided security repair plan.",
-      label: "Repair",
-      impact: "changes"
-    },
-    {
-      title: "Cyber Lab",
-      command: "seven shield lab --preset web",
-      description: "Open an isolated web testing workspace.",
-      label: "Open Lab",
-      impact: "safe"
-    }
-  ],
-  apps: [
-    {
-      title: "SevenPkg Status",
-      command: "sevenpkg status",
-      description: "View package groups and installation state.",
-      label: "Inspect",
-      impact: "safe"
-    },
-    {
-      title: "Install Studio",
-      command: "seven profile studio",
-      description: "Install the creative workspace.",
-      label: "Install",
-      impact: "packages"
-    },
-    {
-      title: "Flatpak Bridge",
-      command: "seven flatpak status",
-      description: "Check Flathub and Flatpak readiness.",
-      label: "Check",
-      impact: "safe"
-    },
-    {
-      title: "Windows Apps",
-      command: "seven windows status",
-      description: "Check Wine, Bottles and VM readiness.",
-      label: "Check",
-      impact: "safe"
-    }
-  ],
-  system: [
-    {
-      title: "Doctor",
-      command: "seven doctor",
-      description: "Check system health and post-install blockers.",
-      label: "Check",
-      impact: "safe"
-    },
-    {
-      title: "Repair UX",
-      command: "seven repair ux",
-      description: "Review desktop and shell repair actions.",
-      label: "Repair",
-      impact: "changes"
-    },
-    {
-      title: "Server Status",
-      command: "seven server status",
-      description: "Check the local SevenOS API service.",
-      label: "Check",
-      impact: "safe"
-    },
-    {
-      title: "Installer Stack",
-      command: "seven installer status",
-      description: "Check Calamares and ISO foundations.",
-      label: "Check",
-      impact: "safe"
-    }
+const fallbackActionRegistry = {
+  schema: "sevenos.actions.v1",
+  actions: [
+    { id: "security.audit", category: "Security", title: "Shield Audit", command: "seven shield audit", impact: "safe", description: "Audit firewall, sandbox and cyber tooling." },
+    { id: "security.enable", category: "Security", title: "Enable Shield", command: "seven shield enable", impact: "changes", description: "Apply base SevenOS security hardening." },
+    { id: "security.lab", category: "Security", title: "Open Cyber Lab", command: "seven shield lab --preset web", impact: "safe", description: "Open an isolated web testing lab." },
+    { id: "apps.open", category: "Desktop", title: "Open Apps", command: "seven-overview apps", impact: "safe", description: "Open the SevenOS application library." },
+    { id: "sevenpkg.status", category: "Apps", title: "SevenPkg Status", command: "sevenpkg status", impact: "safe", description: "Show SevenOS software layer state." },
+    { id: "flatpak.status", category: "Apps", title: "Flatpak Status", command: "seven flatpak status", impact: "safe", description: "Check Flathub and Flatpak readiness." },
+    { id: "profile.studio", category: "Profiles", title: "Install Studio", command: "seven profile install studio", impact: "packages", description: "Install the creative workspace." },
+    { id: "readiness.run", category: "System", title: "Run Readiness", command: "seven readiness", impact: "safe", description: "Score SevenOS against product readiness checks." },
+    { id: "doctor.run", category: "System", title: "Run Doctor", command: "seven doctor", impact: "safe", description: "Check common system blockers." },
+    { id: "repair.ux", category: "System", title: "Repair UX", command: "seven repair ux", impact: "changes", description: "Review desktop and shell repair actions." }
   ]
+};
+
+const actionGroups = {
+  security: ["security.audit", "security.enable", "security.lab", "repair.ux"],
+  apps: ["apps.open", "sevenpkg.status", "flatpak.status", "profile.studio", "profile.windows"],
+  system: ["readiness.run", "doctor.run", "server.status", "installer.status", "theme.apply", "files.open", "quick.open"]
 };
 
 const stateClass = {
@@ -139,6 +68,7 @@ const confirmCancel = document.querySelector("#confirm-cancel");
 const confirmRun = document.querySelector("#confirm-run");
 
 let pendingAction = null;
+let actionRegistry = fallbackActionRegistry;
 
 function escapeHtml(value) {
   return String(value)
@@ -234,6 +164,21 @@ function renderRecommendations(snapshot) {
     .join("");
 }
 
+function labelForAction(action) {
+  if (action.title.startsWith("Open ")) return "Open";
+  if (action.title.startsWith("Run ")) return "Run";
+  if (action.title.startsWith("Install ")) return "Install";
+  if (action.title.startsWith("Enable ")) return "Enable";
+  if (action.title.includes("Status")) return "Check";
+  if (action.title.includes("Audit")) return "Audit";
+  if (action.title.includes("Repair")) return "Repair";
+  return "Run";
+}
+
+function actionById(actionId) {
+  return (actionRegistry.actions || []).find((action) => action.id === actionId);
+}
+
 function renderActionGrid(id, list) {
   const target = document.querySelector(id);
   target.innerHTML = list
@@ -242,10 +187,19 @@ function renderActionGrid(id, list) {
         <span class="action-meta">${escapeHtml(action.impact)}</span>
         <h3>${escapeHtml(action.title)}</h3>
         <p>${escapeHtml(action.description)}</p>
-        <button class="btn-ghost" data-command="${escapeHtml(action.command)}" data-label="${escapeHtml(action.label)}" data-impact="${escapeHtml(action.impact)}" data-title="${escapeHtml(action.title)}">${escapeHtml(action.label)}</button>
+        <button class="btn-ghost" data-action-id="${escapeHtml(action.id)}" data-command="${escapeHtml(action.command)}" data-label="${escapeHtml(labelForAction(action))}" data-impact="${escapeHtml(action.impact)}" data-title="${escapeHtml(action.title)}">${escapeHtml(labelForAction(action))}</button>
       </article>
     `)
     .join("");
+}
+
+function renderRegisteredActions() {
+  for (const [group, actionIds] of Object.entries(actionGroups)) {
+    renderActionGrid(
+      `#${group === "apps" ? "app" : group}-actions`,
+      actionIds.map(actionById).filter(Boolean)
+    );
+  }
 }
 
 function actionNeedsConfirmation(action) {
@@ -277,6 +231,7 @@ function summarizeResult(command, result) {
 
 function actionFromButton(button) {
   return {
+    id: button.dataset.actionId || "",
     command: button.dataset.command,
     label: button.dataset.label || button.textContent || "Run",
     impact: button.dataset.impact || "safe",
@@ -321,13 +276,26 @@ async function loadSnapshot() {
   }
 }
 
+async function loadActions() {
+  try {
+    const data = await invoke("get_action_registry");
+    actionRegistry = typeof data === "string" ? JSON.parse(data) : data;
+  } catch (error) {
+    actionRegistry = fallbackActionRegistry;
+    setOutput("SevenOS Actions", `Action registry unavailable. Using local fallback.\n\n${String(error)}`, "error");
+  }
+  renderRegisteredActions();
+}
+
 async function runCommand(action) {
-  const { command, button, label } = action;
+  const { command, button, label, id } = action;
   button.disabled = true;
   button.textContent = "Working";
   setOutput(command, "Running action...", "running");
   try {
-    const result = await invoke("run_seven_command", { command });
+    const result = id
+      ? await invoke("run_seven_action", { actionId: id })
+      : await invoke("run_seven_command", { command });
     setOutput(command, summarizeResult(command, result), "success");
     await loadSnapshot();
   } catch (error) {
@@ -376,7 +344,5 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-renderActionGrid("#security-actions", actions.security);
-renderActionGrid("#app-actions", actions.apps);
-renderActionGrid("#system-actions", actions.system);
+loadActions();
 loadSnapshot();

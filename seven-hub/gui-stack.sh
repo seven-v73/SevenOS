@@ -36,6 +36,7 @@ status() {
   printf 'node:   %s\n' "$(state node)"
   printf 'npm:    %s\n' "$(state npm)"
   printf 'webkit: %s\n' "$(pkg-config --exists webkit2gtk-4.1 2>/dev/null && printf OK || printf MISS)"
+  printf 'jsCore: %s\n' "$(pkg-config --exists javascriptcoregtk-4.1 2>/dev/null && printf OK || printf MISS)"
 }
 
 install_stack() {

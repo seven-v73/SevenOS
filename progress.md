@@ -140,6 +140,8 @@ Les piliers du projet sont :
 - Ajout d'un backend Tauri `get_hub_snapshot` pour afficher l'etat systeme sans ouvrir un terminal.
 - Connexion du Hub aux donnees JSON de SevenPkg pour les profils metiers.
 - Ajout d'un workflow d'actions plus proche d'un vrai OS : labels explicites, niveaux d'impact, confirmation avant les actions sensibles, et retours lisibles dans le panneau de sortie.
+- Connexion du Hub Tauri a `seven actions --json` : les cartes Security, Apps et System utilisent maintenant le registre central au lieu d'une liste statique locale.
+- Ajout de l'execution par `action_id` via le backend Tauri, afin que le Hub lance une action SevenOS validee sans exposer directement des commandes arbitraires.
 - Les actions dangereuses ou modificatrices ne partent plus au clic direct : le Hub demande confirmation avant installation, activation, reparation ou changement de profil.
 - Le panneau de sortie distingue maintenant les etats `running`, `success` et `error`, avec un resume humain avant le detail technique.
 - Amelioration de la maniabilite du Hub : vraie zone de contenu scrollable, navigation laterale lisible avec labels, hauteur adaptee au viewport, scrollbars integrees au design et changement de section plus naturel.

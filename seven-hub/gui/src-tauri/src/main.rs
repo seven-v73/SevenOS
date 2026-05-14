@@ -327,6 +327,11 @@ fn get_hub_snapshot() -> Result<String, String> {
 }
 
 #[tauri::command]
+fn get_action_registry() -> Result<String, String> {
+    run_shell("seven actions --json")
+}
+
+#[tauri::command]
 fn run_seven_command(command: String) -> Result<String, String> {
     let allowed_prefixes = [
         "seven architecture",
@@ -356,11 +361,26 @@ fn run_seven_command(command: String) -> Result<String, String> {
     run_shell(&command)
 }
 
+#[tauri::command]
+fn run_seven_action(action_id: String) -> Result<String, String> {
+    if action_id.is_empty()
+        || !action_id
+            .chars()
+            .all(|value| value.is_ascii_alphanumeric() || value == '.' || value == '_' || value == '-')
+    {
+        return Err("Invalid SevenOS action id".into());
+    }
+
+    run_shell(&format!("seven actions run {action_id}"))
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             get_hub_snapshot,
-            run_seven_command
+            get_action_registry,
+            run_seven_command,
+            run_seven_action
         ])
         .run(tauri::generate_context!())
         .expect("error while running Seven Hub");

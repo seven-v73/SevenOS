@@ -54,6 +54,9 @@ Rules:
 - `seven actions --json` is the shared action registry for Seven Hub, Waybar,
   Quick Settings and future native surfaces. UI code should prefer action IDs
   over hardcoded command strings when possible.
+- Seven Hub runs registered actions through `run_seven_action(action_id)`.
+  Direct command execution is kept only as a compatibility path for safe legacy
+  buttons and recommendations.
 - `seven manifest` is the install/migration contract. It defines future
   package boundaries, protected user paths and restore plans for upgrades.
 - Seven Server may observe and orchestrate, but remote control stays local-only
