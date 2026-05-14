@@ -175,6 +175,7 @@ Les piliers du projet sont :
 - Ajout de `seven control` / `seven control --json` : plan d'actions priorise qui fusionne readiness, experience, Shield, Server et profils pour guider Seven Hub comme un vrai centre de decision OS.
 - Ajout de `seven control apply` : preview executable des corrections prioritaires, non destructif par defaut, avec execution explicite uniquement via `--apply`.
 - `seven state --json` embarque maintenant `control`, afin que les futures surfaces Seven Hub/Server lisent les priorites OS depuis un snapshot unique.
+- Ajout de `seven events` / `seven events --json` : journal local des decisions, previews et futures actions executees, expose dans `seven state --json` et Seven Hub Native.
 
 ### Gestion fichiers
 

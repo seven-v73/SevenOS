@@ -33,6 +33,7 @@ bash -n \
   "$ROOT_DIR/scripts/ecosystem.sh" \
   "$ROOT_DIR/scripts/experience.sh" \
   "$ROOT_DIR/scripts/control-plane.sh" \
+  "$ROOT_DIR/scripts/events.sh" \
   "$ROOT_DIR/scripts/manifest.sh" \
   "$ROOT_DIR/scripts/package-plan.sh" \
   "$ROOT_DIR/scripts/migrate.sh" \
@@ -305,6 +306,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" apply --limit 2 >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" apply --safe-only --limit 2 >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" list >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" summary-json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" log --source check --type preview --message "check event" --command "seven check" >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/security/shield-status.sh" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" summary-json >/dev/null
@@ -369,6 +374,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run control >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run control --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run control apply --limit 2 >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run control apply --safe-only --limit 2 >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run events >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run events --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run phase-gate >/dev/null

@@ -7,9 +7,19 @@ source "$ROOT_DIR/scripts/lib.sh"
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
 STATE_FILE="$STATE_DIR/profile.env"
 STATE_JSON="$STATE_DIR/profile.json"
+INSTALLED_PACKAGES_READY=0
+declare -A INSTALLED_PACKAGES=()
 
 json_escape() {
-  python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
+  local value
+  value="$(cat)"
+  value="${value%$'\n'}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '"%s"\n' "$value"
 }
 
 profile_title() {
@@ -251,7 +261,17 @@ profile_json_object() {
 }
 
 package_installed() {
-  pacman -Q "$1" >/dev/null 2>&1
+  if [[ "$INSTALLED_PACKAGES_READY" -eq 0 ]]; then
+    INSTALLED_PACKAGES_READY=1
+    if command -v pacman >/dev/null 2>&1; then
+      local package
+      while IFS= read -r package; do
+        [[ -n "$package" ]] && INSTALLED_PACKAGES["$package"]=1
+      done < <(pacman -Qq 2>/dev/null || true)
+    fi
+  fi
+
+  [[ -n "${INSTALLED_PACKAGES[$1]+x}" ]]
 }
 
 profile_counts() {

@@ -81,13 +81,14 @@ seven state --json
 seven actions --json
 seven experience --json
 seven control --json
+seven events --json
 seven shield status --json
 seven server status --json
 ```
 
 `seven state --json` is the unified snapshot. It should contain profiles,
 Windows Mode, Shield, Seven Server, Control Plane, actions, manifest and
-ecosystem data so the native Hub can become a real OS control plane without
+event history so the native Hub can become a real OS control plane without
 scraping terminal text.
 
 `seven experience --json` is the coherence score. It exists to catch the exact
@@ -101,6 +102,9 @@ Hub and future automation.
 `seven control apply` previews the next prioritized actions. It remains
 non-destructive unless `--apply` is explicitly passed, so the system can guide
 users without surprising them.
+
+`seven events --json` is the local event journal. It gives SevenOS a traceable
+memory of previews, decisions and future executed actions.
 
 ## Native Hub Integration
 

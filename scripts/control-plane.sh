@@ -179,6 +179,13 @@ execute_plan() {
     exit 1
   fi
 
+  "$ROOT_DIR/scripts/events.sh" log \
+    --source control \
+    --type "$([[ "$APPLY" -eq 1 ]] && printf apply || printf preview)" \
+    --state "$([[ "$APPLY" -eq 1 ]] && printf WARN || printf OK)" \
+    --message "Control plane $([[ "$APPLY" -eq 1 ]] && printf apply || printf preview) requested with limit $LIMIT" \
+    --command "seven control apply --limit $LIMIT$([[ "$SAFE_ONLY" -eq 1 ]] && printf ' --safe-only')$([[ "$APPLY" -eq 1 ]] && printf ' --apply')" >/dev/null
+
   while IFS=$'\t' read -r severity impact command reason; do
     [[ -n "${command:-}" ]] || continue
     command_count=$((command_count + 1))
