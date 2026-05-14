@@ -48,10 +48,11 @@ else
 fi
 
 if grep -q 'custom/quick' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
+   grep -q 'custom/notifications' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    [[ -s "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" ]]; then
-  ok "Quick Settings has a dedicated visual surface"
+  ok "Quick Settings and Notifications have dedicated shell surfaces"
 else
-  fail "Quick Settings dedicated Rofi surface missing"
+  fail "Quick Settings or Notifications dedicated shell surface missing"
 fi
 
 if grep -q 'content: "SevenOS"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&

@@ -105,6 +105,7 @@ install_user_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_user_command "$ROOT_DIR/bin/seven-session" seven-session
 install_user_command "$ROOT_DIR/bin/seven-country" seven-country
 install_user_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
+install_user_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-notifications
 install_user_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_user_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_user_command "$ROOT_DIR/bin/sevenpkg" sevenpkg
@@ -126,6 +127,7 @@ install_system_command "$ROOT_DIR/bin/seven-files" seven-files
 install_system_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_system_command "$ROOT_DIR/bin/seven-session" seven-session
 install_system_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
+install_system_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-notifications
 install_system_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_system_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_system_command "$ROOT_DIR/bin/sevenosctl" sevenosctl

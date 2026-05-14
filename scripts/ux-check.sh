@@ -118,6 +118,7 @@ require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
 require_executable "bin/seven-hub-native"
 require_executable "bin/seven-waybar-action"
+require_executable "bin/seven-waybar-notifications"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "scripts/phase-gate.sh"
@@ -216,10 +217,20 @@ else
   fail "Waybar power action missing"
 fi
 
-if jq -e '.network."on-click" == "seven-waybar-action network" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/quick"."on-click" == "seven-quick-settings"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.network."on-click" == "seven-waybar-action network" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/quick"."on-click" == "seven-quick-settings" and ."custom/notifications"."on-click" == "seven-waybar-notifications menu" and ."custom/notifications"."on-click-right" == "seven-waybar-notifications toggle-dnd"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
+fi
+
+notifications_menu_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
+notifications_toggle_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" toggle-dnd)"
+if jq -e '."modules-right" | index("custom/notifications")' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null &&
+   grep -q '󰂚  Notification Status' <<<"$notifications_menu_output" &&
+   grep -Eq 'touch|rm -f' <<<"$notifications_toggle_output"; then
+  ok "Waybar notifications expose status, menu and Do Not Disturb controls"
+else
+  fail "Waybar notifications should expose status, menu and Do Not Disturb controls"
 fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
@@ -582,6 +593,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu | grep -q 'rofi places menu'
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null

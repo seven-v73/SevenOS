@@ -19,6 +19,7 @@ window#waybar {
 #custom-profile,
 #clock,
 #custom-quick,
+#custom-notifications,
 #custom-security,
 #network,
 #pulseaudio,
@@ -110,6 +111,15 @@ window#waybar {
   color: #2a1f12;
   background: rgba(91, 127, 166, 0.24);
   border-color: #5b7fa6;
+  font-weight: 500;
+  font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "DM Sans", sans-serif;
+  font-size: 14px;
+}
+
+#custom-notifications {
+  color: #2a1f12;
+  background: rgba(255, 248, 230, 0.56);
+  border-color: rgba(200, 169, 110, 0.42);
   font-weight: 500;
   font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "DM Sans", sans-serif;
   font-size: 14px;

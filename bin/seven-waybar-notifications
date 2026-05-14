@@ -1,0 +1,176 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+DND_FILE="$STATE_DIR/notifications.dnd"
+
+dry_run() {
+  [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
+}
+
+notify() {
+  local title="$1"
+  local message="$2"
+
+  if dry_run; then
+    printf 'notify %q %q\n' "$title" "$message"
+    return 0
+  fi
+
+  if command -v notify-send >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    notify-send "$title" "$message" || true
+  else
+    printf '%s: %s\n' "$title" "$message"
+  fi
+}
+
+run_detached() {
+  if dry_run; then
+    printf '%q ' "$@"
+    printf '\n'
+    return 0
+  fi
+
+  setsid -f "$@" >/tmp/sevenos-notifications.log 2>&1 || true
+}
+
+is_mako_running() {
+  pgrep -x mako >/dev/null 2>&1
+}
+
+status() {
+  if [[ -f "$DND_FILE" ]]; then
+    printf '󰂛\n'
+  elif is_mako_running; then
+    printf '󰂚\n'
+  else
+    printf '󰂜\n'
+  fi
+}
+
+start_mako() {
+  if is_mako_running; then
+    notify "SevenOS Notifications" "Mako is already running."
+    return 0
+  fi
+
+  if command -v mako >/dev/null 2>&1; then
+    run_detached mako
+    notify "SevenOS Notifications" "Notification service started."
+  else
+    notify "SevenOS Notifications" "Mako is not installed."
+    return 1
+  fi
+}
+
+restart_mako() {
+  if dry_run; then
+    printf 'pkill -x mako || true\n'
+    printf 'mako\n'
+    return 0
+  fi
+
+  pkill -x mako >/dev/null 2>&1 || true
+  if command -v mako >/dev/null 2>&1; then
+    run_detached mako
+    notify "SevenOS Notifications" "Notification service restarted."
+  else
+    notify "SevenOS Notifications" "Mako is not installed."
+    return 1
+  fi
+}
+
+dismiss_visible() {
+  if command -v makoctl >/dev/null 2>&1; then
+    dry_run && printf 'makoctl dismiss --all\n' && return 0
+    makoctl dismiss --all >/dev/null 2>&1 || true
+    return 0
+  fi
+  notify "SevenOS Notifications" "makoctl is not available."
+}
+
+restore_last() {
+  if command -v makoctl >/dev/null 2>&1; then
+    dry_run && printf 'makoctl restore\n' && return 0
+    makoctl restore >/dev/null 2>&1 || true
+    return 0
+  fi
+  notify "SevenOS Notifications" "makoctl is not available."
+}
+
+toggle_dnd() {
+  mkdir -p "$STATE_DIR"
+
+  if [[ -f "$DND_FILE" ]]; then
+    dry_run && printf 'rm -f %q\n' "$DND_FILE"
+    rm -f "$DND_FILE"
+    if command -v makoctl >/dev/null 2>&1; then
+      dry_run || makoctl mode -r do-not-disturb >/dev/null 2>&1 || true
+    fi
+    notify "SevenOS Notifications" "Do Not Disturb disabled."
+  else
+    dry_run && printf 'touch %q\n' "$DND_FILE"
+    dry_run || touch "$DND_FILE"
+    if command -v makoctl >/dev/null 2>&1; then
+      dry_run || makoctl mode -a do-not-disturb >/dev/null 2>&1 || true
+    fi
+    notify "SevenOS Notifications" "Do Not Disturb enabled."
+  fi
+}
+
+menu() {
+  cat <<'EOF'
+󰂚  Notification Status
+󰅺  Test Notification
+󰕒  Restore Last
+󰅖  Dismiss Visible
+󰂛  Toggle Do Not Disturb
+󰜉  Restart Notifications
+EOF
+}
+
+clean_selection() {
+  local selected="$1"
+  selected="${selected#*  }"
+  selected="${selected%%    *}"
+  printf '%s\n' "$selected"
+}
+
+open_menu() {
+  local selected
+
+  if dry_run; then
+    menu
+    return 0
+  fi
+
+  if ! command -v rofi >/dev/null 2>&1; then
+    notify "SevenOS Notifications" "Rofi is not installed."
+    return 1
+  fi
+
+  selected="$(menu | rofi -dmenu -i -p "Notifications" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi" 2>/dev/null || true)"
+  selected="$(clean_selection "$selected")"
+
+  case "$selected" in
+    "Notification Status") notify "SevenOS Notifications" "Status: $(status)" ;;
+    "Test Notification") notify "SevenOS Notifications" "SevenOS notification surface is active." ;;
+    "Restore Last") restore_last ;;
+    "Dismiss Visible") dismiss_visible ;;
+    "Toggle Do Not Disturb") toggle_dnd ;;
+    "Restart Notifications") restart_mako ;;
+    "") exit 0 ;;
+  esac
+}
+
+case "${1:-status}" in
+  status) status ;;
+  menu|open) open_menu ;;
+  start) start_mako ;;
+  restart) restart_mako ;;
+  dismiss) dismiss_visible ;;
+  restore) restore_last ;;
+  toggle-dnd|dnd) toggle_dnd ;;
+  test) notify "SevenOS Notifications" "SevenOS notification surface is active." ;;
+  *) printf 'Usage: seven-waybar-notifications [status|menu|start|restart|dismiss|restore|toggle-dnd|test]\n' >&2; exit 1 ;;
+esac

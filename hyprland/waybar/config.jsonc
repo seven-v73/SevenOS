@@ -5,7 +5,7 @@
   "spacing": 10,
   "modules-left": ["custom/sevenos", "hyprland/workspaces"],
   "modules-center": ["custom/apps", "custom/files", "custom/profile", "clock"],
-  "modules-right": ["custom/quick", "custom/security", "network", "pulseaudio", "battery", "custom/power"],
+  "modules-right": ["custom/quick", "custom/notifications", "custom/security", "network", "pulseaudio", "battery", "custom/power"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
@@ -98,6 +98,16 @@
     "tooltip-format": "Open SevenOS quick settings",
     "on-click": "seven-quick-settings",
     "on-click-right": "seven-help"
+  },
+  "custom/notifications": {
+    "exec": "bash -lc 'seven-waybar-notifications status'",
+    "interval": 8,
+    "format": "{}",
+    "tooltip": true,
+    "tooltip-format": "Notifications. Click for controls, right-click for Do Not Disturb.",
+    "on-click": "seven-waybar-notifications menu",
+    "on-click-right": "seven-waybar-notifications toggle-dnd",
+    "on-click-middle": "seven-waybar-notifications dismiss"
   },
   "custom/power": {
     "format": "󰐥",
