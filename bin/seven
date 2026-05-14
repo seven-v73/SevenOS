@@ -53,39 +53,10 @@ def run_script(args, relative_path, *extra):
 
 
 def handle_profile(args):
-    if args.name == "list":
-        extra = ["--json"] if args.json else []
-        sevenpkg(args, "meta", *extra)
-        return
-
-    if args.name == "status":
-        extra = ["--json"] if args.json else []
-        sevenpkg(args, "status", *extra)
-        return
-
-    target_map = {
-        "forge": ("dev", []),
-        "dev": ("dev", []),
-        "shield": ("cybersecurity", []),
-        "security": ("cybersecurity", []),
-        "studio": ("creation", []),
-        "creation": ("creation", []),
-        "horizon": ("server", []),
-        "server": ("server", []),
-        "baobab": ("base", []),
-        "base": ("base", []),
-    }
-
-    if args.name == "griot":
-        sevenpkg(args, "install", "griot")
-        return
-
-    target = target_map.get(args.name)
-    if not target:
-        print(f"seven: unknown profile: {args.name}", file=sys.stderr)
-        sys.exit(1)
-
-    install_target(target[0], args, target[1])
+    extra = [args.name, *args.extra]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "profiles/profile-manager.sh", *extra)
 
 
 def handle_shield(args):
@@ -197,9 +168,10 @@ def main():
     files_parser = subparsers.add_parser("files", help="open Seven Files")
     files_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
-    profile_parser = subparsers.add_parser("profile", help="list, inspect, or install a SevenOS profile")
+    profile_parser = subparsers.add_parser("profile", help="list, inspect, activate, or install a SevenOS profile")
     profile_parser.add_argument("name")
     profile_parser.add_argument("--json", action="store_true", help="print machine-readable profile status for list/status")
+    profile_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     shield_parser = subparsers.add_parser("shield", help="security and cyber controls")
     shield_parser.add_argument("action", choices=("enable", "audit", "lab"))

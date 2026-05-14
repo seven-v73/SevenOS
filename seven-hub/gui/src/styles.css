@@ -428,10 +428,15 @@ p {
 }
 
 .profile-card {
-  min-height: 156px;
+  min-height: 190px;
   padding: 16px;
   display: flex;
   gap: 14px;
+}
+
+.profile-card.active-profile {
+  background: var(--indigo-pale);
+  border-color: var(--indigo);
 }
 
 .profile-icon {
@@ -456,7 +461,28 @@ p {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
+}
+
+.profile-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.profile-workspace {
+  display: block;
+  margin: 10px 0 14px;
+  color: var(--gold);
+  font: 400 12px/1.5 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .recommendation-strip {

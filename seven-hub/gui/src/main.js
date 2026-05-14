@@ -10,10 +10,10 @@ const fallbackSnapshot = {
     { label: "Server", state: "MISS", detail: "Waiting for SevenOS backend" }
   ],
   profiles: [
-    { key: "forge", title: "Forge", description: "Development workspace", state: "MISS", action: "seven profile forge" },
-    { key: "shield", title: "Shield", description: "Cybersecurity workspace", state: "MISS", action: "seven profile shield" },
-    { key: "studio", title: "Studio", description: "Creative production workspace", state: "MISS", action: "seven profile studio" },
-    { key: "windows", title: "Windows", description: "Compatibility layer", state: "MISS", action: "seven windows status" }
+    { key: "forge", title: "Forge", description: "Development workspace", state: "MISS", action: "seven profile install forge", active: false, workspace: "~/Forge" },
+    { key: "shield", title: "Shield", description: "Cybersecurity workspace", state: "MISS", action: "seven profile install shield", active: false, workspace: "~/ShieldLab" },
+    { key: "studio", title: "Studio", description: "Creative production workspace", state: "MISS", action: "seven profile install studio", active: false, workspace: "~/Studio" },
+    { key: "windows", title: "Windows", description: "Compatibility layer", state: "MISS", action: "seven profile install windows", active: false, workspace: "~/WindowsMode" }
   ],
   recommendations: []
 };
@@ -184,19 +184,26 @@ function renderProfiles(snapshot) {
   profileGrid.innerHTML = (snapshot.profiles || fallbackSnapshot.profiles)
     .map((profile) => {
       const ready = profile.state === "OK";
-      const command = ready ? "seven profile status" : profile.action;
-      const label = ready ? "Status" : "Install";
-      const impact = ready ? "safe" : "packages";
+      const command = ready ? `seven profile activate ${profile.key}` : profile.action;
+      const label = profile.active ? "Active" : ready ? "Activate" : "Install";
+      const impact = ready ? "changes" : "packages";
       return `
-      <article class="profile-card">
+      <article class="profile-card${profile.active ? " active-profile" : ""}">
         <div class="profile-icon">${escapeHtml(profile.title.slice(0, 1))}</div>
         <div class="profile-body">
           <div class="profile-title">
             <h3>${escapeHtml(profile.title)}</h3>
-            ${pill(profile.state)}
+            <div class="profile-pills">
+              ${profile.active ? '<span class="pill pill-indigo"><span class="pill-dot"></span>ACTIVE</span>' : ""}
+              ${pill(profile.state)}
+            </div>
           </div>
           <p>${escapeHtml(profile.description)}</p>
-          <button class="btn-ghost" data-command="${escapeHtml(command)}" data-label="${escapeHtml(label)}" data-impact="${escapeHtml(impact)}" data-title="${escapeHtml(profile.title)}">${escapeHtml(label)}</button>
+          <span class="profile-workspace">${escapeHtml(profile.workspace || "Workspace not configured")}</span>
+          <div class="profile-actions">
+            <button class="btn-ghost" data-command="seven profile show ${escapeHtml(profile.key)}" data-label="Details" data-impact="safe" data-title="${escapeHtml(profile.title)}">Details</button>
+            <button class="btn-ghost" data-command="${escapeHtml(command)}" data-label="${escapeHtml(label)}" data-impact="${escapeHtml(impact)}" data-title="${escapeHtml(profile.title)}" ${profile.active ? "disabled" : ""}>${escapeHtml(label)}</button>
+          </div>
         </div>
       </article>
     `;

@@ -139,6 +139,10 @@ Les piliers du projet sont :
 - Profil Windows pour compatibilite.
 - Profil Server pour deploiement.
 - Meta-packages dans `sevenpkg/metapackages.json`.
+- Ajout d'un vrai gestionnaire de profils : `profiles/profile-manager.sh`.
+- Les profils ne sont plus seulement des scripts d'installation : ils exposent maintenant un etat, un workspace, un accent, une activation et une sortie JSON exploitable par Seven Hub.
+- `seven profile status --json`, `seven profile show <profil>`, `seven profile activate <profil>` et `seven profile install <profil>` deviennent la base de la logique metier SevenOS.
+- Seven Hub lit maintenant les profils via `seven profile status --json` au lieu de dependre uniquement de `sevenpkg`.
 
 ### Cybersecurite
 
@@ -182,8 +186,8 @@ Les piliers du projet sont :
 | Desktop Hyprland | 75% | Fonctionnel, Waybar actionnable, session plus robuste |
 | Seven commands | 70% | Base solide, besoin de plus de robustesse |
 | SevenPkg | 65% | Wrapper utile, sorties JSON ajoutees, pas encore vrai package manager |
-| Seven Hub | 74% | GUI Tauri structuree, dashboard natif, backend snapshot, donnees JSON, workflow d'actions confirmees et navigation scrollable |
-| Profils metiers | 55% | Concept clair, installation encore partielle |
+| Seven Hub | 75% | GUI Tauri structuree, dashboard natif, backend snapshot, donnees JSON, workflow d'actions confirmees et navigation scrollable |
+| Profils metiers | 64% | Etat, activation et workspaces ajoutes ; installation encore a rendre plus contextuelle |
 | Securite | 55% | Bonne direction, hardening a renforcer |
 | Windows Mode | 50% | Base technique, UX guidee manquante |
 | Serveur/deploy | 40% | Vision et scripts initiaux |
@@ -255,7 +259,15 @@ Objectif :
 Chaque profil doit transformer le systeme de maniere visible et utile.
 ```
 
-A faire :
+En place :
+
+- Gestionnaire central `profiles/profile-manager.sh`.
+- Etat `OK/PART/MISS` par profil.
+- Profil actif persistant dans `~/.config/sevenos/profile.env`.
+- Workspaces utilisateurs : `~/Forge`, `~/ShieldLab`, `~/Studio`, `~/WindowsMode`, `~/HorizonDeploy`.
+- Sortie JSON stable pour Seven Hub.
+
+A faire ensuite :
 
 - `seven profile forge` : dev complet + services + shortcuts.
 - `seven profile shield` : sandbox + audit + lab + firewall.

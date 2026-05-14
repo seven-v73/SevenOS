@@ -23,6 +23,8 @@ struct ProfileCard {
     description: String,
     state: String,
     action: String,
+    active: bool,
+    workspace: String,
 }
 
 #[derive(Serialize)]
@@ -126,27 +128,26 @@ fi
     run_shell(&script).unwrap_or_else(|_| "MISS".into())
 }
 
-fn profile_cards_from_sevenpkg() -> Option<Vec<ProfileCard>> {
-    let output = run_shell("sevenpkg status --json").ok()?;
+fn profile_cards_from_seven() -> Option<Vec<ProfileCard>> {
+    let output = run_shell("seven profile status --json").ok()?;
     let items: serde_json::Value = serde_json::from_str(&output).ok()?;
     let array = items.as_array()?;
 
-    let wanted = [
-        ("forge", "Forge", "seven profile forge"),
-        ("shield", "Shield", "seven profile shield"),
-        ("studio", "Studio", "seven profile studio"),
-        ("windows", "Windows", "seven windows status"),
-    ];
+    let wanted = ["forge", "shield", "studio", "windows", "horizon"];
 
     let mut cards = Vec::new();
-    for (key, title, action) in wanted {
+    for key in wanted {
         if let Some(item) = array
             .iter()
-            .find(|entry| entry.get("name").and_then(|value| value.as_str()) == Some(key))
+            .find(|entry| entry.get("key").and_then(|value| value.as_str()) == Some(key))
         {
             cards.push(ProfileCard {
                 key: key.into(),
-                title: title.into(),
+                title: item
+                    .get("title")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or(key)
+                    .to_string(),
                 description: item
                     .get("description")
                     .and_then(|value| value.as_str())
@@ -157,7 +158,20 @@ fn profile_cards_from_sevenpkg() -> Option<Vec<ProfileCard>> {
                     .and_then(|value| value.as_str())
                     .unwrap_or("MISS")
                     .to_string(),
-                action: action.into(),
+                action: item
+                    .get("action")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("seven profile status")
+                    .to_string(),
+                active: item
+                    .get("active")
+                    .and_then(|value| value.as_bool())
+                    .unwrap_or(false),
+                workspace: item
+                    .get("workspace")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("")
+                    .to_string(),
             });
         }
     }
@@ -248,7 +262,7 @@ fn get_hub_snapshot() -> Result<String, String> {
         },
     ];
 
-    let profiles = profile_cards_from_sevenpkg().unwrap_or_else(|| {
+    let profiles = profile_cards_from_seven().unwrap_or_else(|| {
         vec![
             ProfileCard {
                 key: "forge".into(),
@@ -256,14 +270,18 @@ fn get_hub_snapshot() -> Result<String, String> {
                 description: "Development workspace for Git, containers, Node, Python and Rust."
                     .into(),
                 state: profile_state("scripts/packages-dev.txt"),
-                action: "seven profile forge".into(),
+                action: "seven profile install forge".into(),
+                active: false,
+                workspace: "~/Forge".into(),
             },
             ProfileCard {
                 key: "shield".into(),
                 title: "Shield".into(),
                 description: "Cybersecurity workspace with audit, sandbox and lab tooling.".into(),
                 state: profile_state("scripts/packages-cybersecurity.txt"),
-                action: "seven profile shield".into(),
+                action: "seven profile install shield".into(),
+                active: false,
+                workspace: "~/ShieldLab".into(),
             },
             ProfileCard {
                 key: "studio".into(),
@@ -271,7 +289,9 @@ fn get_hub_snapshot() -> Result<String, String> {
                 description: "Creative production workspace for image, vector, video and 3D tools."
                     .into(),
                 state: profile_state("scripts/packages-creation.txt"),
-                action: "seven profile studio".into(),
+                action: "seven profile install studio".into(),
+                active: false,
+                workspace: "~/Studio".into(),
             },
             ProfileCard {
                 key: "windows".into(),
@@ -279,7 +299,9 @@ fn get_hub_snapshot() -> Result<String, String> {
                 description: "Compatibility layer with Wine, Bottles, Lutris and KVM helpers."
                     .into(),
                 state: profile_state("scripts/packages-windows.txt"),
-                action: "seven windows status".into(),
+                action: "seven profile install windows".into(),
+                active: false,
+                workspace: "~/WindowsMode".into(),
             },
         ]
     });

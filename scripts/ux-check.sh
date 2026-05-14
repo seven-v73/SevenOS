@@ -111,6 +111,7 @@ require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
+require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
@@ -279,7 +280,7 @@ else
 fi
 
 if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
-   grep -q 'sevenpkg status --json' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
+   grep -q 'seven profile status --json' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
    grep -q '"identifier": "os.seven.seven-hub"' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
    grep -q '"active": false' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
    grep -q 'data-panel="dashboard"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
@@ -305,6 +306,17 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
+fi
+
+profile_show_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile show forge)"
+profile_activate_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate studio)"
+profile_json_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json)"
+if grep -q 'Workspace:' <<<"$profile_show_output" &&
+   grep -q 'profile.env' <<<"$profile_activate_output" &&
+   grep -q '"active"' <<<"$profile_json_output"; then
+  ok "SevenOS profiles expose concrete state, activation and workspaces"
+else
+  fail "SevenOS profiles should expose state, activation and workspaces"
 fi
 
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" open | grep -q 'xdg-open http://127.0.0.1:7787'; then
