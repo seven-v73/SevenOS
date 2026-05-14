@@ -62,6 +62,14 @@ else
   fail "Apps overview still lacks SevenOS signature depth or tokenized surfaces"
 fi
 
+if grep -q -- '--ebene: #f7f1e5' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+   grep -q 'background #f7f1e5' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
+  ok "SevenOS default UI is light liquid glass, not dark"
+else
+  fail "SevenOS default UI should not ship a dark theme"
+fi
+
 if grep -q 'kente-band' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'section-eyebrow' "$ROOT_DIR/seven-hub/gui/src/styles.css"; then
   ok "Seven Hub uses African-first structural details"

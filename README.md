@@ -348,7 +348,7 @@ The Rofi command palette remains available as `seven-hub`.
 
 ## Identity
 
-SevenOS uses an African first identity system: adaptive graphite surfaces, ancestral gold for action, clay for signal, baobab green for system health, and restrained geometric rhythm inspired by African material culture.
+SevenOS uses an African first identity system: light liquid glass surfaces, ancestral gold for action, clay for signal, baobab green for system health, and restrained geometric rhythm inspired by African material culture.
 
 The identity source of truth lives in `identity/README.md`.
 
@@ -358,7 +358,7 @@ For the complete icon experience, install the base profile package set, which in
 
 The theme layer also writes GTK and Qt preferences so file manager windows,
 settings dialogs, Rofi, Waybar, Kitty, Mako, and Seven Hub stay aligned with
-SevenOS Design System v1 instead of mixing white and black surfaces.
+SevenOS Design System v1 instead of falling back to disconnected toolkit themes.
 
 SevenOS provides `seven`, the main CLI for daily system control:
 

@@ -189,15 +189,15 @@ else
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'ebene: #141319' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
+   grep -q 'ebene: #f7f1e5' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'columns: 6' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'background-color: @surface-3' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -RE '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi" >/dev/null &&
-   grep -q 'gtk-application-prefer-dark-theme=true' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
-   grep -q 'icon_theme=Papirus-Dark' "$ROOT_DIR/hyprland/qt6ct/qt6ct.conf"; then
-  ok "App launcher and toolkit themes use dark SevenOS identity"
+   grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+   grep -q 'icon_theme=Papirus' "$ROOT_DIR/hyprland/qt6ct/qt6ct.conf"; then
+  ok "App launcher and toolkit themes use light liquid SevenOS identity"
 else
   fail "Theme coherence is incomplete across launcher and toolkits"
 fi
@@ -252,7 +252,7 @@ else
   fail "Hyprland protected override files are missing"
 fi
 
-if grep -q 'env = GTK_THEME,adw-gtk3-dark' "$ROOT_DIR/hyprland/hyprland.conf" &&
+if grep -q 'env = GTK_THEME,adw-gtk3' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'env = QT_QPA_PLATFORMTHEME,qt6ct' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland exports GTK and Qt theme hints"
 else
@@ -310,6 +310,7 @@ fi
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'active_tab_background #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'cursor #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'background #f7f1e5' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'symbol_map U+1F1E6-U+1F1FF Noto Color Emoji' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
   ok "Kitty uses SevenOS Design System v1 palette"
 else

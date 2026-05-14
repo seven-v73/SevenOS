@@ -23,11 +23,11 @@ desktop, but with a visual language owned by SevenOS.
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| `--ebene` | `#141319` | zero surface |
-| `--surface-0` | `#191821` | page background |
-| `--surface-1` | `#22212b` | cards and panels |
-| `--surface-2` | `#2d2b38` | raised cards |
-| `--surface-3` | `#383645` | modals and popovers |
+| `--ebene` | `#f7f1e5` | warm glass canvas |
+| `--surface-0` | `#fffaf0` | page background |
+| `--surface-1` | `#ffffff` | glass cards and panels |
+| `--surface-2` | `#f2e7d3` | raised warm glass |
+| `--surface-3` | `#e6d4b8` | focused popovers |
 | `--gold` | `#c8a96e` | primary action |
 | `--gold-bright` | `#e2c07a` | hover and active |
 | `--gold-dim` | `#8a7048` | borders and details |
@@ -36,10 +36,10 @@ desktop, but with a visual language owned by SevenOS.
 | `--baobab-bright` | `#5aad72` | live success |
 | `--indigo` | `#5b7fa6` | info and secondary states |
 | `--indigo-bright` | `#7ba3cf` | info text and icons |
-| `--text-1` | `#f0ede6` | primary text |
-| `--text-2` | `#c7c0b2` | secondary text |
-| `--text-3` | `#8a8378` | tertiary text |
-| `--text-4` | `#5f5a52` | disabled text |
+| `--text-1` | `#1f160b` | primary text |
+| `--text-2` | `#4f4638` | secondary text |
+| `--text-3` | `#756550` | tertiary text |
+| `--text-4` | `#a48f70` | disabled text |
 
 ## Typography
 
@@ -55,10 +55,11 @@ Rules:
 
 ## Surfaces
 
-SevenOS uses an adaptive dark foundation, not a black-only theme. The default
-target is `Sovereign Dusk`: readable in daylight, calm at night, and still
-clearly premium. Liquid glass is simulated with transparent surfaces and subtle
-borders. Do not use production `backdrop-filter` blur.
+SevenOS uses a light liquid glass foundation. The default target is
+`Sovereign Glass`: readable in daylight, elegant at night, and free from
+black-on-black desktop surfaces. Liquid glass is simulated with translucent
+surfaces, warm borders and soft opacity. Do not rely on production
+`backdrop-filter` blur for core Linux surfaces.
 
 - Base: `--surface-1` + `--glass-border`
 - Floating: `--glass` + `--glass-border`
@@ -84,8 +85,8 @@ Functional icon opacity: 60-100%.
 
 ## Absolute Rules
 
-- No pure black app surfaces for interactive lists or launchers.
-- No white app surfaces in the default theme.
+- No black app surfaces for interactive lists, launchers or control panels.
+- White is allowed only as a glass surface with warm borders and dark text.
 - No generic blue/green system palette.
 - No rainbow, purple/pink or neon cyberpunk gradients.
 - No `font-weight` 600, 700, 800 or 900 in UI CSS.
@@ -98,7 +99,7 @@ Functional icon opacity: 60-100%.
 
 - Colors use tokens or documented SevenOS palette values.
 - Typography follows Display / Interface / Mono roles.
-- App tiles, panels and launchers must use at least `--surface-2` or higher.
+- App tiles, panels and launchers must be light, readable and glass-forward.
 - Child radius is smaller than parent radius.
 - Animations use transform and opacity only.
 - `prefers-reduced-motion` is present for web UI.

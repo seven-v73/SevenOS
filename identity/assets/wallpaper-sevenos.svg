@@ -1,34 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
-  <title id="title">SevenOS Sovereign Graphite Wallpaper</title>
-  <desc id="desc">A professional African first graphite wallpaper with architectural rhythm, brass/copper light, malachite and cobalt accents.</desc>
+  <title id="title">SevenOS Sovereign Liquid Wallpaper</title>
+  <desc id="desc">A professional African first light liquid glass wallpaper with architectural rhythm, brass, clay, baobab and indigo accents.</desc>
   <defs>
     <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#07090b"/>
-      <stop offset="42%" stop-color="#10161d"/>
-      <stop offset="100%" stop-color="#17212b"/>
+      <stop offset="0%" stop-color="#fffaf0"/>
+      <stop offset="42%" stop-color="#f7f1e5"/>
+      <stop offset="100%" stop-color="#eadbc4"/>
     </linearGradient>
     <radialGradient id="brassLight" cx="72%" cy="24%" r="48%">
       <stop offset="0%" stop-color="#d7b46a" stop-opacity=".28"/>
       <stop offset="42%" stop-color="#c47a3c" stop-opacity=".12"/>
-      <stop offset="100%" stop-color="#07090b" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#fffaf0" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="coolDepth" cx="18%" cy="72%" r="52%">
       <stop offset="0%" stop-color="#2f5d8c" stop-opacity=".22"/>
       <stop offset="46%" stop-color="#2e8b6d" stop-opacity=".10"/>
-      <stop offset="100%" stop-color="#07090b" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#fffaf0" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="metalEdge" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ede3d1" stop-opacity=".46"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity=".66"/>
       <stop offset="44%" stop-color="#d7b46a" stop-opacity=".72"/>
       <stop offset="100%" stop-color="#c47a3c" stop-opacity=".38"/>
     </linearGradient>
     <pattern id="architectural" width="160" height="160" patternUnits="userSpaceOnUse">
-      <path d="M0 40h160M0 80h160M0 120h160M40 0v160M80 0v160M120 0v160" stroke="#ede3d1" stroke-width="1" opacity=".045"/>
+      <path d="M0 40h160M0 80h160M0 120h160M40 0v160M80 0v160M120 0v160" stroke="#8a7048" stroke-width="1" opacity=".055"/>
       <path d="M20 20h48v48H20zM92 92h48v48H92z" fill="none" stroke="#d7b46a" stroke-width="2" opacity=".08"/>
       <path d="M20 140l40-40 40 40 40-40" fill="none" stroke="#2f5d8c" stroke-width="2" opacity=".075"/>
     </pattern>
     <filter id="panelShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#030405" flood-opacity=".42"/>
+      <feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#8a7048" flood-opacity=".18"/>
     </filter>
   </defs>
 
@@ -43,8 +43,8 @@
   </g>
 
   <g transform="translate(1050 150) skewX(-13)" filter="url(#panelShadow)">
-    <path d="M0 0h560l-104 392H-104z" fill="#1f2b35" opacity=".48" stroke="url(#metalEdge)" stroke-width="2"/>
-    <path d="M50 52h450l-68 256H-18z" fill="#07090b" opacity=".24" stroke="#ede3d1" stroke-opacity=".10"/>
+    <path d="M0 0h560l-104 392H-104z" fill="#ffffff" opacity=".58" stroke="url(#metalEdge)" stroke-width="2"/>
+    <path d="M50 52h450l-68 256H-18z" fill="#fffaf0" opacity=".50" stroke="#8a7048" stroke-opacity=".16"/>
     <path d="M88 102h270M64 154h346M44 206h290M22 258h386" stroke="#d7b46a" stroke-width="4" opacity=".18" stroke-linecap="round"/>
     <path d="M426 58l-70 258M472 58l-70 258" stroke="#2f5d8c" stroke-width="3" opacity=".24"/>
   </g>
@@ -60,8 +60,8 @@
   <g opacity=".72">
     <path d="M118 842h330" stroke="#d7b46a" stroke-width="6" stroke-linecap="round"/>
     <path d="M118 862h190" stroke="#2f5d8c" stroke-width="3" stroke-linecap="round"/>
-    <text x="116" y="934" fill="#ede3d1" font-family="JetBrains Mono, monospace" font-size="64" font-weight="800">SevenOS</text>
-    <text x="119" y="982" fill="#bca77d" font-family="JetBrains Mono, monospace" font-size="24" font-weight="600">Sovereign Linux workbench</text>
+    <text x="116" y="934" fill="#1f160b" font-family="JetBrains Mono, monospace" font-size="64" font-weight="800">SevenOS</text>
+    <text x="119" y="982" fill="#8a7048" font-family="JetBrains Mono, monospace" font-size="24" font-weight="600">Sovereign Linux workbench</text>
   </g>
 
   <rect x="18" y="18" width="1884" height="1044" rx="24" fill="none" stroke="url(#metalEdge)" stroke-opacity=".14" stroke-width="2"/>

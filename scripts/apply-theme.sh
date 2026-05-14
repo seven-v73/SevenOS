@@ -153,9 +153,9 @@ configure_toolkit_theme() {
 
   if is_dry_run; then
     printf 'copy GTK and Qt SevenOS settings into %q\n' "$CONFIG_HOME"
-    printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-dark\n'
-    printf 'gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-dark\n'
-    printf 'gsettings set org.gnome.desktop.interface icon-theme Papirus-Dark\n'
+    printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-light\n'
+    printf 'gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3\n'
+    printf 'gsettings set org.gnome.desktop.interface icon-theme Papirus\n'
     return 0
   fi
 
@@ -165,9 +165,9 @@ configure_toolkit_theme() {
   copy_config_dir "$ROOT_DIR/hyprland/qt6ct" "$CONFIG_HOME/qt6ct"
 
   if command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.interface color-scheme prefer-dark >/dev/null 2>&1 || true
-    gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-dark >/dev/null 2>&1 || true
-    gsettings set org.gnome.desktop.interface icon-theme Papirus-Dark >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface color-scheme prefer-light >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3 >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface icon-theme Papirus >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic >/dev/null 2>&1 || true
   fi
 }

@@ -18,12 +18,12 @@ The goal is not to look like a themed Arch rice. The system should feel like an
 independent professional OS: calm, precise, luxurious, and culturally rooted
 without becoming decorative.
 
-- adaptive graphite surfaces for serious daily work without black-on-black fatigue
+- light liquid glass surfaces for serious daily work without black-on-black fatigue
 - ancestral gold for identity and primary action
 - clay for warning, urgency and danger
 - baobab for trusted/security states
 - indigo for network, VM, deployment, and technical flow
-- warm text colors for readable day/night dark UI
+- dark warm text colors for readable day/night light UI
 - architectural pattern, not surface decoration
 - glass is used as depth and hierarchy, not as a gimmick
 - color is functional: each accent has a job
@@ -32,18 +32,18 @@ without becoming decorative.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `ebene` | `#141319` | zero surface |
-| `surface-0` | `#191821` | page background |
-| `surface-1` | `#22212b` | cards and panels |
-| `surface-2` | `#2d2b38` | raised cards |
-| `surface-3` | `#383645` | modals and popovers |
+| `ebene` | `#f7f1e5` | zero surface |
+| `surface-0` | `#fffaf0` | page background |
+| `surface-1` | `#ffffff` | cards and panels |
+| `surface-2` | `#f2e7d3` | raised cards |
+| `surface-3` | `#e6d4b8` | modals and popovers |
 | `gold` | `#c8a96e` | identity and primary action |
 | `gold-bright` | `#e2c07a` | hover and active states |
 | `clay` | `#c4673a` | warning, danger and urgency |
 | `baobab` | `#4a8c5c` | security, health, success |
 | `indigo` | `#5b7fa6` | network, VM, deployment, technical flow |
-| `text-1` | `#f0ede6` | primary text |
-| `text-2` | `#c7c0b2` | secondary text |
+| `text-1` | `#1f160b` | primary text |
+| `text-2` | `#4f4638` | secondary text |
 
 ## Naming
 

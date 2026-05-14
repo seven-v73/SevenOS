@@ -94,10 +94,10 @@ toolkit_theme_check() {
   if command -v gsettings >/dev/null 2>&1; then
     local color_scheme
     color_scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || true)"
-    if [[ "$color_scheme" == *prefer-dark* ]]; then
-      ok_item "GTK color-scheme prefer-dark"
+    if [[ "$color_scheme" == *prefer-light* ]]; then
+      ok_item "GTK color-scheme prefer-light"
     else
-      warn_item "GTK color-scheme is not prefer-dark"
+      warn_item "GTK color-scheme is not prefer-light"
       printf '  run: ./install.sh theme\n'
     fi
   fi

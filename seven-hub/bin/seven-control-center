@@ -167,13 +167,13 @@ def render_dashboard():
   <title>SevenOS Control Center</title>
   <style>
     :root {{
-      --ebene:#141319; --surface-0:#191821; --surface-1:#22212b; --surface-2:#2d2b38; --surface-3:#383645;
-      --glass:#ffffff12; --glass-2:#ffffff1a; --glass-3:#ffffff24; --glass-border:#ffffff32; --glass-border-2:#ffffff32;
+      --ebene:#f7f1e5; --surface-0:#fffaf0; --surface-1:#ffffff; --surface-2:#f2e7d3; --surface-3:#e6d4b8;
+      --glass:#ffffffb8; --glass-2:#ffffffe0; --glass-3:#fffaf0; --glass-border:#d8c39a; --glass-border-2:#d8c39a;
       --gold:#c8a96e; --gold-bright:#e2c07a; --gold-dim:#8a7048;
       --clay:#c4673a; --clay-dim:#8a4525; --clay-pale:rgba(196,103,58,.14);
       --baobab:#4a8c5c; --baobab-bright:#5aad72; --baobab-pale:rgba(74,140,92,.14);
       --indigo:#5b7fa6; --indigo-bright:#7ba3cf; --indigo-pale:rgba(91,127,166,.14);
-      --text-1:#f0ede6; --text-2:#c7c0b2; --text-3:#8a8378;
+      --text-1:#1f160b; --text-2:#4f4638; --text-3:#756550;
       --font-display:"Cormorant Garamond", Georgia, serif; --font-interface:"DM Sans", system-ui, sans-serif; --font-mono:"JetBrains Mono", monospace;
     }}
     * {{ box-sizing: border-box; }}
@@ -189,7 +189,7 @@ def render_dashboard():
     header {{ display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 24px; }}
     h1 {{ margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 300; font-size: 42px; letter-spacing: 0; line-height: 1.05; }}
     .sub {{ color: var(--text-2); margin: 8px 0 0; }}
-    .score {{ color: #0f0e0a; background: var(--gold); border: 1px solid var(--gold-dim); border-radius: 10px; padding: 10px 14px; font-weight: 500; }}
+    .score {{ color: #1f160b; background: var(--gold); border: 1px solid var(--gold-dim); border-radius: 10px; padding: 10px 14px; font-weight: 500; }}
     .grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }}
     .card {{
       min-height: 156px; padding: 16px; border-radius: 16px;

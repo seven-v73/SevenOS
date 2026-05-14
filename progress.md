@@ -84,7 +84,7 @@ Les piliers du projet sont :
 - Ajout de `identity/STYLE.md` comme reference officielle.
 - Ajout de `identity/tokens.css` comme source CSS des couleurs, rayons, espacements, typographies et transitions.
 - Ajout des motifs dans `identity/patterns/`.
-- Nouvelle palette : Ebene, surfaces sombres, Or ancestral, Argile, Baobab, Indigo.
+- Nouvelle palette : Ebene clair, surfaces liquid glass, Or ancestral, Argile, Baobab, Indigo.
 - Harmonisation de Waybar, Rofi, Kitty, Mako, Hyprland, Seven Hub et Tauri GUI.
 - Suppression des styles trop generiques : pas de fond blanc, pas de `box-shadow`, pas de `backdrop-filter`, pas de font-weight lourd.
 - Correction des surfaces Rofi trop noires ou illisibles.
@@ -95,6 +95,7 @@ Les piliers du projet sont :
 - Raccordement du Launchpad Apps aux tokens Rofi centraux au lieu d'une palette locale dupliquee.
 - Ajout de `scripts/design-check.sh` pour bloquer les regressions visuelles : ombres decoratives, blur lourd, font weights trop forts, Launchpad non tokenise, Quick Settings absent ou Hub sans details structurels.
 - Refonte palette `Sovereign Dusk` : surfaces graphite plus lumineuses, textes secondaires plus lisibles et tuiles Apps mieux separees pour eviter l'effet noir-sur-noir en usage jour/nuit.
+- Pivot design `Sovereign Glass` : SevenOS adopte une base light/liquid glass par defaut pour Rofi, Waybar, Kitty, Mako, Seven Hub, GTK/Qt et le wallpaper.
 
 ### Desktop et session
 
@@ -148,7 +149,7 @@ Les piliers du projet sont :
 
 - Ajout de Seven Files comme point d'entree utilisateur.
 - Integration avec Nautilus, GVFS, MTP, SMB, File Roller, Sushi et XDG user dirs.
-- Ajout de theme GTK/Qt pour eviter une experience visuelle incoherente entre apps sombres et apps claires.
+- Ajout de theme GTK/Qt clair pour eviter une experience visuelle incoherente entre apps et surfaces SevenOS.
 
 ### Terminal et branding
 
