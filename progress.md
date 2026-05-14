@@ -169,6 +169,7 @@ Les piliers du projet sont :
 - `seven state --json` expose maintenant `active_profile` et `windows`, pour que le Hub natif puisse lire un etat OS complet sans parser des textes humains.
 - Renforcement Seven Ecosystem : ajout d'un process map all-in-one (`seven ecosystem processes`), d'un contrat JSON (`seven ecosystem --json`) et integration de l'ecosysteme dans `seven state --json`.
 - Le registre d'actions expose maintenant les actions Ecosystem Map, Process Map, Roadmap et Doctor pour Seven Hub et les futures surfaces natives.
+- Fluidite Ecosystem : Seven Hub Native affiche les processus avec boutons de lancement, et `seven ecosystem summary` donne un resume compact modules/processus.
 
 ### Gestion fichiers
 

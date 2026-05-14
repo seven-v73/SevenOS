@@ -94,5 +94,10 @@ The prototype is intentionally focused: Dashboard, Profiles, Actions and
 Ecosystem first, because these define how SevenOS becomes an adaptive OS instead
 of a static Arch theme.
 
+Ecosystem process rows are action-oriented: each process carries a command and
+the native Hub exposes a start button for it. The user should be able to move
+from “what is this module?” to “start the right flow” without searching the
+terminal.
+
 As modules grow, prefer `seven state --json` when a view needs a full snapshot
 instead of calling multiple commands individually.

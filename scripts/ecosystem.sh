@@ -9,12 +9,13 @@ usage() {
 SevenOS Ecosystem
 
 Usage:
-  seven ecosystem [status|processes|roadmap|doctor|json]
-  ./scripts/ecosystem.sh [status|processes|roadmap|doctor|json]
+  seven ecosystem [status|processes|summary|roadmap|doctor|json]
+  ./scripts/ecosystem.sh [status|processes|summary|roadmap|doctor|json]
 
 Actions:
   status     Show all ecosystem modules and maturity
   processes  Show end-to-end all-in-one user flows
+  summary    Show compact module/process counts
   roadmap    Show phase priorities
   doctor     Check whether ecosystem foundation files exist
   json       Print machine-readable ecosystem map
@@ -89,6 +90,25 @@ processes() {
     printf '  %-18s %-14s %-10s %s\n' "$name" "$layer" "$state" "$flow"
     printf '  %-18s %-14s %-10s command: %s\n' "" "" "" "$command"
   done < <(processes_tsv)
+}
+
+summary() {
+  local active=0 preview=0 planned=0 process_count=0
+  local _name _phase state _description _path
+
+  while IFS=$'\t' read -r _name _phase state _description _path; do
+    case "$state" in
+      active) active=$((active + 1)) ;;
+      preview) preview=$((preview + 1)) ;;
+      planned) planned=$((planned + 1)) ;;
+    esac
+  done < <(modules_tsv)
+
+  while IFS= read -r _line; do
+    process_count=$((process_count + 1))
+  done < <(processes_tsv)
+
+  printf 'SevenOS Ecosystem: %s active, %s preview, %s planned, %s processes\n' "$active" "$preview" "$planned" "$process_count"
 }
 
 roadmap() {
@@ -186,6 +206,7 @@ action="${1:-status}"
 case "$action" in
   status) status ;;
   processes|process) processes ;;
+  summary) summary ;;
   roadmap) roadmap ;;
   doctor) doctor ;;
   json|--json) json ;;

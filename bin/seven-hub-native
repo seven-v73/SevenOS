@@ -119,6 +119,25 @@ def run_registered_action(action_id: str) -> None:
     run_visible(str(ROOT / "bin" / "seven"), "actions", "run", action_id, title=f"SevenOS Action - {action_id}")
 
 
+def run_ecosystem_command(command: str, title: str = "SevenOS Process") -> None:
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        run_visible("bash", "-lc", command, title=title)
+        return
+
+    if not parts:
+        return
+    if parts[0] == "seven":
+        parts[0] = str(ROOT / "bin" / "seven")
+    elif parts[0] == "sevenpkg":
+        parts[0] = str(ROOT / "bin" / "sevenpkg")
+    elif parts[0] == "seven-hub-native":
+        parts[0] = str(ROOT / "bin" / "seven-hub-native")
+
+    run_visible(*parts, title=title)
+
+
 def icon_for_action(action_id: str, impact: str = "safe") -> str:
     if action_id.startswith("profile."):
         return "avatar-default-symbolic"
@@ -376,6 +395,18 @@ def run_gui() -> int:
                         process.get("name", "Process"),
                         f"{process.get('state', 'planned')} · {process.get('flow', '')} · {process.get('command', '')}",
                     )
+                    button = Gtk.Button()
+                    button.set_icon_name("media-playback-start-symbolic")
+                    button.set_tooltip_text(f"Start {process.get('name', 'process')}")
+                    button.add_css_class("suggested-action")
+                    button.connect(
+                        "clicked",
+                        lambda _button, command=process.get("command", ""), name=process.get("name", "Process"): run_ecosystem_command(
+                            command,
+                            title=f"SevenOS Process - {name}",
+                        ),
+                    )
+                    row.add_suffix(button)
                     process_group.add(row)
                 ecosystem_page.append(process_group)
 

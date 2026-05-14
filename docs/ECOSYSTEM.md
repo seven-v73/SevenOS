@@ -74,6 +74,7 @@ The ecosystem must be readable by both humans and UIs:
 
 ```bash
 seven ecosystem
+seven ecosystem summary
 seven ecosystem processes
 seven ecosystem --json
 seven state --json
@@ -94,6 +95,8 @@ Seven Hub Native should expose the ecosystem as a visual product map:
   security, deployment and future cloud/store/automation flows.
 - Actions: process entries should point back to `seven` commands or registered
   action IDs.
+- Native Hub process rows should be action-oriented: every process needs a
+  command that can be launched or inspected from the Hub.
 
 This keeps the ecosystem fluid: the user can see where a feature belongs,
 whether it is ready, and how to start it from the same control center.
@@ -147,6 +150,7 @@ Later:
 
 ```bash
 seven ecosystem
+seven ecosystem summary
 seven ecosystem processes
 seven ecosystem --json
 seven ecosystem roadmap

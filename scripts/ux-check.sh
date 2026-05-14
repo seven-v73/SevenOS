@@ -449,8 +449,10 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def render_dashboard' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'media-playback-start-symbolic' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'icon_for_action' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'set_icon_name' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'run_visible' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -479,6 +481,7 @@ fi
 
 ecosystem_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ecosystem --json)"
 ecosystem_processes="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" processes)"
+ecosystem_summary="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
@@ -487,6 +490,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$ecosystem_json" >/dev/null &&
    grep -q '"processes"' <<<"$ecosystem_json" &&
    grep -q 'SevenOS All-In-One Process Map' <<<"$ecosystem_processes" &&
+   grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","windows","ecosystem"}.issubset(data) else 1)'; then
@@ -677,6 +681,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu | grep -q 'rofi places menu'
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" processes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
