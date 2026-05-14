@@ -45,6 +45,8 @@ Targets:
   installer-plan   Create a non-destructive install plan
   installer-check  Validate an install plan
   installer-script Generate non-destructive install step script
+  migrate-plan     Show SevenOS protected user-state migration plan
+  migrate-backup   Back up protected SevenOS user state before upgrading
   all              Install base layer and all profiles
 
 Options:
@@ -83,7 +85,7 @@ export SEVENOS_ROOT="$ROOT_DIR"
 export SEVENOS_DRY_RUN="$DRY_RUN"
 export SEVENOS_YES="$YES"
 
-if [[ "$TARGET" != "doctor" && "$TARGET" != "status" ]]; then
+if [[ "$TARGET" != "doctor" && "$TARGET" != "status" && "$TARGET" != "migrate-plan" && "$TARGET" != "migrate-backup" ]]; then
   require_arch
   require_command sudo
   require_command pacman
@@ -137,6 +139,12 @@ case "$TARGET" in
     ;;
   doctor)
     "$ROOT_DIR/scripts/doctor.sh"
+    ;;
+  migrate-plan)
+    "$ROOT_DIR/scripts/migrate.sh" plan
+    ;;
+  migrate-backup)
+    "$ROOT_DIR/scripts/migrate.sh" backup
     ;;
   post-install)
     "$ROOT_DIR/scripts/post-install.sh"

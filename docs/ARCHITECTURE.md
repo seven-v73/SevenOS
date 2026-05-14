@@ -78,11 +78,17 @@ seven manifest doctor
 seven manifest restore-plan
 seven manifest components
 seven manifest protected
+seven migrate plan
+seven migrate backup
 ```
 
 This keeps SevenOS from becoming a hard overwrite of user dotfiles. The OS can
 upgrade its system layer while respecting personal monitor, keyboard, profile
 and custom Hyprland state.
+
+`seven migrate backup` creates a timestamped copy of existing protected paths
+under `~/.local/share/sevenos/migrations/`. It is the safe pre-upgrade step for
+test machines and future packaged releases.
 
 ## Interface Strategy
 

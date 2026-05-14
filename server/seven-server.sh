@@ -154,6 +154,8 @@ class Handler(BaseHTTPRequestHandler):
             })
         elif self.path == "/readiness":
             self.send_json(command_json([os.path.join(ROOT, "scripts/readiness.sh"), "--json"]))
+        elif self.path == "/manifest":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/manifest.sh"), "summary-json"]))
         else:
             self.send_json({"ok": False, "error": "not found"}, status=404)
 

@@ -54,6 +54,7 @@ curl http://127.0.0.1:7777/status
 curl http://127.0.0.1:7777/profiles
 curl http://127.0.0.1:7777/monitor/system
 curl http://127.0.0.1:7777/readiness
+curl http://127.0.0.1:7777/manifest
 ```
 
 Planned future endpoints:
@@ -64,6 +65,7 @@ POST /vm/start/windows
 POST /deploy/project
 GET  /state
 GET  /profiles
+GET  /manifest
 GET  /monitor/system
 GET  /deploy/status
 ```

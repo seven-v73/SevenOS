@@ -8,6 +8,8 @@ Run this before pushing a SevenOS phase to GitHub.
 ./scripts/check.sh
 ./scripts/ux-check.sh
 ./scripts/readiness.sh --json
+./scripts/manifest.sh doctor
+./scripts/migrate.sh plan
 ./scripts/installer-stack.sh doctor
 ./seven-hub/gui-stack.sh doctor
 ./scripts/post-install.sh
@@ -24,6 +26,8 @@ git status --short
 ./install.sh iso --dry-run
 ./bin/seven ecosystem
 ./bin/seven architecture doctor
+./bin/seven manifest restore-plan
+./bin/seven migrate plan
 ./bin/seven installer plan
 ./bin/seven hub-gui status
 ./bin/seven flatpak status

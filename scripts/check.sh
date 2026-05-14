@@ -30,6 +30,7 @@ bash -n \
   "$ROOT_DIR/scripts/phase-gate.sh" \
   "$ROOT_DIR/scripts/ecosystem.sh" \
   "$ROOT_DIR/scripts/manifest.sh" \
+  "$ROOT_DIR/scripts/migrate.sh" \
   "$ROOT_DIR/server/seven-server.sh" \
   "$ROOT_DIR/server/seven-deploy.sh" \
   "$ROOT_DIR/branding/shell/terminal-country.sh" \
@@ -262,9 +263,16 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" roadmap >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" summary-json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" restore-plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" backup >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run manifest doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run manifest restore-plan >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate backup >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" doctor >/dev/null || true
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" install-user-service >/dev/null
@@ -342,5 +350,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" blackarch-tool feroxbuster --dry-run >/
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" installer-plan --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" installer-check --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" installer-script --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" migrate-plan --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" migrate-backup --dry-run >/dev/null
 
 log_success "All checks passed."

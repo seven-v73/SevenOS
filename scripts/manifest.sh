@@ -14,6 +14,7 @@ Commands:
   restore-plan  Show user paths that should be preserved during upgrades.
   protected     Show protected user-owned paths.
   components    Show future package/component boundaries.
+  summary-json   Print machine-readable manifest summary.
   json          Print manifest JSON.
 EOF
 }
@@ -117,6 +118,28 @@ def components():
         paths = ", ".join(item.get("paths", []))
         print(f"{item.get('id')}: {item.get('title')} [{paths}]")
 
+def summary_json():
+    payload = {
+        "schema": "sevenos.manifest.v1",
+        "name": manifest.get("name"),
+        "id": manifest.get("id"),
+        "version": manifest.get("version"),
+        "channel": manifest.get("channel"),
+        "component_count": len(manifest.get("components", [])),
+        "restore_count": len(manifest.get("restore", [])),
+        "protected_count": len(manifest.get("protected", [])),
+        "profile_targets": manifest.get("profile_targets", []),
+        "components": [
+            {
+                "id": item.get("id"),
+                "title": item.get("title"),
+                "path_count": len(item.get("paths", [])),
+            }
+            for item in manifest.get("components", [])
+        ],
+    }
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+
 if command == "doctor":
     doctor()
 elif command == "show":
@@ -127,6 +150,8 @@ elif command == "protected":
     protected()
 elif command == "components":
     components()
+elif command == "summary-json":
+    summary_json()
 elif command == "json":
     print(json.dumps(manifest, indent=2, ensure_ascii=False))
 else:
@@ -137,7 +162,7 @@ PY
 
 command="${1:-show}"
 case "$command" in
-  show|doctor|restore-plan|protected|components|json)
+  show|doctor|restore-plan|protected|components|summary-json|json)
     manifest_python "$command"
     ;;
   -h|--help|help)

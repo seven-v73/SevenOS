@@ -62,6 +62,7 @@ Les piliers du projet sont :
 - Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.
 - Ajout de `sevenos.dotinst`, manifeste d'installation et de migration inspire des logiques Hyprland matures : metadata, composants installables, chemins proteges, plan de restauration et checks de validation.
 - Ajout de `seven manifest` comme point d'entree pour valider le manifeste, afficher les futurs composants paquetables et lister les chemins utilisateur a preserver.
+- Ajout de `seven migrate plan` et `seven migrate backup` pour preparer les upgrades sans ecraser l'etat utilisateur.
 - Definition des futures frontieres de paquets : `sevenos-cli`, `sevenos-branding`, `sevenos-hyprland`, `sevenos-hub`, `sevenos-profiles`, `sevenos-server` et `sevenos-installer`.
 
 ### Commandes systeme
@@ -73,6 +74,8 @@ Les piliers du projet sont :
 - Ajout de sorties JSON stables pour `seven status --json`, `seven profile status --json`, `sevenpkg status --json` et `sevenpkg meta --json`.
 - Ajout de `seven state --json`, snapshot machine unifie pour les interfaces natives, l'automatisation et le futur Seven Server.
 - Ajout de `seven manifest show|doctor|restore-plan|protected|components` pour preparer les upgrades, le packaging pacman et la future ISO sans ecraser les choix utilisateur.
+- Ajout de `seven migrate plan|backup` comme etape de securite avant reapplication du theme, upgrade Git, paquet pacman futur ou ISO.
+- Ajout du resume manifeste dans `seven state --json`, pour que Seven Hub et Seven Server voient les composants, la version, le canal et les compteurs de protection en JSON.
 - Debut de separation entre affichage humain et donnees machine pour que Seven Hub pilote SevenOS sans parser des textes fragiles.
 
 ### Design System
@@ -180,6 +183,7 @@ Les piliers du projet sont :
 - Ajout de `seven-server` comme fondation.
 - Ajout de `seven-deploy` comme moteur initial de deploiement.
 - Seven Server expose maintenant des endpoints locaux vivants : `/state`, `/status`, `/profiles`, `/readiness`, `/monitor/system`.
+- Seven Server expose aussi `/manifest`, endpoint local pour les informations de packaging, migration et composants SevenOS.
 - Documentation de la logique Personal Operating Cloud.
 - Fondation pour transformer SevenOS en OS + plateforme de deploiement.
 

@@ -260,6 +260,16 @@ fn get_hub_snapshot() -> Result<String, String> {
             .into(),
             detail: "Local API and deployment foundation".into(),
         },
+        ServiceCard {
+            label: "Migration".into(),
+            state: if command_ok("seven manifest doctor >/dev/null 2>&1") {
+                "OK"
+            } else {
+                "MISS"
+            }
+            .into(),
+            detail: "Protected state and upgrade restore contract".into(),
+        },
     ];
 
     let profiles = profile_cards_from_seven().unwrap_or_else(|| {
@@ -331,6 +341,8 @@ fn run_seven_command(command: String) -> Result<String, String> {
         "seven files",
         "seven doctor",
         "seven repair",
+        "seven manifest",
+        "seven migrate",
         "sevenpkg",
     ];
 

@@ -124,6 +124,7 @@ require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/manifest.sh"
+require_executable "scripts/migrate.sh"
 require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
 require_executable "scripts/post-install.sh"
@@ -354,7 +355,9 @@ fi
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; raise SystemExit(0 if "manifest" in json.load(sys.stdin) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -422,8 +425,20 @@ else
   fail "SevenOS install manifest is incomplete"
 fi
 
+migration_plan_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" plan)"
+migration_backup_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" backup)"
+migration_seven_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" migrate backup)"
+if [[ "$migration_plan_output" == *"SevenOS migration plan"* ]] &&
+   [[ "$migration_backup_output" == *"sevenos/migrations"* ]] &&
+   [[ "$migration_seven_output" == *"scripts/migrate.sh backup"* ]]; then
+  ok "SevenOS migration planner protects user state before upgrades"
+else
+  fail "SevenOS migration planner is missing"
+fi
+
 if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md"; then
   ok "Seven Server exposes live state API endpoints"
 else

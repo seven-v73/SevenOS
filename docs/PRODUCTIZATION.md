@@ -91,6 +91,8 @@ Current foundation:
   rules.
 - `seven manifest doctor` validates this contract before an ISO or package
   release.
+- `seven migrate plan` and `seven migrate backup` provide a safe pre-upgrade
+  path for protected user configuration.
 - protected Hyprland override files let the installer apply SevenOS defaults
   without erasing monitor, keyboard or custom user rules.
 

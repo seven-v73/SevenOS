@@ -128,6 +128,10 @@ def handle_manifest(args):
     run_script(args, "scripts/manifest.sh", args.action)
 
 
+def handle_migrate(args):
+    run_script(args, "scripts/migrate.sh", args.action)
+
+
 def handle_repair(args):
     extra = [args.area]
     if args.apply:
@@ -155,6 +159,8 @@ def main():
     ecosystem_parser.add_argument("action", nargs="?", default="status")
     manifest_parser = subparsers.add_parser("manifest", help="inspect SevenOS install, restore and packaging manifest")
     manifest_parser.add_argument("action", nargs="?", default="show")
+    migrate_parser = subparsers.add_parser("migrate", help="plan or back up protected SevenOS user state before upgrades")
+    migrate_parser.add_argument("action", nargs="?", default="plan")
     subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
     subparsers.add_parser("post-install", help="check common post-install blockers")
     readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
@@ -234,6 +240,8 @@ def main():
         handle_ecosystem(args)
     elif args.command == "manifest":
         handle_manifest(args)
+    elif args.command == "migrate":
+        handle_migrate(args)
     elif args.command == "phase-gate":
         run_script(args, "scripts/phase-gate.sh")
     elif args.command == "post-install":
