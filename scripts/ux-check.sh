@@ -101,6 +101,7 @@ require_executable "bin/seven-session"
 require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
+require_executable "bin/seven-waybar-action"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "scripts/phase-gate.sh"
@@ -135,6 +136,9 @@ package_manifest_contains "qt5ct" "scripts/packages-base.txt"
 package_manifest_contains "qt6ct" "scripts/packages-base.txt"
 package_manifest_contains "kvantum" "scripts/packages-base.txt"
 package_manifest_contains "flatpak" "scripts/packages-base.txt"
+package_manifest_contains "btop" "scripts/packages-base.txt"
+package_manifest_contains "pavucontrol" "scripts/packages-base.txt"
+package_manifest_contains "network-manager-applet" "scripts/packages-base.txt"
 package_manifest_contains "archinstall" "scripts/packages-installer.txt"
 package_manifest_contains "rust" "scripts/packages-hub-gui.txt"
 package_manifest_contains "nodejs" "scripts/packages-hub-gui.txt"
@@ -178,6 +182,12 @@ if jq -e '."custom/power"."on-click" == "seven-power"' "$ROOT_DIR/hyprland/wayba
   ok "Waybar power opens seven-power"
 else
   fail "Waybar power action missing"
+fi
+
+if jq -e '.cpu."on-click" == "seven-waybar-action system" and .memory."on-click" == "seven-waybar-action system" and .network."on-click" == "seven-waybar-action network" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar modules expose actionable controls"
+else
+  fail "Waybar still has decorative modules without actions"
 fi
 
 if grep -q 'exec-once = seven-session' "$ROOT_DIR/hyprland/hyprland.conf"; then

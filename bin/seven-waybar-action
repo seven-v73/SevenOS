@@ -1,0 +1,228 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/install.sh" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/../install.sh" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/SevenOS" "$HOME/Code/OS/SevenOS"; do
+    if [[ -x "$candidate/install.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-waybar-action: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+export SEVENOS_ROOT="$ROOT_DIR"
+
+notify() {
+  local title="$1"
+  local message="$2"
+  if command -v notify-send >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    notify-send "$title" "$message" || true
+  else
+    printf '%s: %s\n' "$title" "$message"
+  fi
+}
+
+dry_run() {
+  [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
+}
+
+run_detached() {
+  if dry_run; then
+    printf '%q ' "$@"
+    printf '\n'
+    return 0
+  fi
+  setsid -f "$@" >/tmp/sevenos-waybar-action.log 2>&1 || notify "SevenOS Waybar" "Action failed: $*"
+}
+
+run_terminal() {
+  local title="$1"
+  local command="$2"
+  local wrapped
+  wrapped="$command; printf '\nPress Enter to close...'; read -r"
+
+  if dry_run; then
+    printf 'terminal %q %q\n' "$title" "$command"
+    return 0
+  fi
+
+  if command -v kitty >/dev/null 2>&1; then
+    run_detached kitty --title "$title" bash -lc "$wrapped"
+  elif command -v foot >/dev/null 2>&1; then
+    run_detached foot -e bash -lc "$wrapped"
+  elif command -v alacritty >/dev/null 2>&1; then
+    run_detached alacritty -e bash -lc "$wrapped"
+  else
+    bash -lc "$command"
+  fi
+}
+
+open_rofi_menu() {
+  local prompt="$1"
+  shift
+
+  if dry_run; then
+    printf 'menu %q\n' "$prompt"
+    printf '%s\n' "$@"
+    return 0
+  fi
+
+  if ! command -v rofi >/dev/null 2>&1; then
+    notify "SevenOS Waybar" "Rofi is not installed."
+    return 1
+  fi
+
+  printf '%s\n' "$@" | rofi -dmenu -i -p "$prompt" -theme "$HOME/.config/rofi/sevenos.rasi"
+}
+
+command_or_terminal() {
+  local title="$1"
+  local preferred="$2"
+  local fallback="$3"
+
+  if command -v "$preferred" >/dev/null 2>&1; then
+    run_detached "$preferred"
+  else
+    run_terminal "$title" "$fallback"
+  fi
+}
+
+run_system_action() {
+  local selected="$1"
+  case "$selected" in
+    "Open Control Center") run_detached seven hub ;;
+    "System Monitor") command_or_terminal "SevenOS Monitor" btop "top" ;;
+    "System Status") run_terminal "SevenOS Status" "seven status" ;;
+    "Readiness Score") run_terminal "SevenOS Readiness" "seven readiness" ;;
+    "Doctor Check") run_terminal "SevenOS Doctor" "seven doctor" ;;
+    "Recent Warnings") run_terminal "SevenOS Logs" "journalctl -p warning -b -n 80 --no-pager" ;;
+    *) return 0 ;;
+  esac
+}
+
+run_profile_action() {
+  local selected="$1"
+  case "$selected" in
+    "Profile Status") run_terminal "SevenOS Profiles" "seven profile status" ;;
+    "Open Profiles Hub") run_detached seven-hub Profiles ;;
+    "Install Forge") run_terminal "SevenOS Forge" "seven profile forge" ;;
+    "Install Shield") run_terminal "SevenOS Shield" "seven profile shield" ;;
+    "Install Studio") run_terminal "SevenOS Studio" "seven profile studio" ;;
+    "SevenPkg Status") run_terminal "SevenPkg Status" "sevenpkg status" ;;
+    *) return 0 ;;
+  esac
+}
+
+run_security_action() {
+  local selected="$1"
+  case "$selected" in
+    "Security Audit") run_terminal "SevenOS Security" "seven shield audit" ;;
+    "Enable Shield") run_terminal "SevenOS Shield" "seven shield enable" ;;
+    "Cyber Lab") run_terminal "SevenOS Cyber Lab" "seven shield lab --preset web" ;;
+    "Firewall Status") run_terminal "SevenOS Firewall" "sudo ufw status verbose" ;;
+    "Open Cyber Hub") run_detached seven-hub Cyber ;;
+    *) return 0 ;;
+  esac
+}
+
+run_network_action() {
+  local selected="$1"
+  case "$selected" in
+    "Network Settings") command_or_terminal "SevenOS Network" nm-connection-editor "nmtui" ;;
+    "Network Status") run_terminal "SevenOS Network" "nmcli device status; printf '\n'; nmcli connection show --active" ;;
+    "Wi-Fi Menu") run_terminal "SevenOS Wi-Fi" "nmtui" ;;
+    "Restart NetworkManager") run_terminal "SevenOS Network" "sudo systemctl restart NetworkManager && systemctl is-active NetworkManager" ;;
+    *) return 0 ;;
+  esac
+}
+
+run_audio_action() {
+  local selected="$1"
+  case "$selected" in
+    "Volume Mixer") command_or_terminal "SevenOS Audio" pavucontrol "wpctl status" ;;
+    "Mute Toggle") run_detached wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+    "Volume Up") run_detached wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ ;;
+    "Volume Down") run_detached wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
+    "Audio Status") run_terminal "SevenOS Audio" "wpctl status" ;;
+    *) return 0 ;;
+  esac
+}
+
+run_battery_action() {
+  local selected="$1"
+  case "$selected" in
+    "Power Menu") run_detached seven-power ;;
+    "Battery Status") run_terminal "SevenOS Battery" "for b in /sys/class/power_supply/BAT*; do [ -e \"\$b\" ] || continue; echo \"\$(basename \"\$b\")\"; cat \"\$b/status\" \"\$b/capacity\" 2>/dev/null; done" ;;
+    "Power Profiles") run_terminal "SevenOS Power" "if command -v powerprofilesctl >/dev/null 2>&1; then powerprofilesctl; else echo 'powerprofilesctl is not installed'; fi" ;;
+    "Lock Session") run_detached seven-power lock ;;
+    *) return 0 ;;
+  esac
+}
+
+run_clock_action() {
+  local selected="$1"
+  case "$selected" in
+    "Calendar") command_or_terminal "SevenOS Calendar" gnome-calendar "cal -3; printf '\n'; timedatectl" ;;
+    "Time Settings") run_terminal "SevenOS Time" "timedatectl" ;;
+    "World Time") run_terminal "SevenOS Time" "date; printf '\nUTC: '; TZ=UTC date; printf 'Abidjan: '; TZ=Africa/Abidjan date" ;;
+    *) return 0 ;;
+  esac
+}
+
+show_menu() {
+  local area="$1"
+  local selected
+
+  case "$area" in
+    system)
+      selected="$(open_rofi_menu "System" "Open Control Center" "System Monitor" "System Status" "Readiness Score" "Doctor Check" "Recent Warnings")"
+      run_system_action "$selected"
+      ;;
+    profile)
+      selected="$(open_rofi_menu "Profiles" "Profile Status" "Open Profiles Hub" "Install Forge" "Install Shield" "Install Studio" "SevenPkg Status")"
+      run_profile_action "$selected"
+      ;;
+    security)
+      selected="$(open_rofi_menu "Security" "Security Audit" "Enable Shield" "Cyber Lab" "Firewall Status" "Open Cyber Hub")"
+      run_security_action "$selected"
+      ;;
+    network)
+      selected="$(open_rofi_menu "Network" "Network Settings" "Network Status" "Wi-Fi Menu" "Restart NetworkManager")"
+      run_network_action "$selected"
+      ;;
+    audio)
+      selected="$(open_rofi_menu "Audio" "Volume Mixer" "Mute Toggle" "Volume Up" "Volume Down" "Audio Status")"
+      run_audio_action "$selected"
+      ;;
+    battery)
+      selected="$(open_rofi_menu "Power" "Power Menu" "Battery Status" "Power Profiles" "Lock Session")"
+      run_battery_action "$selected"
+      ;;
+    clock)
+      selected="$(open_rofi_menu "Time" "Calendar" "Time Settings" "World Time")"
+      run_clock_action "$selected"
+      ;;
+    *)
+      printf 'seven-waybar-action: unknown area: %s\n' "$area" >&2
+      exit 1
+      ;;
+  esac
+}
+
+show_menu "${1:-system}"

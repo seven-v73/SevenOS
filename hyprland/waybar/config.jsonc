@@ -35,38 +35,61 @@
     "interval": 60,
     "format": "󰆧 {}",
     "tooltip": true,
-    "on-click": "seven profile status"
+    "tooltip-format": "Click for profile actions",
+    "on-click": "seven-waybar-action profile",
+    "on-click-right": "kitty --title 'SevenOS Profiles' bash -lc 'seven profile status; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "clock": {
-    "format": "󰥔 {:%a %d %b  %H:%M}"
+    "format": "󰥔 {:%a %d %b  %H:%M}",
+    "tooltip-format": "{:%A %d %B %Y}",
+    "on-click": "seven-waybar-action clock",
+    "on-click-right": "kitty --title 'SevenOS Time' bash -lc 'timedatectl; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "cpu": {
-    "format": "󰍛 {usage}%"
+    "format": "󰍛 {usage}%",
+    "tooltip": true,
+    "tooltip-format": "CPU usage. Click for system actions.",
+    "on-click": "seven-waybar-action system",
+    "on-click-right": "kitty --title 'SevenOS Monitor' bash -lc 'if command -v btop >/dev/null 2>&1; then btop; else top; fi'"
   },
   "memory": {
     "format": "󰘚 {}%",
-    "tooltip-format": "{used:0.1f}G / {total:0.1f}G"
+    "tooltip-format": "{used:0.1f}G / {total:0.1f}G. Click for system actions.",
+    "on-click": "seven-waybar-action system",
+    "on-click-right": "kitty --title 'SevenOS Memory' bash -lc 'free -h; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "custom/security": {
     "exec": "bash -lc 'seven-waybar-security'",
     "interval": 30,
     "format": "󰒃 {}",
     "tooltip": true,
-    "on-click": "seven shield audit"
+    "tooltip-format": "Click for Shield actions",
+    "on-click": "seven-waybar-action security",
+    "on-click-right": "kitty --title 'SevenOS Security' bash -lc 'seven shield audit; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "network": {
     "format-wifi": "󰤨 {signalStrength}%",
     "format-ethernet": "󰈀 LAN",
     "format-disconnected": "󰤭 Offline",
-    "tooltip-format": "{ifname}"
+    "tooltip-format": "{ifname}. Click for network actions.",
+    "on-click": "seven-waybar-action network",
+    "on-click-right": "kitty --title 'SevenOS Network' bash -lc 'nmcli device status; printf \"\\n\"; nmcli connection show --active; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "pulseaudio": {
     "format": "󰕾 {volume}%",
-    "format-muted": "󰝟 Muted"
+    "format-muted": "󰝟 Muted",
+    "tooltip-format": "{desc}. Click for audio actions.",
+    "on-click": "seven-waybar-action audio",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
+    "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
   },
   "battery": {
     "format": "󰁹 {capacity}%",
-    "format-charging": "󰂄 {capacity}%"
+    "format-charging": "󰂄 {capacity}%",
+    "tooltip-format": "{timeTo} {power}W. Click for power actions.",
+    "on-click": "seven-waybar-action battery",
+    "on-click-right": "seven-power"
   },
   "custom/hub": {
     "format": "Hub",
@@ -78,7 +101,8 @@
     "format": "Help",
     "tooltip": true,
     "tooltip-format": "Open SevenOS shortcut and repair help",
-    "on-click": "seven-help"
+    "on-click": "seven-help",
+    "on-click-right": "kitty --title 'SevenOS Repair' bash -lc 'seven repair; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "custom/power": {
     "format": "Power",
