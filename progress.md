@@ -149,8 +149,9 @@ Les piliers du projet sont :
 - Amelioration de la maniabilite du Hub : vraie zone de contenu scrollable, navigation laterale lisible avec labels, hauteur adaptee au viewport, scrollbars integrees au design et changement de section plus naturel.
 - Clarification strategique : Tauri reste un prototype de productisation, mais la cible OS devient Seven Hub Native en GTK4/libadwaita.
 - Ajout de `seven-hub/native/README.md` pour definir les modules natifs, les contrats JSON et le chemin de migration.
-- Ajout de `seven-hub-native`, premier prototype GTK/libadwaita centre sur les profils et connecte a `seven profile status --json`.
+- Ajout de `seven-hub-native`, prototype GTK/libadwaita centre sur Dashboard, Profiles et Actions, connecte a `seven readiness --json`, `seven profile status --json` et `seven actions --json`.
 - Integration de `seven hub-native`, du lanceur desktop `seven-hub-native.desktop` et des wrappers d'installation.
+- `seven-hub` devient la porte d'entree du Hub natif en session graphique, avec fallback menu/Rofi/terminal quand GTK n'est pas encore disponible.
 
 ### Gestion fichiers
 

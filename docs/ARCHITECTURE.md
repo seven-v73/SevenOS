@@ -109,7 +109,7 @@ strategy is therefore split into prototype and native target.
 | SevenOS Shell | GNOME-like overview, quick settings, scratchpad and polished Hyprland rules | Active |
 | Local web Control Center | simple local dashboard for diagnostics | Active |
 | Tauri Seven Hub | productization prototype, action workflow and JSON validation | Preview |
-| Native Seven Hub | long-term OS Control Center using GTK4 + libadwaita | Planned |
+| Native Seven Hub | OS Control Center using GTK4 + libadwaita | Active foundation |
 
 Rules:
 
@@ -132,6 +132,7 @@ Native Hub target modules:
 seven-hub/native
 ├── Dashboard  -> readiness, services, repair suggestions
 ├── Profiles   -> Forge, Shield, Studio, Windows, Horizon activation
+├── Actions    -> shared `seven actions --json` registry
 ├── Apps       -> sevenpkg, Flatpak, future SevenStore
 ├── Security   -> Shield, UFW, sandbox, Cyber Lab
 ├── Windows    -> Wine, Bottles, KVM, VM assistant

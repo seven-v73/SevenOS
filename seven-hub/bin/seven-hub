@@ -97,6 +97,25 @@ doctor() {
   fi
 }
 
+open_native_hub() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'seven-hub-native open\n'
+    return 0
+  fi
+
+  if [[ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    return 1
+  fi
+
+  if command -v seven-hub-native >/dev/null 2>&1; then
+    seven-hub-native open
+  elif [[ -x "$SEVENOS_ROOT/bin/seven-hub-native" ]]; then
+    "$SEVENOS_ROOT/bin/seven-hub-native" open
+  else
+    return 1
+  fi
+}
+
 run_in_terminal() {
   local command="$1"
   local terminal="${TERMINAL:-}"
@@ -452,6 +471,10 @@ select_with_terminal() {
     index=$((index + 1))
   done
 
+  if [[ ! -t 0 || "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    return 0
+  fi
+
   printf '\nChoose an action: ' >&2
   read -r choice
 
@@ -463,6 +486,11 @@ select_with_terminal() {
 
 select_category() {
   actions=("${categories[@]}")
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    select_with_terminal "$title" >&2
+    return 0
+  fi
 
   if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
     local selected
@@ -478,6 +506,11 @@ select_action() {
   local category="$1"
   load_actions "$category"
 
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    select_with_terminal "$category" >&2
+    return 0
+  fi
+
   if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
     local selected
     selected="$(select_with_rofi "$category" "Seven Hub · $category" || true)"
@@ -490,6 +523,7 @@ select_action() {
 
 main() {
   local category selected item label action
+  local skip_native=0
 
   category="${1:-}"
   case "$category" in
@@ -501,9 +535,20 @@ main() {
       doctor
       exit 0
       ;;
+    native|open)
+      open_native_hub || die "Native Hub unavailable. Install it with: seven hub-gui install"
+      exit 0
+      ;;
+    menu|rofi)
+      category=""
+      skip_native=1
+      ;;
   esac
 
   if [[ -z "$category" ]]; then
+    if [[ "$skip_native" -eq 0 ]] && open_native_hub; then
+      exit 0
+    fi
     category="$(select_category)"
   fi
 

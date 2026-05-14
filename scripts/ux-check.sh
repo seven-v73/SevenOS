@@ -401,8 +401,13 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -Fq 'Tauri is useful for fast iteration' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -Fq 'Seven Hub Native' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -Fq 'seven profile status --json' "$ROOT_DIR/seven-hub/native/README.md" &&
+   grep -Fq 'seven actions --json' "$ROOT_DIR/seven-hub/native/README.md" &&
+   grep -q 'def render_dashboard' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
    "$ROOT_DIR/bin/seven-hub-native" status | grep -q 'Seven Hub Native' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" hub-native --dry-run | grep -q 'seven-hub-native open' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" | grep -q 'seven-hub-native open' &&
+   grep -q 'Exec=seven-hub' "$ROOT_DIR/seven-hub/seven-hub.desktop" &&
    grep -q 'Exec=seven-hub-native' "$ROOT_DIR/seven-hub/seven-hub-native.desktop"; then
   ok "Seven Hub native UI strategy is documented"
 else

@@ -38,6 +38,20 @@ def profile_payload() -> list[dict]:
     return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "status", "--json"))
 
 
+def readiness_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "readiness.sh"), "--json"))
+    except Exception:
+        return {"score": 0, "max": 0, "percent": 0, "recommendations": []}
+
+
+def actions_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "actions.sh"), "--json"))
+    except Exception:
+        return {"schema": "sevenos.actions.v1", "actions": []}
+
+
 def status_text() -> str:
     profiles = profile_payload()
     active = next((item for item in profiles if item.get("active")), None)
@@ -60,13 +74,21 @@ def run_profile_action(action: str, key: str) -> None:
     )
 
 
+def run_registered_action(action_id: str) -> None:
+    subprocess.Popen(
+        [str(ROOT / "bin" / "seven"), "actions", "run", action_id],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+    )
+
+
 def run_gui() -> int:
     try:
         import gi
 
         gi.require_version("Gtk", "4.0")
         gi.require_version("Adw", "1")
-        from gi.repository import Adw, Gio, Gtk
+        from gi.repository import Adw, Gtk
     except Exception as error:
         print("seven-hub-native: GTK4/libadwaita is not available yet.", file=sys.stderr)
         print("Install the GUI stack with: seven hub-gui install", file=sys.stderr)
@@ -80,46 +102,115 @@ def run_gui() -> int:
 
         def on_activate(self, app: Adw.Application) -> None:
             win = Adw.ApplicationWindow(application=app)
-            win.set_title("Seven Hub Native")
-            win.set_default_size(980, 680)
+            win.set_title("Seven Hub")
+            win.set_default_size(1080, 720)
 
             toolbar = Adw.HeaderBar()
-            title = Adw.WindowTitle(title="Seven Hub Native", subtitle="Profiles are live SevenOS state")
+            title = Adw.WindowTitle(title="Seven Hub", subtitle="Native SevenOS Control Center")
             toolbar.set_title_widget(title)
 
             refresh = Gtk.Button(label="Refresh")
             toolbar.pack_end(refresh)
 
-            content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-            content.set_margin_top(24)
-            content.set_margin_bottom(24)
-            content.set_margin_start(24)
-            content.set_margin_end(24)
+            stack = Gtk.Stack()
+            stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+            stack.set_vexpand(True)
 
-            scrolled = Gtk.ScrolledWindow()
-            scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-            scrolled.set_child(content)
+            sidebar = Gtk.StackSidebar()
+            sidebar.set_stack(stack)
+            sidebar.set_width_request(180)
+
+            body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+            body.append(sidebar)
+            body.append(stack)
 
             root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
             root.append(toolbar)
-            root.append(scrolled)
+            root.append(body)
             win.set_content(root)
 
-            def render_profiles() -> None:
-                while child := content.get_first_child():
-                    content.remove(child)
+            def make_row(title_text: str, subtitle: str) -> Adw.ActionRow:
+                row = Adw.ActionRow()
+                row.set_title(title_text)
+                row.set_subtitle(subtitle)
+                return row
 
-                heading = Gtk.Label()
-                heading.set_markup("<span size='22000' weight='500'>SevenOS Profiles</span>")
-                heading.set_xalign(0)
-                content.append(heading)
+            def page():
+                box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+                box.set_margin_top(24)
+                box.set_margin_bottom(24)
+                box.set_margin_start(24)
+                box.set_margin_end(24)
 
-                intro = Gtk.Label(label="Install, inspect and activate real SevenOS workspaces without opening a terminal.")
+                scrolled = Gtk.ScrolledWindow()
+                scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+                scrolled.set_child(box)
+                return box, scrolled
+
+            dashboard, dashboard_scroll = page()
+            profiles_page, profiles_scroll = page()
+            actions_page, actions_scroll = page()
+
+            stack.add_titled(dashboard_scroll, "dashboard", "Dashboard")
+            stack.add_titled(profiles_scroll, "profiles", "Profiles")
+            stack.add_titled(actions_scroll, "actions", "Actions")
+
+            def clear(box: Gtk.Box) -> None:
+                while child := box.get_first_child():
+                    box.remove(child)
+
+            def heading(box: Gtk.Box, title_text: str, subtitle: str) -> None:
+                label = Gtk.Label()
+                label.set_markup(f"<span size='22000' weight='500'>{title_text}</span>")
+                label.set_xalign(0)
+                box.append(label)
+
+                intro = Gtk.Label(label=subtitle)
                 intro.set_xalign(0)
                 intro.add_css_class("dim-label")
                 intro.set_wrap(True)
-                content.append(intro)
+                box.append(intro)
 
+            def render_dashboard() -> None:
+                clear(dashboard)
+                readiness = readiness_payload()
+                profiles = profile_payload()
+                active = next((item for item in profiles if item.get("active")), None)
+                ready = sum(1 for item in profiles if item.get("state") == "OK")
+                partial = sum(1 for item in profiles if item.get("state") == "PART")
+                missing = sum(1 for item in profiles if item.get("state") == "MISS")
+
+                heading(dashboard, "SevenOS Dashboard", "System state, readiness and common repair paths from native GTK.")
+
+                group = Adw.PreferencesGroup(title="System overview")
+                for title_text, subtitle in (
+                    ("Readiness", f"{readiness.get('percent', 0)}% · {readiness.get('score', 0)}/{readiness.get('max', 0)} checks passed"),
+                    ("Active profile", active.get("title") if active else "No active profile yet"),
+                    ("Profiles", f"{ready} OK · {partial} PART · {missing} MISS"),
+                    ("Root", str(ROOT)),
+                ):
+                    group.add(make_row(title_text, subtitle))
+                dashboard.append(group)
+
+                recommendations = readiness.get("recommendations") or []
+                if recommendations:
+                    rec_group = Adw.PreferencesGroup(title="Recommended next actions")
+                    for recommendation in recommendations[:4]:
+                        rec_group.add(make_row(
+                            recommendation.get("command", "seven doctor"),
+                            recommendation.get("reason", "Review this SevenOS improvement."),
+                        ))
+                    dashboard.append(rec_group)
+
+            def render_profiles() -> None:
+                clear(profiles_page)
+                heading(
+                    profiles_page,
+                    "Professional Profiles",
+                    "Install, inspect and activate real SevenOS workspaces without opening a terminal.",
+                )
+
+                group = Adw.PreferencesGroup(title="Workspaces")
                 for profile in profile_payload():
                     row = Adw.ActionRow()
                     row.set_title(profile.get("title", profile.get("key", "Profile")))
@@ -140,10 +231,48 @@ def run_gui() -> int:
                     action.connect("clicked", lambda _button, name=action_name, key=profile["key"]: run_profile_action(name, key))
                     row.add_suffix(action)
 
-                    content.append(row)
+                    group.add(row)
 
-            refresh.connect("clicked", lambda _button: render_profiles())
-            render_profiles()
+                profiles_page.append(group)
+
+            def render_actions() -> None:
+                clear(actions_page)
+                heading(
+                    actions_page,
+                    "System Actions",
+                    "Actions come from seven actions --json, so the native Hub follows the same contract as the CLI and server.",
+                )
+
+                payload = actions_payload()
+                by_category: dict[str, list[dict]] = {}
+                for action in payload.get("actions", []):
+                    by_category.setdefault(action.get("category", "System"), []).append(action)
+
+                wanted = ("Desktop", "System", "Profiles", "Security", "Apps", "Windows", "Server", "Installer")
+                for category in wanted:
+                    items = by_category.get(category, [])
+                    if not items:
+                        continue
+                    group = Adw.PreferencesGroup(title=category)
+                    for item in items[:6]:
+                        row = make_row(
+                            item.get("title", item.get("id", "Action")),
+                            f"{item.get('impact', 'safe')} · {item.get('description', '')}",
+                        )
+                        button = Gtk.Button(label="Run")
+                        button.add_css_class("suggested-action" if item.get("impact") == "safe" else "destructive-action")
+                        button.connect("clicked", lambda _button, action_id=item["id"]: run_registered_action(action_id))
+                        row.add_suffix(button)
+                        group.add(row)
+                    actions_page.append(group)
+
+            def render_all() -> None:
+                render_dashboard()
+                render_profiles()
+                render_actions()
+
+            refresh.connect("clicked", lambda _button: render_all())
+            render_all()
             win.present()
 
     app = SevenHubNative()

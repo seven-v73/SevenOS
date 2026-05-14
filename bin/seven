@@ -293,7 +293,7 @@ def main():
         extra = ["--json"] if args.json else []
         run_script(args, "scripts/state.sh", *extra)
     elif args.command == "hub":
-        run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-control-center"), "open"], args)
+        run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-hub")], args)
     elif args.command == "files":
         run_script(args, "bin/seven-files", *args.extra)
     elif args.command == "profile":

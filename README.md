@@ -342,9 +342,13 @@ Launch Seven Hub after installing it:
 
 ```bash
 seven hub
+seven-hub
 ```
 
-The Rofi command palette remains available as `seven-hub`.
+`seven hub` and `seven-hub` open the native GTK/libadwaita Control Center when
+the graphical stack is available. The Rofi/terminal command palette remains
+available as `seven-hub menu` or by opening a focused category such as
+`seven-hub Profiles`.
 
 ## Identity
 
@@ -398,21 +402,23 @@ Desktop controls:
 
 ```bash
 seven hub
+seven hub-native status
 seven-control-center open
 seven-hub
+seven-hub menu
 seven-files
 seven-files menu
 seven-power
 seven-power lock
 ```
 
-`seven hub` opens the SevenOS Control Center dashboard. `seven-hub` opens the
-keyboard-first command palette organized into focused spaces: Dashboard,
-Profiles, Cyber, Desktop, VM & Windows, Server & Deploy, Ecosystem, Installer,
-and Apps.
+`seven hub` and `seven-hub` are the main OS-native Hub entrypoints. They prefer
+the GTK/libadwaita Hub and fall back to the keyboard-first command palette
+organized into focused spaces: Dashboard, Profiles, Cyber, Desktop,
+VM & Windows, Server & Deploy, Ecosystem, Installer, and Apps.
 
 If the graphical dashboard cannot open a browser, it prints the local URL and
-falls back to the `seven-hub` command palette.
+falls back to the `seven-hub menu` command palette.
 
 `seven files` opens the SevenOS file experience. It prefers Nautilus for a
 polished Wayland desktop and falls back to other file managers or `xdg-open`.
