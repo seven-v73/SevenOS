@@ -49,6 +49,8 @@ Rules:
 - Seven Hub UI implementations must consume stable SevenOS data contracts
   (`seven status --json`, `seven profile status --json`, `seven readiness --json`)
   instead of scraping human terminal output.
+- `seven state --json` is the unified machine snapshot for native UI,
+  automation and future Seven Server endpoints.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
@@ -104,6 +106,7 @@ Examples:
 ```bash
 seven hub
 seven files
+seven state --json
 seven profile forge
 seven shield audit
 seven windows status

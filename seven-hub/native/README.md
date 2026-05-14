@@ -24,6 +24,7 @@ The native UI must consume these commands as stable APIs:
 
 ```bash
 seven status --json
+seven state --json
 seven profile status --json
 seven readiness --json
 sevenpkg status --json
@@ -81,3 +82,6 @@ seven hub-native status
 
 The prototype is intentionally small: Profiles first, because profiles define
 how SevenOS becomes an adaptive OS instead of a static Arch theme.
+
+As modules grow, prefer `seven state --json` when a view needs a full snapshot
+instead of calling multiple commands individually.

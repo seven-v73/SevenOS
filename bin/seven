@@ -171,6 +171,8 @@ def main():
     doctor_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
     status_parser = subparsers.add_parser("status", help="show SevenOS status")
     status_parser.add_argument("--json", action="store_true", help="print machine-readable system status")
+    state_parser = subparsers.add_parser("state", help="show unified SevenOS machine state")
+    state_parser.add_argument("--json", action="store_true", help="print machine-readable unified state")
     subparsers.add_parser("hub", help="launch Seven Hub")
     files_parser = subparsers.add_parser("files", help="open Seven Files")
     files_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -258,6 +260,9 @@ def main():
             run_script(args, "scripts/status.sh", *extra)
         else:
             install_target("status", args, extra)
+    elif args.command == "state":
+        extra = ["--json"] if args.json else []
+        run_script(args, "scripts/state.sh", *extra)
     elif args.command == "hub":
         run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-control-center"), "open"], args)
     elif args.command == "files":

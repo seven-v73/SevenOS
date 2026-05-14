@@ -114,6 +114,7 @@ require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
+require_executable "scripts/state.sh"
 require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
@@ -327,6 +328,7 @@ else
 fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null; then
   ok "SevenOS core commands expose stable JSON for the Hub"

@@ -68,6 +68,7 @@ Les piliers du projet sont :
 - Ajout de commandes de statut, readiness, doctor, improvement et profils.
 - Ajout de commandes UX : `seven-session`, `seven-wallpaper`, `seven-power`, `seven-files`, `seven-welcome`, `seven-country`.
 - Ajout de sorties JSON stables pour `seven status --json`, `seven profile status --json`, `sevenpkg status --json` et `sevenpkg meta --json`.
+- Ajout de `seven state --json`, snapshot machine unifie pour les interfaces natives, l'automatisation et le futur Seven Server.
 - Debut de separation entre affichage humain et donnees machine pour que Seven Hub pilote SevenOS sans parser des textes fragiles.
 
 ### Design System
