@@ -16,7 +16,7 @@ body {
   background:
     linear-gradient(135deg, rgba(200, 169, 110, 0.10), transparent 26%),
     linear-gradient(225deg, rgba(91, 127, 166, 0.12), transparent 30%),
-    linear-gradient(145deg, var(--ebene), var(--surface-0) 45%, #12121a);
+    linear-gradient(145deg, var(--ebene), var(--surface-0) 45%, #24232f);
   overflow: auto;
 }
 

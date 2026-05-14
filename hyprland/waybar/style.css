@@ -8,9 +8,9 @@
 }
 
 window#waybar {
-  background: rgba(9, 9, 13, 0.94);
+  background: rgba(25, 24, 33, 0.96);
   color: #f0ede6;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 #workspaces,
@@ -28,8 +28,8 @@ window#waybar {
   padding: 0 12px;
   margin: 5px 2px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 #custom-sevenos {
@@ -49,8 +49,8 @@ window#waybar {
 #workspaces {
   padding: 0 5px;
   background:
-    linear-gradient(90deg, rgba(200, 169, 110, 0.10), rgba(91, 127, 166, 0.08)),
-    rgba(255, 255, 255, 0.03);
+    linear-gradient(90deg, rgba(200, 169, 110, 0.18), rgba(91, 127, 166, 0.14)),
+    rgba(255, 255, 255, 0.08);
 }
 
 #workspaces button {
@@ -59,14 +59,14 @@ window#waybar {
   margin: 3px 1px;
   padding: 0 8px;
   border-radius: 7px;
-  color: #9e9b94;
+  color: #c7c0b2;
   background: transparent;
   transition: background 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
 #workspaces button:hover {
   color: #f0ede6;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 #workspaces button.active {
@@ -84,36 +84,36 @@ window#waybar {
 #custom-apps,
 #custom-files {
   color: #f0ede6;
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(200, 169, 110, 0.22);
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(200, 169, 110, 0.36);
   font-weight: 500;
 }
 
 #custom-profile {
   color: #e2c07a;
-  background: rgba(200, 169, 110, 0.08);
-  border-color: rgba(200, 169, 110, 0.22);
+  background: rgba(200, 169, 110, 0.15);
+  border-color: rgba(200, 169, 110, 0.36);
   font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
   font-size: 11px;
 }
 
 #clock {
   color: #f0ede6;
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(200, 169, 110, 0.22);
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(200, 169, 110, 0.30);
   font-weight: 500;
 }
 
 #custom-quick {
   color: #f0ede6;
-  background: rgba(91, 127, 166, 0.14);
+  background: rgba(91, 127, 166, 0.24);
   border-color: #5b7fa6;
   font-weight: 500;
 }
 
 #custom-security {
   color: #f0ede6;
-  background: rgba(74, 140, 92, 0.14);
+  background: rgba(74, 140, 92, 0.24);
   border-color: #4a8c5c;
   font-weight: 500;
 }
@@ -125,7 +125,7 @@ window#waybar {
 
 #pulseaudio,
 #battery {
-  color: #9e9b94;
+  color: #c7c0b2;
 }
 
 #custom-power {

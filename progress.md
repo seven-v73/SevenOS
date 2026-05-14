@@ -94,6 +94,7 @@ Les piliers du projet sont :
 - Ajout d'une surface dediee Quick Settings avec theme Rofi specifique, plus proche d'un panneau systeme que d'un simple menu texte.
 - Raccordement du Launchpad Apps aux tokens Rofi centraux au lieu d'une palette locale dupliquee.
 - Ajout de `scripts/design-check.sh` pour bloquer les regressions visuelles : ombres decoratives, blur lourd, font weights trop forts, Launchpad non tokenise, Quick Settings absent ou Hub sans details structurels.
+- Refonte palette `Sovereign Dusk` : surfaces graphite plus lumineuses, textes secondaires plus lisibles et tuiles Apps mieux separees pour eviter l'effet noir-sur-noir en usage jour/nuit.
 
 ### Desktop et session
 

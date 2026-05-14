@@ -167,13 +167,13 @@ def render_dashboard():
   <title>SevenOS Control Center</title>
   <style>
     :root {{
-      --ebene:#09090d; --surface-0:#0f0f14; --surface-1:#15151c; --surface-2:#1c1c26; --surface-3:#232330;
-      --glass:#ffffff08; --glass-2:#ffffff0f; --glass-3:#ffffff18; --glass-border:#ffffff14; --glass-border-2:#ffffff22;
+      --ebene:#141319; --surface-0:#191821; --surface-1:#22212b; --surface-2:#2d2b38; --surface-3:#383645;
+      --glass:#ffffff12; --glass-2:#ffffff1a; --glass-3:#ffffff24; --glass-border:#ffffff32; --glass-border-2:#ffffff32;
       --gold:#c8a96e; --gold-bright:#e2c07a; --gold-dim:#8a7048;
       --clay:#c4673a; --clay-dim:#8a4525; --clay-pale:rgba(196,103,58,.14);
       --baobab:#4a8c5c; --baobab-bright:#5aad72; --baobab-pale:rgba(74,140,92,.14);
       --indigo:#5b7fa6; --indigo-bright:#7ba3cf; --indigo-pale:rgba(91,127,166,.14);
-      --text-1:#f0ede6; --text-2:#9e9b94; --text-3:#52504c;
+      --text-1:#f0ede6; --text-2:#c7c0b2; --text-3:#8a8378;
       --font-display:"Cormorant Garamond", Georgia, serif; --font-interface:"DM Sans", system-ui, sans-serif; --font-mono:"JetBrains Mono", monospace;
     }}
     * {{ box-sizing: border-box; }}

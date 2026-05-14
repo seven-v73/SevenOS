@@ -6,7 +6,7 @@ window {
   padding: 34px;
   border: 0px;
   border-radius: 0px;
-  background-color: @ebene;
+  background-color: @surface-0;
 }
 
 mainbox {
@@ -28,11 +28,11 @@ textbox {
 }
 
 inputbar {
-  margin: 0px 38% 0px 38%;
-  padding: 9px 13px;
+  margin: 0px 34% 0px 34%;
+  padding: 11px 15px;
   spacing: 8px;
   border: 1px;
-  border-radius: 12px;
+  border-radius: 14px;
   border-color: @glass-border-2;
   background-color: @surface-3;
   children: [ icon-search, entry ];
@@ -75,24 +75,24 @@ element-icon {
 }
 
 element {
-  padding: 15px 12px;
+  padding: 18px 14px;
   spacing: 10px;
   orientation: vertical;
   border: 1px;
   border-radius: 20px;
-  border-color: @glass-border;
-  background-color: @surface-2;
+  border-color: @glass-border-2;
+  background-color: @surface-3;
   text-color: @text-1;
 }
 
 element selected {
-  background-color: @surface-3;
-  border-color: @gold;
-  text-color: @text-1;
+  background-color: @gold;
+  border-color: @gold-bright;
+  text-color: @ebene;
 }
 
 element alternate {
-  background-color: transparent;
+  background-color: @surface-2;
   text-color: @text-1;
 }
 

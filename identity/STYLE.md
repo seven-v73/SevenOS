@@ -23,11 +23,11 @@ desktop, but with a visual language owned by SevenOS.
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| `--ebene` | `#09090d` | zero surface |
-| `--surface-0` | `#0f0f14` | page background |
-| `--surface-1` | `#15151c` | cards and panels |
-| `--surface-2` | `#1c1c26` | raised cards |
-| `--surface-3` | `#232330` | modals and popovers |
+| `--ebene` | `#141319` | zero surface |
+| `--surface-0` | `#191821` | page background |
+| `--surface-1` | `#22212b` | cards and panels |
+| `--surface-2` | `#2d2b38` | raised cards |
+| `--surface-3` | `#383645` | modals and popovers |
 | `--gold` | `#c8a96e` | primary action |
 | `--gold-bright` | `#e2c07a` | hover and active |
 | `--gold-dim` | `#8a7048` | borders and details |
@@ -37,9 +37,9 @@ desktop, but with a visual language owned by SevenOS.
 | `--indigo` | `#5b7fa6` | info and secondary states |
 | `--indigo-bright` | `#7ba3cf` | info text and icons |
 | `--text-1` | `#f0ede6` | primary text |
-| `--text-2` | `#9e9b94` | secondary text |
-| `--text-3` | `#52504c` | tertiary text |
-| `--text-4` | `#2e2d2a` | disabled text |
+| `--text-2` | `#c7c0b2` | secondary text |
+| `--text-3` | `#8a8378` | tertiary text |
+| `--text-4` | `#5f5a52` | disabled text |
 
 ## Typography
 
@@ -55,8 +55,10 @@ Rules:
 
 ## Surfaces
 
-SevenOS is dark-only. Liquid glass is simulated with transparent surfaces and
-subtle borders. Do not use production `backdrop-filter` blur.
+SevenOS uses an adaptive dark foundation, not a black-only theme. The default
+target is `Sovereign Dusk`: readable in daylight, calm at night, and still
+clearly premium. Liquid glass is simulated with transparent surfaces and subtle
+borders. Do not use production `backdrop-filter` blur.
 
 - Base: `--surface-1` + `--glass-border`
 - Floating: `--glass` + `--glass-border`
@@ -82,7 +84,8 @@ Functional icon opacity: 60-100%.
 
 ## Absolute Rules
 
-- No white or light gray app surfaces.
+- No pure black app surfaces for interactive lists or launchers.
+- No white app surfaces in the default theme.
 - No generic blue/green system palette.
 - No rainbow, purple/pink or neon cyberpunk gradients.
 - No `font-weight` 600, 700, 800 or 900 in UI CSS.
@@ -95,7 +98,7 @@ Functional icon opacity: 60-100%.
 
 - Colors use tokens or documented SevenOS palette values.
 - Typography follows Display / Interface / Mono roles.
-- No surface lighter than `#2a2a2a`.
+- App tiles, panels and launchers must use at least `--surface-2` or higher.
 - Child radius is smaller than parent radius.
 - Animations use transform and opacity only.
 - `prefers-reduced-motion` is present for web UI.

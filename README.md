@@ -348,7 +348,7 @@ The Rofi command palette remains available as `seven-hub`.
 
 ## Identity
 
-SevenOS uses an African first identity system: dark graphite surfaces, ancestral gold for action, clay for signal, baobab green for system health, and restrained geometric rhythm inspired by African material culture.
+SevenOS uses an African first identity system: adaptive graphite surfaces, ancestral gold for action, clay for signal, baobab green for system health, and restrained geometric rhythm inspired by African material culture.
 
 The identity source of truth lives in `identity/README.md`.
 

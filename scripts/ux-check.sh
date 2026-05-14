@@ -189,10 +189,11 @@ else
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'ebene: #09090d' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
+   grep -q 'ebene: #141319' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'columns: 6' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'background-color: @surface-3' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -RE '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi" >/dev/null &&
    grep -q 'gtk-application-prefer-dark-theme=true' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'icon_theme=Papirus-Dark' "$ROOT_DIR/hyprland/qt6ct/qt6ct.conf"; then

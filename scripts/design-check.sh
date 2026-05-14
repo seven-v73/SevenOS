@@ -55,7 +55,7 @@ else
 fi
 
 if grep -q 'content: "SevenOS Apps"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'background-color: @surface-2' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'background-color: @surface-3' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -Eq '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi/apps.rasi"; then
   ok "Apps overview has SevenOS header, tokenized surfaces and raised tiles"
 else
