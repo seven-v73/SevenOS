@@ -147,6 +147,13 @@ open_menu() {
     return 0
   fi
 
+  if [[ "${SEVENOS_PANEL_FALLBACK:-0}" != "1" ]] &&
+     command -v seven-shell-panel >/dev/null 2>&1 &&
+     seven-shell-panel status >/dev/null 2>&1; then
+    seven-shell-panel notifications
+    return $?
+  fi
+
   if ! command -v rofi >/dev/null 2>&1; then
     notify "SevenOS Notifications" "Rofi is not installed."
     return 1

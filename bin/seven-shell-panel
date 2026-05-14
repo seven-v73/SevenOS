@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and Path(env_root, "bin/seven").is_file():
+        return Path(env_root).resolve()
+
+    script_dir = Path(__file__).resolve().parent
+    if Path(script_dir, "seven").is_file():
+        return script_dir.parent
+
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "SevenOS", Path.home() / "Code/OS/SevenOS"):
+        if Path(candidate, "bin/seven").is_file():
+            return candidate
+
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+def dry_run() -> bool:
+    return os.environ.get("SEVENOS_DRY_RUN") == "1"
+
+
+def dry_line(surface: str, action: str) -> None:
+    print(f"DRY-RUN > Shell Panel > {surface} > {action}")
+
+
+def gtk_available() -> tuple[bool, str]:
+    if dry_run():
+        return True, "dry-run"
+
+    try:
+        import gi  # noqa: F401
+
+        gi.require_version("Gtk", "4.0")
+        gi.require_version("Adw", "1")
+        from gi.repository import Adw, Gtk  # noqa: F401
+    except Exception as error:
+        return False, str(error)
+
+    return True, "native-ready"
+
+
+def run_action(*command: str) -> None:
+    env = {**os.environ, "SEVENOS_ROOT": str(ROOT)}
+
+    if dry_run():
+        dry_line("Action", " ".join(command))
+        return
+
+    subprocess.Popen(command, cwd=ROOT, env=env)
+
+
+QUICK_ACTIONS = [
+    ("󰒓", "Control Center", "Dashboard and system state", ["seven", "hub"]),
+    ("󰀻", "Apps", "Open application overview", ["seven-overview", "apps"]),
+    ("󰖲", "Windows", "Switch open windows", ["seven-overview", "windows"]),
+    ("󰤨", "Network", "Wi-Fi and connections", ["seven-waybar-action", "network"]),
+    ("󰕾", "Audio", "Mixer and PipeWire controls", ["seven-waybar-action", "audio"]),
+    ("󰉋", "Files", "Open profile workspace", ["seven-files", "profile"]),
+    ("󰍛", "Monitor", "CPU, memory and processes", ["seven-waybar-action", "system"]),
+    ("󰐥", "Power", "Lock, reboot and shutdown", ["seven-power"]),
+]
+
+NOTIFICATION_ACTIONS = [
+    ("󰂚", "Status", "Show notification state", ["seven-waybar-notifications", "test"]),
+    ("󰅺", "Test", "Send test notification", ["seven-waybar-notifications", "test"]),
+    ("󰕒", "Restore", "Restore last notification", ["seven-waybar-notifications", "restore"]),
+    ("󰅖", "Dismiss", "Dismiss visible notifications", ["seven-waybar-notifications", "dismiss"]),
+    ("󰂛", "Focus", "Toggle Do Not Disturb", ["seven-waybar-notifications", "toggle-dnd"]),
+    ("󰜉", "Restart", "Restart Mako service", ["seven-waybar-notifications", "restart"]),
+]
+
+
+def print_preview(surface: str) -> None:
+    actions = NOTIFICATION_ACTIONS if surface == "notifications" else QUICK_ACTIONS
+    dry_line(surface.title(), "Open native panel")
+    for icon, title, subtitle, command in actions:
+        print(f"{icon}  {title:<16} {subtitle} :: {' '.join(command)}")
+
+
+def run_gui(surface: str) -> int:
+    available, reason = gtk_available()
+    if not available:
+        print("seven-shell-panel: GTK4/libadwaita is not available.", file=sys.stderr)
+        print("Install with: ./seven-hub/gui-stack.sh install", file=sys.stderr)
+        print(f"Details: {reason}", file=sys.stderr)
+        return 1
+
+    import gi
+
+    gi.require_version("Gtk", "4.0")
+    gi.require_version("Adw", "1")
+    from gi.repository import Adw, Gdk, Gtk
+
+    actions = NOTIFICATION_ACTIONS if surface == "notifications" else QUICK_ACTIONS
+    title = "SevenOS Notifications" if surface == "notifications" else "SevenOS Quick Settings"
+    subtitle = "Notification surface" if surface == "notifications" else "System controls"
+
+    class SevenShellPanel(Adw.Application):
+        def __init__(self) -> None:
+            super().__init__(application_id=f"os.seven.ShellPanel.{surface}")
+            self.connect("activate", self.on_activate)
+
+        def on_activate(self, app: Adw.Application) -> None:
+            css = b"""
+            window { background: transparent; }
+            .panel {
+              background: rgba(255, 252, 244, 0.90);
+              color: #2a1f12;
+              border-radius: 28px;
+              border: 1px solid rgba(167, 127, 69, 0.34);
+              padding: 18px;
+            }
+            .title { font-size: 20px; font-weight: 500; }
+            .subtitle { color: #5c4d3a; }
+            .tile {
+              background: rgba(255, 255, 255, 0.48);
+              border-radius: 18px;
+              padding: 12px;
+            }
+            .glyph { font-size: 24px; }
+            """
+            provider = Gtk.CssProvider()
+            provider.load_from_data(css)
+            display = Gdk.Display.get_default()
+            if display:
+                Gtk.StyleContext.add_provider_for_display(display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+            win = Adw.ApplicationWindow(application=app)
+            win.set_title(title)
+            win.set_default_size(430, 470)
+            win.set_resizable(False)
+
+            panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+            panel.add_css_class("panel")
+            panel.set_margin_top(10)
+            panel.set_margin_bottom(10)
+            panel.set_margin_start(10)
+            panel.set_margin_end(10)
+
+            heading = Gtk.Label(label=title)
+            heading.add_css_class("title")
+            heading.set_xalign(0)
+            panel.append(heading)
+
+            subheading = Gtk.Label(label=subtitle)
+            subheading.add_css_class("subtitle")
+            subheading.set_xalign(0)
+            panel.append(subheading)
+
+            grid = Gtk.Grid()
+            grid.set_column_spacing(10)
+            grid.set_row_spacing(10)
+            panel.append(grid)
+
+            for index, (icon, label, description, command) in enumerate(actions):
+                button = Gtk.Button()
+                button.add_css_class("tile")
+                button.set_tooltip_text(description)
+
+                box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+                glyph = Gtk.Label(label=icon)
+                glyph.add_css_class("glyph")
+                glyph.set_xalign(0.5)
+                text = Gtk.Label(label=label)
+                text.set_xalign(0.5)
+                box.append(glyph)
+                box.append(text)
+                button.set_child(box)
+                button.connect("clicked", lambda _button, cmd=command: run_action(*cmd))
+                grid.attach(button, index % 2, index // 2, 1, 1)
+
+            win.set_content(panel)
+            win.present()
+
+    app = SevenShellPanel()
+    return app.run([])
+
+
+def main() -> int:
+    command = sys.argv[1] if len(sys.argv) > 1 else "quick"
+
+    if command in {"status", "doctor"}:
+        available, reason = gtk_available()
+        print(f"Seven Shell Panel: {reason}")
+        return 0 if available else 1
+
+    if command in {"quick", "notifications"}:
+        if dry_run():
+            print_preview(command)
+            return 0
+        return run_gui(command)
+
+    print("Usage: seven-shell-panel [quick|notifications|status]", file=sys.stderr)
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

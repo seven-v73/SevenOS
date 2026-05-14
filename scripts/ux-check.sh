@@ -112,6 +112,7 @@ require_executable "bin/seven-files"
 require_executable "bin/seven-help"
 require_executable "bin/seven-overview"
 require_executable "bin/seven-quick-settings"
+require_executable "bin/seven-shell-panel"
 require_executable "bin/seven-shell-preview"
 require_executable "bin/seven-session"
 require_executable "bin/seven-wallpaper"
@@ -432,6 +433,15 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
   ok "Seven Hub native UI strategy is documented"
 else
   fail "Seven Hub native UI strategy is missing or unclear"
+fi
+
+if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick | grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications | grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' &&
+   grep -q 'seven-shell-panel quick' "$ROOT_DIR/bin/seven-quick-settings" &&
+   grep -q 'seven-shell-panel notifications' "$ROOT_DIR/bin/seven-waybar-notifications"; then
+  ok "Quick Settings and Notifications prefer native shell panels with Rofi fallback"
+else
+  fail "Quick Settings and Notifications should prefer native shell panels with Rofi fallback"
 fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&

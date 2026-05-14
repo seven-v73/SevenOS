@@ -67,12 +67,14 @@ probe check_file "Rofi Launchpad" "$ROOT_DIR/hyprland/rofi/apps.rasi"
 probe check_file "Quick Settings panel" "$ROOT_DIR/hyprland/rofi/quick-settings.rasi"
 probe check_file "Power panel" "$ROOT_DIR/hyprland/rofi/power.rasi"
 probe check_file "Mako notifications" "$ROOT_DIR/hyprland/mako/config"
+probe check_file "Native shell panel" "$ROOT_DIR/bin/seven-shell-panel"
 printf '\n'
 
 printf 'Commands\n'
 probe check_command seven
 probe check_command seven-hub
 probe check_command seven-waybar-notifications
+probe check_command seven-shell-panel
 probe check_command seven-quick-settings
 probe check_command seven-files
 printf '\n'

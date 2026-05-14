@@ -55,6 +55,14 @@ else
   fail "Waybar should use a floating Frost capsule shell"
 fi
 
+if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'border-radius: 28px' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'rgba(255, 252, 244' "$ROOT_DIR/bin/seven-shell-panel"; then
+  ok "Native shell panel follows SevenOS Frost surface language"
+else
+  fail "Native shell panel should follow SevenOS Frost surface language"
+fi
+
 if grep -q 'custom/quick' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    grep -q 'custom/notifications' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    [[ -s "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" ]]; then
