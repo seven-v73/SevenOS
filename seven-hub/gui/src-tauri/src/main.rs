@@ -126,6 +126,49 @@ fi
     run_shell(&script).unwrap_or_else(|_| "MISS".into())
 }
 
+fn profile_cards_from_sevenpkg() -> Option<Vec<ProfileCard>> {
+    let output = run_shell("sevenpkg status --json").ok()?;
+    let items: serde_json::Value = serde_json::from_str(&output).ok()?;
+    let array = items.as_array()?;
+
+    let wanted = [
+        ("forge", "Forge", "seven profile forge"),
+        ("shield", "Shield", "seven profile shield"),
+        ("studio", "Studio", "seven profile studio"),
+        ("windows", "Windows", "seven windows status"),
+    ];
+
+    let mut cards = Vec::new();
+    for (key, title, action) in wanted {
+        if let Some(item) = array
+            .iter()
+            .find(|entry| entry.get("name").and_then(|value| value.as_str()) == Some(key))
+        {
+            cards.push(ProfileCard {
+                key: key.into(),
+                title: title.into(),
+                description: item
+                    .get("description")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("")
+                    .to_string(),
+                state: item
+                    .get("state")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or("MISS")
+                    .to_string(),
+                action: action.into(),
+            });
+        }
+    }
+
+    if cards.is_empty() {
+        None
+    } else {
+        Some(cards)
+    }
+}
+
 fn readiness_snapshot() -> (Readiness, Vec<Recommendation>) {
     let command = format!("{}/scripts/readiness.sh --json", root_dir().display());
     let output = run_shell(&command).unwrap_or_else(|_| "{}".into());
@@ -205,37 +248,41 @@ fn get_hub_snapshot() -> Result<String, String> {
         },
     ];
 
-    let profiles = vec![
-        ProfileCard {
-            key: "forge".into(),
-            title: "Forge".into(),
-            description: "Development workspace for Git, containers, Node, Python and Rust.".into(),
-            state: profile_state("scripts/packages-dev.txt"),
-            action: "seven profile forge".into(),
-        },
-        ProfileCard {
-            key: "shield".into(),
-            title: "Shield".into(),
-            description: "Cybersecurity workspace with audit, sandbox and lab tooling.".into(),
-            state: profile_state("scripts/packages-cybersecurity.txt"),
-            action: "seven profile shield".into(),
-        },
-        ProfileCard {
-            key: "studio".into(),
-            title: "Studio".into(),
-            description: "Creative production workspace for image, vector, video and 3D tools."
-                .into(),
-            state: profile_state("scripts/packages-creation.txt"),
-            action: "seven profile studio".into(),
-        },
-        ProfileCard {
-            key: "windows".into(),
-            title: "Windows".into(),
-            description: "Compatibility layer with Wine, Bottles, Lutris and KVM helpers.".into(),
-            state: profile_state("scripts/packages-windows.txt"),
-            action: "seven windows status".into(),
-        },
-    ];
+    let profiles = profile_cards_from_sevenpkg().unwrap_or_else(|| {
+        vec![
+            ProfileCard {
+                key: "forge".into(),
+                title: "Forge".into(),
+                description: "Development workspace for Git, containers, Node, Python and Rust."
+                    .into(),
+                state: profile_state("scripts/packages-dev.txt"),
+                action: "seven profile forge".into(),
+            },
+            ProfileCard {
+                key: "shield".into(),
+                title: "Shield".into(),
+                description: "Cybersecurity workspace with audit, sandbox and lab tooling.".into(),
+                state: profile_state("scripts/packages-cybersecurity.txt"),
+                action: "seven profile shield".into(),
+            },
+            ProfileCard {
+                key: "studio".into(),
+                title: "Studio".into(),
+                description: "Creative production workspace for image, vector, video and 3D tools."
+                    .into(),
+                state: profile_state("scripts/packages-creation.txt"),
+                action: "seven profile studio".into(),
+            },
+            ProfileCard {
+                key: "windows".into(),
+                title: "Windows".into(),
+                description: "Compatibility layer with Wine, Bottles, Lutris and KVM helpers."
+                    .into(),
+                state: profile_state("scripts/packages-windows.txt"),
+                action: "seven windows status".into(),
+            },
+        ]
+    });
 
     let snapshot = HubSnapshot {
         readiness,
@@ -252,6 +299,7 @@ fn run_seven_command(command: String) -> Result<String, String> {
     let allowed_prefixes = [
         "seven architecture",
         "seven readiness",
+        "seven status",
         "seven profile",
         "seven shield",
         "seven windows",

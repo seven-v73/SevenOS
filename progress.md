@@ -67,6 +67,8 @@ Les piliers du projet sont :
 - Mise en place de `sevenpkg` comme gestionnaire logiciel SevenOS.
 - Ajout de commandes de statut, readiness, doctor, improvement et profils.
 - Ajout de commandes UX : `seven-session`, `seven-wallpaper`, `seven-power`, `seven-files`, `seven-welcome`, `seven-country`.
+- Ajout de sorties JSON stables pour `seven status --json`, `seven profile status --json`, `sevenpkg status --json` et `sevenpkg meta --json`.
+- Debut de separation entre affichage humain et donnees machine pour que Seven Hub pilote SevenOS sans parser des textes fragiles.
 
 ### Design System
 
@@ -110,6 +112,7 @@ Les piliers du projet sont :
 - Ajout de cartes profils : Forge, Shield, Studio, Windows.
 - Ajout de recommandations exploitables depuis l'interface.
 - Ajout d'un backend Tauri `get_hub_snapshot` pour afficher l'etat systeme sans ouvrir un terminal.
+- Connexion du Hub aux donnees JSON de SevenPkg pour les profils metiers.
 
 ### Gestion fichiers
 
@@ -174,8 +177,8 @@ Les piliers du projet sont :
 | Design system | 80% | V1 en place, Launchpad Apps ajoute, coherence a tester sur machine reelle |
 | Desktop Hyprland | 75% | Fonctionnel, Waybar actionnable, session plus robuste |
 | Seven commands | 70% | Base solide, besoin de plus de robustesse |
-| SevenPkg | 60% | Wrapper utile, pas encore vrai package manager |
-| Seven Hub | 65% | GUI Tauri structuree, dashboard natif en cours, backend snapshot ajoute |
+| SevenPkg | 65% | Wrapper utile, sorties JSON ajoutees, pas encore vrai package manager |
+| Seven Hub | 68% | GUI Tauri structuree, dashboard natif en cours, backend snapshot et donnees JSON ajoutes |
 | Profils metiers | 55% | Concept clair, installation encore partielle |
 | Securite | 55% | Bonne direction, hardening a renforcer |
 | Windows Mode | 50% | Base technique, UX guidee manquante |
@@ -303,6 +306,7 @@ A faire :
 - Transformer Seven Hub Tauri en app principale.
 - Ajouter dashboard, readiness, profiles, apps, security, VM, deploy.
 - Connecter `seven` et `sevenpkg` au Hub.
+- Standardiser les sorties JSON des commandes systeme.
 - Ajouter confirmations pour les actions sensibles.
 - Ajouter progress states pour les installations longues.
 - Transformer les sorties brutes en messages utilisateur lisibles.

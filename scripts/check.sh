@@ -210,6 +210,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" all --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" post-install >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
+"$ROOT_DIR/bin/seven" status --json >/dev/null
+"$ROOT_DIR/bin/seven" profile status --json >/dev/null
+"$ROOT_DIR/bin/sevenpkg" status --json >/dev/null
+"$ROOT_DIR/bin/sevenpkg" meta --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" >/dev/null

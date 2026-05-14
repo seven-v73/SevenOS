@@ -54,11 +54,13 @@ def run_script(args, relative_path, *extra):
 
 def handle_profile(args):
     if args.name == "list":
-        sevenpkg(args, "meta")
+        extra = ["--json"] if args.json else []
+        sevenpkg(args, "meta", *extra)
         return
 
     if args.name == "status":
-        sevenpkg(args, "status")
+        extra = ["--json"] if args.json else []
+        sevenpkg(args, "status", *extra)
         return
 
     target_map = {
@@ -189,13 +191,15 @@ def main():
     doctor_parser.add_argument("area", nargs="?", default="all")
     doctor_parser.add_argument("--apply", action="store_true", help="execute repair plan when using 'fix'")
     doctor_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
-    subparsers.add_parser("status", help="show SevenOS status")
+    status_parser = subparsers.add_parser("status", help="show SevenOS status")
+    status_parser.add_argument("--json", action="store_true", help="print machine-readable system status")
     subparsers.add_parser("hub", help="launch Seven Hub")
     files_parser = subparsers.add_parser("files", help="open Seven Files")
     files_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     profile_parser = subparsers.add_parser("profile", help="list, inspect, or install a SevenOS profile")
     profile_parser.add_argument("name")
+    profile_parser.add_argument("--json", action="store_true", help="print machine-readable profile status for list/status")
 
     shield_parser = subparsers.add_parser("shield", help="security and cyber controls")
     shield_parser.add_argument("action", choices=("enable", "audit", "lab"))
@@ -267,7 +271,11 @@ def main():
             print("seven: supported doctor actions are check and fix", file=sys.stderr)
             sys.exit(1)
     elif args.command == "status":
-        install_target("status", args)
+        extra = ["--json"] if args.json else []
+        if args.json:
+            run_script(args, "scripts/status.sh", *extra)
+        else:
+            install_target("status", args, extra)
     elif args.command == "hub":
         run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-control-center"), "open"], args)
     elif args.command == "files":

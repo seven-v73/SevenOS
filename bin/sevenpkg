@@ -258,20 +258,61 @@ def search_package(query, args):
         run(["paru", "-Ss", query], args, check=False)
 
 
-def show_meta(_args):
+def show_meta(args):
     manifest = load_manifest()
     if not manifest:
+        if args.json:
+            print("[]")
+            return
         log("no SevenOS meta-packages found")
+        return
+
+    if args.json:
+        items = []
+        for name in sorted(manifest):
+            meta = manifest[name]
+            items.append(
+                {
+                    "name": name,
+                    "description": meta.get("description", ""),
+                    "kind": meta.get("kind", ""),
+                    "target": meta.get("target", ""),
+                }
+            )
+        print(json.dumps(items, indent=2))
         return
 
     for name in sorted(manifest):
         print(f"{name:8} {manifest[name].get('description', '')}")
 
 
-def show_status(_args):
+def show_status(args):
     manifest = load_manifest()
     if not manifest:
+        if args.json:
+            print("[]")
+            return
         log("no SevenOS meta-packages found")
+        return
+
+    if args.json:
+        items = []
+        for name in sorted(manifest):
+            meta = manifest[name]
+            state, installed, total = meta_state(meta)
+            items.append(
+                {
+                    "name": name,
+                    "state": state,
+                    "installed": installed,
+                    "total": total,
+                    "description": meta.get("description", ""),
+                    "kind": meta.get("kind", ""),
+                    "target": meta.get("target", ""),
+                    "packages": meta_packages(meta),
+                }
+            )
+        print(json.dumps(items, indent=2))
         return
 
     for name in sorted(manifest):
@@ -343,8 +384,10 @@ def main():
     info_parser.add_argument("name")
 
     subparsers.add_parser("update", help="update system packages")
-    subparsers.add_parser("meta", help="list SevenOS meta-packages")
-    subparsers.add_parser("status", help="show SevenOS meta-package installation status")
+    meta_parser = subparsers.add_parser("meta", help="list SevenOS meta-packages")
+    meta_parser.add_argument("--json", action="store_true", help="print machine-readable meta-packages")
+    status_parser = subparsers.add_parser("status", help="show SevenOS meta-package installation status")
+    status_parser.add_argument("--json", action="store_true", help="print machine-readable installation status")
     subparsers.add_parser("sources", help="show package sources")
 
     args = parser.parse_args()

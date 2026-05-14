@@ -36,12 +36,16 @@ Current foundation:
 - Rust backend command allowlist exists
 - backend snapshot command exists
 - readiness, services, profiles and recommendations are exposed to the UI
+- `seven status --json` exposes machine-readable system state
+- `seven profile status --json` exposes profile states through SevenPkg
+- `sevenpkg status --json` exposes meta-package installation state
 
 Next work:
 
 - add confirmation dialogs for privileged actions
 - add progress states for long installs
 - add structured JSON outputs to more `seven` commands
+- connect Hub panels to JSON-first commands before falling back to shell checks
 - replace raw command text with human-readable result summaries
 
 ### 2. SevenOS Local Backend

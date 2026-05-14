@@ -4,6 +4,25 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/scripts/lib.sh"
 
+JSON_OUTPUT=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --json) JSON_OUTPUT=1 ;;
+    -h|--help|help)
+      cat <<'EOF'
+SevenOS status
+
+Usage:
+  seven status [--json]
+  ./scripts/status.sh [--json]
+EOF
+      exit 0
+      ;;
+    *) log_error "Unknown status option: $arg"; exit 1 ;;
+  esac
+done
+
 ok() {
   printf '[OK] %s\n' "$*"
 }
@@ -22,6 +41,10 @@ section() {
 
 package_installed() {
   pacman -Q "$1" >/dev/null 2>&1
+}
+
+json_escape() {
+  python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
 }
 
 flatpak_installed() {
@@ -92,6 +115,118 @@ package_status() {
     missing "$label"
   fi
 }
+
+profile_json() {
+  local key="$1"
+  local name="$2"
+  local package_file="$3"
+  local installed=0
+  local total=0
+  local package state
+
+  while IFS= read -r package; do
+    package="${package%%#*}"
+    package="${package//[[:space:]]/}"
+    [[ -z "$package" ]] && continue
+    total=$((total + 1))
+    package_installed "$package" && installed=$((installed + 1))
+  done < "$package_file"
+
+  if [[ "$total" -eq 0 ]]; then
+    state="MISS"
+  elif [[ "$installed" -eq "$total" ]]; then
+    state="OK"
+  elif [[ "$installed" -gt 0 ]]; then
+    state="PART"
+  else
+    state="MISS"
+  fi
+
+  printf '{"key":%s,"name":%s,"state":%s,"installed":%s,"total":%s}' \
+    "$(printf '%s' "$key" | json_escape)" \
+    "$(printf '%s' "$name" | json_escape)" \
+    "$(printf '%s' "$state" | json_escape)" \
+    "$installed" \
+    "$total"
+}
+
+service_json() {
+  local key="$1"
+  local service="$2"
+  local state
+
+  if service_active "$service"; then
+    state="OK"
+  elif service_enabled "$service"; then
+    state="PART"
+  else
+    state="MISS"
+  fi
+
+  printf '{"key":%s,"service":%s,"state":%s}' \
+    "$(printf '%s' "$key" | json_escape)" \
+    "$(printf '%s' "$service" | json_escape)" \
+    "$(printf '%s' "$state" | json_escape)"
+}
+
+command_json() {
+  local key="$1"
+  local command_name="$2"
+  local state="MISS"
+  command -v "$command_name" >/dev/null 2>&1 && state="OK"
+  printf '{"key":%s,"command":%s,"state":%s}' \
+    "$(printf '%s' "$key" | json_escape)" \
+    "$(printf '%s' "$command_name" | json_escape)" \
+    "$(printf '%s' "$state" | json_escape)"
+}
+
+if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+  printf '{'
+  printf '"identity":{'
+  if [[ -f /etc/sevenos-release ]]; then
+    printf '"release":%s,' "$(head -n 1 /etc/sevenos-release | json_escape)"
+  else
+    printf '"release":null,'
+  fi
+  printf '"commands":['
+  command_json seven seven
+  printf ','
+  command_json sevenpkg sevenpkg
+  printf ','
+  command_json seven_hub seven-hub
+  printf ']},'
+
+  printf '"profiles":['
+  profile_json base "Base desktop" "$ROOT_DIR/scripts/packages-base.txt"
+  printf ','
+  profile_json forge "Forge" "$ROOT_DIR/scripts/packages-dev.txt"
+  printf ','
+  profile_json shield "Shield" "$ROOT_DIR/scripts/packages-cybersecurity.txt"
+  printf ','
+  profile_json studio "Studio" "$ROOT_DIR/scripts/packages-creation.txt"
+  printf ','
+  profile_json windows "Windows" "$ROOT_DIR/scripts/packages-windows.txt"
+  printf ','
+  profile_json security "Security" "$ROOT_DIR/scripts/packages-security.txt"
+  printf '],'
+
+  printf '"services":['
+  service_json network NetworkManager.service
+  printf ','
+  service_json docker docker.service
+  printf ','
+  service_json libvirt libvirtd.service
+  printf ','
+  service_json firewall ufw.service
+  printf '],'
+
+  printf '"desktop":{'
+  printf '"current":%s,' "$(printf '%s' "${XDG_CURRENT_DESKTOP:-unknown}" | json_escape)"
+  printf '"wayland":%s' "$(printf '%s' "${WAYLAND_DISPLAY:-missing}" | json_escape)"
+  printf '}'
+  printf '}\n'
+  exit 0
+fi
 
 log_info "SevenOS system status"
 

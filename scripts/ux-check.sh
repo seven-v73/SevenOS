@@ -277,6 +277,7 @@ else
 fi
 
 if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
+   grep -q 'sevenpkg status --json' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
    grep -q 'data-panel="dashboard"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'data-section="profiles"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'run_seven_command' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
@@ -284,6 +285,14 @@ if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
   ok "Seven Hub GUI behaves like a native Control Center foundation"
 else
   fail "Seven Hub GUI should expose dashboard, profiles, actions and native backend snapshot"
+fi
+
+if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null; then
+  ok "SevenOS core commands expose stable JSON for the Hub"
+else
+  fail "SevenOS core commands must expose JSON for GUI integration"
 fi
 
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" open | grep -q 'xdg-open http://127.0.0.1:7787'; then

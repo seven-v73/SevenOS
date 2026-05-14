@@ -142,7 +142,7 @@ case "$TARGET" in
     "$ROOT_DIR/scripts/post-install.sh"
     ;;
   status)
-    "$ROOT_DIR/scripts/status.sh"
+    "$ROOT_DIR/scripts/status.sh" "${@:2}"
     ;;
   branding)
     "$ROOT_DIR/branding/apply-branding.sh"
@@ -192,5 +192,9 @@ case "$TARGET" in
     exit 1
     ;;
 esac
+
+if [[ "$TARGET" == "status" && " $* " == *" --json "* ]]; then
+  exit 0
+fi
 
 log_success "SevenOS target '$TARGET' completed."
