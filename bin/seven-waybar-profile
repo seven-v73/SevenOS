@@ -2,24 +2,24 @@
 set -Eeuo pipefail
 
 resolve_root() {
-  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/sevenpkg" ]]; then
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven" ]]; then
     printf '%s\n' "$SEVENOS_ROOT"
     return 0
   fi
 
   local script_dir
   script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-  if [[ -x "$script_dir/sevenpkg" ]]; then
+  if [[ -x "$script_dir/seven" ]]; then
     printf '%s\n' "$script_dir/.."
     return 0
   fi
-  if [[ -x "$script_dir/../bin/sevenpkg" ]]; then
+  if [[ -x "$script_dir/../bin/seven" ]]; then
     cd -- "$script_dir/.." && pwd
     return 0
   fi
 
   for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
-    if [[ -x "$candidate/bin/sevenpkg" ]]; then
+    if [[ -x "$candidate/bin/seven" ]]; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -28,28 +28,45 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root || true)"
 
-if command -v sevenpkg >/dev/null 2>&1; then
-  sevenpkg_command=(sevenpkg)
-elif [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/sevenpkg" ]]; then
-  sevenpkg_command=("$ROOT_DIR/bin/sevenpkg")
+if command -v seven >/dev/null 2>&1; then
+  seven_command=(seven)
+elif [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven" ]]; then
+  seven_command=("$ROOT_DIR/bin/seven")
 else
-  printf 'Profiles MISS\n'
+  printf 'Profile MISS\n'
   exit 0
 fi
 
-status="$("${sevenpkg_command[@]}" status 2>/dev/null || true)"
-if [[ -z "$status" ]]; then
-  printf 'Profiles MISS\n'
+profile_json="$(SEVENOS_DRY_RUN=0 "${seven_command[@]}" profile status --json 2>/dev/null || true)"
+if [[ -z "$profile_json" ]]; then
+  printf 'Profile MISS\n'
   exit 0
 fi
 
-ok_count="$(printf '%s\n' "$status" | awk '$2 == "OK" {count++} END {print count + 0}')"
-part_count="$(printf '%s\n' "$status" | awk '$2 == "PART" {count++} END {print count + 0}')"
+python - "$profile_json" <<'PY'
+import json
+import sys
 
-if [[ "$ok_count" -gt 0 ]]; then
-  printf 'Profiles %s OK\n' "$ok_count"
-elif [[ "$part_count" -gt 0 ]]; then
-  printf 'Profiles %s PART\n' "$part_count"
-else
-  printf 'Profiles MISS\n'
-fi
+try:
+    profiles = json.loads(sys.argv[1])
+except Exception:
+    print("Profile MISS")
+    raise SystemExit(0)
+
+active = next((item for item in profiles if item.get("active")), None)
+if active:
+    title = active.get("title") or active.get("key") or "Profile"
+    state = active.get("state") or "MISS"
+    print(f"{title} {state}")
+    raise SystemExit(0)
+
+ok_count = sum(1 for item in profiles if item.get("state") == "OK")
+part_count = sum(1 for item in profiles if item.get("state") == "PART")
+
+if ok_count:
+    print(f"Profiles {ok_count} OK")
+elif part_count:
+    print(f"Profiles {part_count} PART")
+else:
+    print("Profile MISS")
+PY

@@ -95,6 +95,7 @@ Les piliers du projet sont :
 - Ajout d'une couche `seven-waybar-action` pour transformer Waybar en barre de controle active.
 - Ajout d'actions clic sur CPU, RAM, profil, securite, reseau, audio, batterie et horloge.
 - Ajout de menus contextuels Waybar pour systeme, profils, Shield, reseau, audio, batterie et temps.
+- L'indicateur profil Waybar lit maintenant `seven profile status --json` et affiche le profil actif reel au lieu d'un resume statique issu de `sevenpkg`.
 
 ### Seven Hub
 

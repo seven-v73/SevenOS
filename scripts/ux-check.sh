@@ -206,6 +206,14 @@ else
   fail "Waybar still has decorative modules without actions"
 fi
 
+if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
+   grep -q 'Native Profiles' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'seven profile activate forge' "$ROOT_DIR/bin/seven-waybar-action"; then
+  ok "Waybar profile indicator uses live SevenOS profile state"
+else
+  fail "Waybar profile indicator should use live SevenOS profile state"
+fi
+
 if grep -q 'exec-once = seven-session' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland starts SevenOS session"
 else

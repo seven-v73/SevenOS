@@ -120,10 +120,14 @@ run_profile_action() {
   local selected="$1"
   case "$selected" in
     "Profile Status") run_terminal "SevenOS Profiles" "seven profile status" ;;
+    "Native Profiles") run_detached seven-hub-native ;;
     "Open Profiles Hub") run_detached seven-hub Profiles ;;
-    "Install Forge") run_terminal "SevenOS Forge" "seven profile forge" ;;
-    "Install Shield") run_terminal "SevenOS Shield" "seven profile shield" ;;
-    "Install Studio") run_terminal "SevenOS Studio" "seven profile studio" ;;
+    "Activate Forge") run_terminal "SevenOS Forge" "seven profile activate forge" ;;
+    "Activate Shield") run_terminal "SevenOS Shield" "seven profile activate shield" ;;
+    "Activate Studio") run_terminal "SevenOS Studio" "seven profile activate studio" ;;
+    "Install Forge") run_terminal "SevenOS Forge" "seven profile install forge" ;;
+    "Install Shield") run_terminal "SevenOS Shield" "seven profile install shield" ;;
+    "Install Studio") run_terminal "SevenOS Studio" "seven profile install studio" ;;
     "SevenPkg Status") run_terminal "SevenPkg Status" "sevenpkg status" ;;
     *) return 0 ;;
   esac
@@ -195,7 +199,7 @@ show_menu() {
       run_system_action "$selected"
       ;;
     profile)
-      selected="$(open_rofi_menu "Profiles" "Profile Status" "Open Profiles Hub" "Install Forge" "Install Shield" "Install Studio" "SevenPkg Status")"
+      selected="$(open_rofi_menu "Profiles" "Profile Status" "Native Profiles" "Open Profiles Hub" "Activate Forge" "Activate Shield" "Activate Studio" "Install Forge" "Install Shield" "Install Studio" "SevenPkg Status")"
       run_profile_action "$selected"
       ;;
     security)
