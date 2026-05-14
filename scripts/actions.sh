@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+source "$ROOT_DIR/scripts/lib.sh"
+
+usage() {
+  cat <<'EOF'
+SevenOS action registry
+
+Usage:
+  seven actions
+  seven actions --json
+  seven actions list
+  seven actions run <id> [--dry-run]
+
+The registry is the shared action contract for Seven Hub, Waybar,
+Quick Settings and future native SevenOS surfaces.
+EOF
+}
+
+action_rows() {
+  cat <<'EOF'
+hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
+apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS application library.
+files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
+quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
+readiness.run	System	Run Readiness	seven readiness	safe	Score SevenOS against product readiness checks.
+doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
+repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
+theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.
+profile.status	Profiles	Profile Status	seven profile status	safe	Show installed and active profile state.
+profile.forge	Profiles	Install Forge	seven profile install forge	packages	Install the development workspace.
+profile.shield	Profiles	Install Shield	seven profile install shield	packages	Install the cybersecurity workspace.
+profile.studio	Profiles	Install Studio	seven profile install studio	packages	Install the creative workspace.
+profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install Windows compatibility tooling.
+profile.horizon	Profiles	Install Horizon	seven profile install horizon	packages	Install server and deployment tooling.
+security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, sandbox and cyber tooling.
+security.enable	Security	Enable Shield	seven shield enable	changes	Apply base SevenOS security hardening.
+security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
+windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
+windows.start	Windows	Start Windows Mode	seven windows start	changes	Start the guided Windows compatibility workflow.
+server.status	Server	Server Status	seven server status	safe	Check the local SevenOS API service.
+deploy.plan	Server	Deployment Plan	seven deploy plan .	safe	Detect and plan deployment for the current project.
+installer.status	Installer	Installer Status	seven installer status	safe	Check Calamares and ISO foundations.
+flatpak.status	Apps	Flatpak Status	seven flatpak status	safe	Check Flathub and Flatpak readiness.
+sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.
+EOF
+}
+
+json_output() {
+  local rows
+  rows="$(action_rows)"
+  ACTION_ROWS="$rows" python - <<'PY'
+import json
+import os
+
+items = []
+for raw in os.environ.get("ACTION_ROWS", "").splitlines():
+    raw = raw.rstrip("\n")
+    if not raw:
+        continue
+    action_id, category, title, command, impact, description = raw.split("\t", 5)
+    items.append({
+        "id": action_id,
+        "category": category,
+        "title": title,
+        "command": command,
+        "impact": impact,
+        "description": description,
+    })
+
+print(json.dumps({
+    "schema": "sevenos.actions.v1",
+    "actions": items,
+}, indent=2))
+PY
+}
+
+list_output() {
+  printf '%-22s %-11s %-24s %s\n' "ID" "IMPACT" "CATEGORY" "TITLE"
+  action_rows | while IFS=$'\t' read -r action_id category title _command impact _description; do
+    printf '%-22s %-11s %-24s %s\n' "$action_id" "$impact" "$category" "$title"
+  done
+}
+
+command_for_id() {
+  local wanted="$1"
+  action_rows | awk -F '\t' -v wanted="$wanted" '$1 == wanted { print $4; found=1 } END { exit found ? 0 : 1 }'
+}
+
+run_action() {
+  local action_id="$1"
+  local command
+  command="$(command_for_id "$action_id")" || {
+    log_error "Unknown SevenOS action: $action_id"
+    exit 1
+  }
+
+  if is_dry_run; then
+    printf '%s\n' "$command"
+    return 0
+  fi
+
+  log_info "Running SevenOS action: $action_id"
+  bash -lc "cd '$ROOT_DIR' && $command"
+}
+
+ACTION="${1:-list}"
+case "$ACTION" in
+  -h|--help|help)
+    usage
+    ;;
+  --json|json)
+    json_output
+    ;;
+  list)
+    list_output
+    ;;
+  run)
+    shift
+    if [[ -z "${1:-}" ]]; then
+      log_error "Missing action id."
+      usage
+      exit 1
+    fi
+    run_action "$1"
+    ;;
+  *)
+    log_error "Unknown actions command: $ACTION"
+    usage
+    exit 1
+    ;;
+esac

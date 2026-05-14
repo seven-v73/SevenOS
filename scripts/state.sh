@@ -63,6 +63,9 @@ printf ','
 printf '"manifest":'
 json_or_null "$ROOT_DIR/scripts/manifest.sh" summary-json
 printf ','
+printf '"actions":'
+json_or_null "$ROOT_DIR/scripts/actions.sh" --json
+printf ','
 printf '"native_hub":{'
 if "$ROOT_DIR/bin/seven-hub-native" status >/dev/null 2>&1; then
   printf '"state":"OK"'

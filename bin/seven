@@ -141,6 +141,13 @@ def handle_repair(args):
     run_script(args, "scripts/repair.sh", *extra)
 
 
+def handle_actions(args):
+    extra = [args.action, *args.extra]
+    if args.json:
+        extra = ["--json"]
+    run_script(args, "scripts/actions.sh", *extra)
+
+
 def main():
     dry_run_requested = "--dry-run" in sys.argv[1:]
     if dry_run_requested:
@@ -162,6 +169,10 @@ def main():
     migrate_parser = subparsers.add_parser("migrate", help="plan or back up protected SevenOS user state before upgrades")
     migrate_parser.add_argument("action", nargs="?", default="plan")
     subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
+    actions_parser = subparsers.add_parser("actions", help="show or run SevenOS registered UI/system actions")
+    actions_parser.add_argument("action", nargs="?", default="list")
+    actions_parser.add_argument("--json", action="store_true", help="print machine-readable action registry")
+    actions_parser.add_argument("extra", nargs=argparse.REMAINDER)
     subparsers.add_parser("post-install", help="check common post-install blockers")
     readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
     readiness_parser.add_argument("--json", action="store_true", help="print machine-readable score output")
@@ -244,6 +255,8 @@ def main():
         handle_migrate(args)
     elif args.command == "phase-gate":
         run_script(args, "scripts/phase-gate.sh")
+    elif args.command == "actions":
+        handle_actions(args)
     elif args.command == "post-install":
         install_target("post-install", args)
     elif args.command == "readiness":

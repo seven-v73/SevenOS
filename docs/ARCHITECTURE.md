@@ -51,6 +51,9 @@ Rules:
   instead of scraping human terminal output.
 - `seven state --json` is the unified machine snapshot for native UI,
   automation and future Seven Server endpoints.
+- `seven actions --json` is the shared action registry for Seven Hub, Waybar,
+  Quick Settings and future native surfaces. UI code should prefer action IDs
+  over hardcoded command strings when possible.
 - `seven manifest` is the install/migration contract. It defines future
   package boundaries, protected user paths and restore plans for upgrades.
 - Seven Server may observe and orchestrate, but remote control stays local-only
@@ -147,6 +150,7 @@ Examples:
 seven hub
 seven files
 seven state --json
+seven actions --json
 seven profile forge
 seven shield audit
 seven windows status

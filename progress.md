@@ -73,6 +73,7 @@ Les piliers du projet sont :
 - Ajout de commandes UX : `seven-session`, `seven-wallpaper`, `seven-power`, `seven-files`, `seven-welcome`, `seven-country`.
 - Ajout de sorties JSON stables pour `seven status --json`, `seven profile status --json`, `sevenpkg status --json` et `sevenpkg meta --json`.
 - Ajout de `seven state --json`, snapshot machine unifie pour les interfaces natives, l'automatisation et le futur Seven Server.
+- Ajout de `seven actions --json`, registre central des actions SevenOS pour partager les memes commandes entre Hub, Waybar, Quick Settings et les futures surfaces natives.
 - Ajout de `seven manifest show|doctor|restore-plan|protected|components` pour preparer les upgrades, le packaging pacman et la future ISO sans ecraser les choix utilisateur.
 - Ajout de `seven migrate plan|backup` comme etape de securite avant reapplication du theme, upgrade Git, paquet pacman futur ou ISO.
 - Ajout du resume manifeste dans `seven state --json`, pour que Seven Hub et Seven Server voient les composants, la version, le canal et les compteurs de protection en JSON.
@@ -96,6 +97,7 @@ Les piliers du projet sont :
 - Ajout de `scripts/design-check.sh` pour bloquer les regressions visuelles : ombres decoratives, blur lourd, font weights trop forts, Launchpad non tokenise, Quick Settings absent ou Hub sans details structurels.
 - Refonte palette `Sovereign Dusk` : surfaces graphite plus lumineuses, textes secondaires plus lisibles et tuiles Apps mieux separees pour eviter l'effet noir-sur-noir en usage jour/nuit.
 - Pivot design `Sovereign Glass` : SevenOS adopte une base light/liquid glass par defaut pour Rofi, Waybar, Kitty, Mako, Seven Hub, GTK/Qt et le wallpaper.
+- Ajustement `Sovereign Glass` vers une teinte ivoire/raphia plus douce pour reduire la fatigue visuelle tout en gardant le rendu light/liquid glass.
 
 ### Desktop et session
 
@@ -115,6 +117,7 @@ Les piliers du projet sont :
 - Ajout de `seven-overview`, surface type Activities/Overview inspiree des shells modernes : apps, fenetres, recherche et run.
 - Ajout de `seven-apps`, indexeur/lanceur d'applications SevenOS qui lit les applications systeme, utilisateur et Flatpak via leurs fichiers `.desktop`.
 - `Super+A`, Waybar Apps et Seven Help passent par `seven-apps`, afin que l'acces aux applications installees ne depende plus uniquement du cache `drun` de Rofi.
+- `seven-apps` transmet maintenant les icones des fichiers `.desktop` a Rofi, ce qui permet au Launchpad Apps d'afficher les vraies icones d'applications quand le theme d'icones les fournit.
 - Ajout de `seven-quick-settings`, panneau rapide pour Hub, apps, fenetres, reseau, audio, wallpaper, profils, migration, monitoring et power.
 - Hyprland adopte une ergonomie plus GNOME-like : `Super+Tab` pour les fenetres, `Super+N`/`Super+O` pour les quick settings, `Super+S` pour scratchpad, `Super+L` pour lock, mouvements souris Super+clic et workspaces gauche/droite.
 - Ajout de regles de fenetres pour dialogues fichiers, audio, reseau, aide SevenOS, migration et picture-in-picture afin que l'interface semble plus controlee et moins brute.

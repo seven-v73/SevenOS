@@ -123,6 +123,7 @@ require_executable "bin/seven-waybar-security"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
 require_executable "scripts/state.sh"
+require_executable "scripts/actions.sh"
 require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
@@ -237,6 +238,17 @@ else
   fail "SevenOS profile activation should create workspaces and app metadata"
 fi
 
+actions_json="$("$ROOT_DIR/scripts/actions.sh" --json)"
+actions_dry_run="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" run apps.open)"
+state_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json)"
+if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
+   grep -q 'seven-overview apps' <<<"$actions_dry_run" &&
+   grep -q '"actions"' <<<"$state_json"; then
+  ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
+else
+  fail "SevenOS action registry should expose machine-readable UI actions"
+fi
+
 if grep -q 'exec-once = seven-session' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland starts SevenOS session"
 else
@@ -281,6 +293,7 @@ if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'windowrule = match:title ^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
    [[ "$overview_search_output" == *"rofi"* ]] &&
    [[ "$apps_output" == *"seven-apps catalog"* ]] &&
+   [[ "$apps_output" == *"desktop icon metadata"* ]] &&
    [[ "$quick_settings_output" == *"Control Center"* ]]; then
   ok "SevenOS Shell exposes GNOME-like overview, quick settings and polished window rules"
 else

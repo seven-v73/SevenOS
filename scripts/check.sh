@@ -20,6 +20,7 @@ bash -n \
   "$ROOT_DIR/scripts/apply-theme.sh" \
   "$ROOT_DIR/scripts/build-iso.sh" \
   "$ROOT_DIR/scripts/dashboard.sh" \
+  "$ROOT_DIR/scripts/actions.sh" \
   "$ROOT_DIR/scripts/architecture.sh" \
   "$ROOT_DIR/scripts/installer-stack.sh" \
   "$ROOT_DIR/scripts/flatpak.sh" \
@@ -244,6 +245,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/nu
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-security" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/dashboard.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" list >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" run apps.open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" map >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" layers >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" doctor >/dev/null
@@ -306,6 +310,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run dashboard >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run actions --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run actions run apps.open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run architecture >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run architecture doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer status >/dev/null
