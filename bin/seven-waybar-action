@@ -130,6 +130,9 @@ run_profile_action() {
   local selected="$1"
   case "$selected" in
     "Profile Status") run_terminal "SevenOS Profiles" "seven profile status" ;;
+    "Current Profile") run_terminal "SevenOS Profile" "seven profile current" ;;
+    "Profile Guide") run_terminal "SevenOS Profile Guide" "seven profile guide" ;;
+    "Profile Apps") run_terminal "SevenOS Profile Apps" "seven profile apps" ;;
     "Native Profiles") run_detached seven-hub-native ;;
     "Open Active Workspace") run_detached seven-files profile ;;
     "Open Profiles Hub") run_detached seven-hub Profiles ;;
@@ -215,7 +218,7 @@ show_menu() {
     profile)
       prompt="Profiles"
       runner="run_profile_action"
-      options=("󰄬  Profile Status" "󰒓  Native Profiles" "󰉋  Open Active Workspace" "󰌢  Open Profiles Hub" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio" "󰌢  Install Forge" "󰒃  Install Shield" "󰏗  Install Studio" "󰀻  SevenPkg Status")
+      options=("󰄬  Profile Status" "󰋼  Current Profile" "󰞋  Profile Guide" "󰀻  Profile Apps" "󰒓  Native Profiles" "󰉋  Open Active Workspace" "󰌢  Open Profiles Hub" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio" "󰌢  Install Forge" "󰒃  Install Shield" "󰏗  Install Studio" "󰀻  SevenPkg Status")
       ;;
     security)
       prompt="Security"

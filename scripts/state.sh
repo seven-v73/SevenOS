@@ -54,6 +54,12 @@ printf ','
 printf '"profiles":'
 json_or_null "$ROOT_DIR/bin/seven" profile status --json
 printf ','
+printf '"active_profile":'
+json_or_null "$ROOT_DIR/bin/seven" profile current --json
+printf ','
+printf '"windows":'
+json_or_null "$ROOT_DIR/bin/seven-windows-assistant" status --json
+printf ','
 printf '"readiness":'
 json_or_null "$ROOT_DIR/scripts/readiness.sh" --json
 printf ','

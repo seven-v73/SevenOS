@@ -165,6 +165,8 @@ Les piliers du projet sont :
 - Autonomie Windows Mode : ajout de `seven-windows-assistant`, avec statut JSON, guide grand public, ouverture Bottles, ouverture Virt Manager, relais VM et commandes `seven windows guide|apps|vm|open`.
 - Les profils commencent a piloter l'experience : le panneau natif Quick Settings lit le profil actif et ajoute des actions contextuelles Forge, Shield, Studio, Windows, Horizon ou Baobab.
 - Le registre d'actions expose maintenant des actions non decoratives pour l'activation de profils, l'ouverture de workspaces et Windows Mode, afin que Hub/Waybar puissent lancer de vrais flux utilisateur.
+- `seven profile current --json`, `seven profile apps --json` et `seven profile guide` transforment les profils en contrats exploitables : apps disponibles, commandes de lancement, prochaines actions et workspace actif.
+- `seven state --json` expose maintenant `active_profile` et `windows`, pour que le Hub natif puisse lire un etat OS complet sans parser des textes humains.
 
 ### Gestion fichiers
 
@@ -192,6 +194,7 @@ Les piliers du projet sont :
 - `seven profile status --json`, `seven profile show <profil>`, `seven profile activate <profil>` et `seven profile install <profil>` deviennent la base de la logique metier SevenOS.
 - Seven Hub lit maintenant les profils via `seven profile status --json` au lieu de dependre uniquement de `sevenpkg`.
 - Les profils sont maintenant visibles dans le shell : l'utilisateur voit des actions adaptees a son mode courant au lieu d'une grille generique identique pour tout le monde.
+- Les profils exposent aussi la disponibilite reelle des apps metier via `app_status`, afin de distinguer outil present, manquant et action de lancement.
 - L'activation d'un profil cree maintenant un workspace structure, un `profile.json` local et une liste d'apps metier.
 - `seven profile open <profil>` et `seven-files profile` ouvrent le workspace actif, avec raccourci Hyprland `Super+Ctrl+E`.
 

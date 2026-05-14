@@ -104,29 +104,35 @@ PROFILE_ACTIONS = {
     "baobab": [
         ("󰒓", "Welcome", "Open SevenOS first-run guide", ["seven-welcome"]),
         ("󰉋", "Workspace", "Open your SevenOS home workspace", ["seven", "profile", "open", "baobab"]),
+        ("󰞋", "Profile Guide", "Show active profile recommendations", ["seven", "profile", "guide"]),
     ],
     "forge": [
         ("󰅩", "Forge", "Open development workspace", ["seven", "profile", "open", "forge"]),
+        ("󰀻", "Forge Apps", "Show Forge app readiness", ["seven", "profile", "apps", "forge"]),
         ("󰡨", "Containers", "Inspect Docker and Podman tooling", ["seven", "deploy", "detect", "."]),
         ("󰌢", "Install Forge", "Complete development profile packages", ["seven", "profile", "install", "forge"]),
     ],
     "shield": [
         ("󰒃", "Shield Audit", "Audit firewall, sandbox and cyber tools", ["seven", "shield", "audit"]),
+        ("󰀻", "Shield Apps", "Show Shield app readiness", ["seven", "profile", "apps", "shield"]),
         ("󱗼", "Cyber Lab", "Open isolated web testing lab", ["seven", "shield", "lab", "--preset", "web"]),
         ("󰌢", "Install Shield", "Complete cybersecurity profile packages", ["seven", "profile", "install", "shield"]),
     ],
     "studio": [
         ("󰏘", "Studio", "Open creative workspace", ["seven", "profile", "open", "studio"]),
+        ("󰀻", "Studio Apps", "Show Studio app readiness", ["seven", "profile", "apps", "studio"]),
         ("󰀻", "Creative Apps", "Open the application library", ["seven-overview", "apps"]),
         ("󰌢", "Install Studio", "Complete creative profile packages", ["seven", "profile", "install", "studio"]),
     ],
     "windows": [
         ("󰖳", "Windows Guide", "Explain Bottles and KVM Windows paths", ["seven-windows-assistant", "guide"]),
-        ("󰿭", "Windows Apps", "Open Bottles for Windows applications", ["seven-windows-assistant", "apps"]),
+        ("󰀻", "Windows Apps", "Show Windows app readiness", ["seven", "profile", "apps", "windows"]),
+        ("󰿭", "Bottles", "Open Bottles for Windows applications", ["seven-windows-assistant", "apps"]),
         ("󰢹", "Windows VM", "Open Virt Manager for Windows Mode", ["seven-windows-assistant", "vm"]),
     ],
     "horizon": [
         ("󰒋", "Server", "Show local SevenOS API status", ["seven", "server", "status"]),
+        ("󰀻", "Horizon Apps", "Show Horizon app readiness", ["seven", "profile", "apps", "horizon"]),
         ("󰞷", "Deploy", "Detect deployable project stack", ["seven", "deploy", "detect", "."]),
         ("󰌢", "Install Horizon", "Complete server and deployment profile packages", ["seven", "profile", "install", "horizon"]),
     ],

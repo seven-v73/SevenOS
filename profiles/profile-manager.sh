@@ -102,6 +102,35 @@ profile_apps() {
   esac
 }
 
+profile_app_command() {
+  case "$1" in
+    "seven hub") printf 'seven hub' ;;
+    "seven files") printf 'seven-files profile' ;;
+    bottles) printf 'seven windows apps' ;;
+    "virt-manager") printf 'seven windows vm' ;;
+    docker) printf 'docker info' ;;
+    podman) printf 'podman info' ;;
+    caddy) printf 'caddy version' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+profile_app_state() {
+  local app="$1"
+  case "$app" in
+    "seven hub") [[ -x "$ROOT_DIR/seven-hub/bin/seven-hub" || -x "$ROOT_DIR/bin/seven" ]] && printf 'OK' || printf 'MISS' ;;
+    "seven files") [[ -x "$ROOT_DIR/bin/seven-files" ]] && printf 'OK' || printf 'MISS' ;;
+    bottles)
+      if command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
+        printf 'OK'
+      else
+        printf 'MISS'
+      fi
+      ;;
+    *) command -v "$app" >/dev/null 2>&1 && printf 'OK' || printf 'MISS' ;;
+  esac
+}
+
 profile_workspace_dirs() {
   case "$1" in
     forge) printf '%s\n' "Projects" "Sandboxes" "Containers" "Notes" ;;
@@ -118,6 +147,29 @@ profile_keys() {
   printf '%s\n' baobab forge shield studio windows horizon
 }
 
+profile_next_actions() {
+  local key="$1"
+  local counts installed total state
+  counts="$(profile_counts "$key")"
+  installed="${counts%% *}"
+  total="${counts##* }"
+  state="$(profile_state "$installed" "$total")"
+
+  if [[ "$(active_profile)" != "$key" ]]; then
+    printf '%s\t%s\n' "Activate $(profile_title "$key")" "seven profile activate $key"
+  fi
+  if [[ "$state" != "OK" ]]; then
+    printf '%s\t%s\n' "Install missing $(profile_title "$key") tools" "seven profile install $key"
+  fi
+  printf '%s\t%s\n' "Open $(profile_title "$key") workspace" "seven profile open $key"
+  printf '%s\t%s\n' "Show $(profile_title "$key") apps" "seven profile apps $key"
+  case "$key" in
+    shield) printf '%s\t%s\n' "Open Cyber Lab" "seven shield lab --preset web" ;;
+    windows) printf '%s\t%s\n' "Open Windows Mode guide" "seven windows guide" ;;
+    horizon) printf '%s\t%s\n' "Detect deployable project" "seven deploy detect ." ;;
+  esac
+}
+
 active_profile() {
   if [[ -f "$STATE_FILE" ]]; then
     # shellcheck disable=SC1090
@@ -126,6 +178,76 @@ active_profile() {
   else
     printf 'baobab'
   fi
+}
+
+apps_json() {
+  local key="$1"
+  local first=1 app
+  printf '['
+  while IFS= read -r app; do
+    [[ "$first" -eq 1 ]] || printf ','
+    first=0
+    printf '{'
+    printf '"name":%s,' "$(printf '%s' "$app" | json_escape)"
+    printf '"state":%s,' "$(profile_app_state "$app" | json_escape)"
+    printf '"command":%s' "$(profile_app_command "$app" | json_escape)"
+    printf '}'
+  done < <(profile_apps "$key")
+  printf ']'
+}
+
+next_actions_json() {
+  local key="$1"
+  local first=1 label command
+  printf '['
+  while IFS=$'\t' read -r label command; do
+    [[ -n "${label:-}" ]] || continue
+    [[ "$first" -eq 1 ]] || printf ','
+    first=0
+    printf '{'
+    printf '"label":%s,' "$(printf '%s' "$label" | json_escape)"
+    printf '"command":%s' "$(printf '%s' "$command" | json_escape)"
+    printf '}'
+  done < <(profile_next_actions "$key")
+  printf ']'
+}
+
+profile_json_object() {
+  local key="$1"
+  local counts installed total state active_bool
+  counts="$(profile_counts "$key")"
+  installed="${counts%% *}"
+  total="${counts##* }"
+  state="$(profile_state "$installed" "$total")"
+  active_bool=false
+  [[ "$(active_profile)" == "$key" ]] && active_bool=true
+
+  printf '{'
+  printf '"key":%s,' "$(printf '%s' "$key" | json_escape)"
+  printf '"title":%s,' "$(profile_title "$key" | json_escape)"
+  printf '"description":%s,' "$(profile_description "$key" | json_escape)"
+  printf '"state":%s,' "$(printf '%s' "$state" | json_escape)"
+  printf '"installed":%s,' "$installed"
+  printf '"total":%s,' "$total"
+  printf '"active":%s,' "$active_bool"
+  printf '"workspace":%s,' "$(profile_workspace "$key" | json_escape)"
+  printf '"accent":%s,' "$(profile_accent "$key" | json_escape)"
+  printf '"apps":['
+  local app_first=1 app
+  while IFS= read -r app; do
+    [[ "$app_first" -eq 1 ]] || printf ','
+    app_first=0
+    printf '%s' "$(printf '%s' "$app" | json_escape)"
+  done < <(profile_apps "$key")
+  printf '],'
+  printf '"app_status":'
+  apps_json "$key"
+  printf ','
+  printf '"next_actions":'
+  next_actions_json "$key"
+  printf ','
+  printf '"action":%s' "$(printf 'seven profile install %s' "$key" | json_escape)"
+  printf '}'
 }
 
 package_installed() {
@@ -300,43 +422,41 @@ show_profile() {
   profile_package_files "$key" | sed "s#^$ROOT_DIR/##; s#^#- #"
 }
 
+guide_profile() {
+  local key="${1:-$(active_profile)}"
+  profile_target "$key" >/dev/null
+
+  printf 'SevenOS %s profile\n\n' "$(profile_title "$key")"
+  printf '%s\n\n' "$(profile_description "$key")"
+  printf 'Workspace:\n'
+  printf '  %s\n\n' "$(profile_workspace "$key")"
+  printf 'Recommended actions:\n'
+  while IFS=$'\t' read -r label command; do
+    [[ -n "${label:-}" ]] || continue
+    printf '  - %-34s %s\n' "$label" "$command"
+  done < <(profile_next_actions "$key")
+}
+
+apps_human() {
+  local key="${1:-$(active_profile)}"
+  local app
+  profile_target "$key" >/dev/null
+
+  printf 'SevenOS %s apps\n\n' "$(profile_title "$key")"
+  while IFS= read -r app; do
+    printf '  %-18s %-4s %s\n' "$app" "$(profile_app_state "$app")" "$(profile_app_command "$app")"
+  done < <(profile_apps "$key")
+}
+
 status_json() {
   local first=1
   local active
   active="$(active_profile)"
   printf '['
   while IFS= read -r key; do
-    local counts installed total state workspace active_bool
-    counts="$(profile_counts "$key")"
-    installed="${counts%% *}"
-    total="${counts##* }"
-    state="$(profile_state "$installed" "$total")"
-    workspace="$(profile_workspace "$key")"
-    active_bool=false
-    [[ "$active" == "$key" ]] && active_bool=true
-
     [[ "$first" -eq 1 ]] || printf ','
     first=0
-    printf '{'
-    printf '"key":%s,' "$(printf '%s' "$key" | json_escape)"
-    printf '"title":%s,' "$(profile_title "$key" | json_escape)"
-    printf '"description":%s,' "$(profile_description "$key" | json_escape)"
-    printf '"state":%s,' "$(printf '%s' "$state" | json_escape)"
-    printf '"installed":%s,' "$installed"
-    printf '"total":%s,' "$total"
-    printf '"active":%s,' "$active_bool"
-    printf '"workspace":%s,' "$(printf '%s' "$workspace" | json_escape)"
-    printf '"accent":%s,' "$(profile_accent "$key" | json_escape)"
-    printf '"apps":['
-    local app_first=1 app
-    while IFS= read -r app; do
-      [[ "$app_first" -eq 1 ]] || printf ','
-      app_first=0
-      printf '%s' "$(printf '%s' "$app" | json_escape)"
-    done < <(profile_apps "$key")
-    printf '],'
-    printf '"action":%s' "$(printf 'seven profile install %s' "$key" | json_escape)"
-    printf '}'
+    profile_json_object "$key"
   done < <(profile_keys)
   printf ']\n'
 }
@@ -366,6 +486,9 @@ Usage:
   seven profile list [--json]
   seven profile status [--json]
   seven profile show <profile>
+  seven profile current [--json]
+  seven profile guide [profile]
+  seven profile apps [profile] [--json]
   seven profile activate <profile>
   seven profile install <profile>
   seven profile open [profile]
@@ -394,6 +517,28 @@ case "$command" in
   show)
     [[ -n "${1:-}" ]] || { usage; exit 1; }
     show_profile "$1"
+    ;;
+  current)
+    key="$(active_profile)"
+    if [[ "${1:-}" == "--json" ]]; then
+      profile_json_object "$key"
+      printf '\n'
+    else
+      show_profile "$key"
+    fi
+    ;;
+  guide)
+    guide_profile "${1:-$(active_profile)}"
+    ;;
+  apps)
+    key="${1:-$(active_profile)}"
+    if [[ "${2:-}" == "--json" || "${1:-}" == "--json" ]]; then
+      [[ "${1:-}" == "--json" ]] && key="$(active_profile)"
+      apps_json "$key"
+      printf '\n'
+    else
+      apps_human "$key"
+    fi
     ;;
   activate)
     [[ -n "${1:-}" ]] || { usage; exit 1; }

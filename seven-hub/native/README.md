@@ -27,6 +27,9 @@ seven status --json
 seven state --json
 seven actions --json
 seven profile status --json
+seven profile current --json
+seven profile apps --json
+seven windows status --json
 seven readiness --json
 sevenpkg status --json
 ```
@@ -43,9 +46,9 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Actions | safe and state-changing OS actions | `seven actions --json` |
 | Apps | packages, metapackages, Flatpak bridge | `sevenpkg status --json` |
 | Security | Shield, firewall, sandbox, Cyber Lab | `seven status --json` |
-| Windows | Wine, Bottles, KVM, VM state | `seven windows status` then JSON |
+| Windows | Wine, Bottles, KVM, VM state | `seven windows status --json` |
 | System | theme, session, updates, logs | `seven status --json` |
-| Files | workspace shortcuts and file manager actions | `seven profile status --json` |
+| Files | workspace shortcuts and file manager actions | `seven profile current --json` |
 
 ## Stack Decision
 

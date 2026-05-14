@@ -228,6 +228,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" post-install >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" status --json >/dev/null
 "$ROOT_DIR/bin/seven" profile status --json >/dev/null
+"$ROOT_DIR/bin/seven" profile current --json >/dev/null
+"$ROOT_DIR/bin/seven" profile apps --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" status --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" meta --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
@@ -323,6 +325,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run remove nmap hashcat >/dev/n
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" info shield >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile list >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile current >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile guide >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files menu >/dev/null

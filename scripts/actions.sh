@@ -31,6 +31,9 @@ doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.
 profile.status	Profiles	Profile Status	seven profile status	safe	Show installed and active profile state.
+profile.current	Profiles	Current Profile	seven profile current	safe	Show the active profile in detail.
+profile.guide	Profiles	Profile Guide	seven profile guide	safe	Show recommended actions for the active profile.
+profile.apps	Profiles	Profile Apps	seven profile apps	safe	Show apps and launch commands for the active profile.
 profile.open	Profiles	Open Active Workspace	seven profile open	safe	Open the current profile workspace.
 profile.activate.forge	Profiles	Activate Forge	seven profile activate forge	changes	Switch the desktop context to Forge.
 profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch the desktop context to Shield.

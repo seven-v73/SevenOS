@@ -249,12 +249,20 @@ else
   fail "Waybar profile indicator should use live SevenOS profile state"
 fi
 
-if SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate forge | grep -q 'profile.json' &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | grep -q '"apps"' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" open forge | grep -q 'seven-files open'; then
-  ok "SevenOS profile activation creates live workspaces and app metadata"
+profile_activate_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate forge)"
+profile_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json)"
+profile_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json)"
+profile_guide_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile guide)"
+profile_open_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" open forge)"
+if grep -q 'profile.json' <<<"$profile_activate_dry" &&
+   grep -q '"apps"' <<<"$profile_status_json" &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile current --json | python -m json.tool >/dev/null &&
+   grep -q '"command"' <<<"$profile_apps_json" &&
+   grep -q 'Recommended actions' <<<"$profile_guide_output" &&
+   grep -q 'seven-files open' <<<"$profile_open_dry"; then
+  ok "SevenOS profile activation creates live workspaces, app readiness and next actions"
 else
-  fail "SevenOS profile activation should create workspaces and app metadata"
+  fail "SevenOS profile activation should create workspaces, app readiness and next actions"
 fi
 
 actions_json="$("$ROOT_DIR/scripts/actions.sh" --json)"
@@ -456,6 +464,7 @@ if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick | grep -q 'DRY-RUN 
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications | grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick | grep -q 'Active profile:' &&
    grep -q 'PROFILE_ACTIONS' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'Forge Apps' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'seven-windows-assistant' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'seven-shell-panel quick' "$ROOT_DIR/bin/seven-quick-settings" &&
    grep -q 'seven-shell-panel notifications' "$ROOT_DIR/bin/seven-waybar-notifications"; then
@@ -467,9 +476,11 @@ fi
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile current --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; raise SystemExit(0 if "manifest" in json.load(sys.stdin) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","windows"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
