@@ -78,17 +78,17 @@ menu() {
 
   options=$(
     cat <<EOF
-Home
-Projects
-Downloads
-Documents
-Pictures
-Videos
-Music
-Recent
-Trash
-Root
-SevenOS Repo
+󰋜  Home
+󰲋  Projects
+󰇚  Downloads
+󰈙  Documents
+󰉏  Pictures
+󰕧  Videos
+󰝚  Music
+󰋚  Recent
+󰩺  Trash
+󰉌  Root
+󰒓  SevenOS Repo
 EOF
   )
 
@@ -104,6 +104,9 @@ EOF
     printf 'Choice: '
     IFS= read -r choice
   fi
+
+  choice="${choice#*  }"
+  choice="${choice%%    *}"
 
   case "$choice" in
     Home) open_path "$HOME" ;;

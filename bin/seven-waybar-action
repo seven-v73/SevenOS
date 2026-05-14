@@ -91,6 +91,13 @@ open_rofi_menu() {
   printf '%s\n' "$@" | rofi -dmenu -i -p "$prompt" -theme "$HOME/.config/rofi/sevenos.rasi"
 }
 
+clean_selection() {
+  local selected="$1"
+  selected="${selected#*  }"
+  selected="${selected%%    *}"
+  printf '%s\n' "$selected"
+}
+
 command_or_terminal() {
   local title="$1"
   local preferred="$2"
@@ -192,42 +199,60 @@ run_clock_action() {
 
 show_menu() {
   local area="$1"
+  local prompt runner
+  local -a options
   local selected
 
   case "$area" in
     system)
-      selected="$(open_rofi_menu "System" "Open Control Center" "System Monitor" "System Status" "Readiness Score" "Doctor Check" "Recent Warnings")"
-      run_system_action "$selected"
+      prompt="System"
+      runner="run_system_action"
+      options=("󰒓  Open Control Center" "󰍛  System Monitor" "󰄬  System Status" "󰔟  Readiness Score" "󰩂  Doctor Check" "󰋼  Recent Warnings")
       ;;
     profile)
-      selected="$(open_rofi_menu "Profiles" "Profile Status" "Native Profiles" "Open Active Workspace" "Open Profiles Hub" "Activate Forge" "Activate Shield" "Activate Studio" "Install Forge" "Install Shield" "Install Studio" "SevenPkg Status")"
-      run_profile_action "$selected"
+      prompt="Profiles"
+      runner="run_profile_action"
+      options=("󰄬  Profile Status" "󰒓  Native Profiles" "󰉋  Open Active Workspace" "󰌢  Open Profiles Hub" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio" "󰌢  Install Forge" "󰒃  Install Shield" "󰏗  Install Studio" "󰀻  SevenPkg Status")
       ;;
     security)
-      selected="$(open_rofi_menu "Security" "Security Audit" "Enable Shield" "Cyber Lab" "Firewall Status" "Open Cyber Hub")"
-      run_security_action "$selected"
+      prompt="Security"
+      runner="run_security_action"
+      options=("󰒃  Security Audit" "󰞀  Enable Shield" "󰛵  Cyber Lab" "󰖂  Firewall Status" "󰒓  Open Cyber Hub")
       ;;
     network)
-      selected="$(open_rofi_menu "Network" "Network Settings" "Network Status" "Wi-Fi Menu" "Restart NetworkManager")"
-      run_network_action "$selected"
+      prompt="Network"
+      runner="run_network_action"
+      options=("󰤨  Network Settings" "󰈀  Network Status" "󰖩  Wi-Fi Menu" "󰜉  Restart NetworkManager")
       ;;
     audio)
-      selected="$(open_rofi_menu "Audio" "Volume Mixer" "Mute Toggle" "Volume Up" "Volume Down" "Audio Status")"
-      run_audio_action "$selected"
+      prompt="Audio"
+      runner="run_audio_action"
+      options=("󰕾  Volume Mixer" "󰖁  Mute Toggle" "󰝝  Volume Up" "󰝞  Volume Down" "󰄬  Audio Status")
       ;;
     battery)
-      selected="$(open_rofi_menu "Power" "Power Menu" "Battery Status" "Power Profiles" "Lock Session")"
-      run_battery_action "$selected"
+      prompt="Power"
+      runner="run_battery_action"
+      options=("󰐥  Power Menu" "󰁹  Battery Status" "󰈐  Power Profiles" "󰍁  Lock Session")
       ;;
     clock)
-      selected="$(open_rofi_menu "Time" "Calendar" "Time Settings" "World Time")"
-      run_clock_action "$selected"
+      prompt="Time"
+      runner="run_clock_action"
+      options=("󰃭  Calendar" "󰥔  Time Settings" "󰀗  World Time")
       ;;
     *)
       printf 'seven-waybar-action: unknown area: %s\n' "$area" >&2
       exit 1
       ;;
   esac
+
+  if dry_run; then
+    open_rofi_menu "$prompt" "${options[@]}"
+    return 0
+  fi
+
+  selected="$(open_rofi_menu "$prompt" "${options[@]}")"
+  selected="$(clean_selection "$selected")"
+  "$runner" "$selected"
 }
 
 show_menu "${1:-system}"

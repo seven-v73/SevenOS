@@ -225,7 +225,9 @@ fi
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
    grep -q 'Native Profiles' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'Open Active Workspace' "$ROOT_DIR/bin/seven-waybar-action" &&
-   grep -q 'seven profile activate forge' "$ROOT_DIR/bin/seven-waybar-action"; then
+   grep -q 'seven profile activate forge' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'clean_selection' "$ROOT_DIR/bin/seven-waybar-action" &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system | grep -q '󰒓  Open Control Center'; then
   ok "Waybar profile indicator uses live SevenOS profile state"
 else
   fail "Waybar profile indicator should use live SevenOS profile state"
@@ -579,7 +581,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu | grep -q 'rofi places menu'
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
@@ -587,6 +589,14 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset offline --dry-run >/dev/null
 ok "interactive UX commands support dry-run"
+
+if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰒓  Open Seven Hub' &&
+   grep -q '󰋜  Home' "$ROOT_DIR/bin/seven-files" &&
+   grep -q '󰀻  Open Apps' "$ROOT_DIR/bin/seven-help"; then
+  ok "Shell help and files surfaces use icon-first entries"
+else
+  fail "Shell help and files surfaces should be icon-first"
+fi
 
 if [[ "$failures" -gt 0 ]]; then
   log_error "UX checks failed: $failures"
