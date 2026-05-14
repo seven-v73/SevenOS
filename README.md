@@ -261,6 +261,8 @@ seven hub-gui status
 seven hub-gui doctor
 seven flatpak status
 seven ecosystem
+seven ecosystem processes
+seven ecosystem --json
 seven ecosystem roadmap
 seven readiness
 seven phase-gate

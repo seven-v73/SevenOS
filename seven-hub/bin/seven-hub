@@ -356,6 +356,7 @@ load_actions() {
     "Ecosystem")
       actions=(
         "Ecosystem Map|seven:ecosystem|Show modules and maturity"
+        "Ecosystem Processes|seven:ecosystem processes|Show all-in-one SevenOS user flows"
         "Ecosystem Roadmap|seven:ecosystem roadmap|Show Phase 4 and Phase 5 priorities"
         "Ecosystem Doctor|seven:ecosystem doctor|Validate ecosystem foundation"
         "Repair Plan|seven:repair|Show guided repair plan"

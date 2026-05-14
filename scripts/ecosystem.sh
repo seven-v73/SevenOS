@@ -9,13 +9,55 @@ usage() {
 SevenOS Ecosystem
 
 Usage:
-  seven ecosystem [status|roadmap|doctor]
-  ./scripts/ecosystem.sh [status|roadmap|doctor]
+  seven ecosystem [status|processes|roadmap|doctor|json]
+  ./scripts/ecosystem.sh [status|processes|roadmap|doctor|json]
 
 Actions:
-  status   Show all ecosystem modules and maturity
-  roadmap  Show phase priorities
-  doctor   Check whether ecosystem foundation files exist
+  status     Show all ecosystem modules and maturity
+  processes  Show end-to-end all-in-one user flows
+  roadmap    Show phase priorities
+  doctor     Check whether ecosystem foundation files exist
+  json       Print machine-readable ecosystem map
+EOF
+}
+
+modules_tsv() {
+  cat <<'EOF'
+seven	1-2	active	System controller, repair entrypoint and OS command surface	bin/seven
+sevenpkg	2	active	Software, meta-packages and future app layer	bin/sevenpkg
+Seven Hub	2-4	preview	Native control center, action launcher and user-facing OS surface	seven-hub/bin/seven-hub
+Seven Profiles	2-4	active	Adaptive Forge, Shield, Studio, Windows, Horizon and Baobab contexts	profiles/profile-manager.sh
+Seven Files	2	active	Profile-aware file entrypoint and workspace bridge	bin/seven-files
+Windows Mode	2-4	preview	Wine, Bottles, Lutris and KVM/QEMU compatibility	vm/windows-mode.sh
+SevenShield	2-4	preview	Security hardening, audit, sandbox and Cyber Lab	security/cyber-audit.sh
+Seven Server	3	preview	Local API, monitoring and orchestration backend	server/seven-server.sh
+Seven Deploy	3	preview	Project detection and deployment planner	server/seven-deploy.sh
+Seven Installer	3	preview	Archiso, Calamares and install planning foundation	installer/calamares/README.md
+SevenBox	4	planned	Rootless containers and sandbox UX	scripts/ecosystem.sh
+SevenAI	4	planned	Provider-neutral assistant and automation contract	scripts/ecosystem.sh
+Adaptive UI	4	preview	Profile-aware shell, Waybar, panels and Hub actions	bin/seven-shell-panel
+SevenCloud	5	planned	Encrypted backup, config sync and restore	scripts/ecosystem.sh
+SevenStore	5	planned	Apps, profiles, themes and module registry	scripts/ecosystem.sh
+SevenIdentity	5	planned	User identity, accent packs, permissions and environment	scripts/ecosystem.sh
+SevenFlow	5	planned	No-code automation rules for system workflows	scripts/ecosystem.sh
+SevenCluster	5	planned	Local/private multi-machine compute mesh	scripts/ecosystem.sh
+EOF
+}
+
+processes_tsv() {
+  cat <<'EOF'
+First Run	experience	active	seven welcome -> profile select -> theme -> readiness -> Hub	seven welcome
+Daily Control	desktop	active	Waybar -> Quick Settings -> Seven Hub -> actions registry	seven hub
+Install Apps	software	preview	sevenpkg -> Flatpak -> profile apps -> future SevenStore	sevenpkg status
+Work Profiles	productivity	active	Forge/Shield/Studio/Windows/Horizon context -> workspace -> apps	seven profile current
+Windows Apps	compatibility	preview	Windows profile -> Bottles/Wine or KVM VM -> shared workspace	seven windows guide
+Security Trust	security	preview	Shield audit -> UFW/Firejail/Bubblewrap -> Cyber Lab	seven shield audit
+Create & Media	creation	preview	Studio profile -> creative apps -> project workspace	seven profile guide studio
+Develop & Deploy	deployment	preview	Forge/Horizon -> stack detect -> local API -> deploy planner	seven deploy plan .
+Personal Cloud	cloud	planned	SevenCloud -> encrypted backup -> restore -> machine sync	seven ecosystem roadmap
+Marketplace	store	planned	SevenStore -> trust policy -> apps/themes/modules -> one-click install	seven ecosystem roadmap
+Automation	automation	planned	SevenFlow -> triggers -> confirmed actions -> logs	seven ecosystem roadmap
+Identity	identity	planned	SevenIdentity -> user context -> regional accents -> permissions	seven ecosystem roadmap
 EOF
 }
 
@@ -33,23 +75,20 @@ status() {
   printf '=====================\n'
   printf '  %-20s %-8s %-10s %s\n' "Module" "Phase" "Status" "Purpose"
   printf '  %-20s %-8s %-10s %s\n' "------" "-----" "------" "-------"
-  module_line "seven" "1-2" "active" "system controller"
-  module_line "sevenpkg" "2" "active" "package and meta-package layer"
-  module_line "Architecture" "2" "active" "product and system layer contract"
-  module_line "Seven Hub" "2-4" "preview" "control center"
-  module_line "Seven Hub GUI" "4" "preview" "Tauri native control center"
-  module_line "Windows Mode" "2-4" "preview" "Windows compatibility"
-  module_line "seven-server" "3" "preview" "local API and monitoring"
-  module_line "seven-deploy" "3" "preview" "deployment planner"
-  module_line "SevenBox" "4" "planned" "rootless containers and sandbox UX"
-  module_line "SevenAI" "4" "planned" "native assistant and automation"
-  module_line "SevenDoctor" "3-4" "preview" "diagnostics and repair flow"
-  module_line "Adaptive UI" "4" "planned" "profile-aware desktop behavior"
-  module_line "SevenCloud" "5" "planned" "backup, sync and restore"
-  module_line "SevenStore" "5" "planned" "apps, modules and themes marketplace"
-  module_line "SevenIdentity" "5" "planned" "user identity and accent packs"
-  module_line "SevenFlow" "5" "planned" "no-code automation rules"
-  module_line "SevenCluster" "5" "planned" "multi-machine private compute"
+  while IFS=$'\t' read -r name phase state description _path; do
+    module_line "$name" "$phase" "$state" "$description"
+  done < <(modules_tsv)
+}
+
+processes() {
+  printf 'SevenOS All-In-One Process Map\n'
+  printf '==============================\n'
+  printf '  %-18s %-14s %-10s %s\n' "Process" "Layer" "Status" "Flow"
+  printf '  %-18s %-14s %-10s %s\n' "-------" "-----" "------" "----"
+  while IFS=$'\t' read -r name layer state flow command; do
+    printf '  %-18s %-14s %-10s %s\n' "$name" "$layer" "$state" "$flow"
+    printf '  %-18s %-14s %-10s command: %s\n' "" "" "" "$command"
+  done < <(processes_tsv)
 }
 
 roadmap() {
@@ -69,6 +108,42 @@ roadmap() {
   printf '  - SevenCluster local/private compute mesh\n'
 }
 
+json() {
+  MODULES_TSV="$(modules_tsv)" PROCESSES_TSV="$(processes_tsv)" python - <<'PY'
+import json
+import os
+
+modules = []
+for raw in os.environ["MODULES_TSV"].splitlines():
+    name, phase, state, purpose, path = raw.split("\t", 4)
+    modules.append({
+        "name": name,
+        "phase": phase,
+        "state": state,
+        "purpose": purpose,
+        "path": path,
+    })
+
+processes = []
+for raw in os.environ["PROCESSES_TSV"].splitlines():
+    name, layer, state, flow, command = raw.split("\t", 4)
+    processes.append({
+        "name": name,
+        "layer": layer,
+        "state": state,
+        "flow": flow,
+        "command": command,
+    })
+
+print(json.dumps({
+    "schema": "sevenos.ecosystem.v1",
+    "positioning": "all-in-one African first Linux ecosystem",
+    "modules": modules,
+    "processes": processes,
+}, indent=2))
+PY
+}
+
 doctor() {
   local failures=0
 
@@ -80,6 +155,7 @@ doctor() {
     "docs/ARCHITECTURE.md" \
     "docs/VISION.md" \
     "docs/PRODUCT_STRATEGY.md" \
+    "docs/ECOSYSTEM.md" \
     "bin/seven" \
     "bin/sevenpkg" \
     "seven-hub/bin/seven-hub" \
@@ -88,6 +164,7 @@ doctor() {
     "server/seven-deploy.sh" \
     "scripts/architecture.sh" \
     "scripts/readiness.sh" \
+    "scripts/actions.sh" \
     "scripts/phase-gate.sh"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then
       printf '[OK] %s\n' "$path"
@@ -108,8 +185,10 @@ doctor() {
 action="${1:-status}"
 case "$action" in
   status) status ;;
+  processes|process) processes ;;
   roadmap) roadmap ;;
   doctor) doctor ;;
+  json|--json) json ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown ecosystem action: $action"; usage; exit 1 ;;
 esac

@@ -69,6 +69,9 @@ printf ','
 printf '"manifest":'
 json_or_null "$ROOT_DIR/scripts/manifest.sh" summary-json
 printf ','
+printf '"ecosystem":'
+json_or_null "$ROOT_DIR/scripts/ecosystem.sh" json
+printf ','
 printf '"actions":'
 json_or_null "$ROOT_DIR/scripts/actions.sh" --json
 printf ','

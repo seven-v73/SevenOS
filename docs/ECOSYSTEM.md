@@ -8,6 +8,29 @@ The rule is simple:
 
 > A module may be visionary, but the CLI must stay honest about its maturity.
 
+## Product Model
+
+SevenOS should behave like a unified product ecosystem:
+
+```text
+Identity -> Session -> Hub -> Profiles -> Apps -> Services -> Backup/Sync
+```
+
+The user should not feel they are assembling Arch components by hand. The OS
+should offer one coherent path:
+
+- one identity and session
+- one control center
+- one package/app surface
+- one profile system
+- one Windows compatibility path
+- one security posture
+- one deployment/backend layer
+- one future cloud/store/automation layer
+
+This is the Apple-like lesson SevenOS should borrow: not closed control, but
+integration, continuity and predictable defaults.
+
 ## Ecosystem Modules
 
 | Module | Purpose | Phase | Status |
@@ -24,6 +47,42 @@ The rule is simple:
 | SevenIdentity | user identity, cultural accents, permissions and environment | 5 | planned |
 | SevenCluster | multi-machine local cluster and resource sharing | 5 | planned |
 | SevenFlow | no-code automation rules for system workflows | 5 | planned |
+
+## All-In-One Process Map
+
+Each ecosystem process must connect UI, command, data and safety. If a process
+cannot be reached from Seven Hub or `seven`, it is not productized yet.
+
+| Process | Layer | Status | Flow | Command |
+| --- | --- | --- | --- | --- |
+| First Run | experience | active | welcome, profile choice, theme, readiness, Hub | `seven welcome` |
+| Daily Control | desktop | active | Waybar, Quick Settings, Seven Hub, actions registry | `seven hub` |
+| Install Apps | software | preview | SevenPkg, Flatpak, profile apps, future SevenStore | `sevenpkg status` |
+| Work Profiles | productivity | active | profile context, workspace, app readiness, next actions | `seven profile current` |
+| Windows Apps | compatibility | preview | Windows profile, Bottles/Wine, KVM VM | `seven windows guide` |
+| Security Trust | security | preview | Shield audit, hardening, sandbox, Cyber Lab | `seven shield audit` |
+| Create & Media | creation | preview | Studio profile, creative apps, media workspace | `seven profile guide studio` |
+| Develop & Deploy | deployment | preview | Forge/Horizon, stack detection, local API, deploy plan | `seven deploy plan .` |
+| Personal Cloud | cloud | planned | encrypted backup, restore, machine sync | `seven ecosystem roadmap` |
+| Marketplace | store | planned | trust policy, apps, themes, modules | `seven ecosystem roadmap` |
+| Automation | automation | planned | triggers, confirmed actions, logs | `seven ecosystem roadmap` |
+| Identity | identity | planned | user context, regional accents, permissions | `seven ecosystem roadmap` |
+
+## Ecosystem Contracts
+
+The ecosystem must be readable by both humans and UIs:
+
+```bash
+seven ecosystem
+seven ecosystem processes
+seven ecosystem --json
+seven state --json
+seven actions --json
+```
+
+`seven state --json` is the unified snapshot. It should contain profiles,
+Windows Mode, actions, manifest and ecosystem data so the native Hub can become
+a real OS control plane without scraping terminal text.
 
 ## Current Foundation
 
@@ -74,6 +133,8 @@ Later:
 
 ```bash
 seven ecosystem
+seven ecosystem processes
+seven ecosystem --json
 seven ecosystem roadmap
 seven ecosystem doctor
 seven repair

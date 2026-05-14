@@ -61,6 +61,8 @@ Rules:
   buttons and recommendations.
 - `seven manifest` is the install/migration contract. It defines future
   package boundaries, protected user paths and restore plans for upgrades.
+- `seven ecosystem --json` is the product ecosystem contract. It declares
+  modules, maturity states and end-to-end user processes.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
@@ -157,6 +159,8 @@ seven hub
 seven files
 seven state --json
 seven actions --json
+seven ecosystem processes
+seven ecosystem --json
 seven profile forge
 seven shield audit
 seven windows status
