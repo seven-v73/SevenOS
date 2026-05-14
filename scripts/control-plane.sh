@@ -4,7 +4,12 @@ set -Eeuo pipefail
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$ROOT_DIR/scripts/lib.sh"
 
+ACTION="plan"
 JSON_OUTPUT=0
+APPLY=0
+YES=0
+SAFE_ONLY=0
+LIMIT=6
 
 usage() {
   cat <<'EOF'
@@ -13,7 +18,8 @@ SevenOS Control Plane
 Usage:
   seven control
   seven control --json
-  ./scripts/control-plane.sh [--json]
+  seven control apply [--limit N] [--safe-only] [--apply] [--yes]
+  ./scripts/control-plane.sh [plan|apply] [--json]
 
 Builds a single prioritized OS action plan from readiness, experience,
 Shield, Server, profiles and registered actions. This is the decision contract
@@ -21,13 +27,28 @@ for Seven Hub and future Seven Server orchestration.
 EOF
 }
 
-for arg in "$@"; do
+while [[ "$#" -gt 0 ]]; do
+  arg="$1"
   case "$arg" in
+    plan|apply) ACTION="$arg" ;;
     --json|json) JSON_OUTPUT=1 ;;
+    --apply) APPLY=1 ;;
+    --yes) YES=1 ;;
+    --safe-only) SAFE_ONLY=1 ;;
+    --limit)
+      shift
+      LIMIT="${1:-}"
+      [[ "$LIMIT" =~ ^[0-9]+$ ]] || { log_error "--limit expects a number."; exit 1; }
+      ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown control option: $arg"; usage; exit 1 ;;
   esac
+  shift
 done
+
+if [[ "$YES" -eq 1 ]]; then
+  export SEVENOS_YES=1
+fi
 
 payload() {
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
@@ -134,6 +155,68 @@ PY
 
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   payload
+  exit 0
+fi
+
+execute_plan() {
+  local control_payload command_count=0
+  control_payload="$(payload)"
+
+  printf 'SevenOS Control Apply\n'
+  printf '=====================\n'
+  if [[ "$APPLY" -eq 1 ]]; then
+    log_warn "Apply mode enabled. SevenOS will run prioritized actions."
+    [[ "$YES" -eq 1 ]] && log_warn "Non-interactive package install mode enabled where supported."
+  else
+    printf 'Preview only. Add --apply to execute.\n'
+  fi
+  [[ "$SAFE_ONLY" -eq 1 ]] && printf 'Safe-only mode: skipping package and system-changing actions.\n'
+  printf '\n'
+
+  while IFS=$'\t' read -r severity impact command reason; do
+    [[ -n "${command:-}" ]] || continue
+    command_count=$((command_count + 1))
+    printf '%-9s %-9s %s\n' "$severity" "$impact" "$command"
+    printf '%-9s %-9s %s\n' "" "" "$reason"
+
+    if [[ "$APPLY" -eq 1 && ! is_dry_run ]]; then
+      bash -lc "cd '$ROOT_DIR' && $command"
+    else
+      printf '          DRY-RUN > %s\n' "$command"
+    fi
+    printf '\n'
+  done < <(
+    CONTROL_PAYLOAD="$control_payload" SAFE_ONLY="$SAFE_ONLY" LIMIT="$LIMIT" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["CONTROL_PAYLOAD"])
+safe_only = os.environ.get("SAFE_ONLY") == "1"
+limit = int(os.environ.get("LIMIT", "6"))
+count = 0
+
+for item in data.get("actions", []):
+    if safe_only and item.get("impact") != "safe":
+        continue
+    print("\t".join([
+        item.get("severity", ""),
+        item.get("impact", ""),
+        item.get("command", ""),
+        item.get("reason", ""),
+    ]))
+    count += 1
+    if count >= limit:
+        break
+PY
+  )
+
+  if [[ "$command_count" -eq 0 ]]; then
+    log_success "No matching control actions to run."
+  fi
+}
+
+if [[ "$ACTION" == "apply" ]]; then
+  execute_plan
   exit 0
 fi
 

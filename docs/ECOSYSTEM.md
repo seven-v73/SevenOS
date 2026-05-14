@@ -97,6 +97,10 @@ a normal user.
 experience, Shield, Server and profiles into one OS decision surface for Seven
 Hub and future automation.
 
+`seven control apply` previews the next prioritized actions. It remains
+non-destructive unless `--apply` is explicitly passed, so the system can guide
+users without surprising them.
+
 ## Native Hub Integration
 
 Seven Hub Native should expose the ecosystem as a visual product map:

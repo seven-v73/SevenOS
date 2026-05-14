@@ -29,6 +29,7 @@ quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS qu
 readiness.run	System	Run Readiness	seven readiness	safe	Score SevenOS against product readiness checks.
 experience.run	System	Experience Audit	seven experience	safe	Check whether SevenOS behaves like a coherent OS.
 control.plan	System	Control Plane	seven control	safe	Show prioritized SevenOS actions across readiness, trust and services.
+control.preview	System	Preview Control Fixes	seven control apply --limit 5	safe	Preview the next prioritized SevenOS fixes without changing the system.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.

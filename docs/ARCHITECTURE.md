@@ -69,6 +69,8 @@ Rules:
 - `seven control --json` is the decision contract. It converts readiness,
   experience, Shield, Server and profile gaps into prioritized actions for
   Seven Hub and future automation.
+- `seven control apply` previews those actions first. Execution requires an
+  explicit `--apply`, preserving user trust around system-changing operations.
 - `seven shield status --json` and `seven server status --json` expose trust
   and local API readiness directly, so the Hub does not infer critical state
   from generic status text.

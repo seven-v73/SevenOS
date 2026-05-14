@@ -268,6 +268,7 @@ seven experience
 seven experience --json
 seven control
 seven control --json
+seven control apply --limit 5
 seven shield status
 seven shield status --json
 seven readiness
