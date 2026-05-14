@@ -240,9 +240,11 @@ fi
 
 actions_json="$("$ROOT_DIR/scripts/actions.sh" --json)"
 actions_dry_run="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" run apps.open)"
+actions_apps="$("$ROOT_DIR/scripts/actions.sh" category Apps)"
 state_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json)"
 if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'seven-overview apps' <<<"$actions_dry_run" &&
+   grep -q 'sevenpkg.status' <<<"$actions_apps" &&
    grep -q '"actions"' <<<"$state_json"; then
   ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
 else
@@ -494,7 +496,9 @@ fi
 if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md"; then
+   grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md"; then
   ok "Seven Server exposes live state API endpoints"
 else
   fail "Seven Server should expose state and profile API endpoints"

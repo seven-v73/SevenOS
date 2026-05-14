@@ -74,9 +74,11 @@ Les piliers du projet sont :
 - Ajout de sorties JSON stables pour `seven status --json`, `seven profile status --json`, `sevenpkg status --json` et `sevenpkg meta --json`.
 - Ajout de `seven state --json`, snapshot machine unifie pour les interfaces natives, l'automatisation et le futur Seven Server.
 - Ajout de `seven actions --json`, registre central des actions SevenOS pour partager les memes commandes entre Hub, Waybar, Quick Settings et les futures surfaces natives.
+- Ajout de `seven actions category <name>` pour fournir des listes d'actions ciblees aux petits panneaux systeme sans dupliquer les commandes.
 - Ajout de `seven manifest show|doctor|restore-plan|protected|components` pour preparer les upgrades, le packaging pacman et la future ISO sans ecraser les choix utilisateur.
 - Ajout de `seven migrate plan|backup` comme etape de securite avant reapplication du theme, upgrade Git, paquet pacman futur ou ISO.
 - Ajout du resume manifeste dans `seven state --json`, pour que Seven Hub et Seven Server voient les composants, la version, le canal et les compteurs de protection en JSON.
+- Seven Server expose maintenant `/actions`, afin que les interfaces locales puissent consommer le meme registre d'actions que Seven Hub.
 - Debut de separation entre affichage humain et donnees machine pour que Seven Hub pilote SevenOS sans parser des textes fragiles.
 
 ### Design System

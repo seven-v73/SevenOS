@@ -12,6 +12,7 @@ Usage:
   seven actions
   seven actions --json
   seven actions list
+  seven actions category <name>
   seven actions run <id> [--dry-run]
 
 The registry is the shared action contract for Seven Hub, Waybar,
@@ -48,9 +49,14 @@ sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software 
 EOF
 }
 
+print_rows_for_category() {
+  local wanted="$1"
+  action_rows | awk -F '\t' -v wanted="$wanted" 'tolower($2) == tolower(wanted)'
+}
+
 json_output() {
   local rows
-  rows="$(action_rows)"
+  rows="${1:-$(action_rows)}"
   ACTION_ROWS="$rows" python - <<'PY'
 import json
 import os
@@ -79,9 +85,12 @@ PY
 
 list_output() {
   printf '%-22s %-11s %-24s %s\n' "ID" "IMPACT" "CATEGORY" "TITLE"
-  action_rows | while IFS=$'\t' read -r action_id category title _command impact _description; do
+  local rows
+  rows="${1:-$(action_rows)}"
+  while IFS=$'\t' read -r action_id category title _command impact _description; do
+    [[ -n "${action_id:-}" ]] || continue
     printf '%-22s %-11s %-24s %s\n' "$action_id" "$impact" "$category" "$title"
-  done
+  done <<<"$rows"
 }
 
 command_for_id() {
@@ -116,6 +125,20 @@ case "$ACTION" in
     ;;
   list)
     list_output
+    ;;
+  category)
+    shift
+    if [[ -z "${1:-}" ]]; then
+      log_error "Missing category name."
+      usage
+      exit 1
+    fi
+    rows="$(print_rows_for_category "$1")"
+    if [[ -z "$rows" ]]; then
+      log_error "Unknown SevenOS action category: $1"
+      exit 1
+    fi
+    list_output "$rows"
     ;;
   run)
     shift

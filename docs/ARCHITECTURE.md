@@ -54,6 +54,8 @@ Rules:
 - `seven actions --json` is the shared action registry for Seven Hub, Waybar,
   Quick Settings and future native surfaces. UI code should prefer action IDs
   over hardcoded command strings when possible.
+- `seven actions category <name>` gives focused action sets for small panels
+  such as Apps, Security or Desktop.
 - Seven Hub runs registered actions through `run_seven_action(action_id)`.
   Direct command execution is kept only as a compatibility path for safe legacy
   buttons and recommendations.
