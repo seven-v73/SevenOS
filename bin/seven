@@ -124,6 +124,10 @@ def handle_architecture(args):
     run_script(args, "scripts/architecture.sh", args.action)
 
 
+def handle_manifest(args):
+    run_script(args, "scripts/manifest.sh", args.action)
+
+
 def handle_repair(args):
     extra = [args.area]
     if args.apply:
@@ -149,6 +153,8 @@ def main():
     architecture_parser.add_argument("action", nargs="?", default="map")
     ecosystem_parser = subparsers.add_parser("ecosystem", help="show SevenOS ecosystem modules and roadmap")
     ecosystem_parser.add_argument("action", nargs="?", default="status")
+    manifest_parser = subparsers.add_parser("manifest", help="inspect SevenOS install, restore and packaging manifest")
+    manifest_parser.add_argument("action", nargs="?", default="show")
     subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
     subparsers.add_parser("post-install", help="check common post-install blockers")
     readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
@@ -226,6 +232,8 @@ def main():
         handle_architecture(args)
     elif args.command == "ecosystem":
         handle_ecosystem(args)
+    elif args.command == "manifest":
+        handle_manifest(args)
     elif args.command == "phase-gate":
         run_script(args, "scripts/phase-gate.sh")
     elif args.command == "post-install":

@@ -51,6 +51,7 @@ require_file "docs/ECOSYSTEM.md"
 require_file "docs/PRODUCTIZATION.md"
 require_file "docs/TEST_MACHINE.md"
 require_file "docs/PRE_PUSH.md"
+require_file "sevenos.dotinst"
 require_file "installer/calamares/README.md"
 require_file "installer/calamares/settings.conf"
 require_file "installer/calamares/modules/sevenos.conf"
@@ -90,6 +91,9 @@ require_file "hyprland/rofi/apps.rasi"
 require_file "hyprland/rofi/power.rasi"
 require_file "hyprland/mako/config"
 require_file "hyprland/kitty/kitty.conf"
+require_file "hyprland/conf/custom.conf"
+require_file "hyprland/conf/keyboard.conf"
+require_file "hyprland/conf/monitor.conf"
 require_file "hyprland/waybar/config.jsonc"
 require_file "hyprland/gtk-3.0/settings.ini"
 require_file "hyprland/gtk-4.0/settings.ini"
@@ -119,6 +123,7 @@ require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
+require_executable "scripts/manifest.sh"
 require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
 require_executable "scripts/post-install.sh"
@@ -228,6 +233,15 @@ if grep -q 'exec-once = seven-session' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland starts SevenOS session"
 else
   fail "Hyprland should start seven-session"
+fi
+
+if grep -q 'source = ~/.config/hypr/conf/monitor.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'source = ~/.config/hypr/conf/keyboard.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'source = ~/.config/hypr/conf/custom.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'install_preserved_config_file' "$ROOT_DIR/scripts/apply-theme.sh"; then
+  ok "Hyprland exposes protected user override files"
+else
+  fail "Hyprland protected override files are missing"
 fi
 
 if grep -q 'env = GTK_THEME,adw-gtk3-dark' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -375,6 +389,37 @@ if "$ROOT_DIR/scripts/architecture.sh" doctor >/dev/null; then
   ok "SevenOS architecture doctor works"
 else
   fail "SevenOS architecture doctor failed"
+fi
+
+if "$ROOT_DIR/scripts/manifest.sh" doctor >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" manifest restore-plan | grep -q 'Hyprland user override' &&
+   python - "$ROOT_DIR/sevenos.dotinst" <<'PY' >/dev/null
+import json
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8") as handle:
+    manifest = json.load(handle)
+
+component_ids = {item.get("id") for item in manifest.get("components", [])}
+required = {
+    "sevenos-cli",
+    "sevenos-branding",
+    "sevenos-hyprland",
+    "sevenos-hub",
+    "sevenos-profiles",
+    "sevenos-server",
+    "sevenos-installer",
+}
+if not required.issubset(component_ids):
+    missing = ", ".join(sorted(required - component_ids))
+    raise SystemExit(f"missing components: {missing}")
+if "~/.config/hypr/conf/custom.conf" not in manifest.get("protected", []):
+    raise SystemExit("missing protected custom Hyprland path")
+PY
+then
+  ok "SevenOS install manifest defines package boundaries and protected user paths"
+else
+  fail "SevenOS install manifest is incomplete"
 fi
 
 if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&

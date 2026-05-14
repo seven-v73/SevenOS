@@ -39,6 +39,8 @@ Current foundation:
 - `seven status --json` exposes machine-readable system state
 - `seven profile status --json` exposes profile states through SevenPkg
 - `sevenpkg status --json` exposes meta-package installation state
+- `seven manifest` exposes package boundaries and user paths that must survive
+  future upgrades
 
 Next work:
 
@@ -82,6 +84,15 @@ Required capabilities:
 - SevenOS profile selection
 - automatic theme, CLI, Hub and session setup
 - first-boot welcome
+
+Current foundation:
+
+- `sevenos.dotinst` defines install metadata, component boundaries and restore
+  rules.
+- `seven manifest doctor` validates this contract before an ISO or package
+  release.
+- protected Hyprland override files let the installer apply SevenOS defaults
+  without erasing monitor, keyboard or custom user rules.
 
 ### 4. First Run Experience
 

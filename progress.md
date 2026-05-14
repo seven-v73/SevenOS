@@ -60,6 +60,9 @@ Les piliers du projet sont :
 - Separation claire entre `bin/`, `scripts/`, `profiles/`, `security/`, `vm/`, `server/`, `sevenpkg/`, `seven-hub/`, `identity/`, `branding/`, `installer/` et `archiso/`.
 - Ajout des documents de vision, architecture, UX, criteres OS, deploiement et test machine.
 - Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.
+- Ajout de `sevenos.dotinst`, manifeste d'installation et de migration inspire des logiques Hyprland matures : metadata, composants installables, chemins proteges, plan de restauration et checks de validation.
+- Ajout de `seven manifest` comme point d'entree pour valider le manifeste, afficher les futurs composants paquetables et lister les chemins utilisateur a preserver.
+- Definition des futures frontieres de paquets : `sevenos-cli`, `sevenos-branding`, `sevenos-hyprland`, `sevenos-hub`, `sevenos-profiles`, `sevenos-server` et `sevenos-installer`.
 
 ### Commandes systeme
 
@@ -69,6 +72,7 @@ Les piliers du projet sont :
 - Ajout de commandes UX : `seven-session`, `seven-wallpaper`, `seven-power`, `seven-files`, `seven-welcome`, `seven-country`.
 - Ajout de sorties JSON stables pour `seven status --json`, `seven profile status --json`, `sevenpkg status --json` et `sevenpkg meta --json`.
 - Ajout de `seven state --json`, snapshot machine unifie pour les interfaces natives, l'automatisation et le futur Seven Server.
+- Ajout de `seven manifest show|doctor|restore-plan|protected|components` pour preparer les upgrades, le packaging pacman et la future ISO sans ecraser les choix utilisateur.
 - Debut de separation entre affichage humain et donnees machine pour que Seven Hub pilote SevenOS sans parser des textes fragiles.
 
 ### Design System
@@ -97,6 +101,8 @@ Les piliers du projet sont :
 - Ajout d'actions clic sur CPU, RAM, profil, securite, reseau, audio, batterie et horloge.
 - Ajout de menus contextuels Waybar pour systeme, profils, Shield, reseau, audio, batterie et temps.
 - L'indicateur profil Waybar lit maintenant `seven profile status --json` et affiche le profil actif reel au lieu d'un resume statique issu de `sevenpkg`.
+- Ajout de fichiers Hyprland proteges : `~/.config/hypr/conf/monitor.conf`, `keyboard.conf` et `custom.conf`.
+- `scripts/apply-theme.sh` installe ces fichiers seulement s'ils n'existent pas deja, afin que les mises a jour SevenOS puissent changer la session sans effacer les ecrans, le clavier ou les regles personnelles.
 
 ### Seven Hub
 
@@ -202,6 +208,7 @@ Les piliers du projet sont :
 | Serveur/deploy | 40% | Vision et scripts initiaux |
 | Installateur ISO | 35% | Fondation, pas encore distribution installable grand public |
 | Documentation | 75% | Bonne base, a maintenir avec chaque phase |
+| Packaging/migration | 45% | Manifeste installable, composants futurs et chemins proteges ajoutes |
 
 ## Points A Consolider Maintenant
 
@@ -342,6 +349,9 @@ A faire :
 
 ### Phase C — Distribution testable
 
+- Utiliser `sevenos.dotinst` comme contrat d'installation et de migration.
+- Transformer les composants du manifeste en paquets pacman SevenOS.
+- Preserver les chemins declares par `seven manifest restore-plan` pendant les upgrades.
 - Finaliser Calamares.
 - Generer ISO live.
 - Creer install flow complet.

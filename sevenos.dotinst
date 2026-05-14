@@ -1,0 +1,166 @@
+{
+  "name": "SevenOS",
+  "id": "os.seven.sevenos",
+  "description": "African first Linux ecosystem built on Arch, Hyprland, Seven Hub, seven, sevenpkg, profiles, security, Windows Mode and deployment foundations.",
+  "version": "0.5.0-developer-preview",
+  "channel": "developer-preview",
+  "author": "SevenOS",
+  "homepage": "https://github.com/seven-v73/SevenOS",
+  "source": "https://github.com/seven-v73/SevenOS.git",
+  "subfolder": ".",
+  "base": {
+    "distribution": "Arch Linux",
+    "desktop": "Hyprland",
+    "session": "seven-session",
+    "package_manager": "pacman",
+    "software_layer": "sevenpkg"
+  },
+  "components": [
+    {
+      "id": "sevenos-cli",
+      "title": "SevenOS CLI",
+      "paths": [
+        "bin/seven",
+        "bin/sevenpkg",
+        "scripts/status.sh",
+        "scripts/state.sh"
+      ]
+    },
+    {
+      "id": "sevenos-branding",
+      "title": "Branding and identity",
+      "paths": [
+        "branding",
+        "identity"
+      ]
+    },
+    {
+      "id": "sevenos-hyprland",
+      "title": "Desktop session",
+      "paths": [
+        "hyprland",
+        "bin/seven-session",
+        "bin/seven-wallpaper",
+        "bin/seven-power",
+        "bin/seven-files"
+      ]
+    },
+    {
+      "id": "sevenos-hub",
+      "title": "Seven Hub",
+      "paths": [
+        "seven-hub",
+        "bin/seven-hub-native"
+      ]
+    },
+    {
+      "id": "sevenos-profiles",
+      "title": "Profile system",
+      "paths": [
+        "profiles",
+        "sevenpkg/metapackages.json"
+      ]
+    },
+    {
+      "id": "sevenos-server",
+      "title": "Server and deployment layer",
+      "paths": [
+        "server"
+      ]
+    },
+    {
+      "id": "sevenos-installer",
+      "title": "Installer and ISO layer",
+      "paths": [
+        "installer",
+        "archiso"
+      ]
+    }
+  ],
+  "restore": [
+    {
+      "title": "SevenOS user settings",
+      "source": ".config/sevenos",
+      "target": "~/.config/sevenos",
+      "value": true
+    },
+    {
+      "title": "Hyprland user override",
+      "source": ".config/hypr/conf/custom.conf",
+      "target": "~/.config/hypr/conf/custom.conf",
+      "value": true
+    },
+    {
+      "title": "Hyprland monitor layout",
+      "source": ".config/hypr/conf/monitor.conf",
+      "target": "~/.config/hypr/conf/monitor.conf",
+      "value": true
+    },
+    {
+      "title": "Hyprland keyboard layout",
+      "source": ".config/hypr/conf/keyboard.conf",
+      "target": "~/.config/hypr/conf/keyboard.conf",
+      "value": true
+    },
+    {
+      "title": "Waybar local state",
+      "source": ".config/waybar",
+      "target": "~/.config/waybar",
+      "value": true
+    },
+    {
+      "title": "Rofi local launchers",
+      "source": ".config/rofi",
+      "target": "~/.config/rofi",
+      "value": true
+    },
+    {
+      "title": "Kitty local overrides",
+      "source": ".config/kitty",
+      "target": "~/.config/kitty",
+      "value": true
+    },
+    {
+      "title": "GTK 3 theme state",
+      "source": ".config/gtk-3.0",
+      "target": "~/.config/gtk-3.0",
+      "value": true
+    },
+    {
+      "title": "GTK 4 theme state",
+      "source": ".config/gtk-4.0",
+      "target": "~/.config/gtk-4.0",
+      "value": true
+    },
+    {
+      "title": "SevenOS wallpapers",
+      "source": ".local/share/sevenos/wallpapers",
+      "target": "~/.local/share/sevenos/wallpapers",
+      "value": true
+    }
+  ],
+  "protected": [
+    "~/.config/sevenos/profile.env",
+    "~/.config/sevenos/profile.json",
+    "~/.config/sevenos/settings.json",
+    "~/.config/hypr/conf/custom.conf",
+    "~/.config/hypr/conf/monitor.conf",
+    "~/.config/hypr/conf/keyboard.conf",
+    "~/.local/share/sevenos/readiness-history.jsonl",
+    "~/.local/share/sevenos/profiles"
+  ],
+  "profile_targets": [
+    "baobab",
+    "forge",
+    "shield",
+    "studio",
+    "windows",
+    "horizon"
+  ],
+  "checks": [
+    "scripts/check.sh",
+    "scripts/ux-check.sh",
+    "scripts/phase-gate.sh",
+    "scripts/manifest.sh doctor"
+  ]
+}

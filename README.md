@@ -12,6 +12,7 @@ It is built around foundation pillars:
 
 - `seven` as the system controller
 - `sevenpkg` as the package and application manager
+- `sevenos.dotinst` as the install, restore, migration and packaging contract
 - Seven Hub as the user-facing control center
 - Seven Server and Seven Deploy as the service/deployment foundation
 - Calamares/Archinstall as the install path foundation
@@ -39,6 +40,7 @@ Implemented:
 - base installer entrypoint
 - modular profile scripts
 - package manifests
+- SevenOS install manifest with protected user paths
 - Hyprland, Waybar, Rofi, Kitty, Mako and Hyprpaper configuration
 - Seven Hub MVP
 - `seven` system controller
@@ -46,6 +48,7 @@ Implemented:
 - `seven architecture` product/system architecture map
 - `seven repair` guided repair planner
 - `seven ecosystem` innovation roadmap
+- `seven manifest` install, restore and package-boundary inspector
 - `seven-server` local API foundation
 - `seven-deploy` deployment planner
 - Calamares installer profile scaffold

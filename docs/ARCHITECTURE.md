@@ -20,7 +20,7 @@ The promise is:
 | Layer | Role | Current Modules |
 | --- | --- | --- |
 | System Core | entrypoints, bootstrap, status, repair and phase checks | `install.sh`, `bootstrap.sh`, `bin/seven`, `scripts/*.sh` |
-| Package Layer | package manifests, meta-packages and software sources | `sevenpkg`, `scripts/packages-*.txt`, `sevenpkg/metapackages.json` |
+| Package Layer | package manifests, meta-packages, future package boundaries and software sources | `sevenpkg`, `scripts/packages-*.txt`, `sevenpkg/metapackages.json`, `sevenos.dotinst` |
 | Service Layer | local services, deployment, VM and background session | `seven-session`, `seven-server`, `seven-deploy`, `vm/` |
 | UI Layer | desktop shell, hub, files, theme and visible controls | Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files, Tauri prototype, native GTK target |
 | Security Layer | hardening, audit, sandbox and cyber workspaces | `security/`, Shield profile, UFW, Firejail, Bubblewrap |
@@ -51,9 +51,38 @@ Rules:
   instead of scraping human terminal output.
 - `seven state --json` is the unified machine snapshot for native UI,
   automation and future Seven Server endpoints.
+- `seven manifest` is the install/migration contract. It defines future
+  package boundaries, protected user paths and restore plans for upgrades.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
+
+## Install And Migration Contract
+
+SevenOS uses `sevenos.dotinst` as the first productization bridge between a Git
+repository and future pacman packages or ISO upgrades.
+
+The manifest defines:
+
+- metadata for the SevenOS distribution layer
+- component boundaries such as `sevenos-cli`, `sevenos-hyprland`,
+  `sevenos-hub`, `sevenos-profiles`, `sevenos-server` and `sevenos-installer`
+- user-owned paths that must be preserved during updates
+- restore-plan entries for theme/session migrations
+- checks that must pass before packaging or publishing
+
+Useful commands:
+
+```bash
+seven manifest doctor
+seven manifest restore-plan
+seven manifest components
+seven manifest protected
+```
+
+This keeps SevenOS from becoming a hard overwrite of user dotfiles. The OS can
+upgrade its system layer while respecting personal monitor, keyboard, profile
+and custom Hyprland state.
 
 ## Interface Strategy
 

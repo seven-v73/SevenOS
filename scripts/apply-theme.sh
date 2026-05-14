@@ -12,6 +12,31 @@ WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
 WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
 
+install_preserved_config_file() {
+  local source_file="$1"
+  local target_file="$2"
+  local target_dir
+
+  target_dir="$(dirname -- "$target_file")"
+  log_info "Ensuring protected config: ${target_file#$HOME/}"
+
+  if is_dry_run; then
+    printf 'mkdir -p %q\n' "$target_dir"
+    if [[ ! -e "$target_file" ]]; then
+      printf 'cp %q %q\n' "$source_file" "$target_file"
+    else
+      printf 'preserve existing %q\n' "$target_file"
+    fi
+    return 0
+  fi
+
+  mkdir -p "$target_dir"
+  if [[ -e "$target_file" ]]; then
+    return 0
+  fi
+  cp "$source_file" "$target_file"
+}
+
 install_shell_hook() {
   local rc_file="$1"
   local marker_start="# >>> SevenOS terminal country signal"
@@ -165,6 +190,9 @@ render_wallpaper() {
 
 log_info "Applying SevenOS African first theme..."
 copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.conf"
+install_preserved_config_file "$ROOT_DIR/hyprland/conf/monitor.conf" "$CONFIG_HOME/hypr/conf/monitor.conf"
+install_preserved_config_file "$ROOT_DIR/hyprland/conf/keyboard.conf" "$CONFIG_HOME/hypr/conf/keyboard.conf"
+install_preserved_config_file "$ROOT_DIR/hyprland/conf/custom.conf" "$CONFIG_HOME/hypr/conf/custom.conf"
 copy_config_dir "$ROOT_DIR/hyprland/waybar" "$CONFIG_HOME/waybar"
 copy_config_dir "$ROOT_DIR/hyprland/rofi" "$CONFIG_HOME/rofi"
 copy_config_dir "$ROOT_DIR/hyprland/mako" "$CONFIG_HOME/mako"
