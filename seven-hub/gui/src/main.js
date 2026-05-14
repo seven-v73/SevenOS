@@ -20,22 +20,94 @@ const fallbackSnapshot = {
 
 const actions = {
   security: [
-    ["Security Audit", "seven shield audit", "Review firewall, sandbox and cyber tooling."],
-    ["Enable Shield", "seven shield enable", "Apply the base security profile."],
-    ["Repair Security", "seven repair security", "Generate a guided security repair plan."],
-    ["Cyber Lab", "seven shield lab --preset web", "Open an isolated web testing workspace."]
+    {
+      title: "Security Audit",
+      command: "seven shield audit",
+      description: "Review firewall, sandbox and cyber tooling.",
+      label: "Audit",
+      impact: "safe"
+    },
+    {
+      title: "Enable Shield",
+      command: "seven shield enable",
+      description: "Apply the base security profile.",
+      label: "Enable",
+      impact: "changes"
+    },
+    {
+      title: "Repair Security",
+      command: "seven repair security",
+      description: "Generate a guided security repair plan.",
+      label: "Repair",
+      impact: "changes"
+    },
+    {
+      title: "Cyber Lab",
+      command: "seven shield lab --preset web",
+      description: "Open an isolated web testing workspace.",
+      label: "Open Lab",
+      impact: "safe"
+    }
   ],
   apps: [
-    ["SevenPkg Status", "sevenpkg status", "View package groups and installation state."],
-    ["Install Studio", "seven profile studio", "Install the creative workspace."],
-    ["Flatpak Bridge", "seven flatpak status", "Check Flathub and Flatpak readiness."],
-    ["Windows Apps", "seven windows status", "Check Wine, Bottles and VM readiness."]
+    {
+      title: "SevenPkg Status",
+      command: "sevenpkg status",
+      description: "View package groups and installation state.",
+      label: "Inspect",
+      impact: "safe"
+    },
+    {
+      title: "Install Studio",
+      command: "seven profile studio",
+      description: "Install the creative workspace.",
+      label: "Install",
+      impact: "packages"
+    },
+    {
+      title: "Flatpak Bridge",
+      command: "seven flatpak status",
+      description: "Check Flathub and Flatpak readiness.",
+      label: "Check",
+      impact: "safe"
+    },
+    {
+      title: "Windows Apps",
+      command: "seven windows status",
+      description: "Check Wine, Bottles and VM readiness.",
+      label: "Check",
+      impact: "safe"
+    }
   ],
   system: [
-    ["Doctor", "seven doctor", "Check system health and post-install blockers."],
-    ["Repair UX", "seven repair ux", "Review desktop and shell repair actions."],
-    ["Server Status", "seven server status", "Check the local SevenOS API service."],
-    ["Installer Stack", "seven installer status", "Check Calamares and ISO foundations."]
+    {
+      title: "Doctor",
+      command: "seven doctor",
+      description: "Check system health and post-install blockers.",
+      label: "Check",
+      impact: "safe"
+    },
+    {
+      title: "Repair UX",
+      command: "seven repair ux",
+      description: "Review desktop and shell repair actions.",
+      label: "Repair",
+      impact: "changes"
+    },
+    {
+      title: "Server Status",
+      command: "seven server status",
+      description: "Check the local SevenOS API service.",
+      label: "Check",
+      impact: "safe"
+    },
+    {
+      title: "Installer Stack",
+      command: "seven installer status",
+      description: "Check Calamares and ISO foundations.",
+      label: "Check",
+      impact: "safe"
+    }
   ]
 };
 
@@ -56,7 +128,16 @@ const profileGrid = document.querySelector("#profile-grid");
 const recommendations = document.querySelector("#recommendations");
 const output = document.querySelector("#output");
 const outputTitle = document.querySelector("#output-title");
+const outputDrawer = document.querySelector("#output-drawer");
 const clearOutput = document.querySelector("#clear-output");
+const confirmLayer = document.querySelector("#confirm-layer");
+const confirmTitle = document.querySelector("#confirm-title");
+const confirmCopy = document.querySelector("#confirm-copy");
+const confirmCommand = document.querySelector("#confirm-command");
+const confirmCancel = document.querySelector("#confirm-cancel");
+const confirmRun = document.querySelector("#confirm-run");
+
+let pendingAction = null;
 
 function escapeHtml(value) {
   return String(value)
@@ -99,7 +180,12 @@ function renderStatus(snapshot) {
 
 function renderProfiles(snapshot) {
   profileGrid.innerHTML = (snapshot.profiles || fallbackSnapshot.profiles)
-    .map((profile) => `
+    .map((profile) => {
+      const ready = profile.state === "OK";
+      const command = ready ? "seven profile status" : profile.action;
+      const label = ready ? "Status" : "Install";
+      const impact = ready ? "safe" : "packages";
+      return `
       <article class="profile-card">
         <div class="profile-icon">${escapeHtml(profile.title.slice(0, 1))}</div>
         <div class="profile-body">
@@ -108,10 +194,11 @@ function renderProfiles(snapshot) {
             ${pill(profile.state)}
           </div>
           <p>${escapeHtml(profile.description)}</p>
-          <button class="btn-ghost" data-command="${escapeHtml(profile.action)}">Open</button>
+          <button class="btn-ghost" data-command="${escapeHtml(command)}" data-label="${escapeHtml(label)}" data-impact="${escapeHtml(impact)}" data-title="${escapeHtml(profile.title)}">${escapeHtml(label)}</button>
         </div>
       </article>
-    `)
+    `;
+    })
     .join("");
 }
 
@@ -132,7 +219,7 @@ function renderRecommendations(snapshot) {
       <article class="recommendation-card">
         <span class="pill pill-gold"><span class="pill-dot"></span>FIX</span>
         <p>${escapeHtml(item.reason)}</p>
-        <button class="btn-ghost compact" data-command="${escapeHtml(item.command)}">Run</button>
+        <button class="btn-ghost compact" data-command="${escapeHtml(item.command)}" data-label="Fix" data-impact="changes" data-title="Recommended Fix">Fix</button>
       </article>
     `)
     .join("");
@@ -141,14 +228,69 @@ function renderRecommendations(snapshot) {
 function renderActionGrid(id, list) {
   const target = document.querySelector(id);
   target.innerHTML = list
-    .map(([title, command, description]) => `
-      <article class="action-card">
-        <h3>${escapeHtml(title)}</h3>
-        <p>${escapeHtml(description)}</p>
-        <button class="btn-ghost" data-command="${escapeHtml(command)}">Run</button>
+    .map((action) => `
+      <article class="action-card" data-impact="${escapeHtml(action.impact)}">
+        <span class="action-meta">${escapeHtml(action.impact)}</span>
+        <h3>${escapeHtml(action.title)}</h3>
+        <p>${escapeHtml(action.description)}</p>
+        <button class="btn-ghost" data-command="${escapeHtml(action.command)}" data-label="${escapeHtml(action.label)}" data-impact="${escapeHtml(action.impact)}" data-title="${escapeHtml(action.title)}">${escapeHtml(action.label)}</button>
       </article>
     `)
     .join("");
+}
+
+function actionNeedsConfirmation(action) {
+  if (action.impact === "safe") return false;
+  return / install| enable| repair| update| profile| start| stop| setup| apply/.test(` ${action.command}`);
+}
+
+function setOutput(title, text, mode = "idle") {
+  outputTitle.textContent = title;
+  output.textContent = text;
+  outputDrawer.dataset.mode = mode;
+}
+
+function summarizeResult(command, result) {
+  const lines = String(result || "Done.")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+
+  const notes = lines.filter((line) => /\b(warn|fail|miss|error|partial)\b/i.test(line)).slice(0, 5);
+  const preview = lines.slice(0, 16).join("\n");
+
+  if (notes.length) {
+    return `Completed with notes.\n\n${notes.join("\n")}\n\nFull output:\n${preview}`;
+  }
+
+  return `Completed successfully.\n\n${preview}`;
+}
+
+function actionFromButton(button) {
+  return {
+    command: button.dataset.command,
+    label: button.dataset.label || button.textContent || "Run",
+    impact: button.dataset.impact || "safe",
+    title: button.dataset.title || button.textContent || "SevenOS Action",
+    button
+  };
+}
+
+function openConfirm(action) {
+  pendingAction = action;
+  confirmTitle.textContent = action.title;
+  confirmCopy.textContent = action.impact === "packages"
+    ? "This may install packages and change your current SevenOS profile."
+    : "This may change your current SevenOS configuration.";
+  confirmCommand.textContent = action.command;
+  confirmRun.textContent = action.label;
+  confirmLayer.classList.remove("hidden");
+  confirmCancel.focus();
+}
+
+function closeConfirm() {
+  confirmLayer.classList.add("hidden");
+  pendingAction = null;
 }
 
 async function loadSnapshot() {
@@ -170,20 +312,20 @@ async function loadSnapshot() {
   }
 }
 
-async function runCommand(command, button) {
+async function runCommand(action) {
+  const { command, button, label } = action;
   button.disabled = true;
-  button.textContent = "Running";
-  outputTitle.textContent = command;
-  output.textContent = "Running...";
+  button.textContent = "Working";
+  setOutput(command, "Running action...", "running");
   try {
     const result = await invoke("run_seven_command", { command });
-    output.textContent = result || "Done.";
+    setOutput(command, summarizeResult(command, result), "success");
     await loadSnapshot();
   } catch (error) {
-    output.textContent = String(error);
+    setOutput(command, `Action failed.\n\n${String(error)}`, "error");
   } finally {
     button.disabled = false;
-    button.textContent = button.dataset.originalLabel || "Run";
+    button.textContent = label;
   }
 }
 
@@ -196,15 +338,33 @@ document.addEventListener("click", (event) => {
 
   const button = event.target.closest("button[data-command]");
   if (button) {
-    button.dataset.originalLabel ||= button.textContent;
-    runCommand(button.dataset.command, button);
+    const action = actionFromButton(button);
+    if (actionNeedsConfirmation(action)) {
+      openConfirm(action);
+    } else {
+      runCommand(action);
+    }
   }
 });
 
 refresh.addEventListener("click", loadSnapshot);
 clearOutput.addEventListener("click", () => {
-  outputTitle.textContent = "Action Output";
-  output.textContent = "Ready.";
+  setOutput("Action Output", "Ready.");
+});
+confirmCancel.addEventListener("click", closeConfirm);
+confirmRun.addEventListener("click", () => {
+  if (!pendingAction) return;
+  const action = pendingAction;
+  closeConfirm();
+  runCommand(action);
+});
+confirmLayer.addEventListener("click", (event) => {
+  if (event.target === confirmLayer) closeConfirm();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !confirmLayer.classList.contains("hidden")) {
+    closeConfirm();
+  }
 });
 
 renderActionGrid("#security-actions", actions.security);

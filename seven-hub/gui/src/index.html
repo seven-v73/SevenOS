@@ -112,5 +112,18 @@
         </div>
       </section>
     </main>
+
+    <section class="confirm-layer hidden" id="confirm-layer" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <article class="confirm-card">
+        <p class="section-eyebrow">Confirm Action</p>
+        <h2 id="confirm-title">Continue?</h2>
+        <p id="confirm-copy">This action changes your SevenOS setup.</p>
+        <code class="command-preview" id="confirm-command">seven status</code>
+        <div class="confirm-actions">
+          <button class="btn-ghost" id="confirm-cancel">Cancel</button>
+          <button class="btn-primary" id="confirm-run">Continue</button>
+        </div>
+      </article>
+    </section>
   </body>
 </html>

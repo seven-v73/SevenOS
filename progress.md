@@ -113,6 +113,9 @@ Les piliers du projet sont :
 - Ajout de recommandations exploitables depuis l'interface.
 - Ajout d'un backend Tauri `get_hub_snapshot` pour afficher l'etat systeme sans ouvrir un terminal.
 - Connexion du Hub aux donnees JSON de SevenPkg pour les profils metiers.
+- Ajout d'un workflow d'actions plus proche d'un vrai OS : labels explicites, niveaux d'impact, confirmation avant les actions sensibles, et retours lisibles dans le panneau de sortie.
+- Les actions dangereuses ou modificatrices ne partent plus au clic direct : le Hub demande confirmation avant installation, activation, reparation ou changement de profil.
+- Le panneau de sortie distingue maintenant les etats `running`, `success` et `error`, avec un resume humain avant le detail technique.
 
 ### Gestion fichiers
 
@@ -178,7 +181,7 @@ Les piliers du projet sont :
 | Desktop Hyprland | 75% | Fonctionnel, Waybar actionnable, session plus robuste |
 | Seven commands | 70% | Base solide, besoin de plus de robustesse |
 | SevenPkg | 65% | Wrapper utile, sorties JSON ajoutees, pas encore vrai package manager |
-| Seven Hub | 68% | GUI Tauri structuree, dashboard natif en cours, backend snapshot et donnees JSON ajoutes |
+| Seven Hub | 72% | GUI Tauri structuree, dashboard natif, backend snapshot, donnees JSON et workflow d'actions confirmees |
 | Profils metiers | 55% | Concept clair, installation encore partielle |
 | Securite | 55% | Bonne direction, hardening a renforcer |
 | Windows Mode | 50% | Base technique, UX guidee manquante |
@@ -203,6 +206,7 @@ A faire :
 - Cartes systeme.
 - Actions `Fix now`.
 - Profils avec etats installes/partiels/manquants.
+- Actions sans clic aveugle : confirmation, statut en cours, succes, erreur.
 - Gestion theme/session.
 - Statut firewall, VM, server, deploy.
 - Version Tauri prioritaire.

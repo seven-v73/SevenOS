@@ -187,7 +187,8 @@ h1 {
 .profile-card,
 .action-card,
 .recommendation-card,
-.output-drawer {
+.output-drawer,
+.confirm-card {
   position: relative;
   background: var(--glass);
   border: 1px solid var(--glass-border);
@@ -199,7 +200,8 @@ h1 {
 .profile-card::before,
 .action-card::before,
 .recommendation-card::before,
-.output-drawer::before {
+.output-drawer::before,
+.confirm-card::before {
   content: "";
   position: absolute;
   top: 0;
@@ -311,9 +313,38 @@ p {
   padding: 16px;
 }
 
+.action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.action-card[data-impact="packages"] {
+  background: var(--gold-pale);
+  border-color: var(--gold-dim);
+}
+
+.action-card[data-impact="changes"] {
+  background: var(--clay-pale);
+  border-color: var(--clay-dim);
+}
+
 .stat-card h3,
 .action-card h3 {
-  margin-top: 14px;
+  margin-top: 10px;
+}
+
+.action-card p {
+  flex: 1;
+}
+
+.action-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
 }
 
 .profile-grid {
@@ -367,6 +398,18 @@ p {
 .output-drawer {
   margin-top: 20px;
   overflow: hidden;
+}
+
+.output-drawer[data-mode="running"] {
+  border-color: var(--indigo);
+}
+
+.output-drawer[data-mode="success"] {
+  border-color: var(--baobab);
+}
+
+.output-drawer[data-mode="error"] {
+  border-color: var(--clay);
 }
 
 .output-head {
@@ -481,6 +524,54 @@ button:active {
 button:disabled {
   opacity: 0.6;
   cursor: wait;
+}
+
+.confirm-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(9, 9, 13, 0.88), rgba(15, 15, 20, 0.94)),
+    linear-gradient(90deg, rgba(200, 169, 110, 0.10), rgba(91, 127, 166, 0.08));
+  animation: card-in var(--t-base) var(--ease-soft) both;
+}
+
+.confirm-layer.hidden {
+  display: none;
+}
+
+.confirm-card {
+  width: min(460px, calc(100vw - 40px));
+  padding: 24px;
+  background: var(--surface-3);
+  border-color: var(--gold-dim);
+  border-radius: var(--r-lg);
+}
+
+.confirm-card h2 {
+  margin-bottom: 10px;
+}
+
+.command-preview {
+  display: block;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--glass-border-2);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--baobab-bright);
+  font: 400 12px/1.5 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 @media (max-width: 1080px) {

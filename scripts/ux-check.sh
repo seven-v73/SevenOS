@@ -283,12 +283,17 @@ if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
    grep -q '"identifier": "os.seven.seven-hub"' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
    grep -q '"active": false' "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" &&
    grep -q 'data-panel="dashboard"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
+   grep -q 'confirm-layer' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'data-section="profiles"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
    grep -q 'run_seven_command' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
-   grep -q 'seven-window' "$ROOT_DIR/seven-hub/gui/src/styles.css"; then
+   grep -q 'actionNeedsConfirmation' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
+   grep -q 'summarizeResult' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
+   grep -q 'data-impact' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
+   grep -q 'seven-window' "$ROOT_DIR/seven-hub/gui/src/styles.css" &&
+   grep -q 'confirm-card' "$ROOT_DIR/seven-hub/gui/src/styles.css"; then
   ok "Seven Hub GUI behaves like a native Control Center foundation"
 else
-  fail "Seven Hub GUI should expose dashboard, profiles, actions and native backend snapshot"
+  fail "Seven Hub GUI should expose dashboard, profiles, confirmations, readable actions and native backend snapshot"
 fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
