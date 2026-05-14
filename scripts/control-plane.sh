@@ -72,6 +72,7 @@ experience = command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"
 shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"], {"posture": "unknown", "percent": 0, "checks": [], "recommendations": []})
 shield_plan = command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"], {"next": []})
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}, "recommendations": []})
+server_plan = command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"], {"next": []})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
@@ -118,8 +119,15 @@ for item in shield_plan.get("next", []):
         item.get("impact", "changes"),
     )
 
-for rec in server.get("recommendations", []):
-    add("server", "medium", "Prepare Seven Server", rec.get("command", "seven server status"), rec.get("reason", "Improve local API readiness"), "changes")
+for item in server_plan.get("next", []):
+    add(
+        "server",
+        item.get("severity", "medium"),
+        item.get("title", "Prepare Seven Server"),
+        item.get("command", "seven server plan"),
+        item.get("reason", "Improve local API readiness"),
+        item.get("impact", "changes"),
+    )
 
 for rec in readiness.get("recommendations", []):
     add("readiness", "medium", "Improve Readiness", rec.get("command", "seven readiness"), rec.get("reason", "Improve SevenOS readiness"), "changes")

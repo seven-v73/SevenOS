@@ -51,6 +51,7 @@ control = state.get("control") or {}
 shield = state.get("shield") or {}
 shield_plan = state.get("shield_plan") or {}
 server = state.get("server") or {}
+server_plan = state.get("server_plan") or {}
 windows = state.get("windows") or {}
 profiles = state.get("profiles") or []
 profile_gaps = state.get("profile_gaps") or {}
@@ -130,12 +131,13 @@ if shield_percent < 75:
     )
 
 if server_state != "RUN":
+    next_server = (server_plan.get("next") or [{}])[0]
     add(
         "server",
         "medium",
         "Start local OS API",
         f"Seven Server is {server_state}. A fluid ecosystem needs a local backend for Hub and automation.",
-        "seven server status",
+        next_server.get("command", "seven server plan"),
         "service",
         "server",
     )
@@ -196,6 +198,10 @@ signals = {
         "next": (shield_plan.get("next") or [{}])[0].get("command"),
     },
     "server": {"state": server_state},
+    "server_plan": {
+        "total": (server_plan.get("summary") or {}).get("total", 0),
+        "next": (server_plan.get("next") or [{}])[0].get("command"),
+    },
     "windows": {"ready": windows_ready},
     "events": {"total": events.get("total", 0), "last": events.get("last")},
     "ecosystem": {

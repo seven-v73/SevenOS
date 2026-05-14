@@ -181,6 +181,7 @@ Les piliers du projet sont :
 - Ajout de `seven events` / `seven events --json` : journal local des decisions, previews et futures actions executees, expose dans `seven state --json` et Seven Hub Native.
 - Ajout de `seven insights` / `seven insights --json` : synthese produit des limites actuelles, priorites et prochaines commandes, afin que Seven Hub ne montre pas seulement des donnees brutes.
 - Ajout de `seven shield plan` / `seven shield plan --json` : plan de remediation Shield priorise, expose dans `seven state --json`, Seven Server, Control Plane, Insights et Seven Hub Native.
+- Ajout de `seven server plan` / `seven server plan --json` : plan de remediation backend local pour transformer Seven Server en service pilotable, expose dans l'etat unifie, Control Plane, Insights et Hub natif.
 
 ### Gestion fichiers
 

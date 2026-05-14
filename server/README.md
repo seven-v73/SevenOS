@@ -32,6 +32,8 @@ authorization policies are enabled. Future phases should add:
 ```bash
 seven server status
 seven server status --json
+seven server plan
+seven server plan --json
 seven server doctor
 seven server serve
 seven server install-user-service
@@ -62,6 +64,7 @@ curl http://127.0.0.1:7777/actions
 curl http://127.0.0.1:7777/experience
 curl http://127.0.0.1:7777/shield
 curl http://127.0.0.1:7777/shield-plan
+curl http://127.0.0.1:7777/server-plan
 curl http://127.0.0.1:7777/control
 curl http://127.0.0.1:7777/events
 curl http://127.0.0.1:7777/insights
@@ -82,6 +85,7 @@ GET  /actions
 GET  /experience
 GET  /shield
 GET  /shield-plan
+GET  /server-plan
 GET  /control
 GET  /events
 GET  /insights

@@ -92,6 +92,9 @@ Rules:
 - `seven shield plan --json` is the trust remediation contract. It prioritizes
   firewall, sandbox and audit tooling so Shield becomes an actionable OS layer
   instead of a static security badge.
+- `seven server plan --json` is the local backend remediation contract. It
+  prioritizes service installation, runtime startup, rootless containers and
+  local-only API policy before SevenOS moves toward a personal operating cloud.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
@@ -205,6 +208,8 @@ seven windows apps
 seven windows vm
 seven server status
 seven server status --json
+seven server plan
+seven server plan --json
 seven deploy plan .
 seven repair ux --apply
 ```

@@ -84,6 +84,8 @@ json_to_file "$STATE_TMP/shield_plan.json" "$ROOT_DIR/security/shield-status.sh"
 pid_shield_plan=$!
 json_to_file "$STATE_TMP/server.json" "$ROOT_DIR/server/seven-server.sh" status --json &
 pid_server=$!
+json_to_file "$STATE_TMP/server_plan.json" "$ROOT_DIR/server/seven-server.sh" plan --json &
+pid_server_plan=$!
 json_to_file "$STATE_TMP/readiness.json" "$ROOT_DIR/scripts/readiness.sh" --json &
 pid_readiness=$!
 json_to_file "$STATE_TMP/packages.json" "$ROOT_DIR/bin/sevenpkg" status --json &
@@ -102,7 +104,7 @@ json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
 pid_actions=$!
 
 wait "$pid_status" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_shield" "$pid_shield_plan" \
-  "$pid_server" "$pid_readiness" "$pid_packages" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_server" "$pid_server_plan" "$pid_readiness" "$pid_packages" "$pid_manifest" "$pid_ecosystem" \
   "$pid_experience" "$pid_control" "$pid_events" "$pid_actions" || true
 
 printf '{'
@@ -135,6 +137,9 @@ cat "$STATE_TMP/shield_plan.json"
 printf ','
 printf '"server":'
 cat "$STATE_TMP/server.json"
+printf ','
+printf '"server_plan":'
+cat "$STATE_TMP/server_plan.json"
 printf ','
 printf '"readiness":'
 cat "$STATE_TMP/readiness.json"

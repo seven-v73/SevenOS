@@ -33,6 +33,8 @@ control.preview	System	Preview Control Fixes	seven control apply --limit 5	safe	
 events.open	System	Event Journal	seven events	safe	Show local SevenOS decision and action history.
 insights.open	System	OS Insights	seven insights	safe	Show product-facing SevenOS limits and next actions.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
+improve.security	System	Improve Security	seven improve security --apply	packages	Install or prepare the core security improvements.
+improve.deployment	System	Improve Deployment	seven improve deployment --apply	packages	Install or prepare server and deployment dependencies.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.
 profile.status	Profiles	Profile Status	seven profile status	safe	Show installed and active profile state.
@@ -65,6 +67,7 @@ windows.vm	Windows	Windows VM	seven windows vm	safe	Open Virt Manager for the Wi
 windows.create	Windows	Create Windows VM	seven windows create	packages	Start the guided Windows VM creation command.
 windows.start	Windows	Start Windows VM	seven windows start	changes	Start the SevenOS Windows virtual machine.
 server.status	Server	Server Status	seven server status	safe	Check the local SevenOS API service.
+server.plan	Server	Server Plan	seven server plan	safe	Show prioritized Seven Server backend actions.
 server.install	Server	Install Server Service	seven server install-user-service	changes	Install the local SevenOS API user service.
 server.start	Server	Start Server Service	seven server start	changes	Start the local SevenOS API user service.
 deploy.plan	Server	Deployment Plan	seven deploy plan .	safe	Detect and plan deployment for the current project.

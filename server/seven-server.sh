@@ -21,6 +21,8 @@ Usage:
 Actions:
   status                Show local server and deployment readiness
   status --json         Show machine-readable server readiness
+  plan                  Show prioritized local backend actions
+  plan --json           Show machine-readable backend action plan
   doctor                Check server dependencies
   serve                 Run the local SevenOS API on 127.0.0.1:7777
   install-user-service  Install a user systemd service for seven-server
@@ -83,7 +85,7 @@ status() {
     printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
     printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
     printf '],'
-    printf '"endpoints":["/health","/state","/status","/profiles","/profile-gaps","/profile-plan","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/shield-plan","/control","/events","/insights"],'
+    printf '"endpoints":["/health","/state","/status","/profiles","/profile-gaps","/profile-plan","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/shield-plan","/server-plan","/control","/events","/insights"],'
     printf '"recommendations":['
     local first=1
     if [[ "$service" != "RUN" ]]; then
@@ -115,6 +117,152 @@ status() {
   printf 'deploy tool:  %s\n' "$([[ -x "$ROOT_DIR/server/seven-deploy.sh" ]] && printf OK || printf MISS)"
   printf '\nSecurity posture:\n'
   printf '  Local-first API. Keep host at 127.0.0.1 until auth/TLS policies are enabled.\n'
+}
+
+plan_json() {
+  local service go_state podman_state caddy_state jq_state deploy_state bind_state
+  service="$(service_state)"
+  go_state="$(command_state go)"
+  podman_state="$(command_state podman)"
+  caddy_state="$(command_state caddy)"
+  jq_state="$(command_state jq)"
+  deploy_state="$([[ -x "$ROOT_DIR/server/seven-deploy.sh" ]] && printf OK || printf MISS)"
+  bind_state="LOCAL"
+  [[ "$HOST" != "127.0.0.1" && "$HOST" != "localhost" ]] && bind_state="EXPOSED"
+
+  SERVER_ROWS="$(
+    printf 'service\t%s\tSeven Server user service\tseven server install-user-service\n' "$service"
+    printf 'service-start\t%s\tSeven Server runtime\tseven server start\n' "$([[ "$service" == READY ]] && printf MISS || printf OK)"
+    printf 'go\t%s\tGo runtime for future native backend components\tseven improve deployment --apply\n' "$go_state"
+    printf 'podman\t%s\tRootless container runtime for deployment flows\tseven improve deployment --apply\n' "$podman_state"
+    printf 'caddy\t%s\tLocal reverse proxy for deployment previews\tseven improve deployment --apply\n' "$caddy_state"
+    printf 'jq\t%s\tJSON tooling for scripts and diagnostics\tseven improve deployment --apply\n' "$jq_state"
+    printf 'seven-deploy\t%s\tSevenOS deployment planner\tseven deploy status\n' "$deploy_state"
+    printf 'bind\t%s\tLocal-only API bind policy\tseven server status\n' "$([[ "$bind_state" == LOCAL ]] && printf OK || printf PART)"
+  )" python - <<'PY'
+import json
+import os
+
+metadata = {
+    "service": {
+        "title": "Install Seven Server service",
+        "severity": "high",
+        "impact": "changes",
+        "phase": "service",
+        "reason": "Seven Hub needs a durable local backend instead of calling scattered scripts directly.",
+    },
+    "service-start": {
+        "title": "Start Seven Server service",
+        "severity": "high",
+        "impact": "changes",
+        "phase": "service",
+        "reason": "The local API must run before SevenOS can feel like a connected ecosystem.",
+    },
+    "go": {
+        "title": "Install Go backend toolchain",
+        "severity": "medium",
+        "impact": "packages",
+        "phase": "backend",
+        "reason": "Go is the planned low-footprint path for the future seven-server backend.",
+    },
+    "podman": {
+        "title": "Install rootless container runtime",
+        "severity": "high",
+        "impact": "packages",
+        "phase": "deploy",
+        "reason": "Seven Deploy needs rootless containers to host apps without exposing the system.",
+    },
+    "caddy": {
+        "title": "Install local reverse proxy",
+        "severity": "medium",
+        "impact": "packages",
+        "phase": "deploy",
+        "reason": "Caddy prepares HTTPS/reverse-proxy flows for the personal operating cloud.",
+    },
+    "jq": {
+        "title": "Install JSON diagnostics",
+        "severity": "medium",
+        "impact": "packages",
+        "phase": "contracts",
+        "reason": "Machine-readable contracts need reliable JSON tooling for tests and operators.",
+    },
+    "seven-deploy": {
+        "title": "Restore deployment planner",
+        "severity": "critical",
+        "impact": "changes",
+        "phase": "deploy",
+        "reason": "Seven Server cannot orchestrate deployments without seven-deploy.",
+    },
+    "bind": {
+        "title": "Keep local API private",
+        "severity": "critical",
+        "impact": "safe",
+        "phase": "trust",
+        "reason": "Remote exposure must wait for authentication, TLS and audit policy.",
+    },
+}
+
+rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+actions = []
+
+for raw in os.environ["SERVER_ROWS"].splitlines():
+    key, state, detail, command = raw.split("\t", 3)
+    if state == "OK":
+        continue
+    item = metadata.get(key, {})
+    actions.append({
+        "key": key,
+        "state": state,
+        "title": item.get("title", f"Fix {key}"),
+        "severity": item.get("severity", "medium"),
+        "impact": item.get("impact", "changes"),
+        "phase": item.get("phase", "service"),
+        "detail": detail,
+        "reason": item.get("reason", f"Resolve {key}."),
+        "command": command,
+    })
+
+actions.sort(key=lambda item: (rank.get(item["severity"], 9), item["key"]))
+
+print(json.dumps({
+    "schema": "sevenos.server-plan.v1",
+    "summary": {
+        "total": len(actions),
+        "critical": sum(1 for item in actions if item["severity"] == "critical"),
+        "high": sum(1 for item in actions if item["severity"] == "high"),
+        "medium": sum(1 for item in actions if item["severity"] == "medium"),
+    },
+    "next": actions,
+}, indent=2))
+PY
+}
+
+plan() {
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    plan_json
+    return 0
+  fi
+
+  SERVER_PLAN="$(plan_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["SERVER_PLAN"])
+summary = data.get("summary", {})
+
+print("SevenOS Server Plan")
+print("===================")
+print(
+    f"Open actions: {summary.get('total', 0)} "
+    f"({summary.get('critical', 0)} critical, {summary.get('high', 0)} high, {summary.get('medium', 0)} medium)"
+)
+print()
+print(f"{'Severity':<9} {'Phase':<9} {'Command'}")
+print(f"{'--------':<9} {'-----':<9} {'-------'}")
+for item in data.get("next", []):
+    print(f"{item.get('severity',''):<9} {item.get('phase',''):<9} {item.get('command','')}")
+    print(f"{'':<9} {'':<9} {item.get('reason','')}")
+PY
 }
 
 doctor() {
@@ -220,6 +368,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"]))
         elif self.path == "/shield-plan":
             self.send_json(command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"]))
+        elif self.path == "/server-plan":
+            self.send_json(command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"]))
         elif self.path == "/control":
             self.send_json(command_json([os.path.join(ROOT, "scripts/control-plane.sh"), "--json"]))
         elif self.path == "/events":
@@ -281,6 +431,7 @@ for arg in "$@"; do
 done
 case "$action" in
   status) status ;;
+  plan) plan ;;
   doctor) doctor ;;
   serve) serve ;;
   install-user-service) install_user_service ;;

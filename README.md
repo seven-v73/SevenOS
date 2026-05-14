@@ -392,6 +392,8 @@ seven ecosystem
 seven ecosystem roadmap
 seven server status
 seven server status --json
+seven server plan
+seven server plan --json
 seven deploy ./my-project
 seven improve
 seven doctor

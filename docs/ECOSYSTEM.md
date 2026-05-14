@@ -88,6 +88,7 @@ seven insights --json
 seven shield status --json
 seven shield plan --json
 seven server status --json
+seven server plan --json
 ```
 
 `seven state --json` is the unified snapshot. It should contain profiles,
@@ -126,6 +127,10 @@ of blockers with severity, impact and next command.
 and Seven Server a clean list of firewall, sandbox and audit actions, ordered
 by severity, so security work becomes guided and visible instead of hidden in
 scripts.
+
+`seven server plan --json` is the backend remediation plan. It makes the local
+API layer actionable by listing service, rootless container, proxy and JSON
+tooling gaps with commands Seven Hub can launch or preview.
 
 ## Native Hub Integration
 
