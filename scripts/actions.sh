@@ -31,6 +31,7 @@ experience.run	System	Experience Audit	seven experience	safe	Check whether Seven
 control.plan	System	Control Plane	seven control	safe	Show prioritized SevenOS actions across readiness, trust and services.
 control.preview	System	Preview Control Fixes	seven control apply --limit 5	safe	Preview the next prioritized SevenOS fixes without changing the system.
 events.open	System	Event Journal	seven events	safe	Show local SevenOS decision and action history.
+insights.open	System	OS Insights	seven insights	safe	Show product-facing SevenOS limits and next actions.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.

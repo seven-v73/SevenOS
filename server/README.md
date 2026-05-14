@@ -61,6 +61,7 @@ curl http://127.0.0.1:7777/experience
 curl http://127.0.0.1:7777/shield
 curl http://127.0.0.1:7777/control
 curl http://127.0.0.1:7777/events
+curl http://127.0.0.1:7777/insights
 ```
 
 Planned future endpoints:
@@ -77,6 +78,7 @@ GET  /experience
 GET  /shield
 GET  /control
 GET  /events
+GET  /insights
 GET  /monitor/system
 GET  /deploy/status
 ```

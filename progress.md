@@ -176,6 +176,7 @@ Les piliers du projet sont :
 - Ajout de `seven control apply` : preview executable des corrections prioritaires, non destructif par defaut, avec execution explicite uniquement via `--apply`.
 - `seven state --json` embarque maintenant `control`, afin que les futures surfaces Seven Hub/Server lisent les priorites OS depuis un snapshot unique.
 - Ajout de `seven events` / `seven events --json` : journal local des decisions, previews et futures actions executees, expose dans `seven state --json` et Seven Hub Native.
+- Ajout de `seven insights` / `seven insights --json` : synthese produit des limites actuelles, priorites et prochaines commandes, afin que Seven Hub ne montre pas seulement des donnees brutes.
 
 ### Gestion fichiers
 

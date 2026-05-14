@@ -82,6 +82,7 @@ seven actions --json
 seven experience --json
 seven control --json
 seven events --json
+seven insights --json
 seven shield status --json
 seven server status --json
 ```
@@ -105,6 +106,10 @@ users without surprising them.
 
 `seven events --json` is the local event journal. It gives SevenOS a traceable
 memory of previews, decisions and future executed actions.
+
+`seven insights --json` is the product diagnosis layer. It turns raw state,
+profiles, trust posture and Control Plane recommendations into a concise list
+of blockers with severity, impact and next command.
 
 ## Native Hub Integration
 
@@ -174,6 +179,7 @@ seven ecosystem
 seven ecosystem summary
 seven ecosystem processes
 seven ecosystem --json
+seven insights
 seven ecosystem roadmap
 seven ecosystem doctor
 seven repair

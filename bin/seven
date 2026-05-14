@@ -157,6 +157,15 @@ def handle_events(args):
     run_script(args, "scripts/events.sh", *extra)
 
 
+def handle_insights(args):
+    extra = []
+    if args.json:
+        extra.append("--json")
+    if args.limit is not None:
+        extra.extend(["--limit", str(args.limit)])
+    run_script(args, "scripts/insights.sh", *extra)
+
+
 def handle_architecture(args):
     run_script(args, "scripts/architecture.sh", args.action)
 
@@ -215,6 +224,9 @@ def main():
     events_parser.add_argument("action", nargs="?", default="list", choices=("list", "summary-json"))
     events_parser.add_argument("--json", action="store_true", help="print machine-readable events")
     events_parser.add_argument("--limit", type=int, help="maximum events to show")
+    insights_parser = subparsers.add_parser("insights", help="show product-facing SevenOS health insights")
+    insights_parser.add_argument("--json", action="store_true", help="print machine-readable insights")
+    insights_parser.add_argument("--limit", type=int, help="maximum insights to show")
     manifest_parser = subparsers.add_parser("manifest", help="inspect SevenOS install, restore and packaging manifest")
     manifest_parser.add_argument("action", nargs="?", default="show")
     migrate_parser = subparsers.add_parser("migrate", help="plan or back up protected SevenOS user state before upgrades")
@@ -307,6 +319,8 @@ def main():
         handle_control(args)
     elif args.command == "events":
         handle_events(args)
+    elif args.command == "insights":
+        handle_insights(args)
     elif args.command == "manifest":
         handle_manifest(args)
     elif args.command == "migrate":

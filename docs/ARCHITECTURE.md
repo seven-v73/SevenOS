@@ -75,6 +75,8 @@ Rules:
   explicit `--apply`, preserving user trust around system-changing operations.
 - `seven events --json` is the local event journal for decisions, previews and
   future executed actions.
+- `seven insights --json` converts state, trust, profile and control signals
+  into product-facing blockers and next actions for Hub and Seven Server.
 - `seven shield status --json` and `seven server status --json` expose trust
   and local API readiness directly, so the Hub does not infer critical state
   from generic status text.

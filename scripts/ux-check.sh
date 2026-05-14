@@ -136,6 +136,7 @@ require_executable "scripts/ecosystem.sh"
 require_executable "scripts/experience.sh"
 require_executable "scripts/control-plane.sh"
 require_executable "scripts/events.sh"
+require_executable "scripts/insights.sh"
 require_executable "security/shield-status.sh"
 require_executable "scripts/manifest.sh"
 require_executable "scripts/package-plan.sh"
@@ -456,6 +457,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def experience_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def control_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def events_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def insights_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def shield_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def server_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -494,6 +496,7 @@ ecosystem_summary="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary)
 experience_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" experience --json)"
 control_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" control --json)"
 events_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" events --json)"
+insights_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" insights --json)"
 shield_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield status --json)"
 server_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" server status --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -505,11 +508,13 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$experience_json" >/dev/null &&
    python -m json.tool <<<"$control_json" >/dev/null &&
    python -m json.tool <<<"$events_json" >/dev/null &&
+   python -m json.tool <<<"$insights_json" >/dev/null &&
    python -m json.tool <<<"$shield_json" >/dev/null &&
    python -m json.tool <<<"$server_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
    grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
    grep -q '"schema": "sevenos.events.v1"' <<<"$events_json" &&
+   grep -q '"schema": "sevenos.insights.v1"' <<<"$insights_json" &&
    grep -q '"schema": "sevenos.shield.v1"' <<<"$shield_json" &&
    grep -q '"schema":"sevenos.server.v1"' <<<"$server_json" &&
    grep -q '"processes"' <<<"$ecosystem_json" &&
@@ -616,10 +621,12 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/control"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/events"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/insights"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/control' "$ROOT_DIR/server/README.md" &&
-   grep -q 'curl http://127.0.0.1:7777/events' "$ROOT_DIR/server/README.md"; then
+   grep -q 'curl http://127.0.0.1:7777/events' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/insights' "$ROOT_DIR/server/README.md"; then
   ok "Seven Server exposes live state API endpoints"
 else
   fail "Seven Server should expose state and profile API endpoints"
@@ -722,6 +729,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" apply --limit 2 >/dev/nul
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" control apply --limit 2 >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" list >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/insights.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/insights.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
