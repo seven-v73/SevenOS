@@ -124,6 +124,7 @@ require_executable "bin/seven-waybar-action"
 require_executable "bin/seven-waybar-notifications"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
+require_executable "bin/seven-windows-assistant"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
 require_executable "scripts/state.sh"
@@ -453,11 +454,14 @@ fi
 
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick | grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications | grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick | grep -q 'Active profile:' &&
+   grep -q 'PROFILE_ACTIONS' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'seven-windows-assistant' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'seven-shell-panel quick' "$ROOT_DIR/bin/seven-quick-settings" &&
    grep -q 'seven-shell-panel notifications' "$ROOT_DIR/bin/seven-waybar-notifications"; then
-  ok "Quick Settings and Notifications prefer native shell panels with Rofi fallback"
+  ok "Quick Settings, Notifications and active profile actions prefer native shell panels"
 else
-  fail "Quick Settings and Notifications should prefer native shell panels with Rofi fallback"
+  fail "Quick Settings and Notifications should expose native profile-aware shell panels"
 fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -565,6 +569,22 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
   ok "Seven Server exposes live state API endpoints"
 else
   fail "Seven Server should expose state and profile API endpoints"
+fi
+
+windows_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" status --json)"
+windows_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide)"
+windows_apps="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" apps)"
+windows_mode_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode guide --dry-run)"
+if python -m json.tool <<<"$windows_json" >/dev/null &&
+   grep -q '"schema": "sevenos.windows.v1"' <<<"$windows_json" &&
+   grep -q 'SevenOS Windows Mode guide' <<<"$windows_guide" &&
+   grep -q 'DRY-RUN > Windows Mode > Open Bottles' <<<"$windows_apps" &&
+   grep -q 'SevenOS Windows Mode guide' <<<"$windows_mode_guide" &&
+   grep -q 'windows.guide' <<<"$actions_json" &&
+   grep -q 'windows.apps' <<<"$actions_json"; then
+  ok "Windows Mode exposes a guided non-terminal assistant and shared actions"
+else
+  fail "Windows Mode should expose status JSON, guide, app surface and actions"
 fi
 
 if "$ROOT_DIR/scripts/installer-stack.sh" doctor >/dev/null &&

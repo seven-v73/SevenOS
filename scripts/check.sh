@@ -56,6 +56,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-waybar-notifications" \
   "$ROOT_DIR/bin/seven-waybar-profile" \
   "$ROOT_DIR/bin/seven-waybar-security" \
+  "$ROOT_DIR/bin/seven-windows-assistant" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
   "$ROOT_DIR/security/hardening.sh" \
@@ -250,6 +251,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" profile >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" security >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
@@ -356,6 +359,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile shield >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield audit >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run vm start windows >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows guide >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows apps >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows vm >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows start >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" branding --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" security --dry-run --yes >/dev/null
@@ -365,6 +371,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-network --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --virtio-iso /tmp/virtio.iso --os win10 --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode status --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode guide --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode apps --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode vm --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode start --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" server --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" installer-stack --dry-run >/dev/null

@@ -162,6 +162,9 @@ Les piliers du projet sont :
 - Debut de sortie de Rofi pour les panneaux systeme : ajout de `seven-shell-panel` en GTK4/libadwaita pour Quick Settings et Notifications, avec fallback Rofi conserve si la stack native manque.
 - Productisation session : ajout de `session/sevenos.desktop`, services utilisateur systemd `sevenos-session.target`, Waybar, notifications, wallpaper et idle, plus `seven-session-status` pour verifier que SevenOS se comporte comme une vraie session OS installable.
 - Productisation packaging : ajout de `scripts/package-plan.sh`, generation de squelettes PKGBUILD depuis `sevenos.dotinst`, commandes `seven manifest package-plan|package-generate|package-doctor`, et documentation packaging pour preparer les paquets pacman SevenOS.
+- Autonomie Windows Mode : ajout de `seven-windows-assistant`, avec statut JSON, guide grand public, ouverture Bottles, ouverture Virt Manager, relais VM et commandes `seven windows guide|apps|vm|open`.
+- Les profils commencent a piloter l'experience : le panneau natif Quick Settings lit le profil actif et ajoute des actions contextuelles Forge, Shield, Studio, Windows, Horizon ou Baobab.
+- Le registre d'actions expose maintenant des actions non decoratives pour l'activation de profils, l'ouverture de workspaces et Windows Mode, afin que Hub/Waybar puissent lancer de vrais flux utilisateur.
 
 ### Gestion fichiers
 
@@ -188,6 +191,7 @@ Les piliers du projet sont :
 - Les profils ne sont plus seulement des scripts d'installation : ils exposent maintenant un etat, un workspace, un accent, une activation et une sortie JSON exploitable par Seven Hub.
 - `seven profile status --json`, `seven profile show <profil>`, `seven profile activate <profil>` et `seven profile install <profil>` deviennent la base de la logique metier SevenOS.
 - Seven Hub lit maintenant les profils via `seven profile status --json` au lieu de dependre uniquement de `sevenpkg`.
+- Les profils sont maintenant visibles dans le shell : l'utilisateur voit des actions adaptees a son mode courant au lieu d'une grille generique identique pour tout le monde.
 - L'activation d'un profil cree maintenant un workspace structure, un `profile.json` local et une liste d'apps metier.
 - `seven profile open <profil>` et `seven-files profile` ouvrent le workspace actif, avec raccourci Hyprland `Super+Ctrl+E`.
 

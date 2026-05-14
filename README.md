@@ -497,16 +497,23 @@ DaVinci Resolve is not installed automatically because it is not distributed thr
 
 Installs compatibility tools such as Wine, Winetricks, Lutris, Flatpak, QEMU, and Virt Manager.
 
-Bottles is expected to be installed later through Flatpak or an AUR workflow.
-
 The installer configures Flathub, installs Bottles through Flatpak when possible, enables `libvirtd`, and adds the current user to the `libvirt` group.
 
-Windows VM helpers:
+Windows Mode is exposed as a guided user flow:
+
+```bash
+seven windows guide
+seven windows status
+seven windows apps
+seven windows vm
+```
+
+VM creation still needs a Windows ISO and, for best storage/network support, the VirtIO driver ISO:
 
 ```bash
 ./install.sh vm-check
 ./install.sh vm-network
-./install.sh vm-windows \
+seven windows create \
   --iso /path/to/windows.iso \
   --virtio-iso /path/to/virtio-win.iso \
   --os win11

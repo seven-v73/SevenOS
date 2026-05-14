@@ -1,0 +1,275 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+VM_NAME="${SEVENOS_WINDOWS_VM:-sevenos-windows}"
+ACTION="${1:-status}"
+shift || true
+
+dry_run() {
+  [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
+}
+
+dry_line() {
+  printf 'DRY-RUN > Windows Mode > %s\n' "$*"
+}
+
+command_state() {
+  command -v "$1" >/dev/null 2>&1 && printf 'OK' || printf 'MISS'
+}
+
+package_state() {
+  pacman -Q "$1" >/dev/null 2>&1 && printf 'OK' || printf 'MISS'
+}
+
+service_state() {
+  systemctl is-active --quiet "$1" 2>/dev/null && printf 'OK' || printf 'MISS'
+}
+
+flatpak_app_state() {
+  command -v flatpak >/dev/null 2>&1 && flatpak info "$1" >/dev/null 2>&1 && printf 'OK' || printf 'MISS'
+}
+
+kvm_state() {
+  [[ -r /dev/kvm ]] && printf 'OK' || printf 'MISS'
+}
+
+virt_cpu_state() {
+  grep -Eiq '(vmx|svm)' /proc/cpuinfo 2>/dev/null && printf 'OK' || printf 'MISS'
+}
+
+libvirt_group_state() {
+  id -nG 2>/dev/null | tr ' ' '\n' | grep -qx libvirt && printf 'OK' || printf 'MISS'
+}
+
+network_state() {
+  command -v virsh >/dev/null 2>&1 &&
+    virsh -c qemu:///system net-info default >/dev/null 2>&1 &&
+    printf 'OK' || printf 'MISS'
+}
+
+vm_state() {
+  if ! command -v virsh >/dev/null 2>&1; then
+    printf 'MISS'
+    return 0
+  fi
+
+  if ! virsh -c qemu:///system dominfo "$VM_NAME" >/dev/null 2>&1; then
+    printf 'MISS'
+    return 0
+  fi
+
+  local state
+  state="$(virsh -c qemu:///system domstate "$VM_NAME" 2>/dev/null || true)"
+  case "$state" in
+    running) printf 'RUN' ;;
+    *) printf 'OK' ;;
+  esac
+}
+
+status_json() {
+  python - "$VM_NAME" \
+    "$(virt_cpu_state)" \
+    "$(kvm_state)" \
+    "$(command_state wine)" \
+    "$(command_state lutris)" \
+    "$(command_state flatpak)" \
+    "$(flatpak_app_state com.usebottles.bottles)" \
+    "$(command_state qemu-system-x86_64)" \
+    "$(command_state virt-manager)" \
+    "$(command_state virt-install)" \
+    "$(command_state virsh)" \
+    "$(service_state libvirtd.service)" \
+    "$(libvirt_group_state)" \
+    "$(network_state)" \
+    "$(vm_state)" <<'PY'
+import json
+import sys
+
+keys = [
+    "vm_name",
+    "cpu_virtualization",
+    "kvm_device",
+    "wine",
+    "lutris",
+    "flatpak",
+    "bottles_flatpak",
+    "qemu",
+    "virt_manager",
+    "virt_install",
+    "virsh",
+    "libvirtd",
+    "libvirt_group",
+    "default_network",
+    "windows_vm",
+]
+payload = dict(zip(keys, sys.argv[1:]))
+payload["schema"] = "sevenos.windows.v1"
+payload["ready"] = all(
+    payload[key] in {"OK", "RUN"}
+    for key in ("cpu_virtualization", "kvm_device", "qemu", "virt_manager", "virsh", "libvirtd", "default_network")
+)
+print(json.dumps(payload, indent=2))
+PY
+}
+
+status_human() {
+  printf 'SevenOS Windows Mode\n\n'
+  printf '  %-20s %s\n' "CPU virtualization" "$(virt_cpu_state)"
+  printf '  %-20s %s\n' "/dev/kvm" "$(kvm_state)"
+  printf '  %-20s %s\n' "Wine" "$(command_state wine)"
+  printf '  %-20s %s\n' "Lutris" "$(command_state lutris)"
+  printf '  %-20s %s\n' "Bottles Flatpak" "$(flatpak_app_state com.usebottles.bottles)"
+  printf '  %-20s %s\n' "QEMU" "$(command_state qemu-system-x86_64)"
+  printf '  %-20s %s\n' "Virt Manager" "$(command_state virt-manager)"
+  printf '  %-20s %s\n' "Virt Install" "$(command_state virt-install)"
+  printf '  %-20s %s\n' "libvirtd" "$(service_state libvirtd.service)"
+  printf '  %-20s %s\n' "libvirt group" "$(libvirt_group_state)"
+  printf '  %-20s %s\n' "default network" "$(network_state)"
+  printf '  %-20s %s\n' "$VM_NAME" "$(vm_state)"
+  printf '\n'
+  printf 'Friendly actions:\n'
+  printf '  seven windows guide          Explain the setup path\n'
+  printf '  seven windows apps           Open Bottles for Windows apps\n'
+  printf '  seven windows vm             Open Virt Manager for the Windows VM\n'
+  printf '  seven windows create --iso /path/windows.iso --virtio-iso /path/virtio.iso\n'
+}
+
+guide_action() {
+  cat <<'EOF'
+SevenOS Windows Mode guide
+
+1. Install the Windows layer
+   seven profile install windows
+
+2. Check virtualization
+   seven windows status
+   seven vm network
+
+3. For lightweight Windows apps
+   seven windows apps
+
+4. For full Windows desktop mode
+   seven windows create --iso /path/windows.iso --virtio-iso /path/virtio.iso --os win11
+   seven windows vm
+
+SevenOS keeps both paths separate:
+- Bottles/Wine for simple apps.
+- KVM/QEMU for heavy apps, Adobe workflows, office suites and full Windows sessions.
+EOF
+}
+
+run_detached() {
+  local label="$1"
+  shift
+  if dry_run; then
+    dry_line "$label"
+    printf '%q ' "$@"
+    printf '\n'
+    return 0
+  fi
+  nohup "$@" >/dev/null 2>&1 &
+}
+
+open_bottles() {
+  if dry_run; then
+    dry_line "Open Bottles"
+    printf 'flatpak run com.usebottles.bottles\n'
+    return 0
+  fi
+  if command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
+    run_detached "Open Bottles" flatpak run com.usebottles.bottles
+  elif command -v bottles >/dev/null 2>&1; then
+    run_detached "Open Bottles" bottles
+  else
+    printf 'Bottles is not installed yet.\n\n'
+    guide_action
+    return 1
+  fi
+}
+
+open_virt_manager() {
+  if dry_run; then
+    dry_line "Open Virt Manager"
+    printf 'virt-manager --connect qemu:///system\n'
+    return 0
+  fi
+  if command -v virt-manager >/dev/null 2>&1; then
+    run_detached "Open Virt Manager" virt-manager --connect qemu:///system
+  else
+    printf 'Virt Manager is not installed yet.\n\n'
+    guide_action
+    return 1
+  fi
+}
+
+open_best_surface() {
+  if [[ "$(flatpak_app_state com.usebottles.bottles)" == "OK" ]]; then
+    open_bottles
+  elif [[ "$(command_state virt-manager)" == "OK" ]]; then
+    open_virt_manager
+  else
+    guide_action
+    return 1
+  fi
+}
+
+case "$ACTION" in
+  status)
+    if [[ "${1:-}" == "--json" ]]; then
+      status_json
+    else
+      status_human
+    fi
+    ;;
+  guide|help)
+    guide_action
+    ;;
+  open)
+    open_best_surface
+    ;;
+  apps|bottles)
+    open_bottles
+    ;;
+  vm|virt-manager)
+    open_virt_manager
+    ;;
+  create)
+    if [[ "$#" -eq 0 || " $* " != *" --iso "* ]]; then
+      cat <<'EOF'
+Windows VM creation needs a Windows ISO before it can start.
+
+Recommended command:
+  seven windows create --iso /path/to/windows.iso --virtio-iso /path/to/virtio-win.iso --os win11
+
+Why VirtIO?
+  It helps Windows detect the virtual disk and network device during installation.
+
+Open the guide any time with:
+  seven windows guide
+EOF
+      exit 0
+    fi
+    "$ROOT_DIR/vm/windows-vm.sh" "$@"
+    ;;
+  start|console|stop)
+    "$ROOT_DIR/vm/windows-mode.sh" "$ACTION" "$@"
+    ;;
+  network)
+    "$ROOT_DIR/vm/network.sh" "$@"
+    ;;
+  check)
+    "$ROOT_DIR/vm/check.sh" "$@"
+    ;;
+  --json)
+    status_json
+    ;;
+  -h|--help)
+    guide_action
+    ;;
+  *)
+    printf 'seven-windows-assistant: unknown action: %s\n\n' "$ACTION" >&2
+    guide_action >&2
+    exit 1
+    ;;
+esac

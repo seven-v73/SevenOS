@@ -16,7 +16,11 @@ Usage:
   ./install.sh windows-mode <action> [options]
 
 Actions:
-  status              Show Windows Mode readiness
+  status [--json]     Show Windows Mode readiness
+  guide               Explain the friendly Windows setup path
+  open                Open the best available Windows surface
+  apps                Open Bottles for Windows applications
+  vm                  Open Virt Manager for the Windows VM
   create [options]    Create/install Windows VM, forwards options to vm-windows
   start [--name VM]   Start Windows VM
   console [--name VM] Open Windows VM console in Virt Manager
@@ -24,6 +28,8 @@ Actions:
 
 Examples:
   ./install.sh windows-mode status
+  ./install.sh windows-mode guide
+  ./install.sh windows-mode apps
   ./install.sh windows-mode create --iso /path/windows.iso --virtio-iso /path/virtio.iso --os win11
   ./install.sh windows-mode start
 EOF
@@ -102,7 +108,14 @@ stop_action() {
 
 case "$ACTION" in
   status)
-    status_action
+    if [[ "${1:-}" == "--json" && -x "$ROOT_DIR/bin/seven-windows-assistant" ]]; then
+      "$ROOT_DIR/bin/seven-windows-assistant" status --json
+    else
+      status_action
+    fi
+    ;;
+  guide|open|apps|bottles|vm|virt-manager|network|check)
+    "$ROOT_DIR/bin/seven-windows-assistant" "$ACTION" "$@"
     ;;
   create)
     "$ROOT_DIR/vm/windows-vm.sh" "$@"

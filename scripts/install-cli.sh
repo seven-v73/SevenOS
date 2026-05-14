@@ -111,6 +111,7 @@ install_user_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
 install_user_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-notifications
 install_user_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_user_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
+install_user_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
 install_user_command "$ROOT_DIR/bin/sevenpkg" sevenpkg
 install_user_command "$ROOT_DIR/bin/sevenosctl" sevenosctl
 ensure_user_bin_path
@@ -136,6 +137,7 @@ install_system_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
 install_system_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-notifications
 install_system_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_system_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
+install_system_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
 install_system_command "$ROOT_DIR/bin/sevenosctl" sevenosctl
 
 log_success "SevenOS CLI installed. Run: seven status or sevenpkg meta"

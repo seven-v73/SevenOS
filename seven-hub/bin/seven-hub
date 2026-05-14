@@ -327,9 +327,12 @@ load_actions() {
       ;;
     "VM & Windows")
       actions=(
-        "Windows Mode Status|windows-mode status|Show Windows compatibility readiness"
-        "Windows Mode Start|windows-mode start|Start SevenOS Windows VM"
-        "Windows Mode Console|windows-mode console|Open SevenOS Windows VM console"
+        "Windows Mode Guide|seven:windows guide|Explain Bottles, Wine and KVM paths"
+        "Windows Mode Status|seven:windows status|Show Windows compatibility readiness"
+        "Windows Apps|seven:windows apps|Open Bottles for Windows applications"
+        "Windows VM|seven:windows vm|Open Virt Manager for Windows desktop mode"
+        "Windows Mode Start|seven:windows start|Start SevenOS Windows VM"
+        "Windows Mode Console|seven:windows console|Open SevenOS Windows VM console"
         "Install WINDOWS|windows|Install Wine, Lutris, QEMU, Bottles"
         "VM Check|vm-check|Check KVM and libvirt readiness"
         "VM Network|vm-network|Start libvirt default network"

@@ -31,6 +31,12 @@ doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.
 profile.status	Profiles	Profile Status	seven profile status	safe	Show installed and active profile state.
+profile.open	Profiles	Open Active Workspace	seven profile open	safe	Open the current profile workspace.
+profile.activate.forge	Profiles	Activate Forge	seven profile activate forge	changes	Switch the desktop context to Forge.
+profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch the desktop context to Shield.
+profile.activate.studio	Profiles	Activate Studio	seven profile activate studio	changes	Switch the desktop context to Studio.
+profile.activate.windows	Profiles	Activate Windows	seven profile activate windows	changes	Switch the desktop context to Windows Mode.
+profile.activate.horizon	Profiles	Activate Horizon	seven profile activate horizon	changes	Switch the desktop context to Horizon.
 profile.forge	Profiles	Install Forge	seven profile install forge	packages	Install the development workspace.
 profile.shield	Profiles	Install Shield	seven profile install shield	packages	Install the cybersecurity workspace.
 profile.studio	Profiles	Install Studio	seven profile install studio	packages	Install the creative workspace.
@@ -40,7 +46,12 @@ security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, san
 security.enable	Security	Enable Shield	seven shield enable	changes	Apply base SevenOS security hardening.
 security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
-windows.start	Windows	Start Windows Mode	seven windows start	changes	Start the guided Windows compatibility workflow.
+windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Bottles, Wine and KVM Windows paths.
+windows.open	Windows	Open Windows Mode	seven windows open	safe	Open Bottles or Virt Manager depending on what is available.
+windows.apps	Windows	Windows Apps	seven windows apps	safe	Open Bottles for Windows applications.
+windows.vm	Windows	Windows VM	seven windows vm	safe	Open Virt Manager for the Windows VM.
+windows.create	Windows	Create Windows VM	seven windows create	packages	Start the guided Windows VM creation command.
+windows.start	Windows	Start Windows VM	seven windows start	changes	Start the SevenOS Windows virtual machine.
 server.status	Server	Server Status	seven server status	safe	Check the local SevenOS API service.
 deploy.plan	Server	Deployment Plan	seven deploy plan .	safe	Detect and plan deployment for the current project.
 installer.status	Installer	Installer Status	seven installer status	safe	Check Calamares and ISO foundations.

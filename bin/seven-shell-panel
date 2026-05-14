@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import json
 import shutil
 import subprocess
 import sys
@@ -51,12 +52,41 @@ def gtk_available() -> tuple[bool, str]:
 
 def run_action(*command: str) -> None:
     env = {**os.environ, "SEVENOS_ROOT": str(ROOT)}
+    command = tuple(resolve_command(command))
 
     if dry_run():
         dry_line("Action", " ".join(command))
         return
 
     subprocess.Popen(command, cwd=ROOT, env=env)
+
+
+def resolve_command(command: tuple[str, ...]) -> list[str]:
+    if not command:
+        return []
+    first = command[0]
+    local = ROOT / "bin" / first
+    if local.is_file():
+        return [str(local), *command[1:]]
+    if first == "seven" and (ROOT / "bin" / "seven").is_file():
+        return [str(ROOT / "bin" / "seven"), *command[1:]]
+    return list(command)
+
+
+def active_profile() -> dict[str, str]:
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    profile_file = config_home / "sevenos" / "profile.json"
+    if profile_file.is_file():
+        try:
+            payload = json.loads(profile_file.read_text(encoding="utf-8"))
+            return {
+                "key": str(payload.get("key") or "baobab"),
+                "title": str(payload.get("title") or "Baobab"),
+                "workspace": str(payload.get("workspace") or str(Path.home() / "SevenOS")),
+            }
+        except Exception:
+            pass
+    return {"key": "baobab", "title": "Baobab", "workspace": str(Path.home() / "SevenOS")}
 
 
 QUICK_ACTIONS = [
@@ -70,6 +100,39 @@ QUICK_ACTIONS = [
     ("󰐥", "Power", "Lock, reboot and shutdown", ["seven-power"]),
 ]
 
+PROFILE_ACTIONS = {
+    "baobab": [
+        ("󰒓", "Welcome", "Open SevenOS first-run guide", ["seven-welcome"]),
+        ("󰉋", "Workspace", "Open your SevenOS home workspace", ["seven", "profile", "open", "baobab"]),
+    ],
+    "forge": [
+        ("󰅩", "Forge", "Open development workspace", ["seven", "profile", "open", "forge"]),
+        ("󰡨", "Containers", "Inspect Docker and Podman tooling", ["seven", "deploy", "detect", "."]),
+        ("󰌢", "Install Forge", "Complete development profile packages", ["seven", "profile", "install", "forge"]),
+    ],
+    "shield": [
+        ("󰒃", "Shield Audit", "Audit firewall, sandbox and cyber tools", ["seven", "shield", "audit"]),
+        ("󱗼", "Cyber Lab", "Open isolated web testing lab", ["seven", "shield", "lab", "--preset", "web"]),
+        ("󰌢", "Install Shield", "Complete cybersecurity profile packages", ["seven", "profile", "install", "shield"]),
+    ],
+    "studio": [
+        ("󰏘", "Studio", "Open creative workspace", ["seven", "profile", "open", "studio"]),
+        ("󰀻", "Creative Apps", "Open the application library", ["seven-overview", "apps"]),
+        ("󰌢", "Install Studio", "Complete creative profile packages", ["seven", "profile", "install", "studio"]),
+    ],
+    "windows": [
+        ("󰖳", "Windows Guide", "Explain Bottles and KVM Windows paths", ["seven-windows-assistant", "guide"]),
+        ("󰿭", "Windows Apps", "Open Bottles for Windows applications", ["seven-windows-assistant", "apps"]),
+        ("󰢹", "Windows VM", "Open Virt Manager for Windows Mode", ["seven-windows-assistant", "vm"]),
+    ],
+    "horizon": [
+        ("󰒋", "Server", "Show local SevenOS API status", ["seven", "server", "status"]),
+        ("󰞷", "Deploy", "Detect deployable project stack", ["seven", "deploy", "detect", "."]),
+        ("󰌢", "Install Horizon", "Complete server and deployment profile packages", ["seven", "profile", "install", "horizon"]),
+    ],
+}
+
+
 NOTIFICATION_ACTIONS = [
     ("󰂚", "Status", "Show notification state", ["seven-waybar-notifications", "test"]),
     ("󰅺", "Test", "Send test notification", ["seven-waybar-notifications", "test"]),
@@ -81,8 +144,11 @@ NOTIFICATION_ACTIONS = [
 
 
 def print_preview(surface: str) -> None:
-    actions = NOTIFICATION_ACTIONS if surface == "notifications" else QUICK_ACTIONS
+    profile = active_profile()
+    actions = NOTIFICATION_ACTIONS if surface == "notifications" else [*PROFILE_ACTIONS.get(profile["key"], []), *QUICK_ACTIONS]
     dry_line(surface.title(), "Open native panel")
+    if surface != "notifications":
+        print(f"Active profile: {profile['title']} :: {profile['workspace']}")
     for icon, title, subtitle, command in actions:
         print(f"{icon}  {title:<16} {subtitle} :: {' '.join(command)}")
 
@@ -101,9 +167,10 @@ def run_gui(surface: str) -> int:
     gi.require_version("Adw", "1")
     from gi.repository import Adw, Gdk, Gtk
 
-    actions = NOTIFICATION_ACTIONS if surface == "notifications" else QUICK_ACTIONS
+    profile = active_profile()
+    actions = NOTIFICATION_ACTIONS if surface == "notifications" else [*PROFILE_ACTIONS.get(profile["key"], []), *QUICK_ACTIONS]
     title = "SevenOS Notifications" if surface == "notifications" else "SevenOS Quick Settings"
-    subtitle = "Notification surface" if surface == "notifications" else "System controls"
+    subtitle = "Notification surface" if surface == "notifications" else f"{profile['title']} profile controls"
 
     class SevenShellPanel(Adw.Application):
         def __init__(self) -> None:

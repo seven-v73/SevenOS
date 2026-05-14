@@ -301,7 +301,10 @@ Windows compatibility:
 ./install.sh windows --yes
 ./install.sh vm-check
 ./install.sh vm-network
+seven windows guide
 seven windows status
+seven windows apps
+seven windows vm
 ```
 
 Server/deployment:

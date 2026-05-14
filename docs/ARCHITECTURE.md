@@ -24,7 +24,7 @@ The promise is:
 | Service Layer | local services, deployment, VM and background session | `seven-session`, `seven-server`, `seven-deploy`, `vm/` |
 | UI Layer | desktop shell, hub, files, theme and visible controls | Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files, Tauri prototype, native GTK target |
 | Security Layer | hardening, audit, sandbox and cyber workspaces | `security/`, Shield profile, UFW, Firejail, Bubblewrap |
-| Compatibility Layer | Windows apps, VM, Wine/Bottles/Lutris/KVM | `profiles/windows.sh`, `vm/windows-mode.sh`, `vm/windows-vm.sh` |
+| Compatibility Layer | Windows apps, VM, Wine/Bottles/Lutris/KVM | `profiles/windows.sh`, `bin/seven-windows-assistant`, `vm/windows-mode.sh`, `vm/windows-vm.sh` |
 | Deployment Layer | local API, stack detection and personal cloud direction | `server/`, `docs/DEPLOYMENT.md`, Horizon profile |
 | Identity Layer | product language, branding, palette and cultural coherence | `identity/`, `branding/`, `docs/VOCABULARY.md` |
 | Installer Layer | ISO, live profile and future disk install flow | `archiso/`, `installer/` |
@@ -160,6 +160,9 @@ seven actions --json
 seven profile forge
 seven shield audit
 seven windows status
+seven windows guide
+seven windows apps
+seven windows vm
 seven server status
 seven deploy plan .
 seven repair ux --apply
