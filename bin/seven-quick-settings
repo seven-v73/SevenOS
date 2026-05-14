@@ -23,7 +23,7 @@ resolve_root() {
 }
 
 ROOT_DIR="$(resolve_root)"
-THEME="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi"
+THEME="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/quick-settings.rasi"
 
 run_detached() {
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
@@ -51,16 +51,16 @@ run_terminal() {
 
 menu() {
   cat <<'EOF'
-Open Control Center
-Open Apps Overview
-Open Window Overview
-Network Settings
-Audio Mixer
-Wallpaper Refresh
-Profile Workspace
-Migration Plan
-System Monitor
-Power Menu
+Control Center       Dashboard and system state
+Apps Overview        Launch installed applications
+Window Overview      Switch open windows
+Network Settings     Wi-Fi, Ethernet and connections
+Audio Mixer          Volume and PipeWire controls
+Wallpaper Refresh    Rebuild SevenOS wallpaper
+Profile Workspace    Open active profile files
+Migration Plan       Protected upgrade state
+System Monitor       CPU, memory and processes
+Power Menu           Lock, reboot and shutdown
 EOF
 }
 
@@ -74,36 +74,36 @@ if ! command -v rofi >/dev/null 2>&1; then
   exit 1
 fi
 
-selected="$(menu | rofi -dmenu -i -p "SevenOS" -mesg "Quick settings and shell controls" -theme "$THEME" 2>/dev/null || true)"
+selected="$(menu | rofi -dmenu -i -p "SevenOS" -mesg "Quick Settings" -theme "$THEME" 2>/dev/null || true)"
 
 case "$selected" in
-  "Open Control Center") run_detached seven hub ;;
-  "Open Apps Overview") run_detached seven-overview apps ;;
-  "Open Window Overview") run_detached seven-overview windows ;;
-  "Network Settings")
+  "Control Center"*) run_detached seven hub ;;
+  "Apps Overview"*) run_detached seven-overview apps ;;
+  "Window Overview"*) run_detached seven-overview windows ;;
+  "Network Settings"*)
     if command -v nm-connection-editor >/dev/null 2>&1; then
       run_detached nm-connection-editor
     else
       run_terminal "SevenOS Network" "nmtui"
     fi
     ;;
-  "Audio Mixer")
+  "Audio Mixer"*)
     if command -v pavucontrol >/dev/null 2>&1; then
       run_detached pavucontrol
     else
       run_terminal "SevenOS Audio" "wpctl status"
     fi
     ;;
-  "Wallpaper Refresh") run_terminal "SevenOS Wallpaper" "seven-wallpaper refresh" ;;
-  "Profile Workspace") run_detached seven-files profile ;;
-  "Migration Plan") run_terminal "SevenOS Migration" "seven migrate plan" ;;
-  "System Monitor")
+  "Wallpaper Refresh"*) run_terminal "SevenOS Wallpaper" "seven-wallpaper refresh" ;;
+  "Profile Workspace"*) run_detached seven-files profile ;;
+  "Migration Plan"*) run_terminal "SevenOS Migration" "seven migrate plan" ;;
+  "System Monitor"*)
     if command -v btop >/dev/null 2>&1; then
       run_detached kitty --title "SevenOS Monitor" btop
     else
       run_terminal "SevenOS Monitor" "top"
     fi
     ;;
-  "Power Menu") run_detached seven-power ;;
+  "Power Menu"*) run_detached seven-power ;;
   "") exit 0 ;;
 esac

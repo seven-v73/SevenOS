@@ -1,43 +1,40 @@
 /* SevenOS Launchpad - macOS-like app grid with SevenOS identity */
 @theme "sevenos.rasi"
 
-* {
-  launchpad-overlay: #09090d;
-  launchpad-panel: #15151c;
-  launchpad-search: #232330;
-  launchpad-search-border: #44445a;
-  launchpad-tile: #1c1c26;
-  launchpad-tile-hover: #2a2a38;
-  launchpad-accent: #c8a96e;
-  launchpad-accent-bright: #e2c07a;
-}
-
 window {
   fullscreen: true;
   padding: 34px;
   border: 0px;
   border-radius: 0px;
-  background-color: @launchpad-overlay;
+  background-color: @ebene;
 }
 
 mainbox {
-  padding: 12px;
-  spacing: 0px;
+  padding: 24px;
+  spacing: 22px;
   background-color: transparent;
+  children: [ textbox, inputbar, listview ];
 }
 
-message {
-  enabled: false;
+textbox {
+  margin: 4px 9% 0px 9%;
+  padding: 0px 0px 14px 0px;
+  border: 0px 0px 1px 0px;
+  border-color: @gold-dim;
+  text-color: @gold-bright;
+  font: "Cormorant Garamond Italic 32";
+  content: "SevenOS Apps";
+  horizontal-align: 0.5;
 }
 
 inputbar {
-  margin: 6px 41% 0px 41%;
-  padding: 8px 12px;
+  margin: 0px 38% 0px 38%;
+  padding: 9px 13px;
   spacing: 8px;
   border: 1px;
-  border-radius: 10px;
-  border-color: @launchpad-search-border;
-  background-color: @launchpad-search;
+  border-radius: 12px;
+  border-color: @glass-border-2;
+  background-color: @surface-3;
   children: [ icon-search, entry ];
 }
 
@@ -55,15 +52,15 @@ icon-search {
 
 entry {
   placeholder: "Search";
-  placeholder-color: #9e9b94;
+  placeholder-color: @text-2;
   text-color: @text-1;
-  cursor-color: @launchpad-accent;
+  cursor-color: @gold;
   font: "DM Sans 13";
 }
 
 listview {
-  margin: 64px 9% 0px 9%;
-  spacing: 34px;
+  margin: 34px 8% 0px 8%;
+  spacing: 30px;
   lines: 3;
   columns: 6;
   fixed-height: true;
@@ -78,19 +75,19 @@ element-icon {
 }
 
 element {
-  padding: 12px 10px;
-  spacing: 9px;
+  padding: 15px 12px;
+  spacing: 10px;
   orientation: vertical;
   border: 1px;
-  border-radius: 18px;
-  border-color: transparent;
-  background-color: transparent;
+  border-radius: 20px;
+  border-color: @glass-border;
+  background-color: @surface-2;
   text-color: @text-1;
 }
 
 element selected {
-  background-color: @launchpad-tile-hover;
-  border-color: @launchpad-accent;
+  background-color: @surface-3;
+  border-color: @gold;
   text-color: @text-1;
 }
 
@@ -100,7 +97,7 @@ element alternate {
 }
 
 element-icon {
-  size: 70px;
+  size: 72px;
   horizontal-align: 0.5;
   margin: 0px;
 }

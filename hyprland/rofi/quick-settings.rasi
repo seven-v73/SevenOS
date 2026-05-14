@@ -1,0 +1,85 @@
+@theme "sevenos.rasi"
+
+window {
+  location: northeast;
+  anchor: northeast;
+  x-offset: -14px;
+  y-offset: 46px;
+  width: 390px;
+  border: 1px;
+  border-color: @gold-dim;
+  border-radius: 22px;
+  background-color: @surface-1;
+}
+
+mainbox {
+  padding: 18px;
+  spacing: 12px;
+  background-color: @surface-1;
+  children: [ message, inputbar, listview ];
+}
+
+message {
+  padding: 0px 0px 12px 0px;
+  border: 0px 0px 4px 0px;
+  border-color: @gold;
+  background-color: transparent;
+}
+
+textbox {
+  text-color: @gold-bright;
+  font: "Cormorant Garamond Italic 22";
+}
+
+inputbar {
+  padding: 11px 13px;
+  border: 1px;
+  border-color: @glass-border-2;
+  border-radius: 12px;
+  background-color: @surface-3;
+  children: [ prompt, textbox-prompt-colon, entry ];
+}
+
+prompt {
+  text-color: @gold;
+  font: "JetBrains Mono Medium 12";
+}
+
+entry {
+  placeholder: "Search Controls";
+  placeholder-color: @text-2;
+  text-color: @text-1;
+  cursor-color: @gold;
+  font: "DM Sans 13";
+}
+
+listview {
+  lines: 10;
+  spacing: 7px;
+  fixed-height: true;
+  background-color: transparent;
+}
+
+element {
+  padding: 12px 13px;
+  border: 1px;
+  border-radius: 12px;
+  border-color: @glass-border;
+  background-color: @surface-2;
+  text-color: @text-1;
+}
+
+element selected {
+  background-color: @gold;
+  border-color: @gold-bright;
+  text-color: @ebene;
+}
+
+element alternate {
+  background-color: @surface-3;
+}
+
+element-text {
+  text-color: inherit;
+  font: "DM Sans 13";
+}

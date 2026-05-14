@@ -90,6 +90,10 @@ Les piliers du projet sont :
 - Correction des surfaces Rofi trop noires ou illisibles.
 - Passage du menu Apps vers un rendu plein ecran type Launchpad macOS : recherche centree, grille 6 colonnes, grandes icones et labels centres.
 - Suppression des couleurs alpha hex fragiles dans Rofi et Waybar pour ameliorer la compatibilite GTK/Rofi.
+- Recomposition de Waybar en vraie barre systeme : identite et workspaces a gauche, navigation au centre, controles systeme a droite.
+- Ajout d'une surface dediee Quick Settings avec theme Rofi specifique, plus proche d'un panneau systeme que d'un simple menu texte.
+- Raccordement du Launchpad Apps aux tokens Rofi centraux au lieu d'une palette locale dupliquee.
+- Ajout de `scripts/design-check.sh` pour bloquer les regressions visuelles : ombres decoratives, blur lourd, font weights trop forts, Launchpad non tokenise, Quick Settings absent ou Hub sans details structurels.
 
 ### Desktop et session
 

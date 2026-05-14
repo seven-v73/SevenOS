@@ -88,6 +88,7 @@ require_file "identity/patterns/motif-triangle.svg"
 require_file "identity/patterns/motif-stripe.svg"
 require_file "identity/patterns/motif-cross.svg"
 require_file "hyprland/rofi/apps.rasi"
+require_file "hyprland/rofi/quick-settings.rasi"
 require_file "hyprland/rofi/power.rasi"
 require_file "hyprland/mako/config"
 require_file "hyprland/kitty/kitty.conf"
@@ -130,6 +131,7 @@ require_executable "scripts/migrate.sh"
 require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
 require_executable "scripts/post-install.sh"
+require_executable "scripts/design-check.sh"
 
 package_manifest_contains "mako" "scripts/packages-base.txt"
 package_manifest_contains "libnotify" "scripts/packages-base.txt"
@@ -178,7 +180,7 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."custom/apps".format == "Apps" and (."custom/apps"."on-click" | contains("rofi -show drun")) and (."custom/apps"."on-click" | contains("apps.rasi"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-overview search"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes visible Apps launcher"
 else
   fail "Waybar visible Apps launcher missing"
@@ -209,7 +211,7 @@ else
   fail "Waybar power action missing"
 fi
 
-if jq -e '.cpu."on-click" == "seven-waybar-action system" and .memory."on-click" == "seven-waybar-action system" and .network."on-click" == "seven-waybar-action network" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.network."on-click" == "seven-waybar-action network" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/quick"."on-click" == "seven-quick-settings"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
@@ -274,7 +276,7 @@ if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'windowrulev2 = float, title:^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
    [[ "$overview_search_output" == *"rofi"* ]] &&
-   [[ "$quick_settings_output" == *"Open Control Center"* ]]; then
+   [[ "$quick_settings_output" == *"Control Center"* ]]; then
   ok "SevenOS Shell exposes GNOME-like overview, quick settings and polished window rules"
 else
   fail "SevenOS Shell GNOME-like interface layer is incomplete"
@@ -505,6 +507,7 @@ done
 if command -v rofi >/dev/null 2>&1; then
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/apps.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
+  rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/power.rasi" -dump-theme >/dev/null
   ok "Rofi themes parse"
 else
@@ -518,6 +521,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset offline --dry-run >/dev/null
 ok "interactive UX commands support dry-run"

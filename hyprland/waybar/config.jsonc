@@ -1,11 +1,11 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 34,
-  "spacing": 8,
-  "modules-left": ["custom/sevenos", "custom/apps", "custom/files", "custom/hub", "hyprland/workspaces", "custom/profile"],
-  "modules-center": ["clock"],
-  "modules-right": ["cpu", "memory", "custom/security", "network", "pulseaudio", "battery", "custom/help", "custom/power", "tray"],
+  "height": 38,
+  "spacing": 10,
+  "modules-left": ["custom/sevenos", "hyprland/workspaces"],
+  "modules-center": ["custom/apps", "custom/files", "custom/profile", "clock"],
+  "modules-right": ["custom/quick", "custom/security", "network", "pulseaudio", "battery", "custom/power"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
@@ -13,15 +13,16 @@
   "custom/sevenos": {
     "format": "SevenOS",
     "tooltip": true,
-    "tooltip-format": "SevenOS desktop. Click for dashboard, right-click for welcome.",
+    "tooltip-format": "SevenOS desktop. Click for Control Center, right-click for welcome.",
     "on-click": "seven hub",
     "on-click-right": "seven-welcome"
   },
   "custom/apps": {
     "format": "Apps",
     "tooltip": true,
-    "tooltip-format": "Open application launcher",
-    "on-click": "rofi -show drun -show-icons -theme ~/.config/rofi/apps.rasi"
+    "tooltip-format": "Open SevenOS app overview",
+    "on-click": "seven-overview apps",
+    "on-click-right": "seven-overview search"
   },
   "custom/files": {
     "format": "Files",
@@ -33,14 +34,14 @@
   "custom/profile": {
     "exec": "bash -lc 'seven-waybar-profile'",
     "interval": 60,
-    "format": "󰆧 {}",
+    "format": "{}",
     "tooltip": true,
     "tooltip-format": "Click for profile actions",
     "on-click": "seven-waybar-action profile",
     "on-click-right": "kitty --title 'SevenOS Profiles' bash -lc 'seven profile status; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "clock": {
-    "format": "󰥔 {:%a %d %b  %H:%M}",
+    "format": "{:%a %d %b  %H:%M}",
     "tooltip-format": "{:%A %d %B %Y}",
     "on-click": "seven-waybar-action clock",
     "on-click-right": "kitty --title 'SevenOS Time' bash -lc 'timedatectl; printf \"\\nPress Enter to close...\"; read -r'"
@@ -61,23 +62,23 @@
   "custom/security": {
     "exec": "bash -lc 'seven-waybar-security'",
     "interval": 30,
-    "format": "󰒃 {}",
+    "format": "{}",
     "tooltip": true,
     "tooltip-format": "Click for Shield actions",
     "on-click": "seven-waybar-action security",
     "on-click-right": "kitty --title 'SevenOS Security' bash -lc 'seven shield audit; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "network": {
-    "format-wifi": "󰤨 {signalStrength}%",
-    "format-ethernet": "󰈀 LAN",
-    "format-disconnected": "󰤭 Offline",
+    "format-wifi": "Wi-Fi {signalStrength}%",
+    "format-ethernet": "LAN",
+    "format-disconnected": "Offline",
     "tooltip-format": "{ifname}. Click for network actions.",
     "on-click": "seven-waybar-action network",
     "on-click-right": "kitty --title 'SevenOS Network' bash -lc 'nmcli device status; printf \"\\n\"; nmcli connection show --active; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "pulseaudio": {
-    "format": "󰕾 {volume}%",
-    "format-muted": "󰝟 Muted",
+    "format": "Vol {volume}%",
+    "format-muted": "Muted",
     "tooltip-format": "{desc}. Click for audio actions.",
     "on-click": "seven-waybar-action audio",
     "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
@@ -85,27 +86,21 @@
     "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
   },
   "battery": {
-    "format": "󰁹 {capacity}%",
-    "format-charging": "󰂄 {capacity}%",
+    "format": "Bat {capacity}%",
+    "format-charging": "Charge {capacity}%",
     "tooltip-format": "{timeTo} {power}W. Click for power actions.",
     "on-click": "seven-waybar-action battery",
     "on-click-right": "seven-power"
   },
-  "custom/hub": {
-    "format": "Hub",
+  "custom/quick": {
+    "format": "Controls",
     "tooltip": true,
-    "tooltip-format": "Seven Hub control center",
-    "on-click": "seven-hub"
-  },
-  "custom/help": {
-    "format": "Help",
-    "tooltip": true,
-    "tooltip-format": "Open SevenOS shortcut and repair help",
-    "on-click": "seven-help",
-    "on-click-right": "kitty --title 'SevenOS Repair' bash -lc 'seven repair; printf \"\\nPress Enter to close...\"; read -r'"
+    "tooltip-format": "Open SevenOS quick settings",
+    "on-click": "seven-quick-settings",
+    "on-click-right": "seven-help"
   },
   "custom/power": {
-    "format": "Power",
+    "format": "Session",
     "tooltip": true,
     "tooltip-format": "Power menu",
     "on-click": "seven-power"
