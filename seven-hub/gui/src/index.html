@@ -4,19 +4,113 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Seven Hub</title>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/main.js"></script>
   </head>
   <body>
-    <main class="shell">
-      <header>
-        <div>
-          <p class="eyebrow">SevenOS Control Center</p>
-          <h1>System, profiles, security and deployment in one place.</h1>
-        </div>
-        <button id="refresh">Refresh</button>
-      </header>
+    <main class="seven-window">
+      <aside class="sidebar" aria-label="Seven Hub navigation">
+        <div class="brand-mark">7</div>
+        <button class="nav-item active" data-section="dashboard" title="Dashboard">D</button>
+        <button class="nav-item" data-section="profiles" title="Profiles">P</button>
+        <button class="nav-item" data-section="security" title="Security">S</button>
+        <button class="nav-item" data-section="apps" title="Apps">A</button>
+        <button class="nav-item" data-section="system" title="System">Y</button>
+      </aside>
 
-      <section class="grid" id="cards"></section>
+      <section class="workspace">
+        <header class="titlebar">
+          <div class="titlebar-dots" aria-hidden="true">
+            <span class="dot dot-close"></span>
+            <span class="dot dot-min"></span>
+            <span class="dot dot-max"></span>
+          </div>
+          <p class="titlebar-title">Seven Hub</p>
+          <button class="btn-ghost compact" id="refresh">Refresh</button>
+        </header>
+
+        <div class="content">
+          <section class="hero">
+            <div>
+              <p class="section-eyebrow">Sovereign Control Center</p>
+              <h1>Make SevenOS feel like an OS, not a terminal workflow.</h1>
+              <p class="hero-copy">
+                Pilot profiles, security, applications, Windows Mode and system repair from one premium dashboard.
+              </p>
+            </div>
+            <article class="score-card">
+              <span class="score-label">Readiness</span>
+              <strong id="readiness-score">--%</strong>
+              <span id="readiness-detail">Loading system state</span>
+            </article>
+          </section>
+
+          <div class="kente-band"></div>
+
+          <section class="section-panel" data-panel="dashboard">
+            <div class="section-head">
+              <div>
+                <p class="section-eyebrow">Today</p>
+                <h2>System Overview</h2>
+              </div>
+              <button class="btn-primary" data-command="seven readiness">Run Readiness</button>
+            </div>
+            <div class="stat-grid" id="status-grid"></div>
+            <div class="recommendation-strip" id="recommendations"></div>
+          </section>
+
+          <section class="section-panel hidden" data-panel="profiles">
+            <div class="section-head">
+              <div>
+                <p class="section-eyebrow">Workspaces</p>
+                <h2>Professional Profiles</h2>
+              </div>
+              <button class="btn-ghost" data-command="seven profile status">Profile Status</button>
+            </div>
+            <div class="profile-grid" id="profile-grid"></div>
+          </section>
+
+          <section class="section-panel hidden" data-panel="security">
+            <div class="section-head">
+              <div>
+                <p class="section-eyebrow">Trust Layer</p>
+                <h2>Security And Repair</h2>
+              </div>
+              <button class="btn-primary" data-command="seven shield audit">Audit Shield</button>
+            </div>
+            <div class="action-grid" id="security-actions"></div>
+          </section>
+
+          <section class="section-panel hidden" data-panel="apps">
+            <div class="section-head">
+              <div>
+                <p class="section-eyebrow">Software Layer</p>
+                <h2>Apps And Packages</h2>
+              </div>
+              <button class="btn-ghost" data-command="sevenpkg status">SevenPkg Status</button>
+            </div>
+            <div class="action-grid" id="app-actions"></div>
+          </section>
+
+          <section class="section-panel hidden" data-panel="system">
+            <div class="section-head">
+              <div>
+                <p class="section-eyebrow">Core</p>
+                <h2>System Operations</h2>
+              </div>
+              <button class="btn-ghost" data-command="seven doctor">Doctor</button>
+            </div>
+            <div class="action-grid" id="system-actions"></div>
+          </section>
+
+          <section class="output-drawer" id="output-drawer" aria-live="polite">
+            <div class="output-head">
+              <span id="output-title">Action Output</span>
+              <button class="btn-ghost compact" id="clear-output">Clear</button>
+            </div>
+            <pre id="output">Ready.</pre>
+          </section>
+        </div>
+      </section>
     </main>
   </body>
 </html>

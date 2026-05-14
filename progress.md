@@ -14,6 +14,16 @@ Foundation OS / Developer Preview
 
 Cela signifie que SevenOS n'est plus seulement une idee ou un theme Arch. Le projet possede deja une architecture de distribution, une identite visuelle, des scripts d'installation, des profils metiers, un debut de Control Center, une couche Windows, une base ISO, une couche serveur et un gestionnaire logiciel maison.
 
+Le niveau actuel a progresse sur l'experience desktop : Waybar n'est plus seulement informative, les menus Rofi sont plus lisibles, et le lanceur d'applications suit maintenant une logique Launchpad plein ecran inspiree de macOS, adaptee a l'identite SevenOS.
+
+SevenOS entre maintenant dans la phase :
+
+```text
+Phase B — OS Productization
+```
+
+Cette phase vise a reduire la dependance au terminal, masquer la complexite des scripts, et faire de Seven Hub la surface principale de controle du systeme.
+
 Le projet n'est pas encore au niveau :
 
 ```text
@@ -67,6 +77,9 @@ Les piliers du projet sont :
 - Nouvelle palette : Ebene, surfaces sombres, Or ancestral, Argile, Baobab, Indigo.
 - Harmonisation de Waybar, Rofi, Kitty, Mako, Hyprland, Seven Hub et Tauri GUI.
 - Suppression des styles trop generiques : pas de fond blanc, pas de `box-shadow`, pas de `backdrop-filter`, pas de font-weight lourd.
+- Correction des surfaces Rofi trop noires ou illisibles.
+- Passage du menu Apps vers un rendu plein ecran type Launchpad macOS : recherche centree, grille 6 colonnes, grandes icones et labels centres.
+- Suppression des couleurs alpha hex fragiles dans Rofi et Waybar pour ameliorer la compatibilite GTK/Rofi.
 
 ### Desktop et session
 
@@ -76,6 +89,10 @@ Les piliers du projet sont :
 - Ajout d'une logique `seven-session` pour lancer les composants desktop.
 - Ajout de raccourcis plus decouvrables pour Hub, Apps et Help.
 - Ajout du wallpaper SevenOS via Hyprpaper.
+- Correction du demarrage Waybar avec chemins explicites de config et style.
+- Ajout d'une couche `seven-waybar-action` pour transformer Waybar en barre de controle active.
+- Ajout d'actions clic sur CPU, RAM, profil, securite, reseau, audio, batterie et horloge.
+- Ajout de menus contextuels Waybar pour systeme, profils, Shield, reseau, audio, batterie et temps.
 
 ### Seven Hub
 
@@ -84,6 +101,15 @@ Les piliers du projet sont :
 - Ajout d'un Control Center web local.
 - Fondation Tauri ajoutee pour une future vraie interface native.
 - Ajout d'actions systeme contextuelles et de checks.
+- Amelioration de la visibilite du Hub Rofi avec une largeur plus confortable.
+- Les menus Hub restent encore bases sur Rofi, mais ils sont moins compresses et mieux contrastes.
+- Debut de transformation du Hub Tauri en vrai Control Center natif.
+- Ajout d'une navigation interne : Dashboard, Profiles, Security, Apps et System.
+- Ajout d'un score readiness visible dans l'interface.
+- Ajout de cartes services : Network, Firewall, Windows Mode, Seven Server.
+- Ajout de cartes profils : Forge, Shield, Studio, Windows.
+- Ajout de recommandations exploitables depuis l'interface.
+- Ajout d'un backend Tauri `get_hub_snapshot` pour afficher l'etat systeme sans ouvrir un terminal.
 
 ### Gestion fichiers
 
@@ -145,11 +171,11 @@ Les piliers du projet sont :
 |---|---:|---|
 | Vision produit | 85% | Tres claire, bien documentee |
 | Architecture repo | 80% | Modulaire et lisible |
-| Design system | 75% | V1 en place, encore a tester sur machine reelle |
-| Desktop Hyprland | 70% | Fonctionnel, encore a polir |
+| Design system | 80% | V1 en place, Launchpad Apps ajoute, coherence a tester sur machine reelle |
+| Desktop Hyprland | 75% | Fonctionnel, Waybar actionnable, session plus robuste |
 | Seven commands | 70% | Base solide, besoin de plus de robustesse |
 | SevenPkg | 60% | Wrapper utile, pas encore vrai package manager |
-| Seven Hub | 50% | Fondation presente, GUI native encore a construire |
+| Seven Hub | 65% | GUI Tauri structuree, dashboard natif en cours, backend snapshot ajoute |
 | Profils metiers | 55% | Concept clair, installation encore partielle |
 | Securite | 55% | Bonne direction, hardening a renforcer |
 | Windows Mode | 50% | Base technique, UX guidee manquante |
@@ -177,6 +203,7 @@ A faire :
 - Gestion theme/session.
 - Statut firewall, VM, server, deploy.
 - Version Tauri prioritaire.
+- Remplacer progressivement les menus Rofi du Hub par une interface Tauri native.
 
 ### 2. Installer reel
 
@@ -206,10 +233,11 @@ Eviter l'effet "theme Arch" et donner une experience OS complete.
 A faire :
 
 - Tester GTK/Qt apps en conditions reelles.
-- Ameliorer l'app launcher.
+- Tester le nouveau Launchpad Apps sur machine test : densite, taille des icones, lisibilite des labels.
 - Harmoniser Nautilus, menus, notifications, terminal.
 - Ajouter assets plus premium.
 - Construire des composants Seven Hub reutilisables.
+- Revoir les autres menus Rofi pour les rapprocher du niveau du Launchpad Apps.
 
 ### 4. Profils metiers plus concrets
 
@@ -265,6 +293,8 @@ A faire :
 
 - Tester Design System v1 sur machine test.
 - Corriger lisibilite, contrastes, app launcher et menus.
+- Valider le Launchpad Apps plein ecran.
+- Valider Waybar comme barre de controle active.
 - Ameliorer Seven Files.
 - Stabiliser Waybar/Hub/session.
 
@@ -273,6 +303,10 @@ A faire :
 - Transformer Seven Hub Tauri en app principale.
 - Ajouter dashboard, readiness, profiles, apps, security, VM, deploy.
 - Connecter `seven` et `sevenpkg` au Hub.
+- Ajouter confirmations pour les actions sensibles.
+- Ajouter progress states pour les installations longues.
+- Transformer les sorties brutes en messages utilisateur lisibles.
+- Faire de Rofi un fallback, pas l'interface principale.
 
 ### Phase C — Distribution testable
 
@@ -304,10 +338,28 @@ SevenOS passe au niveau superieur quand un utilisateur peut :
 Dernier grand jalon connu :
 
 ```text
-b2736d2 Apply SevenOS design system v1
+68d460e Make app launcher macOS style
 ```
 
-Ce jalon introduit le Design System v1 et harmonise les principales surfaces UI.
+Jalons recents :
+
+```text
+b2736d2 Apply SevenOS design system v1
+96850bf Fix Waybar startup compatibility
+cc25e63 Make Waybar modules actionable
+2f8b52e Improve Rofi menu visibility
+68d460e Make app launcher macOS style
+```
+
+Ces jalons introduisent le Design System v1, stabilisent Waybar, rendent la barre plus actionnable, ameliorent la lisibilite des menus Rofi et transforment le lanceur d'applications en experience plein ecran inspiree de macOS Launchpad.
+
+Jalon en cours :
+
+```text
+Phase B — Seven Hub native Control Center
+```
+
+Ce jalon transforme le Hub Tauri en premiere vraie surface OS : dashboard, profils, securite, apps, systeme, readiness score et backend snapshot.
 
 ## Regle De Progression
 

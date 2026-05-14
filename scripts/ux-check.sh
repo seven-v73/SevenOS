@@ -48,6 +48,7 @@ require_file "docs/UX_PRINCIPLES.md"
 require_file "docs/VOCABULARY.md"
 require_file "docs/PHASE_GATE.md"
 require_file "docs/ECOSYSTEM.md"
+require_file "docs/PRODUCTIZATION.md"
 require_file "docs/TEST_MACHINE.md"
 require_file "docs/PRE_PUSH.md"
 require_file "installer/calamares/README.md"
@@ -55,6 +56,8 @@ require_file "installer/calamares/settings.conf"
 require_file "installer/calamares/modules/sevenos.conf"
 require_file "seven-hub/gui/README.md"
 require_file "seven-hub/gui/package.json"
+require_file "seven-hub/gui/package-lock.json"
+require_file "seven-hub/gui/vite.config.js"
 require_file "seven-hub/gui/src/index.html"
 require_file "seven-hub/gui/src/main.js"
 require_file "seven-hub/gui/src/styles.css"
@@ -271,6 +274,16 @@ if "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null; then
   ok "Seven Control Center status works"
 else
   fail "Seven Control Center status failed"
+fi
+
+if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
+   grep -q 'data-panel="dashboard"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
+   grep -q 'data-section="profiles"' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
+   grep -q 'run_seven_command' "$ROOT_DIR/seven-hub/gui/src/main.js" &&
+   grep -q 'seven-window' "$ROOT_DIR/seven-hub/gui/src/styles.css"; then
+  ok "Seven Hub GUI behaves like a native Control Center foundation"
+else
+  fail "Seven Hub GUI should expose dashboard, profiles, actions and native backend snapshot"
 fi
 
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" open | grep -q 'xdg-open http://127.0.0.1:7787'; then

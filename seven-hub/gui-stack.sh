@@ -50,6 +50,8 @@ doctor() {
   for path in \
     "seven-hub/gui/README.md" \
     "seven-hub/gui/package.json" \
+    "seven-hub/gui/package-lock.json" \
+    "seven-hub/gui/vite.config.js" \
     "seven-hub/gui/src/index.html" \
     "seven-hub/gui/src/main.js" \
     "seven-hub/gui/src/styles.css" \
