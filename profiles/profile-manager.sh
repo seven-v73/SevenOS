@@ -6,6 +6,7 @@ source "$ROOT_DIR/scripts/lib.sh"
 
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
 STATE_FILE="$STATE_DIR/profile.env"
+STATE_JSON="$STATE_DIR/profile.json"
 
 json_escape() {
   python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
@@ -89,6 +90,30 @@ profile_accent() {
   esac
 }
 
+profile_apps() {
+  case "$1" in
+    forge) printf '%s\n' "kitty" "code" "helix" "docker" ;;
+    shield) printf '%s\n' "kitty" "wireshark" "burpsuite" "zaproxy" ;;
+    studio) printf '%s\n' "gimp" "krita" "inkscape" "blender" "kdenlive" ;;
+    windows) printf '%s\n' "bottles" "lutris" "virt-manager" ;;
+    horizon) printf '%s\n' "kitty" "podman" "caddy" ;;
+    baobab) printf '%s\n' "seven hub" "seven files" ;;
+    *) return 1 ;;
+  esac
+}
+
+profile_workspace_dirs() {
+  case "$1" in
+    forge) printf '%s\n' "Projects" "Sandboxes" "Containers" "Notes" ;;
+    shield) printf '%s\n' "Labs" "Reports" "Captures" "Wordlists" "Evidence" ;;
+    studio) printf '%s\n' "Images" "Video" "Audio" "3D" "Exports" "References" ;;
+    windows) printf '%s\n' "Bottles" "VMs" "Installers" "Shared" ;;
+    horizon) printf '%s\n' "Projects" "Deployments" "Services" "Logs" ;;
+    baobab) printf '%s\n' "Notes" "Backups" ;;
+    *) return 1 ;;
+  esac
+}
+
 profile_keys() {
   printf '%s\n' baobab forge shield studio windows horizon
 }
@@ -149,11 +174,17 @@ write_workspace_readme() {
 
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$workspace"
+    while IFS= read -r dir; do
+      printf 'mkdir -p %q\n' "$workspace/$dir"
+    done < <(profile_workspace_dirs "$key")
     printf 'write %q\n' "$workspace/README.md"
     return 0
   fi
 
   mkdir -p "$workspace"
+  while IFS= read -r dir; do
+    mkdir -p "$workspace/$dir"
+  done < <(profile_workspace_dirs "$key")
   cat > "$workspace/README.md" <<EOF
 # SevenOS $(profile_title "$key")
 
@@ -165,7 +196,32 @@ Useful commands:
 - seven profile show $key
 - seven profile activate $key
 - seven profile install $key
+- seven profile open $key
 EOF
+}
+
+write_profile_json() {
+  local key="$1"
+  if is_dry_run; then
+    printf 'write %q\n' "$STATE_JSON"
+    return 0
+  fi
+
+  python - "$key" "$(profile_title "$key")" "$(profile_description "$key")" "$(profile_workspace "$key")" "$(profile_accent "$key")" "$(profile_apps "$key" | paste -sd ',')" <<'PY' > "$STATE_JSON"
+import json
+import sys
+
+key, title, description, workspace, accent, apps = sys.argv[1:]
+payload = {
+    "key": key,
+    "title": title,
+    "description": description,
+    "workspace": workspace,
+    "accent": accent,
+    "apps": [item for item in apps.split(",") if item],
+}
+print(json.dumps(payload, indent=2))
+PY
 }
 
 activate_profile() {
@@ -178,6 +234,7 @@ activate_profile() {
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$STATE_DIR"
     printf 'write %q\n' "$STATE_FILE"
+    write_profile_json "$key"
     return 0
   fi
 
@@ -188,9 +245,30 @@ SEVENOS_PROFILE_TITLE="$(profile_title "$key")"
 SEVENOS_PROFILE_ACCENT="$(profile_accent "$key")"
 SEVENOS_PROFILE_WORKSPACE="$(profile_workspace "$key")"
 EOF
+  write_profile_json "$key"
 
   log_success "Active profile: $(profile_title "$key")"
   log_info "Workspace: $(profile_workspace "$key")"
+}
+
+open_profile() {
+  local key="${1:-$(active_profile)}"
+  local workspace
+  workspace="$(profile_workspace "$key")"
+  write_workspace_readme "$key"
+
+  if is_dry_run; then
+    printf 'seven-files open %q\n' "$workspace"
+    return 0
+  fi
+
+  if command -v seven-files >/dev/null 2>&1; then
+    seven-files open "$workspace"
+  elif [[ -x "$ROOT_DIR/bin/seven-files" ]]; then
+    "$ROOT_DIR/bin/seven-files" open "$workspace"
+  else
+    xdg-open "$workspace" >/dev/null 2>&1 || printf '%s\n' "$workspace"
+  fi
 }
 
 install_profile() {
@@ -249,6 +327,14 @@ status_json() {
     printf '"active":%s,' "$active_bool"
     printf '"workspace":%s,' "$(printf '%s' "$workspace" | json_escape)"
     printf '"accent":%s,' "$(profile_accent "$key" | json_escape)"
+    printf '"apps":['
+    local app_first=1 app
+    while IFS= read -r app; do
+      [[ "$app_first" -eq 1 ]] || printf ','
+      app_first=0
+      printf '%s' "$(printf '%s' "$app" | json_escape)"
+    done < <(profile_apps "$key")
+    printf '],'
     printf '"action":%s' "$(printf 'seven profile install %s' "$key" | json_escape)"
     printf '}'
   done < <(profile_keys)
@@ -282,6 +368,7 @@ Usage:
   seven profile show <profile>
   seven profile activate <profile>
   seven profile install <profile>
+  seven profile open [profile]
 
 Profiles:
   baobab   Base desktop and system foundation
@@ -317,6 +404,9 @@ case "$command" in
     profile="$1"
     shift
     install_profile "$profile" "$@"
+    ;;
+  open)
+    open_profile "${1:-$(active_profile)}"
     ;;
   -h|--help|help)
     usage

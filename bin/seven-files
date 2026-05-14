@@ -6,10 +6,31 @@ usage() {
 Seven Files
 
 Usage:
-  seven-files [open|menu|home|downloads|documents|projects|pictures|videos|music|trash|recent] [path]
+  seven-files [open|menu|profile|home|downloads|documents|projects|pictures|videos|music|trash|recent] [path]
 
 Seven Files opens the preferred graphical file manager with SevenOS fallbacks.
 EOF
+}
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/seven" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/SevenOS" "$HOME/Code/OS/SevenOS"; do
+    if [[ -x "$candidate/bin/seven" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
 }
 
 is_dry_run() {
@@ -107,6 +128,17 @@ EOF
   esac
 }
 
+open_profile_workspace() {
+  local root
+  root="$(resolve_root || true)"
+
+  if [[ -n "$root" ]]; then
+    SEVENOS_ROOT="$root" "$root/bin/seven" profile open "${1:-}" || return $?
+  else
+    open_path "$HOME"
+  fi
+}
+
 ensure_dirs
 
 action="${1:-open}"
@@ -118,6 +150,9 @@ case "$action" in
     ;;
   menu|places)
     menu
+    ;;
+  profile|workspace)
+    open_profile_workspace "$target"
     ;;
   home)
     open_path "$HOME"

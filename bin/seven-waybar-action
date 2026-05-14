@@ -121,6 +121,7 @@ run_profile_action() {
   case "$selected" in
     "Profile Status") run_terminal "SevenOS Profiles" "seven profile status" ;;
     "Native Profiles") run_detached seven-hub-native ;;
+    "Open Active Workspace") run_detached seven-files profile ;;
     "Open Profiles Hub") run_detached seven-hub Profiles ;;
     "Activate Forge") run_terminal "SevenOS Forge" "seven profile activate forge" ;;
     "Activate Shield") run_terminal "SevenOS Shield" "seven profile activate shield" ;;
@@ -199,7 +200,7 @@ show_menu() {
       run_system_action "$selected"
       ;;
     profile)
-      selected="$(open_rofi_menu "Profiles" "Profile Status" "Native Profiles" "Open Profiles Hub" "Activate Forge" "Activate Shield" "Activate Studio" "Install Forge" "Install Shield" "Install Studio" "SevenPkg Status")"
+      selected="$(open_rofi_menu "Profiles" "Profile Status" "Native Profiles" "Open Active Workspace" "Open Profiles Hub" "Activate Forge" "Activate Shield" "Activate Studio" "Install Forge" "Install Shield" "Install Studio" "SevenPkg Status")"
       run_profile_action "$selected"
       ;;
     security)

@@ -149,6 +149,8 @@ Les piliers du projet sont :
 - Les profils ne sont plus seulement des scripts d'installation : ils exposent maintenant un etat, un workspace, un accent, une activation et une sortie JSON exploitable par Seven Hub.
 - `seven profile status --json`, `seven profile show <profil>`, `seven profile activate <profil>` et `seven profile install <profil>` deviennent la base de la logique metier SevenOS.
 - Seven Hub lit maintenant les profils via `seven profile status --json` au lieu de dependre uniquement de `sevenpkg`.
+- L'activation d'un profil cree maintenant un workspace structure, un `profile.json` local et une liste d'apps metier.
+- `seven profile open <profil>` et `seven-files profile` ouvrent le workspace actif, avec raccourci Hyprland `Super+Ctrl+E`.
 
 ### Cybersecurite
 
@@ -194,7 +196,7 @@ Les piliers du projet sont :
 | Seven commands | 70% | Base solide, besoin de plus de robustesse |
 | SevenPkg | 65% | Wrapper utile, sorties JSON ajoutees, pas encore vrai package manager |
 | Seven Hub | 78% | Tauri prototype maintenu, premiere surface native GTK/libadwaita ajoutee, contrats JSON consolides |
-| Profils metiers | 64% | Etat, activation et workspaces ajoutes ; installation encore a rendre plus contextuelle |
+| Profils metiers | 69% | Etat, activation, workspaces structures, metadata apps et ouverture directe ajoutes |
 | Securite | 55% | Bonne direction, hardening a renforcer |
 | Windows Mode | 50% | Base technique, UX guidee manquante |
 | Serveur/deploy | 40% | Vision et scripts initiaux |
@@ -272,6 +274,7 @@ En place :
 - Gestionnaire central `profiles/profile-manager.sh`.
 - Etat `OK/PART/MISS` par profil.
 - Profil actif persistant dans `~/.config/sevenos/profile.env`.
+- Metadata active persistante dans `~/.config/sevenos/profile.json`.
 - Workspaces utilisateurs : `~/Forge`, `~/ShieldLab`, `~/Studio`, `~/WindowsMode`, `~/HorizonDeploy`.
 - Sortie JSON stable pour Seven Hub.
 

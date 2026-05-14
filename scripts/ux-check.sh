@@ -209,10 +209,19 @@ fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
    grep -q 'Native Profiles' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'Open Active Workspace' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'seven profile activate forge' "$ROOT_DIR/bin/seven-waybar-action"; then
   ok "Waybar profile indicator uses live SevenOS profile state"
 else
   fail "Waybar profile indicator should use live SevenOS profile state"
+fi
+
+if SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate forge | grep -q 'profile.json' &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | grep -q '"apps"' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" open forge | grep -q 'seven-files open'; then
+  ok "SevenOS profile activation creates live workspaces and app metadata"
+else
+  fail "SevenOS profile activation should create workspaces and app metadata"
 fi
 
 if grep -q 'exec-once = seven-session' "$ROOT_DIR/hyprland/hyprland.conf"; then
@@ -231,6 +240,7 @@ fi
 if grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod CTRL, E, exec, seven-files profile' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'apps.rasi' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland exposes discoverable Hub, Apps and Help shortcuts"
