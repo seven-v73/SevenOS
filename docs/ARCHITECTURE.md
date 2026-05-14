@@ -66,6 +66,9 @@ Rules:
 - `seven experience --json` is the OS coherence contract. It scores whether
   identity, shell, Hub, profiles, actions, Windows, security, server and
   installer feel connected enough for a normal user.
+- `seven shield status --json` and `seven server status --json` expose trust
+  and local API readiness directly, so the Hub does not infer critical state
+  from generic status text.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
@@ -167,12 +170,14 @@ seven ecosystem --json
 seven experience
 seven experience --json
 seven profile forge
+seven shield status
 seven shield audit
 seven windows status
 seven windows guide
 seven windows apps
 seven windows vm
 seven server status
+seven server status --json
 seven deploy plan .
 seven repair ux --apply
 ```

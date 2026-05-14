@@ -266,6 +266,8 @@ seven ecosystem --json
 seven ecosystem roadmap
 seven experience
 seven experience --json
+seven shield status
+seven shield status --json
 seven readiness
 seven phase-gate
 seven repair
@@ -382,12 +384,14 @@ seven phase-gate
 seven ecosystem
 seven ecosystem roadmap
 seven server status
+seven server status --json
 seven deploy ./my-project
 seven improve
 seven doctor
 seven profile forge
 seven profile list
 seven profile status
+seven shield status
 seven shield audit
 seven files
 seven files menu

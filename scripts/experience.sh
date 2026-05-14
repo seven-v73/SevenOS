@@ -77,18 +77,22 @@ check_rows() {
   printf 'Windows Mode\t%s\tGuided Bottles/Wine/KVM path with status JSON\tseven windows guide\n' "$state"
 
   state="MISS"
-  if pacman -Q ufw firejail bubblewrap >/dev/null 2>&1; then
+  if SEVENOS_DRY_RUN=0 "$ROOT_DIR/security/shield-status.sh" --json 2>/dev/null | python -m json.tool >/dev/null; then
     state="PART"
-    systemctl is-active --quiet ufw.service 2>/dev/null && state="OK"
+    if SEVENOS_DRY_RUN=0 "$ROOT_DIR/security/shield-status.sh" --json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("posture") == "trusted" else 1)' >/dev/null; then
+      state="OK"
+    fi
   fi
-  printf 'Security\t%s\tFirewall, sandbox and Shield audit are ready\tseven improve security --apply\n' "$state"
+  printf 'Security\t%s\tFirewall, sandbox and Shield audit are ready\tseven shield status\n' "$state"
 
   state="MISS"
-  if [[ -x "$ROOT_DIR/server/seven-server.sh" && -x "$ROOT_DIR/server/seven-deploy.sh" ]]; then
+  if SEVENOS_DRY_RUN=0 "$ROOT_DIR/server/seven-server.sh" status --json 2>/dev/null | python -m json.tool >/dev/null; then
     state="PART"
-    systemctl --user is-active --quiet seven-server.service 2>/dev/null && state="OK"
+    if SEVENOS_DRY_RUN=0 "$ROOT_DIR/server/seven-server.sh" status --json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("service", {}).get("state") == "RUN" else 1)' >/dev/null; then
+      state="OK"
+    fi
   fi
-  printf 'Server\t%s\tLocal API and deployment planner are available\tseven server install-user-service\n' "$state"
+  printf 'Server\t%s\tLocal API and deployment planner are available\tseven server status\n' "$state"
 
   state="MISS"
   if [[ -s "$ROOT_DIR/installer/calamares/settings.conf" && -s "$ROOT_DIR/sevenos.dotinst" ]]; then

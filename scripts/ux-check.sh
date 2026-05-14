@@ -134,6 +134,7 @@ require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/experience.sh"
+require_executable "security/shield-status.sh"
 require_executable "scripts/manifest.sh"
 require_executable "scripts/package-plan.sh"
 require_executable "scripts/migrate.sh"
@@ -451,6 +452,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def experience_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def shield_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def server_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -485,6 +488,8 @@ ecosystem_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ecosystem --json)"
 ecosystem_processes="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" processes)"
 ecosystem_summary="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary)"
 experience_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" experience --json)"
+shield_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield status --json)"
+server_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" server status --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
@@ -492,13 +497,17 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json | python -m json.tool >/dev/null &&
    python -m json.tool <<<"$ecosystem_json" >/dev/null &&
    python -m json.tool <<<"$experience_json" >/dev/null &&
+   python -m json.tool <<<"$shield_json" >/dev/null &&
+   python -m json.tool <<<"$server_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
+   grep -q '"schema": "sevenos.shield.v1"' <<<"$shield_json" &&
+   grep -q '"schema":"sevenos.server.v1"' <<<"$server_json" &&
    grep -q '"processes"' <<<"$ecosystem_json" &&
    grep -q 'SevenOS All-In-One Process Map' <<<"$ecosystem_processes" &&
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","windows","ecosystem","experience"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","windows","shield","server","ecosystem","experience"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -593,6 +602,8 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md"; then
   ok "Seven Server exposes live state API endpoints"

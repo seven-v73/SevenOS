@@ -60,6 +60,12 @@ printf ','
 printf '"windows":'
 json_or_null "$ROOT_DIR/bin/seven-windows-assistant" status --json
 printf ','
+printf '"shield":'
+json_or_null "$ROOT_DIR/security/shield-status.sh" --json
+printf ','
+printf '"server":'
+json_or_null "$ROOT_DIR/server/seven-server.sh" status --json
+printf ','
 printf '"readiness":'
 json_or_null "$ROOT_DIR/scripts/readiness.sh" --json
 printf ','

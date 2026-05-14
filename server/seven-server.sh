@@ -8,6 +8,7 @@ HOST="${SEVENOS_SERVER_HOST:-127.0.0.1}"
 PORT="${SEVENOS_SERVER_PORT:-7777}"
 UNIT_DIR="$HOME/.config/systemd/user"
 UNIT_FILE="$UNIT_DIR/seven-server.service"
+JSON_OUTPUT=0
 
 usage() {
   cat <<'EOF'
@@ -19,6 +20,7 @@ Usage:
 
 Actions:
   status                Show local server and deployment readiness
+  status --json         Show machine-readable server readiness
   doctor                Check server dependencies
   serve                 Run the local SevenOS API on 127.0.0.1:7777
   install-user-service  Install a user systemd service for seven-server
@@ -30,6 +32,10 @@ Environment:
   SEVENOS_SERVER_HOST   Bind host, default 127.0.0.1
   SEVENOS_SERVER_PORT   Bind port, default 7777
 EOF
+}
+
+json_string() {
+  python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
 }
 
 command_state() {
@@ -52,6 +58,52 @@ service_state() {
 }
 
 status() {
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    local service go_state podman_state caddy_state jq_state deploy_state bind_state
+    service="$(service_state)"
+    go_state="$(command_state go)"
+    podman_state="$(command_state podman)"
+    caddy_state="$(command_state caddy)"
+    jq_state="$(command_state jq)"
+    deploy_state="$([[ -x "$ROOT_DIR/server/seven-deploy.sh" ]] && printf OK || printf MISS)"
+    bind_state="LOCAL"
+    [[ "$HOST" != "127.0.0.1" && "$HOST" != "localhost" ]] && bind_state="EXPOSED"
+
+    printf '{'
+    printf '"schema":"sevenos.server.v1",'
+    printf '"bind":{"host":%s,"port":%s,"state":%s},' \
+      "$(printf '%s' "$HOST" | json_string)" \
+      "$(printf '%s' "$PORT" | json_string)" \
+      "$(printf '%s' "$bind_state" | json_string)"
+    printf '"service":{"name":"seven-server.service","state":%s},' "$(printf '%s' "$service" | json_string)"
+    printf '"dependencies":['
+    printf '{"key":"go","state":%s},' "$(printf '%s' "$go_state" | json_string)"
+    printf '{"key":"podman","state":%s},' "$(printf '%s' "$podman_state" | json_string)"
+    printf '{"key":"caddy","state":%s},' "$(printf '%s' "$caddy_state" | json_string)"
+    printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
+    printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
+    printf '],'
+    printf '"endpoints":["/health","/state","/status","/profiles","/monitor/system","/readiness","/manifest","/actions","/experience","/shield"],'
+    printf '"recommendations":['
+    local first=1
+    if [[ "$service" != "RUN" ]]; then
+      printf '{"command":"seven server install-user-service","reason":"Install the local API user service"}'
+      first=0
+    fi
+    if [[ "$service" == "READY" ]]; then
+      [[ "$first" -eq 1 ]] || printf ','
+      printf '{"command":"seven server start","reason":"Start the local API user service"}'
+      first=0
+    fi
+    if [[ "$go_state" != OK || "$podman_state" != OK || "$caddy_state" != OK || "$jq_state" != OK ]]; then
+      [[ "$first" -eq 1 ]] || printf ','
+      printf '{"command":"seven improve deployment --apply","reason":"Install server and deployment dependencies"}'
+    fi
+    printf ']'
+    printf '}\n'
+    return 0
+  fi
+
   printf 'SevenOS Server Status\n'
   printf '=====================\n'
   printf 'API bind:     %s:%s\n' "$HOST" "$PORT"
@@ -158,6 +210,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "scripts/manifest.sh"), "summary-json"]))
         elif self.path == "/actions":
             self.send_json(command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"]))
+        elif self.path == "/experience":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"]))
+        elif self.path == "/shield":
+            self.send_json(command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"]))
         else:
             self.send_json({"ok": False, "error": "not found"}, status=404)
 
@@ -203,6 +259,14 @@ EOF
 }
 
 action="${1:-status}"
+shift || true
+for arg in "$@"; do
+  case "$arg" in
+    --json|json) JSON_OUTPUT=1 ;;
+    -h|--help|help) usage; exit 0 ;;
+    *) log_error "Unknown server option: $arg"; usage; exit 1 ;;
+  esac
+done
 case "$action" in
   status) status ;;
   doctor) doctor ;;

@@ -100,10 +100,26 @@ def experience_payload() -> dict:
         return {"schema": "sevenos.experience.v1", "score": 0, "max": 0, "percent": 0, "checks": []}
 
 
+def shield_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "security" / "shield-status.sh"), "--json"))
+    except Exception:
+        return {"schema": "sevenos.shield.v1", "posture": "unknown", "percent": 0, "checks": []}
+
+
+def server_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "server" / "seven-server.sh"), "status", "--json"))
+    except Exception:
+        return {"schema": "sevenos.server.v1", "service": {"state": "MISS"}, "dependencies": []}
+
+
 def status_text() -> str:
     profiles = profile_payload()
     ecosystem = ecosystem_payload()
     experience = experience_payload()
+    shield = shield_payload()
+    server = server_payload()
     active = next((item for item in profiles if item.get("active")), None)
     ready = sum(1 for item in profiles if item.get("state") == "OK")
     partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -117,6 +133,8 @@ def status_text() -> str:
         f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
         f"Ecosystem: {active_modules} active, {preview_modules} preview, {len(ecosystem.get('processes', []))} processes\n"
         f"Experience: {experience.get('percent', 0)}% ({experience.get('score', 0)}/{experience.get('max', 0)})\n"
+        f"Shield: {shield.get('posture', 'unknown')} ({shield.get('percent', 0)}%)\n"
+        f"Server: {server.get('service', {}).get('state', 'MISS')}\n"
     )
 
 
@@ -264,6 +282,8 @@ def run_gui() -> int:
                 profiles = profile_payload()
                 ecosystem = ecosystem_payload()
                 experience = experience_payload()
+                shield = shield_payload()
+                server = server_payload()
                 active = next((item for item in profiles if item.get("active")), None)
                 ready = sum(1 for item in profiles if item.get("state") == "OK")
                 partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -277,6 +297,8 @@ def run_gui() -> int:
                 for title_text, subtitle in (
                     ("Readiness", f"{readiness.get('percent', 0)}% · {readiness.get('score', 0)}/{readiness.get('max', 0)} checks passed"),
                     ("Experience", f"{experience.get('percent', 0)}% · {experience.get('score', 0)}/{experience.get('max', 0)} coherence score"),
+                    ("Shield", f"{shield.get('posture', 'unknown')} · {shield.get('percent', 0)}% trust posture"),
+                    ("Server", f"{server.get('service', {}).get('state', 'MISS')} · local API service"),
                     ("Active profile", active.get("title") if active else "No active profile yet"),
                     ("Profiles", f"{ready} OK · {partial} PART · {missing} MISS"),
                     ("Ecosystem", f"{active_modules} active modules · {preview_modules} preview · {len(ecosystem.get('processes', []))} processes"),

@@ -48,7 +48,8 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Actions | safe and state-changing OS actions | `seven actions --json` |
 | Ecosystem | modules, maturity and all-in-one user flows | `seven ecosystem --json` |
 | Apps | packages, metapackages, Flatpak bridge | `sevenpkg status --json` |
-| Security | Shield, firewall, sandbox, Cyber Lab | `seven status --json` |
+| Security | Shield, firewall, sandbox, Cyber Lab | `seven shield status --json` |
+| Server | local API, user service, deployment endpoints | `seven server status --json` |
 | Windows | Wine, Bottles, KVM, VM state | `seven windows status --json` |
 | System | theme, session, updates, logs | `seven status --json` |
 | Files | workspace shortcuts and file manager actions | `seven profile current --json` |

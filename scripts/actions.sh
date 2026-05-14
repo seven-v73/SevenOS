@@ -47,6 +47,7 @@ profile.studio	Profiles	Install Studio	seven profile install studio	packages	Ins
 profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install Windows compatibility tooling.
 profile.horizon	Profiles	Install Horizon	seven profile install horizon	packages	Install server and deployment tooling.
 security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, sandbox and cyber tooling.
+security.status	Security	Shield Status	seven shield status	safe	Show firewall, sandbox and Shield trust posture.
 security.enable	Security	Enable Shield	seven shield enable	changes	Apply base SevenOS security hardening.
 security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
@@ -57,6 +58,8 @@ windows.vm	Windows	Windows VM	seven windows vm	safe	Open Virt Manager for the Wi
 windows.create	Windows	Create Windows VM	seven windows create	packages	Start the guided Windows VM creation command.
 windows.start	Windows	Start Windows VM	seven windows start	changes	Start the SevenOS Windows virtual machine.
 server.status	Server	Server Status	seven server status	safe	Check the local SevenOS API service.
+server.install	Server	Install Server Service	seven server install-user-service	changes	Install the local SevenOS API user service.
+server.start	Server	Start Server Service	seven server start	changes	Start the local SevenOS API user service.
 deploy.plan	Server	Deployment Plan	seven deploy plan .	safe	Detect and plan deployment for the current project.
 installer.status	Installer	Installer Status	seven installer status	safe	Check Calamares and ISO foundations.
 flatpak.status	Apps	Flatpak Status	seven flatpak status	safe	Check Flathub and Flatpak readiness.

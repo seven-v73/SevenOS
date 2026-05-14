@@ -25,7 +25,8 @@
         "bin/seven-windows-assistant",
         "scripts/experience.sh",
         "scripts/status.sh",
-        "scripts/state.sh"
+        "scripts/state.sh",
+        "security/shield-status.sh"
       ]
     },
     {

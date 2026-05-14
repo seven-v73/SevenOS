@@ -61,6 +61,7 @@ bash -n \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
   "$ROOT_DIR/security/hardening.sh" \
+  "$ROOT_DIR/security/shield-status.sh" \
   "$ROOT_DIR/security/cyber-audit.sh" \
   "$ROOT_DIR/security/cyber-lab.sh" \
   "$ROOT_DIR/security/blackarch.sh" \
@@ -299,6 +300,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" --json >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/security/shield-status.sh" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" summary-json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" restore-plan >/dev/null
@@ -315,6 +317,7 @@ SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate backup >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" doctor >/dev/null || true
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" install-user-service >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" detect "$ROOT_DIR" >/dev/null
@@ -357,6 +360,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem roadmap >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run experience >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run experience --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run phase-gate >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --json >/dev/null
@@ -368,6 +373,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run repair >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run repair security --apply --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run doctor fix deployment >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run deploy detect "$ROOT_DIR" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run deploy plan "$ROOT_DIR" >/dev/null
