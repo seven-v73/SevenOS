@@ -25,6 +25,13 @@ resolve_root() {
 ROOT_DIR="$(resolve_root)"
 THEME="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/quick-settings.rasi"
 
+clean_selection() {
+  local selected="$1"
+  selected="${selected#*  }"
+  selected="${selected%%    *}"
+  printf '%s\n' "$selected"
+}
+
 run_detached() {
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf '%q ' "$@"
@@ -51,16 +58,16 @@ run_terminal() {
 
 menu() {
   cat <<'EOF'
-Control Center       Dashboard and system state
-Apps Overview        Launch installed applications
-Window Overview      Switch open windows
-Network Settings     Wi-Fi, Ethernet and connections
-Audio Mixer          Volume and PipeWire controls
-Wallpaper Refresh    Rebuild SevenOS wallpaper
-Profile Workspace    Open active profile files
-Migration Plan       Protected upgrade state
-System Monitor       CPU, memory and processes
-Power Menu           Lock, reboot and shutdown
+󰒓  Control Center
+󰀻  Apps Overview
+󰖲  Window Overview
+󰤨  Network Settings
+󰕾  Audio Mixer
+󰸉  Wallpaper Refresh
+󰉋  Profile Workspace
+󰁯  Migration Plan
+󰍛  System Monitor
+󰐥  Power Menu
 EOF
 }
 
@@ -75,6 +82,7 @@ if ! command -v rofi >/dev/null 2>&1; then
 fi
 
 selected="$(menu | rofi -dmenu -i -p "SevenOS" -mesg "Quick Settings" -theme "$THEME" 2>/dev/null || true)"
+selected="$(clean_selection "$selected")"
 
 case "$selected" in
   "Control Center"*) run_detached seven hub ;;

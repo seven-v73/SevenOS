@@ -5,38 +5,38 @@ window {
   anchor: northeast;
   x-offset: -14px;
   y-offset: 46px;
-  width: 390px;
+  width: 360px;
   border: 1px;
   border-color: @gold-dim;
-  border-radius: 22px;
+  border-radius: 24px;
   background-color: @surface-1;
 }
 
 mainbox {
-  padding: 18px;
-  spacing: 12px;
+  padding: 16px;
+  spacing: 11px;
   background-color: @surface-1;
   children: [ message, inputbar, listview ];
 }
 
 message {
-  padding: 0px 0px 12px 0px;
-  border: 0px 0px 4px 0px;
+  padding: 0px 0px 11px 0px;
+  border: 0px 0px 3px 0px;
   border-color: @gold;
   background-color: transparent;
 }
 
 textbox {
   text-color: @gold-bright;
-  font: "Cormorant Garamond Italic 22";
+  font: "Cormorant Garamond Italic 21";
 }
 
 inputbar {
-  padding: 11px 13px;
+  padding: 10px 12px;
   border: 1px;
   border-color: @glass-border-2;
-  border-radius: 12px;
-  background-color: @surface-3;
+  border-radius: 16px;
+  background-color: @surface-2;
   children: [ prompt, textbox-prompt-colon, entry ];
 }
 
@@ -55,22 +55,22 @@ entry {
 
 listview {
   lines: 10;
-  spacing: 7px;
+  spacing: 8px;
   fixed-height: true;
   background-color: transparent;
 }
 
 element {
-  padding: 12px 13px;
+  padding: 13px 14px;
   border: 1px;
-  border-radius: 12px;
+  border-radius: 16px;
   border-color: @glass-border;
-  background-color: @surface-2;
+  background-color: @surface-1;
   text-color: @text-1;
 }
 
 element selected {
-  background-color: @gold;
+  background-color: @gold-bright;
   border-color: @gold-bright;
   text-color: @ebene;
 }
@@ -81,5 +81,5 @@ element alternate {
 
 element-text {
   text-color: inherit;
-  font: "DM Sans 13";
+  font: "JetBrains Mono Medium 13";
 }

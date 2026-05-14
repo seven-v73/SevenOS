@@ -194,7 +194,8 @@ if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'columns: 6' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'background-color: @surface-3' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'content: "SevenOS"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -RE '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi" >/dev/null &&
    grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'icon_theme=Papirus' "$ROOT_DIR/hyprland/qt6ct/qt6ct.conf"; then
@@ -296,7 +297,9 @@ if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
    [[ "$overview_search_output" == *"rofi"* ]] &&
    [[ "$apps_output" == *"seven-apps catalog"* ]] &&
    [[ "$apps_output" == *"desktop icon metadata"* ]] &&
-   [[ "$quick_settings_output" == *"Control Center"* ]]; then
+   [[ "$quick_settings_output" == *"󰒓  Control Center"* ]] &&
+   grep -q 'clean_selection' "$ROOT_DIR/bin/seven-quick-settings" &&
+   grep -q 'clean_selection' "$ROOT_DIR/bin/seven-power"; then
   ok "SevenOS Shell exposes GNOME-like overview, quick settings and polished window rules"
 else
   fail "SevenOS Shell GNOME-like interface layer is incomplete"

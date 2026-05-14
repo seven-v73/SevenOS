@@ -154,13 +154,33 @@ open_apps() {
   python - "$catalog_file" > "$menu_file" <<'PY'
 import sys
 
+def fallback_icon(categories):
+    cats = {item for item in categories.split(";") if item}
+    if "Development" in cats:
+        return "applications-development"
+    if "Graphics" in cats or "AudioVideo" in cats:
+        return "applications-graphics"
+    if "Network" in cats:
+        return "applications-internet"
+    if "System" in cats or "Settings" in cats:
+        return "preferences-system"
+    if "Utility" in cats:
+        return "applications-utilities"
+    if "Game" in cats:
+        return "applications-games"
+    if "Office" in cats:
+        return "applications-office"
+    return "application-x-executable"
+
 with open(sys.argv[1], "r", encoding="utf-8", errors="replace") as handle:
     for line in handle:
         parts = line.rstrip("\n").split("\t")
         if len(parts) < 6:
             continue
         name, desktop_id, _path, _comment, _categories, icon = parts[:6]
-        label = f"{name}    {desktop_id}"
+        if not icon or icon == "application-x-executable":
+            icon = fallback_icon(_categories)
+        label = name
         print(f"{label}\0icon\x1f{icon}")
 PY
 

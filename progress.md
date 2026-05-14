@@ -155,6 +155,7 @@ Les piliers du projet sont :
 - Les actions du Hub natif ouvrent maintenant un terminal visible pour les details, installations et actions systeme, afin d'eviter les boutons silencieux qui semblent decoratifs.
 - `seven-hub doctor` audite le cablage des actions par categorie et detecte les entrees de menu qui ne menent a rien.
 - Passage UI icon-first inspire par les references ML4W, GeoDots et end-4 : Waybar devient plus compacte, le Hub Rofi affiche icone + etat plutot que de longues phrases, et le Hub natif utilise des boutons symboliques avec tooltips.
+- Approfondissement du shell SevenOS : Launchpad nettoye des identifiants `.desktop`, fallback d'icones par categorie, Quick Settings et Power Menu en lignes icon-first, panneaux Rofi plus arrondis et plus proches d'un control surface OS.
 
 ### Gestion fichiers
 

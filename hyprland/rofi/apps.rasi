@@ -3,38 +3,38 @@
 
 window {
   fullscreen: true;
-  padding: 34px;
+  padding: 30px;
   border: 0px;
   border-radius: 0px;
   background-color: @surface-0;
 }
 
 mainbox {
-  padding: 24px;
-  spacing: 22px;
+  padding: 22px;
+  spacing: 20px;
   background-color: transparent;
   children: [ textbox, inputbar, listview ];
 }
 
 textbox {
-  margin: 4px 9% 0px 9%;
-  padding: 0px 0px 14px 0px;
-  border: 0px 0px 1px 0px;
+  margin: 4px 12% 0px 12%;
+  padding: 0px 0px 12px 0px;
+  border: 0px 0px 3px 0px;
   border-color: @gold-dim;
   text-color: @gold-bright;
-  font: "Cormorant Garamond Italic 32";
-  content: "SevenOS Apps";
+  font: "Cormorant Garamond Italic 30";
+  content: "SevenOS";
   horizontal-align: 0.5;
 }
 
 inputbar {
-  margin: 0px 34% 0px 34%;
-  padding: 11px 15px;
+  margin: 0px 36% 0px 36%;
+  padding: 10px 15px;
   spacing: 8px;
   border: 1px;
-  border-radius: 14px;
+  border-radius: 18px;
   border-color: @glass-border-2;
-  background-color: @surface-3;
+  background-color: @surface-1;
   children: [ icon-search, entry ];
 }
 
@@ -59,8 +59,8 @@ entry {
 }
 
 listview {
-  margin: 34px 8% 0px 8%;
-  spacing: 30px;
+  margin: 32px 10% 0px 10%;
+  spacing: 28px;
   lines: 3;
   columns: 6;
   fixed-height: true;
@@ -75,18 +75,18 @@ element-icon {
 }
 
 element {
-  padding: 18px 14px;
-  spacing: 10px;
+  padding: 17px 12px;
+  spacing: 9px;
   orientation: vertical;
   border: 1px;
-  border-radius: 20px;
+  border-radius: 22px;
   border-color: @glass-border-2;
-  background-color: @surface-3;
+  background-color: @surface-1;
   text-color: @text-1;
 }
 
 element selected {
-  background-color: @gold;
+  background-color: @gold-bright;
   border-color: @gold-bright;
   text-color: @ebene;
 }
@@ -97,7 +97,7 @@ element alternate {
 }
 
 element-icon {
-  size: 72px;
+  size: 76px;
   horizontal-align: 0.5;
   margin: 0px;
 }

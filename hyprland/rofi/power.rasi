@@ -1,22 +1,49 @@
 @theme "sevenos.rasi"
 
 window {
-  width: 32%;
-  border-color: #c4673a;
+  width: 26%;
+  border: 1px;
+  border-radius: 26px;
+  border-color: @clay;
   background-color: @surface-1;
+}
+
+mainbox {
+  padding: 18px;
+  spacing: 12px;
+  background-color: @surface-1;
+  children: [ message, listview ];
+}
+
+message {
+  padding: 0px 0px 12px 0px;
+  border: 0px 0px 3px 0px;
+  border-color: @clay;
+  background-color: transparent;
+}
+
+textbox {
+  text-color: @clay;
+  font: "Cormorant Garamond Italic 22";
 }
 
 listview {
   lines: 5;
+  spacing: 9px;
 }
 
-entry {
-  placeholder: "Seven Power";
+element {
+  padding: 14px 15px;
+  border: 1px;
+  border-radius: 18px;
+  border-color: @glass-border;
+  background-color: @surface-1;
+  text-color: @text-1;
 }
 
-message {
-  background-color: @surface-2;
-  border-color: @clay;
+element-text {
+  text-color: inherit;
+  font: "JetBrains Mono Medium 14";
 }
 
 element selected {

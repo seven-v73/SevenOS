@@ -28,6 +28,13 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root)"
 
+clean_selection() {
+  local selected="$1"
+  selected="${selected#*  }"
+  selected="${selected%%    *}"
+  printf '%s\n' "$selected"
+}
+
 run_action() {
   local action="$1"
 
@@ -70,7 +77,7 @@ run_action() {
 
 select_action() {
   local menu
-  menu=$'Lock    Keep session private\nSuspend    Sleep this machine\nLogout    Exit Hyprland session\nReboot    Restart system\nPower Off    Shut down system'
+  menu=$'󰍁  Lock\n󰒲  Suspend\n󰍃  Logout\n󰜉  Reboot\n󰐥  Power Off'
 
   if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
     printf '%s\n' "$menu" | rofi -dmenu -i -p "$title" -mesg "SevenOS power controls" -theme "$ROOT_DIR/hyprland/rofi/power.rasi" 2>/dev/null || true
@@ -85,7 +92,7 @@ select_action() {
 selected="${1:-}"
 if [[ -z "$selected" ]]; then
   selected="$(select_action)"
-  selected="${selected%%    *}"
+  selected="$(clean_selection "$selected")"
 fi
 
 case "$selected" in
