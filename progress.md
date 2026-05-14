@@ -174,6 +174,7 @@ Les piliers du projet sont :
 - Consolidation Trust/Server : ajout de `seven shield status --json`, `seven server status --json`, endpoints `/experience` et `/shield`, et integration de `shield`/`server` dans `seven state --json`.
 - Ajout de `seven control` / `seven control --json` : plan d'actions priorise qui fusionne readiness, experience, Shield, Server et profils pour guider Seven Hub comme un vrai centre de decision OS.
 - Ajout de `seven control apply` : preview executable des corrections prioritaires, non destructif par defaut, avec execution explicite uniquement via `--apply`.
+- `seven state --json` embarque maintenant `control`, afin que les futures surfaces Seven Hub/Server lisent les priorites OS depuis un snapshot unique.
 
 ### Gestion fichiers
 

@@ -512,7 +512,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","windows","shield","server","ecosystem","experience"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"manifest","active_profile","windows","shield","server","ecosystem","experience","control"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"

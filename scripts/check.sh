@@ -368,6 +368,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run experience --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run control >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run control --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run control apply --limit 2 >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run control apply --safe-only --limit 2 >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run phase-gate >/dev/null

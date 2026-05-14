@@ -50,7 +50,9 @@ Rules:
   (`seven status --json`, `seven profile status --json`, `seven readiness --json`)
   instead of scraping human terminal output.
 - `seven state --json` is the unified machine snapshot for native UI,
-  automation and future Seven Server endpoints.
+  automation and future Seven Server endpoints. It includes Control Plane
+  priorities so UI surfaces can show the next best actions without recomputing
+  decisions locally.
 - `seven actions --json` is the shared action registry for Seven Hub, Waybar,
   Quick Settings and future native surfaces. UI code should prefer action IDs
   over hardcoded command strings when possible.

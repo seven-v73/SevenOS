@@ -81,6 +81,9 @@ printf ','
 printf '"experience":'
 json_or_null "$ROOT_DIR/scripts/experience.sh" --json
 printf ','
+printf '"control":'
+json_or_null "$ROOT_DIR/scripts/control-plane.sh" --json
+printf ','
 printf '"actions":'
 json_or_null "$ROOT_DIR/scripts/actions.sh" --json
 printf ','
