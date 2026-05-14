@@ -44,7 +44,7 @@ reload_desktop_session() {
   if is_dry_run; then
     printf 'hyprctl reload\n'
     printf 'pkill -x waybar hyprpaper mako || true\n'
-    printf 'waybar >/tmp/sevenos-waybar.log 2>&1 &\n'
+    printf 'waybar -c %q -s %q >/tmp/sevenos-waybar.log 2>&1 &\n' "$CONFIG_HOME/waybar/config.jsonc" "$CONFIG_HOME/waybar/style.css"
     printf 'hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &\n'
     printf 'mako >/tmp/sevenos-mako.log 2>&1 &\n'
     return 0
@@ -59,7 +59,7 @@ reload_desktop_session() {
     pkill -x hyprpaper >/dev/null 2>&1 || true
     pkill -x mako >/dev/null 2>&1 || true
     if command -v waybar >/dev/null 2>&1; then
-      waybar >/tmp/sevenos-waybar.log 2>&1 &
+      waybar -c "$CONFIG_HOME/waybar/config.jsonc" -s "$CONFIG_HOME/waybar/style.css" >/tmp/sevenos-waybar.log 2>&1 &
     fi
     if command -v hyprpaper >/dev/null 2>&1; then
       hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &

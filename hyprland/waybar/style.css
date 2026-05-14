@@ -10,15 +10,15 @@
 window#waybar {
   background: rgba(9, 9, 13, 0.92);
   color: #f0ede6;
-  border-bottom: 1px solid #ffffff14;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 #workspaces {
   padding: 0 5px;
   margin: 5px 4px;
   border-radius: 10px;
-  background: #ffffff08;
-  border: 1px solid #ffffff14;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 #workspaces button {
@@ -60,8 +60,8 @@ window#waybar {
   padding: 0 11px;
   margin: 5px 3px;
   border-radius: 10px;
-  background: #ffffff08;
-  border: 1px solid #ffffff14;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 #custom-sevenos {
@@ -75,7 +75,7 @@ window#waybar {
 #custom-apps,
 #custom-files {
   color: #f0ede6;
-  background: #ffffff0f;
+  background: rgba(255, 255, 255, 0.06);
   border-color: rgba(200, 169, 110, 0.22);
   font-weight: 500;
 }
@@ -89,7 +89,7 @@ window#waybar {
 
 #clock {
   color: #e2c07a;
-  background: #ffffff08;
+  background: rgba(255, 255, 255, 0.03);
   border-color: rgba(200, 169, 110, 0.22);
 }
 

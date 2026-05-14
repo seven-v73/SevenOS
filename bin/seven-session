@@ -27,6 +27,7 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root)"
 export SEVENOS_ROOT="$ROOT_DIR"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 log() {
   printf '[seven-session] %s\n' "$*"
@@ -63,7 +64,7 @@ else
   start_once hyprpaper hyprpaper
 fi
 
-start_once waybar waybar
+start_once waybar waybar -c "$CONFIG_HOME/waybar/config.jsonc" -s "$CONFIG_HOME/waybar/style.css"
 start_once mako mako
 
 if ! pgrep -f 'swayidle .*swaylock' >/dev/null 2>&1 && command -v swayidle >/dev/null 2>&1; then

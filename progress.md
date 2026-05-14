@@ -1,0 +1,322 @@
+# SevenOS Progress
+
+Derniere mise a jour : 2026-05-14
+
+Ce document suit l'evolution de SevenOS : ce qui est deja en place, le niveau actuel du projet, les ameliorations recentes, et les prochaines etapes pour le faire passer d'une base Arch personnalisee a un vrai systeme d'exploitation coherent.
+
+## Niveau Actuel
+
+SevenOS est actuellement au niveau :
+
+```text
+Foundation OS / Developer Preview
+```
+
+Cela signifie que SevenOS n'est plus seulement une idee ou un theme Arch. Le projet possede deja une architecture de distribution, une identite visuelle, des scripts d'installation, des profils metiers, un debut de Control Center, une couche Windows, une base ISO, une couche serveur et un gestionnaire logiciel maison.
+
+Le projet n'est pas encore au niveau :
+
+```text
+Stable Public Distribution
+```
+
+Pour y arriver, les priorites restantes sont : installateur graphique reel, Seven Hub complet, ISO testable proprement, profils metiers plus robustes, securite active par defaut, et meilleure integration entre tous les composants.
+
+## Vision Produit
+
+SevenOS vise a devenir un OS Linux afro-futuriste, souverain, fluide et modulaire.
+
+Le positionnement est clair :
+
+```text
+Un ecosysteme Linux moderne pour creer, developper, securiser, deployer et utiliser Windows quand c'est necessaire.
+```
+
+Les piliers du projet sont :
+
+- Performance : base Arch, Hyprland, composants legers.
+- UX premium : Design System v1, surfaces liquid glass, coherence visuelle.
+- Compatibilite : Wine, Bottles, Lutris, KVM/QEMU, VirtIO.
+- Simplicite : commandes `seven` et `sevenpkg`.
+- Securite : Shield mode, hardening, sandbox, Cyber Lab.
+- Profils metiers : Forge, Shield, Studio, Windows, Server.
+- Ecosysteme : Seven Hub, Seven Server, Seven Deploy, SevenRepo futur.
+
+## Ameliorations Deja Appliquees
+
+### Architecture projet
+
+- Structure modulaire du depot creee.
+- Separation claire entre `bin/`, `scripts/`, `profiles/`, `security/`, `vm/`, `server/`, `sevenpkg/`, `seven-hub/`, `identity/`, `branding/`, `installer/` et `archiso/`.
+- Ajout des documents de vision, architecture, UX, criteres OS, deploiement et test machine.
+- Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.
+
+### Commandes systeme
+
+- Mise en place de `seven` comme controleur principal.
+- Mise en place de `sevenpkg` comme gestionnaire logiciel SevenOS.
+- Ajout de commandes de statut, readiness, doctor, improvement et profils.
+- Ajout de commandes UX : `seven-session`, `seven-wallpaper`, `seven-power`, `seven-files`, `seven-welcome`, `seven-country`.
+
+### Design System
+
+- Creation du Design System v1 : `Sovereign by design`.
+- Ajout de `identity/STYLE.md` comme reference officielle.
+- Ajout de `identity/tokens.css` comme source CSS des couleurs, rayons, espacements, typographies et transitions.
+- Ajout des motifs dans `identity/patterns/`.
+- Nouvelle palette : Ebene, surfaces sombres, Or ancestral, Argile, Baobab, Indigo.
+- Harmonisation de Waybar, Rofi, Kitty, Mako, Hyprland, Seven Hub et Tauri GUI.
+- Suppression des styles trop generiques : pas de fond blanc, pas de `box-shadow`, pas de `backdrop-filter`, pas de font-weight lourd.
+
+### Desktop et session
+
+- Configuration Hyprland stabilisee.
+- Correction des options Hyprland obsoletes.
+- Integration de Waybar, Rofi, Mako, Kitty, Hyprpaper, Swaylock et Swayidle.
+- Ajout d'une logique `seven-session` pour lancer les composants desktop.
+- Ajout de raccourcis plus decouvrables pour Hub, Apps et Help.
+- Ajout du wallpaper SevenOS via Hyprpaper.
+
+### Seven Hub
+
+- Passage d'un simple launcher vers une logique de Control Center.
+- Organisation par categories : Dashboard, Profiles, Cyber, Desktop, VM & Windows, Server & Deploy, Ecosystem, Installer, Apps.
+- Ajout d'un Control Center web local.
+- Fondation Tauri ajoutee pour une future vraie interface native.
+- Ajout d'actions systeme contextuelles et de checks.
+
+### Gestion fichiers
+
+- Ajout de Seven Files comme point d'entree utilisateur.
+- Integration avec Nautilus, GVFS, MTP, SMB, File Roller, Sushi et XDG user dirs.
+- Ajout de theme GTK/Qt pour eviter une experience visuelle incoherente entre apps sombres et apps claires.
+
+### Terminal et branding
+
+- Kitty harmonise avec la palette SevenOS.
+- Ajout d'un signal culturel dynamique dans le terminal via pays africains aleatoires.
+- Ajout du drapeau, nom, capitale et population.
+- Ajout des fichiers branding : `motd`, `issue`, `os-release`, `sevenos-release`.
+
+### Profils metiers
+
+- Profil Forge pour developpement.
+- Profil Shield pour cybersecurite.
+- Profil Studio pour creation.
+- Profil Windows pour compatibilite.
+- Profil Server pour deploiement.
+- Meta-packages dans `sevenpkg/metapackages.json`.
+
+### Cybersecurite
+
+- Hardening systeme de base.
+- Cyber Lab sandbox.
+- Outils de security audit.
+- Integration possible de Firejail, UFW, Wireshark, nmap et autres outils.
+- Strategie BlackArch documentee comme extension optionnelle, pas dependance obligatoire.
+
+### Windows Mode
+
+- Helpers VM Windows avec KVM/QEMU.
+- Support VirtIO ISO.
+- Detection/verification libvirt.
+- Documentation VM et reseau.
+- Strategie future : Bottles, Wine, Lutris, Looking Glass.
+
+### Deploiement et serveur
+
+- Ajout de la vision Seven Server.
+- Ajout de `seven-server` comme fondation.
+- Ajout de `seven-deploy` comme moteur initial de deploiement.
+- Documentation de la logique Personal Operating Cloud.
+- Fondation pour transformer SevenOS en OS + plateforme de deploiement.
+
+### Installateur et ISO
+
+- Fondation Archiso ajoutee.
+- Build ISO documente.
+- Debut d'integration Calamares.
+- Documentation test machine ajoutee.
+- Scripts post-install et repair ajoutes.
+
+## Niveau Par Domaine
+
+| Domaine | Niveau | Etat |
+|---|---:|---|
+| Vision produit | 85% | Tres claire, bien documentee |
+| Architecture repo | 80% | Modulaire et lisible |
+| Design system | 75% | V1 en place, encore a tester sur machine reelle |
+| Desktop Hyprland | 70% | Fonctionnel, encore a polir |
+| Seven commands | 70% | Base solide, besoin de plus de robustesse |
+| SevenPkg | 60% | Wrapper utile, pas encore vrai package manager |
+| Seven Hub | 50% | Fondation presente, GUI native encore a construire |
+| Profils metiers | 55% | Concept clair, installation encore partielle |
+| Securite | 55% | Bonne direction, hardening a renforcer |
+| Windows Mode | 50% | Base technique, UX guidee manquante |
+| Serveur/deploy | 40% | Vision et scripts initiaux |
+| Installateur ISO | 35% | Fondation, pas encore distribution installable grand public |
+| Documentation | 75% | Bonne base, a maintenir avec chaque phase |
+
+## Points A Consolider Maintenant
+
+### 1. Seven Hub doit devenir une vraie application
+
+Objectif :
+
+```text
+Remplacer la sensation "launcher de scripts" par un vrai Control Center SevenOS.
+```
+
+A faire :
+
+- Dashboard visuel.
+- Readiness score.
+- Cartes systeme.
+- Actions `Fix now`.
+- Profils avec etats installes/partiels/manquants.
+- Gestion theme/session.
+- Statut firewall, VM, server, deploy.
+- Version Tauri prioritaire.
+
+### 2. Installer reel
+
+Objectif :
+
+```text
+Pouvoir installer SevenOS sur une machine test sans post-install fragile.
+```
+
+A faire :
+
+- Finaliser Calamares.
+- Clarifier partitionnement.
+- Integrer post-install SevenOS.
+- Creer premiere ouverture SevenOS.
+- Generer ISO testable.
+- Ajouter GitHub Actions pour valider les builds.
+
+### 3. Coherence UI systeme
+
+Objectif :
+
+```text
+Eviter l'effet "theme Arch" et donner une experience OS complete.
+```
+
+A faire :
+
+- Tester GTK/Qt apps en conditions reelles.
+- Ameliorer l'app launcher.
+- Harmoniser Nautilus, menus, notifications, terminal.
+- Ajouter assets plus premium.
+- Construire des composants Seven Hub reutilisables.
+
+### 4. Profils metiers plus concrets
+
+Objectif :
+
+```text
+Chaque profil doit transformer le systeme de maniere visible et utile.
+```
+
+A faire :
+
+- `seven profile forge` : dev complet + services + shortcuts.
+- `seven profile shield` : sandbox + audit + lab + firewall.
+- `seven profile studio` : apps creatives + presets + file associations.
+- `seven profile windows` : Bottles + VM assistant.
+- `seven profile server` : deploy + monitoring local.
+
+### 5. Securite active par defaut
+
+Objectif :
+
+```text
+SevenOS doit etre un OS de confiance, pas seulement un desktop elegant.
+```
+
+A faire :
+
+- UFW active proprement.
+- Firejail/Bubblewrap mieux integres.
+- Indicateur security dans Waybar et Hub.
+- Audit de permissions.
+- AppArmor en phase suivante.
+
+### 6. SevenPkg doit devenir intelligent
+
+Objectif :
+
+```text
+Passer d'un wrapper pacman a une couche logiciel SevenOS.
+```
+
+A faire :
+
+- Recherche pacman/Flatpak/AUR.
+- Installation de meta-packages.
+- Source selection : Arch, Flatpak, AUR, SevenRepo futur.
+- Post-configuration automatique.
+- Export JSON pour Seven Hub.
+
+## Roadmap Courte
+
+### Phase A — Stabilisation UI
+
+- Tester Design System v1 sur machine test.
+- Corriger lisibilite, contrastes, app launcher et menus.
+- Ameliorer Seven Files.
+- Stabiliser Waybar/Hub/session.
+
+### Phase B — Control Center
+
+- Transformer Seven Hub Tauri en app principale.
+- Ajouter dashboard, readiness, profiles, apps, security, VM, deploy.
+- Connecter `seven` et `sevenpkg` au Hub.
+
+### Phase C — Distribution testable
+
+- Finaliser Calamares.
+- Generer ISO live.
+- Creer install flow complet.
+- Tester sur machine physique et VM.
+
+### Phase D — Ecosysteme
+
+- SevenPkg avance.
+- Flatpak/SevenRepo.
+- Seven Server + Seven Deploy.
+- Cloud personnel et backup.
+
+## Definition Du Succes
+
+SevenOS passe au niveau superieur quand un utilisateur peut :
+
+- Installer SevenOS sans suivre dix commandes manuelles.
+- Ouvrir Seven Hub et comprendre l'etat du systeme.
+- Installer un profil metier en un clic ou une commande.
+- Lancer ses apps Linux et Windows avec une experience claire.
+- Voir une interface coherente partout.
+- Se sentir dans un OS complet, pas dans une configuration Arch.
+
+## Etat Git
+
+Dernier grand jalon connu :
+
+```text
+b2736d2 Apply SevenOS design system v1
+```
+
+Ce jalon introduit le Design System v1 et harmonise les principales surfaces UI.
+
+## Regle De Progression
+
+Chaque nouvelle amelioration doit repondre a au moins une question :
+
+- Est-ce que SevenOS devient plus simple a utiliser ?
+- Est-ce que SevenOS devient plus coherent visuellement ?
+- Est-ce que SevenOS devient plus robuste techniquement ?
+- Est-ce que SevenOS devient plus proche d'un vrai OS autonome ?
+- Est-ce que SevenOS renforce son identite souveraine, fluide et ancree ?
+
+Si la reponse est non, l'amelioration doit etre repoussee ou repensee.

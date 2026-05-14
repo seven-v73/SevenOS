@@ -234,7 +234,8 @@ fi
 
 if grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-display' "$ROOT_DIR/identity/tokens.css" &&
-   ! grep -R "box-shadow" "$ROOT_DIR/hyprland/waybar/style.css" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null; then
+   ! grep -R "box-shadow" "$ROOT_DIR/hyprland/waybar/style.css" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null &&
+   ! grep -E '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/waybar/style.css" >/dev/null; then
   ok "Design tokens and no-shadow UI rule are enforced"
 else
   fail "Design tokens or no-shadow UI rule failed"
