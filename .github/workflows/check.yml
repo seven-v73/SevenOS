@@ -1,0 +1,33 @@
+name: SevenOS Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install git
+        run: pacman -Sy --noconfirm git
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install check dependencies
+        run: |
+          pacman -Syu --noconfirm --needed \
+            sudo pacman-contrib jq python rofi kitty \
+            archiso libisoburn squashfs-tools dosfstools mtools
+      - name: SevenOS repository checks
+        run: ./scripts/check.sh
+      - name: SevenOS UX checks
+        run: ./scripts/ux-check.sh
+      - name: SevenOS architecture doctor
+        run: ./scripts/architecture.sh doctor
+      - name: Installer stack doctor
+        run: ./scripts/installer-stack.sh doctor
+      - name: Seven Hub GUI doctor
+        run: ./seven-hub/gui-stack.sh doctor

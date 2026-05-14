@@ -14,6 +14,9 @@ It is built around foundation pillars:
 - `sevenpkg` as the package and application manager
 - Seven Hub as the user-facing control center
 - Seven Server and Seven Deploy as the service/deployment foundation
+- Calamares/Archinstall as the install path foundation
+- Tauri as the future native Seven Hub GUI foundation
+- Flatpak/Flathub as the mainstream application bridge
 - Seven Ecosystem as the roadmap for AI, cloud, marketplace, containers, automation, and identity modules
 
 SevenOS aims to provide:
@@ -45,6 +48,9 @@ Implemented:
 - `seven ecosystem` innovation roadmap
 - `seven-server` local API foundation
 - `seven-deploy` deployment planner
+- Calamares installer profile scaffold
+- Seven Hub Tauri GUI scaffold
+- Flatpak/Flathub bridge with Bottles candidate
 - initial Archiso profile and ISO build script
 - African first identity foundation
 - Windows Mode helper workflow
@@ -193,6 +199,10 @@ Install a profile:
 ./install.sh installer-check
 ./install.sh installer-script
 ./install.sh server
+./install.sh installer-stack
+./install.sh hub-gui-stack
+./install.sh flatpak status
+./install.sh flatpak setup
 ```
 
 Check whether the current host is ready for SevenOS features:
@@ -213,6 +223,11 @@ seven hub
 seven dashboard
 seven architecture
 seven architecture doctor
+seven installer status
+seven installer doctor
+seven hub-gui status
+seven hub-gui doctor
+seven flatpak status
 seven ecosystem
 seven ecosystem roadmap
 seven readiness

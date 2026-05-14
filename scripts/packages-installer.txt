@@ -1,0 +1,22 @@
+# SevenOS installer foundation
+archinstall
+arch-install-scripts
+python-yaml
+python-jsonschema
+python-pydantic
+python-textual
+python-pyparted
+gptfdisk
+parted
+btrfs-progs
+dosfstools
+e2fsprogs
+xfsprogs
+cryptsetup
+lvm2
+efibootmgr
+os-prober
+
+# Calamares is the target graphical installer, but it is not always available
+# in the official Arch repositories. SevenOS keeps its Calamares profile in
+# installer/calamares and treats the package as an AUR/downstream build step.

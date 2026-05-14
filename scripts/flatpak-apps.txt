@@ -1,0 +1,7 @@
+# SevenOS default Flatpak application candidates
+com.usebottles.bottles
+org.blender.Blender
+org.gimp.GIMP
+org.inkscape.Inkscape
+org.kde.kdenlive
+org.kde.krita

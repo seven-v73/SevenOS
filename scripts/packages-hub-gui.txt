@@ -1,0 +1,11 @@
+# Seven Hub GUI foundation
+rust
+nodejs
+npm
+webkit2gtk-4.1
+gtk3
+glib2
+libsoup3
+openssl
+appmenu-gtk-module
+librsvg

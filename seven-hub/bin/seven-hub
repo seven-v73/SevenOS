@@ -181,6 +181,9 @@ load_actions() {
         "Architecture Map|seven:architecture|Show SevenOS system architecture"
         "Architecture Doctor|seven:architecture doctor|Validate product architecture"
         "Ecosystem Map|seven:ecosystem|Show all SevenOS ecosystem modules"
+        "Installer Stack|seven:installer status|Show Calamares and Archinstall readiness"
+        "Hub GUI Stack|seven:hub-gui status|Show Tauri readiness"
+        "Flatpak Bridge|seven:flatpak status|Show Flatpak and Flathub readiness"
         "Readiness Score|seven:readiness|Score SevenOS against OS choice criteria"
         "Improve Plan|seven:improve|Plan improvements for all OS criteria"
         "Repair Plan|seven:repair|Show guided repair plan"
@@ -267,6 +270,10 @@ load_actions() {
       ;;
     "Installer")
       actions=(
+        "Installer Stack|seven:installer status|Show Calamares and Archinstall readiness"
+        "Installer Stack Doctor|seven:installer doctor|Validate installer foundation"
+        "Installer Stack Plan|seven:installer plan|Show Calamares integration plan"
+        "Install Installer Stack|installer-stack|Install official installer foundation packages"
         "ISO Tools|iso-tools|Install ISO build tooling"
         "Build ISO Dry Run|iso --dry-run|Preview ISO build"
         "Installer Plan|installer-plan|Create non-destructive install plan"
@@ -276,6 +283,11 @@ load_actions() {
       ;;
     "Apps")
       actions=(
+        "Flatpak Bridge|seven:flatpak status|Show Flatpak and Flathub readiness"
+        "Flatpak Setup|seven:flatpak setup|Install Flatpak and add Flathub"
+        "Install Default Flatpaks|seven:flatpak install-defaults|Install SevenOS app candidates"
+        "Hub GUI Stack|seven:hub-gui status|Show native GUI readiness"
+        "Hub GUI Doctor|seven:hub-gui doctor|Validate Tauri scaffold"
         "Open Virt Manager|app:virt-manager|Launch VM manager"
         "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"
         "SevenPkg Meta|sevenpkg:meta|List SevenOS meta-packages"
@@ -353,7 +365,7 @@ action_badge() {
 
   case "$label" in
     "Control Center"|"Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
-    "Welcome"|"System Dashboard"|"Architecture Map"|"Architecture Doctor"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
+    "Welcome"|"System Dashboard"|"Architecture Map"|"Architecture Doctor"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Installer Stack"|"Installer Stack Doctor"|"Installer Stack Plan"|"Hub GUI Stack"|"Hub GUI Doctor"|"Flatpak Bridge"|"Flatpak Setup"|"Install Default Flatpaks"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
     "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
     "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
     "Profile Studio") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
@@ -396,6 +408,7 @@ action_badge() {
       fi
       ;;
     "Installer Plan"|"Installer Check"|"Installer Script") printf 'RUN' ;;
+    "Install Installer Stack") package_file_state "$SEVENOS_ROOT/scripts/packages-installer.txt" ;;
     "ISO Tools") package_file_state "$SEVENOS_ROOT/scripts/packages-iso.txt" ;;
     "Open Virt Manager") app_state virt-manager ;;
     "Open Bottles")

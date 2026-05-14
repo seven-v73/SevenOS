@@ -8,3 +8,5 @@ pass
 keepassxc
 rkhunter
 lynis
+apparmor
+age

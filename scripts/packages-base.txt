@@ -45,6 +45,7 @@ playerctl
 ufw
 firejail
 bubblewrap
+flatpak
 fastfetch
 ttf-jetbrains-mono-nerd
 noto-fonts-emoji

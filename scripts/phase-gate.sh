@@ -70,6 +70,8 @@ section "Required Checks"
 run_required "Core repository checks" "$ROOT_DIR/scripts/check.sh"
 run_required "UX coherence checks" "$ROOT_DIR/scripts/ux-check.sh"
 run_required "Architecture foundation doctor" "$ROOT_DIR/scripts/architecture.sh" doctor
+run_required "Installer stack doctor" "$ROOT_DIR/scripts/installer-stack.sh" doctor
+run_required "Seven Hub GUI scaffold doctor" "$ROOT_DIR/seven-hub/gui-stack.sh" doctor
 run_required "Readiness JSON export" "$ROOT_DIR/scripts/readiness.sh" --json
 run_required "Ecosystem foundation doctor" "$ROOT_DIR/scripts/ecosystem.sh" doctor
 run_required "Deployment planner dry-run" env SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" plan "$ROOT_DIR"

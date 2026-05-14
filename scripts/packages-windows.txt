@@ -7,6 +7,7 @@ lutris
 flatpak
 gamemode
 vulkan-icd-loader
+vkd3d
 qemu-full
 virt-manager
 virt-viewer

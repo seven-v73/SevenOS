@@ -27,7 +27,7 @@ layers() {
   printf '  %-22s %s\n' "System Core" "install.sh, bootstrap.sh, seven, repair, readiness, phase-gate"
   printf '  %-22s %s\n' "Package Layer" "sevenpkg, package manifests, meta-packages"
   printf '  %-22s %s\n' "Service Layer" "seven-session, seven-server, seven-deploy, systemd"
-  printf '  %-22s %s\n' "UI Layer" "Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files"
+  printf '  %-22s %s\n' "UI Layer" "Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files, Tauri GUI"
   printf '  %-22s %s\n' "Security Layer" "hardening, cyber audit, cyber lab, sandboxing"
   printf '  %-22s %s\n' "Compatibility Layer" "Wine, Bottles, Lutris, KVM, Windows Mode"
   printf '  %-22s %s\n' "Deployment Layer" "Horizon, local API, deploy planner"
@@ -77,8 +77,12 @@ doctor() {
     "bin/seven-files" \
     "seven-hub/bin/seven-hub" \
     "seven-hub/bin/seven-control-center" \
+    "seven-hub/gui-stack.sh" \
+    "seven-hub/gui/package.json" \
     "server/seven-server.sh" \
     "server/seven-deploy.sh" \
+    "scripts/installer-stack.sh" \
+    "scripts/flatpak.sh" \
     "scripts/readiness.sh" \
     "scripts/phase-gate.sh" \
     "scripts/ux-check.sh" \

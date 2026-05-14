@@ -18,6 +18,9 @@ Targets:
   creation         Install creation profile
   windows          Install Windows compatibility layer
   server           Install SevenOS server and deployment layer
+  installer-stack  Install graphical installer foundation packages
+  hub-gui-stack    Install Seven Hub Tauri GUI foundation packages
+  flatpak          Manage Flatpak/Flathub bridge
   security         Apply base security hardening
   cyber-audit      Show cybersecurity profile readiness
   cyber-lab        Open an isolated cybersecurity lab shell
@@ -104,6 +107,15 @@ case "$TARGET" in
     ;;
   server)
     install_package_file "$ROOT_DIR/scripts/packages-server.txt"
+    ;;
+  installer-stack)
+    "$ROOT_DIR/scripts/installer-stack.sh" install
+    ;;
+  hub-gui-stack)
+    "$ROOT_DIR/seven-hub/gui-stack.sh" install
+    ;;
+  flatpak)
+    "$ROOT_DIR/scripts/flatpak.sh" "${@:2}"
     ;;
   security)
     "$ROOT_DIR/security/hardening.sh"

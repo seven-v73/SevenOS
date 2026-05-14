@@ -50,6 +50,18 @@ require_file "docs/PHASE_GATE.md"
 require_file "docs/ECOSYSTEM.md"
 require_file "docs/TEST_MACHINE.md"
 require_file "docs/PRE_PUSH.md"
+require_file "installer/calamares/README.md"
+require_file "installer/calamares/settings.conf"
+require_file "installer/calamares/modules/sevenos.conf"
+require_file "seven-hub/gui/README.md"
+require_file "seven-hub/gui/package.json"
+require_file "seven-hub/gui/src/index.html"
+require_file "seven-hub/gui/src/main.js"
+require_file "seven-hub/gui/src/styles.css"
+require_file "seven-hub/gui/src-tauri/Cargo.toml"
+require_file "seven-hub/gui/src-tauri/tauri.conf.json"
+require_file "seven-hub/gui/src-tauri/src/main.rs"
+require_file "scripts/flatpak-apps.txt"
 require_file "branding/shell/terminal-country.sh"
 require_file "branding/motd"
 require_file "branding/issue"
@@ -84,7 +96,10 @@ require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
+require_executable "scripts/installer-stack.sh"
+require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
+require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
 require_executable "scripts/post-install.sh"
 
@@ -109,6 +124,12 @@ package_manifest_contains "adw-gtk-theme" "scripts/packages-base.txt"
 package_manifest_contains "qt5ct" "scripts/packages-base.txt"
 package_manifest_contains "qt6ct" "scripts/packages-base.txt"
 package_manifest_contains "kvantum" "scripts/packages-base.txt"
+package_manifest_contains "flatpak" "scripts/packages-base.txt"
+package_manifest_contains "archinstall" "scripts/packages-installer.txt"
+package_manifest_contains "rust" "scripts/packages-hub-gui.txt"
+package_manifest_contains "nodejs" "scripts/packages-hub-gui.txt"
+package_manifest_contains "npm" "scripts/packages-hub-gui.txt"
+package_manifest_contains "webkit2gtk-4.1" "scripts/packages-hub-gui.txt"
 
 if jq -e '."custom/sevenos"."on-click" == "seven hub"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar SevenOS click opens dashboard"
@@ -237,6 +258,14 @@ if "$ROOT_DIR/scripts/architecture.sh" doctor >/dev/null; then
   ok "SevenOS architecture doctor works"
 else
   fail "SevenOS architecture doctor failed"
+fi
+
+if "$ROOT_DIR/scripts/installer-stack.sh" doctor >/dev/null &&
+   "$ROOT_DIR/seven-hub/gui-stack.sh" doctor >/dev/null &&
+   "$ROOT_DIR/scripts/flatpak.sh" list | grep -q 'com.usebottles.bottles'; then
+  ok "Installer, Tauri GUI and Flatpak foundations are coherent"
+else
+  fail "Installer, Tauri GUI or Flatpak foundation failed"
 fi
 
 if grep -q 'System Core' "$ROOT_DIR/docs/ARCHITECTURE.md" &&

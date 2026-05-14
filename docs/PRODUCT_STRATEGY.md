@@ -53,9 +53,13 @@ SevenOS should be:
 - branded live environment
 - install planner
 - installer workflow
+- Calamares graphical installer profile
+- Archinstall automation bridge
 
 ### Phase 4: Distribution Polish
 
+- Seven Hub Tauri native GUI
+- Flatpak/Flathub application bridge
 - release signing
 - checksum workflow
 - hardware validation
@@ -108,12 +112,14 @@ SevenOS should be:
 
 ## Near-Term Priorities
 
-1. Make Seven Hub progressively richer without breaking CLI truth.
-2. Turn `sevenpkg` meta-packages into clear user journeys.
-3. Improve Windows Mode from helper scripts into a guided workflow.
-4. Complete ISO installer planning into a real install path.
-5. Keep design QA strict so SevenOS remains coherent as it grows.
-6. Use `seven ecosystem` to keep innovation modules visible and honest.
+1. Turn the install path into a Calamares-driven graphical flow.
+2. Move Seven Hub toward a native Tauri GUI without breaking CLI truth.
+3. Make Flatpak/Flathub and Bottles first-class app bridges.
+4. Turn `sevenpkg` meta-packages into clear user journeys.
+5. Improve Windows Mode from helper scripts into a guided workflow.
+6. Complete ISO installer planning into a real install path.
+7. Keep design QA strict so SevenOS remains coherent as it grows.
+8. Use `seven ecosystem` to keep innovation modules visible and honest.
 
 ## OS Choice Criteria
 

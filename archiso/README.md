@@ -60,8 +60,8 @@ Implemented:
 
 Still planned:
 
-- graphical installer
-- Calamares or custom installer evaluation
+- graphical installer through Calamares
+- Archinstall automation bridge for advanced/non-GUI paths
 - SevenOS boot splash and theme assets
 - hardware-specific package variants
 - release signing and checksum workflow

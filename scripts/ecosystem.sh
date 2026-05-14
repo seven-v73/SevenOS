@@ -37,6 +37,7 @@ status() {
   module_line "sevenpkg" "2" "active" "package and meta-package layer"
   module_line "Architecture" "2" "active" "product and system layer contract"
   module_line "Seven Hub" "2-4" "preview" "control center"
+  module_line "Seven Hub GUI" "4" "preview" "Tauri native control center"
   module_line "Windows Mode" "2-4" "preview" "Windows compatibility"
   module_line "seven-server" "3" "preview" "local API and monitoring"
   module_line "seven-deploy" "3" "preview" "deployment planner"
@@ -82,6 +83,7 @@ doctor() {
     "bin/seven" \
     "bin/sevenpkg" \
     "seven-hub/bin/seven-hub" \
+    "seven-hub/gui-stack.sh" \
     "server/seven-server.sh" \
     "server/seven-deploy.sh" \
     "scripts/architecture.sh" \

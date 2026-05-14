@@ -22,6 +22,8 @@ Before installing on a test machine, follow `docs/TEST_MACHINE.md`.
 - `./scripts/check.sh`
 - `./scripts/ux-check.sh`
 - `./scripts/readiness.sh --json`
+- `./scripts/installer-stack.sh doctor`
+- `./seven-hub/gui-stack.sh doctor`
 - `seven-deploy` dry-run planning
 
 Any failure blocks the next phase.
@@ -43,6 +45,9 @@ a public phase are:
 - install and activate Shield basics: UFW, Firejail, Bubblewrap
 - complete Windows compatibility: Wine, Bottles, Lutris, KVM
 - complete Horizon/server profile: Go, Podman, Caddy
+- complete Calamares installer profile and package path
+- mature Seven Hub Tauri GUI beyond scaffold
+- enable Flatpak/Flathub defaults for creative and Windows bridge apps
 - start `seven-server` as a user service
 - commit generated project foundation cleanly
 

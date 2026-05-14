@@ -58,6 +58,25 @@ The planner asks for:
 - swap strategy
 - selected profiles
 
+## Graphical Installer Direction
+
+SevenOS now keeps a Calamares profile scaffold in:
+
+```text
+installer/calamares/
+```
+
+Use:
+
+```bash
+seven installer status
+seven installer doctor
+seven installer plan
+```
+
+Calamares is the preferred graphical installer path. Archinstall remains the
+secondary automation backend for scripts, CI experiments and recovery flows.
+
 ## Next Step
 
 The next implementation phase should consume the generated plan and perform installation steps behind explicit confirmations.

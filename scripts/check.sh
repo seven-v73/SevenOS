@@ -21,6 +21,8 @@ bash -n \
   "$ROOT_DIR/scripts/build-iso.sh" \
   "$ROOT_DIR/scripts/dashboard.sh" \
   "$ROOT_DIR/scripts/architecture.sh" \
+  "$ROOT_DIR/scripts/installer-stack.sh" \
+  "$ROOT_DIR/scripts/flatpak.sh" \
   "$ROOT_DIR/scripts/readiness.sh" \
   "$ROOT_DIR/scripts/improve.sh" \
   "$ROOT_DIR/scripts/repair.sh" \
@@ -55,6 +57,7 @@ bash -n \
   "$ROOT_DIR/installer/validate-plan.sh" \
   "$ROOT_DIR/installer/generate-script.sh" \
   "$ROOT_DIR/seven-hub/install.sh" \
+  "$ROOT_DIR/seven-hub/gui-stack.sh" \
   "$ROOT_DIR/seven-hub/bin/seven-hub"
 bash -n "$ROOT_DIR/security/hardening.sh"
 
@@ -64,6 +67,8 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
+python -m json.tool "$ROOT_DIR/seven-hub/gui/package.json" >/dev/null
+python -m json.tool "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" >/dev/null
 
 for doc in ARCHITECTURE.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
   if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
@@ -197,6 +202,16 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/dashboard.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" map >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" layers >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/flatpak.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/flatpak.sh" setup >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/flatpak.sh" install-defaults >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/gui-stack.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/gui-stack.sh" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/gui-stack.sh" dev >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/gui-stack.sh" build >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/readiness.sh" --json >/dev/null
@@ -236,6 +251,11 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run dashboard >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run architecture >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run architecture doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run hub-gui status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run hub-gui doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run flatpak status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run post-install >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem roadmap >/dev/null
@@ -268,6 +288,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --vir
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode status --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode start --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" server --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" installer-stack --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" hub-gui-stack --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" flatpak status --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" flatpak setup --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cybersecurity core --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cybersecurity sandbox --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-audit --dry-run >/dev/null

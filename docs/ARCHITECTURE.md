@@ -22,7 +22,7 @@ The promise is:
 | System Core | entrypoints, bootstrap, status, repair and phase checks | `install.sh`, `bootstrap.sh`, `bin/seven`, `scripts/*.sh` |
 | Package Layer | package manifests, meta-packages and software sources | `sevenpkg`, `scripts/packages-*.txt`, `sevenpkg/metapackages.json` |
 | Service Layer | local services, deployment, VM and background session | `seven-session`, `seven-server`, `seven-deploy`, `vm/` |
-| UI Layer | desktop shell, hub, files, theme and visible controls | Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files |
+| UI Layer | desktop shell, hub, files, theme and visible controls | Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files, Tauri GUI |
 | Security Layer | hardening, audit, sandbox and cyber workspaces | `security/`, Shield profile, UFW, Firejail, Bubblewrap |
 | Compatibility Layer | Windows apps, VM, Wine/Bottles/Lutris/KVM | `profiles/windows.sh`, `vm/windows-mode.sh`, `vm/windows-vm.sh` |
 | Deployment Layer | local API, stack detection and personal cloud direction | `server/`, `docs/DEPLOYMENT.md`, Horizon profile |
@@ -107,10 +107,13 @@ Active:
 Preview:
 
 - Windows Mode
+- Seven Hub Tauri GUI scaffold
 - `seven-server`
 - `seven-deploy`
 - Archiso profile
 - installer planner
+- Calamares profile scaffold
+- Flatpak/Bottles bridge
 - cybersecurity lab presets
 
 Planned:

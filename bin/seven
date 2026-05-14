@@ -120,6 +120,18 @@ def handle_server(args):
     run_script(args, "server/seven-server.sh", args.action, *args.extra)
 
 
+def handle_installer(args):
+    run_script(args, "scripts/installer-stack.sh", args.action)
+
+
+def handle_hub_gui(args):
+    run_script(args, "seven-hub/gui-stack.sh", args.action)
+
+
+def handle_flatpak(args):
+    run_script(args, "scripts/flatpak.sh", args.action)
+
+
 def handle_deploy(args):
     run_script(args, "server/seven-deploy.sh", args.action, *args.extra)
 
@@ -201,6 +213,15 @@ def main():
     server_parser.add_argument("action", nargs="?", default="status")
     server_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
+    installer_parser = subparsers.add_parser("installer", help="SevenOS installer stack controls")
+    installer_parser.add_argument("action", nargs="?", default="status")
+
+    hub_gui_parser = subparsers.add_parser("hub-gui", help="Seven Hub native GUI stack controls")
+    hub_gui_parser.add_argument("action", nargs="?", default="status")
+
+    flatpak_parser = subparsers.add_parser("flatpak", help="SevenOS Flatpak bridge controls")
+    flatpak_parser.add_argument("action", nargs="?", default="status")
+
     deploy_parser = subparsers.add_parser("deploy", help="detect and prepare project deployments")
     deploy_parser.add_argument("action", nargs="?", default="plan")
     deploy_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -261,6 +282,12 @@ def main():
         handle_windows(args)
     elif args.command == "server":
         handle_server(args)
+    elif args.command == "installer":
+        handle_installer(args)
+    elif args.command == "hub-gui":
+        handle_hub_gui(args)
+    elif args.command == "flatpak":
+        handle_flatpak(args)
     elif args.command == "deploy":
         handle_deploy(args)
     else:
