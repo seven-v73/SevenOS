@@ -32,6 +32,35 @@ SevenOS aims to provide:
 - an African first visual identity with obsidian, ancestral gold, clay, baobab green, and indigo accents
 - a vocabulary and workflow model that makes Linux easier to live with
 
+## Inspirations And References
+
+SevenOS is not a fork of these projects. It studies their public architecture,
+UX patterns and tooling choices to build an independent African first Linux
+ecosystem.
+
+| Project | Link | What SevenOS Learns From It |
+| --- | --- | --- |
+| Arch Linux | [archlinux.org](https://archlinux.org/) / [GitLab](https://gitlab.archlinux.org/archlinux) | Minimal base, rolling package ecosystem, pacman workflow and distribution discipline. |
+| Archiso | [github.com/archlinux/archiso](https://github.com/archlinux/archiso) | Live ISO structure, profile overlays and reproducible image building. |
+| Hyprland | [github.com/hyprwm/Hyprland](https://github.com/hyprwm/Hyprland) | Modern Wayland compositor foundation, tiling, animations, workspaces and window rules. |
+| end-4 dots-hyprland | [github.com/end-4/dots-hyprland](https://github.com/end-4/dots-hyprland) | Shell-like Hyprland UX: overview, quick controls, polished window rules and GNOME-like ergonomics. |
+| ML4W dotfiles | [github.com/mylinuxforwork/dotfiles](https://github.com/mylinuxforwork/dotfiles) | Mature dotfile installation logic, protected restore paths, modular desktop configuration and update discipline. |
+| Calamares | [github.com/calamares/calamares](https://github.com/calamares/calamares) | Future graphical installer direction for a real SevenOS installation flow. |
+| Tauri | [github.com/tauri-apps/tauri](https://github.com/tauri-apps/tauri) | Lightweight native app shell used for the current Seven Hub GUI prototype. |
+| GTK / Libadwaita | [gitlab.gnome.org/GNOME/libadwaita](https://gitlab.gnome.org/GNOME/libadwaita) | Native Linux control-center direction, accessibility and GNOME-class application behavior. |
+| Flatpak | [github.com/flatpak/flatpak](https://github.com/flatpak/flatpak) | Sandboxed app delivery and mainstream Linux application ecosystem through Flathub. |
+| Bottles | [github.com/bottlesdevs/Bottles](https://github.com/bottlesdevs/Bottles) | User-friendly Windows compatibility environments over Wine. |
+| QEMU | [gitlab.com/qemu-project/qemu](https://gitlab.com/qemu-project/qemu) | Future Windows Mode virtualization foundation with KVM and VirtIO. |
+
+SevenOS keeps its own product direction:
+
+- African first identity, not generic theme stacking.
+- `seven` as the system control plane.
+- `sevenpkg` as the software layer.
+- Seven Hub as the user-facing control center.
+- Profiles for Forge, Shield, Studio, Windows and Horizon workflows.
+- Migration and packaging contracts through `sevenos.dotinst`.
+
 ## Current Status
 
 Implemented:
