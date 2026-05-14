@@ -44,6 +44,7 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | --- | --- | --- |
 | Dashboard | readiness, services, urgent repairs | `seven readiness --json` |
 | Experience | OS coherence score and blockers | `seven experience --json` |
+| Control | prioritized next actions | `seven control --json` |
 | Profiles | active profile, workspaces, install/activate | `seven profile status --json` |
 | Actions | safe and state-changing OS actions | `seven actions --json` |
 | Ecosystem | modules, maturity and all-in-one user flows | `seven ecosystem --json` |

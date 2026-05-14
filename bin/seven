@@ -133,6 +133,11 @@ def handle_experience(args):
     run_script(args, "scripts/experience.sh", *extra)
 
 
+def handle_control(args):
+    extra = ["--json"] if args.json else []
+    run_script(args, "scripts/control-plane.sh", *extra)
+
+
 def handle_architecture(args):
     run_script(args, "scripts/architecture.sh", args.action)
 
@@ -180,6 +185,8 @@ def main():
     ecosystem_parser.add_argument("--json", action="store_true", help="print machine-readable ecosystem map")
     experience_parser = subparsers.add_parser("experience", help="audit whether SevenOS feels like a coherent OS")
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
+    control_parser = subparsers.add_parser("control", help="show prioritized SevenOS control plane actions")
+    control_parser.add_argument("--json", action="store_true", help="print machine-readable control plane")
     manifest_parser = subparsers.add_parser("manifest", help="inspect SevenOS install, restore and packaging manifest")
     manifest_parser.add_argument("action", nargs="?", default="show")
     migrate_parser = subparsers.add_parser("migrate", help="plan or back up protected SevenOS user state before upgrades")
@@ -268,6 +275,8 @@ def main():
         handle_ecosystem(args)
     elif args.command == "experience":
         handle_experience(args)
+    elif args.command == "control":
+        handle_control(args)
     elif args.command == "manifest":
         handle_manifest(args)
     elif args.command == "migrate":

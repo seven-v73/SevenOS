@@ -24,6 +24,7 @@
         "bin/sevenpkg",
         "bin/seven-windows-assistant",
         "scripts/experience.sh",
+        "scripts/control-plane.sh",
         "scripts/status.sh",
         "scripts/state.sh",
         "security/shield-status.sh"

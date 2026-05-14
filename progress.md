@@ -172,6 +172,7 @@ Les piliers du projet sont :
 - Fluidite Ecosystem : Seven Hub Native affiche les processus avec boutons de lancement, et `seven ecosystem summary` donne un resume compact modules/processus.
 - Ajout de `seven experience` / `seven experience --json` : audit de coherence OS qui relie identite, shell, Hub, profils, actions, Windows, securite, serveur, installateur et ecosysteme.
 - Consolidation Trust/Server : ajout de `seven shield status --json`, `seven server status --json`, endpoints `/experience` et `/shield`, et integration de `shield`/`server` dans `seven state --json`.
+- Ajout de `seven control` / `seven control --json` : plan d'actions priorise qui fusionne readiness, experience, Shield, Server et profils pour guider Seven Hub comme un vrai centre de decision OS.
 
 ### Gestion fichiers
 

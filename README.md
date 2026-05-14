@@ -266,6 +266,8 @@ seven ecosystem --json
 seven ecosystem roadmap
 seven experience
 seven experience --json
+seven control
+seven control --json
 seven shield status
 seven shield status --json
 seven readiness

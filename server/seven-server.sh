@@ -83,7 +83,7 @@ status() {
     printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
     printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
     printf '],'
-    printf '"endpoints":["/health","/state","/status","/profiles","/monitor/system","/readiness","/manifest","/actions","/experience","/shield"],'
+    printf '"endpoints":["/health","/state","/status","/profiles","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/control"],'
     printf '"recommendations":['
     local first=1
     if [[ "$service" != "RUN" ]]; then
@@ -214,6 +214,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"]))
         elif self.path == "/shield":
             self.send_json(command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"]))
+        elif self.path == "/control":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/control-plane.sh"), "--json"]))
         else:
             self.send_json({"ok": False, "error": "not found"}, status=404)
 

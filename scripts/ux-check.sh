@@ -134,6 +134,7 @@ require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/experience.sh"
+require_executable "scripts/control-plane.sh"
 require_executable "security/shield-status.sh"
 require_executable "scripts/manifest.sh"
 require_executable "scripts/package-plan.sh"
@@ -452,6 +453,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def experience_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def control_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def shield_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def server_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -488,6 +490,7 @@ ecosystem_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ecosystem --json)"
 ecosystem_processes="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" processes)"
 ecosystem_summary="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary)"
 experience_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" experience --json)"
+control_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" control --json)"
 shield_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield status --json)"
 server_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" server status --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -497,9 +500,11 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json | python -m json.tool >/dev/null &&
    python -m json.tool <<<"$ecosystem_json" >/dev/null &&
    python -m json.tool <<<"$experience_json" >/dev/null &&
+   python -m json.tool <<<"$control_json" >/dev/null &&
    python -m json.tool <<<"$shield_json" >/dev/null &&
    python -m json.tool <<<"$server_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
+   grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
    grep -q '"schema": "sevenos.shield.v1"' <<<"$shield_json" &&
    grep -q '"schema":"sevenos.server.v1"' <<<"$server_json" &&
    grep -q '"processes"' <<<"$ecosystem_json" &&
@@ -604,8 +609,10 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/control"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
-   grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md"; then
+   grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/control' "$ROOT_DIR/server/README.md"; then
   ok "Seven Server exposes live state API endpoints"
 else
   fail "Seven Server should expose state and profile API endpoints"
@@ -702,6 +709,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" processes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
