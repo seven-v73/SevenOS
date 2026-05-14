@@ -133,6 +133,7 @@ require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/manifest.sh"
+require_executable "scripts/package-plan.sh"
 require_executable "scripts/migrate.sh"
 require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
@@ -503,6 +504,7 @@ fi
 
 if "$ROOT_DIR/scripts/manifest.sh" doctor >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" manifest restore-plan | grep -q 'Hyprland user override' &&
+   "$ROOT_DIR/scripts/package-plan.sh" plan | grep -q 'sevenos-hyprland' &&
    python - "$ROOT_DIR/sevenos.dotinst" <<'PY' >/dev/null
 import json
 import sys
@@ -531,6 +533,17 @@ then
 else
   fail "SevenOS install manifest is incomplete"
 fi
+
+package_plan_out="$(mktemp -d)"
+if SEVENOS_PACKAGE_OUT="$package_plan_out" "$ROOT_DIR/scripts/package-plan.sh" generate >/dev/null &&
+   SEVENOS_PACKAGE_OUT="$package_plan_out" "$ROOT_DIR/scripts/package-plan.sh" doctor | grep -q 'SevenOS package plan OK' &&
+   [[ -s "$package_plan_out/sevenos-cli/PKGBUILD" ]] &&
+   grep -q 'pkgname=sevenos-hyprland' "$package_plan_out/sevenos-hyprland/PKGBUILD"; then
+  ok "SevenOS package skeletons can be generated from the manifest"
+else
+  fail "SevenOS package skeleton generation failed"
+fi
+rm -rf "$package_plan_out"
 
 migration_plan_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" plan)"
 migration_backup_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" backup)"

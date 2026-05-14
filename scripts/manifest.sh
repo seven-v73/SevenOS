@@ -15,6 +15,11 @@ Commands:
   protected     Show protected user-owned paths.
   components    Show future package/component boundaries.
   summary-json   Print machine-readable manifest summary.
+  package-plan   Show future pacman package boundaries.
+  package-generate
+               Generate local PKGBUILD skeletons.
+  package-doctor
+               Validate generated PKGBUILD skeletons.
   json          Print manifest JSON.
 EOF
 }
@@ -164,6 +169,15 @@ command="${1:-show}"
 case "$command" in
   show|doctor|restore-plan|protected|components|summary-json|json)
     manifest_python "$command"
+    ;;
+  package-plan)
+    "$ROOT_DIR/scripts/package-plan.sh" plan
+    ;;
+  package-generate)
+    "$ROOT_DIR/scripts/package-plan.sh" generate
+    ;;
+  package-doctor)
+    "$ROOT_DIR/scripts/package-plan.sh" doctor
     ;;
   -h|--help|help)
     usage

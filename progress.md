@@ -161,6 +161,7 @@ Les piliers du projet sont :
 - Refonte shell Frost : Waybar en groupes capsules flottants, dry-run transforme en langage produit `DRY-RUN > Surface > Action`, et ajout de `seven-shell-preview` pour auditer Waybar, Rofi, Mako, fonts et commandes shell.
 - Debut de sortie de Rofi pour les panneaux systeme : ajout de `seven-shell-panel` en GTK4/libadwaita pour Quick Settings et Notifications, avec fallback Rofi conserve si la stack native manque.
 - Productisation session : ajout de `session/sevenos.desktop`, services utilisateur systemd `sevenos-session.target`, Waybar, notifications, wallpaper et idle, plus `seven-session-status` pour verifier que SevenOS se comporte comme une vraie session OS installable.
+- Productisation packaging : ajout de `scripts/package-plan.sh`, generation de squelettes PKGBUILD depuis `sevenos.dotinst`, commandes `seven manifest package-plan|package-generate|package-doctor`, et documentation packaging pour preparer les paquets pacman SevenOS.
 
 ### Gestion fichiers
 

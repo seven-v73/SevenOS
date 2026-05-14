@@ -2,6 +2,42 @@
 
 SevenOS uses three package channels with clear boundaries.
 
+## SevenOS Component Packages
+
+SevenOS is moving away from a visible Git-repo-only install flow. The
+component boundaries are declared in:
+
+```text
+sevenos.dotinst
+```
+
+Generate local pacman package skeletons with:
+
+```bash
+seven manifest package-plan
+seven manifest package-generate
+seven manifest package-doctor
+```
+
+Generated output lives in:
+
+```text
+packaging/pacman/
+```
+
+Current target components:
+
+- `sevenos-cli`
+- `sevenos-branding`
+- `sevenos-hyprland`
+- `sevenos-hub`
+- `sevenos-profiles`
+- `sevenos-server`
+- `sevenos-installer`
+
+These PKGBUILDs are developer skeletons. They are meant to make package
+boundaries concrete before publishing a real SevenOS repository.
+
 ## Official Pacman Repositories
 
 Default for system packages, desktop components, profiles, ISO tooling, security tools, and VM tooling.

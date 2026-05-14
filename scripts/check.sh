@@ -32,6 +32,7 @@ bash -n \
   "$ROOT_DIR/scripts/phase-gate.sh" \
   "$ROOT_DIR/scripts/ecosystem.sh" \
   "$ROOT_DIR/scripts/manifest.sh" \
+  "$ROOT_DIR/scripts/package-plan.sh" \
   "$ROOT_DIR/scripts/migrate.sh" \
   "$ROOT_DIR/server/seven-server.sh" \
   "$ROOT_DIR/server/seven-deploy.sh" \
@@ -290,6 +291,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" summary-json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" restore-plan >/dev/null
+package_plan_out="$(mktemp -d)"
+SEVENOS_PACKAGE_OUT="$package_plan_out" "$ROOT_DIR/scripts/package-plan.sh" generate >/dev/null
+SEVENOS_PACKAGE_OUT="$package_plan_out" "$ROOT_DIR/scripts/package-plan.sh" doctor >/dev/null
+rm -rf "$package_plan_out"
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" backup >/dev/null
