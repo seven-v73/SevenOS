@@ -4,6 +4,9 @@ nodejs
 npm
 webkit2gtk-4.1
 gtk3
+gtk4
+libadwaita
+python-gobject
 glib2
 libsoup3
 openssl

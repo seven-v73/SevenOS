@@ -66,6 +66,7 @@ require_file "seven-hub/gui/src-tauri/build.rs"
 require_file "seven-hub/gui/src-tauri/icons/icon.png"
 require_file "seven-hub/gui/src-tauri/tauri.conf.json"
 require_file "seven-hub/gui/src-tauri/src/main.rs"
+require_file "seven-hub/native/README.md"
 require_file "scripts/flatpak-apps.txt"
 require_file "branding/shell/terminal-country.sh"
 require_file "branding/motd"
@@ -150,6 +151,9 @@ package_manifest_contains "rust" "scripts/packages-hub-gui.txt"
 package_manifest_contains "nodejs" "scripts/packages-hub-gui.txt"
 package_manifest_contains "npm" "scripts/packages-hub-gui.txt"
 package_manifest_contains "webkit2gtk-4.1" "scripts/packages-hub-gui.txt"
+package_manifest_contains "gtk4" "scripts/packages-hub-gui.txt"
+package_manifest_contains "libadwaita" "scripts/packages-hub-gui.txt"
+package_manifest_contains "python-gobject" "scripts/packages-hub-gui.txt"
 
 if jq -e '."custom/sevenos"."on-click" == "seven hub"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar SevenOS click opens dashboard"
@@ -298,6 +302,15 @@ if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
   ok "Seven Hub GUI behaves like a native Control Center foundation"
 else
   fail "Seven Hub GUI should expose dashboard, profiles, confirmations, readable actions and native backend snapshot"
+fi
+
+if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
+   grep -Fq 'Tauri is useful for fast iteration' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
+   grep -Fq 'Seven Hub Native' "$ROOT_DIR/seven-hub/native/README.md" &&
+   grep -Fq 'seven profile status --json' "$ROOT_DIR/seven-hub/native/README.md"; then
+  ok "Seven Hub native UI strategy is documented"
+else
+  fail "Seven Hub native UI strategy is missing or unclear"
 fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&

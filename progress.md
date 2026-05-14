@@ -117,6 +117,8 @@ Les piliers du projet sont :
 - Les actions dangereuses ou modificatrices ne partent plus au clic direct : le Hub demande confirmation avant installation, activation, reparation ou changement de profil.
 - Le panneau de sortie distingue maintenant les etats `running`, `success` et `error`, avec un resume humain avant le detail technique.
 - Amelioration de la maniabilite du Hub : vraie zone de contenu scrollable, navigation laterale lisible avec labels, hauteur adaptee au viewport, scrollbars integrees au design et changement de section plus naturel.
+- Clarification strategique : Tauri reste un prototype de productisation, mais la cible OS devient Seven Hub Native en GTK4/libadwaita.
+- Ajout de `seven-hub/native/README.md` pour definir les modules natifs, les contrats JSON et le chemin de migration.
 
 ### Gestion fichiers
 
@@ -186,7 +188,7 @@ Les piliers du projet sont :
 | Desktop Hyprland | 75% | Fonctionnel, Waybar actionnable, session plus robuste |
 | Seven commands | 70% | Base solide, besoin de plus de robustesse |
 | SevenPkg | 65% | Wrapper utile, sorties JSON ajoutees, pas encore vrai package manager |
-| Seven Hub | 75% | GUI Tauri structuree, dashboard natif, backend snapshot, donnees JSON, workflow d'actions confirmees et navigation scrollable |
+| Seven Hub | 76% | GUI Tauri prototype structuree, cible native GTK/libadwaita documentee, contrats JSON consolides |
 | Profils metiers | 64% | Etat, activation et workspaces ajoutes ; installation encore a rendre plus contextuelle |
 | Securite | 55% | Bonne direction, hardening a renforcer |
 | Windows Mode | 50% | Base technique, UX guidee manquante |
@@ -214,8 +216,9 @@ A faire :
 - Actions sans clic aveugle : confirmation, statut en cours, succes, erreur.
 - Gestion theme/session.
 - Statut firewall, VM, server, deploy.
-- Version Tauri prioritaire.
-- Remplacer progressivement les menus Rofi du Hub par une interface Tauri native.
+- Version Tauri maintenue comme prototype.
+- Construire progressivement une interface native GTK4/libadwaita pour les surfaces systeme.
+- Remplacer progressivement les menus Rofi du Hub par une interface native, avec Tauri comme banc d'essai.
 
 ### 2. Installer reel
 

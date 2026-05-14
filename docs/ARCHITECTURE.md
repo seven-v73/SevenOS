@@ -22,7 +22,7 @@ The promise is:
 | System Core | entrypoints, bootstrap, status, repair and phase checks | `install.sh`, `bootstrap.sh`, `bin/seven`, `scripts/*.sh` |
 | Package Layer | package manifests, meta-packages and software sources | `sevenpkg`, `scripts/packages-*.txt`, `sevenpkg/metapackages.json` |
 | Service Layer | local services, deployment, VM and background session | `seven-session`, `seven-server`, `seven-deploy`, `vm/` |
-| UI Layer | desktop shell, hub, files, theme and visible controls | Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files, Tauri GUI |
+| UI Layer | desktop shell, hub, files, theme and visible controls | Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files, Tauri prototype, native GTK target |
 | Security Layer | hardening, audit, sandbox and cyber workspaces | `security/`, Shield profile, UFW, Firejail, Bubblewrap |
 | Compatibility Layer | Windows apps, VM, Wine/Bottles/Lutris/KVM | `profiles/windows.sh`, `vm/windows-mode.sh`, `vm/windows-vm.sh` |
 | Deployment Layer | local API, stack detection and personal cloud direction | `server/`, `docs/DEPLOYMENT.md`, Horizon profile |
@@ -46,9 +46,48 @@ Rules:
 - `seven` is the human entrypoint for system operations.
 - `sevenpkg` handles packages and meta-packages.
 - Seven Hub exposes the same actions as `seven`, not a second truth.
+- Seven Hub UI implementations must consume stable SevenOS data contracts
+  (`seven status --json`, `seven profile status --json`, `seven readiness --json`)
+  instead of scraping human terminal output.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
+
+## Interface Strategy
+
+SevenOS must feel like an operating system, not a browser dashboard. The UI
+strategy is therefore split into prototype and native target.
+
+| Surface | Role | State |
+| --- | --- | --- |
+| Rofi Hub | fast command palette and fallback launcher | Active |
+| Local web Control Center | simple local dashboard for diagnostics | Active |
+| Tauri Seven Hub | productization prototype, action workflow and JSON validation | Preview |
+| Native Seven Hub | long-term OS Control Center using GTK4 + libadwaita | Planned |
+
+Rules:
+
+- Tauri is useful for fast iteration, but it is not the final OS shell model.
+- Native Seven Hub should use GTK4 + libadwaita, system portals, notifications,
+  file integration and accessibility primitives.
+- Both Tauri and native Hub must speak the same SevenOS command/data contracts.
+- UI state belongs to SevenOS (`seven`, profile manager, status JSON), not to
+  the frontend implementation.
+- Web technologies may remain for docs, local dashboards or marketplace
+  previews, but core system control must move toward native Linux components.
+
+Native Hub target modules:
+
+```text
+seven-hub/native
+├── Dashboard  -> readiness, services, repair suggestions
+├── Profiles   -> Forge, Shield, Studio, Windows, Horizon activation
+├── Apps       -> sevenpkg, Flatpak, future SevenStore
+├── Security   -> Shield, UFW, sandbox, Cyber Lab
+├── Windows    -> Wine, Bottles, KVM, VM assistant
+├── System     -> theme, session, updates, logs
+└── Files      -> Seven Files integration and workspace shortcuts
+```
 
 ## UX Contract
 
@@ -108,6 +147,7 @@ Preview:
 
 - Windows Mode
 - Seven Hub Tauri GUI scaffold
+- Seven Hub native architecture contract
 - `seven-server`
 - `seven-deploy`
 - Archiso profile
