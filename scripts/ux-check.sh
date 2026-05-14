@@ -189,7 +189,7 @@ else
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'ebene: #f7f1e5' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
+   grep -q 'ebene: #efe3cf' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'columns: 6' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -310,7 +310,7 @@ fi
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'active_tab_background #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'cursor #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'background #f7f1e5' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'background #efe3cf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'symbol_map U+1F1E6-U+1F1FF Noto Color Emoji' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
   ok "Kitty uses SevenOS Design System v1 palette"
 else

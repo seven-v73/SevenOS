@@ -23,11 +23,11 @@ desktop, but with a visual language owned by SevenOS.
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| `--ebene` | `#f7f1e5` | warm glass canvas |
-| `--surface-0` | `#fffaf0` | page background |
-| `--surface-1` | `#ffffff` | glass cards and panels |
-| `--surface-2` | `#f2e7d3` | raised warm glass |
-| `--surface-3` | `#e6d4b8` | focused popovers |
+| `--ebene` | `#efe3cf` | warm glass canvas |
+| `--surface-0` | `#f6ead8` | page background |
+| `--surface-1` | `#fbf5ea` | glass cards and panels |
+| `--surface-2` | `#ead9bd` | raised warm glass |
+| `--surface-3` | `#d8bd91` | focused popovers |
 | `--gold` | `#c8a96e` | primary action |
 | `--gold-bright` | `#e2c07a` | hover and active |
 | `--gold-dim` | `#8a7048` | borders and details |
@@ -36,10 +36,10 @@ desktop, but with a visual language owned by SevenOS.
 | `--baobab-bright` | `#5aad72` | live success |
 | `--indigo` | `#5b7fa6` | info and secondary states |
 | `--indigo-bright` | `#7ba3cf` | info text and icons |
-| `--text-1` | `#1f160b` | primary text |
-| `--text-2` | `#4f4638` | secondary text |
-| `--text-3` | `#756550` | tertiary text |
-| `--text-4` | `#a48f70` | disabled text |
+| `--text-1` | `#2a1f12` | primary text |
+| `--text-2` | `#5c4d3a` | secondary text |
+| `--text-3` | `#827158` | tertiary text |
+| `--text-4` | `#aa9673` | disabled text |
 
 ## Typography
 

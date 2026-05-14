@@ -32,18 +32,18 @@ without becoming decorative.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `ebene` | `#f7f1e5` | zero surface |
-| `surface-0` | `#fffaf0` | page background |
-| `surface-1` | `#ffffff` | cards and panels |
-| `surface-2` | `#f2e7d3` | raised cards |
-| `surface-3` | `#e6d4b8` | modals and popovers |
+| `ebene` | `#efe3cf` | zero surface |
+| `surface-0` | `#f6ead8` | page background |
+| `surface-1` | `#fbf5ea` | cards and panels |
+| `surface-2` | `#ead9bd` | raised cards |
+| `surface-3` | `#d8bd91` | modals and popovers |
 | `gold` | `#c8a96e` | identity and primary action |
 | `gold-bright` | `#e2c07a` | hover and active states |
 | `clay` | `#c4673a` | warning, danger and urgency |
 | `baobab` | `#4a8c5c` | security, health, success |
 | `indigo` | `#5b7fa6` | network, VM, deployment, technical flow |
-| `text-1` | `#1f160b` | primary text |
-| `text-2` | `#4f4638` | secondary text |
+| `text-1` | `#2a1f12` | primary text |
+| `text-2` | `#5c4d3a` | secondary text |
 
 ## Naming
 

@@ -72,7 +72,8 @@ def read_desktop(path):
 
     comment = data.get("Comment", "")
     categories = data.get("Categories", "")
-    return name, path.name, str(path), comment, categories
+    icon = data.get("Icon") or "application-x-executable"
+    return name, path.name, str(path), comment, categories, icon
 
 data_dirs = []
 for candidate in (
@@ -133,14 +134,15 @@ launch_desktop() {
 }
 
 open_apps() {
-  local catalog_file selected_index selected_line desktop_id desktop_path
+  local catalog_file menu_file selected_index selected_line desktop_id desktop_path
   catalog_file="$(mktemp)"
-  trap 'rm -f "$catalog_file"' RETURN
+  menu_file="$(mktemp)"
+  trap 'rm -f "$catalog_file" "$menu_file"' RETURN
   catalog > "$catalog_file"
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'seven-apps catalog %s applications\n' "$(wc -l < "$catalog_file")"
-    printf 'rofi -dmenu -i -show-icons -theme %q\n' "$THEME"
+    printf 'rofi -dmenu -i -show-icons -theme %q with desktop icon metadata\n' "$THEME"
     return 0
   fi
 
@@ -149,9 +151,21 @@ open_apps() {
     exit 1
   fi
 
+  python - "$catalog_file" > "$menu_file" <<'PY'
+import sys
+
+with open(sys.argv[1], "r", encoding="utf-8", errors="replace") as handle:
+    for line in handle:
+        parts = line.rstrip("\n").split("\t")
+        if len(parts) < 6:
+            continue
+        name, desktop_id, _path, _comment, _categories, icon = parts[:6]
+        label = f"{name}    {desktop_id}"
+        print(f"{label}\0icon\x1f{icon}")
+PY
+
   selected_index="$(
-    awk -F '\t' '{ printf "%s    %s\n", $1, $2 }' "$catalog_file" |
-      rofi -dmenu -i -show-icons -p "Apps" -mesg "SevenOS application library" -format i -theme "$THEME" 2>/dev/null || true
+    rofi -dmenu -i -show-icons -p "Apps" -mesg "SevenOS application library" -format i -theme "$THEME" < "$menu_file" 2>/dev/null || true
   )"
 
   [[ "$selected_index" =~ ^[0-9]+$ ]] || exit 0

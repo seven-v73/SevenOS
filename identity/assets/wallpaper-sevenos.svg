@@ -3,22 +3,22 @@
   <desc id="desc">A professional African first light liquid glass wallpaper with architectural rhythm, brass, clay, baobab and indigo accents.</desc>
   <defs>
     <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fffaf0"/>
-      <stop offset="42%" stop-color="#f7f1e5"/>
+      <stop offset="0%" stop-color="#f6ead8"/>
+      <stop offset="42%" stop-color="#efe3cf"/>
       <stop offset="100%" stop-color="#eadbc4"/>
     </linearGradient>
     <radialGradient id="brassLight" cx="72%" cy="24%" r="48%">
       <stop offset="0%" stop-color="#d7b46a" stop-opacity=".28"/>
       <stop offset="42%" stop-color="#c47a3c" stop-opacity=".12"/>
-      <stop offset="100%" stop-color="#fffaf0" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#f6ead8" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="coolDepth" cx="18%" cy="72%" r="52%">
       <stop offset="0%" stop-color="#2f5d8c" stop-opacity=".22"/>
       <stop offset="46%" stop-color="#2e8b6d" stop-opacity=".10"/>
-      <stop offset="100%" stop-color="#fffaf0" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#f6ead8" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="metalEdge" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".66"/>
+      <stop offset="0%" stop-color="#fbf5ea" stop-opacity=".66"/>
       <stop offset="44%" stop-color="#d7b46a" stop-opacity=".72"/>
       <stop offset="100%" stop-color="#c47a3c" stop-opacity=".38"/>
     </linearGradient>
@@ -43,8 +43,8 @@
   </g>
 
   <g transform="translate(1050 150) skewX(-13)" filter="url(#panelShadow)">
-    <path d="M0 0h560l-104 392H-104z" fill="#ffffff" opacity=".58" stroke="url(#metalEdge)" stroke-width="2"/>
-    <path d="M50 52h450l-68 256H-18z" fill="#fffaf0" opacity=".50" stroke="#8a7048" stroke-opacity=".16"/>
+    <path d="M0 0h560l-104 392H-104z" fill="#fbf5ea" opacity=".58" stroke="url(#metalEdge)" stroke-width="2"/>
+    <path d="M50 52h450l-68 256H-18z" fill="#f6ead8" opacity=".50" stroke="#8a7048" stroke-opacity=".16"/>
     <path d="M88 102h270M64 154h346M44 206h290M22 258h386" stroke="#d7b46a" stroke-width="4" opacity=".18" stroke-linecap="round"/>
     <path d="M426 58l-70 258M472 58l-70 258" stroke="#2f5d8c" stroke-width="3" opacity=".24"/>
   </g>
@@ -60,7 +60,7 @@
   <g opacity=".72">
     <path d="M118 842h330" stroke="#d7b46a" stroke-width="6" stroke-linecap="round"/>
     <path d="M118 862h190" stroke="#2f5d8c" stroke-width="3" stroke-linecap="round"/>
-    <text x="116" y="934" fill="#1f160b" font-family="JetBrains Mono, monospace" font-size="64" font-weight="800">SevenOS</text>
+    <text x="116" y="934" fill="#2a1f12" font-family="JetBrains Mono, monospace" font-size="64" font-weight="800">SevenOS</text>
     <text x="119" y="982" fill="#8a7048" font-family="JetBrains Mono, monospace" font-size="24" font-weight="600">Sovereign Linux workbench</text>
   </g>
 

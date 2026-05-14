@@ -54,7 +54,7 @@ button {
   place-items: center;
   border-radius: 12px;
   background: var(--gold);
-  color: #1f160b;
+  color: #2a1f12;
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 300;
@@ -595,7 +595,7 @@ pre {
 .btn-primary {
   border: none;
   background: var(--gold);
-  color: #1f160b;
+  color: #2a1f12;
   font-weight: 500;
 }
 

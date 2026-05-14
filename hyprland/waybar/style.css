@@ -8,9 +8,9 @@
 }
 
 window#waybar {
-  background: rgba(255, 250, 240, 0.82);
-  color: #1f160b;
-  border-bottom: 1px solid rgba(200, 169, 110, 0.22);
+  background: rgba(246, 234, 216, 0.78);
+  color: #2a1f12;
+  border-bottom: 1px solid rgba(167, 127, 69, 0.26);
 }
 
 #workspaces,
@@ -28,8 +28,8 @@ window#waybar {
   padding: 0 12px;
   margin: 5px 2px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(184, 146, 82, 0.30);
+  background: rgba(255, 248, 230, 0.48);
+  border: 1px solid rgba(167, 127, 69, 0.34);
 }
 
 #custom-sevenos {
@@ -37,7 +37,7 @@ window#waybar {
   margin: 5px 7px 5px 8px;
   padding: 0 18px;
   border-radius: 12px;
-  color: #1f160b;
+  color: #2a1f12;
   background: #c8a96e;
   border: 1px solid #8a7048;
   font-family: "Cormorant Garamond", "DM Sans", serif;
@@ -50,7 +50,7 @@ window#waybar {
   padding: 0 5px;
   background:
     linear-gradient(90deg, rgba(200, 169, 110, 0.18), rgba(91, 127, 166, 0.14)),
-    rgba(255, 255, 255, 0.54);
+    rgba(255, 248, 230, 0.44);
 }
 
 #workspaces button {
@@ -59,32 +59,32 @@ window#waybar {
   margin: 3px 1px;
   padding: 0 8px;
   border-radius: 7px;
-  color: #4f4638;
+  color: #5c4d3a;
   background: transparent;
   transition: background 120ms ease, color 120ms ease, transform 120ms ease;
 }
 
 #workspaces button:hover {
-  color: #1f160b;
-  background: rgba(200, 169, 110, 0.22);
+  color: #2a1f12;
+  background: rgba(167, 127, 69, 0.26);
 }
 
 #workspaces button.active {
-  color: #1f160b;
+  color: #2a1f12;
   background: #c8a96e;
   font-weight: 500;
 }
 
 #workspaces button.urgent {
-  color: #1f160b;
+  color: #2a1f12;
   background: rgba(196, 103, 58, 0.14);
   border: 1px solid #8a4525;
 }
 
 #custom-apps,
 #custom-files {
-  color: #1f160b;
-  background: rgba(255, 255, 255, 0.74);
+  color: #2a1f12;
+  background: rgba(255, 248, 230, 0.62);
   border-color: rgba(200, 169, 110, 0.36);
   font-weight: 500;
 }
@@ -98,38 +98,38 @@ window#waybar {
 }
 
 #clock {
-  color: #1f160b;
-  background: rgba(255, 255, 255, 0.64);
+  color: #2a1f12;
+  background: rgba(255, 248, 230, 0.52);
   border-color: rgba(200, 169, 110, 0.30);
   font-weight: 500;
 }
 
 #custom-quick {
-  color: #1f160b;
+  color: #2a1f12;
   background: rgba(91, 127, 166, 0.24);
   border-color: #5b7fa6;
   font-weight: 500;
 }
 
 #custom-security {
-  color: #1f160b;
+  color: #2a1f12;
   background: rgba(74, 140, 92, 0.24);
   border-color: #4a8c5c;
   font-weight: 500;
 }
 
 #network {
-  color: #1f160b;
+  color: #2a1f12;
   border-color: rgba(91, 127, 166, 0.45);
 }
 
 #pulseaudio,
 #battery {
-  color: #4f4638;
+  color: #5c4d3a;
 }
 
 #custom-power {
-  color: #1f160b;
+  color: #2a1f12;
   background: #c8a96e;
   border-color: #8a7048;
   font-weight: 500;
