@@ -94,7 +94,7 @@ install_package_file() {
     return 0
   fi
 
-  log_info "Installing packages from ${package_file#$SEVENOS_ROOT/}"
+  log_info "Installing packages from ${package_file#${SEVENOS_ROOT:-}/}"
 
   if is_dry_run; then
     if assume_yes; then

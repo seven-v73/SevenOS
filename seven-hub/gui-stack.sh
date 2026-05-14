@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+export SEVENOS_ROOT="$ROOT_DIR"
 source "$ROOT_DIR/scripts/lib.sh"
 
 GUI_DIR="$ROOT_DIR/seven-hub/gui"
