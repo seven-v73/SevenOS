@@ -58,6 +58,7 @@ doctor() {
     "seven-hub/gui/src/styles.css" \
     "seven-hub/gui/src-tauri/Cargo.toml" \
     "seven-hub/gui/src-tauri/build.rs" \
+    "seven-hub/gui/src-tauri/icons/icon.png" \
     "seven-hub/gui/src-tauri/tauri.conf.json" \
     "seven-hub/gui/src-tauri/src/main.rs"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then

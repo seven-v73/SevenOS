@@ -78,3 +78,6 @@ npm run tauri:dev
 
 Seven Hub keeps native bundling disabled during this phase. Packaging will be
 enabled after `.png` and `.ico` app icons are generated for Tauri.
+
+The development context still requires `src-tauri/icons/icon.png`; it is
+generated from `identity/assets/icon-hub.svg` and tracked in the repository.
