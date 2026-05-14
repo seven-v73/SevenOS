@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/hyprland/rofi" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -d "$script_dir/../hyprland/rofi" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -d "$candidate/hyprland/rofi" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-apps: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+THEME="$CONFIG_HOME/rofi/apps.rasi"
+action="${1:-open}"
+
+catalog() {
+  python - <<'PY'
+import os
+from pathlib import Path
+
+def truthy(value):
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+def read_desktop(path):
+    data = {}
+    in_entry = False
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_entry = line == "[Desktop Entry]"
+            continue
+        if not in_entry or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        data.setdefault(key.strip(), value.strip())
+
+    if data.get("Type", "Application") != "Application":
+        return None
+    if truthy(data.get("Hidden", "false")):
+        return None
+    if truthy(data.get("NoDisplay", "false")) and os.environ.get("SEVENOS_APPS_SHOW_HIDDEN") != "1":
+        return None
+
+    name = data.get("Name") or data.get("Name[en_US]") or path.stem
+    exec_value = data.get("Exec", "")
+    if not exec_value:
+        return None
+
+    comment = data.get("Comment", "")
+    categories = data.get("Categories", "")
+    return name, path.name, str(path), comment, categories
+
+data_dirs = []
+for candidate in (
+    Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")),
+    Path.home() / ".local/share/flatpak/exports/share",
+    Path("/var/lib/flatpak/exports/share"),
+):
+    data_dirs.append(candidate)
+
+for raw in os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":"):
+    if raw:
+        data_dirs.append(Path(raw))
+
+seen_paths = set()
+apps = []
+for base in data_dirs:
+    app_dir = base / "applications"
+    if not app_dir.is_dir():
+        continue
+    for path in app_dir.glob("*.desktop"):
+        resolved = str(path)
+        if resolved in seen_paths:
+            continue
+        seen_paths.add(resolved)
+        entry = read_desktop(path)
+        if entry:
+            apps.append(entry)
+
+for entry in sorted(apps, key=lambda item: item[0].casefold()):
+    print("\t".join(value.replace("\t", " ") for value in entry))
+PY
+}
+
+launch_desktop() {
+  local desktop_id="$1"
+  local desktop_path="$2"
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'launch %q %q\n' "$desktop_id" "$desktop_path"
+    return 0
+  fi
+
+  if command -v gtk-launch >/dev/null 2>&1; then
+    gtk-launch "${desktop_id%.desktop}" >/dev/null 2>&1 && return 0
+    gtk-launch "$desktop_id" >/dev/null 2>&1 && return 0
+  fi
+
+  if command -v gio >/dev/null 2>&1; then
+    gio launch "$desktop_path" >/dev/null 2>&1 && return 0
+  fi
+
+  if command -v dex >/dev/null 2>&1; then
+    dex "$desktop_path" >/dev/null 2>&1 && return 0
+  fi
+
+  printf 'seven-apps: could not launch %s\n' "$desktop_id" >&2
+  return 1
+}
+
+open_apps() {
+  local catalog_file selected_index selected_line desktop_id desktop_path
+  catalog_file="$(mktemp)"
+  trap 'rm -f "$catalog_file"' RETURN
+  catalog > "$catalog_file"
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'seven-apps catalog %s applications\n' "$(wc -l < "$catalog_file")"
+    printf 'rofi -dmenu -i -show-icons -theme %q\n' "$THEME"
+    return 0
+  fi
+
+  if ! command -v rofi >/dev/null 2>&1; then
+    printf 'seven-apps: rofi is required for the graphical app launcher\n' >&2
+    exit 1
+  fi
+
+  selected_index="$(
+    awk -F '\t' '{ printf "%s    %s\n", $1, $2 }' "$catalog_file" |
+      rofi -dmenu -i -show-icons -p "Apps" -mesg "SevenOS application library" -format i -theme "$THEME" 2>/dev/null || true
+  )"
+
+  [[ "$selected_index" =~ ^[0-9]+$ ]] || exit 0
+  selected_line="$(sed -n "$((selected_index + 1))p" "$catalog_file")"
+  [[ -n "$selected_line" ]] || exit 0
+
+  desktop_id="$(printf '%s\n' "$selected_line" | awk -F '\t' '{print $2}')"
+  desktop_path="$(printf '%s\n' "$selected_line" | awk -F '\t' '{print $3}')"
+  launch_desktop "$desktop_id" "$desktop_path"
+}
+
+case "$action" in
+  open|apps|launchpad)
+    open_apps
+    ;;
+  list)
+    catalog
+    ;;
+  count)
+    catalog | wc -l
+    ;;
+  doctor)
+    count="$(catalog | wc -l)"
+    printf 'SevenOS Apps: %s desktop applications indexed\n' "$count"
+    if [[ "$count" -eq 0 ]]; then
+      printf 'No .desktop applications found. Check XDG_DATA_DIRS and installed packages.\n' >&2
+      exit 1
+    fi
+    ;;
+  *)
+    printf 'Usage: seven-apps [open|list|count|doctor]\n' >&2
+    exit 2
+    ;;
+esac

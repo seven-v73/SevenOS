@@ -48,7 +48,11 @@ rofi_or_fallback() {
 
 case "$action" in
   apps|app-grid|launchpad)
-    rofi_or_fallback rofi -show drun -show-icons -theme "$APP_THEME"
+    if command -v seven-apps >/dev/null 2>&1; then
+      seven-apps open
+    else
+      "$ROOT_DIR/bin/seven-apps" open
+    fi
     ;;
   windows|overview|activities)
     rofi_or_fallback rofi -show window -show-icons -theme "$SHELL_THEME"

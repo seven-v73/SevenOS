@@ -111,6 +111,8 @@ Les piliers du projet sont :
 - Ajout de fichiers Hyprland proteges : `~/.config/hypr/conf/monitor.conf`, `keyboard.conf` et `custom.conf`.
 - `scripts/apply-theme.sh` installe ces fichiers seulement s'ils n'existent pas deja, afin que les mises a jour SevenOS puissent changer la session sans effacer les ecrans, le clavier ou les regles personnelles.
 - Ajout de `seven-overview`, surface type Activities/Overview inspiree des shells modernes : apps, fenetres, recherche et run.
+- Ajout de `seven-apps`, indexeur/lanceur d'applications SevenOS qui lit les applications systeme, utilisateur et Flatpak via leurs fichiers `.desktop`.
+- `Super+A`, Waybar Apps et Seven Help passent par `seven-apps`, afin que l'acces aux applications installees ne depende plus uniquement du cache `drun` de Rofi.
 - Ajout de `seven-quick-settings`, panneau rapide pour Hub, apps, fenetres, reseau, audio, wallpaper, profils, migration, monitoring et power.
 - Hyprland adopte une ergonomie plus GNOME-like : `Super+Tab` pour les fenetres, `Super+N`/`Super+O` pour les quick settings, `Super+S` pour scratchpad, `Super+L` pour lock, mouvements souris Super+clic et workspaces gauche/droite.
 - Ajout de regles de fenetres pour dialogues fichiers, audio, reseau, aide SevenOS, migration et picture-in-picture afin que l'interface semble plus controlee et moins brute.

@@ -107,6 +107,7 @@ require_executable "bin/sevenpkg"
 require_executable "seven-hub/bin/seven-hub"
 require_executable "seven-hub/bin/seven-control-center"
 require_executable "bin/seven-country"
+require_executable "bin/seven-apps"
 require_executable "bin/seven-files"
 require_executable "bin/seven-help"
 require_executable "bin/seven-overview"
@@ -151,6 +152,7 @@ package_manifest_contains "file-roller" "scripts/packages-base.txt"
 package_manifest_contains "sushi" "scripts/packages-base.txt"
 package_manifest_contains "xdg-user-dirs" "scripts/packages-base.txt"
 package_manifest_contains "xdg-utils" "scripts/packages-base.txt"
+package_manifest_contains "desktop-file-utils" "scripts/packages-base.txt"
 package_manifest_contains "adw-gtk-theme" "scripts/packages-base.txt"
 package_manifest_contains "qt5ct" "scripts/packages-base.txt"
 package_manifest_contains "qt6ct" "scripts/packages-base.txt"
@@ -271,11 +273,13 @@ fi
 
 overview_search_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" search)"
 quick_settings_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings")"
+apps_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open)"
 if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'windowrule = match:title ^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
    [[ "$overview_search_output" == *"rofi"* ]] &&
+   [[ "$apps_output" == *"seven-apps catalog"* ]] &&
    [[ "$quick_settings_output" == *"Control Center"* ]]; then
   ok "SevenOS Shell exposes GNOME-like overview, quick settings and polished window rules"
 else
@@ -324,6 +328,12 @@ if "$ROOT_DIR/bin/seven-country" plain | grep -q 'Capital:'; then
   ok "Terminal country signal works"
 else
   fail "Terminal country signal failed"
+fi
+
+if "$ROOT_DIR/bin/seven-apps" doctor | grep -q 'desktop applications indexed'; then
+  ok "SevenOS Apps indexes installed desktop applications"
+else
+  fail "SevenOS Apps should index installed desktop applications"
 fi
 
 if "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null; then
@@ -515,6 +525,7 @@ else
 fi
 
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null

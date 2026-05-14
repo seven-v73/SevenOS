@@ -35,6 +35,7 @@ file-roller
 sushi
 xdg-user-dirs
 xdg-utils
+desktop-file-utils
 adw-gtk-theme
 qt5ct
 qt6ct

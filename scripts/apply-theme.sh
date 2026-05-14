@@ -128,6 +128,7 @@ configure_file_experience() {
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'xdg-mime default org.gnome.Nautilus.desktop inode/directory\n'
+    printf 'update-desktop-database %q || true\n' "$HOME/.local/share/applications"
     return 0
   fi
 
@@ -140,6 +141,10 @@ configure_file_experience() {
   if command -v xdg-mime >/dev/null 2>&1 && command -v nautilus >/dev/null 2>&1; then
     xdg-mime default org.gnome.Nautilus.desktop inode/directory >/dev/null 2>&1 || true
     xdg-mime default org.gnome.Nautilus.desktop application/x-gnome-saved-search >/dev/null 2>&1 || true
+  fi
+
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
   fi
 }
 
