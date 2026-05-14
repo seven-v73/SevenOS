@@ -47,6 +47,14 @@ else
   ok "Waybar has a clearer left/center/right hierarchy"
 fi
 
+if grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'background: transparent' "$ROOT_DIR/hyprland/waybar/style.css"; then
+  ok "Waybar uses a floating Frost capsule shell"
+else
+  fail "Waybar should use a floating Frost capsule shell"
+fi
+
 if grep -q 'custom/quick' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    grep -q 'custom/notifications' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    [[ -s "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" ]]; then

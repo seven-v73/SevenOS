@@ -158,6 +158,7 @@ Les piliers du projet sont :
 - Approfondissement du shell SevenOS : Launchpad nettoye des identifiants `.desktop`, fallback d'icones par categorie, Quick Settings et Power Menu en lignes icon-first, panneaux Rofi plus arrondis et plus proches d'un control surface OS.
 - Harmonisation des sous-surfaces shell : menus Waybar, Seven Files et Seven Help passent en icon-first avec nettoyage de selection, pour eviter les entrees purement textuelles et conserver des actions reelles.
 - Ajout d'une surface Notifications dans Waybar : etat Mako, menu notification, test, restauration, dismissal, redemarrage du service et bascule Do Not Disturb via `seven-waybar-notifications`.
+- Refonte shell Frost : Waybar en groupes capsules flottants, dry-run transforme en langage produit `DRY-RUN > Surface > Action`, et ajout de `seven-shell-preview` pour auditer Waybar, Rofi, Mako, fonts et commandes shell.
 
 ### Gestion fichiers
 

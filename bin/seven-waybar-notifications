@@ -8,12 +8,16 @@ dry_run() {
   [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
 }
 
+dry_line() {
+  printf 'DRY-RUN > Notifications > %s\n' "$*"
+}
+
 notify() {
   local title="$1"
   local message="$2"
 
   if dry_run; then
-    printf 'notify %q %q\n' "$title" "$message"
+    dry_line "$title: $message"
     return 0
   fi
 
@@ -26,8 +30,7 @@ notify() {
 
 run_detached() {
   if dry_run; then
-    printf '%q ' "$@"
-    printf '\n'
+    dry_line "Launch $*"
     return 0
   fi
 
@@ -65,8 +68,7 @@ start_mako() {
 
 restart_mako() {
   if dry_run; then
-    printf 'pkill -x mako || true\n'
-    printf 'mako\n'
+    dry_line "Restart Mako"
     return 0
   fi
 
@@ -82,7 +84,7 @@ restart_mako() {
 
 dismiss_visible() {
   if command -v makoctl >/dev/null 2>&1; then
-    dry_run && printf 'makoctl dismiss --all\n' && return 0
+    dry_run && dry_line "Dismiss visible notifications" && return 0
     makoctl dismiss --all >/dev/null 2>&1 || true
     return 0
   fi
@@ -91,7 +93,7 @@ dismiss_visible() {
 
 restore_last() {
   if command -v makoctl >/dev/null 2>&1; then
-    dry_run && printf 'makoctl restore\n' && return 0
+    dry_run && dry_line "Restore last notification" && return 0
     makoctl restore >/dev/null 2>&1 || true
     return 0
   fi
@@ -102,14 +104,14 @@ toggle_dnd() {
   mkdir -p "$STATE_DIR"
 
   if [[ -f "$DND_FILE" ]]; then
-    dry_run && printf 'rm -f %q\n' "$DND_FILE"
+    dry_run && dry_line "Toggle Do Not Disturb > off"
     rm -f "$DND_FILE"
     if command -v makoctl >/dev/null 2>&1; then
       dry_run || makoctl mode -r do-not-disturb >/dev/null 2>&1 || true
     fi
     notify "SevenOS Notifications" "Do Not Disturb disabled."
   else
-    dry_run && printf 'touch %q\n' "$DND_FILE"
+    dry_run && dry_line "Toggle Do Not Disturb > on"
     dry_run || touch "$DND_FILE"
     if command -v makoctl >/dev/null 2>&1; then
       dry_run || makoctl mode -a do-not-disturb >/dev/null 2>&1 || true
@@ -140,6 +142,7 @@ open_menu() {
   local selected
 
   if dry_run; then
+    dry_line "Open panel"
     menu
     return 0
   fi

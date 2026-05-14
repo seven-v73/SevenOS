@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/seven" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/SevenOS" "$HOME/Code/OS/SevenOS"; do
+    if [[ -x "$candidate/bin/seven" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  pwd
+}
+
+ROOT_DIR="$(resolve_root)"
+
+check_file() {
+  local label="$1"
+  local path="$2"
+  if [[ -s "$path" ]]; then
+    printf 'OK   %s\n' "$label"
+    return 0
+  fi
+  printf 'MISS %s\n' "$label"
+  return 1
+}
+
+check_command() {
+  local command_name="$1"
+  local local_name="$ROOT_DIR/bin/$command_name"
+  if command -v "$command_name" >/dev/null 2>&1 || [[ -x "$local_name" ]]; then
+    printf 'OK   %s\n' "$command_name"
+    return 0
+  fi
+  printf 'MISS %s\n' "$command_name"
+  return 1
+}
+
+score=0
+total=0
+
+probe() {
+  total=$((total + 1))
+  if "$@"; then
+    score=$((score + 1))
+  fi
+}
+
+printf 'SevenOS Shell Preview\n'
+printf '=====================\n\n'
+
+printf 'Surfaces\n'
+probe check_file "Waybar Frost capsule" "$ROOT_DIR/hyprland/waybar/style.css"
+probe check_file "Rofi Launchpad" "$ROOT_DIR/hyprland/rofi/apps.rasi"
+probe check_file "Quick Settings panel" "$ROOT_DIR/hyprland/rofi/quick-settings.rasi"
+probe check_file "Power panel" "$ROOT_DIR/hyprland/rofi/power.rasi"
+probe check_file "Mako notifications" "$ROOT_DIR/hyprland/mako/config"
+printf '\n'
+
+printf 'Commands\n'
+probe check_command seven
+probe check_command seven-hub
+probe check_command seven-waybar-notifications
+probe check_command seven-quick-settings
+probe check_command seven-files
+printf '\n'
+
+printf 'Live Dry-Run\n'
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" | sed -n '1,5p'
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu | sed -n '1,5p'
+printf '\n'
+
+printf 'Score\n'
+printf '%s/%s shell foundations ready\n' "$score" "$total"
+
+if [[ "$score" -eq "$total" ]]; then
+  printf 'SevenOS Shell: READY\n'
+else
+  printf 'SevenOS Shell: PARTIAL\n'
+fi

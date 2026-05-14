@@ -112,6 +112,7 @@ require_executable "bin/seven-files"
 require_executable "bin/seven-help"
 require_executable "bin/seven-overview"
 require_executable "bin/seven-quick-settings"
+require_executable "bin/seven-shell-preview"
 require_executable "bin/seven-session"
 require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
@@ -226,8 +227,8 @@ fi
 notifications_menu_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
 notifications_toggle_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" toggle-dnd)"
 if jq -e '."modules-right" | index("custom/notifications")' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null &&
-   grep -q '󰂚  Notification Status' <<<"$notifications_menu_output" &&
-   grep -Eq 'touch|rm -f' <<<"$notifications_toggle_output"; then
+   grep -q 'DRY-RUN > Notifications > Open panel' <<<"$notifications_menu_output" &&
+   grep -q 'DRY-RUN > Notifications > Toggle Do Not Disturb' <<<"$notifications_toggle_output"; then
   ok "Waybar notifications expose status, menu and Do Not Disturb controls"
 else
   fail "Waybar notifications should expose status, menu and Do Not Disturb controls"
@@ -238,7 +239,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|For
    grep -q 'Open Active Workspace' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'seven profile activate forge' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'clean_selection' "$ROOT_DIR/bin/seven-waybar-action" &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system | grep -q '󰒓  Open Control Center'; then
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system | grep -q 'DRY-RUN > System > Open panel'; then
   ok "Waybar profile indicator uses live SevenOS profile state"
 else
   fail "Waybar profile indicator should use live SevenOS profile state"
@@ -310,7 +311,7 @@ if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
    [[ "$overview_search_output" == *"rofi"* ]] &&
    [[ "$apps_output" == *"seven-apps catalog"* ]] &&
    [[ "$apps_output" == *"desktop icon metadata"* ]] &&
-   [[ "$quick_settings_output" == *"󰒓  Control Center"* ]] &&
+   [[ "$quick_settings_output" == *"DRY-RUN > Quick Settings > Open panel"* ]] &&
    grep -q 'clean_selection' "$ROOT_DIR/bin/seven-quick-settings" &&
    grep -q 'clean_selection' "$ROOT_DIR/bin/seven-power"; then
   ok "SevenOS Shell exposes GNOME-like overview, quick settings and polished window rules"
@@ -592,6 +593,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" >/dev/null
+shell_preview_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-preview")"
+grep -q 'SevenOS Shell Preview' <<<"$shell_preview_output"
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu | grep -q 'rofi places menu'
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null

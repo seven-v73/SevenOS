@@ -42,10 +42,13 @@ dry_run() {
   [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
 }
 
+dry_line() {
+  printf 'DRY-RUN > %s\n' "$*"
+}
+
 run_detached() {
   if dry_run; then
-    printf '%q ' "$@"
-    printf '\n'
+    dry_line "Launch > $*"
     return 0
   fi
   setsid -f "$@" >/tmp/sevenos-waybar-action.log 2>&1 || notify "SevenOS Waybar" "Action failed: $*"
@@ -58,7 +61,7 @@ run_terminal() {
   wrapped="$command; printf '\nPress Enter to close...'; read -r"
 
   if dry_run; then
-    printf 'terminal %q %q\n' "$title" "$command"
+    dry_line "$title > $command"
     return 0
   fi
 
@@ -78,7 +81,7 @@ open_rofi_menu() {
   shift
 
   if dry_run; then
-    printf 'menu %q\n' "$prompt"
+    dry_line "$prompt > Open panel"
     printf '%s\n' "$@"
     return 0
   fi
