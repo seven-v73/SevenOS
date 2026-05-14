@@ -274,7 +274,7 @@ quick_settings_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings")
 if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'windowrulev2 = float, title:^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'windowrule = match:title ^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
    [[ "$overview_search_output" == *"rofi"* ]] &&
    [[ "$quick_settings_output" == *"Control Center"* ]]; then
   ok "SevenOS Shell exposes GNOME-like overview, quick settings and polished window rules"
