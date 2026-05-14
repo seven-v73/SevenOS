@@ -251,6 +251,9 @@ Show the current SevenOS installation status:
 seven status
 seven post-install
 seven welcome
+seven welcome status --json
+seven welcome plan
+seven welcome plan --json
 seven hub
 seven dashboard
 seven architecture
@@ -385,6 +388,8 @@ SevenOS provides `seven`, the main CLI for daily system control:
 ```bash
 seven status
 seven welcome
+seven welcome status --json
+seven welcome plan --json
 seven hub
 seven dashboard
 seven architecture

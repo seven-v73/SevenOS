@@ -137,6 +137,13 @@ def handle_experience(args):
     run_script(args, "scripts/experience.sh", *extra)
 
 
+def handle_welcome(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "bin/seven-welcome", *extra)
+
+
 def handle_control(args):
     extra = [args.action]
     if args.json:
@@ -208,7 +215,9 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
 
     subparsers.add_parser("update", help="update SevenOS packages")
-    subparsers.add_parser("welcome", help="show SevenOS onboarding overview")
+    welcome_parser = subparsers.add_parser("welcome", help="show SevenOS onboarding overview")
+    welcome_parser.add_argument("action", nargs="?", default="show", choices=("show", "status", "plan"))
+    welcome_parser.add_argument("--json", action="store_true", help="print machine-readable first-run status or plan")
     subparsers.add_parser("dashboard", help="show SevenOS dashboard")
     architecture_parser = subparsers.add_parser("architecture", help="show or validate SevenOS architecture")
     architecture_parser.add_argument("action", nargs="?", default="map")
@@ -312,7 +321,7 @@ def main():
     if args.command == "update":
         sevenpkg(args, "update")
     elif args.command == "welcome":
-        run_script(args, "bin/seven-welcome")
+        handle_welcome(args)
     elif args.command == "dashboard":
         run_script(args, "seven-hub/bin/seven-control-center", "open")
     elif args.command == "architecture":

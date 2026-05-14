@@ -93,6 +93,20 @@ def readiness_payload() -> dict:
         return {"score": 0, "max": 0, "percent": 0, "recommendations": []}
 
 
+def welcome_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "seven-welcome"), "status", "--json"))
+    except Exception:
+        return {"schema": "sevenos.welcome.v1", "mode": "unknown", "percent": 0, "checks": []}
+
+
+def welcome_plan_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "seven-welcome"), "plan", "--json"))
+    except Exception:
+        return {"schema": "sevenos.welcome-plan.v1", "summary": {}, "next": []}
+
+
 def actions_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "actions.sh"), "--json"))
@@ -199,6 +213,8 @@ def insights_payload() -> dict:
 
 
 def status_text() -> str:
+    welcome = welcome_payload()
+    welcome_plan = welcome_plan_payload()
     profiles = profile_payload()
     profile_gaps = profile_gaps_payload()
     profile_plan = profile_plan_payload()
@@ -220,6 +236,7 @@ def status_text() -> str:
     return (
         "Seven Hub Native\n"
         f"Root: {ROOT}\n"
+        f"First run: {welcome.get('mode', 'unknown')} · {welcome.get('percent', 0)}% · {welcome_plan.get('summary', {}).get('total', 0)} actions\n"
         f"Active profile: {active.get('title') if active else 'none'}\n"
         f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
         f"Profile gaps: {profile_gap_count} incomplete modes\n"
@@ -374,6 +391,8 @@ def run_gui() -> int:
 
             def render_dashboard() -> None:
                 clear(dashboard)
+                welcome = welcome_payload()
+                welcome_plan = welcome_plan_payload()
                 readiness = readiness_payload()
                 profiles = profile_payload()
                 profile_gaps = profile_gaps_payload()
@@ -405,6 +424,7 @@ def run_gui() -> int:
 
                 group = Adw.PreferencesGroup(title="System overview")
                 for title_text, subtitle in (
+                    ("First run", f"{welcome.get('mode', 'unknown')} · {welcome.get('percent', 0)}% · {welcome_plan.get('summary', {}).get('total', 0)} onboarding actions"),
                     ("Readiness", f"{readiness.get('percent', 0)}% · {readiness.get('score', 0)}/{readiness.get('max', 0)} checks passed"),
                     ("Experience", f"{experience.get('percent', 0)}% · {experience.get('score', 0)}/{experience.get('max', 0)} coherence score"),
                     ("Shield", f"{shield.get('posture', 'unknown')} · {shield.get('percent', 0)}% trust posture"),
@@ -428,6 +448,28 @@ def run_gui() -> int:
                 ):
                     group.add(make_row(title_text, subtitle))
                 dashboard.append(group)
+
+                welcome_actions = welcome_plan.get("next") or []
+                if welcome_actions:
+                    welcome_group = Adw.PreferencesGroup(title="First-run plan")
+                    for item in welcome_actions[:5]:
+                        row = make_row(
+                            item.get("title", item.get("key", "First-run")),
+                            f"{item.get('severity', 'medium')} · {item.get('phase', 'welcome')} · {item.get('reason', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("go-next-symbolic" if item.get("state") == "READY" else "emblem-system-symbolic")
+                        button.set_tooltip_text(item.get("command", "seven welcome plan"))
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=item.get("command", "seven welcome plan"), title_text=item.get("title", "First-run Plan"): run_ecosystem_command(
+                                command,
+                                title=f"SevenOS First Run - {title_text}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        welcome_group.add(row)
+                    dashboard.append(welcome_group)
 
                 recommendations = readiness.get("recommendations") or []
                 if recommendations:

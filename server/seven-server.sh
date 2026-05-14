@@ -85,7 +85,7 @@ status() {
     printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
     printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
     printf '],'
-    printf '"endpoints":["/health","/state","/status","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/packages","/packages-plan","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/shield-plan","/server-plan","/control","/events","/insights"],'
+    printf '"endpoints":["/health","/state","/status","/welcome","/welcome-plan","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/packages","/packages-plan","/monitor/system","/readiness","/manifest","/actions","/experience","/shield","/shield-plan","/server-plan","/control","/events","/insights"],'
     printf '"recommendations":['
     local first=1
     if [[ "$service" != "RUN" ]]; then
@@ -341,6 +341,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "scripts/state.sh"), "--json"]))
         elif self.path == "/status":
             self.send_json(command_json([os.path.join(ROOT, "bin/seven"), "status", "--json"]))
+        elif self.path == "/welcome":
+            self.send_json(command_json([os.path.join(ROOT, "bin/seven-welcome"), "status", "--json"]))
+        elif self.path == "/welcome-plan":
+            self.send_json(command_json([os.path.join(ROOT, "bin/seven-welcome"), "plan", "--json"]))
         elif self.path == "/profiles":
             self.send_json(command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"]))
         elif self.path == "/profile-gaps":

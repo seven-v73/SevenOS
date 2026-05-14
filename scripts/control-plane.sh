@@ -68,6 +68,7 @@ def command_json(command, fallback):
         return fallback
 
 readiness = command_json([os.path.join(ROOT, "scripts/readiness.sh"), "--json"], {"percent": 0, "recommendations": []})
+welcome_plan = command_json([os.path.join(ROOT, "bin/seven-welcome"), "plan", "--json"], {"next": []})
 experience = command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"], {"percent": 0, "checks": [], "recommendations": []})
 shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"], {"posture": "unknown", "percent": 0, "checks": [], "recommendations": []})
 shield_plan = command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"], {"next": []})
@@ -113,6 +114,18 @@ for check in experience.get("checks", []):
     command = check.get("command", "seven experience")
     severity = "high" if state == "MISS" else "medium"
     add("experience", severity, f"Fix {check.get('category', 'Experience')}", command, check.get("detail", "Improve SevenOS coherence"), "changes")
+
+for item in welcome_plan.get("next", []):
+    if item.get("state") == "READY":
+        continue
+    add(
+        "first-run",
+        item.get("severity", "high"),
+        item.get("title", "Complete first-run setup"),
+        item.get("command", "seven welcome plan"),
+        item.get("reason", item.get("detail", "Complete SevenOS onboarding")),
+        item.get("impact", "changes"),
+    )
 
 for item in shield_plan.get("next", []):
     add(

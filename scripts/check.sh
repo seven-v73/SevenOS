@@ -232,6 +232,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" post-install >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" status --json >/dev/null
+"$ROOT_DIR/bin/seven" welcome status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" welcome plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" profile status --json >/dev/null
 "$ROOT_DIR/bin/seven" profile current --json >/dev/null
 "$ROOT_DIR/bin/seven" profile apps --json >/dev/null
@@ -245,6 +247,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/sevenpkg" plan --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-welcome" status --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-welcome" plan --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open >/dev/null
 "$ROOT_DIR/bin/seven-apps" doctor >/dev/null
@@ -369,6 +373,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" open >/dev/null

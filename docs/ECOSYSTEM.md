@@ -78,6 +78,8 @@ seven ecosystem summary
 seven ecosystem processes
 seven ecosystem --json
 seven state --json
+seven welcome status --json
+seven welcome plan --json
 seven actions --json
 seven profile gaps --json
 seven profile plan --json
@@ -94,10 +96,15 @@ seven installer plan --json
 sevenpkg plan --json
 ```
 
-`seven state --json` is the unified snapshot. It should contain profiles,
-profile gaps, Windows Mode, Windows plan, Shield, Seven Server, Installer,
-Control Plane, actions, manifest and event history so the native Hub can become
-a real OS control plane without scraping terminal text.
+`seven state --json` is the unified snapshot. It should contain welcome,
+welcome plan, profiles, profile gaps, Windows Mode, Windows plan, Shield,
+Seven Server, Installer, Control Plane, actions, manifest and event history so
+the native Hub can become a real OS control plane without scraping terminal
+text.
+
+`seven welcome status --json` and `seven welcome plan --json` are the first-run
+contracts. They let Seven Hub detect missing commands, shell files, user
+services and trust/compatibility blockers immediately after installation.
 
 `seven windows plan --json` is the Windows compatibility plan. It translates
 Wine, Bottles, KVM, libvirt networking and VM creation gaps into a guided setup
@@ -116,8 +123,8 @@ problem SevenOS must avoid: many working pieces that still feel disconnected to
 a normal user.
 
 `seven control --json` is the prioritized action plan. It merges readiness,
-experience, Shield, Server and profiles into one OS decision surface for Seven
-Hub and future automation.
+first-run, experience, Shield, Server and profiles into one OS decision surface
+for Seven Hub and future automation.
 
 `seven control apply` previews the next prioritized actions. It remains
 non-destructive unless `--apply` is explicitly passed, so the system can guide

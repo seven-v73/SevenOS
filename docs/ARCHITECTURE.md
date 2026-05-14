@@ -68,9 +68,15 @@ Rules:
 - `seven experience --json` is the OS coherence contract. It scores whether
   identity, shell, Hub, profiles, actions, Windows, security, server and
   installer feel connected enough for a normal user.
+- `seven welcome status --json` is the first-run session contract. It checks
+  commands, shell files, user services, network, firewall and Windows VM
+  services from the point of view of the current user.
+- `seven welcome plan --json` is the onboarding remediation contract. It tells
+  Seven Hub what must be installed, enabled or repaired before SevenOS feels
+  complete after reboot.
 - `seven control --json` is the decision contract. It converts readiness,
-  experience, Shield, Server and profile gaps into prioritized actions for
-  Seven Hub and future automation.
+  first-run, experience, Shield, Server and profile gaps into prioritized
+  actions for Seven Hub and future automation.
 - `seven control apply` previews those actions first. Execution requires an
   explicit `--apply`, preserving user trust around system-changing operations.
 - `seven events --json` is the local event journal for decisions, previews and
@@ -174,6 +180,7 @@ Native Hub target modules:
 ```text
 seven-hub/native
 ├── Dashboard  -> readiness, services, repair suggestions
+├── First Run  -> welcome status, onboarding plan and post-install blockers
 ├── Profiles   -> Forge, Shield, Studio, Windows, Horizon activation
 ├── Actions    -> shared `seven actions --json` registry
 ├── Apps       -> sevenpkg, Flatpak, future SevenStore

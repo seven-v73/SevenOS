@@ -26,8 +26,21 @@ resolve_root() {
 }
 
 ROOT_DIR="$(resolve_root)"
+ACTION="${1:-show}"
+JSON_OUTPUT=0
 
-if [[ "${1:-}" == "--notify" ]]; then
+if [[ "$ACTION" == "--json" || "$ACTION" == "json" ]]; then
+  ACTION="status"
+  JSON_OUTPUT=1
+elif [[ "$ACTION" == "status" && "${2:-}" == "--json" ]]; then
+  JSON_OUTPUT=1
+elif [[ "$ACTION" == "plan" && "${2:-}" == "--json" ]]; then
+  JSON_OUTPUT=1
+elif [[ "$ACTION" == "--notify" ]]; then
+  ACTION="notify"
+fi
+
+if [[ "$ACTION" == "notify" ]]; then
   if command -v notify-send >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
     notify-send \
       "SevenOS is ready" \
@@ -36,12 +49,36 @@ if [[ "${1:-}" == "--notify" ]]; then
   exit 0
 fi
 
+usage() {
+  cat <<'EOF'
+SevenOS Welcome
+
+Usage:
+  seven-welcome
+  seven-welcome status --json
+  seven-welcome plan --json
+  seven-welcome --notify
+
+This is the first-run contract for Seven Hub and Seven Server. It checks
+whether the current user can experience SevenOS as an OS, not as a repo.
+EOF
+}
+
 command_state() {
   local command_name="$1"
   if command -v "$command_name" >/dev/null 2>&1; then
     printf 'OK'
   elif [[ -x "$ROOT_DIR/bin/$command_name" ]]; then
     printf 'TREE'
+  else
+    printf 'MISS'
+  fi
+}
+
+file_state() {
+  local path="$1"
+  if [[ -s "$path" ]]; then
+    printf 'OK'
   else
     printf 'MISS'
   fi
@@ -56,6 +93,154 @@ service_state() {
   else
     printf 'MISS'
   fi
+}
+
+user_service_state() {
+  local service="$1"
+  if systemctl --user is-active --quiet "$service" 2>/dev/null; then
+    printf 'RUN'
+  elif systemctl --user is-enabled --quiet "$service" 2>/dev/null; then
+    printf 'READY'
+  else
+    printf 'MISS'
+  fi
+}
+
+json_string() {
+  python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
+}
+
+status_rows() {
+  local config_home data_home
+  config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+  data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
+
+  printf 'command\tseven\tSeven controller\t%s\t./install.sh cli\n' "$(command_state seven)"
+  printf 'command\tsevenpkg\tSevenOS software layer\t%s\t./install.sh cli\n' "$(command_state sevenpkg)"
+  printf 'command\tseven-hub\tSeven Hub launcher\t%s\t./install.sh hub\n' "$(command_state seven-hub)"
+  printf 'command\tseven-files\tSeven Files launcher\t%s\t./install.sh cli\n' "$(command_state seven-files)"
+  printf 'command\tseven-power\tSevenOS power menu\t%s\t./install.sh cli\n' "$(command_state seven-power)"
+  printf 'session\thyprland-config\tHyprland SevenOS config\t%s\t./install.sh theme\n' "$(file_state "$config_home/hypr/hyprland.conf")"
+  printf 'session\twaybar-config\tWaybar SevenOS config\t%s\t./install.sh theme\n' "$(file_state "$config_home/waybar/config.jsonc")"
+  printf 'session\trofi-config\tRofi SevenOS config\t%s\t./install.sh theme\n' "$(file_state "$config_home/rofi/apps.rasi")"
+  printf 'session\tmako-config\tNotification theme\t%s\t./install.sh theme\n' "$(file_state "$config_home/mako/config")"
+  printf 'session\tkitty-config\tTerminal identity\t%s\t./install.sh theme\n' "$(file_state "$config_home/kitty/kitty.conf")"
+  printf 'session\twayland-entry\tSevenOS login session\t%s\t./install.sh theme\n' "$(file_state "$data_home/wayland-sessions/sevenos.desktop")"
+  printf 'service\tsevenos-session\tSevenOS user session service\t%s\t./install.sh theme\n' "$(user_service_state sevenos-session.target)"
+  printf 'service\tnetwork\tNetwork manager service\t%s\t./install.sh base\n' "$(service_state NetworkManager.service)"
+  printf 'service\tfirewall\tFirewall trust baseline\t%s\tseven shield plan\n' "$(service_state ufw.service)"
+  printf 'service\twindows-vm\tWindows VM service layer\t%s\tseven windows plan\n' "$(service_state libvirtd.service)"
+}
+
+status_json() {
+  STATUS_ROWS="$(status_rows)" ROOT_DIR="$ROOT_DIR" python - <<'PY'
+import json
+import os
+
+rows = []
+for raw in os.environ["STATUS_ROWS"].splitlines():
+    category, key, label, state, command = raw.split("\t", 4)
+    rows.append({
+        "category": category,
+        "key": key,
+        "label": label,
+        "state": state,
+        "command": command,
+    })
+
+blocking = [item for item in rows if item["state"] == "MISS" and item["category"] in ("command", "session")]
+partial = [item for item in rows if item["state"] in ("MISS", "PART", "READY")]
+ready_count = sum(1 for item in rows if item["state"] in ("OK", "RUN", "TREE"))
+percent = round((ready_count / len(rows)) * 100) if rows else 0
+mode = "ready" if not blocking else "setup-needed"
+
+print(json.dumps({
+    "schema": "sevenos.welcome.v1",
+    "root": os.environ["ROOT_DIR"],
+    "mode": mode,
+    "percent": percent,
+    "summary": {
+        "total": len(rows),
+        "ready": ready_count,
+        "attention": len(partial),
+        "blocking": len(blocking),
+    },
+    "checks": rows,
+}, indent=2))
+PY
+}
+
+plan_json() {
+  STATUS_ROWS="$(status_rows)" python - <<'PY'
+import json
+import os
+
+metadata = {
+    "seven": ("critical", "core", "Install SevenOS controller", "SevenOS must be controllable without staying inside the Git repo."),
+    "sevenpkg": ("critical", "apps", "Install SevenPkg", "The software layer is required for profiles and app delivery."),
+    "seven-hub": ("high", "ux", "Install Seven Hub", "Users need a visible control center before SevenOS feels like an OS."),
+    "seven-files": ("medium", "ux", "Install Seven Files", "File navigation should be accessible without terminal knowledge."),
+    "seven-power": ("medium", "session", "Install session controls", "Power, lock and logout should be reachable from the shell."),
+    "hyprland-config": ("critical", "session", "Apply SevenOS Hyprland session", "Without the SevenOS session config, the user sees a basic Hyprland desktop."),
+    "waybar-config": ("high", "shell", "Apply SevenOS Waybar", "The system bar is the main daily surface for status and actions."),
+    "rofi-config": ("high", "apps", "Apply SevenOS app launcher", "Apps must be discoverable through a polished launcher."),
+    "mako-config": ("medium", "shell", "Apply notification style", "System feedback should be visible and coherent."),
+    "kitty-config": ("medium", "terminal", "Apply terminal identity", "The terminal should feel like a SevenOS tool, not a generic shell."),
+    "wayland-entry": ("high", "session", "Install SevenOS login entry", "A named session makes SevenOS independent from a manually edited Hyprland setup."),
+    "sevenos-session": ("high", "session", "Enable SevenOS session services", "Wallpaper, bar, notifications and idle handling need supervised startup."),
+    "network": ("high", "base", "Enable networking", "A first-run experience needs internet access for packages and profiles."),
+    "firewall": ("high", "trust", "Prepare Shield firewall", "SevenOS should communicate trust posture from the first session."),
+    "windows-vm": ("medium", "compatibility", "Prepare Windows VM services", "Windows Mode needs libvirt before it can be guided for non-technical users."),
+}
+
+rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+actions = []
+for raw in os.environ["STATUS_ROWS"].splitlines():
+    category, key, label, state, command = raw.split("\t", 4)
+    if state in ("OK", "RUN", "TREE"):
+        continue
+    severity, phase, title, reason = metadata.get(key, ("medium", category, f"Fix {label}", f"Resolve {label}."))
+    impact = "packages" if command.startswith("./install.sh") or "install" in command else "changes"
+    if command.endswith("plan") or command.startswith("seven windows"):
+        impact = "safe"
+    actions.append({
+        "key": key,
+        "state": state,
+        "title": title,
+        "severity": severity,
+        "impact": impact,
+        "phase": phase,
+        "detail": label,
+        "reason": reason,
+        "command": command,
+    })
+
+if not actions:
+    actions.append({
+        "key": "open-hub",
+        "state": "READY",
+        "title": "Open Seven Hub",
+        "severity": "low",
+        "impact": "safe",
+        "phase": "welcome",
+        "detail": "SevenOS first-run checks are ready",
+        "reason": "Start from the Control Center and choose the next profile or system improvement.",
+        "command": "seven hub-native open",
+    })
+
+actions.sort(key=lambda item: (rank.get(item["severity"], 9), item["phase"], item["key"]))
+
+print(json.dumps({
+    "schema": "sevenos.welcome-plan.v1",
+    "summary": {
+        "total": len([item for item in actions if item["state"] != "READY"]),
+        "critical": sum(1 for item in actions if item["severity"] == "critical" and item["state"] != "READY"),
+        "high": sum(1 for item in actions if item["severity"] == "high" and item["state"] != "READY"),
+        "medium": sum(1 for item in actions if item["severity"] == "medium" and item["state"] != "READY"),
+    },
+    "next": actions,
+}, indent=2))
+PY
 }
 
 print_next_steps() {
@@ -78,6 +263,50 @@ print_next_steps() {
   printf '  seven hub                 Open Seven Hub\n'
   printf '  sevenpkg meta             List SevenOS meta-packages\n'
 }
+
+case "$ACTION" in
+  status)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      status_json
+    else
+      "$0"
+    fi
+    exit 0
+    ;;
+  plan)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      plan_json
+    else
+      WELCOME_PLAN="$(plan_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["WELCOME_PLAN"])
+summary = data.get("summary", {})
+print("SevenOS First-Run Plan")
+print("======================")
+print(f"Open actions: {summary.get('total', 0)} ({summary.get('critical', 0)} critical, {summary.get('high', 0)} high)")
+print()
+print(f"{'Severity':<9} {'Phase':<12} {'Command'}")
+print(f"{'--------':<9} {'-----':<12} {'-------'}")
+for item in data.get("next", []):
+    print(f"{item.get('severity',''):<9} {item.get('phase',''):<12} {item.get('command','')}")
+    print(f"{'':<9} {'':<12} {item.get('reason','')}")
+PY
+    fi
+    exit 0
+    ;;
+  show) ;;
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+  *)
+    printf 'seven-welcome: unknown action: %s\n' "$ACTION" >&2
+    usage
+    exit 1
+    ;;
+esac
 
 printf 'SevenOS Welcome\n'
 printf '===============\n\n'

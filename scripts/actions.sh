@@ -26,6 +26,11 @@ hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
 apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS application library.
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
+welcome.open	System	Welcome	seven welcome	safe	Show the SevenOS onboarding overview.
+welcome.status	System	First-Run Status	seven welcome status	safe	Check whether this user session is really SevenOS.
+welcome.plan	System	First-Run Plan	seven welcome plan	safe	Show the first-run completion plan.
+postinstall.check	System	Post-Install Check	seven post-install	safe	Check common blockers after installation.
+session.status	Desktop	Session Status	seven-session-status	safe	Check SevenOS session services and desktop files.
 readiness.run	System	Run Readiness	seven readiness	safe	Score SevenOS against product readiness checks.
 experience.run	System	Experience Audit	seven experience	safe	Check whether SevenOS behaves like a coherent OS.
 control.plan	System	Control Plane	seven control	safe	Show prioritized SevenOS actions across readiness, trust and services.

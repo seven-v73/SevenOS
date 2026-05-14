@@ -46,6 +46,8 @@ state = json.loads(os.environ["STATE_PAYLOAD"])
 limit = int(os.environ.get("LIMIT", "8"))
 
 readiness = state.get("readiness") or {}
+welcome = state.get("welcome") or {}
+welcome_plan = state.get("welcome_plan") or {}
 experience = state.get("experience") or {}
 control = state.get("control") or {}
 shield = state.get("shield") or {}
@@ -110,6 +112,19 @@ if readiness_percent < 80:
         "seven readiness",
         "foundation",
         "readiness",
+    )
+
+welcome_open = (welcome_plan.get("summary") or {}).get("total", 0)
+if welcome_open:
+    next_welcome = (welcome_plan.get("next") or [{}])[0]
+    add(
+        "first-run",
+        "critical" if (welcome_plan.get("summary") or {}).get("critical", 0) else "high",
+        "Complete first-run setup",
+        f"Welcome readiness is {welcome.get('percent', 0)}% with {welcome_open} first-run blockers. SevenOS should boot into a complete product surface.",
+        next_welcome.get("command", "seven welcome plan"),
+        "onboarding",
+        "welcome",
     )
 
 if experience_percent < 85:
@@ -221,6 +236,15 @@ planned_modules = sum(1 for item in ecosystem_modules if item.get("state") == "p
 
 signals = {
     "readiness": {"percent": readiness_percent, "band": score_band(readiness_percent)},
+    "welcome": {
+        "percent": welcome.get("percent", 0),
+        "mode": welcome.get("mode", "unknown"),
+        "open": welcome_open,
+    },
+    "welcome_plan": {
+        "total": welcome_open,
+        "next": (welcome_plan.get("next") or [{}])[0].get("command"),
+    },
     "experience": {"percent": experience_percent, "band": score_band(experience_percent)},
     "control": {"percent": control_percent, "band": score_band(control_percent)},
     "shield": {"percent": shield_percent, "band": score_band(shield_percent)},

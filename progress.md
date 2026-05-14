@@ -185,6 +185,8 @@ Les piliers du projet sont :
 - Ajout de `seven insights` / `seven insights --json` : synthese produit des limites actuelles, priorites et prochaines commandes, afin que Seven Hub ne montre pas seulement des donnees brutes.
 - Ajout de `seven shield plan` / `seven shield plan --json` : plan de remediation Shield priorise, expose dans `seven state --json`, Seven Server, Control Plane, Insights et Seven Hub Native.
 - Ajout de `seven server plan` / `seven server plan --json` : plan de remediation backend local pour transformer Seven Server en service pilotable, expose dans l'etat unifie, Control Plane, Insights et Hub natif.
+- Ajout de `seven welcome status --json` et `seven welcome plan --json` : contrat de premiere ouverture qui detecte commandes, fichiers de session, services utilisateur, reseau, firewall et Windows VM apres reboot.
+- `seven state --json`, Seven Server, Control Plane, Insights et Seven Hub Native consomment maintenant le plan First Run, afin que SevenOS puisse guider l'utilisateur vers un environnement complet sans lire un README ni deviner les commandes.
 
 ### Gestion fichiers
 
