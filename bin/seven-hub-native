@@ -86,17 +86,28 @@ def actions_payload() -> dict:
         return {"schema": "sevenos.actions.v1", "actions": []}
 
 
+def ecosystem_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "ecosystem.sh"), "json"))
+    except Exception:
+        return {"schema": "sevenos.ecosystem.v1", "modules": [], "processes": []}
+
+
 def status_text() -> str:
     profiles = profile_payload()
+    ecosystem = ecosystem_payload()
     active = next((item for item in profiles if item.get("active")), None)
     ready = sum(1 for item in profiles if item.get("state") == "OK")
     partial = sum(1 for item in profiles if item.get("state") == "PART")
     missing = sum(1 for item in profiles if item.get("state") == "MISS")
+    active_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "active")
+    preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
     return (
         "Seven Hub Native\n"
         f"Root: {ROOT}\n"
         f"Active profile: {active.get('title') if active else 'none'}\n"
         f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
+        f"Ecosystem: {active_modules} active, {preview_modules} preview, {len(ecosystem.get('processes', []))} processes\n"
     )
 
 
@@ -196,10 +207,12 @@ def run_gui() -> int:
             dashboard, dashboard_scroll = page()
             profiles_page, profiles_scroll = page()
             actions_page, actions_scroll = page()
+            ecosystem_page, ecosystem_scroll = page()
 
             stack.add_titled(dashboard_scroll, "dashboard", "Dashboard")
             stack.add_titled(profiles_scroll, "profiles", "Profiles")
             stack.add_titled(actions_scroll, "actions", "Actions")
+            stack.add_titled(ecosystem_scroll, "ecosystem", "Ecosystem")
 
             def clear(box: Gtk.Box) -> None:
                 while child := box.get_first_child():
@@ -221,10 +234,13 @@ def run_gui() -> int:
                 clear(dashboard)
                 readiness = readiness_payload()
                 profiles = profile_payload()
+                ecosystem = ecosystem_payload()
                 active = next((item for item in profiles if item.get("active")), None)
                 ready = sum(1 for item in profiles if item.get("state") == "OK")
                 partial = sum(1 for item in profiles if item.get("state") == "PART")
                 missing = sum(1 for item in profiles if item.get("state") == "MISS")
+                active_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "active")
+                preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
 
                 heading(dashboard, "SevenOS Dashboard", "System state, readiness and common repair paths from native GTK.")
 
@@ -233,6 +249,7 @@ def run_gui() -> int:
                     ("Readiness", f"{readiness.get('percent', 0)}% · {readiness.get('score', 0)}/{readiness.get('max', 0)} checks passed"),
                     ("Active profile", active.get("title") if active else "No active profile yet"),
                     ("Profiles", f"{ready} OK · {partial} PART · {missing} MISS"),
+                    ("Ecosystem", f"{active_modules} active modules · {preview_modules} preview · {len(ecosystem.get('processes', []))} processes"),
                     ("Root", str(ROOT)),
                 ):
                     group.add(make_row(title_text, subtitle))
@@ -300,7 +317,7 @@ def run_gui() -> int:
                 for action in payload.get("actions", []):
                     by_category.setdefault(action.get("category", "System"), []).append(action)
 
-                wanted = ("Desktop", "System", "Profiles", "Security", "Apps", "Windows", "Server", "Installer")
+                wanted = ("Desktop", "System", "Profiles", "Security", "Apps", "Windows", "Server", "Ecosystem", "Installer")
                 for category in wanted:
                     items = by_category.get(category, [])
                     if not items:
@@ -320,10 +337,53 @@ def run_gui() -> int:
                         group.add(row)
                     actions_page.append(group)
 
+            def render_ecosystem() -> None:
+                clear(ecosystem_page)
+                payload = ecosystem_payload()
+                heading(
+                    ecosystem_page,
+                    "Seven Ecosystem",
+                    "All-in-one process map: desktop, profiles, apps, Windows, security, deployment and future cloud/store layers.",
+                )
+
+                modules = payload.get("modules", [])
+                processes = payload.get("processes", [])
+                active = sum(1 for item in modules if item.get("state") == "active")
+                preview = sum(1 for item in modules if item.get("state") == "preview")
+                planned = sum(1 for item in modules if item.get("state") == "planned")
+
+                overview = Adw.PreferencesGroup(title="Ecosystem overview")
+                for title_text, subtitle in (
+                    ("Positioning", payload.get("positioning", "SevenOS ecosystem")),
+                    ("Modules", f"{active} active · {preview} preview · {planned} planned"),
+                    ("Processes", f"{len(processes)} all-in-one flows declared"),
+                ):
+                    overview.add(make_row(title_text, subtitle))
+                ecosystem_page.append(overview)
+
+                module_group = Adw.PreferencesGroup(title="Modules")
+                for module in modules:
+                    row = make_row(
+                        module.get("name", "Module"),
+                        f"{module.get('state', 'planned')} · phase {module.get('phase', '?')} · {module.get('purpose', '')}",
+                    )
+                    module_group.add(row)
+                ecosystem_page.append(module_group)
+
+                process_group = Adw.PreferencesGroup(title="Processes")
+                for process in processes:
+                    row = make_row(
+                        process.get("name", "Process"),
+                        f"{process.get('state', 'planned')} · {process.get('flow', '')} · {process.get('command', '')}",
+                    )
+                    process_group.add(row)
+                ecosystem_page.append(process_group)
+
             def render_all() -> None:
                 render_dashboard()
                 render_profiles()
                 render_actions()
+                render_ecosystem()
 
             refresh.connect("clicked", lambda _button: render_all())
             render_all()

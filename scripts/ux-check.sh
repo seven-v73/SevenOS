@@ -445,8 +445,12 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -Fq 'Seven Hub Native' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -Fq 'seven profile status --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -Fq 'seven actions --json' "$ROOT_DIR/seven-hub/native/README.md" &&
+   grep -Fq 'seven ecosystem --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -q 'def render_dashboard' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'icon_for_action' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'set_icon_name' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'run_visible' "$ROOT_DIR/bin/seven-hub-native" &&

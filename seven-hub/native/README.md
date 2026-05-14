@@ -44,6 +44,7 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Dashboard | readiness, services, urgent repairs | `seven readiness --json` |
 | Profiles | active profile, workspaces, install/activate | `seven profile status --json` |
 | Actions | safe and state-changing OS actions | `seven actions --json` |
+| Ecosystem | modules, maturity and all-in-one user flows | `seven ecosystem --json` |
 | Apps | packages, metapackages, Flatpak bridge | `sevenpkg status --json` |
 | Security | Shield, firewall, sandbox, Cyber Lab | `seven status --json` |
 | Windows | Wine, Bottles, KVM, VM state | `seven windows status --json` |
@@ -68,10 +69,10 @@ diagnostics, documentation, marketplace previews or developer dashboards.
 
 1. Keep Tauri as the visible prototype.
 2. Harden JSON contracts in `seven` and `sevenpkg`.
-3. Build the native Dashboard, Profiles and Actions views first.
+3. Build the native Dashboard, Profiles, Actions and Ecosystem views first.
    `bin/seven-hub-native` now starts this path with live state from
    `seven readiness --json`, `seven profile status --json` and
-   `seven actions --json`.
+   `seven actions --json`, plus `seven ecosystem --json`.
 4. Add Security, Apps and Windows-specific pages.
 5. Keep Tauri as a prototype while `seven-hub` defaults to the native Hub
    whenever GTK/libadwaita is available.
@@ -89,9 +90,9 @@ seven hub-native status
 seven-hub
 ```
 
-The prototype is intentionally focused: Dashboard, Profiles and Actions first,
-because these define how SevenOS becomes an adaptive OS instead of a static Arch
-theme.
+The prototype is intentionally focused: Dashboard, Profiles, Actions and
+Ecosystem first, because these define how SevenOS becomes an adaptive OS instead
+of a static Arch theme.
 
 As modules grow, prefer `seven state --json` when a view needs a full snapshot
 instead of calling multiple commands individually.

@@ -84,6 +84,20 @@ seven actions --json
 Windows Mode, actions, manifest and ecosystem data so the native Hub can become
 a real OS control plane without scraping terminal text.
 
+## Native Hub Integration
+
+Seven Hub Native should expose the ecosystem as a visual product map:
+
+- Dashboard summary: active modules, preview modules and process count.
+- Ecosystem page: module maturity, purpose and phase.
+- Process page/section: first run, daily control, apps, profiles, Windows,
+  security, deployment and future cloud/store/automation flows.
+- Actions: process entries should point back to `seven` commands or registered
+  action IDs.
+
+This keeps the ecosystem fluid: the user can see where a feature belongs,
+whether it is ready, and how to start it from the same control center.
+
 ## Current Foundation
 
 Already present:
