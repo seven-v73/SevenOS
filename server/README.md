@@ -56,6 +56,7 @@ curl http://127.0.0.1:7777/state
 curl http://127.0.0.1:7777/status
 curl http://127.0.0.1:7777/welcome
 curl http://127.0.0.1:7777/welcome-plan
+curl http://127.0.0.1:7777/session
 curl http://127.0.0.1:7777/profiles
 curl http://127.0.0.1:7777/profile-gaps
 curl http://127.0.0.1:7777/profile-plan

@@ -187,6 +187,7 @@ Les piliers du projet sont :
 - Ajout de `seven server plan` / `seven server plan --json` : plan de remediation backend local pour transformer Seven Server en service pilotable, expose dans l'etat unifie, Control Plane, Insights et Hub natif.
 - Ajout de `seven welcome status --json` et `seven welcome plan --json` : contrat de premiere ouverture qui detecte commandes, fichiers de session, services utilisateur, reseau, firewall et Windows VM apres reboot.
 - `seven state --json`, Seven Server, Control Plane, Insights et Seven Hub Native consomment maintenant le plan First Run, afin que SevenOS puisse guider l'utilisateur vers un environnement complet sans lire un README ni deviner les commandes.
+- Ajout de `seven session status --json` : contrat runtime de session SevenOS pour verifier entree de login, services utilisateur, Waybar, notifications, wallpaper et idle depuis Seven Hub, Seven Server et l'etat unifie.
 
 ### Gestion fichiers
 

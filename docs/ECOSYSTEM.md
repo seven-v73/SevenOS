@@ -80,6 +80,7 @@ seven ecosystem --json
 seven state --json
 seven welcome status --json
 seven welcome plan --json
+seven session status --json
 seven actions --json
 seven profile gaps --json
 seven profile plan --json
@@ -105,6 +106,10 @@ text.
 `seven welcome status --json` and `seven welcome plan --json` are the first-run
 contracts. They let Seven Hub detect missing commands, shell files, user
 services and trust/compatibility blockers immediately after installation.
+
+`seven session status --json` is the shell runtime contract. It exposes the
+login session, user service files and running Waybar/notifications/wallpaper
+services as data for Seven Hub and Seven Server.
 
 `seven windows plan --json` is the Windows compatibility plan. It translates
 Wine, Bottles, KVM, libvirt networking and VM creation gaps into a guided setup

@@ -107,6 +107,13 @@ def welcome_plan_payload() -> dict:
         return {"schema": "sevenos.welcome-plan.v1", "summary": {}, "next": []}
 
 
+def session_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "seven-session-status"), "--json"))
+    except Exception:
+        return {"schema": "sevenos.session.v1", "mode": "unknown", "percent": 0, "summary": {}, "checks": []}
+
+
 def actions_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "actions.sh"), "--json"))
@@ -215,6 +222,7 @@ def insights_payload() -> dict:
 def status_text() -> str:
     welcome = welcome_payload()
     welcome_plan = welcome_plan_payload()
+    session = session_payload()
     profiles = profile_payload()
     profile_gaps = profile_gaps_payload()
     profile_plan = profile_plan_payload()
@@ -237,6 +245,7 @@ def status_text() -> str:
         "Seven Hub Native\n"
         f"Root: {ROOT}\n"
         f"First run: {welcome.get('mode', 'unknown')} · {welcome.get('percent', 0)}% · {welcome_plan.get('summary', {}).get('total', 0)} actions\n"
+        f"Session: {session.get('mode', 'unknown')} · {session.get('percent', 0)}% · {session.get('summary', {}).get('running', 0)} running\n"
         f"Active profile: {active.get('title') if active else 'none'}\n"
         f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
         f"Profile gaps: {profile_gap_count} incomplete modes\n"
@@ -393,6 +402,7 @@ def run_gui() -> int:
                 clear(dashboard)
                 welcome = welcome_payload()
                 welcome_plan = welcome_plan_payload()
+                session = session_payload()
                 readiness = readiness_payload()
                 profiles = profile_payload()
                 profile_gaps = profile_gaps_payload()
@@ -425,6 +435,7 @@ def run_gui() -> int:
                 group = Adw.PreferencesGroup(title="System overview")
                 for title_text, subtitle in (
                     ("First run", f"{welcome.get('mode', 'unknown')} · {welcome.get('percent', 0)}% · {welcome_plan.get('summary', {}).get('total', 0)} onboarding actions"),
+                    ("Session", f"{session.get('mode', 'unknown')} · {session.get('percent', 0)}% · {session.get('summary', {}).get('running', 0)} services running"),
                     ("Readiness", f"{readiness.get('percent', 0)}% · {readiness.get('score', 0)}/{readiness.get('max', 0)} checks passed"),
                     ("Experience", f"{experience.get('percent', 0)}% · {experience.get('score', 0)}/{experience.get('max', 0)} coherence score"),
                     ("Shield", f"{shield.get('posture', 'unknown')} · {shield.get('percent', 0)}% trust posture"),

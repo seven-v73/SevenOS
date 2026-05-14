@@ -3,6 +3,29 @@ set -Eeuo pipefail
 
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+JSON_OUTPUT=0
+
+for arg in "$@"; do
+  case "$arg" in
+    --json|json) JSON_OUTPUT=1 ;;
+    -h|--help|help)
+      cat <<'EOF'
+SevenOS Session Status
+
+Usage:
+  seven-session-status
+  seven-session-status --json
+
+Checks the installable SevenOS session files and user services.
+EOF
+      exit 0
+      ;;
+    *)
+      printf 'seven-session-status: unknown option: %s\n' "$arg" >&2
+      exit 1
+      ;;
+  esac
+done
 
 check_file() {
   local label="$1"
@@ -11,6 +34,15 @@ check_file() {
     printf 'OK   %s\n' "$label"
   else
     printf 'MISS %s\n' "$label"
+  fi
+}
+
+file_state() {
+  local path="$1"
+  if [[ -s "$path" ]]; then
+    printf 'OK'
+  else
+    printf 'MISS'
   fi
 }
 
@@ -26,6 +58,74 @@ check_service() {
     printf 'MISS %s\n' "$unit"
   fi
 }
+
+service_state() {
+  local unit="$1"
+  if command -v systemctl >/dev/null 2>&1 && systemctl --user is-enabled --quiet "$unit" 2>/dev/null; then
+    if systemctl --user is-active --quiet "$unit" 2>/dev/null; then
+      printf 'RUN'
+    else
+      printf 'READY'
+    fi
+  else
+    printf 'MISS'
+  fi
+}
+
+json_string() {
+  python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
+}
+
+session_rows() {
+  printf 'file\twayland-entry\tWayland session entry\t%s\t%s\n' "$(file_state "$DATA_HOME/wayland-sessions/sevenos.desktop")" "$DATA_HOME/wayland-sessions/sevenos.desktop"
+  printf 'file\tsession-target\tUser session target\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-session.target")" "$CONFIG_HOME/systemd/user/sevenos-session.target"
+  printf 'file\twaybar-service\tWaybar service\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-waybar.service")" "$CONFIG_HOME/systemd/user/sevenos-waybar.service"
+  printf 'file\tnotifications-service\tNotifications service\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-notifications.service")" "$CONFIG_HOME/systemd/user/sevenos-notifications.service"
+  printf 'file\twallpaper-service\tWallpaper service\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-wallpaper.service")" "$CONFIG_HOME/systemd/user/sevenos-wallpaper.service"
+  printf 'service\tsevenos-session\tSevenOS session target\t%s\tsevenos-session.target\n' "$(service_state sevenos-session.target)"
+  printf 'service\tsevenos-waybar\tWaybar runtime\t%s\tsevenos-waybar.service\n' "$(service_state sevenos-waybar.service)"
+  printf 'service\tsevenos-notifications\tNotifications runtime\t%s\tsevenos-notifications.service\n' "$(service_state sevenos-notifications.service)"
+  printf 'service\tsevenos-wallpaper\tWallpaper runtime\t%s\tsevenos-wallpaper.service\n' "$(service_state sevenos-wallpaper.service)"
+  printf 'service\tsevenos-idle\tIdle runtime\t%s\tsevenos-idle.service\n' "$(service_state sevenos-idle.service)"
+}
+
+if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+  SESSION_ROWS="$(session_rows)" python - <<'PY'
+import json
+import os
+
+items = []
+for raw in os.environ["SESSION_ROWS"].splitlines():
+    kind, key, label, state, target = raw.split("\t", 4)
+    items.append({
+        "kind": kind,
+        "key": key,
+        "label": label,
+        "state": state,
+        "target": target,
+    })
+
+ready = sum(1 for item in items if item["state"] in ("OK", "RUN", "READY"))
+running = sum(1 for item in items if item["state"] == "RUN")
+missing = sum(1 for item in items if item["state"] == "MISS")
+percent = round((ready / len(items)) * 100) if items else 0
+mode = "running" if running >= 3 and missing == 0 else "installed" if missing == 0 else "setup-needed"
+
+print(json.dumps({
+    "schema": "sevenos.session.v1",
+    "mode": mode,
+    "percent": percent,
+    "summary": {
+        "total": len(items),
+        "ready": ready,
+        "running": running,
+        "missing": missing,
+    },
+    "checks": items,
+}, indent=2))
+PY
+  exit 0
+fi
 
 printf 'SevenOS Session Status\n'
 printf '======================\n\n'

@@ -74,6 +74,9 @@ Rules:
 - `seven welcome plan --json` is the onboarding remediation contract. It tells
   Seven Hub what must be installed, enabled or repaired before SevenOS feels
   complete after reboot.
+- `seven session status --json` is the desktop session runtime contract. It
+  exposes login entry, user service files and active session services so SevenOS
+  can verify its shell like a real OS session, not loose autostart commands.
 - `seven control --json` is the decision contract. It converts readiness,
   first-run, experience, Shield, Server and profile gaps into prioritized
   actions for Seven Hub and future automation.
@@ -206,6 +209,7 @@ Examples:
 seven hub
 seven files
 seven state --json
+seven session status --json
 seven actions --json
 seven ecosystem processes
 seven ecosystem --json

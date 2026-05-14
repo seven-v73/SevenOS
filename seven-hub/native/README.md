@@ -27,6 +27,7 @@ seven status --json
 seven state --json
 seven welcome status --json
 seven welcome plan --json
+seven session status --json
 seven actions --json
 seven profile status --json
 seven profile current --json
@@ -46,6 +47,7 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | --- | --- | --- |
 | Dashboard | readiness, services, urgent repairs | `seven readiness --json` |
 | First Run | onboarding completion and post-install blockers | `seven welcome plan --json` |
+| Session | login entry, user services and running shell components | `seven session status --json` |
 | Experience | OS coherence score and blockers | `seven experience --json` |
 | Control | prioritized next actions | `seven control --json` |
 | Profiles | active profile, workspaces, install/activate | `seven profile status --json` |

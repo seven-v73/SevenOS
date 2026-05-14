@@ -72,6 +72,8 @@ json_to_file "$STATE_TMP/welcome.json" "$ROOT_DIR/bin/seven-welcome" status --js
 pid_welcome=$!
 json_to_file "$STATE_TMP/welcome_plan.json" "$ROOT_DIR/bin/seven-welcome" plan --json &
 pid_welcome_plan=$!
+json_to_file "$STATE_TMP/session.json" "$ROOT_DIR/bin/seven-session-status" --json &
+pid_session=$!
 json_to_file "$STATE_TMP/profiles.json" "$ROOT_DIR/bin/seven" profile status --json &
 pid_profiles=$!
 json_to_file "$STATE_TMP/profile_gaps.json" "$ROOT_DIR/bin/seven" profile gaps --json &
@@ -115,7 +117,7 @@ pid_events=$!
 json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
 pid_actions=$!
 
-wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" \
+wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
   "$pid_experience" "$pid_control" "$pid_events" "$pid_actions" || true
 
@@ -131,6 +133,9 @@ cat "$STATE_TMP/welcome.json"
 printf ','
 printf '"welcome_plan":'
 cat "$STATE_TMP/welcome_plan.json"
+printf ','
+printf '"session":'
+cat "$STATE_TMP/session.json"
 printf ','
 printf '"profiles":'
 cat "$STATE_TMP/profiles.json"

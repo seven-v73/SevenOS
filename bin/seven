@@ -144,6 +144,19 @@ def handle_welcome(args):
     run_script(args, "bin/seven-welcome", *extra)
 
 
+def handle_session(args):
+    if args.action == "status":
+        extra = ["--json"] if args.json else []
+        run_script(args, "bin/seven-session-status", *extra)
+    elif args.action == "start":
+        run_script(args, "bin/seven-session")
+    elif args.action == "restart":
+        run(["bash", "-lc", f"systemctl --user restart sevenos-session.target || {shlex.quote(str(ROOT_DIR / 'bin' / 'seven-session'))}"], args)
+    else:
+        print(f"seven: unknown session action: {args.action}", file=sys.stderr)
+        sys.exit(1)
+
+
 def handle_control(args):
     extra = [args.action]
     if args.json:
@@ -272,6 +285,9 @@ def main():
     status_parser.add_argument("--json", action="store_true", help="print machine-readable system status")
     state_parser = subparsers.add_parser("state", help="show unified SevenOS machine state")
     state_parser.add_argument("--json", action="store_true", help="print machine-readable unified state")
+    session_parser = subparsers.add_parser("session", help="inspect or start the SevenOS desktop session")
+    session_parser.add_argument("action", nargs="?", default="status", choices=("status", "start", "restart"))
+    session_parser.add_argument("--json", action="store_true", help="print machine-readable session status")
     subparsers.add_parser("hub", help="launch Seven Hub")
     files_parser = subparsers.add_parser("files", help="open Seven Files")
     files_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -379,6 +395,8 @@ def main():
     elif args.command == "state":
         extra = ["--json"] if args.json else []
         run_script(args, "scripts/state.sh", *extra)
+    elif args.command == "session":
+        handle_session(args)
     elif args.command == "hub":
         run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-hub")], args)
     elif args.command == "files":
