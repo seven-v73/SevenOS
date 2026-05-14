@@ -12,12 +12,13 @@ usage() {
 SevenOS Flatpak bridge
 
 Usage:
-  ./scripts/flatpak.sh [status|setup|install-defaults|list]
+  ./scripts/flatpak.sh [status|setup|install|install-defaults|list]
 
 Actions:
   status            Show Flatpak and Flathub state
   setup             Install Flatpak and add Flathub
-  install-defaults  Install SevenOS default Flatpak apps
+  install            Install SevenOS default Flatpak apps
+  install-defaults   Install SevenOS default Flatpak apps
   list              Print default Flatpak app IDs
 EOF
 }
@@ -76,7 +77,7 @@ action="${1:-status}"
 case "$action" in
   status) status ;;
   setup) setup ;;
-  install-defaults) install_defaults ;;
+  install|install-defaults) install_defaults ;;
   list) flatpak_apps ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown Flatpak action: $action"; usage; exit 1 ;;

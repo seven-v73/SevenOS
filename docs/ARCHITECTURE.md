@@ -77,6 +77,12 @@ Rules:
   future executed actions.
 - `seven insights --json` converts state, trust, profile and control signals
   into product-facing blockers and next actions for Hub and Seven Server.
+- `seven profile gaps --json` is the profile completeness contract. It exposes
+  missing packages, unavailable profile apps and install/open commands so
+  profiles behave like real work modes.
+- `seven windows status --json` must stay strict JSON. Human success messages
+  are forbidden on JSON contracts because Seven Hub and Seven Server depend on
+  clean machine-readable output.
 - `seven shield status --json` and `seven server status --json` expose trust
   and local API readiness directly, so the Hub does not infer critical state
   from generic status text.

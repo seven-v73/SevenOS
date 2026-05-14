@@ -166,6 +166,8 @@ Les piliers du projet sont :
 - Les profils commencent a piloter l'experience : le panneau natif Quick Settings lit le profil actif et ajoute des actions contextuelles Forge, Shield, Studio, Windows, Horizon ou Baobab.
 - Le registre d'actions expose maintenant des actions non decoratives pour l'activation de profils, l'ouverture de workspaces et Windows Mode, afin que Hub/Waybar puissent lancer de vrais flux utilisateur.
 - `seven profile current --json`, `seven profile apps --json` et `seven profile guide` transforment les profils en contrats exploitables : apps disponibles, commandes de lancement, prochaines actions et workspace actif.
+- `seven profile gaps --json` expose maintenant les paquets manquants, apps indisponibles, priorites et commandes d'installation pour transformer les profils en vrais modes metier pilotables.
+- Correction du contrat `seven windows status --json` : la sortie est maintenant du JSON strict, sans message humain ajoute par `install.sh`.
 - `seven state --json` expose maintenant `active_profile` et `windows`, pour que le Hub natif puisse lire un etat OS complet sans parser des textes humains.
 - Renforcement Seven Ecosystem : ajout d'un process map all-in-one (`seven ecosystem processes`), d'un contrat JSON (`seven ecosystem --json`) et integration de l'ecosysteme dans `seven state --json`.
 - Le registre d'actions expose maintenant les actions Ecosystem Map, Process Map, Roadmap et Doctor pour Seven Hub et les futures surfaces natives.

@@ -70,6 +70,8 @@ json_to_file "$STATE_TMP/status.json" "$ROOT_DIR/bin/seven" status --json &
 pid_status=$!
 json_to_file "$STATE_TMP/profiles.json" "$ROOT_DIR/bin/seven" profile status --json &
 pid_profiles=$!
+json_to_file "$STATE_TMP/profile_gaps.json" "$ROOT_DIR/bin/seven" profile gaps --json &
+pid_profile_gaps=$!
 json_to_file "$STATE_TMP/active_profile.json" "$ROOT_DIR/bin/seven" profile current --json &
 pid_active_profile=$!
 json_to_file "$STATE_TMP/windows.json" "$ROOT_DIR/bin/seven-windows-assistant" status --json &
@@ -95,7 +97,7 @@ pid_events=$!
 json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
 pid_actions=$!
 
-wait "$pid_status" "$pid_profiles" "$pid_active_profile" "$pid_windows" "$pid_shield" \
+wait "$pid_status" "$pid_profiles" "$pid_profile_gaps" "$pid_active_profile" "$pid_windows" "$pid_shield" \
   "$pid_server" "$pid_readiness" "$pid_packages" "$pid_manifest" "$pid_ecosystem" \
   "$pid_experience" "$pid_control" "$pid_events" "$pid_actions" || true
 
@@ -108,6 +110,9 @@ cat "$STATE_TMP/status.json"
 printf ','
 printf '"profiles":'
 cat "$STATE_TMP/profiles.json"
+printf ','
+printf '"profile_gaps":'
+cat "$STATE_TMP/profile_gaps.json"
 printf ','
 printf '"active_profile":'
 cat "$STATE_TMP/active_profile.json"

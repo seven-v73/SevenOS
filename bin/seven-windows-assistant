@@ -105,10 +105,22 @@ keys = [
 ]
 payload = dict(zip(keys, sys.argv[1:]))
 payload["schema"] = "sevenos.windows.v1"
-payload["ready"] = all(
+payload["vm_ready"] = all(
     payload[key] in {"OK", "RUN"}
     for key in ("cpu_virtualization", "kvm_device", "qemu", "virt_manager", "virsh", "libvirtd", "default_network")
 )
+payload["app_ready"] = payload["wine"] == "OK" and (payload["bottles_flatpak"] == "OK" or payload["lutris"] == "OK")
+payload["ready"] = payload["vm_ready"] and payload["app_ready"]
+payload["mode"] = "complete" if payload["ready"] else "vm-ready" if payload["vm_ready"] else "setup-needed"
+payload["recommendations"] = []
+if payload["wine"] != "OK" or payload["lutris"] != "OK":
+    payload["recommendations"].append({"command": "seven profile install windows", "reason": "Install Wine/Lutris compatibility tooling"})
+if payload["bottles_flatpak"] != "OK":
+    payload["recommendations"].append({"command": "seven flatpak install", "reason": "Install Bottles through Flatpak for accessible Windows apps"})
+if not payload["vm_ready"]:
+    payload["recommendations"].append({"command": "seven vm check", "reason": "Complete KVM/libvirt readiness"})
+if payload["windows_vm"] == "MISS":
+    payload["recommendations"].append({"command": "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso", "reason": "Create the guided Windows VM"})
 print(json.dumps(payload, indent=2))
 PY
 }

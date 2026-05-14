@@ -398,6 +398,8 @@ seven doctor
 seven profile forge
 seven profile list
 seven profile status
+seven profile gaps
+seven profile gaps --json
 seven shield status
 seven shield audit
 seven files
@@ -519,6 +521,7 @@ Windows Mode is exposed as a guided user flow:
 ```bash
 seven windows guide
 seven windows status
+seven windows status --json
 seven windows apps
 seven windows vm
 ```

@@ -235,6 +235,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" profile status --json >/dev/null
 "$ROOT_DIR/bin/seven" profile current --json >/dev/null
 "$ROOT_DIR/bin/seven" profile apps --json >/dev/null
+"$ROOT_DIR/bin/seven" profile gaps --json >/dev/null
+"$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenpkg" status --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" meta --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
@@ -350,6 +352,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile current >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile guide >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile apps >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile gaps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run files menu >/dev/null

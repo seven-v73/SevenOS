@@ -205,4 +205,8 @@ if [[ "$TARGET" == "status" && " $* " == *" --json "* ]]; then
   exit 0
 fi
 
+if [[ " $* " == *" --json "* ]]; then
+  exit 0
+fi
+
 log_success "SevenOS target '$TARGET' completed."

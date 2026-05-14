@@ -79,6 +79,7 @@ seven ecosystem processes
 seven ecosystem --json
 seven state --json
 seven actions --json
+seven profile gaps --json
 seven experience --json
 seven control --json
 seven events --json
@@ -88,9 +89,13 @@ seven server status --json
 ```
 
 `seven state --json` is the unified snapshot. It should contain profiles,
-Windows Mode, Shield, Seven Server, Control Plane, actions, manifest and
-event history so the native Hub can become a real OS control plane without
-scraping terminal text.
+profile gaps, Windows Mode, Shield, Seven Server, Control Plane, actions,
+manifest and event history so the native Hub can become a real OS control plane
+without scraping terminal text.
+
+`seven profile gaps --json` is the work-mode completeness contract. It lists
+missing packages and missing app launch surfaces for Baobab, Forge, Shield,
+Studio, Windows and Horizon.
 
 `seven experience --json` is the coherence score. It exists to catch the exact
 problem SevenOS must avoid: many working pieces that still feel disconnected to

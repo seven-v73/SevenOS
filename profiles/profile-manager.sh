@@ -141,6 +141,30 @@ profile_app_state() {
   esac
 }
 
+profile_missing_packages() {
+  local key="$1"
+  local package package_file
+
+  while IFS= read -r package_file; do
+    [[ -f "$package_file" ]] || continue
+    while IFS= read -r package; do
+      package="${package%%#*}"
+      package="${package//[[:space:]]/}"
+      [[ -z "$package" ]] && continue
+      package_installed "$package" || printf '%s\n' "$package"
+    done < "$package_file"
+  done < <(profile_package_files "$key")
+}
+
+profile_missing_apps() {
+  local key="$1"
+  local app
+
+  while IFS= read -r app; do
+    [[ "$(profile_app_state "$app")" == "OK" ]] || printf '%s\n' "$app"
+  done < <(profile_apps "$key")
+}
+
 profile_workspace_dirs() {
   case "$1" in
     forge) printf '%s\n' "Projects" "Sandboxes" "Containers" "Notes" ;;
@@ -257,6 +281,58 @@ profile_json_object() {
   next_actions_json "$key"
   printf ','
   printf '"action":%s' "$(printf 'seven profile install %s' "$key" | json_escape)"
+  printf '}'
+}
+
+gap_json_object() {
+  local key="$1"
+  local counts installed total state priority missing_count missing_app_count
+  counts="$(profile_counts "$key")"
+  installed="${counts%% *}"
+  total="${counts##* }"
+  state="$(profile_state "$installed" "$total")"
+  missing_count=$((total - installed))
+  missing_app_count="$(profile_missing_apps "$key" | sed '/^$/d' | wc -l | tr -d ' ')"
+
+  case "$key:$state" in
+    shield:*) priority="critical" ;;
+    studio:MISS|horizon:MISS) priority="high" ;;
+    studio:PART|horizon:PART|windows:PART|windows:MISS) priority="high" ;;
+    *:PART) priority="medium" ;;
+    *:MISS) priority="high" ;;
+    *) priority="low" ;;
+  esac
+
+  printf '{'
+  printf '"key":%s,' "$(printf '%s' "$key" | json_escape)"
+  printf '"title":%s,' "$(profile_title "$key" | json_escape)"
+  printf '"state":%s,' "$(printf '%s' "$state" | json_escape)"
+  printf '"priority":%s,' "$(printf '%s' "$priority" | json_escape)"
+  printf '"installed":%s,' "$installed"
+  printf '"total":%s,' "$total"
+  printf '"missing_count":%s,' "$missing_count"
+  printf '"missing_app_count":%s,' "$missing_app_count"
+  printf '"workspace":%s,' "$(profile_workspace "$key" | json_escape)"
+  printf '"install_command":%s,' "$(printf 'seven profile install %s' "$key" | json_escape)"
+  printf '"open_command":%s,' "$(printf 'seven profile open %s' "$key" | json_escape)"
+  printf '"missing_packages":['
+  local first=1 package
+  while IFS= read -r package; do
+    [[ -n "$package" ]] || continue
+    [[ "$first" -eq 1 ]] || printf ','
+    first=0
+    printf '%s' "$(printf '%s' "$package" | json_escape)"
+  done < <(profile_missing_packages "$key")
+  printf '],'
+  printf '"missing_apps":['
+  first=1
+  while IFS= read -r app; do
+    [[ -n "$app" ]] || continue
+    [[ "$first" -eq 1 ]] || printf ','
+    first=0
+    printf '%s' "$(printf '%s' "$app" | json_escape)"
+  done < <(profile_missing_apps "$key")
+  printf ']'
   printf '}'
 }
 
@@ -468,6 +544,33 @@ apps_human() {
   done < <(profile_apps "$key")
 }
 
+gaps_json() {
+  local first=1 key
+  printf '{"schema":"sevenos.profile-gaps.v1","profiles":['
+  while IFS= read -r key; do
+    [[ "$first" -eq 1 ]] || printf ','
+    first=0
+    gap_json_object "$key"
+  done < <(profile_keys)
+  printf ']}\n'
+}
+
+gaps_human() {
+  local key counts installed total state missing_count missing_apps
+  printf 'SevenOS Profile Gaps\n\n'
+  printf '%-9s %-5s %-7s %-8s %s\n' "Profile" "State" "Missing" "Apps" "Next"
+  printf '%-9s %-5s %-7s %-8s %s\n' "-------" "-----" "-------" "----" "----"
+  while IFS= read -r key; do
+    counts="$(profile_counts "$key")"
+    installed="${counts%% *}"
+    total="${counts##* }"
+    state="$(profile_state "$installed" "$total")"
+    missing_count=$((total - installed))
+    missing_apps="$(profile_missing_apps "$key" | sed '/^$/d' | wc -l | tr -d ' ')"
+    printf '%-9s %-5s %2s/%-4s %-8s seven profile install %s\n' "$key" "$state" "$missing_count" "$total" "$missing_apps" "$key"
+  done < <(profile_keys)
+}
+
 status_json() {
   local first=1
   local active
@@ -509,6 +612,7 @@ Usage:
   seven profile current [--json]
   seven profile guide [profile]
   seven profile apps [profile] [--json]
+  seven profile gaps [--json]
   seven profile activate <profile>
   seven profile install <profile>
   seven profile open [profile]
@@ -558,6 +662,13 @@ case "$command" in
       printf '\n'
     else
       apps_human "$key"
+    fi
+    ;;
+  gaps)
+    if [[ "${1:-}" == "--json" ]]; then
+      gaps_json
+    else
+      gaps_human
     fi
     ;;
   activate)
