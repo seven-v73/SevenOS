@@ -183,10 +183,10 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-overview search"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar exposes visible Apps launcher"
+if jq -e '."custom/apps".format == "󰀻" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-overview search"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar exposes icon-first Apps launcher"
 else
-  fail "Waybar visible Apps launcher missing"
+  fail "Waybar icon-first Apps launcher missing"
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -203,10 +203,10 @@ else
   fail "Theme coherence is incomplete across launcher and toolkits"
 fi
 
-if jq -e '."custom/files".format == "Files" and ."custom/files"."on-click" == "seven-files" and ."custom/files"."on-click-right" == "seven-files menu"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar exposes Seven Files"
+if jq -e '."custom/files".format == "󰉋" and ."custom/files"."on-click" == "seven-files" and ."custom/files"."on-click-right" == "seven-files menu"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar exposes icon-first Seven Files"
 else
-  fail "Waybar Seven Files launcher missing"
+  fail "Waybar icon-first Seven Files launcher missing"
 fi
 
 if jq -e '."custom/power"."on-click" == "seven-power"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
@@ -404,6 +404,9 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -Fq 'seven actions --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -q 'def render_dashboard' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'icon_for_action' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'set_icon_name' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'run_visible' "$ROOT_DIR/bin/seven-hub-native" &&
    "$ROOT_DIR/bin/seven-hub-native" status | grep -q 'Seven Hub Native' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" hub-native --dry-run | grep -q 'seven-hub-native open' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" | grep -q 'seven-hub-native open' &&
@@ -532,6 +535,16 @@ if grep -q '"Control Center|control:center' "$ROOT_DIR/seven-hub/bin/seven-hub";
   ok "Seven Hub opens Control Center"
 else
   fail "Seven Hub Control Center entry missing"
+fi
+
+hub_profiles_preview="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" Profiles 2>&1)"
+if grep -q 'item_icon' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
+   grep -q 'display_label' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
+   grep -q 'clean_selection' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
+   grep -q '󰌢 Profile Forge' <<<"$hub_profiles_preview"; then
+  ok "Seven Hub command palette is icon-first and compact"
+else
+  fail "Seven Hub command palette should be icon-first and compact"
 fi
 
 if grep -q '"Seven Files|files:open' "$ROOT_DIR/seven-hub/bin/seven-hub" &&

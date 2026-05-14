@@ -108,6 +108,26 @@ def run_registered_action(action_id: str) -> None:
     run_visible(str(ROOT / "bin" / "seven"), "actions", "run", action_id, title=f"SevenOS Action - {action_id}")
 
 
+def icon_for_action(action_id: str, impact: str = "safe") -> str:
+    if action_id.startswith("profile."):
+        return "avatar-default-symbolic"
+    if action_id.startswith("security."):
+        return "security-high-symbolic"
+    if action_id.startswith("windows."):
+        return "computer-symbolic"
+    if action_id.startswith("server.") or action_id.startswith("deploy."):
+        return "network-server-symbolic"
+    if action_id.startswith("installer."):
+        return "drive-harddisk-symbolic"
+    if action_id.startswith("flatpak.") or action_id.startswith("sevenpkg.") or action_id.startswith("apps."):
+        return "application-x-executable-symbolic"
+    if action_id.startswith("files."):
+        return "folder-symbolic"
+    if impact != "safe":
+        return "emblem-system-symbolic"
+    return "system-run-symbolic"
+
+
 def run_gui() -> int:
     try:
         import gi
@@ -246,12 +266,18 @@ def run_gui() -> int:
                     row.add_prefix(Gtk.Label(label="●" if profile.get("active") else "○"))
 
                     details = Gtk.Button(label="Details")
+                    details.set_icon_name("dialog-information-symbolic")
+                    details.set_label("")
+                    details.set_tooltip_text(f"Show {profile.get('title', profile['key'])} details")
                     details.connect("clicked", lambda _button, key=profile["key"]: run_profile_action("show", key))
                     row.add_suffix(details)
 
                     action_label = "Active" if profile.get("active") else "Activate" if profile.get("state") == "OK" else "Install"
                     action_name = "activate" if profile.get("state") == "OK" else "install"
                     action = Gtk.Button(label=action_label)
+                    action.set_icon_name("emblem-ok-symbolic" if profile.get("state") == "OK" else "document-save-symbolic")
+                    action.set_label("")
+                    action.set_tooltip_text(action_label)
                     action.set_sensitive(not profile.get("active"))
                     action.add_css_class("suggested-action")
                     action.connect("clicked", lambda _button, name=action_name, key=profile["key"]: run_profile_action(name, key))
@@ -285,7 +311,9 @@ def run_gui() -> int:
                             item.get("title", item.get("id", "Action")),
                             f"{item.get('impact', 'safe')} · {item.get('description', '')}",
                         )
-                        button = Gtk.Button(label="Run")
+                        button = Gtk.Button()
+                        button.set_icon_name(icon_for_action(item.get("id", ""), item.get("impact", "safe")))
+                        button.set_tooltip_text(f"Run {item.get('title', item.get('id', 'action'))}")
                         button.add_css_class("suggested-action" if item.get("impact") == "safe" else "destructive-action")
                         button.connect("clicked", lambda _button, action_id=item["id"]: run_registered_action(action_id))
                         row.add_suffix(button)

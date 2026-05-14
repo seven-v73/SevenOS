@@ -231,6 +231,37 @@ run_action() {
   esac
 }
 
+item_icon() {
+  local label="$1"
+
+  case "$label" in
+    *Hub*|*Dashboard*|*Control*) printf '󰕮' ;;
+    *Profile*|Forge|Shield|Studio) printf '󰌢' ;;
+    *Cyber*|*Security*|*Shield*|*Firewall*) printf '󰌾' ;;
+    *Files*|*Installer*|*ISO*) printf '󰉋' ;;
+    *Windows*|*VM*|*Bottles*|*Virt*) printf '󰖳' ;;
+    *Server*|*Deploy*|*API*) printf '󰒋' ;;
+    *Apps*|*Flatpak*|*SevenPkg*|*Software*) printf '󰀻' ;;
+    *Power*|*Lock*|*Session*) printf '󰐥' ;;
+    *Theme*|*Branding*) printf '󰏘' ;;
+    *Doctor*|*Repair*|*Improve*) printf '󰁨' ;;
+    *Readiness*|*Status*|*Plan*|*Preview*) printf '󰔟' ;;
+    *) printf '󰒓' ;;
+  esac
+}
+
+display_label() {
+  local label="$1"
+  printf '%s %s' "$(item_icon "$label")" "$label"
+}
+
+clean_selection() {
+  local selected="$1"
+  selected="${selected%%    *}"
+  selected="${selected#* }"
+  printf '%s\n' "$selected"
+}
+
 load_actions() {
   local category="$1"
 
@@ -256,7 +287,7 @@ load_actions() {
         "System Status|seven:status|Show installed profiles and services"
         "Doctor|doctor|Check host readiness"
         "Seven Update|seven:update|Update pacman and AUR packages"
-        "Dry Run ALL|all --dry-run|Preview full installation"
+        "Preview Full Install|all --dry-run|Preview full installation"
       )
       ;;
     "Profiles")
@@ -428,7 +459,7 @@ action_badge() {
 
   case "$label" in
     "Control Center"|"Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
-    "Welcome"|"System Dashboard"|"Architecture Map"|"Architecture Doctor"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Dry Run ALL"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Installer Stack"|"Installer Stack Doctor"|"Installer Stack Plan"|"Hub GUI Stack"|"Hub GUI Doctor"|"Flatpak Bridge"|"Flatpak Setup"|"Install Default Flatpaks"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
+    "Welcome"|"System Dashboard"|"Architecture Map"|"Architecture Doctor"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Preview Full Install"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Installer Stack"|"Installer Stack Doctor"|"Installer Stack Plan"|"Hub GUI Stack"|"Hub GUI Doctor"|"Flatpak Bridge"|"Flatpak Setup"|"Install Default Flatpaks"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
     "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
     "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
     "Profile Studio") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
@@ -494,10 +525,10 @@ select_with_rofi() {
   for item in "${actions[@]}"; do
     IFS='|' read -r label _ description <<<"$item"
     badge="$(action_badge "$label")"
-    menu+="$label    [$badge] $description"$'\n'
+    menu+="$(display_label "$label")    [$badge]"$'\n'
   done
 
-  printf '%s' "$menu" | rofi -dmenu -i -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -theme-str 'window { width: 64%; } listview { lines: 9; }'
+  printf '%s' "$menu" | rofi -dmenu -i -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -theme-str 'window { width: 48%; } listview { lines: 9; }'
 }
 
 select_with_terminal() {
@@ -509,7 +540,7 @@ select_with_terminal() {
   for item in "${actions[@]}"; do
     IFS='|' read -r label _ description <<<"$item"
     badge="$(action_badge "$label")"
-    printf '%2d. %-18s [%s] %s\n' "$index" "$label" "$badge" "$description" >&2
+    printf '%2d. %-24s [%s] %s\n' "$index" "$(display_label "$label")" "$badge" "$description" >&2
     index=$((index + 1))
   done
 
@@ -537,7 +568,7 @@ select_category() {
   if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
     local selected
     selected="$(select_with_rofi "$title" "Choose a focused SevenOS workspace" || true)"
-    selected="${selected%%    *}"
+    selected="$(clean_selection "$selected")"
     printf '%s\n' "$selected"
   else
     select_with_terminal "$title"
@@ -556,7 +587,7 @@ select_action() {
   if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
     local selected
     selected="$(select_with_rofi "$category" "Seven Hub · $category" || true)"
-    selected="${selected%%    *}"
+    selected="$(clean_selection "$selected")"
     printf '%s\n' "$selected"
   else
     select_with_terminal "$category"
