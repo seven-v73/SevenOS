@@ -30,6 +30,7 @@ seven profile status --json
 seven profile current --json
 seven profile apps --json
 seven windows status --json
+seven experience --json
 seven readiness --json
 sevenpkg status --json
 ```
@@ -42,6 +43,7 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Module | Purpose | First data source |
 | --- | --- | --- |
 | Dashboard | readiness, services, urgent repairs | `seven readiness --json` |
+| Experience | OS coherence score and blockers | `seven experience --json` |
 | Profiles | active profile, workspaces, install/activate | `seven profile status --json` |
 | Actions | safe and state-changing OS actions | `seven actions --json` |
 | Ecosystem | modules, maturity and all-in-one user flows | `seven ecosystem --json` |

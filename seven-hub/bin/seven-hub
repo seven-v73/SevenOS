@@ -274,6 +274,7 @@ load_actions() {
         "Architecture Map|seven:architecture|Show SevenOS system architecture"
         "Architecture Doctor|seven:architecture doctor|Validate product architecture"
         "Ecosystem Map|seven:ecosystem|Show all SevenOS ecosystem modules"
+        "Experience Audit|seven:experience|Check OS coherence and UX blockers"
         "Installer Stack|seven:installer status|Show Calamares and Archinstall readiness"
         "Hub GUI Stack|seven:hub-gui status|Show Tauri readiness"
         "Flatpak Bridge|seven:flatpak status|Show Flatpak and Flathub readiness"

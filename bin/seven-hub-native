@@ -93,9 +93,17 @@ def ecosystem_payload() -> dict:
         return {"schema": "sevenos.ecosystem.v1", "modules": [], "processes": []}
 
 
+def experience_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "experience.sh"), "--json"))
+    except Exception:
+        return {"schema": "sevenos.experience.v1", "score": 0, "max": 0, "percent": 0, "checks": []}
+
+
 def status_text() -> str:
     profiles = profile_payload()
     ecosystem = ecosystem_payload()
+    experience = experience_payload()
     active = next((item for item in profiles if item.get("active")), None)
     ready = sum(1 for item in profiles if item.get("state") == "OK")
     partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -108,6 +116,7 @@ def status_text() -> str:
         f"Active profile: {active.get('title') if active else 'none'}\n"
         f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
         f"Ecosystem: {active_modules} active, {preview_modules} preview, {len(ecosystem.get('processes', []))} processes\n"
+        f"Experience: {experience.get('percent', 0)}% ({experience.get('score', 0)}/{experience.get('max', 0)})\n"
     )
 
 
@@ -254,6 +263,7 @@ def run_gui() -> int:
                 readiness = readiness_payload()
                 profiles = profile_payload()
                 ecosystem = ecosystem_payload()
+                experience = experience_payload()
                 active = next((item for item in profiles if item.get("active")), None)
                 ready = sum(1 for item in profiles if item.get("state") == "OK")
                 partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -266,6 +276,7 @@ def run_gui() -> int:
                 group = Adw.PreferencesGroup(title="System overview")
                 for title_text, subtitle in (
                     ("Readiness", f"{readiness.get('percent', 0)}% · {readiness.get('score', 0)}/{readiness.get('max', 0)} checks passed"),
+                    ("Experience", f"{experience.get('percent', 0)}% · {experience.get('score', 0)}/{experience.get('max', 0)} coherence score"),
                     ("Active profile", active.get("title") if active else "No active profile yet"),
                     ("Profiles", f"{ready} OK · {partial} PART · {missing} MISS"),
                     ("Ecosystem", f"{active_modules} active modules · {preview_modules} preview · {len(ecosystem.get('processes', []))} processes"),
@@ -283,6 +294,28 @@ def run_gui() -> int:
                             recommendation.get("reason", "Review this SevenOS improvement."),
                         ))
                     dashboard.append(rec_group)
+
+                experience_checks = experience.get("checks") or []
+                if experience_checks:
+                    exp_group = Adw.PreferencesGroup(title="Experience blockers")
+                    for item in [entry for entry in experience_checks if entry.get("state") != "OK"][:5]:
+                        row = make_row(
+                            item.get("category", "Experience"),
+                            f"{item.get('state', 'MISS')} · {item.get('detail', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("media-playback-start-symbolic")
+                        button.set_tooltip_text(item.get("command", "seven experience"))
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=item.get("command", "seven experience"), category=item.get("category", "Experience"): run_ecosystem_command(
+                                command,
+                                title=f"SevenOS Experience - {category}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        exp_group.add(row)
+                    dashboard.append(exp_group)
 
             def render_profiles() -> None:
                 clear(profiles_page)

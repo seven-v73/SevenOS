@@ -170,6 +170,7 @@ Les piliers du projet sont :
 - Renforcement Seven Ecosystem : ajout d'un process map all-in-one (`seven ecosystem processes`), d'un contrat JSON (`seven ecosystem --json`) et integration de l'ecosysteme dans `seven state --json`.
 - Le registre d'actions expose maintenant les actions Ecosystem Map, Process Map, Roadmap et Doctor pour Seven Hub et les futures surfaces natives.
 - Fluidite Ecosystem : Seven Hub Native affiche les processus avec boutons de lancement, et `seven ecosystem summary` donne un resume compact modules/processus.
+- Ajout de `seven experience` / `seven experience --json` : audit de coherence OS qui relie identite, shell, Hub, profils, actions, Windows, securite, serveur, installateur et ecosysteme.
 
 ### Gestion fichiers
 

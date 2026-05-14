@@ -79,11 +79,16 @@ seven ecosystem processes
 seven ecosystem --json
 seven state --json
 seven actions --json
+seven experience --json
 ```
 
 `seven state --json` is the unified snapshot. It should contain profiles,
 Windows Mode, actions, manifest and ecosystem data so the native Hub can become
 a real OS control plane without scraping terminal text.
+
+`seven experience --json` is the coherence score. It exists to catch the exact
+problem SevenOS must avoid: many working pieces that still feel disconnected to
+a normal user.
 
 ## Native Hub Integration
 

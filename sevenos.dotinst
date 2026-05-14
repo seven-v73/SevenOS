@@ -23,6 +23,7 @@
         "bin/seven",
         "bin/sevenpkg",
         "bin/seven-windows-assistant",
+        "scripts/experience.sh",
         "scripts/status.sh",
         "scripts/state.sh"
       ]

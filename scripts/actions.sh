@@ -27,6 +27,7 @@ apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS applicatio
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
 readiness.run	System	Run Readiness	seven readiness	safe	Score SevenOS against product readiness checks.
+experience.run	System	Experience Audit	seven experience	safe	Check whether SevenOS behaves like a coherent OS.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.

@@ -31,6 +31,7 @@ bash -n \
   "$ROOT_DIR/scripts/design-check.sh" \
   "$ROOT_DIR/scripts/phase-gate.sh" \
   "$ROOT_DIR/scripts/ecosystem.sh" \
+  "$ROOT_DIR/scripts/experience.sh" \
   "$ROOT_DIR/scripts/manifest.sh" \
   "$ROOT_DIR/scripts/package-plan.sh" \
   "$ROOT_DIR/scripts/migrate.sh" \
@@ -296,6 +297,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" processes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" roadmap >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" summary-json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/manifest.sh" restore-plan >/dev/null
@@ -352,6 +355,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem summary >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem processes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem roadmap >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run experience >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run experience --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run phase-gate >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --json >/dev/null

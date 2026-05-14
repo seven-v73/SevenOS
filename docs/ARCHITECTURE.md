@@ -63,6 +63,9 @@ Rules:
   package boundaries, protected user paths and restore plans for upgrades.
 - `seven ecosystem --json` is the product ecosystem contract. It declares
   modules, maturity states and end-to-end user processes.
+- `seven experience --json` is the OS coherence contract. It scores whether
+  identity, shell, Hub, profiles, actions, Windows, security, server and
+  installer feel connected enough for a normal user.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.
@@ -161,6 +164,8 @@ seven state --json
 seven actions --json
 seven ecosystem processes
 seven ecosystem --json
+seven experience
+seven experience --json
 seven profile forge
 seven shield audit
 seven windows status

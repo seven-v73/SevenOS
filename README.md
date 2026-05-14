@@ -264,6 +264,8 @@ seven ecosystem
 seven ecosystem processes
 seven ecosystem --json
 seven ecosystem roadmap
+seven experience
+seven experience --json
 seven readiness
 seven phase-gate
 seven repair

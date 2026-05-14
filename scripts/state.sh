@@ -72,14 +72,17 @@ printf ','
 printf '"ecosystem":'
 json_or_null "$ROOT_DIR/scripts/ecosystem.sh" json
 printf ','
+printf '"experience":'
+json_or_null "$ROOT_DIR/scripts/experience.sh" --json
+printf ','
 printf '"actions":'
 json_or_null "$ROOT_DIR/scripts/actions.sh" --json
 printf ','
 printf '"native_hub":{'
-if "$ROOT_DIR/bin/seven-hub-native" status >/dev/null 2>&1; then
-  printf '"state":"OK"'
+if [[ -x "$ROOT_DIR/bin/seven-hub-native" ]]; then
+  printf '"state":"OK","command":"seven hub-native open"'
 else
-  printf '"state":"MISS"'
+  printf '"state":"MISS","command":"./install.sh hub"'
 fi
 printf '}'
 printf '}\n'
