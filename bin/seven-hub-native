@@ -449,6 +449,9 @@ def run_gui() -> int:
                 ))
                 principle_names = ", ".join(item.get("label", item.get("key", "")) for item in identity.get("principles", [])[:6])
                 identity_group.add(make_row("Product principles", principle_names or "Sovereignty, transmission, creation, protection, community, resilience"))
+                packs = identity.get("regional_packs", [])
+                pack_names = ", ".join(item.get("title", "") for item in packs[:4])
+                identity_group.add(make_row("Accent packs", pack_names or "Pan-African, West Africa, North Africa, Central Africa"))
                 dashboard.append(identity_group)
 
                 group = Adw.PreferencesGroup(title="System overview")

@@ -93,3 +93,15 @@ Each pack may adjust:
 
 The default SevenOS identity remains broad, modern and African first.
 
+The machine-readable source for these packs is:
+
+```text
+identity/accent-packs.json
+```
+
+Use:
+
+```bash
+seven identity packs
+seven identity packs --json
+```

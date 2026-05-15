@@ -71,6 +71,7 @@ Use names that feel native to SevenOS:
 
 - `identity/AFRICAN_FIRST.md` as the African first product language
 - `scripts/identity.sh` / `seven identity --json` as the machine-readable identity contract
+- `identity/accent-packs.json` as the regional accent pack contract
 - profile roles, symbols, principles and stories exposed through `seven profile status --json`
 - visual components in `identity/components/`
 - Hyprland border colors and behavior
@@ -98,6 +99,19 @@ alone:
 - `identity/components/griot-doc-mark.svg`
 - `identity/components/forge-profile-mark.svg`
 - `identity/components/shield-profile-mark.svg`
+
+## Accent Pack Contract
+
+Regional packs are declared in `identity/accent-packs.json` and surfaced with:
+
+```bash
+seven identity packs
+seven identity packs --json
+```
+
+They are planned as subtle optional layers for wallpaper, accents, patterns and
+welcome signals. They are not the default visual system and should not become
+flag-based decoration.
 
 ## Regional Accent Packs
 

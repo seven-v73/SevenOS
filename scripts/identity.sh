@@ -11,6 +11,8 @@ SevenOS Identity
 Usage:
   seven identity
   seven identity --json
+  seven identity packs
+  seven identity packs --json
   ./scripts/identity.sh [status|json|doctor]
 
 Shows the African first product language used by profiles, onboarding, Hub and
@@ -19,8 +21,13 @@ EOF
 }
 
 json_output() {
-  python - <<'PY'
+  SEVENOS_IDENTITY_ROOT="$ROOT_DIR" python - <<'PY'
 import json
+import os
+from pathlib import Path
+
+root = Path(os.environ["SEVENOS_IDENTITY_ROOT"])
+packs = json.loads((root / "identity" / "accent-packs.json").read_text(encoding="utf-8"))
 
 profiles = [
     {
@@ -101,15 +108,7 @@ print(json.dumps({
         {"key": "resilience", "label": "Resilience", "meaning": "State, repair, migration and backups are observable."},
     ],
     "profiles": profiles,
-    "regional_packs": [
-        "Pan-African",
-        "West Africa",
-        "North Africa",
-        "Central Africa",
-        "East Africa",
-        "Southern Africa",
-        "Diaspora",
-    ],
+    "regional_packs": packs["packs"],
     "components": [
         "kente-divider.svg",
         "adinkra-status-ok.svg",
@@ -122,12 +121,23 @@ print(json.dumps({
 PY
 }
 
+packs_json() {
+  python - "$ROOT_DIR/identity/accent-packs.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+print(json.dumps(json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")), indent=2))
+PY
+}
+
 doctor() {
   local missing=0
   local file
 
   for file in \
     "$ROOT_DIR/identity/AFRICAN_FIRST.md" \
+    "$ROOT_DIR/identity/accent-packs.json" \
     "$ROOT_DIR/identity/components/kente-divider.svg" \
     "$ROOT_DIR/identity/components/adinkra-status-ok.svg" \
     "$ROOT_DIR/identity/components/baobab-system-mark.svg" \
@@ -150,6 +160,23 @@ doctor() {
   log_success "African first identity layer is present."
 }
 
+packs_status() {
+  python - "$ROOT_DIR/identity/accent-packs.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+print("SevenOS Regional Accent Packs")
+print("=============================")
+print()
+print(f"{'Pack':<18} {'Accent':<8} {'Pattern':<10} {'State'}")
+print(f"{'----':<18} {'------':<8} {'-------':<10} {'-----'}")
+for item in data.get("packs", []):
+    print(f"{item.get('title',''):<18} {item.get('accent',''):<8} {item.get('pattern',''):<10} {item.get('state','')}")
+PY
+}
+
 status() {
   printf 'SevenOS African First Identity\n'
   printf '==============================\n\n'
@@ -165,14 +192,26 @@ status() {
   printf '  Windows Bridge     baobab  compatibility without surrender\n'
   printf '  Horizon Navigator  indigo  deploy, network and cloud\n'
   printf '  Griot   Memory     gold    documentation and knowledge\n'
+  printf '\nRegional accent packs:\n'
+  printf '  seven identity packs\n'
 }
 
 ACTION="${1:-status}"
+JSON_OUTPUT=0
+if [[ "${2:-}" == "--json" || "${2:-}" == "json" ]]; then
+  JSON_OUTPUT=1
+fi
 case "$ACTION" in
   --json|json) json_output ;;
   status) status ;;
+  packs)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      packs_json
+    else
+      packs_status
+    fi
+    ;;
   doctor) doctor ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown identity action: $ACTION"; usage; exit 1 ;;
 esac
-

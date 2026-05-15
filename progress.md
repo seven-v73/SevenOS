@@ -189,6 +189,7 @@ Les piliers du projet sont :
 - `seven state --json`, Seven Server, Control Plane, Insights et Seven Hub Native consomment maintenant le plan First Run, afin que SevenOS puisse guider l'utilisateur vers un environnement complet sans lire un README ni deviner les commandes.
 - Ajout de `seven session status --json` : contrat runtime de session SevenOS pour verifier entree de login, services utilisateur, Waybar, notifications, wallpaper et idle depuis Seven Hub, Seven Server et l'etat unifie.
 - Renforcement African First : ajout de `identity/AFRICAN_FIRST.md`, composants SVG reutilisables, `seven identity --json`, endpoint `/identity`, carte African first dans le Hub natif et profils enrichis avec role, symbole, principe et recit.
+- Ajout du contrat `identity/accent-packs.json` et de `seven identity packs --json`, pour preparer les variantes Pan-African, West, North, Central, East, Southern et Diaspora sans reduire l'interface aux drapeaux.
 
 ### Gestion fichiers
 

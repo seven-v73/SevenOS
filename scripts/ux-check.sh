@@ -81,6 +81,7 @@ require_file "identity/countries/africa.tsv"
 require_file "identity/STYLE.md"
 require_file "identity/AFRICAN_FIRST.md"
 require_file "identity/tokens.css"
+require_file "identity/accent-packs.json"
 require_file "identity/components/kente-divider.svg"
 require_file "identity/components/adinkra-status-ok.svg"
 require_file "identity/components/baobab-system-mark.svg"
@@ -297,6 +298,7 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'welcome.plan' <<<"$actions_json" &&
    grep -q 'session.status' <<<"$actions_json" &&
    grep -q 'identity.status' <<<"$actions_json" &&
+   grep -q 'identity.packs' <<<"$actions_json" &&
    grep -q '"actions"' <<<"$state_json"; then
   ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
 else
@@ -489,6 +491,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'Session:' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def identity_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'African first' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Accent packs' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def shield_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def shield_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Shield plan' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -546,6 +549,7 @@ welcome_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" welcome status --json)"
 welcome_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" welcome plan --json)"
 session_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" session status --json)"
 identity_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" identity --json)"
+identity_packs_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" identity packs --json)"
 windows_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows plan --json)"
 installer_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer status --json)"
 installer_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer plan --json)"
@@ -561,6 +565,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$welcome_plan_json" >/dev/null &&
    python -m json.tool <<<"$session_json" >/dev/null &&
    python -m json.tool <<<"$identity_json" >/dev/null &&
+   python -m json.tool <<<"$identity_packs_json" >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null &&
    python -m json.tool <<<"$windows_plan_json" >/dev/null &&
    python -m json.tool <<<"$ecosystem_json" >/dev/null &&
@@ -584,6 +589,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema": "sevenos.session.v1"' <<<"$session_json" &&
    grep -q '"schema": "sevenos.identity.v1"' <<<"$identity_json" &&
    grep -q '"profiles"' <<<"$identity_json" &&
+   grep -q '"schema": "sevenos.accent-packs.v1"' <<<"$identity_packs_json" &&
+   grep -q 'pan-african' <<<"$identity_packs_json" &&
    grep -q '"schema": "sevenos.shield.v1"' <<<"$shield_json" &&
    grep -q '"schema": "sevenos.shield-plan.v1"' <<<"$shield_plan_json" &&
    grep -q '"schema":"sevenos.server.v1"' <<<"$server_json" &&

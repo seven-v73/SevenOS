@@ -1,0 +1,69 @@
+{
+  "schema": "sevenos.accent-packs.v1",
+  "default_pack": "pan-african",
+  "packs": [
+    {
+      "key": "pan-african",
+      "title": "Pan-African",
+      "state": "planned",
+      "accent": "gold",
+      "pattern": "kente",
+      "signal": "unity",
+      "description": "Broad SevenOS identity for sovereignty, creation, trust and community."
+    },
+    {
+      "key": "west-africa",
+      "title": "West Africa",
+      "state": "planned",
+      "accent": "gold",
+      "pattern": "stripe",
+      "signal": "trade, craft and rhythm",
+      "description": "Warm gold, clay and woven rhythm for creation, learning and public digital work."
+    },
+    {
+      "key": "north-africa",
+      "title": "North Africa",
+      "state": "planned",
+      "accent": "indigo",
+      "pattern": "geometry",
+      "signal": "architecture and navigation",
+      "description": "Indigo, stone and precise geometry for knowledge, networks and horizon workflows."
+    },
+    {
+      "key": "central-africa",
+      "title": "Central Africa",
+      "state": "planned",
+      "accent": "baobab",
+      "pattern": "concentric",
+      "signal": "forest, roots and resilience",
+      "description": "Baobab green and circular marks for system health, resilience and shared infrastructure."
+    },
+    {
+      "key": "east-africa",
+      "title": "East Africa",
+      "state": "planned",
+      "accent": "indigo",
+      "pattern": "horizon",
+      "signal": "movement, coast and exchange",
+      "description": "Light indigo and horizon rhythm for cloud, deployment, education and mobility."
+    },
+    {
+      "key": "southern-africa",
+      "title": "Southern Africa",
+      "state": "planned",
+      "accent": "clay",
+      "pattern": "diamond",
+      "signal": "earth, craft and industry",
+      "description": "Clay, gold and diamond structure for production, media, engineering and making."
+    },
+    {
+      "key": "diaspora",
+      "title": "Diaspora",
+      "state": "planned",
+      "accent": "gold",
+      "pattern": "cross",
+      "signal": "connection and return",
+      "description": "Gold and bridge marks for distributed identity, sync, learning and contribution."
+    }
+  ]
+}

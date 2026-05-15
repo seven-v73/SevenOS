@@ -68,6 +68,8 @@ Rules:
 - `seven identity --json` is the African first product language contract. It
   declares principles, profile roles, symbols, stories and future regional
   accent packs so identity can appear in Hub, onboarding and profiles.
+- `seven identity packs --json` is the regional accent pack contract. It keeps
+  optional cultural variants structured before they become theme modules.
 - `seven experience --json` is the OS coherence contract. It scores whether
   identity, shell, Hub, profiles, actions, Windows, security, server and
   installer feel connected enough for a normal user.
@@ -214,6 +216,7 @@ seven files
 seven state --json
 seven session status --json
 seven identity --json
+seven identity packs --json
 seven actions --json
 seven ecosystem processes
 seven ecosystem --json

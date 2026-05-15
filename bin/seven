@@ -136,6 +136,8 @@ def handle_identity(args):
     extra = [args.action]
     if args.json:
         extra = ["--json"]
+        if args.action != "status":
+            extra = [args.action, "--json"]
     run_script(args, "scripts/identity.sh", *extra)
 
 

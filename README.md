@@ -88,6 +88,8 @@ Useful identity commands:
 ```bash
 seven identity
 seven identity --json
+seven identity packs
+seven identity packs --json
 seven identity doctor
 ```
 
