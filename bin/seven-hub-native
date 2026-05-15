@@ -447,6 +447,11 @@ def run_gui() -> int:
                     "Sovereign by design",
                     identity.get("positioning", "African first Linux ecosystem for sovereignty, creation, security and deployment."),
                 ))
+                current_pack = identity.get("current_pack", {})
+                identity_group.add(make_row(
+                    "Active accent pack",
+                    f"{current_pack.get('title', 'Pan-African')} · {current_pack.get('accent', 'gold')} · {current_pack.get('pattern', 'kente')}",
+                ))
                 principle_names = ", ".join(item.get("label", item.get("key", "")) for item in identity.get("principles", [])[:6])
                 identity_group.add(make_row("Product principles", principle_names or "Sovereignty, transmission, creation, protection, community, resilience"))
                 packs = identity.get("regional_packs", [])

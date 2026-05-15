@@ -90,6 +90,9 @@ seven identity
 seven identity --json
 seven identity packs
 seven identity packs --json
+seven identity current
+seven identity current --json
+seven identity activate pan-african
 seven identity doctor
 ```
 

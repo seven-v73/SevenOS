@@ -70,6 +70,8 @@ Rules:
   accent packs so identity can appear in Hub, onboarding and profiles.
 - `seven identity packs --json` is the regional accent pack contract. It keeps
   optional cultural variants structured before they become theme modules.
+- `seven identity current --json` is the active identity preference contract.
+  It records which accent pack the current user selected.
 - `seven experience --json` is the OS coherence contract. It scores whether
   identity, shell, Hub, profiles, actions, Windows, security, server and
   installer feel connected enough for a normal user.
@@ -217,6 +219,7 @@ seven state --json
 seven session status --json
 seven identity --json
 seven identity packs --json
+seven identity current --json
 seven actions --json
 seven ecosystem processes
 seven ecosystem --json

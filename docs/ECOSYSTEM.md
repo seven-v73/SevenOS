@@ -83,6 +83,7 @@ seven welcome plan --json
 seven session status --json
 seven identity --json
 seven identity packs --json
+seven identity current --json
 seven actions --json
 seven profile gaps --json
 seven profile plan --json
@@ -121,6 +122,9 @@ identity as only wallpaper or README language.
 `seven identity packs --json` is the regional accent pack contract. It keeps
 future Pan-African, West, North, Central, East, Southern and Diaspora packs
 structured before they become installable theme modules.
+
+`seven identity current --json` is the active identity preference. It lets
+Seven Hub and future installers know which accent pack the user selected.
 
 `seven windows plan --json` is the Windows compatibility plan. It translates
 Wine, Bottles, KVM, libvirt networking and VM creation gaps into a guided setup

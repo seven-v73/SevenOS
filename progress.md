@@ -190,6 +190,7 @@ Les piliers du projet sont :
 - Ajout de `seven session status --json` : contrat runtime de session SevenOS pour verifier entree de login, services utilisateur, Waybar, notifications, wallpaper et idle depuis Seven Hub, Seven Server et l'etat unifie.
 - Renforcement African First : ajout de `identity/AFRICAN_FIRST.md`, composants SVG reutilisables, `seven identity --json`, endpoint `/identity`, carte African first dans le Hub natif et profils enrichis avec role, symbole, principe et recit.
 - Ajout du contrat `identity/accent-packs.json` et de `seven identity packs --json`, pour preparer les variantes Pan-African, West, North, Central, East, Southern et Diaspora sans reduire l'interface aux drapeaux.
+- Ajout de `seven identity current --json` et `seven identity activate <pack>` pour transformer les accent packs en preference utilisateur lisible par le Hub.
 
 ### Gestion fichiers
 

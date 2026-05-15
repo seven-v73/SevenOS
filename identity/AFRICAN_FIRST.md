@@ -104,4 +104,6 @@ Use:
 ```bash
 seven identity packs
 seven identity packs --json
+seven identity current
+seven identity activate pan-african
 ```

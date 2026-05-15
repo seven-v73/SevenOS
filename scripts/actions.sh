@@ -100,6 +100,8 @@ ecosystem.roadmap	Ecosystem	Ecosystem Roadmap	seven ecosystem roadmap	safe	Show 
 ecosystem.doctor	Ecosystem	Ecosystem Doctor	seven ecosystem doctor	safe	Validate ecosystem foundation files.
 identity.status	Ecosystem	African First Identity	seven identity	safe	Show SevenOS African first product language.
 identity.packs	Ecosystem	Regional Accent Packs	seven identity packs	safe	Show planned regional accent packs without turning the UI into flags.
+identity.current	Ecosystem	Active Identity Pack	seven identity current	safe	Show the active SevenOS regional accent pack.
+identity.activate.pan	Ecosystem	Activate Pan-African Pack	seven identity activate pan-african	changes	Set the broad default SevenOS African first accent pack.
 identity.doctor	Ecosystem	Identity Doctor	seven identity doctor	safe	Validate African first identity files and components.
 EOF
 }

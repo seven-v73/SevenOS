@@ -107,6 +107,8 @@ Regional packs are declared in `identity/accent-packs.json` and surfaced with:
 ```bash
 seven identity packs
 seven identity packs --json
+seven identity current
+seven identity activate pan-african
 ```
 
 They are planned as subtle optional layers for wallpaper, accents, patterns and

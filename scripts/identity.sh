@@ -3,6 +3,9 @@ set -Eeuo pipefail
 
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$ROOT_DIR/scripts/lib.sh"
+STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
+IDENTITY_ENV="$STATE_DIR/identity.env"
+IDENTITY_JSON="$STATE_DIR/identity.json"
 
 usage() {
   cat <<'EOF'
@@ -13,6 +16,9 @@ Usage:
   seven identity --json
   seven identity packs
   seven identity packs --json
+  seven identity current
+  seven identity current --json
+  seven identity activate <pack>
   ./scripts/identity.sh [status|json|doctor]
 
 Shows the African first product language used by profiles, onboarding, Hub and
@@ -21,13 +27,15 @@ EOF
 }
 
 json_output() {
-  SEVENOS_IDENTITY_ROOT="$ROOT_DIR" python - <<'PY'
+  SEVENOS_IDENTITY_ROOT="$ROOT_DIR" SEVENOS_IDENTITY_CURRENT="$(current_pack_key)" python - <<'PY'
 import json
 import os
 from pathlib import Path
 
 root = Path(os.environ["SEVENOS_IDENTITY_ROOT"])
 packs = json.loads((root / "identity" / "accent-packs.json").read_text(encoding="utf-8"))
+current_key = os.environ.get("SEVENOS_IDENTITY_CURRENT") or packs.get("default_pack", "pan-african")
+current_pack = next((item for item in packs["packs"] if item.get("key") == current_key), packs["packs"][0])
 
 profiles = [
     {
@@ -99,6 +107,7 @@ print(json.dumps({
     "schema": "sevenos.identity.v1",
     "positioning": "African first Linux ecosystem for sovereignty, creation, security and deployment.",
     "question": "Does this make Linux more sovereign, more fluid and more culturally coherent?",
+    "current_pack": current_pack,
     "principles": [
         {"key": "sovereignty", "label": "Sovereignty", "meaning": "SevenOS explains, repairs and owns its system path."},
         {"key": "transmission", "label": "Transmission", "meaning": "Knowledge is surfaced through Griot-style documentation and onboarding."},
@@ -119,6 +128,118 @@ print(json.dumps({
     ],
 }, indent=2))
 PY
+}
+
+current_pack_key() {
+  if [[ -f "$IDENTITY_ENV" ]]; then
+    # shellcheck disable=SC1090
+    source "$IDENTITY_ENV"
+    printf '%s' "${SEVENOS_IDENTITY_PACK:-pan-african}"
+  else
+    printf 'pan-african'
+  fi
+}
+
+pack_exists() {
+  local key="$1"
+  python - "$ROOT_DIR/identity/accent-packs.json" "$key" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+key = sys.argv[2]
+raise SystemExit(0 if any(item.get("key") == key for item in data.get("packs", [])) else 1)
+PY
+}
+
+pack_json_by_key() {
+  local key="$1"
+  python - "$ROOT_DIR/identity/accent-packs.json" "$key" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+key = sys.argv[2]
+pack = next((item for item in data.get("packs", []) if item.get("key") == key), None)
+if not pack:
+    raise SystemExit(1)
+print(json.dumps(pack, indent=2))
+PY
+}
+
+current_json() {
+  local key
+  key="$(current_pack_key)"
+  pack_exists "$key" || key="pan-african"
+  SEVENOS_IDENTITY_PACK_PAYLOAD="$(pack_json_by_key "$key")" python - <<'PY'
+import json
+import os
+
+pack = json.loads(os.environ["SEVENOS_IDENTITY_PACK_PAYLOAD"])
+print(json.dumps({
+    "schema": "sevenos.identity-current.v1",
+    "pack": pack,
+    "config": {
+        "env": "~/.config/sevenos/identity.env",
+        "json": "~/.config/sevenos/identity.json",
+    },
+}, indent=2))
+PY
+}
+
+current_status() {
+  local key
+  key="$(current_pack_key)"
+  pack_exists "$key" || key="pan-african"
+  python - "$ROOT_DIR/identity/accent-packs.json" "$key" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+key = sys.argv[2]
+pack = next(item for item in data.get("packs", []) if item.get("key") == key)
+print("SevenOS Active Identity Pack")
+print("============================")
+print()
+print(f"Pack:        {pack.get('title')}")
+print(f"Key:         {pack.get('key')}")
+print(f"Accent:      {pack.get('accent')}")
+print(f"Pattern:     {pack.get('pattern')}")
+print(f"Signal:      {pack.get('signal')}")
+print(f"State:       {pack.get('state')}")
+print(f"Description: {pack.get('description')}")
+PY
+}
+
+activate_pack() {
+  local key="$1"
+  if [[ -z "$key" ]]; then
+    log_error "Missing accent pack key."
+    log_info "Use: seven identity packs"
+    exit 1
+  fi
+  if ! pack_exists "$key"; then
+    log_error "Unknown accent pack: $key"
+    log_info "Use: seven identity packs"
+    exit 1
+  fi
+
+  if is_dry_run; then
+    printf 'mkdir -p %q\n' "$STATE_DIR"
+    printf 'write %q\n' "$IDENTITY_ENV"
+    printf 'write %q\n' "$IDENTITY_JSON"
+    return 0
+  fi
+
+  mkdir -p "$STATE_DIR"
+  cat > "$IDENTITY_ENV" <<EOF
+SEVENOS_IDENTITY_PACK="$key"
+EOF
+  current_json > "$IDENTITY_JSON"
+  log_success "Active identity pack: $key"
 }
 
 packs_json() {
@@ -178,6 +299,8 @@ PY
 }
 
 status() {
+  local active_pack
+  active_pack="$(current_pack_key)"
   printf 'SevenOS African First Identity\n'
   printf '==============================\n\n'
   printf 'Positioning:\n'
@@ -194,22 +317,40 @@ status() {
   printf '  Griot   Memory     gold    documentation and knowledge\n'
   printf '\nRegional accent packs:\n'
   printf '  seven identity packs\n'
+  printf '  active: %s\n' "$active_pack"
 }
 
 ACTION="${1:-status}"
+PACK_KEY="${2:-}"
 JSON_OUTPUT=0
-if [[ "${2:-}" == "--json" || "${2:-}" == "json" ]]; then
+if [[ "${2:-}" == "--json" || "${2:-}" == "json" || "${3:-}" == "--json" || "${3:-}" == "json" ]]; then
   JSON_OUTPUT=1
 fi
 case "$ACTION" in
   --json|json) json_output ;;
-  status) status ;;
+  status)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      json_output
+    else
+      status
+    fi
+    ;;
   packs)
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       packs_json
     else
       packs_status
     fi
+    ;;
+  current)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      current_json
+    else
+      current_status
+    fi
+    ;;
+  activate)
+    activate_pack "$PACK_KEY"
     ;;
   doctor) doctor ;;
   -h|--help|help) usage ;;

@@ -30,6 +30,7 @@ seven welcome plan --json
 seven session status --json
 seven identity --json
 seven identity packs --json
+seven identity current --json
 seven actions --json
 seven profile status --json
 seven profile current --json
@@ -52,6 +53,7 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Session | login entry, user services and running shell components | `seven session status --json` |
 | Identity | African first principles, profile roles and accent packs | `seven identity --json` |
 | Accent Packs | optional regional identity variants | `seven identity packs --json` |
+| Active Identity | selected user accent pack | `seven identity current --json` |
 | Experience | OS coherence score and blockers | `seven experience --json` |
 | Control | prioritized next actions | `seven control --json` |
 | Profiles | active profile, workspaces, install/activate | `seven profile status --json` |

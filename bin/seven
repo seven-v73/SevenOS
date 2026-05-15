@@ -133,11 +133,9 @@ def handle_ecosystem(args):
 
 
 def handle_identity(args):
-    extra = [args.action]
+    extra = [args.action, *args.extra]
     if args.json:
-        extra = ["--json"]
-        if args.action != "status":
-            extra = [args.action, "--json"]
+        extra.append("--json")
     run_script(args, "scripts/identity.sh", *extra)
 
 
@@ -249,6 +247,7 @@ def main():
     identity_parser = subparsers.add_parser("identity", help="show SevenOS African first identity language")
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
+    identity_parser.add_argument("extra", nargs=argparse.REMAINDER)
     experience_parser = subparsers.add_parser("experience", help="audit whether SevenOS feels like a coherent OS")
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
     control_parser = subparsers.add_parser("control", help="show prioritized SevenOS control plane actions")
