@@ -77,9 +77,10 @@ available, then falls back to the older Bash/Python writer. This is the intended
 migration style for SevenOS: preserve working commands while moving the system
 logic into a system language.
 
-`seven core snapshot --json` exposes the daemon view of SevenBus: event count,
-source counts, state counts, writer counts and last event. This is the next
-step away from shell-centric state inspection.
+`seven core snapshot --json` exposes the daemon view of SevenBus: valid event
+count, invalid event count, source counts, state counts, writer counts and the
+last valid event. The reader uses `serde_json`, which keeps Core state
+inspection out of fragile shell text parsing.
 
 The current service is a user service:
 

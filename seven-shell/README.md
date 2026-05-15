@@ -35,7 +35,12 @@ Seven Shell consumes JSON contracts only:
 
 - `seven state --json`
 - `seven actions --json`
+- `seven core snapshot --json`
 - `seven profile current --json`
 - `seven shell status --json`
 
 Human terminal output is not an API.
+
+`seven core snapshot --json` is the daemon-native SevenBus reader. Shell
+surfaces use it to understand recent system activity without parsing human
+logs or walking the event journal directly.

@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use serde_json::{json, Value};
+
 fn state_dir() -> PathBuf {
     if let Ok(value) = env::var("XDG_STATE_HOME") {
         return PathBuf::from(value).join("sevenos");
@@ -40,30 +42,6 @@ fn unix_timestamp() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_else(|_| Duration::from_secs(0))
         .as_secs()
-}
-
-fn json_field(raw: &str, key: &str) -> Option<String> {
-    let needle = format!("\"{}\":\"", key);
-    let start = raw.find(&needle)? + needle.len();
-    let rest = &raw[start..];
-    let mut value = String::new();
-    let mut escaped = false;
-    for ch in rest.chars() {
-        if escaped {
-            value.push(ch);
-            escaped = false;
-            continue;
-        }
-        if ch == '\\' {
-            escaped = true;
-            continue;
-        }
-        if ch == '"' {
-            return Some(value);
-        }
-        value.push(ch);
-    }
-    None
 }
 
 fn count_key(counts: &mut Vec<(String, usize)>, key: &str) {
@@ -123,36 +101,63 @@ fn snapshot() {
     let mut by_source: Vec<(String, usize)> = Vec::new();
     let mut by_state: Vec<(String, usize)> = Vec::new();
     let mut by_writer: Vec<(String, usize)> = Vec::new();
-    let mut last = String::new();
+    let mut last: Option<Value> = None;
+    let mut invalid = 0usize;
 
     for line in &lines {
         if line.trim().is_empty() {
             continue;
         }
-        last = line.to_string();
-        let source = json_field(line, "source").unwrap_or_else(|| "unknown".to_string());
-        let state = json_field(line, "state").unwrap_or_else(|| "unknown".to_string());
-        let writer = json_field(line, "writer").unwrap_or_else(|| "legacy".to_string());
-        count_key(&mut by_source, &source);
-        count_key(&mut by_state, &state);
-        count_key(&mut by_writer, &writer);
+        match serde_json::from_str::<Value>(line) {
+            Ok(event) => {
+                let source = event
+                    .get("source")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown");
+                let state = event
+                    .get("state")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown");
+                let writer = event
+                    .get("writer")
+                    .and_then(Value::as_str)
+                    .unwrap_or("legacy");
+                count_key(&mut by_source, source);
+                count_key(&mut by_state, state);
+                count_key(&mut by_writer, writer);
+                last = Some(event);
+            }
+            Err(_) => {
+                invalid += 1;
+            }
+        }
     }
 
+    let payload = json!({
+        "schema": "sevenos.daemon.snapshot.v1",
+        "state": "ready",
+        "event_file": event_file().to_string_lossy(),
+        "event_count": lines.len().saturating_sub(invalid),
+        "invalid_event_count": invalid,
+        "sources": serde_json::from_str::<Value>(&json_counts(&by_source)).unwrap_or_else(|_| json!({})),
+        "states": serde_json::from_str::<Value>(&json_counts(&by_state)).unwrap_or_else(|_| json!({})),
+        "writers": serde_json::from_str::<Value>(&json_counts(&by_writer)).unwrap_or_else(|_| json!({})),
+        "last_event": last,
+    });
     println!(
-        "{{\"schema\":\"sevenos.daemon.snapshot.v1\",\"state\":\"ready\",\"event_file\":\"{}\",\"event_count\":{},\"sources\":{},\"states\":{},\"writers\":{},\"last_event\":{}}}",
-        json_escape(&event_file().to_string_lossy()),
-        lines.len(),
-        json_counts(&by_source),
-        json_counts(&by_state),
-        json_counts(&by_writer),
-        if last.is_empty() { "null".to_string() } else { last }
+        "{}",
+        serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string())
     );
 }
 
 fn serve() {
     let dir = state_dir();
     if let Err(error) = fs::create_dir_all(&dir) {
-        eprintln!("seven-daemon: failed to create state dir {}: {}", dir.display(), error);
+        eprintln!(
+            "seven-daemon: failed to create state dir {}: {}",
+            dir.display(),
+            error
+        );
     }
 
     println!("seven-daemon: local runtime started");
@@ -178,37 +183,47 @@ fn emit(args: &[String]) -> i32 {
 
     let dir = state_dir();
     if let Err(error) = fs::create_dir_all(&dir) {
-        eprintln!("seven-daemon emit: failed to create {}: {}", dir.display(), error);
+        eprintln!(
+            "seven-daemon emit: failed to create {}: {}",
+            dir.display(),
+            error
+        );
         return 1;
     }
 
-    let command_json = if command.is_empty() {
-        "null".to_string()
-    } else {
-        format!("\"{}\"", json_escape(&command))
-    };
-
-    let payload = format!(
-        "{{\"schema\":\"sevenos.event.v1\",\"timestamp\":\"unix:{}\",\"timestamp_unix\":{},\"source\":\"{}\",\"type\":\"{}\",\"state\":\"{}\",\"message\":\"{}\",\"command\":{},\"writer\":\"seven-daemon\"}}\n",
-        unix_timestamp(),
-        unix_timestamp(),
-        json_escape(&source),
-        json_escape(&event_type),
-        json_escape(&state),
-        json_escape(&message),
-        command_json
-    );
+    let timestamp = unix_timestamp();
+    let payload = json!({
+        "schema": "sevenos.event.v1",
+        "timestamp": format!("unix:{}", timestamp),
+        "timestamp_unix": timestamp,
+        "source": source,
+        "type": event_type,
+        "state": state,
+        "message": message,
+        "command": if command.is_empty() { Value::Null } else { Value::String(command) },
+        "writer": "seven-daemon",
+    })
+    .to_string()
+        + "\n";
 
     let path = event_file();
     match OpenOptions::new().create(true).append(true).open(&path) {
         Ok(mut file) => {
             if let Err(error) = file.write_all(payload.as_bytes()) {
-                eprintln!("seven-daemon emit: failed to write {}: {}", path.display(), error);
+                eprintln!(
+                    "seven-daemon emit: failed to write {}: {}",
+                    path.display(),
+                    error
+                );
                 return 1;
             }
         }
         Err(error) => {
-            eprintln!("seven-daemon emit: failed to open {}: {}", path.display(), error);
+            eprintln!(
+                "seven-daemon emit: failed to open {}: {}",
+                path.display(),
+                error
+            );
             return 1;
         }
     }

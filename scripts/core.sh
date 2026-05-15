@@ -84,7 +84,7 @@ event_count() {
 }
 
 status_json() {
-  local contracts api bus_schema daemon daemon_src daemon_bin bus_c bus_c_bin cc_state make_state service rust cargo events state
+  local contracts api bus_schema daemon daemon_src daemon_bin daemon_json bus_c bus_c_bin cc_state make_state service rust cargo events state
   contracts=0
   [[ "$(exec_state scripts/state.sh)" == OK ]] && contracts=$((contracts + 1))
   [[ "$(exec_state scripts/control-plane.sh)" == OK ]] && contracts=$((contracts + 1))
@@ -97,6 +97,7 @@ status_json() {
   daemon="$(file_state seven-core/daemon/Cargo.toml)"
   daemon_src="$(file_state seven-core/daemon/src/main.rs)"
   daemon_bin="$(exec_state bin/seven-daemon)"
+  daemon_json="$([[ -s "$DAEMON_MANIFEST" ]] && grep -q 'serde_json' "$DAEMON_MANIFEST" && printf OK || printf MISS)"
   bus_c="$(file_state seven-core/bus-c/src/sevenbus_probe.c)"
   bus_c_bin="$(exec_state bin/sevenbus-probe)"
   cc_state="$(command_state cc)"
@@ -114,7 +115,7 @@ status_json() {
     state="READY_FOR_DAEMON"
   fi
 
-  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
+  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_JSON_STATE="$daemon_json" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
 import json
 import os
 
@@ -129,6 +130,7 @@ components = [
     {"key": "daemon_scaffold", "title": "Rust daemon scaffold", "state": "OK" if os.environ["DAEMON_STATE"] == "OK" and os.environ["DAEMON_SRC_STATE"] == "OK" else "MISS", "detail": "seven-core/daemon"},
     {"key": "daemon_cli", "title": "Seven daemon CLI", "state": os.environ["DAEMON_BIN_STATE"], "detail": "bin/seven-daemon"},
     {"key": "bus_writer", "title": "Rust SevenBus writer", "state": os.environ["DAEMON_BIN_STATE"], "detail": "seven-daemon emit"},
+    {"key": "bus_reader", "title": "Typed SevenBus reader", "state": os.environ["DAEMON_JSON_STATE"], "detail": "serde_json snapshot parser"},
     {"key": "bus_c_probe", "title": "C SevenBus probe", "state": "OK" if os.environ["BUS_C_STATE"] == "OK" and os.environ["BUS_C_BIN_STATE"] == "OK" else "MISS", "detail": "sevenbus-probe"},
     {"key": "c_toolchain", "title": "C toolchain", "state": "OK" if os.environ["CC_STATE"] == "OK" and os.environ["MAKE_STATE"] == "OK" else "MISS", "detail": "cc + make for low-level IPC probes"},
     {"key": "daemon_service", "title": "Seven daemon service", "state": os.environ["DAEMON_SERVICE_STATE"], "detail": "seven-daemon.service"},

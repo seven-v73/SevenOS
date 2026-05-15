@@ -345,10 +345,13 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -q '"schema": "sevenos.bus.v1"' <<<"$core_bus_json" &&
    grep -q '"schema":"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
+   grep -q '"invalid_event_count"' <<<"$core_snapshot_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null &&
    XDG_STATE_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-daemon" emit --source ux --type preview --message "ux event" --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null &&
+   grep -q 'serde_json' "$ROOT_DIR/seven-core/daemon/Cargo.toml" &&
+   grep -q 'Typed SevenBus reader' <<<"$core_json" &&
    grep -q 'C SevenBus probe' <<<"$core_json" &&
    grep -q 'seven-daemon emit' "$ROOT_DIR/scripts/events.sh" &&
    grep -q 'ExecStart=/usr/bin/env seven-daemon serve' "$ROOT_DIR/systemd/user/seven-daemon.service" &&

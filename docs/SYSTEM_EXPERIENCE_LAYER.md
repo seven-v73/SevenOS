@@ -170,11 +170,13 @@ The second migration is SevenBus state reading:
 ```text
 seven core snapshot --json
   -> seven-daemon snapshot --json
-  -> source/state/writer counts from SevenBus
+  -> typed source/state/writer counts from SevenBus
 ```
 
 This gives Seven Hub and Seven Shell a daemon-native view of the event stream
-without parsing shell output.
+without parsing shell output. The reader is implemented with `serde_json` and
+reports invalid event lines separately, so corrupted local event history does
+not break the whole OS state contract.
 
 ## SevenBus
 

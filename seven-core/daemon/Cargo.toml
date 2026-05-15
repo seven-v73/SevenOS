@@ -6,3 +6,4 @@ description = "SevenOS system experience daemon scaffold"
 license = "MIT"
 
 [dependencies]
+serde_json = "1"

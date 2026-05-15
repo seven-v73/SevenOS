@@ -77,6 +77,7 @@ Les piliers du projet sont :
 - Ajout de `seven core install-service`, `seven core start`, `seven core stop` et `seven core logs` pour piloter le runtime Core sans manipuler systemd a la main.
 - Debut de migration Bash vers Rust : `seven events log` prefere maintenant `seven-daemon emit` pour ecrire les evenements SevenBus, avec fallback Bash/Python si le daemon n'est pas disponible.
 - Ajout de `seven core snapshot --json` : SevenDaemon lit maintenant le journal SevenBus et expose un resume natif des sources, etats, writers et dernier evenement.
+- Renforcement du snapshot SevenDaemon avec `serde_json` : les evenements sont parses par Rust, les lignes invalides sont comptees separement, et `last_event` reste un vrai objet JSON.
 - Ajout de la frontiere C : `seven-core/bus-c` et `sevenbus-probe --json` preparent les futures capacites IPC/hardware de SevenBus sans deplacer la logique produit vers C.
 - Integration de Seven Core dans `seven state --json`, Seven Server, Seven Hub Native, le registre `seven actions`, le phase gate, le manifeste installable et les checks.
 - Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.
