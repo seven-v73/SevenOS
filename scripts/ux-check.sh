@@ -328,6 +328,7 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'identity.current' <<<"$actions_json" &&
    grep -q 'core.status' <<<"$actions_json" &&
    grep -q 'core.bus' <<<"$actions_json" &&
+   grep -q 'core.snapshot' <<<"$actions_json" &&
    grep -q 'core.install-service' <<<"$actions_json" &&
    grep -q '"actions"' <<<"$state_json"; then
   ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
@@ -338,11 +339,14 @@ fi
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
 core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
 core_bus_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core bus --json)"
+core_snapshot_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core snapshot --json)"
 if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -Eq '"state": "(FOUNDATION|READY_FOR_DAEMON)"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -q '"schema": "sevenos.bus.v1"' <<<"$core_bus_json" &&
+   grep -q '"schema":"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null &&
    XDG_STATE_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-daemon" emit --source ux --type preview --message "ux event" --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null &&
    grep -q 'C SevenBus probe' <<<"$core_json" &&
@@ -622,6 +626,7 @@ installer_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer plan --
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
 core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
+core_snapshot_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core snapshot --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
@@ -651,6 +656,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$packages_plan_json" >/dev/null &&
    python -m json.tool <<<"$core_json" >/dev/null &&
    python -m json.tool <<<"$core_plan_json" >/dev/null &&
+   python -m json.tool <<<"$core_snapshot_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
    grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
    grep -q '"schema": "sevenos.events.v1"' <<<"$events_json" &&
@@ -674,12 +680,13 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema": "sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
    grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
+   grep -q '"schema":"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
    grep -q '"processes"' <<<"$ecosystem_json" &&
    grep -q 'SevenOS All-In-One Process Map' <<<"$ecosystem_processes" &&
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","core","experience","control","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","core","core_snapshot","experience","control","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -786,6 +793,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/stack"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shell"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shell-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/core-snapshot"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield-plan"' "$ROOT_DIR/server/seven-server.sh" &&
@@ -807,6 +815,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/stack' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/shell' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/shell-plan' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/core-snapshot' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/shield-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/server-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/control' "$ROOT_DIR/server/README.md" &&

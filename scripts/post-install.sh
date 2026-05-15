@@ -106,6 +106,14 @@ toolkit_theme_check() {
 command_check() {
   section "SevenOS Commands"
   local command_name
+  local hub_command="seven-hub"
+  local control_command="seven-control-center"
+
+  if is_dry_run; then
+    hub_command="$ROOT_DIR/seven-hub/bin/seven-hub"
+    control_command="$ROOT_DIR/seven-hub/bin/seven-control-center"
+  fi
+
   for command_name in seven sevenpkg seven-country seven-files seven-hub seven-control-center seven-session seven-power; do
     if command -v "$command_name" >/dev/null 2>&1; then
       ok_item "$command_name available"
@@ -123,8 +131,8 @@ command_check() {
     fi
   done
 
-  if command -v seven-hub >/dev/null 2>&1; then
-    if seven-hub doctor >/dev/null 2>&1; then
+  if command -v seven-hub >/dev/null 2>&1 || [[ -x "$hub_command" ]]; then
+    if "$hub_command" doctor >/dev/null 2>&1; then
       ok_item "seven-hub doctor"
     else
       warn_item "seven-hub exists but fails its doctor check"
@@ -133,8 +141,8 @@ command_check() {
     fi
   fi
 
-  if command -v seven-control-center >/dev/null 2>&1; then
-    if seven-control-center status >/dev/null 2>&1; then
+  if command -v seven-control-center >/dev/null 2>&1 || [[ -x "$control_command" ]]; then
+    if "$control_command" status >/dev/null 2>&1; then
       ok_item "seven-control-center status"
     else
       warn_item "seven-control-center exists but status failed"

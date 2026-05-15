@@ -29,6 +29,7 @@ Usage:
   seven core start
   seven core stop
   seven core logs
+  seven core snapshot --json
 
 Seven Core is the system experience layer foundation above Linux and Arch:
 contracts, local event bus, daemon scaffold, API handoff and policy surface.
@@ -269,6 +270,14 @@ schema_json() {
   fi
 }
 
+snapshot_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" snapshot --json
+  else
+    printf '{"schema":"sevenos.daemon.snapshot.v1","state":"MISS","event_count":0}\n'
+  fi
+}
+
 doctor() {
   local missing=0
   printf 'SevenOS Core Doctor\n'
@@ -355,6 +364,13 @@ case "$ACTION" in
     ;;
   bus|schema)
     [[ "$JSON_OUTPUT" -eq 1 ]] && schema_json || { printf 'SevenBus schema: %s\n' "$BUS_SCHEMA"; }
+    ;;
+  snapshot)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      snapshot_json
+    else
+      snapshot_json | python -m json.tool
+    fi
     ;;
   -h|--help|help)
     usage

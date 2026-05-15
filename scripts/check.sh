@@ -265,8 +265,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" core status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" core snapshot --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null
 SEVENOS_BUS_TEST_HOME="$(mktemp -d)"
 XDG_STATE_HOME="$SEVENOS_BUS_TEST_HOME" "$ROOT_DIR/bin/seven-daemon" emit --source check --type preview --message "check event" --json | python -m json.tool >/dev/null
@@ -453,6 +455,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core bus --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core snapshot --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core install-service >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core start >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell >/dev/null

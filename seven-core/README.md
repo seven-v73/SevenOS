@@ -64,6 +64,7 @@ The daemon is now launchable through:
 
 ```bash
 seven-daemon --json
+seven-daemon snapshot --json
 seven-daemon emit --source core --type event --message "SevenBus event"
 seven-daemon serve
 seven core install-service
@@ -75,6 +76,10 @@ seven core logs
 available, then falls back to the older Bash/Python writer. This is the intended
 migration style for SevenOS: preserve working commands while moving the system
 logic into a system language.
+
+`seven core snapshot --json` exposes the daemon view of SevenBus: event count,
+source counts, state counts, writer counts and last event. This is the next
+step away from shell-centric state inspection.
 
 The current service is a user service:
 
@@ -93,6 +98,7 @@ seven core status --json
 seven core plan --json
 seven core doctor
 seven core bus --json
+seven core snapshot --json
 seven core install-service
 seven core start
 ```

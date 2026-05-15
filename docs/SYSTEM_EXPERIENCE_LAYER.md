@@ -165,6 +165,17 @@ If the Rust writer is unavailable, the Bash/Python fallback remains. That is
 the long-term migration rule: Bash stays as glue and compatibility, while
 SevenDaemon takes over stateful system behavior step by step.
 
+The second migration is SevenBus state reading:
+
+```text
+seven core snapshot --json
+  -> seven-daemon snapshot --json
+  -> source/state/writer counts from SevenBus
+```
+
+This gives Seven Hub and Seven Shell a daemon-native view of the event stream
+without parsing shell output.
+
 ## SevenBus
 
 SevenBus is the future local event and command bus for SevenOS.
