@@ -139,6 +139,13 @@ def handle_stack(args):
     run_script(args, "scripts/stack.sh", *extra)
 
 
+def handle_shell(args):
+    extra = [args.action, *args.extra]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/shell.sh", *extra)
+
+
 def handle_identity(args):
     extra = [args.action, *args.extra]
     if args.json:
@@ -259,6 +266,10 @@ def main():
     stack_parser = subparsers.add_parser("stack", help="show SevenOS technology stack strategy")
     stack_parser.add_argument("action", nargs="?", default="status")
     stack_parser.add_argument("--json", action="store_true", help="print machine-readable stack strategy")
+    shell_parser = subparsers.add_parser("shell", help="inspect Seven Shell AGS foundation")
+    shell_parser.add_argument("action", nargs="?", default="status")
+    shell_parser.add_argument("--json", action="store_true", help="print machine-readable shell status or plan")
+    shell_parser.add_argument("extra", nargs=argparse.REMAINDER)
     identity_parser = subparsers.add_parser("identity", help="show SevenOS African first identity language")
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
@@ -373,6 +384,8 @@ def main():
         handle_ecosystem(args)
     elif args.command == "stack":
         handle_stack(args)
+    elif args.command == "shell":
+        handle_shell(args)
     elif args.command == "identity":
         handle_identity(args)
     elif args.command == "experience":

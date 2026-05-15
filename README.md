@@ -310,6 +310,10 @@ seven ecosystem roadmap
 seven stack
 seven stack --json
 seven stack doctor
+seven shell
+seven shell status --json
+seven shell plan
+seven shell preview
 seven experience
 seven experience --json
 seven control
@@ -442,6 +446,7 @@ seven phase-gate --json
 seven ecosystem
 seven ecosystem roadmap
 seven stack
+seven shell
 seven server status
 seven server status --json
 seven server plan

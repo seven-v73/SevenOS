@@ -142,6 +142,13 @@ def stack_payload() -> dict:
         return {"schema": "sevenos.stack.v1", "summary": {}, "layers": [], "rules": []}
 
 
+def shell_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "shell.sh"), "status", "--json"))
+    except Exception:
+        return {"schema": "sevenos.shell.v1", "state": "unknown", "surfaces": []}
+
+
 def experience_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "experience.sh"), "--json"))
@@ -250,6 +257,7 @@ def status_text() -> str:
     profile_plan = profile_plan_payload()
     ecosystem = ecosystem_payload()
     stack = stack_payload()
+    shell = shell_payload()
     experience = experience_payload()
     shield = shield_payload()
     server = server_payload()
@@ -278,6 +286,7 @@ def status_text() -> str:
         f"Next profile: {next_profile}\n"
         f"Ecosystem: {active_modules} active, {preview_modules} preview, {len(ecosystem.get('processes', []))} processes\n"
         f"Stack: {stack.get('phase', 'B2-B3')} · next {next_stack}\n"
+        f"Shell: {shell.get('state', 'unknown')} · {len(shell.get('surfaces', []))} surfaces\n"
         f"Experience: {experience.get('percent', 0)}% ({experience.get('score', 0)}/{experience.get('max', 0)})\n"
         f"Shield: {shield.get('posture', 'unknown')} ({shield.get('percent', 0)}%)\n"
         f"Server: {server.get('service', {}).get('state', 'MISS')}\n"
@@ -438,6 +447,7 @@ def run_gui() -> int:
                 profile_plan = profile_plan_payload()
                 ecosystem = ecosystem_payload()
                 stack = stack_payload()
+                shell = shell_payload()
                 experience = experience_payload()
                 shield = shield_payload()
                 shield_plan = shield_plan_payload()
@@ -506,6 +516,7 @@ def run_gui() -> int:
                     ("Next profile", f"{next_profile} · prioritized completion plan"),
                     ("Ecosystem", f"{active_modules} active modules · {preview_modules} preview · {len(ecosystem.get('processes', []))} processes"),
                     ("Stack Strategy", f"{stack.get('phase', 'B2-B3')} · next: {next_stack}"),
+                    ("Seven Shell", f"{shell.get('state', 'unknown')} · {shell.get('strategy', 'AGS + TypeScript shell')}"),
                     ("Root", str(ROOT)),
                 ):
                     group.add(make_row(title_text, subtitle))

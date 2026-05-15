@@ -71,6 +71,13 @@ require_file "seven-hub/gui/src-tauri/src/main.rs"
 require_file "seven-hub/native/README.md"
 require_file "seven-hub/seven-hub-native.desktop"
 require_file "scripts/flatpak-apps.txt"
+require_file "seven-shell/README.md"
+require_file "seven-shell/ags/README.md"
+require_file "seven-shell/ags/package.json"
+require_file "seven-shell/ags/tsconfig.json"
+require_file "seven-shell/ags/src/contracts.ts"
+require_file "seven-shell/ags/src/config.ts"
+require_file "seven-shell/ags/src/dock.ts"
 require_file "branding/shell/terminal-country.sh"
 require_file "branding/motd"
 require_file "branding/issue"
@@ -143,6 +150,7 @@ require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/stack.sh"
+require_executable "scripts/shell.sh"
 require_executable "scripts/identity.sh"
 require_executable "scripts/experience.sh"
 require_executable "scripts/control-plane.sh"
@@ -486,6 +494,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def stack_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def shell_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def profile_gaps_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def profile_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def experience_payload' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -516,6 +525,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'Software plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Phase Gate' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Stack Strategy' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Seven Shell' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -Fq 'seven stack --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -Fq 'seven phase-gate --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -622,7 +632,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","experience","control","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","experience","control","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -727,6 +737,8 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/stack"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/shell"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/shell-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield-plan"' "$ROOT_DIR/server/seven-server.sh" &&
@@ -746,6 +758,8 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/packages-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/stack' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/shell' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/shell-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/shield-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/server-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/control' "$ROOT_DIR/server/README.md" &&
@@ -853,6 +867,12 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/stack.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/stack.sh" roadmap >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/stack.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/stack.sh" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/shell.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/shell.sh" status --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/shell.sh" plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/shell.sh" plan --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/shell.sh" preview >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/shell.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" >/dev/null

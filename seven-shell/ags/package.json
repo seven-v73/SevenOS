@@ -1,0 +1,14 @@
+{
+  "name": "seven-shell-ags",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SevenOS AGS + TypeScript shell foundation",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "preview": "seven shell preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

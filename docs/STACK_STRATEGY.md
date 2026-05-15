@@ -93,3 +93,23 @@ seven stack doctor
 
 The JSON contract is `sevenos.stack.v1`. Seven Hub and Seven Server should use
 it to show which stacks are active, next, planned or blocked.
+
+## Seven Shell Contract
+
+Use:
+
+```bash
+seven shell
+seven shell status --json
+seven shell plan --json
+seven shell preview
+seven shell doctor
+```
+
+The JSON contracts are:
+
+- `sevenos.shell.v1`
+- `sevenos.shell-plan.v1`
+
+These contracts let Seven Hub and Seven Server prepare the AGS shell without
+removing the stable Waybar/Rofi/GTK fallback.

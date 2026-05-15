@@ -86,6 +86,8 @@ seven identity packs --json
 seven identity current --json
 seven actions --json
 seven stack --json
+seven shell status --json
+seven shell plan --json
 seven profile gaps --json
 seven profile plan --json
 seven windows plan --json
@@ -168,6 +170,11 @@ the active African first identity pack.
 order: JSON contracts and native Hub first, then AGS/TypeScript shell, then
 Rust daemon, then AI and product apps. This keeps SevenOS from adopting every
 interesting runtime at once.
+
+`seven shell status --json` and `seven shell plan --json` are the B3 shell
+contracts. They describe how AGS/TypeScript will replace Quick Settings,
+Notifications, Launcher and Dock surfaces gradually while keeping Waybar/Rofi
+fallbacks active.
 
 `seven shield plan --json` is the trust remediation plan. It gives Seven Hub
 and Seven Server a clean list of firewall, sandbox and audit actions, ordered

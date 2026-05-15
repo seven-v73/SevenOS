@@ -21,6 +21,7 @@ Targets:
   installer-stack  Install graphical installer foundation packages
   hub-gui-stack    Install Seven Hub Tauri GUI foundation packages
   shell-ags        Install Seven Shell AGS/TypeScript foundation packages
+  shell-preview    Preview Seven Shell AGS migration plan
   flatpak          Manage Flatpak/Flathub bridge
   security         Apply base security hardening
   cyber-audit      Show cybersecurity profile readiness
@@ -119,6 +120,9 @@ case "$TARGET" in
     ;;
   shell-ags)
     install_package_file "$ROOT_DIR/scripts/packages-shell-ags.txt"
+    ;;
+  shell-preview)
+    "$ROOT_DIR/scripts/shell.sh" preview
     ;;
   flatpak)
     "$ROOT_DIR/scripts/flatpak.sh" "${@:2}"

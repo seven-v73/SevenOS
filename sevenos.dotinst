@@ -28,6 +28,7 @@
         "scripts/events.sh",
         "scripts/insights.sh",
         "scripts/stack.sh",
+        "scripts/shell.sh",
         "scripts/status.sh",
         "scripts/state.sh",
         "security/shield-status.sh"
@@ -58,7 +59,9 @@
       "id": "sevenos-shell",
       "title": "Seven Shell AGS foundation",
       "paths": [
+        "seven-shell",
         "scripts/stack.sh",
+        "scripts/shell.sh",
         "scripts/packages-shell-ags.txt",
         "docs/STACK_STRATEGY.md"
       ]

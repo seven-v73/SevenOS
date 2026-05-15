@@ -193,6 +193,7 @@ Les piliers du projet sont :
 - Ajout de `seven identity current --json` et `seven identity activate <pack>` pour transformer les accent packs en preference utilisateur lisible par le Hub.
 - Ajout de `seven phase-gate --json` comme contrat de passage B2 -> B3 : readiness, experience, control plane, Shield, Seven Server, installateur, Windows Mode, profils, logiciels et pack African first actif sont exposes dans une decision `pass/warning/blocked`.
 - Ajout de `seven stack` / `seven stack --json` : strategie officielle d'adoption des technologies pour eviter l'empilement incontrôle. Ordre retenu : contrats JSON + Hub natif, puis Seven Shell AGS/TypeScript, puis seven-daemon Rust, puis IA Python, puis apps Flutter/Qt, puis Store/Cloud/Marketplace.
+- Ajout de la fondation `seven shell` : statut, plan, doctor, preview, contrats `sevenos.shell.v1` et `sevenos.shell-plan.v1`, scaffold `seven-shell/ags` en TypeScript et endpoints Seven Server `/shell` et `/shell-plan`.
 
 ### Gestion fichiers
 

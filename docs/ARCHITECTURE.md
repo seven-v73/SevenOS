@@ -99,6 +99,8 @@ Rules:
 - `seven stack --json` defines the technology adoption order. It keeps AGS,
   Rust, Python AI, Flutter and Qt in their proper phases instead of letting
   every promising stack enter the system at once.
+- `seven shell status --json` and `seven shell plan --json` define the B3 AGS
+  shell migration without removing Waybar/Rofi/GTK fallbacks too early.
 - `seven profile gaps --json` is the profile completeness contract. It exposes
   missing packages, unavailable profile apps and install/open commands so
   profiles behave like real work modes.
@@ -230,6 +232,8 @@ seven actions --json
 seven ecosystem processes
 seven ecosystem --json
 seven stack --json
+seven shell status --json
+seven shell plan --json
 seven experience
 seven experience --json
 seven control
