@@ -123,6 +123,7 @@ components = [
     {"key": "sevenbus_schema", "title": "SevenBus schema", "state": os.environ["BUS_SCHEMA_STATE"], "detail": os.environ["BUS_SCHEMA"]},
     {"key": "daemon_scaffold", "title": "Rust daemon scaffold", "state": "OK" if os.environ["DAEMON_STATE"] == "OK" and os.environ["DAEMON_SRC_STATE"] == "OK" else "MISS", "detail": "seven-core/daemon"},
     {"key": "daemon_cli", "title": "Seven daemon CLI", "state": os.environ["DAEMON_BIN_STATE"], "detail": "bin/seven-daemon"},
+    {"key": "bus_writer", "title": "Rust SevenBus writer", "state": os.environ["DAEMON_BIN_STATE"], "detail": "seven-daemon emit"},
     {"key": "daemon_service", "title": "Seven daemon service", "state": os.environ["DAEMON_SERVICE_STATE"], "detail": "seven-daemon.service"},
     {"key": "rust_toolchain", "title": "Rust toolchain", "state": "OK" if runtime_ready else "MISS", "detail": "Required before compiling seven-daemon."},
     {"key": "event_journal", "title": "Local event journal", "state": "OK" if int(os.environ["EVENT_COUNT"]) > 0 else "READY", "detail": os.environ["EVENT_FILE"]},

@@ -70,6 +70,14 @@ log_event() {
 
   local timestamp payload
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  if ! is_dry_run && [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    if "$ROOT_DIR/bin/seven-daemon" emit --source "$SOURCE" --type "$TYPE" --state "$STATE" --message "$MESSAGE" --command "$COMMAND_TEXT" >/dev/null 2>&1; then
+      return 0
+    fi
+    log_warn "seven-daemon emit failed; falling back to Bash event writer."
+  fi
+
   payload="$(
     EVENT_SOURCE="$SOURCE" EVENT_TYPE="$TYPE" EVENT_MESSAGE="$MESSAGE" EVENT_COMMAND="$COMMAND_TEXT" EVENT_STATE="$STATE" EVENT_TIME="$timestamp" python - <<'PY'
 import json
@@ -89,7 +97,11 @@ PY
 
   ensure_state_dir >/dev/null
   if is_dry_run; then
-    printf 'append %q to %q\n' "$payload" "$EVENT_FILE"
+    if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+      printf 'DRY-RUN > SevenBus > Emit via seven-daemon: %s/%s\n' "$SOURCE" "$TYPE"
+    else
+      printf 'append %q to %q\n' "$payload" "$EVENT_FILE"
+    fi
   else
     printf '%s\n' "$payload" >> "$EVENT_FILE"
   fi

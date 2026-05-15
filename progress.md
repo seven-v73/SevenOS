@@ -75,6 +75,7 @@ Les piliers du projet sont :
 - Ajout de `seven core plan --json`, `seven core bus --json` et `seven core doctor` pour rendre la couche Seven Core observable avant le passage au daemon.
 - Ajout de `bin/seven-daemon` et `systemd/user/seven-daemon.service` : SevenDaemon peut maintenant etre lance comme runtime local et rattache a `sevenos-session.target`.
 - Ajout de `seven core install-service`, `seven core start`, `seven core stop` et `seven core logs` pour piloter le runtime Core sans manipuler systemd a la main.
+- Debut de migration Bash vers Rust : `seven events log` prefere maintenant `seven-daemon emit` pour ecrire les evenements SevenBus, avec fallback Bash/Python si le daemon n'est pas disponible.
 - Integration de Seven Core dans `seven state --json`, Seven Server, Seven Hub Native, le registre `seven actions`, le phase gate, le manifeste installable et les checks.
 - Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.
 - Ajout de `sevenos.dotinst`, manifeste d'installation et de migration inspire des logiques Hyprland matures : metadata, composants installables, chemins proteges, plan de restauration et checks de validation.

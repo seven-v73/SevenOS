@@ -339,6 +339,8 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -q '"schema": "sevenos.bus.v1"' <<<"$core_bus_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null &&
+   XDG_STATE_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-daemon" emit --source ux --type preview --message "ux event" --json | python -m json.tool >/dev/null &&
+   grep -q 'seven-daemon emit' "$ROOT_DIR/scripts/events.sh" &&
    grep -q 'ExecStart=/usr/bin/env seven-daemon serve' "$ROOT_DIR/systemd/user/seven-daemon.service" &&
    grep -q 'Wants=seven-daemon.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
    grep -q '"core"' <<<"$state_json" &&

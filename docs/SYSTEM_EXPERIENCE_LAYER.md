@@ -153,6 +153,18 @@ the local event journal count, and can run as a user service. The point is to
 introduce a supervised runtime boundary before moving orchestration logic out
 of Bash.
 
+The first migration out of Bash is SevenBus event writing:
+
+```text
+seven events log
+  -> seven-daemon emit
+  -> ~/.local/state/sevenos/events.jsonl
+```
+
+If the Rust writer is unavailable, the Bash/Python fallback remains. That is
+the long-term migration rule: Bash stays as glue and compatibility, while
+SevenDaemon takes over stateful system behavior step by step.
+
 ## SevenBus
 
 SevenBus is the future local event and command bus for SevenOS.

@@ -6,12 +6,14 @@
   "event_path": "~/.local/state/sevenos/events.jsonl",
   "envelope": {
     "schema": "sevenos.event.v1",
-    "timestamp": "RFC3339 UTC timestamp",
+    "timestamp": "RFC3339 UTC timestamp or unix:<seconds> during daemon preview phase",
+    "timestamp_unix": "Optional Unix timestamp emitted by seven-daemon",
     "source": "core | hub | shell | profile | shield | windows | server | installer | package | user",
     "type": "status | action | preview | apply | error | notification | phase | profile | security",
     "state": "OK | READY | RUN | PART | WARN | MISS | FAIL",
     "message": "Human-readable event summary",
     "command": "Optional command that produced or will resolve the event",
+    "writer": "Optional writer identifier such as seven-daemon",
     "payload": "Optional future object for typed event data"
   },
   "sources": [

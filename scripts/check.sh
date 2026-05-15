@@ -261,6 +261,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
+SEVENOS_BUS_TEST_HOME="$(mktemp -d)"
+XDG_STATE_HOME="$SEVENOS_BUS_TEST_HOME" "$ROOT_DIR/bin/seven-daemon" emit --source check --type preview --message "check event" --json | python -m json.tool >/dev/null
+rm -rf "$SEVENOS_BUS_TEST_HOME"
 "$ROOT_DIR/bin/seven" profile status --json >/dev/null
 "$ROOT_DIR/bin/seven" profile current --json >/dev/null
 "$ROOT_DIR/bin/seven" profile apps --json >/dev/null

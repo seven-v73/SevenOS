@@ -29,8 +29,9 @@ resolve_root() {
 ROOT_DIR="$(resolve_root)"
 MANIFEST="$ROOT_DIR/seven-core/daemon/Cargo.toml"
 BINARY="$ROOT_DIR/seven-core/daemon/target/debug/seven-daemon"
+SOURCE="$ROOT_DIR/seven-core/daemon/src/main.rs"
 
-if [[ -x "$BINARY" ]]; then
+if [[ -x "$BINARY" && ! "$SOURCE" -nt "$BINARY" ]]; then
   exec "$BINARY" "$@"
 fi
 

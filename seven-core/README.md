@@ -45,11 +45,17 @@ The daemon is now launchable through:
 
 ```bash
 seven-daemon --json
+seven-daemon emit --source core --type event --message "SevenBus event"
 seven-daemon serve
 seven core install-service
 seven core start
 seven core logs
 ```
+
+`seven events log` now prefers the Rust event writer when `seven-daemon` is
+available, then falls back to the older Bash/Python writer. This is the intended
+migration style for SevenOS: preserve working commands while moving the system
+logic into a system language.
 
 The current service is a user service:
 
