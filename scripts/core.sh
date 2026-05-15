@@ -30,6 +30,7 @@ Usage:
   seven core stop
   seven core logs
   seven core snapshot --json
+  seven core health --json
 
 Seven Core is the system experience layer foundation above Linux and Arch:
 contracts, local event bus, daemon scaffold, API handoff and policy surface.
@@ -281,6 +282,14 @@ snapshot_json() {
   fi
 }
 
+health_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" health --json
+  else
+    printf '{"schema":"sevenos.daemon.health.v1","state":"MISS","checks":[]}\n'
+  fi
+}
+
 doctor() {
   local missing=0
   printf 'SevenOS Core Doctor\n'
@@ -373,6 +382,13 @@ case "$ACTION" in
       snapshot_json
     else
       snapshot_json | python -m json.tool
+    fi
+    ;;
+  health)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      health_json
+    else
+      health_json | python -m json.tool
     fi
     ;;
   -h|--help|help)

@@ -106,6 +106,7 @@ core.status	Ecosystem	Seven Core Status	seven core	safe	Show the Seven Core and 
 core.plan	Ecosystem	Seven Core Plan	seven core plan	safe	Show the next actions for the system experience layer.
 core.bus	Ecosystem	SevenBus Schema	seven core bus --json	safe	Show the local event envelope consumed by Hub, Shell and future daemon.
 core.snapshot	Ecosystem	SevenDaemon Snapshot	seven core snapshot --json	safe	Show the Rust daemon view of SevenBus event state.
+core.health	Ecosystem	SevenDaemon Health	seven core health --json	safe	Show local runtime health from the Rust daemon.
 core.doctor	Ecosystem	Seven Core Doctor	seven core doctor	safe	Validate contracts, SevenBus and the daemon scaffold.
 core.install-service	Ecosystem	Install Seven Daemon	seven core install-service	changes	Install the Seven Core runtime as a user service.
 core.start	Ecosystem	Start Seven Daemon	seven core start	changes	Start the local Seven Core runtime.

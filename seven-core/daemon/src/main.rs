@@ -21,6 +21,29 @@ fn event_file() -> PathBuf {
     state_dir().join("events.jsonl")
 }
 
+fn path_state(path: &PathBuf) -> &'static str {
+    if path.exists() {
+        "OK"
+    } else {
+        "MISS"
+    }
+}
+
+fn can_write_state_dir() -> bool {
+    let dir = state_dir();
+    if fs::create_dir_all(&dir).is_err() {
+        return false;
+    }
+    let probe = dir.join(".seven-daemon-write-check");
+    match fs::write(&probe, b"ok") {
+        Ok(_) => {
+            let _ = fs::remove_file(probe);
+            true
+        }
+        Err(_) => false,
+    }
+}
+
 fn event_count() -> usize {
     let path = event_file();
     match fs::read_to_string(path) {
@@ -42,6 +65,57 @@ fn unix_timestamp() -> u64 {
         .duration_since(UNIX_EPOCH)
         .unwrap_or_else(|_| Duration::from_secs(0))
         .as_secs()
+}
+
+fn proc_first_line(path: &str) -> Option<String> {
+    fs::read_to_string(path)
+        .ok()
+        .and_then(|content| content.lines().next().map(str::to_string))
+}
+
+fn uptime_seconds() -> Option<u64> {
+    let raw = proc_first_line("/proc/uptime")?;
+    let first = raw.split_whitespace().next()?;
+    let seconds = first.split('.').next()?;
+    seconds.parse::<u64>().ok()
+}
+
+fn loadavg() -> Value {
+    let raw = proc_first_line("/proc/loadavg").unwrap_or_default();
+    let parts: Vec<&str> = raw.split_whitespace().collect();
+    json!({
+        "one": parts.first().copied().unwrap_or("0.00"),
+        "five": parts.get(1).copied().unwrap_or("0.00"),
+        "fifteen": parts.get(2).copied().unwrap_or("0.00"),
+    })
+}
+
+fn meminfo_kib(key: &str) -> Option<u64> {
+    let content = fs::read_to_string("/proc/meminfo").ok()?;
+    for line in content.lines() {
+        let mut parts = line.split_whitespace();
+        if parts.next()? == format!("{}:", key) {
+            return parts.next()?.parse::<u64>().ok();
+        }
+    }
+    None
+}
+
+fn memory_json() -> Value {
+    let total = meminfo_kib("MemTotal").unwrap_or(0);
+    let available = meminfo_kib("MemAvailable").unwrap_or(0);
+    let used = total.saturating_sub(available);
+    let used_percent = if total > 0 {
+        ((used as f64 / total as f64) * 100.0).round() as u64
+    } else {
+        0
+    };
+    json!({
+        "total_kib": total,
+        "available_kib": available,
+        "used_kib": used,
+        "used_percent": used_percent,
+    })
 }
 
 fn count_key(counts: &mut Vec<(String, usize)>, key: &str) {
@@ -209,6 +283,74 @@ fn summary_json() {
     );
 }
 
+fn health_json() {
+    let state_path = state_dir();
+    let events_path = event_file();
+    let state_writable = can_write_state_dir();
+    let wayland_display = env::var("WAYLAND_DISPLAY").unwrap_or_default();
+    let desktop = env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
+    let session = env::var("XDG_SESSION_DESKTOP").unwrap_or_default();
+    let user = env::var("USER").unwrap_or_default();
+    let (events, invalid, raw_lines) = parsed_events();
+
+    let checks = vec![
+        json!({
+            "key": "state_dir",
+            "state": if state_writable { "OK" } else { "MISS" },
+            "detail": state_path.to_string_lossy(),
+        }),
+        json!({
+            "key": "event_journal",
+            "state": path_state(&events_path),
+            "detail": events_path.to_string_lossy(),
+        }),
+        json!({
+            "key": "wayland_session",
+            "state": if wayland_display.is_empty() { "MISS" } else { "OK" },
+            "detail": if wayland_display.is_empty() { "WAYLAND_DISPLAY is not set".to_string() } else { wayland_display.clone() },
+        }),
+        json!({
+            "key": "event_integrity",
+            "state": if invalid == 0 { "OK" } else { "WARN" },
+            "detail": format!("{} invalid line(s)", invalid),
+        }),
+    ];
+
+    let payload = json!({
+        "schema": "sevenos.daemon.health.v1",
+        "state": if state_writable { "ready" } else { "degraded" },
+        "name": "seven-daemon",
+        "language": "rust",
+        "policy": "local-only",
+        "runtime": {
+            "uptime_seconds": uptime_seconds(),
+            "loadavg": loadavg(),
+            "memory": memory_json(),
+        },
+        "session": {
+            "user": user,
+            "wayland_display": wayland_display,
+            "desktop": desktop,
+            "session_desktop": session,
+        },
+        "bus": {
+            "event_file": events_path.to_string_lossy(),
+            "event_count": events.len(),
+            "invalid_event_count": invalid,
+            "raw_line_count": raw_lines,
+        },
+        "paths": {
+            "state_dir": state_path.to_string_lossy(),
+            "state_dir_writable": state_writable,
+        },
+        "checks": checks,
+    });
+    println!(
+        "{}",
+        serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string())
+    );
+}
+
 fn serve() {
     let dir = state_dir();
     if let Err(error) = fs::create_dir_all(&dir) {
@@ -312,6 +454,8 @@ fn main() {
         events_json(&args);
     } else if action == "summary" || action == "summary-json" {
         summary_json();
+    } else if action == "health" {
+        health_json();
     } else if action == "snapshot" {
         snapshot();
     } else if args.iter().any(|arg| arg == "--json" || arg == "json") {

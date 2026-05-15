@@ -65,6 +65,7 @@ The daemon is now launchable through:
 ```bash
 seven-daemon --json
 seven-daemon snapshot --json
+seven-daemon health --json
 seven-daemon events --json
 seven-daemon summary --json
 seven-daemon emit --source core --type event --message "SevenBus event"
@@ -87,6 +88,11 @@ inspection out of fragile shell text parsing.
 `seven events --json` and `seven events summary-json` now prefer the same Rust
 reader through `seven-daemon events` and `seven-daemon summary`, with the Bash
 reader kept as a compatibility fallback.
+
+`seven core health --json` is a daemon-owned runtime health surface. It reads
+local `/proc` data, session variables, event integrity and SevenOS state paths
+from Rust, giving Hub and Shell a fast OS-level signal without walking the
+whole Bash stack.
 
 The current service is a user service:
 

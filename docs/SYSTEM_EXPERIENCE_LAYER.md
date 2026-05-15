@@ -190,6 +190,18 @@ seven events summary-json
 The public commands keep their Bash entrypoints for compatibility, but the
 event stream is now read by the Rust runtime when available.
 
+The fourth migration is local runtime health:
+
+```text
+seven core health --json
+  -> seven-daemon health --json
+  -> /proc uptime, load, memory, session and SevenBus health
+```
+
+This is the beginning of Seven Core behaving like an OS runtime: lightweight,
+local and daemon-owned state that Hub/Shell can read without executing a chain
+of shell scripts.
+
 ## SevenBus
 
 SevenBus is the future local event and command bus for SevenOS.

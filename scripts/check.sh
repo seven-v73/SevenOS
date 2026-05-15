@@ -266,9 +266,11 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" core plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core snapshot --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" core health --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" health --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" events --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" summary --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null
@@ -465,6 +467,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core bus --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core snapshot --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core health --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core install-service >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core start >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell >/dev/null

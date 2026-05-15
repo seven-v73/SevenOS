@@ -78,6 +78,7 @@ curl http://127.0.0.1:7777/shell-plan
 curl http://127.0.0.1:7777/core
 curl http://127.0.0.1:7777/core-plan
 curl http://127.0.0.1:7777/core-snapshot
+curl http://127.0.0.1:7777/core-health
 curl http://127.0.0.1:7777/bus
 curl http://127.0.0.1:7777/experience
 curl http://127.0.0.1:7777/shield
@@ -109,6 +110,7 @@ GET  /actions
 GET  /core
 GET  /core-plan
 GET  /core-snapshot
+GET  /core-health
 GET  /bus
 GET  /experience
 GET  /shield
