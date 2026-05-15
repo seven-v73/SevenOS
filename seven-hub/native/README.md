@@ -41,6 +41,7 @@ seven profile apps --json
 seven windows status --json
 seven experience --json
 seven phase-gate --json
+seven b3 plan --json
 seven readiness --json
 sevenpkg status --json
 ```
@@ -60,6 +61,7 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Active Identity | selected user accent pack | `seven identity current --json` |
 | Experience | OS coherence score and blockers | `seven experience --json` |
 | Control | prioritized next actions | `seven control --json` |
+| B3 Consolidation | phase targets, blockers and next system actions | `seven b3 plan --json` |
 | Profiles | active profile, workspaces, install/activate | `seven profile status --json` |
 | Actions | safe and state-changing OS actions | `seven actions --json` |
 | Ecosystem | modules, maturity and all-in-one user flows | `seven ecosystem --json` |

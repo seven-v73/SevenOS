@@ -41,6 +41,12 @@ seven server install-user-service
 seven server start
 seven server stop
 
+seven b3 status
+seven b3 plan
+seven b3 plan --json
+seven b3 plan --phase backend
+seven b3 doctor
+
 seven deploy ./my-project
 seven deploy plan ./my-project
 seven deploy detect ./my-project
@@ -85,6 +91,7 @@ curl http://127.0.0.1:7777/shield
 curl http://127.0.0.1:7777/shield-plan
 curl http://127.0.0.1:7777/server-plan
 curl http://127.0.0.1:7777/control
+curl http://127.0.0.1:7777/b3
 curl http://127.0.0.1:7777/events
 curl http://127.0.0.1:7777/insights
 ```
@@ -117,6 +124,7 @@ GET  /shield
 GET  /shield-plan
 GET  /server-plan
 GET  /control
+GET  /b3
 GET  /events
 GET  /insights
 GET  /monitor/system

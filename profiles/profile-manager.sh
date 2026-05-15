@@ -559,7 +559,39 @@ install_profile() {
 
   log_info "Installing SevenOS profile: $(profile_title "$key")"
   "$ROOT_DIR/install.sh" "$target" "${@:2}"
+  post_install_profile "$key"
   activate_profile "$key"
+}
+
+post_install_profile() {
+  local key="$1"
+
+  case "$key" in
+    shield)
+      log_info "Running Shield post-install audit..."
+      "$ROOT_DIR/security/shield-status.sh" status || true
+      ;;
+    windows)
+      log_info "Preparing Windows Mode post-install guidance..."
+      "$ROOT_DIR/bin/seven-windows-assistant" plan || true
+      ;;
+    horizon)
+      log_info "Preparing Horizon backend service..."
+      "$ROOT_DIR/server/seven-server.sh" install-user-service || true
+      "$ROOT_DIR/server/seven-server.sh" start || true
+      "$ROOT_DIR/server/seven-server.sh" status || true
+      ;;
+    forge)
+      log_info "Forge post-install check..."
+      "$ROOT_DIR/server/seven-deploy.sh" status || true
+      ;;
+    studio)
+      log_info "Studio workspace ready for creative applications."
+      ;;
+    baobab)
+      log_info "Baobab base workspace ready."
+      ;;
+  esac
 }
 
 show_profile() {

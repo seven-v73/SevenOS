@@ -583,11 +583,14 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def packages_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Software plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Phase Gate' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def b3_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'B3 Consolidation' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Stack Strategy' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Seven Shell' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Seven Core' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -Fq 'seven stack --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -Fq 'seven phase-gate --json' "$ROOT_DIR/seven-hub/native/README.md" &&
+   grep -Fq 'seven b3 plan --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -644,6 +647,7 @@ core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
 core_snapshot_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core snapshot --json)"
 core_health_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core health --json)"
 shell_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shell status --json)"
+b3_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" b3 plan --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
@@ -676,6 +680,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$core_snapshot_json" >/dev/null &&
    python -m json.tool <<<"$core_health_json" >/dev/null &&
    python -m json.tool <<<"$shell_status_json" >/dev/null &&
+   python -m json.tool <<<"$b3_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
    grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.events.v1"' <<<"$events_json" &&
@@ -702,12 +707,16 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema":"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
    grep -q '"schema":"sevenos.daemon.health.v1"' <<<"$core_health_json" &&
    grep -q '"runtime_health":' <<<"$shell_status_json" &&
+   grep -q '"schema": "sevenos.b3.v1"' <<<"$b3_json" &&
+   grep -q '"targets":' <<<"$b3_json" &&
+   grep -q '"phase_state":' <<<"$b3_json" &&
+   grep -q '"blocked_by":' <<<"$b3_json" &&
    grep -q '"processes"' <<<"$ecosystem_json" &&
    grep -q 'SevenOS All-In-One Process Map' <<<"$ecosystem_processes" &&
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","core","core_snapshot","core_health","experience","control","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","core","core_snapshot","core_health","experience","control","b3","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -821,6 +830,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/server-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/control"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/b3"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/events"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/insights"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
@@ -842,6 +852,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/shield-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/server-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/control' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/b3' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/events' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/insights' "$ROOT_DIR/server/README.md"; then
   ok "Seven Server exposes live state API endpoints"

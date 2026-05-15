@@ -127,6 +127,8 @@ Implemented:
 - `sevenpkg` package/application manager
 - `seven state --json` unified machine state
 - `seven phase-gate --json` B2 -> B3 transition contract
+- `seven b3 status`, `seven b3 plan --json` and `seven b3 apply` as the B2 -> B3 consolidation orchestrator
+- B3 phase targets documented in [`docs/B3_CONSOLIDATION.md`](docs/B3_CONSOLIDATION.md)
 - `seven stack --json` stack discipline contract
 - `seven shell status --json` and `seven shell plan --json` AGS shell migration contracts
 - `seven core status --json`, `seven core plan --json` and `seven core bus --json` system experience contracts
@@ -177,9 +179,37 @@ Run the live status with:
 
 ```bash
 seven phase-gate --json
+seven b3 status
+seven b3 plan --json
+seven b3 plan --phase trust
+seven b3 doctor
 seven stack --json
 seven shell plan --json
 ```
+
+`seven b3 apply` is a preview by default. It only executes when explicitly run
+with `--apply`, and it orders the work as trust, backend, profiles, shell, then
+installer. This is the preferred path for making SevenOS more OS-like without
+turning the project into scattered terminal scripts.
+
+The phase filters let a tester fix one OS layer at a time:
+
+```bash
+seven b3 apply --phase trust --limit 4
+seven b3 apply --phase backend --limit 4
+seven b3 apply --phase profiles --limit 4
+```
+
+B3 is considered satisfactory only when these phase targets are met and no
+critical/high action remains open:
+
+| Layer | Target |
+|-------|--------|
+| Trust / Shield | 70% |
+| Seven Server backend | 80% |
+| Profiles | 70% |
+| Seven Shell | 65% |
+| Installer foundation | 50% |
 
 ## Project Health Commands
 
@@ -190,6 +220,7 @@ Use these before pushing or testing a new machine:
 ./scripts/ux-check.sh
 ./scripts/check.sh
 seven phase-gate --json | python -m json.tool
+seven b3 plan --json | python -m json.tool
 seven state --json | python -m json.tool
 seven stack --json | python -m json.tool
 seven shell status --json | python -m json.tool
@@ -273,6 +304,7 @@ Start here before making strategic changes:
 - `docs/STACK_STRATEGY.md`
 - `docs/DEPLOYMENT.md`
 - `docs/PHASE_GATE.md`
+- `docs/B3_CONSOLIDATION.md`
 - `docs/TEST_MACHINE.md`
 - `docs/PRE_PUSH.md`
 

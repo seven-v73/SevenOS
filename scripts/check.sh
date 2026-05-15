@@ -36,6 +36,7 @@ bash -n \
   "$ROOT_DIR/scripts/core.sh" \
   "$ROOT_DIR/scripts/experience.sh" \
   "$ROOT_DIR/scripts/control-plane.sh" \
+  "$ROOT_DIR/scripts/b3.sh" \
   "$ROOT_DIR/scripts/events.sh" \
   "$ROOT_DIR/scripts/insights.sh" \
   "$ROOT_DIR/scripts/manifest.sh" \
@@ -130,7 +131,7 @@ if ! grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" ||
   exit 1
 fi
 
-for doc in ARCHITECTURE.md SYSTEM_EXPERIENCE_LAYER.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md STACK_STRATEGY.md PRODUCTIZATION.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
+for doc in ARCHITECTURE.md SYSTEM_EXPERIENCE_LAYER.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md STACK_STRATEGY.md PRODUCTIZATION.md PHASE_GATE.md B3_CONSOLIDATION.md TEST_MACHINE.md PRE_PUSH.md; do
   if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
     log_error "Missing product direction document: docs/$doc"
     exit 1
@@ -496,6 +497,13 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run phase-gate >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" phase-gate --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 plan >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" b3 plan --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 plan --phase trust >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 apply --limit 2 >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 apply --phase backend --limit 2 >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --record >/dev/null

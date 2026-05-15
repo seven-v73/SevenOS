@@ -261,6 +261,13 @@ def phase_gate_payload() -> dict:
         return {"schema": "sevenos.phase-gate.v1", "decision": "unknown", "summary": {}, "gates": []}
 
 
+def b3_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "b3.sh"), "plan", "--json"))
+    except Exception:
+        return {"schema": "sevenos.b3.v1", "state": "unknown", "overall": 0, "summary": {}, "actions": []}
+
+
 def status_text() -> str:
     welcome = welcome_payload()
     welcome_plan = welcome_plan_payload()
@@ -281,6 +288,7 @@ def status_text() -> str:
     events = events_payload()
     insights = insights_payload()
     phase_gate = phase_gate_payload()
+    b3 = b3_payload()
     active = next((item for item in profiles if item.get("active")), None)
     ready = sum(1 for item in profiles if item.get("state") == "OK")
     partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -311,6 +319,7 @@ def status_text() -> str:
         f"Events: {events.get('total', 0)} recorded\n"
         f"Insights: phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open items\n"
         f"Phase gate: {phase_gate.get('decision', 'unknown')} · {phase_gate.get('summary', {}).get('block', 0)} blockers\n"
+        f"B3: {b3.get('overall', 0)}% · {b3.get('summary', {}).get('total', 0)} actions · {b3.get('state', 'blocked')}\n"
     )
 
 
@@ -481,6 +490,7 @@ def run_gui() -> int:
                 events = events_payload()
                 insights = insights_payload()
                 phase_gate = phase_gate_payload()
+                b3 = b3_payload()
                 active = next((item for item in profiles if item.get("active")), None)
                 ready = sum(1 for item in profiles if item.get("state") == "OK")
                 partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -529,6 +539,7 @@ def run_gui() -> int:
                     ("Events", f"{events.get('total', 0)} recorded · {events.get('last', {}).get('type', 'none') if events.get('last') else 'no local history yet'}"),
                     ("Insights", f"phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open product items"),
                     ("Phase Gate", f"{phase_gate.get('decision', 'unknown')} · {phase_gate.get('summary', {}).get('block', 0)} blockers · next: {phase_gate.get('next_phase', 'B3')}"),
+                    ("B3 Consolidation", f"{b3.get('overall', 0)}% · {b3.get('summary', {}).get('total', 0)} actions · {b3.get('state', 'blocked')}"),
                     ("Active profile", active.get("title") if active else "No active profile yet"),
                     ("Profiles", f"{ready} OK · {partial} PART · {missing} MISS"),
                     ("Profile gaps", f"{profile_gap_count} incomplete modes · install from Profiles"),
@@ -566,6 +577,50 @@ def run_gui() -> int:
                         row.add_suffix(button)
                         phase_group.add(row)
                     dashboard.append(phase_group)
+
+                b3_actions = b3.get("actions") or []
+                b3_scores = b3.get("scores") or {}
+                b3_targets = b3.get("targets") or {}
+                if b3_scores or b3_actions:
+                    b3_group = Adw.PreferencesGroup(title="B3 consolidation")
+                    for phase in b3.get("phase_order", ["trust", "backend", "profiles", "shell", "installer"]):
+                        row = make_row(
+                            phase.title(),
+                            f"{b3_scores.get(phase, 0)}% / {b3_targets.get(phase, 0)}% · {b3.get('phase_state', {}).get(phase, 'block')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("emblem-ok-symbolic" if b3.get("phase_state", {}).get(phase) == "pass" else "go-next-symbolic")
+                        command = f"seven b3 plan --phase {phase}"
+                        button.set_tooltip_text(command)
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=command, phase=phase: run_ecosystem_command(
+                                command,
+                                title=f"SevenOS B3 - {phase}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        b3_group.add(row)
+
+                    for item in b3_actions[:4]:
+                        row = make_row(
+                            item.get("title", item.get("key", "B3 action")),
+                            f"{item.get('severity', 'medium')} · {item.get('phase', 'b3')} · {item.get('reason', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("system-run-symbolic")
+                        command = item.get("command", "seven b3 status")
+                        button.set_tooltip_text(command)
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=command: run_ecosystem_command(
+                                command,
+                                title="SevenOS B3 Action",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        b3_group.add(row)
+                    dashboard.append(b3_group)
 
                 welcome_actions = welcome_plan.get("next") or []
                 if welcome_actions:

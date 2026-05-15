@@ -85,7 +85,7 @@ status() {
     printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
     printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
     printf '],'
-    printf '"endpoints":["/health","/state","/status","/welcome","/welcome-plan","/session","/identity","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/packages","/packages-plan","/monitor/system","/readiness","/manifest","/actions","/stack","/shell","/shell-plan","/core","/core-plan","/core-snapshot","/core-health","/bus","/experience","/shield","/shield-plan","/server-plan","/control","/events","/insights"],'
+    printf '"endpoints":["/health","/state","/status","/welcome","/welcome-plan","/session","/identity","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/packages","/packages-plan","/monitor/system","/readiness","/manifest","/actions","/stack","/shell","/shell-plan","/core","/core-plan","/core-snapshot","/core-health","/bus","/experience","/shield","/shield-plan","/server-plan","/control","/b3","/events","/insights"],'
     printf '"recommendations":['
     local first=1
     if [[ "$service" != "RUN" ]]; then
@@ -131,8 +131,8 @@ plan_json() {
   [[ "$HOST" != "127.0.0.1" && "$HOST" != "localhost" ]] && bind_state="EXPOSED"
 
   SERVER_ROWS="$(
-    printf 'service\t%s\tSeven Server user service\tseven server install-user-service\n' "$service"
-    printf 'service-start\t%s\tSeven Server runtime\tseven server start\n' "$([[ "$service" == READY ]] && printf MISS || printf OK)"
+    printf 'service\t%s\tSeven Server user service\tseven server install-user-service\n' "$([[ "$service" == READY || "$service" == RUN ]] && printf OK || printf MISS)"
+    printf 'service-start\t%s\tSeven Server runtime\tseven server start\n' "$([[ "$service" == RUN ]] && printf OK || printf MISS)"
     printf 'go\t%s\tGo runtime for future native backend components\tseven improve deployment --apply\n' "$go_state"
     printf 'podman\t%s\tRootless container runtime for deployment flows\tseven improve deployment --apply\n' "$podman_state"
     printf 'caddy\t%s\tLocal reverse proxy for deployment previews\tseven improve deployment --apply\n' "$caddy_state"
@@ -408,6 +408,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"]))
         elif self.path == "/control":
             self.send_json(command_json([os.path.join(ROOT, "scripts/control-plane.sh"), "--json"]))
+        elif self.path == "/b3":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/b3.sh"), "plan", "--json"]))
         elif self.path == "/events":
             self.send_json(command_json([os.path.join(ROOT, "scripts/events.sh"), "summary-json"]))
         elif self.path == "/insights":

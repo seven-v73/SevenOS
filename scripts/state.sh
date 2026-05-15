@@ -124,6 +124,8 @@ json_to_file "$STATE_TMP/experience.json" "$ROOT_DIR/scripts/experience.sh" --js
 pid_experience=$!
 json_to_file "$STATE_TMP/control.json" "$ROOT_DIR/scripts/control-plane.sh" --json &
 pid_control=$!
+json_to_file "$STATE_TMP/b3.json" "$ROOT_DIR/scripts/b3.sh" plan --json &
+pid_b3=$!
 json_to_file "$STATE_TMP/events.json" "$ROOT_DIR/scripts/events.sh" summary-json &
 pid_events=$!
 json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
@@ -131,7 +133,7 @@ pid_actions=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_experience" "$pid_control" "$pid_events" "$pid_actions" || true
+  "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_experience" "$pid_control" "$pid_b3" "$pid_events" "$pid_actions" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -223,6 +225,9 @@ cat "$STATE_TMP/experience.json"
 printf ','
 printf '"control":'
 cat "$STATE_TMP/control.json"
+printf ','
+printf '"b3":'
+cat "$STATE_TMP/b3.json"
 printf ','
 printf '"events":'
 cat "$STATE_TMP/events.json"

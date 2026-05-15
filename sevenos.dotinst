@@ -27,6 +27,7 @@
         "bin/seven-windows-assistant",
         "scripts/experience.sh",
         "scripts/control-plane.sh",
+        "scripts/b3.sh",
         "scripts/events.sh",
         "scripts/insights.sh",
         "scripts/stack.sh",
@@ -66,7 +67,8 @@
         "scripts/stack.sh",
         "scripts/shell.sh",
         "scripts/packages-shell-ags.txt",
-        "docs/STACK_STRATEGY.md"
+        "docs/STACK_STRATEGY.md",
+        "docs/B3_CONSOLIDATION.md"
       ]
     },
     {

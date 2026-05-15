@@ -59,8 +59,8 @@ EOF
 }
 
 TARGET="${1:-}"
-DRY_RUN=0
-YES=0
+DRY_RUN="${SEVENOS_DRY_RUN:-0}"
+YES="${SEVENOS_YES:-0}"
 
 for arg in "$@"; do
   case "$arg" in

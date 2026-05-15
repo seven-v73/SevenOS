@@ -44,7 +44,14 @@ file_state() {
 runtime_state() {
   if command -v ags >/dev/null 2>&1; then
     printf READY
-  elif [[ "$(package_state gjs)" == OK && "$(package_state typescript)" == OK ]]; then
+  elif [[ "$(file_state seven-shell/ags/src/config.ts)" == OK &&
+          "$(file_state seven-shell/ags/src/dock.ts)" == OK &&
+          "$(file_state bin/seven-shell-panel)" == OK &&
+          "$(file_state bin/seven-apps)" == OK &&
+          "$(package_state typescript)" == OK &&
+          "$(package_state gtk4)" == OK &&
+          "$(package_state libadwaita)" == OK &&
+          "$(command_state node)" == OK ]]; then
     printf FOUNDATION
   else
     printf PLANNED

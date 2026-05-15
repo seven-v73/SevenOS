@@ -93,7 +93,7 @@ items = []
 seen = set()
 
 def add(source, severity, title, command, reason, impact="safe"):
-    key = (source, command, reason)
+    key = command
     if key in seen:
         return
     seen.add(key)
@@ -145,6 +145,16 @@ for item in server_plan.get("next", []):
         item.get("command", "seven server plan"),
         item.get("reason", "Improve local API readiness"),
         item.get("impact", "changes"),
+    )
+
+if shield.get("percent", 0) < 70 or (server.get("service") or {}).get("state") not in ("READY", "RUN"):
+    add(
+        "b3",
+        "critical",
+        "Run B3 consolidation path",
+        "seven b3 plan",
+        "Use the ordered B3 path for trust, backend, profiles, shell and installer instead of scattered fixes.",
+        "safe",
     )
 
 for rec in readiness.get("recommendations", []):
@@ -203,6 +213,7 @@ scores = {
     "server": 100 if server.get("service", {}).get("state") == "RUN" else 50 if server.get("service", {}).get("state") == "READY" else 0,
     "windows": 100 if windows.get("ready") else 60 if windows.get("mode") == "vm-ready" else 0,
     "installer": 100 if installer.get("ready") else 60 if installer.get("mode") in ("tui-ready", "graphical") else 35,
+    "b3": round((shield.get("percent", 0) * 0.45) + ((100 if server.get("service", {}).get("state") == "RUN" else 60 if server.get("service", {}).get("state") == "READY" else 0) * 0.35) + ((100 if installer.get("ready") else 35) * 0.2)),
 }
 overall = round((scores["readiness"] * 0.22) + (scores["experience"] * 0.22) + (scores["shield"] * 0.18) + (scores["server"] * 0.13) + (scores["windows"] * 0.13) + (scores["installer"] * 0.12))
 

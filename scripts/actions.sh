@@ -39,9 +39,23 @@ control.preview	System	Preview Control Fixes	seven control apply --limit 5	safe	
 events.open	System	Event Journal	seven events	safe	Show local SevenOS decision and action history.
 insights.open	System	OS Insights	seven insights	safe	Show product-facing SevenOS limits and next actions.
 phase.gate	System	Phase Gate	seven phase-gate --json	safe	Show whether SevenOS is ready to move beyond product consolidation.
+b3.status	System	B3 Status	seven b3 status	safe	Show the B2 to B3 consolidation score and blockers.
+b3.plan	System	B3 Plan	seven b3 plan	safe	Show the ordered path for trust, backend, profiles, shell and installer.
+b3.trust	System	B3 Trust Plan	seven b3 plan --phase trust	safe	Show only critical trust and Shield actions.
+b3.backend	System	B3 Backend Plan	seven b3 plan --phase backend	safe	Show only Seven Server backend actions.
+b3.profiles	System	B3 Profiles Plan	seven b3 plan --phase profiles	safe	Show only profile completion actions.
+b3.shell	System	B3 Shell Plan	seven b3 plan --phase shell	safe	Show only Seven Shell native desktop actions.
+b3.installer	System	B3 Installer Plan	seven b3 plan --phase installer	safe	Show only installer readiness actions.
+b3.doctor	System	B3 Doctor	seven b3 doctor	safe	Validate B3 orchestration before applying system changes.
+b3.apply	System	B3 Apply Preview	seven b3 apply --limit 8	safe	Preview the next B3 consolidation actions without changing the system.
+b3.apply.trust	System	B3 Trust Preview	seven b3 apply --phase trust --limit 4	safe	Preview the next trust and Shield actions without changing the system.
+b3.apply.backend	System	B3 Backend Preview	seven b3 apply --phase backend --limit 4	safe	Preview the next Seven Server actions without changing the system.
+b3.apply.profiles	System	B3 Profiles Preview	seven b3 apply --phase profiles --limit 4	safe	Preview the next profile completion actions without changing the system.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 improve.security	System	Improve Security	seven improve security --apply	packages	Install or prepare the core security improvements.
+improve.security.yes	System	Improve Security Batch	seven improve security --apply --yes	packages	Install core security improvements non-interactively.
 improve.deployment	System	Improve Deployment	seven improve deployment --apply	packages	Install or prepare server and deployment dependencies.
+improve.deployment.yes	System	Improve Deployment Batch	seven improve deployment --apply --yes	packages	Install server and deployment dependencies non-interactively.
 improve.compatibility	System	Improve Compatibility	seven improve compatibility	packages	Install or prepare Windows compatibility improvements.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.
@@ -114,6 +128,7 @@ core.logs	Ecosystem	Seven Daemon Logs	seven core logs	safe	Follow the Seven Core
 shell.status	Desktop	Seven Shell Status	seven shell	safe	Show the AGS/TypeScript Seven Shell foundation state.
 shell.plan	Desktop	Seven Shell Plan	seven shell plan	safe	Show how Seven Shell will replace Rofi panels gradually.
 shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned AGS surfaces and fallback contracts.
+shell.install	Desktop	Install Shell Foundation	./install.sh shell-ags --yes	packages	Install GJS, TypeScript, GTK4 and libadwaita for the B3 shell foundation.
 identity.status	Ecosystem	African First Identity	seven identity	safe	Show SevenOS African first product language.
 identity.packs	Ecosystem	Regional Accent Packs	seven identity packs	safe	Show planned regional accent packs without turning the UI into flags.
 identity.current	Ecosystem	Active Identity Pack	seven identity current	safe	Show the active SevenOS regional accent pack.

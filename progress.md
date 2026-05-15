@@ -218,6 +218,13 @@ Les piliers du projet sont :
 - Ajout de `seven identity current --json` et `seven identity activate <pack>` pour transformer les accent packs en preference utilisateur lisible par le Hub.
 - Ajout de `seven phase-gate --json` comme contrat de passage B2 -> B3 : readiness, experience, control plane, Shield, Seven Server, installateur, Windows Mode, profils, logiciels et pack African first actif sont exposes dans une decision `pass/warning/blocked`.
 - Ajout de `seven stack` / `seven stack --json` : strategie officielle d'adoption des technologies pour eviter l'empilement incontrôle. Ordre retenu : contrats JSON + Hub natif, puis Seven Shell AGS/TypeScript, puis seven-daemon Rust, puis IA Python, puis apps Flutter/Qt, puis Store/Cloud/Marketplace.
+- Ajout de `seven b3 status`, `seven b3 plan --json` et `seven b3 apply` : orchestrateur de consolidation B2 -> B3 qui transforme les blocages principaux en sequence OS unique, dans l'ordre trust/Shield, Seven Server, profils concrets, Seven Shell AGS et installateur.
+- Integration du plan B3 dans `seven state --json`, Seven Server (`/b3`), le registre `seven actions`, le Control Plane et les checks, afin que Seven Hub puisse presenter une route claire au lieu d'une collection de scripts disperses.
+- Ajout des filtres `seven b3 plan/apply --phase trust|backend|profiles|shell|installer` et de `seven b3 doctor`, pour corriger les couches critiques une par une sans melanger securite, backend, profils, shell et installateur.
+- Ajout de seuils B3 mesurables : Trust 70%, Backend 80%, Profiles 70%, Shell 65%, Installer 50%. `seven b3 status` affiche maintenant score, cible, gate, preflight sudo et blocages explicites.
+- Ajout de `docs/B3_CONSOLIDATION.md` comme reference de phase : B3 ne passe que si les seuils sont atteints et qu'aucune action critique/high ne reste ouverte.
+- Amelioration de `seven b3 apply` : les actions systeme sans session `sudo` sont marquees `BLOCKED` au lieu de casser tout le flux, pendant que les actions safe/manual restent consultables.
+- Integration de B3 dans Seven Hub Native : le dashboard affiche maintenant le score B3, les seuils par phase et les prochaines actions de consolidation.
 - Ajout de la fondation `seven shell` : statut, plan, doctor, preview, contrats `sevenos.shell.v1` et `sevenos.shell-plan.v1`, scaffold `seven-shell/ags` en TypeScript et endpoints Seven Server `/shell` et `/shell-plan`.
 
 ### Gestion fichiers
