@@ -4,6 +4,10 @@ SevenOS is evolving from a Linux distribution layer into an all-in-one operating
 ecosystem: desktop, development workstation, security lab, Windows bridge,
 deployment node, personal cloud and intelligent automation surface.
 
+For the long-term system direction, read
+`docs/SYSTEM_EXPERIENCE_LAYER.md`. It is the reference for Seven Core,
+SevenBus, Seven Shell, Seven Hub, hardware intelligence and AI orchestration.
+
 The rule is simple:
 
 > A module may be visionary, but the CLI must stay honest about its maturity.

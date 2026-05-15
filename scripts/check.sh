@@ -116,12 +116,19 @@ if ! grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" ||
   exit 1
 fi
 
-for doc in ARCHITECTURE.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md STACK_STRATEGY.md PRODUCTIZATION.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
+for doc in ARCHITECTURE.md SYSTEM_EXPERIENCE_LAYER.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md STACK_STRATEGY.md PRODUCTIZATION.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
   if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
     log_error "Missing product direction document: docs/$doc"
     exit 1
   fi
 done
+
+if ! grep -q 'system experience layer above Linux and Arch' "$ROOT_DIR/docs/SYSTEM_EXPERIENCE_LAYER.md" ||
+   ! grep -q 'SevenBus' "$ROOT_DIR/docs/SYSTEM_EXPERIENCE_LAYER.md" ||
+   ! grep -q 'seven-daemon in Rust' "$ROOT_DIR/docs/SYSTEM_EXPERIENCE_LAYER.md"; then
+  log_error "System Experience Layer reference is missing the core SevenOS direction."
+  exit 1
+fi
 
 if command -v jq >/dev/null 2>&1; then
   jq empty "$ROOT_DIR/hyprland/waybar/config.jsonc"

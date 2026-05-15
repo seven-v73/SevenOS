@@ -70,6 +70,7 @@ Les piliers du projet sont :
 - Structure modulaire du depot creee.
 - Separation claire entre `bin/`, `scripts/`, `profiles/`, `security/`, `vm/`, `server/`, `sevenpkg/`, `seven-hub/`, `identity/`, `branding/`, `installer/` et `archiso/`.
 - Ajout des documents de vision, architecture, UX, criteres OS, deploiement et test machine.
+- Ajout de `docs/SYSTEM_EXPERIENCE_LAYER.md` comme reference principale : SevenOS est defini comme une couche d'experience systeme au-dessus du kernel Linux et de la base Arch, avec Seven Core, SevenBus, Seven Shell, Seven Hub, IA et hardware intelligence comme direction long terme.
 - Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.
 - Ajout de `sevenos.dotinst`, manifeste d'installation et de migration inspire des logiques Hyprland matures : metadata, composants installables, chemins proteges, plan de restauration et checks de validation.
 - Ajout de `seven manifest` comme point d'entree pour valider le manifeste, afficher les futurs composants paquetables et lister les chemins utilisateur a preserver.

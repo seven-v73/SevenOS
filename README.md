@@ -10,6 +10,15 @@ It is **not yet a complete standalone distribution**. The next major gate is **B
 
 SevenOS aims to become an afro-futurist Linux ecosystem for productivity, creation, cybersecurity, Windows compatibility, deployment, personal cloud workflows, and digital sovereignty.
 
+The main long-term reference is:
+
+```text
+docs/SYSTEM_EXPERIENCE_LAYER.md
+```
+
+That document defines SevenOS as a **system experience layer above Linux and
+Arch**, not merely as a themed distribution.
+
 It is built around foundation pillars:
 
 - `seven` as the system controller
@@ -244,6 +253,7 @@ SevenOS/
 Start here before making strategic changes:
 
 - `docs/ARCHITECTURE.md`
+- `docs/SYSTEM_EXPERIENCE_LAYER.md`
 - `docs/VISION.md`
 - `docs/PRODUCT_STRATEGY.md`
 - `docs/UX_PRINCIPLES.md`

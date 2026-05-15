@@ -21,6 +21,12 @@ Run this before pushing a SevenOS phase to GitHub.
 git status --short
 ```
 
+Make sure the main system reference remains present:
+
+```bash
+test -s docs/SYSTEM_EXPERIENCE_LAYER.md
+```
+
 ## Recommended
 
 ```bash

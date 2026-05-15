@@ -4,6 +4,11 @@ SevenOS is designed as an operating ecosystem, not a theme pack. Every module
 must belong to a clear layer, expose a predictable command path, and connect to
 the user experience through `seven`, `sevenpkg`, Seven Hub, or Seven Server.
 
+The long-term architecture reference is `docs/SYSTEM_EXPERIENCE_LAYER.md`.
+That document defines SevenOS as a system experience layer above Linux and
+Arch: Seven Core, SevenBus, Seven Shell, Seven Hub and future intelligent
+services.
+
 ## Product Problem
 
 Linux is powerful but fragmented. SevenOS exists to make development,

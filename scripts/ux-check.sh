@@ -44,6 +44,7 @@ log_info "Running SevenOS UX coherence checks..."
 
 require_file "docs/VISION.md"
 require_file "docs/ARCHITECTURE.md"
+require_file "docs/SYSTEM_EXPERIENCE_LAYER.md"
 require_file "docs/UX_PRINCIPLES.md"
 require_file "docs/VOCABULARY.md"
 require_file "docs/PHASE_GATE.md"
