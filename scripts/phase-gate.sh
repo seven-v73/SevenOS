@@ -92,6 +92,7 @@ installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "sta
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"summary": {"total": 0}, "next": []})
 packages = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"summary": {"total": 0}, "next": []})
 identity = command_json([os.path.join(ROOT, "scripts/identity.sh"), "current", "--json"], {"pack": {"key": "unknown"}})
+stack = command_json([os.path.join(ROOT, "scripts/stack.sh"), "--json"], {"summary": {"checks_ok": 0, "checks_total": 1}})
 
 
 def band(value):
@@ -127,6 +128,9 @@ server_state = (server.get("service") or {}).get("state", "MISS")
 installer_mode = installer.get("mode", "foundation")
 profile_total = (profiles.get("summary") or {}).get("total", 0)
 package_total = (packages.get("summary") or {}).get("total", 0)
+stack_summary = stack.get("summary") or {}
+stack_ok = stack_summary.get("checks_ok", 0)
+stack_total = stack_summary.get("checks_total", 1)
 
 gates = [
     gate("readiness", "OS readiness", readiness.get("percent", 0), 85, "seven readiness", "block", "Minimum product readiness before B3."),
@@ -182,6 +186,16 @@ gates = [
         "band": "open" if package_total else "strong",
         "command": "sevenpkg plan",
         "detail": "SevenPkg must explain what is still needed for complete app delivery.",
+    },
+    {
+        "key": "stack",
+        "title": "Stack discipline",
+        "state": "PASS" if stack_ok >= max(stack_total - 1, 0) else "WARN",
+        "actual": f"{stack_ok}/{stack_total}",
+        "target": f"{max(stack_total - 1, 0)}/{stack_total}",
+        "band": "ready" if stack_ok >= max(stack_total - 1, 0) else "open",
+        "command": "seven stack doctor",
+        "detail": "AGS and Rust should enter in a controlled B3 order, not as parallel rewrites.",
     },
 ]
 

@@ -232,6 +232,7 @@ insights.sort(key=lambda item: (severity_rank.get(item["severity"], 9), item["do
 ecosystem_modules = ecosystem.get("modules") or []
 active_modules = sum(1 for item in ecosystem_modules if item.get("state") == "active")
 preview_modules = sum(1 for item in ecosystem_modules if item.get("state") == "preview")
+next_modules = sum(1 for item in ecosystem_modules if item.get("state") == "next")
 planned_modules = sum(1 for item in ecosystem_modules if item.get("state") == "planned")
 
 signals = {
@@ -275,6 +276,7 @@ signals = {
     "ecosystem": {
         "active": active_modules,
         "preview": preview_modules,
+        "next": next_modules,
         "planned": planned_modules,
         "processes": len(ecosystem.get("processes") or []),
     },

@@ -307,6 +307,9 @@ seven ecosystem
 seven ecosystem processes
 seven ecosystem --json
 seven ecosystem roadmap
+seven stack
+seven stack --json
+seven stack doctor
 seven experience
 seven experience --json
 seven control
@@ -438,6 +441,7 @@ seven phase-gate
 seven phase-gate --json
 seven ecosystem
 seven ecosystem roadmap
+seven stack
 seven server status
 seven server status --json
 seven server plan

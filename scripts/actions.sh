@@ -99,6 +99,9 @@ ecosystem.status	Ecosystem	Ecosystem Map	seven ecosystem	safe	Show modules and m
 ecosystem.processes	Ecosystem	Process Map	seven ecosystem processes	safe	Show all-in-one SevenOS user flows.
 ecosystem.roadmap	Ecosystem	Ecosystem Roadmap	seven ecosystem roadmap	safe	Show Phase 4 and Phase 5 priorities.
 ecosystem.doctor	Ecosystem	Ecosystem Doctor	seven ecosystem doctor	safe	Validate ecosystem foundation files.
+stack.status	Ecosystem	Stack Strategy	seven stack	safe	Show the phased technology stack strategy.
+stack.roadmap	Ecosystem	Stack Roadmap	seven stack roadmap	safe	Show when AGS, Rust, AI and app stacks should enter SevenOS.
+stack.doctor	Ecosystem	Stack Doctor	seven stack doctor	safe	Validate stack strategy files and shell foundation packages.
 identity.status	Ecosystem	African First Identity	seven identity	safe	Show SevenOS African first product language.
 identity.packs	Ecosystem	Regional Accent Packs	seven identity packs	safe	Show planned regional accent packs without turning the UI into flags.
 identity.current	Ecosystem	Active Identity Pack	seven identity current	safe	Show the active SevenOS regional accent pack.

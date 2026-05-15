@@ -135,6 +135,13 @@ def ecosystem_payload() -> dict:
         return {"schema": "sevenos.ecosystem.v1", "modules": [], "processes": []}
 
 
+def stack_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "stack.sh"), "--json"))
+    except Exception:
+        return {"schema": "sevenos.stack.v1", "summary": {}, "layers": [], "rules": []}
+
+
 def experience_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "experience.sh"), "--json"))
@@ -242,6 +249,7 @@ def status_text() -> str:
     profile_gaps = profile_gaps_payload()
     profile_plan = profile_plan_payload()
     ecosystem = ecosystem_payload()
+    stack = stack_payload()
     experience = experience_payload()
     shield = shield_payload()
     server = server_payload()
@@ -257,6 +265,7 @@ def status_text() -> str:
     next_profile = (profile_plan.get("next") or [{}])[0].get("title", "none")
     active_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "active")
     preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
+    next_stack = ", ".join(stack.get("next_focus", [])[:2]) or "Seven Shell AGS, seven-daemon Rust"
     return (
         "Seven Hub Native\n"
         f"Root: {ROOT}\n"
@@ -268,6 +277,7 @@ def status_text() -> str:
         f"Profile gaps: {profile_gap_count} incomplete modes\n"
         f"Next profile: {next_profile}\n"
         f"Ecosystem: {active_modules} active, {preview_modules} preview, {len(ecosystem.get('processes', []))} processes\n"
+        f"Stack: {stack.get('phase', 'B2-B3')} · next {next_stack}\n"
         f"Experience: {experience.get('percent', 0)}% ({experience.get('score', 0)}/{experience.get('max', 0)})\n"
         f"Shield: {shield.get('posture', 'unknown')} ({shield.get('percent', 0)}%)\n"
         f"Server: {server.get('service', {}).get('state', 'MISS')}\n"
@@ -427,6 +437,7 @@ def run_gui() -> int:
                 profile_gaps = profile_gaps_payload()
                 profile_plan = profile_plan_payload()
                 ecosystem = ecosystem_payload()
+                stack = stack_payload()
                 experience = experience_payload()
                 shield = shield_payload()
                 shield_plan = shield_plan_payload()
@@ -449,6 +460,7 @@ def run_gui() -> int:
                 next_profile = (profile_plan.get("next") or [{}])[0].get("title", "none")
                 active_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "active")
                 preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
+                next_stack = ", ".join(stack.get("next_focus", [])[:2]) or "Seven Shell AGS, seven-daemon Rust"
 
                 heading(dashboard, "SevenOS Dashboard", "System state, readiness and common repair paths from native GTK.")
 
@@ -493,6 +505,7 @@ def run_gui() -> int:
                     ("Profile gaps", f"{profile_gap_count} incomplete modes · install from Profiles"),
                     ("Next profile", f"{next_profile} · prioritized completion plan"),
                     ("Ecosystem", f"{active_modules} active modules · {preview_modules} preview · {len(ecosystem.get('processes', []))} processes"),
+                    ("Stack Strategy", f"{stack.get('phase', 'B2-B3')} · next: {next_stack}"),
                     ("Root", str(ROOT)),
                 ):
                     group.add(make_row(title_text, subtitle))

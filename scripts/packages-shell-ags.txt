@@ -1,0 +1,14 @@
+# Seven Shell AGS foundation
+# AGS itself may come from AUR or a chosen upstream workflow; keep this list to
+# official Arch packages so repository checks stay deterministic.
+gjs
+typescript
+nodejs
+npm
+gtk4
+libadwaita
+libgtop
+gtksourceview5
+glib2
+gobject-introspection
+gobject-introspection-runtime

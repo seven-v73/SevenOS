@@ -37,6 +37,7 @@ Seven Installer	3	preview	Archiso, Calamares and install planning foundation	ins
 SevenBox	4	planned	Rootless containers and sandbox UX	scripts/ecosystem.sh
 SevenAI	4	planned	Provider-neutral assistant and automation contract	scripts/ecosystem.sh
 Adaptive UI	4	preview	Profile-aware shell, Waybar, panels and Hub actions	bin/seven-shell-panel
+Seven Shell	3	next	AGS and TypeScript shell layer for panels, dock, launcher and widgets	scripts/stack.sh
 SevenCloud	5	planned	Encrypted backup, config sync and restore	scripts/ecosystem.sh
 SevenStore	5	planned	Apps, profiles, themes and module registry	scripts/ecosystem.sh
 SevenIdentity	5	planned	User identity, accent packs, permissions and environment	scripts/ecosystem.sh
@@ -93,13 +94,14 @@ processes() {
 }
 
 summary() {
-  local active=0 preview=0 planned=0 process_count=0
+  local active=0 preview=0 next=0 planned=0 process_count=0
   local _name _phase state _description _path
 
   while IFS=$'\t' read -r _name _phase state _description _path; do
     case "$state" in
       active) active=$((active + 1)) ;;
       preview) preview=$((preview + 1)) ;;
+      next) next=$((next + 1)) ;;
       planned) planned=$((planned + 1)) ;;
     esac
   done < <(modules_tsv)
@@ -108,7 +110,7 @@ summary() {
     process_count=$((process_count + 1))
   done < <(processes_tsv)
 
-  printf 'SevenOS Ecosystem: %s active, %s preview, %s planned, %s processes\n' "$active" "$preview" "$planned" "$process_count"
+  printf 'SevenOS Ecosystem: %s active, %s preview, %s next, %s planned, %s processes\n' "$active" "$preview" "$next" "$planned" "$process_count"
 }
 
 roadmap() {

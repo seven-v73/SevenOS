@@ -20,6 +20,7 @@ Targets:
   server           Install SevenOS server and deployment layer
   installer-stack  Install graphical installer foundation packages
   hub-gui-stack    Install Seven Hub Tauri GUI foundation packages
+  shell-ags        Install Seven Shell AGS/TypeScript foundation packages
   flatpak          Manage Flatpak/Flathub bridge
   security         Apply base security hardening
   cyber-audit      Show cybersecurity profile readiness
@@ -115,6 +116,9 @@ case "$TARGET" in
     ;;
   hub-gui-stack)
     "$ROOT_DIR/seven-hub/gui-stack.sh" install
+    ;;
+  shell-ags)
+    install_package_file "$ROOT_DIR/scripts/packages-shell-ags.txt"
     ;;
   flatpak)
     "$ROOT_DIR/scripts/flatpak.sh" "${@:2}"

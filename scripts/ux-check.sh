@@ -48,6 +48,7 @@ require_file "docs/UX_PRINCIPLES.md"
 require_file "docs/VOCABULARY.md"
 require_file "docs/PHASE_GATE.md"
 require_file "docs/ECOSYSTEM.md"
+require_file "docs/STACK_STRATEGY.md"
 require_file "docs/PRODUCTIZATION.md"
 require_file "docs/TEST_MACHINE.md"
 require_file "docs/PRE_PUSH.md"
@@ -141,6 +142,7 @@ require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
+require_executable "scripts/stack.sh"
 require_executable "scripts/identity.sh"
 require_executable "scripts/experience.sh"
 require_executable "scripts/control-plane.sh"
@@ -190,6 +192,10 @@ package_manifest_contains "webkit2gtk-4.1" "scripts/packages-hub-gui.txt"
 package_manifest_contains "gtk4" "scripts/packages-hub-gui.txt"
 package_manifest_contains "libadwaita" "scripts/packages-hub-gui.txt"
 package_manifest_contains "python-gobject" "scripts/packages-hub-gui.txt"
+package_manifest_contains "gjs" "scripts/packages-shell-ags.txt"
+package_manifest_contains "typescript" "scripts/packages-shell-ags.txt"
+package_manifest_contains "gtk4" "scripts/packages-shell-ags.txt"
+package_manifest_contains "libadwaita" "scripts/packages-shell-ags.txt"
 
 if jq -e '."custom/sevenos"."on-click" == "seven hub"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar SevenOS click opens dashboard"
@@ -479,6 +485,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def render_dashboard' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def stack_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def profile_gaps_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def profile_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def experience_payload' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -508,6 +515,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def packages_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Software plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Phase Gate' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Stack Strategy' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -Fq 'seven stack --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -Fq 'seven phase-gate --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -613,7 +622,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","experience","control","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","experience","control","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -717,6 +726,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/packages-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/stack"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield-plan"' "$ROOT_DIR/server/seven-server.sh" &&
@@ -735,6 +745,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/installer-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/packages-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/stack' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/shield-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/server-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/control' "$ROOT_DIR/server/README.md" &&
@@ -838,6 +849,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" processes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/stack.sh" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/stack.sh" roadmap >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/stack.sh" --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/stack.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/control-plane.sh" >/dev/null

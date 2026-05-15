@@ -31,6 +31,7 @@ bash -n \
   "$ROOT_DIR/scripts/design-check.sh" \
   "$ROOT_DIR/scripts/phase-gate.sh" \
   "$ROOT_DIR/scripts/ecosystem.sh" \
+  "$ROOT_DIR/scripts/stack.sh" \
   "$ROOT_DIR/scripts/experience.sh" \
   "$ROOT_DIR/scripts/control-plane.sh" \
   "$ROOT_DIR/scripts/events.sh" \
@@ -114,7 +115,7 @@ if ! grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" ||
   exit 1
 fi
 
-for doc in ARCHITECTURE.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md PRODUCTIZATION.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
+for doc in ARCHITECTURE.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md STACK_STRATEGY.md PRODUCTIZATION.md PHASE_GATE.md TEST_MACHINE.md PRE_PUSH.md; do
   if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
     log_error "Missing product direction document: docs/$doc"
     exit 1
@@ -413,6 +414,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem summary >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem processes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem roadmap >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run stack >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run stack --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run stack doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity packs >/dev/null
@@ -468,6 +472,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode apps --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode vm --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode start --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" server --dry-run >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" shell-ags --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" installer-stack --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" hub-gui-stack --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" flatpak status --dry-run >/dev/null

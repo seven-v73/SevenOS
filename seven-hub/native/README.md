@@ -32,6 +32,7 @@ seven identity --json
 seven identity packs --json
 seven identity current --json
 seven actions --json
+seven stack --json
 seven profile status --json
 seven profile current --json
 seven profile apps --json

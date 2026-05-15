@@ -85,6 +85,7 @@ seven identity --json
 seven identity packs --json
 seven identity current --json
 seven actions --json
+seven stack --json
 seven profile gaps --json
 seven profile plan --json
 seven windows plan --json
@@ -162,6 +163,11 @@ of blockers with severity, impact and next command.
 whether B2 can move toward B3 by looking at readiness, experience, Control
 Plane, Shield, Seven Server, installer, Windows Mode, profiles, software and
 the active African first identity pack.
+
+`seven stack --json` is the stack discipline contract. It records the chosen
+order: JSON contracts and native Hub first, then AGS/TypeScript shell, then
+Rust daemon, then AI and product apps. This keeps SevenOS from adopting every
+interesting runtime at once.
 
 `seven shield plan --json` is the trust remediation plan. It gives Seven Hub
 and Seven Server a clean list of firewall, sandbox and audit actions, ordered

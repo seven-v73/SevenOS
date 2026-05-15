@@ -110,6 +110,8 @@ json_to_file "$STATE_TMP/manifest.json" "$ROOT_DIR/scripts/manifest.sh" summary-
 pid_manifest=$!
 json_to_file "$STATE_TMP/ecosystem.json" "$ROOT_DIR/scripts/ecosystem.sh" json &
 pid_ecosystem=$!
+json_to_file "$STATE_TMP/stack.json" "$ROOT_DIR/scripts/stack.sh" --json &
+pid_stack=$!
 json_to_file "$STATE_TMP/experience.json" "$ROOT_DIR/scripts/experience.sh" --json &
 pid_experience=$!
 json_to_file "$STATE_TMP/control.json" "$ROOT_DIR/scripts/control-plane.sh" --json &
@@ -121,7 +123,7 @@ pid_actions=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_experience" "$pid_control" "$pid_events" "$pid_actions" || true
+  "$pid_stack" "$pid_experience" "$pid_control" "$pid_events" "$pid_actions" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -192,6 +194,9 @@ cat "$STATE_TMP/manifest.json"
 printf ','
 printf '"ecosystem":'
 cat "$STATE_TMP/ecosystem.json"
+printf ','
+printf '"stack":'
+cat "$STATE_TMP/stack.json"
 printf ','
 printf '"experience":'
 cat "$STATE_TMP/experience.json"

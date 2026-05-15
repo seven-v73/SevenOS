@@ -27,6 +27,7 @@
         "scripts/control-plane.sh",
         "scripts/events.sh",
         "scripts/insights.sh",
+        "scripts/stack.sh",
         "scripts/status.sh",
         "scripts/state.sh",
         "security/shield-status.sh"
@@ -51,6 +52,15 @@
         "bin/seven-overview",
         "bin/seven-quick-settings",
         "bin/seven-files"
+      ]
+    },
+    {
+      "id": "sevenos-shell",
+      "title": "Seven Shell AGS foundation",
+      "paths": [
+        "scripts/stack.sh",
+        "scripts/packages-shell-ags.txt",
+        "docs/STACK_STRATEGY.md"
       ]
     },
     {

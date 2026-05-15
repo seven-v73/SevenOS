@@ -96,6 +96,9 @@ Rules:
 - `seven phase-gate --json` converts those signals into a transition decision:
   whether SevenOS can move beyond B2, and which trust, backend, installer,
   profile or software gates still block that move.
+- `seven stack --json` defines the technology adoption order. It keeps AGS,
+  Rust, Python AI, Flutter and Qt in their proper phases instead of letting
+  every promising stack enter the system at once.
 - `seven profile gaps --json` is the profile completeness contract. It exposes
   missing packages, unavailable profile apps and install/open commands so
   profiles behave like real work modes.
@@ -226,6 +229,7 @@ seven identity current --json
 seven actions --json
 seven ecosystem processes
 seven ecosystem --json
+seven stack --json
 seven experience
 seven experience --json
 seven control
