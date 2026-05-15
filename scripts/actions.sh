@@ -38,6 +38,7 @@ control.plan	System	Control Plane	seven control	safe	Show prioritized SevenOS ac
 control.preview	System	Preview Control Fixes	seven control apply --limit 5	safe	Preview the next prioritized SevenOS fixes without changing the system.
 events.open	System	Event Journal	seven events	safe	Show local SevenOS decision and action history.
 insights.open	System	OS Insights	seven insights	safe	Show product-facing SevenOS limits and next actions.
+phase.gate	System	Phase Gate	seven phase-gate --json	safe	Show whether SevenOS is ready to move beyond product consolidation.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 improve.security	System	Improve Security	seven improve security --apply	packages	Install or prepare the core security improvements.
 improve.deployment	System	Improve Deployment	seven improve deployment --apply	packages	Install or prepare server and deployment dependencies.

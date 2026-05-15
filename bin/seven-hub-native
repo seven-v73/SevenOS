@@ -226,6 +226,13 @@ def insights_payload() -> dict:
         return {"schema": "sevenos.insights.v1", "phase": "unknown", "summary": {}, "insights": []}
 
 
+def phase_gate_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "phase-gate.sh"), "--json"))
+    except Exception:
+        return {"schema": "sevenos.phase-gate.v1", "decision": "unknown", "summary": {}, "gates": []}
+
+
 def status_text() -> str:
     welcome = welcome_payload()
     welcome_plan = welcome_plan_payload()
@@ -241,6 +248,7 @@ def status_text() -> str:
     control = control_payload()
     events = events_payload()
     insights = insights_payload()
+    phase_gate = phase_gate_payload()
     active = next((item for item in profiles if item.get("active")), None)
     ready = sum(1 for item in profiles if item.get("state") == "OK")
     partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -266,6 +274,7 @@ def status_text() -> str:
         f"Control: {control.get('overall', 0)}% · {control.get('summary', {}).get('total', 0)} actions\n"
         f"Events: {events.get('total', 0)} recorded\n"
         f"Insights: phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open items\n"
+        f"Phase gate: {phase_gate.get('decision', 'unknown')} · {phase_gate.get('summary', {}).get('block', 0)} blockers\n"
     )
 
 
@@ -431,6 +440,7 @@ def run_gui() -> int:
                 control = control_payload()
                 events = events_payload()
                 insights = insights_payload()
+                phase_gate = phase_gate_payload()
                 active = next((item for item in profiles if item.get("active")), None)
                 ready = sum(1 for item in profiles if item.get("state") == "OK")
                 partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -477,6 +487,7 @@ def run_gui() -> int:
                     ("Control Plane", f"{control.get('overall', 0)}% · {control.get('summary', {}).get('total', 0)} prioritized actions"),
                     ("Events", f"{events.get('total', 0)} recorded · {events.get('last', {}).get('type', 'none') if events.get('last') else 'no local history yet'}"),
                     ("Insights", f"phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open product items"),
+                    ("Phase Gate", f"{phase_gate.get('decision', 'unknown')} · {phase_gate.get('summary', {}).get('block', 0)} blockers · next: {phase_gate.get('next_phase', 'B3')}"),
                     ("Active profile", active.get("title") if active else "No active profile yet"),
                     ("Profiles", f"{ready} OK · {partial} PART · {missing} MISS"),
                     ("Profile gaps", f"{profile_gap_count} incomplete modes · install from Profiles"),
@@ -486,6 +497,30 @@ def run_gui() -> int:
                 ):
                     group.add(make_row(title_text, subtitle))
                 dashboard.append(group)
+
+                phase_gates = phase_gate.get("gates") or []
+                if phase_gates:
+                    phase_group = Adw.PreferencesGroup(title="Phase gate")
+                    for item in phase_gates[:6]:
+                        row = make_row(
+                            item.get("title", item.get("key", "Phase gate")),
+                            f"{item.get('state', 'WARN')} · actual {item.get('actual', 'unknown')} · target {item.get('target', 'ready')} · {item.get('detail', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("emblem-ok-symbolic" if item.get("state") == "PASS" else "dialog-warning-symbolic")
+                        button.set_tooltip_text(item.get("command", "seven phase-gate --json"))
+                        command = item.get("command", "seven phase-gate --json")
+                        title_text = item.get("title", "Phase Gate")
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=command, title_text=title_text: run_ecosystem_command(
+                                command,
+                                title=f"SevenOS Phase Gate - {title_text}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        phase_group.add(row)
+                    dashboard.append(phase_group)
 
                 welcome_actions = welcome_plan.get("next") or []
                 if welcome_actions:

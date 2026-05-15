@@ -191,6 +191,7 @@ Les piliers du projet sont :
 - Renforcement African First : ajout de `identity/AFRICAN_FIRST.md`, composants SVG reutilisables, `seven identity --json`, endpoint `/identity`, carte African first dans le Hub natif et profils enrichis avec role, symbole, principe et recit.
 - Ajout du contrat `identity/accent-packs.json` et de `seven identity packs --json`, pour preparer les variantes Pan-African, West, North, Central, East, Southern et Diaspora sans reduire l'interface aux drapeaux.
 - Ajout de `seven identity current --json` et `seven identity activate <pack>` pour transformer les accent packs en preference utilisateur lisible par le Hub.
+- Ajout de `seven phase-gate --json` comme contrat de passage B2 -> B3 : readiness, experience, control plane, Shield, Seven Server, installateur, Windows Mode, profils, logiciels et pack African first actif sont exposes dans une decision `pass/warning/blocked`.
 
 ### Gestion fichiers
 

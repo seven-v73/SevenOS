@@ -37,6 +37,7 @@ seven profile current --json
 seven profile apps --json
 seven windows status --json
 seven experience --json
+seven phase-gate --json
 seven readiness --json
 sevenpkg status --json
 ```

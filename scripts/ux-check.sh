@@ -485,6 +485,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def control_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def events_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def insights_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def phase_gate_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def welcome_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def welcome_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'First-run plan' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -506,6 +507,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'Installer plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def packages_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Software plan' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Phase Gate' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -Fq 'seven phase-gate --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -845,6 +848,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" list >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/insights.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/insights.sh" --json >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/phase-gate.sh" --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.phase-gate.v1" and data.get("gates") else 1)'
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null

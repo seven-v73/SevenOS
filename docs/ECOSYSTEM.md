@@ -92,6 +92,7 @@ seven experience --json
 seven control --json
 seven events --json
 seven insights --json
+seven phase-gate --json
 seven shield status --json
 seven shield plan --json
 seven server status --json
@@ -156,6 +157,11 @@ memory of previews, decisions and future executed actions.
 `seven insights --json` is the product diagnosis layer. It turns raw state,
 profiles, trust posture and Control Plane recommendations into a concise list
 of blockers with severity, impact and next command.
+
+`seven phase-gate --json` is the higher-phase decision contract. It checks
+whether B2 can move toward B3 by looking at readiness, experience, Control
+Plane, Shield, Seven Server, installer, Windows Mode, profiles, software and
+the active African first identity pack.
 
 `seven shield plan --json` is the trust remediation plan. It gives Seven Hub
 and Seven Server a clean list of firewall, sandbox and audit actions, ordered

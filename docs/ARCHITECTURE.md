@@ -93,6 +93,9 @@ Rules:
   future executed actions.
 - `seven insights --json` converts state, trust, profile and control signals
   into product-facing blockers and next actions for Hub and Seven Server.
+- `seven phase-gate --json` converts those signals into a transition decision:
+  whether SevenOS can move beyond B2, and which trust, backend, installer,
+  profile or software gates still block that move.
 - `seven profile gaps --json` is the profile completeness contract. It exposes
   missing packages, unavailable profile apps and install/open commands so
   profiles behave like real work modes.
@@ -227,6 +230,7 @@ seven experience
 seven experience --json
 seven control
 seven control --json
+seven phase-gate --json
 seven profile forge
 seven shield status
 seven shield plan

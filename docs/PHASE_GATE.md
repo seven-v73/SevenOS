@@ -8,6 +8,12 @@ Run:
 seven phase-gate
 ```
 
+For Seven Hub, Seven Server or release automation:
+
+```bash
+seven phase-gate --json
+```
+
 or:
 
 ```bash
@@ -59,3 +65,17 @@ Before moving from foundation to public ISO work:
 - Security should be at least 80%
 - Deployment should be at least 80%
 - required phase-gate checks must pass
+
+## JSON Contract
+
+`seven phase-gate --json` exposes:
+
+- `decision`: `pass`, `warning` or `blocked`
+- `gates`: readiness, experience, control plane, Shield, Server, installer,
+  Windows Mode, profiles and software
+- `next_commands`: the highest-impact commands to run before the next phase
+- `identity.active_pack`: the current African first accent pack
+
+This contract is intentionally faster than the full human phase gate. It lets
+Seven Hub show whether the system is ready for B3 without running every shell
+check in the foreground.

@@ -197,6 +197,11 @@ def handle_insights(args):
     run_script(args, "scripts/insights.sh", *extra)
 
 
+def handle_phase_gate(args):
+    extra = ["--json"] if args.json else []
+    run_script(args, "scripts/phase-gate.sh", *extra)
+
+
 def handle_architecture(args):
     run_script(args, "scripts/architecture.sh", args.action)
 
@@ -268,7 +273,8 @@ def main():
     manifest_parser.add_argument("action", nargs="?", default="show")
     migrate_parser = subparsers.add_parser("migrate", help="plan or back up protected SevenOS user state before upgrades")
     migrate_parser.add_argument("action", nargs="?", default="plan")
-    subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
+    phase_gate_parser = subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
+    phase_gate_parser.add_argument("--json", action="store_true", help="print machine-readable phase decision")
     actions_parser = subparsers.add_parser("actions", help="show or run SevenOS registered UI/system actions")
     actions_parser.add_argument("action", nargs="?", default="list")
     actions_parser.add_argument("--json", action="store_true", help="print machine-readable action registry")
@@ -370,7 +376,7 @@ def main():
     elif args.command == "migrate":
         handle_migrate(args)
     elif args.command == "phase-gate":
-        run_script(args, "scripts/phase-gate.sh")
+        handle_phase_gate(args)
     elif args.command == "actions":
         handle_actions(args)
     elif args.command == "post-install":

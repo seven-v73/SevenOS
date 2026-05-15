@@ -316,6 +316,7 @@ seven events
 seven events --json
 seven insights
 seven insights --json
+seven phase-gate --json
 seven shield status
 seven shield status --json
 seven readiness
@@ -434,6 +435,7 @@ seven architecture
 seven architecture doctor
 seven readiness
 seven phase-gate
+seven phase-gate --json
 seven ecosystem
 seven ecosystem roadmap
 seven server status
