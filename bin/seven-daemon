@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -f "$SEVENOS_ROOT/install.sh" ]]; then
+    cd "$SEVENOS_ROOT" && pwd
+    return 0
+  fi
+
+  local script_dir candidate
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  candidate="$(cd -- "$script_dir/.." && pwd)"
+  if [[ -f "$candidate/install.sh" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  for candidate in /usr/share/sevenos "$HOME/Code/OS/SevenOS" "$HOME/SevenOS" /opt/SevenOS; do
+    if [[ -f "$candidate/install.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-daemon: could not find SevenOS root\n' >&2
+  return 1
+}
+
+ROOT_DIR="$(resolve_root)"
+MANIFEST="$ROOT_DIR/seven-core/daemon/Cargo.toml"
+BINARY="$ROOT_DIR/seven-core/daemon/target/debug/seven-daemon"
+
+if [[ -x "$BINARY" ]]; then
+  exec "$BINARY" "$@"
+fi
+
+if command -v cargo >/dev/null 2>&1; then
+  exec cargo run --quiet --manifest-path "$MANIFEST" -- "$@"
+fi
+
+printf 'seven-daemon: Rust/cargo is required until the daemon is packaged.\n' >&2
+printf 'Install it with: sevenpkg install forge\n' >&2
+exit 127

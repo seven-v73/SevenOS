@@ -1,6 +1,8 @@
 [Unit]
 Description=SevenOS desktop session services
 Documentation=https://github.com/seven-v73/SevenOS
+Wants=seven-daemon.service sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-idle.service
+After=graphical-session.target
 
 [Install]
 WantedBy=default.target

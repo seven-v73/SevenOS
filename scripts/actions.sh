@@ -106,6 +106,9 @@ core.status	Ecosystem	Seven Core Status	seven core	safe	Show the Seven Core and 
 core.plan	Ecosystem	Seven Core Plan	seven core plan	safe	Show the next actions for the system experience layer.
 core.bus	Ecosystem	SevenBus Schema	seven core bus --json	safe	Show the local event envelope consumed by Hub, Shell and future daemon.
 core.doctor	Ecosystem	Seven Core Doctor	seven core doctor	safe	Validate contracts, SevenBus and the daemon scaffold.
+core.install-service	Ecosystem	Install Seven Daemon	seven core install-service	changes	Install the Seven Core runtime as a user service.
+core.start	Ecosystem	Start Seven Daemon	seven core start	changes	Start the local Seven Core runtime.
+core.logs	Ecosystem	Seven Daemon Logs	seven core logs	safe	Follow the Seven Core runtime journal.
 shell.status	Desktop	Seven Shell Status	seven shell	safe	Show the AGS/TypeScript Seven Shell foundation state.
 shell.plan	Desktop	Seven Shell Plan	seven shell plan	safe	Show how Seven Shell will replace Rofi panels gradually.
 shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned AGS surfaces and fallback contracts.

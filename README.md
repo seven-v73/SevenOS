@@ -130,6 +130,7 @@ Implemented:
 - `seven stack --json` stack discipline contract
 - `seven shell status --json` and `seven shell plan --json` AGS shell migration contracts
 - `seven core status --json`, `seven core plan --json` and `seven core bus --json` system experience contracts
+- `seven-daemon` Rust runtime scaffold with a user service path through `seven core install-service`
 - `seven architecture` product/system architecture map
 - `seven repair` guided repair planner
 - `seven ecosystem` innovation roadmap
@@ -137,6 +138,7 @@ Implemented:
 - `seven-server` local API foundation
 - `seven-deploy` deployment planner
 - `seven-core` foundation with SevenBus schema and `seven-daemon` Rust scaffold
+- `systemd/user/seven-daemon.service` integrated with the SevenOS session target
 - Seven Shell AGS/TypeScript scaffold
 - Calamares installer profile scaffold
 - Seven Hub Tauri GUI scaffold

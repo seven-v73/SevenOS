@@ -73,6 +73,8 @@ Les piliers du projet sont :
 - Ajout de `docs/SYSTEM_EXPERIENCE_LAYER.md` comme reference principale : SevenOS est defini comme une couche d'experience systeme au-dessus du kernel Linux et de la base Arch, avec Seven Core, SevenBus, Seven Shell, Seven Hub, IA et hardware intelligence comme direction long terme.
 - Ajout de `seven-core/` comme premiere implementation concrète de cette direction : README d'architecture, schema `sevenos.bus.v1`, scaffold Rust `seven-daemon` et contrat `seven core status --json`.
 - Ajout de `seven core plan --json`, `seven core bus --json` et `seven core doctor` pour rendre la couche Seven Core observable avant le passage au daemon.
+- Ajout de `bin/seven-daemon` et `systemd/user/seven-daemon.service` : SevenDaemon peut maintenant etre lance comme runtime local et rattache a `sevenos-session.target`.
+- Ajout de `seven core install-service`, `seven core start`, `seven core stop` et `seven core logs` pour piloter le runtime Core sans manipuler systemd a la main.
 - Integration de Seven Core dans `seven state --json`, Seven Server, Seven Hub Native, le registre `seven actions`, le phase gate, le manifeste installable et les checks.
 - Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.
 - Ajout de `sevenos.dotinst`, manifeste d'installation et de migration inspire des logiques Hyprland matures : metadata, composants installables, chemins proteges, plan de restauration et checks de validation.

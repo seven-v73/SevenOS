@@ -48,6 +48,7 @@ bash -n \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/seven-apps" \
   "$ROOT_DIR/bin/seven-country" \
+  "$ROOT_DIR/bin/seven-daemon" \
   "$ROOT_DIR/bin/seven-files" \
   "$ROOT_DIR/bin/seven-help" \
   "$ROOT_DIR/bin/seven-overview" \
@@ -259,6 +260,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" core plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
+"$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" profile status --json >/dev/null
 "$ROOT_DIR/bin/seven" profile current --json >/dev/null
 "$ROOT_DIR/bin/seven" profile apps --json >/dev/null
@@ -441,6 +443,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core bus --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core install-service >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core start >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell plan >/dev/null

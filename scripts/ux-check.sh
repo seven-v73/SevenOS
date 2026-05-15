@@ -57,6 +57,7 @@ require_file "seven-core/README.md"
 require_file "seven-core/bus-schema.json"
 require_file "seven-core/daemon/Cargo.toml"
 require_file "seven-core/daemon/src/main.rs"
+require_file "systemd/user/seven-daemon.service"
 require_file "sevenos.dotinst"
 require_file "installer/calamares/README.md"
 require_file "installer/calamares/settings.conf"
@@ -128,6 +129,7 @@ require_executable "bin/sevenpkg"
 require_executable "seven-hub/bin/seven-hub"
 require_executable "seven-hub/bin/seven-control-center"
 require_executable "bin/seven-country"
+require_executable "bin/seven-daemon"
 require_executable "bin/seven-apps"
 require_executable "bin/seven-files"
 require_executable "bin/seven-help"
@@ -322,6 +324,7 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'identity.current' <<<"$actions_json" &&
    grep -q 'core.status' <<<"$actions_json" &&
    grep -q 'core.bus' <<<"$actions_json" &&
+   grep -q 'core.install-service' <<<"$actions_json" &&
    grep -q '"actions"' <<<"$state_json"; then
   ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
 else
@@ -335,6 +338,9 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -Eq '"state": "(FOUNDATION|READY_FOR_DAEMON)"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -q '"schema": "sevenos.bus.v1"' <<<"$core_bus_json" &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null &&
+   grep -q 'ExecStart=/usr/bin/env seven-daemon serve' "$ROOT_DIR/systemd/user/seven-daemon.service" &&
+   grep -q 'Wants=seven-daemon.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
    grep -q '"core"' <<<"$state_json" &&
    grep -q 'SevenBus' "$ROOT_DIR/seven-core/README.md" &&
    grep -q 'sevenos.daemon.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs"; then
@@ -408,6 +414,7 @@ fi
 session_status_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-session-status")"
 session_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" session status --json)"
 if [[ -s "$ROOT_DIR/systemd/user/sevenos-session.target" ]] &&
+   [[ -s "$ROOT_DIR/systemd/user/seven-daemon.service" ]] &&
    [[ -s "$ROOT_DIR/systemd/user/sevenos-waybar.service" ]] &&
    [[ -s "$ROOT_DIR/systemd/user/sevenos-notifications.service" ]] &&
    [[ -s "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" ]] &&

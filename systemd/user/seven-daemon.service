@@ -1,0 +1,13 @@
+[Unit]
+Description=SevenOS Core runtime daemon
+PartOf=sevenos-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env seven-daemon serve
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=sevenos-session.target

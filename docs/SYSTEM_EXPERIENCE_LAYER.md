@@ -140,6 +140,19 @@ This is the B2-B3 bridge. The shell and Hub can consume Core state today, while
 the Rust daemon remains a small, testable scaffold instead of a premature
 rewrite.
 
+Runtime bridge:
+
+```text
+bin/seven-daemon
+systemd/user/seven-daemon.service
+systemd/user/sevenos-session.target
+```
+
+`seven-daemon` is intentionally small for now: it reports its contract, watches
+the local event journal count, and can run as a user service. The point is to
+introduce a supervised runtime boundary before moving orchestration logic out
+of Bash.
+
 ## SevenBus
 
 SevenBus is the future local event and command bus for SevenOS.

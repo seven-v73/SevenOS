@@ -21,6 +21,7 @@
       "title": "SevenOS CLI",
       "paths": [
         "bin/seven",
+        "bin/seven-daemon",
         "bin/sevenpkg",
         "bin/seven-windows-assistant",
         "scripts/experience.sh",
@@ -72,6 +73,8 @@
       "title": "System Experience Layer core",
       "paths": [
         "seven-core",
+        "bin/seven-daemon",
+        "systemd/user/seven-daemon.service",
         "scripts/core.sh",
         "docs/SYSTEM_EXPERIENCE_LAYER.md"
       ]

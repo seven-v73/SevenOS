@@ -41,6 +41,25 @@ process. Its job is narrower:
 3. coordinate profile, session, security and server events;
 4. keep unsafe operations behind policy and confirmation.
 
+The daemon is now launchable through:
+
+```bash
+seven-daemon --json
+seven-daemon serve
+seven core install-service
+seven core start
+seven core logs
+```
+
+The current service is a user service:
+
+```text
+systemd/user/seven-daemon.service
+```
+
+It is also pulled into `sevenos-session.target`, so the SevenOS desktop session
+can grow toward a coordinated runtime instead of independent autostart scripts.
+
 ## Current Commands
 
 ```bash
@@ -49,6 +68,8 @@ seven core status --json
 seven core plan --json
 seven core doctor
 seven core bus --json
+seven core install-service
+seven core start
 ```
 
 These commands are part of the B2-B3 transition. They make SevenOS more
