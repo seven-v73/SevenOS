@@ -97,11 +97,49 @@ fn print_human(state: &str) {
 }
 
 fn snapshot() {
-    let lines = event_lines();
+    let (events, invalid, _total) = parsed_events();
     let mut by_source: Vec<(String, usize)> = Vec::new();
     let mut by_state: Vec<(String, usize)> = Vec::new();
     let mut by_writer: Vec<(String, usize)> = Vec::new();
-    let mut last: Option<Value> = None;
+
+    for event in &events {
+        let source = event
+            .get("source")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let state = event
+            .get("state")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let writer = event
+            .get("writer")
+            .and_then(Value::as_str)
+            .unwrap_or("legacy");
+        count_key(&mut by_source, source);
+        count_key(&mut by_state, state);
+        count_key(&mut by_writer, writer);
+    }
+
+    let payload = json!({
+        "schema": "sevenos.daemon.snapshot.v1",
+        "state": "ready",
+        "event_file": event_file().to_string_lossy(),
+        "event_count": events.len(),
+        "invalid_event_count": invalid,
+        "sources": serde_json::from_str::<Value>(&json_counts(&by_source)).unwrap_or_else(|_| json!({})),
+        "states": serde_json::from_str::<Value>(&json_counts(&by_state)).unwrap_or_else(|_| json!({})),
+        "writers": serde_json::from_str::<Value>(&json_counts(&by_writer)).unwrap_or_else(|_| json!({})),
+        "last_event": events.last(),
+    });
+    println!(
+        "{}",
+        serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string())
+    );
+}
+
+fn parsed_events() -> (Vec<Value>, usize, usize) {
+    let lines = event_lines();
+    let mut events = Vec::new();
     let mut invalid = 0usize;
 
     for line in &lines {
@@ -109,40 +147,61 @@ fn snapshot() {
             continue;
         }
         match serde_json::from_str::<Value>(line) {
-            Ok(event) => {
-                let source = event
-                    .get("source")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown");
-                let state = event
-                    .get("state")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown");
-                let writer = event
-                    .get("writer")
-                    .and_then(Value::as_str)
-                    .unwrap_or("legacy");
-                count_key(&mut by_source, source);
-                count_key(&mut by_state, state);
-                count_key(&mut by_writer, writer);
-                last = Some(event);
-            }
-            Err(_) => {
-                invalid += 1;
-            }
+            Ok(event) => events.push(event),
+            Err(_) => invalid += 1,
         }
     }
 
+    (events, invalid, lines.len())
+}
+
+fn limit_value(args: &[String]) -> usize {
+    arg_value(args, "--limit", "12")
+        .parse::<usize>()
+        .unwrap_or(12)
+}
+
+fn events_json(args: &[String]) {
+    let limit = limit_value(args);
+    let (events, invalid, total) = parsed_events();
+    let start = events.len().saturating_sub(limit);
     let payload = json!({
-        "schema": "sevenos.daemon.snapshot.v1",
-        "state": "ready",
-        "event_file": event_file().to_string_lossy(),
-        "event_count": lines.len().saturating_sub(invalid),
+        "schema": "sevenos.events.v1",
+        "path": event_file().to_string_lossy(),
+        "count": events.len().saturating_sub(start),
+        "total": events.len(),
         "invalid_event_count": invalid,
+        "raw_line_count": total,
+        "events": events[start..],
+        "writer": "seven-daemon",
+    });
+    println!(
+        "{}",
+        serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string())
+    );
+}
+
+fn summary_json() {
+    let (events, invalid, total) = parsed_events();
+    let mut by_source: Vec<(String, usize)> = Vec::new();
+
+    for event in &events {
+        let source = event
+            .get("source")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        count_key(&mut by_source, source);
+    }
+
+    let payload = json!({
+        "schema": "sevenos.events.summary.v1",
+        "path": event_file().to_string_lossy(),
+        "total": events.len(),
+        "invalid_event_count": invalid,
+        "raw_line_count": total,
         "sources": serde_json::from_str::<Value>(&json_counts(&by_source)).unwrap_or_else(|_| json!({})),
-        "states": serde_json::from_str::<Value>(&json_counts(&by_state)).unwrap_or_else(|_| json!({})),
-        "writers": serde_json::from_str::<Value>(&json_counts(&by_writer)).unwrap_or_else(|_| json!({})),
-        "last_event": last,
+        "last": events.last(),
+        "writer": "seven-daemon",
     });
     println!(
         "{}",
@@ -249,6 +308,10 @@ fn main() {
         serve();
     } else if action == "emit" {
         std::process::exit(emit(&args));
+    } else if action == "events" {
+        events_json(&args);
+    } else if action == "summary" || action == "summary-json" {
+        summary_json();
     } else if action == "snapshot" {
         snapshot();
     } else if args.iter().any(|arg| arg == "--json" || arg == "json") {

@@ -78,6 +78,7 @@ Les piliers du projet sont :
 - Debut de migration Bash vers Rust : `seven events log` prefere maintenant `seven-daemon emit` pour ecrire les evenements SevenBus, avec fallback Bash/Python si le daemon n'est pas disponible.
 - Ajout de `seven core snapshot --json` : SevenDaemon lit maintenant le journal SevenBus et expose un resume natif des sources, etats, writers et dernier evenement.
 - Renforcement du snapshot SevenDaemon avec `serde_json` : les evenements sont parses par Rust, les lignes invalides sont comptees separement, et `last_event` reste un vrai objet JSON.
+- Migration supplementaire hors Bash : `seven events --json` et `seven events summary-json` preferent maintenant `seven-daemon events` / `seven-daemon summary`, avec fallback Bash conserve.
 - Ajout de la frontiere C : `seven-core/bus-c` et `sevenbus-probe --json` preparent les futures capacites IPC/hardware de SevenBus sans deplacer la logique produit vers C.
 - Integration de Seven Core dans `seven state --json`, Seven Server, Seven Hub Native, le registre `seven actions`, le phase gate, le manifeste installable et les checks.
 - Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.

@@ -178,6 +178,18 @@ without parsing shell output. The reader is implemented with `serde_json` and
 reports invalid event lines separately, so corrupted local event history does
 not break the whole OS state contract.
 
+The third migration is event listing and summaries:
+
+```text
+seven events --json
+seven events summary-json
+  -> seven-daemon events --json
+  -> seven-daemon summary --json
+```
+
+The public commands keep their Bash entrypoints for compatibility, but the
+event stream is now read by the Rust runtime when available.
+
 ## SevenBus
 
 SevenBus is the future local event and command bus for SevenOS.

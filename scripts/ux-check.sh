@@ -348,12 +348,16 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q '"invalid_event_count"' <<<"$core_snapshot_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" events --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" summary --json | python -m json.tool >/dev/null &&
    XDG_STATE_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-daemon" emit --source ux --type preview --message "ux event" --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null &&
    grep -q 'serde_json' "$ROOT_DIR/seven-core/daemon/Cargo.toml" &&
    grep -q 'Typed SevenBus reader' <<<"$core_json" &&
+   grep -q 'Rust event list reader' <<<"$core_json" &&
    grep -q 'C SevenBus probe' <<<"$core_json" &&
    grep -q 'seven-daemon emit' "$ROOT_DIR/scripts/events.sh" &&
+   grep -Fq '"$ROOT_DIR/bin/seven-daemon" events' "$ROOT_DIR/scripts/events.sh" &&
    grep -q 'ExecStart=/usr/bin/env seven-daemon serve' "$ROOT_DIR/systemd/user/seven-daemon.service" &&
    grep -q 'Wants=seven-daemon.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
    grep -q '"core"' <<<"$state_json" &&
@@ -662,7 +666,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$core_snapshot_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
    grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
-   grep -q '"schema": "sevenos.events.v1"' <<<"$events_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.events.v1"' <<<"$events_json" &&
    grep -q '"schema": "sevenos.insights.v1"' <<<"$insights_json" &&
    grep -q '"schema": "sevenos.welcome.v1"' <<<"$welcome_json" &&
    grep -q '"schema": "sevenos.welcome-plan.v1"' <<<"$welcome_plan_json" &&

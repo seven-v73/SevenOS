@@ -131,6 +131,7 @@ components = [
     {"key": "daemon_cli", "title": "Seven daemon CLI", "state": os.environ["DAEMON_BIN_STATE"], "detail": "bin/seven-daemon"},
     {"key": "bus_writer", "title": "Rust SevenBus writer", "state": os.environ["DAEMON_BIN_STATE"], "detail": "seven-daemon emit"},
     {"key": "bus_reader", "title": "Typed SevenBus reader", "state": os.environ["DAEMON_JSON_STATE"], "detail": "serde_json snapshot parser"},
+    {"key": "events_reader", "title": "Rust event list reader", "state": os.environ["DAEMON_JSON_STATE"], "detail": "seven-daemon events / summary"},
     {"key": "bus_c_probe", "title": "C SevenBus probe", "state": "OK" if os.environ["BUS_C_STATE"] == "OK" and os.environ["BUS_C_BIN_STATE"] == "OK" else "MISS", "detail": "sevenbus-probe"},
     {"key": "c_toolchain", "title": "C toolchain", "state": "OK" if os.environ["CC_STATE"] == "OK" and os.environ["MAKE_STATE"] == "OK" else "MISS", "detail": "cc + make for low-level IPC probes"},
     {"key": "daemon_service", "title": "Seven daemon service", "state": os.environ["DAEMON_SERVICE_STATE"], "detail": "seven-daemon.service"},

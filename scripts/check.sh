@@ -269,11 +269,15 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" events --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" summary --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null
 SEVENOS_BUS_PARSE_HOME="$(mktemp -d)"
 mkdir -p "$SEVENOS_BUS_PARSE_HOME/sevenos"
 printf '%s\n' '{"schema":"sevenos.event.v1","source":"core","type":"check","state":"OK","message":"valid","writer":"seven-daemon"}' 'invalid-json' > "$SEVENOS_BUS_PARSE_HOME/sevenos/events.jsonl"
 XDG_STATE_HOME="$SEVENOS_BUS_PARSE_HOME" "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("invalid_event_count") == 1 and data.get("event_count") == 1 else 1)'
+XDG_STATE_HOME="$SEVENOS_BUS_PARSE_HOME" "$ROOT_DIR/bin/seven-daemon" events --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("invalid_event_count") == 1 and data.get("count") == 1 and data.get("writer") == "seven-daemon" else 1)'
+XDG_STATE_HOME="$SEVENOS_BUS_PARSE_HOME" "$ROOT_DIR/scripts/events.sh" --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("invalid_event_count") == 1 and data.get("writer") == "seven-daemon" else 1)'
 rm -rf "$SEVENOS_BUS_PARSE_HOME"
 SEVENOS_BUS_TEST_HOME="$(mktemp -d)"
 XDG_STATE_HOME="$SEVENOS_BUS_TEST_HOME" "$ROOT_DIR/bin/seven-daemon" emit --source check --type preview --message "check event" --json | python -m json.tool >/dev/null

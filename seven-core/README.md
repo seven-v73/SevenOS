@@ -65,6 +65,8 @@ The daemon is now launchable through:
 ```bash
 seven-daemon --json
 seven-daemon snapshot --json
+seven-daemon events --json
+seven-daemon summary --json
 seven-daemon emit --source core --type event --message "SevenBus event"
 seven-daemon serve
 seven core install-service
@@ -81,6 +83,10 @@ logic into a system language.
 count, invalid event count, source counts, state counts, writer counts and the
 last valid event. The reader uses `serde_json`, which keeps Core state
 inspection out of fragile shell text parsing.
+
+`seven events --json` and `seven events summary-json` now prefer the same Rust
+reader through `seven-daemon events` and `seven-daemon summary`, with the Bash
+reader kept as a compatibility fallback.
 
 The current service is a user service:
 

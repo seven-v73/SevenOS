@@ -108,6 +108,11 @@ PY
 }
 
 json_events() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" events --limit "$LIMIT" --json
+    return 0
+  fi
+
   EVENT_FILE="$EVENT_FILE" LIMIT="$LIMIT" python - <<'PY'
 import json
 import os
@@ -134,6 +139,11 @@ PY
 }
 
 summary_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" summary --json
+    return 0
+  fi
+
   EVENT_FILE="$EVENT_FILE" python - <<'PY'
 import json
 from collections import Counter

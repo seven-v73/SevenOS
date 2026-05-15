@@ -133,6 +133,7 @@ Implemented:
 - `seven-daemon` Rust runtime scaffold with a user service path through `seven core install-service`
 - Rust-backed SevenBus event emission through `seven-daemon emit`, with Bash fallback kept for compatibility
 - daemon-native SevenBus state snapshots through `seven core snapshot --json`, backed by typed Rust JSON parsing
+- daemon-native event list and summary reads through `seven-daemon events` and `seven-daemon summary`
 - C-boundary SevenBus probe through `sevenbus-probe --json` for future low-level IPC/hardware-adjacent work
 - `seven architecture` product/system architecture map
 - `seven repair` guided repair planner
