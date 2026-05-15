@@ -10,6 +10,7 @@ Phase 1 is intentionally local-first and non-destructive.
 
 - `seven-server`: local system backend and monitoring API
 - `seven-deploy`: project detector and deployment plan generator
+- `seven-core`: system experience layer and SevenBus contract provider
 - `seven server`: controller entrypoint
 - `seven deploy`: deployment entrypoint
 
@@ -74,6 +75,9 @@ curl http://127.0.0.1:7777/actions
 curl http://127.0.0.1:7777/stack
 curl http://127.0.0.1:7777/shell
 curl http://127.0.0.1:7777/shell-plan
+curl http://127.0.0.1:7777/core
+curl http://127.0.0.1:7777/core-plan
+curl http://127.0.0.1:7777/bus
 curl http://127.0.0.1:7777/experience
 curl http://127.0.0.1:7777/shield
 curl http://127.0.0.1:7777/shield-plan
@@ -101,6 +105,9 @@ GET  /packages
 GET  /packages-plan
 GET  /manifest
 GET  /actions
+GET  /core
+GET  /core-plan
+GET  /bus
 GET  /experience
 GET  /shield
 GET  /shield-plan

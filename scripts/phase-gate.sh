@@ -93,6 +93,7 @@ profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--
 packages = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"summary": {"total": 0}, "next": []})
 identity = command_json([os.path.join(ROOT, "scripts/identity.sh"), "current", "--json"], {"pack": {"key": "unknown"}})
 stack = command_json([os.path.join(ROOT, "scripts/stack.sh"), "--json"], {"summary": {"checks_ok": 0, "checks_total": 1}})
+core = command_json([os.path.join(ROOT, "scripts/core.sh"), "status", "--json"], {"state": "MISS", "components": []})
 
 
 def band(value):
@@ -131,6 +132,7 @@ package_total = (packages.get("summary") or {}).get("total", 0)
 stack_summary = stack.get("summary") or {}
 stack_ok = stack_summary.get("checks_ok", 0)
 stack_total = stack_summary.get("checks_total", 1)
+core_state = core.get("state", "MISS")
 
 gates = [
     gate("readiness", "OS readiness", readiness.get("percent", 0), 85, "seven readiness", "block", "Minimum product readiness before B3."),
@@ -196,6 +198,16 @@ gates = [
         "band": "ready" if stack_ok >= max(stack_total - 1, 0) else "open",
         "command": "seven stack doctor",
         "detail": "AGS and Rust should enter in a controlled B3 order, not as parallel rewrites.",
+    },
+    {
+        "key": "core",
+        "title": "Seven Core foundation",
+        "state": "PASS" if core_state in ("FOUNDATION", "READY_FOR_DAEMON") else "WARN",
+        "actual": core_state,
+        "target": "FOUNDATION",
+        "band": core_state.lower(),
+        "command": "seven core plan",
+        "detail": "SevenOS needs a named system experience layer before replacing script surfaces with daemon-backed UI.",
     },
 ]
 

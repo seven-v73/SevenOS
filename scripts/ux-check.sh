@@ -53,6 +53,10 @@ require_file "docs/STACK_STRATEGY.md"
 require_file "docs/PRODUCTIZATION.md"
 require_file "docs/TEST_MACHINE.md"
 require_file "docs/PRE_PUSH.md"
+require_file "seven-core/README.md"
+require_file "seven-core/bus-schema.json"
+require_file "seven-core/daemon/Cargo.toml"
+require_file "seven-core/daemon/src/main.rs"
 require_file "sevenos.dotinst"
 require_file "installer/calamares/README.md"
 require_file "installer/calamares/settings.conf"
@@ -152,6 +156,7 @@ require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/stack.sh"
 require_executable "scripts/shell.sh"
+require_executable "scripts/core.sh"
 require_executable "scripts/identity.sh"
 require_executable "scripts/experience.sh"
 require_executable "scripts/control-plane.sh"
@@ -315,10 +320,27 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'identity.status' <<<"$actions_json" &&
    grep -q 'identity.packs' <<<"$actions_json" &&
    grep -q 'identity.current' <<<"$actions_json" &&
+   grep -q 'core.status' <<<"$actions_json" &&
+   grep -q 'core.bus' <<<"$actions_json" &&
    grep -q '"actions"' <<<"$state_json"; then
   ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
 else
   fail "SevenOS action registry should expose machine-readable UI actions"
+fi
+
+core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
+core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
+core_bus_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core bus --json)"
+if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
+   grep -Eq '"state": "(FOUNDATION|READY_FOR_DAEMON)"' <<<"$core_json" &&
+   grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
+   grep -q '"schema": "sevenos.bus.v1"' <<<"$core_bus_json" &&
+   grep -q '"core"' <<<"$state_json" &&
+   grep -q 'SevenBus' "$ROOT_DIR/seven-core/README.md" &&
+   grep -q 'sevenos.daemon.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs"; then
+  ok "Seven Core exposes a real system experience layer contract"
+else
+  fail "Seven Core should expose status, plan, bus schema and daemon scaffold"
 fi
 
 if grep -q 'exec-once = seven-session' "$ROOT_DIR/hyprland/hyprland.conf"; then
@@ -496,6 +518,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def stack_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def shell_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def core_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def core_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def profile_gaps_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def profile_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def experience_payload' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -527,6 +551,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'Phase Gate' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Stack Strategy' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Seven Shell' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Seven Core' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -Fq 'seven stack --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -Fq 'seven phase-gate --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -580,6 +605,8 @@ windows_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows plan --json
 installer_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer status --json)"
 installer_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer plan --json)"
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
+core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
+core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
@@ -607,6 +634,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$installer_json" >/dev/null &&
    python -m json.tool <<<"$installer_plan_json" >/dev/null &&
    python -m json.tool <<<"$packages_plan_json" >/dev/null &&
+   python -m json.tool <<<"$core_json" >/dev/null &&
+   python -m json.tool <<<"$core_plan_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
    grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
    grep -q '"schema": "sevenos.events.v1"' <<<"$events_json" &&
@@ -628,12 +657,14 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema":"sevenos.installer.v1"' <<<"$installer_json" &&
    grep -q '"schema": "sevenos.installer-plan.v1"' <<<"$installer_plan_json" &&
    grep -q '"schema": "sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
+   grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
+   grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -q '"processes"' <<<"$ecosystem_json" &&
    grep -q 'SevenOS All-In-One Process Map' <<<"$ecosystem_processes" &&
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","experience","control","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","core","experience","control","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"

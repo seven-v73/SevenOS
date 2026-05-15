@@ -149,6 +149,20 @@ def shell_payload() -> dict:
         return {"schema": "sevenos.shell.v1", "state": "unknown", "surfaces": []}
 
 
+def core_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "core.sh"), "status", "--json"))
+    except Exception:
+        return {"schema": "sevenos.core.v1", "state": "unknown", "components": []}
+
+
+def core_plan_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "core.sh"), "plan", "--json"))
+    except Exception:
+        return {"schema": "sevenos.core-plan.v1", "summary": {}, "next": []}
+
+
 def experience_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "experience.sh"), "--json"))
@@ -258,6 +272,8 @@ def status_text() -> str:
     ecosystem = ecosystem_payload()
     stack = stack_payload()
     shell = shell_payload()
+    core = core_payload()
+    core_plan = core_plan_payload()
     experience = experience_payload()
     shield = shield_payload()
     server = server_payload()
@@ -287,6 +303,7 @@ def status_text() -> str:
         f"Ecosystem: {active_modules} active, {preview_modules} preview, {len(ecosystem.get('processes', []))} processes\n"
         f"Stack: {stack.get('phase', 'B2-B3')} · next {next_stack}\n"
         f"Shell: {shell.get('state', 'unknown')} · {len(shell.get('surfaces', []))} surfaces\n"
+        f"Core: {core.get('state', 'unknown')} · {core_plan.get('summary', {}).get('total', 0)} actions\n"
         f"Experience: {experience.get('percent', 0)}% ({experience.get('score', 0)}/{experience.get('max', 0)})\n"
         f"Shield: {shield.get('posture', 'unknown')} ({shield.get('percent', 0)}%)\n"
         f"Server: {server.get('service', {}).get('state', 'MISS')}\n"
@@ -448,6 +465,8 @@ def run_gui() -> int:
                 ecosystem = ecosystem_payload()
                 stack = stack_payload()
                 shell = shell_payload()
+                core = core_payload()
+                core_plan = core_plan_payload()
                 experience = experience_payload()
                 shield = shield_payload()
                 shield_plan = shield_plan_payload()
@@ -517,6 +536,8 @@ def run_gui() -> int:
                     ("Ecosystem", f"{active_modules} active modules · {preview_modules} preview · {len(ecosystem.get('processes', []))} processes"),
                     ("Stack Strategy", f"{stack.get('phase', 'B2-B3')} · next: {next_stack}"),
                     ("Seven Shell", f"{shell.get('state', 'unknown')} · {shell.get('strategy', 'AGS + TypeScript shell')}"),
+                    ("Seven Core", f"{core.get('state', 'unknown')} · {core.get('role', 'system experience layer')}"),
+                    ("Seven Core plan", f"{core_plan.get('summary', {}).get('total', 0)} core actions · first: {(core_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Root", str(ROOT)),
                 ):
                     group.add(make_row(title_text, subtitle))

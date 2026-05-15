@@ -146,6 +146,13 @@ def handle_shell(args):
     run_script(args, "scripts/shell.sh", *extra)
 
 
+def handle_core(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/core.sh", *extra)
+
+
 def handle_identity(args):
     extra = [args.action, *args.extra]
     if args.json:
@@ -270,6 +277,9 @@ def main():
     shell_parser.add_argument("action", nargs="?", default="status")
     shell_parser.add_argument("--json", action="store_true", help="print machine-readable shell status or plan")
     shell_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    core_parser = subparsers.add_parser("core", help="inspect Seven Core and SevenBus foundation")
+    core_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "bus", "schema"))
+    core_parser.add_argument("--json", action="store_true", help="print machine-readable core status, plan or bus schema")
     identity_parser = subparsers.add_parser("identity", help="show SevenOS African first identity language")
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
@@ -386,6 +396,8 @@ def main():
         handle_stack(args)
     elif args.command == "shell":
         handle_shell(args)
+    elif args.command == "core":
+        handle_core(args)
     elif args.command == "identity":
         handle_identity(args)
     elif args.command == "experience":

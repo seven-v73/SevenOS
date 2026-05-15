@@ -1,0 +1,37 @@
+{
+  "schema": "sevenos.bus.v1",
+  "description": "Typed event envelope for the SevenOS System Experience Layer.",
+  "transport_now": "jsonl-user-state",
+  "transport_future": "local-typed-ipc",
+  "event_path": "~/.local/state/sevenos/events.jsonl",
+  "envelope": {
+    "schema": "sevenos.event.v1",
+    "timestamp": "RFC3339 UTC timestamp",
+    "source": "core | hub | shell | profile | shield | windows | server | installer | package | user",
+    "type": "status | action | preview | apply | error | notification | phase | profile | security",
+    "state": "OK | READY | RUN | PART | WARN | MISS | FAIL",
+    "message": "Human-readable event summary",
+    "command": "Optional command that produced or will resolve the event",
+    "payload": "Optional future object for typed event data"
+  },
+  "sources": [
+    "core",
+    "hub",
+    "shell",
+    "profile",
+    "shield",
+    "windows",
+    "server",
+    "installer",
+    "package",
+    "identity",
+    "user"
+  ],
+  "rules": [
+    "JSON output must never be followed by human text.",
+    "Every UI action should have an action id in sevenos.actions.v1.",
+    "Unsafe actions must declare impact before execution.",
+    "The event bus must remain local-only until authentication exists.",
+    "UI surfaces consume contracts; they do not parse decorative text."
+  ]
+}

@@ -105,11 +105,15 @@ Responsibilities:
 Near-term implementation:
 
 ```text
+seven core --json
+seven core plan --json
+seven core bus --json
 seven state --json
 seven control --json
 seven events --json
 seven insights --json
 Seven Server local API
+seven-core/daemon Rust scaffold
 ```
 
 Future implementation:
@@ -120,6 +124,21 @@ seven-daemon in Rust
 
 Rust enters here because long-running orchestration benefits from memory safety,
 typed events and predictable performance.
+
+Current repository anchor:
+
+```text
+seven-core/
+  README.md
+  bus-schema.json
+  daemon/
+    Cargo.toml
+    src/main.rs
+```
+
+This is the B2-B3 bridge. The shell and Hub can consume Core state today, while
+the Rust daemon remains a small, testable scaffold instead of a premature
+rewrite.
 
 ## SevenBus
 
@@ -140,7 +159,7 @@ and permission policy exist.
 Initial form:
 
 ```text
-JSON contracts + Seven Server endpoints
+JSON contracts + Seven Server endpoints + local JSONL event journal
 ```
 
 Future form:

@@ -71,6 +71,9 @@ Les piliers du projet sont :
 - Separation claire entre `bin/`, `scripts/`, `profiles/`, `security/`, `vm/`, `server/`, `sevenpkg/`, `seven-hub/`, `identity/`, `branding/`, `installer/` et `archiso/`.
 - Ajout des documents de vision, architecture, UX, criteres OS, deploiement et test machine.
 - Ajout de `docs/SYSTEM_EXPERIENCE_LAYER.md` comme reference principale : SevenOS est defini comme une couche d'experience systeme au-dessus du kernel Linux et de la base Arch, avec Seven Core, SevenBus, Seven Shell, Seven Hub, IA et hardware intelligence comme direction long terme.
+- Ajout de `seven-core/` comme premiere implementation concrète de cette direction : README d'architecture, schema `sevenos.bus.v1`, scaffold Rust `seven-daemon` et contrat `seven core status --json`.
+- Ajout de `seven core plan --json`, `seven core bus --json` et `seven core doctor` pour rendre la couche Seven Core observable avant le passage au daemon.
+- Integration de Seven Core dans `seven state --json`, Seven Server, Seven Hub Native, le registre `seven actions`, le phase gate, le manifeste installable et les checks.
 - Ajout de checks globaux avec `scripts/check.sh`, `scripts/ux-check.sh` et scripts de diagnostic.
 - Ajout de `sevenos.dotinst`, manifeste d'installation et de migration inspire des logiques Hyprland matures : metadata, composants installables, chemins proteges, plan de restauration et checks de validation.
 - Ajout de `seven manifest` comme point d'entree pour valider le manifeste, afficher les futurs composants paquetables et lister les chemins utilisateur a preserver.
@@ -85,6 +88,7 @@ Les piliers du projet sont :
 - Ajout de commandes UX : `seven-session`, `seven-wallpaper`, `seven-power`, `seven-files`, `seven-welcome`, `seven-country`.
 - Ajout de sorties JSON stables pour `seven status --json`, `seven profile status --json`, `sevenpkg status --json` et `sevenpkg meta --json`.
 - Ajout de `seven state --json`, snapshot machine unifie pour les interfaces natives, l'automatisation et le futur Seven Server.
+- Ajout de `seven core status --json` comme contrat de la couche System Experience Layer : etat des contrats, SevenBus, journal local, API, daemon Rust et toolchain.
 - Ajout de `seven actions --json`, registre central des actions SevenOS pour partager les memes commandes entre Hub, Waybar, Quick Settings et les futures surfaces natives.
 - Ajout de `seven actions category <name>` pour fournir des listes d'actions ciblees aux petits panneaux systeme sans dupliquer les commandes.
 - Ajout de `seven manifest show|doctor|restore-plan|protected|components` pour preparer les upgrades, le packaging pacman et la future ISO sans ecraser les choix utilisateur.

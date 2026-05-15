@@ -24,7 +24,7 @@ The promise is:
 
 | Layer | Role | Current Modules |
 | --- | --- | --- |
-| System Core | entrypoints, bootstrap, status, repair and phase checks | `install.sh`, `bootstrap.sh`, `bin/seven`, `scripts/*.sh` |
+| System Core | entrypoints, bootstrap, Seven Core, SevenBus, status, repair and phase checks | `install.sh`, `bootstrap.sh`, `bin/seven`, `scripts/*.sh`, `seven-core/` |
 | Package Layer | package manifests, meta-packages, future package boundaries and software sources | `sevenpkg`, `scripts/packages-*.txt`, `sevenpkg/metapackages.json`, `sevenos.dotinst` |
 | Service Layer | local services, deployment, VM and background session | `seven-session`, `seven-server`, `seven-deploy`, `vm/` |
 | UI Layer | desktop shell, hub, files, theme and visible controls | Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files, Tauri prototype, native GTK target |
@@ -106,6 +106,10 @@ Rules:
   every promising stack enter the system at once.
 - `seven shell status --json` and `seven shell plan --json` define the B3 AGS
   shell migration without removing Waybar/Rofi/GTK fallbacks too early.
+- `seven core status --json`, `seven core plan --json` and
+  `seven core bus --json` define the System Experience Layer foundation. They
+  expose SevenBus, the local event journal, daemon scaffold and Core readiness
+  to Seven Hub, Seven Server and future Seven Shell surfaces.
 - `seven profile gaps --json` is the profile completeness contract. It exposes
   missing packages, unavailable profile apps and install/open commands so
   profiles behave like real work modes.

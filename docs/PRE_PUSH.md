@@ -11,6 +11,10 @@ Run this before pushing a SevenOS phase to GitHub.
 ./scripts/stack.sh --json
 ./scripts/shell.sh status --json
 ./scripts/shell.sh plan --json
+./scripts/core.sh status --json
+./scripts/core.sh plan --json
+./scripts/core.sh bus --json
+./scripts/core.sh doctor
 ./scripts/manifest.sh doctor
 ./scripts/migrate.sh plan
 ./scripts/installer-stack.sh doctor
@@ -37,6 +41,7 @@ test -s docs/SYSTEM_EXPERIENCE_LAYER.md
 ./bin/seven ecosystem
 ./bin/seven stack
 ./bin/seven shell preview
+./bin/seven core
 ./bin/seven architecture doctor
 ./bin/seven manifest restore-plan
 ./bin/seven migrate plan

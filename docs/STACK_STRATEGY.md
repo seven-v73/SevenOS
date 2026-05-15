@@ -47,6 +47,28 @@ Seven Shell should replace the most visible Rofi surfaces gradually:
 
 Rofi remains a fallback, not the main OS control plane.
 
+## Seven Core Contract
+
+Use:
+
+```bash
+seven core
+seven core status --json
+seven core plan --json
+seven core bus --json
+seven core doctor
+```
+
+The JSON contracts are:
+
+- `sevenos.core.v1`
+- `sevenos.core-plan.v1`
+- `sevenos.bus.v1`
+
+Seven Core is the B2-B3 bridge between the existing Bash/Python contracts and
+the future Rust daemon. It makes the system experience layer visible today
+without forcing a rewrite before the Hub, Shell and Server can consume it.
+
 ## Rust Boundary
 
 Rust enters after the shell contracts are stable, as:

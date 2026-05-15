@@ -29,6 +29,7 @@
         "scripts/insights.sh",
         "scripts/stack.sh",
         "scripts/shell.sh",
+        "scripts/core.sh",
         "scripts/status.sh",
         "scripts/state.sh",
         "security/shield-status.sh"
@@ -64,6 +65,15 @@
         "scripts/shell.sh",
         "scripts/packages-shell-ags.txt",
         "docs/STACK_STRATEGY.md"
+      ]
+    },
+    {
+      "id": "sevenos-core",
+      "title": "System Experience Layer core",
+      "paths": [
+        "seven-core",
+        "scripts/core.sh",
+        "docs/SYSTEM_EXPERIENCE_LAYER.md"
       ]
     },
     {

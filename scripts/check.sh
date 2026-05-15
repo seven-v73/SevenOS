@@ -33,6 +33,7 @@ bash -n \
   "$ROOT_DIR/scripts/ecosystem.sh" \
   "$ROOT_DIR/scripts/stack.sh" \
   "$ROOT_DIR/scripts/shell.sh" \
+  "$ROOT_DIR/scripts/core.sh" \
   "$ROOT_DIR/scripts/experience.sh" \
   "$ROOT_DIR/scripts/control-plane.sh" \
   "$ROOT_DIR/scripts/events.sh" \
@@ -93,6 +94,12 @@ python -m json.tool "$ROOT_DIR/sevenos.dotinst" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/package.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/package-lock.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" >/dev/null
+python -m json.tool "$ROOT_DIR/seven-core/bus-schema.json" >/dev/null
+if command -v cargo >/dev/null 2>&1; then
+  cargo check --manifest-path "$ROOT_DIR/seven-core/daemon/Cargo.toml" >/dev/null
+else
+  log_warn "cargo not found; skipping seven-daemon scaffold check."
+fi
 
 for identity_file in \
   "$ROOT_DIR/identity/STYLE.md" \
@@ -248,6 +255,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" identity packs --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" identity current --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" identity doctor >/dev/null
+"$ROOT_DIR/bin/seven" core status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" core plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven" profile status --json >/dev/null
 "$ROOT_DIR/bin/seven" profile current --json >/dev/null
 "$ROOT_DIR/bin/seven" profile apps --json >/dev/null
@@ -425,6 +436,11 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run ecosystem roadmap >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run stack >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run stack --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run stack doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core status --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core bus --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell plan >/dev/null

@@ -31,6 +31,7 @@ done
 layers_tsv() {
   cat <<'EOF'
 system-contracts	B2	active	Bash + Python	Stable JSON contracts, installer scripts, Seven Hub Native bridge	Keep until B3 is measurable.
+seven-core	B2-B3	active	Bash + Python now, Rust scaffold	System experience layer, SevenBus, event journal, daemon bridge	Keep contracts stable before supervising daemon.
 native-hub	B2	active	GTK4 + libadwaita + Python	Control Center foundation, profiles, actions, phase gate	Polish before replacing shell surfaces.
 seven-server	B2-B3	preview	Python now, Rust later	Local API, monitoring, orchestration and deployment state	Do not expose remote control before auth model.
 seven-shell	B3	next	AGS + TypeScript + GJS	Hyprland panels, dock, launcher, notifications, widgets	Replace Rofi panels gradually, keep Rofi fallback.
@@ -101,6 +102,7 @@ checks = [
     {"key": "typescript", "label": "TypeScript", "state": "OK" if pacman_installed("typescript") else "MISS", "command": "./install.sh shell-ags"},
     {"key": "nodejs", "label": "Node.js", "state": "OK" if command_exists("node") else "MISS", "command": "./install.sh hub-gui-stack"},
     {"key": "rust", "label": "Rust", "state": "OK" if command_exists("rustc") or pacman_installed("rust") else "MISS", "command": "./install.sh hub-gui-stack"},
+    {"key": "seven-core", "label": "Seven Core", "state": "OK" if os.path.exists(os.path.join(ROOT, "seven-core", "bus-schema.json")) else "MISS", "command": "seven core doctor"},
     {"key": "python", "label": "Python", "state": "OK" if command_exists("python") else "MISS", "command": "./install.sh base"},
     {"key": "ags-runtime", "label": "AGS runtime", "state": "OK" if command_exists("ags") else "AUR", "command": "Install AGS from the chosen Arch/AUR workflow before replacing panels"},
 ]
@@ -117,7 +119,7 @@ print(json.dumps({
     "schema": "sevenos.stack.v1",
     "phase": "B2-B3",
     "principle": "Introduce one major stack at a time: JSON contracts, native Hub, AGS shell, Rust daemon, AI, apps, ecosystem.",
-    "current_focus": ["JSON contracts", "Seven Hub Native", "Seven Server preparation"],
+    "current_focus": ["JSON contracts", "Seven Core", "Seven Hub Native", "Seven Server preparation"],
     "next_focus": ["Seven Shell AGS", "seven-daemon Rust"],
     "layers": layers,
     "rules": rules,
@@ -165,6 +167,9 @@ doctor() {
 
   for file in \
     "docs/STACK_STRATEGY.md" \
+    "seven-core/README.md" \
+    "seven-core/bus-schema.json" \
+    "seven-core/daemon/Cargo.toml" \
     "scripts/packages-shell-ags.txt" \
     "scripts/stack.sh" \
     "bin/seven" \

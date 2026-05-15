@@ -41,6 +41,7 @@ runtime_deps = {
     "sevenos-branding": ["bash", "librsvg"],
     "sevenos-hyprland": ["hyprland", "waybar", "rofi", "kitty", "mako", "swayidle", "swaylock"],
     "sevenos-shell": ["gjs", "typescript", "gtk4", "libadwaita", "libgtop", "nodejs", "npm"],
+    "sevenos-core": ["bash", "python", "rust", "systemd"],
     "sevenos-hub": ["gtk4", "libadwaita", "python-gobject", "webkit2gtk-4.1", "nodejs", "npm"],
     "sevenos-profiles": ["bash", "pacman"],
     "sevenos-server": ["python", "curl"],

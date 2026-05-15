@@ -26,6 +26,7 @@ It is built around foundation pillars:
 - `sevenos.dotinst` as the install, restore, migration and packaging contract
 - Seven Hub as the user-facing control center
 - Seven Server and Seven Deploy as the service/deployment foundation
+- Seven Core and SevenBus as the system experience layer foundation
 - Calamares/Archinstall as the install path foundation
 - GTK/libadwaita as the native Seven Hub direction
 - Tauri as a prototype/fallback for GUI experiments
@@ -128,12 +129,14 @@ Implemented:
 - `seven phase-gate --json` B2 -> B3 transition contract
 - `seven stack --json` stack discipline contract
 - `seven shell status --json` and `seven shell plan --json` AGS shell migration contracts
+- `seven core status --json`, `seven core plan --json` and `seven core bus --json` system experience contracts
 - `seven architecture` product/system architecture map
 - `seven repair` guided repair planner
 - `seven ecosystem` innovation roadmap
 - `seven manifest` install, restore and package-boundary inspector
 - `seven-server` local API foundation
 - `seven-deploy` deployment planner
+- `seven-core` foundation with SevenBus schema and `seven-daemon` Rust scaffold
 - Seven Shell AGS/TypeScript scaffold
 - Calamares installer profile scaffold
 - Seven Hub Tauri GUI scaffold
