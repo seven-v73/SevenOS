@@ -31,6 +31,18 @@ cd SevenOS
 chmod +x install.sh bootstrap.sh profiles/*.sh scripts/*.sh bin/* server/*.sh seven-hub/bin/*
 ```
 
+If the repository already exists on the test machine:
+
+```bash
+cd ~/SevenOS
+git status --short
+git pull --ff-only
+```
+
+If `git pull` says everything is up to date but the UI still looks old, you
+probably updated the repository without reapplying the installed user configs.
+Run the UX reapply step below after pulling.
+
 ## 3. Preview Before Installing
 
 Important:
@@ -59,6 +71,9 @@ Hyprland session unchanged.
 ./install.sh theme --dry-run
 ./install.sh branding --dry-run
 seven readiness || ./scripts/readiness.sh
+./bin/seven phase-gate --json | python -m json.tool
+./bin/seven stack --json | python -m json.tool
+./bin/seven shell plan --json | python -m json.tool
 ```
 
 If `seven` is not installed yet, use local paths:
@@ -192,6 +207,29 @@ Then log out and back into Hyprland.
 ./install.sh branding
 ./install.sh theme
 ./install.sh hub
+./install.sh post-install
+```
+
+After pulling updates from GitHub, this is the safest refresh sequence for the
+test machine:
+
+```bash
+git pull --ff-only
+./install.sh cli
+./install.sh hub
+./install.sh theme
+./install.sh branding
+seven post-install
+hyprctl reload
+```
+
+Then check the product contracts:
+
+```bash
+seven phase-gate --json | python -m json.tool
+seven stack --json | python -m json.tool
+seven shell status --json | python -m json.tool
+seven shell plan --json | python -m json.tool
 ```
 
 Open the main dashboard:
@@ -219,6 +257,25 @@ The legacy keyboard command palette is still available:
 ```bash
 seven-hub
 ```
+
+Seven Shell is currently a planned AGS/TypeScript layer, not the active shell.
+The active fallback remains Waybar + GTK shell panels + Rofi. You can inspect
+the planned migration with:
+
+```bash
+seven shell
+seven shell preview
+seven shell doctor
+```
+
+If you want to prepare the AGS foundation packages:
+
+```bash
+./install.sh shell-ags --yes
+```
+
+AGS itself may still require the chosen AUR/upstream workflow; SevenOS keeps it
+explicit until the repository policy is settled.
 
 Open the file manager:
 

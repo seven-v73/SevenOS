@@ -1,6 +1,6 @@
 # SevenOS Progress
 
-Derniere mise a jour : 2026-05-14
+Derniere mise a jour : 2026-05-15
 
 Ce document suit l'evolution de SevenOS : ce qui est deja en place, le niveau actuel du projet, les ameliorations recentes, et les prochaines etapes pour le faire passer d'une base Arch personnalisee a un vrai systeme d'exploitation coherent.
 
@@ -9,20 +9,31 @@ Ce document suit l'evolution de SevenOS : ce qui est deja en place, le niveau ac
 SevenOS est actuellement au niveau :
 
 ```text
-Foundation OS / Developer Preview
+Phase B2 / Product Consolidation Before ISO
 ```
 
 Cela signifie que SevenOS n'est plus seulement une idee ou un theme Arch. Le projet possede deja une architecture de distribution, une identite visuelle, des scripts d'installation, des profils metiers, un debut de Control Center, une couche Windows, une base ISO, une couche serveur et un gestionnaire logiciel maison.
 
 Le niveau actuel a progresse sur l'experience desktop : Waybar n'est plus seulement informative, les menus Rofi sont plus lisibles, et le lanceur d'applications suit maintenant une logique Launchpad plein ecran inspiree de macOS, adaptee a l'identite SevenOS.
 
-SevenOS entre maintenant dans la phase :
+SevenOS est maintenant dans la phase :
 
 ```text
-Phase B — OS Productization
+Phase B2 — consolidation produit avant passage B3
 ```
 
-Cette phase vise a reduire la dependance au terminal, masquer la complexite des scripts, et faire de Seven Hub la surface principale de controle du systeme.
+Cette phase vise a reduire la dependance au terminal, stabiliser les contrats JSON, rendre Seven Hub Native plus utile, preparer Seven Server, et introduire Seven Shell AGS/TypeScript sans casser le fallback Waybar/Rofi/GTK.
+
+Le phase gate actuel indique :
+
+```text
+decision: blocked
+pass: 1
+warn: 4
+block: 5
+```
+
+Les blocages principaux avant B3 sont : readiness, control plane, Shield, Seven Server et installateur.
 
 Le projet n'est pas encore au niveau :
 

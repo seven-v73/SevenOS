@@ -52,7 +52,8 @@ a public phase are:
 - complete Windows compatibility: Wine, Bottles, Lutris, KVM
 - complete Horizon/server profile: Go, Podman, Caddy
 - complete Calamares installer profile and package path
-- mature Seven Hub Tauri GUI beyond scaffold
+- mature Seven Hub Native beyond the current GTK/libadwaita foundation
+- prepare Seven Shell AGS/TypeScript without removing the stable fallback
 - enable Flatpak/Flathub defaults for creative and Windows bridge apps
 - start `seven-server` as a user service
 - commit generated project foundation cleanly
@@ -72,7 +73,7 @@ Before moving from foundation to public ISO work:
 
 - `decision`: `pass`, `warning` or `blocked`
 - `gates`: readiness, experience, control plane, Shield, Server, installer,
-  Windows Mode, profiles and software
+  Windows Mode, profiles, software and stack discipline
 - `next_commands`: the highest-impact commands to run before the next phase
 - `identity.active_pack`: the current African first accent pack
 

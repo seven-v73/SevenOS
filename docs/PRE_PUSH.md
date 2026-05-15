@@ -8,12 +8,16 @@ Run this before pushing a SevenOS phase to GitHub.
 ./scripts/check.sh
 ./scripts/ux-check.sh
 ./scripts/readiness.sh --json
+./scripts/stack.sh --json
+./scripts/shell.sh status --json
+./scripts/shell.sh plan --json
 ./scripts/manifest.sh doctor
 ./scripts/migrate.sh plan
 ./scripts/installer-stack.sh doctor
 ./seven-hub/gui-stack.sh doctor
 ./scripts/post-install.sh
 ./scripts/phase-gate.sh
+./scripts/phase-gate.sh --json
 git status --short
 ```
 
@@ -25,6 +29,8 @@ git status --short
 ./install.sh branding --dry-run
 ./install.sh iso --dry-run
 ./bin/seven ecosystem
+./bin/seven stack
+./bin/seven shell preview
 ./bin/seven architecture doctor
 ./bin/seven manifest restore-plan
 ./bin/seven migrate plan
@@ -57,8 +63,19 @@ git push origin main
 
 ## Current Release Caveat
 
-SevenOS is still a post-install layer and live ISO foundation. It is ready for
-test machines, but not yet a polished public installer distribution.
+SevenOS is still a post-install layer and live ISO foundation in Phase B2. It is
+ready for test machines, but not yet a polished public installer distribution.
+
+Before presenting a push as a phase upgrade, verify:
+
+```bash
+seven phase-gate --json | python -m json.tool
+seven stack --json | python -m json.tool
+seven shell plan --json | python -m json.tool
+```
+
+If the phase gate says `blocked`, the push can still be useful, but it should be
+described as consolidation work, not as a completed higher phase.
 
 ## Test-Machine Warning
 

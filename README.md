@@ -1,8 +1,10 @@
 # SevenOS
 
-SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, modular work profiles, security tooling, creative production, Windows compatibility, and an African first product identity.
+SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, modular work profiles, security tooling, creative production, Windows compatibility, local deployment, and an African first product identity.
 
-This repository currently contains foundations for **Phase 1, Phase 2, Phase 3, and early Phase 4**: post-install setup, Seven Hub, `seven`/`sevenpkg`, VM helpers, identity assets, server/deploy foundations, repair planning, and an early Archiso live profile. It is not yet a complete installable distribution.
+This repository is currently in **Phase B2 — product consolidation before ISO**. It contains the post-install OS layer, Seven Hub Native, `seven`/`sevenpkg`, profile contracts, Windows Mode helpers, identity assets, Seven Server/Deploy foundations, Seven Shell AGS planning, repair planning, and an early Archiso live profile.
+
+It is **not yet a complete standalone distribution**. The next major gate is **B3**, blocked until trust, server, installer and profile completeness improve.
 
 ## Vision
 
@@ -16,7 +18,9 @@ It is built around foundation pillars:
 - Seven Hub as the user-facing control center
 - Seven Server and Seven Deploy as the service/deployment foundation
 - Calamares/Archinstall as the install path foundation
-- Tauri as the future native Seven Hub GUI foundation
+- GTK/libadwaita as the native Seven Hub direction
+- Tauri as a prototype/fallback for GUI experiments
+- Seven Shell as the AGS + TypeScript shell direction for B3
 - Flatpak/Flathub as the mainstream application bridge
 - Seven Ecosystem as the roadmap for AI, cloud, marketplace, containers, automation, and identity modules
 
@@ -29,6 +33,7 @@ SevenOS aims to provide:
 - local deployment through `seven-server` and `seven-deploy`
 - future intelligent modules such as SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow, and SevenIdentity
 - a Seven Hub control center
+- a future Seven Shell layer for AGS panels, launcher, dock and widgets
 - an African first visual identity with obsidian, ancestral gold, clay, baobab green, and indigo accents
 - a vocabulary and workflow model that makes Linux easier to live with
 
@@ -106,30 +111,80 @@ Implemented:
 - package manifests
 - SevenOS install manifest with protected user paths
 - Hyprland, Waybar, Rofi, Kitty, Mako and Hyprpaper configuration
-- Seven Hub MVP
+- Seven Hub Native GTK/libadwaita foundation
+- Seven Hub Tauri GUI prototype
 - `seven` system controller
 - `sevenpkg` package/application manager
+- `seven state --json` unified machine state
+- `seven phase-gate --json` B2 -> B3 transition contract
+- `seven stack --json` stack discipline contract
+- `seven shell status --json` and `seven shell plan --json` AGS shell migration contracts
 - `seven architecture` product/system architecture map
 - `seven repair` guided repair planner
 - `seven ecosystem` innovation roadmap
 - `seven manifest` install, restore and package-boundary inspector
 - `seven-server` local API foundation
 - `seven-deploy` deployment planner
+- Seven Shell AGS/TypeScript scaffold
 - Calamares installer profile scaffold
 - Seven Hub Tauri GUI scaffold
 - Flatpak/Flathub bridge with Bottles candidate
 - initial Archiso profile and ISO build script
 - African first identity foundation
+- active African first accent pack preference
 - Windows Mode helper workflow
 
 Not implemented yet:
 
 - full Arch installation automation
 - final ISO installer flow
-- Seven Hub GUI
+- production-ready Seven Shell AGS desktop
+- production-ready Seven Hub settings panels
 - automated Windows VM provisioning
 - GPU passthrough automation
 - real SevenAI/SevenCloud/SevenStore implementations
+
+Current phase gate snapshot:
+
+```text
+Phase: B2
+Decision: blocked for B3
+Passing: user experience foundation
+Blocking: readiness, control plane score, Shield trust posture, Seven Server, installer path
+Warnings: Windows Mode, profile completeness, software plan, stack readiness
+```
+
+Run the live status with:
+
+```bash
+seven phase-gate --json
+seven stack --json
+seven shell plan --json
+```
+
+## Project Health Commands
+
+Use these before pushing or testing a new machine:
+
+```bash
+./scripts/design-check.sh
+./scripts/ux-check.sh
+./scripts/check.sh
+seven phase-gate --json | python -m json.tool
+seven state --json | python -m json.tool
+seven stack --json | python -m json.tool
+seven shell status --json | python -m json.tool
+seven shell plan --json | python -m json.tool
+```
+
+Expected current truth:
+
+```text
+SevenOS is coherent enough for test machines.
+SevenOS is not yet ready to be presented as a final standalone distro.
+Seven Shell is planned/foundation, not active replacement.
+AGS is prepared but not mandatory until the runtime workflow is settled.
+```
 
 ## Repository Layout
 
@@ -169,6 +224,8 @@ SevenOS/
 │   ├── bin/
 │   ├── install.sh
 │   └── seven-hub.desktop
+├── seven-shell/
+│   └── ags/
 └── archiso/
     └── profile/
 ```
@@ -193,6 +250,7 @@ Start here before making strategic changes:
 - `docs/VOCABULARY.md`
 - `docs/OS_CRITERIA.md`
 - `docs/ECOSYSTEM.md`
+- `docs/STACK_STRATEGY.md`
 - `docs/DEPLOYMENT.md`
 - `docs/PHASE_GATE.md`
 - `docs/TEST_MACHINE.md`
