@@ -267,6 +267,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core snapshot --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core health --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" shell status --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("runtime_health", {}).get("schema") == "sevenos.daemon.health.v1" else 1)'
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null

@@ -202,6 +202,17 @@ This is the beginning of Seven Core behaving like an OS runtime: lightweight,
 local and daemon-owned state that Hub/Shell can read without executing a chain
 of shell scripts.
 
+Seven Shell consumes that health contract:
+
+```text
+seven shell status --json
+  -> runtime_health
+  -> seven-daemon health --json
+```
+
+The shell layer should increasingly display daemon-owned state instead of
+launching independent probes for every widget.
+
 ## SevenBus
 
 SevenBus is the future local event and command bus for SevenOS.

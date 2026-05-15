@@ -55,15 +55,27 @@ json_string() {
   python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
 }
 
+core_health_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" health --json 2>/dev/null || printf 'null'
+  else
+    printf 'null'
+  fi
+}
+
 status_json() {
-  local runtime
+  local runtime health
   runtime="$(runtime_state)"
+  health="$(core_health_json)"
   printf '{'
   printf '"schema":"sevenos.shell.v1",'
   printf '"phase":"B3",'
   printf '"state":%s,' "$(printf '%s' "$runtime" | json_string)"
   printf '"strategy":"AGS + TypeScript shell with Rofi fallback",'
   printf '"fallback":"Waybar, Rofi and GTK shell panels remain active until AGS surfaces are ready",'
+  printf '"runtime_health":'
+  printf '%s' "$health"
+  printf ','
   printf '"surfaces":['
   printf '{"key":"quick-settings","state":%s,"current":"GTK/Rofi","target":"AGS"},' "$(printf '%s' "$(file_state bin/seven-shell-panel)" | json_string)"
   printf '{"key":"notifications","state":%s,"current":"GTK/Rofi","target":"AGS"},' "$(printf '%s' "$(file_state bin/seven-waybar-notifications)" | json_string)"
@@ -78,7 +90,7 @@ status_json() {
   printf '{"key":"nodejs","state":%s},' "$(printf '%s' "$(command_state node)" | json_string)"
   printf '{"key":"ags","state":%s}' "$(printf '%s' "$(command_state ags)" | json_string)"
   printf '],'
-  printf '"contracts":["seven state --json","seven actions --json","seven profile current --json","seven shell status --json"],'
+  printf '"contracts":["seven state --json","seven actions --json","seven profile current --json","seven core health --json","seven shell status --json"],'
   printf '"commands":{"install":"./install.sh shell-ags","plan":"seven shell plan","preview":"seven shell preview"}'
   printf '}\n'
 }
@@ -152,6 +164,23 @@ status() {
   printf 'state:       %s\n' "$(runtime_state)"
   printf 'strategy:    AGS + TypeScript shell with Rofi fallback\n'
   printf 'fallback:    Waybar, Rofi and GTK shell panels stay active\n'
+  CORE_HEALTH="$(core_health_json)" python - <<'PY'
+import json
+import os
+
+try:
+    health = json.loads(os.environ.get("CORE_HEALTH") or "null") or {}
+except json.JSONDecodeError:
+    health = {}
+
+runtime = health.get("runtime", {})
+memory = runtime.get("memory", {})
+session = health.get("session", {})
+if health:
+    print(f"core health: {health.get('state', 'unknown')}")
+    print(f"session:     {session.get('desktop') or 'unknown'} / {session.get('wayland_display') or 'no-wayland'}")
+    print(f"memory:      {memory.get('used_percent', 0)}% used")
+PY
   printf 'install:     ./install.sh shell-ags\n'
   printf 'next:        seven shell plan\n'
 }
@@ -224,6 +253,7 @@ preview() {
   printf '  - seven state --json\n'
   printf '  - seven actions --json\n'
   printf '  - seven profile current --json\n'
+  printf '  - seven core health --json\n'
   printf '  - seven shell status --json\n'
 }
 
