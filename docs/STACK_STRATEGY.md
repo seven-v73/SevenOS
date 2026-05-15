@@ -19,7 +19,7 @@ real friction.
 | Phase | Focus | Stack |
 | --- | --- | --- |
 | B2-B3 | JSON contracts, Hub Native, Seven Server preparation | Bash, Python, GTK4/libadwaita |
-| B3 | Seven Shell and long-running system core | AGS + TypeScript, Rust |
+| B3 | Seven Shell and long-running system core | AGS + TypeScript, Rust, small C probes |
 | Phase 4 | Intelligence and product apps | Python AI, Flutter/Qt/GTK apps |
 | Phase 5 | Store, Cloud, Sync and extensions | Rust, Python, Flutter/Qt, package registry |
 
@@ -80,6 +80,19 @@ Rust enters after the shell contracts are stable, as:
 
 Rust should not be introduced as a rewrite impulse. It enters where SevenOS
 needs a reliable long-running process.
+
+## C Boundary
+
+C is allowed only for the physical and nervous layer of SevenOS:
+
+- drivers and hardware-adjacent communication;
+- ultra-low-level IPC probes for SevenBus;
+- future power, input, audio and security hooks;
+- tiny audited binaries where ABI and startup cost matter.
+
+C must not become the Hub, the Shell, the profile engine or the ecosystem
+logic. The current C foothold is `sevenbus-probe`, a local IPC capability probe
+used to prepare SevenBus without moving product logic into C.
 
 ## Python Boundary
 

@@ -30,14 +30,14 @@ system layer above Linux or another kernel foundation.
 SevenOS should follow that path:
 
 ```text
-Hardware
-  -> Linux Kernel
-  -> Arch Base
+Kernel / Hardware Interface
+  -> Linux, drivers, libinput, ALSA, PipeWire
   -> Seven Core
   -> SevenBus
+  -> Seven Daemon Runtime
   -> Seven Shell
   -> Seven Hub
-  -> Seven Apps, Profiles, AI and Cloud
+  -> Profiles / Ecosystem
 ```
 
 ## Why This Layer Exists
@@ -191,9 +191,22 @@ Future form:
 
 ```text
 Rust daemon IPC
+small C IPC/hardware probes
 Unix socket
 typed event schema
 Hub/Shell clients
+```
+
+C is deliberately constrained here. It is the physical and nervous layer for
+SevenBus IPC probes, hardware communication, power/input/audio adjacency and
+future security hooks. It is not the product brain, the UI, or the ecosystem
+language.
+
+Current C foothold:
+
+```text
+seven-core/bus-c/
+bin/sevenbus-probe
 ```
 
 Example future events:

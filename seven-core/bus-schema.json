@@ -3,6 +3,8 @@
   "description": "Typed event envelope for the SevenOS System Experience Layer.",
   "transport_now": "jsonl-user-state",
   "transport_future": "local-typed-ipc",
+  "low_level_language": "C for IPC and hardware-adjacent probes only",
+  "orchestration_language": "Rust for SevenDaemon and policy-aware runtime behavior",
   "event_path": "~/.local/state/sevenos/events.jsonl",
   "envelope": {
     "schema": "sevenos.event.v1",

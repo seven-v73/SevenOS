@@ -132,6 +132,7 @@ Implemented:
 - `seven core status --json`, `seven core plan --json` and `seven core bus --json` system experience contracts
 - `seven-daemon` Rust runtime scaffold with a user service path through `seven core install-service`
 - Rust-backed SevenBus event emission through `seven-daemon emit`, with Bash fallback kept for compatibility
+- C-boundary SevenBus probe through `sevenbus-probe --json` for future low-level IPC/hardware-adjacent work
 - `seven architecture` product/system architecture map
 - `seven repair` guided repair planner
 - `seven ecosystem` innovation roadmap

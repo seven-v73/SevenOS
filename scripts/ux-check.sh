@@ -57,6 +57,9 @@ require_file "seven-core/README.md"
 require_file "seven-core/bus-schema.json"
 require_file "seven-core/daemon/Cargo.toml"
 require_file "seven-core/daemon/src/main.rs"
+require_file "seven-core/bus-c/README.md"
+require_file "seven-core/bus-c/Makefile"
+require_file "seven-core/bus-c/src/sevenbus_probe.c"
 require_file "systemd/user/seven-daemon.service"
 require_file "sevenos.dotinst"
 require_file "installer/calamares/README.md"
@@ -130,6 +133,7 @@ require_executable "seven-hub/bin/seven-hub"
 require_executable "seven-hub/bin/seven-control-center"
 require_executable "bin/seven-country"
 require_executable "bin/seven-daemon"
+require_executable "bin/sevenbus-probe"
 require_executable "bin/seven-apps"
 require_executable "bin/seven-files"
 require_executable "bin/seven-help"
@@ -340,6 +344,8 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.bus.v1"' <<<"$core_bus_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null &&
    XDG_STATE_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-daemon" emit --source ux --type preview --message "ux event" --json | python -m json.tool >/dev/null &&
+   "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null &&
+   grep -q 'C SevenBus probe' <<<"$core_json" &&
    grep -q 'seven-daemon emit' "$ROOT_DIR/scripts/events.sh" &&
    grep -q 'ExecStart=/usr/bin/env seven-daemon serve' "$ROOT_DIR/systemd/user/seven-daemon.service" &&
    grep -q 'Wants=seven-daemon.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&

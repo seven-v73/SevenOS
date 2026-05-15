@@ -83,7 +83,7 @@ event_count() {
 }
 
 status_json() {
-  local contracts api bus_schema daemon daemon_src daemon_bin service rust cargo events state
+  local contracts api bus_schema daemon daemon_src daemon_bin bus_c bus_c_bin cc_state make_state service rust cargo events state
   contracts=0
   [[ "$(exec_state scripts/state.sh)" == OK ]] && contracts=$((contracts + 1))
   [[ "$(exec_state scripts/control-plane.sh)" == OK ]] && contracts=$((contracts + 1))
@@ -96,6 +96,10 @@ status_json() {
   daemon="$(file_state seven-core/daemon/Cargo.toml)"
   daemon_src="$(file_state seven-core/daemon/src/main.rs)"
   daemon_bin="$(exec_state bin/seven-daemon)"
+  bus_c="$(file_state seven-core/bus-c/src/sevenbus_probe.c)"
+  bus_c_bin="$(exec_state bin/sevenbus-probe)"
+  cc_state="$(command_state cc)"
+  make_state="$(command_state make)"
   service="$(service_state)"
   rust="$(command_state rustc)"
   cargo="$(command_state cargo)"
@@ -109,7 +113,7 @@ status_json() {
     state="READY_FOR_DAEMON"
   fi
 
-  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_SERVICE_STATE="$service" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
+  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
 import json
 import os
 
@@ -124,6 +128,8 @@ components = [
     {"key": "daemon_scaffold", "title": "Rust daemon scaffold", "state": "OK" if os.environ["DAEMON_STATE"] == "OK" and os.environ["DAEMON_SRC_STATE"] == "OK" else "MISS", "detail": "seven-core/daemon"},
     {"key": "daemon_cli", "title": "Seven daemon CLI", "state": os.environ["DAEMON_BIN_STATE"], "detail": "bin/seven-daemon"},
     {"key": "bus_writer", "title": "Rust SevenBus writer", "state": os.environ["DAEMON_BIN_STATE"], "detail": "seven-daemon emit"},
+    {"key": "bus_c_probe", "title": "C SevenBus probe", "state": "OK" if os.environ["BUS_C_STATE"] == "OK" and os.environ["BUS_C_BIN_STATE"] == "OK" else "MISS", "detail": "sevenbus-probe"},
+    {"key": "c_toolchain", "title": "C toolchain", "state": "OK" if os.environ["CC_STATE"] == "OK" and os.environ["MAKE_STATE"] == "OK" else "MISS", "detail": "cc + make for low-level IPC probes"},
     {"key": "daemon_service", "title": "Seven daemon service", "state": os.environ["DAEMON_SERVICE_STATE"], "detail": "seven-daemon.service"},
     {"key": "rust_toolchain", "title": "Rust toolchain", "state": "OK" if runtime_ready else "MISS", "detail": "Required before compiling seven-daemon."},
     {"key": "event_journal", "title": "Local event journal", "state": "OK" if int(os.environ["EVENT_COUNT"]) > 0 else "READY", "detail": os.environ["EVENT_FILE"]},
@@ -136,6 +142,7 @@ print(json.dumps({
     "bus": {
         "schema": "sevenos.bus.v1",
         "transport": "jsonl-user-state-now, typed-local-ipc-later",
+        "low_level_probe": "sevenbus-probe",
         "event_file": os.environ["EVENT_FILE"],
         "event_count": int(os.environ["EVENT_COUNT"]),
     },
@@ -186,6 +193,9 @@ if components.get("daemon_scaffold", {}).get("state") != "OK":
 
 if components.get("rust_toolchain", {}).get("state") != "OK":
     add("rust-toolchain", "Install Rust toolchain", "medium", "sevenpkg install forge", "Rust is needed to compile the future seven-daemon safely.", "packages", "daemon")
+
+if components.get("c_toolchain", {}).get("state") != "OK":
+    add("c-toolchain", "Install C build toolchain", "medium", "sudo pacman -S --needed base-devel", "C is reserved for SevenBus IPC probes and future hardware-adjacent components.", "packages", "bus")
 
 if components.get("event_journal", {}).get("state") == "READY":
     add("seed-event", "Record the first Core event", "low", "seven events log --source core --type boot --message 'Seven Core initialized'", "A local event history makes system decisions auditable.", "safe", "bus")
@@ -263,7 +273,7 @@ doctor() {
   local missing=0
   printf 'SevenOS Core Doctor\n'
   printf '===================\n'
-  for path in scripts/state.sh scripts/control-plane.sh scripts/events.sh scripts/insights.sh scripts/phase-gate.sh server/seven-server.sh bin/seven-daemon systemd/user/seven-daemon.service seven-core/README.md seven-core/bus-schema.json seven-core/daemon/Cargo.toml seven-core/daemon/src/main.rs; do
+  for path in scripts/state.sh scripts/control-plane.sh scripts/events.sh scripts/insights.sh scripts/phase-gate.sh server/seven-server.sh bin/seven-daemon bin/sevenbus-probe systemd/user/seven-daemon.service seven-core/README.md seven-core/bus-schema.json seven-core/daemon/Cargo.toml seven-core/daemon/src/main.rs seven-core/bus-c/README.md seven-core/bus-c/Makefile seven-core/bus-c/src/sevenbus_probe.c; do
     if [[ -s "$ROOT_DIR/$path" ]]; then
       printf '[OK] %s\n' "$path"
     else
@@ -280,6 +290,16 @@ doctor() {
     fi
   else
     printf '[WARN] cargo missing; install Rust before compiling seven-daemon\n'
+  fi
+
+  if command -v make >/dev/null 2>&1 && command -v cc >/dev/null 2>&1; then
+    if make -C "$ROOT_DIR/seven-core/bus-c" >/dev/null 2>&1; then
+      printf '[OK] sevenbus-probe C build\n'
+    else
+      printf '[WARN] sevenbus-probe C build failed\n'
+    fi
+  else
+    printf '[WARN] C compiler or make missing; install base-devel before building C bus probes\n'
   fi
 
   if [[ "$missing" -gt 0 ]]; then

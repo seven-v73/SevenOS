@@ -29,6 +29,25 @@ Later, the same envelope can move to a typed local IPC transport backed by
 `seven-daemon`. This keeps the migration safe: UI code can use the same event
 shape before and after the daemon becomes active.
 
+## C Boundary
+
+SevenOS uses C only where it belongs: the physical and nervous system layer.
+
+```text
+C = drivers, hardware communication, ultra-low-level IPC probes, power/input/audio adjacency
+Rust = SevenDaemon, policy, orchestration, long-running safe runtime
+TypeScript/GTK/Tauri = shell and user-facing control surfaces
+```
+
+The first C component is:
+
+```bash
+sevenbus-probe --json
+```
+
+It checks local Unix socket capabilities for future SevenBus IPC work. It does
+not replace SevenDaemon and does not own product logic.
+
 ## Daemon Path
 
 `seven-core/daemon` is a Rust scaffold for the future `seven-daemon`.

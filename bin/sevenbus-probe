@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -f "$SEVENOS_ROOT/install.sh" ]]; then
+    cd "$SEVENOS_ROOT" && pwd
+    return 0
+  fi
+
+  local script_dir candidate
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  candidate="$(cd -- "$script_dir/.." && pwd)"
+  if [[ -f "$candidate/install.sh" ]]; then
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  for candidate in /usr/share/sevenos "$HOME/Code/OS/SevenOS" "$HOME/SevenOS" /opt/SevenOS; do
+    if [[ -f "$candidate/install.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'sevenbus-probe: could not find SevenOS root\n' >&2
+  return 1
+}
+
+ROOT_DIR="$(resolve_root)"
+SOURCE="$ROOT_DIR/seven-core/bus-c/src/sevenbus_probe.c"
+BINARY="$ROOT_DIR/seven-core/bus-c/build/sevenbus-probe"
+
+if [[ -x "$BINARY" && ! "$SOURCE" -nt "$BINARY" ]]; then
+  exec "$BINARY" "$@"
+fi
+
+if command -v make >/dev/null 2>&1 && command -v cc >/dev/null 2>&1; then
+  make -C "$ROOT_DIR/seven-core/bus-c" >/dev/null
+  exec "$BINARY" "$@"
+fi
+
+printf 'sevenbus-probe: C compiler and make are required for the low-level probe.\n' >&2
+printf 'Install base-devel before building future SevenBus C components.\n' >&2
+exit 127

@@ -49,6 +49,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-apps" \
   "$ROOT_DIR/bin/seven-country" \
   "$ROOT_DIR/bin/seven-daemon" \
+  "$ROOT_DIR/bin/sevenbus-probe" \
   "$ROOT_DIR/bin/seven-files" \
   "$ROOT_DIR/bin/seven-help" \
   "$ROOT_DIR/bin/seven-overview" \
@@ -100,6 +101,11 @@ if command -v cargo >/dev/null 2>&1; then
   cargo check --manifest-path "$ROOT_DIR/seven-core/daemon/Cargo.toml" >/dev/null
 else
   log_warn "cargo not found; skipping seven-daemon scaffold check."
+fi
+if command -v make >/dev/null 2>&1 && command -v cc >/dev/null 2>&1; then
+  make -C "$ROOT_DIR/seven-core/bus-c" >/dev/null
+else
+  log_warn "C compiler or make not found; skipping sevenbus-probe build."
 fi
 
 for identity_file in \
@@ -261,6 +267,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null
 SEVENOS_BUS_TEST_HOME="$(mktemp -d)"
 XDG_STATE_HOME="$SEVENOS_BUS_TEST_HOME" "$ROOT_DIR/bin/seven-daemon" emit --source check --type preview --message "check event" --json | python -m json.tool >/dev/null
 rm -rf "$SEVENOS_BUS_TEST_HOME"

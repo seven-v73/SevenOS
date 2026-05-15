@@ -13,6 +13,7 @@ iso/
 dist/
 target/
 node_modules/
+seven-core/bus-c/build/
 
 # Editor state
 .idea/
