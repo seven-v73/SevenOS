@@ -68,6 +68,7 @@ if grep -q 'seven-hub-window' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-sidebar' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-nav-item' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-hero' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-metric-card' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-card' "$ROOT_DIR/bin/seven-hub-native"; then
   ok "Seven Hub Native uses OS-grade glass navigation"
 else

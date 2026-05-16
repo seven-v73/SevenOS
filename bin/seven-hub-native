@@ -413,7 +413,7 @@ def run_gui() -> int:
 
         gi.require_version("Gtk", "4.0")
         gi.require_version("Adw", "1")
-        from gi.repository import Adw, Gdk, Gtk
+        from gi.repository import Adw, Gdk, Gio, Gtk
     except Exception as error:
         print("seven-hub-native: GTK4/libadwaita is not available yet.", file=sys.stderr)
         print("Install the GUI stack with: seven hub-gui install", file=sys.stderr)
@@ -507,6 +507,52 @@ def run_gui() -> int:
           font-size: 14px;
         }
 
+        .seven-metric-row {
+          margin-top: 8px;
+          margin-bottom: 4px;
+        }
+
+        .seven-metric-card {
+          min-width: 154px;
+          min-height: 84px;
+          background: rgba(255, 255, 255, 0.052);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 18px;
+          padding: 14px;
+        }
+
+        .seven-metric-card.good {
+          border-color: rgba(90, 173, 114, 0.34);
+          background: rgba(90, 173, 114, 0.075);
+        }
+
+        .seven-metric-card.warn {
+          border-color: rgba(226, 192, 122, 0.34);
+          background: rgba(226, 192, 122, 0.075);
+        }
+
+        .seven-metric-card.bad {
+          border-color: rgba(196, 103, 58, 0.34);
+          background: rgba(196, 103, 58, 0.075);
+        }
+
+        .seven-metric-label {
+          color: rgba(214, 207, 196, 0.62);
+          font-size: 11px;
+          letter-spacing: 0.08em;
+        }
+
+        .seven-metric-value {
+          color: rgba(246, 243, 238, 0.98);
+          font-size: 26px;
+          font-weight: 500;
+        }
+
+        .seven-metric-note {
+          color: rgba(214, 207, 196, 0.62);
+          font-size: 12px;
+        }
+
         preferencesgroup {
           margin-top: 10px;
         }
@@ -547,7 +593,10 @@ def run_gui() -> int:
 
     class SevenHubNative(Adw.Application):
         def __init__(self) -> None:
-            super().__init__(application_id="os.seven.SevenHubNative")
+            super().__init__(
+                application_id=None,
+                flags=Gio.ApplicationFlags.NON_UNIQUE,
+            )
             self.connect("activate", self.on_activate)
 
         def on_activate(self, app: Adw.Application) -> None:
@@ -682,6 +731,33 @@ def run_gui() -> int:
                 hero.append(intro)
                 box.append(hero)
 
+            def metric_card(label_text: str, value_text: str, note_text: str, state: str = "warn") -> Gtk.Box:
+                card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+                card.add_css_class("seven-metric-card")
+                if state in ("good", "warn", "bad"):
+                    card.add_css_class(state)
+                label = Gtk.Label(label=label_text.upper())
+                label.set_xalign(0)
+                label.add_css_class("seven-metric-label")
+                value = Gtk.Label(label=value_text)
+                value.set_xalign(0)
+                value.add_css_class("seven-metric-value")
+                note = Gtk.Label(label=note_text)
+                note.set_xalign(0)
+                note.add_css_class("seven-metric-note")
+                note.set_wrap(True)
+                card.append(label)
+                card.append(value)
+                card.append(note)
+                return card
+
+            def metric_state(percent: int) -> str:
+                if percent >= 85:
+                    return "good"
+                if percent >= 60:
+                    return "warn"
+                return "bad"
+
             def render_dashboard() -> None:
                 clear(dashboard)
                 welcome = welcome_payload()
@@ -724,6 +800,18 @@ def run_gui() -> int:
                 next_stack = ", ".join(stack.get("next_focus", [])[:2]) or "Seven Shell AGS, seven-daemon Rust"
 
                 heading(dashboard, "SevenOS Dashboard", "System state, readiness and common repair paths from native GTK.")
+
+                metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+                metrics.add_css_class("seven-metric-row")
+                readiness_percent = int(readiness.get("percent", 0) or 0)
+                shield_percent = int(shield.get("percent", 0) or 0)
+                experience_percent = int(experience.get("percent", 0) or 0)
+                daily_state = daily.get("decision", "unknown")
+                metrics.append(metric_card("Readiness", f"{readiness_percent}%", "primary PC gate", metric_state(readiness_percent)))
+                metrics.append(metric_card("Shield", f"{shield_percent}%", shield.get("posture", "unknown"), metric_state(shield_percent)))
+                metrics.append(metric_card("Experience", f"{experience_percent}%", "UI/UX coherence", metric_state(experience_percent)))
+                metrics.append(metric_card("Daily", daily_state.replace("-", " "), f"{len(daily.get('blockers', []))} blockers", "good" if daily_state == "ready" else "warn"))
+                dashboard.append(metrics)
 
                 identity_group = Adw.PreferencesGroup(title="African first")
                 identity_group.add(make_row(
