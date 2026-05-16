@@ -187,6 +187,17 @@ seven-wallpaper refresh
 cat ~/.config/hypr/hyprpaper.conf
 ```
 
+If the screen is black and `seven-wallpaper status` says `hyprpaper not
+running`, reinstall the updated SevenOS session service and restart the
+wallpaper runtime:
+
+```bash
+./install.sh theme
+systemctl --user daemon-reload
+systemctl --user restart sevenos-wallpaper.service
+seven-wallpaper status
+```
+
 If you accidentally installed with `sudo ./install.sh ...`, recover as your
 normal user:
 

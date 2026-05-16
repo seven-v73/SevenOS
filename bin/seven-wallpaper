@@ -33,6 +33,7 @@ SOURCE_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
 TARGET_SVG="$WALLPAPER_DIR/wallpaper-sevenos.svg"
 TARGET_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
+SERVICE_NAME="sevenos-wallpaper.service"
 
 render_wallpaper() {
   mkdir -p "$WALLPAPER_DIR"
@@ -49,7 +50,7 @@ render_wallpaper() {
   fi
 }
 
-restart_hyprpaper() {
+write_config() {
   mkdir -p "$CONFIG_HOME/hypr"
   {
     printf 'ipc = on\n'
@@ -57,19 +58,58 @@ restart_hyprpaper() {
     printf 'wallpaper = ,%s\n' "$TARGET_PNG"
     printf 'splash = false\n'
   } > "$HYPRPAPER_CONFIG"
+}
+
+systemd_wallpaper_available() {
+  [[ "${SEVENOS_WALLPAPER_NO_SYSTEMD:-0}" != "1" ]] &&
+    command -v systemctl >/dev/null 2>&1 &&
+    [[ -f "$CONFIG_HOME/systemd/user/$SERVICE_NAME" ]] &&
+    grep -q 'seven-wallpaper serve' "$CONFIG_HOME/systemd/user/$SERVICE_NAME"
+}
+
+start_hyprpaper_detached() {
+  pkill -x hyprpaper >/dev/null 2>&1 || true
+  if command -v hyprpaper >/dev/null 2>&1; then
+    setsid hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 < /dev/null &
+    sleep 0.4
+  fi
+}
+
+apply_live() {
+  if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
+    return 0
+  fi
+
+  if systemd_wallpaper_available; then
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user restart "$SERVICE_NAME" >/dev/null 2>&1 || true
+    sleep 0.4
+  elif ! pgrep -x hyprpaper >/dev/null 2>&1; then
+    start_hyprpaper_detached
+  fi
+
+  if command -v hyprctl >/dev/null 2>&1; then
+    hyprctl hyprpaper unload all >/dev/null 2>&1 || true
+    hyprctl hyprpaper preload "$TARGET_PNG" >/dev/null 2>&1 || true
+    hyprctl hyprpaper wallpaper ",$TARGET_PNG" >/dev/null 2>&1 || true
+  fi
+}
+
+serve_hyprpaper() {
+  render_wallpaper
+  write_config
+  if ! command -v hyprpaper >/dev/null 2>&1; then
+    printf 'seven-wallpaper: hyprpaper is not installed.\n' >&2
+    exit 1
+  fi
+  exec hyprpaper
+}
+
+restart_hyprpaper() {
+  write_config
 
   if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
-    pkill -x hyprpaper >/dev/null 2>&1 || true
-    if command -v hyprpaper >/dev/null 2>&1; then
-      hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &
-      sleep 0.4
-    fi
-
-    if command -v hyprctl >/dev/null 2>&1; then
-      hyprctl hyprpaper unload all >/dev/null 2>&1 || true
-      hyprctl hyprpaper preload "$TARGET_PNG" >/dev/null 2>&1 || true
-      hyprctl hyprpaper wallpaper ",$TARGET_PNG" >/dev/null 2>&1 || true
-    fi
+    apply_live
   fi
 }
 
@@ -99,17 +139,25 @@ print_status() {
     printf '\nProcesses:\n'
     pgrep -a hyprpaper 2>/dev/null | sed 's/^/  /' || printf '  hyprpaper not running\n'
   fi
+  if command -v systemctl >/dev/null 2>&1; then
+    printf '\nService:\n'
+    systemctl --user is-active "$SERVICE_NAME" 2>/dev/null | sed 's/^/  /' || printf '  unavailable\n'
+  fi
 }
 
 case "${1:-refresh}" in
   render)
     render_wallpaper
+    write_config
     printf '%s\n' "$TARGET_PNG"
     ;;
   refresh)
     render_wallpaper
     restart_hyprpaper
     printf 'SevenOS wallpaper refreshed: %s\n' "$TARGET_PNG"
+    ;;
+  serve)
+    serve_hyprpaper
     ;;
   status)
     print_status
@@ -118,7 +166,7 @@ case "${1:-refresh}" in
     printf '%s\n' "$TARGET_PNG"
     ;;
   *)
-    printf 'Usage: seven-wallpaper [refresh|render|status|path]\n' >&2
+    printf 'Usage: seven-wallpaper [refresh|render|serve|status|path]\n' >&2
     exit 1
     ;;
 esac

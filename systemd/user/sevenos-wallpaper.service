@@ -4,8 +4,10 @@ PartOf=sevenos-session.target
 After=graphical-session.target
 
 [Service]
-Type=oneshot
-ExecStart=/usr/bin/env seven-wallpaper refresh
+Type=simple
+ExecStart=/usr/bin/env seven-wallpaper serve
+Restart=on-failure
+RestartSec=2
 
 [Install]
 WantedBy=sevenos-session.target

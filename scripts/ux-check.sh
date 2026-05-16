@@ -527,6 +527,14 @@ else
   fail "Hyprpaper should use the SevenOS wallpaper target"
 fi
 
+if grep -q '^Type=simple' "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" &&
+   grep -q 'seven-wallpaper serve' "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" &&
+   grep -q 'systemd_wallpaper_available' "$ROOT_DIR/bin/seven-wallpaper"; then
+  ok "Wallpaper runtime is a persistent Hyprpaper service"
+else
+  fail "Wallpaper runtime should keep Hyprpaper alive through seven-wallpaper serve"
+fi
+
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'active_tab_background #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'cursor #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
