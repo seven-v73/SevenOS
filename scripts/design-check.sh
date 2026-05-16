@@ -41,18 +41,19 @@ else
   ok "Seven Hub imports design tokens"
 fi
 
-if grep -q 'modules-left.*custom/apps' "$ROOT_DIR/hyprland/waybar/config.jsonc"; then
-  fail "Waybar left side should stay reserved for system identity and workspaces."
+if jq -e '."modules-left" == ["custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar uses a macOS-like left/center/right liquid hierarchy"
 else
-  ok "Waybar has a clearer left/center/right hierarchy"
+  fail "Waybar should use Apps+Clock left, workspaces center, merged liquid islands and system controls right."
 fi
 
-if grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+if grep -q 'border-radius: 13px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'border-radius: 16px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'background: transparent' "$ROOT_DIR/hyprland/waybar/style.css"; then
-  ok "Waybar uses a floating Frost capsule shell"
+  ok "Waybar uses liquid glass islands"
 else
-  fail "Waybar should use a floating Frost capsule shell"
+  fail "Waybar should use liquid glass islands"
 fi
 
 if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&

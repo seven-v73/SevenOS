@@ -2,10 +2,13 @@
   "layer": "top",
   "position": "top",
   "height": 38,
-  "spacing": 10,
-  "modules-left": ["custom/sevenos", "hyprland/workspaces"],
-  "modules-center": ["custom/apps", "custom/files", "custom/profile", "clock"],
-  "modules-right": ["custom/quick", "custom/notifications", "custom/security", "network", "pulseaudio", "battery", "custom/power"],
+  "spacing": 0,
+  "margin-top": 4,
+  "margin-left": 16,
+  "margin-right": 16,
+  "modules-left": ["custom/apps", "clock"],
+  "modules-center": ["hyprland/workspaces"],
+  "modules-right": ["custom/files", "custom/profile", "custom/security", "pulseaudio", "network", "battery", "custom/quick", "custom/notifications", "custom/power", "custom/sevenos"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
@@ -18,7 +21,7 @@
     "on-click-right": "seven-welcome"
   },
   "custom/apps": {
-    "format": "󰀻",
+    "format": "Apps",
     "tooltip": true,
     "tooltip-format": "Open SevenOS app overview",
     "on-click": "seven-overview apps",
@@ -41,7 +44,7 @@
     "on-click-right": "kitty --title 'SevenOS Profiles' bash -lc 'seven profile status; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "clock": {
-    "format": "󰥔 {:%H:%M}",
+    "format": "{:%H:%M %a}",
     "tooltip-format": "{:%A %d %B %Y}",
     "on-click": "seven-waybar-action clock",
     "on-click-right": "kitty --title 'SevenOS Time' bash -lc 'timedatectl; printf \"\\nPress Enter to close...\"; read -r'"

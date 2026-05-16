@@ -240,10 +240,10 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."custom/apps".format == "󰀻" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-overview search"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar exposes icon-first Apps launcher"
+if jq -e '."modules-left" == ["custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-overview search"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar exposes liquid Apps launcher and centered workspaces"
 else
-  fail "Waybar icon-first Apps launcher missing"
+  fail "Waybar liquid Apps launcher or centered workspaces missing"
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
