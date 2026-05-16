@@ -143,6 +143,7 @@ require_executable "bin/seven-files"
 require_executable "bin/seven-help"
 require_executable "bin/seven-overview"
 require_executable "bin/seven-quick-settings"
+require_executable "bin/seven-screenshot"
 require_executable "bin/seven-shell-panel"
 require_executable "bin/seven-shell-preview"
 require_executable "bin/seven-session"
@@ -497,6 +498,16 @@ if grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.co
   ok "Hyprland exposes discoverable Hub, Apps, Help and CyberSpace shortcuts"
 else
   fail "Hyprland discoverable desktop and CyberSpace shortcuts missing"
+fi
+
+if grep -q 'bind = , Print, exec, seven-screenshot area save' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, Print, exec, seven-screenshot full save' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod SHIFT, S, exec, seven-screenshot area edit' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod CTRL, S, exec, seven-screenshot area copy' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'Screenshot Save' "$ROOT_DIR/bin/seven-help"; then
+  ok "SevenOS screenshots save, edit and copy through a native helper"
+else
+  fail "SevenOS screenshot shortcuts should use the native helper"
 fi
 
 overview_search_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" search)"

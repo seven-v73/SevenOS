@@ -35,7 +35,7 @@ run_terminal() {
   fi
 }
 
-menu=$'󰒓  Open Seven Hub    Super+Space / Super+H\n󰀻  Open Apps    Super+A / Super+D\n󰖲  Window Overview    Super+Tab\n󰒓  Quick Settings    Super+N / Super+O\n󰆍  Open Terminal    Super+Enter\n󰉋  Open Files    Super+E\n󰐥  Power Menu    Super+Shift+P\n󰍁  Lock Screen    Super+L\n󰆍  Scratchpad    Super+S\n󰄀  Screenshot Region    Super+Shift+S\n󰜉  Reload Desktop    Reapply Hyprland config\n󰩂  Post-Install Check    Diagnose missing UI pieces\n󰁨  Repair UX    Reapply theme, hub and commands'
+menu=$'󰒓  Open Seven Hub    Super+Space / Super+H\n󰀻  Open Apps    Super+A / Super+D\n󰖲  Window Overview    Super+Tab\n󰒓  Quick Settings    Super+N / Super+O\n󰆍  Open Terminal    Super+Enter\n󰉋  Open Files    Super+E\n󰐥  Power Menu    Super+Shift+P\n󰍁  Lock Screen    Super+L\n󰆍  Scratchpad    Super+S\n󰄀  Screenshot Save    Print\n󰄀  Screenshot Edit    Super+Shift+S\n󰅍  Screenshot Copy    Super+Ctrl+S\n󰜉  Reload Desktop    Reapply Hyprland config\n󰩂  Post-Install Check    Diagnose missing UI pieces\n󰁨  Repair UX    Reapply theme, hub and commands'
 
 if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   printf '%s\n' "$menu"
@@ -62,7 +62,9 @@ case "$selected" in
   "Power Menu") seven-power ;;
   "Lock Screen") seven-power lock ;;
   "Scratchpad") hyprctl dispatch togglespecialworkspace seven ;;
-  "Screenshot Region") grim -g "$(slurp)" - | swappy -f - ;;
+  "Screenshot Save") seven-screenshot area save ;;
+  "Screenshot Edit") seven-screenshot area edit ;;
+  "Screenshot Copy") seven-screenshot area copy ;;
   "Reload Desktop") hyprctl reload ;;
   "Post-Install Check") run_terminal "seven post-install" ;;
   "Repair UX") run_terminal "seven repair ux --apply" ;;

@@ -60,6 +60,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-help" \
   "$ROOT_DIR/bin/seven-overview" \
   "$ROOT_DIR/bin/seven-quick-settings" \
+  "$ROOT_DIR/bin/seven-screenshot" \
   "$ROOT_DIR/bin/seven-shell-panel" \
   "$ROOT_DIR/bin/seven-shell-preview" \
   "$ROOT_DIR/bin/seven-session" \
@@ -361,6 +362,7 @@ SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-session-status" --json | python -m json.t
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-screenshot" --help >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system >/dev/null

@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+mode="${1:-area}"
+target="${2:-save}"
+
+screenshot_dir="${SEVENOS_SCREENSHOT_DIR:-$HOME/Pictures/Screenshots}"
+timestamp="$(date +%Y-%m-%d_%H-%M-%S)"
+output="$screenshot_dir/SevenOS-$timestamp.png"
+
+notify() {
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send "SevenOS Screenshot" "$1"
+  fi
+}
+
+need() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    notify "Missing dependency: $1"
+    printf 'seven-screenshot: missing dependency: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+usage() {
+  cat <<'EOF'
+SevenOS Screenshot
+
+Usage:
+  seven-screenshot [area|full] [save|copy|edit]
+
+Shortcuts:
+  Print             Save selected area
+  Super+Print       Save full screen
+  Super+Shift+S     Edit selected area
+  Super+Ctrl+S      Copy selected area
+EOF
+}
+
+if [[ "$mode" == "-h" || "$mode" == "--help" || "$mode" == "help" ]]; then
+  usage
+  exit 0
+fi
+
+case "$mode" in
+  area|region|select) mode="area" ;;
+  full|screen) mode="full" ;;
+  *) printf 'seven-screenshot: unknown mode: %s\n' "$mode" >&2; usage >&2; exit 1 ;;
+esac
+
+case "$target" in
+  save|copy|edit) ;;
+  *) printf 'seven-screenshot: unknown target: %s\n' "$target" >&2; usage >&2; exit 1 ;;
+esac
+
+need grim
+if [[ "$mode" == "area" ]]; then
+  need slurp
+fi
+
+mkdir -p "$screenshot_dir"
+
+geometry=()
+if [[ "$mode" == "area" ]]; then
+  selection="$(slurp || true)"
+  if [[ -z "$selection" ]]; then
+    notify "Capture cancelled."
+    exit 0
+  fi
+  geometry=(-g "$selection")
+fi
+
+case "$target" in
+  save)
+    grim "${geometry[@]}" "$output"
+    notify "Saved to $output"
+    printf '%s\n' "$output"
+    ;;
+  copy)
+    need wl-copy
+    grim "${geometry[@]}" - | wl-copy --type image/png
+    notify "Copied to clipboard."
+    ;;
+  edit)
+    if command -v swappy >/dev/null 2>&1; then
+      grim "${geometry[@]}" - | swappy -f - -o "$output"
+      if [[ -s "$output" ]]; then
+        notify "Saved to $output"
+        printf '%s\n' "$output"
+      fi
+    else
+      grim "${geometry[@]}" "$output"
+      notify "swappy missing. Saved directly to $output"
+      printf '%s\n' "$output"
+    fi
+    ;;
+esac

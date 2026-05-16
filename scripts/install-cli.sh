@@ -100,6 +100,7 @@ install_user_command "$ROOT_DIR/bin/seven-help" seven-help
 install_user_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_user_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_user_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
+install_user_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_user_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_user_command "$ROOT_DIR/bin/seven-files" seven-files
 install_user_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
@@ -127,6 +128,7 @@ install_system_command "$ROOT_DIR/bin/seven-help" seven-help
 install_system_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_system_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_system_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
+install_system_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_system_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_system_command "$ROOT_DIR/bin/seven-files" seven-files
 install_system_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
