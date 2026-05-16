@@ -14,6 +14,7 @@ TYPE="event"
 MESSAGE=""
 COMMAND_TEXT=""
 STATE="OK"
+PAYLOAD_JSON=""
 
 usage() {
   cat <<'EOF'
@@ -23,7 +24,7 @@ Usage:
   seven events
   seven events --json
   seven events summary-json
-  seven events log --source <name> --type <event> --message <text> [--command <cmd>] [--state OK|WARN|MISS]
+  seven events log --source <name> --type <event> --message <text> [--command <cmd>] [--state OK|WARN|MISS] [--payload-json <json>]
 
 The event journal is a local user-state audit trail for SevenOS decisions,
 previews and executed actions.
@@ -44,6 +45,7 @@ while [[ "$#" -gt 0 ]]; do
     --message) shift; MESSAGE="${1:-}" ;;
     --command) shift; COMMAND_TEXT="${1:-}" ;;
     --state) shift; STATE="${1:-OK}" ;;
+    --payload-json) shift; PAYLOAD_JSON="${1:-}" ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown events option: $1"; usage; exit 1 ;;
   esac
@@ -72,16 +74,24 @@ log_event() {
   timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
   if ! is_dry_run && [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
-    if "$ROOT_DIR/bin/seven-daemon" emit --source "$SOURCE" --type "$TYPE" --state "$STATE" --message "$MESSAGE" --command "$COMMAND_TEXT" >/dev/null 2>&1; then
+    if "$ROOT_DIR/bin/seven-daemon" emit --source "$SOURCE" --type "$TYPE" --state "$STATE" --message "$MESSAGE" --command "$COMMAND_TEXT" --payload-json "$PAYLOAD_JSON" >/dev/null 2>&1; then
       return 0
     fi
     log_warn "seven-daemon emit failed; falling back to Bash event writer."
   fi
 
   payload="$(
-    EVENT_SOURCE="$SOURCE" EVENT_TYPE="$TYPE" EVENT_MESSAGE="$MESSAGE" EVENT_COMMAND="$COMMAND_TEXT" EVENT_STATE="$STATE" EVENT_TIME="$timestamp" python - <<'PY'
+    EVENT_SOURCE="$SOURCE" EVENT_TYPE="$TYPE" EVENT_MESSAGE="$MESSAGE" EVENT_COMMAND="$COMMAND_TEXT" EVENT_STATE="$STATE" EVENT_TIME="$timestamp" EVENT_PAYLOAD="$PAYLOAD_JSON" python - <<'PY'
 import json
 import os
+
+payload_raw = os.environ.get("EVENT_PAYLOAD", "")
+payload = None
+if payload_raw:
+    try:
+        payload = json.loads(payload_raw)
+    except json.JSONDecodeError as error:
+        raise SystemExit(f"invalid EVENT_PAYLOAD: {error}")
 
 print(json.dumps({
     "schema": "sevenos.event.v1",
@@ -91,6 +101,7 @@ print(json.dumps({
     "state": os.environ["EVENT_STATE"],
     "message": os.environ["EVENT_MESSAGE"],
     "command": os.environ["EVENT_COMMAND"] or None,
+    "payload": payload,
 }, separators=(",", ":")))
 PY
   )"

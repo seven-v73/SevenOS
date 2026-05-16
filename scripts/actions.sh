@@ -52,6 +52,10 @@ b3.apply.trust	System	B3 Trust Preview	seven b3 apply --phase trust --limit 4	sa
 b3.apply.backend	System	B3 Backend Preview	seven b3 apply --phase backend --limit 4	safe	Preview the next Seven Server actions without changing the system.
 b3.apply.profiles	System	B3 Profiles Preview	seven b3 apply --phase profiles --limit 4	safe	Preview the next profile completion actions without changing the system.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
+daily.status	System	Daily Driver Gate	seven daily	safe	Check whether SevenOS is ready for a primary PC.
+daily.plan	System	Daily Driver Plan	seven daily plan	safe	Show the ordered path to make SevenOS daily-driver ready.
+daily.apply	System	Apply Daily Driver Plan	seven daily apply --yes	packages	Install and enable the daily-driver security, profile, Windows, server and installer foundation.
+improve.daily	System	Improve Daily Driver	seven improve daily --apply --yes	packages	Apply the daily-driver consolidation plan.
 improve.security	System	Improve Security	seven improve security --apply	packages	Install or prepare the core security improvements.
 improve.security.yes	System	Improve Security Batch	seven improve security --apply --yes	packages	Install core security improvements non-interactively.
 improve.deployment	System	Improve Deployment	seven improve deployment --apply	packages	Install or prepare server and deployment dependencies.
@@ -65,6 +69,8 @@ profile.guide	Profiles	Profile Guide	seven profile guide	safe	Show recommended a
 profile.apps	Profiles	Profile Apps	seven profile apps	safe	Show apps and launch commands for the active profile.
 profile.gaps	Profiles	Profile Gaps	seven profile gaps	safe	Show incomplete profile packages, apps and next actions.
 profile.plan	Profiles	Profile Plan	seven profile plan	safe	Show prioritized profile completion plan.
+profile.bootstrap.active	Profiles	Bootstrap Active Profile	seven profile bootstrap	safe	Create the manifest, checklist and launcher for the active profile workspace.
+profile.bootstrap.all	Profiles	Bootstrap All Profiles	seven profile bootstrap all	safe	Create workspace manifests, checklists and launchers for every SevenOS profile.
 profile.open	Profiles	Open Active Workspace	seven profile open	safe	Open the current profile workspace.
 profile.activate.forge	Profiles	Activate Forge	seven profile activate forge	changes	Switch the desktop context to Forge.
 profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch the desktop context to Shield.
@@ -77,10 +83,24 @@ profile.studio	Profiles	Install Studio	seven profile install studio	packages	Ins
 profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install Windows compatibility tooling.
 profile.horizon	Profiles	Install Horizon	seven profile install horizon	packages	Install server and deployment tooling.
 security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, sandbox and cyber tooling.
+security.dashboard	Security	Shield Control	seven shield dashboard	safe	Open the native Shield workspace dashboard.
+security.mode	Security	CyberSpace	seven shield mode	safe	Show the context-aware cybersecurity workspace.
+security.hud	Security	Cyber HUD	seven shield hud	safe	Show cyber context, scope and workspace status.
+security.context.recon	Security	Recon Context	seven shield context recon	changes	Enter the Recon CyberSpace workspace.
+security.context.web	Security	Web Pentest Context	seven shield context web	changes	Enter the Web Pentest CyberSpace workspace.
+security.context.forensics	Security	Forensics Context	seven shield context forensics	changes	Enter the Forensics CyberSpace workspace.
 security.status	Security	Shield Status	seven shield status	safe	Show firewall, sandbox and Shield trust posture.
 security.plan	Security	Shield Plan	seven shield plan	safe	Show prioritized Shield hardening actions.
+security.bootstrap	Security	Bootstrap Shield Workspace	seven shield bootstrap	safe	Create Shield policy, checklist and safe launchers in the user workspace.
+security.workspace	Security	Shield Workspace	seven shield workspace	safe	Show the local Shield workspace contract.
+security.open	Security	Open Shield Workspace	seven shield open	safe	Open the Shield workspace folders.
+security.tools	Security	Shield Tools	seven shield tools	safe	Show grouped Shield tool readiness.
+security.scope	Security	Shield Scope	seven shield scope	safe	Show authorized audit scope before any network action.
+security.report	Security	New Shield Report	seven shield report	safe	Create a structured Shield report in the workspace.
 security.enable	Security	Enable Shield	seven shield enable	changes	Apply base SevenOS security hardening.
 security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
+security.lab.forensics	Security	Open Forensics Lab	seven shield lab --preset forensics	safe	Open an offline evidence-safe forensics lab.
+security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset reversing	safe	Open an offline reversing lab.
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
 windows.plan	Windows	Windows Plan	seven windows plan	safe	Show prioritized Windows Mode setup actions.
 windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Bottles, Wine and KVM Windows paths.
@@ -121,10 +141,22 @@ core.plan	Ecosystem	Seven Core Plan	seven core plan	safe	Show the next actions f
 core.bus	Ecosystem	SevenBus Schema	seven core bus --json	safe	Show the local event envelope consumed by Hub, Shell and future daemon.
 core.snapshot	Ecosystem	SevenDaemon Snapshot	seven core snapshot --json	safe	Show the Rust daemon view of SevenBus event state.
 core.health	Ecosystem	SevenDaemon Health	seven core health --json	safe	Show local runtime health from the Rust daemon.
+core.profiles	Ecosystem	SevenDaemon Profiles	seven core profiles --json	safe	Show daemon-native profile state as SevenOS migrates profile logic out of Bash.
+core.observe	Ecosystem	Observe Context Once	seven core observe --json	safe	Ask SevenDaemon to record one semantic context observation into SevenBus.
 core.doctor	Ecosystem	Seven Core Doctor	seven core doctor	safe	Validate contracts, SevenBus and the daemon scaffold.
 core.install-service	Ecosystem	Install Seven Daemon	seven core install-service	changes	Install the Seven Core runtime as a user service.
+core.install-observer	Ecosystem	Install Context Observer	seven core install-observer	changes	Install the supervised SevenOS semantic context observer service.
 core.start	Ecosystem	Start Seven Daemon	seven core start	changes	Start the local Seven Core runtime.
+core.start-observer	Ecosystem	Start Context Observer	seven core start-observer	changes	Start continuous semantic context observations for the current session.
 core.logs	Ecosystem	Seven Daemon Logs	seven core logs	safe	Follow the Seven Core runtime journal.
+core.observer-logs	Ecosystem	Context Observer Logs	seven core observer-logs	safe	Follow the semantic context observer journal.
+scheduler.status	Ecosystem	Seven Scheduler Status	seven scheduler status	safe	Show process groups, active profile policy and host scheduling hints.
+scheduler.plan	Ecosystem	Seven Scheduler Plan	seven scheduler plan	safe	Show context-aware CPU, priority and power actions.
+scheduler.apply	Ecosystem	Apply Scheduler Hints	seven scheduler apply	changes	Preview or apply safe user-space nice adjustments for owned processes.
+context.status	Ecosystem	Context Status	seven context status	safe	Show the current semantic workflow context.
+context.graph	Ecosystem	Context Graph	seven context graph	safe	Show process/window topology grouped into human workflows.
+context.plan	Ecosystem	Context Plan	seven context plan	safe	Show context-driven profile and scheduler recommendations.
+context.emit	Ecosystem	Emit Context Event	seven context emit	safe	Record the current semantic context into SevenBus for Hub, Shell and future daemon observation.
 shell.status	Desktop	Seven Shell Status	seven shell	safe	Show the AGS/TypeScript Seven Shell foundation state.
 shell.plan	Desktop	Seven Shell Plan	seven shell plan	safe	Show how Seven Shell will replace Rofi panels gradually.
 shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned AGS surfaces and fallback contracts.

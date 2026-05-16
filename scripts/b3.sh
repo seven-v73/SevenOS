@@ -93,8 +93,10 @@ shield_plan = command_json([os.path.join(ROOT, "security/shield-status.sh"), "pl
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}, "dependencies": []})
 server_plan = command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"], {"next": []})
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": [], "summary": {}})
+profile_status = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 shell = command_json([os.path.join(ROOT, "scripts/shell.sh"), "status", "--json"], {"state": "PLANNED", "dependencies": []})
 shell_plan = command_json([os.path.join(ROOT, "scripts/shell.sh"), "plan", "--json"], {"next": []})
+core_plan = command_json([os.path.join(ROOT, "scripts/core.sh"), "plan", "--json"], {"next": []})
 installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
 installer_plan = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "plan", "--json"], {"next": []})
 
@@ -151,22 +153,45 @@ service_state = (server.get("service") or {}).get("state", "MISS")
 server_dependencies = server.get("dependencies") or []
 server_dependency_total = len(server_dependencies)
 server_dependency_ok = sum(1 for item in server_dependencies if item.get("state") == "OK")
-if service_state == "RUN":
+runtime_ready = bool(server.get("runtime_ready")) or service_state == "RUN"
+if runtime_ready:
     backend_score = 55 + round((server_dependency_ok / server_dependency_total) * 45) if server_dependency_total else 55
 elif service_state == "READY":
     backend_score = 35 + round((server_dependency_ok / server_dependency_total) * 25) if server_dependency_total else 35
 else:
     backend_score = round((server_dependency_ok / server_dependency_total) * 25) if server_dependency_total else 0
-if service_state not in ("READY", "RUN"):
+if not runtime_ready and service_state != "READY":
     add("server.packages", "backend", "high", "Install deployment/backend layer", "seven improve deployment --apply --yes", "Install Podman, Caddy, Go and deployment tools for Horizon.", "packages")
     add("server.install-service", "backend", "high", "Install Seven Server user service", "seven server install-user-service", "Make the local API durable instead of ad-hoc script calls.", "changes")
-if service_state != "RUN":
+if not runtime_ready:
     add("server.start", "backend", "high", "Start Seven Server runtime", "seven server start", "Expose SevenOS state to Hub and future shell surfaces.", "changes")
 
 profile_priority = {"shield": "critical", "studio": "high", "windows": "high", "horizon": "high", "baobab": "medium", "forge": "medium"}
+profile_bootstrap_total = len(profile_status) if isinstance(profile_status, list) else 0
+profile_bootstrap_ok = sum(1 for item in profile_status if item.get("bootstrap_state") == "OK") if isinstance(profile_status, list) else 0
+if profile_bootstrap_total and profile_bootstrap_ok < profile_bootstrap_total:
+    add(
+        "profile.bootstrap",
+        "profiles",
+        "medium",
+        "Bootstrap SevenOS profile workspaces",
+        "seven profile bootstrap all",
+        "Create manifests, checklists and launchers so profiles become visible workspaces before full package installs.",
+        "safe",
+    )
 for profile in profile_plan.get("next", []):
     key = profile.get("key", "profile")
     severity = profile_priority.get(key, profile.get("priority", "medium"))
+    if profile.get("bootstrap_state") != "OK":
+        add(
+            f"profile.{key}.bootstrap",
+            "profiles",
+            "medium",
+            f"Bootstrap {profile.get('title', key.title())}",
+            profile.get("bootstrap_command", f"seven profile bootstrap {key}"),
+            f"{profile.get('title', key.title())} workspace contract is {profile.get('bootstrap_state', 'MISS')}.",
+            "safe",
+        )
     add(
         f"profile.{key}",
         "profiles",
@@ -191,6 +216,19 @@ for item in shell_plan.get("next", []):
 if shell.get("state") == "PLANNED":
     add("shell.foundation", "shell", "high", "Install Seven Shell AGS foundation", "./install.sh shell-ags --yes", "Prepare GJS, TypeScript, GTK4 and libadwaita before replacing Rofi surfaces.", "packages")
     add("shell.doctor", "shell", "medium", "Validate shell foundation", "seven shell doctor", "Confirm the AGS foundation remains coherent with fallback surfaces.", "safe")
+
+for item in core_plan.get("next", []):
+    command = item.get("command", "")
+    if command in ("seven core install-service", "seven core install-observer", "seven core start", "seven core start-observer"):
+        add(
+            f"core.{item.get('key', 'runtime')}",
+            "backend",
+            item.get("severity", "medium"),
+            item.get("title", "Activate Seven Core runtime"),
+            command,
+            item.get("reason", "Move Seven Core from contracts toward supervised runtime services."),
+            item.get("impact", "changes"),
+        )
 
 for item in installer_plan.get("next", []):
     add(
@@ -230,6 +268,13 @@ preferred_commands = {
     "seven improve deployment --apply": "seven improve deployment --apply --yes",
     "./install.sh shell-ags": "./install.sh shell-ags --yes",
     "seven installer plan": "seven installer install",
+    "seven core install-observer": "seven core install-service",
+    "seven profile bootstrap baobab": "seven profile bootstrap all",
+    "seven profile bootstrap forge": "seven profile bootstrap all",
+    "seven profile bootstrap shield": "seven profile bootstrap all",
+    "seven profile bootstrap studio": "seven profile bootstrap all",
+    "seven profile bootstrap windows": "seven profile bootstrap all",
+    "seven profile bootstrap horizon": "seven profile bootstrap all",
 }
 available_commands = {item["command"] for item in actions}
 actions = [
@@ -266,7 +311,10 @@ if any(item.get("impact") == "manual" for item in actions):
 phase_scores = {
     "trust": shield.get("percent", 0),
     "backend": min(100, backend_score),
-    "profiles": max(0, 100 - min(100, (profile_plan.get("summary", {}) or {}).get("total", 0) * 15)),
+    "profiles": max(0, 100 - min(100, (profile_plan.get("summary", {}) or {}).get("total", 0) * 15)) if not profile_bootstrap_total else round(
+        max(0, 100 - min(100, (profile_plan.get("summary", {}) or {}).get("total", 0) * 15)) * 0.7
+        + ((profile_bootstrap_ok / profile_bootstrap_total) * 100) * 0.3
+    ),
     "shell": 100 if shell.get("state") == "READY" else 65 if shell.get("state") == "FOUNDATION" else 35,
     "installer": 100 if installer.get("ready") else 35,
 }

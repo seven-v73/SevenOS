@@ -45,6 +45,10 @@ json_string() {
 }
 
 status() {
+  if [[ "$JSON_OUTPUT" -eq 1 && -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    exec "$ROOT_DIR/bin/seven-daemon" installer --json
+  fi
+
   local archinstall_state calamares_state planner_state profile_state archiso_state build_state packages_state
   archinstall_state="$(state archinstall)"
   calamares_state="$(state calamares)"
@@ -120,6 +124,9 @@ doctor() {
 
 plan() {
   if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+      exec "$ROOT_DIR/bin/seven-daemon" installer-plan --json
+    fi
     INSTALLER_STATUS="$(JSON_OUTPUT=1 status)" python - <<'PY'
 import json
 import os

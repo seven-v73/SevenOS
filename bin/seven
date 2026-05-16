@@ -62,10 +62,20 @@ def handle_profile(args):
 def handle_shield(args):
     shield_json = args.json or "--json" in args.extra or "json" in args.extra
     shield_extra = [item for item in args.extra if item not in ("--json", "json")]
-    if args.action in ("status", "plan"):
+    if args.action in ("dashboard", "open", "labs", "tools", "scope", "report"):
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-control.sh", args.action, *extra, *shield_extra)
+    elif args.action in ("mode", "workspaces", "context", "layout", "hud"):
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/cyberspace.sh", args.action, *extra, *shield_extra)
+    elif args.action in ("status", "plan"):
         shield_action = ["plan"] if args.action == "plan" else []
         extra = ["--json"] if shield_json else []
         run_script(args, "security/shield-status.sh", *shield_action, *extra, *shield_extra)
+    elif args.action in ("bootstrap", "workspace"):
+        workspace_action = "bootstrap" if args.action == "bootstrap" else "status"
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-workspace.sh", workspace_action, *extra, *shield_extra)
     elif args.action == "enable":
         install_target("security", args)
     elif args.action == "audit":
@@ -153,6 +163,24 @@ def handle_core(args):
     run_script(args, "scripts/core.sh", *extra)
 
 
+def handle_scheduler(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    if args.apply:
+        extra.append("--apply")
+    if args.yes:
+        extra.append("--yes")
+    run_script(args, "scripts/scheduler.sh", *extra)
+
+
+def handle_context(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/context.sh", *extra)
+
+
 def handle_identity(args):
     extra = [args.action, *args.extra]
     if args.json:
@@ -238,6 +266,17 @@ def handle_b3(args):
     run_script(args, "scripts/b3.sh", *extra)
 
 
+def handle_daily(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    if args.apply:
+        extra.append("--apply")
+    if args.yes:
+        extra.append("--yes")
+    run_script(args, "scripts/daily-driver.sh", *extra)
+
+
 def handle_architecture(args):
     run_script(args, "scripts/architecture.sh", args.action)
 
@@ -293,8 +332,16 @@ def main():
     shell_parser.add_argument("--json", action="store_true", help="print machine-readable shell status or plan")
     shell_parser.add_argument("extra", nargs=argparse.REMAINDER)
     core_parser = subparsers.add_parser("core", help="inspect Seven Core and SevenBus foundation")
-    core_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "bus", "schema", "snapshot", "health", "install-service", "start", "stop", "logs"))
+    core_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "bus", "schema", "snapshot", "health", "profiles", "observe", "install-service", "install-observer", "start", "start-observer", "stop", "stop-observer", "logs", "observer-logs"))
     core_parser.add_argument("--json", action="store_true", help="print machine-readable core status, health, plan or bus schema")
+    scheduler_parser = subparsers.add_parser("scheduler", help="inspect SevenOS process and thread orchestration")
+    scheduler_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "apply"))
+    scheduler_parser.add_argument("--json", action="store_true", help="print machine-readable scheduler state or plan")
+    scheduler_parser.add_argument("--apply", action="store_true", help="apply safe user-space scheduler hints")
+    scheduler_parser.add_argument("--yes", action="store_true", help="run non-interactively where supported")
+    context_parser = subparsers.add_parser("context", help="inspect SevenOS semantic user context")
+    context_parser.add_argument("action", nargs="?", default="status", choices=("status", "graph", "plan", "emit"))
+    context_parser.add_argument("--json", action="store_true", help="print machine-readable context engine state")
     identity_parser = subparsers.add_parser("identity", help="show SevenOS African first identity language")
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
@@ -328,6 +375,11 @@ def main():
     b3_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
     b3_parser.add_argument("--phase", choices=("all", "trust", "backend", "profiles", "shell", "installer"), help="filter B3 actions by phase")
     b3_parser.add_argument("--limit", type=int, help="maximum actions to preview or execute")
+    daily_parser = subparsers.add_parser("daily", help="check or apply daily-driver consolidation")
+    daily_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "apply"))
+    daily_parser.add_argument("--json", action="store_true", help="print machine-readable daily-driver gate")
+    daily_parser.add_argument("--apply", action="store_true", help="execute daily-driver consolidation")
+    daily_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
     actions_parser = subparsers.add_parser("actions", help="show or run SevenOS registered UI/system actions")
     actions_parser.add_argument("action", nargs="?", default="list")
     actions_parser.add_argument("--json", action="store_true", help="print machine-readable action registry")
@@ -368,7 +420,7 @@ def main():
     profile_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     shield_parser = subparsers.add_parser("shield", help="security and cyber controls")
-    shield_parser.add_argument("action", choices=("status", "plan", "enable", "audit", "lab"), nargs="?", default="status")
+    shield_parser.add_argument("action", choices=("dashboard", "status", "plan", "enable", "audit", "lab", "bootstrap", "workspace", "open", "labs", "tools", "scope", "report", "mode", "workspaces", "context", "layout", "hud"), nargs="?", default="dashboard")
     shield_parser.add_argument("--json", action="store_true", help="print machine-readable Shield posture or plan")
     shield_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
@@ -420,6 +472,10 @@ def main():
         handle_shell(args)
     elif args.command == "core":
         handle_core(args)
+    elif args.command == "scheduler":
+        handle_scheduler(args)
+    elif args.command == "context":
+        handle_context(args)
     elif args.command == "identity":
         handle_identity(args)
     elif args.command == "experience":
@@ -438,6 +494,8 @@ def main():
         handle_phase_gate(args)
     elif args.command == "b3":
         handle_b3(args)
+    elif args.command == "daily":
+        handle_daily(args)
     elif args.command == "actions":
         handle_actions(args)
     elif args.command == "post-install":

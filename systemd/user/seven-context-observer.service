@@ -1,0 +1,14 @@
+[Unit]
+Description=SevenOS semantic context observer
+PartOf=sevenos-session.target
+After=seven-daemon.service graphical-session.target
+
+[Service]
+Type=simple
+Environment=SEVENOS_CONTEXT_INTERVAL=60
+ExecStart=/usr/bin/env seven-daemon observe-loop
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=sevenos-session.target

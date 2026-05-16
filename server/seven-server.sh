@@ -59,7 +59,15 @@ service_state() {
   fi
 }
 
+daemon_json() {
+  local action="$1"
+  if [[ "$JSON_OUTPUT" -eq 1 && -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    exec "$ROOT_DIR/bin/seven-daemon" "$action" --json
+  fi
+}
+
 status() {
+  daemon_json server
   if [[ "$JSON_OUTPUT" -eq 1 ]]; then
     local service go_state podman_state caddy_state jq_state deploy_state bind_state
     service="$(service_state)"
@@ -85,7 +93,7 @@ status() {
     printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
     printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
     printf '],'
-    printf '"endpoints":["/health","/state","/status","/welcome","/welcome-plan","/session","/identity","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/packages","/packages-plan","/monitor/system","/readiness","/manifest","/actions","/stack","/shell","/shell-plan","/core","/core-plan","/core-snapshot","/core-health","/bus","/experience","/shield","/shield-plan","/server-plan","/control","/b3","/events","/insights"],'
+    printf '"endpoints":["/health","/state","/status","/welcome","/welcome-plan","/session","/identity","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/packages","/packages-plan","/monitor/system","/readiness","/manifest","/actions","/stack","/shell","/shell-plan","/core","/core-plan","/core-snapshot","/core-health","/core-observe","/scheduler","/context","/bus","/experience","/shield","/shield-plan","/cyberspace","/cyberspace-plan","/server-plan","/control","/b3","/daily","/events","/insights"],'
     printf '"recommendations":['
     local first=1
     if [[ "$service" != "RUN" ]]; then
@@ -120,6 +128,11 @@ status() {
 }
 
 plan_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" server-plan --json
+    return 0
+  fi
+
   local service go_state podman_state caddy_state jq_state deploy_state bind_state
   service="$(service_state)"
   go_state="$(command_state go)"
@@ -396,6 +409,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "scripts/core.sh"), "snapshot", "--json"]))
         elif self.path == "/core-health":
             self.send_json(command_json([os.path.join(ROOT, "scripts/core.sh"), "health", "--json"]))
+        elif self.path == "/core-observe":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/core.sh"), "observe", "--json"]))
+        elif self.path == "/scheduler":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/scheduler.sh"), "status", "--json"]))
+        elif self.path == "/context":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/context.sh"), "status", "--json"]))
         elif self.path == "/bus":
             self.send_json(command_json([os.path.join(ROOT, "scripts/core.sh"), "bus", "--json"]))
         elif self.path == "/experience":
@@ -404,12 +423,18 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"]))
         elif self.path == "/shield-plan":
             self.send_json(command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"]))
+        elif self.path == "/cyberspace":
+            self.send_json(command_json([os.path.join(ROOT, "security/cyberspace.sh"), "mode", "--json"]))
+        elif self.path == "/cyberspace-plan":
+            self.send_json(command_json([os.path.join(ROOT, "bin/seven-daemon"), "cyberspace-plan", "--json"]))
         elif self.path == "/server-plan":
             self.send_json(command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"]))
         elif self.path == "/control":
             self.send_json(command_json([os.path.join(ROOT, "scripts/control-plane.sh"), "--json"]))
         elif self.path == "/b3":
             self.send_json(command_json([os.path.join(ROOT, "scripts/b3.sh"), "plan", "--json"]))
+        elif self.path == "/daily":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/daily-driver.sh"), "status", "--json"]))
         elif self.path == "/events":
             self.send_json(command_json([os.path.join(ROOT, "scripts/events.sh"), "summary-json"]))
         elif self.path == "/insights":

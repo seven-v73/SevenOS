@@ -9,13 +9,20 @@ gamemode
 vulkan-icd-loader
 vkd3d
 qemu-full
+libvirt
+virt-install
 virt-manager
 virt-viewer
 dnsmasq
 vde2
 openbsd-netcat
 edk2-ovmf
+swtpm
+spice-gtk
+virglrenderer
 
 # Optional, depending on your repositories:
 # bottles is commonly installed through Flatpak or AUR.
 # lib32-gamemode and lib32-vulkan-icd-loader require the Arch multilib repo.
+# virtio-win is required during Windows installation, but is often provided as
+# a downloaded ISO rather than a pacman package.

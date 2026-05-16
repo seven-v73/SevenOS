@@ -71,6 +71,7 @@ Hyprland session unchanged.
 ./install.sh theme --dry-run
 ./install.sh branding --dry-run
 seven readiness || ./scripts/readiness.sh
+./bin/seven daily --json | python -m json.tool
 ./bin/seven phase-gate --json | python -m json.tool
 ./bin/seven stack --json | python -m json.tool
 ./bin/seven shell plan --json | python -m json.tool
@@ -223,9 +224,38 @@ seven post-install
 hyprctl reload
 ```
 
+For the current daily-driver consolidation push, run the gate before applying
+heavy packages:
+
+```bash
+seven daily
+seven daily --json | python -m json.tool
+```
+
+If this is a disposable test machine and you want to exercise the full path:
+
+```bash
+sudo -v
+seven improve daily --apply --yes
+seven daily
+seven readiness
+```
+
+On a real primary machine, keep the first run conservative:
+
+```bash
+seven daily
+seven improve security
+seven improve compatibility
+seven improve target
+```
+
+Then apply only the parts you are ready to install.
+
 Then check the product contracts:
 
 ```bash
+seven daily --json | python -m json.tool
 seven phase-gate --json | python -m json.tool
 seven stack --json | python -m json.tool
 seven shell status --json | python -m json.tool
@@ -320,12 +350,34 @@ Cybersecurity core and sandbox:
 ./install.sh cybersecurity core --yes
 ./install.sh cybersecurity sandbox --yes
 ./install.sh cyber-audit
+seven shield bootstrap
+seven shield dashboard
+seven shield dashboard --json | python -m json.tool
+seven shield mode
+seven shield mode --json | python -m json.tool
+seven-daemon cyberspace --json | python -m json.tool
+seven-daemon cyberspace-plan --json | python -m json.tool
+seven shield workspaces --json | python -m json.tool
+seven shield layout recon --json | python -m json.tool
+seven shield hud
+seven shield workspace --json | python -m json.tool
+seven shield tools
+seven shield scope
+seven shield scope --json | python -m json.tool
+seven shield report
 ```
+
+CyberSpace shortcuts after reapplying the theme:
+
+- `Super+C` opens the Shield CyberSpace map.
+- `Super+Ctrl+C` opens the Cyber HUD.
+- `seven shield context recon` switches to the Recon workspace.
+- `seven shield context web` switches to the Web Pentest workspace.
 
 Cyber Lab note:
 
 ```bash
-./install.sh cyber-lab --name webapp
+seven shield lab --preset web
 ```
 
 opens an isolated Firejail shell. Your prompt may show `sevenos-webapp`.
@@ -397,13 +449,110 @@ seven improve compatibility
 seven improve deployment
 ```
 
-## 8. Validate The Result
+## 8. B3 Consolidation Path
+
+Before trying to build an ISO, use B3 as the single consolidation gate. It
+orders the real blockers: trust, backend, profiles, shell and installer.
+
+Inspect the current gate:
+
+```bash
+seven b3 status
+seven b3 plan
+seven phase-gate
+```
+
+Preview the next fixes without changing the machine:
+
+```bash
+seven b3 apply --limit 8
+seven b3 apply --phase trust --limit 4
+seven b3 apply --phase profiles --limit 4
+```
+
+Apply only after opening a sudo session:
+
+```bash
+sudo -v
+seven b3 apply --phase trust --apply --yes --limit 4
+seven b3 apply --phase backend --apply --yes --limit 4
+seven b3 apply --phase profiles --apply --yes --limit 6
+seven b3 apply --phase shell --apply --yes --limit 4
+seven b3 apply --phase installer --apply --yes --limit 4
+```
+
+Then validate again:
+
+```bash
+seven shield status
+seven profile bootstrap all
+seven profile plan
+seven server status
+seven shell status
+seven installer status
+seven b3 status
+seven readiness
+```
+
+Seven Core runtime checks:
+
+```bash
+seven core health --json | python -m json.tool
+seven core profiles --json | python -m json.tool
+seven-daemon shield --json | python -m json.tool
+seven-daemon shield-plan --json | python -m json.tool
+seven-daemon server --json | python -m json.tool
+seven-daemon server-plan --json | python -m json.tool
+seven-daemon windows --json | python -m json.tool
+seven-daemon windows-plan --json | python -m json.tool
+seven-daemon installer --json | python -m json.tool
+seven-daemon installer-plan --json | python -m json.tool
+seven-daemon packages --json | python -m json.tool
+seven-daemon packages-plan --json | python -m json.tool
+seven-daemon insights --json | python -m json.tool
+seven-daemon phase-gate --json | python -m json.tool
+seven core observe --json | python -m json.tool
+seven events --json --limit 3 | python -m json.tool
+```
+
+`seven core observe` records one semantic context observation through
+SevenDaemon into SevenBus. It is the current bridge toward a future continuous
+runtime observer.
+
+To enable the continuous observer for the test session:
+
+```bash
+seven core install-service
+seven core start
+seven core start-observer
+systemctl --user status seven-context-observer.service
+```
+
+The observer is local-only. It records semantic context events every 60 seconds
+through SevenBus so Seven Hub and Seven Shell can evolve toward live context
+state instead of one-off probes.
+
+Profile workspace bootstrap checks:
+
+```bash
+seven profile bootstrap all
+seven profile current --json | python -m json.tool
+seven profile open
+```
+
+Each profile should now contain `.sevenos/profile.json`,
+`.sevenos/CHECKLIST.md` and `.sevenos/launch.sh` inside its workspace. This
+turns Forge, Shield, Studio, Windows, Horizon and Baobab into visible working
+spaces before the full profile package install is complete.
+
+## 9. Validate The Result
 
 ```bash
 seven status
 seven doctor
 seven post-install
 seven readiness
+seven daily
 seven phase-gate
 seven ecosystem
 ./scripts/check.sh
@@ -414,9 +563,19 @@ Record readiness history:
 
 ```bash
 seven readiness --record
+seven daily --json | python -m json.tool
 ```
 
-## 9. What To Inspect Visually
+For a primary PC, do not treat the test as complete until `seven daily` reports
+no `BLOCK` gates. The current consolidation command is:
+
+```bash
+sudo -v
+seven improve daily --apply --yes
+seven daily
+```
+
+## 10. What To Inspect Visually
 
 - Hyprland window borders and animation feel
 - Waybar profile/security/status modules
@@ -429,7 +588,7 @@ seven readiness --record
 - Windows Mode status
 - `seven deploy .` generated plan
 
-## 10. Feedback To Capture
+## 11. Feedback To Capture
 
 For each test machine, record:
 

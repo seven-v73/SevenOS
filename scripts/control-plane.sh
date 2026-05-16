@@ -82,6 +82,7 @@ packages_plan = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--jso
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
+daily = command_json([os.path.join(ROOT, "scripts/daily-driver.sh"), "status", "--json"], {"decision": "unknown", "blockers": [], "warnings": []})
 
 actions_by_command = {item.get("command"): item for item in actions.get("actions", [])}
 
@@ -147,7 +148,8 @@ for item in server_plan.get("next", []):
         item.get("impact", "changes"),
     )
 
-if shield.get("percent", 0) < 70 or (server.get("service") or {}).get("state") not in ("READY", "RUN"):
+server_runtime_ready = bool(server.get("runtime_ready")) or (server.get("service") or {}).get("state") in ("READY", "RUN")
+if shield.get("percent", 0) < 70 or not server_runtime_ready:
     add(
         "b3",
         "critical",
@@ -155,6 +157,26 @@ if shield.get("percent", 0) < 70 or (server.get("service") or {}).get("state") n
         "seven b3 plan",
         "Use the ordered B3 path for trust, backend, profiles, shell and installer instead of scattered fixes.",
         "safe",
+    )
+
+for item in daily.get("blockers", []):
+    add(
+        "daily",
+        "critical",
+        item.get("title", "Resolve daily driver blocker"),
+        item.get("command", "seven daily"),
+        item.get("reason", "SevenOS is not ready for a primary PC."),
+        "packages" if "--apply" in item.get("command", "") else "safe",
+    )
+
+for item in daily.get("warnings", []):
+    add(
+        "daily",
+        "high",
+        item.get("title", "Resolve daily driver warning"),
+        item.get("command", "seven daily"),
+        item.get("reason", "SevenOS daily-driver gate has a warning."),
+        "changes",
     )
 
 for rec in readiness.get("recommendations", []):
@@ -210,10 +232,10 @@ scores = {
     "readiness": readiness.get("percent", 0),
     "experience": experience.get("percent", 0),
     "shield": shield.get("percent", 0),
-    "server": 100 if server.get("service", {}).get("state") == "RUN" else 50 if server.get("service", {}).get("state") == "READY" else 0,
+    "server": 100 if bool(server.get("deployment_stack_ready")) else 75 if bool(server.get("runtime_ready")) else 50 if server.get("service", {}).get("state") == "READY" else 0,
     "windows": 100 if windows.get("ready") else 60 if windows.get("mode") == "vm-ready" else 0,
     "installer": 100 if installer.get("ready") else 60 if installer.get("mode") in ("tui-ready", "graphical") else 35,
-    "b3": round((shield.get("percent", 0) * 0.45) + ((100 if server.get("service", {}).get("state") == "RUN" else 60 if server.get("service", {}).get("state") == "READY" else 0) * 0.35) + ((100 if installer.get("ready") else 35) * 0.2)),
+    "b3": round((shield.get("percent", 0) * 0.45) + ((100 if bool(server.get("deployment_stack_ready")) else 75 if bool(server.get("runtime_ready")) else 60 if server.get("service", {}).get("state") == "READY" else 0) * 0.35) + ((100 if installer.get("ready") else 35) * 0.2)),
 }
 overall = round((scores["readiness"] * 0.22) + (scores["experience"] * 0.22) + (scores["shield"] * 0.18) + (scores["server"] * 0.13) + (scores["windows"] * 0.13) + (scores["installer"] * 0.12))
 

@@ -64,6 +64,11 @@ git_summary() {
 }
 
 json_gate() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" phase-gate --json
+    return
+  fi
+
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
 import json
 import os
@@ -126,6 +131,7 @@ def gate(key, title, actual, target, command, severity="block", detail=""):
 
 
 server_state = (server.get("service") or {}).get("state", "MISS")
+server_runtime_state = "RUN" if server.get("runtime_ready") else server_state
 installer_mode = installer.get("mode", "foundation")
 profile_total = (profiles.get("summary") or {}).get("total", 0)
 package_total = (packages.get("summary") or {}).get("total", 0)
@@ -142,12 +148,12 @@ gates = [
     {
         "key": "server",
         "title": "Seven Server backend",
-        "state": "PASS" if server_state in ("READY", "RUN") else "BLOCK",
-        "actual": server_state,
-        "target": "READY",
-        "band": server_state,
+        "state": "PASS" if server.get("runtime_ready") or server_state in ("READY", "RUN") else "BLOCK",
+        "actual": server_runtime_state,
+        "target": "RUNTIME_READY",
+        "band": server_runtime_state,
         "command": "seven server plan",
-        "detail": "The ecosystem needs a local OS API surface before Phase 5 work can be credible.",
+        "detail": "The ecosystem needs a local OS API surface. Go/Podman/Caddy complete Horizon deployment, but they are not required to prove that the local API is running.",
     },
     {
         "key": "installer",

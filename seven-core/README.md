@@ -66,6 +66,8 @@ The daemon is now launchable through:
 seven-daemon --json
 seven-daemon snapshot --json
 seven-daemon health --json
+seven-daemon cyberspace --json
+seven-daemon cyberspace-plan --json
 seven-daemon events --json
 seven-daemon summary --json
 seven-daemon emit --source core --type event --message "SevenBus event"
@@ -93,6 +95,12 @@ reader kept as a compatibility fallback.
 local `/proc` data, session variables, event integrity and SevenOS state paths
 from Rust, giving Hub and Shell a fast OS-level signal without walking the
 whole Bash stack.
+
+`seven-daemon cyberspace --json` and `seven-daemon cyberspace-plan --json`
+turn Shield CyberSpace into a daemon-readable contract. The Bash surface still
+handles human commands and Hyprland dispatch, while Rust owns the context map,
+scope state and remediation plan that Hub, Server and future `seven-cyberd`
+will consume.
 
 The current service is a user service:
 

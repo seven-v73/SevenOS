@@ -85,13 +85,18 @@ curl http://127.0.0.1:7777/core
 curl http://127.0.0.1:7777/core-plan
 curl http://127.0.0.1:7777/core-snapshot
 curl http://127.0.0.1:7777/core-health
+curl http://127.0.0.1:7777/scheduler
+curl http://127.0.0.1:7777/context
 curl http://127.0.0.1:7777/bus
 curl http://127.0.0.1:7777/experience
 curl http://127.0.0.1:7777/shield
 curl http://127.0.0.1:7777/shield-plan
+curl http://127.0.0.1:7777/cyberspace
+curl http://127.0.0.1:7777/cyberspace-plan
 curl http://127.0.0.1:7777/server-plan
 curl http://127.0.0.1:7777/control
 curl http://127.0.0.1:7777/b3
+curl http://127.0.0.1:7777/daily
 curl http://127.0.0.1:7777/events
 curl http://127.0.0.1:7777/insights
 ```
@@ -118,13 +123,18 @@ GET  /core
 GET  /core-plan
 GET  /core-snapshot
 GET  /core-health
+GET  /scheduler
+GET  /context
 GET  /bus
 GET  /experience
 GET  /shield
 GET  /shield-plan
+GET  /cyberspace
+GET  /cyberspace-plan
 GET  /server-plan
 GET  /control
 GET  /b3
+GET  /daily
 GET  /events
 GET  /insights
 GET  /monitor/system
