@@ -91,12 +91,12 @@ else
   fail "Quick Settings or Notifications dedicated shell surface missing"
 fi
 
-if grep -q 'bg: rgba(246, 251, 254, 0.70)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+if grep -q 'bg: rgba(246, 251, 254, 0.42)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'min-height: 58px' "$ROOT_DIR/hyprland/rofi/hub.rasi"; then
-  ok "Seven Hub fallback uses frosted glass navigation"
+  ok "Seven Hub fallback uses transparent frosted navigation"
 else
-  fail "Seven Hub fallback should use frosted glass navigation"
+  fail "Seven Hub fallback should use transparent frosted navigation"
 fi
 
 if grep -q 'content: "SevenOS"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -110,9 +110,9 @@ fi
 if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'background #eef4f8' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
-  ok "SevenOS default UI is frosted liquid glass, not dark or yellow"
+  ok "SevenOS default UI is transparent minimal with frosted glass accents"
 else
-  fail "SevenOS default UI should ship frosted liquid glass"
+  fail "SevenOS default UI should ship transparent minimal glass"
 fi
 
 if grep -q 'kente-band' "$ROOT_DIR/seven-hub/gui/src/index.html" &&

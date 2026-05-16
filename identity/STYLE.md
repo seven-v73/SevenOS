@@ -55,11 +55,14 @@ Rules:
 
 ## Surfaces
 
-SevenOS uses a frosted liquid glass foundation. The default target is
-`Sovereign Frost`: readable in daylight, elegant at night, and free from both
-black-on-black desktop surfaces and dominant yellow/orange chrome. Liquid glass
-is simulated with translucent surfaces, white glass borders and soft opacity. Do not rely on production
-`backdrop-filter` blur for core Linux surfaces.
+SevenOS uses a transparent minimal foundation with frosted liquid glass accents.
+The default target is `Sovereign Frost`: readable in daylight, elegant at
+night, and free from both black-on-black desktop surfaces and dominant
+yellow/orange chrome. The ratio is intentional: about 70% transparent minimal
+UI, 30% glass premium on active windows, Hub, notifications, overlays, control
+surfaces and widgets. Liquid glass is simulated with translucent surfaces,
+white glass borders and soft opacity. Do not rely on production `backdrop-filter`
+blur for core Linux surfaces.
 
 - Base: `--surface-1` + `--glass-border`
 - Floating: `--glass` + `--glass-border`

@@ -19,7 +19,8 @@ The goal is not to look like a themed Arch rice. The system should feel like an
 independent professional OS: calm, precise, luxurious, and culturally rooted
 without becoming decorative.
 
-- frosted liquid glass surfaces for serious daily work without black-on-black or yellow-heavy fatigue
+- transparent minimal surfaces for serious daily work without black-on-black or yellow-heavy fatigue
+- frosted liquid glass accents reserved for active windows, Hub, notifications, overlays and widgets
 - ancestral gold as a restrained cultural micro-accent, not a dominant UI color
 - clay for warning, urgency and danger
 - baobab for trusted/security states

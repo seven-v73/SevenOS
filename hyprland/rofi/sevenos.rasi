@@ -1,14 +1,14 @@
 * {
   ebene: #eef4f8;
   surface-0: #f6fbfe;
-  surface-1: rgba(255, 255, 255, 0.72);
-  surface-2: rgba(255, 255, 255, 0.54);
-  surface-3: rgba(231, 242, 248, 0.72);
-  glass: rgba(255, 255, 255, 0.46);
-  glass-2: rgba(255, 255, 255, 0.64);
-  glass-3: rgba(247, 252, 255, 0.82);
-  glass-border: rgba(255, 255, 255, 0.78);
-  glass-border-2: rgba(122, 153, 170, 0.38);
+  surface-1: rgba(255, 255, 255, 0.42);
+  surface-2: rgba(255, 255, 255, 0.28);
+  surface-3: rgba(231, 242, 248, 0.36);
+  glass: rgba(255, 255, 255, 0.24);
+  glass-2: rgba(255, 255, 255, 0.34);
+  glass-3: rgba(247, 252, 255, 0.52);
+  glass-border: rgba(255, 255, 255, 0.58);
+  glass-border-2: rgba(122, 153, 170, 0.28);
   gold: #b89a62;
   gold-bright: #cbb37a;
   gold-dim: #8f7a53;

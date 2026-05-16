@@ -429,19 +429,19 @@ def run_gui() -> int:
 
         .seven-root {
           background:
-            linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(111, 157, 188, 0.16) 42%, rgba(238, 244, 248, 0.94) 72%),
+            linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(111, 157, 188, 0.10) 42%, rgba(238, 244, 248, 0.74) 72%),
             #eef4f8;
         }
 
         .seven-body {
-          background: rgba(255, 255, 255, 0.48);
-          border: 1px solid rgba(255, 255, 255, 0.78);
+          background: rgba(255, 255, 255, 0.30);
+          border: 1px solid rgba(255, 255, 255, 0.54);
           border-radius: 24px;
           margin: 24px;
         }
 
         .seven-sidebar {
-          background: rgba(255, 255, 255, 0.42);
+          background: rgba(255, 255, 255, 0.22);
           border-right: 1px solid rgba(122, 153, 170, 0.22);
           padding: 24px 18px;
         }
@@ -466,14 +466,14 @@ def run_gui() -> int:
         }
 
         .seven-nav-item.active {
-          background: rgba(255, 255, 255, 0.68);
+          background: rgba(255, 255, 255, 0.44);
           color: #17232b;
           outline: 1px solid rgba(111, 157, 188, 0.42);
         }
 
         .seven-status-card {
-          background: rgba(255, 255, 255, 0.50);
-          border: 1px solid rgba(255, 255, 255, 0.74);
+          background: rgba(255, 255, 255, 0.30);
+          border: 1px solid rgba(255, 255, 255, 0.50);
           border-radius: 16px;
           padding: 14px;
           margin-top: 18px;
@@ -481,7 +481,7 @@ def run_gui() -> int:
         }
 
         .seven-content {
-          background: rgba(238, 246, 250, 0.30);
+          background: rgba(238, 246, 250, 0.16);
         }
 
         .seven-page {
@@ -489,8 +489,8 @@ def run_gui() -> int:
         }
 
         .seven-hero {
-          background: rgba(255, 255, 255, 0.48);
-          border: 1px solid rgba(255, 255, 255, 0.78);
+          background: rgba(255, 255, 255, 0.30);
+          border: 1px solid rgba(255, 255, 255, 0.54);
           border-radius: 18px;
           padding: 20px 22px;
           margin-bottom: 4px;
@@ -515,8 +515,8 @@ def run_gui() -> int:
         .seven-metric-card {
           min-width: 154px;
           min-height: 84px;
-          background: rgba(255, 255, 255, 0.50);
-          border: 1px solid rgba(255, 255, 255, 0.78);
+          background: rgba(255, 255, 255, 0.30);
+          border: 1px solid rgba(255, 255, 255, 0.54);
           border-radius: 18px;
           padding: 14px;
         }
@@ -562,12 +562,12 @@ def run_gui() -> int:
           margin-top: 6px;
           margin-bottom: 6px;
           border-radius: 14px;
-          background: rgba(255, 255, 255, 0.48);
-          border: 1px solid rgba(255, 255, 255, 0.76);
+          background: rgba(255, 255, 255, 0.30);
+          border: 1px solid rgba(255, 255, 255, 0.52);
         }
 
         row.seven-card:hover {
-          background: rgba(255, 255, 255, 0.66);
+          background: rgba(255, 255, 255, 0.44);
           border-color: rgba(111, 157, 188, 0.38);
         }
 

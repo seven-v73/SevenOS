@@ -15,8 +15,8 @@ window#waybar {
 tooltip {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(241, 248, 251, 0.70)),
-    rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.82);
+    rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 14px;
   color: rgba(23, 35, 43, 0.94);
 }
@@ -44,9 +44,9 @@ tooltip label {
   padding: 0 10px;
   color: rgba(23, 35, 43, 0.92);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(239, 247, 251, 0.48)),
-    rgba(255, 255, 255, 0.46);
-  border-top: 1px solid rgba(255, 255, 255, 0.92);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(239, 247, 251, 0.26)),
+    rgba(255, 255, 255, 0.24);
+  border-top: 1px solid rgba(255, 255, 255, 0.62);
   border-bottom: 1px solid rgba(112, 139, 154, 0.22);
 }
 
@@ -55,7 +55,7 @@ tooltip label {
   padding-left: 16px;
   padding-right: 11px;
   border-radius: 13px 0 0 13px;
-  border-left: 1px solid rgba(255, 255, 255, 0.82);
+  border-left: 1px solid rgba(255, 255, 255, 0.52);
   font-size: 13px;
 }
 
@@ -73,11 +73,11 @@ tooltip label {
   margin-right: 0;
   padding: 0 13px;
   border-radius: 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.72);
+  border-left: 1px solid rgba(255, 255, 255, 0.42);
   border-right: 1px solid rgba(118, 149, 166, 0.24);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(235, 246, 251, 0.46)),
-    rgba(255, 255, 255, 0.50);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(235, 246, 251, 0.26)),
+    rgba(255, 255, 255, 0.28);
 }
 
 #workspaces button {
@@ -94,14 +94,14 @@ tooltip label {
 #workspaces button:hover {
   color: rgba(16, 31, 40, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(220, 239, 248, 0.54)),
-    rgba(255, 255, 255, 0.54);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(220, 239, 248, 0.30)),
+    rgba(255, 255, 255, 0.34);
 }
 
 #workspaces button.active {
   color: rgba(16, 31, 40, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(218, 240, 248, 0.64)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(218, 240, 248, 0.38)),
     rgba(111, 157, 188, 0.20);
   border: 1px solid rgba(111, 157, 188, 0.42);
 }
@@ -116,7 +116,7 @@ tooltip label {
   margin-left: 0;
   padding-left: 14px;
   border-radius: 13px 0 0 13px;
-  border-left: 1px solid rgba(255, 255, 255, 0.82);
+  border-left: 1px solid rgba(255, 255, 255, 0.52);
 }
 
 #custom-profile,
@@ -165,8 +165,8 @@ tooltip label {
   border-right: 1px solid rgba(118, 149, 166, 0.26);
   color: rgba(23, 35, 43, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(228, 243, 249, 0.56)),
-    rgba(255, 255, 255, 0.54);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(228, 243, 249, 0.30)),
+    rgba(255, 255, 255, 0.34);
   font-family: "Cormorant Garamond", "DM Sans", serif;
   font-size: 16px;
   font-style: italic;
@@ -185,6 +185,6 @@ tooltip label {
 #custom-power:hover,
 #custom-sevenos:hover {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(229, 243, 249, 0.62)),
-    rgba(255, 255, 255, 0.62);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(229, 243, 249, 0.36)),
+    rgba(255, 255, 255, 0.42);
 }

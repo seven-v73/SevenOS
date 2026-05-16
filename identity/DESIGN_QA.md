@@ -7,7 +7,7 @@ Use this checklist before shipping visual changes.
 - African first, not generic cyberpunk.
 - Cultural references are structural, subtle, and respectful.
 - Flags are not used as the default design system.
-- Palette follows Design System v1: frosted ebene, translucent surfaces, indigo interaction, baobab health, clay warnings, and gold only as a restrained cultural accent.
+- Palette follows Design System v1: transparent minimal base, frosted active surfaces, indigo interaction, baobab health, clay warnings, and gold only as a restrained cultural accent.
 - `identity/STYLE.md` and `identity/tokens.css` are the source of truth.
 
 ## Readability
@@ -20,6 +20,7 @@ Use this checklist before shipping visual changes.
 ## Premium Feel
 
 - Surfaces are dimensional, disciplined, translucent, and purposeful.
+- Default desktop chrome is 70% transparent minimal and 30% glass premium.
 - Liquid glass is simulated with opacity and borders, not production backdrop blur.
 - UI CSS avoids decorative `box-shadow` and weights above 500.
 - Corners stay consistent.
