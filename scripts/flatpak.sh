@@ -12,7 +12,7 @@ usage() {
 SevenOS Flatpak bridge
 
 Usage:
-  ./scripts/flatpak.sh [status|setup|install|install-defaults|list]
+  ./scripts/flatpak.sh [status|setup|install|install-defaults|list] [--json]
 
 Actions:
   status            Show Flatpak and Flathub state
@@ -20,6 +20,7 @@ Actions:
   install            Install SevenOS default Flatpak apps
   install-defaults   Install SevenOS default Flatpak apps
   list              Print default Flatpak app IDs
+  --json            Emit machine-readable status for Seven Hub and Seven Core
 EOF
 }
 
@@ -43,6 +44,53 @@ status() {
   printf 'flathub: %s\n' "$(flathub_present && printf OK || printf MISS)"
   printf '\nDefault candidates:\n'
   flatpak_apps | sed 's/^/  - /'
+}
+
+app_status_tsv() {
+  flatpak_apps | while IFS= read -r app; do
+    local state="MISS"
+    if command -v flatpak >/dev/null 2>&1 && flatpak info "$app" >/dev/null 2>&1; then
+      state="OK"
+    fi
+    printf '%s\t%s\n' "$app" "$state"
+  done
+}
+
+status_json() {
+  local flatpak_state="MISS"
+  local flathub_state="MISS"
+  command -v flatpak >/dev/null 2>&1 && flatpak_state="OK"
+  flathub_present && flathub_state="OK"
+
+  FLATPAK_STATE="$flatpak_state" \
+  FLATHUB_STATE="$flathub_state" \
+  APP_STATUS="$(app_status_tsv)" \
+  python - <<'PY'
+import json
+import os
+
+apps = []
+installed = 0
+for raw in os.environ.get("APP_STATUS", "").splitlines():
+    if not raw.strip():
+        continue
+    app_id, state = raw.split("\t", 1)
+    if state == "OK":
+        installed += 1
+    apps.append({"id": app_id, "state": state})
+
+total = len(apps)
+print(json.dumps({
+    "schema": "sevenos.flatpak.v1",
+    "flatpak": os.environ.get("FLATPAK_STATE", "MISS"),
+    "flathub": os.environ.get("FLATHUB_STATE", "MISS"),
+    "total": total,
+    "installed": installed,
+    "missing": max(total - installed, 0),
+    "ready": os.environ.get("FLATPAK_STATE") == "OK" and os.environ.get("FLATHUB_STATE") == "OK",
+    "apps": apps,
+}, indent=2))
+PY
 }
 
 setup() {
@@ -73,9 +121,18 @@ install_defaults() {
   done
 }
 
-action="${1:-status}"
+json_output=0
+args=()
+for arg in "$@"; do
+  case "$arg" in
+    --json|json) json_output=1 ;;
+    *) args+=("$arg") ;;
+  esac
+done
+
+action="${args[0]:-status}"
 case "$action" in
-  status) status ;;
+  status) [[ "$json_output" -eq 1 ]] && status_json || status ;;
   setup) setup ;;
   install|install-defaults) install_defaults ;;
   list) flatpak_apps ;;

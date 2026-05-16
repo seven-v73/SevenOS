@@ -132,7 +132,7 @@ def handle_hub_native(args):
 
 
 def handle_flatpak(args):
-    run_script(args, "scripts/flatpak.sh", args.action)
+    run_script(args, "scripts/flatpak.sh", args.action, *args.extra)
 
 
 def handle_deploy(args):
@@ -457,6 +457,7 @@ def main():
 
     flatpak_parser = subparsers.add_parser("flatpak", help="SevenOS Flatpak bridge controls")
     flatpak_parser.add_argument("action", nargs="?", default="status")
+    flatpak_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     deploy_parser = subparsers.add_parser("deploy", help="detect and prepare project deployments")
     deploy_parser.add_argument("action", nargs="?", default="plan")

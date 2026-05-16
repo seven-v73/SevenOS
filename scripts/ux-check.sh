@@ -367,6 +367,15 @@ else
   fail "SevenOS action registry should expose machine-readable UI actions"
 fi
 
+flatpak_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" flatpak status --json)"
+if python -m json.tool >/dev/null <<<"$flatpak_json" &&
+   grep -q '"schema": "sevenos.flatpak.v1"' <<<"$flatpak_json" &&
+   grep -q '"apps"' <<<"$flatpak_json"; then
+  ok "SevenOS Flatpak bridge exposes a Hub-ready JSON contract"
+else
+  fail "SevenOS Flatpak bridge should expose machine-readable app readiness"
+fi
+
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
 core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
 core_bus_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core bus --json)"
@@ -577,6 +586,15 @@ if "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null; then
   ok "Seven Control Center status works"
 else
   fail "Seven Control Center status failed"
+fi
+
+if grep -q 'def daily_summary' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
+   grep -q 'Daily Driver' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
+   grep -q '"daily-apply"' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
+   grep -q 'wallpaper-refresh' "$ROOT_DIR/seven-hub/bin/seven-control-center"; then
+  ok "Seven Control Center fallback exposes primary-PC gates and repair actions"
+else
+  fail "Seven Control Center fallback should expose daily-driver, Core and wallpaper repair actions"
 fi
 
 if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&

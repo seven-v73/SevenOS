@@ -61,13 +61,20 @@ This path performs:
 If something feels incomplete after reboot:
 
 ```bash
+seven hub
+seven-control-center open
 seven session status --json | python -m json.tool
 seven core health --json | python -m json.tool
 seven-wallpaper status
+seven flatpak status --json | python -m json.tool
 seven windows resolve photoshop --json | python -m json.tool
 seven shield status --json | python -m json.tool
 seven profile plan --json | python -m json.tool
 ```
+
+The native Hub is the preferred control surface. The lightweight web control
+center is only a fallback, but it must still show the primary-PC gate, Shield,
+Windows Mode, Server runtime and quick repair actions.
 
 ## Stop Conditions
 
