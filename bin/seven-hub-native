@@ -29,6 +29,34 @@ def resolve_root() -> Path:
 ROOT = resolve_root()
 
 
+def ensure_gtk_python() -> None:
+    """Re-exec with the system Python when pyenv lacks GTK bindings."""
+    if os.environ.get("SEVENOS_NATIVE_PYTHON") == "1":
+        return
+
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        pass
+
+    system_python = Path("/usr/bin/python3")
+    if not system_python.is_file() or Path(sys.executable).resolve() == system_python.resolve():
+        return
+
+    probe = subprocess.run(
+        [str(system_python), "-c", "import gi"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    if probe.returncode != 0:
+        return
+
+    env = {**os.environ, "SEVENOS_NATIVE_PYTHON": "1"}
+    os.execve(str(system_python), [str(system_python), str(Path(__file__).resolve()), *sys.argv[1:]], env)
+
+
 def run_text(*command: str) -> str:
     env = {**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_DRY_RUN": "0"}
     output = subprocess.check_output(command, cwd=ROOT, text=True, env=env)
@@ -538,7 +566,7 @@ def run_gui() -> int:
             refresh.add_css_class("pill")
 
             sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-            sidebar.set_width_request(250)
+            sidebar.set_size_request(250, -1)
             sidebar.add_css_class("seven-sidebar")
 
             brand = Gtk.Label(label="7  SevenOS")
@@ -1261,7 +1289,7 @@ def run_gui() -> int:
             win.present()
 
     app = SevenHubNative()
-    return app.run(sys.argv)
+    return app.run([sys.argv[0]])
 
 
 def main() -> int:
@@ -1278,6 +1306,7 @@ def main() -> int:
         print("seven-hub-native open")
         return 0
 
+    ensure_gtk_python()
     return run_gui()
 
 

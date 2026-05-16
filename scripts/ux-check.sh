@@ -728,6 +728,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'seven-sidebar' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'nav_button("Dashboard"' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-hero' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'ensure_gtk_python' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'SEVENOS_NATIVE_PYTHON' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'media-playback-start-symbolic' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'icon_for_action' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'set_icon_name' "$ROOT_DIR/bin/seven-hub-native" &&
