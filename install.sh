@@ -49,6 +49,7 @@ Targets:
   installer-script Generate non-destructive install step script
   migrate-plan     Show SevenOS protected user-state migration plan
   migrate-backup   Back up protected SevenOS user state before upgrading
+  daily-driver     Consolidate SevenOS for primary PC testing
   all              Install base layer and all profiles
 
 Options:
@@ -153,6 +154,9 @@ case "$TARGET" in
     ;;
   migrate-backup)
     "$ROOT_DIR/scripts/migrate.sh" backup
+    ;;
+  daily-driver)
+    "$ROOT_DIR/scripts/daily-driver.sh" apply "${@:2}"
     ;;
   post-install)
     "$ROOT_DIR/scripts/post-install.sh"

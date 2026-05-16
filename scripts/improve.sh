@@ -147,13 +147,21 @@ improve_deployment() {
 improve_daily() {
   section "Daily Driver Consolidation"
   run_step "Back up protected SevenOS user state" "$ROOT_DIR/install.sh" migrate-backup
+  run_step "Install SevenOS CLI commands" "$ROOT_DIR/install.sh" cli
+  run_step "Apply desktop session, theme and persistent wallpaper runtime" "$ROOT_DIR/install.sh" theme
+  run_step "Install Seven Hub control center" "$ROOT_DIR/install.sh" hub
   improve_security
-  improve_compatibility
   improve_target
+  improve_compatibility
   improve_deployment
   improve_ecosystem
   run_step "Install Seven Core user services" "$ROOT_DIR/scripts/core.sh" install-service
   run_step "Install Seven Context observer" "$ROOT_DIR/scripts/core.sh" install-observer
+  run_step "Start Seven Core user service" "$ROOT_DIR/scripts/core.sh" start
+  run_step "Start Seven Context observer" "$ROOT_DIR/scripts/core.sh" start-observer
+  run_step "Refresh persistent wallpaper runtime" "$ROOT_DIR/bin/seven-wallpaper" refresh
+  run_step "Bootstrap all SevenOS profile workspaces after package installation" "$ROOT_DIR/profiles/profile-manager.sh" bootstrap all
+  run_step "Run post-install blocker check" "$ROOT_DIR/install.sh" post-install
   run_step "Run daily driver gate" "$ROOT_DIR/scripts/daily-driver.sh" status
 }
 

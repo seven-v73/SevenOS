@@ -23,12 +23,16 @@ Purpose:
   Decide whether this SevenOS installation is safe and complete enough for a
   primary PC. The gate focuses on security, profiles, Windows Mode, server,
   installer foundation and rollback hygiene.
+
+  `seven daily apply --yes` is the one-command consolidation path for a
+  test machine that is about to become a primary SevenOS workstation.
 EOF
 }
 
 shift || true
 for arg in "$@"; do
   case "$arg" in
+    --dry-run) export SEVENOS_DRY_RUN=1 ;;
     --json|json) JSON_OUTPUT=1 ;;
     --apply) APPLY=1 ;;
     --yes) YES=1; export SEVENOS_YES=1 ;;
@@ -194,6 +198,12 @@ actions = [
         "impact": "safe",
     },
     {
+        "key": "desktop",
+        "title": "Reapply SevenOS session, theme and wallpaper runtime",
+        "command": "./install.sh theme",
+        "impact": "changes",
+    },
+    {
         "key": "security",
         "title": "Consolidate Shield/security",
         "command": "seven improve security --apply --yes && seven profile install shield --yes",
@@ -226,8 +236,14 @@ actions = [
     {
         "key": "core",
         "title": "Install Seven Core user services",
-        "command": "seven core install-service && seven core install-observer",
+        "command": "seven core install-service && seven core install-observer && seven core start && seven core start-observer",
         "impact": "changes",
+    },
+    {
+        "key": "profile-bootstrap",
+        "title": "Bootstrap all profile workspaces",
+        "command": "seven profile bootstrap all",
+        "impact": "safe",
     },
     {
         "key": "verify",
@@ -299,7 +315,7 @@ if data["warnings"]:
         print(f"  - {item['title']}: {item['command']}")
 print()
 print("Recommended command:")
-print("  seven improve daily --apply --yes")
+print("  seven daily apply --yes")
 PY
 }
 

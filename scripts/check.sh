@@ -580,6 +580,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run daily >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" daily --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run daily plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run daily apply --yes >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" daily-driver --dry-run --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --record >/dev/null

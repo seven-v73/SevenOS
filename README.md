@@ -355,6 +355,7 @@ Start here before making strategic changes:
 - `docs/DEPLOYMENT.md`
 - `docs/PHASE_GATE.md`
 - `docs/B3_CONSOLIDATION.md`
+- `docs/PRIMARY_PC.md`
 - `docs/TEST_MACHINE.md`
 - `docs/PRE_PUSH.md`
 
@@ -795,12 +796,22 @@ services. The recommended consolidation path is:
 
 ```bash
 sudo -v
-seven improve daily --apply --yes
+seven daily apply --yes
+seven daily
+```
+
+The installer entrypoint is:
+
+```bash
+sudo -v
+./install.sh daily-driver --yes
 seven daily
 ```
 
 SevenOS should reach at least 90% readiness, 70% Shield/security and 70% role
 profile coverage before replacing an existing primary workstation.
+
+See `docs/PRIMARY_PC.md` for the full stop conditions and recovery checks.
 
 ### CREATION
 
