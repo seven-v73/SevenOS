@@ -111,6 +111,7 @@ configure_user_session_services() {
   if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload >/dev/null 2>&1 || true
     systemctl --user enable sevenos-session.target >/dev/null 2>&1 || true
+    systemctl --user enable sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-idle.service >/dev/null 2>&1 || true
   fi
 }
 

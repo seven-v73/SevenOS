@@ -50,6 +50,21 @@ start_once() {
   fi
 }
 
+stop_conflicting_shell_processes() {
+  if [[ "${SEVENOS_SESSION_KEEP_EXISTING:-0}" == "1" ]]; then
+    return 0
+  fi
+
+  log "stopping conflicting shell surfaces"
+  pkill -x waybar >/dev/null 2>&1 || true
+  pkill -x mako >/dev/null 2>&1 || true
+  pkill -x swaync >/dev/null 2>&1 || true
+  pkill -x dunst >/dev/null 2>&1 || true
+  pkill -x wlogout >/dev/null 2>&1 || true
+  pkill -x eww >/dev/null 2>&1 || true
+  pkill -f 'ags.*ml4w|ml4w.*ags|waybar.*ml4w|swaync.*ml4w' >/dev/null 2>&1 || true
+}
+
 start_systemd_session() {
   if [[ "${SEVENOS_SESSION_NO_SYSTEMD:-0}" == "1" ]]; then
     return 1
@@ -79,6 +94,8 @@ fi
 if command -v hyprctl >/dev/null 2>&1; then
   hyprctl setcursor Bibata-Modern-Classic 24 >/dev/null 2>&1 || true
 fi
+
+stop_conflicting_shell_processes
 
 if [[ -x "$ROOT_DIR/bin/seven-wallpaper" ]]; then
   "$ROOT_DIR/bin/seven-wallpaper" refresh >/tmp/sevenos-wallpaper.log 2>&1 || log "wallpaper refresh failed"

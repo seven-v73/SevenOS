@@ -174,14 +174,43 @@ remove_detected() {
   fi
 }
 
+stop_ml4w_runtime() {
+  log_info "Stopping ML4W runtime surfaces still running in this session..."
+
+  if is_dry_run; then
+    printf 'systemctl --user stop ml4w.service ml4w*.service || true\n'
+    printf 'pkill -x waybar mako swaync dunst wlogout eww || true\n'
+    printf "pkill -f 'ags.*ml4w|ml4w.*ags|waybar.*ml4w|swaync.*ml4w' || true\n"
+    return 0
+  fi
+
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user stop ml4w.service >/dev/null 2>&1 || true
+    systemctl --user stop 'ml4w*.service' >/dev/null 2>&1 || true
+  fi
+
+  pkill -x waybar >/dev/null 2>&1 || true
+  pkill -x mako >/dev/null 2>&1 || true
+  pkill -x swaync >/dev/null 2>&1 || true
+  pkill -x dunst >/dev/null 2>&1 || true
+  pkill -x wlogout >/dev/null 2>&1 || true
+  pkill -x eww >/dev/null 2>&1 || true
+  pkill -f 'ags.*ml4w|ml4w.*ags|waybar.*ml4w|swaync.*ml4w' >/dev/null 2>&1 || true
+}
+
 switch_to_sevenos() {
   local quarantine_dir="$BACKUP_ROOT/ml4w-$(stamp)"
   remove_detected "$quarantine_dir"
+  stop_ml4w_runtime
+  log_info "Installing SevenOS command wrappers..."
+  "$ROOT_DIR/install.sh" cli
   log_info "Applying SevenOS desktop layer..."
   "$ROOT_DIR/install.sh" theme
   log_info "Restarting SevenOS session services..."
   if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user enable sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-idle.service >/dev/null 2>&1 || true
+    systemctl --user stop sevenos-session.target >/dev/null 2>&1 || true
     systemctl --user restart sevenos-session.target >/dev/null 2>&1 || true
   fi
   "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
