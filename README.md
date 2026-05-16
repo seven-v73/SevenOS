@@ -2,7 +2,7 @@
 
 SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, context-aware work profiles, security tooling, creative production, Windows compatibility, local deployment, and an African first product identity.
 
-This repository is currently in **Phase B2 — product consolidation before ISO**. It contains the post-install OS layer, Seven Hub Native, `seven`/`sevenpkg`, profile contracts, Windows Mode helpers, identity assets, Seven Server/Deploy foundations, Seven Shell AGS planning, repair planning, and an early Archiso live profile.
+This repository is currently in **Phase B2 — product consolidation before ISO**. It contains the post-install OS layer, Seven Hub Native, `seven`/`sevenpkg`, profile contracts, an app-first Windows compatibility layer, identity assets, Seven Server/Deploy foundations, Seven Shell AGS planning, repair planning, a persistent wallpaper/session runtime, and an early Archiso live profile.
 
 It is **not yet a complete standalone distribution**. The next major gate is **B3**, blocked until trust, server, installer and profile completeness improve.
 
@@ -43,13 +43,39 @@ SevenOS aims to provide:
 - a Wayland desktop based on Hyprland
 - modular profiles for development, cybersecurity, and creation
 - context-aware orchestration that understands Forge, Studio, Shield, Windows, Horizon and Streaming workflows
-- Windows application compatibility through Wine, Bottles, Lutris, and later KVM/QEMU
+- Windows application compatibility through Wine, Bottles, Proton/Lutris, and optional KVM/QEMU fallback
 - local deployment through `seven-server` and `seven-deploy`
 - future intelligent modules such as SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow, and SevenIdentity
 - a Seven Hub control center
 - a future Seven Shell layer for AGS panels, launcher, dock and widgets
 - an African first visual identity with obsidian, ancestral gold, clay, baobab green, and indigo accents
 - a vocabulary and workflow model that makes Linux easier to live with
+
+## Current Product State
+
+SevenOS is not packaged as a standalone ISO yet. The current focus is making the
+post-install OS layer reliable enough to test on real hardware before moving to
+Calamares/Archiso distribution work.
+
+What is already testable:
+
+- `seven` as a unified system controller.
+- `sevenpkg` as the SevenOS software layer over pacman/meta-packages.
+- Seven Hub / Control Center entrypoints.
+- Forge, Shield, Studio, Windows and Horizon profile contracts.
+- CyberSpace and Shield workspace foundations.
+- Seven Core, SevenBus and SevenDaemon foundations.
+- Seven Server local API foundation.
+- App-first Windows compatibility through `seven run <app>`.
+- Persistent Hyprpaper wallpaper runtime through `seven-wallpaper serve`.
+
+The current quality gate remains:
+
+```bash
+./scripts/design-check.sh
+./scripts/ux-check.sh
+./scripts/check.sh
+```
 
 ## Inspirations And References
 
@@ -243,6 +269,8 @@ seven state --json | python -m json.tool
 seven stack --json | python -m json.tool
 seven shell status --json | python -m json.tool
 seven shell plan --json | python -m json.tool
+seven windows resolve photoshop --json | python -m json.tool
+seven-wallpaper status
 ```
 
 Expected current truth:
@@ -558,7 +586,25 @@ SevenOS uses an African first identity system: light liquid glass surfaces, ance
 
 The identity source of truth lives in `identity/README.md`.
 
-The current desktop theme uses liquid glass surfaces, SevenOS SVG icons, and a rendered wallpaper applied through Hyprpaper.
+The current desktop theme uses liquid glass surfaces, SevenOS SVG icons, and a
+rendered wallpaper applied through Hyprpaper.
+
+The wallpaper runtime is intentionally managed as a persistent user service:
+
+```bash
+seven-wallpaper status
+seven-wallpaper refresh
+systemctl --user status sevenos-wallpaper.service
+```
+
+If the desktop becomes black after a theme update, refresh the session layer:
+
+```bash
+./install.sh theme
+systemctl --user daemon-reload
+systemctl --user restart sevenos-wallpaper.service
+seven-wallpaper status
+```
 
 For the complete icon experience, install the base profile package set, which includes `ttf-jetbrains-mono-nerd`.
 
@@ -790,6 +836,18 @@ SevenOS now treats Windows compatibility as an app-first layer:
 - Bottles for accessible non-terminal app bottles.
 - Proton / Lutris for games.
 - KVM/QEMU only as the optional fallback for heavy apps or full Windows sessions.
+
+The resolver exposes a machine-readable contract for Seven Hub, Seven Shell and
+SevenDaemon:
+
+```bash
+seven windows catalog --json | python -m json.tool
+seven windows resolve photoshop --json | python -m json.tool
+SEVENOS_DRY_RUN=1 seven run photoshop
+```
+
+This lets SevenOS decide whether an app should use Wine, Bottles, Proton/Lutris
+or the optional VM path without forcing users to download a Windows ISO first.
 
 VM creation still needs a user-provided Windows ISO and, for best
 storage/network support, the VirtIO driver ISO. SevenOS does not download or
