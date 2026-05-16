@@ -366,6 +366,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-screenshot" --help >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" wallpaper "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" profile >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" security >/dev/null

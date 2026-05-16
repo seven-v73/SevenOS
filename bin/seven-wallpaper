@@ -32,6 +32,8 @@ WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
 SOURCE_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
 TARGET_SVG="$WALLPAPER_DIR/wallpaper-sevenos.svg"
 TARGET_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
+CUSTOM_WALLPAPER="$WALLPAPER_DIR/wallpaper-sevenos-custom.png"
+ACTIVE_WALLPAPER="$WALLPAPER_DIR/wallpaper-sevenos-active.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
 SERVICE_NAME="sevenos-wallpaper.service"
 
@@ -48,14 +50,44 @@ render_wallpaper() {
     printf 'seven-wallpaper: missing SVG renderer. Install librsvg or imagemagick.\n' >&2
     exit 1
   fi
+
+  cp "$TARGET_PNG" "$ACTIVE_WALLPAPER"
+}
+
+set_custom_wallpaper() {
+  local source_file="${1:-}"
+
+  if [[ -z "$source_file" ]]; then
+    printf 'seven-wallpaper: missing image path\n' >&2
+    exit 1
+  fi
+
+  source_file="${source_file/#\~/$HOME}"
+  if [[ "$source_file" == file://* ]]; then
+    source_file="${source_file#file://}"
+    source_file="$(printf '%b' "${source_file//%/\\x}")"
+  fi
+
+  if [[ ! -f "$source_file" ]]; then
+    printf 'seven-wallpaper: image not found: %s\n' "$source_file" >&2
+    exit 1
+  fi
+
+  mkdir -p "$WALLPAPER_DIR"
+  if command -v magick >/dev/null 2>&1; then
+    magick "$source_file" -auto-orient "$CUSTOM_WALLPAPER"
+  else
+    cp "$source_file" "$CUSTOM_WALLPAPER"
+  fi
+  cp "$CUSTOM_WALLPAPER" "$ACTIVE_WALLPAPER"
 }
 
 write_config() {
   mkdir -p "$CONFIG_HOME/hypr"
   {
     printf 'ipc = on\n'
-    printf 'preload = %s\n' "$TARGET_PNG"
-    printf 'wallpaper = ,%s\n' "$TARGET_PNG"
+    printf 'preload = %s\n' "$ACTIVE_WALLPAPER"
+    printf 'wallpaper = ,%s\n' "$ACTIVE_WALLPAPER"
     printf 'splash = false\n'
   } > "$HYPRPAPER_CONFIG"
 }
@@ -90,19 +122,33 @@ apply_live() {
 
   if command -v hyprctl >/dev/null 2>&1; then
     hyprctl hyprpaper unload all >/dev/null 2>&1 || true
-    hyprctl hyprpaper preload "$TARGET_PNG" >/dev/null 2>&1 || true
-    hyprctl hyprpaper wallpaper ",$TARGET_PNG" >/dev/null 2>&1 || true
+    hyprctl hyprpaper preload "$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
+    hyprctl hyprpaper wallpaper ",$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
   fi
 }
 
 serve_hyprpaper() {
-  render_wallpaper
+  if [[ ! -f "$ACTIVE_WALLPAPER" ]]; then
+    render_wallpaper
+  fi
   write_config
   if ! command -v hyprpaper >/dev/null 2>&1; then
     printf 'seven-wallpaper: hyprpaper is not installed.\n' >&2
     exit 1
   fi
-  exec hyprpaper
+
+  hyprpaper >/tmp/sevenos-hyprpaper.log 2>&1 &
+  local hyprpaper_pid="$!"
+  trap 'kill "$hyprpaper_pid" >/dev/null 2>&1 || true' INT TERM EXIT
+
+  sleep 0.6
+  if command -v hyprctl >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    hyprctl hyprpaper unload all >/dev/null 2>&1 || true
+    hyprctl hyprpaper preload "$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
+    hyprctl hyprpaper wallpaper ",$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
+  fi
+
+  wait "$hyprpaper_pid"
 }
 
 restart_hyprpaper() {
@@ -118,6 +164,8 @@ print_status() {
   printf '  repo svg:    %s\n' "$SOURCE_SVG"
   printf '  copied svg:  %s\n' "$TARGET_SVG"
   printf '  rendered png:%s\n' "$TARGET_PNG"
+  printf '  custom png:  %s\n' "$CUSTOM_WALLPAPER"
+  printf '  active png:  %s\n' "$ACTIVE_WALLPAPER"
   printf '  hypr config: %s\n' "$HYPRPAPER_CONFIG"
 
   if [[ -f "$SOURCE_SVG" ]]; then
@@ -130,6 +178,13 @@ print_status() {
     file "$TARGET_PNG" | sed 's/^/  /'
   else
     printf '  png: missing\n'
+  fi
+  if [[ -f "$ACTIVE_WALLPAPER" ]]; then
+    printf '  active sha:  '
+    sha256sum "$ACTIVE_WALLPAPER" | awk '{print $1}'
+    file "$ACTIVE_WALLPAPER" | sed 's/^/  /'
+  else
+    printf '  active: missing\n'
   fi
   if [[ -f "$HYPRPAPER_CONFIG" ]]; then
     printf '\nCurrent hyprpaper config:\n'
@@ -154,7 +209,15 @@ case "${1:-refresh}" in
   refresh)
     render_wallpaper
     restart_hyprpaper
-    printf 'SevenOS wallpaper refreshed: %s\n' "$TARGET_PNG"
+    printf 'SevenOS wallpaper refreshed: %s\n' "$ACTIVE_WALLPAPER"
+    ;;
+  set)
+    set_custom_wallpaper "${2:-}"
+    restart_hyprpaper
+    if command -v notify-send >/dev/null 2>&1; then
+      notify-send "SevenOS Wallpaper" "Wallpaper updated from $(basename -- "${2:-image}")" || true
+    fi
+    printf 'SevenOS wallpaper set: %s\n' "$ACTIVE_WALLPAPER"
     ;;
   serve)
     serve_hyprpaper
@@ -163,10 +226,10 @@ case "${1:-refresh}" in
     print_status
     ;;
   path)
-    printf '%s\n' "$TARGET_PNG"
+    printf '%s\n' "$ACTIVE_WALLPAPER"
     ;;
   *)
-    printf 'Usage: seven-wallpaper [refresh|render|serve|status|path]\n' >&2
+    printf 'Usage: seven-wallpaper [refresh|render|serve|status|path|set IMAGE]\n' >&2
     exit 1
     ;;
 esac

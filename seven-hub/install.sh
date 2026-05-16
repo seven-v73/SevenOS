@@ -62,6 +62,7 @@ fi
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub.desktop" "$APP_HOME/seven-hub.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub-native.desktop" "$APP_HOME/seven-hub-native.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$APP_HOME/seven-files.desktop"
+run_cmd cp "$ROOT_DIR/seven-hub/seven-wallpaper.desktop" "$APP_HOME/seven-wallpaper.desktop"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$ICON_HOME/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos-symbol.svg" "$ICON_HOME/sevenos-symbol.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-hub.svg" "$ICON_HOME/seven-hub.svg"

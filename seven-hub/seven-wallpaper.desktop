@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Set as SevenOS Wallpaper
+Comment=Apply the selected image to the SevenOS Hyprland session
+Exec=seven-wallpaper set %f
+Icon=preferences-desktop-wallpaper
+Terminal=false
+NoDisplay=true
+MimeType=image/png;image/jpeg;image/webp;image/svg+xml;image/bmp;
+Categories=Settings;DesktopSettings;
+StartupNotify=false

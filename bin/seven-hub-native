@@ -413,7 +413,7 @@ def run_gui() -> int:
 
         gi.require_version("Gtk", "4.0")
         gi.require_version("Adw", "1")
-        from gi.repository import Adw, Gdk, Gio, Gtk
+        from gi.repository import Adw, Gdk, Gio, GLib, Gtk
     except Exception as error:
         print("seven-hub-native: GTK4/libadwaita is not available yet.", file=sys.stderr)
         print("Install the GUI stack with: seven hub-gui install", file=sys.stderr)
@@ -1372,9 +1372,38 @@ def run_gui() -> int:
                 render_actions()
                 render_ecosystem()
 
+            def render_loading_shell() -> None:
+                clear(dashboard)
+                heading(dashboard, "SevenOS Dashboard", "Loading live system state...")
+                dashboard.append(
+                    status_card(
+                        "Preparing Control Center",
+                        "Seven Hub is opening first, then loading readiness, profiles, actions and ecosystem state.",
+                        "RUN",
+                        "accent",
+                    )
+                )
+
+                clear(profiles_page)
+                heading(profiles_page, "Profiles", "Loading profile workspaces...")
+                profiles_page.append(status_card("Profile Engine", "Collecting Forge, Shield, Studio, Windows and Horizon state.", "LOAD", "info"))
+
+                clear(actions_page)
+                heading(actions_page, "Actions", "Loading available repairs and system actions...")
+                actions_page.append(status_card("Action Plane", "Preparing safe controls and contextual fixes.", "LOAD", "info"))
+
+                clear(ecosystem_page)
+                heading(ecosystem_page, "Ecosystem", "Loading ecosystem modules and processes...")
+                ecosystem_page.append(status_card("Seven Ecosystem", "Preparing Server, Store, Shell, Core and deployment state.", "LOAD", "info"))
+
+            def load_after_present() -> bool:
+                render_all()
+                return False
+
             refresh.connect("clicked", lambda _button: render_all())
-            render_all()
+            render_loading_shell()
             win.present()
+            GLib.timeout_add(80, load_after_present)
 
     app = SevenHubNative()
     return app.run([sys.argv[0]])

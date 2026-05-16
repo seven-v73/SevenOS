@@ -83,6 +83,7 @@ require_file "seven-hub/gui/src-tauri/tauri.conf.json"
 require_file "seven-hub/gui/src-tauri/src/main.rs"
 require_file "seven-hub/native/README.md"
 require_file "seven-hub/seven-hub-native.desktop"
+require_file "seven-hub/seven-wallpaper.desktop"
 require_file "scripts/flatpak-apps.txt"
 require_file "seven-shell/README.md"
 require_file "seven-shell/ags/README.md"
@@ -561,18 +562,24 @@ else
   ok "Hyprland config avoids removed 0.55 options"
 fi
 
-if grep -q 'wallpaper-sevenos-royal-kente.png' "$ROOT_DIR/hyprland/hyprpaper.conf"; then
-  ok "Hyprpaper uses SevenOS wallpaper target"
+if grep -q 'wallpaper-sevenos-active.png' "$ROOT_DIR/hyprland/hyprpaper.conf"; then
+  ok "Hyprpaper uses the active SevenOS wallpaper target"
 else
-  fail "Hyprpaper should use the SevenOS wallpaper target"
+  fail "Hyprpaper should use the active SevenOS wallpaper target"
 fi
 
 if grep -q '^Type=simple' "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" &&
    grep -q 'seven-wallpaper serve' "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" &&
-   grep -q 'systemd_wallpaper_available' "$ROOT_DIR/bin/seven-wallpaper"; then
-  ok "Wallpaper runtime is a persistent Hyprpaper service"
+   grep -q 'systemd_wallpaper_available' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q 'set_custom_wallpaper' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q 'ACTIVE_WALLPAPER' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q 'hyprctl hyprpaper wallpaper' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q 'wallpaper|set-wallpaper' "$ROOT_DIR/bin/seven-files" &&
+   grep -q 'Set as SevenOS Wallpaper' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'MimeType=image/png' "$ROOT_DIR/seven-hub/seven-wallpaper.desktop"; then
+  ok "Wallpaper runtime supports persistent service and file-manager wallpaper selection"
 else
-  fail "Wallpaper runtime should keep Hyprpaper alive through seven-wallpaper serve"
+  fail "Wallpaper runtime should keep Hyprpaper alive and expose file-manager wallpaper selection"
 fi
 
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
@@ -734,6 +741,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'media-playback-start-symbolic' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'icon_for_action' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'set_icon_name' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'render_loading_shell' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'GLib.timeout_add' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'run_visible' "$ROOT_DIR/bin/seven-hub-native" &&
    "$ROOT_DIR/bin/seven-hub-native" status | grep -q 'Seven Hub Native' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" hub-native --dry-run | grep -q 'seven-hub-native open' &&
@@ -1121,10 +1130,11 @@ else
 fi
 
 if grep -q '"Seven Files|files:open' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
-   grep -q 'Exec=seven-files' "$ROOT_DIR/seven-hub/seven-files.desktop"; then
-  ok "Seven Files is exposed in Hub and app launcher"
+   grep -q 'Exec=seven-files' "$ROOT_DIR/seven-hub/seven-files.desktop" &&
+   grep -q 'Exec=seven-wallpaper set %f' "$ROOT_DIR/seven-hub/seven-wallpaper.desktop"; then
+  ok "Seven Files and wallpaper actions are exposed in desktop integration"
 else
-  fail "Seven Files desktop integration missing"
+  fail "Seven Files or wallpaper desktop integration missing"
 fi
 
 for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy" Ecosystem Installer Apps; do

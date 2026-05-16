@@ -6,9 +6,10 @@ usage() {
 Seven Files
 
 Usage:
-  seven-files [open|menu|profile|home|downloads|documents|projects|pictures|videos|music|trash|recent] [path]
+  seven-files [open|menu|profile|wallpaper|home|downloads|documents|projects|pictures|videos|music|trash|recent] [path]
 
 Seven Files opens the preferred graphical file manager with SevenOS fallbacks.
+Use "seven-files wallpaper IMAGE" to set a Hyprland/SevenOS wallpaper from a file manager action.
 EOF
 }
 
@@ -142,6 +143,31 @@ open_profile_workspace() {
   fi
 }
 
+set_wallpaper() {
+  local image="${1:-}"
+  local root
+
+  if [[ -z "$image" ]]; then
+    printf 'seven-files: missing wallpaper image path\n' >&2
+    return 1
+  fi
+
+  if is_dry_run; then
+    printf 'set SevenOS wallpaper %q\n' "$image"
+    return 0
+  fi
+
+  root="$(resolve_root || true)"
+  if [[ -n "$root" && -x "$root/bin/seven-wallpaper" ]]; then
+    SEVENOS_ROOT="$root" "$root/bin/seven-wallpaper" set "$image"
+  elif command -v seven-wallpaper >/dev/null 2>&1; then
+    seven-wallpaper set "$image"
+  else
+    printf 'seven-files: seven-wallpaper command not found\n' >&2
+    return 1
+  fi
+}
+
 ensure_dirs
 
 action="${1:-open}"
@@ -156,6 +182,9 @@ case "$action" in
     ;;
   profile|workspace)
     open_profile_workspace "$target"
+    ;;
+  wallpaper|set-wallpaper)
+    set_wallpaper "$target"
     ;;
   home)
     open_path "$HOME"

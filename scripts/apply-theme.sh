@@ -10,6 +10,7 @@ DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 SHELL_HOOK="$CONFIG_HOME/sevenos/shell/terminal-country.sh"
 WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
 WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
+WALLPAPER_ACTIVE="$WALLPAPER_DIR/wallpaper-sevenos-active.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
 SYSTEMD_USER_DIR="$CONFIG_HOME/systemd/user"
 WAYLAND_SESSION_DIR="$DATA_HOME/wayland-sessions"
@@ -119,15 +120,18 @@ write_hyprpaper_config() {
   log_info "Writing Hyprpaper config with absolute SevenOS wallpaper path..."
 
   if is_dry_run; then
-    printf 'write hyprpaper config %q using %q\n' "$HYPRPAPER_CONFIG" "$WALLPAPER_PNG"
+    printf 'write hyprpaper config %q using %q\n' "$HYPRPAPER_CONFIG" "$WALLPAPER_ACTIVE"
     return 0
   fi
 
   mkdir -p "$(dirname -- "$HYPRPAPER_CONFIG")"
+  if [[ ! -f "$WALLPAPER_ACTIVE" && -f "$WALLPAPER_PNG" ]]; then
+    cp "$WALLPAPER_PNG" "$WALLPAPER_ACTIVE"
+  fi
   {
     printf 'ipc = on\n'
-    printf 'preload = %s\n' "$WALLPAPER_PNG"
-    printf 'wallpaper = ,%s\n' "$WALLPAPER_PNG"
+    printf 'preload = %s\n' "$WALLPAPER_ACTIVE"
+    printf 'wallpaper = ,%s\n' "$WALLPAPER_ACTIVE"
     printf 'splash = false\n'
   } > "$HYPRPAPER_CONFIG"
 }
@@ -139,6 +143,8 @@ configure_file_experience() {
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'xdg-mime default org.gnome.Nautilus.desktop inode/directory\n'
+    printf 'install Nautilus script: Set as SevenOS Wallpaper\n'
+    printf 'install desktop action: Set as SevenOS Wallpaper\n'
     printf 'update-desktop-database %q || true\n' "$HOME/.local/share/applications"
     return 0
   fi
@@ -153,6 +159,40 @@ configure_file_experience() {
     xdg-mime default org.gnome.Nautilus.desktop inode/directory >/dev/null 2>&1 || true
     xdg-mime default org.gnome.Nautilus.desktop application/x-gnome-saved-search >/dev/null 2>&1 || true
   fi
+
+  local nautilus_scripts_dir="$HOME/.local/share/nautilus/scripts"
+  local wallpaper_script="$nautilus_scripts_dir/Set as SevenOS Wallpaper"
+  mkdir -p "$nautilus_scripts_dir"
+  cat > "$wallpaper_script" <<'EOF'
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+selected="${NAUTILUS_SCRIPT_SELECTED_FILE_PATHS:-}"
+first="$(printf '%s\n' "$selected" | sed -n '1p')"
+if [[ -z "$first" && "$#" -gt 0 ]]; then
+  first="$1"
+fi
+
+if [[ -z "$first" ]]; then
+  notify-send "SevenOS Wallpaper" "No image selected." 2>/dev/null || true
+  exit 1
+fi
+
+if command -v seven-wallpaper >/dev/null 2>&1; then
+  seven-wallpaper set "$first"
+elif [[ -x "$HOME/Code/OS/SevenOS/bin/seven-wallpaper" ]]; then
+  "$HOME/Code/OS/SevenOS/bin/seven-wallpaper" set "$first"
+elif [[ -x "$HOME/SevenOS/bin/seven-wallpaper" ]]; then
+  "$HOME/SevenOS/bin/seven-wallpaper" set "$first"
+else
+  notify-send "SevenOS Wallpaper" "seven-wallpaper command not found." 2>/dev/null || true
+  exit 1
+fi
+EOF
+  chmod +x "$wallpaper_script"
+
+  mkdir -p "$HOME/.local/share/applications"
+  cp "$ROOT_DIR/seven-hub/seven-wallpaper.desktop" "$HOME/.local/share/applications/seven-wallpaper.desktop"
 
   if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
