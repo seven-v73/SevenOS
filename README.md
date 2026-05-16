@@ -1,6 +1,6 @@
 # SevenOS
 
-SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, modular work profiles, security tooling, creative production, Windows compatibility, local deployment, and an African first product identity.
+SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, context-aware work profiles, security tooling, creative production, Windows compatibility, local deployment, and an African first product identity.
 
 This repository is currently in **Phase B2 — product consolidation before ISO**. It contains the post-install OS layer, Seven Hub Native, `seven`/`sevenpkg`, profile contracts, Windows Mode helpers, identity assets, Seven Server/Deploy foundations, Seven Shell AGS planning, repair planning, and an early Archiso live profile.
 
@@ -27,6 +27,8 @@ It is built around foundation pillars:
 - Seven Hub as the user-facing control center
 - Seven Server and Seven Deploy as the service/deployment foundation
 - Seven Core and SevenBus as the system experience layer foundation
+- Seven Context Engine as the semantic workflow layer above raw processes/windows
+- Seven Scheduler as the safe user-space process policy layer above Linux CFS
 - Calamares/Archinstall as the install path foundation
 - GTK/libadwaita as the native Seven Hub direction
 - Tauri as a prototype/fallback for GUI experiments
@@ -39,6 +41,7 @@ SevenOS aims to provide:
 - a lightweight Arch Linux foundation
 - a Wayland desktop based on Hyprland
 - modular profiles for development, cybersecurity, and creation
+- context-aware orchestration that understands Forge, Studio, Shield, Windows, Horizon and Streaming workflows
 - Windows application compatibility through Wine, Bottles, Lutris, and later KVM/QEMU
 - local deployment through `seven-server` and `seven-deploy`
 - future intelligent modules such as SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow, and SevenIdentity
@@ -132,11 +135,25 @@ Implemented:
 - `seven stack --json` stack discipline contract
 - `seven shell status --json` and `seven shell plan --json` AGS shell migration contracts
 - `seven core status --json`, `seven core plan --json` and `seven core bus --json` system experience contracts
+- `seven context status --json` semantic workflow detection for a context-aware Linux platform
+- `seven context emit` SevenBus event bridge for the detected workflow context
+- `seven core observe --json` daemon-facing one-shot context observation
+- `seven core install-service` installs both SevenDaemon and the context observer user services
+- `seven scheduler status --json` context-aware process grouping above Linux CFS
 - `seven-daemon` Rust runtime scaffold with a user service path through `seven core install-service`
+- `seven-context-observer.service` for continuous local semantic context observations
 - Rust-backed SevenBus event emission through `seven-daemon emit`, with Bash fallback kept for compatibility
 - daemon-native SevenBus state snapshots through `seven core snapshot --json`, backed by typed Rust JSON parsing
 - daemon-native event list and summary reads through `seven-daemon events` and `seven-daemon summary`
 - daemon-native runtime health through `seven core health --json`, reading `/proc`, session and event integrity from Rust
+- daemon-native profile inventory through `seven core profiles --json`, the first step toward moving profile state out of Bash
+- daemon-native Shield posture through `seven-daemon shield --json` / `shield-plan --json`, so trust state is no longer only script-owned
+- daemon-native Server readiness through `seven-daemon server --json` / `server-plan --json`, moving the local backend contract into Seven Core
+- daemon-native Windows Mode readiness through `seven-daemon windows --json` / `windows-plan --json`, keeping the guided assistant as the UX layer
+- daemon-native Installer readiness through `seven-daemon installer --json` / `installer-plan --json`, keeping destructive install actions outside the runtime
+- daemon-native software readiness through `seven-daemon packages --json` / `packages-plan --json`, while `sevenpkg` remains the user-facing package/app command
+- daemon-native product diagnosis through `seven-daemon insights --json`, so Hub can show priorities without waiting on the large Bash state aggregator
+- daemon-native phase transition gate through `seven-daemon phase-gate --json`, while the human phase gate keeps the full long-form repository audit
 - C-boundary SevenBus probe through `sevenbus-probe --json` for future low-level IPC/hardware-adjacent work
 - `seven architecture` product/system architecture map
 - `seven repair` guided repair planner
@@ -145,7 +162,7 @@ Implemented:
 - `seven-server` local API foundation
 - `seven-deploy` deployment planner
 - `seven-core` foundation with SevenBus schema and `seven-daemon` Rust scaffold
-- `systemd/user/seven-daemon.service` integrated with the SevenOS session target
+- `systemd/user/seven-daemon.service` and `systemd/user/seven-context-observer.service` integrated with the SevenOS session target
 - Seven Shell AGS/TypeScript scaffold
 - Calamares installer profile scaffold
 - Seven Hub Tauri GUI scaffold
@@ -295,6 +312,9 @@ Start here before making strategic changes:
 
 - `docs/ARCHITECTURE.md`
 - `docs/SYSTEM_EXPERIENCE_LAYER.md`
+- `docs/CONTEXT_ENGINE.md`
+- `docs/SCHEDULING.md`
+- `docs/CYBERSPACE.md`
 - `docs/VISION.md`
 - `docs/PRODUCT_STRATEGY.md`
 - `docs/UX_PRINCIPLES.md`
@@ -410,6 +430,9 @@ seven installer status --json
 seven installer plan
 seven installer plan --json
 seven installer doctor
+seven-daemon packages --json
+seven-daemon packages-plan --json
+seven-daemon insights --json
 seven hub-gui status
 seven hub-gui doctor
 seven flatpak status
@@ -437,6 +460,9 @@ seven phase-gate --json
 seven shield status
 seven shield status --json
 seven readiness
+seven daily
+seven daily --json
+seven daily plan
 seven phase-gate
 seven repair
 seven repair ux --apply
@@ -563,10 +589,12 @@ seven server plan
 seven server plan --json
 seven deploy ./my-project
 seven improve
+seven improve daily --apply --yes
 seven doctor
 seven profile forge
 seven profile list
 seven profile status
+seven profile bootstrap all
 seven profile gaps
 seven profile gaps --json
 seven profile plan
@@ -643,7 +671,31 @@ Audit the current machine:
 
 ```bash
 ./install.sh cyber-audit
+seven shield dashboard
+seven shield dashboard --json
+seven shield mode
+seven shield mode --json
+seven-daemon cyberspace --json
+seven-daemon cyberspace-plan --json
+seven shield workspaces
+seven shield context recon
+seven shield context web
+seven shield hud
+seven shield status
+seven shield plan
+seven shield bootstrap
+seven shield workspace --json
+seven shield tools
+seven shield scope
+seven shield scope --json
+seven shield report
 ```
+
+CyberSpace turns Shield into a context-aware mode instead of a simple tools
+collection. It maps the cybersecurity workflow into dedicated workspaces:
+Recon, Web Pentest, Reverse Engineering, Network, Forensics, Exploitation,
+Threat Intel, Logs & Monitoring, and Sandbox. Use `Super+C` to open the
+CyberSpace map and `Super+Ctrl+C` to show the Cyber HUD.
 
 Install by category when you do not want the full cyber layer:
 
@@ -658,8 +710,9 @@ Install by category when you do not want the full cyber layer:
 Open an isolated lab shell:
 
 ```bash
-./install.sh cyber-lab --name webapp
-./install.sh cyber-lab --name reversing --offline
+seven shield lab --preset web
+seven shield lab --preset forensics
+seven shield lab --preset reversing
 ```
 
 The lab uses a private Firejail home and may show a prompt such as
@@ -678,6 +731,28 @@ SevenOS also provides an optional BlackArch bridge for specialized tools:
 BlackArch is opt-in because it adds an external package repository. SevenOS should stay stable for daily use, then scale up when deeper security work is needed.
 
 Use responsibly and only on systems and networks where you have permission.
+
+## Daily Driver Gate
+
+Before installing SevenOS on a primary PC, use the daily driver gate:
+
+```bash
+seven daily
+seven daily --json | python -m json.tool
+```
+
+The gate checks the parts that matter for daily use: readiness, Shield/security,
+profiles, Windows Mode, Seven Server, installer foundation and Seven Core
+services. The recommended consolidation path is:
+
+```bash
+sudo -v
+seven improve daily --apply --yes
+seven daily
+```
+
+SevenOS should reach at least 90% readiness, 70% Shield/security and 70% role
+profile coverage before replacing an existing primary workstation.
 
 ### CREATION
 

@@ -15,11 +15,30 @@ SevenOS Shield Status
 Usage:
   seven shield status [--json]
   seven shield plan [--json] [--limit N]
+  seven shield bootstrap
+  seven shield workspace [--json]
   ./security/shield-status.sh [status|plan] [--json]
 
 Shows the local trust posture: firewall, sandbox helpers, audit tools and
 recommended actions. It is read-only and safe for Seven Hub.
 EOF
+}
+
+shield_workspace_state() {
+  local workspace="${SEVENOS_SHIELD_WORKSPACE:-$HOME/ShieldLab}"
+  if [[ -s "$workspace/.sevenos/shield.json" &&
+        -s "$workspace/.sevenos/SHIELD_CHECKLIST.md" &&
+        -s "$workspace/.sevenos/SANDBOXES.md" &&
+        -x "$workspace/.sevenos/launchers/secure-browser.sh" &&
+        -x "$workspace/.sevenos/launchers/network-audit.sh" ]]; then
+    printf OK
+  elif [[ -e "$workspace/.sevenos/shield.json" ||
+          -e "$workspace/.sevenos/SHIELD_CHECKLIST.md" ||
+          -e "$workspace/.sevenos/SANDBOXES.md" ]]; then
+    printf PART
+  else
+    printf MISS
+  fi
 }
 
 while [[ "$#" -gt 0 ]]; do
@@ -36,6 +55,13 @@ while [[ "$#" -gt 0 ]]; do
   esac
   shift
 done
+
+if [[ "$JSON_OUTPUT" -eq 1 && -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+  if [[ "$ACTION" == "plan" ]]; then
+    exec "$ROOT_DIR/bin/seven-daemon" shield-plan --json
+  fi
+  exec "$ROOT_DIR/bin/seven-daemon" shield --json
+fi
 
 json_string() {
   python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
@@ -71,6 +97,7 @@ service_state() {
 }
 
 rows() {
+  printf 'workspace\t%s\tShield workspace policy and launchers\tseven shield bootstrap\n' "$(shield_workspace_state)"
   printf 'firewall\t%s\tUFW firewall service\tseven shield enable\n' "$(service_state ufw.service)"
   printf 'firejail\t%s\tFirejail app sandbox helper\tseven improve security --apply\n' "$(package_state firejail)"
   printf 'bubblewrap\t%s\tBubblewrap namespace sandbox helper\tseven improve security --apply\n' "$(package_state bubblewrap)"
@@ -92,6 +119,13 @@ metadata = {
         "impact": "changes",
         "phase": "trust",
         "reason": "SevenOS must protect incoming traffic by default.",
+    },
+    "workspace": {
+        "title": "Bootstrap Shield workspace",
+        "severity": "medium",
+        "impact": "safe",
+        "phase": "workspace",
+        "reason": "Shield needs visible policy, checklist and launchers before it feels like an OS trust layer.",
     },
     "firejail": {
         "title": "Install Firejail sandbox",

@@ -36,13 +36,20 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 payload() {
-  local state_payload
-  state_payload="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/state.sh" --json)"
-  STATE_PAYLOAD="$state_payload" LIMIT="$LIMIT" python - <<'PY'
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" insights --json --limit "$LIMIT"
+    return
+  fi
+
+  local state_file
+  state_file="$(mktemp)"
+  SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/state.sh" --json > "$state_file"
+  STATE_FILE="$state_file" LIMIT="$LIMIT" python - <<'PY'
 import json
 import os
+from pathlib import Path
 
-state = json.loads(os.environ["STATE_PAYLOAD"])
+state = json.loads(Path(os.environ["STATE_FILE"]).read_text(encoding="utf-8"))
 limit = int(os.environ.get("LIMIT", "8"))
 
 readiness = state.get("readiness") or {}
@@ -302,6 +309,7 @@ print(json.dumps({
     "insights": insights[:limit],
 }, indent=2))
 PY
+  rm -f "$state_file"
 }
 
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then

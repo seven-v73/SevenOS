@@ -225,6 +225,22 @@ profile_workspace_dirs() {
   esac
 }
 
+profile_state_dir() {
+  printf '%s/.sevenos' "$(profile_workspace "$1")"
+}
+
+profile_manifest_path() {
+  printf '%s/profile.json' "$(profile_state_dir "$1")"
+}
+
+profile_checklist_path() {
+  printf '%s/CHECKLIST.md' "$(profile_state_dir "$1")"
+}
+
+profile_launcher_path() {
+  printf '%s/launch.sh' "$(profile_state_dir "$1")"
+}
+
 profile_keys() {
   printf '%s\n' baobab forge shield studio windows horizon
 }
@@ -240,6 +256,9 @@ profile_next_actions() {
   if [[ "$(active_profile)" != "$key" ]]; then
     printf '%s\t%s\n' "Activate $(profile_title "$key")" "seven profile activate $key"
   fi
+  if [[ "$(profile_bootstrap_state "$key")" != "OK" ]]; then
+    printf '%s\t%s\n' "Bootstrap $(profile_title "$key") workspace" "seven profile bootstrap $key"
+  fi
   if [[ "$state" != "OK" ]]; then
     printf '%s\t%s\n' "Install missing $(profile_title "$key") tools" "seven profile install $key"
   fi
@@ -250,6 +269,22 @@ profile_next_actions() {
     windows) printf '%s\t%s\n' "Open Windows Mode guide" "seven windows guide" ;;
     horizon) printf '%s\t%s\n' "Detect deployable project" "seven deploy detect ." ;;
   esac
+}
+
+profile_bootstrap_state() {
+  local key="$1"
+  local manifest checklist launcher
+  manifest="$(profile_manifest_path "$key")"
+  checklist="$(profile_checklist_path "$key")"
+  launcher="$(profile_launcher_path "$key")"
+
+  if [[ -s "$manifest" && -s "$checklist" && -x "$launcher" ]]; then
+    printf 'OK'
+  elif [[ -e "$manifest" || -e "$checklist" || -e "$launcher" ]]; then
+    printf 'PART'
+  else
+    printf 'MISS'
+  fi
 }
 
 active_profile() {
@@ -313,10 +348,15 @@ profile_json_object() {
   printf '"principle":%s,' "$(profile_principle "$key" | json_escape)"
   printf '"story":%s,' "$(profile_story "$key" | json_escape)"
   printf '"state":%s,' "$(printf '%s' "$state" | json_escape)"
+  printf '"bootstrap_state":%s,' "$(profile_bootstrap_state "$key" | json_escape)"
   printf '"installed":%s,' "$installed"
   printf '"total":%s,' "$total"
   printf '"active":%s,' "$active_bool"
   printf '"workspace":%s,' "$(profile_workspace "$key" | json_escape)"
+  printf '"state_dir":%s,' "$(profile_state_dir "$key" | json_escape)"
+  printf '"manifest":%s,' "$(profile_manifest_path "$key" | json_escape)"
+  printf '"checklist":%s,' "$(profile_checklist_path "$key" | json_escape)"
+  printf '"launcher":%s,' "$(profile_launcher_path "$key" | json_escape)"
   printf '"accent":%s,' "$(profile_accent "$key" | json_escape)"
   printf '"apps":['
   local app_first=1 app
@@ -332,7 +372,8 @@ profile_json_object() {
   printf '"next_actions":'
   next_actions_json "$key"
   printf ','
-  printf '"action":%s' "$(printf 'seven profile install %s' "$key" | json_escape)"
+  printf '"action":%s,' "$(printf 'seven profile install %s' "$key" | json_escape)"
+  printf '"bootstrap_command":%s' "$(printf 'seven profile bootstrap %s' "$key" | json_escape)"
   printf '}'
 }
 
@@ -359,6 +400,7 @@ gap_json_object() {
   printf '"key":%s,' "$(printf '%s' "$key" | json_escape)"
   printf '"title":%s,' "$(profile_title "$key" | json_escape)"
   printf '"state":%s,' "$(printf '%s' "$state" | json_escape)"
+  printf '"bootstrap_state":%s,' "$(profile_bootstrap_state "$key" | json_escape)"
   printf '"priority":%s,' "$(printf '%s' "$priority" | json_escape)"
   printf '"installed":%s,' "$installed"
   printf '"total":%s,' "$total"
@@ -366,6 +408,7 @@ gap_json_object() {
   printf '"missing_app_count":%s,' "$missing_app_count"
   printf '"workspace":%s,' "$(profile_workspace "$key" | json_escape)"
   printf '"install_command":%s,' "$(printf 'seven profile install %s' "$key" | json_escape)"
+  printf '"bootstrap_command":%s,' "$(printf 'seven profile bootstrap %s' "$key" | json_escape)"
   printf '"open_command":%s,' "$(printf 'seven profile open %s' "$key" | json_escape)"
   printf '"missing_packages":['
   local first=1 package
@@ -448,6 +491,9 @@ write_workspace_readme() {
       printf 'mkdir -p %q\n' "$workspace/$dir"
     done < <(profile_workspace_dirs "$key")
     printf 'write %q\n' "$workspace/README.md"
+    write_profile_manifest "$key"
+    write_profile_checklist "$key"
+    write_profile_launcher "$key"
     return 0
   fi
 
@@ -475,6 +521,155 @@ Useful commands:
 - seven profile install $key
 - seven profile open $key
 EOF
+  write_profile_manifest "$key"
+  write_profile_checklist "$key"
+  write_profile_launcher "$key"
+}
+
+write_profile_manifest() {
+  local key="$1"
+  local state_dir manifest
+  state_dir="$(profile_state_dir "$key")"
+  manifest="$(profile_manifest_path "$key")"
+
+  if is_dry_run; then
+    printf 'mkdir -p %q\n' "$state_dir"
+    printf 'write %q\n' "$manifest"
+    return 0
+  fi
+
+  mkdir -p "$state_dir"
+  profile_json_object "$key" > "$manifest"
+}
+
+write_profile_checklist() {
+  local key="$1"
+  local state_dir checklist workspace counts installed total state item label command missing_packages
+  state_dir="$(profile_state_dir "$key")"
+  checklist="$(profile_checklist_path "$key")"
+  workspace="$(profile_workspace "$key")"
+  counts="$(profile_counts "$key")"
+  installed="${counts%% *}"
+  total="${counts##* }"
+  state="$(profile_state "$installed" "$total")"
+
+  if is_dry_run; then
+    printf 'mkdir -p %q\n' "$state_dir"
+    printf 'write %q\n' "$checklist"
+    return 0
+  fi
+
+  mkdir -p "$state_dir"
+  {
+    printf '# SevenOS %s Checklist\n\n' "$(profile_title "$key")"
+    printf '%s\n\n' "$(profile_description "$key")"
+    printf -- '- Role: %s\n' "$(profile_role "$key")"
+    printf -- '- Principle: %s\n' "$(profile_principle "$key")"
+    printf -- '- State: %s (%s/%s packages)\n' "$state" "$installed" "$total"
+    printf -- '- Workspace: `%s`\n\n' "$workspace"
+    printf '## Workspace\n\n'
+    while IFS= read -r item; do
+      printf -- '- [ ] `%s/%s`\n' "$workspace" "$item"
+    done < <(profile_workspace_dirs "$key")
+    printf '\n## Apps\n\n'
+    while IFS= read -r item; do
+      printf -- '- [%s] `%s` - `%s`\n' "$([[ "$(profile_app_state "$item")" == "OK" ]] && printf x || printf ' ')" "$item" "$(profile_app_command "$item")"
+    done < <(profile_apps "$key")
+    printf '\n## Missing Packages\n\n'
+    missing_packages="$(profile_missing_packages "$key" | sed '/^$/d')"
+    if [[ -z "$missing_packages" ]]; then
+      printf -- '- [x] No missing packages detected.\n'
+    else
+      while IFS= read -r item; do
+        [[ -n "$item" ]] && printf -- '- [ ] `%s`\n' "$item"
+      done <<<"$missing_packages"
+    fi
+    printf '\n## Next Actions\n\n'
+    while IFS=$'\t' read -r label command; do
+      [[ -n "${label:-}" ]] || continue
+      printf -- '- [ ] %s: `%s`\n' "$label" "$command"
+    done < <(profile_next_actions "$key")
+  } > "$checklist"
+}
+
+write_profile_launcher() {
+  local key="$1"
+  local state_dir launcher title workspace app command
+  state_dir="$(profile_state_dir "$key")"
+  launcher="$(profile_launcher_path "$key")"
+  title="$(profile_title "$key")"
+  workspace="$(profile_workspace "$key")"
+
+  if is_dry_run; then
+    printf 'mkdir -p %q\n' "$state_dir"
+    printf 'write %q\n' "$launcher"
+    printf 'chmod +x %q\n' "$launcher"
+    return 0
+  fi
+
+  mkdir -p "$state_dir"
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf 'set -Eeuo pipefail\n\n'
+    printf 'PROFILE_KEY=%q\n' "$key"
+    printf 'PROFILE_TITLE=%q\n' "$title"
+    printf 'WORKSPACE=%q\n' "$workspace"
+    printf 'ROOT_DIR="${SEVENOS_ROOT:-%q}"\n\n' "$ROOT_DIR"
+    cat <<'EOF'
+run_command() {
+  local command="$1"
+  if [[ -z "$command" ]]; then
+    return 0
+  fi
+  bash -lc "$command"
+}
+
+show_menu() {
+  printf 'SevenOS %s workspace\n\n' "$PROFILE_TITLE"
+  printf '  open      Open workspace\n'
+  printf '  install   Install missing profile tools\n'
+  printf '  status    Show profile status\n'
+  printf '  checklist Open checklist path\n'
+EOF
+    while IFS= read -r app; do
+      printf '  printf %q %q %q\n' '  %-9s Launch %s\n' "$app" "$app"
+    done < <(profile_apps "$key")
+    cat <<'EOF'
+}
+
+case "${1:-menu}" in
+  menu)
+    show_menu
+    ;;
+  open)
+    exec "${ROOT_DIR}/bin/seven" profile open "$PROFILE_KEY"
+    ;;
+  install)
+    exec "${ROOT_DIR}/bin/seven" profile install "$PROFILE_KEY"
+    ;;
+  status)
+    exec "${ROOT_DIR}/bin/seven" profile show "$PROFILE_KEY"
+    ;;
+  checklist)
+    printf '%s\n' "$WORKSPACE/.sevenos/CHECKLIST.md"
+    ;;
+EOF
+    while IFS= read -r app; do
+      command="$(profile_app_command "$app")"
+      printf '  %q)\n' "$app"
+      printf '    run_command %q\n' "$command"
+      printf '    ;;\n'
+    done < <(profile_apps "$key")
+    cat <<'EOF'
+  *)
+    printf 'Unknown SevenOS profile action: %s\n\n' "$1" >&2
+    show_menu >&2
+    exit 1
+    ;;
+esac
+EOF
+  } > "$launcher"
+  chmod +x "$launcher"
 }
 
 write_profile_json() {
@@ -505,6 +700,35 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+bootstrap_profile() {
+  local key="$1"
+  profile_target "$key" >/dev/null
+
+  log_info "Bootstrapping SevenOS profile workspace: $(profile_title "$key")"
+  write_workspace_readme "$key"
+
+  if ! is_dry_run; then
+    "$ROOT_DIR/scripts/events.sh" log \
+      --source profile \
+      --type profile \
+      --state OK \
+      --message "Profile workspace bootstrapped: $(profile_title "$key")" \
+      --command "seven profile bootstrap $key" >/dev/null || true
+  fi
+
+  log_success "Profile workspace ready: $(profile_workspace "$key")"
+  log_info "Manifest: $(profile_manifest_path "$key")"
+  log_info "Checklist: $(profile_checklist_path "$key")"
+  log_info "Launcher: $(profile_launcher_path "$key")"
+}
+
+bootstrap_all_profiles() {
+  local key
+  while IFS= read -r key; do
+    bootstrap_profile "$key"
+  done < <(profile_keys)
+}
+
 activate_profile() {
   local key="$1"
   profile_target "$key" >/dev/null
@@ -527,6 +751,13 @@ SEVENOS_PROFILE_ACCENT="$(profile_accent "$key")"
 SEVENOS_PROFILE_WORKSPACE="$(profile_workspace "$key")"
 EOF
   write_profile_json "$key"
+
+  "$ROOT_DIR/scripts/events.sh" log \
+    --source profile \
+    --type profile \
+    --state OK \
+    --message "Active profile changed to $(profile_title "$key")" \
+    --command "seven profile activate $key" >/dev/null || true
 
   log_success "Active profile: $(profile_title "$key")"
   log_info "Workspace: $(profile_workspace "$key")"
@@ -608,6 +839,7 @@ show_profile() {
   printf 'Principle:   %s\n' "$(profile_principle "$key")"
   printf 'Symbol:      %s\n' "$(profile_symbol "$key")"
   printf 'State:       %s %s/%s packages\n' "$state" "$installed" "$total"
+  printf 'Bootstrap:   %s\n' "$(profile_bootstrap_state "$key")"
   printf 'Active:      %s\n' "$([[ "$(active_profile)" == "$key" ]] && printf yes || printf no)"
   printf 'Workspace:   %s\n' "$(profile_workspace "$key")"
   printf 'Accent:      %s\n' "$(profile_accent "$key")"
@@ -659,8 +891,8 @@ gaps_json() {
 gaps_human() {
   local key counts installed total state missing_count missing_apps
   printf 'SevenOS Profile Gaps\n\n'
-  printf '%-9s %-5s %-7s %-8s %s\n' "Profile" "State" "Missing" "Apps" "Next"
-  printf '%-9s %-5s %-7s %-8s %s\n' "-------" "-----" "-------" "----" "----"
+  printf '%-9s %-5s %-9s %-7s %-8s %s\n' "Profile" "State" "Bootstrap" "Missing" "Apps" "Next"
+  printf '%-9s %-5s %-9s %-7s %-8s %s\n' "-------" "-----" "---------" "-------" "----" "----"
   while IFS= read -r key; do
     counts="$(profile_counts "$key")"
     installed="${counts%% *}"
@@ -668,7 +900,7 @@ gaps_human() {
     state="$(profile_state "$installed" "$total")"
     missing_count=$((total - installed))
     missing_apps="$(profile_missing_apps "$key" | sed '/^$/d' | wc -l | tr -d ' ')"
-    printf '%-9s %-5s %2s/%-4s %-8s seven profile install %s\n' "$key" "$state" "$missing_count" "$total" "$missing_apps" "$key"
+    printf '%-9s %-5s %-9s %2s/%-4s %-8s seven profile install %s\n' "$key" "$state" "$(profile_bootstrap_state "$key")" "$missing_count" "$total" "$missing_apps" "$key"
   done < <(profile_keys)
 }
 
@@ -684,7 +916,7 @@ rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
 items = []
 for profile in data.get("profiles", []):
-    if profile.get("state") == "OK":
+    if profile.get("state") == "OK" and profile.get("bootstrap_state") == "OK":
         continue
     missing_packages = profile.get("missing_packages", [])
     missing_apps = profile.get("missing_apps", [])
@@ -693,13 +925,15 @@ for profile in data.get("profiles", []):
         "title": profile.get("title"),
         "priority": profile.get("priority", "medium"),
         "state": profile.get("state"),
+        "bootstrap_state": profile.get("bootstrap_state", "MISS"),
         "missing_count": profile.get("missing_count", 0),
         "missing_app_count": profile.get("missing_app_count", 0),
         "missing_packages_preview": missing_packages[:limit],
         "missing_apps": missing_apps,
+        "bootstrap_command": profile.get("bootstrap_command"),
         "command": profile.get("install_command"),
         "open_command": profile.get("open_command"),
-        "reason": f"{profile.get('title')} is {profile.get('state')} with {profile.get('missing_count', 0)} missing packages",
+        "reason": f"{profile.get('title')} is {profile.get('state')} with {profile.get('missing_count', 0)} missing packages and bootstrap {profile.get('bootstrap_state', 'MISS')}",
     })
 
 items.sort(key=lambda item: (rank.get(item["priority"], 9), -int(item.get("missing_count", 0)), item.get("key") or ""))
@@ -768,7 +1002,7 @@ status_human() {
     state="$(profile_state "$installed" "$total")"
     marker=' '
     [[ "$active" == "$key" ]] && marker='*'
-    printf '%s %-8s %-4s %2s/%-2s %s\n' "$marker" "$key" "$state" "$installed" "$total" "$(profile_description "$key")"
+    printf '%s %-8s %-4s %-9s %2s/%-2s %s\n' "$marker" "$key" "$state" "$(profile_bootstrap_state "$key")" "$installed" "$total" "$(profile_description "$key")"
   done < <(profile_keys)
   printf '\n* active profile. Use: seven profile activate <name>\n'
 }
@@ -786,6 +1020,7 @@ Usage:
   seven profile apps [profile] [--json]
   seven profile gaps [--json]
   seven profile plan [--json] [--limit N]
+  seven profile bootstrap <profile|all>
   seven profile activate <profile>
   seven profile install <profile>
   seven profile open [profile]
@@ -868,6 +1103,14 @@ case "$command" in
   activate)
     [[ -n "${1:-}" ]] || { usage; exit 1; }
     activate_profile "$1"
+    ;;
+  bootstrap)
+    target="${1:-$(active_profile)}"
+    if [[ "$target" == "all" ]]; then
+      bootstrap_all_profiles
+    else
+      bootstrap_profile "$target"
+    fi
     ;;
   install)
     [[ -n "${1:-}" ]] || { usage; exit 1; }

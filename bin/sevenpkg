@@ -64,6 +64,23 @@ def command_exists(command):
     return shutil.which(command) is not None
 
 
+def daemon_json(action):
+    daemon = ROOT_DIR / "bin" / "seven-daemon"
+    if not daemon.is_file() or not os.access(daemon, os.X_OK):
+        return None
+
+    result = subprocess.run(
+        [str(daemon), action, "--json"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    return result.stdout.strip()
+
+
 def pacman_has(package):
     return subprocess.run(["pacman", "-Si", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
@@ -304,6 +321,12 @@ def show_meta(args):
 
 
 def show_status(args):
+    if args.json:
+        payload = daemon_json("packages")
+        if payload:
+            print(payload)
+            return
+
     manifest = load_manifest()
     if not manifest:
         if args.json:
@@ -484,6 +507,24 @@ def plan_payload(limit=None):
 
 
 def show_plan(args):
+    if args.json:
+        daemon_payload = daemon_json("packages-plan")
+        if daemon_payload:
+            if args.limit is None:
+                print(daemon_payload)
+                return
+
+            payload = json.loads(daemon_payload)
+            payload["next"] = payload.get("next", [])[: args.limit]
+            payload["summary"] = {
+                "total": len(payload["next"]),
+                "critical": sum(1 for item in payload["next"] if item.get("severity") == "critical"),
+                "high": sum(1 for item in payload["next"] if item.get("severity") == "high"),
+                "medium": sum(1 for item in payload["next"] if item.get("severity") == "medium"),
+            }
+            print(json.dumps(payload, indent=2))
+            return
+
     payload = plan_payload(args.limit)
     if args.json:
         print(json.dumps(payload, indent=2))

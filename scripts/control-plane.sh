@@ -82,6 +82,7 @@ packages_plan = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--jso
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
+daily = command_json([os.path.join(ROOT, "scripts/daily-driver.sh"), "status", "--json"], {"decision": "unknown", "blockers": [], "warnings": []})
 
 actions_by_command = {item.get("command"): item for item in actions.get("actions", [])}
 
@@ -155,6 +156,26 @@ if shield.get("percent", 0) < 70 or (server.get("service") or {}).get("state") n
         "seven b3 plan",
         "Use the ordered B3 path for trust, backend, profiles, shell and installer instead of scattered fixes.",
         "safe",
+    )
+
+for item in daily.get("blockers", []):
+    add(
+        "daily",
+        "critical",
+        item.get("title", "Resolve daily driver blocker"),
+        item.get("command", "seven daily"),
+        item.get("reason", "SevenOS is not ready for a primary PC."),
+        "packages" if "--apply" in item.get("command", "") else "safe",
+    )
+
+for item in daily.get("warnings", []):
+    add(
+        "daily",
+        "high",
+        item.get("title", "Resolve daily driver warning"),
+        item.get("command", "seven daily"),
+        item.get("reason", "SevenOS daily-driver gate has a warning."),
+        "changes",
     )
 
 for rec in readiness.get("recommendations", []):

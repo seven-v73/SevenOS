@@ -64,6 +64,11 @@ git_summary() {
 }
 
 json_gate() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" phase-gate --json
+    return
+  fi
+
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
 import json
 import os

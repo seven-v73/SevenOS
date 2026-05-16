@@ -34,9 +34,12 @@ bash -n \
   "$ROOT_DIR/scripts/stack.sh" \
   "$ROOT_DIR/scripts/shell.sh" \
   "$ROOT_DIR/scripts/core.sh" \
+  "$ROOT_DIR/scripts/context.sh" \
+  "$ROOT_DIR/scripts/scheduler.sh" \
   "$ROOT_DIR/scripts/experience.sh" \
   "$ROOT_DIR/scripts/control-plane.sh" \
   "$ROOT_DIR/scripts/b3.sh" \
+  "$ROOT_DIR/scripts/daily-driver.sh" \
   "$ROOT_DIR/scripts/events.sh" \
   "$ROOT_DIR/scripts/insights.sh" \
   "$ROOT_DIR/scripts/manifest.sh" \
@@ -70,7 +73,10 @@ bash -n \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
   "$ROOT_DIR/security/hardening.sh" \
+  "$ROOT_DIR/security/shield-control.sh" \
   "$ROOT_DIR/security/shield-status.sh" \
+  "$ROOT_DIR/security/shield-workspace.sh" \
+  "$ROOT_DIR/security/cyberspace.sh" \
   "$ROOT_DIR/security/cyber-audit.sh" \
   "$ROOT_DIR/security/cyber-lab.sh" \
   "$ROOT_DIR/security/blackarch.sh" \
@@ -131,7 +137,7 @@ if ! grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" ||
   exit 1
 fi
 
-for doc in ARCHITECTURE.md SYSTEM_EXPERIENCE_LAYER.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md STACK_STRATEGY.md PRODUCTIZATION.md PHASE_GATE.md B3_CONSOLIDATION.md TEST_MACHINE.md PRE_PUSH.md; do
+for doc in ARCHITECTURE.md SYSTEM_EXPERIENCE_LAYER.md CONTEXT_ENGINE.md SCHEDULING.md VISION.md PRODUCT_STRATEGY.md UX_PRINCIPLES.md VOCABULARY.md OS_CRITERIA.md DEPLOYMENT.md ECOSYSTEM.md STACK_STRATEGY.md PRODUCTIZATION.md PHASE_GATE.md B3_CONSOLIDATION.md TEST_MACHINE.md PRE_PUSH.md; do
   if [[ ! -s "$ROOT_DIR/docs/$doc" ]]; then
     log_error "Missing product direction document: docs/$doc"
     exit 1
@@ -268,11 +274,33 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core snapshot --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core health --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" context status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" context graph --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" context plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" --dry-run context emit >/dev/null
+"$ROOT_DIR/bin/seven" scheduler status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" scheduler plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" shell status --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("runtime_health", {}).get("schema") == "sevenos.daemon.health.v1" else 1)'
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" health --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" profiles --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" shield --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" shield-plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" cyberspace --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" cyberspace-plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" server --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" server-plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" windows --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" windows-plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" installer --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" installer-plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" packages --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" packages-plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" insights --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-daemon" phase-gate --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" events --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" summary --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenbus-probe" --json | python -m json.tool >/dev/null
@@ -291,7 +319,20 @@ rm -rf "$SEVENOS_BUS_TEST_HOME"
 "$ROOT_DIR/bin/seven" profile apps --json >/dev/null
 "$ROOT_DIR/bin/seven" profile gaps --json >/dev/null
 "$ROOT_DIR/bin/seven" profile plan --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" bootstrap forge >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" bootstrap all >/dev/null
 "$ROOT_DIR/bin/seven" shield plan --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/security/shield-control.sh" dashboard --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield dashboard --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield tools --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield scope --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield mode --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield workspaces --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield layout recon --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield hud --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" shield report >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/security/shield-workspace.sh" bootstrap >/dev/null
+"$ROOT_DIR/bin/seven" shield workspace --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" server plan --json >/dev/null
 "$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenpkg" status --json >/dev/null
@@ -430,6 +471,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile guide >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile gaps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile bootstrap forge >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile bootstrap all >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows plan >/dev/null
@@ -470,8 +513,20 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core plan --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core bus --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core snapshot --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core health --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core profiles --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core observe --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core install-service >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core install-observer >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core start >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run core start-observer >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run context status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run context graph >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run context plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run context emit >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler status --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler apply >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell plan >/dev/null
@@ -495,6 +550,17 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run events --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run insights >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield status --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield dashboard >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield open >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield labs >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield tools >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield scope >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield mode >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield context recon >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield layout web >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield hud >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield bootstrap >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield workspace >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run phase-gate >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" phase-gate --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 status >/dev/null
@@ -504,6 +570,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 plan --phase trust >/dev/nu
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 apply --limit 2 >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run b3 apply --phase backend --limit 2 >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run daily >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" daily --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run daily plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run daily apply --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run readiness --record >/dev/null

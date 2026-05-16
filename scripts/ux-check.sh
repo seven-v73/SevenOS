@@ -45,6 +45,7 @@ log_info "Running SevenOS UX coherence checks..."
 require_file "docs/VISION.md"
 require_file "docs/ARCHITECTURE.md"
 require_file "docs/SYSTEM_EXPERIENCE_LAYER.md"
+require_file "docs/CYBERSPACE.md"
 require_file "docs/UX_PRINCIPLES.md"
 require_file "docs/VOCABULARY.md"
 require_file "docs/PHASE_GATE.md"
@@ -61,6 +62,7 @@ require_file "seven-core/bus-c/README.md"
 require_file "seven-core/bus-c/Makefile"
 require_file "seven-core/bus-c/src/sevenbus_probe.c"
 require_file "systemd/user/seven-daemon.service"
+require_file "systemd/user/seven-context-observer.service"
 require_file "sevenos.dotinst"
 require_file "installer/calamares/README.md"
 require_file "installer/calamares/settings.conf"
@@ -166,9 +168,13 @@ require_executable "scripts/core.sh"
 require_executable "scripts/identity.sh"
 require_executable "scripts/experience.sh"
 require_executable "scripts/control-plane.sh"
+require_executable "scripts/daily-driver.sh"
 require_executable "scripts/events.sh"
 require_executable "scripts/insights.sh"
 require_executable "security/shield-status.sh"
+require_executable "security/shield-control.sh"
+require_executable "security/shield-workspace.sh"
+require_executable "security/cyberspace.sh"
 require_executable "scripts/manifest.sh"
 require_executable "scripts/package-plan.sh"
 require_executable "scripts/migrate.sh"
@@ -296,11 +302,17 @@ profile_gaps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile gaps --json
 profile_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile plan --json)"
 profile_guide_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile guide)"
 profile_open_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" open forge)"
+profile_bootstrap_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" bootstrap forge)"
 if grep -q 'profile.json' <<<"$profile_activate_dry" &&
    grep -q '"apps"' <<<"$profile_status_json" &&
    grep -q '"role"' <<<"$profile_status_json" &&
    grep -q '"principle"' <<<"$profile_status_json" &&
    grep -q '"story"' <<<"$profile_status_json" &&
+   grep -q '"bootstrap_state"' <<<"$profile_status_json" &&
+   grep -q '"manifest"' <<<"$profile_status_json" &&
+   grep -q '"launcher"' <<<"$profile_status_json" &&
+   grep -q 'CHECKLIST.md' <<<"$profile_bootstrap_dry" &&
+   grep -q 'launch.sh' <<<"$profile_bootstrap_dry" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-gaps.v1"' <<<"$profile_gaps_json" &&
    grep -q '"missing_packages"' <<<"$profile_gaps_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-plan.v1"' <<<"$profile_plan_json" &&
@@ -326,10 +338,26 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'identity.status' <<<"$actions_json" &&
    grep -q 'identity.packs' <<<"$actions_json" &&
    grep -q 'identity.current' <<<"$actions_json" &&
+   grep -q 'security.dashboard' <<<"$actions_json" &&
+   grep -q 'security.mode' <<<"$actions_json" &&
+   grep -q 'security.hud' <<<"$actions_json" &&
+   grep -q 'security.context.recon' <<<"$actions_json" &&
+   grep -q 'security.bootstrap' <<<"$actions_json" &&
+   grep -q 'security.workspace' <<<"$actions_json" &&
+   grep -q 'security.scope' <<<"$actions_json" &&
+   grep -q 'security.report' <<<"$actions_json" &&
+   grep -q 'security.lab.forensics' <<<"$actions_json" &&
+   grep -q 'daily.status' <<<"$actions_json" &&
+   grep -q 'daily.apply' <<<"$actions_json" &&
+   grep -q 'improve.daily' <<<"$actions_json" &&
+   grep -q 'profile.bootstrap.active' <<<"$actions_json" &&
+   grep -q 'profile.bootstrap.all' <<<"$actions_json" &&
    grep -q 'core.status' <<<"$actions_json" &&
    grep -q 'core.bus' <<<"$actions_json" &&
    grep -q 'core.snapshot' <<<"$actions_json" &&
    grep -q 'core.health' <<<"$actions_json" &&
+   grep -q 'core.profiles' <<<"$actions_json" &&
+   grep -q 'core.observe' <<<"$actions_json" &&
    grep -q 'core.install-service' <<<"$actions_json" &&
    grep -q '"actions"' <<<"$state_json"; then
   ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
@@ -342,6 +370,8 @@ core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
 core_bus_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core bus --json)"
 core_snapshot_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core snapshot --json)"
 core_health_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core health --json)"
+core_profiles_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core profiles --json)"
+core_observe_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --json)"
 shell_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shell status --json)"
 if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -Eq '"state": "(FOUNDATION|READY_FOR_DAEMON)"' <<<"$core_json" &&
@@ -351,11 +381,29 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q '"invalid_event_count"' <<<"$core_snapshot_json" &&
    grep -q '"schema":"sevenos.daemon.health.v1"' <<<"$core_health_json" &&
    grep -q '"runtime"' <<<"$core_health_json" &&
+   grep -q '"schema":"sevenos.daemon.profiles.v1"' <<<"$core_profiles_json" &&
+   grep -q '"writer":"seven-daemon"' <<<"$core_profiles_json" &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" shield --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" shield-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" cyberspace --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" cyberspace-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" server --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" server-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" windows --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" windows-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" installer --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" installer-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" packages-plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" insights --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" phase-gate --json | python -m json.tool >/dev/null &&
+   grep -q '"schema": "sevenos.context.emit.v1"' <<<"$core_observe_json" &&
    grep -q '"runtime_health":' <<<"$shell_status_json" &&
    grep -q '"seven core health --json"' <<<"$shell_status_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" snapshot --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" health --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" profiles --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" events --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" summary --json | python -m json.tool >/dev/null &&
    XDG_STATE_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-daemon" emit --source ux --type preview --message "ux event" --json | python -m json.tool >/dev/null &&
@@ -363,11 +411,20 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q 'serde_json' "$ROOT_DIR/seven-core/daemon/Cargo.toml" &&
    grep -q 'Typed SevenBus reader' <<<"$core_json" &&
    grep -q 'Rust event list reader' <<<"$core_json" &&
+   grep -q '"shield_engine"' <<<"$core_json" &&
+   grep -q '"server_engine"' <<<"$core_json" &&
+   grep -q '"windows_engine"' <<<"$core_json" &&
+   grep -q '"installer_engine"' <<<"$core_json" &&
+   grep -q '"packages_engine"' <<<"$core_json" &&
+   grep -q '"insights_engine"' <<<"$core_json" &&
+   grep -q '"phase_gate_engine"' <<<"$core_json" &&
    grep -q 'C SevenBus probe' <<<"$core_json" &&
    grep -q 'seven-daemon emit' "$ROOT_DIR/scripts/events.sh" &&
    grep -Fq '"$ROOT_DIR/bin/seven-daemon" events' "$ROOT_DIR/scripts/events.sh" &&
    grep -q 'ExecStart=/usr/bin/env seven-daemon serve' "$ROOT_DIR/systemd/user/seven-daemon.service" &&
+   grep -q 'ExecStart=/usr/bin/env seven-daemon observe-loop' "$ROOT_DIR/systemd/user/seven-context-observer.service" &&
    grep -q 'Wants=seven-daemon.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
+   grep -q 'seven-context-observer.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
    grep -q '"core"' <<<"$state_json" &&
    grep -q 'SevenBus' "$ROOT_DIR/seven-core/README.md" &&
    grep -q 'sevenos.daemon.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs"; then
@@ -402,13 +459,15 @@ if grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.co
    grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, TAB, exec, $overview' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, N, exec, $quicksettings' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, C, exec, seven shield mode' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod CTRL, C, exec, seven shield hud' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod CTRL, E, exec, seven-files profile' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'seven-overview apps' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf"; then
-  ok "Hyprland exposes discoverable Hub, Apps and Help shortcuts"
+  ok "Hyprland exposes discoverable Hub, Apps, Help and CyberSpace shortcuts"
 else
-  fail "Hyprland discoverable desktop shortcuts missing"
+  fail "Hyprland discoverable desktop and CyberSpace shortcuts missing"
 fi
 
 overview_search_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" search)"
@@ -442,6 +501,7 @@ session_status_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-session-status")
 session_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" session status --json)"
 if [[ -s "$ROOT_DIR/systemd/user/sevenos-session.target" ]] &&
    [[ -s "$ROOT_DIR/systemd/user/seven-daemon.service" ]] &&
+   [[ -s "$ROOT_DIR/systemd/user/seven-context-observer.service" ]] &&
    [[ -s "$ROOT_DIR/systemd/user/sevenos-waybar.service" ]] &&
    [[ -s "$ROOT_DIR/systemd/user/sevenos-notifications.service" ]] &&
    [[ -s "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" ]] &&
@@ -630,6 +690,10 @@ events_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" events --json)"
 insights_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" insights --json)"
 shield_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield status --json)"
 shield_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield plan --json)"
+shield_control_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield dashboard --json)"
+cyberspace_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield mode --json)"
+cyberspace_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-daemon" cyberspace-plan --json)"
+shield_bootstrap_preview="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/security/shield-workspace.sh" bootstrap)"
 server_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" server status --json)"
 server_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" server plan --json)"
 welcome_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" welcome status --json)"
@@ -646,6 +710,10 @@ core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
 core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
 core_snapshot_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core snapshot --json)"
 core_health_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core health --json)"
+core_profiles_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core profiles --json)"
+core_observe_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --json)"
+context_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" context status --json)"
+scheduler_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" scheduler status --json)"
 shell_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shell status --json)"
 b3_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" b3 plan --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -655,6 +723,12 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile gaps --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile plan --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield workspace --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield scope --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield workspaces --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield layout recon --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield hud --json | python -m json.tool >/dev/null &&
+   grep -q 'shield.json' <<<"$shield_bootstrap_preview" &&
    python -m json.tool <<<"$welcome_json" >/dev/null &&
    python -m json.tool <<<"$welcome_plan_json" >/dev/null &&
    python -m json.tool <<<"$session_json" >/dev/null &&
@@ -670,6 +744,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$insights_json" >/dev/null &&
    python -m json.tool <<<"$shield_json" >/dev/null &&
    python -m json.tool <<<"$shield_plan_json" >/dev/null &&
+   python -m json.tool <<<"$cyberspace_json" >/dev/null &&
+   python -m json.tool <<<"$cyberspace_plan_json" >/dev/null &&
    python -m json.tool <<<"$server_json" >/dev/null &&
    python -m json.tool <<<"$server_plan_json" >/dev/null &&
    python -m json.tool <<<"$installer_json" >/dev/null &&
@@ -679,12 +755,17 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$core_plan_json" >/dev/null &&
    python -m json.tool <<<"$core_snapshot_json" >/dev/null &&
    python -m json.tool <<<"$core_health_json" >/dev/null &&
+   python -m json.tool <<<"$core_profiles_json" >/dev/null &&
+   python -m json.tool <<<"$core_observe_json" >/dev/null &&
+   python -m json.tool <<<"$context_json" >/dev/null &&
+   python -m json.tool <<<"$scheduler_json" >/dev/null &&
    python -m json.tool <<<"$shell_status_json" >/dev/null &&
    python -m json.tool <<<"$b3_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
    grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.events.v1"' <<<"$events_json" &&
-   grep -q '"schema": "sevenos.insights.v1"' <<<"$insights_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.insights.v1"' <<<"$insights_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$insights_json" &&
    grep -q '"schema": "sevenos.welcome.v1"' <<<"$welcome_json" &&
    grep -q '"schema": "sevenos.welcome-plan.v1"' <<<"$welcome_plan_json" &&
    grep -q '"schema": "sevenos.session.v1"' <<<"$session_json" &&
@@ -694,18 +775,40 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'pan-african' <<<"$identity_packs_json" &&
    grep -q '"schema": "sevenos.identity-current.v1"' <<<"$identity_current_json" &&
    grep -q '"pack"' <<<"$identity_current_json" &&
-   grep -q '"schema": "sevenos.shield.v1"' <<<"$shield_json" &&
-   grep -q '"schema": "sevenos.shield-plan.v1"' <<<"$shield_plan_json" &&
-   grep -q '"schema":"sevenos.server.v1"' <<<"$server_json" &&
-   grep -q '"schema": "sevenos.server-plan.v1"' <<<"$server_plan_json" &&
-   grep -q '"schema": "sevenos.windows-plan.v1"' <<<"$windows_plan_json" &&
-   grep -q '"schema":"sevenos.installer.v1"' <<<"$installer_json" &&
-   grep -q '"schema": "sevenos.installer-plan.v1"' <<<"$installer_plan_json" &&
-   grep -q '"schema": "sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.shield.v1"' <<<"$shield_json" &&
+   grep -q '"writer":"seven-daemon"' <<<"$shield_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.shield-plan.v1"' <<<"$shield_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.shield-control.v1"' <<<"$shield_control_json" &&
+   grep -q '"quick_actions"' <<<"$shield_control_json" &&
+   grep -q '"scope"' <<<"$shield_control_json" &&
+   grep -q '"labs"' <<<"$shield_control_json" &&
+   grep -q '"tools"' <<<"$shield_control_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.cyberspace.v1"' <<<"$cyberspace_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$cyberspace_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.cyberspace-plan.v1"' <<<"$cyberspace_plan_json" &&
+   grep -q '"workspaces"' <<<"$cyberspace_json" &&
+   grep -q '"recon"' <<<"$cyberspace_json" &&
+   grep -q '"sandbox"' <<<"$cyberspace_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.server.v1"' <<<"$server_json" &&
+   grep -q '"writer":"seven-daemon"' <<<"$server_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.server-plan.v1"' <<<"$server_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan_json" &&
+   grep -q '"writer":"seven-daemon"' <<<"$windows_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer.v1"' <<<"$installer_json" &&
+   grep -q '"writer":"seven-daemon"' <<<"$installer_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-plan.v1"' <<<"$installer_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$packages_plan_json" &&
    grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -q '"schema":"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
    grep -q '"schema":"sevenos.daemon.health.v1"' <<<"$core_health_json" &&
+   grep -q '"schema":"sevenos.daemon.profiles.v1"' <<<"$core_profiles_json" &&
+   grep -q '"schema": "sevenos.context.emit.v1"' <<<"$core_observe_json" &&
+   grep -q '"schema": "sevenos.context.v1"' <<<"$context_json" &&
+   grep -q '"primary_context"' <<<"$context_json" &&
+   grep -q '"schema": "sevenos.scheduler.v1"' <<<"$scheduler_json" &&
+   grep -q '"active_policy"' <<<"$scheduler_json" &&
    grep -q '"runtime_health":' <<<"$shell_status_json" &&
    grep -q '"schema": "sevenos.b3.v1"' <<<"$b3_json" &&
    grep -q '"targets":' <<<"$b3_json" &&
@@ -716,7 +819,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","core","core_snapshot","core_health","experience","control","b3","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","experience","control","b3","daily","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -828,9 +931,12 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/shield-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/cyberspace"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/cyberspace-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/server-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/control"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/b3"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/daily"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/events"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/insights"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
@@ -842,6 +948,8 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/profile-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/windows-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/installer-plan' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/cyberspace' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/cyberspace-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/packages-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/stack' "$ROOT_DIR/server/README.md" &&
@@ -853,6 +961,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/server-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/control' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/b3' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/daily' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/events' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/insights' "$ROOT_DIR/server/README.md"; then
   ok "Seven Server exposes live state API endpoints"
@@ -867,8 +976,8 @@ windows_apps="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" apps)"
 windows_mode_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode guide --dry-run)"
 if python -m json.tool <<<"$windows_json" >/dev/null &&
    python -m json.tool <<<"$windows_plan" >/dev/null &&
-   grep -q '"schema": "sevenos.windows.v1"' <<<"$windows_json" &&
-   grep -q '"schema": "sevenos.windows-plan.v1"' <<<"$windows_plan" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows.v1"' <<<"$windows_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan" &&
    grep -q 'SevenOS Windows Mode guide' <<<"$windows_guide" &&
    grep -q 'DRY-RUN > Windows Mode > Open Bottles' <<<"$windows_apps" &&
    grep -q 'SevenOS Windows Mode guide' <<<"$windows_mode_guide" &&
@@ -882,7 +991,7 @@ fi
 
 if "$ROOT_DIR/scripts/installer-stack.sh" doctor >/dev/null &&
    "$ROOT_DIR/seven-hub/gui-stack.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/flatpak.sh" list | grep -q 'com.usebottles.bottles'; then
+   grep -q 'com.usebottles.bottles' <<<"$("$ROOT_DIR/scripts/flatpak.sh" list)"; then
   ok "Installer, Tauri GUI and Flatpak foundations are coherent"
 else
   fail "Installer, Tauri GUI or Flatpak foundation failed"
@@ -973,7 +1082,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" list >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/events.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/insights.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/insights.sh" --json >/dev/null
-SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/phase-gate.sh" --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.phase-gate.v1" and data.get("gates") else 1)'
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/phase-gate.sh" --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema") == "sevenos.phase-gate.v1" and data.get("writer") == "seven-daemon" and data.get("gates") else 1)'
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null

@@ -92,6 +92,10 @@ json_to_file "$STATE_TMP/shield.json" "$ROOT_DIR/security/shield-status.sh" --js
 pid_shield=$!
 json_to_file "$STATE_TMP/shield_plan.json" "$ROOT_DIR/security/shield-status.sh" plan --json &
 pid_shield_plan=$!
+json_to_file "$STATE_TMP/cyberspace.json" "$ROOT_DIR/security/cyberspace.sh" mode --json &
+pid_cyberspace=$!
+json_to_file "$STATE_TMP/cyberspace_plan.json" "$ROOT_DIR/bin/seven-daemon" cyberspace-plan --json &
+pid_cyberspace_plan=$!
 json_to_file "$STATE_TMP/server.json" "$ROOT_DIR/server/seven-server.sh" status --json &
 pid_server=$!
 json_to_file "$STATE_TMP/server_plan.json" "$ROOT_DIR/server/seven-server.sh" plan --json &
@@ -120,20 +124,26 @@ json_to_file "$STATE_TMP/core_snapshot.json" "$ROOT_DIR/scripts/core.sh" snapsho
 pid_core_snapshot=$!
 json_to_file "$STATE_TMP/core_health.json" "$ROOT_DIR/scripts/core.sh" health --json &
 pid_core_health=$!
+json_to_file "$STATE_TMP/scheduler.json" "$ROOT_DIR/scripts/scheduler.sh" status --json &
+pid_scheduler=$!
+json_to_file "$STATE_TMP/context.json" "$ROOT_DIR/scripts/context.sh" status --json &
+pid_context=$!
 json_to_file "$STATE_TMP/experience.json" "$ROOT_DIR/scripts/experience.sh" --json &
 pid_experience=$!
 json_to_file "$STATE_TMP/control.json" "$ROOT_DIR/scripts/control-plane.sh" --json &
 pid_control=$!
 json_to_file "$STATE_TMP/b3.json" "$ROOT_DIR/scripts/b3.sh" plan --json &
 pid_b3=$!
+json_to_file "$STATE_TMP/daily.json" "$ROOT_DIR/scripts/daily-driver.sh" status --json &
+pid_daily=$!
 json_to_file "$STATE_TMP/events.json" "$ROOT_DIR/scripts/events.sh" summary-json &
 pid_events=$!
 json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
 pid_actions=$!
 
-wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" \
+wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_experience" "$pid_control" "$pid_b3" "$pid_events" "$pid_actions" || true
+  "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -178,6 +188,12 @@ printf ','
 printf '"shield_plan":'
 cat "$STATE_TMP/shield_plan.json"
 printf ','
+printf '"cyberspace":'
+cat "$STATE_TMP/cyberspace.json"
+printf ','
+printf '"cyberspace_plan":'
+cat "$STATE_TMP/cyberspace_plan.json"
+printf ','
 printf '"server":'
 cat "$STATE_TMP/server.json"
 printf ','
@@ -220,6 +236,12 @@ printf ','
 printf '"core_health":'
 cat "$STATE_TMP/core_health.json"
 printf ','
+printf '"scheduler":'
+cat "$STATE_TMP/scheduler.json"
+printf ','
+printf '"context":'
+cat "$STATE_TMP/context.json"
+printf ','
 printf '"experience":'
 cat "$STATE_TMP/experience.json"
 printf ','
@@ -228,6 +250,9 @@ cat "$STATE_TMP/control.json"
 printf ','
 printf '"b3":'
 cat "$STATE_TMP/b3.json"
+printf ','
+printf '"daily":'
+cat "$STATE_TMP/daily.json"
 printf ','
 printf '"events":'
 cat "$STATE_TMP/events.json"

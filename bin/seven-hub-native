@@ -268,6 +268,13 @@ def b3_payload() -> dict:
         return {"schema": "sevenos.b3.v1", "state": "unknown", "overall": 0, "summary": {}, "actions": []}
 
 
+def daily_payload() -> dict:
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "daily-driver.sh"), "status", "--json"))
+    except Exception:
+        return {"schema": "sevenos.daily-driver.v1", "decision": "unknown", "summary": {}, "gates": [], "actions": []}
+
+
 def status_text() -> str:
     welcome = welcome_payload()
     welcome_plan = welcome_plan_payload()
@@ -289,6 +296,7 @@ def status_text() -> str:
     insights = insights_payload()
     phase_gate = phase_gate_payload()
     b3 = b3_payload()
+    daily = daily_payload()
     active = next((item for item in profiles if item.get("active")), None)
     ready = sum(1 for item in profiles if item.get("state") == "OK")
     partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -320,6 +328,7 @@ def status_text() -> str:
         f"Insights: phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open items\n"
         f"Phase gate: {phase_gate.get('decision', 'unknown')} · {phase_gate.get('summary', {}).get('block', 0)} blockers\n"
         f"B3: {b3.get('overall', 0)}% · {b3.get('summary', {}).get('total', 0)} actions · {b3.get('state', 'blocked')}\n"
+        f"Daily: {daily.get('decision', 'unknown')} · {len(daily.get('blockers', []))} blockers · Shield {daily.get('summary', {}).get('shield', 0)}%\n"
     )
 
 
@@ -491,6 +500,7 @@ def run_gui() -> int:
                 insights = insights_payload()
                 phase_gate = phase_gate_payload()
                 b3 = b3_payload()
+                daily = daily_payload()
                 active = next((item for item in profiles if item.get("active")), None)
                 ready = sum(1 for item in profiles if item.get("state") == "OK")
                 partial = sum(1 for item in profiles if item.get("state") == "PART")
@@ -540,6 +550,7 @@ def run_gui() -> int:
                     ("Insights", f"phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open product items"),
                     ("Phase Gate", f"{phase_gate.get('decision', 'unknown')} · {phase_gate.get('summary', {}).get('block', 0)} blockers · next: {phase_gate.get('next_phase', 'B3')}"),
                     ("B3 Consolidation", f"{b3.get('overall', 0)}% · {b3.get('summary', {}).get('total', 0)} actions · {b3.get('state', 'blocked')}"),
+                    ("Daily Driver", f"{daily.get('decision', 'unknown')} · {len(daily.get('blockers', []))} blockers · Shield {daily.get('summary', {}).get('shield', 0)}%"),
                     ("Active profile", active.get("title") if active else "No active profile yet"),
                     ("Profiles", f"{ready} OK · {partial} PART · {missing} MISS"),
                     ("Profile gaps", f"{profile_gap_count} incomplete modes · install from Profiles"),
@@ -553,6 +564,30 @@ def run_gui() -> int:
                 ):
                     group.add(make_row(title_text, subtitle))
                 dashboard.append(group)
+
+                daily_gates = daily.get("gates") or []
+                if daily_gates:
+                    daily_group = Adw.PreferencesGroup(title="Daily driver gate")
+                    for item in daily_gates[:7]:
+                        row = make_row(
+                            item.get("title", item.get("key", "Daily driver")),
+                            f"{item.get('state', 'WARN')} · actual {item.get('actual', 'unknown')} · target {item.get('target', 'ready')} · {item.get('reason', '')}",
+                        )
+                        button = Gtk.Button()
+                        button.set_icon_name("emblem-ok-symbolic" if item.get("state") == "PASS" else "dialog-warning-symbolic")
+                        command = item.get("command", "seven daily")
+                        button.set_tooltip_text(command)
+                        title_text = item.get("title", "Daily Driver")
+                        button.connect(
+                            "clicked",
+                            lambda _button, command=command, title_text=title_text: run_ecosystem_command(
+                                command,
+                                title=f"SevenOS Daily - {title_text}",
+                            ),
+                        )
+                        row.add_suffix(button)
+                        daily_group.add(row)
+                    dashboard.append(daily_group)
 
                 phase_gates = phase_gate.get("gates") or []
                 if phase_gates:
@@ -677,6 +712,33 @@ def run_gui() -> int:
                         row.add_suffix(button)
                         control_group.add(row)
                     dashboard.append(control_group)
+
+                shield_control_group = Adw.PreferencesGroup(title="Shield workspace")
+                for title_text, detail_text, command, icon_name in [
+                    ("CyberSpace", "Context-aware cyber workspaces, HUD and workflow map", "seven shield mode", "view-grid-symbolic"),
+                    ("Cyber HUD", "Show active context, scope state and report location", "seven shield hud", "utilities-system-monitor-symbolic"),
+                    ("Shield Control", "Cybersecurity dashboard: posture, labs, tools and reports", "seven shield dashboard", "security-high-symbolic"),
+                    ("Scope", "Review authorized targets before audit actions", "seven shield scope", "emblem-documents-symbolic"),
+                    ("Recon Context", "Switch to the Recon cybersecurity workspace", "seven shield context recon", "find-location-symbolic"),
+                    ("Web Context", "Switch to the Web Pentest cybersecurity workspace", "seven shield context web", "web-browser-symbolic"),
+                    ("Open Workspace", "Open Reports, Captures, Evidence and lab folders", "seven shield open", "folder-symbolic"),
+                    ("Web Lab", "Open an isolated web testing lab", "seven shield lab --preset web", "network-workgroup-symbolic"),
+                    ("New Report", "Create a structured Shield report", "seven shield report", "document-new-symbolic"),
+                ]:
+                    row = make_row(title_text, detail_text)
+                    button = Gtk.Button()
+                    button.set_icon_name(icon_name)
+                    button.set_tooltip_text(command)
+                    button.connect(
+                        "clicked",
+                        lambda _button, command=command, title_text=title_text: run_ecosystem_command(
+                            command,
+                            title=f"SevenOS Shield - {title_text}",
+                        ),
+                    )
+                    row.add_suffix(button)
+                    shield_control_group.add(row)
+                dashboard.append(shield_control_group)
 
                 shield_actions = shield_plan.get("next") or []
                 if shield_actions:

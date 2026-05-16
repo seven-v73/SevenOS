@@ -313,6 +313,13 @@ for item in data.get("next", []):
 PY
 }
 
+daemon_json() {
+  local action="$1"
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    exec "$ROOT_DIR/bin/seven-daemon" "$action" --json
+  fi
+}
+
 status_human() {
   printf 'SevenOS Windows Mode\n\n'
   printf '  %-20s %s\n' "CPU virtualization" "$(virt_cpu_state)"
@@ -417,6 +424,7 @@ open_best_surface() {
 case "$ACTION" in
   status)
     if [[ "${1:-}" == "--json" ]]; then
+      daemon_json windows
       status_json
     else
       status_human
@@ -424,6 +432,7 @@ case "$ACTION" in
     ;;
   plan)
     if [[ "${1:-}" == "--json" ]]; then
+      daemon_json windows-plan
       plan_json
     else
       plan_human

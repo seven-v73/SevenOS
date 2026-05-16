@@ -226,6 +226,17 @@ Les piliers du projet sont :
 - Amelioration de `seven b3 apply` : les actions systeme sans session `sudo` sont marquees `BLOCKED` au lieu de casser tout le flux, pendant que les actions safe/manual restent consultables.
 - Integration de B3 dans Seven Hub Native : le dashboard affiche maintenant le score B3, les seuils par phase et les prochaines actions de consolidation.
 - Ajout de la fondation `seven shell` : statut, plan, doctor, preview, contrats `sevenos.shell.v1` et `sevenos.shell-plan.v1`, scaffold `seven-shell/ags` en TypeScript et endpoints Seven Server `/shell` et `/shell-plan`.
+- Ajout de `seven context status|graph|plan --json` : SevenOS dispose maintenant d'un Context Engine qui transforme processus, fenetres Hyprland et profil actif en contexte humain (`Forge`, `Studio`, `Shield`, `Windows`, `Horizon`, `Streaming`, `Baobab`).
+- Ajout de `docs/CONTEXT_ENGINE.md` : SevenOS est formule comme une plateforme Linux context-aware, capable de comprendre le workflow utilisateur au-dessus des PID/process.
+- Ajout de `seven scheduler status|plan|apply` et `docs/SCHEDULING.md` : Seven Scheduler devient une couche user-space au-dessus de Linux CFS, sans remplacement kernel, avec politiques par groupe de contexte.
+- Le Scheduler consomme maintenant le Context Engine : si l'utilisateur est en profil Baobab mais que les signaux indiquent Forge, la politique active devient Forge au lieu d'une simple lecture du profil.
+- Le contrat Scheduler expose les bases futures `cgroups v2`, `systemd slices`, `CPUWeight`, `IOWeight` et `uclamp`, tout en gardant les changements destructifs ou opaques hors de la phase actuelle.
+- `seven state --json`, Seven Server, Insights, Control Plane, le registre d'actions et les checks consomment maintenant `context` et `scheduler`, ce qui prepare Seven Hub et Seven Shell a piloter le systeme par intention utilisateur.
+- Ajout de `seven context emit` : le contexte detecte est maintenant enregistrable dans SevenBus avec un payload `sevenos.context-event.v1`, ce qui transforme la detection ponctuelle en evenement systeme observable.
+- SevenDaemon accepte maintenant `--payload-json` sur `emit`, et SevenBus declare les sources `context` / `scheduler`, premiere etape vers une boucle d'observation runtime moins dependante des scripts.
+- Ajout de `seven core observe --json` : SevenDaemon peut maintenant declencher une observation de contexte ponctuelle et l'enregistrer dans SevenBus, premiere transition concrete vers une boucle runtime supervisee.
+- Ajout de `seven-context-observer.service` et de `seven-daemon observe-loop` : le Context Engine peut maintenant fonctionner comme signal continu de session via systemd user, avec `seven core install-service` / `seven core start-observer`.
+- Le plan B3 integre maintenant la mise en service de Seven Core runtime, afin que le backend ne se limite pas a Seven Server mais inclue aussi l'observation semantique locale.
 
 ### Gestion fichiers
 
@@ -256,12 +267,42 @@ Les piliers du projet sont :
 - Les profils exposent aussi la disponibilite reelle des apps metier via `app_status`, afin de distinguer outil present, manquant et action de lancement.
 - L'activation d'un profil cree maintenant un workspace structure, un `profile.json` local et une liste d'apps metier.
 - `seven profile open <profil>` et `seven-files profile` ouvrent le workspace actif, avec raccourci Hyprland `Super+Ctrl+E`.
+- Ajout de `seven profile bootstrap <profil|all>` : chaque profil genere maintenant un manifeste local `.sevenos/profile.json`, une checklist `.sevenos/CHECKLIST.md` et un lanceur `.sevenos/launch.sh` dans son workspace.
+- Les actions `profile.bootstrap.active` et `profile.bootstrap.all` sont exposees au registre d'actions, afin que Seven Hub et Seven Shell puissent preparer les workspaces sans passer par des scripts caches.
 
 ### Cybersecurite
 
 - Hardening systeme de base.
 - Cyber Lab sandbox.
 - Outils de security audit.
+- Ajout de `seven shield bootstrap` et `seven shield workspace --json` : Shield genere maintenant un contrat local, une checklist, des notes sandbox et des launchers dans `~/ShieldLab/.sevenos`.
+- Le plan Shield distingue maintenant la preparation workspace non destructive des actions systeme comme UFW, Firejail et les outils d'audit.
+
+### Migration hors Bash
+
+- Ajout de `seven-daemon profiles --json` et `seven core profiles --json` : SevenDaemon sait maintenant lire les profils depuis Rust, calculer paquets installes/manquants, apps disponibles et etat de bootstrap.
+- Cette migration pose le premier moteur de profils daemon-native. `profiles/profile-manager.sh` reste le wrapper et le fallback, mais le contrat cible pour Seven Hub/Seven Shell devient Rust-owned.
+- Ajout de `seven-daemon shield --json` et `seven-daemon shield-plan --json` : le posture Shield et son plan de remediation sont maintenant calcules par Rust, avec `security/shield-status.sh` conserve comme interface humaine/fallback.
+- Ajout de `seven-daemon server --json` et `seven-daemon server-plan --json` : la readiness Seven Server, les dependances backend, le bind local et le plan de remediation serveur ont maintenant un contrat Rust-owned.
+- Ajout de `seven-daemon windows --json` et `seven-daemon windows-plan --json` : Windows Mode a maintenant une readiness Rust-owned pour Wine, Bottles, KVM, libvirt, reseau et VM, pendant que l'assistant Bash reste la couche UX guidee.
+- Ajout de `seven-daemon installer --json` et `seven-daemon installer-plan --json` : l'etat Archinstall, Calamares, Archiso, builder ISO et plan distribution sont maintenant lus par Rust, sans donner au daemon le pouvoir de modifier les disques.
+- Ajout de `seven-daemon packages --json` et `seven-daemon packages-plan --json` : SevenPkg conserve l'interface utilisateur, mais le statut logiciel, les meta-packages et le plan Flatpak/Flathub sont maintenant calcules par Rust.
+- Ajout de `seven-daemon insights --json` et delegation de `seven insights --json` : la synthese produit priorisee peut maintenant etre calculee par Seven Core sans attendre la grande aggregation Bash.
+- Ajout de `seven-daemon phase-gate --json` et delegation de `seven phase-gate --json` : la decision B2 -> B3 dispose maintenant d'un contrat Rust rapide, pendant que le mode humain conserve les audits complets.
+- Ajout de `seven shield dashboard`, `seven shield tools`, `seven shield labs`, `seven shield scope`, `seven shield open` et `seven shield report` : Shield devient un espace cyber natif avec posture, perimetre d'audit autorise, labs, outils, workspace, rapports et actions rapides, au lieu d'etre seulement une liste de paquets.
+- Ajout de `seven shield mode`, `seven shield workspaces`, `seven shield context <name>`, `seven shield layout <name>` et `seven shield hud` : naissance de CyberSpace, une couche cyber orientee contexte qui relie Shield aux workspaces Hyprland, aux scopes, aux labs et au HUD.
+- Hyprland expose maintenant `Super+C` pour CyberSpace et `Super+Ctrl+C` pour le Cyber HUD, avec les workspaces 1-9 alignes sur Recon, Web, Reversing, Network, Forensics, Exploit, Intel, Logs et Sandbox.
+- Migration CyberSpace vers Seven Core : `seven-daemon cyberspace --json` et `seven-daemon cyberspace-plan --json` exposent maintenant la carte des contextes, l'etat du scope et le plan de remediation cyber. `seven state --json` et Seven Server exposent aussi `cyberspace` / `cyberspace-plan`.
+
+## Daily Driver Consolidation
+
+- Ajout de `seven daily`, `seven daily --json`, `seven daily plan` et `seven daily apply --yes` : SevenOS dispose maintenant d'un gate explicite avant installation sur PC principal.
+- Le gate daily-driver mesure readiness, Shield/securite, profils metiers, Windows Mode, Seven Server, installateur et services Seven Core avec des seuils concrets pour usage quotidien.
+- Ajout de `seven improve daily --apply --yes` : orchestration en une passe avec backup utilisateur, securite, profils, Windows Mode, serveur, installateur et services Core.
+- Renforcement de `seven improve security` : installation hardening + Shield core + sandbox + bootstrap workspace + CyberSpace status.
+- Renforcement de `seven improve compatibility` : Windows profile, Flatpak defaults/Bottles, KVM/libvirt checks, reseau VM et assistant Windows.
+- Renforcement de `seven improve target` : bootstrap de tous les workspaces puis installation Forge, Shield, Studio, Windows et Horizon.
+- Seven Server expose maintenant `/daily` pour que Seven Hub puisse afficher le gate PC principal sans parser le terminal.
 - Integration possible de Firejail, UFW, Wireshark, nmap et autres outils.
 - Strategie BlackArch documentee comme extension optionnelle, pas dependance obligatoire.
 

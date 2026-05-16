@@ -11,6 +11,8 @@ DAEMON_MANIFEST="$ROOT_DIR/seven-core/daemon/Cargo.toml"
 SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 DAEMON_SERVICE_SOURCE="$ROOT_DIR/systemd/user/seven-daemon.service"
 DAEMON_SERVICE_TARGET="$SYSTEMD_USER_DIR/seven-daemon.service"
+OBSERVER_SERVICE_SOURCE="$ROOT_DIR/systemd/user/seven-context-observer.service"
+OBSERVER_SERVICE_TARGET="$SYSTEMD_USER_DIR/seven-context-observer.service"
 JSON_OUTPUT=0
 ACTION="${1:-status}"
 
@@ -26,11 +28,17 @@ Usage:
   seven core bus --json
   seven core schema --json
   seven core install-service
+  seven core install-observer
   seven core start
+  seven core start-observer
   seven core stop
+  seven core stop-observer
   seven core logs
+  seven core observer-logs
   seven core snapshot --json
   seven core health --json
+  seven core profiles --json
+  seven core observe --json
 
 Seven Core is the system experience layer foundation above Linux and Arch:
 contracts, local event bus, daemon scaffold, API handoff and policy surface.
@@ -63,13 +71,18 @@ command_state() {
 }
 
 service_state() {
-  if systemctl --user is-active --quiet seven-daemon.service 2>/dev/null; then
+  local service="${1:-seven-daemon.service}"
+  if systemctl --user is-active --quiet "$service" 2>/dev/null; then
     printf RUN
-  elif systemctl --user is-enabled --quiet seven-daemon.service 2>/dev/null; then
+  elif systemctl --user is-enabled --quiet "$service" 2>/dev/null; then
     printf READY
-  elif [[ -s "$DAEMON_SERVICE_TARGET" ]]; then
+  elif [[ "$service" == "seven-daemon.service" && -s "$DAEMON_SERVICE_TARGET" ]]; then
     printf INSTALLED
-  elif [[ -s "$DAEMON_SERVICE_SOURCE" ]]; then
+  elif [[ "$service" == "seven-context-observer.service" && -s "$OBSERVER_SERVICE_TARGET" ]]; then
+    printf INSTALLED
+  elif [[ "$service" == "seven-daemon.service" && -s "$DAEMON_SERVICE_SOURCE" ]]; then
+    printf AVAILABLE
+  elif [[ "$service" == "seven-context-observer.service" && -s "$OBSERVER_SERVICE_SOURCE" ]]; then
     printf AVAILABLE
   else
     printf MISS
@@ -85,7 +98,7 @@ event_count() {
 }
 
 status_json() {
-  local contracts api bus_schema daemon daemon_src daemon_bin daemon_json bus_c bus_c_bin cc_state make_state service rust cargo events state
+  local contracts api bus_schema daemon daemon_src daemon_bin daemon_json daemon_profiles daemon_shield daemon_server daemon_windows daemon_installer daemon_packages daemon_insights daemon_phase_gate bus_c bus_c_bin cc_state make_state service observer_service observer_unit rust cargo events state
   contracts=0
   [[ "$(exec_state scripts/state.sh)" == OK ]] && contracts=$((contracts + 1))
   [[ "$(exec_state scripts/control-plane.sh)" == OK ]] && contracts=$((contracts + 1))
@@ -99,11 +112,21 @@ status_json() {
   daemon_src="$(file_state seven-core/daemon/src/main.rs)"
   daemon_bin="$(exec_state bin/seven-daemon)"
   daemon_json="$([[ -s "$DAEMON_MANIFEST" ]] && grep -q 'serde_json' "$DAEMON_MANIFEST" && printf OK || printf MISS)"
+  daemon_profiles="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.daemon.profiles.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_shield="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.shield.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_server="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.server.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_windows="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.windows.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_installer="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.installer.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_packages="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.packages-plan.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_insights="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.insights.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_phase_gate="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.phase-gate.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   bus_c="$(file_state seven-core/bus-c/src/sevenbus_probe.c)"
   bus_c_bin="$(exec_state bin/sevenbus-probe)"
   cc_state="$(command_state cc)"
   make_state="$(command_state make)"
-  service="$(service_state)"
+  service="$(service_state seven-daemon.service)"
+  observer_service="$(service_state seven-context-observer.service)"
+  observer_unit="$(file_state systemd/user/seven-context-observer.service)"
   rust="$(command_state rustc)"
   cargo="$(command_state cargo)"
   events="$(event_count)"
@@ -116,7 +139,7 @@ status_json() {
     state="READY_FOR_DAEMON"
   fi
 
-  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_JSON_STATE="$daemon_json" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
+  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_JSON_STATE="$daemon_json" DAEMON_PROFILES_STATE="$daemon_profiles" DAEMON_SHIELD_STATE="$daemon_shield" DAEMON_SERVER_STATE="$daemon_server" DAEMON_WINDOWS_STATE="$daemon_windows" DAEMON_INSTALLER_STATE="$daemon_installer" DAEMON_PACKAGES_STATE="$daemon_packages" DAEMON_INSIGHTS_STATE="$daemon_insights" DAEMON_PHASE_GATE_STATE="$daemon_phase_gate" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" OBSERVER_SERVICE_STATE="$observer_service" OBSERVER_UNIT_STATE="$observer_unit" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
 import json
 import os
 
@@ -133,6 +156,16 @@ components = [
     {"key": "bus_writer", "title": "Rust SevenBus writer", "state": os.environ["DAEMON_BIN_STATE"], "detail": "seven-daemon emit"},
     {"key": "bus_reader", "title": "Typed SevenBus reader", "state": os.environ["DAEMON_JSON_STATE"], "detail": "serde_json snapshot parser"},
     {"key": "events_reader", "title": "Rust event list reader", "state": os.environ["DAEMON_JSON_STATE"], "detail": "seven-daemon events / summary"},
+    {"key": "profile_engine", "title": "Rust profile inventory engine", "state": os.environ["DAEMON_PROFILES_STATE"], "detail": "seven-daemon profiles"},
+    {"key": "shield_engine", "title": "Rust Shield posture engine", "state": os.environ["DAEMON_SHIELD_STATE"], "detail": "seven-daemon shield / shield-plan"},
+    {"key": "server_engine", "title": "Rust Server readiness engine", "state": os.environ["DAEMON_SERVER_STATE"], "detail": "seven-daemon server / server-plan"},
+    {"key": "windows_engine", "title": "Rust Windows Mode readiness engine", "state": os.environ["DAEMON_WINDOWS_STATE"], "detail": "seven-daemon windows / windows-plan"},
+    {"key": "installer_engine", "title": "Rust Installer readiness engine", "state": os.environ["DAEMON_INSTALLER_STATE"], "detail": "seven-daemon installer / installer-plan"},
+    {"key": "packages_engine", "title": "Rust software readiness engine", "state": os.environ["DAEMON_PACKAGES_STATE"], "detail": "seven-daemon packages / packages-plan"},
+    {"key": "insights_engine", "title": "Rust product insights engine", "state": os.environ["DAEMON_INSIGHTS_STATE"], "detail": "seven-daemon insights"},
+    {"key": "phase_gate_engine", "title": "Rust phase gate engine", "state": os.environ["DAEMON_PHASE_GATE_STATE"], "detail": "seven-daemon phase-gate"},
+    {"key": "context_observer", "title": "Daemon context observer", "state": os.environ["DAEMON_JSON_STATE"], "detail": "seven-daemon observe-once"},
+    {"key": "context_observer_service", "title": "Context observer service", "state": os.environ["OBSERVER_SERVICE_STATE"], "detail": "seven-context-observer.service"},
     {"key": "bus_c_probe", "title": "C SevenBus probe", "state": "OK" if os.environ["BUS_C_STATE"] == "OK" and os.environ["BUS_C_BIN_STATE"] == "OK" else "MISS", "detail": "sevenbus-probe"},
     {"key": "c_toolchain", "title": "C toolchain", "state": "OK" if os.environ["CC_STATE"] == "OK" and os.environ["MAKE_STATE"] == "OK" else "MISS", "detail": "cc + make for low-level IPC probes"},
     {"key": "daemon_service", "title": "Seven daemon service", "state": os.environ["DAEMON_SERVICE_STATE"], "detail": "seven-daemon.service"},
@@ -158,6 +191,15 @@ print(json.dumps({
         "manifest": "seven-core/daemon/Cargo.toml",
         "command": "seven-daemon",
         "service": os.environ["DAEMON_SERVICE_STATE"],
+        "context_observer_service": os.environ["OBSERVER_SERVICE_STATE"],
+        "profile_engine": os.environ["DAEMON_PROFILES_STATE"],
+        "shield_engine": os.environ["DAEMON_SHIELD_STATE"],
+        "server_engine": os.environ["DAEMON_SERVER_STATE"],
+        "windows_engine": os.environ["DAEMON_WINDOWS_STATE"],
+        "installer_engine": os.environ["DAEMON_INSTALLER_STATE"],
+        "packages_engine": os.environ["DAEMON_PACKAGES_STATE"],
+        "insights_engine": os.environ["DAEMON_INSIGHTS_STATE"],
+        "phase_gate_engine": os.environ["DAEMON_PHASE_GATE_STATE"],
     },
     "components": components,
     "next_focus": [
@@ -165,6 +207,15 @@ print(json.dumps({
         "Expose Core through Seven Server and Seven Hub Native",
         "Promote SevenBus from JSONL audit trail to typed local IPC",
         "Compile and supervise seven-daemon as a user service",
+        "Run seven-context-observer as the first continuous context loop",
+        "Move profile state consumers from Bash to seven-daemon profiles",
+        "Move Shield posture consumers from Bash to seven-daemon shield",
+        "Move Server readiness consumers from Bash to seven-daemon server",
+        "Move Windows Mode consumers from Bash to seven-daemon windows",
+        "Move Installer readiness consumers from Bash to seven-daemon installer",
+        "Move SevenPkg software consumers from Python to seven-daemon packages",
+        "Move product diagnosis consumers from Bash to seven-daemon insights",
+        "Move phase transition decisions from Bash to seven-daemon phase-gate",
     ],
 }, indent=2))
 PY
@@ -210,6 +261,12 @@ if service_state in ("MISS", "AVAILABLE"):
     add("daemon-service", "Install seven-daemon user service", "medium", "seven core install-service", "The next step is supervising the daemon through systemd user services.", "changes", "service")
 elif service_state in ("INSTALLED", "READY"):
     add("daemon-start", "Start seven-daemon user service", "medium", "seven core start", "Starting the daemon turns Seven Core into a live runtime instead of only a contract.", "changes", "service")
+
+observer_state = components.get("context_observer_service", {}).get("state")
+if observer_state in ("MISS", "AVAILABLE"):
+    add("context-observer-service", "Install context observer service", "medium", "seven core install-observer", "The semantic Context Engine should be supervised by systemd user services.", "changes", "service")
+elif observer_state in ("INSTALLED", "READY"):
+    add("context-observer-start", "Start context observer service", "medium", "seven core start-observer", "Starting the observer moves context detection from one-shot probes toward a live OS runtime.", "changes", "service")
 
 rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 actions.sort(key=lambda item: (rank.get(item["severity"], 9), item["key"]))
@@ -290,11 +347,31 @@ health_json() {
   fi
 }
 
+profiles_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" profiles --json
+  else
+    printf '{"schema":"sevenos.daemon.profiles.v1","state":"MISS","profiles":[]}\n'
+  fi
+}
+
+observe_json() {
+  if is_dry_run; then
+    printf '{"schema": "sevenos.context.emit.v1", "state": "DRY_RUN", "message": "context observation would be recorded by seven-daemon", "primary_context": {}}\n'
+    return 0
+  fi
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" observe-once --json
+  else
+    printf '{"schema":"sevenos.context.emit.v1","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
 doctor() {
   local missing=0
   printf 'SevenOS Core Doctor\n'
   printf '===================\n'
-  for path in scripts/state.sh scripts/control-plane.sh scripts/events.sh scripts/insights.sh scripts/phase-gate.sh server/seven-server.sh bin/seven-daemon bin/sevenbus-probe systemd/user/seven-daemon.service seven-core/README.md seven-core/bus-schema.json seven-core/daemon/Cargo.toml seven-core/daemon/src/main.rs seven-core/bus-c/README.md seven-core/bus-c/Makefile seven-core/bus-c/src/sevenbus_probe.c; do
+  for path in scripts/state.sh scripts/control-plane.sh scripts/events.sh scripts/insights.sh scripts/phase-gate.sh server/seven-server.sh bin/seven-daemon bin/sevenbus-probe systemd/user/seven-daemon.service systemd/user/seven-context-observer.service seven-core/README.md seven-core/bus-schema.json seven-core/daemon/Cargo.toml seven-core/daemon/src/main.rs seven-core/bus-c/README.md seven-core/bus-c/Makefile seven-core/bus-c/src/sevenbus_probe.c; do
     if [[ -s "$ROOT_DIR/$path" ]]; then
       printf '[OK] %s\n' "$path"
     else
@@ -335,18 +412,41 @@ install_service() {
   if is_dry_run; then
     printf 'mkdir -p %q\n' "$SYSTEMD_USER_DIR"
     printf 'cp %q %q\n' "$DAEMON_SERVICE_SOURCE" "$DAEMON_SERVICE_TARGET"
+    printf 'cp %q %q\n' "$OBSERVER_SERVICE_SOURCE" "$OBSERVER_SERVICE_TARGET"
     printf 'systemctl --user daemon-reload\n'
     printf 'systemctl --user enable seven-daemon.service\n'
+    printf 'systemctl --user enable seven-context-observer.service\n'
     return 0
   fi
 
   mkdir -p "$SYSTEMD_USER_DIR"
   cp "$DAEMON_SERVICE_SOURCE" "$DAEMON_SERVICE_TARGET"
+  cp "$OBSERVER_SERVICE_SOURCE" "$OBSERVER_SERVICE_TARGET"
   if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload >/dev/null 2>&1 || true
     systemctl --user enable seven-daemon.service >/dev/null 2>&1 || true
+    systemctl --user enable seven-context-observer.service >/dev/null 2>&1 || true
   fi
-  log_success "seven-daemon user service installed."
+  log_success "seven-daemon and context observer user services installed."
+}
+
+install_observer() {
+  log_info "Installing SevenOS context observer user service..."
+  if is_dry_run; then
+    printf 'mkdir -p %q\n' "$SYSTEMD_USER_DIR"
+    printf 'cp %q %q\n' "$OBSERVER_SERVICE_SOURCE" "$OBSERVER_SERVICE_TARGET"
+    printf 'systemctl --user daemon-reload\n'
+    printf 'systemctl --user enable seven-context-observer.service\n'
+    return 0
+  fi
+
+  mkdir -p "$SYSTEMD_USER_DIR"
+  cp "$OBSERVER_SERVICE_SOURCE" "$OBSERVER_SERVICE_TARGET"
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user enable seven-context-observer.service >/dev/null 2>&1 || true
+  fi
+  log_success "SevenOS context observer user service installed."
 }
 
 case "$ACTION" in
@@ -365,14 +465,28 @@ case "$ACTION" in
   install-service)
     install_service
     ;;
+  install-observer)
+    install_observer
+    ;;
   start)
     run_cmd systemctl --user start seven-daemon.service
+    run_cmd systemctl --user start seven-context-observer.service
+    ;;
+  start-observer)
+    run_cmd systemctl --user start seven-context-observer.service
     ;;
   stop)
+    run_cmd systemctl --user stop seven-context-observer.service
     run_cmd systemctl --user stop seven-daemon.service
+    ;;
+  stop-observer)
+    run_cmd systemctl --user stop seven-context-observer.service
     ;;
   logs)
     run_cmd journalctl --user -u seven-daemon.service -f
+    ;;
+  observer-logs)
+    run_cmd journalctl --user -u seven-context-observer.service -f
     ;;
   bus|schema)
     [[ "$JSON_OUTPUT" -eq 1 ]] && schema_json || { printf 'SevenBus schema: %s\n' "$BUS_SCHEMA"; }
@@ -389,6 +503,20 @@ case "$ACTION" in
       health_json
     else
       health_json | python -m json.tool
+    fi
+    ;;
+  profiles)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      profiles_json
+    else
+      profiles_json | python -m json.tool
+    fi
+    ;;
+  observe)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      observe_json
+    else
+      observe_json | python -m json.tool
     fi
     ;;
   -h|--help|help)

@@ -14,7 +14,27 @@ Run this before pushing a SevenOS phase to GitHub.
 ./scripts/core.sh status --json
 ./scripts/core.sh plan --json
 ./scripts/core.sh bus --json
+./scripts/core.sh profiles --json
+./bin/seven-daemon shield --json
+./bin/seven-daemon shield-plan --json
+./bin/seven-daemon server --json
+./bin/seven-daemon server-plan --json
+./bin/seven-daemon windows --json
+./bin/seven-daemon windows-plan --json
+./bin/seven-daemon installer --json
+./bin/seven-daemon installer-plan --json
+./bin/seven-daemon packages --json
+./bin/seven-daemon packages-plan --json
+./bin/seven-daemon insights --json
+./bin/seven-daemon phase-gate --json
+SEVENOS_DRY_RUN=1 ./scripts/core.sh observe --json
+SEVENOS_DRY_RUN=1 ./scripts/core.sh install-observer
 ./scripts/core.sh doctor
+./scripts/context.sh status --json
+./scripts/context.sh graph --json
+SEVENOS_DRY_RUN=1 ./scripts/context.sh emit
+./scripts/scheduler.sh status --json
+./scripts/scheduler.sh plan --json
 ./scripts/manifest.sh doctor
 ./scripts/migrate.sh plan
 ./scripts/installer-stack.sh doctor
@@ -22,6 +42,9 @@ Run this before pushing a SevenOS phase to GitHub.
 ./scripts/post-install.sh
 ./scripts/phase-gate.sh
 ./scripts/phase-gate.sh --json
+./scripts/daily-driver.sh status
+./scripts/daily-driver.sh status --json
+SEVENOS_DRY_RUN=1 ./scripts/improve.sh daily --apply --yes
 git status --short
 ```
 
@@ -29,6 +52,8 @@ Make sure the main system reference remains present:
 
 ```bash
 test -s docs/SYSTEM_EXPERIENCE_LAYER.md
+test -s docs/CONTEXT_ENGINE.md
+test -s docs/SCHEDULING.md
 ```
 
 ## Recommended
@@ -42,6 +67,8 @@ test -s docs/SYSTEM_EXPERIENCE_LAYER.md
 ./bin/seven stack
 ./bin/seven shell preview
 ./bin/seven core
+./bin/seven context graph
+./bin/seven scheduler plan
 ./bin/seven architecture doctor
 ./bin/seven manifest restore-plan
 ./bin/seven migrate plan

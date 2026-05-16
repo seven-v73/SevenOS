@@ -18,6 +18,7 @@ Usage:
 
 Criteria:
   all
+  daily
   performance
   ux
   compatibility
@@ -86,8 +87,10 @@ improve_ux() {
 improve_compatibility() {
   section "Software Compatibility"
   run_step "Install Windows compatibility profile" "$ROOT_DIR/install.sh" windows
+  run_step "Install Flatpak defaults for accessible app compatibility" "$ROOT_DIR/scripts/flatpak.sh" install-defaults
   run_step "Check KVM/libvirt readiness" "$ROOT_DIR/install.sh" vm-check
   run_step "Start libvirt default network" "$ROOT_DIR/install.sh" vm-network
+  run_step "Show guided Windows Mode assistant" "$ROOT_DIR/bin/seven-windows-assistant" plan
 }
 
 improve_ease() {
@@ -99,9 +102,13 @@ improve_ease() {
 
 improve_security() {
   section "Security"
-  run_step "Install sandbox helpers" "$ROOT_DIR/install.sh" cybersecurity sandbox
+  run_step "Install firewall, secrets and hardening tools" "$ROOT_DIR/install.sh" security
+  run_step "Install Shield core audit tools" "$ROOT_DIR/install.sh" cybersecurity core
   run_step "Apply base hardening" "$ROOT_DIR/install.sh" security
+  run_step "Install Shield sandbox helpers" "$ROOT_DIR/install.sh" cybersecurity sandbox
+  run_step "Bootstrap native Shield workspace" "$ROOT_DIR/security/shield-workspace.sh" bootstrap
   run_step "Audit Shield readiness" "$ROOT_DIR/install.sh" cyber-audit
+  run_step "Show CyberSpace runtime status" "$ROOT_DIR/security/cyberspace.sh" mode
 }
 
 improve_customization() {
@@ -112,13 +119,17 @@ improve_customization() {
 
 improve_target() {
   section "Target Use"
+  run_step "Bootstrap all SevenOS profile workspaces" "$ROOT_DIR/profiles/profile-manager.sh" bootstrap all
   run_step "Install Forge development workspace" "$ROOT_DIR/install.sh" dev
   run_step "Install Shield cybersecurity workspace" "$ROOT_DIR/install.sh" cybersecurity
   run_step "Install Studio creative workspace" "$ROOT_DIR/install.sh" creation
+  run_step "Install Windows bridge workspace" "$ROOT_DIR/install.sh" windows
+  run_step "Install Horizon deployment workspace" "$ROOT_DIR/install.sh" server
 }
 
 improve_ecosystem() {
   section "Ecosystem"
+  run_step "Install SevenOS installer automation foundation" "$ROOT_DIR/install.sh" installer-stack
   run_step "Install ISO build tooling" "$ROOT_DIR/install.sh" iso-tools
   run_step "Create installer plan" "$ROOT_DIR/install.sh" installer-plan
   run_step "Validate installer plan" "$ROOT_DIR/install.sh" installer-check
@@ -127,8 +138,23 @@ improve_ecosystem() {
 improve_deployment() {
   section "Deployment"
   run_step "Install SevenOS server and deployment packages" "$ROOT_DIR/install.sh" server
+  run_step "Install Seven Server user service" "$ROOT_DIR/server/seven-server.sh" install-user-service
+  run_step "Start Seven Server local API" "$ROOT_DIR/server/seven-server.sh" start
   run_step "Check local server readiness" "$ROOT_DIR/server/seven-server.sh" doctor
   run_step "Preview deployment planner on this repository" "$ROOT_DIR/server/seven-deploy.sh" plan "$ROOT_DIR"
+}
+
+improve_daily() {
+  section "Daily Driver Consolidation"
+  run_step "Back up protected SevenOS user state" "$ROOT_DIR/install.sh" migrate-backup
+  improve_security
+  improve_compatibility
+  improve_target
+  improve_deployment
+  improve_ecosystem
+  run_step "Install Seven Core user services" "$ROOT_DIR/scripts/core.sh" install-service
+  run_step "Install Seven Context observer" "$ROOT_DIR/scripts/core.sh" install-observer
+  run_step "Run daily driver gate" "$ROOT_DIR/scripts/daily-driver.sh" status
 }
 
 printf 'SevenOS Improve Plan\n'
@@ -159,6 +185,7 @@ case "$CRITERION" in
     improve_ecosystem
     improve_deployment
     ;;
+  daily|daily-driver) improve_daily ;;
   performance) improve_performance ;;
   ux) improve_ux ;;
   compatibility) improve_compatibility ;;

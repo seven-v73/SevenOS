@@ -73,7 +73,7 @@ SevenBus
   typed local event bus, state updates, commands, permissions
 
 Seven Core
-  daemon, session manager, profile engine, power, input, audio and AI hooks
+  daemon, session manager, profile engine, context engine, scheduler, power, input, audio and AI hooks
 
 Arch Base
   pacman, systemd, PipeWire, Hyprland, Flatpak, libvirt
@@ -100,6 +100,8 @@ Responsibilities:
 - app and package workflow state
 - deployment/backend state
 - future power and performance policies
+- user-space process scheduling policy
+- semantic workflow context
 - future AI context signals
 
 Near-term implementation:
@@ -212,6 +214,257 @@ seven shell status --json
 
 The shell layer should increasingly display daemon-owned state instead of
 launching independent probes for every widget.
+
+The fifth migration is profile inventory:
+
+```text
+seven core profiles --json
+  -> seven-daemon profiles --json
+  -> daemon-owned profile state, package counts, bootstrap state and app readiness
+```
+
+This does not delete `profiles/profile-manager.sh` yet. Instead, it creates the
+first Rust-owned profile contract so Bash can become a compatibility wrapper
+over time. The long-term target is:
+
+```text
+seven profile status --json
+  -> SevenDaemon profile engine
+  -> Seven Hub / Seven Shell without parsing shell output
+```
+
+The sixth migration is trust posture:
+
+```text
+seven shield status --json
+  -> seven-daemon shield --json
+  -> daemon-owned firewall, sandbox, audit tool and workspace posture
+
+seven shield plan --json
+  -> seven-daemon shield-plan --json
+  -> daemon-owned prioritized remediation plan
+```
+
+`security/shield-status.sh` remains the human CLI and fallback surface, but the
+machine contract now has a Rust owner. This is important because Shield is not a
+theme feature: it is part of the SevenOS trust runtime that Seven Hub, Seven
+Shell and future SevenAI must be able to read without scraping shell output.
+
+Shield also exposes a native workspace surface:
+
+```text
+seven shield dashboard
+seven shield dashboard --json
+seven shield mode
+seven shield mode --json
+  -> seven-daemon cyberspace --json
+seven shield workspaces
+seven shield context recon
+seven shield layout web
+seven shield hud
+seven shield tools
+seven shield labs
+seven shield scope
+seven shield scope --json
+seven shield report
+seven shield open
+```
+
+This surface aggregates posture, profile completeness, authorized scope, lab
+presets, workspace folders, tools and quick actions. It makes cybersecurity
+feel like a SevenOS mode rather than a disconnected set of terminal commands.
+
+The next Shield layer is CyberSpace:
+
+```text
+Shield profile
+  -> CyberSpace context engine
+  -> Hyprland workspaces
+  -> scoped labs, reports and tools
+  -> Seven Hub Security Center
+```
+
+CyberSpace maps human intent to OS behavior. `recon`, `web`, `reversing`,
+`network`, `forensics`, `exploit`, `intel`, `logs` and `sandbox` are not just
+labels: they define workspace targets, preferred tools, safe actions and
+dashboard state. SevenOS still delegates CPU scheduling to Linux, but Shield can
+now express what the user is doing before tools are opened.
+
+The machine-owned contracts are:
+
+```text
+seven-daemon cyberspace --json
+seven-daemon cyberspace-plan --json
+```
+
+This is the bridge toward `seven-cyberd`: Bash remains the user command surface,
+while Seven Core owns the context map and plan that Hub and Server consume.
+
+The seventh migration is local backend readiness:
+
+```text
+seven server status --json
+  -> seven-daemon server --json
+  -> daemon-owned service, bind, dependency and endpoint posture
+
+seven server plan --json
+  -> seven-daemon server-plan --json
+  -> daemon-owned local API and deployment remediation plan
+```
+
+`server/seven-server.sh` still owns the development HTTP server and service
+install/start actions. The state contract, however, now has a Rust owner. This
+keeps the future Hub/Server relationship clean: Hub can ask SevenDaemon what the
+backend state is, while the server process focuses on serving API routes.
+
+The eighth migration is Windows Mode readiness:
+
+```text
+seven windows status --json
+  -> seven-daemon windows --json
+  -> daemon-owned Wine, Bottles, KVM, libvirt and VM posture
+
+seven windows plan --json
+  -> seven-daemon windows-plan --json
+  -> daemon-owned compatibility remediation plan
+```
+
+`bin/seven-windows-assistant` remains the human guide and action surface for
+opening Bottles, Virt Manager or creating a VM. The readiness contract moves to
+SevenDaemon so Hub and Shell can reason about compatibility without inheriting a
+large Bash decision tree.
+
+The ninth migration is installer readiness:
+
+```text
+seven installer status --json
+  -> seven-daemon installer --json
+  -> daemon-owned Archinstall, Calamares, Archiso and ISO builder posture
+
+seven installer plan --json
+  -> seven-daemon installer-plan --json
+  -> daemon-owned distribution readiness plan
+```
+
+The important boundary is safety: SevenDaemon reads installer state and plans
+the next steps, but it does not perform destructive disk operations. Real install
+actions stay behind the existing planner, doctor and explicit installer commands
+until the Calamares/ISO path is mature.
+
+The tenth migration is software readiness:
+
+```text
+sevenpkg status --json
+  -> seven-daemon packages --json
+  -> daemon-owned meta-package, package count and source posture
+
+sevenpkg plan --json
+  -> seven-daemon packages-plan --json
+  -> daemon-owned software remediation plan
+```
+
+`sevenpkg` remains the public user command for installing apps and SevenOS
+software layers. The decision contract moves into SevenDaemon so Seven Hub,
+Seven Shell and Seven Server can read software posture without reimplementing
+package logic in Python or Bash.
+
+The eleventh migration is product diagnosis:
+
+```text
+seven insights --json
+  -> seven-daemon insights --json
+  -> daemon-owned diagnosis across Shield, Server, Profiles, Windows, Installer and Packages
+```
+
+This does not replace the full historical `scripts/state.sh` aggregation yet.
+It creates a faster OS-native path for the question Hub asks constantly:
+what should the user fix or activate next?
+
+The twelfth migration is the phase transition gate:
+
+```text
+seven phase-gate --json
+  -> seven-daemon phase-gate --json
+  -> daemon-owned B2 -> B3 decision contract
+```
+
+The human `seven phase-gate` command still runs the full check suite. The JSON
+contract is intentionally daemon-native so Hub, Server and release tooling can
+read a transition decision quickly without spawning the entire validation stack.
+
+## Seven Context Engine
+
+Seven Context Engine sits just above raw process/window observation. It is the
+semantic layer that answers: what is the user actually doing?
+
+```text
+Processes + windows + profile + events
+  -> Seven Context Engine
+  -> Forge / Studio / Shield / Windows / Horizon / Streaming context
+  -> Seven Scheduler, Seven Shell, Seven Hub, future SevenAI
+```
+
+The first implementation is:
+
+```text
+seven context status --json
+seven context graph --json
+seven context plan --json
+seven context emit
+seven core observe --json
+seven core start-observer
+```
+
+It builds a lightweight context graph from process topology and Hyprland window
+state when available. This is the strategic difference between a PID-centric
+desktop and a context-aware OS.
+
+`seven core observe --json` is the first daemon-facing bridge: SevenDaemon asks
+the Context Engine to emit one typed SevenBus context event. The next runtime
+step is turning this into a supervised loop owned by SevenDaemon.
+
+`seven-context-observer.service` is that first supervised loop. It belongs to
+`sevenos-session.target`, runs locally as the user, and periodically records the
+semantic context through SevenBus so future Shell/Hub surfaces can react to a
+live OS signal instead of only on-demand script output.
+
+## Seven Scheduler
+
+Seven Scheduler is the user-space process and thread orchestration layer.
+
+It does not replace Linux CFS. It gives SevenOS a contextual policy engine above
+the kernel scheduler:
+
+```text
+Applications
+  -> Seven Shell context
+  -> Seven Core Scheduler Layer
+  -> Linux CFS Scheduler
+  -> CPU
+```
+
+The first implementation is intentionally conservative:
+
+```text
+seven scheduler status --json
+seven scheduler plan --json
+seven scheduler apply
+```
+
+It groups processes by SevenOS profile:
+
+- Baobab: core OS services and shell
+- Forge: editors, compilers and containers
+- Shield: audit, sandbox and network security tools
+- Studio: media, graphics, audio and 3D production
+- Windows: Wine, Bottles, Lutris and KVM/QEMU
+- Horizon: containers, Caddy, deployment and services
+
+The current layer detects matching workloads, exposes a policy contract, and
+previews nice/power/IO hints plus future cgroups v2, systemd slice and `uclamp`
+targets. Future versions should move observation and policy execution into
+SevenDaemon, with SevenBus carrying foreground app, profile and AI intent
+events.
 
 ## SevenBus
 
@@ -459,7 +712,7 @@ Focus:
 - SevenBus local event model
 - Seven Shell AGS first active panels
 - Seven Hub talks to daemon/bus where possible
-- Shield, Server and installer blockers reduced
+- Shield, Server, installer and software readiness blockers reduced
 
 ### Phase 4: Intelligent OS Preview
 

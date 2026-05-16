@@ -35,7 +35,8 @@
         "scripts/core.sh",
         "scripts/status.sh",
         "scripts/state.sh",
-        "security/shield-status.sh"
+        "security/shield-status.sh",
+        "security/shield-workspace.sh"
       ]
     },
     {
@@ -79,7 +80,12 @@
         "bin/seven-daemon",
         "bin/sevenbus-probe",
         "systemd/user/seven-daemon.service",
+        "systemd/user/seven-context-observer.service",
         "scripts/core.sh",
+        "scripts/context.sh",
+        "scripts/scheduler.sh",
+        "docs/CONTEXT_ENGINE.md",
+        "docs/SCHEDULING.md",
         "docs/SYSTEM_EXPERIENCE_LAYER.md"
       ]
     },
