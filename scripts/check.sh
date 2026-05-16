@@ -45,6 +45,7 @@ bash -n \
   "$ROOT_DIR/scripts/manifest.sh" \
   "$ROOT_DIR/scripts/package-plan.sh" \
   "$ROOT_DIR/scripts/migrate.sh" \
+  "$ROOT_DIR/scripts/migrate-from-ml4w.sh" \
   "$ROOT_DIR/server/seven-server.sh" \
   "$ROOT_DIR/server/seven-deploy.sh" \
   "$ROOT_DIR/branding/shell/terminal-country.sh" \
@@ -446,11 +447,15 @@ rm -rf "$package_plan_out"
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate.sh" backup >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate-from-ml4w.sh" plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/migrate-from-ml4w.sh" backup >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run manifest doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run manifest restore-plan >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate backup >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate-ml4w plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate-ml4w switch >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" plan >/dev/null

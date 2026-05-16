@@ -28,6 +28,13 @@ seven phase-gate --json | python -m json.tool
 
 ## One-Command Consolidation
 
+If the machine currently uses ML4W, switch the active desktop layer first:
+
+```bash
+seven migrate-ml4w plan
+seven migrate-ml4w switch
+```
+
 On the test machine that should become your main workstation:
 
 ```bash

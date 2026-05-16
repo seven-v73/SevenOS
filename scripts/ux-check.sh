@@ -55,6 +55,7 @@ require_file "docs/PRODUCTIZATION.md"
 require_file "docs/TEST_MACHINE.md"
 require_file "docs/PRE_PUSH.md"
 require_file "docs/PRIMARY_PC.md"
+require_file "docs/MIGRATE_FROM_ML4W.md"
 require_file "seven-core/README.md"
 require_file "seven-core/bus-schema.json"
 require_file "seven-core/daemon/Cargo.toml"
@@ -180,6 +181,7 @@ require_executable "security/cyberspace.sh"
 require_executable "scripts/manifest.sh"
 require_executable "scripts/package-plan.sh"
 require_executable "scripts/migrate.sh"
+require_executable "scripts/migrate-from-ml4w.sh"
 require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
 require_executable "scripts/post-install.sh"
@@ -336,6 +338,8 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'seven-overview apps' <<<"$actions_dry_run" &&
    grep -q 'sevenpkg.status' <<<"$actions_apps" &&
    grep -q 'welcome.plan' <<<"$actions_json" &&
+   grep -q 'migrate.ml4w.plan' <<<"$actions_json" &&
+   grep -q 'migrate.ml4w.switch' <<<"$actions_json" &&
    grep -q 'session.status' <<<"$actions_json" &&
    grep -q 'identity.status' <<<"$actions_json" &&
    grep -q 'identity.packs' <<<"$actions_json" &&
