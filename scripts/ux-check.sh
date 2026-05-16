@@ -154,6 +154,7 @@ require_executable "bin/seven-waybar-notifications"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "bin/seven-windows-assistant"
+require_executable "vm/windows-app-runner.sh"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
 require_executable "scripts/state.sh"
@@ -971,22 +972,33 @@ fi
 
 windows_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" status --json)"
 windows_plan="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" plan --json)"
+windows_catalog="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" catalog --json)"
+windows_resolve="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" resolve photoshop --json)"
+windows_run="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" run photoshop)"
 windows_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide)"
 windows_apps="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" apps)"
 windows_mode_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode guide --dry-run)"
 if python -m json.tool <<<"$windows_json" >/dev/null &&
    python -m json.tool <<<"$windows_plan" >/dev/null &&
+   python -m json.tool <<<"$windows_catalog" >/dev/null &&
+   python -m json.tool <<<"$windows_resolve" >/dev/null &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows.v1"' <<<"$windows_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-catalog.v1"' <<<"$windows_catalog" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-resolve.v1"' <<<"$windows_resolve" &&
    grep -q 'SevenOS Windows Mode guide' <<<"$windows_guide" &&
+   grep -q 'DRY-RUN > Windows App >' <<<"$windows_run" &&
    grep -q 'DRY-RUN > Windows Mode > Open Bottles' <<<"$windows_apps" &&
    grep -q 'SevenOS Windows Mode guide' <<<"$windows_mode_guide" &&
+   grep -q 'windows.catalog' <<<"$actions_json" &&
+   grep -q 'windows.resolve.photoshop' <<<"$actions_json" &&
+   grep -q 'windows.run.photoshop' <<<"$actions_json" &&
    grep -q 'windows.guide' <<<"$actions_json" &&
    grep -q 'windows.apps' <<<"$actions_json" &&
    grep -q 'windows.plan' <<<"$actions_json"; then
-  ok "Windows Mode exposes a guided non-terminal assistant and shared actions"
+  ok "Windows Mode exposes an app-first resolver, guided assistant and shared actions"
 else
-  fail "Windows Mode should expose status JSON, guide, app surface and actions"
+  fail "Windows Mode should expose status JSON, app resolver, guide, app surface and actions"
 fi
 
 if "$ROOT_DIR/scripts/installer-stack.sh" doctor >/dev/null &&

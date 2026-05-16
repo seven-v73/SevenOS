@@ -105,6 +105,10 @@ def handle_windows(args):
     run_script(args, "bin/seven-windows-assistant", args.action, *args.extra)
 
 
+def handle_run(args):
+    run_script(args, "vm/windows-app-runner.sh", "run", args.target, *args.extra)
+
+
 def handle_server(args):
     run_script(args, "server/seven-server.sh", args.action, *args.extra)
 
@@ -432,6 +436,10 @@ def main():
     windows_parser.add_argument("action", nargs="?", default="status")
     windows_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
+    run_parser = subparsers.add_parser("run", help="run an app through the SevenOS compatibility resolver")
+    run_parser.add_argument("target", help="app name or Windows executable path")
+    run_parser.add_argument("extra", nargs=argparse.REMAINDER)
+
     server_parser = subparsers.add_parser("server", help="SevenOS local server and API controls")
     server_parser.add_argument("action", nargs="?", default="status")
     server_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -547,6 +555,8 @@ def main():
         handle_vm(args)
     elif args.command == "windows":
         handle_windows(args)
+    elif args.command == "run":
+        handle_run(args)
     elif args.command == "server":
         handle_server(args)
     elif args.command == "installer":

@@ -104,6 +104,9 @@ security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset rev
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
 windows.plan	Windows	Windows Plan	seven windows plan	safe	Show prioritized Windows Mode setup actions.
 windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Bottles, Wine and KVM Windows paths.
+windows.catalog	Windows	Windows App Catalog	seven windows catalog	safe	List app-first Windows workflows and preferred engines.
+windows.resolve.photoshop	Windows	Resolve Photoshop	seven windows resolve photoshop	safe	Show whether Photoshop should use Bottles, Wine or VM fallback.
+windows.run.photoshop	Windows	Run Photoshop	seven run photoshop	safe	Open Photoshop through the Windows App Layer when configured.
 windows.open	Windows	Open Windows Mode	seven windows open	safe	Open Bottles or Virt Manager depending on what is available.
 windows.apps	Windows	Windows Apps	seven windows apps	safe	Open Bottles for Windows applications.
 windows.vm	Windows	Windows VM	seven windows vm	safe	Open Virt Manager for the Windows VM.

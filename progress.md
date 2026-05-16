@@ -1,6 +1,6 @@
 # SevenOS Progress
 
-Derniere mise a jour : 2026-05-15
+Derniere mise a jour : 2026-05-16
 
 Ce document suit l'evolution de SevenOS : ce qui est deja en place, le niveau actuel du projet, les ameliorations recentes, et les prochaines etapes pour le faire passer d'une base Arch personnalisee a un vrai systeme d'exploitation coherent.
 
@@ -58,6 +58,7 @@ Les piliers du projet sont :
 - Performance : base Arch, Hyprland, composants legers.
 - UX premium : Design System v1, surfaces liquid glass, coherence visuelle.
 - Compatibilite : Wine, Bottles, Lutris, KVM/QEMU, VirtIO.
+- Compatibilite app-first : `seven run <app>` choisit Wine, Bottles, Proton/Lutris ou VM selon le contexte.
 - Simplicite : commandes `seven` et `sevenpkg`.
 - Securite : Shield mode, hardening, sandbox, Cyber Lab.
 - Profils metiers : Forge, Shield, Studio, Windows, Server.
@@ -105,6 +106,10 @@ Les piliers du projet sont :
 - Ajout du resume manifeste dans `seven state --json`, pour que Seven Hub et Seven Server voient les composants, la version, le canal et les compteurs de protection en JSON.
 - Seven Server expose maintenant `/actions`, afin que les interfaces locales puissent consommer le meme registre d'actions que Seven Hub.
 - Debut de separation entre affichage humain et donnees machine pour que Seven Hub pilote SevenOS sans parser des textes fragiles.
+- Ajout de `seven run <app>` comme entree directe vers la couche Windows App Layer.
+- Ajout de `seven windows catalog`, `seven windows resolve <app> --json` et `seven windows run <app>` : SevenOS peut maintenant raisonner en “application Windows” avant de demander une VM.
+- Ajout du contrat `sevenos.windows-app-resolve.v1` pour exposer moteur choisi, engines disponibles, fallback VM, sandbox recommandee et prochaines actions.
+- Ajout de `docs/WINDOWS_APP_LAYER.md` : la compatibilite Windows devient app-first, VM-optionnelle, et exploitable par Seven Hub/SevenDaemon.
 
 ### Design System
 

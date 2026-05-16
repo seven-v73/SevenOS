@@ -82,6 +82,7 @@ bash -n \
   "$ROOT_DIR/security/blackarch.sh" \
   "$ROOT_DIR/vm/check.sh" \
   "$ROOT_DIR/vm/network.sh" \
+  "$ROOT_DIR/vm/windows-app-runner.sh" \
   "$ROOT_DIR/vm/windows-mode.sh" \
   "$ROOT_DIR/vm/windows-vm.sh" \
   "$ROOT_DIR/installer/plan.sh" \
@@ -335,6 +336,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/security/shield-workspace.sh" bootstrap >/dev/null
 "$ROOT_DIR/bin/seven" shield workspace --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" server plan --json >/dev/null
 "$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" windows catalog --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" windows resolve photoshop --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenpkg" status --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" meta --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" plan --json | python -m json.tool >/dev/null
@@ -365,6 +368,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" plan --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" catalog --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" resolve photoshop --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" run photoshop >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
@@ -593,6 +599,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield audit >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run vm start windows >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows guide >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows catalog >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows resolve photoshop >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run run photoshop >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows vm >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows start >/dev/null

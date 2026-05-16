@@ -29,6 +29,7 @@ It is built around foundation pillars:
 - Seven Core and SevenBus as the system experience layer foundation
 - Seven Context Engine as the semantic workflow layer above raw processes/windows
 - Seven Scheduler as the safe user-space process policy layer above Linux CFS
+- Windows App Layer as the app-first compatibility path before optional VM fallback
 - Calamares/Archinstall as the install path foundation
 - GTK/libadwaita as the native Seven Hub direction
 - Tauri as a prototype/fallback for GUI experiments
@@ -315,6 +316,7 @@ Start here before making strategic changes:
 - `docs/CONTEXT_ENGINE.md`
 - `docs/SCHEDULING.md`
 - `docs/CYBERSPACE.md`
+- `docs/WINDOWS_APP_LAYER.md`
 - `docs/VISION.md`
 - `docs/PRODUCT_STRATEGY.md`
 - `docs/UX_PRINCIPLES.md`
@@ -769,6 +771,10 @@ The installer configures Flathub, installs Bottles through Flatpak when possible
 Windows Mode is exposed as a guided user flow:
 
 ```bash
+seven run photoshop
+seven windows catalog
+seven windows resolve photoshop --json
+seven windows run /path/to/setup.exe
 seven windows guide
 seven windows status
 seven windows status --json
@@ -778,7 +784,16 @@ seven windows apps
 seven windows vm
 ```
 
-VM creation still needs a Windows ISO and, for best storage/network support, the VirtIO driver ISO:
+SevenOS now treats Windows compatibility as an app-first layer:
+
+- Wine for direct `.exe` / `.msi` launching.
+- Bottles for accessible non-terminal app bottles.
+- Proton / Lutris for games.
+- KVM/QEMU only as the optional fallback for heavy apps or full Windows sessions.
+
+VM creation still needs a user-provided Windows ISO and, for best
+storage/network support, the VirtIO driver ISO. SevenOS does not download or
+redistribute Windows images:
 
 ```bash
 ./install.sh vm-check

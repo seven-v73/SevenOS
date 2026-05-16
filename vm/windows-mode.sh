@@ -19,6 +19,9 @@ Actions:
   status [--json]     Show Windows Mode readiness
   plan [--json]       Show prioritized Windows Mode setup actions
   guide               Explain the friendly Windows setup path
+  catalog [--json]    List app-first Windows workflows
+  resolve APP [--json] Show the preferred engine for a Windows app
+  run APP             Launch a Windows app through the app-first resolver
   open                Open the best available Windows surface
   apps                Open Bottles for Windows applications
   vm                  Open Virt Manager for the Windows VM
@@ -30,6 +33,8 @@ Actions:
 Examples:
   ./install.sh windows-mode status
   ./install.sh windows-mode guide
+  ./install.sh windows-mode resolve photoshop --json
+  ./install.sh windows-mode run /path/setup.exe
   ./install.sh windows-mode apps
   ./install.sh windows-mode create --iso /path/windows.iso --virtio-iso /path/virtio.iso --os win11
   ./install.sh windows-mode start
@@ -115,7 +120,7 @@ case "$ACTION" in
       status_action
     fi
     ;;
-  plan|guide|open|apps|bottles|vm|virt-manager|network|check)
+  plan|guide|catalog|resolve|run|open|apps|bottles|vm|virt-manager|network|check)
     "$ROOT_DIR/bin/seven-windows-assistant" "$ACTION" "$@"
     ;;
   create)

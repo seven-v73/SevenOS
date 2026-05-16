@@ -412,9 +412,16 @@ Windows compatibility:
 ./install.sh vm-network
 seven windows guide
 seven windows status
+seven windows catalog
+seven windows resolve photoshop --json | python -m json.tool
+SEVENOS_DRY_RUN=1 seven run photoshop
+SEVENOS_DRY_RUN=1 seven windows run /path/to/setup.exe
 seven windows apps
 seven windows vm
 ```
+
+Windows compatibility should be tested app-first. A Windows ISO is only needed
+when the resolver falls back to `vm` for a heavy or driver-sensitive workflow.
 
 Server/deployment:
 

@@ -1,9 +1,23 @@
 # SevenOS VM Layer
 
-This directory contains the first Windows VM workflow for SevenOS.
+This directory contains the SevenOS Windows Compatibility Layer.
+
+The default philosophy is now app-first and VM-optional:
+
+```bash
+seven run photoshop
+seven windows run /path/to/setup.exe
+seven windows resolve photoshop --json
+```
+
+SevenOS should try Wine, Bottles, Proton or Lutris before asking the user to
+create a full Windows VM. The VM path remains available for heavy or
+driver-sensitive applications.
 
 Planned scope:
 
+- app-first Windows workflows
+- Wine/Bottles/Proton/Lutris resolver
 - KVM/QEMU setup validation
 - Virt Manager integration
 - Windows 10/11 VM templates
@@ -52,6 +66,29 @@ Start and autostart the default network:
 ```bash
 ./install.sh vm-network
 ```
+
+## App-First Windows Workflows
+
+```bash
+seven windows catalog
+seven windows catalog --json
+seven windows resolve photoshop
+seven windows resolve photoshop --json
+SEVENOS_DRY_RUN=1 seven run photoshop
+SEVENOS_DRY_RUN=1 seven windows run /path/to/setup.exe
+```
+
+The resolver reports:
+
+- preferred engines for the app
+- current engine readiness
+- whether the app can open as a native Wayland/Hyprland window
+- whether an ISO-backed VM is only an optional fallback
+- next actions when Wine, Bottles, Proton, Lutris or the VM are missing
+
+SevenOS does not download, redistribute or require unofficial Windows images.
+If the user wants a lightweight Windows VM, they must provide their own legal
+Windows ISO or image.
 
 ## Create A Windows VM
 
