@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="SevenOS forge profile mark">
-  <rect x="18" y="18" width="92" height="92" rx="26" fill="#c8a96e" fill-opacity="0.18" stroke="#c8a96e" stroke-width="4"/>
+  <rect x="18" y="18" width="92" height="92" rx="26" fill="#b89a62" fill-opacity="0.18" stroke="#b89a62" stroke-width="4"/>
   <path d="M38 84h52M44 68h40M52 52h24" stroke="#2a1f12" stroke-width="8" stroke-linecap="round"/>
   <path d="M64 26v22M44 36l16 16M84 36L68 52" stroke="#c4673a" stroke-width="5" stroke-linecap="round"/>
 </svg>

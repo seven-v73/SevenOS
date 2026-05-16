@@ -1,38 +1,38 @@
 :root {
-  --ebene: #efe3cf;
-  --surface-0: #f6ead8;
-  --surface-1: #fbf5ea;
-  --surface-2: #ead9bd;
-  --surface-3: #d8bd91;
+  --ebene: #eef4f8;
+  --surface-0: #f6fbfe;
+  --surface-1: #ffffffd9;
+  --surface-2: #edf5f9cc;
+  --surface-3: #dbe9efc2;
 
-  --glass: #fbf5eab8;
-  --glass-2: #fbf5eae0;
-  --glass-3: #f6ead8;
-  --glass-border: #c7a86f;
-  --glass-border-2: #c7a86f;
+  --glass: #ffffff78;
+  --glass-2: #ffffffa6;
+  --glass-3: #f7fcffcc;
+  --glass-border: #ffffffd6;
+  --glass-border-2: #9fb8c6a8;
 
-  --gold: #c8a96e;
-  --gold-bright: #e2c07a;
-  --gold-dim: #8a7048;
-  --gold-pale: rgba(200, 169, 110, 0.08);
-  --gold-glass: rgba(200, 169, 110, 0.15);
+  --gold: #b89a62;
+  --gold-bright: #cbb37a;
+  --gold-dim: #8f7a53;
+  --gold-pale: rgba(184, 154, 98, 0.08);
+  --gold-glass: rgba(184, 154, 98, 0.11);
 
-  --clay: #c4673a;
-  --clay-dim: #8a4525;
-  --clay-pale: rgba(196, 103, 58, 0.14);
+  --clay: #a95738;
+  --clay-dim: #7d432e;
+  --clay-pale: rgba(169, 87, 56, 0.10);
 
-  --baobab: #4a8c5c;
-  --baobab-bright: #5aad72;
-  --baobab-pale: rgba(74, 140, 92, 0.14);
+  --baobab: #3f8b65;
+  --baobab-bright: #4ba979;
+  --baobab-pale: rgba(63, 139, 101, 0.12);
 
-  --indigo: #5b7fa6;
-  --indigo-bright: #7ba3cf;
-  --indigo-pale: rgba(91, 127, 166, 0.14);
+  --indigo: #567f9d;
+  --indigo-bright: #6f9dbc;
+  --indigo-pale: rgba(86, 127, 157, 0.13);
 
-  --text-1: #2a1f12;
-  --text-2: #5c4d3a;
-  --text-3: #827158;
-  --text-4: #aa9673;
+  --text-1: #17232b;
+  --text-2: #4d606a;
+  --text-3: #7c8c94;
+  --text-4: #a8b4ba;
 
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-interface: "DM Sans", system-ui, sans-serif;

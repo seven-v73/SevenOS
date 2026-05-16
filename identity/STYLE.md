@@ -23,23 +23,23 @@ desktop, but with a visual language owned by SevenOS.
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| `--ebene` | `#efe3cf` | warm glass canvas |
-| `--surface-0` | `#f6ead8` | page background |
-| `--surface-1` | `#fbf5ea` | glass cards and panels |
-| `--surface-2` | `#ead9bd` | raised warm glass |
-| `--surface-3` | `#d8bd91` | focused popovers |
-| `--gold` | `#c8a96e` | primary action |
-| `--gold-bright` | `#e2c07a` | hover and active |
-| `--gold-dim` | `#8a7048` | borders and details |
-| `--clay` | `#c4673a` | warning and urgency |
-| `--baobab` | `#4a8c5c` | success and health |
-| `--baobab-bright` | `#5aad72` | live success |
-| `--indigo` | `#5b7fa6` | info and secondary states |
-| `--indigo-bright` | `#7ba3cf` | info text and icons |
-| `--text-1` | `#2a1f12` | primary text |
-| `--text-2` | `#5c4d3a` | secondary text |
-| `--text-3` | `#827158` | tertiary text |
-| `--text-4` | `#aa9673` | disabled text |
+| `--ebene` | `#eef4f8` | frosted glass canvas |
+| `--surface-0` | `#f6fbfe` | page background |
+| `--surface-1` | `#ffffffd9` | glass cards and panels |
+| `--surface-2` | `#edf5f9cc` | raised glass |
+| `--surface-3` | `#dbe9efc2` | focused popovers |
+| `--gold` | `#b89a62` | cultural micro-accent only |
+| `--gold-bright` | `#cbb37a` | subtle warm highlight |
+| `--gold-dim` | `#8f7a53` | fine cultural detail |
+| `--clay` | `#a95738` | warning and urgency |
+| `--baobab` | `#3f8b65` | success and health |
+| `--baobab-bright` | `#4ba979` | live success |
+| `--indigo` | `#567f9d` | primary interaction and secondary states |
+| `--indigo-bright` | `#6f9dbc` | focus rings and icons |
+| `--text-1` | `#17232b` | primary text |
+| `--text-2` | `#4d606a` | secondary text |
+| `--text-3` | `#7c8c94` | tertiary text |
+| `--text-4` | `#a8b4ba` | disabled text |
 
 ## Typography
 
@@ -55,16 +55,16 @@ Rules:
 
 ## Surfaces
 
-SevenOS uses a light liquid glass foundation. The default target is
-`Sovereign Glass`: readable in daylight, elegant at night, and free from
-black-on-black desktop surfaces. Liquid glass is simulated with translucent
-surfaces, warm borders and soft opacity. Do not rely on production
+SevenOS uses a frosted liquid glass foundation. The default target is
+`Sovereign Frost`: readable in daylight, elegant at night, and free from both
+black-on-black desktop surfaces and dominant yellow/orange chrome. Liquid glass
+is simulated with translucent surfaces, white glass borders and soft opacity. Do not rely on production
 `backdrop-filter` blur for core Linux surfaces.
 
 - Base: `--surface-1` + `--glass-border`
 - Floating: `--glass` + `--glass-border`
-- Focus: `--surface-3` + `--gold-dim`
-- Action: `--gold-pale` + `--gold-dim`
+- Focus: `--glass-3` + `--indigo-bright`
+- Action: `--indigo-pale` + `--indigo`
 
 Avoid decorative shadows. Elevation should come from surface tone and border.
 

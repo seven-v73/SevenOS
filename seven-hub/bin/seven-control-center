@@ -246,13 +246,13 @@ def render_dashboard():
   <title>SevenOS Control Center</title>
   <style>
     :root {{
-      --ebene:#efe3cf; --surface-0:#f6ead8; --surface-1:#fbf5ea; --surface-2:#ead9bd; --surface-3:#d8bd91;
-      --glass:#fbf5eab8; --glass-2:#fbf5eae0; --glass-3:#f6ead8; --glass-border:#c7a86f; --glass-border-2:#c7a86f;
-      --gold:#c8a96e; --gold-bright:#e2c07a; --gold-dim:#8a7048;
-      --clay:#c4673a; --clay-dim:#8a4525; --clay-pale:rgba(196,103,58,.14);
-      --baobab:#4a8c5c; --baobab-bright:#5aad72; --baobab-pale:rgba(74,140,92,.14);
-      --indigo:#5b7fa6; --indigo-bright:#7ba3cf; --indigo-pale:rgba(91,127,166,.14);
-      --text-1:#2a1f12; --text-2:#5c4d3a; --text-3:#827158;
+      --ebene:#eef4f8; --surface-0:#f6fbfe; --surface-1:#ffffffd9; --surface-2:#edf5f9cc; --surface-3:#dbe9efc2;
+      --glass:#ffffff78; --glass-2:#ffffffa6; --glass-3:#f7fcffcc; --glass-border:#ffffffd6; --glass-border-2:#9fb8c6a8;
+      --gold:#b89a62; --gold-bright:#cbb37a; --gold-dim:#8f7a53;
+      --clay:#a95738; --clay-dim:#7d432e; --clay-pale:rgba(169,87,56,.10);
+      --baobab:#3f8b65; --baobab-bright:#4ba979; --baobab-pale:rgba(63,139,101,.12);
+      --indigo:#567f9d; --indigo-bright:#6f9dbc; --indigo-pale:rgba(86,127,157,.13);
+      --text-1:#17232b; --text-2:#4d606a; --text-3:#7c8c94;
       --font-display:"Cormorant Garamond", Georgia, serif; --font-interface:"DM Sans", system-ui, sans-serif; --font-mono:"JetBrains Mono", monospace;
     }}
     * {{ box-sizing: border-box; }}
@@ -260,15 +260,15 @@ def render_dashboard():
       margin: 0; min-height: 100vh; color: var(--text-1);
       font-family: var(--font-interface);
       background:
-        linear-gradient(135deg, rgba(200,169,110,.08), transparent 30%),
-        linear-gradient(225deg, rgba(91,127,166,.10), transparent 34%),
+        linear-gradient(135deg, rgba(255,255,255,.58), transparent 30%),
+        linear-gradient(225deg, rgba(86,127,157,.13), transparent 34%),
         linear-gradient(135deg, var(--ebene), var(--surface-0) 48%, var(--surface-1));
     }}
     main {{ max-width: 1180px; margin: 0 auto; padding: 34px 26px 44px; }}
     header {{ display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 24px; }}
     h1 {{ margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 300; font-size: 42px; letter-spacing: 0; line-height: 1.05; }}
     .sub {{ color: var(--text-2); margin: 8px 0 0; }}
-    .score {{ color: #2a1f12; background: var(--gold); border: 1px solid var(--gold-dim); border-radius: 10px; padding: 10px 14px; font-weight: 500; }}
+    .score {{ color: var(--text-1); background: var(--glass-2); border: 1px solid var(--glass-border-2); border-radius: 10px; padding: 10px 14px; font-weight: 500; }}
     .grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }}
     .card {{
       min-height: 156px; padding: 16px; border-radius: 16px;
@@ -278,9 +278,9 @@ def render_dashboard():
     .card-head {{ display: flex; align-items: center; justify-content: space-between; gap: 10px; }}
     h2 {{ margin: 0; font-size: 15px; font-weight: 500; }}
     p {{ color: var(--text-2); line-height: 1.55; min-height: 42px; }}
-    .badge {{ border-radius: 999px; padding: 5px 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--gold-bright); background: rgba(200,169,110,.08); border: 1px solid var(--gold-dim); }}
+    .badge {{ border-radius: 999px; padding: 5px 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--indigo); background: var(--indigo-pale); border: 1px solid var(--indigo); }}
     .badge.ok, .badge.run, .badge.100\\% {{ color: var(--baobab-bright); background: var(--baobab-pale); border-color: var(--baobab); }}
-    .badge.part, .badge.79\\% {{ color: var(--gold-bright); background: rgba(200,169,110,.08); border-color: var(--gold-dim); }}
+    .badge.part, .badge.79\\% {{ color: var(--indigo); background: var(--indigo-pale); border-color: var(--indigo); }}
     .badge.miss {{ color: var(--clay); background: var(--clay-pale); border-color: var(--clay-dim); }}
     .actions {{ display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }}
     button {{
@@ -288,7 +288,7 @@ def render_dashboard():
       border-radius: 10px; padding: 9px 11px; font-weight: 400; cursor: pointer;
       transition: background 200ms cubic-bezier(.4,0,.2,1), border-color 200ms cubic-bezier(.4,0,.2,1), transform 120ms cubic-bezier(.4,0,.2,1);
     }}
-    button:hover {{ background: var(--glass-3); border-color: var(--gold-dim); }}
+    button:hover {{ background: var(--glass-3); border-color: var(--indigo-bright); }}
     button:active {{ transform: scale(.97); }}
     @keyframes card-in {{ from {{ opacity: 0; transform: translateY(8px); }} to {{ opacity: 1; transform: translateY(0); }} }}
     @media (prefers-reduced-motion: reduce) {{ *, *::before, *::after {{ animation-duration: .01ms !important; transition-duration: .01ms !important; }} }}

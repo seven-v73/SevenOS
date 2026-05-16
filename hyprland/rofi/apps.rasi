@@ -6,7 +6,7 @@ window {
   padding: 30px;
   border: 0px;
   border-radius: 0px;
-  background-color: @surface-0;
+  background-color: rgba(246, 251, 254, 0.58);
 }
 
 mainbox {
@@ -19,9 +19,9 @@ mainbox {
 textbox {
   margin: 4px 12% 0px 12%;
   padding: 0px 0px 12px 0px;
-  border: 0px 0px 3px 0px;
-  border-color: @gold-dim;
-  text-color: @gold-bright;
+  border: 0px 0px 1px 0px;
+  border-color: @glass-border-2;
+  text-color: @indigo;
   font: "Cormorant Garamond Italic 30";
   content: "SevenOS";
   horizontal-align: 0.5;
@@ -34,7 +34,7 @@ inputbar {
   border: 1px;
   border-radius: 18px;
   border-color: @glass-border-2;
-  background-color: @surface-1;
+  background-color: @glass-2;
   children: [ icon-search, entry ];
 }
 
@@ -54,7 +54,7 @@ entry {
   placeholder: "Search";
   placeholder-color: @text-2;
   text-color: @text-1;
-  cursor-color: @gold;
+  cursor-color: @indigo;
   font: "DM Sans 13";
 }
 
@@ -80,19 +80,19 @@ element {
   orientation: vertical;
   border: 1px;
   border-radius: 22px;
-  border-color: @glass-border-2;
-  background-color: @surface-1;
+  border-color: @glass-border;
+  background-color: @glass;
   text-color: @text-1;
 }
 
 element selected {
-  background-color: @gold-bright;
-  border-color: @gold-bright;
-  text-color: @ebene;
+  background-color: @glass-3;
+  border-color: @indigo-bright;
+  text-color: @text-1;
 }
 
 element alternate {
-  background-color: @surface-2;
+  background-color: @glass-2;
   text-color: @text-1;
 }
 

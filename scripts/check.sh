@@ -135,7 +135,7 @@ for identity_file in \
   fi
 done
 
-if ! grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" ||
+if ! grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" ||
    ! grep -q 'Sovereign by design' "$ROOT_DIR/identity/STYLE.md"; then
   log_error "SevenOS design tokens are not aligned with Design System v1."
   exit 1

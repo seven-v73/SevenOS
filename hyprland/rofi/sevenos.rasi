@@ -1,51 +1,52 @@
 * {
-  ebene: #efe3cf;
-  surface-0: #f6ead8;
-  surface-1: #fbf5ea;
-  surface-2: #ead9bd;
-  surface-3: #d8bd91;
-  glass: #ead9bd;
-  glass-2: #d8bd91;
-  glass-3: #cdaa75;
-  glass-border: #c19b5e;
-  glass-border-2: #a77f45;
-  gold: #c8a96e;
-  gold-bright: #e2c07a;
-  gold-dim: #8a7048;
-  clay: #c4673a;
-  clay-dim: #8a4525;
-  baobab: #4a8c5c;
-  baobab-bright: #5aad72;
-  indigo: #5b7fa6;
-  indigo-bright: #7ba3cf;
-  text-1: #2a1f12;
-  text-2: #5c4d3a;
-  text-3: #827158;
+  ebene: #eef4f8;
+  surface-0: #f6fbfe;
+  surface-1: rgba(255, 255, 255, 0.72);
+  surface-2: rgba(255, 255, 255, 0.54);
+  surface-3: rgba(231, 242, 248, 0.72);
+  glass: rgba(255, 255, 255, 0.46);
+  glass-2: rgba(255, 255, 255, 0.64);
+  glass-3: rgba(247, 252, 255, 0.82);
+  glass-border: rgba(255, 255, 255, 0.78);
+  glass-border-2: rgba(122, 153, 170, 0.38);
+  gold: #b89a62;
+  gold-bright: #cbb37a;
+  gold-dim: #8f7a53;
+  clay: #a95738;
+  clay-dim: #7d432e;
+  baobab: #3f8b65;
+  baobab-bright: #4ba979;
+  indigo: #567f9d;
+  indigo-bright: #6f9dbc;
+  text-1: #17232b;
+  text-2: #4d606a;
+  text-3: #7c8c94;
 }
 
 window {
   width: 58%;
-  border: 2px;
-  border-color: @gold-dim;
-  border-radius: 22px;
+  border: 1px;
+  border-color: @glass-border-2;
+  border-radius: 24px;
   background-color: @surface-1;
 }
 
 mainbox {
   padding: 20px;
   spacing: 14px;
-  background-color: @surface-1;
+  background-color: transparent;
 }
 
 message {
   padding: 12px 14px;
-  border: 0px 0px 1px 0px;
-  border-color: @gold-dim;
-  background-color: @surface-2;
+  border: 1px;
+  border-color: @glass-border;
+  border-radius: 14px;
+  background-color: @glass;
 }
 
 textbox {
-  text-color: @gold-bright;
+  text-color: @indigo;
   font: "DM Sans Medium 12";
 }
 
@@ -53,25 +54,25 @@ inputbar {
   padding: 14px 15px;
   border: 1px;
   border-color: @glass-border-2;
-  border-radius: 10px;
-  background-color: @surface-3;
+  border-radius: 14px;
+  background-color: @glass-2;
   children: [ prompt, textbox-prompt-colon, entry ];
 }
 
 prompt {
-  text-color: @gold;
+  text-color: @indigo;
   font: "JetBrains Mono Medium 13";
 }
 
 textbox-prompt-colon {
-  text-color: @clay;
+  text-color: @text-3;
 }
 
 entry {
   text-color: @text-1;
   placeholder: "Search SevenOS";
   placeholder-color: @text-2;
-  cursor-color: @gold;
+  cursor-color: @indigo;
   font: "DM Sans 13";
 }
 
@@ -79,7 +80,7 @@ listview {
   lines: 10;
   fixed-height: true;
   margin: 3px 0 0 0;
-  spacing: 6px;
+  spacing: 7px;
   background-color: transparent;
 }
 
@@ -87,19 +88,19 @@ element {
   padding: 12px 13px;
   border: 1px;
   border-color: @glass-border;
-  border-radius: 10px;
-  background-color: @surface-2;
+  border-radius: 13px;
+  background-color: @glass;
   text-color: @text-1;
 }
 
 element selected {
-  background-color: @gold;
-  text-color: @ebene;
-  border-color: @gold-bright;
+  background-color: @glass-3;
+  text-color: @text-1;
+  border-color: @indigo-bright;
 }
 
 element alternate {
-  background-color: @surface-3;
+  background-color: @surface-2;
   text-color: @text-1;
 }
 

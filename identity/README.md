@@ -19,8 +19,8 @@ The goal is not to look like a themed Arch rice. The system should feel like an
 independent professional OS: calm, precise, luxurious, and culturally rooted
 without becoming decorative.
 
-- light liquid glass surfaces for serious daily work without black-on-black fatigue
-- ancestral gold for identity and primary action
+- frosted liquid glass surfaces for serious daily work without black-on-black or yellow-heavy fatigue
+- ancestral gold as a restrained cultural micro-accent, not a dominant UI color
 - clay for warning, urgency and danger
 - baobab for trusted/security states
 - indigo for network, VM, deployment, and technical flow
@@ -33,18 +33,18 @@ without becoming decorative.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `ebene` | `#efe3cf` | zero surface |
-| `surface-0` | `#f6ead8` | page background |
-| `surface-1` | `#fbf5ea` | cards and panels |
-| `surface-2` | `#ead9bd` | raised cards |
-| `surface-3` | `#d8bd91` | modals and popovers |
-| `gold` | `#c8a96e` | identity and primary action |
-| `gold-bright` | `#e2c07a` | hover and active states |
-| `clay` | `#c4673a` | warning, danger and urgency |
-| `baobab` | `#4a8c5c` | security, health, success |
-| `indigo` | `#5b7fa6` | network, VM, deployment, technical flow |
-| `text-1` | `#2a1f12` | primary text |
-| `text-2` | `#5c4d3a` | secondary text |
+| `ebene` | `#eef4f8` | zero surface |
+| `surface-0` | `#f6fbfe` | page background |
+| `surface-1` | `#ffffffd9` | cards and panels |
+| `surface-2` | `#edf5f9cc` | raised cards |
+| `surface-3` | `#dbe9efc2` | modals and popovers |
+| `gold` | `#b89a62` | restrained cultural accent |
+| `gold-bright` | `#cbb37a` | subtle warm highlight |
+| `clay` | `#a95738` | warning, danger and urgency |
+| `baobab` | `#3f8b65` | security, health, success |
+| `indigo` | `#567f9d` | interaction, network, VM, deployment |
+| `text-1` | `#17232b` | primary text |
+| `text-2` | `#4d606a` | secondary text |
 
 ## Naming
 

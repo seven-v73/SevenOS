@@ -4,26 +4,26 @@ window {
   width: 26%;
   border: 1px;
   border-radius: 26px;
-  border-color: @clay;
-  background-color: @surface-1;
+  border-color: @glass-border-2;
+  background-color: @glass-2;
 }
 
 mainbox {
   padding: 18px;
   spacing: 12px;
-  background-color: @surface-1;
+  background-color: transparent;
   children: [ message, listview ];
 }
 
 message {
   padding: 0px 0px 12px 0px;
   border: 0px 0px 3px 0px;
-  border-color: @clay;
+  border-color: @glass-border-2;
   background-color: transparent;
 }
 
 textbox {
-  text-color: @clay;
+  text-color: @indigo;
   font: "Cormorant Garamond Italic 22";
 }
 
@@ -37,7 +37,7 @@ element {
   border: 1px;
   border-radius: 18px;
   border-color: @glass-border;
-  background-color: @surface-1;
+  background-color: @glass;
   text-color: @text-1;
 }
 
@@ -47,7 +47,7 @@ element-text {
 }
 
 element selected {
-  background-color: @clay;
-  border-color: @clay;
-  text-color: @ebene;
+  background-color: rgba(169, 87, 56, 0.14);
+  border-color: rgba(169, 87, 56, 0.34);
+  text-color: @text-1;
 }

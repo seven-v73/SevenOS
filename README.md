@@ -48,7 +48,7 @@ SevenOS aims to provide:
 - future intelligent modules such as SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow, and SevenIdentity
 - a Seven Hub control center
 - a future Seven Shell layer for AGS panels, launcher, dock and widgets
-- an African first visual identity with obsidian, ancestral gold, clay, baobab green, and indigo accents
+- an African first frosted liquid glass identity with restrained cultural accents, baobab green, indigo flow, and subtle geometric rhythm
 - a vocabulary and workflow model that makes Linux easier to live with
 
 ## Current Product State
@@ -589,11 +589,11 @@ available as `seven-hub menu` or by opening a focused category such as
 
 ## Identity
 
-SevenOS uses an African first identity system: light liquid glass surfaces, ancestral gold for action, clay for signal, baobab green for system health, and restrained geometric rhythm inspired by African material culture.
+SevenOS uses an African first identity system: frosted liquid glass surfaces, indigo for interaction, clay for signal, baobab green for system health, and ancestral gold only as a restrained cultural micro-accent.
 
 The identity source of truth lives in `identity/README.md`.
 
-The current desktop theme uses liquid glass surfaces, SevenOS SVG icons, and a
+The current desktop theme uses frosted liquid glass surfaces, SevenOS SVG icons, and a
 rendered wallpaper applied through Hyprpaper.
 
 The wallpaper runtime is intentionally managed as a persistent user service:

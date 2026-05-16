@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="SevenOS shield profile mark">
   <path d="M64 16l42 16v30c0 27-17 44-42 54-25-10-42-27-42-54V32z" fill="#5b7fa6" fill-opacity="0.16" stroke="#5b7fa6" stroke-width="4" stroke-linejoin="round"/>
   <path d="M64 34v60M42 58h44" stroke="#2a1f12" stroke-width="7" stroke-linecap="round"/>
-  <path d="M46 82l18 12 18-12" fill="none" stroke="#c8a96e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 82l18 12 18-12" fill="none" stroke="#b89a62" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

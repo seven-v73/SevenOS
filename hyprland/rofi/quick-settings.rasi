@@ -7,9 +7,9 @@ window {
   y-offset: 46px;
   width: 360px;
   border: 1px;
-  border-color: @gold-dim;
+  border-color: @glass-border-2;
   border-radius: 24px;
-  background-color: @surface-1;
+  background-color: @glass-2;
 }
 
 mainbox {
@@ -22,12 +22,12 @@ mainbox {
 message {
   padding: 0px 0px 11px 0px;
   border: 0px 0px 3px 0px;
-  border-color: @gold;
+  border-color: @glass-border-2;
   background-color: transparent;
 }
 
 textbox {
-  text-color: @gold-bright;
+  text-color: @indigo;
   font: "Cormorant Garamond Italic 21";
 }
 
@@ -36,12 +36,12 @@ inputbar {
   border: 1px;
   border-color: @glass-border-2;
   border-radius: 16px;
-  background-color: @surface-2;
+  background-color: @glass-2;
   children: [ prompt, textbox-prompt-colon, entry ];
 }
 
 prompt {
-  text-color: @gold;
+  text-color: @indigo;
   font: "JetBrains Mono Medium 12";
 }
 
@@ -49,7 +49,7 @@ entry {
   placeholder: "Search Controls";
   placeholder-color: @text-2;
   text-color: @text-1;
-  cursor-color: @gold;
+  cursor-color: @indigo;
   font: "DM Sans 13";
 }
 
@@ -65,18 +65,18 @@ element {
   border: 1px;
   border-radius: 16px;
   border-color: @glass-border;
-  background-color: @surface-1;
+  background-color: @glass;
   text-color: @text-1;
 }
 
 element selected {
-  background-color: @gold-bright;
-  border-color: @gold-bright;
-  text-color: @ebene;
+  background-color: @glass-3;
+  border-color: @indigo-bright;
+  text-color: @text-1;
 }
 
 element alternate {
-  background-color: @surface-3;
+  background-color: @glass-2;
 }
 
 element-text {

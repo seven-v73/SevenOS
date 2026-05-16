@@ -250,7 +250,7 @@ else
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'ebene: #efe3cf' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
+   grep -q 'ebene: #eef4f8' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'columns: 6' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -583,20 +583,20 @@ else
 fi
 
 if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'active_tab_background #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'cursor #c8a96e' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'background #efe3cf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'active_tab_background #e8f3f8' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'cursor #567f9d' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'background #eef4f8' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'symbol_map U+1F1E6-U+1F1FF Noto Color Emoji' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
-  ok "Kitty uses SevenOS Design System v1 palette"
+  ok "Kitty uses SevenOS frosted glass palette"
 else
   fail "Kitty palette is not aligned with SevenOS identity"
 fi
 
-if grep -q -- '--gold: #c8a96e' "$ROOT_DIR/identity/tokens.css" &&
+if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-display' "$ROOT_DIR/identity/tokens.css" &&
    ! grep -R "box-shadow" "$ROOT_DIR/hyprland/waybar/style.css" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null &&
    ! grep -E '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/waybar/style.css" >/dev/null; then
-  ok "Design tokens and no-shadow UI rule are enforced"
+  ok "Frosted glass design tokens and no-shadow UI rule are enforced"
 else
   fail "Design tokens or no-shadow UI rule failed"
 fi

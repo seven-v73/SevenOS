@@ -58,7 +58,7 @@ fi
 
 if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'border-radius: 28px' "$ROOT_DIR/bin/seven-shell-panel" &&
-   grep -q 'rgba(255, 252, 244' "$ROOT_DIR/bin/seven-shell-panel"; then
+   grep -q 'rgba(255, 255, 255, 0.72)' "$ROOT_DIR/bin/seven-shell-panel"; then
   ok "Native shell panel follows SevenOS Frost surface language"
 else
   fail "Native shell panel should follow SevenOS Frost surface language"
@@ -91,12 +91,12 @@ else
   fail "Quick Settings or Notifications dedicated shell surface missing"
 fi
 
-if grep -q 'bg: rgba(8, 12, 15, 0.90)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+if grep -q 'bg: rgba(246, 251, 254, 0.70)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'min-height: 58px' "$ROOT_DIR/hyprland/rofi/hub.rasi"; then
-  ok "Seven Hub fallback uses premium glass navigation"
+  ok "Seven Hub fallback uses frosted glass navigation"
 else
-  fail "Seven Hub fallback should use premium glass navigation"
+  fail "Seven Hub fallback should use frosted glass navigation"
 fi
 
 if grep -q 'content: "SevenOS"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -107,12 +107,12 @@ else
   fail "Apps overview still lacks SevenOS signature depth or tokenized surfaces"
 fi
 
-if grep -q -- '--ebene: #efe3cf' "$ROOT_DIR/identity/tokens.css" &&
+if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
-   grep -q 'background #efe3cf' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
-  ok "SevenOS default UI is light liquid glass, not dark"
+   grep -q 'background #eef4f8' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
+  ok "SevenOS default UI is frosted liquid glass, not dark or yellow"
 else
-  fail "SevenOS default UI should not ship a dark theme"
+  fail "SevenOS default UI should ship frosted liquid glass"
 fi
 
 if grep -q 'kente-band' "$ROOT_DIR/seven-hub/gui/src/index.html" &&

@@ -195,16 +195,16 @@ def run_gui(surface: str) -> int:
             css = b"""
             window { background: transparent; }
             .panel {
-              background: rgba(255, 252, 244, 0.90);
-              color: #2a1f12;
+              background: rgba(255, 255, 255, 0.72);
+              color: #17232b;
               border-radius: 28px;
-              border: 1px solid rgba(167, 127, 69, 0.34);
+              border: 1px solid rgba(159, 184, 198, 0.42);
               padding: 18px;
             }
             .title { font-size: 20px; font-weight: 500; }
-            .subtitle { color: #5c4d3a; }
+            .subtitle { color: #4d606a; }
             .tile {
-              background: rgba(255, 255, 255, 0.48);
+              background: rgba(255, 255, 255, 0.56);
               border-radius: 18px;
               padding: 12px;
             }

@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="640" height="24" viewBox="0 0 640 24" role="img" aria-label="SevenOS kente divider">
   <rect width="640" height="24" rx="12" fill="#ffffff" fill-opacity="0.18"/>
   <g opacity="0.82">
-    <rect x="12" y="8" width="92" height="8" rx="4" fill="#c8a96e"/>
+    <rect x="12" y="8" width="92" height="8" rx="4" fill="#b89a62"/>
     <rect x="112" y="8" width="56" height="8" rx="4" fill="#c4673a"/>
     <rect x="176" y="8" width="72" height="8" rx="4" fill="#4a8c5c"/>
     <rect x="256" y="8" width="48" height="8" rx="4" fill="#5b7fa6"/>
-    <rect x="312" y="8" width="92" height="8" rx="4" fill="#c8a96e"/>
+    <rect x="312" y="8" width="92" height="8" rx="4" fill="#b89a62"/>
     <rect x="412" y="8" width="56" height="8" rx="4" fill="#c4673a"/>
     <rect x="476" y="8" width="72" height="8" rx="4" fill="#4a8c5c"/>
     <rect x="556" y="8" width="72" height="8" rx="4" fill="#5b7fa6"/>

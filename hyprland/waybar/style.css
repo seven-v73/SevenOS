@@ -9,18 +9,20 @@
 
 window#waybar {
   background: transparent;
-  color: rgba(46, 38, 28, 0.96);
+  color: rgba(23, 35, 43, 0.96);
 }
 
 tooltip {
-  background: rgba(255, 248, 234, 0.94);
-  border: 1px solid rgba(142, 112, 77, 0.24);
-  border-radius: 12px;
-  color: rgba(46, 38, 28, 0.94);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(241, 248, 251, 0.70)),
+    rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  color: rgba(23, 35, 43, 0.94);
 }
 
 tooltip label {
-  padding: 4px 7px;
+  padding: 5px 8px;
 }
 
 #custom-apps,
@@ -36,16 +38,16 @@ tooltip label {
 #custom-notifications,
 #custom-power,
 #custom-sevenos {
-  min-height: 30px;
+  min-height: 31px;
   margin-top: 4px;
   margin-bottom: 4px;
   padding: 0 10px;
-  color: rgba(46, 38, 28, 0.94);
+  color: rgba(23, 35, 43, 0.92);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(255, 243, 219, 0.34)),
-    rgba(244, 225, 196, 0.34);
-  border-top: 1px solid rgba(255, 255, 255, 0.78);
-  border-bottom: 1px solid rgba(128, 93, 54, 0.22);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(239, 247, 251, 0.48)),
+    rgba(255, 255, 255, 0.46);
+  border-top: 1px solid rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(112, 139, 154, 0.22);
 }
 
 #custom-apps {
@@ -53,7 +55,7 @@ tooltip label {
   padding-left: 16px;
   padding-right: 11px;
   border-radius: 13px 0 0 13px;
-  border-left: 1px solid rgba(128, 93, 54, 0.26);
+  border-left: 1px solid rgba(255, 255, 255, 0.82);
   font-size: 13px;
 }
 
@@ -62,8 +64,8 @@ tooltip label {
   padding-left: 9px;
   padding-right: 16px;
   border-radius: 0 13px 13px 0;
-  border-right: 1px solid rgba(128, 93, 54, 0.26);
-  color: rgba(64, 54, 42, 0.96);
+  border-right: 1px solid rgba(118, 149, 166, 0.26);
+  color: rgba(40, 55, 64, 0.96);
 }
 
 #workspaces {
@@ -71,11 +73,11 @@ tooltip label {
   margin-right: 0;
   padding: 0 13px;
   border-radius: 16px;
-  border-left: 1px solid rgba(128, 93, 54, 0.24);
-  border-right: 1px solid rgba(128, 93, 54, 0.24);
+  border-left: 1px solid rgba(255, 255, 255, 0.72);
+  border-right: 1px solid rgba(118, 149, 166, 0.24);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(244, 220, 187, 0.30)),
-    rgba(242, 222, 195, 0.38);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(235, 246, 251, 0.46)),
+    rgba(255, 255, 255, 0.50);
 }
 
 #workspaces button {
@@ -84,36 +86,37 @@ tooltip label {
   margin: 4px 1px;
   padding: 0 9px;
   border-radius: 9px;
-  color: rgba(56, 46, 34, 0.86);
+  color: rgba(53, 70, 79, 0.84);
   background: transparent;
   transition: background 160ms ease, color 160ms ease, transform 120ms ease;
 }
 
 #workspaces button:hover {
-  color: rgba(39, 31, 21, 0.98);
+  color: rgba(16, 31, 40, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(200, 169, 110, 0.24)),
-    rgba(200, 169, 110, 0.20);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(220, 239, 248, 0.54)),
+    rgba(255, 255, 255, 0.54);
 }
 
 #workspaces button.active {
-  color: rgba(39, 31, 21, 0.98);
+  color: rgba(16, 31, 40, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(198, 159, 104, 0.34)),
-    rgba(188, 141, 86, 0.32);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(218, 240, 248, 0.64)),
+    rgba(111, 157, 188, 0.20);
+  border: 1px solid rgba(111, 157, 188, 0.42);
 }
 
 #workspaces button.urgent {
-  color: rgba(39, 31, 21, 0.98);
-  background: rgba(196, 103, 58, 0.22);
-  border: 1px solid rgba(138, 69, 37, 0.42);
+  color: rgba(16, 31, 40, 0.98);
+  background: rgba(169, 87, 56, 0.14);
+  border: 1px solid rgba(169, 87, 56, 0.32);
 }
 
 #custom-files {
   margin-left: 0;
   padding-left: 14px;
   border-radius: 13px 0 0 13px;
-  border-left: 1px solid rgba(128, 93, 54, 0.26);
+  border-left: 1px solid rgba(255, 255, 255, 0.82);
 }
 
 #custom-profile,
@@ -126,32 +129,32 @@ tooltip label {
 #custom-power {
   margin-left: 0;
   margin-right: 0;
-  border-left: 1px solid rgba(128, 93, 54, 0.10);
+  border-left: 1px solid rgba(118, 149, 166, 0.12);
   font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "DM Sans", sans-serif;
 }
 
 #custom-profile {
-  color: rgba(138, 112, 72, 0.98);
+  color: rgba(86, 127, 157, 0.98);
   font-size: 11px;
 }
 
 #custom-security {
-  color: rgba(53, 93, 66, 0.98);
+  color: rgba(63, 139, 101, 0.98);
 }
 
 #pulseaudio,
 #network,
 #battery {
-  color: rgba(64, 54, 42, 0.94);
+  color: rgba(40, 55, 64, 0.94);
 }
 
 #custom-quick,
 #custom-notifications {
-  color: rgba(73, 99, 126, 0.98);
+  color: rgba(86, 127, 157, 0.98);
 }
 
 #custom-power {
-  color: rgba(48, 39, 29, 0.96);
+  color: rgba(43, 56, 64, 0.96);
 }
 
 #custom-sevenos {
@@ -159,11 +162,11 @@ tooltip label {
   padding-left: 9px;
   padding-right: 10px;
   border-radius: 0 13px 13px 0;
-  border-right: 1px solid rgba(128, 93, 54, 0.26);
-  color: rgba(246, 244, 238, 0.98);
+  border-right: 1px solid rgba(118, 149, 166, 0.26);
+  color: rgba(23, 35, 43, 0.98);
   background:
-    linear-gradient(180deg, rgba(26, 178, 186, 0.92), rgba(10, 134, 146, 0.84)),
-    rgba(10, 134, 146, 0.88);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(228, 243, 249, 0.56)),
+    rgba(255, 255, 255, 0.54);
   font-family: "Cormorant Garamond", "DM Sans", serif;
   font-size: 16px;
   font-style: italic;
@@ -179,14 +182,9 @@ tooltip label {
 #battery:hover,
 #custom-quick:hover,
 #custom-notifications:hover,
-#custom-power:hover {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 243, 219, 0.44)),
-    rgba(250, 235, 211, 0.48);
-}
-
+#custom-power:hover,
 #custom-sevenos:hover {
   background:
-    linear-gradient(180deg, rgba(37, 195, 202, 0.98), rgba(10, 150, 162, 0.90)),
-    rgba(10, 150, 162, 0.92);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(229, 243, 249, 0.62)),
+    rgba(255, 255, 255, 0.62);
 }

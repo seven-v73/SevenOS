@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="SevenOS baobab system mark">
   <circle cx="64" cy="64" r="48" fill="#4a8c5c" fill-opacity="0.14" stroke="#4a8c5c" stroke-width="4"/>
   <path d="M64 96V52M42 96h44M46 56c14-26 22-26 36 0M38 70c18-14 34-14 52 0" fill="none" stroke="#2a1f12" stroke-width="6" stroke-linecap="round"/>
-  <path d="M44 40l20-18 20 18" fill="none" stroke="#c8a96e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 40l20-18 20 18" fill="none" stroke="#b89a62" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

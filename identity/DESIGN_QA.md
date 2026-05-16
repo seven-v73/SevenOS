@@ -7,13 +7,13 @@ Use this checklist before shipping visual changes.
 - African first, not generic cyberpunk.
 - Cultural references are structural, subtle, and respectful.
 - Flags are not used as the default design system.
-- Palette follows Design System v1: ebene, surfaces, ancestral gold, clay, baobab, indigo, and warm text tokens.
+- Palette follows Design System v1: frosted ebene, translucent surfaces, indigo interaction, baobab health, clay warnings, and gold only as a restrained cultural accent.
 - `identity/STYLE.md` and `identity/tokens.css` are the source of truth.
 
 ## Readability
 
 - Primary text uses `--text-1` or another high-contrast SevenOS token.
-- Gold, clay, baobab and indigo are used as purposeful accents by function.
+- Indigo, clay, baobab and restrained gold are used as purposeful accents by function.
 - Small Waybar text remains readable at 13px.
 - Buttons and labels do not overflow their containers.
 

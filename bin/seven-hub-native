@@ -423,31 +423,31 @@ def run_gui() -> int:
     def install_css() -> None:
         css = """
         window.seven-hub-window {
-          background: #090d10;
-          color: rgba(246, 243, 238, 0.96);
+          background: #eef4f8;
+          color: rgba(23, 35, 43, 0.96);
         }
 
         .seven-root {
           background:
-            linear-gradient(135deg, rgba(200, 169, 110, 0.14), rgba(91, 127, 166, 0.10) 38%, rgba(9, 13, 16, 0.96) 68%),
-            #090d10;
+            linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(111, 157, 188, 0.16) 42%, rgba(238, 244, 248, 0.94) 72%),
+            #eef4f8;
         }
 
         .seven-body {
-          background: rgba(255, 255, 255, 0.035);
-          border: 1px solid rgba(226, 192, 122, 0.24);
+          background: rgba(255, 255, 255, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.78);
           border-radius: 24px;
           margin: 24px;
         }
 
         .seven-sidebar {
-          background: rgba(0, 0, 0, 0.18);
-          border-right: 1px solid rgba(255, 255, 255, 0.10);
+          background: rgba(255, 255, 255, 0.42);
+          border-right: 1px solid rgba(122, 153, 170, 0.22);
           padding: 24px 18px;
         }
 
         .seven-brand {
-          color: #e2c07a;
+          color: #17232b;
           font-size: 24px;
           font-weight: 500;
           margin-bottom: 18px;
@@ -458,30 +458,30 @@ def run_gui() -> int:
           padding: 0 14px;
           border-radius: 13px;
           background: transparent;
-          color: rgba(246, 243, 238, 0.84);
+          color: rgba(77, 96, 106, 0.90);
         }
 
         .seven-nav-item:hover {
-          background: rgba(255, 255, 255, 0.075);
+          background: rgba(255, 255, 255, 0.54);
         }
 
         .seven-nav-item.active {
-          background: rgba(200, 169, 110, 0.18);
-          color: #e2c07a;
-          outline: 1px solid rgba(226, 192, 122, 0.34);
+          background: rgba(255, 255, 255, 0.68);
+          color: #17232b;
+          outline: 1px solid rgba(111, 157, 188, 0.42);
         }
 
         .seven-status-card {
-          background: rgba(255, 255, 255, 0.055);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.50);
+          border: 1px solid rgba(255, 255, 255, 0.74);
           border-radius: 16px;
           padding: 14px;
           margin-top: 18px;
-          color: rgba(246, 243, 238, 0.86);
+          color: rgba(23, 35, 43, 0.88);
         }
 
         .seven-content {
-          background: rgba(5, 9, 12, 0.22);
+          background: rgba(238, 246, 250, 0.30);
         }
 
         .seven-page {
@@ -489,21 +489,21 @@ def run_gui() -> int:
         }
 
         .seven-hero {
-          background: rgba(255, 255, 255, 0.045);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.78);
           border-radius: 18px;
           padding: 20px 22px;
           margin-bottom: 4px;
         }
 
         .seven-hero-title {
-          color: rgba(246, 243, 238, 0.98);
+          color: rgba(23, 35, 43, 0.98);
           font-size: 28px;
           font-weight: 500;
         }
 
         .seven-hero-subtitle {
-          color: rgba(214, 207, 196, 0.68);
+          color: rgba(77, 96, 106, 0.72);
           font-size: 14px;
         }
 
@@ -515,8 +515,8 @@ def run_gui() -> int:
         .seven-metric-card {
           min-width: 154px;
           min-height: 84px;
-          background: rgba(255, 255, 255, 0.052);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.50);
+          border: 1px solid rgba(255, 255, 255, 0.78);
           border-radius: 18px;
           padding: 14px;
         }
@@ -527,8 +527,8 @@ def run_gui() -> int:
         }
 
         .seven-metric-card.warn {
-          border-color: rgba(226, 192, 122, 0.34);
-          background: rgba(226, 192, 122, 0.075);
+          border-color: rgba(111, 157, 188, 0.34);
+          background: rgba(111, 157, 188, 0.075);
         }
 
         .seven-metric-card.bad {
@@ -537,19 +537,19 @@ def run_gui() -> int:
         }
 
         .seven-metric-label {
-          color: rgba(214, 207, 196, 0.62);
+          color: rgba(77, 96, 106, 0.62);
           font-size: 11px;
           letter-spacing: 0.08em;
         }
 
         .seven-metric-value {
-          color: rgba(246, 243, 238, 0.98);
+          color: rgba(23, 35, 43, 0.98);
           font-size: 26px;
           font-weight: 500;
         }
 
         .seven-metric-note {
-          color: rgba(214, 207, 196, 0.62);
+          color: rgba(77, 96, 106, 0.62);
           font-size: 12px;
         }
 
@@ -562,13 +562,13 @@ def run_gui() -> int:
           margin-top: 6px;
           margin-bottom: 6px;
           border-radius: 14px;
-          background: rgba(255, 255, 255, 0.050);
-          border: 1px solid rgba(255, 255, 255, 0.11);
+          background: rgba(255, 255, 255, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.76);
         }
 
         row.seven-card:hover {
-          background: rgba(255, 255, 255, 0.078);
-          border-color: rgba(226, 192, 122, 0.34);
+          background: rgba(255, 255, 255, 0.66);
+          border-color: rgba(111, 157, 188, 0.38);
         }
 
         .seven-pill {
