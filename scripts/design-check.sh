@@ -80,6 +80,14 @@ else
   fail "Quick Settings or Notifications dedicated shell surface missing"
 fi
 
+if grep -q 'bg: rgba(8, 12, 15, 0.90)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+   grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+   grep -q 'min-height: 58px' "$ROOT_DIR/hyprland/rofi/hub.rasi"; then
+  ok "Seven Hub fallback uses premium glass navigation"
+else
+  fail "Seven Hub fallback should use premium glass navigation"
+fi
+
 if grep -q 'content: "SevenOS"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -Eq '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi/apps.rasi"; then

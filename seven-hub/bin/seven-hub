@@ -89,14 +89,14 @@ doctor() {
   printf 'rofi:         %s\n' "$(command -v rofi 2>/dev/null || printf 'missing')"
   printf 'kitty:        %s\n' "$(command -v kitty 2>/dev/null || printf 'missing')"
   printf 'display:      %s\n' "${WAYLAND_DISPLAY:-${DISPLAY:-none}}"
-  printf 'theme:        %s\n' "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi"
+  printf 'theme:        %s\n' "$SEVENOS_ROOT/hyprland/rofi/hub.rasi"
 
   [[ -x "$INSTALLER" ]] || die "installer not executable: $INSTALLER"
-  [[ -f "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" ]] || die "Rofi theme missing"
+  [[ -f "$SEVENOS_ROOT/hyprland/rofi/hub.rasi" ]] || die "Rofi Hub theme missing"
 
   if command -v rofi >/dev/null 2>&1; then
-    rofi -no-config -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
-    printf 'rofi theme:   OK\n'
+    rofi -no-config -theme "$SEVENOS_ROOT/hyprland/rofi/hub.rasi" -dump-theme >/dev/null
+    printf 'rofi hub:     OK\n'
   fi
 
   printf '\nAction wiring:\n'
@@ -253,6 +253,13 @@ item_icon() {
 display_label() {
   local label="$1"
   printf '%s %s' "$(item_icon "$label")" "$label"
+}
+
+display_row() {
+  local label="$1"
+  local description="$2"
+  local badge="$3"
+  printf '%-32s  %-58s  %s' "$(display_label "$label")" "$description" "$badge"
 }
 
 clean_selection() {
@@ -530,10 +537,10 @@ select_with_rofi() {
   for item in "${actions[@]}"; do
     IFS='|' read -r label _ description <<<"$item"
     badge="$(action_badge "$label")"
-    menu+="$(display_label "$label")    [$badge]"$'\n'
+    menu+="$(display_row "$label" "$description" "$badge")"$'\n'
   done
 
-  printf '%s' "$menu" | rofi -dmenu -i -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/sevenos.rasi" -theme-str 'window { width: 48%; } listview { lines: 9; }'
+  printf '%s' "$menu" | rofi -dmenu -i -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/hub.rasi"
 }
 
 select_with_terminal() {

@@ -117,6 +117,7 @@ require_file "identity/patterns/motif-triangle.svg"
 require_file "identity/patterns/motif-stripe.svg"
 require_file "identity/patterns/motif-cross.svg"
 require_file "hyprland/rofi/apps.rasi"
+require_file "hyprland/rofi/hub.rasi"
 require_file "hyprland/rofi/quick-settings.rasi"
 require_file "hyprland/rofi/power.rasi"
 require_file "hyprland/mako/config"
@@ -1095,14 +1096,22 @@ else
   fail "Seven Hub Control Center entry missing"
 fi
 
+if SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" | grep -q 'seven-hub-native open' &&
+   grep -q 'open_native_hub' "$ROOT_DIR/seven-hub/bin/seven-hub"; then
+  ok "Seven Hub defaults to native Control Center before Rofi fallback"
+else
+  fail "Seven Hub should default to native Control Center before Rofi fallback"
+fi
+
 hub_profiles_preview="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" Profiles 2>&1)"
 if grep -q 'item_icon' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
    grep -q 'display_label' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
+   grep -q 'display_row' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
    grep -q 'clean_selection' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
    grep -q '󰌢 Profile Forge' <<<"$hub_profiles_preview"; then
-  ok "Seven Hub command palette is icon-first and compact"
+  ok "Seven Hub command palette is icon-first and information-rich"
 else
-  fail "Seven Hub command palette should be icon-first and compact"
+  fail "Seven Hub command palette should be icon-first and information-rich"
 fi
 
 if grep -q '"Seven Files|files:open' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
@@ -1122,6 +1131,7 @@ done
 
 if command -v rofi >/dev/null 2>&1; then
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/apps.rasi" -dump-theme >/dev/null
+  rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/hub.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/power.rasi" -dump-theme >/dev/null

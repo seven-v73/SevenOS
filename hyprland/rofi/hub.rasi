@@ -1,0 +1,115 @@
+* {
+  bg: rgba(8, 12, 15, 0.90);
+  bg-soft: rgba(255, 255, 255, 0.055);
+  bg-hover: rgba(255, 255, 255, 0.095);
+  bg-active: rgba(200, 169, 110, 0.16);
+  border: rgba(255, 255, 255, 0.12);
+  border-strong: rgba(200, 169, 110, 0.58);
+  text: rgba(246, 243, 238, 0.96);
+  text-muted: rgba(214, 207, 196, 0.62);
+  gold: rgba(226, 192, 122, 0.96);
+  green: rgba(90, 173, 114, 0.96);
+  blue: rgba(123, 163, 207, 0.96);
+  violet: rgba(139, 111, 226, 0.95);
+  cyan: rgba(62, 210, 202, 0.95);
+  orange: rgba(214, 145, 62, 0.95);
+
+  background-color: transparent;
+  text-color: @text;
+  font: "DM Sans 13";
+  margin: 0;
+  padding: 0;
+}
+
+window {
+  width: 74%;
+  location: center;
+  anchor: center;
+  border: 1px;
+  border-color: @border-strong;
+  border-radius: 22px;
+  background-color: @bg;
+}
+
+mainbox {
+  padding: 28px;
+  spacing: 18px;
+  background-color: transparent;
+}
+
+inputbar {
+  padding: 14px 16px;
+  spacing: 12px;
+  border: 1px;
+  border-color: @border;
+  border-radius: 14px;
+  background-color: @bg-soft;
+  children: [ prompt, entry ];
+}
+
+prompt {
+  text-color: @gold;
+  font: "DM Sans Medium 14";
+}
+
+entry {
+  text-color: @text;
+  placeholder: "Search SevenOS";
+  placeholder-color: @text-muted;
+  cursor-color: @gold;
+  font: "DM Sans 14";
+}
+
+message {
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+}
+
+textbox {
+  padding: 0 0 1px 0;
+  text-color: @gold;
+  font: "DM Sans Medium 12";
+}
+
+listview {
+  lines: 9;
+  fixed-height: true;
+  spacing: 6px;
+  background-color: transparent;
+}
+
+element {
+  min-height: 58px;
+  padding: 10px 13px;
+  border: 1px;
+  border-color: @border;
+  border-radius: 13px;
+  background-color: @bg-soft;
+  text-color: @text;
+}
+
+element selected {
+  background-color: @bg-active;
+  border-color: @border-strong;
+  text-color: @text;
+}
+
+element alternate {
+  background-color: rgba(255, 255, 255, 0.035);
+}
+
+element-text,
+element-icon {
+  background-color: transparent;
+  text-color: inherit;
+}
+
+element-text {
+  font: "DM Sans 14";
+}
+
+element-icon {
+  size: 28px;
+  margin: 0 14px 0 0;
+}
