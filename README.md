@@ -491,6 +491,8 @@ seven phase-gate --json
 seven shield status
 seven shield status --json
 seven readiness
+seven primary
+seven primary --json
 seven daily
 seven daily --json
 seven daily plan
@@ -786,18 +788,20 @@ Use responsibly and only on systems and networks where you have permission.
 Before installing SevenOS on a primary PC, use the daily driver gate:
 
 ```bash
+seven primary
+seven primary --json | python -m json.tool
 seven daily
 seven daily --json | python -m json.tool
 ```
 
-The gate checks the parts that matter for daily use: readiness, Shield/security,
-profiles, Windows Mode, Seven Server, installer foundation and Seven Core
-services. The recommended consolidation path is:
+`seven primary` is the user-facing gate for a real workstation. It aggregates
+readiness, Shield/security, profiles, Windows Mode, Seven Server, Seven Core and
+Flatpak app delivery into one verdict. The recommended consolidation path is:
 
 ```bash
 sudo -v
-seven daily apply --yes
-seven daily
+seven primary apply
+seven primary
 ```
 
 The installer entrypoint is:
@@ -805,7 +809,7 @@ The installer entrypoint is:
 ```bash
 sudo -v
 ./install.sh daily-driver --yes
-seven daily
+seven primary
 ```
 
 SevenOS should reach at least 90% readiness, 70% Shield/security and 70% role

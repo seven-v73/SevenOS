@@ -84,6 +84,18 @@ def daily_summary():
     )
 
 
+def primary_summary():
+    return json_command(
+        [str(ROOT / "bin/seven"), "primary", "--json"],
+        {
+            "schema": "sevenos.primary-pc.v1",
+            "decision": "unknown",
+            "summary": {},
+            "next_actions": [],
+        },
+    )
+
+
 def shield_summary():
     return json_command(
         [str(ROOT / "bin/seven"), "shield", "status", "--json"],
@@ -135,6 +147,8 @@ ACTIONS = {
     "daily-status": ("Daily Driver Gate", ["./bin/seven", "daily"]),
     "daily-plan": ("Daily Driver Plan", ["./bin/seven", "daily", "plan"]),
     "daily-apply": ("Apply Daily Driver", ["./bin/seven", "daily", "apply", "--yes"]),
+    "primary-status": ("Primary PC Gate", ["./bin/seven", "primary"]),
+    "primary-apply": ("Apply Primary PC Path", ["./bin/seven", "primary", "apply"]),
     "core-health": ("Core Health", ["./bin/seven", "core", "health"]),
     "core-start": ("Start Core Runtime", ["./bin/seven", "core", "start"]),
     "wallpaper-refresh": ("Refresh Wallpaper", ["./bin/seven-wallpaper", "refresh"]),
@@ -182,6 +196,7 @@ def card(title, status, detail, action=None):
 
 def render_dashboard():
     readiness = readiness_summary()
+    primary = primary_summary()
     daily = daily_summary()
     shield_state = shield_summary()
     windows_state = windows_summary()
@@ -197,6 +212,7 @@ def render_dashboard():
     files = command_state("nautilus")
     gvfs = command_state("gio")
     daily_decision = str(daily.get("decision", "unknown"))
+    primary_decision = str(primary.get("decision", "unknown"))
     daily_summary_block = daily.get("summary", {}) if isinstance(daily.get("summary", {}), dict) else {}
     blocker_count = len(daily.get("blockers", []) or [])
     shield_percent = int(shield_state.get("percent", daily_summary_block.get("shield", 0)) or 0)
@@ -205,6 +221,7 @@ def render_dashboard():
 
     cards = [
         card("Readiness", f"{readiness.get('percent', 0)}%", f"{readiness.get('score', 0)}/{readiness.get('max', 0)} OS criteria covered.", "phase-gate"),
+        card("Primary PC", "OK" if primary_decision == "ready" else "PART", f"Decision: {primary_decision}. Next actions: {len(primary.get('next_actions', []) or [])}.", "primary-status"),
         card("Daily Driver", "OK" if daily_decision == "ready" else "PART", f"Decision: {daily_decision}. Blockers: {blocker_count}.", "daily-plan"),
         card("Security", "OK" if shield_percent >= 70 else "PART", f"Shield: {shield_percent}%. UFW: {ufw}. Firewall: {firewall}.", "security-plan"),
         card("Seven Files", "OK" if files == "OK" and gvfs == "OK" else "PART", f"Nautilus: {files}. GVfs/GIO: {gvfs}.", "files"),

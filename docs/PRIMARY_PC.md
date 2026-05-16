@@ -19,6 +19,8 @@ Before replacing an existing daily OS, aim for:
 Check it with:
 
 ```bash
+seven primary
+seven primary --json | python -m json.tool
 seven daily
 seven daily --json | python -m json.tool
 seven phase-gate --json | python -m json.tool
@@ -30,8 +32,8 @@ On the test machine that should become your main workstation:
 
 ```bash
 sudo -v
-seven daily apply --yes
-seven daily
+seven primary apply
+seven primary
 ```
 
 Equivalent installer entrypoint:
@@ -63,6 +65,7 @@ If something feels incomplete after reboot:
 ```bash
 seven hub
 seven-control-center open
+seven primary --json | python -m json.tool
 seven session status --json | python -m json.tool
 seven core health --json | python -m json.tool
 seven-wallpaper status

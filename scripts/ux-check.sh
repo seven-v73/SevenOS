@@ -351,6 +351,8 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'security.lab.forensics' <<<"$actions_json" &&
    grep -q 'daily.status' <<<"$actions_json" &&
    grep -q 'daily.apply' <<<"$actions_json" &&
+   grep -q 'primary.status' <<<"$actions_json" &&
+   grep -q 'primary.apply' <<<"$actions_json" &&
    grep -q 'improve.daily' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.active' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.all' <<<"$actions_json" &&
@@ -368,12 +370,21 @@ else
 fi
 
 flatpak_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" flatpak status --json)"
+primary_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" primary --json)"
 if python -m json.tool >/dev/null <<<"$flatpak_json" &&
    grep -q '"schema": "sevenos.flatpak.v1"' <<<"$flatpak_json" &&
    grep -q '"apps"' <<<"$flatpak_json"; then
   ok "SevenOS Flatpak bridge exposes a Hub-ready JSON contract"
 else
   fail "SevenOS Flatpak bridge should expose machine-readable app readiness"
+fi
+
+if python -m json.tool >/dev/null <<<"$primary_json" &&
+   grep -q '"schema": "sevenos.primary-pc.v1"' <<<"$primary_json" &&
+   grep -q '"next_actions"' <<<"$primary_json"; then
+  ok "SevenOS exposes a primary-PC readiness gate"
+else
+  fail "SevenOS should expose one primary-PC readiness contract"
 fi
 
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
@@ -589,8 +600,11 @@ else
 fi
 
 if grep -q 'def daily_summary' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
+   grep -q 'def primary_summary' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
+   grep -q 'Primary PC' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
    grep -q 'Daily Driver' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
    grep -q '"daily-apply"' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
+   grep -q '"primary-apply"' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
    grep -q 'wallpaper-refresh' "$ROOT_DIR/seven-hub/bin/seven-control-center"; then
   ok "Seven Control Center fallback exposes primary-PC gates and repair actions"
 else
