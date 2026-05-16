@@ -64,6 +64,16 @@ else
   fail "Native shell panel should follow SevenOS Frost surface language"
 fi
 
+if grep -q 'seven-hub-window' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-sidebar' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-nav-item' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-hero' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-card' "$ROOT_DIR/bin/seven-hub-native"; then
+  ok "Seven Hub Native uses OS-grade glass navigation"
+else
+  fail "Seven Hub Native should use OS-grade glass navigation"
+fi
+
 if [[ -s "$ROOT_DIR/session/sevenos.desktop" ]] &&
    grep -q 'Name=SevenOS' "$ROOT_DIR/session/sevenos.desktop" &&
    [[ -s "$ROOT_DIR/systemd/user/sevenos-session.target" ]]; then

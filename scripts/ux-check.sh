@@ -725,6 +725,9 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-sidebar' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'nav_button("Dashboard"' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-hero' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'media-playback-start-symbolic' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'icon_for_action' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'set_icon_name' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -734,9 +737,9 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" | grep -q 'seven-hub-native open' &&
    grep -q 'Exec=seven-hub' "$ROOT_DIR/seven-hub/seven-hub.desktop" &&
    grep -q 'Exec=seven-hub-native' "$ROOT_DIR/seven-hub/seven-hub-native.desktop"; then
-  ok "Seven Hub native UI strategy is documented"
+  ok "Seven Hub native UI strategy is documented and OS-styled"
 else
-  fail "Seven Hub native UI strategy is missing or unclear"
+  fail "Seven Hub native UI strategy is missing, unstyled or unclear"
 fi
 
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick | grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' &&

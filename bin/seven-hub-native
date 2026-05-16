@@ -385,12 +385,137 @@ def run_gui() -> int:
 
         gi.require_version("Gtk", "4.0")
         gi.require_version("Adw", "1")
-        from gi.repository import Adw, Gtk
+        from gi.repository import Adw, Gdk, Gtk
     except Exception as error:
         print("seven-hub-native: GTK4/libadwaita is not available yet.", file=sys.stderr)
         print("Install the GUI stack with: seven hub-gui install", file=sys.stderr)
         print(f"Details: {error}", file=sys.stderr)
         return 1
+
+    def install_css() -> None:
+        css = """
+        window.seven-hub-window {
+          background: #090d10;
+          color: rgba(246, 243, 238, 0.96);
+        }
+
+        .seven-root {
+          background:
+            linear-gradient(135deg, rgba(200, 169, 110, 0.14), rgba(91, 127, 166, 0.10) 38%, rgba(9, 13, 16, 0.96) 68%),
+            #090d10;
+        }
+
+        .seven-body {
+          background: rgba(255, 255, 255, 0.035);
+          border: 1px solid rgba(226, 192, 122, 0.24);
+          border-radius: 24px;
+          margin: 24px;
+        }
+
+        .seven-sidebar {
+          background: rgba(0, 0, 0, 0.18);
+          border-right: 1px solid rgba(255, 255, 255, 0.10);
+          padding: 24px 18px;
+        }
+
+        .seven-brand {
+          color: #e2c07a;
+          font-size: 24px;
+          font-weight: 500;
+          margin-bottom: 18px;
+        }
+
+        .seven-nav-item {
+          min-height: 46px;
+          padding: 0 14px;
+          border-radius: 13px;
+          background: transparent;
+          color: rgba(246, 243, 238, 0.84);
+        }
+
+        .seven-nav-item:hover {
+          background: rgba(255, 255, 255, 0.075);
+        }
+
+        .seven-nav-item.active {
+          background: rgba(200, 169, 110, 0.18);
+          color: #e2c07a;
+          outline: 1px solid rgba(226, 192, 122, 0.34);
+        }
+
+        .seven-status-card {
+          background: rgba(255, 255, 255, 0.055);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 16px;
+          padding: 14px;
+          margin-top: 18px;
+          color: rgba(246, 243, 238, 0.86);
+        }
+
+        .seven-content {
+          background: rgba(5, 9, 12, 0.22);
+        }
+
+        .seven-page {
+          padding: 30px;
+        }
+
+        .seven-hero {
+          background: rgba(255, 255, 255, 0.045);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 18px;
+          padding: 20px 22px;
+          margin-bottom: 4px;
+        }
+
+        .seven-hero-title {
+          color: rgba(246, 243, 238, 0.98);
+          font-size: 28px;
+          font-weight: 500;
+        }
+
+        .seven-hero-subtitle {
+          color: rgba(214, 207, 196, 0.68);
+          font-size: 14px;
+        }
+
+        preferencesgroup {
+          margin-top: 10px;
+        }
+
+        row.seven-card {
+          min-height: 58px;
+          margin-top: 6px;
+          margin-bottom: 6px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.050);
+          border: 1px solid rgba(255, 255, 255, 0.11);
+        }
+
+        row.seven-card:hover {
+          background: rgba(255, 255, 255, 0.078);
+          border-color: rgba(226, 192, 122, 0.34);
+        }
+
+        .seven-pill {
+          border-radius: 999px;
+          padding: 4px 9px;
+          background: rgba(90, 173, 114, 0.14);
+          color: #5aad72;
+        }
+        """
+        provider = Gtk.CssProvider()
+        try:
+            provider.load_from_data(css.encode("utf-8"))
+        except TypeError:
+            provider.load_from_data(css)
+        display = Gdk.Display.get_default()
+        if display is not None:
+            Gtk.StyleContext.add_provider_for_display(
+                display,
+                provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+            )
 
     class SevenHubNative(Adw.Application):
         def __init__(self) -> None:
@@ -398,46 +523,101 @@ def run_gui() -> int:
             self.connect("activate", self.on_activate)
 
         def on_activate(self, app: Adw.Application) -> None:
+            install_css()
             win = Adw.ApplicationWindow(application=app)
             win.set_title("Seven Hub")
-            win.set_default_size(1080, 720)
-
-            toolbar = Adw.HeaderBar()
-            title = Adw.WindowTitle(title="Seven Hub", subtitle="Native SevenOS Control Center")
-            toolbar.set_title_widget(title)
-
-            refresh = Gtk.Button(label="Refresh")
-            toolbar.pack_end(refresh)
+            win.set_default_size(1280, 780)
+            win.add_css_class("seven-hub-window")
 
             stack = Gtk.Stack()
             stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
             stack.set_vexpand(True)
+            stack.add_css_class("seven-content")
 
-            sidebar = Gtk.StackSidebar()
-            sidebar.set_stack(stack)
-            sidebar.set_width_request(180)
+            refresh = Gtk.Button(label="Refresh")
+            refresh.add_css_class("pill")
+
+            sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            sidebar.set_width_request(250)
+            sidebar.add_css_class("seven-sidebar")
+
+            brand = Gtk.Label(label="7  SevenOS")
+            brand.set_xalign(0)
+            brand.add_css_class("seven-brand")
+            sidebar.append(brand)
+
+            nav_buttons = []
+
+            def nav_button(label_text: str, icon_name: str, page_name: str) -> Gtk.Button:
+                button = Gtk.Button()
+                button.add_css_class("seven-nav-item")
+                content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+                icon = Gtk.Image.new_from_icon_name(icon_name)
+                text = Gtk.Label(label=label_text)
+                text.set_xalign(0)
+                text.set_hexpand(True)
+                content.append(icon)
+                content.append(text)
+                button.set_child(content)
+
+                def activate(_button: Gtk.Button) -> None:
+                    stack.set_visible_child_name(page_name)
+                    for item in nav_buttons:
+                        item.remove_css_class("active")
+                    button.add_css_class("active")
+
+                button.connect("clicked", activate)
+                nav_buttons.append(button)
+                sidebar.append(button)
+                return button
+
+            dashboard_nav = nav_button("Dashboard", "view-dashboard-symbolic", "dashboard")
+            nav_button("Profiles", "avatar-default-symbolic", "profiles")
+            nav_button("Actions", "system-run-symbolic", "actions")
+            nav_button("Ecosystem", "network-workgroup-symbolic", "ecosystem")
+            dashboard_nav.add_css_class("active")
+
+            status_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            status_card.add_css_class("seven-status-card")
+            status_title = Gtk.Label(label="SYSTEM STATUS")
+            status_title.set_xalign(0)
+            status_title.add_css_class("dim-label")
+            status_value = Gtk.Label(label="Native Hub online")
+            status_value.set_xalign(0)
+            status_value.add_css_class("seven-pill")
+            status_note = Gtk.Label(label="SevenOS Control Center")
+            status_note.set_xalign(0)
+            status_note.add_css_class("dim-label")
+            status_card.append(status_title)
+            status_card.append(status_value)
+            status_card.append(status_note)
+            sidebar.append(status_card)
+            sidebar.append(refresh)
 
             body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+            body.add_css_class("seven-body")
             body.append(sidebar)
             body.append(stack)
 
             root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-            root.append(toolbar)
+            root.add_css_class("seven-root")
             root.append(body)
             win.set_content(root)
 
             def make_row(title_text: str, subtitle: str) -> Adw.ActionRow:
                 row = Adw.ActionRow()
+                row.add_css_class("seven-card")
                 row.set_title(title_text)
                 row.set_subtitle(subtitle)
                 return row
 
             def page():
                 box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-                box.set_margin_top(24)
-                box.set_margin_bottom(24)
-                box.set_margin_start(24)
-                box.set_margin_end(24)
+                box.add_css_class("seven-page")
+                box.set_margin_top(0)
+                box.set_margin_bottom(0)
+                box.set_margin_start(0)
+                box.set_margin_end(0)
 
                 scrolled = Gtk.ScrolledWindow()
                 scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -459,16 +639,20 @@ def run_gui() -> int:
                     box.remove(child)
 
             def heading(box: Gtk.Box, title_text: str, subtitle: str) -> None:
+                hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+                hero.add_css_class("seven-hero")
                 label = Gtk.Label()
-                label.set_markup(f"<span size='22000' weight='500'>{title_text}</span>")
+                label.set_markup(f"<span weight='500'>{title_text}</span>")
                 label.set_xalign(0)
-                box.append(label)
+                label.add_css_class("seven-hero-title")
+                hero.append(label)
 
                 intro = Gtk.Label(label=subtitle)
                 intro.set_xalign(0)
-                intro.add_css_class("dim-label")
+                intro.add_css_class("seven-hero-subtitle")
                 intro.set_wrap(True)
-                box.append(intro)
+                hero.append(intro)
+                box.append(hero)
 
             def render_dashboard() -> None:
                 clear(dashboard)
