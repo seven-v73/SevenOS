@@ -31,6 +31,8 @@ welcome.status	System	First-Run Status	seven welcome status	safe	Check whether t
 welcome.plan	System	First-Run Plan	seven welcome plan	safe	Show the first-run completion plan.
 migrate.ml4w.plan	System	ML4W Migration Plan	seven migrate-ml4w plan	safe	Show active ML4W-marked configuration paths that conflict with SevenOS.
 migrate.ml4w.switch	System	Switch ML4W to SevenOS	seven migrate-ml4w switch	changes	Quarantine ML4W configs, apply SevenOS desktop layer and restart session services.
+keyboard.status	Desktop	Keyboard Layout	seven keyboard status	safe	Show SevenOS keyboard layouts and switching mode.
+keyboard.apply	Desktop	Apply US/FR Keyboard	seven keyboard apply	changes	Enable English/French keyboard layouts with Alt+Shift switching.
 postinstall.check	System	Post-Install Check	seven post-install	safe	Check common blockers after installation.
 session.status	Desktop	Session Status	seven session status	safe	Check SevenOS session services and desktop files.
 session.start	Desktop	Start Session	seven session start	changes	Start SevenOS desktop session components.

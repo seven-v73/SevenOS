@@ -75,6 +75,7 @@ seven-control-center open
 seven primary --json | python -m json.tool
 seven session status --json | python -m json.tool
 seven core health --json | python -m json.tool
+seven keyboard status
 seven-wallpaper status
 seven flatpak status --json | python -m json.tool
 seven windows resolve photoshop --json | python -m json.tool
@@ -95,6 +96,17 @@ Do not move the machine to primary use if:
 - the active desktop has no SevenOS session services;
 - `seven profile plan` still shows critical profile gaps;
 - you have no recovery/reinstall path documented for the machine.
+
+## Keyboard
+
+SevenOS defaults to English US + French keyboard layouts:
+
+```bash
+seven keyboard status
+seven keyboard apply
+```
+
+Switch layouts with `Alt+Shift`.
 
 ## Product Rule
 

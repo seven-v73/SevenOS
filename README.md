@@ -495,6 +495,8 @@ seven primary
 seven primary --json
 seven migrate-ml4w plan
 seven migrate-ml4w switch
+seven keyboard status
+seven keyboard apply
 seven daily
 seven daily --json
 seven daily plan

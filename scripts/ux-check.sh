@@ -182,6 +182,7 @@ require_executable "scripts/manifest.sh"
 require_executable "scripts/package-plan.sh"
 require_executable "scripts/migrate.sh"
 require_executable "scripts/migrate-from-ml4w.sh"
+require_executable "scripts/keyboard.sh"
 require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
 require_executable "scripts/post-install.sh"
@@ -340,6 +341,8 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'welcome.plan' <<<"$actions_json" &&
    grep -q 'migrate.ml4w.plan' <<<"$actions_json" &&
    grep -q 'migrate.ml4w.switch' <<<"$actions_json" &&
+   grep -q 'keyboard.status' <<<"$actions_json" &&
+   grep -q 'keyboard.apply' <<<"$actions_json" &&
    grep -q 'session.status' <<<"$actions_json" &&
    grep -q 'identity.status' <<<"$actions_json" &&
    grep -q 'identity.packs' <<<"$actions_json" &&
@@ -639,6 +642,16 @@ if grep -q 'get_hub_snapshot' "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" &&
   ok "Seven Hub GUI behaves like a native Control Center foundation"
 else
   fail "Seven Hub GUI should expose dashboard, profiles, confirmations, readable actions and native backend snapshot"
+fi
+
+keyboard_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" keyboard status --json)"
+if python -m json.tool >/dev/null <<<"$keyboard_json" &&
+   grep -q '"schema":"sevenos.keyboard.v1"' <<<"$keyboard_json" &&
+   grep -q 'kb_layout = us,fr' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'kb_options = grp:alt_shift_toggle' "$ROOT_DIR/hyprland/conf/keyboard.conf"; then
+  ok "SevenOS provides US/French keyboard layouts with Alt+Shift switching"
+else
+  fail "SevenOS keyboard should default to US/French with Alt+Shift switching"
 fi
 
 if grep -q 'javascriptcoregtk-4.1' "$ROOT_DIR/seven-hub/gui-stack.sh"; then
