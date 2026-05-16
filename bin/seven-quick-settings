@@ -92,7 +92,7 @@ if ! command -v rofi >/dev/null 2>&1; then
   exit 1
 fi
 
-selected="$(menu | rofi -dmenu -i -p "SevenOS" -mesg "Quick Settings" -theme "$THEME" 2>/dev/null || true)"
+selected="$(menu | rofi -dmenu -p "SevenOS" -mesg "Quick Settings" -theme "$THEME" 2>/dev/null || true)"
 selected="$(clean_selection "$selected")"
 
 case "$selected" in

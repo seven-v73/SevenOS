@@ -142,7 +142,7 @@ open_apps() {
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'seven-apps catalog %s applications\n' "$(wc -l < "$catalog_file")"
-    printf 'rofi -dmenu -i -show-icons -theme %q with desktop icon metadata\n' "$THEME"
+    printf 'rofi -dmenu -show-icons -theme %q with desktop icon metadata\n' "$THEME"
     return 0
   fi
 
@@ -185,7 +185,7 @@ with open(sys.argv[1], "r", encoding="utf-8", errors="replace") as handle:
 PY
 
   selected_index="$(
-    rofi -dmenu -i -show-icons -p "Apps" -mesg "SevenOS application library" -format i -theme "$THEME" < "$menu_file" 2>/dev/null || true
+    rofi -dmenu -show-icons -p "Apps" -mesg "SevenOS application library" -format i -theme "$THEME" < "$menu_file" 2>/dev/null || true
   )"
 
   [[ "$selected_index" =~ ^[0-9]+$ ]] || exit 0

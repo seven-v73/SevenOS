@@ -86,7 +86,7 @@ reload_desktop_session() {
       "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
     fi
     if command -v notify-send >/dev/null 2>&1; then
-      notify-send "SevenOS desktop refreshed" "Use Super+Space for Hub, Super+A for Apps, Super+/ for Help" || true
+      notify-send "SevenOS desktop refreshed" "Use Super for Apps, Super+Space for Spotlight, Super+/ for Help" || true
     fi
   fi
 }
@@ -274,5 +274,5 @@ install_shell_hook "$HOME/.zshrc"
 reload_desktop_session
 
 log_success "SevenOS theme applied."
-log_info "Use Super+Space for Seven Hub, Super+A for apps, and Super+/ for desktop help."
+log_info "Use Super for apps, Super+Space for SevenOS Spotlight, and Super+/ for desktop help."
 log_info "Disable terminal country signals with: export SEVENOS_TERMINAL_COUNTRY=0"

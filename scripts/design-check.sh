@@ -41,14 +41,16 @@ else
   ok "Seven Hub imports design tokens"
 fi
 
-if jq -e '."modules-left" == ["custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/apps","custom/files"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("cpu") and index("memory") and index("custom/notifications") and index("clock")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses a macOS-like left/center/right liquid hierarchy"
 else
-  fail "Waybar should use Apps+Clock left, workspaces center, merged liquid islands and system controls right."
+  fail "Waybar should use SevenOS/app/files left, workspaces center, stateful system controls right."
 fi
 
-if grep -q 'border-radius: 13px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+if grep -q 'border-radius: 15px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'border-radius: 16px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-profile.ok' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-security.miss' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'background: transparent' "$ROOT_DIR/hyprland/waybar/style.css"; then
   ok "Waybar uses liquid glass islands"
@@ -91,16 +93,35 @@ else
   fail "Quick Settings or Notifications dedicated shell surface missing"
 fi
 
-if grep -q 'bg: rgba(246, 251, 254, 0.42)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+if grep -q 'bg: rgba(246, 251, 254, 0.86)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'min-height: 58px' "$ROOT_DIR/hyprland/rofi/hub.rasi"; then
-  ok "Seven Hub fallback uses transparent frosted navigation"
+  ok "Seven Hub fallback uses readable frosted navigation"
 else
-  fail "Seven Hub fallback should use transparent frosted navigation"
+  fail "Seven Hub fallback should use readable frosted navigation"
 fi
 
-if grep -q 'content: "SevenOS"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+if grep -q 'width: 48%' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'border-radius: 28px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'Search SevenOS' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'min-height: 52px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+   ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" &&
+   ! grep -Eq 'placeholder: "Search|filename: "search"' "$ROOT_DIR/hyprland/rofi/sevenos.rasi"; then
+  ok "SevenOS Spotlight uses centered readable liquid command surface"
+else
+  fail "SevenOS Spotlight should use centered readable liquid command surface"
+fi
+
+if grep -Fq 'children: [ inputbar, listview ]' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'placeholder: "Search"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'columns: 7' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'size: 84px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'spacing: 58px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -Eq '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi/apps.rasi"; then
   ok "Apps overview has SevenOS header, tokenized surfaces and rounded glass tiles"
 else
@@ -109,7 +130,9 @@ fi
 
 if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
-   grep -q 'background #eef4f8' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
+   grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'background #fbfbfb' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'background #2d333d' "$ROOT_DIR/hyprland/kitty/dark.conf"; then
   ok "SevenOS default UI is transparent minimal with frosted glass accents"
 else
   fail "SevenOS default UI should ship transparent minimal glass"

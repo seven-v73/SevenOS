@@ -1,0 +1,292 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+dry_run() {
+  [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
+}
+
+dry_line() {
+  printf 'DRY-RUN > Wi-Fi > %s\n' "$*"
+}
+
+notify() {
+  local title="$1"
+  local message="$2"
+  if command -v notify-send >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    notify-send "$title" "$message" || true
+  else
+    printf '%s: %s\n' "$title" "$message"
+  fi
+}
+
+json_escape() {
+  python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))' 2>/dev/null || printf '""'
+}
+
+nmcli_available() {
+  command -v nmcli >/dev/null 2>&1
+}
+
+networkmanager_state() {
+  if ! command -v systemctl >/dev/null 2>&1; then
+    printf 'UNKNOWN'
+    return 0
+  fi
+  if systemctl is-active --quiet NetworkManager 2>/dev/null; then
+    printf 'RUN'
+  else
+    printf 'MISS'
+  fi
+}
+
+wifi_device() {
+  nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2 == "wifi" { print $1; exit }'
+}
+
+active_wifi() {
+  nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$2 == "802-11-wireless" { print $1; exit }'
+}
+
+wifi_radio_state() {
+  nmcli radio wifi 2>/dev/null | tr -d '\n' || printf 'unknown'
+}
+
+rofi_menu() {
+  local prompt="$1"
+  shift
+  if ! command -v rofi >/dev/null 2>&1; then
+    return 1
+  fi
+  printf '%s\n' "$@" | rofi -dmenu -p "$prompt" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi"
+}
+
+password_prompt() {
+  local ssid="$1"
+  if command -v rofi >/dev/null 2>&1; then
+    rofi -dmenu -password -p "Password for $ssid" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/prompt.rasi"
+  else
+    printf 'Password for %s: ' "$ssid" >&2
+    stty -echo
+    read -r password
+    stty echo
+    printf '\n' >&2
+    printf '%s\n' "$password"
+  fi
+}
+
+terminal_status() {
+  if dry_run; then
+    dry_line "Status"
+    return 0
+  fi
+  if ! nmcli_available; then
+    notify "SevenOS Wi-Fi" "nmcli is not installed. Install NetworkManager."
+    return 1
+  fi
+  nmcli device status
+  printf '\n'
+  nmcli connection show --active
+}
+
+show_status_window() {
+  if dry_run; then
+    dry_line "Status"
+    return 0
+  fi
+  if command -v kitty >/dev/null 2>&1; then
+    setsid -f kitty --title "SevenOS Network" bash -lc 'seven-wifi status 2>/dev/null || { nmcli device status; printf "\n"; nmcli connection show --active; }; printf "\nPress Enter to close..."; read -r' >/tmp/sevenos-wifi.log 2>&1 || true
+  elif command -v foot >/dev/null 2>&1; then
+    setsid -f foot -e bash -lc 'seven-wifi status 2>/dev/null || nmcli device status; printf "\nPress Enter to close..."; read -r' >/tmp/sevenos-wifi.log 2>&1 || true
+  else
+    terminal_status
+  fi
+}
+
+status_json() {
+  local nm_state radio device active
+  nm_state="$(networkmanager_state)"
+  if nmcli_available; then
+    radio="$(wifi_radio_state)"
+    device="$(wifi_device)"
+    active="$(active_wifi)"
+  else
+    radio="missing"
+    device=""
+    active=""
+  fi
+
+  printf '{'
+  printf '"schema":"sevenos.wifi.status.v1",'
+  printf '"networkmanager":"%s",' "$nm_state"
+  printf '"nmcli":%s,' "$(nmcli_available && printf true || printf false)"
+  printf '"wifi_radio":%s,' "$(printf '%s' "$radio" | json_escape)"
+  printf '"device":%s,' "$(printf '%s' "$device" | json_escape)"
+  printf '"active":%s' "$(printf '%s' "$active" | json_escape)"
+  printf '}\n'
+}
+
+ensure_network_ready() {
+  if ! nmcli_available; then
+    notify "SevenOS Wi-Fi" "nmcli is missing. Install networkmanager first."
+    return 1
+  fi
+
+  if [[ "$(networkmanager_state)" != "RUN" ]]; then
+    notify "SevenOS Wi-Fi" "NetworkManager is not running. Open the network menu to restart it."
+    return 1
+  fi
+
+  if [[ -z "$(wifi_device)" ]]; then
+    notify "SevenOS Wi-Fi" "No Wi-Fi device was detected."
+    return 1
+  fi
+}
+
+network_rows() {
+  nmcli -t -f SSID,SECURITY,SIGNAL device wifi list --rescan yes 2>/dev/null |
+    awk -F: '
+      length($1) > 0 && !seen[$1]++ {
+        security = length($2) ? $2 : "open"
+        printf "%s\t%s\t%s%%\n", $1, security, $3
+      }
+    ' |
+    sort -t $'\t' -k3,3nr
+}
+
+connect_wifi() {
+  if dry_run; then
+    dry_line "Connect"
+    return 0
+  fi
+  ensure_network_ready || return 1
+
+  nmcli radio wifi on >/dev/null 2>&1 || true
+
+  local rows selected ssid security password output status
+  rows="$(network_rows)"
+  if [[ -z "$rows" ]]; then
+    notify "SevenOS Wi-Fi" "No Wi-Fi networks found."
+    return 1
+  fi
+
+  if command -v rofi >/dev/null 2>&1; then
+    selected="$(printf '%s\n' "$rows" | rofi -dmenu -p "Connect Wi-Fi" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi")"
+  else
+    printf '%s\n' "$rows"
+    printf 'SSID: '
+    read -r selected
+  fi
+  [[ -n "$selected" ]] || return 0
+
+  ssid="$(awk -F '\t' '{ print $1 }' <<<"$selected")"
+  security="$(awk -F '\t' -v needle="$ssid" '$1 == needle { print $2; exit }' <<<"$rows")"
+
+  if [[ -n "$security" && "$security" != "open" && "$security" != "--" ]]; then
+    password="$(password_prompt "$ssid")"
+    [[ -n "$password" ]] || return 0
+    set +e
+    output="$(nmcli device wifi connect "$ssid" password "$password" 2>&1)"
+    status=$?
+    set -e
+  else
+    set +e
+    output="$(nmcli device wifi connect "$ssid" 2>&1)"
+    status=$?
+    set -e
+  fi
+
+  if [[ "$status" -eq 0 ]]; then
+    notify "SevenOS Wi-Fi" "Connected to $ssid."
+  else
+    notify "SevenOS Wi-Fi" "Connection failed: $output"
+    return "$status"
+  fi
+}
+
+disconnect_wifi() {
+  if dry_run; then
+    dry_line "Disconnect"
+    return 0
+  fi
+  ensure_network_ready || return 1
+
+  local device
+  device="$(wifi_device)"
+  nmcli device disconnect "$device" >/dev/null && notify "SevenOS Wi-Fi" "Disconnected $device."
+}
+
+open_settings() {
+  if dry_run; then
+    dry_line "Settings"
+    return 0
+  fi
+  if command -v nm-connection-editor >/dev/null 2>&1; then
+    setsid -f nm-connection-editor >/tmp/sevenos-wifi.log 2>&1 || true
+  elif command -v kitty >/dev/null 2>&1; then
+    setsid -f kitty --title "SevenOS Network" nmtui >/tmp/sevenos-wifi.log 2>&1 || true
+  elif command -v nmtui >/dev/null 2>&1; then
+    nmtui
+  else
+    notify "SevenOS Wi-Fi" "Install nm-connection-editor or nmtui for network settings."
+  fi
+}
+
+restart_networkmanager() {
+  if dry_run; then
+    dry_line "Restart NetworkManager"
+    return 0
+  fi
+  if command -v systemctl >/dev/null 2>&1; then
+    if sudo systemctl restart NetworkManager; then
+      notify "SevenOS Network" "NetworkManager restarted."
+    else
+      notify "SevenOS Network" "Could not restart NetworkManager."
+      return 1
+    fi
+  fi
+}
+
+menu() {
+  if dry_run; then
+    dry_line "Open panel"
+    printf '%s\n' "Connect Wi-Fi" "Disconnect Wi-Fi" "Network Settings" "Network Status" "Restart NetworkManager"
+    return 0
+  fi
+
+  local active label selected
+  active="$(active_wifi)"
+  label="${active:-not connected}"
+  selected="$(rofi_menu "Wi-Fi: $label" \
+    "󰤨  Connect Wi-Fi" \
+    "󰤭  Disconnect Wi-Fi" \
+    "󰖩  Network Settings" \
+    "󰈀  Network Status" \
+    "󰜉  Restart NetworkManager")" || {
+      open_settings
+      return 0
+    }
+  selected="${selected#*  }"
+
+  case "$selected" in
+    "Connect Wi-Fi") connect_wifi ;;
+    "Disconnect Wi-Fi") disconnect_wifi ;;
+    "Network Settings") open_settings ;;
+    "Network Status") show_status_window ;;
+    "Restart NetworkManager") restart_networkmanager ;;
+    *) return 0 ;;
+  esac
+}
+
+case "${1:-menu}" in
+  menu|open) menu ;;
+  connect) connect_wifi ;;
+  disconnect) disconnect_wifi ;;
+  settings) open_settings ;;
+  status) terminal_status ;;
+  status-json|--json) status_json ;;
+  restart) restart_networkmanager ;;
+  *)
+    printf 'Usage: seven-wifi [menu|connect|disconnect|settings|status|status-json|restart]\n' >&2
+    exit 1
+    ;;
+esac

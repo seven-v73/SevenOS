@@ -1,14 +1,14 @@
 * {
   ebene: #eef4f8;
   surface-0: #f6fbfe;
-  surface-1: rgba(255, 255, 255, 0.42);
-  surface-2: rgba(255, 255, 255, 0.28);
-  surface-3: rgba(231, 242, 248, 0.36);
-  glass: rgba(255, 255, 255, 0.24);
-  glass-2: rgba(255, 255, 255, 0.34);
-  glass-3: rgba(247, 252, 255, 0.52);
-  glass-border: rgba(255, 255, 255, 0.58);
-  glass-border-2: rgba(122, 153, 170, 0.28);
+  surface-1: rgba(255, 255, 255, 0.86);
+  surface-2: rgba(255, 255, 255, 0.72);
+  surface-3: rgba(231, 242, 248, 0.76);
+  glass: rgba(255, 255, 255, 0.68);
+  glass-2: rgba(255, 255, 255, 0.80);
+  glass-3: rgba(247, 252, 255, 0.92);
+  glass-border: rgba(255, 255, 255, 0.88);
+  glass-border-2: rgba(120, 147, 163, 0.56);
   gold: #b89a62;
   gold-bright: #cbb37a;
   gold-dim: #8f7a53;
@@ -18,9 +18,9 @@
   baobab-bright: #4ba979;
   indigo: #567f9d;
   indigo-bright: #6f9dbc;
-  text-1: #17232b;
-  text-2: #4d606a;
-  text-3: #7c8c94;
+  text-1: #101a21;
+  text-2: #334852;
+  text-3: #657883;
 }
 
 window {
@@ -35,6 +35,7 @@ mainbox {
   padding: 20px;
   spacing: 14px;
   background-color: transparent;
+  children: [ message, listview ];
 }
 
 message {
@@ -50,15 +51,6 @@ textbox {
   font: "DM Sans Medium 12";
 }
 
-inputbar {
-  padding: 14px 15px;
-  border: 1px;
-  border-color: @glass-border-2;
-  border-radius: 14px;
-  background-color: @glass-2;
-  children: [ prompt, textbox-prompt-colon, entry ];
-}
-
 prompt {
   text-color: @indigo;
   font: "JetBrains Mono Medium 13";
@@ -66,14 +58,6 @@ prompt {
 
 textbox-prompt-colon {
   text-color: @text-3;
-}
-
-entry {
-  text-color: @text-1;
-  placeholder: "Search SevenOS";
-  placeholder-color: @text-2;
-  cursor-color: @indigo;
-  font: "DM Sans 13";
 }
 
 listview {

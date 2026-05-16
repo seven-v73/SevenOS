@@ -1,15 +1,15 @@
 :root {
   --ebene: #eef4f8;
   --surface-0: #f6fbfe;
-  --surface-1: #ffffffd9;
-  --surface-2: #edf5f9cc;
-  --surface-3: #dbe9efc2;
+  --surface-1: #fffffff0;
+  --surface-2: #edf5f9e6;
+  --surface-3: #dbe9efd9;
 
-  --glass: #ffffff38;
-  --glass-2: #ffffff56;
-  --glass-3: #f7fcff78;
-  --glass-border: #ffffffa8;
-  --glass-border-2: #9fb8c675;
+  --glass: #ffffff80;
+  --glass-2: #ffffffa3;
+  --glass-3: #f7fcffc4;
+  --glass-border: #ffffffe0;
+  --glass-border-2: #7893a3a6;
 
   --gold: #b89a62;
   --gold-bright: #cbb37a;
@@ -29,10 +29,10 @@
   --indigo-bright: #6f9dbc;
   --indigo-pale: rgba(86, 127, 157, 0.13);
 
-  --text-1: #17232b;
-  --text-2: #4d606a;
-  --text-3: #7c8c94;
-  --text-4: #a8b4ba;
+  --text-1: #101a21;
+  --text-2: #334852;
+  --text-3: #657883;
+  --text-4: #93a3ab;
 
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-interface: "DM Sans", system-ui, sans-serif;

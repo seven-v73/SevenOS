@@ -148,10 +148,31 @@ Les piliers du projet sont :
 - `scripts/apply-theme.sh` installe ces fichiers seulement s'ils n'existent pas deja, afin que les mises a jour SevenOS puissent changer la session sans effacer les ecrans, le clavier ou les regles personnelles.
 - Ajout de `seven-overview`, surface type Activities/Overview inspiree des shells modernes : apps, fenetres, recherche et run.
 - Ajout de `seven-apps`, indexeur/lanceur d'applications SevenOS qui lit les applications systeme, utilisateur et Flatpak via leurs fichiers `.desktop`.
-- `Super+A`, Waybar Apps et Seven Help passent par `seven-apps`, afin que l'acces aux applications installees ne depende plus uniquement du cache `drun` de Rofi.
+- `Super` seul, `Super+A`, Waybar Apps et Seven Help passent par `seven-apps`, afin que l'acces aux applications installees ne depende plus uniquement du cache `drun` de Rofi.
 - `seven-apps` transmet maintenant les icones des fichiers `.desktop` a Rofi, ce qui permet au Launchpad Apps d'afficher les vraies icones d'applications quand le theme d'icones les fournit.
 - Ajout de `seven-quick-settings`, panneau rapide pour Hub, apps, fenetres, reseau, audio, wallpaper, profils, migration, monitoring et power.
 - Hyprland adopte une ergonomie plus GNOME-like : `Super+Tab` pour les fenetres, `Super+N`/`Super+O` pour les quick settings, `Super+S` pour scratchpad, `Super+L` pour lock, mouvements souris Super+clic et workspaces gauche/droite.
+- `Super+D` n'est plus utilise pour les apps : SevenOS reserve l'ouverture directe des applications a `Super` seul, avec `Super+Space` pour Spotlight.
+- Kitty expose maintenant deux profils simultanes via `seven-terminal` :
+  `classic` pour le rendu macOS blanc et `dark` pour le rendu macOS graphite.
+  `Super+Enter`, `Super+Shift+Enter` et `Super+Ctrl+Enter` ouvrent
+  respectivement le terminal classic, dark et le menu de choix.
+- Les profils SevenOS Terminal sont maintenant forces en fenetres flottantes
+  centrees et compactes `640x420` via Hyprland pour se rapprocher du petit
+  format Apple, au lieu d'ouvrir un grand terminal tuile.
+- Ajout de `seven-terminal-shell`, un shell minimal dedie aux profils classic et
+  dark : pas de signal pays, pas de fastfetch, pas de description materielle,
+  uniquement un prompt simple type Terminal Apple.
+- Les profils Kitty affichent maintenant des marqueurs type traffic lights
+  `rouge / jaune / vert` dans la barre superieure, avec raccourcis associes :
+  fermer, envoyer au scratch workspace et basculer le plein ecran.
+- Ajout de `seven-terminal-native`, surface GTK/VTE qui fournit de vrais boutons
+  traffic lights cliquables. `seven-terminal` l'utilise automatiquement quand
+  `python-gobject` et `vte3` sont installes, puis retombe sur Kitty sinon.
+- Le Launchpad SevenOS passe vers une grille plus macOS-like : fond immersif,
+  champ `Search` compact en haut, moins de cartes visibles, plus d'espace,
+  icones plus grandes et selection glass legere. Spotlight reste reserve a la
+  recherche systeme globale et aux actions intelligentes.
 - Ajout de regles de fenetres pour dialogues fichiers, audio, reseau, aide SevenOS, migration et picture-in-picture afin que l'interface semble plus controlee et moins brute.
 
 ### Seven Hub
@@ -537,9 +558,39 @@ b2736d2 Apply SevenOS design system v1
 cc25e63 Make Waybar modules actionable
 2f8b52e Improve Rofi menu visibility
 68d460e Make app launcher macOS style
+a31e630 Shift SevenOS design to transparent minimal glass
 ```
 
 Ces jalons introduisent le Design System v1, stabilisent Waybar, rendent la barre plus actionnable, ameliorent la lisibilite des menus Rofi et transforment le lanceur d'applications en experience plein ecran inspiree de macOS Launchpad.
+
+Travail en cours :
+
+```text
+Waybar network controls
+SevenOS Spotlight command center
+```
+
+Objectif : le module reseau ne doit plus ouvrir seulement un statut technique.
+Il doit permettre de scanner, choisir et connecter un Wi-Fi depuis une surface
+SevenOS claire, avec statut JSON et controles testables.
+
+Objectif Spotlight : `Super+Space` devient le centre d'orchestration quotidien
+de SevenOS. Il indexe les apps, fichiers, dossiers, projets, actions, profils,
+reglages systeme, commandes, CyberSpace, Windows Mode, mail, contacts,
+calendrier et premiers intents contextuels. Il gere aussi les calculs rapides,
+les conversions pratiques, les definitions et les suggestions web. Le Hub reste
+accessible depuis Spotlight au lieu d'etre le seul comportement de `Super+Space`.
+
+Avancement Spotlight :
+
+- Surface Rofi dediee, plus proche d'un Spotlight macOS : centree, compacte,
+  lisible, avec input pill et liste a icones.
+- Modes rapides integres : `/apps`, `/files`, `/settings`, `/system`, `/web`.
+- Resultats enrichis avec icone, categorie, nom et detail court.
+- Les autres menus SevenOS restent sans barre de recherche visible : la recherche
+  globale vit dans Spotlight.
+- Checks design/UX alignes sur cette regle pour eviter les retours aux menus
+  disperses.
 
 Jalon en cours :
 

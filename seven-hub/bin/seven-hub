@@ -540,7 +540,7 @@ select_with_rofi() {
     menu+="$(display_row "$label" "$description" "$badge")"$'\n'
   done
 
-  printf '%s' "$menu" | rofi -dmenu -i -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/hub.rasi"
+  printf '%s' "$menu" | rofi -dmenu -p "$menu_title" -mesg "$message" -theme "$SEVENOS_ROOT/hyprland/rofi/hub.rasi"
 }
 
 select_with_terminal() {

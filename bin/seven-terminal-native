@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+"""SevenOS native terminal surface with real traffic-light controls."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+from pathlib import Path
+
+
+def probe() -> int:
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Vte", "2.91")
+        from gi.repository import Gtk, Vte  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin").is_dir():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "bin").is_dir():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin").is_dir():
+            return candidate
+    return Path.home()
+
+
+def resolve_shell() -> Path:
+    root = resolve_root()
+    for candidate in (root / "bin/seven-terminal-shell", Path.home() / ".local/bin/seven-terminal-shell"):
+        if candidate.exists():
+            return candidate
+    return Path(os.environ.get("SHELL", "/bin/sh"))
+
+
+def hex_to_rgba(value: str):
+    value = value.lstrip("#")
+    return tuple(int(value[index : index + 2], 16) / 255.0 for index in (0, 2, 4)) + (1.0,)
+
+
+def run_terminal(profile: str, command: list[str]) -> int:
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Vte", "2.91")
+    from gi.repository import Gdk, GLib, Gtk, Pango, Vte
+
+    dark = profile == "dark"
+    title = f"{os.environ.get('USER', 'seven')}@SevenOS"
+    argv = command or [str(resolve_shell())]
+
+    css = f"""
+    window.seven-window {{
+      background: {'#2d333d' if dark else '#fbfbfb'};
+      border-radius: 10px;
+    }}
+    .seven-titlebar {{
+      min-height: 25px;
+      padding: 0 8px;
+      background: {'#34373d' if dark else '#d9d9d9'};
+      border-bottom: 1px solid {'#242932' if dark else '#b8b8b8'};
+    }}
+    .seven-title {{
+      color: {'#eef3f7' if dark else '#2f3437'};
+      font: 500 12px "DM Sans", "Inter", sans-serif;
+    }}
+    .traffic {{
+      min-width: 13px;
+      min-height: 13px;
+      border-radius: 999px;
+      padding: 0;
+      margin: 0 4px 0 0;
+      border: 1px solid rgba(0,0,0,0.18);
+      box-shadow: none;
+    }}
+    .traffic.close {{ background: #ff5f57; }}
+    .traffic.min {{ background: #febc2e; }}
+    .traffic.max {{ background: #28c840; }}
+    """
+
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title=title)
+    window.set_default_size(640, 420)
+    window.set_resizable(True)
+    window.set_decorated(False)
+    window.set_wmclass("SevenTerminalNative", "SevenTerminalNative")
+    window.get_style_context().add_class("seven-window")
+
+    outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    window.add(outer)
+
+    titlebar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+    titlebar.get_style_context().add_class("seven-titlebar")
+    outer.pack_start(titlebar, False, False, 0)
+
+    close_btn = traffic_button("close", "Close")
+    min_btn = traffic_button("min", "Minimize")
+    max_btn = traffic_button("max", "Maximize")
+    titlebar.pack_start(close_btn, False, False, 0)
+    titlebar.pack_start(min_btn, False, False, 0)
+    titlebar.pack_start(max_btn, False, False, 0)
+
+    title_label = Gtk.Label(label=title)
+    title_label.get_style_context().add_class("seven-title")
+    title_label.set_hexpand(True)
+    titlebar.pack_start(title_label, True, True, 0)
+    spacer = Gtk.Box()
+    spacer.set_size_request(51, 1)
+    titlebar.pack_start(spacer, False, False, 0)
+
+    terminal = Vte.Terminal()
+    terminal.set_scrollback_lines(20000)
+    terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
+    terminal.set_cursor_shape(Vte.CursorShape.IBEAM)
+    terminal.set_audible_bell(False)
+    terminal.set_font(Pango.FontDescription("JetBrainsMono Nerd Font 10"))
+    terminal.set_colors(
+        Gdk.RGBA(*hex_to_rgba("#eef3f7" if dark else "#2f3437")),
+        Gdk.RGBA(*hex_to_rgba("#2d333d" if dark else "#fbfbfb")),
+        [],
+    )
+    outer.pack_start(terminal, True, True, 0)
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "SEVENOS_TERMINAL_COUNTRY": "0",
+            "SEVENOS_TERMINAL_CLASSIC": "1",
+            "SEVENOS_TERMINAL_CLASSIC_PROMPT": "0",
+            "FASTFETCH_DISABLED": "1",
+        }
+    )
+    terminal.spawn_async(
+        Vte.PtyFlags.DEFAULT,
+        os.getcwd(),
+        argv,
+        [f"{key}={value}" for key, value in env.items()],
+        GLib.SpawnFlags.DEFAULT,
+        None,
+        None,
+        -1,
+        None,
+        None,
+    )
+
+    close_btn.connect("clicked", lambda *_: window.close())
+    min_btn.connect("clicked", lambda *_: window.iconify())
+    max_btn.connect("clicked", lambda *_: window.unmaximize() if window.is_maximized() else window.maximize())
+    terminal.connect("child-exited", lambda *_: window.close())
+    titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
+    window.connect("destroy", Gtk.main_quit)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def traffic_button(style: str, tooltip: str):
+    from gi.repository import Gtk
+
+    button = Gtk.Button()
+    button.set_tooltip_text(tooltip)
+    button.set_relief(Gtk.ReliefStyle.NONE)
+    button.set_focus_on_click(False)
+    button.get_style_context().add_class("traffic")
+    button.get_style_context().add_class(style)
+    return button
+
+
+def begin_move(window, event) -> bool:
+    if getattr(event, "button", 0) == 1:
+        window.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
+        return True
+    return False
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--probe", action="store_true")
+    parser.add_argument("--profile", choices=("classic", "dark"), default="classic")
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    args = parser.parse_args()
+    if args.probe:
+        return probe()
+    command = args.command[1:] if args.command[:1] == ["--"] else args.command
+    return run_terminal(args.profile, command)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

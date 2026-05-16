@@ -35,7 +35,7 @@ run_terminal() {
   fi
 }
 
-menu=$'󰒓  Open Seven Hub    Super+Space / Super+H\n󰀻  Open Apps    Super+A / Super+D\n󰖲  Window Overview    Super+Tab\n󰒓  Quick Settings    Super+N / Super+O\n󰆍  Open Terminal    Super+Enter\n󰉋  Open Files    Super+E\n󰐥  Power Menu    Super+Shift+P\n󰍁  Lock Screen    Super+L\n󰆍  Scratchpad    Super+S\n󰄀  Screenshot Save    Print\n󰄀  Screenshot Edit    Super+Shift+S\n󰅍  Screenshot Copy    Super+Ctrl+S\n󰜉  Reload Desktop    Reapply Hyprland config\n󰩂  Post-Install Check    Diagnose missing UI pieces\n󰁨  Repair UX    Reapply theme, hub and commands'
+menu=$'󰖟  SevenOS Spotlight    Super+Space\n󰒓  Open Seven Hub    Super+H\n󰀻  Open Apps    Super\n󰖲  Window Overview    Super+Tab\n󰒓  Quick Settings    Super+N / Super+O\n󰆍  Terminal Classic    Super+Enter\n󰆍  Terminal Dark    Super+Shift+Enter\n󰆍  Terminal Theme Menu    Super+Ctrl+Enter\n󰉋  Open Files    Super+E\n󰐥  Power Menu    Super+Shift+P\n󰍁  Lock Screen    Super+L\n󰆍  Scratchpad    Super+S\n󰄀  Screenshot Save    Print\n󰄀  Screenshot Edit    Super+Shift+S\n󰅍  Screenshot Copy    Super+Ctrl+S\n󰜉  Reload Desktop    Reapply Hyprland config\n󰩂  Post-Install Check    Diagnose missing UI pieces\n󰁨  Repair UX    Reapply theme, hub and commands'
 
 if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   printf '%s\n' "$menu"
@@ -43,7 +43,7 @@ if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
 fi
 
 if command -v rofi >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
-  selected="$(printf '%s\n' "$menu" | rofi -dmenu -i -p "$title" -mesg "SevenOS desktop controls" -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" 2>/dev/null || true)"
+  selected="$(printf '%s\n' "$menu" | rofi -dmenu -p "$title" -mesg "SevenOS desktop controls" -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" 2>/dev/null || true)"
 else
   printf '%s\n' "$menu"
   exit 0
@@ -53,11 +53,14 @@ selected="${selected#*  }"
 selected="${selected%%    *}"
 
 case "$selected" in
+  "SevenOS Spotlight") seven-spotlight ;;
   "Open Seven Hub") seven-hub ;;
   "Open Apps") seven-overview apps ;;
   "Window Overview") seven-overview windows ;;
   "Quick Settings") seven-quick-settings ;;
-  "Open Terminal") kitty & ;;
+  "Terminal Classic") seven-terminal classic ;;
+  "Terminal Dark") seven-terminal dark ;;
+  "Terminal Theme Menu") seven-terminal menu ;;
   "Open Files") seven-files ;;
   "Power Menu") seven-power ;;
   "Lock Screen") seven-power lock ;;

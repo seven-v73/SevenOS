@@ -91,7 +91,7 @@ open_rofi_menu() {
     return 1
   fi
 
-  printf '%s\n' "$@" | rofi -dmenu -i -p "$prompt" -theme "$HOME/.config/rofi/sevenos.rasi"
+  printf '%s\n' "$@" | rofi -dmenu -p "$prompt" -theme "$HOME/.config/rofi/sevenos.rasi"
 }
 
 clean_selection() {
@@ -110,6 +110,17 @@ command_or_terminal() {
     run_detached "$preferred"
   else
     run_terminal "$title" "$fallback"
+  fi
+}
+
+run_wifi() {
+  local helper="$ROOT_DIR/bin/seven-wifi"
+  if [[ -x "$helper" ]]; then
+    run_detached "$helper" "$@"
+  elif command -v seven-wifi >/dev/null 2>&1; then
+    run_detached seven-wifi "$@"
+  else
+    notify "SevenOS Network" "seven-wifi is not installed. Run ./install.sh cli."
   fi
 }
 
@@ -162,10 +173,12 @@ run_security_action() {
 run_network_action() {
   local selected="$1"
   case "$selected" in
-    "Network Settings") command_or_terminal "SevenOS Network" nm-connection-editor "nmtui" ;;
-    "Network Status") run_terminal "SevenOS Network" "nmcli device status; printf '\n'; nmcli connection show --active" ;;
-    "Wi-Fi Menu") run_terminal "SevenOS Wi-Fi" "nmtui" ;;
-    "Restart NetworkManager") run_terminal "SevenOS Network" "sudo systemctl restart NetworkManager && systemctl is-active NetworkManager" ;;
+    "Connect Wi-Fi") run_wifi connect ;;
+    "Disconnect Wi-Fi") run_wifi disconnect ;;
+    "Network Settings") run_wifi settings ;;
+    "Network Status") run_terminal "SevenOS Network" "seven-wifi status 2>/dev/null || { nmcli device status; printf '\n'; nmcli connection show --active; }" ;;
+    "Wi-Fi Menu") run_wifi menu ;;
+    "Restart NetworkManager") run_wifi restart ;;
     *) return 0 ;;
   esac
 }
@@ -228,7 +241,7 @@ show_menu() {
     network)
       prompt="Network"
       runner="run_network_action"
-      options=("󰤨  Network Settings" "󰈀  Network Status" "󰖩  Wi-Fi Menu" "󰜉  Restart NetworkManager")
+      options=("󰤨  Connect Wi-Fi" "󰤭  Disconnect Wi-Fi" "󰖩  Network Settings" "󰈀  Network Status" "󰖩  Wi-Fi Menu" "󰜉  Restart NetworkManager")
       ;;
     audio)
       prompt="Audio"
@@ -244,6 +257,22 @@ show_menu() {
       prompt="Time"
       runner="run_clock_action"
       options=("󰃭  Calendar" "󰥔  Time Settings" "󰀗  World Time")
+      ;;
+    network-connect)
+      run_wifi connect
+      return 0
+      ;;
+    network-disconnect)
+      run_wifi disconnect
+      return 0
+      ;;
+    network-settings)
+      run_wifi settings
+      return 0
+      ;;
+    network-status)
+      run_terminal "SevenOS Network" "seven-wifi status 2>/dev/null || nmcli device status"
+      return 0
       ;;
     *)
       printf 'seven-waybar-action: unknown area: %s\n' "$area" >&2

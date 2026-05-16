@@ -1,12 +1,12 @@
 * {
-  bg: rgba(246, 251, 254, 0.42);
-  bg-soft: rgba(255, 255, 255, 0.30);
-  bg-hover: rgba(255, 255, 255, 0.46);
-  bg-active: rgba(111, 157, 188, 0.16);
-  border: rgba(255, 255, 255, 0.54);
-  border-strong: rgba(111, 157, 188, 0.32);
-  text: rgba(23, 35, 43, 0.96);
-  text-muted: rgba(77, 96, 106, 0.68);
+  bg: rgba(246, 251, 254, 0.86);
+  bg-soft: rgba(255, 255, 255, 0.78);
+  bg-hover: rgba(255, 255, 255, 0.92);
+  bg-active: rgba(111, 157, 188, 0.30);
+  border: rgba(255, 255, 255, 0.88);
+  border-strong: rgba(86, 127, 157, 0.54);
+  text: rgba(16, 26, 33, 0.98);
+  text-muted: rgba(51, 72, 82, 0.82);
   gold: rgba(184, 154, 98, 0.78);
   green: rgba(63, 139, 101, 0.95);
   blue: rgba(86, 127, 157, 0.96);
@@ -35,29 +35,12 @@ mainbox {
   padding: 28px;
   spacing: 18px;
   background-color: transparent;
-}
-
-inputbar {
-  padding: 14px 16px;
-  spacing: 12px;
-  border: 1px;
-  border-color: @border;
-  border-radius: 14px;
-  background-color: @bg-soft;
-  children: [ prompt, entry ];
+  children: [ message, listview ];
 }
 
 prompt {
   text-color: @blue;
   font: "DM Sans Medium 14";
-}
-
-entry {
-  text-color: @text;
-  placeholder: "Search SevenOS";
-  placeholder-color: @text-muted;
-  cursor-color: @blue;
-  font: "DM Sans 14";
 }
 
 message {
@@ -96,7 +79,7 @@ element selected {
 }
 
 element alternate {
-  background-color: rgba(255, 255, 255, 0.38);
+  background-color: rgba(255, 255, 255, 0.70);
 }
 
 element-text,

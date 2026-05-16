@@ -93,6 +93,8 @@ require_file "seven-shell/ags/src/contracts.ts"
 require_file "seven-shell/ags/src/config.ts"
 require_file "seven-shell/ags/src/dock.ts"
 require_file "branding/shell/terminal-country.sh"
+require_file "branding/shell/terminal-bashrc"
+require_file "branding/shell/terminal-zsh/.zshrc"
 require_file "branding/motd"
 require_file "branding/issue"
 require_file "branding/sevenos-release"
@@ -119,10 +121,14 @@ require_file "identity/patterns/motif-stripe.svg"
 require_file "identity/patterns/motif-cross.svg"
 require_file "hyprland/rofi/apps.rasi"
 require_file "hyprland/rofi/hub.rasi"
+require_file "hyprland/rofi/spotlight.rasi"
 require_file "hyprland/rofi/quick-settings.rasi"
 require_file "hyprland/rofi/power.rasi"
+require_file "hyprland/rofi/prompt.rasi"
 require_file "hyprland/mako/config"
 require_file "hyprland/kitty/kitty.conf"
+require_file "hyprland/kitty/classic.conf"
+require_file "hyprland/kitty/dark.conf"
 require_file "hyprland/conf/custom.conf"
 require_file "hyprland/conf/keyboard.conf"
 require_file "hyprland/conf/monitor.conf"
@@ -148,6 +154,10 @@ require_executable "bin/seven-quick-settings"
 require_executable "bin/seven-screenshot"
 require_executable "bin/seven-shell-panel"
 require_executable "bin/seven-shell-preview"
+require_executable "bin/seven-terminal"
+require_executable "bin/seven-terminal-native"
+require_executable "bin/seven-terminal-shell"
+require_executable "bin/seven-spotlight"
 require_executable "bin/seven-session"
 require_executable "bin/seven-session-status"
 require_executable "bin/seven-wallpaper"
@@ -201,6 +211,8 @@ package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
 package_manifest_contains "ttf-cormorant" "scripts/packages-base.txt"
 package_manifest_contains "noto-fonts-emoji" "scripts/packages-base.txt"
 package_manifest_contains "kitty" "scripts/packages-base.txt"
+package_manifest_contains "python-gobject" "scripts/packages-base.txt"
+package_manifest_contains "vte3" "scripts/packages-base.txt"
 package_manifest_contains "nautilus" "scripts/packages-base.txt"
 package_manifest_contains "gvfs" "scripts/packages-base.txt"
 package_manifest_contains "gvfs-mtp" "scripts/packages-base.txt"
@@ -217,6 +229,7 @@ package_manifest_contains "kvantum" "scripts/packages-base.txt"
 package_manifest_contains "flatpak" "scripts/packages-base.txt"
 package_manifest_contains "btop" "scripts/packages-base.txt"
 package_manifest_contains "pavucontrol" "scripts/packages-base.txt"
+package_manifest_contains "networkmanager" "scripts/packages-base.txt"
 package_manifest_contains "network-manager-applet" "scripts/packages-base.txt"
 package_manifest_contains "archinstall" "scripts/packages-installer.txt"
 package_manifest_contains "rust" "scripts/packages-hub-gui.txt"
@@ -243,7 +256,7 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."modules-left" == ["custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-overview search"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/apps","custom/files"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/apps".format == "󰀻" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-spotlight" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and (."modules-right" | index("cpu") and index("memory"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes liquid Apps launcher and centered workspaces"
 else
   fail "Waybar liquid Apps launcher or centered workspaces missing"
@@ -252,10 +265,11 @@ fi
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'ebene: #eef4f8' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'columns: 6' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'columns: 7' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'content: "SevenOS"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'size: 84px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'placeholder: "Search"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'spacing: 58px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -RE '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi" >/dev/null &&
    grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'icon_theme=Papirus' "$ROOT_DIR/hyprland/qt6ct/qt6ct.conf"; then
@@ -276,10 +290,23 @@ else
   fail "Waybar power action missing"
 fi
 
-if jq -e '.network."on-click" == "seven-waybar-action network" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/quick"."on-click" == "seven-quick-settings" and ."custom/notifications"."on-click" == "seven-waybar-notifications menu" and ."custom/notifications"."on-click-right" == "seven-waybar-notifications toggle-dnd"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.network."on-click" == "seven-waybar-action network" and .network."on-click-middle" == "seven-waybar-action network-connect" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/quick"."on-click" == "seven-quick-settings" and ."custom/notifications"."on-click" == "seven-waybar-notifications menu" and ."custom/notifications"."on-click-right" == "seven-waybar-notifications toggle-dnd"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
+fi
+
+wifi_menu_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" menu)"
+wifi_connect_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" connect)"
+if [[ -x "$ROOT_DIR/bin/seven-wifi" ]] &&
+   grep -q 'Connect Wi-Fi' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'run_wifi connect' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'DRY-RUN > Wi-Fi > Open panel' <<<"$wifi_menu_output" &&
+   grep -q 'DRY-RUN > Wi-Fi > Connect' <<<"$wifi_connect_output" &&
+   "$ROOT_DIR/bin/seven-wifi" status-json | python -m json.tool >/dev/null; then
+  ok "Waybar network module exposes a real Wi-Fi workflow"
+else
+  fail "Waybar network module should expose a real Wi-Fi workflow"
 fi
 
 notifications_menu_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
@@ -301,6 +328,48 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|For
   ok "Waybar profile indicator uses live SevenOS profile state"
 else
   fail "Waybar profile indicator should use live SevenOS profile state"
+fi
+
+spotlight_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open)"
+spotlight_catalog="$("$ROOT_DIR/bin/seven-spotlight" catalog)"
+if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
+   grep -q '/apps · Applications' <<<"$spotlight_catalog" &&
+   grep -q '/files · Files' <<<"$spotlight_catalog" &&
+   grep -q '/settings · Settings' <<<"$spotlight_catalog" &&
+   grep -q '/system · System Actions' <<<"$spotlight_catalog" &&
+   grep -q '/web · Web & Intelligence' <<<"$spotlight_catalog" &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open apps | awk -F': ' '/entries:/ {print $2}')" -gt 0 ]] &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open files | awk -F': ' '/entries:/ {print $2}')" -gt 0 ]] &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open settings | awk -F': ' '/entries:/ {print $2}')" -gt 0 ]] &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open system | awk -F': ' '/entries:/ {print $2}')" -gt 0 ]] &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open web | awk -F': ' '/entries:/ {print $2}')" -gt 0 ]] &&
+   grep -q 'Desktop · Open Seven Hub' <<<"$spotlight_catalog" &&
+   grep -q 'App · ' <<<"$spotlight_catalog" &&
+   grep -q 'Files · Home' <<<"$spotlight_catalog" &&
+   grep -q 'Settings · Network' <<<"$spotlight_catalog" &&
+   grep -q 'Mail · Open mail client' <<<"$spotlight_catalog" &&
+   grep -q 'Contacts · Open address book' <<<"$spotlight_catalog" &&
+   grep -q 'Calendar · Open events' <<<"$spotlight_catalog" &&
+   grep -q 'Calculator · Type an expression' <<<"$spotlight_catalog" &&
+   grep -q 'Converter · Type value and unit' <<<"$spotlight_catalog" &&
+   grep -q 'Dictionary · Type "define word"' <<<"$spotlight_catalog" &&
+   grep -q 'Web · Search the web' <<<"$spotlight_catalog" &&
+   grep -q 'Ask · Prepare Cyber workspace' <<<"$spotlight_catalog" &&
+   [[ "$("$ROOT_DIR/bin/seven-spotlight" eval '42*7')" == "42*7 = 294" ]] &&
+   [[ "$("$ROOT_DIR/bin/seven-spotlight" eval '10 km to mi')" == "10 km = 6.21371 mi" ]] &&
+   [[ "$("$ROOT_DIR/bin/seven-spotlight" eval '15% of 240')" == "15% of 240 = 36" ]] &&
+   grep -q 'Search SevenOS' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -Fq 'children: [ inputbar, message, listview ]' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -Fq 'children: [ inputbar, listview ]' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -Fq 'children: [ message, listview ]' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+   grep -Fq 'children: [ message, listview ]' "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" &&
+   ! grep -Eq 'inputbar|placeholder: "Search|filename: "search"' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+   ! grep -Eq 'inputbar|placeholder: "Search|filename: "search"' "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" &&
+   ! grep -Eq 'placeholder: "Search|filename: "search"' "$ROOT_DIR/hyprland/rofi/sevenos.rasi"; then
+  ok "SevenOS Spotlight indexes apps, actions and contextual intents"
+else
+  fail "SevenOS Spotlight should index apps, actions and contextual intents"
 fi
 
 profile_activate_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate forge)"
@@ -487,19 +556,30 @@ else
   fail "Hyprland missing GTK/Qt theme environment"
 fi
 
-if grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
+if grep -q '$terminal = seven-terminal classic' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, Return, exec, $terminal' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod SHIFT, Return, exec, seven-terminal dark' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod CTRL, Return, exec, seven-terminal menu' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'windowrule = match:class ^(SevenTerminalClassic)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'windowrule = match:class ^(SevenTerminalDark)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, SPACE, exec, $spotlight' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q '$spotlight = seven-spotlight' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bindr = $mod, SUPER_L, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bindr = $mod, SUPER_R, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   ! grep -q 'bind = $mod, D, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, TAB, exec, $overview' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, N, exec, $quicksettings' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, C, exec, seven shield mode' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod CTRL, C, exec, seven shield hud' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod CTRL, E, exec, seven-files profile' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'seven-overview apps' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf"; then
-  ok "Hyprland exposes discoverable Hub, Apps, Help and CyberSpace shortcuts"
+  grep -q 'seven-overview apps' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   ! grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf"; then
+  ok "Hyprland exposes Spotlight, Apps, Help and CyberSpace shortcuts"
 else
-  fail "Hyprland discoverable desktop and CyberSpace shortcuts missing"
+  fail "Hyprland discoverable Spotlight, desktop and CyberSpace shortcuts missing"
 fi
 
 if grep -q 'bind = , Print, exec, seven-screenshot area save' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -519,7 +599,7 @@ if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'windowrule = match:title ^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   [[ "$overview_search_output" == *"rofi"* ]] &&
+   [[ "$overview_search_output" == *"DRY-RUN > Spotlight > Open command center"* ]] &&
    [[ "$apps_output" == *"seven-apps catalog"* ]] &&
    [[ "$apps_output" == *"desktop icon metadata"* ]] &&
    [[ "$quick_settings_output" == *"DRY-RUN > Quick Settings > Open panel"* ]] &&
@@ -582,12 +662,38 @@ else
   fail "Wallpaper runtime should keep Hyprpaper alive and expose file-manager wallpaper selection"
 fi
 
-if grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'active_tab_background #e8f3f8' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'cursor #567f9d' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'background #eef4f8' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'symbol_map U+1F1E6-U+1F1FF Noto Color Emoji' "$ROOT_DIR/hyprland/kitty/kitty.conf"; then
-  ok "Kitty uses SevenOS frosted glass palette"
+if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
+   grep -q 'background_opacity 1.0' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'initial_window_width 76c' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'initial_window_height 21c' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'window_padding_width 6' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'font_size 10.0' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'remember_window_size no' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'background_blur 0' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'active_tab_background #d8d8d8' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'cursor #2f3437' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'background #fbfbfb' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'tab_bar_min_tabs 1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q '🔴  🟡  🟢' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'map ctrl+shift+w close_window' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'map ctrl+shift+f launch --type=background hyprctl dispatch fullscreen 1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'env SEVENOS_TERMINAL_CLASSIC=1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'SevenTerminalNative' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'traffic.close' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'traffic.min' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'traffic.max' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'native-if-available' "$ROOT_DIR/bin/seven-terminal" &&
+   grep -q 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'exec zsh -di' "$ROOT_DIR/bin/seven-terminal-shell" &&
+   grep -q 'background #2d333d' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'initial_window_width 76c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'initial_window_height 21c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'wayland_titlebar_color #34373d' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'map ctrl+shift+u kitten hints' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" classic | grep -q 'DRY-RUN > Terminal > Open classic' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" dark | grep -q 'DRY-RUN > Terminal > Open dark' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" menu | grep -q 'DRY-RUN > Terminal > Open profile chooser'; then
+  ok "Kitty exposes SevenOS classic and dark macOS-style terminal profiles"
 else
   fail "Kitty palette is not aligned with SevenOS identity"
 fi
@@ -1151,6 +1257,7 @@ if command -v rofi >/dev/null 2>&1; then
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/power.rasi" -dump-theme >/dev/null
+  rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/prompt.rasi" -dump-theme >/dev/null
   ok "Rofi themes parse"
 else
   warn "rofi not installed; theme parse skipped"
@@ -1198,7 +1305,10 @@ ok "interactive UX commands support dry-run"
 
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰒓  Open Seven Hub' &&
    grep -q '󰋜  Home' "$ROOT_DIR/bin/seven-files" &&
-   grep -q '󰀻  Open Apps' "$ROOT_DIR/bin/seven-help"; then
+   grep -q '󰀻  Open Apps    Super' "$ROOT_DIR/bin/seven-help" &&
+   grep -q 'Terminal Classic' "$ROOT_DIR/bin/seven-help" &&
+   grep -q 'Terminal Dark' "$ROOT_DIR/bin/seven-help" &&
+   ! grep -q 'Super+D' "$ROOT_DIR/bin/seven-help"; then
   ok "Shell help and files surfaces use icon-first entries"
 else
   fail "Shell help and files surfaces should be icon-first"

@@ -63,6 +63,10 @@ bash -n \
   "$ROOT_DIR/bin/seven-screenshot" \
   "$ROOT_DIR/bin/seven-shell-panel" \
   "$ROOT_DIR/bin/seven-shell-preview" \
+  "$ROOT_DIR/bin/seven-terminal" \
+  "$ROOT_DIR/bin/seven-terminal-native" \
+  "$ROOT_DIR/bin/seven-terminal-shell" \
+  "$ROOT_DIR/bin/seven-spotlight" \
   "$ROOT_DIR/bin/seven-session" \
   "$ROOT_DIR/bin/seven-session-status" \
   "$ROOT_DIR/bin/seven-wallpaper" \
@@ -72,6 +76,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-waybar-notifications" \
   "$ROOT_DIR/bin/seven-waybar-profile" \
   "$ROOT_DIR/bin/seven-waybar-security" \
+  "$ROOT_DIR/bin/seven-wifi" \
   "$ROOT_DIR/bin/seven-windows-assistant" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
@@ -194,6 +199,7 @@ if command -v rofi >/dev/null 2>&1; then
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/power.rasi" -dump-theme >/dev/null
+  rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/prompt.rasi" -dump-theme >/dev/null
 else
   log_warn "rofi not found; skipping Rofi theme check."
 fi
@@ -212,6 +218,14 @@ fi
 if command -v kitty >/dev/null 2>&1; then
   kitty +runpy 'from kitty.config import load_config; load_config("hyprland/kitty/kitty.conf")' >/dev/null 2>&1 || {
     log_error "Kitty config failed to parse."
+    exit 1
+  }
+  kitty +runpy 'from kitty.config import load_config; load_config("hyprland/kitty/classic.conf")' >/dev/null 2>&1 || {
+    log_error "Kitty classic profile failed to parse."
+    exit 1
+  }
+  kitty +runpy 'from kitty.config import load_config; load_config("hyprland/kitty/dark.conf")' >/dev/null 2>&1 || {
+    log_error "Kitty dark profile failed to parse."
     exit 1
   }
 else
@@ -358,6 +372,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-preview" >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open >/dev/null
+"$ROOT_DIR/bin/seven-spotlight" catalog >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-session-status" >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-session-status" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
@@ -370,7 +386,13 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" wallpaper "$ROOT_DIR/identity/asse
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" profile >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" security >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" network >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" network-connect >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" menu >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" connect >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" disconnect >/dev/null
+"$ROOT_DIR/bin/seven-wifi" status-json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" plan --json | python -m json.tool >/dev/null

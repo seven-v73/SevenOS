@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+mode="${1:-text}"
 firewall="MISS"
 if systemctl is-active --quiet ufw.service 2>/dev/null; then
   firewall="OK"
@@ -11,4 +12,14 @@ if command -v firejail >/dev/null 2>&1; then
   lab="OK"
 fi
 
-printf 'Shield %s Lab %s\n' "$firewall" "$lab"
+if [[ "$mode" == "json" ]]; then
+  if [[ "$firewall" == "OK" && "$lab" == "OK" ]]; then
+    printf '{"text":"󰒃 Shield","tooltip":"Shield baseline: OK\\nFirewall: OK\\nCyber lab: OK\\nClick for Shield actions.","class":"ok"}\n'
+  elif [[ "$firewall" == "OK" || "$lab" == "OK" ]]; then
+    printf '{"text":"󰒃 Shield","tooltip":"Shield baseline: partial\\nFirewall: %s\\nCyber lab: %s\\nClick to complete protection.","class":"warn"}\n' "$firewall" "$lab"
+  else
+    printf '{"text":"󰒃 Shield","tooltip":"Shield baseline: missing\\nFirewall: MISS\\nCyber lab: MISS\\nClick to enable SevenOS security.","class":"miss"}\n'
+  fi
+else
+  printf 'Shield %s Lab %s\n' "$firewall" "$lab"
+fi

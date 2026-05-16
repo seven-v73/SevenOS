@@ -39,31 +39,62 @@ fi
 
 profile_json="$(SEVENOS_DRY_RUN=0 "${seven_command[@]}" profile status --json 2>/dev/null || true)"
 if [[ -z "$profile_json" ]]; then
+  if [[ "${1:-}" == "json" ]]; then
+    printf '{"text":"󰀻 MISS","tooltip":"SevenOS profiles are unavailable. Click to open profile actions.","class":"miss"}\n'
+    exit 0
+  fi
   printf 'Profile MISS\n'
   exit 0
 fi
 
-python - "$profile_json" <<'PY'
+python - "$profile_json" "${1:-text}" <<'PY'
 import json
 import sys
 
 try:
     profiles = json.loads(sys.argv[1])
 except Exception:
+    if len(sys.argv) > 2 and sys.argv[2] == "json":
+        print(json.dumps({"text": "󰀻 MISS", "tooltip": "SevenOS profile state could not be parsed.", "class": "miss"}))
+        raise SystemExit(0)
     print("Profile MISS")
     raise SystemExit(0)
 
+mode = sys.argv[2] if len(sys.argv) > 2 else "text"
 active = next((item for item in profiles if item.get("active")), None)
 if active:
     title = active.get("title") or active.get("key") or "Profile"
     state = active.get("state") or "MISS"
+    if mode == "json":
+        cls = {"OK": "ok", "PART": "warn", "MISS": "miss"}.get(state, "warn")
+        print(json.dumps({
+            "text": f"󰀻 {title}",
+            "tooltip": f"Active profile: {title}\\nState: {state}\\nClick for profile actions.",
+            "class": cls,
+        }))
+        raise SystemExit(0)
     print(f"{title} {state}")
     raise SystemExit(0)
 
 ok_count = sum(1 for item in profiles if item.get("state") == "OK")
 part_count = sum(1 for item in profiles if item.get("state") == "PART")
 
-if ok_count:
+if mode == "json":
+    if ok_count:
+        text = f"󰀻 {ok_count} OK"
+        cls = "ok"
+    elif part_count:
+        text = f"󰀻 {part_count} PART"
+        cls = "warn"
+    else:
+        text = "󰀻 MISS"
+        cls = "miss"
+    print(json.dumps({
+        "text": text,
+        "tooltip": f"Profiles ready: {ok_count}\\nProfiles partial: {part_count}\\nClick for profile actions.",
+        "class": cls,
+    }))
+elif ok_count:
     print(f"Profiles {ok_count} OK")
 elif part_count:
     print(f"Profiles {part_count} PART")

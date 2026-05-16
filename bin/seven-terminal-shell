@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/branding/shell" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -d "$script_dir/../branding/shell" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -d "$candidate/branding/shell" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf '%s\n' "$HOME"
+}
+
+ROOT_DIR="$(resolve_root)"
+
+export SEVENOS_TERMINAL_COUNTRY=0
+export SEVENOS_TERMINAL_CLASSIC=1
+export SEVENOS_TERMINAL_CLASSIC_PROMPT=0
+export FASTFETCH_DISABLED=1
+
+if command -v zsh >/dev/null 2>&1; then
+  export ZDOTDIR="$ROOT_DIR/branding/shell/terminal-zsh"
+  exec zsh -di
+fi
+
+if command -v bash >/dev/null 2>&1; then
+  exec bash --rcfile "$ROOT_DIR/branding/shell/terminal-bashrc" -i
+fi
+
+exec "${SHELL:-/bin/sh}"

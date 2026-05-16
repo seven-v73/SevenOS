@@ -145,14 +145,16 @@ already-running GTK/Qt applications may need to be closed and opened again.
 Expected desktop controls after the UX repair:
 
 ```text
-Super+Space  SevenOS Control Center
+Super        Apps launcher
+Super+Space  SevenOS Spotlight
 Super+H      Seven Hub command palette
-Super+A      Apps launcher
-Super+D      Apps launcher
+Super+A      Apps launcher compatibility shortcut
 Super+E      Seven Files
 Super+Shift+E Seven Files places menu
 Super+/      SevenOS help
-Super+Enter  Terminal
+Super+Enter  Terminal Classic
+Super+Shift+Enter Terminal Dark
+Super+Ctrl+Enter Terminal theme menu
 Super+Shift+P Power menu
 ```
 

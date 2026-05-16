@@ -80,7 +80,7 @@ select_action() {
   menu=$'󰍁  Lock\n󰒲  Suspend\n󰍃  Logout\n󰜉  Reboot\n󰐥  Power Off'
 
   if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
-    printf '%s\n' "$menu" | rofi -dmenu -i -p "$title" -mesg "SevenOS power controls" -theme "$ROOT_DIR/hyprland/rofi/power.rasi" 2>/dev/null || true
+    printf '%s\n' "$menu" | rofi -dmenu -p "$title" -mesg "SevenOS power controls" -theme "$ROOT_DIR/hyprland/rofi/power.rasi" 2>/dev/null || true
   else
     printf '%s\n' "$menu" >&2
     printf 'Choose action: ' >&2

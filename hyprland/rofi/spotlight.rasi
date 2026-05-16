@@ -1,0 +1,95 @@
+@theme "sevenos.rasi"
+
+window {
+  location: center;
+  anchor: center;
+  width: 48%;
+  border: 1px;
+  border-radius: 28px;
+  border-color: rgba(255, 255, 255, 0.72);
+  background-color: rgba(238, 248, 252, 0.78);
+}
+
+mainbox {
+  padding: 18px;
+  spacing: 10px;
+  background-color: transparent;
+  children: [ inputbar, message, listview ];
+}
+
+inputbar {
+  padding: 13px 16px;
+  spacing: 12px;
+  border: 1px;
+  border-radius: 999px;
+  border-color: rgba(86, 127, 157, 0.36);
+  background-color: rgba(255, 255, 255, 0.76);
+  children: [ icon-search, entry ];
+}
+
+icon-search {
+  expand: false;
+  filename: "search";
+  size: 18px;
+  vertical-align: 0.5;
+}
+
+entry {
+  placeholder: "Search SevenOS";
+  placeholder-color: rgba(51, 72, 82, 0.56);
+  text-color: rgba(16, 26, 33, 0.98);
+  cursor-color: @indigo;
+  font: "DM Sans Medium 17";
+}
+
+message {
+  padding: 0px 8px 3px 8px;
+  border: 0px;
+  background-color: transparent;
+}
+
+textbox {
+  text-color: rgba(51, 72, 82, 0.64);
+  font: "JetBrains Mono Medium 10";
+}
+
+listview {
+  lines: 7;
+  fixed-height: true;
+  spacing: 7px;
+  background-color: transparent;
+}
+
+element {
+  min-height: 52px;
+  padding: 9px 12px;
+  spacing: 12px;
+  border: 1px;
+  border-radius: 18px;
+  border-color: rgba(255, 255, 255, 0.56);
+  background-color: rgba(255, 255, 255, 0.46);
+  text-color: rgba(16, 26, 33, 0.96);
+}
+
+element selected {
+  background-color: rgba(255, 255, 255, 0.82);
+  border-color: rgba(86, 127, 157, 0.52);
+  text-color: rgba(16, 26, 33, 0.98);
+}
+
+element alternate {
+  background-color: rgba(255, 255, 255, 0.34);
+}
+
+element-icon {
+  size: 28px;
+  margin: 0 12px 0 0;
+  background-color: transparent;
+  text-color: inherit;
+}
+
+element-text {
+  font: "DM Sans Medium 13";
+  background-color: transparent;
+  text-color: inherit;
+}

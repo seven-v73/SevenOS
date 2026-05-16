@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/hyprland/kitty" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -d "$script_dir/../hyprland/kitty" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -d "$candidate/hyprland/kitty" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-terminal: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+KITTY_CONFIG_DIR="$CONFIG_HOME/kitty"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  seven-terminal [classic|dark|menu|status] [-- command...]
+
+Profiles:
+  classic  macOS-like white terminal
+  dark     macOS-like graphite terminal
+  menu     choose a terminal profile
+
+Examples:
+  seven-terminal classic
+  seven-terminal dark
+  seven-terminal dark -- btop
+EOF
+}
+
+terminal_shell() {
+  local helper="$ROOT_DIR/bin/seven-terminal-shell"
+  if [[ -x "$helper" ]]; then
+    printf '%s\n' "$helper"
+    return 0
+  fi
+
+  helper="$HOME/.local/bin/seven-terminal-shell"
+  if [[ -x "$helper" ]]; then
+    printf '%s\n' "$helper"
+    return 0
+  fi
+
+  printf '%s\n' "${SHELL:-/bin/sh}"
+}
+
+config_for_profile() {
+  case "$1" in
+    classic) printf '%s\n' "$KITTY_CONFIG_DIR/classic.conf" ;;
+    dark) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
+    *) return 1 ;;
+  esac
+}
+
+repo_config_for_profile() {
+  case "$1" in
+    classic) printf '%s\n' "$ROOT_DIR/hyprland/kitty/classic.conf" ;;
+    dark) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
+    *) return 1 ;;
+  esac
+}
+
+ensure_config() {
+  local profile="$1"
+  local active_config repo_config
+  active_config="$(config_for_profile "$profile")"
+  repo_config="$(repo_config_for_profile "$profile")"
+
+  if [[ -s "$active_config" ]]; then
+    printf '%s\n' "$active_config"
+    return 0
+  fi
+  if [[ -s "$repo_config" ]]; then
+    printf '%s\n' "$repo_config"
+    return 0
+  fi
+
+  printf 'seven-terminal: missing Kitty profile: %s\n' "$profile" >&2
+  return 1
+}
+
+open_terminal() {
+  local profile="$1"
+  shift || true
+  local config title class width height shell_helper native
+  config="$(ensure_config "$profile")"
+
+  if ! command -v kitty >/dev/null 2>&1; then
+    printf 'seven-terminal: kitty is not installed\n' >&2
+    return 1
+  fi
+
+  case "$profile" in
+    classic)
+      title="${USER:-seven}@SevenOS"
+      class="SevenTerminalClassic"
+      width=640
+      height=420
+      ;;
+    dark)
+      title="${USER:-seven}@SevenOS"
+      class="SevenTerminalDark"
+      width=640
+      height=420
+      ;;
+  esac
+  shell_helper="$(terminal_shell)"
+  native="$ROOT_DIR/bin/seven-terminal-native"
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'DRY-RUN > Terminal > Open %s > native-if-available > %s > %sx%s floating centered\n' "$profile" "$config" "$width" "$height"
+    return 0
+  fi
+
+  if [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
+    setsid -f "$native" --profile "$profile" "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
+    place_window SevenTerminalNative "$width" "$height"
+    return 0
+  fi
+
+  if [[ "$#" -gt 0 ]]; then
+    setsid -f kitty --config "$config" \
+      --class "$class" \
+      --name "$class" \
+      --title "$title" \
+      --override remember_window_size=no \
+      --override tab_bar_min_tabs=1 \
+      --override initial_window_width=76c \
+      --override initial_window_height=21c \
+      "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
+  else
+    setsid -f kitty --config "$config" \
+      --class "$class" \
+      --name "$class" \
+      --title "$title" \
+      --override remember_window_size=no \
+      --override tab_bar_min_tabs=1 \
+      --override initial_window_width=76c \
+      --override initial_window_height=21c \
+      "$shell_helper" >/tmp/sevenos-terminal.log 2>&1 || return 1
+  fi
+
+  place_window "$class" "$width" "$height"
+}
+
+place_window() {
+  local class="$1"
+  local width="$2"
+  local height="$3"
+
+  if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      sleep 0.06
+      if hyprctl dispatch focuswindow "class:^(${class})$" >/dev/null 2>&1; then
+        hyprctl dispatch setfloating active >/dev/null 2>&1 || true
+        hyprctl dispatch resizeactive exact "$width" "$height" >/dev/null 2>&1 || true
+        hyprctl dispatch centerwindow >/dev/null 2>&1 || true
+        break
+      fi
+    done
+  fi
+}
+
+open_menu() {
+  local menu selected
+  menu=$'Classic Terminal\tmacOS-like bright terminal\nDark Terminal\tmacOS-like graphite terminal'
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'DRY-RUN > Terminal > Open profile chooser\n'
+    printf '%s\n' "$menu"
+    return 0
+  fi
+
+  if command -v rofi >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
+    selected="$(printf '%s\n' "$menu" | rofi -dmenu -i -p "Terminal" -mesg "Choose a SevenOS terminal profile" -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" 2>/dev/null || true)"
+  else
+    printf '%s\n' "$menu"
+    return 0
+  fi
+
+  case "$selected" in
+    Classic*) open_terminal classic ;;
+    Dark*) open_terminal dark ;;
+    "") return 0 ;;
+  esac
+}
+
+status() {
+  printf 'SevenOS Terminal Profiles\n'
+  printf 'classic: %s\n' "$(ensure_config classic)"
+  printf 'dark:    %s\n' "$(ensure_config dark)"
+  printf 'default: %s\n' "$KITTY_CONFIG_DIR/kitty.conf"
+}
+
+action="${1:-classic}"
+case "$action" in
+  classic|dark)
+    shift || true
+    if [[ "${1:-}" == "--" ]]; then
+      shift
+    fi
+    open_terminal "$action" "$@"
+    ;;
+  menu|choose)
+    open_menu
+    ;;
+  status)
+    status
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

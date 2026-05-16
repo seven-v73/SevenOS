@@ -1,0 +1,43 @@
+@theme "sevenos.rasi"
+
+window {
+  width: 34%;
+  border: 1px;
+  border-color: @glass-border-2;
+  border-radius: 22px;
+  background-color: @surface-1;
+}
+
+mainbox {
+  padding: 18px;
+  spacing: 12px;
+  background-color: transparent;
+  children: [ message, inputbar ];
+}
+
+message {
+  padding: 0px;
+  border: 0px;
+  background-color: transparent;
+}
+
+textbox {
+  text-color: @indigo;
+  font: "DM Sans Medium 12";
+}
+
+inputbar {
+  padding: 14px 15px;
+  border: 1px;
+  border-color: @glass-border-2;
+  border-radius: 14px;
+  background-color: @glass-2;
+  children: [ prompt, textbox-prompt-colon, entry ];
+}
+
+entry {
+  text-color: @text-1;
+  placeholder: "";
+  cursor-color: @indigo;
+  font: "DM Sans 13";
+}

@@ -58,10 +58,18 @@ case "$action" in
     rofi_or_fallback rofi -show window -show-icons -theme "$SHELL_THEME"
     ;;
   search)
-    rofi_or_fallback rofi -show combi -show-icons -combi-modes "drun,window,run" -theme "$SHELL_THEME"
+    if command -v seven-spotlight >/dev/null 2>&1; then
+      seven-spotlight
+    else
+      "$ROOT_DIR/bin/seven-spotlight"
+    fi
     ;;
   run)
-    rofi_or_fallback rofi -show run -theme "$SHELL_THEME"
+    if command -v seven-spotlight >/dev/null 2>&1; then
+      seven-spotlight
+    else
+      "$ROOT_DIR/bin/seven-spotlight"
+    fi
     ;;
   *)
     printf 'Usage: seven-overview [apps|windows|search|run]\n' >&2

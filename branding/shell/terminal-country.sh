@@ -7,6 +7,13 @@ case "$-" in
 esac
 
 if [ "${SEVENOS_TERMINAL_COUNTRY:-1}" = "0" ]; then
+  if [ "${SEVENOS_TERMINAL_CLASSIC:-0}" = "1" ] && [ "${SEVENOS_TERMINAL_CLASSIC_PROMPT:-1}" != "0" ]; then
+    if [ -n "${ZSH_VERSION:-}" ]; then
+      PROMPT='%m:%1~ %n%# '
+    elif [ -n "${BASH_VERSION:-}" ]; then
+      PS1='\h:\W \u\$ '
+    fi
+  fi
   return 0 2>/dev/null || exit 0
 fi
 

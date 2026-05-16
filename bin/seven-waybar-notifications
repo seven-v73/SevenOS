@@ -51,6 +51,16 @@ status() {
   fi
 }
 
+status_json() {
+  if [[ -f "$DND_FILE" ]]; then
+    printf '{"text":"󰂛","tooltip":"Notifications: Do Not Disturb enabled\\nClick opens controls, right-click disables DND, middle-click dismisses visible notifications.","class":"dnd"}\n'
+  elif is_mako_running; then
+    printf '{"text":"󰂚","tooltip":"Notifications: active\\nClick opens controls, right-click enables DND, middle-click dismisses visible notifications.","class":"ok"}\n'
+  else
+    printf '{"text":"󰂜","tooltip":"Notifications: service missing\\nClick opens controls, right-click toggles DND.","class":"miss"}\n'
+  fi
+}
+
 start_mako() {
   if is_mako_running; then
     notify "SevenOS Notifications" "Mako is already running."
@@ -159,7 +169,7 @@ open_menu() {
     return 1
   fi
 
-  selected="$(menu | rofi -dmenu -i -p "Notifications" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi" 2>/dev/null || true)"
+  selected="$(menu | rofi -dmenu -p "Notifications" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi" 2>/dev/null || true)"
   selected="$(clean_selection "$selected")"
 
   case "$selected" in
@@ -175,6 +185,7 @@ open_menu() {
 
 case "${1:-status}" in
   status) status ;;
+  status-json|json) status_json ;;
   menu|open) open_menu ;;
   start) start_mako ;;
   restart) restart_mako ;;

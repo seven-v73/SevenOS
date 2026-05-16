@@ -1,0 +1,9 @@
+# SevenOS minimal terminal profile.
+# Used only by seven-terminal classic/dark.
+
+export SEVENOS_TERMINAL_COUNTRY=0
+export SEVENOS_TERMINAL_CLASSIC=1
+export FASTFETCH_DISABLED=1
+
+set +o histexpand 2>/dev/null || true
+PS1='\h:\W \u\$ '

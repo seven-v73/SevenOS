@@ -1,14 +1,14 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 38,
+  "height": 40,
   "spacing": 0,
   "margin-top": 4,
   "margin-left": 16,
   "margin-right": 16,
-  "modules-left": ["custom/apps", "clock"],
+  "modules-left": ["custom/sevenos", "custom/apps", "custom/files"],
   "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/files", "custom/profile", "custom/security", "pulseaudio", "network", "battery", "custom/quick", "custom/notifications", "custom/power", "custom/sevenos"],
+  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "pulseaudio", "network", "battery", "custom/notifications", "custom/quick", "custom/power", "clock"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
@@ -16,16 +16,17 @@
   "custom/sevenos": {
     "format": "7",
     "tooltip": true,
-    "tooltip-format": "SevenOS desktop. Click for Control Center, right-click for welcome.",
+    "tooltip-format": "SevenOS Control Center. Click opens Hub, right-click opens Welcome.",
     "on-click": "seven hub",
-    "on-click-right": "seven-welcome"
+    "on-click-right": "seven-welcome",
+    "on-click-middle": "seven-spotlight"
   },
   "custom/apps": {
-    "format": "Apps",
+    "format": "󰀻",
     "tooltip": true,
-    "tooltip-format": "Open SevenOS app overview",
+    "tooltip-format": "Applications. Click opens app grid, right-click opens Spotlight.",
     "on-click": "seven-overview apps",
-    "on-click-right": "seven-overview search"
+    "on-click-right": "seven-spotlight"
   },
   "custom/files": {
     "format": "󰉋",
@@ -35,16 +36,17 @@
     "on-click-right": "seven-files menu"
   },
   "custom/profile": {
-    "exec": "bash -lc 'seven-waybar-profile'",
+    "exec": "bash -lc 'seven-waybar-profile json'",
     "interval": 60,
     "format": "{}",
+    "return-type": "json",
     "tooltip": true,
-    "tooltip-format": "Click for profile actions",
+    "tooltip-format": "{}",
     "on-click": "seven-waybar-action profile",
     "on-click-right": "kitty --title 'SevenOS Profiles' bash -lc 'seven profile status; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "clock": {
-    "format": "{:%H:%M %a}",
+    "format": "󰥔 {:%H:%M}",
     "tooltip-format": "{:%A %d %B %Y}",
     "on-click": "seven-waybar-action clock",
     "on-click-right": "kitty --title 'SevenOS Time' bash -lc 'timedatectl; printf \"\\nPress Enter to close...\"; read -r'"
@@ -63,11 +65,12 @@
     "on-click-right": "kitty --title 'SevenOS Memory' bash -lc 'free -h; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "custom/security": {
-    "exec": "bash -lc 'seven-waybar-security'",
+    "exec": "bash -lc 'seven-waybar-security json'",
     "interval": 30,
     "format": "{}",
+    "return-type": "json",
     "tooltip": true,
-    "tooltip-format": "Click for Shield actions",
+    "tooltip-format": "{}",
     "on-click": "seven-waybar-action security",
     "on-click-right": "kitty --title 'SevenOS Security' bash -lc 'seven shield audit; printf \"\\nPress Enter to close...\"; read -r'"
   },
@@ -75,14 +78,15 @@
     "format-wifi": "󰤨 {signalStrength}%",
     "format-ethernet": "󰈀",
     "format-disconnected": "󰤭",
-    "tooltip-format": "{ifname}. Click for network actions.",
+    "tooltip-format": "{ifname}. Click opens network actions, middle-click connects Wi-Fi, right-click shows status.",
     "on-click": "seven-waybar-action network",
+    "on-click-middle": "seven-waybar-action network-connect",
     "on-click-right": "kitty --title 'SevenOS Network' bash -lc 'nmcli device status; printf \"\\n\"; nmcli connection show --active; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "pulseaudio": {
     "format": "󰕾 {volume}%",
     "format-muted": "󰖁",
-    "tooltip-format": "{desc}. Click for audio actions.",
+    "tooltip-format": "{desc}. Click opens audio actions, scroll changes volume, right-click toggles mute.",
     "on-click": "seven-waybar-action audio",
     "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
     "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
@@ -91,23 +95,24 @@
   "battery": {
     "format": "󰁹 {capacity}%",
     "format-charging": "󰂄 {capacity}%",
-    "tooltip-format": "{timeTo} {power}W. Click for power actions.",
+    "tooltip-format": "{timeTo} {power}W. Click opens power actions.",
     "on-click": "seven-waybar-action battery",
     "on-click-right": "seven-power"
   },
   "custom/quick": {
     "format": "󰒓",
     "tooltip": true,
-    "tooltip-format": "Open SevenOS quick settings",
+    "tooltip-format": "Quick Settings. Click opens system panel, right-click opens help.",
     "on-click": "seven-quick-settings",
     "on-click-right": "seven-help"
   },
   "custom/notifications": {
-    "exec": "bash -lc 'seven-waybar-notifications status'",
+    "exec": "bash -lc 'seven-waybar-notifications status-json'",
     "interval": 8,
     "format": "{}",
+    "return-type": "json",
     "tooltip": true,
-    "tooltip-format": "Notifications. Click for controls, right-click for Do Not Disturb.",
+    "tooltip-format": "{}",
     "on-click": "seven-waybar-notifications menu",
     "on-click-right": "seven-waybar-notifications toggle-dnd",
     "on-click-middle": "seven-waybar-notifications dismiss"

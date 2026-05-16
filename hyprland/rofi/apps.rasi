@@ -1,41 +1,44 @@
-/* SevenOS Launchpad - macOS-like app grid with SevenOS identity */
+/* SevenOS Launchpad - macOS-like fullscreen app grid */
 @theme "sevenos.rasi"
 
 window {
   fullscreen: true;
-  padding: 30px;
+  padding: 26px 46px 42px 46px;
   border: 0px;
   border-radius: 0px;
-  background-color: rgba(246, 251, 254, 0.58);
+  background-color: rgba(15, 22, 18, 0.42);
 }
 
 mainbox {
-  padding: 22px;
-  spacing: 20px;
+  padding: 0px;
+  spacing: 54px;
   background-color: transparent;
-  children: [ textbox, inputbar, listview ];
-}
-
-textbox {
-  margin: 4px 12% 0px 12%;
-  padding: 0px 0px 12px 0px;
-  border: 0px 0px 1px 0px;
-  border-color: @glass-border-2;
-  text-color: @indigo;
-  font: "Cormorant Garamond Italic 30";
-  content: "SevenOS";
-  horizontal-align: 0.5;
+  children: [ inputbar, listview ];
 }
 
 inputbar {
-  margin: 0px 36% 0px 36%;
-  padding: 10px 15px;
-  spacing: 8px;
+  margin: 0px 42% 14px 42%;
+  padding: 5px 11px;
+  spacing: 7px;
   border: 1px;
-  border-radius: 18px;
-  border-color: @glass-border-2;
-  background-color: @glass-2;
+  border-color: rgba(255, 255, 255, 0.30);
+  border-radius: 7px;
+  background-color: rgba(255, 255, 255, 0.16);
   children: [ icon-search, entry ];
+}
+
+icon-search {
+  expand: false;
+  filename: "search";
+  size: 13px;
+  vertical-align: 0.5;
+}
+
+entry {
+  placeholder: "Search";
+  placeholder-color: rgba(255, 255, 255, 0.72);
+  text-color: rgba(255, 255, 255, 0.92);
+  font: "DM Sans 11";
 }
 
 prompt,
@@ -43,26 +46,11 @@ textbox-prompt-colon {
   enabled: false;
 }
 
-icon-search {
-  expand: false;
-  filename: "search";
-  size: 15px;
-  vertical-align: 0.5;
-}
-
-entry {
-  placeholder: "Search";
-  placeholder-color: @text-2;
-  text-color: @text-1;
-  cursor-color: @indigo;
-  font: "DM Sans 13";
-}
-
 listview {
-  margin: 32px 10% 0px 10%;
-  spacing: 28px;
-  lines: 3;
-  columns: 6;
+  margin: 4px 12% 0px 12%;
+  spacing: 58px;
+  lines: 5;
+  columns: 7;
   fixed-height: true;
   fixed-columns: true;
   background-color: transparent;
@@ -75,29 +63,26 @@ element-icon {
 }
 
 element {
-  padding: 17px 12px;
-  spacing: 9px;
+  padding: 7px 6px;
+  spacing: 11px;
   orientation: vertical;
-  border: 1px;
-  border-radius: 22px;
-  border-color: @glass-border;
-  background-color: @glass;
-  text-color: @text-1;
+  border: 0px;
+  border-radius: 20px;
+  background-color: transparent;
+  text-color: rgba(255, 255, 255, 0.96);
 }
 
 element selected {
-  background-color: @glass-3;
-  border-color: @indigo-bright;
-  text-color: @text-1;
+  background-color: rgba(255, 255, 255, 0.18);
+  text-color: rgba(255, 255, 255, 1.00);
 }
 
 element alternate {
-  background-color: @glass-2;
-  text-color: @text-1;
+  background-color: transparent;
 }
 
 element-icon {
-  size: 76px;
+  size: 84px;
   horizontal-align: 0.5;
   margin: 0px;
 }
@@ -105,5 +90,5 @@ element-icon {
 element-text {
   horizontal-align: 0.5;
   text-color: inherit;
-  font: "DM Sans Medium 12";
+  font: "DM Sans Medium 11";
 }

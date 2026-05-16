@@ -1,0 +1,584 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/scripts/actions.sh" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/../scripts/actions.sh" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -x "$candidate/scripts/actions.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-spotlight: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+export SEVENOS_ROOT="$ROOT_DIR"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+THEME="$CONFIG_HOME/rofi/spotlight.rasi"
+
+notify() {
+  local title="$1"
+  local message="$2"
+  if command -v notify-send >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    notify-send "$title" "$message" || true
+  else
+    printf '%s: %s\n' "$title" "$message"
+  fi
+}
+
+dry_run() {
+  [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
+}
+
+url_encode() {
+  python - "$1" <<'PY'
+import sys
+from urllib.parse import quote_plus
+print(quote_plus(sys.argv[1]))
+PY
+}
+
+open_url() {
+  local url="$1"
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > Open URL > %s\n' "$url"
+    return 0
+  fi
+  if command -v xdg-open >/dev/null 2>&1; then
+    setsid -f xdg-open "$url" >/tmp/sevenos-spotlight.log 2>&1 || notify "SevenOS Spotlight" "Could not open URL."
+  else
+    notify "SevenOS Spotlight" "xdg-open is not installed."
+    return 1
+  fi
+}
+
+open_path() {
+  local path="$1"
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > Open path > %s\n' "$path"
+    return 0
+  fi
+  if command -v xdg-open >/dev/null 2>&1; then
+    setsid -f xdg-open "$path" >/tmp/sevenos-spotlight.log 2>&1 || notify "SevenOS Spotlight" "Could not open path."
+  else
+    notify "SevenOS Spotlight" "xdg-open is not installed."
+    return 1
+  fi
+}
+
+desktop_catalog() {
+  python - <<'PY'
+import os
+from pathlib import Path
+
+def truthy(value):
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+def fallback_icon(categories):
+    cats = {item for item in categories.split(";") if item}
+    if "Development" in cats:
+        return "applications-development"
+    if "Graphics" in cats or "AudioVideo" in cats:
+        return "applications-graphics"
+    if "Network" in cats:
+        return "applications-internet"
+    if "System" in cats or "Settings" in cats:
+        return "preferences-system"
+    if "Utility" in cats:
+        return "applications-utilities"
+    if "Game" in cats:
+        return "applications-games"
+    if "Office" in cats:
+        return "applications-office"
+    return "application-x-executable"
+
+def read_desktop(path):
+    data = {}
+    in_entry = False
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_entry = line == "[Desktop Entry]"
+            continue
+        if not in_entry or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        data.setdefault(key.strip(), value.strip())
+    if data.get("Type", "Application") != "Application":
+        return None
+    if truthy(data.get("Hidden", "false")):
+        return None
+    if truthy(data.get("NoDisplay", "false")) and os.environ.get("SEVENOS_APPS_SHOW_HIDDEN") != "1":
+        return None
+    name = data.get("Name") or data.get("Name[en_US]") or path.stem
+    exec_value = data.get("Exec", "")
+    if not exec_value:
+        return None
+    comment = data.get("Comment", "")
+    categories = data.get("Categories", "")
+    icon = data.get("Icon") or fallback_icon(categories)
+    return name, path.name, str(path), comment, icon
+
+data_dirs = [
+    Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")),
+    Path.home() / ".local/share/flatpak/exports/share",
+    Path("/var/lib/flatpak/exports/share"),
+]
+for raw in os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":"):
+    if raw:
+        data_dirs.append(Path(raw))
+
+seen = set()
+apps = []
+for base in data_dirs:
+    app_dir = base / "applications"
+    if not app_dir.is_dir():
+        continue
+    for path in app_dir.glob("*.desktop"):
+        resolved = str(path)
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        item = read_desktop(path)
+        if item:
+            apps.append(item)
+
+for name, desktop_id, path, comment, icon in sorted(apps, key=lambda item: item[0].casefold()):
+    print("\t".join(value.replace("\t", " ") for value in ("app", f"󰀻  App · {name}", desktop_id, path, comment, icon)))
+PY
+}
+
+action_catalog() {
+  ACTION_JSON="$("$ROOT_DIR/scripts/actions.sh" --json)" python - <<'PY'
+import json
+import os
+import sys
+
+icons = {
+    "Desktop": ("󰇄", "preferences-desktop"),
+    "System": ("󰒓", "preferences-system"),
+    "Profiles": ("󰀻", "avatar-default"),
+    "Security": ("󰒃", "security-high"),
+    "Windows": ("󰖳", "computer"),
+    "Server": ("󰒋", "network-server"),
+    "Installer": ("󰏗", "system-software-install"),
+    "Apps": ("󰀻", "applications-other"),
+    "Ecosystem": ("󰌢", "applications-science"),
+}
+
+try:
+    payload = json.loads(os.environ.get("ACTION_JSON", "{}"))
+except Exception:
+    payload = {"actions": []}
+
+for item in payload.get("actions", []):
+    action_id = item.get("id", "")
+    title = item.get("title", action_id)
+    category = item.get("category", "System")
+    command = item.get("command", "")
+    description = item.get("description", "")
+    glyph, icon = icons.get(category, ("󰐊", "system-run"))
+    label = f"{glyph}  {category} · {title}"
+    print("\t".join(value.replace("\t", " ") for value in ("action", label, action_id, command, description, icon)))
+PY
+}
+
+extra_catalog() {
+  cat <<'EOF'
+mode	󰀻  /apps · Applications	mode.apps	__mode__	Only installed desktop applications.	view-grid
+mode	󰉋  /files · Files	mode.files	__mode__	Folders, projects and recent files.	system-file-manager
+mode	󰒓  /settings · Settings	mode.settings	__mode__	System controls and SevenOS settings.	preferences-system
+mode	󰐊  /system · System Actions	mode.system	__mode__	SevenOS actions, profiles, security and runtime commands.	system-run
+mode	󰖟  /web · Web & Intelligence	mode.web	__mode__	Calculations, conversions, definitions, web, mail, contacts and calendar.	web-browser
+intent	󰚩  Ask · Why is my system slow?	ai.system.slow	seven insights	Analyze SevenOS readiness, services and bottlenecks.	system-search
+intent	󰁹  Ask · Optimize battery	ai.battery	seven scheduler plan	Show power-aware scheduler recommendations.	battery
+intent	󰒃  Ask · Prepare Cyber workspace	ai.cyber	seven shield mode	Open CyberSpace context and actions.	security-high
+intent	󰅩  Ask · Prepare Dev workspace	ai.forge	seven profile activate forge	Switch to Forge development context.	applications-development
+intent	󰏗  Ask · Prepare Studio workspace	ai.studio	seven profile activate studio	Switch to Studio creative context.	applications-graphics
+calc	󰃬  Calculator · Type an expression	calc.help	__calc__	Try: 42*7, (128/4)+9, 15% of 240	accessories-calculator
+convert	󰦓  Converter · Type value and unit	convert.help	__convert__	Try: 10 km to mi, 32 f to c, 5 gb to mb	accessories-calculator
+define	󰈙  Dictionary · Type "define word"	define.help	__define__	Look up definitions through your browser.	accessories-dictionary
+web	󰖟  Web · Search the web	web.help	__web__	Type any question or prefix with web.	web-browser
+mail	󰇮  Mail · Open mail client	mail.open	__mail__	Open Thunderbird, Evolution, Geary or web mail.	internet-mail
+contacts	󰀻  Contacts · Open address book	contacts.open	__contacts__	Open GNOME Contacts, KDE contacts or web contacts.	x-office-address-book
+calendar	󰃭  Calendar · Open events	calendar.open	__calendar__	Open GNOME Calendar, KOrganizer or web calendar.	x-office-calendar
+EOF
+}
+
+system_catalog() {
+  cat <<'EOF'
+setting	󰖩  Settings · Network	settings.network	seven-waybar-action network	Wi-Fi, Ethernet and NetworkManager controls.	network-wireless
+setting	󰤨  Settings · Connect Wi-Fi	settings.wifi	seven-wifi connect	Scan and connect to Wi-Fi.	network-wireless
+setting	󰕾  Settings · Audio	settings.audio	seven-waybar-action audio	Volume, mixer and PipeWire status.	audio-volume-high
+setting	󰁹  Settings · Power	settings.power	seven-waybar-action battery	Battery, power profile and lock controls.	battery
+setting	󰂚  Settings · Notifications	settings.notifications	seven-waybar-notifications menu	Notifications, restore, dismiss and Do Not Disturb.	preferences-system-notifications
+setting	󰸉  Settings · Wallpaper	settings.wallpaper	seven-wallpaper choose	Set or refresh SevenOS wallpaper.	preferences-desktop-wallpaper
+setting	󰌌  Settings · Keyboard	settings.keyboard	seven keyboard status	US/French layouts and Alt+Shift switching.	input-keyboard
+setting	󰂯  Settings · Bluetooth	settings.bluetooth	blueman-manager	Bluetooth device manager.	bluetooth
+setting	󰍛  Settings · System Monitor	settings.monitor	btop	CPU, memory and process monitor.	utilities-system-monitor
+setting	󰩂  Settings · SevenOS Doctor	settings.doctor	seven doctor	Diagnose SevenOS system state.	system-search
+EOF
+}
+
+file_catalog() {
+  python - <<'PY'
+import os
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+
+home = Path.home()
+items = []
+
+def emit(label, key, path, detail, icon):
+    print("\t".join(str(value).replace("\t", " ") for value in ("file", label, key, path, detail, icon)))
+
+places = [
+    ("󰉋  Files · Home", "place.home", home, "Open your home folder.", "user-home"),
+    ("󰲋  Files · Projects", "place.projects", home / "Projects", "Open development projects.", "folder-development"),
+    ("󰇚  Files · Downloads", "place.downloads", home / "Downloads", "Open downloaded files.", "folder-download"),
+    ("󰈙  Files · Documents", "place.documents", home / "Documents", "Open documents.", "folder-documents"),
+    ("󰉏  Files · Pictures", "place.pictures", home / "Pictures", "Open images and wallpapers.", "folder-pictures"),
+    ("󰕧  Files · Videos", "place.videos", home / "Videos", "Open videos.", "folder-videos"),
+]
+for label, key, path, detail, icon in places:
+    if path.exists():
+        emit(label, key, path, detail, icon)
+
+projects = home / "Projects"
+if projects.is_dir():
+    for path in sorted((p for p in projects.iterdir() if p.is_dir()), key=lambda p: p.name.casefold())[:12]:
+        emit(f"󰲋  Project · {path.name}", f"project.{path.name}", path, "Open project folder.", "folder-development")
+
+recent = home / ".local/share/recently-used.xbel"
+if recent.exists():
+    try:
+        root = ET.parse(recent).getroot()
+        count = 0
+        for bookmark in reversed(root.findall("{http://www.freedesktop.org/standards/desktop-bookmarks}bookmark")):
+            href = bookmark.attrib.get("href", "")
+            if not href.startswith("file://"):
+                continue
+            parsed = urlparse(href)
+            path = Path(unquote(parsed.path))
+            if not path.exists():
+                continue
+            label = f"󰋚  Recent · {path.name}"
+            icon = "folder" if path.is_dir() else "text-x-generic"
+            emit(label, f"recent.{count}", path, str(path.parent), icon)
+            count += 1
+            if count >= 12:
+                break
+    except Exception:
+        pass
+PY
+}
+
+build_catalog() {
+  {
+    extra_catalog
+    system_catalog
+    file_catalog
+    action_catalog
+    desktop_catalog
+  } | awk -F '\t' 'NF >= 6 && !seen[$2]++'
+}
+
+filter_catalog() {
+  local mode="${1:-all}"
+  case "$mode" in
+    all|spotlight) cat ;;
+    apps) awk -F '\t' '$1 == "app"' ;;
+    files) awk -F '\t' '$1 == "file"' ;;
+    settings) awk -F '\t' '$1 == "setting"' ;;
+    system) awk -F '\t' '$1 == "action" || $1 == "intent" || $1 == "mode"' ;;
+    web) awk -F '\t' '$1 == "calc" || $1 == "convert" || $1 == "define" || $1 == "web" || $1 == "mail" || $1 == "contacts" || $1 == "calendar"' ;;
+    *) cat ;;
+  esac
+}
+
+mode_message() {
+  case "${1:-all}" in
+    apps) printf 'Applications · launch installed desktop apps' ;;
+    files) printf 'Files · folders · projects · recent documents' ;;
+    settings) printf 'Settings · network · audio · power · notifications · keyboard' ;;
+    system) printf 'System Actions · profiles · security · Windows · server · installer' ;;
+    web) printf 'Web & Intelligence · calculate · convert · define · mail · contacts · calendar' ;;
+    *) printf 'Universal search · Apps · Files · Settings · Mail · Calendar · Calculate · Web' ;;
+  esac
+}
+
+launch_desktop() {
+  local desktop_id="$1"
+  local desktop_path="$2"
+
+  if command -v gtk-launch >/dev/null 2>&1; then
+    gtk-launch "${desktop_id%.desktop}" >/dev/null 2>&1 && return 0
+    gtk-launch "$desktop_id" >/dev/null 2>&1 && return 0
+  fi
+  if command -v gio >/dev/null 2>&1; then
+    gio launch "$desktop_path" >/dev/null 2>&1 && return 0
+  fi
+  if command -v dex >/dev/null 2>&1; then
+    dex "$desktop_path" >/dev/null 2>&1 && return 0
+  fi
+
+  notify "SevenOS Spotlight" "Could not launch $desktop_id."
+  return 1
+}
+
+run_command() {
+  local command="$1"
+  if [[ "$command" == "__calc__" || "$command" == "__convert__" || "$command" == "__define__" || "$command" == "__web__" ]]; then
+    notify "SevenOS Spotlight" "Type directly in Spotlight, for example: 24*7, 10 km to mi, define kernel, web SevenOS."
+    return 0
+  fi
+  if [[ "$command" == "__mail__" ]]; then
+    open_mail
+    return $?
+  fi
+  if [[ "$command" == "__contacts__" ]]; then
+    open_contacts
+    return $?
+  fi
+  if [[ "$command" == "__calendar__" ]]; then
+    open_calendar
+    return $?
+  fi
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > %s\n' "$command"
+    return 0
+  fi
+  bash -lc "cd '$ROOT_DIR' && $command"
+}
+
+open_first_available() {
+  local fallback_url="$1"
+  shift
+  local app
+  for app in "$@"; do
+    if command -v "$app" >/dev/null 2>&1; then
+      run_command "$app"
+      return 0
+    fi
+  done
+  open_url "$fallback_url"
+}
+
+open_mail() {
+  open_first_available "https://mail.google.com" thunderbird evolution geary
+}
+
+open_contacts() {
+  open_first_available "https://contacts.google.com" gnome-contacts kaddressbook
+}
+
+open_calendar() {
+  open_first_available "https://calendar.google.com" gnome-calendar korganizer
+}
+
+handle_freeform() {
+  local query="$1"
+  local result kind encoded
+  case "$query" in
+    /app|/apps|apps|applications) open_spotlight apps; return 0 ;;
+    /file|/files|files) open_spotlight files; return 0 ;;
+    /setting|/settings|settings) open_spotlight settings; return 0 ;;
+    /system|system) open_spotlight system; return 0 ;;
+    /web|web) open_spotlight web; return 0 ;;
+  esac
+
+  result="$("$ROOT_DIR/bin/seven-spotlight" eval "$query" 2>/dev/null || true)"
+  if [[ -n "$result" ]]; then
+    notify "SevenOS Spotlight" "$result"
+    printf '%s\n' "$result" | wl-copy 2>/dev/null || true
+    return 0
+  fi
+
+  case "$query" in
+    define\ *|definition\ *)
+      kind="${query#* }"
+      encoded="$(url_encode "$kind")"
+      open_url "https://www.google.com/search?q=define+${encoded}"
+      ;;
+    web\ *|search\ *)
+      kind="${query#* }"
+      encoded="$(url_encode "$kind")"
+      open_url "https://duckduckgo.com/?q=${encoded}"
+      ;;
+    mail|mails|email|emails) open_mail ;;
+    contacts|contact) open_contacts ;;
+    calendar|calendrier|events|événements) open_calendar ;;
+    *)
+      encoded="$(url_encode "$query")"
+      open_url "https://duckduckgo.com/?q=${encoded}"
+      ;;
+  esac
+}
+
+eval_query() {
+  python - "$*" <<'PY'
+import ast
+import math
+import operator
+import re
+import sys
+
+query = sys.argv[1].strip().lower()
+query = query.replace(",", ".")
+
+allowed = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
+
+def fmt(value):
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return f"{value:.6g}"
+
+def calc(node):
+    if isinstance(node, ast.Expression):
+        return calc(node.body)
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return node.value
+    if isinstance(node, ast.BinOp) and type(node.op) in allowed:
+        return allowed[type(node.op)](calc(node.left), calc(node.right))
+    if isinstance(node, ast.UnaryOp) and type(node.op) in allowed:
+        return allowed[type(node.op)](calc(node.operand))
+    raise ValueError
+
+percent = re.fullmatch(r"([0-9.]+)\s*%\s+of\s+([0-9.]+)", query)
+if percent:
+    value = float(percent.group(1)) / 100 * float(percent.group(2))
+    print(f"{percent.group(1)}% of {percent.group(2)} = {fmt(value)}")
+    raise SystemExit(0)
+
+conv = re.fullmatch(r"([0-9.]+)\s*([a-z°]+)\s+(?:to|in|en)\s+([a-z°]+)", query)
+units = {
+    ("km", "mi"): lambda x: x * 0.621371,
+    ("mi", "km"): lambda x: x / 0.621371,
+    ("m", "ft"): lambda x: x * 3.28084,
+    ("ft", "m"): lambda x: x / 3.28084,
+    ("kg", "lb"): lambda x: x * 2.20462,
+    ("lb", "kg"): lambda x: x / 2.20462,
+    ("c", "f"): lambda x: x * 9 / 5 + 32,
+    ("f", "c"): lambda x: (x - 32) * 5 / 9,
+    ("mb", "gb"): lambda x: x / 1024,
+    ("gb", "mb"): lambda x: x * 1024,
+    ("gb", "tb"): lambda x: x / 1024,
+    ("tb", "gb"): lambda x: x * 1024,
+}
+aliases = {"°c": "c", "celsius": "c", "°f": "f", "fahrenheit": "f", "kilometer": "km", "kilometers": "km", "mile": "mi", "miles": "mi"}
+if conv:
+    value = float(conv.group(1))
+    src = aliases.get(conv.group(2), conv.group(2))
+    dst = aliases.get(conv.group(3), conv.group(3))
+    fn = units.get((src, dst))
+    if fn:
+        print(f"{fmt(value)} {src} = {fmt(fn(value))} {dst}")
+        raise SystemExit(0)
+
+if re.fullmatch(r"[0-9\s+\-*/().%^]+", query):
+    expression = query.replace("^", "**")
+    try:
+        tree = ast.parse(expression, mode="eval")
+        value = calc(tree)
+        if math.isfinite(float(value)):
+            print(f"{query} = {fmt(value)}")
+            raise SystemExit(0)
+    except Exception:
+        pass
+PY
+}
+
+open_spotlight() {
+  local mode="${1:-all}"
+  local catalog_file display_catalog_file menu_file selected label row type key command detail icon display
+  catalog_file="$(mktemp)"
+  display_catalog_file="$(mktemp)"
+  menu_file="$(mktemp)"
+  trap 'rm -f "$catalog_file" "$display_catalog_file" "$menu_file"' RETURN
+
+  build_catalog | filter_catalog "$mode" > "$catalog_file"
+  awk -F '\t' 'BEGIN { OFS = "\t" } {
+    detail = $5
+    if (length(detail) > 58) detail = substr(detail, 1, 55) "..."
+    display = $2
+    if (length(detail) > 0) display = display "  —  " detail
+    print $1, $2, $3, $4, $5, $6, display
+  }' "$catalog_file" > "$display_catalog_file"
+
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > Open command center\n'
+    printf 'entries: %s\n' "$(wc -l < "$catalog_file")"
+    return 0
+  fi
+
+  if ! command -v rofi >/dev/null 2>&1; then
+    notify "SevenOS Spotlight" "Rofi is required for Spotlight fallback."
+    exit 1
+  fi
+
+  awk -F '\t' '{ printf "%s\0icon\37%s\0meta\37%s %s %s\n", $7, $6, $1, $3, $5 }' "$display_catalog_file" > "$menu_file"
+  selected="$(rofi -dmenu -i -show-icons -p "SevenOS" -mesg "$(mode_message "$mode") · /apps /files /settings /system /web" -theme "$THEME" < "$menu_file" 2>/dev/null || true)"
+  [[ -n "$selected" ]] || return 0
+
+  row="$(awk -F '\t' -v selected="$selected" '$7 == selected { print; exit }' "$display_catalog_file")"
+  if [[ -z "$row" ]]; then
+    handle_freeform "$selected"
+    return 0
+  fi
+
+  IFS=$'\t' read -r type label key command detail icon display <<<"$row"
+  case "$type" in
+    mode) open_spotlight "${key#mode.}" ;;
+    app) launch_desktop "$key" "$command" ;;
+    file) open_path "$command" ;;
+    action|intent|setting|calc|convert|define|web|mail|contacts|calendar) run_command "$command" ;;
+    *) notify "SevenOS Spotlight" "Unknown item type: $type" ;;
+  esac
+}
+
+case "${1:-open}" in
+  open|spotlight) open_spotlight "${2:-all}" ;;
+  apps|applications) open_spotlight apps ;;
+  files) open_spotlight files ;;
+  settings) open_spotlight settings ;;
+  system) open_spotlight system ;;
+  web|intelligence) open_spotlight web ;;
+  catalog) build_catalog ;;
+  count) build_catalog | wc -l ;;
+  eval) shift; eval_query "$*" ;;
+  *)
+    printf 'Usage: seven-spotlight [open [mode]|apps|files|settings|system|web|catalog|count|eval QUERY]\n' >&2
+    exit 2
+    ;;
+esac

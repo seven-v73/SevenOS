@@ -81,6 +81,7 @@ seven flatpak status --json | python -m json.tool
 seven windows resolve photoshop --json | python -m json.tool
 seven shield status --json | python -m json.tool
 seven profile plan --json | python -m json.tool
+seven-wifi status-json | python -m json.tool
 ```
 
 The native Hub is the preferred control surface. The lightweight web control
@@ -107,6 +108,130 @@ seven keyboard apply
 ```
 
 Switch layouts with `Alt+Shift`.
+
+## Waybar Network Controls
+
+SevenOS expects the network module to be usable without opening a generic
+terminal first:
+
+```bash
+seven-wifi menu
+seven-wifi connect
+seven-wifi status-json | python -m json.tool
+```
+
+Waybar actions:
+
+- click Wi-Fi/network: open SevenOS network actions;
+- middle-click Wi-Fi/network: scan and connect to a Wi-Fi network;
+- right-click Wi-Fi/network: show NetworkManager status.
+
+If the Wi-Fi menu does not appear, check:
+
+```bash
+command -v nmcli
+systemctl is-active NetworkManager
+command -v rofi
+```
+
+## SevenOS Spotlight
+
+`Super+Space` opens SevenOS Spotlight:
+
+```bash
+seven-spotlight
+```
+
+Spotlight is the command surface for daily use. It indexes:
+
+- installed desktop applications;
+- files, common folders, recent documents and project folders;
+- SevenOS actions from the shared action registry;
+- profile/workspace actions;
+- system settings such as network, audio, power, notifications, wallpaper,
+  keyboard, Bluetooth and monitoring;
+- system, security, Windows Mode and server commands;
+- mail, contacts and calendar entrypoints when native apps are installed, with
+  web fallbacks;
+- quick calculations and practical conversions such as `42*7`, `15% of 240` or
+  `10 km to mi`;
+- definitions and web suggestions through the browser;
+- contextual intents such as preparing Forge, Studio or Cyber workspaces.
+
+Use `Super` alone when you want the full app grid. `Super+A` remains a
+compatibility shortcut, but `Super+D` is intentionally not used for apps.
+Use `Super+H` or the
+Spotlight action `Desktop · Open Seven Hub` for the Control Center.
+
+Search is intentionally centralized here. The app grid, Hub fallback, quick
+settings and power menu should behave like direct panels without their own
+visible search bars. `Super+W` and `Super+R` also route back to Spotlight so
+there is one command brain instead of multiple parallel launchers.
+
+## SevenOS Terminal Profiles
+
+SevenOS ships two Kitty profiles at the same time:
+
+```bash
+seven-terminal classic
+seven-terminal dark
+seven-terminal menu
+```
+
+Desktop shortcuts:
+
+```text
+Super+Enter       Terminal Classic
+Super+Shift+Enter Terminal Dark
+Super+Ctrl+Enter  Terminal theme menu
+```
+
+Open a new terminal after `./install.sh theme`; already-running Kitty windows
+keep their previous config until they are closed.
+
+The launcher opens a compact floating terminal instead of a tiled/fullscreen
+window. It also uses a minimal shell profile, so it starts without country
+signals, fastfetch or hardware/system descriptions:
+
+```text
+Super+Enter       640x420 Classic terminal
+Super+Shift+Enter 640x420 Dark terminal
+```
+
+SevenOS prefers the native GTK/VTE terminal surface when `python-gobject` and
+`vte3` are installed. That surface has real clickable macOS-style traffic-light
+buttons:
+
+```text
+red    close
+yellow minimize
+green  maximize / restore
+```
+
+If GTK/VTE is not installed yet, SevenOS falls back to Kitty with visual
+traffic-light markers and these shortcuts:
+
+```text
+Ctrl+Shift+W close terminal tab/window
+Ctrl+Shift+M move terminal to the SevenOS scratch workspace
+Ctrl+Shift+F toggle fullscreen
+```
+
+## SevenOS Launchpad
+
+`Super` opens the SevenOS Launchpad. It is intentionally an icon-first app grid:
+large icons, soft spacing, a compact app filter at the top and no system command
+results. Global actions, files, settings and intelligence still belong to
+`Super+Space` Spotlight.
+
+If an old fullscreen Kitty window keeps appearing, close all Kitty windows and
+re-apply the active desktop layer:
+
+```bash
+./install.sh cli
+./install.sh theme
+hyprctl reload
+```
 
 ## Product Rule
 
