@@ -291,10 +291,10 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/sevenos".format == "7" and ."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-dock toggle" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and ."custom/bluetooth"."return-type" == "json" and (."modules-right" | index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/power"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar exposes liquid Apps launcher and centered workspaces"
+if jq -e '."modules-left" == ["custom/sevenos","custom/apps","hyprland/workspaces"] and ."modules-center" == ["custom/spotlight","custom/ai"] and ."custom/sevenos".format == "7" and (."custom/apps".format | contains("Apps")) and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-dock toggle" and ."custom/spotlight"."on-click" == "seven-spotlight" and ."custom/ai"."on-click" == "seven ai focus" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and ."custom/bluetooth"."return-type" == "json" and (."modules-right" | index("cpu") and index("memory") and index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/power"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar exposes futuristic Apps, Spotlight, AI and workspace cockpit"
 else
-  fail "Waybar liquid Apps launcher or centered workspaces missing"
+  fail "Waybar futuristic Apps, Spotlight, AI or workspace cockpit missing"
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&

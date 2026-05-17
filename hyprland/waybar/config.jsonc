@@ -1,14 +1,14 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 38,
-  "spacing": 0,
-  "margin-top": 6,
-  "margin-left": 18,
-  "margin-right": 18,
-  "modules-left": ["custom/sevenos", "custom/apps", "clock"],
-  "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/security", "cpu", "custom/bluetooth", "pulseaudio", "network", "battery", "custom/notifications", "custom/settings", "custom/power"],
+  "height": 44,
+  "spacing": 8,
+  "margin-top": 10,
+  "margin-left": 22,
+  "margin-right": 22,
+  "modules-left": ["custom/sevenos", "custom/apps", "hyprland/workspaces"],
+  "modules-center": ["custom/spotlight", "custom/ai"],
+  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "custom/bluetooth", "pulseaudio", "network", "battery", "custom/notifications", "clock", "custom/settings", "custom/power"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
@@ -22,12 +22,28 @@
     "on-click-middle": "seven-spotlight"
   },
   "custom/apps": {
-    "format": "Apps",
+    "format": "󰣆 Apps",
     "tooltip": true,
     "tooltip-format": "Applications. Click opens app grid, right-click toggles Dock.",
     "on-click": "seven-overview apps",
     "on-click-right": "seven-dock toggle",
     "on-click-middle": "seven-spotlight"
+  },
+  "custom/spotlight": {
+    "format": "󰍉 Rechercher...",
+    "tooltip": true,
+    "tooltip-format": "SevenOS Spotlight. Apps, fichiers, actions, réglages et assistant.",
+    "on-click": "seven-spotlight",
+    "on-click-right": "seven-hub",
+    "on-click-middle": "seven-overview apps"
+  },
+  "custom/ai": {
+    "format": "󰚩 AI",
+    "tooltip": true,
+    "tooltip-format": "SevenAI local focus. Click shows product guidance.",
+    "on-click": "seven ai focus",
+    "on-click-right": "seven control",
+    "on-click-middle": "seven insights"
   },
   "custom/files": {
     "format": "󰉋",
@@ -61,6 +77,13 @@
     "on-click": "seven-waybar-action system",
     "on-click-right": "seven-settings system",
     "on-click-middle": "seven-waybar-action system"
+  },
+  "memory": {
+    "format": "󰘚",
+    "tooltip": true,
+    "tooltip-format": "Memory {used:0.1f}G / {total:0.1f}G",
+    "on-click": "seven-waybar-action system",
+    "on-click-right": "seven-settings system"
   },
   "custom/bluetooth": {
     "exec": "bash -lc 'cmd=\"$HOME/.local/bin/seven-bluetooth\"; [ -x \"$cmd\" ] || cmd=seven-bluetooth; \"$cmd\" status-json'",

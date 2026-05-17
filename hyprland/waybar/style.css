@@ -1,37 +1,57 @@
+@define-color seven_bg rgba(9, 9, 11, 0.38);
+@define-color seven_surface rgba(18, 19, 26, 0.58);
+@define-color seven_surface_lift rgba(26, 30, 44, 0.62);
+@define-color seven_edge rgba(237, 237, 237, 0.12);
+@define-color seven_edge_hot rgba(77, 163, 255, 0.42);
+@define-color seven_text rgba(237, 237, 237, 0.94);
+@define-color seven_muted rgba(176, 186, 205, 0.76);
+@define-color seven_blue #4DA3FF;
+@define-color seven_violet #7A5CFF;
+@define-color seven_cyan #00D4FF;
+@define-color seven_cyber #00FFB3;
+@define-color seven_danger rgba(255, 89, 118, 0.94);
+
 * {
   border: none;
   border-radius: 0;
   font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
+  letter-spacing: 0;
   min-height: 0;
 }
 
 window#waybar {
-  background: transparent;
-  color: rgba(16, 25, 31, 0.97);
+  background:
+    radial-gradient(circle at 12% 10%, rgba(77, 163, 255, 0.16), transparent 32%),
+    radial-gradient(circle at 78% 16%, rgba(122, 92, 255, 0.16), transparent 34%),
+    linear-gradient(90deg, rgba(9, 9, 11, 0.26), rgba(18, 19, 26, 0.42), rgba(9, 9, 11, 0.24));
+  color: @seven_text;
 }
 
 tooltip {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(233, 244, 249, 0.72)),
-    rgba(255, 255, 255, 0.68);
-  border: 1px solid rgba(255, 255, 255, 0.86);
-  border-radius: 16px;
-  color: rgba(16, 25, 31, 0.97);
+    radial-gradient(circle at 20% 0%, rgba(77, 163, 255, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(22, 25, 36, 0.96), rgba(9, 9, 11, 0.90));
+  border: 1px solid rgba(237, 237, 237, 0.14);
+  border-radius: 18px;
+  color: @seven_text;
 }
 
 tooltip label {
-  padding: 7px 10px;
+  padding: 8px 11px;
 }
 
 #custom-sevenos,
 #custom-apps,
+#custom-spotlight,
+#custom-ai,
 #clock,
 #workspaces,
 #custom-profile,
 #custom-security,
 #cpu,
+#memory,
 #custom-bluetooth,
 #pulseaudio,
 #network,
@@ -39,94 +59,124 @@ tooltip label {
 #custom-notifications,
 #custom-settings,
 #custom-power {
-  min-height: 27px;
-  margin-top: 3px;
-  margin-bottom: 3px;
-  padding: 0 10px;
-  color: rgba(16, 25, 31, 0.97);
+  min-height: 31px;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  padding: 0 12px;
+  color: @seven_text;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(225, 240, 248, 0.48)),
-    rgba(255, 255, 255, 0.38);
-  border-top: 1px solid rgba(255, 255, 255, 0.88);
-  border-bottom: 1px solid rgba(68, 92, 108, 0.16);
-  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.030)),
+    radial-gradient(circle at 22% 0%, rgba(77, 163, 255, 0.10), transparent 36%),
+    @seven_surface;
+  border: 1px solid @seven_edge;
+  border-radius: 999px;
+  text-shadow: 0 0 10px rgba(77, 163, 255, 0.26);
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    border-color 220ms ease,
+    opacity 220ms ease;
 }
 
 #custom-sevenos {
-  margin-left: 4px;
-  padding-left: 14px;
-  padding-right: 12px;
-  border-radius: 16px 0 0 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.82);
-  color: rgba(106, 74, 39, 0.98);
-  font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
-  font-size: 18px;
-  font-style: italic;
+  min-width: 35px;
+  margin-left: 2px;
+  padding-left: 13px;
+  padding-right: 13px;
+  color: @seven_cyan;
+  font-family: "SF Pro Rounded", "SF Pro Display", system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 500;
+  background:
+    radial-gradient(circle at 50% 15%, rgba(0, 212, 255, 0.25), transparent 45%),
+    radial-gradient(circle at 50% 95%, rgba(122, 92, 255, 0.26), transparent 48%),
+    rgba(12, 14, 22, 0.70);
+  border-color: rgba(77, 163, 255, 0.34);
+  text-shadow:
+    0 0 9px rgba(0, 212, 255, 0.80),
+    0 0 18px rgba(122, 92, 255, 0.52);
 }
 
 #custom-apps {
-  padding-left: 12px;
-  padding-right: 13px;
-  border-left: 1px solid rgba(68, 92, 108, 0.10);
-  font-size: 12px;
-}
-
-#clock {
-  padding-left: 11px;
-  padding-right: 14px;
-  border-left: 1px solid rgba(68, 92, 108, 0.10);
-  border-right: 1px solid rgba(68, 92, 108, 0.20);
-  border-radius: 0 16px 16px 0;
+  padding-left: 14px;
+  padding-right: 15px;
+  color: rgba(237, 237, 237, 0.92);
 }
 
 #workspaces {
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.82);
-  border-right: 1px solid rgba(74, 102, 119, 0.18);
+  padding: 0 8px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(221, 237, 246, 0.52)),
-    rgba(255, 255, 255, 0.44);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.035)),
+    rgba(8, 10, 17, 0.58);
+  border-color: rgba(237, 237, 237, 0.13);
 }
 
 #workspaces button {
-  min-width: 24px;
-  min-height: 20px;
-  margin: 4px 1px;
-  padding: 0 8px;
-  border-radius: 9px;
-  color: rgba(44, 58, 66, 0.82);
+  min-width: 26px;
+  min-height: 23px;
+  margin: 3px 2px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: @seven_muted;
   background: transparent;
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    min-width 220ms ease,
+    border-color 220ms ease;
 }
 
 #workspaces button:hover {
-  color: rgba(18, 27, 34, 0.98);
-  background: rgba(255, 255, 255, 0.50);
+  color: @seven_text;
+  background: rgba(77, 163, 255, 0.12);
+  text-shadow: 0 0 12px rgba(77, 163, 255, 0.56);
 }
 
 #workspaces button.active {
-  color: rgba(18, 27, 34, 0.98);
+  min-width: 36px;
+  color: rgba(255, 255, 255, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(203, 224, 238, 0.70)),
-    rgba(255, 255, 255, 0.60);
-  border: 1px solid rgba(82, 122, 149, 0.28);
+    radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.32), transparent 55%),
+    linear-gradient(135deg, rgba(77, 163, 255, 0.38), rgba(122, 92, 255, 0.34));
+  border: 1px solid rgba(77, 163, 255, 0.50);
+  text-shadow:
+    0 0 11px rgba(0, 212, 255, 0.78),
+    0 0 22px rgba(122, 92, 255, 0.54);
 }
 
 #workspaces button.urgent {
-  color: rgba(132, 54, 41, 0.98);
-  background: rgba(196, 103, 58, 0.16);
+  color: @seven_danger;
+  background: rgba(255, 89, 118, 0.15);
+  border: 1px solid rgba(255, 89, 118, 0.30);
 }
 
-#custom-profile {
-  margin-left: 4px;
-  border-radius: 16px 0 0 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.82);
+#custom-spotlight {
+  min-width: 255px;
+  padding-left: 18px;
+  padding-right: 22px;
+  color: rgba(237, 237, 237, 0.84);
+  background:
+    radial-gradient(circle at 0% 50%, rgba(77, 163, 255, 0.18), transparent 42%),
+    radial-gradient(circle at 100% 45%, rgba(122, 92, 255, 0.18), transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    rgba(14, 16, 27, 0.62);
+  border-color: rgba(77, 163, 255, 0.22);
+}
+
+#custom-ai {
+  min-width: 48px;
+  color: @seven_cyan;
+  background:
+    radial-gradient(circle at 50% 5%, rgba(0, 212, 255, 0.22), transparent 46%),
+    rgba(14, 16, 27, 0.62);
+  border-color: rgba(0, 212, 255, 0.22);
+  font-family: "SF Pro Rounded", "SF Pro Display", system-ui, sans-serif;
 }
 
 #custom-profile,
 #custom-security,
 #cpu,
+#memory,
 #custom-bluetooth,
 #pulseaudio,
 #network,
@@ -134,52 +184,63 @@ tooltip label {
 #custom-notifications,
 #custom-settings,
 #custom-power {
-  margin-left: 0;
-  margin-right: 0;
-  border-left: 1px solid rgba(68, 92, 108, 0.10);
-  font-family: "SF Pro Display", "SF UI Display", "San Francisco", sans-serif;
+  min-width: 30px;
+  padding-left: 11px;
+  padding-right: 11px;
+  color: rgba(221, 229, 244, 0.88);
 }
 
 #cpu,
-#custom-bluetooth,
-#custom-security,
-#custom-profile {
-  min-width: 27px;
-  padding-left: 9px;
-  padding-right: 9px;
-  color: rgba(42, 58, 68, 0.74);
+#memory {
+  font-family: "SF Mono", "JetBrains Mono", monospace;
+  color: rgba(0, 212, 255, 0.90);
 }
 
-#custom-profile,
 #custom-security {
-  font-size: 14px;
+  color: @seven_cyber;
+  font-family: "SF Mono", "JetBrains Mono", monospace;
+  border-color: rgba(0, 255, 179, 0.22);
+  background:
+    linear-gradient(180deg, rgba(0, 255, 179, 0.10), rgba(0, 255, 179, 0.030)),
+    rgba(6, 13, 13, 0.58);
+  text-shadow: 0 0 13px rgba(0, 255, 179, 0.50);
 }
 
-#pulseaudio,
-#network,
-#battery {
-  padding-left: 9px;
-  padding-right: 9px;
+#clock {
+  min-width: 72px;
+  padding-left: 14px;
+  padding-right: 14px;
+  color: rgba(237, 237, 237, 0.94);
+  font-family: "SF Mono", "JetBrains Mono", monospace;
+}
+
+#network.wifi,
+#network.ethernet,
+#custom-bluetooth.connected,
+#custom-bluetooth.on {
+  color: @seven_cyan;
+  border-color: rgba(0, 212, 255, 0.28);
 }
 
 #custom-profile.ok,
 #custom-security.ok,
-#custom-bluetooth.connected,
-#custom-bluetooth.on,
 #custom-notifications.ok,
 #battery.charging {
-  color: rgba(38, 116, 76, 0.96);
+  color: @seven_cyber;
+  border-color: rgba(0, 255, 179, 0.28);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(218, 242, 226, 0.52)),
-    rgba(90, 173, 114, 0.10);
+    linear-gradient(180deg, rgba(0, 255, 179, 0.11), rgba(0, 255, 179, 0.030)),
+    @seven_surface;
 }
 
 #custom-profile.warn,
-#custom-security.warn {
-  color: rgba(137, 93, 42, 0.96);
+#custom-security.warn,
+#battery.warning:not(.charging) {
+  color: rgba(255, 198, 92, 0.96);
+  border-color: rgba(255, 198, 92, 0.28);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(235, 226, 205, 0.52)),
-    rgba(200, 169, 110, 0.12);
+    linear-gradient(180deg, rgba(255, 198, 92, 0.11), rgba(255, 198, 92, 0.025)),
+    @seven_surface;
 }
 
 #custom-profile.miss,
@@ -189,36 +250,38 @@ tooltip label {
 #custom-notifications.miss,
 #pulseaudio.muted,
 #network.disconnected,
-#battery.warning:not(.charging),
 #battery.critical:not(.charging) {
-  color: rgba(143, 65, 45, 0.96);
+  color: @seven_danger;
+  border-color: rgba(255, 89, 118, 0.28);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(242, 223, 214, 0.52)),
-    rgba(196, 103, 58, 0.12);
+    linear-gradient(180deg, rgba(255, 89, 118, 0.12), rgba(255, 89, 118, 0.025)),
+    @seven_surface;
 }
 
-#custom-notifications.dnd,
-#network.wifi,
-#network.ethernet,
-#custom-settings,
-#custom-power {
-  color: rgba(44, 96, 132, 0.96);
+#custom-notifications.dnd {
+  color: rgba(177, 164, 255, 0.94);
+  border-color: rgba(122, 92, 255, 0.26);
+}
+
+#custom-settings {
+  color: rgba(237, 237, 237, 0.88);
 }
 
 #custom-power {
-  margin-right: 4px;
-  padding-left: 10px;
-  padding-right: 13px;
-  border-right: 1px solid rgba(68, 92, 108, 0.20);
-  border-radius: 0 16px 16px 0;
+  margin-right: 2px;
+  color: rgba(255, 127, 158, 0.94);
+  border-color: rgba(255, 89, 118, 0.22);
 }
 
 #custom-sevenos:hover,
 #custom-apps:hover,
+#custom-spotlight:hover,
+#custom-ai:hover,
 #clock:hover,
 #custom-profile:hover,
 #custom-security:hover,
 #cpu:hover,
+#memory:hover,
 #custom-bluetooth:hover,
 #pulseaudio:hover,
 #network:hover,
@@ -226,7 +289,13 @@ tooltip label {
 #custom-notifications:hover,
 #custom-settings:hover,
 #custom-power:hover {
+  color: rgba(255, 255, 255, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(215, 237, 248, 0.64)),
-    rgba(255, 255, 255, 0.58);
+    radial-gradient(circle at 50% 0%, rgba(77, 163, 255, 0.18), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.055)),
+    @seven_surface_lift;
+  border-color: @seven_edge_hot;
+  text-shadow:
+    0 0 10px rgba(77, 163, 255, 0.62),
+    0 0 20px rgba(122, 92, 255, 0.35);
 }

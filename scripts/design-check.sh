@@ -58,22 +58,24 @@ else
   fail "SevenOS typography should follow SF Pro Display/Text, SF Mono and SF Pro Rounded roles"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/notifications") and index("custom/power")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar uses a SevenOS left/center/right liquid hierarchy"
+if jq -e '."modules-left" == ["custom/sevenos","custom/apps","hyprland/workspaces"] and ."modules-center" == ["custom/spotlight","custom/ai"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("cpu") and index("memory") and index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/notifications") and index("clock") and index("custom/power")) and .spacing == 8' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar uses a SevenOS cockpit hierarchy"
 else
-  fail "Waybar should use SevenOS/Apps/time left, workspaces center, stateful system controls right."
+  fail "Waybar should use SevenOS/Apps/workspaces left, Spotlight/AI center, stateful system controls right."
 fi
 
-if grep -q 'border-radius: 16px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+if grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-sevenos' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-spotlight' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-ai' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-profile.ok' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-security.miss' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-bluetooth.connected' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'background: transparent' "$ROOT_DIR/hyprland/waybar/style.css"; then
-  ok "Waybar uses liquid glass islands"
+   grep -q '@define-color seven_cyber' "$ROOT_DIR/hyprland/waybar/style.css"; then
+  ok "Waybar uses futuristic liquid glass islands"
 else
-  fail "Waybar should use liquid glass islands"
+  fail "Waybar should use futuristic liquid glass islands"
 fi
 
 if [[ -x "$ROOT_DIR/bin/seven-dock" ]] &&
