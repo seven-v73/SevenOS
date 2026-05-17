@@ -125,6 +125,8 @@ def run_files(start_path: str) -> int:
 
     history: list[Path] = []
     future: list[Path] = []
+    file_clipboard: list[Path] = []
+    file_clipboard_cut = False
 
     css = """
     window.seven-files {
@@ -223,8 +225,8 @@ def run_files(start_path: str) -> int:
       background: #ffffff;
     }
     .file-tile {
-      min-width: 124px;
-      min-height: 132px;
+      min-width: 120px;
+      min-height: 124px;
       padding: 10px 6px;
       border-radius: 16px;
       color: #20242a;
@@ -246,6 +248,10 @@ def run_files(start_path: str) -> int:
     .files-status-label {
       color: #7b828a;
       font: 500 11px "DM Sans", "Inter", sans-serif;
+    }
+    .file-tile-box {
+      min-width: 120px;
+      min-height: 124px;
     }
     menu {
       border-radius: 12px;
@@ -269,8 +275,8 @@ def run_files(start_path: str) -> int:
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     window = Gtk.Window(title="Seven Files")
-    window.set_default_size(1120, 700)
-    window.set_size_request(1040, 620)
+    window.set_default_size(1080, 680)
+    window.set_size_request(980, 600)
     window.set_resizable(True)
     window.set_decorated(False)
     window.set_wmclass("SevenFilesNative", "SevenFilesNative")
@@ -416,7 +422,12 @@ def run_files(start_path: str) -> int:
     title.get_style_context().add_class("files-title")
     toolbar.pack_start(title, True, True, 10)
 
-    for icon in ("view-grid-symbolic", "view-list-symbolic", "view-column-symbolic", "view-more-symbolic"):
+    copy_btn = toolbar_button("edit-copy-symbolic", lambda *_: copy_selected())
+    paste_btn = toolbar_button("edit-paste-symbolic", lambda *_: paste_items())
+    for button in (copy_btn, paste_btn):
+        toolbar.pack_start(button, False, False, 0)
+
+    for icon in ("view-grid-symbolic", "view-list-symbolic", "view-column-symbolic"):
         toolbar.pack_start(toolbar_button(icon, lambda *_: None), False, False, 0)
 
     scroller = Gtk.ScrolledWindow()
@@ -428,6 +439,7 @@ def run_files(start_path: str) -> int:
     flow.set_halign(Gtk.Align.FILL)
     flow.set_valign(Gtk.Align.START)
     flow.set_selection_mode(Gtk.SelectionMode.SINGLE)
+    flow.set_activate_on_single_click(False)
     flow.set_min_children_per_line(4)
     flow.set_max_children_per_line(4)
     flow.set_column_spacing(22)
@@ -482,6 +494,7 @@ def run_files(start_path: str) -> int:
                 ctx.remove_class("active")
 
     def render():
+        previous_size = window.get_size()
         title.set_text(current.name or str(current))
         for child in flow.get_children():
             flow.remove(child)
@@ -492,19 +505,22 @@ def run_files(start_path: str) -> int:
         for path in entries:
             child = Gtk.FlowBoxChild()
             child.get_style_context().add_class("file-tile")
+            child.set_size_request(120, 124)
             child.path = path
             tile_event = Gtk.EventBox()
             tile_event.set_visible_window(False)
             tile_event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
             box.set_halign(Gtk.Align.CENTER)
+            box.set_size_request(120, 124)
+            box.get_style_context().add_class("file-tile-box")
             image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
-            image.set_pixel_size(72)
+            image.set_pixel_size(68)
             label = Gtk.Label(label=path.name)
-            label.set_width_chars(14)
-            label.set_max_width_chars(14)
-            label.set_line_wrap(True)
-            label.set_lines(2)
+            label.set_width_chars(13)
+            label.set_max_width_chars(13)
+            label.set_line_wrap(False)
+            label.set_single_line_mode(True)
             label.set_ellipsize(Pango.EllipsizeMode.END)
             label.set_justify(Gtk.Justification.CENTER)
             label.get_style_context().add_class("file-name")
@@ -518,6 +534,14 @@ def run_files(start_path: str) -> int:
         update_sidebar()
         update_preview(current)
         flow.show_all()
+        if previous_size != (1, 1):
+            GLib.idle_add(lambda: restore_window_size(previous_size))
+
+    def restore_window_size(size: tuple[int, int]) -> bool:
+        width, height = size
+        if width > 0 and height > 0:
+            window.resize(width, height)
+        return False
 
     def detail_row(label: str, value: str):
         heading = Gtk.Label(label=label)
@@ -629,6 +653,68 @@ def run_files(start_path: str) -> int:
     def copy_path(path: Path):
         Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(str(path), -1)
 
+    def selected_path() -> Path | None:
+        selected = flow.get_selected_children()
+        if not selected:
+            return None
+        return selected[0].path
+
+    def copy_items(paths: list[Path], cut: bool = False):
+        nonlocal file_clipboard, file_clipboard_cut
+        file_clipboard = [path for path in paths if path.exists()]
+        file_clipboard_cut = cut
+        if file_clipboard:
+            Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text("\n".join(str(path) for path in file_clipboard), -1)
+            status_label.set_text(f"{'Cut' if cut else 'Copied'} {len(file_clipboard)} item(s)")
+
+    def copy_selected():
+        path = selected_path()
+        if path:
+            copy_items([path])
+
+    def cut_selected():
+        path = selected_path()
+        if path:
+            copy_items([path], cut=True)
+
+    def unique_destination(directory: Path, name: str) -> Path:
+        destination = directory / name
+        if not destination.exists():
+            return destination
+        stem = destination.stem
+        suffix = destination.suffix
+        for index in range(2, 1000):
+            candidate = directory / f"{stem} copy {index}{suffix}"
+            if not candidate.exists():
+                return candidate
+        return directory / f"{stem} copy{suffix}"
+
+    def paste_items():
+        nonlocal file_clipboard, file_clipboard_cut
+        if not file_clipboard:
+            status_label.set_text("Nothing to paste")
+            return
+        pasted = 0
+        for source in list(file_clipboard):
+            if not source.exists():
+                continue
+            destination = unique_destination(current, source.name)
+            try:
+                if file_clipboard_cut:
+                    shutil.move(str(source), str(destination))
+                elif source.is_dir():
+                    shutil.copytree(source, destination)
+                else:
+                    shutil.copy2(source, destination)
+                pasted += 1
+            except OSError:
+                continue
+        if file_clipboard_cut:
+            file_clipboard = []
+            file_clipboard_cut = False
+        render()
+        status_label.set_text(f"Pasted {pasted} item(s)" if pasted else "Paste failed")
+
     def reveal_in_parent(path: Path):
         xdg_open(path.parent if path.is_file() else path)
 
@@ -640,6 +726,10 @@ def run_files(start_path: str) -> int:
     def show_context_menu(path: Path, event):
         menu = Gtk.Menu()
         add_menu_item(menu, "Open", lambda: navigate(path) if path.is_dir() else open_file(path))
+        add_menu_item(menu, "Copy", lambda: copy_items([path]))
+        add_menu_item(menu, "Cut", lambda: copy_items([path], cut=True))
+        add_menu_item(menu, "Paste Item", paste_items)
+        menu.append(Gtk.SeparatorMenuItem())
         add_menu_item(menu, "Reveal in Folder", lambda: reveal_in_parent(path))
         add_menu_item(menu, "Copy Path", lambda: copy_path(path))
         if is_image(path):
@@ -662,7 +752,19 @@ def run_files(start_path: str) -> int:
         if getattr(event, "button", 0) == 1:
             flow.select_child(child)
             update_preview(path)
+            if getattr(event, "type", None) == Gdk.EventType._2BUTTON_PRESS:
+                open_selected(path)
+            return True
         return False
+
+    def open_selected(path: Path | None = None):
+        target = path or selected_path()
+        if not target:
+            return
+        if target.is_dir():
+            navigate(target)
+        else:
+            open_file(target)
 
     def navigate(path: Path):
         nonlocal current
@@ -691,11 +793,7 @@ def run_files(start_path: str) -> int:
     def activate(_flow, child):
         if child is None:
             return
-        path = child.path
-        if path.is_dir():
-            navigate(path)
-        else:
-            open_file(path)
+        open_selected(child.path)
 
     def selection_changed(flow_box):
         selected = flow_box.get_selected_children()
@@ -711,6 +809,19 @@ def run_files(start_path: str) -> int:
         if event.keyval == Gdk.KEY_BackSpace:
             go_back()
             return True
+        if event.keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
+            open_selected()
+            return True
+        if event.state & Gdk.ModifierType.CONTROL_MASK:
+            if event.keyval in (Gdk.KEY_c, Gdk.KEY_C):
+                copy_selected()
+                return True
+            if event.keyval in (Gdk.KEY_x, Gdk.KEY_X):
+                cut_selected()
+                return True
+            if event.keyval in (Gdk.KEY_v, Gdk.KEY_V):
+                paste_items()
+                return True
         return False
 
     flow.connect("child-activated", activate)
@@ -719,7 +830,7 @@ def run_files(start_path: str) -> int:
     window.connect("destroy", Gtk.main_quit)
     render()
     window.show_all()
-    window.resize(1120, 700)
+    window.resize(1080, 680)
     Gtk.main()
     return 0
 
