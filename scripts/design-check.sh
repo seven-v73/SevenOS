@@ -112,12 +112,12 @@ else
   fail "Seven Hub fallback should use readable frosted navigation"
 fi
 
-if grep -q 'width: 48%' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
-   grep -q 'border-radius: 28px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+if grep -q 'width: 52%' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'border-radius: 30px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
-   grep -q 'Search SevenOS' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'Search apps, files, windows, clipboard, actions' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
-   grep -q 'min-height: 52px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'min-height: 54px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" &&

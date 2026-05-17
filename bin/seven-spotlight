@@ -29,6 +29,8 @@ ROOT_DIR="$(resolve_root)"
 export SEVENOS_ROOT="$ROOT_DIR"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 THEME="$CONFIG_HOME/rofi/spotlight.rasi"
+STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+HISTORY_FILE="$STATE_HOME/sevenos/spotlight-history.tsv"
 
 notify() {
   local title="$1"
@@ -78,6 +80,26 @@ open_path() {
     notify "SevenOS Spotlight" "xdg-open is not installed."
     return 1
   fi
+}
+
+remember_query() {
+  local query="$1"
+  [[ -n "$query" ]] || return 0
+  mkdir -p "$(dirname "$HISTORY_FILE")"
+  python - "$HISTORY_FILE" "$query" <<'PY'
+from pathlib import Path
+import sys
+from time import strftime
+
+path = Path(sys.argv[1])
+query = sys.argv[2].strip()
+rows = []
+if path.exists():
+    rows = [line.rstrip("\n") for line in path.read_text(encoding="utf-8", errors="replace").splitlines()]
+rows = [line for line in rows if not line.endswith("\t" + query)]
+rows.append(strftime("%Y-%m-%d %H:%M:%S") + "\t" + query)
+path.write_text("\n".join(rows[-40:]) + "\n", encoding="utf-8")
+PY
 }
 
 desktop_catalog() {
@@ -210,6 +232,9 @@ mode	󰉋  /files · Files	mode.files	__mode__	Folders, projects and recent file
 mode	󰒓  /settings · Settings	mode.settings	__mode__	System controls and SevenOS settings.	preferences-system
 mode	󰐊  /system · System Actions	mode.system	__mode__	SevenOS actions, profiles, security and runtime commands.	system-run
 mode	󰖟  /web · Web & Intelligence	mode.web	__mode__	Calculations, conversions, definitions, web, mail, contacts and calendar.	web-browser
+mode	󰅇  /clipboard · Clipboard	mode.clipboard	__mode__	Recent clipboard items from cliphist or wl-paste.	edit-paste
+mode	󰖲  /windows · Windows	mode.windows	__mode__	Open Hyprland windows and active app surfaces.	preferences-system-windows
+mode	󰋚  /history · Search History	mode.history	__mode__	Previous Spotlight searches and commands.	document-open-recent
 intent	󰚩  Ask · Why is my system slow?	ai.system.slow	seven insights	Analyze SevenOS readiness, services and bottlenecks.	system-search
 intent	󰁹  Ask · Optimize battery	ai.battery	seven scheduler plan	Show power-aware scheduler recommendations.	battery
 intent	󰒃  Ask · Prepare Cyber workspace	ai.cyber	seven shield mode	Open CyberSpace context and actions.	security-high
@@ -222,7 +247,104 @@ web	󰖟  Web · Search the web	web.help	__web__	Type any question or prefix wit
 mail	󰇮  Mail · Open mail client	mail.open	__mail__	Open Thunderbird, Evolution, Geary or web mail.	internet-mail
 contacts	󰀻  Contacts · Open address book	contacts.open	__contacts__	Open GNOME Contacts, KDE contacts or web contacts.	x-office-address-book
 calendar	󰃭  Calendar · Open events	calendar.open	__calendar__	Open GNOME Calendar, KOrganizer or web calendar.	x-office-calendar
+quick	󰔟  Quick Action · Start 5 minute timer	quick.timer.5	__timer_5__	Start a desktop timer notification.	alarm
+quick	󰔟  Quick Action · Start 25 minute focus timer	quick.timer.25	__timer_25__	Start a focus timer notification.	alarm
+quick	󰑊  Quick Action · Record audio	quick.audio.record	__record_audio__	Start a quick PipeWire audio recording when pw-record is available.	audio-input-microphone
+quick	󰐊  Quick Action · Open command terminal	quick.terminal	seven-terminal classic	Open SevenOS classic terminal.	utilities-terminal
 EOF
+}
+
+clipboard_catalog() {
+  if command -v cliphist >/dev/null 2>&1; then
+    CLIPBOARD_ROWS="$(cliphist list 2>/dev/null | sed -n '1,20p')" python - <<'PY'
+import os
+import sys
+for index, raw in enumerate(os.environ.get("CLIPBOARD_ROWS", "").splitlines(), 1):
+    item = raw.strip()
+    if not item:
+        continue
+    parts = item.split("\t", 1)
+    clip_id = parts[0]
+    text = parts[1] if len(parts) > 1 else item
+    preview = text.replace("\t", " ")
+    if len(preview) > 80:
+        preview = preview[:77] + "..."
+    print("\t".join(("clipboard", f"󰅇  Clipboard · {preview}", f"clipboard.{index}", clip_id, "Paste or copy this clipboard entry.", "edit-paste")))
+PY
+    return 0
+  fi
+  if command -v wl-paste >/dev/null 2>&1; then
+    local current
+    current="$(wl-paste 2>/dev/null | head -c 160 | tr '\n\t' '  ' || true)"
+    if [[ -n "$current" ]]; then
+      printf 'clipboard\t󰅇  Clipboard · %s\tclipboard.current\t__current__\tCurrent Wayland clipboard.\tedit-paste\n' "$current"
+    fi
+  fi
+}
+
+window_catalog() {
+  if ! command -v hyprctl >/dev/null 2>&1; then
+    return 0
+  fi
+  HYPR_CLIENTS_JSON="$(hyprctl clients -j 2>/dev/null || true)" python - <<'PY'
+import json
+import os
+import sys
+
+try:
+    clients = json.loads(os.environ.get("HYPR_CLIENTS_JSON", "[]"))
+except Exception:
+    clients = []
+
+for index, client in enumerate(clients, 1):
+    title = client.get("title") or client.get("class") or "Window"
+    klass = client.get("class") or "app"
+    address = client.get("address", "")
+    workspace = client.get("workspace", {}).get("name", "?")
+    label = f"󰖲  Window · {title}"
+    detail = f"{klass} · workspace {workspace}"
+    print("\t".join(("window", label.replace("\t", " "), f"window.{index}", address, detail.replace("\t", " "), "preferences-system-windows")))
+PY
+}
+
+history_catalog() {
+  [[ -s "$HISTORY_FILE" ]] || return 0
+  tail -n 20 "$HISTORY_FILE" | tac | awk -F '\t' 'NF >= 2 {
+    query=$2
+    gsub(/\t/, " ", query)
+    print "history\t󰋚  History · " query "\thistory." NR "\t" query "\tRun previous Spotlight query.\tdocument-open-recent"
+  }'
+}
+
+browser_catalog() {
+  python - <<'PY'
+import sqlite3
+import shutil
+import tempfile
+from pathlib import Path
+
+profiles = sorted((Path.home() / ".mozilla/firefox").glob("*/places.sqlite"))
+count = 0
+for db in profiles[:2]:
+    try:
+        tmp = Path(tempfile.mkstemp(suffix=".sqlite")[1])
+        shutil.copy2(db, tmp)
+        conn = sqlite3.connect(tmp)
+        rows = conn.execute(
+            "select coalesce(title, url), url from moz_bookmarks b join moz_places p on b.fk = p.id "
+            "where url like 'http%' order by b.dateAdded desc limit 12"
+        ).fetchall()
+        conn.close()
+        tmp.unlink(missing_ok=True)
+    except Exception:
+        continue
+    for title, url in rows:
+        count += 1
+        title = (title or url).replace("\t", " ")
+        if len(title) > 72:
+            title = title[:69] + "..."
+        print("\t".join(("bookmark", f"󰖟  Bookmark · {title}", f"bookmark.{count}", url, "Firefox bookmark.", "web-browser")))
+PY
 }
 
 system_catalog() {
@@ -299,6 +421,10 @@ build_catalog() {
     extra_catalog
     system_catalog
     file_catalog
+    clipboard_catalog
+    window_catalog
+    history_catalog
+    browser_catalog
     action_catalog
     desktop_catalog
   } | awk -F '\t' 'NF >= 6 && !seen[$2]++'
@@ -312,7 +438,10 @@ filter_catalog() {
     files) awk -F '\t' '$1 == "file"' ;;
     settings) awk -F '\t' '$1 == "setting"' ;;
     system) awk -F '\t' '$1 == "action" || $1 == "intent" || $1 == "mode"' ;;
-    web) awk -F '\t' '$1 == "calc" || $1 == "convert" || $1 == "define" || $1 == "web" || $1 == "mail" || $1 == "contacts" || $1 == "calendar"' ;;
+    web) awk -F '\t' '$1 == "calc" || $1 == "convert" || $1 == "define" || $1 == "web" || $1 == "mail" || $1 == "contacts" || $1 == "calendar" || $1 == "quick" || $1 == "bookmark"' ;;
+    clipboard) awk -F '\t' '$1 == "clipboard"' ;;
+    windows) awk -F '\t' '$1 == "window"' ;;
+    history) awk -F '\t' '$1 == "history"' ;;
     *) cat ;;
   esac
 }
@@ -324,7 +453,10 @@ mode_message() {
     settings) printf 'Settings · network · audio · power · notifications · keyboard' ;;
     system) printf 'System Actions · profiles · security · Windows · server · installer' ;;
     web) printf 'Web & Intelligence · calculate · convert · define · mail · contacts · calendar' ;;
-    *) printf 'Universal search · Apps · Files · Settings · Mail · Calendar · Calculate · Web' ;;
+    clipboard) printf 'Clipboard · recent copied text · paste-ready snippets' ;;
+    windows) printf 'Windows · active apps · jump to open surfaces' ;;
+    history) printf 'History · previous searches · repeat commands' ;;
+    *) printf 'Universal search · Apps · Files · Windows · Clipboard · Calculate · Web' ;;
   esac
 }
 
@@ -365,11 +497,49 @@ run_command() {
     open_calendar
     return $?
   fi
+  if [[ "$command" == __timer_*__ ]]; then
+    local minutes="${command#__timer_}"
+    minutes="${minutes%__}"
+    start_timer "$minutes"
+    return $?
+  fi
+  if [[ "$command" == "__record_audio__" ]]; then
+    record_audio
+    return $?
+  fi
   if dry_run; then
     printf 'DRY-RUN > Spotlight > %s\n' "$command"
     return 0
   fi
   bash -lc "cd '$ROOT_DIR' && $command"
+}
+
+start_timer() {
+  local minutes="$1"
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > Timer > %s minutes\n' "$minutes"
+    return 0
+  fi
+  notify "SevenOS Timer" "${minutes} minute timer started."
+  (
+    sleep "$((minutes * 60))"
+    notify "SevenOS Timer" "${minutes} minute timer finished."
+  ) >/dev/null 2>&1 &
+}
+
+record_audio() {
+  local output="$HOME/Music/seven-recording-$(date +%Y%m%d-%H%M%S).wav"
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > Record audio > %s\n' "$output"
+    return 0
+  fi
+  if ! command -v pw-record >/dev/null 2>&1; then
+    notify "SevenOS Spotlight" "pw-record is required for quick audio recording."
+    return 1
+  fi
+  mkdir -p "$(dirname "$output")"
+  setsid -f pw-record "$output" >/tmp/sevenos-spotlight-record.log 2>&1
+  notify "SevenOS Recorder" "Recording started: $output"
 }
 
 open_first_available() {
@@ -400,12 +570,23 @@ open_calendar() {
 handle_freeform() {
   local query="$1"
   local result kind encoded
+  remember_query "$query"
   case "$query" in
     /app|/apps|apps|applications) open_spotlight apps; return 0 ;;
     /file|/files|files) open_spotlight files; return 0 ;;
     /setting|/settings|settings) open_spotlight settings; return 0 ;;
     /system|system) open_spotlight system; return 0 ;;
     /web|web) open_spotlight web; return 0 ;;
+    /clip|/clipboard|clipboard) open_spotlight clipboard; return 0 ;;
+    /window|/windows|windows) open_spotlight windows; return 0 ;;
+    /history|history) open_spotlight history; return 0 ;;
+    timer\ *|minuteur\ *)
+      minutes="${query//[^0-9]/}"
+      [[ -n "$minutes" ]] || minutes=5
+      start_timer "$minutes"
+      return 0
+      ;;
+    record\ audio|audio\ record|enregistrer\ audio) record_audio; return 0 ;;
   esac
 
   result="$("$ROOT_DIR/bin/seven-spotlight" eval "$query" 2>/dev/null || true)"
@@ -421,6 +602,10 @@ handle_freeform() {
       encoded="$(url_encode "$kind")"
       open_url "https://www.google.com/search?q=define+${encoded}"
       ;;
+    content\ *|inside\ *)
+      kind="${query#* }"
+      search_content "$kind"
+      ;;
     web\ *|search\ *)
       kind="${query#* }"
       encoded="$(url_encode "$kind")"
@@ -434,6 +619,25 @@ handle_freeform() {
       open_url "https://duckduckgo.com/?q=${encoded}"
       ;;
   esac
+}
+
+search_content() {
+  local needle="$1"
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > Content search > %s\n' "$needle"
+    return 0
+  fi
+  if ! command -v rg >/dev/null 2>&1; then
+    notify "SevenOS Spotlight" "ripgrep is required for content search."
+    return 1
+  fi
+  local result
+  result="$(rg -i -l --hidden --glob '!**/.git/**' --glob '!**/node_modules/**' "$needle" "$HOME/Documents" "$HOME/Projects" 2>/dev/null | head -n 1 || true)"
+  if [[ -n "$result" ]]; then
+    open_path "$result"
+  else
+    notify "SevenOS Spotlight" "No document content match found."
+  fi
 }
 
 eval_query() {
@@ -562,9 +766,31 @@ open_spotlight() {
     mode) open_spotlight "${key#mode.}" ;;
     app) launch_desktop "$key" "$command" ;;
     file) open_path "$command" ;;
-    action|intent|setting|calc|convert|define|web|mail|contacts|calendar) run_command "$command" ;;
+    clipboard) copy_clipboard_entry "$command" ;;
+    window) [[ -n "$command" ]] && hyprctl dispatch focuswindow "address:$command" >/dev/null 2>&1 || true ;;
+    bookmark) open_url "$command" ;;
+    history) handle_freeform "$command" ;;
+    action|intent|setting|calc|convert|define|web|mail|contacts|calendar|quick) run_command "$command" ;;
     *) notify "SevenOS Spotlight" "Unknown item type: $type" ;;
   esac
+}
+
+copy_clipboard_entry() {
+  local entry="$1"
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > Clipboard > %s\n' "$entry"
+    return 0
+  fi
+  if [[ "$entry" == "__current__" ]]; then
+    notify "SevenOS Spotlight" "Current clipboard is already active."
+    return 0
+  fi
+  if command -v cliphist >/dev/null 2>&1 && command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$entry" | cliphist decode | wl-copy
+    notify "SevenOS Clipboard" "Clipboard item restored."
+    return 0
+  fi
+  printf '%s' "$entry" | wl-copy 2>/dev/null || printf '%s\n' "$entry"
 }
 
 case "${1:-open}" in
@@ -574,11 +800,14 @@ case "${1:-open}" in
   settings) open_spotlight settings ;;
   system) open_spotlight system ;;
   web|intelligence) open_spotlight web ;;
+  clipboard|clip) open_spotlight clipboard ;;
+  windows) open_spotlight windows ;;
+  history) open_spotlight history ;;
   catalog) build_catalog ;;
   count) build_catalog | wc -l ;;
   eval) shift; eval_query "$*" ;;
   *)
-    printf 'Usage: seven-spotlight [open [mode]|apps|files|settings|system|web|catalog|count|eval QUERY]\n' >&2
+    printf 'Usage: seven-spotlight [open [mode]|apps|files|settings|system|web|clipboard|windows|history|catalog|count|eval QUERY]\n' >&2
     exit 2
     ;;
 esac

@@ -159,6 +159,11 @@ Super+Ctrl+Enter Terminal theme menu
 Super+Shift+P Power menu
 ```
 
+Spotlight should be the only global search surface. It supports `/apps`,
+`/files`, `/settings`, `/system`, `/web`, `/clipboard`, `/windows` and
+`/history`, plus direct calculations, conversions, definitions, timers,
+clipboard entries and active Hyprland windows.
+
 Waybar should expose a macOS-like top bar: `7 + Apps + time` on the left,
 workspaces in the center, and compact system controls on the right. Files and
 favorite launchers live in the Dock through `Super+D`. The Dock separates apps,

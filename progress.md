@@ -642,3 +642,10 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - Le Dock devient un vrai composant de workflow : configuration persistante dans `~/.config/sevenos/dock.json`, commandes `seven-dock pin`, `seven-dock unpin` et `seven-dock settings`.
 - Le Dock separe les apps epinglees, les dossiers (`Downloads`, `Home`) et les actions systeme, comme un dock d'OS plutot qu'une simple barre de lancement.
 - Les icones affichent des indicateurs d'execution bases sur les processus, un badge de notifications sur le Hub quand disponible, et des menus clic droit avec ouvrir, afficher les fenetres, quitter, forcer a quitter, garder ou retirer du Dock.
+
+## 2026-05-17 - Spotlight command brain expansion
+
+- Spotlight devient un centre de recherche plus proche de macOS/Raycast : apps, fichiers, settings, actions SevenOS, fenetres Hyprland actives, clipboard, historique de recherche, bookmarks Firefox, calculs, conversions, definitions, mail, contacts, calendrier et actions rapides.
+- Ajout des filtres `/clipboard`, `/windows` et `/history`, en plus de `/apps`, `/files`, `/settings`, `/system` et `/web`.
+- Ajout de requetes directes : `timer 5`, `record audio`, `content <texte>`, `define <mot>`, `web <requete>`, expressions mathematiques et conversions.
+- Le theme Spotlight est elargi et clarifie : placeholder plus explicite, lignes plus hautes, icones plus visibles et message de categories plus riche.

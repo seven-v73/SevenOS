@@ -396,6 +396,9 @@ if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
    grep -q '/settings · Settings' <<<"$spotlight_catalog" &&
    grep -q '/system · System Actions' <<<"$spotlight_catalog" &&
    grep -q '/web · Web & Intelligence' <<<"$spotlight_catalog" &&
+   grep -q '/clipboard · Clipboard' <<<"$spotlight_catalog" &&
+   grep -q '/windows · Windows' <<<"$spotlight_catalog" &&
+   grep -q '/history · Search History' <<<"$spotlight_catalog" &&
    [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open apps | awk -F': ' '/entries:/ {print $2}')" -gt 0 ]] &&
    [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open files | awk -F': ' '/entries:/ {print $2}')" -gt 0 ]] &&
    [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open settings | awk -F': ' '/entries:/ {print $2}')" -gt 0 ]] &&
@@ -412,11 +415,13 @@ if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
    grep -q 'Converter · Type value and unit' <<<"$spotlight_catalog" &&
    grep -q 'Dictionary · Type "define word"' <<<"$spotlight_catalog" &&
    grep -q 'Web · Search the web' <<<"$spotlight_catalog" &&
+   grep -q 'Quick Action · Start 5 minute timer' <<<"$spotlight_catalog" &&
+   grep -q 'Quick Action · Record audio' <<<"$spotlight_catalog" &&
    grep -q 'Ask · Prepare Cyber workspace' <<<"$spotlight_catalog" &&
    [[ "$("$ROOT_DIR/bin/seven-spotlight" eval '42*7')" == "42*7 = 294" ]] &&
    [[ "$("$ROOT_DIR/bin/seven-spotlight" eval '10 km to mi')" == "10 km = 6.21371 mi" ]] &&
    [[ "$("$ROOT_DIR/bin/seven-spotlight" eval '15% of 240')" == "15% of 240 = 36" ]] &&
-   grep -q 'Search SevenOS' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'Search apps, files, windows, clipboard, actions' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -Fq 'children: [ inputbar, message, listview ]' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -Fq 'children: [ inputbar, listview ]' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&

@@ -146,6 +146,10 @@ Spotlight is the command surface for daily use. It indexes:
 
 - installed desktop applications;
 - files, common folders, recent documents and project folders;
+- active Hyprland windows so you can jump back to an open surface;
+- clipboard history through `cliphist` or the current Wayland clipboard;
+- previous Spotlight searches through `/history`;
+- Firefox bookmarks when the local browser database is readable;
 - SevenOS actions from the shared action registry;
 - profile/workspace actions;
 - system settings such as network, audio, power, notifications, wallpaper,
@@ -156,6 +160,9 @@ Spotlight is the command surface for daily use. It indexes:
 - quick calculations and practical conversions such as `42*7`, `15% of 240` or
   `10 km to mi`;
 - definitions and web suggestions through the browser;
+- quick actions such as timers and audio recording when the runtime tool exists;
+- content search with queries such as `content docker compose` across common
+  document/project folders;
 - contextual intents such as preparing Forge, Studio or Cyber workspaces.
 
 Use `Super` alone when you want the full app grid. `Super+A` remains a
