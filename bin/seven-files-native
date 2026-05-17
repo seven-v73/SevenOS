@@ -7,6 +7,7 @@ import argparse
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -144,6 +145,33 @@ def run_files(start_path: str) -> int:
     .files-main {
       background: #ffffff;
     }
+    .files-preview {
+      min-width: 254px;
+      padding: 22px 18px;
+      background: rgba(249, 250, 251, 0.98);
+      border-left: 1px solid rgba(134, 145, 156, 0.16);
+    }
+    .preview-icon {
+      margin: 8px 0 12px 0;
+    }
+    .preview-title {
+      color: #20242a;
+      font: 500 17px "DM Sans", "Inter", sans-serif;
+    }
+    .preview-subtitle {
+      color: #7b828a;
+      font: 500 12px "DM Sans", "Inter", sans-serif;
+      margin-bottom: 18px;
+    }
+    .preview-heading {
+      color: #8a8f96;
+      font: 500 11px "DM Sans", "Inter", sans-serif;
+      margin-top: 12px;
+    }
+    .preview-value {
+      color: #30363d;
+      font: 500 12px "DM Sans", "Inter", sans-serif;
+    }
     .files-toolbar {
       min-height: 64px;
       padding: 0 20px 0 14px;
@@ -251,17 +279,25 @@ def run_files(start_path: str) -> int:
     def dot(fill: str, stroke: str, style: str, callback):
         event = Gtk.EventBox()
         event.set_visible_window(False)
+        event.set_above_child(True)
         area = Gtk.DrawingArea()
         area.set_size_request(15, 15)
         area.get_style_context().add_class("traffic-dot")
         area.connect("draw", draw_dot, fill, stroke, style)
         event.add(area)
-        event.connect("button-release-event", callback)
+        event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
+        event.connect("button-press-event", lambda _widget, event_data: activate_dot(event_data, callback))
         return event
 
-    traffic.pack_start(dot("#ff5f57", "#d8463f", "close", lambda *_: window.close()), False, False, 0)
-    traffic.pack_start(dot("#febc2e", "#d9a023", "min", lambda *_: window.iconify()), False, False, 0)
-    traffic.pack_start(dot("#28c840", "#1fa334", "max", lambda *_: toggle_zoom_or_tile(window)), False, False, 0)
+    def activate_dot(event_data, callback) -> bool:
+        if getattr(event_data, "button", 0) == 1:
+            callback()
+            return True
+        return False
+
+    traffic.pack_start(dot("#ff5f57", "#d8463f", "close", lambda: window.close()), False, False, 0)
+    traffic.pack_start(dot("#febc2e", "#d9a023", "min", lambda: window.iconify()), False, False, 0)
+    traffic.pack_start(dot("#28c840", "#1fa334", "max", lambda: toggle_zoom_or_tile(window)), False, False, 0)
 
     sidebar_buttons = []
 
@@ -344,6 +380,32 @@ def run_files(start_path: str) -> int:
     flow.set_row_spacing(34)
     scroller.add(flow)
 
+    preview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+    preview.get_style_context().add_class("files-preview")
+    root.pack_start(preview, False, False, 0)
+
+    preview_icon = Gtk.Image.new_from_icon_name("folder", Gtk.IconSize.DIALOG)
+    preview_icon.set_pixel_size(88)
+    preview_icon.set_halign(Gtk.Align.CENTER)
+    preview_icon.get_style_context().add_class("preview-icon")
+    preview.pack_start(preview_icon, False, False, 0)
+
+    preview_title = Gtk.Label(label="Seven Files")
+    preview_title.set_line_wrap(True)
+    preview_title.set_max_width_chars(22)
+    preview_title.set_justify(Gtk.Justification.CENTER)
+    preview_title.set_halign(Gtk.Align.CENTER)
+    preview_title.get_style_context().add_class("preview-title")
+    preview.pack_start(preview_title, False, False, 0)
+
+    preview_subtitle = Gtk.Label(label="Finder-like workspace")
+    preview_subtitle.set_halign(Gtk.Align.CENTER)
+    preview_subtitle.get_style_context().add_class("preview-subtitle")
+    preview.pack_start(preview_subtitle, False, False, 0)
+
+    preview_details = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    preview.pack_start(preview_details, False, False, 0)
+
     def update_sidebar():
         for row in sidebar_buttons:
             ctx = row.get_style_context()
@@ -379,7 +441,44 @@ def run_files(start_path: str) -> int:
             child.add(box)
             flow.add(child)
         update_sidebar()
+        update_preview(current)
         flow.show_all()
+
+    def detail_row(label: str, value: str):
+        heading = Gtk.Label(label=label)
+        heading.set_xalign(0)
+        heading.get_style_context().add_class("preview-heading")
+        value_label = Gtk.Label(label=value)
+        value_label.set_xalign(0)
+        value_label.set_line_wrap(True)
+        value_label.set_max_width_chars(26)
+        value_label.get_style_context().add_class("preview-value")
+        preview_details.pack_start(heading, False, False, 0)
+        preview_details.pack_start(value_label, False, False, 0)
+
+    def update_preview(path: Path | None):
+        for child in preview_details.get_children():
+            preview_details.remove(child)
+        target = path or current
+        preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
+        preview_icon.set_pixel_size(88)
+        preview_title.set_text(target.name or str(target))
+        preview_subtitle.set_text("Folder" if target.is_dir() else (target.suffix.upper().lstrip(".") or "File"))
+        try:
+            stat = target.stat()
+            detail_row("Location", str(target.parent if target != current else target))
+            detail_row("Modified", time.strftime("%b %d, %Y %H:%M", time.localtime(stat.st_mtime)))
+            if target.is_file():
+                detail_row("Size", format_size(stat.st_size))
+            elif target.is_dir():
+                try:
+                    count = len(list(target.iterdir()))
+                except OSError:
+                    count = 0
+                detail_row("Items", f"{count}")
+        except OSError:
+            detail_row("Status", "Unavailable")
+        preview_details.show_all()
 
     def navigate(path: Path):
         nonlocal current
@@ -414,6 +513,13 @@ def run_files(start_path: str) -> int:
         else:
             xdg_open(path)
 
+    def selection_changed(flow_box):
+        selected = flow_box.get_selected_children()
+        if selected:
+            update_preview(selected[0].path)
+        else:
+            update_preview(current)
+
     def on_key(_window, event):
         if event.keyval == Gdk.KEY_Escape:
             window.close()
@@ -424,6 +530,7 @@ def run_files(start_path: str) -> int:
         return False
 
     flow.connect("child-activated", activate)
+    flow.connect("selected-children-changed", selection_changed)
     window.connect("key-press-event", on_key)
     window.connect("destroy", Gtk.main_quit)
     render()
@@ -434,6 +541,7 @@ def run_files(start_path: str) -> int:
 
 
 def toggle_zoom_or_tile(window) -> None:
+    window.present()
     if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
         result = subprocess.run(["hyprctl", "dispatch", "togglefloating", "active"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         if result.returncode == 0:
@@ -443,6 +551,16 @@ def toggle_zoom_or_tile(window) -> None:
         window.resize(1120, 700)
     else:
         window.maximize()
+
+
+def format_size(size: int) -> str:
+    units = ["B", "KB", "MB", "GB", "TB"]
+    value = float(size)
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
+        value /= 1024
+    return f"{size} B"
 
 
 def begin_move(window, event) -> bool:

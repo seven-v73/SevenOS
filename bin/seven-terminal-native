@@ -141,9 +141,9 @@ def run_terminal(profile: str, command: list[str]) -> int:
     titlebar.get_style_context().add_class("seven-titlebar")
     outer.pack_start(titlebar, False, False, 0)
 
-    close_btn = traffic_button("close", "Close")
-    min_btn = traffic_button("min", "Minimize")
-    max_btn = traffic_button("max", "Maximize")
+    close_btn = traffic_button("close", "Close", lambda: window.close())
+    min_btn = traffic_button("min", "Minimize", lambda: window.iconify())
+    max_btn = traffic_button("max", "Tile / Float", lambda: toggle_zoom_or_tile(window))
     titlebar.pack_start(close_btn, False, False, 0)
     titlebar.pack_start(min_btn, False, False, 0)
     titlebar.pack_start(max_btn, False, False, 0)
@@ -191,9 +191,6 @@ def run_terminal(profile: str, command: list[str]) -> int:
         None,
     )
 
-    close_btn.connect("button-release-event", lambda *_: window.close())
-    min_btn.connect("button-release-event", lambda *_: window.iconify())
-    max_btn.connect("button-release-event", lambda *_: toggle_zoom_or_tile(window))
     terminal.connect("child-exited", lambda *_: window.close())
     titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
     window.connect("destroy", Gtk.main_quit)
@@ -203,7 +200,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     return 0
 
 
-def traffic_button(style: str, tooltip: str):
+def traffic_button(style: str, tooltip: str, callback):
     from gi.repository import Gdk, Gtk
 
     colors = {
@@ -215,8 +212,10 @@ def traffic_button(style: str, tooltip: str):
 
     event_box = Gtk.EventBox()
     event_box.set_visible_window(False)
+    event_box.set_above_child(True)
     event_box.set_tooltip_text(tooltip)
     event_box.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
+    event_box.connect("button-press-event", lambda _widget, event: activate_traffic(event, callback))
 
     area = Gtk.DrawingArea()
     area.set_size_request(15, 15)
@@ -225,6 +224,13 @@ def traffic_button(style: str, tooltip: str):
     area.connect("draw", draw_traffic_light, fill, stroke, style)
     event_box.add(area)
     return event_box
+
+
+def activate_traffic(event, callback) -> bool:
+    if getattr(event, "button", 0) == 1:
+        callback()
+        return True
+    return False
 
 
 def draw_traffic_light(widget, cr, fill: str, stroke: str, style: str) -> bool:
@@ -275,6 +281,7 @@ def draw_traffic_symbol(cr, style: str, center_x: float, center_y: float, radius
 
 
 def toggle_zoom_or_tile(window) -> None:
+    window.present()
     if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and subprocess_run(["hyprctl", "dispatch", "togglefloating", "active"]) == 0:
         return
     if window.is_maximized():
