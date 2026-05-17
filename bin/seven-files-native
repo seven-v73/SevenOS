@@ -37,6 +37,7 @@ def probe() -> int:
     try:
         import gi
 
+        gi.require_version("Gdk", "3.0")
         gi.require_version("Gtk", "3.0")
         from gi.repository import Gtk  # noqa: F401
     except Exception as exc:
@@ -82,6 +83,7 @@ def run_files(start_path: str) -> int:
     ensure_gi_python()
     import gi
 
+    gi.require_version("Gdk", "3.0")
     gi.require_version("Gtk", "3.0")
     from gi.repository import Gdk, Gtk
 
@@ -96,21 +98,21 @@ def run_files(start_path: str) -> int:
 
     css = """
     window.seven-files {
-      background: #fdfdfd;
+      background: #fbfcfd;
       border-radius: 18px;
-      color: #202124;
+      color: #20242a;
     }
     .files-root {
-      background: #fdfdfd;
+      background: #fbfcfd;
     }
     .files-sidebar {
-      min-width: 184px;
+      min-width: 196px;
       padding: 16px 12px;
-      background: rgba(243, 245, 247, 0.94);
-      border-right: 1px solid rgba(120, 130, 140, 0.18);
+      background: rgba(244, 246, 248, 0.96);
+      border-right: 1px solid rgba(134, 145, 156, 0.20);
     }
     .traffic-row {
-      padding: 0 0 18px 0;
+      padding: 0 0 20px 0;
     }
     .traffic-dot {
       min-width: 13px;
@@ -119,14 +121,14 @@ def run_files(start_path: str) -> int:
     }
     .sidebar-heading {
       color: #8a8f96;
-      font: 600 11px "DM Sans", "Inter", sans-serif;
-      margin: 12px 0 4px 8px;
+      font: 500 11px "DM Sans", "Inter", sans-serif;
+      margin: 14px 0 5px 8px;
     }
     .sidebar-row {
-      min-height: 36px;
-      padding: 0 10px;
-      border-radius: 11px;
-      color: #1f2328;
+      min-height: 37px;
+      padding: 0 11px;
+      border-radius: 12px;
+      color: #20242a;
       font: 500 13px "DM Sans", "Inter", sans-serif;
     }
     .sidebar-row:hover,
@@ -137,17 +139,17 @@ def run_files(start_path: str) -> int:
       background: #ffffff;
     }
     .files-toolbar {
-      min-height: 58px;
-      padding: 0 16px 0 10px;
-      background: rgba(255, 255, 255, 0.96);
-      border-bottom: 1px solid rgba(120, 130, 140, 0.16);
+      min-height: 62px;
+      padding: 0 18px 0 12px;
+      background: rgba(255, 255, 255, 0.98);
+      border-bottom: 1px solid rgba(134, 145, 156, 0.16);
     }
     .toolbar-button {
       min-width: 38px;
       min-height: 38px;
       border-radius: 999px;
-      background: rgba(245, 246, 248, 0.96);
-      color: #30343a;
+      background: rgba(247, 248, 250, 0.98);
+      color: #30363d;
       border: 0;
       padding: 0;
     }
@@ -155,26 +157,26 @@ def run_files(start_path: str) -> int:
       background: rgba(226, 230, 235, 0.96);
     }
     .files-title {
-      color: #30343a;
-      font: 700 17px "DM Sans", "Inter", sans-serif;
+      color: #30363d;
+      font: 500 18px "DM Sans", "Inter", sans-serif;
     }
     .files-grid {
-      padding: 34px 34px;
+      padding: 36px 38px;
       background: #ffffff;
     }
     .file-tile {
-      min-width: 128px;
-      min-height: 128px;
-      padding: 10px 8px;
-      border-radius: 14px;
-      color: #202124;
+      min-width: 132px;
+      min-height: 132px;
+      padding: 11px 8px;
+      border-radius: 16px;
+      color: #20242a;
     }
     .file-tile:hover,
     .file-tile:selected {
       background: rgba(35, 118, 220, 0.10);
     }
     .file-name {
-      color: #202124;
+      color: #20242a;
       font: 500 12px "DM Sans", "Inter", sans-serif;
     }
     """
@@ -274,6 +276,7 @@ def run_files(start_path: str) -> int:
     toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     toolbar.get_style_context().add_class("files-toolbar")
     main.pack_start(toolbar, False, False, 0)
+    toolbar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
 
     def toolbar_button(icon: str, callback):
         button = Gtk.Button()
@@ -334,7 +337,7 @@ def run_files(start_path: str) -> int:
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
             box.set_halign(Gtk.Align.CENTER)
             image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
-            image.set_pixel_size(72)
+            image.set_pixel_size(76)
             label = Gtk.Label(label=path.name)
             label.set_max_width_chars(16)
             label.set_line_wrap(True)
@@ -397,6 +400,13 @@ def run_files(start_path: str) -> int:
     window.show_all()
     Gtk.main()
     return 0
+
+
+def begin_move(window, event) -> bool:
+    if getattr(event, "button", 0) == 1:
+        window.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
+        return True
+    return False
 
 
 def main() -> int:

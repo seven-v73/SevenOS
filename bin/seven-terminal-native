@@ -37,6 +37,7 @@ def probe() -> int:
     try:
         import gi
 
+        gi.require_version("Gdk", "3.0")
         gi.require_version("Gtk", "3.0")
         gi.require_version("Vte", "2.91")
         from gi.repository import Gtk, Vte  # noqa: F401
@@ -77,6 +78,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     ensure_gi_python()
     import gi
 
+    gi.require_version("Gdk", "3.0")
     gi.require_version("Gtk", "3.0")
     gi.require_version("Vte", "2.91")
     from gi.repository import Gdk, GLib, Gtk, Pango, Vte
@@ -87,25 +89,25 @@ def run_terminal(profile: str, command: list[str]) -> int:
 
     css = f"""
     window.seven-window {{
-      background: {'#2d333d' if dark else '#fbfbfb'};
-      border-radius: 10px;
+      background: {'#2f3642' if dark else '#fdfdfd'};
+      border-radius: 12px;
     }}
     .seven-titlebar {{
-      min-height: 25px;
-      padding: 0 8px;
-      background: {'#34373d' if dark else '#d9d9d9'};
-      border-bottom: 1px solid {'#242932' if dark else '#b8b8b8'};
+      min-height: 28px;
+      padding: 0 9px;
+      background: {'#3a3d42' if dark else '#dedede'};
+      border-bottom: 1px solid {'#222832' if dark else '#b9b9b9'};
     }}
     .seven-title {{
-      color: {'#eef3f7' if dark else '#2f3437'};
+      color: {'#f4f7fa' if dark else '#33383d'};
       font: 500 12px "DM Sans", "Inter", sans-serif;
     }}
     .traffic {{
-      min-width: 13px;
-      min-height: 13px;
+      min-width: 14px;
+      min-height: 14px;
       border-radius: 999px;
       padding: 0;
-      margin: 0 4px 0 0;
+      margin: 0 7px 0 0;
       border: 1px solid rgba(0,0,0,0.18);
       box-shadow: none;
     }}
@@ -154,8 +156,8 @@ def run_terminal(profile: str, command: list[str]) -> int:
     terminal.set_audible_bell(False)
     terminal.set_font(Pango.FontDescription("JetBrainsMono Nerd Font 10"))
     terminal.set_colors(
-        Gdk.RGBA(*hex_to_rgba("#eef3f7" if dark else "#2f3437")),
-        Gdk.RGBA(*hex_to_rgba("#2d333d" if dark else "#fbfbfb")),
+        Gdk.RGBA(*hex_to_rgba("#f4f7fa" if dark else "#2b3137")),
+        Gdk.RGBA(*hex_to_rgba("#2f3642" if dark else "#fdfdfd")),
         [],
     )
     outer.pack_start(terminal, True, True, 0)
