@@ -1,34 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
-  <title id="title">SevenOS Sovereign Liquid Wallpaper</title>
-  <desc id="desc">A professional African first frosted liquid glass wallpaper with architectural rhythm, subtle cultural accents, baobab and indigo flow.</desc>
+  <title id="title">SevenOS Beyond the Desktop Wallpaper</title>
+  <desc id="desc">A premium futuristic SevenOS wallpaper with Deep Void depth, blue violet cyan glow, cyber green signal and cinematic glass layers.</desc>
   <defs>
     <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f6fbfe"/>
-      <stop offset="42%" stop-color="#eef4f8"/>
-      <stop offset="100%" stop-color="#dbe9ef"/>
+      <stop offset="0%" stop-color="#09090B"/>
+      <stop offset="42%" stop-color="#12131A"/>
+      <stop offset="100%" stop-color="#05070D"/>
     </linearGradient>
     <radialGradient id="brassLight" cx="72%" cy="24%" r="48%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".42"/>
-      <stop offset="42%" stop-color="#b89a62" stop-opacity=".08"/>
-      <stop offset="100%" stop-color="#f6fbfe" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#00D4FF" stop-opacity=".34"/>
+      <stop offset="42%" stop-color="#7A5CFF" stop-opacity=".12"/>
+      <stop offset="100%" stop-color="#09090B" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="coolDepth" cx="18%" cy="72%" r="52%">
-      <stop offset="0%" stop-color="#567f9d" stop-opacity=".22"/>
-      <stop offset="46%" stop-color="#3f8b65" stop-opacity=".10"/>
-      <stop offset="100%" stop-color="#f6fbfe" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#4DA3FF" stop-opacity=".24"/>
+      <stop offset="46%" stop-color="#00FFB3" stop-opacity=".10"/>
+      <stop offset="100%" stop-color="#09090B" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="metalEdge" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity=".76"/>
-      <stop offset="44%" stop-color="#9fb8c6" stop-opacity=".54"/>
-      <stop offset="100%" stop-color="#567f9d" stop-opacity=".28"/>
+      <stop offset="0%" stop-color="#EDEDED" stop-opacity=".62"/>
+      <stop offset="44%" stop-color="#00D4FF" stop-opacity=".40"/>
+      <stop offset="100%" stop-color="#7A5CFF" stop-opacity=".28"/>
     </linearGradient>
     <pattern id="architectural" width="160" height="160" patternUnits="userSpaceOnUse">
-      <path d="M0 40h160M0 80h160M0 120h160M40 0v160M80 0v160M120 0v160" stroke="#7c8c94" stroke-width="1" opacity=".055"/>
-      <path d="M20 20h48v48H20zM92 92h48v48H92z" fill="none" stroke="#9fb8c6" stroke-width="2" opacity=".08"/>
-      <path d="M20 140l40-40 40 40 40-40" fill="none" stroke="#567f9d" stroke-width="2" opacity=".075"/>
+      <path d="M0 40h160M0 80h160M0 120h160M40 0v160M80 0v160M120 0v160" stroke="#8A8F98" stroke-width="1" opacity=".06"/>
+      <path d="M20 20h48v48H20zM92 92h48v48H92z" fill="none" stroke="#4DA3FF" stroke-width="2" opacity=".10"/>
+      <path d="M20 140l40-40 40 40 40-40" fill="none" stroke="#00D4FF" stroke-width="2" opacity=".09"/>
     </pattern>
     <filter id="panelShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#7c8c94" flood-opacity=".14"/>
+      <feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#00D4FF" flood-opacity=".14"/>
     </filter>
   </defs>
 
@@ -43,25 +43,25 @@
   </g>
 
   <g transform="translate(1050 150) skewX(-13)" filter="url(#panelShadow)">
-    <path d="M0 0h560l-104 392H-104z" fill="#ffffff" opacity=".48" stroke="url(#metalEdge)" stroke-width="2"/>
-    <path d="M50 52h450l-68 256H-18z" fill="#f7fcff" opacity=".46" stroke="#7c8c94" stroke-opacity=".16"/>
-    <path d="M88 102h270M64 154h346M44 206h290M22 258h386" stroke="#9fb8c6" stroke-width="4" opacity=".18" stroke-linecap="round"/>
-    <path d="M426 58l-70 258M472 58l-70 258" stroke="#567f9d" stroke-width="3" opacity=".20"/>
+    <path d="M0 0h560l-104 392H-104z" fill="#ffffff" opacity=".08" stroke="url(#metalEdge)" stroke-width="2"/>
+    <path d="M50 52h450l-68 256H-18z" fill="#12131A" opacity=".54" stroke="#00D4FF" stroke-opacity=".18"/>
+    <path d="M88 102h270M64 154h346M44 206h290M22 258h386" stroke="#4DA3FF" stroke-width="4" opacity=".18" stroke-linecap="round"/>
+    <path d="M426 58l-70 258M472 58l-70 258" stroke="#7A5CFF" stroke-width="3" opacity=".24"/>
   </g>
 
   <g transform="translate(1260 448)" filter="url(#panelShadow)">
-    <path d="M0 0h278l-112 266h-70l84-200H0z" fill="#ffffff" opacity=".72"/>
-    <path d="M0 0h278l-32 66H0z" fill="#9fb8c6" opacity=".34"/>
-    <path d="M96 266h70l34-82h-70z" fill="#3f8b65" opacity=".76"/>
-    <path d="M180 66h66l-34 82h-66z" fill="#567f9d" opacity=".64"/>
-    <path d="M0 0h278l-112 266h-70l84-200H0z" fill="none" stroke="#ffffff" stroke-opacity=".42" stroke-width="2"/>
+    <path d="M0 0h278l-112 266h-70l84-200H0z" fill="#EDEDED" opacity=".72"/>
+    <path d="M0 0h278l-32 66H0z" fill="#00D4FF" opacity=".34"/>
+    <path d="M96 266h70l34-82h-70z" fill="#00FFB3" opacity=".76"/>
+    <path d="M180 66h66l-34 82h-66z" fill="#7A5CFF" opacity=".64"/>
+    <path d="M0 0h278l-112 266h-70l84-200H0z" fill="none" stroke="#EDEDED" stroke-opacity=".42" stroke-width="2"/>
   </g>
 
   <g opacity=".72">
-    <path d="M118 842h330" stroke="#9fb8c6" stroke-width="6" stroke-linecap="round"/>
-    <path d="M118 862h190" stroke="#567f9d" stroke-width="3" stroke-linecap="round"/>
-    <text x="116" y="934" fill="#17232b" font-family="SF Pro Rounded, SF Pro Display, SF UI Display, sans-serif" font-size="64" font-weight="500">SevenOS</text>
-    <text x="119" y="982" fill="#4d606a" font-family="SF Pro Text, SF UI Text, San Francisco, sans-serif" font-size="24" font-weight="500">Sovereign Linux workbench</text>
+    <path d="M118 842h330" stroke="#4DA3FF" stroke-width="6" stroke-linecap="round"/>
+    <path d="M118 862h190" stroke="#00D4FF" stroke-width="3" stroke-linecap="round"/>
+    <text x="116" y="934" fill="#EDEDED" font-family="SF Pro Rounded, SF Pro Display, SF UI Display, sans-serif" font-size="64" font-weight="500">SevenOS</text>
+    <text x="119" y="982" fill="#8A8F98" font-family="SF Pro Text, SF UI Text, San Francisco, sans-serif" font-size="24" font-weight="500">Beyond the Desktop</text>
   </g>
 
   <rect x="18" y="18" width="1884" height="1044" rx="24" fill="none" stroke="url(#metalEdge)" stroke-opacity=".14" stroke-width="2"/>

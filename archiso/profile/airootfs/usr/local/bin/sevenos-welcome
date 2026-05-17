@@ -3,13 +3,13 @@ set -euo pipefail
 
 cat <<'EOF'
 SevenOS Live
-African first intelligent Linux ecosystem
+Beyond the Desktop
 
 Repository:
   /opt/SevenOS
 
 Identity:
-  Obsidian shell, ancestral gold, clay signal, baobab green.
+  Deep Void shell, Seven Blue, Seven Violet, Seven Cyan and Cyber Green.
 
 Start here:
   cd /opt/SevenOS

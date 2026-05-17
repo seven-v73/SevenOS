@@ -1,113 +1,132 @@
-# SevenOS Design System v1
+# SevenOS Design System v2
 
-> Sovereign by design.
+> Beyond the Desktop.
 
-SevenOS is an afro-futurist, premium, liquid glass operating system identity.
-The interface must feel sovereign, fluid and grounded: refined like a premium
-desktop, but with a visual language owned by SevenOS.
-
-## Philosophy
-
-- Sovereign: every element expresses control and clarity, not decoration.
-- Fluid: surfaces breathe through spacing, opacity and soft transitions.
-- Grounded: African identity is structural through rhythm, geometry and color.
+SevenOS is a futuristic, premium and immersive Linux operating system identity.
+It combines Hyprland fluidity, contextual AI, cybersecurity clarity, creative
+workflows and cinematic glass surfaces.
 
 ## Source Of Truth
 
-- `identity/tokens.css` contains UI CSS variables.
+- `identity/CHARTER.md` is the official graphic charter.
+- `identity/tokens.css` contains the CSS token contract.
 - `identity/palette.sh` contains shell/script palette variables.
-- `identity/patterns/` contains low-opacity geometric motifs.
-- `identity/LIQUID_GLASS_OS.md` defines the OS-level liquid glass direction.
-- UI files should reference this vocabulary and avoid random hex colors.
+- `identity/LIQUID_GLASS_OS.md` defines the OS-level shell behavior.
+- UI files should use this vocabulary and avoid undocumented random colors.
 
-## Palette
+## Visual DNA
+
+SevenOS should be perceived as the intelligent next generation Linux experience
+for creators, developers and cybersecurity.
+
+Core influences:
+
+- Apple VisionOS and macOS for premium OS polish
+- realistic sci-fi interfaces for depth and atmosphere
+- modern SOC dashboards for cybersecurity readability
+- Arc/Nothing-style minimalism for calm, focused surfaces
+- Hyprland for transparent, animated and adaptive Linux ergonomics
+
+## Official Palette
 
 | Token | Hex | Role |
 | --- | --- | --- |
-| `--ebene` | `#eef4f8` | frosted glass canvas |
-| `--surface-0` | `#f6fbfe` | page background |
-| `--surface-1` | `#ffffffd9` | glass cards and panels |
-| `--surface-2` | `#edf5f9cc` | raised glass |
-| `--surface-3` | `#dbe9efc2` | focused popovers |
-| `--gold` | `#b89a62` | cultural micro-accent only |
-| `--gold-bright` | `#cbb37a` | subtle warm highlight |
-| `--gold-dim` | `#8f7a53` | fine cultural detail |
-| `--clay` | `#a95738` | warning and urgency |
-| `--baobab` | `#3f8b65` | success and health |
-| `--baobab-bright` | `#4ba979` | live success |
-| `--indigo` | `#567f9d` | primary interaction and secondary states |
-| `--indigo-bright` | `#6f9dbc` | focus rings and icons |
-| `--text-1` | `#17232b` | primary text |
-| `--text-2` | `#4d606a` | secondary text |
-| `--text-3` | `#7c8c94` | tertiary text |
-| `--text-4` | `#a8b4ba` | disabled text |
+| `--seven-blue` | `#4DA3FF` | primary accent |
+| `--seven-violet` | `#7A5CFF` | identity glow and depth |
+| `--seven-cyan` | `#00D4FF` | interactions and active states |
+| `--seven-green` | `#00FFB3` | cyber mode and trusted live signals |
+| `--deep-void` | `#09090B` | primary background |
+| `--surface-dark` | `#12131A` | cards and panels |
+| `--surface-glass` | `rgba(255, 255, 255, 0.06)` | translucent surfaces |
+| `--soft-white` | `#EDEDED` | primary text |
+| `--muted-gray` | `#8A8F98` | secondary text |
+
+Official gradient:
+
+```css
+linear-gradient(135deg, #4DA3FF 0%, #7A5CFF 50%, #00D4FF 100%)
+```
 
 ## Typography
 
-- Interface principale: SF Pro Display for navigation chrome, primary titles and large control labels.
-- Texte normal: SF Pro Text for body copy, lists, cards and secondary labels.
-- Terminal: SF Mono for terminal surfaces, code previews and command output.
-- Dashboard cyber: JetBrains Mono or SF Mono for security metrics, badges and audit status.
-- Branding SevenOS: SF Pro Rounded with SF Pro Display fallback for marks and identity lockups.
+- Interface principale: SF Pro Display for shell chrome, titles and controls.
+- UI secondaire: SF Pro Rounded for brand, badges and friendly controls.
+- Texte normal: SF Pro Text for body copy, lists and settings descriptions.
+- Terminal / cyber: SF Mono with JetBrains Mono fallback.
 
 Rules:
 
-- Avoid weights above 500 in UI surfaces.
-- Section labels use 10px, uppercase, letter spacing and `--text-3`.
-- Do not uppercase body text or headings.
+- Avoid weights above 500 in production UI CSS.
+- Section labels use small mono or rounded text with restrained tracking.
+- Body text stays readable, never decorative.
 
 ## Surfaces
 
-SevenOS uses a transparent minimal foundation with frosted liquid glass accents.
-The default target is `Sovereign Frost`: readable in daylight, elegant at
-night, and free from both black-on-black desktop surfaces and dominant
-yellow/orange chrome. The ratio is intentional: about 70% transparent minimal
-UI, 30% glass premium on active windows, Hub, notifications, overlays, control
-surfaces and widgets. Liquid glass is simulated with translucent surfaces,
-white glass borders and soft opacity. Do not rely on production `backdrop-filter`
-blur for core Linux surfaces.
+SevenOS surfaces are floating, translucent, luminous and minimal:
 
-- Base: `--surface-1` + `--glass-border`
-- Floating: `--glass` + `--glass-border`
-- Focus: `--glass-3` + `--indigo-bright`
-- Action: `--indigo-pale` + `--indigo`
+- Base: `--deep-void`
+- Panel: `--surface-1`
+- Card: `--surface-glass` + `--glass-border`
+- Focus: gradient border, cyan/blue text glow and alpha overlays
+- Cyber: `--cyber-void`, `--surface-cyber`, `--seven-green`
 
-Avoid decorative shadows. Elevation should come from surface tone and border.
+Production shell CSS does not rely on web-only `backdrop-filter`; Hyprland blur
+is the blur engine. Production UI also avoids decorative `box-shadow`; glow is
+expressed through text shadow, borders and translucent gradients.
+
+## Radius Scale
+
+| Element | Radius |
+| --- | --- |
+| Buttons | 14px |
+| Widgets | 18px |
+| Cards | 22px |
+| Waybar | 24px |
+| Windows | 28px |
 
 ## Motion
 
-- Animate only `transform` and `opacity`.
-- Use 120ms for micro interactions, 200ms for standard interactions, 350ms for panel entry.
-- Respect `prefers-reduced-motion`.
+- Hover: 120ms
+- Fade: 180ms
+- Window opening: 220ms
+- Workspace transition: 280ms
+- Spotlight: 300ms
 
-## African Identity
+Animate opacity and transform first. Motion should feel premium, slow enough to
+read, and never like gaming RGB.
 
-African identity is expressed through rhythm, geometry and palette, not visual
-collage. Kente-inspired separators and geometric motifs must remain subtle.
+## Waybar
 
-Background motif opacity: 3-8%.
-Decorative motif opacity: 15-30%.
-Functional icon opacity: 60-100%.
+Waybar is the SevenOS cockpit:
+
+- left: SevenOS logo and workspaces
+- center: Spotlight, media and SevenAI
+- right: battery, network, audio, Bluetooth, weather, VPN, time and monitoring
+
+Every module should be an independent glass capsule with outline icons and
+subtle blue/violet/cyan glow.
+
+## Cyber Mode
+
+Cyber Mode uses deep black-green surfaces, SF Mono / JetBrains Mono, live
+network/security signals and SOC-like density without clutter.
 
 ## Absolute Rules
 
-- No black app surfaces for interactive lists, launchers or control panels.
-- White is allowed only as a glass surface with warm borders and dark text.
-- No generic blue/green system palette.
-- No rainbow, purple/pink or neon cyberpunk gradients.
+- No generic Linux bar look for primary shell surfaces.
+- No visually heavy black-on-black panels without glass depth.
+- No aggressive rainbow/RGB effects.
+- No cartoon icons.
 - No `font-weight` 600, 700, 800 or 900 in UI CSS.
-- No colored `box-shadow`.
-- No `backdrop-filter` in production UI.
-- No `border-radius` above 30px except circles.
-- No emoji in UI labels.
+- No decorative `box-shadow` in production shell CSS.
+- No production `backdrop-filter` in Linux shell CSS.
+- No emoji in UI labels unless it is a deliberate icon fallback.
 
 ## PR Checklist
 
-- Colors use tokens or documented SevenOS palette values.
-- Typography follows Display / Interface / Mono roles.
-- App tiles, panels and launchers must be light, readable and glass-forward.
-- Child radius is smaller than parent radius.
-- Animations use transform and opacity only.
-- `prefers-reduced-motion` is present for web UI.
-- Motifs are low-opacity when decorative.
-- Icons remain outline-style.
+- Colors use `identity/tokens.css` or this charter.
+- Typography follows Display / Rounded / Text / Mono roles.
+- Surfaces are floating, translucent and rounded.
+- Interactions expose features directly, not procedural menus.
+- Motion uses calm fade, slide or subtle scale.
+- Cyber surfaces use green/cyan data clarity without visual noise.

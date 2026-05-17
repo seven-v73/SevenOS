@@ -56,7 +56,7 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Dashboard | readiness, services, urgent repairs | `seven readiness --json` |
 | First Run | onboarding completion and post-install blockers | `seven welcome plan --json` |
 | Session | login entry, user services and running shell components | `seven session status --json` |
-| Identity | African first principles, profile roles and accent packs | `seven identity --json` |
+| Identity | SevenOS visual principles, profile roles and accent packs | `seven identity --json` |
 | Accent Packs | optional regional identity variants | `seven identity packs --json` |
 | Active Identity | selected user accent pack | `seven identity current --json` |
 | Experience | OS coherence score and blockers | `seven experience --json` |

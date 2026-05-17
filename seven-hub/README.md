@@ -33,7 +33,7 @@ Current spaces:
 - host readiness check
 - installation status report
 - SevenOS branding action
-- African first theme application
+- Beyond the Desktop theme application
 - dynamic `OK`, `PART`, `MISS`, and `RUN` badges in the action menu
 - base desktop installation
 - DEV, CYBERSECURITY, CREATION, WINDOWS, and SECURITY actions

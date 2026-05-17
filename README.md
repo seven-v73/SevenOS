@@ -1,6 +1,6 @@
 # SevenOS
 
-SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, context-aware work profiles, security tooling, creative production, Windows compatibility, local deployment, and an African first product identity.
+SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, context-aware work profiles, security tooling, creative production, Windows compatibility, local deployment, and the Beyond the Desktop product identity.
 
 This repository is currently in **Phase B2 — product consolidation before ISO**. It contains the post-install OS layer, Seven Hub Native, `seven`/`sevenpkg`, profile contracts, an app-first Windows compatibility layer, identity assets, Seven Server/Deploy foundations, Seven Shell AGS planning, repair planning, a persistent wallpaper/session runtime, and an early Archiso live profile.
 
@@ -8,7 +8,7 @@ It is **not yet a complete standalone distribution**. The next major gate is **B
 
 ## Vision
 
-SevenOS aims to become an afro-futurist Linux ecosystem for productivity, creation, cybersecurity, Windows compatibility, deployment, personal cloud workflows, and digital sovereignty.
+SevenOS aims to become a futuristic intelligent Linux ecosystem for productivity, creation, cybersecurity, Windows compatibility, deployment, personal cloud workflows, and digital sovereignty.
 
 The main long-term reference is:
 
@@ -49,7 +49,7 @@ SevenOS aims to provide:
 - future intelligent modules such as SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow, and SevenIdentity
 - a Seven Hub control center
 - a future Seven Shell layer for AGS panels, launcher, dock and widgets
-- an African first transparent minimal identity with frosted liquid glass accents, baobab green, indigo flow, and subtle geometric rhythm
+- a premium dark glass identity with Seven Blue, Seven Violet, Seven Cyan, Cyber Green, contextual AI and subtle cinematic depth
 - a vocabulary and workflow model that makes Linux easier to live with
 
 ## Current Product State
@@ -82,7 +82,7 @@ The current quality gate remains:
 ## Inspirations And References
 
 SevenOS is not a fork of these projects. It studies their public architecture,
-UX patterns and tooling choices to build an independent African first Linux
+UX patterns and tooling choices to build an independent next-generation Linux
 ecosystem.
 
 | Project | Link | What SevenOS Learns From It |
@@ -101,33 +101,29 @@ ecosystem.
 
 SevenOS keeps its own product direction:
 
-- African first identity, not generic theme stacking.
+- Beyond the Desktop identity, not generic theme stacking.
 - `seven` as the system control plane.
 - `sevenpkg` as the software layer.
 - Seven Hub as the user-facing control center.
 - Profiles for Forge, Shield, Studio, Windows and Horizon workflows.
 - Migration and packaging contracts through `sevenos.dotinst`.
 
-## Why African First?
+## Why Beyond The Desktop?
 
-SevenOS treats African first as product architecture, not as decoration.
+SevenOS treats visual identity as product architecture, not as decoration.
 
-The point is to build a Linux ecosystem shaped by sovereignty, transmission,
-creation, protection, community and resilience:
+The point is to build a Linux ecosystem shaped by fluidity, transparency,
+intelligent minimalism, depth, contextuality and visible security:
 
-- sovereignty: the system explains, repairs and owns its path instead of hiding
-  behind fragile manual steps
-- transmission: onboarding, Griot-style documentation and readable commands
-  make knowledge visible
-- creation: Forge and Studio are first-class work modes for building and making
-- protection: Shield makes trust posture visible, guided and respectful
-- community: profiles, future accent packs and SevenStore are designed for
-  shared extension
-- resilience: JSON contracts, repair plans, migration and backups make the OS
-  observable and survivable
+- fluidity: shell motion and shortcuts make the system feel alive
+- transparency: Hyprland blur and translucent layers create spatial hierarchy
+- intelligent minimalism: useful features are exposed without procedural clutter
+- depth: glow, glass and gradients give SevenOS a premium OS signature
+- contextuality: profiles, SevenAI and Shield tune actions to the current work
+- visible security: cyber signals stay observable without becoming noisy
 
 The visual language supports this direction through profile roles, reusable
-symbols, geometric rhythm and optional future regional accent packs. It should
+symbols, cinematic glass surfaces and optional future accent packs. It should
 never become a collage of flags or motifs.
 
 Useful identity commands:
@@ -197,8 +193,8 @@ Implemented:
 - Seven Hub Tauri GUI scaffold
 - Flatpak/Flathub bridge with Bottles candidate
 - initial Archiso profile and ISO build script
-- African first identity foundation
-- active African first accent pack preference
+- Beyond the Desktop identity foundation
+- active SevenOS accent pack preference
 - Windows Mode helper workflow
 
 Not implemented yet:
@@ -591,7 +587,7 @@ available as `seven-hub menu` or by opening a focused category such as
 
 ## Identity
 
-SevenOS uses an African first identity system: transparent minimal surfaces for everyday focus, frosted liquid glass on active system surfaces, indigo for interaction, clay for signal, baobab green for system health, and ancestral gold only as a restrained cultural micro-accent.
+SevenOS uses the Beyond the Desktop identity system: Deep Void backgrounds, translucent glass surfaces, Seven Blue for primary interaction, Seven Violet for identity depth, Seven Cyan for active focus, and Seven Green for cyber/security signals.
 
 The identity source of truth lives in `identity/README.md`.
 

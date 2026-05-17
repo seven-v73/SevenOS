@@ -164,9 +164,9 @@ for identity_file in \
   fi
 done
 
-if ! grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" ||
-   ! grep -q 'Sovereign by design' "$ROOT_DIR/identity/STYLE.md"; then
-  log_error "SevenOS design tokens are not aligned with Design System v1."
+if ! grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" ||
+   ! grep -q 'Beyond the Desktop' "$ROOT_DIR/identity/STYLE.md"; then
+  log_error "SevenOS design tokens are not aligned with Design System v2."
   exit 1
 fi
 
@@ -211,8 +211,8 @@ for live_branding in \
   "$ROOT_DIR/archiso/profile/airootfs/etc/issue" \
   "$ROOT_DIR/archiso/profile/airootfs/etc/sevenos-release" \
   "$ROOT_DIR/archiso/profile/airootfs/etc/os-release"; do
-  if ! grep -q 'ecosystem' "$live_branding"; then
-    log_error "Live branding missing ecosystem identity: ${live_branding#$ROOT_DIR/}"
+  if ! grep -Eq 'Beyond the Desktop|ecosystem' "$live_branding"; then
+    log_error "Live branding missing SevenOS identity: ${live_branding#$ROOT_DIR/}"
     exit 1
   fi
 done

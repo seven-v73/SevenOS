@@ -21,8 +21,8 @@ Usage:
   seven identity activate <pack>
   ./scripts/identity.sh [status|json|doctor]
 
-Shows the African first product language used by profiles, onboarding, Hub and
-future accent packs.
+Shows the SevenOS futuristic product language used by profiles, onboarding,
+Hub, shell surfaces and future contextual accent packs.
 EOF
 }
 
@@ -42,16 +42,16 @@ profiles = [
         "key": "baobab",
         "title": "Baobab",
         "role": "Roots",
-        "accent": "baobab",
+        "accent": "seven-blue",
         "symbol": "baobab-system-mark",
         "principle": "stability",
-        "story": "The rooted base: system health, identity, desktop and daily trust.",
+        "story": "The adaptive base: system health, identity, desktop and daily trust.",
     },
     {
         "key": "forge",
         "title": "Forge",
         "role": "Builder",
-        "accent": "gold",
+        "accent": "seven-cyan",
         "symbol": "forge-profile-mark",
         "principle": "creation through skill",
         "story": "The builder space: code, learning, containers and productive power.",
@@ -60,7 +60,7 @@ profiles = [
         "key": "shield",
         "title": "Shield",
         "role": "Guardian",
-        "accent": "indigo",
+        "accent": "seven-green",
         "symbol": "shield-profile-mark",
         "principle": "visible protection",
         "story": "The guardian space: audit, sandbox, forensics and careful defense.",
@@ -69,7 +69,7 @@ profiles = [
         "key": "studio",
         "title": "Studio",
         "role": "Maker",
-        "accent": "clay",
+        "accent": "seven-violet",
         "symbol": "motif-diamond",
         "principle": "expressive production",
         "story": "The maker space: image, sound, motion, 3D and cultural output.",
@@ -78,7 +78,7 @@ profiles = [
         "key": "windows",
         "title": "Windows",
         "role": "Bridge",
-        "accent": "baobab",
+        "accent": "seven-blue",
         "symbol": "motif-cross",
         "principle": "compatibility without surrender",
         "story": "The bridge space: Windows apps inside a Linux-first life.",
@@ -87,7 +87,7 @@ profiles = [
         "key": "horizon",
         "title": "Horizon",
         "role": "Navigator",
-        "accent": "indigo",
+        "accent": "seven-cyan",
         "symbol": "motif-stripe",
         "principle": "deployment and reach",
         "story": "The navigator space: servers, networks, deployment and personal cloud.",
@@ -96,7 +96,7 @@ profiles = [
         "key": "griot",
         "title": "Griot",
         "role": "Memory",
-        "accent": "gold",
+        "accent": "seven-violet",
         "symbol": "griot-doc-mark",
         "principle": "transmission",
         "story": "The memory layer: docs, notes, logs, explanation and knowledge transfer.",
@@ -104,17 +104,18 @@ profiles = [
 ]
 
 print(json.dumps({
-    "schema": "sevenos.identity.v1",
-    "positioning": "African first Linux ecosystem for sovereignty, creation, security and deployment.",
-    "question": "Does this make Linux more sovereign, more fluid and more culturally coherent?",
+    "schema": "sevenos.identity.v2",
+    "positioning": "Next generation intelligent Linux experience for creators, developers and cybersecurity.",
+    "tagline": "Beyond the Desktop.",
+    "question": "Does this make Linux more fluid, secure, immersive and context-aware?",
     "current_pack": current_pack,
     "principles": [
-        {"key": "sovereignty", "label": "Sovereignty", "meaning": "SevenOS explains, repairs and owns its system path."},
-        {"key": "transmission", "label": "Transmission", "meaning": "Knowledge is surfaced through Griot-style documentation and onboarding."},
-        {"key": "creation", "label": "Creation", "meaning": "Forge and Studio are first-class work modes."},
-        {"key": "protection", "label": "Protection", "meaning": "Shield makes trust visible and guided."},
-        {"key": "community", "label": "Community", "meaning": "Profiles and future accent packs invite shared extension."},
-        {"key": "resilience", "label": "Resilience", "meaning": "State, repair, migration and backups are observable."},
+        {"key": "fluidity", "label": "Fluidity", "meaning": "Every shell surface should feel alive and continuous."},
+        {"key": "transparency", "label": "Transparency", "meaning": "Glass, compositor blur and translucent layers carry the interface."},
+        {"key": "minimalism", "label": "Intelligent minimalism", "meaning": "SevenOS exposes useful features without procedural clutter."},
+        {"key": "depth", "label": "Depth", "meaning": "Luminous layers and subtle glow create cinematic hierarchy."},
+        {"key": "contextuality", "label": "Contextuality", "meaning": "Profiles, AI and security state tune visible actions."},
+        {"key": "security", "label": "Visible security", "meaning": "Cyber Mode and Shield make trust observable without noise."},
     ],
     "profiles": profiles,
     "regional_packs": packs["packs"],
@@ -257,7 +258,8 @@ doctor() {
   local file
 
   for file in \
-    "$ROOT_DIR/identity/AFRICAN_FIRST.md" \
+    "$ROOT_DIR/identity/CHARTER.md" \
+    "$ROOT_DIR/identity/STYLE.md" \
     "$ROOT_DIR/identity/accent-packs.json" \
     "$ROOT_DIR/identity/components/kente-divider.svg" \
     "$ROOT_DIR/identity/components/adinkra-status-ok.svg" \
@@ -274,11 +276,11 @@ doctor() {
   done
 
   if [[ "$missing" -gt 0 ]]; then
-    log_error "African first identity layer is incomplete."
+    log_error "SevenOS identity layer is incomplete."
     exit 1
   fi
 
-  log_success "African first identity layer is present."
+  log_success "SevenOS identity layer is present."
 }
 
 packs_status() {
@@ -301,20 +303,21 @@ PY
 status() {
   local active_pack
   active_pack="$(current_pack_key)"
-  printf 'SevenOS African First Identity\n'
-  printf '==============================\n\n'
+  printf 'SevenOS Visual Identity\n'
+  printf '=======================\n\n'
   printf 'Positioning:\n'
-  printf '  African first Linux ecosystem for sovereignty, creation, security and deployment.\n\n'
+  printf '  Next generation intelligent Linux experience for creators, developers and cybersecurity.\n'
+  printf '  Tagline: Beyond the Desktop.\n\n'
   printf 'Principles:\n'
-  printf '  Sovereignty, Transmission, Creation, Protection, Community, Resilience\n\n'
+  printf '  Fluidity, Transparency, Intelligent minimalism, Depth, Contextuality, Visible security\n\n'
   printf 'Profile language:\n'
-  printf '  Baobab  Roots      baobab  stable base and health\n'
-  printf '  Forge   Builder    gold    code, learning and construction\n'
-  printf '  Shield  Guardian   indigo  audit, sandbox and trust\n'
-  printf '  Studio  Maker      clay    creative production\n'
-  printf '  Windows Bridge     baobab  compatibility without surrender\n'
-  printf '  Horizon Navigator  indigo  deploy, network and cloud\n'
-  printf '  Griot   Memory     gold    documentation and knowledge\n'
+  printf '  Baobab  Roots      blue    adaptive base and health\n'
+  printf '  Forge   Builder    cyan    code, learning and construction\n'
+  printf '  Shield  Guardian   green   audit, sandbox and cyber trust\n'
+  printf '  Studio  Maker      violet  creative production\n'
+  printf '  Windows Bridge     blue    compatibility without friction\n'
+  printf '  Horizon Navigator  cyan    deploy, network and cloud\n'
+  printf '  Griot   Memory     violet  documentation and knowledge\n'
   printf '\nRegional accent packs:\n'
   printf '  seven identity packs\n'
   printf '  active: %s\n' "$active_pack"

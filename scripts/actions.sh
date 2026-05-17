@@ -196,11 +196,11 @@ shell.status	Desktop	Seven Shell Status	seven shell	safe	Show the AGS/TypeScript
 shell.plan	Desktop	Seven Shell Plan	seven shell plan	safe	Show how Seven Shell will replace Rofi panels gradually.
 shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned AGS surfaces and fallback contracts.
 shell.install	Desktop	Install Shell Foundation	./install.sh shell-ags --yes	packages	Install GJS, TypeScript, GTK4 and libadwaita for the B3 shell foundation.
-identity.status	Ecosystem	African First Identity	seven identity	safe	Show SevenOS African first product language.
+identity.status	Ecosystem	SevenOS Visual Identity	seven identity	safe	Show SevenOS Beyond the Desktop product language.
 identity.packs	Ecosystem	Regional Accent Packs	seven identity packs	safe	Show planned regional accent packs without turning the UI into flags.
 identity.current	Ecosystem	Active Identity Pack	seven identity current	safe	Show the active SevenOS regional accent pack.
-identity.activate.pan	Ecosystem	Activate Pan-African Pack	seven identity activate pan-african	changes	Set the broad default SevenOS African first accent pack.
-identity.doctor	Ecosystem	Identity Doctor	seven identity doctor	safe	Validate African first identity files and components.
+identity.activate.pan	Ecosystem	Activate Accent Pack	seven identity activate pan-african	changes	Set the active SevenOS contextual accent pack.
+identity.doctor	Ecosystem	Identity Doctor	seven identity doctor	safe	Validate SevenOS identity files and components.
 EOF
 }
 

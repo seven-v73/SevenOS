@@ -1,132 +1,99 @@
 # SevenOS Identity
 
-SevenOS uses an **African first** visual identity: modern, grounded, technical, and proudly rooted.
-
-This is not an ornament layer. The identity should guide the whole system: colors, naming, rhythm, surfaces, spacing, boot messages, documentation, and future UI.
+SevenOS uses a futuristic premium visual identity for an intelligent Linux
+ecosystem: fluid, secure, immersive and adaptive.
 
 The broader product direction lives in:
 
-- `identity/AFRICAN_FIRST.md`
+- `identity/CHARTER.md`
+- `identity/STYLE.md`
+- `identity/LIQUID_GLASS_OS.md`
 - `docs/VISION.md`
 - `docs/UX_PRINCIPLES.md`
 - `docs/VOCABULARY.md`
 
 ## Design Direction
 
-SevenOS uses **Design System v1: Sovereign by design**.
+SevenOS uses **Design System v2: Beyond the Desktop**.
 
-The goal is not to look like a themed Arch rice. The system should feel like an
-independent professional OS: calm, precise, luxurious, and culturally rooted
-without becoming decorative.
+The goal is not to look like a themed Linux desktop. SevenOS should feel like a
+coherent, commercial-grade operating system for creators, developers and
+cybersecurity: premium, cinematic, intelligent and fast.
 
-- transparent minimal surfaces for serious daily work without black-on-black or yellow-heavy fatigue
-- frosted liquid glass accents reserved for active windows, Hub, notifications, overlays and widgets
-- ancestral gold as a restrained cultural micro-accent, not a dominant UI color
-- clay for warning, urgency and danger
-- baobab for trusted/security states
-- indigo for network, VM, deployment, and technical flow
-- dark warm text colors for readable day/night light UI
-- architectural pattern, not surface decoration
-- glass is used as depth and hierarchy, not as a gimmick
-- color is functional: each accent has a job
+- dark translucent surfaces for immersion and focus
+- Hyprland compositor blur as the real glass engine
+- blue/violet/cyan glow for identity and interactions
+- green cyber signals for security and trusted live state
+- contextual AI and profile signals in visible shell surfaces
+- outline iconography inspired by Lucide, Phosphor and SF Symbols
+- feature-first controls instead of procedural menus
+- consistent SF Pro Display, SF Pro Rounded, SF Pro Text and SF Mono roles
 
 ## Palette
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `ebene` | `#eef4f8` | zero surface |
-| `surface-0` | `#f6fbfe` | page background |
-| `surface-1` | `#ffffffd9` | cards and panels |
-| `surface-2` | `#edf5f9cc` | raised cards |
-| `surface-3` | `#dbe9efc2` | modals and popovers |
-| `gold` | `#b89a62` | restrained cultural accent |
-| `gold-bright` | `#cbb37a` | subtle warm highlight |
-| `clay` | `#a95738` | warning, danger and urgency |
-| `baobab` | `#3f8b65` | security, health, success |
-| `indigo` | `#567f9d` | interaction, network, VM, deployment |
-| `text-1` | `#17232b` | primary text |
-| `text-2` | `#4d606a` | secondary text |
+| `seven-blue` | `#4DA3FF` | primary accent |
+| `seven-violet` | `#7A5CFF` | glow and identity depth |
+| `seven-cyan` | `#00D4FF` | interaction and active state |
+| `seven-green` | `#00FFB3` | cyber and trusted live state |
+| `deep-void` | `#09090B` | primary background |
+| `surface-dark` | `#12131A` | panels and cards |
+| `surface-glass` | `rgba(255, 255, 255, 0.06)` | glass surfaces |
+| `soft-white` | `#EDEDED` | primary text |
+| `muted-gray` | `#8A8F98` | secondary text |
 
 ## Naming
 
 Use names that feel native to SevenOS:
 
-- `Ebene Base` for the system shell
-- `Ancestral Gold` for primary action and SevenOS identity
-- `Clay Signal` for warning and urgency
-- `Baobab Trust` for Shield, health, and success
-- `Indigo Flow` for networking, VM, deployment, and technical states
-
-## UI Rules
-
-- Keep layouts highly functional, but visually deliberate and premium.
-- Use pattern as architectural rhythm, not as wallpaper noise.
-- Do not use generic neon cyberpunk gradients or rainbow borders.
-- Do not let the wallpaper carry the identity alone.
-- Do not use flags as the visual system. Country colors can appear as subtle accents only when a context specifically calls for it.
-- Do not reduce African identity to random motifs. The style should feel intentional, architectural, and useful.
-- Prefer high contrast and readable text over decorative complexity.
-- `ttf-jetbrains-mono-nerd` is required for the complete Waybar icon experience.
+- `Deep Void` for the immersive base
+- `Seven Blue` for primary interaction
+- `Seven Violet` for identity glow
+- `Seven Cyan` for active focus and fluid UI
+- `Seven Green` for Cyber Mode and trusted state
+- `Surface Glass` for translucent cards and widgets
 
 ## Current Implementation
 
-- `identity/AFRICAN_FIRST.md` as the African first product language
-- `scripts/identity.sh` / `seven identity --json` as the machine-readable identity contract
-- `identity/accent-packs.json` as the regional accent pack contract
-- profile roles, symbols, principles and stories exposed through `seven profile status --json`
-- visual components in `identity/components/`
-- Hyprland border colors and behavior
-- Hyprland idle lock and power controls
-- Waybar colors and workspace states
-- Waybar SevenOS profile/security/system indicators
-- Rofi launcher theme
-- Rofi power theme
-- Mako notification theme
-- SevenOS live ISO welcome message
-- SVG logo, wallpaper, and mode icon foundations in `identity/assets/`
-- documentation language and branding direction
+- `identity/CHARTER.md` as the official graphic charter
 - `identity/STYLE.md` as the design contract
 - `identity/tokens.css` as CSS token source
-- `identity/patterns/` for low-opacity geometric motifs
+- `identity/palette.sh` as shell/script palette source
+- `scripts/identity.sh` / `seven identity --json` as the machine-readable identity contract
+- Hyprland border colors, blur and animation tuning
+- Waybar cockpit modules and glass capsules
+- Rofi launcher, Spotlight, quick settings and power themes
+- Mako notification theme
+- Kitty terminal profiles
+- Seven Hub, Seven Files, Settings and native shell panels
+- SVG logo, wallpaper and mode icon foundations in `identity/assets/`
 
 ## Components
 
-SevenOS uses small reusable identity components instead of relying on wallpaper
-alone:
+SevenOS keeps reusable identity components for profile and status surfaces:
 
-- `identity/components/kente-divider.svg`
 - `identity/components/adinkra-status-ok.svg`
 - `identity/components/baobab-system-mark.svg`
 - `identity/components/griot-doc-mark.svg`
 - `identity/components/forge-profile-mark.svg`
 - `identity/components/shield-profile-mark.svg`
+- `identity/components/kente-divider.svg`
 
-## Accent Pack Contract
+Regional and cultural accent components remain optional layers. The default
+SevenOS identity is now the global premium sci-fi glass direction.
 
-Regional packs are declared in `identity/accent-packs.json` and surfaced with:
+## Tagline
 
-```bash
-seven identity packs
-seven identity packs --json
-seven identity current
-seven identity activate pan-african
+Official:
+
+```text
+Beyond the Desktop.
 ```
 
-They are planned as subtle optional layers for wallpaper, accents, patterns and
-welcome signals. They are not the default visual system and should not become
-flag-based decoration.
+Alternatives:
 
-## Regional Accent Packs
-
-Regional accent packs are planned as optional layers, not as the default visual language.
-
-Possible packs:
-
-- Pan-African
-- West Africa
-- North Africa
-- Central Africa
-- East Africa
-- Southern Africa
-
-These packs should use subtle color and pattern accents. They should not turn the interface into a collage of flags.
+- The Intelligent Linux Experience.
+- Fluid. Secure. Immersive.
+- Next Generation Linux.
+- Your Adaptive System.

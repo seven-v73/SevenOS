@@ -6,8 +6,8 @@ window {
   width: 52%;
   border: 1px;
   border-radius: 30px;
-  border-color: rgba(255, 255, 255, 0.76);
-  background-color: rgba(232, 246, 252, 0.82);
+  border-color: rgba(77, 163, 255, 0.34);
+  background-color: rgba(18, 19, 26, 0.86);
 }
 
 mainbox {
@@ -22,8 +22,8 @@ inputbar {
   spacing: 12px;
   border: 1px;
   border-radius: 999px;
-  border-color: rgba(86, 127, 157, 0.38);
-  background-color: rgba(255, 255, 255, 0.82);
+  border-color: rgba(0, 212, 255, 0.28);
+  background-color: rgba(255, 255, 255, 0.07);
   children: [ icon-search, entry ];
 }
 
@@ -36,8 +36,8 @@ icon-search {
 
 entry {
   placeholder: "Search apps, files, windows, clipboard, actions...";
-  placeholder-color: rgba(51, 72, 82, 0.54);
-  text-color: rgba(16, 26, 33, 0.98);
+  placeholder-color: rgba(138, 143, 152, 0.70);
+  text-color: rgba(237, 237, 237, 0.98);
   cursor-color: @indigo;
   font: "SF Pro Text Medium 17";
 }
@@ -49,7 +49,7 @@ message {
 }
 
 textbox {
-  text-color: rgba(51, 72, 82, 0.66);
+  text-color: rgba(185, 192, 204, 0.72);
   font: "SF Pro Text Medium 10";
 }
 
@@ -66,19 +66,19 @@ element {
   spacing: 13px;
   border: 1px;
   border-radius: 18px;
-  border-color: rgba(255, 255, 255, 0.58);
-  background-color: rgba(255, 255, 255, 0.48);
-  text-color: rgba(16, 26, 33, 0.96);
+  border-color: rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.06);
+  text-color: rgba(237, 237, 237, 0.96);
 }
 
 element selected {
-  background-color: rgba(255, 255, 255, 0.88);
-  border-color: rgba(86, 127, 157, 0.58);
-  text-color: rgba(16, 26, 33, 0.98);
+  background-color: rgba(77, 163, 255, 0.16);
+  border-color: rgba(0, 212, 255, 0.36);
+  text-color: rgba(237, 237, 237, 0.98);
 }
 
 element alternate {
-  background-color: rgba(255, 255, 255, 0.36);
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 element-icon {

@@ -326,7 +326,7 @@ load_actions() {
     "Desktop")
       actions=(
         "Apply Branding|branding|Install SevenOS system identity"
-        "Apply Theme|theme|Apply African first desktop identity"
+        "Apply Theme|theme|Apply SevenOS Beyond the Desktop identity"
         "Seven Files|files:open|Open the file manager"
         "Seven Files Places|files:menu|Open quick places"
         "Power Menu|app:seven-power|Open power controls"

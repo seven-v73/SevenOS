@@ -230,7 +230,7 @@ def render_dashboard():
         card("Studio", studio[0], f"Creative workspace packages: {studio[1]}.", "target-plan"),
         card("Windows Mode", "OK" if windows_state.get("app_ready") else windows[0], f"Mode: {windows_mode}. Packages: {windows[1]}.", "windows-status"),
         card("Server & Deploy", "OK" if server_runtime == "RUN" else horizon[0], f"Horizon packages: {horizon[1]}. Runtime: {server_runtime}.", "deployment-plan"),
-        card("Theme & Session", "OK", "SevenOS Design System v1 across wallpaper, Waybar, Rofi, Kitty and Mako.", "theme"),
+        card("Theme & Session", "OK", "SevenOS Design System v2 across wallpaper, Waybar, Rofi, Kitty and Mako.", "theme"),
     ]
 
     actions = "".join(
@@ -246,13 +246,13 @@ def render_dashboard():
   <title>SevenOS Control Center</title>
   <style>
     :root {{
-      --ebene:#eef4f8; --surface-0:#f6fbfe; --surface-1:#ffffffd9; --surface-2:#edf5f9cc; --surface-3:#dbe9efc2;
-      --glass:#ffffff78; --glass-2:#ffffffa6; --glass-3:#f7fcffcc; --glass-border:#ffffffd6; --glass-border-2:#9fb8c6a8;
-      --gold:#b89a62; --gold-bright:#cbb37a; --gold-dim:#8f7a53;
-      --clay:#a95738; --clay-dim:#7d432e; --clay-pale:rgba(169,87,56,.10);
-      --baobab:#3f8b65; --baobab-bright:#4ba979; --baobab-pale:rgba(63,139,101,.12);
-      --indigo:#567f9d; --indigo-bright:#6f9dbc; --indigo-pale:rgba(86,127,157,.13);
-      --text-1:#17232b; --text-2:#4d606a; --text-3:#7c8c94;
+      --ebene:#09090B; --surface-0:#09090B; --surface-1:#12131A; --surface-2:#1C1F2C; --surface-3:#272B3D;
+      --glass:rgba(255,255,255,.06); --glass-2:rgba(255,255,255,.09); --glass-3:rgba(255,255,255,.13); --glass-border:rgba(255,255,255,.08); --glass-border-2:rgba(77,163,255,.32);
+      --gold:#7A5CFF; --gold-bright:#00D4FF; --gold-dim:rgba(122,92,255,.72);
+      --clay:#FF5976; --clay-dim:#C94563; --clay-pale:rgba(255,89,118,.12);
+      --baobab:#00FFB3; --baobab-bright:#00E676; --baobab-pale:rgba(0,255,179,.12);
+      --indigo:#4DA3FF; --indigo-bright:#00D4FF; --indigo-pale:rgba(77,163,255,.12);
+      --text-1:#EDEDED; --text-2:#B9C0CC; --text-3:#8A8F98;
       --font-display:"SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; --font-interface:"SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; --font-text:"SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif; --font-mono:"SF Mono", "JetBrainsMono Nerd Font", "SF Pro Text", monospace; --font-brand:"SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif;
     }}
     * {{ box-sizing: border-box; }}
@@ -260,13 +260,13 @@ def render_dashboard():
       margin: 0; min-height: 100vh; color: var(--text-1);
       font-family: var(--font-interface);
       background:
-        linear-gradient(135deg, rgba(255,255,255,.58), transparent 30%),
-        linear-gradient(225deg, rgba(86,127,157,.13), transparent 34%),
+        radial-gradient(circle at 14% 8%, rgba(77,163,255,.18), transparent 34%),
+        radial-gradient(circle at 84% 12%, rgba(122,92,255,.16), transparent 34%),
         linear-gradient(135deg, var(--ebene), var(--surface-0) 48%, var(--surface-1));
     }}
     main {{ max-width: 1180px; margin: 0 auto; padding: 34px 26px 44px; }}
     header {{ display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 24px; }}
-    h1 {{ margin: 0; font-family: var(--font-display); font-style: italic; font-weight: 300; font-size: 42px; letter-spacing: 0; line-height: 1.05; }}
+    h1 {{ margin: 0; font-family: var(--font-display); font-weight: 300; font-size: 42px; letter-spacing: 0; line-height: 1.05; }}
     .sub {{ color: var(--text-2); margin: 8px 0 0; }}
     .score {{ color: var(--text-1); background: var(--glass-2); border: 1px solid var(--glass-border-2); border-radius: 10px; padding: 10px 14px; font-weight: 500; }}
     .grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }}

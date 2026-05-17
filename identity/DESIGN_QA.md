@@ -1,63 +1,30 @@
 # SevenOS Design QA Checklist
 
-Use this checklist before shipping visual changes.
+Use this checklist before shipping a SevenOS visual change.
 
 ## Identity
 
-- African first, not generic cyberpunk.
-- Cultural references are structural, subtle, and respectful.
-- Flags are not used as the default design system.
-- Palette follows Design System v1: transparent minimal base, frosted active surfaces, indigo interaction, baobab health, clay warnings, and gold only as a restrained cultural accent.
-- `identity/STYLE.md` and `identity/tokens.css` are the source of truth.
+- SevenOS reads as premium, futuristic, intelligent and Linux-native.
+- The direction matches `identity/CHARTER.md` and the tagline “Beyond the Desktop.”
+- Interfaces feel fluid, transparent, minimal, deep and contextual.
 
-## Readability
+## Palette
 
-- Primary text uses `--text-1` or another high-contrast SevenOS token.
-- Indigo, clay, baobab and restrained gold are used as purposeful accents by function.
-- Small Waybar text remains readable at 13px.
-- Buttons and labels do not overflow their containers.
+- Primary accents use Seven Blue `#4DA3FF`, Seven Violet `#7A5CFF` and Seven Cyan `#00D4FF`.
+- Cyber/security signals use Seven Green `#00FFB3`.
+- Base surfaces use Deep Void `#09090B`, Surface Dark `#12131A` and translucent glass.
+- Text uses Soft White `#EDEDED` and Muted Gray `#8A8F98`.
 
-## Premium Feel
+## Surface Rules
 
-- Surfaces are dimensional, disciplined, translucent, and purposeful.
-- Default desktop chrome is 70% transparent minimal and 30% glass premium.
-- Liquid glass is simulated with opacity and borders, not production backdrop blur.
-- UI CSS avoids decorative `box-shadow` and weights above 500.
-- Corners stay consistent.
-- Icon weight is consistent across the profile set.
-- Wallpaper does not fight app windows or status bars.
-- Terminal theme feels premium while keeping command output highly readable.
-- Terminal cultural signals are concise, random, and easy to disable.
-- Terminal country flags require `noto-fonts-emoji` and Kitty maps regional indicator symbols to `Noto Color Emoji`.
+- Floating surfaces use 14px, 18px, 22px, 24px or 28px radius according to role.
+- Production shell CSS avoids decorative `box-shadow` and web-only `backdrop-filter`.
+- Glow is expressed through alpha gradients, borders, Hyprland blur and text-shadow.
+- UI CSS avoids font weights above 500.
 
-## Technical Checks
+## UX
 
-```bash
-jq empty hyprland/waybar/config.jsonc
-rofi -no-config -theme hyprland/rofi/sevenos.rasi -dump-theme
-rofi -no-config -theme hyprland/rofi/apps.rasi -dump-theme
-rofi -no-config -theme hyprland/rofi/power.rasi -dump-theme
-kitty +runpy 'from kitty.config import load_config; load_config("hyprland/kitty/kitty.conf")'
-bin/seven-country plain
-python3 - <<'PY'
-from pathlib import Path
-from xml.etree import ElementTree as ET
-for path in Path("identity/assets").glob("*.svg"):
-    ET.parse(path)
-    print("OK", path)
-for path in Path("identity/patterns").glob("*.svg"):
-    ET.parse(path)
-    print("OK", path)
-PY
-./scripts/ux-check.sh
-./scripts/check.sh
-```
-
-## UX Checks
-
-- Seven Hub opens first-level categories before action lists.
-- Waybar shows profile and security status without crowding the bar.
-- Power actions live in `seven-power`, not behind a misleading icon.
-- Cyber Lab presets create predictable private workspaces.
-- Kitty uses Design System v1 colors, readable contrast, calm opacity, and ergonomic tabs.
-- Country facts appear on terminal open/close without taking over the prompt.
+- Controls expose features directly.
+- Tabs and procedure-heavy menus are avoided unless they are genuinely needed.
+- Icons are outline, minimal and consistent.
+- Motion is calm: fade, slide, subtle scale and breathing focus.

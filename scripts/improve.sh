@@ -116,7 +116,7 @@ improve_security() {
 
 improve_customization() {
   section "Customization"
-  run_step "Apply SevenOS African first desktop identity" "$ROOT_DIR/install.sh" theme
+  run_step "Apply SevenOS Beyond the Desktop identity" "$ROOT_DIR/install.sh" theme
   run_step "Apply SevenOS system branding" "$ROOT_DIR/install.sh" branding
 }
 

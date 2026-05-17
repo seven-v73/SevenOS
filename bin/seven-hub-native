@@ -146,7 +146,7 @@ def identity_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "identity.sh"), "--json"))
     except Exception:
-        return {"schema": "sevenos.identity.v1", "positioning": "African first SevenOS", "principles": [], "profiles": []}
+        return {"schema": "sevenos.identity.v2", "positioning": "Next generation intelligent Linux experience", "tagline": "Beyond the Desktop.", "principles": [], "profiles": []}
 
 
 def actions_payload() -> dict:
@@ -339,7 +339,7 @@ def status_text() -> str:
         f"Root: {ROOT}\n"
         f"First run: {welcome.get('mode', 'unknown')} · {welcome.get('percent', 0)}% · {welcome_plan.get('summary', {}).get('total', 0)} actions\n"
         f"Session: {session.get('mode', 'unknown')} · {session.get('percent', 0)}% · {session.get('summary', {}).get('running', 0)} running\n"
-        f"Identity: {identity.get('positioning', 'African first SevenOS')}\n"
+        f"Identity: {identity.get('positioning', 'Next generation intelligent Linux experience')}\n"
         f"Active profile: {active.get('title') if active else 'none'}\n"
         f"Profiles: {ready} OK, {partial} PART, {missing} MISS\n"
         f"Profile gaps: {profile_gap_count} incomplete modes\n"
@@ -427,20 +427,22 @@ def run_gui() -> int:
         * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
         window.seven-hub-window {
           background:
-            linear-gradient(180deg, rgba(246, 251, 254, 0.98), rgba(226, 239, 247, 0.92));
-          color: rgba(23, 35, 43, 0.96);
+            radial-gradient(circle at 12% 8%, rgba(77, 163, 255, 0.16), transparent 34%),
+            linear-gradient(180deg, rgba(9, 9, 11, 0.98), rgba(18, 19, 26, 0.94));
+          color: rgba(237, 237, 237, 0.96);
         }
 
         .seven-root {
           background:
-            linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(111, 157, 188, 0.12) 42%, rgba(238, 244, 248, 0.78) 72%),
-            rgba(238, 244, 248, 0.96);
+            radial-gradient(circle at 12% 6%, rgba(77, 163, 255, 0.18), transparent 34%),
+            radial-gradient(circle at 86% 12%, rgba(122, 92, 255, 0.15), transparent 34%),
+            rgba(9, 9, 11, 0.96);
         }
 
         .seven-body {
           background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(226, 239, 247, 0.32));
-          border: 1px solid rgba(255, 255, 255, 0.72);
+            linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+          border: 1px solid rgba(77, 163, 255, 0.22);
           border-radius: 24px;
           margin: 24px;
         }
@@ -972,18 +974,18 @@ def run_gui() -> int:
                 metrics.append(metric_card("Daily", daily_state.replace("-", " "), f"{len(daily.get('blockers', []))} blockers", "good" if daily_state == "ready" else "warn"))
                 dashboard.append(metrics)
 
-                identity_group = Adw.PreferencesGroup(title="African first")
+                identity_group = Adw.PreferencesGroup(title="SevenOS identity")
                 identity_group.add(make_row(
-                    "Sovereign by design",
-                    identity.get("positioning", "African first Linux ecosystem for sovereignty, creation, security and deployment."),
+                    identity.get("tagline", "Beyond the Desktop."),
+                    identity.get("positioning", "Next generation intelligent Linux experience for creators, developers and cybersecurity."),
                 ))
                 current_pack = identity.get("current_pack", {})
                 identity_group.add(make_row(
                     "Active accent pack",
-                    f"{current_pack.get('title', 'Pan-African')} · {current_pack.get('accent', 'gold')} · {current_pack.get('pattern', 'kente')}",
+                    f"{current_pack.get('title', 'Default')} · {current_pack.get('accent', 'seven-blue')} · {current_pack.get('pattern', 'glass')}",
                 ))
                 principle_names = ", ".join(item.get("label", item.get("key", "")) for item in identity.get("principles", [])[:6])
-                identity_group.add(make_row("Product principles", principle_names or "Sovereignty, transmission, creation, protection, community, resilience"))
+                identity_group.add(make_row("Product principles", principle_names or "Fluidity, transparency, intelligent minimalism, depth, contextuality"))
                 packs = identity.get("regional_packs", [])
                 pack_names = ", ".join(item.get("title", "") for item in packs[:4])
                 identity_group.add(make_row("Accent packs", pack_names or "Pan-African, West Africa, North Africa, Central Africa"))
@@ -1576,7 +1578,7 @@ def run_gui() -> int:
                     tile_button("A", "Apps", "install and update", "sevenpkg status", "warn"),
                     tile_button("D", "Doctor", "repair path", "seven doctor", "warn"),
                     tile_button("B", "B3", "phase gate", "seven b3 status", "warn"),
-                    tile_button("I", "Identity", identity.get("current_pack", {}).get("title", "African first"), "seven identity status", "good"),
+                    tile_button("I", "Identity", identity.get("tagline", "Beyond the Desktop"), "seven identity status", "good"),
                 ]
                 add_tiles(grid, tiles, 4)
                 dashboard.append(grid)

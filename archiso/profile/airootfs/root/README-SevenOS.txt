@@ -1,5 +1,5 @@
 SevenOS Live ISO
-African first intelligent Linux ecosystem
+Beyond the Desktop
 
 This live environment contains the SevenOS repository at:
 

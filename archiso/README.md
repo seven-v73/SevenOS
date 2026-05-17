@@ -2,7 +2,7 @@
 
 This directory contains the first SevenOS live ISO profile.
 
-The profile is intentionally minimal: it creates a bootable Arch-based live environment, injects the SevenOS repository into `/opt/SevenOS`, and provides a small welcome command with the SevenOS African first ecosystem identity.
+The profile is intentionally minimal: it creates a bootable Arch-based live environment, injects the SevenOS repository into `/opt/SevenOS`, and provides a small welcome command with the SevenOS Beyond the Desktop identity.
 
 ## Build
 

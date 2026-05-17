@@ -44,7 +44,7 @@ Use:
 - SevenOS Cyber Lab
 - SevenOS profile
 - Windows Mode
-- African first
+- Beyond the Desktop
 - digital sovereignty
 
 Avoid:

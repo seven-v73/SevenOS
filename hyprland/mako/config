@@ -1,8 +1,8 @@
 font=SF Pro Display 10.5
-background-color=#ffffffe0
-text-color=#101a21
-border-color=#ffffffe8
-progress-color=over #567f9d
+background-color=#12131ad8
+text-color=#edededf2
+border-color=#4da3ff55
+progress-color=over #00d4ff
 width=430
 height=138
 margin=18
@@ -15,6 +15,6 @@ max-icon-size=48
 layer=overlay
 
 [urgency=high]
-border-color=#a95738
-background-color=#ffffffe8
-text-color=#101a21
+border-color=#ff5976
+background-color=#170b11e8
+text-color=#edededf7

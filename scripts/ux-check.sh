@@ -298,7 +298,7 @@ else
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
-   grep -q 'ebene: #eef4f8' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
+   grep -q 'seven-blue: #4DA3FF' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'SevenLaunchpadNative' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'set_max_children_per_line(8)' "$ROOT_DIR/bin/seven-launchpad-native" &&
@@ -309,9 +309,9 @@ if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'placeholder: "Search"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'spacing: 58px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    ! grep -RE '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/rofi" >/dev/null &&
-   grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+   grep -q 'gtk-application-prefer-dark-theme=true' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'icon_theme=Papirus' "$ROOT_DIR/hyprland/qt6ct/qt6ct.conf"; then
-  ok "App launcher and toolkit themes use light liquid SevenOS identity"
+  ok "App launcher and toolkit themes use futuristic dark glass SevenOS identity"
 else
   fail "Theme coherence is incomplete across launcher and toolkits"
 fi
@@ -770,7 +770,7 @@ fi
 overview_search_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" search)"
 quick_settings_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings")"
 apps_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open)"
-if grep -q 'rounding = 16' "$ROOT_DIR/hyprland/hyprland.conf" &&
+if grep -q 'rounding = 28' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'windowrule = match:title ^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -840,16 +840,16 @@ else
 fi
 
 if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'background_opacity 1.0' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'background_opacity 0.88' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'initial_window_width 76c' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'initial_window_height 21c' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'window_padding_width 6' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'font_size 10.0' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'remember_window_size no' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'background_blur 0' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'active_tab_background #d8d8d8' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'cursor #2f3437' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'background #fbfbfb' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'background_blur 14' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'active_tab_background #12131A' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'cursor #00D4FF' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'copy_on_select clipboard' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'map ctrl+shift+c copy_to_clipboard' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'map ctrl+shift+v paste_from_clipboard' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
@@ -874,13 +874,13 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -Fq 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -Fq 'windowrule = match:title ^(.+@SevenOS)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'exec zsh -di' "$ROOT_DIR/bin/seven-terminal-shell" &&
-   grep -q 'background #2d333d' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'copy_on_select clipboard' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'map ctrl+shift+c copy_to_clipboard' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'map ctrl+shift+v paste_from_clipboard' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'initial_window_width 76c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'initial_window_height 21c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
-   grep -q 'wayland_titlebar_color #34373d' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'wayland_titlebar_color #12131A' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'map ctrl+shift+u kitten hints' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" classic | grep -q 'DRY-RUN > Terminal > Open classic' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" dark | grep -q 'DRY-RUN > Terminal > Open dark' &&
@@ -890,7 +890,7 @@ else
   fail "Kitty palette is not aligned with SevenOS identity"
 fi
 
-if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
+if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-interface: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-text: "SF Pro Text"' "$ROOT_DIR/identity/tokens.css" &&
@@ -908,7 +908,7 @@ if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'copy GTK, Qt and fontconfig SevenOS settings' "$ROOT_DIR/scripts/apply-theme.sh" &&
    ! grep -R "box-shadow" "$ROOT_DIR/hyprland/waybar/style.css" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null &&
    ! grep -E '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/waybar/style.css" >/dev/null; then
-  ok "Frosted glass design tokens and no-shadow UI rule are enforced"
+  ok "SevenOS v2 glass design tokens and no-shadow UI rule are enforced"
 else
   fail "Design tokens or no-shadow UI rule failed"
 fi
@@ -1028,7 +1028,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def session_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Session:' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def identity_payload' "$ROOT_DIR/bin/seven-hub-native" &&
-   grep -q 'African first' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Beyond the Desktop' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Accent packs' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Active accent pack' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def shield_payload' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -1237,7 +1237,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema": "sevenos.welcome.v1"' <<<"$welcome_json" &&
    grep -q '"schema": "sevenos.welcome-plan.v1"' <<<"$welcome_plan_json" &&
    grep -q '"schema": "sevenos.session.v1"' <<<"$session_json" &&
-   grep -q '"schema": "sevenos.identity.v1"' <<<"$identity_json" &&
+   grep -q '"schema": "sevenos.identity.v2"' <<<"$identity_json" &&
    grep -q '"profiles"' <<<"$identity_json" &&
    grep -q '"schema": "sevenos.accent-packs.v1"' <<<"$identity_packs_json" &&
    grep -q 'pan-african' <<<"$identity_packs_json" &&
@@ -1324,7 +1324,7 @@ else
 fi
 
 if grep -q 'seven ecosystem' "$ROOT_DIR/branding/motd" &&
-   grep -q 'African first intelligent Linux ecosystem' "$ROOT_DIR/branding/issue" &&
+   grep -q 'Beyond the Desktop' "$ROOT_DIR/branding/issue" &&
    grep -q 'seven ecosystem' "$ROOT_DIR/archiso/profile/airootfs/etc/motd"; then
   ok "Branding exposes SevenOS ecosystem identity"
 else

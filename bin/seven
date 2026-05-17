@@ -587,7 +587,7 @@ def main():
     adaptive_parser = subparsers.add_parser("adaptive", help="inspect SevenOS adaptive profile-aware UI")
     adaptive_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
     adaptive_parser.add_argument("--json", action="store_true", help="print machine-readable adaptive UI contract")
-    identity_parser = subparsers.add_parser("identity", help="show SevenOS African first identity language")
+    identity_parser = subparsers.add_parser("identity", help="show SevenOS visual identity language")
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
     identity_parser.add_argument("extra", nargs=argparse.REMAINDER)

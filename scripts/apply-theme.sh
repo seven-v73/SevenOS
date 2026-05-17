@@ -235,7 +235,7 @@ configure_toolkit_theme() {
   "$ROOT_DIR/scripts/fonts.sh" apply-default
 
   if command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.interface color-scheme prefer-light >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface color-scheme prefer-dark >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3 >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface icon-theme Papirus >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic >/dev/null 2>&1 || true
@@ -250,7 +250,7 @@ configure_toolkit_theme() {
 }
 
 render_wallpaper() {
-  log_info "Rendering SevenOS Sovereign Graphite wallpaper..."
+  log_info "Rendering SevenOS Beyond the Desktop wallpaper..."
 
   if is_dry_run; then
     printf 'rm -f %q\n' "$WALLPAPER_PNG"
@@ -270,7 +270,7 @@ render_wallpaper() {
   fi
 }
 
-log_info "Applying SevenOS African first theme..."
+log_info "Applying SevenOS Beyond the Desktop theme..."
 copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.conf"
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/monitor.conf" "$CONFIG_HOME/hypr/conf/monitor.conf"
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/keyboard.conf" "$CONFIG_HOME/hypr/conf/keyboard.conf"

@@ -37,7 +37,7 @@ User question:
 
 SevenOS answer:
 
-- African first identity
+- Beyond the Desktop identity
 - liquid glass desktop language
 - Seven Hub control center
 - Waybar status surfaces
@@ -184,7 +184,7 @@ Signals:
 SevenOS should reduce forced compromise:
 
 > Linux power, Windows compatibility, desktop-grade care, Ubuntu-like approachability,
-> and a modern African first identity.
+> and a modern Beyond the Desktop identity.
 
 This document is paired with:
 

@@ -91,7 +91,7 @@ fi
 
 if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'border-radius: 28px' "$ROOT_DIR/bin/seven-shell-panel" &&
-   grep -q 'linear-gradient(180deg, rgba(255, 255, 255, 0.82)' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'notification-card' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'SevenQuickSettingsNative' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'build_slider_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'icon-action' "$ROOT_DIR/bin/seven-quick-settings-native" &&
@@ -101,9 +101,9 @@ if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'notification-card' "$ROOT_DIR/bin/seven-notification-center-native" &&
    grep -q 'action-glyph' "$ROOT_DIR/bin/seven-notification-center-native" &&
    ! grep -q 'Notification Status' "$ROOT_DIR/bin/seven-waybar-notifications"; then
-  ok "Native shell panel, quick settings and notification center follow SevenOS Frost surface language"
+  ok "Native shell panel, quick settings and notification center follow SevenOS glass surface language"
 else
-  fail "Native shell panel, quick settings and notification center should follow SevenOS Frost surface language"
+  fail "Native shell panel, quick settings and notification center should follow SevenOS glass surface language"
 fi
 
 if grep -q 'SevenProfileCenterNative' "$ROOT_DIR/bin/seven-profile-center-native" &&
@@ -137,7 +137,7 @@ fi
 if [[ -s "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" ]] &&
    grep -q 'Spotlight is the only global search surface' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" &&
    grep -q 'Dock is a workflow surface' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" &&
-   grep -q 'No black-on-black utility surfaces' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md"; then
+   grep -q 'No flat black-on-black utility surfaces' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md"; then
   ok "SevenOS has an OS-level Liquid Glass direction"
 else
   fail "SevenOS should document the OS-level Liquid Glass direction"
@@ -174,12 +174,12 @@ else
   fail "Settings or Notifications dedicated shell surface missing"
 fi
 
-if grep -q 'bg: rgba(246, 251, 254, 0.86)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
+if grep -q 'bg: rgba(18, 19, 26, 0.86)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'border-radius: 22px' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    grep -q 'min-height: 58px' "$ROOT_DIR/hyprland/rofi/hub.rasi"; then
-  ok "Seven Hub fallback uses readable frosted navigation"
+  ok "Seven Hub fallback uses readable futuristic glass navigation"
 else
-  fail "Seven Hub fallback should use readable frosted navigation"
+  fail "Seven Hub fallback should use readable futuristic glass navigation"
 fi
 
 if grep -q 'width: 52%' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
@@ -215,25 +215,26 @@ else
   fail "Apps overview still lacks SevenOS signature depth or tokenized surfaces"
 fi
 
-if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q 'gtk-application-prefer-dark-theme=true' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
    grep -q 'window.nautilus-window headerbar' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
    grep -q 'SevenFilesNative' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'files-sidebar' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
-   grep -q 'background #fbfbfb' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'background #2d333d' "$ROOT_DIR/hyprland/kitty/dark.conf"; then
-  ok "SevenOS default UI is transparent minimal with frosted glass accents"
+   grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/dark.conf"; then
+  ok "SevenOS default UI is dark, transparent and cinematic with glass accents"
 else
-  fail "SevenOS default UI should ship transparent minimal glass"
+  fail "SevenOS default UI should ship dark transparent cinematic glass"
 fi
 
 if grep -q 'kente-band' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
-   grep -q 'section-eyebrow' "$ROOT_DIR/seven-hub/gui/src/styles.css"; then
-  ok "Seven Hub uses African-first structural details"
+   grep -q 'Beyond the Desktop' "$ROOT_DIR/identity/CHARTER.md" &&
+   grep -q 'gradient-primary' "$ROOT_DIR/seven-hub/gui/src/styles.css"; then
+  ok "Seven Hub uses SevenOS v2 structural glow details"
 else
-  fail "Seven Hub should expose structural African-first details"
+  fail "Seven Hub should expose SevenOS v2 structural glow details"
 fi
 
 if [[ "$failures" -gt 0 ]]; then

@@ -2,7 +2,7 @@
 
 SevenOS uses desktop-grade systems as a quality reference, not as a copy
 target. The goal is a desktop that feels calm, readable, spatial and integrated
-while keeping the SevenOS identity: African first, sovereign, context-aware and
+while keeping the SevenOS identity: futuristic, premium, context-aware and
 Linux-native.
 
 ## Core Material Rule
@@ -13,19 +13,20 @@ SevenOS uses a 70/30 balance:
 - 30% liquid glass on active surfaces: Waybar islands, Dock, Spotlight, Seven
   Files, notifications, Control Center and overlays.
 
-Liquid glass should be simulated with translucent surfaces, white borders, soft
-surface gradients and consistent spacing. It must not depend on heavy CSS
-`backdrop-filter` effects for production Linux surfaces.
+Liquid glass is delivered by Hyprland compositor blur plus translucent
+surfaces, soft borders, subtle gradients and consistent spacing. Production
+Linux shell CSS does not use web-only `backdrop-filter`.
 
 ## Interface Anatomy
 
 ### Menu Bar
 
-The top Waybar behaves as a system menu bar:
+The top Waybar behaves as a floating cockpit:
 
-- left: SevenOS identity, Apps and current time;
-- center: workspaces/spaces;
-- right: profile, security, audio, network, notifications, battery and power.
+- left: SevenOS identity, Apps and workspaces;
+- center: Spotlight, media and SevenAI;
+- right: profile, security, CPU/RAM, Bluetooth, audio, network, notifications,
+  clock, battery and power.
 
 Every visible item must be clickable or carry useful state. Decorative modules
 are not allowed.
@@ -106,9 +107,9 @@ The visual system should support future continuity features:
 
 ## Non-Negotiables
 
-- No black-on-black utility surfaces.
+- No flat black-on-black utility surfaces without translucent depth.
 - No oversized glass sheets everywhere.
-- No neon or cyberpunk cliché.
+- No aggressive neon or cyberpunk cliché; cyber mode stays premium and useful.
 - No search bars outside Spotlight unless the app is a dedicated search tool.
 - No decorative UI element without a real action or state.
 - No direct clone branding. SevenOS keeps its own vocabulary and profile

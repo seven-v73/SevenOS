@@ -1,6 +1,6 @@
 # SevenOS Wallpaper Direction
 
-Future wallpapers should follow the SevenOS African first identity:
+Future wallpapers should follow the SevenOS Beyond the Desktop identity:
 
 - abstract geometry over literal symbols
 - graphite base with brass, copper, malachite, and cobalt accents

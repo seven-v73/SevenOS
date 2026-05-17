@@ -6,7 +6,7 @@ window {
   padding: 26px 46px 42px 46px;
   border: 0px;
   border-radius: 0px;
-  background-color: rgba(226, 239, 247, 0.36);
+  background-color: rgba(9, 9, 11, 0.46);
 }
 
 mainbox {
@@ -21,9 +21,9 @@ inputbar {
   padding: 5px 11px;
   spacing: 7px;
   border: 1px;
-  border-color: rgba(255, 255, 255, 0.70);
+  border-color: rgba(77, 163, 255, 0.30);
   border-radius: 999px;
-  background-color: rgba(255, 255, 255, 0.58);
+  background-color: rgba(18, 19, 26, 0.74);
   children: [ icon-search, entry ];
 }
 
@@ -36,8 +36,8 @@ icon-search {
 
 entry {
   placeholder: "Search";
-  placeholder-color: rgba(51, 72, 82, 0.70);
-  text-color: rgba(16, 26, 33, 0.94);
+  placeholder-color: rgba(138, 143, 152, 0.78);
+  text-color: rgba(237, 237, 237, 0.94);
   font: "SF Pro Text 11";
 }
 
@@ -69,12 +69,12 @@ element {
   border: 0px;
   border-radius: 20px;
   background-color: transparent;
-  text-color: rgba(16, 26, 33, 0.94);
+  text-color: rgba(237, 237, 237, 0.94);
 }
 
 element selected {
-  background-color: rgba(255, 255, 255, 0.48);
-  text-color: rgba(16, 26, 33, 1.00);
+  background-color: rgba(77, 163, 255, 0.16);
+  text-color: rgba(237, 237, 237, 1.00);
 }
 
 element alternate {

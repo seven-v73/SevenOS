@@ -17,7 +17,7 @@ work feel like one coherent environment.
 
 The promise is:
 
-> one African first Linux ecosystem to create, secure, develop, run, deploy and
+> one intelligent Linux ecosystem to create, secure, develop, run, deploy and
 > maintain digital work without assembling a different toolchain every day.
 
 ## System Layers
@@ -70,7 +70,7 @@ Rules:
   package boundaries, protected user paths and restore plans for upgrades.
 - `seven ecosystem --json` is the product ecosystem contract. It declares
   modules, maturity states and end-to-end user processes.
-- `seven identity --json` is the African first product language contract. It
+- `seven identity --json` is the Beyond the Desktop product language contract. It
   declares principles, profile roles, symbols, stories and future regional
   accent packs so identity can appear in Hub, onboarding and profiles.
 - `seven identity packs --json` is the regional accent pack contract. It keeps

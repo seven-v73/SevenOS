@@ -129,10 +129,10 @@ services and trust/compatibility blockers immediately after installation.
 login session, user service files and running Waybar/notifications/wallpaper
 services as data for Seven Hub and Seven Server.
 
-`seven identity --json` is the African first contract. It turns sovereignty,
-transmission, creation, protection, community, resilience, profile roles and
-regional accent packs into data that Seven Hub can show instead of leaving
-identity as only wallpaper or README language.
+`seven identity --json` is the Beyond the Desktop contract. It turns fluidity,
+transparency, intelligent minimalism, depth, contextuality, visible security,
+profile roles and accent packs into data that Seven Hub can show instead of
+leaving identity as only wallpaper or README language.
 
 `seven identity packs --json` is the regional accent pack contract. It keeps
 future Pan-African, West, North, Central, East, Southern and Diaspora packs
@@ -185,7 +185,7 @@ of blockers with severity, impact and next command.
 `seven phase-gate --json` is the higher-phase decision contract. It checks
 whether B2 can move toward B3 by looking at readiness, experience, Control
 Plane, Shield, Seven Server, installer, Windows Mode, profiles, software and
-the active African first identity pack.
+the active SevenOS identity pack.
 
 `seven stack --json` is the stack discipline contract. It records the chosen
 order: JSON contracts and native Hub first, then AGS/TypeScript shell, then
@@ -252,7 +252,7 @@ Already present:
 - `seven-server` local API foundation
 - `seven-deploy` deployment planner
 - readiness and phase-gate scorecards
-- African first identity layer
+- Beyond the Desktop identity layer
 
 ## Phase Discipline
 

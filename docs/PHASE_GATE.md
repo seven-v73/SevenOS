@@ -95,7 +95,7 @@ backend, profile or shell layers are still only partial.
 - `gates`: readiness, experience, control plane, Shield, Server, installer,
   Windows Mode, profiles, software and stack discipline
 - `next_commands`: the highest-impact commands to run before the next phase
-- `identity.active_pack`: the current African first accent pack
+- `identity.active_pack`: the current SevenOS accent pack
 
 `seven b3 plan --json` complements the phase gate with an executable
 consolidation sequence. It orders the blockers as:

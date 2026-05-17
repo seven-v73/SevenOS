@@ -366,7 +366,7 @@ for raw in os.environ["PROCESSES_TSV"].splitlines():
 
 print(json.dumps({
     "schema": "sevenos.ecosystem.v1",
-    "positioning": "all-in-one African first Linux ecosystem",
+    "positioning": "next generation intelligent Linux experience",
     "modules": modules,
     "processes": processes,
     "maturity": json.loads(os.environ["MATURITY_JSON"]),

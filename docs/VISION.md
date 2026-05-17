@@ -1,14 +1,14 @@
 # SevenOS Vision
 
-SevenOS is not meant to be another Arch remix. It is a Linux ecosystem with an
-African first point of view: powerful, open, culturally grounded, and built for
+SevenOS is not meant to be another Arch remix. It is a Linux ecosystem with a
+Beyond the Desktop point of view: intelligent, open, immersive, and built for
 modern work.
 
 ## Positioning
 
 SevenOS aims to become:
 
-> an afro-futurist Linux ecosystem for productivity, creation, cybersecurity,
+> a futuristic intelligent Linux ecosystem for productivity, creation, cybersecurity,
 > Windows compatibility, personal cloud deployment, and digital sovereignty.
 
 The goal is to combine:
@@ -84,7 +84,7 @@ marking every module as active, preview, or planned.
 
 ## Differentiators
 
-- African first identity without reducing culture to decoration
+- Beyond the Desktop identity without reducing the system to decoration
 - profile-based workflows: Forge, Shield, Studio, Horizon, Griot, Baobab
 - integrated Windows compatibility through Wine, Bottles, Lutris, and KVM
 - cybersecurity as a first-class workspace, not a separate live ISO only
@@ -99,7 +99,7 @@ Every major change should answer yes to at least one of these questions:
 
 - Does it make SevenOS more sovereign?
 - Does it make Linux easier to live with?
-- Does it strengthen the African first identity in a useful way?
+- Does it strengthen the Beyond the Desktop identity in a useful way?
 - Does it improve creative, cyber, development, or Windows workflows?
 - Does it make self-hosting and deployment easier without weakening security?
 - Does it make the system feel more coherent and premium?

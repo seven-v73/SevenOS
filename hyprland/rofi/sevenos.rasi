@@ -1,26 +1,37 @@
 * {
-  ebene: #eef4f8;
-  surface-0: #f6fbfe;
-  surface-1: rgba(255, 255, 255, 0.86);
-  surface-2: rgba(255, 255, 255, 0.72);
-  surface-3: rgba(231, 242, 248, 0.76);
-  glass: rgba(255, 255, 255, 0.68);
-  glass-2: rgba(255, 255, 255, 0.80);
-  glass-3: rgba(247, 252, 255, 0.92);
-  glass-border: rgba(255, 255, 255, 0.88);
-  glass-border-2: rgba(120, 147, 163, 0.56);
-  gold: #b89a62;
-  gold-bright: #cbb37a;
-  gold-dim: #8f7a53;
-  clay: #a95738;
-  clay-dim: #7d432e;
-  baobab: #3f8b65;
-  baobab-bright: #4ba979;
-  indigo: #567f9d;
-  indigo-bright: #6f9dbc;
-  text-1: #101a21;
-  text-2: #334852;
-  text-3: #657883;
+  seven-blue: #4DA3FF;
+  seven-violet: #7A5CFF;
+  seven-cyan: #00D4FF;
+  seven-green: #00FFB3;
+  deep-void: #09090B;
+  surface-dark: #12131A;
+  surface-0: #09090B;
+  surface-1: rgba(18, 19, 26, 0.86);
+  surface-2: rgba(28, 31, 44, 0.76);
+  surface-3: rgba(39, 43, 61, 0.82);
+  glass: rgba(255, 255, 255, 0.06);
+  glass-2: rgba(255, 255, 255, 0.09);
+  glass-3: rgba(255, 255, 255, 0.13);
+  glass-border: rgba(255, 255, 255, 0.08);
+  glass-border-2: rgba(77, 163, 255, 0.32);
+  text-1: #EDEDED;
+  text-2: #B9C0CC;
+  text-3: #8A8F98;
+  indigo: #4DA3FF;
+  indigo-bright: #00D4FF;
+  gold: #7A5CFF;
+  gold-bright: #00D4FF;
+  gold-dim: rgba(122, 92, 255, 0.72);
+  clay: #FF5976;
+  clay-dim: #C94563;
+  baobab: #00FFB3;
+  baobab-bright: #00E676;
+
+  background-color: transparent;
+  text-color: @text-1;
+  font: "SF Pro Text 13";
+  margin: 0;
+  padding: 0;
 }
 
 window {
@@ -42,17 +53,17 @@ message {
   padding: 12px 14px;
   border: 1px;
   border-color: @glass-border;
-  border-radius: 14px;
+  border-radius: 18px;
   background-color: @glass;
 }
 
 textbox {
-  text-color: @indigo;
+  text-color: @indigo-bright;
   font: "SF Pro Text Medium 12";
 }
 
 prompt {
-  text-color: @indigo;
+  text-color: @indigo-bright;
   font: "SF Pro Text Medium 13";
 }
 
@@ -72,7 +83,7 @@ element {
   padding: 12px 13px;
   border: 1px;
   border-color: @glass-border;
-  border-radius: 13px;
+  border-radius: 14px;
   background-color: @glass;
   text-color: @text-1;
 }
