@@ -9,7 +9,31 @@ import sys
 from pathlib import Path
 
 
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        probe_cmd = [str(system_python), "-c", "import gi"]
+        if subprocess_run(probe_cmd) == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def subprocess_run(command: list[str]) -> int:
+    import subprocess
+
+    return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode
+
+
 def probe() -> int:
+    ensure_gi_python()
     try:
         import gi
 
@@ -50,6 +74,7 @@ def hex_to_rgba(value: str):
 
 
 def run_terminal(profile: str, command: list[str]) -> int:
+    ensure_gi_python()
     import gi
 
     gi.require_version("Gtk", "3.0")

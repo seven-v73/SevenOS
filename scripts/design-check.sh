@@ -134,6 +134,8 @@ if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
    grep -q 'window.nautilus-window headerbar' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
+   grep -q 'SevenFilesNative' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'files-sidebar' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'background #fbfbfb' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'background #2d333d' "$ROOT_DIR/hyprland/kitty/dark.conf"; then

@@ -223,6 +223,10 @@ sudo pacman -S --needed python-gobject vte3
 hyprctl reload
 ```
 
+SevenOS also guards against `pyenv` masking Arch Python modules: native GTK
+surfaces relaunch through `/usr/bin/python` when the system bindings are
+available there.
+
 If GTK/VTE is not installed yet, SevenOS falls back to Kitty with visual
 traffic-light markers and these shortcuts:
 
@@ -242,6 +246,25 @@ results. Global actions, files, settings and intelligence still belong to
 When GTK is available, SevenOS uses the native Launchpad surface first: a
 fullscreen icon grid with large app icons, a compact top filter and Escape to
 close. Rofi remains only the fallback for machines missing GTK bindings.
+
+## Seven Files
+
+`seven-files` now prefers the native Finder-like Seven Files surface before
+falling back to Nautilus. The native surface provides a macOS-like sidebar,
+traffic-light controls, toolbar navigation and large icon grid:
+
+```bash
+seven-files
+seven-files downloads
+seven-files pictures
+```
+
+If the native surface does not open, verify the same GTK Python path used by the
+terminal:
+
+```bash
+seven-files-native --probe
+```
 
 If an old fullscreen Kitty window keeps appearing, close all Kitty windows and
 re-apply the active desktop layer:

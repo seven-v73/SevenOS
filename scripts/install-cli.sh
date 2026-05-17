@@ -121,6 +121,7 @@ install_user_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
 install_user_command "$ROOT_DIR/bin/seven-terminal-native" seven-terminal-native
 install_user_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
 install_user_command "$ROOT_DIR/bin/seven-files" seven-files
+install_user_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
 install_user_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_user_command "$ROOT_DIR/bin/seven-shell-preview" seven-shell-preview
 install_user_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight
@@ -155,6 +156,7 @@ install_system_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
 install_system_command "$ROOT_DIR/bin/seven-terminal-native" seven-terminal-native
 install_system_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
 install_system_command "$ROOT_DIR/bin/seven-files" seven-files
+install_system_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
 install_system_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_system_command "$ROOT_DIR/bin/seven-shell-preview" seven-shell-preview
 install_system_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight

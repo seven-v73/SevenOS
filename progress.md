@@ -581,10 +581,12 @@ Avancement UI :
   dessinees directement, donc moins dependant du theme GTK.
 - `seven-terminal status` indique si le terminal natif est actif ou si les
   dependances `python-gobject` et `vte3` manquent.
+- Les surfaces natives GTK detectent maintenant pyenv et se relancent via
+  `/usr/bin/python` quand les bindings systeme `gi` sont masques.
 - Launchpad natif GTK ajoute : grille plein ecran, grandes icones, filtre
   compact et fermeture par Escape. Rofi reste le fallback.
-- Seven Files est aligne vers Nautilus/Finder-like : vue icones large,
-  headerbar, sidebar douce, favoris et fenetre flottante.
+- Seven Files a maintenant une vraie surface native Finder-like :
+  sidebar, pastilles, barre de navigation, grandes icones et fallback Nautilus.
 - Checks design/UX mis a jour pour proteger ces surfaces.
 
 Jalon en cours :

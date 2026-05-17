@@ -11,7 +11,30 @@ import sys
 from pathlib import Path
 
 
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
 def probe() -> int:
+    ensure_gi_python()
     try:
         import gi
 
@@ -140,6 +163,7 @@ def shutil_which(command: str) -> str | None:
 
 
 def run_launchpad() -> int:
+    ensure_gi_python()
     import gi
 
     gi.require_version("Gtk", "3.0")

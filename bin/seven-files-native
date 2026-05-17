@@ -1,0 +1,413 @@
+#!/usr/bin/env python3
+"""SevenOS Finder-like native file surface."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def xdg_open(path: Path) -> None:
+    subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def folder_icon(path: Path) -> str:
+    mapping = {
+        "Desktop": "user-desktop",
+        "Documents": "folder-documents",
+        "Downloads": "folder-download",
+        "Music": "folder-music",
+        "Pictures": "folder-pictures",
+        "Videos": "folder-videos",
+        "Projects": "folder-development",
+    }
+    if path.is_dir():
+        return mapping.get(path.name, "folder")
+    suffix = path.suffix.lower()
+    if suffix in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}:
+        return "image-x-generic"
+    if suffix in {".mp4", ".mkv", ".mov", ".webm"}:
+        return "video-x-generic"
+    if suffix in {".mp3", ".wav", ".flac", ".ogg"}:
+        return "audio-x-generic"
+    if suffix in {".zip", ".tar", ".gz", ".xz", ".7z"}:
+        return "package-x-generic"
+    if suffix in {".pdf"}:
+        return "application-pdf"
+    if suffix in {".sh", ".py", ".rs", ".js", ".ts", ".html", ".css", ".json", ".md"}:
+        return "text-x-script"
+    return "text-x-generic"
+
+
+def run_files(start_path: str) -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, Gtk
+
+    current = Path(start_path).expanduser()
+    if not current.exists():
+        current = Path.home()
+    if current.is_file():
+        current = current.parent
+
+    history: list[Path] = []
+    future: list[Path] = []
+
+    css = """
+    window.seven-files {
+      background: #fdfdfd;
+      border-radius: 18px;
+      color: #202124;
+    }
+    .files-root {
+      background: #fdfdfd;
+    }
+    .files-sidebar {
+      min-width: 184px;
+      padding: 16px 12px;
+      background: rgba(243, 245, 247, 0.94);
+      border-right: 1px solid rgba(120, 130, 140, 0.18);
+    }
+    .traffic-row {
+      padding: 0 0 18px 0;
+    }
+    .traffic-dot {
+      min-width: 13px;
+      min-height: 13px;
+      margin-right: 8px;
+    }
+    .sidebar-heading {
+      color: #8a8f96;
+      font: 600 11px "DM Sans", "Inter", sans-serif;
+      margin: 12px 0 4px 8px;
+    }
+    .sidebar-row {
+      min-height: 36px;
+      padding: 0 10px;
+      border-radius: 11px;
+      color: #1f2328;
+      font: 500 13px "DM Sans", "Inter", sans-serif;
+    }
+    .sidebar-row:hover,
+    .sidebar-row.active {
+      background: rgba(35, 118, 220, 0.10);
+    }
+    .files-main {
+      background: #ffffff;
+    }
+    .files-toolbar {
+      min-height: 58px;
+      padding: 0 16px 0 10px;
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom: 1px solid rgba(120, 130, 140, 0.16);
+    }
+    .toolbar-button {
+      min-width: 38px;
+      min-height: 38px;
+      border-radius: 999px;
+      background: rgba(245, 246, 248, 0.96);
+      color: #30343a;
+      border: 0;
+      padding: 0;
+    }
+    .toolbar-button:hover {
+      background: rgba(226, 230, 235, 0.96);
+    }
+    .files-title {
+      color: #30343a;
+      font: 700 17px "DM Sans", "Inter", sans-serif;
+    }
+    .files-grid {
+      padding: 34px 34px;
+      background: #ffffff;
+    }
+    .file-tile {
+      min-width: 128px;
+      min-height: 128px;
+      padding: 10px 8px;
+      border-radius: 14px;
+      color: #202124;
+    }
+    .file-tile:hover,
+    .file-tile:selected {
+      background: rgba(35, 118, 220, 0.10);
+    }
+    .file-name {
+      color: #202124;
+      font: 500 12px "DM Sans", "Inter", sans-serif;
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title="Seven Files")
+    window.set_default_size(1120, 700)
+    window.set_resizable(True)
+    window.set_decorated(False)
+    window.set_wmclass("SevenFilesNative", "SevenFilesNative")
+    window.get_style_context().add_class("seven-files")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+    root.get_style_context().add_class("files-root")
+    window.add(root)
+
+    sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    sidebar.get_style_context().add_class("files-sidebar")
+    root.pack_start(sidebar, False, False, 0)
+
+    traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+    traffic.get_style_context().add_class("traffic-row")
+    sidebar.pack_start(traffic, False, False, 0)
+
+    def draw_dot(widget, cr, fill: str, stroke: str):
+        rgba = Gdk.RGBA()
+        border = Gdk.RGBA()
+        rgba.parse(fill)
+        border.parse(stroke)
+        alloc = widget.get_allocation()
+        radius = min(alloc.width, alloc.height) / 2 - 1
+        cr.set_source_rgba(rgba.red, rgba.green, rgba.blue, rgba.alpha)
+        cr.arc(alloc.width / 2, alloc.height / 2, radius, 0, 6.28318)
+        cr.fill_preserve()
+        cr.set_source_rgba(border.red, border.green, border.blue, 0.72)
+        cr.set_line_width(1)
+        cr.stroke()
+        return False
+
+    def dot(fill: str, stroke: str, callback):
+        event = Gtk.EventBox()
+        event.set_visible_window(False)
+        area = Gtk.DrawingArea()
+        area.set_size_request(14, 14)
+        area.get_style_context().add_class("traffic-dot")
+        area.connect("draw", draw_dot, fill, stroke)
+        event.add(area)
+        event.connect("button-release-event", callback)
+        return event
+
+    traffic.pack_start(dot("#ff5f57", "#d8463f", lambda *_: window.close()), False, False, 0)
+    traffic.pack_start(dot("#febc2e", "#d9a023", lambda *_: window.iconify()), False, False, 0)
+    traffic.pack_start(dot("#28c840", "#1fa334", lambda *_: window.unmaximize() if window.is_maximized() else window.maximize()), False, False, 0)
+
+    sidebar_buttons = []
+
+    def add_heading(label: str):
+        heading = Gtk.Label(label=label)
+        heading.set_xalign(0)
+        heading.get_style_context().add_class("sidebar-heading")
+        sidebar.pack_start(heading, False, False, 0)
+
+    def add_place(label: str, icon: str, path: Path):
+        row = Gtk.Button()
+        row.set_relief(Gtk.ReliefStyle.NONE)
+        row.get_style_context().add_class("sidebar-row")
+        content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.MENU)
+        text = Gtk.Label(label=label)
+        text.set_xalign(0)
+        content.pack_start(image, False, False, 0)
+        content.pack_start(text, True, True, 0)
+        row.add(content)
+        row.connect("clicked", lambda *_: navigate(path))
+        row.place_path = path
+        sidebar_buttons.append(row)
+        sidebar.pack_start(row, False, False, 0)
+
+    add_place("Recents", "document-open-recent", Path.home())
+    add_heading("Favorites")
+    add_place("Applications", "applications-system", Path("/usr/share/applications"))
+    add_place("Downloads", "folder-download", Path.home() / "Downloads")
+    add_place("Desktop", "user-desktop", Path.home() / "Desktop")
+    add_place("Documents", "folder-documents", Path.home() / "Documents")
+    add_place("Pictures", "folder-pictures", Path.home() / "Pictures")
+    add_place("Projects", "folder-development", Path.home() / "Projects")
+    add_heading("Locations")
+    add_place(Path.home().name, "user-home", Path.home())
+    add_place("SevenOS", "drive-harddisk", Path("/"))
+
+    main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    main.get_style_context().add_class("files-main")
+    root.pack_start(main, True, True, 0)
+
+    toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    toolbar.get_style_context().add_class("files-toolbar")
+    main.pack_start(toolbar, False, False, 0)
+
+    def toolbar_button(icon: str, callback):
+        button = Gtk.Button()
+        button.set_relief(Gtk.ReliefStyle.NONE)
+        button.get_style_context().add_class("toolbar-button")
+        button.add(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.BUTTON))
+        button.connect("clicked", callback)
+        return button
+
+    back_btn = toolbar_button("go-previous-symbolic", lambda *_: go_back())
+    forward_btn = toolbar_button("go-next-symbolic", lambda *_: go_forward())
+    toolbar.pack_start(back_btn, False, False, 0)
+    toolbar.pack_start(forward_btn, False, False, 0)
+
+    title = Gtk.Label()
+    title.set_xalign(0)
+    title.get_style_context().add_class("files-title")
+    toolbar.pack_start(title, True, True, 10)
+
+    for icon in ("view-grid-symbolic", "view-list-symbolic", "view-column-symbolic", "view-more-symbolic"):
+        toolbar.pack_start(toolbar_button(icon, lambda *_: None), False, False, 0)
+
+    scroller = Gtk.ScrolledWindow()
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    main.pack_start(scroller, True, True, 0)
+
+    flow = Gtk.FlowBox()
+    flow.get_style_context().add_class("files-grid")
+    flow.set_halign(Gtk.Align.FILL)
+    flow.set_valign(Gtk.Align.START)
+    flow.set_selection_mode(Gtk.SelectionMode.SINGLE)
+    flow.set_min_children_per_line(4)
+    flow.set_max_children_per_line(7)
+    flow.set_column_spacing(30)
+    flow.set_row_spacing(34)
+    scroller.add(flow)
+
+    def update_sidebar():
+        for row in sidebar_buttons:
+            ctx = row.get_style_context()
+            if getattr(row, "place_path", None) == current:
+                ctx.add_class("active")
+            else:
+                ctx.remove_class("active")
+
+    def render():
+        title.set_text(current.name or str(current))
+        for child in flow.get_children():
+            flow.remove(child)
+        try:
+            entries = sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.casefold()))
+        except OSError:
+            entries = []
+        for path in entries:
+            child = Gtk.FlowBoxChild()
+            child.get_style_context().add_class("file-tile")
+            child.path = path
+            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            box.set_halign(Gtk.Align.CENTER)
+            image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
+            image.set_pixel_size(72)
+            label = Gtk.Label(label=path.name)
+            label.set_max_width_chars(16)
+            label.set_line_wrap(True)
+            label.set_lines(2)
+            label.set_justify(Gtk.Justification.CENTER)
+            label.get_style_context().add_class("file-name")
+            box.pack_start(image, False, False, 0)
+            box.pack_start(label, False, False, 0)
+            child.add(box)
+            flow.add(child)
+        update_sidebar()
+        flow.show_all()
+
+    def navigate(path: Path):
+        nonlocal current
+        if not path.exists() or not path.is_dir():
+            return
+        if path != current:
+            history.append(current)
+            future.clear()
+            current = path
+        render()
+
+    def go_back():
+        nonlocal current
+        if history:
+            future.append(current)
+            current = history.pop()
+            render()
+
+    def go_forward():
+        nonlocal current
+        if future:
+            history.append(current)
+            current = future.pop()
+            render()
+
+    def activate(_flow, child):
+        if child is None:
+            return
+        path = child.path
+        if path.is_dir():
+            navigate(path)
+        else:
+            xdg_open(path)
+
+    def on_key(_window, event):
+        if event.keyval == Gdk.KEY_Escape:
+            window.close()
+            return True
+        if event.keyval == Gdk.KEY_BackSpace:
+            go_back()
+            return True
+        return False
+
+    flow.connect("child-activated", activate)
+    window.connect("key-press-event", on_key)
+    window.connect("destroy", Gtk.main_quit)
+    render()
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--probe", action="store_true")
+    parser.add_argument("path", nargs="?", default=str(Path.home()))
+    args = parser.parse_args()
+    if args.probe:
+        return probe()
+    return run_files(args.path)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
