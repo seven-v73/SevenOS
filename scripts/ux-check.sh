@@ -262,7 +262,7 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."modules-left" == ["custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-dock toggle" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and (."modules-right" | index("pulseaudio") and index("network") and index("custom/sevenos"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/sevenos".format == "7" and ."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-dock toggle" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and (."modules-right" | index("pulseaudio") and index("network") and index("custom/power"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes liquid Apps launcher and centered workspaces"
 else
   fail "Waybar liquid Apps launcher or centered workspaces missing"

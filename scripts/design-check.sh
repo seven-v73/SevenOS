@@ -41,14 +41,14 @@ else
   ok "Seven Hub imports design tokens"
 fi
 
-if jq -e '."modules-left" == ["custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("pulseaudio") and index("network") and index("custom/notifications") and index("custom/sevenos")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("pulseaudio") and index("network") and index("custom/notifications") and index("custom/power")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses a macOS-like left/center/right liquid hierarchy"
 else
-  fail "Waybar should use Apps/time left, workspaces center, stateful system controls right."
+  fail "Waybar should use SevenOS/Apps/time left, workspaces center, stateful system controls right."
 fi
 
-if grep -q 'border-radius: 18px' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'border-radius: 19px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+if grep -q 'border-radius: 16px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-sevenos' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-profile.ok' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-security.miss' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&

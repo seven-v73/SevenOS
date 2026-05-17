@@ -630,3 +630,9 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - Les icones du dock ont maintenant des surfaces colorees distinctes pour mieux differencier Files, Apps, Browser, Terminal, Spotlight, Hub et Settings sans surcharger l'interface.
 - La Waybar est encore affine dans une logique menu-bar premium : capsules plus respirantes, contraste glass plus lisible, workspaces plus doux et etats hover/actif plus polis.
 - Les regles Hyprland suivent la nouvelle taille du Dock afin d'eviter l'impression d'un panneau trop petit ou mal pose.
+
+## 2026-05-17 - Waybar Seven menu and compact Dock
+
+- La Waybar adopte une lecture plus macOS-like et plus SevenOS : `7`, `Apps` et l'heure forment le menu systeme de gauche, les workspaces restent au centre, et les controles systeme sont regroupes a droite.
+- La hauteur de la barre est reduite avec des capsules plus fines pour eviter l'effet "barre custom Arch" et donner une sensation plus proche d'un vrai menu-bar d'OS.
+- Le Dock est fortement compacte : cadre moins large, hauteur reduite, icones plus petites, margin inferieur plus discret et position plus ergonomique.

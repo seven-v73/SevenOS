@@ -1,20 +1,20 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 42,
+  "height": 38,
   "spacing": 0,
-  "margin-top": 5,
+  "margin-top": 6,
   "margin-left": 18,
   "margin-right": 18,
-  "modules-left": ["custom/apps", "clock"],
+  "modules-left": ["custom/sevenos", "custom/apps", "clock"],
   "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "pulseaudio", "network", "battery", "custom/notifications", "custom/quick", "custom/power", "custom/sevenos"],
+  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "pulseaudio", "network", "battery", "custom/notifications", "custom/quick", "custom/power"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
   },
   "custom/sevenos": {
-    "format": "ml",
+    "format": "7",
     "tooltip": true,
     "tooltip-format": "SevenOS Control Center. Click opens Hub, right-click opens Welcome.",
     "on-click": "seven hub",
