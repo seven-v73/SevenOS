@@ -74,6 +74,10 @@ curl http://127.0.0.1:7777/installer
 curl http://127.0.0.1:7777/installer-plan
 curl http://127.0.0.1:7777/packages
 curl http://127.0.0.1:7777/packages-plan
+curl http://127.0.0.1:7777/store
+curl http://127.0.0.1:7777/box
+curl http://127.0.0.1:7777/cloud
+curl http://127.0.0.1:7777/flow
 curl http://127.0.0.1:7777/monitor/system
 curl http://127.0.0.1:7777/readiness
 curl http://127.0.0.1:7777/manifest
@@ -117,6 +121,10 @@ GET  /installer
 GET  /installer-plan
 GET  /packages
 GET  /packages-plan
+GET  /store
+GET  /box
+GET  /cloud
+GET  /flow
 GET  /manifest
 GET  /actions
 GET  /core

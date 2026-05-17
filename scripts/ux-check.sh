@@ -1353,6 +1353,10 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/windows-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/installer-plan"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/packages-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/store"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/box"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/cloud"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/flow"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/stack"' "$ROOT_DIR/server/seven-server.sh" &&
@@ -1383,6 +1387,10 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/cyberspace' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/cyberspace-plan' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/packages-plan' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/store' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/box' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/cloud' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/flow' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/stack' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/shell' "$ROOT_DIR/server/README.md" &&

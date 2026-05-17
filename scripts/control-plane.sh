@@ -79,6 +79,11 @@ windows_plan = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), 
 installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
 installer_plan = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "plan", "--json"], {"next": []})
 packages_plan = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"next": []})
+store = command_json([os.path.join(ROOT, "scripts/store.sh"), "json"], {"summary": {}, "modules": []})
+box = command_json([os.path.join(ROOT, "scripts/box.sh"), "json"], {"summary": {}, "checks": []})
+cloud = command_json([os.path.join(ROOT, "scripts/cloud.sh"), "json"], {"summary": {}, "targets": []})
+flow = command_json([os.path.join(ROOT, "scripts/flow.sh"), "json"], {"summary": {}, "recipes": []})
+ecosystem = command_json([os.path.join(ROOT, "scripts/ecosystem.sh"), "json"], {"modules": [], "processes": []})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
 actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"actions": []})
@@ -112,6 +117,8 @@ for check in experience.get("checks", []):
     state = check.get("state")
     if state == "OK":
         continue
+    if check.get("category") == "Security" and shield.get("percent", 0) >= 90:
+        continue
     command = check.get("command", "seven experience")
     severity = "high" if state == "MISS" else "medium"
     add("experience", severity, f"Fix {check.get('category', 'Experience')}", command, check.get("detail", "Improve SevenOS coherence"), "changes")
@@ -129,6 +136,8 @@ for item in welcome_plan.get("next", []):
     )
 
 for item in shield_plan.get("next", []):
+    if item.get("key") == "firewall" and shield.get("percent", 0) >= 90:
+        continue
     add(
         "shield",
         item.get("severity", "high"),
@@ -212,6 +221,51 @@ for item in packages_plan.get("next", []):
         item.get("impact", "packages"),
     )
 
+store_summary = store.get("summary") or {}
+box_summary = box.get("summary") or {}
+cloud_summary = cloud.get("summary") or {}
+flow_summary = flow.get("summary") or {}
+
+if store_summary and store_summary.get("modules_ready", 0) < max(store_summary.get("modules", 0) - store_summary.get("optional_modules", 0), 0):
+    add(
+        "ecosystem",
+        "medium",
+        "Complete SevenStore required modules",
+        "seven store modules",
+        "SevenStore should show all required SevenOS modules as ready before it becomes a primary app surface.",
+        "safe",
+    )
+
+if box_summary and box_summary.get("ready", 0) < box_summary.get("total", 0):
+    add(
+        "ecosystem",
+        "medium",
+        "Complete SevenBox isolation runtime",
+        "seven box doctor",
+        "SevenBox needs container and sandbox runtimes before it can safely host workflows.",
+        "packages",
+    )
+
+if cloud_summary and cloud_summary.get("tools_ready", 0) < cloud_summary.get("tools_total", 0):
+    add(
+        "ecosystem",
+        "medium",
+        "Prepare SevenCloud protection tools",
+        "seven cloud doctor",
+        "SevenCloud needs rsync, encryption and versioning tools before backups become actionable.",
+        "packages",
+    )
+
+if flow_summary and flow_summary.get("ready", 0) < flow_summary.get("recipes", 0):
+    add(
+        "ecosystem",
+        "medium",
+        "Resolve SevenFlow recipe gaps",
+        "seven flow doctor",
+        "SevenFlow recipes must resolve to concrete action registry commands before automation can be trusted.",
+        "safe",
+    )
+
 for profile in profile_plan.get("next", []):
     key = profile.get("key", "profile")
     title = profile.get("title", key.title())
@@ -237,12 +291,33 @@ scores = {
     "installer": 100 if installer.get("ready") else 60 if installer.get("mode") in ("tui-ready", "graphical") else 35,
     "b3": round((shield.get("percent", 0) * 0.45) + ((100 if bool(server.get("deployment_stack_ready")) else 75 if bool(server.get("runtime_ready")) else 60 if server.get("service", {}).get("state") == "READY" else 0) * 0.35) + ((100 if installer.get("ready") else 35) * 0.2)),
 }
+ecosystem_modules = ecosystem.get("modules") or []
+planned_modules = sum(1 for item in ecosystem_modules if item.get("state") == "planned")
+preview_modules = sum(1 for item in ecosystem_modules if item.get("state") == "preview")
+active_modules = sum(1 for item in ecosystem_modules if item.get("state") == "active")
+ecosystem_total = len(ecosystem_modules) or 1
+store_score = 100 if not store_summary else round((store_summary.get("modules_ready", 0) / max(store_summary.get("modules", 1), 1)) * 100)
+box_score = 100 if not box_summary else round((box_summary.get("ready", 0) / max(box_summary.get("total", 1), 1)) * 100)
+cloud_score = 100 if not cloud_summary else round((cloud_summary.get("tools_ready", 0) / max(cloud_summary.get("tools_total", 1), 1)) * 100)
+flow_score = 100 if not flow_summary else round((flow_summary.get("ready", 0) / max(flow_summary.get("recipes", 1), 1)) * 100)
+ecosystem_maturity = round(((active_modules + preview_modules * 0.85) / ecosystem_total) * 100)
+scores["ecosystem"] = round((ecosystem_maturity * 0.4) + (store_score * 0.15) + (box_score * 0.15) + (cloud_score * 0.15) + (flow_score * 0.15))
 overall = round((scores["readiness"] * 0.22) + (scores["experience"] * 0.22) + (scores["shield"] * 0.18) + (scores["server"] * 0.13) + (scores["windows"] * 0.13) + (scores["installer"] * 0.12))
+overall = round((overall * 0.85) + (scores["ecosystem"] * 0.15))
 
 print(json.dumps({
     "schema": "sevenos.control.v1",
     "overall": overall,
     "scores": scores,
+    "ecosystem": {
+        "active": active_modules,
+        "preview": preview_modules,
+        "planned": planned_modules,
+        "store": store_summary,
+        "box": box_summary,
+        "cloud": cloud_summary,
+        "flow": flow_summary,
+    },
     "summary": {
         "critical": sum(1 for item in items if item["severity"] == "critical"),
         "high": sum(1 for item in items if item["severity"] == "high"),

@@ -39,39 +39,47 @@ PY
 }
 
 payload_json() {
-  local state insights actions shell installer profiles packages
-  state="$(command_json '{}' "$ROOT_DIR/scripts/state.sh" --json)"
-  insights="$(command_json '{"insights":[],"summary":{}}' "$ROOT_DIR/scripts/insights.sh" --json)"
-  actions="$(command_json '{"actions":[]}' "$ROOT_DIR/scripts/actions.sh" --json)"
-  shell="$(command_json '{}' "$ROOT_DIR/scripts/shell.sh" status --json)"
-  installer="$(command_json '{}' "$ROOT_DIR/scripts/installer-stack.sh" status --json)"
-  profiles="$(command_json '{"summary":{},"next":[]}' "$ROOT_DIR/profiles/profile-manager.sh" plan --json)"
-  packages="$(command_json '{"summary":{},"next":[]}' "$ROOT_DIR/bin/sevenpkg" plan --json)"
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$tmp_dir"' RETURN
 
-  STATE_JSON="$state" \
-  INSIGHTS_JSON="$insights" \
-  ACTIONS_JSON="$actions" \
-  SHELL_JSON="$shell" \
-  INSTALLER_JSON="$installer" \
-  PROFILES_JSON="$profiles" \
-  PACKAGES_JSON="$packages" \
+  command_json '{}' "$ROOT_DIR/scripts/state.sh" --json > "$tmp_dir/state.json"
+  command_json '{"insights":[],"summary":{}}' "$ROOT_DIR/scripts/insights.sh" --json > "$tmp_dir/insights.json"
+  command_json '{"actions":[]}' "$ROOT_DIR/scripts/actions.sh" --json > "$tmp_dir/actions.json"
+  command_json '{}' "$ROOT_DIR/scripts/shell.sh" status --json > "$tmp_dir/shell.json"
+  command_json '{}' "$ROOT_DIR/scripts/installer-stack.sh" status --json > "$tmp_dir/installer.json"
+  command_json '{"summary":{},"next":[]}' "$ROOT_DIR/profiles/profile-manager.sh" plan --json > "$tmp_dir/profiles.json"
+  command_json '{"summary":{},"next":[]}' "$ROOT_DIR/bin/sevenpkg" plan --json > "$tmp_dir/packages.json"
+  command_json '{"summary":{}}' "$ROOT_DIR/scripts/store.sh" json > "$tmp_dir/store.json"
+  command_json '{"summary":{}}' "$ROOT_DIR/scripts/box.sh" json > "$tmp_dir/box.json"
+  command_json '{"summary":{}}' "$ROOT_DIR/scripts/cloud.sh" json > "$tmp_dir/cloud.json"
+  command_json '{"summary":{}}' "$ROOT_DIR/scripts/flow.sh" json > "$tmp_dir/flow.json"
+
+  SEVENAI_TMP="$tmp_dir" \
   python - <<'PY'
 import json
 import os
+from pathlib import Path
 
-def load(name, fallback):
+tmp = Path(os.environ["SEVENAI_TMP"])
+
+def load_file(name, fallback):
     try:
-        return json.loads(os.environ.get(name, "") or json.dumps(fallback))
-    except json.JSONDecodeError:
+        return json.loads((tmp / name).read_text(encoding="utf-8"))
+    except Exception:
         return fallback
 
-state = load("STATE_JSON", {})
-insights = load("INSIGHTS_JSON", {"insights": [], "summary": {}})
-actions = load("ACTIONS_JSON", {"actions": []})
-shell = load("SHELL_JSON", {})
-installer = load("INSTALLER_JSON", {})
-profiles = load("PROFILES_JSON", {"summary": {}, "next": []})
-packages = load("PACKAGES_JSON", {"summary": {}, "next": []})
+state = load_file("state.json", {})
+insights = load_file("insights.json", {"insights": [], "summary": {}})
+actions = load_file("actions.json", {"actions": []})
+shell = load_file("shell.json", {})
+installer = load_file("installer.json", {})
+profiles = load_file("profiles.json", {"summary": {}, "next": []})
+packages = load_file("packages.json", {"summary": {}, "next": []})
+store = load_file("store.json", {"summary": {}})
+box = load_file("box.json", {"summary": {}})
+cloud = load_file("cloud.json", {"summary": {}})
+flow = load_file("flow.json", {"summary": {}})
 
 daily = state.get("daily") or {}
 daily_summary = daily.get("summary") or {}
@@ -124,6 +132,21 @@ elif shell_state == "NATIVE_READY":
 if not installer.get("ready"):
     add("installer", "Prepare installer path", "seven installer plan", "SevenOS should stay installable for normal users, not only repaired after install.", "safe", "medium")
 
+store_summary = store.get("summary", {})
+box_summary = box.get("summary", {})
+cloud_summary = cloud.get("summary", {})
+flow_summary = flow.get("summary", {})
+
+required_modules = max(store_summary.get("modules", 0) - store_summary.get("optional_modules", 0), 0)
+if store_summary and store_summary.get("modules_ready", 0) < required_modules:
+    add("store", "Complete Store modules", "seven store modules", "SevenStore still has required modules that are not ready.", "safe", "medium")
+if box_summary and box_summary.get("ready", 0) < box_summary.get("total", 0):
+    add("box", "Prepare sandbox runtime", "seven box doctor", "SevenBox needs all sandbox/container checks ready before workflow isolation feels complete.", "packages", "medium")
+if cloud_summary and cloud_summary.get("tools_ready", 0) < cloud_summary.get("tools_total", 0):
+    add("cloud", "Prepare protection tools", "seven cloud doctor", "SevenCloud backup planning needs its local tooling ready first.", "packages", "medium")
+if flow_summary and flow_summary.get("ready", 0) < flow_summary.get("recipes", 0):
+    add("flow", "Resolve automation recipes", "seven flow doctor", "SevenFlow recipes should all resolve to action registry commands before automation expands.", "safe", "medium")
+
 for insight in (insights.get("insights") or [])[:3]:
     key = f"insight.{insight.get('key', insight.get('area', 'item'))}"
     add(
@@ -158,6 +181,10 @@ print(json.dumps({
         "installer": installer.get("mode", "unknown"),
         "profile_actions": (profiles.get("summary") or {}).get("total", 0),
         "package_actions": (packages.get("summary") or {}).get("total", 0),
+        "store_modules": f"{store_summary.get('modules_ready', 0)}/{store_summary.get('modules', 0)}",
+        "box_runtime": f"{box_summary.get('ready', 0)}/{box_summary.get('total', 0)}",
+        "cloud_tools": f"{cloud_summary.get('tools_ready', 0)}/{cloud_summary.get('tools_total', 0)}",
+        "flow_recipes": f"{flow_summary.get('ready', 0)}/{flow_summary.get('recipes', 0)}",
     },
     "recommendations": recommendations[:6],
     "actions": available_actions,
