@@ -82,6 +82,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-wallpaper" \
   "$ROOT_DIR/bin/seven-power" \
   "$ROOT_DIR/bin/seven-welcome" \
+  "$ROOT_DIR/bin/seven-installer" \
   "$ROOT_DIR/bin/seven-waybar-action" \
   "$ROOT_DIR/bin/seven-waybar-notifications" \
   "$ROOT_DIR/bin/seven-waybar-profile" \
@@ -128,6 +129,14 @@ python -m json.tool "$ROOT_DIR/seven-hub/gui/package.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/package-lock.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-core/bus-schema.json" >/dev/null
+for installer_file in \
+  "$ROOT_DIR/archiso/profile/airootfs/usr/share/applications/seven-installer.desktop" \
+  "$ROOT_DIR/installer/calamares/branding/sevenos/branding.desc"; do
+  if [[ ! -s "$installer_file" ]]; then
+    log_error "Missing installer file: ${installer_file#$ROOT_DIR/}"
+    exit 1
+  fi
+done
 if command -v cargo >/dev/null 2>&1; then
   cargo check --manifest-path "$ROOT_DIR/seven-core/daemon/Cargo.toml" >/dev/null
 else
@@ -431,6 +440,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" status --json | python 
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" plan --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" release --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" graphical >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" graphical --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/flatpak.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/flatpak.sh" setup >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/flatpak.sh" install-defaults >/dev/null
@@ -551,6 +564,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer status --json >/dev/
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer plan --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer release --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer graphical >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer graphical --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run hub-gui status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run hub-gui doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run flatpak status >/dev/null

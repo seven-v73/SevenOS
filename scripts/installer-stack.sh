@@ -9,7 +9,7 @@ usage() {
 SevenOS installer stack
 
 Usage:
-  ./scripts/installer-stack.sh [status|install|doctor|plan|guide|release] [--json]
+  ./scripts/installer-stack.sh [status|install|doctor|plan|guide|release|graphical] [--json]
 
 Actions:
   status   Show installer tooling state
@@ -22,6 +22,8 @@ Actions:
            Show prioritized installer/ISO productization actions
   guide    Show the normal-user install path SevenOS exposes today
   release  Show public-ISO release readiness checks
+  graphical
+           Show graphical installer route readiness
 EOF
 }
 
@@ -54,7 +56,7 @@ json_string() {
 
 release_json() {
   local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_postinstall_state
-  local archiso_state build_state packages_state repo_injection_state live_cli_state
+  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state live_desktop_state calamares_branding_state
 
   archinstall_state="$(state archinstall)"
   calamares_state="$(state calamares)"
@@ -62,6 +64,9 @@ release_json() {
   calamares_settings_state="$(file_state installer/calamares/settings.conf)"
   calamares_module_state="$(file_state installer/calamares/modules/sevenos.conf)"
   calamares_postinstall_state="$(contains_state installer/calamares/modules/sevenos.conf "/opt/SevenOS/install.sh base")"
+  graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
+  live_desktop_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Exec=seven-installer")"
+  calamares_branding_state="$(file_state installer/calamares/branding/sevenos/branding.desc)"
   archiso_state="$(dir_state archiso/profile)"
   build_state="$([[ -x "$ROOT_DIR/scripts/build-iso.sh" ]] && printf OK || printf MISS)"
   packages_state="$(file_state archiso/profile/packages.x86_64)"
@@ -74,6 +79,9 @@ release_json() {
   CALAMARES_SETTINGS_STATE="$calamares_settings_state" \
   CALAMARES_MODULE_STATE="$calamares_module_state" \
   CALAMARES_POSTINSTALL_STATE="$calamares_postinstall_state" \
+  GRAPHICAL_LAUNCHER_STATE="$graphical_launcher_state" \
+  LIVE_DESKTOP_STATE="$live_desktop_state" \
+  CALAMARES_BRANDING_STATE="$calamares_branding_state" \
   ARCHISO_STATE="$archiso_state" \
   BUILD_STATE="$build_state" \
   PACKAGES_STATE="$packages_state" \
@@ -125,6 +133,27 @@ checks = [
         "required": True,
         "title": "SevenOS base install hook",
         "command": "seven installer doctor",
+    },
+    {
+        "key": "graphical-launcher",
+        "state": os.environ["GRAPHICAL_LAUNCHER_STATE"],
+        "required": True,
+        "title": "SevenOS graphical installer launcher",
+        "command": "seven installer graphical",
+    },
+    {
+        "key": "live-desktop-entry",
+        "state": os.environ["LIVE_DESKTOP_STATE"],
+        "required": True,
+        "title": "Live ISO installer desktop entry",
+        "command": "seven installer graphical",
+    },
+    {
+        "key": "calamares-branding",
+        "state": os.environ["CALAMARES_BRANDING_STATE"],
+        "required": True,
+        "title": "SevenOS Calamares branding",
+        "command": "seven installer graphical",
     },
     {
         "key": "archiso-profile",
@@ -243,6 +272,10 @@ status() {
 release_status() {
   local release_payload
   release_payload="$(release_json)"
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    printf '%s\n' "$release_payload"
+    return 0
+  fi
   RELEASE_JSON="$release_payload" python - <<'PY'
 import json
 import os
@@ -267,6 +300,63 @@ PY
 
 install_stack() {
   install_package_file "$ROOT_DIR/scripts/packages-installer.txt"
+}
+
+graphical() {
+  local release_payload
+  release_payload="$(release_json)"
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    RELEASE_JSON="$release_payload" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["RELEASE_JSON"])
+keys = {
+    "calamares-runtime",
+    "calamares-settings",
+    "calamares-sevenos-module",
+    "calamares-postinstall",
+    "graphical-launcher",
+    "live-desktop-entry",
+    "calamares-branding",
+}
+checks = [item for item in data.get("checks", []) if item.get("key") in keys]
+print(json.dumps({
+    "schema": "sevenos.installer-graphical.v1",
+    "state": "graphical-ready" if all(item.get("state") == "OK" for item in checks) else "graphical-profile-ready",
+    "runtime": next((item.get("state") for item in checks if item.get("key") == "calamares-runtime"), "MISS"),
+    "checks": checks,
+    "command": "seven-installer",
+}, indent=2))
+PY
+    return 0
+  fi
+
+  RELEASE_JSON="$release_payload" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["RELEASE_JSON"])
+keys = (
+    "calamares-runtime",
+    "calamares-settings",
+    "calamares-sevenos-module",
+    "calamares-postinstall",
+    "graphical-launcher",
+    "live-desktop-entry",
+    "calamares-branding",
+)
+checks = [item for item in data.get("checks", []) if item.get("key") in keys]
+runtime = next((item for item in checks if item.get("key") == "calamares-runtime"), {})
+profile_ok = all(item.get("state") == "OK" for item in checks if item.get("key") != "calamares-runtime")
+print("SevenOS Graphical Installer Route")
+print("=================================")
+print(f"State: {'graphical-ready' if profile_ok and runtime.get('state') == 'OK' else 'graphical-profile-ready'}")
+print(f"Calamares runtime: {runtime.get('state', 'MISS')}")
+print()
+for item in checks:
+    print(f"{item.get('state', 'MISS'):<5} {item.get('key', ''):<24} {item.get('title', '')}")
+PY
 }
 
 guide() {
@@ -302,6 +392,18 @@ doctor() {
     "installer/calamares/settings.conf" \
     "installer/calamares/modules/sevenos.conf" \
     "scripts/packages-installer.txt"; do
+    if [[ -s "$ROOT_DIR/$path" ]]; then
+      printf '[OK] %s\n' "$path"
+    else
+      printf '[MISS] %s\n' "$path"
+      failures=$((failures + 1))
+    fi
+  done
+
+  for path in \
+    "bin/seven-installer" \
+    "archiso/profile/airootfs/usr/share/applications/seven-installer.desktop" \
+    "installer/calamares/branding/sevenos/branding.desc"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then
       printf '[OK] %s\n' "$path"
     else
@@ -387,6 +489,30 @@ metadata = {
         "phase": "iso",
         "command": "seven installer doctor",
         "reason": "The live image needs an explicit package set for repeatable builds.",
+    },
+    "graphical-launcher": {
+        "title": "Restore graphical installer launcher",
+        "severity": "high",
+        "impact": "changes",
+        "phase": "gui",
+        "command": "seven installer graphical",
+        "reason": "The live ISO needs a user-facing Install SevenOS entrypoint.",
+    },
+    "live-desktop-entry": {
+        "title": "Restore live installer desktop entry",
+        "severity": "high",
+        "impact": "changes",
+        "phase": "gui",
+        "command": "seven installer graphical",
+        "reason": "Normal users need a visible graphical installer launcher in the live session.",
+    },
+    "calamares-branding": {
+        "title": "Restore SevenOS installer branding",
+        "severity": "medium",
+        "impact": "changes",
+        "phase": "gui",
+        "command": "seven installer graphical",
+        "reason": "The graphical installer should identify itself as SevenOS instead of a generic Calamares flow.",
     },
 }
 
@@ -493,6 +619,7 @@ case "$action" in
   plan) plan ;;
   guide) guide ;;
   release) release_status ;;
+  graphical) graphical ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown installer stack action: $action"; usage; exit 1 ;;
 esac

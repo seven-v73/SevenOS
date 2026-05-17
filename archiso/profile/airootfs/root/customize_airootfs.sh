@@ -10,6 +10,7 @@ passwd -l seven
 install -Dm755 /opt/SevenOS/bin/sevenosctl /usr/local/bin/sevenosctl
 install -Dm755 /opt/SevenOS/bin/seven /usr/local/bin/seven
 install -Dm755 /opt/SevenOS/bin/seven-country /usr/local/bin/seven-country
+install -Dm755 /opt/SevenOS/bin/seven-installer /usr/local/bin/seven-installer
 install -Dm755 /opt/SevenOS/bin/seven-power /usr/local/bin/seven-power
 install -Dm755 /opt/SevenOS/bin/seven-welcome /usr/local/bin/seven-welcome
 install -Dm755 /opt/SevenOS/bin/seven-waybar-profile /usr/local/bin/seven-waybar-profile

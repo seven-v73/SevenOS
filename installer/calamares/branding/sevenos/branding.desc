@@ -1,0 +1,25 @@
+---
+componentName: sevenos
+
+strings:
+  productName: SevenOS
+  shortProductName: SevenOS
+  version: rolling
+  shortVersion: rolling
+  versionedName: SevenOS
+  shortVersionedName: SevenOS
+  bootloaderEntryName: SevenOS
+  productUrl: https://sevenos.local
+  supportUrl: https://sevenos.local/support
+  knownIssuesUrl: https://sevenos.local/issues
+  releaseNotesUrl: https://sevenos.local/release-notes
+
+images:
+  productLogo: ""
+  productIcon: ""
+  productWelcome: ""
+
+style:
+  sidebarBackground: "#f7f8f6"
+  sidebarText: "#1c1f1d"
+  sidebarTextSelect: "#111412"

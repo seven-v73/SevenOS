@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+
+usage() {
+  cat <<'EOF'
+SevenOS graphical installer launcher
+
+Usage:
+  seven-installer [open|status|guide]
+
+This launcher prefers Calamares when it is available in the live ISO. When the
+graphical runtime is missing, it falls back to the SevenOS guided installer
+status instead of pretending a destructive installer is ready.
+EOF
+}
+
+run_or_print() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%q ' "$@"
+    printf '\n'
+    return 0
+  fi
+  exec "$@"
+}
+
+status() {
+  printf 'SevenOS Graphical Installer\n'
+  printf '===========================\n'
+  if command -v calamares >/dev/null 2>&1; then
+    printf 'calamares: OK\n'
+    printf 'command:   calamares -d\n'
+  else
+    printf 'calamares: MISS\n'
+    printf 'fallback:  seven installer release\n'
+  fi
+}
+
+open_installer() {
+  if command -v calamares >/dev/null 2>&1; then
+    if command -v pkexec >/dev/null 2>&1; then
+      run_or_print pkexec calamares -d
+    else
+      run_or_print calamares -d
+    fi
+    return 0
+  fi
+
+  printf 'SevenOS graphical installer runtime is not installed yet.\n'
+  printf 'Use the current safe installer path:\n\n'
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'seven installer release\n'
+    return 0
+  fi
+  "$ROOT_DIR/bin/seven" installer release
+}
+
+case "${1:-open}" in
+  open) open_installer ;;
+  status) status ;;
+  guide) "$ROOT_DIR/bin/seven" installer guide ;;
+  -h|--help|help) usage ;;
+  *)
+    printf 'seven-installer: unknown action: %s\n' "$1" >&2
+    usage
+    exit 1
+    ;;
+esac

@@ -134,6 +134,7 @@ install_user_command "$ROOT_DIR/bin/seven" seven
 install_user_command "$ROOT_DIR/bin/seven-daemon" seven-daemon
 install_user_command "$ROOT_DIR/bin/seven-power" seven-power
 install_user_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
+install_user_command "$ROOT_DIR/bin/seven-installer" seven-installer
 install_user_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_user_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_user_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
@@ -182,6 +183,7 @@ install_system_command "$ROOT_DIR/bin/sevenpkg" sevenpkg
 install_system_command "$ROOT_DIR/bin/seven-country" seven-country
 install_system_command "$ROOT_DIR/bin/seven-power" seven-power
 install_system_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
+install_system_command "$ROOT_DIR/bin/seven-installer" seven-installer
 install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_system_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_system_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native

@@ -110,6 +110,7 @@ seven shield plan --json
 seven server status --json
 seven server plan --json
 seven installer plan --json
+seven installer graphical --json
 seven hub status --json
 sevenpkg plan --json
 ```
@@ -213,6 +214,11 @@ tooling gaps with commands Seven Hub can launch or preview.
 `seven installer plan --json` is the distribution readiness plan. It lists the
 missing pieces between SevenOS as a post-install layer and SevenOS as a bootable,
 installable operating system.
+
+`seven installer graphical --json` is the public graphical installer route. It
+checks the Calamares module profile, SevenOS branding, live ISO desktop launcher
+and `seven-installer` fallback, while keeping the Calamares runtime as an
+explicit downstream/package availability gap.
 
 `sevenpkg plan --json` is the software readiness plan. It combines SevenOS
 meta-packages, pacman/AUR availability, Flatpak/Flathub and default app gaps so

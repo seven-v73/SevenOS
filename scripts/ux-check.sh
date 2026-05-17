@@ -69,6 +69,8 @@ require_file "sevenos.dotinst"
 require_file "installer/calamares/README.md"
 require_file "installer/calamares/settings.conf"
 require_file "installer/calamares/modules/sevenos.conf"
+require_file "installer/calamares/branding/sevenos/branding.desc"
+require_file "archiso/profile/airootfs/usr/share/applications/seven-installer.desktop"
 require_file "seven-hub/gui/README.md"
 require_file "seven-hub/gui/package.json"
 require_file "seven-hub/gui/package-lock.json"
@@ -178,6 +180,7 @@ require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
 require_executable "bin/seven-hub-native"
+require_executable "bin/seven-installer"
 require_executable "bin/seven-waybar-action"
 require_executable "bin/seven-waybar-notifications"
 require_executable "bin/seven-waybar-profile"
@@ -1158,6 +1161,9 @@ windows_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows plan --json
 installer_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer status --json)"
 installer_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer plan --json)"
 installer_release_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer release)"
+installer_release_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer release --json)"
+installer_graphical_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer graphical --json)"
+installer_graphical_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer graphical)"
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
 core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
@@ -1204,6 +1210,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$server_plan_json" >/dev/null &&
    python -m json.tool <<<"$installer_json" >/dev/null &&
    python -m json.tool <<<"$installer_plan_json" >/dev/null &&
+   python -m json.tool <<<"$installer_release_json" >/dev/null &&
+   python -m json.tool <<<"$installer_graphical_json" >/dev/null &&
    python -m json.tool <<<"$packages_plan_json" >/dev/null &&
    python -m json.tool <<<"$adaptive_json" >/dev/null &&
    python -m json.tool <<<"$core_json" >/dev/null &&
@@ -1260,6 +1268,13 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'sevenos.installer-release.v1' <<<"$installer_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-plan.v1"' <<<"$installer_plan_json" &&
    grep -q '"release"' <<<"$installer_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-release.v1"' <<<"$installer_release_json" &&
+   grep -q '"graphical-launcher"' <<<"$installer_release_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-graphical.v1"' <<<"$installer_graphical_json" &&
+   grep -q 'graphical-profile-ready' <<<"$installer_graphical_json" &&
+   grep -q 'SevenOS Graphical Installer Route' <<<"$installer_graphical_output" &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open | grep -q 'seven installer release' &&
+   grep -q 'Exec=seven-installer' "$ROOT_DIR/archiso/profile/airootfs/usr/share/applications/seven-installer.desktop" &&
    grep -q 'SevenOS Installer Release Readiness' <<<"$installer_release_output" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
    grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$packages_plan_json" &&
