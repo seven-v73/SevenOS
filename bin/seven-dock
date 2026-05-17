@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven-dock-native" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/seven-dock-native" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -x "$candidate/bin/seven-dock-native" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+}
+
+ROOT_DIR="$(resolve_root || true)"
+native="${ROOT_DIR:+$ROOT_DIR/bin/seven-dock-native}"
+
+is_running() {
+  pgrep -u "$USER" -f 'seven-dock-native' >/dev/null 2>&1
+}
+
+open_dock() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'DRY-RUN > Dock > Open SevenOS Dock\n'
+    return 0
+  fi
+  if is_running; then
+    return 0
+  fi
+  if [[ -n "$native" && -x "$native" ]]; then
+    SEVENOS_ROOT="$ROOT_DIR" setsid -f "$native" >/tmp/sevenos-dock.log 2>&1
+  else
+    printf 'seven-dock: seven-dock-native not found\n' >&2
+    return 1
+  fi
+}
+
+close_dock() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'DRY-RUN > Dock > Close SevenOS Dock\n'
+    return 0
+  fi
+  pkill -u "$USER" -f 'seven-dock-native' >/dev/null 2>&1 || true
+}
+
+case "${1:-toggle}" in
+  open|show|start)
+    open_dock
+    ;;
+  close|hide|stop)
+    close_dock
+    ;;
+  toggle)
+    if is_running; then
+      close_dock
+    else
+      open_dock
+    fi
+    ;;
+  status)
+    if is_running; then
+      printf 'SevenOS Dock: RUN\n'
+    else
+      printf 'SevenOS Dock: MISS\n'
+    fi
+    ;;
+  --probe)
+    if [[ -n "$native" && -x "$native" ]]; then
+      "$native" --probe
+    else
+      printf 'MISS: seven-dock-native not found\n' >&2
+      exit 1
+    fi
+    ;;
+  *)
+    printf 'Usage: seven-dock [toggle|open|close|status|--probe]\n' >&2
+    exit 1
+    ;;
+esac

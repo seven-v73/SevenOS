@@ -56,6 +56,8 @@ bash -n \
   "$ROOT_DIR/bin/seven-country" \
   "$ROOT_DIR/bin/seven-daemon" \
   "$ROOT_DIR/bin/sevenbus-probe" \
+  "$ROOT_DIR/bin/seven-dock" \
+  "$ROOT_DIR/bin/seven-dock-native" \
   "$ROOT_DIR/bin/seven-files" \
   "$ROOT_DIR/bin/seven-help" \
   "$ROOT_DIR/bin/seven-overview" \

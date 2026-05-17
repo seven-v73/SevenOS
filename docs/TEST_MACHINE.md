@@ -146,6 +146,7 @@ Expected desktop controls after the UX repair:
 
 ```text
 Super        Apps launcher
+Super+D      Toggle SevenOS Dock
 Super+Space  SevenOS Spotlight
 Super+H      Seven Hub command palette
 Super+A      Apps launcher compatibility shortcut
@@ -158,8 +159,10 @@ Super+Ctrl+Enter Terminal theme menu
 Super+Shift+P Power menu
 ```
 
-Waybar should expose visible `SevenOS`, `Apps`, `Files`, `Hub`, `Help`, and `Power`
-buttons. If the bar is missing, run:
+Waybar should expose a macOS-like top bar: `Apps + time` on the left,
+workspaces in the center, and compact system controls on the right. Files and
+favorite launchers live in the Dock through `Super+D`. If the bar is missing,
+run:
 
 ```bash
 pkill waybar || true

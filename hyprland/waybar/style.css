@@ -9,25 +9,24 @@
 
 window#waybar {
   background: transparent;
-  color: rgba(16, 26, 33, 0.98);
+  color: rgba(18, 26, 32, 0.96);
 }
 
 tooltip {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(242, 248, 251, 0.90)),
-    rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(120, 147, 163, 0.48);
-  border-radius: 14px;
-  color: rgba(16, 26, 33, 0.98);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(232, 244, 250, 0.86)),
+    rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: 16px;
+  color: rgba(18, 26, 32, 0.96);
 }
 
 tooltip label {
-  padding: 6px 9px;
+  padding: 7px 10px;
 }
 
-#custom-sevenos,
 #custom-apps,
-#custom-files,
+#clock,
 #workspaces,
 #custom-profile,
 #custom-security,
@@ -39,88 +38,76 @@ tooltip label {
 #custom-notifications,
 #custom-quick,
 #custom-power,
-#clock {
-  min-height: 32px;
-  margin-top: 4px;
-  margin-bottom: 4px;
+#custom-sevenos {
+  min-height: 30px;
+  margin-top: 3px;
+  margin-bottom: 3px;
   padding: 0 10px;
-  color: rgba(16, 26, 33, 0.98);
+  color: rgba(18, 26, 32, 0.96);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.90), rgba(235, 246, 251, 0.72)),
-    rgba(255, 255, 255, 0.78);
-  border-top: 1px solid rgba(255, 255, 255, 0.96);
-  border-bottom: 1px solid rgba(86, 112, 128, 0.34);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(221, 239, 248, 0.48)),
+    rgba(255, 255, 255, 0.40);
+  border-top: 1px solid rgba(255, 255, 255, 0.78);
+  border-bottom: 1px solid rgba(86, 112, 128, 0.22);
   transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
 
-#custom-sevenos {
+#custom-apps {
   margin-left: 4px;
-  padding-left: 13px;
-  padding-right: 12px;
-  border-radius: 15px 0 0 15px;
-  border-left: 1px solid rgba(120, 147, 163, 0.42);
-  color: rgba(124, 91, 43, 0.98);
-  font-family: "Cormorant Garamond", "DM Sans", serif;
-  font-size: 18px;
-  font-style: italic;
+  border-radius: 17px 0 0 17px;
+  border-left: 1px solid rgba(255, 255, 255, 0.72);
+  padding-left: 14px;
+  font-size: 12px;
 }
 
-#custom-apps,
-#custom-files {
-  border-left: 1px solid rgba(86, 112, 128, 0.18);
-  font-family: "JetBrainsMono Nerd Font", "DM Sans", sans-serif;
-  font-size: 14px;
-}
-
-#custom-files {
+#clock {
+  border-radius: 0 17px 17px 0;
+  border-right: 1px solid rgba(86, 112, 128, 0.26);
   padding-right: 14px;
-  border-radius: 0 15px 15px 0;
-  border-right: 1px solid rgba(86, 112, 128, 0.38);
 }
 
 #workspaces {
   padding: 0 12px;
-  border-radius: 16px;
-  border-left: 1px solid rgba(120, 147, 163, 0.34);
-  border-right: 1px solid rgba(86, 112, 128, 0.36);
+  border-radius: 18px;
+  border-left: 1px solid rgba(255, 255, 255, 0.72);
+  border-right: 1px solid rgba(86, 112, 128, 0.22);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(229, 243, 249, 0.76)),
-    rgba(255, 255, 255, 0.80);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(217, 237, 247, 0.54)),
+    rgba(255, 255, 255, 0.46);
 }
 
 #workspaces button {
-  min-width: 31px;
+  min-width: 28px;
   min-height: 22px;
   margin: 4px 1px;
   padding: 0 8px;
-  border-radius: 9px;
-  color: rgba(35, 52, 61, 0.88);
+  border-radius: 10px;
+  color: rgba(38, 52, 62, 0.84);
   background: transparent;
 }
 
 #workspaces button:hover {
-  color: rgba(16, 26, 33, 0.98);
-  background: rgba(255, 255, 255, 0.70);
+  color: rgba(18, 26, 32, 0.98);
+  background: rgba(255, 255, 255, 0.44);
 }
 
 #workspaces button.active {
-  color: rgba(16, 26, 33, 0.98);
+  color: rgba(18, 26, 32, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(214, 237, 247, 0.82)),
-    rgba(111, 157, 188, 0.30);
-  border: 1px solid rgba(86, 127, 157, 0.56);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.90), rgba(199, 224, 237, 0.68)),
+    rgba(255, 255, 255, 0.54);
+  border: 1px solid rgba(89, 127, 151, 0.30);
 }
 
 #workspaces button.urgent {
-  color: rgba(16, 26, 33, 0.98);
-  background: rgba(169, 87, 56, 0.16);
-  border: 1px solid rgba(169, 87, 56, 0.38);
+  color: rgba(132, 54, 41, 0.98);
+  background: rgba(196, 103, 58, 0.16);
 }
 
 #custom-profile {
   margin-left: 4px;
-  border-radius: 15px 0 0 15px;
-  border-left: 1px solid rgba(120, 147, 163, 0.42);
+  border-radius: 17px 0 0 17px;
+  border-left: 1px solid rgba(255, 255, 255, 0.72);
 }
 
 #custom-profile,
@@ -133,81 +120,66 @@ tooltip label {
 #custom-notifications,
 #custom-quick,
 #custom-power,
-#clock {
+#custom-sevenos {
   margin-left: 0;
   margin-right: 0;
-  border-left: 1px solid rgba(86, 112, 128, 0.18);
+  border-left: 1px solid rgba(86, 112, 128, 0.14);
   font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "DM Sans", sans-serif;
-}
-
-#custom-profile.ok,
-#custom-security.ok,
-#custom-notifications.ok {
-  color: rgba(42, 116, 78, 0.98);
-}
-
-#custom-profile.warn,
-#custom-security.warn {
-  color: rgba(124, 91, 43, 0.98);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 236, 214, 0.78)),
-    rgba(255, 255, 255, 0.78);
-}
-
-#custom-profile.miss,
-#custom-security.miss,
-#custom-notifications.miss {
-  color: rgba(146, 70, 45, 0.98);
-}
-
-#custom-notifications.dnd {
-  color: rgba(86, 127, 157, 0.98);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(219, 235, 244, 0.78)),
-    rgba(255, 255, 255, 0.80);
 }
 
 #cpu,
 #memory {
-  color: rgba(51, 72, 82, 0.94);
+  padding-left: 9px;
+  padding-right: 9px;
+  color: rgba(38, 52, 62, 0.70);
 }
 
-#pulseaudio.muted,
-#network.disconnected {
-  color: rgba(146, 70, 45, 0.98);
-}
-
-#network.wifi,
-#network.ethernet {
-  color: rgba(48, 96, 132, 0.98);
-}
-
+#custom-profile.ok,
+#custom-security.ok,
+#custom-notifications.ok,
 #battery.charging {
-  color: rgba(42, 116, 78, 0.98);
+  color: rgba(38, 116, 76, 0.96);
 }
 
+#custom-profile.warn,
+#custom-security.warn {
+  color: rgba(137, 93, 42, 0.96);
+}
+
+#custom-profile.miss,
+#custom-security.miss,
+#custom-notifications.miss,
+#pulseaudio.muted,
+#network.disconnected,
 #battery.warning:not(.charging),
 #battery.critical:not(.charging) {
-  color: rgba(146, 70, 45, 0.98);
+  color: rgba(143, 65, 45, 0.96);
 }
 
+#custom-notifications.dnd,
+#network.wifi,
+#network.ethernet,
 #custom-quick,
 #custom-power {
-  color: rgba(48, 96, 132, 0.98);
-  font-size: 14px;
+  color: rgba(44, 96, 132, 0.96);
 }
 
-#clock {
+#custom-sevenos {
   margin-right: 4px;
-  padding-right: 14px;
-  border-radius: 0 15px 15px 0;
-  border-right: 1px solid rgba(86, 112, 128, 0.38);
-  color: rgba(16, 26, 33, 0.98);
+  border-radius: 0 17px 17px 0;
+  border-right: 1px solid rgba(86, 112, 128, 0.26);
+  padding-left: 11px;
+  padding-right: 12px;
+  color: rgba(14, 91, 107, 0.96);
+  background:
+    linear-gradient(180deg, rgba(119, 227, 236, 0.62), rgba(46, 182, 202, 0.48)),
+    rgba(255, 255, 255, 0.36);
+  font-family: "DM Sans", "JetBrainsMono Nerd Font", sans-serif;
+  font-size: 12px;
 }
 
-#custom-sevenos:hover,
 #custom-apps:hover,
-#custom-files:hover,
+#clock:hover,
 #custom-profile:hover,
 #custom-security:hover,
 #cpu:hover,
@@ -218,8 +190,8 @@ tooltip label {
 #custom-notifications:hover,
 #custom-quick:hover,
 #custom-power:hover,
-#clock:hover {
+#custom-sevenos:hover {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(225, 241, 248, 0.84)),
-    rgba(255, 255, 255, 0.88);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(217, 237, 247, 0.64)),
+    rgba(255, 255, 255, 0.54);
 }

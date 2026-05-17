@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""SevenOS macOS-like dock surface."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin").is_dir():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "bin").is_dir():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin").is_dir():
+            return candidate
+    return Path.home()
+
+
+ROOT = resolve_root()
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def command_available(command: str) -> bool:
+    return subprocess.run(["sh", "-lc", f"command -v {command}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+
+def resolve_command(command: list[str]) -> list[str]:
+    if not command:
+        return []
+    local = ROOT / "bin" / command[0]
+    if local.exists():
+        return [str(local), *command[1:]]
+    return command
+
+
+def run_action(command: list[str]) -> None:
+    if not command:
+        return
+    subprocess.Popen(resolve_command(command), cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def dock_tiles() -> list[dict[str, object]]:
+    browser = ["xdg-open", "https://www.google.com"]
+    return [
+        {"title": "Files", "icon": "system-file-manager", "command": ["seven-files"], "active": True},
+        {"title": "Apps", "icon": "view-app-grid-symbolic", "command": ["seven-overview", "apps"], "active": True},
+        {"title": "Browser", "icon": "web-browser", "command": browser, "active": False},
+        {"title": "Terminal", "icon": "utilities-terminal", "command": ["seven-terminal", "classic"], "active": False},
+        {"title": "Spotlight", "icon": "system-search", "command": ["seven-spotlight"], "active": False},
+        {"title": "Hub", "icon": "preferences-system", "command": ["seven", "hub"], "active": True},
+        {"title": "Settings", "icon": "emblem-system", "command": ["seven-quick-settings"], "active": False},
+    ]
+
+
+def run_dock() -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    GLib.set_prgname("SevenDockNative")
+    GLib.set_application_name("Seven Dock")
+    try:
+        Gdk.set_program_class("SevenDockNative")
+    except Exception:
+        pass
+
+    css = """
+    window.seven-dock {
+      background: transparent;
+    }
+    .dock-shell {
+      min-height: 104px;
+      padding: 10px 18px 9px 18px;
+      border-radius: 34px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.52), rgba(205,229,241,0.34)),
+        rgba(255,255,255,0.38);
+      border: 1px solid rgba(255,255,255,0.72);
+    }
+    .dock-tile {
+      min-width: 76px;
+      min-height: 82px;
+      border-radius: 23px;
+      background: transparent;
+      padding: 0;
+    }
+    .dock-tile:hover {
+      background: rgba(255,255,255,0.34);
+    }
+    .dock-icon {
+      min-width: 62px;
+      min-height: 62px;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.94), rgba(231,240,246,0.74)),
+        rgba(255,255,255,0.72);
+      border: 1px solid rgba(255,255,255,0.78);
+    }
+    .dock-dot {
+      min-width: 5px;
+      min-height: 5px;
+      border-radius: 999px;
+      background: rgba(31, 45, 57, 0.78);
+      margin-top: 5px;
+    }
+    .dock-dot.idle {
+      background: transparent;
+    }
+    """
+
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title="Seven Dock")
+    window.set_decorated(False)
+    window.set_resizable(False)
+    window.set_keep_above(True)
+    window.set_skip_taskbar_hint(True)
+    window.set_skip_pager_hint(True)
+    window.set_wmclass("SevenDockNative", "SevenDockNative")
+    window.get_style_context().add_class("seven-dock")
+
+    try:
+        import gi as _gi
+
+        _gi.require_version("GtkLayerShell", "0.1")
+        from gi.repository import GtkLayerShell
+
+        GtkLayerShell.init_for_window(window)
+        GtkLayerShell.set_layer(window, GtkLayerShell.Layer.TOP)
+        GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.BOTTOM, True)
+        GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.LEFT, False)
+        GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.RIGHT, False)
+        GtkLayerShell.set_margin(window, GtkLayerShell.Edge.BOTTOM, 14)
+        GtkLayerShell.set_keyboard_interactivity(window, False)
+    except Exception:
+        window.set_position(Gtk.WindowPosition.CENTER)
+
+    shell = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    shell.get_style_context().add_class("dock-shell")
+    window.add(shell)
+
+    for tile in dock_tiles():
+        event = Gtk.EventBox()
+        event.set_visible_window(False)
+        event.set_tooltip_text(str(tile["title"]))
+        event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        event.connect("button-press-event", lambda _widget, event_data, command=tile["command"]: on_tile_click(event_data, command))
+
+        button_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        button_box.set_halign(Gtk.Align.CENTER)
+        button_box.get_style_context().add_class("dock-tile")
+
+        icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        icon_box.set_halign(Gtk.Align.CENTER)
+        icon_box.set_valign(Gtk.Align.CENTER)
+        icon_box.get_style_context().add_class("dock-icon")
+        icon = Gtk.Image.new_from_icon_name(str(tile["icon"]), Gtk.IconSize.DIALOG)
+        icon.set_pixel_size(42)
+        icon_box.pack_start(icon, True, True, 0)
+
+        dot = Gtk.Box()
+        dot.get_style_context().add_class("dock-dot")
+        if not tile.get("active"):
+            dot.get_style_context().add_class("idle")
+        dot.set_halign(Gtk.Align.CENTER)
+
+        button_box.pack_start(icon_box, False, False, 0)
+        button_box.pack_start(dot, False, False, 0)
+        event.add(button_box)
+        shell.pack_start(event, False, False, 0)
+
+    window.connect("destroy", Gtk.main_quit)
+    window.show_all()
+    window.resize(730, 106)
+    Gtk.main()
+    return 0
+
+
+def on_tile_click(event, command: object) -> bool:
+    if getattr(event, "button", 0) == 1 and isinstance(command, list):
+        run_action([str(part) for part in command])
+        return True
+    return False
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--probe", action="store_true")
+    args = parser.parse_args()
+    if args.probe:
+        return probe()
+    return run_dock()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

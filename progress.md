@@ -152,7 +152,7 @@ Les piliers du projet sont :
 - `seven-apps` transmet maintenant les icones des fichiers `.desktop` a Rofi, ce qui permet au Launchpad Apps d'afficher les vraies icones d'applications quand le theme d'icones les fournit.
 - Ajout de `seven-quick-settings`, panneau rapide pour Hub, apps, fenetres, reseau, audio, wallpaper, profils, migration, monitoring et power.
 - Hyprland adopte une ergonomie plus GNOME-like : `Super+Tab` pour les fenetres, `Super+N`/`Super+O` pour les quick settings, `Super+S` pour scratchpad, `Super+L` pour lock, mouvements souris Super+clic et workspaces gauche/droite.
-- `Super+D` n'est plus utilise pour les apps : SevenOS reserve l'ouverture directe des applications a `Super` seul, avec `Super+Space` pour Spotlight.
+- `Super+D` toggle maintenant le Dock SevenOS ; l'ouverture directe des applications reste sur `Super`, avec `Super+Space` pour Spotlight.
 - Kitty expose maintenant deux profils simultanes via `seven-terminal` :
   `classic` pour le rendu macOS blanc et `dark` pour le rendu macOS graphite.
   `Super+Enter`, `Super+Shift+Enter` et `Super+Ctrl+Enter` ouvrent
@@ -597,6 +597,11 @@ Avancement UI :
 - Le bouton jaune des surfaces natives suit la logique Hyprland : reduction
   vers le special workspace SevenOS quand la session Wayland le permet, avec
   fallback GTK classique.
+- Ajout de `seven-dock` / `seven-dock-native` : dock liquid glass inspire de
+  macOS, togglable avec `Super+D`, avec Files, Apps, Browser, Terminal,
+  Spotlight, Hub et Settings.
+- Refonte Waybar vers une barre superieure plus macOS-like : Apps + heure a
+  gauche, workspaces au centre, controles systeme compacts a droite.
 - Checks design/UX mis a jour pour proteger ces surfaces.
 
 Jalon en cours :

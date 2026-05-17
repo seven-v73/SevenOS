@@ -41,14 +41,14 @@ else
   ok "Seven Hub imports design tokens"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/apps","custom/files"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("cpu") and index("memory") and index("custom/notifications") and index("clock")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("pulseaudio") and index("network") and index("custom/notifications") and index("custom/sevenos")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses a macOS-like left/center/right liquid hierarchy"
 else
-  fail "Waybar should use SevenOS/app/files left, workspaces center, stateful system controls right."
+  fail "Waybar should use Apps/time left, workspaces center, stateful system controls right."
 fi
 
-if grep -q 'border-radius: 15px' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'border-radius: 16px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+if grep -q 'border-radius: 17px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'border-radius: 18px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-profile.ok' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-security.miss' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
@@ -56,6 +56,15 @@ if grep -q 'border-radius: 15px' "$ROOT_DIR/hyprland/waybar/style.css" &&
   ok "Waybar uses liquid glass islands"
 else
   fail "Waybar should use liquid glass islands"
+fi
+
+if [[ -x "$ROOT_DIR/bin/seven-dock" ]] &&
+   [[ -x "$ROOT_DIR/bin/seven-dock-native" ]] &&
+   grep -q 'dock-shell' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'GtkLayerShell' "$ROOT_DIR/bin/seven-dock-native"; then
+  ok "SevenOS exposes a native macOS-like dock surface"
+else
+  fail "SevenOS should expose a native dock with layer-shell support"
 fi
 
 if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&

@@ -21,6 +21,7 @@ waybar
 rofi
 kitty
 python-gobject
+gtk-layer-shell
 vte3
 mako
 libnotify

@@ -150,6 +150,8 @@ require_executable "bin/seven-daemon"
 require_executable "bin/sevenbus-probe"
 require_executable "bin/seven-apps"
 require_executable "bin/seven-launchpad-native"
+require_executable "bin/seven-dock"
+require_executable "bin/seven-dock-native"
 require_executable "bin/seven-files"
 require_executable "bin/seven-files-native"
 require_executable "bin/seven-help"
@@ -260,7 +262,7 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/apps","custom/files"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/apps".format == "󰀻" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-spotlight" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and (."modules-right" | index("cpu") and index("memory"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-dock toggle" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and (."modules-right" | index("pulseaudio") and index("network") and index("custom/sevenos"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes liquid Apps launcher and centered workspaces"
 else
   fail "Waybar liquid Apps launcher or centered workspaces missing"
@@ -285,10 +287,11 @@ else
   fail "Theme coherence is incomplete across launcher and toolkits"
 fi
 
-if jq -e '."custom/files".format == "󰉋" and ."custom/files"."on-click" == "seven-files" and ."custom/files"."on-click-right" == "seven-files menu"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar exposes icon-first Seven Files"
+if grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'seven-files menu' "$ROOT_DIR/hyprland/hyprland.conf"; then
+  ok "Hyprland exposes Seven Files shortcuts"
 else
-  fail "Waybar icon-first Seven Files launcher missing"
+  fail "Seven Files shortcuts missing"
 fi
 
 if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
@@ -330,6 +333,15 @@ if jq -e '."custom/power"."on-click" == "seven-power"' "$ROOT_DIR/hyprland/wayba
   ok "Waybar power opens seven-power"
 else
   fail "Waybar power action missing"
+fi
+
+if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q '$dock = seven-dock toggle' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'SevenDockNative' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-dock" toggle | grep -q 'DRY-RUN > Dock >'; then
+  ok "SevenOS Dock toggles with Super+D"
+else
+  fail "SevenOS Dock should toggle with Super+D"
 fi
 
 if jq -e '.network."on-click" == "seven-waybar-action network" and .network."on-click-middle" == "seven-waybar-action network-connect" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/quick"."on-click" == "seven-quick-settings" and ."custom/notifications"."on-click" == "seven-waybar-notifications menu" and ."custom/notifications"."on-click-right" == "seven-waybar-notifications toggle-dnd"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
@@ -609,7 +621,7 @@ if grep -q '$terminal = seven-terminal classic' "$ROOT_DIR/hyprland/hyprland.con
    grep -q 'bindr = $mod, SUPER_L, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bindr = $mod, SUPER_R, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   ! grep -q 'bind = $mod, D, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, TAB, exec, $overview' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, N, exec, $quicksettings' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, C, exec, seven shield mode' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -1355,9 +1367,9 @@ ok "interactive UX commands support dry-run"
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰒓  Open Seven Hub' &&
    grep -q '󰋜  Home' "$ROOT_DIR/bin/seven-files" &&
    grep -q '󰀻  Open Apps    Super' "$ROOT_DIR/bin/seven-help" &&
+   grep -q 'Toggle Dock    Super+D' "$ROOT_DIR/bin/seven-help" &&
    grep -q 'Terminal Classic' "$ROOT_DIR/bin/seven-help" &&
-   grep -q 'Terminal Dark' "$ROOT_DIR/bin/seven-help" &&
-   ! grep -q 'Super+D' "$ROOT_DIR/bin/seven-help"; then
+   grep -q 'Terminal Dark' "$ROOT_DIR/bin/seven-help"; then
   ok "Shell help and files surfaces use icon-first entries"
 else
   fail "Shell help and files surfaces should be icon-first"

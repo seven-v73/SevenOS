@@ -3,18 +3,18 @@
   "position": "top",
   "height": 40,
   "spacing": 0,
-  "margin-top": 4,
-  "margin-left": 16,
-  "margin-right": 16,
-  "modules-left": ["custom/sevenos", "custom/apps", "custom/files"],
+  "margin-top": 5,
+  "margin-left": 18,
+  "margin-right": 18,
+  "modules-left": ["custom/apps", "clock"],
   "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "pulseaudio", "network", "battery", "custom/notifications", "custom/quick", "custom/power", "clock"],
+  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "pulseaudio", "network", "battery", "custom/notifications", "custom/quick", "custom/power", "custom/sevenos"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
   },
   "custom/sevenos": {
-    "format": "7",
+    "format": "ml",
     "tooltip": true,
     "tooltip-format": "SevenOS Control Center. Click opens Hub, right-click opens Welcome.",
     "on-click": "seven hub",
@@ -22,11 +22,12 @@
     "on-click-middle": "seven-spotlight"
   },
   "custom/apps": {
-    "format": "󰀻",
+    "format": "Apps",
     "tooltip": true,
-    "tooltip-format": "Applications. Click opens app grid, right-click opens Spotlight.",
+    "tooltip-format": "Applications. Click opens app grid, right-click toggles Dock.",
     "on-click": "seven-overview apps",
-    "on-click-right": "seven-spotlight"
+    "on-click-right": "seven-dock toggle",
+    "on-click-middle": "seven-spotlight"
   },
   "custom/files": {
     "format": "󰉋",
@@ -46,20 +47,20 @@
     "on-click-right": "kitty --title 'SevenOS Profiles' bash -lc 'seven profile status; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "clock": {
-    "format": "󰥔 {:%H:%M}",
+    "format": "{:%H:%M %a}",
     "tooltip-format": "{:%A %d %B %Y}",
     "on-click": "seven-waybar-action clock",
     "on-click-right": "kitty --title 'SevenOS Time' bash -lc 'timedatectl; printf \"\\nPress Enter to close...\"; read -r'"
   },
   "cpu": {
-    "format": "󰍛 {usage}%",
+    "format": "󰍛",
     "tooltip": true,
     "tooltip-format": "CPU usage. Click for system actions.",
     "on-click": "seven-waybar-action system",
     "on-click-right": "kitty --title 'SevenOS Monitor' bash -lc 'if command -v btop >/dev/null 2>&1; then btop; else top; fi'"
   },
   "memory": {
-    "format": "󰘚 {}%",
+    "format": "󰘚",
     "tooltip-format": "{used:0.1f}G / {total:0.1f}G. Click for system actions.",
     "on-click": "seven-waybar-action system",
     "on-click-right": "kitty --title 'SevenOS Memory' bash -lc 'free -h; printf \"\\nPress Enter to close...\"; read -r'"
