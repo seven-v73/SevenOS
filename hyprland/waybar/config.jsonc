@@ -8,7 +8,7 @@
   "margin-right": 18,
   "modules-left": ["custom/sevenos", "custom/apps", "clock"],
   "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "pulseaudio", "network", "battery", "custom/notifications", "custom/settings", "custom/power"],
+  "modules-right": ["custom/profile", "custom/security", "cpu", "custom/bluetooth", "pulseaudio", "network", "battery", "custom/notifications", "custom/settings", "custom/power"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
@@ -62,12 +62,16 @@
     "on-click-right": "seven-settings system",
     "on-click-middle": "seven-waybar-action system"
   },
-  "memory": {
-    "format": "󰘚",
-    "tooltip-format": "{used:0.1f}G / {total:0.1f}G. Click opens live system center.",
-    "on-click": "seven-waybar-action system",
-    "on-click-right": "seven-settings system",
-    "on-click-middle": "seven-waybar-action system"
+  "custom/bluetooth": {
+    "exec": "bash -lc 'cmd=\"$HOME/.local/bin/seven-bluetooth\"; [ -x \"$cmd\" ] || cmd=seven-bluetooth; \"$cmd\" status-json'",
+    "interval": 8,
+    "format": "{}",
+    "return-type": "json",
+    "tooltip": true,
+    "tooltip-format": "{}",
+    "on-click": "seven-waybar-action bluetooth",
+    "on-click-right": "seven-bluetooth manager",
+    "on-click-middle": "seven-bluetooth toggle"
   },
   "custom/security": {
     "exec": "bash -lc 'seven-waybar-security json'",

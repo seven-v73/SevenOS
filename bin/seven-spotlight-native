@@ -184,6 +184,7 @@ def run(mode: str) -> int:
         pass
 
     css = """
+    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.spotlight-window { background: transparent; }
     .spotlight-root {
       padding: 16px;

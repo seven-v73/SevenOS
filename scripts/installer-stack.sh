@@ -9,7 +9,7 @@ usage() {
 SevenOS installer stack
 
 Usage:
-  ./scripts/installer-stack.sh [status|install|doctor|plan] [--json]
+  ./scripts/installer-stack.sh [status|install|doctor|plan|guide] [--json]
 
 Actions:
   status   Show installer tooling state
@@ -20,6 +20,7 @@ Actions:
   plan     Explain Calamares + Archinstall next steps
   plan --json
            Show prioritized installer/ISO productization actions
+  guide    Show the normal-user install path SevenOS exposes today
 EOF
 }
 
@@ -73,7 +74,9 @@ status() {
     printf '{"key":"iso-packages","state":%s}' "$(printf '%s' "$packages_state" | json_string)"
     printf '],'
     printf '"ready":%s,' "$([[ "$archinstall_state" == OK && "$planner_state" == OK && "$archiso_state" == OK && "$build_state" == OK ]] && printf true || printf false)"
-    printf '"mode":%s' "$(if [[ "$calamares_state" == OK ]]; then printf graphical | json_string; elif [[ "$archinstall_state" == OK ]]; then printf tui-ready | json_string; else printf foundation | json_string; fi)"
+    printf '"mode":%s,' "$(if [[ "$calamares_state" == OK ]]; then printf graphical | json_string; elif [[ "$archinstall_state" == OK ]]; then printf tui-ready | json_string; else printf foundation | json_string; fi)"
+    printf '"consumer_path":%s,' "$(if [[ "$calamares_state" == OK ]]; then printf graphical-calamares | json_string; elif [[ "$archinstall_state" == OK ]]; then printf guided-tui | json_string; else printf planned | json_string; fi)"
+    printf '"commands":{"status":"seven installer status","plan":"seven installer plan","guide":"seven installer guide","doctor":"seven installer doctor"}'
     printf '}\n'
     return 0
   fi
@@ -86,10 +89,30 @@ status() {
   printf 'profile:     %s\n' "$profile_state"
   printf 'archiso:     %s\n' "$archiso_state"
   printf 'iso builder: %s\n' "$build_state"
+  printf 'consumer:    %s\n' "$(if [[ "$calamares_state" == OK ]]; then printf graphical-calamares; elif [[ "$archinstall_state" == OK ]]; then printf guided-tui; else printf planned; fi)"
 }
 
 install_stack() {
   install_package_file "$ROOT_DIR/scripts/packages-installer.txt"
+}
+
+guide() {
+  cat <<'EOF'
+SevenOS install guide
+=====================
+
+Current user path:
+  1. Start from the SevenOS live or test environment.
+  2. Run `seven installer plan` to preview disk, user, locale, boot and profile choices.
+  3. Run `seven installer doctor` before any destructive install step.
+  4. Use Archinstall as the guided TUI backend today.
+  5. Keep Calamares as the graphical installer target for public ISO builds.
+
+Design rule:
+  SevenOS must keep destructive disk operations behind explicit confirmation.
+  Settings and Hub may show installer status, but they should not silently format
+  disks or rewrite bootloaders.
+EOF
 }
 
 doctor() {
@@ -275,6 +298,7 @@ case "$action" in
   install) install_stack ;;
   doctor) doctor ;;
   plan) plan ;;
+  guide) guide ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown installer stack action: $action"; usage; exit 1 ;;
 esac

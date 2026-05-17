@@ -228,7 +228,7 @@ file_ready "$ROOT_DIR/docs/ECOSYSTEM.md" && pass "Ecosystem architecture documen
 [[ -x "$ROOT_DIR/scripts/ecosystem.sh" ]] && pass "Ecosystem command available" || miss "Ecosystem command missing"
 "$ROOT_DIR/scripts/ecosystem.sh" doctor >/dev/null 2>&1 && pass "Ecosystem foundation coherent" || partial "Ecosystem foundation needs review"
 [[ -x "$ROOT_DIR/scripts/repair.sh" ]] && pass "SevenDoctor repair planner available" || partial "SevenDoctor repair planner missing"
-grep -q 'SevenAI' "$ROOT_DIR/docs/ECOSYSTEM.md" && pass "SevenAI roadmap declared" || partial "SevenAI roadmap missing"
+[[ -x "$ROOT_DIR/scripts/ai.sh" ]] && pass "SevenAI Local guidance available" || partial "SevenAI Local guidance missing"
 grep -q 'SevenCloud' "$ROOT_DIR/docs/ECOSYSTEM.md" && pass "SevenCloud roadmap declared" || partial "SevenCloud roadmap missing"
 
 percent=$((score_total * 100 / score_max))

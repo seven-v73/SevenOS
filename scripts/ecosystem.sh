@@ -35,7 +35,7 @@ Seven Server	3	preview	Local API, monitoring and orchestration backend	server/se
 Seven Deploy	3	preview	Project detection and deployment planner	server/seven-deploy.sh
 Seven Installer	3	preview	Archiso, Calamares and install planning foundation	installer/calamares/README.md
 SevenBox	4	planned	Rootless containers and sandbox UX	scripts/ecosystem.sh
-SevenAI	4	planned	Provider-neutral assistant and automation contract	scripts/ecosystem.sh
+SevenAI	4	preview	Local system assistant, readiness guidance and automation contract	scripts/ai.sh
 Adaptive UI	4	preview	Profile-aware shell, Waybar, panels and Hub actions	bin/seven-shell-panel
 Seven Shell	3	next	AGS and TypeScript shell layer for panels, dock, launcher and widgets	scripts/stack.sh
 SevenCloud	5	planned	Encrypted backup, config sync and restore	scripts/ecosystem.sh
@@ -117,7 +117,7 @@ roadmap() {
   printf 'SevenOS Innovation Roadmap\n'
   printf '==========================\n\n'
   printf 'Phase 4 - Intelligent OS Preview\n'
-  printf '  - SevenAI provider-neutral command contract\n'
+  printf '  - SevenAI Local readiness guidance and provider-neutral command contract\n'
   printf '  - SevenDoctor guided repair suggestions\n'
   printf '  - SevenBox rootless container workflow\n'
   printf '  - Adaptive UI signals for Forge, Shield, Studio and Horizon\n'
@@ -187,6 +187,7 @@ doctor() {
     "scripts/architecture.sh" \
     "scripts/readiness.sh" \
     "scripts/actions.sh" \
+    "scripts/ai.sh" \
     "scripts/phase-gate.sh"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then
       printf '[OK] %s\n' "$path"

@@ -28,12 +28,12 @@ message {
 
 textbox {
   text-color: @indigo;
-  font: "Cormorant Garamond Italic 21";
+  font: "SF Pro Display Italic 21";
 }
 
 prompt {
   text-color: @indigo;
-  font: "JetBrains Mono Medium 12";
+  font: "SF Pro Text Medium 12";
 }
 
 listview {
@@ -64,5 +64,5 @@ element alternate {
 
 element-text {
   text-color: inherit;
-  font: "JetBrains Mono Medium 13";
+  font: "SF Pro Text Medium 13";
 }

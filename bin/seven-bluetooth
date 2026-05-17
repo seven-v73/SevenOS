@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""SevenOS Bluetooth helper for Waybar and Settings."""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+
+def dry_run() -> bool:
+    return os.environ.get("SEVENOS_DRY_RUN") == "1"
+
+
+def out(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout.strip()
+
+
+def bluetoothctl(*args: str) -> str:
+    if not shutil.which("bluetoothctl"):
+        return ""
+    return out(["bluetoothctl", *args])
+
+
+def powered_state() -> str:
+    raw = bluetoothctl("show")
+    for line in raw.splitlines():
+        if "Powered:" in line:
+            return line.split(":", 1)[1].strip()
+    return "missing" if not shutil.which("bluetoothctl") else "unknown"
+
+
+def connected_devices() -> list[str]:
+    raw = bluetoothctl("devices", "Connected")
+    names: list[str] = []
+    for line in raw.splitlines():
+        parts = line.split(maxsplit=2)
+        if len(parts) == 3:
+            names.append(parts[2])
+    return names
+
+
+def paired_devices() -> list[str]:
+    raw = bluetoothctl("devices", "Paired")
+    names: list[str] = []
+    for line in raw.splitlines():
+        parts = line.split(maxsplit=2)
+        if len(parts) == 3:
+            names.append(f"{parts[1]} {parts[2]}")
+    return names
+
+
+def status_json() -> int:
+    state = powered_state()
+    connected = connected_devices()
+    if state == "missing":
+        payload = {"text": "󰂲", "tooltip": "Bluetooth tools missing", "class": "missing"}
+    elif state != "yes":
+        payload = {"text": "󰂲", "tooltip": "Bluetooth off · middle-click toggles", "class": "off"}
+    elif connected:
+        names = ", ".join(connected[:2])
+        more = f" +{len(connected) - 2}" if len(connected) > 2 else ""
+        payload = {"text": "󰂯", "tooltip": f"Bluetooth on · {names}{more}", "class": "connected"}
+    else:
+        payload = {"text": "󰂯", "tooltip": "Bluetooth on · no device connected", "class": "on"}
+    print(json.dumps(payload, ensure_ascii=False))
+    return 0
+
+
+def print_status() -> int:
+    state = powered_state()
+    connected = connected_devices()
+    if state == "missing":
+        print("Bluetooth tools missing")
+    elif state != "yes":
+        print("Bluetooth off")
+    elif connected:
+        print("Connected: " + ", ".join(connected))
+    else:
+        print("Bluetooth on, no device connected")
+    return 0
+
+
+def toggle() -> int:
+    target = "off" if powered_state() == "yes" else "on"
+    if dry_run():
+        print(f"DRY-RUN > Bluetooth > power {target}")
+        return 0
+    if not shutil.which("bluetoothctl"):
+        print("seven-bluetooth: bluetoothctl is not installed", file=sys.stderr)
+        return 1
+    subprocess.Popen(["bluetoothctl", "power", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return 0
+
+
+def scan() -> int:
+    if dry_run():
+        print("DRY-RUN > Bluetooth > scan nearby devices")
+        return 0
+    if not shutil.which("bluetoothctl"):
+        print("seven-bluetooth: bluetoothctl is not installed", file=sys.stderr)
+        return 1
+    subprocess.Popen(["bluetoothctl", "power", "on"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).wait(timeout=4)
+    subprocess.Popen(["bash", "-lc", "timeout 10s bluetoothctl scan on >/dev/null 2>&1 || true"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return 0
+
+
+def manager() -> int:
+    if dry_run():
+        print("DRY-RUN > Bluetooth > open manager")
+        return 0
+    if shutil.which("blueman-manager"):
+        subprocess.Popen(["blueman-manager"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        subprocess.Popen(["seven-waybar-center-native", "bluetooth"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return 0
+
+
+def devices() -> int:
+    for line in paired_devices():
+        print(line)
+    return 0
+
+
+def main() -> int:
+    command = sys.argv[1] if len(sys.argv) > 1 else "status"
+    if command == "status-json":
+        return status_json()
+    if command == "status":
+        return print_status()
+    if command == "toggle":
+        return toggle()
+    if command == "scan":
+        return scan()
+    if command == "manager":
+        return manager()
+    if command == "devices":
+        return devices()
+    if command == "menu":
+        return manager()
+    print("Usage: seven-bluetooth [status-json|status|toggle|scan|manager|devices|menu]", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

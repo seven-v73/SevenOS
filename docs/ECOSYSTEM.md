@@ -39,7 +39,7 @@ integration, continuity and predictable defaults.
 
 | Module | Purpose | Phase | Status |
 | --- | --- | --- | --- |
-| SevenAI | native system assistant and automation brain | 4 | planned |
+| SevenAI | local system assistant and automation brain | 4 | preview |
 | SevenCloud | personal backup, config sync and restore | 5 | planned |
 | SevenStore | marketplace for apps, profiles, themes and modules | 5 | planned |
 | SevenBox | rootless containers and sandboxed app runtime | 4 | preview |
@@ -67,6 +67,7 @@ cannot be reached from Seven Hub or `seven`, it is not productized yet.
 | Security Trust | security | preview | Shield audit, hardening, sandbox, Cyber Lab | `seven shield audit` |
 | Create & Media | creation | preview | Studio profile, creative apps, media workspace | `seven profile guide studio` |
 | Develop & Deploy | deployment | preview | Forge/Horizon, stack detection, local API, deploy plan | `seven deploy plan .` |
+| Local Guidance | intelligence | preview | state, insights, action registry, next best commands | `seven ai plan` |
 | Personal Cloud | cloud | planned | encrypted backup, restore, machine sync | `seven ecosystem roadmap` |
 | Marketplace | store | planned | trust policy, apps, themes, modules | `seven ecosystem roadmap` |
 | Automation | automation | planned | triggers, confirmed actions, logs | `seven ecosystem roadmap` |
@@ -237,7 +238,13 @@ The next innovation phase should focus on:
 - SevenDoctor repair suggestions
 - SevenBox rootless container UX
 - Adaptive UI profile status
-- SevenAI interface contract, without hardcoding one provider
+- SevenAI Local interface contract, without hardcoding one provider
+
+SevenAI Local is intentionally provider-neutral in this phase. `seven ai`,
+`seven ai plan` and `seven ai --json` read SevenOS state, insights, shell,
+installer, packages and actions, then produce a concise plan. It gives the OS a
+visible assistant surface now while leaving room for model-backed providers
+later.
 
 ### Phase 5: Connected Ecosystem
 

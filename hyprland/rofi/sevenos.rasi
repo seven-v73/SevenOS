@@ -48,12 +48,12 @@ message {
 
 textbox {
   text-color: @indigo;
-  font: "DM Sans Medium 12";
+  font: "SF Pro Text Medium 12";
 }
 
 prompt {
   text-color: @indigo;
-  font: "JetBrains Mono Medium 13";
+  font: "SF Pro Text Medium 13";
 }
 
 textbox-prompt-colon {
@@ -95,7 +95,7 @@ element-icon {
 }
 
 element-text {
-  font: "DM Sans 13";
+  font: "SF Pro Text 13";
 }
 
 element-icon {

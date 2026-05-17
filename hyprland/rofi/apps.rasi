@@ -38,7 +38,7 @@ entry {
   placeholder: "Search";
   placeholder-color: rgba(51, 72, 82, 0.70);
   text-color: rgba(16, 26, 33, 0.94);
-  font: "DM Sans 11";
+  font: "SF Pro Text 11";
 }
 
 prompt,
@@ -90,5 +90,5 @@ element-icon {
 element-text {
   horizontal-align: 0.5;
   text-color: inherit;
-  font: "DM Sans Medium 11";
+  font: "SF Pro Text Medium 11";
 }

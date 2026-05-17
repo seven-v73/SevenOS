@@ -148,11 +148,11 @@ Expected desktop controls after the UX repair:
 Super        Apps launcher
 Super+D      Toggle SevenOS Dock
 Super+Space  SevenOS Spotlight
-Super+H      Seven Hub command palette
+Super+H      SevenOS help
+Super+Shift+H Seven Hub command palette
 Super+A      Apps launcher compatibility shortcut
 Super+E      Seven Files
 Super+Shift+E Seven Files places menu
-Super+/      SevenOS help
 Super+Enter  Terminal Classic
 Super+Shift+Enter Terminal Dark
 Super+Ctrl+Enter Terminal theme menu

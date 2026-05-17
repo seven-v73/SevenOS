@@ -113,7 +113,10 @@ def process_running(names: list[str]) -> bool:
 
 def notification_count() -> int:
     for command in (["swaync-client", "-c"], ["makoctl", "list"]):
-        result = subprocess.run(command, text=True, capture_output=True, check=False)
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, check=False, timeout=0.35)
+        except subprocess.TimeoutExpired:
+            continue
         if result.returncode == 0 and result.stdout.strip().isdigit():
             return int(result.stdout.strip())
     return 0
@@ -132,6 +135,36 @@ def run_action(command: list[str]) -> None:
     if not command:
         return
     subprocess.Popen(resolve_command(command), cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def place_hyprland_window() -> bool:
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or not command_available("hyprctl"):
+        return False
+    try:
+        clients = json.loads(subprocess.run(["hyprctl", "clients", "-j"], text=True, capture_output=True, check=False, timeout=0.5).stdout or "[]")
+        monitors = json.loads(subprocess.run(["hyprctl", "monitors", "-j"], text=True, capture_output=True, check=False, timeout=0.5).stdout or "[]")
+    except Exception:
+        return True
+    dock = next((client for client in clients if client.get("pid") == os.getpid() or client.get("title") == "Seven Dock"), None)
+    if not dock:
+        return True
+    monitor_id = dock.get("monitor", 0)
+    monitor = next((item for item in monitors if item.get("id") == monitor_id), monitors[0] if monitors else {})
+    width = int(monitor.get("width", 1920))
+    height = int(monitor.get("height", 1080))
+    scale = float(monitor.get("scale", 1) or 1)
+    mon_x = int(monitor.get("x", 0))
+    mon_y = int(monitor.get("y", 0))
+    size = dock.get("size", [592, 91])
+    dock_w = int(size[0])
+    dock_h = int(size[1])
+    target_x = mon_x + max(0, int((width / scale - dock_w) / 2))
+    target_y = mon_y + max(0, int(height / scale - dock_h - 22))
+    address = dock.get("address")
+    if address:
+        subprocess.run(["hyprctl", "dispatch", "movewindowpixel", f"exact {target_x} {target_y},address:{address}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.5)
+        subprocess.run(["hyprctl", "dispatch", "pin", f"address:{address}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.5)
+    return False
 
 
 def tile_catalog() -> dict[str, dict[str, object]]:
@@ -175,6 +208,7 @@ def run_dock() -> int:
     config = load_config()
 
     css = """
+    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.seven-dock {
       background: transparent;
     }
@@ -266,32 +300,47 @@ def run_dock() -> int:
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
+    force_window = os.environ.get("SEVENOS_DOCK_FORCE_WINDOW") == "1"
     window = Gtk.Window(title="Seven Dock")
     window.set_decorated(False)
     window.set_resizable(False)
+    window.set_default_size(540, 82)
+    window.set_size_request(540, 82)
+    window.set_app_paintable(True)
     window.set_keep_above(True)
-    window.set_skip_taskbar_hint(True)
-    window.set_skip_pager_hint(True)
+    if not force_window:
+        window.set_skip_taskbar_hint(True)
+        window.set_skip_pager_hint(True)
     window.set_wmclass("SevenDockNative", "SevenDockNative")
     window.get_style_context().add_class("seven-dock")
 
     try:
+        if force_window:
+            raise RuntimeError("window fallback requested")
         import gi as _gi
 
         _gi.require_version("GtkLayerShell", "0.1")
         from gi.repository import GtkLayerShell
 
         GtkLayerShell.init_for_window(window)
-        GtkLayerShell.set_layer(window, GtkLayerShell.Layer.TOP)
+        if hasattr(GtkLayerShell, "set_namespace"):
+            GtkLayerShell.set_namespace(window, "sevenos-dock")
+        GtkLayerShell.set_layer(window, GtkLayerShell.Layer.OVERLAY)
         GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.BOTTOM, True)
-        GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.LEFT, False)
-        GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.RIGHT, False)
+        GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.LEFT, True)
+        GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.RIGHT, True)
         GtkLayerShell.set_margin(window, GtkLayerShell.Edge.BOTTOM, 11)
+        GtkLayerShell.set_exclusive_zone(window, -1)
         GtkLayerShell.set_keyboard_interactivity(window, False)
     except Exception:
-        window.set_position(Gtk.WindowPosition.CENTER)
+        screen = Gdk.Screen.get_default()
+        width = screen.get_width() if screen else 1920
+        height = screen.get_height() if screen else 1080
+        window.move(max(0, int((width - 540) / 2)), max(0, height - 104))
 
     shell = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+    shell.set_halign(Gtk.Align.CENTER)
+    shell.set_size_request(540, 82)
     shell.get_style_context().add_class("dock-shell")
     window.add(shell)
 
@@ -307,6 +356,13 @@ def run_dock() -> int:
     window.connect("destroy", Gtk.main_quit)
     window.show_all()
     window.resize(540, 82)
+    if force_window:
+        screen = Gdk.Screen.get_default()
+        width = screen.get_width() if screen else 1920
+        height = screen.get_height() if screen else 1080
+        window.move(max(0, int((width - 540) / 2)), max(0, height - 104))
+        GLib.timeout_add(350, place_hyprland_window)
+    window.present()
     Gtk.main()
     return 0
 

@@ -89,6 +89,7 @@ def run() -> int:
         pass
 
     css = """
+    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.shield-center-window { background: transparent; }
     .shield-root {
       padding: 16px;
@@ -108,7 +109,7 @@ def run() -> int:
     .metric.good { border-color: rgba(90,173,114,0.30); background: rgba(90,173,114,0.08); }
     .metric.warn { border-color: rgba(111,157,188,0.34); background: rgba(111,157,188,0.08); }
     .metric.bad { border-color: rgba(196,103,58,0.28); background: rgba(196,103,58,0.08); }
-    .metric-value { color: rgba(16,27,34,0.98); font-size: 24px; font-weight: 500; }
+    .metric-value { color: rgba(16,27,34,0.98); font-family: "JetBrainsMono Nerd Font", "SF Mono", monospace; font-size: 24px; font-weight: 500; }
     .metric-label { color: rgba(44,60,70,0.66); font-size: 11px; }
     .plan-card {
       min-height: 58px;

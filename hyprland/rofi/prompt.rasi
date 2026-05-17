@@ -23,7 +23,7 @@ message {
 
 textbox {
   text-color: @indigo;
-  font: "DM Sans Medium 12";
+  font: "SF Pro Text Medium 12";
 }
 
 inputbar {
@@ -39,5 +39,5 @@ entry {
   text-color: @text-1;
   placeholder: "";
   cursor-color: @indigo;
-  font: "DM Sans 13";
+  font: "SF Pro Text 13";
 }

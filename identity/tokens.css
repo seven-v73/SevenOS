@@ -34,9 +34,12 @@
   --text-3: #657883;
   --text-4: #93a3ab;
 
-  --font-display: "Cormorant Garamond", Georgia, serif;
-  --font-interface: "DM Sans", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-display: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
+  --font-interface: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
+  --font-text: "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrainsMono Nerd Font", "SF Pro Text", monospace;
+  --font-cyber: "JetBrainsMono Nerd Font", "SF Mono", monospace;
+  --font-brand: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif;
 
   --r-xs: 6px;
   --r-sm: 10px;

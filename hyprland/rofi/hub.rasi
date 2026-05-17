@@ -16,7 +16,7 @@
 
   background-color: transparent;
   text-color: @text;
-  font: "DM Sans 13";
+  font: "SF Pro Text 13";
   margin: 0;
   padding: 0;
 }
@@ -40,7 +40,7 @@ mainbox {
 
 prompt {
   text-color: @blue;
-  font: "DM Sans Medium 14";
+  font: "SF Pro Text Medium 14";
 }
 
 message {
@@ -52,7 +52,7 @@ message {
 textbox {
   padding: 0 0 1px 0;
   text-color: @blue;
-  font: "DM Sans Medium 12";
+  font: "SF Pro Text Medium 12";
 }
 
 listview {
@@ -89,7 +89,7 @@ element-icon {
 }
 
 element-text {
-  font: "DM Sans 14";
+  font: "SF Pro Text 14";
 }
 
 element-icon {

@@ -127,8 +127,11 @@ server.start	Server	Start Server Service	seven server start	changes	Start the lo
 deploy.plan	Server	Deployment Plan	seven deploy plan .	safe	Detect and plan deployment for the current project.
 installer.status	Installer	Installer Status	seven installer status	safe	Check Calamares and ISO foundations.
 installer.plan	Installer	Installer Plan	seven installer plan	safe	Show prioritized installer and ISO actions.
+installer.guide	Installer	Installer Guide	seven installer guide	safe	Show the normal-user install path SevenOS exposes today.
 installer.install	Installer	Install Installer Tools	seven installer install	packages	Install installer foundation packages.
 installer.iso	Installer	Preview ISO Build	./install.sh iso --dry-run	safe	Preview the SevenOS ISO build path.
+ai.brief	System	SevenAI Brief	seven ai	safe	Show the local SevenAI system brief.
+ai.plan	System	SevenAI Plan	seven ai plan	safe	Show prioritized local guidance from SevenOS state.
 flatpak.status	Apps	Flatpak Status	seven flatpak status	safe	Check Flathub and Flatpak readiness.
 flatpak.install	Apps	Install Default Flatpaks	seven flatpak install	packages	Install default Flatpak apps including Bottles and creative tools.
 sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.

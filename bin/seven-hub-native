@@ -424,6 +424,7 @@ def run_gui() -> int:
 
     def install_css() -> None:
         css = """
+        * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
         window.seven-hub-window {
           background:
             linear-gradient(180deg, rgba(246, 251, 254, 0.98), rgba(226, 239, 247, 0.92));
@@ -453,6 +454,7 @@ def run_gui() -> int:
 
         .seven-brand {
           color: #17232b;
+          font-family: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif;
           font-size: 24px;
           font-weight: 500;
           margin-bottom: 18px;
@@ -550,6 +552,7 @@ def run_gui() -> int:
 
         .seven-metric-value {
           color: rgba(23, 35, 43, 0.98);
+          font-family: "JetBrainsMono Nerd Font", "SF Mono", monospace;
           font-size: 26px;
           font-weight: 500;
         }

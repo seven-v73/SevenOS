@@ -29,7 +29,9 @@ else
   ok "No backdrop-filter in production UI"
 fi
 
-if grep -R "font-weight:[[:space:]]*[6-9]00" "$ROOT_DIR/hyprland" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
+if grep -R "font-weight:[[:space:]]*[6-9]00" \
+  --exclude-dir=font \
+  "$ROOT_DIR/hyprland" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
   fail "UI font weight above 500 found."
 else
   ok "UI font weights stay at 500 or below"
@@ -41,7 +43,22 @@ else
   ok "Seven Hub imports design tokens"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("pulseaudio") and index("network") and index("custom/notifications") and index("custom/power")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-interface: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-text: "SF Pro Text"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-mono: "SF Mono"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-brand: "SF Pro Rounded"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+   grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
+   grep -q 'font_family SF Mono' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'SF Pro Rounded' "$ROOT_DIR/hyprland/fontconfig/fonts.conf"; then
+  ok "SevenOS typography follows SF Pro Display/Text, SF Mono and SF Pro Rounded roles"
+else
+  fail "SevenOS typography should follow SF Pro Display/Text, SF Mono and SF Pro Rounded roles"
+fi
+
+if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/notifications") and index("custom/power")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses a SevenOS left/center/right liquid hierarchy"
 else
   fail "Waybar should use SevenOS/Apps/time left, workspaces center, stateful system controls right."
@@ -51,6 +68,7 @@ if grep -q 'border-radius: 16px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-sevenos' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-profile.ok' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-security.miss' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-bluetooth.connected' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'background: transparent' "$ROOT_DIR/hyprland/waybar/style.css"; then
   ok "Waybar uses liquid glass islands"
@@ -104,6 +122,8 @@ if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    grep -q 'SevenSettingsNative' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'settings-shell' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'file_wallpaper_button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'import_fonts_button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven fonts apply-default' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven-wallpaper' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven keyboard apply' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven-shield-center-native' "$ROOT_DIR/bin/seven-settings-native"; then

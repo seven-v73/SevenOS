@@ -175,6 +175,7 @@ def run_launchpad() -> int:
     visible_apps = list(apps)
 
     css = """
+    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.seven-launchpad {
       background: rgba(18, 24, 24, 0.54);
     }
@@ -189,7 +190,7 @@ def run_launchpad() -> int:
       border: 1px solid rgba(255, 255, 255, 0.26);
       background: rgba(255, 255, 255, 0.18);
       color: rgba(255, 255, 255, 0.96);
-      font: 500 12px "DM Sans", "Inter", sans-serif;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     .launchpad-scroll {
       background: transparent;
@@ -210,7 +211,7 @@ def run_launchpad() -> int:
     .launchpad-label {
       color: #ffffff;
       text-shadow: 0 1px 4px rgba(0,0,0,0.80);
-      font: 500 11px "DM Sans", "Inter", sans-serif;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     """
     provider = Gtk.CssProvider()

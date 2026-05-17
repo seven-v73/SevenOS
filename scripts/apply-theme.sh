@@ -86,7 +86,7 @@ reload_desktop_session() {
       "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
     fi
     if command -v notify-send >/dev/null 2>&1; then
-      notify-send "SevenOS desktop refreshed" "Use Super for Apps, Super+D for Dock, Super+Space for Spotlight, Super+/ for Help" || true
+      notify-send "SevenOS desktop refreshed" "Use Super for Apps, Super+D for Dock, Super+Space for Spotlight, Super+H for Help" || true
     fi
   fi
 }
@@ -217,7 +217,8 @@ configure_toolkit_theme() {
   log_info "Configuring SevenOS GTK and Qt theme coherence..."
 
   if is_dry_run; then
-    printf 'copy GTK and Qt SevenOS settings into %q\n' "$CONFIG_HOME"
+    printf 'copy GTK, Qt and fontconfig SevenOS settings into %q\n' "$CONFIG_HOME"
+    printf '%q apply-default\n' "$ROOT_DIR/scripts/fonts.sh"
     printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-light\n'
     printf 'gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3\n'
     printf 'gsettings set org.gnome.desktop.interface icon-theme Papirus\n'
@@ -230,12 +231,17 @@ configure_toolkit_theme() {
   copy_config_dir "$ROOT_DIR/hyprland/gtk-4.0" "$CONFIG_HOME/gtk-4.0"
   copy_config_dir "$ROOT_DIR/hyprland/qt5ct" "$CONFIG_HOME/qt5ct"
   copy_config_dir "$ROOT_DIR/hyprland/qt6ct" "$CONFIG_HOME/qt6ct"
+  copy_config_dir "$ROOT_DIR/hyprland/fontconfig" "$CONFIG_HOME/fontconfig"
+  "$ROOT_DIR/scripts/fonts.sh" apply-default
 
   if command -v gsettings >/dev/null 2>&1; then
     gsettings set org.gnome.desktop.interface color-scheme prefer-light >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3 >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface icon-theme Papirus >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface font-name 'SF Pro Display 10' >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface document-font-name 'SF Pro Text 10' >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface monospace-font-name 'SF Mono 10' >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface gtk-decoration-layout 'close,minimize,maximize:' >/dev/null 2>&1 || true
     gsettings set org.gnome.nautilus.preferences default-folder-viewer 'icon-view' >/dev/null 2>&1 || true
     gsettings set org.gnome.nautilus.icon-view default-zoom-level 'large' >/dev/null 2>&1 || true
@@ -294,5 +300,5 @@ install_shell_hook "$HOME/.zshrc"
 reload_desktop_session
 
 log_success "SevenOS theme applied."
-log_info "Use Super for apps, Super+D for Dock, Super+Space for SevenOS Spotlight, and Super+/ for desktop help."
+log_info "Use Super for apps, Super+D for Dock, Super+Space for SevenOS Spotlight, and Super+H for desktop help."
 log_info "Disable terminal country signals with: export SEVENOS_TERMINAL_COUNTRY=0"

@@ -260,6 +260,8 @@ def handle_settings(args):
     extra = []
     if args.probe:
         extra.append("--probe")
+    if args.page:
+        extra.append(args.page)
     run_script(args, "bin/seven-settings-native", *extra)
 
 
@@ -276,6 +278,13 @@ def handle_ecosystem(args):
     if args.json:
         extra = ["json"]
     run_script(args, "scripts/ecosystem.sh", *extra)
+
+
+def handle_ai(args):
+    extra = [args.action]
+    if args.json:
+        extra = ["json"]
+    run_script(args, "scripts/ai.sh", *extra)
 
 
 def handle_stack(args):
@@ -447,6 +456,11 @@ def handle_keyboard(args):
     run_script(args, "scripts/keyboard.sh", *extra)
 
 
+def handle_fonts(args):
+    extra = [args.action, *args.extra]
+    run_script(args, "scripts/fonts.sh", *extra)
+
+
 def handle_repair(args):
     extra = [args.area]
     if args.apply:
@@ -482,6 +496,9 @@ def main():
     ecosystem_parser = subparsers.add_parser("ecosystem", help="show SevenOS ecosystem modules and roadmap")
     ecosystem_parser.add_argument("action", nargs="?", default="status")
     ecosystem_parser.add_argument("--json", action="store_true", help="print machine-readable ecosystem map")
+    ai_parser = subparsers.add_parser("ai", help="show local SevenAI system guidance")
+    ai_parser.add_argument("action", nargs="?", default="brief", choices=("brief", "status", "plan", "doctor", "json"))
+    ai_parser.add_argument("--json", action="store_true", help="print machine-readable SevenAI local payload")
     stack_parser = subparsers.add_parser("stack", help="show SevenOS technology stack strategy")
     stack_parser.add_argument("action", nargs="?", default="status")
     stack_parser.add_argument("--json", action="store_true", help="print machine-readable stack strategy")
@@ -529,6 +546,9 @@ def main():
     keyboard_parser = subparsers.add_parser("keyboard", help="inspect or apply SevenOS keyboard layouts")
     keyboard_parser.add_argument("action", nargs="?", default="status", choices=("status", "apply"))
     keyboard_parser.add_argument("--json", action="store_true", help="print machine-readable keyboard state")
+    fonts_parser = subparsers.add_parser("fonts", help="inspect, import and apply SevenOS font roles")
+    fonts_parser.add_argument("action", nargs="?", default="status")
+    fonts_parser.add_argument("extra", nargs=argparse.REMAINDER)
     phase_gate_parser = subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
     phase_gate_parser.add_argument("--json", action="store_true", help="print machine-readable phase decision")
     b3_parser = subparsers.add_parser("b3", help="orchestrate B2 to B3 consolidation")
@@ -618,6 +638,7 @@ def main():
     hub_native_parser.add_argument("--dry-run", dest="dry_run_native", action="store_true", help="show native Hub launch command")
 
     settings_parser = subparsers.add_parser("settings", help="open native SevenOS Settings")
+    settings_parser.add_argument("page", nargs="?", help="open a specific settings page")
     settings_parser.add_argument("--probe", action="store_true", help="check whether the native settings stack is available")
 
     flatpak_parser = subparsers.add_parser("flatpak", help="SevenOS Flatpak bridge controls")
@@ -640,6 +661,8 @@ def main():
         handle_architecture(args)
     elif args.command == "ecosystem":
         handle_ecosystem(args)
+    elif args.command == "ai":
+        handle_ai(args)
     elif args.command == "stack":
         handle_stack(args)
     elif args.command == "shell":
@@ -668,6 +691,8 @@ def main():
         handle_migrate_ml4w(args)
     elif args.command == "keyboard":
         handle_keyboard(args)
+    elif args.command == "fonts":
+        handle_fonts(args)
     elif args.command == "phase-gate":
         handle_phase_gate(args)
     elif args.command == "b3":

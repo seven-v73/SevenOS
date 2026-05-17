@@ -169,6 +169,7 @@ install_user_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_user_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_user_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
 install_user_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
+install_user_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_user_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
 install_user_command "$ROOT_DIR/bin/sevenpkg" sevenpkg
 install_user_command "$ROOT_DIR/bin/sevenosctl" sevenosctl
@@ -215,6 +216,7 @@ install_system_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_system_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_system_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
 install_system_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
+install_system_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_system_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
 install_system_command "$ROOT_DIR/bin/sevenosctl" sevenosctl
 

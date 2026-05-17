@@ -8,6 +8,9 @@ zip
 rsync
 networkmanager
 network-manager-applet
+bluez
+bluez-utils
+blueman
 pipewire
 pipewire-alsa
 pipewire-pulse
@@ -16,6 +19,8 @@ wireplumber
 hyprland
 hyprpaper
 librsvg
+fontconfig
+7zip
 xdg-desktop-portal-hyprland
 waybar
 rofi
@@ -57,6 +62,6 @@ fastfetch
 btop
 pavucontrol
 ttf-jetbrains-mono-nerd
-ttf-cormorant
+noto-fonts
 noto-fonts-emoji
 papirus-icon-theme

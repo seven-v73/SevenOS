@@ -44,7 +44,7 @@ if [[ "$ACTION" == "notify" ]]; then
   if command -v notify-send >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
     notify-send \
       "SevenOS is ready" \
-      "Super: Apps  |  Super+Space: Spotlight  |  Super+/: Help"
+      "Super: Apps  |  Super+Space: Spotlight  |  Super+H: Help"
   fi
   exit 0
 fi

@@ -44,9 +44,11 @@ desktop, but with a visual language owned by SevenOS.
 
 ## Typography
 
-- Display: Cormorant Garamond for expressive hero/title moments only.
-- Interface: DM Sans or system UI for navigation, cards, labels and body.
-- Mono: JetBrains Mono for CLI, code, technical badges and status values.
+- Interface principale: SF Pro Display for navigation chrome, primary titles and large control labels.
+- Texte normal: SF Pro Text for body copy, lists, cards and secondary labels.
+- Terminal: SF Mono for terminal surfaces, code previews and command output.
+- Dashboard cyber: JetBrains Mono or SF Mono for security metrics, badges and audit status.
+- Branding SevenOS: SF Pro Rounded with SF Pro Display fallback for marks and identity lockups.
 
 Rules:
 

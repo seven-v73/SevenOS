@@ -35,6 +35,18 @@ is_running() {
   kill -0 "$pid" >/dev/null 2>&1
 }
 
+kill_dock_processes() {
+  local pid cmdline
+  while read -r pid; do
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    [[ "$pid" != "$$" && "$pid" != "${PPID:-}" ]] || continue
+    cmdline="$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)"
+    if [[ "$cmdline" == *"seven-dock-native"* ]] || [[ -n "${native:-}" && "$cmdline" == *"$native"* ]]; then
+      kill "$pid" >/dev/null 2>&1 || true
+    fi
+  done < <(pgrep -u "$USER" -f 'seven-dock-native|SevenDockNative' 2>/dev/null || true)
+}
+
 open_dock() {
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'DRY-RUN > Dock > Open SevenOS Dock\n'
@@ -44,8 +56,13 @@ open_dock() {
     return 0
   fi
   if [[ -n "$native" && -x "$native" ]]; then
-    SEVENOS_ROOT="$ROOT_DIR" nohup "$native" >/tmp/sevenos-dock.log 2>&1 &
+    SEVENOS_ROOT="$ROOT_DIR" SEVENOS_DOCK_FORCE_WINDOW=1 setsid "$native" >/tmp/sevenos-dock.log 2>&1 &
     printf '%s\n' "$!" > "$pid_file"
+    sleep 0.25
+    if ! is_running; then
+      printf 'seven-dock: dock failed to stay open; see /tmp/sevenos-dock.log\n' >&2
+      return 1
+    fi
   else
     printf 'seven-dock: seven-dock-native not found\n' >&2
     return 1
@@ -60,6 +77,7 @@ close_dock() {
   if is_running; then
     kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
   fi
+  kill_dock_processes
   rm -f "$pid_file"
 }
 
@@ -69,6 +87,10 @@ case "${1:-toggle}" in
     ;;
   close|hide|stop)
     close_dock
+    ;;
+  restart|repair|reopen)
+    close_dock
+    open_dock
     ;;
   toggle)
     if is_running; then
@@ -155,7 +177,7 @@ PY
     fi
     ;;
   *)
-    printf 'Usage: seven-dock [toggle|open|close|status|settings|pin <id>|unpin <id>|--probe]\n' >&2
+    printf 'Usage: seven-dock [toggle|open|close|restart|repair|status|settings|pin <id>|unpin <id>|--probe]\n' >&2
     exit 1
     ;;
 esac

@@ -135,6 +135,7 @@ server_runtime_state = "RUN" if server.get("runtime_ready") else server_state
 installer_mode = installer.get("mode", "foundation")
 profile_total = (profiles.get("summary") or {}).get("total", 0)
 package_total = (packages.get("summary") or {}).get("total", 0)
+package_blocking = (packages.get("summary") or {}).get("critical", 0) + (packages.get("summary") or {}).get("high", 0)
 stack_summary = stack.get("summary") or {}
 stack_ok = stack_summary.get("checks_ok", 0)
 stack_total = stack_summary.get("checks_total", 1)
@@ -188,12 +189,12 @@ gates = [
     {
         "key": "software",
         "title": "Software plan",
-        "state": "PASS" if package_total == 0 else "WARN",
-        "actual": package_total,
+        "state": "PASS" if package_blocking == 0 else "WARN",
+        "actual": package_blocking,
         "target": 0,
-        "band": "open" if package_total else "strong",
+        "band": "open" if package_blocking else "strong",
         "command": "sevenpkg plan",
-        "detail": "SevenPkg must explain what is still needed for complete app delivery.",
+        "detail": "SevenPkg must explain critical and high-priority app delivery gaps. Medium bundles stay optional.",
     },
     {
         "key": "stack",

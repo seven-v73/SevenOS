@@ -1070,3 +1070,66 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   contextuel.
 - Les checks UX protegent les modes de vue, le clipboard fichier persistant, la
   preview video fallback et les actions modernes de gestionnaire de fichiers.
+
+## 2026-05-17 - SevenOS typography role pass
+
+- La typographie SevenOS est separee par role : SF Pro Display pour l'interface
+  principale, SF Pro Text pour le texte normal, SF Mono pour le terminal,
+  JetBrainsMono Nerd Font ou SF Mono pour les surfaces cyber, et SF Pro Rounded
+  pour le branding avec fallback SF Pro Display.
+- `hyprland/fontconfig/fonts.conf` expose les alias SevenOS UI, Display, Mono et
+  Brand, et mappe aussi `monospace` vers SF Mono puis JetBrainsMono Nerd Font.
+- `apply-theme` copie maintenant la configuration fontconfig avec les themes
+  GTK/Qt et applique `SF Pro Display 10` a l'interface, `SF Pro Text 10` aux
+  documents et `SF Mono 10` au monospace.
+- Les polices SF Pro et SF Mono locales sont installees et detectees par
+  fontconfig; SF Pro Rounded reste declare avec fallback SF Pro Display si la
+  famille exacte n'est pas presente.
+- Les checks design et UX verifient maintenant cette matrice typographique.
+
+## 2026-05-17 - Dynamic font management pass
+
+- Ajout de `seven fonts` via `scripts/fonts.sh` pour detecter, importer,
+  rafraichir et appliquer les roles typographiques SevenOS sans terminal
+  obligatoire.
+- `install.sh base` applique deja le theme; `apply-theme` lance maintenant aussi
+  `seven fonts apply-default`, ce qui rend la typographie par defaut robuste sur
+  une nouvelle machine avec fallbacks Noto/Cantarell quand SF Pro n'est pas
+  installe.
+- SevenOS Settings ajoute une page `Fonts` accessible par `seven settings fonts`
+  avec import `.ttf/.otf/.ttc`, ouverture de la bibliotheque de polices,
+  refresh du cache et application des roles par defaut.
+- Le manifest base ajoute `fontconfig`, `7zip` et `noto-fonts` afin que la
+  detection, l'extraction locale et les fallbacks soient presents des
+  l'installation.
+
+## 2026-05-17 - Waybar Bluetooth replacement pass
+
+- Le module `memory` de Waybar est retire de la barre parce qu'il doublonnait
+  avec le module CPU/systeme.
+- Ajout de `custom/bluetooth` avec etat JSON, tooltip propre, clic gauche vers
+  le centre Bluetooth, clic milieu pour activer/desactiver et clic droit vers le
+  gestionnaire.
+- Ajout de `seven-bluetooth` pour exposer `status-json`, `toggle`, `scan`,
+  `manager` et `devices` sans melanger la logique Bluetooth dans la config
+  Waybar.
+- `seven-waybar-center-native` ajoute un panneau Bluetooth compact : etat radio,
+  appareil connecte, scan, manager et acces Settings.
+- Le manifest base ajoute `bluez`, `bluez-utils` et `blueman` pour que la
+  connexion Bluetooth soit disponible par defaut sur une installation SevenOS.
+
+## 2026-05-17 - Dock visibility and helpers shortcut pass
+
+- `Super+H` ouvre maintenant directement les helpers SevenOS, plus simple que
+  l'ancien raccourci `Super+/`.
+- Le Hub reste accessible via `Super+Shift+H` afin d'eviter le conflit avec
+  l'aide et de garder un raccourci clavier clair.
+- Le dock natif est repare avec un ancrage layer-shell bas centre plus robuste,
+  un namespace `sevenos-dock`, et une commande `seven-dock repair/restart`.
+- `seven-dock repair` ferme les anciens processus invisibles, relance le dock
+  et signale si le processus ne reste pas ouvert.
+- Le dock utilise maintenant une fenetre Hyprland visible en fallback quand
+  layer-shell ne mappe pas la surface, puis se replace automatiquement en bas au
+  centre via `hyprctl`.
+- Les badges de notification du dock ont un timeout court afin qu'un
+  `makoctl list` bloque ne puisse plus empecher l'apparition du dock.

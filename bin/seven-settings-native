@@ -167,6 +167,20 @@ def session_state() -> tuple[str, str]:
     return f"{payload.get('percent', 0)}%", str(payload.get("mode", "unknown"))
 
 
+def font_state() -> dict:
+    return run_json(
+        [str(ROOT / "scripts/fonts.sh"), "status", "--json"],
+        {
+            "interface": "SF Pro Display",
+            "text": "SF Pro Text",
+            "mono": "SF Mono",
+            "cyber": "JetBrainsMono Nerd Font",
+            "brand": "SF Pro Rounded",
+            "font_home": str(Path.home() / ".local/share/fonts/SevenOS"),
+        },
+    )
+
+
 def probe() -> int:
     ensure_gi_python()
     try:
@@ -197,6 +211,7 @@ def run(initial_page: str = "overview") -> int:
         pass
 
     css = """
+    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.settings-window { background: transparent; }
     .settings-shell {
       border-radius: 30px;
@@ -220,7 +235,7 @@ def run(initial_page: str = "overview") -> int:
       border-right: 1px solid rgba(95,117,130,0.16);
       background: rgba(255,255,255,0.28);
     }
-    .brand { color: rgba(21,31,38,0.96); font-size: 20px; font-weight: 500; padding: 4px 8px 10px 8px; }
+    .brand { color: rgba(21,31,38,0.96); font-family: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif; font-size: 20px; font-weight: 500; padding: 4px 8px 10px 8px; }
     .nav-button {
       min-height: 36px;
       padding: 0 10px;
@@ -531,6 +546,33 @@ def run(initial_page: str = "overview") -> int:
         button.connect("clicked", choose)
         return button
 
+    def import_fonts_button(label: str) -> Gtk.Button:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("action-button")
+
+        def choose(_button) -> None:
+            dialog = Gtk.FileChooserDialog(
+                title="Import Fonts",
+                parent=window,
+                action=Gtk.FileChooserAction.OPEN,
+                buttons=("_Cancel", Gtk.ResponseType.CANCEL, "_Import", Gtk.ResponseType.ACCEPT),
+            )
+            dialog.set_select_multiple(True)
+            font_filter = Gtk.FileFilter()
+            font_filter.set_name("Fonts")
+            for pattern in ("*.ttf", "*.otf", "*.ttc"):
+                font_filter.add_pattern(pattern)
+            dialog.add_filter(font_filter)
+            response = dialog.run()
+            filenames = dialog.get_filenames()
+            dialog.destroy()
+            if response == Gtk.ResponseType.ACCEPT and filenames:
+                subprocess.Popen([str(ROOT / "scripts/fonts.sh"), "import", *filenames], cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
+                notify("SevenOS Fonts", "Fonts imported and cache refreshed.")
+
+        button.connect("clicked", choose)
+        return button
+
     def setting_card(icon: str, title: str, note: str, buttons: list[Gtk.Button]) -> Gtk.Box:
         card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         card.get_style_context().add_class("settings-card")
@@ -591,6 +633,7 @@ def run(initial_page: str = "overview") -> int:
         "network": page("Wi-Fi & Network", "Connect, diagnose and configure NetworkManager."),
         "sound": page("Sound", "Volume, mixer, mute and PipeWire status."),
         "keyboard": page("Keyboard", "US/French layouts with Alt+Shift switching."),
+        "fonts": page("Fonts", "Choose, import and refresh SevenOS typography roles without terminal work."),
         "security": page("Security", "Shield, firewall, sandbox and CyberSpace controls."),
         "profiles": page("Profiles", "Switch SevenOS work modes and open profile workspaces."),
         "power": page("Battery & Power", "Battery state, lock, sleep and power profiles."),
@@ -607,6 +650,7 @@ def run(initial_page: str = "overview") -> int:
     nav("network", "󰤨", "Wi-Fi", "network")
     nav("sound", "󰕾", "Sound", "sound")
     nav("keyboard", "󰌌", "Keyboard", "keyboard")
+    nav("fonts", "󰛖", "Fonts", "fonts")
     nav("security", "󰒃", "Security", "security")
     nav("profiles", "󰐃", "Profiles", "profiles")
     nav("power", "󰁹", "Power", "power")
@@ -691,6 +735,7 @@ def run(initial_page: str = "overview") -> int:
     section(network, "Connectivity")
     card_grid(network, [
         setting_card("󰤨", "Wi-Fi", f"{wifi_radio} · {wifi_detail}", [action_button("Connect", "seven-wifi connect"), action_button("Panel", "seven-waybar-center-native network")]),
+        setting_card("󰂯", "Bluetooth", "Pair headphones, keyboards, phones and nearby devices.", [action_button("Panel", "seven-waybar-center-native bluetooth"), action_button("Manager", "seven-bluetooth manager")]),
         setting_card("󰖩", "Network settings", "Open NetworkManager connection editor.", [action_button("Open", "nm-connection-editor || seven-wifi settings")]),
         setting_card("󰜉", "Restart network", "Restart NetworkManager when the link is stuck.", [action_button("Restart", "seven-wifi restart")]),
     ])
@@ -713,6 +758,31 @@ def run(initial_page: str = "overview") -> int:
         setting_card("󰌌", "Layouts", f"{kbd.get('layouts', 'us,fr')} · Alt+Shift switch", [action_button("Apply", "seven keyboard apply")]),
         setting_card("󰌢", "Keyboard override", "Open the managed Hyprland keyboard configuration.", [action_button("Edit", "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
         setting_card("󰜉", "Reload keyboard", "Reload Hyprland after input changes.", [action_button("Reload", "hyprctl reload")]),
+    ])
+
+    # Fonts
+    fonts = pages["fonts"][0]
+    font_payload = font_state()
+    section(fonts, "Typography roles")
+    status_grid(
+        fonts,
+        [
+            ("Display", str(font_payload.get("interface", "SF Pro Display"))),
+            ("Text", str(font_payload.get("text", "SF Pro Text"))),
+            ("Mono", str(font_payload.get("mono", "SF Mono"))),
+            ("Cyber", str(font_payload.get("cyber", "JetBrainsMono Nerd Font"))),
+            ("Brand", str(font_payload.get("brand", "SF Pro Rounded"))),
+            ("Folder", "SevenOS Fonts"),
+        ],
+    )
+    fonts.pack_start(hero_card("Fonts accessibles partout", "SevenOS applique les roles typographiques au theme, aux toolkits et aux apps. Les polices ajoutees ici sont disponibles pour toute la session."), False, False, 0)
+    card_grid(fonts, [
+        setting_card("󰛖", "Apply default roles", "Reinstall local SF sources, refresh fontconfig and apply Display/Text/Mono roles.", [action_button("Apply", "seven fonts apply-default")]),
+        setting_card("󰈙", "Import font files", "Add .ttf, .otf or .ttc files to the SevenOS user font library.", [import_fonts_button("Import")]),
+        setting_card("󰉋", "Font library", "Open the SevenOS font folder for drag-and-drop installation.", [action_button("Open", "seven fonts open")]),
+        setting_card("󰜉", "Refresh cache", "Refresh fontconfig after adding or removing font files.", [action_button("Refresh", "seven fonts refresh")]),
+        setting_card("󰌢", "Advanced roles", "Edit the SevenOS font role preference file.", [action_button("Edit", "seven fonts prefs")]),
+        setting_card("󰄬", "Font status", "Show resolved font families and fallbacks.", [action_button("Status", "kitty --title 'SevenOS Fonts' bash -lc 'seven fonts status; read -r'")]),
     ])
 
     # Security

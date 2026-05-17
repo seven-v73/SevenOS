@@ -1,7 +1,7 @@
 * {
   border: none;
   border-radius: 0;
-  font-family: "DM Sans", "JetBrainsMono Nerd Font", system-ui, sans-serif;
+  font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
   min-height: 0;
@@ -32,7 +32,7 @@ tooltip label {
 #custom-profile,
 #custom-security,
 #cpu,
-#memory,
+#custom-bluetooth,
 #pulseaudio,
 #network,
 #battery,
@@ -59,7 +59,7 @@ tooltip label {
   border-radius: 16px 0 0 16px;
   border-left: 1px solid rgba(255, 255, 255, 0.82);
   color: rgba(106, 74, 39, 0.98);
-  font-family: "Cormorant Garamond", "DM Sans", serif;
+  font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
   font-size: 18px;
   font-style: italic;
 }
@@ -127,7 +127,7 @@ tooltip label {
 #custom-profile,
 #custom-security,
 #cpu,
-#memory,
+#custom-bluetooth,
 #pulseaudio,
 #network,
 #battery,
@@ -137,11 +137,11 @@ tooltip label {
   margin-left: 0;
   margin-right: 0;
   border-left: 1px solid rgba(68, 92, 108, 0.10);
-  font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", "DM Sans", sans-serif;
+  font-family: "SF Pro Display", "SF UI Display", "San Francisco", sans-serif;
 }
 
 #cpu,
-#memory,
+#custom-bluetooth,
 #custom-security,
 #custom-profile {
   min-width: 27px;
@@ -164,6 +164,8 @@ tooltip label {
 
 #custom-profile.ok,
 #custom-security.ok,
+#custom-bluetooth.connected,
+#custom-bluetooth.on,
 #custom-notifications.ok,
 #battery.charging {
   color: rgba(38, 116, 76, 0.96);
@@ -182,6 +184,8 @@ tooltip label {
 
 #custom-profile.miss,
 #custom-security.miss,
+#custom-bluetooth.missing,
+#custom-bluetooth.off,
 #custom-notifications.miss,
 #pulseaudio.muted,
 #network.disconnected,
@@ -215,7 +219,7 @@ tooltip label {
 #custom-profile:hover,
 #custom-security:hover,
 #cpu:hover,
-#memory:hover,
+#custom-bluetooth:hover,
 #pulseaudio:hover,
 #network:hover,
 #battery:hover,

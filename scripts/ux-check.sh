@@ -140,6 +140,7 @@ require_file "hyprland/gtk-3.0/settings.ini"
 require_file "hyprland/gtk-4.0/settings.ini"
 require_file "hyprland/qt5ct/qt5ct.conf"
 require_file "hyprland/qt6ct/qt6ct.conf"
+require_file "hyprland/fontconfig/fonts.conf"
 require_file "seven-hub/seven-files.desktop"
 
 require_executable "bin/seven"
@@ -182,6 +183,7 @@ require_executable "bin/seven-waybar-notifications"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "bin/seven-waybar"
+require_executable "bin/seven-bluetooth"
 require_executable "bin/seven-windows-assistant"
 require_executable "vm/windows-app-runner.sh"
 require_executable "scripts/phase-gate.sh"
@@ -201,6 +203,7 @@ require_executable "scripts/control-plane.sh"
 require_executable "scripts/daily-driver.sh"
 require_executable "scripts/events.sh"
 require_executable "scripts/insights.sh"
+require_executable "scripts/ai.sh"
 require_executable "security/shield-status.sh"
 require_executable "security/shield-control.sh"
 require_executable "security/shield-workspace.sh"
@@ -214,6 +217,7 @@ require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
 require_executable "scripts/post-install.sh"
 require_executable "scripts/design-check.sh"
+require_executable "scripts/fonts.sh"
 
 package_manifest_contains "mako" "scripts/packages-base.txt"
 package_manifest_contains "libnotify" "scripts/packages-base.txt"
@@ -221,8 +225,10 @@ package_manifest_contains "swaylock" "scripts/packages-base.txt"
 package_manifest_contains "swayidle" "scripts/packages-base.txt"
 package_manifest_contains "hyprpaper" "scripts/packages-base.txt"
 package_manifest_contains "librsvg" "scripts/packages-base.txt"
+package_manifest_contains "fontconfig" "scripts/packages-base.txt"
+package_manifest_contains "7zip" "scripts/packages-base.txt"
 package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
-package_manifest_contains "ttf-cormorant" "scripts/packages-base.txt"
+package_manifest_contains "noto-fonts" "scripts/packages-base.txt"
 package_manifest_contains "noto-fonts-emoji" "scripts/packages-base.txt"
 package_manifest_contains "kitty" "scripts/packages-base.txt"
 package_manifest_contains "python-gobject" "scripts/packages-base.txt"
@@ -247,6 +253,9 @@ package_manifest_contains "btop" "scripts/packages-base.txt"
 package_manifest_contains "pavucontrol" "scripts/packages-base.txt"
 package_manifest_contains "networkmanager" "scripts/packages-base.txt"
 package_manifest_contains "network-manager-applet" "scripts/packages-base.txt"
+package_manifest_contains "bluez" "scripts/packages-base.txt"
+package_manifest_contains "bluez-utils" "scripts/packages-base.txt"
+package_manifest_contains "blueman" "scripts/packages-base.txt"
 package_manifest_contains "archinstall" "scripts/packages-installer.txt"
 package_manifest_contains "rust" "scripts/packages-hub-gui.txt"
 package_manifest_contains "nodejs" "scripts/packages-hub-gui.txt"
@@ -272,7 +281,7 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/sevenos".format == "7" and ."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-dock toggle" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and (."modules-right" | index("pulseaudio") and index("network") and index("custom/power"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and ."custom/sevenos".format == "7" and ."custom/apps".format == "Apps" and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-dock toggle" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and ."custom/bluetooth"."return-type" == "json" and (."modules-right" | index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/power"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes liquid Apps launcher and centered workspaces"
 else
   fail "Waybar liquid Apps launcher or centered workspaces missing"
@@ -381,6 +390,15 @@ fi
 if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q '$dock = seven-dock toggle' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'SevenDockNative' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'restart|repair|reopen' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'SEVENOS_DOCK_FORCE_WINDOW=1' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'set_namespace(window, "sevenos-dock")' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'GtkLayerShell.Layer.OVERLAY' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'SEVENOS_DOCK_FORCE_WINDOW' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'place_hyprland_window' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'movewindowpixel' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'window.present()' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'set_anchor(window, GtkLayerShell.Edge.LEFT, True)' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'pin)' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'unpin)' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'show_context_menu' "$ROOT_DIR/bin/seven-dock-native" &&
@@ -391,7 +409,7 @@ else
   fail "SevenOS Dock should toggle with Super+D and expose workflow actions"
 fi
 
-if jq -e '.network."on-click" == "seven-wifi menu" and .network."on-click-middle" == "seven-wifi disconnect" and .network."on-click-right" == "seven-wifi settings" and .network."format-wifi" == "󰤨" and .pulseaudio."on-click" == "seven-waybar-action audio" and .pulseaudio."on-click-right" == "seven-settings sound" and .pulseaudio.format == "󰕾" and .battery."on-click" == "seven-waybar-action battery" and .battery."on-click-right" == "seven-settings power" and .battery.format == "󰁹" and .clock."on-click" == "seven-waybar-action clock" and .clock."on-click-right" == "seven-settings system" and .cpu."on-click-right" == "seven-settings system" and .memory."on-click-right" == "seven-settings system" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/security"."on-click-right" == "seven-settings security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/profile"."on-click-right" == "seven-settings profiles" and ."custom/profile"."on-click-middle" == "seven-files profile" and ."custom/settings"."on-click" == "seven-settings" and ."custom/settings"."on-click-right" == "seven-hub-native" and (."custom/notifications"."on-click" | contains("seven-waybar-notifications") and contains("menu")) and (."custom/notifications"."on-click-right" | contains("seven-waybar-notifications") and contains("toggle-dnd"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.network."on-click" == "seven-wifi menu" and .network."on-click-middle" == "seven-wifi disconnect" and .network."on-click-right" == "seven-wifi settings" and .network."format-wifi" == "󰤨" and ."custom/bluetooth"."on-click" == "seven-waybar-action bluetooth" and ."custom/bluetooth"."on-click-middle" == "seven-bluetooth toggle" and ."custom/bluetooth"."return-type" == "json" and .pulseaudio."on-click" == "seven-waybar-action audio" and .pulseaudio."on-click-right" == "seven-settings sound" and .pulseaudio.format == "󰕾" and .battery."on-click" == "seven-waybar-action battery" and .battery."on-click-right" == "seven-settings power" and .battery.format == "󰁹" and .clock."on-click" == "seven-waybar-action clock" and .clock."on-click-right" == "seven-settings system" and .cpu."on-click-right" == "seven-settings system" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/security"."on-click-right" == "seven-settings security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/profile"."on-click-right" == "seven-settings profiles" and ."custom/profile"."on-click-middle" == "seven-files profile" and ."custom/settings"."on-click" == "seven-settings" and ."custom/settings"."on-click-right" == "seven-hub-native" and (."custom/notifications"."on-click" | contains("seven-waybar-notifications") and contains("menu")) and (."custom/notifications"."on-click-right" | contains("seven-waybar-notifications") and contains("toggle-dnd"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
@@ -420,6 +438,16 @@ else
   fail "Waybar network module should expose a real Wi-Fi workflow"
 fi
 
+if [[ -x "$ROOT_DIR/bin/seven-bluetooth" ]] &&
+   "$ROOT_DIR/bin/seven-bluetooth" status-json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-bluetooth" toggle | grep -q 'DRY-RUN > Bluetooth > power' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-bluetooth" scan | grep -q 'DRY-RUN > Bluetooth > scan nearby devices' &&
+   grep -q 'bluetooth_state' "$ROOT_DIR/bin/seven-waybar-center-native"; then
+  ok "Waybar Bluetooth module exposes toggle, status and pairing workflow"
+else
+  fail "Waybar Bluetooth module should expose status, toggle and pairing workflow"
+fi
+
 notifications_menu_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
 notifications_toggle_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" toggle-dnd)"
 if jq -e '."modules-right" | index("custom/notifications")' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null &&
@@ -441,6 +469,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|For
    grep -q 'native_panel seven-profile-center-native' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'native_panel seven-shield-center-native' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'native_panel seven-waybar-center-native network' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'native_panel seven-waybar-center-native bluetooth' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'native_panel seven-waybar-center-native audio' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'native_panel seven-waybar-center-native power' "$ROOT_DIR/bin/seven-waybar-action" &&
    "$ROOT_DIR/bin/seven-waybar-center-native" --probe >/dev/null 2>&1 &&
@@ -709,7 +738,8 @@ if grep -q '$terminal = seven-terminal classic' "$ROOT_DIR/hyprland/hyprland.con
    grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod CTRL, E, exec, seven-files profile' "$ROOT_DIR/hyprland/hyprland.conf" &&
   grep -q 'seven-overview apps' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, slash, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, H, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod SHIFT, H, exec, seven-hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
    ! grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Hyprland exposes Spotlight, Apps, Help and CyberSpace shortcuts"
 else
@@ -850,7 +880,21 @@ else
 fi
 
 if grep -q -- '--ebene: #eef4f8' "$ROOT_DIR/identity/tokens.css" &&
-   grep -q -- '--font-display' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-interface: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-text: "SF Pro Text"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-mono: "SF Mono"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--font-brand: "SF Pro Rounded"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q 'gtk-font-name=SF Pro Display 10' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
+   grep -q 'general="SF Pro Display,10' "$ROOT_DIR/hyprland/qt5ct/qt5ct.conf" &&
+   grep -q 'fixed="SF Mono,10' "$ROOT_DIR/hyprland/qt5ct/qt5ct.conf" &&
+   grep -q 'font=SF Pro Display 10.5' "$ROOT_DIR/hyprland/mako/config" &&
+   grep -q 'font_family SF Mono' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'SF Pro Rounded' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
+   grep -q 'SevenOS Cyber' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
+   grep -q 'apply-default' "$ROOT_DIR/scripts/fonts.sh" &&
+   grep -q 'import_fonts_button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'copy GTK, Qt and fontconfig SevenOS settings' "$ROOT_DIR/scripts/apply-theme.sh" &&
    ! grep -R "box-shadow" "$ROOT_DIR/hyprland/waybar/style.css" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null &&
    ! grep -E '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/waybar/style.css" >/dev/null; then
   ok "Frosted glass design tokens and no-shadow UI rule are enforced"
@@ -1495,7 +1539,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset offline --dry-run >/dev/null
 ok "interactive UX commands support dry-run"
 
-if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰒓  Open Seven Hub' &&
+if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰩂  Desktop Helpers    Super+H' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰒓  Open Seven Hub    Super+Shift+H' &&
    grep -q '󰋜  Home' "$ROOT_DIR/bin/seven-files" &&
    grep -q '󰀻  Open Apps    Super' "$ROOT_DIR/bin/seven-help" &&
    grep -q 'Toggle Dock    Super+D' "$ROOT_DIR/bin/seven-help" &&

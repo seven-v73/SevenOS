@@ -176,7 +176,7 @@ Browser, Terminal, Spotlight, Hub and Settings. The Dock also separates folders
 from apps, shows running indicators, provides right-click actions such as show
 windows, quit and force quit, and stores pinned items in
 `~/.config/sevenos/dock.json`.
-Use `Super+H` or the
+Use `Super+Shift+H` or the
 Spotlight action `Desktop · Open Seven Hub` for the Control Center.
 
 Search is intentionally centralized here. The app grid, Hub fallback, quick

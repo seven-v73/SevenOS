@@ -17,8 +17,9 @@ Usage:
   seven shell plan --json
   ./scripts/shell.sh [status|plan|doctor|preview] [--json]
 
-Seven Shell is the B3 AGS/TypeScript shell foundation. It will replace Rofi
-panels gradually while keeping the current Hyprland/Waybar/Rofi fallback safe.
+Seven Shell tracks the production fallback and the B3 AGS/TypeScript target.
+The current shell is Native GTK + Waybar + Hyprland-managed dock; AGS replaces
+surfaces gradually when its runtime policy is settled.
 EOF
 }
 
@@ -44,6 +45,14 @@ file_state() {
 runtime_state() {
   if command -v ags >/dev/null 2>&1; then
     printf READY
+  elif [[ "$(file_state bin/seven-dock-native)" == OK &&
+          "$(file_state bin/seven-waybar-center-native)" == OK &&
+          "$(file_state bin/seven-settings-native)" == OK &&
+          "$(file_state hyprland/waybar/config.jsonc)" == OK &&
+          "$(file_state hyprland/waybar/style.css)" == OK &&
+          "$(package_state waybar)" == OK &&
+          "$(package_state gtk-layer-shell)" == OK ]]; then
+    printf NATIVE_READY
   elif [[ "$(file_state seven-shell/ags/src/config.ts)" == OK &&
           "$(file_state seven-shell/ags/src/dock.ts)" == OK &&
           "$(file_state bin/seven-shell-panel)" == OK &&
@@ -78,22 +87,23 @@ status_json() {
   printf '"schema":"sevenos.shell.v1",'
   printf '"phase":"B3",'
   printf '"state":%s,' "$(printf '%s' "$runtime" | json_string)"
-  printf '"strategy":"AGS + TypeScript shell with Rofi fallback",'
-  printf '"fallback":"Waybar, Rofi and GTK shell panels remain active until AGS surfaces are ready",'
+  printf '"strategy":"Native GTK production fallback now; AGS + TypeScript as the B3 replacement path",'
+  printf '"fallback":"Waybar, Native GTK panels, Hyprland-managed Dock and Rofi remain supported until AGS surfaces are ready",'
   printf '"runtime_health":'
   printf '%s' "$health"
   printf ','
   printf '"surfaces":['
-  printf '{"key":"quick-settings","state":%s,"current":"GTK/Rofi","target":"AGS"},' "$(printf '%s' "$(file_state bin/seven-shell-panel)" | json_string)"
-  printf '{"key":"notifications","state":%s,"current":"GTK/Rofi","target":"AGS"},' "$(printf '%s' "$(file_state bin/seven-waybar-notifications)" | json_string)"
-  printf '{"key":"launcher","state":%s,"current":"Rofi Launchpad","target":"AGS"},' "$(printf '%s' "$(file_state bin/seven-apps)" | json_string)"
-  printf '{"key":"dock","state":%s,"current":"planned","target":"AGS"}' "$(printf '%s' "$(file_state seven-shell/ags/src/dock.ts)" | json_string)"
+  printf '{"key":"quick-settings","state":%s,"current":"Native GTK/Waybar","target":"AGS"},' "$(printf '%s' "$(file_state bin/seven-waybar-center-native)" | json_string)"
+  printf '{"key":"notifications","state":%s,"current":"Native GTK notification center","target":"AGS"},' "$(printf '%s' "$(file_state bin/seven-notification-center-native)" | json_string)"
+  printf '{"key":"launcher","state":%s,"current":"Native Launchpad with Rofi fallback","target":"AGS"},' "$(printf '%s' "$(file_state bin/seven-launchpad-native)" | json_string)"
+  printf '{"key":"dock","state":%s,"current":"Native GTK Hyprland-managed dock","target":"AGS or stable layer-shell"}' "$(printf '%s' "$(file_state bin/seven-dock-native)" | json_string)"
   printf '],'
   printf '"dependencies":['
   printf '{"key":"gjs","state":%s},' "$(printf '%s' "$(package_state gjs)" | json_string)"
   printf '{"key":"typescript","state":%s},' "$(printf '%s' "$(package_state typescript)" | json_string)"
   printf '{"key":"gtk4","state":%s},' "$(printf '%s' "$(package_state gtk4)" | json_string)"
   printf '{"key":"libadwaita","state":%s},' "$(printf '%s' "$(package_state libadwaita)" | json_string)"
+  printf '{"key":"gtk-layer-shell","state":%s},' "$(printf '%s' "$(package_state gtk-layer-shell)" | json_string)"
   printf '{"key":"nodejs","state":%s},' "$(printf '%s' "$(command_state node)" | json_string)"
   printf '{"key":"ags","state":%s}' "$(printf '%s' "$(command_state ags)" | json_string)"
   printf '],'
@@ -114,6 +124,7 @@ meta = {
     "typescript": ("Install TypeScript", "medium", "packages", "Seven Shell source should be typed from the beginning."),
     "gtk4": ("Install GTK4", "medium", "packages", "AGS shell surfaces need GTK4 widgets."),
     "libadwaita": ("Install libadwaita", "medium", "packages", "Seven Shell should stay visually native with GNOME-like components."),
+    "gtk-layer-shell": ("Install GTK layer shell support", "high", "packages", "Native SevenOS panels and dock need stable layer-shell support where the compositor allows it."),
     "nodejs": ("Install Node.js", "medium", "packages", "TypeScript tooling needs Node.js."),
     "ags": ("Choose AGS runtime workflow", "high", "manual", "AGS is not in the core Arch repo here; keep installation explicit until the AUR policy is settled."),
 }
@@ -169,8 +180,8 @@ status() {
   printf 'SevenOS Shell Status\n'
   printf '====================\n'
   printf 'state:       %s\n' "$(runtime_state)"
-  printf 'strategy:    AGS + TypeScript shell with Rofi fallback\n'
-  printf 'fallback:    Waybar, Rofi and GTK shell panels stay active\n'
+  printf 'strategy:    Native GTK production fallback now; AGS + TypeScript target next\n'
+  printf 'fallback:    Waybar, Native GTK panels, Hyprland-managed Dock and Rofi stay active\n'
   CORE_HEALTH="$(core_health_json)" python - <<'PY'
 import json
 import os
@@ -236,6 +247,9 @@ doctor() {
   printf '[%s] gjs\n' "$(package_state gjs)"
   printf '[%s] typescript\n' "$(package_state typescript)"
   printf '[%s] gtk4\n' "$(package_state gtk4)"
+  printf '[%s] gtk-layer-shell\n' "$(package_state gtk-layer-shell)"
+  [[ -x "$ROOT_DIR/bin/seven-dock-native" ]] && printf '[OK] native dock\n' || printf '[MISS] native dock\n'
+  [[ -s "$ROOT_DIR/hyprland/waybar/config.jsonc" ]] && printf '[OK] waybar config\n' || printf '[MISS] waybar config\n'
   command -v ags >/dev/null 2>&1 && printf '[OK] ags\n' || printf '[AUR] ags runtime pending explicit workflow\n'
 
   if [[ "$failures" -gt 0 ]]; then
@@ -250,12 +264,12 @@ preview() {
   printf 'SevenOS Shell Preview\n'
   printf '=====================\n'
   printf 'B3 target: AGS + TypeScript shell\n'
-  printf 'Current fallback: Waybar + GTK shell panel + Rofi\n\n'
+  printf 'Current production fallback: Waybar + Native GTK panels + Hyprland-managed Dock + Rofi\n\n'
   printf 'Surfaces:\n'
-  printf '  - Quick Settings: GTK/Rofi now -> AGS panel next\n'
-  printf '  - Notifications: GTK/Rofi now -> AGS center next\n'
-  printf '  - Launcher: Rofi Launchpad now -> AGS launcher next\n'
-  printf '  - Dock: planned -> AGS dock\n\n'
+  printf '  - Quick Settings: Native GTK now -> AGS panel next\n'
+  printf '  - Notifications: Native GTK now -> AGS center next\n'
+  printf '  - Launcher: Native Launchpad now -> AGS launcher next\n'
+  printf '  - Dock: Native Hyprland-managed dock now -> AGS or stable layer-shell next\n\n'
   printf 'Contracts consumed:\n'
   printf '  - seven state --json\n'
   printf '  - seven actions --json\n'

@@ -24,7 +24,7 @@ message {
 
 textbox {
   text-color: @indigo;
-  font: "Cormorant Garamond Italic 22";
+  font: "SF Pro Display Italic 22";
 }
 
 listview {
@@ -43,7 +43,7 @@ element {
 
 element-text {
   text-color: inherit;
-  font: "JetBrains Mono Medium 14";
+  font: "SF Pro Text Medium 14";
 }
 
 element selected {

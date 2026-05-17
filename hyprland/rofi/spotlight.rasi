@@ -39,7 +39,7 @@ entry {
   placeholder-color: rgba(51, 72, 82, 0.54);
   text-color: rgba(16, 26, 33, 0.98);
   cursor-color: @indigo;
-  font: "DM Sans Medium 17";
+  font: "SF Pro Text Medium 17";
 }
 
 message {
@@ -50,7 +50,7 @@ message {
 
 textbox {
   text-color: rgba(51, 72, 82, 0.66);
-  font: "JetBrains Mono Medium 10";
+  font: "SF Pro Text Medium 10";
 }
 
 listview {
@@ -89,7 +89,7 @@ element-icon {
 }
 
 element-text {
-  font: "DM Sans Medium 13";
+  font: "SF Pro Text Medium 13";
   background-color: transparent;
   text-color: inherit;
 }

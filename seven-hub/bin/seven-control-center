@@ -253,7 +253,7 @@ def render_dashboard():
       --baobab:#3f8b65; --baobab-bright:#4ba979; --baobab-pale:rgba(63,139,101,.12);
       --indigo:#567f9d; --indigo-bright:#6f9dbc; --indigo-pale:rgba(86,127,157,.13);
       --text-1:#17232b; --text-2:#4d606a; --text-3:#7c8c94;
-      --font-display:"Cormorant Garamond", Georgia, serif; --font-interface:"DM Sans", system-ui, sans-serif; --font-mono:"JetBrains Mono", monospace;
+      --font-display:"SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; --font-interface:"SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; --font-text:"SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif; --font-mono:"SF Mono", "JetBrainsMono Nerd Font", "SF Pro Text", monospace; --font-brand:"SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif;
     }}
     * {{ box-sizing: border-box; }}
     body {{

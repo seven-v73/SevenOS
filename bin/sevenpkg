@@ -86,7 +86,18 @@ def pacman_has(package):
 
 
 def package_installed(package):
-    return package in installed_package_set()
+    installed = installed_package_set()
+    if package in installed:
+        return True
+    return any(alternative in installed for alternative in package_alternatives(package))
+
+
+def package_alternatives(package):
+    return {
+        "code": ("visual-studio-code-bin", "vscodium-bin", "vscodium"),
+        "p7zip": ("7zip",),
+        "7zip": ("p7zip",),
+    }.get(package, ())
 
 
 @lru_cache(maxsize=1)

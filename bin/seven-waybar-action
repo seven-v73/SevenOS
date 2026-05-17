@@ -185,6 +185,18 @@ run_network_action() {
   esac
 }
 
+run_bluetooth_action() {
+  local selected="$1"
+  case "$selected" in
+    "Bluetooth Panel") run_detached seven-waybar-center-native bluetooth ;;
+    "Toggle Bluetooth") run_detached seven-bluetooth toggle ;;
+    "Scan Devices") run_detached seven-bluetooth scan ;;
+    "Device Manager") run_detached seven-bluetooth manager ;;
+    "Settings") run_detached seven-settings network ;;
+    *) return 0 ;;
+  esac
+}
+
 run_audio_action() {
   local selected="$1"
   case "$selected" in
@@ -230,6 +242,7 @@ show_menu() {
       profile) native_panel seven-profile-center-native && return 0 ;;
       security) native_panel seven-shield-center-native && return 0 ;;
       network) native_panel seven-waybar-center-native network && return 0 ;;
+      bluetooth) native_panel seven-waybar-center-native bluetooth && return 0 ;;
       audio) native_panel seven-waybar-center-native audio && return 0 ;;
       battery) native_panel seven-waybar-center-native power && return 0 ;;
       system) native_panel seven-waybar-center-native system && return 0 ;;
@@ -257,6 +270,11 @@ show_menu() {
       prompt="Network"
       runner="run_network_action"
       options=("󰤨  Wi-Fi Panel" "󰖩  Toggle Wi-Fi" "󰤭  Disconnect Wi-Fi" "󰒓  Settings")
+      ;;
+    bluetooth)
+      prompt="Bluetooth"
+      runner="run_bluetooth_action"
+      options=("󰂯  Bluetooth Panel" "󰖩  Toggle Bluetooth" "󰐢  Scan Devices" "󰂱  Device Manager" "󰒓  Settings")
       ;;
     audio)
       prompt="Audio"

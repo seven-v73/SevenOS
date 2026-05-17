@@ -656,6 +656,8 @@ fn package_flatpak_equivalent(package: &str) -> Option<&'static str> {
 fn package_alternatives(package: &str) -> &'static [&'static str] {
     match package {
         "code" => &["visual-studio-code-bin", "vscodium-bin", "vscodium"],
+        "p7zip" => &["7zip"],
+        "7zip" => &["p7zip"],
         _ => &[],
     }
 }
@@ -1995,7 +1997,7 @@ fn package_layer_state(
     }
     let installed = packages
         .iter()
-        .filter(|package| installed_set.contains(package.as_str()))
+        .filter(|package| package_satisfied(package, installed_set))
         .count();
     let total = packages.len();
     let state = if installed == total {
@@ -2788,6 +2790,8 @@ fn daemon_phase_gate_json() {
 
     let package_actions = package_plan_actions(&root, &installed_set);
     let package_open = package_actions.len();
+    let package_blocking = severity_count(&package_actions, "critical")
+        + severity_count(&package_actions, "high");
 
     let experience_percent = if root.join("seven-hub/native/README.md").is_file()
         && root.join("seven-shell/README.md").is_file()
@@ -2967,12 +2971,12 @@ fn daemon_phase_gate_json() {
         phase_gate_item(
             "software",
             "Software plan",
-            if package_open == 0 { "PASS" } else { "WARN" },
-            json!(package_open),
+            if package_blocking == 0 { "PASS" } else { "WARN" },
+            json!(package_blocking),
             json!(0),
-            if package_open == 0 { "strong" } else { "open" },
+            if package_blocking == 0 { "strong" } else { "open" },
             "sevenpkg plan",
-            "SevenPkg must explain what is still needed for complete app delivery.",
+            "SevenPkg must explain critical and high-priority app delivery gaps. Medium bundles stay optional.",
         ),
         phase_gate_item(
             "stack",

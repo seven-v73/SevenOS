@@ -93,6 +93,7 @@ def run() -> int:
         pass
 
     css = """
+    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.profile-center-window { background: transparent; }
     .profile-root {
       padding: 16px;

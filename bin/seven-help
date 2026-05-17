@@ -35,7 +35,7 @@ run_terminal() {
   fi
 }
 
-menu=$'󰖟  SevenOS Spotlight    Super+Space\n󰒓  Open Seven Hub    Super+H\n󰀻  Open Apps    Super\n󰟀  Toggle Dock    Super+D\n󰖲  Window Overview    Super+Tab\n󰒓  Quick Settings    Super+N / Super+O\n󰆍  Terminal Classic    Super+Enter\n󰆍  Terminal Dark    Super+Shift+Enter\n󰆍  Terminal Theme Menu    Super+Ctrl+Enter\n󰉋  Open Files    Super+E\n󰐥  Power Menu    Super+Shift+P\n󰍁  Lock Screen    Super+L\n󰆍  Scratchpad    Super+S\n󰄀  Screenshot Save    Print\n󰄀  Screenshot Edit    Super+Shift+S\n󰅍  Screenshot Copy    Super+Ctrl+S\n󰜉  Reload Desktop    Reapply Hyprland config\n󰩂  Post-Install Check    Diagnose missing UI pieces\n󰁨  Repair UX    Reapply theme, hub and commands'
+menu=$'󰩂  Desktop Helpers    Super+H\n󰖟  SevenOS Spotlight    Super+Space\n󰒓  Open Seven Hub    Super+Shift+H\n󰀻  Open Apps    Super\n󰟀  Toggle Dock    Super+D\n󰖲  Window Overview    Super+Tab\n󰒓  Quick Settings    Super+N / Super+O\n󰆍  Terminal Classic    Super+Enter\n󰆍  Terminal Dark    Super+Shift+Enter\n󰆍  Terminal Theme Menu    Super+Ctrl+Enter\n󰉋  Open Files    Super+E\n󰐥  Power Menu    Super+Shift+P\n󰍁  Lock Screen    Super+L\n󰆍  Scratchpad    Super+S\n󰄀  Screenshot Save    Print\n󰄀  Screenshot Edit    Super+Shift+S\n󰅍  Screenshot Copy    Super+Ctrl+S\n󰜉  Reload Desktop    Reapply Hyprland config\n󰩂  Post-Install Check    Diagnose missing UI pieces\n󰁨  Repair UX    Reapply theme, hub and commands'
 
 if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   printf '%s\n' "$menu"
@@ -53,6 +53,7 @@ selected="${selected#*  }"
 selected="${selected%%    *}"
 
 case "$selected" in
+  "Desktop Helpers") seven-help ;;
   "SevenOS Spotlight") seven-spotlight ;;
   "Open Seven Hub") seven-hub ;;
   "Open Apps") seven-overview apps ;;

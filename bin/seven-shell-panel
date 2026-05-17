@@ -244,6 +244,7 @@ def run_gui(surface: str) -> int:
 
         def on_activate(self, app: Adw.Application) -> None:
             css = b"""
+            * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
             window { background: transparent; }
             .panel {
               background:

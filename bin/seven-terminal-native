@@ -94,6 +94,9 @@ def run_terminal(profile: str, command: list[str]) -> int:
     argv = command or [str(resolve_shell())]
 
     css = f"""
+    * {{
+      font-family: "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
     window.seven-window {{
       background: {'#2f3642' if dark else '#fdfdfd'};
       border-radius: 12px;
@@ -106,7 +109,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     }}
     .seven-title {{
       color: {'#f4f7fa' if dark else '#33383d'};
-      font: 500 12px "DM Sans", "Inter", sans-serif;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }}
     .traffic {{
       min-width: 15px;
@@ -161,7 +164,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
     terminal.set_cursor_shape(Vte.CursorShape.IBEAM)
     terminal.set_audible_bell(False)
-    terminal.set_font(Pango.FontDescription("JetBrainsMono Nerd Font 10"))
+    terminal.set_font(Pango.FontDescription("SF Mono 10"))
     terminal.set_colors(
         Gdk.RGBA(*hex_to_rgba("#f4f7fa" if dark else "#2b3137")),
         Gdk.RGBA(*hex_to_rgba("#2f3642" if dark else "#fdfdfd")),

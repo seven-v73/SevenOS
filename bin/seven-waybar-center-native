@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native SevenOS Waybar centers for network, audio, power and system."""
+"""Native SevenOS Waybar centers for network, Bluetooth, audio, power and system."""
 
 from __future__ import annotations
 
@@ -87,6 +87,30 @@ def wifi_signal() -> str:
     return f"{signal}%" if signal else "--"
 
 
+def bluetooth_state() -> tuple[str, str, str]:
+    if not shutil.which("bluetoothctl"):
+        return "Missing", "Install bluez-utils", "--"
+    raw = out(["bluetoothctl", "show"])
+    powered = "unknown"
+    discovering = "no"
+    for line in raw.splitlines():
+        if "Powered:" in line:
+            powered = line.split(":", 1)[1].strip()
+        if "Discovering:" in line:
+            discovering = line.split(":", 1)[1].strip()
+    if powered != "yes":
+        return "Off", "Bluetooth radio disabled", "--"
+    connected_raw = out(["bluetoothctl", "devices", "Connected"])
+    connected = []
+    for line in connected_raw.splitlines():
+        parts = line.split(maxsplit=2)
+        if len(parts) == 3:
+            connected.append(parts[2])
+    device = ", ".join(connected[:2]) if connected else "None"
+    status = "Scanning" if discovering == "yes" else "Ready"
+    return "On", status, device
+
+
 def volume_state() -> tuple[int, str]:
     if not shutil.which("wpctl"):
         return 0, "Audio tools unavailable"
@@ -128,9 +152,10 @@ def run(panel: str) -> int:
     gi.require_version("Gtk", "3.0")
     from gi.repository import Gdk, GLib, Gtk
 
-    panel = panel if panel in {"network", "audio", "power", "system", "time"} else "system"
+    panel = panel if panel in {"network", "bluetooth", "audio", "power", "system", "time"} else "system"
     titles = {
         "network": ("Wi-Fi", "Connect, toggle and manage nearby networks"),
+        "bluetooth": ("Bluetooth", "Pair, connect and manage nearby devices"),
         "audio": ("Sound", "Volume, mute and output controls"),
         "power": ("Power", "Battery, lock and energy controls"),
         "system": ("System", "Performance, settings and repair"),
@@ -145,6 +170,7 @@ def run(panel: str) -> int:
         pass
 
     css = """
+    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.waybar-center-window { background: transparent; }
     .center-root {
       padding: 16px;
@@ -231,6 +257,11 @@ def run(panel: str) -> int:
         root.pack_start(metric_row(Gtk, [(state, "Wi-Fi"), (detail, "Network"), (wifi_signal(), "Signal")]), False, False, 0)
         root.pack_start(hint(Gtk, "Choose opens the simple Wi-Fi list: toggle, connected network and nearby SSIDs."), False, False, 0)
         actions = [("󰤨", "Networks", "seven-wifi menu"), ("󰖩", "On / Off", "seven-wifi toggle"), ("󰤭", "Disconnect", "seven-wifi disconnect"), ("󰒓", "Settings", "seven-settings network")]
+    elif panel == "bluetooth":
+        state, status, device = bluetooth_state()
+        root.pack_start(metric_row(Gtk, [(state, "Bluetooth"), (device, "Connected"), (status, "Status")]), False, False, 0)
+        root.pack_start(hint(Gtk, "Use On / Off, Scan and Manager for the full pairing workflow without leaving the bar."), False, False, 0)
+        actions = [("󰂯", "On / Off", "seven-bluetooth toggle"), ("󰐢", "Scan", "seven-bluetooth scan"), ("󰂱", "Manager", "seven-bluetooth manager"), ("󰒓", "Settings", "seven-settings network")]
     elif panel == "audio":
         volume, muted = volume_state()
         root.pack_start(metric_row(Gtk, [(f"{volume}%", "Volume"), (muted.title(), "State")]), False, False, 0)
