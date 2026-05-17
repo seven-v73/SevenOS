@@ -322,6 +322,7 @@ def show_meta(args):
                     "description": meta.get("description", ""),
                     "kind": meta.get("kind", ""),
                     "target": meta.get("target", ""),
+                    "optional": bool(meta.get("optional", False)),
                 }
             )
         print(json.dumps(items, indent=2))
@@ -360,6 +361,7 @@ def show_status(args):
                     "description": meta.get("description", ""),
                     "kind": meta.get("kind", ""),
                     "target": meta.get("target", ""),
+                    "optional": bool(meta.get("optional", False)),
                     "packages": meta_packages(meta),
                 }
             )
@@ -430,6 +432,8 @@ def plan_payload(limit=None):
 
     for name in sorted(manifest):
         meta = manifest[name]
+        if meta.get("optional") is True:
+            continue
         state, installed, total = meta_state(meta)
         if state == "OK":
             continue
@@ -565,6 +569,7 @@ def show_info(name, args):
         print(f"Name:        {name}")
         print(f"Description: {meta.get('description', '')}")
         print(f"Kind:        {meta.get('kind', '')}")
+        print(f"Optional:    {'yes' if meta.get('optional') else 'no'}")
         if "target" in meta:
             print(f"Target:      {meta['target']}")
 

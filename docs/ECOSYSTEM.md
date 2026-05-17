@@ -41,7 +41,7 @@ integration, continuity and predictable defaults.
 | --- | --- | --- | --- |
 | SevenAI | local system assistant and automation brain | 4 | preview |
 | SevenCloud | personal backup, config sync and restore | 5 | planned |
-| SevenStore | marketplace for apps, profiles, themes and modules | 5 | planned |
+| SevenStore | marketplace for apps, profiles, themes and modules | 5 | preview |
 | SevenBox | rootless containers and sandboxed app runtime | 4 | preview |
 | SevenShield Pro | advanced protection, scans and intrusion signals | 4 | planned |
 | Adaptive UI | profile-aware desktop behavior and visual modes | 4 | preview |
@@ -61,7 +61,7 @@ cannot be reached from Seven Hub or `seven`, it is not productized yet.
 | --- | --- | --- | --- | --- |
 | First Run | experience | active | welcome, profile choice, theme, readiness, Hub | `seven welcome` |
 | Daily Control | desktop | active | Waybar, Quick Settings, Seven Hub, actions registry | `seven hub` |
-| Install Apps | software | preview | SevenPkg, Flatpak, profile apps, future SevenStore | `sevenpkg status` |
+| Install Apps | software | preview | SevenStore, SevenPkg, Flatpak, profile apps | `seven store` |
 | Work Profiles | productivity | active | profile context, workspace, app readiness, next actions | `seven profile current` |
 | Windows Apps | compatibility | preview | Windows profile, Bottles/Wine, KVM VM | `seven windows guide` |
 | Security Trust | security | preview | Shield audit, hardening, sandbox, Cyber Lab | `seven shield audit` |
@@ -69,7 +69,7 @@ cannot be reached from Seven Hub or `seven`, it is not productized yet.
 | Develop & Deploy | deployment | preview | Forge/Horizon, stack detection, local API, deploy plan | `seven deploy plan .` |
 | Local Guidance | intelligence | preview | state, insights, action registry, next best commands | `seven ai plan` |
 | Personal Cloud | cloud | planned | encrypted backup, restore, machine sync | `seven ecosystem roadmap` |
-| Marketplace | store | planned | trust policy, apps, themes, modules | `seven ecosystem roadmap` |
+| Marketplace | store | preview | modules, apps, actions and guided install | `seven store` |
 | Automation | automation | planned | triggers, confirmed actions, logs | `seven ecosystem roadmap` |
 | Identity | identity | planned | user context, regional accents, permissions | `seven ecosystem roadmap` |
 
@@ -286,7 +286,7 @@ Future commands:
 ```bash
 seven ai "explain this error"
 seven cloud backup
-seven store search blender
+seven store apps
 seven box run app --sandbox
 seven flow list
 seven identity status

@@ -37,9 +37,9 @@ Seven Installer	3	preview	Archiso, Calamares and install planning foundation	ins
 SevenBox	4	planned	Rootless containers and sandbox UX	scripts/ecosystem.sh
 SevenAI	4	preview	Local system assistant, readiness guidance and automation contract	scripts/ai.sh
 Adaptive UI	4	preview	Profile-aware shell, Waybar, panels and Hub actions	bin/seven-shell-panel
-Seven Shell	3	next	AGS and TypeScript shell layer for panels, dock, launcher and widgets	scripts/stack.sh
+Seven Shell	3	active	Native GTK, Waybar, Dock and AGS migration path	scripts/shell.sh
 SevenCloud	5	planned	Encrypted backup, config sync and restore	scripts/ecosystem.sh
-SevenStore	5	planned	Apps, profiles, themes and module registry	scripts/ecosystem.sh
+SevenStore	5	preview	Apps, profiles, themes and module registry	scripts/store.sh
 SevenIdentity	5	planned	User identity, accent packs, permissions and environment	scripts/ecosystem.sh
 SevenFlow	5	planned	No-code automation rules for system workflows	scripts/ecosystem.sh
 SevenCluster	5	planned	Local/private multi-machine compute mesh	scripts/ecosystem.sh
@@ -50,14 +50,14 @@ processes_tsv() {
   cat <<'EOF'
 First Run	experience	active	seven welcome -> profile select -> theme -> readiness -> Hub	seven welcome
 Daily Control	desktop	active	Waybar -> Quick Settings -> Seven Hub -> actions registry	seven hub
-Install Apps	software	preview	sevenpkg -> Flatpak -> profile apps -> future SevenStore	sevenpkg status
+Install Apps	software	preview	SevenStore -> sevenpkg -> Flatpak -> profile apps	seven store
 Work Profiles	productivity	active	Forge/Shield/Studio/Windows/Horizon context -> workspace -> apps	seven profile current
 Windows Apps	compatibility	preview	Windows profile -> Bottles/Wine or KVM VM -> shared workspace	seven windows guide
 Security Trust	security	preview	Shield audit -> UFW/Firejail/Bubblewrap -> Cyber Lab	seven shield audit
 Create & Media	creation	preview	Studio profile -> creative apps -> project workspace	seven profile guide studio
 Develop & Deploy	deployment	preview	Forge/Horizon -> stack detect -> local API -> deploy planner	seven deploy plan .
 Personal Cloud	cloud	planned	SevenCloud -> encrypted backup -> restore -> machine sync	seven ecosystem roadmap
-Marketplace	store	planned	SevenStore -> trust policy -> apps/themes/modules -> one-click install	seven ecosystem roadmap
+Marketplace	store	preview	SevenStore -> modules/apps/actions -> guided install	seven store
 Automation	automation	planned	SevenFlow -> triggers -> confirmed actions -> logs	seven ecosystem roadmap
 Identity	identity	planned	SevenIdentity -> user context -> regional accents -> permissions	seven ecosystem roadmap
 EOF
@@ -124,7 +124,7 @@ roadmap() {
   printf '  - Seven Hub dashboard cards for ecosystem modules\n\n'
   printf 'Phase 5 - Connected Ecosystem\n'
   printf '  - SevenCloud encrypted backup and restore\n'
-  printf '  - SevenStore registry and trust policy\n'
+  printf '  - SevenStore trust policy, reviews and signed module feeds\n'
   printf '  - SevenIdentity user/environment profiles\n'
   printf '  - SevenFlow automation rules\n'
   printf '  - SevenCluster local/private compute mesh\n'
@@ -188,6 +188,7 @@ doctor() {
     "scripts/readiness.sh" \
     "scripts/actions.sh" \
     "scripts/ai.sh" \
+    "scripts/store.sh" \
     "scripts/phase-gate.sh"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then
       printf '[OK] %s\n' "$path"

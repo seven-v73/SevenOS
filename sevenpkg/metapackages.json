@@ -46,6 +46,8 @@
   "griot": {
     "description": "Documentation and knowledge toolkit",
     "kind": "pacman",
+    "optional": true,
+    "category": "knowledge",
     "packages": [
       "man-db",
       "tldr",

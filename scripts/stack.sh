@@ -34,17 +34,17 @@ system-contracts	B2	active	Bash + Python	Stable JSON contracts, installer script
 seven-core	B2-B3	active	Bash + Python now, Rust scaffold	System experience layer, SevenBus, event journal, daemon bridge	Keep contracts stable before supervising daemon.
 native-hub	B2	active	GTK4 + libadwaita + Python	Control Center foundation, profiles, actions, phase gate	Polish before replacing shell surfaces.
 seven-server	B2-B3	preview	Python now, Rust later	Local API, monitoring, orchestration and deployment state	Do not expose remote control before auth model.
-seven-shell	B3	next	AGS + TypeScript + GJS	Hyprland panels, dock, launcher, notifications, widgets	Replace Rofi panels gradually, keep Rofi fallback.
+seven-shell	B3	active	Native GTK + Waybar + AGS path	Hyprland panels, dock, launcher, notifications, widgets	Ship native shell now; migrate AGS widgets only when they improve UX.
 seven-daemon	B3	next	Rust	System events, IPC, profile/session orchestration	Introduce after JSON contracts stabilize.
-seven-ai	Phase 4	planned	Python	Local assistant, explain errors, optimize workflows	Keep outside critical security path.
-native-apps	Phase 4	planned	Flutter or Qt	Seven Store, Settings, Notes, Cloud and media apps	Choose per app; avoid duplicating Hub.
-ecosystem	Phase 5	planned	Rust + Python + Flutter/Qt	Store, Cloud, Sync, extensions, marketplace	Only after B3 services are stable.
+seven-ai	Phase 4	preview	Python	Local assistant, explain errors, optimize workflows	Keep outside critical security path.
+native-apps	Phase 4	preview	GTK/libadwaita now, Flutter/Qt later	Seven Store, Settings, Notes, Cloud and media apps	Choose per app; avoid duplicating Hub.
+ecosystem	Phase 5	preview	Rust + Python + GTK/Flutter/Qt	Store, Cloud, Sync, extensions, marketplace	Keep Store local until signed feeds exist.
 EOF
 }
 
 rules_tsv() {
   cat <<'EOF'
-one-shell-stack	Seven Shell uses AGS/TypeScript first; no parallel Qt/QML shell until AGS is proven.
+one-shell-stack	Seven Shell ships native GTK/Waybar first; AGS is an upgrade path, not a blocker.
 native-before-web	Control surfaces should prefer GTK/libadwaita or AGS; Tauri remains prototype/fallback.
 rust-for-daemons	Rust enters for long-running daemons, IPC and security-sensitive orchestration.
 python-for-ai	Python handles AI, recommendations and analysis, not boot-critical session control.
@@ -117,10 +117,10 @@ summary = {
 
 print(json.dumps({
     "schema": "sevenos.stack.v1",
-    "phase": "B2-B3",
-    "principle": "Introduce one major stack at a time: JSON contracts, native Hub, AGS shell, Rust daemon, AI, apps, ecosystem.",
-    "current_focus": ["JSON contracts", "Seven Core", "Seven Hub Native", "Seven Server preparation"],
-    "next_focus": ["Seven Shell AGS", "seven-daemon Rust"],
+    "phase": "B3",
+    "principle": "Ship one coherent native shell now, then add AGS/Rust/AI where they remove real friction.",
+    "current_focus": ["Native shell", "Seven Core", "SevenStore preview", "Seven Hub Native"],
+    "next_focus": ["seven-daemon Rust", "signed Store feeds", "select AGS widgets"],
     "layers": layers,
     "rules": rules,
     "checks": checks,
@@ -132,8 +132,8 @@ PY
 status() {
   printf 'SevenOS Stack Strategy\n'
   printf '======================\n'
-  printf 'Focus now: JSON contracts, Seven Hub Native, Seven Server preparation\n'
-  printf 'Next: Seven Shell AGS, then seven-daemon Rust\n\n'
+  printf 'Focus now: Native shell, Seven Hub Native, SevenStore preview\n'
+  printf 'Next: seven-daemon Rust, signed Store feeds, selective AGS widgets\n\n'
   printf '%-18s %-9s %-8s %-24s %s\n' "Layer" "Phase" "State" "Stack" "Purpose"
   printf '%-18s %-9s %-8s %-24s %s\n' "-----" "-----" "-----" "-----" "-------"
   while IFS=$'\t' read -r key phase state stack purpose _constraint; do
@@ -149,12 +149,12 @@ roadmap() {
   printf '  - Polish Seven Hub Native GTK/libadwaita.\n'
   printf '  - Prepare Seven Server as local backend.\n\n'
   printf 'B3\n'
-  printf '  - Introduce Seven Shell with AGS + TypeScript.\n'
-  printf '  - Keep Rofi as fallback, not primary shell surface.\n'
+  printf '  - Ship Seven Shell through native GTK, Waybar and Dock surfaces.\n'
+  printf '  - Keep AGS as a selective widget migration path, not a blocker.\n'
   printf '  - Start seven-daemon in Rust after contracts are stable.\n\n'
   printf 'Phase 4\n'
-  printf '  - Add SevenAI in Python outside critical security paths.\n'
-  printf '  - Build Store/Cloud/Notes with Flutter, Qt or GTK per product need.\n\n'
+  printf '  - Expand SevenAI in Python outside critical security paths.\n'
+  printf '  - Productize SevenStore before Cloud/Notes.\n\n'
   printf 'Phase 5\n'
   printf '  - Connect Store, Cloud, AI, Sync and extensions into the ecosystem.\n'
 }

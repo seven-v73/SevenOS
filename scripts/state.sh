@@ -110,6 +110,8 @@ json_to_file "$STATE_TMP/packages.json" "$ROOT_DIR/bin/sevenpkg" status --json &
 pid_packages=$!
 json_to_file "$STATE_TMP/packages_plan.json" "$ROOT_DIR/bin/sevenpkg" plan --json &
 pid_packages_plan=$!
+json_to_file "$STATE_TMP/store.json" "$ROOT_DIR/scripts/store.sh" json &
+pid_store=$!
 json_to_file "$STATE_TMP/manifest.json" "$ROOT_DIR/scripts/manifest.sh" summary-json &
 pid_manifest=$!
 json_to_file "$STATE_TMP/ecosystem.json" "$ROOT_DIR/scripts/ecosystem.sh" json &
@@ -143,7 +145,7 @@ pid_actions=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" || true
+  "$pid_store" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -214,6 +216,9 @@ cat "$STATE_TMP/packages.json"
 printf ','
 printf '"packages_plan":'
 cat "$STATE_TMP/packages_plan.json"
+printf ','
+printf '"store":'
+cat "$STATE_TMP/store.json"
 printf ','
 printf '"manifest":'
 cat "$STATE_TMP/manifest.json"

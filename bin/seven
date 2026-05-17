@@ -287,6 +287,13 @@ def handle_ai(args):
     run_script(args, "scripts/ai.sh", *extra)
 
 
+def handle_store(args):
+    extra = [args.action, *args.extra]
+    if args.json:
+        extra = ["json"]
+    run_script(args, "scripts/store.sh", *extra)
+
+
 def handle_stack(args):
     extra = [args.action]
     if args.json:
@@ -499,6 +506,10 @@ def main():
     ai_parser = subparsers.add_parser("ai", help="show local SevenAI system guidance")
     ai_parser.add_argument("action", nargs="?", default="brief", choices=("brief", "status", "plan", "doctor", "json"))
     ai_parser.add_argument("--json", action="store_true", help="print machine-readable SevenAI local payload")
+    store_parser = subparsers.add_parser("store", help="browse SevenStore modules, apps and actions")
+    store_parser.add_argument("action", nargs="?", default="status", choices=("status", "modules", "catalog", "apps", "actions", "doctor", "install", "json"))
+    store_parser.add_argument("--json", action="store_true", help="print machine-readable SevenStore catalog")
+    store_parser.add_argument("extra", nargs=argparse.REMAINDER)
     stack_parser = subparsers.add_parser("stack", help="show SevenOS technology stack strategy")
     stack_parser.add_argument("action", nargs="?", default="status")
     stack_parser.add_argument("--json", action="store_true", help="print machine-readable stack strategy")
@@ -663,6 +674,8 @@ def main():
         handle_ecosystem(args)
     elif args.command == "ai":
         handle_ai(args)
+    elif args.command == "store":
+        handle_store(args)
     elif args.command == "stack":
         handle_stack(args)
     elif args.command == "shell":

@@ -1780,6 +1780,16 @@ fn installer_mode(tooling: &[Value]) -> &'static str {
     }
 }
 
+fn installer_consumer_path(tooling: &[Value]) -> &'static str {
+    if item_state(tooling, "calamares") == "OK" {
+        "graphical-calamares"
+    } else if item_state(tooling, "archinstall") == "OK" {
+        "guided-tui"
+    } else {
+        "setup-needed"
+    }
+}
+
 fn installer_ready(tooling: &[Value], foundation: &[Value]) -> bool {
     item_state(tooling, "archinstall") == "OK"
         && item_state(foundation, "planner") == "OK"
@@ -1796,6 +1806,13 @@ fn installer_json() {
         "foundation": foundation,
         "ready": installer_ready(&tooling, &foundation),
         "mode": installer_mode(&tooling),
+        "consumer_path": installer_consumer_path(&tooling),
+        "commands": {
+            "status": "seven installer status",
+            "guide": "seven installer guide",
+            "plan": "seven installer plan",
+            "install_tools": "seven installer install"
+        },
         "runtime": "seven-daemon",
         "writer": "seven-daemon",
     });
@@ -2107,6 +2124,13 @@ fn package_plan_actions(root: &Path, installed_set: &HashSet<String>) -> Vec<Val
     let mut actions = Vec::new();
     for name in keys {
         let meta = manifest.get(&name).unwrap_or(&Value::Null);
+        if meta
+            .get("optional")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            continue;
+        }
         let packages = meta_package_list(&root, meta);
         let (state, installed, total) = package_layer_state(&packages, &installed_set);
         if state == "OK" {
@@ -2802,6 +2826,14 @@ fn daemon_phase_gate_json() {
         55
     };
     let control_percent = if root.join("scripts/actions.sh").is_file()
+        && root.join("scripts/control-plane.sh").is_file()
+        && root.join("scripts/insights.sh").is_file()
+        && root.join("scripts/ai.sh").is_file()
+        && root.join("scripts/store.sh").is_file()
+        && root.join("bin/seven-hub-native").is_file()
+    {
+        86
+    } else if root.join("scripts/actions.sh").is_file()
         && root.join("scripts/control-plane.sh").is_file()
         && root.join("scripts/insights.sh").is_file()
     {
