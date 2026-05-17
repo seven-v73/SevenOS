@@ -85,7 +85,13 @@ def run_files(start_path: str) -> int:
 
     gi.require_version("Gdk", "3.0")
     gi.require_version("Gtk", "3.0")
-    from gi.repository import Gdk, Gtk
+    from gi.repository import Gdk, GLib, Gtk
+    GLib.set_prgname("SevenFilesNative")
+    GLib.set_application_name("Seven Files")
+    try:
+        Gdk.set_program_class("SevenFilesNative")
+    except Exception:
+        pass
 
     current = Path(start_path).expanduser()
     if not current.exists():
@@ -106,18 +112,18 @@ def run_files(start_path: str) -> int:
       background: #fbfcfd;
     }
     .files-sidebar {
-      min-width: 196px;
-      padding: 16px 12px;
-      background: rgba(244, 246, 248, 0.96);
+      min-width: 204px;
+      padding: 16px 13px;
+      background: rgba(244, 246, 248, 0.97);
       border-right: 1px solid rgba(134, 145, 156, 0.20);
     }
     .traffic-row {
       padding: 0 0 20px 0;
     }
     .traffic-dot {
-      min-width: 13px;
-      min-height: 13px;
-      margin-right: 8px;
+      min-width: 15px;
+      min-height: 15px;
+      margin-right: 9px;
     }
     .sidebar-heading {
       color: #8a8f96;
@@ -139,8 +145,8 @@ def run_files(start_path: str) -> int:
       background: #ffffff;
     }
     .files-toolbar {
-      min-height: 62px;
-      padding: 0 18px 0 12px;
+      min-height: 64px;
+      padding: 0 20px 0 14px;
       background: rgba(255, 255, 255, 0.98);
       border-bottom: 1px solid rgba(134, 145, 156, 0.16);
     }
@@ -161,14 +167,14 @@ def run_files(start_path: str) -> int:
       font: 500 18px "DM Sans", "Inter", sans-serif;
     }
     .files-grid {
-      padding: 36px 38px;
+      padding: 38px 42px;
       background: #ffffff;
     }
     .file-tile {
-      min-width: 132px;
-      min-height: 132px;
-      padding: 11px 8px;
-      border-radius: 16px;
+      min-width: 138px;
+      min-height: 138px;
+      padding: 12px 8px;
+      border-radius: 18px;
       color: #20242a;
     }
     .file-tile:hover,
@@ -186,6 +192,7 @@ def run_files(start_path: str) -> int:
 
     window = Gtk.Window(title="Seven Files")
     window.set_default_size(1120, 700)
+    window.set_size_request(880, 560)
     window.set_resizable(True)
     window.set_decorated(False)
     window.set_wmclass("SevenFilesNative", "SevenFilesNative")
@@ -203,7 +210,7 @@ def run_files(start_path: str) -> int:
     traffic.get_style_context().add_class("traffic-row")
     sidebar.pack_start(traffic, False, False, 0)
 
-    def draw_dot(widget, cr, fill: str, stroke: str):
+    def draw_dot(widget, cr, fill: str, stroke: str, style: str):
         rgba = Gdk.RGBA()
         border = Gdk.RGBA()
         rgba.parse(fill)
@@ -216,22 +223,45 @@ def run_files(start_path: str) -> int:
         cr.set_source_rgba(border.red, border.green, border.blue, 0.72)
         cr.set_line_width(1)
         cr.stroke()
+        draw_dot_symbol(cr, style, alloc.width / 2, alloc.height / 2, radius)
         return False
 
-    def dot(fill: str, stroke: str, callback):
+    def draw_dot_symbol(cr, style: str, center_x: float, center_y: float, radius: float) -> None:
+        cr.set_line_width(1.35)
+        cr.set_line_cap(1)
+        cr.set_source_rgba(0.20, 0.14, 0.10, 0.52)
+        if style == "close":
+            offset = radius * 0.38
+            cr.move_to(center_x - offset, center_y - offset)
+            cr.line_to(center_x + offset, center_y + offset)
+            cr.move_to(center_x + offset, center_y - offset)
+            cr.line_to(center_x - offset, center_y + offset)
+        elif style == "min":
+            offset = radius * 0.42
+            cr.move_to(center_x - offset, center_y)
+            cr.line_to(center_x + offset, center_y)
+        elif style == "max":
+            offset = radius * 0.36
+            cr.move_to(center_x, center_y - offset)
+            cr.line_to(center_x, center_y + offset)
+            cr.move_to(center_x - offset, center_y)
+            cr.line_to(center_x + offset, center_y)
+        cr.stroke()
+
+    def dot(fill: str, stroke: str, style: str, callback):
         event = Gtk.EventBox()
         event.set_visible_window(False)
         area = Gtk.DrawingArea()
-        area.set_size_request(14, 14)
+        area.set_size_request(15, 15)
         area.get_style_context().add_class("traffic-dot")
-        area.connect("draw", draw_dot, fill, stroke)
+        area.connect("draw", draw_dot, fill, stroke, style)
         event.add(area)
         event.connect("button-release-event", callback)
         return event
 
-    traffic.pack_start(dot("#ff5f57", "#d8463f", lambda *_: window.close()), False, False, 0)
-    traffic.pack_start(dot("#febc2e", "#d9a023", lambda *_: window.iconify()), False, False, 0)
-    traffic.pack_start(dot("#28c840", "#1fa334", lambda *_: window.unmaximize() if window.is_maximized() else window.maximize()), False, False, 0)
+    traffic.pack_start(dot("#ff5f57", "#d8463f", "close", lambda *_: window.close()), False, False, 0)
+    traffic.pack_start(dot("#febc2e", "#d9a023", "min", lambda *_: window.iconify()), False, False, 0)
+    traffic.pack_start(dot("#28c840", "#1fa334", "max", lambda *_: toggle_zoom_or_tile(window)), False, False, 0)
 
     sidebar_buttons = []
 
@@ -337,7 +367,7 @@ def run_files(start_path: str) -> int:
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
             box.set_halign(Gtk.Align.CENTER)
             image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
-            image.set_pixel_size(76)
+            image.set_pixel_size(80)
             label = Gtk.Label(label=path.name)
             label.set_max_width_chars(16)
             label.set_line_wrap(True)
@@ -398,8 +428,21 @@ def run_files(start_path: str) -> int:
     window.connect("destroy", Gtk.main_quit)
     render()
     window.show_all()
+    window.resize(1120, 700)
     Gtk.main()
     return 0
+
+
+def toggle_zoom_or_tile(window) -> None:
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        result = subprocess.run(["hyprctl", "dispatch", "togglefloating", "active"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            return
+    if window.is_maximized():
+        window.unmaximize()
+        window.resize(1120, 700)
+    else:
+        window.maximize()
 
 
 def begin_move(window, event) -> bool:

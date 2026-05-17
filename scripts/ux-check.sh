@@ -297,12 +297,15 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'SevenFilesNative' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'files-sidebar' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'traffic-row' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'draw_dot_symbol' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'toggle_zoom_or_tile' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'set_max_children_per_line(7)' "$ROOT_DIR/bin/seven-files-native" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open "$HOME" | grep -q 'native Finder-like Seven Files surface' &&
    grep -q 'configure_nautilus_preferences' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'default-folder-viewer' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'nautilus --new-window' "$ROOT_DIR/bin/seven-files" &&
-   grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 1120 700' "$ROOT_DIR/hyprland/hyprland.conf"; then
+   grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 1120 700' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'windowrule = match:title ^(Seven Files)$, float on, center on, size 1120 700' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Seven Files is shaped as a Finder-like file surface"
 else
   fail "Seven Files Finder-like shell integration is incomplete"
@@ -706,8 +709,11 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'traffic.close' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'traffic.min' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'traffic.max' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'draw_traffic_symbol' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'toggle_zoom_or_tile' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'native-if-available' "$ROOT_DIR/bin/seven-terminal" &&
    grep -Fq 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -Fq 'windowrule = match:title ^(.+@SevenOS)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'exec zsh -di' "$ROOT_DIR/bin/seven-terminal-shell" &&
    grep -q 'background #2d333d' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'initial_window_width 76c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&

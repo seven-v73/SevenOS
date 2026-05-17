@@ -132,7 +132,7 @@ open_terminal() {
 
   if [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
     setsid -f "$native" --profile "$profile" "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
-    place_window SevenTerminalNative "$width" "$height"
+    place_window SevenTerminalNative "$width" "$height" "${USER:-seven}@SevenOS"
     return 0
   fi
 
@@ -165,11 +165,13 @@ place_window() {
   local class="$1"
   local width="$2"
   local height="$3"
+  local title="${4:-}"
 
   if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
     for _ in 1 2 3 4 5 6 7 8 9 10; do
       sleep 0.06
-      if hyprctl dispatch focuswindow "class:^(${class})$" >/dev/null 2>&1; then
+      if hyprctl dispatch focuswindow "class:^(${class})$" >/dev/null 2>&1 ||
+         { [[ -n "$title" ]] && hyprctl dispatch focuswindow "title:^(${title})$" >/dev/null 2>&1; }; then
         hyprctl dispatch setfloating active >/dev/null 2>&1 || true
         hyprctl dispatch resizeactive exact "$width" "$height" >/dev/null 2>&1 || true
         hyprctl dispatch centerwindow >/dev/null 2>&1 || true

@@ -82,6 +82,12 @@ def run_terminal(profile: str, command: list[str]) -> int:
     gi.require_version("Gtk", "3.0")
     gi.require_version("Vte", "2.91")
     from gi.repository import Gdk, GLib, Gtk, Pango, Vte
+    GLib.set_prgname("SevenTerminalNative")
+    GLib.set_application_name("Seven Terminal")
+    try:
+        Gdk.set_program_class("SevenTerminalNative")
+    except Exception:
+        pass
 
     dark = profile == "dark"
     title = f"{os.environ.get('USER', 'seven')}@SevenOS"
@@ -103,11 +109,11 @@ def run_terminal(profile: str, command: list[str]) -> int:
       font: 500 12px "DM Sans", "Inter", sans-serif;
     }}
     .traffic {{
-      min-width: 14px;
-      min-height: 14px;
+      min-width: 15px;
+      min-height: 15px;
       border-radius: 999px;
       padding: 0;
-      margin: 0 7px 0 0;
+      margin: 0 9px 0 0;
       border: 1px solid rgba(0,0,0,0.18);
       box-shadow: none;
     }}
@@ -122,6 +128,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
 
     window = Gtk.Window(title=title)
     window.set_default_size(640, 420)
+    window.set_size_request(520, 320)
     window.set_resizable(True)
     window.set_decorated(False)
     window.set_wmclass("SevenTerminalNative", "SevenTerminalNative")
@@ -186,11 +193,12 @@ def run_terminal(profile: str, command: list[str]) -> int:
 
     close_btn.connect("button-release-event", lambda *_: window.close())
     min_btn.connect("button-release-event", lambda *_: window.iconify())
-    max_btn.connect("button-release-event", lambda *_: window.unmaximize() if window.is_maximized() else window.maximize())
+    max_btn.connect("button-release-event", lambda *_: toggle_zoom_or_tile(window))
     terminal.connect("child-exited", lambda *_: window.close())
     titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
     window.connect("destroy", Gtk.main_quit)
     window.show_all()
+    window.resize(640, 420)
     Gtk.main()
     return 0
 
@@ -211,15 +219,15 @@ def traffic_button(style: str, tooltip: str):
     event_box.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
 
     area = Gtk.DrawingArea()
-    area.set_size_request(14, 14)
+    area.set_size_request(15, 15)
     area.get_style_context().add_class("traffic")
     area.get_style_context().add_class(style)
-    area.connect("draw", draw_traffic_light, fill, stroke)
+    area.connect("draw", draw_traffic_light, fill, stroke, style)
     event_box.add(area)
     return event_box
 
 
-def draw_traffic_light(widget, cr, fill: str, stroke: str) -> bool:
+def draw_traffic_light(widget, cr, fill: str, stroke: str, style: str) -> bool:
     from gi.repository import Gdk
 
     allocation = widget.get_allocation()
@@ -239,7 +247,41 @@ def draw_traffic_light(widget, cr, fill: str, stroke: str) -> bool:
     cr.set_line_width(1)
     cr.set_source_rgba(stroke_rgba.red, stroke_rgba.green, stroke_rgba.blue, 0.75)
     cr.stroke()
+    draw_traffic_symbol(cr, style, center_x, center_y, radius)
     return False
+
+
+def draw_traffic_symbol(cr, style: str, center_x: float, center_y: float, radius: float) -> None:
+    cr.set_line_width(1.35)
+    cr.set_line_cap(1)
+    cr.set_source_rgba(0.20, 0.14, 0.10, 0.52)
+    if style == "close":
+        offset = radius * 0.38
+        cr.move_to(center_x - offset, center_y - offset)
+        cr.line_to(center_x + offset, center_y + offset)
+        cr.move_to(center_x + offset, center_y - offset)
+        cr.line_to(center_x - offset, center_y + offset)
+    elif style == "min":
+        offset = radius * 0.42
+        cr.move_to(center_x - offset, center_y)
+        cr.line_to(center_x + offset, center_y)
+    elif style == "max":
+        offset = radius * 0.36
+        cr.move_to(center_x, center_y - offset)
+        cr.line_to(center_x, center_y + offset)
+        cr.move_to(center_x - offset, center_y)
+        cr.line_to(center_x + offset, center_y)
+    cr.stroke()
+
+
+def toggle_zoom_or_tile(window) -> None:
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and subprocess_run(["hyprctl", "dispatch", "togglefloating", "active"]) == 0:
+        return
+    if window.is_maximized():
+        window.unmaximize()
+        window.resize(640, 420)
+    else:
+        window.maximize()
 
 
 def begin_move(window, event) -> bool:
