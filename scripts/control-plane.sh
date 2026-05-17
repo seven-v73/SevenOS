@@ -291,9 +291,6 @@ for profile in profile_plan.get("next", []):
         "packages",
     )
 
-severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-items.sort(key=lambda item: (severity_rank.get(item["severity"], 9), item["source"], item["command"]))
-
 scores = {
     "readiness": readiness.get("percent", 0),
     "experience": experience.get("percent", 0),
@@ -304,6 +301,9 @@ scores = {
     "b3": round((shield.get("percent", 0) * 0.45) + ((100 if bool(server.get("deployment_stack_ready")) else 75 if bool(server.get("runtime_ready")) else 60 if server.get("service", {}).get("state") == "READY" else 0) * 0.35) + ((100 if installer.get("ready") else 35) * 0.2)),
 }
 ecosystem_modules = ecosystem.get("modules") or []
+ecosystem_maturity_payload = ecosystem.get("maturity") or {}
+ecosystem_maturity_summary = ecosystem_maturity_payload.get("summary") or {}
+ecosystem_maturity_modules = ecosystem_maturity_payload.get("modules") or []
 planned_modules = sum(1 for item in ecosystem_modules if item.get("state") == "planned")
 preview_modules = sum(1 for item in ecosystem_modules if item.get("state") == "preview")
 active_modules = sum(1 for item in ecosystem_modules if item.get("state") == "active")
@@ -314,9 +314,27 @@ cloud_score = 100 if not cloud_summary else round((cloud_summary.get("tools_read
 flow_score = 100 if not flow_summary else round((flow_summary.get("ready", 0) / max(flow_summary.get("recipes", 1), 1)) * 100)
 cluster_score = 100 if not cluster_summary else round((cluster_summary.get("tools_ready", 0) / max(cluster_summary.get("tools_total", 1), 1)) * 100)
 ecosystem_maturity = round(((active_modules + preview_modules * 0.85) / ecosystem_total) * 100)
-scores["ecosystem"] = round((ecosystem_maturity * 0.35) + (store_score * 0.13) + (box_score * 0.13) + (cloud_score * 0.13) + (flow_score * 0.13) + (cluster_score * 0.13))
+product_maturity = ecosystem_maturity_summary.get("average", ecosystem_maturity)
+scores["ecosystem"] = round((product_maturity * 0.35) + (store_score * 0.13) + (box_score * 0.13) + (cloud_score * 0.13) + (flow_score * 0.13) + (cluster_score * 0.13))
 overall = round((scores["readiness"] * 0.22) + (scores["experience"] * 0.22) + (scores["shield"] * 0.18) + (scores["server"] * 0.13) + (scores["windows"] * 0.13) + (scores["installer"] * 0.12))
 overall = round((overall * 0.85) + (scores["ecosystem"] * 0.15))
+
+for module in ecosystem_maturity_modules[:3]:
+    if module.get("state") != "preview":
+        continue
+    if int(module.get("score", 0) or 0) >= 85:
+        continue
+    add(
+        "ecosystem",
+        "medium",
+        f"Harden {module.get('name', 'preview module')}",
+        "seven ecosystem maturity",
+        module.get("next", "Move this preview toward a product-ready surface."),
+        "safe",
+    )
+
+severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+items.sort(key=lambda item: (severity_rank.get(item["severity"], 9), item["source"], item["command"]))
 
 print(json.dumps({
     "schema": "sevenos.control.v1",
@@ -326,6 +344,7 @@ print(json.dumps({
         "active": active_modules,
         "preview": preview_modules,
         "planned": planned_modules,
+        "maturity": ecosystem_maturity_summary,
         "store": store_summary,
         "box": box_summary,
         "cloud": cloud_summary,

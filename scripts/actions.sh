@@ -158,6 +158,7 @@ sevenpkg.horizon	Apps	Install Horizon Bundle	sevenpkg install horizon	packages	I
 sevenpkg.griot	Apps	Install Griot Bundle	sevenpkg install griot	packages	Install the documentation and knowledge software bundle.
 ecosystem.status	Ecosystem	Ecosystem Map	seven ecosystem	safe	Show modules and maturity states.
 ecosystem.processes	Ecosystem	Process Map	seven ecosystem processes	safe	Show all-in-one SevenOS user flows.
+ecosystem.maturity	Ecosystem	Maturity Map	seven ecosystem maturity	safe	Show product-readiness levels and next hardening steps for every SevenOS module.
 ecosystem.roadmap	Ecosystem	Ecosystem Roadmap	seven ecosystem roadmap	safe	Show Phase 4 and Phase 5 priorities.
 ecosystem.doctor	Ecosystem	Ecosystem Doctor	seven ecosystem doctor	safe	Validate ecosystem foundation files.
 stack.status	Ecosystem	Stack Strategy	seven stack	safe	Show the phased technology stack strategy.

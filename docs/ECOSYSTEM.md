@@ -43,11 +43,11 @@ integration, continuity and predictable defaults.
 | SevenCloud | personal backup, config sync and restore | 5 | preview |
 | SevenStore | marketplace for apps, profiles, themes and modules | 5 | preview |
 | SevenBox | rootless containers and sandboxed app runtime | 4 | preview |
-| SevenShield Pro | advanced protection, scans and intrusion signals | 4 | planned |
+| SevenShield | hardening, scans, scope and cybersecurity workspaces | 2-4 | preview |
 | Adaptive UI | profile-aware desktop behavior and visual modes | 4 | preview |
 | Windows Integration | guided VM, Wine, Bottles and future app integration | 2-4 | preview |
-| SevenDoctor | auto-repair and guided remediation | 3-4 | preview |
-| Advanced Profiles | Learn, Enterprise, Gaming, Cloud, AI Lab | 4 | planned |
+| SevenDoctor | auto-repair and guided remediation through Control Plane | 3-4 | preview |
+| Seven Profiles | Baobab, Forge, Shield, Studio, Windows, Horizon and Griot | 2-4 | active |
 | SevenIdentity | user identity, cultural accents, permissions and environment | 5 | preview |
 | SevenCluster | multi-machine local cluster and resource sharing | 5 | preview |
 | SevenFlow | no-code automation rules for system workflows | 5 | preview |
@@ -82,6 +82,7 @@ The ecosystem must be readable by both humans and UIs:
 seven ecosystem
 seven ecosystem summary
 seven ecosystem processes
+seven ecosystem maturity
 seven ecosystem --json
 seven state --json
 seven welcome status --json
@@ -160,6 +161,11 @@ for Seven Hub and future automation.
 non-destructive unless `--apply` is explicitly passed, so the system can guide
 users without surprising them.
 
+`seven ecosystem maturity` is the product-readiness map. It scores each module
+by visible state, file presence, executable or documented surface, machine
+contract and process links. This prevents SevenOS from hiding weak previews
+behind a good global score.
+
 `seven events --json` is the local event journal. It gives SevenOS a traceable
 memory of previews, decisions and future executed actions.
 
@@ -204,7 +210,7 @@ Seven Hub can guide application setup without exposing package-manager details.
 Seven Hub Native should expose the ecosystem as a visual product map:
 
 - Dashboard summary: active modules, preview modules and process count.
-- Ecosystem page: module maturity, purpose and phase.
+- Ecosystem page: module maturity, product level, purpose and phase.
 - Process page/section: first run, daily control, apps, profiles, Windows,
   security, deployment and future cloud/store/automation flows.
 - Actions: process entries should point back to `seven` commands or registered
@@ -272,6 +278,7 @@ Later:
 seven ecosystem
 seven ecosystem summary
 seven ecosystem processes
+seven ecosystem maturity
 seven ecosystem --json
 seven insights
 seven ecosystem roadmap
@@ -282,10 +289,10 @@ seven phase-gate
 seven readiness
 ```
 
-Future commands:
+Specialized preview commands:
 
 ```bash
-seven ai "explain this error"
+seven ai plan
 seven cloud plan
 seven store apps
 seven box profiles
