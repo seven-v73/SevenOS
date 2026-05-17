@@ -190,6 +190,7 @@ require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
 require_executable "scripts/state.sh"
 require_executable "scripts/actions.sh"
+require_executable "scripts/hub.sh"
 require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/store.sh"
@@ -927,6 +928,17 @@ else
   fail "Seven Hub doctor failed"
 fi
 
+hub_product_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub status --json)"
+if python -m json.tool >/dev/null <<<"$hub_product_json" &&
+   grep -q '"schema": "sevenos.hub.v1"' <<<"$hub_product_json" &&
+   grep -Eq '"level": "(active|product-preview)"' <<<"$hub_product_json" &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub doctor >/dev/null &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" actions --json | grep -q '"hub.status"'; then
+  ok "Seven Hub exposes a product-surface readiness contract"
+else
+  fail "Seven Hub product-surface readiness contract failed"
+fi
+
 if "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null; then
   ok "Seven Control Center status works"
 else
@@ -1487,6 +1499,13 @@ if grep -q '"Control Center|control:center' "$ROOT_DIR/seven-hub/bin/seven-hub";
   ok "Seven Hub opens Control Center"
 else
   fail "Seven Hub Control Center entry missing"
+fi
+
+if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub plan | grep -q 'SevenOS Hub Product Plan' &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub status | grep -q 'SevenOS Hub Product Surface'; then
+  ok "Seven Hub product plan is reachable from the main seven command"
+else
+  fail "Seven Hub product plan should be reachable from the main seven command"
 fi
 
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" | grep -q 'seven-hub-native open' &&

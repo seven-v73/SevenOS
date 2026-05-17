@@ -23,6 +23,8 @@ EOF
 action_rows() {
   cat <<'EOF'
 hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
+hub.status	Desktop	Hub Status	seven hub status	safe	Show whether Seven Hub is ready as the default product control surface.
+hub.plan	Desktop	Hub Product Plan	seven hub plan	safe	Show missing Hub productization work before changing the desktop.
 apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS application library.
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.

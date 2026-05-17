@@ -27,7 +27,7 @@ modules_tsv() {
   cat <<'EOF'
 seven	1-2	active	System controller, repair entrypoint and OS command surface	bin/seven
 sevenpkg	2	active	Software, meta-packages and future app layer	bin/sevenpkg
-Seven Hub	2-4	preview	Native control center, action launcher and user-facing OS surface	seven-hub/bin/seven-hub
+Seven Hub	2-4	active	Native control center, action launcher and user-facing OS surface	seven-hub/bin/seven-hub
 Seven Profiles	2-4	active	Adaptive Forge, Shield, Studio, Windows, Horizon and Baobab contexts	profiles/profile-manager.sh
 Seven Files	2	active	Profile-aware file entrypoint and workspace bridge	bin/seven-files
 Windows Mode	2-4	preview	Wine, Bottles, Lutris and KVM/QEMU compatibility	vm/windows-mode.sh
@@ -126,7 +126,7 @@ root = Path(os.environ["SEVENOS_ROOT"])
 json_checks = {
     "seven": ["bin/seven", "readiness", "--json"],
     "sevenpkg": ["bin/sevenpkg", "plan", "--json"],
-    "Seven Hub": ["seven-hub/bin/seven-control-center", "status", "--json"],
+    "Seven Hub": ["scripts/hub.sh", "json"],
     "Seven Profiles": ["profiles/profile-manager.sh", "status", "--json"],
     "Seven Files": ["bin/seven-files", "--help"],
     "Windows Mode": ["bin/seven-windows-assistant", "status", "--json"],
@@ -163,7 +163,7 @@ product_next = {
 }
 
 product_commands = {
-    "Seven Hub": "seven hub-native status",
+    "Seven Hub": "seven hub status --json",
     "SevenAI": "seven ai focus",
     "Adaptive UI": "seven adaptive plan",
     "Seven Installer": "seven installer release",
@@ -180,7 +180,7 @@ product_commands = {
 }
 
 release_gaps = {
-    "Seven Hub": 10,
+    "Seven Hub": 0,
     "Windows Mode": 12,
     "SevenShield": 8,
     "Seven Server": 8,

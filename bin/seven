@@ -249,6 +249,15 @@ def handle_hub_gui(args):
     run_script(args, "seven-hub/gui-stack.sh", args.action)
 
 
+def handle_hub(args):
+    if args.action == "open":
+        run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-hub")], args)
+        return
+
+    action = "json" if args.json else args.action
+    run_script(args, "scripts/hub.sh", action)
+
+
 def handle_hub_native(args):
     extra = [args.action]
     if args.dry_run_native:
@@ -657,7 +666,9 @@ def main():
     session_parser = subparsers.add_parser("session", help="inspect or start the SevenOS desktop session")
     session_parser.add_argument("action", nargs="?", default="status", choices=("status", "start", "restart"))
     session_parser.add_argument("--json", action="store_true", help="print machine-readable session status")
-    subparsers.add_parser("hub", help="launch Seven Hub")
+    hub_parser = subparsers.add_parser("hub", help="launch or inspect Seven Hub")
+    hub_parser.add_argument("action", nargs="?", default="open", choices=("open", "status", "plan", "doctor", "json"))
+    hub_parser.add_argument("--json", action="store_true", help="print machine-readable Hub readiness")
     files_parser = subparsers.add_parser("files", help="open Seven Files")
     files_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
@@ -814,7 +825,7 @@ def main():
     elif args.command == "session":
         handle_session(args)
     elif args.command == "hub":
-        run([str(ROOT_DIR / "seven-hub" / "bin" / "seven-hub")], args)
+        handle_hub(args)
     elif args.command == "files":
         run_script(args, "bin/seven-files", *args.extra)
     elif args.command == "profile":

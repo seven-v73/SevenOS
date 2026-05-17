@@ -110,6 +110,7 @@ seven shield plan --json
 seven server status --json
 seven server plan --json
 seven installer plan --json
+seven hub status --json
 sevenpkg plan --json
 ```
 
@@ -167,6 +168,11 @@ users without surprising them.
 by visible state, file presence, executable or documented surface, machine
 contract and process links. This prevents SevenOS from hiding weak previews
 behind a good global score.
+
+`seven hub status --json` is the Hub product-surface contract. It checks the
+native Hub, fallback launcher, Control Center, desktop entries, Settings route,
+action registry and dashboard data contracts so SevenAI can tell whether the
+Hub is truly ready as the default graphical control surface.
 
 `seven events --json` is the local event journal. It gives SevenOS a traceable
 memory of previews, decisions and future executed actions.
