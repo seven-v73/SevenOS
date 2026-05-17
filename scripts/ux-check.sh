@@ -600,6 +600,7 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'daily.apply' <<<"$actions_json" &&
    grep -q 'primary.status' <<<"$actions_json" &&
    grep -q 'primary.apply' <<<"$actions_json" &&
+   grep -q 'ai.focus' <<<"$actions_json" &&
    grep -q 'improve.daily' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.active' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.all' <<<"$actions_json" &&
@@ -1122,6 +1123,8 @@ experience_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" experience --json)"
 control_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" control --json)"
 events_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" events --json)"
 insights_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" insights --json)"
+ai_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json)"
+ai_focus_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai focus)"
 shield_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield status --json)"
 shield_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield plan --json)"
 shield_control_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shield dashboard --json)"
@@ -1177,6 +1180,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$control_json" >/dev/null &&
    python -m json.tool <<<"$events_json" >/dev/null &&
    python -m json.tool <<<"$insights_json" >/dev/null &&
+   python -m json.tool <<<"$ai_json" >/dev/null &&
    python -m json.tool <<<"$shield_json" >/dev/null &&
    python -m json.tool <<<"$shield_plan_json" >/dev/null &&
    python -m json.tool <<<"$cyberspace_json" >/dev/null &&
@@ -1201,6 +1205,9 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.events.v1"' <<<"$events_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.insights.v1"' <<<"$insights_json" &&
    grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$insights_json" &&
+   grep -q '"schema": "sevenos.ai-local.v1"' <<<"$ai_json" &&
+   grep -q '"focus"' <<<"$ai_json" &&
+   grep -q 'SevenAI Product Focus' <<<"$ai_focus_output" &&
    grep -q '"schema": "sevenos.welcome.v1"' <<<"$welcome_json" &&
    grep -q '"schema": "sevenos.welcome-plan.v1"' <<<"$welcome_plan_json" &&
    grep -q '"schema": "sevenos.session.v1"' <<<"$session_json" &&

@@ -103,6 +103,7 @@ seven control --json
 seven events --json
 seven insights --json
 seven phase-gate --json
+seven ai focus
 seven shield status --json
 seven shield plan --json
 seven server status --json
@@ -248,10 +249,10 @@ The next innovation phase should focus on:
 - SevenAI Local interface contract, without hardcoding one provider
 
 SevenAI Local is intentionally provider-neutral in this phase. `seven ai`,
-`seven ai plan` and `seven ai --json` read SevenOS state, insights, shell,
-installer, packages and actions, then produce a concise plan. It gives the OS a
-visible assistant surface now while leaving room for model-backed providers
-later.
+`seven ai plan`, `seven ai focus` and `seven ai --json` read SevenOS state,
+insights, shell, installer, ecosystem maturity, packages and actions, then
+produce a concise plan. It gives the OS a visible assistant surface now while
+leaving room for model-backed providers later.
 
 ### Phase 5: Connected Ecosystem
 
@@ -293,6 +294,7 @@ Specialized preview commands:
 
 ```bash
 seven ai plan
+seven ai focus
 seven cloud plan
 seven store apps
 seven box profiles

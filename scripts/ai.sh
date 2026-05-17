@@ -9,8 +9,8 @@ usage() {
 SevenAI Local
 
 Usage:
-  seven ai [brief|plan|doctor|json]
-  ./scripts/ai.sh [brief|plan|doctor|json]
+  seven ai [brief|plan|focus|doctor|json]
+  ./scripts/ai.sh [brief|plan|focus|doctor|json]
 
 SevenAI Local is a provider-neutral system assistant preview. It does not call
 an online model; it reads SevenOS state, insights and actions, then turns them
@@ -55,6 +55,8 @@ payload_json() {
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/cloud.sh" json > "$tmp_dir/cloud.json"
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/flow.sh" json > "$tmp_dir/flow.json"
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/cluster.sh" json > "$tmp_dir/cluster.json"
+  command_json '{"maturity":{"summary":{},"modules":[]}}' "$ROOT_DIR/scripts/ecosystem.sh" json > "$tmp_dir/ecosystem.json"
+  command_json '{"overall":0,"actions":[],"summary":{}}' "$ROOT_DIR/scripts/control-plane.sh" --json > "$tmp_dir/control.json"
 
   SEVENAI_TMP="$tmp_dir" \
   python - <<'PY'
@@ -82,6 +84,8 @@ box = load_file("box.json", {"summary": {}})
 cloud = load_file("cloud.json", {"summary": {}})
 flow = load_file("flow.json", {"summary": {}})
 cluster = load_file("cluster.json", {"summary": {}})
+ecosystem = load_file("ecosystem.json", {"maturity": {"summary": {}, "modules": []}})
+control = load_file("control.json", {"overall": 0, "actions": [], "summary": {}})
 
 daily = state.get("daily") or {}
 daily_summary = daily.get("summary") or {}
@@ -139,6 +143,10 @@ box_summary = box.get("summary", {})
 cloud_summary = cloud.get("summary", {})
 flow_summary = flow.get("summary", {})
 cluster_summary = cluster.get("summary", {})
+ecosystem_maturity = (ecosystem.get("maturity") or {})
+ecosystem_maturity_summary = ecosystem_maturity.get("summary") or {}
+ecosystem_maturity_modules = ecosystem_maturity.get("modules") or []
+installer_release = installer.get("release") or {}
 
 required_modules = max(store_summary.get("modules", 0) - store_summary.get("optional_modules", 0), 0)
 if store_summary and store_summary.get("modules_ready", 0) < required_modules:
@@ -151,6 +159,20 @@ if flow_summary and flow_summary.get("ready", 0) < flow_summary.get("recipes", 0
     add("flow", "Resolve automation recipes", "seven flow doctor", "SevenFlow recipes should all resolve to action registry commands before automation expands.", "safe", "medium")
 if cluster_summary and cluster_summary.get("tools_ready", 0) < cluster_summary.get("tools_total", 0):
     add("cluster", "Prepare private mesh tools", "seven cluster doctor", "SevenCluster needs its transport/runtime checks ready before multi-machine workflows expand.", "packages", "medium")
+
+for module in ecosystem_maturity_modules[:3]:
+    if module.get("level") == "active":
+        continue
+    if int(module.get("score", 0) or 0) >= 85:
+        continue
+    add(
+        f"focus.{module.get('name', 'module').lower().replace(' ', '-')}",
+        f"Harden {module.get('name', 'SevenOS module')}",
+        "seven ecosystem maturity",
+        module.get("next") or "Move this preview toward a product-ready surface.",
+        "safe",
+        "medium",
+    )
 
 for insight in (insights.get("insights") or [])[:3]:
     key = f"insight.{insight.get('key', insight.get('area', 'item'))}"
@@ -184,6 +206,10 @@ print(json.dumps({
         "readiness": readiness,
         "shell": shell_state,
         "installer": installer.get("mode", "unknown"),
+        "installer_release": installer_release.get("state", "unknown"),
+        "ecosystem_maturity": ecosystem_maturity_summary.get("average", 0),
+        "ecosystem_guided_preview": ecosystem_maturity_summary.get("guided_preview", 0),
+        "control": control.get("overall", 0),
         "profile_actions": (profiles.get("summary") or {}).get("total", 0),
         "package_actions": (packages.get("summary") or {}).get("total", 0),
         "store_modules": f"{store_summary.get('modules_ready', 0)}/{store_summary.get('modules', 0)}",
@@ -193,6 +219,20 @@ print(json.dumps({
         "cluster_tools": f"{cluster_summary.get('tools_ready', 0)}/{cluster_summary.get('tools_total', 0)}",
     },
     "recommendations": recommendations[:6],
+    "focus": [
+        {
+            "rank": index + 1,
+            "module": item.get("name"),
+            "score": item.get("score"),
+            "level": item.get("level"),
+            "command": "seven ecosystem maturity",
+            "reason": item.get("next"),
+        }
+        for index, item in enumerate([
+            item for item in ecosystem_maturity_modules
+            if item.get("level") != "active"
+        ][:5])
+    ],
     "actions": available_actions,
 }, indent=2))
 PY
@@ -234,6 +274,32 @@ for item in data.get("recommendations", []):
 PY
 }
 
+focus() {
+  SEVENAI_PAYLOAD="$(payload_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["SEVENAI_PAYLOAD"])
+summary = data.get("summary", {})
+print("SevenAI Product Focus")
+print("=====================")
+print(
+    f"Ecosystem maturity: {summary.get('ecosystem_maturity', 0)}% · "
+    f"guided previews: {summary.get('ecosystem_guided_preview', 0)} · "
+    f"installer release: {summary.get('installer_release', 'unknown')}"
+)
+print()
+items = data.get("focus", [])
+if not items:
+    print("No product focus gaps found.")
+else:
+    for item in items:
+        print(f"{item.get('rank')}. {item.get('module')} · {item.get('score')}% · {item.get('level')}")
+        print(f"   {item.get('reason')}")
+        print(f"   command: {item.get('command')}")
+PY
+}
+
 doctor() {
   local failures=0
   printf 'SevenAI Local Doctor\n'
@@ -262,6 +328,7 @@ action="${1:-brief}"
 case "$action" in
   brief|status) brief ;;
   plan) plan ;;
+  focus) focus ;;
   doctor) doctor ;;
   json|--json) payload_json ;;
   -h|--help|help) usage ;;

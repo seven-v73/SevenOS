@@ -532,7 +532,7 @@ def main():
     ecosystem_parser.add_argument("action", nargs="?", default="status")
     ecosystem_parser.add_argument("--json", action="store_true", help="print machine-readable ecosystem map")
     ai_parser = subparsers.add_parser("ai", help="show local SevenAI system guidance")
-    ai_parser.add_argument("action", nargs="?", default="brief", choices=("brief", "status", "plan", "doctor", "json"))
+    ai_parser.add_argument("action", nargs="?", default="brief", choices=("brief", "status", "plan", "focus", "doctor", "json"))
     ai_parser.add_argument("--json", action="store_true", help="print machine-readable SevenAI local payload")
     store_parser = subparsers.add_parser("store", help="browse SevenStore modules, apps and actions")
     store_parser.add_argument("action", nargs="?", default="status", choices=("status", "modules", "catalog", "apps", "actions", "doctor", "install", "json"))
