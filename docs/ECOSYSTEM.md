@@ -95,6 +95,7 @@ seven actions --json
 seven stack --json
 seven shell status --json
 seven shell plan --json
+seven adaptive --json
 seven profile gaps --json
 seven profile plan --json
 seven windows plan --json
@@ -188,6 +189,11 @@ interesting runtime at once.
 contracts. They describe how AGS/TypeScript will replace Quick Settings,
 Notifications, Launcher and Dock surfaces gradually while keeping Waybar/Rofi
 fallbacks active.
+
+`seven adaptive --json` is the profile-aware UI contract. It checks whether the
+active profile, shell state, Waybar profile indicator, Hub actions and semantic
+context engine are connected enough for SevenOS to feel mode-aware instead of
+only themed.
 
 `seven shield plan --json` is the trust remediation plan. It gives Seven Hub
 and Seven Server a clean list of firewall, sandbox and audit actions, ordered
@@ -295,6 +301,7 @@ Specialized preview commands:
 ```bash
 seven ai plan
 seven ai focus
+seven adaptive plan
 seven cloud plan
 seven store apps
 seven box profiles

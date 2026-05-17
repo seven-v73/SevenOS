@@ -203,7 +203,7 @@ for key, context in CONTEXTS.items():
     matched_windows = [item for item in window_nodes if match_name(item.get("class"), context["classes"]) or match_name(item.get("title"), context["classes"])]
     score = len(matched_processes) * 2 + len(matched_windows) * 3
     if context["profile"] == active_profile:
-        score += 4
+        score += 10
     confidence = min(100, score * 10)
     contexts.append({
         "key": key,

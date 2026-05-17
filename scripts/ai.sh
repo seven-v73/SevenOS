@@ -225,7 +225,7 @@ print(json.dumps({
             "module": item.get("name"),
             "score": item.get("score"),
             "level": item.get("level"),
-            "command": "seven ecosystem maturity",
+            "command": item.get("command", "seven ecosystem maturity"),
             "reason": item.get("next"),
         }
         for index, item in enumerate([

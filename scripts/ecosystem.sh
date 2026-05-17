@@ -136,7 +136,7 @@ json_checks = {
     "Seven Installer": ["scripts/installer-stack.sh", "status", "--json"],
     "SevenBox": ["scripts/box.sh", "json"],
     "SevenAI": ["scripts/ai.sh", "json"],
-    "Adaptive UI": ["scripts/experience.sh", "--json"],
+    "Adaptive UI": ["scripts/adaptive-ui.sh", "json"],
     "Seven Shell": ["scripts/shell.sh", "status", "--json"],
     "SevenCloud": ["scripts/cloud.sh", "json"],
     "SevenStore": ["scripts/store.sh", "json"],
@@ -162,16 +162,33 @@ product_next = {
     "SevenCluster": "Support declared private nodes with health checks before remote orchestration.",
 }
 
+product_commands = {
+    "Seven Hub": "seven hub-native status",
+    "SevenAI": "seven ai focus",
+    "Adaptive UI": "seven adaptive plan",
+    "Seven Installer": "seven installer release",
+    "Seven Server": "seven server plan",
+    "SevenBox": "seven box profiles",
+    "SevenCloud": "seven cloud plan",
+    "SevenCluster": "seven cluster plan",
+    "SevenFlow": "seven flow recipes",
+    "Seven Deploy": "seven deploy status",
+    "SevenIdentity": "seven identity current",
+    "Windows Mode": "seven windows guide",
+    "SevenShield": "seven shield dashboard",
+    "SevenStore": "seven store modules",
+}
+
 release_gaps = {
-    "Seven Hub": 15,
+    "Seven Hub": 10,
     "Windows Mode": 12,
     "SevenShield": 8,
     "Seven Server": 8,
     "Seven Deploy": 8,
     "Seven Installer": 10,
     "SevenBox": 8,
-    "SevenAI": 15,
-    "Adaptive UI": 15,
+    "SevenAI": 5,
+    "Adaptive UI": 5,
     "SevenCloud": 10,
     "SevenStore": 8,
     "SevenIdentity": 8,
@@ -248,6 +265,7 @@ for raw in os.environ["MODULES_TSV"].splitlines():
             "release_gap": release_gap,
         },
         "next": "Keep as daily product surface." if level == "active" else product_next.get(name, "Add a machine-readable contract, Hub action and user-facing workflow."),
+        "command": product_commands.get(name, "seven ecosystem maturity"),
     })
 
 summary = {
@@ -296,6 +314,7 @@ for item in data.get("modules", []):
     print(f"{item.get('score', 0):<6} {item.get('level', ''):<16} {item.get('name', '')}")
     if item.get("level") != "active":
         print(f"{'':<6} {'':<16} {item.get('next', '')}")
+        print(f"{'':<6} {'':<16} command: {item.get('command', 'seven ecosystem maturity')}")
 PY
 }
 

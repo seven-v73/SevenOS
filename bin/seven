@@ -373,6 +373,13 @@ def handle_experience(args):
     run_script(args, "scripts/experience.sh", *extra)
 
 
+def handle_adaptive(args):
+    extra = [args.action]
+    if args.json:
+        extra = ["json"]
+    run_script(args, "scripts/adaptive-ui.sh", *extra)
+
+
 def handle_welcome(args):
     extra = [args.action]
     if args.json:
@@ -568,6 +575,9 @@ def main():
     context_parser = subparsers.add_parser("context", help="inspect SevenOS semantic user context")
     context_parser.add_argument("action", nargs="?", default="status", choices=("status", "graph", "plan", "emit"))
     context_parser.add_argument("--json", action="store_true", help="print machine-readable context engine state")
+    adaptive_parser = subparsers.add_parser("adaptive", help="inspect SevenOS adaptive profile-aware UI")
+    adaptive_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
+    adaptive_parser.add_argument("--json", action="store_true", help="print machine-readable adaptive UI contract")
     identity_parser = subparsers.add_parser("identity", help="show SevenOS African first identity language")
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
@@ -734,6 +744,8 @@ def main():
         handle_scheduler(args)
     elif args.command == "context":
         handle_context(args)
+    elif args.command == "adaptive":
+        handle_adaptive(args)
     elif args.command == "identity":
         handle_identity(args)
     elif args.command == "experience":

@@ -204,6 +204,7 @@ require_executable "scripts/shell.sh"
 require_executable "scripts/core.sh"
 require_executable "scripts/identity.sh"
 require_executable "scripts/experience.sh"
+require_executable "scripts/adaptive-ui.sh"
 require_executable "scripts/control-plane.sh"
 require_executable "scripts/daily-driver.sh"
 require_executable "scripts/events.sh"
@@ -1120,6 +1121,8 @@ ecosystem_processes="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" proces
 ecosystem_summary="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary)"
 ecosystem_maturity="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" maturity)"
 experience_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" experience --json)"
+adaptive_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" adaptive --json)"
+adaptive_plan_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" adaptive plan)"
 control_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" control --json)"
 events_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" events --json)"
 insights_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" insights --json)"
@@ -1190,6 +1193,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$installer_json" >/dev/null &&
    python -m json.tool <<<"$installer_plan_json" >/dev/null &&
    python -m json.tool <<<"$packages_plan_json" >/dev/null &&
+   python -m json.tool <<<"$adaptive_json" >/dev/null &&
    python -m json.tool <<<"$core_json" >/dev/null &&
    python -m json.tool <<<"$core_plan_json" >/dev/null &&
    python -m json.tool <<<"$core_snapshot_json" >/dev/null &&
@@ -1201,6 +1205,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$shell_status_json" >/dev/null &&
    python -m json.tool <<<"$b3_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
+   grep -q '"schema": "sevenos.adaptive-ui.v1"' <<<"$adaptive_json" &&
+   grep -q 'SevenOS Adaptive UI Plan' <<<"$adaptive_plan_output" &&
    grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.events.v1"' <<<"$events_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.insights.v1"' <<<"$insights_json" &&
