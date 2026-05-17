@@ -109,7 +109,7 @@ def run_files(start_path: str) -> int:
     gi.require_version("Gdk", "3.0")
     gi.require_version("GdkPixbuf", "2.0")
     gi.require_version("Gtk", "3.0")
-    from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+    from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango
     GLib.set_prgname("SevenFilesNative")
     GLib.set_application_name("Seven Files")
     try:
@@ -166,6 +166,7 @@ def run_files(start_path: str) -> int:
       background: rgba(35, 118, 220, 0.10);
     }
     .files-main {
+      min-width: 650px;
       background: #ffffff;
     }
     .files-preview {
@@ -218,14 +219,14 @@ def run_files(start_path: str) -> int:
       font: 500 18px "DM Sans", "Inter", sans-serif;
     }
     .files-grid {
-      padding: 38px 42px;
+      padding: 34px 36px;
       background: #ffffff;
     }
     .file-tile {
-      min-width: 138px;
-      min-height: 138px;
-      padding: 12px 8px;
-      border-radius: 18px;
+      min-width: 124px;
+      min-height: 132px;
+      padding: 10px 6px;
+      border-radius: 16px;
       color: #20242a;
     }
     .file-tile:hover,
@@ -269,7 +270,7 @@ def run_files(start_path: str) -> int:
 
     window = Gtk.Window(title="Seven Files")
     window.set_default_size(1120, 700)
-    window.set_size_request(880, 560)
+    window.set_size_request(1040, 620)
     window.set_resizable(True)
     window.set_decorated(False)
     window.set_wmclass("SevenFilesNative", "SevenFilesNative")
@@ -281,6 +282,7 @@ def run_files(start_path: str) -> int:
 
     sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
     sidebar.get_style_context().add_class("files-sidebar")
+    sidebar.set_size_request(204, -1)
     root.pack_start(sidebar, False, False, 0)
 
     traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
@@ -386,6 +388,7 @@ def run_files(start_path: str) -> int:
 
     main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     main.get_style_context().add_class("files-main")
+    main.set_size_request(650, -1)
     root.pack_start(main, True, True, 0)
 
     toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -408,6 +411,8 @@ def run_files(start_path: str) -> int:
 
     title = Gtk.Label()
     title.set_xalign(0)
+    title.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+    title.set_single_line_mode(True)
     title.get_style_context().add_class("files-title")
     toolbar.pack_start(title, True, True, 10)
 
@@ -424,21 +429,25 @@ def run_files(start_path: str) -> int:
     flow.set_valign(Gtk.Align.START)
     flow.set_selection_mode(Gtk.SelectionMode.SINGLE)
     flow.set_min_children_per_line(4)
-    flow.set_max_children_per_line(7)
-    flow.set_column_spacing(30)
-    flow.set_row_spacing(34)
+    flow.set_max_children_per_line(4)
+    flow.set_column_spacing(22)
+    flow.set_row_spacing(30)
+    flow.set_homogeneous(True)
     scroller.add(flow)
 
     statusbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
     statusbar.get_style_context().add_class("files-statusbar")
     status_label = Gtk.Label()
     status_label.set_xalign(0)
+    status_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+    status_label.set_single_line_mode(True)
     status_label.get_style_context().add_class("files-status-label")
     statusbar.pack_start(status_label, True, True, 0)
     main.pack_start(statusbar, False, False, 0)
 
     preview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
     preview.get_style_context().add_class("files-preview")
+    preview.set_size_request(254, -1)
     root.pack_start(preview, False, False, 0)
 
     preview_icon = Gtk.Image.new_from_icon_name("folder", Gtk.IconSize.DIALOG)
@@ -448,8 +457,9 @@ def run_files(start_path: str) -> int:
     preview.pack_start(preview_icon, False, False, 0)
 
     preview_title = Gtk.Label(label="Seven Files")
-    preview_title.set_line_wrap(True)
-    preview_title.set_max_width_chars(22)
+    preview_title.set_ellipsize(Pango.EllipsizeMode.END)
+    preview_title.set_single_line_mode(True)
+    preview_title.set_max_width_chars(20)
     preview_title.set_justify(Gtk.Justification.CENTER)
     preview_title.set_halign(Gtk.Align.CENTER)
     preview_title.get_style_context().add_class("preview-title")
@@ -489,11 +499,13 @@ def run_files(start_path: str) -> int:
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
             box.set_halign(Gtk.Align.CENTER)
             image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
-            image.set_pixel_size(80)
+            image.set_pixel_size(72)
             label = Gtk.Label(label=path.name)
-            label.set_max_width_chars(16)
+            label.set_width_chars(14)
+            label.set_max_width_chars(14)
             label.set_line_wrap(True)
             label.set_lines(2)
+            label.set_ellipsize(Pango.EllipsizeMode.END)
             label.set_justify(Gtk.Justification.CENTER)
             label.get_style_context().add_class("file-name")
             box.pack_start(image, False, False, 0)
@@ -513,8 +525,9 @@ def run_files(start_path: str) -> int:
         heading.get_style_context().add_class("preview-heading")
         value_label = Gtk.Label(label=value)
         value_label.set_xalign(0)
-        value_label.set_line_wrap(True)
-        value_label.set_max_width_chars(26)
+        value_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        value_label.set_single_line_mode(True)
+        value_label.set_max_width_chars(24)
         value_label.get_style_context().add_class("preview-value")
         preview_details.pack_start(heading, False, False, 0)
         preview_details.pack_start(value_label, False, False, 0)

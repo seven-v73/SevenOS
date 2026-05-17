@@ -307,7 +307,9 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'show_context_menu' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'Set as Wallpaper' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'selected-children-changed' "$ROOT_DIR/bin/seven-files-native" &&
-   grep -q 'set_max_children_per_line(7)' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'set_max_children_per_line(4)' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'set_homogeneous(True)' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'EllipsizeMode.MIDDLE' "$ROOT_DIR/bin/seven-files-native" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open "$HOME" | grep -q 'native Finder-like Seven Files surface' &&
    grep -q 'configure_nautilus_preferences' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'default-folder-viewer' "$ROOT_DIR/bin/seven-files" &&
