@@ -6,6 +6,5 @@ Exec=seven-wallpaper set %f
 Icon=preferences-desktop-wallpaper
 Terminal=false
 NoDisplay=true
-MimeType=image/png;image/jpeg;image/webp;image/svg+xml;image/bmp;
 Categories=Settings;DesktopSettings;
 StartupNotify=false

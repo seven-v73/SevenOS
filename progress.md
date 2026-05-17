@@ -587,6 +587,16 @@ Avancement UI :
   compact et fermeture par Escape. Rofi reste le fallback.
 - Seven Files a maintenant une vraie surface native Finder-like :
   sidebar, pastilles, barre de navigation, grandes icones et fallback Nautilus.
+- Seven Files separe maintenant clairement "ouvrir une image" et "definir un
+  wallpaper" : le clic ouvre une preview native, le wallpaper passe par une
+  action explicite du clic droit.
+- Le clic droit Seven Files expose des actions Finder-like : Open, Reveal,
+  Copy Path, Set as Wallpaper pour les images, Properties.
+- Les associations MIME SevenOS evitent maintenant de transformer
+  `seven-wallpaper.desktop` en application par defaut des images.
+- Le bouton jaune des surfaces natives suit la logique Hyprland : reduction
+  vers le special workspace SevenOS quand la session Wayland le permet, avec
+  fallback GTK classique.
 - Checks design/UX mis a jour pour proteger ces surfaces.
 
 Jalon en cours :

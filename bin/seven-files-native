@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -38,6 +39,7 @@ def probe() -> int:
     try:
         import gi
 
+        gi.require_version("GdkPixbuf", "2.0")
         gi.require_version("Gdk", "3.0")
         gi.require_version("Gtk", "3.0")
         from gi.repository import Gtk  # noqa: F401
@@ -50,6 +52,26 @@ def probe() -> int:
 
 def xdg_open(path: Path) -> None:
     subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".tiff", ".tif"}
+
+
+def is_image(path: Path) -> bool:
+    return path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+
+
+def resolve_root() -> Path | None:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin").is_dir():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "bin").is_dir():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin").is_dir():
+            return candidate
+    return None
 
 
 def folder_icon(path: Path) -> str:
@@ -65,7 +87,7 @@ def folder_icon(path: Path) -> str:
     if path.is_dir():
         return mapping.get(path.name, "folder")
     suffix = path.suffix.lower()
-    if suffix in {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}:
+    if suffix in IMAGE_SUFFIXES:
         return "image-x-generic"
     if suffix in {".mp4", ".mkv", ".mov", ".webm"}:
         return "video-x-generic"
@@ -85,8 +107,9 @@ def run_files(start_path: str) -> int:
     import gi
 
     gi.require_version("Gdk", "3.0")
+    gi.require_version("GdkPixbuf", "2.0")
     gi.require_version("Gtk", "3.0")
-    from gi.repository import Gdk, GLib, Gtk
+    from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
     GLib.set_prgname("SevenFilesNative")
     GLib.set_application_name("Seven Files")
     try:
@@ -213,6 +236,32 @@ def run_files(start_path: str) -> int:
       color: #20242a;
       font: 500 12px "DM Sans", "Inter", sans-serif;
     }
+    .files-statusbar {
+      min-height: 32px;
+      padding: 0 18px;
+      background: rgba(255, 255, 255, 0.98);
+      border-top: 1px solid rgba(134, 145, 156, 0.14);
+    }
+    .files-status-label {
+      color: #7b828a;
+      font: 500 11px "DM Sans", "Inter", sans-serif;
+    }
+    menu {
+      border-radius: 12px;
+      padding: 6px;
+      background: #ffffff;
+      border: 1px solid rgba(134, 145, 156, 0.22);
+    }
+    menuitem {
+      min-height: 30px;
+      border-radius: 8px;
+      padding: 0 10px;
+      color: #20242a;
+      font: 500 12px "DM Sans", "Inter", sans-serif;
+    }
+    menuitem:hover {
+      background: rgba(35, 118, 220, 0.10);
+    }
     """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
@@ -296,7 +345,7 @@ def run_files(start_path: str) -> int:
         return False
 
     traffic.pack_start(dot("#ff5f57", "#d8463f", "close", lambda: window.close()), False, False, 0)
-    traffic.pack_start(dot("#febc2e", "#d9a023", "min", lambda: window.iconify()), False, False, 0)
+    traffic.pack_start(dot("#febc2e", "#d9a023", "min", lambda: minimize_window(window)), False, False, 0)
     traffic.pack_start(dot("#28c840", "#1fa334", "max", lambda: toggle_zoom_or_tile(window)), False, False, 0)
 
     sidebar_buttons = []
@@ -380,6 +429,14 @@ def run_files(start_path: str) -> int:
     flow.set_row_spacing(34)
     scroller.add(flow)
 
+    statusbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+    statusbar.get_style_context().add_class("files-statusbar")
+    status_label = Gtk.Label()
+    status_label.set_xalign(0)
+    status_label.get_style_context().add_class("files-status-label")
+    statusbar.pack_start(status_label, True, True, 0)
+    main.pack_start(statusbar, False, False, 0)
+
     preview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
     preview.get_style_context().add_class("files-preview")
     root.pack_start(preview, False, False, 0)
@@ -426,6 +483,9 @@ def run_files(start_path: str) -> int:
             child = Gtk.FlowBoxChild()
             child.get_style_context().add_class("file-tile")
             child.path = path
+            tile_event = Gtk.EventBox()
+            tile_event.set_visible_window(False)
+            tile_event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
             box.set_halign(Gtk.Align.CENTER)
             image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
@@ -438,8 +498,11 @@ def run_files(start_path: str) -> int:
             label.get_style_context().add_class("file-name")
             box.pack_start(image, False, False, 0)
             box.pack_start(label, False, False, 0)
-            child.add(box)
+            tile_event.add(box)
+            tile_event.connect("button-press-event", lambda _widget, event, tile=child, item=path: on_tile_button(event, tile, item))
+            child.add(tile_event)
             flow.add(child)
+        status_label.set_text(f"{len(entries)} items  |  {current}")
         update_sidebar()
         update_preview(current)
         flow.show_all()
@@ -480,6 +543,114 @@ def run_files(start_path: str) -> int:
             detail_row("Status", "Unavailable")
         preview_details.show_all()
 
+    def open_image_preview(path: Path):
+        preview_window = Gtk.Window(title=path.name)
+        preview_window.set_default_size(880, 620)
+        preview_window.set_size_request(520, 360)
+        preview_window.set_resizable(True)
+        preview_window.set_position(Gtk.WindowPosition.CENTER)
+        preview_window.set_wmclass("SevenImagePreview", "SevenImagePreview")
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        preview_window.add(outer)
+
+        header = Gtk.HeaderBar(title=path.name)
+        header.set_show_close_button(True)
+        preview_window.set_titlebar(header)
+
+        image_scroller = Gtk.ScrolledWindow()
+        image_scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        image_scroller.set_hexpand(True)
+        image_scroller.set_vexpand(True)
+
+        try:
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 1160, 760, True)
+            image = Gtk.Image.new_from_pixbuf(pixbuf)
+        except Exception:
+            image = Gtk.Image.new_from_icon_name("image-x-generic", Gtk.IconSize.DIALOG)
+            image.set_pixel_size(128)
+        image.set_margin_top(24)
+        image.set_margin_bottom(24)
+        image.set_margin_start(24)
+        image.set_margin_end(24)
+        image_scroller.add_with_viewport(image)
+        outer.pack_start(image_scroller, True, True, 0)
+
+        footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        footer.set_margin_top(8)
+        footer.set_margin_bottom(10)
+        footer.set_margin_start(14)
+        footer.set_margin_end(14)
+        open_button = Gtk.Button(label="Open externally")
+        wallpaper_button = Gtk.Button(label="Set as Wallpaper")
+        open_button.connect("clicked", lambda *_: open_image_externally(path))
+        wallpaper_button.connect("clicked", lambda *_: set_wallpaper_from_file(path))
+        footer.pack_start(open_button, False, False, 0)
+        footer.pack_end(wallpaper_button, False, False, 0)
+        outer.pack_start(footer, False, False, 0)
+
+        preview_window.show_all()
+
+    def open_file(path: Path):
+        if is_image(path):
+            open_image_preview(path)
+        else:
+            xdg_open(path)
+
+    def open_image_externally(path: Path):
+        for command in ("loupe", "eog", "swayimg", "imv", "feh"):
+            if shutil.which(command):
+                subprocess.Popen([command, str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return
+        open_image_preview(path)
+
+    def set_wallpaper_from_file(path: Path):
+        root = resolve_root()
+        command: list[str] | None = None
+        if root and (root / "bin/seven-wallpaper").exists():
+            command = [str(root / "bin/seven-wallpaper"), "set", str(path)]
+        else:
+            command = ["seven-wallpaper", "set", str(path)]
+        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def copy_path(path: Path):
+        Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(str(path), -1)
+
+    def reveal_in_parent(path: Path):
+        xdg_open(path.parent if path.is_file() else path)
+
+    def add_menu_item(menu, label: str, callback):
+        item = Gtk.MenuItem(label=label)
+        item.connect("activate", lambda *_: callback())
+        menu.append(item)
+
+    def show_context_menu(path: Path, event):
+        menu = Gtk.Menu()
+        add_menu_item(menu, "Open", lambda: navigate(path) if path.is_dir() else open_file(path))
+        add_menu_item(menu, "Reveal in Folder", lambda: reveal_in_parent(path))
+        add_menu_item(menu, "Copy Path", lambda: copy_path(path))
+        if is_image(path):
+            menu.append(Gtk.SeparatorMenuItem())
+            add_menu_item(menu, "Set as Wallpaper", lambda: set_wallpaper_from_file(path))
+        menu.append(Gtk.SeparatorMenuItem())
+        add_menu_item(menu, "Properties", lambda: update_preview(path))
+        menu.show_all()
+        try:
+            menu.popup_at_pointer(event)
+        except AttributeError:
+            menu.popup(None, None, None, None, event.button, event.time)
+
+    def on_tile_button(event, child, path: Path) -> bool:
+        if getattr(event, "button", 0) == 3:
+            flow.select_child(child)
+            update_preview(path)
+            show_context_menu(path, event)
+            return True
+        if getattr(event, "button", 0) == 1:
+            flow.select_child(child)
+            update_preview(path)
+        return False
+
     def navigate(path: Path):
         nonlocal current
         if not path.exists() or not path.is_dir():
@@ -511,7 +682,7 @@ def run_files(start_path: str) -> int:
         if path.is_dir():
             navigate(path)
         else:
-            xdg_open(path)
+            open_file(path)
 
     def selection_changed(flow_box):
         selected = flow_box.get_selected_children()
@@ -551,6 +722,19 @@ def toggle_zoom_or_tile(window) -> None:
         window.resize(1120, 700)
     else:
         window.maximize()
+
+
+def minimize_window(window) -> None:
+    window.present()
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        for command in (
+            ["hyprctl", "dispatch", "movetoworkspacesilent", "special:seven"],
+            ["hyprctl", "dispatch", "movetoworkspace", "special:seven"],
+        ):
+            result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            if result.returncode == 0:
+                return
+    window.iconify()
 
 
 def format_size(size: int) -> str:

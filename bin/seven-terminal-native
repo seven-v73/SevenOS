@@ -142,7 +142,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     outer.pack_start(titlebar, False, False, 0)
 
     close_btn = traffic_button("close", "Close", lambda: window.close())
-    min_btn = traffic_button("min", "Minimize", lambda: window.iconify())
+    min_btn = traffic_button("min", "Minimize", lambda: minimize_window(window))
     max_btn = traffic_button("max", "Tile / Float", lambda: toggle_zoom_or_tile(window))
     titlebar.pack_start(close_btn, False, False, 0)
     titlebar.pack_start(min_btn, False, False, 0)
@@ -289,6 +289,18 @@ def toggle_zoom_or_tile(window) -> None:
         window.resize(640, 420)
     else:
         window.maximize()
+
+
+def minimize_window(window) -> None:
+    window.present()
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        for command in (
+            ["hyprctl", "dispatch", "movetoworkspacesilent", "special:seven"],
+            ["hyprctl", "dispatch", "movetoworkspace", "special:seven"],
+        ):
+            if subprocess_run(command) == 0:
+                return
+    window.iconify()
 
 
 def begin_move(window, event) -> bool:

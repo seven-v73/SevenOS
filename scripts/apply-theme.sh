@@ -145,6 +145,7 @@ configure_file_experience() {
     printf 'xdg-mime default org.gnome.Nautilus.desktop inode/directory\n'
     printf 'install Nautilus script: Set as SevenOS Wallpaper\n'
     printf 'install desktop action: Set as SevenOS Wallpaper\n'
+    printf 'remove SevenOS wallpaper from image MIME defaults\n'
     printf 'update-desktop-database %q || true\n' "$HOME/.local/share/applications"
     return 0
   fi
@@ -193,6 +194,17 @@ EOF
 
   mkdir -p "$HOME/.local/share/applications"
   cp "$ROOT_DIR/seven-hub/seven-wallpaper.desktop" "$HOME/.local/share/applications/seven-wallpaper.desktop"
+
+  local mime_file
+  for mime_file in "$CONFIG_HOME/mimeapps.list" "$HOME/.local/share/applications/mimeapps.list" "$HOME/.local/share/applications/mimeinfo.cache"; do
+    if [[ -f "$mime_file" ]]; then
+      sed -i \
+        -e '/^image\/.*=seven-wallpaper\.desktop;*$/d' \
+        -e 's/seven-wallpaper\.desktop;//g' \
+        -e 's/;seven-wallpaper\.desktop//g' \
+        "$mime_file"
+    fi
+  done
 
   if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true

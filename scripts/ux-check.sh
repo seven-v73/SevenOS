@@ -299,8 +299,13 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'traffic-row' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'draw_dot_symbol' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'activate_dot' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'minimize_window' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'toggle_zoom_or_tile' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'files-preview' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'files-statusbar' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'open_image_preview' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'show_context_menu' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'Set as Wallpaper' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'selected-children-changed' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'set_max_children_per_line(7)' "$ROOT_DIR/bin/seven-files-native" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open "$HOME" | grep -q 'native Finder-like Seven Files surface' &&
@@ -686,10 +691,12 @@ if grep -q '^Type=simple' "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" &&
    grep -q 'hyprctl hyprpaper wallpaper' "$ROOT_DIR/bin/seven-wallpaper" &&
    grep -q 'wallpaper|set-wallpaper' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'Set as SevenOS Wallpaper' "$ROOT_DIR/scripts/apply-theme.sh" &&
-   grep -q 'MimeType=image/png' "$ROOT_DIR/seven-hub/seven-wallpaper.desktop"; then
-  ok "Wallpaper runtime supports persistent service and file-manager wallpaper selection"
+   grep -q 'remove SevenOS wallpaper from image MIME defaults' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'Exec=seven-wallpaper set %f' "$ROOT_DIR/seven-hub/seven-wallpaper.desktop" &&
+   ! grep -q '^MimeType=image/' "$ROOT_DIR/seven-hub/seven-wallpaper.desktop"; then
+  ok "Wallpaper runtime supports explicit file-manager wallpaper selection without hijacking image open"
 else
-  fail "Wallpaper runtime should keep Hyprpaper alive and expose file-manager wallpaper selection"
+  fail "Wallpaper runtime should keep Hyprpaper alive and avoid becoming the default image opener"
 fi
 
 if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
@@ -714,6 +721,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'traffic.max' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'draw_traffic_symbol' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'activate_traffic' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'minimize_window' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'toggle_zoom_or_tile' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'native-if-available' "$ROOT_DIR/bin/seven-terminal" &&
    grep -Fq 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
