@@ -42,7 +42,7 @@ SevenCloud	5	preview	Encrypted backup, config sync and restore	scripts/cloud.sh
 SevenStore	5	preview	Apps, profiles, themes and module registry	scripts/store.sh
 SevenIdentity	5	preview	User identity, accent packs, permissions and environment	scripts/identity.sh
 SevenFlow	5	preview	No-code automation rules for system workflows	scripts/flow.sh
-SevenCluster	5	planned	Local/private multi-machine compute mesh	scripts/ecosystem.sh
+SevenCluster	5	preview	Local/private multi-machine compute mesh	scripts/cluster.sh
 EOF
 }
 
@@ -60,6 +60,7 @@ Personal Cloud	cloud	preview	SevenCloud -> local-first backup plan -> restore co
 Marketplace	store	preview	SevenStore -> modules/apps/actions -> guided install	seven store
 Automation	automation	preview	SevenFlow -> recipes -> confirmed actions -> logs	seven flow
 Identity	identity	preview	SevenIdentity -> user context -> regional accents -> permissions	seven identity
+Private Mesh	cluster	preview	SevenCluster -> explicit nodes -> local/private compute policy	seven cluster
 EOF
 }
 
@@ -191,6 +192,7 @@ doctor() {
     "scripts/box.sh" \
     "scripts/cloud.sh" \
     "scripts/flow.sh" \
+    "scripts/cluster.sh" \
     "scripts/identity.sh" \
     "scripts/store.sh" \
     "scripts/phase-gate.sh"; do

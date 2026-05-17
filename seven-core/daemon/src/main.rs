@@ -984,6 +984,7 @@ fn server_json() {
             "/box",
             "/cloud",
             "/flow",
+            "/cluster",
             "/monitor/system",
             "/readiness",
             "/manifest",

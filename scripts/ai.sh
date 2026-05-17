@@ -54,6 +54,7 @@ payload_json() {
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/box.sh" json > "$tmp_dir/box.json"
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/cloud.sh" json > "$tmp_dir/cloud.json"
   command_json '{"summary":{}}' "$ROOT_DIR/scripts/flow.sh" json > "$tmp_dir/flow.json"
+  command_json '{"summary":{}}' "$ROOT_DIR/scripts/cluster.sh" json > "$tmp_dir/cluster.json"
 
   SEVENAI_TMP="$tmp_dir" \
   python - <<'PY'
@@ -80,6 +81,7 @@ store = load_file("store.json", {"summary": {}})
 box = load_file("box.json", {"summary": {}})
 cloud = load_file("cloud.json", {"summary": {}})
 flow = load_file("flow.json", {"summary": {}})
+cluster = load_file("cluster.json", {"summary": {}})
 
 daily = state.get("daily") or {}
 daily_summary = daily.get("summary") or {}
@@ -136,6 +138,7 @@ store_summary = store.get("summary", {})
 box_summary = box.get("summary", {})
 cloud_summary = cloud.get("summary", {})
 flow_summary = flow.get("summary", {})
+cluster_summary = cluster.get("summary", {})
 
 required_modules = max(store_summary.get("modules", 0) - store_summary.get("optional_modules", 0), 0)
 if store_summary and store_summary.get("modules_ready", 0) < required_modules:
@@ -146,6 +149,8 @@ if cloud_summary and cloud_summary.get("tools_ready", 0) < cloud_summary.get("to
     add("cloud", "Prepare protection tools", "seven cloud doctor", "SevenCloud backup planning needs its local tooling ready first.", "packages", "medium")
 if flow_summary and flow_summary.get("ready", 0) < flow_summary.get("recipes", 0):
     add("flow", "Resolve automation recipes", "seven flow doctor", "SevenFlow recipes should all resolve to action registry commands before automation expands.", "safe", "medium")
+if cluster_summary and cluster_summary.get("tools_ready", 0) < cluster_summary.get("tools_total", 0):
+    add("cluster", "Prepare private mesh tools", "seven cluster doctor", "SevenCluster needs its transport/runtime checks ready before multi-machine workflows expand.", "packages", "medium")
 
 for insight in (insights.get("insights") or [])[:3]:
     key = f"insight.{insight.get('key', insight.get('area', 'item'))}"
@@ -185,6 +190,7 @@ print(json.dumps({
         "box_runtime": f"{box_summary.get('ready', 0)}/{box_summary.get('total', 0)}",
         "cloud_tools": f"{cloud_summary.get('tools_ready', 0)}/{cloud_summary.get('tools_total', 0)}",
         "flow_recipes": f"{flow_summary.get('ready', 0)}/{flow_summary.get('recipes', 0)}",
+        "cluster_tools": f"{cluster_summary.get('tools_ready', 0)}/{cluster_summary.get('tools_total', 0)}",
     },
     "recommendations": recommendations[:6],
     "actions": available_actions,

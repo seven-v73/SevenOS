@@ -142,6 +142,9 @@ cloud.status	Ecosystem	SevenCloud Status	seven cloud	safe	Show local-first backu
 cloud.plan	Ecosystem	SevenCloud Plan	seven cloud plan	safe	Show which SevenOS state would be protected before any backup runs.
 flow.status	Ecosystem	SevenFlow Status	seven flow	safe	Show automation recipes and safety policy.
 flow.recipes	Ecosystem	SevenFlow Recipes	seven flow recipes	safe	Show the explicit steps behind each automation recipe.
+cluster.status	Ecosystem	SevenCluster Status	seven cluster	safe	Show private multi-machine readiness and safety policy.
+cluster.nodes	Ecosystem	SevenCluster Nodes	seven cluster nodes	safe	Show declared local/private cluster nodes.
+cluster.plan	Ecosystem	SevenCluster Plan	seven cluster plan	safe	Show next steps before any multi-machine orchestration is enabled.
 flatpak.status	Apps	Flatpak Status	seven flatpak status	safe	Check Flathub and Flatpak readiness.
 flatpak.install	Apps	Install Default Flatpaks	seven flatpak install	packages	Install default Flatpak apps including Bottles and creative tools.
 sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.

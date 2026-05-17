@@ -196,6 +196,7 @@ require_executable "scripts/store.sh"
 require_executable "scripts/box.sh"
 require_executable "scripts/cloud.sh"
 require_executable "scripts/flow.sh"
+require_executable "scripts/cluster.sh"
 require_executable "scripts/flatpak.sh"
 require_executable "scripts/ecosystem.sh"
 require_executable "scripts/stack.sh"
@@ -1251,7 +1252,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","experience","control","b3","daily","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","experience","control","b3","daily","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -1357,6 +1358,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/box"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/cloud"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/flow"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'self.path == "/cluster"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'self.path == "/stack"' "$ROOT_DIR/server/seven-server.sh" &&
@@ -1391,6 +1393,7 @@ if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/box' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/cloud' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/flow' "$ROOT_DIR/server/README.md" &&
+   grep -q 'curl http://127.0.0.1:7777/cluster' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/actions' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/stack' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/shell' "$ROOT_DIR/server/README.md" &&

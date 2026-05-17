@@ -83,6 +83,7 @@ store = command_json([os.path.join(ROOT, "scripts/store.sh"), "json"], {"summary
 box = command_json([os.path.join(ROOT, "scripts/box.sh"), "json"], {"summary": {}, "checks": []})
 cloud = command_json([os.path.join(ROOT, "scripts/cloud.sh"), "json"], {"summary": {}, "targets": []})
 flow = command_json([os.path.join(ROOT, "scripts/flow.sh"), "json"], {"summary": {}, "recipes": []})
+cluster = command_json([os.path.join(ROOT, "scripts/cluster.sh"), "json"], {"summary": {}, "actions": []})
 ecosystem = command_json([os.path.join(ROOT, "scripts/ecosystem.sh"), "json"], {"modules": [], "processes": []})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "status", "--json"], [])
 profile_plan = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"next": []})
@@ -225,6 +226,7 @@ store_summary = store.get("summary") or {}
 box_summary = box.get("summary") or {}
 cloud_summary = cloud.get("summary") or {}
 flow_summary = flow.get("summary") or {}
+cluster_summary = cluster.get("summary") or {}
 
 if store_summary and store_summary.get("modules_ready", 0) < max(store_summary.get("modules", 0) - store_summary.get("optional_modules", 0), 0):
     add(
@@ -266,6 +268,16 @@ if flow_summary and flow_summary.get("ready", 0) < flow_summary.get("recipes", 0
         "safe",
     )
 
+if cluster_summary and cluster_summary.get("tools_ready", 0) < cluster_summary.get("tools_total", 0):
+    add(
+        "ecosystem",
+        "medium",
+        "Prepare SevenCluster private mesh tools",
+        "seven cluster doctor",
+        "SevenCluster needs SSH, rsync, Podman and local routing before private multi-machine workflows are safe.",
+        "packages",
+    )
+
 for profile in profile_plan.get("next", []):
     key = profile.get("key", "profile")
     title = profile.get("title", key.title())
@@ -300,8 +312,9 @@ store_score = 100 if not store_summary else round((store_summary.get("modules_re
 box_score = 100 if not box_summary else round((box_summary.get("ready", 0) / max(box_summary.get("total", 1), 1)) * 100)
 cloud_score = 100 if not cloud_summary else round((cloud_summary.get("tools_ready", 0) / max(cloud_summary.get("tools_total", 1), 1)) * 100)
 flow_score = 100 if not flow_summary else round((flow_summary.get("ready", 0) / max(flow_summary.get("recipes", 1), 1)) * 100)
+cluster_score = 100 if not cluster_summary else round((cluster_summary.get("tools_ready", 0) / max(cluster_summary.get("tools_total", 1), 1)) * 100)
 ecosystem_maturity = round(((active_modules + preview_modules * 0.85) / ecosystem_total) * 100)
-scores["ecosystem"] = round((ecosystem_maturity * 0.4) + (store_score * 0.15) + (box_score * 0.15) + (cloud_score * 0.15) + (flow_score * 0.15))
+scores["ecosystem"] = round((ecosystem_maturity * 0.35) + (store_score * 0.13) + (box_score * 0.13) + (cloud_score * 0.13) + (flow_score * 0.13) + (cluster_score * 0.13))
 overall = round((scores["readiness"] * 0.22) + (scores["experience"] * 0.22) + (scores["shield"] * 0.18) + (scores["server"] * 0.13) + (scores["windows"] * 0.13) + (scores["installer"] * 0.12))
 overall = round((overall * 0.85) + (scores["ecosystem"] * 0.15))
 
@@ -317,6 +330,7 @@ print(json.dumps({
         "box": box_summary,
         "cloud": cloud_summary,
         "flow": flow_summary,
+        "cluster": cluster_summary,
     },
     "summary": {
         "critical": sum(1 for item in items if item["severity"] == "critical"),

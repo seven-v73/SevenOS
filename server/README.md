@@ -78,6 +78,7 @@ curl http://127.0.0.1:7777/store
 curl http://127.0.0.1:7777/box
 curl http://127.0.0.1:7777/cloud
 curl http://127.0.0.1:7777/flow
+curl http://127.0.0.1:7777/cluster
 curl http://127.0.0.1:7777/monitor/system
 curl http://127.0.0.1:7777/readiness
 curl http://127.0.0.1:7777/manifest
@@ -125,6 +126,7 @@ GET  /store
 GET  /box
 GET  /cloud
 GET  /flow
+GET  /cluster
 GET  /manifest
 GET  /actions
 GET  /core

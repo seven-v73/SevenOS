@@ -93,7 +93,7 @@ status() {
     printf '{"key":"jq","state":%s},' "$(printf '%s' "$jq_state" | json_string)"
     printf '{"key":"seven-deploy","state":%s}' "$(printf '%s' "$deploy_state" | json_string)"
     printf '],'
-    printf '"endpoints":["/health","/state","/status","/welcome","/welcome-plan","/session","/identity","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/packages","/packages-plan","/store","/box","/cloud","/flow","/monitor/system","/readiness","/manifest","/actions","/stack","/shell","/shell-plan","/core","/core-plan","/core-snapshot","/core-health","/core-observe","/scheduler","/context","/bus","/experience","/shield","/shield-plan","/cyberspace","/cyberspace-plan","/server-plan","/control","/b3","/daily","/events","/insights"],'
+    printf '"endpoints":["/health","/state","/status","/welcome","/welcome-plan","/session","/identity","/profiles","/profile-gaps","/profile-plan","/windows","/windows-plan","/installer","/installer-plan","/packages","/packages-plan","/store","/box","/cloud","/flow","/cluster","/monitor/system","/readiness","/manifest","/actions","/stack","/shell","/shell-plan","/core","/core-plan","/core-snapshot","/core-health","/core-observe","/scheduler","/context","/bus","/experience","/shield","/shield-plan","/cyberspace","/cyberspace-plan","/server-plan","/control","/b3","/daily","/events","/insights"],'
     printf '"recommendations":['
     local first=1
     if [[ "$service" != "RUN" ]]; then
@@ -388,6 +388,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(command_json([os.path.join(ROOT, "scripts/cloud.sh"), "json"]))
         elif self.path == "/flow":
             self.send_json(command_json([os.path.join(ROOT, "scripts/flow.sh"), "json"]))
+        elif self.path == "/cluster":
+            self.send_json(command_json([os.path.join(ROOT, "scripts/cluster.sh"), "json"]))
         elif self.path == "/monitor/system":
             self.send_json({
                 "ok": True,

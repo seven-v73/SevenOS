@@ -315,6 +315,13 @@ def handle_flow(args):
     run_script(args, "scripts/flow.sh", *extra)
 
 
+def handle_cluster(args):
+    extra = [args.action]
+    if args.json:
+        extra = ["json"]
+    run_script(args, "scripts/cluster.sh", *extra)
+
+
 def handle_stack(args):
     extra = [args.action]
     if args.json:
@@ -540,6 +547,9 @@ def main():
     flow_parser = subparsers.add_parser("flow", help="inspect SevenFlow automation recipes")
     flow_parser.add_argument("action", nargs="?", default="status", choices=("status", "recipes", "plan", "doctor", "json"))
     flow_parser.add_argument("--json", action="store_true", help="print machine-readable SevenFlow recipes")
+    cluster_parser = subparsers.add_parser("cluster", help="inspect SevenCluster private multi-machine readiness")
+    cluster_parser.add_argument("action", nargs="?", default="status", choices=("status", "nodes", "plan", "doctor", "json"))
+    cluster_parser.add_argument("--json", action="store_true", help="print machine-readable SevenCluster status")
     stack_parser = subparsers.add_parser("stack", help="show SevenOS technology stack strategy")
     stack_parser.add_argument("action", nargs="?", default="status")
     stack_parser.add_argument("--json", action="store_true", help="print machine-readable stack strategy")
@@ -712,6 +722,8 @@ def main():
         handle_cloud(args)
     elif args.command == "flow":
         handle_flow(args)
+    elif args.command == "cluster":
+        handle_cluster(args)
     elif args.command == "stack":
         handle_stack(args)
     elif args.command == "shell":

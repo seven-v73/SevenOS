@@ -49,7 +49,7 @@ integration, continuity and predictable defaults.
 | SevenDoctor | auto-repair and guided remediation | 3-4 | preview |
 | Advanced Profiles | Learn, Enterprise, Gaming, Cloud, AI Lab | 4 | planned |
 | SevenIdentity | user identity, cultural accents, permissions and environment | 5 | preview |
-| SevenCluster | multi-machine local cluster and resource sharing | 5 | planned |
+| SevenCluster | multi-machine local cluster and resource sharing | 5 | preview |
 | SevenFlow | no-code automation rules for system workflows | 5 | preview |
 
 ## All-In-One Process Map
@@ -72,6 +72,7 @@ cannot be reached from Seven Hub or `seven`, it is not productized yet.
 | Marketplace | store | preview | modules, apps, actions and guided install | `seven store` |
 | Automation | automation | preview | recipes, confirmed actions, logs | `seven flow` |
 | Identity | identity | preview | user context, regional accents, permissions | `seven identity` |
+| Private Mesh | cluster | preview | explicit nodes, local/private compute policy | `seven cluster` |
 
 ## Ecosystem Contracts
 
@@ -289,5 +290,6 @@ seven cloud plan
 seven store apps
 seven box profiles
 seven flow recipes
+seven cluster nodes
 seven identity status
 ```
