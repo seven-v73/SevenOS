@@ -136,6 +136,12 @@ store.open	Apps	SevenStore	seven store	safe	Browse SevenOS modules, Flatpak apps
 store.modules	Apps	Store Modules	seven store modules	safe	Show installable SevenOS bundles with optional modules separated from required readiness.
 store.apps	Apps	Store Apps	seven store apps	safe	Show the Flatpak application catalog exposed through SevenStore.
 store.doctor	Apps	Store Doctor	seven store doctor	safe	Validate the SevenStore catalog contract for Hub and future native UI surfaces.
+box.status	Ecosystem	SevenBox Status	seven box	safe	Show sandbox, container and app isolation readiness.
+box.profiles	Ecosystem	SevenBox Profiles	seven box profiles	safe	Show available sandbox/container profiles without starting anything.
+cloud.status	Ecosystem	SevenCloud Status	seven cloud	safe	Show local-first backup and restore readiness.
+cloud.plan	Ecosystem	SevenCloud Plan	seven cloud plan	safe	Show which SevenOS state would be protected before any backup runs.
+flow.status	Ecosystem	SevenFlow Status	seven flow	safe	Show automation recipes and safety policy.
+flow.recipes	Ecosystem	SevenFlow Recipes	seven flow recipes	safe	Show the explicit steps behind each automation recipe.
 flatpak.status	Apps	Flatpak Status	seven flatpak status	safe	Check Flathub and Flatpak readiness.
 flatpak.install	Apps	Install Default Flatpaks	seven flatpak install	packages	Install default Flatpak apps including Bottles and creative tools.
 sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.

@@ -34,14 +34,14 @@ SevenShield	2-4	preview	Security hardening, audit, sandbox and Cyber Lab	securit
 Seven Server	3	preview	Local API, monitoring and orchestration backend	server/seven-server.sh
 Seven Deploy	3	preview	Project detection and deployment planner	server/seven-deploy.sh
 Seven Installer	3	preview	Archiso, Calamares and install planning foundation	installer/calamares/README.md
-SevenBox	4	planned	Rootless containers and sandbox UX	scripts/ecosystem.sh
+SevenBox	4	preview	Rootless containers and sandbox UX	scripts/box.sh
 SevenAI	4	preview	Local system assistant, readiness guidance and automation contract	scripts/ai.sh
 Adaptive UI	4	preview	Profile-aware shell, Waybar, panels and Hub actions	bin/seven-shell-panel
 Seven Shell	3	active	Native GTK, Waybar, Dock and AGS migration path	scripts/shell.sh
-SevenCloud	5	planned	Encrypted backup, config sync and restore	scripts/ecosystem.sh
+SevenCloud	5	preview	Encrypted backup, config sync and restore	scripts/cloud.sh
 SevenStore	5	preview	Apps, profiles, themes and module registry	scripts/store.sh
-SevenIdentity	5	planned	User identity, accent packs, permissions and environment	scripts/ecosystem.sh
-SevenFlow	5	planned	No-code automation rules for system workflows	scripts/ecosystem.sh
+SevenIdentity	5	preview	User identity, accent packs, permissions and environment	scripts/identity.sh
+SevenFlow	5	preview	No-code automation rules for system workflows	scripts/flow.sh
 SevenCluster	5	planned	Local/private multi-machine compute mesh	scripts/ecosystem.sh
 EOF
 }
@@ -56,10 +56,10 @@ Windows Apps	compatibility	preview	Windows profile -> Bottles/Wine or KVM VM -> 
 Security Trust	security	preview	Shield audit -> UFW/Firejail/Bubblewrap -> Cyber Lab	seven shield audit
 Create & Media	creation	preview	Studio profile -> creative apps -> project workspace	seven profile guide studio
 Develop & Deploy	deployment	preview	Forge/Horizon -> stack detect -> local API -> deploy planner	seven deploy plan .
-Personal Cloud	cloud	planned	SevenCloud -> encrypted backup -> restore -> machine sync	seven ecosystem roadmap
+Personal Cloud	cloud	preview	SevenCloud -> local-first backup plan -> restore contract	seven cloud
 Marketplace	store	preview	SevenStore -> modules/apps/actions -> guided install	seven store
-Automation	automation	planned	SevenFlow -> triggers -> confirmed actions -> logs	seven ecosystem roadmap
-Identity	identity	planned	SevenIdentity -> user context -> regional accents -> permissions	seven ecosystem roadmap
+Automation	automation	preview	SevenFlow -> recipes -> confirmed actions -> logs	seven flow
+Identity	identity	preview	SevenIdentity -> user context -> regional accents -> permissions	seven identity
 EOF
 }
 
@@ -188,6 +188,10 @@ doctor() {
     "scripts/readiness.sh" \
     "scripts/actions.sh" \
     "scripts/ai.sh" \
+    "scripts/box.sh" \
+    "scripts/cloud.sh" \
+    "scripts/flow.sh" \
+    "scripts/identity.sh" \
     "scripts/store.sh" \
     "scripts/phase-gate.sh"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then

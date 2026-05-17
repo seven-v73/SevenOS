@@ -40,7 +40,7 @@ integration, continuity and predictable defaults.
 | Module | Purpose | Phase | Status |
 | --- | --- | --- | --- |
 | SevenAI | local system assistant and automation brain | 4 | preview |
-| SevenCloud | personal backup, config sync and restore | 5 | planned |
+| SevenCloud | personal backup, config sync and restore | 5 | preview |
 | SevenStore | marketplace for apps, profiles, themes and modules | 5 | preview |
 | SevenBox | rootless containers and sandboxed app runtime | 4 | preview |
 | SevenShield Pro | advanced protection, scans and intrusion signals | 4 | planned |
@@ -48,9 +48,9 @@ integration, continuity and predictable defaults.
 | Windows Integration | guided VM, Wine, Bottles and future app integration | 2-4 | preview |
 | SevenDoctor | auto-repair and guided remediation | 3-4 | preview |
 | Advanced Profiles | Learn, Enterprise, Gaming, Cloud, AI Lab | 4 | planned |
-| SevenIdentity | user identity, cultural accents, permissions and environment | 5 | planned |
+| SevenIdentity | user identity, cultural accents, permissions and environment | 5 | preview |
 | SevenCluster | multi-machine local cluster and resource sharing | 5 | planned |
-| SevenFlow | no-code automation rules for system workflows | 5 | planned |
+| SevenFlow | no-code automation rules for system workflows | 5 | preview |
 
 ## All-In-One Process Map
 
@@ -68,10 +68,10 @@ cannot be reached from Seven Hub or `seven`, it is not productized yet.
 | Create & Media | creation | preview | Studio profile, creative apps, media workspace | `seven profile guide studio` |
 | Develop & Deploy | deployment | preview | Forge/Horizon, stack detection, local API, deploy plan | `seven deploy plan .` |
 | Local Guidance | intelligence | preview | state, insights, action registry, next best commands | `seven ai plan` |
-| Personal Cloud | cloud | planned | encrypted backup, restore, machine sync | `seven ecosystem roadmap` |
+| Personal Cloud | cloud | preview | local-first backup plan and restore contract | `seven cloud` |
 | Marketplace | store | preview | modules, apps, actions and guided install | `seven store` |
-| Automation | automation | planned | triggers, confirmed actions, logs | `seven ecosystem roadmap` |
-| Identity | identity | planned | user context, regional accents, permissions | `seven ecosystem roadmap` |
+| Automation | automation | preview | recipes, confirmed actions, logs | `seven flow` |
+| Identity | identity | preview | user context, regional accents, permissions | `seven identity` |
 
 ## Ecosystem Contracts
 
@@ -285,9 +285,9 @@ Future commands:
 
 ```bash
 seven ai "explain this error"
-seven cloud backup
+seven cloud plan
 seven store apps
-seven box run app --sandbox
-seven flow list
+seven box profiles
+seven flow recipes
 seven identity status
 ```

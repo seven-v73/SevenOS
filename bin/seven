@@ -294,6 +294,27 @@ def handle_store(args):
     run_script(args, "scripts/store.sh", *extra)
 
 
+def handle_box(args):
+    extra = [args.action]
+    if args.json:
+        extra = ["json"]
+    run_script(args, "scripts/box.sh", *extra)
+
+
+def handle_cloud(args):
+    extra = [args.action]
+    if args.json:
+        extra = ["json"]
+    run_script(args, "scripts/cloud.sh", *extra)
+
+
+def handle_flow(args):
+    extra = [args.action]
+    if args.json:
+        extra = ["json"]
+    run_script(args, "scripts/flow.sh", *extra)
+
+
 def handle_stack(args):
     extra = [args.action]
     if args.json:
@@ -510,6 +531,15 @@ def main():
     store_parser.add_argument("action", nargs="?", default="status", choices=("status", "modules", "catalog", "apps", "actions", "doctor", "install", "json"))
     store_parser.add_argument("--json", action="store_true", help="print machine-readable SevenStore catalog")
     store_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    box_parser = subparsers.add_parser("box", help="inspect SevenBox sandbox and container readiness")
+    box_parser.add_argument("action", nargs="?", default="status", choices=("status", "profiles", "doctor", "json"))
+    box_parser.add_argument("--json", action="store_true", help="print machine-readable SevenBox status")
+    cloud_parser = subparsers.add_parser("cloud", help="inspect SevenCloud backup and restore readiness")
+    cloud_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
+    cloud_parser.add_argument("--json", action="store_true", help="print machine-readable SevenCloud plan")
+    flow_parser = subparsers.add_parser("flow", help="inspect SevenFlow automation recipes")
+    flow_parser.add_argument("action", nargs="?", default="status", choices=("status", "recipes", "plan", "doctor", "json"))
+    flow_parser.add_argument("--json", action="store_true", help="print machine-readable SevenFlow recipes")
     stack_parser = subparsers.add_parser("stack", help="show SevenOS technology stack strategy")
     stack_parser.add_argument("action", nargs="?", default="status")
     stack_parser.add_argument("--json", action="store_true", help="print machine-readable stack strategy")
@@ -676,6 +706,12 @@ def main():
         handle_ai(args)
     elif args.command == "store":
         handle_store(args)
+    elif args.command == "box":
+        handle_box(args)
+    elif args.command == "cloud":
+        handle_cloud(args)
+    elif args.command == "flow":
+        handle_flow(args)
     elif args.command == "stack":
         handle_stack(args)
     elif args.command == "shell":
