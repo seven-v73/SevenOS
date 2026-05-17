@@ -17,6 +17,17 @@ It defines:
 - a SevenOS post-install hook placeholder
 - the boundary between Calamares and the existing SevenOS installer planner
 
+SevenOS tracks this boundary with:
+
+```bash
+seven installer release
+seven installer plan --json
+```
+
+The release contract should remain green for the TUI/Archinstall path while
+showing `calamares-runtime` as the explicit remaining graphical installer gap
+until Calamares is packaged into the ISO.
+
 ## Strategy
 
 SevenOS should keep two installer paths:

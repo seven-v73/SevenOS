@@ -9,7 +9,7 @@ usage() {
 SevenOS installer stack
 
 Usage:
-  ./scripts/installer-stack.sh [status|install|doctor|plan|guide] [--json]
+  ./scripts/installer-stack.sh [status|install|doctor|plan|guide|release] [--json]
 
 Actions:
   status   Show installer tooling state
@@ -21,6 +21,7 @@ Actions:
   plan --json
            Show prioritized installer/ISO productization actions
   guide    Show the normal-user install path SevenOS exposes today
+  release  Show public-ISO release readiness checks
 EOF
 }
 
@@ -41,8 +42,151 @@ dir_state() {
   [[ -d "$ROOT_DIR/$path" ]] && printf OK || printf MISS
 }
 
+contains_state() {
+  local path="$1"
+  local pattern="$2"
+  [[ -s "$ROOT_DIR/$path" ]] && grep -Fq "$pattern" "$ROOT_DIR/$path" && printf OK || printf MISS
+}
+
 json_string() {
   python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
+}
+
+release_json() {
+  local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_postinstall_state
+  local archiso_state build_state packages_state repo_injection_state live_cli_state
+
+  archinstall_state="$(state archinstall)"
+  calamares_state="$(state calamares)"
+  planner_state="$([[ -x "$ROOT_DIR/installer/plan.sh" ]] && printf OK || printf MISS)"
+  calamares_settings_state="$(file_state installer/calamares/settings.conf)"
+  calamares_module_state="$(file_state installer/calamares/modules/sevenos.conf)"
+  calamares_postinstall_state="$(contains_state installer/calamares/modules/sevenos.conf "/opt/SevenOS/install.sh base")"
+  archiso_state="$(dir_state archiso/profile)"
+  build_state="$([[ -x "$ROOT_DIR/scripts/build-iso.sh" ]] && printf OK || printf MISS)"
+  packages_state="$(file_state archiso/profile/packages.x86_64)"
+  repo_injection_state="$(contains_state scripts/build-iso.sh "/opt/SevenOS")"
+  live_cli_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/opt/SevenOS/bin/seven")"
+
+  ARCHINSTALL_STATE="$archinstall_state" \
+  CALAMARES_STATE="$calamares_state" \
+  PLANNER_STATE="$planner_state" \
+  CALAMARES_SETTINGS_STATE="$calamares_settings_state" \
+  CALAMARES_MODULE_STATE="$calamares_module_state" \
+  CALAMARES_POSTINSTALL_STATE="$calamares_postinstall_state" \
+  ARCHISO_STATE="$archiso_state" \
+  BUILD_STATE="$build_state" \
+  PACKAGES_STATE="$packages_state" \
+  REPO_INJECTION_STATE="$repo_injection_state" \
+  LIVE_CLI_STATE="$live_cli_state" \
+  python - <<'PY'
+import json
+import os
+
+checks = [
+    {
+        "key": "archinstall-runtime",
+        "state": os.environ["ARCHINSTALL_STATE"],
+        "required": True,
+        "title": "Guided TUI backend",
+        "command": "seven installer install",
+    },
+    {
+        "key": "calamares-runtime",
+        "state": os.environ["CALAMARES_STATE"],
+        "required": False,
+        "title": "Graphical installer runtime",
+        "command": "seven installer plan",
+    },
+    {
+        "key": "installer-planner",
+        "state": os.environ["PLANNER_STATE"],
+        "required": True,
+        "title": "Non-destructive install planner",
+        "command": "seven installer doctor",
+    },
+    {
+        "key": "calamares-settings",
+        "state": os.environ["CALAMARES_SETTINGS_STATE"],
+        "required": True,
+        "title": "Calamares module sequence",
+        "command": "seven installer doctor",
+    },
+    {
+        "key": "calamares-sevenos-module",
+        "state": os.environ["CALAMARES_MODULE_STATE"],
+        "required": True,
+        "title": "SevenOS Calamares post-install module",
+        "command": "seven installer doctor",
+    },
+    {
+        "key": "calamares-postinstall",
+        "state": os.environ["CALAMARES_POSTINSTALL_STATE"],
+        "required": True,
+        "title": "SevenOS base install hook",
+        "command": "seven installer doctor",
+    },
+    {
+        "key": "archiso-profile",
+        "state": os.environ["ARCHISO_STATE"],
+        "required": True,
+        "title": "Archiso live profile",
+        "command": "seven installer doctor",
+    },
+    {
+        "key": "iso-builder",
+        "state": os.environ["BUILD_STATE"],
+        "required": True,
+        "title": "ISO build script",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "iso-packages",
+        "state": os.environ["PACKAGES_STATE"],
+        "required": True,
+        "title": "Live ISO package list",
+        "command": "seven installer doctor",
+    },
+    {
+        "key": "repo-injection",
+        "state": os.environ["REPO_INJECTION_STATE"],
+        "required": True,
+        "title": "SevenOS repository injection",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-cli",
+        "state": os.environ["LIVE_CLI_STATE"],
+        "required": True,
+        "title": "Live CLI bootstrap",
+        "command": "seven installer doctor",
+    },
+]
+
+required = [item for item in checks if item["required"]]
+required_ok = sum(1 for item in required if item["state"] == "OK")
+optional_ok = sum(1 for item in checks if not item["required"] and item["state"] == "OK")
+score = round(((required_ok / max(len(required), 1)) * 85) + (optional_ok * 15))
+if score >= 95:
+    state = "graphical-ready"
+elif required_ok == len(required):
+    state = "tui-release-ready"
+elif score >= 70:
+    state = "iso-foundation"
+else:
+    state = "foundation"
+
+print(json.dumps({
+    "schema": "sevenos.installer-release.v1",
+    "state": state,
+    "score": min(score, 100),
+    "required_ready": required_ok,
+    "required_total": len(required),
+    "optional_ready": optional_ok,
+    "optional_total": len(checks) - len(required),
+    "checks": checks,
+}, indent=2))
+PY
 }
 
 status() {
@@ -60,6 +204,8 @@ status() {
   packages_state="$(file_state archiso/profile/packages.x86_64)"
 
   if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    local release_payload
+    release_payload="$(release_json)"
     printf '{'
     printf '"schema":"sevenos.installer.v1",'
     printf '"tooling":['
@@ -76,6 +222,7 @@ status() {
     printf '"ready":%s,' "$([[ "$archinstall_state" == OK && "$planner_state" == OK && "$archiso_state" == OK && "$build_state" == OK ]] && printf true || printf false)"
     printf '"mode":%s,' "$(if [[ "$calamares_state" == OK ]]; then printf graphical | json_string; elif [[ "$archinstall_state" == OK ]]; then printf tui-ready | json_string; else printf foundation | json_string; fi)"
     printf '"consumer_path":%s,' "$(if [[ "$calamares_state" == OK ]]; then printf graphical-calamares | json_string; elif [[ "$archinstall_state" == OK ]]; then printf guided-tui | json_string; else printf planned | json_string; fi)"
+    printf '"release":%s,' "$release_payload"
     printf '"commands":{"status":"seven installer status","plan":"seven installer plan","guide":"seven installer guide","doctor":"seven installer doctor"}'
     printf '}\n'
     return 0
@@ -90,6 +237,32 @@ status() {
   printf 'archiso:     %s\n' "$archiso_state"
   printf 'iso builder: %s\n' "$build_state"
   printf 'consumer:    %s\n' "$(if [[ "$calamares_state" == OK ]]; then printf graphical-calamares; elif [[ "$archinstall_state" == OK ]]; then printf guided-tui; else printf planned; fi)"
+  printf 'release:     %s\n' "$(release_json | python -c 'import json,sys; print(json.load(sys.stdin)["state"])')"
+}
+
+release_status() {
+  local release_payload
+  release_payload="$(release_json)"
+  RELEASE_JSON="$release_payload" python - <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["RELEASE_JSON"])
+print("SevenOS Installer Release Readiness")
+print("====================================")
+print(f"State:    {data.get('state')}")
+print(f"Score:    {data.get('score')}%")
+print(f"Required: {data.get('required_ready')}/{data.get('required_total')}")
+print(f"Optional: {data.get('optional_ready')}/{data.get('optional_total')}")
+print()
+print(f"{'Check':<26} {'State':<5} {'Required'}")
+print(f"{'-----':<26} {'-----':<5} {'--------'}")
+for item in data.get("checks", []):
+    print(f"{item.get('key',''):<26} {item.get('state',''):<5} {'yes' if item.get('required') else 'no'}")
+    if item.get("state") != "OK":
+        print(f"{'':<26} {'':<5} {item.get('command', '')}")
+PY
 }
 
 install_stack() {
@@ -156,6 +329,7 @@ import os
 
 status = json.loads(os.environ["INSTALLER_STATUS"])
 states = {item["key"]: item["state"] for item in status.get("tooling", []) + status.get("foundation", [])}
+release = status.get("release", {})
 
 metadata = {
     "archinstall": {
@@ -244,12 +418,31 @@ actions.append({
     "command": "./install.sh iso --dry-run",
 })
 
+for check in release.get("checks", []):
+    if check.get("state") == "OK":
+        continue
+    if check.get("key") in states:
+        continue
+    if check.get("key") == "calamares-runtime" and "calamares" in states:
+        continue
+    actions.append({
+        "key": check.get("key", "release-check"),
+        "state": check.get("state", "MISS"),
+        "title": check.get("title", "Resolve installer release check"),
+        "severity": "high" if check.get("required") else "medium",
+        "impact": "safe" if check.get("command", "").endswith("--dry-run") else "changes",
+        "phase": "release",
+        "reason": "Public ISO readiness requires this installer release check to pass.",
+        "command": check.get("command", "seven installer release"),
+    })
+
 actions.sort(key=lambda item: (rank.get(item["severity"], 9), item["phase"], item["key"]))
 
 print(json.dumps({
     "schema": "sevenos.installer-plan.v1",
     "mode": status.get("mode", "foundation"),
     "ready": bool(status.get("ready")),
+    "release": release,
     "summary": {
         "total": len(actions),
         "critical": sum(1 for item in actions if item["severity"] == "critical"),
@@ -299,6 +492,7 @@ case "$action" in
   doctor) doctor ;;
   plan) plan ;;
   guide) guide ;;
+  release) release_status ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown installer stack action: $action"; usage; exit 1 ;;
 esac

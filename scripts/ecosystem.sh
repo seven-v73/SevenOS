@@ -168,7 +168,7 @@ release_gaps = {
     "SevenShield": 8,
     "Seven Server": 8,
     "Seven Deploy": 8,
-    "Seven Installer": 20,
+    "Seven Installer": 10,
     "SevenBox": 8,
     "SevenAI": 15,
     "Adaptive UI": 15,

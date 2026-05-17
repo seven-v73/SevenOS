@@ -70,12 +70,24 @@ Use:
 
 ```bash
 seven installer status
+seven installer release
 seven installer doctor
 seven installer plan
 ```
 
 Calamares is the preferred graphical installer path. Archinstall remains the
 secondary automation backend for scripts, CI experiments and recovery flows.
+
+`seven installer release` is the public-ISO readiness contract. It separates
+the current TUI release path from the future graphical path:
+
+- required checks: Archinstall backend, installer planner, Calamares profile
+  files, SevenOS post-install hook, Archiso profile, ISO builder, package list,
+  repository injection and live CLI bootstrap
+- optional graphical check: Calamares runtime availability
+
+This lets SevenOS say "TUI release ready" honestly before Calamares is packaged
+for the live ISO.
 
 ## Next Step
 

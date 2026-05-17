@@ -1726,6 +1726,14 @@ fn dir_state(root: &Path, relative: &str) -> &'static str {
     }
 }
 
+fn file_contains_state(root: &Path, relative: &str, needle: &str) -> &'static str {
+    let path = root.join(relative);
+    match fs::read_to_string(path) {
+        Ok(contents) if contents.contains(needle) => "OK",
+        _ => "MISS",
+    }
+}
+
 fn installer_tooling_item(key: &str, state: &str) -> Value {
     json!({
         "key": key,
@@ -1764,6 +1772,148 @@ fn installer_status_items(root: &Path) -> (Vec<Value>, Vec<Value>) {
         ),
     ];
     (tooling, foundation)
+}
+
+fn installer_release_checks(root: &Path, tooling: &[Value], foundation: &[Value]) -> Vec<Value> {
+    vec![
+        json!({
+            "key": "archinstall-runtime",
+            "state": item_state(tooling, "archinstall"),
+            "required": true,
+            "title": "Guided TUI backend",
+            "command": "seven installer install",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "calamares-runtime",
+            "state": item_state(tooling, "calamares"),
+            "required": false,
+            "title": "Graphical installer runtime",
+            "command": "seven installer plan",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "installer-planner",
+            "state": item_state(foundation, "planner"),
+            "required": true,
+            "title": "Non-destructive install planner",
+            "command": "seven installer doctor",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "calamares-settings",
+            "state": file_state(root, "installer/calamares/settings.conf"),
+            "required": true,
+            "title": "Calamares module sequence",
+            "command": "seven installer doctor",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "calamares-sevenos-module",
+            "state": file_state(root, "installer/calamares/modules/sevenos.conf"),
+            "required": true,
+            "title": "SevenOS Calamares post-install module",
+            "command": "seven installer doctor",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "calamares-postinstall",
+            "state": file_contains_state(root, "installer/calamares/modules/sevenos.conf", "/opt/SevenOS/install.sh base"),
+            "required": true,
+            "title": "SevenOS base install hook",
+            "command": "seven installer doctor",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "archiso-profile",
+            "state": item_state(foundation, "archiso-profile"),
+            "required": true,
+            "title": "Archiso live profile",
+            "command": "seven installer doctor",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "iso-builder",
+            "state": item_state(foundation, "iso-builder"),
+            "required": true,
+            "title": "ISO build script",
+            "command": "./install.sh iso --dry-run",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "iso-packages",
+            "state": item_state(foundation, "iso-packages"),
+            "required": true,
+            "title": "Live ISO package list",
+            "command": "seven installer doctor",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "repo-injection",
+            "state": file_contains_state(root, "scripts/build-iso.sh", "/opt/SevenOS"),
+            "required": true,
+            "title": "SevenOS repository injection",
+            "command": "./install.sh iso --dry-run",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "live-cli",
+            "state": file_contains_state(root, "archiso/profile/airootfs/root/customize_airootfs.sh", "/opt/SevenOS/bin/seven"),
+            "required": true,
+            "title": "Live CLI bootstrap",
+            "command": "seven installer doctor",
+            "writer": "seven-daemon",
+        }),
+    ]
+}
+
+fn installer_release_json(root: &Path, tooling: &[Value], foundation: &[Value]) -> Value {
+    let checks = installer_release_checks(root, tooling, foundation);
+    let required_total = checks
+        .iter()
+        .filter(|item| item.get("required").and_then(Value::as_bool) == Some(true))
+        .count();
+    let required_ready = checks
+        .iter()
+        .filter(|item| {
+            item.get("required").and_then(Value::as_bool) == Some(true)
+                && item.get("state").and_then(Value::as_str) == Some("OK")
+        })
+        .count();
+    let optional_total = checks.len().saturating_sub(required_total);
+    let optional_ready = checks
+        .iter()
+        .filter(|item| {
+            item.get("required").and_then(Value::as_bool) == Some(false)
+                && item.get("state").and_then(Value::as_str) == Some("OK")
+        })
+        .count();
+    let score = (((required_ready as f64 / required_total.max(1) as f64) * 85.0)
+        + (optional_ready as f64 * 15.0))
+        .round()
+        .min(100.0) as u64;
+    let state = if score >= 95 {
+        "graphical-ready"
+    } else if required_ready == required_total {
+        "tui-release-ready"
+    } else if score >= 70 {
+        "iso-foundation"
+    } else {
+        "foundation"
+    };
+
+    json!({
+        "schema": "sevenos.installer-release.v1",
+        "state": state,
+        "score": score,
+        "required_ready": required_ready,
+        "required_total": required_total,
+        "optional_ready": optional_ready,
+        "optional_total": optional_total,
+        "checks": checks,
+        "runtime": "seven-daemon",
+        "writer": "seven-daemon",
+    })
 }
 
 fn item_state(items: &[Value], key: &str) -> String {
@@ -1805,6 +1955,7 @@ fn installer_ready(tooling: &[Value], foundation: &[Value]) -> bool {
 fn installer_json() {
     let root = sevenos_root().unwrap_or_else(|| PathBuf::from("."));
     let (tooling, foundation) = installer_status_items(&root);
+    let release = installer_release_json(&root, &tooling, &foundation);
     let payload = json!({
         "schema": "sevenos.installer.v1",
         "tooling": tooling,
@@ -1812,10 +1963,12 @@ fn installer_json() {
         "ready": installer_ready(&tooling, &foundation),
         "mode": installer_mode(&tooling),
         "consumer_path": installer_consumer_path(&tooling),
+        "release": release,
         "commands": {
             "status": "seven installer status",
             "guide": "seven installer guide",
             "plan": "seven installer plan",
+            "release": "seven installer release",
             "install_tools": "seven installer install"
         },
         "runtime": "seven-daemon",
@@ -1918,6 +2071,7 @@ fn installer_plan_item(key: &str, state: &str) -> Value {
 fn installer_plan_json() {
     let root = sevenos_root().unwrap_or_else(|| PathBuf::from("."));
     let (tooling, foundation) = installer_status_items(&root);
+    let release = installer_release_json(&root, &tooling, &foundation);
     let mut actions = Vec::new();
     for item in tooling.iter().chain(foundation.iter()) {
         let key = item.get("key").and_then(Value::as_str).unwrap_or("unknown");
@@ -1927,6 +2081,40 @@ fn installer_plan_json() {
         }
     }
     actions.push(installer_plan_item("dry-run-iso", "READY"));
+    let existing_keys: Vec<String> = tooling
+        .iter()
+        .chain(foundation.iter())
+        .filter_map(|item| item.get("key").and_then(Value::as_str).map(str::to_string))
+        .collect();
+    if let Some(checks) = release.get("checks").and_then(Value::as_array) {
+        for check in checks {
+            let state = check.get("state").and_then(Value::as_str).unwrap_or("MISS");
+            if state == "OK" {
+                continue;
+            }
+            let key = check
+                .get("key")
+                .and_then(Value::as_str)
+                .unwrap_or("release-check");
+            if existing_keys.iter().any(|existing| existing == key) {
+                continue;
+            }
+            if key == "calamares-runtime" && existing_keys.iter().any(|existing| existing == "calamares") {
+                continue;
+            }
+            actions.push(json!({
+                "key": key,
+                "state": state,
+                "title": check.get("title").and_then(Value::as_str).unwrap_or("Resolve installer release check"),
+                "severity": if check.get("required").and_then(Value::as_bool) == Some(true) { "high" } else { "medium" },
+                "impact": if check.get("command").and_then(Value::as_str).unwrap_or("").ends_with("--dry-run") { "safe" } else { "changes" },
+                "phase": "release",
+                "reason": "Public ISO readiness requires this installer release check to pass.",
+                "command": check.get("command").and_then(Value::as_str).unwrap_or("seven installer release"),
+                "writer": "seven-daemon",
+            }));
+        }
+    }
     actions.sort_by(|left, right| {
         severity_rank(left)
             .cmp(&severity_rank(right))
@@ -1959,6 +2147,7 @@ fn installer_plan_json() {
         "schema": "sevenos.installer-plan.v1",
         "mode": installer_mode(&tooling),
         "ready": installer_ready(&tooling, &foundation),
+        "release": release,
         "summary": {
             "total": actions.len(),
             "critical": critical,
@@ -3968,6 +4157,14 @@ fn main() {
         windows_plan_json();
     } else if action == "installer" {
         installer_json();
+    } else if action == "installer-release" {
+        let root = sevenos_root().unwrap_or_else(|| PathBuf::from("."));
+        let (tooling, foundation) = installer_status_items(&root);
+        println!(
+            "{}",
+            serde_json::to_string(&installer_release_json(&root, &tooling, &foundation))
+                .unwrap_or_else(|_| "{}".to_string())
+        );
     } else if action == "installer-plan" {
         installer_plan_json();
     } else if action == "packages" {

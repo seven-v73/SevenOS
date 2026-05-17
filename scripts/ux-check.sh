@@ -1139,6 +1139,7 @@ identity_current_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" identity curren
 windows_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows plan --json)"
 installer_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer status --json)"
 installer_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer plan --json)"
+installer_release_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer release)"
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
 core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
@@ -1230,7 +1231,11 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"writer":"seven-daemon"' <<<"$windows_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer.v1"' <<<"$installer_json" &&
    grep -q '"writer":"seven-daemon"' <<<"$installer_json" &&
+   grep -q '"release"' <<<"$installer_json" &&
+   grep -q 'sevenos.installer-release.v1' <<<"$installer_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-plan.v1"' <<<"$installer_plan_json" &&
+   grep -q '"release"' <<<"$installer_plan_json" &&
+   grep -q 'SevenOS Installer Release Readiness' <<<"$installer_release_output" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
    grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$packages_plan_json" &&
    grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
