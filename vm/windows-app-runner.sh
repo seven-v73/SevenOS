@@ -290,7 +290,7 @@ run_app() {
   engine="$(python -c 'import json,sys; print(json.load(sys.stdin).get("engine","missing"))' <<<"$resolved")"
   ready="$(python -c 'import json,sys; print(str(json.load(sys.stdin).get("ready", False)).lower())' <<<"$resolved")"
 
-  if [[ "$ready" != "true" && ! dry_run ]]; then
+  if [[ "$ready" != "true" ]] && ! dry_run; then
     printf '%s\n' "$resolved" | python -m json.tool >&2
     return 1
   fi

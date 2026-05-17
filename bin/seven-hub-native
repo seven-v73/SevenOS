@@ -383,6 +383,8 @@ def run_ecosystem_command(command: str, title: str = "SevenOS Process") -> None:
         parts[0] = str(ROOT / "bin" / "sevenpkg")
     elif parts[0] == "seven-hub-native":
         parts[0] = str(ROOT / "bin" / "seven-hub-native")
+    elif parts[0] == "seven-settings":
+        parts[0] = str(ROOT / "bin" / "seven-settings")
 
     run_visible(*parts, title=title)
 
@@ -423,25 +425,28 @@ def run_gui() -> int:
     def install_css() -> None:
         css = """
         window.seven-hub-window {
-          background: #eef4f8;
+          background:
+            linear-gradient(180deg, rgba(246, 251, 254, 0.98), rgba(226, 239, 247, 0.92));
           color: rgba(23, 35, 43, 0.96);
         }
 
         .seven-root {
           background:
-            linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(111, 157, 188, 0.10) 42%, rgba(238, 244, 248, 0.74) 72%),
-            #eef4f8;
+            linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(111, 157, 188, 0.12) 42%, rgba(238, 244, 248, 0.78) 72%),
+            rgba(238, 244, 248, 0.96);
         }
 
         .seven-body {
-          background: rgba(255, 255, 255, 0.30);
-          border: 1px solid rgba(255, 255, 255, 0.54);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(226, 239, 247, 0.32));
+          border: 1px solid rgba(255, 255, 255, 0.72);
           border-radius: 24px;
           margin: 24px;
         }
 
         .seven-sidebar {
-          background: rgba(255, 255, 255, 0.22);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(226, 239, 247, 0.24));
           border-right: 1px solid rgba(122, 153, 170, 0.22);
           padding: 24px 18px;
         }
@@ -462,18 +467,18 @@ def run_gui() -> int:
         }
 
         .seven-nav-item:hover {
-          background: rgba(255, 255, 255, 0.54);
+          background: rgba(255, 255, 255, 0.60);
         }
 
         .seven-nav-item.active {
-          background: rgba(255, 255, 255, 0.44);
+          background: rgba(255, 255, 255, 0.70);
           color: #17232b;
           outline: 1px solid rgba(111, 157, 188, 0.42);
         }
 
         .seven-status-card {
-          background: rgba(255, 255, 255, 0.30);
-          border: 1px solid rgba(255, 255, 255, 0.50);
+          background: rgba(255, 255, 255, 0.46);
+          border: 1px solid rgba(255, 255, 255, 0.64);
           border-radius: 16px;
           padding: 14px;
           margin-top: 18px;
@@ -489,8 +494,9 @@ def run_gui() -> int:
         }
 
         .seven-hero {
-          background: rgba(255, 255, 255, 0.30);
-          border: 1px solid rgba(255, 255, 255, 0.54);
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(226, 239, 247, 0.30));
+          border: 1px solid rgba(255, 255, 255, 0.70);
           border-radius: 18px;
           padding: 20px 22px;
           margin-bottom: 4px;
@@ -515,8 +521,8 @@ def run_gui() -> int:
         .seven-metric-card {
           min-width: 154px;
           min-height: 84px;
-          background: rgba(255, 255, 255, 0.30);
-          border: 1px solid rgba(255, 255, 255, 0.54);
+          background: rgba(255, 255, 255, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.66);
           border-radius: 18px;
           padding: 14px;
         }
@@ -562,12 +568,12 @@ def run_gui() -> int:
           margin-top: 6px;
           margin-bottom: 6px;
           border-radius: 14px;
-          background: rgba(255, 255, 255, 0.30);
-          border: 1px solid rgba(255, 255, 255, 0.52);
+          background: rgba(255, 255, 255, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.64);
         }
 
         row.seven-card:hover {
-          background: rgba(255, 255, 255, 0.44);
+          background: rgba(255, 255, 255, 0.64);
           border-color: rgba(111, 157, 188, 0.38);
         }
 
@@ -576,6 +582,75 @@ def run_gui() -> int:
           padding: 4px 9px;
           background: rgba(90, 173, 114, 0.14);
           color: #5aad72;
+        }
+
+        .seven-compact-grid {
+          margin-top: 4px;
+        }
+
+        .seven-tile {
+          min-width: 168px;
+          min-height: 116px;
+          padding: 14px;
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.68);
+          color: rgba(23, 35, 43, 0.96);
+        }
+
+        .seven-tile:hover {
+          background: rgba(255, 255, 255, 0.70);
+          border-color: rgba(111, 157, 188, 0.38);
+        }
+
+        .seven-tile.good {
+          border-color: rgba(90, 173, 114, 0.30);
+          background: rgba(90, 173, 114, 0.08);
+        }
+
+        .seven-tile.warn {
+          border-color: rgba(111, 157, 188, 0.34);
+          background: rgba(111, 157, 188, 0.08);
+        }
+
+        .seven-tile.bad {
+          border-color: rgba(196, 103, 58, 0.28);
+          background: rgba(196, 103, 58, 0.08);
+        }
+
+        .seven-tile-icon {
+          font-size: 26px;
+          color: rgba(48, 78, 98, 0.92);
+        }
+
+        .seven-tile-title {
+          color: rgba(23, 35, 43, 0.98);
+          font-size: 14px;
+          font-weight: 500;
+        }
+
+        .seven-tile-note {
+          color: rgba(77, 96, 106, 0.66);
+          font-size: 11px;
+        }
+
+        .seven-glass-strip {
+          padding: 13px;
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.44);
+          border: 1px solid rgba(255, 255, 255, 0.66);
+        }
+
+        .seven-action-dot {
+          min-width: 42px;
+          min-height: 42px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.58);
+          border: 1px solid rgba(255, 255, 255, 0.78);
+        }
+
+        .seven-action-dot:hover {
+          background: rgba(255, 255, 255, 0.82);
         }
         """
         provider = Gtk.CssProvider()
@@ -757,6 +832,87 @@ def run_gui() -> int:
                 if percent >= 60:
                     return "warn"
                 return "bad"
+
+            def state_short(state: str) -> str:
+                value = str(state or "unknown").replace("-", " ")
+                return value[:22]
+
+            def status_card(title_text: str, subtitle: str, state: str = "RUN", css_state: str = "warn") -> Gtk.Box:
+                card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+                card.add_css_class("seven-tile")
+                if css_state in ("good", "warn", "bad"):
+                    card.add_css_class(css_state)
+                icon = Gtk.Label(label="●")
+                icon.set_xalign(0)
+                icon.add_css_class("seven-tile-icon")
+                title = Gtk.Label(label=title_text)
+                title.set_xalign(0)
+                title.add_css_class("seven-tile-title")
+                note = Gtk.Label(label=f"{state} · {subtitle}")
+                note.set_xalign(0)
+                note.set_wrap(True)
+                note.set_lines(2)
+                note.add_css_class("seven-tile-note")
+                card.append(icon)
+                card.append(title)
+                card.append(note)
+                return card
+
+            def tile_button(icon_text: str, title_text: str, note_text: str, command: str, state: str = "warn") -> Gtk.Button:
+                button = Gtk.Button()
+                button.add_css_class("seven-tile")
+                if state in ("good", "warn", "bad"):
+                    button.add_css_class(state)
+                button.set_tooltip_text(command)
+                box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+                icon = Gtk.Label(label=icon_text)
+                icon.set_xalign(0)
+                icon.add_css_class("seven-tile-icon")
+                title = Gtk.Label(label=title_text)
+                title.set_xalign(0)
+                title.add_css_class("seven-tile-title")
+                note = Gtk.Label(label=note_text)
+                note.set_xalign(0)
+                note.set_wrap(True)
+                note.set_lines(2)
+                note.add_css_class("seven-tile-note")
+                box.append(icon)
+                box.append(title)
+                box.append(note)
+                button.set_child(box)
+                button.connect(
+                    "clicked",
+                    lambda _button, command=command, title_text=title_text: run_ecosystem_command(
+                        command,
+                        title=f"SevenOS Hub - {title_text}",
+                    ),
+                )
+                return button
+
+            def icon_action(icon_name: str, tooltip: str, command: str) -> Gtk.Button:
+                button = Gtk.Button()
+                button.add_css_class("seven-action-dot")
+                button.set_icon_name(icon_name)
+                button.set_tooltip_text(tooltip)
+                button.connect(
+                    "clicked",
+                    lambda _button, command=command, tooltip=tooltip: run_ecosystem_command(
+                        command,
+                        title=f"SevenOS - {tooltip}",
+                    ),
+                )
+                return button
+
+            def compact_grid() -> Gtk.Grid:
+                grid = Gtk.Grid()
+                grid.add_css_class("seven-compact-grid")
+                grid.set_column_spacing(12)
+                grid.set_row_spacing(12)
+                return grid
+
+            def add_tiles(grid: Gtk.Grid, tiles: list[Gtk.Widget], columns: int = 4) -> None:
+                for index, tile in enumerate(tiles):
+                    grid.attach(tile, index % columns, index // columns, 1, 1)
 
             def render_dashboard() -> None:
                 clear(dashboard)
@@ -1366,11 +1522,190 @@ def run_gui() -> int:
                     process_group.add(row)
                 ecosystem_page.append(process_group)
 
+            def render_dashboard_compact() -> None:
+                clear(dashboard)
+                readiness = readiness_payload()
+                experience = experience_payload()
+                shield = shield_payload()
+                server = server_payload()
+                windows = windows_payload()
+                daily = daily_payload()
+                profiles = profile_payload()
+                identity = identity_payload()
+                control = control_payload()
+                active = next((item for item in profiles if item.get("active")), None)
+
+                heading(dashboard, "Seven Hub", "Control Center for the active SevenOS session.")
+
+                metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+                metrics.add_css_class("seven-metric-row")
+                readiness_percent = int(readiness.get("percent", 0) or 0)
+                shield_percent = int(shield.get("percent", 0) or 0)
+                experience_percent = int(experience.get("percent", 0) or 0)
+                daily_state = daily.get("decision", "unknown")
+                metrics.append(metric_card("Readiness", f"{readiness_percent}%", "system", metric_state(readiness_percent)))
+                metrics.append(metric_card("Shield", f"{shield_percent}%", "trust", metric_state(shield_percent)))
+                metrics.append(metric_card("UX", f"{experience_percent}%", "experience", metric_state(experience_percent)))
+                metrics.append(metric_card("Daily", state_short(daily_state), f"{len(daily.get('blockers', []))} blockers", "good" if daily_state == "ready" else "warn"))
+                dashboard.append(metrics)
+
+                strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+                strip.add_css_class("seven-glass-strip")
+                for icon_name, tooltip, command in [
+                    ("system-search-symbolic", "Spotlight", "seven-spotlight"),
+                    ("view-grid-symbolic", "Launchpad", "seven-overview apps"),
+                    ("folder-symbolic", "Files", "seven-files"),
+                    ("preferences-system-symbolic", "Settings", "seven-settings"),
+                    ("emblem-system-symbolic", "Quick Settings", "seven-quick-settings"),
+                    ("security-high-symbolic", "Shield", "seven shield dashboard"),
+                    ("system-shutdown-symbolic", "Power", "seven-power"),
+                ]:
+                    strip.append(icon_action(icon_name, tooltip, command))
+                dashboard.append(strip)
+
+                grid = compact_grid()
+                tiles = [
+                    tile_button("7", "Profile", active.get("title", "Baobab") if active else "Choose mode", "seven-waybar-action profile", "good" if active else "warn"),
+                    tile_button("⚙", "Settings", "desktop controls", "seven-settings", "good"),
+                    tile_button("!", "Security", shield.get("posture", "unknown"), "seven shield dashboard", metric_state(shield_percent)),
+                    tile_button("W", "Windows", windows.get("mode", "setup"), "seven-windows-assistant guide", "good" if windows.get("ready") else "warn"),
+                    tile_button("S", "Server", server.get("state", server.get("service", {}).get("state", "MISS")), "seven server status", "good" if str(server.get("state", "")).upper() == "RUN" else "warn"),
+                    tile_button("A", "Apps", "install and update", "sevenpkg status", "warn"),
+                    tile_button("D", "Doctor", "repair path", "seven doctor", "warn"),
+                    tile_button("B", "B3", "phase gate", "seven b3 status", "warn"),
+                    tile_button("I", "Identity", identity.get("current_pack", {}).get("title", "African first"), "seven identity status", "good"),
+                ]
+                add_tiles(grid, tiles, 4)
+                dashboard.append(grid)
+
+                control_actions = control.get("actions") or []
+                if control_actions:
+                    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+                    actions.add_css_class("seven-glass-strip")
+                    for item in control_actions[:4]:
+                        actions.append(
+                            tile_button(
+                                "→",
+                                item.get("title", "Action"),
+                                item.get("severity", "next"),
+                                item.get("command", "seven control"),
+                                "bad" if item.get("severity") in {"critical", "high"} else "warn",
+                            )
+                        )
+                    dashboard.append(actions)
+
+            def render_profiles_compact() -> None:
+                clear(profiles_page)
+                heading(profiles_page, "Profiles", "Workspace modes for work, security, creation and compatibility.")
+                grid = compact_grid()
+                tiles = []
+                for profile in profile_payload():
+                    title_text = profile.get("title", profile.get("key", "Profile"))
+                    state = profile.get("state", "MISS")
+                    note = "active" if profile.get("active") else f"{profile.get('installed', 0)}/{profile.get('total', 0)} ready"
+                    command = f"seven profile activate {profile['key']}" if state == "OK" else f"seven profile install {profile['key']}"
+                    icon = title_text[:1].upper()
+                    tiles.append(tile_button(icon, title_text, note, command, metric_state(100 if state == "OK" else 65 if state == "PART" else 20)))
+                add_tiles(grid, tiles, 3)
+                profiles_page.append(grid)
+
+                actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+                actions.add_css_class("seven-glass-strip")
+                for icon_name, tooltip, command in [
+                    ("view-refresh-symbolic", "Bootstrap active profile", "seven profile bootstrap active"),
+                    ("folder-symbolic", "Open profile workspace", "seven-files profile"),
+                    ("dialog-information-symbolic", "Profile guide", "seven profile guide"),
+                    ("document-save-symbolic", "Install all profile workspaces", "seven profile bootstrap all"),
+                ]:
+                    actions.append(icon_action(icon_name, tooltip, command))
+                profiles_page.append(actions)
+
+            def render_actions_compact() -> None:
+                clear(actions_page)
+                heading(actions_page, "Actions", "One tap operations for the system. Details stay in tooltips and terminal output.")
+                payload = actions_payload()
+                interesting = []
+                preferred = {
+                    "apps.open",
+                    "files.open",
+                    "security.dashboard",
+                    "security.audit",
+                    "windows.guide",
+                    "windows.apps",
+                    "server.status",
+                    "daily.status",
+                    "doctor.run",
+                    "readiness.run",
+                    "installer.status",
+                    "flatpak.status",
+                }
+                for item in payload.get("actions", []):
+                    if item.get("id") in preferred:
+                        interesting.append(item)
+                if not interesting:
+                    interesting = (payload.get("actions") or [])[:12]
+
+                grid = compact_grid()
+                tiles = [
+                    tile_button(
+                        item.get("title", item.get("id", "Action"))[:1].upper(),
+                        item.get("title", item.get("id", "Action")),
+                        item.get("category", "System"),
+                        f"seven actions run {item.get('id')}",
+                        "good" if item.get("impact") == "safe" else "warn",
+                    )
+                    for item in interesting[:12]
+                ]
+                add_tiles(grid, tiles, 4)
+                actions_page.append(grid)
+
+            def render_ecosystem_compact() -> None:
+                clear(ecosystem_page)
+                payload = ecosystem_payload()
+                stack = stack_payload()
+                core = core_payload()
+                shell = shell_payload()
+                heading(ecosystem_page, "Ecosystem", "SevenOS layers as a product map.")
+
+                modules = payload.get("modules", [])
+                active = sum(1 for item in modules if item.get("state") == "active")
+                preview = sum(1 for item in modules if item.get("state") == "preview")
+                planned = sum(1 for item in modules if item.get("state") == "planned")
+                metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+                metrics.add_css_class("seven-metric-row")
+                metrics.append(metric_card("Active", str(active), "modules", "good"))
+                metrics.append(metric_card("Preview", str(preview), "modules", "warn"))
+                metrics.append(metric_card("Planned", str(planned), "modules", "warn"))
+                metrics.append(metric_card("Stack", stack.get("phase", "B2-B3"), "strategy", "warn"))
+                ecosystem_page.append(metrics)
+
+                grid = compact_grid()
+                tiles = [
+                    tile_button("C", "Seven Core", core.get("state", "foundation"), "seven core status", "good" if core.get("state") == "ready" else "warn"),
+                    tile_button("S", "Seven Shell", shell.get("state", "foundation"), "seven shell status", "warn"),
+                    tile_button("P", "Profiles", "work modes", "seven profile status", "warn"),
+                    tile_button("W", "Windows", "app layer", "seven windows status", "warn"),
+                    tile_button("H", "Hub", "control center", "seven hub", "good"),
+                    tile_button("D", "Deploy", "server layer", "seven server status", "warn"),
+                ]
+                for module in modules[:6]:
+                    tiles.append(
+                        tile_button(
+                            module.get("name", "Module")[:1].upper(),
+                            module.get("name", "Module"),
+                            module.get("state", "planned"),
+                            module.get("command", "seven ecosystem summary"),
+                            "good" if module.get("state") == "active" else "warn",
+                        )
+                    )
+                add_tiles(grid, tiles[:12], 4)
+                ecosystem_page.append(grid)
+
             def render_all() -> None:
-                render_dashboard()
-                render_profiles()
-                render_actions()
-                render_ecosystem()
+                render_dashboard_compact()
+                render_profiles_compact()
+                render_actions_compact()
+                render_ecosystem_compact()
 
             def render_loading_shell() -> None:
                 clear(dashboard)

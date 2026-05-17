@@ -1,0 +1,315 @@
+#!/usr/bin/env python3
+"""Native SevenOS Waybar centers for network, audio, power and system."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+def out(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout.strip()
+
+
+def run_detached(command: str) -> None:
+    subprocess.Popen(
+        ["bash", "-lc", command],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def wifi_state() -> tuple[str, str]:
+    if not shutil.which("nmcli"):
+        return "Missing", "NetworkManager tools unavailable"
+    radio = out(["nmcli", "radio", "wifi"])
+    if radio == "disabled":
+        return "Off", "Wi-Fi radio disabled"
+    ssid = out(["bash", "-lc", "nmcli -t -f active,ssid dev wifi | awk -F: '$1==\"yes\"{print $2; exit}'"])
+    return "On", ssid or "Not connected"
+
+
+def wifi_signal() -> str:
+    if not shutil.which("nmcli"):
+        return "--"
+    signal = out(["bash", "-lc", "nmcli -t -f ACTIVE,SIGNAL dev wifi | awk -F: '$1==\"yes\"{print $2; exit}'"])
+    return f"{signal}%" if signal else "--"
+
+
+def volume_state() -> tuple[int, str]:
+    if not shutil.which("wpctl"):
+        return 0, "Audio tools unavailable"
+    raw = out(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
+    try:
+        value = int(float(raw.split()[1]) * 100)
+    except Exception:
+        value = 0
+    muted = "muted" if "MUTED" in raw else "active"
+    return max(0, min(100, value)), muted
+
+
+def set_volume(value: float) -> None:
+    if shutil.which("wpctl"):
+        subprocess.Popen(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{int(value)}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def battery_state() -> tuple[str, str]:
+    bats = list(Path("/sys/class/power_supply").glob("BAT*"))
+    if not bats:
+        return "AC", "No battery detected"
+    bat = bats[0]
+    status = (bat / "status").read_text(encoding="utf-8", errors="ignore").strip() if (bat / "status").exists() else "Unknown"
+    capacity = (bat / "capacity").read_text(encoding="utf-8", errors="ignore").strip() if (bat / "capacity").exists() else "?"
+    return f"{capacity}%", status
+
+
+def probe_system() -> tuple[str, str]:
+    load = out(["bash", "-lc", "awk '{print $1}' /proc/loadavg"])
+    mem = out(["bash", "-lc", "free -h | awk '/Mem:/ {print $3\" / \"$2}'"])
+    return load or "0.00", mem or "unknown"
+
+
+def run(panel: str) -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    panel = panel if panel in {"network", "audio", "power", "system", "time"} else "system"
+    titles = {
+        "network": ("Wi-Fi", "Connect, toggle and manage nearby networks"),
+        "audio": ("Sound", "Volume, mute and output controls"),
+        "power": ("Power", "Battery, lock and energy controls"),
+        "system": ("System", "Performance, settings and repair"),
+        "time": ("Time", "Calendar, clock and date actions"),
+    }
+
+    GLib.set_prgname("SevenWaybarCenterNative")
+    GLib.set_application_name(f"SevenOS {titles[panel][0]}")
+    try:
+        Gdk.set_program_class("SevenWaybarCenterNative")
+    except Exception:
+        pass
+
+    css = """
+    window.waybar-center-window { background: transparent; }
+    .center-root {
+      padding: 16px;
+      border-radius: 30px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(230,244,249,0.66)), rgba(255,255,255,0.58);
+      border: 1px solid rgba(255,255,255,0.84);
+    }
+    .title { color: rgba(16,27,34,0.98); font-size: 18px; font-weight: 500; }
+    .subtitle { color: rgba(42,58,68,0.62); font-size: 11px; }
+    .hint {
+      padding: 10px 12px;
+      border-radius: 20px;
+      color: rgba(36,52,62,0.70);
+      font-size: 11px;
+      background: rgba(255,255,255,0.38);
+      border: 1px solid rgba(255,255,255,0.58);
+    }
+    .metric {
+      min-height: 86px;
+      padding: 13px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.52);
+      border: 1px solid rgba(255,255,255,0.72);
+    }
+    .metric-value { color: rgba(16,27,34,0.98); font-size: 24px; font-weight: 500; }
+    .metric-label { color: rgba(44,60,70,0.66); font-size: 11px; }
+    .wide-card {
+      padding: 13px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.50);
+      border: 1px solid rgba(255,255,255,0.70);
+    }
+    .scale trough { min-height: 8px; border-radius: 999px; background: rgba(94,116,130,0.18); }
+    .scale highlight { border-radius: 999px; background: rgba(78,139,189,0.75); }
+    .scale slider {
+      min-width: 22px;
+      min-height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(91,127,166,0.22);
+    }
+    .action-strip {
+      padding: 12px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.46);
+      border: 1px solid rgba(255,255,255,0.68);
+    }
+    .icon-action {
+      min-width: 46px;
+      min-height: 46px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.58);
+      border: 1px solid rgba(255,255,255,0.76);
+    }
+    .icon-action:hover { background: rgba(255,255,255,0.84); }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title=f"SevenOS {titles[panel][0]}")
+    window.set_wmclass("SevenWaybarCenterNative", "SevenWaybarCenterNative")
+    window.set_decorated(False)
+    window.set_resizable(False)
+    window.set_keep_above(True)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_default_size(420, 360)
+    window.get_style_context().add_class("waybar-center-window")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    root.get_style_context().add_class("center-root")
+    window.add(root)
+
+    title = Gtk.Label(label=titles[panel][0], xalign=0)
+    title.get_style_context().add_class("title")
+    root.pack_start(title, False, False, 0)
+    subtitle = Gtk.Label(label=titles[panel][1], xalign=0)
+    subtitle.get_style_context().add_class("subtitle")
+    root.pack_start(subtitle, False, False, 0)
+
+    if panel == "network":
+        state, detail = wifi_state()
+        root.pack_start(metric_row(Gtk, [(state, "Wi-Fi"), (detail, "Network"), (wifi_signal(), "Signal")]), False, False, 0)
+        root.pack_start(hint(Gtk, "Choose opens the simple Wi-Fi list: toggle, connected network and nearby SSIDs."), False, False, 0)
+        actions = [("󰤨", "Networks", "seven-wifi menu"), ("󰖩", "On / Off", "seven-wifi toggle"), ("󰤭", "Disconnect", "seven-wifi disconnect"), ("󰒓", "Settings", "seven-settings network")]
+    elif panel == "audio":
+        volume, muted = volume_state()
+        root.pack_start(metric_row(Gtk, [(f"{volume}%", "Volume"), (muted.title(), "State")]), False, False, 0)
+        root.pack_start(slider(Gtk, volume, set_volume), False, False, 0)
+        actions = [("󰕾", "Mixer", "pavucontrol"), ("󰖁", "Mute", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), ("󰝝", "Volume +", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"), ("󰒓", "Settings", "seven-settings sound")]
+    elif panel == "power":
+        capacity, status = battery_state()
+        root.pack_start(metric_row(Gtk, [(capacity, "Battery"), (status, "State")]), False, False, 0)
+        actions = [("󰍁", "Lock", "seven-power lock"), ("󰒲", "Sleep", "seven-power suspend"), ("󰐥", "Power", "seven-power"), ("󰒓", "Settings", "seven-settings power")]
+    elif panel == "time":
+        now = out(["date", "+%H:%M"])
+        day = out(["date", "+%A %d %B"])
+        root.pack_start(metric_row(Gtk, [(now, "Local"), (day, "Date")]), False, False, 0)
+        actions = [("󰃭", "Calendar", "gnome-calendar || seven-spotlight calendar"), ("󰥔", "Clock", "seven-spotlight time"), ("󰀗", "World", "seven-spotlight world time"), ("󰒓", "Settings", "seven-settings system")]
+    else:
+        load, mem = probe_system()
+        root.pack_start(metric_row(Gtk, [(load, "Load"), (mem, "Memory")]), False, False, 0)
+        root.pack_start(hint(Gtk, "Use Settings for normal controls; Monitor and Repair remain one-click utilities."), False, False, 0)
+        actions = [("󰍛", "Monitor", "seven-terminal classic -- bash -lc 'btop || top'"), ("󰚰", "Updates", "seven-settings system"), ("󰜉", "Repair UI", "seven-waybar repair"), ("󰒓", "Settings", "seven-settings system")]
+
+    strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    strip.set_halign(Gtk.Align.CENTER)
+    strip.get_style_context().add_class("action-strip")
+    root.pack_end(strip, False, False, 0)
+    for glyph, tooltip, command in actions:
+        button = Gtk.Button()
+        button.get_style_context().add_class("icon-action")
+        button.set_tooltip_text(tooltip)
+        button.add(Gtk.Label(label=glyph))
+        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        strip.pack_start(button, False, False, 0)
+
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def metric_row(Gtk, items: list[tuple[str, str]]):
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    for value, label in items:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        box.get_style_context().add_class("metric")
+        value_label = Gtk.Label(label=value)
+        value_label.get_style_context().add_class("metric-value")
+        note = Gtk.Label(label=label)
+        note.get_style_context().add_class("metric-label")
+        box.pack_start(value_label, False, False, 0)
+        box.pack_start(note, False, False, 0)
+        row.pack_start(box, True, True, 0)
+    return row
+
+
+def hint(Gtk, text: str):
+    label = Gtk.Label(label=text, xalign=0)
+    label.set_line_wrap(True)
+    label.get_style_context().add_class("hint")
+    return label
+
+
+def slider(Gtk, value: int, callback):
+    card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    card.get_style_context().add_class("wide-card")
+    scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+    scale.set_value(value)
+    scale.set_draw_value(False)
+    scale.get_style_context().add_class("scale")
+    scale.connect("value-changed", lambda widget: callback(widget.get_value()))
+    card.pack_start(scale, False, False, 0)
+    return card
+
+
+def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--probe":
+        return probe()
+    panel = sys.argv[1] if len(sys.argv) > 1 else "system"
+    return run(panel)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

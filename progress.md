@@ -14,7 +14,7 @@ Phase B2 / Product Consolidation Before ISO
 
 Cela signifie que SevenOS n'est plus seulement une idee ou un theme Arch. Le projet possede deja une architecture de distribution, une identite visuelle, des scripts d'installation, des profils metiers, un debut de Control Center, une couche Windows, une base ISO, une couche serveur et un gestionnaire logiciel maison.
 
-Le niveau actuel a progresse sur l'experience desktop : Waybar n'est plus seulement informative, les menus Rofi sont plus lisibles, et le lanceur d'applications suit maintenant une logique Launchpad plein ecran inspiree de macOS, adaptee a l'identite SevenOS.
+Le niveau actuel a progresse sur l'experience desktop : Waybar n'est plus seulement informative, les menus Rofi sont plus lisibles, et le lanceur d'applications suit maintenant une logique Launchpad plein ecran adaptee a SevenOS, adaptee a l'identite SevenOS.
 
 SevenOS est maintenant dans la phase :
 
@@ -121,7 +121,7 @@ Les piliers du projet sont :
 - Harmonisation de Waybar, Rofi, Kitty, Mako, Hyprland, Seven Hub et Tauri GUI.
 - Suppression des styles trop generiques : pas de fond blanc, pas de `box-shadow`, pas de `backdrop-filter`, pas de font-weight lourd.
 - Correction des surfaces Rofi trop noires ou illisibles.
-- Passage du menu Apps vers un rendu plein ecran type Launchpad macOS : recherche centree, grille 6 colonnes, grandes icones et labels centres.
+- Passage du menu Apps vers un rendu plein ecran type Launchpad SevenOS : recherche centree, grille 6 colonnes, grandes icones et labels centres.
 - Suppression des couleurs alpha hex fragiles dans Rofi et Waybar pour ameliorer la compatibilite GTK/Rofi.
 - Recomposition de Waybar en vraie barre systeme : identite et workspaces a gauche, navigation au centre, controles systeme a droite.
 - Ajout d'une surface dediee Quick Settings avec theme Rofi specifique, plus proche d'un panneau systeme que d'un simple menu texte.
@@ -154,7 +154,7 @@ Les piliers du projet sont :
 - Hyprland adopte une ergonomie plus GNOME-like : `Super+Tab` pour les fenetres, `Super+N`/`Super+O` pour les quick settings, `Super+S` pour scratchpad, `Super+L` pour lock, mouvements souris Super+clic et workspaces gauche/droite.
 - `Super+D` toggle maintenant le Dock SevenOS ; l'ouverture directe des applications reste sur `Super`, avec `Super+Space` pour Spotlight.
 - Kitty expose maintenant deux profils simultanes via `seven-terminal` :
-  `classic` pour le rendu macOS blanc et `dark` pour le rendu macOS graphite.
+  `classic` pour le rendu SevenOS clair et `dark` pour le rendu SevenOS graphite.
   `Super+Enter`, `Super+Shift+Enter` et `Super+Ctrl+Enter` ouvrent
   respectivement le terminal classic, dark et le menu de choix.
 - Les profils SevenOS Terminal sont maintenant forces en fenetres flottantes
@@ -169,7 +169,7 @@ Les piliers du projet sont :
 - Ajout de `seven-terminal-native`, surface GTK/VTE qui fournit de vrais boutons
   traffic lights cliquables. `seven-terminal` l'utilise automatiquement quand
   `python-gobject` et `vte3` sont installes, puis retombe sur Kitty sinon.
-- Le Launchpad SevenOS passe vers une grille plus macOS-like : fond immersif,
+- Le Launchpad SevenOS passe vers une grille plus native SevenOS : fond immersif,
   champ `Search` compact en haut, moins de cartes visibles, plus d'espace,
   icones plus grandes et selection glass legere. Spotlight reste reserve a la
   recherche systeme globale et aux actions intelligentes.
@@ -547,7 +547,7 @@ SevenOS passe au niveau superieur quand un utilisateur peut :
 Dernier grand jalon connu :
 
 ```text
-68d460e Make app launcher macOS style
+68d460e Make app launcher SevenOS style
 ```
 
 Jalons recents :
@@ -557,18 +557,18 @@ b2736d2 Apply SevenOS design system v1
 96850bf Fix Waybar startup compatibility
 cc25e63 Make Waybar modules actionable
 2f8b52e Improve Rofi menu visibility
-68d460e Make app launcher macOS style
+68d460e Make app launcher SevenOS style
 a31e630 Shift SevenOS design to transparent minimal glass
 ```
 
-Ces jalons introduisent le Design System v1, stabilisent Waybar, rendent la barre plus actionnable, ameliorent la lisibilite des menus Rofi et transforment le lanceur d'applications en experience plein ecran inspiree de macOS Launchpad.
+Ces jalons introduisent le Design System v1, stabilisent Waybar, rendent la barre plus actionnable, ameliorent la lisibilite des menus Rofi et transforment le lanceur d'applications en experience plein ecran adaptee a SevenOS Launchpad.
 
 Travail en cours :
 
 ```text
 Native Launchpad
-Seven Files Finder-like surface
-macOS-style native terminal
+Seven Files SevenOS Files surface
+SevenOS native terminal
 ```
 
 Objectif : remplacer les surfaces trop "script/theme" par des surfaces OS
@@ -585,12 +585,12 @@ Avancement UI :
   `/usr/bin/python` quand les bindings systeme `gi` sont masques.
 - Launchpad natif GTK ajoute : grille plein ecran, grandes icones, filtre
   compact et fermeture par Escape. Rofi reste le fallback.
-- Seven Files a maintenant une vraie surface native Finder-like :
+- Seven Files a maintenant une vraie surface native SevenOS Files :
   sidebar, pastilles, barre de navigation, grandes icones et fallback Nautilus.
 - Seven Files separe maintenant clairement "ouvrir une image" et "definir un
   wallpaper" : le clic ouvre une preview native, le wallpaper passe par une
   action explicite du clic droit.
-- Le clic droit Seven Files expose des actions Finder-like : Open, Reveal,
+- Le clic droit Seven Files expose des actions SevenOS Files : Open, Reveal,
   Copy Path, Set as Wallpaper pour les images, Properties.
 - Les associations MIME SevenOS evitent maintenant de transformer
   `seven-wallpaper.desktop` en application par defaut des images.
@@ -598,9 +598,9 @@ Avancement UI :
   vers le special workspace SevenOS quand la session Wayland le permet, avec
   fallback GTK classique.
 - Ajout de `seven-dock` / `seven-dock-native` : dock liquid glass inspire de
-  macOS, togglable avec `Super+D`, avec Files, Apps, Browser, Terminal,
+  SevenOS, togglable avec `Super+D`, avec Files, Apps, Browser, Terminal,
   Spotlight, Hub et Settings.
-- Refonte Waybar vers une barre superieure plus macOS-like : Apps + heure a
+- Refonte Waybar vers une barre superieure plus native SevenOS : Apps + heure a
   gauche, workspaces au centre, controles systeme compacts a droite.
 - Checks design/UX mis a jour pour proteger ces surfaces.
 
@@ -626,14 +626,14 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 
 ## 2026-05-17 - Dock and Waybar polish pass
 
-- Le dock SevenOS gagne une presence plus macOS-like : surface plus large, coins plus doux, icones plus grandes, separation entre apps et controles systeme, et effet de magnification au survol.
+- Le dock SevenOS gagne une presence plus native SevenOS : surface plus large, coins plus doux, icones plus grandes, separation entre apps et controles systeme, et effet de magnification au survol.
 - Les icones du dock ont maintenant des surfaces colorees distinctes pour mieux differencier Files, Apps, Browser, Terminal, Spotlight, Hub et Settings sans surcharger l'interface.
 - La Waybar est encore affine dans une logique menu-bar premium : capsules plus respirantes, contraste glass plus lisible, workspaces plus doux et etats hover/actif plus polis.
 - Les regles Hyprland suivent la nouvelle taille du Dock afin d'eviter l'impression d'un panneau trop petit ou mal pose.
 
 ## 2026-05-17 - Waybar Seven menu and compact Dock
 
-- La Waybar adopte une lecture plus macOS-like et plus SevenOS : `7`, `Apps` et l'heure forment le menu systeme de gauche, les workspaces restent au centre, et les controles systeme sont regroupes a droite.
+- La Waybar adopte une lecture plus native SevenOS et plus SevenOS : `7`, `Apps` et l'heure forment le menu systeme de gauche, les workspaces restent au centre, et les controles systeme sont regroupes a droite.
 - La hauteur de la barre est reduite avec des capsules plus fines pour eviter l'effet "barre custom Arch" et donner une sensation plus proche d'un vrai menu-bar d'OS.
 - Le Dock est fortement compacte : cadre moins large, hauteur reduite, icones plus petites, margin inferieur plus discret et position plus ergonomique.
 
@@ -645,7 +645,7 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 
 ## 2026-05-17 - Spotlight command brain expansion
 
-- Spotlight devient un centre de recherche plus proche de macOS/Raycast : apps, fichiers, settings, actions SevenOS, fenetres Hyprland actives, clipboard, historique de recherche, bookmarks Firefox, calculs, conversions, definitions, mail, contacts, calendrier et actions rapides.
+- Spotlight devient un centre de recherche plus proche de SevenOS Spotlight/Raycast : apps, fichiers, settings, actions SevenOS, fenetres Hyprland actives, clipboard, historique de recherche, bookmarks Firefox, calculs, conversions, definitions, mail, contacts, calendrier et actions rapides.
 - Ajout des filtres `/clipboard`, `/windows` et `/history`, en plus de `/apps`, `/files`, `/settings`, `/system` et `/web`.
 - Ajout de requetes directes : `timer 5`, `record audio`, `content <texte>`, `define <mot>`, `web <requete>`, expressions mathematiques et conversions.
 - Le theme Spotlight est elargi et clarifie : placeholder plus explicite, lignes plus hautes, icones plus visibles et message de categories plus riche.
@@ -655,3 +655,418 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - Ajout de `seven-waybar` pour gerer proprement la barre : `status`, `repair`, `restart`, `stop`.
 - Le service utilisateur `sevenos-waybar.service` coupe toute instance Waybar existante avant de lancer la barre SevenOS, afin d'eviter les doubles barres apres installation, theme reload ou migration ML4W.
 - La documentation de test remplace le lancement manuel `waybar &` par `seven-waybar repair`.
+
+## 2026-05-17 - Native Spotlight refonte
+
+- Ajout de `seven-spotlight-native`, une surface GTK compacte qui remplace le
+  rendu Rofi par defaut pour `Super+Space`.
+- Au repos, Spotlight affiche uniquement une barre de recherche et des icones de
+  categories : apps, fichiers, reglages, actions, web, clipboard, fenetres et
+  historique. Les resultats n'apparaissent qu'apres saisie ou selection d'une
+  categorie.
+- `seven-spotlight` garde le catalogue universel et devient le routeur d'actions
+  pour la surface native, avec fallback explicite :
+  `SEVENOS_SPOTLIGHT_NATIVE=0 seven-spotlight rofi`.
+- L'installation CLI, les checks design/UX et la documentation Primary/Test
+  Machine protegent maintenant cette experience.
+
+## 2026-05-17 - Liquid Glass OS refonte pass
+
+- Ajout de `identity/LIQUID_GLASS_OS.md` comme reference produit pour la
+  direction SevenOS-grade sans copie : menu bar, Dock, fenetres a sidebar,
+  Spotlight calme et surfaces d'OS actionnables.
+- Waybar est affinee vers une vraie menu bar liquide : contraste plus lisible,
+  verres plus propres, hover plus subtil et separation gauche/centre/droite plus
+  calme.
+- Dock natif compacte et poli : cadre plus petit, icones legerement reduites,
+  magnification plus douce et surface plus proche d'un dock que d'un panneau.
+- Seven Files gagne une matiere SevenOS Files plus coherente : sidebar translucide,
+  toolbar claire, canvas stable et preview plus douce.
+- Spotlight natif conserve son ouverture minimaliste mais avec un glass plus
+  lisible et une iconographie plus presente.
+
+## 2026-05-17 - Notification Center UX pass
+
+- Le panneau Notifications n'affiche plus une liste de modes techniques en
+  premier. Il montre directement les notifications actives ou un etat vide clair
+  `No notifications`.
+- Les actions de notification deviennent secondaires et icon-only dans la
+  surface native : test, restore, dismiss, focus/DND et restart.
+- Le fallback Rofi de `seven-waybar-notifications` affiche aussi le flux de
+  notifications avant les actions, afin d'eviter le rendu trop textuel de type
+  menu admin.
+- Les checks design/UX protegent maintenant cette direction orientee contenu.
+
+## 2026-05-17 - Notification Center native surface
+
+- Ajout de `seven-notification-center-native`, un centre de notifications GTK3
+  dedie qui s'ouvre depuis la Waybar avant tout fallback Rofi ou panneau
+  generique.
+- La surface est maintenant contenu-first : cartes de notifications, etat vide
+  calme et bande d'actions en icones uniquement avec tooltips.
+- `seven-waybar-notifications menu` route vers ce centre natif, puis retombe sur
+  `seven-shell-panel`, puis Rofi seulement si la stack native n'est pas
+  disponible.
+- Les regles Hyprland, l'installation CLI et les checks design/UX savent
+  verifier cette surface comme un composant OS, pas comme une liste d'actions.
+
+## 2026-05-17 - Quick Settings native Control Center
+
+- Ajout de `seven-quick-settings-native`, une surface GTK3 dediee qui remplace
+  le rendu grille textuelle pour les Quick Settings.
+- Le panneau adopte une logique SevenOS Control Center : tuiles Wi-Fi,
+  Bluetooth, Focus et Profil, sliders Sound/Display, puis actions systeme en
+  icones compactes.
+- `seven-quick-settings` ouvre cette surface native en priorite, garde
+  `seven-shell-panel quick` comme fallback et n'utilise Rofi qu'en dernier
+  recours.
+- Les checks design/UX protegent le nouveau contrat : Quick Settings ne doit
+  plus se presenter comme une liste repetitive de commandes.
+
+## 2026-05-17 - Seven Hub compact OS dashboard
+
+- Seven Hub Native passe en rendu compact par defaut : dashboard a metriques,
+  raccourcis icon-only, tuiles d'etat et sections visuelles au lieu d'une longue
+  page d'audit textuelle.
+- Les pages Profiles, Actions et Ecosystem utilisent maintenant des grilles de
+  tuiles native SevenOS avec les details en tooltips ou actions secondaires.
+- Les anciens contrats JSON restent consommes, mais la presentation devient plus
+  OS Control Center : moins de texte, moins de repetition, plus d'etats visuels.
+- Les checks design/UX verifient la presence du rendu compact
+  `render_dashboard_compact`, des tuiles `seven-tile` et des surfaces glass.
+
+## 2026-05-17 - Waybar Profile and Shield native centers
+
+- Les modules Profile et Shield de la Waybar deviennent icon-only avec tooltips
+  utiles, afin d'eviter les libelles repetitifs dans la barre.
+- Ajout de `seven-profile-center-native` : centre compact pour voir le profil
+  actif, changer ou installer Forge, Shield, Studio, Windows, Horizon et Baobab.
+- Ajout de `seven-shield-center-native` : centre compact pour lire la posture
+  Shield, les points ouverts et les actions trust prioritaires.
+- `seven-waybar-action profile` et `seven-waybar-action security` ouvrent ces
+  surfaces natives en priorite, avec Rofi uniquement comme fallback.
+- Waybar colore subtilement Profile/Shield selon etat OK/PART/MISS dans le style
+  liquid glass actuel.
+
+## 2026-05-17 - Waybar system centers pass
+
+- Ajout de `seven-waybar-center-native`, une surface GTK3 commune pour Wi-Fi,
+  Audio, Power, System et Time.
+- Les modules Network, Audio et Battery deviennent plus compacts dans la Waybar :
+  icone dans la barre, etat detaille en tooltip, panneau natif au clic.
+- Le panneau Network expose etat Wi-Fi, connexion active, connect/settings/status
+  et restart sans menu textuel repetitif.
+- Le panneau Audio expose volume, mute state, slider direct et actions Mixer,
+  Mute, Status et Settings.
+- Le panneau Power expose batterie/session avec actions Lock, Restart, Power et
+  Power Profiles.
+- Les modules CPU/Mem/Clock passent aussi par la meme logique de centre natif,
+  pour garder une experience menu-bar coherente.
+
+## 2026-05-17 - SevenOS Settings native
+
+- Ajout de `seven-settings-native`, une application GTK3 complete pour les
+  reglages utilisateur normaux : apparence, wallpaper, ecrans, Wi-Fi, son,
+  clavier, securite, profils, energie, apps et maintenance systeme.
+- Ajout du wrapper `seven-settings`, du fichier desktop
+  `seven-settings.desktop`, de l'installation CLI et du raccourci `Super+,`.
+- Spotlight indexe maintenant `Settings · SevenOS Settings`, tandis que Seven
+  Hub affiche un acces direct Settings dans ses raccourcis et tuiles.
+- Les checks design/UX protegent ce nouveau centre afin que les reglages ne
+  redeviendront pas une collection de scripts ou menus Rofi.
+
+## 2026-05-17 - Settings daily usability fix
+
+- Correction du lancement de `seven-settings-native` : l'app GTK3 utilisait une
+  methode GTK4 (`set_wrap`) et ne s'ouvrait pas correctement.
+- La Waybar ne lance plus Quick Settings comme entree principale : le module
+  systeme ouvre maintenant `seven-settings`, avec Seven Hub et Spotlight comme
+  actions secondaires.
+- Les reglages SevenOS incluent maintenant les mises a jour systeme via
+  `seven update`, plus l'etat paquet via `sevenpkg status`.
+- Kitty accepte les flux de copie/coller quotidiens : selection vers presse-
+  papiers, `Ctrl+Shift+C` pour copier et `Ctrl+Shift+V` pour coller dans les
+  profils Classic et Dark.
+
+## 2026-05-17 - Settings polish and terminal clipboard native
+
+- `seven-settings-native` gagne une page d'accueil plus fluide : carte hero,
+  raccourcis ronds icon-only et cartes plus compactes pour un rendu plus proche
+  d'un panneau systeme native SevenOS.
+- Le terminal natif VTE gere maintenant lui aussi le presse-papiers :
+  `Ctrl+Shift+C`, `Ctrl+Shift+V`, `Ctrl+Insert`, `Shift+Insert`, plus un menu
+  clic droit avec Copy, Paste, Select All et Clear.
+- Les checks UX protegent la correction pour eviter que le copier/coller ne
+  depende uniquement de Kitty quand SevenOS lance le terminal natif.
+
+## 2026-05-17 - Settings compact professional layout
+
+- Refonte de la densite de `seven-settings-native` apres test visuel sur machine
+  principale : la fenetre passe a un format plus contenu, la sidebar est plus
+  fine et le contenu principal est limite en largeur au lieu de s'etirer sur
+  tout l'ecran.
+- Les pages Settings utilisent maintenant des grilles de cartes en deux colonnes
+  pour eviter les grandes lignes vides et donner une lecture plus proche d'un
+  vrai panneau de reglages OS.
+- Les cards, raccourcis rapides et statuts ont ete reduits et resserres :
+  moins d'espace inutile, meilleure hierarchie, plus de lisibilite.
+- Checks relances : `design-check`, `ux-check`, probe GTK et installation CLI
+  utilisateur OK.
+
+## 2026-05-17 - Settings controlled zoom
+
+- Correction du comportement en mode agrandi : le bouton vert ne maximise plus
+  l'app en plein ecran, il applique un zoom utile `980x660 <-> 1080x690` comme un
+  panneau de reglages native SevenOS.
+- Le contenu des pages Settings s'ancre maintenant a gauche dans une largeur
+  controlee, au lieu de se centrer dans une immense zone vide quand la fenetre
+  est forcee en grand format.
+- Les cartes gardent des largeurs fixes professionnelles (`status` compact,
+  cartes fonctionnelles en 2 colonnes), ce qui evite les lignes trop longues et
+  l'effet dashboard web.
+
+## 2026-05-17 - Settings Hyprland size discipline
+
+- Alignement de la regle Hyprland avec la nouvelle ergonomie Settings :
+  `SevenSettingsNative` et `SevenOS Settings` s'ouvrent maintenant en `980x660`
+  au lieu de `1080x720`.
+- Ajout de contraintes GTK min/max (`980x660` a `1080x690`) pour empecher le
+  panneau Settings de se transformer en surface plein ecran trop vide.
+- Rechargement de la session Hyprland et verification de la config active dans
+  `~/.config/hypr/hyprland.conf`.
+
+## 2026-05-17 - Notification center backend repair path
+
+- Diagnostic du module Notifications Waybar : le centre natif etait present,
+  mais le backend `mako` etait absent sur la machine principale, ce qui mettait
+  `sevenos-notifications.service` en boucle d'echec `status=127`.
+- `seven-waybar-notifications` distingue maintenant clairement les etats
+  `running`, `inactive` et `backend missing`, et expose une action `Install`
+  qui ouvre un terminal avec l'installation `mako + libnotify`.
+- `seven-notification-center-native` affiche un etat utile quand le backend est
+  manquant ou arrete, avec bouton principal `Install` ou `Start` au lieu d'un
+  centre vide.
+- La config Waybar appelle maintenant explicitement la version utilisateur
+  `~/.local/bin/seven-waybar-notifications` avant tout wrapper systeme stale de
+  `/usr/local/bin`.
+- `sevenos-notifications.service` ne boucle plus en echec si `mako` manque : il
+  sort proprement et laisse le centre expliquer l'action a effectuer.
+
+## 2026-05-17 - Improve/profile apply flag fix
+
+- Correction du bug `seven profile install shield --yes` : `install.sh` filtre
+  maintenant les flags globaux `--yes` et `--dry-run` avant de transmettre les
+  arguments aux scripts de profil. `--yes` n'est donc plus confondu avec une
+  categorie cyber.
+- Les targets qui deleguent a d'autres scripts utilisent maintenant
+  `TARGET_ARGS`, ce qui stabilise aussi `cybersecurity core --yes`,
+  `daily-driver --yes`, `flatpak --yes`, VM, ISO et installer.
+- `seven improve ... --apply --yes` affiche maintenant une ligne `running:` pour
+  chaque etape executee, afin de distinguer clairement un plan d'une execution.
+- Validation dry-run : `profiles/profile-manager.sh install shield --yes` ne
+  produit plus `Unknown cybersecurity category: --yes`.
+
+## 2026-05-17 - Daily driver gate hardening pass
+
+- `seven profile install shield` bootstrappe maintenant aussi le vrai workspace
+  Shield natif (`~/ShieldLab/.sevenos/shield.json`, scope, checklist,
+  launchers). Le statut Shield ne confond plus le workspace generique du profil
+  avec l'espace cyber operationnel.
+- Shield est passe de `71%` a `86%` apres bootstrap local ; le dernier manque
+  critique cote Shield est l'activation UFW via `seven shield enable`.
+- `seven-daemon` est installe comme commande utilisateur et les services
+  systemd user utilisent `~/.local/bin/seven-daemon` au lieu de dependre du PATH
+  limite de systemd. Les services `seven-daemon.service` et
+  `seven-context-observer.service` demarrent maintenant correctement.
+- `seven core start` reset les services en echec avant redemarrage, ce qui evite
+  le blocage `start-limit-hit` apres un ancien wrapper manquant.
+- Le gate daily-driver lit maintenant l'etat Core depuis `scripts/core.sh
+  status --json`, donc les services Core actifs sont visibles dans la decision
+  OS principale.
+- `install.sh cli` place `~/.local/bin` en priorite pour eviter les wrappers
+  systeme obsoletes. La commande `seven improve --apply` signale explicitement
+  si `SEVENOS_DRY_RUN=1` force encore un simple preview.
+
+## 2026-05-17 - UFW degraded firewall handling
+
+- `seven shield enable` ne plante plus en traceback Python quand UFW echoue sur
+  `ufw-init` / iptables / nftables. L'installation continue et SevenOS affiche
+  un diagnostic noyau/netfilter lisible.
+- Quand UFW est installe mais que ses regles ne s'appliquent pas correctement,
+  SevenOS ecrit maintenant un marqueur
+  `~/.local/state/sevenos/security/ufw-degraded`.
+- `seven shield status` et `seven-daemon shield --json` lisent ce marqueur et
+  affichent le firewall en `PART` au lieu de pretendre que tout est parfaitement
+  fiable.
+- Etat apres correction : readiness `89%`, security `100%`, Shield `93%`, Core
+  services `RUN`. Le blocage daily-driver restant est `Target Use`, c'est-a-dire
+  les profils Studio / Windows / Horizon encore trop partiels.
+
+## 2026-05-17 - Apply execution condition fix
+
+- Correction d'un bug Bash subtil : `[[ "$APPLY" -eq 1 && ! is_dry_run ]]`
+  ne lancait pas la fonction `is_dry_run`, donc `seven improve ... --apply`
+  restait en mode preview et affichait `command:` au lieu de `running:`.
+- La condition est maintenant ecrite correctement :
+  `[[ "$APPLY" -eq 1 ]] && ! is_dry_run`.
+- Le meme piege a ete corrige dans `scripts/repair.sh`,
+  `scripts/control-plane.sh` et `vm/windows-app-runner.sh`.
+- Validation : sans session sudo active, `seven improve target --apply --yes`
+  echoue proprement avec un message sudo ; avec `SEVENOS_DRY_RUN=1`, il reste en
+  preview explicite.
+
+## 2026-05-17 - Flatpak Studio profile bridge
+
+- Correction de `scripts/flatpak.sh` : l'appel inexistant `install_packages`
+  a ete remplace par une installation Arch explicite de `flatpak`, compatible
+  `--yes` et dry-run.
+- Les installations Flatpak par defaut sont maintenant idempotentes : les apps
+  deja presentes sont sautees, et les nouvelles apps utilisent
+  `flatpak install --noninteractive --or-update -y`.
+- Le bundle Flatpak par defaut couvre maintenant le socle Studio utile :
+  Blender, GIMP, Inkscape, Kdenlive, Krita, OBS, Audacity, Darktable,
+  RawTherapee, Scribus, LMMS et HandBrake.
+- Les profils SevenOS, cote Bash et cote `seven-daemon`, reconnaissent les
+  equivalents Flatpak officiels comme satisfaisant les besoins Studio. Cela
+  evite de bloquer le daily gate si une app creative est installee via Flathub
+  plutot que via pacman.
+- Etat local avant installation des apps Studio : daily readiness `95%`,
+  security/shield/compatibility/deployment `100%`, seul blocage restant :
+  `Daily role profiles` a cause du profil Studio non installe.
+
+## 2026-05-17 - Package conflict equivalence
+
+- Correction du conflit Forge entre `code` et `visual-studio-code-bin` :
+  SevenOS reconnait maintenant `visual-studio-code-bin`, `vscodium-bin` et
+  `vscodium` comme equivalents valides du paquet Arch `code`.
+- `install_package_file` filtre les paquets deja satisfaits par une alternative
+  avant d'appeler `pacman -S`, ce qui evite les prompts de conflit non
+  resolubles en mode `--yes`.
+- Le calcul des profils Bash et `seven-daemon` utilise la meme equivalence, donc
+  Forge ne reste plus partiel uniquement parce que l'utilisateur prefere la
+  variante AUR de VS Code.
+
+## 2026-05-17 - Primary PC gate ready
+
+- Installation de la fondation installer TUI via `seven installer install` :
+  `archinstall`, `arch-install-scripts`, outils de partitionnement et schemas
+  Python sont presents.
+- `seven installer status` affiche maintenant `archinstall: OK`, planner `OK`,
+  profil Calamares `OK`, Archiso `OK` et ISO builder `OK`.
+- `seven daily` passe officiellement a `Decision: ready` avec readiness,
+  security, Shield, target use, compatibility et deployment a `100%`.
+- Tous les gates daily-driver sont maintenant en `PASS`, y compris
+  `Installer foundation tui-ready -> tui-ready` et les services Core
+  `daemon=RUN, observer=RUN`.
+- Calamares reste `MISS`, mais ce n'est plus bloquant pour la machine
+  principale : le chemin TUI/recovery via Archinstall est disponible.
+
+## 2026-05-17 - Waybar Wi-Fi simplification
+
+- Le clic gauche sur l'icone Wi-Fi de Waybar ouvre maintenant directement le
+  panneau Wi-Fi unique (`seven-wifi menu`) au lieu d'un centre d'actions trop
+  charge ou de plusieurs chemins concurrents.
+- Le panneau affiche d'abord l'action activer/desactiver, puis le Wi-Fi
+  connecte, puis la liste des reseaux proches.
+- Le reseau actif est retire de la liste des reseaux proches pour eviter les
+  doublons visuels : une ligne d'etat connecte, puis uniquement les autres
+  SSID disponibles.
+- Le clic milieu deconnecte le Wi-Fi actif, et le clic droit ouvre les reglages
+  NetworkManager avances.
+- `seven-wifi connect` scanne les reseaux avec signal, securite et etat actif,
+  affiche une liste compacte, reutilise les connexions NetworkManager deja
+  enregistrees, et ne demande le mot de passe que pour les nouveaux reseaux
+  proteges.
+- Le menu Wi-Fi a ete retire des onglets/actions secondaires : le flux normal
+  reste toggle + connecte + reseaux disponibles.
+- Le centre Waybar reseau affiche maintenant etat, reseau et signal avec des
+  actions directes `Choose`, `On / Off`, `Disconnect` et `Settings`.
+- La configuration active `~/.config/waybar/config.jsonc` a ete reappliquee via
+  `./install.sh theme`; Waybar tourne avec une seule instance.
+
+## 2026-05-17 - Waybar feature-first interaction pass
+
+- La logique Wi-Fi simple est etendue aux autres modules Waybar : clic gauche
+  vers une surface fonctionnelle, clic droit vers le reglage logique, clic milieu
+  seulement pour une action rapide claire.
+- Les clics droits qui ouvraient des terminaux bruts pour Time, CPU, Memory,
+  Security, Audio et Power sont remplaces par des entrees directes vers
+  `seven-settings` et les centres natifs.
+- `seven-waybar-action` reduit ses fallbacks a des menus courts orientes
+  fonctionnalites : Settings, Monitor, Updates, Repair UI, Profile Center,
+  Workspace, Shield Center, Wi-Fi Panel, Mixer, Lock, Sleep et Calendar.
+- `seven-waybar-center-native` devient plus actionnable : panneaux Wi-Fi, Sound,
+  Power, System et Time avec metriques utiles, hints courts et actions en icones
+  coherentes avec le style liquid glass.
+- `seven-settings-native` accepte maintenant une page initiale
+  (`seven-settings sound`, `seven-settings power`, `seven-settings profiles`,
+  etc.), pour que Waybar ouvre directement le bon contexte sans navigation
+  supplementaire.
+
+## 2026-05-17 - Seven Files compression and keyboard pass
+
+- Seven Files natif ajoute une action `Compress` dans le menu contextuel et un
+  bouton toolbar pour creer une archive `.zip` a cote de l'element selectionne.
+- La compression utilise le module Python standard `zipfile`, respecte les
+  dossiers recursifs et choisit automatiquement un nom libre (`name.zip`,
+  `name 2.zip`, etc.).
+- La navigation clavier est explicitement geree dans la grille : fleches gauche,
+  droite, haut et bas changent la selection, `Enter` ouvre, `Backspace` revient
+  en arriere.
+- Les raccourcis de fichier restent coherents : `Ctrl+C`, `Ctrl+X`, `Ctrl+V`
+  pour copier/couper/coller, et `Alt+C` pour compresser l'element selectionne.
+- Les checks UX protegent maintenant la compression, le menu contextuel, la
+  navigation clavier et le double-clic comme comportements attendus de Seven
+  Files.
+
+## 2026-05-17 - Seven Files default manager and modern file operations
+
+- La compression n'est plus immediate : Seven Files affiche un dialogue pour
+  choisir le nom de l'archive et le format (`zip`, `tar.gz`, `tar.xz`) avant de
+  creer le fichier.
+- La copie publie maintenant un clipboard de fichiers compatible avec les
+  gestionnaires modernes (`x-special/gnome-copied-files`, avec fallback
+  `text/uri-list` en lecture), au lieu de se limiter a du texte; le collage peut
+  aussi reprendre un clipboard fichier externe.
+- La preview laterale affiche une vignette reelle pour les images selectionnees,
+  et `Space` ouvre la preview Seven Files avant ouverture externe.
+- `seven-files.desktop` declare `inode/directory` et
+  `application/x-gnome-saved-search`; `apply-theme` definit Seven Files comme
+  gestionnaire par defaut des dossiers via `xdg-mime`.
+- `seven-files` accepte aussi les URI `file://...` envoyees par le systeme et
+  les normalise avant d'ouvrir Seven Files natif.
+
+## 2026-05-17 - Seven Files Quick Look and real file clipboard
+
+- La copie evite maintenant de publier un simple chemin texte quand Wayland ou
+  X11 fournit un clipboard fichier : `wl-copy`/`xclip` expose le type
+  `x-special/gnome-copied-files`, et Seven Files garde son clipboard interne
+  pour un collage fiable.
+- Le collage peut relire un clipboard fichier externe (`x-special` ou
+  `text/uri-list`) afin de copier des elements depuis un autre gestionnaire vers
+  Seven Files.
+- La preview devient un Quick Look SevenOS : images en grand, texte/code en
+  lecture seule, extraction texte DOCX, premiere page PDF via `pdftoppm`, et
+  thumbnails video via `ffmpegthumbnailer` quand les paquets sont installes.
+- La preview laterale affiche maintenant les vignettes PDF/video disponibles et
+  `Space` ouvre Quick Look pour images, videos, PDF, DOCX, TXT, Markdown, code
+  et fichiers de configuration.
+- `scripts/packages-base.txt` inclut `ffmpegthumbnailer` et `poppler` pour que
+  les previews video/PDF soient installees avec la base SevenOS.
+
+## 2026-05-17 - Seven Files Finder-grade interaction pass
+
+- La copie Seven Files est renforcee avec un clipboard persistant dans
+  `~/.cache/sevenos/files-clipboard.json` et une publication systeme
+  `text/uri-list`, plus compatible avec le collage de vrais fichiers entre
+  gestionnaires.
+- La preview video ne depend plus seulement de `ffmpegthumbnailer`; elle utilise
+  `ffmpeg` en fallback pour generer une image de preview quand il est present.
+- Les boutons de vue sont maintenant fonctionnels : grille, liste detaillee et
+  vue compacte ajustent la densite, les tailles de tuiles, les metadonnees et la
+  navigation.
+- Seven Files ajoute des actions de base indispensables : nouveau dossier,
+  dupliquer, renommer et deplacer vers la corbeille depuis le toolbar ou le menu
+  contextuel.
+- Les checks UX protegent les modes de vue, le clipboard fichier persistant, la
+  preview video fallback et les actions modernes de gestionnaire de fichiers.

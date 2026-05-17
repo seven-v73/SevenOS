@@ -17,6 +17,7 @@ desktop, but with a visual language owned by SevenOS.
 - `identity/tokens.css` contains UI CSS variables.
 - `identity/palette.sh` contains shell/script palette variables.
 - `identity/patterns/` contains low-opacity geometric motifs.
+- `identity/LIQUID_GLASS_OS.md` defines the OS-level liquid glass direction.
 - UI files should reference this vocabulary and avoid random hex colors.
 
 ## Palette

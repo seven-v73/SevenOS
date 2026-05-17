@@ -1,0 +1,370 @@
+#!/usr/bin/env python3
+"""SevenOS native Quick Settings surface."""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
+DND_FILE = STATE_DIR / "notifications.dnd"
+
+
+def local_command(name: str) -> str:
+    candidate = ROOT / "bin" / name
+    return str(candidate) if candidate.exists() else name
+
+
+def run_detached(*command: str) -> None:
+    subprocess.Popen(
+        [local_command(command[0]), *command[1:]],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def command_output(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout.strip()
+
+
+def active_profile() -> tuple[str, str]:
+    profile_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/profile.json"
+    if profile_file.exists():
+        try:
+            payload = json.loads(profile_file.read_text(encoding="utf-8"))
+            return str(payload.get("title") or "Baobab"), str(payload.get("key") or "baobab")
+        except Exception:
+            pass
+    return "Baobab", "baobab"
+
+
+def wifi_state() -> str:
+    if not shutil.which("nmcli"):
+        return "Missing"
+    radio = command_output(["nmcli", "radio", "wifi"])
+    if radio == "disabled":
+        return "Off"
+    active = command_output(["bash", "-lc", "nmcli -t -f active,ssid dev wifi | awk -F: '$1==\"yes\"{print $2; exit}'"])
+    return active or "On"
+
+
+def bluetooth_state() -> str:
+    if not shutil.which("bluetoothctl"):
+        return "Missing"
+    state = command_output(["bash", "-lc", "bluetoothctl show 2>/dev/null | awk -F': ' '/Powered/{print $2; exit}'"])
+    return "On" if state == "yes" else "Off"
+
+
+def volume_value() -> int:
+    if not shutil.which("wpctl"):
+        return 50
+    raw = command_output(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
+    try:
+        value = float(raw.split()[1]) * 100
+        return max(0, min(100, int(value)))
+    except Exception:
+        return 50
+
+
+def set_volume(value: float) -> None:
+    if shutil.which("wpctl"):
+        subprocess.Popen(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{int(value)}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def brightness_value() -> int:
+    if not shutil.which("brightnessctl"):
+        return 60
+    raw = command_output(["bash", "-lc", "brightnessctl -m 2>/dev/null | awk -F, '{gsub(/%/,\"\",$4); print $4; exit}'"])
+    try:
+        return max(0, min(100, int(raw)))
+    except Exception:
+        return 60
+
+
+def set_brightness(value: float) -> None:
+    if shutil.which("brightnessctl"):
+        subprocess.Popen(["brightnessctl", "set", f"{int(value)}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def toggle_wifi() -> None:
+    if shutil.which("nmcli"):
+        state = command_output(["nmcli", "radio", "wifi"])
+        subprocess.Popen(["nmcli", "radio", "wifi", "off" if state == "enabled" else "on"])
+    else:
+        run_detached("seven-waybar-action", "network")
+
+
+def toggle_bluetooth() -> None:
+    if shutil.which("bluetoothctl"):
+        state = bluetooth_state()
+        subprocess.Popen(["bluetoothctl", "power", "off" if state == "On" else "on"])
+
+
+def toggle_focus() -> None:
+    run_detached("seven-waybar-notifications", "toggle-dnd")
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def run() -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    GLib.set_prgname("SevenQuickSettingsNative")
+    GLib.set_application_name("SevenOS Quick Settings")
+    try:
+        Gdk.set_program_class("SevenQuickSettingsNative")
+    except Exception:
+        pass
+
+    css = """
+    window.quick-window { background: transparent; }
+    .quick-root {
+      padding: 16px;
+      border-radius: 30px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.86), rgba(230,244,249,0.66)),
+        rgba(255,255,255,0.58);
+      border: 1px solid rgba(255,255,255,0.84);
+    }
+    .quick-title { color: rgba(16,27,34,0.98); font-size: 18px; font-weight: 500; }
+    .quick-subtitle { color: rgba(42,58,68,0.62); font-size: 11px; }
+    .tile {
+      min-height: 82px;
+      padding: 13px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.52);
+      border: 1px solid rgba(255,255,255,0.72);
+      color: rgba(20,34,44,0.96);
+    }
+    .tile:hover {
+      background: rgba(255,255,255,0.80);
+      border-color: rgba(91,127,166,0.30);
+    }
+    .tile.active {
+      background: linear-gradient(135deg, rgba(90,162,222,0.74), rgba(255,255,255,0.58));
+      border-color: rgba(72,128,180,0.36);
+    }
+    .tile.warn {
+      background: rgba(255,255,255,0.64);
+      border-color: rgba(196,103,58,0.22);
+    }
+    .tile-glyph { font-size: 25px; }
+    .tile-title { font-size: 13px; font-weight: 500; }
+    .tile-state { color: rgba(44,60,70,0.66); font-size: 11px; }
+    .wide-card {
+      padding: 13px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.50);
+      border: 1px solid rgba(255,255,255,0.70);
+    }
+    .slider-title { color: rgba(16,27,34,0.92); font-size: 12px; font-weight: 500; }
+    .scale trough {
+      min-height: 8px;
+      border-radius: 999px;
+      background: rgba(94,116,130,0.18);
+    }
+    .scale highlight {
+      border-radius: 999px;
+      background: rgba(78,139,189,0.75);
+    }
+    .scale slider {
+      min-width: 22px;
+      min-height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(91,127,166,0.22);
+    }
+    .icon-action {
+      min-width: 46px;
+      min-height: 46px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.58);
+      border: 1px solid rgba(255,255,255,0.76);
+      color: rgba(20,34,44,0.92);
+    }
+    .icon-action:hover { background: rgba(255,255,255,0.84); }
+    .icon-action label { font-size: 18px; }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    profile_title, profile_key = active_profile()
+
+    window = Gtk.Window(title="SevenOS Quick Settings")
+    window.set_wmclass("SevenQuickSettingsNative", "SevenQuickSettingsNative")
+    window.set_decorated(False)
+    window.set_resizable(False)
+    window.set_keep_above(True)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_default_size(430, 520)
+    window.get_style_context().add_class("quick-window")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    root.get_style_context().add_class("quick-root")
+    window.add(root)
+
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    root.pack_start(header, False, False, 0)
+    titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+    title = Gtk.Label(label="Control Center", xalign=0)
+    title.get_style_context().add_class("quick-title")
+    titles.pack_start(title, False, False, 0)
+    subtitle = Gtk.Label(label=f"{profile_title} mode", xalign=0)
+    subtitle.get_style_context().add_class("quick-subtitle")
+    titles.pack_start(subtitle, False, False, 0)
+    header.pack_start(titles, True, True, 0)
+
+    grid = Gtk.Grid()
+    grid.set_column_spacing(10)
+    grid.set_row_spacing(10)
+    root.pack_start(grid, False, False, 0)
+
+    tiles = [
+        ("Wi-Fi", wifi_state(), "󰤨", toggle_wifi, "active" if wifi_state() not in {"Off", "Missing"} else ""),
+        ("Bluetooth", bluetooth_state(), "󰂯", toggle_bluetooth, "active" if bluetooth_state() == "On" else ""),
+        ("Focus", "On" if DND_FILE.exists() else "Off", "󰂛", toggle_focus, "active" if DND_FILE.exists() else ""),
+        ("Profile", profile_key.title(), "󰐃", lambda: run_detached("seven-waybar-action", "profile"), ""),
+    ]
+
+    for index, (label, state, glyph, callback, css_class) in enumerate(tiles):
+        tile = build_tile(Gtk, label, state, glyph, callback, css_class)
+        grid.attach(tile, index % 2, index // 2, 1, 1)
+
+    sound = build_slider_card(Gtk, "Sound", "󰕾", volume_value(), set_volume)
+    root.pack_start(sound, False, False, 0)
+    display = build_slider_card(Gtk, "Display", "󰃠", brightness_value(), set_brightness)
+    root.pack_start(display, False, False, 0)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    actions.set_halign(Gtk.Align.CENTER)
+    root.pack_end(actions, False, False, 0)
+    for glyph, tooltip, command in [
+        ("󰀻", "Apps", ("seven-overview", "apps")),
+        ("󰉋", "Files", ("seven-files", "profile")),
+        ("󰍛", "Monitor", ("seven-waybar-action", "system")),
+        ("󰒓", "Hub", ("seven", "hub")),
+        ("󰐥", "Power", ("seven-power",)),
+    ]:
+        button = Gtk.Button()
+        button.get_style_context().add_class("icon-action")
+        button.set_tooltip_text(tooltip)
+        button.add(Gtk.Label(label=glyph))
+        button.connect("clicked", lambda _button, cmd=command: run_detached(*cmd))
+        actions.pack_start(button, False, False, 0)
+
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def build_tile(Gtk, label: str, state: str, glyph: str, callback, css_class: str):
+    button = Gtk.Button()
+    button.get_style_context().add_class("tile")
+    if css_class:
+        button.get_style_context().add_class(css_class)
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    icon = Gtk.Label(label=glyph)
+    icon.get_style_context().add_class("tile-glyph")
+    title = Gtk.Label(label=label)
+    title.get_style_context().add_class("tile-title")
+    status = Gtk.Label(label=state)
+    status.get_style_context().add_class("tile-state")
+    box.pack_start(icon, False, False, 0)
+    box.pack_start(title, False, False, 0)
+    box.pack_start(status, False, False, 0)
+    button.add(box)
+    button.connect("clicked", lambda _button: callback())
+    return button
+
+
+def build_slider_card(Gtk, title: str, glyph: str, value: int, callback):
+    card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    card.get_style_context().add_class("wide-card")
+    heading = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    heading.pack_start(Gtk.Label(label=glyph), False, False, 0)
+    label = Gtk.Label(label=title, xalign=0)
+    label.get_style_context().add_class("slider-title")
+    heading.pack_start(label, True, True, 0)
+    card.pack_start(heading, False, False, 0)
+    scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+    scale.set_value(value)
+    scale.set_draw_value(False)
+    scale.get_style_context().add_class("scale")
+    scale.connect("value-changed", lambda widget: callback(widget.get_value()))
+    card.pack_start(scale, False, False, 0)
+    return card
+
+
+def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--probe":
+        return probe()
+    return run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

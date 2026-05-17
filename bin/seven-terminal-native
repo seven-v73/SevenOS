@@ -168,6 +168,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
         [],
     )
     outer.pack_start(terminal, True, True, 0)
+    terminal.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.KEY_PRESS_MASK)
 
     env = os.environ.copy()
     env.update(
@@ -192,12 +193,71 @@ def run_terminal(profile: str, command: list[str]) -> int:
     )
 
     terminal.connect("child-exited", lambda *_: window.close())
+    terminal.connect("key-press-event", terminal_key_press)
+    terminal.connect("button-press-event", lambda _terminal, event: show_terminal_menu(_terminal, event))
     titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
     window.connect("destroy", Gtk.main_quit)
     window.show_all()
     window.resize(640, 420)
     Gtk.main()
     return 0
+
+
+def terminal_key_press(terminal, event) -> bool:
+    from gi.repository import Gdk
+
+    state = event.state
+    ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK)
+    shift = bool(state & Gdk.ModifierType.SHIFT_MASK)
+    key_name = (Gdk.keyval_name(event.keyval) or "").lower()
+
+    if ctrl and shift and key_name in {"c", "copy"}:
+        copy_terminal_selection(terminal)
+        return True
+    if ctrl and shift and key_name in {"v", "paste"}:
+        terminal.paste_clipboard()
+        return True
+    if ctrl and key_name == "insert":
+        copy_terminal_selection(terminal)
+        return True
+    if shift and key_name == "insert":
+        terminal.paste_clipboard()
+        return True
+    return False
+
+
+def copy_terminal_selection(terminal) -> None:
+    try:
+        from gi.repository import Vte
+
+        if hasattr(terminal, "copy_clipboard_format"):
+            terminal.copy_clipboard_format(Vte.Format.TEXT)
+            return
+    except Exception:
+        pass
+    terminal.copy_clipboard()
+
+
+def show_terminal_menu(terminal, event) -> bool:
+    from gi.repository import Gtk
+
+    if getattr(event, "button", 0) != 3:
+        return False
+
+    menu = Gtk.Menu()
+    entries = (
+        ("Copy", lambda *_: copy_terminal_selection(terminal)),
+        ("Paste", lambda *_: terminal.paste_clipboard()),
+        ("Select All", lambda *_: terminal.select_all()),
+        ("Clear", lambda *_: terminal.reset(True, True)),
+    )
+    for label, callback in entries:
+        item = Gtk.MenuItem(label=label)
+        item.connect("activate", callback)
+        menu.append(item)
+    menu.show_all()
+    menu.popup_at_pointer(event)
+    return True
 
 
 def traffic_button(style: str, tooltip: str, callback):

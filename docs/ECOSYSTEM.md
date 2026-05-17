@@ -32,7 +32,7 @@ should offer one coherent path:
 - one deployment/backend layer
 - one future cloud/store/automation layer
 
-This is the Apple-like lesson SevenOS should borrow: not closed control, but
+This is the SevenOS ecosystem lesson SevenOS should borrow: not closed control, but
 integration, continuity and predictable defaults.
 
 ## Ecosystem Modules

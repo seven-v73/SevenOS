@@ -256,6 +256,13 @@ def handle_hub_native(args):
     run_script(args, "bin/seven-hub-native", *extra)
 
 
+def handle_settings(args):
+    extra = []
+    if args.probe:
+        extra.append("--probe")
+    run_script(args, "bin/seven-settings-native", *extra)
+
+
 def handle_flatpak(args):
     run_script(args, "scripts/flatpak.sh", args.action, *args.extra)
 
@@ -610,6 +617,9 @@ def main():
     hub_native_parser.add_argument("action", nargs="?", default="open", choices=("open", "status", "doctor"))
     hub_native_parser.add_argument("--dry-run", dest="dry_run_native", action="store_true", help="show native Hub launch command")
 
+    settings_parser = subparsers.add_parser("settings", help="open native SevenOS Settings")
+    settings_parser.add_argument("--probe", action="store_true", help="check whether the native settings stack is available")
+
     flatpak_parser = subparsers.add_parser("flatpak", help="SevenOS Flatpak bridge controls")
     flatpak_parser.add_argument("action", nargs="?", default="status")
     flatpak_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -727,6 +737,8 @@ def main():
         handle_hub_gui(args)
     elif args.command == "hub-native":
         handle_hub_native(args)
+    elif args.command == "settings":
+        handle_settings(args)
     elif args.command == "flatpak":
         handle_flatpak(args)
     elif args.command == "deploy":

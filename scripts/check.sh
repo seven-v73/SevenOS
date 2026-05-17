@@ -62,6 +62,9 @@ bash -n \
   "$ROOT_DIR/bin/seven-help" \
   "$ROOT_DIR/bin/seven-overview" \
   "$ROOT_DIR/bin/seven-quick-settings" \
+  "$ROOT_DIR/bin/seven-quick-settings-native" \
+  "$ROOT_DIR/bin/seven-settings" \
+  "$ROOT_DIR/bin/seven-settings-native" \
   "$ROOT_DIR/bin/seven-screenshot" \
   "$ROOT_DIR/bin/seven-shell-panel" \
   "$ROOT_DIR/bin/seven-shell-preview" \
@@ -69,6 +72,11 @@ bash -n \
   "$ROOT_DIR/bin/seven-terminal-native" \
   "$ROOT_DIR/bin/seven-terminal-shell" \
   "$ROOT_DIR/bin/seven-spotlight" \
+  "$ROOT_DIR/bin/seven-spotlight-native" \
+  "$ROOT_DIR/bin/seven-notification-center-native" \
+  "$ROOT_DIR/bin/seven-profile-center-native" \
+  "$ROOT_DIR/bin/seven-shield-center-native" \
+  "$ROOT_DIR/bin/seven-waybar-center-native" \
   "$ROOT_DIR/bin/seven-session" \
   "$ROOT_DIR/bin/seven-session-status" \
   "$ROOT_DIR/bin/seven-wallpaper" \
@@ -111,6 +119,7 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/seven-files-native" \
   "$ROOT_DIR/bin/seven-launchpad-native" \
+  "$ROOT_DIR/bin/seven-settings-native" \
   "$ROOT_DIR/bin/seven-terminal-native" \
   "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null

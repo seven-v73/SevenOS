@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+"""Compact SevenOS Shield center for Waybar."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+def run_json(command: list[str], fallback):
+    try:
+        out = subprocess.check_output(command, cwd=ROOT, text=True, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
+        return json.loads(out)
+    except Exception:
+        return fallback
+
+
+def run_detached(command: str) -> None:
+    subprocess.Popen(
+        ["bash", "-lc", command],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def run() -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    GLib.set_prgname("SevenShieldCenterNative")
+    GLib.set_application_name("SevenOS Shield")
+    try:
+        Gdk.set_program_class("SevenShieldCenterNative")
+    except Exception:
+        pass
+
+    css = """
+    window.shield-center-window { background: transparent; }
+    .shield-root {
+      padding: 16px;
+      border-radius: 30px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(230,244,249,0.66)), rgba(255,255,255,0.58);
+      border: 1px solid rgba(255,255,255,0.84);
+    }
+    .title { color: rgba(16,27,34,0.98); font-size: 18px; font-weight: 500; }
+    .subtitle { color: rgba(42,58,68,0.62); font-size: 11px; }
+    .metric {
+      min-height: 88px;
+      padding: 13px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.52);
+      border: 1px solid rgba(255,255,255,0.72);
+    }
+    .metric.good { border-color: rgba(90,173,114,0.30); background: rgba(90,173,114,0.08); }
+    .metric.warn { border-color: rgba(111,157,188,0.34); background: rgba(111,157,188,0.08); }
+    .metric.bad { border-color: rgba(196,103,58,0.28); background: rgba(196,103,58,0.08); }
+    .metric-value { color: rgba(16,27,34,0.98); font-size: 24px; font-weight: 500; }
+    .metric-label { color: rgba(44,60,70,0.66); font-size: 11px; }
+    .plan-card {
+      min-height: 58px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.50);
+      border: 1px solid rgba(255,255,255,0.68);
+    }
+    .plan-title { color: rgba(16,27,34,0.96); font-size: 13px; font-weight: 500; }
+    .plan-note { color: rgba(44,60,70,0.66); font-size: 11px; }
+    .action-strip {
+      padding: 12px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.46);
+      border: 1px solid rgba(255,255,255,0.68);
+    }
+    .icon-action {
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.58);
+      border: 1px solid rgba(255,255,255,0.76);
+    }
+    .icon-action:hover { background: rgba(255,255,255,0.84); }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    shield = run_json([str(ROOT / "security/shield-status.sh"), "--json"], {"percent": 0, "posture": "unknown", "checks": []})
+    plan = run_json([str(ROOT / "security/shield-status.sh"), "plan", "--json"], {"next": []})
+    percent = int(shield.get("percent", 0) or 0)
+    posture = shield.get("posture", "unknown")
+    checks = shield.get("checks", [])
+    ok_count = sum(1 for item in checks if item.get("state") == "OK")
+    miss_count = sum(1 for item in checks if item.get("state") != "OK")
+
+    window = Gtk.Window(title="SevenOS Shield")
+    window.set_wmclass("SevenShieldCenterNative", "SevenShieldCenterNative")
+    window.set_decorated(False)
+    window.set_resizable(False)
+    window.set_keep_above(True)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_default_size(500, 430)
+    window.get_style_context().add_class("shield-center-window")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    root.get_style_context().add_class("shield-root")
+    window.add(root)
+
+    title = Gtk.Label(label="Shield", xalign=0)
+    title.get_style_context().add_class("title")
+    root.pack_start(title, False, False, 0)
+    subtitle = Gtk.Label(label=f"{posture.title()} posture", xalign=0)
+    subtitle.get_style_context().add_class("subtitle")
+    root.pack_start(subtitle, False, False, 0)
+
+    metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    root.pack_start(metrics, False, False, 0)
+    metrics.pack_start(metric(Gtk, f"{percent}%", "Trust", css_state(percent)), True, True, 0)
+    metrics.pack_start(metric(Gtk, str(ok_count), "Ready", "good"), True, True, 0)
+    metrics.pack_start(metric(Gtk, str(miss_count), "Open", "bad" if miss_count else "good"), True, True, 0)
+
+    list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    root.pack_start(list_box, True, True, 0)
+    for item in (plan.get("next") or [])[:4]:
+        list_box.pack_start(plan_card(Gtk, item), False, False, 0)
+    if not (plan.get("next") or []):
+        list_box.pack_start(plan_card(Gtk, {"title": "Shield ready", "severity": "ok", "command": "seven shield dashboard", "reason": "No urgent Shield action."}), False, False, 0)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    actions.set_halign(Gtk.Align.CENTER)
+    actions.get_style_context().add_class("action-strip")
+    root.pack_end(actions, False, False, 0)
+    for glyph, tooltip, command in [
+        ("󰒃", "Dashboard", "seven shield dashboard"),
+        ("󰄬", "Audit", "seven shield audit"),
+        ("󱗼", "Lab", "seven shield lab --preset web"),
+        ("󰉋", "Workspace", "seven shield open"),
+        ("󰞀", "Enable", "seven shield enable"),
+    ]:
+        button = Gtk.Button()
+        button.get_style_context().add_class("icon-action")
+        button.set_tooltip_text(tooltip)
+        button.add(Gtk.Label(label=glyph))
+        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        actions.pack_start(button, False, False, 0)
+
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def css_state(percent: int) -> str:
+    if percent >= 70:
+        return "good"
+    if percent >= 35:
+        return "warn"
+    return "bad"
+
+
+def metric(Gtk, value: str, label: str, state: str):
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    box.get_style_context().add_class("metric")
+    box.get_style_context().add_class(state)
+    value_label = Gtk.Label(label=value)
+    value_label.get_style_context().add_class("metric-value")
+    label_label = Gtk.Label(label=label)
+    label_label.get_style_context().add_class("metric-label")
+    box.pack_start(value_label, False, False, 0)
+    box.pack_start(label_label, False, False, 0)
+    return box
+
+
+def plan_card(Gtk, item: dict):
+    button = Gtk.Button()
+    button.get_style_context().add_class("plan-card")
+    button.set_tooltip_text(item.get("command", "seven shield dashboard"))
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+    title = Gtk.Label(label=item.get("title", "Shield action"), xalign=0)
+    title.get_style_context().add_class("plan-title")
+    note = Gtk.Label(label=f"{item.get('severity', 'next')} · {item.get('phase', 'trust')}", xalign=0)
+    note.get_style_context().add_class("plan-note")
+    box.pack_start(title, False, False, 0)
+    box.pack_start(note, False, False, 0)
+    button.add(box)
+    button.connect("clicked", lambda _button, cmd=item.get("command", "seven shield dashboard"): run_detached(cmd))
+    return button
+
+
+def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--probe":
+        return probe()
+    return run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

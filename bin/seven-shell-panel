@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -148,7 +149,6 @@ PROFILE_ACTIONS = {
 
 
 NOTIFICATION_ACTIONS = [
-    ("󰂚", "Status", "Show notification state", ["seven-waybar-notifications", "test"]),
     ("󰅺", "Test", "Send test notification", ["seven-waybar-notifications", "test"]),
     ("󰕒", "Restore", "Restore last notification", ["seven-waybar-notifications", "restore"]),
     ("󰅖", "Dismiss", "Dismiss visible notifications", ["seven-waybar-notifications", "dismiss"]),
@@ -157,14 +157,65 @@ NOTIFICATION_ACTIONS = [
 ]
 
 
+def dnd_enabled() -> bool:
+    state_dir = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "sevenos"
+    return (state_dir / "notifications.dnd").exists()
+
+
+def notification_rows() -> list[dict[str, str]]:
+    if not shutil.which("makoctl"):
+        return []
+    result = subprocess.run(["makoctl", "list"], text=True, capture_output=True, check=False)
+    text = result.stdout.strip()
+    if not text:
+        return []
+    try:
+        payload = json.loads(text)
+        rows: list[dict[str, str]] = []
+
+        def walk(value) -> None:
+            if isinstance(value, dict):
+                summary = str(value.get("summary") or value.get("title") or value.get("app-name") or value.get("app_name") or "").strip()
+                body = str(value.get("body") or value.get("text") or "").strip()
+                app_name = str(value.get("app-name") or value.get("app_name") or value.get("app") or "Notification").strip()
+                if summary or body:
+                    rows.append({"app": app_name, "summary": summary or app_name, "body": body})
+                for child in value.values():
+                    walk(child)
+            elif isinstance(value, list):
+                for child in value:
+                    walk(child)
+
+        walk(payload)
+        return rows[:5]
+    except Exception:
+        rows = []
+        for raw in text.splitlines():
+            line = re.sub(r"\s+", " ", raw).strip()
+            if not line or line in {"[]", "{}"}:
+                continue
+            rows.append({"app": "Notification", "summary": line[:72], "body": ""})
+            if len(rows) >= 5:
+                break
+        return rows
+
+
 def print_preview(surface: str) -> None:
     profile = active_profile()
     actions = NOTIFICATION_ACTIONS if surface == "notifications" else [*PROFILE_ACTIONS.get(profile["key"], []), *QUICK_ACTIONS]
     dry_line(surface.title(), "Open native panel")
-    if surface != "notifications":
+    if surface == "notifications":
+        print("Notification Center")
+        rows = notification_rows()
+        if rows:
+            for row in rows:
+                print(f"󰂚  {row['summary']}")
+        else:
+            print("󰂚  No notifications")
+    else:
         print(f"Active profile: {profile['title']} :: {profile['workspace']}")
-    for icon, title, subtitle, command in actions:
-        print(f"{icon}  {title:<16} {subtitle} :: {' '.join(command)}")
+        for icon, title, subtitle, command in actions:
+            print(f"{icon}  {title:<16} {subtitle} :: {' '.join(command)}")
 
 
 def run_gui(surface: str) -> int:
@@ -184,7 +235,7 @@ def run_gui(surface: str) -> int:
     profile = active_profile()
     actions = NOTIFICATION_ACTIONS if surface == "notifications" else [*PROFILE_ACTIONS.get(profile["key"], []), *QUICK_ACTIONS]
     title = "SevenOS Notifications" if surface == "notifications" else "SevenOS Quick Settings"
-    subtitle = "Notification surface" if surface == "notifications" else f"{profile['title']} profile controls"
+    subtitle = "Do Not Disturb active" if surface == "notifications" and dnd_enabled() else ("Recent alerts" if surface == "notifications" else f"{profile['title']} profile controls")
 
     class SevenShellPanel(Adw.Application):
         def __init__(self) -> None:
@@ -195,19 +246,49 @@ def run_gui(surface: str) -> int:
             css = b"""
             window { background: transparent; }
             .panel {
-              background: rgba(255, 255, 255, 0.72);
+              background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(226, 242, 249, 0.58));
               color: #17232b;
               border-radius: 28px;
-              border: 1px solid rgba(159, 184, 198, 0.42);
+              border: 1px solid rgba(255, 255, 255, 0.82);
               padding: 18px;
             }
             .title { font-size: 20px; font-weight: 500; }
             .subtitle { color: #4d606a; }
             .tile {
-              background: rgba(255, 255, 255, 0.56);
+              background: rgba(255, 255, 255, 0.54);
+              border: 1px solid rgba(255, 255, 255, 0.62);
               border-radius: 18px;
               padding: 12px;
             }
+            .notification-card {
+              background: rgba(255, 255, 255, 0.58);
+              border: 1px solid rgba(255, 255, 255, 0.66);
+              border-radius: 18px;
+              padding: 12px;
+            }
+            .notification-app { color: #4d606a; font-size: 12px; }
+            .notification-summary { color: #17232b; font-size: 15px; font-weight: 500; }
+            .notification-body { color: #4d606a; font-size: 12px; }
+            .empty {
+              background: rgba(255, 255, 255, 0.42);
+              border: 1px solid rgba(255, 255, 255, 0.58);
+              border-radius: 20px;
+              padding: 24px;
+            }
+            .empty-icon { font-size: 34px; }
+            .empty-title { color: #17232b; font-size: 17px; font-weight: 500; }
+            .empty-note { color: #4d606a; font-size: 12px; }
+            .action-strip { margin-top: 2px; }
+            .mini-action {
+              min-width: 52px;
+              min-height: 42px;
+              border-radius: 15px;
+              background: rgba(255, 255, 255, 0.50);
+              border: 1px solid rgba(255, 255, 255, 0.62);
+            }
+            .mini-action:hover { background: rgba(255, 255, 255, 0.70); }
+            .mini-glyph { font-size: 20px; }
             .glyph { font-size: 24px; }
             """
             provider = Gtk.CssProvider()
@@ -218,7 +299,7 @@ def run_gui(surface: str) -> int:
 
             win = Adw.ApplicationWindow(application=app)
             win.set_title(title)
-            win.set_default_size(430, 470)
+            win.set_default_size(430, 430 if surface == "notifications" else 470)
             win.set_resizable(False)
 
             panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
@@ -238,27 +319,79 @@ def run_gui(surface: str) -> int:
             subheading.set_xalign(0)
             panel.append(subheading)
 
-            grid = Gtk.Grid()
-            grid.set_column_spacing(10)
-            grid.set_row_spacing(10)
-            panel.append(grid)
+            if surface == "notifications":
+                rows = notification_rows()
+                list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+                panel.append(list_box)
+                if rows:
+                    for row in rows:
+                        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+                        card.add_css_class("notification-card")
+                        app_label = Gtk.Label(label=row["app"])
+                        app_label.add_css_class("notification-app")
+                        app_label.set_xalign(0)
+                        summary_label = Gtk.Label(label=row["summary"])
+                        summary_label.add_css_class("notification-summary")
+                        summary_label.set_xalign(0)
+                        summary_label.set_wrap(True)
+                        card.append(app_label)
+                        card.append(summary_label)
+                        if row.get("body"):
+                            body_label = Gtk.Label(label=row["body"])
+                            body_label.add_css_class("notification-body")
+                            body_label.set_xalign(0)
+                            body_label.set_wrap(True)
+                            body_label.set_lines(2)
+                            card.append(body_label)
+                        list_box.append(card)
+                else:
+                    empty = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+                    empty.add_css_class("empty")
+                    empty_icon = Gtk.Label(label="󰂚")
+                    empty_icon.add_css_class("empty-icon")
+                    empty_title = Gtk.Label(label="No notifications")
+                    empty_title.add_css_class("empty-title")
+                    empty_note = Gtk.Label(label="Alerts will appear here.")
+                    empty_note.add_css_class("empty-note")
+                    empty.append(empty_icon)
+                    empty.append(empty_title)
+                    empty.append(empty_note)
+                    list_box.append(empty)
 
-            for index, (icon, label, description, command) in enumerate(actions):
-                button = Gtk.Button()
-                button.add_css_class("tile")
-                button.set_tooltip_text(description)
+                strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+                strip.add_css_class("action-strip")
+                panel.append(strip)
+                for icon, label, description, command in actions:
+                    button = Gtk.Button()
+                    button.add_css_class("mini-action")
+                    button.set_tooltip_text(f"{label}: {description}")
+                    glyph = Gtk.Label(label=icon)
+                    glyph.add_css_class("mini-glyph")
+                    button.set_child(glyph)
+                    button.connect("clicked", lambda _button, cmd=command: run_action(*cmd))
+                    strip.append(button)
+            else:
+                grid = Gtk.Grid()
+                grid.set_column_spacing(10)
+                grid.set_row_spacing(10)
+                panel.append(grid)
 
-                box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
-                glyph = Gtk.Label(label=icon)
-                glyph.add_css_class("glyph")
-                glyph.set_xalign(0.5)
-                text = Gtk.Label(label=label)
-                text.set_xalign(0.5)
-                box.append(glyph)
-                box.append(text)
-                button.set_child(box)
-                button.connect("clicked", lambda _button, cmd=command: run_action(*cmd))
-                grid.attach(button, index % 2, index // 2, 1, 1)
+                for index, (icon, label, description, command) in enumerate(actions):
+                    button = Gtk.Button()
+                    button.add_css_class("tile")
+                    button.set_tooltip_text(description)
+
+                    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+                    glyph = Gtk.Label(label=icon)
+                    glyph.add_css_class("glyph")
+                    glyph.set_xalign(0.5)
+                    text = Gtk.Label(label=label)
+                    text.set_xalign(0.5)
+                    box.append(glyph)
+                    box.append(text)
+                    button.set_child(box)
+                    button.connect("clicked", lambda _button, cmd=command: run_action(*cmd))
+                    grid.attach(button, index % 2, index // 2, 1, 1)
 
             win.set_content(panel)
             win.present()

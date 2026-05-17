@@ -3,6 +3,19 @@ set -Eeuo pipefail
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
 DND_FILE="$STATE_DIR/notifications.dnd"
+ROOT_DIR="${SEVENOS_ROOT:-}"
+
+resolve_native_center() {
+  if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-notification-center-native" ]]; then
+    printf '%s\n' "$ROOT_DIR/bin/seven-notification-center-native"
+    return 0
+  fi
+  if command -v seven-notification-center-native >/dev/null 2>&1; then
+    command -v seven-notification-center-native
+    return 0
+  fi
+  return 1
+}
 
 dry_run() {
   [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
@@ -37,13 +50,39 @@ run_detached() {
   setsid -f "$@" >/tmp/sevenos-notifications.log 2>&1 || true
 }
 
+run_terminal() {
+  local title="$1"
+  local command="$2"
+  local wrapped
+  wrapped="$command; printf '\nPress Enter to close...'; read -r"
+
+  if dry_run; then
+    dry_line "$title > $command"
+    return 0
+  fi
+
+  if command -v seven-terminal >/dev/null 2>&1; then
+    run_detached seven-terminal classic -- bash -lc "$wrapped"
+  elif command -v kitty >/dev/null 2>&1; then
+    run_detached kitty --title "$title" bash -lc "$wrapped"
+  else
+    bash -lc "$command"
+  fi
+}
+
 is_mako_running() {
   pgrep -x mako >/dev/null 2>&1
+}
+
+mako_missing() {
+  ! command -v mako >/dev/null 2>&1
 }
 
 status() {
   if [[ -f "$DND_FILE" ]]; then
     printf '󰂛\n'
+  elif mako_missing; then
+    printf '󰂜\n'
   elif is_mako_running; then
     printf '󰂚\n'
   else
@@ -54,11 +93,57 @@ status() {
 status_json() {
   if [[ -f "$DND_FILE" ]]; then
     printf '{"text":"󰂛","tooltip":"Notifications: Do Not Disturb enabled\\nClick opens controls, right-click disables DND, middle-click dismisses visible notifications.","class":"dnd"}\n'
+  elif mako_missing; then
+    printf '{"text":"󰂜","tooltip":"Notifications: backend missing\\nClick opens notification center with install/repair action.","class":"miss"}\n'
   elif is_mako_running; then
     printf '{"text":"󰂚","tooltip":"Notifications: active\\nClick opens controls, right-click enables DND, middle-click dismisses visible notifications.","class":"ok"}\n'
   else
     printf '{"text":"󰂜","tooltip":"Notifications: service missing\\nClick opens controls, right-click toggles DND.","class":"miss"}\n'
   fi
+}
+
+notification_feed() {
+  if command -v makoctl >/dev/null 2>&1; then
+    local raw
+    raw="$(makoctl list 2>/dev/null || true)"
+    if [[ -n "$raw" && "$raw" != "[]" && "$raw" != "{}" ]]; then
+      NOTIFICATION_RAW="$raw" python - <<'PY'
+import json
+import os
+import re
+
+text = os.environ.get("NOTIFICATION_RAW", "").strip()
+rows = []
+
+def walk(value):
+    if isinstance(value, dict):
+        summary = str(value.get("summary") or value.get("title") or value.get("app-name") or value.get("app_name") or "").strip()
+        body = str(value.get("body") or value.get("text") or "").strip()
+        app = str(value.get("app-name") or value.get("app_name") or value.get("app") or "Notification").strip()
+        if summary or body:
+            rows.append((app, summary or app, body))
+        for child in value.values():
+            walk(child)
+    elif isinstance(value, list):
+        for child in value:
+            walk(child)
+
+try:
+    walk(json.loads(text))
+except Exception:
+    for raw in text.splitlines():
+        line = re.sub(r"\s+", " ", raw).strip()
+        if line and line not in {"[]", "{}"}:
+            rows.append(("Notification", line[:72], ""))
+
+for app, summary, body in rows[:5]:
+    detail = body[:60] if body else app
+    print(f"󰂚  {summary}    {detail}")
+PY
+      return 0
+    fi
+  fi
+  printf '󰂚  No notifications    Alerts will appear here\n'
 }
 
 start_mako() {
@@ -67,12 +152,23 @@ start_mako() {
     return 0
   fi
 
-  if command -v mako >/dev/null 2>&1; then
-    run_detached mako
+  if mako_missing; then
+    systemctl --user reset-failed sevenos-notifications.service >/dev/null 2>&1 || true
+    notify "SevenOS Notifications" "Mako is not installed. Open the notification center and use Install."
+    dry_run && return 0
+    return 1
+  fi
+
+  if systemctl --user list-unit-files sevenos-notifications.service >/dev/null 2>&1; then
+    systemctl --user restart sevenos-notifications.service >/dev/null 2>&1 || true
+    sleep 0.3
+  fi
+
+  if is_mako_running; then
     notify "SevenOS Notifications" "Notification service started."
   else
-    notify "SevenOS Notifications" "Mako is not installed."
-    return 1
+    run_detached mako
+    notify "SevenOS Notifications" "Notification service started."
   fi
 }
 
@@ -82,14 +178,20 @@ restart_mako() {
     return 0
   fi
 
-  pkill -x mako >/dev/null 2>&1 || true
-  if command -v mako >/dev/null 2>&1; then
-    run_detached mako
-    notify "SevenOS Notifications" "Notification service restarted."
-  else
-    notify "SevenOS Notifications" "Mako is not installed."
+  if mako_missing; then
+    systemctl --user reset-failed sevenos-notifications.service >/dev/null 2>&1 || true
+    notify "SevenOS Notifications" "Mako is not installed. Use Install in the notification center."
+    dry_run && return 0
     return 1
   fi
+
+  pkill -x mako >/dev/null 2>&1 || true
+  systemctl --user restart sevenos-notifications.service >/dev/null 2>&1 || run_detached mako
+  notify "SevenOS Notifications" "Notification service restarted."
+}
+
+install_mako() {
+  run_terminal "SevenOS Notifications" "sudo pacman -S --needed mako libnotify && systemctl --user daemon-reload && systemctl --user reset-failed sevenos-notifications.service && systemctl --user enable --now sevenos-notifications.service"
 }
 
 dismiss_visible() {
@@ -131,13 +233,15 @@ toggle_dnd() {
 }
 
 menu() {
+  notification_feed
   cat <<'EOF'
-󰂚  Notification Status
-󰅺  Test Notification
-󰕒  Restore Last
-󰅖  Dismiss Visible
-󰂛  Toggle Do Not Disturb
-󰜉  Restart Notifications
+󰅺  Test
+󰐥  Start
+󰚰  Install
+󰕒  Restore
+󰅖  Dismiss
+󰂛  Focus
+󰜉  Restart
 EOF
 }
 
@@ -157,6 +261,14 @@ open_menu() {
     return 0
   fi
 
+  local native_center
+  if [[ "${SEVENOS_NOTIFICATIONS_NATIVE:-1}" != "0" ]] &&
+     native_center="$(resolve_native_center)" &&
+     "$native_center" --probe >/dev/null 2>&1; then
+    "$native_center"
+    return $?
+  fi
+
   if [[ "${SEVENOS_PANEL_FALLBACK:-0}" != "1" ]] &&
      command -v seven-shell-panel >/dev/null 2>&1 &&
      seven-shell-panel status >/dev/null 2>&1; then
@@ -173,12 +285,15 @@ open_menu() {
   selected="$(clean_selection "$selected")"
 
   case "$selected" in
-    "Notification Status") notify "SevenOS Notifications" "Status: $(status)" ;;
-    "Test Notification") notify "SevenOS Notifications" "SevenOS notification surface is active." ;;
-    "Restore Last") restore_last ;;
-    "Dismiss Visible") dismiss_visible ;;
-    "Toggle Do Not Disturb") toggle_dnd ;;
-    "Restart Notifications") restart_mako ;;
+    "Test") notify "SevenOS Notifications" "SevenOS notification surface is active." ;;
+    "Start") start_mako ;;
+    "Install") install_mako ;;
+    "Restore") restore_last ;;
+    "Dismiss") dismiss_visible ;;
+    "Focus") toggle_dnd ;;
+    "Restart") restart_mako ;;
+    "No notifications") exit 0 ;;
+    Notification*) exit 0 ;;
     "") exit 0 ;;
   esac
 }
@@ -188,6 +303,7 @@ case "${1:-status}" in
   status-json|json) status_json ;;
   menu|open) open_menu ;;
   start) start_mako ;;
+  install) install_mako ;;
   restart) restart_mako ;;
   dismiss) dismiss_visible ;;
   restore) restore_last ;;

@@ -142,7 +142,8 @@ configure_file_experience() {
   if is_dry_run; then
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
-    printf 'xdg-mime default org.gnome.Nautilus.desktop inode/directory\n'
+    printf 'install Seven Files desktop entry\n'
+    printf 'xdg-mime default seven-files.desktop inode/directory\n'
     printf 'install Nautilus script: Set as SevenOS Wallpaper\n'
     printf 'install desktop action: Set as SevenOS Wallpaper\n'
     printf 'remove SevenOS wallpaper from image MIME defaults\n'
@@ -155,10 +156,12 @@ configure_file_experience() {
   fi
 
   mkdir -p "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
+  mkdir -p "$HOME/.local/share/applications"
+  cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$HOME/.local/share/applications/seven-files.desktop"
 
-  if command -v xdg-mime >/dev/null 2>&1 && command -v nautilus >/dev/null 2>&1; then
-    xdg-mime default org.gnome.Nautilus.desktop inode/directory >/dev/null 2>&1 || true
-    xdg-mime default org.gnome.Nautilus.desktop application/x-gnome-saved-search >/dev/null 2>&1 || true
+  if command -v xdg-mime >/dev/null 2>&1; then
+    xdg-mime default seven-files.desktop inode/directory >/dev/null 2>&1 || true
+    xdg-mime default seven-files.desktop application/x-gnome-saved-search >/dev/null 2>&1 || true
   fi
 
   local nautilus_scripts_dir="$HOME/.local/share/nautilus/scripts"
@@ -192,7 +195,6 @@ fi
 EOF
   chmod +x "$wallpaper_script"
 
-  mkdir -p "$HOME/.local/share/applications"
   cp "$ROOT_DIR/seven-hub/seven-wallpaper.desktop" "$HOME/.local/share/applications/seven-wallpaper.desktop"
 
   local mime_file

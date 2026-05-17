@@ -26,13 +26,16 @@ if is_dry_run; then
   printf 'install Seven Hub wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "$BIN_HOME/seven-hub"
   printf 'install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "$BIN_HOME/seven-control-center"
   printf 'install Seven Hub Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-hub-native" "$BIN_HOME/seven-hub-native"
+  printf 'install SevenOS Settings wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-settings" "$BIN_HOME/seven-settings"
   printf 'sudo install Seven Hub wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "/usr/local/bin/seven-hub"
   printf 'sudo install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "/usr/local/bin/seven-control-center"
   printf 'sudo install Seven Hub Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-hub-native" "/usr/local/bin/seven-hub-native"
+  printf 'sudo install SevenOS Settings wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-settings" "/usr/local/bin/seven-settings"
 else
   write_command_wrapper "$BIN_HOME/seven-hub" "$ROOT_DIR/seven-hub/bin/seven-hub"
   write_command_wrapper "$BIN_HOME/seven-control-center" "$ROOT_DIR/seven-hub/bin/seven-control-center"
   write_command_wrapper "$BIN_HOME/seven-hub-native" "$ROOT_DIR/bin/seven-hub-native"
+  write_command_wrapper "$BIN_HOME/seven-settings" "$ROOT_DIR/bin/seven-settings"
   if command -v sudo >/dev/null 2>&1; then
     tmp_file="$(mktemp)"
     write_command_wrapper "$tmp_file" "$ROOT_DIR/seven-hub/bin/seven-hub"
@@ -57,10 +60,19 @@ else
       log_warn "The user command is still available at $BIN_HOME/seven-hub-native."
     fi
     rm -f "$tmp_file"
+
+    tmp_file="$(mktemp)"
+    write_command_wrapper "$tmp_file" "$ROOT_DIR/bin/seven-settings"
+    if ! sudo install -Dm755 "$tmp_file" "/usr/local/bin/seven-settings"; then
+      log_warn "Could not install seven-settings into /usr/local/bin."
+      log_warn "The user command is still available at $BIN_HOME/seven-settings."
+    fi
+    rm -f "$tmp_file"
   fi
 fi
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub.desktop" "$APP_HOME/seven-hub.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub-native.desktop" "$APP_HOME/seven-hub-native.desktop"
+run_cmd cp "$ROOT_DIR/seven-hub/seven-settings.desktop" "$APP_HOME/seven-settings.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$APP_HOME/seven-files.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-wallpaper.desktop" "$APP_HOME/seven-wallpaper.desktop"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$ICON_HOME/sevenos.svg"

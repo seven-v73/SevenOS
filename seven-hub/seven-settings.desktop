@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS Settings
+Comment=Configure SevenOS desktop, security, profiles, devices and system runtime
+Exec=seven-settings
+Icon=preferences-system
+Terminal=false
+Categories=System;Settings;DesktopSettings;
+StartupNotify=true

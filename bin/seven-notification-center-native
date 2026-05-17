@@ -1,0 +1,438 @@
+#!/usr/bin/env python3
+"""SevenOS native notification center.
+
+This surface is intentionally content-first: notifications are the main body,
+while controls live as compact icon buttons. Rofi remains only a fallback in
+the caller when GTK is unavailable.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven-waybar-notifications").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven-waybar-notifications").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven-waybar-notifications").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
+DND_FILE = STATE_DIR / "notifications.dnd"
+
+
+@dataclass
+class Notification:
+    app: str
+    title: str
+    body: str
+
+
+def run_notification_action(action: str) -> None:
+    command = ROOT / "bin/seven-waybar-notifications"
+    env = {**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_NOTIFICATIONS_NATIVE": "0"}
+    subprocess.Popen(
+        [str(command), action],
+        cwd=ROOT,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def dnd_enabled() -> bool:
+    return DND_FILE.exists()
+
+
+def command_available(command: str) -> bool:
+    return subprocess.run(["bash", "-lc", f"command -v {command} >/dev/null 2>&1"], check=False).returncode == 0
+
+
+def mako_running() -> bool:
+    return subprocess.run(["pgrep", "-x", "mako"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+
+def backend_state() -> tuple[str, str]:
+    if not command_available("mako"):
+        return "missing", "Service missing"
+    if mako_running():
+        return "running", "Ready"
+    return "inactive", "Service stopped"
+
+
+def _walk_notifications(value: object, rows: list[Notification]) -> None:
+    if isinstance(value, dict):
+        summary = str(value.get("summary") or value.get("title") or "").strip()
+        body = str(value.get("body") or value.get("text") or "").strip()
+        app = str(value.get("app-name") or value.get("app_name") or value.get("app") or "Notification").strip()
+        if summary or body:
+            rows.append(Notification(app=app or "Notification", title=summary or app or "Notification", body=body))
+        for child in value.values():
+            _walk_notifications(child, rows)
+    elif isinstance(value, list):
+        for child in value:
+            _walk_notifications(child, rows)
+
+
+def load_notifications() -> list[Notification]:
+    if not command_available("makoctl"):
+        return []
+    result = subprocess.run(["makoctl", "list"], text=True, capture_output=True, check=False)
+    raw = result.stdout.strip()
+    if not raw or raw in {"[]", "{}"}:
+        return []
+    rows: list[Notification] = []
+    try:
+        _walk_notifications(json.loads(raw), rows)
+    except Exception:
+        for line in raw.splitlines():
+            clean = re.sub(r"\s+", " ", line).strip()
+            if clean and clean not in {"[]", "{}"}:
+                rows.append(Notification(app="Notification", title=clean[:72], body=""))
+    seen: set[tuple[str, str, str]] = set()
+    unique: list[Notification] = []
+    for row in rows:
+        key = (row.app, row.title, row.body)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(row)
+    return unique[:7]
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def run() -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    GLib.set_prgname("SevenNotificationCenterNative")
+    GLib.set_application_name("SevenOS Notifications")
+    try:
+        Gdk.set_program_class("SevenNotificationCenterNative")
+    except Exception:
+        pass
+
+    css = """
+    window.notification-center-window { background: transparent; }
+    .notification-root {
+      padding: 16px;
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.84), rgba(232,244,249,0.64)),
+        rgba(255,255,255,0.58);
+      border: 1px solid rgba(255,255,255,0.82);
+    }
+    .header {
+      padding: 4px 4px 12px 4px;
+    }
+    .header-title {
+      color: rgba(16,27,34,0.96);
+      font-size: 19px;
+      font-weight: 500;
+    }
+    .header-subtitle {
+      color: rgba(42,58,68,0.58);
+      font-size: 12px;
+    }
+    .dnd-pill {
+      min-height: 28px;
+      padding: 0 11px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.62);
+      border: 1px solid rgba(91,127,166,0.24);
+      color: rgba(30,48,58,0.78);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .notification-card {
+      min-height: 72px;
+      padding: 12px;
+      margin-bottom: 8px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.56);
+      border: 1px solid rgba(255,255,255,0.70);
+    }
+    .notification-card:hover {
+      background: rgba(255,255,255,0.78);
+      border-color: rgba(91,127,166,0.28);
+    }
+    .notification-icon {
+      min-width: 40px;
+      min-height: 40px;
+      border-radius: 13px;
+      background: rgba(91,127,166,0.14);
+      color: rgba(54,86,108,0.92);
+      font-size: 18px;
+    }
+    .notification-title {
+      color: rgba(16,27,34,0.98);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .notification-body,
+    .notification-app {
+      color: rgba(43,58,68,0.62);
+      font-size: 11px;
+    }
+    .empty-box {
+      min-height: 250px;
+      padding: 24px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.34);
+      border: 1px solid rgba(255,255,255,0.58);
+    }
+    .empty-glyph {
+      color: rgba(64,88,104,0.72);
+      font-size: 44px;
+    }
+    .empty-title {
+      color: rgba(16,27,34,0.92);
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .empty-subtitle {
+      color: rgba(43,58,68,0.58);
+      font-size: 12px;
+    }
+    .primary-action {
+      min-height: 34px;
+      padding: 0 15px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(91,127,166,0.28);
+      color: rgba(16,27,34,0.92);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .primary-action:hover {
+      background: rgba(255,255,255,0.94);
+    }
+    .action-strip {
+      padding-top: 12px;
+    }
+    .action-button {
+      min-width: 42px;
+      min-height: 42px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.56);
+      border: 1px solid rgba(255,255,255,0.76);
+      color: rgba(24,39,49,0.86);
+    }
+    .action-button:hover {
+      background: rgba(255,255,255,0.86);
+      border-color: rgba(91,127,166,0.30);
+    }
+    .action-glyph {
+      font-size: 17px;
+      font-weight: 500;
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    state_key, state_label = backend_state()
+    notifications = load_notifications()
+
+    window = Gtk.Window(title="SevenOS Notifications")
+    window.set_wmclass("SevenNotificationCenterNative", "SevenNotificationCenterNative")
+    window.set_decorated(False)
+    window.set_resizable(False)
+    window.set_keep_above(True)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_default_size(430, 500)
+    window.get_style_context().add_class("notification-center-window")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    root.get_style_context().add_class("notification-root")
+    window.add(root)
+
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    header.get_style_context().add_class("header")
+    root.pack_start(header, False, False, 0)
+
+    title_stack = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+    title = Gtk.Label(label="Notifications", xalign=0)
+    title.get_style_context().add_class("header-title")
+    title_stack.pack_start(title, False, False, 0)
+    subtitle_text = f"{len(notifications)} active" if notifications else state_label
+    subtitle = Gtk.Label(label=subtitle_text, xalign=0)
+    subtitle.get_style_context().add_class("header-subtitle")
+    title_stack.pack_start(subtitle, False, False, 0)
+    header.pack_start(title_stack, True, True, 0)
+
+    dnd = Gtk.Label(label="Focus On" if dnd_enabled() else "Focus Off")
+    dnd.get_style_context().add_class("dnd-pill")
+    header.pack_end(dnd, False, False, 0)
+
+    if notifications:
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_min_content_height(330)
+        scroll.set_max_content_height(330)
+        list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        scroll.add(list_box)
+        root.pack_start(scroll, True, True, 0)
+        for item in notifications:
+            list_box.pack_start(build_notification_card(Gtk, item), False, False, 0)
+    else:
+        root.pack_start(build_empty_state(Gtk, state_key), True, True, 0)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
+    actions.set_halign(Gtk.Align.CENTER)
+    actions.get_style_context().add_class("action-strip")
+    root.pack_end(actions, False, False, 0)
+
+    actions_model = [
+        ("+", "Send test notification", "test"),
+        ("▶", "Start notification service", "start"),
+        ("⇣", "Install notification backend", "install"),
+        ("↺", "Restore last notification", "restore"),
+        ("×", "Dismiss visible notifications", "dismiss"),
+        ("☾", "Toggle Do Not Disturb", "toggle-dnd"),
+        ("⟳", "Restart notification service", "restart"),
+    ]
+    for glyph, tooltip, action in actions_model:
+        button = Gtk.Button()
+        button.get_style_context().add_class("action-button")
+        button.set_tooltip_text(tooltip)
+        label = Gtk.Label(label=glyph)
+        label.get_style_context().add_class("action-glyph")
+        button.add(label)
+        button.connect("clicked", lambda _button, act=action: run_notification_action(act))
+        actions.pack_start(button, False, False, 0)
+
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def build_notification_card(Gtk, item: Notification):
+    card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    card.get_style_context().add_class("notification-card")
+
+    icon = Gtk.Label(label="!")
+    icon.get_style_context().add_class("notification-icon")
+    card.pack_start(icon, False, False, 0)
+
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    title = Gtk.Label(label=item.title, xalign=0)
+    title.set_ellipsize(3)
+    title.get_style_context().add_class("notification-title")
+    text.pack_start(title, False, False, 0)
+    app = Gtk.Label(label=item.app, xalign=0)
+    app.get_style_context().add_class("notification-app")
+    text.pack_start(app, False, False, 0)
+    if item.body:
+        body = Gtk.Label(label=item.body, xalign=0)
+        body.set_ellipsize(3)
+        body.get_style_context().add_class("notification-body")
+        text.pack_start(body, False, False, 0)
+    card.pack_start(text, True, True, 0)
+    return card
+
+
+def build_empty_state(Gtk, state_key: str):
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    box.set_valign(Gtk.Align.CENTER)
+    box.set_halign(Gtk.Align.FILL)
+    box.get_style_context().add_class("empty-box")
+
+    if state_key == "missing":
+        glyph_text = "!"
+        title_text = "Notification backend missing"
+        subtitle_text = "Install Mako to receive alerts and make this center live."
+        primary_label = "Install"
+        primary_action = "install"
+    elif state_key == "inactive":
+        glyph_text = "▶"
+        title_text = "Notifications are stopped"
+        subtitle_text = "Start the notification service to receive system alerts."
+        primary_label = "Start"
+        primary_action = "start"
+    else:
+        glyph_text = "◌"
+        title_text = "No notifications"
+        subtitle_text = "SevenOS will surface important events here."
+        primary_label = "Test"
+        primary_action = "test"
+
+    glyph = Gtk.Label(label=glyph_text)
+    glyph.get_style_context().add_class("empty-glyph")
+    box.pack_start(glyph, False, False, 0)
+    title = Gtk.Label(label=title_text)
+    title.get_style_context().add_class("empty-title")
+    box.pack_start(title, False, False, 0)
+    subtitle = Gtk.Label(label=subtitle_text)
+    subtitle.get_style_context().add_class("empty-subtitle")
+    box.pack_start(subtitle, False, False, 0)
+    primary = Gtk.Button(label=primary_label)
+    primary.get_style_context().add_class("primary-action")
+    primary.connect("clicked", lambda _button, act=primary_action: run_notification_action(act))
+    box.pack_start(primary, False, False, 8)
+    return box
+
+
+def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--probe":
+        return probe()
+    return run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

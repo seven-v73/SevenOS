@@ -51,7 +51,7 @@ run_repair() {
   shift
 
   printf '  - %s\n' "$label"
-  if [[ "$APPLY" -eq 1 && ! is_dry_run ]]; then
+  if [[ "$APPLY" -eq 1 ]] && ! is_dry_run; then
     "$@"
   else
     printf '    command:'

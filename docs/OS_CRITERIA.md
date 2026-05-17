@@ -183,7 +183,7 @@ Signals:
 
 SevenOS should reduce forced compromise:
 
-> Linux power, Windows compatibility, macOS-level care, Ubuntu-like approachability,
+> Linux power, Windows compatibility, desktop-grade care, Ubuntu-like approachability,
 > and a modern African first identity.
 
 This document is paired with:

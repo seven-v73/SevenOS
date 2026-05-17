@@ -87,6 +87,10 @@ command_state() {
 
 service_state() {
   local service="$1"
+  if [[ "$service" == "ufw.service" && -s "${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/security/ufw-degraded" ]]; then
+    printf PART
+    return 0
+  fi
   if systemctl is-active --quiet "$service" 2>/dev/null; then
     printf OK
   elif systemctl is-enabled --quiet "$service" 2>/dev/null; then

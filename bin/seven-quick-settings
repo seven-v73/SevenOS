@@ -25,6 +25,18 @@ resolve_root() {
 ROOT_DIR="$(resolve_root)"
 THEME="${XDG_CONFIG_HOME:-$HOME/.config}/rofi/quick-settings.rasi"
 
+resolve_native_quick() {
+  if [[ -x "$ROOT_DIR/bin/seven-quick-settings-native" ]]; then
+    printf '%s\n' "$ROOT_DIR/bin/seven-quick-settings-native"
+    return 0
+  fi
+  if command -v seven-quick-settings-native >/dev/null 2>&1; then
+    command -v seven-quick-settings-native
+    return 0
+  fi
+  return 1
+}
+
 dry_line() {
   printf 'DRY-RUN > Quick Settings > %s\n' "$*"
 }
@@ -78,6 +90,14 @@ if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   dry_line "Open panel"
   menu
   exit 0
+fi
+
+if [[ "${SEVENOS_QUICK_NATIVE:-1}" != "0" ]]; then
+  native_quick="$(resolve_native_quick || true)"
+  if [[ -n "${native_quick:-}" ]] && "$native_quick" --probe >/dev/null 2>&1; then
+    "$native_quick"
+    exit $?
+  fi
 fi
 
 if [[ "${SEVENOS_PANEL_FALLBACK:-0}" != "1" ]] &&

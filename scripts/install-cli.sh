@@ -16,32 +16,56 @@ ensure_user_bin_path() {
   local marker_end="# <<< SevenOS user bin path"
   local shell_file
 
-  if [[ ":$PATH:" == *":$BIN_HOME:"* ]]; then
-    log_success "$BIN_HOME is already in PATH."
+  if [[ ":$PATH:" == ":$BIN_HOME:"* ]]; then
+    log_success "$BIN_HOME is already first in PATH."
     return 0
   fi
 
   if is_dry_run; then
-    printf 'append managed SevenOS PATH block to %q %q %q\n' "$PROFILE_HOME" "$BASHRC_HOME" "$ZSHRC_HOME"
+    printf 'prepend managed SevenOS PATH block to %q %q %q\n' "$PROFILE_HOME" "$BASHRC_HOME" "$ZSHRC_HOME"
     return 0
   fi
 
   for shell_file in "$PROFILE_HOME" "$BASHRC_HOME" "$ZSHRC_HOME"; do
     touch "$shell_file"
-    if ! grep -qF "$marker_start" "$shell_file"; then
-      cp -a "$shell_file" "$(backup_path "$shell_file")"
-      {
-        printf '\n%s\n' "$marker_start"
-        printf 'case ":$PATH:" in\n'
-        printf '  *":$HOME/.local/bin:"*) ;;\n'
-        printf '  *) export PATH="$HOME/.local/bin:$PATH" ;;\n'
-        printf 'esac\n'
-        printf '%s\n' "$marker_end"
-      } >> "$shell_file"
-    fi
+    cp -a "$shell_file" "$(backup_path "$shell_file")"
+    python - "$shell_file" "$marker_start" "$marker_end" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+start = sys.argv[2]
+end = sys.argv[3]
+text = path.read_text()
+lines = text.splitlines()
+out = []
+inside = False
+for line in lines:
+    if line.strip() == start:
+        inside = True
+        continue
+    if line.strip() == end:
+        inside = False
+        continue
+    if not inside:
+        out.append(line)
+
+block = [
+    "",
+    start,
+    'case ":$PATH:" in',
+    '  ":$HOME/.local/bin:"*) ;;',
+    '  *) export PATH="$HOME/.local/bin:${PATH//$HOME/.local/bin:/}" ;;',
+    'esac',
+    end,
+]
+path.write_text("\n".join(out + block).rstrip() + "\n")
+PY
   done
 
-  log_warn "Open a new shell or run: export PATH=\"\$HOME/.local/bin:\$PATH\""
+  export PATH="$BIN_HOME:${PATH//$BIN_HOME:/}"
+  log_warn "SevenOS user commands now take priority in new shells."
+  log_warn "For this terminal, run: export PATH=\"\$HOME/.local/bin:\${PATH//\$HOME/.local/bin:/}\" && hash -r"
 }
 
 write_command_wrapper() {
@@ -107,9 +131,12 @@ install_system_command() {
 log_info "Installing SevenOS CLI..."
 run_cmd mkdir -p "$BIN_HOME"
 install_user_command "$ROOT_DIR/bin/seven" seven
+install_user_command "$ROOT_DIR/bin/seven-daemon" seven-daemon
 install_user_command "$ROOT_DIR/bin/seven-power" seven-power
 install_user_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
 install_user_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
+install_user_command "$ROOT_DIR/bin/seven-settings" seven-settings
+install_user_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_user_command "$ROOT_DIR/bin/seven-help" seven-help
 install_user_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_user_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
@@ -117,6 +144,7 @@ install_user_command "$ROOT_DIR/bin/seven-dock" seven-dock
 install_user_command "$ROOT_DIR/bin/seven-dock-native" seven-dock-native
 install_user_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_user_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
+install_user_command "$ROOT_DIR/bin/seven-quick-settings-native" seven-quick-settings-native
 install_user_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_user_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_user_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
@@ -127,10 +155,15 @@ install_user_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
 install_user_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_user_command "$ROOT_DIR/bin/seven-shell-preview" seven-shell-preview
 install_user_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight
+install_user_command "$ROOT_DIR/bin/seven-spotlight-native" seven-spotlight-native
 install_user_command "$ROOT_DIR/bin/seven-session" seven-session
 install_user_command "$ROOT_DIR/bin/seven-session-status" seven-session-status
 install_user_command "$ROOT_DIR/bin/seven-country" seven-country
 install_user_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
+install_user_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
+install_user_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
+install_user_command "$ROOT_DIR/bin/seven-shield-center-native" seven-shield-center-native
+install_user_command "$ROOT_DIR/bin/seven-waybar-center-native" seven-waybar-center-native
 install_user_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-notifications
 install_user_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_user_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
@@ -143,11 +176,14 @@ ensure_user_bin_path
 
 log_info "Installing SevenOS CLI into /usr/local/bin for reliable terminal access..."
 install_system_command "$ROOT_DIR/bin/seven" seven
+install_system_command "$ROOT_DIR/bin/seven-daemon" seven-daemon
 install_system_command "$ROOT_DIR/bin/sevenpkg" sevenpkg
 install_system_command "$ROOT_DIR/bin/seven-country" seven-country
 install_system_command "$ROOT_DIR/bin/seven-power" seven-power
 install_system_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
 install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
+install_system_command "$ROOT_DIR/bin/seven-settings" seven-settings
+install_system_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_system_command "$ROOT_DIR/bin/seven-help" seven-help
 install_system_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_system_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
@@ -155,6 +191,7 @@ install_system_command "$ROOT_DIR/bin/seven-dock" seven-dock
 install_system_command "$ROOT_DIR/bin/seven-dock-native" seven-dock-native
 install_system_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_system_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
+install_system_command "$ROOT_DIR/bin/seven-quick-settings-native" seven-quick-settings-native
 install_system_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_system_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_system_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
@@ -165,9 +202,14 @@ install_system_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
 install_system_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_system_command "$ROOT_DIR/bin/seven-shell-preview" seven-shell-preview
 install_system_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight
+install_system_command "$ROOT_DIR/bin/seven-spotlight-native" seven-spotlight-native
 install_system_command "$ROOT_DIR/bin/seven-session" seven-session
 install_system_command "$ROOT_DIR/bin/seven-session-status" seven-session-status
 install_system_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
+install_system_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
+install_system_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
+install_system_command "$ROOT_DIR/bin/seven-shield-center-native" seven-shield-center-native
+install_system_command "$ROOT_DIR/bin/seven-waybar-center-native" seven-waybar-center-native
 install_system_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-notifications
 install_system_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_system_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security

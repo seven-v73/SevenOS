@@ -26,6 +26,7 @@ hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
 apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS application library.
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
+settings.open	Desktop	Open Settings	seven-settings	safe	Open the native SevenOS Settings app for wallpaper, displays, network, sound, keyboard, security, profiles and system.
 welcome.open	System	Welcome	seven welcome	safe	Show the SevenOS onboarding overview.
 welcome.status	System	First-Run Status	seven welcome status	safe	Check whether this user session is really SevenOS.
 welcome.plan	System	First-Run Plan	seven welcome plan	safe	Show the first-run completion plan.

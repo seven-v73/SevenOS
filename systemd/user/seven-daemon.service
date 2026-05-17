@@ -5,7 +5,8 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/env seven-daemon serve
+Environment=SEVENOS_ROOT=%h/Code/OS/SevenOS
+ExecStart=%h/.local/bin/seven-daemon serve
 Restart=on-failure
 RestartSec=3
 

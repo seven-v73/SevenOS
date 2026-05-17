@@ -58,7 +58,10 @@ run_step() {
   shift
 
   printf '  - %s\n' "$label"
-  if [[ "$APPLY" -eq 1 && ! is_dry_run ]]; then
+  if [[ "$APPLY" -eq 1 ]] && ! is_dry_run; then
+    printf '    running:'
+    printf ' %q' "$@"
+    printf '\n'
     "$@"
   else
     printf '    command:'
@@ -171,6 +174,9 @@ if [[ "$APPLY" -eq 1 ]]; then
   log_warn "Apply mode enabled. System-changing commands may run."
   if [[ "$YES" -eq 1 ]]; then
     log_warn "Non-interactive package install mode enabled."
+  fi
+  if is_dry_run; then
+    log_warn "SEVENOS_DRY_RUN=1 is active; --apply will only preview commands."
   fi
   if ! is_dry_run && ! sudo -n true 2>/dev/null; then
     log_error "Apply mode needs an active sudo session."

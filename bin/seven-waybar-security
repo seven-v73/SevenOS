@@ -14,11 +14,11 @@ fi
 
 if [[ "$mode" == "json" ]]; then
   if [[ "$firewall" == "OK" && "$lab" == "OK" ]]; then
-    printf '{"text":"󰒃 Shield","tooltip":"Shield baseline: OK\\nFirewall: OK\\nCyber lab: OK\\nClick for Shield actions.","class":"ok"}\n'
+    printf '{"text":"󰒃","tooltip":"Shield: protected\\nFirewall: OK\\nSandbox: OK\\nClick opens Shield center.","class":"ok"}\n'
   elif [[ "$firewall" == "OK" || "$lab" == "OK" ]]; then
-    printf '{"text":"󰒃 Shield","tooltip":"Shield baseline: partial\\nFirewall: %s\\nCyber lab: %s\\nClick to complete protection.","class":"warn"}\n' "$firewall" "$lab"
+    printf '{"text":"󰒃","tooltip":"Shield: partial\\nFirewall: %s\\nSandbox: %s\\nClick opens Shield center.","class":"warn"}\n' "$firewall" "$lab"
   else
-    printf '{"text":"󰒃 Shield","tooltip":"Shield baseline: missing\\nFirewall: MISS\\nCyber lab: MISS\\nClick to enable SevenOS security.","class":"miss"}\n'
+    printf '{"text":"󰒃","tooltip":"Shield: exposed\\nFirewall: MISS\\nSandbox: MISS\\nClick opens Shield center.","class":"miss"}\n'
   fi
 else
   printf 'Shield %s Lab %s\n' "$firewall" "$lab"

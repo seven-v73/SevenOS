@@ -8,7 +8,7 @@
   "margin-right": 18,
   "modules-left": ["custom/sevenos", "custom/apps", "clock"],
   "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "pulseaudio", "network", "battery", "custom/notifications", "custom/quick", "custom/power"],
+  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "pulseaudio", "network", "battery", "custom/notifications", "custom/settings", "custom/power"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
@@ -38,90 +38,101 @@
   },
   "custom/profile": {
     "exec": "bash -lc 'seven-waybar-profile json'",
-    "interval": 60,
+    "interval": 20,
     "format": "{}",
     "return-type": "json",
     "tooltip": true,
     "tooltip-format": "{}",
     "on-click": "seven-waybar-action profile",
-    "on-click-right": "kitty --title 'SevenOS Profiles' bash -lc 'seven profile status; printf \"\\nPress Enter to close...\"; read -r'"
+    "on-click-right": "seven-settings profiles",
+    "on-click-middle": "seven-files profile"
   },
   "clock": {
     "format": "{:%H:%M %a}",
     "tooltip-format": "{:%A %d %B %Y}",
     "on-click": "seven-waybar-action clock",
-    "on-click-right": "kitty --title 'SevenOS Time' bash -lc 'timedatectl; printf \"\\nPress Enter to close...\"; read -r'"
+    "on-click-right": "seven-settings system",
+    "on-click-middle": "seven-spotlight calendar"
   },
   "cpu": {
     "format": "󰍛",
     "tooltip": true,
-    "tooltip-format": "CPU usage. Click for system actions.",
+    "tooltip-format": "System performance. Click opens live system center.",
     "on-click": "seven-waybar-action system",
-    "on-click-right": "kitty --title 'SevenOS Monitor' bash -lc 'if command -v btop >/dev/null 2>&1; then btop; else top; fi'"
+    "on-click-right": "seven-settings system",
+    "on-click-middle": "seven-waybar-action system"
   },
   "memory": {
     "format": "󰘚",
-    "tooltip-format": "{used:0.1f}G / {total:0.1f}G. Click for system actions.",
+    "tooltip-format": "{used:0.1f}G / {total:0.1f}G. Click opens live system center.",
     "on-click": "seven-waybar-action system",
-    "on-click-right": "kitty --title 'SevenOS Memory' bash -lc 'free -h; printf \"\\nPress Enter to close...\"; read -r'"
+    "on-click-right": "seven-settings system",
+    "on-click-middle": "seven-waybar-action system"
   },
   "custom/security": {
     "exec": "bash -lc 'seven-waybar-security json'",
-    "interval": 30,
+    "interval": 20,
     "format": "{}",
     "return-type": "json",
     "tooltip": true,
     "tooltip-format": "{}",
     "on-click": "seven-waybar-action security",
-    "on-click-right": "kitty --title 'SevenOS Security' bash -lc 'seven shield audit; printf \"\\nPress Enter to close...\"; read -r'"
+    "on-click-right": "seven-settings security",
+    "on-click-middle": "seven-shield-center-native"
   },
   "network": {
-    "format-wifi": "󰤨 {signalStrength}%",
+    "format-wifi": "󰤨",
     "format-ethernet": "󰈀",
     "format-disconnected": "󰤭",
-    "tooltip-format": "{ifname}. Click opens network actions, middle-click connects Wi-Fi, right-click shows status.",
-    "on-click": "seven-waybar-action network",
-    "on-click-middle": "seven-waybar-action network-connect",
-    "on-click-right": "kitty --title 'SevenOS Network' bash -lc 'nmcli device status; printf \"\\n\"; nmcli connection show --active; printf \"\\nPress Enter to close...\"; read -r'"
+    "tooltip-format": "{essid} · {signalStrength}% · click for Wi-Fi",
+    "tooltip-format-disconnected": "Wi-Fi disconnected · click for Wi-Fi",
+    "on-click": "seven-wifi menu",
+    "on-click-middle": "seven-wifi disconnect",
+    "on-click-right": "seven-wifi settings"
   },
   "pulseaudio": {
-    "format": "󰕾 {volume}%",
+    "format": "󰕾",
     "format-muted": "󰖁",
-    "tooltip-format": "{desc}. Click opens audio actions, scroll changes volume, right-click toggles mute.",
+    "tooltip-format": "{volume}% · {desc} · Click opens sound center.",
     "on-click": "seven-waybar-action audio",
-    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-click-right": "seven-settings sound",
+    "on-click-middle": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
     "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
     "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
   },
   "battery": {
-    "format": "󰁹 {capacity}%",
-    "format-charging": "󰂄 {capacity}%",
-    "tooltip-format": "{timeTo} {power}W. Click opens power actions.",
+    "format": "󰁹",
+    "format-charging": "󰂄",
+    "tooltip-format": "{capacity}% · {timeTo} · Click opens power center.",
     "on-click": "seven-waybar-action battery",
-    "on-click-right": "seven-power"
+    "on-click-right": "seven-settings power",
+    "on-click-middle": "seven-power lock"
   },
-  "custom/quick": {
+  "custom/settings": {
     "format": "󰒓",
     "tooltip": true,
-    "tooltip-format": "Quick Settings. Click opens system panel, right-click opens help.",
-    "on-click": "seven-quick-settings",
-    "on-click-right": "seven-help"
+    "tooltip-format": "SevenOS Settings. Wallpaper, displays, Wi-Fi, sound, keyboard, security, profiles, apps and updates.",
+    "on-click": "seven-settings",
+    "on-click-right": "seven-hub-native",
+    "on-click-middle": "seven-spotlight settings"
   },
   "custom/notifications": {
-    "exec": "bash -lc 'seven-waybar-notifications status-json'",
+    "exec": "bash -lc 'cmd=\"$HOME/.local/bin/seven-waybar-notifications\"; [ -x \"$cmd\" ] || cmd=seven-waybar-notifications; \"$cmd\" status-json'",
     "interval": 8,
     "format": "{}",
     "return-type": "json",
     "tooltip": true,
     "tooltip-format": "{}",
-    "on-click": "seven-waybar-notifications menu",
-    "on-click-right": "seven-waybar-notifications toggle-dnd",
-    "on-click-middle": "seven-waybar-notifications dismiss"
+    "on-click": "bash -lc 'cmd=\"$HOME/.local/bin/seven-waybar-notifications\"; [ -x \"$cmd\" ] || cmd=seven-waybar-notifications; \"$cmd\" menu'",
+    "on-click-right": "bash -lc 'cmd=\"$HOME/.local/bin/seven-waybar-notifications\"; [ -x \"$cmd\" ] || cmd=seven-waybar-notifications; \"$cmd\" toggle-dnd'",
+    "on-click-middle": "bash -lc 'cmd=\"$HOME/.local/bin/seven-waybar-notifications\"; [ -x \"$cmd\" ] || cmd=seven-waybar-notifications; \"$cmd\" dismiss'"
   },
   "custom/power": {
     "format": "󰐥",
     "tooltip": true,
-    "tooltip-format": "Power menu",
-    "on-click": "seven-power"
+    "tooltip-format": "Power. Click opens session controls, middle-click locks.",
+    "on-click": "seven-power",
+    "on-click-right": "seven-settings power",
+    "on-click-middle": "seven-power lock"
   }
 }

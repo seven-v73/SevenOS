@@ -349,6 +349,7 @@ PY
 
 system_catalog() {
   cat <<'EOF'
+setting	󰒓  Settings · SevenOS Settings	settings.sevenos	seven-settings	Configure wallpaper, displays, Wi-Fi, sound, keyboard, security, profiles, apps and system.	preferences-system
 setting	󰖩  Settings · Network	settings.network	seven-waybar-action network	Wi-Fi, Ethernet and NetworkManager controls.	network-wireless
 setting	󰤨  Settings · Connect Wi-Fi	settings.wifi	seven-wifi connect	Scan and connect to Wi-Fi.	network-wireless
 setting	󰕾  Settings · Audio	settings.audio	seven-waybar-action audio	Volume, mixer and PipeWire status.	audio-volume-high
@@ -726,6 +727,11 @@ PY
 open_spotlight() {
   local mode="${1:-all}"
   local catalog_file display_catalog_file menu_file selected label row type key command detail icon display
+
+  if [[ "${SEVENOS_SPOTLIGHT_NATIVE:-1}" != "0" && "${SEVENOS_DRY_RUN:-0}" != "1" && -x "$ROOT_DIR/bin/seven-spotlight-native" ]]; then
+    SEVENOS_ROOT="$ROOT_DIR" exec "$ROOT_DIR/bin/seven-spotlight-native" --mode "$mode"
+  fi
+
   catalog_file="$(mktemp)"
   display_catalog_file="$(mktemp)"
   menu_file="$(mktemp)"
@@ -775,6 +781,23 @@ open_spotlight() {
   esac
 }
 
+dispatch_item() {
+  local type="${1:-}"
+  local key="${2:-}"
+  local command="${3:-}"
+  case "$type" in
+    mode) open_spotlight "${key#mode.}" ;;
+    app) launch_desktop "$key" "$command" ;;
+    file) open_path "$command" ;;
+    clipboard) copy_clipboard_entry "$command" ;;
+    window) [[ -n "$command" ]] && hyprctl dispatch focuswindow "address:$command" >/dev/null 2>&1 || true ;;
+    bookmark) open_url "$command" ;;
+    history|query) handle_freeform "$command" ;;
+    action|intent|setting|calc|convert|define|web|mail|contacts|calendar|quick) run_command "$command" ;;
+    *) handle_freeform "$command" ;;
+  esac
+}
+
 copy_clipboard_entry() {
   local entry="$1"
   if dry_run; then
@@ -795,6 +818,7 @@ copy_clipboard_entry() {
 
 case "${1:-open}" in
   open|spotlight) open_spotlight "${2:-all}" ;;
+  rofi|fallback) SEVENOS_SPOTLIGHT_NATIVE=0 open_spotlight "${2:-all}" ;;
   apps|applications) open_spotlight apps ;;
   files) open_spotlight files ;;
   settings) open_spotlight settings ;;
@@ -806,8 +830,10 @@ case "${1:-open}" in
   catalog) build_catalog ;;
   count) build_catalog | wc -l ;;
   eval) shift; eval_query "$*" ;;
+  query) shift; handle_freeform "$*" ;;
+  dispatch) shift; dispatch_item "$@" ;;
   *)
-    printf 'Usage: seven-spotlight [open [mode]|apps|files|settings|system|web|clipboard|windows|history|catalog|count|eval QUERY]\n' >&2
+    printf 'Usage: seven-spotlight [open [mode]|rofi [mode]|apps|files|settings|system|web|clipboard|windows|history|catalog|count|eval QUERY|query QUERY|dispatch TYPE KEY COMMAND]\n' >&2
     exit 2
     ;;
 esac

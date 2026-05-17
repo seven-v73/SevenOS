@@ -1,0 +1,389 @@
+#!/usr/bin/env python3
+"""SevenOS native Spotlight surface."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven-spotlight").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven-spotlight").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven-spotlight").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+@dataclass
+class Item:
+    kind: str
+    label: str
+    key: str
+    command: str
+    detail: str
+    icon: str
+
+    @property
+    def clean_title(self) -> str:
+        if " · " in self.label:
+            return self.label.split(" · ", 1)[1].strip()
+        return self.label.strip()
+
+    @property
+    def category(self) -> str:
+        if " · " in self.label:
+            return self.label.split(" · ", 1)[0].strip()
+        return self.kind.title()
+
+
+CATEGORIES = [
+    ("all", "system-search", "All"),
+    ("apps", "view-grid-symbolic", "Applications"),
+    ("files", "system-file-manager", "Files"),
+    ("settings", "preferences-system", "Settings"),
+    ("system", "system-run", "Actions"),
+    ("web", "web-browser", "Web"),
+    ("clipboard", "edit-paste", "Clipboard"),
+    ("windows", "preferences-system-windows", "Windows"),
+    ("history", "document-open-recent", "History"),
+]
+
+
+def load_catalog() -> list[Item]:
+    result = subprocess.run(
+        [str(ROOT / "bin/seven-spotlight"), "catalog"],
+        text=True,
+        capture_output=True,
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_SPOTLIGHT_NATIVE": "0"},
+        check=False,
+    )
+    items: list[Item] = []
+    for raw in result.stdout.splitlines():
+        parts = raw.split("\t")
+        if len(parts) >= 6:
+            items.append(Item(*parts[:6]))
+    return items
+
+
+def filter_items(items: list[Item], query: str, mode: str) -> list[Item]:
+    if mode != "all":
+        items = [item for item in items if mode_matches(item, mode)]
+    if not query.strip():
+        return items[:9] if mode != "all" else []
+    terms = query.casefold().split()
+    ranked: list[tuple[int, Item]] = []
+    for item in items:
+        haystack = f"{item.label} {item.key} {item.detail} {item.kind}".casefold()
+        if all(term in haystack for term in terms):
+            score = 0
+            title = item.clean_title.casefold()
+            if title.startswith(query.casefold()):
+                score -= 20
+            if item.kind == "app":
+                score -= 6
+            if item.kind in {"setting", "action"}:
+                score -= 3
+            score += len(title)
+            ranked.append((score, item))
+    return [item for _, item in sorted(ranked, key=lambda row: row[0])[:9]]
+
+
+def mode_matches(item: Item, mode: str) -> bool:
+    return {
+        "apps": item.kind == "app",
+        "files": item.kind == "file",
+        "settings": item.kind == "setting",
+        "system": item.kind in {"action", "intent", "mode"},
+        "web": item.kind in {"calc", "convert", "define", "web", "mail", "contacts", "calendar", "quick", "bookmark"},
+        "clipboard": item.kind == "clipboard",
+        "windows": item.kind == "window",
+        "history": item.kind == "history",
+    }.get(mode, True)
+
+
+def dispatch_item(item: Item) -> None:
+    subprocess.Popen(
+        [str(ROOT / "bin/seven-spotlight"), "dispatch", item.kind, item.key, item.command],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_SPOTLIGHT_NATIVE": "0"},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def dispatch_query(query: str) -> None:
+    if not query.strip():
+        return
+    subprocess.Popen(
+        [str(ROOT / "bin/seven-spotlight"), "query", query],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_SPOTLIGHT_NATIVE": "0"},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def run(mode: str) -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    GLib.set_prgname("SevenSpotlightNative")
+    GLib.set_application_name("SevenOS Spotlight")
+    try:
+        Gdk.set_program_class("SevenSpotlightNative")
+    except Exception:
+        pass
+
+    css = """
+    window.spotlight-window { background: transparent; }
+    .spotlight-root {
+      padding: 16px;
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.82), rgba(226,242,249,0.58)),
+        rgba(255,255,255,0.52);
+      border: 1px solid rgba(255,255,255,0.82);
+    }
+    .spotlight-search {
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(91,127,166,0.24);
+      color: rgba(17,27,34,0.98);
+      font-size: 18px;
+    }
+    .category-row { margin-top: 13px; }
+    .category-button {
+      min-width: 62px;
+      min-height: 58px;
+      padding: 0;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.38);
+      border: 1px solid rgba(255,255,255,0.52);
+      color: rgba(32,49,60,0.84);
+    }
+    .category-button:hover,
+    .category-button.active {
+      background: rgba(255,255,255,0.76);
+      border-color: rgba(91,127,166,0.36);
+      color: rgba(17,27,34,0.98);
+    }
+    .result-list { margin-top: 14px; }
+    .result-row {
+      min-height: 58px;
+      padding: 8px 11px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.46);
+      border: 1px solid rgba(255,255,255,0.56);
+    }
+    .result-row:hover,
+    .result-row:focus {
+      background: rgba(255,255,255,0.86);
+      border-color: rgba(91,127,166,0.42);
+    }
+    .result-title {
+      color: rgba(17,27,34,0.98);
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .result-meta {
+      color: rgba(67,84,94,0.66);
+      font-size: 11px;
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    items = load_catalog()
+    current_mode = mode if mode in {key for key, _, _ in CATEGORIES} else "all"
+    result_rows: list[Gtk.Widget] = []
+
+    window = Gtk.Window(title="SevenOS Spotlight")
+    window.set_decorated(False)
+    window.set_resizable(False)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_wmclass("SevenSpotlightNative", "SevenSpotlightNative")
+    window.get_style_context().add_class("spotlight-window")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    root.get_style_context().add_class("spotlight-root")
+    window.add(root)
+
+    entry = Gtk.Entry()
+    entry.set_placeholder_text("Search SevenOS")
+    entry.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "system-search")
+    entry.get_style_context().add_class("spotlight-search")
+    root.pack_start(entry, False, False, 0)
+
+    category_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    category_row.set_halign(Gtk.Align.CENTER)
+    category_row.get_style_context().add_class("category-row")
+    root.pack_start(category_row, False, False, 0)
+
+    result_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    result_box.get_style_context().add_class("result-list")
+    root.pack_start(result_box, False, False, 0)
+
+    category_buttons: dict[str, Gtk.Button] = {}
+
+    def refresh_results() -> None:
+        nonlocal result_rows
+        for child in list(result_box.get_children()):
+            result_box.remove(child)
+        result_rows = []
+        query = entry.get_text()
+        matches = filter_items(items, query, current_mode)
+        result_box.set_visible(bool(matches))
+        for item in matches:
+            row = make_result_row(item)
+            result_box.pack_start(row, False, False, 0)
+            result_rows.append(row)
+        result_box.show_all()
+
+    def set_mode(new_mode: str) -> None:
+        nonlocal current_mode
+        current_mode = new_mode
+        for key, button in category_buttons.items():
+            if key == new_mode:
+                button.get_style_context().add_class("active")
+            else:
+                button.get_style_context().remove_class("active")
+        refresh_results()
+
+    def make_category_button(key: str, icon_name: str, label: str) -> Gtk.Button:
+        button = Gtk.Button()
+        button.set_tooltip_text(label)
+        button.get_style_context().add_class("category-button")
+        icon = Gtk.Image.new_from_icon_name(icon_name, Gtk.IconSize.DIALOG)
+        icon.set_pixel_size(30)
+        button.add(icon)
+        button.connect("clicked", lambda _button: set_mode(key))
+        category_buttons[key] = button
+        return button
+
+    def make_result_row(item: Item) -> Gtk.EventBox:
+        event = Gtk.EventBox()
+        event.set_visible_window(False)
+        event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        event.connect("button-press-event", lambda _widget, event_data, row_item=item: activate_result(row_item) if getattr(event_data, "button", 0) == 1 else False)
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.get_style_context().add_class("result-row")
+        icon = Gtk.Image.new_from_icon_name(item.icon, Gtk.IconSize.DIALOG)
+        icon.set_pixel_size(30)
+        row.pack_start(icon, False, False, 0)
+
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        title = Gtk.Label(label=item.clean_title)
+        title.set_xalign(0)
+        title.get_style_context().add_class("result-title")
+        meta_text = item.detail if item.detail else item.category
+        meta = Gtk.Label(label=meta_text[:88])
+        meta.set_xalign(0)
+        meta.get_style_context().add_class("result-meta")
+        text.pack_start(title, False, False, 0)
+        text.pack_start(meta, False, False, 0)
+        row.pack_start(text, True, True, 0)
+        event.add(row)
+        return event
+
+    def activate_result(item: Item) -> bool:
+        dispatch_item(item)
+        window.destroy()
+        return True
+
+    def activate_current() -> None:
+        query = entry.get_text().strip()
+        matches = filter_items(items, query, current_mode)
+        if matches:
+            dispatch_item(matches[0])
+        else:
+            dispatch_query(query)
+        window.destroy()
+
+    def on_key(_widget, event) -> bool:
+        if event.keyval == Gdk.KEY_Escape:
+            window.destroy()
+            return True
+        if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter}:
+            activate_current()
+            return True
+        return False
+
+    for category in CATEGORIES:
+        category_row.pack_start(make_category_button(*category), False, False, 0)
+
+    entry.connect("changed", lambda _entry: refresh_results())
+    window.connect("key-press-event", on_key)
+    window.connect("destroy", Gtk.main_quit)
+    window.set_default_size(684, 0)
+    window.show_all()
+    set_mode(current_mode)
+    entry.grab_focus()
+    Gtk.main()
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", default="all")
+    parser.add_argument("--probe", action="store_true")
+    args = parser.parse_args()
+    if args.probe:
+        return probe()
+    return run(args.mode)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

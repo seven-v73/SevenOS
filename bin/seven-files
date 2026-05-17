@@ -38,13 +38,29 @@ is_dry_run() {
   [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
 }
 
+normalize_target() {
+  local target="$1"
+  if [[ "$target" == file://* ]]; then
+    python - "$target" <<'PY'
+from urllib.parse import unquote, urlparse
+import sys
+
+parsed = urlparse(sys.argv[1])
+print(unquote(parsed.path or sys.argv[1].removeprefix("file://")))
+PY
+  else
+    printf '%s\n' "$target"
+  fi
+}
+
 open_path() {
   local target="$1"
   local manager native
+  target="$(normalize_target "$target")"
   native="$(resolve_root || true)/bin/seven-files-native"
 
   if is_dry_run; then
-    printf 'open files %q with native Finder-like Seven Files surface\n' "$target"
+    printf 'open files %q with native Seven Files surface\n' "$target"
     return 0
   fi
 

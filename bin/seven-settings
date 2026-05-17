@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven-settings-native" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/seven-settings-native" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -x "$candidate/bin/seven-settings-native" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-settings: could not find SevenOS repository root\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+export SEVENOS_ROOT="$ROOT_DIR"
+
+if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+  printf 'DRY-RUN > Settings > Open SevenOS Settings\n'
+  exit 0
+fi
+
+if "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1; then
+  exec "$ROOT_DIR/bin/seven-settings-native" "$@"
+fi
+
+if command -v seven-quick-settings >/dev/null 2>&1; then
+  exec seven-quick-settings "$@"
+fi
+
+exec "$ROOT_DIR/bin/seven-quick-settings" "$@"

@@ -35,8 +35,8 @@ Usage:
   seven-terminal [classic|dark|menu|status|doctor] [-- command...]
 
 Profiles:
-  classic  macOS-like white terminal
-  dark     macOS-like graphite terminal
+  classic  SevenOS classic bright terminal
+  dark     SevenOS graphite terminal
   menu     choose a terminal profile
 
 Examples:
@@ -183,7 +183,7 @@ place_window() {
 
 open_menu() {
   local menu selected
-  menu=$'Classic Terminal\tmacOS-like bright terminal\nDark Terminal\tmacOS-like graphite terminal'
+  menu=$'Classic Terminal\tSevenOS bright terminal\nDark Terminal\tSevenOS graphite terminal'
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'DRY-RUN > Terminal > Open profile chooser\n'

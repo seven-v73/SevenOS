@@ -469,10 +469,13 @@ case "$ACTION" in
     install_observer
     ;;
   start)
+    run_cmd systemctl --user reset-failed seven-daemon.service
+    run_cmd systemctl --user reset-failed seven-context-observer.service
     run_cmd systemctl --user start seven-daemon.service
     run_cmd systemctl --user start seven-context-observer.service
     ;;
   start-observer)
+    run_cmd systemctl --user reset-failed seven-context-observer.service
     run_cmd systemctl --user start seven-context-observer.service
     ;;
   stop)

@@ -754,7 +754,7 @@ SevenOS should not:
 - rewrite the Linux kernel
 - become only a beautiful Hyprland rice
 - add hundreds of scripts without contracts
-- copy macOS or Windows directly
+- copy other desktop systems directly
 - introduce every language at once
 - expose remote system control before trust policy exists
 - replace working Linux foundations prematurely

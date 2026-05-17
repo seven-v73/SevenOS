@@ -25,6 +25,7 @@ It is built around foundation pillars:
 - `sevenpkg` as the package and application manager
 - `sevenos.dotinst` as the install, restore, migration and packaging contract
 - Seven Hub as the user-facing control center
+- SevenOS Settings as the normal-user configuration center for wallpaper, displays, Wi-Fi, sound, keyboard, security, profiles, apps and system repair
 - Seven Server and Seven Deploy as the service/deployment foundation
 - Seven Core and SevenBus as the system experience layer foundation
 - Seven Context Engine as the semantic workflow layer above raw processes/windows
@@ -62,6 +63,7 @@ What is already testable:
 - `seven` as a unified system controller.
 - `sevenpkg` as the SevenOS software layer over pacman/meta-packages.
 - Seven Hub / Control Center entrypoints.
+- Native SevenOS Settings for daily desktop and system configuration.
 - Forge, Shield, Studio, Windows and Horizon profile contracts.
 - CyberSpace and Shield workspace foundations.
 - Seven Core, SevenBus and SevenDaemon foundations.

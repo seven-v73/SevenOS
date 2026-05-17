@@ -36,6 +36,8 @@ gvfs-mtp
 gvfs-smb
 file-roller
 sushi
+ffmpegthumbnailer
+poppler
 xdg-user-dirs
 xdg-utils
 desktop-file-utils

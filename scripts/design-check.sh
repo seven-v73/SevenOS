@@ -42,7 +42,7 @@ else
 fi
 
 if jq -e '."modules-left" == ["custom/sevenos","custom/apps","clock"] and ."modules-center" == ["hyprland/workspaces"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("pulseaudio") and index("network") and index("custom/notifications") and index("custom/power")) and .spacing == 0' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar uses a macOS-like left/center/right liquid hierarchy"
+  ok "Waybar uses a SevenOS left/center/right liquid hierarchy"
 else
   fail "Waybar should use SevenOS/Apps/time left, workspaces center, stateful system controls right."
 fi
@@ -64,17 +64,61 @@ if [[ -x "$ROOT_DIR/bin/seven-dock" ]] &&
    grep -q 'GtkLayerShell' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'show_context_menu' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'dock-badge' "$ROOT_DIR/bin/seven-dock-native"; then
-  ok "SevenOS exposes a native macOS-like dock surface"
+  ok "SevenOS exposes a native SevenOS dock surface"
 else
   fail "SevenOS should expose a native dock with layer-shell support, badges and context menus"
 fi
 
 if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'border-radius: 28px' "$ROOT_DIR/bin/seven-shell-panel" &&
-   grep -q 'rgba(255, 255, 255, 0.72)' "$ROOT_DIR/bin/seven-shell-panel"; then
-  ok "Native shell panel follows SevenOS Frost surface language"
+   grep -q 'linear-gradient(180deg, rgba(255, 255, 255, 0.82)' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'SevenQuickSettingsNative' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'build_slider_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'icon-action' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'notification-card' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'mini-action' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'SevenNotificationCenterNative' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   grep -q 'notification-card' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   grep -q 'action-glyph' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   ! grep -q 'Notification Status' "$ROOT_DIR/bin/seven-waybar-notifications"; then
+  ok "Native shell panel, quick settings and notification center follow SevenOS Frost surface language"
 else
-  fail "Native shell panel should follow SevenOS Frost surface language"
+  fail "Native shell panel, quick settings and notification center should follow SevenOS Frost surface language"
+fi
+
+if grep -q 'SevenProfileCenterNative' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'SevenShieldCenterNative' "$ROOT_DIR/bin/seven-shield-center-native" &&
+   grep -q 'SevenWaybarCenterNative' "$ROOT_DIR/bin/seven-waybar-center-native" &&
+   grep -q 'profile-root' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'shield-root' "$ROOT_DIR/bin/seven-shield-center-native" &&
+   grep -q 'center-root' "$ROOT_DIR/bin/seven-waybar-center-native" &&
+   grep -q '󰐃' "$ROOT_DIR/bin/seven-waybar-profile" &&
+   grep -q '󰒃' "$ROOT_DIR/bin/seven-waybar-security"; then
+  ok "Waybar Profile, Shield and system modules expose compact native OS centers"
+else
+  fail "Waybar Profile, Shield and system modules should expose compact native OS centers"
+fi
+
+if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
+   "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1 &&
+   grep -q 'SevenSettingsNative' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings-shell' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'file_wallpaper_button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven-wallpaper' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven keyboard apply' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven-shield-center-native' "$ROOT_DIR/bin/seven-settings-native"; then
+  ok "SevenOS exposes a complete native Settings surface"
+else
+  fail "SevenOS Settings should expose wallpaper, display, security, profile and device controls"
+fi
+
+if [[ -s "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" ]] &&
+   grep -q 'Spotlight is the only global search surface' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" &&
+   grep -q 'Dock is a workflow surface' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" &&
+   grep -q 'No black-on-black utility surfaces' "$ROOT_DIR/identity/LIQUID_GLASS_OS.md"; then
+  ok "SevenOS has an OS-level Liquid Glass direction"
+else
+  fail "SevenOS should document the OS-level Liquid Glass direction"
 fi
 
 if grep -q 'seven-hub-window' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -82,6 +126,9 @@ if grep -q 'seven-hub-window' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-nav-item' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-hero' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-metric-card' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-compact-grid' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-tile' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'render_dashboard_compact' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-card' "$ROOT_DIR/bin/seven-hub-native"; then
   ok "Seven Hub Native uses OS-grade glass navigation"
 else
@@ -96,12 +143,13 @@ else
   fail "SevenOS should expose a named desktop session"
 fi
 
-if grep -q 'custom/quick' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
+if grep -q 'custom/settings' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
+   grep -q '"on-click": "seven-settings"' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    grep -q 'custom/notifications' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
    [[ -s "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" ]]; then
-  ok "Quick Settings and Notifications have dedicated shell surfaces"
+  ok "Settings and Notifications have dedicated shell surfaces"
 else
-  fail "Quick Settings or Notifications dedicated shell surface missing"
+  fail "Settings or Notifications dedicated shell surface missing"
 fi
 
 if grep -q 'bg: rgba(246, 251, 254, 0.86)' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
@@ -118,6 +166,10 @@ if grep -q 'width: 52%' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'Search apps, files, windows, clipboard, actions' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'min-height: 54px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'SevenSpotlightNative' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'category-button' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'Search SevenOS' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'filter_items(items, query, current_mode)' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
    ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" &&

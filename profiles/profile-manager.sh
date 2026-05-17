@@ -185,6 +185,21 @@ profile_app_state() {
         printf 'MISS'
       fi
       ;;
+    gimp)
+      command -v gimp >/dev/null 2>&1 || flatpak_app_installed org.gimp.GIMP && printf 'OK' || printf 'MISS'
+      ;;
+    krita)
+      command -v krita >/dev/null 2>&1 || flatpak_app_installed org.kde.krita && printf 'OK' || printf 'MISS'
+      ;;
+    inkscape)
+      command -v inkscape >/dev/null 2>&1 || flatpak_app_installed org.inkscape.Inkscape && printf 'OK' || printf 'MISS'
+      ;;
+    blender)
+      command -v blender >/dev/null 2>&1 || flatpak_app_installed org.blender.Blender && printf 'OK' || printf 'MISS'
+      ;;
+    kdenlive)
+      command -v kdenlive >/dev/null 2>&1 || flatpak_app_installed org.kde.kdenlive && printf 'OK' || printf 'MISS'
+      ;;
     *) command -v "$app" >/dev/null 2>&1 && printf 'OK' || printf 'MISS' ;;
   esac
 }
@@ -442,7 +457,45 @@ package_installed() {
     fi
   fi
 
-  [[ -n "${INSTALLED_PACKAGES[$1]+x}" ]]
+  [[ -n "${INSTALLED_PACKAGES[$1]+x}" ]] && return 0
+
+  local alternative
+  while IFS= read -r alternative; do
+    [[ -n "$alternative" ]] || continue
+    [[ -n "${INSTALLED_PACKAGES[$alternative]+x}" ]] && return 0
+  done < <(package_alternatives "$1")
+
+  local flatpak_id
+  flatpak_id="$(package_flatpak_equivalent "$1")"
+  [[ -n "$flatpak_id" ]] && flatpak_app_installed "$flatpak_id"
+}
+
+package_alternatives() {
+  case "$1" in
+    code) printf '%s\n' visual-studio-code-bin vscodium-bin vscodium ;;
+  esac
+}
+
+flatpak_app_installed() {
+  local app_id="$1"
+  command -v flatpak >/dev/null 2>&1 && flatpak info "$app_id" >/dev/null 2>&1
+}
+
+package_flatpak_equivalent() {
+  case "$1" in
+    gimp) printf 'org.gimp.GIMP' ;;
+    krita) printf 'org.kde.krita' ;;
+    inkscape) printf 'org.inkscape.Inkscape' ;;
+    blender) printf 'org.blender.Blender' ;;
+    kdenlive) printf 'org.kde.kdenlive' ;;
+    obs-studio) printf 'com.obsproject.Studio' ;;
+    audacity) printf 'org.audacityteam.Audacity' ;;
+    darktable) printf 'org.darktable.Darktable' ;;
+    rawtherapee) printf 'com.rawtherapee.RawTherapee' ;;
+    scribus) printf 'net.scribus.Scribus' ;;
+    lmms) printf 'io.lmms.LMMS' ;;
+    handbrake) printf 'fr.handbrake.ghb' ;;
+  esac
 }
 
 profile_counts() {
@@ -799,6 +852,8 @@ post_install_profile() {
 
   case "$key" in
     shield)
+      log_info "Bootstrapping Shield native workspace..."
+      "$ROOT_DIR/security/shield-workspace.sh" bootstrap || true
       log_info "Running Shield post-install audit..."
       "$ROOT_DIR/security/shield-status.sh" status || true
       ;;

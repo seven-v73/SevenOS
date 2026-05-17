@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""SevenOS Finder-like native file surface."""
+"""SevenOS native file surface."""
 
 from __future__ import annotations
 
 import argparse
+import html
+import json
 import os
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
+import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 
 
@@ -55,10 +60,26 @@ def xdg_open(path: Path) -> None:
 
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".tiff", ".tif"}
+VIDEO_SUFFIXES = {".mp4", ".mkv", ".mov", ".webm", ".avi", ".m4v"}
+TEXT_SUFFIXES = {
+    ".txt", ".md", ".log", ".csv", ".json", ".yaml", ".yml", ".toml", ".ini",
+    ".conf", ".sh", ".py", ".rs", ".js", ".ts", ".html", ".css", ".xml",
+}
+DOCUMENT_SUFFIXES = {".pdf", ".docx", ".odt", ".rtf"}
+PREVIEW_SUFFIXES = IMAGE_SUFFIXES | VIDEO_SUFFIXES | TEXT_SUFFIXES | DOCUMENT_SUFFIXES
+CLIPBOARD_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos" / "files-clipboard.json"
 
 
 def is_image(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+
+
+def is_video(path: Path) -> bool:
+    return path.is_file() and path.suffix.lower() in VIDEO_SUFFIXES
+
+
+def is_previewable(path: Path) -> bool:
+    return path.is_file() and path.suffix.lower() in PREVIEW_SUFFIXES
 
 
 def resolve_root() -> Path | None:
@@ -89,17 +110,24 @@ def folder_icon(path: Path) -> str:
     suffix = path.suffix.lower()
     if suffix in IMAGE_SUFFIXES:
         return "image-x-generic"
-    if suffix in {".mp4", ".mkv", ".mov", ".webm"}:
+    if suffix in VIDEO_SUFFIXES:
         return "video-x-generic"
     if suffix in {".mp3", ".wav", ".flac", ".ogg"}:
         return "audio-x-generic"
     if suffix in {".zip", ".tar", ".gz", ".xz", ".7z"}:
         return "package-x-generic"
-    if suffix in {".pdf"}:
+    if suffix == ".pdf":
         return "application-pdf"
     if suffix in {".sh", ".py", ".rs", ".js", ".ts", ".html", ".css", ".json", ".md"}:
         return "text-x-script"
     return "text-x-generic"
+
+
+ARCHIVE_FORMATS = {
+    "zip": ".zip",
+    "tar.gz": ".tar.gz",
+    "tar.xz": ".tar.xz",
+}
 
 
 def run_files(start_path: str) -> int:
@@ -127,20 +155,24 @@ def run_files(start_path: str) -> int:
     future: list[Path] = []
     file_clipboard: list[Path] = []
     file_clipboard_cut = False
+    view_mode = "grid"
 
     css = """
     window.seven-files {
-      background: #fbfcfd;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,247,251,0.92));
       border-radius: 18px;
       color: #20242a;
     }
     .files-root {
-      background: #fbfcfd;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,247,251,0.92));
     }
     .files-sidebar {
       min-width: 204px;
       padding: 16px 13px;
-      background: rgba(244, 246, 248, 0.97);
+      background:
+        linear-gradient(180deg, rgba(250,252,253,0.94), rgba(231,240,246,0.72));
       border-right: 1px solid rgba(134, 145, 156, 0.20);
     }
     .traffic-row {
@@ -165,16 +197,17 @@ def run_files(start_path: str) -> int:
     }
     .sidebar-row:hover,
     .sidebar-row.active {
-      background: rgba(35, 118, 220, 0.10);
+      background: rgba(255, 255, 255, 0.72);
     }
     .files-main {
       min-width: 650px;
-      background: #ffffff;
+      background: rgba(255, 255, 255, 0.96);
     }
     .files-preview {
       min-width: 254px;
       padding: 22px 18px;
-      background: rgba(249, 250, 251, 0.98);
+      background:
+        linear-gradient(180deg, rgba(250,252,253,0.96), rgba(239,247,251,0.78));
       border-left: 1px solid rgba(134, 145, 156, 0.16);
     }
     .preview-icon {
@@ -198,17 +231,22 @@ def run_files(start_path: str) -> int:
       color: #30363d;
       font: 500 12px "DM Sans", "Inter", sans-serif;
     }
+    .preview-hint {
+      color: #7b828a;
+      font: 500 11px "DM Sans", "Inter", sans-serif;
+      margin-top: 12px;
+    }
     .files-toolbar {
       min-height: 64px;
       padding: 0 20px 0 14px;
-      background: rgba(255, 255, 255, 0.98);
+      background: rgba(255, 255, 255, 0.90);
       border-bottom: 1px solid rgba(134, 145, 156, 0.16);
     }
     .toolbar-button {
       min-width: 38px;
       min-height: 38px;
       border-radius: 999px;
-      background: rgba(247, 248, 250, 0.98);
+      background: rgba(247, 250, 252, 0.92);
       color: #30363d;
       border: 0;
       padding: 0;
@@ -222,7 +260,7 @@ def run_files(start_path: str) -> int:
     }
     .files-grid {
       padding: 34px 36px;
-      background: #ffffff;
+      background: rgba(255, 255, 255, 0.96);
     }
     .file-tile {
       min-width: 120px;
@@ -231,18 +269,35 @@ def run_files(start_path: str) -> int:
       border-radius: 16px;
       color: #20242a;
     }
+    .file-tile.list-view {
+      min-width: 560px;
+      min-height: 48px;
+      padding: 5px 12px;
+      border-radius: 10px;
+    }
+    .file-tile.compact-view {
+      min-width: 250px;
+      min-height: 40px;
+      padding: 4px 10px;
+      border-radius: 10px;
+    }
     .file-tile:hover,
     .file-tile:selected {
-      background: rgba(35, 118, 220, 0.10);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.88), rgba(226,239,247,0.62));
     }
     .file-name {
       color: #20242a;
       font: 500 12px "DM Sans", "Inter", sans-serif;
     }
+    .file-meta {
+      color: #7b828a;
+      font: 500 11px "DM Sans", "Inter", sans-serif;
+    }
     .files-statusbar {
       min-height: 32px;
       padding: 0 18px;
-      background: rgba(255, 255, 255, 0.98);
+      background: rgba(255, 255, 255, 0.88);
       border-top: 1px solid rgba(134, 145, 156, 0.14);
     }
     .files-status-label {
@@ -256,7 +311,7 @@ def run_files(start_path: str) -> int:
     menu {
       border-radius: 12px;
       padding: 6px;
-      background: #ffffff;
+      background: rgba(255, 255, 255, 0.98);
       border: 1px solid rgba(134, 145, 156, 0.22);
     }
     menuitem {
@@ -267,7 +322,22 @@ def run_files(start_path: str) -> int:
       font: 500 12px "DM Sans", "Inter", sans-serif;
     }
     menuitem:hover {
-      background: rgba(35, 118, 220, 0.10);
+      background: rgba(226, 239, 247, 0.72);
+    }
+    .quicklook-window {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(237,246,252,0.94));
+      color: #20242a;
+    }
+    .quicklook-footer {
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.90);
+      border-top: 1px solid rgba(134, 145, 156, 0.16);
+    }
+    .quicklook-text {
+      color: #20242a;
+      font: 500 13px "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+      padding: 18px;
     }
     """
     provider = Gtk.CssProvider()
@@ -424,17 +494,33 @@ def run_files(start_path: str) -> int:
 
     copy_btn = toolbar_button("edit-copy-symbolic", lambda *_: copy_selected())
     paste_btn = toolbar_button("edit-paste-symbolic", lambda *_: paste_items())
-    for button in (copy_btn, paste_btn):
+    compress_btn = toolbar_button("package-x-generic-symbolic", lambda *_: compress_selected())
+    new_folder_btn = toolbar_button("folder-new-symbolic", lambda *_: create_folder())
+    compress_btn.set_tooltip_text("Compress selected item")
+    new_folder_btn.set_tooltip_text("New folder")
+    for button in (new_folder_btn, copy_btn, paste_btn, compress_btn):
         toolbar.pack_start(button, False, False, 0)
 
-    for icon in ("view-grid-symbolic", "view-list-symbolic", "view-column-symbolic"):
-        toolbar.pack_start(toolbar_button(icon, lambda *_: None), False, False, 0)
+    def set_view_mode(mode: str):
+        nonlocal view_mode
+        view_mode = mode
+        render()
+
+    grid_btn = toolbar_button("view-grid-symbolic", lambda *_: set_view_mode("grid"))
+    list_btn = toolbar_button("view-list-symbolic", lambda *_: set_view_mode("list"))
+    compact_btn = toolbar_button("view-column-symbolic", lambda *_: set_view_mode("compact"))
+    grid_btn.set_tooltip_text("Grid view")
+    list_btn.set_tooltip_text("List view")
+    compact_btn.set_tooltip_text("Compact view")
+    for button in (grid_btn, list_btn, compact_btn):
+        toolbar.pack_start(button, False, False, 0)
 
     scroller = Gtk.ScrolledWindow()
     scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
     main.pack_start(scroller, True, True, 0)
 
     flow = Gtk.FlowBox()
+    flow.set_can_focus(True)
     flow.get_style_context().add_class("files-grid")
     flow.set_halign(Gtk.Align.FILL)
     flow.set_valign(Gtk.Align.START)
@@ -477,7 +563,7 @@ def run_files(start_path: str) -> int:
     preview_title.get_style_context().add_class("preview-title")
     preview.pack_start(preview_title, False, False, 0)
 
-    preview_subtitle = Gtk.Label(label="Finder-like workspace")
+    preview_subtitle = Gtk.Label(label="SevenOS Files workspace")
     preview_subtitle.set_halign(Gtk.Align.CENTER)
     preview_subtitle.get_style_context().add_class("preview-subtitle")
     preview.pack_start(preview_subtitle, False, False, 0)
@@ -502,30 +588,76 @@ def run_files(start_path: str) -> int:
             entries = sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.casefold()))
         except OSError:
             entries = []
+        if view_mode == "grid":
+            flow.set_min_children_per_line(4)
+            flow.set_max_children_per_line(4)
+            flow.set_column_spacing(22)
+            flow.set_row_spacing(30)
+            flow.set_homogeneous(True)
+        elif view_mode == "list":
+            flow.set_min_children_per_line(1)
+            flow.set_max_children_per_line(1)
+            flow.set_column_spacing(0)
+            flow.set_row_spacing(4)
+            flow.set_homogeneous(False)
+        else:
+            flow.set_min_children_per_line(2)
+            flow.set_max_children_per_line(2)
+            flow.set_column_spacing(8)
+            flow.set_row_spacing(4)
+            flow.set_homogeneous(False)
         for path in entries:
             child = Gtk.FlowBoxChild()
+            child.set_can_focus(True)
             child.get_style_context().add_class("file-tile")
-            child.set_size_request(120, 124)
+            if view_mode == "list":
+                child.get_style_context().add_class("list-view")
+                child.set_size_request(560, 48)
+            elif view_mode == "compact":
+                child.get_style_context().add_class("compact-view")
+                child.set_size_request(250, 40)
+            else:
+                child.set_size_request(120, 124)
             child.path = path
             tile_event = Gtk.EventBox()
             tile_event.set_visible_window(False)
             tile_event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
-            box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-            box.set_halign(Gtk.Align.CENTER)
-            box.set_size_request(120, 124)
+            orientation = Gtk.Orientation.VERTICAL if view_mode == "grid" else Gtk.Orientation.HORIZONTAL
+            box = Gtk.Box(orientation=orientation, spacing=10)
+            box.set_halign(Gtk.Align.FILL if view_mode != "grid" else Gtk.Align.CENTER)
+            box.set_valign(Gtk.Align.CENTER)
+            if view_mode == "list":
+                box.set_size_request(560, 48)
+            elif view_mode == "compact":
+                box.set_size_request(250, 40)
+            else:
+                box.set_size_request(120, 124)
             box.get_style_context().add_class("file-tile-box")
             image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
-            image.set_pixel_size(68)
+            image.set_pixel_size(68 if view_mode == "grid" else 26)
             label = Gtk.Label(label=path.name)
-            label.set_width_chars(13)
-            label.set_max_width_chars(13)
+            label.set_xalign(0 if view_mode != "grid" else 0.5)
+            label.set_width_chars(13 if view_mode == "grid" else 34)
+            label.set_max_width_chars(13 if view_mode == "grid" else 34)
             label.set_line_wrap(False)
             label.set_single_line_mode(True)
             label.set_ellipsize(Pango.EllipsizeMode.END)
-            label.set_justify(Gtk.Justification.CENTER)
+            label.set_justify(Gtk.Justification.CENTER if view_mode == "grid" else Gtk.Justification.LEFT)
             label.get_style_context().add_class("file-name")
             box.pack_start(image, False, False, 0)
-            box.pack_start(label, False, False, 0)
+            if view_mode == "grid":
+                box.pack_start(label, False, False, 0)
+            else:
+                text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+                text_box.pack_start(label, False, False, 0)
+                meta = Gtk.Label(label=file_row_meta(path))
+                meta.set_xalign(0)
+                meta.set_single_line_mode(True)
+                meta.set_ellipsize(Pango.EllipsizeMode.END)
+                meta.get_style_context().add_class("file-meta")
+                if view_mode == "list":
+                    text_box.pack_start(meta, False, False, 0)
+                box.pack_start(text_box, True, True, 0)
             tile_event.add(box)
             tile_event.connect("button-press-event", lambda _widget, event, tile=child, item=path: on_tile_button(event, tile, item))
             child.add(tile_event)
@@ -534,6 +666,7 @@ def run_files(start_path: str) -> int:
         update_sidebar()
         update_preview(current)
         flow.show_all()
+        flow.grab_focus()
         if previous_size != (1, 1):
             GLib.idle_add(lambda: restore_window_size(previous_size))
 
@@ -542,6 +675,22 @@ def run_files(start_path: str) -> int:
         if width > 0 and height > 0:
             window.resize(width, height)
         return False
+
+    def file_row_meta(path: Path) -> str:
+        try:
+            stat = path.stat()
+            modified = time.strftime("%b %d, %H:%M", time.localtime(stat.st_mtime))
+            if path.is_dir():
+                try:
+                    size = f"{len(list(path.iterdir()))} items"
+                except OSError:
+                    size = "Folder"
+            else:
+                size = format_size(stat.st_size)
+            kind = "Folder" if path.is_dir() else (path.suffix.upper().lstrip(".") or "File")
+            return f"{kind}  |  {size}  |  {modified}"
+        except OSError:
+            return "Unavailable"
 
     def detail_row(label: str, value: str):
         heading = Gtk.Label(label=label)
@@ -556,12 +705,97 @@ def run_files(start_path: str) -> int:
         preview_details.pack_start(heading, False, False, 0)
         preview_details.pack_start(value_label, False, False, 0)
 
+    def preview_hint(text: str):
+        label = Gtk.Label(label=text)
+        label.set_xalign(0)
+        label.set_line_wrap(True)
+        label.set_max_width_chars(28)
+        label.get_style_context().add_class("preview-hint")
+        preview_details.pack_start(label, False, False, 0)
+
+    def read_text_preview(path: Path, limit: int = 6000) -> str:
+        data = path.read_bytes()[:limit]
+        return data.decode("utf-8", errors="replace")
+
+    def read_docx_preview(path: Path, limit: int = 6000) -> str:
+        with zipfile.ZipFile(path) as document:
+            xml = document.read("word/document.xml")
+        root = ET.fromstring(xml)
+        namespace = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+        parts = [node.text or "" for node in root.iter(f"{namespace}t")]
+        text = " ".join(part.strip() for part in parts if part.strip())
+        return html.unescape(text[:limit])
+
+    def video_thumbnail(path: Path) -> GdkPixbuf.Pixbuf | None:
+        thumb = Path("/tmp") / f"seven-files-thumb-{os.getpid()}-{abs(hash(path))}.png"
+        if shutil.which("ffmpegthumbnailer"):
+            command = ["ffmpegthumbnailer", "-i", str(path), "-o", str(thumb), "-s", "420", "-q", "8"]
+        elif shutil.which("ffmpeg"):
+            command = [
+                "ffmpeg", "-y", "-ss", "00:00:01", "-i", str(path),
+                "-frames:v", "1", "-vf", "scale=420:-1", str(thumb),
+            ]
+        else:
+            return None
+        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode != 0 or not thumb.exists():
+            return None
+        try:
+            return GdkPixbuf.Pixbuf.new_from_file_at_scale(str(thumb), 210, 150, True)
+        finally:
+            thumb.unlink(missing_ok=True)
+
+    def pdf_thumbnail(path: Path, render_width: int = 760, max_width: int = 210, max_height: int = 150) -> GdkPixbuf.Pixbuf | None:
+        if not shutil.which("pdftoppm"):
+            return None
+        output_prefix = Path("/tmp") / f"seven-files-pdf-{os.getpid()}-{abs(hash(path))}"
+        output_file = Path(f"{output_prefix}.png")
+        result = subprocess.run(
+            ["pdftoppm", "-f", "1", "-singlefile", "-png", "-scale-to", str(render_width), str(path), str(output_prefix)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode != 0 or not output_file.exists():
+            return None
+        try:
+            return GdkPixbuf.Pixbuf.new_from_file_at_scale(str(output_file), max_width, max_height, True)
+        finally:
+            output_file.unlink(missing_ok=True)
+
     def update_preview(path: Path | None):
         for child in preview_details.get_children():
             preview_details.remove(child)
         target = path or current
-        preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
-        preview_icon.set_pixel_size(88)
+        if is_image(target):
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(target), 210, 150, True)
+                preview_icon.set_from_pixbuf(pixbuf)
+            except Exception:
+                preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
+                preview_icon.set_pixel_size(88)
+            preview_hint("Space previews this image. Double-click opens Seven Quick Look.")
+        elif is_video(target):
+            pixbuf = video_thumbnail(target)
+            if pixbuf:
+                preview_icon.set_from_pixbuf(pixbuf)
+            else:
+                preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
+                preview_icon.set_pixel_size(88)
+            preview_hint("Space opens video preview. External player remains available from preview.")
+        elif target.is_file() and target.suffix.lower() == ".pdf":
+            pixbuf = pdf_thumbnail(target)
+            if pixbuf:
+                preview_icon.set_from_pixbuf(pixbuf)
+            else:
+                preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
+                preview_icon.set_pixel_size(88)
+            preview_hint("Space opens PDF preview.")
+        else:
+            preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
+            preview_icon.set_pixel_size(88)
+            if target.is_file() and target.suffix.lower() in TEXT_SUFFIXES | DOCUMENT_SUFFIXES:
+                preview_hint("Space opens document preview.")
         preview_title.set_text(target.name or str(target))
         preview_subtitle.set_text("Folder" if target.is_dir() else (target.suffix.upper().lstrip(".") or "File"))
         try:
@@ -580,13 +814,48 @@ def run_files(start_path: str) -> int:
             detail_row("Status", "Unavailable")
         preview_details.show_all()
 
-    def open_image_preview(path: Path):
+    def preview_text_view(text: str) -> Gtk.ScrolledWindow:
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        text_view = Gtk.TextView()
+        text_view.set_editable(False)
+        text_view.set_cursor_visible(False)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        text_view.get_style_context().add_class("quicklook-text")
+        text_view.get_buffer().set_text(text)
+        scroller.add(text_view)
+        return scroller
+
+    def preview_message(icon_name: str, title_text: str, body: str) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        box.set_halign(Gtk.Align.CENTER)
+        box.set_valign(Gtk.Align.CENTER)
+        box.set_margin_top(32)
+        box.set_margin_bottom(32)
+        box.set_margin_start(32)
+        box.set_margin_end(32)
+        icon = Gtk.Image.new_from_icon_name(icon_name, Gtk.IconSize.DIALOG)
+        icon.set_pixel_size(96)
+        label = Gtk.Label(label=title_text)
+        label.get_style_context().add_class("preview-title")
+        body_label = Gtk.Label(label=body)
+        body_label.set_line_wrap(True)
+        body_label.set_max_width_chars(54)
+        body_label.set_justify(Gtk.Justification.CENTER)
+        body_label.get_style_context().add_class("preview-value")
+        box.pack_start(icon, False, False, 0)
+        box.pack_start(label, False, False, 0)
+        box.pack_start(body_label, False, False, 0)
+        return box
+
+    def open_quicklook_preview(path: Path):
         preview_window = Gtk.Window(title=path.name)
         preview_window.set_default_size(880, 620)
         preview_window.set_size_request(520, 360)
         preview_window.set_resizable(True)
         preview_window.set_position(Gtk.WindowPosition.CENTER)
-        preview_window.set_wmclass("SevenImagePreview", "SevenImagePreview")
+        preview_window.set_wmclass("SevenQuickLook", "SevenQuickLook")
+        preview_window.get_style_context().add_class("quicklook-window")
 
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         preview_window.add(outer)
@@ -595,51 +864,126 @@ def run_files(start_path: str) -> int:
         header.set_show_close_button(True)
         preview_window.set_titlebar(header)
 
-        image_scroller = Gtk.ScrolledWindow()
-        image_scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        image_scroller.set_hexpand(True)
-        image_scroller.set_vexpand(True)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        content.set_hexpand(True)
+        content.set_vexpand(True)
+        suffix = path.suffix.lower()
 
-        try:
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 1160, 760, True)
-            image = Gtk.Image.new_from_pixbuf(pixbuf)
-        except Exception:
-            image = Gtk.Image.new_from_icon_name("image-x-generic", Gtk.IconSize.DIALOG)
-            image.set_pixel_size(128)
-        image.set_margin_top(24)
-        image.set_margin_bottom(24)
-        image.set_margin_start(24)
-        image.set_margin_end(24)
-        image_scroller.add_with_viewport(image)
-        outer.pack_start(image_scroller, True, True, 0)
+        if is_image(path):
+            image_scroller = Gtk.ScrolledWindow()
+            image_scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 1280, 860, True)
+                image = Gtk.Image.new_from_pixbuf(pixbuf)
+            except Exception:
+                image = Gtk.Image.new_from_icon_name("image-x-generic", Gtk.IconSize.DIALOG)
+                image.set_pixel_size(128)
+            image.set_margin_top(18)
+            image.set_margin_bottom(18)
+            image.set_margin_start(18)
+            image.set_margin_end(18)
+            image_scroller.add_with_viewport(image)
+            content.pack_start(image_scroller, True, True, 0)
+        elif suffix in TEXT_SUFFIXES:
+            try:
+                content.pack_start(preview_text_view(read_text_preview(path)), True, True, 0)
+            except OSError as exc:
+                content.pack_start(preview_message("text-x-generic", "Preview unavailable", str(exc)), True, True, 0)
+        elif suffix == ".docx":
+            try:
+                content.pack_start(preview_text_view(read_docx_preview(path)), True, True, 0)
+            except Exception as exc:
+                content.pack_start(preview_message("x-office-document", "DOCX preview unavailable", str(exc)), True, True, 0)
+        elif suffix == ".pdf":
+            pixbuf = pdf_thumbnail(path, 1200, 760, 900)
+            if pixbuf:
+                image = Gtk.Image.new_from_pixbuf(pixbuf)
+                image.set_halign(Gtk.Align.CENTER)
+                image.set_valign(Gtk.Align.CENTER)
+                content.pack_start(image, True, True, 0)
+            else:
+                content.pack_start(
+                    preview_message(
+                        "application-pdf",
+                        "PDF document",
+                        "Install poppler to render the first page inline, or open this file externally now.",
+                    ),
+                    True,
+                    True,
+                    0,
+                )
+        elif is_video(path):
+            pixbuf = video_thumbnail(path)
+            if pixbuf:
+                large = None
+                thumb = Path("/tmp") / f"seven-files-video-large-{os.getpid()}-{abs(hash(path))}.png"
+                if shutil.which("ffmpeg"):
+                    result = subprocess.run(
+                        [
+                            "ffmpeg", "-y", "-ss", "00:00:01", "-i", str(path),
+                            "-frames:v", "1", "-vf", "scale=960:-1", str(thumb),
+                        ],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                    )
+                    if result.returncode == 0 and thumb.exists():
+                        try:
+                            large = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(thumb), 760, 520, True)
+                        finally:
+                            thumb.unlink(missing_ok=True)
+                image = Gtk.Image.new_from_pixbuf(large or pixbuf)
+                image.set_halign(Gtk.Align.CENTER)
+                image.set_valign(Gtk.Align.CENTER)
+                content.pack_start(image, True, True, 0)
+            else:
+                content.pack_start(
+                    preview_message(
+                        "video-x-generic",
+                        "Video preview",
+                        "Install ffmpegthumbnailer for live thumbnails. Use Open externally to play this file.",
+                    ),
+                    True,
+                    True,
+                    0,
+                )
+        else:
+            content.pack_start(preview_message(folder_icon(path), "Preview", "No inline preview is available for this file type yet."), True, True, 0)
+
+        outer.pack_start(content, True, True, 0)
 
         footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        footer.get_style_context().add_class("quicklook-footer")
         footer.set_margin_top(8)
         footer.set_margin_bottom(10)
         footer.set_margin_start(14)
         footer.set_margin_end(14)
         open_button = Gtk.Button(label="Open externally")
-        wallpaper_button = Gtk.Button(label="Set as Wallpaper")
-        open_button.connect("clicked", lambda *_: open_image_externally(path))
-        wallpaper_button.connect("clicked", lambda *_: set_wallpaper_from_file(path))
+        open_button.connect("clicked", lambda *_: open_externally(path))
         footer.pack_start(open_button, False, False, 0)
-        footer.pack_end(wallpaper_button, False, False, 0)
+        if is_image(path):
+            wallpaper_button = Gtk.Button(label="Set as Wallpaper")
+            wallpaper_button.connect("clicked", lambda *_: set_wallpaper_from_file(path))
+            footer.pack_end(wallpaper_button, False, False, 0)
         outer.pack_start(footer, False, False, 0)
 
         preview_window.show_all()
 
     def open_file(path: Path):
-        if is_image(path):
-            open_image_preview(path)
+        if is_previewable(path):
+            open_quicklook_preview(path)
         else:
             xdg_open(path)
 
-    def open_image_externally(path: Path):
+    def open_externally(path: Path):
+        if not is_image(path):
+            xdg_open(path)
+            return
         for command in ("loupe", "eog", "swayimg", "imv", "feh"):
             if shutil.which(command):
                 subprocess.Popen([command, str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 return
-        open_image_preview(path)
+        xdg_open(path)
 
     def set_wallpaper_from_file(path: Path):
         root = resolve_root()
@@ -653,6 +997,80 @@ def run_files(start_path: str) -> int:
     def copy_path(path: Path):
         Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(str(path), -1)
 
+    def clipboard_file_payload(paths: list[Path], cut: bool = False) -> str:
+        action = "cut" if cut else "copy"
+        uris = [path.resolve().as_uri() for path in paths if path.exists()]
+        return "\n".join([action, *uris]) + "\n"
+
+    def clipboard_uri_list(paths: list[Path]) -> str:
+        return "\n".join(path.resolve().as_uri() for path in paths if path.exists()) + "\n"
+
+    def write_clipboard_cache(paths: list[Path], cut: bool = False):
+        CLIPBOARD_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        CLIPBOARD_CACHE.write_text(
+            json.dumps(
+                {
+                    "action": "cut" if cut else "copy",
+                    "paths": [str(path.resolve()) for path in paths if path.exists()],
+                    "time": time.time(),
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def paths_from_uri_payload(payload: str) -> tuple[list[Path], bool]:
+        lines = [line.strip() for line in payload.splitlines() if line.strip() and not line.startswith("#")]
+        cut = False
+        if lines and lines[0] in {"copy", "cut"}:
+            cut = lines[0] == "cut"
+            lines = lines[1:]
+        paths: list[Path] = []
+        for line in lines:
+            if line.startswith("file://"):
+                paths.append(Path(GLib.filename_from_uri(line)[0]))
+            else:
+                paths.append(Path(line))
+        return [path for path in paths if path.exists()], cut
+
+    def publish_file_clipboard(paths: list[Path], cut: bool = False):
+        valid = [path for path in paths if path.exists()]
+        if not valid:
+            return
+        uri_list = clipboard_uri_list(valid)
+        write_clipboard_cache(valid, cut)
+        if shutil.which("wl-copy") and os.environ.get("WAYLAND_DISPLAY"):
+            subprocess.run(["wl-copy", "--type", "text/uri-list"], input=uri_list, text=True, check=False)
+        elif shutil.which("xclip") and os.environ.get("DISPLAY"):
+            subprocess.run(["xclip", "-selection", "clipboard", "-t", "text/uri-list"], input=uri_list, text=True, check=False)
+        else:
+            Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(uri_list, -1)
+
+    def read_system_file_clipboard() -> tuple[list[Path], bool]:
+        commands: list[list[str]] = []
+        if shutil.which("wl-paste") and os.environ.get("WAYLAND_DISPLAY"):
+            commands.extend([
+                ["wl-paste", "--no-newline", "--type", "x-special/gnome-copied-files"],
+                ["wl-paste", "--no-newline", "--type", "text/uri-list"],
+            ])
+        if shutil.which("xclip") and os.environ.get("DISPLAY"):
+            commands.append(["xclip", "-selection", "clipboard", "-o", "-t", "x-special/gnome-copied-files"])
+        for command in commands:
+            result = subprocess.run(command, text=True, capture_output=True, check=False)
+            if result.returncode == 0 and result.stdout.strip():
+                paths, cut = paths_from_uri_payload(result.stdout)
+                if paths:
+                    return paths, cut
+        if CLIPBOARD_CACHE.exists():
+            try:
+                data = json.loads(CLIPBOARD_CACHE.read_text(encoding="utf-8"))
+                paths = [Path(path) for path in data.get("paths", [])]
+                paths = [path for path in paths if path.exists()]
+                if paths:
+                    return paths, data.get("action") == "cut"
+            except (OSError, json.JSONDecodeError):
+                pass
+        return [], False
+
     def selected_path() -> Path | None:
         selected = flow.get_selected_children()
         if not selected:
@@ -664,8 +1082,8 @@ def run_files(start_path: str) -> int:
         file_clipboard = [path for path in paths if path.exists()]
         file_clipboard_cut = cut
         if file_clipboard:
-            Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text("\n".join(str(path) for path in file_clipboard), -1)
-            status_label.set_text(f"{'Cut' if cut else 'Copied'} {len(file_clipboard)} item(s)")
+            publish_file_clipboard(file_clipboard, cut)
+            status_label.set_text(f"{'Cut' if cut else 'Copied'} {len(file_clipboard)} file item(s)")
 
     def copy_selected():
         path = selected_path()
@@ -692,8 +1110,10 @@ def run_files(start_path: str) -> int:
     def paste_items():
         nonlocal file_clipboard, file_clipboard_cut
         if not file_clipboard:
-            status_label.set_text("Nothing to paste")
-            return
+            file_clipboard, file_clipboard_cut = read_system_file_clipboard()
+            if not file_clipboard:
+                status_label.set_text("Nothing to paste")
+                return
         pasted = 0
         for source in list(file_clipboard):
             if not source.exists():
@@ -715,6 +1135,187 @@ def run_files(start_path: str) -> int:
         render()
         status_label.set_text(f"Pasted {pasted} item(s)" if pasted else "Paste failed")
 
+    def ask_name(title_text: str, default_name: str) -> str | None:
+        dialog = Gtk.Dialog(title=title_text, transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("OK", Gtk.ResponseType.OK)
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        content = dialog.get_content_area()
+        content.set_margin_top(14)
+        content.set_margin_bottom(14)
+        content.set_margin_start(14)
+        content.set_margin_end(14)
+        entry = Gtk.Entry()
+        entry.set_text(default_name)
+        entry.set_activates_default(True)
+        content.pack_start(entry, False, False, 0)
+        dialog.show_all()
+        response = dialog.run()
+        value = entry.get_text().strip()
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK or not value:
+            return None
+        return Path(value).name
+
+    def create_folder():
+        name = ask_name("New Folder", "Untitled Folder")
+        if not name:
+            return
+        destination = unique_destination(current, name)
+        try:
+            destination.mkdir()
+            render()
+            status_label.set_text(f"Created {destination.name}")
+        except OSError as exc:
+            status_label.set_text(f"New folder failed: {exc}")
+
+    def rename_path(path: Path):
+        name = ask_name("Rename", path.name)
+        if not name or name == path.name:
+            return
+        destination = unique_destination(path.parent, name)
+        try:
+            path.rename(destination)
+            render()
+            status_label.set_text(f"Renamed to {destination.name}")
+        except OSError as exc:
+            status_label.set_text(f"Rename failed: {exc}")
+
+    def duplicate_path(path: Path):
+        destination = unique_destination(path.parent, f"{path.stem} copy{path.suffix}" if path.is_file() else f"{path.name} copy")
+        try:
+            if path.is_dir():
+                shutil.copytree(path, destination)
+            else:
+                shutil.copy2(path, destination)
+            render()
+            status_label.set_text(f"Duplicated {path.name}")
+        except OSError as exc:
+            status_label.set_text(f"Duplicate failed: {exc}")
+
+    def trash_path(path: Path):
+        if shutil.which("gio"):
+            result = subprocess.run(["gio", "trash", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            if result.returncode == 0:
+                render()
+                status_label.set_text(f"Moved {path.name} to Trash")
+                return
+        trash_dir = Path.home() / ".local/share/Trash/files"
+        trash_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.move(str(path), str(unique_destination(trash_dir, path.name)))
+            render()
+            status_label.set_text(f"Moved {path.name} to Trash")
+        except OSError as exc:
+            status_label.set_text(f"Trash failed: {exc}")
+
+    def archive_destination(path: Path, item_count: int = 1, archive_format: str = "zip", requested_name: str | None = None) -> Path:
+        if item_count > 1 and path == current:
+            base = "Archive"
+            directory = current
+        else:
+            base = path.stem if path.is_file() else path.name
+            directory = path.parent if path != current else current
+        suffix = ARCHIVE_FORMATS.get(archive_format, ".zip")
+        if requested_name:
+            base = Path(requested_name).name
+            for archive_suffix in sorted(ARCHIVE_FORMATS.values(), key=len, reverse=True):
+                if base.endswith(archive_suffix):
+                    base = base[: -len(archive_suffix)]
+                    break
+        candidate = directory / f"{base}{suffix}"
+        if not candidate.exists():
+            return candidate
+        for index in range(2, 1000):
+            candidate = directory / f"{base} {index}{suffix}"
+            if not candidate.exists():
+                return candidate
+        return directory / f"{base} archive{suffix}"
+
+    def archive_member_name(target: Path, item: Path) -> str:
+        if target.is_dir():
+            return str(item.relative_to(target.parent))
+        return target.name
+
+    def write_archive(destination: Path, targets: list[Path], archive_format: str):
+        if archive_format == "zip":
+            with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for target in targets:
+                    if target.is_dir():
+                        for item in target.rglob("*"):
+                            if item == destination:
+                                continue
+                            archive.write(item, archive_member_name(target, item))
+                    else:
+                        archive.write(target, target.name)
+            return
+        mode = "w:gz" if archive_format == "tar.gz" else "w:xz"
+        with tarfile.open(destination, mode) as archive:
+            for target in targets:
+                archive.add(target, arcname=target.name)
+
+    def ask_archive_options(default_name: str) -> tuple[str, str] | None:
+        dialog = Gtk.Dialog(title="Compress", transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Compress", Gtk.ResponseType.OK)
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        content = dialog.get_content_area()
+        content.set_spacing(10)
+        content.set_margin_top(14)
+        content.set_margin_bottom(14)
+        content.set_margin_start(14)
+        content.set_margin_end(14)
+        name_label = Gtk.Label(label="Archive name")
+        name_label.set_xalign(0)
+        entry = Gtk.Entry()
+        entry.set_text(default_name)
+        entry.set_activates_default(True)
+        format_label = Gtk.Label(label="Format")
+        format_label.set_xalign(0)
+        combo = Gtk.ComboBoxText()
+        for value in ARCHIVE_FORMATS:
+            combo.append_text(value)
+        combo.set_active(0)
+        content.pack_start(name_label, False, False, 0)
+        content.pack_start(entry, False, False, 0)
+        content.pack_start(format_label, False, False, 0)
+        content.pack_start(combo, False, False, 0)
+        dialog.show_all()
+        response = dialog.run()
+        name = entry.get_text().strip()
+        archive_format = combo.get_active_text() or "zip"
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK or not name:
+            return None
+        return name, archive_format
+
+    def compress_paths(paths: list[Path]):
+        targets = [path for path in paths if path.exists()]
+        if not targets:
+            status_label.set_text("Select an item to compress")
+            return
+        base_path = targets[0] if len(targets) == 1 else current
+        default_name = "Archive" if len(targets) > 1 else (base_path.stem if base_path.is_file() else base_path.name)
+        options = ask_archive_options(default_name)
+        if not options:
+            status_label.set_text("Compression cancelled")
+            return
+        requested_name, archive_format = options
+        destination = archive_destination(base_path, len(targets), archive_format, requested_name)
+        try:
+            write_archive(destination, targets, archive_format)
+            render()
+            status_label.set_text(f"Compressed {len(targets)} item(s) to {destination.name}")
+        except (OSError, tarfile.TarError, zipfile.BadZipFile) as exc:
+            status_label.set_text(f"Compress failed: {exc}")
+
+    def compress_selected():
+        path = selected_path()
+        if path:
+            compress_paths([path])
+        else:
+            status_label.set_text("Select an item to compress")
+
     def reveal_in_parent(path: Path):
         xdg_open(path.parent if path.is_file() else path)
 
@@ -729,9 +1330,13 @@ def run_files(start_path: str) -> int:
         add_menu_item(menu, "Copy", lambda: copy_items([path]))
         add_menu_item(menu, "Cut", lambda: copy_items([path], cut=True))
         add_menu_item(menu, "Paste Item", paste_items)
+        add_menu_item(menu, "Duplicate", lambda: duplicate_path(path))
+        add_menu_item(menu, "Rename", lambda: rename_path(path))
+        add_menu_item(menu, "Compress", lambda: compress_paths([path]))
         menu.append(Gtk.SeparatorMenuItem())
         add_menu_item(menu, "Reveal in Folder", lambda: reveal_in_parent(path))
         add_menu_item(menu, "Copy Path", lambda: copy_path(path))
+        add_menu_item(menu, "Move to Trash", lambda: trash_path(path))
         if is_image(path):
             menu.append(Gtk.SeparatorMenuItem())
             add_menu_item(menu, "Set as Wallpaper", lambda: set_wallpaper_from_file(path))
@@ -812,6 +1417,14 @@ def run_files(start_path: str) -> int:
         if event.keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             open_selected()
             return True
+        if event.keyval == Gdk.KEY_space:
+            target = selected_path()
+            if target and is_previewable(target):
+                open_quicklook_preview(target)
+                return True
+        if event.keyval in (Gdk.KEY_Left, Gdk.KEY_Right, Gdk.KEY_Up, Gdk.KEY_Down):
+            move_keyboard_selection(event.keyval)
+            return True
         if event.state & Gdk.ModifierType.CONTROL_MASK:
             if event.keyval in (Gdk.KEY_c, Gdk.KEY_C):
                 copy_selected()
@@ -822,10 +1435,37 @@ def run_files(start_path: str) -> int:
             if event.keyval in (Gdk.KEY_v, Gdk.KEY_V):
                 paste_items()
                 return True
+        if event.state & Gdk.ModifierType.MOD1_MASK and event.keyval in (Gdk.KEY_c, Gdk.KEY_C):
+            compress_selected()
+            return True
         return False
+
+    def move_keyboard_selection(keyval: int):
+        children = flow.get_children()
+        if not children:
+            return
+        selected = flow.get_selected_children()
+        if selected and selected[0] in children:
+            index = children.index(selected[0])
+        else:
+            index = 0
+        columns = max(1, min(4, len(children)))
+        if keyval == Gdk.KEY_Left:
+            index = max(0, index - 1)
+        elif keyval == Gdk.KEY_Right:
+            index = min(len(children) - 1, index + 1)
+        elif keyval == Gdk.KEY_Up:
+            index = max(0, index - columns)
+        elif keyval == Gdk.KEY_Down:
+            index = min(len(children) - 1, index + columns)
+        child = children[index]
+        flow.select_child(child)
+        child.grab_focus()
+        update_preview(child.path)
 
     flow.connect("child-activated", activate)
     flow.connect("selected-children-changed", selection_changed)
+    flow.connect("key-press-event", on_key)
     window.connect("key-press-event", on_key)
     window.connect("destroy", Gtk.main_quit)
     render()

@@ -80,7 +80,7 @@ profiles = command_json([str(root / "bin/seven-daemon"), "profiles", "--json"], 
 windows = command_json([str(root / "bin/seven-daemon"), "windows", "--json"], {"ready": False, "mode": "unknown"})
 installer = command_json([str(root / "bin/seven-daemon"), "installer", "--json"], {"ready": False, "mode": "unknown", "tooling": []})
 server = command_json([str(root / "bin/seven-daemon"), "server", "--json"], {"dependencies": [], "service": {"state": "MISS"}})
-core = command_json([str(root / "bin/seven-daemon"), "core", "--json"], {"state": "unknown", "daemon": {}})
+core = command_json([str(root / "scripts" / "core.sh"), "status", "--json"], {"state": "unknown", "daemon": {}})
 
 categories = readiness.get("categories", {})
 profile_items = profiles.get("profiles", [])

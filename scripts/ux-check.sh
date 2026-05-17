@@ -103,6 +103,7 @@ require_file "archiso/profile/airootfs/etc/issue"
 require_file "archiso/profile/airootfs/etc/sevenos-release"
 require_file "identity/countries/africa.tsv"
 require_file "identity/STYLE.md"
+require_file "identity/LIQUID_GLASS_OS.md"
 require_file "identity/AFRICAN_FIRST.md"
 require_file "identity/tokens.css"
 require_file "identity/accent-packs.json"
@@ -157,6 +158,7 @@ require_executable "bin/seven-files-native"
 require_executable "bin/seven-help"
 require_executable "bin/seven-overview"
 require_executable "bin/seven-quick-settings"
+require_executable "bin/seven-quick-settings-native"
 require_executable "bin/seven-screenshot"
 require_executable "bin/seven-shell-panel"
 require_executable "bin/seven-shell-preview"
@@ -164,6 +166,11 @@ require_executable "bin/seven-terminal"
 require_executable "bin/seven-terminal-native"
 require_executable "bin/seven-terminal-shell"
 require_executable "bin/seven-spotlight"
+require_executable "bin/seven-spotlight-native"
+require_executable "bin/seven-notification-center-native"
+require_executable "bin/seven-profile-center-native"
+require_executable "bin/seven-shield-center-native"
+require_executable "bin/seven-waybar-center-native"
 require_executable "bin/seven-session"
 require_executable "bin/seven-session-status"
 require_executable "bin/seven-wallpaper"
@@ -226,6 +233,8 @@ package_manifest_contains "gvfs-mtp" "scripts/packages-base.txt"
 package_manifest_contains "gvfs-smb" "scripts/packages-base.txt"
 package_manifest_contains "file-roller" "scripts/packages-base.txt"
 package_manifest_contains "sushi" "scripts/packages-base.txt"
+package_manifest_contains "ffmpegthumbnailer" "scripts/packages-base.txt"
+package_manifest_contains "poppler" "scripts/packages-base.txt"
 package_manifest_contains "xdg-user-dirs" "scripts/packages-base.txt"
 package_manifest_contains "xdg-utils" "scripts/packages-base.txt"
 package_manifest_contains "desktop-file-utils" "scripts/packages-base.txt"
@@ -307,7 +316,7 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'toggle_zoom_or_tile' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'files-preview' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'files-statusbar' "$ROOT_DIR/bin/seven-files-native" &&
-   grep -q 'open_image_preview' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'open_quicklook_preview' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'show_context_menu' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'Set as Wallpaper' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'selected-children-changed' "$ROOT_DIR/bin/seven-files-native" &&
@@ -318,16 +327,49 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'file-tile-box' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'copy_items' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'paste_items' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'publish_file_clipboard' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'write_clipboard_cache' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'text/uri-list' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'read_system_file_clipboard' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'x-special/gnome-copied-files' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'compress_paths' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'ask_archive_options' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'ARCHIVE_FORMATS' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'tarfile.open' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'Compress' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'new_from_file_at_scale' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'VIDEO_SUFFIXES' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'DOCUMENT_SUFFIXES' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'TEXT_SUFFIXES' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'read_docx_preview' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'ffmpegthumbnailer' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'pdftoppm' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'SevenQuickLook' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'set_view_mode' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'list-view' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'compact-view' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'create_folder' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'rename_path' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'duplicate_path' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'trash_path' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'Gdk.KEY_space' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'move_keyboard_selection' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'Gdk.KEY_Left' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'flow.connect("key-press-event", on_key)' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q '_2BUTTON_PRESS' "$ROOT_DIR/bin/seven-files-native" &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open "$HOME" | grep -q 'native Finder-like Seven Files surface' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open "$HOME" | grep -q 'native Seven Files surface' &&
+   grep -q 'normalize_target' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'configure_nautilus_preferences' "$ROOT_DIR/bin/seven-files" &&
+   grep -q 'Exec=seven-files open %U' "$ROOT_DIR/seven-hub/seven-files.desktop" &&
+   grep -q 'MimeType=inode/directory' "$ROOT_DIR/seven-hub/seven-files.desktop" &&
+   grep -q 'xdg-mime default seven-files.desktop inode/directory' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'default-folder-viewer' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'nautilus --new-window' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 1120 700' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'windowrule = match:title ^(Seven Files)$, float on, center on, size 1120 700' "$ROOT_DIR/hyprland/hyprland.conf"; then
-  ok "Seven Files is shaped as a Finder-like file surface"
+  ok "Seven Files is shaped as a native SevenOS file surface"
 else
-  fail "Seven Files Finder-like shell integration is incomplete"
+  fail "Seven Files shell integration is incomplete"
 fi
 
 if jq -e '."custom/power"."on-click" == "seven-power"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
@@ -349,7 +391,7 @@ else
   fail "SevenOS Dock should toggle with Super+D and expose workflow actions"
 fi
 
-if jq -e '.network."on-click" == "seven-waybar-action network" and .network."on-click-middle" == "seven-waybar-action network-connect" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/quick"."on-click" == "seven-quick-settings" and ."custom/notifications"."on-click" == "seven-waybar-notifications menu" and ."custom/notifications"."on-click-right" == "seven-waybar-notifications toggle-dnd"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.network."on-click" == "seven-wifi menu" and .network."on-click-middle" == "seven-wifi disconnect" and .network."on-click-right" == "seven-wifi settings" and .network."format-wifi" == "󰤨" and .pulseaudio."on-click" == "seven-waybar-action audio" and .pulseaudio."on-click-right" == "seven-settings sound" and .pulseaudio.format == "󰕾" and .battery."on-click" == "seven-waybar-action battery" and .battery."on-click-right" == "seven-settings power" and .battery.format == "󰁹" and .clock."on-click" == "seven-waybar-action clock" and .clock."on-click-right" == "seven-settings system" and .cpu."on-click-right" == "seven-settings system" and .memory."on-click-right" == "seven-settings system" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/security"."on-click-right" == "seven-settings security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/profile"."on-click-right" == "seven-settings profiles" and ."custom/profile"."on-click-middle" == "seven-files profile" and ."custom/settings"."on-click" == "seven-settings" and ."custom/settings"."on-click-right" == "seven-hub-native" and (."custom/notifications"."on-click" | contains("seven-waybar-notifications") and contains("menu")) and (."custom/notifications"."on-click-right" | contains("seven-waybar-notifications") and contains("toggle-dnd"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
@@ -366,10 +408,12 @@ fi
 wifi_menu_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" menu)"
 wifi_connect_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" connect)"
 if [[ -x "$ROOT_DIR/bin/seven-wifi" ]] &&
-   grep -q 'Connect Wi-Fi' "$ROOT_DIR/bin/seven-waybar-action" &&
-   grep -q 'run_wifi connect' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'network_label_rows' "$ROOT_DIR/bin/seven-wifi" &&
+   grep -q 'connect_to_ssid' "$ROOT_DIR/bin/seven-wifi" &&
    grep -q 'DRY-RUN > Wi-Fi > Open panel' <<<"$wifi_menu_output" &&
    grep -q 'DRY-RUN > Wi-Fi > Connect' <<<"$wifi_connect_output" &&
+   grep -q 'Turn Wi-Fi On / Off' <<<"$wifi_menu_output" &&
+   grep -q 'Nearby Wi-Fi' <<<"$wifi_menu_output" &&
    "$ROOT_DIR/bin/seven-wifi" status-json | python -m json.tool >/dev/null; then
   ok "Waybar network module exposes a real Wi-Fi workflow"
 else
@@ -387,8 +431,22 @@ else
 fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
-   grep -q 'Native Profiles' "$ROOT_DIR/bin/seven-waybar-action" &&
-   grep -q 'Open Active Workspace' "$ROOT_DIR/bin/seven-waybar-action" &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" json | grep -q '󰐃' &&
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-security" json | grep -q '󰒃' &&
+   "$ROOT_DIR/bin/seven-profile-center-native" --probe >/dev/null 2>&1 &&
+   "$ROOT_DIR/bin/seven-shield-center-native" --probe >/dev/null 2>&1 &&
+   grep -q 'SevenProfileCenterNative' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'SevenShieldCenterNative' "$ROOT_DIR/bin/seven-shield-center-native" &&
+   grep -q 'Profile Center' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'native_panel seven-profile-center-native' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'native_panel seven-shield-center-native' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'native_panel seven-waybar-center-native network' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'native_panel seven-waybar-center-native audio' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'native_panel seven-waybar-center-native power' "$ROOT_DIR/bin/seven-waybar-action" &&
+   "$ROOT_DIR/bin/seven-waybar-center-native" --probe >/dev/null 2>&1 &&
+   grep -q 'SevenWaybarCenterNative' "$ROOT_DIR/bin/seven-waybar-center-native" &&
+   grep -q 'Workspace' "$ROOT_DIR/bin/seven-waybar-action" &&
+   grep -q 'Settings' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'seven profile activate forge' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'clean_selection' "$ROOT_DIR/bin/seven-waybar-action" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system | grep -q 'DRY-RUN > System > Open panel'; then
@@ -432,6 +490,10 @@ if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
    [[ "$("$ROOT_DIR/bin/seven-spotlight" eval '15% of 240')" == "15% of 240 = 36" ]] &&
    grep -q 'Search apps, files, windows, clipboard, actions' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
+   grep -q 'SevenSpotlightNative' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'category-button' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'result_box.set_visible(bool(matches))' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'seven-spotlight-native' "$ROOT_DIR/scripts/install-cli.sh" &&
    grep -Fq 'children: [ inputbar, message, listview ]' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -Fq 'children: [ inputbar, listview ]' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -Fq 'children: [ message, listview ]' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
@@ -594,8 +656,8 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q 'C SevenBus probe' <<<"$core_json" &&
    grep -q 'seven-daemon emit' "$ROOT_DIR/scripts/events.sh" &&
    grep -Fq '"$ROOT_DIR/bin/seven-daemon" events' "$ROOT_DIR/scripts/events.sh" &&
-   grep -q 'ExecStart=/usr/bin/env seven-daemon serve' "$ROOT_DIR/systemd/user/seven-daemon.service" &&
-   grep -q 'ExecStart=/usr/bin/env seven-daemon observe-loop' "$ROOT_DIR/systemd/user/seven-context-observer.service" &&
+   grep -q 'ExecStart=%h/.local/bin/seven-daemon serve' "$ROOT_DIR/systemd/user/seven-daemon.service" &&
+   grep -q 'ExecStart=%h/.local/bin/seven-daemon observe-loop' "$ROOT_DIR/systemd/user/seven-context-observer.service" &&
    grep -q 'Wants=seven-daemon.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
    grep -q 'seven-context-observer.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
    grep -q '"core"' <<<"$state_json" &&
@@ -747,6 +809,9 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'active_tab_background #d8d8d8' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'cursor #2f3437' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'background #fbfbfb' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'copy_on_select clipboard' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'map ctrl+shift+c copy_to_clipboard' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'map ctrl+shift+v paste_from_clipboard' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'tab_bar_min_tabs 1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q '🔴  🟡  🟢' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'map ctrl+shift+w close_window' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
@@ -758,6 +823,10 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'traffic.max' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'draw_traffic_symbol' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'activate_traffic' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'terminal_key_press' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'copy_terminal_selection' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'paste_clipboard' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'show_terminal_menu' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'minimize_window' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'toggle_zoom_or_tile' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'native-if-available' "$ROOT_DIR/bin/seven-terminal" &&
@@ -765,6 +834,9 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -Fq 'windowrule = match:title ^(.+@SevenOS)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'exec zsh -di' "$ROOT_DIR/bin/seven-terminal-shell" &&
    grep -q 'background #2d333d' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'copy_on_select clipboard' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'map ctrl+shift+c copy_to_clipboard' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'map ctrl+shift+v paste_from_clipboard' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'initial_window_width 76c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'initial_window_height 21c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'wayland_titlebar_color #34373d' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
@@ -772,7 +844,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" classic | grep -q 'DRY-RUN > Terminal > Open classic' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" dark | grep -q 'DRY-RUN > Terminal > Open dark' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" menu | grep -q 'DRY-RUN > Terminal > Open profile chooser'; then
-  ok "Kitty exposes SevenOS classic and dark macOS-style terminal profiles"
+  ok "Kitty exposes SevenOS classic and dark SevenOS terminal profiles"
 else
   fail "Kitty palette is not aligned with SevenOS identity"
 fi
@@ -927,6 +999,11 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'icon_for_action' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'set_icon_name' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'render_loading_shell' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'render_dashboard_compact' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'render_profiles_compact' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'render_actions_compact' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-tile' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'seven-glass-strip' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'GLib.timeout_add' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'run_visible' "$ROOT_DIR/bin/seven-hub-native" &&
    "$ROOT_DIR/bin/seven-hub-native" status | grep -q 'Seven Hub Native' &&
@@ -939,17 +1016,53 @@ else
   fail "Seven Hub native UI strategy is missing, unstyled or unclear"
 fi
 
-if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick | grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications | grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick | grep -q 'Active profile:' &&
+shell_panel_quick_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick)"
+shell_panel_notifications_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications)"
+waybar_notifications_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
+if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_quick_dry" &&
+   grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' <<<"$shell_panel_notifications_dry" &&
+   grep -q 'No notifications' <<<"$shell_panel_notifications_dry" &&
+   grep -q 'No notifications' <<<"$waybar_notifications_dry" &&
+   ! grep -q 'Notification Status' <<<"$waybar_notifications_dry" &&
+   grep -q 'Active profile:' <<<"$shell_panel_quick_dry" &&
    grep -q 'PROFILE_ACTIONS' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'Forge Apps' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'seven-windows-assistant' "$ROOT_DIR/bin/seven-shell-panel" &&
-   grep -q 'seven-shell-panel quick' "$ROOT_DIR/bin/seven-quick-settings" &&
-   grep -q 'seven-shell-panel notifications' "$ROOT_DIR/bin/seven-waybar-notifications"; then
-  ok "Quick Settings, Notifications and active profile actions prefer native shell panels"
+   "$ROOT_DIR/bin/seven-quick-settings-native" --probe >/dev/null 2>&1 &&
+   grep -q 'SevenQuickSettingsNative' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'build_slider_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'Control Center' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   "$ROOT_DIR/bin/seven-notification-center-native" --probe >/dev/null 2>&1 &&
+   grep -q 'SevenNotificationCenterNative' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   grep -q 'notification-card' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   grep -q 'action-glyph' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   grep -q 'seven-quick-settings-native' "$ROOT_DIR/bin/seven-quick-settings" &&
+   grep -q 'seven-notification-center-native' "$ROOT_DIR/bin/seven-waybar-notifications"; then
+  ok "Settings, Notifications and active profile actions prefer native OS surfaces"
 else
-  fail "Quick Settings and Notifications should expose native profile-aware shell panels"
+  fail "Settings and Notifications should expose native profile-aware OS surfaces"
+fi
+
+settings_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-settings")"
+if grep -q 'DRY-RUN > Settings > Open SevenOS Settings' <<<"$settings_dry" &&
+   "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1 &&
+   grep -q 'SevenOS Settings' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Wallpaper' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Displays' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Wi-Fi & Network' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Keyboard' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Security' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Profiles' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Power' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'System updates' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven update' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'hero-card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'quick_strip' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven-settings' "$ROOT_DIR/bin/seven-spotlight" &&
+   grep -q 'Exec=seven-settings' "$ROOT_DIR/seven-hub/seven-settings.desktop"; then
+  ok "SevenOS Settings provides a normal-user native configuration center"
+else
+  fail "SevenOS Settings should be discoverable and cover core normal-user configuration"
 fi
 
 ecosystem_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ecosystem --json)"

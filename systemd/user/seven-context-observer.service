@@ -5,8 +5,9 @@ After=seven-daemon.service graphical-session.target
 
 [Service]
 Type=simple
+Environment=SEVENOS_ROOT=%h/Code/OS/SevenOS
 Environment=SEVENOS_CONTEXT_INTERVAL=60
-ExecStart=/usr/bin/env seven-daemon observe-loop
+ExecStart=%h/.local/bin/seven-daemon observe-loop
 Restart=on-failure
 RestartSec=5
 

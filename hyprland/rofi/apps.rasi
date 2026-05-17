@@ -1,4 +1,4 @@
-/* SevenOS Launchpad - macOS-like fullscreen app grid */
+/* SevenOS Launchpad - SevenOS fullscreen app grid */
 @theme "sevenos.rasi"
 
 window {
@@ -6,7 +6,7 @@ window {
   padding: 26px 46px 42px 46px;
   border: 0px;
   border-radius: 0px;
-  background-color: rgba(15, 22, 18, 0.42);
+  background-color: rgba(226, 239, 247, 0.36);
 }
 
 mainbox {
@@ -21,9 +21,9 @@ inputbar {
   padding: 5px 11px;
   spacing: 7px;
   border: 1px;
-  border-color: rgba(255, 255, 255, 0.30);
-  border-radius: 7px;
-  background-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.70);
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.58);
   children: [ icon-search, entry ];
 }
 
@@ -36,8 +36,8 @@ icon-search {
 
 entry {
   placeholder: "Search";
-  placeholder-color: rgba(255, 255, 255, 0.72);
-  text-color: rgba(255, 255, 255, 0.92);
+  placeholder-color: rgba(51, 72, 82, 0.70);
+  text-color: rgba(16, 26, 33, 0.94);
   font: "DM Sans 11";
 }
 
@@ -69,12 +69,12 @@ element {
   border: 0px;
   border-radius: 20px;
   background-color: transparent;
-  text-color: rgba(255, 255, 255, 0.96);
+  text-color: rgba(16, 26, 33, 0.94);
 }
 
 element selected {
-  background-color: rgba(255, 255, 255, 0.18);
-  text-color: rgba(255, 255, 255, 1.00);
+  background-color: rgba(255, 255, 255, 0.48);
+  text-color: rgba(16, 26, 33, 1.00);
 }
 
 element alternate {

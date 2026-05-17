@@ -113,6 +113,21 @@ command_or_terminal() {
   fi
 }
 
+native_panel() {
+  local name="$1"
+  shift || true
+  local local_path="$ROOT_DIR/bin/$name"
+  if [[ -x "$local_path" ]] && "$local_path" --probe >/dev/null 2>&1; then
+    run_detached "$local_path" "$@"
+    return 0
+  fi
+  if command -v "$name" >/dev/null 2>&1 && "$name" --probe >/dev/null 2>&1; then
+    run_detached "$name" "$@"
+    return 0
+  fi
+  return 1
+}
+
 run_wifi() {
   local helper="$ROOT_DIR/bin/seven-wifi"
   if [[ -x "$helper" ]]; then
@@ -127,12 +142,10 @@ run_wifi() {
 run_system_action() {
   local selected="$1"
   case "$selected" in
-    "Open Control Center") run_detached seven hub ;;
-    "System Monitor") command_or_terminal "SevenOS Monitor" btop "top" ;;
-    "System Status") run_terminal "SevenOS Status" "seven status" ;;
-    "Readiness Score") run_terminal "SevenOS Readiness" "seven readiness" ;;
-    "Doctor Check") run_terminal "SevenOS Doctor" "seven doctor" ;;
-    "Recent Warnings") run_terminal "SevenOS Logs" "journalctl -p warning -b -n 80 --no-pager" ;;
+    "Settings") run_detached seven-settings system ;;
+    "Monitor") run_terminal "SevenOS Monitor" "if command -v btop >/dev/null 2>&1; then btop; else top; fi" ;;
+    "Updates") run_detached seven-settings system ;;
+    "Repair UI") run_detached seven-waybar repair ;;
     *) return 0 ;;
   esac
 }
@@ -140,20 +153,12 @@ run_system_action() {
 run_profile_action() {
   local selected="$1"
   case "$selected" in
-    "Profile Status") run_terminal "SevenOS Profiles" "seven profile status" ;;
-    "Current Profile") run_terminal "SevenOS Profile" "seven profile current" ;;
-    "Profile Guide") run_terminal "SevenOS Profile Guide" "seven profile guide" ;;
-    "Profile Apps") run_terminal "SevenOS Profile Apps" "seven profile apps" ;;
-    "Native Profiles") run_detached seven-hub-native ;;
-    "Open Active Workspace") run_detached seven-files profile ;;
-    "Open Profiles Hub") run_detached seven-hub Profiles ;;
+    "Profile Center") run_detached seven-profile-center-native ;;
+    "Workspace") run_detached seven-files profile ;;
+    "Settings") run_detached seven-settings profiles ;;
     "Activate Forge") run_terminal "SevenOS Forge" "seven profile activate forge" ;;
     "Activate Shield") run_terminal "SevenOS Shield" "seven profile activate shield" ;;
     "Activate Studio") run_terminal "SevenOS Studio" "seven profile activate studio" ;;
-    "Install Forge") run_terminal "SevenOS Forge" "seven profile install forge" ;;
-    "Install Shield") run_terminal "SevenOS Shield" "seven profile install shield" ;;
-    "Install Studio") run_terminal "SevenOS Studio" "seven profile install studio" ;;
-    "SevenPkg Status") run_terminal "SevenPkg Status" "sevenpkg status" ;;
     *) return 0 ;;
   esac
 }
@@ -161,11 +166,10 @@ run_profile_action() {
 run_security_action() {
   local selected="$1"
   case "$selected" in
-    "Security Audit") run_terminal "SevenOS Security" "seven shield audit" ;;
+    "Shield Center") run_detached seven-shield-center-native ;;
     "Enable Shield") run_terminal "SevenOS Shield" "seven shield enable" ;;
     "Cyber Lab") run_terminal "SevenOS Cyber Lab" "seven shield lab --preset web" ;;
-    "Firewall Status") run_terminal "SevenOS Firewall" "sudo ufw status verbose" ;;
-    "Open Cyber Hub") run_detached seven-hub Cyber ;;
+    "Settings") run_detached seven-settings security ;;
     *) return 0 ;;
   esac
 }
@@ -173,12 +177,10 @@ run_security_action() {
 run_network_action() {
   local selected="$1"
   case "$selected" in
-    "Connect Wi-Fi") run_wifi connect ;;
+    "Wi-Fi Panel") run_wifi menu ;;
     "Disconnect Wi-Fi") run_wifi disconnect ;;
-    "Network Settings") run_wifi settings ;;
-    "Network Status") run_terminal "SevenOS Network" "seven-wifi status 2>/dev/null || { nmcli device status; printf '\n'; nmcli connection show --active; }" ;;
-    "Wi-Fi Menu") run_wifi menu ;;
-    "Restart NetworkManager") run_wifi restart ;;
+    "Toggle Wi-Fi") run_wifi toggle ;;
+    "Settings") run_detached seven-settings network ;;
     *) return 0 ;;
   esac
 }
@@ -190,7 +192,7 @@ run_audio_action() {
     "Mute Toggle") run_detached wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
     "Volume Up") run_detached wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ ;;
     "Volume Down") run_detached wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
-    "Audio Status") run_terminal "SevenOS Audio" "wpctl status" ;;
+    "Settings") run_detached seven-settings sound ;;
     *) return 0 ;;
   esac
 }
@@ -199,9 +201,9 @@ run_battery_action() {
   local selected="$1"
   case "$selected" in
     "Power Menu") run_detached seven-power ;;
-    "Battery Status") run_terminal "SevenOS Battery" "for b in /sys/class/power_supply/BAT*; do [ -e \"\$b\" ] || continue; echo \"\$(basename \"\$b\")\"; cat \"\$b/status\" \"\$b/capacity\" 2>/dev/null; done" ;;
-    "Power Profiles") run_terminal "SevenOS Power" "if command -v powerprofilesctl >/dev/null 2>&1; then powerprofilesctl; else echo 'powerprofilesctl is not installed'; fi" ;;
+    "Sleep") run_detached seven-power suspend ;;
     "Lock Session") run_detached seven-power lock ;;
+    "Settings") run_detached seven-settings power ;;
     *) return 0 ;;
   esac
 }
@@ -210,8 +212,9 @@ run_clock_action() {
   local selected="$1"
   case "$selected" in
     "Calendar") command_or_terminal "SevenOS Calendar" gnome-calendar "cal -3; printf '\n'; timedatectl" ;;
-    "Time Settings") run_terminal "SevenOS Time" "timedatectl" ;;
-    "World Time") run_terminal "SevenOS Time" "date; printf '\nUTC: '; TZ=UTC date; printf 'Abidjan: '; TZ=Africa/Abidjan date" ;;
+    "Clock") run_detached seven-spotlight time ;;
+    "World Time") run_detached seven-spotlight "world time" ;;
+    "Settings") run_detached seven-settings system ;;
     *) return 0 ;;
   esac
 }
@@ -222,41 +225,53 @@ show_menu() {
   local -a options
   local selected
 
+  if ! dry_run; then
+    case "$area" in
+      profile) native_panel seven-profile-center-native && return 0 ;;
+      security) native_panel seven-shield-center-native && return 0 ;;
+      network) native_panel seven-waybar-center-native network && return 0 ;;
+      audio) native_panel seven-waybar-center-native audio && return 0 ;;
+      battery) native_panel seven-waybar-center-native power && return 0 ;;
+      system) native_panel seven-waybar-center-native system && return 0 ;;
+      clock) native_panel seven-waybar-center-native time && return 0 ;;
+    esac
+  fi
+
   case "$area" in
     system)
       prompt="System"
       runner="run_system_action"
-      options=("󰒓  Open Control Center" "󰍛  System Monitor" "󰄬  System Status" "󰔟  Readiness Score" "󰩂  Doctor Check" "󰋼  Recent Warnings")
+      options=("󰒓  Settings" "󰍛  Monitor" "󰚰  Updates" "󰜉  Repair UI")
       ;;
     profile)
       prompt="Profiles"
       runner="run_profile_action"
-      options=("󰄬  Profile Status" "󰋼  Current Profile" "󰞋  Profile Guide" "󰀻  Profile Apps" "󰒓  Native Profiles" "󰉋  Open Active Workspace" "󰌢  Open Profiles Hub" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio" "󰌢  Install Forge" "󰒃  Install Shield" "󰏗  Install Studio" "󰀻  SevenPkg Status")
+      options=("󰐃  Profile Center" "󰉋  Workspace" "󰒓  Settings" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio")
       ;;
     security)
       prompt="Security"
       runner="run_security_action"
-      options=("󰒃  Security Audit" "󰞀  Enable Shield" "󰛵  Cyber Lab" "󰖂  Firewall Status" "󰒓  Open Cyber Hub")
+      options=("󰒃  Shield Center" "󰞀  Enable Shield" "󰛵  Cyber Lab" "󰒓  Settings")
       ;;
     network)
       prompt="Network"
       runner="run_network_action"
-      options=("󰤨  Connect Wi-Fi" "󰤭  Disconnect Wi-Fi" "󰖩  Network Settings" "󰈀  Network Status" "󰖩  Wi-Fi Menu" "󰜉  Restart NetworkManager")
+      options=("󰤨  Wi-Fi Panel" "󰖩  Toggle Wi-Fi" "󰤭  Disconnect Wi-Fi" "󰒓  Settings")
       ;;
     audio)
       prompt="Audio"
       runner="run_audio_action"
-      options=("󰕾  Volume Mixer" "󰖁  Mute Toggle" "󰝝  Volume Up" "󰝞  Volume Down" "󰄬  Audio Status")
+      options=("󰕾  Volume Mixer" "󰖁  Mute Toggle" "󰝝  Volume Up" "󰝞  Volume Down" "󰒓  Settings")
       ;;
     battery)
       prompt="Power"
       runner="run_battery_action"
-      options=("󰐥  Power Menu" "󰁹  Battery Status" "󰈐  Power Profiles" "󰍁  Lock Session")
+      options=("󰐥  Power Menu" "󰒲  Sleep" "󰍁  Lock Session" "󰒓  Settings")
       ;;
     clock)
       prompt="Time"
       runner="run_clock_action"
-      options=("󰃭  Calendar" "󰥔  Time Settings" "󰀗  World Time")
+      options=("󰃭  Calendar" "󰥔  Clock" "󰀗  World Time" "󰒓  Settings")
       ;;
     network-connect)
       run_wifi connect

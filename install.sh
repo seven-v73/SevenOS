@@ -62,6 +62,7 @@ EOF
 TARGET="${1:-}"
 DRY_RUN="${SEVENOS_DRY_RUN:-0}"
 YES="${SEVENOS_YES:-0}"
+TARGET_ARGS=()
 
 for arg in "$@"; do
   case "$arg" in
@@ -70,6 +71,15 @@ for arg in "$@"; do
     -h|--help) usage; exit 0 ;;
   esac
 done
+
+if [[ "$#" -gt 1 ]]; then
+  for arg in "${@:2}"; do
+    case "$arg" in
+      --dry-run|--yes) ;;
+      *) TARGET_ARGS+=("$arg") ;;
+    esac
+  done
+fi
 
 if [[ -z "$TARGET" || "$TARGET" == "--dry-run" ]]; then
   usage
@@ -102,7 +112,7 @@ case "$TARGET" in
     "$ROOT_DIR/profiles/dev.sh"
     ;;
   cybersecurity)
-    "$ROOT_DIR/profiles/cybersecurity.sh" "${@:2}"
+    "$ROOT_DIR/profiles/cybersecurity.sh" "${TARGET_ARGS[@]}"
     ;;
   creation)
     "$ROOT_DIR/profiles/creation.sh"
@@ -126,7 +136,7 @@ case "$TARGET" in
     "$ROOT_DIR/scripts/shell.sh" preview
     ;;
   flatpak)
-    "$ROOT_DIR/scripts/flatpak.sh" "${@:2}"
+    "$ROOT_DIR/scripts/flatpak.sh" "${TARGET_ARGS[@]}"
     ;;
   security)
     "$ROOT_DIR/security/hardening.sh"
@@ -135,16 +145,16 @@ case "$TARGET" in
     "$ROOT_DIR/security/cyber-audit.sh"
     ;;
   cyber-lab)
-    "$ROOT_DIR/security/cyber-lab.sh" "${@:2}"
+    "$ROOT_DIR/security/cyber-lab.sh" "${TARGET_ARGS[@]}"
     ;;
   blackarch-setup)
-    "$ROOT_DIR/security/blackarch.sh" setup "${@:2}"
+    "$ROOT_DIR/security/blackarch.sh" setup "${TARGET_ARGS[@]}"
     ;;
   blackarch-category)
-    "$ROOT_DIR/security/blackarch.sh" category "${@:2}"
+    "$ROOT_DIR/security/blackarch.sh" category "${TARGET_ARGS[@]}"
     ;;
   blackarch-tool)
-    "$ROOT_DIR/security/blackarch.sh" tool "${@:2}"
+    "$ROOT_DIR/security/blackarch.sh" tool "${TARGET_ARGS[@]}"
     ;;
   doctor)
     "$ROOT_DIR/scripts/doctor.sh"
@@ -156,13 +166,13 @@ case "$TARGET" in
     "$ROOT_DIR/scripts/migrate.sh" backup
     ;;
   daily-driver)
-    "$ROOT_DIR/scripts/daily-driver.sh" apply "${@:2}"
+    "$ROOT_DIR/scripts/daily-driver.sh" apply "${TARGET_ARGS[@]}"
     ;;
   post-install)
     "$ROOT_DIR/scripts/post-install.sh"
     ;;
   status)
-    "$ROOT_DIR/scripts/status.sh" "${@:2}"
+    "$ROOT_DIR/scripts/status.sh" "${TARGET_ARGS[@]}"
     ;;
   branding)
     "$ROOT_DIR/branding/apply-branding.sh"
@@ -180,7 +190,7 @@ case "$TARGET" in
     install_package_file "$ROOT_DIR/scripts/packages-iso.txt"
     ;;
   iso)
-    "$ROOT_DIR/scripts/build-iso.sh" "${@:2}"
+    "$ROOT_DIR/scripts/build-iso.sh" "${TARGET_ARGS[@]}"
     ;;
   vm-check)
     "$ROOT_DIR/vm/check.sh"
@@ -189,19 +199,19 @@ case "$TARGET" in
     "$ROOT_DIR/vm/network.sh"
     ;;
   vm-windows)
-    "$ROOT_DIR/vm/windows-vm.sh" "${@:2}"
+    "$ROOT_DIR/vm/windows-vm.sh" "${TARGET_ARGS[@]}"
     ;;
   windows-mode)
-    "$ROOT_DIR/vm/windows-mode.sh" "${@:2}"
+    "$ROOT_DIR/vm/windows-mode.sh" "${TARGET_ARGS[@]}"
     ;;
   installer-plan)
-    "$ROOT_DIR/installer/plan.sh" "${@:2}"
+    "$ROOT_DIR/installer/plan.sh" "${TARGET_ARGS[@]}"
     ;;
   installer-check)
-    "$ROOT_DIR/installer/validate-plan.sh" "${@:2}"
+    "$ROOT_DIR/installer/validate-plan.sh" "${TARGET_ARGS[@]}"
     ;;
   installer-script)
-    "$ROOT_DIR/installer/generate-script.sh" "${@:2}"
+    "$ROOT_DIR/installer/generate-script.sh" "${TARGET_ARGS[@]}"
     ;;
   all)
     "$ROOT_DIR/profiles/all.sh"

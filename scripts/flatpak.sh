@@ -95,14 +95,26 @@ PY
 
 setup() {
   if is_dry_run; then
-    printf 'sudo pacman -S --needed flatpak\n'
+    if assume_yes; then
+      printf 'sudo pacman -S --needed --noconfirm flatpak\n'
+    else
+      printf 'sudo pacman -S --needed flatpak\n'
+    fi
     printf 'flatpak remote-add --if-not-exists flathub %q\n' "$FLATHUB_URL"
     return 0
   fi
 
   require_arch
   require_command sudo
-  install_packages flatpak
+  if ! command -v flatpak >/dev/null 2>&1; then
+    log_info "Installing Flatpak package manager"
+    if assume_yes; then
+      sudo pacman -S --needed --noconfirm flatpak
+    else
+      sudo pacman -S --needed flatpak
+    fi
+  fi
+  require_command flatpak
   flatpak remote-add --if-not-exists flathub "$FLATHUB_URL"
 }
 
@@ -111,13 +123,18 @@ install_defaults() {
 
   if is_dry_run; then
     flatpak_apps | while IFS= read -r app; do
-      printf 'flatpak install -y flathub %q\n' "$app"
+      printf 'flatpak install --noninteractive --or-update -y flathub %q\n' "$app"
     done
     return 0
   fi
 
   flatpak_apps | while IFS= read -r app; do
-    flatpak install -y flathub "$app"
+    if flatpak info "$app" >/dev/null 2>&1; then
+      log_success "Flatpak app already installed: $app"
+      continue
+    fi
+    log_info "Installing Flatpak app: $app"
+    flatpak install --noninteractive --or-update -y flathub "$app"
   done
 }
 

@@ -5,3 +5,10 @@ org.gimp.GIMP
 org.inkscape.Inkscape
 org.kde.kdenlive
 org.kde.krita
+com.obsproject.Studio
+org.audacityteam.Audacity
+org.darktable.Darktable
+com.rawtherapee.RawTherapee
+net.scribus.Scribus
+io.lmms.LMMS
+fr.handbrake.ghb

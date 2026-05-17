@@ -1,0 +1,796 @@
+#!/usr/bin/env python3
+"""Native SevenOS Settings.
+
+This is the normal-user control surface for SevenOS. It intentionally keeps
+search out of the Settings app: universal search belongs to SevenOS Spotlight.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+def out(command: list[str], fallback: str = "") -> str:
+    result = subprocess.run(command, cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, text=True, capture_output=True, check=False)
+    return result.stdout.strip() or fallback
+
+
+def run_json(command: list[str], fallback):
+    try:
+        return json.loads(out(command, ""))
+    except Exception:
+        return fallback
+
+
+def run_detached(command: str) -> None:
+    text_prefixes = (
+        "seven daily",
+        "seven doctor",
+        "seven status",
+        "seven update",
+        "sevenpkg status",
+        "seven shield audit",
+        "wpctl status",
+        "powerprofilesctl",
+        "hyprctl monitors",
+        "flatpak list",
+        "seven-wifi status",
+        "btop",
+        "journalctl",
+    )
+    if command.strip().startswith(text_prefixes) and command_exists("seven-terminal"):
+        quoted = command.replace("'", "'\"'\"'")
+        command = f"seven-terminal classic -- bash -lc '{quoted}; printf \"\\nPress Enter to close...\"; read -r'"
+    subprocess.Popen(
+        ["bash", "-lc", command],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def command_exists(command: str) -> bool:
+    return shutil.which(command) is not None
+
+
+def notify(title: str, message: str) -> None:
+    if command_exists("notify-send"):
+        subprocess.Popen(["notify-send", title, message], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def volume_state() -> int:
+    if not command_exists("wpctl"):
+        return 0
+    raw = out(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
+    try:
+        return max(0, min(100, int(float(raw.split()[1]) * 100)))
+    except Exception:
+        return 0
+
+
+def set_volume(value: float) -> None:
+    if command_exists("wpctl"):
+        subprocess.Popen(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{int(value)}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def brightness_state() -> int:
+    if not command_exists("brightnessctl"):
+        return 0
+    try:
+        current = int(out(["brightnessctl", "g"], "0"))
+        maximum = int(out(["brightnessctl", "m"], "1")) or 1
+        return max(0, min(100, round(current / maximum * 100)))
+    except Exception:
+        return 0
+
+
+def set_brightness(value: float) -> None:
+    if command_exists("brightnessctl"):
+        subprocess.Popen(["brightnessctl", "set", f"{int(value)}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def wifi_state() -> tuple[str, str]:
+    if not command_exists("nmcli"):
+        return "Missing", "NetworkManager tools unavailable"
+    radio = out(["nmcli", "radio", "wifi"], "unknown")
+    ssid = out(["bash", "-lc", "nmcli -t -f active,ssid dev wifi | awk -F: '$1==\"yes\"{print $2; exit}'"])
+    if radio == "disabled":
+        return "Off", "Radio disabled"
+    return "On", ssid or "Not connected"
+
+
+def battery_state() -> tuple[str, str]:
+    bats = list(Path("/sys/class/power_supply").glob("BAT*"))
+    if not bats:
+        return "AC", "No battery"
+    bat = bats[0]
+    status = (bat / "status").read_text(encoding="utf-8", errors="ignore").strip() if (bat / "status").exists() else "Unknown"
+    capacity = (bat / "capacity").read_text(encoding="utf-8", errors="ignore").strip() if (bat / "capacity").exists() else "?"
+    return f"{capacity}%", status
+
+
+def active_profile() -> tuple[str, str]:
+    payload = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
+    if isinstance(payload, list):
+        item = next((row for row in payload if row.get("active")), None)
+        if item:
+            return item.get("title", "Profile"), item.get("state", "unknown")
+    return "Baobab", "unknown"
+
+
+def shield_state() -> tuple[str, str]:
+    payload = run_json([str(ROOT / "security/shield-status.sh"), "--json"], {"percent": 0, "posture": "unknown"})
+    return f"{payload.get('percent', 0)}%", str(payload.get("posture", "unknown"))
+
+
+def session_state() -> tuple[str, str]:
+    payload = run_json([str(ROOT / "bin/seven-session-status"), "--json"], {"percent": 0, "mode": "unknown"})
+    return f"{payload.get('percent', 0)}%", str(payload.get("mode", "unknown"))
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def run(initial_page: str = "overview") -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    GLib.set_prgname("SevenSettingsNative")
+    GLib.set_application_name("SevenOS Settings")
+    try:
+        Gdk.set_program_class("SevenSettingsNative")
+    except Exception:
+        pass
+
+    css = """
+    window.settings-window { background: transparent; }
+    .settings-shell {
+      border-radius: 30px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.90), rgba(229,241,247,0.80) 48%, rgba(255,255,255,0.72)),
+        radial-gradient(circle at 82% 8%, rgba(112,160,196,0.22), transparent 34%);
+      border: 1px solid rgba(255,255,255,0.88);
+    }
+    .traffic { padding: 12px 0 6px 16px; }
+    .traffic-dot {
+      min-width: 13px; min-height: 13px;
+      border-radius: 999px; padding: 0;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: rgba(255,255,255,0.5);
+    }
+    .dot-close { background: #ff5f57; }
+    .dot-min { background: #febc2e; }
+    .dot-max { background: #28c840; }
+    .sidebar {
+      padding: 4px 10px 14px 10px;
+      border-right: 1px solid rgba(95,117,130,0.16);
+      background: rgba(255,255,255,0.28);
+    }
+    .brand { color: rgba(21,31,38,0.96); font-size: 20px; font-weight: 500; padding: 4px 8px 10px 8px; }
+    .nav-button {
+      min-height: 36px;
+      padding: 0 10px;
+      border-radius: 13px;
+      color: rgba(39,55,65,0.82);
+      background: transparent;
+      border: 1px solid transparent;
+    }
+    .nav-button:hover { background: rgba(255,255,255,0.50); }
+    .nav-button.active {
+      background: rgba(255,255,255,0.72);
+      border-color: rgba(111,157,188,0.28);
+      color: rgba(15,24,31,0.98);
+    }
+    .content {
+      padding: 22px 24px;
+      background: rgba(255,255,255,0.14);
+    }
+    .page-frame { padding-bottom: 18px; }
+    .compact-row { }
+    .page-title { color: rgba(15,24,31,0.98); font-size: 25px; font-weight: 500; }
+    .page-subtitle { color: rgba(58,76,88,0.64); font-size: 13px; }
+    .section-label { color: rgba(58,76,88,0.58); font-size: 10px; letter-spacing: 0.10em; margin-top: 8px; }
+    .hero-card {
+      padding: 13px 15px;
+      border-radius: 21px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.72), rgba(221,238,248,0.42)),
+        rgba(255,255,255,0.44);
+      border: 1px solid rgba(255,255,255,0.78);
+    }
+    .hero-title { color: rgba(15,24,31,0.98); font-size: 17px; font-weight: 500; }
+    .hero-note { color: rgba(58,76,88,0.62); font-size: 12px; }
+    .quick-strip {
+      padding: 9px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.42);
+      border: 1px solid rgba(255,255,255,0.66);
+    }
+    .quick-dot {
+      min-width: 46px;
+      min-height: 46px;
+      padding: 0;
+      border-radius: 18px;
+      color: rgba(18,29,37,0.92);
+      background: rgba(255,255,255,0.54);
+      border: 1px solid rgba(255,255,255,0.76);
+    }
+    .quick-dot:hover { background: rgba(255,255,255,0.82); }
+    .status-card {
+      min-height: 66px;
+      padding: 11px 12px;
+      border-radius: 17px;
+      background: rgba(255,255,255,0.48);
+      border: 1px solid rgba(255,255,255,0.70);
+    }
+    .status-value { color: rgba(15,24,31,0.98); font-size: 21px; font-weight: 500; }
+    .status-label { color: rgba(58,76,88,0.62); font-size: 11px; }
+    .settings-card {
+      min-height: 56px;
+      padding: 10px;
+      border-radius: 17px;
+      background: rgba(255,255,255,0.46);
+      border: 1px solid rgba(255,255,255,0.70);
+    }
+    .settings-card:hover { background: rgba(255,255,255,0.64); }
+    .card-title { color: rgba(15,24,31,0.96); font-size: 14px; font-weight: 500; }
+    .card-note { color: rgba(58,76,88,0.62); font-size: 11px; }
+    .icon-pill {
+      min-width: 36px; min-height: 36px;
+      border-radius: 12px;
+      background: rgba(111,157,188,0.14);
+      border: 1px solid rgba(111,157,188,0.18);
+    }
+    .action-button {
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      color: rgba(18,28,36,0.92);
+      background: rgba(255,255,255,0.54);
+      border: 1px solid rgba(255,255,255,0.74);
+    }
+    .action-button:hover { background: rgba(255,255,255,0.82); }
+    .scale-card {
+      padding: 11px;
+      border-radius: 17px;
+      background: rgba(255,255,255,0.46);
+      border: 1px solid rgba(255,255,255,0.70);
+    }
+    scale trough { min-height: 8px; border-radius: 999px; background: rgba(94,116,130,0.16); }
+    scale highlight { border-radius: 999px; background: rgba(86,145,189,0.72); }
+    scale slider {
+      min-width: 22px; min-height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(111,157,188,0.28);
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title="SevenOS Settings")
+    window.set_wmclass("SevenSettingsNative", "SevenSettingsNative")
+    window.set_decorated(False)
+    window.set_resizable(True)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_default_size(980, 660)
+    geometry = Gdk.Geometry()
+    geometry.min_width = 980
+    geometry.min_height = 660
+    geometry.max_width = 1080
+    geometry.max_height = 690
+    window.set_geometry_hints(None, geometry, Gdk.WindowHints.MIN_SIZE | Gdk.WindowHints.MAX_SIZE)
+    window.get_style_context().add_class("settings-window")
+
+    shell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    shell.get_style_context().add_class("settings-shell")
+    window.add(shell)
+
+    body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+
+    def toggle_zoom() -> None:
+        if window.is_maximized():
+            window.unmaximize()
+        width, _height = window.get_size()
+        if width >= 1080:
+            window.resize(980, 660)
+        else:
+            window.resize(1080, 690)
+        window.set_position(Gtk.WindowPosition.CENTER)
+
+    sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    sidebar.set_size_request(220, -1)
+    sidebar.get_style_context().add_class("sidebar")
+
+    traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    traffic.get_style_context().add_class("traffic")
+    for klass, action in (("dot-close", window.close), ("dot-min", window.iconify), ("dot-max", toggle_zoom)):
+        button = Gtk.Button()
+        button.get_style_context().add_class("traffic-dot")
+        button.get_style_context().add_class(klass)
+        button.connect("clicked", lambda _button, callback=action: callback())
+        traffic.pack_start(button, False, False, 0)
+    sidebar.pack_start(traffic, False, False, 0)
+
+    brand = Gtk.Label(label="7  Settings")
+    brand.set_xalign(0)
+    brand.get_style_context().add_class("brand")
+    sidebar.pack_start(brand, False, False, 0)
+
+    stack = Gtk.Stack()
+    stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+    stack.set_hexpand(True)
+    stack.set_vexpand(True)
+    content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    content.get_style_context().add_class("content")
+    content.pack_start(stack, True, True, 0)
+
+    body.pack_start(sidebar, False, False, 0)
+    body.pack_start(content, True, True, 0)
+    shell.pack_start(body, True, True, 0)
+
+    nav_buttons: list[Gtk.Button] = []
+    nav_by_target: dict[str, Gtk.Button] = {}
+
+    def page(title: str, subtitle: str) -> tuple[Gtk.Box, Gtk.ScrolledWindow]:
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        outer.set_halign(Gtk.Align.START)
+        outer.set_valign(Gtk.Align.START)
+        outer.set_size_request(850, -1)
+        outer.get_style_context().add_class("page-frame")
+        title_label = Gtk.Label(label=title)
+        title_label.set_xalign(0)
+        title_label.get_style_context().add_class("page-title")
+        subtitle_label = Gtk.Label(label=subtitle)
+        subtitle_label.set_xalign(0)
+        subtitle_label.set_line_wrap(True)
+        subtitle_label.get_style_context().add_class("page-subtitle")
+        outer.pack_start(title_label, False, False, 0)
+        outer.pack_start(subtitle_label, False, False, 0)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        viewport = Gtk.Viewport()
+        viewport.add(outer)
+        scrolled.add(viewport)
+        return outer, scrolled
+
+    def activate_page(name: str, button: Gtk.Button) -> None:
+        stack.set_visible_child_name(name)
+        for item in nav_buttons:
+            item.get_style_context().remove_class("active")
+        button.get_style_context().add_class("active")
+
+    def nav(name: str, icon: str, label: str, target: str) -> None:
+        button = Gtk.Button()
+        button.get_style_context().add_class("nav-button")
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=11)
+        glyph = Gtk.Label(label=icon)
+        text = Gtk.Label(label=label)
+        text.set_xalign(0)
+        text.set_hexpand(True)
+        row.pack_start(glyph, False, False, 0)
+        row.pack_start(text, True, True, 0)
+        button.add(row)
+        button.connect("clicked", lambda clicked: activate_page(target, clicked))
+        nav_buttons.append(button)
+        nav_by_target[target] = button
+        sidebar.pack_start(button, False, False, 0)
+
+    def section(container: Gtk.Box, text: str) -> None:
+        label = Gtk.Label(label=text.upper())
+        label.set_xalign(0)
+        label.get_style_context().add_class("section-label")
+        container.pack_start(label, False, False, 0)
+
+    def status_grid(container: Gtk.Box, items: list[tuple[str, str]]) -> None:
+        grid = Gtk.Grid()
+        grid.set_column_spacing(10)
+        grid.set_row_spacing(10)
+        grid.set_halign(Gtk.Align.START)
+        for index, (value, label) in enumerate(items):
+            card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            card.get_style_context().add_class("status-card")
+            value_label = Gtk.Label(label=value)
+            value_label.set_xalign(0)
+            value_label.get_style_context().add_class("status-value")
+            note = Gtk.Label(label=label)
+            note.set_xalign(0)
+            note.get_style_context().add_class("status-label")
+            card.pack_start(value_label, False, False, 0)
+            card.pack_start(note, False, False, 0)
+            card.set_size_request(118, -1)
+            grid.attach(card, index % 3, index // 3, 1, 1)
+        container.pack_start(grid, False, False, 0)
+
+    def card_grid(container: Gtk.Box, cards: list[Gtk.Widget], columns: int = 2) -> None:
+        grid = Gtk.Grid()
+        grid.set_column_spacing(10)
+        grid.set_row_spacing(10)
+        grid.set_halign(Gtk.Align.START)
+        for index, card in enumerate(cards):
+            card.set_hexpand(False)
+            card.set_size_request(410, -1)
+            grid.attach(card, index % columns, index // columns, 1, 1)
+        container.pack_start(grid, False, False, 0)
+
+    def hero_card(title: str, note: str) -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        card.set_size_request(850, -1)
+        card.get_style_context().add_class("hero-card")
+        title_label = Gtk.Label(label=title)
+        title_label.set_xalign(0)
+        title_label.get_style_context().add_class("hero-title")
+        note_label = Gtk.Label(label=note)
+        note_label.set_xalign(0)
+        note_label.set_line_wrap(True)
+        note_label.get_style_context().add_class("hero-note")
+        card.pack_start(title_label, False, False, 0)
+        card.pack_start(note_label, False, False, 0)
+        return card
+
+    def action_button(label: str, command: str) -> Gtk.Button:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("action-button")
+        button.set_tooltip_text(command)
+        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        return button
+
+    def quick_dot(icon: str, tooltip: str, command: str) -> Gtk.Button:
+        button = Gtk.Button(label=icon)
+        button.get_style_context().add_class("quick-dot")
+        button.set_tooltip_text(tooltip)
+        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        return button
+
+    def quick_strip(items: list[tuple[str, str, str]]) -> Gtk.Box:
+        strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        strip.set_halign(Gtk.Align.START)
+        strip.get_style_context().add_class("quick-strip")
+        for icon, tooltip, command in items:
+            strip.pack_start(quick_dot(icon, tooltip, command), False, False, 0)
+        return strip
+
+    def file_wallpaper_button(label: str) -> Gtk.Button:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("action-button")
+
+        def choose(_button) -> None:
+            dialog = Gtk.FileChooserDialog(
+                title="Choose SevenOS Wallpaper",
+                parent=window,
+                action=Gtk.FileChooserAction.OPEN,
+                buttons=("_Cancel", Gtk.ResponseType.CANCEL, "_Set Wallpaper", Gtk.ResponseType.ACCEPT),
+            )
+            image_filter = Gtk.FileFilter()
+            image_filter.set_name("Images")
+            for mime in ("image/png", "image/jpeg", "image/webp", "image/svg+xml"):
+                image_filter.add_mime_type(mime)
+            dialog.add_filter(image_filter)
+            response = dialog.run()
+            filename = dialog.get_filename()
+            dialog.destroy()
+            if response == Gtk.ResponseType.ACCEPT and filename:
+                subprocess.Popen([str(ROOT / "bin/seven-wallpaper"), "set", filename], cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
+                notify("SevenOS Settings", "Wallpaper updated.")
+
+        button.connect("clicked", choose)
+        return button
+
+    def setting_card(icon: str, title: str, note: str, buttons: list[Gtk.Button]) -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        card.get_style_context().add_class("settings-card")
+        icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        icon_box.set_halign(Gtk.Align.CENTER)
+        icon_box.set_valign(Gtk.Align.CENTER)
+        icon_box.get_style_context().add_class("icon-pill")
+        icon_label = Gtk.Label(label=icon)
+        icon_box.pack_start(icon_label, True, True, 0)
+        text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        text_box.set_hexpand(True)
+        title_label = Gtk.Label(label=title)
+        title_label.set_xalign(0)
+        title_label.get_style_context().add_class("card-title")
+        note_label = Gtk.Label(label=note)
+        note_label.set_xalign(0)
+        note_label.set_line_wrap(True)
+        note_label.get_style_context().add_class("card-note")
+        text_box.pack_start(title_label, False, False, 0)
+        text_box.pack_start(note_label, False, False, 0)
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_valign(Gtk.Align.CENTER)
+        for button in buttons:
+            actions.pack_start(button, False, False, 0)
+        card.pack_start(icon_box, False, False, 0)
+        card.pack_start(text_box, True, True, 0)
+        card.pack_start(actions, False, False, 0)
+        return card
+
+    def slider_card(icon: str, title: str, note: str, value: int, callback) -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        card.get_style_context().add_class("scale-card")
+        icon_label = Gtk.Label(label=icon)
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        labels.set_size_request(170, -1)
+        title_label = Gtk.Label(label=title)
+        title_label.set_xalign(0)
+        title_label.get_style_context().add_class("card-title")
+        note_label = Gtk.Label(label=note)
+        note_label.set_xalign(0)
+        note_label.get_style_context().add_class("card-note")
+        labels.pack_start(title_label, False, False, 0)
+        labels.pack_start(note_label, False, False, 0)
+        scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
+        scale.set_value(value)
+        scale.set_hexpand(True)
+        scale.connect("value-changed", lambda widget: callback(widget.get_value()))
+        card.pack_start(icon_label, False, False, 0)
+        card.pack_start(labels, False, False, 0)
+        card.pack_start(scale, True, True, 0)
+        return card
+
+    pages = {
+        "overview": page("SevenOS Settings", "A complete control surface for desktop, security, profiles, devices and system runtime."),
+        "appearance": page("Appearance", "Liquid glass, dock, terminal style and SevenOS visual identity."),
+        "wallpaper": page("Wallpaper", "Choose a wallpaper, refresh Hyprpaper and open the wallpaper library."),
+        "display": page("Displays", "Brightness, monitor tools and Hyprland display configuration."),
+        "network": page("Wi-Fi & Network", "Connect, diagnose and configure NetworkManager."),
+        "sound": page("Sound", "Volume, mixer, mute and PipeWire status."),
+        "keyboard": page("Keyboard", "US/French layouts with Alt+Shift switching."),
+        "security": page("Security", "Shield, firewall, sandbox and CyberSpace controls."),
+        "profiles": page("Profiles", "Switch SevenOS work modes and open profile workspaces."),
+        "power": page("Battery & Power", "Battery state, lock, sleep and power profiles."),
+        "apps": page("Apps", "SevenPkg, Flatpak, Launchpad and app management."),
+        "system": page("System", "Daily driver gate, doctor, logs, updates and runtime services."),
+    }
+    for name, (_box, scrolled) in pages.items():
+        stack.add_named(scrolled, name)
+
+    nav("overview", "󰕮", "Overview", "overview")
+    nav("appearance", "󰸉", "Appearance", "appearance")
+    nav("wallpaper", "󰸉", "Wallpaper", "wallpaper")
+    nav("display", "󰍹", "Displays", "display")
+    nav("network", "󰤨", "Wi-Fi", "network")
+    nav("sound", "󰕾", "Sound", "sound")
+    nav("keyboard", "󰌌", "Keyboard", "keyboard")
+    nav("security", "󰒃", "Security", "security")
+    nav("profiles", "󰐃", "Profiles", "profiles")
+    nav("power", "󰁹", "Power", "power")
+    nav("apps", "󰀻", "Apps", "apps")
+    nav("system", "󰒓", "System", "system")
+    initial_page = initial_page if initial_page in pages else "overview"
+
+    # Overview
+    overview = pages["overview"][0]
+    profile_name, profile_status = active_profile()
+    shield_percent, shield_posture = shield_state()
+    session_percent, session_mode = session_state()
+    wifi_radio, wifi_detail = wifi_state()
+    volume = volume_state()
+    battery, battery_status = battery_state()
+    status_grid(
+        overview,
+        [
+            (profile_name, f"Profile · {profile_status}"),
+            (shield_percent, f"Shield · {shield_posture}"),
+            (session_percent, f"Session · {session_mode}"),
+            (wifi_radio, wifi_detail),
+            (f"{volume}%", "Sound"),
+            (battery, f"Power · {battery_status}"),
+        ],
+    )
+    overview.pack_start(hero_card("Ajuster SevenOS sans terminal", "Les controles essentiels sont ici. Spotlight reste la recherche globale; Settings reste le lieu des reglages."), False, False, 0)
+    overview.pack_start(
+        quick_strip(
+            [
+                ("󰸉", "Wallpaper", "seven-settings-native"),
+                ("󰤨", "Wi-Fi", "seven-waybar-center-native network"),
+                ("󰕾", "Sound", "seven-waybar-center-native audio"),
+                ("󰃠", "Display", "seven-settings"),
+                ("󰚰", "Update", "seven update"),
+                ("󰒃", "Shield", "seven-shield-center-native"),
+            ]
+        ),
+        False,
+        False,
+        0,
+    )
+    section(overview, "Shortcuts")
+    card_grid(overview, [
+        setting_card("󰒓", "General settings", "Open this complete SevenOS Settings center.", [action_button("Open", "seven-settings")]),
+        setting_card("󰀻", "Launchpad", "Open the SevenOS app grid.", [action_button("Open", "seven-overview apps")]),
+        setting_card("󰉋", "Files", "Open Seven Files.", [action_button("Open", "seven-files")]),
+        setting_card("󰖟", "Spotlight", "Universal search remains centralized in SevenOS Spotlight.", [action_button("Open", "seven-spotlight")]),
+    ])
+
+    # Appearance
+    appearance = pages["appearance"][0]
+    section(appearance, "Visual system")
+    card_grid(appearance, [
+        setting_card("󰔎", "Apply SevenOS theme", "Reapply GTK, Qt, Waybar, Rofi, Kitty and wallpaper services.", [action_button("Apply", "./install.sh theme")]),
+        setting_card("󰃣", "Dock", "Toggle the SevenOS Dock layout.", [action_button("Toggle", "seven-dock toggle")]),
+        setting_card("󰆍", "Terminal style", "Choose classic light or graphite SevenOS terminal.", [action_button("Choose", "seven-terminal menu")]),
+        setting_card("󰇄", "Waybar", "Repair and restart the liquid glass menu bar.", [action_button("Repair", "seven-waybar repair")]),
+    ])
+
+    # Wallpaper
+    wallpaper = pages["wallpaper"][0]
+    section(wallpaper, "Desktop picture")
+    card_grid(wallpaper, [
+        setting_card("󰸉", "Choose image", "Select an image and apply it immediately through hyprpaper.", [file_wallpaper_button("Choose")]),
+        setting_card("󰜉", "Refresh default", "Render and reapply the SevenOS wallpaper.", [action_button("Refresh", "seven-wallpaper refresh")]),
+        setting_card("󰉋", "Wallpaper folder", "Open the active SevenOS wallpaper directory.", [action_button("Open", "xdg-open ~/.local/share/sevenos/wallpapers")]),
+    ])
+
+    # Display
+    display = pages["display"][0]
+    section(display, "Screen")
+    display.pack_start(slider_card("󰃠", "Brightness", f"{brightness_state()}%", brightness_state(), set_brightness), False, False, 0)
+    card_grid(display, [
+        setting_card("󰍹", "Display layout", "Open a graphical display tool when available.", [action_button("Open", "wdisplays || nwg-displays || arandr || hyprctl monitors")]),
+        setting_card("󰌢", "Monitor config", "Open SevenOS monitor override for precise Hyprland setup.", [action_button("Edit", "xdg-open ~/.config/hypr/conf/monitor.conf")]),
+        setting_card("󰜉", "Reload Hyprland", "Apply current compositor configuration.", [action_button("Reload", "hyprctl reload")]),
+    ])
+
+    # Network
+    network = pages["network"][0]
+    section(network, "Connectivity")
+    card_grid(network, [
+        setting_card("󰤨", "Wi-Fi", f"{wifi_radio} · {wifi_detail}", [action_button("Connect", "seven-wifi connect"), action_button("Panel", "seven-waybar-center-native network")]),
+        setting_card("󰖩", "Network settings", "Open NetworkManager connection editor.", [action_button("Open", "nm-connection-editor || seven-wifi settings")]),
+        setting_card("󰜉", "Restart network", "Restart NetworkManager when the link is stuck.", [action_button("Restart", "seven-wifi restart")]),
+    ])
+
+    # Sound
+    sound = pages["sound"][0]
+    section(sound, "Audio")
+    sound.pack_start(slider_card("󰕾", "Output volume", f"{volume}%", volume, set_volume), False, False, 0)
+    card_grid(sound, [
+        setting_card("󰕾", "Mixer", "Open pavucontrol or PipeWire status.", [action_button("Open", "pavucontrol || wpctl status")]),
+        setting_card("󰖁", "Mute", "Toggle default output mute.", [action_button("Toggle", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")]),
+        setting_card("󰄬", "Audio status", "Inspect PipeWire devices and routes.", [action_button("Status", "seven-waybar-center-native audio")]),
+    ])
+
+    # Keyboard
+    keyboard = pages["keyboard"][0]
+    kbd = run_json([str(ROOT / "bin/seven"), "keyboard", "status", "--json"], {"layouts": "us,fr", "switch": "grp:alt_shift_toggle", "ready": False})
+    section(keyboard, "Input")
+    card_grid(keyboard, [
+        setting_card("󰌌", "Layouts", f"{kbd.get('layouts', 'us,fr')} · Alt+Shift switch", [action_button("Apply", "seven keyboard apply")]),
+        setting_card("󰌢", "Keyboard override", "Open the managed Hyprland keyboard configuration.", [action_button("Edit", "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
+        setting_card("󰜉", "Reload keyboard", "Reload Hyprland after input changes.", [action_button("Reload", "hyprctl reload")]),
+    ])
+
+    # Security
+    security = pages["security"][0]
+    section(security, "Trust")
+    card_grid(security, [
+        setting_card("󰒃", "Shield", f"{shield_percent} · {shield_posture}", [action_button("Open", "seven-shield-center-native")]),
+        setting_card("󰞀", "Enable protection", "Apply firewall and sandbox baseline.", [action_button("Enable", "seven shield enable")]),
+        setting_card("󰄬", "Audit", "Run Shield audit and trust checks.", [action_button("Audit", "seven shield audit")]),
+        setting_card("󱗼", "CyberSpace", "Open the specialized cybersecurity workspace.", [action_button("Open", "seven shield mode")]),
+    ])
+
+    # Profiles
+    profiles = pages["profiles"][0]
+    section(profiles, "Work modes")
+    profile_cards = []
+    for icon, title, note, command in (
+        ("󰐃", "Profile center", f"{profile_name} · {profile_status}", "seven-profile-center-native"),
+        ("󰅩", "Forge", "Development workspace.", "seven profile activate forge"),
+        ("󰒃", "Shield", "Cybersecurity workspace.", "seven profile activate shield"),
+        ("󰏗", "Studio", "Creation workspace.", "seven profile activate studio"),
+        ("󰖳", "Windows", "Compatibility workspace.", "seven profile activate windows"),
+        ("󰒋", "Horizon", "Server and deployment workspace.", "seven profile activate horizon"),
+    ):
+        profile_cards.append(setting_card(icon, title, note, [action_button("Open", command)]))
+    card_grid(profiles, profile_cards)
+
+    # Power
+    power = pages["power"][0]
+    section(power, "Energy")
+    card_grid(power, [
+        setting_card("󰁹", "Battery", f"{battery} · {battery_status}", [action_button("Panel", "seven-waybar-center-native power")]),
+        setting_card("󰈐", "Power profile", "Open powerprofilesctl status.", [action_button("Open", "powerprofilesctl")]),
+        setting_card("󰍁", "Lock", "Lock the SevenOS session.", [action_button("Lock", "seven-power lock")]),
+        setting_card("󰜉", "Power menu", "Sleep, reboot and shutdown controls.", [action_button("Open", "seven-power")]),
+    ])
+
+    # Apps
+    apps = pages["apps"][0]
+    section(apps, "Software")
+    card_grid(apps, [
+        setting_card("󰀻", "Launchpad", "Browse installed applications.", [action_button("Open", "seven-overview apps")]),
+        setting_card("󰏗", "SevenPkg", "Inspect packages and meta-bundles.", [action_button("Status", "sevenpkg status")]),
+        setting_card("󰈙", "Flatpak", "Open Flatpak/Flathub management path.", [action_button("Status", "seven flatpak status || flatpak list")]),
+        setting_card("󰉋", "Applications folder", "Open desktop application launchers.", [action_button("Open", "xdg-open /usr/share/applications")]),
+    ])
+
+    # System
+    system = pages["system"][0]
+    section(system, "Maintenance")
+    card_grid(system, [
+        setting_card("󰚰", "System updates", "Update Arch packages and AUR packages through SevenPkg.", [action_button("Update", "seven update")]),
+        setting_card("󰏗", "Package status", "Inspect SevenPkg, pacman, Flatpak and bundle readiness.", [action_button("Open", "sevenpkg status")]),
+        setting_card("󰄬", "Daily driver gate", "Check if SevenOS is ready as a primary OS.", [action_button("Check", "seven daily")]),
+        setting_card("󰩂", "Doctor", "Diagnose common system issues.", [action_button("Run", "seven doctor")]),
+        setting_card("󰒓", "Status", "Open consolidated SevenOS runtime status.", [action_button("Open", "seven status")]),
+        setting_card("󰜉", "Repair UI", "Reapply theme, reload Hyprland and restart Waybar.", [action_button("Repair", "./install.sh theme && hyprctl reload && seven-waybar repair")]),
+        setting_card("󰌢", "Logs", "Open recent system warnings.", [action_button("Open", "kitty --title 'SevenOS Logs' bash -lc 'journalctl -p warning -b -n 120 --no-pager; read -r'")]),
+    ])
+
+    stack.set_visible_child_name(initial_page)
+    if initial_page in nav_by_target:
+        nav_by_target[initial_page].get_style_context().add_class("active")
+    elif nav_buttons:
+        nav_buttons[0].get_style_context().add_class("active")
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def main() -> int:
+    if "--probe" in sys.argv:
+        return probe()
+    page = next((arg for arg in sys.argv[1:] if not arg.startswith("-")), "overview")
+    return run(page)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

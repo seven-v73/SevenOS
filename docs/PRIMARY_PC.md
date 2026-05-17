@@ -142,7 +142,12 @@ command -v rofi
 seven-spotlight
 ```
 
-Spotlight is the command surface for daily use. It indexes:
+Spotlight is the command surface for daily use. The native surface is
+intentionally quiet at first open: only the search field and category icons are
+shown. Results appear only after you start typing or choose a category icon, so
+the panel stays ergonomic instead of becoming another dense menu.
+
+It indexes:
 
 - installed desktop applications;
 - files, common folders, recent documents and project folders;
@@ -179,6 +184,35 @@ settings and power menu should behave like direct panels without their own
 visible search bars. `Super+W` and `Super+R` also route back to Spotlight so
 there is one command brain instead of multiple parallel launchers.
 
+Useful checks:
+
+```bash
+seven-spotlight-native --probe
+seven-settings-native --probe
+SEVENOS_SPOTLIGHT_NATIVE=0 seven-spotlight rofi
+```
+
+## SevenOS Settings
+
+`Super+,` opens the native SevenOS Settings app:
+
+```bash
+seven-settings
+```
+
+This is the normal-user configuration center. It groups the controls that
+should not require terminal usage:
+
+- wallpaper selection and Hyprpaper refresh;
+- liquid glass appearance, dock, terminal style and Waybar repair;
+- display brightness, monitor tools and Hyprland monitor override;
+- Wi-Fi, NetworkManager and audio controls;
+- US/French keyboard layout with Alt+Shift switching;
+- Shield/security, profiles, power, apps and system maintenance.
+
+Spotlight remains the only global search surface. Settings is intentionally
+section-based, icon-led and action-oriented.
+
 ## SevenOS Terminal Profiles
 
 SevenOS ships two Kitty profiles at the same time:
@@ -210,7 +244,7 @@ Super+Shift+Enter 640x420 Dark terminal
 ```
 
 SevenOS prefers the native GTK/VTE terminal surface when `python-gobject` and
-`vte3` are installed. That surface has real clickable macOS-style traffic-light
+`vte3` are installed. That surface has real clickable SevenOS traffic-light
 buttons:
 
 ```text
@@ -260,8 +294,8 @@ close. Rofi remains only the fallback for machines missing GTK bindings.
 
 ## Seven Files
 
-`seven-files` now prefers the native Finder-like Seven Files surface before
-falling back to Nautilus. The native surface provides a macOS-like sidebar,
+`seven-files` now prefers the native Seven Files surface before
+falling back to Nautilus. The native surface provides a SevenOS sidebar,
 traffic-light controls, toolbar navigation and large icon grid:
 
 ```bash
@@ -285,6 +319,78 @@ re-apply the active desktop layer:
 ./install.sh theme
 hyprctl reload
 ```
+
+## Notification Center
+
+The Waybar notification icon opens a native SevenOS Notification Center first:
+
+```bash
+seven-waybar-notifications menu
+seven-notification-center-native --probe
+```
+
+The center is content-first: active notifications appear as cards, an empty
+state appears when the desktop is clear, and actions are compact icon buttons
+with tooltips. Rofi is only a fallback if GTK bindings are unavailable.
+
+## Settings From Waybar
+
+The Waybar Settings icon and `Super+,` open native SevenOS Settings:
+
+```bash
+seven-settings
+seven-settings-native --probe
+```
+
+This surface is not a command list. It exposes direct controls for wallpaper,
+appearance, displays, Wi-Fi, sound, keyboard, security, profiles, power, apps,
+maintenance and system updates. `seven-quick-settings` remains available as a
+fallback panel, but it is no longer the Waybar entrypoint.
+
+## Seven Hub
+
+Seven Hub Native is the primary Control Center:
+
+```bash
+seven hub
+seven-hub-native open
+```
+
+The default view is compact and visual: readiness, Shield, UX, daily-driver
+state, quick OS shortcuts, profile status, security, Windows, server, apps and
+identity. Long diagnostics remain available through action buttons and terminal
+output, not as the first screen.
+
+## Waybar Profile And Shield
+
+Profile and Shield are compact state icons in the menu bar:
+
+```bash
+seven-waybar-profile json
+seven-waybar-security json
+seven-profile-center-native --probe
+seven-shield-center-native --probe
+```
+
+Clicking the Profile icon opens a native profile center. Clicking Shield opens a
+native trust center with posture, ready/open items and prioritized Shield
+actions. Text-heavy Rofi menus are kept only as fallback.
+
+## Waybar System Centers
+
+Network, audio, battery, system and clock modules use compact icons in the menu
+bar and open native centers on click:
+
+```bash
+seven-waybar-center-native network
+seven-waybar-center-native audio
+seven-waybar-center-native power
+seven-waybar-center-native system
+seven-waybar-center-native time
+```
+
+The bar stays quiet, while the clicked center exposes direct controls, sliders
+and icon actions.
 
 ## Product Rule
 

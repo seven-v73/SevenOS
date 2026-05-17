@@ -29,6 +29,25 @@ backup_path() {
   printf '%s.sevenos.bak.%s' "$path" "$(date +%Y%m%d-%H%M%S)"
 }
 
+package_alternatives() {
+  case "$1" in
+    code) printf '%s\n' visual-studio-code-bin vscodium-bin vscodium ;;
+  esac
+}
+
+package_is_satisfied() {
+  local package="$1"
+  local alternative
+
+  pacman -Qq "$package" >/dev/null 2>&1 && return 0
+  while IFS= read -r alternative; do
+    [[ -n "$alternative" ]] || continue
+    pacman -Qq "$alternative" >/dev/null 2>&1 && return 0
+  done < <(package_alternatives "$package")
+
+  return 1
+}
+
 run_cmd() {
   if is_dry_run; then
     printf '%q ' "$@"
@@ -81,6 +100,9 @@ add_user_to_group() {
 
 install_package_file() {
   local package_file="$1"
+  local packages=()
+  local installable_packages=()
+  local package
 
   if [[ ! -f "$package_file" ]]; then
     log_error "Package file not found: $package_file"
@@ -89,8 +111,18 @@ install_package_file() {
 
   mapfile -t packages < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$package_file")
 
+  if command -v pacman >/dev/null 2>&1; then
+    for package in "${packages[@]}"; do
+      if package_is_satisfied "$package"; then
+        continue
+      fi
+      installable_packages+=("$package")
+    done
+    packages=("${installable_packages[@]}")
+  fi
+
   if [[ "${#packages[@]}" -eq 0 ]]; then
-    log_warn "No packages listed in $package_file"
+    log_success "Package requirements already satisfied for ${package_file#${SEVENOS_ROOT:-}/}"
     return 0
   fi
 

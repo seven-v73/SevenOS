@@ -630,6 +630,44 @@ fn command_exists(command_name: &str) -> bool {
     env::split_paths(&path_var).any(|dir| dir.join(command_name).is_file())
 }
 
+fn flatpak_installed(app_id: &str) -> bool {
+    let output = Command::new("flatpak").arg("info").arg(app_id).output();
+    matches!(output, Ok(result) if result.status.success())
+}
+
+fn package_flatpak_equivalent(package: &str) -> Option<&'static str> {
+    match package {
+        "gimp" => Some("org.gimp.GIMP"),
+        "krita" => Some("org.kde.krita"),
+        "inkscape" => Some("org.inkscape.Inkscape"),
+        "blender" => Some("org.blender.Blender"),
+        "kdenlive" => Some("org.kde.kdenlive"),
+        "obs-studio" => Some("com.obsproject.Studio"),
+        "audacity" => Some("org.audacityteam.Audacity"),
+        "darktable" => Some("org.darktable.Darktable"),
+        "rawtherapee" => Some("com.rawtherapee.RawTherapee"),
+        "scribus" => Some("net.scribus.Scribus"),
+        "lmms" => Some("io.lmms.LMMS"),
+        "handbrake" => Some("fr.handbrake.ghb"),
+        _ => None,
+    }
+}
+
+fn package_alternatives(package: &str) -> &'static [&'static str] {
+    match package {
+        "code" => &["visual-studio-code-bin", "vscodium-bin", "vscodium"],
+        _ => &[],
+    }
+}
+
+fn package_satisfied(package: &str, pacman_packages: &HashSet<String>) -> bool {
+    pacman_packages.contains(package)
+        || package_alternatives(package)
+            .iter()
+            .any(|alternative| pacman_packages.contains(*alternative))
+        || package_flatpak_equivalent(package).is_some_and(flatpak_installed)
+}
+
 fn pacman_packages() -> HashSet<String> {
     let output = Command::new("pacman").arg("-Qq").output();
     match output {
@@ -683,13 +721,45 @@ fn app_state(root: &Path, app: &str) -> &'static str {
             }
         }
         "bottles" => {
-            let output = Command::new("flatpak")
-                .arg("info")
-                .arg("com.usebottles.bottles")
-                .output();
-            match output {
-                Ok(result) if result.status.success() => "OK",
-                _ => "MISS",
+            if flatpak_installed("com.usebottles.bottles") {
+                "OK"
+            } else {
+                "MISS"
+            }
+        }
+        "gimp" => {
+            if command_exists("gimp") || flatpak_installed("org.gimp.GIMP") {
+                "OK"
+            } else {
+                "MISS"
+            }
+        }
+        "krita" => {
+            if command_exists("krita") || flatpak_installed("org.kde.krita") {
+                "OK"
+            } else {
+                "MISS"
+            }
+        }
+        "inkscape" => {
+            if command_exists("inkscape") || flatpak_installed("org.inkscape.Inkscape") {
+                "OK"
+            } else {
+                "MISS"
+            }
+        }
+        "blender" => {
+            if command_exists("blender") || flatpak_installed("org.blender.Blender") {
+                "OK"
+            } else {
+                "MISS"
+            }
+        }
+        "kdenlive" => {
+            if command_exists("kdenlive") || flatpak_installed("org.kde.kdenlive") {
+                "OK"
+            } else {
+                "MISS"
             }
         }
         _ => {
@@ -3048,6 +3118,11 @@ fn shield_row(key: &str, state: &str, detail: &str, command: &str) -> Value {
 
 fn shield_checks() -> Vec<Value> {
     let packages = pacman_packages();
+    let firewall_state = if state_dir().join("security/ufw-degraded").is_file() {
+        "PART"
+    } else {
+        system_service_state("ufw.service")
+    };
     vec![
         shield_row(
             "workspace",
@@ -3063,7 +3138,7 @@ fn shield_checks() -> Vec<Value> {
         ),
         shield_row(
             "firewall",
-            system_service_state("ufw.service"),
+            firewall_state,
             "UFW firewall service",
             "seven shield enable",
         ),
@@ -3548,7 +3623,7 @@ fn profile_payload(
     }
     let installed = all_packages
         .iter()
-        .filter(|package| packages.contains(package.as_str()))
+        .filter(|package| package_satisfied(package, packages))
         .count();
     let total = all_packages.len();
     let state = if total == 0 {
@@ -3562,7 +3637,7 @@ fn profile_payload(
     };
     let missing_packages: Vec<&String> = all_packages
         .iter()
-        .filter(|package| !packages.contains(package.as_str()))
+        .filter(|package| !package_satisfied(package, packages))
         .collect();
     let apps: Vec<Value> = spec
         .apps

@@ -2,8 +2,9 @@
 Type=Application
 Name=Seven Files
 Comment=Open the SevenOS file manager
-Exec=seven-files
+Exec=seven-files open %U
 Icon=org.gnome.Nautilus
 Terminal=false
 Categories=System;FileManager;Utility;
+MimeType=inode/directory;application/x-gnome-saved-search;
 StartupNotify=true

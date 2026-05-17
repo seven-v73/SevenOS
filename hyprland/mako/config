@@ -1,7 +1,7 @@
 font=JetBrainsMono Nerd Font 10.5
-background-color=#ffffffe8
+background-color=#ffffffe0
 text-color=#101a21
-border-color=#7893a3a6
+border-color=#ffffffe8
 progress-color=over #567f9d
 width=430
 height=138
@@ -16,5 +16,5 @@ layer=overlay
 
 [urgency=high]
 border-color=#a95738
-background-color=#fffffff2
+background-color=#ffffffe8
 text-color=#101a21

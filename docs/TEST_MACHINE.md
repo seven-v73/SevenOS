@@ -159,12 +159,19 @@ Super+Ctrl+Enter Terminal theme menu
 Super+Shift+P Power menu
 ```
 
-Spotlight should be the only global search surface. It supports `/apps`,
-`/files`, `/settings`, `/system`, `/web`, `/clipboard`, `/windows` and
-`/history`, plus direct calculations, conversions, definitions, timers,
-clipboard entries and active Hyprland windows.
+Spotlight should be the only global search surface. The native GTK surface opens
+as a compact search bar plus category icons only; results appear after typing or
+after selecting a category. It supports `/apps`, `/files`, `/settings`,
+`/system`, `/web`, `/clipboard`, `/windows` and `/history`, plus direct
+calculations, conversions, definitions, timers, clipboard entries and active
+Hyprland windows. If the native surface cannot start, the Rofi fallback remains:
 
-Waybar should expose a macOS-like top bar: `7 + Apps + time` on the left,
+```bash
+seven-spotlight-native --probe
+SEVENOS_SPOTLIGHT_NATIVE=0 seven-spotlight rofi
+```
+
+Waybar should expose a SevenOS top bar: `7 + Apps + time` on the left,
 workspaces in the center, and compact system controls on the right. Files and
 favorite launchers live in the Dock through `Super+D`. The Dock separates apps,
 folders and system actions, shows running indicators, supports right-click
@@ -610,6 +617,7 @@ seven daily
 - Hyprland window borders and animation feel
 - Waybar profile/security/status modules
 - Rofi launcher and Seven Hub categories
+- Native Notification Center from the Waybar bell icon
 - Kitty theme, tabs, opacity and country signal
 - Mako notifications
 - Fastfetch branding

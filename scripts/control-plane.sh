@@ -274,7 +274,7 @@ execute_plan() {
   [[ "$SAFE_ONLY" -eq 1 ]] && printf 'Safe-only mode: skipping package and system-changing actions.\n'
   printf '\n'
 
-  if [[ "$APPLY" -eq 1 && "$SAFE_ONLY" -ne 1 && ! is_dry_run ]] && ! sudo -n true 2>/dev/null; then
+  if [[ "$APPLY" -eq 1 && "$SAFE_ONLY" -ne 1 ]] && ! is_dry_run && ! sudo -n true 2>/dev/null; then
     log_error "Control apply needs an active sudo session for prioritized system changes."
     log_info "Run 'sudo -v' first, or preview with: seven control apply --limit $LIMIT"
     exit 1
@@ -293,7 +293,7 @@ execute_plan() {
     printf '%-9s %-9s %s\n' "$severity" "$impact" "$command"
     printf '%-9s %-9s %s\n' "" "" "$reason"
 
-    if [[ "$APPLY" -eq 1 && ! is_dry_run ]]; then
+    if [[ "$APPLY" -eq 1 ]] && ! is_dry_run; then
       bash -lc "cd '$ROOT_DIR' && $command"
     else
       printf '          DRY-RUN > %s\n' "$command"
