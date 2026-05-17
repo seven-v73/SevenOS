@@ -207,6 +207,8 @@ configure_toolkit_theme() {
     printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-light\n'
     printf 'gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3\n'
     printf 'gsettings set org.gnome.desktop.interface icon-theme Papirus\n'
+    printf 'gsettings set org.gnome.desktop.interface gtk-decoration-layout close,minimize,maximize:\n'
+    printf 'gsettings set org.gnome.nautilus.preferences default-folder-viewer icon-view\n'
     return 0
   fi
 
@@ -220,6 +222,10 @@ configure_toolkit_theme() {
     gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3 >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface icon-theme Papirus >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface gtk-decoration-layout 'close,minimize,maximize:' >/dev/null 2>&1 || true
+    gsettings set org.gnome.nautilus.preferences default-folder-viewer 'icon-view' >/dev/null 2>&1 || true
+    gsettings set org.gnome.nautilus.icon-view default-zoom-level 'large' >/dev/null 2>&1 || true
+    gsettings set org.gtk.Settings.FileChooser sort-directories-first true >/dev/null 2>&1 || true
   fi
 }
 

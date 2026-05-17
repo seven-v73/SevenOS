@@ -43,7 +43,14 @@ open_path() {
   local manager
 
   if is_dry_run; then
-    printf 'open files %q\n' "$target"
+    printf 'open files %q with Finder-like Seven Files surface\n' "$target"
+    return 0
+  fi
+
+  configure_nautilus_preferences
+
+  if command -v nautilus >/dev/null 2>&1; then
+    setsid -f nautilus --new-window "$target" >/tmp/sevenos-files.log 2>&1
     return 0
   fi
 
@@ -62,6 +69,18 @@ open_path() {
   printf 'seven-files: no graphical file manager found\n' >&2
   printf 'Install the SevenOS base layer or run: sudo pacman -S --needed nautilus gvfs file-roller\n' >&2
   return 1
+}
+
+configure_nautilus_preferences() {
+  command -v gsettings >/dev/null 2>&1 || return 0
+
+  gsettings set org.gnome.nautilus.preferences default-folder-viewer 'icon-view' >/dev/null 2>&1 || true
+  gsettings set org.gnome.nautilus.icon-view default-zoom-level 'large' >/dev/null 2>&1 || true
+  gsettings set org.gnome.nautilus.list-view default-zoom-level 'standard' >/dev/null 2>&1 || true
+  gsettings set org.gnome.nautilus.preferences show-create-link true >/dev/null 2>&1 || true
+  gsettings set org.gnome.nautilus.preferences show-delete-permanently true >/dev/null 2>&1 || true
+  gsettings set org.gtk.Settings.FileChooser sort-directories-first true >/dev/null 2>&1 || true
+  gsettings set org.gnome.desktop.interface gtk-decoration-layout 'close,minimize,maximize:' >/dev/null 2>&1 || true
 }
 
 ensure_dirs() {

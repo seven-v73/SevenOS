@@ -208,6 +208,21 @@ yellow minimize
 green  maximize / restore
 ```
 
+Check the active terminal path with:
+
+```bash
+seven-terminal status
+```
+
+If `native: MISS` appears, install the native terminal dependencies and refresh
+the installed SevenOS commands:
+
+```bash
+sudo pacman -S --needed python-gobject vte3
+./install.sh cli
+hyprctl reload
+```
+
 If GTK/VTE is not installed yet, SevenOS falls back to Kitty with visual
 traffic-light markers and these shortcuts:
 
@@ -223,6 +238,10 @@ Ctrl+Shift+F toggle fullscreen
 large icons, soft spacing, a compact app filter at the top and no system command
 results. Global actions, files, settings and intelligence still belong to
 `Super+Space` Spotlight.
+
+When GTK is available, SevenOS uses the native Launchpad surface first: a
+fullscreen icon grid with large app icons, a compact top filter and Escape to
+close. Rofi remains only the fallback for machines missing GTK bindings.
 
 If an old fullscreen Kitty window keeps appearing, close all Kitty windows and
 re-apply the active desktop layer:

@@ -566,31 +566,26 @@ Ces jalons introduisent le Design System v1, stabilisent Waybar, rendent la barr
 Travail en cours :
 
 ```text
-Waybar network controls
-SevenOS Spotlight command center
+Native Launchpad
+Seven Files Finder-like surface
+macOS-style native terminal
 ```
 
-Objectif : le module reseau ne doit plus ouvrir seulement un statut technique.
-Il doit permettre de scanner, choisir et connecter un Wi-Fi depuis une surface
-SevenOS claire, avec statut JSON et controles testables.
+Objectif : remplacer les surfaces trop "script/theme" par des surfaces OS
+natives quand les dependances sont presentes, avec Rofi/Kitty uniquement comme
+fallback.
 
-Objectif Spotlight : `Super+Space` devient le centre d'orchestration quotidien
-de SevenOS. Il indexe les apps, fichiers, dossiers, projets, actions, profils,
-reglages systeme, commandes, CyberSpace, Windows Mode, mail, contacts,
-calendrier et premiers intents contextuels. Il gere aussi les calculs rapides,
-les conversions pratiques, les definitions et les suggestions web. Le Hub reste
-accessible depuis Spotlight au lieu d'etre le seul comportement de `Super+Space`.
+Avancement UI :
 
-Avancement Spotlight :
-
-- Surface Rofi dediee, plus proche d'un Spotlight macOS : centree, compacte,
-  lisible, avec input pill et liste a icones.
-- Modes rapides integres : `/apps`, `/files`, `/settings`, `/system`, `/web`.
-- Resultats enrichis avec icone, categorie, nom et detail court.
-- Les autres menus SevenOS restent sans barre de recherche visible : la recherche
-  globale vit dans Spotlight.
-- Checks design/UX alignes sur cette regle pour eviter les retours aux menus
-  disperses.
+- Terminal natif GTK/VTE ajoute avec vraies pastilles rouge/jaune/verte
+  dessinees directement, donc moins dependant du theme GTK.
+- `seven-terminal status` indique si le terminal natif est actif ou si les
+  dependances `python-gobject` et `vte3` manquent.
+- Launchpad natif GTK ajoute : grille plein ecran, grandes icones, filtre
+  compact et fermeture par Escape. Rofi reste le fallback.
+- Seven Files est aligne vers Nautilus/Finder-like : vue icones large,
+  headerbar, sidebar douce, favoris et fenetre flottante.
+- Checks design/UX mis a jour pour proteger ces surfaces.
 
 Jalon en cours :
 

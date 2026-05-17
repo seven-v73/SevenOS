@@ -1,0 +1,306 @@
+#!/usr/bin/env python3
+"""SevenOS native Launchpad surface with large app icons."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+
+def probe() -> int:
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def truthy(value: str) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes"}
+
+
+def read_desktop(path: Path):
+    data = {}
+    in_entry = False
+    try:
+        content = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            in_entry = line == "[Desktop Entry]"
+            continue
+        if not in_entry or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        data.setdefault(key.strip(), value.strip())
+
+    if data.get("Type", "Application") != "Application":
+        return None
+    if truthy(data.get("Hidden", "false")):
+        return None
+    if truthy(data.get("NoDisplay", "false")) and os.environ.get("SEVENOS_APPS_SHOW_HIDDEN") != "1":
+        return None
+    if not data.get("Exec"):
+        return None
+
+    return {
+        "name": data.get("Name") or data.get("Name[en_US]") or path.stem,
+        "desktop_id": path.name,
+        "path": str(path),
+        "comment": data.get("Comment", ""),
+        "categories": data.get("Categories", ""),
+        "icon": data.get("Icon") or fallback_icon(data.get("Categories", "")),
+    }
+
+
+def fallback_icon(categories: str) -> str:
+    cats = {item for item in categories.split(";") if item}
+    if "Development" in cats:
+        return "applications-development"
+    if "Graphics" in cats or "AudioVideo" in cats:
+        return "applications-graphics"
+    if "Network" in cats:
+        return "applications-internet"
+    if "System" in cats or "Settings" in cats:
+        return "preferences-system"
+    if "Utility" in cats:
+        return "applications-utilities"
+    if "Game" in cats:
+        return "applications-games"
+    if "Office" in cats:
+        return "applications-office"
+    return "application-x-executable"
+
+
+def load_apps():
+    data_dirs = [
+        Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")),
+        Path.home() / ".local/share/flatpak/exports/share",
+        Path("/var/lib/flatpak/exports/share"),
+    ]
+    for raw in os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":"):
+        if raw:
+            data_dirs.append(Path(raw))
+
+    seen = set()
+    apps = []
+    for base in data_dirs:
+        app_dir = base / "applications"
+        if not app_dir.is_dir():
+            continue
+        for path in app_dir.glob("*.desktop"):
+            if str(path) in seen:
+                continue
+            seen.add(str(path))
+            entry = read_desktop(path)
+            if entry:
+                apps.append(entry)
+    return sorted(apps, key=lambda app: app["name"].casefold())
+
+
+def launch_app(app) -> None:
+    desktop_id = app["desktop_id"]
+    desktop_path = app["path"]
+    commands = [
+        ["gtk-launch", desktop_id.removesuffix(".desktop")],
+        ["gtk-launch", desktop_id],
+        ["gio", "launch", desktop_path],
+        ["dex", desktop_path],
+    ]
+    for command in commands:
+        if not shutil_which(command[0]):
+            continue
+        try:
+            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        except OSError:
+            continue
+
+
+def shutil_which(command: str) -> str | None:
+    for folder in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = Path(folder) / command
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def run_launchpad() -> int:
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, Gtk
+
+    apps = load_apps()
+    visible_apps = list(apps)
+
+    css = """
+    window.seven-launchpad {
+      background: rgba(18, 24, 24, 0.54);
+    }
+    .launchpad-root {
+      padding: 28px 72px 42px 72px;
+    }
+    .launchpad-search {
+      min-height: 28px;
+      min-width: 250px;
+      padding: 0 14px;
+      border-radius: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      background: rgba(255, 255, 255, 0.18);
+      color: rgba(255, 255, 255, 0.96);
+      font: 500 12px "DM Sans", "Inter", sans-serif;
+    }
+    .launchpad-scroll {
+      background: transparent;
+      border: 0;
+    }
+    .launchpad-tile {
+      min-width: 124px;
+      min-height: 128px;
+      padding: 10px 8px;
+      border-radius: 22px;
+      background: transparent;
+      color: #ffffff;
+    }
+    .launchpad-tile:selected,
+    .launchpad-tile:hover {
+      background: rgba(255, 255, 255, 0.17);
+    }
+    .launchpad-label {
+      color: #ffffff;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.80);
+      font: 500 11px "DM Sans", "Inter", sans-serif;
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window()
+    window.set_decorated(False)
+    window.fullscreen()
+    window.set_wmclass("SevenLaunchpadNative", "SevenLaunchpadNative")
+    window.get_style_context().add_class("seven-launchpad")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=52)
+    root.get_style_context().add_class("launchpad-root")
+    window.add(root)
+
+    search_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+    search_row.set_halign(Gtk.Align.CENTER)
+    root.pack_start(search_row, False, False, 0)
+
+    search = Gtk.SearchEntry()
+    search.set_placeholder_text("Search")
+    search.get_style_context().add_class("launchpad-search")
+    search_row.pack_start(search, False, False, 0)
+
+    scroller = Gtk.ScrolledWindow()
+    scroller.get_style_context().add_class("launchpad-scroll")
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    root.pack_start(scroller, True, True, 0)
+
+    flow = Gtk.FlowBox()
+    flow.set_halign(Gtk.Align.CENTER)
+    flow.set_valign(Gtk.Align.START)
+    flow.set_selection_mode(Gtk.SelectionMode.SINGLE)
+    flow.set_min_children_per_line(5)
+    flow.set_max_children_per_line(8)
+    flow.set_column_spacing(48)
+    flow.set_row_spacing(42)
+    scroller.add(flow)
+
+    def make_child(app):
+        child = Gtk.FlowBoxChild()
+        child.get_style_context().add_class("launchpad-tile")
+        child.app = app
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9)
+        box.set_halign(Gtk.Align.CENTER)
+        box.set_valign(Gtk.Align.CENTER)
+
+        image = Gtk.Image.new_from_icon_name(app["icon"], Gtk.IconSize.DIALOG)
+        image.set_pixel_size(76)
+        image.set_halign(Gtk.Align.CENTER)
+        box.pack_start(image, False, False, 0)
+
+        label = Gtk.Label(label=app["name"])
+        label.set_max_width_chars(15)
+        label.set_line_wrap(True)
+        label.set_lines(2)
+        label.set_justify(Gtk.Justification.CENTER)
+        label.set_halign(Gtk.Align.CENTER)
+        label.get_style_context().add_class("launchpad-label")
+        box.pack_start(label, False, False, 0)
+
+        child.add(box)
+        return child
+
+    def render():
+        for child in flow.get_children():
+            flow.remove(child)
+        for app in visible_apps:
+            flow.add(make_child(app))
+        flow.show_all()
+
+    def update_filter(entry):
+        nonlocal visible_apps
+        query = entry.get_text().strip().casefold()
+        if query:
+            visible_apps = [
+                app
+                for app in apps
+                if query in " ".join((app["name"], app["comment"], app["categories"])).casefold()
+            ]
+        else:
+            visible_apps = list(apps)
+        render()
+
+    def activate(_flow, child):
+        if child is not None:
+            launch_app(child.app)
+            window.close()
+
+    def on_key(_window, event):
+        if event.keyval == Gdk.KEY_Escape:
+            window.close()
+            return True
+        return False
+
+    search.connect("search-changed", update_filter)
+    flow.connect("child-activated", activate)
+    window.connect("key-press-event", on_key)
+    window.connect("destroy", Gtk.main_quit)
+    render()
+    window.show_all()
+    search.grab_focus()
+    Gtk.main()
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--probe", action="store_true")
+    args = parser.parse_args()
+    if args.probe:
+        return probe()
+    return run_launchpad()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

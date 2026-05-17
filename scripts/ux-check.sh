@@ -129,6 +129,8 @@ require_file "hyprland/mako/config"
 require_file "hyprland/kitty/kitty.conf"
 require_file "hyprland/kitty/classic.conf"
 require_file "hyprland/kitty/dark.conf"
+require_file "hyprland/gtk-3.0/gtk.css"
+require_file "hyprland/gtk-4.0/gtk.css"
 require_file "hyprland/conf/custom.conf"
 require_file "hyprland/conf/keyboard.conf"
 require_file "hyprland/conf/monitor.conf"
@@ -147,6 +149,7 @@ require_executable "bin/seven-country"
 require_executable "bin/seven-daemon"
 require_executable "bin/sevenbus-probe"
 require_executable "bin/seven-apps"
+require_executable "bin/seven-launchpad-native"
 require_executable "bin/seven-files"
 require_executable "bin/seven-help"
 require_executable "bin/seven-overview"
@@ -265,6 +268,9 @@ fi
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'ebene: #eef4f8' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
+   grep -q 'SevenLaunchpadNative' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'set_max_children_per_line(8)' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'set_pixel_size(76)' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'columns: 7' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'size: 84px' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -282,6 +288,18 @@ if jq -e '."custom/files".format == "󰉋" and ."custom/files"."on-click" == "se
   ok "Waybar exposes icon-first Seven Files"
 else
   fail "Waybar icon-first Seven Files launcher missing"
+fi
+
+if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
+   grep -q 'window.nautilus-window headerbar' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
+   grep -q 'placessidebar row:selected' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
+   grep -q 'configure_nautilus_preferences' "$ROOT_DIR/bin/seven-files" &&
+   grep -q 'default-folder-viewer' "$ROOT_DIR/bin/seven-files" &&
+   grep -q 'nautilus --new-window' "$ROOT_DIR/bin/seven-files" &&
+   grep -q 'windowrule = match:class ^(org.gnome.Nautilus)$, float on, center on, size 78% 76%' "$ROOT_DIR/hyprland/hyprland.conf"; then
+  ok "Seven Files is shaped as a Finder-like file surface"
+else
+  fail "Seven Files Finder-like shell integration is incomplete"
 fi
 
 if jq -e '."custom/power"."on-click" == "seven-power"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
@@ -683,7 +701,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'traffic.min' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'traffic.max' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'native-if-available' "$ROOT_DIR/bin/seven-terminal" &&
-   grep -q 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -Fq 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 640 420' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'exec zsh -di' "$ROOT_DIR/bin/seven-terminal-shell" &&
    grep -q 'background #2d333d' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'initial_window_width 76c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&

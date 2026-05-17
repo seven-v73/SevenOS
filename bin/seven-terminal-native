@@ -157,9 +157,9 @@ def run_terminal(profile: str, command: list[str]) -> int:
         None,
     )
 
-    close_btn.connect("clicked", lambda *_: window.close())
-    min_btn.connect("clicked", lambda *_: window.iconify())
-    max_btn.connect("clicked", lambda *_: window.unmaximize() if window.is_maximized() else window.maximize())
+    close_btn.connect("button-release-event", lambda *_: window.close())
+    min_btn.connect("button-release-event", lambda *_: window.iconify())
+    max_btn.connect("button-release-event", lambda *_: window.unmaximize() if window.is_maximized() else window.maximize())
     terminal.connect("child-exited", lambda *_: window.close())
     titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
     window.connect("destroy", Gtk.main_quit)
@@ -169,15 +169,50 @@ def run_terminal(profile: str, command: list[str]) -> int:
 
 
 def traffic_button(style: str, tooltip: str):
-    from gi.repository import Gtk
+    from gi.repository import Gdk, Gtk
 
-    button = Gtk.Button()
-    button.set_tooltip_text(tooltip)
-    button.set_relief(Gtk.ReliefStyle.NONE)
-    button.set_focus_on_click(False)
-    button.get_style_context().add_class("traffic")
-    button.get_style_context().add_class(style)
-    return button
+    colors = {
+        "close": ("#ff5f57", "#d8463f"),
+        "min": ("#febc2e", "#d9a023"),
+        "max": ("#28c840", "#1fa334"),
+    }
+    fill, stroke = colors.get(style, ("#d0d0d0", "#a0a0a0"))
+
+    event_box = Gtk.EventBox()
+    event_box.set_visible_window(False)
+    event_box.set_tooltip_text(tooltip)
+    event_box.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK)
+
+    area = Gtk.DrawingArea()
+    area.set_size_request(14, 14)
+    area.get_style_context().add_class("traffic")
+    area.get_style_context().add_class(style)
+    area.connect("draw", draw_traffic_light, fill, stroke)
+    event_box.add(area)
+    return event_box
+
+
+def draw_traffic_light(widget, cr, fill: str, stroke: str) -> bool:
+    from gi.repository import Gdk
+
+    allocation = widget.get_allocation()
+    diameter = min(allocation.width, allocation.height)
+    radius = max(4.0, (diameter / 2.0) - 1.0)
+    center_x = allocation.width / 2.0
+    center_y = allocation.height / 2.0
+
+    fill_rgba = Gdk.RGBA()
+    stroke_rgba = Gdk.RGBA()
+    fill_rgba.parse(fill)
+    stroke_rgba.parse(stroke)
+
+    cr.set_source_rgba(fill_rgba.red, fill_rgba.green, fill_rgba.blue, fill_rgba.alpha)
+    cr.arc(center_x, center_y, radius, 0, 6.28318)
+    cr.fill_preserve()
+    cr.set_line_width(1)
+    cr.set_source_rgba(stroke_rgba.red, stroke_rgba.green, stroke_rgba.blue, 0.75)
+    cr.stroke()
+    return False
 
 
 def begin_move(window, event) -> bool:

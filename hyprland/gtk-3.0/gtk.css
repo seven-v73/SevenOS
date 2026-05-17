@@ -1,0 +1,42 @@
+/* SevenOS Finder-like file surface polish */
+
+window.nautilus-window,
+window.org-gnome-Nautilus {
+  background: #fbfbfb;
+}
+
+window.nautilus-window headerbar,
+window.org-gnome-Nautilus headerbar {
+  min-height: 48px;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(150, 160, 170, 0.22);
+}
+
+window.nautilus-window placessidebar,
+window.org-gnome-Nautilus placessidebar {
+  background: rgba(246, 248, 250, 0.88);
+  border-right: 1px solid rgba(150, 160, 170, 0.18);
+}
+
+window.nautilus-window placessidebar row,
+window.org-gnome-Nautilus placessidebar row {
+  min-height: 34px;
+  margin: 2px 8px;
+  border-radius: 10px;
+}
+
+window.nautilus-window placessidebar row:selected,
+window.org-gnome-Nautilus placessidebar row:selected {
+  background: rgba(42, 124, 218, 0.12);
+  color: #142536;
+}
+
+window.nautilus-window flowboxchild,
+window.org-gnome-Nautilus flowboxchild {
+  border-radius: 12px;
+}
+
+window.nautilus-window flowboxchild:selected,
+window.org-gnome-Nautilus flowboxchild:selected {
+  background: rgba(42, 124, 218, 0.12);
+}

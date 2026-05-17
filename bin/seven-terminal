@@ -32,7 +32,7 @@ KITTY_CONFIG_DIR="$CONFIG_HOME/kitty"
 usage() {
   cat <<'EOF'
 Usage:
-  seven-terminal [classic|dark|menu|status] [-- command...]
+  seven-terminal [classic|dark|menu|status|doctor] [-- command...]
 
 Profiles:
   classic  macOS-like white terminal
@@ -208,6 +208,11 @@ status() {
   printf 'classic: %s\n' "$(ensure_config classic)"
   printf 'dark:    %s\n' "$(ensure_config dark)"
   printf 'default: %s\n' "$KITTY_CONFIG_DIR/kitty.conf"
+  if [[ -x "$ROOT_DIR/bin/seven-terminal-native" ]] && "$ROOT_DIR/bin/seven-terminal-native" --probe >/dev/null 2>&1; then
+    printf 'native:  OK - GTK/VTE traffic-light terminal available\n'
+  else
+    printf 'native:  MISS - install python-gobject and vte3, then run ./install.sh cli\n'
+  fi
 }
 
 action="${1:-classic}"
@@ -222,7 +227,7 @@ case "$action" in
   menu|choose)
     open_menu
     ;;
-  status)
+  status|doctor)
     status
     ;;
   -h|--help|help)

@@ -106,6 +106,8 @@ log_info "Checking desktop config syntax..."
 PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/sevenpkg" \
+  "$ROOT_DIR/bin/seven-launchpad-native" \
+  "$ROOT_DIR/bin/seven-terminal-native" \
   "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
 python -m json.tool "$ROOT_DIR/sevenos.dotinst" >/dev/null
