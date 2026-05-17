@@ -1,14 +1,14 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 44,
+  "height": 50,
   "spacing": 8,
-  "margin-top": 10,
-  "margin-left": 22,
-  "margin-right": 22,
+  "margin-top": 12,
+  "margin-left": 24,
+  "margin-right": 24,
   "modules-left": ["custom/sevenos", "custom/apps", "hyprland/workspaces"],
   "modules-center": ["custom/spotlight", "custom/ai"],
-  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "custom/bluetooth", "pulseaudio", "network", "battery", "custom/notifications", "clock", "custom/settings", "custom/power"],
+  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "battery", "custom/bluetooth", "pulseaudio", "network", "custom/notifications", "clock", "custom/settings", "custom/power"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true

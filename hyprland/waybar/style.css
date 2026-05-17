@@ -1,6 +1,7 @@
 @define-color seven_bg rgba(9, 9, 11, 0.38);
 @define-color seven_surface rgba(18, 19, 26, 0.58);
 @define-color seven_surface_lift rgba(26, 30, 44, 0.62);
+@define-color seven_group rgba(11, 13, 22, 0.68);
 @define-color seven_edge rgba(237, 237, 237, 0.12);
 @define-color seven_edge_hot rgba(77, 163, 255, 0.42);
 @define-color seven_text rgba(237, 237, 237, 0.94);
@@ -23,9 +24,10 @@
 
 window#waybar {
   background:
-    radial-gradient(circle at 12% 10%, rgba(77, 163, 255, 0.16), transparent 32%),
-    radial-gradient(circle at 78% 16%, rgba(122, 92, 255, 0.16), transparent 34%),
-    linear-gradient(90deg, rgba(9, 9, 11, 0.26), rgba(18, 19, 26, 0.42), rgba(9, 9, 11, 0.24));
+    radial-gradient(ellipse at 50% 0%, rgba(0, 212, 255, 0.18), transparent 36%),
+    radial-gradient(ellipse at 16% 22%, rgba(77, 163, 255, 0.18), transparent 34%),
+    radial-gradient(ellipse at 84% 18%, rgba(122, 92, 255, 0.18), transparent 36%),
+    linear-gradient(90deg, rgba(9, 9, 11, 0.18), rgba(18, 19, 26, 0.48), rgba(9, 9, 11, 0.18));
   color: @seven_text;
 }
 
@@ -62,12 +64,13 @@ tooltip label {
   min-height: 31px;
   margin-top: 5px;
   margin-bottom: 5px;
-  padding: 0 12px;
+  padding: 0 14px;
   color: @seven_text;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.030)),
-    radial-gradient(circle at 22% 0%, rgba(77, 163, 255, 0.10), transparent 36%),
-    @seven_surface;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.034)),
+    radial-gradient(circle at 28% 0%, rgba(77, 163, 255, 0.11), transparent 40%),
+    radial-gradient(circle at 86% 100%, rgba(122, 92, 255, 0.08), transparent 40%),
+    @seven_group;
   border: 1px solid @seven_edge;
   border-radius: 999px;
   text-shadow: 0 0 10px rgba(77, 163, 255, 0.26);
@@ -75,47 +78,60 @@ tooltip label {
     background 220ms ease,
     color 220ms ease,
     border-color 220ms ease,
-    opacity 220ms ease;
+    opacity 220ms ease,
+    margin 220ms ease;
 }
 
 #custom-sevenos {
-  min-width: 35px;
+  min-height: 36px;
+  min-width: 40px;
   margin-left: 2px;
-  padding-left: 13px;
-  padding-right: 13px;
+  margin-right: 7px;
+  padding-left: 15px;
+  padding-right: 15px;
   color: @seven_cyan;
   font-family: "SF Pro Rounded", "SF Pro Display", system-ui, sans-serif;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 500;
   background:
-    radial-gradient(circle at 50% 15%, rgba(0, 212, 255, 0.25), transparent 45%),
-    radial-gradient(circle at 50% 95%, rgba(122, 92, 255, 0.26), transparent 48%),
-    rgba(12, 14, 22, 0.70);
-  border-color: rgba(77, 163, 255, 0.34);
+    radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.40), transparent 47%),
+    radial-gradient(circle at 50% 100%, rgba(122, 92, 255, 0.36), transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.035)),
+    rgba(10, 13, 24, 0.78);
+  border-color: rgba(77, 163, 255, 0.45);
   text-shadow:
-    0 0 9px rgba(0, 212, 255, 0.80),
-    0 0 18px rgba(122, 92, 255, 0.52);
+    0 0 10px rgba(0, 212, 255, 0.86),
+    0 0 22px rgba(122, 92, 255, 0.58),
+    0 0 34px rgba(77, 163, 255, 0.36);
 }
 
 #custom-apps {
+  min-height: 34px;
+  margin-right: 0;
   padding-left: 14px;
-  padding-right: 15px;
+  padding-right: 17px;
   color: rgba(237, 237, 237, 0.92);
+  border-radius: 999px 18px 18px 999px;
+  border-right-color: rgba(237, 237, 237, 0.035);
 }
 
 #workspaces {
-  padding: 0 8px;
+  min-height: 34px;
+  margin-left: -8px;
+  padding: 0 10px 0 14px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.035)),
     rgba(8, 10, 17, 0.58);
   border-color: rgba(237, 237, 237, 0.13);
+  border-left-color: rgba(237, 237, 237, 0.045);
+  border-radius: 18px 999px 999px 18px;
 }
 
 #workspaces button {
-  min-width: 26px;
-  min-height: 23px;
-  margin: 3px 2px;
-  padding: 0 9px;
+  min-width: 28px;
+  min-height: 24px;
+  margin: 4px 3px;
+  padding: 0 10px;
   border-radius: 999px;
   color: @seven_muted;
   background: transparent;
@@ -133,7 +149,7 @@ tooltip label {
 }
 
 #workspaces button.active {
-  min-width: 36px;
+  min-width: 42px;
   color: rgba(255, 255, 255, 0.98);
   background:
     radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.32), transparent 55%),
@@ -151,26 +167,45 @@ tooltip label {
 }
 
 #custom-spotlight {
-  min-width: 255px;
-  padding-left: 18px;
-  padding-right: 22px;
-  color: rgba(237, 237, 237, 0.84);
+  min-height: 38px;
+  min-width: 320px;
+  margin-right: 0;
+  padding-left: 24px;
+  padding-right: 28px;
+  color: rgba(237, 237, 237, 0.92);
   background:
-    radial-gradient(circle at 0% 50%, rgba(77, 163, 255, 0.18), transparent 42%),
-    radial-gradient(circle at 100% 45%, rgba(122, 92, 255, 0.18), transparent 44%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
-    rgba(14, 16, 27, 0.62);
-  border-color: rgba(77, 163, 255, 0.22);
+    radial-gradient(ellipse at 0% 45%, rgba(77, 163, 255, 0.27), transparent 45%),
+    radial-gradient(ellipse at 100% 35%, rgba(122, 92, 255, 0.25), transparent 48%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.15), transparent 44%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.040)),
+    rgba(12, 15, 30, 0.72);
+  border-color: rgba(77, 163, 255, 0.34);
+  border-radius: 999px 20px 20px 999px;
+  font-size: 13px;
+  font-weight: 500;
+  text-shadow:
+    0 0 14px rgba(77, 163, 255, 0.48),
+    0 0 30px rgba(122, 92, 255, 0.28);
 }
 
 #custom-ai {
-  min-width: 48px;
+  min-height: 38px;
+  min-width: 58px;
+  margin-left: -8px;
+  padding-left: 18px;
+  padding-right: 20px;
   color: @seven_cyan;
   background:
-    radial-gradient(circle at 50% 5%, rgba(0, 212, 255, 0.22), transparent 46%),
-    rgba(14, 16, 27, 0.62);
-  border-color: rgba(0, 212, 255, 0.22);
+    radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.30), transparent 48%),
+    radial-gradient(circle at 100% 90%, rgba(122, 92, 255, 0.22), transparent 44%),
+    rgba(12, 15, 30, 0.72);
+  border-color: rgba(0, 212, 255, 0.34);
+  border-left-color: rgba(237, 237, 237, 0.045);
+  border-radius: 20px 999px 999px 20px;
   font-family: "SF Pro Rounded", "SF Pro Display", system-ui, sans-serif;
+  text-shadow:
+    0 0 12px rgba(0, 212, 255, 0.70),
+    0 0 24px rgba(122, 92, 255, 0.38);
 }
 
 #custom-profile,
@@ -185,9 +220,101 @@ tooltip label {
 #custom-settings,
 #custom-power {
   min-width: 30px;
-  padding-left: 11px;
-  padding-right: 11px;
+  padding-left: 13px;
+  padding-right: 13px;
   color: rgba(221, 229, 244, 0.88);
+}
+
+#custom-profile,
+#cpu,
+#custom-bluetooth,
+#custom-notifications {
+  margin-right: 0;
+  border-radius: 999px 14px 14px 999px;
+  border-right-color: rgba(237, 237, 237, 0.035);
+}
+
+#custom-security,
+#memory,
+#pulseaudio,
+#clock,
+#custom-settings,
+#custom-power {
+  margin-left: -8px;
+  border-left-color: rgba(237, 237, 237, 0.040);
+}
+
+#custom-security {
+  margin-right: 12px;
+  border-radius: 14px 999px 999px 14px;
+}
+
+#cpu,
+#memory,
+#battery {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(0, 212, 255, 0.13), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.090), rgba(255, 255, 255, 0.028)),
+    rgba(8, 12, 22, 0.66);
+}
+
+#memory {
+  margin-right: 0;
+  border-radius: 14px;
+  border-right-color: rgba(237, 237, 237, 0.035);
+}
+
+#battery {
+  margin-left: -8px;
+  margin-right: 12px;
+  border-left-color: rgba(237, 237, 237, 0.040);
+  border-radius: 14px 999px 999px 14px;
+}
+
+#custom-bluetooth,
+#pulseaudio,
+#network {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(77, 163, 255, 0.14), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.030)),
+    rgba(10, 13, 22, 0.68);
+}
+
+#pulseaudio {
+  margin-right: 0;
+  border-radius: 14px;
+  border-right-color: rgba(237, 237, 237, 0.035);
+}
+
+#network {
+  margin-left: -8px;
+  margin-right: 12px;
+  border-left-color: rgba(237, 237, 237, 0.040);
+  border-radius: 14px 999px 999px 14px;
+}
+
+#custom-notifications {
+  margin-right: 0;
+}
+
+#clock {
+  min-width: 92px;
+  margin-right: 0;
+  color: rgba(237, 237, 237, 0.95);
+  font-family: "SF Mono", "JetBrains Mono", monospace;
+  font-weight: 500;
+  border-radius: 14px;
+  border-right-color: rgba(237, 237, 237, 0.035);
+}
+
+#custom-settings {
+  margin-right: 0;
+  border-radius: 14px;
+  border-right-color: rgba(237, 237, 237, 0.035);
+}
+
+#custom-power {
+  border-radius: 14px 999px 999px 14px;
 }
 
 #cpu,
@@ -204,14 +331,6 @@ tooltip label {
     linear-gradient(180deg, rgba(0, 255, 179, 0.10), rgba(0, 255, 179, 0.030)),
     rgba(6, 13, 13, 0.58);
   text-shadow: 0 0 13px rgba(0, 255, 179, 0.50);
-}
-
-#clock {
-  min-width: 72px;
-  padding-left: 14px;
-  padding-right: 14px;
-  color: rgba(237, 237, 237, 0.94);
-  font-family: "SF Mono", "JetBrains Mono", monospace;
 }
 
 #network.wifi,
@@ -291,11 +410,26 @@ tooltip label {
 #custom-power:hover {
   color: rgba(255, 255, 255, 0.98);
   background:
-    radial-gradient(circle at 50% 0%, rgba(77, 163, 255, 0.18), transparent 45%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.055)),
+    radial-gradient(circle at 50% 0%, rgba(77, 163, 255, 0.24), transparent 48%),
+    radial-gradient(circle at 100% 100%, rgba(122, 92, 255, 0.14), transparent 45%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.060)),
     @seven_surface_lift;
   border-color: @seven_edge_hot;
   text-shadow:
     0 0 10px rgba(77, 163, 255, 0.62),
     0 0 20px rgba(122, 92, 255, 0.35);
+}
+
+#custom-spotlight:hover,
+#custom-ai:hover {
+  color: rgba(255, 255, 255, 1.0);
+  background:
+    radial-gradient(ellipse at 10% 45%, rgba(77, 163, 255, 0.36), transparent 46%),
+    radial-gradient(ellipse at 95% 35%, rgba(122, 92, 255, 0.34), transparent 48%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.070)),
+    rgba(12, 15, 30, 0.82);
+  border-color: rgba(0, 212, 255, 0.46);
+  text-shadow:
+    0 0 14px rgba(0, 212, 255, 0.82),
+    0 0 30px rgba(122, 92, 255, 0.48);
 }
