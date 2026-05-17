@@ -338,10 +338,14 @@ fi
 if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q '$dock = seven-dock toggle' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'SevenDockNative' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'pin)' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'unpin)' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'show_context_menu' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'process_running' "$ROOT_DIR/bin/seven-dock-native" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-dock" toggle | grep -q 'DRY-RUN > Dock >'; then
-  ok "SevenOS Dock toggles with Super+D"
+  ok "SevenOS Dock toggles with Super+D and exposes workflow actions"
 else
-  fail "SevenOS Dock should toggle with Super+D"
+  fail "SevenOS Dock should toggle with Super+D and expose workflow actions"
 fi
 
 if jq -e '.network."on-click" == "seven-waybar-action network" and .network."on-click-middle" == "seven-waybar-action network-connect" and .pulseaudio."on-click" == "seven-waybar-action audio" and .battery."on-click" == "seven-waybar-action battery" and .clock."on-click" == "seven-waybar-action clock" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/quick"."on-click" == "seven-quick-settings" and ."custom/notifications"."on-click" == "seven-waybar-notifications menu" and ."custom/notifications"."on-click-right" == "seven-waybar-notifications toggle-dnd"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then

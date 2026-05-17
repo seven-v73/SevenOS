@@ -636,3 +636,9 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - La Waybar adopte une lecture plus macOS-like et plus SevenOS : `7`, `Apps` et l'heure forment le menu systeme de gauche, les workspaces restent au centre, et les controles systeme sont regroupes a droite.
 - La hauteur de la barre est reduite avec des capsules plus fines pour eviter l'effet "barre custom Arch" et donner une sensation plus proche d'un vrai menu-bar d'OS.
 - Le Dock est fortement compacte : cadre moins large, hauteur reduite, icones plus petites, margin inferieur plus discret et position plus ergonomique.
+
+## 2026-05-17 - Dock workflow foundation
+
+- Le Dock devient un vrai composant de workflow : configuration persistante dans `~/.config/sevenos/dock.json`, commandes `seven-dock pin`, `seven-dock unpin` et `seven-dock settings`.
+- Le Dock separe les apps epinglees, les dossiers (`Downloads`, `Home`) et les actions systeme, comme un dock d'OS plutot qu'une simple barre de lancement.
+- Les icones affichent des indicateurs d'execution bases sur les processus, un badge de notifications sur le Hub quand disponible, et des menus clic droit avec ouvrir, afficher les fenetres, quitter, forcer a quitter, garder ou retirer du Dock.

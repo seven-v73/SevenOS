@@ -160,7 +160,10 @@ Spotlight is the command surface for daily use. It indexes:
 
 Use `Super` alone when you want the full app grid. `Super+A` remains a
 compatibility shortcut. `Super+D` toggles the SevenOS Dock for Files, Apps,
-Browser, Terminal, Spotlight, Hub and Settings.
+Browser, Terminal, Spotlight, Hub and Settings. The Dock also separates folders
+from apps, shows running indicators, provides right-click actions such as show
+windows, quit and force quit, and stores pinned items in
+`~/.config/sevenos/dock.json`.
 Use `Super+H` or the
 Spotlight action `Desktop · Open Seven Hub` for the Control Center.
 

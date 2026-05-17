@@ -24,9 +24,15 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root || true)"
 native="${ROOT_DIR:+$ROOT_DIR/bin/seven-dock-native}"
+config_file="$HOME/.config/sevenos/dock.json"
+pid_file="${XDG_RUNTIME_DIR:-/tmp}/sevenos-dock.pid"
 
 is_running() {
-  pgrep -u "$USER" -f 'seven-dock-native' >/dev/null 2>&1
+  [[ -s "$pid_file" ]] || return 1
+  local pid
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  kill -0 "$pid" >/dev/null 2>&1
 }
 
 open_dock() {
@@ -38,7 +44,8 @@ open_dock() {
     return 0
   fi
   if [[ -n "$native" && -x "$native" ]]; then
-    SEVENOS_ROOT="$ROOT_DIR" setsid -f "$native" >/tmp/sevenos-dock.log 2>&1
+    SEVENOS_ROOT="$ROOT_DIR" nohup "$native" >/tmp/sevenos-dock.log 2>&1 &
+    printf '%s\n' "$!" > "$pid_file"
   else
     printf 'seven-dock: seven-dock-native not found\n' >&2
     return 1
@@ -50,7 +57,10 @@ close_dock() {
     printf 'DRY-RUN > Dock > Close SevenOS Dock\n'
     return 0
   fi
-  pkill -u "$USER" -f 'seven-dock-native' >/dev/null 2>&1 || true
+  if is_running; then
+    kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
+  fi
+  rm -f "$pid_file"
 }
 
 case "${1:-toggle}" in
@@ -74,6 +84,68 @@ case "${1:-toggle}" in
       printf 'SevenOS Dock: MISS\n'
     fi
     ;;
+  settings)
+    mkdir -p "$(dirname "$config_file")"
+    if [[ ! -s "$config_file" ]]; then
+      cat > "$config_file" <<'JSON'
+{
+  "position": "bottom",
+  "size": "compact",
+  "magnification": true,
+  "autohide": false,
+  "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+  "folders": ["downloads", "home"]
+}
+JSON
+    fi
+    printf 'SevenOS Dock Settings\n'
+    printf '=====================\n'
+    cat "$config_file"
+    ;;
+  pin)
+    shift || true
+    tile="${1:-}"
+    if [[ -z "$tile" ]]; then
+      printf 'Usage: seven-dock pin <files|apps|browser|terminal|spotlight|hub|settings>\n' >&2
+      exit 1
+    fi
+    python - "$config_file" "$tile" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+tile = sys.argv[2]
+path.parent.mkdir(parents=True, exist_ok=True)
+data = json.loads(path.read_text()) if path.exists() else {}
+pinned = data.get("pinned", ["files", "apps", "browser", "terminal", "spotlight", "hub"])
+if tile not in pinned:
+    pinned.append(tile)
+data["pinned"] = pinned
+data.setdefault("position", "bottom")
+data.setdefault("size", "compact")
+data.setdefault("magnification", True)
+data.setdefault("autohide", False)
+data.setdefault("folders", ["downloads", "home"])
+path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+    ;;
+  unpin)
+    shift || true
+    tile="${1:-}"
+    if [[ -z "$tile" ]]; then
+      printf 'Usage: seven-dock unpin <id>\n' >&2
+      exit 1
+    fi
+    python - "$config_file" "$tile" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+tile = sys.argv[2]
+data = json.loads(path.read_text()) if path.exists() else {}
+data["pinned"] = [item for item in data.get("pinned", []) if item != tile]
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+    ;;
   --probe)
     if [[ -n "$native" && -x "$native" ]]; then
       "$native" --probe
@@ -83,7 +155,7 @@ case "${1:-toggle}" in
     fi
     ;;
   *)
-    printf 'Usage: seven-dock [toggle|open|close|status|--probe]\n' >&2
+    printf 'Usage: seven-dock [toggle|open|close|status|settings|pin <id>|unpin <id>|--probe]\n' >&2
     exit 1
     ;;
 esac

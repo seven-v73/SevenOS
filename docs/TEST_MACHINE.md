@@ -159,9 +159,11 @@ Super+Ctrl+Enter Terminal theme menu
 Super+Shift+P Power menu
 ```
 
-Waybar should expose a macOS-like top bar: `Apps + time` on the left,
+Waybar should expose a macOS-like top bar: `7 + Apps + time` on the left,
 workspaces in the center, and compact system controls on the right. Files and
-favorite launchers live in the Dock through `Super+D`. If the bar is missing,
+favorite launchers live in the Dock through `Super+D`. The Dock separates apps,
+folders and system actions, shows running indicators, supports right-click
+menus, and persists pins in `~/.config/sevenos/dock.json`. If the bar is missing,
 run:
 
 ```bash

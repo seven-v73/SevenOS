@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -46,6 +47,17 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+CONFIG_PATH = Path.home() / ".config/sevenos/dock.json"
+
+
+DEFAULT_CONFIG = {
+    "position": "bottom",
+    "size": "compact",
+    "magnification": True,
+    "autohide": False,
+    "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+    "folders": ["downloads", "home"],
+}
 
 
 def probe() -> int:
@@ -67,6 +79,46 @@ def command_available(command: str) -> bool:
     return subprocess.run(["sh", "-lc", f"command -v {command}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 
+def load_config() -> dict[str, object]:
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if not CONFIG_PATH.exists():
+        save_config(DEFAULT_CONFIG)
+        return dict(DEFAULT_CONFIG)
+    try:
+        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        data = {}
+    config = dict(DEFAULT_CONFIG)
+    config.update({key: value for key, value in data.items() if key in DEFAULT_CONFIG})
+    return config
+
+
+def save_config(config: dict[str, object]) -> None:
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def process_running(names: list[str]) -> bool:
+    for name in names:
+        result = subprocess.run(
+            ["pgrep", "-u", os.environ.get("USER", ""), "-x", name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            return True
+    return False
+
+
+def notification_count() -> int:
+    for command in (["swaync-client", "-c"], ["makoctl", "list"]):
+        result = subprocess.run(command, text=True, capture_output=True, check=False)
+        if result.returncode == 0 and result.stdout.strip().isdigit():
+            return int(result.stdout.strip())
+    return 0
+
+
 def resolve_command(command: list[str]) -> list[str]:
     if not command:
         return []
@@ -82,17 +134,27 @@ def run_action(command: list[str]) -> None:
     subprocess.Popen(resolve_command(command), cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def dock_tiles() -> list[dict[str, object]]:
+def tile_catalog() -> dict[str, dict[str, object]]:
     browser = ["xdg-open", "https://www.google.com"]
-    return [
-        {"title": "Files", "icon": "system-file-manager", "style": "files", "command": ["seven-files"], "active": True},
-        {"title": "Apps", "icon": "view-app-grid-symbolic", "style": "apps", "command": ["seven-overview", "apps"], "active": True},
-        {"title": "Browser", "icon": "web-browser", "style": "browser", "command": browser, "active": False},
-        {"title": "Terminal", "icon": "utilities-terminal", "style": "terminal", "command": ["seven-terminal", "classic"], "active": False},
-        {"title": "Spotlight", "icon": "system-search", "style": "spotlight", "command": ["seven-spotlight"], "active": False},
-        {"title": "Hub", "icon": "preferences-system", "style": "hub", "command": ["seven", "hub"], "active": True},
-        {"title": "Settings", "icon": "emblem-system", "style": "settings", "command": ["seven-quick-settings"], "active": False},
-    ]
+    return {
+        "files": {"id": "files", "title": "Files", "icon": "system-file-manager", "style": "files", "command": ["seven-files"], "processes": ["seven-files-native", "nautilus"], "kind": "app"},
+        "apps": {"id": "apps", "title": "Apps", "icon": "view-app-grid-symbolic", "style": "apps", "command": ["seven-overview", "apps"], "processes": ["seven-launchpad-native"], "kind": "system"},
+        "browser": {"id": "browser", "title": "Browser", "icon": "web-browser", "style": "browser", "command": browser, "processes": ["firefox", "brave", "chromium", "google-chrome-stable"], "kind": "app"},
+        "terminal": {"id": "terminal", "title": "Terminal", "icon": "utilities-terminal", "style": "terminal", "command": ["seven-terminal", "classic"], "processes": ["seven-terminal-native", "kitty"], "kind": "app"},
+        "spotlight": {"id": "spotlight", "title": "Spotlight", "icon": "system-search", "style": "spotlight", "command": ["seven-spotlight"], "processes": ["rofi"], "kind": "system"},
+        "hub": {"id": "hub", "title": "Hub", "icon": "preferences-system", "style": "hub", "command": ["seven", "hub"], "processes": ["seven-hub-native"], "kind": "app"},
+        "settings": {"id": "settings", "title": "Settings", "icon": "emblem-system", "style": "settings", "command": ["seven-quick-settings"], "processes": ["pavucontrol", "nm-connection-editor"], "kind": "system"},
+        "downloads": {"id": "downloads", "title": "Downloads", "icon": "folder-download", "style": "folder", "command": ["xdg-open", str(Path.home() / "Downloads")], "path": str(Path.home() / "Downloads"), "kind": "folder"},
+        "home": {"id": "home", "title": "Home", "icon": "user-home", "style": "folder", "command": ["xdg-open", str(Path.home())], "path": str(Path.home()), "kind": "folder"},
+    }
+
+
+def dock_tiles(config: dict[str, object]) -> tuple[list[dict[str, object]], list[dict[str, object]], list[dict[str, object]]]:
+    catalog = tile_catalog()
+    pinned = [catalog[tile_id] for tile_id in config.get("pinned", []) if tile_id in catalog]
+    folders = [catalog[tile_id] for tile_id in config.get("folders", []) if tile_id in catalog]
+    system = [catalog["settings"]]
+    return pinned, folders, system
 
 
 def run_dock() -> int:
@@ -109,6 +171,8 @@ def run_dock() -> int:
         Gdk.set_program_class("SevenDockNative")
     except Exception:
         pass
+
+    config = load_config()
 
     css = """
     window.seven-dock {
@@ -165,6 +229,9 @@ def run_dock() -> int:
     .dock-icon.settings {
       background: linear-gradient(180deg, rgba(240,245,248,0.98), rgba(146,160,170,0.88));
     }
+    .dock-icon.folder {
+      background: linear-gradient(180deg, rgba(112,210,255,0.98), rgba(72,154,224,0.90));
+    }
     .dock-dot {
       min-width: 5px;
       min-height: 5px;
@@ -174,6 +241,18 @@ def run_dock() -> int:
     }
     .dock-dot.idle {
       background: transparent;
+    }
+    .dock-badge {
+      min-width: 17px;
+      min-height: 17px;
+      border-radius: 999px;
+      padding: 0 5px;
+      color: white;
+      background: rgba(214, 58, 52, 0.96);
+      font-size: 10px;
+      font-weight: 500;
+      margin-left: 36px;
+      margin-bottom: -18px;
     }
     .dock-separator {
       min-width: 1px;
@@ -216,44 +295,14 @@ def run_dock() -> int:
     shell.get_style_context().add_class("dock-shell")
     window.add(shell)
 
-    for index, tile in enumerate(dock_tiles()):
-        if index == 4:
+    pinned_tiles, folder_tiles, system_tiles = dock_tiles(config)
+    for group_index, group in enumerate((pinned_tiles, folder_tiles, system_tiles)):
+        if group_index > 0 and group:
             separator = Gtk.Box()
             separator.get_style_context().add_class("dock-separator")
             shell.pack_start(separator, False, False, 0)
-
-        event = Gtk.EventBox()
-        event.set_visible_window(False)
-        event.set_tooltip_text(str(tile["title"]))
-        event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
-        event.connect("button-press-event", lambda _widget, event_data, command=tile["command"]: on_tile_click(event_data, command))
-
-        button_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        button_box.set_halign(Gtk.Align.CENTER)
-        button_box.get_style_context().add_class("dock-tile")
-
-        icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        icon_box.set_halign(Gtk.Align.CENTER)
-        icon_box.set_valign(Gtk.Align.CENTER)
-        icon_box.get_style_context().add_class("dock-icon")
-        icon_box.get_style_context().add_class(str(tile.get("style", "default")))
-        icon = Gtk.Image.new_from_icon_name(str(tile["icon"]), Gtk.IconSize.DIALOG)
-        icon.set_pixel_size(36)
-        icon_box.pack_start(icon, True, True, 0)
-        event.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
-        event.connect("enter-notify-event", lambda _widget, _event, image=icon, box=icon_box: magnify_tile(image, box, True))
-        event.connect("leave-notify-event", lambda _widget, _event, image=icon, box=icon_box: magnify_tile(image, box, False))
-
-        dot = Gtk.Box()
-        dot.get_style_context().add_class("dock-dot")
-        if not tile.get("active"):
-            dot.get_style_context().add_class("idle")
-        dot.set_halign(Gtk.Align.CENTER)
-
-        button_box.pack_start(icon_box, False, False, 0)
-        button_box.pack_start(dot, False, False, 0)
-        event.add(button_box)
-        shell.pack_start(event, False, False, 0)
+        for tile in group:
+            add_tile(shell, tile, config, Gtk, Gdk)
 
     window.connect("destroy", Gtk.main_quit)
     window.show_all()
@@ -262,17 +311,128 @@ def run_dock() -> int:
     return 0
 
 
+def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk) -> None:
+    event = Gtk.EventBox()
+    event.set_visible_window(False)
+    event.set_tooltip_text(str(tile["title"]))
+    event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+    event.connect("button-press-event", lambda widget, event_data, dock_tile=tile: on_tile_click(widget, event_data, dock_tile, config, Gtk))
+
+    button_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    button_box.set_halign(Gtk.Align.CENTER)
+    button_box.get_style_context().add_class("dock-tile")
+
+    icon_stack = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    icon_stack.set_halign(Gtk.Align.CENTER)
+
+    badge_count = notification_count() if tile.get("id") == "hub" else 0
+    if badge_count > 0:
+        badge = Gtk.Label(label=str(min(badge_count, 99)))
+        badge.set_halign(Gtk.Align.END)
+        badge.get_style_context().add_class("dock-badge")
+        icon_stack.pack_start(badge, False, False, 0)
+
+    icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    icon_box.set_halign(Gtk.Align.CENTER)
+    icon_box.set_valign(Gtk.Align.CENTER)
+    icon_box.get_style_context().add_class("dock-icon")
+    icon_box.get_style_context().add_class(str(tile.get("style", "default")))
+    icon = Gtk.Image.new_from_icon_name(str(tile["icon"]), Gtk.IconSize.DIALOG)
+    icon.set_pixel_size(36)
+    icon_box.pack_start(icon, True, True, 0)
+    icon_stack.pack_start(icon_box, False, False, 0)
+
+    event.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+    event.connect("enter-notify-event", lambda _widget, _event, image=icon, box=icon_box: magnify_tile(image, box, True))
+    event.connect("leave-notify-event", lambda _widget, _event, image=icon, box=icon_box: magnify_tile(image, box, False))
+
+    dot = Gtk.Box()
+    dot.get_style_context().add_class("dock-dot")
+    if not tile_running(tile):
+        dot.get_style_context().add_class("idle")
+    dot.set_halign(Gtk.Align.CENTER)
+
+    button_box.pack_start(icon_stack, False, False, 0)
+    button_box.pack_start(dot, False, False, 0)
+    event.add(button_box)
+    shell.pack_start(event, False, False, 0)
+
+
 def magnify_tile(icon, icon_box, active: bool) -> bool:
     icon.set_pixel_size(40 if active else 36)
     icon_box.set_size_request(58 if active else 52, 58 if active else 52)
     return False
 
 
-def on_tile_click(event, command: object) -> bool:
-    if getattr(event, "button", 0) == 1 and isinstance(command, list):
-        run_action([str(part) for part in command])
+def tile_running(tile: dict[str, object]) -> bool:
+    if tile.get("kind") == "folder":
+        return False
+    processes = [str(process) for process in tile.get("processes", [])]
+    return process_running(processes)
+
+
+def on_tile_click(widget, event, tile: dict[str, object], config: dict[str, object], Gtk) -> bool:
+    if getattr(event, "button", 0) == 1 and isinstance(tile.get("command"), list):
+        run_action([str(part) for part in tile["command"]])
+        return True
+    if getattr(event, "button", 0) == 3:
+        show_context_menu(widget, tile, config, Gtk, event)
         return True
     return False
+
+
+def show_context_menu(widget, tile: dict[str, object], config: dict[str, object], Gtk, event) -> None:
+    menu = Gtk.Menu()
+
+    def item(label: str, callback) -> None:
+        menu_item = Gtk.MenuItem(label=label)
+        menu_item.connect("activate", lambda _item: callback())
+        menu.append(menu_item)
+
+    item(f"Open {tile.get('title', 'Item')}", lambda: run_action([str(part) for part in tile.get("command", [])]))
+
+    if tile.get("kind") == "folder":
+        path = str(tile.get("path", Path.home()))
+        item("Open in Seven Files", lambda: run_action(["seven-files", path]))
+        item("Reveal in Files", lambda: run_action(["xdg-open", path]))
+    else:
+        item("Show Windows", lambda: run_action(["seven-overview", "windows"]))
+        if tile_running(tile):
+            processes = [str(process) for process in tile.get("processes", [])]
+            item("Quit", lambda: quit_processes(processes, force=False))
+            item("Force Quit", lambda: quit_processes(processes, force=True))
+
+    tile_id = str(tile.get("id", ""))
+    pinned = [str(item_id) for item_id in config.get("pinned", [])]
+    if tile.get("kind") == "app" or tile.get("kind") == "system":
+        if tile_id in pinned:
+            item("Remove from Dock", lambda: update_pinned(tile_id, keep=False))
+        else:
+            item("Keep in Dock", lambda: update_pinned(tile_id, keep=True))
+
+    item("Dock Settings", lambda: run_action(["seven-dock", "settings"]))
+    menu.show_all()
+    try:
+        menu.popup_at_pointer(event)
+    except Exception:
+        menu.popup(None, None, None, None, getattr(event, "button", 3), getattr(event, "time", 0))
+
+
+def quit_processes(processes: list[str], force: bool) -> None:
+    signal = "-9" if force else "-TERM"
+    for process in processes:
+        subprocess.run(["pkill", signal, "-u", os.environ.get("USER", ""), "-x", process], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+
+
+def update_pinned(tile_id: str, keep: bool) -> None:
+    config = load_config()
+    pinned = [str(item) for item in config.get("pinned", [])]
+    if keep and tile_id not in pinned:
+        pinned.append(tile_id)
+    if not keep:
+        pinned = [item for item in pinned if item != tile_id]
+    config["pinned"] = pinned
+    save_config(config)
 
 
 def main() -> int:

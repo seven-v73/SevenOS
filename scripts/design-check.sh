@@ -61,10 +61,12 @@ fi
 if [[ -x "$ROOT_DIR/bin/seven-dock" ]] &&
    [[ -x "$ROOT_DIR/bin/seven-dock-native" ]] &&
    grep -q 'dock-shell' "$ROOT_DIR/bin/seven-dock-native" &&
-   grep -q 'GtkLayerShell' "$ROOT_DIR/bin/seven-dock-native"; then
+   grep -q 'GtkLayerShell' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'show_context_menu' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'dock-badge' "$ROOT_DIR/bin/seven-dock-native"; then
   ok "SevenOS exposes a native macOS-like dock surface"
 else
-  fail "SevenOS should expose a native dock with layer-shell support"
+  fail "SevenOS should expose a native dock with layer-shell support, badges and context menus"
 fi
 
 if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
