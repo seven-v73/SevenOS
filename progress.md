@@ -623,3 +623,10 @@ Chaque nouvelle amelioration doit repondre a au moins une question :
 - Est-ce que SevenOS renforce son identite souveraine, fluide et ancree ?
 
 Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
+
+## 2026-05-17 - Dock and Waybar polish pass
+
+- Le dock SevenOS gagne une presence plus macOS-like : surface plus large, coins plus doux, icones plus grandes, separation entre apps et controles systeme, et effet de magnification au survol.
+- Les icones du dock ont maintenant des surfaces colorees distinctes pour mieux differencier Files, Apps, Browser, Terminal, Spotlight, Hub et Settings sans surcharger l'interface.
+- La Waybar est encore affine dans une logique menu-bar premium : capsules plus respirantes, contraste glass plus lisible, workspaces plus doux et etats hover/actif plus polis.
+- Les regles Hyprland suivent la nouvelle taille du Dock afin d'eviter l'impression d'un panneau trop petit ou mal pose.

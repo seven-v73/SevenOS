@@ -47,8 +47,8 @@ else
   fail "Waybar should use Apps/time left, workspaces center, stateful system controls right."
 fi
 
-if grep -q 'border-radius: 17px' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'border-radius: 18px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+if grep -q 'border-radius: 18px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'border-radius: 19px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-profile.ok' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-security.miss' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
