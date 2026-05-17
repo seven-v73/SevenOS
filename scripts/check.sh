@@ -78,6 +78,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-waybar-notifications" \
   "$ROOT_DIR/bin/seven-waybar-profile" \
   "$ROOT_DIR/bin/seven-waybar-security" \
+  "$ROOT_DIR/bin/seven-waybar" \
   "$ROOT_DIR/bin/seven-wifi" \
   "$ROOT_DIR/bin/seven-windows-assistant" \
   "$ROOT_DIR/bin/sevenpkg" \

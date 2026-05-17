@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG="$CONFIG_HOME/waybar/config.jsonc"
+STYLE="$CONFIG_HOME/waybar/style.css"
+
+count_waybar() {
+  pgrep -u "$USER" -x waybar | wc -l
+}
+
+start_waybar() {
+  if systemctl --user list-unit-files sevenos-waybar.service >/dev/null 2>&1; then
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user restart sevenos-waybar.service
+    return 0
+  fi
+
+  pkill -u "$USER" -x waybar >/dev/null 2>&1 || true
+  setsid -f waybar -c "$CONFIG" -s "$STYLE" >/tmp/sevenos-waybar.log 2>&1
+}
+
+case "${1:-status}" in
+  status)
+    printf 'SevenOS Waybar: %s instance(s)\n' "$(count_waybar)"
+    pgrep -af '(^|/)waybar( |$)|waybar -c|waybar$' || true
+    ;;
+  start|restart|repair)
+    start_waybar
+    sleep 1
+    printf 'SevenOS Waybar: %s instance(s)\n' "$(count_waybar)"
+    ;;
+  stop)
+    systemctl --user stop sevenos-waybar.service >/dev/null 2>&1 || true
+    pkill -u "$USER" -x waybar >/dev/null 2>&1 || true
+    printf 'SevenOS Waybar: stopped\n'
+    ;;
+  *)
+    printf 'Usage: seven-waybar [status|start|restart|repair|stop]\n' >&2
+    exit 2
+    ;;
+esac

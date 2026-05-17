@@ -649,3 +649,9 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - Ajout des filtres `/clipboard`, `/windows` et `/history`, en plus de `/apps`, `/files`, `/settings`, `/system` et `/web`.
 - Ajout de requetes directes : `timer 5`, `record audio`, `content <texte>`, `define <mot>`, `web <requete>`, expressions mathematiques et conversions.
 - Le theme Spotlight est elargi et clarifie : placeholder plus explicite, lignes plus hautes, icones plus visibles et message de categories plus riche.
+
+## 2026-05-17 - Waybar singleton repair
+
+- Ajout de `seven-waybar` pour gerer proprement la barre : `status`, `repair`, `restart`, `stop`.
+- Le service utilisateur `sevenos-waybar.service` coupe toute instance Waybar existante avant de lancer la barre SevenOS, afin d'eviter les doubles barres apres installation, theme reload ou migration ML4W.
+- La documentation de test remplace le lancement manuel `waybar &` par `seven-waybar repair`.

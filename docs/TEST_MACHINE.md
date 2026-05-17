@@ -172,8 +172,8 @@ menus, and persists pins in `~/.config/sevenos/dock.json`. If the bar is missing
 run:
 
 ```bash
-pkill waybar || true
-waybar &
+seven-waybar repair
+seven-waybar status
 ```
 
 If the wallpaper does not change after a theme update:

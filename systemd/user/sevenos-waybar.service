@@ -5,6 +5,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
+ExecStartPre=-/usr/bin/pkill -x waybar
 ExecStart=/usr/bin/env waybar -c %h/.config/waybar/config.jsonc -s %h/.config/waybar/style.css
 Restart=on-failure
 RestartSec=2

@@ -174,6 +174,7 @@ require_executable "bin/seven-waybar-action"
 require_executable "bin/seven-waybar-notifications"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
+require_executable "bin/seven-waybar"
 require_executable "bin/seven-windows-assistant"
 require_executable "vm/windows-app-runner.sh"
 require_executable "scripts/phase-gate.sh"
@@ -352,6 +353,14 @@ if jq -e '.network."on-click" == "seven-waybar-action network" and .network."on-
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
+fi
+
+if grep -q 'ExecStartPre=-/usr/bin/pkill -x waybar' "$ROOT_DIR/systemd/user/sevenos-waybar.service" &&
+   grep -q 'sevenos-waybar.service' "$ROOT_DIR/bin/seven-waybar" &&
+   grep -q 'pkill -u "$USER" -x waybar' "$ROOT_DIR/bin/seven-waybar"; then
+  ok "SevenOS Waybar is singleton-managed"
+else
+  fail "SevenOS Waybar should be singleton-managed"
 fi
 
 wifi_menu_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" menu)"
