@@ -684,12 +684,11 @@ def run(initial_page: str = "overview") -> int:
             locale_name = widget.get_active_id()
             if not locale_name:
                 return
-            if not installed_by_locale.get(locale_name, True):
-                run_detached(f"seven language ensure {locale_name}")
-                notify("SevenOS Language", "Generate this locale first, then choose it again.")
-                return
             run_detached(f"seven language set {locale_name}")
-            notify("SevenOS Language", "Language updated for new apps and terminals.")
+            if installed_by_locale.get(locale_name, True):
+                notify("SevenOS Language", "Language updated for new apps and terminals.")
+            else:
+                notify("SevenOS Language", "SevenOS will generate this locale, then apply it.")
 
         selector.connect("changed", change_language)
         GLib.idle_add(mark_ready)
@@ -812,7 +811,7 @@ def run(initial_page: str = "overview") -> int:
     general.pack_start(language_selector_card(), False, False, 0)
     card_grid(general, [
         setting_card("󰗊", tr("settings.available_languages", "Available languages"), tr("settings.available_languages.note", "{count} generated or installable language(s) detected on this machine.", count=len(lang_payload.get("languages", []))), [action_button(tr("settings.list", "List"), "seven language list")]),
-        setting_card("󰗊", "Français", "Generate fr_FR.UTF-8 if it is not available yet, then switch the SevenOS interface to French.", [action_button("Generate", "seven language ensure fr_FR.UTF-8"), action_button("Apply", "seven language set fr_FR.UTF-8")]),
+        setting_card("󰗊", "Français", "Generate fr_FR.UTF-8 if needed, then switch the SevenOS interface to French.", [action_button("Install & Apply", "seven language set fr_FR.UTF-8")]),
         setting_card("󰌢", tr("settings.keyboard_layouts", "Keyboard layouts"), tr("settings.keyboard_layouts.note", "Keep US/French layouts and Alt+Shift switching independent from display language."), [action_button(tr("settings.open", "Open"), "seven-settings keyboard")]),
         setting_card("󰔎", tr("settings.dark_or_light", "Dark or Light"), tr("settings.dark_or_light.note", "Switch between immersive SevenOS Dark and clarity-first Light."), [action_button(tr("settings.appearance.button", "Appearance"), "seven-settings appearance")]),
         setting_card("󰜉", tr("settings.session_refresh", "Session refresh"), tr("settings.session_refresh.note", "Reload Hyprland after changing global system preferences."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),

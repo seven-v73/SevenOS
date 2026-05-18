@@ -229,18 +229,36 @@ def ensure_language(locale_name: str) -> int:
         return 0
 
     locale_line = f"{normalized} UTF-8"
-    enable_script = (
-        f"grep -q '^{locale_line}$' /etc/locale.gen || "
-        f"grep -q '^#{locale_line}$' /etc/locale.gen && "
-        f"sed -i 's/^#{locale_line}$/{locale_line}/' /etc/locale.gen || "
-        f"printf '\\n{locale_line}\\n' >> /etc/locale.gen"
+    enable_script = "\n".join(
+        [
+            "set -e",
+            f"if grep -q '^{locale_line}$' /etc/locale.gen; then",
+            "  true",
+            f"elif grep -q '^#{locale_line}$' /etc/locale.gen; then",
+            f"  sed -i 's/^#{locale_line}$/{locale_line}/' /etc/locale.gen",
+            "else",
+            f"  printf '\\n{locale_line}\\n' >> /etc/locale.gen",
+            "fi",
+            "locale-gen",
+        ]
     )
-    commands = [f"sudo sh -lc {shlex.quote(enable_script)}", "sudo locale-gen"]
-    if shutil.which("sudo") and subprocess.run(["sudo", "-n", "true"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0:
-        for command in commands:
-            result = subprocess.run(["bash", "-lc", command], check=False)
-            if result.returncode != 0:
-                return result.returncode
+    if shutil.which("sudo"):
+        print(f"[SevenOS] Generating locale: {normalized}")
+        print("[SevenOS] Admin rights may be requested.")
+        result = subprocess.run(["sudo", "sh", "-lc", enable_script], check=False)
+        if result.returncode != 0:
+            print(f"[SevenOS] ERROR: locale generation failed for {normalized}.")
+            return result.returncode
+        if normalized in installed_locales():
+            print(f"[SevenOS] OK: {normalized} generated.")
+            return 0
+        print(f"[SevenOS] ERROR: locale-gen finished but {normalized} is still not listed by locale -a.")
+        return 1
+
+    if os.geteuid() == 0:
+        result = subprocess.run(["sh", "-lc", enable_script], check=False)
+        if result.returncode != 0:
+            return result.returncode
         print(f"[SevenOS] OK: {normalized} generated.")
         return 0
 
@@ -254,23 +272,26 @@ def ensure_language(locale_name: str) -> int:
 
 def set_language(locale_name: str) -> int:
     normalized = normalize_locale(locale_name)
-    installed = installed_locales()
-    if normalized not in installed:
-        print(f"[SevenOS] ERROR: language locale is not generated yet: {locale_name}", flush=True)
-        print(f"[SevenOS] Generate it with: seven language ensure {normalized}")
-        print("[SevenOS] Languages:")
-        for item in language_entries():
-            state = "OK" if item["installed"] else "installable"
-            print(f"  - {item['locale']}  {item['label']}  [{state}]")
-        print("[SevenOS] OK: Guidance shown. No language change was applied yet.")
-        return 0
-
     lang = language_code(normalized)
     if DRY_RUN:
+        if normalized not in installed_locales():
+            print(f"DRY-RUN > Language > Enable {normalized} in /etc/locale.gen")
+            print("DRY-RUN > Language > Run locale-gen")
         print(f"DRY-RUN > Language > Set {normalized}")
         print(f"DRY-RUN > Language > Write {PREF_FILE}")
         print(f"DRY-RUN > Language > Import session environment")
         return 0
+
+    installed = installed_locales()
+    if normalized not in installed:
+        print(f"[SevenOS] WARN: {normalized} is not generated yet. SevenOS will generate it first.")
+        ensure_result = ensure_language(normalized)
+        if ensure_result != 0:
+            return ensure_result
+        installed = installed_locales()
+        if normalized not in installed:
+            print(f"[SevenOS] ERROR: language locale is still unavailable: {normalized}")
+            return 1
 
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     PREF_FILE.write_text(
