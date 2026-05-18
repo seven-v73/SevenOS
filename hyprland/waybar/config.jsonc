@@ -8,7 +8,7 @@
   "margin-right": 24,
   "gtk-layer-shell": true,
   "modules-left": ["custom/sevenos", "custom/spotlight"],
-  "modules-center": ["hyprland/workspaces"],
+  "modules-center": ["custom/workspace-prev", "hyprland/workspaces", "custom/workspace-next"],
   "modules-right": ["network", "pulseaudio", "battery", "clock", "custom/ai"],
   "custom/sevenos": {
     "format": "󰣇 SevenOS",
@@ -16,10 +16,15 @@
     "on-click": "seven hub"
   },
   "custom/spotlight": {
-    "format": "󰍉  Rechercher...",
+    "format": "󰍉  Rechercher...                         SUPER + SPACE",
     "tooltip": true,
     "tooltip-format": "SevenOS Spotlight · Super + Space",
     "on-click": "seven-spotlight"
+  },
+  "custom/workspace-prev": {
+    "format": "‹",
+    "tooltip": false,
+    "on-click": "hyprctl dispatch workspace e-1"
   },
   "hyprland/workspaces": {
     "disable-scroll": true,
@@ -29,6 +34,11 @@
       "*": 5
     },
     "format": "{name}"
+  },
+  "custom/workspace-next": {
+    "format": "›",
+    "tooltip": false,
+    "on-click": "hyprctl dispatch workspace e+1"
   },
   "network": {
     "format-wifi": "󰤨",

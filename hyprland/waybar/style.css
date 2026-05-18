@@ -1,8 +1,8 @@
-@define-color seven_bg rgba(20, 20, 28, 0.55);
-@define-color seven_glass rgba(255, 255, 255, 0.08);
-@define-color seven_glass_lift rgba(255, 255, 255, 0.12);
-@define-color seven_edge rgba(255, 255, 255, 0.10);
-@define-color seven_edge_hot rgba(255, 255, 255, 0.20);
+@define-color seven_bg rgba(34, 38, 76, 0.44);
+@define-color seven_glass rgba(255, 255, 255, 0.105);
+@define-color seven_glass_lift rgba(255, 255, 255, 0.16);
+@define-color seven_edge rgba(255, 255, 255, 0.14);
+@define-color seven_edge_hot rgba(180, 198, 255, 0.30);
 @define-color seven_text #F5F7FA;
 @define-color seven_text_soft rgba(245, 247, 250, 0.78);
 @define-color seven_blue #6EA8FF;
@@ -11,7 +11,7 @@
 
 @keyframes aiPulse {
   0% {
-    opacity: 0.72;
+    opacity: 0.78;
     text-shadow:
       0 0 10px rgba(110, 168, 255, 0.78),
       0 0 18px rgba(139, 124, 255, 0.42);
@@ -25,7 +25,7 @@
   }
 
   100% {
-    opacity: 0.72;
+    opacity: 0.78;
     text-shadow:
       0 0 10px rgba(110, 168, 255, 0.78),
       0 0 18px rgba(139, 124, 255, 0.42);
@@ -66,21 +66,36 @@ window#waybar {
 .modules-right {
   min-height: 46px;
   margin-top: 0;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 1px solid @seven_edge;
-  border-radius: 24px;
+  border-radius: 25px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055) 46%, rgba(255, 255, 255, 0.025)),
-    radial-gradient(ellipse at 8% 0%, rgba(110, 168, 255, 0.22), transparent 46%),
-    radial-gradient(ellipse at 92% 10%, rgba(139, 124, 255, 0.20), transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.075) 46%, rgba(255, 255, 255, 0.030)),
+    radial-gradient(ellipse at 10% -10%, rgba(130, 168, 255, 0.34), transparent 52%),
+    radial-gradient(ellipse at 96% 0%, rgba(211, 143, 255, 0.26), transparent 48%),
+    radial-gradient(ellipse at 50% 100%, rgba(255, 255, 255, 0.055), transparent 62%),
     @seven_bg;
   box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    0 10px 34px rgba(3, 8, 24, 0.32),
+    0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.035);
   transition:
     background 180ms ease,
     border-color 180ms ease,
     box-shadow 180ms ease;
+}
+
+.modules-left {
+  min-width: 430px;
+}
+
+.modules-center {
+  min-width: 370px;
+}
+
+.modules-right {
+  min-width: 456px;
 }
 
 .modules-left:hover,
@@ -88,18 +103,20 @@ window#waybar {
 .modules-right:hover {
   border-color: @seven_edge_hot;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.07) 48%, rgba(255, 255, 255, 0.03)),
-    radial-gradient(ellipse at 18% 0%, rgba(110, 168, 255, 0.28), transparent 48%),
-    radial-gradient(ellipse at 88% 10%, rgba(139, 124, 255, 0.25), transparent 48%),
-    rgba(22, 22, 32, 0.62);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.09) 48%, rgba(255, 255, 255, 0.04)),
+    radial-gradient(ellipse at 18% 0%, rgba(130, 168, 255, 0.38), transparent 50%),
+    radial-gradient(ellipse at 88% 10%, rgba(211, 143, 255, 0.30), transparent 50%),
+    rgba(42, 45, 85, 0.58);
   box-shadow:
-    0 10px 34px rgba(0, 0, 0, 0.32),
-    0 0 30px rgba(110, 168, 255, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    0 12px 38px rgba(3, 8, 24, 0.36),
+    0 0 34px rgba(110, 168, 255, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 #custom-sevenos,
 #custom-spotlight,
+#custom-workspace-prev,
+#custom-workspace-next,
 #network,
 #pulseaudio,
 #battery,
@@ -121,6 +138,8 @@ window#waybar {
 
 #custom-sevenos:hover,
 #custom-spotlight:hover,
+#custom-workspace-prev:hover,
+#custom-workspace-next:hover,
 #network:hover,
 #pulseaudio:hover,
 #battery:hover,
@@ -128,15 +147,15 @@ window#waybar {
 #custom-ai:hover {
   color: #FFFFFF;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)),
-    rgba(255, 255, 255, 0.08);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.06)),
+    rgba(255, 255, 255, 0.10);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 0 20px rgba(110, 168, 255, 0.10);
 }
 
 #custom-sevenos {
-  min-width: 118px;
+  min-width: 126px;
   padding-left: 16px;
   padding-right: 18px;
   color: #FFFFFF;
@@ -145,25 +164,39 @@ window#waybar {
 }
 
 #custom-spotlight {
-  min-width: 260px;
+  min-width: 272px;
   padding-left: 18px;
-  padding-right: 18px;
-  color: rgba(255, 255, 255, 0.84);
+  padding-right: 16px;
+  color: rgba(255, 255, 255, 0.82);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035)),
-    rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.045)),
+    radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.08), transparent 62%),
+    rgba(255, 255, 255, 0.07);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 1px 0 rgba(255, 255, 255, 0.035);
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 #custom-spotlight:hover {
-  min-width: 272px;
+  min-width: 284px;
   color: rgba(255, 255, 255, 0.96);
 }
 
+#custom-workspace-prev,
+#custom-workspace-next {
+  min-width: 32px;
+  min-height: 34px;
+  padding: 0 8px;
+  margin: 0 2px;
+  color: rgba(255, 255, 255, 0.84);
+  font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
+  font-size: 24px;
+}
+
 #workspaces {
-  padding: 0 6px;
+  padding: 0 2px;
 }
 
 #workspaces button {
@@ -174,7 +207,9 @@ window#waybar {
   border: 1px solid transparent;
   border-radius: 16px;
   color: rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.035);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
+    rgba(255, 255, 255, 0.035);
   transition:
     background 180ms ease,
     color 180ms ease,
@@ -192,7 +227,8 @@ window#waybar {
   min-width: 42px;
   color: #FFFFFF;
   background:
-    radial-gradient(circle at 50% 0%, rgba(156, 203, 255, 0.36), transparent 58%),
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.30), transparent 38%),
+    radial-gradient(circle at 50% 16%, rgba(156, 203, 255, 0.44), transparent 62%),
     linear-gradient(135deg, @seven_blue, @seven_violet);
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow:
@@ -216,8 +252,22 @@ window#waybar {
   color: rgba(255, 255, 255, 0.90);
 }
 
+#network,
+#pulseaudio,
+#battery,
+#clock {
+  background: transparent;
+}
+
+#pulseaudio,
+#battery,
+#clock {
+  border-left: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 0;
+}
+
 #battery {
-  min-width: 78px;
+  min-width: 82px;
 }
 
 #network.disconnected,
@@ -228,7 +278,7 @@ window#waybar {
 }
 
 #clock {
-  min-width: 146px;
+  min-width: 158px;
   padding-left: 16px;
   padding-right: 16px;
   color: rgba(255, 255, 255, 0.84);
@@ -237,19 +287,22 @@ window#waybar {
 }
 
 #custom-ai {
-  min-width: 44px;
+  min-width: 46px;
+  min-height: 38px;
   padding-left: 0;
   padding-right: 0;
   border-radius: 999px;
   color: @seven_cyan;
   font-size: 17px;
   background:
-    radial-gradient(circle at 40% 34%, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.74) 7%, transparent 18%),
-    radial-gradient(circle at 50% 50%, rgba(156, 203, 255, 0.88), rgba(110, 168, 255, 0.76) 34%, rgba(139, 124, 255, 0.56) 62%, transparent 76%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.06));
+    radial-gradient(circle at 42% 33%, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.78) 7%, transparent 18%),
+    radial-gradient(circle at 44% 54%, rgba(156, 203, 255, 0.95), rgba(110, 168, 255, 0.80) 32%, rgba(139, 124, 255, 0.58) 56%, transparent 74%),
+    radial-gradient(circle at 70% 32%, rgba(255, 136, 240, 0.42), transparent 42%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.065));
   box-shadow:
-    0 0 18px rgba(110, 168, 255, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    0 0 20px rgba(110, 168, 255, 0.34),
+    0 0 34px rgba(139, 124, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
   animation: aiPulse 3s ease-in-out infinite;
 }
 
