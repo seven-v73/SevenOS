@@ -137,6 +137,11 @@ installer.iso	Installer	Preview ISO Build	./install.sh iso --dry-run	safe	Previe
 ai.brief	System	SevenAI Brief	seven ai	safe	Show the local SevenAI system brief.
 ai.plan	System	SevenAI Plan	seven ai plan	safe	Show prioritized local guidance from SevenOS state.
 ai.focus	System	SevenAI Product Focus	seven ai focus	safe	Show the next product-hardening focus from ecosystem maturity and release contracts.
+ai.agent	System	SevenAI Agent	seven ai "open settings"	safe	Run the local SevenAI intent engine against a natural-language request.
+ai.apps	System	SevenAI App Registry	seven ai apps --json	safe	Show the app registry SevenAI uses before launching applications.
+ai.context	System	SevenAI Context	seven ai context --json	safe	Show SevenAI local system context from processes and Hyprland state.
+ai.memory	System	SevenAI Memory	seven ai memory --json	safe	Show the local-only SevenAI interaction memory log.
+ai.wifi	System	SevenAI Wi-Fi Repair Plan	seven ai "mon wifi ne marche pas"	safe	Let SevenAI diagnose a Wi-Fi repair intent before applying system changes.
 store.open	Apps	SevenStore	seven store	safe	Browse SevenOS modules, Flatpak apps and safe OS actions from one catalog.
 store.modules	Apps	Store Modules	seven store modules	safe	Show installable SevenOS bundles with optional modules separated from required readiness.
 store.apps	Apps	Store Apps	seven store apps	safe	Show the Flatpak application catalog exposed through SevenStore.

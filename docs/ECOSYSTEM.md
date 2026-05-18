@@ -272,6 +272,21 @@ insights, shell, installer, ecosystem maturity, packages and actions, then
 produce a concise plan. It gives the OS a visible assistant surface now while
 leaving room for model-backed providers later.
 
+SevenAI Agent adds the first executable OS-agent foundation:
+
+- `seven ai open settings` parses natural language into `OPEN_APP` and opens
+  the resolved app through the SevenOS app registry.
+- `seven ai "mon wifi ne marche pas"` maps to a Wi-Fi repair intent, but only
+  previews system changes until `--apply` is explicit.
+- `seven ai apps --json` exposes the app registry used for launch decisions.
+- `seven ai context --json` exposes local process and Hyprland context.
+- `seven ai memory --json` exposes a local-only event log for short-term
+  behavior learning.
+
+The safety contract is simple: app/UI actions can run directly, system actions
+are previewed unless `--apply` is present, and privileged package/root actions
+must remain explicit and explain their command before execution.
+
 ### Phase 5: Connected Ecosystem
 
 Later:
@@ -313,6 +328,10 @@ Specialized preview commands:
 ```bash
 seven ai plan
 seven ai focus
+seven ai open settings
+seven ai "mon wifi ne marche pas"
+seven ai apps --json
+seven ai context --json
 seven adaptive plan
 seven cloud plan
 seven store apps

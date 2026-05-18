@@ -10,12 +10,25 @@ SevenAI Local
 
 Usage:
   seven ai [brief|plan|focus|doctor|json]
-  ./scripts/ai.sh [brief|plan|focus|doctor|json]
+  seven ai open blender
+  seven ai "mon wifi ne marche pas"
+  seven ai intent "open blender" --json
+  seven ai apps --json
+  seven ai context --json
+  seven ai memory --json
+  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|apps|context|memory]
 
 SevenAI Local is a provider-neutral system assistant preview. It does not call
 an online model; it reads SevenOS state, insights and actions, then turns them
 into a short operational plan for the user.
+
+The agent mode adds local intent parsing, app discovery, cautious execution,
+system context and a local-only memory log.
 EOF
+}
+
+agent() {
+  python "$ROOT_DIR/scripts/seven_ai_agent.py" "$@"
 }
 
 command_json() {
@@ -331,6 +344,14 @@ case "$action" in
   focus) focus ;;
   doctor) doctor ;;
   json|--json) payload_json ;;
+  ask|run|intent|apps|context|memory)
+    shift
+    agent "$action" "$@"
+    ;;
+  agent)
+    shift
+    agent ask "$@"
+    ;;
   -h|--help|help) usage ;;
-  *) log_error "Unknown SevenAI action: $action"; usage; exit 1 ;;
+  *) agent ask "$@" ;;
 esac

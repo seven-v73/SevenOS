@@ -126,6 +126,7 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/seven-language" \
   "$ROOT_DIR/bin/seven-terminal-native" \
   "$ROOT_DIR/scripts/seven_i18n.py" \
+  "$ROOT_DIR/scripts/seven_ai_agent.py" \
   "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
 python -m json.tool "$ROOT_DIR/sevenos.dotinst" >/dev/null
@@ -317,6 +318,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" identity packs --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" identity current --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" identity doctor >/dev/null
+"$ROOT_DIR/bin/seven" ai --json intent "open settings" | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" ai --json apps | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" ai --json "mon wifi ne marche pas" | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null

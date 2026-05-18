@@ -607,6 +607,10 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'primary.status' <<<"$actions_json" &&
    grep -q 'primary.apply' <<<"$actions_json" &&
    grep -q 'ai.focus' <<<"$actions_json" &&
+   grep -q 'ai.agent' <<<"$actions_json" &&
+   grep -q 'ai.apps' <<<"$actions_json" &&
+   grep -q 'ai.context' <<<"$actions_json" &&
+   grep -q 'ai.memory' <<<"$actions_json" &&
    grep -q 'improve.daily' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.active' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.all' <<<"$actions_json" &&
@@ -621,6 +625,20 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
   ok "SevenOS exposes a shared action registry for Hub and shell surfaces"
 else
   fail "SevenOS action registry should expose machine-readable UI actions"
+fi
+
+ai_intent_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "open settings")"
+ai_wifi_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mon wifi ne marche pas")"
+ai_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json apps)"
+if python -m json.tool >/dev/null <<<"$ai_intent_json" &&
+   python -m json.tool >/dev/null <<<"$ai_wifi_json" &&
+   python -m json.tool >/dev/null <<<"$ai_apps_json" &&
+   grep -q '"intent": "OPEN_APP"' <<<"$ai_intent_json" &&
+   grep -q '"intent": "REPAIR_NETWORK"' <<<"$ai_wifi_json" &&
+   grep -q '"schema": "sevenos.ai.apps.v1"' <<<"$ai_apps_json"; then
+  ok "SevenAI parses natural-language intents and exposes a local app registry"
+else
+  fail "SevenAI should parse app/network intents and expose app registry JSON"
 fi
 
 flatpak_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" flatpak status --json)"

@@ -290,9 +290,15 @@ def handle_ecosystem(args):
 
 
 def handle_ai(args):
-    extra = [args.action]
-    if args.json:
+    extra = [args.action, *args.extra]
+    if args.json and args.action == "brief" and not args.extra:
         extra = ["json"]
+    elif args.json:
+        extra.append("--json")
+    if args.apply:
+        extra.append("--apply")
+    if args.yes:
+        extra.append("--yes")
     run_script(args, "scripts/ai.sh", *extra)
 
 
@@ -556,9 +562,12 @@ def main():
     ecosystem_parser = subparsers.add_parser("ecosystem", help="show SevenOS ecosystem modules and roadmap")
     ecosystem_parser.add_argument("action", nargs="?", default="status")
     ecosystem_parser.add_argument("--json", action="store_true", help="print machine-readable ecosystem map")
-    ai_parser = subparsers.add_parser("ai", help="show local SevenAI system guidance")
-    ai_parser.add_argument("action", nargs="?", default="brief", choices=("brief", "status", "plan", "focus", "doctor", "json"))
+    ai_parser = subparsers.add_parser("ai", help="ask SevenAI or show local system guidance")
+    ai_parser.add_argument("action", nargs="?", default="brief")
+    ai_parser.add_argument("extra", nargs=argparse.REMAINDER)
     ai_parser.add_argument("--json", action="store_true", help="print machine-readable SevenAI local payload")
+    ai_parser.add_argument("--apply", action="store_true", help="allow SevenAI to execute system actions that require confirmation")
+    ai_parser.add_argument("--yes", action="store_true", help="run non-interactively where supported")
     store_parser = subparsers.add_parser("store", help="browse SevenStore modules, apps and actions")
     store_parser.add_argument("action", nargs="?", default="status", choices=("status", "modules", "catalog", "apps", "actions", "doctor", "install", "json"))
     store_parser.add_argument("--json", action="store_true", help="print machine-readable SevenStore catalog")
