@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-title="Seven Power"
-
 resolve_root() {
   if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/hyprland/rofi" ]]; then
     printf '%s\n' "$SEVENOS_ROOT"
@@ -28,6 +26,45 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root)"
 
+language_code() {
+  local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
+  local config="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.conf"
+  if [[ -z "${SEVENOS_LANGUAGE:-}" && -f "$config" ]]; then
+    language="$(awk -F= '/^(SEVENOS_LANGUAGE|LANG)=/{gsub(/["\047]/, "", $2); print $2; exit}' "$config")"
+  fi
+  case "$language" in
+    fr*) printf 'fr\n' ;;
+    *) printf 'en\n' ;;
+  esac
+}
+
+LANG_CODE="$(language_code)"
+if [[ "$LANG_CODE" == "fr" ]]; then
+  title="Énergie SevenOS"
+  message="Contrôles d’alimentation SevenOS"
+  prompt="Choisir une action : "
+  lock_label="Verrouiller"
+  suspend_label="Mettre en veille"
+  logout_label="Fermer la session"
+  reboot_label="Redémarrer"
+  poweroff_label="Éteindre"
+  missing_lock="seven-power : swaylock n’est pas installé"
+  unknown_action="seven-power : action inconnue"
+  unknown_selection="seven-power : sélection inconnue"
+else
+  title="Seven Power"
+  message="SevenOS power controls"
+  prompt="Choose action: "
+  lock_label="Lock"
+  suspend_label="Suspend"
+  logout_label="Logout"
+  reboot_label="Reboot"
+  poweroff_label="Power Off"
+  missing_lock="seven-power: swaylock is not installed"
+  unknown_action="seven-power: unknown action"
+  unknown_selection="seven-power: unknown selection"
+fi
+
 clean_selection() {
   local selected="$1"
   selected="${selected#*  }"
@@ -48,7 +85,7 @@ run_action() {
       if command -v swaylock >/dev/null 2>&1; then
         swaylock -f -c 0b0b0a
       else
-        printf 'seven-power: swaylock is not installed\n' >&2
+        printf '%s\n' "$missing_lock" >&2
         exit 1
       fi
       ;;
@@ -69,7 +106,7 @@ run_action() {
       systemctl poweroff
       ;;
     *)
-      printf 'seven-power: unknown action: %s\n' "$action" >&2
+      printf '%s: %s\n' "$unknown_action" "$action" >&2
       exit 1
       ;;
   esac
@@ -77,13 +114,16 @@ run_action() {
 
 select_action() {
   local menu
-  menu=$'󰍁  Lock\n󰒲  Suspend\n󰍃  Logout\n󰜉  Reboot\n󰐥  Power Off'
+  menu="$(printf '󰍁  %s\n󰒲  %s\n󰍃  %s\n󰜉  %s\n󰐥  %s\n' "$lock_label" "$suspend_label" "$logout_label" "$reboot_label" "$poweroff_label")"
 
-  if command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
-    printf '%s\n' "$menu" | rofi -dmenu -p "$title" -mesg "SevenOS power controls" -theme "$ROOT_DIR/hyprland/rofi/power.rasi" 2>/dev/null || true
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '%s\n' "$menu"
+    return 0
+  elif command -v rofi >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+    printf '%s\n' "$menu" | rofi -dmenu -p "$title" -mesg "$message" -theme "$ROOT_DIR/hyprland/rofi/power.rasi" 2>/dev/null || true
   else
     printf '%s\n' "$menu" >&2
-    printf 'Choose action: ' >&2
+    printf '%s' "$prompt" >&2
     read -r selected
     printf '%s\n' "$selected"
   fi
@@ -91,16 +131,20 @@ select_action() {
 
 selected="${1:-}"
 if [[ -z "$selected" ]]; then
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    select_action
+    exit 0
+  fi
   selected="$(select_action)"
   selected="$(clean_selection "$selected")"
 fi
 
 case "$selected" in
-  Lock|lock) run_action lock ;;
-  Suspend|suspend) run_action suspend ;;
-  Logout|logout) run_action logout ;;
-  Reboot|reboot) run_action reboot ;;
-  "Power Off"|poweroff|shutdown) run_action poweroff ;;
+  Lock|lock|Verrouiller|verrouiller) run_action lock ;;
+  Suspend|suspend|"Mettre en veille"|veille) run_action suspend ;;
+  Logout|logout|"Fermer la session"|déconnexion|deconnexion) run_action logout ;;
+  Reboot|reboot|Redémarrer|redemarrer) run_action reboot ;;
+  "Power Off"|poweroff|shutdown|Éteindre|Eteindre|éteindre|eteindre) run_action poweroff ;;
   "") exit 0 ;;
-  *) printf 'seven-power: unknown selection: %s\n' "$selected" >&2; exit 1 ;;
+  *) printf '%s: %s\n' "$unknown_selection" "$selected" >&2; exit 1 ;;
 esac

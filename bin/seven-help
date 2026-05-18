@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-title="SevenOS Help"
-
 resolve_root() {
   if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/hyprland/rofi" ]]; then
     printf '%s\n' "$SEVENOS_ROOT"
@@ -26,16 +24,83 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root)"
 
+language_code() {
+  local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
+  local config="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.conf"
+  if [[ -z "${SEVENOS_LANGUAGE:-}" && -f "$config" ]]; then
+    language="$(awk -F= '/^(SEVENOS_LANGUAGE|LANG)=/{gsub(/["\047]/, "", $2); print $2; exit}' "$config")"
+  fi
+  case "$language" in
+    fr*) printf 'fr\n' ;;
+    *) printf 'en\n' ;;
+  esac
+}
+
+LANG_CODE="$(language_code)"
+if [[ "$LANG_CODE" == "fr" ]]; then
+  title="Aide SevenOS"
+  message="Contrôles du bureau SevenOS"
+  close_prompt="Appuyez sur Entrée pour fermer..."
+  menu="$(cat <<'EOF'
+󰩂  Aide du bureau    Super+H
+󰖟  Spotlight SevenOS    Super+Space
+󰒓  Ouvrir Seven Hub    Super+Shift+H
+󰀻  Ouvrir les apps    Super
+󰟀  Basculer le Dock    Super+D
+󰖲  Vue des fenêtres    Super+Tab
+󰒓  Réglages rapides    Super+N / Super+O
+󰆍  Terminal classique    Super+Enter
+󰆍  Terminal sombre    Super+Shift+Enter
+󰆍  Menu du terminal    Super+Ctrl+Enter
+󰉋  Ouvrir Fichiers    Super+E
+󰐥  Menu énergie    Super+Shift+P
+󰍁  Verrouiller l’écran    Super+L
+󰆍  Scratchpad    Super+S
+󰄀  Capture enregistrée    Print
+󰄀  Capture avec édition    Super+Shift+S
+󰅍  Capture copiée    Super+Ctrl+S
+󰜉  Recharger le bureau    Réappliquer la config Hyprland
+󰩂  Vérification post-install    Diagnostiquer les éléments UI manquants
+󰁨  Réparer l’UX    Réappliquer thème, Hub et commandes
+EOF
+)"
+else
+  title="SevenOS Help"
+  message="SevenOS desktop controls"
+  close_prompt="Press Enter to close..."
+  menu="$(cat <<'EOF'
+󰩂  Desktop Helpers    Super+H
+󰖟  SevenOS Spotlight    Super+Space
+󰒓  Open Seven Hub    Super+Shift+H
+󰀻  Open Apps    Super
+󰟀  Toggle Dock    Super+D
+󰖲  Window Overview    Super+Tab
+󰒓  Quick Settings    Super+N / Super+O
+󰆍  Terminal Classic    Super+Enter
+󰆍  Terminal Dark    Super+Shift+Enter
+󰆍  Terminal Theme Menu    Super+Ctrl+Enter
+󰉋  Open Files    Super+E
+󰐥  Power Menu    Super+Shift+P
+󰍁  Lock Screen    Super+L
+󰆍  Scratchpad    Super+S
+󰄀  Screenshot Save    Print
+󰄀  Screenshot Edit    Super+Shift+S
+󰅍  Screenshot Copy    Super+Ctrl+S
+󰜉  Reload Desktop    Reapply Hyprland config
+󰩂  Post-Install Check    Diagnose missing UI pieces
+󰁨  Repair UX    Reapply theme, hub and commands
+EOF
+)"
+fi
+
 run_terminal() {
   local command="$1"
   if command -v kitty >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
-    kitty --title "$title" bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
+    kitty --title "$title" bash -lc "$command; printf '\n%s'; read -r" _ "$close_prompt" &
   else
     bash -lc "$command"
   fi
 }
-
-menu=$'󰩂  Desktop Helpers    Super+H\n󰖟  SevenOS Spotlight    Super+Space\n󰒓  Open Seven Hub    Super+Shift+H\n󰀻  Open Apps    Super\n󰟀  Toggle Dock    Super+D\n󰖲  Window Overview    Super+Tab\n󰒓  Quick Settings    Super+N / Super+O\n󰆍  Terminal Classic    Super+Enter\n󰆍  Terminal Dark    Super+Shift+Enter\n󰆍  Terminal Theme Menu    Super+Ctrl+Enter\n󰉋  Open Files    Super+E\n󰐥  Power Menu    Super+Shift+P\n󰍁  Lock Screen    Super+L\n󰆍  Scratchpad    Super+S\n󰄀  Screenshot Save    Print\n󰄀  Screenshot Edit    Super+Shift+S\n󰅍  Screenshot Copy    Super+Ctrl+S\n󰜉  Reload Desktop    Reapply Hyprland config\n󰩂  Post-Install Check    Diagnose missing UI pieces\n󰁨  Repair UX    Reapply theme, hub and commands'
 
 if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   printf '%s\n' "$menu"
@@ -43,7 +108,7 @@ if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
 fi
 
 if command -v rofi >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
-  selected="$(printf '%s\n' "$menu" | rofi -dmenu -p "$title" -mesg "SevenOS desktop controls" -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" 2>/dev/null || true)"
+  selected="$(printf '%s\n' "$menu" | rofi -dmenu -p "$title" -mesg "$message" -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" 2>/dev/null || true)"
 else
   printf '%s\n' "$menu"
   exit 0
@@ -53,25 +118,25 @@ selected="${selected#*  }"
 selected="${selected%%    *}"
 
 case "$selected" in
-  "Desktop Helpers") seven-help ;;
-  "SevenOS Spotlight") seven-spotlight ;;
-  "Open Seven Hub") seven-hub ;;
-  "Open Apps") seven-overview apps ;;
-  "Toggle Dock") seven-dock toggle ;;
-  "Window Overview") seven-overview windows ;;
-  "Quick Settings") seven-quick-settings ;;
-  "Terminal Classic") seven-terminal classic ;;
-  "Terminal Dark") seven-terminal dark ;;
-  "Terminal Theme Menu") seven-terminal menu ;;
-  "Open Files") seven-files ;;
-  "Power Menu") seven-power ;;
-  "Lock Screen") seven-power lock ;;
+  "Desktop Helpers"|"Aide du bureau") seven-help ;;
+  "SevenOS Spotlight"|"Spotlight SevenOS") seven-spotlight ;;
+  "Open Seven Hub"|"Ouvrir Seven Hub") seven-hub ;;
+  "Open Apps"|"Ouvrir les apps") seven-overview apps ;;
+  "Toggle Dock"|"Basculer le Dock") seven-dock toggle ;;
+  "Window Overview"|"Vue des fenêtres") seven-overview windows ;;
+  "Quick Settings"|"Réglages rapides") seven-quick-settings ;;
+  "Terminal Classic"|"Terminal classique") seven-terminal classic ;;
+  "Terminal Dark"|"Terminal sombre") seven-terminal dark ;;
+  "Terminal Theme Menu"|"Menu du terminal") seven-terminal menu ;;
+  "Open Files"|"Ouvrir Fichiers") seven-files ;;
+  "Power Menu"|"Menu énergie") seven-power ;;
+  "Lock Screen"|"Verrouiller l’écran") seven-power lock ;;
   "Scratchpad") hyprctl dispatch togglespecialworkspace seven ;;
-  "Screenshot Save") seven-screenshot area save ;;
-  "Screenshot Edit") seven-screenshot area edit ;;
-  "Screenshot Copy") seven-screenshot area copy ;;
-  "Reload Desktop") hyprctl reload ;;
-  "Post-Install Check") run_terminal "seven post-install" ;;
-  "Repair UX") run_terminal "seven repair ux --apply" ;;
+  "Screenshot Save"|"Capture enregistrée") seven-screenshot area save ;;
+  "Screenshot Edit"|"Capture avec édition") seven-screenshot area edit ;;
+  "Screenshot Copy"|"Capture copiée") seven-screenshot area copy ;;
+  "Reload Desktop"|"Recharger le bureau") hyprctl reload ;;
+  "Post-Install Check"|"Vérification post-install") run_terminal "seven post-install" ;;
+  "Repair UX"|"Réparer l’UX") run_terminal "seven repair ux --apply" ;;
   "") exit 0 ;;
 esac

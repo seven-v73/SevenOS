@@ -10,6 +10,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+from seven_i18n import tr_text  # noqa: E402
+
 
 def ensure_gi_python() -> None:
     if os.environ.get("SEVENOS_GI_PYTHON") == "1":
@@ -170,15 +173,15 @@ def place_hyprland_window() -> bool:
 def tile_catalog() -> dict[str, dict[str, object]]:
     browser = ["xdg-open", "https://www.google.com"]
     return {
-        "files": {"id": "files", "title": "Files", "icon": "system-file-manager", "style": "files", "command": ["seven-files"], "processes": ["seven-files-native", "nautilus"], "kind": "app"},
-        "apps": {"id": "apps", "title": "Apps", "icon": "view-app-grid-symbolic", "style": "apps", "command": ["seven-overview", "apps"], "processes": ["seven-launchpad-native"], "kind": "system"},
-        "browser": {"id": "browser", "title": "Browser", "icon": "web-browser", "style": "browser", "command": browser, "processes": ["firefox", "brave", "chromium", "google-chrome-stable"], "kind": "app"},
-        "terminal": {"id": "terminal", "title": "Terminal", "icon": "utilities-terminal", "style": "terminal", "command": ["seven-terminal", "classic"], "processes": ["seven-terminal-native", "kitty"], "kind": "app"},
-        "spotlight": {"id": "spotlight", "title": "Spotlight", "icon": "system-search", "style": "spotlight", "command": ["seven-spotlight"], "processes": ["rofi"], "kind": "system"},
-        "hub": {"id": "hub", "title": "Hub", "icon": "preferences-system", "style": "hub", "command": ["seven", "hub"], "processes": ["seven-hub-native"], "kind": "app"},
-        "settings": {"id": "settings", "title": "Settings", "icon": "emblem-system", "style": "settings", "command": ["seven-settings"], "processes": ["seven-settings-native", "pavucontrol", "nm-connection-editor"], "kind": "system"},
-        "downloads": {"id": "downloads", "title": "Downloads", "icon": "folder-download", "style": "folder", "command": ["xdg-open", str(Path.home() / "Downloads")], "path": str(Path.home() / "Downloads"), "kind": "folder"},
-        "home": {"id": "home", "title": "Home", "icon": "user-home", "style": "folder", "command": ["xdg-open", str(Path.home())], "path": str(Path.home()), "kind": "folder"},
+        "files": {"id": "files", "title": tr_text("Files"), "icon": "system-file-manager", "style": "files", "command": ["seven-files"], "processes": ["seven-files-native", "nautilus"], "kind": "app"},
+        "apps": {"id": "apps", "title": tr_text("Apps"), "icon": "view-app-grid-symbolic", "style": "apps", "command": ["seven-overview", "apps"], "processes": ["seven-launchpad-native"], "kind": "system"},
+        "browser": {"id": "browser", "title": tr_text("Browser"), "icon": "web-browser", "style": "browser", "command": browser, "processes": ["firefox", "brave", "chromium", "google-chrome-stable"], "kind": "app"},
+        "terminal": {"id": "terminal", "title": tr_text("Terminal"), "icon": "utilities-terminal", "style": "terminal", "command": ["seven-terminal", "classic"], "processes": ["seven-terminal-native", "kitty"], "kind": "app"},
+        "spotlight": {"id": "spotlight", "title": tr_text("Spotlight"), "icon": "system-search", "style": "spotlight", "command": ["seven-spotlight"], "processes": ["rofi"], "kind": "system"},
+        "hub": {"id": "hub", "title": tr_text("Hub"), "icon": "preferences-system", "style": "hub", "command": ["seven", "hub"], "processes": ["seven-hub-native"], "kind": "app"},
+        "settings": {"id": "settings", "title": tr_text("Settings"), "icon": "emblem-system", "style": "settings", "command": ["seven-settings"], "processes": ["seven-settings-native", "pavucontrol", "nm-connection-editor"], "kind": "system"},
+        "downloads": {"id": "downloads", "title": tr_text("Downloads"), "icon": "folder-download", "style": "folder", "command": ["xdg-open", str(Path.home() / "Downloads")], "path": str(Path.home() / "Downloads"), "kind": "folder"},
+        "home": {"id": "home", "title": tr_text("Home"), "icon": "user-home", "style": "folder", "command": ["xdg-open", str(Path.home())], "path": str(Path.home()), "kind": "folder"},
     }
 
 
@@ -445,28 +448,28 @@ def show_context_menu(widget, tile: dict[str, object], config: dict[str, object]
         menu_item.connect("activate", lambda _item: callback())
         menu.append(menu_item)
 
-    item(f"Open {tile.get('title', 'Item')}", lambda: run_action([str(part) for part in tile.get("command", [])]))
+    item(tr_text("Open {item}", item=tile.get("title", tr_text("Item"))), lambda: run_action([str(part) for part in tile.get("command", [])]))
 
     if tile.get("kind") == "folder":
         path = str(tile.get("path", Path.home()))
-        item("Open in Seven Files", lambda: run_action(["seven-files", path]))
-        item("Reveal in Files", lambda: run_action(["xdg-open", path]))
+        item(tr_text("Open in Seven Files"), lambda: run_action(["seven-files", path]))
+        item(tr_text("Reveal in Files"), lambda: run_action(["xdg-open", path]))
     else:
-        item("Show Windows", lambda: run_action(["seven-overview", "windows"]))
+        item(tr_text("Show Windows"), lambda: run_action(["seven-overview", "windows"]))
         if tile_running(tile):
             processes = [str(process) for process in tile.get("processes", [])]
-            item("Quit", lambda: quit_processes(processes, force=False))
-            item("Force Quit", lambda: quit_processes(processes, force=True))
+            item(tr_text("Quit"), lambda: quit_processes(processes, force=False))
+            item(tr_text("Force Quit"), lambda: quit_processes(processes, force=True))
 
     tile_id = str(tile.get("id", ""))
     pinned = [str(item_id) for item_id in config.get("pinned", [])]
     if tile.get("kind") == "app" or tile.get("kind") == "system":
         if tile_id in pinned:
-            item("Remove from Dock", lambda: update_pinned(tile_id, keep=False))
+            item(tr_text("Remove from Dock"), lambda: update_pinned(tile_id, keep=False))
         else:
-            item("Keep in Dock", lambda: update_pinned(tile_id, keep=True))
+            item(tr_text("Keep in Dock"), lambda: update_pinned(tile_id, keep=True))
 
-    item("Dock Settings", lambda: run_action(["seven-dock", "settings"]))
+    item(tr_text("Dock Settings"), lambda: run_action(["seven-dock", "settings"]))
     menu.show_all()
     try:
         menu.popup_at_pointer(event)

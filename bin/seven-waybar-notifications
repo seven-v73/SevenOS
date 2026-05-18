@@ -5,6 +5,57 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
 DND_FILE="$STATE_DIR/notifications.dnd"
 ROOT_DIR="${SEVENOS_ROOT:-}"
 
+language_code() {
+  local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
+  local config="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.conf"
+  if [[ -z "${SEVENOS_LANGUAGE:-}" && -f "$config" ]]; then
+    language="$(awk -F= '/^(SEVENOS_LANGUAGE|LANG)=/{gsub(/["\047]/, "", $2); print $2; exit}' "$config")"
+  fi
+  case "$language" in
+    fr*) printf 'fr\n' ;;
+    *) printf 'en\n' ;;
+  esac
+}
+
+LANG_CODE="$(language_code)"
+if [[ "$LANG_CODE" == "fr" ]]; then
+  notifications_title="Notifications SevenOS"
+  close_prompt="Appuyez sur Entrée pour fermer..."
+  no_notifications="Aucune notification"
+  no_notifications_detail="Les alertes apparaîtront ici"
+  notification_label="Notification"
+  rofi_prompt="Notifications"
+  test_label="Tester"
+  start_label="Démarrer"
+  install_label="Installer"
+  restore_label="Restaurer"
+  dismiss_label="Fermer"
+  focus_label="Focus"
+  restart_label="Redémarrer"
+  active_tooltip="Notifications : actives\nClic : ouvrir les contrôles, clic droit : activer Ne pas déranger, clic milieu : fermer les notifications visibles."
+  dnd_tooltip="Notifications : Ne pas déranger activé\nClic : ouvrir les contrôles, clic droit : désactiver Ne pas déranger, clic milieu : fermer les notifications visibles."
+  missing_backend_tooltip="Notifications : backend manquant\nClic : ouvrir le centre de notifications avec installation/réparation."
+  missing_service_tooltip="Notifications : service arrêté\nClic : ouvrir les contrôles, clic droit : basculer Ne pas déranger."
+else
+  notifications_title="SevenOS Notifications"
+  close_prompt="Press Enter to close..."
+  no_notifications="No notifications"
+  no_notifications_detail="Alerts will appear here"
+  notification_label="Notification"
+  rofi_prompt="Notifications"
+  test_label="Test"
+  start_label="Start"
+  install_label="Install"
+  restore_label="Restore"
+  dismiss_label="Dismiss"
+  focus_label="Focus"
+  restart_label="Restart"
+  active_tooltip="Notifications: active\nClick opens controls, right-click enables DND, middle-click dismisses visible notifications."
+  dnd_tooltip="Notifications: Do Not Disturb enabled\nClick opens controls, right-click disables DND, middle-click dismisses visible notifications."
+  missing_backend_tooltip="Notifications: backend missing\nClick opens notification center with install/repair action."
+  missing_service_tooltip="Notifications: service missing\nClick opens controls, right-click toggles DND."
+fi
+
 resolve_native_center() {
   if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-notification-center-native" ]]; then
     printf '%s\n' "$ROOT_DIR/bin/seven-notification-center-native"
@@ -54,7 +105,7 @@ run_terminal() {
   local title="$1"
   local command="$2"
   local wrapped
-  wrapped="$command; printf '\nPress Enter to close...'; read -r"
+  wrapped="$command; printf '\n%s' '$close_prompt'; read -r"
 
   if dry_run; then
     dry_line "$title > $command"
@@ -92,13 +143,13 @@ status() {
 
 status_json() {
   if [[ -f "$DND_FILE" ]]; then
-    printf '{"text":"󰂛","tooltip":"Notifications: Do Not Disturb enabled\\nClick opens controls, right-click disables DND, middle-click dismisses visible notifications.","class":"dnd"}\n'
+    printf '{"text":"󰂛","tooltip":"%s","class":"dnd"}\n' "$(printf '%s' "$dnd_tooltip" | sed ':a;N;$!ba;s/\n/\\n/g')"
   elif mako_missing; then
-    printf '{"text":"󰂜","tooltip":"Notifications: backend missing\\nClick opens notification center with install/repair action.","class":"miss"}\n'
+    printf '{"text":"󰂜","tooltip":"%s","class":"miss"}\n' "$(printf '%s' "$missing_backend_tooltip" | sed ':a;N;$!ba;s/\n/\\n/g')"
   elif is_mako_running; then
-    printf '{"text":"󰂚","tooltip":"Notifications: active\\nClick opens controls, right-click enables DND, middle-click dismisses visible notifications.","class":"ok"}\n'
+    printf '{"text":"󰂚","tooltip":"%s","class":"ok"}\n' "$(printf '%s' "$active_tooltip" | sed ':a;N;$!ba;s/\n/\\n/g')"
   else
-    printf '{"text":"󰂜","tooltip":"Notifications: service missing\\nClick opens controls, right-click toggles DND.","class":"miss"}\n'
+    printf '{"text":"󰂜","tooltip":"%s","class":"miss"}\n' "$(printf '%s' "$missing_service_tooltip" | sed ':a;N;$!ba;s/\n/\\n/g')"
   fi
 }
 
@@ -119,7 +170,7 @@ def walk(value):
     if isinstance(value, dict):
         summary = str(value.get("summary") or value.get("title") or value.get("app-name") or value.get("app_name") or "").strip()
         body = str(value.get("body") or value.get("text") or "").strip()
-        app = str(value.get("app-name") or value.get("app_name") or value.get("app") or "Notification").strip()
+        app = str(value.get("app-name") or value.get("app_name") or value.get("app") or os.environ.get("SEVENOS_NOTIFICATION_LABEL", "Notification")).strip()
         if summary or body:
             rows.append((app, summary or app, body))
         for child in value.values():
@@ -134,7 +185,7 @@ except Exception:
     for raw in text.splitlines():
         line = re.sub(r"\s+", " ", raw).strip()
         if line and line not in {"[]", "{}"}:
-            rows.append(("Notification", line[:72], ""))
+            rows.append((os.environ.get("SEVENOS_NOTIFICATION_LABEL", "Notification"), line[:72], ""))
 
 for app, summary, body in rows[:5]:
     detail = body[:60] if body else app
@@ -143,18 +194,18 @@ PY
       return 0
     fi
   fi
-  printf '󰂚  No notifications    Alerts will appear here\n'
+  printf '󰂚  %s    %s\n' "$no_notifications" "$no_notifications_detail"
 }
 
 start_mako() {
   if is_mako_running; then
-    notify "SevenOS Notifications" "Mako is already running."
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Mako est déjà lancé.' || printf 'Mako is already running.')"
     return 0
   fi
 
   if mako_missing; then
     systemctl --user reset-failed sevenos-notifications.service >/dev/null 2>&1 || true
-    notify "SevenOS Notifications" "Mako is not installed. Open the notification center and use Install."
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Mako n’est pas installé. Ouvre le centre de notifications et utilise Installer.' || printf 'Mako is not installed. Open the notification center and use Install.')"
     dry_run && return 0
     return 1
   fi
@@ -165,10 +216,10 @@ start_mako() {
   fi
 
   if is_mako_running; then
-    notify "SevenOS Notifications" "Notification service started."
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Service de notifications démarré.' || printf 'Notification service started.')"
   else
     run_detached mako
-    notify "SevenOS Notifications" "Notification service started."
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Service de notifications démarré.' || printf 'Notification service started.')"
   fi
 }
 
@@ -180,18 +231,18 @@ restart_mako() {
 
   if mako_missing; then
     systemctl --user reset-failed sevenos-notifications.service >/dev/null 2>&1 || true
-    notify "SevenOS Notifications" "Mako is not installed. Use Install in the notification center."
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Mako n’est pas installé. Utilise Installer dans le centre de notifications.' || printf 'Mako is not installed. Use Install in the notification center.')"
     dry_run && return 0
     return 1
   fi
 
   pkill -x mako >/dev/null 2>&1 || true
   systemctl --user restart sevenos-notifications.service >/dev/null 2>&1 || run_detached mako
-  notify "SevenOS Notifications" "Notification service restarted."
+  notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Service de notifications redémarré.' || printf 'Notification service restarted.')"
 }
 
 install_mako() {
-  run_terminal "SevenOS Notifications" "sudo pacman -S --needed mako libnotify && systemctl --user daemon-reload && systemctl --user reset-failed sevenos-notifications.service && systemctl --user enable --now sevenos-notifications.service"
+  run_terminal "$notifications_title" "sudo pacman -S --needed mako libnotify && systemctl --user daemon-reload && systemctl --user reset-failed sevenos-notifications.service && systemctl --user enable --now sevenos-notifications.service"
 }
 
 dismiss_visible() {
@@ -200,7 +251,7 @@ dismiss_visible() {
     makoctl dismiss --all >/dev/null 2>&1 || true
     return 0
   fi
-  notify "SevenOS Notifications" "makoctl is not available."
+  notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'makoctl n’est pas disponible.' || printf 'makoctl is not available.')"
 }
 
 restore_last() {
@@ -209,7 +260,7 @@ restore_last() {
     makoctl restore >/dev/null 2>&1 || true
     return 0
   fi
-  notify "SevenOS Notifications" "makoctl is not available."
+  notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'makoctl n’est pas disponible.' || printf 'makoctl is not available.')"
 }
 
 toggle_dnd() {
@@ -217,32 +268,25 @@ toggle_dnd() {
 
   if [[ -f "$DND_FILE" ]]; then
     dry_run && dry_line "Toggle Do Not Disturb > off"
-    rm -f "$DND_FILE"
+    dry_run || rm -f "$DND_FILE"
     if command -v makoctl >/dev/null 2>&1; then
       dry_run || makoctl mode -r do-not-disturb >/dev/null 2>&1 || true
     fi
-    notify "SevenOS Notifications" "Do Not Disturb disabled."
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Ne pas déranger désactivé.' || printf 'Do Not Disturb disabled.')"
   else
     dry_run && dry_line "Toggle Do Not Disturb > on"
     dry_run || touch "$DND_FILE"
     if command -v makoctl >/dev/null 2>&1; then
       dry_run || makoctl mode -a do-not-disturb >/dev/null 2>&1 || true
     fi
-    notify "SevenOS Notifications" "Do Not Disturb enabled."
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Ne pas déranger activé.' || printf 'Do Not Disturb enabled.')"
   fi
 }
 
 menu() {
+  export SEVENOS_NOTIFICATION_LABEL="$notification_label"
   notification_feed
-  cat <<'EOF'
-󰅺  Test
-󰐥  Start
-󰚰  Install
-󰕒  Restore
-󰅖  Dismiss
-󰂛  Focus
-󰜉  Restart
-EOF
+  printf '󰅺  %s\n󰐥  %s\n󰚰  %s\n󰕒  %s\n󰅖  %s\n󰂛  %s\n󰜉  %s\n' "$test_label" "$start_label" "$install_label" "$restore_label" "$dismiss_label" "$focus_label" "$restart_label"
 }
 
 clean_selection() {
@@ -277,22 +321,22 @@ open_menu() {
   fi
 
   if ! command -v rofi >/dev/null 2>&1; then
-    notify "SevenOS Notifications" "Rofi is not installed."
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Rofi n’est pas installé.' || printf 'Rofi is not installed.')"
     return 1
   fi
 
-  selected="$(menu | rofi -dmenu -p "Notifications" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi" 2>/dev/null || true)"
+  selected="$(menu | rofi -dmenu -p "$rofi_prompt" -theme "${XDG_CONFIG_HOME:-$HOME/.config}/rofi/sevenos.rasi" 2>/dev/null || true)"
   selected="$(clean_selection "$selected")"
 
   case "$selected" in
-    "Test") notify "SevenOS Notifications" "SevenOS notification surface is active." ;;
-    "Start") start_mako ;;
-    "Install") install_mako ;;
-    "Restore") restore_last ;;
-    "Dismiss") dismiss_visible ;;
+    "Test"|"Tester") notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'La surface de notifications SevenOS est active.' || printf 'SevenOS notification surface is active.')" ;;
+    "Start"|"Démarrer") start_mako ;;
+    "Install"|"Installer") install_mako ;;
+    "Restore"|"Restaurer") restore_last ;;
+    "Dismiss"|"Fermer") dismiss_visible ;;
     "Focus") toggle_dnd ;;
-    "Restart") restart_mako ;;
-    "No notifications") exit 0 ;;
+    "Restart"|"Redémarrer") restart_mako ;;
+    "No notifications"|"Aucune notification") exit 0 ;;
     Notification*) exit 0 ;;
     "") exit 0 ;;
   esac
@@ -308,6 +352,6 @@ case "${1:-status}" in
   dismiss) dismiss_visible ;;
   restore) restore_last ;;
   toggle-dnd|dnd) toggle_dnd ;;
-  test) notify "SevenOS Notifications" "SevenOS notification surface is active." ;;
-  *) printf 'Usage: seven-waybar-notifications [status|menu|start|restart|dismiss|restore|toggle-dnd|test]\n' >&2; exit 1 ;;
+  test) notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'La surface de notifications SevenOS est active.' || printf 'SevenOS notification surface is active.')" ;;
+  *) printf '%s\n' "$([[ "$LANG_CODE" == "fr" ]] && printf 'Utilisation : seven-waybar-notifications [status|menu|start|restart|dismiss|restore|toggle-dnd|test]' || printf 'Usage: seven-waybar-notifications [status|menu|start|restart|dismiss|restore|toggle-dnd|test]')" >&2; exit 1 ;;
 esac

@@ -404,6 +404,7 @@ if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'SevenDockNative' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'restart|repair|reopen' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'SEVENOS_DOCK_FORCE_WINDOW=1' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'set_namespace(window, "sevenos-dock")' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'GtkLayerShell.Layer.OVERLAY' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'SEVENOS_DOCK_FORCE_WINDOW' "$ROOT_DIR/bin/seven-dock-native" &&
@@ -460,10 +461,12 @@ else
   fail "Waybar Bluetooth module should expose status, toggle and pairing workflow"
 fi
 
-notifications_menu_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
-notifications_toggle_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" toggle-dnd)"
+notifications_menu_output="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
+notifications_menu_fr="$(SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
+notifications_toggle_output="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" toggle-dnd)"
 if jq -e '."modules-right" | index("custom/notifications")' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null &&
    grep -q 'DRY-RUN > Notifications > Open panel' <<<"$notifications_menu_output" &&
+   grep -q 'Aucune notification' <<<"$notifications_menu_fr" &&
    grep -q 'DRY-RUN > Notifications > Toggle Do Not Disturb' <<<"$notifications_toggle_output"; then
   ok "Waybar notifications expose status, menu and Do Not Disturb controls"
 else
@@ -1174,7 +1177,7 @@ shell_panel_quick_dry="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_D
 shell_panel_notifications_dry="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications)"
 shell_panel_quick_fr="$(SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick)"
 shell_panel_notifications_fr="$(SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications)"
-waybar_notifications_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
+waybar_notifications_dry="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
 if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_quick_dry" &&
    grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' <<<"$shell_panel_notifications_dry" &&
    grep -q 'No notifications' <<<"$shell_panel_notifications_dry" &&
@@ -1707,10 +1710,12 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset offline --dry-run >/dev/null
 ok "interactive UX commands support dry-run"
 
-if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰩂  Desktop Helpers    Super+H' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰒓  Open Seven Hub    Super+Shift+H' &&
+if SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰩂  Desktop Helpers    Super+H' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰒓  Open Seven Hub    Super+Shift+H' &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰩂  Aide du bureau    Super+H' &&
    grep -q '󰋜  Home' "$ROOT_DIR/bin/seven-files" &&
    grep -q '󰀻  Open Apps    Super' "$ROOT_DIR/bin/seven-help" &&
+   grep -q '󰀻  Ouvrir les apps    Super' "$ROOT_DIR/bin/seven-help" &&
    grep -q 'Toggle Dock    Super+D' "$ROOT_DIR/bin/seven-help" &&
    grep -q 'Terminal Classic' "$ROOT_DIR/bin/seven-help" &&
    grep -q 'Terminal Dark' "$ROOT_DIR/bin/seven-help"; then

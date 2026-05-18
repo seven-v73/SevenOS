@@ -2,6 +2,26 @@
 set -Eeuo pipefail
 
 mode="${1:-text}"
+language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.conf"
+if [[ -z "${SEVENOS_LANGUAGE:-}" && -f "$config" ]]; then
+  language="$(awk -F= '/^(SEVENOS_LANGUAGE|LANG)=/{gsub(/["\047]/, "", $2); print $2; exit}' "$config")"
+fi
+if [[ "$language" == fr* ]]; then
+  protected_label="protégé"
+  partial_label="partiel"
+  exposed_label="exposé"
+  firewall_label="Pare-feu"
+  sandbox_label="Sandbox"
+  click_label="Cliquer ouvre le centre Shield."
+else
+  protected_label="protected"
+  partial_label="partial"
+  exposed_label="exposed"
+  firewall_label="Firewall"
+  sandbox_label="Sandbox"
+  click_label="Click opens Shield center."
+fi
 firewall="MISS"
 if systemctl is-active --quiet ufw.service 2>/dev/null; then
   firewall="OK"
@@ -14,11 +34,11 @@ fi
 
 if [[ "$mode" == "json" ]]; then
   if [[ "$firewall" == "OK" && "$lab" == "OK" ]]; then
-    printf '{"text":"󰒃","tooltip":"Shield: protected\\nFirewall: OK\\nSandbox: OK\\nClick opens Shield center.","class":"ok"}\n'
+    printf '{"text":"󰒃","tooltip":"Shield: %s\\n%s: OK\\n%s: OK\\n%s","class":"ok"}\n' "$protected_label" "$firewall_label" "$sandbox_label" "$click_label"
   elif [[ "$firewall" == "OK" || "$lab" == "OK" ]]; then
-    printf '{"text":"󰒃","tooltip":"Shield: partial\\nFirewall: %s\\nSandbox: %s\\nClick opens Shield center.","class":"warn"}\n' "$firewall" "$lab"
+    printf '{"text":"󰒃","tooltip":"Shield: %s\\n%s: %s\\n%s: %s\\n%s","class":"warn"}\n' "$partial_label" "$firewall_label" "$firewall" "$sandbox_label" "$lab" "$click_label"
   else
-    printf '{"text":"󰒃","tooltip":"Shield: exposed\\nFirewall: MISS\\nSandbox: MISS\\nClick opens Shield center.","class":"miss"}\n'
+    printf '{"text":"󰒃","tooltip":"Shield: %s\\n%s: MISS\\n%s: MISS\\n%s","class":"miss"}\n' "$exposed_label" "$firewall_label" "$sandbox_label" "$click_label"
   fi
 else
   printf 'Shield %s Lab %s\n' "$firewall" "$lab"

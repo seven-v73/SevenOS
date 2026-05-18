@@ -27,6 +27,7 @@ resolve_root() {
 }
 
 ROOT_DIR="$(resolve_root || true)"
+export SEVENOS_ROOT="${ROOT_DIR:-${SEVENOS_ROOT:-}}"
 
 if command -v seven >/dev/null 2>&1; then
   seven_command=(seven)
@@ -49,30 +50,40 @@ fi
 
 python - "$profile_json" "${1:-text}" <<'PY'
 import json
+import os
 import sys
+from pathlib import Path
+
+root = Path(os.environ.get("SEVENOS_ROOT") or ".").resolve()
+sys.path.insert(0, str(root / "scripts"))
+try:
+    from seven_i18n import tr_text
+except Exception:
+    def tr_text(text, **values):
+        return text.format(**values) if values else text
 
 try:
     profiles = json.loads(sys.argv[1])
 except Exception:
     if len(sys.argv) > 2 and sys.argv[2] == "json":
-        print(json.dumps({"text": "󰐃", "tooltip": "SevenOS profile state could not be parsed.", "class": "miss"}, ensure_ascii=False))
+        print(json.dumps({"text": "󰐃", "tooltip": tr_text("SevenOS profile state could not be parsed."), "class": "miss"}, ensure_ascii=False))
         raise SystemExit(0)
-    print("Profile MISS")
+    print(tr_text("Profile MISS"))
     raise SystemExit(0)
 
 mode = sys.argv[2] if len(sys.argv) > 2 else "text"
 active = next((item for item in profiles if item.get("active")), None)
 if active:
-    title = active.get("title") or active.get("key") or "Profile"
+    title = active.get("title") or active.get("key") or tr_text("Profile")
     state = active.get("state") or "MISS"
     installed = active.get("installed", 0)
     total = active.get("total", 0)
-    workspace = active.get("workspace") or "Workspace not configured"
+    workspace = active.get("workspace") or tr_text("Workspace not configured")
     if mode == "json":
         cls = {"OK": "ok", "PART": "warn", "MISS": "miss"}.get(state, "warn")
         print(json.dumps({
             "text": "󰐃",
-            "tooltip": f"Profile: {title}\\nState: {state} · {installed}/{total}\\nWorkspace: {workspace}\\nClick opens profile center.",
+            "tooltip": tr_text("Profile: {title}\\nState: {state} · {installed}/{total}\\nWorkspace: {workspace}\\nClick opens profile center.", title=title, state=state, installed=installed, total=total, workspace=workspace),
             "class": cls,
         }, ensure_ascii=False))
         raise SystemExit(0)
@@ -94,13 +105,13 @@ if mode == "json":
         cls = "miss"
     print(json.dumps({
         "text": text,
-        "tooltip": f"Profiles ready: {ok_count}\\nProfiles partial: {part_count}\\nClick opens profile center.",
+        "tooltip": tr_text("Profiles ready: {ok_count}\\nProfiles partial: {part_count}\\nClick opens profile center.", ok_count=ok_count, part_count=part_count),
         "class": cls,
     }, ensure_ascii=False))
 elif ok_count:
-    print(f"Profiles {ok_count} OK")
+    print(tr_text("Profiles {count} OK", count=ok_count))
 elif part_count:
-    print(f"Profiles {part_count} PART")
+    print(tr_text("Profiles {count} PART", count=part_count))
 else:
-    print("Profile MISS")
+    print(tr_text("Profile MISS"))
 PY
