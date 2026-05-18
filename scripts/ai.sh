@@ -18,8 +18,12 @@ Usage:
   seven ai memory --json
   seven ai shortcuts --json
   seven ai llm --json
+  seven ai diagnose system --json
+  seven ai playbook wifi_repair --json
+  seven ai provider "mon wifi ne marche pas" --json
+  seven ai research "Hyprland release notes" --json --web
   SEVENAI_WEB=1 seven ai web "SevenOS Hyprland" --json
-  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|apps|context|memory|knowledge|shortcuts|workflow|llm|web]
+  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|apps|context|memory|knowledge|shortcuts|workflow|llm|web|research|diagnose|playbook|provider]
 
 SevenAI Local is a provider-neutral system assistant preview. It does not call
 an online model; it reads SevenOS state, insights and actions, then turns them
@@ -347,7 +351,7 @@ case "$action" in
   focus) focus ;;
   doctor) doctor ;;
   json|--json) payload_json ;;
-  ask|run|intent|apps|context|memory|knowledge|shortcuts|workflow|llm|web)
+  ask|run|intent|apps|context|memory|knowledge|shortcuts|workflow|llm|web|research|diagnose|playbook|provider)
     shift
     agent "$action" "$@"
     ;;

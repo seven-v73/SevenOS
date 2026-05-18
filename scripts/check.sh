@@ -127,6 +127,7 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/seven-terminal-native" \
   "$ROOT_DIR/scripts/seven_i18n.py" \
   "$ROOT_DIR/scripts/seven_ai_agent.py" \
+  "$ROOT_DIR/scripts/seven_ai_provider.py" \
   "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
 python -m json.tool "$ROOT_DIR/sevenos.dotinst" >/dev/null
@@ -326,6 +327,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" ai --json shortcuts | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" ai --json knowledge | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" ai --json llm | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" ai --json provider "mon wifi ne marche pas" | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" ai --json diagnose system | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" ai --json playbook wifi_repair | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" ai --json research "Hyprland" | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" core bus --json | python -m json.tool >/dev/null

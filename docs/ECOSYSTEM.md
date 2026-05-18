@@ -290,10 +290,20 @@ SevenAI Agent adds the first executable OS-agent foundation:
 - `seven ai llm --json` exposes the complete provider-neutral LLM contract.
 - `seven ai web "query" --json --web` can perform an explicit web lookup; web
   access stays disabled by default and never sends system context implicitly.
+- `seven ai provider "question" --json` runs the active SevenOS local provider:
+  deterministic, no account, no token cost, no external data flow.
+- `seven ai diagnose system --json` inspects load, memory, disk, top processes,
+  failed units and NetworkManager state.
+- `seven ai playbook wifi_repair --json` exposes confirmed auto-healing steps
+  before any repair action runs.
+- `seven ai research "query" --json --web` uses explicit web access and stores
+  research results in the local SQLite cache.
 
 The safety contract is simple: app/UI actions can run directly, system actions
-are previewed unless `--apply` is present, and privileged package/root actions
-must remain explicit and explain their command before execution.
+are previewed unless `--apply` is present, privileged package/root actions must
+remain explicit and explain their command before execution, and the provider
+layer must stay local-only unless a future user-controlled adapter is explicitly
+installed by the user.
 
 ### Phase 5: Connected Ecosystem
 
@@ -343,6 +353,10 @@ seven ai context --json
 seven ai shortcuts
 seven ai knowledge
 seven ai llm --json
+seven ai provider "mon wifi ne marche pas" --json
+seven ai diagnose system --json
+seven ai playbook wifi_repair --json
+seven ai research "Hyprland" --json
 seven adaptive plan
 seven cloud plan
 seven store apps

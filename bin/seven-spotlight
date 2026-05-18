@@ -236,6 +236,11 @@ mode	󰅇  /clipboard · Clipboard	mode.clipboard	__mode__	Recent clipboard item
 mode	󰖲  /windows · Windows	mode.windows	__mode__	Open Hyprland windows and active app surfaces.	preferences-system-windows
 mode	󰋚  /history · Search History	mode.history	__mode__	Previous Spotlight searches and commands.	document-open-recent
 intent	󰚩  Ask · Why is my system slow?	ai.system.slow	seven insights	Analyze SevenOS readiness, services and bottlenecks.	system-search
+intent	󰚩  SevenAI · Diagnose system	ai.diagnose	__sevenai__:diagnose system	Preview local diagnostics from SevenAI before opening repair actions.	system-search
+intent	󰖩  SevenAI · Repair Wi-Fi	ai.wifi	__sevenai__:mon wifi ne marche pas	Preview the Wi-Fi repair playbook before applying changes.	network-wireless
+intent	󰔎  SevenAI · Switch Light Mode	ai.theme.light	__sevenai__:mets le thème light	Preview the SevenOS Light Mode switch before applying.	preferences-desktop-theme
+intent	󰖲  SevenAI · Optimize workspace	ai.workflow	__sevenai__:optimise mon travail	Show workspace and focus recommendations.	preferences-system-windows
+intent	󰈙  SevenAI · Research with cache	ai.research	__sevenai_research__:Hyprland SevenOS	Use explicit web/cache research through SevenAI.	system-search
 intent	󰁹  Ask · Optimize battery	ai.battery	seven scheduler plan	Show power-aware scheduler recommendations.	battery
 intent	󰒃  Ask · Prepare Cyber workspace	ai.cyber	seven shield mode	Open CyberSpace context and actions.	security-high
 intent	󰅩  Ask · Prepare Dev workspace	ai.forge	seven profile activate forge	Switch to Forge development context.	applications-development
@@ -482,6 +487,14 @@ launch_desktop() {
 
 run_command() {
   local command="$1"
+  if [[ "$command" == __sevenai__:* ]]; then
+    sevenai_preview "${command#__sevenai__:}"
+    return $?
+  fi
+  if [[ "$command" == __sevenai_research__:* ]]; then
+    sevenai_research_preview "${command#__sevenai_research__:}"
+    return $?
+  fi
   if [[ "$command" == "__calc__" || "$command" == "__convert__" || "$command" == "__define__" || "$command" == "__web__" ]]; then
     notify "SevenOS Spotlight" "Type directly in Spotlight, for example: 24*7, 10 km to mi, define kernel, web SevenOS."
     return 0
@@ -513,6 +526,67 @@ run_command() {
     return 0
   fi
   bash -lc "cd '$ROOT_DIR' && $command"
+}
+
+sevenai_preview() {
+  local query="$1"
+  local payload title command safety intent choice
+  payload="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai "$query" --json 2>/dev/null || true)"
+  intent="$(python - "$payload" <<'PY'
+import json, sys
+try:
+    data = json.loads(sys.argv[1])
+    print(data.get("intent", {}).get("intent", "GUIDANCE"))
+except Exception:
+    print("GUIDANCE")
+PY
+)"
+  safety="$(python - "$payload" <<'PY'
+import json, sys
+try:
+    data = json.loads(sys.argv[1])
+    print(data.get("intent", {}).get("safety", "SAFE"))
+except Exception:
+    print("SAFE")
+PY
+)"
+  command="$(python - "$payload" <<'PY'
+import json, sys
+try:
+    data = json.loads(sys.argv[1])
+    action = data.get("action") or {}
+    result = data.get("result") or {}
+    print(action.get("command") or result.get("command") or "")
+except Exception:
+    print("")
+PY
+)"
+  title="SevenAI preview · ${intent} · ${safety}"
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > %s > %s\n' "$title" "$query"
+    return 0
+  fi
+  if ! command -v rofi >/dev/null 2>&1; then
+    notify "SevenAI" "$title"
+    return 0
+  fi
+  choice="$(printf 'Preview only\nApply now\nCancel\n' | rofi -dmenu -i -p "SevenAI" -mesg "$title · ${command:-no command}" -theme "$THEME" 2>/dev/null || true)"
+  case "$choice" in
+    "Apply now") "$ROOT_DIR/bin/seven" ai "$query" --apply ;;
+    "Preview only") notify "SevenAI" "$title" ;;
+    *) return 0 ;;
+  esac
+}
+
+sevenai_research_preview() {
+  local query="$1"
+  local summary
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > SevenAI research > %s\n' "$query"
+    return 0
+  fi
+  summary="$("$ROOT_DIR/bin/seven" ai research "$query" --json --web | head -c 900)"
+  notify "SevenAI Research" "$summary"
 }
 
 start_timer() {

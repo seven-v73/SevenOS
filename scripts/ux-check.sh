@@ -616,6 +616,10 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'ai.shortcuts' <<<"$actions_json" &&
    grep -q 'ai.knowledge' <<<"$actions_json" &&
    grep -q 'ai.llm' <<<"$actions_json" &&
+   grep -q 'ai.provider' <<<"$actions_json" &&
+   grep -q 'ai.diagnose' <<<"$actions_json" &&
+   grep -q 'ai.playbook.wifi' <<<"$actions_json" &&
+   grep -q 'ai.research' <<<"$actions_json" &&
    grep -q 'improve.daily' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.active' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.all' <<<"$actions_json" &&
@@ -638,21 +642,33 @@ ai_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json apps)"
 ai_theme_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mets le thème light")"
 ai_workspace_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "workspace 2")"
 ai_llm_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json llm)"
+ai_provider_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json provider "mon wifi ne marche pas")"
+ai_diagnose_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json diagnose system)"
+ai_playbook_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json playbook wifi_repair)"
+ai_research_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json research "Hyprland")"
 if python -m json.tool >/dev/null <<<"$ai_intent_json" &&
    python -m json.tool >/dev/null <<<"$ai_wifi_json" &&
    python -m json.tool >/dev/null <<<"$ai_apps_json" &&
    python -m json.tool >/dev/null <<<"$ai_theme_json" &&
    python -m json.tool >/dev/null <<<"$ai_workspace_json" &&
    python -m json.tool >/dev/null <<<"$ai_llm_json" &&
+   python -m json.tool >/dev/null <<<"$ai_provider_json" &&
+   python -m json.tool >/dev/null <<<"$ai_diagnose_json" &&
+   python -m json.tool >/dev/null <<<"$ai_playbook_json" &&
+   python -m json.tool >/dev/null <<<"$ai_research_json" &&
    grep -q '"intent": "OPEN_APP"' <<<"$ai_intent_json" &&
    grep -q '"intent": "REPAIR_NETWORK"' <<<"$ai_wifi_json" &&
    grep -q '"schema": "sevenos.ai.apps.v1"' <<<"$ai_apps_json" &&
    grep -q '"intent": "SET_THEME"' <<<"$ai_theme_json" &&
    grep -q '"intent": "SWITCH_WORKSPACE"' <<<"$ai_workspace_json" &&
-   grep -q '"schema": "sevenos.ai.llm-contract.v1"' <<<"$ai_llm_json"; then
-  ok "SevenAI parses natural-language intents, desktop control and LLM contracts"
+   grep -q '"schema": "sevenos.ai.llm-contract.v1"' <<<"$ai_llm_json" &&
+   grep -q '"schema": "sevenos.ai.provider.local.v1"' <<<"$ai_provider_json" &&
+   grep -q '"schema": "sevenos.ai.diagnostics.v1"' <<<"$ai_diagnose_json" &&
+   grep -q '"schema": "sevenos.ai.playbook.v1"' <<<"$ai_playbook_json" &&
+   grep -q '"schema": "sevenos.ai.research.v1"' <<<"$ai_research_json"; then
+  ok "SevenAI parses intents, uses local provider, diagnostics, playbooks and research cache"
 else
-  fail "SevenAI should parse app/network/theme/workspace intents and expose LLM JSON"
+  fail "SevenAI should parse intents and expose local provider, diagnostics, playbooks and research JSON"
 fi
 
 flatpak_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" flatpak status --json)"

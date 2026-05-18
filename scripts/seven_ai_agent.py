@@ -15,12 +15,15 @@ import re
 import shutil
 import sys
 import subprocess
+import sqlite3
 import time
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from seven_ai_provider import local_answer
 
 
 ROOT_DIR = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parents[1]))
@@ -198,6 +201,12 @@ def parse_intent(text: str) -> Intent:
     if any(token in raw for token in ("mon wifi ne marche pas", "wifi ne marche pas", "repare wifi", "répare wifi", "fix wifi", "repair wifi")):
         return Intent("REPAIR_NETWORK", "wifi", 0.9, "SYSTEM", True, "Network repair may restart NetworkManager.")
 
+    diagnose_match = re.match(r"^(diagnose|diagnostic|check|analyse)\s*(system|système|systeme|network|wifi|disk|disque|services)?", raw)
+    if diagnose_match and diagnose_match.group(0).strip():
+        target = diagnose_match.group(2) or "system"
+        aliases = {"système": "system", "systeme": "system", "wifi": "network", "disque": "disk"}
+        return Intent("DIAGNOSE_SYSTEM", aliases.get(target, target), 0.86, "SAFE", False, "User asked SevenAI to diagnose local system state.")
+
     if raw in ("wifi status", "network status", "etat wifi", "état wifi", "status wifi"):
         return Intent("CHECK_NETWORK", "wifi", 0.9, "SAFE", False, "User asked for network status.")
 
@@ -223,6 +232,10 @@ def parse_intent(text: str) -> Intent:
     web_match = re.match(r"^(search|cherche|recherche|web|internet)\s+(.+)$", raw)
     if web_match:
         return Intent("WEB_QUERY", web_match.group(2).strip(), 0.78, "WEB", False, "User asked SevenAI to search the web.")
+
+    research_match = re.match(r"^(research|recherche profonde|cherche sur internet)\s+(.+)$", raw)
+    if research_match:
+        return Intent("RESEARCH_QUERY", research_match.group(2).strip(), 0.8, "WEB", False, "User asked SevenAI for cached local research.")
 
     if raw in ("status", "etat", "état", "system status", "statut"):
         return Intent("SYSTEM_STATUS", "system", 0.78, "SAFE", False, "User asked for SevenOS status.")
@@ -368,14 +381,13 @@ def llm_contract() -> dict[str, Any]:
             "Self-Healing & Learning: diagnose, propose, execute, record and improve next suggestions.",
         ],
         "providers": [
-            {"key": "rules", "status": "active", "privacy": "local"},
-            {"key": "ollama", "status": "planned-adapter", "privacy": "local"},
-            {"key": "openai-compatible", "status": "planned-adapter", "privacy": "opt-in remote"},
+            {"key": "seven-local", "status": "active", "privacy": "local", "cost": "none", "network": "none"},
+            {"key": "rules", "status": "active", "privacy": "local", "cost": "none", "network": "none"},
         ],
         "web_policy": {
             "default": "disabled",
             "enable": "SEVENAI_WEB=1 seven ai web \"query\" --json",
-            "storage": "Summaries can be cached locally later under XDG_STATE_HOME/sevenos.",
+            "storage": "Research results are cached locally under XDG_STATE_HOME/sevenos/ai.sqlite3.",
             "safety": "Do not send system context to the web unless the user explicitly asks.",
         },
     }
@@ -402,31 +414,269 @@ def web_query(query: str, *, enabled: bool) -> dict[str, Any]:
     return {"schema": "sevenos.ai.web.v1", "enabled": True, "query": query, "source": "duckduckgo-html", "results": clean}
 
 
-def memory_path() -> Path:
+def cached_research(query: str, *, enabled: bool) -> dict[str, Any]:
+    key = normalize(query)
+    try:
+        with db() as conn:
+            row = conn.execute("select payload from research_cache where query = ?", (key,)).fetchone()
+            if row:
+                payload = json.loads(row["payload"])
+                payload["cached"] = True
+                return payload
+    except (sqlite3.Error, json.JSONDecodeError):
+        pass
+
+    payload = web_query(query, enabled=enabled)
+    answer = local_answer(query, {"web": payload})
+    payload = {
+        "schema": "sevenos.ai.research.v1",
+        "query": query,
+        "web": payload,
+        "local_provider": answer,
+        "cached": False,
+    }
+    if payload["web"].get("enabled"):
+        try:
+            with db() as conn:
+                conn.execute(
+                    "insert or replace into research_cache (query, ts, payload) values (?, ?, ?)",
+                    (key, int(time.time()), json.dumps(payload, ensure_ascii=False)),
+                )
+        except sqlite3.Error:
+            pass
+    return payload
+
+
+def read_meminfo() -> dict[str, int]:
+    data = {}
+    try:
+        for line in Path("/proc/meminfo").read_text(encoding="utf-8").splitlines():
+            key, value = line.split(":", 1)
+            data[key] = int(value.strip().split()[0])
+    except (OSError, ValueError):
+        pass
+    return data
+
+
+def top_processes(limit: int = 8) -> list[dict[str, Any]]:
+    processes = []
+    uptime_ticks = os.sysconf(os.sysconf_names.get("SC_CLK_TCK", "SC_CLK_TCK"))
+    for proc in Path("/proc").glob("[0-9]*"):
+        try:
+            stat = (proc / "stat").read_text(encoding="utf-8", errors="ignore")
+            parts = stat.split()
+            utime = int(parts[13])
+            stime = int(parts[14])
+            rss_pages = int(parts[23])
+            name = (proc / "comm").read_text(encoding="utf-8", errors="ignore").strip()
+            processes.append({
+                "pid": int(proc.name),
+                "name": name,
+                "cpu_ticks": utime + stime,
+                "rss_mb": round(rss_pages * os.sysconf("SC_PAGE_SIZE") / 1024 / 1024, 1),
+            })
+        except (OSError, ValueError, IndexError):
+            continue
+    return sorted(processes, key=lambda item: (item["cpu_ticks"], item["rss_mb"]), reverse=True)[:limit]
+
+
+def service_state(name: str) -> str:
+    if not shutil.which("systemctl"):
+        return "unknown"
+    result = subprocess.run(["systemctl", "is-active", name], text=True, capture_output=True, check=False)
+    return result.stdout.strip() or "unknown"
+
+
+def failed_units() -> list[str]:
+    if not shutil.which("systemctl"):
+        return []
+    result = subprocess.run(["systemctl", "--failed", "--plain", "--no-legend"], text=True, capture_output=True, check=False)
+    units = []
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if parts:
+            units.append(parts[0])
+    return units[:12]
+
+
+def diagnostics(area: str = "system") -> dict[str, Any]:
+    mem = read_meminfo()
+    total = mem.get("MemTotal", 0)
+    available = mem.get("MemAvailable", 0)
+    memory = {
+        "total_mb": round(total / 1024, 1) if total else 0,
+        "available_mb": round(available / 1024, 1) if available else 0,
+        "used_percent": round((1 - available / total) * 100, 1) if total else 0,
+    }
+    disk = shutil.disk_usage(str(Path.home()))
+    payload = {
+        "schema": "sevenos.ai.diagnostics.v1",
+        "area": area,
+        "load": system_context()["load"],
+        "memory": memory,
+        "disk_home": {
+            "total_gb": round(disk.total / 1024**3, 1),
+            "free_gb": round(disk.free / 1024**3, 1),
+            "used_percent": round(disk.used / disk.total * 100, 1),
+        },
+        "top_processes": top_processes(),
+        "failed_units": failed_units(),
+        "network": {
+            "networkmanager": service_state("NetworkManager.service"),
+            "wifi": network_status(),
+        },
+        "recommendations": [],
+    }
+    if payload["memory"]["used_percent"] > 85:
+        payload["recommendations"].append("High memory use: inspect top processes before killing anything.")
+    if payload["disk_home"]["used_percent"] > 85:
+        payload["recommendations"].append("Home disk is getting full: run a cleanup playbook preview.")
+    if payload["failed_units"]:
+        payload["recommendations"].append("Failed systemd units detected: inspect logs before restart.")
+    if payload["network"]["networkmanager"] != "active":
+        payload["recommendations"].append("NetworkManager is not active: Wi-Fi repair playbook can restart it.")
+    return payload
+
+
+PLAYBOOKS = {
+    "wifi_repair": {
+        "title": "Wi-Fi Repair",
+        "safety": "SYSTEM",
+        "steps": [
+            {"explain": "Check current network state.", "command": "seven ai diagnose network --json", "apply": False},
+            {"explain": "Restart NetworkManager if needed.", "command": "systemctl restart NetworkManager.service", "apply": True},
+            {"explain": "Open Wi-Fi connector.", "command": "seven-wifi connect", "apply": True},
+        ],
+    },
+    "slow_system": {
+        "title": "Slow System",
+        "safety": "SYSTEM",
+        "steps": [
+            {"explain": "Inspect load, memory and top processes.", "command": "seven ai diagnose system --json", "apply": False},
+            {"explain": "Show scheduler recommendations.", "command": "seven scheduler plan", "apply": False},
+            {"explain": "Open system monitor for manual confirmation.", "command": "btop", "apply": True},
+        ],
+    },
+    "failed_services": {
+        "title": "Failed Services",
+        "safety": "SYSTEM",
+        "steps": [
+            {"explain": "List failed units.", "command": "systemctl --failed", "apply": False},
+            {"explain": "Show SevenOS repair plan.", "command": "seven repair all", "apply": False},
+        ],
+    },
+    "disk_cleanup": {
+        "title": "Disk Cleanup",
+        "safety": "SYSTEM",
+        "steps": [
+            {"explain": "Inspect disk state.", "command": "seven ai diagnose disk --json", "apply": False},
+            {"explain": "Show package cache size.", "command": "du -sh /var/cache/pacman/pkg 2>/dev/null || true", "apply": False},
+        ],
+    },
+}
+
+
+def playbook(name: str) -> dict[str, Any]:
+    key = normalize(name).replace(" ", "_") or "slow_system"
+    item = PLAYBOOKS.get(key)
+    if not item:
+        return {"schema": "sevenos.ai.playbook.v1", "available": sorted(PLAYBOOKS), "error": f"Unknown playbook: {name}"}
+    return {"schema": "sevenos.ai.playbook.v1", "key": key, **item, "requires_apply": any(step["apply"] for step in item["steps"])}
+
+
+def state_dir() -> Path:
     base = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "sevenos"
     base.mkdir(parents=True, exist_ok=True)
-    return base / "ai-memory.jsonl"
+    return base
+
+
+def db_path() -> Path:
+    return state_dir() / "ai.sqlite3"
+
+
+def db() -> sqlite3.Connection:
+    conn = sqlite3.connect(db_path())
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        "create table if not exists events ("
+        "id integer primary key autoincrement, ts integer not null, input text, intent text, "
+        "target text, safety text, applied integer, source text default 'user')"
+    )
+    conn.execute(
+        "create table if not exists research_cache ("
+        "query text primary key, ts integer not null, payload text not null)"
+    )
+    conn.execute(
+        "create table if not exists preferences ("
+        "key text primary key, value text not null, ts integer not null)"
+    )
+    migrate_jsonl_memory(conn)
+    return conn
+
+
+def migrate_jsonl_memory(conn: sqlite3.Connection) -> None:
+    legacy = state_dir() / "ai-memory.jsonl"
+    marker = conn.execute("select value from preferences where key = 'jsonl_migrated'").fetchone()
+    if marker or not legacy.exists():
+        return
+    for line in legacy.read_text(encoding="utf-8", errors="ignore").splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        conn.execute(
+            "insert into events (ts, input, intent, target, safety, applied, source) values (?, ?, ?, ?, ?, ?, ?)",
+            (
+                int(event.get("ts", time.time())),
+                event.get("input", ""),
+                event.get("intent", ""),
+                event.get("target", ""),
+                event.get("safety", ""),
+                1 if event.get("applied") else 0,
+                "legacy-jsonl",
+            ),
+        )
+    conn.execute("insert or replace into preferences (key, value, ts) values ('jsonl_migrated', '1', ?)", (int(time.time()),))
 
 
 def remember(event: dict[str, Any]) -> None:
     try:
-        with memory_path().open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(event, ensure_ascii=False) + "\n")
-    except OSError:
+        with db() as conn:
+            conn.execute(
+                "insert into events (ts, input, intent, target, safety, applied, source) values (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    int(event.get("ts", time.time())),
+                    event.get("input", ""),
+                    event.get("intent", ""),
+                    event.get("target", ""),
+                    event.get("safety", ""),
+                    1 if event.get("applied") else 0,
+                    event.get("source", "user"),
+                ),
+            )
+    except sqlite3.Error:
         pass
 
 
 def read_memory(limit: int = 12) -> dict[str, Any]:
-    path = memory_path()
-    if not path.exists():
-        return {"schema": "sevenos.ai.memory.v1", "events": []}
-    rows = []
-    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines()[-limit:]:
-        try:
-            rows.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return {"schema": "sevenos.ai.memory.v1", "events": rows}
+    try:
+        with db() as conn:
+            events = [
+                dict(row)
+                for row in conn.execute(
+                    "select ts, input, intent, target, safety, applied, source from events order by id desc limit ?",
+                    (limit,),
+                ).fetchall()
+            ]
+            top_intents = [
+                dict(row)
+                for row in conn.execute(
+                    "select intent, count(*) as count from events group by intent order by count desc limit 8"
+                ).fetchall()
+            ]
+    except sqlite3.Error:
+        events, top_intents = [], []
+    return {"schema": "sevenos.ai.memory.v2", "store": str(db_path()), "events": list(reversed(events)), "summary": {"top_intents": top_intents}}
 
 
 def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
@@ -465,15 +715,18 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
         result["result"] = network_status()
     elif intent.intent == "REPAIR_NETWORK":
         command = ["systemctl", "restart", "NetworkManager.service"]
-        result["action"] = {"type": "repair_network", "target": "wifi", "command": " ".join(command)}
+        result["action"] = {"type": "repair_network", "target": "wifi", "command": " ".join(command), "playbook": playbook("wifi_repair")}
         result["result"] = run(command, apply=effective_apply)
+    elif intent.intent == "DIAGNOSE_SYSTEM":
+        result["action"] = {"type": "diagnose_system", "target": intent.target}
+        result["result"] = {"applied": False, "diagnostics": diagnostics(intent.target), "provider": local_answer(text, {"diagnostics": diagnostics(intent.target)})}
     elif intent.intent == "INSTALL_PACKAGE":
         command = ["sevenpkg", "install", intent.target] if intent.target == "forge" else ["sudo", "pacman", "-S", "--needed", intent.target]
         result["action"] = {"type": "install_package", "target": intent.target, "command": " ".join(command)}
         result["result"] = run(command, apply=effective_apply, cwd=ROOT_DIR)
     elif intent.intent == "OPTIMIZE_SYSTEM":
-        result["action"] = {"type": "optimize_system", "commands": ["seven insights", "seven repair all", "seven scheduler plan"]}
-        result["result"] = {"applied": False, "detail": "Preview first. Use SevenAI with --apply once the plan is acceptable."}
+        result["action"] = {"type": "optimize_system", "commands": ["seven insights", "seven repair all", "seven scheduler plan"], "playbook": playbook("slow_system")}
+        result["result"] = {"applied": False, "diagnostics": diagnostics("system"), "detail": "Preview first. Use SevenAI with --apply once the plan is acceptable."}
     elif intent.intent == "SYSTEM_STATUS":
         result["action"] = {"type": "system_status", "command": "seven state --json"}
         result["result"] = run([str(ROOT_DIR / "bin/seven"), "state", "--json"], apply=True, cwd=ROOT_DIR)
@@ -489,6 +742,9 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
     elif intent.intent == "WEB_QUERY":
         result["action"] = {"type": "web_query", "target": intent.target}
         result["result"] = web_query(intent.target, enabled=False)
+    elif intent.intent == "RESEARCH_QUERY":
+        result["action"] = {"type": "research_query", "target": intent.target}
+        result["result"] = cached_research(intent.target, enabled=False)
     else:
         result["action"] = {"type": "guidance", "suggestions": [
             "seven ai open settings",
@@ -543,6 +799,19 @@ def print_human(data: dict[str, Any]) -> None:
     elif isinstance(result, dict) and result.get("workflow"):
         for item in result["workflow"].get("tips", [])[:6]:
             print(f"- {item}")
+    elif isinstance(result, dict) and result.get("diagnostics"):
+        diag = result["diagnostics"]
+        print(f"Memory used: {diag.get('memory', {}).get('used_percent')}%")
+        print(f"Home disk used: {diag.get('disk_home', {}).get('used_percent')}%")
+        for item in diag.get("recommendations", [])[:4]:
+            print(f"- {item}")
+    elif isinstance(result, dict) and result.get("web"):
+        web = result["web"]
+        if not web.get("enabled"):
+            print(f"Result: {web.get('summary')}")
+        else:
+            for item in web.get("results", [])[:5]:
+                print(f"- {item}")
     elif isinstance(result, dict) and result.get("summary"):
         print(f"Result: {result.get('summary')}")
     else:
@@ -557,7 +826,7 @@ def main() -> int:
     web_flag = "--web" in raw_args
     raw_args = [arg for arg in raw_args if arg not in ("--json", "--apply", "--yes", "--web")]
     parser = argparse.ArgumentParser(prog="seven-ai-agent")
-    parser.add_argument("action", nargs="?", default="ask", choices=("ask", "run", "intent", "apps", "context", "memory", "knowledge", "shortcuts", "workflow", "llm", "web"))
+    parser.add_argument("action", nargs="?", default="ask", choices=("ask", "run", "intent", "apps", "context", "memory", "knowledge", "shortcuts", "workflow", "llm", "web", "research", "diagnose", "playbook", "provider"))
     parser.add_argument("text", nargs=argparse.REMAINDER)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--apply", action="store_true")
@@ -598,10 +867,30 @@ def main() -> int:
         data = llm_contract()
         print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["goal"])
         return 0
+    if args.action == "provider":
+        prompt = " ".join(args.text).strip()
+        data = local_answer(prompt, {"diagnostics": diagnostics("system"), "memory": read_memory(8)})
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["answer"])
+        return 0
+    if args.action == "diagnose":
+        area = " ".join(args.text).strip() or "system"
+        data = diagnostics(area)
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else "\n".join(data.get("recommendations") or ["No urgent diagnostic issue found."]))
+        return 0
+    if args.action == "playbook":
+        name = " ".join(args.text).strip() or "slow_system"
+        data = playbook(name)
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else "\n".join(f"{step['explain']}: {step['command']}" for step in data.get("steps", [])))
+        return 0
     if args.action == "web":
         query = " ".join(args.text).strip()
         data = web_query(query, enabled=args.web)
         print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data.get("summary") or "\n".join(data.get("results", [])))
+        return 0
+    if args.action == "research":
+        query = " ".join(args.text).strip()
+        data = cached_research(query, enabled=args.web)
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data.get("web", {}).get("summary") or data.get("local_provider", {}).get("answer", "No research result."))
         return 0
 
     text = " ".join(args.text).strip()

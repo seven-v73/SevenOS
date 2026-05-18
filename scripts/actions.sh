@@ -147,6 +147,10 @@ ai.workspace	System	SevenAI Workspace Switch	seven ai "workspace 2"	safe	Switch 
 ai.shortcuts	System	SevenAI Shortcuts	seven ai shortcuts	safe	Show SevenOS keyboard shortcuts from the AI knowledge layer.
 ai.knowledge	System	SevenAI SevenOS Knowledge	seven ai knowledge	safe	Explain what SevenOS is, its surfaces and its daily workflow model.
 ai.llm	System	SevenAI LLM Contract	seven ai llm --json	safe	Show the provider-neutral local-first LLM and web architecture contract.
+ai.provider	System	SevenAI Local Provider	seven ai provider "mon wifi ne marche pas" --json	safe	Run the local-only SevenOS provider without tokens, accounts or external data flow.
+ai.diagnose	System	SevenAI Diagnostics	seven ai diagnose system --json	safe	Inspect local load, memory, disk, services, network and top processes.
+ai.playbook.wifi	System	SevenAI Wi-Fi Playbook	seven ai playbook wifi_repair --json	safe	Show the confirmed Wi-Fi repair playbook before applying changes.
+ai.research	System	SevenAI Research Cache	seven ai research "Hyprland" --json	safe	Show cached/offline-first research contract; web requires explicit --web.
 store.open	Apps	SevenStore	seven store	safe	Browse SevenOS modules, Flatpak apps and safe OS actions from one catalog.
 store.modules	Apps	Store Modules	seven store modules	safe	Show installable SevenOS bundles with optional modules separated from required readiness.
 store.apps	Apps	Store Apps	seven store apps	safe	Show the Flatpak application catalog exposed through SevenStore.
