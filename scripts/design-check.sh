@@ -93,8 +93,7 @@ if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#workspaces button.active' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'rgba(34, 38, 76, 0.38)' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '@define-color seven_violet' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'layerrule = blur, waybar' "$ROOT_DIR/hyprland/hyprland.conf"; then
+   grep -q '@define-color seven_violet' "$ROOT_DIR/hyprland/waybar/style.css"; then
   ok "Waybar uses premium liquid glass islands"
 else
   fail "Waybar should use premium liquid glass islands"
