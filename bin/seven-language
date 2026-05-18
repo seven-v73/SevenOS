@@ -248,7 +248,8 @@ def ensure_language(locale_name: str) -> int:
     print("[SevenOS] Run with admin rights:")
     print(f"  sudo sh -lc \"sed -i 's/^#{locale_line}$/{locale_line}/' /etc/locale.gen || printf '\\n{locale_line}\\n' >> /etc/locale.gen; locale-gen\"")
     print(f"Then apply it with: seven language set {normalized}")
-    return 1
+    print("[SevenOS] OK: Guidance shown. No language change was applied yet.")
+    return 0
 
 
 def set_language(locale_name: str) -> int:
@@ -261,7 +262,8 @@ def set_language(locale_name: str) -> int:
         for item in language_entries():
             state = "OK" if item["installed"] else "installable"
             print(f"  - {item['locale']}  {item['label']}  [{state}]")
-        return 1
+        print("[SevenOS] OK: Guidance shown. No language change was applied yet.")
+        return 0
 
     lang = language_code(normalized)
     if DRY_RUN:
