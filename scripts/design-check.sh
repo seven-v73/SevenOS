@@ -71,24 +71,24 @@ else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/apps","hyprland/workspaces"] and ."modules-center" == ["custom/spotlight","custom/ai"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("cpu") and index("memory") and index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/notifications") and index("clock") and index("custom/power")) and .spacing == 8' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar uses a SevenOS cockpit hierarchy"
+if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and .height == 48 and .spacing == 10' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar uses a premium SevenOS floating hierarchy"
 else
-  fail "Waybar should use SevenOS/Apps/workspaces left, Spotlight/AI center, stateful system controls right."
+  fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
 fi
 
 if grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-sevenos' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-spotlight' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-ai' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '#custom-profile.ok' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '#custom-security.miss' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '#custom-bluetooth.connected' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '@keyframes seven-orb' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#workspaces button.active' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'rgba(20, 20, 28, 0.55)' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '@define-color seven_cyber' "$ROOT_DIR/hyprland/waybar/style.css"; then
-  ok "Waybar uses futuristic liquid glass islands"
+   grep -q '@define-color seven_violet' "$ROOT_DIR/hyprland/waybar/style.css"; then
+  ok "Waybar uses premium liquid glass islands"
 else
-  fail "Waybar should use futuristic liquid glass islands"
+  fail "Waybar should use premium liquid glass islands"
 fi
 
 if [[ -x "$ROOT_DIR/bin/seven-dock" ]] &&
@@ -178,10 +178,9 @@ else
   fail "SevenOS should expose a named desktop session"
 fi
 
-if grep -q 'custom/settings' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
-   grep -q '"on-click": "seven-settings"' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
-   grep -q 'custom/notifications' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
-   [[ -s "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" ]]; then
+if grep -q '"on-click": "seven-settings"' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
+   [[ -s "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" ]] &&
+   [[ -x "$ROOT_DIR/bin/seven-waybar-notifications" ]]; then
   ok "Settings and Notifications have dedicated shell surfaces"
 else
   fail "Settings or Notifications dedicated shell surface missing"

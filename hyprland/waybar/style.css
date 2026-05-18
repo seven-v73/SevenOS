@@ -1,69 +1,52 @@
-@define-color seven_bg rgba(9, 9, 11, 0.38);
-@define-color seven_surface rgba(18, 19, 26, 0.58);
-@define-color seven_surface_lift rgba(26, 30, 44, 0.62);
-@define-color seven_group rgba(11, 13, 22, 0.68);
-@define-color seven_edge rgba(237, 237, 237, 0.12);
-@define-color seven_edge_hot rgba(77, 163, 255, 0.42);
-@define-color seven_text rgba(237, 237, 237, 0.94);
-@define-color seven_muted rgba(176, 186, 205, 0.76);
+@define-color seven_bg rgba(20, 20, 28, 0.55);
+@define-color seven_glass rgba(255, 255, 255, 0.085);
+@define-color seven_glass_lift rgba(255, 255, 255, 0.135);
+@define-color seven_edge rgba(255, 255, 255, 0.145);
+@define-color seven_edge_hot rgba(134, 170, 255, 0.42);
+@define-color seven_text rgba(255, 255, 255, 0.94);
+@define-color seven_muted rgba(220, 226, 246, 0.68);
 @define-color seven_blue #4DA3FF;
 @define-color seven_violet #7A5CFF;
 @define-color seven_cyan #00D4FF;
-@define-color seven_cyber #00FFB3;
-@define-color seven_danger rgba(255, 89, 118, 0.94);
+@define-color seven_green #75ffcb;
 
-@keyframes seven-aura {
+@keyframes seven-orb {
   0% {
-    opacity: 0.88;
+    opacity: 0.82;
+    text-shadow:
+      0 0 10px rgba(77, 163, 255, 0.88),
+      0 0 22px rgba(122, 92, 255, 0.50);
   }
   50% {
-    opacity: 1.0;
+    opacity: 1;
+    text-shadow:
+      0 0 16px rgba(0, 212, 255, 0.98),
+      0 0 32px rgba(122, 92, 255, 0.70);
   }
   100% {
-    opacity: 0.88;
+    opacity: 0.82;
+    text-shadow:
+      0 0 10px rgba(77, 163, 255, 0.88),
+      0 0 22px rgba(122, 92, 255, 0.50);
   }
 }
 
-@keyframes seven-breathe {
+@keyframes seven-active-space {
   0% {
-    border-color: rgba(77, 163, 255, 0.34);
-    text-shadow:
-      0 0 10px rgba(77, 163, 255, 0.40),
-      0 0 22px rgba(122, 92, 255, 0.24);
+    border-color: rgba(77, 163, 255, 0.46);
   }
   50% {
-    border-color: rgba(0, 212, 255, 0.48);
-    text-shadow:
-      0 0 15px rgba(0, 212, 255, 0.68),
-      0 0 32px rgba(122, 92, 255, 0.42);
+    border-color: rgba(180, 200, 255, 0.70);
   }
   100% {
-    border-color: rgba(77, 163, 255, 0.34);
-    text-shadow:
-      0 0 10px rgba(77, 163, 255, 0.40),
-      0 0 22px rgba(122, 92, 255, 0.24);
-  }
-}
-
-@keyframes seven-cyber-pulse {
-  0% {
-    border-color: rgba(0, 255, 179, 0.22);
-    text-shadow: 0 0 11px rgba(0, 255, 179, 0.42);
-  }
-  50% {
-    border-color: rgba(0, 255, 179, 0.38);
-    text-shadow: 0 0 18px rgba(0, 255, 179, 0.62);
-  }
-  100% {
-    border-color: rgba(0, 255, 179, 0.22);
-    text-shadow: 0 0 11px rgba(0, 255, 179, 0.42);
+    border-color: rgba(77, 163, 255, 0.46);
   }
 }
 
 * {
   border: none;
   border-radius: 0;
-  font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
+  font-family: "SF Pro Display", "SF UI Display", "Inter", "San Francisco", system-ui, sans-serif;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0;
@@ -71,23 +54,24 @@
 }
 
 window#waybar {
-  background:
-    radial-gradient(ellipse at 50% 0%, rgba(0, 212, 255, 0.24), transparent 38%),
-    radial-gradient(ellipse at 18% 22%, rgba(77, 163, 255, 0.22), transparent 36%),
-    radial-gradient(ellipse at 84% 18%, rgba(122, 92, 255, 0.22), transparent 38%),
-    radial-gradient(ellipse at 50% 100%, rgba(77, 163, 255, 0.08), transparent 44%),
-    linear-gradient(90deg, rgba(9, 9, 11, 0.14), rgba(18, 19, 26, 0.54), rgba(9, 9, 11, 0.14));
   color: @seven_text;
-  animation: seven-aura 9s ease-in-out infinite;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.050) 42%, rgba(255, 255, 255, 0.018)),
+    radial-gradient(ellipse at 6% 50%, rgba(77, 163, 255, 0.20), transparent 34%),
+    radial-gradient(ellipse at 78% 50%, rgba(122, 92, 255, 0.22), transparent 38%),
+    radial-gradient(ellipse at 96% 50%, rgba(255, 174, 232, 0.14), transparent 26%),
+    @seven_bg;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 24px;
 }
 
 tooltip {
-  background:
-    radial-gradient(circle at 20% 0%, rgba(77, 163, 255, 0.16), transparent 36%),
-    linear-gradient(180deg, rgba(22, 25, 36, 0.96), rgba(9, 9, 11, 0.90));
-  border: 1px solid rgba(237, 237, 237, 0.14);
-  border-radius: 18px;
   color: @seven_text;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.050)),
+    rgba(20, 20, 28, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
 }
 
 tooltip label {
@@ -95,406 +79,178 @@ tooltip label {
 }
 
 #custom-sevenos,
-#custom-apps,
 #custom-spotlight,
-#custom-ai,
-#clock,
 #workspaces,
-#custom-profile,
-#custom-security,
-#cpu,
-#memory,
-#custom-bluetooth,
-#pulseaudio,
 #network,
+#pulseaudio,
 #battery,
-#custom-notifications,
-#custom-settings,
-#custom-power {
-  min-height: 36px;
-  margin-top: 6px;
-  margin-bottom: 6px;
-  padding: 0 16px;
+#clock,
+#custom-ai {
+  min-height: 34px;
+  margin-top: 7px;
+  margin-bottom: 7px;
+  padding: 0 14px;
   color: @seven_text;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.150), rgba(255, 255, 255, 0.045) 42%, rgba(255, 255, 255, 0.020)),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.050), transparent 18%, transparent 82%, rgba(255, 255, 255, 0.030)),
-    radial-gradient(circle at 28% 0%, rgba(77, 163, 255, 0.13), transparent 42%),
-    radial-gradient(circle at 86% 100%, rgba(122, 92, 255, 0.10), transparent 42%),
-    @seven_group;
-  border: 1px solid @seven_edge;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.135), rgba(255, 255, 255, 0.040)),
+    rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.105);
   border-radius: 999px;
-  text-shadow: 0 0 10px rgba(77, 163, 255, 0.26);
   transition:
-    background 220ms ease,
-    color 220ms ease,
-    border-color 220ms ease,
-    opacity 220ms ease,
-    margin 220ms ease,
-    min-height 220ms ease;
+    background 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    min-width 180ms ease,
+    opacity 180ms ease;
 }
 
 #custom-sevenos {
-  min-height: 42px;
-  min-width: 44px;
-  margin-left: 2px;
-  margin-right: 9px;
-  padding-left: 17px;
-  padding-right: 17px;
-  color: @seven_cyan;
-  font-family: "SF Pro Rounded", "SF Pro Display", system-ui, sans-serif;
-  font-size: 21px;
-  font-weight: 500;
+  min-width: 116px;
+  margin-left: 10px;
+  margin-right: 4px;
+  padding-left: 18px;
+  padding-right: 18px;
+  color: rgba(255, 255, 255, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.20), transparent 34%),
-    radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.44), transparent 48%),
-    radial-gradient(circle at 50% 100%, rgba(122, 92, 255, 0.40), transparent 50%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.040)),
-    rgba(10, 13, 24, 0.78);
-  border-color: rgba(77, 163, 255, 0.45);
-  text-shadow:
-    0 0 10px rgba(0, 212, 255, 0.86),
-    0 0 22px rgba(122, 92, 255, 0.58),
-    0 0 34px rgba(77, 163, 255, 0.36);
-  animation: seven-breathe 7s ease-in-out infinite;
+    radial-gradient(circle at 10% 48%, rgba(123, 157, 255, 0.28), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.045)),
+    rgba(255, 255, 255, 0.050);
+  border-color: rgba(255, 255, 255, 0.12);
+  font-family: "SF Pro Rounded", "SF Pro Display", system-ui, sans-serif;
+  font-size: 13px;
 }
 
-#custom-apps {
-  min-height: 38px;
-  margin-right: 0;
+#custom-spotlight {
+  min-width: 282px;
   padding-left: 18px;
-  padding-right: 20px;
-  color: rgba(237, 237, 237, 0.92);
-  border-radius: 999px 18px 18px 999px;
-  border-right-color: rgba(237, 237, 237, 0.035);
+  padding-right: 18px;
+  color: rgba(235, 240, 255, 0.86);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.045)),
+    radial-gradient(ellipse at 18% 50%, rgba(255, 255, 255, 0.09), transparent 52%),
+    rgba(255, 255, 255, 0.060);
+  border-color: rgba(255, 255, 255, 0.10);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", system-ui, sans-serif;
+  font-size: 12px;
 }
 
 #workspaces {
   min-height: 38px;
-  margin-left: -9px;
-  padding: 0 12px 0 16px;
+  padding: 0 12px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.130), rgba(255, 255, 255, 0.042)),
-    radial-gradient(circle at 44% 0%, rgba(77, 163, 255, 0.10), transparent 48%),
-    rgba(8, 10, 17, 0.58);
-  border-color: rgba(237, 237, 237, 0.13);
-  border-left-color: rgba(237, 237, 237, 0.045);
-  border-radius: 18px 999px 999px 18px;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.155), rgba(255, 255, 255, 0.052)),
+    radial-gradient(ellipse at 50% 0%, rgba(166, 187, 255, 0.16), transparent 55%),
+    rgba(255, 255, 255, 0.060);
+  border-color: rgba(255, 255, 255, 0.13);
 }
 
 #workspaces button {
-  min-width: 30px;
-  min-height: 26px;
+  min-width: 32px;
+  min-height: 28px;
   margin: 4px 3px;
   padding: 0 10px;
   border-radius: 999px;
-  color: @seven_muted;
-  background: transparent;
+  color: rgba(230, 235, 255, 0.68);
+  background: rgba(255, 255, 255, 0.040);
   transition:
-    background 220ms ease,
-    color 220ms ease,
-    min-width 220ms ease,
-    border-color 220ms ease;
+    min-width 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease;
 }
 
 #workspaces button:hover {
-  color: @seven_text;
-  background: rgba(77, 163, 255, 0.12);
-  text-shadow: 0 0 12px rgba(77, 163, 255, 0.56);
+  color: rgba(255, 255, 255, 0.98);
+  background: rgba(255, 255, 255, 0.105);
 }
 
 #workspaces button.active {
   min-width: 46px;
   color: rgba(255, 255, 255, 0.98);
   background:
-    radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.32), transparent 55%),
-    linear-gradient(135deg, rgba(77, 163, 255, 0.38), rgba(122, 92, 255, 0.34));
-  border: 1px solid rgba(77, 163, 255, 0.50);
-  text-shadow:
-    0 0 11px rgba(0, 212, 255, 0.78),
-    0 0 22px rgba(122, 92, 255, 0.54);
-  animation: seven-breathe 8s ease-in-out infinite;
+    radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.34), transparent 58%),
+    linear-gradient(135deg, rgba(77, 163, 255, 0.74), rgba(122, 92, 255, 0.68));
+  border: 1px solid rgba(77, 163, 255, 0.46);
+  animation: seven-active-space 5.6s ease-in-out infinite;
 }
 
 #workspaces button.urgent {
-  color: @seven_danger;
-  background: rgba(255, 89, 118, 0.15);
-  border: 1px solid rgba(255, 89, 118, 0.30);
+  color: rgba(255, 134, 158, 0.98);
+  background: rgba(255, 89, 118, 0.18);
 }
 
-#custom-spotlight {
-  min-height: 42px;
-  min-width: 348px;
-  margin-right: 0;
-  padding-left: 28px;
-  padding-right: 32px;
-  color: rgba(237, 237, 237, 0.92);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 30%),
-    linear-gradient(90deg, rgba(77, 163, 255, 0.12), transparent 22%, transparent 76%, rgba(122, 92, 255, 0.11)),
-    radial-gradient(ellipse at 0% 45%, rgba(77, 163, 255, 0.31), transparent 46%),
-    radial-gradient(ellipse at 100% 35%, rgba(122, 92, 255, 0.29), transparent 50%),
-    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.18), transparent 44%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.045)),
-    rgba(12, 15, 30, 0.72);
-  border-color: rgba(77, 163, 255, 0.34);
-  border-radius: 999px 20px 20px 999px;
-  font-size: 13px;
-  font-weight: 500;
-  text-shadow:
-    0 0 14px rgba(77, 163, 255, 0.48),
-    0 0 30px rgba(122, 92, 255, 0.28);
-  animation: seven-breathe 8s ease-in-out infinite;
-}
-
-#custom-ai {
-  min-height: 42px;
-  min-width: 64px;
-  margin-left: -9px;
-  padding-left: 20px;
-  padding-right: 22px;
-  color: @seven_cyan;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 34%),
-    radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.34), transparent 50%),
-    radial-gradient(circle at 100% 90%, rgba(122, 92, 255, 0.26), transparent 46%),
-    rgba(12, 15, 30, 0.72);
-  border-color: rgba(0, 212, 255, 0.34);
-  border-left-color: rgba(237, 237, 237, 0.045);
-  border-radius: 20px 999px 999px 20px;
-  font-family: "SF Pro Rounded", "SF Pro Display", system-ui, sans-serif;
-  text-shadow:
-    0 0 12px rgba(0, 212, 255, 0.70),
-    0 0 24px rgba(122, 92, 255, 0.38);
-}
-
-#custom-profile,
-#custom-security,
-#cpu,
-#memory,
-#custom-bluetooth,
-#pulseaudio,
 #network,
+#pulseaudio,
 #battery,
-#custom-notifications,
-#custom-settings,
-#custom-power {
-  min-width: 30px;
-  padding-left: 15px;
-  padding-right: 15px;
-  color: rgba(221, 229, 244, 0.88);
-}
-
-#custom-profile,
-#cpu,
-#custom-bluetooth,
-#custom-notifications {
-  margin-right: 0;
-  border-radius: 999px 14px 14px 999px;
-  border-right-color: rgba(237, 237, 237, 0.035);
-}
-
-#custom-security,
-#memory,
-#pulseaudio,
-#clock,
-#custom-settings,
-#custom-power {
-  margin-left: -8px;
-  border-left-color: rgba(237, 237, 237, 0.040);
-}
-
-#custom-security {
-  margin-right: 14px;
-  border-radius: 14px 999px 999px 14px;
-}
-
-#cpu,
-#memory,
-#battery {
-  background:
-    radial-gradient(circle at 18% 0%, rgba(0, 212, 255, 0.13), transparent 40%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.090), rgba(255, 255, 255, 0.028)),
-    rgba(8, 12, 22, 0.66);
-}
-
-#memory {
-  margin-right: 0;
-  border-radius: 14px;
-  border-right-color: rgba(237, 237, 237, 0.035);
-}
-
-#battery {
-  margin-left: -8px;
-  margin-right: 14px;
-  border-left-color: rgba(237, 237, 237, 0.040);
-  border-radius: 14px 999px 999px 14px;
-}
-
-#custom-bluetooth,
-#pulseaudio,
-#network {
-  background:
-    radial-gradient(circle at 18% 0%, rgba(77, 163, 255, 0.14), transparent 40%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.030)),
-    rgba(10, 13, 22, 0.68);
-}
-
-#pulseaudio {
-  margin-right: 0;
-  border-radius: 14px;
-  border-right-color: rgba(237, 237, 237, 0.035);
-}
-
-#network {
-  margin-left: -8px;
-  margin-right: 14px;
-  border-left-color: rgba(237, 237, 237, 0.040);
-  border-radius: 14px 999px 999px 14px;
-}
-
-#custom-notifications {
-  margin-right: 0;
-}
-
 #clock {
-  min-width: 92px;
-  margin-right: 0;
-  color: rgba(237, 237, 237, 0.95);
-  font-family: "SF Mono", "JetBrains Mono", monospace;
-  font-weight: 500;
-  border-radius: 14px;
-  border-right-color: rgba(237, 237, 237, 0.035);
+  min-width: 30px;
+  padding-left: 12px;
+  padding-right: 12px;
+  color: rgba(244, 247, 255, 0.90);
+  background: transparent;
+  border-color: transparent;
 }
 
-#custom-settings {
-  margin-right: 0;
-  border-radius: 14px;
-  border-right-color: rgba(237, 237, 237, 0.035);
+#network {
+  margin-left: 0;
 }
 
-#custom-power {
-  border-radius: 14px 999px 999px 14px;
-}
-
-#cpu,
-#memory {
-  font-family: "SF Mono", "JetBrains Mono", monospace;
-  color: rgba(0, 212, 255, 0.90);
-}
-
-#custom-security {
-  color: @seven_cyber;
-  font-family: "SF Mono", "JetBrains Mono", monospace;
-  border-color: rgba(0, 255, 179, 0.22);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.110), transparent 32%),
-    linear-gradient(180deg, rgba(0, 255, 179, 0.10), rgba(0, 255, 179, 0.030)),
-    rgba(6, 13, 13, 0.58);
-  text-shadow: 0 0 13px rgba(0, 255, 179, 0.50);
-  animation: seven-cyber-pulse 8s ease-in-out infinite;
+#pulseaudio,
+#battery,
+#clock,
+#custom-ai {
+  margin-left: -5px;
 }
 
 #network.wifi,
 #network.ethernet,
-#custom-bluetooth.connected,
-#custom-bluetooth.on {
-  color: @seven_cyan;
-  border-color: rgba(0, 212, 255, 0.28);
-}
-
-#custom-profile.ok,
-#custom-security.ok,
-#custom-notifications.ok,
+#pulseaudio,
 #battery.charging {
-  color: @seven_cyber;
-  border-color: rgba(0, 255, 179, 0.28);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.120), transparent 34%),
-    linear-gradient(180deg, rgba(0, 255, 179, 0.11), rgba(0, 255, 179, 0.030)),
-    @seven_surface;
+  color: rgba(244, 247, 255, 0.94);
 }
 
-#custom-profile.warn,
-#custom-security.warn,
-#battery.warning:not(.charging) {
-  color: rgba(255, 198, 92, 0.96);
-  border-color: rgba(255, 198, 92, 0.28);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.110), transparent 34%),
-    linear-gradient(180deg, rgba(255, 198, 92, 0.11), rgba(255, 198, 92, 0.025)),
-    @seven_surface;
-}
-
-#custom-profile.miss,
-#custom-security.miss,
-#custom-bluetooth.missing,
-#custom-bluetooth.off,
-#custom-notifications.miss,
-#pulseaudio.muted,
 #network.disconnected,
+#pulseaudio.muted,
+#battery.warning:not(.charging),
 #battery.critical:not(.charging) {
-  color: @seven_danger;
-  border-color: rgba(255, 89, 118, 0.28);
+  color: rgba(255, 170, 188, 0.94);
+}
+
+#clock {
+  min-width: 132px;
+  margin-right: 4px;
+  color: rgba(231, 236, 255, 0.78);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", system-ui, sans-serif;
+}
+
+#custom-ai {
+  min-width: 44px;
+  min-height: 36px;
+  margin-right: 10px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.100), transparent 34%),
-    linear-gradient(180deg, rgba(255, 89, 118, 0.12), rgba(255, 89, 118, 0.025)),
-    @seven_surface;
-}
-
-#custom-notifications.dnd {
-  color: rgba(177, 164, 255, 0.94);
-  border-color: rgba(122, 92, 255, 0.26);
-}
-
-#custom-settings {
-  color: rgba(237, 237, 237, 0.88);
-}
-
-#custom-power {
-  margin-right: 2px;
-  color: rgba(255, 127, 158, 0.94);
-  border-color: rgba(255, 89, 118, 0.22);
+    radial-gradient(circle at 44% 40%, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.70) 7%, transparent 17%),
+    radial-gradient(circle at 50% 50%, rgba(0, 212, 255, 0.86), rgba(77, 163, 255, 0.68) 33%, rgba(122, 92, 255, 0.52) 58%, transparent 76%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.060));
+  border-color: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  font-size: 18px;
+  animation: seven-orb 4.8s ease-in-out infinite;
 }
 
 #custom-sevenos:hover,
-#custom-apps:hover,
 #custom-spotlight:hover,
-#custom-ai:hover,
-#clock:hover,
-#custom-profile:hover,
-#custom-security:hover,
-#cpu:hover,
-#memory:hover,
-#custom-bluetooth:hover,
-#pulseaudio:hover,
+#workspaces:hover,
 #network:hover,
+#pulseaudio:hover,
 #battery:hover,
-#custom-notifications:hover,
-#custom-settings:hover,
-#custom-power:hover {
-  color: rgba(255, 255, 255, 0.98);
-  background:
-    radial-gradient(circle at 50% 0%, rgba(77, 163, 255, 0.24), transparent 48%),
-    radial-gradient(circle at 100% 100%, rgba(122, 92, 255, 0.14), transparent 45%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.060)),
-    @seven_surface_lift;
-  border-color: @seven_edge_hot;
-  text-shadow:
-    0 0 10px rgba(77, 163, 255, 0.62),
-    0 0 20px rgba(122, 92, 255, 0.35);
-}
-
-#custom-spotlight:hover,
+#clock:hover,
 #custom-ai:hover {
   color: rgba(255, 255, 255, 1.0);
   background:
-    radial-gradient(ellipse at 10% 45%, rgba(77, 163, 255, 0.36), transparent 46%),
-    radial-gradient(ellipse at 95% 35%, rgba(122, 92, 255, 0.34), transparent 48%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.20), rgba(255, 255, 255, 0.070)),
-    rgba(12, 15, 30, 0.82);
-  border-color: rgba(0, 212, 255, 0.46);
-  text-shadow:
-    0 0 14px rgba(0, 212, 255, 0.82),
-    0 0 30px rgba(122, 92, 255, 0.48);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.060)),
+    radial-gradient(circle at 50% 0%, rgba(120, 158, 255, 0.18), transparent 54%),
+    @seven_glass_lift;
+  border-color: @seven_edge_hot;
 }

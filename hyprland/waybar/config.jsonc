@@ -1,20 +1,20 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 56,
-  "spacing": 8,
-  "margin-top": 12,
+  "height": 48,
+  "spacing": 10,
+  "margin-top": 22,
   "margin-left": 24,
   "margin-right": 24,
-  "modules-left": ["custom/sevenos", "custom/apps", "hyprland/workspaces"],
-  "modules-center": ["custom/spotlight", "custom/ai"],
-  "modules-right": ["custom/profile", "custom/security", "cpu", "memory", "battery", "custom/bluetooth", "pulseaudio", "network", "custom/notifications", "clock", "custom/settings", "custom/power"],
+  "modules-left": ["custom/sevenos", "custom/spotlight"],
+  "modules-center": ["hyprland/workspaces"],
+  "modules-right": ["network", "pulseaudio", "battery", "clock", "custom/ai"],
   "hyprland/workspaces": {
     "disable-scroll": true,
     "all-outputs": true
   },
   "custom/sevenos": {
-    "format": "7",
+    "format": "7 SevenOS",
     "tooltip": true,
     "tooltip-format": "SevenOS Control Center. Click opens Hub, right-click opens Welcome.",
     "on-click": "seven hub",
@@ -30,7 +30,7 @@
     "on-click-middle": "seven-spotlight"
   },
   "custom/spotlight": {
-    "format": "󰍉 Rechercher...",
+    "format": "󰍉  Rechercher...        SUPER + SPACE",
     "tooltip": true,
     "tooltip-format": "SevenOS Spotlight. Apps, fichiers, actions, réglages et assistant.",
     "on-click": "seven-spotlight",
@@ -38,7 +38,7 @@
     "on-click-middle": "seven-overview apps"
   },
   "custom/ai": {
-    "format": "󰚩 AI",
+    "format": "●",
     "tooltip": true,
     "tooltip-format": "SevenAI local focus. Click shows product guidance.",
     "on-click": "seven ai focus",
@@ -64,7 +64,7 @@
     "on-click-middle": "seven-files profile"
   },
   "clock": {
-    "format": "{:%H:%M %a}",
+    "format": "{:%a %d %b  %H:%M}",
     "tooltip-format": "{:%A %d %B %Y}",
     "on-click": "seven-waybar-action clock",
     "on-click-right": "seven-settings system",
@@ -118,7 +118,7 @@
     "on-click-right": "seven-wifi settings"
   },
   "pulseaudio": {
-    "format": "󰕾",
+    "format": "󰕾 {volume}%",
     "format-muted": "󰖁",
     "tooltip-format": "{volume}% · {desc} · Click opens sound center.",
     "on-click": "seven-waybar-action audio",
@@ -128,8 +128,8 @@
     "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
   },
   "battery": {
-    "format": "󰁹",
-    "format-charging": "󰂄",
+    "format": "󰁹 {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
     "tooltip-format": "{capacity}% · {timeTo} · Click opens power center.",
     "on-click": "seven-waybar-action battery",
     "on-click-right": "seven-settings power",

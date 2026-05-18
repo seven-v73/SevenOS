@@ -292,10 +292,10 @@ else
   fail "Waybar SevenOS right-click does not open welcome"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/apps","hyprland/workspaces"] and ."modules-center" == ["custom/spotlight","custom/ai"] and ."custom/sevenos".format == "7" and (."custom/apps".format | contains("Apps")) and ."custom/apps"."on-click" == "seven-overview apps" and ."custom/apps"."on-click-right" == "seven-dock toggle" and ."custom/spotlight"."on-click" == "seven-spotlight" and ."custom/ai"."on-click" == "seven ai focus" and ."custom/profile"."return-type" == "json" and ."custom/security"."return-type" == "json" and ."custom/notifications"."return-type" == "json" and ."custom/bluetooth"."return-type" == "json" and (."modules-right" | index("cpu") and index("memory") and index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/power"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar exposes futuristic Apps, Spotlight, AI and workspace cockpit"
+if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("Rechercher")) and ."custom/spotlight"."on-click" == "seven-spotlight" and ."custom/ai"."on-click" == "seven ai focus" and (.pulseaudio.format | contains("{volume}%")) and (.battery.format | contains("{capacity}%")) and (. | has("cpu") and has("memory")) and (."modules-right" | index("cpu") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar exposes premium SevenOS search, spaces and essential controls"
 else
-  fail "Waybar futuristic Apps, Spotlight, AI or workspace cockpit missing"
+  fail "Waybar premium search, workspace or essential control layout missing"
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -422,7 +422,7 @@ else
   fail "SevenOS Dock should toggle with Super+D and expose workflow actions"
 fi
 
-if jq -e '.network."on-click" == "seven-wifi menu" and .network."on-click-middle" == "seven-wifi disconnect" and .network."on-click-right" == "seven-wifi settings" and .network."format-wifi" == "󰤨" and ."custom/bluetooth"."on-click" == "seven-waybar-action bluetooth" and ."custom/bluetooth"."on-click-middle" == "seven-bluetooth toggle" and ."custom/bluetooth"."return-type" == "json" and .pulseaudio."on-click" == "seven-waybar-action audio" and .pulseaudio."on-click-right" == "seven-settings sound" and .pulseaudio.format == "󰕾" and .battery."on-click" == "seven-waybar-action battery" and .battery."on-click-right" == "seven-settings power" and .battery.format == "󰁹" and .clock."on-click" == "seven-waybar-action clock" and .clock."on-click-right" == "seven-settings system" and .cpu."on-click-right" == "seven-settings system" and ."custom/security"."on-click" == "seven-waybar-action security" and ."custom/security"."on-click-right" == "seven-settings security" and ."custom/profile"."on-click" == "seven-waybar-action profile" and ."custom/profile"."on-click-right" == "seven-settings profiles" and ."custom/profile"."on-click-middle" == "seven-files profile" and ."custom/settings"."on-click" == "seven-settings" and ."custom/settings"."on-click-right" == "seven-hub-native" and (."custom/notifications"."on-click" | contains("seven-waybar-notifications") and contains("menu")) and (."custom/notifications"."on-click-right" | contains("seven-waybar-notifications") and contains("toggle-dnd"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.network."on-click" == "seven-wifi menu" and .network."on-click-middle" == "seven-wifi disconnect" and .network."on-click-right" == "seven-wifi settings" and .network."format-wifi" == "󰤨" and .pulseaudio."on-click" == "seven-waybar-action audio" and .pulseaudio."on-click-right" == "seven-settings sound" and (.pulseaudio.format | contains("{volume}%")) and .battery."on-click" == "seven-waybar-action battery" and .battery."on-click-right" == "seven-settings power" and (.battery.format | contains("{capacity}%")) and .clock."on-click" == "seven-waybar-action clock" and .clock."on-click-right" == "seven-settings system" and ."custom/ai"."on-click" == "seven ai focus" and ."custom/sevenos"."on-click" == "seven hub" and ."custom/spotlight"."on-click" == "seven-spotlight"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
@@ -464,13 +464,12 @@ fi
 notifications_menu_output="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
 notifications_menu_fr="$(SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
 notifications_toggle_output="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" toggle-dnd)"
-if jq -e '."modules-right" | index("custom/notifications")' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null &&
-   grep -q 'DRY-RUN > Notifications > Open panel' <<<"$notifications_menu_output" &&
+if grep -q 'DRY-RUN > Notifications > Open panel' <<<"$notifications_menu_output" &&
    grep -q 'Aucune notification' <<<"$notifications_menu_fr" &&
    grep -q 'DRY-RUN > Notifications > Toggle Do Not Disturb' <<<"$notifications_toggle_output"; then
-  ok "Waybar notifications expose status, menu and Do Not Disturb controls"
+  ok "SevenOS notifications helper exposes menu and Do Not Disturb controls"
 else
-  fail "Waybar notifications should expose status, menu and Do Not Disturb controls"
+  fail "SevenOS notifications helper should expose menu and Do Not Disturb controls"
 fi
 
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
