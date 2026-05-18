@@ -930,13 +930,18 @@ fi
 
 if "$ROOT_DIR/bin/seven-language" status --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-language" list --json | python -m json.tool >/dev/null &&
+   "$ROOT_DIR/bin/seven-language" status --json | python -c 'import json,sys; data=json.load(sys.stdin); langs={item["locale"]: item for item in data["languages"]}; raise SystemExit(0 if "fr_FR.UTF-8" in langs and langs["fr_FR.UTF-8"].get("installed") in {True, False} else 1)' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" menu | grep -q 'DRY-RUN > Language > Open language chooser' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8 | grep -q 'DRY-RUN > Language > Enable fr_FR.UTF-8' &&
+   grep -q 'fr_FR.UTF-8 UTF-8' "$ROOT_DIR/archiso/profile/airootfs/etc/locale.gen" &&
+   grep -q 'fr_FR.UTF-8' "$ROOT_DIR/installer/lib.sh" &&
+   grep -q 'seven_i18n' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'language_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven language set' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'language_parser' "$ROOT_DIR/bin/seven"; then
-  ok "SevenOS exposes functional language selection in General settings"
+  ok "SevenOS exposes French-aware functional language selection in General settings"
 else
-  fail "SevenOS language selection should be available from Settings and CLI"
+  fail "SevenOS language selection should expose French from Settings, installer and CLI"
 fi
 
 if "$ROOT_DIR/bin/seven-apps" doctor | grep -q 'desktop applications indexed'; then
@@ -1076,9 +1081,10 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-sidebar' "$ROOT_DIR/bin/seven-hub-native" &&
-   grep -q 'nav_button("Dashboard"' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'nav_button(tr("hub.dashboard"' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-hero' "$ROOT_DIR/bin/seven-hub-native" &&
-   grep -q 'metric_card("Readiness"' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'metric_card(tr("hub.readiness"' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'from seven_i18n import tr' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'ensure_gtk_python' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'SEVENOS_NATIVE_PYTHON' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'media-playback-start-symbolic' "$ROOT_DIR/bin/seven-hub-native" &&

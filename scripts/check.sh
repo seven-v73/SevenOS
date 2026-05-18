@@ -120,10 +120,12 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/seven-files-native" \
+  "$ROOT_DIR/bin/seven-hub-native" \
   "$ROOT_DIR/bin/seven-launchpad-native" \
   "$ROOT_DIR/bin/seven-settings-native" \
   "$ROOT_DIR/bin/seven-language" \
   "$ROOT_DIR/bin/seven-terminal-native" \
+  "$ROOT_DIR/scripts/seven_i18n.py" \
   "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null
 python -m json.tool "$ROOT_DIR/sevenos.dotinst" >/dev/null

@@ -10,6 +10,7 @@ installer_default_plan() {
   bootloader="systemd-boot"
   timezone="UTC"
   locale="en_US.UTF-8"
+  available_locales="en_US.UTF-8,fr_FR.UTF-8"
   keymap="us"
   swap="zram"
 }

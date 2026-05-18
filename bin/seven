@@ -629,7 +629,7 @@ def main():
     fonts_parser.add_argument("action", nargs="?", default="status")
     fonts_parser.add_argument("extra", nargs=argparse.REMAINDER)
     language_parser = subparsers.add_parser("language", help="inspect and apply SevenOS user language")
-    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "menu"))
+    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu"))
     language_parser.add_argument("locale", nargs="?")
     language_parser.add_argument("--json", action="store_true", help="print machine-readable language state")
     phase_gate_parser = subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")

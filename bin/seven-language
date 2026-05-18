@@ -9,28 +9,59 @@ import os
 import shlex
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import tr  # noqa: E402
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
 PREF_FILE = CONFIG_DIR / "language.conf"
 ENV_FILE = CONFIG_DIR / "language.env"
 DRY_RUN = os.environ.get("SEVENOS_DRY_RUN") == "1"
 
-LABELS = {
-    "C.UTF-8": "System default",
-    "C": "System default",
-    "en_US.UTF-8": "English (United States)",
-    "en_GB.UTF-8": "English (United Kingdom)",
-    "fr_FR.UTF-8": "Francais (France)",
-    "fr_CA.UTF-8": "Francais (Canada)",
-    "es_ES.UTF-8": "Espanol (Espana)",
-    "de_DE.UTF-8": "Deutsch",
-    "it_IT.UTF-8": "Italiano",
-    "pt_BR.UTF-8": "Portugues (Brasil)",
-    "ar_SA.UTF-8": "Arabic",
-    "zh_CN.UTF-8": "Chinese (Simplified)",
-    "ja_JP.UTF-8": "Japanese",
+PREFERRED_LOCALES = ("en_US.UTF-8", "fr_FR.UTF-8")
+
+LABEL_KEYS = {
+    "C.UTF-8": "language.system_default",
+    "C": "language.system_default",
+    "en_US.UTF-8": "language.english_us",
+    "en_GB.UTF-8": "language.english_us",
+    "fr_FR.UTF-8": "language.french_fr",
+    "fr_CA.UTF-8": "language.french_ca",
+    "es_ES.UTF-8": "language.spanish_es",
+    "de_DE.UTF-8": "language.german",
+    "it_IT.UTF-8": "language.italian",
+    "pt_BR.UTF-8": "language.portuguese_br",
+    "ar_SA.UTF-8": "language.arabic",
+    "zh_CN.UTF-8": "language.chinese_simplified",
+    "ja_JP.UTF-8": "language.japanese",
+}
+
+FALLBACK_LABELS = {
+    "language.system_default": "System default",
+    "language.english_us": "English (United States)",
+    "language.french_fr": "French (France)",
+    "language.french_ca": "French (Canada)",
+    "language.spanish_es": "Spanish (Spain)",
+    "language.german": "German",
+    "language.italian": "Italian",
+    "language.portuguese_br": "Portuguese (Brazil)",
+    "language.arabic": "Arabic",
+    "language.chinese_simplified": "Chinese (Simplified)",
+    "language.japanese": "Japanese",
 }
 
 
@@ -66,6 +97,22 @@ def installed_locales() -> list[str]:
     return sorted(locales, key=lambda item: (item in ("C", "C.UTF-8"), item.lower()))
 
 
+def visible_locales() -> list[tuple[str, bool]]:
+    installed = installed_locales()
+    merged = []
+    for locale_name in [*PREFERRED_LOCALES, *installed]:
+        if locale_name not in [item[0] for item in merged]:
+            merged.append((locale_name, locale_name in installed))
+    return merged
+
+
+def label_for(locale_name: str) -> str:
+    key = LABEL_KEYS.get(locale_name)
+    if key:
+        return tr(key, FALLBACK_LABELS.get(key, locale_name))
+    return locale_name.replace("_", " ").replace(".UTF-8", "")
+
+
 def read_prefs() -> dict[str, str]:
     prefs: dict[str, str] = {}
     if not PREF_FILE.exists():
@@ -95,15 +142,14 @@ def language_code(locale_name: str) -> str:
 def language_entries() -> list[dict[str, object]]:
     current = current_locale()
     entries = []
-    for locale_name in installed_locales():
-        label = LABELS.get(locale_name, locale_name.replace("_", " ").replace(".UTF-8", ""))
+    for locale_name, installed in visible_locales():
         entries.append(
             {
                 "locale": locale_name,
-                "label": label,
+                "label": label_for(locale_name),
                 "language": language_code(locale_name),
                 "current": locale_name == current,
-                "installed": True,
+                "installed": installed,
             }
         )
     return entries
@@ -115,9 +161,10 @@ def status_payload() -> dict[str, object]:
     return {
         "schema": "sevenos.language.v1",
         "current": current,
-        "label": LABELS.get(current, current),
+        "label": label_for(current),
         "language": language_code(current),
-        "available": locales,
+        "available": [item[0] for item in visible_locales()],
+        "generated": locales,
         "languages": language_entries(),
         "config": str(PREF_FILE),
         "env_file": str(ENV_FILE),
@@ -162,20 +209,58 @@ def import_environment(locale_name: str) -> None:
 def notify(locale_name: str) -> None:
     if shutil.which("notify-send"):
         subprocess.Popen(
-            ["notify-send", "SevenOS Language", f"Language set to {LABELS.get(locale_name, locale_name)}"],
+            ["notify-send", "SevenOS Language", f"Language set to {label_for(locale_name)}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+
+
+def ensure_language(locale_name: str) -> int:
+    normalized = normalize_locale(locale_name)
+    if normalized in installed_locales():
+        print(f"[SevenOS] OK: {normalized} is already generated.")
+        return 0
+    if normalized not in PREFERRED_LOCALES:
+        print(f"[SevenOS] ERROR: {normalized} is not in the SevenOS default language catalog.")
+        return 1
+    if DRY_RUN:
+        print(f"DRY-RUN > Language > Enable {normalized} in /etc/locale.gen")
+        print("DRY-RUN > Language > Run locale-gen")
+        return 0
+
+    locale_line = f"{normalized} UTF-8"
+    enable_script = (
+        f"grep -q '^{locale_line}$' /etc/locale.gen || "
+        f"grep -q '^#{locale_line}$' /etc/locale.gen && "
+        f"sed -i 's/^#{locale_line}$/{locale_line}/' /etc/locale.gen || "
+        f"printf '\\n{locale_line}\\n' >> /etc/locale.gen"
+    )
+    commands = [f"sudo sh -lc {shlex.quote(enable_script)}", "sudo locale-gen"]
+    if shutil.which("sudo") and subprocess.run(["sudo", "-n", "true"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0:
+        for command in commands:
+            result = subprocess.run(["bash", "-lc", command], check=False)
+            if result.returncode != 0:
+                return result.returncode
+        print(f"[SevenOS] OK: {normalized} generated.")
+        return 0
+
+    print(f"[SevenOS] WARN: {normalized} is not generated yet.")
+    print("[SevenOS] Run with admin rights:")
+    print(f"  sudo sh -lc \"sed -i 's/^#{locale_line}$/{locale_line}/' /etc/locale.gen || printf '\\n{locale_line}\\n' >> /etc/locale.gen; locale-gen\"")
+    print(f"Then apply it with: seven language set {normalized}")
+    return 1
 
 
 def set_language(locale_name: str) -> int:
     normalized = normalize_locale(locale_name)
     installed = installed_locales()
     if normalized not in installed:
-        print(f"[SevenOS] ERROR: language locale is not available: {locale_name}", flush=True)
-        print("[SevenOS] Available languages:")
+        print(f"[SevenOS] ERROR: language locale is not generated yet: {locale_name}", flush=True)
+        print(f"[SevenOS] Generate it with: seven language ensure {normalized}")
+        print("[SevenOS] Languages:")
         for item in language_entries():
-            print(f"  - {item['locale']}  {item['label']}")
+            state = "OK" if item["installed"] else "installable"
+            print(f"  - {item['locale']}  {item['label']}  [{state}]")
         return 1
 
     lang = language_code(normalized)
@@ -213,22 +298,23 @@ def set_language(locale_name: str) -> int:
         write_shell_hook(shell_file)
     import_environment(normalized)
     notify(normalized)
-    print(f"[SevenOS] OK: Language set to {LABELS.get(normalized, normalized)} ({normalized}).")
+    print(f"[SevenOS] OK: Language set to {label_for(normalized)} ({normalized}).")
     print("[SevenOS] Restart newly opened apps, or log out and back in, for every app to inherit it.")
     return 0
 
 
 def print_status() -> None:
     payload = status_payload()
-    print("SevenOS Language")
+    print(tr("language.title", "SevenOS Language"))
     print("================")
-    print(f"Current:   {payload['label']}")
-    print(f"Locale:    {payload['current']}")
-    print(f"Available: {len(payload['languages'])}")
-    print("\nLanguages:")
+    print(f"{tr('language.current', 'Current')}:   {payload['label']}")
+    print(f"{tr('language.locale', 'Locale')}:    {payload['current']}")
+    print(f"{tr('language.available', 'Available')}: {len(payload['languages'])}")
+    print(f"\n{tr('language.languages', 'Languages')}:")
     for item in payload["languages"]:
         marker = "*" if item["current"] else " "
-        print(f" {marker} {item['locale']:<16} {item['label']}")
+        state = "OK" if item["installed"] else "installable"
+        print(f" {marker} {item['locale']:<16} {item['label']} [{state}]")
 
 
 def open_menu() -> int:
@@ -256,7 +342,7 @@ def open_menu() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="SevenOS language manager")
-    parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "menu"))
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu"))
     parser.add_argument("locale", nargs="?")
     parser.add_argument("--json", action="store_true", help="print machine-readable output")
     args = parser.parse_args()
@@ -277,6 +363,10 @@ def main() -> int:
         return 0
     if args.action == "menu":
         return open_menu()
+    if args.action == "ensure":
+        if not args.locale:
+            parser.error("ensure requires a locale, for example: seven-language ensure fr_FR.UTF-8")
+        return ensure_language(args.locale)
     if not args.locale:
         parser.error("set requires a locale, for example: seven-language set en_US.UTF-8")
     return set_language(args.locale)

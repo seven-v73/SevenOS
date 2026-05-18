@@ -45,6 +45,8 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import tr  # noqa: E402
 
 
 def out(command: list[str], fallback: str = "") -> str:
@@ -67,6 +69,8 @@ def run_detached(command: str) -> None:
         "seven update",
         "seven language status",
         "seven language list",
+        "seven language ensure",
+        "seven language set",
         "sevenpkg status",
         "seven shield audit",
         "wpctl status",
@@ -188,12 +192,12 @@ def language_state() -> dict:
         [str(ROOT / "bin/seven-language"), "status", "--json"],
         {
             "current": os.environ.get("LANG", "C.UTF-8"),
-            "label": "System default",
+            "label": tr("language.system_default", "System default"),
             "language": "C",
             "languages": [
                 {
                     "locale": "C.UTF-8",
-                    "label": "System default",
+                    "label": tr("language.system_default", "System default"),
                     "language": "C",
                     "current": True,
                     "installed": True,
@@ -643,10 +647,10 @@ def run(initial_page: str = "overview") -> int:
 
         text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
         text_box.set_hexpand(True)
-        title_label = Gtk.Label(label="Language")
+        title_label = Gtk.Label(label=tr("settings.language", "Language"))
         title_label.set_xalign(0)
         title_label.get_style_context().add_class("card-title")
-        note_label = Gtk.Label(label=f"{payload.get('label', current)} · applies to new apps and terminals")
+        note_label = Gtk.Label(label=tr("settings.language.note", "{label} · applies to new apps and terminals", label=payload.get("label", current)))
         note_label.set_xalign(0)
         note_label.set_line_wrap(True)
         note_label.get_style_context().add_class("card-note")
@@ -655,10 +659,14 @@ def run(initial_page: str = "overview") -> int:
 
         selector = Gtk.ComboBoxText()
         active_index = 0
+        installed_by_locale: dict[str, bool] = {}
         for index, item in enumerate(languages):
             locale_name = str(item.get("locale", "C.UTF-8"))
             label = str(item.get("label", locale_name))
-            selector.append(locale_name, f"{label} · {locale_name}")
+            installed = bool(item.get("installed", True))
+            installed_by_locale[locale_name] = installed
+            suffix = locale_name if installed else f"{locale_name} · installable"
+            selector.append(locale_name, f"{label} · {suffix}")
             if locale_name == current or item.get("current"):
                 active_index = index
         selector.set_active(active_index)
@@ -676,6 +684,10 @@ def run(initial_page: str = "overview") -> int:
             locale_name = widget.get_active_id()
             if not locale_name:
                 return
+            if not installed_by_locale.get(locale_name, True):
+                run_detached(f"seven language ensure {locale_name}")
+                notify("SevenOS Language", "Generate this locale first, then choose it again.")
+                return
             run_detached(f"seven language set {locale_name}")
             notify("SevenOS Language", "Language updated for new apps and terminals.")
 
@@ -685,7 +697,7 @@ def run(initial_page: str = "overview") -> int:
         actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         actions.set_valign(Gtk.Align.CENTER)
         actions.pack_start(selector, False, False, 0)
-        actions.pack_start(action_button("Status", "seven language status"), False, False, 0)
+        actions.pack_start(action_button(tr("settings.status", "Status"), "seven language status"), False, False, 0)
 
         card.pack_start(icon_box, False, False, 0)
         card.pack_start(text_box, True, True, 0)
@@ -716,38 +728,38 @@ def run(initial_page: str = "overview") -> int:
         return card
 
     pages = {
-        "overview": page("SevenOS Settings", "A complete control surface for desktop, security, profiles, devices and system runtime."),
-        "general": page("General", "Language, region, theme entry points and everyday SevenOS behavior."),
-        "appearance": page("Appearance", "Liquid glass, dock, terminal style and SevenOS visual identity."),
-        "wallpaper": page("Wallpaper", "Choose a wallpaper, refresh Hyprpaper and open the wallpaper library."),
-        "display": page("Displays", "Brightness, monitor tools and Hyprland display configuration."),
+        "overview": page(tr("settings.title", "SevenOS Settings"), tr("settings.subtitle", "A complete control surface for desktop, security, profiles, devices and system runtime.")),
+        "general": page(tr("settings.general", "General"), tr("settings.general.subtitle", "Language, region, theme entry points and everyday SevenOS behavior.")),
+        "appearance": page(tr("settings.appearance", "Appearance"), "Liquid glass, dock, terminal style and SevenOS visual identity."),
+        "wallpaper": page(tr("settings.wallpaper", "Wallpaper"), "Choose a wallpaper, refresh Hyprpaper and open the wallpaper library."),
+        "display": page(tr("settings.displays", "Displays"), "Brightness, monitor tools and Hyprland display configuration."),
         "network": page("Wi-Fi & Network", "Connect, diagnose and configure NetworkManager."),
-        "sound": page("Sound", "Volume, mixer, mute and PipeWire status."),
-        "keyboard": page("Keyboard", "US/French layouts with Alt+Shift switching."),
-        "fonts": page("Fonts", "Choose, import and refresh SevenOS typography roles without terminal work."),
-        "security": page("Security", "Shield, firewall, sandbox and CyberSpace controls."),
-        "profiles": page("Profiles", "Switch SevenOS work modes and open profile workspaces."),
-        "power": page("Battery & Power", "Battery state, lock, sleep and power profiles."),
-        "apps": page("Apps", "SevenPkg, Flatpak, Launchpad and app management."),
-        "system": page("System", "Daily driver gate, doctor, logs, updates and runtime services."),
+        "sound": page(tr("settings.sound", "Sound"), "Volume, mixer, mute and PipeWire status."),
+        "keyboard": page(tr("settings.keyboard", "Keyboard"), "US/French layouts with Alt+Shift switching."),
+        "fonts": page(tr("settings.fonts", "Fonts"), "Choose, import and refresh SevenOS typography roles without terminal work."),
+        "security": page(tr("settings.security", "Security"), "Shield, firewall, sandbox and CyberSpace controls."),
+        "profiles": page(tr("settings.profiles", "Profiles"), "Switch SevenOS work modes and open profile workspaces."),
+        "power": page(tr("settings.power", "Battery & Power"), "Battery state, lock, sleep and power profiles."),
+        "apps": page(tr("settings.apps", "Apps"), "SevenPkg, Flatpak, Launchpad and app management."),
+        "system": page(tr("settings.system", "System"), "Daily driver gate, doctor, logs, updates and runtime services."),
     }
     for name, (_box, scrolled) in pages.items():
         stack.add_named(scrolled, name)
 
-    nav("overview", "󰕮", "Overview", "overview")
-    nav("general", "󰒓", "General", "general")
-    nav("appearance", "󰸉", "Appearance", "appearance")
-    nav("wallpaper", "󰸉", "Wallpaper", "wallpaper")
-    nav("display", "󰍹", "Displays", "display")
+    nav("overview", "󰕮", tr("settings.overview", "Overview"), "overview")
+    nav("general", "󰒓", tr("settings.general", "General"), "general")
+    nav("appearance", "󰸉", tr("settings.appearance", "Appearance"), "appearance")
+    nav("wallpaper", "󰸉", tr("settings.wallpaper", "Wallpaper"), "wallpaper")
+    nav("display", "󰍹", tr("settings.displays", "Displays"), "display")
     nav("network", "󰤨", "Wi-Fi", "network")
-    nav("sound", "󰕾", "Sound", "sound")
-    nav("keyboard", "󰌌", "Keyboard", "keyboard")
-    nav("fonts", "󰛖", "Fonts", "fonts")
-    nav("security", "󰒃", "Security", "security")
-    nav("profiles", "󰐃", "Profiles", "profiles")
-    nav("power", "󰁹", "Power", "power")
-    nav("apps", "󰀻", "Apps", "apps")
-    nav("system", "󰒓", "System", "system")
+    nav("sound", "󰕾", tr("settings.sound", "Sound"), "sound")
+    nav("keyboard", "󰌌", tr("settings.keyboard", "Keyboard"), "keyboard")
+    nav("fonts", "󰛖", tr("settings.fonts", "Fonts"), "fonts")
+    nav("security", "󰒃", tr("settings.security", "Security"), "security")
+    nav("profiles", "󰐃", tr("settings.profiles", "Profiles"), "profiles")
+    nav("power", "󰁹", tr("settings.power", "Power"), "power")
+    nav("apps", "󰀻", tr("settings.apps", "Apps"), "apps")
+    nav("system", "󰒓", tr("settings.system", "System"), "system")
     initial_page = initial_page if initial_page in pages else "overview"
 
     # Overview
@@ -787,7 +799,7 @@ def run(initial_page: str = "overview") -> int:
     )
     section(overview, "Shortcuts")
     card_grid(overview, [
-        setting_card("󰒓", "General settings", "Language, theme entry points and everyday SevenOS behavior.", [action_button("Open", "seven-settings general")]),
+        setting_card("󰒓", tr("settings.general_card", "General settings"), tr("settings.general_card.note", "Language, theme entry points and everyday SevenOS behavior."), [action_button(tr("settings.open", "Open"), "seven-settings general")]),
         setting_card("󰀻", "Launchpad", "Open the SevenOS app grid.", [action_button("Open", "seven-overview apps")]),
         setting_card("󰉋", "Files", "Open Seven Files.", [action_button("Open", "seven-files")]),
         setting_card("󰖟", "Spotlight", "Universal search remains centralized in SevenOS Spotlight.", [action_button("Open", "seven-spotlight")]),
@@ -796,13 +808,14 @@ def run(initial_page: str = "overview") -> int:
     # General
     general = pages["general"][0]
     lang_payload = language_state()
-    section(general, "Language & Region")
+    section(general, tr("settings.language_region", "Language & Region"))
     general.pack_start(language_selector_card(), False, False, 0)
     card_grid(general, [
-        setting_card("󰗊", "Available languages", f"{len(lang_payload.get('languages', []))} generated locale(s) detected on this machine.", [action_button("List", "seven language list")]),
-        setting_card("󰌢", "Keyboard layouts", "Keep US/French layouts and Alt+Shift switching independent from display language.", [action_button("Open", "seven-settings keyboard")]),
-        setting_card("󰔎", "Dark or Light", "Switch between immersive SevenOS Dark and clarity-first Light.", [action_button("Appearance", "seven-settings appearance")]),
-        setting_card("󰜉", "Session refresh", "Reload Hyprland after changing global system preferences.", [action_button("Reload", "hyprctl reload")]),
+        setting_card("󰗊", tr("settings.available_languages", "Available languages"), tr("settings.available_languages.note", "{count} generated or installable language(s) detected on this machine.", count=len(lang_payload.get("languages", []))), [action_button(tr("settings.list", "List"), "seven language list")]),
+        setting_card("󰗊", "Français", "Generate fr_FR.UTF-8 if it is not available yet, then switch the SevenOS interface to French.", [action_button("Generate", "seven language ensure fr_FR.UTF-8"), action_button("Apply", "seven language set fr_FR.UTF-8")]),
+        setting_card("󰌢", tr("settings.keyboard_layouts", "Keyboard layouts"), tr("settings.keyboard_layouts.note", "Keep US/French layouts and Alt+Shift switching independent from display language."), [action_button(tr("settings.open", "Open"), "seven-settings keyboard")]),
+        setting_card("󰔎", tr("settings.dark_or_light", "Dark or Light"), tr("settings.dark_or_light.note", "Switch between immersive SevenOS Dark and clarity-first Light."), [action_button(tr("settings.appearance.button", "Appearance"), "seven-settings appearance")]),
+        setting_card("󰜉", tr("settings.session_refresh", "Session refresh"), tr("settings.session_refresh.note", "Reload Hyprland after changing global system preferences."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
     ])
 
     # Appearance

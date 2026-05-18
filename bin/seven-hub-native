@@ -27,6 +27,8 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import tr  # noqa: E402
 
 
 def ensure_gtk_python() -> None:
@@ -728,21 +730,21 @@ def run_gui() -> int:
                 sidebar.append(button)
                 return button
 
-            dashboard_nav = nav_button("Dashboard", "view-dashboard-symbolic", "dashboard")
-            nav_button("Profiles", "avatar-default-symbolic", "profiles")
-            nav_button("Actions", "system-run-symbolic", "actions")
-            nav_button("Ecosystem", "network-workgroup-symbolic", "ecosystem")
+            dashboard_nav = nav_button(tr("hub.dashboard", "Dashboard"), "view-dashboard-symbolic", "dashboard")
+            nav_button(tr("hub.profiles", "Profiles"), "avatar-default-symbolic", "profiles")
+            nav_button(tr("hub.actions", "Actions"), "system-run-symbolic", "actions")
+            nav_button(tr("hub.ecosystem", "Ecosystem"), "network-workgroup-symbolic", "ecosystem")
             dashboard_nav.add_css_class("active")
 
             sidebar_status_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
             sidebar_status_card.add_css_class("seven-status-card")
-            status_title = Gtk.Label(label="SYSTEM STATUS")
+            status_title = Gtk.Label(label=tr("hub.system_status", "SYSTEM STATUS"))
             status_title.set_xalign(0)
             status_title.add_css_class("dim-label")
-            status_value = Gtk.Label(label="Native Hub online")
+            status_value = Gtk.Label(label=tr("hub.native_online", "Native Hub online"))
             status_value.set_xalign(0)
             status_value.add_css_class("seven-pill")
-            status_note = Gtk.Label(label="SevenOS Control Center")
+            status_note = Gtk.Label(label=tr("hub.control_center", "SevenOS Control Center"))
             status_note.set_xalign(0)
             status_note.add_css_class("dim-label")
             sidebar_status_card.append(status_title)
@@ -1540,7 +1542,7 @@ def run_gui() -> int:
                 control = control_payload()
                 active = next((item for item in profiles if item.get("active")), None)
 
-                heading(dashboard, "Seven Hub", "Control Center for the active SevenOS session.")
+                heading(dashboard, tr("hub.heading", "Seven Hub"), tr("hub.heading.subtitle", "Control Center for the active SevenOS session."))
 
                 metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
                 metrics.add_css_class("seven-metric-row")
@@ -1548,10 +1550,10 @@ def run_gui() -> int:
                 shield_percent = int(shield.get("percent", 0) or 0)
                 experience_percent = int(experience.get("percent", 0) or 0)
                 daily_state = daily.get("decision", "unknown")
-                metrics.append(metric_card("Readiness", f"{readiness_percent}%", "system", metric_state(readiness_percent)))
-                metrics.append(metric_card("Shield", f"{shield_percent}%", "trust", metric_state(shield_percent)))
+                metrics.append(metric_card(tr("hub.readiness", "Readiness"), f"{readiness_percent}%", "system", metric_state(readiness_percent)))
+                metrics.append(metric_card(tr("hub.shield", "Shield"), f"{shield_percent}%", "trust", metric_state(shield_percent)))
                 metrics.append(metric_card("UX", f"{experience_percent}%", "experience", metric_state(experience_percent)))
-                metrics.append(metric_card("Daily", state_short(daily_state), f"{len(daily.get('blockers', []))} blockers", "good" if daily_state == "ready" else "warn"))
+                metrics.append(metric_card(tr("hub.daily", "Daily"), state_short(daily_state), f"{len(daily.get('blockers', []))} blockers", "good" if daily_state == "ready" else "warn"))
                 dashboard.append(metrics)
 
                 strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -1571,14 +1573,14 @@ def run_gui() -> int:
                 grid = compact_grid()
                 tiles = [
                     tile_button("7", "Profile", active.get("title", "Baobab") if active else "Choose mode", "seven-waybar-action profile", "good" if active else "warn"),
-                    tile_button("⚙", "Settings", "desktop controls", "seven-settings", "good"),
-                    tile_button("!", "Security", shield.get("posture", "unknown"), "seven shield dashboard", metric_state(shield_percent)),
-                    tile_button("W", "Windows", windows.get("mode", "setup"), "seven-windows-assistant guide", "good" if windows.get("ready") else "warn"),
-                    tile_button("S", "Server", server.get("state", server.get("service", {}).get("state", "MISS")), "seven server status", "good" if str(server.get("state", "")).upper() == "RUN" else "warn"),
-                    tile_button("A", "Apps", "install and update", "sevenpkg status", "warn"),
-                    tile_button("D", "Doctor", "repair path", "seven doctor", "warn"),
+                    tile_button("⚙", tr("hub.settings", "Settings"), "desktop controls", "seven-settings", "good"),
+                    tile_button("!", tr("hub.security", "Security"), shield.get("posture", "unknown"), "seven shield dashboard", metric_state(shield_percent)),
+                    tile_button("W", tr("hub.windows", "Windows"), windows.get("mode", "setup"), "seven-windows-assistant guide", "good" if windows.get("ready") else "warn"),
+                    tile_button("S", tr("hub.server", "Server"), server.get("state", server.get("service", {}).get("state", "MISS")), "seven server status", "good" if str(server.get("state", "")).upper() == "RUN" else "warn"),
+                    tile_button("A", tr("hub.apps", "Apps"), "install and update", "sevenpkg status", "warn"),
+                    tile_button("D", tr("hub.doctor", "Doctor"), "repair path", "seven doctor", "warn"),
                     tile_button("B", "B3", "phase gate", "seven b3 status", "warn"),
-                    tile_button("I", "Identity", identity.get("tagline", "Beyond the Desktop"), "seven identity status", "good"),
+                    tile_button("I", tr("hub.identity", "Identity"), identity.get("tagline", "Beyond the Desktop"), "seven identity status", "good"),
                 ]
                 add_tiles(grid, tiles, 4)
                 dashboard.append(grid)
