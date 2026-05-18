@@ -1,7 +1,7 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 46,
+  "height": 48,
   "spacing": 8,
   "margin-top": 16,
   "margin-left": 24,
@@ -11,7 +11,7 @@
   "modules-center": ["custom/workspace-prev", "hyprland/workspaces", "custom/workspace-next"],
   "modules-right": ["network", "pulseaudio", "battery", "clock", "custom/ai"],
   "custom/sevenos": {
-    "format": "󰣇 SevenOS",
+    "format": "7  SevenOS",
     "tooltip": false,
     "on-click": "seven hub"
   },

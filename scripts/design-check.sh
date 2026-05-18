@@ -72,7 +72,7 @@ else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and .height == 46 and .spacing == 8 and ."margin-top" == 16 and ."margin-left" == 24 and ."margin-right" == 24 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("SUPER + SPACE")) and ."custom/workspace-prev"."on-click" == "hyprctl dispatch workspace e-1" and ."custom/workspace-next"."on-click" == "hyprctl dispatch workspace e+1" and ."custom/ai".format == "◉"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and .height == 48 and .spacing == 8 and ."margin-top" == 16 and ."margin-left" == 24 and ."margin-right" == 24 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("SUPER + SPACE")) and ."custom/workspace-prev"."on-click" == "hyprctl dispatch workspace e-1" and ."custom/workspace-next"."on-click" == "hyprctl dispatch workspace e+1" and ."custom/ai".format == "◉"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses the SevenOS public premium floating hierarchy"
 else
   fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
@@ -81,7 +81,7 @@ fi
 if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '.modules-center,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '.modules-right' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'border-radius: 25px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'border-radius: 28px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'min-width: 430px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-workspace-prev' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'box-shadow:' "$ROOT_DIR/hyprland/waybar/style.css" &&
@@ -91,9 +91,10 @@ if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-ai' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '@keyframes aiPulse' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#workspaces button.active' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'rgba(34, 38, 76, 0.44)' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'rgba(34, 38, 76, 0.38)' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '@define-color seven_violet' "$ROOT_DIR/hyprland/waybar/style.css"; then
+   grep -q '@define-color seven_violet' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'layerrule = blur, waybar' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Waybar uses premium liquid glass islands"
 else
   fail "Waybar should use premium liquid glass islands"
