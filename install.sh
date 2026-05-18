@@ -36,7 +36,8 @@ Targets:
   status           Show SevenOS installation status
   branding         Apply SevenOS system branding
   cli              Install SevenOS CLI tools
-  theme            Apply SevenOS African first theme
+  theme [dark|light]
+                   Apply SevenOS visual theme
   hub              Install Seven Hub launcher
   iso-tools        Install ISO build tooling
   iso              Build SevenOS live ISO
@@ -181,7 +182,7 @@ case "$TARGET" in
     "$ROOT_DIR/scripts/install-cli.sh"
     ;;
   theme)
-    "$ROOT_DIR/scripts/apply-theme.sh"
+    "$ROOT_DIR/scripts/apply-theme.sh" "${TARGET_ARGS[@]}"
     ;;
   hub)
     "$ROOT_DIR/seven-hub/install.sh"

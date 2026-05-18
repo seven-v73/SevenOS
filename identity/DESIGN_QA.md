@@ -6,6 +6,7 @@ Use this checklist before shipping a SevenOS visual change.
 
 - SevenOS reads as premium, futuristic, intelligent and Linux-native.
 - The direction matches `identity/CHARTER.md` and the tagline “Beyond the Desktop.”
+- Light Mode follows `identity/CHARTER_LIGHT.md` and the tagline “Clarity first.”
 - Interfaces feel fluid, transparent, minimal, deep and contextual.
 
 ## Palette
@@ -21,6 +22,8 @@ Use this checklist before shipping a SevenOS visual change.
 - Production shell CSS avoids decorative `box-shadow` and web-only `backdrop-filter`.
 - Glow is expressed through alpha gradients, borders, Hyprland blur and text-shadow.
 - UI CSS avoids font weights above 500.
+- `identity/tokens-light.css` and `hyprland-light/` define the installable
+  clarity-first Light Mode.
 
 ## UX
 

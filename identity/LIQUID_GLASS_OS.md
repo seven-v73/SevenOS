@@ -17,6 +17,14 @@ Liquid glass is delivered by Hyprland compositor blur plus translucent
 surfaces, soft borders, subtle gradients and consistent spacing. Production
 Linux shell CSS does not use web-only `backdrop-filter`.
 
+SevenOS has two material moods:
+
+- Dark Mode: immersive, cinematic and cyber-aware.
+- Light Mode: clarity-first, white, spacious and productivity-focused.
+
+Light Mode uses translucent white surfaces, fine borders and restrained blue
+accents instead of cyber glow.
+
 ## Interface Anatomy
 
 ### Menu Bar

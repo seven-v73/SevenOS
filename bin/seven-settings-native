@@ -705,9 +705,10 @@ def run(initial_page: str = "overview") -> int:
     appearance = pages["appearance"][0]
     section(appearance, "Visual system")
     card_grid(appearance, [
-        setting_card("󰔎", "Apply SevenOS theme", "Reapply GTK, Qt, Waybar, Rofi, Kitty and wallpaper services.", [action_button("Apply", "./install.sh theme")]),
+        setting_card("󰔎", "Dark Mode", "Immersive SevenOS cockpit for cyber, creation and night focus.", [action_button("Apply", "./install.sh theme dark")]),
+        setting_card("󰔎", "Light Mode", "Clarity-first SevenOS workspace for productivity, reading and daylight use.", [action_button("Apply", "./install.sh theme light")]),
         setting_card("󰃣", "Dock", "Toggle the SevenOS Dock layout.", [action_button("Toggle", "seven-dock toggle")]),
-        setting_card("󰆍", "Terminal style", "Choose classic light or graphite SevenOS terminal.", [action_button("Choose", "seven-terminal menu")]),
+        setting_card("󰆍", "Terminal style", "Choose classic, graphite or clarity-first SevenOS terminal.", [action_button("Choose", "seven-terminal menu")]),
         setting_card("󰇄", "Waybar", "Repair and restart the liquid glass menu bar.", [action_button("Repair", "seven-waybar repair")]),
     ])
 

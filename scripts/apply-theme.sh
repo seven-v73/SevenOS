@@ -7,6 +7,8 @@ source "$ROOT_DIR/scripts/lib.sh"
 
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+SEVENOS_CONFIG_DIR="$CONFIG_HOME/sevenos"
+THEME_PREF="$SEVENOS_CONFIG_DIR/theme.conf"
 SHELL_HOOK="$CONFIG_HOME/sevenos/shell/terminal-country.sh"
 WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
 WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
@@ -14,6 +16,52 @@ WALLPAPER_ACTIVE="$WALLPAPER_DIR/wallpaper-sevenos-active.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
 SYSTEMD_USER_DIR="$CONFIG_HOME/systemd/user"
 WAYLAND_SESSION_DIR="$DATA_HOME/wayland-sessions"
+REQUESTED_THEME="${1:-${SEVENOS_THEME_MODE:-}}"
+
+read_persisted_theme() {
+  if [[ -f "$THEME_PREF" ]]; then
+    # shellcheck disable=SC1090
+    source "$THEME_PREF" || true
+  fi
+  printf '%s' "${SEVENOS_THEME_MODE:-dark}"
+}
+
+case "$REQUESTED_THEME" in
+  ""|"current") THEME_MODE="$(read_persisted_theme)" ;;
+  dark|light) THEME_MODE="$REQUESTED_THEME" ;;
+  *)
+    log_error "Unsupported SevenOS theme mode: $REQUESTED_THEME"
+    log_info "Use: ./install.sh theme dark or ./install.sh theme light"
+    exit 2
+    ;;
+esac
+
+case "$THEME_MODE" in
+  light)
+    THEME_SOURCE_DIR="$ROOT_DIR/hyprland-light"
+    THEME_LABEL="Light Mode"
+    WALLPAPER_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg"
+    WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-light.png"
+    ;;
+  dark)
+    THEME_SOURCE_DIR="$ROOT_DIR/hyprland"
+    THEME_LABEL="Dark Mode"
+    WALLPAPER_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
+    ;;
+esac
+
+persist_theme_mode() {
+  log_info "Persisting SevenOS theme mode: $THEME_MODE"
+
+  if is_dry_run; then
+    printf 'mkdir -p %q\n' "$SEVENOS_CONFIG_DIR"
+    printf 'write %q with SEVENOS_THEME_MODE=%q\n' "$THEME_PREF" "$THEME_MODE"
+    return 0
+  fi
+
+  mkdir -p "$SEVENOS_CONFIG_DIR"
+  printf 'SEVENOS_THEME_MODE=%q\n' "$THEME_MODE" > "$THEME_PREF"
+}
 
 install_preserved_config_file() {
   local source_file="$1"
@@ -219,7 +267,11 @@ configure_toolkit_theme() {
   if is_dry_run; then
     printf 'copy GTK, Qt and fontconfig SevenOS settings into %q\n' "$CONFIG_HOME"
     printf '%q apply-default\n' "$ROOT_DIR/scripts/fonts.sh"
-    printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-light\n'
+    if [[ "$THEME_MODE" == "light" ]]; then
+      printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-light\n'
+    else
+      printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-dark\n'
+    fi
     printf 'gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3\n'
     printf 'gsettings set org.gnome.desktop.interface icon-theme Papirus\n'
     printf 'gsettings set org.gnome.desktop.interface gtk-decoration-layout close,minimize,maximize:\n'
@@ -227,15 +279,19 @@ configure_toolkit_theme() {
     return 0
   fi
 
-  copy_config_dir "$ROOT_DIR/hyprland/gtk-3.0" "$CONFIG_HOME/gtk-3.0"
-  copy_config_dir "$ROOT_DIR/hyprland/gtk-4.0" "$CONFIG_HOME/gtk-4.0"
+  copy_config_dir "$THEME_SOURCE_DIR/gtk-3.0" "$CONFIG_HOME/gtk-3.0"
+  copy_config_dir "$THEME_SOURCE_DIR/gtk-4.0" "$CONFIG_HOME/gtk-4.0"
   copy_config_dir "$ROOT_DIR/hyprland/qt5ct" "$CONFIG_HOME/qt5ct"
   copy_config_dir "$ROOT_DIR/hyprland/qt6ct" "$CONFIG_HOME/qt6ct"
   copy_config_dir "$ROOT_DIR/hyprland/fontconfig" "$CONFIG_HOME/fontconfig"
   "$ROOT_DIR/scripts/fonts.sh" apply-default
 
   if command -v gsettings >/dev/null 2>&1; then
-    gsettings set org.gnome.desktop.interface color-scheme prefer-dark >/dev/null 2>&1 || true
+    if [[ "$THEME_MODE" == "light" ]]; then
+      gsettings set org.gnome.desktop.interface color-scheme prefer-light >/dev/null 2>&1 || true
+    else
+      gsettings set org.gnome.desktop.interface color-scheme prefer-dark >/dev/null 2>&1 || true
+    fi
     gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3 >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface icon-theme Papirus >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic >/dev/null 2>&1 || true
@@ -250,43 +306,52 @@ configure_toolkit_theme() {
 }
 
 render_wallpaper() {
-  log_info "Rendering SevenOS Beyond the Desktop wallpaper..."
+  log_info "Rendering SevenOS $THEME_LABEL wallpaper..."
 
   if is_dry_run; then
     printf 'rm -f %q\n' "$WALLPAPER_PNG"
-    printf 'rsvg-convert -w 1920 -h 1080 %q -o %q\n' "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$WALLPAPER_PNG"
+    printf 'rsvg-convert -w 1920 -h 1080 %q -o %q\n' "$WALLPAPER_SVG" "$WALLPAPER_PNG"
+    printf 'cp %q %q\n' "$WALLPAPER_PNG" "$WALLPAPER_ACTIVE"
     return 0
   fi
 
   rm -f "$WALLPAPER_PNG"
   if command -v rsvg-convert >/dev/null 2>&1; then
-    rsvg-convert -w 1920 -h 1080 "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" -o "$WALLPAPER_PNG"
+    rsvg-convert -w 1920 -h 1080 "$WALLPAPER_SVG" -o "$WALLPAPER_PNG"
   elif command -v magick >/dev/null 2>&1; then
-    magick "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" -resize 1920x1080! "$WALLPAPER_PNG"
+    magick "$WALLPAPER_SVG" -resize 1920x1080! "$WALLPAPER_PNG"
   else
     log_warn "No SVG renderer found. Install librsvg or imagemagick to generate the PNG wallpaper."
     log_warn "Run: sudo pacman -S --needed librsvg"
     return 1
   fi
+  cp "$WALLPAPER_PNG" "$WALLPAPER_ACTIVE"
 }
 
-log_info "Applying SevenOS Beyond the Desktop theme..."
+log_info "Applying SevenOS Beyond the Desktop theme: $THEME_LABEL..."
+persist_theme_mode
 copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.conf"
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/monitor.conf" "$CONFIG_HOME/hypr/conf/monitor.conf"
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/keyboard.conf" "$CONFIG_HOME/hypr/conf/keyboard.conf"
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/custom.conf" "$CONFIG_HOME/hypr/conf/custom.conf"
-copy_config_dir "$ROOT_DIR/hyprland/waybar" "$CONFIG_HOME/waybar"
-copy_config_dir "$ROOT_DIR/hyprland/rofi" "$CONFIG_HOME/rofi"
-copy_config_dir "$ROOT_DIR/hyprland/mako" "$CONFIG_HOME/mako"
-copy_config_dir "$ROOT_DIR/hyprland/kitty" "$CONFIG_HOME/kitty"
+copy_config_dir "$THEME_SOURCE_DIR/waybar" "$CONFIG_HOME/waybar"
+copy_config_dir "$THEME_SOURCE_DIR/rofi" "$CONFIG_HOME/rofi"
+copy_config_dir "$THEME_SOURCE_DIR/mako" "$CONFIG_HOME/mako"
+copy_config_dir "$THEME_SOURCE_DIR/kitty" "$CONFIG_HOME/kitty"
 configure_toolkit_theme
 copy_config_file "$ROOT_DIR/branding/shell/terminal-country.sh" "$SHELL_HOOK"
 
 run_cmd mkdir -p "$WALLPAPER_DIR" "$DATA_HOME/sevenos/countries" "$DATA_HOME/sevenos/identity" "$DATA_HOME/icons/hicolor/scalable/apps"
-run_cmd cp "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" "$WALLPAPER_DIR/wallpaper-sevenos.svg"
+run_cmd cp "$WALLPAPER_SVG" "$WALLPAPER_DIR/wallpaper-sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$DATA_HOME/icons/hicolor/scalable/apps/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/countries/africa.tsv" "$DATA_HOME/sevenos/countries/africa.tsv"
-run_cmd cp "$ROOT_DIR/identity/tokens.css" "$DATA_HOME/sevenos/identity/tokens.css"
+if [[ "$THEME_MODE" == "light" ]]; then
+  run_cmd cp "$ROOT_DIR/identity/tokens-light.css" "$DATA_HOME/sevenos/identity/tokens.css"
+else
+  run_cmd cp "$ROOT_DIR/identity/tokens.css" "$DATA_HOME/sevenos/identity/tokens.css"
+fi
+run_cmd cp "$ROOT_DIR/identity/tokens.css" "$DATA_HOME/sevenos/identity/tokens-dark.css"
+run_cmd cp "$ROOT_DIR/identity/tokens-light.css" "$DATA_HOME/sevenos/identity/tokens-light.css"
 run_cmd cp "$ROOT_DIR/identity/accent-packs.json" "$DATA_HOME/sevenos/identity/accent-packs.json"
 run_cmd cp -r "$ROOT_DIR/identity/patterns" "$DATA_HOME/sevenos/identity/patterns"
 run_cmd cp -r "$ROOT_DIR/identity/components" "$DATA_HOME/sevenos/identity/components"

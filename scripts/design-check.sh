@@ -17,13 +17,13 @@ ok() {
 
 log_info "Running SevenOS design coherence checks..."
 
-if grep -R "box-shadow" "$ROOT_DIR/hyprland" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
+if grep -R "box-shadow" "$ROOT_DIR/hyprland" "$ROOT_DIR/hyprland-light" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
   fail "UI must not use decorative box-shadow."
 else
   ok "No decorative box-shadow in desktop UI"
 fi
 
-if grep -R "backdrop-filter" "$ROOT_DIR/hyprland" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
+if grep -R "backdrop-filter" "$ROOT_DIR/hyprland" "$ROOT_DIR/hyprland-light" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
   fail "UI must not use backdrop-filter in production Linux surfaces."
 else
   ok "No backdrop-filter in production UI"
@@ -31,7 +31,7 @@ fi
 
 if grep -R "font-weight:[[:space:]]*[6-9]00" \
   --exclude-dir=font \
-  "$ROOT_DIR/hyprland" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
+  "$ROOT_DIR/hyprland" "$ROOT_DIR/hyprland-light" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
   fail "UI font weight above 500 found."
 else
   ok "UI font weights stay at 500 or below"
@@ -44,6 +44,7 @@ else
 fi
 
 if grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--seven-blue: #2F7BFF' "$ROOT_DIR/identity/tokens-light.css" &&
    grep -q -- '--font-interface: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-text: "SF Pro Text"' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-mono: "SF Mono"' "$ROOT_DIR/identity/tokens.css" &&
@@ -56,6 +57,18 @@ if grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css"
   ok "SevenOS typography follows SF Pro Display/Text, SF Mono and SF Pro Rounded roles"
 else
   fail "SevenOS typography should follow SF Pro Display/Text, SF Mono and SF Pro Rounded roles"
+fi
+
+if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
+   [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
+   jq -e '."modules-center" == ["custom/spotlight","custom/ai"] and (."modules-right" | index("custom/bluetooth") and index("network") and index("clock"))' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
+   grep -q '@define-color seven_blue #2F7BFF' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
+   grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland-light/gtk-3.0/settings.ini" &&
+   grep -q 'include light.conf' "$ROOT_DIR/hyprland-light/kitty/kitty.conf" &&
+   grep -q 'Clarity first' "$ROOT_DIR/identity/CHARTER_LIGHT.md"; then
+  ok "SevenOS Light Mode exposes a clarity-first visual system"
+else
+  fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
 if jq -e '."modules-left" == ["custom/sevenos","custom/apps","hyprland/workspaces"] and ."modules-center" == ["custom/spotlight","custom/ai"] and (."modules-right" | index("custom/profile") and index("custom/security") and index("cpu") and index("memory") and index("custom/bluetooth") and index("pulseaudio") and index("network") and index("custom/notifications") and index("clock") and index("custom/power")) and .spacing == 8' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then

@@ -1,0 +1,26 @@
+@import "sevenos.rasi"
+
+window {
+  width: 68%;
+  border-radius: 28px;
+}
+
+mainbox {
+  children: [ inputbar, listview ];
+  spacing: 16px;
+}
+
+inputbar {
+  padding: 14px 18px;
+  border: 1px;
+  border-color: @glass-border-2;
+  border-radius: 999px;
+  background-color: @glass-3;
+  children: [ prompt, entry ];
+}
+
+entry {
+  placeholder: "Search apps";
+  text-color: @text-1;
+  placeholder-color: @text-3;
+}

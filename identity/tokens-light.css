@@ -1,0 +1,57 @@
+:root {
+  --pure-white: #FFFFFF;
+  --soft-gray: #F5F7FA;
+  --light-surface: #EEF1F5;
+  --border-light: #DDE3EA;
+  --text-primary: #1C1F26;
+  --text-secondary: #6B7280;
+
+  --seven-blue: #2F7BFF;
+  --seven-violet: #6A5CFF;
+  --seven-cyan: #00B8D9;
+  --seven-green: #00A77A;
+
+  --surface-0: #FFFFFF;
+  --surface-1: rgba(255, 255, 255, 0.78);
+  --surface-2: rgba(245, 247, 250, 0.86);
+  --surface-3: rgba(238, 241, 245, 0.92);
+  --surface-glass: rgba(255, 255, 255, 0.70);
+  --surface-glass-2: rgba(255, 255, 255, 0.82);
+  --surface-glass-3: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-border-strong: rgba(47, 123, 255, 0.24);
+
+  --text-1: #1C1F26;
+  --text-2: #384152;
+  --text-3: #6B7280;
+  --text-4: #9AA3AF;
+
+  --gradient-primary: linear-gradient(135deg, #2F7BFF 0%, #6A5CFF 50%, #00B8D9 100%);
+  --focus-blue: rgba(47, 123, 255, 0.18);
+  --focus-violet: rgba(106, 92, 255, 0.12);
+  --focus-cyan: rgba(0, 184, 217, 0.16);
+
+  --font-display: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
+  --font-interface: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
+  --font-text: "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+  --font-brand: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif;
+
+  --r-button: 14px;
+  --r-widget: 18px;
+  --r-card: 22px;
+  --r-waybar: 24px;
+  --r-window: 28px;
+  --r-pill: 999px;
+
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --t-hover: 100ms;
+  --t-fade: 160ms;
+  --t-window: 200ms;
+  --t-spotlight: 200ms;
+}

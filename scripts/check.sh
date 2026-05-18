@@ -186,6 +186,7 @@ fi
 
 if command -v jq >/dev/null 2>&1; then
   jq empty "$ROOT_DIR/hyprland/waybar/config.jsonc"
+  jq empty "$ROOT_DIR/hyprland-light/waybar/config.jsonc"
   jq empty "$ROOT_DIR/branding/fastfetch/config.jsonc"
   jq empty "$ROOT_DIR/archiso/profile/airootfs/etc/skel/.config/fastfetch/config.jsonc"
   jq empty "$ROOT_DIR/archiso/profile/airootfs/root/.config/fastfetch/config.jsonc"

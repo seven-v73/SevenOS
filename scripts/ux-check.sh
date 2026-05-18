@@ -882,15 +882,19 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'initial_window_height 21c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'wayland_titlebar_color #12131A' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'map ctrl+shift+u kitten hints' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
+   grep -q 'background #F8FAFD' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
+   grep -q 'env SEVENOS_TERMINAL_LIGHT=1' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" classic | grep -q 'DRY-RUN > Terminal > Open classic' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" dark | grep -q 'DRY-RUN > Terminal > Open dark' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" light | grep -q 'DRY-RUN > Terminal > Open light' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" menu | grep -q 'DRY-RUN > Terminal > Open profile chooser'; then
-  ok "Kitty exposes SevenOS classic and dark SevenOS terminal profiles"
+  ok "Kitty exposes SevenOS classic, dark and light SevenOS terminal profiles"
 else
   fail "Kitty palette is not aligned with SevenOS identity"
 fi
 
 if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--seven-blue: #2F7BFF' "$ROOT_DIR/identity/tokens-light.css" &&
    grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-interface: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--font-text: "SF Pro Text"' "$ROOT_DIR/identity/tokens.css" &&
@@ -905,6 +909,10 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'SevenOS Cyber' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'apply-default' "$ROOT_DIR/scripts/fonts.sh" &&
    grep -q 'import_fonts_button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q './install.sh theme light' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q './install.sh theme dark' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'SEVENOS_THEME_MODE' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'hyprland-light' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'copy GTK, Qt and fontconfig SevenOS settings' "$ROOT_DIR/scripts/apply-theme.sh" &&
    ! grep -R "box-shadow" "$ROOT_DIR/hyprland/waybar/style.css" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null &&
    ! grep -E '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/waybar/style.css" >/dev/null; then

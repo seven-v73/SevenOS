@@ -92,6 +92,18 @@
   --clay: #FF5976;
   --clay-dim: #C94563;
   --clay-pale: rgba(255, 89, 118, 0.12);
+
+  /* Light Mode reference tokens. The active light runtime is exported through
+     identity/tokens-light.css when the user chooses SevenOS Light Mode. */
+  --light-pure-white: #FFFFFF;
+  --light-soft-gray: #F5F7FA;
+  --light-surface: #EEF1F5;
+  --light-border: #DDE3EA;
+  --light-text-primary: #1C1F26;
+  --light-text-secondary: #6B7280;
+  --light-seven-blue: #2F7BFF;
+  --light-seven-violet: #6A5CFF;
+  --light-seven-cyan: #00B8D9;
 }
 
 @keyframes breathe {

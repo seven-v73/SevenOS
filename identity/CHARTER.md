@@ -7,6 +7,9 @@ developers and cybersecurity work. Its visual system fuses premium operating
 system polish, realistic sci-fi interfaces, contextual AI and modern SOC
 dashboard clarity.
 
+This charter defines the default immersive Dark Mode. SevenOS also ships a
+parallel clarity-first Light Mode in `identity/CHARTER_LIGHT.md`.
+
 ## Positioning
 
 SevenOS should feel like a commercial high-end operating system designed in the
@@ -134,4 +137,3 @@ SevenOS visual signature:
 - intelligent minimalism
 - discreet neon
 - contextual motion
-

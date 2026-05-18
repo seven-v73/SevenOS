@@ -32,16 +32,18 @@ KITTY_CONFIG_DIR="$CONFIG_HOME/kitty"
 usage() {
   cat <<'EOF'
 Usage:
-  seven-terminal [classic|dark|menu|status|doctor] [-- command...]
+  seven-terminal [classic|dark|light|menu|status|doctor] [-- command...]
 
 Profiles:
   classic  SevenOS classic bright terminal
   dark     SevenOS graphite terminal
+  light    SevenOS clarity-first light terminal
   menu     choose a terminal profile
 
 Examples:
   seven-terminal classic
   seven-terminal dark
+  seven-terminal light
   seven-terminal dark -- btop
 EOF
 }
@@ -66,6 +68,7 @@ config_for_profile() {
   case "$1" in
     classic) printf '%s\n' "$KITTY_CONFIG_DIR/classic.conf" ;;
     dark) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
+    light) printf '%s\n' "$KITTY_CONFIG_DIR/light.conf" ;;
     *) return 1 ;;
   esac
 }
@@ -74,6 +77,7 @@ repo_config_for_profile() {
   case "$1" in
     classic) printf '%s\n' "$ROOT_DIR/hyprland/kitty/classic.conf" ;;
     dark) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
+    light) printf '%s\n' "$ROOT_DIR/hyprland-light/kitty/light.conf" ;;
     *) return 1 ;;
   esac
 }
@@ -118,6 +122,12 @@ open_terminal() {
     dark)
       title="${USER:-seven}@SevenOS"
       class="SevenTerminalDark"
+      width=640
+      height=420
+      ;;
+    light)
+      title="${USER:-seven}@SevenOS"
+      class="SevenTerminalLight"
       width=640
       height=420
       ;;
@@ -183,7 +193,7 @@ place_window() {
 
 open_menu() {
   local menu selected
-  menu=$'Classic Terminal\tSevenOS bright terminal\nDark Terminal\tSevenOS graphite terminal'
+  menu=$'Classic Terminal\tSevenOS bright terminal\nDark Terminal\tSevenOS graphite terminal\nLight Terminal\tSevenOS clarity-first terminal'
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'DRY-RUN > Terminal > Open profile chooser\n'
@@ -201,6 +211,7 @@ open_menu() {
   case "$selected" in
     Classic*) open_terminal classic ;;
     Dark*) open_terminal dark ;;
+    Light*) open_terminal light ;;
     "") return 0 ;;
   esac
 }
@@ -209,6 +220,7 @@ status() {
   printf 'SevenOS Terminal Profiles\n'
   printf 'classic: %s\n' "$(ensure_config classic)"
   printf 'dark:    %s\n' "$(ensure_config dark)"
+  printf 'light:   %s\n' "$(ensure_config light)"
   printf 'default: %s\n' "$KITTY_CONFIG_DIR/kitty.conf"
   if [[ -x "$ROOT_DIR/bin/seven-terminal-native" ]] && "$ROOT_DIR/bin/seven-terminal-native" --probe >/dev/null 2>&1; then
     printf 'native:  OK - GTK/VTE traffic-light terminal available\n'
@@ -219,7 +231,7 @@ status() {
 
 action="${1:-classic}"
 case "$action" in
-  classic|dark)
+  classic|dark|light)
     shift || true
     if [[ "${1:-}" == "--" ]]; then
       shift

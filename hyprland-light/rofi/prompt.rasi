@@ -1,0 +1,9 @@
+@import "sevenos.rasi"
+
+window {
+  width: 34%;
+}
+
+mainbox {
+  children: [ message, listview ];
+}
