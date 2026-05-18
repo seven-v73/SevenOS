@@ -17,7 +17,11 @@ ok() {
 
 log_info "Running SevenOS design coherence checks..."
 
-shadow_hits="$(grep -R -l "box-shadow" "$ROOT_DIR/hyprland" "$ROOT_DIR/hyprland-light" "$ROOT_DIR/seven-hub/gui/src" 2>/dev/null | grep -vFx "$ROOT_DIR/hyprland/waybar/style.css" || true)"
+shadow_hits="$(
+  grep -R -l "box-shadow" "$ROOT_DIR/hyprland" "$ROOT_DIR/hyprland-light" "$ROOT_DIR/seven-hub/gui/src" 2>/dev/null |
+    grep -vFx "$ROOT_DIR/hyprland/waybar/style.css" |
+    grep -vFx "$ROOT_DIR/hyprland-light/waybar/style.css" || true
+)"
 if [[ -n "$shadow_hits" ]]; then
   fail "UI must not use decorative box-shadow outside the SevenOS reference Waybar."
 else
@@ -62,8 +66,10 @@ fi
 
 if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
    [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
-   jq -e '."modules-center" == ["custom/spotlight","custom/ai"] and (."modules-right" | index("custom/bluetooth") and index("network") and index("clock"))' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
+   jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and .height == 48 and ."gtk-layer-shell" == true and (."custom/spotlight".format | contains("SUPER + SPACE"))' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
    grep -q '@define-color seven_blue #2F7BFF' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
+   grep -q 'window#waybar' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
+   grep -q '#custom-ai' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland-light/gtk-3.0/settings.ini" &&
    grep -q 'include light.conf' "$ROOT_DIR/hyprland-light/kitty/kitty.conf" &&
    grep -q 'Clarity first' "$ROOT_DIR/identity/CHARTER_LIGHT.md"; then
