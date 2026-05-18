@@ -40,6 +40,8 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import tr_text  # noqa: E402
 
 
 def out(command: list[str]) -> str:
@@ -72,12 +74,12 @@ def probe() -> int:
 
 def wifi_state() -> tuple[str, str]:
     if not shutil.which("nmcli"):
-        return "Missing", "NetworkManager tools unavailable"
+        return tr_text("Missing"), tr_text("NetworkManager tools unavailable")
     radio = out(["nmcli", "radio", "wifi"])
     if radio == "disabled":
-        return "Off", "Wi-Fi radio disabled"
+        return tr_text("Off"), tr_text("Wi-Fi radio disabled")
     ssid = out(["bash", "-lc", "nmcli -t -f active,ssid dev wifi | awk -F: '$1==\"yes\"{print $2; exit}'"])
-    return "On", ssid or "Not connected"
+    return tr_text("On"), ssid or tr_text("Not connected")
 
 
 def wifi_signal() -> str:
@@ -89,7 +91,7 @@ def wifi_signal() -> str:
 
 def bluetooth_state() -> tuple[str, str, str]:
     if not shutil.which("bluetoothctl"):
-        return "Missing", "Install bluez-utils", "--"
+        return tr_text("Missing"), tr_text("Install bluez-utils"), "--"
     raw = out(["bluetoothctl", "show"])
     powered = "unknown"
     discovering = "no"
@@ -99,27 +101,27 @@ def bluetooth_state() -> tuple[str, str, str]:
         if "Discovering:" in line:
             discovering = line.split(":", 1)[1].strip()
     if powered != "yes":
-        return "Off", "Bluetooth radio disabled", "--"
+        return tr_text("Off"), tr_text("Bluetooth radio disabled"), "--"
     connected_raw = out(["bluetoothctl", "devices", "Connected"])
     connected = []
     for line in connected_raw.splitlines():
         parts = line.split(maxsplit=2)
         if len(parts) == 3:
             connected.append(parts[2])
-    device = ", ".join(connected[:2]) if connected else "None"
-    status = "Scanning" if discovering == "yes" else "Ready"
-    return "On", status, device
+    device = ", ".join(connected[:2]) if connected else tr_text("None")
+    status = tr_text("Scanning") if discovering == "yes" else tr_text("Ready")
+    return tr_text("On"), status, device
 
 
 def volume_state() -> tuple[int, str]:
     if not shutil.which("wpctl"):
-        return 0, "Audio tools unavailable"
+        return 0, tr_text("Audio tools unavailable")
     raw = out(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
     try:
         value = int(float(raw.split()[1]) * 100)
     except Exception:
         value = 0
-    muted = "muted" if "MUTED" in raw else "active"
+    muted = tr_text("muted") if "MUTED" in raw else tr_text("active")
     return max(0, min(100, value)), muted
 
 
@@ -131,9 +133,9 @@ def set_volume(value: float) -> None:
 def battery_state() -> tuple[str, str]:
     bats = list(Path("/sys/class/power_supply").glob("BAT*"))
     if not bats:
-        return "AC", "No battery detected"
+        return "AC", tr_text("No battery detected")
     bat = bats[0]
-    status = (bat / "status").read_text(encoding="utf-8", errors="ignore").strip() if (bat / "status").exists() else "Unknown"
+    status = (bat / "status").read_text(encoding="utf-8", errors="ignore").strip() if (bat / "status").exists() else tr_text("Unknown")
     capacity = (bat / "capacity").read_text(encoding="utf-8", errors="ignore").strip() if (bat / "capacity").exists() else "?"
     return f"{capacity}%", status
 
@@ -141,7 +143,7 @@ def battery_state() -> tuple[str, str]:
 def probe_system() -> tuple[str, str]:
     load = out(["bash", "-lc", "awk '{print $1}' /proc/loadavg"])
     mem = out(["bash", "-lc", "free -h | awk '/Mem:/ {print $3\" / \"$2}'"])
-    return load or "0.00", mem or "unknown"
+    return load or "0.00", mem or tr_text("Unknown")
 
 
 def run(panel: str) -> int:
@@ -154,12 +156,12 @@ def run(panel: str) -> int:
 
     panel = panel if panel in {"network", "bluetooth", "audio", "power", "system", "time"} else "system"
     titles = {
-        "network": ("Wi-Fi", "Connect, toggle and manage nearby networks"),
-        "bluetooth": ("Bluetooth", "Pair, connect and manage nearby devices"),
-        "audio": ("Sound", "Volume, mute and output controls"),
-        "power": ("Power", "Battery, lock and energy controls"),
-        "system": ("System", "Performance, settings and repair"),
-        "time": ("Time", "Calendar, clock and date actions"),
+        "network": ("Wi-Fi", tr_text("Connect, toggle and manage nearby networks")),
+        "bluetooth": ("Bluetooth", tr_text("Pair, connect and manage nearby devices")),
+        "audio": (tr_text("Sound"), tr_text("Volume, mute and output controls")),
+        "power": (tr_text("Power"), tr_text("Battery, lock and energy controls")),
+        "system": (tr_text("System"), tr_text("Performance, settings and repair")),
+        "time": (tr_text("Time"), tr_text("Calendar, clock and date actions")),
     }
 
     GLib.set_prgname("SevenWaybarCenterNative")
@@ -254,33 +256,33 @@ def run(panel: str) -> int:
 
     if panel == "network":
         state, detail = wifi_state()
-        root.pack_start(metric_row(Gtk, [(state, "Wi-Fi"), (detail, "Network"), (wifi_signal(), "Signal")]), False, False, 0)
-        root.pack_start(hint(Gtk, "Choose opens the simple Wi-Fi list: toggle, connected network and nearby SSIDs."), False, False, 0)
-        actions = [("󰤨", "Networks", "seven-wifi menu"), ("󰖩", "On / Off", "seven-wifi toggle"), ("󰤭", "Disconnect", "seven-wifi disconnect"), ("󰒓", "Settings", "seven-settings network")]
+        root.pack_start(metric_row(Gtk, [(state, "Wi-Fi"), (detail, tr_text("Network")), (wifi_signal(), tr_text("Signal"))]), False, False, 0)
+        root.pack_start(hint(Gtk, tr_text("Choose opens the simple Wi-Fi list: toggle, connected network and nearby SSIDs.")), False, False, 0)
+        actions = [("󰤨", tr_text("Networks"), "seven-wifi menu"), ("󰖩", tr_text("On / Off"), "seven-wifi toggle"), ("󰤭", tr_text("Disconnect"), "seven-wifi disconnect"), ("󰒓", tr_text("Settings"), "seven-settings network")]
     elif panel == "bluetooth":
         state, status, device = bluetooth_state()
-        root.pack_start(metric_row(Gtk, [(state, "Bluetooth"), (device, "Connected"), (status, "Status")]), False, False, 0)
-        root.pack_start(hint(Gtk, "Use On / Off, Scan and Manager for the full pairing workflow without leaving the bar."), False, False, 0)
-        actions = [("󰂯", "On / Off", "seven-bluetooth toggle"), ("󰐢", "Scan", "seven-bluetooth scan"), ("󰂱", "Manager", "seven-bluetooth manager"), ("󰒓", "Settings", "seven-settings network")]
+        root.pack_start(metric_row(Gtk, [(state, "Bluetooth"), (device, tr_text("Connected")), (status, tr_text("Status"))]), False, False, 0)
+        root.pack_start(hint(Gtk, tr_text("Use On / Off, Scan and Manager for the full pairing workflow without leaving the bar.")), False, False, 0)
+        actions = [("󰂯", tr_text("On / Off"), "seven-bluetooth toggle"), ("󰐢", tr_text("Scan"), "seven-bluetooth scan"), ("󰂱", tr_text("Manager"), "seven-bluetooth manager"), ("󰒓", tr_text("Settings"), "seven-settings network")]
     elif panel == "audio":
         volume, muted = volume_state()
-        root.pack_start(metric_row(Gtk, [(f"{volume}%", "Volume"), (muted.title(), "State")]), False, False, 0)
+        root.pack_start(metric_row(Gtk, [(f"{volume}%", tr_text("Volume")), (muted.title(), tr_text("State"))]), False, False, 0)
         root.pack_start(slider(Gtk, volume, set_volume), False, False, 0)
-        actions = [("󰕾", "Mixer", "pavucontrol"), ("󰖁", "Mute", "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), ("󰝝", "Volume +", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"), ("󰒓", "Settings", "seven-settings sound")]
+        actions = [("󰕾", tr_text("Mixer"), "pavucontrol"), ("󰖁", tr_text("Mute"), "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"), ("󰝝", "Volume +", "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"), ("󰒓", tr_text("Settings"), "seven-settings sound")]
     elif panel == "power":
         capacity, status = battery_state()
-        root.pack_start(metric_row(Gtk, [(capacity, "Battery"), (status, "State")]), False, False, 0)
-        actions = [("󰍁", "Lock", "seven-power lock"), ("󰒲", "Sleep", "seven-power suspend"), ("󰐥", "Power", "seven-power"), ("󰒓", "Settings", "seven-settings power")]
+        root.pack_start(metric_row(Gtk, [(capacity, tr_text("Battery")), (status, tr_text("State"))]), False, False, 0)
+        actions = [("󰍁", tr_text("Lock"), "seven-power lock"), ("󰒲", tr_text("Sleep"), "seven-power suspend"), ("󰐥", tr_text("Power"), "seven-power"), ("󰒓", tr_text("Settings"), "seven-settings power")]
     elif panel == "time":
         now = out(["date", "+%H:%M"])
         day = out(["date", "+%A %d %B"])
-        root.pack_start(metric_row(Gtk, [(now, "Local"), (day, "Date")]), False, False, 0)
-        actions = [("󰃭", "Calendar", "gnome-calendar || seven-spotlight calendar"), ("󰥔", "Clock", "seven-spotlight time"), ("󰀗", "World", "seven-spotlight world time"), ("󰒓", "Settings", "seven-settings system")]
+        root.pack_start(metric_row(Gtk, [(now, tr_text("Local")), (day, tr_text("Date"))]), False, False, 0)
+        actions = [("󰃭", tr_text("Calendar"), "gnome-calendar || seven-spotlight calendar"), ("󰥔", tr_text("Clock"), "seven-spotlight time"), ("󰀗", tr_text("World"), "seven-spotlight world time"), ("󰒓", tr_text("Settings"), "seven-settings system")]
     else:
         load, mem = probe_system()
-        root.pack_start(metric_row(Gtk, [(load, "Load"), (mem, "Memory")]), False, False, 0)
-        root.pack_start(hint(Gtk, "Use Settings for normal controls; Monitor and Repair remain one-click utilities."), False, False, 0)
-        actions = [("󰍛", "Monitor", "seven-terminal classic -- bash -lc 'btop || top'"), ("󰚰", "Updates", "seven-settings system"), ("󰜉", "Repair UI", "seven-waybar repair"), ("󰒓", "Settings", "seven-settings system")]
+        root.pack_start(metric_row(Gtk, [(load, tr_text("Load")), (mem, tr_text("Memory"))]), False, False, 0)
+        root.pack_start(hint(Gtk, tr_text("Use Settings for normal controls; Monitor and Repair remain one-click utilities.")), False, False, 0)
+        actions = [("󰍛", tr_text("Monitor"), "seven-terminal classic -- bash -lc 'btop || top'"), ("󰚰", tr_text("Updates"), "seven-settings system"), ("󰜉", tr_text("Repair UI"), "seven-waybar repair"), ("󰒓", tr_text("Settings"), "seven-settings system")]
 
     strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     strip.set_halign(Gtk.Align.CENTER)

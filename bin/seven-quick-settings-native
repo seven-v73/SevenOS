@@ -47,6 +47,9 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import tr_text  # noqa: E402
+
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
 DND_FILE = STATE_DIR / "notifications.dnd"
 
@@ -84,19 +87,19 @@ def active_profile() -> tuple[str, str]:
 
 def wifi_state() -> str:
     if not shutil.which("nmcli"):
-        return "Missing"
+        return tr_text("Missing")
     radio = command_output(["nmcli", "radio", "wifi"])
     if radio == "disabled":
-        return "Off"
+        return tr_text("Off")
     active = command_output(["bash", "-lc", "nmcli -t -f active,ssid dev wifi | awk -F: '$1==\"yes\"{print $2; exit}'"])
-    return active or "On"
+    return active or tr_text("On")
 
 
 def bluetooth_state() -> str:
     if not shutil.which("bluetoothctl"):
-        return "Missing"
+        return tr_text("Missing")
     state = command_output(["bash", "-lc", "bluetoothctl show 2>/dev/null | awk -F': ' '/Powered/{print $2; exit}'"])
-    return "On" if state == "yes" else "Off"
+    return tr_text("On") if state == "yes" else tr_text("Off")
 
 
 def volume_value() -> int:
@@ -171,7 +174,7 @@ def run() -> int:
     from gi.repository import Gdk, GLib, Gtk
 
     GLib.set_prgname("SevenQuickSettingsNative")
-    GLib.set_application_name("SevenOS Quick Settings")
+    GLib.set_application_name(f"SevenOS {tr_text('Control Center')}")
     try:
         Gdk.set_program_class("SevenQuickSettingsNative")
     except Exception:
@@ -254,7 +257,7 @@ def run() -> int:
 
     profile_title, profile_key = active_profile()
 
-    window = Gtk.Window(title="SevenOS Quick Settings")
+    window = Gtk.Window(title=f"SevenOS {tr_text('Control Center')}")
     window.set_wmclass("SevenQuickSettingsNative", "SevenQuickSettingsNative")
     window.set_decorated(False)
     window.set_resizable(False)
@@ -270,10 +273,10 @@ def run() -> int:
     header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     root.pack_start(header, False, False, 0)
     titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-    title = Gtk.Label(label="Control Center", xalign=0)
+    title = Gtk.Label(label=tr_text("Control Center"), xalign=0)
     title.get_style_context().add_class("quick-title")
     titles.pack_start(title, False, False, 0)
-    subtitle = Gtk.Label(label=f"{profile_title} mode", xalign=0)
+    subtitle = Gtk.Label(label=tr_text("{profile} mode", profile=profile_title), xalign=0)
     subtitle.get_style_context().add_class("quick-subtitle")
     titles.pack_start(subtitle, False, False, 0)
     header.pack_start(titles, True, True, 0)
@@ -284,19 +287,19 @@ def run() -> int:
     root.pack_start(grid, False, False, 0)
 
     tiles = [
-        ("Wi-Fi", wifi_state(), "󰤨", toggle_wifi, "active" if wifi_state() not in {"Off", "Missing"} else ""),
-        ("Bluetooth", bluetooth_state(), "󰂯", toggle_bluetooth, "active" if bluetooth_state() == "On" else ""),
-        ("Focus", "On" if DND_FILE.exists() else "Off", "󰂛", toggle_focus, "active" if DND_FILE.exists() else ""),
-        ("Profile", profile_key.title(), "󰐃", lambda: run_detached("seven-waybar-action", "profile"), ""),
+        ("Wi-Fi", wifi_state(), "󰤨", toggle_wifi, "active" if wifi_state() not in {tr_text("Off"), tr_text("Missing")} else ""),
+        ("Bluetooth", bluetooth_state(), "󰂯", toggle_bluetooth, "active" if bluetooth_state() == tr_text("On") else ""),
+        (tr_text("Focus"), tr_text("On") if DND_FILE.exists() else tr_text("Off"), "󰂛", toggle_focus, "active" if DND_FILE.exists() else ""),
+        (tr_text("Profile"), profile_key.title(), "󰐃", lambda: run_detached("seven-waybar-action", "profile"), ""),
     ]
 
     for index, (label, state, glyph, callback, css_class) in enumerate(tiles):
         tile = build_tile(Gtk, label, state, glyph, callback, css_class)
         grid.attach(tile, index % 2, index // 2, 1, 1)
 
-    sound = build_slider_card(Gtk, "Sound", "󰕾", volume_value(), set_volume)
+    sound = build_slider_card(Gtk, tr_text("Sound"), "󰕾", volume_value(), set_volume)
     root.pack_start(sound, False, False, 0)
-    display = build_slider_card(Gtk, "Display", "󰃠", brightness_value(), set_brightness)
+    display = build_slider_card(Gtk, tr_text("Display"), "󰃠", brightness_value(), set_brightness)
     root.pack_start(display, False, False, 0)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -304,10 +307,10 @@ def run() -> int:
     root.pack_end(actions, False, False, 0)
     for glyph, tooltip, command in [
         ("󰀻", "Apps", ("seven-overview", "apps")),
-        ("󰉋", "Files", ("seven-files", "profile")),
-        ("󰍛", "Monitor", ("seven-waybar-action", "system")),
-        ("󰒓", "Hub", ("seven", "hub")),
-        ("󰐥", "Power", ("seven-power",)),
+        ("󰉋", tr_text("Files"), ("seven-files", "profile")),
+        ("󰍛", tr_text("Monitor"), ("seven-waybar-action", "system")),
+        ("󰒓", tr_text("Hub"), ("seven", "hub")),
+        ("󰐥", tr_text("Power"), ("seven-power",)),
     ]:
         button = Gtk.Button()
         button.get_style_context().add_class("icon-action")

@@ -53,6 +53,9 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import tr_text  # noqa: E402
+
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
 DND_FILE = STATE_DIR / "notifications.dnd"
 
@@ -90,10 +93,10 @@ def mako_running() -> bool:
 
 def backend_state() -> tuple[str, str]:
     if not command_available("mako"):
-        return "missing", "Service missing"
+        return "missing", tr_text("Service missing")
     if mako_running():
-        return "running", "Ready"
-    return "inactive", "Service stopped"
+        return "running", tr_text("Ready")
+    return "inactive", tr_text("Service stopped")
 
 
 def _walk_notifications(value: object, rows: list[Notification]) -> None:
@@ -102,7 +105,7 @@ def _walk_notifications(value: object, rows: list[Notification]) -> None:
         body = str(value.get("body") or value.get("text") or "").strip()
         app = str(value.get("app-name") or value.get("app_name") or value.get("app") or "Notification").strip()
         if summary or body:
-            rows.append(Notification(app=app or "Notification", title=summary or app or "Notification", body=body))
+            rows.append(Notification(app=app or tr_text("Notifications"), title=summary or app or tr_text("Notifications"), body=body))
         for child in value.values():
             _walk_notifications(child, rows)
     elif isinstance(value, list):
@@ -124,7 +127,7 @@ def load_notifications() -> list[Notification]:
         for line in raw.splitlines():
             clean = re.sub(r"\s+", " ", line).strip()
             if clean and clean not in {"[]", "{}"}:
-                rows.append(Notification(app="Notification", title=clean[:72], body=""))
+                rows.append(Notification(app=tr_text("Notifications"), title=clean[:72], body=""))
     seen: set[tuple[str, str, str]] = set()
     unique: list[Notification] = []
     for row in rows:
@@ -158,7 +161,7 @@ def run() -> int:
     from gi.repository import Gdk, GLib, Gtk
 
     GLib.set_prgname("SevenNotificationCenterNative")
-    GLib.set_application_name("SevenOS Notifications")
+    GLib.set_application_name(f"SevenOS {tr_text('Notifications')}")
     try:
         Gdk.set_program_class("SevenNotificationCenterNative")
     except Exception:
@@ -288,7 +291,7 @@ def run() -> int:
     state_key, state_label = backend_state()
     notifications = load_notifications()
 
-    window = Gtk.Window(title="SevenOS Notifications")
+    window = Gtk.Window(title=f"SevenOS {tr_text('Notifications')}")
     window.set_wmclass("SevenNotificationCenterNative", "SevenNotificationCenterNative")
     window.set_decorated(False)
     window.set_resizable(False)
@@ -306,16 +309,16 @@ def run() -> int:
     root.pack_start(header, False, False, 0)
 
     title_stack = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-    title = Gtk.Label(label="Notifications", xalign=0)
+    title = Gtk.Label(label=tr_text("Notifications"), xalign=0)
     title.get_style_context().add_class("header-title")
     title_stack.pack_start(title, False, False, 0)
-    subtitle_text = f"{len(notifications)} active" if notifications else state_label
+    subtitle_text = tr_text("{count} active", count=len(notifications)) if notifications else state_label
     subtitle = Gtk.Label(label=subtitle_text, xalign=0)
     subtitle.get_style_context().add_class("header-subtitle")
     title_stack.pack_start(subtitle, False, False, 0)
     header.pack_start(title_stack, True, True, 0)
 
-    dnd = Gtk.Label(label="Focus On" if dnd_enabled() else "Focus Off")
+    dnd = Gtk.Label(label=tr_text("Focus On") if dnd_enabled() else tr_text("Focus Off"))
     dnd.get_style_context().add_class("dnd-pill")
     header.pack_end(dnd, False, False, 0)
 
@@ -338,13 +341,13 @@ def run() -> int:
     root.pack_end(actions, False, False, 0)
 
     actions_model = [
-        ("+", "Send test notification", "test"),
-        ("▶", "Start notification service", "start"),
-        ("⇣", "Install notification backend", "install"),
-        ("↺", "Restore last notification", "restore"),
-        ("×", "Dismiss visible notifications", "dismiss"),
-        ("☾", "Toggle Do Not Disturb", "toggle-dnd"),
-        ("⟳", "Restart notification service", "restart"),
+        ("+", tr_text("Send test notification"), "test"),
+        ("▶", tr_text("Start notification service"), "start"),
+        ("⇣", tr_text("Install notification backend"), "install"),
+        ("↺", tr_text("Restore last notification"), "restore"),
+        ("×", tr_text("Dismiss visible notifications"), "dismiss"),
+        ("☾", tr_text("Toggle Do Not Disturb"), "toggle-dnd"),
+        ("⟳", tr_text("Restart notification service"), "restart"),
     ]
     for glyph, tooltip, action in actions_model:
         button = Gtk.Button()
@@ -396,21 +399,21 @@ def build_empty_state(Gtk, state_key: str):
 
     if state_key == "missing":
         glyph_text = "!"
-        title_text = "Notification backend missing"
-        subtitle_text = "Install Mako to receive alerts and make this center live."
-        primary_label = "Install"
+        title_text = tr_text("Notification backend missing")
+        subtitle_text = tr_text("Install Mako to receive alerts and make this center live.")
+        primary_label = tr_text("Install")
         primary_action = "install"
     elif state_key == "inactive":
         glyph_text = "▶"
-        title_text = "Notifications are stopped"
-        subtitle_text = "Start the notification service to receive system alerts."
-        primary_label = "Start"
+        title_text = tr_text("Notifications are stopped")
+        subtitle_text = tr_text("Start the notification service to receive system alerts.")
+        primary_label = tr_text("Start")
         primary_action = "start"
     else:
         glyph_text = "◌"
-        title_text = "No notifications"
-        subtitle_text = "SevenOS will surface important events here."
-        primary_label = "Test"
+        title_text = tr_text("No notifications")
+        subtitle_text = tr_text("SevenOS will surface important events here.")
+        primary_label = tr_text("Test")
         primary_action = "test"
 
     glyph = Gtk.Label(label=glyph_text)

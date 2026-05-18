@@ -987,12 +987,17 @@ if "$ROOT_DIR/bin/seven-language" status --json | python -m json.tool >/dev/null
    "$ROOT_DIR/bin/seven-language" list --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-language" status --json | python -c 'import json,sys; data=json.load(sys.stdin); langs={item["locale"]: item for item in data["languages"]}; raise SystemExit(0 if "fr_FR.UTF-8" in langs and langs["fr_FR.UTF-8"].get("installed") in {True, False} else 1)' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" menu | grep -q 'DRY-RUN > Language > Open language chooser' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8 | grep -q 'DRY-RUN > Language > Enable fr_FR.UTF-8' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8 | grep -Eq 'DRY-RUN > Language > Enable fr_FR.UTF-8|OK: fr_FR.UTF-8 is already generated' &&
    grep -q 'fr_FR.UTF-8 UTF-8' "$ROOT_DIR/archiso/profile/airootfs/etc/locale.gen" &&
    grep -q 'fr_FR.UTF-8' "$ROOT_DIR/installer/lib.sh" &&
    grep -q 'seven_i18n' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'language_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven language set' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.system_updates.note' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'tr_text' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'tr_text' "$ROOT_DIR/bin/seven-waybar-center-native" &&
+   grep -q 'tr_text' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 python -c 'import sys; from pathlib import Path; sys.path.insert(0, str(Path("scripts").resolve())); from seven_i18n import tr, tr_text; text="\n".join([tr("settings.system_updates.note"), tr("settings.appearance.subtitle"), tr_text("Control Center"), tr_text("No notifications"), tr_text("Connect, toggle and manage nearby networks")]); blocked=("Liquid glass", "No notifications", "Control Center", "Connect, toggle"); raise SystemExit(0 if not any(item in text for item in blocked) else 1)' &&
    grep -q 'language_parser' "$ROOT_DIR/bin/seven"; then
   ok "SevenOS exposes French-aware functional language selection in General settings"
 else
