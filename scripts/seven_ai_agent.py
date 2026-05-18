@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from seven_ai_provider import local_answer
+from seven_i18n import language_code as sevenos_language_code
 
 
 ROOT_DIR = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parents[1]))
@@ -74,9 +75,119 @@ APP_ALIASES = {
     "visual studio code": "code",
 }
 
+PROCESS_ALIASES = {
+    "blender": ["blender"],
+    "firefox": ["firefox"],
+    "chrome": ["chrome", "google-chrome", "chromium"],
+    "chromium": ["chromium"],
+    "vscode": ["code"],
+    "vs code": ["code"],
+    "visual studio code": ["code"],
+    "code": ["code"],
+    "terminal": ["kitty", "seven-terminal"],
+    "kitty": ["kitty"],
+    "files": ["seven-files", "nautilus"],
+    "fichiers": ["seven-files", "nautilus"],
+    "seven files": ["seven-files", "nautilus"],
+    "settings": ["seven-settings"],
+    "parametres": ["seven-settings"],
+    "paramètres": ["seven-settings"],
+}
+
+MESSAGES = {
+    "en": {
+        "title": "SevenAI",
+        "input": "Request",
+        "preview": "I understood the request. I am showing the safe preview first.",
+        "apply_hint": "To confirm this system action, run the same request with `--apply`.",
+        "command": "Planned command",
+        "command_done": "Command used",
+        "open_ok": "I am opening {target}.",
+        "open_missing": "I could not find an installed app matching “{target}”.",
+        "stop_preview": "I can stop {target}. This may close unsaved work.",
+        "stop_done": "I asked the system to stop {target}.",
+        "stop_missing": "I could not resolve a safe process name for “{target}”.",
+        "theme_preview": "I can switch SevenOS to {target} mode.",
+        "theme_done": "SevenOS theme switch requested: {target}.",
+        "workspace": "I am switching to workspace {target}.",
+        "wifi_status": "Here is the current Wi-Fi state.",
+        "wifi_repair_preview": "I prepared a Wi-Fi repair. It may restart NetworkManager.",
+        "wifi_repair_done": "I launched the Wi-Fi repair step.",
+        "install_preview": "I can install {target}. This changes system packages.",
+        "install_done": "Package installation requested for {target}.",
+        "diagnostic": "Here is what I see on this machine.",
+        "memory": "Memory used: {value}%",
+        "disk": "Home disk used: {value}%",
+        "failed_units": "Failed services: {value}",
+        "no_failed_units": "No failed systemd services detected.",
+        "recommendations": "Recommendations",
+        "shortcuts": "Useful shortcuts",
+        "workflow": "Workspace and focus tips",
+        "sevenos": "SevenOS in plain words",
+        "pillars": "Key ideas",
+        "web_disabled": "Web access is off by default for privacy.",
+        "guidance": "I can help with apps, Wi-Fi, themes, workspaces, shortcuts and diagnostics.",
+        "result_error": "The action returned an error: {value}",
+        "result_ok": "Done.",
+    },
+    "fr": {
+        "title": "SevenAI",
+        "input": "Demande",
+        "preview": "J’ai compris la demande. Je te montre d’abord l’aperçu sécurisé.",
+        "apply_hint": "Pour confirmer cette action système, relance la même demande avec `--apply`.",
+        "command": "Commande prévue",
+        "command_done": "Commande utilisée",
+        "open_ok": "J’ouvre {target}.",
+        "open_missing": "Je n’ai pas trouvé d’application installée correspondant à « {target} ».",
+        "stop_preview": "Je peux arrêter {target}. Cela peut fermer du travail non enregistré.",
+        "stop_done": "J’ai demandé au système d’arrêter {target}.",
+        "stop_missing": "Je n’ai pas pu résoudre un nom de processus sûr pour « {target} ».",
+        "theme_preview": "Je peux passer SevenOS en mode {target}.",
+        "theme_done": "Changement de thème SevenOS demandé : {target}.",
+        "workspace": "Je passe à l’espace de travail {target}.",
+        "wifi_status": "Voici l’état actuel du Wi-Fi.",
+        "wifi_repair_preview": "J’ai préparé une réparation Wi-Fi. Elle peut redémarrer NetworkManager.",
+        "wifi_repair_done": "J’ai lancé l’étape de réparation Wi-Fi.",
+        "install_preview": "Je peux installer {target}. Cette action modifie les paquets système.",
+        "install_done": "Installation de paquet demandée pour {target}.",
+        "diagnostic": "Voici ce que je vois sur cette machine.",
+        "memory": "Mémoire utilisée : {value} %",
+        "disk": "Disque personnel utilisé : {value} %",
+        "failed_units": "Services en erreur : {value}",
+        "no_failed_units": "Aucun service systemd en erreur détecté.",
+        "recommendations": "Recommandations",
+        "shortcuts": "Raccourcis utiles",
+        "workflow": "Conseils pour les espaces et le focus",
+        "sevenos": "SevenOS simplement",
+        "pillars": "Idées clés",
+        "web_disabled": "L’accès web est désactivé par défaut pour protéger la confidentialité.",
+        "guidance": "Je peux aider avec les apps, le Wi-Fi, les thèmes, les espaces, les raccourcis et les diagnostics.",
+        "result_error": "L’action a retourné une erreur : {value}",
+        "result_ok": "Terminé.",
+    },
+}
+
 
 def normalize(value: str) -> str:
     return re.sub(r"\s+", " ", value.lower().strip())
+
+
+def active_language() -> str:
+    requested = os.environ.get("SEVENAI_LANG") or os.environ.get("SEVENOS_LANGUAGE") or ""
+    if requested.startswith("fr"):
+        return "fr"
+    if requested.startswith("en"):
+        return "en"
+    try:
+        return "fr" if sevenos_language_code().startswith("fr") else "en"
+    except Exception:
+        return "en"
+
+
+def msg(key: str, language: str | None = None, **values: object) -> str:
+    language = language or active_language()
+    text = MESSAGES.get(language, MESSAGES["en"]).get(key, MESSAGES["en"].get(key, key))
+    return text.format(**values) if values else text
 
 
 def desktop_dirs() -> list[Path]:
@@ -167,6 +278,83 @@ def match_app(target: str, apps: list[AppEntry]) -> AppEntry | None:
         if wanted == command_name:
             return app
     return None
+
+
+def command_process_candidates(command: str) -> list[str]:
+    parts = command.split()
+    if not parts:
+        return []
+    while parts and "=" in parts[0] and not parts[0].startswith(("/", "./")):
+        parts = parts[1:]
+    if len(parts) >= 3 and Path(parts[0]).name == "flatpak" and parts[1] == "run":
+        app_id = ""
+        for item in parts[2:]:
+            if not item.startswith("-"):
+                app_id = item
+                break
+        if not app_id:
+            return []
+        leaf = app_id.split(".")[-1].lower()
+        return [leaf, app_id] if leaf else [app_id]
+    first = Path(parts[0]).name
+    blocked = {"env", "sh", "bash", "setsid", "gtk-launch", "hyprctl", "sudo"}
+    if first in blocked and len(parts) > 1:
+        return command_process_candidates(" ".join(parts[1:]))
+    return [first] if first else []
+
+
+def process_names_for_target(target: str, apps: list[AppEntry]) -> list[str]:
+    wanted = normalize(target)
+    names: list[str] = []
+    names.extend(PROCESS_ALIASES.get(wanted, []))
+    app = match_app(target, apps)
+    if app:
+        names.extend(command_process_candidates(app.command))
+        names.append(normalize(app.name).replace(" ", "-"))
+        names.append(app.desktop_id.removesuffix(".desktop"))
+    if wanted and re.fullmatch(r"[a-z0-9._+-]+", wanted):
+        names.append(wanted)
+    clean: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        item = Path(name).name.strip()
+        if not item or item.startswith("-") or item in seen:
+            continue
+        seen.add(item)
+        clean.append(item)
+    return clean
+
+
+def stop_process(target: str, apps: list[AppEntry], *, apply: bool) -> dict[str, Any]:
+    processes = process_names_for_target(target, apps)
+    command = " || ".join(f"pkill -x -- {name}" for name in processes) if processes else f"pkill -x -- {target}"
+    if DRY_RUN or not apply:
+        return {
+            "applied": False,
+            "dry_run": DRY_RUN,
+            "command": command,
+            "processes": processes,
+            "returncode": 0 if processes else 1,
+            "stdout": "",
+            "stderr": "" if processes else f"No safe process mapping for {target}",
+        }
+    results = []
+    matched = False
+    for process in processes:
+        result = subprocess.run(["pkill", "-x", "--", process], text=True, capture_output=True, check=False)
+        results.append({"process": process, "returncode": result.returncode, "stderr": result.stderr.strip()})
+        if result.returncode == 0:
+            matched = True
+    return {
+        "applied": True,
+        "dry_run": False,
+        "command": command,
+        "processes": processes,
+        "returncode": 0 if matched else 1,
+        "stdout": "",
+        "stderr": "" if matched else f"No running process matched {target}",
+        "details": results,
+    }
 
 
 def parse_intent(text: str) -> Intent:
@@ -305,65 +493,114 @@ def system_context() -> dict[str, Any]:
     }
 
 
-def shortcut_catalog() -> dict[str, Any]:
+def shortcut_catalog(language: str | None = None) -> dict[str, Any]:
+    language = language or active_language()
     config = ROOT_DIR / "hyprland/hyprland.conf"
-    shortcuts = [
-        {"keys": "Super", "action": "Apps launcher"},
-        {"keys": "Super+Space", "action": "SevenOS Spotlight"},
-        {"keys": "Super+D", "action": "Toggle SevenOS Dock"},
-        {"keys": "Super+H", "action": "SevenOS Help"},
-        {"keys": "Super+Shift+H", "action": "Seven Hub"},
-        {"keys": "Super+E", "action": "Seven Files"},
-        {"keys": "Super+Enter", "action": "Terminal Classic"},
-        {"keys": "Super+Shift+Enter", "action": "Terminal Dark"},
-        {"keys": "Super+Shift+P", "action": "Power menu"},
-        {"keys": "Super+1..9", "action": "Switch workspace"},
-        {"keys": "Super+Shift+1..9", "action": "Move window to workspace"},
-    ]
+    if language == "fr":
+        shortcuts = [
+            {"keys": "Super", "action": "Lanceur d’apps"},
+            {"keys": "Super+Espace", "action": "Spotlight SevenOS"},
+            {"keys": "Super+D", "action": "Afficher ou masquer le Dock SevenOS"},
+            {"keys": "Super+H", "action": "Aide SevenOS"},
+            {"keys": "Super+Maj+H", "action": "Seven Hub"},
+            {"keys": "Super+E", "action": "Seven Files"},
+            {"keys": "Super+Entrée", "action": "Terminal classique"},
+            {"keys": "Super+Maj+Entrée", "action": "Terminal sombre"},
+            {"keys": "Super+Maj+P", "action": "Menu d’alimentation"},
+            {"keys": "Super+1..9", "action": "Changer d’espace de travail"},
+            {"keys": "Super+Maj+1..9", "action": "Déplacer la fenêtre vers un espace"},
+        ]
+    else:
+        shortcuts = [
+            {"keys": "Super", "action": "Apps launcher"},
+            {"keys": "Super+Space", "action": "SevenOS Spotlight"},
+            {"keys": "Super+D", "action": "Toggle SevenOS Dock"},
+            {"keys": "Super+H", "action": "SevenOS Help"},
+            {"keys": "Super+Shift+H", "action": "Seven Hub"},
+            {"keys": "Super+E", "action": "Seven Files"},
+            {"keys": "Super+Enter", "action": "Terminal Classic"},
+            {"keys": "Super+Shift+Enter", "action": "Terminal Dark"},
+            {"keys": "Super+Shift+P", "action": "Power menu"},
+            {"keys": "Super+1..9", "action": "Switch workspace"},
+            {"keys": "Super+Shift+1..9", "action": "Move window to workspace"},
+        ]
     parsed = []
     if config.exists():
         for line in config.read_text(encoding="utf-8", errors="ignore").splitlines():
             if not line.startswith("bind ="):
                 continue
             parsed.append(line)
-    return {"schema": "sevenos.ai.shortcuts.v1", "shortcuts": shortcuts, "hyprland_binds": parsed[:80]}
+    return {"schema": "sevenos.ai.shortcuts.v1", "language": language, "shortcuts": shortcuts, "hyprland_binds": parsed[:80]}
 
 
-def sevenos_knowledge() -> dict[str, Any]:
+def sevenos_knowledge(language: str | None = None) -> dict[str, Any]:
+    language = language or active_language()
+    if language == "fr":
+        summary = (
+            "SevenOS est une expérience Linux intelligente de nouvelle génération basée sur Hyprland, "
+            "le contrôle système local, les profils contextuels, la cybersécurité, les workflows créatifs "
+            "et un langage visuel glass premium."
+        )
+        pillars = ["fluidité", "sécurité", "profils contextuels", "contrôle assisté par IA", "workflows création/dev/cyber"]
+    else:
+        summary = (
+            "SevenOS is a next-generation intelligent Linux experience based on Hyprland, "
+            "local-first system control, contextual profiles, cybersecurity tooling, "
+            "creative workflows and a premium glass design language."
+        )
+        pillars = ["fluidity", "security", "contextual profiles", "AI-assisted control", "creative/dev/cyber workflows"]
     return {
         "schema": "sevenos.ai.knowledge.v1",
         "name": "SevenOS",
         "tagline": "Beyond the Desktop.",
-        "summary": (
-            "SevenOS is a next-generation intelligent Linux experience based on Hyprland, "
-            "local-first system control, contextual profiles, cybersecurity tooling, "
-            "creative workflows and a premium glass design language."
-        ),
-        "pillars": ["fluidity", "security", "contextual profiles", "AI-assisted control", "creative/dev/cyber workflows"],
+        "language": language,
+        "summary": summary,
+        "pillars": pillars,
         "primary_surfaces": ["Spotlight", "Seven Hub", "Seven Files", "Waybar cockpit", "SevenAI", "SevenShield"],
-        "daily_shortcuts": shortcut_catalog()["shortcuts"],
-        "workflow_tips": workflow_plan()["tips"],
+        "daily_shortcuts": shortcut_catalog(language)["shortcuts"],
+        "workflow_tips": workflow_plan(language)["tips"],
     }
 
 
-def workflow_plan() -> dict[str, Any]:
-    return {
-        "schema": "sevenos.ai.workflow.v1",
-        "tips": [
+def workflow_plan(language: str | None = None) -> dict[str, Any]:
+    language = language or active_language()
+    if language == "fr":
+        tips = [
+            "Utilise Super+Espace comme surface de commande unique au lieu de chercher dans les menus.",
+            "Garde Super+D pour les apps et dossiers quotidiens, et Spotlight pour les actions et la recherche.",
+            "Utilise Super+1..9 pour séparer les contextes : dev, navigateur, docs, média, communication.",
+            "Utilise les profils : Forge pour le développement, Shield pour la cybersécurité, Studio pour la création.",
+            "Utilise Super+S comme espace temporaire pour les terminaux ou notes rapides.",
+            "Ouvre Seven Hub avec Super+Maj+H pour les réglages, réparations et actions de profil.",
+        ]
+        layout_roles = [
+            {"workspace": "1", "role": "App principale / éditeur"},
+            {"workspace": "2", "role": "Navigateur et documentation"},
+            {"workspace": "3", "role": "Terminal, conteneurs et logs"},
+            {"workspace": "4", "role": "Création ou communication"},
+            {"workspace": "special:seven", "role": "Scratchpad et outils temporaires"},
+        ]
+    else:
+        tips = [
             "Use Super+Space as the single command surface instead of hunting through menus.",
             "Keep Super+D for pinned daily apps and folders, and leave Spotlight for actions/search.",
             "Use Super+1..9 to separate focus contexts: dev, browser, docs, media, communication.",
             "Use profile workspaces: Forge for development, Shield for cybersecurity, Studio for creation.",
             "Use Super+S as a temporary scratch workspace for transient terminals or notes.",
             "Open Seven Hub with Super+Shift+H when you need settings, repair or profile actions.",
-        ],
-        "recommended_layout": [
+        ]
+        layout_roles = [
             {"workspace": "1", "role": "Focus app / editor"},
             {"workspace": "2", "role": "Browser and docs"},
             {"workspace": "3", "role": "Terminal, containers and logs"},
             {"workspace": "4", "role": "Creative or communication"},
             {"workspace": "special:seven", "role": "Scratchpad and temporary tools"},
-        ],
+        ]
+    return {
+        "schema": "sevenos.ai.workflow.v1",
+        "language": language,
+        "tips": tips,
+        "recommended_layout": layout_roles,
     }
 
 
@@ -394,12 +631,18 @@ def llm_contract() -> dict[str, Any]:
 
 
 def web_query(query: str, *, enabled: bool) -> dict[str, Any]:
+    language = active_language()
     if not enabled and os.environ.get("SEVENAI_WEB") != "1":
         return {
             "schema": "sevenos.ai.web.v1",
             "enabled": False,
+            "language": language,
             "query": query,
-            "summary": "Web access is disabled by default. Enable it explicitly with SEVENAI_WEB=1.",
+            "summary": (
+                "L’accès web est désactivé par défaut. Active-le explicitement avec SEVENAI_WEB=1."
+                if language == "fr"
+                else "Web access is disabled by default. Enable it explicitly with SEVENAI_WEB=1."
+            ),
             "next": f"SEVENAI_WEB=1 seven ai web {json.dumps(query)} --json",
         }
     url = "https://duckduckgo.com/html/?" + urllib.parse.urlencode({"q": query})
@@ -408,10 +651,10 @@ def web_query(query: str, *, enabled: bool) -> dict[str, Any]:
         with urllib.request.urlopen(request, timeout=8) as response:
             html = response.read(200000).decode("utf-8", errors="ignore")
     except Exception as exc:
-        return {"schema": "sevenos.ai.web.v1", "enabled": True, "query": query, "error": str(exc)}
+        return {"schema": "sevenos.ai.web.v1", "enabled": True, "language": language, "query": query, "error": str(exc)}
     snippets = re.findall(r'class="result__a"[^>]*>(.*?)</a>', html, flags=re.S)
     clean = [re.sub(r"<[^>]+>", "", item).strip() for item in snippets[:5]]
-    return {"schema": "sevenos.ai.web.v1", "enabled": True, "query": query, "source": "duckduckgo-html", "results": clean}
+    return {"schema": "sevenos.ai.web.v1", "enabled": True, "language": language, "query": query, "source": "duckduckgo-html", "results": clean}
 
 
 def cached_research(query: str, *, enabled: bool) -> dict[str, Any]:
@@ -684,6 +927,7 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
     result: dict[str, Any] = {
         "schema": "sevenos.ai.agent.v1",
         "input": text,
+        "language": active_language(),
         "intent": asdict(intent),
         "mode": "apply" if apply else "preview",
         "dry_run": DRY_RUN,
@@ -708,8 +952,10 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
         result["action"] = {"type": "switch_workspace", "target": intent.target, "command": " ".join(command)}
         result["result"] = run(command, apply=effective_apply)
     elif intent.intent == "KILL_PROCESS":
-        result["action"] = {"type": "kill_process", "target": intent.target, "command": f"pkill -f {intent.target}"}
-        result["result"] = run(["pkill", "-f", intent.target], apply=effective_apply)
+        processes = process_names_for_target(intent.target, apps)
+        command = " || ".join(f"pkill -x -- {name}" for name in processes) if processes else f"pkill -x -- {intent.target}"
+        result["action"] = {"type": "kill_process", "target": intent.target, "processes": processes, "command": command}
+        result["result"] = stop_process(intent.target, apps, apply=effective_apply)
     elif intent.intent == "CHECK_NETWORK":
         result["action"] = {"type": "check_network", "target": "wifi"}
         result["result"] = network_status()
@@ -719,7 +965,8 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
         result["result"] = run(command, apply=effective_apply)
     elif intent.intent == "DIAGNOSE_SYSTEM":
         result["action"] = {"type": "diagnose_system", "target": intent.target}
-        result["result"] = {"applied": False, "diagnostics": diagnostics(intent.target), "provider": local_answer(text, {"diagnostics": diagnostics(intent.target)})}
+        diag = diagnostics(intent.target)
+        result["result"] = {"applied": False, "diagnostics": diag, "provider": local_answer(text, {"diagnostics": diag, "language": active_language()})}
     elif intent.intent == "INSTALL_PACKAGE":
         command = ["sevenpkg", "install", intent.target] if intent.target == "forge" else ["sudo", "pacman", "-S", "--needed", intent.target]
         result["action"] = {"type": "install_package", "target": intent.target, "command": " ".join(command)}
@@ -772,27 +1019,67 @@ def print_human(data: dict[str, Any]) -> None:
     intent = data.get("intent", {})
     result = data.get("result") or {}
     action = data.get("action") or {}
-    print("SevenAI Agent")
-    print("=============")
-    print(f"Input: {data.get('input', '')}")
-    print(f"Intent: {intent.get('intent')} · target: {intent.get('target') or '-'} · confidence: {intent.get('confidence')}")
-    print(f"Safety: {intent.get('safety')} · mode: {data.get('mode')} · dry-run: {str(data.get('dry_run')).lower()}")
-    if command := action.get("command") or result.get("command"):
-        print(f"Command: {command}")
-    if app := action.get("app"):
-        print(f"App: {app.get('name')} ({app.get('desktop_id')})")
+    language = active_language()
+    action_type = action.get("type", "")
+    target = action.get("target") or intent.get("target") or ""
+    print(msg("title", language))
+    print("=======")
+    print(f"{msg('input', language)} : {data.get('input', '')}")
+
+    if action_type == "open_app":
+        app = action.get("app")
+        if app and not result.get("stderr"):
+            print(msg("open_ok", language, target=app.get("name") or target))
+        else:
+            print(msg("open_missing", language, target=target))
+    elif action_type == "kill_process":
+        if data.get("mode") == "apply":
+            print(msg("stop_done", language, target=target))
+        elif action.get("processes"):
+            print(msg("stop_preview", language, target=target))
+        else:
+            print(msg("stop_missing", language, target=target))
+    elif action_type == "set_theme":
+        key = "theme_done" if data.get("mode") == "apply" else "theme_preview"
+        print(msg(key, language, target=target))
+    elif action_type == "switch_workspace":
+        print(msg("workspace", language, target=target))
+    elif action_type == "check_network":
+        print(msg("wifi_status", language))
+    elif action_type == "repair_network":
+        key = "wifi_repair_done" if data.get("mode") == "apply" else "wifi_repair_preview"
+        print(msg(key, language))
+    elif action_type == "install_package":
+        key = "install_done" if data.get("mode") == "apply" else "install_preview"
+        print(msg(key, language, target=target))
+    elif action_type == "diagnose_system":
+        print(msg("diagnostic", language))
+    elif action_type == "explain_sevenos":
+        print(msg("sevenos", language))
+    elif action_type == "show_shortcuts":
+        print(msg("shortcuts", language))
+    elif action_type == "optimize_workflow":
+        print(msg("workflow", language))
+    else:
+        print(msg("guidance", language))
+
+    if command := action.get("command") or (result.get("command") if isinstance(result, dict) else ""):
+        label = "command_done" if data.get("mode") == "apply" else "command"
+        print(f"{msg(label, language)} : {command}")
+
     if intent.get("needs_apply") and data.get("mode") != "apply":
-        print("Next: rerun with --apply when you want SevenAI to execute this system action.")
+        print(msg("apply_hint", language))
+
     stderr = result.get("stderr") if isinstance(result, dict) else ""
     detail = result.get("detail") if isinstance(result, dict) else ""
-    if stderr:
-        print(f"Result: {stderr}")
+    if stderr and action_type != "kill_process":
+        print(msg("result_error", language, value=stderr))
     elif detail:
-        print(f"Result: {detail}")
+        print(detail)
     elif isinstance(result, dict) and result.get("knowledge"):
         knowledge = result["knowledge"]
-        print(f"Result: {knowledge.get('summary')}")
-        print("Pillars: " + ", ".join(knowledge.get("pillars", [])[:5]))
+        print(knowledge.get("summary", ""))
+        print(f"{msg('pillars', language)} : " + ", ".join(knowledge.get("pillars", [])[:5]))
     elif isinstance(result, dict) and result.get("shortcuts"):
         for item in result["shortcuts"].get("shortcuts", [])[:8]:
             print(f"- {item.get('keys')}: {item.get('action')}")
@@ -801,21 +1088,23 @@ def print_human(data: dict[str, Any]) -> None:
             print(f"- {item}")
     elif isinstance(result, dict) and result.get("diagnostics"):
         diag = result["diagnostics"]
-        print(f"Memory used: {diag.get('memory', {}).get('used_percent')}%")
-        print(f"Home disk used: {diag.get('disk_home', {}).get('used_percent')}%")
+        print(msg("memory", language, value=diag.get("memory", {}).get("used_percent")))
+        print(msg("disk", language, value=diag.get("disk_home", {}).get("used_percent")))
+        failed = diag.get("failed_units", [])
+        print(msg("failed_units", language, value=", ".join(failed)) if failed else msg("no_failed_units", language))
         for item in diag.get("recommendations", [])[:4]:
             print(f"- {item}")
     elif isinstance(result, dict) and result.get("web"):
         web = result["web"]
         if not web.get("enabled"):
-            print(f"Result: {web.get('summary')}")
+            print(web.get("summary") or msg("web_disabled", language))
         else:
             for item in web.get("results", [])[:5]:
                 print(f"- {item}")
     elif isinstance(result, dict) and result.get("summary"):
-        print(f"Result: {result.get('summary')}")
-    else:
-        print(f"Result: returncode={result.get('returncode', 0) if isinstance(result, dict) else 0}")
+        print(result.get("summary"))
+    elif isinstance(result, dict) and result.get("returncode", 0) not in (0, None) and stderr:
+        print(msg("result_error", language, value=stderr))
 
 
 def main() -> int:
@@ -869,7 +1158,7 @@ def main() -> int:
         return 0
     if args.action == "provider":
         prompt = " ".join(args.text).strip()
-        data = local_answer(prompt, {"diagnostics": diagnostics("system"), "memory": read_memory(8)})
+        data = local_answer(prompt, {"diagnostics": diagnostics("system"), "memory": read_memory(8), "language": active_language()})
         print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["answer"])
         return 0
     if args.action == "diagnose":

@@ -324,6 +324,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cli --dry-run >/dev/null
 "$ROOT_DIR/bin/seven" ai --json "mon wifi ne marche pas" | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" ai --json "mets le thème light" | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" ai --json intent "workspace 2" | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" ai --json intent "stop blender" | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" ai --json shortcuts | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" ai --json knowledge | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" ai --json llm | python -m json.tool >/dev/null

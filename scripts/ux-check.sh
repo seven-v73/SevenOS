@@ -641,6 +641,9 @@ ai_wifi_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mon wifi ne m
 ai_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json apps)"
 ai_theme_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mets le thème light")"
 ai_workspace_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "workspace 2")"
+ai_stop_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "stop blender")"
+ai_stop_fr_text="$(SEVENOS_DRY_RUN=0 SEVENAI_LANG=fr "$ROOT_DIR/bin/seven" ai "stop blender")"
+ai_stop_en_text="$(SEVENOS_DRY_RUN=0 SEVENAI_LANG=en "$ROOT_DIR/bin/seven" ai "stop blender")"
 ai_llm_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json llm)"
 ai_provider_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json provider "mon wifi ne marche pas")"
 ai_diagnose_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json diagnose system)"
@@ -651,6 +654,7 @@ if python -m json.tool >/dev/null <<<"$ai_intent_json" &&
    python -m json.tool >/dev/null <<<"$ai_apps_json" &&
    python -m json.tool >/dev/null <<<"$ai_theme_json" &&
    python -m json.tool >/dev/null <<<"$ai_workspace_json" &&
+   python -m json.tool >/dev/null <<<"$ai_stop_json" &&
    python -m json.tool >/dev/null <<<"$ai_llm_json" &&
    python -m json.tool >/dev/null <<<"$ai_provider_json" &&
    python -m json.tool >/dev/null <<<"$ai_diagnose_json" &&
@@ -661,6 +665,9 @@ if python -m json.tool >/dev/null <<<"$ai_intent_json" &&
    grep -q '"schema": "sevenos.ai.apps.v1"' <<<"$ai_apps_json" &&
    grep -q '"intent": "SET_THEME"' <<<"$ai_theme_json" &&
    grep -q '"intent": "SWITCH_WORKSPACE"' <<<"$ai_workspace_json" &&
+   grep -q '"intent": "KILL_PROCESS"' <<<"$ai_stop_json" &&
+   grep -q 'arrêter blender' <<<"$ai_stop_fr_text" &&
+   grep -q 'stop blender' <<<"$ai_stop_en_text" &&
    grep -q '"schema": "sevenos.ai.llm-contract.v1"' <<<"$ai_llm_json" &&
    grep -q '"schema": "sevenos.ai.provider.local.v1"' <<<"$ai_provider_json" &&
    grep -q '"schema": "sevenos.ai.diagnostics.v1"' <<<"$ai_diagnose_json" &&

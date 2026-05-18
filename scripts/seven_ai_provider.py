@@ -10,44 +10,80 @@ tokens, accounts or data leaving the machine.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from typing import Any
+
+from seven_i18n import language_code as sevenos_language_code
 
 
 def normalize(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().lower())
 
 
+def active_language(context: dict[str, Any] | None = None) -> str:
+    context = context or {}
+    requested = str(context.get("language") or os.environ.get("SEVENAI_LANG") or "")
+    if requested.startswith("fr"):
+        return "fr"
+    if requested.startswith("en"):
+        return "en"
+    try:
+        return "fr" if sevenos_language_code().startswith("fr") else "en"
+    except Exception:
+        return "en"
+
+
 def local_answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
     raw = normalize(prompt)
     context = context or {}
+    language = active_language(context)
     suggestions: list[str] = []
-    answer = "SevenAI can help with apps, workspaces, themes, diagnostics, repairs and SevenOS guidance."
+    if language == "fr":
+        answer = "SevenAI peut aider avec les apps, les espaces de travail, les thèmes, les diagnostics, les réparations et les explications SevenOS."
+    else:
+        answer = "SevenAI can help with apps, workspaces, themes, diagnostics, repairs and SevenOS guidance."
 
     if any(token in raw for token in ("wifi", "network", "réseau", "reseau")):
-        answer = "For Wi-Fi issues, SevenAI should inspect NetworkManager state before restarting services."
+        answer = (
+            "Pour un problème Wi-Fi, SevenAI vérifie d’abord l’état de NetworkManager avant de proposer un redémarrage."
+            if language == "fr"
+            else "For Wi-Fi issues, SevenAI should inspect NetworkManager state before restarting services."
+        )
         suggestions = [
             "seven ai diagnose network --json",
             "seven ai playbook wifi_repair --json",
             "seven ai \"mon wifi ne marche pas\"",
         ]
     elif any(token in raw for token in ("slow", "lent", "performance", "ram", "cpu")):
-        answer = "For a slow system, SevenAI should compare load, memory, top processes and failed services."
+        answer = (
+            "Pour un système lent, SevenAI compare la charge, la mémoire, les processus lourds et les services en erreur."
+            if language == "fr"
+            else "For a slow system, SevenAI should compare load, memory, top processes and failed services."
+        )
         suggestions = [
             "seven ai diagnose system --json",
             "seven ai playbook slow_system --json",
             "seven ai \"optimise mon système\"",
         ]
     elif any(token in raw for token in ("workspace", "travail", "focus", "organise")):
-        answer = "SevenOS works best when Spotlight is the command center and workspaces are separated by context."
+        answer = (
+            "SevenOS fonctionne mieux quand Spotlight devient le centre de commande et que les espaces sont séparés par contexte."
+            if language == "fr"
+            else "SevenOS works best when Spotlight is the command center and workspaces are separated by context."
+        )
         suggestions = [
             "seven ai workflow",
             "seven ai shortcuts",
             "seven ai \"workspace 2\"",
         ]
     elif any(token in raw for token in ("sevenos", "raccourci", "shortcut", "theme", "thème")):
-        answer = "SevenOS is a Hyprland-based intelligent Linux experience with local-first AI, profiles and premium shell surfaces."
+        answer = (
+            "SevenOS est une expérience Linux intelligente basée sur Hyprland, avec IA locale, profils contextuels et interfaces système premium."
+            if language == "fr"
+            else "SevenOS is a Hyprland-based intelligent Linux experience with local-first AI, profiles and premium shell surfaces."
+        )
         suggestions = [
             "seven ai knowledge",
             "seven ai shortcuts",
@@ -63,6 +99,7 @@ def local_answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str
         "schema": "sevenos.ai.provider.local.v1",
         "provider": "seven-local",
         "privacy": "local-only",
+        "language": language,
         "prompt": prompt,
         "answer": answer,
         "suggestions": suggestions[:6],

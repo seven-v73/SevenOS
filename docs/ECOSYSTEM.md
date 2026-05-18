@@ -276,6 +276,9 @@ SevenAI Agent adds the first executable OS-agent foundation:
 
 - `seven ai open settings` parses natural language into `OPEN_APP` and opens
   the resolved app through the SevenOS app registry.
+- `seven ai stop blender` parses ordinary language into `KILL_PROCESS`,
+  resolves a safe process name from the app registry and previews the stop
+  action before `--apply`.
 - `seven ai "mon wifi ne marche pas"` maps to a Wi-Fi repair intent, but only
   previews system changes until `--apply` is explicit.
 - `seven ai apps --json` exposes the app registry used for launch decisions.
@@ -298,6 +301,12 @@ SevenAI Agent adds the first executable OS-agent foundation:
   before any repair action runs.
 - `seven ai research "query" --json --web` uses explicit web access and stores
   research results in the local SQLite cache.
+
+By default the agent answers as a normal user-facing assistant, not as raw
+JSON. Machine-readable output stays available through `--json` for Hub,
+Spotlight and automation surfaces. SevenAI follows the configured SevenOS
+language: English systems receive English guidance, French systems receive
+French guidance, and `SEVENAI_LANG=fr|en` can override that for tests.
 
 The safety contract is simple: app/UI actions can run directly, system actions
 are previewed unless `--apply` is present, privileged package/root actions must
