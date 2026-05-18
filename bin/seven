@@ -512,6 +512,15 @@ def handle_fonts(args):
     run_script(args, "scripts/fonts.sh", *extra)
 
 
+def handle_language(args):
+    extra = [args.action]
+    if args.locale:
+        extra.append(args.locale)
+    if args.json:
+        extra.append("--json")
+    run_script(args, "bin/seven-language", *extra)
+
+
 def handle_repair(args):
     extra = [args.area]
     if args.apply:
@@ -619,6 +628,10 @@ def main():
     fonts_parser = subparsers.add_parser("fonts", help="inspect, import and apply SevenOS font roles")
     fonts_parser.add_argument("action", nargs="?", default="status")
     fonts_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    language_parser = subparsers.add_parser("language", help="inspect and apply SevenOS user language")
+    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "menu"))
+    language_parser.add_argument("locale", nargs="?")
+    language_parser.add_argument("--json", action="store_true", help="print machine-readable language state")
     phase_gate_parser = subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
     phase_gate_parser.add_argument("--json", action="store_true", help="print machine-readable phase decision")
     b3_parser = subparsers.add_parser("b3", help="orchestrate B2 to B3 consolidation")
@@ -777,6 +790,8 @@ def main():
         handle_keyboard(args)
     elif args.command == "fonts":
         handle_fonts(args)
+    elif args.command == "language":
+        handle_language(args)
     elif args.command == "phase-gate":
         handle_phase_gate(args)
     elif args.command == "b3":

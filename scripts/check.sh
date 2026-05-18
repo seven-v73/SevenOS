@@ -54,6 +54,7 @@ bash -n \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/seven-apps" \
   "$ROOT_DIR/bin/seven-country" \
+  "$ROOT_DIR/bin/seven-language" \
   "$ROOT_DIR/bin/seven-daemon" \
   "$ROOT_DIR/bin/sevenbus-probe" \
   "$ROOT_DIR/bin/seven-dock" \
@@ -121,6 +122,7 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/seven-files-native" \
   "$ROOT_DIR/bin/seven-launchpad-native" \
   "$ROOT_DIR/bin/seven-settings-native" \
+  "$ROOT_DIR/bin/seven-language" \
   "$ROOT_DIR/bin/seven-terminal-native" \
   "$ROOT_DIR/seven-hub/bin/seven-control-center"
 python -m json.tool "$ROOT_DIR/sevenpkg/metapackages.json" >/dev/null

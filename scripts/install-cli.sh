@@ -160,6 +160,7 @@ install_user_command "$ROOT_DIR/bin/seven-spotlight-native" seven-spotlight-nati
 install_user_command "$ROOT_DIR/bin/seven-session" seven-session
 install_user_command "$ROOT_DIR/bin/seven-session-status" seven-session-status
 install_user_command "$ROOT_DIR/bin/seven-country" seven-country
+install_user_command "$ROOT_DIR/bin/seven-language" seven-language
 install_user_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
 install_user_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_user_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
@@ -208,6 +209,7 @@ install_system_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight
 install_system_command "$ROOT_DIR/bin/seven-spotlight-native" seven-spotlight-native
 install_system_command "$ROOT_DIR/bin/seven-session" seven-session
 install_system_command "$ROOT_DIR/bin/seven-session-status" seven-session-status
+install_system_command "$ROOT_DIR/bin/seven-language" seven-language
 install_system_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
 install_system_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_system_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native

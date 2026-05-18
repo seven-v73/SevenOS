@@ -1,0 +1,286 @@
+#!/usr/bin/env python3
+"""SevenOS user language manager."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shlex
+import shutil
+import subprocess
+from pathlib import Path
+
+
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
+PREF_FILE = CONFIG_DIR / "language.conf"
+ENV_FILE = CONFIG_DIR / "language.env"
+DRY_RUN = os.environ.get("SEVENOS_DRY_RUN") == "1"
+
+LABELS = {
+    "C.UTF-8": "System default",
+    "C": "System default",
+    "en_US.UTF-8": "English (United States)",
+    "en_GB.UTF-8": "English (United Kingdom)",
+    "fr_FR.UTF-8": "Francais (France)",
+    "fr_CA.UTF-8": "Francais (Canada)",
+    "es_ES.UTF-8": "Espanol (Espana)",
+    "de_DE.UTF-8": "Deutsch",
+    "it_IT.UTF-8": "Italiano",
+    "pt_BR.UTF-8": "Portugues (Brasil)",
+    "ar_SA.UTF-8": "Arabic",
+    "zh_CN.UTF-8": "Chinese (Simplified)",
+    "ja_JP.UTF-8": "Japanese",
+}
+
+
+def normalize_locale(value: str) -> str:
+    value = value.strip()
+    if not value:
+        return "C.UTF-8"
+    if value == "C.utf8":
+        return "C.UTF-8"
+    if value.lower().endswith(".utf8"):
+        return f"{value[:-5]}.UTF-8"
+    return value
+
+
+def command_output(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout.strip()
+
+
+def installed_locales() -> list[str]:
+    raw = command_output(["locale", "-a"]) if shutil.which("locale") else ""
+    locales = []
+    for line in raw.splitlines():
+        item = normalize_locale(line)
+        if item == "POSIX":
+            continue
+        if item not in locales:
+            locales.append(item)
+    if "C.UTF-8" not in locales and "C" in locales:
+        locales.insert(0, "C.UTF-8")
+    if not locales:
+        locales = ["C.UTF-8"]
+    return sorted(locales, key=lambda item: (item in ("C", "C.UTF-8"), item.lower()))
+
+
+def read_prefs() -> dict[str, str]:
+    prefs: dict[str, str] = {}
+    if not PREF_FILE.exists():
+        return prefs
+    for line in PREF_FILE.read_text(encoding="utf-8", errors="ignore").splitlines():
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        prefs[key.strip()] = value.strip().strip("'\"")
+    return prefs
+
+
+def current_locale() -> str:
+    prefs = read_prefs()
+    for key in ("SEVENOS_LANGUAGE", "LANG"):
+        if prefs.get(key):
+            return normalize_locale(prefs[key])
+    return normalize_locale(os.environ.get("LANG", "C.UTF-8"))
+
+
+def language_code(locale_name: str) -> str:
+    if locale_name.startswith("C"):
+        return "C"
+    return locale_name.split("_", 1)[0].split(".", 1)[0]
+
+
+def language_entries() -> list[dict[str, object]]:
+    current = current_locale()
+    entries = []
+    for locale_name in installed_locales():
+        label = LABELS.get(locale_name, locale_name.replace("_", " ").replace(".UTF-8", ""))
+        entries.append(
+            {
+                "locale": locale_name,
+                "label": label,
+                "language": language_code(locale_name),
+                "current": locale_name == current,
+                "installed": True,
+            }
+        )
+    return entries
+
+
+def status_payload() -> dict[str, object]:
+    current = current_locale()
+    locales = installed_locales()
+    return {
+        "schema": "sevenos.language.v1",
+        "current": current,
+        "label": LABELS.get(current, current),
+        "language": language_code(current),
+        "available": locales,
+        "languages": language_entries(),
+        "config": str(PREF_FILE),
+        "env_file": str(ENV_FILE),
+        "active": current in locales,
+    }
+
+
+def write_shell_hook(path: Path) -> None:
+    start = "# >>> SevenOS language"
+    end = "# <<< SevenOS language"
+    block = "\n".join(
+        [
+            start,
+            'if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then',
+            '  . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"',
+            "fi",
+            end,
+            "",
+        ]
+    )
+    existing = path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+    if start in existing and end in existing:
+        before = existing.split(start, 1)[0].rstrip()
+        after = existing.split(end, 1)[1].lstrip()
+        content = f"{before}\n\n{block}{after}"
+    else:
+        content = f"{existing.rstrip()}\n\n{block}" if existing.strip() else block
+    path.write_text(content, encoding="utf-8")
+
+
+def import_environment(locale_name: str) -> None:
+    env = {**os.environ, "LANG": locale_name, "LANGUAGE": language_code(locale_name), "LC_MESSAGES": locale_name}
+    commands = [
+        ["systemctl", "--user", "import-environment", "LANG", "LANGUAGE", "LC_MESSAGES"],
+        ["dbus-update-activation-environment", "--systemd", "LANG", "LANGUAGE", "LC_MESSAGES"],
+    ]
+    for command in commands:
+        if shutil.which(command[0]):
+            subprocess.run(command, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+
+
+def notify(locale_name: str) -> None:
+    if shutil.which("notify-send"):
+        subprocess.Popen(
+            ["notify-send", "SevenOS Language", f"Language set to {LABELS.get(locale_name, locale_name)}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
+def set_language(locale_name: str) -> int:
+    normalized = normalize_locale(locale_name)
+    installed = installed_locales()
+    if normalized not in installed:
+        print(f"[SevenOS] ERROR: language locale is not available: {locale_name}", flush=True)
+        print("[SevenOS] Available languages:")
+        for item in language_entries():
+            print(f"  - {item['locale']}  {item['label']}")
+        return 1
+
+    lang = language_code(normalized)
+    if DRY_RUN:
+        print(f"DRY-RUN > Language > Set {normalized}")
+        print(f"DRY-RUN > Language > Write {PREF_FILE}")
+        print(f"DRY-RUN > Language > Import session environment")
+        return 0
+
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    PREF_FILE.write_text(
+        "\n".join(
+            [
+                "# SevenOS language preference",
+                f"SEVENOS_LANGUAGE={shlex.quote(normalized)}",
+                f"LANG={shlex.quote(normalized)}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    ENV_FILE.write_text(
+        "\n".join(
+            [
+                "# SevenOS language session environment",
+                f"export LANG={shlex.quote(normalized)}",
+                f"export LANGUAGE={shlex.quote(lang)}",
+                f"export LC_MESSAGES={shlex.quote(normalized)}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    for shell_file in (Path.home() / ".bashrc", Path.home() / ".zshrc"):
+        write_shell_hook(shell_file)
+    import_environment(normalized)
+    notify(normalized)
+    print(f"[SevenOS] OK: Language set to {LABELS.get(normalized, normalized)} ({normalized}).")
+    print("[SevenOS] Restart newly opened apps, or log out and back in, for every app to inherit it.")
+    return 0
+
+
+def print_status() -> None:
+    payload = status_payload()
+    print("SevenOS Language")
+    print("================")
+    print(f"Current:   {payload['label']}")
+    print(f"Locale:    {payload['current']}")
+    print(f"Available: {len(payload['languages'])}")
+    print("\nLanguages:")
+    for item in payload["languages"]:
+        marker = "*" if item["current"] else " "
+        print(f" {marker} {item['locale']:<16} {item['label']}")
+
+
+def open_menu() -> int:
+    entries = language_entries()
+    lines = [f"{item['label']}|{item['locale']}" for item in entries]
+    if DRY_RUN:
+        print("DRY-RUN > Language > Open language chooser")
+        return 0
+    if not shutil.which("rofi"):
+        print_status()
+        return 0
+    result = subprocess.run(
+        ["rofi", "-dmenu", "-i", "-p", "Language", "-theme", "sevenos"],
+        input="\n".join(line.split("|", 1)[0] for line in lines),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    choice = result.stdout.strip()
+    if result.returncode != 0 or not choice:
+        return 0
+    selected = next((line.split("|", 1)[1] for line in lines if line.startswith(f"{choice}|")), "")
+    return set_language(selected) if selected else 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="SevenOS language manager")
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "menu"))
+    parser.add_argument("locale", nargs="?")
+    parser.add_argument("--json", action="store_true", help="print machine-readable output")
+    args = parser.parse_args()
+
+    if args.action == "status":
+        if args.json:
+            print(json.dumps(status_payload(), ensure_ascii=False))
+        else:
+            print_status()
+        return 0
+    if args.action == "list":
+        payload = {"schema": "sevenos.language-list.v1", "languages": language_entries()}
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False))
+        else:
+            for item in payload["languages"]:
+                print(f"{item['locale']}\t{item['label']}")
+        return 0
+    if args.action == "menu":
+        return open_menu()
+    if not args.locale:
+        parser.error("set requires a locale, for example: seven-language set en_US.UTF-8")
+    return set_language(args.locale)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

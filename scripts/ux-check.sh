@@ -150,6 +150,7 @@ require_executable "bin/sevenpkg"
 require_executable "seven-hub/bin/seven-hub"
 require_executable "seven-hub/bin/seven-control-center"
 require_executable "bin/seven-country"
+require_executable "bin/seven-language"
 require_executable "bin/seven-daemon"
 require_executable "bin/sevenbus-probe"
 require_executable "bin/seven-apps"
@@ -927,6 +928,17 @@ else
   fail "Terminal country signal failed"
 fi
 
+if "$ROOT_DIR/bin/seven-language" status --json | python -m json.tool >/dev/null &&
+   "$ROOT_DIR/bin/seven-language" list --json | python -m json.tool >/dev/null &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" menu | grep -q 'DRY-RUN > Language > Open language chooser' &&
+   grep -q 'language_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven language set' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'language_parser' "$ROOT_DIR/bin/seven"; then
+  ok "SevenOS exposes functional language selection in General settings"
+else
+  fail "SevenOS language selection should be available from Settings and CLI"
+fi
+
 if "$ROOT_DIR/bin/seven-apps" doctor | grep -q 'desktop applications indexed'; then
   ok "SevenOS Apps indexes installed desktop applications"
 else
@@ -1121,6 +1133,8 @@ settings_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-settings")"
 if grep -q 'DRY-RUN > Settings > Open SevenOS Settings' <<<"$settings_dry" &&
    "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1 &&
    grep -q 'SevenOS Settings' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Language & Region' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven-settings general' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'Wallpaper' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'Displays' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'Wi-Fi & Network' "$ROOT_DIR/bin/seven-settings-native" &&
