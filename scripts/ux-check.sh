@@ -286,13 +286,13 @@ else
   fail "Waybar SevenOS click does not open dashboard"
 fi
 
-if jq -e '."custom/sevenos"."on-click-right" == "seven-welcome"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar SevenOS right-click opens welcome"
+if jq -e '."custom/sevenos".tooltip == false and (."custom/sevenos".format | contains("SevenOS"))' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar SevenOS brand stays simple and public-facing"
 else
-  fail "Waybar SevenOS right-click does not open welcome"
+  fail "Waybar SevenOS brand should stay simple and public-facing"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("Rechercher")) and ."custom/spotlight"."on-click" == "seven-spotlight" and ."custom/ai"."on-click" == "seven ai focus" and (.pulseaudio.format | contains("{volume}%")) and (.battery.format | contains("{capacity}%")) and (. | has("cpu") and has("memory")) and (."modules-right" | index("cpu") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.height == 46 and .spacing == 8 and ."gtk-layer-shell" == true and ."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and (."custom/sevenos".format | contains("SevenOS")) and ."custom/spotlight".format == "󰍉  Rechercher..." and ."custom/spotlight"."on-click" == "seven-spotlight" and ."custom/ai".format == "◉" and ."custom/ai"."on-click" == "seven ai focus" and .pulseaudio.format == "󰕾" and (.battery.format | contains("{capacity}%")) and (. | has("cpu") | not) and (. | has("memory") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes premium SevenOS search, spaces and essential controls"
 else
   fail "Waybar premium search, workspace or essential control layout missing"
@@ -393,10 +393,10 @@ else
   fail "Seven Files shell integration is incomplete"
 fi
 
-if jq -e '."custom/power"."on-click" == "seven-power"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar power opens seven-power"
+if [[ -x "$ROOT_DIR/bin/seven-power" ]] && grep -q 'seven-power' "$ROOT_DIR/bin/seven-waybar-action"; then
+  ok "SevenOS power controls remain available outside the minimal Waybar"
 else
-  fail "Waybar power action missing"
+  fail "SevenOS power controls should remain available outside the minimal Waybar"
 fi
 
 if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -422,7 +422,7 @@ else
   fail "SevenOS Dock should toggle with Super+D and expose workflow actions"
 fi
 
-if jq -e '.network."on-click" == "seven-wifi menu" and .network."on-click-middle" == "seven-wifi disconnect" and .network."on-click-right" == "seven-wifi settings" and .network."format-wifi" == "󰤨" and .pulseaudio."on-click" == "seven-waybar-action audio" and .pulseaudio."on-click-right" == "seven-settings sound" and (.pulseaudio.format | contains("{volume}%")) and .battery."on-click" == "seven-waybar-action battery" and .battery."on-click-right" == "seven-settings power" and (.battery.format | contains("{capacity}%")) and .clock."on-click" == "seven-waybar-action clock" and .clock."on-click-right" == "seven-settings system" and ."custom/ai"."on-click" == "seven ai focus" and ."custom/sevenos"."on-click" == "seven hub" and ."custom/spotlight"."on-click" == "seven-spotlight"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.network."on-click" == "seven-wifi menu" and .network."format-wifi" == "󰤨" and .network.tooltip == false and .pulseaudio."on-click" == "seven-waybar-action audio" and .pulseaudio."on-click-middle" == "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" and .pulseaudio."on-scroll-up" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+" and .pulseaudio."on-scroll-down" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" and .pulseaudio.format == "󰕾" and .pulseaudio.tooltip == false and .battery."on-click" == "seven-waybar-action battery" and (.battery.format | contains("{capacity}%")) and .battery.tooltip == false and .clock.tooltip == false and ."custom/ai"."on-click" == "seven ai focus" and ."custom/sevenos"."on-click" == "seven hub" and ."custom/spotlight"."on-click" == "seven-spotlight"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
@@ -974,11 +974,11 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'SEVENOS_THEME_MODE' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'hyprland-light' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'copy GTK, Qt and fontconfig SevenOS settings' "$ROOT_DIR/scripts/apply-theme.sh" &&
-   ! grep -R "box-shadow" "$ROOT_DIR/hyprland/waybar/style.css" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null &&
+   ! grep -R "box-shadow" "$ROOT_DIR/seven-hub/gui/src/styles.css" >/dev/null &&
    ! grep -E '#[0-9a-fA-F]{8}\b' "$ROOT_DIR/hyprland/waybar/style.css" >/dev/null; then
-  ok "SevenOS v2 glass design tokens and no-shadow UI rule are enforced"
+  ok "SevenOS v2 glass design tokens and scoped shadow UI rule are enforced"
 else
-  fail "Design tokens or no-shadow UI rule failed"
+  fail "Design tokens or scoped shadow UI rule failed"
 fi
 
 if "$ROOT_DIR/bin/seven-country" plain | grep -q 'Capital:'; then

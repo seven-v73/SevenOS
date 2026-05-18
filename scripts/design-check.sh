@@ -17,10 +17,11 @@ ok() {
 
 log_info "Running SevenOS design coherence checks..."
 
-if grep -R "box-shadow" "$ROOT_DIR/hyprland" "$ROOT_DIR/hyprland-light" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
-  fail "UI must not use decorative box-shadow."
+shadow_hits="$(grep -R -l "box-shadow" "$ROOT_DIR/hyprland" "$ROOT_DIR/hyprland-light" "$ROOT_DIR/seven-hub/gui/src" 2>/dev/null | grep -vFx "$ROOT_DIR/hyprland/waybar/style.css" || true)"
+if [[ -n "$shadow_hits" ]]; then
+  fail "UI must not use decorative box-shadow outside the SevenOS reference Waybar."
 else
-  ok "No decorative box-shadow in desktop UI"
+  ok "Desktop UI avoids decorative shadows outside the SevenOS reference Waybar"
 fi
 
 if grep -R "backdrop-filter" "$ROOT_DIR/hyprland" "$ROOT_DIR/hyprland-light" "$ROOT_DIR/seven-hub/gui/src" >/dev/null; then
@@ -71,17 +72,22 @@ else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and .height == 48 and .spacing == 10' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
-  ok "Waybar uses a premium SevenOS floating hierarchy"
+if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and .height == 46 and .spacing == 8 and ."margin-top" == 16 and ."margin-left" == 24 and ."margin-right" == 24 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and ."custom/spotlight".format == "󰍉  Rechercher..." and ."custom/ai".format == "◉"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+  ok "Waybar uses the SevenOS public premium floating hierarchy"
 else
   fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
 fi
 
-if grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '.modules-center,' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '.modules-right' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'border-radius: 24px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'box-shadow:' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-sevenos' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-spotlight' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-ai' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '@keyframes seven-orb' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '@keyframes aiPulse' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#workspaces button.active' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'rgba(20, 20, 28, 0.55)' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
@@ -178,7 +184,7 @@ else
   fail "SevenOS should expose a named desktop session"
 fi
 
-if grep -q '"on-click": "seven-settings"' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
+if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    [[ -s "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" ]] &&
    [[ -x "$ROOT_DIR/bin/seven-waybar-notifications" ]]; then
   ok "Settings and Notifications have dedicated shell surfaces"
