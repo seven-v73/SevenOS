@@ -282,6 +282,14 @@ SevenAI Agent adds the first executable OS-agent foundation:
 - `seven ai context --json` exposes local process and Hyprland context.
 - `seven ai memory --json` exposes a local-only event log for short-term
   behavior learning.
+- `seven ai "mets le thème light"` and `seven ai "workspace 2"` expose natural
+  desktop control for SevenOS theme and Hyprland workspaces.
+- `seven ai shortcuts`, `seven ai knowledge` and `seven ai workflow` let the
+  assistant explain SevenOS, keyboard-first workflows and workspace discipline
+  without needing the web.
+- `seven ai llm --json` exposes the complete provider-neutral LLM contract.
+- `seven ai web "query" --json --web` can perform an explicit web lookup; web
+  access stays disabled by default and never sends system context implicitly.
 
 The safety contract is simple: app/UI actions can run directly, system actions
 are previewed unless `--apply` is present, and privileged package/root actions
@@ -332,6 +340,9 @@ seven ai open settings
 seven ai "mon wifi ne marche pas"
 seven ai apps --json
 seven ai context --json
+seven ai shortcuts
+seven ai knowledge
+seven ai llm --json
 seven adaptive plan
 seven cloud plan
 seven store apps

@@ -299,6 +299,8 @@ def handle_ai(args):
         extra.append("--apply")
     if args.yes:
         extra.append("--yes")
+    if args.web:
+        extra.append("--web")
     run_script(args, "scripts/ai.sh", *extra)
 
 
@@ -568,6 +570,7 @@ def main():
     ai_parser.add_argument("--json", action="store_true", help="print machine-readable SevenAI local payload")
     ai_parser.add_argument("--apply", action="store_true", help="allow SevenAI to execute system actions that require confirmation")
     ai_parser.add_argument("--yes", action="store_true", help="run non-interactively where supported")
+    ai_parser.add_argument("--web", action="store_true", help="allow SevenAI web lookup for this request")
     store_parser = subparsers.add_parser("store", help="browse SevenStore modules, apps and actions")
     store_parser.add_argument("action", nargs="?", default="status", choices=("status", "modules", "catalog", "apps", "actions", "doctor", "install", "json"))
     store_parser.add_argument("--json", action="store_true", help="print machine-readable SevenStore catalog")

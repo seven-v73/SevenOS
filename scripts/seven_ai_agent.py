@@ -16,6 +16,8 @@ import shutil
 import sys
 import subprocess
 import time
+import urllib.parse
+import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -169,6 +171,22 @@ def parse_intent(text: str) -> Intent:
     if not raw:
         return Intent("GUIDANCE", "", 0.2, "SAFE", False, "No natural language request was provided.")
 
+    if ("theme" in raw or "thème" in raw or "mode" in raw) and any(token in raw for token in ("light", "clair", "claire")):
+        return Intent("SET_THEME", "light", 0.9, "SYSTEM", True, "Theme changes rewrite user desktop configuration.")
+
+    if ("theme" in raw or "thème" in raw or "mode" in raw) and any(token in raw for token in ("dark", "sombre", "noir")):
+        return Intent("SET_THEME", "dark", 0.9, "SYSTEM", True, "Theme changes rewrite user desktop configuration.")
+
+    workspace_match = re.search(r"(workspace|bureau|espace)\s+(next|previous|suivant|precedent|précédent|[1-9])", raw)
+    if workspace_match:
+        target = workspace_match.group(2)
+        aliases = {"suivant": "next", "precedent": "previous", "précédent": "previous"}
+        return Intent("SWITCH_WORKSPACE", aliases.get(target, target), 0.88, "SAFE", False, "User asked Hyprland to switch workspace.")
+
+    go_workspace_match = re.search(r"(va|go|switch|change|passe).*(workspace|bureau|espace)\s+([1-9])", raw)
+    if go_workspace_match:
+        return Intent("SWITCH_WORKSPACE", go_workspace_match.group(3), 0.86, "SAFE", False, "User asked Hyprland to switch workspace.")
+
     open_match = re.match(r"^(open|launch|start|ouvre|ouvrir|lance|démarre|demarre)\s+(.+)$", raw)
     if open_match:
         return Intent("OPEN_APP", open_match.group(2).strip(), 0.92, "SAFE", False, "User asked to open an application.")
@@ -192,6 +210,19 @@ def parse_intent(text: str) -> Intent:
 
     if any(token in raw for token in ("optimise mon système", "optimise mon systeme", "optimize my system", "optimise system", "optimize system")):
         return Intent("OPTIMIZE_SYSTEM", "system", 0.84, "SYSTEM", True, "Optimization may alter services or cleanup state.")
+
+    if any(token in raw for token in ("optimise mon workspace", "optimise mon travail", "organise mon travail", "optimize my workspace", "optimize my workflow")):
+        return Intent("OPTIMIZE_WORKFLOW", "workspace", 0.84, "SAFE", False, "User asked for workspace and workflow guidance.")
+
+    if any(token in raw for token in ("raccourcis", "shortcuts", "keybinds", "clavier", "hotkeys")):
+        return Intent("SHOW_SHORTCUTS", "keyboard", 0.86, "SAFE", False, "User asked for SevenOS keyboard shortcuts.")
+
+    if any(token in raw for token in ("c'est quoi sevenos", "qu'est ce que sevenos", "what is sevenos", "parle de sevenos", "explique sevenos")):
+        return Intent("EXPLAIN_SEVENOS", "sevenos", 0.88, "SAFE", False, "User asked for an explanation of SevenOS.")
+
+    web_match = re.match(r"^(search|cherche|recherche|web|internet)\s+(.+)$", raw)
+    if web_match:
+        return Intent("WEB_QUERY", web_match.group(2).strip(), 0.78, "WEB", False, "User asked SevenAI to search the web.")
 
     if raw in ("status", "etat", "état", "system status", "statut"):
         return Intent("SYSTEM_STATUS", "system", 0.78, "SAFE", False, "User asked for SevenOS status.")
@@ -261,6 +292,116 @@ def system_context() -> dict[str, Any]:
     }
 
 
+def shortcut_catalog() -> dict[str, Any]:
+    config = ROOT_DIR / "hyprland/hyprland.conf"
+    shortcuts = [
+        {"keys": "Super", "action": "Apps launcher"},
+        {"keys": "Super+Space", "action": "SevenOS Spotlight"},
+        {"keys": "Super+D", "action": "Toggle SevenOS Dock"},
+        {"keys": "Super+H", "action": "SevenOS Help"},
+        {"keys": "Super+Shift+H", "action": "Seven Hub"},
+        {"keys": "Super+E", "action": "Seven Files"},
+        {"keys": "Super+Enter", "action": "Terminal Classic"},
+        {"keys": "Super+Shift+Enter", "action": "Terminal Dark"},
+        {"keys": "Super+Shift+P", "action": "Power menu"},
+        {"keys": "Super+1..9", "action": "Switch workspace"},
+        {"keys": "Super+Shift+1..9", "action": "Move window to workspace"},
+    ]
+    parsed = []
+    if config.exists():
+        for line in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if not line.startswith("bind ="):
+                continue
+            parsed.append(line)
+    return {"schema": "sevenos.ai.shortcuts.v1", "shortcuts": shortcuts, "hyprland_binds": parsed[:80]}
+
+
+def sevenos_knowledge() -> dict[str, Any]:
+    return {
+        "schema": "sevenos.ai.knowledge.v1",
+        "name": "SevenOS",
+        "tagline": "Beyond the Desktop.",
+        "summary": (
+            "SevenOS is a next-generation intelligent Linux experience based on Hyprland, "
+            "local-first system control, contextual profiles, cybersecurity tooling, "
+            "creative workflows and a premium glass design language."
+        ),
+        "pillars": ["fluidity", "security", "contextual profiles", "AI-assisted control", "creative/dev/cyber workflows"],
+        "primary_surfaces": ["Spotlight", "Seven Hub", "Seven Files", "Waybar cockpit", "SevenAI", "SevenShield"],
+        "daily_shortcuts": shortcut_catalog()["shortcuts"],
+        "workflow_tips": workflow_plan()["tips"],
+    }
+
+
+def workflow_plan() -> dict[str, Any]:
+    return {
+        "schema": "sevenos.ai.workflow.v1",
+        "tips": [
+            "Use Super+Space as the single command surface instead of hunting through menus.",
+            "Keep Super+D for pinned daily apps and folders, and leave Spotlight for actions/search.",
+            "Use Super+1..9 to separate focus contexts: dev, browser, docs, media, communication.",
+            "Use profile workspaces: Forge for development, Shield for cybersecurity, Studio for creation.",
+            "Use Super+S as a temporary scratch workspace for transient terminals or notes.",
+            "Open Seven Hub with Super+Shift+H when you need settings, repair or profile actions.",
+        ],
+        "recommended_layout": [
+            {"workspace": "1", "role": "Focus app / editor"},
+            {"workspace": "2", "role": "Browser and docs"},
+            {"workspace": "3", "role": "Terminal, containers and logs"},
+            {"workspace": "4", "role": "Creative or communication"},
+            {"workspace": "special:seven", "role": "Scratchpad and temporary tools"},
+        ],
+    }
+
+
+def llm_contract() -> dict[str, Any]:
+    return {
+        "schema": "sevenos.ai.llm-contract.v1",
+        "default_mode": "local-first",
+        "goal": "A provider-neutral OS agent that can parse intents, explain SevenOS, control safe desktop actions, request confirmation for system changes and optionally enrich answers from the web.",
+        "layers": [
+            "Input Layer: CLI, Spotlight, Waybar AI module and future voice input.",
+            "Intent Engine: rules first, then local model adapter and embeddings.",
+            "Context & Memory: active window, processes, profile, local event log and user workflow patterns.",
+            "System Knowledge Graph: SevenOS docs, actions, packages, apps, profiles and repair plans.",
+            "Execution Layer: safe UI actions, system actions with --apply, root actions with explicit confirmation.",
+            "Self-Healing & Learning: diagnose, propose, execute, record and improve next suggestions.",
+        ],
+        "providers": [
+            {"key": "rules", "status": "active", "privacy": "local"},
+            {"key": "ollama", "status": "planned-adapter", "privacy": "local"},
+            {"key": "openai-compatible", "status": "planned-adapter", "privacy": "opt-in remote"},
+        ],
+        "web_policy": {
+            "default": "disabled",
+            "enable": "SEVENAI_WEB=1 seven ai web \"query\" --json",
+            "storage": "Summaries can be cached locally later under XDG_STATE_HOME/sevenos.",
+            "safety": "Do not send system context to the web unless the user explicitly asks.",
+        },
+    }
+
+
+def web_query(query: str, *, enabled: bool) -> dict[str, Any]:
+    if not enabled and os.environ.get("SEVENAI_WEB") != "1":
+        return {
+            "schema": "sevenos.ai.web.v1",
+            "enabled": False,
+            "query": query,
+            "summary": "Web access is disabled by default. Enable it explicitly with SEVENAI_WEB=1.",
+            "next": f"SEVENAI_WEB=1 seven ai web {json.dumps(query)} --json",
+        }
+    url = "https://duckduckgo.com/html/?" + urllib.parse.urlencode({"q": query})
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": "SevenAI/0.1"})
+        with urllib.request.urlopen(request, timeout=8) as response:
+            html = response.read(200000).decode("utf-8", errors="ignore")
+    except Exception as exc:
+        return {"schema": "sevenos.ai.web.v1", "enabled": True, "query": query, "error": str(exc)}
+    snippets = re.findall(r'class="result__a"[^>]*>(.*?)</a>', html, flags=re.S)
+    clean = [re.sub(r"<[^>]+>", "", item).strip() for item in snippets[:5]]
+    return {"schema": "sevenos.ai.web.v1", "enabled": True, "query": query, "source": "duckduckgo-html", "results": clean}
+
+
 def memory_path() -> Path:
     base = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "sevenos"
     base.mkdir(parents=True, exist_ok=True)
@@ -307,6 +448,15 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
         result["result"] = launch_app(app, apply=True) if app and (DRY_RUN or effective_apply) else (
             {"returncode": 1, "stderr": f"Application not found: {intent.target}", "applied": False}
         )
+    elif intent.intent == "SET_THEME":
+        command = [str(ROOT_DIR / "install.sh"), "theme", intent.target]
+        result["action"] = {"type": "set_theme", "target": intent.target, "command": " ".join(command)}
+        result["result"] = run(command, apply=effective_apply, cwd=ROOT_DIR)
+    elif intent.intent == "SWITCH_WORKSPACE":
+        dispatch_target = {"next": "r+1", "previous": "r-1"}.get(intent.target, intent.target)
+        command = ["hyprctl", "dispatch", "workspace", dispatch_target]
+        result["action"] = {"type": "switch_workspace", "target": intent.target, "command": " ".join(command)}
+        result["result"] = run(command, apply=effective_apply)
     elif intent.intent == "KILL_PROCESS":
         result["action"] = {"type": "kill_process", "target": intent.target, "command": f"pkill -f {intent.target}"}
         result["result"] = run(["pkill", "-f", intent.target], apply=effective_apply)
@@ -327,9 +477,24 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
     elif intent.intent == "SYSTEM_STATUS":
         result["action"] = {"type": "system_status", "command": "seven state --json"}
         result["result"] = run([str(ROOT_DIR / "bin/seven"), "state", "--json"], apply=True, cwd=ROOT_DIR)
+    elif intent.intent == "EXPLAIN_SEVENOS":
+        result["action"] = {"type": "explain_sevenos", "target": "sevenos"}
+        result["result"] = {"applied": False, "knowledge": sevenos_knowledge()}
+    elif intent.intent == "SHOW_SHORTCUTS":
+        result["action"] = {"type": "show_shortcuts", "target": "keyboard"}
+        result["result"] = {"applied": False, "shortcuts": shortcut_catalog()}
+    elif intent.intent == "OPTIMIZE_WORKFLOW":
+        result["action"] = {"type": "optimize_workflow", "target": "workspace"}
+        result["result"] = {"applied": False, "workflow": workflow_plan()}
+    elif intent.intent == "WEB_QUERY":
+        result["action"] = {"type": "web_query", "target": intent.target}
+        result["result"] = web_query(intent.target, enabled=False)
     else:
         result["action"] = {"type": "guidance", "suggestions": [
             "seven ai open settings",
+            "seven ai 'mets le thème light'",
+            "seven ai 'workspace 2'",
+            "seven ai 'raccourcis clavier'",
             "seven ai wifi status",
             "seven ai \"mon wifi ne marche pas\"",
             "seven ai install forge",
@@ -368,6 +533,18 @@ def print_human(data: dict[str, Any]) -> None:
         print(f"Result: {stderr}")
     elif detail:
         print(f"Result: {detail}")
+    elif isinstance(result, dict) and result.get("knowledge"):
+        knowledge = result["knowledge"]
+        print(f"Result: {knowledge.get('summary')}")
+        print("Pillars: " + ", ".join(knowledge.get("pillars", [])[:5]))
+    elif isinstance(result, dict) and result.get("shortcuts"):
+        for item in result["shortcuts"].get("shortcuts", [])[:8]:
+            print(f"- {item.get('keys')}: {item.get('action')}")
+    elif isinstance(result, dict) and result.get("workflow"):
+        for item in result["workflow"].get("tips", [])[:6]:
+            print(f"- {item}")
+    elif isinstance(result, dict) and result.get("summary"):
+        print(f"Result: {result.get('summary')}")
     else:
         print(f"Result: returncode={result.get('returncode', 0) if isinstance(result, dict) else 0}")
 
@@ -377,18 +554,21 @@ def main() -> int:
     json_flag = "--json" in raw_args
     apply_flag = "--apply" in raw_args
     yes_flag = "--yes" in raw_args
-    raw_args = [arg for arg in raw_args if arg not in ("--json", "--apply", "--yes")]
+    web_flag = "--web" in raw_args
+    raw_args = [arg for arg in raw_args if arg not in ("--json", "--apply", "--yes", "--web")]
     parser = argparse.ArgumentParser(prog="seven-ai-agent")
-    parser.add_argument("action", nargs="?", default="ask", choices=("ask", "run", "intent", "apps", "context", "memory"))
+    parser.add_argument("action", nargs="?", default="ask", choices=("ask", "run", "intent", "apps", "context", "memory", "knowledge", "shortcuts", "workflow", "llm", "web"))
     parser.add_argument("text", nargs=argparse.REMAINDER)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--yes", action="store_true")
+    parser.add_argument("--web", action="store_true")
     parser.add_argument("--limit", type=int, default=12)
     args = parser.parse_args(raw_args)
     args.json = args.json or json_flag
     args.apply = args.apply or apply_flag
     args.yes = args.yes or yes_flag
+    args.web = args.web or web_flag
 
     if args.action == "apps":
         data = {"schema": "sevenos.ai.apps.v1", "apps": [asdict(app) for app in app_registry()]}
@@ -401,6 +581,27 @@ def main() -> int:
     if args.action == "memory":
         data = read_memory(args.limit)
         print(json.dumps(data, indent=2) if args.json else "\n".join(f"{item.get('intent')} {item.get('target')}" for item in data["events"]))
+        return 0
+    if args.action == "knowledge":
+        data = sevenos_knowledge()
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["summary"])
+        return 0
+    if args.action == "shortcuts":
+        data = shortcut_catalog()
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else "\n".join(f"{item['keys']}\t{item['action']}" for item in data["shortcuts"]))
+        return 0
+    if args.action == "workflow":
+        data = workflow_plan()
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else "\n".join(data["tips"]))
+        return 0
+    if args.action == "llm":
+        data = llm_contract()
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["goal"])
+        return 0
+    if args.action == "web":
+        query = " ".join(args.text).strip()
+        data = web_query(query, enabled=args.web)
+        print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data.get("summary") or "\n".join(data.get("results", [])))
         return 0
 
     text = " ".join(args.text).strip()

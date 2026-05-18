@@ -142,6 +142,11 @@ ai.apps	System	SevenAI App Registry	seven ai apps --json	safe	Show the app regis
 ai.context	System	SevenAI Context	seven ai context --json	safe	Show SevenAI local system context from processes and Hyprland state.
 ai.memory	System	SevenAI Memory	seven ai memory --json	safe	Show the local-only SevenAI interaction memory log.
 ai.wifi	System	SevenAI Wi-Fi Repair Plan	seven ai "mon wifi ne marche pas"	safe	Let SevenAI diagnose a Wi-Fi repair intent before applying system changes.
+ai.theme.light	System	SevenAI Light Theme Plan	seven ai "mets le thème light"	safe	Let SevenAI understand and preview the SevenOS Light Mode switch.
+ai.workspace	System	SevenAI Workspace Switch	seven ai "workspace 2"	safe	Switch Hyprland workspace through a natural-language SevenAI command.
+ai.shortcuts	System	SevenAI Shortcuts	seven ai shortcuts	safe	Show SevenOS keyboard shortcuts from the AI knowledge layer.
+ai.knowledge	System	SevenAI SevenOS Knowledge	seven ai knowledge	safe	Explain what SevenOS is, its surfaces and its daily workflow model.
+ai.llm	System	SevenAI LLM Contract	seven ai llm --json	safe	Show the provider-neutral local-first LLM and web architecture contract.
 store.open	Apps	SevenStore	seven store	safe	Browse SevenOS modules, Flatpak apps and safe OS actions from one catalog.
 store.modules	Apps	Store Modules	seven store modules	safe	Show installable SevenOS bundles with optional modules separated from required readiness.
 store.apps	Apps	Store Apps	seven store apps	safe	Show the Flatpak application catalog exposed through SevenStore.

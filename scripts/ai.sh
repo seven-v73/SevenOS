@@ -16,7 +16,10 @@ Usage:
   seven ai apps --json
   seven ai context --json
   seven ai memory --json
-  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|apps|context|memory]
+  seven ai shortcuts --json
+  seven ai llm --json
+  SEVENAI_WEB=1 seven ai web "SevenOS Hyprland" --json
+  ./scripts/ai.sh [brief|plan|focus|doctor|json|ask|intent|apps|context|memory|knowledge|shortcuts|workflow|llm|web]
 
 SevenAI Local is a provider-neutral system assistant preview. It does not call
 an online model; it reads SevenOS state, insights and actions, then turns them
@@ -344,7 +347,7 @@ case "$action" in
   focus) focus ;;
   doctor) doctor ;;
   json|--json) payload_json ;;
-  ask|run|intent|apps|context|memory)
+  ask|run|intent|apps|context|memory|knowledge|shortcuts|workflow|llm|web)
     shift
     agent "$action" "$@"
     ;;

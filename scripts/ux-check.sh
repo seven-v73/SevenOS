@@ -611,6 +611,11 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'ai.apps' <<<"$actions_json" &&
    grep -q 'ai.context' <<<"$actions_json" &&
    grep -q 'ai.memory' <<<"$actions_json" &&
+   grep -q 'ai.theme.light' <<<"$actions_json" &&
+   grep -q 'ai.workspace' <<<"$actions_json" &&
+   grep -q 'ai.shortcuts' <<<"$actions_json" &&
+   grep -q 'ai.knowledge' <<<"$actions_json" &&
+   grep -q 'ai.llm' <<<"$actions_json" &&
    grep -q 'improve.daily' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.active' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.all' <<<"$actions_json" &&
@@ -630,15 +635,24 @@ fi
 ai_intent_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "open settings")"
 ai_wifi_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mon wifi ne marche pas")"
 ai_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json apps)"
+ai_theme_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json "mets le thème light")"
+ai_workspace_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json intent "workspace 2")"
+ai_llm_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" ai --json llm)"
 if python -m json.tool >/dev/null <<<"$ai_intent_json" &&
    python -m json.tool >/dev/null <<<"$ai_wifi_json" &&
    python -m json.tool >/dev/null <<<"$ai_apps_json" &&
+   python -m json.tool >/dev/null <<<"$ai_theme_json" &&
+   python -m json.tool >/dev/null <<<"$ai_workspace_json" &&
+   python -m json.tool >/dev/null <<<"$ai_llm_json" &&
    grep -q '"intent": "OPEN_APP"' <<<"$ai_intent_json" &&
    grep -q '"intent": "REPAIR_NETWORK"' <<<"$ai_wifi_json" &&
-   grep -q '"schema": "sevenos.ai.apps.v1"' <<<"$ai_apps_json"; then
-  ok "SevenAI parses natural-language intents and exposes a local app registry"
+   grep -q '"schema": "sevenos.ai.apps.v1"' <<<"$ai_apps_json" &&
+   grep -q '"intent": "SET_THEME"' <<<"$ai_theme_json" &&
+   grep -q '"intent": "SWITCH_WORKSPACE"' <<<"$ai_workspace_json" &&
+   grep -q '"schema": "sevenos.ai.llm-contract.v1"' <<<"$ai_llm_json"; then
+  ok "SevenAI parses natural-language intents, desktop control and LLM contracts"
 else
-  fail "SevenAI should parse app/network intents and expose app registry JSON"
+  fail "SevenAI should parse app/network/theme/workspace intents and expose LLM JSON"
 fi
 
 flatpak_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" flatpak status --json)"
