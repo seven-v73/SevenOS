@@ -25,6 +25,8 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import tr_text  # noqa: E402
 
 
 def dry_run() -> bool:
@@ -32,7 +34,7 @@ def dry_run() -> bool:
 
 
 def dry_line(surface: str, action: str) -> None:
-    print(f"DRY-RUN > Shell Panel > {surface} > {action}")
+    print(f"DRY-RUN > Shell Panel > {tr_text(surface)} > {tr_text(action)}")
 
 
 def gtk_available() -> tuple[bool, str]:
@@ -91,69 +93,69 @@ def active_profile() -> dict[str, str]:
 
 
 QUICK_ACTIONS = [
-    ("󰒓", "Control Center", "Dashboard and system state", ["seven", "hub"]),
-    ("󰀻", "Apps", "Open application overview", ["seven-overview", "apps"]),
-    ("󰖲", "Windows", "Switch open windows", ["seven-overview", "windows"]),
-    ("󰤨", "Network", "Wi-Fi and connections", ["seven-waybar-action", "network"]),
-    ("󰕾", "Audio", "Mixer and PipeWire controls", ["seven-waybar-action", "audio"]),
-    ("󰉋", "Files", "Open profile workspace", ["seven-files", "profile"]),
-    ("󰍛", "Monitor", "CPU, memory and processes", ["seven-waybar-action", "system"]),
-    ("󰐥", "Power", "Lock, reboot and shutdown", ["seven-power"]),
+    ("󰒓", tr_text("Control Center"), tr_text("Dashboard and system state"), ["seven", "hub"]),
+    ("󰀻", tr_text("Apps"), tr_text("Open application overview"), ["seven-overview", "apps"]),
+    ("󰖲", tr_text("Windows"), tr_text("Switch open windows"), ["seven-overview", "windows"]),
+    ("󰤨", tr_text("Network"), tr_text("Wi-Fi and connections"), ["seven-waybar-action", "network"]),
+    ("󰕾", tr_text("Audio"), tr_text("Mixer and PipeWire controls"), ["seven-waybar-action", "audio"]),
+    ("󰉋", tr_text("Files"), tr_text("Open profile workspace"), ["seven-files", "profile"]),
+    ("󰍛", tr_text("Monitor"), tr_text("CPU, memory and processes"), ["seven-waybar-action", "system"]),
+    ("󰐥", tr_text("Power"), tr_text("Lock, reboot and shutdown"), ["seven-power"]),
 ]
 
 PROFILE_ACTIONS = {
     "baobab": [
-        ("󰒓", "Welcome", "Open SevenOS first-run guide", ["seven-welcome"]),
-        ("󰉋", "Workspace", "Open your SevenOS home workspace", ["seven", "profile", "open", "baobab"]),
-        ("󰞋", "Profile Guide", "Show active profile recommendations", ["seven", "profile", "guide"]),
+        ("󰒓", tr_text("Welcome"), tr_text("Open SevenOS first-run guide"), ["seven-welcome"]),
+        ("󰉋", tr_text("Workspace"), tr_text("Open your SevenOS home workspace"), ["seven", "profile", "open", "baobab"]),
+        ("󰞋", tr_text("Profile Guide"), tr_text("Show active profile recommendations"), ["seven", "profile", "guide"]),
     ],
     "forge": [
-        ("󰅩", "Forge", "Open development workspace", ["seven", "profile", "open", "forge"]),
-        ("󰀻", "Forge Apps", "Show Forge app readiness", ["seven", "profile", "apps", "forge"]),
-        ("󰡨", "Containers", "Inspect Docker and Podman tooling", ["seven", "deploy", "detect", "."]),
-        ("󰌢", "Install Forge", "Complete development profile packages", ["seven", "profile", "install", "forge"]),
+        ("󰅩", tr_text("Forge"), tr_text("Open development workspace"), ["seven", "profile", "open", "forge"]),
+        ("󰀻", tr_text("Forge Apps"), tr_text("Show Forge app readiness"), ["seven", "profile", "apps", "forge"]),
+        ("󰡨", tr_text("Containers"), tr_text("Inspect Docker and Podman tooling"), ["seven", "deploy", "detect", "."]),
+        ("󰌢", tr_text("Install Forge"), tr_text("Complete development profile packages"), ["seven", "profile", "install", "forge"]),
     ],
     "shield": [
-        ("󰹑", "CyberSpace", "Open context-aware cyber workspace map", ["seven", "shield", "mode"]),
-        ("󰯄", "Recon", "Enter Recon context workspace", ["seven", "shield", "context", "recon"]),
-        ("󰖟", "Web", "Enter Web Pentest context workspace", ["seven", "shield", "context", "web"]),
-        ("󰈙", "HUD", "Show cyber context, scope and reports", ["seven", "shield", "hud"]),
-        ("󰕥", "Shield Control", "Open cybersecurity workspace dashboard", ["seven", "shield", "dashboard"]),
-        ("󰒃", "Shield Audit", "Audit firewall, sandbox and cyber tools", ["seven", "shield", "audit"]),
-        ("󰯄", "Scope", "Review authorized targets and engagement rules", ["seven", "shield", "scope"]),
-        ("󰉋", "Workspace", "Open Shield workspace folders", ["seven", "shield", "open"]),
-        ("󰈙", "New Report", "Create a structured Shield report", ["seven", "shield", "report"]),
-        ("󰀻", "Shield Apps", "Show Shield app readiness", ["seven", "profile", "apps", "shield"]),
-        ("󱗼", "Cyber Lab", "Open isolated web testing lab", ["seven", "shield", "lab", "--preset", "web"]),
-        ("󰌢", "Install Shield", "Complete cybersecurity profile packages", ["seven", "profile", "install", "shield"]),
+        ("󰹑", tr_text("CyberSpace"), tr_text("Open context-aware cyber workspace map"), ["seven", "shield", "mode"]),
+        ("󰯄", tr_text("Recon"), tr_text("Enter Recon context workspace"), ["seven", "shield", "context", "recon"]),
+        ("󰖟", tr_text("Web"), tr_text("Enter Web Pentest context workspace"), ["seven", "shield", "context", "web"]),
+        ("󰈙", tr_text("HUD"), tr_text("Show cyber context, scope and reports"), ["seven", "shield", "hud"]),
+        ("󰕥", tr_text("Shield Control"), tr_text("Open cybersecurity workspace dashboard"), ["seven", "shield", "dashboard"]),
+        ("󰒃", tr_text("Shield Audit"), tr_text("Audit firewall, sandbox and cyber tools"), ["seven", "shield", "audit"]),
+        ("󰯄", tr_text("Scope"), tr_text("Review authorized targets and engagement rules"), ["seven", "shield", "scope"]),
+        ("󰉋", tr_text("Workspace"), tr_text("Open Shield workspace folders"), ["seven", "shield", "open"]),
+        ("󰈙", tr_text("New Report"), tr_text("Create a structured Shield report"), ["seven", "shield", "report"]),
+        ("󰀻", tr_text("Shield Apps"), tr_text("Show Shield app readiness"), ["seven", "profile", "apps", "shield"]),
+        ("󱗼", tr_text("Cyber Lab"), tr_text("Open isolated web testing lab"), ["seven", "shield", "lab", "--preset", "web"]),
+        ("󰌢", tr_text("Install Shield"), tr_text("Complete cybersecurity profile packages"), ["seven", "profile", "install", "shield"]),
     ],
     "studio": [
-        ("󰏘", "Studio", "Open creative workspace", ["seven", "profile", "open", "studio"]),
-        ("󰀻", "Studio Apps", "Show Studio app readiness", ["seven", "profile", "apps", "studio"]),
-        ("󰀻", "Creative Apps", "Open the application library", ["seven-overview", "apps"]),
-        ("󰌢", "Install Studio", "Complete creative profile packages", ["seven", "profile", "install", "studio"]),
+        ("󰏘", tr_text("Studio"), tr_text("Open creative workspace"), ["seven", "profile", "open", "studio"]),
+        ("󰀻", tr_text("Studio Apps"), tr_text("Show Studio app readiness"), ["seven", "profile", "apps", "studio"]),
+        ("󰀻", tr_text("Creative Apps"), tr_text("Open the application library"), ["seven-overview", "apps"]),
+        ("󰌢", tr_text("Install Studio"), tr_text("Complete creative profile packages"), ["seven", "profile", "install", "studio"]),
     ],
     "windows": [
-        ("󰖳", "Windows Guide", "Explain Bottles and KVM Windows paths", ["seven-windows-assistant", "guide"]),
-        ("󰀻", "Windows Apps", "Show Windows app readiness", ["seven", "profile", "apps", "windows"]),
-        ("󰿭", "Bottles", "Open Bottles for Windows applications", ["seven-windows-assistant", "apps"]),
-        ("󰢹", "Windows VM", "Open Virt Manager for Windows Mode", ["seven-windows-assistant", "vm"]),
+        ("󰖳", tr_text("Windows Guide"), tr_text("Explain Bottles and KVM Windows paths"), ["seven-windows-assistant", "guide"]),
+        ("󰀻", tr_text("Windows Apps"), tr_text("Show Windows app readiness"), ["seven", "profile", "apps", "windows"]),
+        ("󰿭", tr_text("Bottles"), tr_text("Open Bottles for Windows applications"), ["seven-windows-assistant", "apps"]),
+        ("󰢹", tr_text("Windows VM"), tr_text("Open Virt Manager for Windows Mode"), ["seven-windows-assistant", "vm"]),
     ],
     "horizon": [
-        ("󰒋", "Server", "Show local SevenOS API status", ["seven", "server", "status"]),
-        ("󰀻", "Horizon Apps", "Show Horizon app readiness", ["seven", "profile", "apps", "horizon"]),
-        ("󰞷", "Deploy", "Detect deployable project stack", ["seven", "deploy", "detect", "."]),
-        ("󰌢", "Install Horizon", "Complete server and deployment profile packages", ["seven", "profile", "install", "horizon"]),
+        ("󰒋", tr_text("Server"), tr_text("Show local SevenOS API status"), ["seven", "server", "status"]),
+        ("󰀻", tr_text("Horizon Apps"), tr_text("Show Horizon app readiness"), ["seven", "profile", "apps", "horizon"]),
+        ("󰞷", tr_text("Deploy"), tr_text("Detect deployable project stack"), ["seven", "deploy", "detect", "."]),
+        ("󰌢", tr_text("Install Horizon"), tr_text("Complete server and deployment profile packages"), ["seven", "profile", "install", "horizon"]),
     ],
 }
 
 
 NOTIFICATION_ACTIONS = [
-    ("󰅺", "Test", "Send test notification", ["seven-waybar-notifications", "test"]),
-    ("󰕒", "Restore", "Restore last notification", ["seven-waybar-notifications", "restore"]),
-    ("󰅖", "Dismiss", "Dismiss visible notifications", ["seven-waybar-notifications", "dismiss"]),
-    ("󰂛", "Focus", "Toggle Do Not Disturb", ["seven-waybar-notifications", "toggle-dnd"]),
-    ("󰜉", "Restart", "Restart Mako service", ["seven-waybar-notifications", "restart"]),
+    ("󰅺", tr_text("Test"), tr_text("Send test notification"), ["seven-waybar-notifications", "test"]),
+    ("󰕒", tr_text("Restore"), tr_text("Restore last notification"), ["seven-waybar-notifications", "restore"]),
+    ("󰅖", tr_text("Dismiss"), tr_text("Dismiss visible notifications"), ["seven-waybar-notifications", "dismiss"]),
+    ("󰂛", tr_text("Focus"), tr_text("Toggle Do Not Disturb"), ["seven-waybar-notifications", "toggle-dnd"]),
+    ("󰜉", tr_text("Restart"), tr_text("Restart Mako service"), ["seven-waybar-notifications", "restart"]),
 ]
 
 
@@ -177,7 +179,7 @@ def notification_rows() -> list[dict[str, str]]:
             if isinstance(value, dict):
                 summary = str(value.get("summary") or value.get("title") or value.get("app-name") or value.get("app_name") or "").strip()
                 body = str(value.get("body") or value.get("text") or "").strip()
-                app_name = str(value.get("app-name") or value.get("app_name") or value.get("app") or "Notification").strip()
+                app_name = str(value.get("app-name") or value.get("app_name") or value.get("app") or tr_text("Notifications")).strip()
                 if summary or body:
                     rows.append({"app": app_name, "summary": summary or app_name, "body": body})
                 for child in value.values():
@@ -194,7 +196,7 @@ def notification_rows() -> list[dict[str, str]]:
             line = re.sub(r"\s+", " ", raw).strip()
             if not line or line in {"[]", "{}"}:
                 continue
-            rows.append({"app": "Notification", "summary": line[:72], "body": ""})
+            rows.append({"app": tr_text("Notifications"), "summary": line[:72], "body": ""})
             if len(rows) >= 5:
                 break
         return rows
@@ -205,15 +207,15 @@ def print_preview(surface: str) -> None:
     actions = NOTIFICATION_ACTIONS if surface == "notifications" else [*PROFILE_ACTIONS.get(profile["key"], []), *QUICK_ACTIONS]
     dry_line(surface.title(), "Open native panel")
     if surface == "notifications":
-        print("Notification Center")
+        print(tr_text("Notification Center"))
         rows = notification_rows()
         if rows:
             for row in rows:
                 print(f"󰂚  {row['summary']}")
         else:
-            print("󰂚  No notifications")
+            print(f"󰂚  {tr_text('No notifications')}")
     else:
-        print(f"Active profile: {profile['title']} :: {profile['workspace']}")
+        print(f"{tr_text('Active: {profile}', profile=profile['title'])} :: {profile['workspace']}")
         for icon, title, subtitle, command in actions:
             print(f"{icon}  {title:<16} {subtitle} :: {' '.join(command)}")
 
@@ -221,9 +223,9 @@ def print_preview(surface: str) -> None:
 def run_gui(surface: str) -> int:
     available, reason = gtk_available()
     if not available:
-        print("seven-shell-panel: GTK4/libadwaita is not available.", file=sys.stderr)
-        print("Install with: ./seven-hub/gui-stack.sh install", file=sys.stderr)
-        print(f"Details: {reason}", file=sys.stderr)
+        print(tr_text("seven-shell-panel: GTK4/libadwaita is not available."), file=sys.stderr)
+        print(tr_text("Install with: ./seven-hub/gui-stack.sh install"), file=sys.stderr)
+        print(tr_text("Details: {reason}", reason=reason), file=sys.stderr)
         return 1
 
     import gi
@@ -234,8 +236,8 @@ def run_gui(surface: str) -> int:
 
     profile = active_profile()
     actions = NOTIFICATION_ACTIONS if surface == "notifications" else [*PROFILE_ACTIONS.get(profile["key"], []), *QUICK_ACTIONS]
-    title = "SevenOS Notifications" if surface == "notifications" else "SevenOS Quick Settings"
-    subtitle = "Do Not Disturb active" if surface == "notifications" and dnd_enabled() else ("Recent alerts" if surface == "notifications" else f"{profile['title']} profile controls")
+    title = tr_text("SevenOS Notifications") if surface == "notifications" else tr_text("SevenOS Quick Settings")
+    subtitle = tr_text("Do Not Disturb active") if surface == "notifications" and dnd_enabled() else (tr_text("Recent alerts") if surface == "notifications" else tr_text("{profile} profile controls", profile=profile["title"]))
 
     class SevenShellPanel(Adw.Application):
         def __init__(self) -> None:
@@ -350,9 +352,9 @@ def run_gui(surface: str) -> int:
                     empty.add_css_class("empty")
                     empty_icon = Gtk.Label(label="󰂚")
                     empty_icon.add_css_class("empty-icon")
-                    empty_title = Gtk.Label(label="No notifications")
+                    empty_title = Gtk.Label(label=tr_text("No notifications"))
                     empty_title.add_css_class("empty-title")
-                    empty_note = Gtk.Label(label="Alerts will appear here.")
+                    empty_note = Gtk.Label(label=tr_text("Alerts will appear here."))
                     empty_note.add_css_class("empty-note")
                     empty.append(empty_icon)
                     empty.append(empty_title)
@@ -415,7 +417,7 @@ def main() -> int:
             return 0
         return run_gui(command)
 
-    print("Usage: seven-shell-panel [quick|notifications|status]", file=sys.stderr)
+    print(tr_text("Usage: seven-shell-panel [quick|notifications|status]"), file=sys.stderr)
     return 1
 
 

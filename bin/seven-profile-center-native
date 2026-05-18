@@ -9,6 +9,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+from seven_i18n import tr_text  # noqa: E402
+
 
 def ensure_gi_python() -> None:
     if os.environ.get("SEVENOS_GI_PYTHON") == "1":
@@ -86,7 +89,7 @@ def run() -> int:
     from gi.repository import Gdk, GLib, Gtk
 
     GLib.set_prgname("SevenProfileCenterNative")
-    GLib.set_application_name("SevenOS Profiles")
+    GLib.set_application_name(tr_text("SevenOS Profiles"))
     try:
         Gdk.set_program_class("SevenProfileCenterNative")
     except Exception:
@@ -141,7 +144,7 @@ def run() -> int:
     profiles = run_json("profile", "status", "--json")
     active = next((item for item in profiles if item.get("active")), None)
 
-    window = Gtk.Window(title="SevenOS Profiles")
+    window = Gtk.Window(title=tr_text("SevenOS Profiles"))
     window.set_wmclass("SevenProfileCenterNative", "SevenProfileCenterNative")
     window.set_decorated(False)
     window.set_resizable(False)
@@ -154,10 +157,11 @@ def run() -> int:
     root.get_style_context().add_class("profile-root")
     window.add(root)
 
-    title = Gtk.Label(label="Profiles", xalign=0)
+    title = Gtk.Label(label=tr_text("Profiles"), xalign=0)
     title.get_style_context().add_class("title")
     root.pack_start(title, False, False, 0)
-    subtitle = Gtk.Label(label=f"Active: {active.get('title', 'None') if active else 'None'}", xalign=0)
+    active_label = active.get("title", tr_text("None")) if active else tr_text("None")
+    subtitle = Gtk.Label(label=tr_text("Active: {profile}", profile=active_label), xalign=0)
     subtitle.get_style_context().add_class("subtitle")
     root.pack_start(subtitle, False, False, 0)
 
@@ -167,14 +171,14 @@ def run() -> int:
     root.pack_start(grid, True, True, 0)
 
     for index, profile in enumerate(profiles[:6]):
-        title_text = profile.get("title", profile.get("key", "Profile"))
+        title_text = profile.get("title", profile.get("key", tr_text("Profile")))
         state = profile.get("state", "MISS")
         installed = profile.get("installed", 0)
         total = profile.get("total", 0)
         command = f"seven profile activate {profile['key']}" if state == "OK" else f"seven profile install {profile['key']}"
         if profile.get("active"):
             command = f"seven profile open {profile['key']}"
-        button = profile_tile(Gtk, title_text[:1].upper(), title_text, "active" if profile.get("active") else f"{installed}/{total}", command, state_class(state))
+        button = profile_tile(Gtk, title_text[:1].upper(), title_text, tr_text("active") if profile.get("active") else f"{installed}/{total}", command, state_class(state))
         grid.attach(button, index % 3, index // 3, 1, 1)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -182,10 +186,10 @@ def run() -> int:
     actions.get_style_context().add_class("action-strip")
     root.pack_end(actions, False, False, 0)
     for glyph, tooltip, command in [
-        ("󰉋", "Open workspace", "seven-files profile"),
-        ("󰞋", "Profile guide", "seven profile guide"),
-        ("󰀻", "Profile apps", "seven profile apps"),
-        ("󰒓", "Open Hub", "seven-hub-native open"),
+        ("󰉋", tr_text("Open workspace"), "seven-files profile"),
+        ("󰞋", tr_text("Profile guide"), "seven profile guide"),
+        ("󰀻", tr_text("Profile apps"), "seven profile apps"),
+        ("󰒓", tr_text("Open Hub"), "seven-hub-native open"),
     ]:
         button = Gtk.Button()
         button.get_style_context().add_class("icon-action")

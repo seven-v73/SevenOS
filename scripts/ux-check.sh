@@ -302,6 +302,7 @@ if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'seven-blue: #4DA3FF' "$ROOT_DIR/hyprland/rofi/sevenos.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'SevenLaunchpadNative' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'set_max_children_per_line(8)' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'set_pixel_size(76)' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'columns: 7' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -475,6 +476,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|For
    "$ROOT_DIR/bin/seven-profile-center-native" --probe >/dev/null 2>&1 &&
    "$ROOT_DIR/bin/seven-shield-center-native" --probe >/dev/null 2>&1 &&
    grep -q 'SevenProfileCenterNative' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-profile-center-native" &&
    grep -q 'SevenShieldCenterNative' "$ROOT_DIR/bin/seven-shield-center-native" &&
    grep -q 'Profile Center' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'native_panel seven-profile-center-native' "$ROOT_DIR/bin/seven-waybar-action" &&
@@ -1168,24 +1170,31 @@ else
   fail "Seven Hub native UI strategy is missing, unstyled or unclear"
 fi
 
-shell_panel_quick_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick)"
-shell_panel_notifications_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications)"
+shell_panel_quick_dry="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick)"
+shell_panel_notifications_dry="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications)"
+shell_panel_quick_fr="$(SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick)"
+shell_panel_notifications_fr="$(SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications)"
 waybar_notifications_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu)"
 if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_quick_dry" &&
    grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' <<<"$shell_panel_notifications_dry" &&
    grep -q 'No notifications' <<<"$shell_panel_notifications_dry" &&
+   grep -q 'Aucune notification' <<<"$shell_panel_notifications_fr" &&
+   grep -q 'Centre de contrôle' <<<"$shell_panel_quick_fr" &&
    grep -q 'No notifications' <<<"$waybar_notifications_dry" &&
    ! grep -q 'Notification Status' <<<"$waybar_notifications_dry" &&
-   grep -q 'Active profile:' <<<"$shell_panel_quick_dry" &&
+   grep -Eq 'Active profile:|Active:' <<<"$shell_panel_quick_dry" &&
    grep -q 'PROFILE_ACTIONS' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'Forge Apps' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'seven-windows-assistant' "$ROOT_DIR/bin/seven-shell-panel" &&
    "$ROOT_DIR/bin/seven-quick-settings-native" --probe >/dev/null 2>&1 &&
    grep -q 'SevenQuickSettingsNative' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'build_slider_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'Control Center' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    "$ROOT_DIR/bin/seven-notification-center-native" --probe >/dev/null 2>&1 &&
    grep -q 'SevenNotificationCenterNative' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-notification-center-native" &&
    grep -q 'notification-card' "$ROOT_DIR/bin/seven-notification-center-native" &&
    grep -q 'action-glyph' "$ROOT_DIR/bin/seven-notification-center-native" &&
    grep -q 'seven-quick-settings-native' "$ROOT_DIR/bin/seven-quick-settings" &&

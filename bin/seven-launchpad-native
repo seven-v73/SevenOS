@@ -10,6 +10,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+from seven_i18n import tr_text  # noqa: E402
+
 
 def ensure_gi_python() -> None:
     if os.environ.get("SEVENOS_GI_PYTHON") == "1":
@@ -233,7 +236,7 @@ def run_launchpad() -> int:
     root.pack_start(search_row, False, False, 0)
 
     search = Gtk.SearchEntry()
-    search.set_placeholder_text("Search")
+    search.set_placeholder_text(tr_text("Search"))
     search.get_style_context().add_class("launchpad-search")
     search_row.pack_start(search, False, False, 0)
 
