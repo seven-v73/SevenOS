@@ -97,7 +97,9 @@ show_status_window() {
     dry_line "Status"
     return 0
   fi
-  if command -v kitty >/dev/null 2>&1; then
+  if command -v seven-terminal >/dev/null 2>&1; then
+    setsid -f seven-terminal focus -- bash -lc 'seven-wifi status 2>/dev/null || { nmcli device status; printf "\n"; nmcli connection show --active; }; printf "\nPress Enter to close..."; read -r' >/tmp/sevenos-wifi.log 2>&1 || true
+  elif command -v kitty >/dev/null 2>&1; then
     setsid -f kitty --title "SevenOS Network" bash -lc 'seven-wifi status 2>/dev/null || { nmcli device status; printf "\n"; nmcli connection show --active; }; printf "\nPress Enter to close..."; read -r' >/tmp/sevenos-wifi.log 2>&1 || true
   elif command -v foot >/dev/null 2>&1; then
     setsid -f foot -e bash -lc 'seven-wifi status 2>/dev/null || nmcli device status; printf "\nPress Enter to close..."; read -r' >/tmp/sevenos-wifi.log 2>&1 || true
@@ -302,6 +304,8 @@ open_settings() {
   fi
   if command -v nm-connection-editor >/dev/null 2>&1; then
     setsid -f nm-connection-editor >/tmp/sevenos-wifi.log 2>&1 || true
+  elif command -v seven-terminal >/dev/null 2>&1; then
+    setsid -f seven-terminal focus -- nmtui >/tmp/sevenos-wifi.log 2>&1 || true
   elif command -v kitty >/dev/null 2>&1; then
     setsid -f kitty --title "SevenOS Network" nmtui >/tmp/sevenos-wifi.log 2>&1 || true
   elif command -v nmtui >/dev/null 2>&1; then

@@ -166,7 +166,7 @@ grep -Eiq '(vmx|svm)' /proc/cpuinfo && pass "CPU virtualization available" || pa
 criterion "UX/UI"
 file_ready "$ROOT_DIR/hyprland/rofi/sevenos.rasi" && pass "SevenOS Rofi theme present" || miss "Rofi theme missing"
 file_ready "$ROOT_DIR/hyprland/rofi/power.rasi" && pass "Power menu theme present" || miss "Power menu theme missing"
-file_ready "$ROOT_DIR/hyprland/mako/config" && pass "Mako notification theme present" || miss "Mako theme missing"
+file_ready "$ROOT_DIR/hyprland/swaync/config.json" && pass "SwayNC notification theme present" || miss "SwayNC theme missing"
 command_ready seven-welcome && pass "Welcome flow available" || partial "Welcome flow not installed in PATH"
 command_ready seven-power && pass "Power flow available" || partial "Power flow not installed in PATH"
 

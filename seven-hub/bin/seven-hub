@@ -168,7 +168,9 @@ run_in_terminal() {
   fi
 
   if [[ -z "$terminal" ]]; then
-    if command -v kitty >/dev/null 2>&1; then
+    if command -v seven-terminal >/dev/null 2>&1; then
+      terminal="seven-terminal"
+    elif command -v kitty >/dev/null 2>&1; then
       terminal="kitty"
     elif command -v foot >/dev/null 2>&1; then
       terminal="foot"
@@ -180,15 +182,19 @@ run_in_terminal() {
   fi
 
   if [[ -n "$terminal" ]]; then
-    case "$(basename "$terminal")" in
+    local terminal_cmd="${terminal%% *}"
+    case "$(basename "$terminal_cmd")" in
+      seven-terminal)
+        "$terminal_cmd" focus -- bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
+        ;;
       kitty)
-        "$terminal" --title "$title" bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
+        "$terminal_cmd" --title "$title" bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
         ;;
       foot|alacritty|xterm)
-        "$terminal" -e bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
+        "$terminal_cmd" -e bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
         ;;
       *)
-        "$terminal" -e bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
+        "$terminal_cmd" -e bash -lc "$command; printf '\nPress Enter to close...'; read -r" &
         ;;
     esac
   else
@@ -279,6 +285,9 @@ load_actions() {
         "Native Hub Prototype|seven:hub-native open|Open GTK/libadwaita Seven Hub prototype"
         "System Dashboard|dashboard:system|Open SevenOS overview"
         "Architecture Map|seven:architecture|Show SevenOS system architecture"
+        "Hybrid OS Matrix|seven:architecture matrix|Show SevenOS hybrid layer readiness and contracts"
+        "Design Engine|seven:identity design|Show Seven Mocha/Latte palettes and icon resolution"
+        "Native Icons|seven:identity icons|Show SevenOS app marks and icon install targets"
         "Architecture Doctor|seven:architecture doctor|Validate product architecture"
         "Ecosystem Map|seven:ecosystem|Show all SevenOS ecosystem modules"
         "Experience Audit|seven:experience|Check OS coherence and UX blockers"
@@ -327,6 +336,8 @@ load_actions() {
       actions=(
         "Apply Branding|branding|Install SevenOS system identity"
         "Apply Theme|theme|Apply SevenOS Beyond the Desktop identity"
+        "Design Engine|seven:identity design|Inspect SevenOS palettes and icon theme resolution"
+        "Native Icons|seven:identity icons|Inspect SevenOS app icons"
         "Seven Files|files:open|Open the file manager"
         "Seven Files Places|files:menu|Open quick places"
         "Power Menu|app:seven-power|Open power controls"
@@ -364,6 +375,8 @@ load_actions() {
     "Ecosystem")
       actions=(
         "Ecosystem Map|seven:ecosystem|Show modules and maturity"
+        "Design Engine|seven:identity design|Show the visual contract shared by shell, Hub and apps"
+        "Native Icons|seven:identity icons|Show SevenOS product icon system"
         "Ecosystem Processes|seven:ecosystem processes|Show all-in-one SevenOS user flows"
         "Ecosystem Roadmap|seven:ecosystem roadmap|Show Phase 4 and Phase 5 priorities"
         "Ecosystem Doctor|seven:ecosystem doctor|Validate ecosystem foundation"

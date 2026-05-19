@@ -74,8 +74,10 @@ seven windows catalog
 seven windows catalog --json
 seven windows resolve photoshop
 seven windows resolve photoshop --json
+seven windows prepare office
 SEVENOS_DRY_RUN=1 seven run photoshop
 SEVENOS_DRY_RUN=1 seven windows run /path/to/setup.exe
+seven windows diagnose /path/to/setup.exe
 ```
 
 The resolver reports:
@@ -85,6 +87,20 @@ The resolver reports:
 - whether the app can open as a native Wayland/Hyprland window
 - whether an ISO-backed VM is only an optional fallback
 - next actions when Wine, Bottles, Proton, Lutris or the VM are missing
+
+For Microsoft Office and Microsoft 365 installers, SevenOS uses a dedicated
+Office prefix instead of treating `OfficeSetup.exe` as a generic executable:
+
+```bash
+seven windows prepare office
+seven windows run OfficeSetup.exe
+seven windows diagnose OfficeSetup.exe
+```
+
+The diagnostic command explains common failures such as network, disk-space and
+online-installer errors like `0-2031`. It also detects Click-to-Run/Wine-Mono
+crashes and explains when the right daily-use path is Bottles or the Windows VM
+instead of repeatedly retrying the plain Wine installer.
 
 SevenOS does not download, redistribute or require unofficial Windows images.
 If the user wants a lightweight Windows VM, they must provide their own legal

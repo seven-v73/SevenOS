@@ -32,18 +32,23 @@ KITTY_CONFIG_DIR="$CONFIG_HOME/kitty"
 usage() {
   cat <<'EOF'
 Usage:
-  seven-terminal [classic|dark|light|menu|status|doctor] [-- command...]
+  seven-terminal [classic|dark|light|forge|cyber|focus|admin|menu|status|doctor] [-- command...]
 
 Profiles:
   classic  SevenOS classic bright terminal
   dark     SevenOS graphite terminal
   light    SevenOS clarity-first light terminal
+  forge    development terminal with build/git emphasis
+  cyber    network/security terminal with calm SOC contrast
+  focus    quiet writing and long-reading terminal
+  admin    cautious system-control terminal
   menu     choose a terminal profile
 
 Examples:
   seven-terminal classic
   seven-terminal dark
   seven-terminal light
+  seven-terminal forge
   seven-terminal dark -- btop
 EOF
 }
@@ -69,6 +74,8 @@ config_for_profile() {
     classic) printf '%s\n' "$KITTY_CONFIG_DIR/classic.conf" ;;
     dark) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
     light) printf '%s\n' "$KITTY_CONFIG_DIR/light.conf" ;;
+    forge|cyber|admin) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
+    focus) printf '%s\n' "$KITTY_CONFIG_DIR/light.conf" ;;
     *) return 1 ;;
   esac
 }
@@ -78,7 +85,62 @@ repo_config_for_profile() {
     classic) printf '%s\n' "$ROOT_DIR/hyprland/kitty/classic.conf" ;;
     dark) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
     light) printf '%s\n' "$ROOT_DIR/hyprland-light/kitty/light.conf" ;;
+    forge|cyber|admin) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
+    focus) printf '%s\n' "$ROOT_DIR/hyprland-light/kitty/light.conf" ;;
     *) return 1 ;;
+  esac
+}
+
+profile_label() {
+  case "$1" in
+    classic) printf 'Classic' ;;
+    dark) printf 'Graphite' ;;
+    light) printf 'Light' ;;
+    forge) printf 'Forge' ;;
+    cyber) printf 'Cyber' ;;
+    focus) printf 'Focus' ;;
+    admin) printf 'Admin' ;;
+  esac
+}
+
+profile_class() {
+  case "$1" in
+    classic) printf 'SevenTerminalClassic' ;;
+    dark) printf 'SevenTerminalDark' ;;
+    light) printf 'SevenTerminalLight' ;;
+    forge) printf 'SevenTerminalForge' ;;
+    cyber) printf 'SevenTerminalCyber' ;;
+    focus) printf 'SevenTerminalFocus' ;;
+    admin) printf 'SevenTerminalAdmin' ;;
+  esac
+}
+
+profile_overrides() {
+  case "$1" in
+    forge)
+      printf '%s\n' \
+        foreground=#F4F7FA background=#0B1020 background_opacity=0.89 \
+        cursor=#4DA3FF selection_background=#314C73 active_border_color=#4DA3FF \
+        active_tab_background=#121A2A tab_bar_background=#101827
+      ;;
+    cyber)
+      printf '%s\n' \
+        foreground=#D8FFF3 background=#07110E background_opacity=0.88 \
+        cursor=#00FFB3 selection_background=#174D40 active_border_color=#00FFB3 \
+        active_tab_background=#0A1B16 tab_bar_background=#081510
+      ;;
+    focus)
+      printf '%s\n' \
+        foreground=#20242D background=#FAFBFF background_opacity=0.96 \
+        cursor=#6A5CFF selection_background=#E3DFFF active_border_color=#6A5CFF \
+        active_tab_background=#FFFFFF tab_bar_background=#F5F7FA
+      ;;
+    admin)
+      printf '%s\n' \
+        foreground=#FFF4F0 background=#130A0A background_opacity=0.91 \
+        cursor=#FF9B70 selection_background=#62332C active_border_color=#FF9B70 \
+        active_tab_background=#231111 tab_bar_background=#180D0D
+      ;;
   esac
 }
 
@@ -104,7 +166,7 @@ ensure_config() {
 open_terminal() {
   local profile="$1"
   shift || true
-  local config title class width height shell_helper native
+  local config title class width height shell_helper native label
   config="$(ensure_config "$profile")"
 
   if ! command -v kitty >/dev/null 2>&1; then
@@ -112,26 +174,11 @@ open_terminal() {
     return 1
   fi
 
-  case "$profile" in
-    classic)
-      title="${USER:-seven}@SevenOS"
-      class="SevenTerminalClassic"
-      width=640
-      height=420
-      ;;
-    dark)
-      title="${USER:-seven}@SevenOS"
-      class="SevenTerminalDark"
-      width=640
-      height=420
-      ;;
-    light)
-      title="${USER:-seven}@SevenOS"
-      class="SevenTerminalLight"
-      width=640
-      height=420
-      ;;
-  esac
+  label="$(profile_label "$profile")"
+  title="Seven Terminal · $label"
+  class="$(profile_class "$profile")"
+  width=760
+  height=480
   shell_helper="$(terminal_shell)"
   native="$ROOT_DIR/bin/seven-terminal-native"
 
@@ -141,30 +188,37 @@ open_terminal() {
   fi
 
   if [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
-    setsid -f "$native" --profile "$profile" "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
-    place_window SevenTerminalNative "$width" "$height" "${USER:-seven}@SevenOS"
+    SEVENOS_TERMINAL_MODE="$profile" setsid -f "$native" --profile "$profile" "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
+    place_window SevenTerminalNative "$width" "$height" "$title"
     return 0
   fi
 
+  local overrides=()
+  while IFS= read -r override; do
+    [[ -n "$override" ]] && overrides+=(--override "$override")
+  done < <(profile_overrides "$profile")
+
   if [[ "$#" -gt 0 ]]; then
-    setsid -f kitty --config "$config" \
+    SEVENOS_TERMINAL_MODE="$profile" setsid -f kitty --config "$config" \
       --class "$class" \
       --name "$class" \
       --title "$title" \
       --override remember_window_size=no \
       --override tab_bar_min_tabs=1 \
-      --override initial_window_width=76c \
-      --override initial_window_height=21c \
+      --override initial_window_width=88c \
+      --override initial_window_height=24c \
+      "${overrides[@]}" \
       "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
   else
-    setsid -f kitty --config "$config" \
+    SEVENOS_TERMINAL_MODE="$profile" setsid -f kitty --config "$config" \
       --class "$class" \
       --name "$class" \
       --title "$title" \
       --override remember_window_size=no \
       --override tab_bar_min_tabs=1 \
-      --override initial_window_width=76c \
-      --override initial_window_height=21c \
+      --override initial_window_width=88c \
+      --override initial_window_height=24c \
+      "${overrides[@]}" \
       "$shell_helper" >/tmp/sevenos-terminal.log 2>&1 || return 1
   fi
 
@@ -172,28 +226,15 @@ open_terminal() {
 }
 
 place_window() {
-  local class="$1"
-  local width="$2"
-  local height="$3"
-  local title="${4:-}"
-
-  if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-    for _ in 1 2 3 4 5 6 7 8 9 10; do
-      sleep 0.06
-      if hyprctl dispatch focuswindow "class:^(${class})$" >/dev/null 2>&1 ||
-         { [[ -n "$title" ]] && hyprctl dispatch focuswindow "title:^(${title})$" >/dev/null 2>&1; }; then
-        hyprctl dispatch setfloating active >/dev/null 2>&1 || true
-        hyprctl dispatch resizeactive exact "$width" "$height" >/dev/null 2>&1 || true
-        hyprctl dispatch centerwindow >/dev/null 2>&1 || true
-        break
-      fi
-    done
-  fi
+  # Hyprland windowrules own Seven Terminal placement. Avoid post-launch
+  # resizeactive calls here: if focus races during app startup, Hyprland can
+  # resize the previously focused full-size application instead of the terminal.
+  return 0
 }
 
 open_menu() {
   local menu selected
-  menu=$'Classic Terminal\tSevenOS bright terminal\nDark Terminal\tSevenOS graphite terminal\nLight Terminal\tSevenOS clarity-first terminal'
+  menu=$'Classic Terminal\tDaily SevenOS terminal\nForge Terminal\tDevelopment, git and builds\nCyber Terminal\tSecurity and network workflow\nFocus Terminal\tQuiet writing and reading\nAdmin Terminal\tCautious system control\nDark Terminal\tSevenOS graphite terminal\nLight Terminal\tSevenOS clarity-first terminal'
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'DRY-RUN > Terminal > Open profile chooser\n'
@@ -210,6 +251,10 @@ open_menu() {
 
   case "$selected" in
     Classic*) open_terminal classic ;;
+    Forge*) open_terminal forge ;;
+    Cyber*) open_terminal cyber ;;
+    Focus*) open_terminal focus ;;
+    Admin*) open_terminal admin ;;
     Dark*) open_terminal dark ;;
     Light*) open_terminal light ;;
     "") return 0 ;;
@@ -221,6 +266,7 @@ status() {
   printf 'classic: %s\n' "$(ensure_config classic)"
   printf 'dark:    %s\n' "$(ensure_config dark)"
   printf 'light:   %s\n' "$(ensure_config light)"
+  printf 'modes:   forge cyber focus admin\n'
   printf 'default: %s\n' "$KITTY_CONFIG_DIR/kitty.conf"
   if [[ -x "$ROOT_DIR/bin/seven-terminal-native" ]] && "$ROOT_DIR/bin/seven-terminal-native" --probe >/dev/null 2>&1; then
     printf 'native:  OK - GTK/VTE traffic-light terminal available\n'
@@ -231,7 +277,7 @@ status() {
 
 action="${1:-classic}"
 case "$action" in
-  classic|dark|light)
+  classic|dark|light|forge|cyber|focus|admin)
     shift || true
     if [[ "${1:-}" == "--" ]]; then
       shift

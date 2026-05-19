@@ -39,7 +39,7 @@ source = manifest.get("source", "")
 runtime_deps = {
     "sevenos-cli": ["bash", "python", "pacman"],
     "sevenos-branding": ["bash", "librsvg"],
-    "sevenos-hyprland": ["hyprland", "waybar", "rofi", "kitty", "mako", "swayidle", "swaylock"],
+    "sevenos-hyprland": ["hyprland", "waybar", "rofi", "kitty", "swaync", "wlogout", "hypridle", "hyprlock", "hyprpaper"],
     "sevenos-shell": ["gjs", "typescript", "gtk4", "libadwaita", "libgtop", "nodejs", "npm"],
     "sevenos-core": ["bash", "python", "rust", "systemd", "glibc", "make"],
     "sevenos-hub": ["gtk4", "libadwaita", "python-gobject", "webkit2gtk-4.1", "nodejs", "npm"],

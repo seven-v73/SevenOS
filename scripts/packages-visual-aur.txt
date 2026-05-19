@@ -1,0 +1,8 @@
+catppuccin-gtk-theme-mocha
+catppuccin-gtk-theme-latte
+catppuccin-cursors-mocha
+catppuccin-cursors-latte
+kvantum-theme-catppuccin-git
+papirus-folders-catppuccin-git
+colloid-catppuccin-theme-git
+wlogout

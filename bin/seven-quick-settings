@@ -64,7 +64,9 @@ run_terminal() {
     return 0
   fi
 
-  if command -v kitty >/dev/null 2>&1; then
+  if command -v seven-terminal >/dev/null 2>&1; then
+    run_detached seven-terminal focus -- bash -lc "$command; printf '\nPress Enter to close...'; read -r"
+  elif command -v kitty >/dev/null 2>&1; then
     run_detached kitty --title "$title" bash -lc "$command; printf '\nPress Enter to close...'; read -r"
   else
     bash -lc "$command"
@@ -95,7 +97,7 @@ fi
 if [[ "${SEVENOS_QUICK_NATIVE:-1}" != "0" ]]; then
   native_quick="$(resolve_native_quick || true)"
   if [[ -n "${native_quick:-}" ]] && "$native_quick" --probe >/dev/null 2>&1; then
-    "$native_quick"
+    "$native_quick" "$@"
     exit $?
   fi
 fi
@@ -138,7 +140,13 @@ case "$selected" in
   "Migration Plan"*) run_terminal "SevenOS Migration" "seven migrate plan" ;;
   "System Monitor"*)
     if command -v btop >/dev/null 2>&1; then
-      run_detached kitty --title "SevenOS Monitor" btop
+      if command -v seven-terminal >/dev/null 2>&1; then
+        run_detached seven-terminal cyber -- btop
+      elif command -v kitty >/dev/null 2>&1; then
+        run_detached kitty --title "SevenOS Monitor" btop
+      else
+        run_terminal "SevenOS Monitor" "btop"
+      fi
     else
       run_terminal "SevenOS Monitor" "top"
     fi

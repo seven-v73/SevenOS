@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+action="${1:-area}"
+shift || true
+
+record_dir="${SEVENOS_RECORDING_DIR:-$HOME/Videos/SevenOS-Records}"
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/recorder"
+pid_file="$state_dir/recorder.pid"
+file_file="$state_dir/current-file"
+log_file="$state_dir/recorder.log"
+
+notify() {
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send "SevenOS Recorder" "$1"
+  fi
+}
+
+need() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    notify "Missing dependency: $1"
+    printf 'SevenOS Recorder: missing dependency: %s\n' "$1" >&2
+    printf 'Install the recorder stack with: seven profile install baobab --yes\n' >&2
+    exit 1
+  fi
+}
+
+usage() {
+  cat <<'EOF'
+SevenOS Recorder
+
+Usage:
+  seven recorder [area|full|stop|status|path]
+  seven-recorder [area|full|stop|status|path]
+
+Shortcuts:
+  Super+Shift+R       Select an area and record, or stop if recording
+  Super+Ctrl+Shift+R  Record the full screen, or stop if recording
+
+The recorder saves videos to ~/Videos/SevenOS-Records and copies the saved
+path to the clipboard when recording stops.
+EOF
+}
+
+is_recording() {
+  [[ -s "$pid_file" ]] || return 1
+  local pid
+  pid="$(cat "$pid_file" 2>/dev/null || true)"
+  [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
+
+current_file() {
+  cat "$file_file" 2>/dev/null || true
+}
+
+stop_recording() {
+  if ! is_recording; then
+    notify "No recording is active."
+    printf 'SevenOS Recorder: no active recording.\n'
+    rm -f "$pid_file"
+    return 0
+  fi
+
+  local pid output
+  pid="$(cat "$pid_file")"
+  output="$(current_file)"
+  kill -INT "$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+  sleep 1
+  rm -f "$pid_file"
+
+  if [[ -n "$output" ]]; then
+    if command -v wl-copy >/dev/null 2>&1; then
+      printf '%s\n' "$output" | wl-copy 2>/dev/null || true
+    fi
+    notify "Saved: $output"
+    printf '%s\n' "$output"
+  else
+    notify "Recording stopped."
+    printf 'SevenOS Recorder: stopped.\n'
+  fi
+}
+
+start_recording() {
+  local mode="$1"
+  local timestamp output geometry=() selection codec=()
+
+  if is_recording; then
+    stop_recording
+    return 0
+  fi
+
+  mkdir -p "$record_dir" "$state_dir"
+  timestamp="$(date +%Y-%m-%d_%H-%M-%S)"
+  output="$record_dir/SevenOS-$timestamp.mp4"
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'DRY-RUN > SevenOS Recorder > %s\n' "$mode"
+    printf 'wf-recorder %s -r 60 -f %q\n' "selection-or-fullscreen" "$output"
+    return 0
+  fi
+
+  need wf-recorder
+  if [[ "$mode" == "area" ]]; then
+    need slurp
+  fi
+
+  if [[ "$mode" == "area" ]]; then
+    notify "Select the area to record. Press Esc to cancel."
+    selection="$(slurp -d -b '#00000088' -c '#4DA3FFFF' -B '#12131ACC' -w 2 || true)"
+    if [[ -z "$selection" ]]; then
+      notify "Recording cancelled."
+      printf 'SevenOS Recorder: cancelled.\n'
+      return 0
+    fi
+    geometry=(-g "$selection")
+  fi
+
+  if [[ -n "${SEVENOS_RECORDER_CODEC:-}" ]]; then
+    codec=(-c "$SEVENOS_RECORDER_CODEC")
+  fi
+
+  printf '%s\n' "$output" >"$file_file"
+  notify "Recording started. Press Super+Shift+R again to stop."
+  wf-recorder "${geometry[@]}" -r 60 "${codec[@]}" -f "$output" >"$log_file" 2>&1 &
+  printf '%s\n' "$!" >"$pid_file"
+  printf '%s\n' "$output"
+}
+
+case "$action" in
+  area|region|select|toggle)
+    start_recording area
+    ;;
+  full|screen)
+    start_recording full
+    ;;
+  stop)
+    stop_recording
+    ;;
+  status)
+    if is_recording; then
+      printf 'SevenOS Recorder: recording -> %s\n' "$(current_file)"
+    else
+      printf 'SevenOS Recorder: idle\n'
+    fi
+    ;;
+  path)
+    current_file
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    printf 'seven-recorder: unknown action: %s\n\n' "$action" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

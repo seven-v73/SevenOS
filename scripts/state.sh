@@ -76,6 +76,10 @@ json_to_file "$STATE_TMP/session.json" "$ROOT_DIR/bin/seven-session-status" --js
 pid_session=$!
 json_to_file "$STATE_TMP/identity.json" "$ROOT_DIR/scripts/identity.sh" --json &
 pid_identity=$!
+json_to_file "$STATE_TMP/design.json" "$ROOT_DIR/scripts/identity.sh" design --json &
+pid_design=$!
+json_to_file "$STATE_TMP/icons.json" "$ROOT_DIR/scripts/identity.sh" icons --json &
+pid_icons=$!
 json_to_file "$STATE_TMP/profiles.json" "$ROOT_DIR/bin/seven" profile status --json &
 pid_profiles=$!
 json_to_file "$STATE_TMP/profile_gaps.json" "$ROOT_DIR/bin/seven" profile gaps --json &
@@ -150,10 +154,12 @@ json_to_file "$STATE_TMP/events.json" "$ROOT_DIR/scripts/events.sh" summary-json
 pid_events=$!
 json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
 pid_actions=$!
+json_to_file "$STATE_TMP/architecture.json" "$ROOT_DIR/scripts/architecture.sh" matrix --json &
+pid_architecture=$!
 
-wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
+wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" || true
+  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -173,6 +179,12 @@ cat "$STATE_TMP/session.json"
 printf ','
 printf '"identity":'
 cat "$STATE_TMP/identity.json"
+printf ','
+printf '"design":'
+cat "$STATE_TMP/design.json"
+printf ','
+printf '"icons":'
+cat "$STATE_TMP/icons.json"
 printf ','
 printf '"profiles":'
 cat "$STATE_TMP/profiles.json"
@@ -284,6 +296,9 @@ cat "$STATE_TMP/events.json"
 printf ','
 printf '"actions":'
 cat "$STATE_TMP/actions.json"
+printf ','
+printf '"architecture":'
+cat "$STATE_TMP/architecture.json"
 printf ','
 printf '"native_hub":{'
 if [[ -x "$ROOT_DIR/bin/seven-hub-native" ]]; then

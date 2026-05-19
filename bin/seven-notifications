@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+if command -v swaync >/dev/null 2>&1; then
+  exec swaync
+fi
+
+if command -v mako >/dev/null 2>&1; then
+  exec mako
+fi
+
+printf 'seven-notifications: install swaync or mako for notifications.\n' >&2
+exit 1

@@ -18,6 +18,12 @@ Usage:
   seven identity packs --json
   seven identity current
   seven identity current --json
+  seven identity design
+  seven identity design --json
+  seven identity icons
+  seven identity icons --json
+  seven identity visuals
+  seven identity visuals install --yes
   seven identity activate <pack>
   ./scripts/identity.sh [status|json|doctor]
 
@@ -215,6 +221,146 @@ print(f"Description: {pack.get('description')}")
 PY
 }
 
+active_theme_mode() {
+  local theme_pref="$STATE_DIR/theme.conf"
+  if [[ -f "$theme_pref" ]]; then
+    # shellcheck disable=SC1090
+    source "$theme_pref" || true
+  fi
+  printf '%s' "${SEVENOS_THEME_MODE:-dark}"
+}
+
+design_json() {
+  SEVENOS_IDENTITY_ROOT="$ROOT_DIR" SEVENOS_THEME_MODE_ACTIVE="$(active_theme_mode)" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+root = Path(os.environ["SEVENOS_IDENTITY_ROOT"])
+theme_mode = os.environ.get("SEVENOS_THEME_MODE_ACTIVE", "dark")
+contract = json.loads((root / "identity" / "design-engine.json").read_text(encoding="utf-8"))
+active_key = "seven-latte" if theme_mode == "light" else "seven-mocha"
+active = contract["modes"][active_key]
+
+icon_dirs = [
+    Path.home() / ".local/share/icons",
+    Path.home() / ".icons",
+    Path("/usr/local/share/icons"),
+    Path("/usr/share/icons"),
+]
+available = sorted({
+    child.name
+    for directory in icon_dirs
+    if directory.is_dir()
+    for child in directory.iterdir()
+    if child.is_dir()
+})
+
+def resolve_icon(candidates):
+    available_lower = {name.lower(): name for name in available}
+    for candidate in candidates:
+        found = available_lower.get(candidate.lower())
+        if found:
+            return found
+    wanted = "latte" if active_key == "seven-latte" else "mocha"
+    for name in available:
+        lowered = name.lower()
+        if "catppuccin" in lowered and wanted in lowered:
+            return name
+    for candidate in candidates:
+        found = available_lower.get(candidate.lower())
+        if found:
+            return found
+    return "hicolor"
+
+print(json.dumps({
+    "schema": "sevenos.design-engine.status.v1",
+    "engine": contract["engine"],
+    "active_mode": active_key,
+    "system_mode": theme_mode,
+    "mode": active,
+    "preferred_icon_theme": resolve_icon(active.get("icon_candidates", [])),
+    "available_icon_themes": available,
+    "icon_strategy": contract["icon_strategy"],
+    "folder_roles": contract["folder_roles"],
+    "surfaces": contract["surfaces"],
+}, indent=2))
+PY
+}
+
+design_status() {
+  SEVENOS_DESIGN_PAYLOAD="$(design_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["SEVENOS_DESIGN_PAYLOAD"])
+mode = data["mode"]
+print("SevenOS Design Engine")
+print("=====================")
+print()
+print(f"Engine:      {data['engine']}")
+print(f"Mode:        {mode['label']} ({data['system_mode']})")
+print(f"Icons:       {data['preferred_icon_theme']}")
+print("Base:        Catppuccin-inspired SevenOS palettes")
+print()
+print("Surfaces:")
+for surface in data["surfaces"]:
+    print(f"  - {surface}")
+print()
+print("Folder roles:")
+for key, role in data["folder_roles"].items():
+    print(f"  - {role['label']:<8} {role['accent']}  {key}")
+print()
+print("Next:")
+print("  ./install.sh theme dark")
+print("  ./install.sh theme light")
+PY
+}
+
+icons_json() {
+  SEVENOS_IDENTITY_ROOT="$ROOT_DIR" python - <<'PY'
+import json
+from pathlib import Path
+import os
+
+root = Path(os.environ["SEVENOS_IDENTITY_ROOT"])
+manifest = json.loads((root / "identity" / "icons" / "manifest.json").read_text(encoding="utf-8"))
+icons = []
+for item in manifest.get("icons", []):
+    source = root / "identity" / "icons" / item["file"]
+    icons.append({
+        **item,
+        "source": str(source),
+        "present": source.is_file() and source.stat().st_size > 0,
+        "install_name": item["name"] + ".svg",
+    })
+print(json.dumps({
+    "schema": "sevenos.icons.status.v1",
+    "style": manifest.get("style"),
+    "install_target": manifest.get("install_target"),
+    "icons": icons,
+}, indent=2))
+PY
+}
+
+icons_status() {
+  SEVENOS_ICONS_PAYLOAD="$(icons_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["SEVENOS_ICONS_PAYLOAD"])
+print("SevenOS Native Icons")
+print("====================")
+print()
+print(f"Style:   {data['style']}")
+print(f"Target:  {data['install_target']}")
+print()
+for item in data["icons"]:
+    state = "OK" if item["present"] else "MISS"
+    print(f"{state:<5} {item['name']:<16} {item['label']} ({item['role']})")
+PY
+}
+
 activate_pack() {
   local key="$1"
   if [[ -z "$key" ]]; then
@@ -260,6 +406,9 @@ doctor() {
   for file in \
     "$ROOT_DIR/identity/CHARTER.md" \
     "$ROOT_DIR/identity/STYLE.md" \
+    "$ROOT_DIR/identity/design-engine.json" \
+    "$ROOT_DIR/identity/design-engine.css" \
+    "$ROOT_DIR/identity/icons/manifest.json" \
     "$ROOT_DIR/identity/accent-packs.json" \
     "$ROOT_DIR/identity/components/kente-divider.svg" \
     "$ROOT_DIR/identity/components/adinkra-status-ok.svg" \
@@ -274,6 +423,25 @@ doctor() {
       missing=$((missing + 1))
     fi
   done
+
+  while IFS= read -r icon_file; do
+    file="$ROOT_DIR/identity/icons/$icon_file"
+    if [[ -s "$file" ]]; then
+      printf '[OK] %s\n' "${file#"$ROOT_DIR/"}"
+    else
+      printf '[MISS] %s\n' "${file#"$ROOT_DIR/"}"
+      missing=$((missing + 1))
+    fi
+  done < <(python - "$ROOT_DIR/identity/icons/manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for item in data.get("icons", []):
+    print(item.get("file", ""))
+PY
+)
 
   if [[ "$missing" -gt 0 ]]; then
     log_error "SevenOS identity layer is incomplete."
@@ -321,6 +489,9 @@ status() {
   printf '\nRegional accent packs:\n'
   printf '  seven identity packs\n'
   printf '  active: %s\n' "$active_pack"
+  printf '\nDesign engine:\n'
+  printf '  seven identity design\n'
+  printf '  seven identity icons\n'
 }
 
 ACTION="${1:-status}"
@@ -350,6 +521,24 @@ case "$ACTION" in
       current_json
     else
       current_status
+    fi
+    ;;
+  design)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      design_json
+    else
+      design_status
+    fi
+    ;;
+  visuals)
+    shift || true
+    "$ROOT_DIR/scripts/visual-packages.sh" "${@:-status}"
+    ;;
+  icons)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      icons_json
+    else
+      icons_status
     fi
     ;;
   activate)

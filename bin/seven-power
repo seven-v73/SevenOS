@@ -48,7 +48,7 @@ if [[ "$LANG_CODE" == "fr" ]]; then
   logout_label="Fermer la session"
   reboot_label="Redémarrer"
   poweroff_label="Éteindre"
-  missing_lock="seven-power : swaylock n’est pas installé"
+  missing_lock="seven-power : hyprlock ou swaylock n’est pas installé"
   unknown_action="seven-power : action inconnue"
   unknown_selection="seven-power : sélection inconnue"
 else
@@ -60,7 +60,7 @@ else
   logout_label="Logout"
   reboot_label="Reboot"
   poweroff_label="Power Off"
-  missing_lock="seven-power: swaylock is not installed"
+  missing_lock="seven-power: hyprlock or swaylock is not installed"
   unknown_action="seven-power: unknown action"
   unknown_selection="seven-power: unknown selection"
 fi
@@ -82,7 +82,9 @@ run_action() {
 
   case "$action" in
     lock)
-      if command -v swaylock >/dev/null 2>&1; then
+      if command -v hyprlock >/dev/null 2>&1; then
+        hyprlock
+      elif command -v swaylock >/dev/null 2>&1; then
         swaylock -f -c 0b0b0a
       else
         printf '%s\n' "$missing_lock" >&2
@@ -104,6 +106,23 @@ run_action() {
       ;;
     poweroff)
       systemctl poweroff
+      ;;
+    menu)
+      if command -v wlogout >/dev/null 2>&1; then
+        exec wlogout
+      fi
+      local picked
+      picked="$(select_action)"
+      picked="$(clean_selection "$picked")"
+      case "$picked" in
+        Lock|lock|Verrouiller|verrouiller) run_action lock ;;
+        Suspend|suspend|"Mettre en veille"|veille) run_action suspend ;;
+        Logout|logout|"Fermer la session"|déconnexion|deconnexion) run_action logout ;;
+        Reboot|reboot|Redémarrer|redemarrer) run_action reboot ;;
+        "Power Off"|poweroff|shutdown|Éteindre|Eteindre|éteindre|eteindre) run_action poweroff ;;
+        "") exit 0 ;;
+        *) printf '%s: %s\n' "$unknown_selection" "$picked" >&2; exit 1 ;;
+      esac
       ;;
     *)
       printf '%s: %s\n' "$unknown_action" "$action" >&2
@@ -131,6 +150,15 @@ select_action() {
 
 selected="${1:-}"
 if [[ -z "$selected" ]]; then
+  if [[ "${SEVENOS_DRY_RUN:-0}" != "1" && "${SEVENOS_POWER_NATIVE:-1}" != "0" ]]; then
+    if command -v seven-quick-settings >/dev/null 2>&1; then
+      exec seven-quick-settings power
+    elif command -v seven-quick-settings-native >/dev/null 2>&1 && seven-quick-settings-native --probe >/dev/null 2>&1; then
+      exec seven-quick-settings-native power
+    elif [[ -x "$ROOT_DIR/bin/seven-quick-settings-native" ]] && "$ROOT_DIR/bin/seven-quick-settings-native" --probe >/dev/null 2>&1; then
+      exec "$ROOT_DIR/bin/seven-quick-settings-native" power
+    fi
+  fi
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     select_action
     exit 0
@@ -140,6 +168,7 @@ if [[ -z "$selected" ]]; then
 fi
 
 case "$selected" in
+  Menu|menu|wlogout) run_action menu ;;
   Lock|lock|Verrouiller|verrouiller) run_action lock ;;
   Suspend|suspend|"Mettre en veille"|veille) run_action suspend ;;
   Logout|logout|"Fermer la session"|déconnexion|deconnexion) run_action logout ;;

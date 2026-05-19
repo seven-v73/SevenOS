@@ -6,4 +6,96 @@ export SEVENOS_TERMINAL_CLASSIC=1
 export FASTFETCH_DISABLED=1
 
 set +o histexpand 2>/dev/null || true
-PS1='\h:\W \u\$ '
+
+__sevenos_cmd_started=0
+__sevenos_last_duration=0
+__sevenos_last_command=""
+
+__sevenos_preexec() {
+  case "$BASH_COMMAND" in
+    __sevenos_prompt*|__sevenos_preexec*|PROMPT_COMMAND=*|trap\ *) return ;;
+  esac
+  __sevenos_cmd_started="$SECONDS"
+  __sevenos_last_command="$BASH_COMMAND"
+}
+trap '__sevenos_preexec' DEBUG
+
+__sevenos_git_branch() {
+  command git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  local branch
+  branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || true)"
+  [[ -z "$branch" ]] && return 0
+  local dirty=""
+  git diff --quiet --ignore-submodules -- 2>/dev/null || dirty="*"
+  git diff --cached --quiet --ignore-submodules -- 2>/dev/null || dirty="*"
+  printf ' git:%s%s' "$branch" "$dirty"
+}
+
+__sevenos_prompt_status() {
+  local status="$1"
+  [[ "$status" -eq 0 ]] && return 0
+  printf ' !%s' "$status"
+}
+
+__sevenos_runtime_context() {
+  local parts=()
+  [[ -n "${VIRTUAL_ENV:-}" ]] && parts+=("py:$(basename "$VIRTUAL_ENV")")
+  [[ -f package.json ]] && parts+=("node")
+  [[ -f Cargo.toml ]] && parts+=("rust")
+  [[ -f pyproject.toml || -f requirements.txt ]] && parts+=("python")
+  [[ -f Dockerfile || -f docker-compose.yml || -f compose.yml ]] && parts+=("docker")
+  ((${#parts[@]})) && printf ' %s' "${parts[*]}"
+}
+
+__sevenos_terminal_mode() {
+  local explicit="${SEVENOS_TERMINAL_MODE:-}"
+  case "$explicit" in
+    forge|cyber|focus|admin) printf '%s' "${explicit^}"; return ;;
+  esac
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    printf 'Admin'
+  elif [[ "$__sevenos_last_command" =~ (nmap|tcpdump|wireshark|tshark|ufw|iptables|nft|ss\ |netstat|journalctl|auditctl) ]]; then
+    printf 'Cyber'
+  elif command git rev-parse --is-inside-work-tree >/dev/null 2>&1 || [[ -f package.json || -f Cargo.toml || -f pyproject.toml ]]; then
+    printf 'Forge'
+  else
+    printf 'Classic'
+  fi
+}
+
+__sevenos_duration() {
+  local duration="$1"
+  [[ "$duration" -ge 2 ]] && printf ' %ss' "$duration"
+}
+
+__sevenos_prompt() {
+  local status="$?"
+  if [[ "$__sevenos_cmd_started" -gt 0 ]]; then
+    __sevenos_last_duration=$((SECONDS - __sevenos_cmd_started))
+  else
+    __sevenos_last_duration=0
+  fi
+  local reset='\[\e[0m\]'
+  local blue='\[\e[38;2;77;163;255m\]'
+  local cyan='\[\e[38;2;0;212;255m\]'
+  local violet='\[\e[38;2;122;92;255m\]'
+  local green='\[\e[38;2;0;255;179m\]'
+  local amber='\[\e[38;2;255;155;112m\]'
+  local muted='\[\e[38;2;138;143;152m\]'
+  local red='\[\e[38;2;255;89;118m\]'
+  local symbol='$'
+  [[ "${EUID:-$(id -u)}" -eq 0 ]] && symbol='#'
+  local mode mode_color
+  mode="$(__sevenos_terminal_mode)"
+  case "$mode" in
+    Cyber) mode_color="$green" ;;
+    Admin) mode_color="$amber" ;;
+    Forge) mode_color="$blue" ;;
+    Focus) mode_color="$violet" ;;
+    *) mode_color="$cyan" ;;
+  esac
+
+  PS1="${blue}SevenOS${muted}:${mode_color}${mode}${muted} ${cyan}\w${violet}$(__sevenos_git_branch)${green}$(__sevenos_runtime_context)${muted}$(__sevenos_duration "$__sevenos_last_duration")${red}$(__sevenos_prompt_status "$status")${reset}\n${muted}${USER}@${HOSTNAME%%.*} ${mode_color}${symbol}${reset} "
+}
+
+PROMPT_COMMAND=__sevenos_prompt

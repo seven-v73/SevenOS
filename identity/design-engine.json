@@ -1,0 +1,112 @@
+{
+  "schema": "sevenos.design-engine.v1",
+  "engine": "Seven Design Engine",
+  "base": "Catppuccin-inspired palettes adapted to SevenOS, with optional Catppuccin icon support and stable Papirus fallback.",
+  "principle": "One central design contract synchronizes icons, palettes, surfaces and profile roles without making SevenOS depend on a fragile third-party icon package.",
+  "modes": {
+    "seven-mocha": {
+      "label": "Seven Mocha",
+      "system_mode": "dark",
+      "description": "Premium dark mode: soft contrast, glass depth, Seven blue/violet/cyan accents and calm Catppuccin-inspired surfaces.",
+      "palette": {
+        "base": "#11111B",
+        "mantle": "#181825",
+        "crust": "#0B0B12",
+        "surface0": "#313244",
+        "surface1": "#45475A",
+        "surface2": "#585B70",
+        "text": "#CDD6F4",
+        "subtext0": "#A6ADC8",
+        "subtext1": "#BAC2DE",
+        "blue": "#89B4FA",
+        "mauve": "#CBA6F7",
+        "sky": "#89DCEB",
+        "teal": "#94E2D5",
+        "green": "#A6E3A1",
+        "red": "#F38BA8",
+        "peach": "#FAB387",
+        "seven_blue": "#6EA8FF",
+        "seven_violet": "#8B7CFF",
+        "seven_cyan": "#00D4FF"
+      },
+      "icon_candidates": [
+        "Catppuccin-Mocha",
+        "Catppuccin-Mocha-Dark",
+        "Catppuccin-Mocha-Blue",
+        "Papirus-Dark",
+        "Papirus",
+        "Tela-circle-dark",
+        "Tela-circle",
+        "hicolor"
+      ]
+    },
+    "seven-latte": {
+      "label": "Seven Latte",
+      "system_mode": "light",
+      "description": "Clear productivity mode: bright surfaces, subtle Seven accents, readable hierarchy and Catppuccin Latte inspired calm.",
+      "palette": {
+        "base": "#EFF1F5",
+        "mantle": "#E6E9EF",
+        "crust": "#DCE0E8",
+        "surface0": "#CCD0DA",
+        "surface1": "#BCC0CC",
+        "surface2": "#ACB0BE",
+        "text": "#4C4F69",
+        "subtext0": "#6C6F85",
+        "subtext1": "#5C5F77",
+        "blue": "#1E66F5",
+        "mauve": "#8839EF",
+        "sky": "#04A5E5",
+        "teal": "#179299",
+        "green": "#40A02B",
+        "red": "#D20F39",
+        "peach": "#FE640B",
+        "seven_blue": "#2F7BFF",
+        "seven_violet": "#6A5CFF",
+        "seven_cyan": "#00B8D9"
+      },
+      "icon_candidates": [
+        "Catppuccin-Latte",
+        "Catppuccin-Latte-Light",
+        "Catppuccin-Latte-Blue",
+        "Papirus",
+        "Tela-circle",
+        "hicolor"
+      ]
+    }
+  },
+  "icon_strategy": {
+    "style": "rounded, soft, outline-friendly, pastel-premium icons with SevenOS app marks layered on top",
+    "rule": "Prefer installed Catppuccin icon themes when present; otherwise use Papirus/Papirus-Dark so fresh installs stay reliable.",
+    "native_manifest": "identity/icons/manifest.json",
+    "custom_apps": [
+      "Seven Files",
+      "Seven AI",
+      "Seven Settings",
+      "Seven Spotlight",
+      "Seven Store",
+      "Seven Studio",
+      "Seven Security"
+    ]
+  },
+  "folder_roles": {
+    "ai": { "label": "AI", "accent": "#CBA6F7", "symbol": "spark" },
+    "dev": { "label": "Dev", "accent": "#89B4FA", "symbol": "code" },
+    "security": { "label": "Security", "accent": "#F38BA8", "symbol": "shield" },
+    "media": { "label": "Media", "accent": "#FAB387", "symbol": "play" },
+    "studio": { "label": "Studio", "accent": "#8B7CFF", "symbol": "diamond" },
+    "cloud": { "label": "Cloud", "accent": "#89DCEB", "symbol": "cloud" }
+  },
+  "surfaces": [
+    "Waybar",
+    "Seven Spotlight",
+    "Seven Hub",
+    "Seven Dock",
+    "Seven Files",
+    "Seven Settings",
+    "Notifications",
+    "Hyprlock",
+    "Terminal",
+    "Seven AI"
+  ]
+}

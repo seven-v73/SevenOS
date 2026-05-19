@@ -1,0 +1,49 @@
+:root {
+  --seven-design-engine: "Seven Design Engine";
+  --seven-mode-name: "Seven Mocha";
+
+  --cat-base: #11111B;
+  --cat-mantle: #181825;
+  --cat-crust: #0B0B12;
+  --cat-surface0: #313244;
+  --cat-surface1: #45475A;
+  --cat-surface2: #585B70;
+  --cat-text: #CDD6F4;
+  --cat-subtext0: #A6ADC8;
+  --cat-subtext1: #BAC2DE;
+  --cat-blue: #89B4FA;
+  --cat-mauve: #CBA6F7;
+  --cat-sky: #89DCEB;
+  --cat-teal: #94E2D5;
+  --cat-green: #A6E3A1;
+  --cat-red: #F38BA8;
+  --cat-peach: #FAB387;
+
+  --seven-folder-ai: var(--cat-mauve);
+  --seven-folder-dev: var(--cat-blue);
+  --seven-folder-security: var(--cat-red);
+  --seven-folder-media: var(--cat-peach);
+  --seven-folder-studio: #8B7CFF;
+  --seven-folder-cloud: var(--cat-sky);
+}
+
+[data-seven-theme="light"] {
+  --seven-mode-name: "Seven Latte";
+
+  --cat-base: #EFF1F5;
+  --cat-mantle: #E6E9EF;
+  --cat-crust: #DCE0E8;
+  --cat-surface0: #CCD0DA;
+  --cat-surface1: #BCC0CC;
+  --cat-surface2: #ACB0BE;
+  --cat-text: #4C4F69;
+  --cat-subtext0: #6C6F85;
+  --cat-subtext1: #5C5F77;
+  --cat-blue: #1E66F5;
+  --cat-mauve: #8839EF;
+  --cat-sky: #04A5E5;
+  --cat-teal: #179299;
+  --cat-green: #40A02B;
+  --cat-red: #D20F39;
+  --cat-peach: #FE640B;
+}

@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# seven-terminal-palette: quick action layer for Seven Terminal.
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -d "$SEVENOS_ROOT/bin" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -d "$script_dir/../bin" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
+    if [[ -d "$candidate/bin" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  printf '%s\n' "$HOME"
+}
+
+ROOT_DIR="$(resolve_root)"
+
+last_history_command() {
+  local history_file="${HISTFILE:-$HOME/.bash_history}"
+  if [[ -r "$history_file" ]]; then
+    tail -n 40 "$history_file" | sed '/^[[:space:]]*$/d' | tail -n 1
+  fi
+}
+
+copy_text() {
+  local text="$1"
+  if command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$text" | wl-copy
+  elif command -v xclip >/dev/null 2>&1; then
+    printf '%s' "$text" | xclip -selection clipboard
+  else
+    printf '%s\n' "$text"
+  fi
+}
+
+run_terminal() {
+  local title="$1"
+  local command="$2"
+  if command -v seven-terminal >/dev/null 2>&1; then
+    seven-terminal focus -- bash -lc "$command"
+  elif command -v kitty >/dev/null 2>&1; then
+    kitty --title "$title" bash -lc "$command"
+  else
+    sh -lc "$command"
+  fi
+}
+
+actions() {
+  cat <<'EOF'
+Open Current Folder	Open the current directory in Seven Files
+Copy Current Path	Copy the current working directory
+Copy Last Command	Copy the last shell history command
+Explain Last Command	Ask SevenAI to explain the last command or error
+Terminal Doctor	Show Seven Terminal status and checks
+System Doctor	Run SevenOS post-install diagnostics
+Switch: Classic	Open daily SevenOS terminal
+Switch: Forge	Open development terminal
+Switch: Cyber	Open security and network terminal
+Switch: Focus	Open quiet focus terminal
+Switch: Admin	Open cautious system-control terminal
+Theme: Dark	Apply SevenOS dark theme
+Theme: Light	Apply SevenOS light theme
+EOF
+}
+
+choose_action() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    actions
+    return 0
+  fi
+
+  if command -v rofi >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
+    actions | rofi -dmenu -i -p "Seven Terminal" -mesg "Actions rapides pour le terminal" -theme "$ROOT_DIR/hyprland/rofi/spotlight.rasi" 2>/dev/null || true
+  else
+    actions
+  fi
+}
+
+if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+  actions
+  exit 0
+fi
+selection="$(choose_action)"
+case "$selection" in
+  "Open Current Folder"*) seven-files "${PWD:-$HOME}" ;;
+  "Copy Current Path"*) copy_text "${PWD:-$HOME}" ;;
+  "Copy Last Command"*) copy_text "$(last_history_command)" ;;
+  "Explain Last Command"*)
+    last="$(last_history_command)"
+    if [[ -n "$last" ]]; then
+      run_terminal "SevenAI Terminal" "seven ai \"explique cette commande terminal et les risques possibles: $last\"; printf '\nPress Enter to close...'; read -r"
+    else
+      run_terminal "SevenAI Terminal" "seven ai terminal; printf '\nPress Enter to close...'; read -r"
+    fi
+    ;;
+  "Terminal Doctor"*) run_terminal "Seven Terminal Doctor" "seven-terminal status; printf '\n'; seven identity visuals; printf '\nPress Enter to close...'; read -r" ;;
+  "System Doctor"*) run_terminal "SevenOS Doctor" "seven post-install; printf '\nPress Enter to close...'; read -r" ;;
+  "Switch: Classic"*) seven-terminal classic ;;
+  "Switch: Forge"*) seven-terminal forge ;;
+  "Switch: Cyber"*) seven-terminal cyber ;;
+  "Switch: Focus"*) seven-terminal focus ;;
+  "Switch: Admin"*) seven-terminal admin ;;
+  "Theme: Dark"*) "$ROOT_DIR/install.sh" theme dark ;;
+  "Theme: Light"*) "$ROOT_DIR/install.sh" theme light ;;
+  ""|*) exit 0 ;;
+esac

@@ -172,6 +172,9 @@ def open_action(action_id):
         return
     shell_command = "cd " + subprocess.list2cmdline([str(ROOT)]) + " && " + subprocess.list2cmdline(command) + "; printf '\\nPress Enter to close...'; read -r"
     if os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"):
+        if command_state("seven-terminal") == "OK":
+            subprocess.Popen(["seven-terminal", "focus", "--", "bash", "-lc", shell_command])
+            return
         for terminal in ("kitty", "foot", "alacritty", "xterm"):
             if command_state(terminal) == "OK":
                 if terminal == "kitty":

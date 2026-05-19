@@ -6,6 +6,7 @@
 @define-color seven_violet #6A5CFF;
 @define-color seven_cyan #00B8D9;
 @define-color seven_danger rgba(210, 54, 82, 0.94);
+@define-color light_hairline rgba(28, 31, 38, 0.055);
 
 @keyframes aiPulseLight {
   0% {
@@ -39,7 +40,7 @@
   border: none;
   border-radius: 0;
   font-family: "SF Pro Display", "SF UI Display", "Inter", "JetBrainsMono Nerd Font", sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
   min-height: 0;
@@ -47,17 +48,17 @@
 
 window#waybar {
   color: @light_text;
-  border: 1px solid rgba(28, 31, 38, 0.075);
-  border-radius: 28px;
+  border: 1px solid rgba(28, 31, 38, 0.060);
+  border-radius: 24px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.56) 52%, rgba(245, 247, 250, 0.46)),
-    radial-gradient(ellipse at 8% -20%, rgba(47, 123, 255, 0.16), transparent 42%),
-    radial-gradient(ellipse at 94% 0%, rgba(106, 92, 255, 0.13), transparent 34%),
-    radial-gradient(ellipse at 52% -10%, rgba(0, 184, 217, 0.11), transparent 38%),
-    rgba(255, 255, 255, 0.58);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.60) 52%, rgba(245, 247, 250, 0.48)),
+    radial-gradient(ellipse at 8% -28%, rgba(47, 123, 255, 0.12), transparent 42%),
+    radial-gradient(ellipse at 94% -20%, rgba(106, 92, 255, 0.10), transparent 34%),
+    radial-gradient(ellipse at 52% -22%, rgba(0, 184, 217, 0.070), transparent 40%),
+    rgba(255, 255, 255, 0.62);
   box-shadow:
-    0 12px 34px rgba(28, 31, 38, 0.10),
-    0 0 32px rgba(47, 123, 255, 0.055),
+    0 14px 34px rgba(28, 31, 38, 0.085),
+    0 0 22px rgba(47, 123, 255, 0.040),
     inset 0 1px 0 rgba(255, 255, 255, 0.86),
     inset 0 -1px 0 rgba(28, 31, 38, 0.030);
 }
@@ -65,11 +66,11 @@ window#waybar {
 .modules-left,
 .modules-center,
 .modules-right {
-  min-height: 46px;
+  min-height: 40px;
   margin-top: 0;
-  padding: 6px 12px;
+  padding: 4px 7px;
   border: 1px solid transparent;
-  border-radius: 24px;
+  border-radius: 21px;
   background: transparent;
   box-shadow: none;
   transition:
@@ -79,48 +80,54 @@ window#waybar {
 }
 
 .modules-left {
-  min-width: 430px;
-  margin-left: 6px;
+  min-width: 342px;
+  margin-left: 4px;
 }
 
 .modules-center {
-  min-width: 370px;
-  border-color: rgba(28, 31, 38, 0.060);
+  min-width: 302px;
+  border-color: @light_hairline;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.44)),
-    radial-gradient(ellipse at 50% 0%, rgba(47, 123, 255, 0.10), transparent 58%),
-    rgba(255, 255, 255, 0.52);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.42)),
+    radial-gradient(ellipse at 50% -18%, rgba(47, 123, 255, 0.075), transparent 60%),
+    rgba(255, 255, 255, 0.48);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    0 3px 14px rgba(28, 31, 38, 0.055);
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 3px 12px rgba(28, 31, 38, 0.045);
 }
 
 .modules-right {
-  min-width: 456px;
-  margin-right: 6px;
+  min-width: 330px;
+  margin-right: 4px;
+  border-color: rgba(28, 31, 38, 0.035);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .modules-center:hover {
   border-color: @light_edge_hot;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.90), rgba(255, 255, 255, 0.56)),
-    radial-gradient(ellipse at 50% 0%, rgba(47, 123, 255, 0.14), transparent 60%),
-    rgba(255, 255, 255, 0.62);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.52)),
+    radial-gradient(ellipse at 50% -18%, rgba(47, 123, 255, 0.11), transparent 60%),
+    rgba(255, 255, 255, 0.58);
 }
 
 #custom-sevenos,
 #custom-spotlight,
+#custom-media,
 #custom-workspace-prev,
 #custom-workspace-next,
-#network,
+#custom-wifi,
+#custom-bluetooth,
 #pulseaudio,
 #battery,
+#custom-vpn,
+#custom-recorder,
 #clock,
 #custom-ai {
-  min-height: 34px;
-  margin: 0 4px;
-  padding: 0 14px;
-  border-radius: 18px;
+  min-height: 30px;
+  margin: 0 1px;
+  padding: 0 9px;
+  border-radius: 15px;
   color: @light_text;
   background: transparent;
   transition:
@@ -133,37 +140,43 @@ window#waybar {
 
 #custom-sevenos:hover,
 #custom-spotlight:hover,
+#custom-media:hover,
 #custom-workspace-prev:hover,
 #custom-workspace-next:hover,
-#network:hover,
+#custom-wifi:hover,
+#custom-bluetooth:hover,
 #pulseaudio:hover,
 #battery:hover,
+#custom-vpn:hover,
+#custom-recorder:hover,
 #clock:hover,
 #custom-ai:hover {
   color: rgba(16, 20, 30, 0.98);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.90), rgba(255, 255, 255, 0.60)),
-    rgba(255, 255, 255, 0.54);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.54)),
+    rgba(255, 255, 255, 0.42);
 }
 
 #custom-sevenos {
-  min-width: 126px;
-  padding-left: 16px;
-  padding-right: 16px;
+  min-width: 102px;
+  padding-left: 13px;
+  padding-right: 11px;
   color: rgba(22, 28, 42, 0.96);
   font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 #custom-spotlight {
-  min-width: 286px;
-  padding-left: 18px;
-  padding-right: 16px;
+  min-width: 200px;
+  padding-left: 14px;
+  padding-right: 10px;
+  border: 1px solid rgba(28, 31, 38, 0.052);
+  border-radius: 999px;
   color: rgba(54, 61, 76, 0.78);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.48)),
-    radial-gradient(ellipse at 20% 0%, rgba(47, 123, 255, 0.055), transparent 62%),
-    rgba(255, 255, 255, 0.44);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.46)),
+    radial-gradient(ellipse at 20% -14%, rgba(47, 123, 255, 0.045), transparent 62%),
+    rgba(255, 255, 255, 0.40);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.74),
     0 1px 0 rgba(28, 31, 38, 0.030);
@@ -172,19 +185,40 @@ window#waybar {
 }
 
 #custom-spotlight:hover {
-  min-width: 296px;
+  min-width: 210px;
   color: rgba(28, 31, 38, 0.92);
+  border-color: rgba(47, 123, 255, 0.18);
+}
+
+#custom-media {
+  min-width: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+  color: rgba(74, 82, 96, 0.68);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+}
+
+#custom-media.hidden {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+}
+
+#custom-media.playing {
+  color: rgba(28, 31, 38, 0.90);
 }
 
 #custom-workspace-prev,
 #custom-workspace-next {
   min-width: 32px;
-  min-height: 34px;
-  padding: 0 8px;
-  margin: 0 2px;
+  min-height: 30px;
+  padding: 0 6px;
+  margin: 0 1px;
   color: rgba(74, 82, 96, 0.84);
   font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
-  font-size: 24px;
+  font-size: 21px;
 }
 
 #workspaces {
@@ -192,12 +226,12 @@ window#waybar {
 }
 
 #workspaces button {
-  min-width: 36px;
-  min-height: 34px;
-  margin: 0 3px;
-  padding: 0 10px;
+  min-width: 31px;
+  min-height: 30px;
+  margin: 0 1px;
+  padding: 0 8px;
   border: 1px solid transparent;
-  border-radius: 16px;
+  border-radius: 14px;
   color: @light_soft;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.18)),
@@ -215,14 +249,14 @@ window#waybar {
 }
 
 #workspaces button.active {
-  min-width: 44px;
+  min-width: 38px;
   color: #FFFFFF;
   background:
     radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.24), transparent 38%),
     linear-gradient(135deg, @seven_blue, @seven_violet);
   border-color: rgba(47, 123, 255, 0.20);
   box-shadow:
-    0 4px 16px rgba(47, 123, 255, 0.18),
+    0 4px 14px rgba(47, 123, 255, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.24);
   animation: workspaceGlowLight 4.8s ease-in-out infinite;
 }
@@ -232,66 +266,109 @@ window#waybar {
   background: rgba(210, 54, 82, 0.10);
 }
 
-#network,
+#custom-wifi,
+#custom-bluetooth,
 #pulseaudio,
-#battery {
-  min-width: 34px;
-  padding-left: 12px;
-  padding-right: 12px;
-  font-size: 15px;
+#battery,
+#custom-vpn,
+#custom-recorder {
+  min-width: 28px;
+  padding-left: 8px;
+  padding-right: 8px;
+  font-size: 14px;
   color: rgba(45, 52, 68, 0.88);
 }
 
-#network,
+#custom-wifi,
+#custom-bluetooth,
 #pulseaudio,
 #battery,
+#custom-vpn,
+#custom-recorder,
 #clock {
   background: transparent;
 }
 
+#custom-bluetooth,
 #pulseaudio,
 #battery,
+#custom-vpn,
+#custom-recorder,
 #clock {
   border-left: 1px solid rgba(28, 31, 38, 0.075);
+  border-image: linear-gradient(180deg, transparent, rgba(28, 31, 38, 0.090), transparent) 1;
   border-radius: 0;
 }
 
 #battery {
-  min-width: 82px;
+  min-width: 60px;
 }
 
-#network.disconnected,
+#custom-wifi.off,
+#custom-wifi.missing,
+#custom-wifi.weak,
+#custom-bluetooth.off,
+#custom-bluetooth.missing,
 #pulseaudio.muted,
 #battery.warning:not(.charging),
 #battery.critical:not(.charging) {
   color: @seven_danger;
 }
 
+#custom-wifi.connected,
+#custom-bluetooth.connected,
+#custom-bluetooth.on,
+#custom-vpn.active {
+  color: @seven_blue;
+}
+
+#custom-vpn.hidden,
+#custom-recorder.hidden {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  border-left: 0;
+}
+
+#custom-recorder.recording {
+  color: @seven_danger;
+}
+
 #clock {
-  min-width: 166px;
-  padding-left: 16px;
-  padding-right: 16px;
+  min-width: 54px;
+  padding-left: 11px;
+  padding-right: 11px;
   color: rgba(54, 61, 76, 0.76);
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 #custom-ai {
-  min-width: 48px;
-  min-height: 38px;
+  min-width: 36px;
+  min-height: 30px;
   padding-left: 0;
   padding-right: 0;
   border-radius: 999px;
   color: @seven_blue;
-  font-size: 17px;
+  font-size: 15px;
   background:
-    radial-gradient(circle at 42% 33%, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.74) 7%, transparent 18%),
-    radial-gradient(circle at 44% 54%, rgba(0, 184, 217, 0.72), rgba(47, 123, 255, 0.64) 32%, rgba(106, 92, 255, 0.40) 58%, transparent 76%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.46));
+    radial-gradient(circle at 42% 33%, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.70) 7%, transparent 18%),
+    radial-gradient(circle at 44% 54%, rgba(0, 184, 217, 0.62), rgba(47, 123, 255, 0.56) 32%, rgba(106, 92, 255, 0.34) 58%, transparent 76%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.42));
   box-shadow:
-    0 0 18px rgba(47, 123, 255, 0.16),
+    0 0 12px rgba(47, 123, 255, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.84);
   animation: aiPulseLight 3s ease-in-out infinite;
+}
+
+#custom-ai.busy {
+  color: @seven_violet;
+  animation: aiPulseLight 1.6s ease-in-out infinite;
+}
+
+#custom-ai.attention {
+  color: @seven_danger;
 }
 
 tooltip {

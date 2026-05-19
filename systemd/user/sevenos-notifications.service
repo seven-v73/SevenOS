@@ -5,7 +5,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/env bash -lc 'command -v mako >/dev/null 2>&1 || exit 0; exec mako'
+ExecStart=%h/.local/bin/seven-notifications
 Restart=on-failure
 RestartSec=2
 

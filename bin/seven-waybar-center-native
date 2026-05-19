@@ -147,6 +147,30 @@ def probe_system() -> tuple[str, str]:
 
 
 def run(panel: str) -> int:
+    if os.environ.get("SEVENOS_WAYBAR_CENTER_LEGACY") != "1":
+        panel_map = {
+            "network": "wifi",
+            "bluetooth": "bluetooth",
+            "audio": "audio",
+            "power": "power",
+            "battery": "power",
+            "system": "system",
+            "time": "time",
+        }
+        quick = ROOT / "bin/seven-quick-settings-native"
+        command = str(quick) if quick.exists() else shutil.which("seven-quick-settings-native")
+        if command:
+            probe_result = subprocess.run([command, "--probe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            if probe_result.returncode == 0:
+                subprocess.Popen(
+                    [command, panel_map.get(panel, "system")],
+                    cwd=ROOT,
+                    env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return 0
+
     ensure_gi_python()
     import gi
 

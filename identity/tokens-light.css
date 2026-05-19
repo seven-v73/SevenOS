@@ -54,4 +54,31 @@
   --t-fade: 160ms;
   --t-window: 200ms;
   --t-spotlight: 200ms;
+
+  /* Seven Latte: Catppuccin-inspired compatibility tokens for the
+     clarity-first SevenOS Light Mode. */
+  --seven-mode-name: "Seven Latte";
+  --cat-base: #EFF1F5;
+  --cat-mantle: #E6E9EF;
+  --cat-crust: #DCE0E8;
+  --cat-surface0: #CCD0DA;
+  --cat-surface1: #BCC0CC;
+  --cat-surface2: #ACB0BE;
+  --cat-text: #4C4F69;
+  --cat-subtext0: #6C6F85;
+  --cat-subtext1: #5C5F77;
+  --cat-blue: #1E66F5;
+  --cat-mauve: #8839EF;
+  --cat-sky: #04A5E5;
+  --cat-teal: #179299;
+  --cat-green: #40A02B;
+  --cat-red: #D20F39;
+  --cat-peach: #FE640B;
+  --seven-icon-theme-preferred: "Catppuccin-Latte, Papirus";
+  --seven-folder-ai: var(--cat-mauve);
+  --seven-folder-dev: var(--cat-blue);
+  --seven-folder-security: var(--cat-red);
+  --seven-folder-media: var(--cat-peach);
+  --seven-folder-studio: #6A5CFF;
+  --seven-folder-cloud: var(--cat-sky);
 }

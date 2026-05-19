@@ -3,6 +3,11 @@
 This document is the main architectural reference for the long-term direction
 of SevenOS.
 
+The companion document `docs/HYBRID_OS_ARCHITECTURE.md` names the same strategy
+as a local user-space hybrid operating architecture: Linux keeps the kernel and
+hardware foundation, while SevenOS adds the orchestration, services, shell and
+SevenAI layers above it.
+
 SevenOS should not be understood as:
 
 ```text

@@ -339,6 +339,8 @@ status_human() {
   printf '  seven windows guide          Explain the setup path\n'
   printf '  seven windows catalog        List app-first Windows workflows\n'
   printf '  seven windows resolve APP    Show the best engine for an app\n'
+  printf '  seven windows prepare APP    Prepare a dedicated Wine prefix\n'
+  printf '  seven windows diagnose APP   Explain a failed installer/app in human text\n'
   printf '  seven windows run APP        Launch an app through Wine/Bottles/Proton/VM\n'
   printf '  seven windows apps           Open Bottles for Windows apps\n'
   printf '  seven windows vm             Open Virt Manager for the Windows VM\n'
@@ -355,8 +357,10 @@ SevenOS Windows Mode guide
 2. Launch apps first, without requiring a Windows ISO
    seven windows catalog
    seven windows resolve photoshop
+   seven windows prepare office
    seven run photoshop
    seven windows run /path/to/setup.exe
+   seven windows diagnose /path/to/setup.exe
 
 3. Check virtualization only when an app needs the VM path
    seven windows status
@@ -372,6 +376,13 @@ SevenOS Windows Mode guide
 SevenOS keeps both paths separate:
 - Wine, Bottles, Proton and Lutris for app-like native windows.
 - KVM/QEMU for heavy apps, driver-sensitive workflows and full Windows sessions.
+
+For Microsoft Office:
+- Use `seven windows prepare office` once; SevenOS remembers when the prefix is ready.
+- If Microsoft 365 shows error 0-2031 or a Click-to-Run crash, run
+  `seven windows diagnose OfficeSetup.exe`.
+- Bottles or the Windows VM path is the recommended daily-use route when the
+  Microsoft 365 online installer keeps failing under plain Wine.
 EOF
 }
 
@@ -461,6 +472,12 @@ case "$ACTION" in
     ;;
   resolve)
     "$ROOT_DIR/vm/windows-app-runner.sh" resolve "$@"
+    ;;
+  prepare)
+    "$ROOT_DIR/vm/windows-app-runner.sh" prepare "$@"
+    ;;
+  diagnose|doctor)
+    "$ROOT_DIR/vm/windows-app-runner.sh" diagnose "$@"
     ;;
   run)
     "$ROOT_DIR/vm/windows-app-runner.sh" run "$@"

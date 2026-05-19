@@ -111,7 +111,7 @@ else
   status_warn "seven-hub missing; run './install.sh hub'"
 fi
 
-for command_name in mako swaylock swayidle hyprpaper waybar rofi; do
+for command_name in swaync wlogout hypridle hyprlock hyprpaper waybar rofi; do
   if command -v "$command_name" >/dev/null 2>&1; then
     status_ok "$command_name available"
   else
@@ -119,7 +119,7 @@ for command_name in mako swaylock swayidle hyprpaper waybar rofi; do
   fi
 done
 
-if [[ -f "$HOME/.config/hypr/hyprland.conf" && -f "$HOME/.config/waybar/config.jsonc" && -f "$HOME/.config/mako/config" ]]; then
+if [[ -f "$HOME/.config/hypr/hyprland.conf" && -f "$HOME/.config/waybar/config.jsonc" && -f "$HOME/.config/swaync/config.json" ]]; then
   status_ok "SevenOS desktop configs installed"
 else
   status_warn "SevenOS desktop configs incomplete; run './install.sh theme'"

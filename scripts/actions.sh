@@ -27,7 +27,18 @@ hub.status	Desktop	Hub Status	seven hub status	safe	Show whether Seven Hub is re
 hub.plan	Desktop	Hub Product Plan	seven hub plan	safe	Show missing Hub productization work before changing the desktop.
 apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS application library.
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
+files.downloads	Desktop	Downloads	seven-files downloads	safe	Open Downloads in Seven Files.
+files.projects	Desktop	Projects	seven-files projects	safe	Open Projects in Seven Files.
+files.pictures	Desktop	Pictures	seven-files pictures	safe	Open Pictures in Seven Files.
+files.profile	Desktop	Profile Workspace	seven-files profile	safe	Open the active SevenOS profile workspace in Seven Files.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
+terminal.open	Desktop	Open Terminal	seven-terminal classic	safe	Open the default SevenOS adaptive terminal.
+terminal.forge	Desktop	Forge Terminal	seven-terminal forge	safe	Open a SevenOS terminal tuned for development, Git and builds.
+terminal.cyber	Desktop	Cyber Terminal	seven-terminal cyber	safe	Open a SevenOS terminal tuned for logs, diagnostics and security work.
+terminal.palette	Desktop	Terminal Actions	seven-terminal-palette	safe	Open Seven Terminal quick actions for history, diagnosis and SevenAI help.
+recorder.area	Desktop	Record Area	seven-recorder area	safe	Select an area and start a smooth SevenOS screen recording.
+recorder.full	Desktop	Record Screen	seven-recorder full	safe	Start a full-screen SevenOS recording.
+recorder.stop	Desktop	Stop Recording	seven-recorder stop	safe	Stop the active SevenOS recording and copy the saved path.
 settings.open	Desktop	Open Settings	seven-settings	safe	Open the native SevenOS Settings app for wallpaper, displays, network, sound, keyboard, security, profiles and system.
 welcome.open	System	Welcome	seven welcome	safe	Show the SevenOS onboarding overview.
 welcome.status	System	First-Run Status	seven welcome status	safe	Check whether this user session is really SevenOS.
@@ -116,6 +127,8 @@ windows.plan	Windows	Windows Plan	seven windows plan	safe	Show prioritized Windo
 windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Bottles, Wine and KVM Windows paths.
 windows.catalog	Windows	Windows App Catalog	seven windows catalog	safe	List app-first Windows workflows and preferred engines.
 windows.resolve.photoshop	Windows	Resolve Photoshop	seven windows resolve photoshop	safe	Show whether Photoshop should use Bottles, Wine or VM fallback.
+windows.prepare.office	Windows	Prepare Office	seven windows prepare office	changes	Prepare a dedicated Microsoft Office Wine prefix once and remember when it is ready.
+windows.diagnose.office	Windows	Diagnose Office	seven windows diagnose OfficeSetup.exe	safe	Explain Office installer, Click-to-Run and Wine crashes in human language.
 windows.run.photoshop	Windows	Run Photoshop	seven run photoshop	safe	Open Photoshop through the Windows App Layer when configured.
 windows.open	Windows	Open Windows Mode	seven windows open	safe	Open Bottles or Virt Manager depending on what is available.
 windows.apps	Windows	Windows Apps	seven windows apps	safe	Open Bottles for Windows applications.
@@ -180,6 +193,10 @@ ecosystem.processes	Ecosystem	Process Map	seven ecosystem processes	safe	Show al
 ecosystem.maturity	Ecosystem	Maturity Map	seven ecosystem maturity	safe	Show product-readiness levels and next hardening steps for every SevenOS module.
 ecosystem.roadmap	Ecosystem	Ecosystem Roadmap	seven ecosystem roadmap	safe	Show Phase 4 and Phase 5 priorities.
 ecosystem.doctor	Ecosystem	Ecosystem Doctor	seven ecosystem doctor	safe	Validate ecosystem foundation files.
+architecture.map	Ecosystem	Architecture Map	seven architecture	safe	Show the SevenOS product and control-plane architecture map.
+architecture.hybrid	Ecosystem	Hybrid OS Contract	seven architecture hybrid	safe	Explain the local user-space hybrid OS architecture above Linux.
+architecture.matrix	Ecosystem	Hybrid OS Matrix	seven architecture matrix	safe	Show layer readiness, ownership, contracts, safety and next actions.
+architecture.json	Ecosystem	Hybrid OS JSON	seven architecture matrix --json	safe	Expose SevenOS hybrid architecture as a machine-readable contract for Hub and SevenAI.
 stack.status	Ecosystem	Stack Strategy	seven stack	safe	Show the phased technology stack strategy.
 stack.roadmap	Ecosystem	Stack Roadmap	seven stack roadmap	safe	Show when AGS, Rust, AI and app stacks should enter SevenOS.
 stack.doctor	Ecosystem	Stack Doctor	seven stack doctor	safe	Validate stack strategy files and shell foundation packages.
@@ -211,6 +228,10 @@ shell.plan	Desktop	Seven Shell Plan	seven shell plan	safe	Show how Seven Shell w
 shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned AGS surfaces and fallback contracts.
 shell.install	Desktop	Install Shell Foundation	./install.sh shell-ags --yes	packages	Install GJS, TypeScript, GTK4 and libadwaita for the B3 shell foundation.
 identity.status	Ecosystem	SevenOS Visual Identity	seven identity	safe	Show SevenOS Beyond the Desktop product language.
+identity.design	Ecosystem	Seven Design Engine	seven identity design	safe	Show Seven Mocha/Latte palettes, icon resolution and design surfaces.
+identity.icons	Ecosystem	SevenOS Native Icons	seven identity icons	safe	Show native SevenOS app icons and install names.
+identity.visuals	Ecosystem	Visual Package Layer	seven identity visuals	safe	Show Catppuccin, cursor, Kvantum and icon package readiness.
+identity.visuals.install	Ecosystem	Install Visual Layer	seven identity visuals install --yes	packages	Install Catppuccin GTK, cursors, Kvantum themes and Papirus folder integration.
 identity.packs	Ecosystem	Regional Accent Packs	seven identity packs	safe	Show planned regional accent packs without turning the UI into flags.
 identity.current	Ecosystem	Active Identity Pack	seven identity current	safe	Show the active SevenOS regional accent pack.
 identity.activate.pan	Ecosystem	Activate Accent Pack	seven identity activate pan-african	changes	Set the active SevenOS contextual accent pack.

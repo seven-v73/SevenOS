@@ -31,6 +31,19 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from seven_i18n import tr  # noqa: E402
 
 
+def current_theme_mode() -> str:
+    theme_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/theme.conf"
+    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
+        return str(os.environ["SEVENOS_THEME_MODE"])
+    if theme_file.exists():
+        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("SEVENOS_THEME_MODE="):
+                value = line.split("=", 1)[1].strip().strip("'\"")
+                if value in {"dark", "light"}:
+                    return value
+    return "dark"
+
+
 def ensure_gtk_python() -> None:
     """Re-exec with the system Python when pyenv lacks GTK bindings."""
     if os.environ.get("SEVENOS_NATIVE_PYTHON") == "1":
@@ -61,7 +74,7 @@ def ensure_gtk_python() -> None:
 
 def run_text(*command: str) -> str:
     env = {**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_DRY_RUN": "0"}
-    output = subprocess.check_output(command, cwd=ROOT, text=True, env=env)
+    output = subprocess.check_output(command, cwd=ROOT, text=True, env=env, timeout=8)
     return output.strip()
 
 
@@ -82,6 +95,9 @@ def run_visible(*command: str, title: str = "SevenOS Action") -> None:
         return
 
     if os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"):
+        if command_exists("seven-terminal"):
+            subprocess.Popen(["seven-terminal", "focus", "--", "bash", "-lc", wrapped], cwd=ROOT, env=env)
+            return
         if command_exists("kitty"):
             subprocess.Popen(["kitty", "--title", title, "bash", "-lc", wrapped], cwd=ROOT, env=env)
             return
@@ -405,7 +421,11 @@ def icon_for_action(action_id: str, impact: str = "safe") -> str:
     if action_id.startswith("flatpak.") or action_id.startswith("sevenpkg.") or action_id.startswith("apps."):
         return "application-x-executable-symbolic"
     if action_id.startswith("files."):
-        return "folder-symbolic"
+        return "seven-files"
+    if action_id.startswith("identity."):
+        return "seven-hub"
+    if action_id.startswith("settings."):
+        return "seven-settings"
     if impact != "safe":
         return "emblem-system-symbolic"
     return "system-run-symbolic"
@@ -424,100 +444,258 @@ def run_gui() -> int:
         print(f"Details: {error}", file=sys.stderr)
         return 1
 
+    try:
+        manager = Adw.StyleManager.get_default()
+        if current_theme_mode() == "light":
+            manager.set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
+        else:
+            manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
+    except Exception:
+        pass
+
     def install_css() -> None:
         css = """
         * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
         window.seven-hub-window {
           background:
-            radial-gradient(circle at 12% 8%, rgba(77, 163, 255, 0.16), transparent 34%),
-            linear-gradient(180deg, rgba(9, 9, 11, 0.98), rgba(18, 19, 26, 0.94));
-          color: rgba(237, 237, 237, 0.96);
+            radial-gradient(circle at 13% 8%, rgba(77, 163, 255, 0.24), transparent 34%),
+            radial-gradient(circle at 88% 11%, rgba(122, 92, 255, 0.22), transparent 32%),
+            linear-gradient(180deg, rgba(9, 9, 11, 0.99), rgba(18, 19, 26, 0.98));
+          color: rgba(245, 247, 250, 0.96);
         }
 
         .seven-root {
           background:
-            radial-gradient(circle at 12% 6%, rgba(77, 163, 255, 0.18), transparent 34%),
-            radial-gradient(circle at 86% 12%, rgba(122, 92, 255, 0.15), transparent 34%),
+            radial-gradient(circle at 16% 10%, rgba(77, 163, 255, 0.18), transparent 32%),
+            radial-gradient(circle at 84% 18%, rgba(122, 92, 255, 0.14), transparent 34%),
             rgba(9, 9, 11, 0.96);
+        }
+
+        .seven-root.mode-light {
+          background:
+            radial-gradient(circle at 16% 10%, rgba(47, 123, 255, 0.13), transparent 34%),
+            radial-gradient(circle at 84% 18%, rgba(106, 92, 255, 0.10), transparent 34%),
+            rgba(245, 247, 250, 0.98);
         }
 
         .seven-body {
           background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
-          border: 1px solid rgba(77, 163, 255, 0.22);
-          border-radius: 24px;
-          margin: 24px;
+            linear-gradient(145deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.035) 48%, rgba(122, 92, 255, 0.06)),
+            rgba(18, 19, 26, 0.72);
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          border-radius: 30px;
+          margin: 22px;
+        }
+
+        .mode-light .seven-body {
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(238, 241, 245, 0.70)),
+            rgba(255, 255, 255, 0.76);
+          border-color: rgba(28, 31, 38, 0.07);
         }
 
         .seven-sidebar {
           background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(226, 239, 247, 0.24));
-          border-right: 1px solid rgba(122, 153, 170, 0.22);
-          padding: 24px 18px;
+            linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035));
+          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          padding: 22px 16px;
+        }
+
+        .mode-light .seven-sidebar {
+          background: rgba(255, 255, 255, 0.52);
+          border-right-color: rgba(28, 31, 38, 0.06);
         }
 
         .seven-brand {
-          color: #17232b;
+          color: rgba(245, 247, 250, 0.98);
           font-family: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif;
-          font-size: 24px;
+          font-size: 22px;
           font-weight: 500;
           margin-bottom: 18px;
         }
 
+        .mode-light .seven-brand { color: rgba(28, 31, 38, 0.96); }
+
         .seven-nav-item {
           min-height: 46px;
           padding: 0 14px;
-          border-radius: 13px;
+          border-radius: 16px;
           background: transparent;
-          color: rgba(77, 96, 106, 0.90);
+          color: rgba(237, 237, 237, 0.72);
         }
 
+        .mode-light .seven-nav-item { color: rgba(75, 85, 99, 0.92); }
+
         .seven-nav-item:hover {
-          background: rgba(255, 255, 255, 0.60);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.96);
+        }
+
+        .mode-light .seven-nav-item:hover {
+          background: rgba(28, 31, 38, 0.05);
+          color: rgba(28, 31, 38, 0.96);
         }
 
         .seven-nav-item.active {
-          background: rgba(255, 255, 255, 0.70);
-          color: #17232b;
-          outline: 1px solid rgba(111, 157, 188, 0.42);
+          background:
+            linear-gradient(135deg, rgba(77, 163, 255, 0.28), rgba(122, 92, 255, 0.20));
+          color: rgba(255, 255, 255, 0.98);
+          outline: 1px solid rgba(77, 163, 255, 0.26);
+        }
+
+        .mode-light .seven-nav-item.active {
+          background: rgba(47, 123, 255, 0.10);
+          color: rgba(28, 31, 38, 0.98);
+          outline-color: rgba(47, 123, 255, 0.18);
         }
 
         .seven-status-card {
-          background: rgba(255, 255, 255, 0.46);
-          border: 1px solid rgba(255, 255, 255, 0.64);
-          border-radius: 16px;
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04));
+          border: 1px solid rgba(255, 255, 255, 0.09);
+          border-radius: 18px;
           padding: 14px;
           margin-top: 18px;
-          color: rgba(23, 35, 43, 0.88);
+          color: rgba(237, 237, 237, 0.86);
         }
 
-        .seven-content {
-          background: rgba(238, 246, 250, 0.16);
+        .seven-live-orb {
+          min-width: 10px;
+          min-height: 10px;
+          border-radius: 999px;
+          background: #00ffb3;
+          box-shadow: 0 0 14px rgba(0, 255, 179, 0.55);
         }
+
+        .seven-live-row {
+          margin-top: 6px;
+        }
+
+        .seven-command-center {
+          padding: 16px;
+          border-radius: 26px;
+          background:
+            radial-gradient(circle at 8% 50%, rgba(77, 163, 255, 0.22), transparent 34%),
+            radial-gradient(circle at 96% 22%, rgba(122, 92, 255, 0.20), transparent 36%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045));
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          color: rgba(245, 247, 250, 0.96);
+        }
+
+        .mode-light .seven-command-center {
+          background:
+            radial-gradient(circle at 8% 50%, rgba(47, 123, 255, 0.14), transparent 34%),
+            radial-gradient(circle at 96% 22%, rgba(106, 92, 255, 0.10), transparent 36%),
+            rgba(255, 255, 255, 0.72);
+          border-color: rgba(28, 31, 38, 0.06);
+          color: rgba(28, 31, 38, 0.96);
+        }
+
+        .seven-ai-orb {
+          min-width: 46px;
+          min-height: 46px;
+          border-radius: 999px;
+          background:
+            radial-gradient(circle at 36% 32%, rgba(255, 255, 255, 0.94), transparent 18%),
+            radial-gradient(circle at 42% 48%, rgba(0, 212, 255, 0.92), rgba(122, 92, 255, 0.84) 58%, rgba(77, 163, 255, 0.54));
+          box-shadow:
+            0 0 18px rgba(77, 163, 255, 0.44),
+            0 0 34px rgba(122, 92, 255, 0.28);
+        }
+
+        .seven-command-title {
+          color: rgba(245, 247, 250, 0.98);
+          font-size: 18px;
+          font-weight: 500;
+        }
+
+        .mode-light .seven-command-title { color: rgba(28, 31, 38, 0.98); }
+
+        .seven-command-note {
+          color: rgba(237, 237, 237, 0.64);
+          font-size: 12px;
+        }
+
+        .mode-light .seven-command-note { color: rgba(107, 114, 128, 0.92); }
+
+        .seven-command-pill {
+          min-height: 42px;
+          padding: 0 14px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.075);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: rgba(245, 247, 250, 0.94);
+        }
+
+        .seven-command-pill:hover {
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(77, 163, 255, 0.20);
+        }
+
+        .mode-light .seven-command-pill {
+          background: rgba(255, 255, 255, 0.68);
+          border-color: rgba(28, 31, 38, 0.06);
+          color: rgba(28, 31, 38, 0.94);
+        }
+
+        .seven-recommendation {
+          padding: 14px;
+          border-radius: 22px;
+          background:
+            linear-gradient(145deg, rgba(77, 163, 255, 0.12), rgba(122, 92, 255, 0.08));
+          border: 1px solid rgba(77, 163, 255, 0.16);
+          color: rgba(245, 247, 250, 0.94);
+        }
+
+        .mode-light .seven-recommendation {
+          background: rgba(47, 123, 255, 0.08);
+          border-color: rgba(47, 123, 255, 0.14);
+          color: rgba(28, 31, 38, 0.94);
+        }
+
+        .mode-light .seven-status-card {
+          background: rgba(255, 255, 255, 0.64);
+          border-color: rgba(28, 31, 38, 0.06);
+          color: rgba(28, 31, 38, 0.86);
+        }
+
+        .seven-content { background: transparent; }
 
         .seven-page {
-          padding: 30px;
+          padding: 28px;
         }
 
         .seven-hero {
           background:
-            linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(226, 239, 247, 0.30));
-          border: 1px solid rgba(255, 255, 255, 0.70);
-          border-radius: 18px;
-          padding: 20px 22px;
-          margin-bottom: 4px;
+            radial-gradient(circle at 12% 18%, rgba(77, 163, 255, 0.18), transparent 38%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045));
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          border-radius: 26px;
+          padding: 24px 26px;
+          margin-bottom: 6px;
+        }
+
+        .mode-light .seven-hero {
+          background:
+            radial-gradient(circle at 12% 18%, rgba(47, 123, 255, 0.13), transparent 38%),
+            rgba(255, 255, 255, 0.68);
+          border-color: rgba(28, 31, 38, 0.06);
         }
 
         .seven-hero-title {
-          color: rgba(23, 35, 43, 0.98);
-          font-size: 28px;
+          color: rgba(245, 247, 250, 0.99);
+          font-size: 32px;
           font-weight: 500;
         }
 
+        .mode-light .seven-hero-title { color: rgba(28, 31, 38, 0.98); }
+
         .seven-hero-subtitle {
-          color: rgba(77, 96, 106, 0.72);
+          color: rgba(237, 237, 237, 0.66);
           font-size: 14px;
         }
+
+        .mode-light .seven-hero-subtitle { color: rgba(107, 114, 128, 0.92); }
 
         .seven-metric-row {
           margin-top: 8px;
@@ -527,137 +705,185 @@ def run_gui() -> int:
         .seven-metric-card {
           min-width: 154px;
           min-height: 84px;
-          background: rgba(255, 255, 255, 0.48);
-          border: 1px solid rgba(255, 255, 255, 0.66);
-          border-radius: 18px;
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04));
+          border: 1px solid rgba(255, 255, 255, 0.09);
+          border-radius: 22px;
           padding: 14px;
         }
 
+        .mode-light .seven-metric-card {
+          background: rgba(255, 255, 255, 0.64);
+          border-color: rgba(28, 31, 38, 0.06);
+        }
+
         .seven-metric-card.good {
-          border-color: rgba(90, 173, 114, 0.34);
-          background: rgba(90, 173, 114, 0.075);
+          border-color: rgba(0, 255, 179, 0.24);
+          background: rgba(0, 255, 179, 0.055);
         }
 
         .seven-metric-card.warn {
-          border-color: rgba(111, 157, 188, 0.34);
-          background: rgba(111, 157, 188, 0.075);
+          border-color: rgba(77, 163, 255, 0.24);
+          background: rgba(77, 163, 255, 0.055);
         }
 
         .seven-metric-card.bad {
-          border-color: rgba(196, 103, 58, 0.34);
-          background: rgba(196, 103, 58, 0.075);
+          border-color: rgba(255, 133, 93, 0.24);
+          background: rgba(255, 133, 93, 0.055);
         }
 
         .seven-metric-label {
-          color: rgba(77, 96, 106, 0.62);
+          color: rgba(237, 237, 237, 0.48);
           font-size: 11px;
           letter-spacing: 0.08em;
         }
 
+        .mode-light .seven-metric-label { color: rgba(107, 114, 128, 0.84); }
+
         .seven-metric-value {
-          color: rgba(23, 35, 43, 0.98);
-          font-family: "JetBrainsMono Nerd Font", "SF Mono", monospace;
+          color: rgba(245, 247, 250, 0.98);
+          font-family: "SF Mono", "JetBrainsMono Nerd Font", monospace;
           font-size: 26px;
           font-weight: 500;
         }
 
+        .mode-light .seven-metric-value { color: rgba(28, 31, 38, 0.98); }
+
         .seven-metric-note {
-          color: rgba(77, 96, 106, 0.62);
+          color: rgba(237, 237, 237, 0.54);
           font-size: 12px;
         }
 
-        preferencesgroup {
-          margin-top: 10px;
-        }
+        .mode-light .seven-metric-note { color: rgba(107, 114, 128, 0.86); }
+
+        preferencesgroup { margin-top: 10px; }
 
         row.seven-card {
           min-height: 58px;
           margin-top: 6px;
           margin-bottom: 6px;
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.48);
-          border: 1px solid rgba(255, 255, 255, 0.64);
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.075);
+          border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         row.seven-card:hover {
-          background: rgba(255, 255, 255, 0.64);
-          border-color: rgba(111, 157, 188, 0.38);
+          background: rgba(255, 255, 255, 0.11);
+          border-color: rgba(77, 163, 255, 0.18);
+        }
+
+        .mode-light row.seven-card {
+          background: rgba(255, 255, 255, 0.68);
+          border-color: rgba(28, 31, 38, 0.06);
         }
 
         .seven-pill {
           border-radius: 999px;
           padding: 4px 9px;
-          background: rgba(90, 173, 114, 0.14);
-          color: #5aad72;
+          background: rgba(0, 255, 179, 0.12);
+          color: #00ffb3;
         }
 
-        .seven-compact-grid {
-          margin-top: 4px;
-        }
+        .mode-light .seven-pill { color: #2f7bff; background: rgba(47, 123, 255, 0.10); }
+
+        .seven-compact-grid { margin-top: 4px; }
 
         .seven-tile {
           min-width: 168px;
           min-height: 116px;
           padding: 14px;
           border-radius: 22px;
-          background: rgba(255, 255, 255, 0.48);
-          border: 1px solid rgba(255, 255, 255, 0.68);
-          color: rgba(23, 35, 43, 0.96);
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.035));
+          border: 1px solid rgba(255, 255, 255, 0.085);
+          color: rgba(245, 247, 250, 0.96);
         }
 
         .seven-tile:hover {
-          background: rgba(255, 255, 255, 0.70);
-          border-color: rgba(111, 157, 188, 0.38);
+          background: rgba(255, 255, 255, 0.13);
+          border-color: rgba(77, 163, 255, 0.20);
+        }
+
+        .mode-light .seven-tile {
+          background: rgba(255, 255, 255, 0.64);
+          border-color: rgba(28, 31, 38, 0.06);
+          color: rgba(28, 31, 38, 0.96);
         }
 
         .seven-tile.good {
-          border-color: rgba(90, 173, 114, 0.30);
-          background: rgba(90, 173, 114, 0.08);
+          border-color: rgba(0, 255, 179, 0.22);
+          background: rgba(0, 255, 179, 0.055);
         }
 
         .seven-tile.warn {
-          border-color: rgba(111, 157, 188, 0.34);
-          background: rgba(111, 157, 188, 0.08);
+          border-color: rgba(77, 163, 255, 0.22);
+          background: rgba(77, 163, 255, 0.055);
         }
 
         .seven-tile.bad {
-          border-color: rgba(196, 103, 58, 0.28);
-          background: rgba(196, 103, 58, 0.08);
+          border-color: rgba(255, 133, 93, 0.22);
+          background: rgba(255, 133, 93, 0.055);
         }
 
         .seven-tile-icon {
           font-size: 26px;
-          color: rgba(48, 78, 98, 0.92);
+          color: rgba(77, 163, 255, 0.98);
         }
 
         .seven-tile-title {
-          color: rgba(23, 35, 43, 0.98);
+          color: rgba(245, 247, 250, 0.98);
           font-size: 14px;
           font-weight: 500;
         }
 
+        .mode-light .seven-tile-title { color: rgba(28, 31, 38, 0.98); }
+
         .seven-tile-note {
-          color: rgba(77, 96, 106, 0.66);
+          color: rgba(237, 237, 237, 0.58);
           font-size: 11px;
         }
+
+        .mode-light .seven-tile-note { color: rgba(107, 114, 128, 0.90); }
 
         .seven-glass-strip {
           padding: 13px;
           border-radius: 22px;
-          background: rgba(255, 255, 255, 0.44);
-          border: 1px solid rgba(255, 255, 255, 0.66);
+          background:
+            linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04));
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .mode-light .seven-glass-strip {
+          background: rgba(255, 255, 255, 0.64);
+          border-color: rgba(28, 31, 38, 0.06);
         }
 
         .seven-action-dot {
           min-width: 42px;
           min-height: 42px;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.58);
-          border: 1px solid rgba(255, 255, 255, 0.78);
+          background:
+            linear-gradient(145deg, rgba(77, 163, 255, 0.20), rgba(122, 92, 255, 0.12));
+          border: 1px solid rgba(255, 255, 255, 0.10);
+          color: rgba(245, 247, 250, 0.94);
         }
 
         .seven-action-dot:hover {
-          background: rgba(255, 255, 255, 0.82);
+          background:
+            linear-gradient(145deg, rgba(77, 163, 255, 0.28), rgba(122, 92, 255, 0.18));
+        }
+
+        .seven-action-dot,
+        .seven-command-pill,
+        .seven-nav-item,
+        .seven-tile,
+        .seven-metric-card,
+        row.seven-card {
+          transition:
+            background 160ms ease,
+            color 160ms ease,
+            border-color 160ms ease,
+            outline-color 160ms ease;
         }
         """
         provider = Gtk.CssProvider()
@@ -747,9 +973,19 @@ def run_gui() -> int:
             status_note = Gtk.Label(label=tr("hub.control_center", "SevenOS Control Center"))
             status_note.set_xalign(0)
             status_note.add_css_class("dim-label")
+            live_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            live_row.add_css_class("seven-live-row")
+            live_orb = Gtk.Box()
+            live_orb.add_css_class("seven-live-orb")
+            live_label = Gtk.Label(label="Live")
+            live_label.set_xalign(0)
+            live_label.add_css_class("dim-label")
+            live_row.append(live_orb)
+            live_row.append(live_label)
             sidebar_status_card.append(status_title)
             sidebar_status_card.append(status_value)
             sidebar_status_card.append(status_note)
+            sidebar_status_card.append(live_row)
             sidebar.append(sidebar_status_card)
             sidebar.append(refresh)
 
@@ -760,6 +996,7 @@ def run_gui() -> int:
 
             root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
             root.add_css_class("seven-root")
+            root.add_css_class(f"mode-{current_theme_mode()}")
             root.append(body)
             win.set_content(root)
 
@@ -909,6 +1146,59 @@ def run_gui() -> int:
                     ),
                 )
                 return button
+
+            def command_pill(icon_name: str, label_text: str, command: str) -> Gtk.Button:
+                button = Gtk.Button()
+                button.add_css_class("seven-command-pill")
+                button.set_tooltip_text(command)
+                content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
+                icon = Gtk.Image.new_from_icon_name(icon_name)
+                label = Gtk.Label(label=label_text)
+                label.set_xalign(0)
+                content.append(icon)
+                content.append(label)
+                button.set_child(content)
+                button.connect(
+                    "clicked",
+                    lambda _button, command=command, label_text=label_text: run_ecosystem_command(
+                        command,
+                        title=f"SevenOS - {label_text}",
+                    ),
+                )
+                return button
+
+            def command_center(active_profile: str, daily_state: str) -> Gtk.Box:
+                center = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+                center.add_css_class("seven-command-center")
+                orb = Gtk.Box()
+                orb.add_css_class("seven-ai-orb")
+                center.append(orb)
+
+                copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+                copy.set_hexpand(True)
+                title = Gtk.Label(label=tr("hub.command.title", "What do you want to do?"))
+                title.set_xalign(0)
+                title.add_css_class("seven-command-title")
+                note = Gtk.Label(
+                    label=tr(
+                        "hub.command.note",
+                        "{profile} mode · {state} · Spotlight, Seven AI and settings are one click away.",
+                    ).format(profile=active_profile, state=daily_state.replace("-", " "))
+                )
+                note.set_xalign(0)
+                note.set_wrap(True)
+                note.add_css_class("seven-command-note")
+                copy.append(title)
+                copy.append(note)
+                center.append(copy)
+
+                for icon_name, label_text, command in [
+                    ("seven-spotlight", "Spotlight", "seven-spotlight"),
+                    ("seven-ai", "Seven AI", "seven ai focus"),
+                    ("seven-settings", tr("hub.settings", "Settings"), "seven-settings"),
+                ]:
+                    center.append(command_pill(icon_name, label_text, command))
+                return center
 
             def compact_grid() -> Gtk.Grid:
                 grid = Gtk.Grid()
@@ -1542,45 +1832,52 @@ def run_gui() -> int:
                 control = control_payload()
                 active = next((item for item in profiles if item.get("active")), None)
 
-                heading(dashboard, tr("hub.heading", "Seven Hub"), tr("hub.heading.subtitle", "Control Center for the active SevenOS session."))
+                heading(
+                    dashboard,
+                    tr("hub.home.title", "SevenOS"),
+                    tr("hub.home.subtitle", "Beyond the Desktop. Your intelligent center for launching, tuning, repairing and understanding the system."),
+                )
+
+                daily_state = daily.get("decision", "unknown")
+                active_profile = active.get("title", "SevenOS") if active else tr("hub.tile.choose_workspace", "choose workspace")
+                dashboard.append(command_center(active_profile, daily_state))
 
                 metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
                 metrics.add_css_class("seven-metric-row")
                 readiness_percent = int(readiness.get("percent", 0) or 0)
                 shield_percent = int(shield.get("percent", 0) or 0)
                 experience_percent = int(experience.get("percent", 0) or 0)
-                daily_state = daily.get("decision", "unknown")
-                metrics.append(metric_card(tr("hub.readiness", "Readiness"), f"{readiness_percent}%", "system", metric_state(readiness_percent)))
-                metrics.append(metric_card(tr("hub.shield", "Shield"), f"{shield_percent}%", "trust", metric_state(shield_percent)))
-                metrics.append(metric_card("UX", f"{experience_percent}%", "experience", metric_state(experience_percent)))
-                metrics.append(metric_card(tr("hub.daily", "Daily"), state_short(daily_state), f"{len(daily.get('blockers', []))} blockers", "good" if daily_state == "ready" else "warn"))
+                metrics.append(metric_card(tr("hub.readiness", "Readiness"), f"{readiness_percent}%", tr("hub.metric.system_health", "system health"), metric_state(readiness_percent)))
+                metrics.append(metric_card(tr("hub.shield", "Shield"), f"{shield_percent}%", tr("hub.metric.security_posture", "security posture"), metric_state(shield_percent)))
+                metrics.append(metric_card("UX", f"{experience_percent}%", tr("hub.metric.interface_coherence", "interface coherence"), metric_state(experience_percent)))
+                metrics.append(metric_card(tr("hub.daily", "Daily"), state_short(daily_state), tr("hub.metric.ready_to_work", "ready to work"), "good" if daily_state == "ready" else "warn"))
                 dashboard.append(metrics)
 
                 strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
                 strip.add_css_class("seven-glass-strip")
                 for icon_name, tooltip, command in [
-                    ("system-search-symbolic", "Spotlight", "seven-spotlight"),
+                    ("seven-spotlight", "Spotlight", "seven-spotlight"),
                     ("view-grid-symbolic", "Launchpad", "seven-overview apps"),
-                    ("folder-symbolic", "Files", "seven-files"),
-                    ("preferences-system-symbolic", "Settings", "seven-settings"),
-                    ("emblem-system-symbolic", "Quick Settings", "seven-quick-settings"),
-                    ("security-high-symbolic", "Shield", "seven shield dashboard"),
-                    ("system-shutdown-symbolic", "Power", "seven-power"),
+                    ("seven-files", "Files", "seven-files"),
+                    ("utilities-terminal-symbolic", tr("hub.action.terminal", "Terminal"), "seven-terminal classic"),
+                    ("seven-settings", "Settings", "seven-settings"),
+                    ("emblem-system-symbolic", tr("hub.action.quick_settings", "Quick Settings"), "seven-quick-settings"),
+                    ("seven-ai", "Seven AI", "seven ai focus"),
+                    ("system-shutdown-symbolic", tr("hub.action.power", "Power"), "seven-power"),
                 ]:
                     strip.append(icon_action(icon_name, tooltip, command))
                 dashboard.append(strip)
 
                 grid = compact_grid()
                 tiles = [
-                    tile_button("7", "Profile", active.get("title", "Baobab") if active else "Choose mode", "seven-waybar-action profile", "good" if active else "warn"),
-                    tile_button("⚙", tr("hub.settings", "Settings"), "desktop controls", "seven-settings", "good"),
+                    tile_button("7", tr("hub.tile.active_mode", "Active mode"), active.get("title", "Baobab") if active else tr("hub.tile.choose_workspace", "choose workspace"), "seven-waybar-action profile", "good" if active else "warn"),
+                    tile_button("⌘", tr("hub.settings", "Settings"), tr("hub.tile.settings_note", "appearance, language, theme"), "seven-settings", "good"),
+                    tile_button("AI", "Seven AI", tr("hub.tile.ai_note", "local system assistant"), "seven ai focus", "good"),
                     tile_button("!", tr("hub.security", "Security"), shield.get("posture", "unknown"), "seven shield dashboard", metric_state(shield_percent)),
                     tile_button("W", tr("hub.windows", "Windows"), windows.get("mode", "setup"), "seven-windows-assistant guide", "good" if windows.get("ready") else "warn"),
                     tile_button("S", tr("hub.server", "Server"), server.get("state", server.get("service", {}).get("state", "MISS")), "seven server status", "good" if str(server.get("state", "")).upper() == "RUN" else "warn"),
-                    tile_button("A", tr("hub.apps", "Apps"), "install and update", "sevenpkg status", "warn"),
-                    tile_button("D", tr("hub.doctor", "Doctor"), "repair path", "seven doctor", "warn"),
-                    tile_button("B", "B3", "phase gate", "seven b3 status", "warn"),
-                    tile_button("I", tr("hub.identity", "Identity"), identity.get("tagline", "Beyond the Desktop"), "seven identity status", "good"),
+                    tile_button("A", tr("hub.apps", "Apps"), tr("hub.tile.apps_note", "install and update"), "sevenpkg status", "warn"),
+                    tile_button("D", tr("hub.doctor", "Doctor"), tr("hub.tile.doctor_note", "repair SevenOS"), "seven doctor", "warn"),
                 ]
                 add_tiles(grid, tiles, 4)
                 dashboard.append(grid)
@@ -1588,7 +1885,7 @@ def run_gui() -> int:
                 control_actions = control.get("actions") or []
                 if control_actions:
                     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-                    actions.add_css_class("seven-glass-strip")
+                    actions.add_css_class("seven-recommendation")
                     for item in control_actions[:4]:
                         actions.append(
                             tile_button(
@@ -1714,6 +2011,47 @@ def run_gui() -> int:
                 render_actions_compact()
                 render_ecosystem_compact()
 
+            def render_error(message: str) -> None:
+                clear(dashboard)
+                heading(
+                    dashboard,
+                    "Seven Hub",
+                    "Seven Hub reste ouvert. Une donnée live n'a pas pu être chargée, mais l'interface système continue.",
+                )
+                dashboard.append(
+                    status_card(
+                        "Chargement partiel",
+                        message[:180],
+                        "WARN",
+                        "warn",
+                    )
+                )
+
+            def safe_render_all() -> bool:
+                try:
+                    render_all()
+                    return True
+                except Exception as error:
+                    print(f"seven-hub-native: render warning: {error}", file=sys.stderr)
+                    render_error(str(error))
+                    return False
+
+            def update_live_status() -> bool:
+                try:
+                    daily = daily_payload()
+                    session = session_payload()
+                    state = daily.get("decision", session.get("mode", "live"))
+                    running = session.get("summary", {}).get("running", 0)
+                    live_label.set_text(f"{state} · {running} services")
+                except Exception:
+                    live_label.set_text("live · guarded")
+                return True
+
+            def refresh_live_surface() -> bool:
+                safe_render_all()
+                update_live_status()
+                return True
+
             def render_loading_shell() -> None:
                 clear(dashboard)
                 heading(dashboard, "SevenOS Dashboard", "Loading live system state...")
@@ -1739,13 +2077,16 @@ def run_gui() -> int:
                 ecosystem_page.append(status_card("Seven Ecosystem", "Preparing Server, Store, Shell, Core and deployment state.", "LOAD", "info"))
 
             def load_after_present() -> bool:
-                render_all()
+                safe_render_all()
+                update_live_status()
                 return False
 
-            refresh.connect("clicked", lambda _button: render_all())
+            refresh.connect("clicked", lambda _button: refresh_live_surface())
             render_loading_shell()
             win.present()
             GLib.timeout_add(80, load_after_present)
+            GLib.timeout_add_seconds(10, update_live_status)
+            GLib.timeout_add_seconds(60, refresh_live_surface)
 
     app = SevenHubNative()
     return app.run([sys.argv[0]])

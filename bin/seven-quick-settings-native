@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SevenOS native Quick Settings surface."""
+"""SevenOS native Control Center surface."""
 
 from __future__ import annotations
 
@@ -8,7 +8,11 @@ import os
 import shutil
 import subprocess
 import sys
+import warnings
+from dataclasses import dataclass
 from pathlib import Path
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 def ensure_gi_python() -> None:
@@ -22,12 +26,7 @@ def ensure_gi_python() -> None:
         system_python = Path("/usr/bin/python")
         if not system_python.exists() or Path(sys.executable).resolve() == system_python:
             return
-        result = subprocess.run(
-            [str(system_python), "-c", "import gi"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         if result.returncode == 0:
             os.environ["SEVENOS_GI_PYTHON"] = "1"
             os.execv(str(system_python), [str(system_python), *sys.argv])
@@ -54,6 +53,60 @@ STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/stat
 DND_FILE = STATE_DIR / "notifications.dnd"
 
 
+@dataclass(frozen=True)
+class SystemSnapshot:
+    profile_title: str
+    profile_key: str
+    wifi: str
+    wifi_enabled: bool
+    bluetooth: str
+    bluetooth_enabled: bool
+    volume: int
+    brightness: int
+    battery_percent: int
+    battery_note: str
+    battery_charging: bool
+    vpn_active: bool
+    recorder_active: bool
+    ai_busy: bool
+
+
+def command_output(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout.strip()
+
+
+def command_available(command: str) -> bool:
+    return shutil.which(command) is not None
+
+
+def current_theme_mode() -> str:
+    theme_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/theme.conf"
+    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
+        return str(os.environ["SEVENOS_THEME_MODE"])
+    if theme_file.exists():
+        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("SEVENOS_THEME_MODE="):
+                value = line.split("=", 1)[1].strip().strip("'\"")
+                if value in {"dark", "light"}:
+                    return value
+    return "dark"
+
+
+def control_center_css(theme_mode: str) -> str:
+    css_path = ROOT / "identity" / f"control-center-{theme_mode}.css"
+    if css_path.exists():
+        return css_path.read_text(encoding="utf-8")
+    return """
+    * { font-family: "SF Pro Display", system-ui, sans-serif; }
+    window.quick-window { background: transparent; }
+    .quick-root { padding: 16px; border-radius: 28px; background: rgba(18,19,26,0.92); color: #ededed; }
+    .tile, .context-card, .slider-card, .detail-card, .battery-row, .ai-row, .footer-card { padding: 12px; border-radius: 20px; background: rgba(255,255,255,0.06); }
+    .detail-card { border: 1px solid rgba(255,255,255,0.08); }
+    .icon-action { border-radius: 999px; }
+    """
+
+
 def local_command(name: str) -> str:
     candidate = ROOT / "bin" / name
     return str(candidate) if candidate.exists() else name
@@ -69,11 +122,6 @@ def run_detached(*command: str) -> None:
     )
 
 
-def command_output(command: list[str]) -> str:
-    result = subprocess.run(command, text=True, capture_output=True, check=False)
-    return result.stdout.strip()
-
-
 def active_profile() -> tuple[str, str]:
     profile_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/profile.json"
     if profile_file.exists():
@@ -86,7 +134,7 @@ def active_profile() -> tuple[str, str]:
 
 
 def wifi_state() -> str:
-    if not shutil.which("nmcli"):
+    if not command_available("nmcli"):
         return tr_text("Missing")
     radio = command_output(["nmcli", "radio", "wifi"])
     if radio == "disabled":
@@ -96,30 +144,29 @@ def wifi_state() -> str:
 
 
 def bluetooth_state() -> str:
-    if not shutil.which("bluetoothctl"):
+    if not command_available("bluetoothctl"):
         return tr_text("Missing")
     state = command_output(["bash", "-lc", "bluetoothctl show 2>/dev/null | awk -F': ' '/Powered/{print $2; exit}'"])
     return tr_text("On") if state == "yes" else tr_text("Off")
 
 
 def volume_value() -> int:
-    if not shutil.which("wpctl"):
+    if not command_available("wpctl"):
         return 50
     raw = command_output(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
     try:
-        value = float(raw.split()[1]) * 100
-        return max(0, min(100, int(value)))
+        return max(0, min(100, int(float(raw.split()[1]) * 100)))
     except Exception:
         return 50
 
 
 def set_volume(value: float) -> None:
-    if shutil.which("wpctl"):
+    if command_available("wpctl"):
         subprocess.Popen(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", f"{int(value)}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def brightness_value() -> int:
-    if not shutil.which("brightnessctl"):
+    if not command_available("brightnessctl"):
         return 60
     raw = command_output(["bash", "-lc", "brightnessctl -m 2>/dev/null | awk -F, '{gsub(/%/,\"\",$4); print $4; exit}'"])
     try:
@@ -129,12 +176,75 @@ def brightness_value() -> int:
 
 
 def set_brightness(value: float) -> None:
-    if shutil.which("brightnessctl"):
+    if command_available("brightnessctl"):
         subprocess.Popen(["brightnessctl", "set", f"{int(value)}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def battery_info() -> tuple[int, str, bool]:
+    if command_available("upower"):
+        devices = command_output(["bash", "-lc", "upower -e | grep -m1 BAT || true"])
+        if devices:
+            percentage = command_output(["bash", "-lc", f"upower -i {devices!r} | awk '/percentage:/{{gsub(/%/,\"\",$2); print int($2); exit}}'"])
+            state = command_output(["bash", "-lc", f"upower -i {devices!r} | awk -F': *' '/state:/{{print $2; exit}}'"])
+            time_left = command_output(["bash", "-lc", f"upower -i {devices!r} | awk -F': *' '/time to empty|time to full/{{print $2; exit}}'"])
+            try:
+                return max(0, min(100, int(percentage))), time_left or state or tr_text("Ready"), state == "charging"
+            except Exception:
+                pass
+    capacity = command_output(["bash", "-lc", "cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1"])
+    status = command_output(["bash", "-lc", "cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1"])
+    try:
+        return max(0, min(100, int(capacity))), status or tr_text("Ready"), status.lower() == "charging"
+    except Exception:
+        return 0, tr_text("No battery"), False
+
+
+def vpn_active() -> bool:
+    if not command_available("nmcli"):
+        return False
+    return bool(command_output(["bash", "-lc", "nmcli -t -f TYPE,STATE con show --active | awk -F: '$1~/vpn/ && $2==\"activated\"{print 1; exit}'"]))
+
+
+def recorder_active() -> bool:
+    return subprocess.run(["pgrep", "-x", "wf-recorder"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+
+def ai_busy() -> bool:
+    state_file = STATE_DIR / "ai/status.json"
+    if state_file.exists():
+        try:
+            payload = json.loads(state_file.read_text(encoding="utf-8"))
+            return str(payload.get("state", "")).lower() in {"busy", "running", "thinking"}
+        except Exception:
+            return False
+    return False
+
+
+def snapshot() -> SystemSnapshot:
+    profile_title, profile_key = active_profile()
+    wifi = wifi_state()
+    bluetooth = bluetooth_state()
+    percent, note, charging = battery_info()
+    return SystemSnapshot(
+        profile_title=profile_title,
+        profile_key=profile_key,
+        wifi=wifi,
+        wifi_enabled=wifi not in {tr_text("Off"), tr_text("Missing")},
+        bluetooth=bluetooth,
+        bluetooth_enabled=bluetooth == tr_text("On"),
+        volume=volume_value(),
+        brightness=brightness_value(),
+        battery_percent=percent,
+        battery_note=note,
+        battery_charging=charging,
+        vpn_active=vpn_active(),
+        recorder_active=recorder_active(),
+        ai_busy=ai_busy(),
+    )
+
+
 def toggle_wifi() -> None:
-    if shutil.which("nmcli"):
+    if command_available("nmcli"):
         state = command_output(["nmcli", "radio", "wifi"])
         subprocess.Popen(["nmcli", "radio", "wifi", "off" if state == "enabled" else "on"])
     else:
@@ -142,13 +252,75 @@ def toggle_wifi() -> None:
 
 
 def toggle_bluetooth() -> None:
-    if shutil.which("bluetoothctl"):
+    if command_available("bluetoothctl"):
         state = bluetooth_state()
-        subprocess.Popen(["bluetoothctl", "power", "off" if state == "On" else "on"])
+        subprocess.Popen(["bluetoothctl", "power", "off" if state == tr_text("On") else "on"])
 
 
 def toggle_focus() -> None:
     run_detached("seven-waybar-notifications", "toggle-dnd")
+
+
+def nearby_wifi(limit: int = 5) -> list[tuple[str, str]]:
+    if not command_available("nmcli"):
+        return []
+    raw = command_output(["bash", "-lc", "nmcli -t --escape no -f SSID,SIGNAL,IN-USE dev wifi list --rescan no 2>/dev/null"])
+    rows: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for line in raw.splitlines():
+        parts = line.split(":")
+        if len(parts) < 2:
+            continue
+        ssid = parts[0].strip()
+        if not ssid or ssid in seen:
+            continue
+        seen.add(ssid)
+        signal = parts[1].strip() if len(parts) > 1 else "--"
+        active = f" · {tr_text('Connected').lower()}" if len(parts) > 2 and parts[2].strip() == "*" else ""
+        rows.append((ssid, f"{signal}%{active}"))
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def bluetooth_devices(limit: int = 4) -> list[tuple[str, str]]:
+    if not command_available("bluetoothctl"):
+        return []
+    connected = command_output(["bluetoothctl", "devices", "Connected"])
+    paired = command_output(["bluetoothctl", "devices", "Paired"])
+    rows: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for raw, state in ((connected, tr_text("Connected")), (paired, tr_text("Paired"))):
+        for line in raw.splitlines():
+            parts = line.split(maxsplit=2)
+            if len(parts) != 3 or parts[1] in seen:
+                continue
+            seen.add(parts[1])
+            rows.append((parts[2], state))
+            if len(rows) >= limit:
+                return rows
+    return rows
+
+
+def add_classes(widget, classes: list[str]) -> None:
+    context = widget.get_style_context()
+    for css_class in classes:
+        if css_class:
+            context.add_class(css_class)
+
+
+def context_signal(state: SystemSnapshot) -> tuple[str, str, str, tuple[str, ...] | None]:
+    if state.recorder_active:
+        return tr_text("Recording in progress"), tr_text("Click to stop the current screen recording."), "attention", ("seven-recorder", "stop")
+    if state.battery_percent and state.battery_percent <= 18 and not state.battery_charging:
+        return tr_text("Battery is low"), tr_text("Reduce brightness or open power controls."), "attention", ("seven-quick-settings", "power")
+    if not state.wifi_enabled:
+        return tr_text("Wi-Fi is off"), tr_text("Turn it on or open nearby networks."), "attention", ("seven-wifi", "menu")
+    if state.vpn_active:
+        return tr_text("VPN protected"), tr_text("Network traffic is routed through an active VPN."), "success", ("seven-settings", "network")
+    if state.ai_busy:
+        return tr_text("Seven AI is working"), tr_text("An assistant task is currently running locally."), "success", ("seven", "ai", "focus")
+    return tr_text("SevenOS is ready"), tr_text("Core controls are active and the session looks healthy."), "success", ("seven", "ai", "focus")
 
 
 def probe() -> int:
@@ -165,13 +337,18 @@ def probe() -> int:
     return 0
 
 
-def run() -> int:
+def run(panel: str = "system") -> int:
     ensure_gi_python()
     import gi
 
     gi.require_version("Gdk", "3.0")
     gi.require_version("Gtk", "3.0")
     from gi.repository import Gdk, GLib, Gtk
+    try:
+        gi.require_version("GtkLayerShell", "0.1")
+        from gi.repository import GtkLayerShell
+    except Exception:
+        GtkLayerShell = None
 
     GLib.set_prgname("SevenQuickSettingsNative")
     GLib.set_application_name(f"SevenOS {tr_text('Control Center')}")
@@ -180,145 +357,72 @@ def run() -> int:
     except Exception:
         pass
 
-    css = """
-    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
-    window.quick-window { background: transparent; }
-    .quick-root {
-      padding: 16px;
-      border-radius: 30px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.86), rgba(230,244,249,0.66)),
-        rgba(255,255,255,0.58);
-      border: 1px solid rgba(255,255,255,0.84);
-    }
-    .quick-title { color: rgba(16,27,34,0.98); font-size: 18px; font-weight: 500; }
-    .quick-subtitle { color: rgba(42,58,68,0.62); font-size: 11px; }
-    .tile {
-      min-height: 82px;
-      padding: 13px;
-      border-radius: 24px;
-      background: rgba(255,255,255,0.52);
-      border: 1px solid rgba(255,255,255,0.72);
-      color: rgba(20,34,44,0.96);
-    }
-    .tile:hover {
-      background: rgba(255,255,255,0.80);
-      border-color: rgba(91,127,166,0.30);
-    }
-    .tile.active {
-      background: linear-gradient(135deg, rgba(90,162,222,0.74), rgba(255,255,255,0.58));
-      border-color: rgba(72,128,180,0.36);
-    }
-    .tile.warn {
-      background: rgba(255,255,255,0.64);
-      border-color: rgba(196,103,58,0.22);
-    }
-    .tile-glyph { font-size: 25px; }
-    .tile-title { font-size: 13px; font-weight: 500; }
-    .tile-state { color: rgba(44,60,70,0.66); font-size: 11px; }
-    .wide-card {
-      padding: 13px;
-      border-radius: 24px;
-      background: rgba(255,255,255,0.50);
-      border: 1px solid rgba(255,255,255,0.70);
-    }
-    .slider-title { color: rgba(16,27,34,0.92); font-size: 12px; font-weight: 500; }
-    .scale trough {
-      min-height: 8px;
-      border-radius: 999px;
-      background: rgba(94,116,130,0.18);
-    }
-    .scale highlight {
-      border-radius: 999px;
-      background: rgba(78,139,189,0.75);
-    }
-    .scale slider {
-      min-width: 22px;
-      min-height: 22px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(91,127,166,0.22);
-    }
-    .icon-action {
-      min-width: 46px;
-      min-height: 46px;
-      padding: 0;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.58);
-      border: 1px solid rgba(255,255,255,0.76);
-      color: rgba(20,34,44,0.92);
-    }
-    .icon-action:hover { background: rgba(255,255,255,0.84); }
-    .icon-action label { font-size: 18px; }
-    """
-    provider = Gtk.CssProvider()
-    provider.load_from_data(css.encode("utf-8"))
-    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    theme_mode = current_theme_mode()
+    active_panel = panel if panel in {"system", "wifi", "bluetooth", "audio", "power", "time", "ai"} else "system"
+    state = snapshot()
 
-    profile_title, profile_key = active_profile()
+    provider = Gtk.CssProvider()
+    provider.load_from_data(control_center_css(theme_mode).encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     window = Gtk.Window(title=f"SevenOS {tr_text('Control Center')}")
     window.set_wmclass("SevenQuickSettingsNative", "SevenQuickSettingsNative")
     window.set_decorated(False)
     window.set_resizable(False)
     window.set_keep_above(True)
-    window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(430, 520)
+    window.set_position(Gtk.WindowPosition.NONE)
+    window.set_default_size(364, 552 if active_panel != "system" else 486)
     window.get_style_context().add_class("quick-window")
 
-    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-    root.get_style_context().add_class("quick-root")
+    layer_shell_active = False
+    if GtkLayerShell is not None:
+        try:
+            GtkLayerShell.init_for_window(window)
+            if hasattr(GtkLayerShell, "set_namespace"):
+                GtkLayerShell.set_namespace(window, "sevenos-control-center")
+            GtkLayerShell.set_layer(window, GtkLayerShell.Layer.OVERLAY)
+            GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.TOP, True)
+            GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.RIGHT, True)
+            GtkLayerShell.set_margin(window, GtkLayerShell.Edge.TOP, 74)
+            GtkLayerShell.set_margin(window, GtkLayerShell.Edge.RIGHT, 28)
+            GtkLayerShell.set_exclusive_zone(window, -1)
+            GtkLayerShell.set_keyboard_interactivity(window, True)
+            layer_shell_active = True
+        except Exception:
+            layer_shell_active = False
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    add_classes(root, ["quick-root", f"mode-{theme_mode}", "catppuccin-mocha" if theme_mode == "dark" else "catppuccin-latte"])
     window.add(root)
 
-    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-    root.pack_start(header, False, False, 0)
-    titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-    title = Gtk.Label(label=tr_text("Control Center"), xalign=0)
-    title.get_style_context().add_class("quick-title")
-    titles.pack_start(title, False, False, 0)
-    subtitle = Gtk.Label(label=tr_text("{profile} mode", profile=profile_title), xalign=0)
-    subtitle.get_style_context().add_class("quick-subtitle")
-    titles.pack_start(subtitle, False, False, 0)
-    header.pack_start(titles, True, True, 0)
+    root.pack_start(build_header(Gtk, state, active_panel), False, False, 0)
+    root.pack_start(build_primary_grid(Gtk, state), False, False, 0)
+    root.pack_start(build_context_card(Gtk, state), False, False, 0)
+    root.pack_start(build_slider_card(Gtk, tr_text("Volume"), "audio", "󰕾", state.volume, set_volume), False, False, 0)
+    if command_available("brightnessctl"):
+        root.pack_start(build_slider_card(Gtk, tr_text("Brightness"), "brightness", "󰃠", state.brightness, set_brightness), False, False, 0)
+    if active_panel != "system":
+        root.pack_start(build_detail_card(Gtk, window, active_panel, state), False, False, 0)
+    root.pack_start(build_battery_card(Gtk, state), False, False, 0)
+    root.pack_start(build_ai_card(Gtk, state), False, False, 0)
+    root.pack_end(build_footer(Gtk), False, False, 0)
 
-    grid = Gtk.Grid()
-    grid.set_column_spacing(10)
-    grid.set_row_spacing(10)
-    root.pack_start(grid, False, False, 0)
+    def place_window(_window):
+        if layer_shell_active:
+            return False
+        try:
+            display = Gdk.Display.get_default()
+            monitor = display.get_primary_monitor() if display else None
+            if monitor is None and display and display.get_n_monitors() > 0:
+                monitor = display.get_monitor(0)
+            if monitor:
+                geometry = monitor.get_geometry()
+                window.move(geometry.x + geometry.width - 404, geometry.y + 74)
+        except Exception:
+            pass
+        return False
 
-    tiles = [
-        ("Wi-Fi", wifi_state(), "󰤨", toggle_wifi, "active" if wifi_state() not in {tr_text("Off"), tr_text("Missing")} else ""),
-        ("Bluetooth", bluetooth_state(), "󰂯", toggle_bluetooth, "active" if bluetooth_state() == tr_text("On") else ""),
-        (tr_text("Focus"), tr_text("On") if DND_FILE.exists() else tr_text("Off"), "󰂛", toggle_focus, "active" if DND_FILE.exists() else ""),
-        (tr_text("Profile"), profile_key.title(), "󰐃", lambda: run_detached("seven-waybar-action", "profile"), ""),
-    ]
-
-    for index, (label, state, glyph, callback, css_class) in enumerate(tiles):
-        tile = build_tile(Gtk, label, state, glyph, callback, css_class)
-        grid.attach(tile, index % 2, index // 2, 1, 1)
-
-    sound = build_slider_card(Gtk, tr_text("Sound"), "󰕾", volume_value(), set_volume)
-    root.pack_start(sound, False, False, 0)
-    display = build_slider_card(Gtk, tr_text("Display"), "󰃠", brightness_value(), set_brightness)
-    root.pack_start(display, False, False, 0)
-
-    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-    actions.set_halign(Gtk.Align.CENTER)
-    root.pack_end(actions, False, False, 0)
-    for glyph, tooltip, command in [
-        ("󰀻", "Apps", ("seven-overview", "apps")),
-        ("󰉋", tr_text("Files"), ("seven-files", "profile")),
-        ("󰍛", tr_text("Monitor"), ("seven-waybar-action", "system")),
-        ("󰒓", tr_text("Hub"), ("seven", "hub")),
-        ("󰐥", tr_text("Power"), ("seven-power",)),
-    ]:
-        button = Gtk.Button()
-        button.get_style_context().add_class("icon-action")
-        button.set_tooltip_text(tooltip)
-        button.add(Gtk.Label(label=glyph))
-        button.connect("clicked", lambda _button, cmd=command: run_detached(*cmd))
-        actions.pack_start(button, False, False, 0)
-
+    window.connect("realize", lambda widget: GLib.idle_add(place_window, widget))
     window.connect("destroy", Gtk.main_quit)
     window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
     window.show_all()
@@ -326,48 +430,277 @@ def run() -> int:
     return 0
 
 
-def build_tile(Gtk, label: str, state: str, glyph: str, callback, css_class: str):
+def build_header(Gtk, state: SystemSnapshot, active_panel: str):
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    header.get_style_context().add_class("quick-header")
+    titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+    panel_titles = {
+        "system": tr_text("Control Center"),
+        "wifi": "Wi-Fi",
+        "bluetooth": "Bluetooth",
+        "audio": tr_text("Sound"),
+        "power": tr_text("Power"),
+        "time": tr_text("Time"),
+        "ai": "Seven AI",
+    }
+    title = Gtk.Label(label=panel_titles[active_panel], xalign=0)
+    title.get_style_context().add_class("quick-title")
+    subtitle = Gtk.Label(label=tr_text("{profile} mode", profile=state.profile_title), xalign=0)
+    subtitle.get_style_context().add_class("quick-subtitle")
+    titles.pack_start(title, False, False, 0)
+    titles.pack_start(subtitle, False, False, 0)
+    header.pack_start(titles, True, True, 0)
+    pill = Gtk.Button(label="󰍉  " + tr_text("Spotlight"))
+    add_classes(pill, ["quick-pill"])
+    pill.set_relief(Gtk.ReliefStyle.NONE)
+    pill.connect("clicked", lambda _button: run_detached("seven-spotlight", "field"))
+    header.pack_end(pill, False, False, 0)
+    return header
+
+
+def build_primary_grid(Gtk, state: SystemSnapshot):
+    grid = Gtk.Grid()
+    grid.get_style_context().add_class("control-grid")
+    grid.set_row_spacing(8)
+    grid.set_column_spacing(8)
+    grid.set_column_homogeneous(True)
+    controls = [
+        ("Wi-Fi", state.wifi, "󰤨", toggle_wifi, ["connected" if state.wifi_enabled else "disabled"]),
+        ("Bluetooth", state.bluetooth, "󰂯", toggle_bluetooth, ["connected" if state.bluetooth_enabled else "disabled"]),
+        (tr_text("Focus"), tr_text("On") if DND_FILE.exists() else tr_text("Off"), "󰂛", toggle_focus, ["active" if DND_FILE.exists() else ""]),
+        (tr_text("Brightness"), f"{state.brightness}%", "󰃠", lambda: run_detached("seven-settings", "display"), []),
+    ]
+    for index, item in enumerate(controls):
+        grid.attach(build_tile(Gtk, *item), index % 2, index // 2, 1, 1)
+    return grid
+
+
+def build_tile(Gtk, label: str, state: str, glyph: str, callback, classes: list[str]):
     button = Gtk.Button()
-    button.get_style_context().add_class("tile")
-    if css_class:
-        button.get_style_context().add_class(css_class)
-    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    button.set_relief(Gtk.ReliefStyle.NONE)
+    add_classes(button, ["tile", *classes])
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     icon = Gtk.Label(label=glyph)
     icon.get_style_context().add_class("tile-glyph")
-    title = Gtk.Label(label=label)
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    title = Gtk.Label(label=label, xalign=0)
     title.get_style_context().add_class("tile-title")
-    status = Gtk.Label(label=state)
+    status = Gtk.Label(label=state, xalign=0)
     status.get_style_context().add_class("tile-state")
-    box.pack_start(icon, False, False, 0)
-    box.pack_start(title, False, False, 0)
-    box.pack_start(status, False, False, 0)
-    button.add(box)
+    text.pack_start(title, False, False, 0)
+    text.pack_start(status, False, False, 0)
+    row.pack_start(icon, False, False, 0)
+    row.pack_start(text, True, True, 0)
+    button.add(row)
     button.connect("clicked", lambda _button: callback())
     return button
 
 
-def build_slider_card(Gtk, title: str, glyph: str, value: int, callback):
+def build_context_card(Gtk, state: SystemSnapshot):
+    title, note, css_class, command = context_signal(state)
+    card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    add_classes(card, ["context-card", css_class])
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    title_label = Gtk.Label(label=title, xalign=0)
+    title_label.get_style_context().add_class("context-title")
+    note_label = Gtk.Label(label=note, xalign=0)
+    note_label.set_line_wrap(True)
+    note_label.get_style_context().add_class("quick-context-note")
+    text.pack_start(title_label, False, False, 0)
+    text.pack_start(note_label, False, False, 0)
+    card.pack_start(text, True, True, 0)
+    if command:
+        button = Gtk.Button(label="󰁔")
+        add_classes(button, ["icon-action"])
+        button.set_relief(Gtk.ReliefStyle.NONE)
+        button.connect("clicked", lambda _button: run_detached(*command))
+        card.pack_end(button, False, False, 0)
+    return card
+
+
+def build_slider_card(Gtk, title: str, name: str, glyph: str, value: int, callback):
     card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
-    card.get_style_context().add_class("wide-card")
+    add_classes(card, ["slider-card", f"slider-{name}"])
     heading = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     heading.pack_start(Gtk.Label(label=glyph), False, False, 0)
     label = Gtk.Label(label=title, xalign=0)
     label.get_style_context().add_class("slider-title")
+    value_label = Gtk.Label(label=f"{value}%", xalign=1)
+    value_label.get_style_context().add_class("slider-value")
     heading.pack_start(label, True, True, 0)
+    heading.pack_end(value_label, False, False, 0)
     card.pack_start(heading, False, False, 0)
     scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
     scale.set_value(value)
     scale.set_draw_value(False)
     scale.get_style_context().add_class("scale")
-    scale.connect("value-changed", lambda widget: callback(widget.get_value()))
+
+    def on_change(widget):
+        new_value = int(widget.get_value())
+        value_label.set_text(f"{new_value}%")
+        callback(new_value)
+
+    scale.connect("value-changed", on_change)
     card.pack_start(scale, False, False, 0)
     return card
+
+
+def build_battery_card(Gtk, state: SystemSnapshot):
+    row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    add_classes(row, ["battery-row", "charging" if state.battery_charging else "", "critical" if state.battery_percent and state.battery_percent <= 18 else ""])
+    top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    value = Gtk.Label(label=f"󰁹  {state.battery_percent}%", xalign=0)
+    value.get_style_context().add_class("battery-percent")
+    note = Gtk.Label(label=state.battery_note, xalign=1)
+    note.get_style_context().add_class("battery-note")
+    top.pack_start(value, False, False, 0)
+    top.pack_end(note, False, False, 0)
+    meter = Gtk.Box()
+    meter.get_style_context().add_class("battery-meter")
+    row.pack_start(top, False, False, 0)
+    row.pack_start(meter, False, False, 0)
+    return row
+
+
+def detail_action(Gtk, label: str, command: tuple[str, ...], parent=None, danger: bool = False):
+    button = Gtk.Button(label=label)
+    button.set_relief(Gtk.ReliefStyle.NONE)
+    add_classes(button, ["detail-button", "danger" if danger else ""])
+
+    def activate(_button):
+        if danger and parent is not None:
+            dialog = Gtk.MessageDialog(
+                transient_for=parent,
+                modal=True,
+                message_type=Gtk.MessageType.WARNING,
+                buttons=Gtk.ButtonsType.CANCEL,
+                text=label,
+            )
+            dialog.format_secondary_text(tr_text("Confirm this power action?"))
+            dialog.add_button(tr_text("Confirm"), Gtk.ResponseType.OK)
+            response = dialog.run()
+            dialog.destroy()
+            if response != Gtk.ResponseType.OK:
+                return
+        run_detached(*command)
+
+    button.connect("clicked", activate)
+    return button
+
+
+def detail_row(Gtk, title: str, note: str = ""):
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    row.get_style_context().add_class("detail-row")
+    label = Gtk.Label(label=title, xalign=0)
+    row.pack_start(label, True, True, 0)
+    if note:
+        note_label = Gtk.Label(label=note, xalign=1)
+        note_label.get_style_context().add_class("detail-row-note")
+        row.pack_end(note_label, False, False, 0)
+    return row
+
+
+def build_detail_card(Gtk, parent, panel: str, state: SystemSnapshot):
+    card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    card.get_style_context().add_class("detail-card")
+    titles = {
+        "wifi": ("Wi-Fi", state.wifi),
+        "bluetooth": ("Bluetooth", state.bluetooth),
+        "audio": (tr_text("Sound"), f"{state.volume}%"),
+        "power": (tr_text("Power"), f"{state.battery_percent}%"),
+        "time": (tr_text("Time"), command_output(["date", "+%H:%M"]) or "--"),
+        "ai": ("Seven AI", tr_text("Ready to help") if not state.ai_busy else tr_text("Working")),
+    }
+    title_text, subtitle_text = titles.get(panel, titles["ai"])
+    title = Gtk.Label(label=title_text, xalign=0)
+    title.get_style_context().add_class("detail-title")
+    subtitle = Gtk.Label(label=subtitle_text, xalign=0)
+    subtitle.get_style_context().add_class("detail-subtitle")
+    card.pack_start(title, False, False, 0)
+    card.pack_start(subtitle, False, False, 0)
+
+    if panel == "wifi":
+        for ssid, signal in nearby_wifi()[:4]:
+            card.pack_start(detail_row(Gtk, ssid, signal), False, False, 0)
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.pack_start(detail_action(Gtk, tr_text("Choose"), ("seven-wifi", "menu")), True, True, 0)
+        actions.pack_start(detail_action(Gtk, tr_text("Settings"), ("seven-settings", "network")), True, True, 0)
+        card.pack_start(actions, False, False, 0)
+    elif panel == "bluetooth":
+        devices = bluetooth_devices()
+        for name, device_state in devices or [(tr_text("No device"), tr_text("Ready"))]:
+            card.pack_start(detail_row(Gtk, name, device_state), False, False, 0)
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.pack_start(detail_action(Gtk, tr_text("Scan"), ("seven-bluetooth", "scan")), True, True, 0)
+        actions.pack_start(detail_action(Gtk, tr_text("Manager"), ("seven-bluetooth", "manager")), True, True, 0)
+        card.pack_start(actions, False, False, 0)
+    elif panel == "audio":
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.pack_start(detail_action(Gtk, tr_text("Mute"), ("wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle")), True, True, 0)
+        actions.pack_start(detail_action(Gtk, tr_text("Mixer"), ("pavucontrol",)), True, True, 0)
+        card.pack_start(actions, False, False, 0)
+    elif panel == "power":
+        actions = Gtk.Grid()
+        actions.set_column_spacing(8)
+        actions.set_row_spacing(8)
+        actions.attach(detail_action(Gtk, tr_text("Lock"), ("seven-power", "lock"), parent), 0, 0, 1, 1)
+        actions.attach(detail_action(Gtk, tr_text("Sleep"), ("seven-power", "suspend"), parent), 1, 0, 1, 1)
+        actions.attach(detail_action(Gtk, tr_text("Restart"), ("seven-power", "reboot"), parent, danger=True), 0, 1, 1, 1)
+        actions.attach(detail_action(Gtk, tr_text("Shutdown"), ("seven-power", "poweroff"), parent, danger=True), 1, 1, 1, 1)
+        card.pack_start(actions, False, False, 0)
+    elif panel == "time":
+        card.pack_start(detail_row(Gtk, command_output(["date", "+%A %d %B"]) or tr_text("Today"), command_output(["date", "+%Z"]) or ""), False, False, 0)
+        card.pack_start(detail_action(Gtk, tr_text("Calendar"), ("seven-spotlight", "calendar")), False, False, 0)
+    else:
+        card.pack_start(detail_row(Gtk, tr_text("System assistant"), tr_text("Local only")), False, False, 0)
+        card.pack_start(detail_action(Gtk, tr_text("Open"), ("seven", "ai", "focus")), False, False, 0)
+    return card
+
+
+def build_ai_card(Gtk, state: SystemSnapshot):
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    add_classes(row, ["ai-row", "ai-busy" if state.ai_busy else ""])
+    orb = Gtk.Box()
+    orb.get_style_context().add_class("ai-orb")
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+    title = Gtk.Label(label=tr_text("Seven AI active"), xalign=0)
+    title.get_style_context().add_class("ai-title")
+    ai_state = tr_text("Working") if state.ai_busy else tr_text("Ready to help")
+    status = Gtk.Label(label=ai_state, xalign=0)
+    status.get_style_context().add_class("ai-state")
+    text.pack_start(title, False, False, 0)
+    text.pack_start(status, False, False, 0)
+    button = Gtk.Button(label="󰚩")
+    add_classes(button, ["icon-action"])
+    button.set_relief(Gtk.ReliefStyle.NONE)
+    button.connect("clicked", lambda _button: run_detached("seven", "ai", "focus"))
+    row.pack_start(orb, False, False, 0)
+    row.pack_start(text, True, True, 0)
+    row.pack_end(button, False, False, 0)
+    return row
+
+
+def build_footer(Gtk):
+    footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    footer.get_style_context().add_class("footer-card")
+    settings = Gtk.Button(label="󰒓  " + tr_text("Settings"))
+    settings.set_relief(Gtk.ReliefStyle.NONE)
+    settings.get_style_context().add_class("footer-button")
+    settings.connect("clicked", lambda _button: run_detached("seven-settings"))
+    power = Gtk.Button(label="󰐥  " + tr_text("Power"))
+    power.set_relief(Gtk.ReliefStyle.NONE)
+    power.get_style_context().add_class("footer-button")
+    power.connect("clicked", lambda _button: run_detached("seven-quick-settings", "power"))
+    footer.pack_start(settings, True, True, 0)
+    footer.pack_start(power, True, True, 0)
+    return footer
 
 
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "--probe":
         return probe()
-    return run()
+    panel = sys.argv[1] if len(sys.argv) > 1 else "system"
+    return run(panel)
 
 
 if __name__ == "__main__":

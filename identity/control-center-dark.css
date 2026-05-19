@@ -1,0 +1,190 @@
+* {
+  font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif;
+  font-size: 12px;
+}
+
+window.quick-window {
+  background: transparent;
+}
+
+.quick-root {
+  padding: 16px;
+  border-radius: 28px;
+  color: rgba(237, 237, 237, 0.94);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.035) 48%, rgba(137, 180, 250, 0.06)),
+    rgba(17, 17, 27, 0.90);
+  border: 1px solid rgba(205, 214, 244, 0.14);
+}
+
+.quick-header {
+  padding: 2px 2px 4px;
+}
+
+.quick-title {
+  color: rgba(237, 237, 237, 0.96);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.quick-subtitle,
+.quick-context-note,
+.tile-state,
+.detail-subtitle,
+.detail-row-note,
+.slider-value,
+.battery-note,
+.ai-state {
+  color: rgba(186, 194, 222, 0.72);
+}
+
+.quick-pill {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: rgba(205, 214, 244, 0.92);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(205, 214, 244, 0.09);
+}
+
+.control-grid {
+  padding: 4px 0;
+}
+
+.tile {
+  min-height: 72px;
+  padding: 10px;
+  border-radius: 20px;
+  color: rgba(237, 237, 237, 0.94);
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(205, 214, 244, 0.08);
+}
+
+.tile:hover,
+.detail-button:hover,
+.footer-button:hover,
+.icon-action:hover {
+  background: rgba(137, 180, 250, 0.13);
+}
+
+.tile.connected,
+.tile.active,
+.tile.vpn-active,
+.tile.recording,
+.tile.ai-busy {
+  background: linear-gradient(135deg, rgba(137, 180, 250, 0.28), rgba(203, 166, 247, 0.16));
+  border-color: rgba(137, 180, 250, 0.28);
+}
+
+.tile.disabled {
+  color: rgba(186, 194, 222, 0.54);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.tile.critical {
+  background: rgba(243, 139, 168, 0.13);
+  border-color: rgba(243, 139, 168, 0.24);
+}
+
+.tile-glyph {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.tile.connected .tile-glyph,
+.tile.active .tile-glyph,
+.tile.vpn-active .tile-glyph {
+  background: linear-gradient(135deg, #89B4FA, #CBA6F7);
+}
+
+.tile-title,
+.slider-title,
+.detail-title,
+.battery-percent,
+.ai-title,
+.context-title {
+  color: rgba(237, 237, 237, 0.96);
+  font-weight: 500;
+}
+
+.context-card,
+.slider-card,
+.detail-card,
+.battery-row,
+.ai-row,
+.footer-card {
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(205, 214, 244, 0.075);
+}
+
+.context-card.attention {
+  background: rgba(243, 139, 168, 0.10);
+  border-color: rgba(243, 139, 168, 0.20);
+}
+
+.context-card.success {
+  background: rgba(166, 227, 161, 0.09);
+  border-color: rgba(166, 227, 161, 0.18);
+}
+
+.detail-row {
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 12px;
+}
+
+.detail-row:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.scale trough {
+  min-height: 4px;
+  border-radius: 999px;
+  background: rgba(205, 214, 244, 0.12);
+}
+
+.scale highlight {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #89B4FA, #CBA6F7);
+}
+
+.scale slider {
+  min-width: 15px;
+  min-height: 15px;
+  border-radius: 999px;
+  background: rgba(237, 237, 237, 0.96);
+}
+
+.detail-button,
+.footer-button,
+.icon-action {
+  min-height: 34px;
+  border-radius: 14px;
+  color: rgba(237, 237, 237, 0.90);
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(205, 214, 244, 0.08);
+}
+
+.detail-button.danger {
+  color: rgba(255, 210, 220, 0.96);
+  background: rgba(243, 139, 168, 0.10);
+  border-color: rgba(243, 139, 168, 0.18);
+}
+
+.ai-orb {
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 36% 34%, #ffffff 0%, #89DCEB 18%, #89B4FA 48%, #CBA6F7 82%);
+}
+
+.battery-meter {
+  min-height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #A6E3A1, #89DCEB);
+}

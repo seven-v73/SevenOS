@@ -29,6 +29,7 @@ bash -n \
   "$ROOT_DIR/scripts/repair.sh" \
   "$ROOT_DIR/scripts/ux-check.sh" \
   "$ROOT_DIR/scripts/design-check.sh" \
+  "$ROOT_DIR/scripts/visual-packages.sh" \
   "$ROOT_DIR/scripts/phase-gate.sh" \
   "$ROOT_DIR/scripts/ecosystem.sh" \
   "$ROOT_DIR/scripts/stack.sh" \
@@ -64,6 +65,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-overview" \
   "$ROOT_DIR/bin/seven-quick-settings" \
   "$ROOT_DIR/bin/seven-quick-settings-native" \
+  "$ROOT_DIR/bin/seven-recorder" \
   "$ROOT_DIR/bin/seven-settings" \
   "$ROOT_DIR/bin/seven-settings-native" \
   "$ROOT_DIR/bin/seven-screenshot" \
@@ -71,6 +73,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-shell-preview" \
   "$ROOT_DIR/bin/seven-terminal" \
   "$ROOT_DIR/bin/seven-terminal-native" \
+  "$ROOT_DIR/bin/seven-terminal-palette" \
   "$ROOT_DIR/bin/seven-terminal-shell" \
   "$ROOT_DIR/bin/seven-spotlight" \
   "$ROOT_DIR/bin/seven-spotlight-native" \
@@ -89,7 +92,10 @@ bash -n \
   "$ROOT_DIR/bin/seven-waybar-profile" \
   "$ROOT_DIR/bin/seven-waybar-security" \
   "$ROOT_DIR/bin/seven-waybar" \
+  "$ROOT_DIR/bin/seven-waybar-status" \
   "$ROOT_DIR/bin/seven-wifi" \
+  "$ROOT_DIR/bin/seven-notifications" \
+  "$ROOT_DIR/bin/seven-idle" \
   "$ROOT_DIR/bin/seven-windows-assistant" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
@@ -157,6 +163,12 @@ fi
 for identity_file in \
   "$ROOT_DIR/identity/STYLE.md" \
   "$ROOT_DIR/identity/tokens.css" \
+  "$ROOT_DIR/identity/tokens-light.css" \
+  "$ROOT_DIR/identity/DESIGN_ENGINE.md" \
+  "$ROOT_DIR/identity/design-engine.json" \
+  "$ROOT_DIR/identity/design-engine.css" \
+  "$ROOT_DIR/identity/icons/manifest.json" \
+  "$ROOT_DIR/scripts/packages-visual-aur.txt" \
   "$ROOT_DIR/identity/patterns/kente.svg" \
   "$ROOT_DIR/identity/patterns/motif-concentric.svg" \
   "$ROOT_DIR/identity/patterns/motif-diamond.svg" \
@@ -267,6 +279,12 @@ log_info "Checking package names against pacman metadata..."
 missing=0
 
 for package_file in "$ROOT_DIR"/scripts/packages-*.txt; do
+  case "$(basename "$package_file")" in
+    *-aur.txt)
+      continue
+      ;;
+  esac
+
   while IFS= read -r package; do
     package="${package%%#*}"
     package="${package//[[:space:]]/}"
@@ -417,6 +435,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-preview" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" field >/dev/null
 "$ROOT_DIR/bin/seven-spotlight" catalog >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-session-status" >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-session-status" --json | python -m json.tool >/dev/null
@@ -454,6 +473,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" category Apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" run apps.open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" map >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" layers >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" hybrid >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" hybrid --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" matrix >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" matrix --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/installer-stack.sh" status --json | python -m json.tool >/dev/null
@@ -496,6 +519,12 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" packs >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" packs --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" current >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" current --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" design >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" design --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" icons >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" icons --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" visuals >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" visuals install --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" activate pan-african >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/identity.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/experience.sh" >/dev/null
@@ -578,6 +607,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run actions --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run actions category Apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run actions run apps.open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run architecture >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" architecture hybrid --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run architecture doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer status --json >/dev/null
@@ -631,6 +661,12 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity packs >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity packs --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity current >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity design >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity design --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity icons >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity icons --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity visuals >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity visuals install --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run identity activate pan-african >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run experience >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run experience --json >/dev/null

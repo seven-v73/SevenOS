@@ -21,6 +21,8 @@ Actions:
   guide               Explain the friendly Windows setup path
   catalog [--json]    List app-first Windows workflows
   resolve APP [--json] Show the preferred engine for a Windows app
+  prepare APP         Prepare a dedicated Windows app prefix
+  diagnose APP        Explain a failed installer/app in human language
   run APP             Launch a Windows app through the app-first resolver
   open                Open the best available Windows surface
   apps                Open Bottles for Windows applications
@@ -120,7 +122,7 @@ case "$ACTION" in
       status_action
     fi
     ;;
-  plan|guide|catalog|resolve|run|open|apps|bottles|vm|virt-manager|network|check)
+  plan|guide|catalog|resolve|prepare|diagnose|doctor|run|open|apps|bottles|vm|virt-manager|network|check)
     "$ROOT_DIR/bin/seven-windows-assistant" "$ACTION" "$@"
     ;;
   create)

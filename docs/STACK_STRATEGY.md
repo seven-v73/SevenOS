@@ -4,8 +4,9 @@ SevenOS must not become a pile of unrelated technologies. The stack grows by
 phase, with one major new runtime introduced only when the previous layer is
 testable through JSON contracts, checks and Seven Hub.
 
-This strategy supports `docs/SYSTEM_EXPERIENCE_LAYER.md`, the main reference
-for SevenOS as a system experience layer above Linux and Arch.
+This strategy supports `docs/SYSTEM_EXPERIENCE_LAYER.md` and
+`docs/HYBRID_OS_ARCHITECTURE.md`, the main references for SevenOS as a system
+experience layer and user-space hybrid OS architecture above Linux and Arch.
 
 ## Principle
 

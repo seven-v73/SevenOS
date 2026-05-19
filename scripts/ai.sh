@@ -92,20 +92,23 @@ def load_file(name, fallback):
     except Exception:
         return fallback
 
-state = load_file("state.json", {})
-insights = load_file("insights.json", {"insights": [], "summary": {}})
-actions = load_file("actions.json", {"actions": []})
-shell = load_file("shell.json", {})
-installer = load_file("installer.json", {})
-profiles = load_file("profiles.json", {"summary": {}, "next": []})
-packages = load_file("packages.json", {"summary": {}, "next": []})
-store = load_file("store.json", {"summary": {}})
-box = load_file("box.json", {"summary": {}})
-cloud = load_file("cloud.json", {"summary": {}})
-flow = load_file("flow.json", {"summary": {}})
-cluster = load_file("cluster.json", {"summary": {}})
-ecosystem = load_file("ecosystem.json", {"maturity": {"summary": {}, "modules": []}})
-control = load_file("control.json", {"overall": 0, "actions": [], "summary": {}})
+def as_dict(value, fallback=None):
+    return value if isinstance(value, dict) else (fallback or {})
+
+state = as_dict(load_file("state.json", {}))
+insights = as_dict(load_file("insights.json", {"insights": [], "summary": {}}), {"insights": [], "summary": {}})
+actions = as_dict(load_file("actions.json", {"actions": []}), {"actions": []})
+shell = as_dict(load_file("shell.json", {}))
+installer = as_dict(load_file("installer.json", {}))
+profiles = as_dict(load_file("profiles.json", {"summary": {}, "next": []}), {"summary": {}, "next": []})
+packages = as_dict(load_file("packages.json", {"summary": {}, "next": []}), {"summary": {}, "next": []})
+store = as_dict(load_file("store.json", {"summary": {}}), {"summary": {}})
+box = as_dict(load_file("box.json", {"summary": {}}), {"summary": {}})
+cloud = as_dict(load_file("cloud.json", {"summary": {}}), {"summary": {}})
+flow = as_dict(load_file("flow.json", {"summary": {}}), {"summary": {}})
+cluster = as_dict(load_file("cluster.json", {"summary": {}}), {"summary": {}})
+ecosystem = as_dict(load_file("ecosystem.json", {"maturity": {"summary": {}, "modules": []}}), {"maturity": {"summary": {}, "modules": []}})
+control = as_dict(load_file("control.json", {"overall": 0, "actions": [], "summary": {}}), {"overall": 0, "actions": [], "summary": {}})
 
 daily = state.get("daily") or {}
 daily_summary = daily.get("summary") or {}

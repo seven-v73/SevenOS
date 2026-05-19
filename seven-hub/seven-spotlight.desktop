@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Seven Spotlight
+Comment=Search apps, actions, files and SevenOS context
+Exec=seven-spotlight
+Icon=seven-spotlight
+Terminal=false
+Categories=System;Utility;
+StartupNotify=true

@@ -4,10 +4,11 @@ SevenOS is designed as an operating ecosystem, not a theme pack. Every module
 must belong to a clear layer, expose a predictable command path, and connect to
 the user experience through `seven`, `sevenpkg`, Seven Hub, or Seven Server.
 
-The long-term architecture reference is `docs/SYSTEM_EXPERIENCE_LAYER.md`.
-That document defines SevenOS as a system experience layer above Linux and
-Arch: Seven Core, SevenBus, Seven Shell, Seven Hub and future intelligent
-services.
+The long-term architecture references are `docs/SYSTEM_EXPERIENCE_LAYER.md`
+and `docs/HYBRID_OS_ARCHITECTURE.md`. Together they define SevenOS as a
+system experience layer and local user-space hybrid OS architecture above
+Linux and Arch: Seven Core, SevenBus, Seven Shell, Seven Hub and future
+intelligent services.
 
 ## Product Problem
 
@@ -24,6 +25,8 @@ The promise is:
 
 | Layer | Role | Current Modules |
 | --- | --- | --- |
+| SevenAI Layer | local language interface, diagnostics, playbooks, confirmation and guidance | `scripts/ai.sh`, `scripts/seven_ai_agent.py`, Seven Spotlight AI intents |
+| Orchestration Layer | system decisions, action priorities, profile/session policy and repair plans | `scripts/control-plane.sh`, `scripts/scheduler.sh`, `scripts/events.sh`, `seven-core/` |
 | System Core | entrypoints, bootstrap, Seven Core, SevenBus, status, repair and phase checks | `install.sh`, `bootstrap.sh`, `bin/seven`, `scripts/*.sh`, `seven-core/` |
 | Package Layer | package manifests, meta-packages, future package boundaries and software sources | `sevenpkg`, `scripts/packages-*.txt`, `sevenpkg/metapackages.json`, `sevenos.dotinst` |
 | Service Layer | local services, deployment, VM and background session | `seven-session`, `seven-server`, `seven-deploy`, `vm/` |
@@ -238,6 +241,8 @@ seven identity --json
 seven identity packs --json
 seven identity current --json
 seven actions --json
+seven architecture matrix
+seven architecture matrix --json
 seven ecosystem processes
 seven ecosystem --json
 seven stack --json

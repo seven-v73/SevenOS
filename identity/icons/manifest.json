@@ -1,0 +1,56 @@
+{
+  "schema": "sevenos.icons.v1",
+  "style": "SevenOS Catppuccin-inspired app marks",
+  "install_target": "hicolor/scalable/apps",
+  "icons": [
+    {
+      "name": "seven-hub",
+      "file": "seven-hub.svg",
+      "label": "Seven Hub",
+      "role": "control-center",
+      "accent": "#89B4FA"
+    },
+    {
+      "name": "seven-files",
+      "file": "seven-files.svg",
+      "label": "Seven Files",
+      "role": "files",
+      "accent": "#89DCEB"
+    },
+    {
+      "name": "seven-settings",
+      "file": "seven-settings.svg",
+      "label": "Seven Settings",
+      "role": "settings",
+      "accent": "#CBA6F7"
+    },
+    {
+      "name": "seven-spotlight",
+      "file": "seven-spotlight.svg",
+      "label": "Seven Spotlight",
+      "role": "search",
+      "accent": "#6EA8FF"
+    },
+    {
+      "name": "seven-ai",
+      "file": "seven-ai.svg",
+      "label": "Seven AI",
+      "role": "assistant",
+      "accent": "#8B7CFF"
+    },
+    {
+      "name": "seven-security",
+      "file": "seven-security.svg",
+      "label": "Seven Security",
+      "role": "security",
+      "accent": "#A6E3A1"
+    },
+    {
+      "name": "seven-studio",
+      "file": "seven-studio.svg",
+      "label": "Seven Studio",
+      "role": "creation",
+      "accent": "#FAB387"
+    }
+  ]
+}

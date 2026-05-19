@@ -105,11 +105,15 @@ fi
 
 if ! start_systemd_session; then
   start_once waybar waybar -c "$CONFIG_HOME/waybar/config.jsonc" -s "$CONFIG_HOME/waybar/style.css"
-  start_once mako mako
+  if [[ -x "$ROOT_DIR/bin/seven-notifications" ]]; then
+    start_once seven-notifications "$ROOT_DIR/bin/seven-notifications"
+  else
+    start_once swaync swaync
+    start_once mako mako
+  fi
 
-  if ! pgrep -f 'swayidle .*swaylock' >/dev/null 2>&1 && command -v swayidle >/dev/null 2>&1; then
-    log "starting swayidle"
-    swayidle -w timeout 600 'swaylock -f -c 09090d' timeout 900 'hyprctl dispatch dpms off' resume 'hyprctl dispatch dpms on' >/tmp/sevenos-swayidle.log 2>&1 &
+  if [[ -x "$ROOT_DIR/bin/seven-idle" ]]; then
+    start_once seven-idle "$ROOT_DIR/bin/seven-idle"
   fi
 fi
 

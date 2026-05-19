@@ -1,25 +1,33 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 48,
-  "spacing": 8,
-  "margin-top": 16,
-  "margin-left": 24,
-  "margin-right": 24,
+  "height": 42,
+  "spacing": 6,
+  "margin-top": 10,
+  "margin-left": 18,
+  "margin-right": 18,
   "gtk-layer-shell": true,
-  "modules-left": ["custom/sevenos", "custom/spotlight"],
+  "modules-left": ["custom/sevenos", "custom/spotlight", "custom/media"],
   "modules-center": ["custom/workspace-prev", "hyprland/workspaces", "custom/workspace-next"],
-  "modules-right": ["network", "pulseaudio", "battery", "clock", "custom/ai"],
+  "modules-right": ["custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "custom/vpn", "custom/recorder", "clock", "custom/ai"],
   "custom/sevenos": {
     "format": "7  SevenOS",
     "tooltip": false,
     "on-click": "seven hub"
   },
   "custom/spotlight": {
-    "format": "󰍉  Rechercher...                         SUPER + SPACE",
+    "format": "󰍉  Rechercher...   │",
     "tooltip": true,
-    "tooltip-format": "SevenOS Spotlight · Super + Space",
-    "on-click": "seven-spotlight"
+    "tooltip-format": "Champ Spotlight · saisir avec Super + Space",
+    "on-click": "seven-spotlight field"
+  },
+  "custom/media": {
+    "exec": "seven-waybar-status media",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true,
+    "on-click": "playerctl play-pause",
+    "on-click-right": "seven-quick-settings"
   },
   "custom/workspace-prev": {
     "format": "‹",
@@ -40,36 +48,68 @@
     "tooltip": false,
     "on-click": "hyprctl dispatch workspace e+1"
   },
-  "network": {
-    "format-wifi": "󰤨",
-    "format-ethernet": "󰈀",
-    "format-disconnected": "󰤭",
-    "tooltip": false,
-    "on-click": "seven-wifi menu"
+  "custom/wifi": {
+    "exec": "seven-waybar-status wifi",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true,
+    "on-click": "seven-quick-settings wifi",
+    "on-click-right": "seven-quick-settings",
+    "on-click-middle": "seven-wifi toggle"
+  },
+  "custom/bluetooth": {
+    "exec": "seven-waybar-status bluetooth",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true,
+    "on-click": "seven-quick-settings bluetooth",
+    "on-click-right": "seven-quick-settings",
+    "on-click-middle": "seven-bluetooth toggle"
   },
   "pulseaudio": {
     "format": "󰕾",
     "format-muted": "󰖁",
     "tooltip": false,
-    "on-click": "seven-waybar-action audio",
+    "on-click": "seven-quick-settings audio",
+    "on-click-right": "seven-quick-settings",
     "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
     "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
     "on-click-middle": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
   },
   "battery": {
-    "format": "󰁹  {capacity}%",
-    "format-charging": "󰂄  {capacity}%",
+    "format": "󰁹 {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
     "tooltip": false,
-    "on-click": "seven-waybar-action battery"
+    "on-click": "seven-quick-settings power",
+    "on-click-right": "seven-quick-settings"
+  },
+  "custom/vpn": {
+    "exec": "seven-waybar-status vpn",
+    "return-type": "json",
+    "interval": 10,
+    "tooltip": true,
+    "on-click": "seven-settings network",
+    "on-click-right": "seven-quick-settings"
+  },
+  "custom/recorder": {
+    "exec": "seven-waybar-status recorder",
+    "return-type": "json",
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "seven-recorder stop",
+    "on-click-right": "seven-recorder area"
   },
   "clock": {
-    "format": "{:%a, %d %b  %H:%M}",
-    "tooltip": false
+    "format": "{:%H:%M}",
+    "tooltip": false,
+    "on-click": "seven-quick-settings time"
   },
   "custom/ai": {
-    "format": "◉",
+    "exec": "seven-waybar-status ai",
+    "return-type": "json",
+    "interval": 4,
     "tooltip": true,
-    "tooltip-format": "Seven AI",
-    "on-click": "seven ai focus"
+    "on-click": "seven-quick-settings ai",
+    "on-click-right": "seven ai focus"
   }
 }

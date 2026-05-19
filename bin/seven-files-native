@@ -61,13 +61,18 @@ def xdg_open(path: Path) -> None:
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".bmp", ".tiff", ".tif"}
 VIDEO_SUFFIXES = {".mp4", ".mkv", ".mov", ".webm", ".avi", ".m4v"}
+AUDIO_SUFFIXES = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".opus"}
 TEXT_SUFFIXES = {
     ".txt", ".md", ".log", ".csv", ".json", ".yaml", ".yml", ".toml", ".ini",
     ".conf", ".sh", ".py", ".rs", ".js", ".ts", ".html", ".css", ".xml",
 }
 DOCUMENT_SUFFIXES = {".pdf", ".docx", ".odt", ".rtf"}
-PREVIEW_SUFFIXES = IMAGE_SUFFIXES | VIDEO_SUFFIXES | TEXT_SUFFIXES | DOCUMENT_SUFFIXES
+PREVIEW_SUFFIXES = IMAGE_SUFFIXES | VIDEO_SUFFIXES | AUDIO_SUFFIXES | TEXT_SUFFIXES | DOCUMENT_SUFFIXES
 CLIPBOARD_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos" / "files-clipboard.json"
+TAG_CACHE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/files-tags.json"
+PREFS_CACHE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/files-prefs.json"
+RECENTS_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos/files-recents.json"
+RECENTS_SENTINEL = Path("__sevenos_recent__")
 
 
 def is_image(path: Path) -> bool:
@@ -76,6 +81,10 @@ def is_image(path: Path) -> bool:
 
 def is_video(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in VIDEO_SUFFIXES
+
+
+def is_audio(path: Path) -> bool:
+    return path.is_file() and path.suffix.lower() in AUDIO_SUFFIXES
 
 
 def is_previewable(path: Path) -> bool:
@@ -95,6 +104,70 @@ def resolve_root() -> Path | None:
     return None
 
 
+def read_theme_mode() -> str:
+    config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/theme.conf"
+    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
+        return os.environ["SEVENOS_THEME_MODE"]
+    if config.exists():
+        for line in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("SEVENOS_THEME_MODE="):
+                value = line.split("=", 1)[1].strip().strip("'\"")
+                if value in {"dark", "light"}:
+                    return value
+    return "dark"
+
+
+def read_icon_theme(theme_mode: str) -> str:
+    settings = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "gtk-3.0/settings.ini"
+    if settings.exists():
+        for line in settings.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("gtk-icon-theme-name="):
+                value = line.split("=", 1)[1].strip()
+                if value:
+                    return value
+    return "Papirus" if theme_mode == "light" else "Papirus-Dark"
+
+
+def load_json(path: Path, fallback):
+    try:
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        pass
+    return fallback
+
+
+def write_json(path: Path, payload) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def theme_css(theme_mode: str) -> str:
+    if theme_mode == "light":
+        return """
+        @define-color files_bg #F8FAFD;
+        @define-color files_panel rgba(255,255,255,0.82);
+        @define-color files_sidebar rgba(244,247,251,0.86);
+        @define-color files_text #1C1F26;
+        @define-color files_muted #6B7280;
+        @define-color files_border rgba(0,0,0,0.08);
+        @define-color files_hover rgba(47,123,255,0.10);
+        @define-color files_selected rgba(47,123,255,0.18);
+        @define-color files_accent #2F7BFF;
+        """
+    return """
+    @define-color files_bg #09090B;
+    @define-color files_panel rgba(18,19,26,0.78);
+    @define-color files_sidebar rgba(17,17,27,0.84);
+    @define-color files_text #EDEDED;
+    @define-color files_muted #A6ADC8;
+    @define-color files_border rgba(255,255,255,0.10);
+    @define-color files_hover rgba(77,163,255,0.12);
+    @define-color files_selected rgba(122,92,255,0.24);
+    @define-color files_accent #89B4FA;
+    """
+
+
 def folder_icon(path: Path) -> str:
     mapping = {
         "Desktop": "user-desktop",
@@ -112,7 +185,7 @@ def folder_icon(path: Path) -> str:
         return "image-x-generic"
     if suffix in VIDEO_SUFFIXES:
         return "video-x-generic"
-    if suffix in {".mp3", ".wav", ".flac", ".ogg"}:
+    if suffix in AUDIO_SUFFIXES:
         return "audio-x-generic"
     if suffix in {".zip", ".tar", ".gz", ".xz", ".7z"}:
         return "package-x-generic"
@@ -145,7 +218,23 @@ def run_files(start_path: str) -> int:
     except Exception:
         pass
 
-    current = Path(start_path).expanduser()
+    theme_mode = read_theme_mode()
+    icon_theme = read_icon_theme(theme_mode)
+    gtk_settings = Gtk.Settings.get_default()
+    if gtk_settings:
+        gtk_settings.set_property("gtk-icon-theme-name", icon_theme)
+
+    prefs = load_json(PREFS_CACHE, {})
+    virtual_location = ""
+    start_raw = start_path.strip()
+    if start_raw.startswith("recent://"):
+        current = Path.home()
+        virtual_location = "recent"
+    elif start_raw.startswith("trash://"):
+        current = Path.home() / ".local/share/Trash/files"
+        current.mkdir(parents=True, exist_ok=True)
+    else:
+        current = Path(start_path).expanduser()
     if not current.exists():
         current = Path.home()
     if current.is_file():
@@ -155,26 +244,34 @@ def run_files(start_path: str) -> int:
     future: list[Path] = []
     file_clipboard: list[Path] = []
     file_clipboard_cut = False
-    view_mode = "grid"
+    view_mode = str(prefs.get("view_mode", "grid"))
+    if view_mode not in {"grid", "list", "compact"}:
+        view_mode = "grid"
+    sort_mode = str(prefs.get("sort_mode", "name"))
+    if sort_mode not in {"name", "modified", "size", "kind"}:
+        sort_mode = "name"
+    search_query = ""
+    show_hidden = bool(prefs.get("show_hidden", False))
 
-    css = """
+    css = theme_css(theme_mode) + """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.seven-files {
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,247,251,0.92));
-      border-radius: 18px;
-      color: #20242a;
+        linear-gradient(145deg, alpha(@files_panel, 0.96), alpha(@files_bg, 0.94));
+      border-radius: 22px;
+      color: @files_text;
     }
     .files-root {
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239,247,251,0.92));
+        radial-gradient(circle at top left, rgba(77,163,255,0.16), transparent 38%),
+        linear-gradient(145deg, alpha(@files_panel, 0.98), alpha(@files_bg, 0.94));
     }
     .files-sidebar {
       min-width: 204px;
       padding: 16px 13px;
       background:
-        linear-gradient(180deg, rgba(250,252,253,0.94), rgba(231,240,246,0.72));
-      border-right: 1px solid rgba(134, 145, 156, 0.20);
+        linear-gradient(180deg, alpha(@files_sidebar, 0.96), alpha(@files_panel, 0.72));
+      border-right: 1px solid @files_border;
     }
     .traffic-row {
       padding: 0 0 20px 0;
@@ -185,7 +282,7 @@ def run_files(start_path: str) -> int:
       margin-right: 9px;
     }
     .sidebar-heading {
-      color: #8a8f96;
+      color: @files_muted;
       font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
       margin: 14px 0 5px 8px;
     }
@@ -193,82 +290,113 @@ def run_files(start_path: str) -> int:
       min-height: 37px;
       padding: 0 11px;
       border-radius: 12px;
-      color: #20242a;
+      color: @files_text;
       font: 500 13px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     .sidebar-row:hover,
     .sidebar-row.active {
-      background: rgba(255, 255, 255, 0.72);
+      background: @files_hover;
     }
     .files-main {
       min-width: 650px;
-      background: rgba(255, 255, 255, 0.96);
+      background: alpha(@files_panel, 0.78);
     }
     .files-preview {
       min-width: 254px;
       padding: 22px 18px;
       background:
-        linear-gradient(180deg, rgba(250,252,253,0.96), rgba(239,247,251,0.78));
-      border-left: 1px solid rgba(134, 145, 156, 0.16);
+        linear-gradient(180deg, alpha(@files_sidebar, 0.96), alpha(@files_panel, 0.74));
+      border-left: 1px solid @files_border;
     }
     .preview-icon {
       margin: 8px 0 12px 0;
     }
     .preview-title {
-      color: #20242a;
+      color: @files_text;
       font: 500 17px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     .preview-subtitle {
-      color: #7b828a;
+      color: @files_muted;
       font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
       margin-bottom: 18px;
     }
     .preview-heading {
-      color: #8a8f96;
+      color: @files_muted;
       font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
       margin-top: 12px;
     }
     .preview-value {
-      color: #30363d;
+      color: @files_text;
       font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     .preview-hint {
-      color: #7b828a;
+      color: @files_muted;
       font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
       margin-top: 12px;
     }
     .files-toolbar {
       min-height: 64px;
       padding: 0 20px 0 14px;
-      background: rgba(255, 255, 255, 0.90);
-      border-bottom: 1px solid rgba(134, 145, 156, 0.16);
+      background: alpha(@files_panel, 0.86);
+      border-bottom: 1px solid @files_border;
     }
     .toolbar-button {
       min-width: 38px;
       min-height: 38px;
       border-radius: 999px;
-      background: rgba(247, 250, 252, 0.92);
-      color: #30363d;
+      background: alpha(@files_sidebar, 0.78);
+      color: @files_text;
       border: 0;
       padding: 0;
     }
     .toolbar-button:hover {
-      background: rgba(226, 230, 235, 0.96);
+      background: @files_hover;
     }
     .files-title {
-      color: #30363d;
+      color: @files_text;
       font: 500 18px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .breadcrumb-button {
+      min-height: 30px;
+      border-radius: 999px;
+      padding: 0 10px;
+      background: transparent;
+      color: @files_text;
+      border: 0;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .breadcrumb-button:hover {
+      background: @files_hover;
+    }
+    .files-search {
+      min-width: 210px;
+      min-height: 36px;
+      border-radius: 999px;
+      padding: 0 14px;
+      color: @files_text;
+      background: alpha(@files_sidebar, 0.76);
+      border: 1px solid @files_border;
+    }
+    .files-sort {
+      min-height: 36px;
+      border-radius: 12px;
+      color: @files_text;
+      background: alpha(@files_sidebar, 0.74);
+    }
+    .toolbar-button.active {
+      background: @files_selected;
+      color: @files_accent;
     }
     .files-grid {
       padding: 34px 36px;
-      background: rgba(255, 255, 255, 0.96);
+      background: alpha(@files_panel, 0.62);
     }
     .file-tile {
       min-width: 120px;
       min-height: 124px;
       padding: 10px 6px;
       border-radius: 16px;
-      color: #20242a;
+      color: @files_text;
     }
     .file-tile.list-view {
       min-width: 560px;
@@ -285,24 +413,24 @@ def run_files(start_path: str) -> int:
     .file-tile:hover,
     .file-tile:selected {
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.88), rgba(226,239,247,0.62));
+        linear-gradient(180deg, @files_selected, @files_hover);
     }
     .file-name {
-      color: #20242a;
+      color: @files_text;
       font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     .file-meta {
-      color: #7b828a;
+      color: @files_muted;
       font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     .files-statusbar {
       min-height: 32px;
       padding: 0 18px;
-      background: rgba(255, 255, 255, 0.88);
-      border-top: 1px solid rgba(134, 145, 156, 0.14);
+      background: alpha(@files_panel, 0.78);
+      border-top: 1px solid @files_border;
     }
     .files-status-label {
-      color: #7b828a;
+      color: @files_muted;
       font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     .file-tile-box {
@@ -312,31 +440,31 @@ def run_files(start_path: str) -> int:
     menu {
       border-radius: 12px;
       padding: 6px;
-      background: rgba(255, 255, 255, 0.98);
-      border: 1px solid rgba(134, 145, 156, 0.22);
+      background: alpha(@files_panel, 0.98);
+      border: 1px solid @files_border;
     }
     menuitem {
       min-height: 30px;
       border-radius: 8px;
       padding: 0 10px;
-      color: #20242a;
+      color: @files_text;
       font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     menuitem:hover {
-      background: rgba(226, 239, 247, 0.72);
+      background: @files_hover;
     }
     .quicklook-window {
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(237,246,252,0.94));
-      color: #20242a;
+        linear-gradient(180deg, alpha(@files_panel, 0.98), alpha(@files_bg, 0.94));
+      color: @files_text;
     }
     .quicklook-footer {
       padding: 10px 14px;
-      background: rgba(255,255,255,0.90);
-      border-top: 1px solid rgba(134, 145, 156, 0.16);
+      background: alpha(@files_panel, 0.88);
+      border-top: 1px solid @files_border;
     }
     .quicklook-text {
-      color: #20242a;
+      color: @files_text;
       font: 500 13px "SF Mono", "JetBrainsMono Nerd Font", "SF Pro Text", monospace;
       padding: 18px;
     }
@@ -451,7 +579,7 @@ def run_files(start_path: str) -> int:
         sidebar_buttons.append(row)
         sidebar.pack_start(row, False, False, 0)
 
-    add_place("Recents", "document-open-recent", Path.home())
+    add_place("Recents", "document-open-recent", RECENTS_SENTINEL)
     add_heading("Favorites")
     add_place("Applications", "applications-system", Path("/usr/share/applications"))
     add_place("Downloads", "folder-download", Path.home() / "Downloads")
@@ -486,25 +614,43 @@ def run_files(start_path: str) -> int:
     toolbar.pack_start(back_btn, False, False, 0)
     toolbar.pack_start(forward_btn, False, False, 0)
 
-    title = Gtk.Label()
-    title.set_xalign(0)
-    title.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
-    title.set_single_line_mode(True)
-    title.get_style_context().add_class("files-title")
-    toolbar.pack_start(title, True, True, 10)
+    breadcrumb_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+    breadcrumb_box.set_hexpand(True)
+    toolbar.pack_start(breadcrumb_box, True, True, 10)
+
+    search_entry = Gtk.SearchEntry()
+    search_entry.set_placeholder_text("Search")
+    search_entry.get_style_context().add_class("files-search")
+    toolbar.pack_start(search_entry, False, False, 0)
+
+    sort_combo = Gtk.ComboBoxText()
+    sort_combo.get_style_context().add_class("files-sort")
+    for label, value in (("Name", "name"), ("Modified", "modified"), ("Size", "size"), ("Kind", "kind")):
+        sort_combo.append(value, label)
+    sort_combo.set_active_id(sort_mode)
+    toolbar.pack_start(sort_combo, False, False, 0)
 
     copy_btn = toolbar_button("edit-copy-symbolic", lambda *_: copy_selected())
     paste_btn = toolbar_button("edit-paste-symbolic", lambda *_: paste_items())
     compress_btn = toolbar_button("package-x-generic-symbolic", lambda *_: compress_selected())
+    ai_btn = toolbar_button("seven-ai", lambda *_: sevenai_selected())
     new_folder_btn = toolbar_button("folder-new-symbolic", lambda *_: create_folder())
     compress_btn.set_tooltip_text("Compress selected item")
+    ai_btn.set_tooltip_text("Ask SevenAI about selection")
     new_folder_btn.set_tooltip_text("New folder")
-    for button in (new_folder_btn, copy_btn, paste_btn, compress_btn):
+    for button in (new_folder_btn, copy_btn, paste_btn, compress_btn, ai_btn):
         toolbar.pack_start(button, False, False, 0)
 
     def set_view_mode(mode: str):
         nonlocal view_mode
         view_mode = mode
+        save_preferences()
+        render()
+
+    def toggle_hidden():
+        nonlocal show_hidden
+        show_hidden = not show_hidden
+        save_preferences()
         render()
 
     grid_btn = toolbar_button("view-grid-symbolic", lambda *_: set_view_mode("grid"))
@@ -516,6 +662,10 @@ def run_files(start_path: str) -> int:
     for button in (grid_btn, list_btn, compact_btn):
         toolbar.pack_start(button, False, False, 0)
 
+    hidden_btn = toolbar_button("view-visible-symbolic", lambda *_: toggle_hidden())
+    hidden_btn.set_tooltip_text("Show hidden files")
+    toolbar.pack_start(hidden_btn, False, False, 0)
+
     scroller = Gtk.ScrolledWindow()
     scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
     main.pack_start(scroller, True, True, 0)
@@ -525,7 +675,7 @@ def run_files(start_path: str) -> int:
     flow.get_style_context().add_class("files-grid")
     flow.set_halign(Gtk.Align.FILL)
     flow.set_valign(Gtk.Align.START)
-    flow.set_selection_mode(Gtk.SelectionMode.SINGLE)
+    flow.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
     flow.set_activate_on_single_click(False)
     flow.set_min_children_per_line(4)
     flow.set_max_children_per_line(4)
@@ -575,20 +725,117 @@ def run_files(start_path: str) -> int:
     def update_sidebar():
         for row in sidebar_buttons:
             ctx = row.get_style_context()
-            if getattr(row, "place_path", None) == current:
+            place_path = getattr(row, "place_path", None)
+            if (virtual_location == "recent" and place_path == RECENTS_SENTINEL) or place_path == current:
                 ctx.add_class("active")
             else:
                 ctx.remove_class("active")
 
+    def path_label(path: Path) -> str:
+        if virtual_location == "recent":
+            return "Recents"
+        if path == Path.home():
+            return "Home"
+        if path == Path(path.anchor):
+            return "SevenOS"
+        return path.name or str(path)
+
+    def update_breadcrumbs():
+        for child in breadcrumb_box.get_children():
+            breadcrumb_box.remove(child)
+        if virtual_location == "recent":
+            button = Gtk.Button(label="Recents")
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.get_style_context().add_class("breadcrumb-button")
+            breadcrumb_box.pack_start(button, False, False, 0)
+            breadcrumb_box.show_all()
+            return
+        parts: list[Path] = []
+        cursor = current
+        while True:
+            parts.append(cursor)
+            if cursor.parent == cursor:
+                break
+            cursor = cursor.parent
+        parts.reverse()
+        if len(parts) > 5:
+            parts = [parts[0], *parts[-4:]]
+        for index, part in enumerate(parts):
+            button = Gtk.Button(label=path_label(part))
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.get_style_context().add_class("breadcrumb-button")
+            button.connect("clicked", lambda _button, target=part: navigate(target))
+            breadcrumb_box.pack_start(button, False, False, 0)
+            if index < len(parts) - 1:
+                sep = Gtk.Label(label="›")
+                sep.get_style_context().add_class("files-status-label")
+                breadcrumb_box.pack_start(sep, False, False, 0)
+        breadcrumb_box.show_all()
+
+    def sort_entries(entries: list[Path]) -> list[Path]:
+        mode = sort_mode
+
+        def safe_stat(path: Path):
+            try:
+                return path.stat()
+            except OSError:
+                return None
+
+        if mode == "modified":
+            return sorted(entries, key=lambda p: (not p.is_dir(), -(safe_stat(p).st_mtime if safe_stat(p) else 0), p.name.casefold()))
+        if mode == "size":
+            return sorted(entries, key=lambda p: (not p.is_dir(), -(safe_stat(p).st_size if safe_stat(p) and p.is_file() else 0), p.name.casefold()))
+        if mode == "kind":
+            return sorted(entries, key=lambda p: (not p.is_dir(), p.suffix.casefold(), p.name.casefold()))
+        return sorted(entries, key=lambda p: (not p.is_dir(), p.name.casefold()))
+
+    def save_preferences():
+        write_json(PREFS_CACHE, {"view_mode": view_mode, "sort_mode": sort_mode, "show_hidden": show_hidden})
+
+    def recent_paths() -> list[Path]:
+        data = load_json(RECENTS_CACHE, [])
+        paths = []
+        for item in data:
+            path = Path(str(item))
+            if path.exists() and path not in paths:
+                paths.append(path)
+        return paths[:80]
+
+    def remember_recent(path: Path):
+        if not path.exists():
+            return
+        paths = [str(path.resolve())]
+        paths.extend(str(item.resolve()) for item in recent_paths() if item.resolve() != path.resolve())
+        write_json(RECENTS_CACHE, paths[:80])
+
+    def refresh_view_buttons():
+        for button, mode in ((grid_btn, "grid"), (list_btn, "list"), (compact_btn, "compact")):
+            ctx = button.get_style_context()
+            if view_mode == mode:
+                ctx.add_class("active")
+            else:
+                ctx.remove_class("active")
+        hidden_ctx = hidden_btn.get_style_context()
+        if show_hidden:
+            hidden_ctx.add_class("active")
+        else:
+            hidden_ctx.remove_class("active")
+
     def render():
         previous_size = window.get_size()
-        title.set_text(current.name or str(current))
+        update_breadcrumbs()
         for child in flow.get_children():
             flow.remove(child)
         try:
-            entries = sorted(current.iterdir(), key=lambda p: (not p.is_dir(), p.name.casefold()))
+            entries = recent_paths() if virtual_location == "recent" else list(current.iterdir())
         except OSError:
             entries = []
+        if not show_hidden:
+            entries = [path for path in entries if not path.name.startswith(".")]
+        if search_query:
+            query = search_query.casefold()
+            entries = [path for path in entries if query in path.name.casefold()]
+        entries = sort_entries(entries)
         if view_mode == "grid":
             flow.set_min_children_per_line(4)
             flow.set_max_children_per_line(4)
@@ -663,9 +910,16 @@ def run_files(start_path: str) -> int:
             tile_event.connect("button-press-event", lambda _widget, event, tile=child, item=path: on_tile_button(event, tile, item))
             child.add(tile_event)
             flow.add(child)
-        status_label.set_text(f"{len(entries)} items  |  {current}")
+        selected_count = len(flow.get_selected_children())
+        mode_label = theme_mode.title()
+        location = "Recents" if virtual_location == "recent" else str(current)
+        status_label.set_text(f"{len(entries)} item(s)  |  {mode_label} · {icon_theme}  |  {location}" if not selected_count else f"{selected_count} selected  |  {location}")
         update_sidebar()
-        update_preview(current)
+        refresh_view_buttons()
+        if virtual_location == "recent":
+            update_preview_multiple(entries)
+        else:
+            update_preview(current)
         flow.show_all()
         flow.grab_focus()
         if previous_size != (1, 1):
@@ -784,6 +1038,10 @@ def run_files(start_path: str) -> int:
                 preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
                 preview_icon.set_pixel_size(88)
             preview_hint("Space opens video preview. External player remains available from preview.")
+        elif is_audio(target):
+            preview_icon.set_from_icon_name(folder_icon(target), Gtk.IconSize.DIALOG)
+            preview_icon.set_pixel_size(88)
+            preview_hint("Space opens audio preview. External player remains available from preview.")
         elif target.is_file() and target.suffix.lower() == ".pdf":
             pixbuf = pdf_thumbnail(target)
             if pixbuf:
@@ -811,8 +1069,32 @@ def run_files(start_path: str) -> int:
                 except OSError:
                     count = 0
                 detail_row("Items", f"{count}")
+            tag = tag_for_path(target)
+            if tag:
+                detail_row("Tag", tag)
         except OSError:
             detail_row("Status", "Unavailable")
+        preview_details.show_all()
+
+    def update_preview_multiple(paths: list[Path]):
+        for child in preview_details.get_children():
+            preview_details.remove(child)
+        preview_icon.set_from_icon_name("edit-select-all", Gtk.IconSize.DIALOG)
+        preview_icon.set_pixel_size(88)
+        preview_title.set_text(f"{len(paths)} selected")
+        files = [path for path in paths if path.is_file()]
+        folders = [path for path in paths if path.is_dir()]
+        preview_subtitle.set_text("Selection")
+        total = 0
+        for path in files:
+            try:
+                total += path.stat().st_size
+            except OSError:
+                pass
+        detail_row("Files", str(len(files)))
+        detail_row("Folders", str(len(folders)))
+        detail_row("Total size", format_size(total))
+        preview_hint("Use Copy, Compress, Tags or SevenAI actions on the selected items.")
         preview_details.show_all()
 
     def preview_text_view(text: str) -> Gtk.ScrolledWindow:
@@ -948,6 +1230,17 @@ def run_files(start_path: str) -> int:
                     True,
                     0,
                 )
+        elif is_audio(path):
+            content.pack_start(
+                preview_message(
+                    "audio-x-generic",
+                    "Audio file",
+                    "Seven Files can identify this audio file. Use Open externally to play it with your preferred player.",
+                ),
+                True,
+                True,
+                0,
+            )
         else:
             content.pack_start(preview_message(folder_icon(path), "Preview", "No inline preview is available for this file type yet."), True, True, 0)
 
@@ -971,6 +1264,7 @@ def run_files(start_path: str) -> int:
         preview_window.show_all()
 
     def open_file(path: Path):
+        remember_recent(path)
         if is_previewable(path):
             open_quicklook_preview(path)
         else:
@@ -1078,6 +1372,9 @@ def run_files(start_path: str) -> int:
             return None
         return selected[0].path
 
+    def selected_paths() -> list[Path]:
+        return [child.path for child in flow.get_selected_children()]
+
     def copy_items(paths: list[Path], cut: bool = False):
         nonlocal file_clipboard, file_clipboard_cut
         file_clipboard = [path for path in paths if path.exists()]
@@ -1087,14 +1384,14 @@ def run_files(start_path: str) -> int:
             status_label.set_text(f"{'Cut' if cut else 'Copied'} {len(file_clipboard)} file item(s)")
 
     def copy_selected():
-        path = selected_path()
-        if path:
-            copy_items([path])
+        paths = selected_paths()
+        if paths:
+            copy_items(paths)
 
     def cut_selected():
-        path = selected_path()
-        if path:
-            copy_items([path], cut=True)
+        paths = selected_paths()
+        if paths:
+            copy_items(paths, cut=True)
 
     def unique_destination(directory: Path, name: str) -> Path:
         destination = directory / name
@@ -1158,6 +1455,28 @@ def run_files(start_path: str) -> int:
             return None
         return Path(value).name
 
+    def ask_text(title_text: str, default_value: str) -> str | None:
+        dialog = Gtk.Dialog(title=title_text, transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("OK", Gtk.ResponseType.OK)
+        dialog.set_default_response(Gtk.ResponseType.OK)
+        content = dialog.get_content_area()
+        content.set_margin_top(14)
+        content.set_margin_bottom(14)
+        content.set_margin_start(14)
+        content.set_margin_end(14)
+        entry = Gtk.Entry()
+        entry.set_text(default_value)
+        entry.set_activates_default(True)
+        content.pack_start(entry, False, False, 0)
+        dialog.show_all()
+        response = dialog.run()
+        value = entry.get_text().strip()
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK or not value:
+            return None
+        return value
+
     def create_folder():
         name = ask_name("New Folder", "Untitled Folder")
         if not name:
@@ -1209,6 +1528,65 @@ def run_files(start_path: str) -> int:
             status_label.set_text(f"Moved {path.name} to Trash")
         except OSError as exc:
             status_label.set_text(f"Trash failed: {exc}")
+
+    def trash_selected():
+        paths = selected_paths()
+        if not paths:
+            status_label.set_text("Select an item to move to Trash")
+            return
+        for path in paths:
+            trash_path(path)
+        render()
+        status_label.set_text(f"Moved {len(paths)} item(s) to Trash")
+
+    def load_tags() -> dict[str, str]:
+        if not TAG_CACHE.exists():
+            return {}
+        try:
+            return json.loads(TAG_CACHE.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    def save_tags(tags: dict[str, str]) -> None:
+        TAG_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        TAG_CACHE.write_text(json.dumps(tags, indent=2, sort_keys=True), encoding="utf-8")
+
+    def tag_paths(paths: list[Path], tag: str):
+        if not paths:
+            status_label.set_text("Select an item to tag")
+            return
+        tags = load_tags()
+        for path in paths:
+            tags[str(path.resolve())] = tag
+        save_tags(tags)
+        status_label.set_text(f"Tagged {len(paths)} item(s) as {tag}")
+        update_preview_multiple(paths) if len(paths) > 1 else update_preview(paths[0])
+
+    def tag_for_path(path: Path) -> str:
+        return load_tags().get(str(path.resolve()), "")
+
+    def sevenai_selected():
+        paths = selected_paths()
+        if not paths:
+            status_label.set_text("Select an item before asking SevenAI")
+            return
+        prompt = "analyse ce fichier et propose les actions utiles: " + ", ".join(str(path) for path in paths[:6])
+        command = ["seven", "ai", prompt] if shutil.which("seven") else [str(resolve_root() / "bin/seven"), "ai", prompt] if resolve_root() else []
+        if command:
+            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            status_label.set_text("SevenAI is analyzing the selection")
+        else:
+            status_label.set_text("SevenAI command is not available")
+
+    def go_to_path_dialog():
+        name = ask_text("Go to Folder", str(current))
+        if not name:
+            return
+        target = Path(name).expanduser()
+        if target.exists() and target.is_dir():
+            navigate(target)
+        else:
+            status_label.set_text(f"Folder not found: {target}")
 
     def archive_destination(path: Path, item_count: int = 1, archive_format: str = "zip", requested_name: str | None = None) -> Path:
         if item_count > 1 and path == current:
@@ -1311,9 +1689,9 @@ def run_files(start_path: str) -> int:
             status_label.set_text(f"Compress failed: {exc}")
 
     def compress_selected():
-        path = selected_path()
-        if path:
-            compress_paths([path])
+        paths = selected_paths()
+        if paths:
+            compress_paths(paths)
         else:
             status_label.set_text("Select an item to compress")
 
@@ -1326,18 +1704,27 @@ def run_files(start_path: str) -> int:
         menu.append(item)
 
     def show_context_menu(path: Path, event):
+        active_paths = selected_paths()
+        if path not in active_paths:
+            active_paths = [path]
         menu = Gtk.Menu()
         add_menu_item(menu, "Open", lambda: navigate(path) if path.is_dir() else open_file(path))
-        add_menu_item(menu, "Copy", lambda: copy_items([path]))
-        add_menu_item(menu, "Cut", lambda: copy_items([path], cut=True))
+        if path.is_file() and is_previewable(path):
+            add_menu_item(menu, "Quick Look", lambda: open_quicklook_preview(path))
+        add_menu_item(menu, "Copy", lambda: copy_items(active_paths))
+        add_menu_item(menu, "Cut", lambda: copy_items(active_paths, cut=True))
         add_menu_item(menu, "Paste Item", paste_items)
         add_menu_item(menu, "Duplicate", lambda: duplicate_path(path))
         add_menu_item(menu, "Rename", lambda: rename_path(path))
-        add_menu_item(menu, "Compress", lambda: compress_paths([path]))
+        add_menu_item(menu, "Compress", lambda: compress_paths(active_paths))
+        menu.append(Gtk.SeparatorMenuItem())
+        add_menu_item(menu, "Ask SevenAI", sevenai_selected)
+        for tag in ("Blue", "Violet", "Green", "Orange", "Focus"):
+            add_menu_item(menu, f"Tag: {tag}", lambda tag_name=tag: tag_paths(active_paths, tag_name))
         menu.append(Gtk.SeparatorMenuItem())
         add_menu_item(menu, "Reveal in Folder", lambda: reveal_in_parent(path))
         add_menu_item(menu, "Copy Path", lambda: copy_path(path))
-        add_menu_item(menu, "Move to Trash", lambda: trash_path(path))
+        add_menu_item(menu, "Move to Trash", lambda: trash_selected())
         if is_image(path):
             menu.append(Gtk.SeparatorMenuItem())
             add_menu_item(menu, "Set as Wallpaper", lambda: set_wallpaper_from_file(path))
@@ -1373,28 +1760,50 @@ def run_files(start_path: str) -> int:
             open_file(target)
 
     def navigate(path: Path):
-        nonlocal current
+        nonlocal current, virtual_location
+        if path == RECENTS_SENTINEL:
+            if virtual_location != "recent":
+                history.append(current)
+                future.clear()
+            virtual_location = "recent"
+            render()
+            return
         if not path.exists() or not path.is_dir():
             return
-        if path != current:
+        if path != current or virtual_location:
             history.append(current)
             future.clear()
             current = path
+            virtual_location = ""
+            remember_recent(path)
         render()
 
     def go_back():
-        nonlocal current
+        nonlocal current, virtual_location
         if history:
             future.append(current)
             current = history.pop()
+            virtual_location = ""
             render()
 
     def go_forward():
-        nonlocal current
+        nonlocal current, virtual_location
         if future:
             history.append(current)
             current = future.pop()
+            virtual_location = ""
             render()
+
+    def set_search_query(entry):
+        nonlocal search_query
+        search_query = entry.get_text().strip()
+        render()
+
+    def set_sort_mode(combo):
+        nonlocal sort_mode
+        sort_mode = combo.get_active_id() or "name"
+        save_preferences()
+        render()
 
     def activate(_flow, child):
         if child is None:
@@ -1403,10 +1812,14 @@ def run_files(start_path: str) -> int:
 
     def selection_changed(flow_box):
         selected = flow_box.get_selected_children()
-        if selected:
+        location = "Recents" if virtual_location == "recent" else str(current)
+        if len(selected) > 1:
+            update_preview_multiple([child.path for child in selected])
+            status_label.set_text(f"{len(selected)} selected  |  {location}")
+        elif selected:
             update_preview(selected[0].path)
         else:
-            update_preview(current)
+            update_preview_multiple(recent_paths()) if virtual_location == "recent" else update_preview(current)
 
     def on_key(_window, event):
         if event.keyval == Gdk.KEY_Escape:
@@ -1417,6 +1830,14 @@ def run_files(start_path: str) -> int:
             return True
         if event.keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
             open_selected()
+            return True
+        if event.keyval == Gdk.KEY_Delete:
+            trash_selected()
+            return True
+        if event.keyval == Gdk.KEY_F2:
+            target = selected_path()
+            if target:
+                rename_path(target)
             return True
         if event.keyval == Gdk.KEY_space:
             target = selected_path()
@@ -1436,6 +1857,21 @@ def run_files(start_path: str) -> int:
             if event.keyval in (Gdk.KEY_v, Gdk.KEY_V):
                 paste_items()
                 return True
+            if event.keyval in (Gdk.KEY_a, Gdk.KEY_A):
+                flow.select_all()
+                return True
+            if event.keyval in (Gdk.KEY_f, Gdk.KEY_F):
+                search_entry.grab_focus()
+                return True
+            if event.keyval in (Gdk.KEY_h, Gdk.KEY_H):
+                toggle_hidden()
+                return True
+            if event.keyval in (Gdk.KEY_l, Gdk.KEY_L):
+                go_to_path_dialog()
+                return True
+            if event.keyval in (Gdk.KEY_i, Gdk.KEY_I):
+                preview.set_visible(not preview.get_visible())
+                return True
         if event.state & Gdk.ModifierType.MOD1_MASK and event.keyval in (Gdk.KEY_c, Gdk.KEY_C):
             compress_selected()
             return True
@@ -1450,7 +1886,7 @@ def run_files(start_path: str) -> int:
             index = children.index(selected[0])
         else:
             index = 0
-        columns = max(1, min(4, len(children)))
+        columns = 1 if view_mode == "list" else 2 if view_mode == "compact" else max(1, min(4, len(children)))
         if keyval == Gdk.KEY_Left:
             index = max(0, index - 1)
         elif keyval == Gdk.KEY_Right:
@@ -1464,6 +1900,8 @@ def run_files(start_path: str) -> int:
         child.grab_focus()
         update_preview(child.path)
 
+    search_entry.connect("search-changed", set_search_query)
+    sort_combo.connect("changed", set_sort_mode)
     flow.connect("child-activated", activate)
     flow.connect("selected-children-changed", selection_changed)
     flow.connect("key-press-event", on_key)

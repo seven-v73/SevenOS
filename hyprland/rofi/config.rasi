@@ -1,7 +1,7 @@
 configuration {
   modi: "drun,run,window";
   show-icons: true;
-  terminal: "kitty";
+  terminal: "seven-terminal";
   drun-display-format: "{name}";
 }
 

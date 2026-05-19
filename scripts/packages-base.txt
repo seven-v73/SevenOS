@@ -18,6 +18,8 @@ pipewire-jack
 wireplumber
 hyprland
 hyprpaper
+hypridle
+hyprlock
 librsvg
 fontconfig
 7zip
@@ -29,10 +31,12 @@ python-gobject
 gtk-layer-shell
 vte3
 mako
+swaync
 libnotify
 polkit-kde-agent
 grim
 slurp
+wf-recorder
 wl-clipboard
 swappy
 nautilus
@@ -50,6 +54,9 @@ adw-gtk-theme
 qt5ct
 qt6ct
 kvantum
+kvantum-qt5
+nwg-look
+sassc
 swaylock
 swayidle
 brightnessctl

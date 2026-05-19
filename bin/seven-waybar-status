@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""Dynamic JSON status providers for the SevenOS Waybar."""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+STATE_HOME = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+RECORDER_PID = STATE_HOME / "sevenos/recorder/recorder.pid"
+RECORDER_FILE = STATE_HOME / "sevenos/recorder/current-file"
+
+
+def run(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout.strip()
+
+
+def emit(text: str, tooltip: str, css_class: str = "ready", alt: str = "") -> int:
+    payload = {"text": text, "tooltip": tooltip, "class": css_class}
+    if alt:
+        payload["alt"] = alt
+    print(json.dumps(payload, ensure_ascii=False))
+    return 0
+
+
+def read_json(command: list[str]) -> dict:
+    try:
+        return json.loads(run(command) or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def wifi() -> int:
+    helper = shutil.which("seven-wifi") or str(Path(__file__).resolve().with_name("seven-wifi"))
+    data = read_json([helper, "status-json"]) if Path(helper).exists() or shutil.which("seven-wifi") else {}
+    if not data.get("nmcli", False):
+        return emit("󰤭", "Wi-Fi tools missing", "missing", "missing")
+    if str(data.get("wifi_radio", "")).lower() not in {"enabled", "on"}:
+        return emit("󰤭", "Wi-Fi off", "off", "off")
+    ssid = str(data.get("ssid") or data.get("active") or "").strip()
+    signal_raw = str(data.get("signal") or "").strip()
+    try:
+        signal = int(signal_raw)
+    except ValueError:
+        signal = 0
+    if not ssid:
+        return emit("󰤯", "Wi-Fi on · not connected", "idle", "idle")
+    css = "weak" if signal and signal < 45 else "connected"
+    text = "󰤨" if signal >= 60 else "󰤢"
+    return emit(text, f"Wi-Fi · {ssid}" + (f" · {signal}%" if signal else ""), css, "connected")
+
+
+def bluetooth() -> int:
+    helper = shutil.which("seven-bluetooth") or str(Path(__file__).resolve().with_name("seven-bluetooth"))
+    data = read_json([helper, "status-json"]) if Path(helper).exists() or shutil.which("seven-bluetooth") else {}
+    if data:
+        return emit(str(data.get("text", "󰂲")), str(data.get("tooltip", "Bluetooth")), str(data.get("class", "ready")))
+    return emit("󰂲", "Bluetooth tools missing", "missing")
+
+
+def vpn() -> int:
+    if not shutil.which("nmcli"):
+        return emit("", "VPN tools missing", "hidden")
+    active = run(["bash", "-lc", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"])
+    if active:
+        return emit("󰖂", f"VPN active · {active}", "active", "active")
+    return emit("", "VPN inactive", "hidden", "idle")
+
+
+def recorder() -> int:
+    if RECORDER_PID.exists():
+        pid = RECORDER_PID.read_text(encoding="utf-8", errors="ignore").strip()
+        if pid and Path(f"/proc/{pid}").exists():
+            current = RECORDER_FILE.read_text(encoding="utf-8", errors="ignore").strip() if RECORDER_FILE.exists() else ""
+            name = Path(current).name if current else "recording"
+            return emit("●", f"Recording · {name}", "recording", "active")
+    return emit("", "Recorder idle", "hidden", "idle")
+
+
+def ai() -> int:
+    state_file = STATE_HOME / "sevenos/ai/status.json"
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            status = str(state.get("status", "ready"))
+            message = str(state.get("message", "SevenAI ready"))
+        except (OSError, json.JSONDecodeError):
+            status = "ready"
+            message = "SevenAI ready"
+    else:
+        status = "ready"
+        message = "SevenAI ready"
+    if status in {"busy", "thinking", "running"}:
+        return emit("◉", message, "busy", "busy")
+    if status in {"warn", "warning", "attention"}:
+        return emit("◉", message, "attention", "attention")
+    return emit("◉", message, "ready", "ready")
+
+
+def media() -> int:
+    if not shutil.which("playerctl"):
+        return emit("", "No media provider", "hidden")
+    title = run(["playerctl", "metadata", "--format", "{{title}}", "-p", "playerctld"])
+    artist = run(["playerctl", "metadata", "--format", "{{artist}}", "-p", "playerctld"])
+    status = run(["playerctl", "status", "-p", "playerctld"])
+    if not title:
+        return emit("", "No media playing", "hidden")
+    label = f"󰝚  {title}"
+    tooltip = f"{artist} · {title}" if artist else title
+    css = "playing" if status.lower() == "playing" else "paused"
+    return emit(label[:38], tooltip, css, css)
+
+
+def main() -> int:
+    command = sys.argv[1] if len(sys.argv) > 1 else "ai"
+    handlers = {
+        "wifi": wifi,
+        "bluetooth": bluetooth,
+        "vpn": vpn,
+        "recorder": recorder,
+        "recording": recorder,
+        "ai": ai,
+        "media": media,
+    }
+    if command not in handlers:
+        print("Usage: seven-waybar-status [wifi|bluetooth|vpn|recorder|ai|media]", file=sys.stderr)
+        return 2
+    return handlers[command]()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

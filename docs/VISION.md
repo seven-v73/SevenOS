@@ -17,6 +17,7 @@ The goal is to combine:
 - the simplicity expected from a modern desktop OS
 - the creative polish people associate with premium systems
 - the openness of Linux
+- a user-space hybrid OS layer that coordinates Linux instead of replacing it
 - a cultural identity that is structural, not decorative
 
 ## Why SevenOS Exists

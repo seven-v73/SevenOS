@@ -255,7 +255,12 @@ calendar	󰃭  Calendar · Open events	calendar.open	__calendar__	Open GNOME Cal
 quick	󰔟  Quick Action · Start 5 minute timer	quick.timer.5	__timer_5__	Start a desktop timer notification.	alarm
 quick	󰔟  Quick Action · Start 25 minute focus timer	quick.timer.25	__timer_25__	Start a focus timer notification.	alarm
 quick	󰑊  Quick Action · Record audio	quick.audio.record	__record_audio__	Start a quick PipeWire audio recording when pw-record is available.	audio-input-microphone
+quick	󰑊  Quick Action · Record screen	quick.screen.record	seven-recorder area	Select an area and start a SevenOS screen recording.	camera-video
+quick	󰓛  Quick Action · Stop screen recording	quick.screen.stop	seven-recorder stop	Stop the active SevenOS screen recording.	media-playback-stop
 quick	󰐊  Quick Action · Open command terminal	quick.terminal	seven-terminal classic	Open SevenOS classic terminal.	utilities-terminal
+quick	󰆍  Quick Action · Open Forge terminal	quick.terminal.forge	seven-terminal forge	Open the SevenOS development terminal.	utilities-terminal
+quick	󰞀  Quick Action · Open Cyber terminal	quick.terminal.cyber	seven-terminal cyber	Open the SevenOS security and network terminal.	utilities-terminal
+quick	󰌵  Quick Action · Terminal actions	quick.terminal.palette	seven-terminal-palette	Open Seven Terminal quick actions.	system-search
 EOF
 }
 
@@ -662,6 +667,8 @@ handle_freeform() {
       return 0
       ;;
     record\ audio|audio\ record|enregistrer\ audio) record_audio; return 0 ;;
+    record\ screen|screen\ record|enregistrer\ ecran|enregistrer\ écran) seven-recorder area; return 0 ;;
+    stop\ recording|arreter\ enregistrement|arrêter\ enregistrement) seven-recorder stop; return 0 ;;
   esac
 
   result="$("$ROOT_DIR/bin/seven-spotlight" eval "$query" 2>/dev/null || true)"
@@ -855,6 +862,22 @@ open_spotlight() {
   esac
 }
 
+open_field() {
+  local mode="${1:-all}"
+
+  if dry_run; then
+    printf 'DRY-RUN > Spotlight > Focus editable field\n'
+    printf 'entries: %s\n' "$(build_catalog | filter_catalog "$mode" | wc -l)"
+    return 0
+  fi
+
+  if [[ "${SEVENOS_SPOTLIGHT_NATIVE:-1}" != "0" && -x "$ROOT_DIR/bin/seven-spotlight-native" ]]; then
+    SEVENOS_ROOT="$ROOT_DIR" exec "$ROOT_DIR/bin/seven-spotlight-native" --field --mode "$mode"
+  fi
+
+  SEVENOS_SPOTLIGHT_NATIVE=0 open_spotlight "$mode"
+}
+
 dispatch_item() {
   local type="${1:-}"
   local key="${2:-}"
@@ -892,6 +915,7 @@ copy_clipboard_entry() {
 
 case "${1:-open}" in
   open|spotlight) open_spotlight "${2:-all}" ;;
+  field|input) open_field "${2:-all}" ;;
   rofi|fallback) SEVENOS_SPOTLIGHT_NATIVE=0 open_spotlight "${2:-all}" ;;
   apps|applications) open_spotlight apps ;;
   files) open_spotlight files ;;
@@ -907,7 +931,7 @@ case "${1:-open}" in
   query) shift; handle_freeform "$*" ;;
   dispatch) shift; dispatch_item "$@" ;;
   *)
-    printf 'Usage: seven-spotlight [open [mode]|rofi [mode]|apps|files|settings|system|web|clipboard|windows|history|catalog|count|eval QUERY|query QUERY|dispatch TYPE KEY COMMAND]\n' >&2
+    printf 'Usage: seven-spotlight [open [mode]|field [mode]|rofi [mode]|apps|files|settings|system|web|clipboard|windows|history|catalog|count|eval QUERY|query QUERY|dispatch TYPE KEY COMMAND]\n' >&2
     exit 2
     ;;
 esac

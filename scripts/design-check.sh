@@ -64,9 +64,43 @@ else
   fail "SevenOS typography should follow SF Pro Display/Text, SF Mono and SF Pro Rounded roles"
 fi
 
+if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&
+   [[ -s "$ROOT_DIR/identity/design-engine.json" ]] &&
+   [[ -s "$ROOT_DIR/identity/design-engine.css" ]] &&
+   jq -e '.schema == "sevenos.design-engine.v1" and .modes."seven-mocha".palette.base == "#11111B" and .modes."seven-latte".palette.base == "#EFF1F5" and (.icon_strategy.rule | contains("Papirus"))' "$ROOT_DIR/identity/design-engine.json" >/dev/null &&
+   grep -q -- '--cat-base: #11111B' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--cat-base: #EFF1F5' "$ROOT_DIR/identity/tokens-light.css" &&
+   grep -q 'resolve_icon_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'resolve_gtk_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'resolve_cursor_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'resolve_kvantum_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'Catppuccin-Mocha' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'gsettings set org.gnome.desktop.interface gtk-theme "$GTK_THEME"' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME"' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'gsettings set org.gnome.desktop.interface cursor-theme "$CURSOR_THEME"' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'kvantum.kvconfig' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'catppuccin-gtk-theme-mocha' "$ROOT_DIR/scripts/packages-visual-aur.txt" &&
+   grep -q 'catppuccin-cursors-mocha' "$ROOT_DIR/scripts/packages-visual-aur.txt" &&
+   grep -q 'kvantum-theme-catppuccin-git' "$ROOT_DIR/scripts/packages-visual-aur.txt" &&
+   grep -q 'seven identity visuals' "$ROOT_DIR/scripts/identity.sh" &&
+   grep -q 'design_json' "$ROOT_DIR/scripts/identity.sh" &&
+   jq -e '.schema == "sevenos.icons.v1" and ([.icons[].name] | index("seven-hub") and index("seven-files") and index("seven-ai") and index("seven-settings") and index("seven-spotlight"))' "$ROOT_DIR/identity/icons/manifest.json" >/dev/null &&
+   grep -q 'seven identity icons' "$ROOT_DIR/scripts/identity.sh" &&
+   grep -q 'seven-hub.svg' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'Icon=seven-files' "$ROOT_DIR/seven-hub/seven-files.desktop" &&
+   grep -q 'Icon=seven-settings' "$ROOT_DIR/seven-hub/seven-settings.desktop" &&
+   grep -q 'Icon=seven-hub' "$ROOT_DIR/seven-hub/seven-hub-native.desktop" &&
+   grep -q 'Icon=seven-spotlight' "$ROOT_DIR/seven-hub/seven-spotlight.desktop" &&
+   grep -q 'Icon=seven-ai' "$ROOT_DIR/seven-hub/seven-ai.desktop" &&
+   grep -q 'seven-spotlight.desktop' "$ROOT_DIR/scripts/apply-theme.sh"; then
+  ok "Seven Design Engine exposes Catppuccin-inspired Mocha/Latte palettes with resilient icon resolution"
+else
+  fail "Seven Design Engine should expose Mocha/Latte palettes, optional Catppuccin icons and Papirus fallback"
+fi
+
 if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
    [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
-   jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and .height == 48 and ."gtk-layer-shell" == true and (."custom/spotlight".format | contains("SUPER + SPACE"))' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
+   jq -e '."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 42 and ."gtk-layer-shell" == true and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/ai".exec == "seven-waybar-status ai"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
    grep -q '@define-color seven_blue #2F7BFF' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q '#custom-ai' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
@@ -78,7 +112,7 @@ else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["network","pulseaudio","battery","clock","custom/ai"] and .height == 48 and .spacing == 8 and ."margin-top" == 16 and ."margin-left" == 24 and ."margin-right" == 24 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("SUPER + SPACE")) and ."custom/workspace-prev"."on-click" == "hyprctl dispatch workspace e-1" and ."custom/workspace-next"."on-click" == "hyprctl dispatch workspace e+1" and ."custom/ai".format == "◉"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 42 and .spacing == 6 and ."margin-top" == 10 and ."margin-left" == 18 and ."margin-right" == 18 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "hyprctl dispatch workspace e-1" and ."custom/workspace-next"."on-click" == "hyprctl dispatch workspace e+1" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses the SevenOS public premium floating hierarchy"
 else
   fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
@@ -87,9 +121,14 @@ fi
 if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '.modules-center,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '.modules-right' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'border-radius: 28px' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'min-width: 430px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'border-radius: 24px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'min-width: 342px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'min-width: 330px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-workspace-prev' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-wifi' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-bluetooth' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-recorder.recording' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-vpn.hidden' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'box-shadow:' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-sevenos' "$ROOT_DIR/hyprland/waybar/style.css" &&
@@ -121,7 +160,13 @@ if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'notification-card' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'SevenQuickSettingsNative' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'build_slider_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'build_detail_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'detail-card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'icon-action' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'control_center_css' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'context_signal' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'SystemSnapshot' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'control-center-{theme_mode}.css' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'notification-card' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'mini-action' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'SevenNotificationCenterNative' "$ROOT_DIR/bin/seven-notification-center-native" &&

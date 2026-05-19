@@ -146,10 +146,12 @@ install_user_command "$ROOT_DIR/bin/seven-dock-native" seven-dock-native
 install_user_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_user_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
 install_user_command "$ROOT_DIR/bin/seven-quick-settings-native" seven-quick-settings-native
+install_user_command "$ROOT_DIR/bin/seven-recorder" seven-recorder
 install_user_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_user_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_user_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
 install_user_command "$ROOT_DIR/bin/seven-terminal-native" seven-terminal-native
+install_user_command "$ROOT_DIR/bin/seven-terminal-palette" seven-terminal-palette
 install_user_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
 install_user_command "$ROOT_DIR/bin/seven-files" seven-files
 install_user_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
@@ -159,6 +161,8 @@ install_user_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight
 install_user_command "$ROOT_DIR/bin/seven-spotlight-native" seven-spotlight-native
 install_user_command "$ROOT_DIR/bin/seven-session" seven-session
 install_user_command "$ROOT_DIR/bin/seven-session-status" seven-session-status
+install_user_command "$ROOT_DIR/bin/seven-notifications" seven-notifications
+install_user_command "$ROOT_DIR/bin/seven-idle" seven-idle
 install_user_command "$ROOT_DIR/bin/seven-country" seven-country
 install_user_command "$ROOT_DIR/bin/seven-language" seven-language
 install_user_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
@@ -170,6 +174,7 @@ install_user_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-not
 install_user_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_user_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_user_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
+install_user_command "$ROOT_DIR/bin/seven-waybar-status" seven-waybar-status
 install_user_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_user_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_user_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
@@ -196,10 +201,12 @@ install_system_command "$ROOT_DIR/bin/seven-dock-native" seven-dock-native
 install_system_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_system_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
 install_system_command "$ROOT_DIR/bin/seven-quick-settings-native" seven-quick-settings-native
+install_system_command "$ROOT_DIR/bin/seven-recorder" seven-recorder
 install_system_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_system_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_system_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
 install_system_command "$ROOT_DIR/bin/seven-terminal-native" seven-terminal-native
+install_system_command "$ROOT_DIR/bin/seven-terminal-palette" seven-terminal-palette
 install_system_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
 install_system_command "$ROOT_DIR/bin/seven-files" seven-files
 install_system_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
@@ -209,6 +216,8 @@ install_system_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight
 install_system_command "$ROOT_DIR/bin/seven-spotlight-native" seven-spotlight-native
 install_system_command "$ROOT_DIR/bin/seven-session" seven-session
 install_system_command "$ROOT_DIR/bin/seven-session-status" seven-session-status
+install_system_command "$ROOT_DIR/bin/seven-notifications" seven-notifications
+install_system_command "$ROOT_DIR/bin/seven-idle" seven-idle
 install_system_command "$ROOT_DIR/bin/seven-language" seven-language
 install_system_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
 install_system_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
@@ -219,6 +228,7 @@ install_system_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-n
 install_system_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_system_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_system_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
+install_system_command "$ROOT_DIR/bin/seven-waybar-status" seven-waybar-status
 install_system_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_system_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_system_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant

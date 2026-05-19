@@ -16,6 +16,7 @@ WALLPAPER_ACTIVE="$WALLPAPER_DIR/wallpaper-sevenos-active.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
 SYSTEMD_USER_DIR="$CONFIG_HOME/systemd/user"
 WAYLAND_SESSION_DIR="$DATA_HOME/wayland-sessions"
+DESIGN_ENGINE_STATE="$SEVENOS_CONFIG_DIR/design-engine.json"
 REQUESTED_THEME="${1:-${SEVENOS_THEME_MODE:-}}"
 
 read_persisted_theme() {
@@ -49,6 +50,186 @@ case "$THEME_MODE" in
     WALLPAPER_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
     ;;
 esac
+
+resolve_icon_theme() {
+  SEVENOS_THEME_MODE_ACTIVE="$THEME_MODE" python - <<'PY'
+import os
+from pathlib import Path
+
+mode = os.environ.get("SEVENOS_THEME_MODE_ACTIVE", "dark")
+candidates = (
+    [
+        "Colloid-Catppuccin-Light",
+        "Colloid-Catppuccin",
+        "Catppuccin-Latte",
+        "Catppuccin-Latte-Light",
+        "Catppuccin-Latte-Blue",
+    ]
+    if mode == "light"
+    else [
+        "Colloid-Catppuccin-Dark",
+        "Colloid-Catppuccin",
+        "Catppuccin-Mocha",
+        "Catppuccin-Mocha-Dark",
+        "Catppuccin-Mocha-Blue",
+    ]
+)
+icon_dirs = [
+    Path.home() / ".local/share/icons",
+    Path.home() / ".icons",
+    Path("/usr/local/share/icons"),
+    Path("/usr/share/icons"),
+]
+available = sorted({
+    child.name
+    for directory in icon_dirs
+    if directory.is_dir()
+    for child in directory.iterdir()
+    if child.is_dir()
+})
+lower = {name.lower(): name for name in available}
+for candidate in candidates:
+    if candidate.lower() in lower:
+        print(lower[candidate.lower()])
+        raise SystemExit(0)
+wanted = "latte" if mode == "light" else "mocha"
+for accent in ("blue", "lavender", "mauve", "sky", "purple"):
+    for name in available:
+        lowered = name.lower()
+        if "catppuccin" in lowered and wanted in lowered and accent in lowered and "cursor" not in lowered:
+            print(name)
+            raise SystemExit(0)
+for name in available:
+    lowered = name.lower()
+    if "catppuccin" in lowered and wanted in lowered and "cursor" not in lowered:
+        print(name)
+        raise SystemExit(0)
+fallbacks = ["Papirus", "Tela-circle", "hicolor"] if mode == "light" else ["Papirus-Dark", "Papirus", "Tela-circle-dark", "Tela-circle", "hicolor"]
+for fallback in fallbacks:
+    if fallback.lower() in lower:
+        print(lower[fallback.lower()])
+        raise SystemExit(0)
+print("hicolor")
+PY
+}
+
+ICON_THEME="$(resolve_icon_theme)"
+
+resolve_gtk_theme() {
+  SEVENOS_THEME_MODE_ACTIVE="$THEME_MODE" python - <<'PY'
+import os
+from pathlib import Path
+
+mode = os.environ.get("SEVENOS_THEME_MODE_ACTIVE", "dark")
+theme_dirs = [Path.home() / ".local/share/themes", Path.home() / ".themes", Path("/usr/local/share/themes"), Path("/usr/share/themes")]
+available = sorted({child.name for directory in theme_dirs if directory.is_dir() for child in directory.iterdir() if child.is_dir()})
+lower = {name.lower(): name for name in available}
+candidates = (
+    [
+        "Catppuccin-Latte-Standard-Blue-Light",
+        "Catppuccin-Latte-Standard-Lavender-Light",
+        "Catppuccin-Latte-Standard-Mauve-Light",
+    ]
+    if mode == "light"
+    else [
+        "Catppuccin-Mocha-Standard-Blue-Dark",
+        "Catppuccin-Mocha-Standard-Lavender-Dark",
+        "Catppuccin-Mocha-Standard-Mauve-Dark",
+    ]
+)
+for candidate in candidates:
+    if candidate.lower() in lower:
+        print(lower[candidate.lower()])
+        raise SystemExit(0)
+wanted = "latte" if mode == "light" else "mocha"
+for accent in ("blue", "lavender", "mauve", "sky"):
+    for name in available:
+        lowered = name.lower()
+        if "catppuccin" in lowered and wanted in lowered and accent in lowered:
+            print(name)
+            raise SystemExit(0)
+fallbacks = ["adw-gtk3", "Adwaita"] if mode == "light" else ["adw-gtk3-dark", "Adwaita-dark"]
+for fallback in fallbacks:
+    if fallback.lower() in lower:
+        print(lower[fallback.lower()])
+        raise SystemExit(0)
+print("adw-gtk3" if mode == "light" else "adw-gtk3-dark")
+PY
+}
+
+resolve_cursor_theme() {
+  SEVENOS_THEME_MODE_ACTIVE="$THEME_MODE" python - <<'PY'
+import os
+from pathlib import Path
+
+mode = os.environ.get("SEVENOS_THEME_MODE_ACTIVE", "dark")
+icon_dirs = [Path.home() / ".local/share/icons", Path.home() / ".icons", Path("/usr/local/share/icons"), Path("/usr/share/icons")]
+available = sorted({child.name for directory in icon_dirs if directory.is_dir() for child in directory.iterdir() if child.is_dir()})
+lower = {name.lower(): name for name in available}
+candidates = (
+    [
+        "Catppuccin-Latte-Blue-Cursors",
+        "Catppuccin-Latte-Lavender-Cursors",
+        "Catppuccin-Latte-Mauve-Cursors",
+        "Bibata-Modern-Ice",
+        "Bibata-Modern-Classic",
+    ]
+    if mode == "light"
+    else [
+        "Catppuccin-Mocha-Blue-Cursors",
+        "Catppuccin-Mocha-Lavender-Cursors",
+        "Catppuccin-Mocha-Mauve-Cursors",
+        "Bibata-Modern-Ice",
+        "Bibata-Modern-Classic",
+    ]
+)
+for candidate in candidates:
+    if candidate.lower() in lower:
+        print(lower[candidate.lower()])
+        raise SystemExit(0)
+wanted = "latte" if mode == "light" else "mocha"
+for accent in ("blue", "lavender", "mauve", "sky"):
+    for name in available:
+        lowered = name.lower()
+        if "catppuccin" in lowered and wanted in lowered and "cursor" in lowered and accent in lowered:
+            print(name)
+            raise SystemExit(0)
+print("Bibata-Modern-Ice" if mode == "light" else "Bibata-Modern-Classic")
+PY
+}
+
+resolve_kvantum_theme() {
+  SEVENOS_THEME_MODE_ACTIVE="$THEME_MODE" python - <<'PY'
+import os
+from pathlib import Path
+
+mode = os.environ.get("SEVENOS_THEME_MODE_ACTIVE", "dark")
+dirs = [Path.home() / ".config/Kvantum", Path.home() / ".local/share/Kvantum", Path("/usr/local/share/Kvantum"), Path("/usr/share/Kvantum")]
+available = sorted({child.name for directory in dirs if directory.is_dir() for child in directory.iterdir() if child.is_dir()})
+lower = {name.lower(): name for name in available}
+candidates = (
+    ["Catppuccin-Latte-Blue", "Catppuccin-Latte-Lavender", "Catppuccin-Latte-Mauve", "KvMojaveLight", "KvFlatLight"]
+    if mode == "light"
+    else ["Catppuccin-Mocha-Blue", "Catppuccin-Mocha-Lavender", "Catppuccin-Mocha-Mauve", "KvMojave", "KvArcDark"]
+)
+for candidate in candidates:
+    if candidate.lower() in lower:
+        print(lower[candidate.lower()])
+        raise SystemExit(0)
+wanted = "latte" if mode == "light" else "mocha"
+for accent in ("blue", "lavender", "mauve", "sky"):
+    for name in available:
+        lowered = name.lower()
+        if "catppuccin" in lowered and wanted in lowered and accent in lowered:
+            print(name)
+            raise SystemExit(0)
+print("KvMojaveLight" if mode == "light" else "KvMojave")
+PY
+}
+
+GTK_THEME="$(resolve_gtk_theme)"
+CURSOR_THEME="$(resolve_cursor_theme)"
+KVANTUM_THEME="$(resolve_kvantum_theme)"
 
 persist_theme_mode() {
   log_info "Persisting SevenOS theme mode: $THEME_MODE"
@@ -191,6 +372,9 @@ configure_file_experience() {
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'install Seven Files desktop entry\n'
+    printf 'install SevenOS Spotlight, AI and Terminal desktop entries\n'
+    printf 'write SevenOS default terminal contract\n'
+    printf 'write xdg-terminal-exec preference\n'
     printf 'xdg-mime default seven-files.desktop inode/directory\n'
     printf 'install Nautilus script: Set as SevenOS Wallpaper\n'
     printf 'install desktop action: Set as SevenOS Wallpaper\n'
@@ -206,6 +390,20 @@ configure_file_experience() {
   mkdir -p "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
   mkdir -p "$HOME/.local/share/applications"
   cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$HOME/.local/share/applications/seven-files.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-spotlight.desktop" "$HOME/.local/share/applications/seven-spotlight.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-ai.desktop" "$HOME/.local/share/applications/seven-ai.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-terminal.desktop" "$HOME/.local/share/applications/seven-terminal.desktop"
+
+  mkdir -p "$CONFIG_HOME/sevenos"
+  {
+    printf 'SEVENOS_TERMINAL=seven-terminal\n'
+    printf 'TERMINAL=seven-terminal\n'
+    printf 'SEVENOS_TERMINAL_PROFILE=classic\n'
+  } > "$CONFIG_HOME/sevenos/defaults.conf"
+
+  {
+    printf 'seven-terminal.desktop\n'
+  } > "$CONFIG_HOME/xdg-terminals.list"
 
   if command -v xdg-mime >/dev/null 2>&1; then
     xdg-mime default seven-files.desktop inode/directory >/dev/null 2>&1 || true
@@ -263,6 +461,10 @@ EOF
 
 configure_toolkit_theme() {
   log_info "Configuring SevenOS GTK and Qt theme coherence..."
+  log_info "Resolved SevenOS GTK theme: $GTK_THEME"
+  log_info "Resolved SevenOS icon theme: $ICON_THEME"
+  log_info "Resolved SevenOS cursor theme: $CURSOR_THEME"
+  log_info "Resolved SevenOS Kvantum theme: $KVANTUM_THEME"
 
   if is_dry_run; then
     printf 'copy GTK, Qt and fontconfig SevenOS settings into %q\n' "$CONFIG_HOME"
@@ -272,10 +474,13 @@ configure_toolkit_theme() {
     else
       printf 'gsettings set org.gnome.desktop.interface color-scheme prefer-dark\n'
     fi
-    printf 'gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3\n'
-    printf 'gsettings set org.gnome.desktop.interface icon-theme Papirus\n'
+    printf 'gsettings set org.gnome.desktop.interface gtk-theme %q\n' "$GTK_THEME"
+    printf 'gsettings set org.gnome.desktop.interface icon-theme %q\n' "$ICON_THEME"
+    printf 'gsettings set org.gnome.desktop.interface cursor-theme %q\n' "$CURSOR_THEME"
+    printf 'write Kvantum theme %q into %q\n' "$KVANTUM_THEME" "$CONFIG_HOME/Kvantum/kvantum.kvconfig"
     printf 'gsettings set org.gnome.desktop.interface gtk-decoration-layout close,minimize,maximize:\n'
     printf 'gsettings set org.gnome.nautilus.preferences default-folder-viewer icon-view\n'
+    printf 'write Seven Design Engine runtime state to %q\n' "$DESIGN_ENGINE_STATE"
     return 0
   fi
 
@@ -286,15 +491,28 @@ configure_toolkit_theme() {
   copy_config_dir "$ROOT_DIR/hyprland/fontconfig" "$CONFIG_HOME/fontconfig"
   "$ROOT_DIR/scripts/fonts.sh" apply-default
 
+  sed -i "s/^gtk-icon-theme-name=.*/gtk-icon-theme-name=$ICON_THEME/" \
+    "$CONFIG_HOME/gtk-3.0/settings.ini" "$CONFIG_HOME/gtk-4.0/settings.ini" 2>/dev/null || true
+  sed -i "s/^gtk-theme-name=.*/gtk-theme-name=$GTK_THEME/" \
+    "$CONFIG_HOME/gtk-3.0/settings.ini" "$CONFIG_HOME/gtk-4.0/settings.ini" 2>/dev/null || true
+  sed -i "s/^icon_theme=.*/icon_theme=$ICON_THEME/" \
+    "$CONFIG_HOME/qt5ct/qt5ct.conf" "$CONFIG_HOME/qt6ct/qt6ct.conf" 2>/dev/null || true
+
+  mkdir -p "$CONFIG_HOME/Kvantum"
+  {
+    printf '[General]\n'
+    printf 'theme=%s\n' "$KVANTUM_THEME"
+  } > "$CONFIG_HOME/Kvantum/kvantum.kvconfig"
+
   if command -v gsettings >/dev/null 2>&1; then
     if [[ "$THEME_MODE" == "light" ]]; then
       gsettings set org.gnome.desktop.interface color-scheme prefer-light >/dev/null 2>&1 || true
     else
       gsettings set org.gnome.desktop.interface color-scheme prefer-dark >/dev/null 2>&1 || true
     fi
-    gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3 >/dev/null 2>&1 || true
-    gsettings set org.gnome.desktop.interface icon-theme Papirus >/dev/null 2>&1 || true
-    gsettings set org.gnome.desktop.interface cursor-theme Bibata-Modern-Classic >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface gtk-theme "$GTK_THEME" >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME" >/dev/null 2>&1 || true
+    gsettings set org.gnome.desktop.interface cursor-theme "$CURSOR_THEME" >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface font-name 'SF Pro Display 10' >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface document-font-name 'SF Pro Text 10' >/dev/null 2>&1 || true
     gsettings set org.gnome.desktop.interface monospace-font-name 'SF Mono 10' >/dev/null 2>&1 || true
@@ -303,6 +521,9 @@ configure_toolkit_theme() {
     gsettings set org.gnome.nautilus.icon-view default-zoom-level 'large' >/dev/null 2>&1 || true
     gsettings set org.gtk.Settings.FileChooser sort-directories-first true >/dev/null 2>&1 || true
   fi
+
+  mkdir -p "$SEVENOS_CONFIG_DIR"
+  "$ROOT_DIR/scripts/identity.sh" design --json > "$DESIGN_ENGINE_STATE" || true
 }
 
 render_wallpaper() {
@@ -337,13 +558,25 @@ install_preserved_config_file "$ROOT_DIR/hyprland/conf/custom.conf" "$CONFIG_HOM
 copy_config_dir "$THEME_SOURCE_DIR/waybar" "$CONFIG_HOME/waybar"
 copy_config_dir "$THEME_SOURCE_DIR/rofi" "$CONFIG_HOME/rofi"
 copy_config_dir "$THEME_SOURCE_DIR/mako" "$CONFIG_HOME/mako"
+copy_config_dir "$ROOT_DIR/hyprland/swaync" "$CONFIG_HOME/swaync"
+copy_config_dir "$ROOT_DIR/hyprland/wlogout" "$CONFIG_HOME/wlogout"
 copy_config_dir "$THEME_SOURCE_DIR/kitty" "$CONFIG_HOME/kitty"
+copy_config_file "$ROOT_DIR/hyprland/hypridle.conf" "$CONFIG_HOME/hypr/hypridle.conf"
+copy_config_file "$ROOT_DIR/hyprland/hyprlock.conf" "$CONFIG_HOME/hypr/hyprlock.conf"
+copy_config_file "$ROOT_DIR/hyprland-light/kitty/light.conf" "$CONFIG_HOME/kitty/light.conf"
 configure_toolkit_theme
 copy_config_file "$ROOT_DIR/branding/shell/terminal-country.sh" "$SHELL_HOOK"
 
 run_cmd mkdir -p "$WALLPAPER_DIR" "$DATA_HOME/sevenos/countries" "$DATA_HOME/sevenos/identity" "$DATA_HOME/icons/hicolor/scalable/apps"
 run_cmd cp "$WALLPAPER_SVG" "$WALLPAPER_DIR/wallpaper-sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$DATA_HOME/icons/hicolor/scalable/apps/sevenos.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-hub.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-hub.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-files.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-files.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-settings.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-settings.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-spotlight.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-spotlight.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-ai.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-ai.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-security.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-security.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-studio.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-studio.svg"
 run_cmd cp "$ROOT_DIR/identity/countries/africa.tsv" "$DATA_HOME/sevenos/countries/africa.tsv"
 if [[ "$THEME_MODE" == "light" ]]; then
   run_cmd cp "$ROOT_DIR/identity/tokens-light.css" "$DATA_HOME/sevenos/identity/tokens.css"
@@ -352,6 +585,11 @@ else
 fi
 run_cmd cp "$ROOT_DIR/identity/tokens.css" "$DATA_HOME/sevenos/identity/tokens-dark.css"
 run_cmd cp "$ROOT_DIR/identity/tokens-light.css" "$DATA_HOME/sevenos/identity/tokens-light.css"
+run_cmd cp "$ROOT_DIR/identity/control-center-dark.css" "$DATA_HOME/sevenos/identity/control-center-dark.css"
+run_cmd cp "$ROOT_DIR/identity/control-center-light.css" "$DATA_HOME/sevenos/identity/control-center-light.css"
+run_cmd cp "$ROOT_DIR/identity/design-engine.json" "$DATA_HOME/sevenos/identity/design-engine.json"
+run_cmd cp "$ROOT_DIR/identity/design-engine.css" "$DATA_HOME/sevenos/identity/design-engine.css"
+run_cmd cp -r "$ROOT_DIR/identity/icons" "$DATA_HOME/sevenos/identity/icons"
 run_cmd cp "$ROOT_DIR/identity/accent-packs.json" "$DATA_HOME/sevenos/identity/accent-packs.json"
 run_cmd cp -r "$ROOT_DIR/identity/patterns" "$DATA_HOME/sevenos/identity/patterns"
 run_cmd cp -r "$ROOT_DIR/identity/components" "$DATA_HOME/sevenos/identity/components"

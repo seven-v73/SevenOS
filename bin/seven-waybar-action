@@ -65,7 +65,9 @@ run_terminal() {
     return 0
   fi
 
-  if command -v kitty >/dev/null 2>&1; then
+  if command -v seven-terminal >/dev/null 2>&1; then
+    run_detached seven-terminal focus -- bash -lc "$wrapped"
+  elif command -v kitty >/dev/null 2>&1; then
     run_detached kitty --title "$title" bash -lc "$wrapped"
   elif command -v foot >/dev/null 2>&1; then
     run_detached foot -e bash -lc "$wrapped"

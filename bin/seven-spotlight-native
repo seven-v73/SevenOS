@@ -67,10 +67,10 @@ class Item:
 
 
 CATEGORIES = [
-    ("all", "system-search", "All"),
+    ("all", "seven-spotlight", "All"),
     ("apps", "view-grid-symbolic", "Applications"),
     ("files", "system-file-manager", "Files"),
-    ("settings", "preferences-system", "Settings"),
+    ("settings", "seven-settings", "Settings"),
     ("system", "system-run", "Actions"),
     ("web", "web-browser", "Web"),
     ("clipboard", "edit-paste", "Clipboard"),
@@ -168,7 +168,7 @@ def probe() -> int:
     return 0
 
 
-def run(mode: str) -> int:
+def run(mode: str, *, field_mode: bool = False) -> int:
     ensure_gi_python()
     import gi
 
@@ -194,6 +194,13 @@ def run(mode: str) -> int:
         rgba(255,255,255,0.52);
       border: 1px solid rgba(255,255,255,0.82);
     }
+    .spotlight-root.field-mode {
+      padding: 10px;
+      border-radius: 24px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.76), rgba(226,242,249,0.52)),
+        rgba(255,255,255,0.48);
+    }
     .spotlight-search {
       min-height: 48px;
       padding: 0 18px;
@@ -202,6 +209,11 @@ def run(mode: str) -> int:
       border: 1px solid rgba(91,127,166,0.24);
       color: rgba(17,27,34,0.98);
       font-size: 18px;
+    }
+    .spotlight-root.field-mode .spotlight-search {
+      min-height: 42px;
+      padding: 0 16px;
+      font-size: 15px;
     }
     .category-row { margin-top: 13px; }
     .category-button {
@@ -259,10 +271,12 @@ def run(mode: str) -> int:
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     root.get_style_context().add_class("spotlight-root")
+    if field_mode:
+        root.get_style_context().add_class("field-mode")
     window.add(root)
 
     entry = Gtk.Entry()
-    entry.set_placeholder_text("Search SevenOS")
+    entry.set_placeholder_text("Search SevenOS" if not field_mode else "Search apps, files, actions...")
     entry.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "system-search")
     entry.get_style_context().add_class("spotlight-search")
     root.pack_start(entry, False, False, 0)
@@ -365,10 +379,14 @@ def run(mode: str) -> int:
     for category in CATEGORIES:
         category_row.pack_start(make_category_button(*category), False, False, 0)
 
+    if field_mode:
+        category_row.set_no_show_all(True)
+        category_row.hide()
+
     entry.connect("changed", lambda _entry: refresh_results())
     window.connect("key-press-event", on_key)
     window.connect("destroy", Gtk.main_quit)
-    window.set_default_size(684, 0)
+    window.set_default_size(560 if field_mode else 684, 0)
     window.show_all()
     set_mode(current_mode)
     entry.grab_focus()
@@ -379,11 +397,12 @@ def run(mode: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", default="all")
+    parser.add_argument("--field", action="store_true")
     parser.add_argument("--probe", action="store_true")
     args = parser.parse_args()
     if args.probe:
         return probe()
-    return run(args.mode)
+    return run(args.mode, field_mode=args.field)
 
 
 if __name__ == "__main__":

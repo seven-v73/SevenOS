@@ -53,11 +53,11 @@ class Intent:
 
 
 BUILTIN_APPS = [
-    AppEntry("SevenOS Settings", "seven-settings.desktop", "seven-settings", "gui", "settings", "preferences-system", "sevenos"),
-    AppEntry("Seven Files", "seven-files.desktop", "seven-files", "gui", "files", "folder", "sevenos"),
-    AppEntry("Seven Hub", "seven-hub.desktop", "seven hub", "gui", "system", "sevenos", "sevenos"),
+    AppEntry("SevenOS Settings", "seven-settings.desktop", "seven-settings", "gui", "settings", "seven-settings", "sevenos"),
+    AppEntry("Seven Files", "seven-files.desktop", "seven-files", "gui", "files", "seven-files", "sevenos"),
+    AppEntry("Seven Hub", "seven-hub.desktop", "seven hub", "gui", "system", "seven-hub", "sevenos"),
     AppEntry("Seven Terminal", "seven-terminal.desktop", "seven-terminal", "gui", "terminal", "utilities-terminal", "sevenos"),
-    AppEntry("Seven Spotlight", "seven-spotlight.desktop", "seven-spotlight", "gui", "search", "system-search", "sevenos"),
+    AppEntry("Seven Spotlight", "seven-spotlight.desktop", "seven-spotlight", "gui", "search", "seven-spotlight", "sevenos"),
 ]
 
 APP_ALIASES = {

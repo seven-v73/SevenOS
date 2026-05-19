@@ -493,7 +493,10 @@ def handle_primary(args):
 
 
 def handle_architecture(args):
-    run_script(args, "scripts/architecture.sh", args.action)
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/architecture.sh", *extra)
 
 
 def handle_manifest(args):
@@ -561,6 +564,7 @@ def main():
     subparsers.add_parser("dashboard", help="show SevenOS dashboard")
     architecture_parser = subparsers.add_parser("architecture", help="show or validate SevenOS architecture")
     architecture_parser.add_argument("action", nargs="?", default="map")
+    architecture_parser.add_argument("--json", action="store_true", help="print machine-readable architecture status")
     ecosystem_parser = subparsers.add_parser("ecosystem", help="show SevenOS ecosystem modules and roadmap")
     ecosystem_parser.add_argument("action", nargs="?", default="status")
     ecosystem_parser.add_argument("--json", action="store_true", help="print machine-readable ecosystem map")
@@ -696,6 +700,8 @@ def main():
     hub_parser.add_argument("--json", action="store_true", help="print machine-readable Hub readiness")
     files_parser = subparsers.add_parser("files", help="open Seven Files")
     files_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    recorder_parser = subparsers.add_parser("recorder", help="record the screen with SevenOS Recorder")
+    recorder_parser.add_argument("action", nargs="?", default="area", choices=("area", "full", "stop", "status", "path", "help"))
 
     profile_parser = subparsers.add_parser("profile", help="list, inspect, activate, or install a SevenOS profile")
     profile_parser.add_argument("name")
@@ -855,6 +861,8 @@ def main():
         handle_hub(args)
     elif args.command == "files":
         run_script(args, "bin/seven-files", *args.extra)
+    elif args.command == "recorder":
+        run_script(args, "bin/seven-recorder", args.action)
     elif args.command == "profile":
         handle_profile(args)
     elif args.command == "shield":

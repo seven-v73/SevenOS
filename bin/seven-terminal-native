@@ -74,6 +74,150 @@ def hex_to_rgba(value: str):
     return tuple(int(value[index : index + 2], 16) / 255.0 for index in (0, 2, 4)) + (1.0,)
 
 
+THEMES = {
+    "classic": {
+        "window": "#141822",
+        "titlebar": "#1B2130",
+        "titlebar_border": "#2B3548",
+        "terminal": "#09090B",
+        "foreground": "#F4F7FA",
+        "muted": "#AEB8C6",
+        "selection": "#7CCBFF",
+        "cursor": "#00D4FF",
+        "palette": [
+            "#09090B",
+            "#FF5976",
+            "#00FFB3",
+            "#F6C85F",
+            "#4DA3FF",
+            "#7A5CFF",
+            "#00D4FF",
+            "#EDEDED",
+            "#606776",
+            "#FF7A93",
+            "#00E676",
+            "#FFD580",
+            "#79BBFF",
+            "#9A84FF",
+            "#5BE6FF",
+            "#FFFFFF",
+        ],
+    },
+    "dark": {
+        "window": "#141821",
+        "titlebar": "#1A202B",
+        "titlebar_border": "#2C3440",
+        "terminal": "#09090B",
+        "foreground": "#F4F7FA",
+        "muted": "#B9C4D0",
+        "selection": "#3E5367",
+        "cursor": "#00FFB3",
+        "palette": [
+            "#2D333D",
+            "#D06B55",
+            "#76C893",
+            "#D9B86F",
+            "#8EB7DF",
+            "#B59AD8",
+            "#83C6D6",
+            "#EEF3F7",
+            "#596575",
+            "#E07C66",
+            "#8EDAA6",
+            "#EBCA80",
+            "#A4CBEF",
+            "#C6ABE6",
+            "#9ED9E7",
+            "#FFFFFF",
+        ],
+    },
+    "light": {
+        "window": "#EEF3FA",
+        "titlebar": "#FFFFFF",
+        "titlebar_border": "#DDE3EA",
+        "terminal": "#F8FAFD",
+        "foreground": "#1C1F26",
+        "muted": "#596273",
+        "selection": "#CFE3FF",
+        "cursor": "#2F7BFF",
+        "palette": [
+            "#F5F7FA",
+            "#D23652",
+            "#00A77A",
+            "#B47600",
+            "#2F7BFF",
+            "#6A5CFF",
+            "#00B8D9",
+            "#384152",
+            "#9AA3AF",
+            "#D23652",
+            "#00A77A",
+            "#B47600",
+            "#2F7BFF",
+            "#6A5CFF",
+            "#00B8D9",
+            "#1C1F26",
+        ],
+    },
+    "forge": {
+        "window": "#121A2A",
+        "titlebar": "#101827",
+        "titlebar_border": "#263A5A",
+        "terminal": "#0B1020",
+        "foreground": "#F4F7FA",
+        "muted": "#A9B8CF",
+        "selection": "#314C73",
+        "cursor": "#4DA3FF",
+        "palette": [
+            "#111827", "#FF6B8A", "#7EE787", "#F6C85F", "#4DA3FF", "#9A84FF", "#00D4FF", "#F4F7FA",
+            "#56657A", "#FF8DA4", "#9CF2AA", "#FFD580", "#79BBFF", "#B4A6FF", "#5BE6FF", "#FFFFFF",
+        ],
+    },
+    "cyber": {
+        "window": "#0A1B16",
+        "titlebar": "#081510",
+        "titlebar_border": "#174D40",
+        "terminal": "#07110E",
+        "foreground": "#D8FFF3",
+        "muted": "#8CD6BE",
+        "selection": "#174D40",
+        "cursor": "#00FFB3",
+        "palette": [
+            "#07110E", "#FF5976", "#00FFB3", "#D6FF7A", "#4DA3FF", "#7A5CFF", "#00D4FF", "#D8FFF3",
+            "#335A50", "#FF7A93", "#42FFC7", "#E5FF9C", "#79BBFF", "#9A84FF", "#5BE6FF", "#FFFFFF",
+        ],
+    },
+    "focus": {
+        "window": "#EEF3FA",
+        "titlebar": "#FFFFFF",
+        "titlebar_border": "#DDE3EA",
+        "terminal": "#FAFBFF",
+        "foreground": "#20242D",
+        "muted": "#687184",
+        "selection": "#E3DFFF",
+        "cursor": "#6A5CFF",
+        "palette": [
+            "#F5F7FA", "#C85068", "#008C70", "#A66A00", "#2F7BFF", "#6A5CFF", "#00A8C8", "#384152",
+            "#9AA3AF", "#D45F78", "#00A77A", "#B47600", "#2F7BFF", "#6A5CFF", "#00B8D9", "#1C1F26",
+        ],
+    },
+    "admin": {
+        "window": "#231111",
+        "titlebar": "#180D0D",
+        "titlebar_border": "#62332C",
+        "terminal": "#130A0A",
+        "foreground": "#FFF4F0",
+        "muted": "#E2B3A6",
+        "selection": "#62332C",
+        "cursor": "#FF9B70",
+        "palette": [
+            "#130A0A", "#FF6B8A", "#8EDAA6", "#FFD580", "#79BBFF", "#B59AD8", "#9ED9E7", "#FFF4F0",
+            "#68433D", "#FF8DA4", "#A8F0BC", "#FFE0A3", "#9BCFFF", "#CBB6EA", "#B8EEF3", "#FFFFFF",
+        ],
+    },
+}
+
+
 def run_terminal(profile: str, command: list[str]) -> int:
     ensure_gi_python()
     import gi
@@ -89,8 +233,9 @@ def run_terminal(profile: str, command: list[str]) -> int:
     except Exception:
         pass
 
-    dark = profile == "dark"
-    title = f"{os.environ.get('USER', 'seven')}@SevenOS"
+    theme = THEMES.get(profile, THEMES["classic"])
+    dark = profile != "light"
+    title = f"Seven Terminal · {profile.title()}"
     argv = command or [str(resolve_shell())]
 
     css = f"""
@@ -98,18 +243,27 @@ def run_terminal(profile: str, command: list[str]) -> int:
       font-family: "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }}
     window.seven-window {{
-      background: {'#2f3642' if dark else '#fdfdfd'};
-      border-radius: 12px;
+      background: {theme['window']};
+      border-radius: 18px;
     }}
     .seven-titlebar {{
-      min-height: 28px;
-      padding: 0 9px;
-      background: {'#3a3d42' if dark else '#dedede'};
-      border-bottom: 1px solid {'#222832' if dark else '#b9b9b9'};
+      min-height: 36px;
+      padding: 0 13px;
+      background: {theme['titlebar']};
+      border-bottom: 1px solid {theme['titlebar_border']};
     }}
     .seven-title {{
-      color: {'#f4f7fa' if dark else '#33383d'};
+      color: {theme['foreground']};
       font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .seven-terminal-frame {{
+      padding: 12px 14px 14px 14px;
+      background: {theme['terminal']};
+    }}
+    .seven-terminal {{
+      padding: 0;
+      background: {theme['terminal']};
+      color: {theme['foreground']};
     }}
     .traffic {{
       min-width: 15px;
@@ -130,8 +284,8 @@ def run_terminal(profile: str, command: list[str]) -> int:
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     window = Gtk.Window(title=title)
-    window.set_default_size(640, 420)
-    window.set_size_request(520, 320)
+    window.set_default_size(760, 480)
+    window.set_size_request(620, 380)
     window.set_resizable(True)
     window.set_decorated(False)
     window.set_wmclass("SevenTerminalNative", "SevenTerminalNative")
@@ -160,17 +314,28 @@ def run_terminal(profile: str, command: list[str]) -> int:
     titlebar.pack_start(spacer, False, False, 0)
 
     terminal = Vte.Terminal()
+    terminal.get_style_context().add_class("seven-terminal")
     terminal.set_scrollback_lines(20000)
     terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
     terminal.set_cursor_shape(Vte.CursorShape.IBEAM)
     terminal.set_audible_bell(False)
-    terminal.set_font(Pango.FontDescription("SF Mono 10"))
+    terminal.set_font(Pango.FontDescription("SF Mono 11"))
+    if hasattr(terminal, "set_cell_height_scale"):
+        terminal.set_cell_height_scale(1.10)
+    if hasattr(terminal, "set_cell_width_scale"):
+        terminal.set_cell_width_scale(1.01)
+    terminal.set_mouse_autohide(True)
     terminal.set_colors(
-        Gdk.RGBA(*hex_to_rgba("#f4f7fa" if dark else "#2b3137")),
-        Gdk.RGBA(*hex_to_rgba("#2f3642" if dark else "#fdfdfd")),
-        [],
+        Gdk.RGBA(*hex_to_rgba(theme["foreground"])),
+        Gdk.RGBA(*hex_to_rgba(theme["terminal"])),
+        [Gdk.RGBA(*hex_to_rgba(color)) for color in theme["palette"]],
     )
-    outer.pack_start(terminal, True, True, 0)
+    terminal.set_color_cursor(Gdk.RGBA(*hex_to_rgba(theme["cursor"])))
+    terminal.set_color_highlight(Gdk.RGBA(*hex_to_rgba(theme["selection"])))
+    terminal_frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    terminal_frame.get_style_context().add_class("seven-terminal-frame")
+    terminal_frame.pack_start(terminal, True, True, 0)
+    outer.pack_start(terminal_frame, True, True, 0)
     terminal.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.KEY_PRESS_MASK)
 
     env = os.environ.copy()
@@ -178,7 +343,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
         {
             "SEVENOS_TERMINAL_COUNTRY": "0",
             "SEVENOS_TERMINAL_CLASSIC": "1",
-            "SEVENOS_TERMINAL_CLASSIC_PROMPT": "0",
+            "SEVENOS_TERMINAL_PROMPT": "1",
             "FASTFETCH_DISABLED": "1",
         }
     )
@@ -201,7 +366,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
     window.connect("destroy", Gtk.main_quit)
     window.show_all()
-    window.resize(640, 420)
+    window.resize(760, 480)
     Gtk.main()
     return 0
 
@@ -349,7 +514,7 @@ def toggle_zoom_or_tile(window) -> None:
         return
     if window.is_maximized():
         window.unmaximize()
-        window.resize(640, 420)
+        window.resize(760, 480)
     else:
         window.maximize()
 
@@ -376,7 +541,7 @@ def begin_move(window, event) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--probe", action="store_true")
-    parser.add_argument("--profile", choices=("classic", "dark"), default="classic")
+    parser.add_argument("--profile", choices=("classic", "dark", "light", "forge", "cyber", "focus", "admin"), default="classic")
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.probe:
