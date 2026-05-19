@@ -9,14 +9,15 @@ usage() {
 SevenOS Architecture
 
 Usage:
-  seven architecture [map|layers|hybrid|matrix|doctor] [--json]
-  ./scripts/architecture.sh [map|layers|hybrid|matrix|doctor] [--json]
+  seven architecture [map|layers|hybrid|matrix|json|doctor] [--json]
+  ./scripts/architecture.sh [map|layers|hybrid|matrix|json|doctor] [--json]
 
 Actions:
   map     Show control plane and product architecture
   layers  Show system layers and modules
   hybrid  Show the user-space hybrid OS architecture
   matrix  Show layer readiness, ownership, contracts and next actions
+  json    Print the machine-readable hybrid architecture contract
   doctor  Validate architecture foundation files and entrypoints
 EOF
 }
@@ -485,6 +486,9 @@ case "$action" in
     ;;
   matrix)
     matrix "$@"
+    ;;
+  json)
+    hybrid_json
     ;;
   doctor) doctor ;;
   -h|--help|help) usage ;;

@@ -70,6 +70,7 @@ b3.apply.trust	System	B3 Trust Preview	seven b3 apply --phase trust --limit 4	sa
 b3.apply.backend	System	B3 Backend Preview	seven b3 apply --phase backend --limit 4	safe	Preview the next Seven Server actions without changing the system.
 b3.apply.profiles	System	B3 Profiles Preview	seven b3 apply --phase profiles --limit 4	safe	Preview the next profile completion actions without changing the system.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
+doctor.open	System	Open Seven Doctor	seven doctor open	safe	Open the graphical Seven Doctor surface with guided repair actions.
 daily.status	System	Daily Driver Gate	seven daily	safe	Check whether SevenOS is ready for a primary PC.
 daily.plan	System	Daily Driver Plan	seven daily plan	safe	Show the ordered path to make SevenOS daily-driver ready.
 daily.apply	System	Apply Daily Driver Plan	seven daily apply --yes	packages	Install and enable the daily-driver security, profile, Windows, server and installer foundation.

@@ -1,0 +1,4 @@
+# SevenOS graphical installer runtime candidates.
+# Calamares is not consistently available in the official Arch repositories.
+# ISO builders should source it from a trusted downstream repository or AUR.
+calamares

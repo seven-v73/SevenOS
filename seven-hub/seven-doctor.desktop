@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Seven Doctor
+Comment=Diagnose SevenOS and open guided repair actions
+Exec=seven-doctor-native
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Settings;SevenOS;

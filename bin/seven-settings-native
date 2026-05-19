@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -45,6 +46,8 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+REGION_PREFS = CONFIG_DIR / "region.conf"
 sys.path.insert(0, str(ROOT / "scripts"))
 from seven_i18n import tr, tr_text  # noqa: E402
 
@@ -62,9 +65,12 @@ def run_json(command: list[str], fallback):
 
 
 def run_detached(command: str) -> None:
+    if command.strip() == "seven doctor open":
+        command = "seven-doctor-native"
     text_prefixes = (
         "seven daily",
-        "seven doctor",
+        "seven doctor check",
+        "seven doctor fix",
         "seven status",
         "seven update",
         "seven language status",
@@ -96,6 +102,74 @@ def run_detached(command: str) -> None:
 
 def command_exists(command: str) -> bool:
     return shutil.which(command) is not None
+
+
+def current_theme_mode() -> str:
+    theme_file = CONFIG_DIR / "theme.conf"
+    if theme_file.exists():
+        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == "SEVENOS_THEME_MODE":
+                value = value.strip().strip('"').strip("'").lower()
+                if value in {"dark", "light"}:
+                    return value
+    return "dark"
+
+
+def read_region_prefs() -> dict[str, str]:
+    prefs = {
+        "region": "France",
+        "time_format": "24h",
+        "date_format": "DD/MM/YYYY",
+        "week_start": "Monday",
+        "units": "metric",
+    }
+    if REGION_PREFS.exists():
+        for line in REGION_PREFS.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() in prefs and value.strip():
+                prefs[key.strip()] = value.strip().strip('"').strip("'")
+    return prefs
+
+
+def write_region_pref(key: str, value: str) -> None:
+    prefs = read_region_prefs()
+    prefs[key] = value
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    REGION_PREFS.write_text("\n".join(f"{name}={prefs[name]}" for name in sorted(prefs)) + "\n", encoding="utf-8")
+
+
+def xdg_default(mime: str) -> str:
+    if not command_exists("xdg-mime"):
+        return tr_text("Unknown")
+    value = out(["xdg-mime", "query", "default", mime])
+    return value or tr_text("Not set")
+
+
+def set_xdg_default(desktop_id: str, *mimes: str) -> None:
+    if not command_exists("xdg-mime"):
+        notify("SevenOS Settings", tr_text("xdg-mime is unavailable."))
+        return
+    for mime in mimes:
+        subprocess.run(["xdg-mime", "default", desktop_id, mime], check=False)
+    notify("SevenOS Settings", tr_text("Default app updated."))
+
+
+def system_about() -> dict[str, str]:
+    release = "SevenOS"
+    release_file = Path("/etc/sevenos-release")
+    if release_file.exists():
+        release = release_file.read_text(encoding="utf-8", errors="ignore").strip().splitlines()[0] or release
+    readiness = run_json([str(ROOT / "scripts/readiness.sh"), "--json"], {"percent": "?"})
+    profile_name, profile_status = active_profile()
+    return {
+        "release": release,
+        "hostname": platform.node() or "sevenos",
+        "kernel": platform.release(),
+        "session": os.environ.get("XDG_CURRENT_DESKTOP") or os.environ.get("DESKTOP_SESSION") or "Hyprland",
+        "profile": f"{profile_name} · {profile_status}",
+        "readiness": f"{readiness.get('percent', '?')}%",
+    }
 
 
 def notify(title: str, message: str) -> None:
@@ -236,6 +310,7 @@ def run(initial_page: str = "overview") -> int:
     except Exception:
         pass
 
+    theme_mode = current_theme_mode()
     css = """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.settings-window { background: transparent; }
@@ -360,6 +435,44 @@ def run(initial_page: str = "overview") -> int:
       border: 1px solid rgba(111,157,188,0.28);
     }
     """
+    if theme_mode == "dark":
+        css += """
+        .settings-shell {
+          background:
+            linear-gradient(135deg, rgba(16,17,25,0.92), rgba(25,28,42,0.82) 48%, rgba(14,16,23,0.74)),
+            radial-gradient(circle at 82% 8%, rgba(122,92,255,0.22), transparent 35%),
+            radial-gradient(circle at 10% 0%, rgba(77,163,255,0.16), transparent 30%);
+          border-color: rgba(255,255,255,0.10);
+        }
+        .sidebar { background: rgba(255,255,255,0.04); border-right-color: rgba(255,255,255,0.08); }
+        .content { background: rgba(255,255,255,0.03); }
+        .brand, .page-title, .hero-title, .card-title, .status-value { color: rgba(245,247,250,0.96); }
+        .page-subtitle, .hero-note, .card-note, .status-label { color: rgba(218,225,235,0.64); }
+        .section-label { color: rgba(218,225,235,0.54); }
+        .nav-button { color: rgba(218,225,235,0.78); }
+        .nav-button:hover { background: rgba(255,255,255,0.08); }
+        .nav-button.active {
+          background: rgba(255,255,255,0.12);
+          border-color: rgba(137,180,250,0.24);
+          color: rgba(255,255,255,0.96);
+        }
+        .hero-card, .quick-strip, .status-card, .settings-card, .scale-card {
+          background: rgba(255,255,255,0.07);
+          border-color: rgba(255,255,255,0.10);
+        }
+        .settings-card:hover, .quick-dot:hover, .action-button:hover { background: rgba(255,255,255,0.12); }
+        .quick-dot, .action-button {
+          color: rgba(245,247,250,0.94);
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.12);
+        }
+        .icon-pill {
+          background: rgba(77,163,255,0.13);
+          border-color: rgba(77,163,255,0.20);
+        }
+        scale trough { background: rgba(255,255,255,0.12); }
+        scale highlight { background: rgba(77,163,255,0.80); }
+        """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -369,13 +482,11 @@ def run(initial_page: str = "overview") -> int:
     window.set_decorated(False)
     window.set_resizable(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(980, 660)
+    window.set_default_size(1000, 680)
     geometry = Gdk.Geometry()
-    geometry.min_width = 980
-    geometry.min_height = 660
-    geometry.max_width = 1080
-    geometry.max_height = 690
-    window.set_geometry_hints(None, geometry, Gdk.WindowHints.MIN_SIZE | Gdk.WindowHints.MAX_SIZE)
+    geometry.min_width = 860
+    geometry.min_height = 560
+    window.set_geometry_hints(None, geometry, Gdk.WindowHints.MIN_SIZE)
     window.get_style_context().add_class("settings-window")
 
     shell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -388,10 +499,10 @@ def run(initial_page: str = "overview") -> int:
         if window.is_maximized():
             window.unmaximize()
         width, _height = window.get_size()
-        if width >= 1080:
-            window.resize(980, 660)
+        if width >= 1120:
+            window.resize(1000, 680)
         else:
-            window.resize(1080, 690)
+            window.resize(1160, 760)
         window.set_position(Gtk.WindowPosition.CENTER)
 
     sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -531,6 +642,30 @@ def run(initial_page: str = "overview") -> int:
         button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
         return button
 
+    def callback_button(label: str, tooltip: str, callback) -> Gtk.Button:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("action-button")
+        button.set_tooltip_text(tooltip)
+        button.connect("clicked", lambda _button: callback())
+        return button
+
+    def copy_system_summary() -> None:
+        about = system_about()
+        summary = "\n".join(
+            [
+                f"SevenOS: {about['release']}",
+                f"Device: {about['hostname']}",
+                f"Kernel: {about['kernel']}",
+                f"Session: {about['session']}",
+                f"Profile: {about['profile']}",
+                f"Readiness: {about['readiness']}",
+            ]
+        )
+        clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(summary, -1)
+        clipboard.store()
+        notify("SevenOS Settings", tr_text("System information copied."))
+
     def quick_dot(icon: str, tooltip: str, command: str) -> Gtk.Button:
         button = Gtk.Button(label=icon)
         button.get_style_context().add_class("quick-dot")
@@ -627,6 +762,71 @@ def run(initial_page: str = "overview") -> int:
         card.pack_start(text_box, True, True, 0)
         card.pack_start(actions, False, False, 0)
         return card
+
+    def region_selector_card() -> Gtk.Box:
+        prefs = read_region_prefs()
+        options = {
+            "region": [("France", "France"), ("United States", "United States"), ("Côte d’Ivoire", "Côte d’Ivoire"), ("System", tr("language.system_default", "System default"))],
+            "time_format": [("24h", "24h"), ("12h", "12h")],
+            "date_format": [("DD/MM/YYYY", "DD/MM/YYYY"), ("MM/DD/YYYY", "MM/DD/YYYY"), ("YYYY-MM-DD", "YYYY-MM-DD")],
+            "week_start": [("Monday", tr("settings.monday", "Monday")), ("Sunday", tr("settings.sunday", "Sunday"))],
+            "units": [("metric", tr("settings.metric", "Metric")), ("imperial", tr("settings.imperial", "Imperial"))],
+        }
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(850, -1)
+        card.get_style_context().add_class("settings-card")
+        title = Gtk.Label(label=tr("settings.region_formats", "Region & formats"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("card-title")
+        note = Gtk.Label(label=tr("settings.region_formats.note", "Choose everyday formats without changing your keyboard layout."))
+        note.set_xalign(0)
+        note.get_style_context().add_class("card-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+
+        grid = Gtk.Grid()
+        grid.set_column_spacing(10)
+        grid.set_row_spacing(8)
+        for index, (key, label_text) in enumerate(
+            [
+                ("region", tr("settings.region", "Region")),
+                ("time_format", tr("settings.time_format", "Time")),
+                ("date_format", tr("settings.date_format", "Date")),
+                ("week_start", tr("settings.week_start", "Week starts")),
+                ("units", tr("settings.units", "Units")),
+            ]
+        ):
+            label = Gtk.Label(label=label_text)
+            label.set_xalign(0)
+            label.get_style_context().add_class("card-note")
+            combo = Gtk.ComboBoxText()
+            active = 0
+            for option_index, (value, option_label) in enumerate(options[key]):
+                combo.append(value, option_label)
+                if prefs.get(key) == value:
+                    active = option_index
+            combo.set_active(active)
+            combo.connect("changed", lambda widget, pref_key=key: write_region_pref(pref_key, widget.get_active_id() or ""))
+            grid.attach(label, 0, index, 1, 1)
+            grid.attach(combo, 1, index, 1, 1)
+        card.pack_start(grid, False, False, 0)
+        return card
+
+    def default_app_card(icon: str, title: str, note: str, desktop_id: str, mimes: tuple[str, ...]) -> Gtk.Box:
+        current = xdg_default(mimes[0])
+        return setting_card(
+            icon,
+            title,
+            f"{note} · {tr('settings.current', 'Current')}: {current}",
+            [
+                callback_button(
+                    tr("settings.set_default", "Set default"),
+                    f"xdg-mime default {desktop_id}",
+                    lambda app=desktop_id, targets=mimes: set_xdg_default(app, *targets),
+                )
+            ],
+        )
 
     def language_selector_card() -> Gtk.Box:
         payload = language_state()
@@ -807,15 +1007,79 @@ def run(initial_page: str = "overview") -> int:
     # General
     general = pages["general"][0]
     lang_payload = language_state()
+    about = system_about()
+    prefs = read_region_prefs()
+    section(general, tr("settings.about_this_sevenos", "About this SevenOS"))
+    status_grid(
+        general,
+        [
+            (about["release"], tr("settings.version", "Version")),
+            (about["hostname"], tr("settings.device_name", "Device")),
+            (about["kernel"], "Kernel"),
+            (about["session"], tr("settings.session", "Session")),
+            (about["profile"], tr_text("Profile")),
+            (about["readiness"], tr("settings.readiness", "Readiness")),
+        ],
+    )
+    general.pack_start(
+        hero_card(
+            tr("settings.about.hero.title", "SevenOS is ready, but transparent"),
+            tr(
+                "settings.about.hero.note",
+                "General settings shows the human-facing defaults first, while Seven Doctor keeps system issues visible without forcing terminal work.",
+            ),
+        ),
+        False,
+        False,
+        0,
+    )
+    card_grid(
+        general,
+        [
+            setting_card("󰩂", tr("settings.doctor", "Doctor"), tr("settings.doctor.note", "Diagnose common system issues."), [action_button(tr("settings.open", "Open"), "seven doctor open")]),
+            setting_card("󰅐", tr("settings.copy_system_info", "Copy system info"), tr("settings.copy_system_info.note", "Copy a clean SevenOS summary for support, logs or bug reports."), [callback_button(tr("settings.copy", "Copy"), "copy SevenOS system summary", copy_system_summary)]),
+        ],
+    )
     section(general, tr("settings.language_region", "Language & Region"))
     general.pack_start(language_selector_card(), False, False, 0)
-    card_grid(general, [
-        setting_card("󰗊", tr("settings.available_languages", "Available languages"), tr("settings.available_languages.note", "{count} generated or installable language(s) detected on this machine.", count=len(lang_payload.get("languages", []))), [action_button(tr("settings.list", "List"), "seven language list")]),
-        setting_card("󰗊", "Français", tr("settings.french.note", "Generate fr_FR.UTF-8 if needed, then switch the SevenOS interface to French."), [action_button(tr("settings.install_apply", "Install & Apply"), "seven language set fr_FR.UTF-8")]),
-        setting_card("󰌢", tr("settings.keyboard_layouts", "Keyboard layouts"), tr("settings.keyboard_layouts.note", "Keep US/French layouts and Alt+Shift switching independent from display language."), [action_button(tr("settings.open", "Open"), "seven-settings keyboard")]),
-        setting_card("󰔎", tr("settings.dark_or_light", "Dark or Light"), tr("settings.dark_or_light.note", "Switch between immersive SevenOS Dark and clarity-first Light."), [action_button(tr("settings.appearance.button", "Appearance"), "seven-settings appearance")]),
-        setting_card("󰜉", tr("settings.session_refresh", "Session refresh"), tr("settings.session_refresh.note", "Reload Hyprland after changing global system preferences."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
-    ])
+    general.pack_start(region_selector_card(), False, False, 0)
+    card_grid(
+        general,
+        [
+            setting_card("󰗊", tr("settings.available_languages", "Available languages"), tr("settings.available_languages.note", "{count} generated or installable language(s) detected on this machine.", count=len(lang_payload.get("languages", []))), [action_button(tr("settings.list", "List"), "seven language list")]),
+            setting_card("󰗊", "Français", tr("settings.french.note", "Generate fr_FR.UTF-8 if needed, then switch the SevenOS interface to French."), [action_button(tr("settings.install_apply", "Install & Apply"), "seven language set fr_FR.UTF-8")]),
+            setting_card("󰌢", tr("settings.keyboard_layouts", "Keyboard layouts"), tr("settings.keyboard_layouts.note", "Keep US/French layouts and Alt+Shift switching independent from display language."), [action_button(tr("settings.apply", "Apply"), "seven keyboard apply")]),
+            setting_card("󰅐", tr("settings.current_region", "Current region"), f"{prefs['region']} · {prefs['date_format']} · {prefs['time_format']} · {prefs['units']}", [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
+        ],
+    )
+    section(general, tr("settings.quick_appearance", "Quick appearance"))
+    card_grid(
+        general,
+        [
+            setting_card("󰔎", tr("settings.dark_mode", "Dark Mode"), tr("settings.dark_mode.note", "Immersive SevenOS cockpit for cyber, creation and night focus."), [action_button(tr("settings.apply", "Apply"), "./install.sh theme dark")]),
+            setting_card("󰔎", tr("settings.light_mode", "Light Mode"), tr("settings.light_mode.note", "Clarity-first SevenOS workspace for productivity, reading and daylight use."), [action_button(tr("settings.apply", "Apply"), "./install.sh theme light")]),
+            setting_card("󰜉", tr("settings.apply_now", "Apply now"), tr("settings.apply_now.note", "Restart SevenOS shell surfaces after language, theme or region changes."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload && seven-waybar repair")]),
+            setting_card("󰏘", tr("settings.design_engine", "Design Engine"), tr("settings.design_engine.note", "Inspect Seven Mocha/Latte palettes and the resolved icon theme."), [action_button(tr("settings.open", "Open"), "seven identity design")]),
+        ],
+    )
+    section(general, tr("settings.default_apps", "Default apps"))
+    card_grid(
+        general,
+        [
+            default_app_card("󰉋", "Seven Files", tr("settings.default_files.note", "Use Seven Files for folders and saved searches."), "seven-files.desktop", ("inode/directory", "application/x-gnome-saved-search")),
+            default_app_card("󰆍", "Seven Terminal", tr("settings.default_terminal.note", "Keep terminal launches coherent across SevenOS."), "seven-terminal.desktop", ("x-scheme-handler/terminal", "application/x-terminal-emulator")),
+            default_app_card("󰖟", tr("settings.default_browser", "Browser"), tr("settings.default_browser.note", "Choose the browser used by links and web apps."), "firefox.desktop", ("x-scheme-handler/http", "x-scheme-handler/https", "text/html")),
+            default_app_card("󰈙", tr("settings.default_text", "Text editor"), tr("settings.default_text.note", "Choose the editor for plain text files."), "org.gnome.TextEditor.desktop", ("text/plain",)),
+        ],
+    )
+    section(general, tr("settings.advanced", "Advanced"))
+    card_grid(
+        general,
+        [
+            setting_card("󰌢", tr("settings.language_status", "Language status"), tr("settings.language_status.note", "Show generated locales and current SevenOS language contract."), [action_button(tr("settings.status", "Status"), "seven language status")]),
+            setting_card("󰜉", tr("settings.session_refresh", "Session refresh"), tr("settings.session_refresh.note", "Reload Hyprland after changing global system preferences."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
+        ],
+    )
 
     # Appearance
     appearance = pages["appearance"][0]

@@ -393,6 +393,7 @@ configure_file_experience() {
   cp "$ROOT_DIR/seven-hub/seven-spotlight.desktop" "$HOME/.local/share/applications/seven-spotlight.desktop"
   cp "$ROOT_DIR/seven-hub/seven-ai.desktop" "$HOME/.local/share/applications/seven-ai.desktop"
   cp "$ROOT_DIR/seven-hub/seven-terminal.desktop" "$HOME/.local/share/applications/seven-terminal.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-doctor.desktop" "$HOME/.local/share/applications/seven-doctor.desktop"
 
   mkdir -p "$CONFIG_HOME/sevenos"
   {

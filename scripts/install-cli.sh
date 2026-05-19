@@ -138,6 +138,7 @@ install_user_command "$ROOT_DIR/bin/seven-installer" seven-installer
 install_user_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_user_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_user_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
+install_user_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
 install_user_command "$ROOT_DIR/bin/seven-help" seven-help
 install_user_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_user_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
@@ -193,6 +194,7 @@ install_system_command "$ROOT_DIR/bin/seven-installer" seven-installer
 install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_system_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_system_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
+install_system_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
 install_system_command "$ROOT_DIR/bin/seven-help" seven-help
 install_system_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_system_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native

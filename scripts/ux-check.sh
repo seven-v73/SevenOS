@@ -329,7 +329,7 @@ else
   fail "Waybar SevenOS brand should stay simple and public-facing"
 fi
 
-if jq -e '.height == 42 and .spacing == 6 and ."gtk-layer-shell" == true and ."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev".format == "‹" and ."custom/workspace-next".format == "›" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json" and ."custom/ai"."on-click" == "seven-quick-settings ai" and ."custom/ai"."on-click-right" == "seven ai focus" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/media".exec == "seven-waybar-status media" and ."custom/vpn".exec == "seven-waybar-status vpn" and ."custom/recorder".exec == "seven-waybar-status recorder" and .pulseaudio.format == "󰕾" and (.battery.format | contains("{capacity}%")) and (. | has("cpu") | not) and (. | has("memory") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.height == 50 and .spacing == 6 and ."gtk-layer-shell" == true and ."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev".format == "‹" and ."custom/workspace-next".format == "›" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json" and ."custom/ai"."on-click" == "seven-quick-settings ai" and ."custom/ai"."on-click-right" == "seven ai focus" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/media".exec == "seven-waybar-status media" and ."custom/vpn".exec == "seven-waybar-status vpn" and ."custom/recorder".exec == "seven-waybar-status recorder" and .pulseaudio.format == "󰕾" and (.battery.format | contains("{capacity}%")) and (. | has("cpu") | not) and (. | has("memory") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes premium SevenOS search, spaces and essential controls"
 else
   fail "Waybar premium search, workspace or essential control layout missing"
@@ -340,6 +340,20 @@ if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'fullscreen: true' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'SevenLaunchpadNative' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'icon_theme_name' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'CACHE_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'RECENTS_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'PREFS_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'fuzzy_score' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'launchpad-filter' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'menu_for_app' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'close_existing_launchpad' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'acquire_launchpad_lock' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'LOCK_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'fcntl.LOCK_EX' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'close_existing_launchpad' "$ROOT_DIR/bin/seven-apps" &&
+   grep -q 'closewindow' "$ROOT_DIR/bin/seven-apps" &&
    grep -q 'set_max_children_per_line(8)' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'set_pixel_size(76)' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'columns: 7' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -605,6 +619,14 @@ if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
    grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'SevenSpotlightNative' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'category-button' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'category-label' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'spotlight_css' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'CACHE_FILE' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'LOCK_FILE' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'fcntl.LOCK_EX' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'fuzzy_score' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'selected_index' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'result_box.set_visible(bool(matches))' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'seven-spotlight-native' "$ROOT_DIR/scripts/install-cli.sh" &&
    grep -Fq 'children: [ inputbar, message, listview ]' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
@@ -1118,6 +1140,10 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'SevenOS Cyber' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'apply-default' "$ROOT_DIR/scripts/fonts.sh" &&
    grep -q 'import_fonts_button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'region_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'default_app_card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'copy_system_summary' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q './install.sh theme light' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q './install.sh theme dark' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'SEVENOS_THEME_MODE' "$ROOT_DIR/scripts/apply-theme.sh" &&
@@ -1157,10 +1183,11 @@ else
   fail "SevenOS language selection should expose French from Settings, installer and CLI"
 fi
 
-if "$ROOT_DIR/bin/seven-apps" doctor | grep -q 'desktop applications indexed'; then
-  ok "SevenOS Apps indexes installed desktop applications"
+if "$ROOT_DIR/bin/seven-apps" doctor | grep -q 'desktop applications indexed' &&
+   "$ROOT_DIR/bin/seven-apps" list --json | python -m json.tool >/dev/null; then
+  ok "SevenOS Apps indexes installed desktop applications and exports JSON"
 else
-  fail "SevenOS Apps should index installed desktop applications"
+  fail "SevenOS Apps should index installed desktop applications and expose JSON"
 fi
 
 if "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null; then
@@ -1344,6 +1371,8 @@ if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_
    grep -q 'build_slider_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'build_detail_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'nearby_wifi' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'set_keyboard_interactivity(window, False)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'GLib.idle_add(Gtk.main_quit)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'control_center_css' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'context_signal' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'SystemSnapshot' "$ROOT_DIR/bin/seven-quick-settings-native" &&
@@ -1366,6 +1395,11 @@ if grep -q 'DRY-RUN > Settings > Open SevenOS Settings' <<<"$settings_dry" &&
    "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1 &&
    grep -q 'SevenOS Settings' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'Language & Region' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'About this SevenOS' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Default apps' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Region & formats' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven doctor open' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'xdg-mime default' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven-settings general' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'Wallpaper' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'Displays' "$ROOT_DIR/bin/seven-settings-native" &&

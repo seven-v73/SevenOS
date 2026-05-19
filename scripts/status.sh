@@ -105,6 +105,40 @@ service_status() {
   fi
 }
 
+ufw_status_line() {
+  local service_state command_output degraded_marker
+  degraded_marker="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/security/ufw-degraded"
+
+  if ! command -v ufw >/dev/null 2>&1; then
+    printf 'MISS\tUFW command missing'
+    return 0
+  fi
+
+  if [[ -s "$degraded_marker" ]]; then
+    printf 'PART\tUFW degraded marker present'
+    return 0
+  fi
+
+  if service_active ufw.service; then
+    service_state="service active"
+  elif service_enabled ufw.service; then
+    service_state="service enabled"
+  else
+    service_state="service inactive"
+  fi
+
+  command_output="$(sudo -n ufw status 2>/dev/null | head -n 1 || true)"
+  if [[ "$command_output" == *"active"* ]]; then
+    printf 'OK\t%s' "$command_output"
+  elif [[ -n "$command_output" ]]; then
+    printf 'PART\t%s (%s)' "$command_output" "$service_state"
+  elif service_active ufw.service; then
+    printf 'OK\t%s; detailed status requires sudo' "$service_state"
+  else
+    printf 'PART\t%s; detailed status requires sudo' "$service_state"
+  fi
+}
+
 package_status() {
   local package="$1"
   local label="${2:-$1}"
@@ -220,6 +254,13 @@ if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   service_json firewall ufw.service
   printf '],'
 
+  IFS=$'\t' read -r ufw_state ufw_detail < <(ufw_status_line) || true
+  printf '"security":{'
+  printf '"ufw":{"state":%s,"detail":%s}' \
+    "$(printf '%s' "$ufw_state" | json_escape)" \
+    "$(printf '%s' "$ufw_detail" | json_escape)"
+  printf '},'
+
   printf '"desktop":{'
   printf '"current":%s,' "$(printf '%s' "${XDG_CURRENT_DESKTOP:-unknown}" | json_escape)"
   printf '"wayland":%s' "$(printf '%s' "${WAYLAND_DISPLAY:-missing}" | json_escape)"
@@ -290,16 +331,12 @@ else
 fi
 
 section "Security"
-if command -v ufw >/dev/null 2>&1; then
-  ufw_status="$(sudo -n ufw status 2>/dev/null | head -n 1 || true)"
-  if [[ "$ufw_status" == *"active"* ]]; then
-    ok "UFW: $ufw_status"
-  else
-    warn "UFW: ${ufw_status:-status unavailable}"
-  fi
-else
-  missing "UFW command"
-fi
+IFS=$'\t' read -r ufw_state ufw_detail < <(ufw_status_line) || true
+case "$ufw_state" in
+  OK) ok "UFW: $ufw_detail" ;;
+  PART) warn "UFW: $ufw_detail" ;;
+  *) missing "UFW: $ufw_detail" ;;
+esac
 package_status firejail "Firejail"
 package_status bubblewrap "Bubblewrap"
 package_status keepassxc "KeePassXC"

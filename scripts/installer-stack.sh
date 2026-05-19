@@ -104,7 +104,8 @@ checks = [
         "state": os.environ["CALAMARES_STATE"],
         "required": False,
         "title": "Graphical installer runtime",
-        "command": "seven installer plan",
+        "command": "seven installer graphical",
+        "reason": "Install calamares from an Arch derivative repository, AUR package or ISO build environment where it is available.",
     },
     {
         "key": "installer-planner",
@@ -353,6 +354,8 @@ print("SevenOS Graphical Installer Route")
 print("=================================")
 print(f"State: {'graphical-ready' if profile_ok and runtime.get('state') == 'OK' else 'graphical-profile-ready'}")
 print(f"Calamares runtime: {runtime.get('state', 'MISS')}")
+if runtime.get("state") != "OK":
+    print("Runtime note: Calamares is not in every official Arch repository. SevenOS ships the profile, launcher and branding; the ISO build host must provide the calamares package.")
 print()
 for item in checks:
     print(f"{item.get('state', 'MISS'):<5} {item.get('key', ''):<24} {item.get('title', '')}")
@@ -370,6 +373,14 @@ Current user path:
   3. Run `seven installer doctor` before any destructive install step.
   4. Use Archinstall as the guided TUI backend today.
   5. Keep Calamares as the graphical installer target for public ISO builds.
+
+Graphical path:
+  - SevenOS already ships the Calamares profile, launcher, branding and live
+    desktop entry.
+  - The remaining runtime dependency is the `calamares` package on the ISO
+    build host. Some Arch setups need an AUR/downstream Calamares package.
+  - `seven installer graphical --json` exposes this as a product contract
+    instead of hiding it behind a generic MISS.
 
 Design rule:
   SevenOS must keep destructive disk operations behind explicit confirmation.
@@ -391,7 +402,8 @@ doctor() {
     "installer/generate-script.sh" \
     "installer/calamares/settings.conf" \
     "installer/calamares/modules/sevenos.conf" \
-    "scripts/packages-installer.txt"; do
+    "scripts/packages-installer.txt" \
+    "scripts/packages-installer-aur.txt"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then
       printf '[OK] %s\n' "$path"
     else

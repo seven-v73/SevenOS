@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gdk
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def load_doctor():
+    result = subprocess.run(
+        [str(ROOT / "bin" / "seven"), "doctor", "check", "--json"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return {
+            "decision": "error",
+            "summary": {"issues": 1},
+            "issues": [
+                {
+                    "title": "Seven Doctor failed",
+                    "detail": result.stderr.strip() or "Unable to read system diagnostics.",
+                    "command": "seven doctor check",
+                    "severity": "high",
+                }
+            ],
+            "checks": [],
+        }
+    return json.loads(result.stdout)
+
+
+CSS = """
+window {
+  background: rgba(12, 14, 24, 0.88);
+  color: #f5f7fa;
+  font-family: "SF Pro Display", "Inter", sans-serif;
+}
+.shell {
+  padding: 22px;
+}
+.title {
+  font-size: 25px;
+  font-weight: 600;
+}
+.subtitle {
+  color: rgba(245, 247, 250, 0.68);
+  font-size: 13px;
+}
+.card {
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.075);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+}
+.good {
+  background: linear-gradient(135deg, rgba(0, 255, 179, 0.16), rgba(77, 163, 255, 0.08));
+}
+.warn {
+  background: linear-gradient(135deg, rgba(255, 204, 102, 0.18), rgba(122, 92, 255, 0.08));
+}
+.danger {
+  background: linear-gradient(135deg, rgba(255, 92, 122, 0.20), rgba(122, 92, 255, 0.10));
+}
+.label-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.label-detail {
+  color: rgba(245, 247, 250, 0.68);
+}
+button {
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  padding: 8px 14px;
+  color: #f5f7fa;
+  background: rgba(255,255,255,0.08);
+}
+button:hover {
+  background: rgba(77, 163, 255, 0.22);
+}
+"""
+
+
+class DoctorWindow(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Seven Doctor")
+        self.set_default_size(760, 620)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        self.set_name("seven-doctor")
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS.encode())
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        self.data = load_doctor()
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        outer.get_style_context().add_class("shell")
+        self.add(outer)
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        title = Gtk.Label(label="Seven Doctor", xalign=0)
+        title.get_style_context().add_class("title")
+        summary = self.data.get("summary", {})
+        subtitle = Gtk.Label(
+            label=f"{self.data.get('decision', 'unknown')} · {summary.get('issues', 0)} issue(s) · {summary.get('checks', 0)} checks",
+            xalign=0,
+        )
+        subtitle.get_style_context().add_class("subtitle")
+        title_box.pack_start(title, False, False, 0)
+        title_box.pack_start(subtitle, False, False, 0)
+        header.pack_start(title_box, True, True, 0)
+
+        refresh = Gtk.Button(label="Refresh")
+        refresh.connect("clicked", lambda *_: self.reload())
+        header.pack_end(refresh, False, False, 0)
+        outer.pack_start(header, False, False, 0)
+
+        self.list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroller.add(self.list_box)
+        outer.pack_start(scroller, True, True, 0)
+        self.render()
+
+    def reload(self):
+        self.data = load_doctor()
+        for child in self.list_box.get_children():
+            self.list_box.remove(child)
+        self.render()
+        self.show_all()
+
+    def render(self):
+        issues = self.data.get("issues") or []
+        items = issues if issues else [
+            {
+                "title": "System looks ready",
+                "detail": "No hard issue detected by Seven Doctor.",
+                "command": "seven daily",
+                "severity": "low",
+            }
+        ]
+        for item in items:
+            self.list_box.pack_start(self.card(item), False, False, 0)
+
+    def card(self, item):
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("card")
+        sev = item.get("severity", "medium")
+        box.get_style_context().add_class("danger" if sev == "critical" else "warn" if sev in {"high", "medium"} else "good")
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        title = Gtk.Label(label=item.get("title", "Issue"), xalign=0)
+        title.get_style_context().add_class("label-title")
+        detail = Gtk.Label(label=item.get("detail", ""), xalign=0)
+        detail.set_line_wrap(True)
+        detail.get_style_context().add_class("label-detail")
+        labels.pack_start(title, False, False, 0)
+        labels.pack_start(detail, False, False, 0)
+        row.pack_start(labels, True, True, 0)
+
+        command = item.get("command", "seven doctor check")
+        btn = Gtk.Button(label="Open")
+        btn.connect("clicked", lambda *_: subprocess.Popen([str(ROOT / "bin" / "seven-terminal"), "--", "sh", "-lc", command]))
+        row.pack_end(btn, False, False, 0)
+        box.pack_start(row, False, False, 0)
+
+        cmd = Gtk.Label(label=command, xalign=0)
+        cmd.get_style_context().add_class("subtitle")
+        box.pack_start(cmd, False, False, 0)
+        return box
+
+
+if __name__ == "__main__":
+    if "--probe" in sys.argv:
+        print("OK")
+        raise SystemExit(0)
+    win = DoctorWindow()
+    win.connect("destroy", Gtk.main_quit)
+    win.show_all()
+    Gtk.main()

@@ -4,9 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
+import json
 import os
 import subprocess
 import sys
+import time
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -42,6 +46,14 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos"
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/sevenos-{os.getuid()}")) / "sevenos"
+THEME_CONF = CONFIG_DIR / "theme.conf"
+CACHE_FILE = CACHE_DIR / "spotlight.json"
+LOCK_FILE = RUNTIME_DIR / "spotlight.lock"
+CACHE_TTL_SECONDS = 4
+LOCK_HANDLE = None
 
 
 @dataclass
@@ -65,6 +77,10 @@ class Item:
             return self.label.split(" · ", 1)[0].strip()
         return self.kind.title()
 
+    @property
+    def search_text(self) -> str:
+        return normalize(" ".join((self.label, self.key, self.command, self.detail, self.kind)))
+
 
 CATEGORIES = [
     ("all", "seven-spotlight", "All"),
@@ -79,7 +95,62 @@ CATEGORIES = [
 ]
 
 
+def normalize(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value or "")
+    return "".join(char for char in normalized if not unicodedata.combining(char)).casefold()
+
+
+def read_json(path: Path, default):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return default
+
+
+def write_json(path: Path, data) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def current_theme_mode() -> str:
+    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
+    if env_mode in {"dark", "light"}:
+        return env_mode
+    try:
+        for raw in THEME_CONF.read_text(encoding="utf-8", errors="replace").splitlines():
+            if "=" not in raw or raw.strip().startswith("#"):
+                continue
+            key, value = [part.strip().lower() for part in raw.split("=", 1)]
+            if key in {"mode", "theme_mode", "sevenos_theme_mode"} and value in {"dark", "light"}:
+                return value
+    except OSError:
+        pass
+    return "dark"
+
+
+def icon_theme_name(mode: str) -> str:
+    settings = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "gtk-3.0/settings.ini"
+    try:
+        for raw in settings.read_text(encoding="utf-8", errors="replace").splitlines():
+            if raw.strip().startswith("gtk-icon-theme-name="):
+                value = raw.split("=", 1)[1].strip()
+                if value:
+                    return value
+    except OSError:
+        pass
+    return "Papirus-Dark" if mode == "dark" else "Papirus"
+
+
 def load_catalog() -> list[Item]:
+    cached = read_json(CACHE_FILE, {})
+    now = time.time()
+    if (
+        cached.get("schema") == "sevenos.spotlight.v1"
+        and isinstance(cached.get("items"), list)
+        and now - float(cached.get("created_at", 0)) <= CACHE_TTL_SECONDS
+    ):
+        return [Item(*row[:6]) for row in cached["items"] if isinstance(row, list) and len(row) >= 6]
+
     result = subprocess.run(
         [str(ROOT / "bin/seven-spotlight"), "catalog"],
         text=True,
@@ -93,7 +164,37 @@ def load_catalog() -> list[Item]:
         parts = raw.split("\t")
         if len(parts) >= 6:
             items.append(Item(*parts[:6]))
+    write_json(CACHE_FILE, {"schema": "sevenos.spotlight.v1", "created_at": now, "items": [[item.kind, item.label, item.key, item.command, item.detail, item.icon] for item in items]})
     return items
+
+
+def fuzzy_score(query: str, item: Item) -> int:
+    if not query:
+        return 0
+    haystack = item.search_text
+    title = normalize(item.clean_title)
+    if title == query:
+        score = 140
+    elif title.startswith(query):
+        score = 118
+    elif query in haystack:
+        score = 82
+    else:
+        score = 0
+        position = 0
+        for char in query:
+            found = haystack.find(char, position)
+            if found == -1:
+                return -1
+            score += 4 if found == position else 2
+            position = found + 1
+    if item.kind == "app":
+        score += 18
+    if item.kind in {"setting", "action", "intent"}:
+        score += 14
+    if item.kind in {"history", "clipboard", "window"}:
+        score += 8
+    return score
 
 
 def filter_items(items: list[Item], query: str, mode: str) -> list[Item]:
@@ -101,22 +202,15 @@ def filter_items(items: list[Item], query: str, mode: str) -> list[Item]:
         items = [item for item in items if mode_matches(item, mode)]
     if not query.strip():
         return items[:9] if mode != "all" else []
-    terms = query.casefold().split()
-    ranked: list[tuple[int, Item]] = []
+    terms = [normalize(term) for term in query.split() if term.strip()]
+    ranked: list[tuple[int, int, Item]] = []
     for item in items:
-        haystack = f"{item.label} {item.key} {item.detail} {item.kind}".casefold()
-        if all(term in haystack for term in terms):
-            score = 0
-            title = item.clean_title.casefold()
-            if title.startswith(query.casefold()):
-                score -= 20
-            if item.kind == "app":
-                score -= 6
-            if item.kind in {"setting", "action"}:
-                score -= 3
-            score += len(title)
-            ranked.append((score, item))
-    return [item for _, item in sorted(ranked, key=lambda row: row[0])[:9]]
+        if not all(term in item.search_text or fuzzy_score(term, item) >= 0 for term in terms):
+            continue
+        score = fuzzy_score(normalize(query), item)
+        if score >= 0:
+            ranked.append((-score, len(item.clean_title), item))
+    return [item for _, __, item in sorted(ranked, key=lambda row: (row[0], row[1]))[:9]]
 
 
 def mode_matches(item: Item, mode: str) -> bool:
@@ -154,6 +248,53 @@ def dispatch_query(query: str) -> None:
     )
 
 
+def shutil_which(command: str) -> str | None:
+    for folder in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = Path(folder) / command
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def close_existing_spotlight() -> bool:
+    if not shutil_which("hyprctl"):
+        return False
+    try:
+        result = subprocess.run(
+            ["hyprctl", "clients", "-j"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        clients = json.loads(result.stdout or "[]")
+    except (OSError, json.JSONDecodeError):
+        return False
+    for client in clients:
+        if client.get("class") != "SevenSpotlightNative":
+            continue
+        address = str(client.get("address", "")).strip()
+        if not address:
+            continue
+        subprocess.run(["hyprctl", "dispatch", "closewindow", f"address:{address}"], check=False)
+        return True
+    return False
+
+
+def acquire_spotlight_lock() -> bool:
+    global LOCK_HANDLE
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    LOCK_HANDLE = LOCK_FILE.open("w", encoding="utf-8")
+    try:
+        fcntl.flock(LOCK_HANDLE.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return False
+    LOCK_HANDLE.seek(0)
+    LOCK_HANDLE.truncate()
+    LOCK_HANDLE.write(f"{os.getpid()}\n")
+    LOCK_HANDLE.flush()
+    return True
+
+
 def probe() -> int:
     ensure_gi_python()
     try:
@@ -166,6 +307,140 @@ def probe() -> int:
         return 1
     print("OK")
     return 0
+
+
+def spotlight_css(mode: str) -> str:
+    if mode == "light":
+        return """
+        * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
+        window.spotlight-window { background: transparent; }
+        .spotlight-root {
+          padding: 16px;
+          border-radius: 28px;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.86), rgba(245,247,250,0.72)),
+            rgba(255,255,255,0.64);
+          border: 1px solid rgba(27,34,48,0.08);
+          box-shadow: 0 22px 58px rgba(43,63,100,0.16);
+        }
+        .spotlight-root.field-mode { padding: 10px; border-radius: 24px; }
+        .spotlight-search {
+          min-height: 48px;
+          padding: 0 18px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.82);
+          border: 1px solid rgba(47,123,255,0.13);
+          color: #1C1F26;
+          font-size: 18px;
+        }
+        .spotlight-root.field-mode .spotlight-search { min-height: 42px; padding: 0 16px; font-size: 15px; }
+        .category-row { margin-top: 13px; }
+        .category-button {
+          min-width: 74px;
+          min-height: 56px;
+          padding: 4px 9px;
+          border-radius: 18px;
+          background: rgba(255,255,255,0.46);
+          border: 1px solid rgba(28,31,38,0.06);
+          color: rgba(28,31,38,0.76);
+        }
+        .category-button:hover,
+        .category-button.active {
+          background: rgba(255,255,255,0.82);
+          border-color: rgba(47,123,255,0.22);
+          color: #1C1F26;
+        }
+        .category-label { font-size: 10px; color: inherit; }
+        .result-list { margin-top: 14px; }
+        .result-row {
+          min-height: 58px;
+          padding: 8px 11px;
+          border-radius: 18px;
+          background: rgba(255,255,255,0.54);
+          border: 1px solid rgba(28,31,38,0.06);
+        }
+        .result-row:hover,
+        .result-row.selected {
+          background: rgba(255,255,255,0.92);
+          border-color: rgba(47,123,255,0.26);
+        }
+        .result-title { color: #1C1F26; font-size: 14px; font-weight: 500; }
+        .result-meta { color: rgba(28,31,38,0.56); font-size: 11px; }
+        .ai-card {
+          margin-top: 10px;
+          padding: 9px 13px;
+          border-radius: 18px;
+          background: rgba(47,123,255,0.08);
+          color: rgba(28,31,38,0.72);
+          border: 1px solid rgba(47,123,255,0.12);
+          font-size: 11px;
+        }
+        """
+    return """
+    * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
+    window.spotlight-window { background: transparent; }
+    .spotlight-root {
+      padding: 16px;
+      border-radius: 28px;
+      background:
+        linear-gradient(160deg, rgba(255,255,255,0.13), rgba(122,92,255,0.11)),
+        rgba(9,9,11,0.78);
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow: 0 24px 72px rgba(0,0,0,0.42), 0 0 42px rgba(77,163,255,0.13);
+    }
+    .spotlight-root.field-mode { padding: 10px; border-radius: 24px; }
+    .spotlight-search {
+      min-height: 48px;
+      padding: 0 18px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(245,247,250,0.98);
+      font-size: 18px;
+    }
+    .spotlight-root.field-mode .spotlight-search { min-height: 42px; padding: 0 16px; font-size: 15px; }
+    .category-row { margin-top: 13px; }
+    .category-button {
+      min-width: 74px;
+      min-height: 56px;
+      padding: 4px 9px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.07);
+      color: rgba(245,247,250,0.72);
+    }
+    .category-button:hover,
+    .category-button.active {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(77,163,255,0.26);
+      color: #F5F7FA;
+    }
+    .category-label { font-size: 10px; color: inherit; }
+    .result-list { margin-top: 14px; }
+    .result-row {
+      min-height: 58px;
+      padding: 8px 11px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .result-row:hover,
+    .result-row.selected {
+      background: rgba(77,163,255,0.16);
+      border-color: rgba(0,212,255,0.30);
+    }
+    .result-title { color: rgba(245,247,250,0.98); font-size: 14px; font-weight: 500; }
+    .result-meta { color: rgba(245,247,250,0.56); font-size: 11px; }
+    .ai-card {
+      margin-top: 10px;
+      padding: 9px 13px;
+      border-radius: 18px;
+      background: rgba(122,92,255,0.12);
+      color: rgba(245,247,250,0.72);
+      border: 1px solid rgba(122,92,255,0.16);
+      font-size: 11px;
+    }
+    """
 
 
 def run(mode: str, *, field_mode: bool = False) -> int:
@@ -183,77 +458,9 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     except Exception:
         pass
 
-    css = """
-    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
-    window.spotlight-window { background: transparent; }
-    .spotlight-root {
-      padding: 16px;
-      border-radius: 28px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.82), rgba(226,242,249,0.58)),
-        rgba(255,255,255,0.52);
-      border: 1px solid rgba(255,255,255,0.82);
-    }
-    .spotlight-root.field-mode {
-      padding: 10px;
-      border-radius: 24px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.76), rgba(226,242,249,0.52)),
-        rgba(255,255,255,0.48);
-    }
-    .spotlight-search {
-      min-height: 48px;
-      padding: 0 18px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.78);
-      border: 1px solid rgba(91,127,166,0.24);
-      color: rgba(17,27,34,0.98);
-      font-size: 18px;
-    }
-    .spotlight-root.field-mode .spotlight-search {
-      min-height: 42px;
-      padding: 0 16px;
-      font-size: 15px;
-    }
-    .category-row { margin-top: 13px; }
-    .category-button {
-      min-width: 62px;
-      min-height: 58px;
-      padding: 0;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.38);
-      border: 1px solid rgba(255,255,255,0.52);
-      color: rgba(32,49,60,0.84);
-    }
-    .category-button:hover,
-    .category-button.active {
-      background: rgba(255,255,255,0.76);
-      border-color: rgba(91,127,166,0.36);
-      color: rgba(17,27,34,0.98);
-    }
-    .result-list { margin-top: 14px; }
-    .result-row {
-      min-height: 58px;
-      padding: 8px 11px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.46);
-      border: 1px solid rgba(255,255,255,0.56);
-    }
-    .result-row:hover,
-    .result-row:focus {
-      background: rgba(255,255,255,0.86);
-      border-color: rgba(91,127,166,0.42);
-    }
-    .result-title {
-      color: rgba(17,27,34,0.98);
-      font-size: 14px;
-      font-weight: 500;
-    }
-    .result-meta {
-      color: rgba(67,84,94,0.66);
-      font-size: 11px;
-    }
-    """
+    theme_mode = current_theme_mode()
+    Gtk.Settings.get_default().set_property("gtk-icon-theme-name", icon_theme_name(theme_mode))
+    css = spotlight_css(theme_mode)
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -261,6 +468,8 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     items = load_catalog()
     current_mode = mode if mode in {key for key, _, _ in CATEGORIES} else "all"
     result_rows: list[Gtk.Widget] = []
+    current_matches: list[Item] = []
+    selected_index = 0
 
     window = Gtk.Window(title="SevenOS Spotlight")
     window.set_decorated(False)
@@ -290,21 +499,38 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     result_box.get_style_context().add_class("result-list")
     root.pack_start(result_box, False, False, 0)
 
+    ai_card = Gtk.Label(label="SevenAI analyse les requêtes libres et demande confirmation avant les actions système.")
+    ai_card.set_xalign(0)
+    ai_card.get_style_context().add_class("ai-card")
+    root.pack_start(ai_card, False, False, 0)
+
     category_buttons: dict[str, Gtk.Button] = {}
 
     def refresh_results() -> None:
-        nonlocal result_rows
+        nonlocal result_rows, current_matches, selected_index
         for child in list(result_box.get_children()):
             result_box.remove(child)
         result_rows = []
         query = entry.get_text()
-        matches = filter_items(items, query, current_mode)
+        current_matches = filter_items(items, query, current_mode)
+        matches = current_matches
+        selected_index = 0
         result_box.set_visible(bool(matches))
+        ai_card.set_visible(bool(query.strip()) and not matches)
         for item in matches:
             row = make_result_row(item)
             result_box.pack_start(row, False, False, 0)
             result_rows.append(row)
+        update_selection()
         result_box.show_all()
+
+    def update_selection() -> None:
+        for index, row in enumerate(result_rows):
+            style = row.get_child().get_style_context()
+            if index == selected_index:
+                style.add_class("selected")
+            else:
+                style.remove_class("selected")
 
     def set_mode(new_mode: str) -> None:
         nonlocal current_mode
@@ -320,9 +546,15 @@ def run(mode: str, *, field_mode: bool = False) -> int:
         button = Gtk.Button()
         button.set_tooltip_text(label)
         button.get_style_context().add_class("category-button")
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        content.set_halign(Gtk.Align.CENTER)
         icon = Gtk.Image.new_from_icon_name(icon_name, Gtk.IconSize.DIALOG)
-        icon.set_pixel_size(30)
-        button.add(icon)
+        icon.set_pixel_size(24)
+        content.pack_start(icon, False, False, 0)
+        text = Gtk.Label(label=label)
+        text.get_style_context().add_class("category-label")
+        content.pack_start(text, False, False, 0)
+        button.add(content)
         button.connect("clicked", lambda _button: set_mode(key))
         category_buttons[key] = button
         return button
@@ -360,17 +592,30 @@ def run(mode: str, *, field_mode: bool = False) -> int:
 
     def activate_current() -> None:
         query = entry.get_text().strip()
-        matches = filter_items(items, query, current_mode)
-        if matches:
-            dispatch_item(matches[0])
+        if current_matches:
+            dispatch_item(current_matches[selected_index])
         else:
             dispatch_query(query)
         window.destroy()
 
     def on_key(_widget, event) -> bool:
+        nonlocal selected_index
         if event.keyval == Gdk.KEY_Escape:
             window.destroy()
             return True
+        if event.keyval in {Gdk.KEY_Down, Gdk.KEY_Tab} and result_rows:
+            selected_index = min(selected_index + 1, len(result_rows) - 1)
+            update_selection()
+            return True
+        if event.keyval == Gdk.KEY_Up and result_rows:
+            selected_index = max(selected_index - 1, 0)
+            update_selection()
+            return True
+        if Gdk.KEY_1 <= event.keyval <= Gdk.KEY_8 and event.state & Gdk.ModifierType.CONTROL_MASK:
+            index = event.keyval - Gdk.KEY_1
+            if index < len(CATEGORIES):
+                set_mode(CATEGORIES[index][0])
+                return True
         if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter}:
             activate_current()
             return True
@@ -402,6 +647,11 @@ def main() -> int:
     args = parser.parse_args()
     if args.probe:
         return probe()
+    if not acquire_spotlight_lock():
+        close_existing_spotlight()
+        return 0
+    if close_existing_spotlight():
+        return 0
     return run(args.mode, field_mode=args.field)
 
 

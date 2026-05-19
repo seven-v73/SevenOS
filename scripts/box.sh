@@ -9,7 +9,7 @@ usage() {
 SevenBox Preview
 
 Usage:
-  seven box [status|profiles|doctor|json]
+  seven box [status|profiles|launch|doctor|json]
 
 SevenBox is the local sandbox and container contract for SevenOS. It reports
 what can run safely today without starting containers or changing the system.
@@ -82,7 +82,7 @@ profiles = [
 
 payload = {
     "schema": "sevenos.box.v1",
-    "state": "preview",
+    "state": "product-preview",
     "writer": "scripts/box.sh",
     "summary": {
         "ready": sum(1 for item in checks if item["state"] == "OK"),
@@ -92,6 +92,12 @@ payload = {
     },
     "checks": checks,
     "profiles": profiles,
+    "launch_contract": {
+        "default": "preview command first",
+        "app-sandbox": "bwrap/firejail wrapper for selected apps",
+        "dev-container": "rootless podman shell in a project directory",
+        "flatpak-runtime": "open sandboxed app catalog",
+    },
     "workspace": str(Path.home() / "SevenOS" / "Boxes"),
     "docs": str(root / "docs" / "ECOSYSTEM.md"),
 }
@@ -121,6 +127,36 @@ profiles() {
   payload_json | python -c 'import json,sys; d=json.load(sys.stdin); print("SevenBox Profiles\n================="); [print(f"{i[\"key\"]:<16} {i[\"state\"]:<13} {i[\"description\"]}\n{'':<16} command: {i[\"command\"]}") for i in d["profiles"]]'
 }
 
+launch() {
+  local profile="${1:-app-sandbox}"
+  case "$profile" in
+    app-sandbox)
+      printf 'SevenBox App Sandbox\n'
+      printf '====================\n'
+      printf 'Use Firejail or Bubblewrap for an explicit app launch.\n'
+      printf 'Examples:\n'
+      printf '  firejail --private <app>\n'
+      printf '  bwrap --ro-bind /usr /usr --dev /dev --proc /proc --tmpfs /tmp <command>\n'
+      ;;
+    dev-container)
+      printf 'SevenBox Dev Container\n'
+      printf '======================\n'
+      printf 'Preview command:\n'
+      printf '  podman run --rm -it -v "$PWD:/workspace:Z" -w /workspace archlinux:latest bash\n'
+      ;;
+    flatpak-runtime)
+      printf 'SevenBox Flatpak Runtime\n'
+      printf '========================\n'
+      printf 'Open app delivery with: seven store apps\n'
+      ;;
+    *)
+      log_error "Unknown SevenBox profile: $profile"
+      printf 'Available: app-sandbox, dev-container, flatpak-runtime\n'
+      return 1
+      ;;
+  esac
+}
+
 doctor() {
   local payload
   payload="$(payload_json)"
@@ -140,6 +176,7 @@ action="${1:-status}"
 case "$action" in
   status) status ;;
   profiles) profiles ;;
+  launch) launch "${2:-app-sandbox}" ;;
   doctor) doctor ;;
   json|--json) payload_json ;;
   -h|--help|help) usage ;;

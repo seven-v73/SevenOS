@@ -100,7 +100,7 @@ fi
 
 if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
    [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
-   jq -e '."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 42 and ."gtk-layer-shell" == true and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/ai".exec == "seven-waybar-status ai"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
+   jq -e '."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 50 and ."gtk-layer-shell" == true and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/ai".exec == "seven-waybar-status ai"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
    grep -q '@define-color seven_blue #2F7BFF' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q '#custom-ai' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
@@ -112,7 +112,7 @@ else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 42 and .spacing == 6 and ."margin-top" == 10 and ."margin-left" == 18 and ."margin-right" == 18 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "hyprctl dispatch workspace e-1" and ."custom/workspace-next"."on-click" == "hyprctl dispatch workspace e+1" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 50 and .spacing == 6 and ."margin-top" == 10 and ."margin-left" == 18 and ."margin-right" == 18 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "hyprctl dispatch workspace e-1" and ."custom/workspace-next"."on-click" == "hyprctl dispatch workspace e+1" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses the SevenOS public premium floating hierarchy"
 else
   fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
@@ -163,6 +163,7 @@ if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'build_detail_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'detail-card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'icon-action' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'set_keyboard_interactivity(window, False)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'control_center_css' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'context_signal' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'SystemSnapshot' "$ROOT_DIR/bin/seven-quick-settings-native" &&
@@ -199,6 +200,10 @@ if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    grep -q 'import_fonts_button' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven fonts apply-default' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven-wallpaper' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'region_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'default_app_card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'copy_system_summary' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven keyboard apply' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven-shield-center-native' "$ROOT_DIR/bin/seven-settings-native"; then
   ok "SevenOS exposes a complete native Settings surface"
@@ -262,6 +267,12 @@ if grep -q 'width: 52%' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    grep -q 'SevenSpotlightNative' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'category-button' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'Search SevenOS' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'spotlight_css' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'CACHE_FILE' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'LOCK_FILE' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'fcntl.LOCK_EX' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'fuzzy_score' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'filter_items(items, query, current_mode)' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/spotlight.rasi" &&
    ! grep -Eq 'placeholder: "Search|filename: "search"|inputbar' "$ROOT_DIR/hyprland/rofi/hub.rasi" &&
@@ -275,6 +286,16 @@ fi
 if grep -Fq 'children: [ inputbar, listview ]' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'SevenLaunchpadNative' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'launchpad-tile' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'CACHE_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'fuzzy_score' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'launchpad-filter' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'menu_for_app' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'record_recent' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'close_existing_launchpad' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'closewindow' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'LOCK_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'fcntl.LOCK_EX' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'placeholder: "Search"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'columns: 7' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'element-icon' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&

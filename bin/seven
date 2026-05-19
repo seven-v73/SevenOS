@@ -312,7 +312,7 @@ def handle_store(args):
 
 
 def handle_box(args):
-    extra = [args.action]
+    extra = [args.action, *getattr(args, "extra", [])]
     if args.json:
         extra = ["json"]
     run_script(args, "scripts/box.sh", *extra)
@@ -580,7 +580,8 @@ def main():
     store_parser.add_argument("--json", action="store_true", help="print machine-readable SevenStore catalog")
     store_parser.add_argument("extra", nargs=argparse.REMAINDER)
     box_parser = subparsers.add_parser("box", help="inspect SevenBox sandbox and container readiness")
-    box_parser.add_argument("action", nargs="?", default="status", choices=("status", "profiles", "doctor", "json"))
+    box_parser.add_argument("action", nargs="?", default="status", choices=("status", "profiles", "launch", "doctor", "json"))
+    box_parser.add_argument("extra", nargs=argparse.REMAINDER)
     box_parser.add_argument("--json", action="store_true", help="print machine-readable SevenBox status")
     cloud_parser = subparsers.add_parser("cloud", help="inspect SevenCloud backup and restore readiness")
     cloud_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
@@ -686,6 +687,7 @@ def main():
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
     doctor_parser.add_argument("area", nargs="?", default="all")
+    doctor_parser.add_argument("--json", action="store_true", help="print machine-readable Seven Doctor report")
     doctor_parser.add_argument("--apply", action="store_true", help="execute repair plan when using 'fix'")
     doctor_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
     status_parser = subparsers.add_parser("status", help="show SevenOS status")
@@ -841,10 +843,15 @@ def main():
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)
+        elif args.action in ("open", "dashboard"):
+            run_script(args, "bin/seven-doctor-native")
         elif args.action == "check":
-            install_target("doctor", args)
+            extra = [args.area]
+            if args.json:
+                extra.append("--json")
+            run_script(args, "scripts/doctor.sh", *extra)
         else:
-            print("seven: supported doctor actions are check and fix", file=sys.stderr)
+            print("seven: supported doctor actions are check, open and fix", file=sys.stderr)
             sys.exit(1)
     elif args.command == "status":
         extra = ["--json"] if args.json else []

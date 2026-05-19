@@ -89,6 +89,12 @@ for key, meta in manifest.items():
         "installed": state.get("installed", 0),
         "total": state.get("total", len(meta.get("packages", []))),
         "command": f"sevenpkg install {key}",
+        "trust": {
+            "source": "SevenOS manifest",
+            "scope": "system packages",
+            "confirmation": "required",
+            "privacy": "local package metadata only",
+        },
     })
 modules.sort(key=module_sort_key)
 
@@ -101,6 +107,12 @@ for app in flatpak.get("apps", []) or []:
         "source": "flatpak",
         "state": app_state,
         "command": f"flatpak install flathub {app.get('id')}" if app.get("id") else "seven flatpak install",
+        "trust": {
+            "source": "Flathub",
+            "scope": "sandboxed application",
+            "confirmation": "required",
+            "privacy": "Flatpak metadata and runtime permissions",
+        },
     })
 
 catalog_actions = []
@@ -116,12 +128,23 @@ for action in actions_payload.get("actions", []) or []:
             "impact": action.get("impact", "safe"),
             "command": action.get("command", ""),
             "description": action.get("description", ""),
+            "trust": {
+                "source": "SevenOS action registry",
+                "scope": action.get("impact", "safe"),
+                "confirmation": "required" if action.get("impact") not in {"safe"} else "not required",
+                "privacy": "local command execution",
+            },
         })
 
 payload = {
     "schema": "sevenos.store.v1",
-    "state": "preview",
+    "state": "product-preview",
     "writer": "scripts/store.sh",
+    "trust_policy": {
+        "default": "preview first, install only after explicit user confirmation",
+        "sources": ["SevenOS manifest", "Flathub", "SevenOS action registry"],
+        "privacy": "local-first; no account required for catalog inspection",
+    },
     "summary": {
         "modules": len(modules),
         "modules_ready": sum(1 for item in modules if item["state"] == "OK"),

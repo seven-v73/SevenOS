@@ -30,20 +30,20 @@ sevenpkg	2	active	Software, meta-packages and future app layer	bin/sevenpkg
 Seven Hub	2-4	active	Native control center, action launcher and user-facing OS surface	seven-hub/bin/seven-hub
 Seven Profiles	2-4	active	Adaptive Forge, Shield, Studio, Windows, Horizon and Baobab contexts	profiles/profile-manager.sh
 Seven Files	2	active	Profile-aware file entrypoint and workspace bridge	bin/seven-files
-Windows Mode	2-4	preview	Wine, Bottles, Lutris and KVM/QEMU compatibility	vm/windows-mode.sh
-SevenShield	2-4	preview	Security hardening, audit, sandbox and Cyber Lab	security/cyber-audit.sh
-Seven Server	3	preview	Local API, monitoring and orchestration backend	server/seven-server.sh
-Seven Deploy	3	preview	Project detection and deployment planner	server/seven-deploy.sh
-Seven Installer	3	preview	Archiso, Calamares and install planning foundation	installer/calamares/README.md
-SevenBox	4	preview	Rootless containers and sandbox UX	scripts/box.sh
-SevenAI	4	preview	Local system assistant, readiness guidance and automation contract	scripts/ai.sh
-Adaptive UI	4	preview	Profile-aware shell, Waybar, panels and Hub actions	bin/seven-shell-panel
+Windows Mode	2-4	product-preview	Wine, Bottles, Lutris and KVM/QEMU compatibility	vm/windows-mode.sh
+SevenShield	2-4	product-preview	Security hardening, audit, sandbox and Cyber Lab	security/cyber-audit.sh
+Seven Server	3	guided-preview	Local API, monitoring and orchestration backend	server/seven-server.sh
+Seven Deploy	3	product-preview	Project detection and deployment planner	server/seven-deploy.sh
+Seven Installer	3	product-preview	Archiso, Calamares and install planning foundation	installer/calamares/README.md
+SevenBox	4	product-preview	Rootless containers and sandbox UX	scripts/box.sh
+SevenAI	4	product-preview	Local system assistant, readiness guidance and automation contract	scripts/ai.sh
+Adaptive UI	4	product-preview	Profile-aware shell, Waybar, panels and Hub actions	bin/seven-shell-panel
 Seven Shell	3	active	Native GTK, Waybar, Dock and AGS migration path	scripts/shell.sh
-SevenCloud	5	preview	Encrypted backup, config sync and restore	scripts/cloud.sh
-SevenStore	5	preview	Apps, profiles, themes and module registry	scripts/store.sh
-SevenIdentity	5	preview	User identity, accent packs, permissions and environment	scripts/identity.sh
-SevenFlow	5	preview	No-code automation rules for system workflows	scripts/flow.sh
-SevenCluster	5	preview	Local/private multi-machine compute mesh	scripts/cluster.sh
+SevenCloud	5	product-preview	Encrypted backup, config sync and restore	scripts/cloud.sh
+SevenStore	5	product-preview	Apps, profiles, themes and module registry	scripts/store.sh
+SevenIdentity	5	product-preview	User identity, accent packs, permissions and environment	scripts/identity.sh
+SevenFlow	5	product-preview	No-code automation rules for system workflows	scripts/flow.sh
+SevenCluster	5	product-preview	Local/private multi-machine compute mesh	scripts/cluster.sh
 EOF
 }
 
@@ -96,13 +96,15 @@ processes() {
 }
 
 summary() {
-  local active=0 preview=0 next=0 planned=0 process_count=0
+  local active=0 preview=0 product_preview=0 guided_preview=0 next=0 planned=0 process_count=0
   local _name _phase state _description _path
 
   while IFS=$'\t' read -r _name _phase state _description _path; do
     case "$state" in
       active) active=$((active + 1)) ;;
       preview) preview=$((preview + 1)) ;;
+      product-preview) product_preview=$((product_preview + 1)) ;;
+      guided-preview) guided_preview=$((guided_preview + 1)) ;;
       next) next=$((next + 1)) ;;
       planned) planned=$((planned + 1)) ;;
     esac
@@ -112,7 +114,7 @@ summary() {
     process_count=$((process_count + 1))
   done < <(processes_tsv)
 
-  printf 'SevenOS Ecosystem: %s active, %s preview, %s next, %s planned, %s processes\n' "$active" "$preview" "$next" "$planned" "$process_count"
+  printf 'SevenOS Ecosystem: %s active, %s product-preview, %s guided-preview, %s preview, %s next, %s planned, %s processes\n' "$active" "$product_preview" "$guided_preview" "$preview" "$next" "$planned" "$process_count"
 }
 
 maturity_json() {
@@ -225,7 +227,7 @@ for raw in os.environ["MODULES_TSV"].splitlines():
     elif name == "Seven Deploy":
         process_count = process_counts.get("Deploy", 0)
 
-    base = {"active": 65, "preview": 45, "next": 25, "planned": 5}.get(state, 0)
+    base = {"active": 65, "product-preview": 55, "guided-preview": 50, "preview": 45, "next": 25, "planned": 5}.get(state, 0)
     score = base
     score += 15 if exists else 0
     score += 10 if executable or rel_path.endswith(".md") else 0
@@ -235,8 +237,10 @@ for raw in os.environ["MODULES_TSV"].splitlines():
     score -= release_gap
     if state == "active":
         score = max(score, 95)
-    if state == "preview":
+    if state in {"preview", "product-preview"}:
         score = min(score, 92)
+    if state == "guided-preview":
+        score = min(score, 84)
     score = min(score, 100)
 
     if score >= 95:

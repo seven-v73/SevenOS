@@ -29,6 +29,9 @@ ROOT_DIR="$(resolve_root)"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 THEME="$CONFIG_HOME/rofi/apps.rasi"
 action="${1:-open}"
+if [[ "${2:-}" == "--json" && "$action" == "list" ]]; then
+  action="json"
+fi
 
 catalog() {
   python - <<'PY'
@@ -107,6 +110,33 @@ for entry in sorted(apps, key=lambda item: item[0].casefold()):
 PY
 }
 
+catalog_json() {
+  catalog | python -c '
+import json
+import sys
+
+apps = []
+for line in sys.stdin:
+    parts = line.rstrip("\n").split("\t")
+    if len(parts) < 6:
+        continue
+    name, desktop_id, path, comment, categories, icon = parts[:6]
+    category_items = [item for item in categories.split(";") if item]
+    apps.append(
+        {
+            "name": name,
+            "desktop_id": desktop_id,
+            "path": path,
+            "comment": comment,
+            "categories": category_items,
+            "icon": icon,
+        }
+    )
+
+print(json.dumps({"schema": "sevenos.apps.v1", "count": len(apps), "apps": apps}, ensure_ascii=False, indent=2))
+'
+}
+
 launch_desktop() {
   local desktop_id="$1"
   local desktop_path="$2"
@@ -133,6 +163,32 @@ launch_desktop() {
   return 1
 }
 
+close_existing_launchpad() {
+  command -v hyprctl >/dev/null 2>&1 || return 1
+  python - <<'PY'
+import json
+import subprocess
+import sys
+
+try:
+    result = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True, check=False)
+    clients = json.loads(result.stdout or "[]")
+except Exception:
+    sys.exit(1)
+
+for client in clients:
+    if client.get("class") != "SevenLaunchpadNative":
+        continue
+    address = str(client.get("address", "")).strip()
+    if not address:
+        continue
+    subprocess.run(["hyprctl", "dispatch", "closewindow", f"address:{address}"], check=False)
+    sys.exit(0)
+
+sys.exit(1)
+PY
+}
+
 open_apps() {
   local catalog_file menu_file selected_index selected_line desktop_id desktop_path native
   native="$ROOT_DIR/bin/seven-launchpad-native"
@@ -143,6 +199,10 @@ open_apps() {
     catalog > "$catalog_file"
     printf 'seven-apps catalog %s applications\n' "$(wc -l < "$catalog_file")"
     printf 'native Launchpad if GTK is available, Rofi fallback with %q and desktop icon metadata\n' "$THEME"
+    return 0
+  fi
+
+  if close_existing_launchpad; then
     return 0
   fi
 
@@ -213,6 +273,9 @@ case "$action" in
   list)
     catalog
     ;;
+  json)
+    catalog_json
+    ;;
   count)
     catalog | wc -l
     ;;
@@ -225,7 +288,7 @@ case "$action" in
     fi
     ;;
   *)
-    printf 'Usage: seven-apps [open|list|count|doctor]\n' >&2
+    printf 'Usage: seven-apps [open|list|json|count|doctor]\n' >&2
     exit 2
     ;;
 esac
