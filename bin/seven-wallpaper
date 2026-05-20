@@ -37,6 +37,27 @@ ACTIVE_WALLPAPER="$WALLPAPER_DIR/wallpaper-sevenos-active.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
 SERVICE_NAME="sevenos-wallpaper.service"
 
+profile_meta_json() {
+  local profile="${1:-}"
+  local payload
+  if [[ -z "$profile" ]]; then
+    profile="$("$ROOT_DIR/profiles/profile-manager.sh" current --json 2>/dev/null | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))' 2>/dev/null || printf 'equinox')"
+  fi
+  payload="$("$ROOT_DIR/profiles/profile-manager.sh" status --json 2>/dev/null || printf '[]')"
+  PROFILE_KEY="$profile" PROFILE_STATUS="$payload" python - <<'PY'
+import json
+import os
+
+key = os.environ.get("PROFILE_KEY") or "equinox"
+try:
+    profiles = json.loads(os.environ.get("PROFILE_STATUS") or "[]")
+except Exception:
+    profiles = []
+match = next((item for item in profiles if item.get("key") == key), None) or next((item for item in profiles if item.get("active")), None) or {}
+print(json.dumps(match))
+PY
+}
+
 render_wallpaper() {
   mkdir -p "$WALLPAPER_DIR"
   cp "$SOURCE_SVG" "$TARGET_SVG"
@@ -82,6 +103,125 @@ set_custom_wallpaper() {
   cp "$CUSTOM_WALLPAPER" "$ACTIVE_WALLPAPER"
 }
 
+render_profile_wallpaper() {
+  local profile="${1:-}"
+  mkdir -p "$WALLPAPER_DIR"
+  PROFILE_JSON="$(profile_meta_json "$profile")" python - "$WALLPAPER_DIR" <<'PY'
+import html
+import json
+import os
+import sys
+
+wallpaper_dir = sys.argv[1]
+profile = json.loads(os.environ.get("PROFILE_JSON") or "{}")
+key = profile.get("key", "equinox")
+title = html.escape(profile.get("title", "Equinox Balance"))
+role = html.escape(profile.get("role", "Balance"))
+accent = profile.get("accent_color", "#8B7CFF")
+secondary = profile.get("secondary_color", "#6EA8FF")
+mood = html.escape(profile.get("ui_mood", "SevenOS profile"))
+principle = html.escape(profile.get("principle", "No profile dependency, only profile collaboration."))
+symbol = html.escape(profile.get("waybar_icon", profile.get("icon", "7")))
+target = os.path.join(wallpaper_dir, f"wallpaper-sevenos-{key}.svg")
+
+palette = {
+    "equinox": ("#11111B", "#1B1F30", "#34365C", "#121528"),
+    "baobab": ("#09160E", "#172415", "#4E3923", "#0E1E13"),
+    "forge": ("#120F0B", "#21170E", "#45321E", "#15111B"),
+    "shield": ("#041411", "#09201B", "#123F38", "#071D23"),
+    "studio": ("#130B1B", "#21122B", "#3E244D", "#171129"),
+    "windows": ("#07111E", "#0D1C2B", "#183D5A", "#0B1626"),
+    "horizon": ("#061620", "#092635", "#16495A", "#071C28"),
+    "pulse": ("#031522", "#082337", "#0A4961", "#061A2A"),
+}.get(key, ("#11111B", "#1B1F30", "#34365C", "#121528"))
+bg, mid, ridge, deep = palette
+
+svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="skyA" cx="20%" cy="8%" r="72%">
+      <stop offset="0%" stop-color="{accent}" stop-opacity="0.48"/>
+      <stop offset="42%" stop-color="{secondary}" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="{bg}" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="skyB" cx="84%" cy="18%" r="60%">
+      <stop offset="0%" stop-color="{secondary}" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="{bg}" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="{mid}"/>
+      <stop offset="56%" stop-color="{bg}"/>
+      <stop offset="100%" stop-color="{deep}"/>
+    </linearGradient>
+    <linearGradient id="lake" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="{accent}" stop-opacity="0.22"/>
+      <stop offset="42%" stop-color="{secondary}" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#050815" stop-opacity="0.42"/>
+    </linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="36"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="2" seed="7"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 0.08"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#skyA)"/>
+  <rect width="1920" height="1080" fill="url(#skyB)"/>
+  <circle cx="1580" cy="188" r="112" fill="{accent}" opacity="0.18" filter="url(#soft)"/>
+  <circle cx="1540" cy="170" r="42" fill="#FFFFFF" opacity="0.34"/>
+  <path d="M-80 655 C 190 520, 330 565, 520 415 C 690 280, 790 410, 930 318 C 1070 230, 1185 405, 1370 338 C 1575 262, 1720 410, 2040 320 L 2040 780 L -80 780 Z" fill="{ridge}" opacity="0.70"/>
+  <path d="M-70 710 C 210 580, 420 640, 640 500 C 870 352, 1010 566, 1190 450 C 1410 310, 1615 565, 2010 438 L 2010 840 L -70 840 Z" fill="{deep}" opacity="0.88"/>
+  <path d="M-60 805 C 300 700, 560 735, 840 628 C 1110 525, 1360 668, 2010 560 L 2010 1100 L -60 1100 Z" fill="#060A17" opacity="0.82"/>
+  <path d="M0 785 C 340 745, 650 785, 960 710 C 1260 638, 1510 730, 1920 650 L 1920 1080 L 0 1080 Z" fill="url(#lake)" opacity="0.84"/>
+  <path d="M120 850 C 520 820, 830 870, 1180 795 C 1460 735, 1660 782, 1840 748" fill="none" stroke="{accent}" stroke-opacity="0.18" stroke-width="3"/>
+  <path d="M180 908 C 560 890, 830 928, 1200 858 C 1450 812, 1655 852, 1810 828" fill="none" stroke="{secondary}" stroke-opacity="0.12" stroke-width="2"/>
+  <ellipse cx="960" cy="1008" rx="1020" ry="210" fill="{accent}" opacity="0.09" filter="url(#soft)"/>
+  <g opacity="0.12" stroke="{secondary}" stroke-width="1.4">
+    <path d="M120 170 h240 m-120 -120 v240"/>
+    <path d="M1510 770 h250 m-125 -125 v250"/>
+    <path d="M1360 92 l72 72 l-72 72 l-72 -72z"/>
+  </g>
+  <g transform="translate(112 725)">
+    <rect x="-26" y="-94" width="720" height="238" rx="34" fill="#020617" opacity="0.20"/>
+    <text x="0" y="-18" fill="#FFFFFF" opacity="0.94" font-family="SF Pro Display, Inter, sans-serif" font-size="72" font-weight="500">{title}</text>
+    <text x="2" y="34" fill="#FFFFFF" opacity="0.70" font-family="SF Pro Text, Inter, sans-serif" font-size="25">{role} · {mood}</text>
+    <text x="2" y="78" fill="{accent}" opacity="0.82" font-family="SF Pro Text, Inter, sans-serif" font-size="19">{principle}</text>
+  </g>
+  <g transform="translate(1660 770)">
+    <circle cx="0" cy="0" r="72" fill="{accent}" opacity="0.22"/>
+    <circle cx="0" cy="0" r="48" fill="#FFFFFF" opacity="0.10"/>
+    <text x="0" y="18" text-anchor="middle" fill="#FFFFFF" opacity="0.86" font-family="JetBrainsMono Nerd Font, SF Pro Display, sans-serif" font-size="48">{symbol}</text>
+  </g>
+  <rect width="1920" height="1080" filter="url(#grain)" opacity="0.42"/>
+</svg>
+'''
+open(target, "w", encoding="utf-8").write(svg)
+PY
+
+  local key
+  key="$(PROFILE_JSON="$(profile_meta_json "$profile")" python -c 'import json,os; print(json.loads(os.environ.get("PROFILE_JSON") or "{}").get("key","equinox"))')"
+  local profile_svg="$WALLPAPER_DIR/wallpaper-sevenos-$key.svg"
+  local profile_png="$WALLPAPER_DIR/wallpaper-sevenos-$key.png"
+  rm -f "$profile_png"
+  if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w 1920 -h 1080 "$profile_svg" -o "$profile_png"
+  elif command -v magick >/dev/null 2>&1; then
+    magick "$profile_svg" -resize 1920x1080! "$profile_png"
+  else
+    cp "$profile_svg" "$TARGET_SVG"
+    printf 'seven-wallpaper: missing SVG renderer. Install librsvg or imagemagick.\n' >&2
+    exit 1
+  fi
+  cp "$profile_png" "$ACTIVE_WALLPAPER"
+}
+
+render_all_profile_wallpapers() {
+  local profile
+  for profile in equinox baobab forge shield studio windows horizon pulse; do
+    render_profile_wallpaper "$profile"
+  done
+}
+
 write_config() {
   mkdir -p "$CONFIG_HOME/hypr"
   {
@@ -90,6 +230,12 @@ write_config() {
     printf 'wallpaper = ,%s\n' "$ACTIVE_WALLPAPER"
     printf 'splash = false\n'
   } > "$HYPRPAPER_CONFIG"
+}
+
+generate_palette() {
+  if [[ -x "$ROOT_DIR/scripts/wallpaper-theme.sh" && -f "$ACTIVE_WALLPAPER" ]]; then
+    "$ROOT_DIR/scripts/wallpaper-theme.sh" generate "$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
+  fi
 }
 
 systemd_wallpaper_available() {
@@ -125,6 +271,7 @@ apply_live() {
     hyprctl hyprpaper preload "$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
     hyprctl hyprpaper wallpaper ",$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
   fi
+  generate_palette
 }
 
 serve_hyprpaper() {
@@ -204,20 +351,34 @@ case "${1:-refresh}" in
   render)
     render_wallpaper
     write_config
+    generate_palette
     printf '%s\n' "$TARGET_PNG"
     ;;
   refresh)
     render_wallpaper
+    generate_palette
     restart_hyprpaper
     printf 'SevenOS wallpaper refreshed: %s\n' "$ACTIVE_WALLPAPER"
     ;;
   set)
     set_custom_wallpaper "${2:-}"
+    generate_palette
     restart_hyprpaper
     if command -v notify-send >/dev/null 2>&1; then
       notify-send "SevenOS Wallpaper" "Wallpaper updated from $(basename -- "${2:-image}")" || true
     fi
     printf 'SevenOS wallpaper set: %s\n' "$ACTIVE_WALLPAPER"
+    ;;
+  profile)
+    render_profile_wallpaper "${2:-}"
+    generate_palette
+    restart_hyprpaper
+    printf 'SevenOS profile wallpaper set: %s\n' "$ACTIVE_WALLPAPER"
+    ;;
+  profiles)
+    render_all_profile_wallpapers
+    generate_palette
+    printf 'SevenOS profile wallpapers generated in %s\n' "$WALLPAPER_DIR"
     ;;
   serve)
     serve_hyprpaper
@@ -229,7 +390,7 @@ case "${1:-refresh}" in
     printf '%s\n' "$ACTIVE_WALLPAPER"
     ;;
   *)
-    printf 'Usage: seven-wallpaper [refresh|render|serve|status|path|set IMAGE]\n' >&2
+    printf 'Usage: seven-wallpaper [refresh|render|serve|status|path|set IMAGE|profile [PROFILE]|profiles]\n' >&2
     exit 1
     ;;
 esac

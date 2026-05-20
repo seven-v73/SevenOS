@@ -142,10 +142,10 @@ def active_profile() -> tuple[str, str]:
     if profile_file.exists():
         try:
             payload = json.loads(profile_file.read_text(encoding="utf-8"))
-            return str(payload.get("title") or "Baobab"), str(payload.get("key") or "baobab")
+            return str(payload.get("title") or "Equinox"), str(payload.get("key") or "equinox")
         except Exception:
             pass
-    return "Baobab", "baobab"
+    return "Equinox", "equinox"
 
 
 def wifi_state() -> str:

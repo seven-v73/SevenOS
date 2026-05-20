@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+WORKSPACE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/workspace"
+WORKSPACE_STATE_FILE="$WORKSPACE_STATE_DIR/current.json"
+
+workspace_title() {
+  case "$1" in
+    1) printf 'Focus' ;;
+    2) printf 'Build' ;;
+    3) printf 'Web' ;;
+    4) printf 'Create' ;;
+    5) printf 'System' ;;
+    6) printf 'Comms' ;;
+    7) printf 'Lab' ;;
+    8) printf 'Deploy' ;;
+    9) printf 'Vault' ;;
+    special:seven) printf 'Seven Space' ;;
+    *) printf 'Workspace %s' "$1" ;;
+  esac
+}
+
+workspace_icon() {
+  case "$1" in
+    1) printf '󰈹' ;;
+    2) printf '󰅩' ;;
+    3) printf '󰖟' ;;
+    4) printf '󰏘' ;;
+    5) printf '󰒓' ;;
+    6) printf '󰍡' ;;
+    7) printf '󰙨' ;;
+    8) printf '󰓦' ;;
+    9) printf '󰌾' ;;
+    special:seven) printf '󰐃' ;;
+    *) printf '󰧟' ;;
+  esac
+}
+
+workspace_hint() {
+  case "$1" in
+    1) printf 'calme, lecture, concentration' ;;
+    2) printf 'code, build, terminal, Forge' ;;
+    3) printf 'web, recherche, documentation' ;;
+    4) printf 'création, design, média, Studio' ;;
+    5) printf 'réglages, fichiers, système' ;;
+    6) printf 'messages, collaboration, appels' ;;
+    7) printf 'lab, sécurité, Shield' ;;
+    8) printf 'serveurs, déploiement, Horizon' ;;
+    9) printf 'privé, coffre, actions sensibles' ;;
+    special:seven) printf 'surface spéciale SevenOS' ;;
+    *) printf 'espace personnalisé' ;;
+  esac
+}
+
+json_escape() {
+  if [[ "$#" -gt 0 ]]; then
+    python -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
+  else
+    python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
+  fi
+}
+
+current_workspace_id() {
+  if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    hyprctl activeworkspace -j 2>/dev/null | python -c 'import json,sys; data=json.load(sys.stdin); print(data.get("name") or data.get("id") or "1")' 2>/dev/null || printf '1'
+  else
+    printf '1'
+  fi
+}
+
+write_state() {
+  local id="$1"
+  mkdir -p "$WORKSPACE_STATE_DIR"
+  {
+    printf '{'
+    printf '"schema":"sevenos.workspace.v1",'
+    printf '"id":%s,' "$(json_escape "$id")"
+    printf '"title":%s,' "$(workspace_title "$id" | json_escape)"
+    printf '"icon":%s,' "$(workspace_icon "$id" | json_escape)"
+    printf '"hint":%s' "$(workspace_hint "$id" | json_escape)"
+    printf '}\n'
+  } > "$WORKSPACE_STATE_FILE"
+}
+
+notify_workspace() {
+  local id="$1"
+  local title icon hint
+  title="$(workspace_title "$id")"
+  icon="$(workspace_icon "$id")"
+  hint="$(workspace_hint "$id")"
+
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send \
+      -a "SevenOS Workspace" \
+      -h string:x-canonical-private-synchronous:sevenos-workspace \
+      -t 900 \
+      "$icon  $title" \
+      "$hint" >/dev/null 2>&1 || true
+  fi
+}
+
+dispatch_workspace() {
+  local target="$1"
+  if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    hyprctl dispatch workspace "$target" >/dev/null 2>&1 || true
+    sleep 0.05
+  fi
+  local id
+  id="$(current_workspace_id)"
+  write_state "$id"
+  notify_workspace "$id"
+}
+
+status_json() {
+  local id
+  id="$(current_workspace_id)"
+  write_state "$id"
+  cat "$WORKSPACE_STATE_FILE"
+}
+
+case "${1:-status}" in
+  switch)
+    [[ -n "${2:-}" ]] || { printf 'Usage: seven-workspace switch <id>\n' >&2; exit 2; }
+    dispatch_workspace "$2"
+    ;;
+  next)
+    dispatch_workspace "r+1"
+    ;;
+  prev)
+    dispatch_workspace "r-1"
+    ;;
+  json|status-json)
+    status_json
+    ;;
+  status)
+    id="$(current_workspace_id)"
+    printf '%s · %s\n' "$(workspace_title "$id")" "$(workspace_hint "$id")"
+    ;;
+  *)
+    printf 'Usage: seven-workspace [status|json|switch <id>|next|prev]\n' >&2
+    exit 2
+    ;;
+esac

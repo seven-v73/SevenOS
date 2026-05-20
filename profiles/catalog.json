@@ -1,0 +1,737 @@
+{
+  "schema": "sevenos.profiles.catalog.v1",
+  "model": "layered-autonomous-profiles-architecture",
+  "golden_rule": "No profile dependency, only profile collaboration.",
+  "default_profile": "equinox",
+  "profile_model": {
+    "name": "Layered Autonomous Profiles Architecture",
+    "short_name": "LAPA",
+    "contract": "Each profile is a self-contained mini OS with Kernel, Runtime, Experience and Intelligence layers.",
+    "composition": "Profiles can collaborate through declared capabilities, but no profile may silently load another profile's full stack.",
+    "equinox_role": "Equinox is the balanced general profile. It is not a hidden super-profile and it must not make another profile dominant by default."
+  },
+  "profile_naming": {
+    "equinox": "Equinox Balance",
+    "baobab": "Baobab Culture",
+    "forge": "Forge Developer",
+    "shield": "Shield Cybersecurity",
+    "studio": "Studio Creator",
+    "windows": "Windows Bridge",
+    "horizon": "Horizon Cloud",
+    "pulse": "Pulse Gaming"
+  },
+  "state_files": {
+    "active_env": "~/.config/sevenos/profile.env",
+    "active_json": "~/.config/sevenos/profile.json",
+    "runtime_json": "~/.config/sevenos/runtime.json",
+    "runtime_env": "~/.config/sevenos/runtime.env",
+    "isolation_json": "~/.config/sevenos/profile-isolation.json",
+    "active_packages": "~/.config/sevenos/active-packages.txt",
+    "service_policy": "~/.config/sevenos/profile-services.json"
+  },
+  "core_package_files": [
+    "scripts/packages-base.txt"
+  ],
+  "runtime_optional_package_files": [
+    "scripts/packages-runtime-optional.txt"
+  ],
+  "isolation_policy": {
+    "package_store": "pacman packages are installed globally",
+    "activation": "SevenOS activates packages per profile through runtime state, service policy, app shims and systemd slices",
+    "rule": "Installed does not mean active. No profile dependency, only profile collaboration."
+  },
+  "profiles": {
+    "equinox": {
+      "title": "Equinox Balance",
+      "role": "Balanced general mini OS",
+      "target": "base",
+      "domain": "balanced general computing",
+      "purpose": "A neutral daily SevenOS environment for work, media, browsing, files and light creation without making any specialized profile dominant.",
+      "mini_os": true,
+      "layers": {
+        "kernel": [
+          "balanced CPU scheduling",
+          "moderate power policy",
+          "responsive foreground apps"
+        ],
+        "runtime": [
+          "core desktop services",
+          "files, settings, terminal and browser readiness",
+          "safe common tools"
+        ],
+        "experience": [
+          "neutral SevenOS glass UI",
+          "general Waybar and Control Center",
+          "broad public-user workflow"
+        ],
+        "intelligence": [
+          "SevenAI general assistant",
+          "Seven Doctor baseline checks",
+          "capability arbitration without forced stacks"
+        ]
+      },
+      "package_files": [
+        "scripts/packages-base.txt"
+      ],
+      "waybar_modules": [
+        "profile",
+        "spotlight",
+        "media",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "battery",
+        "ai"
+      ],
+      "runtime_slice": "seven-equinox.slice",
+      "capabilities": [
+        "balanced-ui",
+        "core-tools",
+        "basic-security",
+        "light-dev",
+        "light-creative",
+        "light-cloud",
+        "light-performance"
+      ],
+      "anti_nuisance": [
+        "no heavy dev stack by default",
+        "no security scans by default",
+        "no cloud daemons by default",
+        "no gaming overlays by default",
+        "no Windows VM by default"
+      ],
+      "independence": {
+        "standalone": true,
+        "does_not_require": [
+          "forge",
+          "shield",
+          "studio",
+          "windows",
+          "horizon",
+          "pulse",
+          "baobab"
+        ],
+        "composition_policy": "may borrow light capabilities only after explicit user action or SevenAI confirmation"
+      },
+      "resource_intent": {
+        "cpu": "balanced-arbitration",
+        "ram": "shared-general-pool",
+        "gpu": "foreground-fairness",
+        "io": "responsive",
+        "network": "normal-qos"
+      },
+      "priority": 150,
+      "center_command": "seven-profile-center-native",
+      "profile_surfaces": {
+        "center": "seven-profile-center-native",
+        "workspace": "seven profile open equinox",
+        "apps": "seven profile apps equinox",
+        "runtime": "seven runtime plan equinox"
+      }
+    },
+    "baobab": {
+      "title": "Baobab Culture",
+      "role": "African culture and learning mini OS",
+      "target": "culture",
+      "domain": "culture and learning",
+      "purpose": "A lightweight cultural and educational SevenOS experience for African knowledge, languages, community memory, reading and learning.",
+      "mini_os": true,
+      "layers": {
+        "kernel": [
+          "quiet resource use",
+          "battery-friendly defaults",
+          "low background activity"
+        ],
+        "runtime": [
+          "local cultural archives",
+          "language resources",
+          "reader and media tools",
+          "community knowledge spaces"
+        ],
+        "experience": [
+          "African cultural identity",
+          "simple learning navigation",
+          "calm media and reading surfaces"
+        ],
+        "intelligence": [
+          "cultural assistant",
+          "translation and oral knowledge support",
+          "offline learning guidance"
+        ]
+      },
+      "package_files": [
+        "scripts/packages-culture.txt"
+      ],
+      "optional_package_files": [
+        "scripts/packages-culture-optional.txt"
+      ],
+      "waybar_modules": [
+        "profile",
+        "spotlight",
+        "media",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "battery",
+        "ai"
+      ],
+      "runtime_slice": "seven-baobab.slice",
+      "capabilities": [
+        "cultural-identity",
+        "language-support",
+        "community-space",
+        "local-knowledge"
+      ],
+      "anti_nuisance": [
+        "no dev toolchain",
+        "no docker",
+        "no security toolkit",
+        "no cloud services",
+        "no gaming runtime"
+      ],
+      "independence": {
+        "standalone": true,
+        "does_not_require": [
+          "forge",
+          "shield",
+          "studio",
+          "windows",
+          "horizon",
+          "pulse"
+        ],
+        "composition_policy": "must stay culture-first; dev, cloud, security or gaming tools are added only by explicit composition"
+      },
+      "resource_intent": {
+        "cpu": "light-cultural",
+        "ram": "small-local-cache",
+        "gpu": "minimal-ui",
+        "io": "archive-friendly",
+        "network": "optional-sharing"
+      },
+      "priority": 90,
+      "center_command": "seven-mini-os-center baobab",
+      "profile_surfaces": {
+        "center": "seven-mini-os-center baobab",
+        "workspace": "seven profile open baobab",
+        "apps": "seven profile apps baobab",
+        "runtime": "seven runtime plan baobab"
+      }
+    },
+    "forge": {
+      "title": "Forge Developer",
+      "role": "Developer mini OS",
+      "target": "dev",
+      "domain": "development",
+      "purpose": "A developer-mode SevenOS environment for software engineering, code, local services, containers, builds and technical documentation.",
+      "mini_os": true,
+      "layers": {
+        "kernel": [
+          "interactive build scheduling",
+          "compiler-friendly CPU/RAM policy",
+          "fast project IO caches"
+        ],
+        "runtime": [
+          "editors and IDE helpers",
+          "Node, Python, Rust and system toolchains",
+          "Git workflows",
+          "containers and local services"
+        ],
+        "experience": [
+          "terminal-forward workspace",
+          "project and documentation panels",
+          "developer Waybar signals"
+        ],
+        "intelligence": [
+          "code assistant",
+          "build and error explanation",
+          "project bootstrap and workflow suggestions"
+        ]
+      },
+      "package_files": [
+        "scripts/packages-dev.txt"
+      ],
+      "waybar_modules": [
+        "profile",
+        "spotlight",
+        "media",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "battery",
+        "recorder",
+        "ai"
+      ],
+      "runtime_slice": "seven-forge.slice",
+      "capabilities": [
+        "dev-tools",
+        "containers",
+        "build-system",
+        "git-workflows",
+        "local-services"
+      ],
+      "anti_nuisance": [
+        "no security scans unless Shield is composed",
+        "no media render stack unless Studio is composed",
+        "no gaming runtime unless Pulse is composed"
+      ],
+      "independence": {
+        "standalone": true,
+        "does_not_require": [
+          "shield",
+          "studio",
+          "windows",
+          "horizon",
+          "pulse",
+          "baobab"
+        ]
+      },
+      "resource_intent": {
+        "cpu": "interactive-build",
+        "ram": "large-working-set",
+        "gpu": "normal",
+        "io": "build-cache",
+        "network": "dev-services"
+      },
+      "priority": 180,
+      "center_command": "seven-mini-os-center forge",
+      "profile_surfaces": {
+        "center": "seven-mini-os-center forge",
+        "workspace": "seven profile open forge",
+        "apps": "seven profile apps forge",
+        "runtime": "seven runtime plan forge"
+      }
+    },
+    "shield": {
+      "title": "Shield Cybersecurity",
+      "role": "Cybersecurity mini OS",
+      "target": "cybersecurity",
+      "domain": "security",
+      "purpose": "A cybersecurity and forensic SevenOS environment for authorized audit, sandboxing, network analysis, reversing and reporting.",
+      "mini_os": true,
+      "layers": {
+        "kernel": [
+          "audit-aware scheduling",
+          "network visibility",
+          "sandbox and isolation readiness"
+        ],
+        "runtime": [
+          "forensics tools",
+          "network tools",
+          "sandbox labs",
+          "reporting and evidence helpers"
+        ],
+        "experience": [
+          "scope-first security UI",
+          "VPN and isolation signals",
+          "evidence-safe workspaces"
+        ],
+        "intelligence": [
+          "authorized-scope guard",
+          "risk explanation",
+          "repair and hardening playbooks"
+        ]
+      },
+      "package_files": [
+        "scripts/packages-cybersecurity.txt",
+        "scripts/packages-cybersecurity-forensics.txt",
+        "scripts/packages-cybersecurity-reversing.txt",
+        "scripts/packages-cybersecurity-wireless.txt",
+        "scripts/packages-cybersecurity-sandbox.txt"
+      ],
+      "waybar_modules": [
+        "profile",
+        "spotlight",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "battery",
+        "vpn",
+        "recorder",
+        "ai"
+      ],
+      "runtime_slice": "seven-shield.slice",
+      "capabilities": [
+        "security-rules",
+        "audit",
+        "sandboxing",
+        "network-defense",
+        "forensics"
+      ],
+      "optional_apps": [
+        "burpsuite"
+      ],
+      "anti_nuisance": [
+        "no intrusive scans without confirmation",
+        "no dev containers unless Forge is composed",
+        "no cloud daemons unless Horizon is composed"
+      ],
+      "independence": {
+        "standalone": true,
+        "does_not_require": [
+          "forge",
+          "studio",
+          "windows",
+          "horizon",
+          "pulse",
+          "baobab"
+        ]
+      },
+      "resource_intent": {
+        "cpu": "event-driven",
+        "ram": "isolated-tools",
+        "gpu": "restricted",
+        "io": "evidence-safe",
+        "network": "guarded"
+      },
+      "priority": 120,
+      "center_command": "seven-shield-center-native",
+      "profile_surfaces": {
+        "center": "seven-shield-center-native",
+        "workspace": "seven profile open shield",
+        "apps": "seven profile apps shield",
+        "runtime": "seven runtime plan shield"
+      }
+    },
+    "studio": {
+      "title": "Studio Creator",
+      "role": "Creator mini OS",
+      "target": "creation",
+      "domain": "creation",
+      "purpose": "A creator-focused SevenOS environment for logos, design, video, audio, 3D, capture, streaming and asset production.",
+      "mini_os": true,
+      "layers": {
+        "kernel": [
+          "GPU render priority",
+          "low-latency audio path",
+          "large media cache policy"
+        ],
+        "runtime": [
+          "image and vector tools",
+          "video and audio tools",
+          "3D and capture tools",
+          "asset conversion helpers"
+        ],
+        "experience": [
+          "creative canvas UI",
+          "media library surfaces",
+          "export and capture workflow"
+        ],
+        "intelligence": [
+          "asset organization",
+          "creative brief assistance",
+          "render and export guidance"
+        ]
+      },
+      "package_files": [
+        "scripts/packages-creation.txt"
+      ],
+      "waybar_modules": [
+        "profile",
+        "spotlight",
+        "media",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "recorder",
+        "battery",
+        "ai"
+      ],
+      "runtime_slice": "seven-studio.slice",
+      "capabilities": [
+        "creative-apps",
+        "media-pipeline",
+        "gpu-rendering",
+        "low-latency-audio"
+      ],
+      "anti_nuisance": [
+        "no security scans during render unless confirmed",
+        "no dev services unless Forge is composed",
+        "no gaming overlays unless Pulse is composed"
+      ],
+      "independence": {
+        "standalone": true,
+        "does_not_require": [
+          "forge",
+          "shield",
+          "windows",
+          "horizon",
+          "pulse",
+          "baobab"
+        ]
+      },
+      "resource_intent": {
+        "cpu": "media-low-latency",
+        "ram": "asset-cache",
+        "gpu": "render-priority",
+        "io": "media-throughput",
+        "network": "normal"
+      },
+      "priority": 220,
+      "center_command": "seven-mini-os-center studio",
+      "profile_surfaces": {
+        "center": "seven-mini-os-center studio",
+        "workspace": "seven profile open studio",
+        "apps": "seven profile apps studio",
+        "runtime": "seven runtime plan studio"
+      }
+    },
+    "windows": {
+      "title": "Windows Bridge",
+      "role": "Windows VM and compatibility mini OS",
+      "target": "windows",
+      "domain": "windows compatibility",
+      "purpose": "A Windows-first compatibility environment centered on a complete Windows VM experience, with Wine and Bottles used as lighter fallback paths.",
+      "mini_os": true,
+      "layers": {
+        "kernel": [
+          "KVM and libvirt readiness",
+          "VM CPU/RAM reservation",
+          "foreground compatibility scheduling"
+        ],
+        "runtime": [
+          "QEMU/KVM and VirtIO",
+          "Windows VM lifecycle",
+          "shared folders",
+          "Wine and Bottles fallback"
+        ],
+        "experience": [
+          "guided Windows assistant",
+          "Windows app launcher",
+          "snapshot and recovery flow"
+        ],
+        "intelligence": [
+          "compatibility diagnosis",
+          "engine selection",
+          "Office and installer guidance",
+          "VM repair suggestions"
+        ]
+      },
+      "package_files": [
+        "scripts/packages-windows.txt"
+      ],
+      "waybar_modules": [
+        "profile",
+        "spotlight",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "battery",
+        "ai"
+      ],
+      "runtime_slice": "seven-windows.slice",
+      "capabilities": [
+        "windows-vm",
+        "virtio",
+        "snapshots",
+        "windows-app-routing",
+        "wine",
+        "bottles",
+        "shared-folders"
+      ],
+      "anti_nuisance": [
+        "no VM autostart by default",
+        "no Wine prefix mutation without confirmation",
+        "no gaming tuning unless Pulse is composed"
+      ],
+      "independence": {
+        "standalone": true,
+        "does_not_require": [
+          "forge",
+          "shield",
+          "studio",
+          "horizon",
+          "pulse",
+          "baobab"
+        ]
+      },
+      "resource_intent": {
+        "cpu": "foreground-vm",
+        "ram": "vm-reserve",
+        "gpu": "compatibility",
+        "io": "disk-image",
+        "network": "bridged-or-nat"
+      },
+      "priority": 200,
+      "center_command": "seven-mini-os-center windows",
+      "profile_surfaces": {
+        "center": "seven-mini-os-center windows",
+        "workspace": "seven profile open windows",
+        "apps": "seven profile apps windows",
+        "runtime": "seven runtime plan windows"
+      }
+    },
+    "horizon": {
+      "title": "Horizon Cloud",
+      "role": "Cloud and server mini OS",
+      "target": "server",
+      "domain": "cloud deployment and server operations",
+      "purpose": "A cloud, server and deployment SevenOS environment for self-hosting, reverse proxies, containers, infrastructure and service operations.",
+      "mini_os": true,
+      "layers": {
+        "kernel": [
+          "stable service throughput",
+          "network QoS",
+          "background daemon control"
+        ],
+        "runtime": [
+          "containers",
+          "reverse proxy",
+          "SSH and deployment tools",
+          "local API and service helpers"
+        ],
+        "experience": [
+          "service dashboard",
+          "deploy planner",
+          "logs and endpoints",
+          "network-first controls"
+        ],
+        "intelligence": [
+          "deployment analysis",
+          "health checks",
+          "rollback suggestions",
+          "service repair"
+        ]
+      },
+      "package_files": [
+        "scripts/packages-server.txt"
+      ],
+      "waybar_modules": [
+        "profile",
+        "spotlight",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "battery",
+        "vpn",
+        "recorder",
+        "ai"
+      ],
+      "runtime_slice": "seven-horizon.slice",
+      "capabilities": [
+        "server-services",
+        "containers",
+        "reverse-proxy",
+        "deploy-pipeline",
+        "personal-cloud"
+      ],
+      "anti_nuisance": [
+        "no public service exposure without confirmation",
+        "no security toolkit unless Shield is composed",
+        "no developer IDE stack unless Forge is composed"
+      ],
+      "independence": {
+        "standalone": true,
+        "does_not_require": [
+          "forge",
+          "shield",
+          "studio",
+          "windows",
+          "pulse",
+          "baobab"
+        ]
+      },
+      "resource_intent": {
+        "cpu": "service-stability",
+        "ram": "daemon-pools",
+        "gpu": "none",
+        "io": "service-cache",
+        "network": "qos-services"
+      },
+      "priority": 140,
+      "center_command": "seven-mini-os-center horizon",
+      "profile_surfaces": {
+        "center": "seven-mini-os-center horizon",
+        "workspace": "seven profile open horizon",
+        "apps": "seven profile apps horizon",
+        "runtime": "seven runtime plan horizon"
+      }
+    },
+    "pulse": {
+      "title": "Pulse Gaming",
+      "role": "Linux gaming mini OS",
+      "target": "performance",
+      "domain": "linux gaming and performance",
+      "purpose": "A gaming-focused SevenOS environment optimized for Linux games, Proton, low latency, frame pacing, controllers and overlays.",
+      "mini_os": true,
+      "layers": {
+        "kernel": [
+          "low-latency foreground scheduling",
+          "frame pacing",
+          "power boost on demand"
+        ],
+        "runtime": [
+          "Steam, Lutris and Proton helpers",
+          "GameMode",
+          "MangoHud and overlays",
+          "controller support"
+        ],
+        "experience": [
+          "game launcher surface",
+          "performance HUD",
+          "recording and media shortcuts"
+        ],
+        "intelligence": [
+          "per-game tuning",
+          "thermal and bottleneck advice",
+          "latency mode suggestions"
+        ]
+      },
+      "package_files": [
+        "scripts/packages-performance.txt"
+      ],
+      "optional_package_files": [
+        "scripts/packages-performance-optional.txt"
+      ],
+      "waybar_modules": [
+        "profile",
+        "spotlight",
+        "media",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "battery",
+        "recorder",
+        "ai"
+      ],
+      "runtime_slice": "seven-pulse.slice",
+      "capabilities": [
+        "low-latency",
+        "gaming-runtime",
+        "performance-overlay",
+        "foreground-boost"
+      ],
+      "anti_nuisance": [
+        "no dev daemons",
+        "no background scans",
+        "no cloud services",
+        "no Windows VM unless Windows Bridge is composed"
+      ],
+      "independence": {
+        "standalone": true,
+        "does_not_require": [
+          "forge",
+          "shield",
+          "studio",
+          "windows",
+          "horizon",
+          "baobab"
+        ]
+      },
+      "resource_intent": {
+        "cpu": "low-latency-foreground",
+        "ram": "game-working-set",
+        "gpu": "frame-priority",
+        "io": "asset-streaming",
+        "network": "latency-sensitive"
+      },
+      "priority": 210,
+      "center_command": "seven-mini-os-center pulse",
+      "profile_surfaces": {
+        "center": "seven-mini-os-center pulse",
+        "workspace": "seven profile open pulse",
+        "apps": "seven profile apps pulse",
+        "runtime": "seven runtime plan pulse"
+      }
+    }
+  }
+}

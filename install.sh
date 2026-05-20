@@ -21,6 +21,8 @@ Targets:
   installer-stack  Install graphical installer foundation packages
   hub-gui-stack    Install Seven Hub Tauri GUI foundation packages
   shell-ags        Install Seven Shell AGS/TypeScript foundation packages
+  runtime-tools    Install optional runtime orchestration tools such as CRIU
+  hypr-ecosystem   Install premium Hyprland ecosystem tools
   shell-preview    Preview Seven Shell AGS migration plan
   flatpak          Manage Flatpak/Flathub bridge
   security         Apply base security hardening
@@ -109,6 +111,12 @@ case "$TARGET" in
   base)
     "$ROOT_DIR/bootstrap.sh"
     ;;
+  culture)
+    install_package_file "$ROOT_DIR/scripts/packages-culture.txt"
+    ;;
+  performance)
+    install_package_file "$ROOT_DIR/scripts/packages-performance.txt"
+    ;;
   dev)
     "$ROOT_DIR/profiles/dev.sh"
     ;;
@@ -132,6 +140,12 @@ case "$TARGET" in
     ;;
   shell-ags)
     install_package_file "$ROOT_DIR/scripts/packages-shell-ags.txt"
+    ;;
+  runtime-tools)
+    install_package_file "$ROOT_DIR/scripts/packages-runtime-optional.txt"
+    ;;
+  hypr-ecosystem)
+    "$ROOT_DIR/scripts/hypr-ecosystem.sh" install "${TARGET_ARGS[@]}"
     ;;
   shell-preview)
     "$ROOT_DIR/scripts/shell.sh" preview

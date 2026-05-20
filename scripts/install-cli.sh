@@ -156,6 +156,10 @@ install_user_command "$ROOT_DIR/bin/seven-terminal-palette" seven-terminal-palet
 install_user_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
 install_user_command "$ROOT_DIR/bin/seven-files" seven-files
 install_user_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
+install_user_command "$ROOT_DIR/bin/seven-reader" seven-reader
+install_user_command "$ROOT_DIR/bin/seven-reader-native" seven-reader-native
+install_user_command "$ROOT_DIR/bin/seven-store" seven-store
+install_user_command "$ROOT_DIR/bin/seven-store-native" seven-store-native
 install_user_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_user_command "$ROOT_DIR/bin/seven-shell-preview" seven-shell-preview
 install_user_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight
@@ -176,6 +180,9 @@ install_user_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_user_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_user_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
 install_user_command "$ROOT_DIR/bin/seven-waybar-status" seven-waybar-status
+install_user_command "$ROOT_DIR/bin/seven-workspace" seven-workspace
+install_user_command "$ROOT_DIR/bin/seven-window" seven-window
+install_user_command "$ROOT_DIR/bin/seven-profile-theme" seven-profile-theme
 install_user_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_user_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_user_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
@@ -212,6 +219,10 @@ install_system_command "$ROOT_DIR/bin/seven-terminal-palette" seven-terminal-pal
 install_system_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
 install_system_command "$ROOT_DIR/bin/seven-files" seven-files
 install_system_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
+install_system_command "$ROOT_DIR/bin/seven-reader" seven-reader
+install_system_command "$ROOT_DIR/bin/seven-reader-native" seven-reader-native
+install_system_command "$ROOT_DIR/bin/seven-store" seven-store
+install_system_command "$ROOT_DIR/bin/seven-store-native" seven-store-native
 install_system_command "$ROOT_DIR/bin/seven-wallpaper" seven-wallpaper
 install_system_command "$ROOT_DIR/bin/seven-shell-preview" seven-shell-preview
 install_system_command "$ROOT_DIR/bin/seven-spotlight" seven-spotlight
@@ -231,6 +242,9 @@ install_system_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_system_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_system_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
 install_system_command "$ROOT_DIR/bin/seven-waybar-status" seven-waybar-status
+install_system_command "$ROOT_DIR/bin/seven-workspace" seven-workspace
+install_system_command "$ROOT_DIR/bin/seven-window" seven-window
+install_system_command "$ROOT_DIR/bin/seven-profile-theme" seven-profile-theme
 install_system_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_system_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_system_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant

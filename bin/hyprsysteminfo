@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""SevenOS fallback for Hyprland system information.
+
+If the upstream hyprsysteminfo binary is installed in /usr/bin, this wrapper
+delegates to it. Otherwise it presents Hyprland's native systeminfo output in a
+small SevenOS GTK surface so the Super+Shift+I workflow remains reliable.
+"""
+
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+UPSTREAM_USER = Path.home() / ".local/lib/sevenos/hyprsysteminfo-upstream/bin/hyprsysteminfo"
+REAL = UPSTREAM_USER if UPSTREAM_USER.exists() else Path("/usr/bin/hyprsysteminfo")
+if "--text" not in sys.argv and os.environ.get("SEVENOS_HYPRSYSTEMINFO_FALLBACK") != "1" and REAL.exists() and REAL.resolve() != Path(__file__).resolve():
+    os.execv(str(REAL), [str(REAL), *sys.argv[1:]])
+
+
+def systeminfo() -> str:
+    parts = []
+    for command in (["hyprctl", "systeminfo"], ["seven", "doctor", "check", "system"]):
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, check=False, timeout=5)
+        except Exception as exc:
+            parts.append(f"$ {' '.join(command)}\n{exc}")
+            continue
+        output = result.stdout.strip() or result.stderr.strip()
+        parts.append(f"$ {' '.join(command)}\n{output}")
+    return "\n\n".join(parts).strip()
+
+
+def main() -> int:
+    text = systeminfo()
+    if "--text" in sys.argv or not os.environ.get("WAYLAND_DISPLAY"):
+        print(text)
+        return 0
+
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gdk, Gtk
+    except Exception:
+        print(text)
+        return 0
+
+    css = """
+    * { font-family: "SF Pro Text", "Inter", sans-serif; }
+    window { background: rgba(14, 15, 22, 0.96); color: #F5F7FA; }
+    .root { padding: 22px; }
+    .title { font: 500 22px "SF Pro Display", "Inter", sans-serif; color: #FFFFFF; }
+    .subtitle { color: rgba(245,247,250,0.68); margin-bottom: 14px; }
+    textview, text { background: rgba(255,255,255,0.055); color: #E7ECF8; border-radius: 18px; }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title="SevenOS System Info")
+    window.set_wmclass("Hyprsysteminfo", "Hyprsysteminfo")
+    window.set_default_size(820, 620)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.connect("destroy", Gtk.main_quit)
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    root.get_style_context().add_class("root")
+    window.add(root)
+
+    title = Gtk.Label(label="Hyprland System Info")
+    title.set_xalign(0)
+    title.get_style_context().add_class("title")
+    root.pack_start(title, False, False, 0)
+
+    subtitle = Gtk.Label(label="SevenOS fallback surface · install hyprsysteminfo for the upstream Qt dashboard")
+    subtitle.set_xalign(0)
+    subtitle.get_style_context().add_class("subtitle")
+    root.pack_start(subtitle, False, False, 0)
+
+    scroll = Gtk.ScrolledWindow()
+    scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+    view = Gtk.TextView()
+    view.set_editable(False)
+    view.set_monospace(True)
+    view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+    view.get_buffer().set_text(text)
+    scroll.add(view)
+    root.pack_start(scroll, True, True, 0)
+
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

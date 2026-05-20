@@ -27,9 +27,15 @@ bash -n \
   "$ROOT_DIR/scripts/readiness.sh" \
   "$ROOT_DIR/scripts/improve.sh" \
   "$ROOT_DIR/scripts/repair.sh" \
+  "$ROOT_DIR/scripts/system-repair.sh" \
   "$ROOT_DIR/scripts/ux-check.sh" \
   "$ROOT_DIR/scripts/design-check.sh" \
   "$ROOT_DIR/scripts/visual-packages.sh" \
+  "$ROOT_DIR/scripts/hypr-ecosystem.sh" \
+  "$ROOT_DIR/scripts/install-glaze-local.sh" \
+  "$ROOT_DIR/scripts/install-hyprsysteminfo.sh" \
+  "$ROOT_DIR/scripts/wallpaper-theme.sh" \
+  "$ROOT_DIR/scripts/smart-window.sh" \
   "$ROOT_DIR/scripts/phase-gate.sh" \
   "$ROOT_DIR/scripts/ecosystem.sh" \
   "$ROOT_DIR/scripts/stack.sh" \
@@ -61,6 +67,8 @@ bash -n \
   "$ROOT_DIR/bin/seven-dock" \
   "$ROOT_DIR/bin/seven-dock-native" \
   "$ROOT_DIR/bin/seven-files" \
+  "$ROOT_DIR/bin/seven-reader" \
+  "$ROOT_DIR/bin/seven-store" \
   "$ROOT_DIR/bin/seven-help" \
   "$ROOT_DIR/bin/seven-overview" \
   "$ROOT_DIR/bin/seven-quick-settings" \
@@ -93,6 +101,10 @@ bash -n \
   "$ROOT_DIR/bin/seven-waybar-security" \
   "$ROOT_DIR/bin/seven-waybar" \
   "$ROOT_DIR/bin/seven-waybar-status" \
+  "$ROOT_DIR/bin/seven-workspace" \
+  "$ROOT_DIR/bin/seven-window" \
+  "$ROOT_DIR/bin/seven-profile-theme" \
+  "$ROOT_DIR/bin/hyprsysteminfo" \
   "$ROOT_DIR/bin/seven-wifi" \
   "$ROOT_DIR/bin/seven-notifications" \
   "$ROOT_DIR/bin/seven-idle" \
@@ -126,6 +138,8 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/seven-files-native" \
+  "$ROOT_DIR/bin/seven-reader-native" \
+  "$ROOT_DIR/bin/seven-store-native" \
   "$ROOT_DIR/bin/seven-hub-native" \
   "$ROOT_DIR/bin/seven-launchpad-native" \
   "$ROOT_DIR/bin/seven-settings-native" \
@@ -141,6 +155,7 @@ python -m json.tool "$ROOT_DIR/seven-hub/gui/package.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/package-lock.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-hub/gui/src-tauri/tauri.conf.json" >/dev/null
 python -m json.tool "$ROOT_DIR/seven-core/bus-schema.json" >/dev/null
+python -m json.tool "$ROOT_DIR/identity/profile-themes.json" >/dev/null
 for installer_file in \
   "$ROOT_DIR/archiso/profile/airootfs/usr/share/applications/seven-installer.desktop" \
   "$ROOT_DIR/installer/calamares/branding/sevenos/branding.desc"; do
@@ -168,6 +183,7 @@ for identity_file in \
   "$ROOT_DIR/identity/design-engine.json" \
   "$ROOT_DIR/identity/design-engine.css" \
   "$ROOT_DIR/identity/icons/manifest.json" \
+  "$ROOT_DIR/identity/icons/seven-store.svg" \
   "$ROOT_DIR/scripts/packages-visual-aur.txt" \
   "$ROOT_DIR/identity/patterns/kente.svg" \
   "$ROOT_DIR/identity/patterns/motif-concentric.svg" \
@@ -362,6 +378,13 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --json | python -m json.to
 "$ROOT_DIR/bin/seven" --dry-run context emit >/dev/null
 "$ROOT_DIR/bin/seven" scheduler status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" scheduler plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" runtime status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" runtime plan forge shield horizon --json | python -m json.tool >/dev/null
+python -m json.tool "$ROOT_DIR/profiles/catalog.json" >/dev/null
+"$ROOT_DIR/bin/seven" profile catalog --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" profile health --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" profile isolation plan equinox forge shield --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/profile-isolation.sh" apply equinox --yes --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" shell status --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("runtime_health", {}).get("schema") == "sevenos.daemon.health.v1" else 1)'
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
@@ -445,12 +468,18 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-screenshot" --help >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" menu >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" read "$ROOT_DIR/README.md" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" wallpaper "$ROOT_DIR/identity/assets/wallpaper-sevenos.svg" >/dev/null
+"$ROOT_DIR/bin/seven-reader-native" --probe >/dev/null
+"$ROOT_DIR/bin/seven-reader-native" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" system >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" profile >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" security >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" network >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" network-connect >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-workspace" json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-waybar-status" profile | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-profile-theme" apply >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" connect >/dev/null
@@ -650,6 +679,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler apply >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime status --json >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime plan forge shield horizon >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell plan >/dev/null

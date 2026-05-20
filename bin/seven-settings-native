@@ -234,7 +234,7 @@ def active_profile() -> tuple[str, str]:
         item = next((row for row in payload if row.get("active")), None)
         if item:
             return item.get("title", tr_text("Profile")), item.get("state", "unknown")
-    return "Baobab", "unknown"
+    return "Equinox", "unknown"
 
 
 def shield_state() -> tuple[str, str]:

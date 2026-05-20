@@ -1,0 +1,3 @@
+# SevenOS optional Hyprland ecosystem packages from AUR
+wallust
+hyprsysteminfo

@@ -75,7 +75,8 @@ module_line() {
 }
 
 status() {
-  printf 'SevenOS Ecosystem Map\n'
+  summary
+  printf '\nSevenOS Ecosystem Map\n'
   printf '=====================\n'
   printf '  %-20s %-8s %-10s %s\n' "Module" "Phase" "Status" "Purpose"
   printf '  %-20s %-8s %-10s %s\n' "------" "-----" "------" "-------"

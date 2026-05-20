@@ -7,6 +7,7 @@ import argparse
 import fcntl
 import json
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -22,11 +23,14 @@ STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
 CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/sevenos-{os.getuid()}")) / "sevenos"
 THEME_CONF = CONFIG_DIR / "theme.conf"
+PROFILE_UI_FILE = CONFIG_DIR / "profile-ui.json"
 PREFS_FILE = CONFIG_DIR / "launchpad.json"
 RECENTS_FILE = STATE_DIR / "launchpad-recents.json"
 CACHE_FILE = CACHE_DIR / "apps.json"
 LOCK_FILE = RUNTIME_DIR / "launchpad.lock"
+LOG_FILE = STATE_DIR / "launchpad.log"
 LOCK_HANDLE = None
+ROOT_DIR = Path(__file__).resolve().parent.parent
 
 CATEGORIES = [
     ("all", "All", "view-app-grid-symbolic"),
@@ -94,6 +98,24 @@ def read_json(path: Path, default):
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return default
+
+
+def read_profile_ui() -> dict:
+    data = read_json(PROFILE_UI_FILE, {})
+    return data if isinstance(data, dict) else {}
+
+
+def default_filter_for_profile(profile: dict) -> str:
+    key = profile.get("profile", "equinox")
+    return {
+        "forge": "dev",
+        "studio": "creative",
+        "windows": "windows",
+        "horizon": "network",
+        "pulse": "games",
+        "baobab": "office",
+        "shield": "network",
+    }.get(key, "all")
 
 
 def write_json(path: Path, data) -> None:
@@ -262,6 +284,7 @@ def read_desktop(path: Path):
         "comment": data.get("Comment", ""),
         "categories": data.get("Categories", ""),
         "icon": data.get("Icon") or fallback_icon(data.get("Categories", "")),
+        "exec": data.get("Exec", ""),
     }
     entry["category"] = category_for(entry)
     entry["search"] = normalize(" ".join((entry["name"], entry["comment"], entry["categories"], entry["desktop_id"])))
@@ -305,9 +328,59 @@ def shutil_which(command: str) -> str | None:
 
 def run_detached(command: list[str]) -> None:
     try:
-        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=launch_environment())
     except OSError:
         pass
+
+
+def log_launch(message: str) -> None:
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        with LOG_FILE.open("a", encoding="utf-8") as handle:
+            handle.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
+    except OSError:
+        pass
+
+
+def launch_environment() -> dict:
+    env = os.environ.copy()
+    user_bin = str(Path.home() / ".local/bin")
+    repo_bin = str(ROOT_DIR / "bin")
+    path_parts = [user_bin, repo_bin]
+    for part in env.get("PATH", "").split(os.pathsep):
+        if part and part not in path_parts:
+            path_parts.append(part)
+    env["PATH"] = os.pathsep.join(path_parts)
+    env.setdefault("SEVENOS_ROOT", str(ROOT_DIR))
+    return env
+
+
+def parse_desktop_exec(exec_line: str) -> list[str]:
+    try:
+        parts = shlex.split(exec_line)
+    except ValueError:
+        return []
+
+    command = []
+    for part in parts:
+        if part in {"%f", "%F", "%u", "%U", "%i", "%c", "%k", "%d", "%D", "%n", "%N", "%v", "%m"}:
+            continue
+        command.append(part.replace("%%", "%"))
+    return command
+
+
+def launch_desktop_exec(app: dict) -> bool:
+    command = parse_desktop_exec(app.get("exec", ""))
+    if not command:
+        return False
+    try:
+        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=launch_environment())
+        log_launch(f"launch exec ok: {' '.join(command)}")
+        record_recent(app)
+        return True
+    except OSError as exc:
+        log_launch(f"launch exec failed: {' '.join(command)} :: {exc}")
+        return False
 
 
 def close_existing_launchpad() -> bool:
@@ -351,6 +424,9 @@ def acquire_launchpad_lock() -> bool:
 
 
 def launch_app(app) -> None:
+    if launch_desktop_exec(app):
+        return
+
     desktop_id = app["desktop_id"]
     desktop_path = app["path"]
     commands = [
@@ -363,11 +439,14 @@ def launch_app(app) -> None:
         if not shutil_which(command[0]):
             continue
         try:
-            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=launch_environment())
+            log_launch(f"launch fallback ok: {' '.join(command)}")
             record_recent(app)
             return
-        except OSError:
+        except OSError as exc:
+            log_launch(f"launch fallback failed: {' '.join(command)} :: {exc}")
             continue
+    log_launch(f"launch failed: {app.get('desktop_id', app.get('name', 'unknown'))}")
 
 
 def fuzzy_score(query: str, app: dict, favorites: list[str], recent_map: dict) -> int:
@@ -398,7 +477,31 @@ def fuzzy_score(query: str, app: dict, favorites: list[str], recent_map: dict) -
     return score
 
 
-def launchpad_css(mode: str) -> str:
+def profile_css(profile: dict, mode: str) -> str:
+    accent = profile.get("accent") or "#8B7CFF"
+    secondary = profile.get("secondary") or "#6EA8FF"
+    return f"""
+    .launchpad-topbar {{
+      border-color: alpha({accent}, 0.26);
+      box-shadow:
+        0 22px 60px rgba(0,0,0,{'0.14' if mode == 'light' else '0.34'}),
+        0 0 34px alpha({accent}, {'0.18' if mode == 'light' else '0.20'});
+    }}
+    .launchpad-filter:checked {{
+      background: linear-gradient(135deg, {accent}, {secondary});
+      box-shadow: 0 8px 24px alpha({accent}, {'0.22' if mode == 'light' else '0.28'});
+    }}
+    .launchpad-search {{
+      border-color: alpha({accent}, 0.22);
+    }}
+    .launchpad-suggestion {{
+      border-color: alpha({secondary}, 0.22);
+      background: alpha({secondary}, {'0.12' if mode == 'light' else '0.13'});
+    }}
+    """
+
+
+def launchpad_css(mode: str, profile: dict | None = None) -> str:
     if mode == "light":
         return """
         * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
@@ -464,7 +567,7 @@ def launchpad_css(mode: str) -> str:
           background: rgba(255,255,255,0.62);
           border: 1px solid rgba(47,123,255,0.12);
         }
-        """
+        """ + profile_css(profile or {}, mode)
     return """
     * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
     window.seven-launchpad {
@@ -535,7 +638,7 @@ def launchpad_css(mode: str) -> str:
       background: rgba(255,255,255,0.10);
       border: 1px solid rgba(255,255,255,0.08);
     }
-    """
+    """ + profile_css(profile or {}, mode)
 
 
 def run_launchpad() -> int:
@@ -547,6 +650,7 @@ def run_launchpad() -> int:
     from gi.repository import Gdk, Gtk
 
     mode = current_theme_mode()
+    profile_ui = read_profile_ui()
     Gtk.Settings.get_default().set_property("gtk-icon-theme-name", icon_theme_name(mode))
 
     app_prefs = prefs()
@@ -554,16 +658,18 @@ def run_launchpad() -> int:
     hidden = app_prefs["hidden"]
     recent_map = recents()
     apps = [app for app in load_apps() if app["desktop_id"] not in hidden]
-    active_filter = {"id": "all"}
+    active_filter = {"id": default_filter_for_profile(profile_ui)}
     visible_apps = list(apps)
 
     provider = Gtk.CssProvider()
-    provider.load_from_data(launchpad_css(mode).encode("utf-8"))
+    provider.load_from_data(launchpad_css(mode, profile_ui).encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
-    window = Gtk.Window()
+    window = Gtk.Window(title="SevenOS Launchpad")
     window.set_decorated(False)
-    window.fullscreen()
+    window.set_default_size(1320, 780)
+    window.set_size_request(980, 620)
+    window.set_resizable(True)
     window.set_wmclass("SevenLaunchpadNative", "SevenLaunchpadNative")
     window.get_style_context().add_class("seven-launchpad")
 
@@ -578,10 +684,11 @@ def run_launchpad() -> int:
 
     brand_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
     brand_box.set_margin_start(8)
-    brand = Gtk.Label(label="SevenOS")
+    profile_title = profile_ui.get("title") or "SevenOS"
+    brand = Gtk.Label(label=profile_title)
     brand.set_xalign(0)
     brand.get_style_context().add_class("launchpad-brand")
-    subtitle = Gtk.Label(label=tr_text("Apps"))
+    subtitle = Gtk.Label(label=tr_text("Apps") + f" · {profile_ui.get('role', '')}".rstrip(" · "))
     subtitle.set_xalign(0)
     subtitle.get_style_context().add_class("launchpad-subtitle")
     brand_box.pack_start(brand, False, False, 0)
@@ -606,7 +713,7 @@ def run_launchpad() -> int:
     for key, label, _icon in CATEGORIES:
         button = Gtk.ToggleButton(label=tr_text(label))
         button.get_style_context().add_class("launchpad-filter")
-        button.set_active(key == "all")
+        button.set_active(key == active_filter["id"])
         filters.pack_start(button, False, False, 0)
         filter_buttons[key] = button
 
@@ -727,7 +834,17 @@ def run_launchpad() -> int:
         box.pack_start(meta, False, False, 0)
 
         child.add(box)
-        child.connect("button-press-event", lambda _child, event: menu_for_app(app, event) if event.button == 3 else False)
+
+        def on_tile_click(_child, event) -> bool:
+            if event.button == 3:
+                return menu_for_app(app, event)
+            if event.button == 1:
+                launch_app(app)
+                window.close()
+                return True
+            return False
+
+        child.connect("button-press-event", on_tile_click)
         return child
 
     def render():

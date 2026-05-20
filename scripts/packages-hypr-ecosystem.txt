@@ -1,0 +1,8 @@
+# SevenOS Hyprland premium ecosystem layer
+hyprpaper
+hyprpicker
+hyprsunset
+matugen
+hyprtoolkit
+glaze
+pciutils

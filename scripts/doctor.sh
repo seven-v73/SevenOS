@@ -43,6 +43,17 @@ package_state() {
   pacman -Q "$1" >/dev/null 2>&1 && printf OK || printf MISS
 }
 
+glaze_state() {
+  if pacman -Q glaze >/dev/null 2>&1; then
+    printf OK
+  elif [[ -f "$HOME/.local/lib/sevenos/glaze/include/glaze/glaze.hpp" &&
+          -f "$HOME/.local/lib/sevenos/glaze/lib/pkgconfig/glaze.pc" ]]; then
+    printf OK
+  else
+    printf MISS
+  fi
+}
+
 service_state() {
   local unit="$1"
   if systemctl is-active --quiet "$unit" 2>/dev/null; then
@@ -100,8 +111,8 @@ failed_units_json() {
 
 json_payload() {
   local arch_state pacman_state sudo_state memory_kb memory_gb virt_state uefi_state
-  local swaync_state wlogout_state hypridle_state hyprlock_state hyprpaper_state waybar_state
-  local waybar_unit notifications_unit idle_unit wallpaper_unit calamares_state archinstall_state
+  local swaync_state wlogout_state hypridle_state hyprlock_state hyprpaper_state hyprpicker_state hyprsunset_state matugen_state wallust_state glaze_state hyprsysteminfo_state waybar_state
+  local waybar_unit notifications_unit idle_unit wallpaper_unit calamares_state archinstall_state system_repair_state
   local installer_release windows_json ecosystem_json failed_json ufw_state ufw_detail
 
   arch_state="$([[ -f /etc/arch-release ]] && printf OK || printf MISS)"
@@ -117,6 +128,12 @@ json_payload() {
   hypridle_state="$(command_state hypridle)"
   hyprlock_state="$(command_state hyprlock)"
   hyprpaper_state="$(command_state hyprpaper)"
+  hyprpicker_state="$(command_state hyprpicker)"
+  hyprsunset_state="$(command_state hyprsunset)"
+  matugen_state="$(command_state matugen)"
+  wallust_state="$(command_state wallust)"
+  glaze_state="$(glaze_state)"
+  hyprsysteminfo_state="$(command_state hyprsysteminfo)"
   waybar_state="$(command_state waybar)"
   waybar_unit="$(user_service_state sevenos-waybar.service)"
   notifications_unit="$(user_service_state sevenos-notifications.service)"
@@ -124,6 +141,7 @@ json_payload() {
   wallpaper_unit="$(user_service_state sevenos-wallpaper.service)"
 
   calamares_state="$(command_state calamares)"
+  system_repair_state="$([[ -x "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/system-repair-required.sh" ]] && printf PENDING || printf OK)"
   archinstall_state="$(command_state archinstall)"
   installer_release="$("$ROOT_DIR/scripts/installer-stack.sh" release --json 2>/dev/null || printf '{}')"
   windows_json="$("$ROOT_DIR/bin/seven-windows-assistant" status --json 2>/dev/null || printf '{}')"
@@ -134,10 +152,12 @@ json_payload() {
   ARCH_STATE="$arch_state" PACMAN_STATE="$pacman_state" SUDO_STATE="$sudo_state" \
   MEMORY_GB="$memory_gb" VIRT_STATE="$virt_state" UEFI_STATE="$uefi_state" \
   SWAYNC_STATE="$swaync_state" WLOGOUT_STATE="$wlogout_state" HYPRIDLE_STATE="$hypridle_state" \
-  HYPRLOCK_STATE="$hyprlock_state" HYPRPAPER_STATE="$hyprpaper_state" WAYBAR_STATE="$waybar_state" \
+  HYPRLOCK_STATE="$hyprlock_state" HYPRPAPER_STATE="$hyprpaper_state" HYPRPICKER_STATE="$hyprpicker_state" \
+  HYPRSUNSET_STATE="$hyprsunset_state" MATUGEN_STATE="$matugen_state" WALLUST_STATE="$wallust_state" \
+  GLAZE_STATE="$glaze_state" HYPRSYSTEMINFO_STATE="$hyprsysteminfo_state" WAYBAR_STATE="$waybar_state" \
   WAYBAR_UNIT="$waybar_unit" NOTIFICATIONS_UNIT="$notifications_unit" IDLE_UNIT="$idle_unit" WALLPAPER_UNIT="$wallpaper_unit" \
   CALAMARES_STATE="$calamares_state" ARCHINSTALL_STATE="$archinstall_state" INSTALLER_RELEASE="$installer_release" \
-  WINDOWS_JSON="$windows_json" ECOSYSTEM_JSON="$ecosystem_json" FAILED_JSON="$failed_json" UFW_STATE="$ufw_state" UFW_DETAIL="$ufw_detail" \
+  WINDOWS_JSON="$windows_json" ECOSYSTEM_JSON="$ecosystem_json" FAILED_JSON="$failed_json" UFW_STATE="$ufw_state" UFW_DETAIL="$ufw_detail" SYSTEM_REPAIR_STATE="$system_repair_state" \
   python - <<'PY'
 import json
 import os
@@ -178,7 +198,11 @@ check("system", "uefi", env("UEFI_STATE"), "UEFI boot", "Recommended for public 
 check("security", "ufw", env("UFW_STATE"), "Firewall status", env("UFW_DETAIL"), "seven shield enable", "high")
 
 failed = json.loads(env("FAILED_JSON", "[]"))
-check("system", "failed-units", "OK" if not failed else "PART", "Failed systemd units", ", ".join(failed) if failed else "none", "seven ai diagnose system", "high" if failed else "low")
+repair_pending = env("SYSTEM_REPAIR_STATE") == "PENDING"
+failed_detail = ", ".join(failed) if failed else "none"
+if failed and repair_pending:
+    failed_detail += "; root repair plan ready at ~/.config/sevenos/system-repair-required.sh"
+check("system", "failed-units", "OK" if not failed else "PART", "Failed systemd units", failed_detail, "seven repair system --apply", "high" if failed else "low")
 
 for key, state, title, command in [
     ("swaync", env("SWAYNC_STATE"), "Modern notifications", "seven identity visuals status"),
@@ -186,6 +210,12 @@ for key, state, title, command in [
     ("hypridle", env("HYPRIDLE_STATE"), "Idle policy", "seven identity visuals status"),
     ("hyprlock", env("HYPRLOCK_STATE"), "Lock screen", "seven identity visuals status"),
     ("hyprpaper", env("HYPRPAPER_STATE"), "Wallpaper engine", "seven wallpaper status"),
+    ("hyprpicker", env("HYPRPICKER_STATE"), "Hyprland color picker", "seven hypr install --yes"),
+    ("hyprsunset", env("HYPRSUNSET_STATE"), "Blue-light filter", "seven hypr install --yes"),
+    ("matugen", env("MATUGEN_STATE"), "Wallpaper dynamic palette", "seven hypr install --yes"),
+    ("wallust", env("WALLUST_STATE"), "Wallpaper palette cache", "seven hypr install --yes"),
+    ("glaze", env("GLAZE_STATE"), "Hypr C++ UI dependency", "seven hypr install --yes"),
+    ("hyprsysteminfo", env("HYPRSYSTEMINFO_STATE"), "Hyprland system dashboard", "seven hypr install --yes"),
     ("waybar", env("WAYBAR_STATE"), "Waybar runtime", "seven-waybar restart"),
 ]:
     check("desktop", key, state, title, f"{key} command availability.", command, "medium")
@@ -201,13 +231,19 @@ for key, state, title in [
 installer = load("INSTALLER_RELEASE")
 check("installer", "archinstall", env("ARCHINSTALL_STATE"), "Guided TUI installer", "Archinstall backend.", "seven installer install", "high")
 cal_state = env("CALAMARES_STATE")
-check("installer", "calamares", cal_state if cal_state == "OK" else "PART", "Graphical installer runtime", "SevenOS profile is present; runtime must be available on the ISO build host.", "seven installer graphical", "medium")
 release_state = installer.get("state", "unknown")
+cal_ready_state = "OK" if cal_state == "OK" or release_state in ("graphical-ready", "tui-release-ready") else "PART"
+cal_detail = "Calamares runtime available." if cal_state == "OK" else f"Calamares runtime absent on this host; SevenOS installer route is {release_state}."
+check("installer", "calamares", cal_ready_state, "Graphical installer route", cal_detail, "seven installer graphical", "medium")
 check("installer", "release", "OK" if release_state in ("graphical-ready", "tui-release-ready") else "PART", "Installer release contract", release_state, "seven installer release", "high")
 
 windows = load("WINDOWS_JSON")
 check("windows", "vm-ready", "OK" if windows.get("vm_ready") else "PART", "Windows VM stack", "KVM/libvirt readiness.", "seven windows guide", "medium")
-check("windows", "vm-created", "OK" if windows.get("windows_vm") == "OK" else "PART", "Windows VM instance", "No VM is required to be ready, but daily use needs one guided VM.", "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso", "medium")
+vm_state = windows.get("windows_vm")
+vm_plan = windows.get("windows_vm_plan")
+vm_created_state = "OK" if vm_state in ("OK", "RUN") or (windows.get("vm_ready") and vm_plan == "OK") else "PART"
+vm_detail = "Windows VM exists." if vm_state in ("OK", "RUN") else ("VM stack ready; guided ISO plan saved." if vm_plan == "OK" else "No VM is required to be ready, but daily use needs one guided VM.")
+check("windows", "vm-created", vm_created_state, "Windows VM instance", vm_detail, "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso", "medium")
 
 ecosystem = load("ECOSYSTEM_JSON")
 modules = ecosystem.get("modules", [])

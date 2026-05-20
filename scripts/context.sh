@@ -38,9 +38,9 @@ active_profile() {
   if [[ -f "$state_file" ]]; then
     # shellcheck disable=SC1090
     source "$state_file"
-    printf '%s' "${SEVENOS_ACTIVE_PROFILE:-baobab}"
+    printf '%s' "${SEVENOS_ACTIVE_PROFILE:-equinox}"
   else
-    printf 'baobab'
+    printf 'equinox'
   fi
 }
 
@@ -59,7 +59,7 @@ import os
 import subprocess
 from collections import Counter
 
-active_profile = os.environ.get("ACTIVE_PROFILE", "baobab")
+active_profile = os.environ.get("ACTIVE_PROFILE", "equinox")
 detail_mode = os.environ.get("CONTEXT_ACTION") == "graph"
 
 try:
@@ -68,6 +68,15 @@ except json.JSONDecodeError:
     clients = []
 
 CONTEXTS = {
+    "equinox": {
+        "title": "Equinox Workspace",
+        "intent": "balanced daily computing",
+        "profile": "equinox",
+        "classes": ["waybar", "kitty", "org.gnome.Nautilus", "firefox", "chromium"],
+        "processes": ["seven", "seven-daemon", "seven-server", "waybar", "hyprpaper", "mako", "swaync", "nautilus", "kitty"],
+        "signals": ["system", "files", "shell", "browser"],
+        "scheduler_group": "equinox",
+    },
     "forge": {
         "title": "Forge Environment",
         "intent": "development",
@@ -218,7 +227,7 @@ for key, context in CONTEXTS.items():
     })
 
 contexts.sort(key=lambda item: (item["confidence"], item["score"]), reverse=True)
-primary = contexts[0] if contexts else CONTEXTS["baobab"]
+primary = contexts[0] if contexts else CONTEXTS["equinox"]
 if primary.get("confidence", 0) < 25:
     primary = next(item for item in contexts if item["key"] == active_profile) if any(item["key"] == active_profile for item in contexts) else primary
 

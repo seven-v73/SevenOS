@@ -47,3 +47,38 @@ window.nautilus-window flowboxchild:selected,
 window.org-gnome-Nautilus flowboxchild:selected {
   background: rgba(0, 212, 255, 0.14);
 }
+
+/* SevenDecor phase 1: make GTK client-side controls read like SevenOS traffic lights. */
+headerbar button.titlebutton,
+.titlebar button.titlebutton {
+  min-width: 14px;
+  min-height: 14px;
+  padding: 0;
+  margin: 0 3px;
+  border-radius: 999px;
+  background-image: none;
+  color: transparent;
+}
+
+headerbar button.titlebutton image,
+.titlebar button.titlebutton image {
+  opacity: 0;
+}
+
+headerbar button.titlebutton.close,
+.titlebar button.titlebutton.close {
+  background-color: #ff5f57;
+  border: 1px solid rgba(255, 95, 87, 0.78);
+}
+
+headerbar button.titlebutton.minimize,
+.titlebar button.titlebutton.minimize {
+  background-color: #ffbd2e;
+  border: 1px solid rgba(255, 189, 46, 0.78);
+}
+
+headerbar button.titlebutton.maximize,
+.titlebar button.titlebutton.maximize {
+  background-color: #28c840;
+  border: 1px solid rgba(40, 200, 64, 0.78);
+}

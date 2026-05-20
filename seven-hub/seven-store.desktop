@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=SevenStore
+Comment=Discover, install and manage SevenOS apps
+Exec=seven-store open
+Icon=seven-store
+Terminal=false
+Categories=Settings;PackageManager;
+StartupNotify=true
+StartupWMClass=SevenStoreNative
+Keywords=store;apps;software;packages;flatpak;aur;SevenOS;

@@ -6,9 +6,10 @@ usage() {
 Seven Files
 
 Usage:
-  seven-files [open|menu|profile|wallpaper|home|downloads|documents|projects|pictures|videos|music|trash|recent] [path]
+  seven-files [open|menu|profile|read|reader|wallpaper|home|downloads|documents|projects|pictures|videos|music|trash|recent] [path]
 
 Seven Files opens the preferred graphical file manager with SevenOS fallbacks.
+Use "seven-files reader" to open Seven Reader, or "seven-files reader DOCUMENT" to open a document.
 Use "seven-files wallpaper IMAGE" to set a Hyprland/SevenOS wallpaper from a file manager action.
 EOF
 }
@@ -209,6 +210,48 @@ set_wallpaper() {
   fi
 }
 
+read_document() {
+  local document="${1:-}"
+  local root reader
+
+  root="$(resolve_root || true)"
+  reader="$root/bin/seven-reader"
+
+  if is_dry_run; then
+    if [[ -n "$document" ]]; then
+      printf 'open %q with Seven Reader immersive surface\n' "$document"
+    else
+      printf 'open Seven Reader immersive library\n'
+    fi
+    return 0
+  fi
+
+  if [[ -n "$document" ]]; then
+    document="$(normalize_target "$document")"
+  fi
+
+  if [[ -n "$root" && -x "$reader" ]]; then
+    if [[ -n "$document" ]]; then
+      setsid -f "$reader" open "$document" >/tmp/sevenos-reader.log 2>&1
+    else
+      setsid -f "$reader" library >/tmp/sevenos-reader.log 2>&1
+    fi
+    return 0
+  fi
+
+  if command -v seven-reader >/dev/null 2>&1; then
+    if [[ -n "$document" ]]; then
+      setsid -f seven-reader open "$document" >/tmp/sevenos-reader.log 2>&1
+    else
+      setsid -f seven-reader library >/tmp/sevenos-reader.log 2>&1
+    fi
+    return 0
+  fi
+
+  printf 'seven-files: seven-reader command not found\n' >&2
+  return 1
+}
+
 ensure_dirs
 
 action="${1:-open}"
@@ -226,6 +269,9 @@ case "$action" in
     ;;
   wallpaper|set-wallpaper)
     set_wallpaper "$target"
+    ;;
+  read|reader|book)
+    read_document "$target"
     ;;
   home)
     open_path "$HOME"

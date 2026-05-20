@@ -1,0 +1,14 @@
+[Unit]
+Description=SevenOS warm light filter
+PartOf=sevenos-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+Environment=SEVENOS_HYPRSUNSET_TEMP=4500
+ExecStart=/usr/bin/env sh -lc 'exec hyprsunset -t "${SEVENOS_HYPRSUNSET_TEMP:-4500}"'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=sevenos-session.target

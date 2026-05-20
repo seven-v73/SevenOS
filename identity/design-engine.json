@@ -97,6 +97,11 @@
     "studio": { "label": "Studio", "accent": "#8B7CFF", "symbol": "diamond" },
     "cloud": { "label": "Cloud", "accent": "#89DCEB", "symbol": "cloud" }
   },
+  "profile_themes": {
+    "contract": "identity/profile-themes.json",
+    "catalog": "profiles/catalog.json",
+    "rule": "Equinox keeps the neutral SevenOS shell. Specialized profiles get distinct Catppuccin-inspired accents and Waybar identity pills without loading unrelated tools."
+  },
   "surfaces": [
     "Waybar",
     "Seven Spotlight",

@@ -18,6 +18,20 @@
       "accent": "#89DCEB"
     },
     {
+      "name": "seven-reader",
+      "file": "seven-reader.svg",
+      "label": "Seven Reader",
+      "role": "reader",
+      "accent": "#CBA6F7"
+    },
+    {
+      "name": "seven-store",
+      "file": "seven-store.svg",
+      "label": "SevenStore",
+      "role": "app-center",
+      "accent": "#8B7CFF"
+    },
+    {
       "name": "seven-settings",
       "file": "seven-settings.svg",
       "label": "Seven Settings",

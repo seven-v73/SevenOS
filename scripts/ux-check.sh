@@ -57,6 +57,9 @@ require_file "docs/TEST_MACHINE.md"
 require_file "docs/PRE_PUSH.md"
 require_file "docs/PRIMARY_PC.md"
 require_file "docs/MIGRATE_FROM_ML4W.md"
+require_file "docs/SEVEN_READER.md"
+require_file "docs/SEVEN_STORE.md"
+require_file "docs/SMART_WINDOW_SYSTEM.md"
 require_file "seven-core/README.md"
 require_file "seven-core/bus-schema.json"
 require_file "seven-core/daemon/Cargo.toml"
@@ -111,6 +114,12 @@ require_file "identity/STYLE.md"
 require_file "identity/LIQUID_GLASS_OS.md"
 require_file "identity/AFRICAN_FIRST.md"
 require_file "identity/DESIGN_ENGINE.md"
+require_file "identity/PROFILE_THEMES.md"
+require_file "identity/profile-themes.json"
+require_file "profiles/catalog.json"
+require_file "docs/PROFILE_ISOLATION.md"
+require_file "scripts/profile-isolation.sh"
+require_file "bin/seven-profile-run"
 require_file "identity/tokens.css"
 require_file "identity/tokens-light.css"
 require_file "identity/control-center-dark.css"
@@ -120,12 +129,19 @@ require_file "identity/design-engine.css"
 require_file "identity/icons/manifest.json"
 require_file "identity/icons/seven-hub.svg"
 require_file "identity/icons/seven-files.svg"
+require_file "identity/icons/seven-reader.svg"
+require_file "identity/icons/seven-store.svg"
 require_file "identity/icons/seven-settings.svg"
 require_file "identity/icons/seven-spotlight.svg"
 require_file "identity/icons/seven-ai.svg"
 require_file "identity/icons/seven-security.svg"
 require_file "identity/icons/seven-studio.svg"
 require_file "scripts/packages-visual-aur.txt"
+require_file "scripts/packages-culture-optional.txt"
+require_file "scripts/packages-performance-optional.txt"
+require_file "scripts/packages-runtime-optional.txt"
+require_file "scripts/packages-hypr-ecosystem.txt"
+require_file "scripts/packages-hypr-ecosystem-aur.txt"
 require_file "identity/accent-packs.json"
 require_file "identity/components/kente-divider.svg"
 require_file "identity/components/adinkra-status-ok.svg"
@@ -153,6 +169,9 @@ require_file "hyprland/wlogout/layout"
 require_file "hyprland/wlogout/style.css"
 require_file "hyprland/hypridle.conf"
 require_file "hyprland/hyprlock.conf"
+require_file "hyprland/conf/sevenos-dynamic.conf"
+require_file "hyprland/conf/sevenos-windows.conf"
+require_file "systemd/user/sevenos-hyprsunset.service"
 require_file "hyprland/kitty/kitty.conf"
 require_file "hyprland/kitty/classic.conf"
 require_file "hyprland/kitty/dark.conf"
@@ -168,6 +187,8 @@ require_file "hyprland/qt5ct/qt5ct.conf"
 require_file "hyprland/qt6ct/qt6ct.conf"
 require_file "hyprland/fontconfig/fonts.conf"
 require_file "seven-hub/seven-files.desktop"
+require_file "seven-hub/seven-reader.desktop"
+require_file "seven-hub/seven-store.desktop"
 require_file "seven-hub/seven-terminal.desktop"
 
 require_executable "bin/seven"
@@ -184,6 +205,10 @@ require_executable "bin/seven-dock"
 require_executable "bin/seven-dock-native"
 require_executable "bin/seven-files"
 require_executable "bin/seven-files-native"
+require_executable "bin/seven-reader"
+require_executable "bin/seven-reader-native"
+require_executable "bin/seven-store"
+require_executable "bin/seven-store-native"
 require_executable "bin/seven-help"
 require_executable "bin/seven-overview"
 require_executable "bin/seven-quick-settings"
@@ -216,6 +241,10 @@ require_executable "bin/seven-waybar-notifications"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
 require_executable "bin/seven-waybar"
+require_executable "bin/seven-workspace"
+require_executable "bin/seven-window"
+require_executable "bin/seven-profile-theme"
+require_executable "bin/hyprsysteminfo"
 require_executable "bin/seven-bluetooth"
 require_executable "bin/seven-windows-assistant"
 require_executable "vm/windows-app-runner.sh"
@@ -255,9 +284,15 @@ require_executable "scripts/migrate-from-ml4w.sh"
 require_executable "scripts/keyboard.sh"
 require_executable "seven-hub/gui-stack.sh"
 require_executable "scripts/repair.sh"
+require_executable "scripts/system-repair.sh"
 require_executable "scripts/post-install.sh"
 require_executable "scripts/design-check.sh"
 require_executable "scripts/visual-packages.sh"
+require_executable "scripts/hypr-ecosystem.sh"
+require_executable "scripts/install-glaze-local.sh"
+require_executable "scripts/install-hyprsysteminfo.sh"
+require_executable "scripts/wallpaper-theme.sh"
+require_executable "scripts/smart-window.sh"
 require_executable "scripts/fonts.sh"
 
 package_manifest_contains "mako" "scripts/packages-base.txt"
@@ -268,6 +303,13 @@ package_manifest_contains "swayidle" "scripts/packages-base.txt"
 package_manifest_contains "hypridle" "scripts/packages-base.txt"
 package_manifest_contains "hyprlock" "scripts/packages-base.txt"
 package_manifest_contains "hyprpaper" "scripts/packages-base.txt"
+package_manifest_contains "hyprpicker" "scripts/packages-hypr-ecosystem.txt"
+package_manifest_contains "hyprsunset" "scripts/packages-hypr-ecosystem.txt"
+package_manifest_contains "matugen" "scripts/packages-hypr-ecosystem.txt"
+package_manifest_contains "glaze" "scripts/packages-hypr-ecosystem.txt"
+package_manifest_contains "wallust" "scripts/packages-hypr-ecosystem-aur.txt"
+package_manifest_contains "hyprsysteminfo" "scripts/packages-hypr-ecosystem-aur.txt"
+package_manifest_contains "criu" "scripts/packages-runtime-optional.txt"
 package_manifest_contains "wlogout" "scripts/packages-visual-aur.txt"
 package_manifest_contains "librsvg" "scripts/packages-base.txt"
 package_manifest_contains "fontconfig" "scripts/packages-base.txt"
@@ -304,6 +346,10 @@ package_manifest_contains "network-manager-applet" "scripts/packages-base.txt"
 package_manifest_contains "bluez" "scripts/packages-base.txt"
 package_manifest_contains "bluez-utils" "scripts/packages-base.txt"
 package_manifest_contains "blueman" "scripts/packages-base.txt"
+package_manifest_contains "foliate" "scripts/packages-culture-optional.txt"
+package_manifest_contains "translate-shell" "scripts/packages-culture-optional.txt"
+package_manifest_contains "gamescope" "scripts/packages-performance-optional.txt"
+package_manifest_contains "mangohud" "scripts/packages-performance-optional.txt"
 package_manifest_contains "archinstall" "scripts/packages-installer.txt"
 package_manifest_contains "rust" "scripts/packages-hub-gui.txt"
 package_manifest_contains "nodejs" "scripts/packages-hub-gui.txt"
@@ -329,7 +375,7 @@ else
   fail "Waybar SevenOS brand should stay simple and public-facing"
 fi
 
-if jq -e '.height == 50 and .spacing == 6 and ."gtk-layer-shell" == true and ."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev".format == "‹" and ."custom/workspace-next".format == "›" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json" and ."custom/ai"."on-click" == "seven-quick-settings ai" and ."custom/ai"."on-click-right" == "seven ai focus" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/media".exec == "seven-waybar-status media" and ."custom/vpn".exec == "seven-waybar-status vpn" and ."custom/recorder".exec == "seven-waybar-status recorder" and .pulseaudio.format == "󰕾" and (.battery.format | contains("{capacity}%")) and (. | has("cpu") | not) and (. | has("memory") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.height == 50 and .spacing == 6 and ."gtk-layer-shell" == true and ."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."return-type" == "json" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev".format == "‹" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next".format == "›" and ."custom/workspace-next"."on-click" == "seven-workspace next" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json" and ."custom/ai"."on-click" == "seven-quick-settings ai" and ."custom/ai"."on-click-right" == "seven ai focus" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/media".exec == "seven-waybar-status media" and ."custom/vpn".exec == "seven-waybar-status vpn" and ."custom/recorder".exec == "seven-waybar-status recorder" and .pulseaudio.format == "󰕾" and (.battery.format | contains("{capacity}%")) and (. | has("cpu") | not) and (. | has("memory") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes premium SevenOS search, spaces and essential controls"
 else
   fail "Waybar premium search, workspace or essential control layout missing"
@@ -393,7 +439,7 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'Set as Wallpaper' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'selected-children-changed' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'set_max_children_per_line(4)' "$ROOT_DIR/bin/seven-files-native" &&
-   grep -q 'set_activate_on_single_click(False)' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'Click selects · Double-click opens' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'set_homogeneous(True)' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'EllipsizeMode.MIDDLE' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'file-tile-box' "$ROOT_DIR/bin/seven-files-native" &&
@@ -419,6 +465,16 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'SevenQuickLook' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'read_theme_mode' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'read_icon_theme' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'read_active_profile' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'READER_SUFFIXES' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'open_in_reader' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'global_search' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'build_global_index' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'run_background' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'show_ai_result' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'tag-pill' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'inspector-card' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'adapt_layout' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'theme_css' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'Gtk.SearchEntry' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'sort_entries' "$ROOT_DIR/bin/seven-files-native" &&
@@ -453,7 +509,9 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'Gdk.KEY_Left' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'flow.connect("key-press-event", on_key)' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q '_2BUTTON_PRESS' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK' "$ROOT_DIR/bin/seven-files-native" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open "$HOME" | grep -q 'native Seven Files surface' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" reader | grep -q 'Seven Reader immersive library' &&
    grep -q 'normalize_target' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'configure_nautilus_preferences' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'Exec=seven-files open %U' "$ROOT_DIR/seven-hub/seven-files.desktop" &&
@@ -461,8 +519,8 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'xdg-mime default seven-files.desktop inode/directory' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'default-folder-viewer' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'nautilus --new-window' "$ROOT_DIR/bin/seven-files" &&
-   grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 1120 700' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'windowrule = match:title ^(Seven Files)$, float on, center on, size 1120 700' "$ROOT_DIR/hyprland/hyprland.conf"; then
+   grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 1040 660' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'windowrule = match:title ^(Seven Files)$, float on, center on, size 1040 660' "$ROOT_DIR/hyprland/hyprland.conf"; then
   ok "Seven Files is shaped as a native SevenOS file surface"
 else
   fail "Seven Files shell integration is incomplete"
@@ -472,6 +530,60 @@ if [[ -x "$ROOT_DIR/bin/seven-power" ]] && grep -q 'seven-power' "$ROOT_DIR/bin/
   ok "SevenOS power controls remain available outside the minimal Waybar"
 else
   fail "SevenOS power controls should remain available outside the minimal Waybar"
+fi
+
+if grep -q 'SevenReaderNative' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'SUPPORTED_SUFFIXES' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'pdf_page_png' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'epub_text' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'cbz_pages' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'book-spread' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'paper-page' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'reader-search' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'ANNOTATIONS_PATH' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'search_document' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'toggle_bookmark' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'add_note_dialog' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'reader-sidebar' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'toggle_focus' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'preload_pages' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'progress_scale' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'adjust_zoom' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'flip-active' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'SevenAI Reading Companion' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'Exec=seven-reader open %U' "$ROOT_DIR/seven-hub/seven-reader.desktop" &&
+   grep -q 'MimeType=application/pdf;application/epub+zip;text/markdown;text/plain;application/vnd.comicbook+zip;application/x-cbz;' "$ROOT_DIR/seven-hub/seven-reader.desktop" &&
+   grep -q 'xdg-mime default seven-reader.desktop application/pdf' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'install_user_command "$ROOT_DIR/bin/seven-reader" seven-reader' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'reader.open' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'windowrule = match:class ^(SevenReaderNative)$, float on, center on, size 1220 760' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" read "$ROOT_DIR/README.md" | grep -q 'Seven Reader immersive surface' &&
+   "$ROOT_DIR/bin/seven-reader-native" --json | python -m json.tool >/dev/null; then
+  ok "Seven Reader is integrated as an immersive native reading surface"
+else
+  fail "Seven Reader integration is incomplete"
+fi
+
+if grep -q 'SevenStoreNative' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'sevenos.package-engine.v1' "$ROOT_DIR/scripts/store.sh" &&
+   grep -q 'Exec=seven-store open' "$ROOT_DIR/seven-hub/seven-store.desktop" &&
+   grep -q 'Icon=seven-store' "$ROOT_DIR/seven-hub/seven-store.desktop" &&
+   grep -q 'launch_environment' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'launch_desktop_exec' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'on_tile_click' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'Install on system' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'Install for' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'install_command_for' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'record_profile_app' "$ROOT_DIR/scripts/store.sh" &&
+   "$ROOT_DIR/scripts/store.sh" install-app pacman firefox --profile forge --dry-run | grep -q 'profile: forge' &&
+   grep -q 'install_user_command "$ROOT_DIR/bin/seven-store" seven-store' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'install_user_command "$ROOT_DIR/bin/seven-store-native" seven-store-native' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'write_command_wrapper "$BIN_HOME/seven-store" "$ROOT_DIR/bin/seven-store"' "$ROOT_DIR/seven-hub/install.sh" &&
+   "$ROOT_DIR/bin/seven-store-native" --probe >/dev/null &&
+   "$ROOT_DIR/bin/seven-store-native" --json | python -m json.tool >/dev/null; then
+  ok "SevenStore is launchpad-accessible as a native AppCenter"
+else
+  fail "SevenStore Launchpad integration is incomplete"
 fi
 
 if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -497,7 +609,7 @@ else
   fail "SevenOS Dock should toggle with Super+D and expose workflow actions"
 fi
 
-if jq -e '."custom/wifi"."on-click" == "seven-quick-settings wifi" and ."custom/wifi"."on-click-right" == "seven-quick-settings" and ."custom/wifi"."on-click-middle" == "seven-wifi toggle" and ."custom/wifi"."return-type" == "json" and ."custom/bluetooth"."on-click" == "seven-quick-settings bluetooth" and ."custom/bluetooth"."on-click-middle" == "seven-bluetooth toggle" and ."custom/bluetooth"."return-type" == "json" and .pulseaudio."on-click" == "seven-quick-settings audio" and .pulseaudio."on-click-right" == "seven-quick-settings" and .pulseaudio."on-click-middle" == "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" and .pulseaudio."on-scroll-up" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+" and .pulseaudio."on-scroll-down" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" and .pulseaudio.format == "󰕾" and .pulseaudio.tooltip == false and .battery."on-click" == "seven-quick-settings power" and .battery."on-click-right" == "seven-quick-settings" and (.battery.format | contains("{capacity}%")) and .battery.tooltip == false and ."custom/vpn"."return-type" == "json" and ."custom/recorder"."return-type" == "json" and .clock.tooltip == false and .clock."on-click" == "seven-quick-settings time" and ."custom/ai"."on-click" == "seven-quick-settings ai" and ."custom/ai"."on-click-right" == "seven ai focus" and ."custom/sevenos"."on-click" == "seven hub" and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "hyprctl dispatch workspace e-1" and ."custom/workspace-next"."on-click" == "hyprctl dispatch workspace e+1"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."custom/profile"."on-click" == "seven-profile-center-native" and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/wifi"."on-click" == "seven-quick-settings wifi" and ."custom/wifi"."on-click-right" == "seven-quick-settings" and ."custom/wifi"."on-click-middle" == "seven-wifi toggle" and ."custom/wifi"."return-type" == "json" and ."custom/bluetooth"."on-click" == "seven-quick-settings bluetooth" and ."custom/bluetooth"."on-click-middle" == "seven-bluetooth toggle" and ."custom/bluetooth"."return-type" == "json" and .pulseaudio."on-click" == "seven-quick-settings audio" and .pulseaudio."on-click-right" == "seven-quick-settings" and .pulseaudio."on-click-middle" == "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" and .pulseaudio."on-scroll-up" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+" and .pulseaudio."on-scroll-down" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" and .pulseaudio.format == "󰕾" and .pulseaudio.tooltip == false and .battery."on-click" == "seven-quick-settings power" and .battery."on-click-right" == "seven-quick-settings" and (.battery.format | contains("{capacity}%")) and .battery.tooltip == false and ."custom/vpn"."return-type" == "json" and ."custom/recorder"."return-type" == "json" and .clock.tooltip == false and .clock."on-click" == "seven-quick-settings time" and ."custom/ai"."on-click" == "seven-quick-settings ai" and ."custom/ai"."on-click-right" == "seven ai focus" and ."custom/sevenos"."on-click" == "seven hub" and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next"."on-click" == "seven-workspace next"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
@@ -552,8 +664,10 @@ else
   fail "SevenOS notifications helper should expose menu and Do Not Disturb controls"
 fi
 
-if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" json | grep -q '󰐃' &&
+profile_theme_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-profile-theme" apply)"
+if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Equinox|Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
+   "$ROOT_DIR/bin/seven-waybar-status" profile | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("alt") and "profile-" in d.get("class","") else 1)' &&
+   grep -q 'render profile Waybar' <<<"$profile_theme_output" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-security" json | grep -q '󰒃' &&
    "$ROOT_DIR/bin/seven-profile-center-native" --probe >/dev/null 2>&1 &&
    "$ROOT_DIR/bin/seven-shield-center-native" --probe >/dev/null 2>&1 &&
@@ -646,6 +760,7 @@ profile_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --
 profile_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json)"
 profile_gaps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile gaps --json)"
 profile_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile plan --json)"
+profile_health_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile health --json)"
 profile_guide_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile guide)"
 profile_open_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" open forge)"
 profile_bootstrap_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" bootstrap forge)"
@@ -655,6 +770,8 @@ if grep -q 'profile.json' <<<"$profile_activate_dry" &&
    grep -q '"principle"' <<<"$profile_status_json" &&
    grep -q '"story"' <<<"$profile_status_json" &&
    grep -q '"bootstrap_state"' <<<"$profile_status_json" &&
+   grep -q '"runtime"' <<<"$profile_status_json" &&
+   grep -q '"lifecycle"' <<<"$profile_status_json" &&
    grep -q '"manifest"' <<<"$profile_status_json" &&
    grep -q '"launcher"' <<<"$profile_status_json" &&
    grep -q 'CHECKLIST.md' <<<"$profile_bootstrap_dry" &&
@@ -662,6 +779,8 @@ if grep -q 'profile.json' <<<"$profile_activate_dry" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-gaps.v1"' <<<"$profile_gaps_json" &&
    grep -q '"missing_packages"' <<<"$profile_gaps_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-plan.v1"' <<<"$profile_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-health.v1"' <<<"$profile_health_json" &&
+   grep -q '"isolation_ready"' <<<"$profile_health_json" &&
    grep -q '"next"' <<<"$profile_plan_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile current --json | python -m json.tool >/dev/null &&
    grep -q '"command"' <<<"$profile_apps_json" &&
@@ -722,6 +841,9 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'improve.daily' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.active' <<<"$actions_json" &&
    grep -q 'profile.bootstrap.all' <<<"$actions_json" &&
+   grep -q 'runtime.status' <<<"$actions_json" &&
+   grep -q 'runtime.plan' <<<"$actions_json" &&
+   grep -q 'runtime.capabilities' <<<"$actions_json" &&
    grep -q 'core.status' <<<"$actions_json" &&
    grep -q 'core.bus' <<<"$actions_json" &&
    grep -q 'core.snapshot' <<<"$actions_json" &&
@@ -871,6 +993,7 @@ fi
 
 if grep -q 'source = ~/.config/hypr/conf/monitor.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'source = ~/.config/hypr/conf/keyboard.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'source = ~/.config/hypr/conf/sevenos-windows.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'source = ~/.config/hypr/conf/custom.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'install_preserved_config_file' "$ROOT_DIR/scripts/apply-theme.sh"; then
   ok "Hyprland exposes protected user override files"
@@ -936,7 +1059,7 @@ fi
 overview_search_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" search)"
 quick_settings_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings")"
 apps_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open)"
-if grep -q 'rounding = 28' "$ROOT_DIR/hyprland/hyprland.conf" &&
+if grep -Eq 'rounding = (26|28)' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'windowrule = match:title ^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -949,6 +1072,36 @@ if grep -q 'rounding = 28' "$ROOT_DIR/hyprland/hyprland.conf" &&
   ok "SevenOS Shell exposes GNOME-like overview, quick settings and polished window rules"
 else
   fail "SevenOS Shell GNOME-like interface layer is incomplete"
+fi
+
+window_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-window" status --json)"
+window_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-window" smart-maximize)"
+if python -m json.tool <<<"$window_json" >/dev/null &&
+   grep -q '"schema": "sevenos.smart-window.v1"' <<<"$window_json" &&
+   grep -q 'SevenDecor' "$ROOT_DIR/docs/SMART_WINDOW_SYSTEM.md" &&
+   grep -q 'Traffic-Light Logic' "$ROOT_DIR/docs/SMART_WINDOW_SYSTEM.md" &&
+   grep -q 'Decoration Coverage' "$ROOT_DIR/docs/SMART_WINDOW_SYSTEM.md" &&
+   grep -q 'seven-window toggle-float' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'seven-window smart-maximize' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'seven-window layout-menu' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-windows.conf"' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'Seven Smart Window System' "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" &&
+   grep -q 'layerrule = blur on, match:namespace waybar' "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" &&
+   ! grep -q 'layerrule = blur, waybar' "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" &&
+   grep -q 'blueman-manager' "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" &&
+   grep -q 'mpv' "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" &&
+   grep -q 'SevenDecor phase 1' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
+   grep -q 'button.titlebutton.close' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
+   grep -q 'button.titlebutton.minimize' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
+   grep -q 'button.titlebutton.maximize' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
+   grep -q 'write_mode' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'layout_menu' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'decor_status_json' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'decor_apply' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'DRY-RUN > hyprctl' <<<"$window_dry"; then
+  ok "Seven Smart Window System exposes visual window modes and Hyprland-backed layout actions"
+else
+  fail "Seven Smart Window System should expose modes, traffic-light actions and Hyprland rules"
 fi
 
 if grep -q 'seven-notifications' "$ROOT_DIR/bin/seven-session" &&
@@ -994,6 +1147,8 @@ fi
 
 if [[ -s "$ROOT_DIR/hyprland/hypridle.conf" ]] &&
    [[ -s "$ROOT_DIR/hyprland/hyprlock.conf" ]] &&
+   [[ -s "$ROOT_DIR/hyprland/conf/sevenos-dynamic.conf" ]] &&
+   [[ -s "$ROOT_DIR/systemd/user/sevenos-hyprsunset.service" ]] &&
    [[ -s "$ROOT_DIR/hyprland/swaync/config.json" ]] &&
    [[ -s "$ROOT_DIR/hyprland/swaync/style.css" ]] &&
    [[ -s "$ROOT_DIR/hyprland/wlogout/layout" ]] &&
@@ -1007,6 +1162,18 @@ if [[ -s "$ROOT_DIR/hyprland/hypridle.conf" ]] &&
   ok "SevenOS integrates swaync, wlogout, hypridle, hyprlock and Hyprpaper as modern system surfaces"
 else
   fail "SevenOS modern notification, power, idle, lock or wallpaper integration is incomplete"
+fi
+
+if grep -q 'matugen' "$ROOT_DIR/scripts/wallpaper-theme.sh" &&
+   grep -q 'wallust' "$ROOT_DIR/scripts/wallpaper-theme.sh" &&
+   grep -q 'install-glaze-local.sh' "$ROOT_DIR/scripts/hypr-ecosystem.sh" &&
+   grep -q 'install-hyprsysteminfo.sh' "$ROOT_DIR/scripts/hypr-ecosystem.sh" &&
+   grep -q 'sevenos-dynamic.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'sevenos-hyprsunset.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
+   grep -q 'hyprsysteminfo' "$ROOT_DIR/hyprland/hyprland.conf"; then
+  ok "SevenOS Hypr ecosystem exposes dynamic wallpaper theming, warm light and system info hooks"
+else
+  fail "SevenOS Hypr ecosystem should connect wallpaper colors, hyprsunset and system info hooks"
 fi
 
 if grep -q '^Type=simple' "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" &&
@@ -1073,7 +1240,8 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'show_terminal_menu' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'minimize_window' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'toggle_zoom_or_tile' "$ROOT_DIR/bin/seven-terminal-native" &&
-   grep -q 'native-if-available' "$ROOT_DIR/bin/seven-terminal" &&
+   grep -q 'kitty-default' "$ROOT_DIR/bin/seven-terminal" &&
+   grep -q 'SEVENOS_TERMINAL_NATIVE' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'Avoid post-launch' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'Exec=seven-terminal classic' "$ROOT_DIR/seven-hub/seven-terminal.desktop" &&
    grep -q 'terminal: "seven-terminal";' "$ROOT_DIR/hyprland/rofi/config.rasi" &&
@@ -1479,6 +1647,7 @@ installer_release_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer re
 installer_release_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer release --json)"
 installer_graphical_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer graphical --json)"
 installer_graphical_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer graphical)"
+installer_open_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open)"
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
 core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
@@ -1488,6 +1657,8 @@ core_profiles_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core profiles --js
 core_observe_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --json)"
 context_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" context status --json)"
 scheduler_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" scheduler status --json)"
+runtime_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime status --json)"
+runtime_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime plan forge shield horizon --json)"
 shell_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shell status --json)"
 b3_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" b3 plan --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -1537,6 +1708,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$core_observe_json" >/dev/null &&
    python -m json.tool <<<"$context_json" >/dev/null &&
    python -m json.tool <<<"$scheduler_json" >/dev/null &&
+   python -m json.tool <<<"$runtime_json" >/dev/null &&
+   python -m json.tool <<<"$runtime_plan_json" >/dev/null &&
    python -m json.tool <<<"$shell_status_json" >/dev/null &&
    python -m json.tool <<<"$b3_json" >/dev/null &&
    grep -q '"schema": "sevenos.experience.v1"' <<<"$experience_json" &&
@@ -1576,7 +1749,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"writer":"seven-daemon"' <<<"$server_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.server-plan.v1"' <<<"$server_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan_json" &&
-   grep -q '"writer":"seven-daemon"' <<<"$windows_plan_json" &&
+   grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$windows_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer.v1"' <<<"$installer_json" &&
    grep -q '"writer":"seven-daemon"' <<<"$installer_json" &&
    grep -q '"release"' <<<"$installer_json" &&
@@ -1588,7 +1761,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-graphical.v1"' <<<"$installer_graphical_json" &&
    grep -q 'graphical-profile-ready' <<<"$installer_graphical_json" &&
    grep -q 'SevenOS Graphical Installer Route' <<<"$installer_graphical_output" &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open | grep -q 'seven installer release' &&
+   grep -q 'seven installer release' <<<"$installer_open_output" &&
    grep -q 'Exec=seven-installer' "$ROOT_DIR/archiso/profile/airootfs/usr/share/applications/seven-installer.desktop" &&
    grep -q 'SevenOS Installer Release Readiness' <<<"$installer_release_output" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
@@ -1603,6 +1776,13 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"primary_context"' <<<"$context_json" &&
    grep -q '"schema": "sevenos.scheduler.v1"' <<<"$scheduler_json" &&
    grep -q '"active_policy"' <<<"$scheduler_json" &&
+   grep -q '"runtime"' <<<"$state_json" &&
+   grep -q '"schema": "sevenos.runtime-orchestrator.v1"' <<<"$runtime_json" &&
+   grep -q '"capability_fusion"' <<<"$runtime_json" &&
+   grep -q '"conflict_resolver"' <<<"$runtime_json" &&
+   grep -q '"primary_profile"' <<<"$runtime_plan_json" &&
+   grep -q '"shield"' <<<"$runtime_plan_json" &&
+   grep -q '"horizon"' <<<"$runtime_plan_json" &&
    grep -q '"runtime_health":' <<<"$shell_status_json" &&
    grep -q '"schema": "sevenos.b3.v1"' <<<"$b3_json" &&
    grep -q '"targets":' <<<"$b3_json" &&
@@ -1615,7 +1795,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_gaps","profile_plan","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","experience","control","b3","daily","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -1624,9 +1804,25 @@ fi
 profile_show_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile show forge)"
 profile_activate_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate studio)"
 profile_json_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json)"
+profile_catalog_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile catalog --json)"
+profile_isolation_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/profile-isolation.sh" apply equinox forge --yes --json)"
 if grep -q 'Workspace:' <<<"$profile_show_output" &&
    grep -q 'profile.env' <<<"$profile_activate_output" &&
-   grep -q '"active"' <<<"$profile_json_output"; then
+   grep -q 'profile.lock' <<<"$profile_activate_output" &&
+   grep -q 'seven runtime activate' <<<"$profile_activate_output" &&
+   grep -q '"active"' <<<"$profile_json_output" &&
+   python -m json.tool <<<"$profile_catalog_json" >/dev/null &&
+   python -m json.tool <<<"$profile_isolation_json" >/dev/null &&
+   grep -q '"default_profile": "equinox"' <<<"$profile_catalog_json" &&
+   grep -q '"profile_model"' <<<"$profile_catalog_json" &&
+   grep -q '"mini_os": true' <<<"$profile_catalog_json" &&
+   grep -q '"Windows Bridge"' <<<"$profile_catalog_json" &&
+   grep -q '"Baobab Culture"' <<<"$profile_catalog_json" &&
+   grep -q '"schema": "sevenos.profile-isolation.v1"' <<<"$profile_isolation_json" &&
+   grep -q 'seven-profile-run' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q 'SEVENOS_PROFILE_SHIMS' "$ROOT_DIR/branding/shell/terminal-bashrc" &&
+   grep -q 'SEVENOS_PROFILE_SHIMS' "$ROOT_DIR/branding/shell/terminal-zsh/.zshrc" &&
+   ! grep -Eq ':-baobab|ACTIVE_PROFILE", "baobab"|return "Baobab", "unknown"' "$ROOT_DIR/scripts/context.sh" "$ROOT_DIR/scripts/scheduler.sh" "$ROOT_DIR/bin/seven-shell-panel" "$ROOT_DIR/bin/seven-quick-settings-native" "$ROOT_DIR/bin/seven-settings-native"; then
   ok "SevenOS profiles expose concrete state, activation and workspaces"
 else
   fail "SevenOS profiles should expose state, activation and workspaces"
@@ -1653,12 +1849,14 @@ if "$ROOT_DIR/scripts/architecture.sh" doctor >/dev/null &&
    python -m json.tool <<<"$hybrid_arch_json" >/dev/null &&
    grep -q '"schema": "sevenos.hybrid-architecture.v1"' <<<"$hybrid_arch_json" &&
    grep -q '"SevenAI Layer"' <<<"$hybrid_arch_json" &&
+   grep -q '"Seven Runtime Orchestrator"' <<<"$hybrid_arch_json" &&
    grep -q '"Seven System Orchestration Layer"' <<<"$hybrid_arch_json" &&
    grep -q '"User-Space Services Layer"' <<<"$hybrid_arch_json" &&
    grep -q '"contracts"' <<<"$hybrid_arch_json" &&
    grep -q '"capabilities"' <<<"$hybrid_arch_json" &&
    grep -q '"next_actions"' <<<"$hybrid_arch_json" &&
    grep -q 'SevenAI Layer' "$ROOT_DIR/docs/HYBRID_OS_ARCHITECTURE.md" &&
+   grep -q 'Seven Runtime Orchestrator' "$ROOT_DIR/docs/HYBRID_OS_ARCHITECTURE.md" &&
    grep -q 'Seven System Orchestration' "$ROOT_DIR/docs/HYBRID_OS_ARCHITECTURE.md"; then
   ok "SevenOS architecture doctor works"
 else

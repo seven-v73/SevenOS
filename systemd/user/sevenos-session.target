@@ -1,7 +1,7 @@
 [Unit]
 Description=SevenOS desktop session services
 Documentation=https://github.com/seven-v73/SevenOS
-Wants=seven-daemon.service seven-context-observer.service sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-idle.service
+Wants=seven-daemon.service seven-context-observer.service sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-idle.service sevenos-hyprsunset.service
 After=graphical-session.target
 
 [Install]

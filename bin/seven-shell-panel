@@ -83,13 +83,13 @@ def active_profile() -> dict[str, str]:
         try:
             payload = json.loads(profile_file.read_text(encoding="utf-8"))
             return {
-                "key": str(payload.get("key") or "baobab"),
-                "title": str(payload.get("title") or "Baobab"),
+                "key": str(payload.get("key") or "equinox"),
+                "title": str(payload.get("title") or "Equinox"),
                 "workspace": str(payload.get("workspace") or str(Path.home() / "SevenOS")),
             }
         except Exception:
             pass
-    return {"key": "baobab", "title": "Baobab", "workspace": str(Path.home() / "SevenOS")}
+    return {"key": "equinox", "title": "Equinox", "workspace": str(Path.home() / "SevenOS")}
 
 
 QUICK_ACTIONS = [
@@ -104,10 +104,15 @@ QUICK_ACTIONS = [
 ]
 
 PROFILE_ACTIONS = {
+    "equinox": [
+        ("󰘦", tr_text("Equinox"), tr_text("Open balanced SevenOS workspace"), ["seven", "profile", "open", "equinox"]),
+        ("󰒓", tr_text("Control Center"), tr_text("Open Seven Hub"), ["seven", "hub"]),
+        ("󰧑", tr_text("Runtime"), tr_text("Preview balanced profile composition"), ["seven", "runtime", "plan", "equinox", "forge", "shield", "studio", "horizon", "pulse"]),
+    ],
     "baobab": [
-        ("󰒓", tr_text("Welcome"), tr_text("Open SevenOS first-run guide"), ["seven-welcome"]),
-        ("󰉋", tr_text("Workspace"), tr_text("Open your SevenOS home workspace"), ["seven", "profile", "open", "baobab"]),
-        ("󰞋", tr_text("Profile Guide"), tr_text("Show active profile recommendations"), ["seven", "profile", "guide"]),
+        ("󰔱", tr_text("Baobab"), tr_text("Open cultural workspace"), ["seven", "profile", "open", "baobab"]),
+        ("󰉋", tr_text("Archives"), tr_text("Open culture and language folders"), ["seven-files", "profile"]),
+        ("󰞋", tr_text("Profile Guide"), tr_text("Show cultural profile recommendations"), ["seven", "profile", "guide", "baobab"]),
     ],
     "forge": [
         ("󰅩", tr_text("Forge"), tr_text("Open development workspace"), ["seven", "profile", "open", "forge"]),

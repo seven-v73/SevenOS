@@ -1,0 +1,315 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+THEME_CONF="$CONFIG_HOME/sevenos/theme.conf"
+WAYBAR_CONFIG="$CONFIG_HOME/waybar/config.jsonc"
+WAYBAR_STYLE="$CONFIG_HOME/waybar/style.css"
+PROFILE_UI="$CONFIG_HOME/sevenos/profile-ui.json"
+
+theme_mode() {
+  local mode
+  if [[ -f "$THEME_CONF" ]]; then
+    mode="$(awk -F= 'tolower($1) ~ /^(mode|theme_mode|sevenos_theme_mode)$/ {print $2; exit}' "$THEME_CONF" | tr -d '[:space:]\"')"
+  else
+    mode=""
+  fi
+  case "$mode" in
+    dark|light) printf '%s' "$mode" ;;
+    *) printf 'dark' ;;
+  esac
+}
+
+profile_json() {
+  "$ROOT_DIR/profiles/profile-manager.sh" current --json
+}
+
+base_config() {
+  local mode="$1"
+  if [[ "$mode" == "light" ]]; then
+    printf '%s/hyprland-light/waybar/config.jsonc\n' "$ROOT_DIR"
+  else
+    printf '%s/hyprland/waybar/config.jsonc\n' "$ROOT_DIR"
+  fi
+}
+
+base_style() {
+  local mode="$1"
+  if [[ "$mode" == "light" ]]; then
+    printf '%s/hyprland-light/waybar/style.css\n' "$ROOT_DIR"
+  else
+    printf '%s/hyprland/waybar/style.css\n' "$ROOT_DIR"
+  fi
+}
+
+render_config() {
+  local mode="$1"
+  local base="$2"
+  PROFILE_JSON="$(profile_json)" BASE_CONFIG="$base" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+profile = json.loads(os.environ["PROFILE_JSON"])
+config = json.loads(Path(os.environ["BASE_CONFIG"]).read_text(encoding="utf-8"))
+modules = {item.strip() for item in str(profile.get("waybar_modules", "")).split(",") if item.strip()}
+essential_left = {"spotlight"}
+essential_right = {"wifi", "bluetooth", "audio", "battery", "ai"}
+modules |= essential_left | essential_right
+
+left = ["custom/sevenos", "custom/profile"]
+if "spotlight" in modules:
+    left.append("custom/spotlight")
+if "media" in modules:
+    left.append("custom/media")
+config["modules-left"] = left
+
+right_order = [
+    ("wifi", "custom/wifi"),
+    ("bluetooth", "custom/bluetooth"),
+    ("audio", "pulseaudio"),
+    ("battery", "battery"),
+    ("vpn", "custom/vpn"),
+    ("recorder", "custom/recorder"),
+    ("clock", "clock"),
+    ("ai", "custom/ai"),
+]
+right = [module for key, module in right_order if key in modules or key == "clock"]
+config["modules-right"] = right
+
+key = profile.get("key", "equinox")
+label = profile.get("label") or profile.get("title") or key.title()
+icon = profile.get("waybar_icon") or profile.get("icon") or "7"
+short = profile.get("short_label") or key[:3].upper()
+config.setdefault("custom/sevenos", {})["format"] = f"{icon}  {label}"
+config.setdefault("custom/sevenos", {})["tooltip"] = True
+config.setdefault("custom/sevenos", {})["tooltip-format"] = f"SevenOS · {label}"
+
+print(json.dumps(config, indent=2, ensure_ascii=False))
+PY
+}
+
+render_style() {
+  local mode="$1"
+  local base="$2"
+  PROFILE_JSON="$(profile_json)" MODE="$mode" BASE_STYLE="$base" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+profile = json.loads(os.environ["PROFILE_JSON"])
+mode = os.environ["MODE"]
+base_style = Path(os.environ["BASE_STYLE"]).read_text(encoding="utf-8")
+
+key = profile.get("key", "equinox")
+accent = profile.get("accent_color") or profile.get("accent") or "#8B7CFF"
+secondary = profile.get("secondary_color") or profile.get("secondary") or "#6EA8FF"
+label = profile.get("title") or profile.get("label") or key.title()
+mood = profile.get("ui_mood", "")
+
+dark_profiles = {
+    "equinox": ("rgba(34, 38, 76, 0.42)", "balanced liquid glass"),
+    "baobab": ("rgba(25, 42, 30, 0.50)", "warm cultural glass"),
+    "forge": ("rgba(48, 37, 22, 0.50)", "builder amber glass"),
+    "shield": ("rgba(8, 38, 32, 0.52)", "secure teal glass"),
+    "studio": ("rgba(42, 28, 54, 0.50)", "creative mauve glass"),
+    "windows": ("rgba(22, 39, 58, 0.50)", "compatibility blue glass"),
+    "horizon": ("rgba(16, 42, 54, 0.50)", "cloud sky glass"),
+    "pulse": ("rgba(12, 38, 58, 0.52)", "performance cyan glass"),
+}
+light_profiles = {
+    "equinox": ("rgba(255, 255, 255, 0.66)", "balanced light glass"),
+    "baobab": ("rgba(250, 255, 244, 0.76)", "warm cultural light"),
+    "forge": ("rgba(255, 249, 235, 0.78)", "builder warm light"),
+    "shield": ("rgba(241, 255, 250, 0.76)", "secure mint light"),
+    "studio": ("rgba(253, 245, 255, 0.78)", "creative soft light"),
+    "windows": ("rgba(242, 250, 255, 0.78)", "compatibility light"),
+    "horizon": ("rgba(239, 253, 255, 0.78)", "cloud light"),
+    "pulse": ("rgba(238, 252, 255, 0.78)", "performance light"),
+}
+surface, surface_name = (light_profiles if mode == "light" else dark_profiles).get(
+    key, (light_profiles if mode == "light" else dark_profiles)["equinox"]
+)
+text = "rgba(24, 28, 38, 0.96)" if mode == "light" else "#FFFFFF"
+soft = "rgba(74, 82, 96, 0.76)" if mode == "light" else "rgba(255, 255, 255, 0.82)"
+edge_alpha = "0.26" if mode == "light" else "0.34"
+glow_alpha = "0.16" if mode == "light" else "0.24"
+panel_alpha = "0.18" if mode == "light" else "0.22"
+spotlight_alpha = "0.16" if mode == "light" else "0.20"
+
+override = f"""
+
+/* SevenOS profile runtime skin
+   profile: {key}
+   label: {label}
+   mood: {mood}
+   generated by seven-profile-theme; edit identity/profile-themes.json for source identity.
+*/
+
+window#waybar {{
+  color: {text};
+  border-color: alpha({accent}, {edge_alpha});
+  background:
+    linear-gradient(180deg, alpha(#FFFFFF, {'0.82' if mode == 'light' else '0.18'}), alpha(#FFFFFF, {'0.42' if mode == 'light' else '0.045'})),
+    radial-gradient(ellipse at 7% -34%, alpha({accent}, {'0.24' if mode == 'light' else '0.36'}), transparent 44%),
+    radial-gradient(ellipse at 94% -28%, alpha({secondary}, {'0.20' if mode == 'light' else '0.30'}), transparent 38%),
+    radial-gradient(ellipse at 50% -20%, alpha({accent}, {'0.12' if mode == 'light' else '0.16'}), transparent 50%),
+    {surface};
+  box-shadow:
+    0 14px 38px rgba(3, 8, 24, {'0.10' if mode == 'light' else '0.34'}),
+    0 0 30px alpha({accent}, {glow_alpha}),
+    inset 0 1px 0 alpha(#FFFFFF, {'0.78' if mode == 'light' else '0.22'});
+}}
+
+.modules-center {{
+  border-color: alpha({accent}, {'0.18' if mode == 'light' else '0.22'});
+  background:
+    linear-gradient(180deg, alpha(#FFFFFF, {'0.74' if mode == 'light' else '0.15'}), alpha(#FFFFFF, {'0.38' if mode == 'light' else '0.045'})),
+    radial-gradient(ellipse at 50% -18%, alpha({accent}, {'0.14' if mode == 'light' else '0.24'}), transparent 62%),
+    alpha({accent}, {panel_alpha});
+}}
+
+.modules-right {{
+  border-color: alpha({secondary}, {'0.13' if mode == 'light' else '0.16'});
+  background:
+    linear-gradient(90deg, alpha({accent}, {'0.07' if mode == 'light' else '0.10'}), alpha({secondary}, {'0.09' if mode == 'light' else '0.12'})),
+    alpha(#FFFFFF, {'0.20' if mode == 'light' else '0.025'});
+}}
+
+#custom-sevenos {{
+  color: {text};
+  text-shadow: 0 0 12px alpha({accent}, {'0.12' if mode == 'light' else '0.30'});
+}}
+
+#custom-profile {{
+  color: {text};
+  border-color: alpha({accent}, {'0.32' if mode == 'light' else '0.42'});
+  background:
+    radial-gradient(circle at 18% 18%, alpha(#FFFFFF, {'0.90' if mode == 'light' else '0.34'}), transparent 24%),
+    linear-gradient(135deg, alpha({accent}, {'0.28' if mode == 'light' else '0.32'}), alpha({secondary}, {'0.22' if mode == 'light' else '0.26'})),
+    alpha(#FFFFFF, {'0.44' if mode == 'light' else '0.060'});
+  box-shadow:
+    0 0 18px alpha({accent}, {glow_alpha}),
+    inset 0 1px 0 alpha(#FFFFFF, {'0.70' if mode == 'light' else '0.22'});
+}}
+
+#custom-spotlight {{
+  color: {soft};
+  border-color: alpha({accent}, {'0.15' if mode == 'light' else '0.18'});
+  background:
+    linear-gradient(180deg, alpha(#FFFFFF, {'0.72' if mode == 'light' else '0.15'}), alpha(#FFFFFF, {'0.38' if mode == 'light' else '0.040'})),
+    radial-gradient(ellipse at 18% -12%, alpha({accent}, {spotlight_alpha}), transparent 62%),
+    alpha({accent}, {'0.075' if mode == 'light' else '0.090'});
+}}
+
+#custom-spotlight:hover {{
+  border-color: alpha({accent}, {'0.30' if mode == 'light' else '0.34'});
+  box-shadow: 0 0 18px alpha({accent}, {'0.18' if mode == 'light' else '0.16'});
+}}
+
+#workspaces button.active {{
+  background:
+    radial-gradient(circle at 50% 0%, alpha(#FFFFFF, {'0.48' if mode == 'light' else '0.34'}), transparent 38%),
+    linear-gradient(135deg, {accent}, {secondary});
+  border-color: alpha(#FFFFFF, {'0.62' if mode == 'light' else '0.24'});
+  box-shadow:
+    0 5px 18px alpha({accent}, {'0.30' if mode == 'light' else '0.36'}),
+    inset 0 1px 0 alpha(#FFFFFF, {'0.66' if mode == 'light' else '0.30'});
+}}
+
+#custom-wifi.connected,
+#custom-bluetooth.connected,
+#custom-bluetooth.on,
+#custom-vpn.active,
+#custom-ai {{
+  color: {accent};
+}}
+
+#custom-ai {{
+  background:
+    radial-gradient(circle at 42% 33%, alpha(#FFFFFF, {'0.96' if mode == 'light' else '0.98'}) 0%, alpha(#FFFFFF, 0.70) 8%, transparent 19%),
+    radial-gradient(circle at 45% 54%, alpha({accent}, 0.86), alpha({secondary}, 0.68) 38%, transparent 74%),
+    linear-gradient(135deg, alpha(#FFFFFF, {'0.60' if mode == 'light' else '0.24'}), alpha({accent}, {'0.20' if mode == 'light' else '0.16'}));
+  box-shadow:
+    0 0 16px alpha({accent}, {'0.30' if mode == 'light' else '0.34'}),
+    0 0 26px alpha({secondary}, {'0.16' if mode == 'light' else '0.18'}),
+    inset 0 1px 0 alpha(#FFFFFF, {'0.70' if mode == 'light' else '0.24'});
+}}
+
+tooltip {{
+  border-color: alpha({accent}, {'0.18' if mode == 'light' else '0.20'});
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, {'0.10' if mode == 'light' else '0.28'}),
+    0 0 18px alpha({accent}, {'0.10' if mode == 'light' else '0.12'});
+}}
+"""
+
+print(base_style.rstrip() + override)
+PY
+}
+
+status() {
+  local mode profile
+  mode="$(theme_mode)"
+  profile="$(profile_json)"
+  PROFILE_JSON="$profile" MODE="$mode" python - <<'PY'
+import json
+import os
+
+profile = json.loads(os.environ["PROFILE_JSON"])
+print(f"{profile.get('title', profile.get('key'))} · {os.environ['MODE']} · {profile.get('waybar_modules', '')}")
+PY
+}
+
+apply_profile() {
+  local mode config_base style_base
+  mode="$(theme_mode)"
+  config_base="$(base_config "$mode")"
+  style_base="$(base_style "$mode")"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf 'render profile Waybar config from %q to %q\n' "$config_base" "$WAYBAR_CONFIG"
+    printf 'render profile Waybar style from %q to %q\n' "$style_base" "$WAYBAR_STYLE"
+    status
+    return 0
+  fi
+  mkdir -p "$(dirname "$WAYBAR_CONFIG")"
+  mkdir -p "$(dirname "$PROFILE_UI")"
+  render_config "$mode" "$config_base" > "$WAYBAR_CONFIG"
+  render_style "$mode" "$style_base" > "$WAYBAR_STYLE"
+  PROFILE_JSON="$(profile_json)" MODE="$mode" python - <<'PY' > "$PROFILE_UI"
+import json
+import os
+
+profile = json.loads(os.environ["PROFILE_JSON"])
+key = profile.get("key", "equinox")
+payload = {
+    "schema": "sevenos.profile-ui.v1",
+    "profile": key,
+    "title": profile.get("title") or profile.get("label") or key.title(),
+    "role": profile.get("role", ""),
+    "mode": os.environ["MODE"],
+    "accent": profile.get("accent_color") or profile.get("accent") or "#8B7CFF",
+    "secondary": profile.get("secondary_color") or profile.get("secondary") or "#6EA8FF",
+    "waybar_modules": [item.strip() for item in str(profile.get("waybar_modules", "")).split(",") if item.strip()],
+    "center_command": f"seven profile center {key}",
+    "workspace_command": f"seven profile open {key}",
+    "apps_command": f"seven profile apps {key}",
+}
+print(json.dumps(payload, indent=2, ensure_ascii=False))
+PY
+  if [[ -x "$ROOT_DIR/bin/seven-wallpaper" ]]; then
+    "$ROOT_DIR/bin/seven-wallpaper" profile "$(PROFILE_JSON="$(profile_json)" python -c 'import json,os; print(json.loads(os.environ["PROFILE_JSON"]).get("key","equinox"))')" >/dev/null 2>&1 || true
+  fi
+  status
+}
+
+case "${1:-status}" in
+  status) status ;;
+  json) profile_json ;;
+  apply) apply_profile ;;
+  *)
+    printf 'Usage: seven-profile-theme [status|json|apply]\n' >&2
+    exit 2
+    ;;
+esac

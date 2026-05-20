@@ -19,6 +19,7 @@ Usage:
 
 Areas:
   all
+  system
   ux
   security
   compatibility
@@ -72,6 +73,11 @@ repair_ux() {
   run_repair "Install Seven Hub" "$ROOT_DIR/install.sh" hub
 }
 
+repair_system() {
+  section "System Repair"
+  run_repair "Repair stale UFW marker and host-level failed service state" "$ROOT_DIR/scripts/system-repair.sh" apply
+}
+
 repair_security() {
   section "Security Repair"
   run_repair "Install sandbox helpers and Shield tools" "$ROOT_DIR/install.sh" cybersecurity sandbox
@@ -121,12 +127,14 @@ fi
 
 case "$AREA" in
   all)
+    repair_system
     repair_ux
     repair_security
     repair_compatibility
     repair_deployment
     repair_target
     ;;
+  system) repair_system ;;
   ux) repair_ux ;;
   security) repair_security ;;
   compatibility|windows) repair_compatibility ;;

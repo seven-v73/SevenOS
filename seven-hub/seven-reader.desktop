@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Seven Reader
+Comment=Read PDF, EPUB, Markdown and comics with SevenOS
+Exec=seven-reader open %U
+Icon=seven-reader
+Terminal=false
+Categories=Office;Viewer;
+MimeType=application/pdf;application/epub+zip;text/markdown;text/plain;application/vnd.comicbook+zip;application/x-cbz;
+StartupNotify=true
+StartupWMClass=SevenReaderNative
+Keywords=reader;books;pdf;epub;markdown;comics;SevenOS;

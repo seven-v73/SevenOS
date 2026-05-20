@@ -1,0 +1,313 @@
+#!/usr/bin/env python3
+"""SevenOS mini OS center.
+
+This is a profile-aware surface used by Baobab, Forge, Studio, Windows,
+Horizon and Pulse while Profile Center remains the global compositor view.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+def run_json(*args: str, fallback=None):
+    fallback = {} if fallback is None else fallback
+    try:
+        out = subprocess.check_output([str(ROOT / "bin/seven"), *args], cwd=ROOT, text=True, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
+        return json.loads(out)
+    except Exception:
+        return fallback
+
+
+def load_catalog() -> dict:
+    try:
+        return json.loads((ROOT / "profiles/catalog.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def active_profile() -> str:
+    payload = run_json("profile", "current", "--json", fallback={})
+    return payload.get("key") or "equinox"
+
+
+def compact(items, limit: int = 4) -> str:
+    values = [str(item) for item in (items or []) if str(item).strip()]
+    if not values:
+        return "none"
+    if len(values) <= limit:
+        return " · ".join(values)
+    return " · ".join(values[:limit]) + f" +{len(values) - limit}"
+
+
+def run_detached(command: str) -> None:
+    subprocess.Popen(
+        ["bash", "-lc", command],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def profile_actions(key: str) -> list[tuple[str, str, str]]:
+    actions = {
+        "baobab": [
+            ("Read", "Open Seven Reader", "seven-reader"),
+            ("Library", "Open Baobab workspace", "seven profile open baobab"),
+            ("Voice", "Test oral learning tools", "seven-profile-run espeak-ng 'SevenOS Baobab'"),
+        ],
+        "forge": [
+            ("Code", "Open development editor", "code"),
+            ("Terminal", "Open Forge terminal", "seven-terminal forge"),
+            ("Containers", "Check Docker", "docker info"),
+        ],
+        "studio": [
+            ("Design", "Open Krita", "krita"),
+            ("Video", "Open Kdenlive", "kdenlive"),
+            ("Record", "Open Seven Recorder", "seven recorder"),
+        ],
+        "windows": [
+            ("VM", "Open Windows VM assistant", "seven windows vm"),
+            ("Apps", "Open Windows app launcher", "seven windows apps"),
+            ("Guide", "Open Windows guide", "seven windows guide"),
+        ],
+        "horizon": [
+            ("Deploy", "Detect deployable project", "seven deploy detect ."),
+            ("Services", "Check Caddy", "caddy version"),
+            ("SSH", "Open Horizon workspace", "seven profile open horizon"),
+        ],
+        "pulse": [
+            ("Games", "Open Lutris", "lutris"),
+            ("Boost", "Show GameMode", "gamemoderun --help"),
+            ("HUD", "Show MangoHud", "mangohud --help"),
+        ],
+        "equinox": [
+            ("Hub", "Open Seven Hub", "seven hub"),
+            ("Files", "Open Seven Files", "seven-files profile"),
+            ("Profiles", "Open Profile Center", "seven-profile-center-native"),
+        ],
+    }
+    return actions.get(key, actions["equinox"])
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def run() -> int:
+    if "--probe" in sys.argv:
+        return probe()
+
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    catalog = load_catalog()
+    requested = next((arg for arg in sys.argv[1:] if not arg.startswith("-")), "")
+    key = requested or active_profile()
+    profiles = catalog.get("profiles", {})
+    if key not in profiles:
+        key = active_profile()
+    meta = profiles.get(key, {})
+    health = run_json("profile", "status", "--json", fallback=[])
+    status = next((item for item in health if item.get("key") == key), {})
+    runtime = run_json("runtime", "plan", key, "--json", fallback={})
+    isolation = run_json("profile", "isolation", "plan", key, "--json", fallback={})
+
+    GLib.set_prgname("SevenMiniOSCenter")
+    GLib.set_application_name(meta.get("title", "SevenOS Mini OS"))
+    try:
+        Gdk.set_program_class("SevenMiniOSCenter")
+    except Exception:
+        pass
+
+    accent = meta.get("resource_intent", {}).get("gpu", "foreground")
+    css = f"""
+    * {{ font-family: "SF Pro Display", "Inter", system-ui, sans-serif; }}
+    window.mini-os-window {{ background: transparent; }}
+    .root {{
+      padding: 18px;
+      border-radius: 30px;
+      background:
+        radial-gradient(ellipse at 10% 0%, rgba(137,180,250,0.18), transparent 42%),
+        radial-gradient(ellipse at 90% 0%, rgba(166,227,161,0.12), transparent 44%),
+        rgba(17,18,25,0.92);
+      border: 1px solid rgba(255,255,255,0.13);
+    }}
+    .eyebrow {{ color: rgba(245,247,250,0.58); font-size: 11px; }}
+    .title {{ color: rgba(245,247,250,0.98); font-size: 25px; font-weight: 600; }}
+    .subtitle {{ color: rgba(245,247,250,0.68); font-size: 12px; }}
+    .card {{
+      padding: 14px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.065);
+      border: 1px solid rgba(255,255,255,0.11);
+    }}
+    .card-title {{ color: rgba(245,247,250,0.95); font-size: 13px; font-weight: 600; }}
+    .card-text {{ color: rgba(245,247,250,0.63); font-size: 11px; }}
+    .pill {{
+      min-height: 42px;
+      border-radius: 999px;
+      color: rgba(245,247,250,0.95);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+    }}
+    .pill:hover {{ background: rgba(255,255,255,0.13); }}
+    .signal {{ color: rgba(249,226,175,0.86); font-size: 10px; }}
+    .accent {{ color: rgba(156,203,255,0.92); font-size: 11px; }}
+    .hidden-note {{ color: rgba(245,247,250,0.48); font-size: 10px; }}
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title=meta.get("title", "SevenOS Mini OS"))
+    window.set_wmclass("SevenMiniOSCenter", "SevenMiniOSCenter")
+    window.set_decorated(False)
+    window.set_resizable(False)
+    window.set_keep_above(True)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_default_size(760, 620)
+    window.get_style_context().add_class("mini-os-window")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    root.get_style_context().add_class("root")
+    window.add(root)
+
+    eyebrow = Gtk.Label(label=f"{key.upper()} · mini OS autonome · {accent}", xalign=0)
+    eyebrow.get_style_context().add_class("eyebrow")
+    root.pack_start(eyebrow, False, False, 0)
+
+    title = Gtk.Label(label=meta.get("title", key.title()), xalign=0)
+    title.get_style_context().add_class("title")
+    root.pack_start(title, False, False, 0)
+
+    subtitle = Gtk.Label(label=meta.get("purpose", meta.get("domain", "")), xalign=0)
+    subtitle.set_line_wrap(True)
+    subtitle.get_style_context().add_class("subtitle")
+    root.pack_start(subtitle, False, False, 0)
+
+    grid = Gtk.Grid()
+    grid.set_column_spacing(10)
+    grid.set_row_spacing(10)
+    root.pack_start(grid, True, True, 0)
+
+    layers = meta.get("layers", {})
+    for index, name in enumerate(("kernel", "runtime", "experience", "intelligence")):
+        grid.attach(info_card(Gtk, name.title(), compact(layers.get(name))), index % 2, index // 2, 1, 1)
+
+    runtime_summary = runtime.get("resource_plan", {})
+    grid.attach(info_card(Gtk, "Resources", compact([
+        f"CPU {runtime_summary.get('cpu', {}).get('strategy', 'unknown')}",
+        f"RAM {runtime_summary.get('ram', {}).get('strategy', 'unknown')}",
+        f"IO {runtime_summary.get('io', {}).get('strategy', 'unknown')}",
+    ])), 0, 2, 1, 1)
+    grid.attach(info_card(Gtk, "Isolation", compact([
+        f"{isolation.get('active_package_count', 0)} active packages",
+        f"{isolation.get('inactive_package_count', 0)} quiet packages",
+        f"{len(isolation.get('service_policy', []))} service rules",
+    ])), 1, 2, 1, 1)
+
+    actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    root.pack_start(actions_box, False, False, 0)
+    for label, tooltip, command in profile_actions(key):
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("pill")
+        button.set_tooltip_text(tooltip)
+        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        actions_box.pack_start(button, True, True, 0)
+
+    footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    root.pack_end(footer, False, False, 0)
+    for label, command in [
+        ("Activate", f"seven profile activate {key}"),
+        ("Apply runtime", f"seven runtime activate {key} --apply --yes"),
+        ("Apply isolation", f"seven profile isolation apply {key} --yes"),
+        ("Profile apps", f"seven profile apps {key}"),
+    ]:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("pill")
+        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        footer.pack_start(button, True, True, 0)
+
+    state_line = Gtk.Label(
+        label=f"State: {status.get('runtime', {}).get('lifecycle', 'UNKNOWN')} · packages {status.get('installed', 0)}/{status.get('total', 0)} · anti-noise: {compact(meta.get('anti_nuisance'), 2)}",
+        xalign=0,
+    )
+    state_line.get_style_context().add_class("hidden-note")
+    root.pack_end(state_line, False, False, 0)
+
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def info_card(Gtk, title: str, text: str):
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    box.set_hexpand(True)
+    box.set_vexpand(False)
+    box.get_style_context().add_class("card")
+    title_label = Gtk.Label(label=title, xalign=0)
+    title_label.get_style_context().add_class("card-title")
+    text_label = Gtk.Label(label=text, xalign=0)
+    text_label.set_line_wrap(True)
+    text_label.set_max_width_chars(40)
+    text_label.get_style_context().add_class("card-text")
+    box.pack_start(title_label, False, False, 0)
+    box.pack_start(text_label, False, False, 0)
+    return box
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())

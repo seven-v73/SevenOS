@@ -1,0 +1,9 @@
+# SevenOS Pulse optional overlays
+# These improve the Pulse experience but should not block the profile.
+gamescope
+mangohud
+vulkan-tools
+lutris
+# Steam/ProtonUp-Qt are intentionally kept out of the official package check
+# because availability depends on multilib/AUR policy. SevenOS exposes them
+# through Pulse guidance when those sources are enabled.

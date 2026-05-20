@@ -1,6 +1,14 @@
 {
+  "equinox": {
+    "description": "Equinox Balance: neutral daily SevenOS mini OS for balanced general computing",
+    "kind": "sevenos-target",
+    "target": "base",
+    "package_files": [
+      "scripts/packages-base.txt"
+    ]
+  },
   "forge": {
-    "description": "Development workspace",
+    "description": "Forge Developer: autonomous developer mini OS for code, toolchains, containers and local builds",
     "kind": "sevenos-target",
     "target": "dev",
     "package_files": [
@@ -8,7 +16,7 @@
     ]
   },
   "shield": {
-    "description": "Cybersecurity workspace",
+    "description": "Shield Cybersecurity: autonomous security mini OS for authorized audit, forensics, sandboxing and network analysis",
     "kind": "sevenos-target",
     "target": "cybersecurity",
     "package_files": [
@@ -20,7 +28,7 @@
     ]
   },
   "studio": {
-    "description": "Creative production workspace",
+    "description": "Studio Creator: autonomous creator mini OS for logos, design, video, audio, 3D and capture",
     "kind": "sevenos-target",
     "target": "creation",
     "package_files": [
@@ -28,19 +36,41 @@
     ]
   },
   "baobab": {
-    "description": "SevenOS base system and desktop layer",
+    "description": "Baobab Culture: autonomous culture and learning mini OS for African knowledge, languages and community memory",
     "kind": "sevenos-target",
-    "target": "base",
+    "target": "culture",
     "package_files": [
-      "scripts/packages-base.txt"
+      "scripts/packages-culture.txt"
+    ],
+    "optional_package_files": [
+      "scripts/packages-culture-optional.txt"
+    ]
+  },
+  "windows": {
+    "description": "Windows Bridge: autonomous Windows VM-first mini OS with Wine and Bottles fallback",
+    "kind": "sevenos-target",
+    "target": "windows",
+    "package_files": [
+      "scripts/packages-windows.txt"
     ]
   },
   "horizon": {
-    "description": "Cloud, server and deployment toolkit",
+    "description": "Horizon Cloud: autonomous cloud/server mini OS for deployment, services, reverse proxy and self-hosting",
     "kind": "sevenos-target",
     "target": "server",
     "package_files": [
       "scripts/packages-server.txt"
+    ]
+  },
+  "pulse": {
+    "description": "Pulse Gaming: autonomous Linux gaming mini OS for Proton, low latency, overlays and frame pacing",
+    "kind": "sevenos-target",
+    "target": "performance",
+    "package_files": [
+      "scripts/packages-performance.txt"
+    ],
+    "optional_package_files": [
+      "scripts/packages-performance-optional.txt"
     ]
   },
   "griot": {

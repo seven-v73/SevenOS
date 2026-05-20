@@ -5,6 +5,13 @@ export SEVENOS_TERMINAL_COUNTRY=0
 export SEVENOS_TERMINAL_CLASSIC=1
 export FASTFETCH_DISABLED=1
 
+if [[ -r "$HOME/.config/sevenos/profile-isolation.env" ]]; then
+  source "$HOME/.config/sevenos/profile-isolation.env"
+fi
+if [[ -d "${SEVENOS_PROFILE_SHIMS:-}" && ":$PATH:" != *":$SEVENOS_PROFILE_SHIMS:"* ]]; then
+  export PATH="$SEVENOS_PROFILE_SHIMS:$PATH"
+fi
+
 setopt prompt_subst
 autoload -Uz colors && colors
 zmodload zsh/datetime 2>/dev/null || true
@@ -30,9 +37,9 @@ __sevenos_git_branch() {
 }
 
 __sevenos_status() {
-  local status="$1"
-  [[ "$status" -eq 0 ]] && return 0
-  printf ' !%s' "$status"
+  local exit_code="$1"
+  [[ "$exit_code" -eq 0 ]] && return 0
+  printf ' !%s' "$exit_code"
 }
 
 __sevenos_runtime_context() {
@@ -70,7 +77,7 @@ __sevenos_duration() {
 }
 
 precmd() {
-  local status="$?"
+  local exit_code="$?"
   if [[ "$__sevenos_cmd_started" -gt 0 ]]; then
     __sevenos_last_duration=$((EPOCHSECONDS - __sevenos_cmd_started))
   else
@@ -87,7 +94,7 @@ precmd() {
     *) mode_color=45 ;;
   esac
   git_info="$(__sevenos_git_branch)"
-  fail_info="$(__sevenos_status "$status")"
+  fail_info="$(__sevenos_status "$exit_code")"
   runtime_info="$(__sevenos_runtime_context)"
   duration_info="$(__sevenos_duration "$__sevenos_last_duration")"
   PROMPT="%F{39}SevenOS%f:%F{${mode_color}}${mode}%f %F{245}%~%f%F{105}${git_info}%f%F{48}${runtime_info}%f%F{245}${duration_info}%f%F{203}${fail_info}%f"$'\n'"%F{245}%n@%m%f %F{${mode_color}}%#%f "

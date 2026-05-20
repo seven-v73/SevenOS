@@ -372,7 +372,7 @@ configure_file_experience() {
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'install Seven Files desktop entry\n'
-    printf 'install SevenOS Spotlight, AI and Terminal desktop entries\n'
+    printf 'install SevenOS Spotlight, AI, Reader and Terminal desktop entries\n'
     printf 'write SevenOS default terminal contract\n'
     printf 'write xdg-terminal-exec preference\n'
     printf 'xdg-mime default seven-files.desktop inode/directory\n'
@@ -392,6 +392,8 @@ configure_file_experience() {
   cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$HOME/.local/share/applications/seven-files.desktop"
   cp "$ROOT_DIR/seven-hub/seven-spotlight.desktop" "$HOME/.local/share/applications/seven-spotlight.desktop"
   cp "$ROOT_DIR/seven-hub/seven-ai.desktop" "$HOME/.local/share/applications/seven-ai.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-reader.desktop" "$HOME/.local/share/applications/seven-reader.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-store.desktop" "$HOME/.local/share/applications/seven-store.desktop"
   cp "$ROOT_DIR/seven-hub/seven-terminal.desktop" "$HOME/.local/share/applications/seven-terminal.desktop"
   cp "$ROOT_DIR/seven-hub/seven-doctor.desktop" "$HOME/.local/share/applications/seven-doctor.desktop"
 
@@ -409,6 +411,10 @@ configure_file_experience() {
   if command -v xdg-mime >/dev/null 2>&1; then
     xdg-mime default seven-files.desktop inode/directory >/dev/null 2>&1 || true
     xdg-mime default seven-files.desktop application/x-gnome-saved-search >/dev/null 2>&1 || true
+    xdg-mime default seven-reader.desktop application/pdf >/dev/null 2>&1 || true
+    xdg-mime default seven-reader.desktop application/epub+zip >/dev/null 2>&1 || true
+    xdg-mime default seven-reader.desktop text/markdown >/dev/null 2>&1 || true
+    xdg-mime default seven-reader.desktop application/x-cbz >/dev/null 2>&1 || true
   fi
 
   local nautilus_scripts_dir="$HOME/.local/share/nautilus/scripts"
@@ -564,6 +570,8 @@ copy_config_dir "$ROOT_DIR/hyprland/wlogout" "$CONFIG_HOME/wlogout"
 copy_config_dir "$THEME_SOURCE_DIR/kitty" "$CONFIG_HOME/kitty"
 copy_config_file "$ROOT_DIR/hyprland/hypridle.conf" "$CONFIG_HOME/hypr/hypridle.conf"
 copy_config_file "$ROOT_DIR/hyprland/hyprlock.conf" "$CONFIG_HOME/hypr/hyprlock.conf"
+copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" "$CONFIG_HOME/hypr/conf/sevenos-windows.conf"
+copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-dynamic.conf" "$CONFIG_HOME/hypr/conf/sevenos-dynamic.conf"
 copy_config_file "$ROOT_DIR/hyprland-light/kitty/light.conf" "$CONFIG_HOME/kitty/light.conf"
 configure_toolkit_theme
 copy_config_file "$ROOT_DIR/branding/shell/terminal-country.sh" "$SHELL_HOOK"
@@ -573,6 +581,8 @@ run_cmd cp "$WALLPAPER_SVG" "$WALLPAPER_DIR/wallpaper-sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$DATA_HOME/icons/hicolor/scalable/apps/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/icons/seven-hub.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-hub.svg"
 run_cmd cp "$ROOT_DIR/identity/icons/seven-files.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-files.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-reader.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-reader.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-store.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-store.svg"
 run_cmd cp "$ROOT_DIR/identity/icons/seven-settings.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-settings.svg"
 run_cmd cp "$ROOT_DIR/identity/icons/seven-spotlight.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-spotlight.svg"
 run_cmd cp "$ROOT_DIR/identity/icons/seven-ai.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-ai.svg"
@@ -596,8 +606,10 @@ run_cmd cp -r "$ROOT_DIR/identity/patterns" "$DATA_HOME/sevenos/identity/pattern
 run_cmd cp -r "$ROOT_DIR/identity/components" "$DATA_HOME/sevenos/identity/components"
 render_wallpaper
 write_hyprpaper_config
+"$ROOT_DIR/scripts/wallpaper-theme.sh" generate "$WALLPAPER_ACTIVE" || true
 configure_file_experience
 configure_user_session_services
+"$ROOT_DIR/scripts/hypr-ecosystem.sh" apply || true
 
 install_shell_hook "$HOME/.bashrc"
 install_shell_hook "$HOME/.zshrc"

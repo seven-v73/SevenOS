@@ -41,6 +41,12 @@ package_is_satisfied() {
   local package="$1"
   local alternative
 
+  if [[ "$package" == "glaze" &&
+        -f "$HOME/.local/lib/sevenos/glaze/include/glaze/glaze.hpp" &&
+        -f "$HOME/.local/lib/sevenos/glaze/lib/pkgconfig/glaze.pc" ]]; then
+    return 0
+  fi
+
   pacman -Qq "$package" >/dev/null 2>&1 && return 0
   while IFS= read -r alternative; do
     [[ -n "$alternative" ]] || continue

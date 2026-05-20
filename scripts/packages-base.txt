@@ -20,6 +20,9 @@ hyprland
 hyprpaper
 hypridle
 hyprlock
+hyprpicker
+hyprsunset
+matugen
 librsvg
 fontconfig
 7zip

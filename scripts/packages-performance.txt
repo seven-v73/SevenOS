@@ -1,0 +1,3 @@
+# SevenOS Pulse performance profile
+# Keep this focused on gaming/performance helpers only.
+gamemode

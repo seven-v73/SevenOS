@@ -67,7 +67,11 @@ fi
 if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&
    [[ -s "$ROOT_DIR/identity/design-engine.json" ]] &&
    [[ -s "$ROOT_DIR/identity/design-engine.css" ]] &&
-   jq -e '.schema == "sevenos.design-engine.v1" and .modes."seven-mocha".palette.base == "#11111B" and .modes."seven-latte".palette.base == "#EFF1F5" and (.icon_strategy.rule | contains("Papirus"))' "$ROOT_DIR/identity/design-engine.json" >/dev/null &&
+   [[ -s "$ROOT_DIR/identity/PROFILE_THEMES.md" ]] &&
+   [[ -s "$ROOT_DIR/profiles/catalog.json" ]] &&
+   jq -e '.schema == "sevenos.design-engine.v1" and .modes."seven-mocha".palette.base == "#11111B" and .modes."seven-latte".palette.base == "#EFF1F5" and (.icon_strategy.rule | contains("Papirus")) and .profile_themes.contract == "identity/profile-themes.json" and .profile_themes.catalog == "profiles/catalog.json"' "$ROOT_DIR/identity/design-engine.json" >/dev/null &&
+   jq -e '.schema == "sevenos.profile-themes.v1" and .profiles.equinox.short_label == "EQX" and .profiles.baobab.catppuccin_role == "green/yellow" and .profiles.shield.short_label == "SEC" and .profiles.pulse.short_label == "GAME"' "$ROOT_DIR/identity/profile-themes.json" >/dev/null &&
+   jq -e '.schema == "sevenos.profiles.catalog.v1" and .default_profile == "equinox" and .profile_model.short_name == "LAPA" and .profiles.forge.mini_os == true and .profiles.windows.title == "Windows Bridge" and .profiles.baobab.layers.experience and .isolation_policy.activation and .core_package_files[0] == "scripts/packages-base.txt" and .runtime_optional_package_files[0] == "scripts/packages-runtime-optional.txt" and any(.profiles.baobab.anti_nuisance[]; . == "no dev toolchain") and .profiles.pulse.optional_package_files[0] == "scripts/packages-performance-optional.txt"' "$ROOT_DIR/profiles/catalog.json" >/dev/null &&
    grep -q -- '--cat-base: #11111B' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--cat-base: #EFF1F5' "$ROOT_DIR/identity/tokens-light.css" &&
    grep -q 'resolve_icon_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
@@ -84,7 +88,7 @@ if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&
    grep -q 'kvantum-theme-catppuccin-git' "$ROOT_DIR/scripts/packages-visual-aur.txt" &&
    grep -q 'seven identity visuals' "$ROOT_DIR/scripts/identity.sh" &&
    grep -q 'design_json' "$ROOT_DIR/scripts/identity.sh" &&
-   jq -e '.schema == "sevenos.icons.v1" and ([.icons[].name] | index("seven-hub") and index("seven-files") and index("seven-ai") and index("seven-settings") and index("seven-spotlight"))' "$ROOT_DIR/identity/icons/manifest.json" >/dev/null &&
+   jq -e '.schema == "sevenos.icons.v1" and ([.icons[].name] | index("seven-hub") and index("seven-files") and index("seven-reader") and index("seven-store") and index("seven-ai") and index("seven-settings") and index("seven-spotlight"))' "$ROOT_DIR/identity/icons/manifest.json" >/dev/null &&
    grep -q 'seven identity icons' "$ROOT_DIR/scripts/identity.sh" &&
    grep -q 'seven-hub.svg' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'Icon=seven-files' "$ROOT_DIR/seven-hub/seven-files.desktop" &&
@@ -100,7 +104,7 @@ fi
 
 if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
    [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
-   jq -e '."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 50 and ."gtk-layer-shell" == true and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/ai".exec == "seven-waybar-status ai"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
+   jq -e '."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 50 and ."gtk-layer-shell" == true and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/ai".exec == "seven-waybar-status ai"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
    grep -q '@define-color seven_blue #2F7BFF' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q '#custom-ai' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
@@ -112,7 +116,7 @@ else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/spotlight","custom/media"] and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 50 and .spacing == 6 and ."margin-top" == 10 and ."margin-left" == 18 and ."margin-right" == 18 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "hyprctl dispatch workspace e-1" and ."custom/workspace-next"."on-click" == "hyprctl dispatch workspace e+1" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 50 and .spacing == 6 and ."margin-top" == 10 and ."margin-left" == 18 and ."margin-right" == 18 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next"."on-click" == "seven-workspace next" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses the SevenOS public premium floating hierarchy"
 else
   fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
@@ -122,8 +126,11 @@ if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '.modules-center,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '.modules-right' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'border-radius: 24px' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'min-width: 342px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'min-width: 394px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'min-width: 330px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-profile.profile-equinox' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-profile.profile-baobab' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-profile.profile-shield' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-workspace-prev' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-wifi' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-bluetooth' "$ROOT_DIR/hyprland/waybar/style.css" &&
@@ -313,6 +320,11 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'window.nautilus-window headerbar' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
    grep -q 'SevenFilesNative' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'files-sidebar' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'Seven Reader' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'book-spread' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'paper-page' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'flip-active' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'SevenAI Reading Companion' "$ROOT_DIR/bin/seven-reader-native" &&
    grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'background #09090B' "$ROOT_DIR/hyprland/kitty/dark.conf"; then

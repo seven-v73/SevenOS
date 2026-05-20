@@ -1,0 +1,94 @@
+{
+  "schema": "sevenos.profile-themes.v1",
+  "principle": "Profile visuals must express autonomous mini OS identities. Equinox is the balanced general experience; specialized profiles change purpose, tools, Waybar signals and UI mood without polluting one another.",
+  "profiles": {
+    "equinox": {
+      "label": "Equinox Balance",
+      "icon": "󰘦",
+      "short_label": "EQX",
+      "accent": "#8B7CFF",
+      "secondary": "#6EA8FF",
+      "catppuccin_role": "mauve/blue",
+      "waybar": "balanced public shell: profile, Spotlight, media, network, battery and SevenAI",
+      "ui_mood": "neutral glass, calm productivity, all-purpose readiness",
+      "design_signal": "no domain dominates; every control feels general and approachable"
+    },
+    "baobab": {
+      "label": "Baobab Culture",
+      "icon": "󰔱",
+      "short_label": "BAO",
+      "accent": "#A6E3A1",
+      "secondary": "#F9E2AF",
+      "catppuccin_role": "green/yellow",
+      "waybar": "culture and learning shell: identity, reader/media, language, connectivity, battery and light AI",
+      "ui_mood": "warm cultural calm, community memory, African learning surfaces",
+      "design_signal": "culture-first, quiet, no developer/security/cloud noise"
+    },
+    "forge": {
+      "label": "Forge Developer",
+      "icon": "󰙨",
+      "short_label": "DEV",
+      "accent": "#89B4FA",
+      "secondary": "#A6E3A1",
+      "catppuccin_role": "blue/green",
+      "waybar": "developer shell: profile, Spotlight, project flow, network, recorder and code-aware AI",
+      "ui_mood": "focused engineering cockpit, terminal clarity, git/build/container readiness",
+      "design_signal": "code, services and local builds are first-class"
+    },
+    "shield": {
+      "label": "Shield Cybersecurity",
+      "icon": "󰒃",
+      "short_label": "SEC",
+      "accent": "#94E2D5",
+      "secondary": "#F38BA8",
+      "catppuccin_role": "teal/red",
+      "waybar": "security shell: profile, network, Bluetooth, VPN, recorder and audit-aware AI",
+      "ui_mood": "trust dashboard, scoped actions, isolation and evidence-safe surfaces",
+      "design_signal": "authorized scope and safety are always visible"
+    },
+    "studio": {
+      "label": "Studio Creator",
+      "icon": "󰏘",
+      "short_label": "CRT",
+      "accent": "#F5C2E7",
+      "secondary": "#CBA6F7",
+      "catppuccin_role": "pink/mauve",
+      "waybar": "creator shell: profile, media, audio, recorder, battery and production AI",
+      "ui_mood": "creative canvas, asset-first layout, color/media/export emphasis",
+      "design_signal": "design, video, audio and capture tools come forward"
+    },
+    "windows": {
+      "label": "Windows Bridge",
+      "icon": "󰖳",
+      "short_label": "VM",
+      "accent": "#74C7EC",
+      "secondary": "#89B4FA",
+      "catppuccin_role": "sapphire/blue",
+      "waybar": "Windows bridge shell: VM readiness, app routing, network, audio, battery and assistant",
+      "ui_mood": "complete Windows VM path, compatibility guidance, app-first bridge",
+      "design_signal": "VM-first Windows experience, with Wine/Bottles as lighter fallbacks"
+    },
+    "horizon": {
+      "label": "Horizon Cloud",
+      "icon": "󰖟",
+      "short_label": "CLD",
+      "accent": "#89DCEB",
+      "secondary": "#94E2D5",
+      "catppuccin_role": "sky/teal",
+      "waybar": "cloud shell: profile, Spotlight, network, VPN, recorder and service-aware AI",
+      "ui_mood": "deployment navigator, services dashboard, endpoints and logs",
+      "design_signal": "server, deploy and network controls are primary"
+    },
+    "pulse": {
+      "label": "Pulse Gaming",
+      "icon": "󰓅",
+      "short_label": "GAME",
+      "accent": "#A6E3A1",
+      "secondary": "#89B4FA",
+      "catppuccin_role": "green/blue",
+      "waybar": "gaming shell: profile, media, audio, battery, recorder and low-latency AI",
+      "ui_mood": "low-latency gaming HUD, controller-friendly, overlay-aware",
+      "design_signal": "games, frame pacing and performance become the center"
+    }
+  }
+}

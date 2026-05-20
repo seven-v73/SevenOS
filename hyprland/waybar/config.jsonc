@@ -7,13 +7,21 @@
   "margin-left": 18,
   "margin-right": 18,
   "gtk-layer-shell": true,
-  "modules-left": ["custom/sevenos", "custom/spotlight", "custom/media"],
+  "modules-left": ["custom/sevenos", "custom/profile", "custom/spotlight", "custom/media"],
   "modules-center": ["custom/workspace-prev", "hyprland/workspaces", "custom/workspace-next"],
   "modules-right": ["custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "custom/vpn", "custom/recorder", "clock", "custom/ai"],
   "custom/sevenos": {
     "format": "7  SevenOS",
     "tooltip": false,
     "on-click": "seven hub"
+  },
+  "custom/profile": {
+    "exec": "seven-waybar-status profile",
+    "return-type": "json",
+    "interval": 3,
+    "tooltip": true,
+    "on-click": "seven-profile-center-native",
+    "on-click-right": "seven profile current"
   },
   "custom/spotlight": {
     "format": "󰍉  Rechercher...   │",
@@ -32,7 +40,7 @@
   "custom/workspace-prev": {
     "format": "‹",
     "tooltip": false,
-    "on-click": "hyprctl dispatch workspace e-1"
+    "on-click": "seven-workspace prev"
   },
   "hyprland/workspaces": {
     "disable-scroll": true,
@@ -41,12 +49,24 @@
     "persistent-workspaces": {
       "*": 5
     },
-    "format": "{name}"
+    "format": "{icon}",
+    "format-icons": {
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "6": "6",
+      "7": "7",
+      "8": "8",
+      "9": "9",
+      "default": "•"
+    }
   },
   "custom/workspace-next": {
     "format": "›",
     "tooltip": false,
-    "on-click": "hyprctl dispatch workspace e+1"
+    "on-click": "seven-workspace next"
   },
   "custom/wifi": {
     "exec": "seven-waybar-status wifi",

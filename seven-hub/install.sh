@@ -7,6 +7,8 @@ source "$ROOT_DIR/scripts/lib.sh"
 BIN_HOME="${HOME}/.local/bin"
 APP_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 ICON_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/scalable/apps"
+SYSTEM_BIN_HOME="/usr/local/bin"
+SYSTEM_INSTALL_WARNED=0
 
 write_command_wrapper() {
   local target_file="$1"
@@ -20,6 +22,37 @@ write_command_wrapper() {
   chmod +x "$target_file"
 }
 
+install_system_command() {
+  local source_file="$1"
+  local command_name="$2"
+  local tmp_file
+
+  if ! command -v sudo >/dev/null 2>&1; then
+    if [[ "$SYSTEM_INSTALL_WARNED" -eq 0 ]]; then
+      log_warn "sudo unavailable; skipping $SYSTEM_BIN_HOME command install."
+      SYSTEM_INSTALL_WARNED=1
+    fi
+    return 0
+  fi
+
+  if [[ ! -t 0 ]] && ! sudo -n true >/dev/null 2>&1; then
+    if [[ "$SYSTEM_INSTALL_WARNED" -eq 0 ]]; then
+      log_warn "Skipping $SYSTEM_BIN_HOME command install because sudo needs an interactive password."
+      log_warn "User commands are still installed in $BIN_HOME."
+      SYSTEM_INSTALL_WARNED=1
+    fi
+    return 0
+  fi
+
+  tmp_file="$(mktemp)"
+  write_command_wrapper "$tmp_file" "$source_file"
+  if ! sudo install -Dm755 "$tmp_file" "$SYSTEM_BIN_HOME/$command_name"; then
+    log_warn "Could not install $command_name into $SYSTEM_BIN_HOME."
+    log_warn "The user command is still available at $BIN_HOME/$command_name."
+  fi
+  rm -f "$tmp_file"
+}
+
 log_info "Installing Seven Hub launcher..."
 run_cmd mkdir -p "$BIN_HOME" "$APP_HOME" "$ICON_HOME"
 if is_dry_run; then
@@ -27,57 +60,38 @@ if is_dry_run; then
   printf 'install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "$BIN_HOME/seven-control-center"
   printf 'install Seven Hub Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-hub-native" "$BIN_HOME/seven-hub-native"
   printf 'install SevenOS Settings wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-settings" "$BIN_HOME/seven-settings"
-  printf 'sudo install Seven Hub wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "/usr/local/bin/seven-hub"
-  printf 'sudo install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "/usr/local/bin/seven-control-center"
-  printf 'sudo install Seven Hub Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-hub-native" "/usr/local/bin/seven-hub-native"
-  printf 'sudo install SevenOS Settings wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-settings" "/usr/local/bin/seven-settings"
+  printf 'install SevenStore wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-store" "$BIN_HOME/seven-store"
+  printf 'install SevenStore Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-store-native" "$BIN_HOME/seven-store-native"
+  printf 'sudo install Seven Hub wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-hub" "$SYSTEM_BIN_HOME/seven-hub"
+  printf 'sudo install Seven Control Center wrapper %q -> %q\n' "$ROOT_DIR/seven-hub/bin/seven-control-center" "$SYSTEM_BIN_HOME/seven-control-center"
+  printf 'sudo install Seven Hub Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-hub-native" "$SYSTEM_BIN_HOME/seven-hub-native"
+  printf 'sudo install SevenOS Settings wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-settings" "$SYSTEM_BIN_HOME/seven-settings"
+  printf 'sudo install SevenStore wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-store" "$SYSTEM_BIN_HOME/seven-store"
+  printf 'sudo install SevenStore Native wrapper %q -> %q\n' "$ROOT_DIR/bin/seven-store-native" "$SYSTEM_BIN_HOME/seven-store-native"
 else
   write_command_wrapper "$BIN_HOME/seven-hub" "$ROOT_DIR/seven-hub/bin/seven-hub"
   write_command_wrapper "$BIN_HOME/seven-control-center" "$ROOT_DIR/seven-hub/bin/seven-control-center"
   write_command_wrapper "$BIN_HOME/seven-hub-native" "$ROOT_DIR/bin/seven-hub-native"
   write_command_wrapper "$BIN_HOME/seven-settings" "$ROOT_DIR/bin/seven-settings"
-  if command -v sudo >/dev/null 2>&1; then
-    tmp_file="$(mktemp)"
-    write_command_wrapper "$tmp_file" "$ROOT_DIR/seven-hub/bin/seven-hub"
-    if ! sudo install -Dm755 "$tmp_file" "/usr/local/bin/seven-hub"; then
-      log_warn "Could not install seven-hub into /usr/local/bin."
-      log_warn "The user command is still available at $BIN_HOME/seven-hub."
-    fi
-    rm -f "$tmp_file"
-
-    tmp_file="$(mktemp)"
-    write_command_wrapper "$tmp_file" "$ROOT_DIR/seven-hub/bin/seven-control-center"
-    if ! sudo install -Dm755 "$tmp_file" "/usr/local/bin/seven-control-center"; then
-      log_warn "Could not install seven-control-center into /usr/local/bin."
-      log_warn "The user command is still available at $BIN_HOME/seven-control-center."
-    fi
-    rm -f "$tmp_file"
-
-    tmp_file="$(mktemp)"
-    write_command_wrapper "$tmp_file" "$ROOT_DIR/bin/seven-hub-native"
-    if ! sudo install -Dm755 "$tmp_file" "/usr/local/bin/seven-hub-native"; then
-      log_warn "Could not install seven-hub-native into /usr/local/bin."
-      log_warn "The user command is still available at $BIN_HOME/seven-hub-native."
-    fi
-    rm -f "$tmp_file"
-
-    tmp_file="$(mktemp)"
-    write_command_wrapper "$tmp_file" "$ROOT_DIR/bin/seven-settings"
-    if ! sudo install -Dm755 "$tmp_file" "/usr/local/bin/seven-settings"; then
-      log_warn "Could not install seven-settings into /usr/local/bin."
-      log_warn "The user command is still available at $BIN_HOME/seven-settings."
-    fi
-    rm -f "$tmp_file"
-  fi
+  write_command_wrapper "$BIN_HOME/seven-store" "$ROOT_DIR/bin/seven-store"
+  write_command_wrapper "$BIN_HOME/seven-store-native" "$ROOT_DIR/bin/seven-store-native"
+  install_system_command "$ROOT_DIR/seven-hub/bin/seven-hub" seven-hub
+  install_system_command "$ROOT_DIR/seven-hub/bin/seven-control-center" seven-control-center
+  install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
+  install_system_command "$ROOT_DIR/bin/seven-settings" seven-settings
+  install_system_command "$ROOT_DIR/bin/seven-store" seven-store
+  install_system_command "$ROOT_DIR/bin/seven-store-native" seven-store-native
 fi
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub.desktop" "$APP_HOME/seven-hub.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub-native.desktop" "$APP_HOME/seven-hub-native.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-settings.desktop" "$APP_HOME/seven-settings.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$APP_HOME/seven-files.desktop"
+run_cmd cp "$ROOT_DIR/seven-hub/seven-store.desktop" "$APP_HOME/seven-store.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-wallpaper.desktop" "$APP_HOME/seven-wallpaper.desktop"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$ICON_HOME/sevenos.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos-symbol.svg" "$ICON_HOME/sevenos-symbol.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-hub.svg" "$ICON_HOME/seven-hub.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-store.svg" "$ICON_HOME/seven-store.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-dev.svg" "$ICON_HOME/sevenos-dev.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-security.svg" "$ICON_HOME/sevenos-security.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-creation.svg" "$ICON_HOME/sevenos-creation.svg"

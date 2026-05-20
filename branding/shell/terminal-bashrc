@@ -5,6 +5,14 @@ export SEVENOS_TERMINAL_COUNTRY=0
 export SEVENOS_TERMINAL_CLASSIC=1
 export FASTFETCH_DISABLED=1
 
+if [[ -r "$HOME/.config/sevenos/profile-isolation.env" ]]; then
+  # shellcheck disable=SC1090
+  source "$HOME/.config/sevenos/profile-isolation.env"
+fi
+if [[ -d "${SEVENOS_PROFILE_SHIMS:-}" && ":$PATH:" != *":$SEVENOS_PROFILE_SHIMS:"* ]]; then
+  export PATH="$SEVENOS_PROFILE_SHIMS:$PATH"
+fi
+
 set +o histexpand 2>/dev/null || true
 
 __sevenos_cmd_started=0
@@ -32,9 +40,9 @@ __sevenos_git_branch() {
 }
 
 __sevenos_prompt_status() {
-  local status="$1"
-  [[ "$status" -eq 0 ]] && return 0
-  printf ' !%s' "$status"
+  local exit_code="$1"
+  [[ "$exit_code" -eq 0 ]] && return 0
+  printf ' !%s' "$exit_code"
 }
 
 __sevenos_runtime_context() {
@@ -69,7 +77,7 @@ __sevenos_duration() {
 }
 
 __sevenos_prompt() {
-  local status="$?"
+  local exit_code="$?"
   if [[ "$__sevenos_cmd_started" -gt 0 ]]; then
     __sevenos_last_duration=$((SECONDS - __sevenos_cmd_started))
   else
@@ -95,7 +103,7 @@ __sevenos_prompt() {
     *) mode_color="$cyan" ;;
   esac
 
-  PS1="${blue}SevenOS${muted}:${mode_color}${mode}${muted} ${cyan}\w${violet}$(__sevenos_git_branch)${green}$(__sevenos_runtime_context)${muted}$(__sevenos_duration "$__sevenos_last_duration")${red}$(__sevenos_prompt_status "$status")${reset}\n${muted}${USER}@${HOSTNAME%%.*} ${mode_color}${symbol}${reset} "
+  PS1="${blue}SevenOS${muted}:${mode_color}${mode}${muted} ${cyan}\w${violet}$(__sevenos_git_branch)${green}$(__sevenos_runtime_context)${muted}$(__sevenos_duration "$__sevenos_last_duration")${red}$(__sevenos_prompt_status "$exit_code")${reset}\n${muted}${USER}@${HOSTNAME%%.*} ${mode_color}${symbol}${reset} "
 }
 
 PROMPT_COMMAND=__sevenos_prompt

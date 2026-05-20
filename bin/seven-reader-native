@@ -1,0 +1,1328 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import hashlib
+import html
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import textwrap
+import zipfile
+from pathlib import Path
+
+
+APP_ID = "SevenReaderNative"
+SUPPORTED_SUFFIXES = {".pdf", ".epub", ".md", ".markdown", ".txt", ".cbz"}
+FORMAT_LABELS = {
+    ".pdf": "PDF",
+    ".epub": "EPUB",
+    ".md": "Markdown",
+    ".markdown": "Markdown",
+    ".txt": "Text",
+    ".cbz": "Comics",
+}
+STATE_DIR = Path.home() / ".local/share/sevenos/reader"
+CACHE_DIR = Path.home() / ".cache/sevenos/reader"
+LIBRARY_PATH = STATE_DIR / "library.json"
+POSITION_PATH = STATE_DIR / "positions.json"
+ANNOTATIONS_PATH = STATE_DIR / "annotations.json"
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi  # noqa: F401
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("GdkPixbuf", "2.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"Seven Reader native probe failed: {exc}", file=sys.stderr)
+        return 1
+    print("Seven Reader Native: OK")
+    return 0
+
+
+def root_dir() -> Path:
+    env = os.environ.get("SEVENOS_ROOT")
+    if env and (Path(env) / "bin/seven").exists():
+        return Path(env)
+    here = Path(__file__).resolve().parent
+    if (here / "seven").exists():
+        return here.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+def state_payload() -> dict:
+    return {
+        "schema": "sevenos.reader.v1",
+        "state": "ready",
+        "library": str(LIBRARY_PATH),
+        "positions": str(POSITION_PATH),
+        "annotations": str(ANNOTATIONS_PATH),
+        "cache": str(CACHE_DIR),
+        "formats": sorted(SUPPORTED_SUFFIXES),
+        "rendering": {
+            "pdf": "poppler/pdftoppm",
+            "epub": "zip/xhtml text extraction",
+            "markdown": "native text",
+            "cbz": "image archive",
+        },
+        "modes": ["library", "reader", "double-page", "book", "flipbook", "inspect", "focus", "night"],
+        "ux": {
+            "library": "cover cards, recents, progress memory",
+            "professional": "document search, bookmarks, notes, metadata and reading sidebar",
+            "book_mode": "double page spread with spine and paper texture",
+            "flipbook": "animated premium page transition foundation",
+            "inspect": "high resolution page rendering for detailed reading",
+        },
+        "ai": {
+            "provider": "SevenAI local-first",
+            "actions": ["summarize", "explain", "translate", "quiz", "concepts"],
+            "command": "seven ai provider",
+        },
+    }
+
+
+def status_json() -> int:
+    print(json.dumps(state_payload(), indent=2))
+    return 0
+
+
+def ensure_state() -> None:
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def file_id(path: Path) -> str:
+    return hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:16]
+
+
+def read_positions() -> dict:
+    ensure_state()
+    try:
+        return json.loads(POSITION_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def write_positions(data: dict) -> None:
+    ensure_state()
+    POSITION_PATH.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def read_annotations() -> dict:
+    ensure_state()
+    try:
+        payload = json.loads(ANNOTATIONS_PATH.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def write_annotations(data: dict) -> None:
+    ensure_state()
+    ANNOTATIONS_PATH.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def title_for(path: Path) -> str:
+    return path.stem.replace("_", " ").replace("-", " ").strip().title() or path.name
+
+
+def scan_library() -> list[dict]:
+    roots = [
+        Path.home() / "Books",
+        Path.home() / "Documents",
+        Path.home() / "Downloads",
+        Path.home() / "SevenOS",
+        Path.home() / "Baobab",
+        Path.home() / "Forge",
+    ]
+    seen: set[Path] = set()
+    items: list[dict] = []
+    for base in roots:
+        if not base.exists():
+            continue
+        for path in base.rglob("*"):
+            if len(items) >= 160:
+                break
+            if not path.is_file() or path.suffix.lower() not in SUPPORTED_SUFFIXES:
+                continue
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            try:
+                stat = path.stat()
+            except OSError:
+                continue
+            items.append(
+                {
+                    "id": file_id(path),
+                    "title": title_for(path),
+                    "path": str(path),
+                    "suffix": path.suffix.lower(),
+                    "size": stat.st_size,
+                    "mtime": int(stat.st_mtime),
+                }
+            )
+    items.sort(key=lambda row: row["mtime"], reverse=True)
+    ensure_state()
+    LIBRARY_PATH.write_text(json.dumps({"schema": "sevenos.reader-library.v1", "items": items}, indent=2) + "\n", encoding="utf-8")
+    return items
+
+
+def load_library() -> list[dict]:
+    ensure_state()
+    try:
+        payload = json.loads(LIBRARY_PATH.read_text(encoding="utf-8"))
+        items = payload.get("items", [])
+        if isinstance(items, list):
+            return items
+    except Exception:
+        pass
+    return scan_library()
+
+
+def save_library_items(items: list[dict]) -> None:
+    ensure_state()
+    unique: dict[str, dict] = {}
+    for item in items:
+        path = str(item.get("path", ""))
+        if path:
+            unique[path] = item
+    rows = sorted(unique.values(), key=lambda row: int(row.get("mtime", 0)), reverse=True)
+    LIBRARY_PATH.write_text(json.dumps({"schema": "sevenos.reader-library.v1", "items": rows}, indent=2) + "\n", encoding="utf-8")
+
+
+def library_item_for(path: Path) -> dict:
+    stat = path.stat()
+    return {
+        "id": file_id(path),
+        "title": title_for(path),
+        "path": str(path),
+        "suffix": path.suffix.lower(),
+        "size": stat.st_size,
+        "mtime": int(stat.st_mtime),
+    }
+
+
+def text_from_html(raw: str) -> str:
+    text = re.sub(r"<(script|style).*?</\1>", " ", raw, flags=re.I | re.S)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = html.unescape(text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+class Document:
+    def __init__(self, path: Path):
+        self.path = path.expanduser().resolve()
+        self.id = file_id(self.path)
+        self.title = title_for(self.path)
+        self.suffix = self.path.suffix.lower()
+        self.pages: list[str | Path] = []
+        self.page_count = 1
+        self.kind = "text"
+        self.outline: list[tuple[int, str]] = []
+        self.load()
+
+    def load(self) -> None:
+        if self.suffix == ".pdf":
+            self.kind = "pdf"
+            self.page_count = self.pdf_page_count()
+            self.pages = [str(index) for index in range(1, self.page_count + 1)]
+        elif self.suffix == ".cbz":
+            self.kind = "image"
+            self.pages = self.cbz_pages()
+            self.page_count = max(1, len(self.pages))
+        elif self.suffix == ".epub":
+            self.kind = "text"
+            self.pages = self.paginate_text(self.epub_text())
+            self.page_count = len(self.pages)
+        else:
+            self.kind = "text"
+            self.pages = self.paginate_text(self.read_text())
+            self.page_count = len(self.pages)
+        self.outline = self.build_outline()
+
+    def pdf_page_count(self) -> int:
+        if shutil.which("pdfinfo"):
+            result = subprocess.run(["pdfinfo", str(self.path)], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False)
+            for line in result.stdout.splitlines():
+                if line.lower().startswith("pages:"):
+                    try:
+                        return max(1, int(line.split(":", 1)[1].strip()))
+                    except ValueError:
+                        pass
+        return 1
+
+    def pdf_page_png(self, page: int, width: int = 1400) -> Path | None:
+        if not shutil.which("pdftoppm"):
+            return None
+        target_dir = CACHE_DIR / self.id
+        target_dir.mkdir(parents=True, exist_ok=True)
+        output_prefix = target_dir / f"page-{page}-{width}"
+        png = output_prefix.with_suffix(".png")
+        if png.exists():
+            return png
+        subprocess.run(
+            ["pdftoppm", "-f", str(page), "-l", str(page), "-singlefile", "-png", "-scale-to", str(width), str(self.path), str(output_prefix)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        return png if png.exists() else None
+
+    def pdf_text_for_page(self, page: int) -> str:
+        target_dir = CACHE_DIR / self.id / "text"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        text_path = target_dir / f"page-{page}.txt"
+        if text_path.exists():
+            return text_path.read_text(encoding="utf-8", errors="ignore")
+        if not shutil.which("pdftotext"):
+            return ""
+        result = subprocess.run(
+            ["pdftotext", "-f", str(page), "-l", str(page), "-layout", str(self.path), "-"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        text = result.stdout.strip() if result.returncode == 0 else ""
+        text_path.write_text(text, encoding="utf-8")
+        return text
+
+    def metadata(self) -> dict[str, str]:
+        try:
+            stat = self.path.stat()
+            rows = {
+                "Title": self.title,
+                "Format": FORMAT_LABELS.get(self.suffix, self.suffix.upper().lstrip(".") or "Document"),
+                "Pages": str(self.page_count),
+                "Size": format_size(stat.st_size),
+                "Location": str(self.path.parent),
+            }
+        except OSError:
+            rows = {"Title": self.title, "Format": FORMAT_LABELS.get(self.suffix, "Document"), "Pages": str(self.page_count)}
+        if self.suffix == ".pdf" and shutil.which("pdfinfo"):
+            result = subprocess.run(["pdfinfo", str(self.path)], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False)
+            for line in result.stdout.splitlines():
+                if ":" not in line:
+                    continue
+                key, value = [part.strip() for part in line.split(":", 1)]
+                if key in {"Author", "Creator", "Producer", "CreationDate", "ModDate"} and value:
+                    rows[key] = value
+        return rows
+
+    def cbz_pages(self) -> list[Path]:
+        target_dir = CACHE_DIR / self.id / "cbz"
+        target_dir.mkdir(parents=True, exist_ok=True)
+        pages: list[Path] = []
+        try:
+            with zipfile.ZipFile(self.path) as archive:
+                names = sorted(name for name in archive.namelist() if Path(name).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"})
+                for index, name in enumerate(names[:600], 1):
+                    suffix = Path(name).suffix.lower() or ".png"
+                    target = target_dir / f"{index:04d}{suffix}"
+                    if not target.exists():
+                        target.write_bytes(archive.read(name))
+                    pages.append(target)
+        except Exception:
+            pass
+        return pages
+
+    def epub_text(self) -> str:
+        chunks: list[str] = []
+        try:
+            with zipfile.ZipFile(self.path) as archive:
+                names = sorted(
+                    name for name in archive.namelist()
+                    if Path(name).suffix.lower() in {".xhtml", ".html", ".htm"}
+                )
+                for name in names[:80]:
+                    try:
+                        chunks.append(text_from_html(archive.read(name).decode("utf-8", errors="ignore")))
+                    except Exception:
+                        continue
+        except Exception as exc:
+            return f"Could not read EPUB: {exc}"
+        return "\n\n".join(chunk for chunk in chunks if chunk) or "Empty EPUB."
+
+    def read_text(self) -> str:
+        try:
+            raw = self.path.read_text(encoding="utf-8", errors="ignore")
+        except OSError as exc:
+            return f"Could not read document: {exc}"
+        if self.suffix in {".md", ".markdown"}:
+            raw = re.sub(r"^#{1,6}\s*", "", raw, flags=re.M)
+            raw = re.sub(r"`{1,3}", "", raw)
+            raw = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", raw)
+        return raw
+
+    def paginate_text(self, text: str, size: int = 2400) -> list[str]:
+        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+        pages: list[str] = []
+        current = ""
+        for paragraph in paragraphs:
+            wrapped = "\n".join(textwrap.wrap(paragraph, width=90)) if len(paragraph) > 100 else paragraph
+            if len(current) + len(wrapped) > size and current:
+                pages.append(current.strip())
+                current = ""
+            current += wrapped + "\n\n"
+        if current.strip():
+            pages.append(current.strip())
+        return pages or ["No readable text found."]
+
+    def text_for_page(self, page: int) -> str:
+        if self.kind == "pdf":
+            text = self.pdf_text_for_page(page + 1)
+            return text or f"{self.title}, page {page + 1}."
+        if self.kind != "text":
+            return f"{self.title}, page {page + 1}."
+        return str(self.pages[max(0, min(page, len(self.pages) - 1))])
+
+    def search(self, query: str, limit: int = 80) -> list[tuple[int, str]]:
+        query = query.strip().casefold()
+        if not query:
+            return []
+        results: list[tuple[int, str]] = []
+        for index in range(self.page_count):
+            text = self.text_for_page(index)
+            folded = text.casefold()
+            pos = folded.find(query)
+            if pos < 0:
+                continue
+            start = max(0, pos - 52)
+            end = min(len(text), pos + len(query) + 96)
+            snippet = re.sub(r"\s+", " ", text[start:end]).strip()
+            results.append((index, snippet or f"Page {index + 1}"))
+            if len(results) >= limit:
+                break
+        return results
+
+    def build_outline(self) -> list[tuple[int, str]]:
+        outline: list[tuple[int, str]] = []
+        if self.kind == "text":
+            for index, page in enumerate(self.pages):
+                text = str(page)
+                for line in text.splitlines()[:16]:
+                    clean = line.strip()
+                    if len(clean) > 4 and (clean.isupper() or clean.endswith(":") or clean.startswith(("Chapter", "Part", "Section"))):
+                        outline.append((index, clean[:72]))
+                        break
+        if not outline:
+            step = 2 if self.page_count <= 20 else max(5, self.page_count // 12)
+            outline = [(index, f"Page {index + 1}") for index in range(0, self.page_count, step)]
+        return outline[:40]
+
+    def preload_pages(self, center: int, zoom: float) -> None:
+        if self.kind != "pdf":
+            return
+        width = int(1200 * zoom)
+        for page in (center + 1, center + 2):
+            if 1 <= page <= self.page_count:
+                self.pdf_page_png(page, width)
+                self.pdf_text_for_page(page)
+
+
+def format_size(size: int) -> str:
+    value = float(size)
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
+        value /= 1024
+    return f"{size} B"
+
+
+if "--probe" in sys.argv:
+    raise SystemExit(probe())
+if "--json" in sys.argv or (len(sys.argv) > 1 and sys.argv[1] in {"status", "json"}):
+    raise SystemExit(status_json())
+
+try:
+    ensure_gi_python()
+    import gi
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("GdkPixbuf", "2.0")
+    from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
+except Exception as exc:
+    print(f"Seven Reader requires GTK Python bindings: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+CSS = b"""
+window.seven-reader {
+  background: #09090B;
+  color: #EDEDED;
+}
+.reader-root {
+  background:
+    radial-gradient(circle at 28% 18%, rgba(77,163,255,0.18), transparent 30%),
+    radial-gradient(circle at 82% 12%, rgba(122,92,255,0.16), transparent 28%),
+    #09090B;
+}
+.reader-header {
+  background: rgba(18,19,26,0.72);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.reader-search {
+  min-height: 38px;
+  border-radius: 999px;
+  padding: 0 14px;
+  color: #EDEDED;
+  background: rgba(255,255,255,0.075);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.reader-section-title {
+  color: #EDEDED;
+  font: 500 18px "SF Pro Text", "Inter", system-ui, sans-serif;
+}
+.library-card {
+  background: rgba(255,255,255,0.065);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 22px;
+  padding: 16px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.32);
+}
+.library-card:hover {
+  background: rgba(255,255,255,0.10);
+}
+.library-empty {
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 24px;
+  padding: 28px;
+}
+.cover {
+  background: linear-gradient(135deg, rgba(77,163,255,0.42), rgba(122,92,255,0.34), rgba(0,212,255,0.24));
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: inset 0 1px rgba(255,255,255,0.28), 0 18px 42px rgba(0,0,0,0.35);
+}
+.reader-stage {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(137,180,250,0.10), transparent 34%),
+    rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 28px;
+  padding: 18px;
+}
+.reader-body {
+  background: transparent;
+}
+.reader-sidebar {
+  min-width: 292px;
+  padding: 14px;
+  border-radius: 24px;
+  background: rgba(12,16,28,0.72);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-card {
+  padding: 12px;
+  margin: 6px 0;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.060);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-action {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 0 12px;
+}
+.reader-list row {
+  padding: 8px;
+  border-radius: 12px;
+}
+.reader-list row:hover,
+.reader-list row:selected {
+  background: rgba(137,180,250,0.16);
+}
+.reader-note {
+  color: rgba(237,237,237,0.78);
+  font: 500 12px "SF Pro Text", "Inter", system-ui, sans-serif;
+}
+.book-spread {
+  background: rgba(0,0,0,0.22);
+  border-radius: 26px;
+  padding: 22px;
+  box-shadow: inset 0 1px rgba(255,255,255,0.08), 0 24px 56px rgba(0,0,0,0.45);
+}
+.paper-page {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(255,255,255,0.52), transparent 28%),
+    linear-gradient(90deg, rgba(0,0,0,0.10), transparent 7%, transparent 92%, rgba(0,0,0,0.12)),
+    #F4E8D1;
+  color: #1C1F26;
+  border-radius: 10px;
+  border: 1px solid rgba(90,70,42,0.18);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.34), inset 0 0 32px rgba(124,87,42,0.10);
+  padding: 28px;
+}
+.paper-page textview, .paper-page text {
+  background: transparent;
+  color: #1C1F26;
+}
+.spine {
+  background: linear-gradient(90deg, rgba(0,0,0,0.34), rgba(255,255,255,0.12), rgba(0,0,0,0.34));
+  min-width: 16px;
+  border-radius: 99px;
+  box-shadow: 0 0 34px rgba(0,0,0,0.52);
+}
+.reader-toolbar button {
+  border-radius: 16px;
+  padding: 8px 12px;
+}
+.reader-topbar {
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 8px;
+}
+.mode-pill {
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+.mode-pill-active {
+  background: linear-gradient(135deg, rgba(77,163,255,0.42), rgba(122,92,255,0.38));
+  color: white;
+}
+.reader-progress trough {
+  min-height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.10);
+}
+.reader-progress highlight {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #89B4FA, #B4BEFE);
+}
+.reader-info {
+  color: rgba(237,237,237,0.72);
+  font: 500 12px "SF Pro Text", "Inter", system-ui, sans-serif;
+}
+.ai-card {
+  background: rgba(12,16,28,0.82);
+  border: 1px solid rgba(77,163,255,0.20);
+  border-radius: 22px;
+  padding: 18px;
+}
+.flip-active {
+  box-shadow: 0 0 0 1px rgba(77,163,255,0.34), 0 0 44px rgba(122,92,255,0.34);
+}
+.muted {
+  color: rgba(237,237,237,0.66);
+}
+"""
+
+
+def install_css() -> None:
+    provider = Gtk.CssProvider()
+    provider.load_from_data(CSS)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+
+class ReaderWindow(Gtk.ApplicationWindow):
+    def __init__(self, app: Gtk.Application, initial: Path | None = None):
+        super().__init__(application=app, title="Seven Reader")
+        self.set_wmclass(APP_ID, APP_ID)
+        self.set_default_size(1220, 760)
+        self.set_size_request(940, 620)
+        self.get_style_context().add_class("seven-reader")
+        self.document: Document | None = None
+        self.page = 0
+        self.mode = "book"
+        self.zoom = 1.0
+        self.positions = read_positions()
+        self.annotations = read_annotations()
+        self.library_items: list[dict] = []
+        self.library_query = ""
+        self.mode_buttons: dict[str, Gtk.Button] = {}
+        self.search_results: list[tuple[int, str]] = []
+        self.focus_mode = False
+
+        self.root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.root.get_style_context().add_class("reader-root")
+        self.add(self.root)
+        self.build_header()
+        self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, transition_duration=220)
+        self.root.pack_start(self.stack, True, True, 0)
+        self.build_library()
+        self.build_reader()
+        if initial:
+            self.open_document(initial)
+        else:
+            self.stack.set_visible_child_name("library")
+        self.show_all()
+
+    def annotation_bucket(self) -> dict:
+        if not self.document:
+            return {"bookmarks": [], "notes": []}
+        bucket = self.annotations.setdefault(self.document.id, {"bookmarks": [], "notes": []})
+        bucket.setdefault("bookmarks", [])
+        bucket.setdefault("notes", [])
+        return bucket
+
+    def build_header(self) -> None:
+        header = Gtk.HeaderBar(title="Seven Reader", subtitle="Immersive reading for SevenOS")
+        header.set_show_close_button(True)
+        header.get_style_context().add_class("reader-header")
+        self.set_titlebar(header)
+
+        library_button = Gtk.Button.new_from_icon_name("view-grid-symbolic", Gtk.IconSize.BUTTON)
+        library_button.set_tooltip_text("Library")
+        library_button.connect("clicked", lambda *_: self.show_library())
+        header.pack_start(library_button)
+
+        open_button = Gtk.Button.new_from_icon_name("document-open-symbolic", Gtk.IconSize.BUTTON)
+        open_button.set_tooltip_text("Open document")
+        open_button.connect("clicked", lambda *_: self.choose_document())
+        header.pack_start(open_button)
+
+        self.title_label = Gtk.Label(label="Library")
+        header.set_custom_title(self.title_label)
+
+        for label, mode in (("Reader", "reader"), ("Double", "double"), ("Book", "book"), ("Flip", "flip")):
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("mode-pill")
+            button.connect("clicked", self.set_mode, mode)
+            self.mode_buttons[mode] = button
+            header.pack_end(button)
+
+        ai_button = Gtk.Button(label="SevenAI")
+        ai_button.connect("clicked", lambda *_: self.show_ai("summary"))
+        header.pack_end(ai_button)
+
+        focus_button = Gtk.Button(label="Focus")
+        focus_button.set_tooltip_text("Toggle distraction-free reading")
+        focus_button.connect("clicked", lambda *_: self.toggle_focus())
+        header.pack_end(focus_button)
+
+        sidebar_button = Gtk.Button.new_from_icon_name("sidebar-show-symbolic", Gtk.IconSize.BUTTON)
+        sidebar_button.set_tooltip_text("Toggle reading sidebar")
+        sidebar_button.connect("clicked", lambda *_: self.toggle_sidebar())
+        header.pack_end(sidebar_button)
+
+    def build_library(self) -> None:
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        outer.set_margin_top(28)
+        outer.set_margin_bottom(28)
+        outer.set_margin_start(34)
+        outer.set_margin_end(34)
+        scroller.add(outer)
+
+        hero = Gtk.Label()
+        hero.set_markup("<span size='30000' weight='500'>Seven Reader</span>\n<span foreground='#AAB4C2'>Library · Book Mode · Flipbook · SevenAI</span>")
+        hero.set_xalign(0)
+        outer.pack_start(hero, False, False, 0)
+
+        self.library_search = Gtk.SearchEntry()
+        self.library_search.set_placeholder_text("Search library")
+        self.library_search.get_style_context().add_class("reader-search")
+        self.library_search.connect("search-changed", self.on_library_search)
+        outer.pack_start(self.library_search, False, False, 0)
+
+        continue_label = Gtk.Label(label="Continue Reading")
+        continue_label.set_xalign(0)
+        continue_label.get_style_context().add_class("reader-section-title")
+        outer.pack_start(continue_label, False, False, 0)
+
+        refresh = Gtk.Button(label="Refresh Library")
+        refresh.connect("clicked", lambda *_: self.refresh_library())
+        outer.pack_start(refresh, False, False, 0)
+
+        self.library_grid = Gtk.FlowBox()
+        self.library_grid.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.library_grid.set_min_children_per_line(2)
+        self.library_grid.set_max_children_per_line(5)
+        self.library_grid.set_row_spacing(18)
+        self.library_grid.set_column_spacing(18)
+        outer.pack_start(self.library_grid, True, True, 0)
+        self.stack.add_titled(scroller, "library", "Library")
+        self.library_items = load_library()
+        self.populate_library(self.library_items)
+
+    def on_library_search(self, entry: Gtk.SearchEntry) -> None:
+        self.library_query = entry.get_text().strip().casefold()
+        self.populate_library(self.library_items)
+
+    def refresh_library(self) -> None:
+        self.library_items = scan_library()
+        self.populate_library(self.library_items)
+
+    def populate_library(self, items: list[dict]) -> None:
+        for child in list(self.library_grid.get_children()):
+            self.library_grid.remove(child)
+        if self.library_query:
+            items = [
+                item for item in items
+                if self.library_query in f"{item.get('title', '')} {item.get('path', '')} {item.get('suffix', '')}".casefold()
+            ]
+        if not items:
+            empty = Gtk.Label(label="No matching books found.\nPut PDF, EPUB, Markdown or CBZ files in Books, Documents or Downloads.")
+            empty.get_style_context().add_class("muted")
+            empty.get_style_context().add_class("library-empty")
+            empty.set_justify(Gtk.Justification.CENTER)
+            self.library_grid.add(empty)
+            self.library_grid.show_all()
+            return
+        for item in items:
+            self.library_grid.add(self.book_card(item))
+        self.library_grid.show_all()
+
+    def book_card(self, item: dict) -> Gtk.Widget:
+        card = Gtk.Button()
+        card.get_style_context().add_class("library-card")
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        cover = Gtk.Box()
+        cover.set_size_request(170, 220)
+        cover.get_style_context().add_class("cover")
+        cover_label = Gtk.Label(label=FORMAT_LABELS.get(item.get("suffix", ""), item.get("suffix", "").replace(".", "").upper()))
+        cover_label.set_halign(Gtk.Align.CENTER)
+        cover_label.set_valign(Gtk.Align.CENTER)
+        cover.add(cover_label)
+        title = Gtk.Label(label=item.get("title", "Untitled"))
+        title.set_line_wrap(True)
+        title.set_max_width_chars(22)
+        title.set_xalign(0)
+        meta = Gtk.Label(label=item.get("path", ""))
+        meta.get_style_context().add_class("muted")
+        meta.set_line_wrap(True)
+        meta.set_max_width_chars(24)
+        meta.set_xalign(0)
+        position = self.positions.get(str(item.get("id", "")), {})
+        page = int(position.get("page", 0)) + 1 if isinstance(position, dict) else 1
+        progress = Gtk.Label(label=f"Page {page} · {FORMAT_LABELS.get(item.get('suffix', ''), 'Document')}")
+        progress.get_style_context().add_class("reader-info")
+        progress.set_xalign(0)
+        box.pack_start(cover, False, False, 0)
+        box.pack_start(title, False, False, 0)
+        box.pack_start(meta, False, False, 0)
+        box.pack_start(progress, False, False, 0)
+        card.add(box)
+        card.connect("clicked", lambda *_: self.open_document(Path(item["path"])))
+        return card
+
+    def build_reader(self) -> None:
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        page.set_margin_top(18)
+        page.set_margin_bottom(18)
+        page.set_margin_start(22)
+        page.set_margin_end(22)
+
+        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        toolbar.get_style_context().add_class("reader-toolbar")
+        toolbar.get_style_context().add_class("reader-topbar")
+        prev_button = Gtk.Button(label="‹ Previous")
+        prev_button.connect("clicked", lambda *_: self.turn_page(-1))
+        next_button = Gtk.Button(label="Next ›")
+        next_button.connect("clicked", lambda *_: self.turn_page(1))
+        inspect_button = Gtk.Button(label="Inspect")
+        inspect_button.connect("clicked", lambda *_: self.set_mode(None, "inspect"))
+        zoom_out = Gtk.Button(label="−")
+        zoom_out.set_tooltip_text("Zoom out")
+        zoom_out.connect("clicked", lambda *_: self.adjust_zoom(-0.10))
+        zoom_in = Gtk.Button(label="+")
+        zoom_in.set_tooltip_text("Zoom in")
+        zoom_in.connect("clicked", lambda *_: self.adjust_zoom(0.10))
+        self.progress_label = Gtk.Label(label="Page 0 / 0")
+        self.progress_label.set_hexpand(True)
+        self.progress_label.set_xalign(0.5)
+        toolbar.pack_start(prev_button, False, False, 0)
+        toolbar.pack_start(zoom_out, False, False, 0)
+        toolbar.pack_start(self.progress_label, True, True, 0)
+        toolbar.pack_start(zoom_in, False, False, 0)
+        toolbar.pack_start(inspect_button, False, False, 0)
+        toolbar.pack_start(next_button, False, False, 0)
+        page.pack_start(toolbar, False, False, 0)
+
+        self.progress_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 1, 2, 1)
+        self.progress_scale.set_draw_value(False)
+        self.progress_scale.get_style_context().add_class("reader-progress")
+        self.progress_scale.connect("value-changed", self.on_progress_changed)
+        page.pack_start(self.progress_scale, False, False, 0)
+
+        body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        body.get_style_context().add_class("reader-body")
+        page.pack_start(body, True, True, 0)
+
+        self.reader_sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.reader_sidebar.get_style_context().add_class("reader-sidebar")
+        body.pack_start(self.reader_sidebar, False, False, 0)
+        self.build_reader_sidebar()
+
+        self.reader_stage = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.reader_stage.get_style_context().add_class("reader-stage")
+        body.pack_start(self.reader_stage, True, True, 0)
+        self.stack.add_titled(page, "reader", "Reader")
+
+    def build_reader_sidebar(self) -> None:
+        self.document_search = Gtk.SearchEntry()
+        self.document_search.set_placeholder_text("Search document")
+        self.document_search.get_style_context().add_class("reader-search")
+        self.document_search.connect("activate", lambda entry: self.search_document(entry.get_text()))
+        self.document_search.connect("search-changed", lambda entry: self.search_document(entry.get_text()) if len(entry.get_text().strip()) >= 2 else None)
+        self.reader_sidebar.pack_start(self.document_search, False, False, 0)
+
+        action_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        bookmark = Gtk.Button(label="Bookmark")
+        bookmark.get_style_context().add_class("sidebar-action")
+        bookmark.connect("clicked", lambda *_: self.toggle_bookmark())
+        note = Gtk.Button(label="Note")
+        note.get_style_context().add_class("sidebar-action")
+        note.connect("clicked", lambda *_: self.add_note_dialog())
+        action_row.pack_start(bookmark, True, True, 0)
+        action_row.pack_start(note, True, True, 0)
+        self.reader_sidebar.pack_start(action_row, False, False, 0)
+
+        ai_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        for label, action in (("Summary", "summary"), ("Explain", "explain"), ("Quiz", "quiz")):
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("sidebar-action")
+            button.connect("clicked", lambda _button, mode=action: self.show_ai(mode))
+            ai_row.pack_start(button, True, True, 0)
+        self.reader_sidebar.pack_start(ai_row, False, False, 0)
+
+        self.info_label = Gtk.Label(label="No document")
+        self.info_label.set_xalign(0)
+        self.info_label.set_line_wrap(True)
+        self.info_label.get_style_context().add_class("sidebar-card")
+        self.reader_sidebar.pack_start(self.info_label, False, False, 0)
+
+        tabs = Gtk.Notebook()
+        tabs.set_tab_pos(Gtk.PositionType.TOP)
+        self.search_list = Gtk.ListBox()
+        self.search_list.get_style_context().add_class("reader-list")
+        self.search_list.connect("row-activated", self.activate_page_row)
+        self.outline_list = Gtk.ListBox()
+        self.outline_list.get_style_context().add_class("reader-list")
+        self.outline_list.connect("row-activated", self.activate_page_row)
+        self.notes_list = Gtk.ListBox()
+        self.notes_list.get_style_context().add_class("reader-list")
+        self.notes_list.connect("row-activated", self.activate_page_row)
+        tabs.append_page(self.wrap_list(self.search_list), Gtk.Label(label="Search"))
+        tabs.append_page(self.wrap_list(self.outline_list), Gtk.Label(label="Outline"))
+        tabs.append_page(self.wrap_list(self.notes_list), Gtk.Label(label="Notes"))
+        self.reader_sidebar.pack_start(tabs, True, True, 0)
+
+    def wrap_list(self, widget: Gtk.ListBox) -> Gtk.ScrolledWindow:
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroller.add(widget)
+        return scroller
+
+    def choose_document(self) -> None:
+        dialog = Gtk.FileChooserDialog(title="Open in Seven Reader", parent=self, action=Gtk.FileChooserAction.OPEN)
+        dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
+        file_filter = Gtk.FileFilter()
+        file_filter.set_name("Books and documents")
+        for suffix in SUPPORTED_SUFFIXES:
+            file_filter.add_pattern(f"*{suffix}")
+        dialog.add_filter(file_filter)
+        if dialog.run() == Gtk.ResponseType.OK:
+            self.open_document(Path(dialog.get_filename()))
+        dialog.destroy()
+
+    def show_library(self) -> None:
+        self.title_label.set_text("Library")
+        self.stack.set_visible_child_name("library")
+
+    def toggle_focus(self) -> None:
+        self.focus_mode = not self.focus_mode
+        if not self.focus_mode:
+            self.unfullscreen()
+        else:
+            self.fullscreen()
+
+    def toggle_sidebar(self) -> None:
+        if hasattr(self, "reader_sidebar"):
+            self.reader_sidebar.set_visible(not self.reader_sidebar.get_visible())
+
+    def open_document(self, path: Path) -> None:
+        if not path.exists():
+            return
+        self.document = Document(path)
+        self.add_to_library(path)
+        self.page = int(self.positions.get(self.document.id, {}).get("page", 0))
+        self.page = max(0, min(self.page, self.document.page_count - 1))
+        self.title_label.set_text(self.document.title)
+        self.stack.set_visible_child_name("reader")
+        self.render_current()
+
+    def add_to_library(self, path: Path) -> None:
+        try:
+            item = library_item_for(path)
+        except OSError:
+            return
+        existing = [row for row in load_library() if str(row.get("path", "")) != str(path)]
+        save_library_items([item, *existing])
+        self.library_items = load_library()
+
+    def save_position(self) -> None:
+        if not self.document:
+            return
+        self.positions[self.document.id] = {"path": str(self.document.path), "page": self.page}
+        write_positions(self.positions)
+
+    def list_row(self, page: int, title: str, subtitle: str = "") -> Gtk.ListBoxRow:
+        row = Gtk.ListBoxRow()
+        row.page = page
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        box.get_style_context().add_class("sidebar-card")
+        title_label = Gtk.Label(label=title)
+        title_label.set_xalign(0)
+        title_label.set_ellipsize(Pango.EllipsizeMode.END)
+        title_label.set_single_line_mode(True)
+        subtitle_label = Gtk.Label(label=subtitle)
+        subtitle_label.set_xalign(0)
+        subtitle_label.set_line_wrap(True)
+        subtitle_label.set_max_width_chars(34)
+        subtitle_label.get_style_context().add_class("reader-note")
+        box.pack_start(title_label, False, False, 0)
+        if subtitle:
+            box.pack_start(subtitle_label, False, False, 0)
+        row.add(box)
+        return row
+
+    def clear_list(self, listbox: Gtk.ListBox) -> None:
+        for child in list(listbox.get_children()):
+            listbox.remove(child)
+
+    def activate_page_row(self, _listbox: Gtk.ListBox, row: Gtk.ListBoxRow) -> None:
+        target = int(getattr(row, "page", self.page))
+        self.page = max(0, min(self.document.page_count - 1, target)) if self.document else target
+        self.render_current()
+
+    def refresh_sidebar(self) -> None:
+        if not self.document:
+            return
+        meta = self.document.metadata()
+        self.info_label.set_text("\n".join(f"{key}: {value}" for key, value in list(meta.items())[:7]))
+
+        self.clear_list(self.outline_list)
+        for page, title in self.document.outline:
+            self.outline_list.add(self.list_row(page, title, f"Page {page + 1}"))
+
+        self.clear_list(self.notes_list)
+        bucket = self.annotation_bucket()
+        for page in sorted(set(int(item) for item in bucket.get("bookmarks", []))):
+            self.notes_list.add(self.list_row(page, "Bookmark", f"Page {page + 1}"))
+        for note in bucket.get("notes", []):
+            page = int(note.get("page", 0))
+            self.notes_list.add(self.list_row(page, f"Note · Page {page + 1}", str(note.get("text", ""))))
+
+        for widget in (self.outline_list, self.notes_list):
+            widget.show_all()
+
+    def search_document(self, query: str) -> None:
+        self.clear_list(self.search_list)
+        if not self.document:
+            return
+        query = query.strip()
+        self.search_results = self.document.search(query)
+        if not query:
+            self.search_list.show_all()
+            return
+        if not self.search_results:
+            self.search_list.add(self.list_row(self.page, "No result", f"No match for “{query}”"))
+        for page, snippet in self.search_results:
+            self.search_list.add(self.list_row(page, f"Page {page + 1}", snippet))
+        self.search_list.show_all()
+
+    def toggle_bookmark(self) -> None:
+        if not self.document:
+            return
+        bucket = self.annotation_bucket()
+        bookmarks = set(int(item) for item in bucket.get("bookmarks", []))
+        if self.page in bookmarks:
+            bookmarks.remove(self.page)
+        else:
+            bookmarks.add(self.page)
+        bucket["bookmarks"] = sorted(bookmarks)
+        write_annotations(self.annotations)
+        self.refresh_sidebar()
+
+    def add_note_dialog(self) -> None:
+        if not self.document:
+            return
+        dialog = Gtk.Dialog(title="Add Note", transient_for=self, modal=True)
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        dialog.add_button("Save", Gtk.ResponseType.OK)
+        dialog.set_default_size(420, 220)
+        area = dialog.get_content_area()
+        area.set_margin_top(12)
+        area.set_margin_bottom(12)
+        area.set_margin_start(12)
+        area.set_margin_end(12)
+        text = Gtk.TextView()
+        text.set_wrap_mode(Gtk.WrapMode.WORD)
+        area.pack_start(text, True, True, 0)
+        dialog.show_all()
+        response = dialog.run()
+        start, end = text.get_buffer().get_bounds()
+        value = text.get_buffer().get_text(start, end, True).strip()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK and value:
+            bucket = self.annotation_bucket()
+            bucket.setdefault("notes", []).append({"page": self.page, "text": value})
+            write_annotations(self.annotations)
+            self.refresh_sidebar()
+
+    def set_mode(self, _button, mode: str) -> None:
+        self.mode = mode
+        self.update_mode_buttons()
+        self.render_current()
+
+    def update_mode_buttons(self) -> None:
+        for mode_name, button in self.mode_buttons.items():
+            ctx = button.get_style_context()
+            if mode_name == self.mode:
+                ctx.add_class("mode-pill-active")
+            else:
+                ctx.remove_class("mode-pill-active")
+
+    def adjust_zoom(self, delta: float) -> None:
+        self.zoom = max(0.72, min(1.45, self.zoom + delta))
+        self.render_current()
+
+    def on_progress_changed(self, scale: Gtk.Scale) -> None:
+        if not self.document:
+            return
+        target = int(round(scale.get_value())) - 1
+        if target != self.page:
+            self.page = max(0, min(self.document.page_count - 1, target))
+            self.render_current()
+
+    def clear_stage(self) -> None:
+        for child in list(self.reader_stage.get_children()):
+            self.reader_stage.remove(child)
+
+    def render_current(self) -> None:
+        if not self.document:
+            return
+        self.clear_stage()
+        self.update_mode_buttons()
+        self.progress_label.set_text(f"{self.document.title} · Page {self.page + 1} / {self.document.page_count} · {self.mode.title()} · {int(self.zoom * 100)}%")
+        self.progress_scale.handler_block_by_func(self.on_progress_changed)
+        self.progress_scale.set_range(1, max(1, self.document.page_count))
+        self.progress_scale.set_increments(1, 2 if self.mode in {"double", "book", "flip"} else 1)
+        self.progress_scale.set_value(self.page + 1)
+        self.progress_scale.handler_unblock_by_func(self.on_progress_changed)
+        spread = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        spread.get_style_context().add_class("book-spread")
+        spread.set_halign(Gtk.Align.CENTER)
+        spread.set_valign(Gtk.Align.CENTER)
+
+        if self.mode in {"double", "book", "flip"}:
+            left_page = self.page if self.page % 2 == 0 else self.page - 1
+            right_page = min(left_page + 1, self.document.page_count - 1)
+            spread.pack_start(self.page_widget(left_page), True, True, 0)
+            spine = Gtk.Box()
+            spine.get_style_context().add_class("spine")
+            spread.pack_start(spine, False, False, 0)
+            spread.pack_start(self.page_widget(right_page), True, True, 0)
+        else:
+            spread.pack_start(self.page_widget(self.page), True, True, 0)
+        if self.mode == "flip":
+            spread.get_style_context().add_class("flip-active")
+            GLib.timeout_add(420, lambda: (spread.get_style_context().remove_class("flip-active"), False)[1])
+        self.reader_stage.pack_start(spread, True, True, 0)
+        self.reader_stage.show_all()
+        self.refresh_sidebar()
+        GLib.idle_add(lambda: (self.document.preload_pages(self.page + 1, self.zoom), False)[1] if self.document else False)
+        self.save_position()
+
+    def page_widget(self, page_index: int) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        base_width = 420 if self.mode != "inspect" else 820
+        base_height = 560 if self.mode != "inspect" else 700
+        box.set_size_request(int(base_width * self.zoom), int(base_height * self.zoom))
+        box.get_style_context().add_class("paper-page")
+        if not self.document:
+            return box
+        if self.document.kind == "pdf":
+            png = self.document.pdf_page_png(page_index + 1, int((1800 if self.mode == "inspect" else 1200) * self.zoom))
+            if png:
+                try:
+                    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                        str(png),
+                        int((760 if self.mode == "inspect" else 390) * self.zoom),
+                        int((980 if self.mode == "inspect" else 500) * self.zoom),
+                        True,
+                    )
+                    image = Gtk.Image.new_from_pixbuf(pixbuf)
+                except Exception:
+                    image = Gtk.Image.new_from_file(str(png))
+                image.set_halign(Gtk.Align.CENTER)
+                image.set_valign(Gtk.Align.CENTER)
+                box.pack_start(image, True, True, 0)
+            else:
+                box.pack_start(Gtk.Label(label="Install poppler to render PDF pages."), True, True, 0)
+        elif self.document.kind == "image":
+            try:
+                page_path = self.document.pages[max(0, min(page_index, len(self.document.pages) - 1))]
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                    str(page_path),
+                    int((760 if self.mode == "inspect" else 390) * self.zoom),
+                    int((980 if self.mode == "inspect" else 500) * self.zoom),
+                    True,
+                )
+                image = Gtk.Image.new_from_pixbuf(pixbuf)
+                box.pack_start(image, True, True, 0)
+            except Exception:
+                box.pack_start(Gtk.Label(label="Image page unavailable."), True, True, 0)
+        else:
+            view = Gtk.TextView()
+            view.set_wrap_mode(Gtk.WrapMode.WORD)
+            view.set_editable(False)
+            view.set_cursor_visible(False)
+            view.set_left_margin(8)
+            view.set_right_margin(8)
+            view.set_top_margin(8)
+            view.set_bottom_margin(8)
+            view.get_buffer().set_text(self.document.text_for_page(page_index))
+            box.pack_start(view, True, True, 0)
+        footer = Gtk.Label(label=f"{page_index + 1}")
+        footer.set_halign(Gtk.Align.CENTER)
+        box.pack_end(footer, False, False, 0)
+        return box
+
+    def turn_page(self, delta: int) -> None:
+        if not self.document:
+            return
+        step = 2 if self.mode in {"double", "book", "flip"} else 1
+        self.page = max(0, min(self.document.page_count - 1, self.page + delta * step))
+        self.render_current()
+
+    def show_ai(self, action: str = "summary") -> None:
+        if not self.document:
+            return
+        instructions = {
+            "summary": "Summarize this reading page in clear, structured language.",
+            "explain": "Explain this passage for a normal reader and define difficult concepts.",
+            "quiz": "Create five study questions with short answers from this page.",
+            "translate": "Translate and simplify the key ideas of this page.",
+            "concepts": "Extract the key concepts and make a compact glossary.",
+        }
+        prompt = f"{instructions.get(action, instructions['summary'])}\n\n{self.document.text_for_page(self.page)[:2200]}"
+        output = "SevenAI is ready, but no response was returned."
+        seven = root_dir() / "bin/seven"
+        if seven.exists():
+            try:
+                result = subprocess.run([str(seven), "ai", "provider", prompt], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, timeout=12)
+                if result.stdout.strip():
+                    output = result.stdout.strip()
+            except subprocess.TimeoutExpired:
+                output = "SevenAI is still thinking. Try again in a moment, or ask from Seven Spotlight."
+        dialog = Gtk.Dialog(title="SevenAI Reading Companion", transient_for=self, modal=True)
+        dialog.set_default_size(620, 420)
+        dialog.add_button("Close", Gtk.ResponseType.CLOSE)
+        area = dialog.get_content_area()
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        card.set_margin_top(16)
+        card.set_margin_bottom(16)
+        card.set_margin_start(16)
+        card.set_margin_end(16)
+        card.get_style_context().add_class("ai-card")
+        title = Gtk.Label(label=f"SevenAI Reading Companion · {action.title()}")
+        title.set_xalign(0)
+        body = Gtk.TextView()
+        body.set_wrap_mode(Gtk.WrapMode.WORD)
+        body.set_editable(False)
+        body.get_buffer().set_text(output)
+        card.pack_start(title, False, False, 0)
+        card.pack_start(body, True, True, 0)
+        area.pack_start(card, True, True, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+
+    def do_key_press_event(self, event):
+        key = Gdk.keyval_name(event.keyval)
+        if event.state & Gdk.ModifierType.CONTROL_MASK:
+            if key in {"f", "F"} and hasattr(self, "document_search"):
+                self.document_search.grab_focus()
+                return True
+            if key in {"b", "B"}:
+                self.toggle_bookmark()
+                return True
+            if key in {"n", "N"}:
+                self.add_note_dialog()
+                return True
+            if key in {"plus", "KP_Add", "equal"}:
+                self.adjust_zoom(0.10)
+                return True
+            if key in {"minus", "KP_Subtract"}:
+                self.adjust_zoom(-0.10)
+                return True
+        if key in {"Right", "space", "Page_Down"}:
+            self.turn_page(1)
+            return True
+        if key in {"Left", "BackSpace", "Page_Up"}:
+            self.turn_page(-1)
+            return True
+        if key == "Escape":
+            self.show_library()
+            return True
+        if key == "F11":
+            self.toggle_focus()
+            return True
+        return Gtk.ApplicationWindow.do_key_press_event(self, event)
+
+
+class ReaderApp(Gtk.Application):
+    def __init__(self, initial: Path | None = None):
+        super().__init__(application_id="os.seven.Reader", flags=Gio.ApplicationFlags.NON_UNIQUE)
+        self.initial = initial
+
+    def do_activate(self):
+        install_css()
+        window = ReaderWindow(self, self.initial)
+        window.present()
+
+
+def main() -> int:
+    initial = None
+    for arg in sys.argv[1:]:
+        if arg in {"open", "library"}:
+            continue
+        candidate = Path(arg)
+        if candidate.exists():
+            initial = candidate
+            break
+    ensure_state()
+    app = ReaderApp(initial)
+    return app.run([sys.argv[0]])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

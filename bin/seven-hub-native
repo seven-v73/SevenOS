@@ -118,6 +118,15 @@ def profile_payload() -> list[dict]:
     return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "status", "--json"))
 
 
+def profile_ui_payload() -> dict:
+    path = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/profile-ui.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
 def profile_gaps_payload() -> dict:
     try:
         return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "gaps", "--json"))
@@ -1671,6 +1680,12 @@ def run_gui() -> int:
                     details.connect("clicked", lambda _button, key=profile["key"]: run_profile_action("show", key))
                     row.add_suffix(details)
 
+                    center = Gtk.Button()
+                    center.set_icon_name("emblem-system-symbolic")
+                    center.set_tooltip_text(f"Open {profile.get('title', profile['key'])} mini OS center")
+                    center.connect("clicked", lambda _button, key=profile["key"]: run_ecosystem_command(f"seven profile center {key}", title=f"SevenOS Profile - {key}"))
+                    row.add_suffix(center)
+
                     action_label = "Active" if profile.get("active") else "Activate" if profile.get("state") == "OK" else "Install"
                     action_name = "activate" if profile.get("state") == "OK" else "install"
                     action = Gtk.Button(label=action_label)
@@ -1830,6 +1845,7 @@ def run_gui() -> int:
                 profiles = profile_payload()
                 identity = identity_payload()
                 control = control_payload()
+                profile_ui = profile_ui_payload()
                 active = next((item for item in profiles if item.get("active")), None)
 
                 heading(
@@ -1839,7 +1855,7 @@ def run_gui() -> int:
                 )
 
                 daily_state = daily.get("decision", "unknown")
-                active_profile = active.get("title", "SevenOS") if active else tr("hub.tile.choose_workspace", "choose workspace")
+                active_profile = profile_ui.get("title") or (active.get("title", "SevenOS") if active else tr("hub.tile.choose_workspace", "choose workspace"))
                 dashboard.append(command_center(active_profile, daily_state))
 
                 metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -1859,6 +1875,7 @@ def run_gui() -> int:
                     ("seven-spotlight", "Spotlight", "seven-spotlight"),
                     ("view-grid-symbolic", "Launchpad", "seven-overview apps"),
                     ("seven-files", "Files", "seven-files"),
+                    ("emblem-system-symbolic", "Mini OS Center", profile_ui.get("center_command", "seven profile center")),
                     ("utilities-terminal-symbolic", tr("hub.action.terminal", "Terminal"), "seven-terminal classic"),
                     ("seven-settings", "Settings", "seven-settings"),
                     ("emblem-system-symbolic", tr("hub.action.quick_settings", "Quick Settings"), "seven-quick-settings"),
@@ -1870,7 +1887,7 @@ def run_gui() -> int:
 
                 grid = compact_grid()
                 tiles = [
-                    tile_button("7", tr("hub.tile.active_mode", "Active mode"), active.get("title", "Baobab") if active else tr("hub.tile.choose_workspace", "choose workspace"), "seven-waybar-action profile", "good" if active else "warn"),
+                    tile_button("7", tr("hub.tile.active_mode", "Active mode"), active_profile, profile_ui.get("center_command", "seven-waybar-action profile"), "good" if active else "warn"),
                     tile_button("⌘", tr("hub.settings", "Settings"), tr("hub.tile.settings_note", "appearance, language, theme"), "seven-settings", "good"),
                     tile_button("AI", "Seven AI", tr("hub.tile.ai_note", "local system assistant"), "seven ai focus", "good"),
                     tile_button("!", tr("hub.security", "Security"), shield.get("posture", "unknown"), "seven shield dashboard", metric_state(shield_percent)),

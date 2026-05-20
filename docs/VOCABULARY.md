@@ -11,18 +11,21 @@ This document keeps SevenOS language consistent across commands, UI, and docs.
 | `sevenpkg` | package and application manager |
 | Seven Hub | graphical/control center entrypoint |
 | SevenRepo | future SevenOS package repository |
-| Windows Mode | Windows compatibility through Wine, Bottles, Lutris, and KVM |
+| Windows Bridge | VM-first Windows compatibility with Wine, Bottles, and Lutris as lighter fallback paths |
 
 ## Profile Names
 
 | Name | Meaning |
 | --- | --- |
-| Forge | development workspace |
-| Shield | cybersecurity and protection workspace |
-| Studio | creative production workspace |
-| Horizon | cloud, infrastructure, and network workspace |
-| Griot | documentation, knowledge, and learning workspace |
-| Baobab | base system, continuity, and stability |
+| Equinox Balance | balanced general mini OS for daily SevenOS use |
+| Forge Developer | developer mini OS for code, toolchains, containers, local services, and builds |
+| Shield Cybersecurity | cybersecurity mini OS for authorized audit, forensics, sandboxing, and network analysis |
+| Studio Creator | creator mini OS for logos, design, video, audio, 3D, and capture |
+| Windows Bridge | complete Windows VM-first mini OS |
+| Horizon Cloud | cloud/server mini OS for deployment, services, reverse proxy, and self-hosting |
+| Pulse Gaming | Linux gaming mini OS for Proton, low latency, overlays, and frame pacing |
+| Baobab Culture | culture and learning mini OS for African knowledge, languages, and community memory |
+| Griot | documentation, knowledge, and learning toolkit |
 
 ## Identity Tokens
 

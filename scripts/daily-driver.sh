@@ -85,6 +85,7 @@ core = command_json([str(root / "scripts" / "core.sh"), "status", "--json"], {"s
 categories = readiness.get("categories", {})
 profile_items = profiles.get("profiles", [])
 profile_by_key = {item.get("key"): item for item in profile_items}
+daily_profile_keys = ("equinox", "baobab", "forge", "shield", "studio", "windows", "horizon", "pulse")
 
 def category_percent(name):
     item = categories.get(name) or {}
@@ -133,8 +134,8 @@ gates = [
     {
         "key": "profiles",
         "title": "Daily role profiles",
-        "state": "PASS" if all(profile_percent(key) >= 70 for key in ("baobab", "forge", "shield", "studio", "windows", "horizon")) else "BLOCK",
-        "actual": min(profile_percent(key) for key in ("baobab", "forge", "shield", "studio", "windows", "horizon")),
+        "state": "PASS" if all(profile_percent(key) >= 70 for key in daily_profile_keys) else "BLOCK",
+        "actual": min(profile_percent(key) for key in daily_profile_keys),
         "target": 70,
         "command": "seven improve target --apply --yes",
         "reason": "SevenOS should expose real workspaces, not decorative profile names.",

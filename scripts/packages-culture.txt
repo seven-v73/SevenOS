@@ -1,0 +1,4 @@
+# SevenOS Baobab cultural profile
+# Keep this profile lightweight and human/culture focused.
+noto-fonts
+noto-fonts-emoji

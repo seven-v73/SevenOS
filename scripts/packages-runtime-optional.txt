@@ -1,0 +1,3 @@
+# SevenOS runtime orchestration optional tools
+# CRIU enables future FROZEN/OFFLOADED profile checkpoint and restore flows.
+criu

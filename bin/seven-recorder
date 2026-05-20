@@ -20,7 +20,7 @@ need() {
   if ! command -v "$1" >/dev/null 2>&1; then
     notify "Missing dependency: $1"
     printf 'SevenOS Recorder: missing dependency: %s\n' "$1" >&2
-    printf 'Install the recorder stack with: seven profile install baobab --yes\n' >&2
+    printf 'Install the recorder stack with: seven profile install equinox --yes\n' >&2
     exit 1
   fi
 }

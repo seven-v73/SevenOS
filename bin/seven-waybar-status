@@ -117,6 +117,52 @@ def media() -> int:
     return emit(label[:38], tooltip, css, css)
 
 
+def profile() -> int:
+    root = Path(__file__).resolve().parent.parent
+    manager = root / "profiles/profile-manager.sh"
+    fallback = {
+        "key": "equinox",
+        "title": "Equinox",
+        "role": "Global",
+        "waybar_icon": "󰘦",
+        "short_label": "EQX",
+        "state": "MISS",
+        "ui_mood": "balanced global SevenOS profile",
+        "waybar_modules": "profile,spotlight,wifi,audio,battery,ai",
+    }
+    if manager.exists():
+        data = read_json([str(manager), "current", "--json"]) or fallback
+    else:
+        data = fallback
+    key = str(data.get("key") or "equinox").lower()
+    icon = str(data.get("waybar_icon") or "󰐃")
+    short = str(data.get("short_label") or key[:3].upper())
+    title = str(data.get("title") or key.title())
+    role = str(data.get("role") or "Profile")
+    state = str(data.get("state") or "MISS")
+    mood = str(data.get("ui_mood") or data.get("description") or "")
+    modules = str(data.get("waybar_modules") or "")
+    tooltip = "\n".join(
+        part
+        for part in [
+            f"{title} · {role}",
+            f"State: {state}",
+            mood,
+            f"Waybar: {modules}" if modules else "",
+            "Click to change profile",
+        ]
+        if part
+    )
+    css = f"profile-{key}"
+    if state == "MISS":
+        css += " miss"
+    elif state == "PART":
+        css += " warn"
+    else:
+        css += " ok"
+    return emit(f"{icon} {short}", tooltip, css, key)
+
+
 def main() -> int:
     command = sys.argv[1] if len(sys.argv) > 1 else "ai"
     handlers = {
@@ -127,9 +173,10 @@ def main() -> int:
         "recording": recorder,
         "ai": ai,
         "media": media,
+        "profile": profile,
     }
     if command not in handlers:
-        print("Usage: seven-waybar-status [wifi|bluetooth|vpn|recorder|ai|media]", file=sys.stderr)
+        print("Usage: seven-waybar-status [wifi|bluetooth|vpn|recorder|ai|media|profile]", file=sys.stderr)
         return 2
     return handlers[command]()
 

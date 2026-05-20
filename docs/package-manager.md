@@ -72,11 +72,14 @@ Current meta-packages:
 
 | Name | Role |
 | --- | --- |
-| `forge` | development workspace |
-| `shield` | cybersecurity workspace |
-| `studio` | creative production workspace |
-| `baobab` | base system and desktop layer |
-| `horizon` | cloud and network operations toolkit |
+| `equinox` | balanced general SevenOS mini OS |
+| `forge` | developer mini OS for code, toolchains, containers and builds |
+| `shield` | cybersecurity mini OS for authorized audit, forensics and sandboxing |
+| `studio` | creator mini OS for logo, video, audio, 3D and design tools |
+| `windows` | Windows Bridge mini OS for VM-first compatibility with Wine/Bottles fallback |
+| `baobab` | culture and learning mini OS for African knowledge, languages and community memory |
+| `horizon` | cloud/server mini OS for deployment, services and self-hosting |
+| `pulse` | Linux gaming mini OS for Proton, low latency, overlays and performance |
 | `griot` | documentation and knowledge toolkit |
 
 Examples:
@@ -85,7 +88,9 @@ Examples:
 sevenpkg install forge
 sevenpkg install shield
 sevenpkg install studio
+sevenpkg install windows
 sevenpkg install horizon
+sevenpkg install pulse
 sevenpkg install griot
 sevenpkg status
 sevenpkg plan

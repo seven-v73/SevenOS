@@ -86,6 +86,8 @@ json_to_file "$STATE_TMP/profile_gaps.json" "$ROOT_DIR/bin/seven" profile gaps -
 pid_profile_gaps=$!
 json_to_file "$STATE_TMP/profile_plan.json" "$ROOT_DIR/bin/seven" profile plan --json &
 pid_profile_plan=$!
+json_to_file "$STATE_TMP/profile_health.json" "$ROOT_DIR/bin/seven" profile health --json &
+pid_profile_health=$!
 json_to_file "$STATE_TMP/active_profile.json" "$ROOT_DIR/bin/seven" profile current --json &
 pid_active_profile=$!
 json_to_file "$STATE_TMP/windows.json" "$ROOT_DIR/bin/seven-windows-assistant" status --json &
@@ -140,6 +142,8 @@ json_to_file "$STATE_TMP/core_health.json" "$ROOT_DIR/scripts/core.sh" health --
 pid_core_health=$!
 json_to_file "$STATE_TMP/scheduler.json" "$ROOT_DIR/scripts/scheduler.sh" status --json &
 pid_scheduler=$!
+json_to_file "$STATE_TMP/runtime.json" "$ROOT_DIR/scripts/runtime-orchestrator.sh" status --json &
+pid_runtime=$!
 json_to_file "$STATE_TMP/context.json" "$ROOT_DIR/scripts/context.sh" status --json &
 pid_context=$!
 json_to_file "$STATE_TMP/experience.json" "$ROOT_DIR/scripts/experience.sh" --json &
@@ -157,9 +161,9 @@ pid_actions=$!
 json_to_file "$STATE_TMP/architecture.json" "$ROOT_DIR/scripts/architecture.sh" matrix --json &
 pid_architecture=$!
 
-wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
+wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" || true
+  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -194,6 +198,9 @@ cat "$STATE_TMP/profile_gaps.json"
 printf ','
 printf '"profile_plan":'
 cat "$STATE_TMP/profile_plan.json"
+printf ','
+printf '"profile_health":'
+cat "$STATE_TMP/profile_health.json"
 printf ','
 printf '"active_profile":'
 cat "$STATE_TMP/active_profile.json"
@@ -275,6 +282,9 @@ cat "$STATE_TMP/core_health.json"
 printf ','
 printf '"scheduler":'
 cat "$STATE_TMP/scheduler.json"
+printf ','
+printf '"runtime":'
+cat "$STATE_TMP/runtime.json"
 printf ','
 printf '"context":'
 cat "$STATE_TMP/context.json"

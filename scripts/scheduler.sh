@@ -41,9 +41,9 @@ active_profile() {
   if [[ -f "$state_file" ]]; then
     # shellcheck disable=SC1090
     source "$state_file"
-    printf '%s' "${SEVENOS_ACTIVE_PROFILE:-baobab}"
+    printf '%s' "${SEVENOS_ACTIVE_PROFILE:-equinox}"
   else
-    printf 'baobab'
+    printf 'equinox'
   fi
 }
 
@@ -62,27 +62,42 @@ import os
 import shutil
 import subprocess
 
-active = os.environ.get("ACTIVE_PROFILE", "baobab")
+active = os.environ.get("ACTIVE_PROFILE", "equinox")
 try:
     context_payload = json.loads(os.environ.get("CONTEXT_PAYLOAD", "null") or "null")
 except json.JSONDecodeError:
     context_payload = None
 
 GROUPS = {
+    "equinox": {
+        "title": "Equinox",
+        "role": "Balanced global",
+        "policy": "balanced-adaptive",
+        "nice": 0,
+        "io": "best-effort",
+        "power": "balanced",
+        "slice": "seven-equinox.slice",
+        "cpu_weight": 150,
+        "io_weight": 140,
+        "uclamp_min": "0",
+        "uclamp_max": "max",
+        "processes": ["seven", "seven-daemon", "seven-server", "waybar", "hyprpaper", "swaync", "kitty", "nautilus"],
+        "reason": "Keep the neutral system profile responsive while avoiding profile dominance.",
+    },
     "baobab": {
         "title": "Baobab",
-        "role": "System roots",
-        "policy": "balanced",
+        "role": "Culture",
+        "policy": "quiet-cultural",
         "nice": 0,
         "io": "best-effort",
         "power": "balanced",
         "slice": "seven-baobab.slice",
-        "cpu_weight": 100,
-        "io_weight": 100,
+        "cpu_weight": 90,
+        "io_weight": 90,
         "uclamp_min": "0",
-        "uclamp_max": "max",
-        "processes": ["seven", "seven-daemon", "seven-server", "waybar", "hyprpaper", "mako"],
-        "reason": "Keep the OS responsive without over-boosting background services.",
+        "uclamp_max": "80%",
+        "processes": ["seven-files", "seven-hub-native", "seven-settings-native", "waybar", "hyprpaper"],
+        "reason": "Keep cultural/community surfaces calm and lightweight without dev/security noise.",
     },
     "forge": {
         "title": "Forge",
@@ -159,6 +174,21 @@ GROUPS = {
         "processes": ["podman", "conmon", "caddy", "go", "seven-server", "seven-deploy"],
         "reason": "Prefer stable service throughput over aggressive desktop boosts.",
     },
+    "pulse": {
+        "title": "Pulse",
+        "role": "Performance",
+        "policy": "low-latency-foreground",
+        "nice": -3,
+        "io": "best-effort-high",
+        "power": "performance-on-demand",
+        "slice": "seven-pulse.slice",
+        "cpu_weight": 210,
+        "io_weight": 170,
+        "uclamp_min": "25%",
+        "uclamp_max": "max",
+        "processes": ["gamemoderun", "gamescope", "mangohud", "steam", "lutris", "heroic", "obs", "wf-recorder"],
+        "reason": "Prioritize focused interactive workloads and capture hooks while suppressing background noise.",
+    },
 }
 
 
@@ -204,7 +234,7 @@ rows = process_rows()
 primary_context = (context_payload or {}).get("primary_context", {}) if isinstance(context_payload, dict) else {}
 context_group = primary_context.get("scheduler_group") or active
 if context_group not in GROUPS:
-    context_group = active if active in GROUPS else "baobab"
+    context_group = active if active in GROUPS else "equinox"
 groups = []
 for key, group in GROUPS.items():
     matches = [item for item in rows if match_group(item, group)]
@@ -218,7 +248,7 @@ for key, group in GROUPS.items():
         "sample": matches[:8],
     })
 
-active_group = GROUPS.get(context_group, GROUPS["baobab"])
+active_group = GROUPS.get(context_group, GROUPS["equinox"])
 governor_path = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
 try:
     with open(governor_path, "r", encoding="utf-8") as handle:
@@ -284,7 +314,7 @@ print(json.dumps({
     "active_profile": active,
     "active_context": primary_context or {
         "key": active,
-        "title": GROUPS.get(active, GROUPS["baobab"])["title"],
+        "title": GROUPS.get(active, GROUPS["equinox"])["title"],
         "confidence": 0,
         "scheduler_group": context_group,
     },

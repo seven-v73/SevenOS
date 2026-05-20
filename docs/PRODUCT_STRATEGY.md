@@ -102,8 +102,9 @@ SevenOS should be:
 | Studio | creative production |
 | Horizon | cloud, network, and infrastructure |
 | Griot | documentation, learning, and knowledge |
-| Baobab | base system and continuity |
-| Windows Mode | Windows compatibility and VM workflows |
+| Baobab | African culture, learning, languages, and community memory |
+| Windows Bridge | complete Windows VM-first compatibility with Wine/Bottles fallback |
+| Pulse | Linux gaming, Proton, latency, overlays, and performance |
 | SevenAI | system assistant and automation contract |
 | SevenCloud | backup, restore, and machine sync |
 | SevenStore | apps, themes, profiles, and modules |

@@ -34,6 +34,9 @@ strict local contracts.
 SevenAI Layer
   local language understanding, diagnostics, confirmation, learning
 
+Seven Runtime Orchestrator
+  autonomous profiles, Equinox global balance, composition, conflict resolver
+
 Seven System Orchestration Layer
   decisions, profiles, scheduler hints, repair plans, trusted actions
 
@@ -57,6 +60,8 @@ User intent
   -> Seven Hub / Spotlight / Waybar / CLI
   -> seven action registry
   -> SevenAI or Control Plane decision
+  -> Seven Runtime Orchestrator
+  -> Capability Fusion Engine and Conflict Resolver
   -> SevenBus event and audit trail
   -> SevenDaemon / system service / Hyprland / package tool
   -> Linux kernel and hardware
@@ -126,6 +131,87 @@ This layer decides what should happen:
 The orchestration layer never hides risk. System-changing actions need preview,
 confirmation and logs.
 
+### Seven Runtime Orchestrator
+
+This layer implements the Layered Autonomous Profiles Architecture.
+
+Each profile is complete in its own domain and exposes four internal layers:
+
+```text
+Profile
+  Kernel Layer        resource intent, performance posture, isolation
+  Runtime Layer       services, tools and domain-specific dependencies
+  Experience Layer    UI, workflow and profile-specific surfaces
+  Intelligence Layer  SevenAI rules, behavior and local knowledge
+```
+
+The rule is:
+
+```text
+No profile dependency, only profile collaboration.
+```
+
+Baobab does not depend on Forge. Shield does not depend on Horizon. Studio does
+not inherit developer services. Each profile can run alone.
+
+The global system adds a fifth invisible layer:
+
+```text
+Composition Layer
+  controlled fusion, resource arbitration, conflict resolution, anti-nuisance
+```
+
+The rule is:
+
+- one profile is visible as the dominant runtime;
+- other profiles collaborate through explicit capabilities;
+- duplicate services are avoided;
+- conflicts are resolved by policy;
+- heavy stacks do not leak across profile boundaries.
+
+#### Profile Domains
+
+| Profile | Domain | Rule |
+| --- | --- | --- |
+| Equinox Balance | balanced general computing | neutral daily mini OS; no specialized profile dominates |
+| Baobab Culture | culture and learning | African knowledge, languages and community memory; no dev/security/cloud/gaming stack |
+| Forge Developer | development | engineering, toolchains, containers and builds |
+| Shield Cybersecurity | security | authorized audit, sandbox, forensics, reports and safe scope |
+| Studio Creator | creation | logos, design, video, audio, capture and 3D production |
+| Windows Bridge | Windows compatibility | complete VM-first Windows path with Wine/Bottles fallback |
+| Horizon Cloud | cloud/server | server, deploy, reverse proxy, services and local API |
+| Pulse Gaming | Linux gaming | Proton, low latency, overlays, controllers and foreground responsiveness |
+
+For example:
+
+```text
+seven runtime plan equinox forge shield studio horizon pulse
+```
+
+means:
+
+- `equinox` stays neutral;
+- Forge contributes light dev capability only when needed;
+- Shield contributes basic safety rules without launching scans;
+- Studio/Horizon/Pulse remain controlled fragments instead of full noisy stacks.
+
+Another example:
+
+```text
+seven runtime plan baobab shield horizon
+```
+
+means:
+
+- `baobab` owns the visible cultural experience;
+- Shield and Horizon can collaborate only through explicit injected rules;
+- Baobab remains clean: no Docker, no dev toolchain, no cloud daemons, no gaming runtime.
+
+The current implementation is deliberately safe. It exposes the composite
+runtime, lifecycle, conflict decisions and resource allocation plan, then only
+writes local runtime state when the user explicitly confirms with
+`--apply --yes`.
+
 ### SevenAI Layer
 
 SevenAI is the human language layer over the same contracts:
@@ -150,6 +236,7 @@ to the local control plane.
 | Action registry | `scripts/actions.sh` |
 | Unified state | `scripts/state.sh` |
 | Control decisions | `scripts/control-plane.sh` |
+| Runtime orchestration | `scripts/runtime-orchestrator.sh`, `seven runtime` |
 | Local event bus | `scripts/events.sh`, `seven-core/daemon` |
 | Runtime health | `seven core health --json` |
 | Context | `scripts/context.sh`, `seven-context-observer.service` |
@@ -167,6 +254,8 @@ seven architecture hybrid
 seven architecture matrix
 seven architecture matrix --json
 seven state --json
+seven runtime status --json
+seven runtime plan equinox forge shield horizon pulse --json
 ```
 
 `seven architecture matrix --json` is the product contract for Hub, Spotlight,
@@ -187,6 +276,7 @@ finished OS layer.
 | Layer | Owner | Main Contracts | Safety Rule |
 | --- | --- | --- | --- |
 | SevenAI | SevenAI agent and provider | `seven ai`, diagnostics, playbooks | safe-by-default, confirm before system changes |
+| Runtime | Seven Runtime Orchestrator | `seven runtime status --json`, `seven runtime plan ...` | plan first, apply local state only with confirmation |
 | Orchestration | `seven control`, actions, scheduler, repair | `seven control --json`, `seven actions --json` | preview before apply |
 | User-Space Services | SevenDaemon, SevenBus, context services | `seven core health --json`, `seven events --json` | local audit trail |
 | Desktop/UI | Hyprland, Waybar, Hub, Spotlight, native apps | `seven hub`, `seven-spotlight`, `seven-files` | normal-user workflows first |

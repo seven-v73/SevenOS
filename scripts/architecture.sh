@@ -72,6 +72,7 @@ hybrid() {
   printf '  hybrid operating architecture above it.\n\n'
   printf 'Stack:\n'
   printf '  SevenAI Layer                  natural language, local diagnostics, playbooks\n'
+  printf '  Seven Runtime Orchestrator     autonomous profiles, Equinox balance, composition\n'
   printf '  Seven System Orchestration     control plane, profiles, scheduler, repair\n'
   printf '  User-Space Services            SevenDaemon, SevenBus, context, Server\n'
   printf '  Desktop / UI Layer             Hyprland, Waybar, Hub, Spotlight, Files\n'
@@ -79,7 +80,10 @@ hybrid() {
   printf '  Linux Kernel                   processes, memory, drivers, network, devices\n\n'
   printf 'Runtime flow:\n'
   printf '  User intent -> Hub/Spotlight/Waybar/CLI -> action registry -> SevenAI or\n'
-  printf '  Control Plane -> SevenBus event -> SevenDaemon/service -> Linux.\n\n'
+  printf '  Control Plane -> Seven Runtime Orchestrator -> SevenBus event -> service -> Linux.\n\n'
+  printf 'Capability runtime:\n'
+  printf '  Profiles are autonomous. Equinox is the neutral global profile. The composition\n'
+  printf '  layer lets profiles collaborate without dependency or cross-profile pollution.\n\n'
   printf 'Reference:\n'
   printf '  docs/HYBRID_OS_ARCHITECTURE.md\n'
 }
@@ -163,6 +167,7 @@ def layer_status(checks):
 
 layer_contracts = {
     "seven_ai": ["seven ai", "seven ai --json", "seven ai diagnose system --json", "seven ai playbook <id> --json"],
+    "runtime": ["seven runtime status --json", "seven runtime plan equinox forge shield --json", "seven runtime activate <primary> <capability> --apply --yes"],
     "orchestration": ["seven control --json", "seven actions --json", "seven scheduler status --json", "seven repair"],
     "services": ["seven core health --json", "seven context status --json", "seven events --json", "seven server status --json"],
     "desktop_ui": ["seven hub", "seven-spotlight", "seven-quick-settings", "seven-files", "hyprctl"],
@@ -172,6 +177,7 @@ layer_contracts = {
 
 layer_capabilities = {
     "seven_ai": ["natural language intents", "human explanations", "local diagnostics", "safe playbook selection"],
+    "runtime": ["autonomous profiles", "Equinox global balance", "composition layer", "anti-nuisance policy", "resource allocation plan", "conflict resolution"],
     "orchestration": ["prioritized plans", "profile decisions", "repair routing", "confirmation levels"],
     "services": ["event trail", "runtime health", "context observation", "local API foundation"],
     "desktop_ui": ["visible control surfaces", "quick actions", "workspace interaction", "normal-user workflows"],
@@ -181,6 +187,7 @@ layer_capabilities = {
 
 layer_owners = {
     "seven_ai": "SevenAI agent and provider",
+    "runtime": "Seven Runtime Orchestrator",
     "orchestration": "seven control, actions, scheduler and repair",
     "services": "SevenDaemon, SevenBus and systemd user services",
     "desktop_ui": "Hyprland, Waybar, Hub, Spotlight and native SevenOS apps",
@@ -190,6 +197,7 @@ layer_owners = {
 
 layer_safety = {
     "seven_ai": "safe-by-default; escalates through confirmation gates",
+    "runtime": "plan first; composite activation only writes local runtime state unless explicitly confirmed",
     "orchestration": "preview first; apply requires explicit intent",
     "services": "local-only audit trail and daemon contracts",
     "desktop_ui": "normal-user actions first; system actions routed to control plane",
@@ -199,6 +207,7 @@ layer_safety = {
 
 layer_actions = {
     "seven_ai": ["seven ai focus", "seven ai diagnose system --json", "seven ai shortcuts"],
+    "runtime": ["seven runtime status", "seven runtime plan equinox forge shield horizon pulse", "seven runtime doctor"],
     "orchestration": ["seven control", "seven actions --json", "seven scheduler plan"],
     "services": ["seven core health --json", "seven context emit", "seven events --json"],
     "desktop_ui": ["seven hub", "seven-spotlight", "seven-quick-settings"],
@@ -210,6 +219,7 @@ layer_actions = {
 core_health, core_health_error = run_json([str(root / "bin/seven"), "core", "health", "--json"])
 actions, actions_error = run_json([str(root / "scripts/actions.sh"), "--json"])
 context, context_error = run_json([str(root / "bin/seven"), "context", "--json"])
+runtime, runtime_error = run_json([str(root / "bin/seven"), "runtime", "status", "--json"])
 
 event_count = 0
 if event_file.exists():
@@ -228,6 +238,18 @@ layers = [
             {"name": "agent_engine", "state": "OK" if exists("scripts/seven_ai_agent.py") else "MISS"},
             {"name": "provider", "state": "OK" if exists("scripts/seven_ai_provider.py") else "MISS"},
             {"name": "ai_json_contract", "state": "OK" if file_contains("scripts/ai.sh", "sevenos.ai-local.v1") else "MISS", "detail": "sevenos.ai-local.v1"},
+        ],
+    },
+    {
+        "id": "runtime",
+        "title": "Seven Runtime Orchestrator",
+        "role": "autonomous profiles, Equinox balance, composition, resource planning and conflict resolution",
+        "checks": [
+            {"name": "runtime_orchestrator", "state": "OK" if executable("scripts/runtime-orchestrator.sh") else "MISS"},
+            {"name": "runtime_json_contract", "state": "OK" if runtime and runtime.get("schema") == "sevenos.runtime-orchestrator.v1" else "MISS", "detail": runtime_error or runtime.get("schema") if runtime else runtime_error},
+            {"name": "capability_fusion", "state": "OK" if runtime and runtime.get("composite_runtime", {}).get("capability_fusion") else "MISS"},
+            {"name": "conflict_resolver", "state": "OK" if runtime and runtime.get("composite_runtime", {}).get("conflict_resolver") else "MISS"},
+            {"name": "resource_allocator", "state": "OK" if runtime and runtime.get("resource_plan", {}).get("allocator") == "Seven Resource Allocator" else "MISS"},
         ],
     },
     {
@@ -328,11 +350,16 @@ payload = {
         "hub_spotlight_waybar_cli",
         "action_registry",
         "sevenai_or_control_plane",
+        "seven_runtime_orchestrator",
+        "capability_fusion_engine",
+        "conflict_resolver",
         "sevenbus_event",
         "sevendaemon_or_service",
         "linux_kernel",
     ],
     "next": [
+        {"command": "seven runtime status --json", "reason": "read the active capability-based runtime"},
+        {"command": "seven runtime plan forge shield horizon", "reason": "preview one primary runtime with injected capabilities"},
         {"command": "seven core health --json", "reason": "read daemon-owned runtime state"},
         {"command": "seven actions --json", "reason": "route UI and AI through stable action IDs"},
         {"command": "seven ai diagnose system --json", "reason": "inspect local context before repair"},
@@ -418,6 +445,7 @@ doctor() {
     "seven-hub/gui/package.json" \
     "server/seven-server.sh" \
     "server/seven-deploy.sh" \
+    "scripts/runtime-orchestrator.sh" \
     "scripts/installer-stack.sh" \
     "scripts/flatpak.sh" \
     "scripts/readiness.sh" \
@@ -450,6 +478,7 @@ doctor() {
 
   if ! grep -q 'user-space hybrid operating architecture' "$ROOT_DIR/docs/HYBRID_OS_ARCHITECTURE.md" ||
      ! grep -q 'SevenAI Layer' "$ROOT_DIR/docs/HYBRID_OS_ARCHITECTURE.md" ||
+     ! grep -q 'Seven Runtime Orchestrator' "$ROOT_DIR/docs/HYBRID_OS_ARCHITECTURE.md" ||
      ! grep -q 'SevenBus' "$ROOT_DIR/docs/HYBRID_OS_ARCHITECTURE.md"; then
     printf '[MISS] docs/HYBRID_OS_ARCHITECTURE.md missing hybrid OS contract language\n'
     failures=$((failures + 1))

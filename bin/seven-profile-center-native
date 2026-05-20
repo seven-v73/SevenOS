@@ -53,6 +53,22 @@ def run_json(*args: str):
         return []
 
 
+def load_catalog() -> dict:
+    try:
+        return json.loads((ROOT / "profiles/catalog.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def compact_list(items, limit: int = 3) -> str:
+    values = [str(item) for item in (items or []) if str(item).strip()]
+    if not values:
+        return "none"
+    if len(values) <= limit:
+        return " · ".join(values)
+    return " · ".join(values[:limit]) + f" +{len(values) - limit}"
+
+
 def run_detached(command: str) -> None:
     subprocess.Popen(
         ["bash", "-lc", command],
@@ -99,49 +115,85 @@ def run() -> int:
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.profile-center-window { background: transparent; }
     .profile-root {
-      padding: 16px;
+      padding: 18px;
       border-radius: 30px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(230,244,249,0.66)), rgba(255,255,255,0.58);
-      border: 1px solid rgba(255,255,255,0.84);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06)),
+        radial-gradient(ellipse at 12% -12%, rgba(110,168,255,0.16), transparent 46%),
+        radial-gradient(ellipse at 88% -16%, rgba(139,124,255,0.13), transparent 40%),
+        rgba(18,19,26,0.88);
+      border: 1px solid rgba(255,255,255,0.12);
     }
-    .title { color: rgba(16,27,34,0.98); font-size: 18px; font-weight: 500; }
-    .subtitle { color: rgba(42,58,68,0.62); font-size: 11px; }
-    .tile {
-      min-height: 96px;
+    .title { color: rgba(245,247,250,0.98); font-size: 18px; font-weight: 500; }
+    .subtitle { color: rgba(245,247,250,0.62); font-size: 11px; }
+    .section {
       padding: 12px;
       border-radius: 22px;
-      background: rgba(255,255,255,0.52);
-      border: 1px solid rgba(255,255,255,0.72);
-      color: rgba(20,34,44,0.96);
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.10);
     }
-    .tile:hover { background: rgba(255,255,255,0.80); border-color: rgba(91,127,166,0.30); }
-    .tile.good { border-color: rgba(90,173,114,0.30); background: rgba(90,173,114,0.08); }
-    .tile.warn { border-color: rgba(111,157,188,0.34); background: rgba(111,157,188,0.08); }
-    .tile.bad { border-color: rgba(196,103,58,0.28); background: rgba(196,103,58,0.08); }
-    .glyph { font-size: 24px; }
+    .section-title { color: rgba(245,247,250,0.96); font-size: 12px; font-weight: 500; }
+    .section-note { color: rgba(245,247,250,0.62); font-size: 11px; }
+    .layer-card {
+      padding: 10px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.050);
+      border: 1px solid rgba(255,255,255,0.09);
+    }
+    .layer-name { color: rgba(245,247,250,0.90); font-size: 11px; font-weight: 500; }
+    .layer-value { color: rgba(245,247,250,0.58); font-size: 10px; }
+    .tile {
+      min-height: 122px;
+      padding: 12px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.065);
+      border: 1px solid rgba(255,255,255,0.11);
+      color: rgba(245,247,250,0.96);
+    }
+    .tile:hover { background: rgba(255,255,255,0.105); border-color: rgba(156,203,255,0.30); }
+    .tile.good { border-color: rgba(166,227,161,0.24); }
+    .tile.warn { border-color: rgba(249,226,175,0.30); }
+    .tile.bad { border-color: rgba(243,139,168,0.28); }
+    .tile.active {
+      background: rgba(137,180,250,0.12);
+      border-color: rgba(137,180,250,0.36);
+    }
+    .tile.equinox { border-color: rgba(139,124,255,0.28); }
+    .tile.baobab { border-color: rgba(166,227,161,0.28); }
+    .tile.forge { border-color: rgba(249,226,175,0.28); }
+    .tile.shield { border-color: rgba(0,255,179,0.30); }
+    .tile.studio { border-color: rgba(203,166,247,0.28); }
+    .tile.windows, .tile.horizon { border-color: rgba(137,220,235,0.28); }
+    .tile.pulse { border-color: rgba(0,212,255,0.30); }
+    .glyph { font-size: 26px; }
     .tile-title { font-size: 13px; font-weight: 500; }
-    .tile-note { color: rgba(44,60,70,0.66); font-size: 11px; }
+    .tile-note { color: rgba(245,247,250,0.62); font-size: 11px; }
     .action-strip {
       padding: 12px;
       border-radius: 22px;
-      background: rgba(255,255,255,0.46);
-      border: 1px solid rgba(255,255,255,0.68);
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.10);
     }
+    .danger-note { color: rgba(249,226,175,0.82); font-size: 10px; }
     .icon-action {
       min-width: 44px;
       min-height: 44px;
       padding: 0;
       border-radius: 999px;
-      background: rgba(255,255,255,0.58);
-      border: 1px solid rgba(255,255,255,0.76);
+      color: rgba(245,247,250,0.94);
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
     }
-    .icon-action:hover { background: rgba(255,255,255,0.84); }
+    .icon-action:hover { background: rgba(255,255,255,0.14); }
     """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     profiles = run_json("profile", "status", "--json")
+    runtime = run_json("runtime", "status", "--json")
+    isolation = run_json("profile", "isolation", "status", "--json")
+    catalog = load_catalog()
     active = next((item for item in profiles if item.get("active")), None)
 
     window = Gtk.Window(title=tr_text("SevenOS Profiles"))
@@ -150,7 +202,7 @@ def run() -> int:
     window.set_resizable(False)
     window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(520, 430)
+    window.set_default_size(860, 680)
     window.get_style_context().add_class("profile-center-window")
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -161,25 +213,52 @@ def run() -> int:
     title.get_style_context().add_class("title")
     root.pack_start(title, False, False, 0)
     active_label = active.get("title", tr_text("None")) if active else tr_text("None")
-    subtitle = Gtk.Label(label=tr_text("Active: {profile}", profile=active_label), xalign=0)
+    context = runtime.get("context", {}).get("primary_context", {}) if isinstance(runtime, dict) else {}
+    context_title = context.get("title") or context.get("key") or tr_text("none")
+    scheduler_policy = runtime.get("scheduler", {}).get("active_policy", {}) if isinstance(runtime, dict) else {}
+    subtitle_text = tr_text("Active: {profile} · Detected context: {context}", profile=active_label, context=context_title)
+    if scheduler_policy.get("scheduler_group") and active and scheduler_policy.get("scheduler_group") != active.get("key"):
+        subtitle_text += tr_text(" · temporary optimization: {group}", group=scheduler_policy.get("scheduler_group"))
+    subtitle = Gtk.Label(label=subtitle_text, xalign=0)
     subtitle.get_style_context().add_class("subtitle")
     root.pack_start(subtitle, False, False, 0)
+
+    composition = composition_panel(Gtk, runtime if isinstance(runtime, dict) else {}, isolation if isinstance(isolation, dict) else {})
+    root.pack_start(composition, False, False, 0)
+
+    if active:
+        active_catalog = (catalog.get("profiles", {}) or {}).get(active.get("key", ""), {})
+        layers = active_catalog.get("layers", {})
+        layers_box = Gtk.Grid()
+        layers_box.set_column_spacing(8)
+        layers_box.set_row_spacing(8)
+        layers_box.get_style_context().add_class("section")
+        for index, (name, values) in enumerate([
+            ("Kernel", layers.get("kernel")),
+            ("Runtime", layers.get("runtime")),
+            ("Experience", layers.get("experience")),
+            ("Intelligence", layers.get("intelligence")),
+        ]):
+            layers_box.attach(layer_card(Gtk, name, compact_list(values)), index % 4, index // 4, 1, 1)
+        root.pack_start(layers_box, False, False, 0)
 
     grid = Gtk.Grid()
     grid.set_column_spacing(10)
     grid.set_row_spacing(10)
     root.pack_start(grid, True, True, 0)
 
-    for index, profile in enumerate(profiles[:6]):
+    for index, profile in enumerate(profiles[:8]):
         title_text = profile.get("title", profile.get("key", tr_text("Profile")))
         state = profile.get("state", "MISS")
         installed = profile.get("installed", 0)
         total = profile.get("total", 0)
-        command = f"seven profile activate {profile['key']}" if state == "OK" else f"seven profile install {profile['key']}"
-        if profile.get("active"):
-            command = f"seven profile open {profile['key']}"
-        button = profile_tile(Gtk, title_text[:1].upper(), title_text, tr_text("active") if profile.get("active") else f"{installed}/{total}", command, state_class(state))
-        grid.attach(button, index % 3, index // 3, 1, 1)
+        key = profile.get("key", "")
+        command = f"seven profile activate {key}"
+        role = profile.get("role") or key
+        note = tr_text("active") if profile.get("active") else f"{role} · {state} · {installed}/{total}"
+        glyph = profile.get("waybar_icon") or title_text[:1].upper()
+        button = profile_tile(Gtk, glyph, title_text, note, command, state_class(state), key, bool(profile.get("active")))
+        grid.attach(button, index % 4, index // 4, 1, 1)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     actions.set_halign(Gtk.Align.CENTER)
@@ -187,8 +266,11 @@ def run() -> int:
     root.pack_end(actions, False, False, 0)
     for glyph, tooltip, command in [
         ("󰉋", tr_text("Open workspace"), "seven-files profile"),
+        ("󰡱", tr_text("Open active mini OS center"), f"seven profile center {active.get('key', '')}" if active else "seven profile center"),
         ("󰞋", tr_text("Profile guide"), "seven profile guide"),
         ("󰀻", tr_text("Profile apps"), "seven profile apps"),
+        ("󰐱", tr_text("Runtime composition"), "seven runtime status"),
+        ("󰌾", tr_text("Apply isolation policy"), "seven profile isolation apply --yes"),
         ("󰒓", tr_text("Open Hub"), "seven-hub-native open"),
     ]:
         button = Gtk.Button()
@@ -205,10 +287,73 @@ def run() -> int:
     return 0
 
 
-def profile_tile(Gtk, glyph: str, title: str, note: str, command: str, css_class: str):
+def composition_panel(Gtk, runtime: dict, isolation: dict):
+    panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    panel.get_style_context().add_class("section")
+
+    primary = runtime.get("primary_profile", {})
+    composite = runtime.get("composite_runtime", {})
+    resource = runtime.get("resource_plan", {})
+    doctor = runtime.get("doctor", {})
+    injected = composite.get("injected_profiles") or []
+    active_count = isolation.get("active_package_count", 0)
+    inactive_count = isolation.get("inactive_package_count", 0)
+
+    title = Gtk.Label(label=tr_text("Composition Layer"), xalign=0)
+    title.get_style_context().add_class("section-title")
+    panel.pack_start(title, False, False, 0)
+
+    summary = Gtk.Label(
+        label=tr_text(
+            "Primary: {primary} · injected: {injected} · packages: {active} active / {inactive} quiet",
+            primary=primary.get("title") or composite.get("primary") or "unknown",
+            injected=", ".join(injected) if injected else "none",
+            active=active_count,
+            inactive=inactive_count,
+        ),
+        xalign=0,
+    )
+    summary.get_style_context().add_class("section-note")
+    panel.pack_start(summary, False, False, 0)
+
+    details = Gtk.Label(
+        label=tr_text(
+            "CPU: {cpu} · RAM: {ram} · services: {services} · snapshot: {snapshot}",
+            cpu=resource.get("cpu", {}).get("strategy", "unknown"),
+            ram=resource.get("ram", {}).get("strategy", "unknown"),
+            services=resource.get("isolation", {}).get("services", "unknown"),
+            snapshot="ready" if any(item.get("name") == "criu" and item.get("state") == "OK" for item in doctor.get("checks", [])) else "planned",
+        ),
+        xalign=0,
+    )
+    details.get_style_context().add_class("danger-note")
+    panel.pack_start(details, False, False, 0)
+    return panel
+
+
+def layer_card(Gtk, name: str, value: str):
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    box.set_hexpand(True)
+    box.get_style_context().add_class("layer-card")
+    title = Gtk.Label(label=name, xalign=0)
+    title.get_style_context().add_class("layer-name")
+    text = Gtk.Label(label=value, xalign=0)
+    text.set_line_wrap(True)
+    text.set_max_width_chars(28)
+    text.get_style_context().add_class("layer-value")
+    box.pack_start(title, False, False, 0)
+    box.pack_start(text, False, False, 0)
+    return box
+
+
+def profile_tile(Gtk, glyph: str, title: str, note: str, command: str, css_class: str, key: str, active: bool):
     button = Gtk.Button()
     button.get_style_context().add_class("tile")
     button.get_style_context().add_class(css_class)
+    if key:
+        button.get_style_context().add_class(key)
+    if active:
+        button.get_style_context().add_class("active")
     button.set_tooltip_text(command)
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
     icon = Gtk.Label(label=glyph)

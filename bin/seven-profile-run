@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def state_dir() -> Path:
+    return Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+
+
+def load_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def active_profile() -> str:
+    env_path = state_dir() / "profile.env"
+    try:
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("SEVENOS_ACTIVE_PROFILE="):
+                return line.split("=", 1)[1].strip().strip('"') or "equinox"
+    except OSError:
+        pass
+    return "equinox"
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        print("Usage: seven-profile-run [--container] <command> [args...]", file=sys.stderr)
+        return 2
+
+    use_container = False
+    raw_args = sys.argv[1:]
+    if raw_args and raw_args[0] == "--container":
+        use_container = True
+        raw_args = raw_args[1:]
+    if not raw_args:
+        print("Usage: seven-profile-run [--container] <command> [args...]", file=sys.stderr)
+        return 2
+
+    command = raw_args[0]
+    args = raw_args[1:]
+    isolation = load_json(state_dir() / "profile-isolation.json")
+    runtime = load_json(state_dir() / "runtime.json")
+    active = active_profile()
+    active_commands = set(isolation.get("active_commands") or [])
+    inactive_commands = set(isolation.get("inactive_commands") or [])
+
+    if not isolation:
+        print("[SevenOS] WARN: profile isolation state missing; run: seven profile isolation apply --yes", file=sys.stderr)
+    elif command in inactive_commands and command not in active_commands:
+        selected = ", ".join(isolation.get("selected_profiles") or [active])
+        owners = []
+        for profile, commands in {
+            "forge": ["docker", "node", "npm", "pnpm", "python", "cargo", "go", "code", "nvim", "helix", "hx"],
+            "baobab": ["seven-reader", "foliate", "calibre", "ebook-viewer", "espeak-ng", "festival", "trans"],
+            "shield": ["nmap", "wireshark", "tcpdump", "sqlmap", "zaproxy", "msfconsole", "aircrack-ng"],
+            "studio": ["gimp", "krita", "inkscape", "blender", "kdenlive", "obs", "obs-studio", "audacity"],
+            "windows": ["wine", "winetricks", "lutris", "virt-manager", "virt-install"],
+            "horizon": ["podman", "buildah", "skopeo", "caddy", "seven-deploy"],
+            "pulse": ["gamemoderun", "game-mode", "gamescope", "mangohud", "vulkaninfo", "lutris"],
+        }.items():
+            if command in commands:
+                owners.append(profile)
+        owner_hint = ", ".join(owners) if owners else "another profile"
+        print(
+            f"[SevenOS] {command} belongs to {owner_hint}, but the active runtime is {selected}.",
+            file=sys.stderr,
+        )
+        print(f"[SevenOS] Activate a matching profile or run: seven runtime activate {active} {' '.join(owners)} --apply --yes", file=sys.stderr)
+        return 126
+
+    shims_dir = str(Path.home() / ".local/share/sevenos/profile-shims")
+    search_path = os.pathsep.join(
+        item for item in os.environ.get("PATH", "").split(os.pathsep)
+        if item and os.path.abspath(item) != os.path.abspath(shims_dir)
+    )
+    executable = shutil.which(command, path=search_path)
+    if not executable:
+        print(f"[SevenOS] command not found: {command}", file=sys.stderr)
+        return 127
+
+    slice_name = (
+        runtime.get("resource_plan", {})
+        .get("cpu", {})
+        .get("primary_slice")
+        or f"seven-{active}.slice"
+    )
+    env = os.environ.copy()
+    env.setdefault("SEVENOS_ACTIVE_PROFILE", active)
+    env.setdefault("SEVENOS_RUNTIME_SLICE", slice_name)
+
+    if use_container and shutil.which("bwrap"):
+        container_root = Path.home() / ".local/share/sevenos/profile-containers" / active
+        home = container_root / "home"
+        cache = container_root / "cache"
+        data = container_root / "data"
+        for path in (home, cache, data):
+            path.mkdir(parents=True, exist_ok=True)
+        env.update({
+            "HOME": str(home),
+            "XDG_CACHE_HOME": str(cache),
+            "XDG_DATA_HOME": str(data),
+            "SEVENOS_PROFILE_CONTAINER": active,
+        })
+        command_line = [
+            "bwrap",
+            "--dev-bind", "/", "/",
+            "--setenv", "HOME", str(home),
+            "--setenv", "XDG_CACHE_HOME", str(cache),
+            "--setenv", "XDG_DATA_HOME", str(data),
+            executable,
+            *args,
+        ]
+        if shutil.which("systemd-run"):
+            command_line = [
+                "systemd-run",
+                "--user",
+                "--scope",
+                f"--slice={slice_name}",
+                "--quiet",
+                *command_line,
+            ]
+        result = subprocess.run(command_line, env=env, check=False)
+        return int(result.returncode)
+
+    if shutil.which("systemd-run"):
+        result = subprocess.run(
+            [
+                "systemd-run",
+                "--user",
+                "--scope",
+                f"--slice={slice_name}",
+                "--quiet",
+                executable,
+                *args,
+            ],
+            env=env,
+            check=False,
+        )
+        return int(result.returncode)
+
+    result = subprocess.run([executable, *args], env=env, check=False)
+    return int(result.returncode)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

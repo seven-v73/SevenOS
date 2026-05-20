@@ -31,6 +31,9 @@ files.downloads	Desktop	Downloads	seven-files downloads	safe	Open Downloads in S
 files.projects	Desktop	Projects	seven-files projects	safe	Open Projects in Seven Files.
 files.pictures	Desktop	Pictures	seven-files pictures	safe	Open Pictures in Seven Files.
 files.profile	Desktop	Profile Workspace	seven-files profile	safe	Open the active SevenOS profile workspace in Seven Files.
+reader.open	Desktop	Open Reader	seven-reader	safe	Open the Seven Reader immersive library.
+reader.library	Desktop	Reader Library	seven-reader library	safe	Open the Seven Reader visual library.
+reader.status	System	Reader Status	seven-reader --json	safe	Show Seven Reader formats, modes and local state.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
 terminal.open	Desktop	Open Terminal	seven-terminal classic	safe	Open the default SevenOS adaptive terminal.
 terminal.forge	Desktop	Forge Terminal	seven-terminal forge	safe	Open a SevenOS terminal tuned for development, Git and builds.
@@ -94,16 +97,26 @@ profile.plan	Profiles	Profile Plan	seven profile plan	safe	Show prioritized prof
 profile.bootstrap.active	Profiles	Bootstrap Active Profile	seven profile bootstrap	safe	Create the manifest, checklist and launcher for the active profile workspace.
 profile.bootstrap.all	Profiles	Bootstrap All Profiles	seven profile bootstrap all	safe	Create workspace manifests, checklists and launchers for every SevenOS profile.
 profile.open	Profiles	Open Active Workspace	seven profile open	safe	Open the current profile workspace.
-profile.activate.forge	Profiles	Activate Forge	seven profile activate forge	changes	Switch the desktop context to Forge.
-profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch the desktop context to Shield.
-profile.activate.studio	Profiles	Activate Studio	seven profile activate studio	changes	Switch the desktop context to Studio.
-profile.activate.windows	Profiles	Activate Windows	seven profile activate windows	changes	Switch the desktop context to Windows Mode.
-profile.activate.horizon	Profiles	Activate Horizon	seven profile activate horizon	changes	Switch the desktop context to Horizon.
-profile.forge	Profiles	Install Forge	seven profile install forge	packages	Install the development workspace.
-profile.shield	Profiles	Install Shield	seven profile install shield	packages	Install the cybersecurity workspace.
-profile.studio	Profiles	Install Studio	seven profile install studio	packages	Install the creative workspace.
-profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install Windows compatibility tooling.
-profile.horizon	Profiles	Install Horizon	seven profile install horizon	packages	Install server and deployment tooling.
+profile.activate.equinox	Profiles	Activate Equinox	seven profile activate equinox	changes	Switch to the balanced general SevenOS mini OS.
+profile.activate.baobab	Profiles	Activate Baobab	seven profile activate baobab	changes	Switch to the African culture and learning mini OS.
+profile.activate.forge	Profiles	Activate Forge	seven profile activate forge	changes	Switch to the developer mini OS.
+profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch to the cybersecurity mini OS.
+profile.activate.studio	Profiles	Activate Studio	seven profile activate studio	changes	Switch to the creator mini OS.
+profile.activate.windows	Profiles	Activate Windows	seven profile activate windows	changes	Switch to the Windows Bridge VM-first mini OS.
+profile.activate.horizon	Profiles	Activate Horizon	seven profile activate horizon	changes	Switch to the cloud/server mini OS.
+profile.activate.pulse	Profiles	Activate Pulse	seven profile activate pulse	changes	Switch to the Linux gaming mini OS.
+runtime.status	Profiles	Runtime Status	seven runtime status	safe	Show the active SevenOS layered autonomous runtime without changing resources.
+runtime.plan	Profiles	Runtime Fusion Plan	seven runtime plan equinox forge shield horizon pulse	safe	Preview Equinox with controlled capability fragments from multiple profiles.
+runtime.capabilities	Profiles	Runtime Capabilities	seven runtime capabilities	safe	List profile capabilities that can be injected into a composite runtime.
+runtime.doctor	Profiles	Runtime Doctor	seven runtime doctor	safe	Check cgroups, scheduler, context, zram and future checkpoint hooks for runtime orchestration.
+profile.equinox	Profiles	Install Equinox	seven profile install equinox	packages	Install the balanced global SevenOS profile.
+profile.baobab	Profiles	Install Baobab	seven profile install baobab	packages	Install the cultural SevenOS profile.
+profile.forge	Profiles	Install Forge	seven profile install forge	packages	Install the developer mini OS stack.
+profile.shield	Profiles	Install Shield	seven profile install shield	packages	Install the cybersecurity mini OS stack.
+profile.studio	Profiles	Install Studio	seven profile install studio	packages	Install the creator mini OS stack.
+profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install the Windows Bridge VM-first compatibility stack.
+profile.horizon	Profiles	Install Horizon	seven profile install horizon	packages	Install the cloud/server mini OS stack.
+profile.pulse	Profiles	Install Pulse	seven profile install pulse	packages	Install the Linux gaming mini OS stack.
 security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, sandbox and cyber tooling.
 security.dashboard	Security	Shield Control	seven shield dashboard	safe	Open the native Shield workspace dashboard.
 security.mode	Security	CyberSpace	seven shield mode	safe	Show the context-aware cybersecurity workspace.
@@ -183,11 +196,13 @@ flatpak.install	Apps	Install Default Flatpaks	seven flatpak install	packages	Ins
 sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.
 sevenpkg.plan	Apps	Software Plan	sevenpkg plan	safe	Show prioritized software and app completion actions.
 sevenpkg.meta	Apps	Meta Packages	sevenpkg meta	safe	List SevenOS software bundles.
-sevenpkg.baobab	Apps	Install Baobab Bundle	sevenpkg install baobab	packages	Install the SevenOS base software bundle.
-sevenpkg.forge	Apps	Install Forge Bundle	sevenpkg install forge	packages	Install the development software bundle.
+sevenpkg.baobab	Apps	Install Baobab Bundle	sevenpkg install baobab	packages	Install the African culture and learning software bundle.
+sevenpkg.forge	Apps	Install Forge Bundle	sevenpkg install forge	packages	Install the developer software bundle.
 sevenpkg.shield	Apps	Install Shield Bundle	sevenpkg install shield	packages	Install the cybersecurity software bundle.
 sevenpkg.studio	Apps	Install Studio Bundle	sevenpkg install studio	packages	Install the creative production software bundle.
+sevenpkg.windows	Apps	Install Windows Bundle	sevenpkg install windows	packages	Install the Windows Bridge VM-first compatibility bundle.
 sevenpkg.horizon	Apps	Install Horizon Bundle	sevenpkg install horizon	packages	Install the server and deployment software bundle.
+sevenpkg.pulse	Apps	Install Pulse Bundle	sevenpkg install pulse	packages	Install the Linux gaming software bundle.
 sevenpkg.griot	Apps	Install Griot Bundle	sevenpkg install griot	packages	Install the documentation and knowledge software bundle.
 ecosystem.status	Ecosystem	Ecosystem Map	seven ecosystem	safe	Show modules and maturity states.
 ecosystem.processes	Ecosystem	Process Map	seven ecosystem processes	safe	Show all-in-one SevenOS user flows.

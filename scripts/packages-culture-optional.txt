@@ -1,0 +1,8 @@
+# SevenOS Baobab optional learning and cultural tools
+# Installed when the user wants the full Baobab Culture mini OS.
+foliate
+calibre
+espeak-ng
+festival
+translate-shell
+hyphen-fr

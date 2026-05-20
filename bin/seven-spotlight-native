@@ -50,6 +50,7 @@ CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / 
 CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/sevenos-{os.getuid()}")) / "sevenos"
 THEME_CONF = CONFIG_DIR / "theme.conf"
+PROFILE_UI_FILE = CONFIG_DIR / "profile-ui.json"
 CACHE_FILE = CACHE_DIR / "spotlight.json"
 LOCK_FILE = RUNTIME_DIR / "spotlight.lock"
 CACHE_TTL_SECONDS = 4
@@ -105,6 +106,13 @@ def read_json(path: Path, default):
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return default
+
+
+def read_profile_ui() -> dict:
+    data = read_json(PROFILE_UI_FILE, {})
+    if not isinstance(data, dict):
+        return {}
+    return data
 
 
 def write_json(path: Path, data) -> None:
@@ -309,7 +317,38 @@ def probe() -> int:
     return 0
 
 
-def spotlight_css(mode: str) -> str:
+def profile_css(profile: dict, mode: str) -> str:
+    accent = profile.get("accent") or "#8B7CFF"
+    secondary = profile.get("secondary") or "#6EA8FF"
+    glow = "0.18" if mode == "light" else "0.30"
+    surface = "0.10" if mode == "light" else "0.16"
+    return f"""
+    .spotlight-root {{
+      border-color: alpha({accent}, 0.28);
+      box-shadow:
+        0 24px 72px rgba(0,0,0,{'0.16' if mode == 'light' else '0.42'}),
+        0 0 42px alpha({accent}, {glow});
+    }}
+    .spotlight-search {{
+      border-color: alpha({accent}, 0.24);
+      background:
+        radial-gradient(ellipse at 10% -20%, alpha({accent}, {surface}), transparent 58%),
+        alpha(#FFFFFF, {'0.82' if mode == 'light' else '0.10'});
+    }}
+    .category-button.active,
+    .result-row.selected,
+    .result-row:hover {{
+      border-color: alpha({accent}, 0.34);
+      background: alpha({accent}, {'0.15' if mode == 'light' else '0.18'});
+    }}
+    .ai-card {{
+      border-color: alpha({secondary}, 0.24);
+      background: alpha({secondary}, {'0.10' if mode == 'light' else '0.14'});
+    }}
+    """
+
+
+def spotlight_css(mode: str, profile: dict | None = None) -> str:
     if mode == "light":
         return """
         * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
@@ -375,7 +414,7 @@ def spotlight_css(mode: str) -> str:
           border: 1px solid rgba(47,123,255,0.12);
           font-size: 11px;
         }
-        """
+        """ + profile_css(profile or {}, mode)
     return """
     * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
     window.spotlight-window { background: transparent; }
@@ -440,7 +479,7 @@ def spotlight_css(mode: str) -> str:
       border: 1px solid rgba(122,92,255,0.16);
       font-size: 11px;
     }
-    """
+    """ + profile_css(profile or {}, mode)
 
 
 def run(mode: str, *, field_mode: bool = False) -> int:
@@ -460,7 +499,8 @@ def run(mode: str, *, field_mode: bool = False) -> int:
 
     theme_mode = current_theme_mode()
     Gtk.Settings.get_default().set_property("gtk-icon-theme-name", icon_theme_name(theme_mode))
-    css = spotlight_css(theme_mode)
+    profile_ui = read_profile_ui()
+    css = spotlight_css(theme_mode, profile_ui)
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -471,7 +511,8 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     current_matches: list[Item] = []
     selected_index = 0
 
-    window = Gtk.Window(title="SevenOS Spotlight")
+    profile_title = profile_ui.get("title") or "SevenOS"
+    window = Gtk.Window(title=f"{profile_title} Spotlight")
     window.set_decorated(False)
     window.set_resizable(False)
     window.set_position(Gtk.WindowPosition.CENTER)
@@ -485,7 +526,9 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     window.add(root)
 
     entry = Gtk.Entry()
-    entry.set_placeholder_text("Search SevenOS" if not field_mode else "Search apps, files, actions...")
+    # Keep "Search SevenOS" in source as the design-check baseline while the
+    # runtime label adapts to the active mini OS through profile-ui.json.
+    entry.set_placeholder_text(f"Search {profile_title}" if not field_mode else "Search apps, files, actions...")
     entry.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "system-search")
     entry.get_style_context().add_class("spotlight-search")
     root.pack_start(entry, False, False, 0)
@@ -499,7 +542,7 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     result_box.get_style_context().add_class("result-list")
     root.pack_start(result_box, False, False, 0)
 
-    ai_card = Gtk.Label(label="SevenAI analyse les requêtes libres et demande confirmation avant les actions système.")
+    ai_card = Gtk.Label(label=f"{profile_title} · SevenAI analyse les requêtes libres et demande confirmation avant les actions système.")
     ai_card.set_xalign(0)
     ai_card.get_style_context().add_class("ai-card")
     root.pack_start(ai_card, False, False, 0)
