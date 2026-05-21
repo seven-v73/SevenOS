@@ -22,6 +22,7 @@ seven platform
 seven mask
 seven dynamic
 seven surfaces
+seven routes
 seven channel
 ```
 
@@ -38,6 +39,7 @@ The contract checks:
 - installer and release freeze gates.
 - dynamic profile/theme/wallpaper/compositor adaptation.
 - public native surfaces for normal-user workflows.
+- user-intent routes that keep workflows SevenOS-first.
 
 ## Public Mask Contract
 
@@ -88,6 +90,22 @@ controls.
 The goal is simple: each common workflow needs a SevenOS-native entrance before
 the user ever has to know about Rofi, Hyprland, pacman, libvirt, systemctl or
 raw shell scripts.
+
+## User Routes Contract
+
+`seven routes` maps human intentions to SevenOS actions and surfaces:
+
+- install software -> SevenStore;
+- change settings -> Settings;
+- search -> Spotlight;
+- switch mini OS -> Profile Center;
+- manage Windows compatibility -> Windows Bridge;
+- repair the system -> Seven Doctor;
+- control windows -> Seven Smart Window System.
+
+This is the autonomy layer above command names. The user should not need to know
+which backend tool is responsible; SevenOS owns the route and exposes the
+backend only as implementation detail.
 
 ## Masking Policy
 

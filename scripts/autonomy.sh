@@ -83,6 +83,7 @@ channel = run_json(["scripts/channel.sh", "json"], timeout=8) or {}
 mask = run_json(["scripts/mask.sh", "json"], timeout=8) or {}
 adaptive = run_json(["scripts/adaptive-ui.sh", "json"], timeout=8) or {}
 surfaces = run_json(["scripts/surfaces.sh", "json"], timeout=8) or {}
+routes = run_json(["scripts/routes.sh", "json"], timeout=8) or {}
 dirty_count = 0
 try:
     dirty = subprocess.run(["git", "status", "--short"], cwd=root, text=True, capture_output=True, check=False, timeout=5)
@@ -137,6 +138,13 @@ checks = [
         "title": "SevenOS public surfaces",
         "detail": f"Surfaces state: {surfaces.get('state', 'unknown')}; score: {surfaces.get('score', 'unknown')}%.",
         "command": "seven surfaces",
+    },
+    {
+        "key": "user-routes",
+        "state": "OK" if routes.get("state") == "routed" else "PART",
+        "title": "SevenOS user routes",
+        "detail": f"Routes state: {routes.get('state', 'unknown')}; score: {routes.get('score', 'unknown')}%.",
+        "command": "seven routes",
     },
     {
         "key": "release-channel",

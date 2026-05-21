@@ -34,6 +34,8 @@ mask.status	System	SevenOS Mask	seven mask	safe	Show whether public SevenOS surf
 mask.doctor	System	Mask Doctor	seven mask doctor	safe	Validate launcher names, installer portal, software surfaces and identity masking.
 surfaces.status	System	Public Surfaces	seven surfaces	safe	Show whether SevenOS native surfaces cover normal-user workflows.
 surfaces.doctor	System	Surfaces Doctor	seven surfaces doctor	safe	Validate Hub, Settings, Store, Files, Reader, Terminal and profile-aware native surfaces.
+routes.status	System	User Routes	seven routes	safe	Show how normal user intentions route to SevenOS surfaces before backend tools.
+routes.doctor	System	Routes Doctor	seven routes doctor	safe	Validate user-intent routing across SevenOS surfaces and action IDs.
 channel.status	System	Release Channel	seven channel	safe	Show whether this workspace is dev, testing or stable from a SevenOS product perspective.
 channel.testing	System	Switch To Testing Channel	seven channel set testing	changes	Mark the current workspace as a SevenOS testing channel without creating a git commit.
 channel.stable	System	Switch To Stable Channel	seven channel set stable	changes	Mark the current workspace as stable when release gates are ready.

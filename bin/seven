@@ -228,6 +228,13 @@ def handle_surfaces(args):
     run_script(args, "scripts/surfaces.sh", *extra)
 
 
+def handle_routes(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/routes.sh", *extra)
+
+
 def handle_channel(args):
     extra = [args.action]
     if args.channel:
@@ -852,6 +859,9 @@ def main():
     surfaces_parser = subparsers.add_parser("surfaces", help="inspect SevenOS public native surfaces")
     surfaces_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     surfaces_parser.add_argument("--json", action="store_true", help="print machine-readable public surface contract")
+    routes_parser = subparsers.add_parser("routes", help="inspect SevenOS user-intent routes")
+    routes_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    routes_parser.add_argument("--json", action="store_true", help="print machine-readable user route contract")
 
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
@@ -1034,6 +1044,8 @@ def main():
         handle_mask(args)
     elif args.command == "surfaces":
         handle_surfaces(args)
+    elif args.command == "routes":
+        handle_routes(args)
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)

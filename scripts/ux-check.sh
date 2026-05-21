@@ -280,6 +280,7 @@ require_executable "scripts/platform.sh"
 require_executable "scripts/channel.sh"
 require_executable "scripts/mask.sh"
 require_executable "scripts/surfaces.sh"
+require_executable "scripts/routes.sh"
 require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/store.sh"
@@ -1677,22 +1678,27 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    "$ROOT_DIR/scripts/mask.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/surfaces.sh" json | grep -q '"schema": "sevenos.surfaces.v1"' &&
    "$ROOT_DIR/scripts/surfaces.sh" doctor >/dev/null &&
+   "$ROOT_DIR/scripts/routes.sh" json | grep -q '"schema": "sevenos.routes.v1"' &&
+   "$ROOT_DIR/scripts/routes.sh" doctor >/dev/null &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-action-runner" --dry-run -- "$ROOT_DIR/bin/seven" status | grep -q 'seven status' &&
    grep -q 'seven autonomy' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven platform' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven channel' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven mask' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven surfaces' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven routes' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q '"autonomy":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"platform":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"channel":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"mask":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"surfaces":' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q '"routes":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q 'SevenOS Distribution Autonomy' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Platform Facade' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Public Mask Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Dynamic OS Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Public Surfaces Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
+   grep -q 'User Routes Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven-action-runner' "$ROOT_DIR/bin/seven-hub-native"; then
   ok "SevenOS exposes an autonomy layer that masks Arch/Hyprland internals"
 else
@@ -1840,6 +1846,7 @@ installer_graphical_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer 
 installer_portal_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-installer" status --json)"
 channel_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" channel --json)"
 surfaces_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" surfaces --json)"
+routes_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" routes --json)"
 installer_open_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open)"
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
@@ -1894,6 +1901,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$installer_portal_json" >/dev/null &&
    python -m json.tool <<<"$channel_json" >/dev/null &&
    python -m json.tool <<<"$surfaces_json" >/dev/null &&
+   python -m json.tool <<<"$routes_json" >/dev/null &&
    python -m json.tool <<<"$packages_plan_json" >/dev/null &&
    python -m json.tool <<<"$adaptive_json" >/dev/null &&
    python -m json.tool <<<"$core_json" >/dev/null &&
@@ -1912,6 +1920,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema": "sevenos.adaptive-ui.v1"' <<<"$adaptive_json" &&
    grep -q '"schema": "sevenos.surfaces.v1"' <<<"$surfaces_json" &&
    grep -q '"state": "productized"' <<<"$surfaces_json" &&
+   grep -q '"schema": "sevenos.routes.v1"' <<<"$routes_json" &&
+   grep -q '"state": "routed"' <<<"$routes_json" &&
    grep -q '"dynamic_inputs"' <<<"$adaptive_json" &&
    grep -q '"profile-ui-bus"' <<<"$adaptive_json" &&
    grep -q '"wallpaper-palette"' <<<"$adaptive_json" &&
@@ -2006,7 +2016,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","platform","mask","surfaces"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","platform","mask","surfaces","routes"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"

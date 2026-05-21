@@ -1375,3 +1375,17 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - `seven autonomy` integre `public-surfaces` comme gate : SevenOS doit avoir des
   entrees natives pour les workflows normaux avant de parler de distribution
   autonome.
+
+## 2026-05-21 - SevenOS user routes contract pass
+
+- Ajout de `seven routes`, contrat qui mappe les intentions utilisateur vers
+  les surfaces SevenOS : installer une app, changer les reglages, chercher,
+  ouvrir les fichiers, lire un document, changer de mini OS, utiliser Windows,
+  reparer le systeme ou controler les fenetres.
+- Chaque route verifie l'action ID, la surface native, l'entree commande et les
+  contrats `mask` + `dynamic`, afin que les workflows restent SevenOS-first.
+- `seven state --json` expose maintenant `routes` pour Hub, Spotlight, Settings
+  et SevenAI.
+- `seven autonomy` integre `user-routes` comme gate : SevenOS ne doit pas
+  seulement avoir des apps natives, il doit aussi router clairement les
+  intentions normales vers ces surfaces.
