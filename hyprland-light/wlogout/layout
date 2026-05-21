@@ -1,0 +1,30 @@
+{
+    "label": "lock",
+    "action": "seven-power lock",
+    "text": "Lock",
+    "keybind": "l"
+}
+{
+    "label": "suspend",
+    "action": "seven-power suspend",
+    "text": "Sleep",
+    "keybind": "s"
+}
+{
+    "label": "logout",
+    "action": "seven-power logout",
+    "text": "Logout",
+    "keybind": "e"
+}
+{
+    "label": "reboot",
+    "action": "seven-power reboot",
+    "text": "Restart",
+    "keybind": "r"
+}
+{
+    "label": "shutdown",
+    "action": "seven-power poweroff",
+    "text": "Shut Down",
+    "keybind": "p"
+}

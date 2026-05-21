@@ -72,6 +72,10 @@ write_command_wrapper() {
   local target_file="$1"
   local source_file="$2"
 
+  if [[ -L "$target_file" ]]; then
+    rm -f "$target_file"
+  fi
+
   {
     printf '#!/usr/bin/env bash\n'
     printf 'export SEVENOS_ROOT=%q\n' "$ROOT_DIR"
@@ -182,7 +186,10 @@ install_user_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
 install_user_command "$ROOT_DIR/bin/seven-waybar-status" seven-waybar-status
 install_user_command "$ROOT_DIR/bin/seven-workspace" seven-workspace
 install_user_command "$ROOT_DIR/bin/seven-window" seven-window
+install_user_command "$ROOT_DIR/bin/seven-window-controls-native" seven-window-controls-native
 install_user_command "$ROOT_DIR/bin/seven-profile-theme" seven-profile-theme
+install_user_command "$ROOT_DIR/scripts/hypr-lua.sh" seven-hypr-lua
+install_user_command "$ROOT_DIR/scripts/hypr-lua-events.sh" seven-hypr-lua-events
 install_user_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_user_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_user_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
@@ -245,6 +252,8 @@ install_system_command "$ROOT_DIR/bin/seven-waybar-status" seven-waybar-status
 install_system_command "$ROOT_DIR/bin/seven-workspace" seven-workspace
 install_system_command "$ROOT_DIR/bin/seven-window" seven-window
 install_system_command "$ROOT_DIR/bin/seven-profile-theme" seven-profile-theme
+install_system_command "$ROOT_DIR/scripts/hypr-lua.sh" seven-hypr-lua
+install_system_command "$ROOT_DIR/scripts/hypr-lua-events.sh" seven-hypr-lua-events
 install_system_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_system_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_system_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant

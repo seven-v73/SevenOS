@@ -64,6 +64,7 @@ swaylock
 swayidle
 brightnessctl
 playerctl
+socat
 ufw
 firejail
 bubblewrap

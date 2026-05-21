@@ -1,0 +1,51 @@
+* {
+  background-image: none;
+  font-family: "SF Pro Display", "Inter", sans-serif;
+}
+
+window {
+  background: rgba(245, 247, 250, 0.42);
+}
+
+button {
+  min-width: 132px;
+  min-height: 112px;
+  margin: 12px;
+  padding: 18px;
+  color: rgba(28, 31, 38, 0.94);
+  background:
+    linear-gradient(135deg, rgba(47, 123, 255, 0.10), rgba(106, 92, 255, 0.08)),
+    rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(28, 31, 38, 0.08);
+  border-radius: 28px;
+  background-repeat: no-repeat;
+  background-position: center 28px;
+  background-size: 34px;
+}
+
+button:hover,
+button:focus {
+  background-color: rgba(47, 123, 255, 0.16);
+  border-color: rgba(47, 123, 255, 0.34);
+  color: #1C1F26;
+}
+
+#lock {
+  background-image: image(url("/usr/share/wlogout/icons/lock.png"));
+}
+
+#suspend {
+  background-image: image(url("/usr/share/wlogout/icons/suspend.png"));
+}
+
+#logout {
+  background-image: image(url("/usr/share/wlogout/icons/logout.png"));
+}
+
+#reboot {
+  background-image: image(url("/usr/share/wlogout/icons/reboot.png"));
+}
+
+#shutdown {
+  background-image: image(url("/usr/share/wlogout/icons/shutdown.png"));
+}

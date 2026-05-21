@@ -1,0 +1,72 @@
+* {
+  font-family: "SF Pro Display", "Inter", sans-serif;
+  font-size: 13px;
+  color: rgba(28, 31, 38, 0.94);
+}
+
+.control-center,
+.notification-row .notification-background {
+  background:
+    linear-gradient(135deg, rgba(47, 123, 255, 0.10), rgba(106, 92, 255, 0.08)),
+    rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(28, 31, 38, 0.08);
+  border-radius: 24px;
+}
+
+.control-center {
+  padding: 12px;
+}
+
+.notification-row .notification-background {
+  padding: 14px;
+  margin: 8px;
+}
+
+.notification {
+  background: transparent;
+  border-radius: 20px;
+}
+
+.notification-content {
+  margin: 8px;
+}
+
+.summary {
+  font-weight: 500;
+}
+
+.time,
+.body {
+  color: rgba(56, 65, 82, 0.70);
+}
+
+.close-button {
+  background: rgba(28, 31, 38, 0.06);
+  border-radius: 999px;
+  color: rgba(28, 31, 38, 0.88);
+}
+
+.control-center-clear-all,
+.widget-dnd > switch {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(28, 31, 38, 0.08);
+  border-radius: 999px;
+}
+
+.control-center-clear-all:hover,
+.close-button:hover {
+  background: rgba(47, 123, 255, 0.14);
+}
+
+.widget-title {
+  padding: 10px 12px 8px;
+}
+
+.widget-title > label {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.widget-dnd {
+  padding: 8px 12px 12px;
+}

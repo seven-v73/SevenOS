@@ -16,6 +16,7 @@ Usage:
   ./scripts/hypr-ecosystem.sh status
   ./scripts/hypr-ecosystem.sh install [--yes]
   ./scripts/hypr-ecosystem.sh apply
+  ./scripts/hypr-ecosystem.sh lua <status|profiles|plan|audit|generate|apply|doctor>
 
 Installs and configures the premium Hyprland layer: hyprpaper, dynamic
 wallpaper palette generation, hyprsunset, hyprpicker and system dashboard
@@ -160,9 +161,10 @@ apply() {
 }
 
 case "${1:-status}" in
-  status) status ;;
-  install) install_all "${2:-}" ;;
-  apply) apply ;;
-  -h|--help|help) usage ;;
-  *) log_error "Unknown Hypr ecosystem action: $1"; usage; exit 1 ;;
+status) status ;;
+install) install_all "${2:-}" ;;
+apply) apply ;;
+lua) shift; "$ROOT_DIR/scripts/hypr-lua.sh" "$@" ;;
+-h|--help|help) usage ;;
+*) log_error "Unknown Hypr ecosystem action: $1"; usage; exit 1 ;;
 esac

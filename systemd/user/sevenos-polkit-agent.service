@@ -1,0 +1,15 @@
+[Unit]
+Description=SevenOS Polkit authentication agent
+Documentation=https://github.com/seven-v73/SevenOS
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/env sh -lc 'pkill -u "$USER" -f "polkit-.*authentication-agent|lxqt-policykit-agent|mate-polkit" 2>/dev/null || true'
+ExecStart=/usr/bin/env sh -lc 'if [ -x /usr/lib/polkit-kde-authentication-agent-1 ]; then exec /usr/lib/polkit-kde-authentication-agent-1; elif [ -x /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1 ]; then exec /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1; elif command -v lxqt-policykit-agent >/dev/null 2>&1; then exec lxqt-policykit-agent; elif command -v mate-polkit >/dev/null 2>&1; then exec mate-polkit; else echo "No Polkit authentication agent found"; exit 1; fi'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target
