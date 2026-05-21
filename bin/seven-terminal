@@ -144,6 +144,10 @@ profile_overrides() {
   esac
 }
 
+native_enabled() {
+  [[ "${SEVENOS_TERMINAL_NATIVE:-1}" != "0" ]]
+}
+
 ensure_config() {
   local profile="$1"
   local active_config repo_config
@@ -183,11 +187,15 @@ open_terminal() {
   native="$ROOT_DIR/bin/seven-terminal-native"
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
-    printf 'DRY-RUN > Terminal > Open %s > kitty-default > %s > %sx%s floating centered\n' "$profile" "$config" "$width" "$height"
+    if native_enabled && [[ -x "$native" ]]; then
+      printf 'DRY-RUN > Terminal > Open %s > native-vte > real traffic lights > %sx%s floating centered\n' "$profile" "$width" "$height"
+    else
+      printf 'DRY-RUN > Terminal > Open %s > kitty-default > %s > %sx%s floating centered\n' "$profile" "$config" "$width" "$height"
+    fi
     return 0
   fi
 
-  if [[ "${SEVENOS_TERMINAL_NATIVE:-0}" == "1" && -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
+  if native_enabled && [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
     SEVENOS_TERMINAL_MODE="$profile" setsid -f "$native" --profile "$profile" "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
     place_window SevenTerminalNative "$width" "$height" "$title"
     return 0
@@ -268,7 +276,7 @@ status() {
   printf 'light:   %s\n' "$(ensure_config light)"
   printf 'modes:   forge cyber focus admin\n'
   printf 'default: %s\n' "$KITTY_CONFIG_DIR/kitty.conf"
-  printf 'backend: kitty default; set SEVENOS_TERMINAL_NATIVE=1 for GTK/VTE native\n'
+  printf 'backend: native VTE default with Kitty fallback; set SEVENOS_TERMINAL_NATIVE=0 for Kitty\n'
   if [[ -x "$ROOT_DIR/bin/seven-terminal-native" ]] && "$ROOT_DIR/bin/seven-terminal-native" --probe >/dev/null 2>&1; then
     printf 'native:  OK - GTK/VTE traffic-light terminal available\n'
   else

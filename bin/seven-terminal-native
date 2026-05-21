@@ -61,8 +61,17 @@ def resolve_root() -> Path:
     return Path.home()
 
 
+ROOT_DIR = resolve_root()
+sys.path.insert(0, str(ROOT_DIR / "scripts"))
+try:
+    from seven_i18n import tr_text  # noqa: E402
+except Exception:  # pragma: no cover
+    def tr_text(text: str, **values: object) -> str:
+        return text.format(**values) if values else text
+
+
 def resolve_shell() -> Path:
-    root = resolve_root()
+    root = ROOT_DIR
     for candidate in (root / "bin/seven-terminal-shell", Path.home() / ".local/bin/seven-terminal-shell"):
         if candidate.exists():
             return candidate
@@ -244,20 +253,30 @@ def run_terminal(profile: str, command: list[str]) -> int:
     }}
     window.seven-window {{
       background: {theme['window']};
-      border-radius: 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
     }}
     .seven-titlebar {{
-      min-height: 36px;
-      padding: 0 13px;
-      background: {theme['titlebar']};
+      min-height: 42px;
+      padding: 0 14px;
+      background: linear-gradient(180deg, alpha({theme['titlebar']}, 0.98), alpha({theme['window']}, 0.94));
       border-bottom: 1px solid {theme['titlebar_border']};
     }}
     .seven-title {{
       color: {theme['foreground']};
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 600 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      letter-spacing: 0;
+    }}
+    .seven-profile-pill {{
+      color: {theme['muted']};
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 999px;
+      padding: 3px 9px;
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }}
     .seven-terminal-frame {{
-      padding: 12px 14px 14px 14px;
+      padding: 14px 16px 16px 16px;
       background: {theme['terminal']};
     }}
     .seven-terminal {{
@@ -266,8 +285,8 @@ def run_terminal(profile: str, command: list[str]) -> int:
       color: {theme['foreground']};
     }}
     .traffic {{
-      min-width: 15px;
-      min-height: 15px;
+      min-width: 14px;
+      min-height: 14px;
       border-radius: 999px;
       padding: 0;
       margin: 0 9px 0 0;
@@ -298,9 +317,9 @@ def run_terminal(profile: str, command: list[str]) -> int:
     titlebar.get_style_context().add_class("seven-titlebar")
     outer.pack_start(titlebar, False, False, 0)
 
-    close_btn = traffic_button("close", "Close", lambda: window.close())
-    min_btn = traffic_button("min", "Minimize", lambda: minimize_window(window))
-    max_btn = traffic_button("max", "Tile / Float", lambda: toggle_zoom_or_tile(window))
+    close_btn = traffic_button("close", tr_text("Close"), lambda: window.close())
+    min_btn = traffic_button("min", tr_text("Minimize"), lambda: minimize_window(window))
+    max_btn = traffic_button("max", tr_text("Tile / Float"), lambda: toggle_zoom_or_tile(window))
     titlebar.pack_start(close_btn, False, False, 0)
     titlebar.pack_start(min_btn, False, False, 0)
     titlebar.pack_start(max_btn, False, False, 0)
@@ -309,6 +328,11 @@ def run_terminal(profile: str, command: list[str]) -> int:
     title_label.get_style_context().add_class("seven-title")
     title_label.set_hexpand(True)
     titlebar.pack_start(title_label, True, True, 0)
+
+    profile_pill = Gtk.Label(label=profile.upper())
+    profile_pill.get_style_context().add_class("seven-profile-pill")
+    titlebar.pack_start(profile_pill, False, False, 10)
+
     spacer = Gtk.Box()
     spacer.set_size_request(51, 1)
     titlebar.pack_start(spacer, False, False, 0)
@@ -414,10 +438,10 @@ def show_terminal_menu(terminal, event) -> bool:
 
     menu = Gtk.Menu()
     entries = (
-        ("Copy", lambda *_: copy_terminal_selection(terminal)),
-        ("Paste", lambda *_: terminal.paste_clipboard()),
-        ("Select All", lambda *_: terminal.select_all()),
-        ("Clear", lambda *_: terminal.reset(True, True)),
+        (tr_text("Copy"), lambda *_: copy_terminal_selection(terminal)),
+        (tr_text("Paste"), lambda *_: terminal.paste_clipboard()),
+        (tr_text("Select All"), lambda *_: terminal.select_all()),
+        (tr_text("Clear"), lambda *_: terminal.reset(True, True)),
     )
     for label, callback in entries:
         item = Gtk.MenuItem(label=label)
