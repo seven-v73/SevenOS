@@ -1360,3 +1360,18 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - `seven autonomy` integre `dynamic-adaptation` comme gate de distribution
   autonome : SevenOS doit changer de comportement et d'identite selon le mini OS,
   le contexte et le theme.
+
+## 2026-05-21 - SevenOS public surfaces contract pass
+
+- Ajout de `seven surfaces`, inventaire produit des surfaces natives visibles :
+  Hub, Settings, Launchpad, Spotlight, Quick Settings, Files, Store, Reader,
+  Terminal, Profile Center, Mini OS Center, Shield, Windows Bridge, Doctor,
+  notifications et controles de fenetres.
+- Le contrat verifie les executables natifs, les entrees desktop, les actions
+  Hub/Spotlight et la compatibilite avec `seven mask` + `seven dynamic`.
+- `seven state --json` expose maintenant `surfaces`, afin que Hub et Settings
+  puissent afficher une carte de couverture produit sans relancer des checks
+  disperses.
+- `seven autonomy` integre `public-surfaces` comme gate : SevenOS doit avoir des
+  entrees natives pour les workflows normaux avant de parler de distribution
+  autonome.

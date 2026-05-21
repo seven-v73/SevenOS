@@ -32,10 +32,14 @@ platform.status	System	SevenOS Platform	seven platform	safe	Show SevenOS public 
 platform.doctor	System	Platform Doctor	seven platform doctor	safe	Validate the SevenOS platform facade.
 mask.status	System	SevenOS Mask	seven mask	safe	Show whether public SevenOS surfaces present SevenOS before backend details.
 mask.doctor	System	Mask Doctor	seven mask doctor	safe	Validate launcher names, installer portal, software surfaces and identity masking.
+surfaces.status	System	Public Surfaces	seven surfaces	safe	Show whether SevenOS native surfaces cover normal-user workflows.
+surfaces.doctor	System	Surfaces Doctor	seven surfaces doctor	safe	Validate Hub, Settings, Store, Files, Reader, Terminal and profile-aware native surfaces.
 channel.status	System	Release Channel	seven channel	safe	Show whether this workspace is dev, testing or stable from a SevenOS product perspective.
 channel.testing	System	Switch To Testing Channel	seven channel set testing	changes	Mark the current workspace as a SevenOS testing channel without creating a git commit.
 channel.stable	System	Switch To Stable Channel	seven channel set stable	changes	Mark the current workspace as stable when release gates are ready.
 apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS application library.
+spotlight.open	Desktop	Open Spotlight	seven-spotlight	safe	Open SevenOS Spotlight search and action surface.
+launchpad.open	Desktop	Open Launchpad	seven-launchpad-native	safe	Open the SevenOS profile-aware application grid.
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
 files.downloads	Desktop	Downloads	seven-files downloads	safe	Open Downloads in Seven Files.
 files.projects	Desktop	Projects	seven-files projects	safe	Open Projects in Seven Files.
@@ -45,6 +49,7 @@ reader.open	Desktop	Open Reader	seven-reader	safe	Open the Seven Reader immersiv
 reader.library	Desktop	Reader Library	seven-reader library	safe	Open the Seven Reader visual library.
 reader.status	System	Reader Status	seven-reader --json	safe	Show Seven Reader formats, modes and local state.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
+notifications.open	Desktop	Open Notifications	seven-shell-panel notifications	safe	Open the SevenOS notification center.
 terminal.open	Desktop	Open Terminal	seven-terminal	safe	Open the active mini OS terminal.
 terminal.forge	Desktop	Forge Terminal	seven-terminal forge	safe	Open a SevenOS terminal tuned for development, Git and builds.
 terminal.cyber	Desktop	Cyber Terminal	seven-terminal cyber	safe	Open a SevenOS terminal tuned for logs, diagnostics and security work.
@@ -52,6 +57,8 @@ terminal.palette	Desktop	Terminal Actions	seven-terminal-palette	safe	Open Seven
 recorder.area	Desktop	Record Area	seven-recorder area	safe	Select an area and start a smooth SevenOS screen recording.
 recorder.full	Desktop	Record Screen	seven-recorder full	safe	Start a full-screen SevenOS recording.
 recorder.stop	Desktop	Stop Recording	seven-recorder stop	safe	Stop the active SevenOS recording and copy the saved path.
+window.toggle-float	Desktop	Toggle Floating	seven window toggle-float	safe	Toggle the active window between tiled and floating mode.
+window.smart-maximize	Desktop	Smart Maximize	seven window smart-maximize	safe	Apply SevenOS smart maximize to the active window.
 settings.open	Desktop	Open Settings	seven-settings	safe	Open the native SevenOS Settings app for wallpaper, displays, network, sound, keyboard, security, profiles and system.
 welcome.open	System	Welcome	seven welcome	safe	Show the SevenOS onboarding overview.
 welcome.status	System	First-Run Status	seven welcome status	safe	Check whether this user session is really SevenOS.

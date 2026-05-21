@@ -204,10 +204,12 @@ json_to_file "$STATE_TMP/platform.json" "$ROOT_DIR/scripts/platform.sh" json &
 pid_platform=$!
 json_to_file "$STATE_TMP/mask.json" "$ROOT_DIR/scripts/mask.sh" json &
 pid_mask=$!
+json_to_file "$STATE_TMP/surfaces.json" "$ROOT_DIR/scripts/surfaces.sh" json &
+pid_surfaces=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" || true
+  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -377,6 +379,9 @@ cat "$STATE_TMP/platform.json"
 printf ','
 printf '"mask":'
 cat "$STATE_TMP/mask.json"
+printf ','
+printf '"surfaces":'
+cat "$STATE_TMP/surfaces.json"
 printf ','
 printf '"native_hub":{'
 if [[ -x "$ROOT_DIR/bin/seven-hub-native" ]]; then

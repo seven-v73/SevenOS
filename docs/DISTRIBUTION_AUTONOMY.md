@@ -21,6 +21,7 @@ seven autonomy doctor
 seven platform
 seven mask
 seven dynamic
+seven surfaces
 seven channel
 ```
 
@@ -36,6 +37,7 @@ The contract checks:
 - SevenDaemon service path for future policy execution;
 - installer and release freeze gates.
 - dynamic profile/theme/wallpaper/compositor adaptation.
+- public native surfaces for normal-user workflows.
 
 ## Public Mask Contract
 
@@ -75,6 +77,17 @@ It checks that these signals move together:
 This is what prevents SevenOS from feeling like a static theme. A profile change
 must have visible runtime consequences across shell, launchers, settings,
 terminal, wallpaper and window behavior.
+
+## Public Surfaces Contract
+
+`seven surfaces` checks the visible product layer: Hub, Settings, Launchpad,
+Spotlight, Quick Settings, Files, Store, Reader, Terminal, Profile Center, Mini
+OS Center, Shield Center, Windows Bridge, Doctor, notifications and window
+controls.
+
+The goal is simple: each common workflow needs a SevenOS-native entrance before
+the user ever has to know about Rofi, Hyprland, pacman, libvirt, systemctl or
+raw shell scripts.
 
 ## Masking Policy
 

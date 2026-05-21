@@ -82,6 +82,7 @@ platform = run_json(["scripts/platform.sh", "json"], timeout=8) or {}
 channel = run_json(["scripts/channel.sh", "json"], timeout=8) or {}
 mask = run_json(["scripts/mask.sh", "json"], timeout=8) or {}
 adaptive = run_json(["scripts/adaptive-ui.sh", "json"], timeout=8) or {}
+surfaces = run_json(["scripts/surfaces.sh", "json"], timeout=8) or {}
 dirty_count = 0
 try:
     dirty = subprocess.run(["git", "status", "--short"], cwd=root, text=True, capture_output=True, check=False, timeout=5)
@@ -129,6 +130,13 @@ checks = [
         "title": "SevenOS dynamic adaptation",
         "detail": f"Adaptive state: {adaptive.get('state', 'unknown')}; score: {adaptive.get('percent', 'unknown')}%.",
         "command": "seven dynamic",
+    },
+    {
+        "key": "public-surfaces",
+        "state": "OK" if surfaces.get("state") == "productized" else "PART",
+        "title": "SevenOS public surfaces",
+        "detail": f"Surfaces state: {surfaces.get('state', 'unknown')}; score: {surfaces.get('score', 'unknown')}%.",
+        "command": "seven surfaces",
     },
     {
         "key": "release-channel",

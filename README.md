@@ -48,6 +48,8 @@ It is built around foundation pillars:
 - `seven dynamic` as the adaptive OS contract that verifies profile UI,
   semantic context, theme runtime, wallpaper palette and compositor accents move
   together.
+- `seven surfaces` as the public surface contract that verifies normal workflows
+  have SevenOS-native entrypoints before terminal or backend fallbacks.
 - `seven channel` as the product release channel contract, so Hub and Settings
   can say dev/testing/stable before exposing branch, commit and dirty worktree
   details.
@@ -92,6 +94,8 @@ What is already testable:
   SevenOS-first surface from a backend-visible Arch/Hyprland workflow.
 - Dynamic adaptation checks through `seven dynamic`, linking profile UI,
   wallpaper colors, theme runtime and the Hyprland dynamic layer.
+- Public surface checks through `seven surfaces`, covering Hub, Settings, Store,
+  Files, Reader, Terminal, Launchpad, Spotlight, Shield, Windows and Doctor.
 - Release channel/status checks through `seven channel`, `seven release` and
   `seven-installer status --json`.
 - Calamares runtime source checks through `seven installer runtime`, keeping
