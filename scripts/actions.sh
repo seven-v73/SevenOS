@@ -25,6 +25,14 @@ action_rows() {
 hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
 hub.status	Desktop	Hub Status	seven hub status	safe	Show whether Seven Hub is ready as the default product control surface.
 hub.plan	Desktop	Hub Product Plan	seven hub plan	safe	Show missing Hub productization work before changing the desktop.
+autonomy.status	System	SevenOS Autonomy	seven autonomy	safe	Show whether SevenOS is presented as an autonomous OS layer instead of exposed Arch/Hyprland internals.
+autonomy.plan	System	Autonomy Plan	seven autonomy plan	safe	Show the remaining work to mask backend details behind SevenOS surfaces.
+autonomy.doctor	System	Autonomy Doctor	seven autonomy doctor	safe	Validate the SevenOS autonomy contract.
+platform.status	System	SevenOS Platform	seven platform	safe	Show SevenOS public platform layers and their hidden technical backends.
+platform.doctor	System	Platform Doctor	seven platform doctor	safe	Validate the SevenOS platform facade.
+channel.status	System	Release Channel	seven channel	safe	Show whether this workspace is dev, testing or stable from a SevenOS product perspective.
+channel.testing	System	Switch To Testing Channel	seven channel set testing	changes	Mark the current workspace as a SevenOS testing channel without creating a git commit.
+channel.stable	System	Switch To Stable Channel	seven channel set stable	changes	Mark the current workspace as stable when release gates are ready.
 apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS application library.
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
 files.downloads	Desktop	Downloads	seven-files downloads	safe	Open Downloads in Seven Files.
@@ -35,7 +43,7 @@ reader.open	Desktop	Open Reader	seven-reader	safe	Open the Seven Reader immersiv
 reader.library	Desktop	Reader Library	seven-reader library	safe	Open the Seven Reader visual library.
 reader.status	System	Reader Status	seven-reader --json	safe	Show Seven Reader formats, modes and local state.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
-terminal.open	Desktop	Open Terminal	seven-terminal classic	safe	Open the default SevenOS adaptive terminal.
+terminal.open	Desktop	Open Terminal	seven-terminal	safe	Open the active mini OS terminal.
 terminal.forge	Desktop	Forge Terminal	seven-terminal forge	safe	Open a SevenOS terminal tuned for development, Git and builds.
 terminal.cyber	Desktop	Cyber Terminal	seven-terminal cyber	safe	Open a SevenOS terminal tuned for logs, diagnostics and security work.
 terminal.palette	Desktop	Terminal Actions	seven-terminal-palette	safe	Open Seven Terminal quick actions for history, diagnosis and SevenAI help.
@@ -94,28 +102,42 @@ profile.guide	Profiles	Profile Guide	seven profile guide	safe	Show recommended a
 profile.apps	Profiles	Profile Apps	seven profile apps	safe	Show apps and launch commands for the active profile.
 profile.gaps	Profiles	Profile Gaps	seven profile gaps	safe	Show incomplete profile packages, apps and next actions.
 profile.plan	Profiles	Profile Plan	seven profile plan	safe	Show prioritized profile completion plan.
+profile.aliases	Profiles	Profile Aliases	seven profile aliases	safe	Show retired profile aliases and their active replacements.
+profile.migrate_aliases	Profiles	Migrate Profile Aliases	seven profile migrate-aliases --apply	changes	Rewrite stale local state from retired profile aliases to active mini OS names.
+profile.isolation	Profiles	Profile Isolation	seven profile isolation status	safe	Show active packages, quiet packages, services and strict app-data boundaries.
+profile.strict.active	Profiles	Strict Active Runtime	seven-profile-run --json	safe	Show the strict execution boundary for the active mini OS.
+profile.strict.manifest	Profiles	Runtime Manifest	seven-profile-run --manifest	safe	Show the full runtime manifest for the active mini OS.
+profile.strict.workspace	Profiles	Strict Workspace Shell	seven-profile-run --container --workspace . sh	packages	Open a strict shell for the active mini OS with only the current folder mounted as workspace.
+profile.strict.profile_workspace	Profiles	Strict Profile Workspace	seven-profile-run --container --workspace-profile sh	packages	Open a strict shell for the active mini OS with its default workspace mounted.
+profile.strict.ephemeral	Profiles	Ephemeral Strict Shell	seven-profile-run --ephemeral sh	packages	Open a strict shell with temporary HOME, cache and data removed after exit.
+profile.strict.equinox	Profiles	Strict Equinox Shell	seven profile exec equinox --container sh	packages	Open an Equinox shell with isolated HOME, cache and data.
+profile.strict.baobab	Profiles	Strict Baobab Shell	seven profile exec baobab --container sh	packages	Open a Baobab shell with isolated HOME, cache and data.
+profile.strict.forge	Profiles	Strict Forge Shell	seven profile exec forge --container sh	packages	Open a Forge shell with isolated HOME, cache and data.
+profile.strict.shield	Profiles	Strict Shield Shell	seven profile exec shield --container sh	packages	Open a Shield shell with isolated HOME, cache and data.
+profile.strict.shield_ephemeral	Profiles	Ephemeral Shield Shell	seven profile exec shield --ephemeral sh	packages	Open a disposable Shield shell for labs, OSINT or risky investigation.
+profile.strict.studio	Profiles	Strict Studio Shell	seven profile exec studio --container sh	packages	Open a Studio shell with isolated HOME, cache and data.
+profile.strict.windows	Profiles	Strict Windows Shell	seven profile exec windows --container sh	packages	Open a Windows Bridge shell with isolated HOME, cache and data.
+profile.strict.pulse	Profiles	Strict Pulse Shell	seven profile exec pulse --container sh	packages	Open a Pulse shell with isolated HOME, cache and data.
 profile.bootstrap.active	Profiles	Bootstrap Active Profile	seven profile bootstrap	safe	Create the manifest, checklist and launcher for the active profile workspace.
 profile.bootstrap.all	Profiles	Bootstrap All Profiles	seven profile bootstrap all	safe	Create workspace manifests, checklists and launchers for every SevenOS profile.
 profile.open	Profiles	Open Active Workspace	seven profile open	safe	Open the current profile workspace.
 profile.activate.equinox	Profiles	Activate Equinox	seven profile activate equinox	changes	Switch to the balanced general SevenOS mini OS.
 profile.activate.baobab	Profiles	Activate Baobab	seven profile activate baobab	changes	Switch to the African culture and learning mini OS.
-profile.activate.forge	Profiles	Activate Forge	seven profile activate forge	changes	Switch to the developer mini OS.
+profile.activate.forge	Profiles	Activate Forge DevOps	seven profile activate forge	changes	Switch to the development, containers and deployment mini OS.
 profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch to the cybersecurity mini OS.
 profile.activate.studio	Profiles	Activate Studio	seven profile activate studio	changes	Switch to the creator mini OS.
 profile.activate.windows	Profiles	Activate Windows	seven profile activate windows	changes	Switch to the Windows Bridge VM-first mini OS.
-profile.activate.horizon	Profiles	Activate Horizon	seven profile activate horizon	changes	Switch to the cloud/server mini OS.
 profile.activate.pulse	Profiles	Activate Pulse	seven profile activate pulse	changes	Switch to the Linux gaming mini OS.
 runtime.status	Profiles	Runtime Status	seven runtime status	safe	Show the active SevenOS layered autonomous runtime without changing resources.
-runtime.plan	Profiles	Runtime Fusion Plan	seven runtime plan equinox forge shield horizon pulse	safe	Preview Equinox with controlled capability fragments from multiple profiles.
+runtime.plan	Profiles	Runtime Fusion Plan	seven runtime plan equinox forge shield studio pulse	safe	Preview Equinox with controlled capability fragments from multiple profiles.
 runtime.capabilities	Profiles	Runtime Capabilities	seven runtime capabilities	safe	List profile capabilities that can be injected into a composite runtime.
 runtime.doctor	Profiles	Runtime Doctor	seven runtime doctor	safe	Check cgroups, scheduler, context, zram and future checkpoint hooks for runtime orchestration.
 profile.equinox	Profiles	Install Equinox	seven profile install equinox	packages	Install the balanced global SevenOS profile.
 profile.baobab	Profiles	Install Baobab	seven profile install baobab	packages	Install the cultural SevenOS profile.
-profile.forge	Profiles	Install Forge	seven profile install forge	packages	Install the developer mini OS stack.
+profile.forge	Profiles	Install Forge DevOps	seven profile install forge	packages	Install the development, containers and deployment mini OS stack.
 profile.shield	Profiles	Install Shield	seven profile install shield	packages	Install the cybersecurity mini OS stack.
 profile.studio	Profiles	Install Studio	seven profile install studio	packages	Install the creator mini OS stack.
 profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install the Windows Bridge VM-first compatibility stack.
-profile.horizon	Profiles	Install Horizon	seven profile install horizon	packages	Install the cloud/server mini OS stack.
 profile.pulse	Profiles	Install Pulse	seven profile install pulse	packages	Install the Linux gaming mini OS stack.
 security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, sandbox and cyber tooling.
 security.dashboard	Security	Shield Control	seven shield dashboard	safe	Open the native Shield workspace dashboard.
@@ -139,16 +161,25 @@ security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset rev
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
 windows.plan	Windows	Windows Plan	seven windows plan	safe	Show prioritized Windows Mode setup actions.
 windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Bottles, Wine and KVM Windows paths.
+windows.aur_helpers	Windows	Install AUR Helpers	./install.sh aur-helpers --yes	packages	Install yay and paru for SevenOS AUR-backed Windows helpers.
 windows.catalog	Windows	Windows App Catalog	seven windows catalog	safe	List app-first Windows workflows and preferred engines.
 windows.resolve.photoshop	Windows	Resolve Photoshop	seven windows resolve photoshop	safe	Show whether Photoshop should use Bottles, Wine or VM fallback.
 windows.prepare.office	Windows	Prepare Office	seven windows prepare office	changes	Prepare a dedicated Microsoft Office Wine prefix once and remember when it is ready.
 windows.diagnose.office	Windows	Diagnose Office	seven windows diagnose OfficeSetup.exe	safe	Explain Office installer, Click-to-Run and Wine crashes in human language.
 windows.run.photoshop	Windows	Run Photoshop	seven run photoshop	safe	Open Photoshop through the Windows App Layer when configured.
+windows.enter	Windows	Enter Windows Bridge	seven windows enter	changes	Start Windows Bridge, fix the VM network and open the console.
+windows.leave	Windows	Leave Windows Bridge	seven windows leave	changes	Save or stop the Windows VM to free resources when leaving the mini OS.
+windows.sync	Windows	Sync Windows Bridge	seven windows sync	changes	Reconcile the Windows VM state with the active SevenOS mini OS.
+windows.bridge_status	Windows	Windows Bridge Runtime	seven windows bridge-status	safe	Show whether the active profile, VM, console and watchdog are synchronized.
 windows.open	Windows	Open Windows Mode	seven windows open	safe	Open Bottles or Virt Manager depending on what is available.
 windows.apps	Windows	Windows Apps	seven windows apps	safe	Open Bottles for Windows applications.
 windows.vm	Windows	Windows VM	seven windows vm	safe	Open Virt Manager for the Windows VM.
+windows.sources	Windows	Windows Sources	seven windows sources	safe	Explain the legal Windows media sources used by SevenOS.
+windows.provision	Windows	Provision Windows	seven windows provision	safe	Prepare the local Windows Bridge media and qcow2 provisioning flow.
+windows.virtio	Windows	Download VirtIO	seven windows virtio	changes	Fetch VirtIO driver media for the Windows VM.
 windows.create	Windows	Create Windows VM	seven windows create	packages	Start the guided Windows VM creation command.
 windows.start	Windows	Start Windows VM	seven windows start	changes	Start the SevenOS Windows virtual machine.
+windows.fix_network	Windows	Fix Windows VM Network	seven windows fix-network	changes	Attach a Windows-friendly e1000e network card to the VM.
 server.status	Server	Server Status	seven server status	safe	Check the local SevenOS API service.
 server.plan	Server	Server Plan	seven server plan	safe	Show prioritized Seven Server backend actions.
 server.install	Server	Install Server Service	seven server install-user-service	changes	Install the local SevenOS API user service.
@@ -158,6 +189,7 @@ installer.status	Installer	Installer Status	seven installer status	safe	Check Ca
 installer.plan	Installer	Installer Plan	seven installer plan	safe	Show prioritized installer and ISO actions.
 installer.release	Installer	Installer Release Readiness	seven installer release	safe	Show public-ISO release readiness, required checks and graphical installer gap.
 installer.graphical	Installer	Graphical Installer Route	seven installer graphical	safe	Show the Calamares graphical installer route, launcher and live ISO entrypoint readiness.
+installer.portal	Installer	Installer Portal	seven-installer portal	safe	Show the user-facing SevenOS installer portal and safe route for this machine.
 installer.guide	Installer	Installer Guide	seven installer guide	safe	Show the normal-user install path SevenOS exposes today.
 installer.install	Installer	Install Installer Tools	seven installer install	packages	Install installer foundation packages.
 installer.iso	Installer	Preview ISO Build	./install.sh iso --dry-run	safe	Preview the SevenOS ISO build path.
@@ -201,7 +233,6 @@ sevenpkg.forge	Apps	Install Forge Bundle	sevenpkg install forge	packages	Install
 sevenpkg.shield	Apps	Install Shield Bundle	sevenpkg install shield	packages	Install the cybersecurity software bundle.
 sevenpkg.studio	Apps	Install Studio Bundle	sevenpkg install studio	packages	Install the creative production software bundle.
 sevenpkg.windows	Apps	Install Windows Bundle	sevenpkg install windows	packages	Install the Windows Bridge VM-first compatibility bundle.
-sevenpkg.horizon	Apps	Install Horizon Bundle	sevenpkg install horizon	packages	Install the server and deployment software bundle.
 sevenpkg.pulse	Apps	Install Pulse Bundle	sevenpkg install pulse	packages	Install the Linux gaming software bundle.
 sevenpkg.griot	Apps	Install Griot Bundle	sevenpkg install griot	packages	Install the documentation and knowledge software bundle.
 ecosystem.status	Ecosystem	Ecosystem Map	seven ecosystem	safe	Show modules and maturity states.

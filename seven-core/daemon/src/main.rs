@@ -1770,6 +1770,23 @@ fn installer_status_items(root: &Path) -> (Vec<Value>, Vec<Value>) {
             "iso-packages",
             file_state(root, "archiso/profile/packages.x86_64"),
         ),
+        installer_tooling_item("graphical-launcher", file_state(root, "bin/seven-installer")),
+        installer_tooling_item(
+            "installer-portal",
+            file_state(root, "bin/seven-installer"),
+        ),
+        installer_tooling_item(
+            "live-desktop-entry",
+            file_contains_state(
+                root,
+                "archiso/profile/airootfs/usr/share/applications/seven-installer.desktop",
+                "Exec=seven-installer",
+            ),
+        ),
+        installer_tooling_item(
+            "calamares-branding",
+            file_state(root, "installer/calamares/branding/sevenos/branding.desc"),
+        ),
     ];
     (tooling, foundation)
 }
@@ -1822,6 +1839,38 @@ fn installer_release_checks(root: &Path, tooling: &[Value], foundation: &[Value]
             "required": true,
             "title": "SevenOS base install hook",
             "command": "seven installer doctor",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "graphical-launcher",
+            "state": item_state(foundation, "graphical-launcher"),
+            "required": true,
+            "title": "SevenOS graphical installer launcher",
+            "command": "seven installer graphical",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "installer-portal",
+            "state": item_state(foundation, "installer-portal"),
+            "required": true,
+            "title": "SevenOS installer portal contract",
+            "command": "seven-installer status --json",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "live-desktop-entry",
+            "state": item_state(foundation, "live-desktop-entry"),
+            "required": true,
+            "title": "Live ISO installer desktop entry",
+            "command": "seven installer graphical",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "calamares-branding",
+            "state": item_state(foundation, "calamares-branding"),
+            "required": true,
+            "title": "SevenOS Calamares branding",
+            "command": "seven installer graphical",
             "writer": "seven-daemon",
         }),
         json!({
@@ -1911,6 +1960,7 @@ fn installer_release_json(root: &Path, tooling: &[Value], foundation: &[Value]) 
         "optional_ready": optional_ready,
         "optional_total": optional_total,
         "checks": checks,
+        "portal": "seven-installer status --json",
         "runtime": "seven-daemon",
         "writer": "seven-daemon",
     })
@@ -3298,22 +3348,76 @@ fn shield_workspace_state() -> &'static str {
         .unwrap_or_else(|_| home_dir().join("ShieldLab"));
     let state_dir = workspace.join(".sevenos");
     let manifest = state_dir.join("shield.json");
+    let persona = state_dir.join("persona.json");
     let scope = state_dir.join("scope.json");
+    let network_guard = state_dir.join("network-guard.json");
+    let evidence_index = state_dir.join("evidence-index.json");
     let checklist = state_dir.join("SHIELD_CHECKLIST.md");
     let sandboxes = state_dir.join("SANDBOXES.md");
     let secure_browser = state_dir.join("launchers/secure-browser.sh");
     let network_audit = state_dir.join("launchers/network-audit.sh");
 
     if manifest.is_file()
+        && persona.is_file()
         && scope.is_file()
+        && network_guard.is_file()
+        && evidence_index.is_file()
         && checklist.is_file()
         && sandboxes.is_file()
         && secure_browser.is_file()
         && network_audit.is_file()
     {
         "OK"
-    } else if manifest.exists() || scope.exists() || checklist.exists() || sandboxes.exists() {
+    } else if manifest.exists() || persona.exists() || scope.exists() || network_guard.exists() || evidence_index.exists() || checklist.exists() || sandboxes.exists() {
         "PART"
+    } else {
+        "MISS"
+    }
+}
+
+fn shield_persona_state() -> &'static str {
+    let workspace = shield_workspace_root();
+    if workspace.join(".sevenos/persona.json").is_file() {
+        "OK"
+    } else {
+        "MISS"
+    }
+}
+
+fn shield_scope_state() -> &'static str {
+    let workspace = shield_workspace_root();
+    let scope_file = workspace.join(".sevenos/scope.json");
+    if !scope_file.is_file() {
+        return "MISS";
+    }
+    match fs::read_to_string(scope_file)
+        .ok()
+        .and_then(|content| serde_json::from_str::<Value>(&content).ok())
+    {
+        Some(value) => {
+            let has_owner = value.get("owner").and_then(Value::as_str).map(|s| !s.is_empty()).unwrap_or(false);
+            let has_engagement = value.get("engagement").and_then(Value::as_str).map(|s| !s.is_empty()).unwrap_or(false);
+            let has_window = value.get("time_window").and_then(Value::as_str).map(|s| !s.is_empty()).unwrap_or(false);
+            let has_targets = value.get("targets").and_then(Value::as_array).map(|items| !items.is_empty()).unwrap_or(false);
+            if has_owner && has_engagement && has_window && has_targets { "OK" } else { "PART" }
+        }
+        None => "PART",
+    }
+}
+
+fn shield_network_guard_state() -> &'static str {
+    let workspace = shield_workspace_root();
+    if workspace.join(".sevenos/network-guard.json").is_file() {
+        "OK"
+    } else {
+        "MISS"
+    }
+}
+
+fn shield_evidence_state() -> &'static str {
+    let workspace = shield_workspace_root();
+    if workspace.join(".sevenos/evidence-index.json").is_file() {
+        "OK"
     } else {
         "MISS"
     }
@@ -3359,6 +3463,30 @@ fn shield_checks() -> Vec<Value> {
             shield_workspace_state(),
             "Shield workspace policy, scope and launchers",
             "seven shield bootstrap",
+        ),
+        shield_row(
+            "persona",
+            shield_persona_state(),
+            "Shield persona and session policy",
+            "seven shield persona safe",
+        ),
+        shield_row(
+            "scope",
+            shield_scope_state(),
+            "Shield authorization scope gate",
+            "seven shield scope",
+        ),
+        shield_row(
+            "network_guard",
+            shield_network_guard_state(),
+            "Persona-aware network posture",
+            "seven shield network apply",
+        ),
+        shield_row(
+            "evidence",
+            shield_evidence_state(),
+            "Evidence hash and chain-of-custody index",
+            "seven shield evidence init",
         ),
         shield_row(
             "cyberspace",
@@ -3490,12 +3618,40 @@ fn shield_plan_item(check: &Value) -> Value {
             "workspace",
             "Shield needs visible policy, checklist and launchers before it feels like an OS trust layer.",
         ),
+        "persona" => (
+            "Initialize Shield Persona Engine",
+            "medium",
+            "safe",
+            "persona",
+            "Shield should expose a visible cybersecurity mode, session policy and isolation intent.",
+        ),
         "cyberspace" => (
             "Activate CyberSpace",
             "medium",
             "safe",
             "workspace",
             "Shield should expose context-aware workspaces and a HUD, not only package checks.",
+        ),
+        "scope" => (
+            "Complete Shield scope",
+            "high",
+            "safe",
+            "authorization",
+            "Pentest and Red Team workflows need owner, engagement, time window and targets before execution.",
+        ),
+        "network_guard" => (
+            "Record Network Guard posture",
+            "medium",
+            "safe",
+            "network",
+            "Shield personas should expose VPN/Tor/offline/scope requirements before tools launch.",
+        ),
+        "evidence" => (
+            "Initialize Evidence Manager",
+            "medium",
+            "safe",
+            "forensics",
+            "Forensics needs hashes, metadata and chain-of-custody records.",
         ),
         "firejail" => (
             "Install Firejail sandbox",
@@ -3609,6 +3765,30 @@ fn shield_workspace_root() -> PathBuf {
         .unwrap_or_else(|_| home_dir().join("ShieldLab"))
 }
 
+fn shield_persona_value(workspace: &Path) -> Value {
+    let persona_file = workspace.join(".sevenos/persona.json");
+    let fallback = json!({
+        "schema": "sevenos.shield-persona-state.v1",
+        "state": "DEFAULT",
+        "active": {
+            "key": "safe",
+            "title": "Safe Audit",
+            "network": "normal-guarded",
+            "isolation": "standard-sandbox",
+            "visual": "blue guarded SOC"
+        },
+        "session": "persistent",
+        "workspace": workspace.to_string_lossy(),
+    });
+    if !persona_file.is_file() {
+        return fallback;
+    }
+    fs::read_to_string(persona_file)
+        .ok()
+        .and_then(|content| serde_json::from_str::<Value>(&content).ok())
+        .unwrap_or(fallback)
+}
+
 fn cyberspace_active_context(context_file: &Path) -> Value {
     if !context_file.is_file() {
         return json!({
@@ -3719,6 +3899,8 @@ fn cyberspace_json() {
     let workspaces: Vec<Value> = CYBER_CONTEXTS.iter().map(cyberspace_context_value).collect();
     let active_context = cyberspace_active_context(&context_file);
     let scope = cyberspace_scope(&scope_file);
+    let persona = shield_persona_value(&workspace);
+    let persona_active = persona.get("active").cloned().unwrap_or_else(|| json!({}));
     let state = if script.is_file() && scope.get("state").and_then(Value::as_str) == Some("ACTIVE") {
         "ready"
     } else if script.is_file() {
@@ -3732,6 +3914,12 @@ fn cyberspace_json() {
         "workspace": workspace.to_string_lossy(),
         "state_dir": state_dir.to_string_lossy(),
         "active_context": active_context,
+        "persona": {
+            "active": persona_active,
+            "session": persona.get("session").cloned().unwrap_or_else(|| json!("persistent")),
+            "network": persona.get("active").and_then(|item| item.get("network")).cloned().unwrap_or_else(|| json!("normal-guarded")),
+            "isolation": persona.get("active").and_then(|item| item.get("isolation")).cloned().unwrap_or_else(|| json!("standard-sandbox")),
+        },
         "scope": scope,
         "workspaces": workspaces,
         "commands": {

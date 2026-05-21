@@ -1133,3 +1133,193 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   centre via `hyprctl`.
 - Les badges de notification du dock ont un timeout court afin qu'un
   `makoctl list` bloque ne puisse plus empecher l'apparition du dock.
+
+## 2026-05-21 - Seven mini OS consolidation guard pass
+
+- SevenOS est verrouille autour de 7 mini OS visibles : Equinox, Baobab,
+  Forge DevOps, Shield, Studio, Windows Bridge et Pulse.
+- Horizon reste disponible uniquement comme alias de compatibilite vers
+  Forge DevOps, sans reapparaitre comme mini OS dans les surfaces principales.
+- Les checks UX valident maintenant les sorties `profile aliases`,
+  `profile migrate-aliases`, la migration automatique pendant l'activation et
+  l'absence de Horizon dans la liste active des profils.
+- Les plans runtime et mini-os-bridge testent explicitement que les anciennes
+  commandes `horizon + shield` deviennent `forge + shield`.
+- Les validations Python des gros JSON passent par variables d'environnement
+  pour eviter les erreurs de type "liste d'arguments trop longue".
+
+## 2026-05-21 - Windows Bridge profile sync pass
+
+- Ajout de `seven windows sync` pour reconcilier automatiquement l'etat de la
+  VM avec le mini OS actif : Windows actif lance/reconnecte la VM, les autres
+  profils sauvegardent ou arretent la VM selon la politique.
+- L'activation du profil Windows Bridge lance maintenant `seven windows enter`
+  puis un `sync` retarde, afin de rattraper les courses entre changement de
+  profil, libvirt et ouverture de console.
+- Les verrous VM sont relaches explicitement dans les chemins start/enter/leave
+  pour eviter les operations bloquees apres une erreur.
+- L'action `windows.sync` est exposee dans les actions SevenOS et protegee par
+  les checks UX.
+- Ajout de `seven windows bridge-status` et du bloc `bridge_runtime` dans
+  `seven windows status --json` pour diagnostiquer profil actif, etat VM,
+  console, watchdog, et action recommandee.
+- Le statut humain affiche maintenant un resume runtime clair, afin de savoir
+  immediatement si Windows Bridge est synchronise ou s'il faut lancer
+  `seven windows sync`.
+- Le Mini OS Center affiche maintenant une carte `Windows Runtime` pour le
+  profil Windows Bridge avec profil actif, etat VM, console, synchronisation et
+  action suivante.
+- Les actions rapides Windows Bridge incluent desormais `Sync` et `Status` dans
+  le contrat du Mini OS et dans `profile-ui.json`.
+
+## 2026-05-21 - Hybrid runtime autonomy pass
+
+- L'isolation des mini OS prepare maintenant les racines overlay et les racines
+  HOME/cache/data pour les 7 profils, pas uniquement pour le profil actif.
+- Les containers de profil exposent un `launch_mode`
+  `available-via-seven-profile-run-container`, ce qui rend l'isolation stricte
+  disponible a la demande sans casser le store pacman global.
+- Le scheduler passe de `foundation` a `active-user-space-executor` : il garde
+  la detection de contexte, ajoute un etat d'application JSON et sait appliquer
+  des renice prudents sur les processus possedes par l'utilisateur.
+- `profile-ui.json` expose maintenant `runtime_context` pour clarifier les cas
+  comme Equinox actif avec optimisation temporaire Forge.
+- Le Mini OS Center affiche ce contexte dans la carte Composition afin que
+  l'utilisateur voie le profil actif, les capacites injectees et l'optimisation
+  runtime detectee.
+- Les checks UX verrouillent ces garanties : 7 profils, alias Horizon nettoye,
+  overlays/containers prepares, scheduler applicatif et contexte runtime visible.
+
+## 2026-05-21 - Strict mini OS runtime visibility pass
+
+- `profile-isolation.json` expose maintenant `strict_runtime` avec score,
+  moteur, commande de lancement, scope runtime et separation app-data pour
+  chaque mini OS.
+- `seven profile isolation status` affiche une section `Strict runtime`
+  lisible avec le score de chaque profil et sa commande stricte.
+- Le registre d'actions expose des shells stricts pour les 7 mini OS, afin que
+  le Hub, Spotlight et les surfaces natives puissent les proposer.
+- `seven state --json` exporte `profile_run`, donnant aux interfaces un contrat
+  central sur la frontiere d'execution du profil actif.
+- Le Mini OS Center affiche le score strict dans la carte Isolation et ouvre les
+  diagnostics/strict shells dans Seven Terminal, au lieu de lancer des commandes
+  invisibles en arriere-plan.
+
+## 2026-05-21 - Explicit workspace boundary pass
+
+- `seven-profile-run` accepte maintenant `--workspace PATH`, monte ce dossier
+  explicitement a `/workspace` et demarre la commande dedans.
+- Le mode strict garde HOME/cache/data isoles par mini OS tout en permettant a
+  Forge, Shield ou Studio de travailler sur un projet/cas precis sans exposer
+  tout le vrai `$HOME`.
+- Le contrat JSON `sevenos.profile-run.v1` documente `workspace_mount` et la
+  politique `explicit-bind-only`.
+- Le registre d'actions ajoute `profile.strict.workspace` pour ouvrir un shell
+  strict du profil actif avec le dossier courant comme workspace.
+- Le Mini OS Center ajoute `Workspace shell` afin de tester l'execution stricte
+  avec un dossier de travail visible et controle.
+
+## 2026-05-21 - Default profile workspace strict pass
+
+- `seven-profile-run` accepte `--workspace-profile` pour monter le workspace
+  par defaut du mini OS actif ou cible a `/workspace`.
+- Les workspaces par defaut (`~/Forge`, `~/ShieldLab`, `~/Studio`, `~/Baobab`,
+  `~/WindowsMode`, `~/Pulse`, `~/SevenOS`) sont crees automatiquement au besoin.
+- Le contrat JSON expose `profile_default`, `profile_flag` et l'existence du
+  workspace, ce qui permet aux interfaces d'afficher une action fiable.
+- Le registre d'actions ajoute `profile.strict.profile_workspace`.
+- Le Mini OS Center utilise maintenant le workspace du mini OS plutot que le
+  dossier du depot SevenOS pour son action `Workspace shell`.
+
+## 2026-05-21 - Ephemeral strict runtime pass
+
+- `seven-profile-run` accepte maintenant `--ephemeral`, qui force un lancement
+  strict avec HOME/cache/data temporaires supprimes a la fermeture.
+- Le contrat JSON annonce `ephemeral` et la politique de conservation : les
+  workspaces explicites restent intacts, seules les donnees temporaires sont
+  detruites.
+- Le registre d'actions ajoute `profile.strict.ephemeral` et
+  `profile.strict.shield_ephemeral` pour les usages jetables, notamment Shield.
+- Le Mini OS Center expose `Ephemeral shell`, utile pour labs, tests, OSINT ou
+  experimentation sans pollution du profil permanent.
+
+## 2026-05-21 - Mini OS runtime manifest pass
+
+- `seven-profile-run --profile <profil> --manifest` expose maintenant un
+  contrat complet `sevenos.profile-runtime-manifest.v1`.
+- Le manifeste decrit les racines HOME/cache/data du mini OS, son workspace par
+  defaut, ses variables d'environnement, ses commandes strictes et sa politique
+  d'execution.
+- `seven profile isolation apply` ecrit des manifests par profil dans
+  `~/.local/share/sevenos/profile-runtime-manifests`.
+- Le registre d'actions ajoute `profile.strict.manifest`, afin que Spotlight,
+  Hub et Settings puissent ouvrir le contrat runtime actif sans parsing fragile.
+- `seven state --json` expose maintenant `profile_runtime_manifest` pour le
+  profil actif et `profile_runtime_manifests` comme index des manifests
+  disponibles pour les 7 mini OS.
+
+## 2026-05-21 - Seven Hub runtime/search pass
+
+- Seven Hub Native dispose maintenant d'un cache `seven state --json` partage
+  afin d'eviter de recalculer toutes les surfaces quand un snapshot central est
+  deja disponible.
+- Ajout d'une page `Search` dans Seven Hub pour trouver actions, mini OS,
+  raccourcis systeme et manifests runtime depuis une seule surface.
+- Ajout d'une page `Runtime & Mini OS` avec manifest actif, index des 7
+  manifests, commandes strictes, workspace shell et shell ephemere.
+- Le contrat `seven hub status --json` valide maintenant que `seven state`
+  expose bien `profile_runtime_manifest` et `profile_runtime_manifests`.
+- Nettoyage des anciennes mentions Horizon dans le vieux Hub Tauri/fallback au
+  profit de Forge DevOps, Pulse et Baobab.
+
+## 2026-05-21 - Seven Hub non-blocking stability pass
+
+- Seven Hub affiche maintenant une coque de chargement immediatement, puis
+  charge `seven state --json` dans un thread de fond pour ne plus bloquer GTK.
+- Le statut live lit uniquement le snapshot deja en cache, ce qui evite les
+  pauses repetees toutes les 10 secondes.
+- Le bouton refresh et le refresh periodique passent par le meme garde-fou
+  anti-double-chargement.
+- Si le snapshot central est indisponible ou partiel, le Hub reste ouvert et
+  affiche un etat degrade au lieu de relancer une cascade de diagnostics lents.
+
+## 2026-05-21 - Distribution autonomy masking pass
+
+- Ajout de `seven autonomy`, contrat qui mesure si SevenOS se presente comme une
+  couche OS autonome plutot qu'un Arch/Hyprland rice expose.
+- Ajout de `seven-action-runner`, runner d'actions avec logs et notifications
+  pour eviter d'ouvrir un terminal par defaut depuis les surfaces natives.
+- Seven Hub utilise maintenant `seven-action-runner` pour les actions non
+  interactives, tout en gardant le terminal pour les commandes explicitement
+  interactives/debug.
+- `seven state --json` expose maintenant le contrat `autonomy` pour Hub,
+  Settings, Doctor et les futures surfaces SevenDaemon.
+- La documentation `docs/DISTRIBUTION_AUTONOMY.md` formalise la politique :
+  SevenOS peut utiliser Arch/Hyprland comme backend, mais les workflows normaux
+  doivent passer par des surfaces SevenOS.
+
+## 2026-05-21 - SevenOS platform facade pass
+
+- Ajout de `seven platform`, carte publique des couches SevenOS : Software,
+  Smart Window System, Session, Mini OS Runtime, Installer, Seven Core et
+  Windows Bridge.
+- Les backends Arch, pacman, Hyprland, systemd, libvirt et QEMU restent
+  documentes comme details techniques, mais les surfaces peuvent afficher le
+  vocabulaire SevenOS en premier.
+- `seven autonomy` integre maintenant la presence de cette facade, ce qui fait
+  passer SevenOS d'un masquage partiel a une couche distribution mesurable.
+- `seven state --json`, Hub, actions et UX QA savent verifier `platform`.
+
+## 2026-05-21 - SevenOS release channel and installer portal pass
+
+- Ajout de `seven channel`, contrat de canal produit `dev/testing/stable` pour
+  eviter que Hub et Settings parlent d'abord en termes de branche Git sale.
+- `seven channel --json` expose l'etat daily-driver, le canal actif, le commit,
+  le nombre de chemins modifies et les gates restantes sans pretendre qu'une
+  release publique est prete.
+- `seven-installer status --json` expose maintenant `sevenos.installer-portal.v1`
+  avec la route effective : Calamares si disponible, sinon guide SevenOS TUI.
+- `seven installer release --json` verifie le portail installateur comme gate
+  obligatoire, en plus du launcher, du profil Calamares et de l'entree live ISO.
+- `seven state --json`, `seven autonomy`, le registre d'actions et `ux-check`
+  savent maintenant lire `channel` et le portail installateur.

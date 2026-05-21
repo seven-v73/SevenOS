@@ -65,11 +65,16 @@ windows_status_json() {
   "$ROOT_DIR/bin/seven-windows-assistant" status --json 2>/dev/null || printf '{}'
 }
 
+channel_status_json() {
+  "$ROOT_DIR/scripts/channel.sh" json 2>/dev/null || printf '{}'
+}
+
 release_status_json() {
-  local doctor installer windows dirty_count branch commit freeze_state freeze_path
+  local doctor installer windows channel dirty_count branch commit freeze_state freeze_path
   doctor="$(doctor_check_json)"
   installer="$(installer_release_json)"
   windows="$(windows_status_json)"
+  channel="$(channel_status_json)"
   dirty_count="$(git_dirty_count)"
   branch="$(git_value unknown rev-parse --abbrev-ref HEAD)"
   commit="$(git_value unknown rev-parse --short HEAD)"
@@ -79,7 +84,7 @@ release_status_json() {
     freeze_state="OK"
     freeze_path="$FREEZE_JSON"
   fi
-  DOCTOR_JSON="$doctor" INSTALLER_JSON="$installer" WINDOWS_JSON="$windows" \
+  DOCTOR_JSON="$doctor" INSTALLER_JSON="$installer" WINDOWS_JSON="$windows" CHANNEL_JSON="$channel" \
   DIRTY_COUNT="$dirty_count" BRANCH="$branch" COMMIT="$commit" \
   FREEZE_STATE="$freeze_state" FREEZE_PATH="$freeze_path" ROOT_DIR="$ROOT_DIR" \
   python - <<'PY'
@@ -95,6 +100,7 @@ def load(name):
 doctor = load("DOCTOR_JSON")
 installer = load("INSTALLER_JSON")
 windows = load("WINDOWS_JSON")
+channel = load("CHANNEL_JSON")
 dirty_count = int(os.environ.get("DIRTY_COUNT", "0") or 0)
 summary = doctor.get("summary", {})
 doctor_blocked = summary.get("critical", 1) > 0 or summary.get("high", 1) > 0
@@ -123,11 +129,11 @@ release_actions = [
         "command": "seven installer release",
     },
     {
-        "key": "windows-vm-user-iso",
+        "key": "windows-vm-provisioning",
         "state": "OK" if windows.get("windows_vm") in {"OK", "RUN"} else "USER_REQUIRED",
-        "title": "Créer la VM Windows avec une ISO légale fournie par l'utilisateur",
-        "detail": "SevenOS ne télécharge pas Windows automatiquement; l'utilisateur doit fournir l'ISO.",
-        "command": "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso",
+        "title": "Créer la VM Windows depuis un média officiel",
+        "detail": "SevenOS ne redistribue pas Windows; la VM doit être provisionnée depuis un média officiel ou autorisé par l'utilisateur.",
+        "command": "seven windows provision --yes",
     },
 ]
 release_issues = [item for item in release_actions if item["state"] not in {"OK", "READY", "RUN"}]
@@ -138,6 +144,8 @@ print(json.dumps({
     "root": os.environ.get("ROOT_DIR"),
     "branch": os.environ.get("BRANCH"),
     "commit": os.environ.get("COMMIT"),
+    "channel": channel.get("channel", "dev"),
+    "channel_state": channel.get("state", "unknown"),
     "state": "public-release-ready" if public_ready else "daily-driver-ready" if daily_ready else "release-blocked",
     "daily_driver_ready": daily_ready,
     "public_release_ready": public_ready,

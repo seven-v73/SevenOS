@@ -90,6 +90,40 @@ json_to_file "$STATE_TMP/profile_health.json" "$ROOT_DIR/bin/seven" profile heal
 pid_profile_health=$!
 json_to_file "$STATE_TMP/active_profile.json" "$ROOT_DIR/bin/seven" profile current --json &
 pid_active_profile=$!
+json_to_file "$STATE_TMP/profile_run.json" "$ROOT_DIR/bin/seven-profile-run" --json &
+pid_profile_run=$!
+json_to_file "$STATE_TMP/profile_runtime_manifest.json" "$ROOT_DIR/bin/seven-profile-run" --manifest &
+pid_profile_runtime_manifest=$!
+json_to_file "$STATE_TMP/profile_runtime_manifests.json" python - "$HOME/.local/share/sevenos/profile-runtime-manifests" <<'PY' &
+import json
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+items = {}
+if root.is_dir():
+    for path in sorted(root.glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            data = {"schema": "sevenos.profile-runtime-manifest.v1", "profile": path.stem, "state": "invalid"}
+        items[path.stem] = {
+            "profile": data.get("profile", path.stem),
+            "path": str(path),
+            "schema": data.get("schema"),
+            "engine": data.get("engine"),
+            "workspace": (data.get("workspace") or {}).get("default"),
+            "strict_shell": (data.get("commands") or {}).get("strict_shell"),
+            "ephemeral_shell": (data.get("commands") or {}).get("ephemeral_shell"),
+        }
+print(json.dumps({
+    "schema": "sevenos.profile-runtime-manifests.v1",
+    "root": str(root),
+    "count": len(items),
+    "profiles": items,
+}, indent=2))
+PY
+pid_profile_runtime_manifests=$!
 json_to_file "$STATE_TMP/windows.json" "$ROOT_DIR/bin/seven-windows-assistant" status --json &
 pid_windows=$!
 json_to_file "$STATE_TMP/windows_plan.json" "$ROOT_DIR/bin/seven-windows-assistant" plan --json &
@@ -110,6 +144,8 @@ json_to_file "$STATE_TMP/installer.json" "$ROOT_DIR/scripts/installer-stack.sh" 
 pid_installer=$!
 json_to_file "$STATE_TMP/installer_plan.json" "$ROOT_DIR/scripts/installer-stack.sh" plan --json &
 pid_installer_plan=$!
+json_to_file "$STATE_TMP/channel.json" "$ROOT_DIR/scripts/channel.sh" json &
+pid_channel=$!
 json_to_file "$STATE_TMP/readiness.json" "$ROOT_DIR/scripts/readiness.sh" --json &
 pid_readiness=$!
 json_to_file "$STATE_TMP/packages.json" "$ROOT_DIR/bin/sevenpkg" status --json &
@@ -160,10 +196,14 @@ json_to_file "$STATE_TMP/actions.json" "$ROOT_DIR/scripts/actions.sh" --json &
 pid_actions=$!
 json_to_file "$STATE_TMP/architecture.json" "$ROOT_DIR/scripts/architecture.sh" matrix --json &
 pid_architecture=$!
+json_to_file "$STATE_TMP/autonomy.json" "$ROOT_DIR/scripts/autonomy.sh" json &
+pid_autonomy=$!
+json_to_file "$STATE_TMP/platform.json" "$ROOT_DIR/scripts/platform.sh" json &
+pid_platform=$!
 
-wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
-  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" || true
+wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
+  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_autonomy" "$pid_platform" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -205,6 +245,15 @@ printf ','
 printf '"active_profile":'
 cat "$STATE_TMP/active_profile.json"
 printf ','
+printf '"profile_run":'
+cat "$STATE_TMP/profile_run.json"
+printf ','
+printf '"profile_runtime_manifest":'
+cat "$STATE_TMP/profile_runtime_manifest.json"
+printf ','
+printf '"profile_runtime_manifests":'
+cat "$STATE_TMP/profile_runtime_manifests.json"
+printf ','
 printf '"windows":'
 cat "$STATE_TMP/windows.json"
 printf ','
@@ -234,6 +283,9 @@ cat "$STATE_TMP/installer.json"
 printf ','
 printf '"installer_plan":'
 cat "$STATE_TMP/installer_plan.json"
+printf ','
+printf '"channel":'
+cat "$STATE_TMP/channel.json"
 printf ','
 printf '"readiness":'
 cat "$STATE_TMP/readiness.json"
@@ -309,6 +361,12 @@ cat "$STATE_TMP/actions.json"
 printf ','
 printf '"architecture":'
 cat "$STATE_TMP/architecture.json"
+printf ','
+printf '"autonomy":'
+cat "$STATE_TMP/autonomy.json"
+printf ','
+printf '"platform":'
+cat "$STATE_TMP/platform.json"
 printf ','
 printf '"native_hub":{'
 if [[ -x "$ROOT_DIR/bin/seven-hub-native" ]]; then

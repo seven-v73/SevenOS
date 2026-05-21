@@ -200,12 +200,65 @@ def handle_mini_os(args):
     run_script(args, "scripts/mini-os-bridge.sh", *extra)
 
 
+def handle_autonomy(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/autonomy.sh", *extra)
+
+
+def handle_platform(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/platform.sh", *extra)
+
+
+def handle_channel(args):
+    extra = [args.action]
+    if args.channel:
+        extra.append(args.channel)
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/channel.sh", *extra)
+
+
 def handle_shield(args):
     shield_json = args.json or "--json" in args.extra or "json" in args.extra
     shield_extra = [item for item in args.extra if item not in ("--json", "json")]
-    if args.action in ("dashboard", "open", "labs", "tools", "scope", "report"):
+    if args.action in ("dashboard", "open", "labs", "tools", "report"):
         extra = ["--json"] if shield_json else []
         run_script(args, "security/shield-control.sh", args.action, *extra, *shield_extra)
+    elif args.action == "scope":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-scope.sh", *extra, *shield_extra)
+    elif args.action == "network":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-network-guard.sh", *extra, *shield_extra)
+    elif args.action == "evidence":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-evidence.sh", *extra, *shield_extra)
+    elif args.action == "optional-tools":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-optional-tools.sh", *extra, *shield_extra)
+    elif args.action == "toolchain":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-toolchain.sh", *extra, *shield_extra)
+    elif args.action == "bundles":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-bundles.sh", *extra, *shield_extra)
+    elif args.action == "wrappers":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-wrappers.sh", *extra, *shield_extra)
+    elif args.action == "tool-doctor":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-tool-doctor.sh", *extra, *shield_extra)
+    elif args.action == "performance":
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-performance.sh", *extra, *shield_extra)
+    elif args.action in ("persona", "personas", "session", "cleanup"):
+        extra = ["--json"] if shield_json else []
+        run_script(args, "security/shield-persona.sh", args.action, *extra, *shield_extra)
     elif args.action in ("mode", "workspaces", "context", "layout", "hud"):
         extra = ["--json"] if shield_json else []
         run_script(args, "security/cyberspace.sh", args.action, *extra, *shield_extra)
@@ -759,6 +812,16 @@ def main():
     release_parser = subparsers.add_parser("release", help="inspect public SevenOS release gates")
     release_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "freeze", "doctor", "json"))
     release_parser.add_argument("--json", action="store_true", help="print machine-readable release status or plan")
+    channel_parser = subparsers.add_parser("channel", help="inspect or set the SevenOS release channel")
+    channel_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "set", "json"))
+    channel_parser.add_argument("channel", nargs="?", choices=("dev", "testing", "stable"), help="channel to set when action is 'set'")
+    channel_parser.add_argument("--json", action="store_true", help="print machine-readable channel status")
+    autonomy_parser = subparsers.add_parser("autonomy", help="check whether SevenOS is masked as an autonomous OS layer")
+    autonomy_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    autonomy_parser.add_argument("--json", action="store_true", help="print machine-readable autonomy contract")
+    platform_parser = subparsers.add_parser("platform", help="show SevenOS public platform layers and hidden backends")
+    platform_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json"))
+    platform_parser.add_argument("--json", action="store_true", help="print machine-readable platform facade")
 
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
@@ -790,7 +853,7 @@ def main():
     profile_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     shield_parser = subparsers.add_parser("shield", help="security and cyber controls")
-    shield_parser.add_argument("action", choices=("dashboard", "status", "plan", "enable", "audit", "lab", "bootstrap", "workspace", "open", "labs", "tools", "scope", "report", "mode", "workspaces", "context", "layout", "hud"), nargs="?", default="dashboard")
+    shield_parser.add_argument("action", choices=("dashboard", "status", "plan", "enable", "audit", "lab", "bootstrap", "workspace", "open", "labs", "tools", "scope", "network", "evidence", "optional-tools", "toolchain", "bundles", "wrappers", "tool-doctor", "performance", "report", "persona", "personas", "session", "cleanup", "mode", "workspaces", "context", "layout", "hud"), nargs="?", default="dashboard")
     shield_parser.add_argument("--json", action="store_true", help="print machine-readable Shield posture or plan")
     shield_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
@@ -929,6 +992,12 @@ def main():
         handle_repair(args)
     elif args.command == "release":
         handle_release(args)
+    elif args.command == "channel":
+        handle_channel(args)
+    elif args.command == "autonomy":
+        handle_autonomy(args)
+    elif args.command == "platform":
+        handle_platform(args)
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)

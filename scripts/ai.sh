@@ -47,7 +47,11 @@ import subprocess
 import sys
 
 fallback = json.loads(sys.argv[1])
-result = subprocess.run(sys.argv[2:], text=True, capture_output=True, check=False)
+try:
+    result = subprocess.run(sys.argv[2:], text=True, capture_output=True, check=False, timeout=2)
+except subprocess.TimeoutExpired:
+    print(json.dumps(fallback))
+    raise SystemExit(0)
 if result.returncode != 0 or not result.stdout.strip():
     print(json.dumps(fallback))
     raise SystemExit(0)

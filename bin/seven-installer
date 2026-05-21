@@ -8,13 +8,23 @@ usage() {
 SevenOS graphical installer launcher
 
 Usage:
-  seven-installer [open|status|guide]
+  seven-installer [open|status|portal|guide] [--json]
 
 This launcher prefers Calamares when it is available in the live ISO. When the
 graphical runtime is missing, it falls back to the SevenOS guided installer
 status instead of pretending a destructive installer is ready.
 EOF
 }
+
+JSON_OUTPUT=0
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --json|json) JSON_OUTPUT=1 ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+set -- "${ARGS[@]}"
 
 run_or_print() {
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
@@ -25,7 +35,60 @@ run_or_print() {
   exec "$@"
 }
 
+status_json() {
+  local calamares_state archinstall_state release_state
+  command -v calamares >/dev/null 2>&1 && calamares_state="OK" || calamares_state="MISS"
+  command -v archinstall >/dev/null 2>&1 && archinstall_state="OK" || archinstall_state="MISS"
+  if [[ "$calamares_state" == "OK" ]]; then
+    release_state="graphical-ready"
+  elif [[ "$archinstall_state" == "OK" ]]; then
+    release_state="tui-release-ready"
+  else
+    release_state="foundation"
+  fi
+  CALAMARES_STATE="$calamares_state" ARCHINSTALL_STATE="$archinstall_state" RELEASE_STATE="$release_state" \
+  python - <<'PY'
+import json
+import os
+
+calamares = os.environ.get("CALAMARES_STATE", "MISS")
+archinstall = os.environ.get("ARCHINSTALL_STATE", "MISS")
+if calamares == "OK":
+    state = "graphical-ready"
+    route = "calamares"
+elif archinstall == "OK":
+    state = "guided-tui-ready"
+    route = "sevenos-guided-tui"
+else:
+    state = "foundation"
+    route = "status-only"
+
+print(json.dumps({
+    "schema": "sevenos.installer-portal.v1",
+    "state": state,
+    "route": route,
+    "calamares_runtime": calamares,
+    "archinstall_runtime": archinstall,
+    "release_state": os.environ.get("RELEASE_STATE", "foundation"),
+    "safe_by_default": True,
+    "destructive_actions_require_confirmation": True,
+    "commands": {
+        "open": "seven-installer open",
+        "status": "seven-installer status",
+        "graphical": "seven installer graphical",
+        "release": "seven installer release",
+        "guide": "seven-installer guide",
+    },
+}, indent=2))
+PY
+}
+
 status() {
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    status_json
+    return 0
+  fi
+
   printf 'SevenOS Graphical Installer\n'
   printf '===========================\n'
   if command -v calamares >/dev/null 2>&1; then
@@ -37,7 +100,41 @@ status() {
   fi
 }
 
+portal() {
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    status_json
+    return 0
+  fi
+  PORTAL_JSON="$(status_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["PORTAL_JSON"])
+print("SevenOS Installer Portal")
+print("========================")
+print(f"State: {data.get('state')}")
+print(f"Route: {data.get('route')}")
+print(f"Calamares: {data.get('calamares_runtime')}")
+print(f"Archinstall: {data.get('archinstall_runtime')}")
+print(f"Release gate: {data.get('release_state')}")
+print()
+print("Safe path:")
+if data.get("route") == "calamares":
+    print("  seven-installer open")
+elif data.get("route") == "sevenos-guided-tui":
+    print("  seven installer plan")
+    print("  seven installer doctor")
+else:
+    print("  seven installer release")
+PY
+}
+
 open_installer() {
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    status_json
+    return 0
+  fi
+
   if command -v calamares >/dev/null 2>&1; then
     if command -v pkexec >/dev/null 2>&1; then
       run_or_print pkexec calamares -d
@@ -59,6 +156,7 @@ open_installer() {
 case "${1:-open}" in
   open) open_installer ;;
   status) status ;;
+  portal) portal ;;
   guide) "$ROOT_DIR/bin/seven" installer guide ;;
   -h|--help|help) usage ;;
   *)

@@ -37,13 +37,21 @@ It is built around foundation pillars:
 - Seven Shell as the AGS + TypeScript shell direction for B3
 - Flatpak/Flathub as the mainstream application bridge
 - Seven Ecosystem as the roadmap for AI, cloud, marketplace, containers, automation, and identity modules
+- `seven autonomy` as the distribution-autonomy contract that keeps Arch,
+  Hyprland, pacman and service internals behind SevenOS-first surfaces.
+- `seven platform` as the public vocabulary map for SevenOS Software, Seven
+  Smart Window System, SevenOS Session, Mini OS Runtime, Installer, Seven Core
+  and Windows Bridge.
+- `seven channel` as the product release channel contract, so Hub and Settings
+  can say dev/testing/stable before exposing branch, commit and dirty worktree
+  details.
 
 SevenOS aims to provide:
 
 - a lightweight Arch Linux foundation
 - a Wayland desktop based on Hyprland
 - modular profiles for development, cybersecurity, and creation
-- context-aware orchestration that understands Forge, Studio, Shield, Windows, Horizon and Streaming workflows
+- context-aware orchestration that understands Forge DevOps, Studio, Shield, Windows, Pulse and Streaming workflows
 - Windows application compatibility through Wine, Bottles, Proton/Lutris, and optional KVM/QEMU fallback
 - local deployment through `seven-server` and `seven-deploy`
 - future intelligent modules such as SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow, and SevenIdentity
@@ -51,6 +59,8 @@ SevenOS aims to provide:
 - a future Seven Shell layer for AGS panels, launcher, dock and widgets
 - a premium dark glass identity with Seven Blue, Seven Violet, Seven Cyan, Cyber Green, contextual AI and subtle cinematic depth
 - a vocabulary and workflow model that makes Linux easier to live with
+- an action runner that prefers native logs and notifications over visible
+  terminal windows for normal Hub/Settings workflows
 
 ## Current Product State
 
@@ -64,12 +74,16 @@ What is already testable:
 - `sevenpkg` as the SevenOS software layer over pacman/meta-packages.
 - Seven Hub / Control Center entrypoints.
 - Native SevenOS Settings for daily desktop and system configuration.
-- Forge, Shield, Studio, Windows and Horizon profile contracts.
+- Forge DevOps, Shield, Studio, Windows and Pulse profile contracts.
 - CyberSpace and Shield workspace foundations.
 - Seven Core, SevenBus and SevenDaemon foundations.
 - Seven Server local API foundation.
 - App-first Windows compatibility through `seven run <app>`.
 - Persistent Hyprpaper wallpaper runtime through `seven-wallpaper serve`.
+- Distribution autonomy checks through `seven autonomy` and
+  `docs/DISTRIBUTION_AUTONOMY.md`.
+- Release channel/status checks through `seven channel`, `seven release` and
+  `seven-installer status --json`.
 
 The current quality gate remains:
 
@@ -105,7 +119,7 @@ SevenOS keeps its own product direction:
 - `seven` as the system control plane.
 - `sevenpkg` as the software layer.
 - Seven Hub as the user-facing control center.
-- Profiles for Forge, Shield, Studio, Windows and Horizon workflows.
+- Profiles for Forge DevOps, Shield, Studio, Windows and Pulse workflows.
 - Migration and packaging contracts through `sevenos.dotinst`.
 
 ## Why Beyond The Desktop?
@@ -307,6 +321,7 @@ SevenOS/
 │   ├── packages-cybersecurity.txt
 │   ├── packages-creation.txt
 │   └── packages-windows.txt
+│   └── packages-windows-aur.txt
 ├── vm/
 ├── security/
 ├── docs/

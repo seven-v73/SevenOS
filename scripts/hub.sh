@@ -30,7 +30,7 @@ from pathlib import Path
 root = Path(os.environ["SEVENOS_ROOT"])
 
 
-def run_json(parts):
+def run_json(parts, timeout=8):
     try:
         result = subprocess.run(
             [str(root / parts[0]), *parts[1:]],
@@ -38,7 +38,7 @@ def run_json(parts):
             text=True,
             capture_output=True,
             check=False,
-            timeout=12,
+            timeout=timeout,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -59,13 +59,15 @@ def executable(rel):
     return path.is_file() and os.access(path, os.X_OK)
 
 
-actions_payload = run_json(["scripts/actions.sh", "--json"]) or {"actions": []}
+actions_payload = run_json(["scripts/actions.sh", "--json"], timeout=4) or {"actions": []}
 action_ids = {
     item.get("id")
     for item in actions_payload.get("actions", [])
     if isinstance(item, dict)
 }
 required_actions = {
+    "autonomy.status",
+    "platform.status",
     "hub.open",
     "hub.status",
     "hub.plan",
@@ -78,17 +80,20 @@ required_actions = {
 }
 missing_actions = sorted(required_actions - action_ids)
 
-contract_commands = {
-    "state": ["scripts/state.sh", "--json"],
-    "actions": ["scripts/actions.sh", "--json"],
-    "ecosystem": ["scripts/ecosystem.sh", "json"],
-    "installer": ["scripts/installer-stack.sh", "status", "--json"],
-    "adaptive": ["scripts/adaptive-ui.sh", "json"],
-}
+state_contract = run_json(["scripts/state.sh", "--json"], timeout=12) or {}
+adaptive_contract = run_json(["scripts/adaptive-ui.sh", "json"], timeout=4) or {}
 contracts = {
-    name: run_json(parts) is not None
-    for name, parts in contract_commands.items()
+    "state": bool(state_contract),
+    "actions": bool(actions_payload.get("actions")),
+    "ecosystem": isinstance(state_contract.get("ecosystem"), dict),
+    "installer": isinstance(state_contract.get("installer"), dict),
+    "adaptive": isinstance(state_contract.get("adaptive"), dict) or bool(adaptive_contract),
+    "autonomy": isinstance(state_contract.get("autonomy"), dict),
+    "platform": isinstance(state_contract.get("platform"), dict),
+    "channel": isinstance(state_contract.get("channel"), dict),
 }
+contracts["state_runtime_manifest"] = isinstance(state_contract.get("profile_runtime_manifest"), dict)
+contracts["state_runtime_manifests"] = isinstance(state_contract.get("profile_runtime_manifests"), dict)
 missing_contracts = sorted(name for name, ok in contracts.items() if not ok)
 
 checks = [
@@ -141,6 +146,12 @@ checks = [
         "state": "OK" if executable("scripts/control-plane.sh") else "MISS",
         "detail": "Hub can hand off prioritized repairs to the Control Plane",
         "command": "seven control",
+    },
+    {
+        "key": "native-action-runner",
+        "state": "OK" if executable("bin/seven-action-runner") else "MISS",
+        "detail": "Hub actions can run with native logs and notifications instead of terminal windows",
+        "command": "seven-action-runner --dry-run -- seven status",
     },
 ]
 

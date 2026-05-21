@@ -61,6 +61,7 @@ require_file "docs/SEVEN_READER.md"
 require_file "docs/SEVEN_STORE.md"
 require_file "docs/SMART_WINDOW_SYSTEM.md"
 require_file "docs/HYPRLAND_LUA_ENGINE.md"
+require_file "docs/DISTRIBUTION_AUTONOMY.md"
 require_file "seven-core/README.md"
 require_file "seven-core/bus-schema.json"
 require_file "seven-core/daemon/Cargo.toml"
@@ -185,7 +186,6 @@ require_file "hyprland/lua/profiles/forge.lua"
 require_file "hyprland/lua/profiles/shield.lua"
 require_file "hyprland/lua/profiles/studio.lua"
 require_file "hyprland/lua/profiles/windows.lua"
-require_file "hyprland/lua/profiles/horizon.lua"
 require_file "hyprland/lua/profiles/pulse.lua"
 require_file "hyprland/lua/profiles/baobab.lua"
 require_file "hyprland/lua/profile_runtime.json"
@@ -241,6 +241,7 @@ require_executable "bin/seven-terminal"
 require_executable "bin/seven-terminal-native"
 require_executable "bin/seven-terminal-palette"
 require_executable "bin/seven-terminal-shell"
+require_executable "scripts/terminal-guard.sh"
 require_executable "bin/seven-spotlight"
 require_executable "bin/seven-spotlight-native"
 require_executable "bin/seven-notification-center-native"
@@ -255,6 +256,7 @@ require_executable "bin/seven-wallpaper"
 require_executable "bin/seven-power"
 require_executable "bin/seven-welcome"
 require_executable "bin/seven-hub-native"
+require_executable "bin/seven-action-runner"
 require_executable "bin/seven-installer"
 require_executable "bin/seven-waybar-action"
 require_executable "bin/seven-waybar-notifications"
@@ -274,6 +276,8 @@ require_executable "scripts/architecture.sh"
 require_executable "scripts/state.sh"
 require_executable "scripts/actions.sh"
 require_executable "scripts/hub.sh"
+require_executable "scripts/platform.sh"
+require_executable "scripts/channel.sh"
 require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/store.sh"
@@ -690,7 +694,7 @@ else
 fi
 
 profile_theme_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-profile-theme" apply)"
-if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Equinox|Baobab|Forge|Shield|Studio|Windows|Horizon|Profiles|Profile' &&
+if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Equinox|Baobab|Forge|Shield|Studio|Windows|Pulse|Profiles|Profile' &&
    "$ROOT_DIR/bin/seven-waybar-status" profile | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("alt") and "profile-" in d.get("class","") else 1)' &&
    grep -q 'render profile Waybar' <<<"$profile_theme_output" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-security" json | grep -q '󰒃' &&
@@ -786,10 +790,13 @@ profile_apps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile apps --json
 profile_gaps_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile gaps --json)"
 profile_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile plan --json)"
 profile_health_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile health --json)"
+profile_aliases_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile aliases --json)"
+profile_migration_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile migrate-aliases --json)"
 profile_guide_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile guide)"
 profile_open_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" open forge)"
 profile_bootstrap_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" bootstrap forge)"
 if grep -q 'profile.json' <<<"$profile_activate_dry" &&
+   grep -q 'seven profile migrate-aliases --apply' <<<"$profile_activate_dry" &&
    grep -q '"apps"' <<<"$profile_status_json" &&
    grep -q '"role"' <<<"$profile_status_json" &&
    grep -q '"principle"' <<<"$profile_status_json" &&
@@ -805,7 +812,13 @@ if grep -q 'profile.json' <<<"$profile_activate_dry" &&
    grep -q '"missing_packages"' <<<"$profile_gaps_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-plan.v1"' <<<"$profile_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-health.v1"' <<<"$profile_health_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-aliases.v1"' <<<"$profile_aliases_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-migration.v1"' <<<"$profile_migration_json" &&
    grep -q '"isolation_ready"' <<<"$profile_health_json" &&
+   grep -q '"alias_migration_pending"[[:space:]]*:[[:space:]]*0' <<<"$profile_health_json" &&
+   grep -q '"redirects_to"[[:space:]]*:[[:space:]]*"forge"' <<<"$profile_aliases_json" &&
+   grep -q '"pending"[[:space:]]*:[[:space:]]*0' <<<"$profile_migration_json" &&
+   PROFILE_STATUS_JSON="$profile_status_json" python -c 'import json,os,sys; data=json.loads(os.environ["PROFILE_STATUS_JSON"]); keys=[item.get("key") for item in data]; raise SystemExit(0 if len(keys)==7 and "horizon" not in keys and "forge" in keys else 1)' &&
    grep -q '"next"' <<<"$profile_plan_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile current --json | python -m json.tool >/dev/null &&
    grep -q '"command"' <<<"$profile_apps_json" &&
@@ -1101,7 +1114,7 @@ else
   fail "Hyprland missing GTK/Qt theme environment"
 fi
 
-if grep -q '$terminal = seven-terminal classic' "$ROOT_DIR/hyprland/hyprland.conf" &&
+if grep -q '$terminal = seven-terminal' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'bind = $mod, Return, exec, $terminal' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
    grep -q 'bind = $mod SHIFT, Return, exec, seven-terminal dark' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
    grep -q 'bind = $mod CTRL, Return, exec, seven-terminal menu' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
@@ -1316,7 +1329,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'map ctrl+shift+f launch --type=background hyprctl dispatch fullscreen 1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'env SEVENOS_TERMINAL_CLASSIC=1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'env SEVENOS_TERMINAL_PROMPT=1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'forge|cyber|focus|admin' "$ROOT_DIR/bin/seven-terminal" &&
+   grep -q 'forge|cyber|windows|focus|admin' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'profile_overrides' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'SevenTerminalForge' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'seven-terminal-palette' "$ROOT_DIR/bin/seven-terminal-palette" &&
@@ -1327,6 +1340,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q '"cyber": {' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q '"focus": {' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q '"admin": {' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q '"windows": {' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'SF Mono 11' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'set_cell_height_scale(1.10)' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'seven-terminal-frame' "$ROOT_DIR/bin/seven-terminal-native" &&
@@ -1344,7 +1358,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'kitty-default' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'SEVENOS_TERMINAL_NATIVE' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'Avoid post-launch' "$ROOT_DIR/bin/seven-terminal" &&
-   grep -q 'Exec=seven-terminal classic' "$ROOT_DIR/seven-hub/seven-terminal.desktop" &&
+   grep -q 'Exec=seven-terminal' "$ROOT_DIR/seven-hub/seven-terminal.desktop" &&
    grep -q 'terminal: "seven-terminal";' "$ROOT_DIR/hyprland/rofi/config.rasi" &&
    grep -q 'env = TERMINAL,seven-terminal' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'env = SEVENOS_TERMINAL,seven-terminal' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -1360,6 +1374,8 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'terminal.open' "$ROOT_DIR/scripts/actions.sh" &&
    grep -Fq 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
    grep -Fq 'windowrule = match:title ^(Seven Terminal · .*)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q '__sevenos_real_command' "$ROOT_DIR/branding/shell/terminal-bashrc" &&
+   grep -q '__sevenos_git()' "$ROOT_DIR/branding/shell/terminal-bashrc" &&
    grep -q '__sevenos_git_branch' "$ROOT_DIR/branding/shell/terminal-bashrc" &&
    grep -q '__sevenos_git_branch' "$ROOT_DIR/branding/shell/terminal-zsh/.zshrc" &&
    grep -q '__sevenos_terminal_mode' "$ROOT_DIR/branding/shell/terminal-bashrc" &&
@@ -1384,9 +1400,12 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" cyber | grep -q 'DRY-RUN > Terminal > Open cyber' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" focus | grep -q 'DRY-RUN > Terminal > Open focus' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" admin | grep -q 'DRY-RUN > Terminal > Open admin' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" windows | grep -q 'DRY-RUN > Terminal > Open windows' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal-palette" | grep -q 'Explain Last Command' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" dark | grep -q 'DRY-RUN > Terminal > Open dark' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" light | grep -q 'DRY-RUN > Terminal > Open light' &&
+   SEVENOS_DRY_RUN=1 SEVENOS_ACTIVE_PROFILE=shield "$ROOT_DIR/bin/seven-terminal" | grep -q 'DRY-RUN > Terminal > Open cyber' &&
+   SEVENOS_DRY_RUN=1 SEVENOS_ACTIVE_PROFILE=forge "$ROOT_DIR/bin/seven-terminal" | grep -q 'DRY-RUN > Terminal > Open forge' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" menu | grep -q 'DRY-RUN > Terminal > Open profile chooser'; then
   ok "Kitty exposes SevenOS classic, dark and light SevenOS terminal profiles"
 else
@@ -1485,6 +1504,8 @@ hub_product_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub status --json)"
 if python -m json.tool >/dev/null <<<"$hub_product_json" &&
    grep -q '"schema": "sevenos.hub.v1"' <<<"$hub_product_json" &&
    grep -Eq '"level": "(active|product-preview)"' <<<"$hub_product_json" &&
+   grep -q '"state_runtime_manifest": true' <<<"$hub_product_json" &&
+   grep -q '"state_runtime_manifests": true' <<<"$hub_product_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub doctor >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" actions --json | grep -q '"hub.status"'; then
   ok "Seven Hub exposes a product-surface readiness contract"
@@ -1559,6 +1580,11 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -Fq 'seven actions --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -Fq 'seven ecosystem --json' "$ROOT_DIR/seven-hub/native/README.md" &&
    grep -q 'def render_dashboard' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def state_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def render_search_results' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def render_runtime_compact' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'profile_runtime_manifest' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'profile_runtime_manifests' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_actions' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def ecosystem_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def stack_payload' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -1605,8 +1631,12 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def run_ecosystem_command' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def render_ecosystem' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'stack.add_titled(ecosystem_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'stack.add_titled(search_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'stack.add_titled(runtime_scroll' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-sidebar' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'nav_button(tr("hub.dashboard"' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'nav_button(tr("hub.search"' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'nav_button(tr("hub.runtime"' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-hero' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'metric_card(tr("hub.readiness"' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'from seven_i18n import tr' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -1618,6 +1648,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'render_loading_shell' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'render_dashboard_compact' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'render_profiles_compact' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'render_runtime_compact' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'render_actions_compact' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-tile' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-glass-strip' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -1626,11 +1657,33 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    "$ROOT_DIR/bin/seven-hub-native" status | grep -q 'Seven Hub Native' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" hub-native --dry-run | grep -q 'seven-hub-native open' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" | grep -q 'seven-hub-native open' &&
+   ! grep -Rqi 'Horizon' "$ROOT_DIR/seven-hub/gui/README.md" "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
    grep -q 'Exec=seven-hub' "$ROOT_DIR/seven-hub/seven-hub.desktop" &&
    grep -q 'Exec=seven-hub-native' "$ROOT_DIR/seven-hub/seven-hub-native.desktop"; then
   ok "Seven Hub native UI strategy is documented and OS-styled"
 else
   fail "Seven Hub native UI strategy is missing, unstyled or unclear"
+fi
+
+if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v1"' &&
+   "$ROOT_DIR/scripts/autonomy.sh" doctor >/dev/null &&
+   "$ROOT_DIR/scripts/platform.sh" json | grep -q '"schema": "sevenos.platform.v1"' &&
+   "$ROOT_DIR/scripts/platform.sh" doctor >/dev/null &&
+   "$ROOT_DIR/scripts/channel.sh" json | grep -q '"schema": "sevenos.release-channel.v1"' &&
+   "$ROOT_DIR/scripts/channel.sh" doctor >/dev/null &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-action-runner" --dry-run -- "$ROOT_DIR/bin/seven" status | grep -q 'seven status' &&
+   grep -q 'seven autonomy' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven platform' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven channel' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q '"autonomy":' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q '"platform":' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q '"channel":' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q 'SevenOS Distribution Autonomy' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
+   grep -q 'Platform Facade' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
+   grep -q 'seven-action-runner' "$ROOT_DIR/bin/seven-hub-native"; then
+  ok "SevenOS exposes an autonomy layer that masks Arch/Hyprland internals"
+else
+  fail "SevenOS autonomy layer is missing or not connected to Hub/state/actions"
 fi
 
 shell_panel_quick_dry="$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" quick)"
@@ -1771,6 +1824,8 @@ installer_release_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer re
 installer_release_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer release --json)"
 installer_graphical_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer graphical --json)"
 installer_graphical_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer graphical)"
+installer_portal_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-installer" status --json)"
+channel_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" channel --json)"
 installer_open_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open)"
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
@@ -1782,7 +1837,7 @@ core_observe_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --jso
 context_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" context status --json)"
 scheduler_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" scheduler status --json)"
 runtime_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime status --json)"
-runtime_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime plan forge shield horizon --json)"
+runtime_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime plan forge shield studio --json)"
 shell_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shell status --json)"
 b3_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" b3 plan --json)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -1822,6 +1877,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$installer_plan_json" >/dev/null &&
    python -m json.tool <<<"$installer_release_json" >/dev/null &&
    python -m json.tool <<<"$installer_graphical_json" >/dev/null &&
+   python -m json.tool <<<"$installer_portal_json" >/dev/null &&
+   python -m json.tool <<<"$channel_json" >/dev/null &&
    python -m json.tool <<<"$packages_plan_json" >/dev/null &&
    python -m json.tool <<<"$adaptive_json" >/dev/null &&
    python -m json.tool <<<"$core_json" >/dev/null &&
@@ -1883,6 +1940,9 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-release.v1"' <<<"$installer_release_json" &&
    grep -q '"graphical-launcher"' <<<"$installer_release_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-graphical.v1"' <<<"$installer_graphical_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.installer-portal.v1"' <<<"$installer_portal_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.release-channel.v1"' <<<"$channel_json" &&
+   grep -q '"installer-portal"' <<<"$installer_release_json" &&
    grep -q 'graphical-profile-ready' <<<"$installer_graphical_json" &&
    grep -q 'SevenOS Graphical Installer Route' <<<"$installer_graphical_output" &&
    grep -q 'seven installer release' <<<"$installer_open_output" &&
@@ -1899,14 +1959,20 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"schema": "sevenos.context.v1"' <<<"$context_json" &&
    grep -q '"primary_context"' <<<"$context_json" &&
    grep -q '"schema": "sevenos.scheduler.v1"' <<<"$scheduler_json" &&
+   grep -q '"state": "active-user-space-executor"' <<<"$scheduler_json" &&
    grep -q '"active_policy"' <<<"$scheduler_json" &&
+   grep -q 'safe renice executor' <<<"$scheduler_json" &&
+   grep -q 'sevenos.scheduler-apply.v1' "$ROOT_DIR/scripts/scheduler.sh" &&
    grep -q '"runtime"' <<<"$state_json" &&
+   grep -q '"profile_run"' <<<"$state_json" &&
+   grep -q '"profile_runtime_manifest"' <<<"$state_json" &&
+   grep -q '"profile_runtime_manifests"' <<<"$state_json" &&
    grep -q '"schema": "sevenos.runtime-orchestrator.v1"' <<<"$runtime_json" &&
    grep -q '"capability_fusion"' <<<"$runtime_json" &&
    grep -q '"conflict_resolver"' <<<"$runtime_json" &&
    grep -q '"primary_profile"' <<<"$runtime_plan_json" &&
    grep -q '"shield"' <<<"$runtime_plan_json" &&
-   grep -q '"horizon"' <<<"$runtime_plan_json" &&
+   grep -q '"studio"' <<<"$runtime_plan_json" &&
    grep -q '"runtime_health":' <<<"$shell_status_json" &&
    grep -q '"schema": "sevenos.b3.v1"' <<<"$b3_json" &&
    grep -q '"targets":' <<<"$b3_json" &&
@@ -1919,7 +1985,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -1929,27 +1995,90 @@ profile_show_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile show forg
 profile_activate_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate studio)"
 profile_json_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json)"
 profile_catalog_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile catalog --json)"
+profile_aliases_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile aliases --json)"
+profile_migration_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile migrate-aliases --json)"
 profile_isolation_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/profile-isolation.sh" apply equinox forge --yes --json)"
+runtime_alias_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime plan horizon shield --json)"
+mini_os_alias_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/mini-os-bridge.sh" plan horizon shield --json)"
 if grep -q 'Workspace:' <<<"$profile_show_output" &&
    grep -q 'profile.env' <<<"$profile_activate_output" &&
    grep -q 'profile.lock' <<<"$profile_activate_output" &&
+   grep -q 'seven profile migrate-aliases --apply' <<<"$profile_activate_output" &&
    grep -q 'seven runtime activate' <<<"$profile_activate_output" &&
    grep -q '"active"' <<<"$profile_json_output" &&
+   PROFILE_JSON_OUTPUT="$profile_json_output" python -c 'import json,os,sys; data=json.loads(os.environ["PROFILE_JSON_OUTPUT"]); keys=[item.get("key") for item in data]; raise SystemExit(0 if len(keys)==7 and "horizon" not in keys else 1)' &&
    python -m json.tool <<<"$profile_catalog_json" >/dev/null &&
+   python -m json.tool <<<"$profile_aliases_output" >/dev/null &&
+   python -m json.tool <<<"$profile_migration_output" >/dev/null &&
    python -m json.tool <<<"$profile_isolation_json" >/dev/null &&
    grep -q '"default_profile": "equinox"' <<<"$profile_catalog_json" &&
    grep -q '"profile_model"' <<<"$profile_catalog_json" &&
    grep -q '"mini_os": true' <<<"$profile_catalog_json" &&
    grep -q '"Windows Bridge"' <<<"$profile_catalog_json" &&
    grep -q '"Baobab Culture"' <<<"$profile_catalog_json" &&
+   grep -q '"redirects_to"[[:space:]]*:[[:space:]]*"forge"' <<<"$profile_aliases_output" &&
+   grep -q '"pending"[[:space:]]*:[[:space:]]*0' <<<"$profile_migration_output" &&
+   RUNTIME_ALIAS_PLAN_JSON="$runtime_alias_plan_json" python -c 'import json,os; data=json.loads(os.environ["RUNTIME_ALIAS_PLAN_JSON"]); raise SystemExit(0 if data.get("primary_profile", {}).get("key") == "forge" and "shield" in data.get("composite_runtime", {}).get("injected_profiles", []) else 1)' &&
+   MINI_OS_ALIAS_PLAN_JSON="$mini_os_alias_plan_json" python -c 'import json,os; data=json.loads(os.environ["MINI_OS_ALIAS_PLAN_JSON"]); raise SystemExit(0 if data.get("primary") == "forge" and "shield" in data.get("capabilities", []) else 1)' &&
    grep -q '"schema": "sevenos.profile-isolation.v1"' <<<"$profile_isolation_json" &&
+   PROFILE_ISOLATION_JSON="$profile_isolation_json" python -c 'import json,os; data=json.loads(os.environ["PROFILE_ISOLATION_JSON"]); overlays=data.get("profile_overlays",{}); containers=data.get("profile_containers",{}); strict=data.get("strict_runtime",{}); raise SystemExit(0 if overlays and containers and strict and all(item.get("state")=="prepared" for item in overlays.values()) and all(item.get("state")=="prepared" and item.get("launch_mode")=="available-via-seven-profile-run-container" for item in containers.values()) and all(item.get("score",0) >= 70 for item in strict.values()) else 1)' &&
    grep -q 'seven-profile-run' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q '^#!/usr/bin/python3' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q 'sevenos.profile-run.v1' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q 'sevenos.profile-runtime-manifest.v1' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q -- '--profile' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q -- '--workspace' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q -- '--ephemeral' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q -- '--manifest' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q 'SEVENOS_EPHEMERAL' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q -- '--workspace-profile' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q 'profile_default' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q 'explicit-bind-only' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q 'profile-home-cache-data' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -Fq 'seven profile exec <profile> [--container] [--ephemeral] [--workspace PATH|--workspace-profile]' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'profile.strict.active' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'profile.strict.manifest' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'profile.strict.workspace' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'profile.strict.profile_workspace' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'profile.strict.ephemeral' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'profile.strict.shield_ephemeral' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'profile.strict.baobab' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'profile.strict.windows' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'strict_runtime' "$ROOT_DIR/scripts/profile-isolation.sh" &&
+   grep -q 'runtime_manifests' "$ROOT_DIR/scripts/profile-isolation.sh" &&
+   grep -q 'manifest_command' "$ROOT_DIR/scripts/profile-isolation.sh" &&
+   grep -q '"profile_run"' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q '"profile_runtime_manifest"' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q '"profile_runtime_manifests"' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q 'Strict boundary' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-terminal.*seven-profile-run --profile' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'Workspace shell' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'Ephemeral shell' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q -- '--workspace-profile' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-profile-run --profile shield --container' "$ROOT_DIR/docs/PROFILE_ISOLATION.md" &&
+   grep -q 'seven-profile-run --profile <profile> --manifest' "$ROOT_DIR/docs/PROFILE_ISOLATION.md" &&
+   grep -q 'seven-profile-run --profile forge --container --workspace' "$ROOT_DIR/docs/PROFILE_ISOLATION.md" &&
+   grep -q 'seven-profile-run --profile forge --container --workspace-profile' "$ROOT_DIR/docs/PROFILE_ISOLATION.md" &&
+   grep -q 'seven-profile-run --profile shield --ephemeral' "$ROOT_DIR/docs/PROFILE_ISOLATION.md" &&
+   grep -q 'protected_commands' "$ROOT_DIR/scripts/profile-isolation.sh" &&
+   grep -q '"python3"' "$ROOT_DIR/scripts/profile-isolation.sh" &&
+   grep -q '"bwrap"' "$ROOT_DIR/scripts/profile-isolation.sh" &&
+   grep -q '"firejail"' "$ROOT_DIR/scripts/profile-isolation.sh" &&
    grep -q 'SEVENOS_PROFILE_SHIMS' "$ROOT_DIR/branding/shell/terminal-bashrc" &&
    grep -q 'SEVENOS_PROFILE_SHIMS' "$ROOT_DIR/branding/shell/terminal-zsh/.zshrc" &&
+   grep -q '"runtime_context"' "$ROOT_DIR/bin/seven-profile-theme" &&
+   grep -q 'temporary_optimization' "$ROOT_DIR/bin/seven-profile-theme" &&
+   grep -q 'runtime_context' "$ROOT_DIR/bin/seven-mini-os-center" &&
    ! grep -Eq ':-baobab|ACTIVE_PROFILE", "baobab"|return "Baobab", "unknown"' "$ROOT_DIR/scripts/context.sh" "$ROOT_DIR/scripts/scheduler.sh" "$ROOT_DIR/bin/seven-shell-panel" "$ROOT_DIR/bin/seven-quick-settings-native" "$ROOT_DIR/bin/seven-settings-native"; then
   ok "SevenOS profiles expose concrete state, activation and workspaces"
 else
   fail "SevenOS profiles should expose state, activation and workspaces"
+fi
+
+if "$ROOT_DIR/scripts/terminal-guard.sh" check >/dev/null; then
+  ok "Seven Terminal executes commands across mini OS profiles with isolation shims active"
+else
+  fail "Seven Terminal command execution guard failed"
 fi
 
 if SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" open | grep -q 'xdg-open http://127.0.0.1:7787'; then
@@ -2119,14 +2248,23 @@ windows_run="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" run pho
 windows_office_prepare="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" prepare office)"
 windows_office_diagnose="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" diagnose OfficeSetup.exe)"
 windows_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide)"
+windows_status_human="$("$ROOT_DIR/bin/seven-windows-assistant" status)"
 windows_apps="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" apps)"
+windows_enter="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" enter)"
+windows_leave="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" leave)"
+windows_sync="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" sync)"
+windows_bridge_json="$("$ROOT_DIR/bin/seven-windows-assistant" bridge-status --json)"
 windows_mode_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode guide --dry-run)"
 if python -m json.tool <<<"$windows_json" >/dev/null &&
    python -m json.tool <<<"$windows_plan" >/dev/null &&
    python -m json.tool <<<"$windows_catalog" >/dev/null &&
    python -m json.tool <<<"$windows_resolve" >/dev/null &&
    python -m json.tool <<<"$windows_office_resolve" >/dev/null &&
+   python -m json.tool <<<"$windows_bridge_json" >/dev/null &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows.v1"' <<<"$windows_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-bridge-runtime.v1"' <<<"$windows_bridge_json" &&
+   grep -q '"bridge_runtime"' <<<"$windows_json" &&
+   grep -q 'Bridge runtime:' <<<"$windows_status_human" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-catalog.v1"' <<<"$windows_catalog" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-resolve.v1"' <<<"$windows_resolve" &&
@@ -2136,12 +2274,66 @@ if python -m json.tool <<<"$windows_json" >/dev/null &&
    grep -q 'Prepare Windows prefix office' <<<"$windows_office_prepare" &&
    grep -q 'SevenOS Windows Diagnostic' <<<"$windows_office_diagnose" &&
    grep -q 'DRY-RUN > Windows Mode > Open Bottles' <<<"$windows_apps" &&
+   grep -q 'seven windows fix-network' <<<"$windows_enter" &&
+   grep -q 'seven windows console' <<<"$windows_enter" &&
+   grep -q 'seven windows close-console' <<<"$windows_leave" &&
+   grep -q 'managedsave' <<<"$windows_leave" &&
+   grep -q 'if profile == windows: seven windows enter' <<<"$windows_sync" &&
+   grep -q 'else: seven windows leave' <<<"$windows_sync" &&
+   grep -q '"recommended_action"' <<<"$windows_bridge_json" &&
    grep -q 'SevenOS Windows Mode guide' <<<"$windows_mode_guide" &&
+   grep -q 'iso_state()' "$ROOT_DIR/vm/windows-provisioner.sh" &&
+   grep -q 'VIRTIO_PART=' "$ROOT_DIR/vm/windows-provisioner.sh" &&
+   grep -q 'curl --fail --retry 5 --retry-delay 2 -C - -L --progress-bar' "$ROOT_DIR/vm/windows-provisioner.sh" &&
+   grep -q 'Resume it with: seven windows virtio --yes' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'ensure_tun()' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'sudo modprobe tun' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'NETWORK_MODE="${SEVENOS_WINDOWS_NETWORK_MODE:-user}"' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'NETWORK_MODEL="${SEVENOS_WINDOWS_NETWORK_MODEL:-e1000e}"' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'model=${NETWORK_MODEL}' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'fix-network' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'enter_action()' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'leave_action()' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'sync_action()' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'bridge_status_json()' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'watchdog_state()' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'Windows Runtime' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'windows_bridge_runtime()' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven windows bridge-status' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven windows sync' "$ROOT_DIR/bin/seven-profile-theme" &&
+   grep -q 'seven windows bridge-status' "$ROOT_DIR/bin/seven-profile-theme" &&
+   grep -q 'vm_domstate()' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'LC_ALL=C LANG=C virsh -c qemu:///system domstate' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'release_vm_lock' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'watch_enter_action()' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'WATCH_PID_FILE' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'python3 /usr/bin/virt-manager .*${VM_NAME}' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'watch detected closed console' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'watch detected VM state' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'watch alive: profile=windows' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'SEVENOS_WINDOWS_AUTO_ENTER' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'SEVENOS_WINDOWS_AUTO_LEAVE' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'SEVENOS_WINDOWS_AUTO_LEAVE_MODE:-managedsave' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'SEVENOS_WINDOWS_AUTO_CONSOLE:-virt-manager' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'sleep 5; seven windows sync' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'DISK_BUS="${SEVENOS_WINDOWS_DISK_BUS:-sata}"' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'bus=${DISK_BUS}' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q -- '--noautoconsole' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'seven windows console' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'remote-viewer "$display_uri"' "$ROOT_DIR/vm/windows-mode.sh" &&
+   grep -q 'grant_libvirt_file_access()' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q 'grant_libvirt_file_access "$VM_DISK_PATH" "rw-"' "$ROOT_DIR/vm/windows-vm.sh" &&
+   grep -q '"recommended_next"' <<<"$windows_json" &&
    grep -q 'windows.catalog' <<<"$actions_json" &&
    grep -q 'windows.prepare.office' <<<"$actions_json" &&
    grep -q 'windows.diagnose.office' <<<"$actions_json" &&
    grep -q 'windows.resolve.photoshop' <<<"$actions_json" &&
    grep -q 'windows.run.photoshop' <<<"$actions_json" &&
+   grep -q 'windows.enter' <<<"$actions_json" &&
+   grep -q 'windows.leave' <<<"$actions_json" &&
+   grep -q 'windows.sync' <<<"$actions_json" &&
+   grep -q 'windows.bridge_status' <<<"$actions_json" &&
+   grep -q 'windows.fix_network' <<<"$actions_json" &&
    grep -q 'windows.guide' <<<"$actions_json" &&
    grep -q 'windows.apps' <<<"$actions_json" &&
    grep -q 'windows.plan' <<<"$actions_json"; then

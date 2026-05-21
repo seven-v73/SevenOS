@@ -56,7 +56,7 @@ json_string() {
 
 release_json() {
   local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_postinstall_state
-  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state live_desktop_state calamares_branding_state
+  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state live_desktop_state calamares_branding_state installer_portal_state
 
   archinstall_state="$(state archinstall)"
   calamares_state="$(state calamares)"
@@ -65,6 +65,7 @@ release_json() {
   calamares_module_state="$(file_state installer/calamares/modules/sevenos.conf)"
   calamares_postinstall_state="$(contains_state installer/calamares/modules/sevenos.conf "/opt/SevenOS/install.sh base")"
   graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
+  installer_portal_state="$("$ROOT_DIR/bin/seven-installer" status --json 2>/dev/null | grep -q 'sevenos.installer-portal.v1' && printf OK || printf MISS)"
   live_desktop_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Exec=seven-installer")"
   calamares_branding_state="$(file_state installer/calamares/branding/sevenos/branding.desc)"
   archiso_state="$(dir_state archiso/profile)"
@@ -80,6 +81,7 @@ release_json() {
   CALAMARES_MODULE_STATE="$calamares_module_state" \
   CALAMARES_POSTINSTALL_STATE="$calamares_postinstall_state" \
   GRAPHICAL_LAUNCHER_STATE="$graphical_launcher_state" \
+  INSTALLER_PORTAL_STATE="$installer_portal_state" \
   LIVE_DESKTOP_STATE="$live_desktop_state" \
   CALAMARES_BRANDING_STATE="$calamares_branding_state" \
   ARCHISO_STATE="$archiso_state" \
@@ -141,6 +143,13 @@ checks = [
         "required": True,
         "title": "SevenOS graphical installer launcher",
         "command": "seven installer graphical",
+    },
+    {
+        "key": "installer-portal",
+        "state": os.environ["INSTALLER_PORTAL_STATE"],
+        "required": True,
+        "title": "SevenOS installer portal contract",
+        "command": "seven-installer status --json",
     },
     {
         "key": "live-desktop-entry",
@@ -215,6 +224,7 @@ print(json.dumps({
     "optional_ready": optional_ok,
     "optional_total": len(checks) - len(required),
     "checks": checks,
+    "portal": "seven-installer status --json",
 }, indent=2))
 PY
 }
