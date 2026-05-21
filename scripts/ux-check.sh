@@ -278,6 +278,7 @@ require_executable "scripts/actions.sh"
 require_executable "scripts/hub.sh"
 require_executable "scripts/platform.sh"
 require_executable "scripts/channel.sh"
+require_executable "scripts/mask.sh"
 require_executable "profiles/profile-manager.sh"
 require_executable "scripts/installer-stack.sh"
 require_executable "scripts/store.sh"
@@ -1671,15 +1672,20 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    "$ROOT_DIR/scripts/platform.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/channel.sh" json | grep -q '"schema": "sevenos.release-channel.v1"' &&
    "$ROOT_DIR/scripts/channel.sh" doctor >/dev/null &&
+   "$ROOT_DIR/scripts/mask.sh" json | grep -q '"schema": "sevenos.mask.v1"' &&
+   "$ROOT_DIR/scripts/mask.sh" doctor >/dev/null &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-action-runner" --dry-run -- "$ROOT_DIR/bin/seven" status | grep -q 'seven status' &&
    grep -q 'seven autonomy' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven platform' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven channel' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven mask' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q '"autonomy":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"platform":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"channel":' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q '"mask":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q 'SevenOS Distribution Autonomy' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Platform Facade' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
+   grep -q 'Public Mask Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven-action-runner' "$ROOT_DIR/bin/seven-hub-native"; then
   ok "SevenOS exposes an autonomy layer that masks Arch/Hyprland internals"
 else

@@ -214,6 +214,13 @@ def handle_platform(args):
     run_script(args, "scripts/platform.sh", *extra)
 
 
+def handle_mask(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/mask.sh", *extra)
+
+
 def handle_channel(args):
     extra = [args.action]
     if args.channel:
@@ -822,6 +829,9 @@ def main():
     platform_parser = subparsers.add_parser("platform", help="show SevenOS public platform layers and hidden backends")
     platform_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json"))
     platform_parser.add_argument("--json", action="store_true", help="print machine-readable platform facade")
+    mask_parser = subparsers.add_parser("mask", help="check whether public SevenOS surfaces hide backend details")
+    mask_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    mask_parser.add_argument("--json", action="store_true", help="print machine-readable public masking contract")
 
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
@@ -998,6 +1008,8 @@ def main():
         handle_autonomy(args)
     elif args.command == "platform":
         handle_platform(args)
+    elif args.command == "mask":
+        handle_mask(args)
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)

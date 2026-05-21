@@ -42,6 +42,9 @@ It is built around foundation pillars:
 - `seven platform` as the public vocabulary map for SevenOS Software, Seven
   Smart Window System, SevenOS Session, Mini OS Runtime, Installer, Seven Core
   and Windows Bridge.
+- `seven mask` as the public masking contract that verifies launcher names,
+  installer portals, software surfaces and identity files present SevenOS before
+  backend implementation details.
 - `seven channel` as the product release channel contract, so Hub and Settings
   can say dev/testing/stable before exposing branch, commit and dirty worktree
   details.
@@ -82,6 +85,8 @@ What is already testable:
 - Persistent Hyprpaper wallpaper runtime through `seven-wallpaper serve`.
 - Distribution autonomy checks through `seven autonomy` and
   `docs/DISTRIBUTION_AUTONOMY.md`.
+- Public masking checks through `seven mask`, so Hub/Settings can distinguish a
+  SevenOS-first surface from a backend-visible Arch/Hyprland workflow.
 - Release channel/status checks through `seven channel`, `seven release` and
   `seven-installer status --json`.
 - Calamares runtime source checks through `seven installer runtime`, keeping

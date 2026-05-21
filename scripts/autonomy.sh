@@ -80,6 +80,7 @@ def run_json(parts, timeout=10):
 installer = run_json(["scripts/installer-stack.sh", "release", "--json"], timeout=10) or {}
 platform = run_json(["scripts/platform.sh", "json"], timeout=8) or {}
 channel = run_json(["scripts/channel.sh", "json"], timeout=8) or {}
+mask = run_json(["scripts/mask.sh", "json"], timeout=8) or {}
 dirty_count = 0
 try:
     dirty = subprocess.run(["git", "status", "--short"], cwd=root, text=True, capture_output=True, check=False, timeout=5)
@@ -113,6 +114,13 @@ checks = [
         "title": "SevenOS platform vocabulary",
         "detail": "User surfaces expose SevenOS layers first and keep Arch/Hyprland/pacman/systemd as backend details.",
         "command": "seven platform",
+    },
+    {
+        "key": "public-mask",
+        "state": "OK" if mask.get("state") == "masked" else "PART",
+        "title": "SevenOS public masking",
+        "detail": f"Mask state: {mask.get('state', 'unknown')}; score: {mask.get('score', 'unknown')}.",
+        "command": "seven mask",
     },
     {
         "key": "release-channel",

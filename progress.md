@@ -1334,3 +1334,14 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - `seven installer release --json` ajoute `calamares-source-policy` comme check
   optionnel sans marquer la release graphique comme prete tant que le runtime
   Calamares n'est pas present.
+
+## 2026-05-21 - SevenOS public mask contract pass
+
+- Ajout de `seven mask`, contrat dedie au masquage public : noms de lanceurs,
+  portail installateur, surface logiciel, identite de boot et facade plateforme.
+- `seven state --json` expose maintenant `mask` pour Hub, Settings, Doctor et
+  futures surfaces natives.
+- `seven autonomy` prend en compte le contrat public mask pour mesurer si
+  SevenOS ressemble a une distribution autonome plutot qu'a un backend expose.
+- Le registre d'actions et `ux-check` savent valider `seven mask`, afin que les
+  prochains raffinements de branding soient visibles dans les gates produit.

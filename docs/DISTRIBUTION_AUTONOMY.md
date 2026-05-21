@@ -19,6 +19,7 @@ seven autonomy
 seven autonomy --json
 seven autonomy doctor
 seven platform
+seven mask
 seven channel
 ```
 
@@ -33,6 +34,25 @@ The contract checks:
 - mini OS runtime manifests with strict HOME/cache/data/workspace boundaries;
 - SevenDaemon service path for future policy execution;
 - installer and release freeze gates.
+
+## Public Mask Contract
+
+`seven mask` is the product-facing masking contract. It does not pretend that
+SevenOS has no backend; it checks whether normal launchers, portals and system
+identity files say SevenOS first.
+
+The contract validates:
+
+- SevenOS platform facade availability;
+- release channel vocabulary;
+- installer portal status;
+- native action execution;
+- public `.desktop` launcher names;
+- boot, issue, MOTD and release identity;
+- SevenStore / `sevenpkg` as the software surface.
+
+This is the practical line between “Arch tools visible everywhere” and “SevenOS
+as the primary operating system experience”.
 
 ## Masking Policy
 

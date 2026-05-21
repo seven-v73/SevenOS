@@ -30,6 +30,8 @@ autonomy.plan	System	Autonomy Plan	seven autonomy plan	safe	Show the remaining w
 autonomy.doctor	System	Autonomy Doctor	seven autonomy doctor	safe	Validate the SevenOS autonomy contract.
 platform.status	System	SevenOS Platform	seven platform	safe	Show SevenOS public platform layers and their hidden technical backends.
 platform.doctor	System	Platform Doctor	seven platform doctor	safe	Validate the SevenOS platform facade.
+mask.status	System	SevenOS Mask	seven mask	safe	Show whether public SevenOS surfaces present SevenOS before backend details.
+mask.doctor	System	Mask Doctor	seven mask doctor	safe	Validate launcher names, installer portal, software surfaces and identity masking.
 channel.status	System	Release Channel	seven channel	safe	Show whether this workspace is dev, testing or stable from a SevenOS product perspective.
 channel.testing	System	Switch To Testing Channel	seven channel set testing	changes	Mark the current workspace as a SevenOS testing channel without creating a git commit.
 channel.stable	System	Switch To Stable Channel	seven channel set stable	changes	Mark the current workspace as stable when release gates are ready.
