@@ -17,6 +17,7 @@ Run:
 ```bash
 seven about
 seven lifecycle
+seven product
 seven autonomy
 seven autonomy --json
 seven autonomy doctor
@@ -33,6 +34,7 @@ The contract checks:
 
 - public About/edition identity via `seven about`;
 - public lifecycle/maintenance routes via `seven lifecycle`;
+- compact public product facade via `seven product`;
 - SevenOS-first commands: `seven`, `sevenpkg`, SevenStore and Settings;
 - action execution without opening terminals by default;
 - release channel identity (`dev`, `testing`, `stable`) instead of raw Git as
@@ -77,6 +79,22 @@ essential OS lifecycle to SevenOS routes:
 This is how SevenOS avoids becoming “Arch commands with a theme” during normal
 maintenance. Advanced users can still inspect pacman, systemd, git and logs,
 but the product path starts with SevenOS language and SevenOS actions.
+
+## Product Facade
+
+`seven product` is the compact public snapshot for native surfaces. It bundles
+the signals that Hub, Settings, Welcome and installer screens need most:
+
+- About identity and active mini OS;
+- lifecycle/maintenance state;
+- distribution gate;
+- native surfaces;
+- user routes;
+- public masking;
+- dynamic desktop state.
+
+The goal is performance and clarity: UI surfaces can read one product contract
+instead of re-implementing the product logic or exposing backend checks directly.
 
 ## Distribution Contract
 

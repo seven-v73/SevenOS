@@ -1423,3 +1423,13 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - `seven state --json`, le registre d'actions, README, la doc autonomie et
   `ux-check` exposent maintenant ce cycle de vie afin de masquer les commandes
   backend dans les parcours grand public.
+
+## 2026-05-21 - SevenOS product facade pass
+
+- Ajout de `seven product`, snapshot compact pour Hub, Settings, Welcome et
+  installateur : About, lifecycle, distribution, surfaces, routes, mask et
+  dynamic dans un seul contrat `sevenos.product.v1`.
+- Le contrat expose des cartes d'accueil produit et des promesses utilisateur,
+  afin que les surfaces natives puissent parler SevenOS avant de parler backend.
+- `seven state --json`, le registre d'actions, README, la doc autonomie et
+  `ux-check` savent maintenant valider cette facade produit.

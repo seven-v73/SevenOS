@@ -33,8 +33,30 @@ done
 about_json() {
   local tmp
   tmp="$(mktemp -d)"
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/bin/seven" profile current --json >"$tmp/profile.json" 2>/dev/null || printf '{}\n' >"$tmp/profile.json" &
-  local pid_profile=$!
+  local pid_profile
+  if [[ "${SEVENOS_ABOUT_FAST:-0}" == "1" ]]; then
+    python - <<'PY' >"$tmp/profile.json" 2>/dev/null || printf '{}\n' >"$tmp/profile.json" &
+import json
+from pathlib import Path
+
+path = Path.home() / ".config/sevenos/profile.json"
+if path.is_file():
+    print(path.read_text(encoding="utf-8"))
+else:
+    print(json.dumps({
+        "key": "equinox",
+        "title": "Equinox Balance",
+        "short_label": "EQX",
+        "role": "Balance",
+        "accent_color": "#8B7CFF",
+        "workspace": str(Path.home() / "SevenOS"),
+    }))
+PY
+    pid_profile=$!
+  else
+    SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/bin/seven" profile current --json >"$tmp/profile.json" 2>/dev/null || printf '{}\n' >"$tmp/profile.json" &
+    pid_profile=$!
+  fi
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/channel.sh" json >"$tmp/channel.json" 2>/dev/null || printf '{}\n' >"$tmp/channel.json" &
   local pid_channel=$!
   SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &

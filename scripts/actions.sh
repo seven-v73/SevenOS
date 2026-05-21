@@ -30,6 +30,8 @@ about.json	System	About SevenOS JSON	seven about --json	safe	Expose the SevenOS 
 lifecycle.status	System	SevenOS Lifecycle	seven lifecycle	safe	Show the SevenOS-first maintenance routes for updates, repair, protected state, recovery and release gates.
 lifecycle.doctor	System	Lifecycle Doctor	seven lifecycle doctor	safe	Validate that SevenOS maintenance is exposed through SevenOS surfaces instead of raw backend commands.
 lifecycle.plan	System	Lifecycle Plan	seven lifecycle plan	safe	Show remaining maintenance gates before SevenOS feels like a complete autonomous distribution.
+product.status	System	SevenOS Product	seven product	safe	Show the compact SevenOS product snapshot used by Hub, Settings, Welcome and installer surfaces.
+product.json	System	SevenOS Product JSON	seven product --json	safe	Expose the SevenOS product facade as one machine-readable contract for native surfaces.
 autonomy.status	System	SevenOS Autonomy	seven autonomy	safe	Show whether SevenOS is presented as an autonomous OS layer instead of exposed Arch/Hyprland internals.
 autonomy.plan	System	Autonomy Plan	seven autonomy plan	safe	Show the remaining work to mask backend details behind SevenOS surfaces.
 autonomy.doctor	System	Autonomy Doctor	seven autonomy doctor	safe	Validate the SevenOS autonomy contract.

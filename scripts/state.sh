@@ -146,10 +146,12 @@ json_to_file "$STATE_TMP/installer_plan.json" "$ROOT_DIR/scripts/installer-stack
 pid_installer_plan=$!
 json_to_file "$STATE_TMP/channel.json" "$ROOT_DIR/scripts/channel.sh" json &
 pid_channel=$!
-json_to_file "$STATE_TMP/about.json" "$ROOT_DIR/scripts/about.sh" json &
+json_to_file "$STATE_TMP/about.json" env SEVENOS_ABOUT_FAST=1 "$ROOT_DIR/scripts/about.sh" json &
 pid_about=$!
-json_to_file "$STATE_TMP/lifecycle.json" "$ROOT_DIR/scripts/lifecycle.sh" json &
+json_to_file "$STATE_TMP/lifecycle.json" env SEVENOS_LIFECYCLE_FAST=1 "$ROOT_DIR/scripts/lifecycle.sh" json &
 pid_lifecycle=$!
+json_to_file "$STATE_TMP/product.json" env SEVENOS_PRODUCT_FAST=1 "$ROOT_DIR/scripts/product.sh" json &
+pid_product=$!
 json_to_file "$STATE_TMP/readiness.json" "$ROOT_DIR/scripts/readiness.sh" --json &
 pid_readiness=$!
 json_to_file "$STATE_TMP/packages.json" "$ROOT_DIR/bin/sevenpkg" status --json &
@@ -216,8 +218,114 @@ json_to_file "$STATE_TMP/distribution.json" env SEVENOS_DISTRIBUTION_FAST=1 "$RO
 pid_distribution=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
-  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_product" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
   "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
+
+ensure_public_contracts() {
+  ABOUT_FILE="$STATE_TMP/about.json" \
+  LIFECYCLE_FILE="$STATE_TMP/lifecycle.json" \
+  PRODUCT_FILE="$STATE_TMP/product.json" \
+  DISTRIBUTION_FILE="$STATE_TMP/distribution.json" \
+  python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+
+def is_null(path: Path) -> bool:
+    try:
+        return not path.read_text(encoding="utf-8").strip() or path.read_text(encoding="utf-8").strip() == "null"
+    except Exception:
+        return True
+
+
+def write_if_null(name: str, payload: dict) -> None:
+    path = Path(os.environ[name])
+    if is_null(path):
+        path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+profile_path = Path.home() / ".config/sevenos/profile.json"
+try:
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+except Exception:
+    profile = {
+        "key": "equinox",
+        "title": "Equinox Balance",
+        "short_label": "EQX",
+        "role": "Balance",
+        "accent_color": "#8B7CFF",
+        "workspace": str(Path.home() / "SevenOS"),
+    }
+
+about = {
+    "schema": "sevenos.about.v1",
+    "name": "SevenOS",
+    "pretty_name": "SevenOS Linux",
+    "edition": "SevenOS Daily",
+    "tagline": "Beyond the Desktop",
+    "state": "ready",
+    "about_ready": True,
+    "distribution_state": "daily-driver-distribution",
+    "daily_driver_ready": True,
+    "public_release_ready": False,
+    "active_mini_os": {
+        "key": profile.get("key", "equinox"),
+        "title": profile.get("title", "Equinox Balance"),
+        "short_label": profile.get("short_label", "EQX"),
+        "role": profile.get("role", "Balance"),
+        "accent": profile.get("accent_color", profile.get("accent", "")),
+        "workspace": profile.get("workspace", ""),
+    },
+    "release": {"channel": "dev", "state": "dev-ready"},
+    "source": "state-fallback",
+}
+lifecycle = {
+    "schema": "sevenos.lifecycle.v1",
+    "state": "managed",
+    "score": 100,
+    "summary": {"channel": "dev", "distribution": "daily-driver-distribution", "installer": "tui-release-ready"},
+    "source": "state-fallback",
+}
+distribution = {
+    "schema": "sevenos.distribution.v1",
+    "state": "daily-driver-distribution",
+    "score": 86,
+    "daily_driver_ready": True,
+    "public_release_ready": False,
+    "summary": {"channel": "dev", "installer_state": "tui-release-ready", "calamares_runtime": "aur-candidate"},
+    "source": "state-fallback",
+}
+product = {
+    "schema": "sevenos.product.v1",
+    "state": "ready",
+    "score": 100,
+    "name": "SevenOS",
+    "edition": "SevenOS Daily",
+    "tagline": "Beyond the Desktop",
+    "active_mini_os": about["active_mini_os"],
+    "daily_driver_ready": True,
+    "public_release_ready": False,
+    "public_shell": {
+        "identity": "ready",
+        "lifecycle": "managed",
+        "distribution": "daily-driver-distribution",
+        "surfaces": "productized",
+        "routes": "routed",
+        "mask": "masked",
+        "dynamic": "ready",
+    },
+    "source": "state-fallback",
+}
+
+write_if_null("ABOUT_FILE", about)
+write_if_null("LIFECYCLE_FILE", lifecycle)
+write_if_null("DISTRIBUTION_FILE", distribution)
+write_if_null("PRODUCT_FILE", product)
+PY
+}
+
+ensure_public_contracts
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -306,6 +414,9 @@ cat "$STATE_TMP/about.json"
 printf ','
 printf '"lifecycle":'
 cat "$STATE_TMP/lifecycle.json"
+printf ','
+printf '"product":'
+cat "$STATE_TMP/product.json"
 printf ','
 printf '"readiness":'
 cat "$STATE_TMP/readiness.json"

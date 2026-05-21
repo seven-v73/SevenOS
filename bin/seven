@@ -256,6 +256,13 @@ def handle_lifecycle(args):
     run_script(args, "scripts/lifecycle.sh", *extra)
 
 
+def handle_product(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/product.sh", *extra)
+
+
 def handle_channel(args):
     extra = [args.action]
     if args.channel:
@@ -895,6 +902,9 @@ def main():
     lifecycle_parser = subparsers.add_parser("lifecycle", help="inspect SevenOS update, repair and recovery lifecycle")
     lifecycle_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     lifecycle_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS lifecycle contract")
+    product_parser = subparsers.add_parser("product", help="show compact SevenOS product snapshot for native surfaces")
+    product_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json"))
+    product_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS product facade")
 
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
@@ -1085,6 +1095,8 @@ def main():
         handle_about(args)
     elif args.command == "lifecycle":
         handle_lifecycle(args)
+    elif args.command == "product":
+        handle_product(args)
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)

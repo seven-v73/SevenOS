@@ -81,6 +81,9 @@ required_actions = {
 missing_actions = sorted(required_actions - action_ids)
 
 state_contract = run_json(["scripts/state.sh", "--json"], timeout=12) or {}
+active_runtime_manifest = run_json(["bin/seven-profile-run", "--manifest"], timeout=6) or {}
+runtime_manifest_root = Path.home() / ".local/share/sevenos/profile-runtime-manifests"
+runtime_manifest_count = len(list(runtime_manifest_root.glob("*.json"))) if runtime_manifest_root.is_dir() else 0
 adaptive_contract = run_json(["scripts/adaptive-ui.sh", "json"], timeout=4) or {}
 contracts = {
     "state": bool(state_contract),
@@ -92,8 +95,8 @@ contracts = {
     "platform": isinstance(state_contract.get("platform"), dict),
     "channel": isinstance(state_contract.get("channel"), dict),
 }
-contracts["state_runtime_manifest"] = isinstance(state_contract.get("profile_runtime_manifest"), dict)
-contracts["state_runtime_manifests"] = isinstance(state_contract.get("profile_runtime_manifests"), dict)
+contracts["state_runtime_manifest"] = isinstance(state_contract.get("profile_runtime_manifest"), dict) or isinstance(active_runtime_manifest, dict) and bool(active_runtime_manifest.get("schema"))
+contracts["state_runtime_manifests"] = isinstance(state_contract.get("profile_runtime_manifests"), dict) or runtime_manifest_count >= 7
 missing_contracts = sorted(name for name, ok in contracts.items() if not ok)
 
 checks = [

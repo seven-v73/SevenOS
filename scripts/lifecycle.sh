@@ -32,7 +32,7 @@ done
 lifecycle_json() {
   local tmp
   tmp="$(mktemp -d)"
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/about.sh" json >"$tmp/about.json" 2>/dev/null || printf '{}\n' >"$tmp/about.json" &
+  env SEVENOS_ABOUT_FAST="${SEVENOS_LIFECYCLE_FAST:-0}" SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/about.sh" json >"$tmp/about.json" 2>/dev/null || printf '{}\n' >"$tmp/about.json" &
   local pid_about=$!
   SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &
   local pid_distribution=$!

@@ -27,6 +27,8 @@ It is built around foundation pillars:
   Settings, Hub and installer surfaces
 - `seven lifecycle` as the SevenOS-first maintenance contract for updates,
   repair, protected state, recovery and release gates
+- `seven product` as the compact public product facade for Hub, Settings,
+  Welcome and installer surfaces
 - `sevenos.dotinst` as the install, restore, migration and packaging contract
 - Seven Hub as the user-facing control center
 - SevenOS Settings as the normal-user configuration center for wallpaper, displays, Wi-Fi, sound, keyboard, security, profiles, apps and system repair
@@ -92,6 +94,7 @@ What is already testable:
   channel and distribution state.
 - `seven lifecycle` as a SevenOS-first maintenance surface for update, repair,
   restore/protection, installer and release workflows.
+- `seven product` as a compact SevenOS product snapshot for native surfaces.
 - `sevenpkg` as the SevenOS software layer over pacman/meta-packages.
 - Seven Hub / Control Center entrypoints.
 - Native SevenOS Settings for daily desktop and system configuration.
