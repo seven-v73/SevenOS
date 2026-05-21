@@ -208,10 +208,12 @@ json_to_file "$STATE_TMP/surfaces.json" "$ROOT_DIR/scripts/surfaces.sh" json &
 pid_surfaces=$!
 json_to_file "$STATE_TMP/routes.json" "$ROOT_DIR/scripts/routes.sh" json &
 pid_routes=$!
+json_to_file "$STATE_TMP/distribution.json" env SEVENOS_DISTRIBUTION_FAST=1 "$ROOT_DIR/scripts/distribution.sh" json &
+pid_distribution=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" || true
+  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
 
 printf '{'
 printf '"schema":"sevenos.state.v1",'
@@ -387,6 +389,9 @@ cat "$STATE_TMP/surfaces.json"
 printf ','
 printf '"routes":'
 cat "$STATE_TMP/routes.json"
+printf ','
+printf '"distribution":'
+cat "$STATE_TMP/distribution.json"
 printf ','
 printf '"native_hub":{'
 if [[ -x "$ROOT_DIR/bin/seven-hub-native" ]]; then

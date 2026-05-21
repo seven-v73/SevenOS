@@ -52,6 +52,9 @@ It is built around foundation pillars:
   have SevenOS-native entrypoints before terminal or backend fallbacks.
 - `seven routes` as the user-intent routing contract that maps normal tasks to
   SevenOS surfaces and actions before backend implementation tools.
+- `seven distribution` as the top-level distribution contract across autonomy,
+  public masking, dynamic UI, surfaces, routes, release channel and installer
+  readiness.
 - `seven channel` as the product release channel contract, so Hub and Settings
   can say dev/testing/stable before exposing branch, commit and dirty worktree
   details.
@@ -100,6 +103,8 @@ What is already testable:
   Files, Reader, Terminal, Launchpad, Spotlight, Shield, Windows and Doctor.
 - User-intent route checks through `seven routes`, so install, repair, network,
   mini OS, Windows and window-management tasks stay SevenOS-first.
+- Top-level distribution checks through `seven distribution`, distinguishing a
+  daily-driver SevenOS distribution from a public ISO release candidate.
 - Release channel/status checks through `seven channel`, `seven release` and
   `seven-installer status --json`.
 - Calamares runtime source checks through `seven installer runtime`, keeping

@@ -23,6 +23,7 @@ seven mask
 seven dynamic
 seven surfaces
 seven routes
+seven distribution
 seven channel
 ```
 
@@ -40,6 +41,34 @@ The contract checks:
 - dynamic profile/theme/wallpaper/compositor adaptation.
 - public native surfaces for normal-user workflows.
 - user-intent routes that keep workflows SevenOS-first.
+
+## Distribution Contract
+
+`seven distribution` is the top-level product gate. It does not replace the
+lower contracts; it reads them and gives Hub, Settings, Doctor and release tools
+one clear answer:
+
+- `daily-driver-distribution`: SevenOS is coherent enough for daily use;
+- `public-release-candidate`: all distribution and release gates are clean;
+- `distribution-foundation`: the core layer exists, but key gates are partial;
+- `development-layer`: SevenOS is still visibly a development workspace.
+
+It aggregates:
+
+- `seven autonomy`;
+- `seven platform`;
+- `seven mask`;
+- `seven dynamic`;
+- `seven surfaces`;
+- `seven routes`;
+- `seven channel`;
+- `seven installer release`;
+- `seven installer runtime`;
+- `seven release doctor`.
+
+This is the single gate that prevents SevenOS from presenting itself as a
+public release while the installer runtime, release freeze or graphical ISO path
+still need work.
 
 ## Public Mask Contract
 
@@ -167,6 +196,7 @@ Calamares from a trusted downstream repository or AUR build.
 SevenOS becomes a public distribution only when:
 
 - `seven release doctor` is public-release-ready;
+- `seven distribution doctor` is public-release-candidate;
 - `seven autonomy doctor` passes at distribution-layer level;
 - the repository is frozen/committed;
 - the graphical ISO installer path is present;

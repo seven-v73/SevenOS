@@ -235,6 +235,13 @@ def handle_routes(args):
     run_script(args, "scripts/routes.sh", *extra)
 
 
+def handle_distribution(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/distribution.sh", *extra)
+
+
 def handle_channel(args):
     extra = [args.action]
     if args.channel:
@@ -862,6 +869,12 @@ def main():
     routes_parser = subparsers.add_parser("routes", help="inspect SevenOS user-intent routes")
     routes_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     routes_parser.add_argument("--json", action="store_true", help="print machine-readable user route contract")
+    distribution_parser = subparsers.add_parser("distribution", help="inspect SevenOS top-level distribution readiness")
+    distribution_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    distribution_parser.add_argument("--json", action="store_true", help="print machine-readable distribution contract")
+    distro_parser = subparsers.add_parser("distro", help="alias for SevenOS distribution readiness")
+    distro_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    distro_parser.add_argument("--json", action="store_true", help="print machine-readable distribution contract")
 
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
@@ -1046,6 +1059,8 @@ def main():
         handle_surfaces(args)
     elif args.command == "routes":
         handle_routes(args)
+    elif args.command in ("distribution", "distro"):
+        handle_distribution(args)
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)

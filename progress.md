@@ -1389,3 +1389,16 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - `seven autonomy` integre `user-routes` comme gate : SevenOS ne doit pas
   seulement avoir des apps natives, il doit aussi router clairement les
   intentions normales vers ces surfaces.
+
+## 2026-05-21 - SevenOS distribution contract pass
+
+- Ajout de `seven distribution`, gate produit au-dessus de `autonomy`,
+  `platform`, `mask`, `dynamic`, `surfaces`, `routes`, `channel`, installer et
+  release doctor.
+- Le contrat distingue explicitement `daily-driver-distribution` et
+  `public-release-candidate`, afin que SevenOS reste honnete quand Calamares,
+  l'ISO graphique ou le freeze Git ne sont pas encore verrouilles.
+- `seven state --json` expose maintenant `distribution`, pour que Hub,
+  Settings, Doctor et SevenAI puissent lire une seule jauge de distribution.
+- Le registre d'actions et `ux-check` valident `seven distribution`, ce qui
+  donne un filet QA a la couche "distro autonome masquee et dynamique".

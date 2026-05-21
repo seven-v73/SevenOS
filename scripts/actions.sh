@@ -36,6 +36,9 @@ surfaces.status	System	Public Surfaces	seven surfaces	safe	Show whether SevenOS 
 surfaces.doctor	System	Surfaces Doctor	seven surfaces doctor	safe	Validate Hub, Settings, Store, Files, Reader, Terminal and profile-aware native surfaces.
 routes.status	System	User Routes	seven routes	safe	Show how normal user intentions route to SevenOS surfaces before backend tools.
 routes.doctor	System	Routes Doctor	seven routes doctor	safe	Validate user-intent routing across SevenOS surfaces and action IDs.
+distribution.status	System	SevenOS Distribution	seven distribution	safe	Show the top-level distribution gate across autonomy, masking, dynamic UI, surfaces, routes, channel and installer readiness.
+distribution.doctor	System	Distribution Doctor	seven distribution doctor	safe	Validate whether SevenOS is daily-driver distribution ready or blocked from public release.
+distribution.plan	System	Distribution Plan	seven distribution plan	safe	Show the remaining gates before SevenOS can be treated as a public release candidate.
 channel.status	System	Release Channel	seven channel	safe	Show whether this workspace is dev, testing or stable from a SevenOS product perspective.
 channel.testing	System	Switch To Testing Channel	seven channel set testing	changes	Mark the current workspace as a SevenOS testing channel without creating a git commit.
 channel.stable	System	Switch To Stable Channel	seven channel set stable	changes	Mark the current workspace as stable when release gates are ready.
