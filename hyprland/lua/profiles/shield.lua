@@ -1,0 +1,52 @@
+return {
+  key = "shield",
+  title = "Shield Cybersecurity",
+  role = "cybersecurity mini OS",
+  workspace_policy = "scoped-lab-audit",
+  ui_density = "guarded",
+  runtime_signals = {
+    context = "cybersecurity",
+    layout = "lab-audit-report",
+    priority = "containment",
+  },
+  workspace_intent = {
+    "1: lab target and terminal",
+    "2: analysis tools",
+    "3: network inspection",
+    "4: report and evidence",
+  },
+  actions = {
+    "float confirmation panels",
+    "separate network inspection from reporting",
+    "keep intrusive tools visually scoped",
+  },
+  env_rules = {
+    "env = SEVENOS_HYPR_PROFILE,shield",
+    "env = SEVENOS_HYPR_LAYOUT,guarded",
+  },
+  layout_rules = {
+    "general {",
+    "    gaps_in = 6",
+    "    gaps_out = 12",
+    "    border_size = 2",
+    "    layout = dwindle",
+    "    resize_on_border = true",
+    "}",
+    "decoration {",
+    "    dim_inactive = true",
+    "    dim_strength = 0.10",
+    "}",
+  },
+  animation_rules = {
+    "animations {",
+    "    animation = workspaces, 1, 6, sevenWorkspace, slidefade 16%",
+    "    animation = border, 1, 10, seven",
+    "}",
+  },
+  window_rules = {
+    "windowrule = match:class ^(Wireshark)$, workspace 3",
+    "windowrule = match:class ^(BurpSuite|burpsuite)$, workspace 2",
+    "windowrule = match:title ^(.*Nmap.*)$, workspace 1",
+    "windowrule = match:title ^(SevenOS Shield)$, float on, center on",
+  },
+}

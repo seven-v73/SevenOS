@@ -1,0 +1,52 @@
+return {
+  key = "baobab",
+  title = "Baobab Culture",
+  role = "culture and learning mini OS",
+  workspace_policy = "reading-media-community",
+  ui_density = "calm",
+  runtime_signals = {
+    context = "culture-learning",
+    layout = "reader-media-community",
+    priority = "calm-learning",
+  },
+  workspace_intent = {
+    "1: cultural home and library",
+    "2: reading and study",
+    "3: audio, oral tradition and media",
+    "4: notes and community",
+  },
+  actions = {
+    "prefer quiet reading surfaces",
+    "route Seven Reader as a primary learning tool",
+    "avoid developer, gaming or security assumptions",
+  },
+  env_rules = {
+    "env = SEVENOS_HYPR_PROFILE,baobab",
+    "env = SEVENOS_HYPR_LAYOUT,culture",
+  },
+  layout_rules = {
+    "general {",
+    "    gaps_in = 7",
+    "    gaps_out = 14",
+    "    border_size = 1",
+    "    layout = dwindle",
+    "    resize_on_border = true",
+    "}",
+    "decoration {",
+    "    dim_inactive = true",
+    "    dim_strength = 0.04",
+    "}",
+  },
+  animation_rules = {
+    "animations {",
+    "    animation = workspaces, 1, 8, sevenWorkspace, slidefade 28%",
+    "    animation = windows, 1, 6, sevenOpen, popin 84%",
+    "}",
+  },
+  window_rules = {
+    "windowrule = match:class ^(SevenReaderNative)$, workspace 2",
+    "windowrule = match:title ^(Seven Reader)$, workspace 2",
+    "windowrule = match:class ^(foliate|com.github.johnfactotum.Foliate)$, workspace 2",
+    "windowrule = match:class ^(vlc|mpv)$, workspace 3",
+  },
+}

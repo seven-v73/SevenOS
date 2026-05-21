@@ -21,6 +21,7 @@ Usage:
   seven-window split-right
   seven-window mosaic
   seven-window layout-menu
+  seven-window controls
   seven-window decor-status [--json]
   seven-window decor-apply
   seven-window doctor
@@ -204,7 +205,18 @@ layout_menu() {
   options=$'Smart maximize\nFullscreen\nSplit left\nSplit right\nToggle floating\nMosaic\nMode: Smart\nMode: Focus\nMode: Creative\nMode: Studio'
 
   if [[ "$DRY_RUN" == "1" ]]; then
+    printf 'DRY-RUN > SevenDecor > Open native layout menu\n'
     printf '%s\n' "$options"
+    return 0
+  fi
+
+  if command -v seven-window-controls-native >/dev/null 2>&1 && seven-window-controls-native --probe >/dev/null 2>&1; then
+    seven-window-controls-native --menu
+    return 0
+  fi
+
+  if [[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] && "$ROOT_DIR/bin/seven-window-controls-native" --probe >/dev/null 2>&1; then
+    "$ROOT_DIR/bin/seven-window-controls-native" --menu
     return 0
   fi
 
@@ -229,6 +241,22 @@ layout_menu() {
     "Mode: Creative") set_mode creative ;;
     "Mode: Studio") set_mode studio ;;
   esac
+}
+
+controls() {
+  if [[ "$DRY_RUN" == "1" ]]; then
+    printf 'DRY-RUN > SevenDecor > Open universal window controls overlay\n'
+    return 0
+  fi
+  if command -v seven-window-controls-native >/dev/null 2>&1 && seven-window-controls-native --probe >/dev/null 2>&1; then
+    setsid -f seven-window-controls-native >/tmp/sevenos-window-controls.log 2>&1 || return 1
+    return 0
+  fi
+  if [[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] && "$ROOT_DIR/bin/seven-window-controls-native" --probe >/dev/null 2>&1; then
+    setsid -f "$ROOT_DIR/bin/seven-window-controls-native" >/tmp/sevenos-window-controls.log 2>&1 || return 1
+    return 0
+  fi
+  layout_menu
 }
 
 gtk_decoration_layout() {
@@ -342,7 +370,7 @@ status_json() {
   "profile": $(json_string "$profile"),
   "hyprland": $hypr,
   "engines": {
-    "decor": "phase-1-contract",
+    "decor": "phase-2-overlay",
     "layout": "hyprland-backed",
     "effects": "hyprland-backed",
     "ai": "planned-workspace-memory"
@@ -360,7 +388,11 @@ status_json() {
     "qt": "partial",
     "electron": "partial",
     "xwayland": "rules-only",
-    "universal_override": "planned-seven-decor-compositor-layer"
+    "universal_override": "seven-window-controls-native-overlay"
+  },
+  "overlay": {
+    "command": "seven-window controls",
+    "native": $([[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] && "$ROOT_DIR/bin/seven-window-controls-native" --probe >/dev/null 2>&1 && printf true || printf false)
   },
   "state_files": {
     "env": $(json_string "$MODE_ENV"),
@@ -379,7 +411,7 @@ status_text() {
   else
     printf 'Hyprland: MISS\n'
   fi
-  printf '\nActions: toggle-float, smart-maximize, fullscreen, split-left, split-right, mosaic, layout-menu\n'
+  printf '\nActions: controls, toggle-float, smart-maximize, fullscreen, split-left, split-right, mosaic, layout-menu\n'
 }
 
 doctor() {
@@ -387,7 +419,8 @@ doctor() {
   hypr_available || { printf 'MISS hyprctl\n'; failed=1; }
   [[ -s "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" ]] || { printf 'MISS hyprland/conf/sevenos-windows.conf\n'; failed=1; }
   grep -q 'sevenos-windows.conf' "$ROOT_DIR/hyprland/hyprland.conf" || { printf 'MISS hyprland source include\n'; failed=1; }
-  grep -q 'seven-window toggle-float' "$ROOT_DIR/hyprland/hyprland.conf" || { printf 'MISS toggle-float bind\n'; failed=1; }
+  grep -q 'seven-window toggle-float' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" || { printf 'MISS toggle-float bind\n'; failed=1; }
+  [[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] || { printf 'MISS seven-window-controls-native\n'; failed=1; }
   grep -q 'SevenDecor phase 1' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" || { printf 'MISS GTK4 SevenDecor traffic CSS\n'; failed=1; }
   grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" || { printf 'MISS GTK decoration layout\n'; failed=1; }
   if [[ "$failed" == "0" ]]; then
@@ -418,6 +451,7 @@ main() {
     split-right) split_right ;;
     mosaic) mosaic ;;
     layout-menu|menu) layout_menu ;;
+    controls|overlay) controls ;;
     decor-status)
       if [[ "${1:-}" == "--json" || "${1:-}" == "json" ]]; then
         decor_status_json

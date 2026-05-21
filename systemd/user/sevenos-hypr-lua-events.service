@@ -1,0 +1,14 @@
+[Unit]
+Description=SevenOS Hypr Lua event bridge
+Documentation=https://github.com/seven-v73/SevenOS
+PartOf=sevenos-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/seven-hypr-lua-events watch
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=sevenos-session.target

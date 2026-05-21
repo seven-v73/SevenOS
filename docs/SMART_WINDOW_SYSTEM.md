@@ -22,6 +22,10 @@ SevenOS native apps use macOS-style traffic lights as the public mental model:
 - Green performs smart maximize through `seven-window smart-maximize`.
 - Green double-click or explicit fullscreen uses `seven-window fullscreen`.
 - Long-press equivalent is exposed today as `seven-window layout-menu`.
+- For non-native apps, `seven-window controls` opens a small SevenDecor overlay
+  above the active window. It stores the target window address before the
+  overlay takes focus, then forwards red/yellow/green actions back to that
+  target through Hyprland.
 
 For third-party apps, SSWS phase 1 maps the same behavior to keyboard shortcuts and Hyprland rules. A deeper SevenDecor compositor/plugin layer can later override titlebars globally.
 
@@ -55,6 +59,7 @@ seven-window split-left
 seven-window split-right
 seven-window mosaic
 seven-window layout-menu
+seven-window controls
 seven-window decor-status
 seven-window decor-apply
 ```
@@ -109,6 +114,7 @@ seven-window decor-status --json
 
 Phase 2:
 
+- SevenDecor overlay for non-native apps through `seven-window controls`;
 - profile-aware layouts from `profile-ui.json`;
 - workspace memory;
 - app category learning;

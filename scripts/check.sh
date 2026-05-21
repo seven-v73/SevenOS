@@ -36,6 +36,7 @@ bash -n \
   "$ROOT_DIR/scripts/install-hyprsysteminfo.sh" \
   "$ROOT_DIR/scripts/wallpaper-theme.sh" \
   "$ROOT_DIR/scripts/smart-window.sh" \
+  "$ROOT_DIR/scripts/hypr-lua.sh" \
   "$ROOT_DIR/scripts/phase-gate.sh" \
   "$ROOT_DIR/scripts/ecosystem.sh" \
   "$ROOT_DIR/scripts/stack.sh" \
