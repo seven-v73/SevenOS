@@ -73,11 +73,12 @@ pacman -Ss <query>
 Install plan:
 
 ```bash
-pkexec pacman -S --needed <package>
+seven store install-app pacman <package>
 ```
 
-SevenStore must use `pkexec` or a future SevenOS package daemon for privileged
-installs. It should not expose terminal `sudo` flows in the UI.
+SevenStore must route privileged installs through its installer wrapper. The
+wrapper prefers `pkexec` with a graphical Polkit agent and falls back to `sudo`
+only when no user-session agent is active.
 
 ### AUR
 

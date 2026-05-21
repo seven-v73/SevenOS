@@ -115,6 +115,27 @@ def read_profile_ui() -> dict:
     return data
 
 
+def profile_items(profile_ui: dict) -> list[Item]:
+    if not profile_ui:
+        return []
+    key = str(profile_ui.get("profile") or "equinox")
+    title = str(profile_ui.get("title") or key.title())
+    home = profile_ui.get("home_screen") if isinstance(profile_ui.get("home_screen"), dict) else {}
+    items = [
+        Item("profile", f"{title} · Home", f"profile.home.{key}", str(profile_ui.get("center_command") or f"seven profile center {key}"), str(home.get("focus") or profile_ui.get("purpose") or "Open the active mini OS home."), "preferences-system-symbolic"),
+        Item("profile", f"{title} · Workspace", f"profile.workspace.{key}", str(profile_ui.get("workspace_command") or f"seven profile open {key}"), str(home.get("library") or "Open the mini OS workspace."), "folder-symbolic"),
+        Item("profile", f"{title} · Runtime", f"profile.runtime.{key}", str(profile_ui.get("runtime_command") or f"seven runtime plan {key}"), "Show layers, resources, services and composition for this mini OS.", "utilities-system-monitor-symbolic"),
+    ]
+    for action in home.get("actions", []) if isinstance(home.get("actions"), list) else []:
+        if not isinstance(action, dict):
+            continue
+        label = str(action.get("label") or "").strip()
+        command = str(action.get("command") or "").strip()
+        if label and command:
+            items.append(Item("profile", f"{title} · {label}", f"profile.action.{key}.{normalize(label)}", command, str(action.get("description") or "Mini OS action"), "system-run-symbolic"))
+    return items
+
+
 def write_json(path: Path, data) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -226,7 +247,7 @@ def mode_matches(item: Item, mode: str) -> bool:
         "apps": item.kind == "app",
         "files": item.kind == "file",
         "settings": item.kind == "setting",
-        "system": item.kind in {"action", "intent", "mode"},
+        "system": item.kind in {"action", "intent", "mode", "profile"},
         "web": item.kind in {"calc", "convert", "define", "web", "mail", "contacts", "calendar", "quick", "bookmark"},
         "clipboard": item.kind == "clipboard",
         "windows": item.kind == "window",
@@ -235,6 +256,15 @@ def mode_matches(item: Item, mode: str) -> bool:
 
 
 def dispatch_item(item: Item) -> None:
+    if item.kind == "profile":
+        subprocess.Popen(
+            ["bash", "-lc", item.command],
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return
     subprocess.Popen(
         [str(ROOT / "bin/seven-spotlight"), "dispatch", item.kind, item.key, item.command],
         cwd=ROOT,
@@ -505,13 +535,13 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
-    items = load_catalog()
     current_mode = mode if mode in {key for key, _, _ in CATEGORIES} else "all"
     result_rows: list[Gtk.Widget] = []
     current_matches: list[Item] = []
     selected_index = 0
 
     profile_title = profile_ui.get("title") or "SevenOS"
+    items = profile_items(profile_ui) + load_catalog()
     window = Gtk.Window(title=f"{profile_title} Spotlight")
     window.set_decorated(False)
     window.set_resizable(False)
@@ -542,7 +572,9 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     result_box.get_style_context().add_class("result-list")
     root.pack_start(result_box, False, False, 0)
 
-    ai_card = Gtk.Label(label=f"{profile_title} · SevenAI analyse les requêtes libres et demande confirmation avant les actions système.")
+    home = profile_ui.get("home_screen") if isinstance(profile_ui.get("home_screen"), dict) else {}
+    persona = home.get("ai_persona") or "SevenAI"
+    ai_card = Gtk.Label(label=f"{profile_title} · {persona} analyse les requêtes libres et demande confirmation avant les actions système.")
     ai_card.set_xalign(0)
     ai_card.get_style_context().add_class("ai-card")
     root.pack_start(ai_card, False, False, 0)

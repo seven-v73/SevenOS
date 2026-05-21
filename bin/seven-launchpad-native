@@ -106,6 +106,9 @@ def read_profile_ui() -> dict:
 
 
 def default_filter_for_profile(profile: dict) -> str:
+    home = profile.get("home_screen") if isinstance(profile.get("home_screen"), dict) else {}
+    if home.get("launchpad_filter"):
+        return str(home["launchpad_filter"])
     key = profile.get("profile", "equinox")
     return {
         "forge": "dev",
@@ -647,7 +650,7 @@ def run_launchpad() -> int:
 
     gi.require_version("Gdk", "3.0")
     gi.require_version("Gtk", "3.0")
-    from gi.repository import Gdk, Gtk
+    from gi.repository import Gdk, Gtk, Pango
 
     mode = current_theme_mode()
     profile_ui = read_profile_ui()
@@ -688,8 +691,12 @@ def run_launchpad() -> int:
     brand = Gtk.Label(label=profile_title)
     brand.set_xalign(0)
     brand.get_style_context().add_class("launchpad-brand")
-    subtitle = Gtk.Label(label=tr_text("Apps") + f" · {profile_ui.get('role', '')}".rstrip(" · "))
+    home = profile_ui.get("home_screen") if isinstance(profile_ui.get("home_screen"), dict) else {}
+    subtitle_text = home.get("focus") or profile_ui.get("role", "")
+    subtitle = Gtk.Label(label=tr_text("Apps") + f" · {subtitle_text}".rstrip(" · "))
     subtitle.set_xalign(0)
+    subtitle.set_max_width_chars(72)
+    subtitle.set_ellipsize(Pango.EllipsizeMode.END)
     subtitle.get_style_context().add_class("launchpad-subtitle")
     brand_box.pack_start(brand, False, False, 0)
     brand_box.pack_start(subtitle, False, False, 0)
@@ -700,9 +707,12 @@ def run_launchpad() -> int:
     search.get_style_context().add_class("launchpad-search")
     topbar.pack_start(search, False, False, 0)
 
-    ai_button = Gtk.Button(label="SevenAI")
+    center_command = str(profile_ui.get("center_command") or "seven-profile-center-native")
+    center_label = str((home.get("title") if isinstance(home, dict) else "") or "Mini OS")
+    ai_button = Gtk.Button(label=center_label)
     ai_button.get_style_context().add_class("launchpad-suggestion")
-    ai_button.connect("clicked", lambda _button: run_detached(["seven", "ai", "focus"]))
+    ai_button.set_tooltip_text("Open the active mini OS home")
+    ai_button.connect("clicked", lambda _button: run_detached(["bash", "-lc", center_command]))
     topbar.pack_start(ai_button, False, False, 0)
 
     filters = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
