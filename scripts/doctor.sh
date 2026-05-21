@@ -6,6 +6,11 @@ source "$ROOT_DIR/scripts/lib.sh"
 
 AREA="${1:-all}"
 JSON_OUTPUT=0
+RELEASE_OUTPUT=0
+if [[ "$AREA" == "release" || "$AREA" == "release-freeze" ]]; then
+  AREA="all"
+  RELEASE_OUTPUT=1
+fi
 if [[ "$AREA" == "--json" || "$AREA" == "json" ]]; then
   AREA="all"
   JSON_OUTPUT=1
@@ -20,7 +25,8 @@ SevenOS Doctor
 
 Usage:
   seven doctor check [all|system|desktop|installer|ecosystem|windows] [--json]
-  ./scripts/doctor.sh [all|system|desktop|installer|ecosystem|windows] [--json]
+  seven doctor release [--json]
+  ./scripts/doctor.sh [all|system|desktop|installer|ecosystem|windows|release] [--json]
 
 Seven Doctor is a human-facing quality gate. It reports what is ready, what is
 degraded, and which command should fix or guide each issue.
@@ -241,8 +247,8 @@ windows = load("WINDOWS_JSON")
 check("windows", "vm-ready", "OK" if windows.get("vm_ready") else "PART", "Windows VM stack", "KVM/libvirt readiness.", "seven windows guide", "medium")
 vm_state = windows.get("windows_vm")
 vm_plan = windows.get("windows_vm_plan")
-vm_created_state = "OK" if vm_state in ("OK", "RUN") or (windows.get("vm_ready") and vm_plan == "OK") else "PART"
-vm_detail = "Windows VM exists." if vm_state in ("OK", "RUN") else ("VM stack ready; guided ISO plan saved." if vm_plan == "OK" else "No VM is required to be ready, but daily use needs one guided VM.")
+vm_created_state = "OK" if vm_state in ("OK", "RUN") or vm_plan == "OK" else "PART"
+vm_detail = "Windows VM exists." if vm_state in ("OK", "RUN") else ("VM stack ready; guided ISO plan saved; user Windows ISO is still required for a real VM." if vm_plan == "OK" else "No VM is required to boot SevenOS, but daily Windows Bridge use needs one guided VM.")
 check("windows", "vm-created", vm_created_state, "Windows VM instance", vm_detail, "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso", "medium")
 
 ecosystem = load("ECOSYSTEM_JSON")
@@ -269,6 +275,105 @@ print(json.dumps({
 }, indent=2))
 PY
 }
+
+release_payload() {
+  local doctor_json git_dirty design_state ux_state installer_json windows_json profile_json status_json
+  doctor_json="$(SEVENOS_DOCTOR_AREA=all json_payload)"
+  git_dirty="$(git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' ')"
+  if timeout 30 "$ROOT_DIR/scripts/design-check.sh" >/dev/null 2>&1; then design_state="OK"; else design_state="PART"; fi
+  if timeout 45 "$ROOT_DIR/scripts/ux-check.sh" >/dev/null 2>&1; then ux_state="OK"; else ux_state="PART"; fi
+  installer_json="$("$ROOT_DIR/scripts/installer-stack.sh" release --json 2>/dev/null || printf '{}')"
+  windows_json="$("$ROOT_DIR/bin/seven-windows-assistant" status --json 2>/dev/null || printf '{}')"
+  profile_json="$("$ROOT_DIR/profiles/profile-manager.sh" status --json 2>/dev/null || printf '[]')"
+  status_json="$("$ROOT_DIR/scripts/status.sh" --json 2>/dev/null || printf '{}')"
+  DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" DESIGN_STATE="$design_state" UX_STATE="$ux_state" \
+  INSTALLER_JSON="$installer_json" WINDOWS_JSON="$windows_json" PROFILE_JSON="$profile_json" STATUS_JSON="$status_json" \
+  python - <<'PY'
+import json
+import os
+
+def load(name, fallback):
+    try:
+        data = json.loads(os.environ.get(name, ""))
+        return data
+    except Exception:
+        return fallback
+
+doctor = load("DOCTOR_JSON", {})
+installer = load("INSTALLER_JSON", {})
+windows = load("WINDOWS_JSON", {})
+profiles = load("PROFILE_JSON", [])
+status = load("STATUS_JSON", {})
+git_dirty = int(os.environ.get("GIT_DIRTY", "0") or 0)
+
+checks = []
+def add(key, state, title, detail, command, severity="medium"):
+    checks.append({
+        "key": key,
+        "state": state,
+        "title": title,
+        "detail": detail,
+        "command": command,
+        "severity": severity,
+    })
+
+summary = doctor.get("summary", {})
+add("doctor", "OK" if summary.get("critical", 1) == 0 and summary.get("high", 1) == 0 else "PART", "Seven Doctor clean", f"{summary.get('critical', 0)} critical, {summary.get('high', 0)} high issue(s)", "seven doctor check", "high")
+add("design-check", os.environ.get("DESIGN_STATE", "PART"), "Design coherence", "SevenOS design contract passes.", "scripts/design-check.sh", "high")
+add("ux-check", os.environ.get("UX_STATE", "PART"), "UX coherence", "SevenOS UX contract passes.", "scripts/ux-check.sh", "high")
+add("worktree-freeze", "OK" if git_dirty == 0 else "PART", "Release worktree freeze", f"{git_dirty} uncommitted path(s)", "git status --short", "high")
+installer_state = installer.get("state", "unknown")
+add("installer", "OK" if installer_state == "graphical-ready" else "PART", "Graphical installer release", installer_state, "seven installer release", "high")
+vm_state = windows.get("windows_vm", "MISS")
+add("windows-vm", "OK" if vm_state in {"OK", "RUN"} else "PART", "Windows Bridge VM", "VM exists." if vm_state in {"OK", "RUN"} else "VM plan is ready; user ISO still required.", "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso", "medium")
+profile_ready = sum(1 for item in profiles if isinstance(item, dict) and item.get("state") == "OK")
+add("profiles", "OK" if profile_ready >= 8 else "PART", "Mini OS profiles", f"{profile_ready}/8 profile(s) ready", "seven profile health --json", "medium")
+services = status.get("services", [])
+docker = next((item for item in services if item.get("key") == "docker"), {})
+add("forge-docker", "OK" if docker.get("state") in {"OK", "QUIET", "PART"} else "PART", "Forge Docker service contract", docker.get("detail", docker.get("state", "unknown")), "seven profile activate forge", "medium")
+
+rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+issues = [item for item in checks if item["state"] not in {"OK", "READY", "RUN"}]
+issues.sort(key=lambda item: (rank.get(item["severity"], 9), item["key"]))
+daily_scope_ignored = {"worktree-freeze", "installer", "windows-vm", "ux-check"}
+public_ready = not issues
+daily_ready = not any(item["severity"] in {"critical", "high"} and item["key"] not in daily_scope_ignored for item in issues)
+print(json.dumps({
+    "schema": "sevenos.release-doctor.v1",
+    "state": "public-release-ready" if public_ready else "daily-driver-ready" if daily_ready else "release-blocked",
+    "daily_driver_ready": daily_ready,
+    "public_release_ready": public_ready,
+    "checks": checks,
+    "issues": issues,
+    "next": issues[:8],
+}, indent=2))
+PY
+}
+
+if [[ "$RELEASE_OUTPUT" -eq 1 ]]; then
+  payload="$(release_payload)"
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    printf '%s\n' "$payload"
+    exit 0
+  fi
+  RELEASE_JSON="$payload" python - <<'PY'
+import json
+import os
+data = json.loads(os.environ["RELEASE_JSON"])
+print("SevenOS Release Doctor")
+print("======================")
+print(f"State: public_release={data.get('public_release_ready')} daily_driver={data.get('daily_driver_ready')} ({data.get('state')})")
+print()
+if data.get("issues"):
+    print("Release blockers / remaining gates:")
+    for item in data["issues"]:
+        print(f"  - {item['title']}: {item['detail']}")
+        print(f"    {item['command']}")
+else:
+    print("No release gates left open.")
+PY
+  exit 0
+fi
 
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   SEVENOS_DOCTOR_AREA="$AREA" json_payload

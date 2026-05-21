@@ -37,7 +37,14 @@ def run(command, args):
     if is_dry_run(args):
         print(" ".join(shlex.quote(str(part)) for part in command))
         return
-    subprocess.run(command, check=True)
+    try:
+        subprocess.run(command, check=True)
+    except subprocess.CalledProcessError as exc:
+        short = " ".join(shlex.quote(str(part)) for part in command[:4])
+        print(f"seven: command failed with exit code {exc.returncode}: {short}", file=sys.stderr)
+        if len(command) > 4:
+            print("seven: see the message above for the exact cause.", file=sys.stderr)
+        sys.exit(exc.returncode)
 
 
 def install_target(target, args, extra=None):
@@ -182,6 +189,15 @@ def handle_profile(args):
     if args.json:
         extra.append("--json")
     run_script(args, "profiles/profile-manager.sh", *extra)
+
+
+def handle_mini_os(args):
+    extra = [args.action, *args.items]
+    if args.json:
+        extra.append("--json")
+    if args.yes:
+        extra.append("--yes")
+    run_script(args, "scripts/mini-os-bridge.sh", *extra)
 
 
 def handle_shield(args):
@@ -555,6 +571,8 @@ def handle_language(args):
     extra = [args.action]
     if args.locale:
         extra.append(args.locale)
+    if getattr(args, "live", False):
+        extra.append("--live")
     if args.json:
         extra.append("--json")
     run_script(args, "bin/seven-language", *extra)
@@ -567,6 +585,13 @@ def handle_repair(args):
     if args.yes:
         extra.append("--yes")
     run_script(args, "scripts/repair.sh", *extra)
+
+
+def handle_release(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/release.sh", *extra)
 
 
 def handle_actions(args):
@@ -604,7 +629,7 @@ def main():
     ai_parser.add_argument("--yes", action="store_true", help="run non-interactively where supported")
     ai_parser.add_argument("--web", action="store_true", help="allow SevenAI web lookup for this request")
     store_parser = subparsers.add_parser("store", help="browse SevenStore modules, apps and actions")
-    store_parser.add_argument("action", nargs="?", default="status", choices=("status", "home", "modules", "catalog", "apps", "actions", "search", "detail", "doctor", "install", "install-app", "json"))
+    store_parser.add_argument("action", nargs="?", default="status", choices=("status", "home", "modules", "catalog", "apps", "actions", "search", "detail", "doctor", "install", "install-app", "open-app", "remove-app", "repair-app", "add-profile", "json"))
     store_parser.add_argument("--json", action="store_true", help="print machine-readable SevenStore catalog")
     store_parser.add_argument("extra", nargs=argparse.REMAINDER)
     box_parser = subparsers.add_parser("box", help="inspect SevenBox sandbox and container readiness")
@@ -641,6 +666,11 @@ def main():
     runtime_parser.add_argument("--json", action="store_true", help="print machine-readable runtime orchestration state")
     runtime_parser.add_argument("--apply", action="store_true", help="save an activated composite runtime")
     runtime_parser.add_argument("--yes", action="store_true", help="confirm safe non-root runtime state updates")
+    mini_os_parser = subparsers.add_parser("mini-os", help="inspect or activate explicit mini OS capability collaboration")
+    mini_os_parser.add_argument("action", nargs="?", default="status", choices=("status", "suggest", "plan", "activate"))
+    mini_os_parser.add_argument("items", nargs="*", help="primary mini OS and optional borrowed capability profiles")
+    mini_os_parser.add_argument("--json", action="store_true", help="print machine-readable Mini OS Bridge state")
+    mini_os_parser.add_argument("--yes", action="store_true", help="confirm explicit mini OS composition activation")
     window_parser = subparsers.add_parser("window", help="control the Seven Smart Window System")
     window_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "mode", "apply", "toggle-float", "toggle-floating", "smart-maximize", "maximize", "fullscreen", "split-left", "split-right", "mosaic", "layout-menu", "menu", "decor-status", "decor-apply", "doctor"))
     window_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -656,7 +686,7 @@ def main():
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
     identity_parser.add_argument("extra", nargs=argparse.REMAINDER)
     hypr_parser = subparsers.add_parser("hypr", help="inspect or install the SevenOS Hyprland premium ecosystem")
-    hypr_parser.add_argument("action", nargs="?", default="status", choices=("status", "install", "apply"))
+    hypr_parser.add_argument("action", nargs="?", default="status", choices=("status", "install", "apply", "lua"))
     hypr_parser.add_argument("extra", nargs=argparse.REMAINDER)
     experience_parser = subparsers.add_parser("experience", help="audit whether SevenOS feels like a coherent OS")
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
@@ -687,9 +717,10 @@ def main():
     fonts_parser.add_argument("action", nargs="?", default="status")
     fonts_parser.add_argument("extra", nargs=argparse.REMAINDER)
     language_parser = subparsers.add_parser("language", help="inspect and apply SevenOS user language")
-    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu"))
+    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply"))
     language_parser.add_argument("locale", nargs="?")
     language_parser.add_argument("--json", action="store_true", help="print machine-readable language state")
+    language_parser.add_argument("--live", action="store_true", help="restart visible SevenOS surfaces after a language change")
     phase_gate_parser = subparsers.add_parser("phase-gate", help="run consolidation checks before moving to the next phase")
     phase_gate_parser.add_argument("--json", action="store_true", help="print machine-readable phase decision")
     b3_parser = subparsers.add_parser("b3", help="orchestrate B2 to B3 consolidation")
@@ -724,6 +755,10 @@ def main():
     repair_parser.add_argument("area", nargs="?", default="all")
     repair_parser.add_argument("--apply", action="store_true", help="execute the repair plan")
     repair_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
+
+    release_parser = subparsers.add_parser("release", help="inspect public SevenOS release gates")
+    release_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "freeze", "doctor", "json"))
+    release_parser.add_argument("--json", action="store_true", help="print machine-readable release status or plan")
 
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
@@ -832,6 +867,8 @@ def main():
         handle_scheduler(args)
     elif args.command == "runtime":
         handle_runtime(args)
+    elif args.command == "mini-os":
+        handle_mini_os(args)
     elif args.command == "window":
         handle_window(args)
     elif args.command == "context":
@@ -890,18 +927,25 @@ def main():
         run_script(args, "scripts/improve.sh", *extra)
     elif args.command == "repair":
         handle_repair(args)
+    elif args.command == "release":
+        handle_release(args)
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)
         elif args.action in ("open", "dashboard"):
             run_script(args, "bin/seven-doctor-native")
+        elif args.action in ("release", "release-freeze"):
+            extra = ["release"]
+            if args.json:
+                extra.append("--json")
+            run_script(args, "scripts/doctor.sh", *extra)
         elif args.action == "check":
             extra = [args.area]
             if args.json:
                 extra.append("--json")
             run_script(args, "scripts/doctor.sh", *extra)
         else:
-            print("seven: supported doctor actions are check, open and fix", file=sys.stderr)
+            print("seven: supported doctor actions are check, open, fix and release", file=sys.stderr)
             sys.exit(1)
     elif args.command == "status":
         extra = ["--json"] if args.json else []
