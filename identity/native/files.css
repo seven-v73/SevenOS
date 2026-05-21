@@ -1,0 +1,265 @@
+    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
+    window.seven-files {
+      background:
+        linear-gradient(145deg, alpha(@files_panel, 0.96), alpha(@files_bg, 0.94));
+      border-radius: 22px;
+      color: @files_text;
+    }
+    .files-root {
+      background:
+        radial-gradient(circle at top left, alpha(@files_accent, 0.16), transparent 38%),
+        linear-gradient(145deg, alpha(@files_panel, 0.98), alpha(@files_bg, 0.94));
+    }
+    .files-sidebar {
+      min-width: 204px;
+      padding: 16px 13px;
+      background:
+        linear-gradient(180deg, alpha(@files_sidebar, 0.96), alpha(@files_panel, 0.72));
+      border-right: 1px solid @files_border;
+    }
+    .traffic-row {
+      padding: 0 0 20px 0;
+    }
+    .traffic-dot {
+      min-width: 15px;
+      min-height: 15px;
+      margin-right: 9px;
+    }
+    .sidebar-heading {
+      color: @files_muted;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      margin: 14px 0 5px 8px;
+    }
+    .sidebar-row {
+      min-height: 37px;
+      padding: 0 11px;
+      border-radius: 12px;
+      color: @files_text;
+      font: 500 13px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .sidebar-row:hover,
+    .sidebar-row.active {
+      background: @files_hover;
+    }
+    .files-main {
+      min-width: 650px;
+      background: alpha(@files_panel, 0.78);
+    }
+    .files-preview {
+      min-width: 254px;
+      padding: 18px 16px;
+      background:
+        linear-gradient(180deg, alpha(@files_sidebar, 0.96), alpha(@files_panel, 0.74));
+      border-left: 1px solid @files_border;
+    }
+    .inspector-card {
+      padding: 14px;
+      margin: 8px 0;
+      border-radius: 18px;
+      background: alpha(@files_panel, 0.72);
+      border: 1px solid @files_border;
+    }
+    .preview-actions {
+      margin: 8px 0 12px 0;
+    }
+    .preview-action {
+      min-height: 32px;
+      border-radius: 999px;
+      padding: 0 12px;
+      background: @files_selected;
+      color: @files_text;
+      border: 0;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .preview-action:hover {
+      background: @files_hover;
+    }
+    .preview-icon {
+      margin: 8px 0 12px 0;
+    }
+    .preview-title {
+      color: @files_text;
+      font: 500 17px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .preview-subtitle {
+      color: @files_muted;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      margin-bottom: 18px;
+    }
+    .preview-heading {
+      color: @files_muted;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      margin-top: 12px;
+    }
+    .preview-value {
+      color: @files_text;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .preview-hint {
+      color: @files_muted;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      margin-top: 12px;
+    }
+    .files-toolbar {
+      min-height: 56px;
+      padding: 0 16px 0 12px;
+      background: alpha(@files_panel, 0.86);
+      border-bottom: 1px solid @files_border;
+    }
+    .toolbar-group {
+      min-height: 40px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: alpha(@files_sidebar, 0.50);
+    }
+    .toolbar-button {
+      min-width: 34px;
+      min-height: 34px;
+      border-radius: 999px;
+      background: alpha(@files_sidebar, 0.78);
+      color: @files_text;
+      border: 0;
+      padding: 0;
+    }
+    .toolbar-button:hover {
+      background: @files_hover;
+    }
+    .files-title {
+      color: @files_text;
+      font: 500 18px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .breadcrumb-button {
+      min-height: 30px;
+      border-radius: 999px;
+      padding: 0 10px;
+      background: transparent;
+      color: @files_text;
+      border: 0;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .breadcrumb-button:hover {
+      background: @files_hover;
+    }
+    .files-search {
+      min-width: 112px;
+      min-height: 34px;
+      border-radius: 999px;
+      padding: 0 8px;
+      color: @files_text;
+      background: alpha(@files_sidebar, 0.76);
+      border: 1px solid @files_border;
+    }
+    .files-sort {
+      min-height: 34px;
+      min-width: 64px;
+      border-radius: 12px;
+      color: @files_text;
+      background: alpha(@files_sidebar, 0.74);
+    }
+    .toolbar-button.active {
+      background: @files_selected;
+      color: @files_accent;
+    }
+    .files-grid {
+      padding: 34px 36px;
+      background: alpha(@files_panel, 0.62);
+    }
+    .file-tile {
+      min-width: 120px;
+      min-height: 124px;
+      padding: 10px 6px;
+      border-radius: 16px;
+      color: @files_text;
+    }
+    .file-tile.list-view {
+      min-width: 560px;
+      min-height: 48px;
+      padding: 5px 12px;
+      border-radius: 10px;
+    }
+    .file-tile.compact-view {
+      min-width: 250px;
+      min-height: 40px;
+      padding: 4px 10px;
+      border-radius: 10px;
+    }
+    .file-tile:hover,
+    .file-tile:selected {
+      background:
+        linear-gradient(180deg, @files_selected, @files_hover);
+    }
+    .file-name {
+      color: @files_text;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .file-meta {
+      color: @files_muted;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .tag-pill {
+      min-height: 18px;
+      padding: 0 7px;
+      border-radius: 999px;
+      color: @files_text;
+      background: @files_selected;
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .tag-blue { background: alpha(@files_accent, 0.30); }
+    .tag-violet { background: alpha(@seven_secondary, 0.30); }
+    .tag-green { background: alpha(@seven_success, 0.22); }
+    .tag-orange { background: alpha(@seven_warning, 0.28); }
+    .tag-focus { background: alpha(@files_text, 0.16); }
+    .operation-pill {
+      min-height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: @files_selected;
+      color: @files_text;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .files-statusbar {
+      min-height: 32px;
+      padding: 0 18px;
+      background: alpha(@files_panel, 0.78);
+      border-top: 1px solid @files_border;
+    }
+    .files-status-label {
+      color: @files_muted;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .file-tile-box {
+      min-width: 120px;
+      min-height: 124px;
+    }
+    menu {
+      border-radius: 12px;
+      padding: 6px;
+      background: alpha(@files_panel, 0.98);
+      border: 1px solid @files_border;
+    }
+    menuitem {
+      min-height: 30px;
+      border-radius: 8px;
+      padding: 0 10px;
+      color: @files_text;
+      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    menuitem:hover {
+      background: @files_hover;
+    }
+    .quicklook-window {
+      background:
+        linear-gradient(180deg, alpha(@files_panel, 0.98), alpha(@files_bg, 0.94));
+      color: @files_text;
+    }
+    .quicklook-footer {
+      padding: 10px 14px;
+      background: alpha(@files_panel, 0.88);
+      border-top: 1px solid @files_border;
+    }
+    .quicklook-text {
+      color: @files_text;
+      font: 500 13px "SF Mono", "JetBrainsMono Nerd Font", "SF Pro Text", monospace;
+      padding: 18px;
+    }
+    

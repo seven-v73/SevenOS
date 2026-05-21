@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import textwrap
+import urllib.parse
 import zipfile
 from pathlib import Path
 
@@ -29,6 +30,8 @@ CACHE_DIR = Path.home() / ".cache/sevenos/reader"
 LIBRARY_PATH = STATE_DIR / "library.json"
 POSITION_PATH = STATE_DIR / "positions.json"
 ANNOTATIONS_PATH = STATE_DIR / "annotations.json"
+COLLECTIONS_PATH = STATE_DIR / "collections.json"
+LOG_PATH = Path.home() / ".local/state/sevenos/reader.log"
 
 
 def ensure_gi_python() -> None:
@@ -80,6 +83,12 @@ def root_dir() -> Path:
     return Path.cwd()
 
 
+ROOT_DIR = root_dir()
+sys.path.insert(0, str(ROOT_DIR / "scripts"))
+from seven_i18n import tr_text  # noqa: E402
+import seven_theme  # noqa: E402
+
+
 def state_payload() -> dict:
     return {
         "schema": "sevenos.reader.v1",
@@ -87,6 +96,7 @@ def state_payload() -> dict:
         "library": str(LIBRARY_PATH),
         "positions": str(POSITION_PATH),
         "annotations": str(ANNOTATIONS_PATH),
+        "collections": str(COLLECTIONS_PATH),
         "cache": str(CACHE_DIR),
         "formats": sorted(SUPPORTED_SUFFIXES),
         "rendering": {
@@ -98,10 +108,11 @@ def state_payload() -> dict:
         "modes": ["library", "reader", "double-page", "book", "flipbook", "inspect", "focus", "night"],
         "ux": {
             "library": "cover cards, recents, progress memory",
-            "professional": "document search, bookmarks, notes, metadata and reading sidebar",
+            "professional": "document search with next/previous, bookmarks, colored notes, metadata and study sidebar",
             "book_mode": "double page spread with spine and paper texture",
             "flipbook": "animated premium page transition foundation",
             "inspect": "high resolution page rendering for detailed reading",
+            "collections": "favorites, continue reading and profile-aware shelves",
         },
         "ai": {
             "provider": "SevenAI local-first",
@@ -114,6 +125,56 @@ def state_payload() -> dict:
 def status_json() -> int:
     print(json.dumps(state_payload(), indent=2))
     return 0
+
+
+def reader_log(message: str) -> None:
+    try:
+        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with LOG_PATH.open("a", encoding="utf-8") as handle:
+            handle.write(f"{message}\n")
+    except OSError:
+        pass
+
+
+def reader_path_from_arg(arg: str) -> Path | None:
+    token = (arg or "").strip()
+    if not token or token in {"open", "library", "--open", "--library", "--", "%f", "%F", "%u", "%U"}:
+        return None
+    if (token.startswith('"') and token.endswith('"')) or (token.startswith("'") and token.endswith("'")):
+        token = token[1:-1].strip()
+    if not token:
+        return None
+
+    if token.startswith("file://"):
+        parsed = urllib.parse.urlparse(token)
+        if parsed.netloc and parsed.netloc not in {"localhost", "127.0.0.1"}:
+            return None
+        token = urllib.parse.unquote(parsed.path)
+    elif token.startswith("file:"):
+        token = urllib.parse.unquote(token[5:])
+    elif "://" in token:
+        return None
+    else:
+        token = urllib.parse.unquote(token)
+
+    candidate = Path(token).expanduser()
+    if not candidate.is_absolute():
+        candidate = (Path.cwd() / candidate).expanduser()
+    try:
+        candidate = candidate.resolve()
+    except OSError:
+        candidate = candidate.absolute()
+    if candidate.exists() and candidate.suffix.lower() in SUPPORTED_SUFFIXES:
+        return candidate
+    return None
+
+
+def initial_reader_path(args: list[str]) -> Path | None:
+    for arg in args:
+        candidate = reader_path_from_arg(arg)
+        if candidate:
+            return candidate
+    return None
 
 
 def ensure_state() -> None:
@@ -150,6 +211,38 @@ def read_annotations() -> dict:
 def write_annotations(data: dict) -> None:
     ensure_state()
     ANNOTATIONS_PATH.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def read_collections() -> dict:
+    ensure_state()
+    try:
+        payload = json.loads(COLLECTIONS_PATH.read_text(encoding="utf-8"))
+        if isinstance(payload, dict):
+            return payload
+    except Exception:
+        pass
+    return {"schema": "sevenos.reader-collections.v1", "favorites": [], "collections": {}}
+
+
+def write_collections(data: dict) -> None:
+    ensure_state()
+    COLLECTIONS_PATH.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def active_profile() -> str:
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    for path in (config_home / "sevenos/profile.env", config_home / "sevenos/profile.json"):
+        try:
+            if path.suffix == ".env":
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    if line.startswith("SEVENOS_PROFILE="):
+                        return line.split("=", 1)[1].strip().strip('"').lower() or "equinox"
+            else:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                return str(payload.get("profile") or payload.get("active") or "equinox").lower()
+        except Exception:
+            continue
+    return "equinox"
 
 
 def title_for(path: Path) -> str:
@@ -446,8 +539,8 @@ class Document:
     def preload_pages(self, center: int, zoom: float) -> None:
         if self.kind != "pdf":
             return
-        width = int(1200 * zoom)
-        for page in (center + 1, center + 2):
+        width = int(1400 * zoom)
+        for page in (center - 1, center, center + 1, center + 2):
             if 1 <= page <= self.page_count:
                 self.pdf_page_png(page, width)
                 self.pdf_text_for_page(page)
@@ -479,173 +572,13 @@ except Exception as exc:
     raise SystemExit(1)
 
 
-CSS = b"""
-window.seven-reader {
-  background: #09090B;
-  color: #EDEDED;
-}
-.reader-root {
-  background:
-    radial-gradient(circle at 28% 18%, rgba(77,163,255,0.18), transparent 30%),
-    radial-gradient(circle at 82% 12%, rgba(122,92,255,0.16), transparent 28%),
-    #09090B;
-}
-.reader-header {
-  background: rgba(18,19,26,0.72);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.reader-search {
-  min-height: 38px;
-  border-radius: 999px;
-  padding: 0 14px;
-  color: #EDEDED;
-  background: rgba(255,255,255,0.075);
-  border: 1px solid rgba(255,255,255,0.10);
-}
-.reader-section-title {
-  color: #EDEDED;
-  font: 500 18px "SF Pro Text", "Inter", system-ui, sans-serif;
-}
-.library-card {
-  background: rgba(255,255,255,0.065);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 22px;
-  padding: 16px;
-  box-shadow: 0 18px 40px rgba(0,0,0,0.32);
-}
-.library-card:hover {
-  background: rgba(255,255,255,0.10);
-}
-.library-empty {
-  background: rgba(255,255,255,0.055);
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 24px;
-  padding: 28px;
-}
-.cover {
-  background: linear-gradient(135deg, rgba(77,163,255,0.42), rgba(122,92,255,0.34), rgba(0,212,255,0.24));
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: inset 0 1px rgba(255,255,255,0.28), 0 18px 42px rgba(0,0,0,0.35);
-}
-.reader-stage {
-  background:
-    radial-gradient(circle at 50% 0%, rgba(137,180,250,0.10), transparent 34%),
-    rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 28px;
-  padding: 18px;
-}
-.reader-body {
-  background: transparent;
-}
-.reader-sidebar {
-  min-width: 292px;
-  padding: 14px;
-  border-radius: 24px;
-  background: rgba(12,16,28,0.72);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-.sidebar-card {
-  padding: 12px;
-  margin: 6px 0;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.060);
-  border: 1px solid rgba(255,255,255,0.08);
-}
-.sidebar-action {
-  min-height: 34px;
-  border-radius: 999px;
-  padding: 0 12px;
-}
-.reader-list row {
-  padding: 8px;
-  border-radius: 12px;
-}
-.reader-list row:hover,
-.reader-list row:selected {
-  background: rgba(137,180,250,0.16);
-}
-.reader-note {
-  color: rgba(237,237,237,0.78);
-  font: 500 12px "SF Pro Text", "Inter", system-ui, sans-serif;
-}
-.book-spread {
-  background: rgba(0,0,0,0.22);
-  border-radius: 26px;
-  padding: 22px;
-  box-shadow: inset 0 1px rgba(255,255,255,0.08), 0 24px 56px rgba(0,0,0,0.45);
-}
-.paper-page {
-  background:
-    radial-gradient(circle at 20% 12%, rgba(255,255,255,0.52), transparent 28%),
-    linear-gradient(90deg, rgba(0,0,0,0.10), transparent 7%, transparent 92%, rgba(0,0,0,0.12)),
-    #F4E8D1;
-  color: #1C1F26;
-  border-radius: 10px;
-  border: 1px solid rgba(90,70,42,0.18);
-  box-shadow: 0 18px 40px rgba(0,0,0,0.34), inset 0 0 32px rgba(124,87,42,0.10);
-  padding: 28px;
-}
-.paper-page textview, .paper-page text {
-  background: transparent;
-  color: #1C1F26;
-}
-.spine {
-  background: linear-gradient(90deg, rgba(0,0,0,0.34), rgba(255,255,255,0.12), rgba(0,0,0,0.34));
-  min-width: 16px;
-  border-radius: 99px;
-  box-shadow: 0 0 34px rgba(0,0,0,0.52);
-}
-.reader-toolbar button {
-  border-radius: 16px;
-  padding: 8px 12px;
-}
-.reader-topbar {
-  background: rgba(255,255,255,0.055);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  padding: 8px;
-}
-.mode-pill {
-  border-radius: 999px;
-  padding: 8px 12px;
-}
-.mode-pill-active {
-  background: linear-gradient(135deg, rgba(77,163,255,0.42), rgba(122,92,255,0.38));
-  color: white;
-}
-.reader-progress trough {
-  min-height: 6px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.10);
-}
-.reader-progress highlight {
-  border-radius: 999px;
-  background: linear-gradient(90deg, #89B4FA, #B4BEFE);
-}
-.reader-info {
-  color: rgba(237,237,237,0.72);
-  font: 500 12px "SF Pro Text", "Inter", system-ui, sans-serif;
-}
-.ai-card {
-  background: rgba(12,16,28,0.82);
-  border: 1px solid rgba(77,163,255,0.20);
-  border-radius: 22px;
-  padding: 18px;
-}
-.flip-active {
-  box-shadow: 0 0 0 1px rgba(77,163,255,0.34), 0 0 44px rgba(122,92,255,0.34);
-}
-.muted {
-  color: rgba(237,237,237,0.66);
-}
-"""
+CSS = seven_theme.surface_css("reader").encode("utf-8")
 
 
 def install_css() -> None:
     provider = Gtk.CssProvider()
-    provider.load_from_data(CSS)
+    css = seven_theme.gtk_app_css("reader").encode("utf-8") + CSS
+    provider.load_from_data(css)
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
 
@@ -662,11 +595,18 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.zoom = 1.0
         self.positions = read_positions()
         self.annotations = read_annotations()
+        self.collections = read_collections()
+        self.profile = active_profile()
         self.library_items: list[dict] = []
         self.library_query = ""
         self.mode_buttons: dict[str, Gtk.Button] = {}
         self.search_results: list[tuple[int, str]] = []
+        self.search_index = -1
+        self.current_query = ""
         self.focus_mode = False
+        self.turn_direction = 1
+        self.flip_animating = False
+        self.initial_document = initial
 
         self.root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.root.get_style_context().add_class("reader-root")
@@ -676,11 +616,15 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.root.pack_start(self.stack, True, True, 0)
         self.build_library()
         self.build_reader()
-        if initial:
-            self.open_document(initial)
-        else:
-            self.stack.set_visible_child_name("library")
+        self.stack.set_visible_child_name("library")
         self.show_all()
+        if self.initial_document:
+            GLib.idle_add(self.open_initial_document)
+
+    def open_initial_document(self) -> bool:
+        if self.initial_document:
+            self.open_document(self.initial_document)
+        return False
 
     def annotation_bucket(self) -> dict:
         if not self.document:
@@ -691,44 +635,59 @@ class ReaderWindow(Gtk.ApplicationWindow):
         return bucket
 
     def build_header(self) -> None:
-        header = Gtk.HeaderBar(title="Seven Reader", subtitle="Immersive reading for SevenOS")
+        header = Gtk.HeaderBar(title="Seven Reader", subtitle=tr_text("Immersive reading for SevenOS"))
         header.set_show_close_button(True)
         header.get_style_context().add_class("reader-header")
         self.set_titlebar(header)
 
         library_button = Gtk.Button.new_from_icon_name("view-grid-symbolic", Gtk.IconSize.BUTTON)
-        library_button.set_tooltip_text("Library")
+        library_button.set_tooltip_text(tr_text("Library"))
         library_button.connect("clicked", lambda *_: self.show_library())
         header.pack_start(library_button)
 
         open_button = Gtk.Button.new_from_icon_name("document-open-symbolic", Gtk.IconSize.BUTTON)
-        open_button.set_tooltip_text("Open document")
+        open_button.set_tooltip_text(tr_text("Open document"))
         open_button.connect("clicked", lambda *_: self.choose_document())
         header.pack_start(open_button)
 
-        self.title_label = Gtk.Label(label="Library")
+        self.title_label = Gtk.Label(label=tr_text("Library"))
         header.set_custom_title(self.title_label)
 
-        for label, mode in (("Reader", "reader"), ("Double", "double"), ("Book", "book"), ("Flip", "flip")):
-            button = Gtk.Button(label=label)
+        for label, mode in (("Read", "reader"), ("Book", "book"), ("Flip", "flip")):
+            button = Gtk.Button(label=tr_text(label))
             button.get_style_context().add_class("mode-pill")
             button.connect("clicked", self.set_mode, mode)
             self.mode_buttons[mode] = button
             header.pack_end(button)
 
-        ai_button = Gtk.Button(label="SevenAI")
+        ai_button = Gtk.Button(label=tr_text("Study"))
         ai_button.connect("clicked", lambda *_: self.show_ai("summary"))
         header.pack_end(ai_button)
 
-        focus_button = Gtk.Button(label="Focus")
-        focus_button.set_tooltip_text("Toggle distraction-free reading")
-        focus_button.connect("clicked", lambda *_: self.toggle_focus())
-        header.pack_end(focus_button)
-
         sidebar_button = Gtk.Button.new_from_icon_name("sidebar-show-symbolic", Gtk.IconSize.BUTTON)
-        sidebar_button.set_tooltip_text("Toggle reading sidebar")
+        sidebar_button.set_tooltip_text(tr_text("Toggle reading sidebar"))
         sidebar_button.connect("clicked", lambda *_: self.toggle_sidebar())
         header.pack_end(sidebar_button)
+
+        menu_button = Gtk.MenuButton()
+        menu_button.set_label(tr_text("More"))
+        menu = Gtk.Menu()
+        for label, callback in (
+            ("Double page", lambda: self.set_mode(None, "double")),
+            ("Inspect", lambda: self.set_mode(None, "inspect")),
+            ("Zoom in", lambda: self.adjust_zoom(0.10)),
+            ("Zoom out", lambda: self.adjust_zoom(-0.10)),
+            ("Add note", self.add_note_dialog),
+            ("Focus", self.toggle_focus),
+            ("Favorite", self.toggle_favorite),
+            ("Export notes", self.export_notes),
+        ):
+            item = Gtk.MenuItem(label=tr_text(label))
+            item.connect("activate", lambda _item, cb=callback: cb())
+            menu.append(item)
+        menu.show_all()
+        menu_button.set_popup(menu)
+        header.pack_end(menu_button)
 
     def build_library(self) -> None:
         scroller = Gtk.ScrolledWindow()
@@ -740,23 +699,35 @@ class ReaderWindow(Gtk.ApplicationWindow):
         outer.set_margin_end(34)
         scroller.add(outer)
 
-        hero = Gtk.Label()
-        hero.set_markup("<span size='30000' weight='500'>Seven Reader</span>\n<span foreground='#AAB4C2'>Library · Book Mode · Flipbook · SevenAI</span>")
-        hero.set_xalign(0)
+        hero = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
+        hero.get_style_context().add_class("library-hero")
+        hero_copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        hero_title = Gtk.Label()
+        hero_title.set_markup(f"<span size='30000' weight='500'>Seven Reader</span>\n<span foreground='#AAB4C2'>{self.profile.title()} shelf · Book Mode · Study Companion</span>")
+        hero_title.set_xalign(0)
+        hero_copy.pack_start(hero_title, False, False, 0)
+        hero_copy.pack_start(Gtk.Label(label=self.profile_guidance()), False, False, 0)
+        hero.pack_start(hero_copy, True, True, 0)
+        hero_badge = Gtk.Label(label=tr_text("Premium Reading"))
+        hero_badge.get_style_context().add_class("favorite-pill")
+        hero.pack_start(hero_badge, False, False, 0)
         outer.pack_start(hero, False, False, 0)
 
         self.library_search = Gtk.SearchEntry()
-        self.library_search.set_placeholder_text("Search library")
+        self.library_search.set_placeholder_text(tr_text("Search library"))
         self.library_search.get_style_context().add_class("reader-search")
         self.library_search.connect("search-changed", self.on_library_search)
         outer.pack_start(self.library_search, False, False, 0)
 
-        continue_label = Gtk.Label(label="Continue Reading")
+        self.shelf_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        outer.pack_start(self.shelf_row, False, False, 0)
+
+        continue_label = Gtk.Label(label=tr_text("Continue Reading"))
         continue_label.set_xalign(0)
         continue_label.get_style_context().add_class("reader-section-title")
         outer.pack_start(continue_label, False, False, 0)
 
-        refresh = Gtk.Button(label="Refresh Library")
+        refresh = Gtk.Button(label=tr_text("Refresh Library"))
         refresh.connect("clicked", lambda *_: self.refresh_library())
         outer.pack_start(refresh, False, False, 0)
 
@@ -771,6 +742,15 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.library_items = load_library()
         self.populate_library(self.library_items)
 
+    def profile_guidance(self) -> str:
+        return {
+            "baobab": "Culture, languages and learning materials are prioritized for Baobab.",
+            "forge": "Technical documentation, Markdown and PDFs are prioritized for Forge.",
+            "studio": "Visual documents, magazines and asset references are prioritized for Studio.",
+            "shield": "Forensics notes, reports and technical PDFs stay easy to inspect.",
+            "equinox": "Balanced reading for books, docs and everyday learning.",
+        }.get(self.profile, "Balanced reading for books, docs and study.")
+
     def on_library_search(self, entry: Gtk.SearchEntry) -> None:
         self.library_query = entry.get_text().strip().casefold()
         self.populate_library(self.library_items)
@@ -782,13 +762,32 @@ class ReaderWindow(Gtk.ApplicationWindow):
     def populate_library(self, items: list[dict]) -> None:
         for child in list(self.library_grid.get_children()):
             self.library_grid.remove(child)
+        for child in list(self.shelf_row.get_children()):
+            self.shelf_row.remove(child)
+        favorites = set(self.collections.get("favorites", []))
+        recent = sorted(items, key=lambda row: int(self.positions.get(str(row.get("id", "")), {}).get("page", -1)), reverse=True)
+        for title, count, icon in (
+            ("Favorites", len(favorites), "emblem-favorite-symbolic"),
+            ("Library", len(items), "view-grid-symbolic"),
+            ("Recent", min(len(recent), 12), "document-open-recent-symbolic"),
+            (self.profile.title(), len(self.profile_items(items)), "starred-symbolic"),
+        ):
+            card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            card.get_style_context().add_class("shelf-card")
+            image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.MENU)
+            image.set_pixel_size(18)
+            card.pack_start(image, False, False, 0)
+            card.pack_start(Gtk.Label(label=f"{title} · {count}"), False, False, 0)
+            self.shelf_row.pack_start(card, False, False, 0)
         if self.library_query:
             items = [
                 item for item in items
                 if self.library_query in f"{item.get('title', '')} {item.get('path', '')} {item.get('suffix', '')}".casefold()
             ]
+        else:
+            items = self.profile_items(items)
         if not items:
-            empty = Gtk.Label(label="No matching books found.\nPut PDF, EPUB, Markdown or CBZ files in Books, Documents or Downloads.")
+            empty = Gtk.Label(label=tr_text("No matching books found.\nPut PDF, EPUB, Markdown or CBZ files in Books, Documents or Downloads."))
             empty.get_style_context().add_class("muted")
             empty.get_style_context().add_class("library-empty")
             empty.set_justify(Gtk.Justification.CENTER)
@@ -797,7 +796,26 @@ class ReaderWindow(Gtk.ApplicationWindow):
             return
         for item in items:
             self.library_grid.add(self.book_card(item))
+        self.shelf_row.show_all()
         self.library_grid.show_all()
+
+    def profile_items(self, items: list[dict]) -> list[dict]:
+        if self.profile == "baobab":
+            terms = ("africa", "african", "baobab", "culture", "language", "histoire", "afrique")
+        elif self.profile == "forge":
+            terms = ("code", "linux", "python", "rust", "api", "dev", "docker", "architecture")
+        elif self.profile == "studio":
+            terms = ("design", "video", "color", "media", "photo", "brand", "logo")
+        elif self.profile == "shield":
+            terms = ("security", "forensic", "audit", "network", "report", "cyber")
+        else:
+            return items
+        prioritized = []
+        rest = []
+        for item in items:
+            haystack = f"{item.get('title', '')} {item.get('path', '')}".casefold()
+            (prioritized if any(term in haystack for term in terms) else rest).append(item)
+        return [*prioritized, *rest]
 
     def book_card(self, item: dict) -> Gtk.Widget:
         card = Gtk.Button()
@@ -806,11 +824,21 @@ class ReaderWindow(Gtk.ApplicationWindow):
         cover = Gtk.Box()
         cover.set_size_request(170, 220)
         cover.get_style_context().add_class("cover")
+        cover_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        cover_box.set_halign(Gtk.Align.CENTER)
+        cover_box.set_valign(Gtk.Align.CENTER)
         cover_label = Gtk.Label(label=FORMAT_LABELS.get(item.get("suffix", ""), item.get("suffix", "").replace(".", "").upper()))
+        cover_label.get_style_context().add_class("cover-title")
+        cover_subtitle = Gtk.Label(label=item.get("title", tr_text("Untitled"))[:28])
+        cover_subtitle.set_line_wrap(True)
+        cover_subtitle.set_justify(Gtk.Justification.CENTER)
+        cover_subtitle.get_style_context().add_class("cover-subtitle")
         cover_label.set_halign(Gtk.Align.CENTER)
         cover_label.set_valign(Gtk.Align.CENTER)
-        cover.add(cover_label)
-        title = Gtk.Label(label=item.get("title", "Untitled"))
+        cover_box.pack_start(cover_label, False, False, 0)
+        cover_box.pack_start(cover_subtitle, False, False, 0)
+        cover.add(cover_box)
+        title = Gtk.Label(label=item.get("title", tr_text("Untitled")))
         title.set_line_wrap(True)
         title.set_max_width_chars(22)
         title.set_xalign(0)
@@ -821,9 +849,14 @@ class ReaderWindow(Gtk.ApplicationWindow):
         meta.set_xalign(0)
         position = self.positions.get(str(item.get("id", "")), {})
         page = int(position.get("page", 0)) + 1 if isinstance(position, dict) else 1
-        progress = Gtk.Label(label=f"Page {page} · {FORMAT_LABELS.get(item.get('suffix', ''), 'Document')}")
+        progress = Gtk.Label(label=f"{tr_text('Page')} {page} · {FORMAT_LABELS.get(item.get('suffix', ''), tr_text('Document'))}")
         progress.get_style_context().add_class("reader-info")
         progress.set_xalign(0)
+        if item.get("id") in set(self.collections.get("favorites", [])):
+            fav = Gtk.Label(label=tr_text("Favorite"))
+            fav.get_style_context().add_class("favorite-pill")
+            fav.set_xalign(0)
+            box.pack_start(fav, False, False, 0)
         box.pack_start(cover, False, False, 0)
         box.pack_start(title, False, False, 0)
         box.pack_start(meta, False, False, 0)
@@ -842,26 +875,19 @@ class ReaderWindow(Gtk.ApplicationWindow):
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         toolbar.get_style_context().add_class("reader-toolbar")
         toolbar.get_style_context().add_class("reader-topbar")
-        prev_button = Gtk.Button(label="‹ Previous")
+        prev_button = Gtk.Button.new_from_icon_name("go-previous-symbolic", Gtk.IconSize.BUTTON)
+        prev_button.get_style_context().add_class("reader-nav-button")
+        prev_button.set_tooltip_text(tr_text("Previous page"))
         prev_button.connect("clicked", lambda *_: self.turn_page(-1))
-        next_button = Gtk.Button(label="Next ›")
+        next_button = Gtk.Button.new_from_icon_name("go-next-symbolic", Gtk.IconSize.BUTTON)
+        next_button.get_style_context().add_class("reader-nav-button")
+        next_button.set_tooltip_text(tr_text("Next page"))
         next_button.connect("clicked", lambda *_: self.turn_page(1))
-        inspect_button = Gtk.Button(label="Inspect")
-        inspect_button.connect("clicked", lambda *_: self.set_mode(None, "inspect"))
-        zoom_out = Gtk.Button(label="−")
-        zoom_out.set_tooltip_text("Zoom out")
-        zoom_out.connect("clicked", lambda *_: self.adjust_zoom(-0.10))
-        zoom_in = Gtk.Button(label="+")
-        zoom_in.set_tooltip_text("Zoom in")
-        zoom_in.connect("clicked", lambda *_: self.adjust_zoom(0.10))
-        self.progress_label = Gtk.Label(label="Page 0 / 0")
+        self.progress_label = Gtk.Label(label=f"{tr_text('Page')} 0 / 0")
         self.progress_label.set_hexpand(True)
         self.progress_label.set_xalign(0.5)
         toolbar.pack_start(prev_button, False, False, 0)
-        toolbar.pack_start(zoom_out, False, False, 0)
         toolbar.pack_start(self.progress_label, True, True, 0)
-        toolbar.pack_start(zoom_in, False, False, 0)
-        toolbar.pack_start(inspect_button, False, False, 0)
         toolbar.pack_start(next_button, False, False, 0)
         page.pack_start(toolbar, False, False, 0)
 
@@ -879,40 +905,71 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.reader_sidebar.get_style_context().add_class("reader-sidebar")
         body.pack_start(self.reader_sidebar, False, False, 0)
         self.build_reader_sidebar()
+        self.reader_sidebar.set_no_show_all(True)
+        self.reader_sidebar.set_visible(False)
 
         self.reader_stage = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.reader_stage.get_style_context().add_class("reader-stage")
-        body.pack_start(self.reader_stage, True, True, 0)
+        self.reader_stage.set_halign(Gtk.Align.CENTER)
+        self.reader_stage.set_valign(Gtk.Align.CENTER)
+        self.stage_scroller = Gtk.ScrolledWindow()
+        self.stage_scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.stage_scroller.get_style_context().add_class("reader-stage-scroll")
+        self.stage_viewport = Gtk.Viewport()
+        self.stage_viewport.add(self.reader_stage)
+        self.stage_scroller.add(self.stage_viewport)
+        body.pack_start(self.stage_scroller, True, True, 0)
         self.stack.add_titled(page, "reader", "Reader")
 
     def build_reader_sidebar(self) -> None:
         self.document_search = Gtk.SearchEntry()
-        self.document_search.set_placeholder_text("Search document")
+        self.document_search.set_placeholder_text(tr_text("Search document"))
         self.document_search.get_style_context().add_class("reader-search")
         self.document_search.connect("activate", lambda entry: self.search_document(entry.get_text()))
         self.document_search.connect("search-changed", lambda entry: self.search_document(entry.get_text()) if len(entry.get_text().strip()) >= 2 else None)
         self.reader_sidebar.pack_start(self.document_search, False, False, 0)
 
+        search_nav = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        previous_hit = Gtk.Button(label=tr_text("Previous"))
+        previous_hit.get_style_context().add_class("sidebar-action")
+        previous_hit.connect("clicked", lambda *_: self.goto_search_result(-1))
+        next_hit = Gtk.Button(label=tr_text("Next"))
+        next_hit.get_style_context().add_class("sidebar-action")
+        next_hit.connect("clicked", lambda *_: self.goto_search_result(1))
+        search_nav.pack_start(previous_hit, True, True, 0)
+        search_nav.pack_start(next_hit, True, True, 0)
+        self.reader_sidebar.pack_start(search_nav, False, False, 0)
+
         action_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        bookmark = Gtk.Button(label="Bookmark")
+        bookmark = Gtk.Button(label=tr_text("Bookmark"))
         bookmark.get_style_context().add_class("sidebar-action")
         bookmark.connect("clicked", lambda *_: self.toggle_bookmark())
-        note = Gtk.Button(label="Note")
+        note = Gtk.Button(label=tr_text("Note"))
         note.get_style_context().add_class("sidebar-action")
         note.connect("clicked", lambda *_: self.add_note_dialog())
+        highlight = Gtk.Button(label=tr_text("Highlight"))
+        highlight.get_style_context().add_class("sidebar-action")
+        highlight.connect("clicked", lambda *_: self.add_highlight_note())
         action_row.pack_start(bookmark, True, True, 0)
         action_row.pack_start(note, True, True, 0)
+        action_row.pack_start(highlight, True, True, 0)
         self.reader_sidebar.pack_start(action_row, False, False, 0)
 
+        study = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        study.get_style_context().add_class("study-card")
+        study_title = Gtk.Label(label=tr_text("Study Companion"))
+        study_title.set_xalign(0)
+        study.pack_start(study_title, False, False, 0)
         ai_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        for label, action in (("Summary", "summary"), ("Explain", "explain"), ("Quiz", "quiz")):
-            button = Gtk.Button(label=label)
+        for label, action in (("Summary", "summary"), ("Explain", "explain"), ("Quiz", "quiz"), ("Concepts", "concepts")):
+            button = Gtk.Button(label=tr_text(label))
             button.get_style_context().add_class("sidebar-action")
             button.connect("clicked", lambda _button, mode=action: self.show_ai(mode))
             ai_row.pack_start(button, True, True, 0)
-        self.reader_sidebar.pack_start(ai_row, False, False, 0)
+        study.pack_start(ai_row, False, False, 0)
+        self.reader_sidebar.pack_start(study, False, False, 0)
 
-        self.info_label = Gtk.Label(label="No document")
+        self.info_label = Gtk.Label(label=tr_text("No document"))
         self.info_label.set_xalign(0)
         self.info_label.set_line_wrap(True)
         self.info_label.get_style_context().add_class("sidebar-card")
@@ -929,9 +986,9 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.notes_list = Gtk.ListBox()
         self.notes_list.get_style_context().add_class("reader-list")
         self.notes_list.connect("row-activated", self.activate_page_row)
-        tabs.append_page(self.wrap_list(self.search_list), Gtk.Label(label="Search"))
-        tabs.append_page(self.wrap_list(self.outline_list), Gtk.Label(label="Outline"))
-        tabs.append_page(self.wrap_list(self.notes_list), Gtk.Label(label="Notes"))
+        tabs.append_page(self.wrap_list(self.search_list), Gtk.Label(label=tr_text("Search")))
+        tabs.append_page(self.wrap_list(self.outline_list), Gtk.Label(label=tr_text("Outline")))
+        tabs.append_page(self.wrap_list(self.notes_list), Gtk.Label(label=tr_text("Notes")))
         self.reader_sidebar.pack_start(tabs, True, True, 0)
 
     def wrap_list(self, widget: Gtk.ListBox) -> Gtk.ScrolledWindow:
@@ -941,10 +998,10 @@ class ReaderWindow(Gtk.ApplicationWindow):
         return scroller
 
     def choose_document(self) -> None:
-        dialog = Gtk.FileChooserDialog(title="Open in Seven Reader", parent=self, action=Gtk.FileChooserAction.OPEN)
+        dialog = Gtk.FileChooserDialog(title=tr_text("Open in Seven Reader"), parent=self, action=Gtk.FileChooserAction.OPEN)
         dialog.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK)
         file_filter = Gtk.FileFilter()
-        file_filter.set_name("Books and documents")
+        file_filter.set_name(tr_text("Books and documents"))
         for suffix in SUPPORTED_SUFFIXES:
             file_filter.add_pattern(f"*{suffix}")
         dialog.add_filter(file_filter)
@@ -968,15 +1025,25 @@ class ReaderWindow(Gtk.ApplicationWindow):
             self.reader_sidebar.set_visible(not self.reader_sidebar.get_visible())
 
     def open_document(self, path: Path) -> None:
+        reader_log(f"open_document request: {path}")
         if not path.exists():
+            reader_log(f"open_document missing: {path}")
             return
-        self.document = Document(path)
-        self.add_to_library(path)
-        self.page = int(self.positions.get(self.document.id, {}).get("page", 0))
-        self.page = max(0, min(self.page, self.document.page_count - 1))
-        self.title_label.set_text(self.document.title)
-        self.stack.set_visible_child_name("reader")
-        self.render_current()
+        try:
+            self.document = Document(path)
+            self.add_to_library(path)
+            self.page = int(self.positions.get(self.document.id, {}).get("page", 0))
+            self.page = max(0, min(self.page, self.document.page_count - 1))
+            if self.document.kind == "pdf":
+                self.mode = "flip"
+            self.title_label.set_text(self.document.title)
+            self.stack.set_visible_child_name("reader")
+            self.render_current()
+            reader_log(f"open_document ready: {path} kind={self.document.kind} pages={self.document.page_count}")
+        except Exception as exc:
+            reader_log(f"open_document failed: {path}: {exc}")
+            self.title_label.set_text("Unable to open document")
+            self.stack.set_visible_child_name("library")
 
     def add_to_library(self, path: Path) -> None:
         try:
@@ -1038,7 +1105,8 @@ class ReaderWindow(Gtk.ApplicationWindow):
             self.notes_list.add(self.list_row(page, "Bookmark", f"Page {page + 1}"))
         for note in bucket.get("notes", []):
             page = int(note.get("page", 0))
-            self.notes_list.add(self.list_row(page, f"Note · Page {page + 1}", str(note.get("text", ""))))
+            label = str(note.get("kind", "Note")).title()
+            self.notes_list.add(self.list_row(page, f"{label} · Page {page + 1}", str(note.get("text", ""))))
 
         for widget in (self.outline_list, self.notes_list):
             widget.show_all()
@@ -1048,15 +1116,30 @@ class ReaderWindow(Gtk.ApplicationWindow):
         if not self.document:
             return
         query = query.strip()
+        self.current_query = query
         self.search_results = self.document.search(query)
+        self.search_index = 0 if self.search_results else -1
         if not query:
             self.search_list.show_all()
             return
         if not self.search_results:
             self.search_list.add(self.list_row(self.page, "No result", f"No match for “{query}”"))
         for page, snippet in self.search_results:
-            self.search_list.add(self.list_row(page, f"Page {page + 1}", snippet))
+            row = self.list_row(page, f"Page {page + 1}", snippet)
+            if page == self.page:
+                row.get_style_context().add_class("search-hit")
+            self.search_list.add(row)
         self.search_list.show_all()
+
+    def goto_search_result(self, direction: int) -> None:
+        if not self.search_results:
+            query = self.document_search.get_text().strip() if hasattr(self, "document_search") else ""
+            self.search_document(query)
+        if not self.search_results or not self.document:
+            return
+        self.search_index = (self.search_index + direction) % len(self.search_results)
+        self.page = max(0, min(self.document.page_count - 1, self.search_results[self.search_index][0]))
+        self.render_current()
 
     def toggle_bookmark(self) -> None:
         if not self.document:
@@ -1093,9 +1176,57 @@ class ReaderWindow(Gtk.ApplicationWindow):
         dialog.destroy()
         if response == Gtk.ResponseType.OK and value:
             bucket = self.annotation_bucket()
-            bucket.setdefault("notes", []).append({"page": self.page, "text": value})
+            bucket.setdefault("notes", []).append({"page": self.page, "text": value, "kind": "note", "color": "blue"})
             write_annotations(self.annotations)
             self.refresh_sidebar()
+
+    def selected_text(self) -> str:
+        focus = self.get_focus()
+        if isinstance(focus, Gtk.TextView):
+            buffer = focus.get_buffer()
+            if buffer.get_has_selection():
+                bounds = buffer.get_selection_bounds()
+                if len(bounds) == 3:
+                    _has_selection, start, end = bounds
+                else:
+                    start, end = bounds
+                return buffer.get_text(start, end, True).strip()
+        return ""
+
+    def add_highlight_note(self) -> None:
+        if not self.document:
+            return
+        text = self.selected_text() or self.document.text_for_page(self.page)[:260].strip()
+        bucket = self.annotation_bucket()
+        bucket.setdefault("notes", []).append({"page": self.page, "text": text, "kind": "highlight", "color": "yellow"})
+        write_annotations(self.annotations)
+        self.refresh_sidebar()
+
+    def toggle_favorite(self) -> None:
+        if not self.document:
+            return
+        favorites = set(self.collections.get("favorites", []))
+        if self.document.id in favorites:
+            favorites.remove(self.document.id)
+        else:
+            favorites.add(self.document.id)
+        self.collections["favorites"] = sorted(favorites)
+        write_collections(self.collections)
+        self.populate_library(self.library_items)
+
+    def export_notes(self) -> None:
+        if not self.document:
+            return
+        bucket = self.annotation_bucket()
+        lines = [f"# Notes - {self.document.title}", ""]
+        for page in sorted(set(int(item) for item in bucket.get("bookmarks", []))):
+            lines.append(f"- Bookmark: page {page + 1}")
+        for note in bucket.get("notes", []):
+            lines.append(f"- {str(note.get('kind', 'note')).title()} page {int(note.get('page', 0)) + 1}: {note.get('text', '')}")
+        target = self.document.path.with_suffix(".seven-reader-notes.md")
+        target.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        if hasattr(self, "info_label"):
+            self.info_label.set_text(f"Notes exported:\n{target}")
 
     def set_mode(self, _button, mode: str) -> None:
         self.mode = mode
@@ -1111,7 +1242,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
                 ctx.remove_class("mode-pill-active")
 
     def adjust_zoom(self, delta: float) -> None:
-        self.zoom = max(0.72, min(1.45, self.zoom + delta))
+        self.zoom = max(0.72, min(2.20, self.zoom + delta))
         self.render_current()
 
     def on_progress_changed(self, scale: Gtk.Scale) -> None:
@@ -1131,7 +1262,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
             return
         self.clear_stage()
         self.update_mode_buttons()
-        self.progress_label.set_text(f"{self.document.title} · Page {self.page + 1} / {self.document.page_count} · {self.mode.title()} · {int(self.zoom * 100)}%")
+        self.progress_label.set_text(f"Page {self.page + 1} / {self.document.page_count} · {self.mode.title()} · {int(self.zoom * 100)}%")
         self.progress_scale.handler_block_by_func(self.on_progress_changed)
         self.progress_scale.set_range(1, max(1, self.document.page_count))
         self.progress_scale.set_increments(1, 2 if self.mode in {"double", "book", "flip"} else 1)
@@ -1146,15 +1277,24 @@ class ReaderWindow(Gtk.ApplicationWindow):
             left_page = self.page if self.page % 2 == 0 else self.page - 1
             right_page = min(left_page + 1, self.document.page_count - 1)
             spread.pack_start(self.page_widget(left_page), True, True, 0)
+            if self.mode == "flip" and self.flip_animating and self.turn_direction < 0:
+                curl = Gtk.Box()
+                curl.get_style_context().add_class("page-curl")
+                spread.pack_start(curl, False, False, 0)
             spine = Gtk.Box()
             spine.get_style_context().add_class("spine")
             spread.pack_start(spine, False, False, 0)
+            if self.mode == "flip" and self.flip_animating and self.turn_direction >= 0:
+                curl = Gtk.Box()
+                curl.get_style_context().add_class("page-curl")
+                spread.pack_start(curl, False, False, 0)
             spread.pack_start(self.page_widget(right_page), True, True, 0)
         else:
             spread.pack_start(self.page_widget(self.page), True, True, 0)
-        if self.mode == "flip":
+        if self.mode == "flip" and self.flip_animating:
             spread.get_style_context().add_class("flip-active")
-            GLib.timeout_add(420, lambda: (spread.get_style_context().remove_class("flip-active"), False)[1])
+            spread.get_style_context().add_class("flip-forward" if self.turn_direction >= 0 else "flip-back")
+            GLib.timeout_add(640, self.finish_flip_animation)
         self.reader_stage.pack_start(spread, True, True, 0)
         self.reader_stage.show_all()
         self.refresh_sidebar()
@@ -1167,6 +1307,8 @@ class ReaderWindow(Gtk.ApplicationWindow):
         base_height = 560 if self.mode != "inspect" else 700
         box.set_size_request(int(base_width * self.zoom), int(base_height * self.zoom))
         box.get_style_context().add_class("paper-page")
+        if self.current_query and page_index == self.page:
+            box.get_style_context().add_class("search-active")
         if not self.document:
             return box
         if self.document.kind == "pdf":
@@ -1209,7 +1351,22 @@ class ReaderWindow(Gtk.ApplicationWindow):
             view.set_right_margin(8)
             view.set_top_margin(8)
             view.set_bottom_margin(8)
-            view.get_buffer().set_text(self.document.text_for_page(page_index))
+            text = self.document.text_for_page(page_index)
+            buffer = view.get_buffer()
+            buffer.set_text(text)
+            if self.current_query:
+                tag = buffer.create_tag("search-highlight", background="#f9e2af", foreground="#1c1f26")
+                folded = text.casefold()
+                query = self.current_query.casefold()
+                start = 0
+                for _ in range(80):
+                    pos = folded.find(query, start)
+                    if pos < 0:
+                        break
+                    begin = buffer.get_iter_at_offset(pos)
+                    end = buffer.get_iter_at_offset(pos + len(query))
+                    buffer.apply_tag(tag, begin, end)
+                    start = pos + len(query)
             box.pack_start(view, True, True, 0)
         footer = Gtk.Label(label=f"{page_index + 1}")
         footer.set_halign(Gtk.Align.CENTER)
@@ -1219,9 +1376,17 @@ class ReaderWindow(Gtk.ApplicationWindow):
     def turn_page(self, delta: int) -> None:
         if not self.document:
             return
+        self.turn_direction = 1 if delta >= 0 else -1
+        self.flip_animating = self.mode == "flip"
         step = 2 if self.mode in {"double", "book", "flip"} else 1
         self.page = max(0, min(self.document.page_count - 1, self.page + delta * step))
         self.render_current()
+
+    def finish_flip_animation(self) -> bool:
+        if self.flip_animating:
+            self.flip_animating = False
+            self.render_current()
+        return False
 
     def show_ai(self, action: str = "summary") -> None:
         if not self.document:
@@ -1311,14 +1476,8 @@ class ReaderApp(Gtk.Application):
 
 
 def main() -> int:
-    initial = None
-    for arg in sys.argv[1:]:
-        if arg in {"open", "library"}:
-            continue
-        candidate = Path(arg)
-        if candidate.exists():
-            initial = candidate
-            break
+    initial = initial_reader_path(sys.argv[1:])
+    reader_log(f"argv={sys.argv[1:]} initial={initial}")
     ensure_state()
     app = ReaderApp(initial)
     return app.run([sys.argv[0]])

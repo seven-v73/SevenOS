@@ -277,24 +277,195 @@ apply_profile() {
   mkdir -p "$(dirname "$PROFILE_UI")"
   render_config "$mode" "$config_base" > "$WAYBAR_CONFIG"
   render_style "$mode" "$style_base" > "$WAYBAR_STYLE"
-  PROFILE_JSON="$(profile_json)" MODE="$mode" python - <<'PY' > "$PROFILE_UI"
+  PROFILE_JSON="$(profile_json)" MODE="$mode" ROOT_DIR="$ROOT_DIR" python - <<'PY' > "$PROFILE_UI"
 import json
 import os
+from pathlib import Path
 
 profile = json.loads(os.environ["PROFILE_JSON"])
 key = profile.get("key", "equinox")
+root = Path(os.environ["ROOT_DIR"])
+try:
+    catalog = json.loads((root / "profiles/catalog.json").read_text(encoding="utf-8"))
+except Exception:
+    catalog = {}
+catalog_profile = (catalog.get("profiles") or {}).get(key, {})
+state_dir = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+try:
+    runtime_state = json.loads((state_dir / "runtime.json").read_text(encoding="utf-8"))
+except Exception:
+    runtime_state = {}
+try:
+    bridge_state = json.loads((state_dir / "mini-os-bridge.json").read_text(encoding="utf-8"))
+except Exception:
+    bridge_state = {}
+
+mini_os = {
+    "equinox": {
+        "home": "Daily balance",
+        "focus": "General work, files, browsing and light creation without a dominant specialized stack.",
+        "library": "Everyday Workspace",
+        "collections": ["Recent files", "Favorite apps", "System health", "Balanced recommendations"],
+        "actions": [
+            ["Hub", "Open Seven Hub", "seven hub"],
+            ["Files", "Open Seven Files", "seven-files profile"],
+            ["Doctor", "Run Seven Doctor", "seven doctor"],
+        ],
+        "ai": "general SevenOS assistant",
+        "autonomy": 86,
+        "launchpad_filter": "all",
+        "store_collection": "Getting Started",
+    },
+    "baobab": {
+        "home": "Culture and learning",
+        "focus": "African culture, languages, oral knowledge, reading and community memory without dev/security noise.",
+        "library": "Baobab Library",
+        "collections": ["African knowledge", "Languages", "Oral learning", "Community archives"],
+        "actions": [
+            ["Read", "Open Seven Reader", "seven-reader"],
+            ["Library", "Open Baobab workspace", "seven profile open baobab"],
+            ["Voice", "Try oral learning tools", "seven-profile-run espeak-ng 'SevenOS Baobab'"],
+        ],
+        "ai": "cultural learning and translation assistant",
+        "autonomy": 58,
+        "launchpad_filter": "office",
+        "store_collection": "Culture & Learning",
+    },
+    "forge": {
+        "home": "Developer cockpit",
+        "focus": "Code, terminals, SDKs, containers, local services, builds and documentation.",
+        "library": "Forge Projects",
+        "collections": ["Projects", "Containers", "SDKs", "Local servers"],
+        "actions": [
+            ["Code", "Open development editor", "code"],
+            ["Terminal", "Open Forge terminal", "seven-terminal forge"],
+            ["Containers", "Check Docker", "docker info"],
+        ],
+        "ai": "software engineering assistant",
+        "autonomy": 84,
+        "launchpad_filter": "dev",
+        "store_collection": "Developer Tools",
+    },
+    "shield": {
+        "home": "Authorized security lab",
+        "focus": "Security audit, forensics, sandboxing, network analysis and reports with visible scope.",
+        "library": "Shield Cases",
+        "collections": ["Audit scope", "Forensics", "Network analysis", "Reports"],
+        "actions": [
+            ["Center", "Open Shield Center", "seven-shield-center-native"],
+            ["Lab", "Open Cyber Lab", "seven shield lab --preset web"],
+            ["VPN", "Inspect VPN state", "seven-waybar-status vpn"],
+        ],
+        "ai": "authorized audit and defensive security assistant",
+        "autonomy": 88,
+        "launchpad_filter": "network",
+        "store_collection": "Security Tools",
+    },
+    "studio": {
+        "home": "Creator studio",
+        "focus": "Logos, design, video, audio, capture, 3D, assets and export workflows.",
+        "library": "Studio Assets",
+        "collections": ["Design assets", "Video projects", "Audio sessions", "Export presets"],
+        "actions": [
+            ["Design", "Open Krita", "krita"],
+            ["Video", "Open Kdenlive", "kdenlive"],
+            ["Record", "Open Seven Recorder", "seven recorder"],
+        ],
+        "ai": "creative production assistant",
+        "autonomy": 78,
+        "launchpad_filter": "creative",
+        "store_collection": "Creator Tools",
+    },
+    "windows": {
+        "home": "Windows bridge",
+        "focus": "VM-first Windows experience with snapshots, shared folders and Wine/Bottles as fallback.",
+        "library": "Windows Apps",
+        "collections": ["Virtual machines", "Windows apps", "Shared folders", "Snapshots"],
+        "actions": [
+            ["VM", "Open Windows VM assistant", "seven windows vm"],
+            ["Apps", "Open Windows apps", "seven windows apps"],
+            ["Guide", "Open Windows guide", "seven windows guide"],
+        ],
+        "ai": "Windows compatibility and VM assistant",
+        "autonomy": 72,
+        "launchpad_filter": "windows",
+        "store_collection": "Windows Bridge",
+    },
+    "horizon": {
+        "home": "Cloud and services",
+        "focus": "Deployments, containers, reverse proxy, endpoints, logs and self-hosted services.",
+        "library": "Horizon Deployments",
+        "collections": ["Services", "Endpoints", "Deployments", "Logs"],
+        "actions": [
+            ["Deploy", "Detect deployable project", "seven deploy detect ."],
+            ["Services", "Check Caddy", "caddy version"],
+            ["Workspace", "Open Horizon workspace", "seven profile open horizon"],
+        ],
+        "ai": "cloud deployment and server operations assistant",
+        "autonomy": 74,
+        "launchpad_filter": "network",
+        "store_collection": "Cloud & Server",
+    },
+    "pulse": {
+        "home": "Gaming performance",
+        "focus": "Linux gaming, Proton workflows, low latency, overlays, controllers and frame pacing.",
+        "library": "Pulse Games",
+        "collections": ["Game library", "Performance profiles", "Controllers", "Overlays"],
+        "actions": [
+            ["Games", "Open Lutris", "lutris"],
+            ["Boost", "Show GameMode", "gamemoderun --help"],
+            ["HUD", "Show MangoHud", "mangohud --help"],
+        ],
+        "ai": "gaming performance and troubleshooting assistant",
+        "autonomy": 55,
+        "launchpad_filter": "games",
+        "store_collection": "Gaming Linux",
+    },
+}
+contract = mini_os.get(key, mini_os["equinox"])
+layers = catalog_profile.get("layers") or {}
+surfaces = catalog_profile.get("profile_surfaces") or {}
 payload = {
     "schema": "sevenos.profile-ui.v1",
     "profile": key,
     "title": profile.get("title") or profile.get("label") or key.title(),
     "role": profile.get("role", ""),
+    "domain": catalog_profile.get("domain", ""),
+    "purpose": catalog_profile.get("purpose") or profile.get("description", ""),
     "mode": os.environ["MODE"],
     "accent": profile.get("accent_color") or profile.get("accent") or "#8B7CFF",
     "secondary": profile.get("secondary_color") or profile.get("secondary") or "#6EA8FF",
+    "mood": profile.get("ui_mood", ""),
+    "story": profile.get("story", ""),
+    "principle": profile.get("principle", ""),
     "waybar_modules": [item.strip() for item in str(profile.get("waybar_modules", "")).split(",") if item.strip()],
-    "center_command": f"seven profile center {key}",
-    "workspace_command": f"seven profile open {key}",
-    "apps_command": f"seven profile apps {key}",
+    "center_command": surfaces.get("center") or f"seven profile center {key}",
+    "workspace_command": surfaces.get("workspace") or f"seven profile open {key}",
+    "apps_command": surfaces.get("apps") or f"seven profile apps {key}",
+    "runtime_command": surfaces.get("runtime") or f"seven runtime plan {key}",
+    "layers": layers,
+    "capabilities": catalog_profile.get("capabilities", []),
+    "anti_nuisance": catalog_profile.get("anti_nuisance", []),
+    "resource_intent": catalog_profile.get("resource_intent", {}),
+    "collaboration": {
+        "primary": ((runtime_state.get("primary_profile") or {}).get("key") if isinstance(runtime_state.get("primary_profile"), dict) else key) or key,
+        "capabilities": [item.get("key") for item in runtime_state.get("capabilities", []) if isinstance(item, dict) and item.get("key")],
+        "suggestions": bridge_state.get("suggestions", [])[:4] if isinstance(bridge_state, dict) else [],
+        "rule": "No profile dependency, only explicit capability collaboration.",
+        "activate_command": f"seven mini-os suggest",
+    },
+    "home_screen": {
+        "title": contract["home"],
+        "focus": contract["focus"],
+        "library": contract["library"],
+        "collections": contract["collections"],
+        "actions": [{"label": label, "description": desc, "command": command} for label, desc, command in contract["actions"]],
+        "session_restore": f"Restore {profile.get('title') or key.title()} windows, workspace and recent tasks",
+        "autonomy_score": contract["autonomy"],
+        "ai_persona": contract["ai"],
+        "launchpad_filter": contract["launchpad_filter"],
+        "store_collection": contract["store_collection"],
+    },
 }
 print(json.dumps(payload, indent=2, ensure_ascii=False))
 PY

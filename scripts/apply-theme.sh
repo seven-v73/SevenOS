@@ -40,16 +40,27 @@ esac
 case "$THEME_MODE" in
   light)
     THEME_SOURCE_DIR="$ROOT_DIR/hyprland-light"
+    COMMON_SOURCE_DIR="$ROOT_DIR/hyprland"
     THEME_LABEL="Light Mode"
     WALLPAPER_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg"
     WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-light.png"
     ;;
   dark)
     THEME_SOURCE_DIR="$ROOT_DIR/hyprland"
+    COMMON_SOURCE_DIR="$ROOT_DIR/hyprland"
     THEME_LABEL="Dark Mode"
     WALLPAPER_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
     ;;
 esac
+
+theme_source_or_common() {
+  local relative="$1"
+  if [[ -e "$THEME_SOURCE_DIR/$relative" ]]; then
+    printf '%s/%s' "$THEME_SOURCE_DIR" "$relative"
+  else
+    printf '%s/%s' "$COMMON_SOURCE_DIR" "$relative"
+  fi
+}
 
 resolve_icon_theme() {
   SEVENOS_THEME_MODE_ACTIVE="$THEME_MODE" python - <<'PY'
@@ -502,6 +513,8 @@ configure_toolkit_theme() {
     "$CONFIG_HOME/gtk-3.0/settings.ini" "$CONFIG_HOME/gtk-4.0/settings.ini" 2>/dev/null || true
   sed -i "s/^gtk-theme-name=.*/gtk-theme-name=$GTK_THEME/" \
     "$CONFIG_HOME/gtk-3.0/settings.ini" "$CONFIG_HOME/gtk-4.0/settings.ini" 2>/dev/null || true
+  sed -i "s/^gtk-cursor-theme-name=.*/gtk-cursor-theme-name=$CURSOR_THEME/" \
+    "$CONFIG_HOME/gtk-3.0/settings.ini" "$CONFIG_HOME/gtk-4.0/settings.ini" 2>/dev/null || true
   sed -i "s/^icon_theme=.*/icon_theme=$ICON_THEME/" \
     "$CONFIG_HOME/qt5ct/qt5ct.conf" "$CONFIG_HOME/qt6ct/qt6ct.conf" 2>/dev/null || true
 
@@ -534,20 +547,39 @@ configure_toolkit_theme() {
 }
 
 render_wallpaper() {
+  local render_size render_width render_height
+  render_size="${SEVENOS_WALLPAPER_SIZE:-}"
+  if [[ -z "$render_size" ]] && command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    render_size="$(hyprctl monitors -j 2>/dev/null | python -c 'import json,sys
+try:
+    data=json.load(sys.stdin)
+except Exception:
+    data=[]
+monitors=sorted(data, key=lambda item: 0 if item.get("focused") else 1)
+if monitors:
+    width=int(monitors[0].get("width") or 1920)
+    height=int(monitors[0].get("height") or 1080)
+    print(f"{width}x{height}")' 2>/dev/null || true)"
+  fi
+  render_size="${render_size:-2560x1440}"
+  render_width="${render_size%x*}"
+  render_height="${render_size#*x}"
+
   log_info "Rendering SevenOS $THEME_LABEL wallpaper..."
+  log_info "Wallpaper render target: ${render_width}x${render_height}"
 
   if is_dry_run; then
     printf 'rm -f %q\n' "$WALLPAPER_PNG"
-    printf 'rsvg-convert -w 1920 -h 1080 %q -o %q\n' "$WALLPAPER_SVG" "$WALLPAPER_PNG"
+    printf 'rsvg-convert -w %q -h %q %q -o %q\n' "$render_width" "$render_height" "$WALLPAPER_SVG" "$WALLPAPER_PNG"
     printf 'cp %q %q\n' "$WALLPAPER_PNG" "$WALLPAPER_ACTIVE"
     return 0
   fi
 
   rm -f "$WALLPAPER_PNG"
   if command -v rsvg-convert >/dev/null 2>&1; then
-    rsvg-convert -w 1920 -h 1080 "$WALLPAPER_SVG" -o "$WALLPAPER_PNG"
+    rsvg-convert -w "$render_width" -h "$render_height" "$WALLPAPER_SVG" -o "$WALLPAPER_PNG"
   elif command -v magick >/dev/null 2>&1; then
-    magick "$WALLPAPER_SVG" -resize 1920x1080! "$WALLPAPER_PNG"
+    magick "$WALLPAPER_SVG" -resize "${render_width}x${render_height}!" "$WALLPAPER_PNG"
   else
     log_warn "No SVG renderer found. Install librsvg or imagemagick to generate the PNG wallpaper."
     log_warn "Run: sudo pacman -S --needed librsvg"
@@ -564,13 +596,14 @@ install_preserved_config_file "$ROOT_DIR/hyprland/conf/keyboard.conf" "$CONFIG_H
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/custom.conf" "$CONFIG_HOME/hypr/conf/custom.conf"
 copy_config_dir "$THEME_SOURCE_DIR/waybar" "$CONFIG_HOME/waybar"
 copy_config_dir "$THEME_SOURCE_DIR/rofi" "$CONFIG_HOME/rofi"
-copy_config_dir "$THEME_SOURCE_DIR/mako" "$CONFIG_HOME/mako"
-copy_config_dir "$ROOT_DIR/hyprland/swaync" "$CONFIG_HOME/swaync"
-copy_config_dir "$ROOT_DIR/hyprland/wlogout" "$CONFIG_HOME/wlogout"
+copy_config_dir "$(theme_source_or_common mako)" "$CONFIG_HOME/mako"
+copy_config_dir "$(theme_source_or_common swaync)" "$CONFIG_HOME/swaync"
+copy_config_dir "$(theme_source_or_common wlogout)" "$CONFIG_HOME/wlogout"
 copy_config_dir "$THEME_SOURCE_DIR/kitty" "$CONFIG_HOME/kitty"
 copy_config_file "$ROOT_DIR/hyprland/hypridle.conf" "$CONFIG_HOME/hypr/hypridle.conf"
-copy_config_file "$ROOT_DIR/hyprland/hyprlock.conf" "$CONFIG_HOME/hypr/hyprlock.conf"
+copy_config_file "$(theme_source_or_common hyprlock.conf)" "$CONFIG_HOME/hypr/hyprlock.conf"
 copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" "$CONFIG_HOME/hypr/conf/sevenos-windows.conf"
+copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-lua-generated.conf" "$CONFIG_HOME/hypr/conf/sevenos-lua-generated.conf"
 copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-dynamic.conf" "$CONFIG_HOME/hypr/conf/sevenos-dynamic.conf"
 copy_config_file "$ROOT_DIR/hyprland-light/kitty/light.conf" "$CONFIG_HOME/kitty/light.conf"
 configure_toolkit_theme
@@ -607,6 +640,7 @@ run_cmd cp -r "$ROOT_DIR/identity/components" "$DATA_HOME/sevenos/identity/compo
 render_wallpaper
 write_hyprpaper_config
 "$ROOT_DIR/scripts/wallpaper-theme.sh" generate "$WALLPAPER_ACTIVE" || true
+"$ROOT_DIR/scripts/theme-engine.sh" apply || true
 configure_file_experience
 configure_user_session_services
 "$ROOT_DIR/scripts/hypr-ecosystem.sh" apply || true

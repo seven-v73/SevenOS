@@ -60,6 +60,7 @@ require_file "docs/MIGRATE_FROM_ML4W.md"
 require_file "docs/SEVEN_READER.md"
 require_file "docs/SEVEN_STORE.md"
 require_file "docs/SMART_WINDOW_SYSTEM.md"
+require_file "docs/HYPRLAND_LUA_ENGINE.md"
 require_file "seven-core/README.md"
 require_file "seven-core/bus-schema.json"
 require_file "seven-core/daemon/Cargo.toml"
@@ -171,7 +172,26 @@ require_file "hyprland/hypridle.conf"
 require_file "hyprland/hyprlock.conf"
 require_file "hyprland/conf/sevenos-dynamic.conf"
 require_file "hyprland/conf/sevenos-windows.conf"
+require_file "hyprland/conf/sevenos-lua-generated.conf"
+require_file "hyprland/lua/init.lua"
+require_file "hyprland/lua/core/audit.lua"
+require_file "hyprland/lua/core/emit.lua"
+require_file "hyprland/lua/core/profiles.lua"
+require_file "hyprland/lua/rules/animations.lua"
+require_file "hyprland/lua/rules/windows.lua"
+require_file "hyprland/lua/rules/keybinds.lua"
+require_file "hyprland/lua/profiles/equinox.lua"
+require_file "hyprland/lua/profiles/forge.lua"
+require_file "hyprland/lua/profiles/shield.lua"
+require_file "hyprland/lua/profiles/studio.lua"
+require_file "hyprland/lua/profiles/windows.lua"
+require_file "hyprland/lua/profiles/horizon.lua"
+require_file "hyprland/lua/profiles/pulse.lua"
+require_file "hyprland/lua/profiles/baobab.lua"
+require_file "hyprland/lua/profile_runtime.json"
 require_file "systemd/user/sevenos-hyprsunset.service"
+require_file "systemd/user/sevenos-hypr-lua-events.service"
+require_file "systemd/user/sevenos-polkit-agent.service"
 require_file "hyprland/kitty/kitty.conf"
 require_file "hyprland/kitty/classic.conf"
 require_file "hyprland/kitty/dark.conf"
@@ -243,6 +263,7 @@ require_executable "bin/seven-waybar-security"
 require_executable "bin/seven-waybar"
 require_executable "bin/seven-workspace"
 require_executable "bin/seven-window"
+require_executable "bin/seven-window-controls-native"
 require_executable "bin/seven-profile-theme"
 require_executable "bin/hyprsysteminfo"
 require_executable "bin/seven-bluetooth"
@@ -289,6 +310,8 @@ require_executable "scripts/post-install.sh"
 require_executable "scripts/design-check.sh"
 require_executable "scripts/visual-packages.sh"
 require_executable "scripts/hypr-ecosystem.sh"
+require_executable "scripts/hypr-lua.sh"
+require_executable "scripts/hypr-lua-events.sh"
 require_executable "scripts/install-glaze-local.sh"
 require_executable "scripts/install-hyprsysteminfo.sh"
 require_executable "scripts/wallpaper-theme.sh"
@@ -303,6 +326,7 @@ package_manifest_contains "swayidle" "scripts/packages-base.txt"
 package_manifest_contains "hypridle" "scripts/packages-base.txt"
 package_manifest_contains "hyprlock" "scripts/packages-base.txt"
 package_manifest_contains "hyprpaper" "scripts/packages-base.txt"
+package_manifest_contains "socat" "scripts/packages-base.txt"
 package_manifest_contains "hyprpicker" "scripts/packages-hypr-ecosystem.txt"
 package_manifest_contains "hyprsunset" "scripts/packages-hypr-ecosystem.txt"
 package_manifest_contains "matugen" "scripts/packages-hypr-ecosystem.txt"
@@ -375,7 +399,7 @@ else
   fail "Waybar SevenOS brand should stay simple and public-facing"
 fi
 
-if jq -e '.height == 50 and .spacing == 6 and ."gtk-layer-shell" == true and ."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."return-type" == "json" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev".format == "‹" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next".format == "›" and ."custom/workspace-next"."on-click" == "seven-workspace next" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json" and ."custom/ai"."on-click" == "seven-quick-settings ai" and ."custom/ai"."on-click-right" == "seven ai focus" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/media".exec == "seven-waybar-status media" and ."custom/vpn".exec == "seven-waybar-status vpn" and ."custom/recorder".exec == "seven-waybar-status recorder" and .pulseaudio.format == "󰕾" and (.battery.format | contains("{capacity}%")) and (. | has("cpu") | not) and (. | has("memory") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '.height == 50 and .spacing == 6 and ."gtk-layer-shell" == true and ."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."return-type" == "json" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/control-center"] and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev".format == "‹" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next".format == "›" and ."custom/workspace-next"."on-click" == "seven-workspace next" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and ."custom/control-center".exec == "seven-waybar-status control-center" and ."custom/control-center"."return-type" == "json" and ."custom/control-center"."on-click" == "seven-quick-settings" and ."custom/control-center"."on-click-right" == "seven-settings" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/media".exec == "seven-waybar-status media" and ."custom/vpn".exec == "seven-waybar-status vpn" and ."custom/recorder".exec == "seven-waybar-status recorder" and .pulseaudio.format == "󰕾" and (.battery.format | contains("{capacity}%")) and (. | has("cpu") | not) and (. | has("memory") | not)' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar exposes premium SevenOS search, spaces and essential controls"
 else
   fail "Waybar premium search, workspace or essential control layout missing"
@@ -415,8 +439,8 @@ else
   fail "Theme coherence is incomplete across launcher and toolkits"
 fi
 
-if grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'seven-files menu' "$ROOT_DIR/hyprland/hyprland.conf"; then
+if grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/conf/sevenos-lua-generated.conf" &&
+   grep -q 'seven-files menu' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua"; then
   ok "Hyprland exposes Seven Files shortcuts"
 else
   fail "Seven Files shortcuts missing"
@@ -476,6 +500,7 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'inspector-card' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'adapt_layout' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'theme_css' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'seven_theme.gtk_app_css("files"' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'Gtk.SearchEntry' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'sort_entries' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'breadcrumb-button' "$ROOT_DIR/bin/seven-files-native" &&
@@ -519,8 +544,8 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'xdg-mime default seven-files.desktop inode/directory' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'default-folder-viewer' "$ROOT_DIR/bin/seven-files" &&
    grep -q 'nautilus --new-window' "$ROOT_DIR/bin/seven-files" &&
-   grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 1040 660' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'windowrule = match:title ^(Seven Files)$, float on, center on, size 1040 660' "$ROOT_DIR/hyprland/hyprland.conf"; then
+   grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 1040 660' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'windowrule = match:title ^(Seven Files)$, float on, center on, size 1040 660' "$ROOT_DIR/hyprland/lua/rules/windows.lua"; then
   ok "Seven Files is shaped as a native SevenOS file surface"
 else
   fail "Seven Files shell integration is incomplete"
@@ -551,12 +576,12 @@ if grep -q 'SevenReaderNative' "$ROOT_DIR/bin/seven-reader-native" &&
    grep -q 'adjust_zoom' "$ROOT_DIR/bin/seven-reader-native" &&
    grep -q 'flip-active' "$ROOT_DIR/bin/seven-reader-native" &&
    grep -q 'SevenAI Reading Companion' "$ROOT_DIR/bin/seven-reader-native" &&
-   grep -q 'Exec=seven-reader open %U' "$ROOT_DIR/seven-hub/seven-reader.desktop" &&
+   grep -q 'Exec=seven-reader open %F' "$ROOT_DIR/seven-hub/seven-reader.desktop" &&
    grep -q 'MimeType=application/pdf;application/epub+zip;text/markdown;text/plain;application/vnd.comicbook+zip;application/x-cbz;' "$ROOT_DIR/seven-hub/seven-reader.desktop" &&
    grep -q 'xdg-mime default seven-reader.desktop application/pdf' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'install_user_command "$ROOT_DIR/bin/seven-reader" seven-reader' "$ROOT_DIR/scripts/install-cli.sh" &&
    grep -q 'reader.open' "$ROOT_DIR/scripts/actions.sh" &&
-   grep -q 'windowrule = match:class ^(SevenReaderNative)$, float on, center on, size 1220 760' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'windowrule = match:class ^(SevenReaderNative)$, float on, center on, size 1220 760' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" read "$ROOT_DIR/README.md" | grep -q 'Seven Reader immersive surface' &&
    "$ROOT_DIR/bin/seven-reader-native" --json | python -m json.tool >/dev/null; then
   ok "Seven Reader is integrated as an immersive native reading surface"
@@ -586,9 +611,9 @@ else
   fail "SevenStore Launchpad integration is incomplete"
 fi
 
-if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
+if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
    grep -q '$dock = seven-dock toggle' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'SevenDockNative' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'SevenDockNative' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
    grep -q 'restart|repair|reopen' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'SEVENOS_DOCK_FORCE_WINDOW=1' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-dock-native" &&
@@ -609,7 +634,7 @@ else
   fail "SevenOS Dock should toggle with Super+D and expose workflow actions"
 fi
 
-if jq -e '."custom/profile"."on-click" == "seven-profile-center-native" and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/wifi"."on-click" == "seven-quick-settings wifi" and ."custom/wifi"."on-click-right" == "seven-quick-settings" and ."custom/wifi"."on-click-middle" == "seven-wifi toggle" and ."custom/wifi"."return-type" == "json" and ."custom/bluetooth"."on-click" == "seven-quick-settings bluetooth" and ."custom/bluetooth"."on-click-middle" == "seven-bluetooth toggle" and ."custom/bluetooth"."return-type" == "json" and .pulseaudio."on-click" == "seven-quick-settings audio" and .pulseaudio."on-click-right" == "seven-quick-settings" and .pulseaudio."on-click-middle" == "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" and .pulseaudio."on-scroll-up" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+" and .pulseaudio."on-scroll-down" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" and .pulseaudio.format == "󰕾" and .pulseaudio.tooltip == false and .battery."on-click" == "seven-quick-settings power" and .battery."on-click-right" == "seven-quick-settings" and (.battery.format | contains("{capacity}%")) and .battery.tooltip == false and ."custom/vpn"."return-type" == "json" and ."custom/recorder"."return-type" == "json" and .clock.tooltip == false and .clock."on-click" == "seven-quick-settings time" and ."custom/ai"."on-click" == "seven-quick-settings ai" and ."custom/ai"."on-click-right" == "seven ai focus" and ."custom/sevenos"."on-click" == "seven hub" and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next"."on-click" == "seven-workspace next"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."custom/profile"."on-click" == "seven-profile-center-native" and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/wifi"."on-click" == "seven-quick-settings wifi" and ."custom/wifi"."on-click-right" == "seven-quick-settings" and ."custom/wifi"."on-click-middle" == "seven-wifi toggle" and ."custom/wifi"."return-type" == "json" and ."custom/bluetooth"."on-click" == "seven-quick-settings bluetooth" and ."custom/bluetooth"."on-click-middle" == "seven-bluetooth toggle" and ."custom/bluetooth"."return-type" == "json" and .pulseaudio."on-click" == "seven-quick-settings audio" and .pulseaudio."on-click-right" == "seven-quick-settings" and .pulseaudio."on-click-middle" == "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" and .pulseaudio."on-scroll-up" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+" and .pulseaudio."on-scroll-down" == "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-" and .pulseaudio.format == "󰕾" and .pulseaudio.tooltip == false and .battery."on-click" == "seven-quick-settings power" and .battery."on-click-right" == "seven-quick-settings" and (.battery.format | contains("{capacity}%")) and .battery.tooltip == false and ."custom/vpn"."return-type" == "json" and ."custom/recorder"."return-type" == "json" and .clock.tooltip == false and .clock."on-click" == "seven-quick-settings time" and ."custom/control-center"."on-click" == "seven-quick-settings" and ."custom/control-center"."on-click-right" == "seven-settings" and ."custom/sevenos"."on-click" == "seven hub" and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next"."on-click" == "seven-workspace next"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar modules expose actionable controls"
 else
   fail "Waybar still has decorative modules without actions"
@@ -977,6 +1002,8 @@ if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
    grep -q 'ExecStart=%h/.local/bin/seven-daemon observe-loop' "$ROOT_DIR/systemd/user/seven-context-observer.service" &&
    grep -q 'Wants=seven-daemon.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
    grep -q 'seven-context-observer.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
+   grep -q 'sevenos-polkit-agent.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
+   grep -q 'polkit-gnome-authentication-agent' "$ROOT_DIR/systemd/user/sevenos-polkit-agent.service" &&
    grep -q '"core"' <<<"$state_json" &&
    grep -q 'SevenBus' "$ROOT_DIR/seven-core/README.md" &&
    grep -q 'sevenos.daemon.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs"; then
@@ -994,11 +1021,77 @@ fi
 if grep -q 'source = ~/.config/hypr/conf/monitor.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'source = ~/.config/hypr/conf/keyboard.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'source = ~/.config/hypr/conf/sevenos-windows.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'source = ~/.config/hypr/conf/sevenos-lua-generated.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'source = ~/.config/hypr/conf/custom.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'install_preserved_config_file' "$ROOT_DIR/scripts/apply-theme.sh"; then
   ok "Hyprland exposes protected user override files"
 else
   fail "Hyprland protected override files are missing"
+fi
+
+hypr_lua_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hypr lua status --json)"
+hypr_lua_audit="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hypr lua audit --json)"
+hypr_lua_plan="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hypr lua plan pulse --json)"
+hypr_lua_events="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/hypr-lua-events.sh" status --json)"
+if command -v lua >/dev/null 2>&1 &&
+   python -m json.tool <<<"$hypr_lua_json" >/dev/null &&
+   python -m json.tool <<<"$hypr_lua_audit" >/dev/null &&
+   python -m json.tool <<<"$hypr_lua_plan" >/dev/null &&
+   python -m json.tool <<<"$hypr_lua_events" >/dev/null &&
+   grep -q '"schema":"sevenos.hypr-lua.v1"' <<<"$hypr_lua_json" &&
+   grep -q '"schema":"sevenos.hypr-lua.config-map.v1"' <<<"$hypr_lua_audit" &&
+   grep -q '"schema":"sevenos.hypr-lua.profile-runtime.v1"' <<<"$hypr_lua_plan" &&
+   grep -q '"schema":"sevenos.hypr-lua.events.v1"' <<<"$hypr_lua_events" &&
+   grep -q '"binds":0' <<<"$hypr_lua_audit" &&
+   grep -q '"windowrules":0' <<<"$hypr_lua_audit" &&
+   grep -q '"animations":0' <<<"$hypr_lua_audit" &&
+   grep -q '"semantic_windowrule_conflicts":0' <<<"$hypr_lua_audit" &&
+   grep -q '"realtime_ready":' <<<"$hypr_lua_events" &&
+   grep -q '"transport":' <<<"$hypr_lua_events" &&
+   grep -q '"bind_duplicates":0' <<<"$hypr_lua_audit" &&
+   grep -q '"windowrule_duplicates":0' <<<"$hypr_lua_audit" &&
+   grep -q '"profile":"pulse"' <<<"$hypr_lua_plan" &&
+   grep -q 'Lua intent -> generated Hyprland conf' "$ROOT_DIR/docs/HYPRLAND_LUA_ENGINE.md" &&
+   grep -q 'safe by default' "$ROOT_DIR/docs/HYPRLAND_LUA_ENGINE.md" &&
+   grep -q 'Phase 2 Output' "$ROOT_DIR/docs/HYPRLAND_LUA_ENGINE.md" &&
+   grep -q 'Phase 3 Output' "$ROOT_DIR/docs/HYPRLAND_LUA_ENGINE.md" &&
+   grep -q 'sevenos-lua-generated.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-lua-generated.conf"' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'lua-intent-to-hyprland-conf' "$ROOT_DIR/hyprland/lua/init.lua" &&
+   grep -q 'profile-runtime.v1' "$ROOT_DIR/hyprland/lua/init.lua" &&
+   grep -q 'SEVENOS_ACTIVE_PROFILE' "$ROOT_DIR/hyprland/lua/init.lua" &&
+   grep -q 'rules.keybinds' "$ROOT_DIR/hyprland/lua/init.lua" &&
+   grep -q 'rules.animations' "$ROOT_DIR/hyprland/lua/init.lua" &&
+   grep -q 'rules.windows' "$ROOT_DIR/hyprland/lua/init.lua" &&
+   grep -q 'sevenos.hypr-lua.config-map.v1' "$ROOT_DIR/hyprland/lua/core/audit.lua" &&
+   grep -q 'bind_duplicates' "$ROOT_DIR/hyprland/lua/core/audit.lua" &&
+   grep -q 'semantic_windowrule_conflicts' "$ROOT_DIR/hyprland/lua/core/audit.lua" &&
+   grep -q 'Profile: ' "$ROOT_DIR/hyprland/lua/core/emit.lua" &&
+   grep -q 'Profile environment' "$ROOT_DIR/hyprland/lua/core/emit.lua" &&
+   grep -q 'Common animation rules' "$ROOT_DIR/hyprland/lua/core/emit.lua" &&
+   grep -q 'Common keybinds' "$ROOT_DIR/hyprland/lua/core/emit.lua" &&
+   grep -q 'Common window rules' "$ROOT_DIR/hyprland/lua/core/emit.lua" &&
+   grep -q 'animation = workspaces' "$ROOT_DIR/hyprland/lua/rules/animations.lua" &&
+   grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/lua/rules/animations.lua" &&
+   grep -q 'seven-workspace switch 1' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'seven-hypr-lua-events' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'sevenos-hypr-lua-events.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
+   grep -q 'sevenos.hypr-lua.event.v1' "$ROOT_DIR/scripts/hypr-lua-events.sh" &&
+   grep -q 'nc -U' "$ROOT_DIR/scripts/hypr-lua-events.sh" &&
+   grep -q 'current.json' "$ROOT_DIR/scripts/hypr-lua-events.sh" &&
+   grep -q 'handle_event' "$ROOT_DIR/scripts/hypr-lua-events.sh" &&
+   grep -q 'poll_watch' "$ROOT_DIR/scripts/hypr-lua-events.sh" &&
+   grep -q 'SevenTerminalClassic' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'SevenQuickSettingsNative' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -Fq 'scripts/hypr-lua.sh" apply "$key"' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'seven hypr lua apply %q' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'windowrule = match:class ^(steam)$' "$ROOT_DIR/hyprland/lua/profiles/pulse.lua" &&
+   grep -q 'env = SEVENOS_HYPR_PROFILE,pulse' "$ROOT_DIR/hyprland/lua/profiles/pulse.lua" &&
+   [[ -s "$ROOT_DIR/hyprland/lua/config_map.json" ]]; then
+  ok "SevenOS Hypr Lua Engine audits and generates a safe programmable desktop layer"
+else
+  fail "SevenOS Hypr Lua Engine should expose audit, generated conf and safe fallback"
 fi
 
 if grep -q 'env = GTK_THEME,adw-gtk3' "$ROOT_DIR/hyprland/hyprland.conf" &&
@@ -1009,39 +1102,39 @@ else
 fi
 
 if grep -q '$terminal = seven-terminal classic' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, Return, exec, $terminal' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod SHIFT, Return, exec, seven-terminal dark' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod CTRL, Return, exec, seven-terminal menu' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'windowrule = match:class ^(SevenTerminalClassic)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'windowrule = match:class ^(SevenTerminalDark)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, SPACE, exec, $spotlight' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bind = $mod, Return, exec, $terminal' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod SHIFT, Return, exec, seven-terminal dark' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod CTRL, Return, exec, seven-terminal menu' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'windowrule = match:class ^(SevenTerminalClassic)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'windowrule = match:class ^(SevenTerminalDark)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'bind = $mod, SPACE, exec, $spotlight' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
    grep -q '$spotlight = seven-spotlight' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bindr = $mod, SUPER_L, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bindr = $mod, SUPER_R, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, TAB, exec, $overview' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, N, exec, $quicksettings' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, C, exec, seven shield mode' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod CTRL, C, exec, seven shield hud' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod CTRL, E, exec, seven-files profile' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'bindr = $mod, SUPER_L, exec, $launcher' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bindr = $mod, SUPER_R, exec, $launcher' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod, A, exec, $launcher' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod, TAB, exec, $overview' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod, N, exec, $quicksettings' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod, C, exec, seven shield mode' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod CTRL, C, exec, seven shield hud' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod, E, exec, seven-files' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod CTRL, E, exec, seven-files profile' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
   grep -q 'seven-overview apps' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, H, exec, seven-help' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod SHIFT, H, exec, seven-hub' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   ! grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/hyprland.conf"; then
+   grep -q 'bind = $mod, H, exec, seven-help' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod SHIFT, H, exec, seven-hub' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   ! grep -q 'bind = $mod, SPACE, exec, seven hub' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua"; then
   ok "Hyprland exposes Spotlight, Apps, Help and CyberSpace shortcuts"
 else
   fail "Hyprland discoverable Spotlight, desktop and CyberSpace shortcuts missing"
 fi
 
-if grep -q 'bind = , Print, exec, seven-screenshot area save' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod, Print, exec, seven-screenshot full save' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod SHIFT, S, exec, seven-screenshot area edit' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod CTRL, S, exec, seven-screenshot area copy' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'seven-recorder area' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'seven-recorder full' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'bind = $mod ALT, R, exec, hyprctl reload' "$ROOT_DIR/hyprland/hyprland.conf" &&
+if grep -q 'bind = , Print, exec, seven-screenshot area save' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod, Print, exec, seven-screenshot full save' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod SHIFT, S, exec, seven-screenshot area edit' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod CTRL, S, exec, seven-screenshot area copy' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'seven-recorder area' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'seven-recorder full' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'bind = $mod ALT, R, exec, hyprctl reload' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
    grep -q 'Screenshot Save' "$ROOT_DIR/bin/seven-help" &&
    grep -q 'Record Area' "$ROOT_DIR/bin/seven-help" &&
    grep -q 'wf-recorder' "$ROOT_DIR/scripts/packages-base.txt" &&
@@ -1060,9 +1153,9 @@ overview_search_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" searc
 quick_settings_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings")"
 apps_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open)"
 if grep -Eq 'rounding = (26|28)' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'windowrule = match:title ^(Open File)' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'animation = specialWorkspace' "$ROOT_DIR/hyprland/lua/rules/animations.lua" &&
+   grep -q 'workspace = special:seven' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'windowrule = match:title ^(Open File)' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
    [[ "$overview_search_output" == *"DRY-RUN > Spotlight > Open command center"* ]] &&
    [[ "$apps_output" == *"seven-apps catalog"* ]] &&
    [[ "$apps_output" == *"desktop icon metadata"* ]] &&
@@ -1081,9 +1174,14 @@ if python -m json.tool <<<"$window_json" >/dev/null &&
    grep -q 'SevenDecor' "$ROOT_DIR/docs/SMART_WINDOW_SYSTEM.md" &&
    grep -q 'Traffic-Light Logic' "$ROOT_DIR/docs/SMART_WINDOW_SYSTEM.md" &&
    grep -q 'Decoration Coverage' "$ROOT_DIR/docs/SMART_WINDOW_SYSTEM.md" &&
-   grep -q 'seven-window toggle-float' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'seven-window smart-maximize' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'seven-window layout-menu' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -q 'seven-window toggle-float' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'seven-window smart-maximize' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'seven-window layout-menu' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'seven-window controls' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
+   grep -q 'SevenWindowControlsNative' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'seven-window-controls-native' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'seven-window controls' "$ROOT_DIR/docs/SMART_WINDOW_SYSTEM.md" &&
+   "$ROOT_DIR/bin/seven-window-controls-native" --probe >/dev/null &&
    grep -q 'copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-windows.conf"' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'Seven Smart Window System' "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" &&
    grep -q 'layerrule = blur on, match:namespace waybar' "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" &&
@@ -1155,8 +1253,11 @@ if [[ -s "$ROOT_DIR/hyprland/hypridle.conf" ]] &&
    [[ -s "$ROOT_DIR/hyprland/wlogout/style.css" ]] &&
    grep -q 'hyprlock' "$ROOT_DIR/bin/seven-power" &&
    grep -q 'wlogout' "$ROOT_DIR/bin/seven-power" &&
-   grep -q 'copy_config_dir "$ROOT_DIR/hyprland/swaync"' "$ROOT_DIR/scripts/apply-theme.sh" &&
-   grep -q 'copy_config_dir "$ROOT_DIR/hyprland/wlogout"' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'theme_source_or_common swaync' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'theme_source_or_common wlogout' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   [[ -s "$ROOT_DIR/hyprland-light/swaync/style.css" ]] &&
+   [[ -s "$ROOT_DIR/hyprland-light/wlogout/style.css" ]] &&
+   [[ -s "$ROOT_DIR/hyprland-light/hyprlock.conf" ]] &&
    grep -q 'hypridle.conf' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'hyprlock.conf' "$ROOT_DIR/scripts/apply-theme.sh"; then
   ok "SevenOS integrates swaync, wlogout, hypridle, hyprlock and Hyprpaper as modern system surfaces"
@@ -1170,7 +1271,7 @@ if grep -q 'matugen' "$ROOT_DIR/scripts/wallpaper-theme.sh" &&
    grep -q 'install-hyprsysteminfo.sh' "$ROOT_DIR/scripts/hypr-ecosystem.sh" &&
    grep -q 'sevenos-dynamic.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
    grep -q 'sevenos-hyprsunset.service' "$ROOT_DIR/systemd/user/sevenos-session.target" &&
-   grep -q 'hyprsysteminfo' "$ROOT_DIR/hyprland/hyprland.conf"; then
+   grep -q 'hyprsysteminfo' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua"; then
   ok "SevenOS Hypr ecosystem exposes dynamic wallpaper theming, warm light and system info hooks"
 else
   fail "SevenOS Hypr ecosystem should connect wallpaper colors, hyprsunset and system info hooks"
@@ -1257,8 +1358,8 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'terminal_cmd" focus' "$ROOT_DIR/seven-hub/bin/seven-hub" &&
    grep -q '"seven-terminal", "focus"' "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
    grep -q 'terminal.open' "$ROOT_DIR/scripts/actions.sh" &&
-   grep -Fq 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -Fq 'windowrule = match:title ^(Seven Terminal · .*)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   grep -Fq 'windowrule = match:class ^(SevenTerminalNative)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -Fq 'windowrule = match:title ^(Seven Terminal · .*)$, float on, center on, size 760 480' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
    grep -q '__sevenos_git_branch' "$ROOT_DIR/branding/shell/terminal-bashrc" &&
    grep -q '__sevenos_git_branch' "$ROOT_DIR/branding/shell/terminal-zsh/.zshrc" &&
    grep -q '__sevenos_terminal_mode' "$ROOT_DIR/branding/shell/terminal-bashrc" &&
@@ -1309,6 +1410,22 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'apply-default' "$ROOT_DIR/scripts/fonts.sh" &&
    grep -q 'import_fonts_button' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven_theme.gtk_app_css("settings"' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven_theme.surface_css("settings"' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven_theme.gtk_app_css("store"' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'seven_theme.surface_css("store"' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'seven_theme.gtk_app_css("reader"' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'seven_theme.surface_css("reader"' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'seven_theme.surface_css("files"' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'seven_theme.gtk_app_css("control-center"' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   [[ -s "$ROOT_DIR/identity/native/store.css" ]] &&
+   [[ -s "$ROOT_DIR/identity/native/reader.css" ]] &&
+   [[ -s "$ROOT_DIR/identity/native/settings.css" ]] &&
+   [[ -s "$ROOT_DIR/identity/native/settings-dark.css" ]] &&
+   [[ -s "$ROOT_DIR/identity/native/files.css" ]] &&
+   ! grep -R -E '#[0-9A-Fa-f]{3,8}|rgba?\(' "$ROOT_DIR/identity/native" >/dev/null 2>&1 &&
+   grep -q 'theme-engine.sh' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   "$ROOT_DIR/scripts/theme-engine.sh" doctor >/dev/null 2>&1 &&
    grep -q 'region_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'default_app_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'copy_system_summary' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -1539,6 +1656,13 @@ if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_
    grep -q 'build_slider_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'build_detail_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'nearby_wifi' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'wifi_networks' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'connect_wifi_network' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'bluetooth_device_rows' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'bluetooth_action' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'detail_button_row' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'seven-quick-settings wifi' "$ROOT_DIR/bin/seven-wifi" &&
+   grep -q 'seven-quick-settings\", \"bluetooth\"' "$ROOT_DIR/bin/seven-bluetooth" &&
    grep -q 'set_keyboard_interactivity(window, False)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'GLib.idle_add(Gtk.main_quit)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'control_center_css' "$ROOT_DIR/bin/seven-quick-settings-native" &&

@@ -104,10 +104,10 @@ fi
 
 if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
    [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
-   jq -e '."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 50 and ."gtk-layer-shell" == true and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/ai".exec == "seven-waybar-status ai"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
+   jq -e '."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/control-center"] and .height == 50 and ."gtk-layer-shell" == true and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/control-center".exec == "seven-waybar-status control-center"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
    grep -q '@define-color seven_blue #2F7BFF' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
-   grep -q '#custom-ai' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
+   grep -q '#custom-control-center' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q 'gtk-application-prefer-dark-theme=false' "$ROOT_DIR/hyprland-light/gtk-3.0/settings.ini" &&
    grep -q 'include light.conf' "$ROOT_DIR/hyprland-light/kitty/kitty.conf" &&
    grep -q 'Clarity first' "$ROOT_DIR/identity/CHARTER_LIGHT.md"; then
@@ -116,7 +116,7 @@ else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/ai"] and .height == 50 and .spacing == 6 and ."margin-top" == 10 and ."margin-left" == 18 and ."margin-right" == 18 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next"."on-click" == "seven-workspace next" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and ."custom/ai".exec == "seven-waybar-status ai" and ."custom/ai"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","custom/profile","custom/spotlight","custom/media"] and ."custom/profile".exec == "seven-waybar-status profile" and ."custom/profile"."on-click" == "seven-profile-center-native" and ."modules-center" == ["custom/workspace-prev","hyprland/workspaces","custom/workspace-next"] and ."modules-right" == ["custom/wifi","custom/bluetooth","pulseaudio","battery","custom/vpn","custom/recorder","clock","custom/control-center"] and .height == 50 and .spacing == 6 and ."margin-top" == 10 and ."margin-left" == 18 and ."margin-right" == 18 and ."gtk-layer-shell" == true and (."custom/sevenos".format | contains("SevenOS")) and (."custom/spotlight".format | contains("│")) and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/workspace-prev"."on-click" == "seven-workspace prev" and ."custom/workspace-next"."on-click" == "seven-workspace next" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and ."custom/control-center".exec == "seven-waybar-status control-center" and ."custom/control-center"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses the SevenOS public premium floating hierarchy"
 else
   fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
@@ -127,7 +127,7 @@ if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '.modules-right' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'border-radius: 24px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'min-width: 394px' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q 'min-width: 330px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'min-width: 394px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-profile.profile-equinox' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-profile.profile-baobab' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-profile.profile-shield' "$ROOT_DIR/hyprland/waybar/style.css" &&
@@ -140,8 +140,7 @@ if grep -q '.modules-left,' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'border-radius: 999px' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-sevenos' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#custom-spotlight' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '#custom-ai' "$ROOT_DIR/hyprland/waybar/style.css" &&
-   grep -q '@keyframes aiPulse' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-control-center' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q '#workspaces button.active' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'rgba(34, 38, 76, 0.38)' "$ROOT_DIR/hyprland/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland/waybar/style.css" &&
@@ -212,6 +211,7 @@ if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    grep -q 'default_app_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'copy_system_summary' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven keyboard apply' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven_theme.gtk_app_css("settings"' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven-shield-center-native' "$ROOT_DIR/bin/seven-settings-native"; then
   ok "SevenOS exposes a complete native Settings surface"
 else
@@ -225,6 +225,50 @@ if [[ -s "$ROOT_DIR/identity/LIQUID_GLASS_OS.md" ]] &&
   ok "SevenOS has an OS-level Liquid Glass direction"
 else
   fail "SevenOS should document the OS-level Liquid Glass direction"
+fi
+
+if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
+   python -m py_compile "$ROOT_DIR/scripts/seven_theme.py" >/dev/null 2>&1 &&
+   grep -q 'def gtk_app_css' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'def surface_css' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'def resolved_theme' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'def wallpaper_state' "$ROOT_DIR/scripts/seven_theme.py" &&
+   [[ -s "$ROOT_DIR/identity/native/store.css" ]] &&
+   [[ -s "$ROOT_DIR/identity/native/reader.css" ]] &&
+   [[ -s "$ROOT_DIR/identity/native/settings.css" ]] &&
+   [[ -s "$ROOT_DIR/identity/native/settings-dark.css" ]] &&
+   [[ -s "$ROOT_DIR/identity/native/files.css" ]] &&
+   grep -q 'theme_preview_card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'preview_mode' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'profile_combo' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven-wallpaper.*set' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven_wallpaper_accent' "$ROOT_DIR/identity/native/settings.css" &&
+   grep -q 'seven_theme.gtk_app_css("settings"' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven_theme.surface_css("settings"' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven_theme.gtk_app_css("store"' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'seven_theme.surface_css("store"' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'seven_theme.gtk_app_css("reader"' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'seven_theme.surface_css("reader"' "$ROOT_DIR/bin/seven-reader-native" &&
+   grep -q 'seven_theme.gtk_app_css("files"' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'seven_theme.surface_css("files"' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'seven_theme.gtk_app_css("control-center"' "$ROOT_DIR/bin/seven-quick-settings-native"; then
+  ok "Native GTK surfaces consume the shared Seven Design Engine"
+else
+  fail "Native GTK surfaces must consume scripts/seven_theme.py"
+fi
+
+if ! grep -R -E '#[0-9A-Fa-f]{3,8}|rgba?\(' "$ROOT_DIR/identity/native" >/dev/null 2>&1; then
+  ok "Native app CSS uses Seven Design Engine tokens instead of hard-coded colors"
+else
+  fail "Native app CSS should use @seven_* tokens instead of hard-coded colors"
+fi
+
+if [[ -s "$ROOT_DIR/scripts/theme-engine.sh" ]] &&
+   "$ROOT_DIR/scripts/theme-engine.sh" doctor >/dev/null 2>&1 &&
+   grep -q 'seven identity theme-doctor' "$ROOT_DIR/scripts/identity.sh"; then
+  ok "SevenOS theme runtime doctor is available"
+else
+  fail "SevenOS theme runtime doctor is incomplete"
 fi
 
 if grep -q 'seven-hub-window' "$ROOT_DIR/bin/seven-hub-native" &&

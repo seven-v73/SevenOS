@@ -10,6 +10,13 @@
   --seven-violet: #6A5CFF;
   --seven-cyan: #00B8D9;
   --seven-green: #00A77A;
+  --seven-green-active: #008F68;
+  --deep-void: #FFFFFF;
+  --cyber-void: #F5F7FA;
+  --surface-dark: #EEF1F5;
+  --surface-cyber: #EAF7F3;
+  --soft-white: #1C1F26;
+  --muted-gray: #6B7280;
 
   --surface-0: #FFFFFF;
   --surface-1: rgba(255, 255, 255, 0.78);
@@ -27,6 +34,11 @@
   --text-4: #9AA3AF;
 
   --gradient-primary: linear-gradient(135deg, #2F7BFF 0%, #6A5CFF 50%, #00B8D9 100%);
+  --gradient-cyber: linear-gradient(135deg, rgba(23, 146, 153, 0.16), rgba(4, 165, 229, 0.10));
+  --glow-blue: rgba(47, 123, 255, 0.22);
+  --glow-violet: rgba(106, 92, 255, 0.16);
+  --glow-cyan: rgba(0, 184, 217, 0.18);
+  --glow-green: rgba(0, 167, 122, 0.18);
   --focus-blue: rgba(47, 123, 255, 0.18);
   --focus-violet: rgba(106, 92, 255, 0.12);
   --focus-cyan: rgba(0, 184, 217, 0.16);
@@ -49,11 +61,41 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  --space-1: 4px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
 
   --t-hover: 100ms;
   --t-fade: 160ms;
   --t-window: 200ms;
   --t-spotlight: 200ms;
+  --t-workspace: 260ms;
+  --t-fast: 100ms;
+  --t-base: 200ms;
+  --t-slow: 280ms;
+
+  /* Compatibility aliases for older SevenOS surfaces. */
+  --ebene: var(--pure-white);
+  --glass: var(--surface-glass);
+  --glass-2: var(--surface-glass-2);
+  --glass-3: var(--surface-glass-3);
+  --glass-border-2: var(--glass-border-strong);
+  --indigo: var(--seven-blue);
+  --indigo-bright: var(--seven-cyan);
+  --indigo-pale: rgba(47, 123, 255, 0.10);
+  --baobab: var(--seven-green);
+  --baobab-bright: var(--seven-green-active);
+  --baobab-pale: rgba(0, 167, 122, 0.10);
+  --gold: var(--seven-violet);
+  --gold-bright: var(--seven-cyan);
+  --gold-dim: rgba(106, 92, 255, 0.70);
+  --gold-pale: rgba(106, 92, 255, 0.10);
+  --clay: #D20F39;
+  --clay-dim: #A90D31;
+  --clay-pale: rgba(210, 15, 57, 0.10);
 
   /* Seven Latte: Catppuccin-inspired compatibility tokens for the
      clarity-first SevenOS Light Mode. */
@@ -81,4 +123,26 @@
   --seven-folder-media: var(--cat-peach);
   --seven-folder-studio: #6A5CFF;
   --seven-folder-cloud: var(--cat-sky);
+}
+
+@keyframes breathe {
+  0%, 100% { border-color: var(--glass-border); }
+  50% { border-color: var(--glass-border-strong); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.76; transform: scale(0.97); }
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

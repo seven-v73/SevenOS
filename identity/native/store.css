@@ -1,0 +1,165 @@
+window.seven-store {
+  background: @seven_bg;
+  color: @seven_text;
+}
+.root {
+  background:
+    radial-gradient(circle at 14% 0%, alpha(@seven_accent, 0.24), transparent 32%),
+    radial-gradient(circle at 100% 10%, alpha(@seven_secondary, 0.20), transparent 30%),
+    linear-gradient(135deg, @seven_bg, @seven_panel 54%, @seven_bg);
+}
+.topbar {
+  background: @seven_panel;
+  border: 1px solid @seven_border;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.sidebar {
+  background: @seven_sidebar;
+  border-right: 1px solid @seven_border;
+  padding: 14px 10px;
+}
+.sidebar button {
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: @seven_text;
+  background: transparent;
+}
+.sidebar image {
+  color: @seven_muted;
+}
+.sidebar button:hover,
+.sidebar button.active {
+  background: @seven_selected;
+  color: @seven_text;
+}
+.sidebar-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: @seven_muted;
+}
+.hero {
+  border-radius: 8px;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, alpha(@seven_accent, 0.22), alpha(@seven_secondary, 0.16)),
+    @seven_panel;
+  border: 1px solid @seven_border;
+}
+.hero-icon {
+  min-width: 68px;
+  min-height: 68px;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 35% 20%, alpha(@seven_text, 0.22), transparent 34%),
+    linear-gradient(135deg, alpha(@seven_accent, 0.42), alpha(@seven_secondary, 0.30));
+  border: 1px solid @seven_border;
+}
+.card {
+  border-radius: 8px;
+  padding: 14px;
+  background: @seven_panel;
+  border: 1px solid @seven_border;
+}
+.card:hover {
+  background: @seven_hover;
+  border-color: alpha(@seven_accent, 0.35);
+}
+.app-icon-frame {
+  min-width: 58px;
+  min-height: 58px;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 35% 18%, alpha(@seven_text, 0.20), transparent 36%),
+    linear-gradient(145deg, alpha(@seven_accent, 0.24), alpha(@seven_secondary, 0.16));
+  border: 1px solid @seven_border;
+}
+.app-icon-frame image {
+  color: @seven_text;
+}
+.store-row-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: @seven_text;
+}
+.store-source {
+  color: @seven_muted;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  color: @seven_text;
+  background: alpha(@seven_accent, 0.16);
+}
+.quality {
+  border-radius: 8px;
+  padding: 10px;
+  color: @seven_text;
+  background: alpha(@seven_success, 0.11);
+  border: 1px solid alpha(@seven_success, 0.18);
+}
+.preview-panel {
+  min-height: 116px;
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 20% 20%, alpha(@seven_accent, 0.20), transparent 42%),
+    linear-gradient(145deg, @seven_panel_2, @seven_panel);
+  border: 1px solid @seven_border;
+}
+.mode-toggle {
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: @seven_muted;
+}
+.muted {
+  color: @seven_muted;
+}
+.success {
+  color: @seven_success;
+}
+.title {
+  font-size: 24px;
+  font-weight: 500;
+}
+.section-title {
+  font-size: 16px;
+  font-weight: 500;
+}
+entry.search {
+  min-height: 38px;
+  border-radius: 8px;
+  background: @seven_panel_2;
+  color: @seven_text;
+  border: 1px solid @seven_border;
+}
+button.primary {
+  background: linear-gradient(135deg, @seven_accent, @seven_secondary);
+  color: @seven_text;
+  border-radius: 8px;
+  font-weight: 500;
+  padding: 9px 14px;
+}
+button.ghost {
+  border-radius: 8px;
+  background: @seven_panel;
+  color: @seven_text;
+}
+.detail {
+  background: @seven_panel;
+  border-left: 1px solid @seven_border;
+  padding: 18px;
+}
+.detail-hero {
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    linear-gradient(135deg, alpha(@seven_accent, 0.14), alpha(@seven_secondary, 0.10)),
+    @seven_panel;
+  border: 1px solid @seven_border;
+}

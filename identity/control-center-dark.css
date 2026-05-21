@@ -47,6 +47,27 @@ window.quick-window {
   border: 1px solid rgba(205, 214, 244, 0.09);
 }
 
+.quick-icon-pill {
+  min-width: 30px;
+  padding: 0 8px;
+}
+
+.quick-close {
+  min-width: 30px;
+  min-height: 28px;
+  border-radius: 999px;
+  color: rgba(237, 237, 237, 0.92);
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(205, 214, 244, 0.08);
+  font-size: 16px;
+}
+
+.quick-close:hover {
+  color: #ffffff;
+  background: rgba(243, 139, 168, 0.22);
+  border-color: rgba(243, 139, 168, 0.30);
+}
+
 .control-grid {
   padding: 4px 0;
 }
@@ -122,6 +143,14 @@ window.quick-window {
   border: 1px solid rgba(205, 214, 244, 0.075);
 }
 
+.detail-scroll {
+  border-radius: 20px;
+}
+
+.detail-body {
+  padding-top: 2px;
+}
+
 .context-card.attention {
   background: rgba(243, 139, 168, 0.10);
   border-color: rgba(243, 139, 168, 0.20);
@@ -140,6 +169,23 @@ window.quick-window {
 
 .detail-row:hover {
   background: rgba(255, 255, 255, 0.055);
+}
+
+.network-row {
+  min-height: 42px;
+  margin: 1px 0;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(205, 214, 244, 0.055);
+}
+
+.network-row:hover {
+  background: rgba(137, 180, 250, 0.14);
+  border-color: rgba(137, 180, 250, 0.22);
+}
+
+.network-row.connected {
+  background: linear-gradient(135deg, rgba(137, 180, 250, 0.22), rgba(166, 227, 161, 0.10));
+  border-color: rgba(137, 180, 250, 0.26);
 }
 
 .scale trough {

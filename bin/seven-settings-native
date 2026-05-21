@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Native SevenOS Settings.
 
-This is the normal-user control surface for SevenOS. It intentionally keeps
-search out of the Settings app: universal search belongs to SevenOS Spotlight.
+This is the normal-user control surface for SevenOS. Spotlight remains the
+global command search, while Settings keeps a focused preference search for
+people who already know they are changing system behavior.
 """
 
 from __future__ import annotations
@@ -48,8 +49,13 @@ def resolve_root() -> Path:
 ROOT = resolve_root()
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
 REGION_PREFS = CONFIG_DIR / "region.conf"
+REGION_ENV = CONFIG_DIR / "region.env"
+HYPR_CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "hypr" / "conf"
+MONITOR_PREFS = HYPR_CONFIG_DIR / "monitor.conf"
+MONITOR_BACKUP = HYPR_CONFIG_DIR / "monitor.conf.sevenos.bak"
 sys.path.insert(0, str(ROOT / "scripts"))
 from seven_i18n import tr, tr_text  # noqa: E402
+import seven_theme  # noqa: E402
 
 
 def out(command: list[str], fallback: str = "") -> str:
@@ -73,6 +79,14 @@ def run_detached(command: str) -> None:
         "seven doctor fix",
         "seven status",
         "seven update",
+        "seven state",
+        "seven manifest",
+        "seven migrate",
+        "seven cloud",
+        "seven runtime",
+        "seven mini-os",
+        "seven hypr",
+        "seven ai",
         "seven language status",
         "seven language list",
         "seven language ensure",
@@ -132,11 +146,39 @@ def read_region_prefs() -> dict[str, str]:
     return prefs
 
 
+def write_region_contract(prefs: dict[str, str]) -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    REGION_PREFS.write_text("\n".join(f"{name}={prefs[name]}" for name in sorted(prefs)) + "\n", encoding="utf-8")
+    REGION_ENV.write_text(
+        "\n".join(
+            [
+                f'export SEVENOS_REGION="{prefs["region"]}"',
+                f'export SEVENOS_TIME_FORMAT="{prefs["time_format"]}"',
+                f'export SEVENOS_DATE_FORMAT="{prefs["date_format"]}"',
+                f'export SEVENOS_WEEK_START="{prefs["week_start"]}"',
+                f'export SEVENOS_UNITS="{prefs["units"]}"',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def write_region_pref(key: str, value: str) -> None:
     prefs = read_region_prefs()
     prefs[key] = value
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    REGION_PREFS.write_text("\n".join(f"{name}={prefs[name]}" for name in sorted(prefs)) + "\n", encoding="utf-8")
+    write_region_contract(prefs)
+
+
+def region_sample(prefs: dict[str, str]) -> str:
+    date_samples = {
+        "DD/MM/YYYY": "20/05/2026",
+        "MM/DD/YYYY": "05/20/2026",
+        "YYYY-MM-DD": "2026-05-20",
+    }
+    time_sample = "22:40" if prefs.get("time_format") == "24h" else "10:40 PM"
+    units_sample = "km · kg · °C" if prefs.get("units") == "metric" else "mi · lb · °F"
+    return f"{date_samples.get(prefs.get('date_format', ''), '2026-05-20')} · {time_sample} · {units_sample}"
 
 
 def xdg_default(mime: str) -> str:
@@ -208,6 +250,68 @@ def set_brightness(value: float) -> None:
         subprocess.Popen(["brightnessctl", "set", f"{int(value)}%"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def monitors_state() -> list[dict[str, str]]:
+    payload = run_json(["hyprctl", "monitors", "-j"], []) if command_exists("hyprctl") else []
+    monitors: list[dict[str, str]] = []
+    if isinstance(payload, list):
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or item.get("description") or "").strip()
+            if not name:
+                continue
+            width = int(item.get("width") or 0)
+            height = int(item.get("height") or 0)
+            refresh = float(item.get("refreshRate") or 60)
+            scale = float(item.get("scale") or 1)
+            monitors.append(
+                {
+                    "name": name,
+                    "label": f"{name} · {width}x{height}@{refresh:.0f}Hz · {scale:g}x",
+                    "resolution": f"{width}x{height}" if width and height else "preferred",
+                    "refresh": f"{refresh:.0f}",
+                    "scale": f"{scale:g}",
+                }
+            )
+    if not monitors:
+        monitors.append({"name": "", "label": tr("settings.all_monitors", "All monitors"), "resolution": "preferred", "refresh": "60", "scale": "1"})
+    return monitors
+
+
+def write_monitor_rule(name: str, resolution: str, scale: str) -> None:
+    HYPR_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    monitor_name = name or ""
+    mode = "preferred" if resolution == "preferred" else f"{resolution}@60"
+    rule = f"monitor = {monitor_name},{mode},auto,{scale}"
+    lines: list[str] = []
+    replaced = False
+    if MONITOR_PREFS.exists():
+        MONITOR_BACKUP.write_text(MONITOR_PREFS.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
+        for line in MONITOR_PREFS.read_text(encoding="utf-8", errors="ignore").splitlines():
+            stripped = line.strip()
+            if stripped.startswith("monitor") and "=" in stripped:
+                _left, _eq, value = stripped.partition("=")
+                current_name = value.strip().split(",", 1)[0].strip()
+                if current_name == monitor_name:
+                    lines.append(rule)
+                    replaced = True
+                    continue
+            lines.append(line)
+    if not lines:
+        lines = ["# SevenOS monitor override", "# Example:", "# monitor = eDP-1,preferred,auto,1"]
+    if not replaced:
+        lines.append(rule)
+    MONITOR_PREFS.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+
+
+def restore_monitor_rule() -> bool:
+    if not MONITOR_BACKUP.exists():
+        return False
+    HYPR_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    MONITOR_PREFS.write_text(MONITOR_BACKUP.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
+    return True
+
+
 def wifi_state() -> tuple[str, str]:
     if not command_exists("nmcli"):
         return tr_text("Missing"), tr_text("NetworkManager tools unavailable")
@@ -235,6 +339,45 @@ def active_profile() -> tuple[str, str]:
         if item:
             return item.get("title", tr_text("Profile")), item.get("state", "unknown")
     return "Equinox", "unknown"
+
+
+def active_profile_key() -> str:
+    payload = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
+    if isinstance(payload, list):
+        item = next((row for row in payload if row.get("active")), None)
+        if item:
+            return str(item.get("key") or item.get("profile") or "equinox").lower()
+    profile_env = CONFIG_DIR / "profile.env"
+    if profile_env.exists():
+        for line in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() in {"SEVENOS_ACTIVE_PROFILE", "SEVENOS_PROFILE"} and value.strip():
+                return value.strip().strip('"').strip("'").lower()
+    return "equinox"
+
+
+def profile_catalog() -> dict:
+    catalog_file = ROOT / "profiles/catalog.json"
+    fallback = {
+        "profile_naming": {
+            "equinox": "Equinox Balance",
+            "baobab": "Baobab Culture",
+            "forge": "Forge Developer",
+            "shield": "Shield Cybersecurity",
+            "studio": "Studio Creator",
+            "windows": "Windows Bridge",
+            "horizon": "Horizon Cloud",
+            "pulse": "Pulse Gaming",
+        },
+        "profiles": {},
+    }
+    if not catalog_file.exists():
+        return fallback
+    try:
+        payload = json.loads(catalog_file.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else fallback
+    except Exception:
+        return fallback
 
 
 def shield_state() -> tuple[str, str]:
@@ -311,168 +454,7 @@ def run(initial_page: str = "overview") -> int:
         pass
 
     theme_mode = current_theme_mode()
-    css = """
-    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
-    window.settings-window { background: transparent; }
-    .settings-shell {
-      border-radius: 30px;
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.90), rgba(229,241,247,0.80) 48%, rgba(255,255,255,0.72)),
-        radial-gradient(circle at 82% 8%, rgba(112,160,196,0.22), transparent 34%);
-      border: 1px solid rgba(255,255,255,0.88);
-    }
-    .traffic { padding: 12px 0 6px 16px; }
-    .traffic-dot {
-      min-width: 13px; min-height: 13px;
-      border-radius: 999px; padding: 0;
-      border: 1px solid rgba(0,0,0,0.10);
-      background: rgba(255,255,255,0.5);
-    }
-    .dot-close { background: #ff5f57; }
-    .dot-min { background: #febc2e; }
-    .dot-max { background: #28c840; }
-    .sidebar {
-      padding: 4px 10px 14px 10px;
-      border-right: 1px solid rgba(95,117,130,0.16);
-      background: rgba(255,255,255,0.28);
-    }
-    .brand { color: rgba(21,31,38,0.96); font-family: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif; font-size: 20px; font-weight: 500; padding: 4px 8px 10px 8px; }
-    .nav-button {
-      min-height: 36px;
-      padding: 0 10px;
-      border-radius: 13px;
-      color: rgba(39,55,65,0.82);
-      background: transparent;
-      border: 1px solid transparent;
-    }
-    .nav-button:hover { background: rgba(255,255,255,0.50); }
-    .nav-button.active {
-      background: rgba(255,255,255,0.72);
-      border-color: rgba(111,157,188,0.28);
-      color: rgba(15,24,31,0.98);
-    }
-    .content {
-      padding: 22px 24px;
-      background: rgba(255,255,255,0.14);
-    }
-    .page-frame { padding-bottom: 18px; }
-    .compact-row { }
-    .page-title { color: rgba(15,24,31,0.98); font-size: 25px; font-weight: 500; }
-    .page-subtitle { color: rgba(58,76,88,0.64); font-size: 13px; }
-    .section-label { color: rgba(58,76,88,0.58); font-size: 10px; letter-spacing: 0.10em; margin-top: 8px; }
-    .hero-card {
-      padding: 13px 15px;
-      border-radius: 21px;
-      background:
-        linear-gradient(135deg, rgba(255,255,255,0.72), rgba(221,238,248,0.42)),
-        rgba(255,255,255,0.44);
-      border: 1px solid rgba(255,255,255,0.78);
-    }
-    .hero-title { color: rgba(15,24,31,0.98); font-size: 17px; font-weight: 500; }
-    .hero-note { color: rgba(58,76,88,0.62); font-size: 12px; }
-    .quick-strip {
-      padding: 9px;
-      border-radius: 20px;
-      background: rgba(255,255,255,0.42);
-      border: 1px solid rgba(255,255,255,0.66);
-    }
-    .quick-dot {
-      min-width: 46px;
-      min-height: 46px;
-      padding: 0;
-      border-radius: 18px;
-      color: rgba(18,29,37,0.92);
-      background: rgba(255,255,255,0.54);
-      border: 1px solid rgba(255,255,255,0.76);
-    }
-    .quick-dot:hover { background: rgba(255,255,255,0.82); }
-    .status-card {
-      min-height: 66px;
-      padding: 11px 12px;
-      border-radius: 17px;
-      background: rgba(255,255,255,0.48);
-      border: 1px solid rgba(255,255,255,0.70);
-    }
-    .status-value { color: rgba(15,24,31,0.98); font-size: 21px; font-weight: 500; }
-    .status-label { color: rgba(58,76,88,0.62); font-size: 11px; }
-    .settings-card {
-      min-height: 56px;
-      padding: 10px;
-      border-radius: 17px;
-      background: rgba(255,255,255,0.46);
-      border: 1px solid rgba(255,255,255,0.70);
-    }
-    .settings-card:hover { background: rgba(255,255,255,0.64); }
-    .card-title { color: rgba(15,24,31,0.96); font-size: 14px; font-weight: 500; }
-    .card-note { color: rgba(58,76,88,0.62); font-size: 11px; }
-    .icon-pill {
-      min-width: 36px; min-height: 36px;
-      border-radius: 12px;
-      background: rgba(111,157,188,0.14);
-      border: 1px solid rgba(111,157,188,0.18);
-    }
-    .action-button {
-      min-height: 30px;
-      padding: 0 12px;
-      border-radius: 999px;
-      color: rgba(18,28,36,0.92);
-      background: rgba(255,255,255,0.54);
-      border: 1px solid rgba(255,255,255,0.74);
-    }
-    .action-button:hover { background: rgba(255,255,255,0.82); }
-    .scale-card {
-      padding: 11px;
-      border-radius: 17px;
-      background: rgba(255,255,255,0.46);
-      border: 1px solid rgba(255,255,255,0.70);
-    }
-    scale trough { min-height: 8px; border-radius: 999px; background: rgba(94,116,130,0.16); }
-    scale highlight { border-radius: 999px; background: rgba(86,145,189,0.72); }
-    scale slider {
-      min-width: 22px; min-height: 22px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(111,157,188,0.28);
-    }
-    """
-    if theme_mode == "dark":
-        css += """
-        .settings-shell {
-          background:
-            linear-gradient(135deg, rgba(16,17,25,0.92), rgba(25,28,42,0.82) 48%, rgba(14,16,23,0.74)),
-            radial-gradient(circle at 82% 8%, rgba(122,92,255,0.22), transparent 35%),
-            radial-gradient(circle at 10% 0%, rgba(77,163,255,0.16), transparent 30%);
-          border-color: rgba(255,255,255,0.10);
-        }
-        .sidebar { background: rgba(255,255,255,0.04); border-right-color: rgba(255,255,255,0.08); }
-        .content { background: rgba(255,255,255,0.03); }
-        .brand, .page-title, .hero-title, .card-title, .status-value { color: rgba(245,247,250,0.96); }
-        .page-subtitle, .hero-note, .card-note, .status-label { color: rgba(218,225,235,0.64); }
-        .section-label { color: rgba(218,225,235,0.54); }
-        .nav-button { color: rgba(218,225,235,0.78); }
-        .nav-button:hover { background: rgba(255,255,255,0.08); }
-        .nav-button.active {
-          background: rgba(255,255,255,0.12);
-          border-color: rgba(137,180,250,0.24);
-          color: rgba(255,255,255,0.96);
-        }
-        .hero-card, .quick-strip, .status-card, .settings-card, .scale-card {
-          background: rgba(255,255,255,0.07);
-          border-color: rgba(255,255,255,0.10);
-        }
-        .settings-card:hover, .quick-dot:hover, .action-button:hover { background: rgba(255,255,255,0.12); }
-        .quick-dot, .action-button {
-          color: rgba(245,247,250,0.94);
-          background: rgba(255,255,255,0.08);
-          border-color: rgba(255,255,255,0.12);
-        }
-        .icon-pill {
-          background: rgba(77,163,255,0.13);
-          border-color: rgba(77,163,255,0.20);
-        }
-        scale trough { background: rgba(255,255,255,0.12); }
-        scale highlight { background: rgba(77,163,255,0.80); }
-        """
+    css = seven_theme.gtk_app_css("settings", theme_mode) + seven_theme.surface_css("settings", mode=theme_mode)
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -530,6 +512,20 @@ def run(initial_page: str = "overview") -> int:
     stack.set_vexpand(True)
     content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     content.get_style_context().add_class("content")
+    search_entry = Gtk.SearchEntry()
+    search_entry.set_placeholder_text(tr("settings.search.placeholder", "Search settings, defaults, language, Wi-Fi..."))
+    search_entry.get_style_context().add_class("settings-search")
+    content.pack_start(search_entry, False, False, 0)
+    search_results = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    search_results.set_no_show_all(True)
+    search_results.get_style_context().add_class("search-results")
+    content.pack_start(search_results, False, False, 0)
+    feedback_banner = Gtk.Label(label="")
+    feedback_banner.set_xalign(0)
+    feedback_banner.set_line_wrap(True)
+    feedback_banner.set_no_show_all(True)
+    feedback_banner.get_style_context().add_class("feedback-banner")
+    content.pack_start(feedback_banner, False, False, 0)
     content.pack_start(stack, True, True, 0)
 
     body.pack_start(sidebar, False, False, 0)
@@ -566,6 +562,16 @@ def run(initial_page: str = "overview") -> int:
         for item in nav_buttons:
             item.get_style_context().remove_class("active")
         button.get_style_context().add_class("active")
+
+    def show_feedback(message: str) -> None:
+        feedback_banner.set_text(message)
+        feedback_banner.show()
+
+        def hide_feedback() -> bool:
+            feedback_banner.hide()
+            return False
+
+        GLib.timeout_add_seconds(4, hide_feedback)
 
     def nav(name: str, icon: str, label: str, target: str) -> None:
         button = Gtk.Button()
@@ -635,18 +641,29 @@ def run(initial_page: str = "overview") -> int:
         card.pack_start(note_label, False, False, 0)
         return card
 
-    def action_button(label: str, command: str) -> Gtk.Button:
+    def action_button(label: str, command: str, feedback: str | None = None) -> Gtk.Button:
         button = Gtk.Button(label=label)
         button.get_style_context().add_class("action-button")
         button.set_tooltip_text(command)
-        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+
+        def clicked(_button, cmd=command, feedback_text=feedback) -> None:
+            run_detached(cmd)
+            show_feedback(feedback_text or tr("settings.action_started", "Action started."))
+
+        button.connect("clicked", clicked)
         return button
 
-    def callback_button(label: str, tooltip: str, callback) -> Gtk.Button:
+    def callback_button(label: str, tooltip: str, callback, feedback: str | None = None) -> Gtk.Button:
         button = Gtk.Button(label=label)
         button.get_style_context().add_class("action-button")
         button.set_tooltip_text(tooltip)
-        button.connect("clicked", lambda _button: callback())
+
+        def clicked(_button) -> None:
+            callback()
+            if feedback:
+                show_feedback(feedback)
+
+        button.connect("clicked", clicked)
         return button
 
     def copy_system_summary() -> None:
@@ -665,6 +682,7 @@ def run(initial_page: str = "overview") -> int:
         clipboard.set_text(summary, -1)
         clipboard.store()
         notify("SevenOS Settings", tr_text("System information copied."))
+        show_feedback(tr("settings.system_info_copied", "System information copied."))
 
     def quick_dot(icon: str, tooltip: str, command: str) -> Gtk.Button:
         button = Gtk.Button(label=icon)
@@ -807,7 +825,16 @@ def run(initial_page: str = "overview") -> int:
                 if prefs.get(key) == value:
                     active = option_index
             combo.set_active(active)
-            combo.connect("changed", lambda widget, pref_key=key: write_region_pref(pref_key, widget.get_active_id() or ""))
+            def update_region(widget, pref_key=key) -> None:
+                write_region_pref(pref_key, widget.get_active_id() or "")
+                show_feedback(
+                    tr(
+                        "settings.region_updated",
+                        "Region formats updated. New SevenOS windows will use the refreshed contract.",
+                    )
+                )
+
+            combo.connect("changed", update_region)
             grid.attach(label, 0, index, 1, 1)
             grid.attach(combo, 1, index, 1, 1)
         card.pack_start(grid, False, False, 0)
@@ -824,6 +851,7 @@ def run(initial_page: str = "overview") -> int:
                     tr("settings.set_default", "Set default"),
                     f"xdg-mime default {desktop_id}",
                     lambda app=desktop_id, targets=mimes: set_xdg_default(app, *targets),
+                    tr("settings.default_updated", "Default application updated."),
                 )
             ],
         )
@@ -886,9 +914,11 @@ def run(initial_page: str = "overview") -> int:
                 return
             run_detached(f"seven language set {locale_name}")
             if installed_by_locale.get(locale_name, True):
-                notify("SevenOS Language", tr_text("Language updated for new apps and terminals."))
+                notify("SevenOS Language", tr_text("Language updated for new apps and terminals.") + " " + tr("language.needs_restart", "Some open apps need to be reopened to fully switch language."))
+                show_feedback(tr("language.needs_restart", "Some open apps need to be reopened to fully switch language."))
             else:
                 notify("SevenOS Language", tr_text("SevenOS will generate this locale, then apply it."))
+                show_feedback(tr_text("SevenOS will generate this locale, then apply it."))
 
         selector.connect("changed", change_language)
         GLib.idle_add(mark_ready)
@@ -926,6 +956,294 @@ def run(initial_page: str = "overview") -> int:
         card.pack_start(scale, True, True, 0)
         return card
 
+    def monitor_resolution_card() -> Gtk.Box:
+        monitor_options = monitors_state()
+        resolution_options = [
+            ("preferred", tr("settings.resolution_preferred", "Preferred")),
+            ("3840x2160", "3840x2160"),
+            ("2560x1440", "2560x1440"),
+            ("1920x1080", "1920x1080"),
+            ("1600x900", "1600x900"),
+            ("1366x768", "1366x768"),
+            ("1280x720", "1280x720"),
+        ]
+        scale_options = [("1", "100%"), ("1.25", "125%"), ("1.5", "150%"), ("1.75", "175%"), ("2", "200%")]
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(850, -1)
+        card.get_style_context().add_class("settings-card")
+        title = Gtk.Label(label=tr("settings.monitor_resolution", "Monitor size and resolution"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("card-title")
+        note = Gtk.Label(label=tr("settings.monitor_resolution.note", "Choose a monitor resolution such as 1920x1080, then apply it without editing Hyprland files."))
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("card-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        monitor_combo = Gtk.ComboBoxText()
+        for item in monitor_options:
+            monitor_combo.append(item["name"], item["label"])
+        monitor_combo.set_active(0)
+
+        resolution_combo = Gtk.ComboBoxText()
+        active_resolution = monitor_options[0].get("resolution", "preferred")
+        resolution_active = 0
+        for index, (value, label) in enumerate(resolution_options):
+            resolution_combo.append(value, label)
+            if value == active_resolution:
+                resolution_active = index
+        resolution_combo.set_active(resolution_active)
+
+        scale_combo = Gtk.ComboBoxText()
+        active_scale = monitor_options[0].get("scale", "1")
+        scale_active = 0
+        for index, (value, label) in enumerate(scale_options):
+            scale_combo.append(value, label)
+            if value == active_scale:
+                scale_active = index
+        scale_combo.set_active(scale_active)
+
+        def apply_monitor() -> None:
+            monitor_name = monitor_combo.get_active_id() or ""
+            resolution = resolution_combo.get_active_id() or "preferred"
+            scale = scale_combo.get_active_id() or "1"
+            write_monitor_rule(monitor_name, resolution, scale)
+            run_detached("hyprctl reload")
+            show_feedback(tr("settings.monitor_applied", "Monitor resolution applied. Hyprland is reloading."))
+
+        row.pack_start(monitor_combo, True, True, 0)
+        row.pack_start(resolution_combo, False, False, 0)
+        row.pack_start(scale_combo, False, False, 0)
+        row.pack_start(callback_button(tr("settings.apply", "Apply"), "write Hyprland monitor rule", apply_monitor), False, False, 0)
+        row.pack_start(
+            callback_button(
+                tr("settings.restore", "Restore"),
+                "restore previous Hyprland monitor rule",
+                lambda: (restore_monitor_rule() and run_detached("hyprctl reload")),
+                tr("settings.monitor_restore", "Previous monitor configuration restored when a backup exists."),
+            ),
+            False,
+            False,
+            0,
+        )
+        card.pack_start(row, False, False, 0)
+        return card
+
+    def theme_preview_card() -> Gtk.Box:
+        profile_theme_file = ROOT / "identity/profile-themes.json"
+        profile_theme_payload = run_json(["python", "-m", "json.tool", str(profile_theme_file)], {}) if profile_theme_file.exists() else {}
+        profile_themes = profile_theme_payload.get("profiles", {}) if isinstance(profile_theme_payload.get("profiles"), dict) else {}
+        profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "horizon", "pulse"]
+        selected = {"mode": theme_mode, "profile": active_profile_key()}
+
+        def profile_override(key: str) -> dict:
+            data = profile_themes.get(key, {}) if isinstance(profile_themes.get(key), dict) else {}
+            return {
+                "profile": key,
+                "title": str(data.get("label") or key.title()),
+                "accent": str(data.get("accent") or "#8B7CFF"),
+                "secondary": str(data.get("secondary") or "#6EA8FF"),
+                "mood": str(data.get("ui_mood") or ""),
+            }
+
+        def contract_for_selection() -> dict:
+            return seven_theme.resolved_theme(
+                "settings",
+                selected["mode"],
+                profile_override=profile_override(selected["profile"]),
+            )
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(850, -1)
+        card.get_style_context().add_class("theme-preview-card")
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        title_box.set_hexpand(True)
+        title = Gtk.Label(label=tr("settings.theme_preview", "Theme preview"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label()
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        title_box.pack_start(title, False, False, 0)
+        title_box.pack_start(note, False, False, 0)
+        header.pack_start(title_box, True, True, 0)
+        apply_button = Gtk.Button(label=tr("settings.apply_now", "Apply now"))
+        apply_button.get_style_context().add_class("action-button")
+        header.pack_start(apply_button, False, False, 0)
+        card.pack_start(header, False, False, 0)
+
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        controls.set_halign(Gtk.Align.START)
+        dark_button = Gtk.Button(label=tr("settings.dark_mode", "Dark Mode"))
+        dark_button.get_style_context().add_class("action-button")
+        light_button = Gtk.Button(label=tr("settings.light_mode", "Light Mode"))
+        light_button.get_style_context().add_class("action-button")
+        profile_combo = Gtk.ComboBoxText()
+        active_index = 0
+        for index, key in enumerate(profile_order):
+            data = profile_themes.get(key, {}) if isinstance(profile_themes.get(key), dict) else {}
+            profile_combo.append(key, str(data.get("label") or key.title()))
+            if key == selected["profile"]:
+                active_index = index
+        profile_combo.set_active(active_index)
+        wallpaper_button = Gtk.Button(label=tr("settings.choose_image", "Choose image"))
+        wallpaper_button.get_style_context().add_class("action-button")
+        controls.pack_start(dark_button, False, False, 0)
+        controls.pack_start(light_button, False, False, 0)
+        controls.pack_start(profile_combo, False, False, 0)
+        controls.pack_start(wallpaper_button, False, False, 0)
+        card.pack_start(controls, False, False, 0)
+
+        preview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9)
+        preview.get_style_context().add_class("theme-preview-window")
+        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        toolbar.get_style_context().add_class("theme-preview-toolbar")
+        toolbar.pack_start(Gtk.Label(label="  7  SevenOS"), False, False, 8)
+        profile_badge = Gtk.Label()
+        toolbar.pack_end(profile_badge, False, False, 8)
+        preview.pack_start(toolbar, False, False, 0)
+
+        mock_body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
+        mock_sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+        mock_sidebar.get_style_context().add_class("theme-preview-sidebar")
+        for _ in range(3):
+            pill = Gtk.Box()
+            pill.get_style_context().add_class("theme-preview-pill")
+            mock_sidebar.pack_start(pill, False, False, 0)
+        mock_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        mock_content.set_hexpand(True)
+        mock_content.get_style_context().add_class("theme-preview-content")
+        for index in range(2):
+            pill = Gtk.Box()
+            pill.get_style_context().add_class("theme-preview-pill")
+            if index == 1:
+                pill.get_style_context().add_class("alt")
+            mock_content.pack_start(pill, False, False, 0)
+        mock_body.pack_start(mock_sidebar, False, False, 0)
+        mock_body.pack_start(mock_content, True, True, 0)
+        preview.pack_start(mock_body, True, True, 0)
+        card.pack_start(preview, False, False, 0)
+
+        swatches = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
+        swatches.get_style_context().add_class("theme-swatch-row")
+        swatch_dots: list[Gtk.Box] = []
+        for klass in ("swatch-accent", "swatch-secondary", "swatch-wallpaper", "swatch-cyan"):
+            dot = Gtk.Box()
+            dot.get_style_context().add_class("theme-swatch")
+            dot.get_style_context().add_class(klass)
+            swatch_dots.append(dot)
+            swatches.pack_start(dot, False, False, 0)
+        details = Gtk.Label()
+        details.set_xalign(0)
+        details.set_line_wrap(True)
+        details.get_style_context().add_class("card-note")
+        swatches.pack_start(details, True, True, 0)
+        card.pack_start(swatches, False, False, 0)
+
+        def refresh_preview(apply_css: bool = True) -> None:
+            contract = contract_for_selection()
+            palette = contract.get("palette", {}) if isinstance(contract.get("palette"), dict) else {}
+            wallpaper = contract.get("wallpaper", {}) if isinstance(contract.get("wallpaper"), dict) else {}
+            toolkits = contract.get("toolkits", {}) if isinstance(contract.get("toolkits"), dict) else {}
+            wallpaper_image = str(wallpaper.get("image") or "")
+            wallpaper_name = Path(wallpaper_image).name if wallpaper_image else tr("settings.wallpaper_dynamic", "dynamic wallpaper")
+            profile_title = str(contract.get("profile_title") or selected["profile"].title())
+            note.set_text(
+                tr(
+                    "settings.theme_preview.note",
+                    "{mode} · {profile} · wallpaper atmosphere: {source}",
+                    mode=str(contract.get("mode_label") or selected["mode"]),
+                    profile=profile_title,
+                    source=str(wallpaper.get("source") or "fallback"),
+                )
+            )
+            profile_badge.set_text(str(contract.get("profile") or selected["profile"]).upper())
+            for dot, tooltip in zip(
+                swatch_dots,
+                (
+                    f"{tr('settings.profile_accent', 'Profile accent')}: {palette.get('accent', '')}",
+                    f"{tr('settings.profile_secondary', 'Profile secondary')}: {palette.get('secondary', '')}",
+                    f"{tr('settings.wallpaper_accent', 'Wallpaper accent')}: {palette.get('wallpaper_accent', '')}",
+                    f"{tr('settings.wallpaper_cyan', 'Wallpaper cyan')}: {palette.get('wallpaper_cyan', '')}",
+                ),
+            ):
+                dot.set_tooltip_text(tooltip)
+            details.set_text(
+                tr(
+                    "settings.theme_preview.details",
+                    "Icons: {icons} · Qt/Kvantum: {kvantum} · Wallpaper: {wallpaper}",
+                    icons=str(toolkits.get("icon_theme") or tr("settings.unknown", "Unknown")),
+                    kvantum=str(toolkits.get("kvantum_theme") or tr("settings.unknown", "Unknown")),
+                    wallpaper=wallpaper_name,
+                )
+            )
+            if apply_css:
+                provider.load_from_data(
+                    (
+                        seven_theme.gtk_app_css(
+                            "settings",
+                            selected["mode"],
+                            profile_override=profile_override(selected["profile"]),
+                        )
+                        + seven_theme.surface_css("settings", mode=selected["mode"])
+                    ).encode("utf-8")
+                )
+
+        def preview_mode(mode: str) -> None:
+            selected["mode"] = mode
+            refresh_preview()
+            show_feedback(tr("settings.preview_updated", "Preview updated. Apply when it feels right."))
+
+        def preview_profile(widget) -> None:
+            selected["profile"] = widget.get_active_id() or selected["profile"]
+            refresh_preview()
+            show_feedback(tr("settings.preview_updated", "Preview updated. Apply when it feels right."))
+
+        def choose_wallpaper(_button) -> None:
+            dialog = Gtk.FileChooserDialog(
+                title=tr("settings.choose_image", "Choose SevenOS Wallpaper"),
+                parent=window,
+                action=Gtk.FileChooserAction.OPEN,
+                buttons=(f"_{tr_text('Cancel')}", Gtk.ResponseType.CANCEL, f"_{tr('settings.set_wallpaper', 'Set Wallpaper')}", Gtk.ResponseType.ACCEPT),
+            )
+            image_filter = Gtk.FileFilter()
+            image_filter.set_name("Images")
+            for mime in ("image/png", "image/jpeg", "image/webp", "image/svg+xml"):
+                image_filter.add_mime_type(mime)
+            dialog.add_filter(image_filter)
+            response = dialog.run()
+            filename = dialog.get_filename()
+            dialog.destroy()
+            if response == Gtk.ResponseType.ACCEPT and filename:
+                subprocess.Popen([str(ROOT / "bin/seven-wallpaper"), "set", filename], cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
+                show_feedback(tr("settings.wallpaper_preview_requested", "Wallpaper update requested. The preview will use the refreshed palette after generation."))
+
+        def apply_theme_selection(_button) -> None:
+            command = (
+                f"./install.sh theme {selected['mode']} && "
+                f"seven profile activate {selected['profile']} && "
+                f"seven-wallpaper profile {selected['profile']} && "
+                "seven-profile-theme apply && "
+                "seven language apply --live && "
+                "hyprctl reload"
+            )
+            run_detached(command)
+            show_feedback(tr("settings.theme_apply_requested", "Theme, profile and wallpaper changes are being applied."))
+
+        dark_button.connect("clicked", lambda _button: preview_mode("dark"))
+        light_button.connect("clicked", lambda _button: preview_mode("light"))
+        profile_combo.connect("changed", preview_profile)
+        wallpaper_button.connect("clicked", choose_wallpaper)
+        apply_button.connect("clicked", apply_theme_selection)
+        refresh_preview(apply_css=False)
+        return card
+
     pages = {
         "overview": page(tr("settings.title", "SevenOS Settings"), tr("settings.subtitle", "A complete control surface for desktop, security, profiles, devices and system runtime.")),
         "general": page(tr("settings.general", "General"), tr("settings.general.subtitle", "Language, region, theme entry points and everyday SevenOS behavior.")),
@@ -939,7 +1257,11 @@ def run(initial_page: str = "overview") -> int:
         "security": page(tr("settings.security", "Security"), tr("settings.security.subtitle", "Shield, firewall, sandbox and CyberSpace controls.")),
         "profiles": page(tr("settings.profiles", "Profiles"), tr("settings.profiles.subtitle", "Switch SevenOS work modes and open profile workspaces.")),
         "power": page(tr("settings.power", "Battery & Power"), tr("settings.power.subtitle", "Battery state, lock, sleep and power profiles.")),
+        "defaults": page(tr("settings.default_apps", "Default apps"), tr("settings.default_apps.subtitle", "Choose the apps SevenOS uses for files, links, documents, media and archives.")),
         "apps": page(tr("settings.apps", "Apps"), tr("settings.apps.subtitle", "SevenPkg, Flatpak, Launchpad and app management.")),
+        "privacy": page(tr("settings.privacy", "Privacy"), tr("settings.privacy.subtitle", "Local data, permissions, notifications and SevenAI privacy controls.")),
+        "backup": page(tr("settings.backup_restore", "Backup & Restore"), tr("settings.backup_restore.subtitle", "Export SevenOS state, inspect restore plans and protect user configuration.")),
+        "shortcuts": page(tr("settings.shortcuts", "Shortcuts"), tr("settings.shortcuts.subtitle", "Open, inspect and repair SevenOS keyboard shortcuts.")),
         "system": page(tr("settings.system", "System"), tr("settings.system.subtitle", "Daily driver gate, doctor, logs, updates and runtime services.")),
     }
     for name, (_box, scrolled) in pages.items():
@@ -957,9 +1279,103 @@ def run(initial_page: str = "overview") -> int:
     nav("security", "󰒃", tr("settings.security", "Security"), "security")
     nav("profiles", "󰐃", tr("settings.profiles", "Profiles"), "profiles")
     nav("power", "󰁹", tr("settings.power", "Power"), "power")
+    nav("defaults", "󰒓", tr("settings.default_apps", "Default apps"), "defaults")
     nav("apps", "󰀻", tr("settings.apps", "Apps"), "apps")
+    nav("privacy", "󰌾", tr("settings.privacy", "Privacy"), "privacy")
+    nav("backup", "󰁯", tr("settings.backup_restore", "Backup"), "backup")
+    nav("shortcuts", "󰌌", tr("settings.shortcuts", "Shortcuts"), "shortcuts")
     nav("system", "󰒓", tr("settings.system", "System"), "system")
     initial_page = initial_page if initial_page in pages else "overview"
+
+    settings_search_index = {
+        "general": "general language langue region région formats about a propos clavier keyboard essential essentiel",
+        "appearance": "appearance theme thème dark light glass dock terminal visual design",
+        "wallpaper": "wallpaper fond écran hyprpaper matugen wallust image",
+        "display": "display screen écran monitor brightness luminosité hyprland",
+        "network": "wifi wi-fi network réseau ethernet internet nmcli connection",
+        "sound": "sound audio volume microphone pipewire pavucontrol son",
+        "keyboard": "keyboard clavier layout raccourcis shortcuts alt shift",
+        "fonts": "fonts police typography typographie import sf pro mono",
+        "security": "security sécurité shield firewall ufw sandbox apparmor",
+        "profiles": "profile profil mini os equinox forge baobab shield studio pulse horizon windows composition compare comparer",
+        "power": "power batterie battery sleep lock energy énergie hypridle hyprlock",
+        "defaults": "default apps applications par défaut navigateur browser terminal files fichiers reader pdf epub media image mail archive",
+        "apps": "apps store app applications flatpak launchpad installed updates",
+        "privacy": "privacy confidentialité permissions notifications ai history historique microphone camera caméra local",
+        "backup": "backup sauvegarde restore restauration export migration cloud state état",
+        "shortcuts": "shortcuts raccourcis clavier hotkeys keybinds super help aide",
+        "system": "system système doctor logs updates runtime services status",
+        "overview": "overview accueil résumé dashboard control center",
+    }
+
+    def search_settings(_entry=None) -> None:
+        query = search_entry.get_text().strip().lower()
+        if not query:
+            search_results.hide()
+            return
+        for target, terms in settings_search_index.items():
+            page_title = pages[target][0].get_children()[0].get_text().lower()
+            if query in terms or query in page_title:
+                activate_page(target, nav_by_target[target])
+                show_feedback(tr("settings.search.opened", "Opened {page}.", page=pages[target][0].get_children()[0].get_text()))
+                return
+        show_feedback(tr("settings.search.no_result", "No Settings page matched “{query}”.", query=query))
+
+    search_entry.connect("activate", search_settings)
+
+    search_items = [
+        ("󰒓", tr("settings.general", "General"), tr("settings.general.subtitle", "Language, region, theme entry points and everyday SevenOS behavior."), "general"),
+        ("󰤨", "Wi-Fi", tr("settings.network.subtitle", "Connect, diagnose and configure NetworkManager."), "network"),
+        ("󰂯", "Bluetooth", tr("settings.bluetooth.note", "Pair headphones, keyboards, phones and nearby devices."), "network"),
+        ("󰍹", tr("settings.displays", "Displays"), tr("settings.display.subtitle", "Brightness, monitor tools and Hyprland display configuration."), "display"),
+        ("󰒓", tr("settings.default_apps", "Default apps"), tr("settings.default_apps.subtitle", "Choose the apps SevenOS uses for files, links, documents, media and archives."), "defaults"),
+        ("󰐃", tr("settings.profiles", "Profiles"), tr("settings.profiles.subtitle", "Switch SevenOS work modes and open profile workspaces."), "profiles"),
+        ("󰌾", tr("settings.privacy", "Privacy"), tr("settings.privacy.subtitle", "Local data, permissions, notifications and SevenAI privacy controls."), "privacy"),
+        ("󰁯", tr("settings.backup_restore", "Backup & Restore"), tr("settings.backup_restore.subtitle", "Export SevenOS state, inspect restore plans and protect user configuration."), "backup"),
+        ("󰌌", tr("settings.shortcuts", "Shortcuts"), tr("settings.shortcuts.subtitle", "Open, inspect and repair SevenOS keyboard shortcuts."), "shortcuts"),
+        ("󰩂", tr("settings.doctor", "Doctor"), tr("settings.doctor.note", "Diagnose common system issues."), "system"),
+    ]
+
+    def rebuild_search_results(_entry=None) -> None:
+        for child in list(search_results.get_children()):
+            search_results.remove(child)
+        query = search_entry.get_text().strip().lower()
+        if len(query) < 2:
+            search_results.hide()
+            return
+        matches = []
+        for icon, title, note, target in search_items:
+            haystack = f"{title} {note} {settings_search_index.get(target, '')}".lower()
+            if query in haystack:
+                matches.append((icon, title, note, target))
+        if not matches:
+            label = Gtk.Label(label=tr("settings.search.no_result", "No Settings page matched “{query}”.", query=query))
+            label.set_xalign(0)
+            label.get_style_context().add_class("card-note")
+            search_results.pack_start(label, False, False, 0)
+        for icon, title, note, target in matches[:6]:
+            button = Gtk.Button()
+            button.get_style_context().add_class("search-result-button")
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            glyph = Gtk.Label(label=icon)
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            title_label = Gtk.Label(label=title)
+            title_label.set_xalign(0)
+            title_label.get_style_context().add_class("card-title")
+            note_label = Gtk.Label(label=note)
+            note_label.set_xalign(0)
+            note_label.set_line_wrap(True)
+            note_label.get_style_context().add_class("card-note")
+            labels.pack_start(title_label, False, False, 0)
+            labels.pack_start(note_label, False, False, 0)
+            row.pack_start(glyph, False, False, 0)
+            row.pack_start(labels, True, True, 0)
+            button.add(row)
+            button.connect("clicked", lambda _button, page_name=target: (activate_page(page_name, nav_by_target[page_name]), search_results.hide()))
+            search_results.pack_start(button, False, False, 0)
+        search_results.show_all()
+
+    search_entry.connect("search-changed", rebuild_search_results)
 
     # Overview
     overview = pages["overview"][0]
@@ -1009,6 +1425,29 @@ def run(initial_page: str = "overview") -> int:
     lang_payload = language_state()
     about = system_about()
     prefs = read_region_prefs()
+    write_region_contract(prefs)
+    general.pack_start(
+        hero_card(
+            tr("settings.general.hero.title", "Essential preferences, without terminal work"),
+            tr(
+                "settings.general.hero.note",
+                "Change language, region formats, default apps and SevenOS identity from one calm place. Some system-level changes still apply to new windows first.",
+            ),
+        ),
+        False,
+        False,
+        0,
+    )
+    section(general, tr("settings.essential", "Essential"))
+    general.pack_start(language_selector_card(), False, False, 0)
+    general.pack_start(region_selector_card(), False, False, 0)
+    card_grid(
+        general,
+        [
+            setting_card("󰌢", tr("settings.keyboard_layouts", "Keyboard layouts"), tr("settings.keyboard_layouts.note", "Keep US/French layouts and Alt+Shift switching independent from display language."), [action_button(tr("settings.apply", "Apply"), "seven keyboard apply", tr("settings.keyboard_applied", "Keyboard layout contract refreshed."))]),
+            setting_card("󰅐", tr("settings.current_region", "Current region"), f"{prefs['region']} · {region_sample(prefs)}", [action_button(tr("language.apply_live", "Apply live"), "seven language apply --live && hyprctl reload", tr("language.needs_restart", "Some open apps need to be reopened to fully switch language."))]),
+        ],
+    )
     section(general, tr("settings.about_this_sevenos", "About this SevenOS"))
     status_grid(
         general,
@@ -1023,10 +1462,10 @@ def run(initial_page: str = "overview") -> int:
     )
     general.pack_start(
         hero_card(
-            tr("settings.about.hero.title", "SevenOS is ready, but transparent"),
+            tr("settings.about.hero.title", "SevenOS is ready, and transparent"),
             tr(
                 "settings.about.hero.note",
-                "General settings shows the human-facing defaults first, while Seven Doctor keeps system issues visible without forcing terminal work.",
+                "This page keeps the human-facing defaults first, while Seven Doctor keeps system issues visible without forcing terminal work.",
             ),
         ),
         False,
@@ -1041,35 +1480,33 @@ def run(initial_page: str = "overview") -> int:
         ],
     )
     section(general, tr("settings.language_region", "Language & Region"))
-    general.pack_start(language_selector_card(), False, False, 0)
-    general.pack_start(region_selector_card(), False, False, 0)
     card_grid(
         general,
         [
             setting_card("󰗊", tr("settings.available_languages", "Available languages"), tr("settings.available_languages.note", "{count} generated or installable language(s) detected on this machine.", count=len(lang_payload.get("languages", []))), [action_button(tr("settings.list", "List"), "seven language list")]),
             setting_card("󰗊", "Français", tr("settings.french.note", "Generate fr_FR.UTF-8 if needed, then switch the SevenOS interface to French."), [action_button(tr("settings.install_apply", "Install & Apply"), "seven language set fr_FR.UTF-8")]),
-            setting_card("󰌢", tr("settings.keyboard_layouts", "Keyboard layouts"), tr("settings.keyboard_layouts.note", "Keep US/French layouts and Alt+Shift switching independent from display language."), [action_button(tr("settings.apply", "Apply"), "seven keyboard apply")]),
-            setting_card("󰅐", tr("settings.current_region", "Current region"), f"{prefs['region']} · {prefs['date_format']} · {prefs['time_format']} · {prefs['units']}", [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
+            setting_card("󰜉", tr("settings.apply_now", "Apply now"), tr("settings.apply_now.note", "Restart SevenOS shell surfaces after language, theme or region changes."), [action_button(tr("language.apply_live", "Apply live"), "seven language apply --live && hyprctl reload", tr("language.needs_restart", "Some open apps need to be reopened to fully switch language."))]),
+            setting_card("󰅐", tr("settings.region_contract", "Region contract"), f"{REGION_PREFS.name} · {REGION_ENV.name}", [action_button(tr("settings.reload", "Reload"), "hyprctl reload", tr("settings.action_started", "Action started."))]),
         ],
     )
     section(general, tr("settings.quick_appearance", "Quick appearance"))
+    general.pack_start(theme_preview_card(), False, False, 0)
     card_grid(
         general,
         [
             setting_card("󰔎", tr("settings.dark_mode", "Dark Mode"), tr("settings.dark_mode.note", "Immersive SevenOS cockpit for cyber, creation and night focus."), [action_button(tr("settings.apply", "Apply"), "./install.sh theme dark")]),
             setting_card("󰔎", tr("settings.light_mode", "Light Mode"), tr("settings.light_mode.note", "Clarity-first SevenOS workspace for productivity, reading and daylight use."), [action_button(tr("settings.apply", "Apply"), "./install.sh theme light")]),
-            setting_card("󰜉", tr("settings.apply_now", "Apply now"), tr("settings.apply_now.note", "Restart SevenOS shell surfaces after language, theme or region changes."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload && seven-waybar repair")]),
+            setting_card("󰜉", tr("settings.apply_now", "Apply now"), tr("settings.apply_now.note", "Restart SevenOS shell surfaces after language, theme or region changes."), [action_button(tr("language.apply_live", "Apply live"), "seven language apply --live && hyprctl reload")]),
             setting_card("󰏘", tr("settings.design_engine", "Design Engine"), tr("settings.design_engine.note", "Inspect Seven Mocha/Latte palettes and the resolved icon theme."), [action_button(tr("settings.open", "Open"), "seven identity design")]),
         ],
     )
-    section(general, tr("settings.default_apps", "Default apps"))
     card_grid(
         general,
         [
-            default_app_card("󰉋", "Seven Files", tr("settings.default_files.note", "Use Seven Files for folders and saved searches."), "seven-files.desktop", ("inode/directory", "application/x-gnome-saved-search")),
-            default_app_card("󰆍", "Seven Terminal", tr("settings.default_terminal.note", "Keep terminal launches coherent across SevenOS."), "seven-terminal.desktop", ("x-scheme-handler/terminal", "application/x-terminal-emulator")),
-            default_app_card("󰖟", tr("settings.default_browser", "Browser"), tr("settings.default_browser.note", "Choose the browser used by links and web apps."), "firefox.desktop", ("x-scheme-handler/http", "x-scheme-handler/https", "text/html")),
-            default_app_card("󰈙", tr("settings.default_text", "Text editor"), tr("settings.default_text.note", "Choose the editor for plain text files."), "org.gnome.TextEditor.desktop", ("text/plain",)),
+            setting_card("󰒓", tr("settings.default_apps", "Default apps"), tr("settings.default_apps.note", "Choose browser, files, terminal, Reader, media, image, mail and archive defaults in a dedicated page."), [action_button(tr("settings.open", "Open"), "seven-settings defaults")]),
+            setting_card("󰌾", tr("settings.privacy", "Privacy"), tr("settings.privacy.note", "Review notifications, local SevenAI data and app permissions."), [action_button(tr("settings.open", "Open"), "seven-settings privacy")]),
+            setting_card("󰁯", tr("settings.backup_restore", "Backup & Restore"), tr("settings.backup_restore.note", "Protect SevenOS configuration before deeper changes."), [action_button(tr("settings.open", "Open"), "seven-settings backup")]),
+            setting_card("󰌌", tr("settings.shortcuts", "Shortcuts"), tr("settings.shortcuts.note", "Open the full keyboard shortcut and command reference."), [action_button(tr("settings.open", "Open"), "seven-settings shortcuts")]),
         ],
     )
     section(general, tr("settings.advanced", "Advanced"))
@@ -1084,6 +1521,7 @@ def run(initial_page: str = "overview") -> int:
     # Appearance
     appearance = pages["appearance"][0]
     section(appearance, tr("settings.visual_system", "Visual system"))
+    appearance.pack_start(theme_preview_card(), False, False, 0)
     card_grid(appearance, [
         setting_card("󰔎", tr("settings.dark_mode", "Dark Mode"), tr("settings.dark_mode.note", "Immersive SevenOS cockpit for cyber, creation and night focus."), [action_button(tr("settings.apply", "Apply"), "./install.sh theme dark")]),
         setting_card("󰔎", tr("settings.light_mode", "Light Mode"), tr("settings.light_mode.note", "Clarity-first SevenOS workspace for productivity, reading and daylight use."), [action_button(tr("settings.apply", "Apply"), "./install.sh theme light")]),
@@ -1107,11 +1545,39 @@ def run(initial_page: str = "overview") -> int:
     display = pages["display"][0]
     section(display, tr("settings.screen", "Screen"))
     display.pack_start(slider_card("󰃠", tr("settings.brightness", "Brightness"), f"{brightness_state()}%", brightness_state(), set_brightness), False, False, 0)
+    display.pack_start(monitor_resolution_card(), False, False, 0)
     card_grid(display, [
         setting_card("󰍹", tr("settings.display_layout", "Display layout"), tr("settings.display_layout.note", "Open a graphical display tool when available."), [action_button(tr("settings.open", "Open"), "wdisplays || nwg-displays || arandr || hyprctl monitors")]),
         setting_card("󰌢", tr("settings.monitor_config", "Monitor config"), tr("settings.monitor_config.note", "Open SevenOS monitor override for precise Hyprland setup."), [action_button(tr("settings.edit", "Edit"), "xdg-open ~/.config/hypr/conf/monitor.conf")]),
         setting_card("󰜉", tr("settings.reload_hyprland", "Reload Hyprland"), tr("settings.reload_hyprland.note", "Apply current compositor configuration."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
     ])
+
+    # Default apps
+    defaults = pages["defaults"][0]
+    defaults.pack_start(
+        hero_card(
+            tr("settings.defaults.hero.title", "Open the right app every time"),
+            tr("settings.defaults.hero.note", "SevenOS keeps common file types and links predictable for normal users while still allowing advanced profile workflows."),
+        ),
+        False,
+        False,
+        0,
+    )
+    section(defaults, tr("settings.default_apps", "Default apps"))
+    card_grid(
+        defaults,
+        [
+            default_app_card("󰉋", "Seven Files", tr("settings.default_files.note", "Use Seven Files for folders and saved searches."), "seven-files.desktop", ("inode/directory", "application/x-gnome-saved-search")),
+            default_app_card("󰆍", "Seven Terminal", tr("settings.default_terminal.note", "Keep terminal launches coherent across SevenOS."), "seven-terminal.desktop", ("x-scheme-handler/terminal", "application/x-terminal-emulator")),
+            default_app_card("󰈙", "Seven Reader", tr("settings.default_reader.note", "Use Seven Reader for PDF, EPUB and study documents."), "seven-reader.desktop", ("application/pdf", "application/epub+zip", "text/markdown")),
+            default_app_card("󰖟", tr("settings.default_browser", "Browser"), tr("settings.default_browser.note", "Choose the browser used by links and web apps."), "firefox.desktop", ("x-scheme-handler/http", "x-scheme-handler/https", "text/html")),
+            default_app_card("󰈙", tr("settings.default_text", "Text editor"), tr("settings.default_text.note", "Choose the editor for plain text files."), "org.gnome.TextEditor.desktop", ("text/plain",)),
+            default_app_card("󰕾", tr("settings.default_media", "Media player"), tr("settings.default_media.note", "Choose the player used for common audio and video files."), "vlc.desktop", ("video/mp4", "audio/mpeg", "audio/flac")),
+            default_app_card("󰋩", tr("settings.default_images", "Image viewer"), tr("settings.default_images.note", "Choose the app used to inspect images without changing wallpaper by accident."), "org.gnome.Loupe.desktop", ("image/png", "image/jpeg", "image/webp")),
+            default_app_card("󰇮", tr("settings.default_mail", "Mail"), tr("settings.default_mail.note", "Choose the app used for mail links."), "thunderbird.desktop", ("x-scheme-handler/mailto",)),
+            default_app_card("󰀼", tr("settings.default_archives", "Archives"), tr("settings.default_archives.note", "Choose the archive manager for compressed files."), "org.gnome.FileRoller.desktop", ("application/zip", "application/x-7z-compressed", "application/x-tar")),
+        ],
+    )
 
     # Network
     network = pages["network"][0]
@@ -1180,17 +1646,84 @@ def run(initial_page: str = "overview") -> int:
 
     # Profiles
     profiles = pages["profiles"][0]
-    section(profiles, tr("settings.work_modes", "Work modes"))
+    catalog = profile_catalog()
+    profile_defs = catalog.get("profiles", {}) if isinstance(catalog.get("profiles"), dict) else {}
+    naming = catalog.get("profile_naming", {}) if isinstance(catalog.get("profile_naming"), dict) else {}
+    current_profile_key = active_profile_key()
+    profile_icons = {
+        "equinox": "󰐃",
+        "baobab": "󰣇",
+        "forge": "󰅩",
+        "shield": "󰒃",
+        "studio": "󰏗",
+        "windows": "󰖳",
+        "horizon": "󰒋",
+        "pulse": "󰊴",
+    }
+    profile_notes = {
+        "equinox": tr("settings.profile.equinox.note", "Balanced daily mini OS. Neutral base, no specialized stack forced by default."),
+        "baobab": tr("settings.profile.baobab.note", "African culture and learning mini OS. Reading, knowledge, language and community memory."),
+        "forge": tr("settings.profile.forge.note", "Developer mini OS for code, SDKs, local services, containers and builds."),
+        "shield": tr("settings.profile.shield.note", "Cybersecurity mini OS for authorized audit, forensics, sandboxing and reports."),
+        "studio": tr("settings.profile.studio.note", "Creator mini OS for logos, design, video, audio, 3D, capture and assets."),
+        "windows": tr("settings.profile.windows.note", "Windows VM-first mini OS, with Wine and Bottles as lighter fallback paths."),
+        "horizon": tr("settings.profile.horizon.note", "Cloud and server mini OS for deployments, reverse proxy, endpoints and services."),
+        "pulse": tr("settings.profile.pulse.note", "Linux gaming mini OS for Proton, low latency, frame pacing, controllers and overlays."),
+    }
+
+    profiles.pack_start(
+        hero_card(
+            tr("settings.profiles.hero.title", "Mini OS profiles are independent"),
+            tr(
+                "settings.profiles.hero.note",
+                "Each profile owns its Kernel, Runtime, Experience and Intelligence layers. Profiles can collaborate by capability, but none should silently pollute another.",
+            ),
+        ),
+        False,
+        False,
+        0,
+    )
+    status_grid(
+        profiles,
+        [
+            (profile_name, tr("settings.active_mini_os", "Active mini OS")),
+            (profile_status, tr("settings.profile_state", "State")),
+            (str(len(naming) or len(profile_defs)), tr("settings.profile_count", "Profiles")),
+            (current_profile_key, tr("settings.runtime_key", "Runtime key")),
+            ("LAPA", tr("settings.profile_model", "Profile model")),
+            (tr("settings.collaboration", "Collaboration"), tr("settings.no_pollution", "No pollution")),
+        ],
+    )
+    section(profiles, tr("settings.profile_center", "Profile center"))
+    card_grid(
+        profiles,
+        [
+            setting_card("󰐃", tr("settings.profile_center", "Profile center"), tr("settings.profile_center.note", "Open the full profile dashboard with composition, services and runtime state."), [action_button(tr("settings.open", "Open"), "seven-profile-center-native")]),
+            setting_card("󰮍", tr("settings.composition_layer", "Composition layer"), tr("settings.composition_layer.note", "Inspect active mini OS, borrowed capabilities and anti-pollution policy."), [action_button(tr("settings.open", "Open"), "seven mini-os status")]),
+            setting_card("󰄬", tr("settings.compare_profiles", "Compare profiles"), tr("settings.compare_profiles.note", "Compare Equinox, Forge, Studio and Shield capabilities before switching."), [action_button(tr("settings.open", "Open"), "seven runtime plan equinox forge studio shield")]),
+            setting_card("󰜉", tr("settings.profile_runtime", "Runtime plan"), tr("settings.profile_runtime.note", "Show what services, resources and UI behavior the active mini OS intends to use."), [action_button(tr("settings.open", "Open"), f"seven runtime plan {current_profile_key}")]),
+        ],
+    )
+    section(profiles, tr("settings.mini_os_profiles", "Mini OS profiles"))
     profile_cards = []
-    for icon, title, note, command in (
-        ("󰐃", tr("settings.profile_center", "Profile center"), f"{profile_name} · {profile_status}", "seven-profile-center-native"),
-        ("󰅩", "Forge", tr("settings.forge.note", "Development workspace."), "seven profile activate forge"),
-        ("󰒃", "Shield", tr("settings.shield.note", "Cybersecurity workspace."), "seven profile activate shield"),
-        ("󰏗", "Studio", tr("settings.studio.note", "Creation workspace."), "seven profile activate studio"),
-        ("󰖳", "Windows", tr("settings.windows.note", "Compatibility workspace."), "seven profile activate windows"),
-        ("󰒋", "Horizon", tr("settings.horizon.note", "Server and deployment workspace."), "seven profile activate horizon"),
-    ):
-        profile_cards.append(setting_card(icon, title, note, [action_button(tr("settings.open", "Open"), command)]))
+    profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "horizon", "pulse"]
+    for key in profile_order:
+        data = profile_defs.get(key, {}) if isinstance(profile_defs.get(key), dict) else {}
+        title = str(data.get("title") or naming.get(key) or key.title())
+        state_prefix = f"{tr('settings.active', 'Active')} · " if key == current_profile_key else ""
+        note = state_prefix + profile_notes.get(key, str(data.get("purpose") or ""))
+        center_command = str((data.get("profile_surfaces") or {}).get("center") or data.get("center_command") or f"seven-mini-os-center {key}")
+        profile_cards.append(
+            setting_card(
+                profile_icons.get(key, "󰐃"),
+                title,
+                note,
+                [
+                    action_button(tr("settings.activate", "Activate"), f"seven profile activate {key}", tr("settings.profile_switching", "Profile switch requested.")),
+                    action_button(tr("settings.center", "Center"), center_command),
+                ],
+            )
+        )
     card_grid(profiles, profile_cards)
 
     # Power
@@ -1201,6 +1734,39 @@ def run(initial_page: str = "overview") -> int:
         setting_card("󰈐", tr("settings.power_profile", "Power profile"), tr("settings.power_profile.note", "Open powerprofilesctl status."), [action_button(tr("settings.open", "Open"), "powerprofilesctl")]),
         setting_card("󰍁", tr("settings.lock", "Lock"), tr("settings.lock.note", "Lock the SevenOS session."), [action_button(tr("settings.lock", "Lock"), "seven-power lock")]),
         setting_card("󰜉", tr("settings.power_menu", "Power menu"), tr("settings.power_menu.note", "Sleep, reboot and shutdown controls."), [action_button(tr("settings.open", "Open"), "seven-power")]),
+    ])
+
+    # Privacy
+    privacy = pages["privacy"][0]
+    privacy.pack_start(hero_card(tr("settings.privacy.hero.title", "Local-first by default"), tr("settings.privacy.hero.note", "SevenOS should expose what it stores, what it indexes and which surfaces can use sensitive devices.")), False, False, 0)
+    section(privacy, tr("settings.privacy", "Privacy"))
+    card_grid(privacy, [
+        setting_card("󰂚", tr("settings.notifications", "Notifications"), tr("settings.notifications.note", "Open notification history, Do Not Disturb and restore controls."), [action_button(tr("settings.open", "Open"), "seven-waybar-notifications menu")]),
+        setting_card("󰌾", tr("settings.local_ai_data", "SevenAI local data"), tr("settings.local_ai_data.note", "Inspect the local-only AI provider, knowledge and privacy posture."), [action_button(tr("settings.open", "Open"), "seven ai provider")]),
+        setting_card("󰍬", tr("settings.microphone_camera", "Microphone & camera"), tr("settings.microphone_camera.note", "Open audio devices and app permission surfaces where available."), [action_button(tr("settings.open", "Open"), "pavucontrol || wpctl status")]),
+        setting_card("󰚰", tr("settings.spotlight_history", "Spotlight history"), tr("settings.spotlight_history.note", "Open Spotlight history and clear recent command traces if needed."), [action_button(tr("settings.open", "Open"), "seven-spotlight history")]),
+    ])
+
+    # Backup and restore
+    backup = pages["backup"][0]
+    backup.pack_start(hero_card(tr("settings.backup.hero.title", "Protect changes before they become permanent"), tr("settings.backup.hero.note", "SevenOS can export state, show restore plans and create migration backups before major edits.")), False, False, 0)
+    section(backup, tr("settings.backup_restore", "Backup & Restore"))
+    card_grid(backup, [
+        setting_card("󰁯", tr("settings.export_state", "Export state"), tr("settings.export_state.note", "Create a readable snapshot of SevenOS state for support or migration."), [action_button(tr("settings.open", "Open"), "seven state --json")]),
+        setting_card("󰕒", tr("settings.restore_plan", "Restore plan"), tr("settings.restore_plan.note", "Inspect protected paths and restore metadata before changing the system."), [action_button(tr("settings.open", "Open"), "seven manifest restore-plan")]),
+        setting_card("󰄬", tr("settings.migration_backup", "Migration backup"), tr("settings.migration_backup.note", "Create a protected backup of SevenOS user configuration."), [action_button(tr("settings.run", "Run"), "seven migrate backup")]),
+        setting_card("󰒋", "SevenCloud", tr("settings.sevencloud.note", "Inspect local-first backup and restore readiness."), [action_button(tr("settings.open", "Open"), "seven cloud plan")]),
+    ])
+
+    # Shortcuts
+    shortcuts = pages["shortcuts"][0]
+    shortcuts.pack_start(hero_card(tr("settings.shortcuts.hero.title", "Everything has a visible path"), tr("settings.shortcuts.hero.note", "SevenOS keeps shortcuts documented in Help while the Lua layer keeps bindings generated and auditable.")), False, False, 0)
+    section(shortcuts, tr("settings.shortcuts", "Shortcuts"))
+    card_grid(shortcuts, [
+        setting_card("󰩂", tr("settings.help_center", "Help Center"), tr("settings.help_center.note", "Open the full Super+H documentation with commands and mini OS usage."), [action_button(tr("settings.open", "Open"), "seven-help")]),
+        setting_card("󰄬", tr("settings.shortcut_audit", "Shortcut audit"), tr("settings.shortcut_audit.note", "Validate generated Lua keybinds and Hyprland fallback rules."), [action_button(tr("settings.open", "Open"), "seven hypr lua audit")]),
+        setting_card("󰜉", tr("settings.regenerate_shortcuts", "Regenerate shortcuts"), tr("settings.regenerate_shortcuts.note", "Rebuild the generated Hyprland Lua config and reload the compositor."), [action_button(tr("settings.apply", "Apply"), "seven hypr lua apply")]),
+        setting_card("󰌢", tr("settings.keyboard_override", "Keyboard override"), tr("settings.keyboard_override.note", "Open the managed Hyprland keyboard configuration."), [action_button(tr("settings.edit", "Edit"), "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
     ])
 
     # Apps

@@ -1,0 +1,60 @@
+        .settings-shell {
+          background:
+            linear-gradient(135deg, alpha(@seven_bg, 0.92), alpha(@seven_panel_2, 0.82) 48%, alpha(@seven_bg, 0.74)),
+            radial-gradient(circle at 82% 8%, alpha(@seven_secondary, 0.22), transparent 35%),
+            radial-gradient(circle at 10% 0%, alpha(@seven_wallpaper_accent, 0.16), transparent 30%);
+          border-color: @seven_border;
+        }
+        .sidebar { background: alpha(@seven_sidebar, 0.82); border-right-color: @seven_border; }
+        .content { background: alpha(@seven_panel, 0.36); }
+        .brand, .page-title, .hero-title, .card-title, .status-value { color: @seven_text; }
+        .page-subtitle, .hero-note, .card-note, .status-label { color: @seven_muted; }
+        .section-label { color: @seven_muted; }
+        .nav-button { color: @seven_text; }
+        .nav-button:hover { background: @seven_hover; }
+        .nav-button.active {
+          background: @seven_selected;
+          border-color: alpha(@seven_accent, 0.24);
+          color: @seven_text;
+        }
+        .hero-card, .quick-strip, .status-card, .settings-card, .scale-card {
+          background: @seven_panel;
+          border-color: @seven_border;
+        }
+        .settings-card:hover, .quick-dot:hover, .action-button:hover { background: @seven_hover; }
+        .settings-search {
+          color: @seven_text;
+          background: @seven_panel;
+          border-color: @seven_border;
+        }
+        .feedback-banner {
+          color: @seven_success;
+          background: alpha(@seven_success, 0.12);
+          border-color: alpha(@seven_success, 0.20);
+        }
+        .search-results {
+          background: @seven_panel;
+          border-color: @seven_border;
+        }
+        .search-result-button {
+          color: @seven_text;
+        }
+        .search-result-button:hover { background: @seven_hover; }
+        .quick-dot, .action-button {
+          color: @seven_text;
+          background: @seven_panel;
+          border-color: @seven_border;
+        }
+        .icon-pill {
+          background: alpha(@seven_accent, 0.13);
+          border-color: alpha(@seven_accent, 0.20);
+        }
+        scale trough { background: @seven_panel_2; }
+        scale highlight { background: @seven_accent; }
+        .theme-preview-card {
+          background:
+            radial-gradient(circle at 10% 0%, alpha(@seven_wallpaper_accent, 0.20), transparent 35%),
+            radial-gradient(circle at 94% 8%, alpha(@seven_profile_secondary, 0.20), transparent 34%),
+            @seven_panel;
+        }
+        

@@ -20,6 +20,9 @@ Usage:
   seven identity current --json
   seven identity design
   seven identity design --json
+  seven identity theme
+  seven identity theme --json
+  seven identity theme-doctor
   seven identity icons
   seven identity icons --json
   seven identity visuals
@@ -529,6 +532,16 @@ case "$ACTION" in
     else
       design_status
     fi
+    ;;
+  theme)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      "$ROOT_DIR/scripts/theme-engine.sh" json
+    else
+      "$ROOT_DIR/scripts/theme-engine.sh" status
+    fi
+    ;;
+  theme-doctor|theme_doctor)
+    "$ROOT_DIR/scripts/theme-engine.sh" doctor
     ;;
   visuals)
     shift || true

@@ -108,6 +108,18 @@ def resolve_root() -> Path | None:
     return None
 
 
+ROOT_DIR = resolve_root()
+if ROOT_DIR:
+    sys.path.insert(0, str(ROOT_DIR / "scripts"))
+try:
+    from seven_i18n import tr_text  # noqa: E402
+    import seven_theme  # noqa: E402
+except Exception:  # pragma: no cover - fallback for standalone probes
+    def tr_text(text: str, **values: object) -> str:
+        return text.format(**values) if values else text
+    seven_theme = None
+
+
 def read_theme_mode() -> str:
     config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/theme.conf"
     if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
@@ -207,8 +219,9 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
 
 
 def theme_css(theme_mode: str, profile_ui: dict | None = None) -> str:
+    shared_css = seven_theme.gtk_app_css("files", theme_mode) if seven_theme else ""
     if theme_mode == "light":
-        return """
+        return shared_css + """
         @define-color files_bg #F8FAFD;
         @define-color files_panel rgba(255,255,255,0.82);
         @define-color files_sidebar rgba(244,247,251,0.86);
@@ -219,7 +232,7 @@ def theme_css(theme_mode: str, profile_ui: dict | None = None) -> str:
         @define-color files_selected rgba(47,123,255,0.18);
         @define-color files_accent #2F7BFF;
         """ + profile_css(theme_mode, profile_ui or {})
-    return """
+    return shared_css + """
     @define-color files_bg #09090B;
     @define-color files_panel rgba(18,19,26,0.78);
     @define-color files_sidebar rgba(17,17,27,0.84);
@@ -320,272 +333,7 @@ def run_files(start_path: str) -> int:
     show_hidden = bool(prefs.get("show_hidden", False))
     operation_active = False
 
-    css = theme_css(theme_mode, profile_ui) + """
-    * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
-    window.seven-files {
-      background:
-        linear-gradient(145deg, alpha(@files_panel, 0.96), alpha(@files_bg, 0.94));
-      border-radius: 22px;
-      color: @files_text;
-    }
-    .files-root {
-      background:
-        radial-gradient(circle at top left, rgba(77,163,255,0.16), transparent 38%),
-        linear-gradient(145deg, alpha(@files_panel, 0.98), alpha(@files_bg, 0.94));
-    }
-    .files-sidebar {
-      min-width: 204px;
-      padding: 16px 13px;
-      background:
-        linear-gradient(180deg, alpha(@files_sidebar, 0.96), alpha(@files_panel, 0.72));
-      border-right: 1px solid @files_border;
-    }
-    .traffic-row {
-      padding: 0 0 20px 0;
-    }
-    .traffic-dot {
-      min-width: 15px;
-      min-height: 15px;
-      margin-right: 9px;
-    }
-    .sidebar-heading {
-      color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-      margin: 14px 0 5px 8px;
-    }
-    .sidebar-row {
-      min-height: 37px;
-      padding: 0 11px;
-      border-radius: 12px;
-      color: @files_text;
-      font: 500 13px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .sidebar-row:hover,
-    .sidebar-row.active {
-      background: @files_hover;
-    }
-    .files-main {
-      min-width: 650px;
-      background: alpha(@files_panel, 0.78);
-    }
-    .files-preview {
-      min-width: 254px;
-      padding: 18px 16px;
-      background:
-        linear-gradient(180deg, alpha(@files_sidebar, 0.96), alpha(@files_panel, 0.74));
-      border-left: 1px solid @files_border;
-    }
-    .inspector-card {
-      padding: 14px;
-      margin: 8px 0;
-      border-radius: 18px;
-      background: alpha(@files_panel, 0.72);
-      border: 1px solid @files_border;
-    }
-    .preview-actions {
-      margin: 8px 0 12px 0;
-    }
-    .preview-action {
-      min-height: 32px;
-      border-radius: 999px;
-      padding: 0 12px;
-      background: @files_selected;
-      color: @files_text;
-      border: 0;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .preview-action:hover {
-      background: @files_hover;
-    }
-    .preview-icon {
-      margin: 8px 0 12px 0;
-    }
-    .preview-title {
-      color: @files_text;
-      font: 500 17px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .preview-subtitle {
-      color: @files_muted;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-      margin-bottom: 18px;
-    }
-    .preview-heading {
-      color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-      margin-top: 12px;
-    }
-    .preview-value {
-      color: @files_text;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .preview-hint {
-      color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-      margin-top: 12px;
-    }
-    .files-toolbar {
-      min-height: 56px;
-      padding: 0 16px 0 12px;
-      background: alpha(@files_panel, 0.86);
-      border-bottom: 1px solid @files_border;
-    }
-    .toolbar-group {
-      min-height: 40px;
-      padding: 0 5px;
-      border-radius: 999px;
-      background: alpha(@files_sidebar, 0.50);
-    }
-    .toolbar-button {
-      min-width: 34px;
-      min-height: 34px;
-      border-radius: 999px;
-      background: alpha(@files_sidebar, 0.78);
-      color: @files_text;
-      border: 0;
-      padding: 0;
-    }
-    .toolbar-button:hover {
-      background: @files_hover;
-    }
-    .files-title {
-      color: @files_text;
-      font: 500 18px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .breadcrumb-button {
-      min-height: 30px;
-      border-radius: 999px;
-      padding: 0 10px;
-      background: transparent;
-      color: @files_text;
-      border: 0;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .breadcrumb-button:hover {
-      background: @files_hover;
-    }
-    .files-search {
-      min-width: 112px;
-      min-height: 34px;
-      border-radius: 999px;
-      padding: 0 8px;
-      color: @files_text;
-      background: alpha(@files_sidebar, 0.76);
-      border: 1px solid @files_border;
-    }
-    .files-sort {
-      min-height: 34px;
-      min-width: 64px;
-      border-radius: 12px;
-      color: @files_text;
-      background: alpha(@files_sidebar, 0.74);
-    }
-    .toolbar-button.active {
-      background: @files_selected;
-      color: @files_accent;
-    }
-    .files-grid {
-      padding: 34px 36px;
-      background: alpha(@files_panel, 0.62);
-    }
-    .file-tile {
-      min-width: 120px;
-      min-height: 124px;
-      padding: 10px 6px;
-      border-radius: 16px;
-      color: @files_text;
-    }
-    .file-tile.list-view {
-      min-width: 560px;
-      min-height: 48px;
-      padding: 5px 12px;
-      border-radius: 10px;
-    }
-    .file-tile.compact-view {
-      min-width: 250px;
-      min-height: 40px;
-      padding: 4px 10px;
-      border-radius: 10px;
-    }
-    .file-tile:hover,
-    .file-tile:selected {
-      background:
-        linear-gradient(180deg, @files_selected, @files_hover);
-    }
-    .file-name {
-      color: @files_text;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .file-meta {
-      color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .tag-pill {
-      min-height: 18px;
-      padding: 0 7px;
-      border-radius: 999px;
-      color: @files_text;
-      background: @files_selected;
-      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .tag-blue { background: rgba(77,163,255,0.30); }
-    .tag-violet { background: rgba(122,92,255,0.30); }
-    .tag-green { background: rgba(0,255,179,0.22); }
-    .tag-orange { background: rgba(250,179,135,0.28); }
-    .tag-focus { background: rgba(237,237,237,0.16); }
-    .operation-pill {
-      min-height: 24px;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: @files_selected;
-      color: @files_text;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .files-statusbar {
-      min-height: 32px;
-      padding: 0 18px;
-      background: alpha(@files_panel, 0.78);
-      border-top: 1px solid @files_border;
-    }
-    .files-status-label {
-      color: @files_muted;
-      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    .file-tile-box {
-      min-width: 120px;
-      min-height: 124px;
-    }
-    menu {
-      border-radius: 12px;
-      padding: 6px;
-      background: alpha(@files_panel, 0.98);
-      border: 1px solid @files_border;
-    }
-    menuitem {
-      min-height: 30px;
-      border-radius: 8px;
-      padding: 0 10px;
-      color: @files_text;
-      font: 500 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
-    }
-    menuitem:hover {
-      background: @files_hover;
-    }
-    .quicklook-window {
-      background:
-        linear-gradient(180deg, alpha(@files_panel, 0.98), alpha(@files_bg, 0.94));
-      color: @files_text;
-    }
-    .quicklook-footer {
-      padding: 10px 14px;
-      background: alpha(@files_panel, 0.88);
-      border-top: 1px solid @files_border;
-    }
-    .quicklook-text {
-      color: @files_text;
-      font: 500 13px "SF Mono", "JetBrainsMono Nerd Font", "SF Pro Text", monospace;
-      padding: 18px;
-    }
-    """
+    css = theme_css(theme_mode, profile_ui) + seven_theme.surface_css("files", mode=theme_mode)
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -744,20 +492,20 @@ def run_files(start_path: str) -> int:
     toolbar.pack_start(breadcrumb_box, True, True, 10)
 
     search_entry = Gtk.SearchEntry()
-    search_entry.set_placeholder_text("Search")
+    search_entry.set_placeholder_text(tr_text("Search"))
     search_entry.get_style_context().add_class("files-search")
-    search_entry.set_tooltip_text("Search current folder. Prefix with / for global search or # for tags.")
+    search_entry.set_tooltip_text(tr_text("Search current folder. Prefix with / for global search or # for tags."))
     search_entry.set_width_chars(8)
     search_entry.set_max_width_chars(12)
     search_entry.set_size_request(112, -1)
     toolbar.pack_start(search_entry, False, False, 0)
 
-    sort_labels = {"name": "A-Z", "modified": "Date", "size": "Size", "kind": "Type"}
+    sort_labels = {"name": "A-Z", "modified": tr_text("Date"), "size": tr_text("Size"), "kind": tr_text("Type")}
     sort_order = ["name", "modified", "size", "kind"]
     sort_button = Gtk.Button(label=sort_labels.get(sort_mode, "A-Z"))
     sort_button.set_relief(Gtk.ReliefStyle.NONE)
     sort_button.get_style_context().add_class("files-sort")
-    sort_button.set_tooltip_text("Sort files: A-Z, Date, Size, Type")
+    sort_button.set_tooltip_text(tr_text("Sort files: A-Z, Date, Size, Type"))
     sort_button.set_size_request(58, -1)
     toolbar.pack_start(sort_button, False, False, 0)
 
@@ -766,9 +514,9 @@ def run_files(start_path: str) -> int:
     compress_btn = toolbar_button("package-x-generic-symbolic", lambda *_: compress_selected())
     ai_btn = toolbar_button("seven-ai", lambda *_: sevenai_selected())
     new_folder_btn = toolbar_button("folder-new-symbolic", lambda *_: create_folder())
-    compress_btn.set_tooltip_text("Compress selected item")
-    ai_btn.set_tooltip_text("Ask SevenAI about selection")
-    new_folder_btn.set_tooltip_text("New folder")
+    compress_btn.set_tooltip_text(tr_text("Compress selected item"))
+    ai_btn.set_tooltip_text(tr_text("Ask SevenAI about selection"))
+    new_folder_btn.set_tooltip_text(tr_text("New folder"))
     for button in (new_folder_btn, copy_btn, paste_btn, compress_btn, ai_btn):
         actions_group.pack_start(button, False, False, 0)
     toolbar.pack_start(actions_group, False, False, 0)
@@ -788,14 +536,14 @@ def run_files(start_path: str) -> int:
     grid_btn = toolbar_button("view-grid-symbolic", lambda *_: set_view_mode("grid"))
     list_btn = toolbar_button("view-list-symbolic", lambda *_: set_view_mode("list"))
     compact_btn = toolbar_button("view-column-symbolic", lambda *_: set_view_mode("compact"))
-    grid_btn.set_tooltip_text("Grid view")
-    list_btn.set_tooltip_text("List view")
-    compact_btn.set_tooltip_text("Compact view")
+    grid_btn.set_tooltip_text(tr_text("Grid view"))
+    list_btn.set_tooltip_text(tr_text("List view"))
+    compact_btn.set_tooltip_text(tr_text("Compact view"))
     for button in (grid_btn, list_btn, compact_btn):
         view_group.pack_start(button, False, False, 0)
 
     hidden_btn = toolbar_button("view-visible-symbolic", lambda *_: toggle_hidden())
-    hidden_btn.set_tooltip_text("Show hidden files")
+    hidden_btn.set_tooltip_text(tr_text("Show hidden files"))
     view_group.pack_start(hidden_btn, False, False, 0)
     toolbar.pack_start(view_group, False, False, 0)
 
@@ -850,7 +598,7 @@ def run_files(start_path: str) -> int:
     preview_title.get_style_context().add_class("preview-title")
     preview.pack_start(preview_title, False, False, 0)
 
-    preview_subtitle = Gtk.Label(label="SevenOS Files workspace")
+    preview_subtitle = Gtk.Label(label=tr_text("SevenOS Files workspace"))
     preview_subtitle.set_halign(Gtk.Align.CENTER)
     preview_subtitle.get_style_context().add_class("preview-subtitle")
     preview.pack_start(preview_subtitle, False, False, 0)
@@ -880,7 +628,7 @@ def run_files(start_path: str) -> int:
         for child in breadcrumb_box.get_children():
             breadcrumb_box.remove(child)
         if virtual_location == "recent":
-            button = Gtk.Button(label="Recents")
+            button = Gtk.Button(label=tr_text("Recents"))
             button.set_relief(Gtk.ReliefStyle.NONE)
             button.get_style_context().add_class("breadcrumb-button")
             breadcrumb_box.pack_start(button, False, False, 0)
@@ -1534,15 +1282,15 @@ def run_files(start_path: str) -> int:
         footer.set_margin_bottom(10)
         footer.set_margin_start(14)
         footer.set_margin_end(14)
-        open_button = Gtk.Button(label="Open externally")
+        open_button = Gtk.Button(label=tr_text("Open externally"))
         open_button.connect("clicked", lambda *_: open_externally(path))
         footer.pack_start(open_button, False, False, 0)
         if path.suffix.lower() in READER_SUFFIXES:
-            reader_button = Gtk.Button(label="Read in Seven Reader")
+            reader_button = Gtk.Button(label=tr_text("Read in Seven Reader"))
             reader_button.connect("clicked", lambda *_: open_in_reader(path))
             footer.pack_start(reader_button, False, False, 0)
         if is_image(path):
-            wallpaper_button = Gtk.Button(label="Set as Wallpaper")
+            wallpaper_button = Gtk.Button(label=tr_text("Set as Wallpaper"))
             wallpaper_button.connect("clicked", lambda *_: set_wallpaper_from_file(path))
             footer.pack_end(wallpaper_button, False, False, 0)
         outer.pack_start(footer, False, False, 0)
@@ -1989,9 +1737,9 @@ def run_files(start_path: str) -> int:
                 archive.add(target, arcname=target.name)
 
     def ask_archive_options(default_name: str) -> tuple[str, str] | None:
-        dialog = Gtk.Dialog(title="Compress", transient_for=window, flags=Gtk.DialogFlags.MODAL)
-        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
-        dialog.add_button("Compress", Gtk.ResponseType.OK)
+        dialog = Gtk.Dialog(title=tr_text("Compress"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.add_button(tr_text("Cancel"), Gtk.ResponseType.CANCEL)
+        dialog.add_button(tr_text("Compress"), Gtk.ResponseType.OK)
         dialog.set_default_response(Gtk.ResponseType.OK)
         content = dialog.get_content_area()
         content.set_spacing(10)
@@ -1999,12 +1747,12 @@ def run_files(start_path: str) -> int:
         content.set_margin_bottom(14)
         content.set_margin_start(14)
         content.set_margin_end(14)
-        name_label = Gtk.Label(label="Archive name")
+        name_label = Gtk.Label(label=tr_text("Archive name"))
         name_label.set_xalign(0)
         entry = Gtk.Entry()
         entry.set_text(default_name)
         entry.set_activates_default(True)
-        format_label = Gtk.Label(label="Format")
+        format_label = Gtk.Label(label=tr_text("Format"))
         format_label.set_xalign(0)
         combo = Gtk.ComboBoxText()
         for value in ARCHIVE_FORMATS:
