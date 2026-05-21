@@ -1412,3 +1412,14 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   snapshot global, afin de rester rapide pour les surfaces natives.
 - `seven state --json`, le registre d'actions, README, la doc autonomie et
   `ux-check` savent maintenant lire cette identite produit SevenOS-first.
+
+## 2026-05-21 - SevenOS lifecycle contract pass
+
+- Ajout de `seven lifecycle`, contrat de maintenance SevenOS-first pour les
+  mises a jour, reparations, protection/restauration utilisateur, installer et
+  gates de release.
+- Le contrat mappe les intentions normales vers SevenStore/sevenpkg, Seven
+  Doctor/Repair, manifest restore-plan, distribution gate et installer release.
+- `seven state --json`, le registre d'actions, README, la doc autonomie et
+  `ux-check` exposent maintenant ce cycle de vie afin de masquer les commandes
+  backend dans les parcours grand public.

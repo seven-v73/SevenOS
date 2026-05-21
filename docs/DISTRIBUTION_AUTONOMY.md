@@ -16,6 +16,7 @@ Run:
 
 ```bash
 seven about
+seven lifecycle
 seven autonomy
 seven autonomy --json
 seven autonomy doctor
@@ -31,6 +32,7 @@ seven channel
 The contract checks:
 
 - public About/edition identity via `seven about`;
+- public lifecycle/maintenance routes via `seven lifecycle`;
 - SevenOS-first commands: `seven`, `sevenpkg`, SevenStore and Settings;
 - action execution without opening terminals by default;
 - release channel identity (`dev`, `testing`, `stable`) instead of raw Git as
@@ -60,6 +62,21 @@ It exposes:
 
 This turns “what system am I running?” into a SevenOS answer instead of a raw
 Arch/Hyprland answer.
+
+## Lifecycle Contract
+
+`seven lifecycle` is the SevenOS maintenance surface. It maps the boring but
+essential OS lifecycle to SevenOS routes:
+
+- update apps and system -> SevenStore / `sevenpkg`;
+- repair the OS -> Seven Doctor / `seven repair`;
+- protect user state -> `seven manifest restore-plan`;
+- check release readiness -> `seven distribution`;
+- prepare installer/recovery -> `seven installer release`.
+
+This is how SevenOS avoids becoming “Arch commands with a theme” during normal
+maintenance. Advanced users can still inspect pacman, systemd, git and logs,
+but the product path starts with SevenOS language and SevenOS actions.
 
 ## Distribution Contract
 

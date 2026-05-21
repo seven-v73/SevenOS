@@ -277,6 +277,7 @@ require_executable "scripts/state.sh"
 require_executable "scripts/actions.sh"
 require_executable "scripts/hub.sh"
 require_executable "scripts/about.sh"
+require_executable "scripts/lifecycle.sh"
 require_executable "scripts/platform.sh"
 require_executable "scripts/channel.sh"
 require_executable "scripts/mask.sh"
@@ -1673,6 +1674,8 @@ fi
 if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v1"' &&
    "$ROOT_DIR/scripts/about.sh" json | grep -q '"schema": "sevenos.about.v1"' &&
    "$ROOT_DIR/scripts/about.sh" doctor >/dev/null &&
+   "$ROOT_DIR/scripts/lifecycle.sh" json | grep -q '"schema": "sevenos.lifecycle.v1"' &&
+   "$ROOT_DIR/scripts/lifecycle.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/autonomy.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/platform.sh" json | grep -q '"schema": "sevenos.platform.v1"' &&
    "$ROOT_DIR/scripts/platform.sh" doctor >/dev/null &&
@@ -1688,6 +1691,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    "$ROOT_DIR/scripts/distribution.sh" doctor >/dev/null &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-action-runner" --dry-run -- "$ROOT_DIR/bin/seven" status | grep -q 'seven status' &&
    grep -q 'seven about' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven lifecycle' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven autonomy' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven platform' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven channel' "$ROOT_DIR/scripts/actions.sh" &&
@@ -1697,6 +1701,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    grep -q 'seven distribution' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q '"autonomy":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"about":' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q '"lifecycle":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"platform":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"channel":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"mask":' "$ROOT_DIR/scripts/state.sh" &&
@@ -1711,6 +1716,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    grep -q 'User Routes Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Distribution Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'About Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
+   grep -q 'Lifecycle Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven-action-runner' "$ROOT_DIR/bin/seven-hub-native"; then
   ok "SevenOS exposes an autonomy layer that masks Arch/Hyprland internals"
 else
@@ -1858,6 +1864,7 @@ installer_graphical_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer 
 installer_portal_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-installer" status --json)"
 channel_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" channel --json)"
 about_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" about --json)"
+lifecycle_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" lifecycle --json)"
 surfaces_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" surfaces --json)"
 routes_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" routes --json)"
 distribution_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" distribution --json)"
@@ -1915,6 +1922,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$installer_portal_json" >/dev/null &&
    python -m json.tool <<<"$channel_json" >/dev/null &&
    python -m json.tool <<<"$about_json" >/dev/null &&
+   python -m json.tool <<<"$lifecycle_json" >/dev/null &&
    python -m json.tool <<<"$surfaces_json" >/dev/null &&
    python -m json.tool <<<"$routes_json" >/dev/null &&
    python -m json.tool <<<"$distribution_json" >/dev/null &&
@@ -1993,6 +2001,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.release-channel.v1"' <<<"$channel_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.about.v1"' <<<"$about_json" &&
    grep -q '"name": "SevenOS"' <<<"$about_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.lifecycle.v1"' <<<"$lifecycle_json" &&
+   grep -q '"state": "managed"' <<<"$lifecycle_json" &&
    grep -q '"installer-portal"' <<<"$installer_release_json" &&
    grep -q 'graphical-profile-ready' <<<"$installer_graphical_json" &&
    grep -q 'SevenOS Graphical Installer Route' <<<"$installer_graphical_output" &&
@@ -2036,7 +2046,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","platform","mask","surfaces","routes","distribution"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","platform","mask","surfaces","routes","distribution"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
