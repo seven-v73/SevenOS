@@ -25,7 +25,7 @@ def resolve_root() -> Path:
 
 ROOT = resolve_root()
 sys.path.insert(0, str(ROOT / "scripts"))
-from seven_i18n import tr  # noqa: E402
+from seven_i18n import tr, tr_text  # noqa: E402
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
 PREF_FILE = CONFIG_DIR / "language.conf"
@@ -158,6 +158,7 @@ def language_entries() -> list[dict[str, object]]:
 def status_payload() -> dict[str, object]:
     current = current_locale()
     locales = installed_locales()
+    catalog_dir = ROOT / "identity" / "i18n"
     return {
         "schema": "sevenos.language.v1",
         "current": current,
@@ -168,6 +169,18 @@ def status_payload() -> dict[str, object]:
         "languages": language_entries(),
         "config": str(PREF_FILE),
         "env_file": str(ENV_FILE),
+        "catalog_dir": str(catalog_dir),
+        "catalogs": {
+            "en": (catalog_dir / "en.json").exists(),
+            "fr": (catalog_dir / "fr.json").exists(),
+            "baobab": (catalog_dir / "baobab").is_dir(),
+        },
+        "separated_preferences": {
+            "ui_language": True,
+            "region_formats": True,
+            "keyboard_layout": True,
+            "units": True,
+        },
         "active": current in locales,
     }
 
@@ -213,6 +226,66 @@ def notify(locale_name: str) -> None:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+
+
+def run_live_command(label: str, command: list[str], quiet: bool = False) -> dict[str, object]:
+    if DRY_RUN:
+        if not quiet:
+            print(f"DRY-RUN > Language > {label}: {' '.join(command)}")
+        return {"label": label, "command": command, "state": "dry-run"}
+    if not shutil.which(command[0]):
+        return {"label": label, "command": command, "state": "missing"}
+    result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    return {"label": label, "command": command, "state": "ok" if result.returncode == 0 else "failed", "code": result.returncode}
+
+
+def apply_live(json_mode: bool = False) -> int:
+    current = current_locale()
+    lang = language_code(current)
+    import_environment(current)
+    commands = [
+        ("profile-theme", [str(ROOT / "bin/seven-profile-theme"), "apply"]),
+        ("waybar", [str(ROOT / "bin/seven-waybar"), "repair"]),
+        ("notifications", ["systemctl", "--user", "restart", "mako.service"]),
+        ("shell-panel", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-shell-panel"]),
+        ("quick-settings", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-quick-settings-native"]),
+        ("spotlight", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-spotlight-native"]),
+        ("launchpad", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-launchpad-native"]),
+    ]
+    results = []
+    for label, command in commands:
+        if "" in command:
+            results.append({"label": label, "command": command, "state": "skipped"})
+            continue
+        results.append(run_live_command(label, command, quiet=json_mode))
+    payload = {
+        "schema": "sevenos.language.apply.v1",
+        "locale": current,
+        "language": lang,
+        "live": True,
+        "results": results,
+        "needs_reopen": [
+            "Seven Files",
+            "Seven Reader",
+            "SevenStore",
+            "Seven Terminal",
+            "Settings if already open",
+        ],
+    }
+    if json_mode:
+        print(json.dumps(payload, ensure_ascii=False))
+    else:
+        print(f"[SevenOS] OK: {tr_text('Language applied to live SevenOS surfaces.')}")
+        print(f"[SevenOS] NOTE: {tr('language.needs_restart', 'Some open apps need to be reopened to fully switch language.')}")
+        for item in results:
+            print(f"  {item['label']}: {item['state']}")
+    if shutil.which("notify-send") and not DRY_RUN:
+        subprocess.Popen(
+            ["notify-send", "SevenOS Language", tr_text("Language applied to live SevenOS surfaces.")],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    return 0
 
 
 def ensure_language(locale_name: str) -> int:
@@ -322,7 +395,8 @@ def set_language(locale_name: str) -> int:
     import_environment(normalized)
     notify(normalized)
     print(f"[SevenOS] OK: Language set to {label_for(normalized)} ({normalized}).")
-    print("[SevenOS] Restart newly opened apps, or log out and back in, for every app to inherit it.")
+    print(f"[SevenOS] {tr('language.needs_restart', 'Some open apps need to be reopened to fully switch language.')}")
+    print("[SevenOS] Tip: seven language apply --live")
     return 0
 
 
@@ -365,9 +439,10 @@ def open_menu() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="SevenOS language manager")
-    parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu"))
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply"))
     parser.add_argument("locale", nargs="?")
     parser.add_argument("--json", action="store_true", help="print machine-readable output")
+    parser.add_argument("--live", action="store_true", help="restart visible SevenOS surfaces after a language change")
     args = parser.parse_args()
 
     if args.action == "status":
@@ -386,6 +461,8 @@ def main() -> int:
         return 0
     if args.action == "menu":
         return open_menu()
+    if args.action == "apply":
+        return apply_live(args.json)
     if args.action == "ensure":
         if not args.locale:
             parser.error("ensure requires a locale, for example: seven-language ensure fr_FR.UTF-8")

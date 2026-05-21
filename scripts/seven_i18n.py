@@ -1,8 +1,14 @@
-"""Small SevenOS translation layer for native system surfaces."""
+"""SevenOS translation layer for native system surfaces.
+
+The built-in dictionaries keep older surfaces stable. Optional JSON catalogs in
+identity/i18n can extend or override them without editing Python code.
+"""
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from pathlib import Path
 
 
@@ -10,7 +16,134 @@ CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / 
 LANGUAGE_CONF = CONFIG_DIR / "language.conf"
 
 
+def _root_dir() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin" / "seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "bin" / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin" / "seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT_DIR = _root_dir()
+I18N_DIR = ROOT_DIR / "identity" / "i18n"
+
+
+ENGLISH_TRANSLATIONS = {
+    "settings.title": "SevenOS Settings",
+    "settings.subtitle": "A complete control surface for desktop, security, profiles, devices and system runtime.",
+    "settings.overview": "Overview",
+    "settings.general": "General",
+    "settings.general.subtitle": "Language, region, themes and everyday SevenOS behavior.",
+    "settings.language_region": "Language and Region",
+    "settings.language": "Language",
+    "settings.language.note": "{label} · applies to new apps and terminals",
+    "settings.apply_now": "Apply now",
+    "settings.apply_now.note": "Restart SevenOS shell surfaces after language, theme or region changes.",
+    "settings.reload": "Reload",
+    "settings.session_refresh": "Session refresh",
+    "settings.session_refresh.note": "Reload Hyprland after changing global system preferences.",
+    "settings.region_formats": "Region and formats",
+    "settings.region_formats.note": "Choose everyday formats without changing the keyboard layout.",
+    "settings.region": "Region",
+    "settings.time_format": "Time",
+    "settings.date_format": "Date",
+    "settings.week_start": "Week starts on",
+    "settings.units": "Units",
+    "settings.monday": "Monday",
+    "settings.sunday": "Sunday",
+    "settings.metric": "Metric",
+    "settings.imperial": "Imperial",
+    "settings.status": "Status",
+    "settings.open": "Open",
+    "settings.apply": "Apply",
+    "settings.install_apply": "Install & Apply",
+    "settings.french.note": "Generate fr_FR.UTF-8 if needed, then switch the SevenOS interface to French.",
+    "settings.language_status": "Language status",
+    "settings.language_status.note": "Show generated locales and the active SevenOS language contract.",
+    "language.system_default": "System default",
+    "language.english_us": "English (United States)",
+    "language.french_fr": "French (France)",
+    "language.french_ca": "French (Canada)",
+    "language.spanish_es": "Spanish (Spain)",
+    "language.german": "German",
+    "language.italian": "Italian",
+    "language.portuguese_br": "Portuguese (Brazil)",
+    "language.arabic": "Arabic",
+    "language.chinese_simplified": "Chinese (Simplified)",
+    "language.japanese": "Japanese",
+    "language.title": "SevenOS Language",
+    "language.current": "Current",
+    "language.locale": "Locale",
+    "language.available": "Available",
+    "language.languages": "Languages",
+    "language.apply_live": "Apply live",
+    "language.apply_live.note": "Restart visible SevenOS surfaces so new windows use the active language.",
+    "language.needs_restart": "Some open apps need to be reopened to fully switch language.",
+}
+
+
+ENGLISH_TEXT_TRANSLATIONS = {
+    "Control Center": "Control Center",
+    "No notifications": "No notifications",
+    "Connect, toggle and manage nearby networks": "Connect, toggle and manage nearby networks",
+    "Language updated for new apps and terminals.": "Language updated for new apps and terminals.",
+    "SevenOS will generate this locale, then apply it.": "SevenOS will generate this locale, then apply it.",
+    "Apply language live": "Apply language live",
+    "Language applied to live SevenOS surfaces.": "Language applied to live SevenOS surfaces.",
+    "Some open apps need to be reopened to fully switch language.": "Some open apps need to be reopened to fully switch language.",
+}
+
+
+def _read_catalog(language: str) -> dict[str, dict[str, str]]:
+    path = I18N_DIR / f"{language}.json"
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for section in ("translations", "text"):
+        values = data.get(section, {})
+        if isinstance(values, dict):
+            out[section] = {str(key): str(value) for key, value in values.items()}
+    return out
+
+
+def _humanize_key(key: str) -> str:
+    tail = key.rsplit(".", 1)[-1]
+    text = re.sub(r"[_-]+", " ", tail).strip()
+    return text[:1].upper() + text[1:] if text else key
+
+
+def _source_fallbacks() -> dict[str, str]:
+    """Collect simple English fallbacks from tr("key", "English") calls."""
+    out: dict[str, str] = {}
+    pattern = re.compile(r"tr\(\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]")
+    for directory in (ROOT_DIR / "bin", ROOT_DIR / "scripts"):
+        if not directory.exists():
+            continue
+        for path in directory.glob("seven-*"):
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            for key, fallback in pattern.findall(text):
+                out.setdefault(key, fallback)
+    return out
+
+
 TRANSLATIONS = {
+    "en": ENGLISH_TRANSLATIONS,
     "fr": {
         "settings.title": "Réglages SevenOS",
         "settings.subtitle": "Surface de contrôle complète pour le bureau, la sécurité, les profils, les appareils et l’exécution système.",
@@ -284,6 +417,7 @@ TRANSLATIONS = {
 }
 
 TEXT_TRANSLATIONS = {
+    "en": ENGLISH_TEXT_TRANSLATIONS,
     "fr": {
         "Missing": "Manquant",
         "Off": "Désactivé",
@@ -565,6 +699,16 @@ TEXT_TRANSLATIONS = {
 }
 
 
+for _language in ("en", "fr"):
+    _catalog = _read_catalog(_language)
+    if _language == "en":
+        TRANSLATIONS.setdefault("en", {}).update({key: value for key, value in _source_fallbacks().items() if key not in TRANSLATIONS.get("en", {})})
+    if _catalog.get("translations"):
+        TRANSLATIONS.setdefault(_language, {}).update(_catalog["translations"])
+    if _catalog.get("text"):
+        TEXT_TRANSLATIONS.setdefault(_language, {}).update(_catalog["text"])
+
+
 def configured_locale() -> str:
     if os.environ.get("SEVENOS_LANGUAGE"):
         return os.environ["SEVENOS_LANGUAGE"]
@@ -583,10 +727,20 @@ def language_code(locale_name: str | None = None) -> str:
 
 
 def tr(key: str, fallback: str | None = None, **values: object) -> str:
-    text = TRANSLATIONS.get(language_code(), {}).get(key, fallback or key)
+    lang = language_code()
+    text = TRANSLATIONS.get(lang, {}).get(key)
+    if text is None and lang != "en":
+        text = TRANSLATIONS.get("en", {}).get(key)
+    if text is None:
+        text = fallback or _humanize_key(key)
     return text.format(**values) if values else text
 
 
 def tr_text(text: str, **values: object) -> str:
-    translated = TEXT_TRANSLATIONS.get(language_code(), {}).get(text, text)
+    lang = language_code()
+    translated = TEXT_TRANSLATIONS.get(lang, {}).get(text)
+    if translated is None and lang != "en":
+        translated = TEXT_TRANSLATIONS.get("en", {}).get(text)
+    if translated is None:
+        translated = text
     return translated.format(**values) if values else translated

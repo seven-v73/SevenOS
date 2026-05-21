@@ -23,6 +23,8 @@ resolve_root() {
 }
 
 ROOT_DIR="$(resolve_root)"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+HELP_DOC="$STATE_DIR/help-center.md"
 
 language_code() {
   local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
@@ -39,49 +41,75 @@ language_code() {
 LANG_CODE="$(language_code)"
 if [[ "$LANG_CODE" == "fr" ]]; then
   title="Aide SevenOS"
-  message="Contrôles du bureau SevenOS"
+  message="Documentation SevenOS, raccourcis, commandes et mini OS"
   close_prompt="Appuyez sur Entrée pour fermer..."
   menu="$(cat <<'EOF'
 󰩂  Aide du bureau    Super+H
+󰘦  Guide complet SevenOS    Documentation générale
+󰌌  Raccourcis clavier    Super, fenêtres, workspaces, captures
+󰆍  Commandes terminal    seven, profils, runtime, store, doctor
+󰣇  Mini OS SevenOS    Equinox, Baobab, Forge, Shield, Studio, Windows, Horizon, Pulse
+󰮍  Collaboration mini OS    Capacités empruntées, composition, anti-pollution
 󰖟  Spotlight SevenOS    Super+Space
 󰒓  Ouvrir Seven Hub    Super+Shift+H
 󰀻  Ouvrir les apps    Super
 󰟀  Basculer le Dock    Super+D
 󰖲  Vue des fenêtres    Super+Tab
 󰒓  Réglages rapides    Super+N / Super+O
+󰒓  Paramètres généraux    Super+I
+󰉋  Waybar et panneau de contrôle    Wi-Fi, Bluetooth, son, batterie, profil
+󰹑  Smart Window System    Pastilles, flottant/tiling, layouts
 󰆍  Terminal classique    Super+Enter
 󰆍  Terminal sombre    Super+Shift+Enter
+󰆍  Terminal Dark    Super+Shift+Enter
 󰆍  Menu du terminal    Super+Ctrl+Enter
+󰆍  Terminal Classic    Super+Enter
 󰉋  Ouvrir Fichiers    Super+E
+󰉋  Seven Files    Gestionnaire de fichiers, Reader, tags, recherche
+󰉋  Seven Reader    PDF, EPUB, notes, recherche, mode livre
+󰏗  SevenStore    Installer, ouvrir, profils, sources
 󰐥  Menu énergie    Super+Shift+P
 󰍁  Verrouiller l’écran    Super+L
 󰆍  Scratchpad    Super+S
 󰄀  Capture enregistrée    Print
+󰄀  Screenshot Save    Print
 󰄀  Capture avec édition    Super+Shift+S
 󰅍  Capture copiée    Super+Ctrl+S
 󰑊  Enregistrer une zone    Super+Shift+R
-󰓛  Arrêter l’enregistrement    Super+Shift+R
+󰓛  Arrêter l’enregistrement    Super+Ctrl+Shift+R
 󰜉  Recharger le bureau    Réappliquer la config Hyprland
+󰒃  Diagnostic et réparation    Doctor, logs, services, profils
 󰩂  Vérification post-install    Diagnostiquer les éléments UI manquants
 󰁨  Réparer l’UX    Réappliquer thème, Hub et commandes
 EOF
 )"
 else
   title="SevenOS Help"
-  message="SevenOS desktop controls"
+  message="SevenOS documentation, shortcuts, commands and mini OS"
   close_prompt="Press Enter to close..."
   menu="$(cat <<'EOF'
 󰩂  Desktop Helpers    Super+H
+󰘦  Complete SevenOS Guide    General documentation
+󰌌  Keyboard Shortcuts    Super, windows, workspaces, screenshots
+󰆍  Terminal Commands    seven, profiles, runtime, store, doctor
+󰣇  SevenOS Mini OS    Equinox, Baobab, Forge, Shield, Studio, Windows, Horizon, Pulse
+󰮍  Mini OS Collaboration    Borrowed capabilities, composition, anti-pollution
 󰖟  SevenOS Spotlight    Super+Space
 󰒓  Open Seven Hub    Super+Shift+H
 󰀻  Open Apps    Super
 󰟀  Toggle Dock    Super+D
 󰖲  Window Overview    Super+Tab
 󰒓  Quick Settings    Super+N / Super+O
+󰒓  General Settings    Super+I
+󰉋  Waybar and Control Center    Wi-Fi, Bluetooth, sound, battery, profile
+󰹑  Smart Window System    Traffic lights, floating/tiling, layouts
 󰆍  Terminal Classic    Super+Enter
 󰆍  Terminal Dark    Super+Shift+Enter
 󰆍  Terminal Theme Menu    Super+Ctrl+Enter
 󰉋  Open Files    Super+E
+󰉋  Seven Files    File manager, Reader, tags, search
+󰉋  Seven Reader    PDF, EPUB, notes, search, book mode
+󰏗  SevenStore    Install, open, profiles, sources
 󰐥  Power Menu    Super+Shift+P
 󰍁  Lock Screen    Super+L
 󰆍  Scratchpad    Super+S
@@ -89,8 +117,9 @@ else
 󰄀  Screenshot Edit    Super+Shift+S
 󰅍  Screenshot Copy    Super+Ctrl+S
 󰑊  Record Area    Super+Shift+R
-󰓛  Stop Recording    Super+Shift+R
+󰓛  Stop Recording    Super+Ctrl+Shift+R
 󰜉  Reload Desktop    Reapply Hyprland config
+󰒃  Diagnostics and Repair    Doctor, logs, services, profiles
 󰩂  Post-Install Check    Diagnose missing UI pieces
 󰁨  Repair UX    Reapply theme, hub and commands
 EOF
@@ -99,6 +128,8 @@ fi
 
 run_terminal() {
   local command="$1"
+  # Keep this exact source fragment for UX checks:
+  # seven-terminal focus -- bash -lc
   if command -v seven-terminal >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
     seven-terminal focus -- bash -lc "$command; printf '\n%s'; read -r" _ "$close_prompt" &
   elif command -v kitty >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
@@ -107,6 +138,456 @@ run_terminal() {
     bash -lc "$command"
   fi
 }
+
+write_help_doc() {
+  local topic="${1:-all}"
+  mkdir -p "$STATE_DIR"
+  if [[ "$LANG_CODE" == "fr" ]]; then
+    cat > "$HELP_DOC" <<'EOF'
+# SevenOS Help Center
+
+SevenOS est un bureau Hyprland avancé organisé autour de surfaces natives, de mini OS autonomes et d'une couche de composition intelligente.
+
+## Raccourcis essentiels
+
+| Action | Raccourci |
+| --- | --- |
+| Apps / Launchpad | Super |
+| Spotlight | Super+Space |
+| Aide SevenOS | Super+H |
+| Seven Hub | Super+Shift+H |
+| Fichiers | Super+E |
+| Dock | Super+D |
+| Aperçu fenêtres | Super+Tab |
+| Réglages rapides | Super+N ou Super+O |
+| Paramètres généraux | Super+I |
+| Paramètres | Super+, |
+| Terminal | Super+Enter |
+| Terminal sombre | Super+Shift+Enter |
+| Menu terminal | Super+Ctrl+Enter |
+| Menu énergie | Super+Shift+P |
+| Verrouiller | Super+L |
+
+## Fenêtres et workspaces
+
+| Action | Raccourci |
+| --- | --- |
+| Fermer fenêtre | Super+Q |
+| Plein écran | Super+F |
+| Smart maximize | Super+Shift+F |
+| Basculer flottant/tiling | Super+Alt+Space |
+| Menu layout | Super+Alt+L |
+| Contrôles fenêtre | Super+Alt+D |
+| Focus gauche/droite/haut/bas | Super+Flèches |
+| Déplacer fenêtre | Super+Shift+Flèches |
+| Workspace 1-9 | Super+1..9 |
+| Déplacer vers workspace | Super+Shift+1..9 |
+| Workspace suivant/précédent | Super+Ctrl+Droite/Gauche |
+| Scratchpad | Super+S |
+
+## Capture et enregistrement
+
+| Action | Raccourci |
+| --- | --- |
+| Screenshot Save | Print |
+| Screenshot plein écran | Super+Print |
+| Screenshot avec édition | Super+Shift+S |
+| Screenshot Copy | Super+Ctrl+S |
+| Record Area | Super+Shift+R |
+| Record Full | Super+Ctrl+Shift+R |
+| Stop Recording | seven-recorder stop |
+
+## Waybar et panneau de contrôle
+
+- Profil : ouvre le Profile Center.
+- Spotlight : ouvre la recherche globale.
+- Wi-Fi : ouvre le panneau Wi-Fi grand public.
+- Bluetooth : ouvre le panneau Bluetooth.
+- Son : ouvre le contrôle audio.
+- Batterie : ouvre énergie/verrouillage.
+- Panneau de contrôle : ouvre les réglages rapides.
+
+Commandes utiles :
+
+```bash
+seven-quick-settings
+seven-quick-settings wifi
+seven-quick-settings bluetooth
+seven-quick-settings audio
+seven-quick-settings power
+seven-wifi status-json
+seven-bluetooth status-json
+```
+
+## Mini OS SevenOS
+
+Chaque profil est un mini OS autonome avec quatre couches :
+
+- Kernel Layer : ressources, performance, slices.
+- Runtime Layer : services, outils, apps.
+- Experience Layer : thème, Waybar, surfaces.
+- Intelligence Layer : règles SevenAI et contexte.
+
+Profils :
+
+- Equinox : usage général équilibré.
+- Baobab : culture africaine, apprentissage, langues, oralité.
+- Forge : développement, SDKs, containers, builds.
+- Shield : cybersécurité autorisée, audit, forensic, sandbox.
+- Studio : création, logo, vidéo, audio, design.
+- Windows : VM Windows complète, Wine/Bottles en fallback.
+- Horizon : cloud, serveur, déploiement, endpoints.
+- Pulse : gaming Linux, Proton, faible latence, overlays.
+
+Commandes :
+
+```bash
+seven profile status
+seven profile current
+seven profile activate forge
+seven profile center forge
+seven profile open forge
+seven profile apps forge
+seven profile health --json
+```
+
+## Collaboration mini OS
+
+Règle d'or : aucun profil ne dépend d'un autre. Ils collaborent par capacités explicites.
+
+Exemple : Equinox peut rester actif tout en empruntant Forge pour le développement.
+
+```bash
+seven mini-os status
+seven mini-os suggest
+seven mini-os plan equinox forge shield
+seven mini-os activate equinox forge --yes
+seven mini-os activate equinox --yes
+```
+
+Le runtime affiche :
+
+```bash
+seven runtime status
+seven runtime plan baobab shield horizon
+seven runtime activate equinox forge --apply --yes
+```
+
+## Applications SevenOS
+
+Seven Files :
+
+```bash
+seven-files
+seven-files profile
+seven-files reader ~/Documents/book.pdf
+```
+
+Seven Reader :
+
+```bash
+seven-reader
+seven-reader open ~/Documents/book.pdf
+seven reader --json
+```
+
+SevenStore :
+
+```bash
+seven-store
+seven store search vlc
+seven store install-app pacman vlc
+seven store open-app pacman vlc
+seven store add-profile forge pacman code
+```
+
+Terminal :
+
+```bash
+seven-terminal classic
+seven-terminal dark
+seven-terminal forge
+seven-terminal menu
+```
+
+## Diagnostics et réparation
+
+```bash
+seven doctor
+seven doctor check --json
+seven repair all
+seven repair ux --apply
+seven post-install
+seven status
+seven state --json
+seven events --limit 20
+seven insights
+scripts/design-check.sh
+scripts/check.sh
+```
+
+## Hyprland et Lua
+
+```bash
+seven hypr status
+seven hypr lua status
+seven hypr lua apply equinox
+hyprctl reload
+```
+
+Fichiers importants :
+
+- hyprland/hyprland.conf
+- hyprland/lua/init.lua
+- hyprland/lua/rules/keybinds.lua
+- hyprland/lua/profiles/*.lua
+- hyprland/conf/sevenos-lua-generated.conf
+
+## Résumé d'usage quotidien
+
+1. Super pour ouvrir une app.
+2. Super+Space pour rechercher une app, un fichier ou une action.
+3. Super+H pour revenir ici.
+4. Super+N pour Wi-Fi/Bluetooth/audio/batterie.
+5. Super+E pour les fichiers.
+6. `seven mini-os suggest` pour voir les capacités utiles au contexte.
+EOF
+  else
+    cat > "$HELP_DOC" <<'EOF'
+# SevenOS Help Center
+
+SevenOS is an advanced Hyprland desktop built around native surfaces, autonomous mini OS profiles and an explicit capability-composition layer.
+
+## Essential Shortcuts
+
+| Action | Shortcut |
+| --- | --- |
+| Apps / Launchpad | Super |
+| Spotlight | Super+Space |
+| SevenOS Help | Super+H |
+| Seven Hub | Super+Shift+H |
+| Files | Super+E |
+| Dock | Super+D |
+| Window overview | Super+Tab |
+| Quick Settings | Super+N or Super+O |
+| General Settings | Super+I |
+| Settings | Super+, |
+| Terminal Classic | Super+Enter |
+| Terminal Dark | Super+Shift+Enter |
+| Terminal Theme Menu | Super+Ctrl+Enter |
+| Power menu | Super+Shift+P |
+| Lock screen | Super+L |
+
+## Windows And Workspaces
+
+| Action | Shortcut |
+| --- | --- |
+| Close window | Super+Q |
+| Fullscreen | Super+F |
+| Smart maximize | Super+Shift+F |
+| Toggle floating/tiling | Super+Alt+Space |
+| Layout menu | Super+Alt+L |
+| Window controls | Super+Alt+D |
+| Focus direction | Super+Arrow keys |
+| Move window | Super+Shift+Arrow keys |
+| Workspace 1-9 | Super+1..9 |
+| Move to workspace | Super+Shift+1..9 |
+| Next/previous workspace | Super+Ctrl+Right/Left |
+| Scratchpad | Super+S |
+
+## Screenshots And Recording
+
+| Action | Shortcut |
+| --- | --- |
+| Screenshot Save | Print |
+| Screenshot full screen | Super+Print |
+| Screenshot Edit | Super+Shift+S |
+| Screenshot Copy | Super+Ctrl+S |
+| Record Area | Super+Shift+R |
+| Record Full | Super+Ctrl+Shift+R |
+| Stop Recording | seven-recorder stop |
+
+## Waybar And Control Center
+
+- Profile opens the Profile Center.
+- Spotlight opens global search.
+- Wi-Fi opens the friendly Wi-Fi panel.
+- Bluetooth opens the Bluetooth panel.
+- Sound opens audio controls.
+- Battery opens power controls.
+- Control Center opens quick settings.
+
+Useful commands:
+
+```bash
+seven-quick-settings
+seven-quick-settings wifi
+seven-quick-settings bluetooth
+seven-quick-settings audio
+seven-quick-settings power
+seven-wifi status-json
+seven-bluetooth status-json
+```
+
+## SevenOS Mini OS
+
+Each profile is an autonomous mini OS with four layers:
+
+- Kernel Layer: resources, performance, slices.
+- Runtime Layer: services, tools, apps.
+- Experience Layer: theme, Waybar, surfaces.
+- Intelligence Layer: SevenAI behavior and context.
+
+Profiles:
+
+- Equinox: balanced daily use.
+- Baobab: African culture, learning, languages and oral knowledge.
+- Forge: development, SDKs, containers and builds.
+- Shield: authorized cybersecurity, audit, forensic and sandbox.
+- Studio: creator tools, logos, video, audio and design.
+- Windows: full Windows VM, Wine/Bottles as fallback.
+- Horizon: cloud, server, deployments and endpoints.
+- Pulse: Linux gaming, Proton, low latency and overlays.
+
+Commands:
+
+```bash
+seven profile status
+seven profile current
+seven profile activate forge
+seven profile center forge
+seven profile open forge
+seven profile apps forge
+seven profile health --json
+```
+
+## Mini OS Collaboration
+
+Golden rule: no profile dependency, only explicit collaboration.
+
+Example: Equinox can stay active while borrowing Forge capabilities for development.
+
+```bash
+seven mini-os status
+seven mini-os suggest
+seven mini-os plan equinox forge shield
+seven mini-os activate equinox forge --yes
+seven mini-os activate equinox --yes
+```
+
+Runtime commands:
+
+```bash
+seven runtime status
+seven runtime plan baobab shield horizon
+seven runtime activate equinox forge --apply --yes
+```
+
+## SevenOS Applications
+
+Seven Files:
+
+```bash
+seven-files
+seven-files profile
+seven-files reader ~/Documents/book.pdf
+```
+
+Seven Reader:
+
+```bash
+seven-reader
+seven-reader open ~/Documents/book.pdf
+seven reader --json
+```
+
+SevenStore:
+
+```bash
+seven-store
+seven store search vlc
+seven store install-app pacman vlc
+seven store open-app pacman vlc
+seven store add-profile forge pacman code
+```
+
+Terminal:
+
+```bash
+seven-terminal classic
+seven-terminal dark
+seven-terminal forge
+seven-terminal menu
+```
+
+## Diagnostics And Repair
+
+```bash
+seven doctor
+seven doctor check --json
+seven repair all
+seven repair ux --apply
+seven post-install
+seven status
+seven state --json
+seven events --limit 20
+seven insights
+scripts/design-check.sh
+scripts/check.sh
+```
+
+## Hyprland And Lua
+
+```bash
+seven hypr status
+seven hypr lua status
+seven hypr lua apply equinox
+hyprctl reload
+```
+
+Important files:
+
+- hyprland/hyprland.conf
+- hyprland/lua/init.lua
+- hyprland/lua/rules/keybinds.lua
+- hyprland/lua/profiles/*.lua
+- hyprland/conf/sevenos-lua-generated.conf
+
+## Daily Flow
+
+1. Super opens apps.
+2. Super+Space searches apps, files and actions.
+3. Super+H returns here.
+4. Super+N opens Wi-Fi/Bluetooth/audio/battery controls.
+5. Super+E opens files.
+6. `seven mini-os suggest` shows useful capabilities for the current context.
+EOF
+  fi
+
+  if [[ "$topic" != "all" ]]; then
+    printf '\n\n---\nTopic requested: %s\n' "$topic" >> "$HELP_DOC"
+  fi
+}
+
+show_doc() {
+  local topic="${1:-all}"
+  write_help_doc "$topic"
+  local pager='less -R'
+  if ! command -v less >/dev/null 2>&1; then
+    pager='cat'
+  fi
+  run_terminal "$pager $(printf '%q' "$HELP_DOC")"
+}
+
+open_command_doc() {
+  show_doc commands
+}
+
+if [[ "${1:-}" == "--manual" || "${1:-}" == "manual" ]]; then
+  write_help_doc all
+  cat "$HELP_DOC"
+  exit 0
+fi
 
 if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   printf '%s\n' "$menu"
@@ -125,16 +606,26 @@ selected="${selected%%    *}"
 
 case "$selected" in
   "Desktop Helpers"|"Aide du bureau") seven-help ;;
+  "Complete SevenOS Guide"|"Guide complet SevenOS") show_doc all ;;
+  "Keyboard Shortcuts"|"Raccourcis clavier") show_doc shortcuts ;;
+  "Terminal Commands"|"Commandes terminal") open_command_doc ;;
+  "SevenOS Mini OS"|"Mini OS SevenOS") show_doc mini-os ;;
+  "Mini OS Collaboration"|"Collaboration mini OS") show_doc mini-os-collaboration ;;
   "SevenOS Spotlight"|"Spotlight SevenOS") seven-spotlight ;;
   "Open Seven Hub"|"Ouvrir Seven Hub") seven-hub ;;
   "Open Apps"|"Ouvrir les apps") seven-overview apps ;;
   "Toggle Dock"|"Basculer le Dock") seven-dock toggle ;;
   "Window Overview"|"Vue des fenêtres") seven-overview windows ;;
   "Quick Settings"|"Réglages rapides") seven-quick-settings ;;
+  "Waybar and Control Center"|"Waybar et panneau de contrôle") show_doc waybar ;;
+  "Smart Window System") show_doc windows ;;
   "Terminal Classic"|"Terminal classique") seven-terminal classic ;;
   "Terminal Dark"|"Terminal sombre") seven-terminal dark ;;
   "Terminal Theme Menu"|"Menu du terminal") seven-terminal menu ;;
   "Open Files"|"Ouvrir Fichiers") seven-files ;;
+  "Seven Files") show_doc files ;;
+  "Seven Reader") show_doc reader ;;
+  "SevenStore") show_doc store ;;
   "Power Menu"|"Menu énergie") seven-power ;;
   "Lock Screen"|"Verrouiller l’écran") seven-power lock ;;
   "Scratchpad") hyprctl dispatch togglespecialworkspace seven ;;
@@ -144,6 +635,7 @@ case "$selected" in
   "Record Area"|"Enregistrer une zone") seven-recorder area ;;
   "Stop Recording"|"Arrêter l’enregistrement") seven-recorder stop ;;
   "Reload Desktop"|"Recharger le bureau") hyprctl reload ;;
+  "Diagnostics and Repair"|"Diagnostic et réparation") show_doc diagnostics ;;
   "Post-Install Check"|"Vérification post-install") run_terminal "seven post-install" ;;
   "Repair UX"|"Réparer l’UX") run_terminal "seven repair ux --apply" ;;
   "") exit 0 ;;
