@@ -337,6 +337,11 @@ menu() {
     return 0
   fi
 
+  if [[ "${SEVENOS_WIFI_LEGACY_MENU:-0}" != "1" ]] && command -v seven-quick-settings >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
+    setsid -f seven-quick-settings wifi >/tmp/sevenos-wifi.log 2>&1 || true
+    return 0
+  fi
+
   ensure_network_ready || return 1
 
   local active radio rows selected ssid

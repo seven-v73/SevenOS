@@ -110,7 +110,10 @@ def scan() -> int:
 
 def manager() -> int:
     if dry_run():
-        print("DRY-RUN > Bluetooth > open manager")
+        print("DRY-RUN > Bluetooth > Open panel")
+        return 0
+    if shutil.which("seven-quick-settings") and os.environ.get("SEVENOS_BLUETOOTH_LEGACY_MANAGER") != "1":
+        subprocess.Popen(["seven-quick-settings", "bluetooth"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return 0
     if shutil.which("blueman-manager"):
         subprocess.Popen(["blueman-manager"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

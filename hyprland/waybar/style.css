@@ -109,7 +109,7 @@ window#waybar {
 }
 
 .modules-right {
-  min-width: 330px;
+  min-width: 394px;
   margin-right: 4px;
   border-color: rgba(255, 255, 255, 0.055);
   background: rgba(255, 255, 255, 0.018);
@@ -139,7 +139,7 @@ window#waybar {
 #custom-vpn,
 #custom-recorder,
 #clock,
-#custom-ai {
+#custom-control-center {
   min-height: 30px;
   margin: 0 1px;
   padding: 0 9px;
@@ -167,7 +167,7 @@ window#waybar {
 #custom-vpn:hover,
 #custom-recorder:hover,
 #clock:hover,
-#custom-ai:hover {
+#custom-control-center:hover {
   color: #FFFFFF;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.130), rgba(255, 255, 255, 0.046)),
@@ -436,33 +436,23 @@ window#waybar {
   font-size: 12px;
 }
 
-#custom-ai {
-  min-width: 36px;
+#custom-control-center {
+  min-width: 104px;
   min-height: 30px;
-  padding-left: 0;
-  padding-right: 0;
+  padding-left: 11px;
+  padding-right: 12px;
   border-radius: 999px;
-  color: @seven_cyan;
-  font-size: 15px;
+  color: rgba(255, 255, 255, 0.94);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
   background:
-    radial-gradient(circle at 42% 33%, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.72) 7%, transparent 18%),
-    radial-gradient(circle at 44% 54%, rgba(156, 203, 255, 0.86), rgba(110, 168, 255, 0.70) 32%, rgba(139, 124, 255, 0.50) 56%, transparent 74%),
-    radial-gradient(circle at 70% 32%, rgba(255, 136, 240, 0.32), transparent 42%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.055));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.150), rgba(255, 255, 255, 0.052)),
+    radial-gradient(ellipse at 20% -20%, rgba(156, 203, 255, 0.22), transparent 55%),
+    rgba(255, 255, 255, 0.056);
+  border: 1px solid rgba(156, 203, 255, 0.16);
   box-shadow:
-    0 0 14px rgba(110, 168, 255, 0.24),
-    0 0 22px rgba(139, 124, 255, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24);
-  animation: aiPulse 3s ease-in-out infinite;
-}
-
-#custom-ai.busy {
-  color: #FFFFFF;
-  animation: aiPulse 1.6s ease-in-out infinite;
-}
-
-#custom-ai.attention {
-  color: rgba(255, 179, 195, 0.98);
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 14px rgba(110, 168, 255, 0.10);
 }
 
 tooltip {
