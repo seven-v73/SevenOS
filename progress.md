@@ -1402,3 +1402,13 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   Settings, Doctor et SevenAI puissent lire une seule jauge de distribution.
 - Le registre d'actions et `ux-check` valident `seven distribution`, ce qui
   donne un filet QA a la couche "distro autonome masquee et dynamique".
+
+## 2026-05-21 - SevenOS about identity contract pass
+
+- Ajout de `seven about`, contrat public pour les ecrans A propos, Settings,
+  Hub et installateur : nom, edition, mini OS actif, canal, commit et etat de
+  distribution.
+- `seven about --json` expose `sevenos.about.v1` sans passer par tout le
+  snapshot global, afin de rester rapide pour les surfaces natives.
+- `seven state --json`, le registre d'actions, README, la doc autonomie et
+  `ux-check` savent maintenant lire cette identite produit SevenOS-first.

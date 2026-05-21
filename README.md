@@ -23,6 +23,8 @@ It is built around foundation pillars:
 
 - `seven` as the system controller
 - `sevenpkg` as the package and application manager
+- `seven about` as the public identity and edition contract for About screens,
+  Settings, Hub and installer surfaces
 - `sevenos.dotinst` as the install, restore, migration and packaging contract
 - Seven Hub as the user-facing control center
 - SevenOS Settings as the normal-user configuration center for wallpaper, displays, Wi-Fi, sound, keyboard, security, profiles, apps and system repair
@@ -84,6 +86,8 @@ Calamares/Archiso distribution work.
 What is already testable:
 
 - `seven` as a unified system controller.
+- `seven about` as a SevenOS-first About surface with edition, active mini OS,
+  channel and distribution state.
 - `sevenpkg` as the SevenOS software layer over pacman/meta-packages.
 - Seven Hub / Control Center entrypoints.
 - Native SevenOS Settings for daily desktop and system configuration.

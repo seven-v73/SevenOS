@@ -15,6 +15,7 @@ This document defines the line between:
 Run:
 
 ```bash
+seven about
 seven autonomy
 seven autonomy --json
 seven autonomy doctor
@@ -29,6 +30,7 @@ seven channel
 
 The contract checks:
 
+- public About/edition identity via `seven about`;
 - SevenOS-first commands: `seven`, `sevenpkg`, SevenStore and Settings;
 - action execution without opening terminals by default;
 - release channel identity (`dev`, `testing`, `stable`) instead of raw Git as
@@ -41,6 +43,23 @@ The contract checks:
 - dynamic profile/theme/wallpaper/compositor adaptation.
 - public native surfaces for normal-user workflows.
 - user-intent routes that keep workflows SevenOS-first.
+
+## About Contract
+
+`seven about` is the user-facing identity surface. It is the contract that Hub,
+Settings and the installer should use before showing technical backend details.
+
+It exposes:
+
+- SevenOS name, edition and tagline;
+- active mini OS and workspace;
+- release channel and commit;
+- daily-driver/public-release state;
+- SevenOS product layers;
+- technical foundations for advanced users.
+
+This turns “what system am I running?” into a SevenOS answer instead of a raw
+Arch/Hyprland answer.
 
 ## Distribution Contract
 

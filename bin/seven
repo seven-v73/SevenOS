@@ -242,6 +242,13 @@ def handle_distribution(args):
     run_script(args, "scripts/distribution.sh", *extra)
 
 
+def handle_about(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/about.sh", *extra)
+
+
 def handle_channel(args):
     extra = [args.action]
     if args.channel:
@@ -875,6 +882,9 @@ def main():
     distro_parser = subparsers.add_parser("distro", help="alias for SevenOS distribution readiness")
     distro_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     distro_parser.add_argument("--json", action="store_true", help="print machine-readable distribution contract")
+    about_parser = subparsers.add_parser("about", help="show public SevenOS identity and edition")
+    about_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json"))
+    about_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS about contract")
 
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
@@ -1061,6 +1071,8 @@ def main():
         handle_routes(args)
     elif args.command in ("distribution", "distro"):
         handle_distribution(args)
+    elif args.command == "about":
+        handle_about(args)
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)

@@ -146,6 +146,8 @@ json_to_file "$STATE_TMP/installer_plan.json" "$ROOT_DIR/scripts/installer-stack
 pid_installer_plan=$!
 json_to_file "$STATE_TMP/channel.json" "$ROOT_DIR/scripts/channel.sh" json &
 pid_channel=$!
+json_to_file "$STATE_TMP/about.json" "$ROOT_DIR/scripts/about.sh" json &
+pid_about=$!
 json_to_file "$STATE_TMP/readiness.json" "$ROOT_DIR/scripts/readiness.sh" --json &
 pid_readiness=$!
 json_to_file "$STATE_TMP/packages.json" "$ROOT_DIR/bin/sevenpkg" status --json &
@@ -212,7 +214,7 @@ json_to_file "$STATE_TMP/distribution.json" env SEVENOS_DISTRIBUTION_FAST=1 "$RO
 pid_distribution=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
-  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_about" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
   "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
 
 printf '{'
@@ -296,6 +298,9 @@ cat "$STATE_TMP/installer_plan.json"
 printf ','
 printf '"channel":'
 cat "$STATE_TMP/channel.json"
+printf ','
+printf '"about":'
+cat "$STATE_TMP/about.json"
 printf ','
 printf '"readiness":'
 cat "$STATE_TMP/readiness.json"
