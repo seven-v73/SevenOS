@@ -24,6 +24,7 @@ Actions:
   release  Show public-ISO release readiness checks
   graphical
            Show graphical installer route readiness
+  runtime  Show Calamares runtime source/readiness policy
 EOF
 }
 
@@ -50,16 +51,79 @@ contains_state() {
   [[ -s "$ROOT_DIR/$path" ]] && grep -Fq "$pattern" "$ROOT_DIR/$path" && printf OK || printf MISS
 }
 
+calamares_runtime_json() {
+  local calamares_state aur_manifest_state yay_state paru_state pacman_candidate
+  calamares_state="$(state calamares)"
+  aur_manifest_state="$(contains_state scripts/packages-installer-aur.txt "calamares")"
+  yay_state="$(state yay)"
+  paru_state="$(state paru)"
+  if timeout 4 pacman -Si calamares >/dev/null 2>&1; then
+    pacman_candidate="OK"
+  else
+    pacman_candidate="MISS"
+  fi
+
+  CALAMARES_STATE="$calamares_state" AUR_MANIFEST_STATE="$aur_manifest_state" \
+  YAY_STATE="$yay_state" PARU_STATE="$paru_state" PACMAN_CANDIDATE="$pacman_candidate" \
+  python - <<'PY'
+import json
+import os
+
+calamares = os.environ["CALAMARES_STATE"]
+aur_manifest = os.environ["AUR_MANIFEST_STATE"]
+yay = os.environ["YAY_STATE"]
+paru = os.environ["PARU_STATE"]
+pacman = os.environ["PACMAN_CANDIDATE"]
+helper = "yay" if yay == "OK" else "paru" if paru == "OK" else ""
+
+if calamares == "OK":
+    state = "installed"
+elif pacman == "OK":
+    state = "official-candidate"
+elif aur_manifest == "OK" and helper:
+    state = "aur-candidate"
+elif aur_manifest == "OK":
+    state = "source-declared"
+else:
+    state = "missing-source"
+
+print(json.dumps({
+    "schema": "sevenos.calamares-runtime.v1",
+    "state": state,
+    "installed": calamares == "OK",
+    "sources": {
+        "pacman": pacman,
+        "aur_manifest": aur_manifest,
+        "yay": yay,
+        "paru": paru,
+        "recommended_helper": helper,
+    },
+    "policy": [
+        "SevenOS does not mark public ISO graphical-ready until calamares is present in the ISO runtime.",
+        "Arch hosts may need a trusted downstream repository or AUR build for calamares.",
+        "The SevenOS Calamares profile remains in-repo and is validated separately from runtime packaging.",
+    ],
+    "commands": {
+        "status": "seven installer runtime --json",
+        "graphical": "seven installer graphical",
+        "aur_helpers": "./install.sh aur-helpers --yes",
+        "aur_manifest": "scripts/packages-installer-aur.txt",
+    },
+}, indent=2))
+PY
+}
+
 json_string() {
   python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
 }
 
 release_json() {
   local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_postinstall_state
-  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state live_desktop_state calamares_branding_state installer_portal_state
+  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state live_desktop_state calamares_branding_state installer_portal_state calamares_source_state
 
   archinstall_state="$(state archinstall)"
   calamares_state="$(state calamares)"
+  calamares_source_state="$(calamares_runtime_json | python -c 'import json,sys; print(json.load(sys.stdin).get("state","unknown"))')"
   planner_state="$([[ -x "$ROOT_DIR/installer/plan.sh" ]] && printf OK || printf MISS)"
   calamares_settings_state="$(file_state installer/calamares/settings.conf)"
   calamares_module_state="$(file_state installer/calamares/modules/sevenos.conf)"
@@ -76,6 +140,7 @@ release_json() {
 
   ARCHINSTALL_STATE="$archinstall_state" \
   CALAMARES_STATE="$calamares_state" \
+  CALAMARES_SOURCE_STATE="$calamares_source_state" \
   PLANNER_STATE="$planner_state" \
   CALAMARES_SETTINGS_STATE="$calamares_settings_state" \
   CALAMARES_MODULE_STATE="$calamares_module_state" \
@@ -108,6 +173,14 @@ checks = [
         "title": "Graphical installer runtime",
         "command": "seven installer graphical",
         "reason": "Install calamares from an Arch derivative repository, AUR package or ISO build environment where it is available.",
+    },
+    {
+        "key": "calamares-source-policy",
+        "state": "OK" if os.environ["CALAMARES_SOURCE_STATE"] in {"installed", "official-candidate", "aur-candidate", "source-declared"} else "MISS",
+        "required": False,
+        "title": "Calamares runtime source policy",
+        "command": "seven installer runtime --json",
+        "reason": f"Runtime source state: {os.environ['CALAMARES_SOURCE_STATE']}.",
     },
     {
         "key": "installer-planner",
@@ -205,7 +278,8 @@ checks = [
 required = [item for item in checks if item["required"]]
 required_ok = sum(1 for item in required if item["state"] == "OK")
 optional_ok = sum(1 for item in checks if not item["required"] and item["state"] == "OK")
-score = round(((required_ok / max(len(required), 1)) * 85) + (optional_ok * 15))
+optional = [item for item in checks if not item["required"]]
+score = round(((required_ok / max(len(required), 1)) * 85) + ((optional_ok / max(len(optional), 1)) * 15))
 if score >= 95:
     state = "graphical-ready"
 elif required_ok == len(required):
@@ -223,6 +297,7 @@ print(json.dumps({
     "required_total": len(required),
     "optional_ready": optional_ok,
     "optional_total": len(checks) - len(required),
+    "calamares_runtime": os.environ["CALAMARES_SOURCE_STATE"],
     "checks": checks,
     "portal": "seven-installer status --json",
 }, indent=2))
@@ -369,6 +444,32 @@ if runtime.get("state") != "OK":
 print()
 for item in checks:
     print(f"{item.get('state', 'MISS'):<5} {item.get('key', ''):<24} {item.get('title', '')}")
+PY
+}
+
+runtime() {
+  local payload
+  payload="$(calamares_runtime_json)"
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    printf '%s\n' "$payload"
+    return 0
+  fi
+  CALAMARES_RUNTIME_JSON="$payload" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["CALAMARES_RUNTIME_JSON"])
+sources = data.get("sources", {})
+print("SevenOS Calamares Runtime")
+print("=========================")
+print(f"State: {data.get('state')}")
+print(f"Installed: {str(data.get('installed')).lower()}")
+print(f"Pacman candidate: {sources.get('pacman')}")
+print(f"AUR manifest: {sources.get('aur_manifest')}")
+print(f"yay: {sources.get('yay')} · paru: {sources.get('paru')}")
+print()
+for item in data.get("policy", []):
+    print(f"- {item}")
 PY
 }
 
@@ -642,6 +743,7 @@ case "$action" in
   guide) guide ;;
   release) release_status ;;
   graphical) graphical ;;
+  runtime|calamares) runtime ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown installer stack action: $action"; usage; exit 1 ;;
 esac

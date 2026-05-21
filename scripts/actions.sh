@@ -189,6 +189,7 @@ installer.status	Installer	Installer Status	seven installer status	safe	Check Ca
 installer.plan	Installer	Installer Plan	seven installer plan	safe	Show prioritized installer and ISO actions.
 installer.release	Installer	Installer Release Readiness	seven installer release	safe	Show public-ISO release readiness, required checks and graphical installer gap.
 installer.graphical	Installer	Graphical Installer Route	seven installer graphical	safe	Show the Calamares graphical installer route, launcher and live ISO entrypoint readiness.
+installer.runtime	Installer	Calamares Runtime Policy	seven installer runtime	safe	Show whether Calamares is installed, officially available or declared as a trusted AUR/downstream ISO runtime.
 installer.portal	Installer	Installer Portal	seven-installer portal	safe	Show the user-facing SevenOS installer portal and safe route for this machine.
 installer.guide	Installer	Installer Guide	seven installer guide	safe	Show the normal-user install path SevenOS exposes today.
 installer.install	Installer	Install Installer Tools	seven installer install	packages	Install installer foundation packages.

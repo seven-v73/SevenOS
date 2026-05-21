@@ -1323,3 +1323,14 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   obligatoire, en plus du launcher, du profil Calamares et de l'entree live ISO.
 - `seven state --json`, `seven autonomy`, le registre d'actions et `ux-check`
   savent maintenant lire `channel` et le portail installateur.
+
+## 2026-05-21 - Calamares runtime source gate
+
+- Ajout de `seven installer runtime`, contrat `sevenos.calamares-runtime.v1`
+  qui separe le profil Calamares SevenOS du runtime Calamares reel.
+- Le gate indique maintenant si Calamares est installe, disponible via pacman,
+  declare dans `scripts/packages-installer-aur.txt`, et quel helper AUR
+  (`yay`/`paru`) peut servir au build ISO.
+- `seven installer release --json` ajoute `calamares-source-policy` comme check
+  optionnel sans marquer la release graphique comme prete tant que le runtime
+  Calamares n'est pas present.

@@ -84,6 +84,8 @@ What is already testable:
   `docs/DISTRIBUTION_AUTONOMY.md`.
 - Release channel/status checks through `seven channel`, `seven release` and
   `seven-installer status --json`.
+- Calamares runtime source checks through `seven installer runtime`, keeping
+  the graphical ISO gate explicit instead of silently assuming a package source.
 
 The current quality gate remains:
 

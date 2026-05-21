@@ -85,6 +85,12 @@ This does not create a Git commit or fake a release. It gives Hub, Settings and
 Doctor a stable product vocabulary while `seven release` remains the stricter
 gate for public ISO readiness.
 
+For the graphical installer, `seven installer runtime --json` separates the
+Calamares profile from the Calamares runtime package. This keeps the release
+gate honest on plain Arch hosts: SevenOS can validate its profile and live ISO
+entrypoint while still reporting that the ISO build environment must provide
+Calamares from a trusted downstream repository or AUR build.
+
 SevenOS becomes a public distribution only when:
 
 - `seven release doctor` is public-release-ready;
