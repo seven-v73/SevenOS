@@ -2,7 +2,7 @@
 Type=Application
 Name=Seven Reader
 Comment=Read PDF, EPUB, Markdown and comics with SevenOS
-Exec=seven-reader open %U
+Exec=seven-reader open %F
 Icon=seven-reader
 Terminal=false
 Categories=Office;Viewer;

@@ -8,6 +8,46 @@ shift || true
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
 VM_PLAN="$CONFIG_DIR/windows-vm-plan.json"
 
+language_code() {
+  local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
+  local config="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.conf"
+  if [[ -z "${SEVENOS_LANGUAGE:-}" && -f "$config" ]]; then
+    language="$(awk -F= '/^(SEVENOS_LANGUAGE|LANG)=/{gsub(/["'\'']/, "", $2); print $2; exit}' "$config")"
+  fi
+  [[ "$language" == fr* ]] && printf 'fr' || printf 'en'
+}
+
+LANG_CODE="$(language_code)"
+
+msg() {
+  local key="$1"
+  case "$LANG_CODE:$key" in
+    fr:windows_plan) printf 'Plan Windows SevenOS' ;;
+    fr:mode) printf 'Mode' ;;
+    fr:ready) printf 'prêt' ;;
+    fr:open_actions) printf 'Actions ouvertes' ;;
+    fr:critical) printf 'critique(s)' ;;
+    fr:high) printf 'haute(s)' ;;
+    fr:medium) printf 'moyenne(s)' ;;
+    fr:severity) printf 'Gravité' ;;
+    fr:phase) printf 'Phase' ;;
+    fr:command) printf 'Commande' ;;
+    *) case "$key" in
+      windows_plan) printf 'SevenOS Windows Plan' ;;
+      mode) printf 'Mode' ;;
+      ready) printf 'ready' ;;
+      open_actions) printf 'Open actions' ;;
+      critical) printf 'critical' ;;
+      high) printf 'high' ;;
+      medium) printf 'medium' ;;
+      severity) printf 'Severity' ;;
+      phase) printf 'Phase' ;;
+      command) printf 'Command' ;;
+      *) printf '%s' "$key" ;;
+    esac ;;
+  esac
+}
+
 dry_run() {
   [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]
 }
@@ -321,26 +361,54 @@ PY
 }
 
 plan_human() {
-  WINDOWS_PLAN="$(plan_json)" python - <<'PY'
+  WINDOWS_PLAN="$(plan_json)" \
+  SEVENOS_WINDOWS_PLAN_TITLE="$(msg windows_plan)" \
+  SEVENOS_LABEL_MODE="$(msg mode)" \
+  SEVENOS_LABEL_READY="$(msg ready)" \
+  SEVENOS_LABEL_OPEN_ACTIONS="$(msg open_actions)" \
+  SEVENOS_LABEL_CRITICAL="$(msg critical)" \
+  SEVENOS_LABEL_HIGH="$(msg high)" \
+  SEVENOS_LABEL_MEDIUM="$(msg medium)" \
+  SEVENOS_LABEL_SEVERITY="$(msg severity)" \
+  SEVENOS_LABEL_PHASE="$(msg phase)" \
+  SEVENOS_LABEL_COMMAND="$(msg command)" \
+  SEVENOS_LANG_CODE="$LANG_CODE" \
+  python - <<'PY'
 import json
 import os
 
 data = json.loads(os.environ["WINDOWS_PLAN"])
 summary = data.get("summary", {})
 
-print("SevenOS Windows Plan")
+print(os.environ.get("SEVENOS_WINDOWS_PLAN_TITLE", "SevenOS Windows Plan"))
 print("====================")
-print(f"Mode: {data.get('mode', 'setup-needed')} · ready: {str(data.get('ready', False)).lower()}")
+print(f"{os.environ.get('SEVENOS_LABEL_MODE', 'Mode')}: {data.get('mode', 'setup-needed')} · {os.environ.get('SEVENOS_LABEL_READY', 'ready')}: {str(data.get('ready', False)).lower()}")
 print(
-    f"Open actions: {summary.get('total', 0)} "
-    f"({summary.get('critical', 0)} critical, {summary.get('high', 0)} high, {summary.get('medium', 0)} medium)"
+    f"{os.environ.get('SEVENOS_LABEL_OPEN_ACTIONS', 'Open actions')}: {summary.get('total', 0)} "
+    f"({summary.get('critical', 0)} {os.environ.get('SEVENOS_LABEL_CRITICAL', 'critical')}, {summary.get('high', 0)} {os.environ.get('SEVENOS_LABEL_HIGH', 'high')}, {summary.get('medium', 0)} {os.environ.get('SEVENOS_LABEL_MEDIUM', 'medium')})"
 )
 print()
-print(f"{'Severity':<9} {'Phase':<9} {'Command'}")
+print(f"{os.environ.get('SEVENOS_LABEL_SEVERITY', 'Severity'):<9} {os.environ.get('SEVENOS_LABEL_PHASE', 'Phase'):<9} {os.environ.get('SEVENOS_LABEL_COMMAND', 'Command')}")
 print(f"{'--------':<9} {'-----':<9} {'-------'}")
 for item in data.get("next", []):
+    reason = item.get('reason','')
+    if os.environ.get("SEVENOS_LANG_CODE") == "fr":
+        reason = {
+            "A Windows ISO and VirtIO ISO are needed before SevenOS can launch full Windows Desktop Mode.": "Une ISO Windows et une ISO VirtIO sont nécessaires avant de lancer le mode Bureau Windows complet.",
+            "Install Wine/Lutris compatibility tooling": "Installer les outils de compatibilité Wine/Lutris.",
+            "Install Bottles through Flatpak for accessible Windows apps": "Installer Bottles via Flatpak pour des apps Windows accessibles.",
+            "Complete KVM/libvirt readiness": "Finaliser la préparation KVM/libvirt.",
+            "Create the guided Windows VM": "Créer la VM Windows guidée.",
+            "Wine is the base layer for lightweight Windows applications.": "Wine est la couche de base pour les applications Windows légères.",
+            "Lutris gives SevenOS a friendlier Windows app and game workflow.": "Lutris rend le flux des apps et jeux Windows plus accessible dans SevenOS.",
+            "Bottles is the accessible non-terminal surface for Windows apps.": "Bottles fournit une surface graphique accessible pour les apps Windows.",
+            "KVM needs VT-x or AMD-V enabled in firmware.": "KVM exige VT-x ou AMD-V activé dans le firmware.",
+            "SevenOS needs /dev/kvm for performant Windows VM mode.": "SevenOS a besoin de /dev/kvm pour un mode VM Windows performant.",
+            "QEMU is required for full Windows Desktop Mode.": "QEMU est requis pour le mode Bureau Windows complet.",
+            "Virt Manager is the graphical VM control surface for non-terminal users.": "Virt Manager est la surface graphique de contrôle VM pour les utilisateurs non terminal.",
+        }.get(reason, reason)
     print(f"{item.get('severity',''):<9} {item.get('phase',''):<9} {item.get('command','')}")
-    print(f"{'':<9} {'':<9} {item.get('reason','')}")
+    print(f"{'':<9} {'':<9} {reason}")
 PY
 }
 
