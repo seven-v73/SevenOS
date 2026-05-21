@@ -1051,6 +1051,7 @@ activate_profile() {
     printf 'write %q\n' "$STATE_FILE"
     write_profile_json "$key"
     printf 'seven runtime activate %q --apply --yes\n' "$key"
+    printf 'seven hypr lua apply %q\n' "$key"
     return 0
   fi
 
@@ -1080,6 +1081,9 @@ EOF
   fi
   if [[ -x "$ROOT_DIR/scripts/profile-isolation.sh" ]]; then
     "$ROOT_DIR/scripts/profile-isolation.sh" apply "$key" --yes >/dev/null 2>&1 || true
+  fi
+  if [[ -x "$ROOT_DIR/scripts/hypr-lua.sh" ]]; then
+    "$ROOT_DIR/scripts/hypr-lua.sh" apply "$key" >/dev/null 2>&1 || true
   fi
 
   "$ROOT_DIR/scripts/events.sh" log \

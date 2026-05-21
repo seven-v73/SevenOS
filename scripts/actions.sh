@@ -245,6 +245,8 @@ shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned 
 shell.install	Desktop	Install Shell Foundation	./install.sh shell-ags --yes	packages	Install GJS, TypeScript, GTK4 and libadwaita for the B3 shell foundation.
 identity.status	Ecosystem	SevenOS Visual Identity	seven identity	safe	Show SevenOS Beyond the Desktop product language.
 identity.design	Ecosystem	Seven Design Engine	seven identity design	safe	Show Seven Mocha/Latte palettes, icon resolution and design surfaces.
+identity.theme	Ecosystem	Theme Runtime	seven identity theme	safe	Show active GTK, Qt, icons, cursor and Kvantum runtime state.
+identity.theme.doctor	Ecosystem	Theme Doctor	seven identity theme-doctor	safe	Check dark/light parity, toolkit coherence and runtime theme state.
 identity.icons	Ecosystem	SevenOS Native Icons	seven identity icons	safe	Show native SevenOS app icons and install names.
 identity.visuals	Ecosystem	Visual Package Layer	seven identity visuals	safe	Show Catppuccin, cursor, Kvantum and icon package readiness.
 identity.visuals.install	Ecosystem	Install Visual Layer	seven identity visuals install --yes	packages	Install Catppuccin GTK, cursors, Kvantum themes and Papirus folder integration.

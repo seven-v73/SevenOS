@@ -187,20 +187,27 @@ profile_json() {
 service_json() {
   local key="$1"
   local service="$2"
-  local state
+  local state detail
 
   if service_active "$service"; then
     state="OK"
+    detail="active"
   elif service_enabled "$service"; then
     state="PART"
+    detail="enabled but inactive"
+  elif systemctl list-unit-files "$service" --no-legend 2>/dev/null | grep -q "^$service"; then
+    state="QUIET"
+    detail="installed and intentionally inactive unless its profile needs it"
   else
     state="MISS"
+    detail="unit not installed"
   fi
 
-  printf '{"key":%s,"service":%s,"state":%s}' \
+  printf '{"key":%s,"service":%s,"state":%s,"detail":%s}' \
     "$(printf '%s' "$key" | json_escape)" \
     "$(printf '%s' "$service" | json_escape)" \
-    "$(printf '%s' "$state" | json_escape)"
+    "$(printf '%s' "$state" | json_escape)" \
+    "$(printf '%s' "$detail" | json_escape)"
 }
 
 command_json() {

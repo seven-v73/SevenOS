@@ -103,6 +103,10 @@ def ai() -> int:
     return emit("◉", message, "ready", "ready")
 
 
+def control_center() -> int:
+    return emit("󰒓  Panneau", "Panneau de contrôle · Wi-Fi, Bluetooth, son, batterie", "control-center", "system")
+
+
 def media() -> int:
     if not shutil.which("playerctl"):
         return emit("", "No media provider", "hidden")
@@ -172,11 +176,13 @@ def main() -> int:
         "recorder": recorder,
         "recording": recorder,
         "ai": ai,
+        "control-center": control_center,
+        "panel": control_center,
         "media": media,
         "profile": profile,
     }
     if command not in handlers:
-        print("Usage: seven-waybar-status [wifi|bluetooth|vpn|recorder|ai|media|profile]", file=sys.stderr)
+        print("Usage: seven-waybar-status [wifi|bluetooth|vpn|recorder|ai|control-center|media|profile]", file=sys.stderr)
         return 2
     return handlers[command]()
 
