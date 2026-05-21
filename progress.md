@@ -1345,3 +1345,18 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   SevenOS ressemble a une distribution autonome plutot qu'a un backend expose.
 - Le registre d'actions et `ux-check` savent valider `seven mask`, afin que les
   prochains raffinements de branding soient visibles dans les gates produit.
+
+## 2026-05-21 - SevenOS dynamic adaptation contract pass
+
+- `seven dynamic` devient l'entree produit pour verifier que SevenOS est vivant
+  et pas seulement masque : profil actif, `profile-ui.json`, contexte
+  semantique, theme runtime, palette wallpaper et accents Hyprland dynamiques.
+- `scripts/adaptive-ui.sh` expose maintenant `dynamic_inputs`, avec le bus UI du
+  mini OS, les toolkits dark/light, la source matugen/wallpaper et le fichier
+  `sevenos-dynamic.conf`.
+- `seven state --json` expose maintenant `adaptive`, ce qui permet a Hub,
+  Settings et SevenDaemon de lire l'etat dynamique sans relancer des probes
+  disperses.
+- `seven autonomy` integre `dynamic-adaptation` comme gate de distribution
+  autonome : SevenOS doit changer de comportement et d'identite selon le mini OS,
+  le contexte et le theme.

@@ -266,6 +266,8 @@ core.logs	Ecosystem	Seven Daemon Logs	seven core logs	safe	Follow the Seven Core
 core.observer-logs	Ecosystem	Context Observer Logs	seven core observer-logs	safe	Follow the semantic context observer journal.
 adaptive.status	Ecosystem	Adaptive UI Status	seven adaptive	safe	Show whether active profile, shell, Waybar, Hub and context signals are connected.
 adaptive.plan	Ecosystem	Adaptive UI Plan	seven adaptive plan	safe	Show the remaining steps to make profile-aware UI behavior feel productized.
+dynamic.status	Ecosystem	Dynamic OS Status	seven dynamic	safe	Show whether profile UI, theme runtime, wallpaper palette and compositor accents are connected.
+dynamic.doctor	Ecosystem	Dynamic OS Doctor	seven dynamic doctor	safe	Validate SevenOS dynamic profile/theme/surface adaptation.
 scheduler.status	Ecosystem	Seven Scheduler Status	seven scheduler status	safe	Show process groups, active profile policy and host scheduling hints.
 scheduler.plan	Ecosystem	Seven Scheduler Plan	seven scheduler plan	safe	Show context-aware CPU, priority and power actions.
 scheduler.apply	Ecosystem	Apply Scheduler Hints	seven scheduler apply	changes	Preview or apply safe user-space nice adjustments for owned processes.

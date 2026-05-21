@@ -20,6 +20,7 @@ seven autonomy --json
 seven autonomy doctor
 seven platform
 seven mask
+seven dynamic
 seven channel
 ```
 
@@ -34,6 +35,7 @@ The contract checks:
 - mini OS runtime manifests with strict HOME/cache/data/workspace boundaries;
 - SevenDaemon service path for future policy execution;
 - installer and release freeze gates.
+- dynamic profile/theme/wallpaper/compositor adaptation.
 
 ## Public Mask Contract
 
@@ -53,6 +55,26 @@ The contract validates:
 
 This is the practical line between “Arch tools visible everywhere” and “SevenOS
 as the primary operating system experience”.
+
+## Dynamic OS Contract
+
+`seven dynamic` is the user-facing contract for a living SevenOS desktop. It is
+an alias for the adaptive UI contract, but with product vocabulary that normal
+surfaces can expose.
+
+It checks that these signals move together:
+
+- active mini OS profile;
+- `profile-ui.json` as the UI bus;
+- semantic context and switch suggestions;
+- Waybar/Profile Center/Hub actions;
+- theme runtime;
+- wallpaper-derived palette;
+- Hyprland dynamic compositor accents.
+
+This is what prevents SevenOS from feeling like a static theme. A profile change
+must have visible runtime consequences across shell, launchers, settings,
+terminal, wallpaper and window behavior.
 
 ## Masking Policy
 

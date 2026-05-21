@@ -81,6 +81,7 @@ installer = run_json(["scripts/installer-stack.sh", "release", "--json"], timeou
 platform = run_json(["scripts/platform.sh", "json"], timeout=8) or {}
 channel = run_json(["scripts/channel.sh", "json"], timeout=8) or {}
 mask = run_json(["scripts/mask.sh", "json"], timeout=8) or {}
+adaptive = run_json(["scripts/adaptive-ui.sh", "json"], timeout=8) or {}
 dirty_count = 0
 try:
     dirty = subprocess.run(["git", "status", "--short"], cwd=root, text=True, capture_output=True, check=False, timeout=5)
@@ -121,6 +122,13 @@ checks = [
         "title": "SevenOS public masking",
         "detail": f"Mask state: {mask.get('state', 'unknown')}; score: {mask.get('score', 'unknown')}.",
         "command": "seven mask",
+    },
+    {
+        "key": "dynamic-adaptation",
+        "state": "OK" if int(adaptive.get("percent", 0) or 0) >= 90 else "PART",
+        "title": "SevenOS dynamic adaptation",
+        "detail": f"Adaptive state: {adaptive.get('state', 'unknown')}; score: {adaptive.get('percent', 'unknown')}%.",
+        "command": "seven dynamic",
     },
     {
         "key": "release-channel",

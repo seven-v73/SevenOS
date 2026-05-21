@@ -26,13 +26,22 @@ from pathlib import Path
 
 root = Path(os.environ["SEVENOS_ROOT"])
 
-def command_json(command, fallback):
-    result = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)
+def command_json(command, fallback, timeout=6):
+    try:
+        result = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False, timeout=timeout)
+    except Exception:
+        return fallback
     if result.returncode != 0 or not result.stdout.strip():
         return fallback
     try:
         return json.loads(result.stdout)
     except json.JSONDecodeError:
+        return fallback
+
+def read_json(path, fallback):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
         return fallback
 
 def file_ok(relative):
@@ -46,9 +55,18 @@ profile = command_json([str(root / "bin/seven"), "profile", "current", "--json"]
 shell = command_json([str(root / "scripts/shell.sh"), "status", "--json"], {})
 context = command_json([str(root / "scripts/context.sh"), "status", "--json"], {})
 actions = command_json([str(root / "scripts/actions.sh"), "--json"], {"actions": []})
+platform = command_json([str(root / "scripts/platform.sh"), "json"], {})
+mask = command_json([str(root / "scripts/mask.sh"), "json"], {})
+
+config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+profile_ui = read_json(config_home / "profile-ui.json", {})
+theme_runtime = read_json(config_home / "theme-runtime.json", {})
+wallpaper_theme = read_json(config_home / "wallpaper-theme.json", {})
+hypr_dynamic = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "hypr/conf/sevenos-dynamic.conf"
 
 action_ids = {item.get("id") for item in actions.get("actions", [])}
 active_profile_key = profile.get("key") or profile.get("profile") or "unknown"
+profile_ui_key = profile_ui.get("profile") or "unknown"
 context_payload = context.get("primary_context") if isinstance(context.get("primary_context"), dict) else {}
 context_profile = context_payload.get("profile") or context_payload.get("key") or "unknown"
 aligned = (
@@ -64,6 +82,12 @@ checks = [
         "state": "OK" if profile.get("key") or profile.get("profile") or profile.get("title") else "MISS",
         "detail": "Active profile exposes machine-readable mode state.",
         "command": "seven profile current --json",
+    },
+    {
+        "key": "profile-ui-bus",
+        "state": "OK" if profile_ui.get("schema") == "sevenos.profile-ui.v1" and (profile_ui_key == active_profile_key or active_profile_key == "unknown") else "PART" if profile_ui.get("schema") else "MISS",
+        "detail": "The active mini OS publishes profile-ui.json for Hub, Launchpad, Waybar, Settings and native apps.",
+        "command": "cat ~/.config/sevenos/profile-ui.json",
     },
     {
         "key": "shell-contract",
@@ -84,6 +108,12 @@ checks = [
         "command": "seven actions --json",
     },
     {
+        "key": "public-contracts",
+        "state": "OK" if platform.get("state") == "masked" and mask.get("state") == "masked" else "PART",
+        "detail": "Dynamic surfaces can speak SevenOS vocabulary while hiding backend details.",
+        "command": "seven mask",
+    },
+    {
         "key": "semantic-context",
         "state": "OK" if context.get("schema") == "sevenos.context.v1" and context.get("primary_context") else "PART" if context.get("schema") else "MISS",
         "detail": "Context engine provides semantic mode signals for future adaptive defaults.",
@@ -100,6 +130,24 @@ checks = [
         "state": "OK" if executable_ok("bin/seven-profile-center-native") and executable_ok("bin/seven-hub-native") else "MISS",
         "detail": "Native Hub/Profile Center surfaces can present adaptive controls.",
         "command": "seven hub-native status",
+    },
+    {
+        "key": "theme-runtime",
+        "state": "OK" if theme_runtime.get("schema") == "sevenos.theme-runtime.v1" and theme_runtime.get("mode") else "PART" if theme_runtime else "MISS",
+        "detail": "Theme mode and toolkit state are exposed as a runtime contract.",
+        "command": "scripts/theme-engine.sh json",
+    },
+    {
+        "key": "wallpaper-palette",
+        "state": "OK" if wallpaper_theme.get("schema") == "sevenos.wallpaper-theme.v1" and isinstance(wallpaper_theme.get("colors"), dict) else "PART" if wallpaper_theme else "MISS",
+        "detail": "Wallpaper colors feed SevenOS tokens and dynamic visual accents.",
+        "command": "scripts/wallpaper-theme.sh status",
+    },
+    {
+        "key": "hypr-dynamic",
+        "state": "OK" if hypr_dynamic.is_file() and hypr_dynamic.stat().st_size > 0 else "MISS",
+        "detail": "Hyprland consumes SevenOS dynamic compositor accents instead of only static config.",
+        "command": "cat ~/.config/hypr/conf/sevenos-dynamic.conf",
     },
 ]
 
@@ -136,8 +184,30 @@ print(json.dumps({
     "alignment": {
         "active_profile": active_profile_key,
         "context_profile": context_profile,
+        "profile_ui": profile_ui_key,
         "state": "OK" if aligned or has_switch_suggestion else "PART",
         "switch_suggestion": next((item for item in context_actions if item.get("key") == "profile.switch-suggested"), None),
+    },
+    "dynamic_inputs": {
+        "profile_ui": {
+            "schema": profile_ui.get("schema"),
+            "profile": profile_ui.get("profile"),
+            "title": profile_ui.get("title"),
+            "accent": profile_ui.get("accent"),
+            "wallpaper_modules": profile_ui.get("waybar_modules", []),
+        },
+        "theme_runtime": {
+            "schema": theme_runtime.get("schema"),
+            "mode": theme_runtime.get("mode"),
+            "toolkits": theme_runtime.get("toolkits", {}),
+        },
+        "wallpaper_theme": {
+            "schema": wallpaper_theme.get("schema"),
+            "source": wallpaper_theme.get("source"),
+            "image": wallpaper_theme.get("image"),
+            "colors": wallpaper_theme.get("colors", {}),
+        },
+        "hypr_dynamic": str(hypr_dynamic),
     },
     "checks": checks,
     "next": next_actions,

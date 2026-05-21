@@ -45,6 +45,9 @@ It is built around foundation pillars:
 - `seven mask` as the public masking contract that verifies launcher names,
   installer portals, software surfaces and identity files present SevenOS before
   backend implementation details.
+- `seven dynamic` as the adaptive OS contract that verifies profile UI,
+  semantic context, theme runtime, wallpaper palette and compositor accents move
+  together.
 - `seven channel` as the product release channel contract, so Hub and Settings
   can say dev/testing/stable before exposing branch, commit and dirty worktree
   details.
@@ -87,6 +90,8 @@ What is already testable:
   `docs/DISTRIBUTION_AUTONOMY.md`.
 - Public masking checks through `seven mask`, so Hub/Settings can distinguish a
   SevenOS-first surface from a backend-visible Arch/Hyprland workflow.
+- Dynamic adaptation checks through `seven dynamic`, linking profile UI,
+  wallpaper colors, theme runtime and the Hyprland dynamic layer.
 - Release channel/status checks through `seven channel`, `seven release` and
   `seven-installer status --json`.
 - Calamares runtime source checks through `seven installer runtime`, keeping

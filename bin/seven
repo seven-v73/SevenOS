@@ -501,6 +501,13 @@ def handle_adaptive(args):
     run_script(args, "scripts/adaptive-ui.sh", *extra)
 
 
+def handle_dynamic(args):
+    extra = [args.action]
+    if args.json:
+        extra = ["json"]
+    run_script(args, "scripts/adaptive-ui.sh", *extra)
+
+
 def handle_welcome(args):
     extra = [args.action]
     if args.json:
@@ -741,6 +748,9 @@ def main():
     adaptive_parser = subparsers.add_parser("adaptive", help="inspect SevenOS adaptive profile-aware UI")
     adaptive_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
     adaptive_parser.add_argument("--json", action="store_true", help="print machine-readable adaptive UI contract")
+    dynamic_parser = subparsers.add_parser("dynamic", help="inspect SevenOS dynamic profile/theme/surface adaptation")
+    dynamic_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
+    dynamic_parser.add_argument("--json", action="store_true", help="print machine-readable dynamic adaptation contract")
     identity_parser = subparsers.add_parser("identity", help="show SevenOS visual identity language")
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
@@ -948,6 +958,8 @@ def main():
         handle_context(args)
     elif args.command == "adaptive":
         handle_adaptive(args)
+    elif args.command == "dynamic":
+        handle_dynamic(args)
     elif args.command == "identity":
         handle_identity(args)
     elif args.command == "hypr":
