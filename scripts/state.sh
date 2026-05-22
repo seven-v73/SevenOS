@@ -241,6 +241,11 @@ ensure_public_contracts() {
   AUTONOMY_FILE="$STATE_TMP/autonomy.json" \
   ADAPTIVE_FILE="$STATE_TMP/adaptive.json" \
   CHANNEL_FILE="$STATE_TMP/channel.json" \
+  SMOKE_FILE="$STATE_TMP/smoke.json" \
+  IDENTITY_FILE="$STATE_TMP/identity.json" \
+  HEALTH_FILE="$STATE_TMP/health.json" \
+  PRODUCT_FILE="$STATE_TMP/product.json" \
+  ACTIONS_FILE="$STATE_TMP/actions.json" \
   ROOT_DIR="$ROOT_DIR" \
   python - <<'PY'
 import json
@@ -259,6 +264,15 @@ def write_if_null(name: str, payload: dict) -> None:
     path = Path(os.environ[name])
     if is_null(path):
         path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def load_path(name: str):
+    path = Path(os.environ[name])
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 profile_path = Path.home() / ".config/sevenos/profile.json"
@@ -414,6 +428,92 @@ write_if_null("DAILY_FILE", daily)
 write_if_null("AUTONOMY_FILE", autonomy)
 write_if_null("ADAPTIVE_FILE", adaptive)
 write_if_null("CHANNEL_FILE", channel)
+
+about_contract = load_path("ABOUT_FILE")
+identity_contract = load_path("IDENTITY_FILE")
+distribution_contract = load_path("DISTRIBUTION_FILE")
+health_contract = load_path("HEALTH_FILE")
+product_contract = load_path("PRODUCT_FILE")
+actions_contract = load_path("ACTIONS_FILE")
+action_items = actions_contract.get("actions", [])
+if not isinstance(action_items, list):
+    action_items = []
+action_ids = {item.get("id") for item in action_items if isinstance(item, dict)}
+smoke_checks = [
+    {
+        "key": "state-snapshot",
+        "state": "OK",
+        "title": "Unified SevenOS state",
+        "detail": "This smoke summary is embedded in seven state --json.",
+        "command": "seven state --json",
+    },
+    {
+        "key": "about-contract",
+        "state": "OK" if about_contract.get("schema") == "sevenos.about.v1" and about_contract.get("about_ready") else "PART",
+        "title": "Public SevenOS identity",
+        "detail": f"About state: {about_contract.get('state', 'unknown')}.",
+        "command": "seven about doctor",
+    },
+    {
+        "key": "identity-contract",
+        "state": "OK" if identity_contract.get("schema") in {"sevenos.identity.v2", "sevenos.identity-doctor.v1"} else "PART",
+        "title": "Visual identity",
+        "detail": f"Identity schema: {identity_contract.get('schema', 'unknown')}.",
+        "command": "seven identity doctor",
+    },
+    {
+        "key": "distribution-contract",
+        "state": "OK" if distribution_contract.get("daily_driver_ready") else "PART",
+        "title": "Distribution autonomy",
+        "detail": f"Distribution: {distribution_contract.get('state', 'unknown')} at {distribution_contract.get('score', 'unknown')}%.",
+        "command": "seven distribution",
+    },
+    {
+        "key": "health-contract",
+        "state": "OK" if health_contract.get("daily_ready") or health_contract.get("state") in {"healthy", "ready", "ready-with-actions"} else "PART",
+        "title": "Daily health",
+        "detail": f"Health state: {health_contract.get('state', 'unknown')}.",
+        "command": "seven health doctor",
+    },
+    {
+        "key": "product-facade",
+        "state": "OK" if product_contract.get("schema") == "sevenos.product.v1" and product_contract.get("daily_driver_ready") else "PART",
+        "title": "Product facade",
+        "detail": f"Product state: {product_contract.get('state', 'unknown')}.",
+        "command": "seven product",
+    },
+    {
+        "key": "action-registry",
+        "state": "OK" if {"smoke.status", "smoke.doctor", "smoke.json"}.issubset(action_ids) else "PART",
+        "title": "Native action registry",
+        "detail": f"{len(action_items)} action(s) exposed.",
+        "command": "seven actions --json",
+    },
+]
+smoke_ok = sum(1 for item in smoke_checks if item["state"] == "OK")
+smoke_partial = sum(1 for item in smoke_checks if item["state"] == "PART")
+smoke_score = round((smoke_ok + smoke_partial * 0.35) / max(len(smoke_checks), 1) * 100)
+smoke_issues = [item for item in smoke_checks if item["state"] != "OK"]
+Path(os.environ["SMOKE_FILE"]).write_text(json.dumps({
+    "schema": "sevenos.smoke.v1",
+    "state": "ready" if smoke_score >= 90 else "partial" if smoke_score >= 70 else "blocked",
+    "score": smoke_score,
+    "embedded": True,
+    "fast_gate": True,
+    "checks": smoke_checks,
+    "summary": {
+        "ok": smoke_ok,
+        "partial": smoke_partial,
+        "missing": 0,
+        "total": len(smoke_checks),
+    },
+    "issues": smoke_issues,
+    "commands": {
+        "status": "seven smoke",
+        "doctor": "seven smoke doctor",
+        "deep_audit": "./scripts/ux-check.sh",
+    },
+}, indent=2), encoding="utf-8")
 PY
 }
 
@@ -515,6 +615,9 @@ cat "$STATE_TMP/recovery.json"
 printf ','
 printf '"health":'
 cat "$STATE_TMP/health.json"
+printf ','
+printf '"smoke":'
+cat "$STATE_TMP/smoke.json"
 printf ','
 printf '"support":'
 cat "$STATE_TMP/support.json"

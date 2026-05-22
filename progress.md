@@ -1556,3 +1556,12 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   `SEVENOS_RELEASE_DEEP=1 seven doctor release --json`.
 - La gate release distingue mieux daily-driver stable, release publique et
   audits developpeur profonds sans bloquer l'utilisateur normal.
+
+## 2026-05-22 - SevenOS embedded smoke state pass
+
+- `seven state --json` expose maintenant un objet `smoke` integre, calcule
+  depuis les contrats publics deja collectes par le snapshot.
+- Hub, Settings et SevenAI peuvent lire cette jauge rapide sans relancer
+  `seven smoke` et sans risquer une boucle `state -> smoke -> state`.
+- `ux-check`, README et la doc autonomie savent que le smoke gate existe aussi
+  comme signal embarque dans la source d'etat centrale.

@@ -133,6 +133,10 @@ It is intentionally not a replacement for `./scripts/ux-check.sh`. The UX check
 is a deep developer audit. Smoke is the quick gate Hub, Settings and release
 surfaces can run without making the system feel blocked or backend-first.
 
+`seven state --json` also embeds a `smoke` object. Native surfaces should prefer
+that snapshot for dashboards and only execute `seven smoke doctor` when the user
+requests an explicit validation.
+
 `seven doctor release` uses this smoke gate by default. The full UX audit is
 reserved for explicit release work:
 

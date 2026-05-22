@@ -37,6 +37,8 @@ It is built around foundation pillars:
   update, recovery, foundations, distribution and service diagnostics
 - `seven smoke` as the fast public-product gate for Hub, Settings and release
   flows, before running the full developer UX audit
+- `seven state --json` embeds the smoke summary so native surfaces can show
+  release/product health without launching extra backend checks
 - `seven support` as the local-first support route for health, product,
   recovery, events and optional diagnostic bundles without automatic upload
 - `seven product` as the compact public product facade for Hub, Settings,
