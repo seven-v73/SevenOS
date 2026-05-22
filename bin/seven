@@ -263,6 +263,13 @@ def handle_product(args):
     run_script(args, "scripts/product.sh", *extra)
 
 
+def handle_foundations(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/foundations.sh", *extra)
+
+
 def handle_channel(args):
     extra = [args.action]
     if args.channel:
@@ -905,6 +912,12 @@ def main():
     product_parser = subparsers.add_parser("product", help="show compact SevenOS product snapshot for native surfaces")
     product_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json"))
     product_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS product facade")
+    foundations_parser = subparsers.add_parser("foundations", help="show SevenOS-owned workflow layer over technical foundations")
+    foundations_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    foundations_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS foundations contract")
+    foundation_parser = subparsers.add_parser("foundation", help="alias for SevenOS foundations")
+    foundation_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    foundation_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS foundations contract")
 
     doctor_parser = subparsers.add_parser("doctor", help="check host readiness")
     doctor_parser.add_argument("action", nargs="?", default="check")
@@ -1097,6 +1110,8 @@ def main():
         handle_lifecycle(args)
     elif args.command == "product":
         handle_product(args)
+    elif args.command in ("foundations", "foundation"):
+        handle_foundations(args)
     elif args.command == "doctor":
         if args.action in ("fix", "repair"):
             handle_repair(args)

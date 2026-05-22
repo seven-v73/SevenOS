@@ -29,6 +29,9 @@ It is built around foundation pillars:
   repair, protected state, recovery and release gates
 - `seven product` as the compact public product facade for Hub, Settings,
   Welcome and installer surfaces
+- `seven foundations` as the SevenOS ownership map that links public surfaces
+  to their technical foundations without making backend tools the first user
+  workflow
 - `sevenos.dotinst` as the install, restore, migration and packaging contract
 - Seven Hub as the user-facing control center
 - SevenOS Settings as the normal-user configuration center for wallpaper, displays, Wi-Fi, sound, keyboard, security, profiles, apps and system repair
@@ -64,6 +67,10 @@ It is built around foundation pillars:
 - `seven channel` as the product release channel contract, so Hub and Settings
   can say dev/testing/stable before exposing branch, commit and dirty worktree
   details.
+- `seven foundations` as the foundation ownership contract, so Hub, Settings
+  and Doctor can say SevenOS Software, Seven Smart Window System, SevenOS Shell,
+  Mini OS Runtime, Shield, Windows Bridge and Lifecycle before showing pacman,
+  Hyprland, Waybar, libvirt or systemd.
 
 SevenOS aims to provide:
 

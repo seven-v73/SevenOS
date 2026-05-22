@@ -18,6 +18,7 @@ Run:
 seven about
 seven lifecycle
 seven product
+seven foundations
 seven autonomy
 seven autonomy --json
 seven autonomy doctor
@@ -35,6 +36,7 @@ The contract checks:
 - public About/edition identity via `seven about`;
 - public lifecycle/maintenance routes via `seven lifecycle`;
 - compact public product facade via `seven product`;
+- SevenOS-owned foundation routes via `seven foundations`;
 - SevenOS-first commands: `seven`, `sevenpkg`, SevenStore and Settings;
 - action execution without opening terminals by default;
 - release channel identity (`dev`, `testing`, `stable`) instead of raw Git as
@@ -95,6 +97,26 @@ the signals that Hub, Settings, Welcome and installer screens need most:
 
 The goal is performance and clarity: UI surfaces can read one product contract
 instead of re-implementing the product logic or exposing backend checks directly.
+
+## Foundations Contract
+
+`seven foundations` is the ownership map between SevenOS product surfaces and
+the technical projects underneath them.
+
+It keeps this distinction explicit:
+
+- SevenOS Identity over release files, issue files and branding assets;
+- SevenOS Software over pacman, Flatpak and AUR helpers;
+- Seven Smart Window System over Hyprland, Wayland and generated compositor
+  configuration;
+- SevenOS Shell over Waybar, Rofi and native GTK surfaces;
+- SevenOS Mini OS Runtime over LAPA, cgroups, profile roots and sandbox tools;
+- Shield, Windows Bridge, Installer and Lifecycle over their low-level
+  backends.
+
+The contract does not hide attribution from advanced users. It simply gives Hub,
+Settings, Welcome and Doctor a SevenOS-first route for every foundation before a
+normal user has to see backend commands.
 
 ## Distribution Contract
 

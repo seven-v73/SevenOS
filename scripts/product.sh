@@ -39,6 +39,8 @@ product_json() {
   local pid_about=$!
   env SEVENOS_LIFECYCLE_FAST=1 SEVENOS_DRY_RUN=0 timeout 10 "$ROOT_DIR/scripts/lifecycle.sh" json >"$tmp/lifecycle.json" 2>/dev/null || printf '{}\n' >"$tmp/lifecycle.json" &
   local pid_lifecycle=$!
+  SEVENOS_DRY_RUN=0 timeout 10 "$ROOT_DIR/scripts/foundations.sh" json >"$tmp/foundations.json" 2>/dev/null || printf '{}\n' >"$tmp/foundations.json" &
+  local pid_foundations=$!
   SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 timeout 10 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &
   local pid_distribution=$!
   local pid_surfaces pid_routes pid_mask pid_dynamic
@@ -61,11 +63,12 @@ product_json() {
     SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/adaptive-ui.sh" json >"$tmp/dynamic.json" 2>/dev/null || printf '{}\n' >"$tmp/dynamic.json" &
     pid_dynamic=$!
   fi
-  wait "$pid_about" "$pid_lifecycle" "$pid_distribution" "$pid_surfaces" "$pid_routes" "$pid_mask" "$pid_dynamic" || true
+  wait "$pid_about" "$pid_lifecycle" "$pid_foundations" "$pid_distribution" "$pid_surfaces" "$pid_routes" "$pid_mask" "$pid_dynamic" || true
 
   SEVENOS_ROOT="$ROOT_DIR" \
   ABOUT_JSON="$tmp/about.json" \
   LIFECYCLE_JSON="$tmp/lifecycle.json" \
+  FOUNDATIONS_JSON="$tmp/foundations.json" \
   DISTRIBUTION_JSON="$tmp/distribution.json" \
   SURFACES_JSON="$tmp/surfaces.json" \
   ROUTES_JSON="$tmp/routes.json" \
@@ -87,6 +90,7 @@ def load_path(name):
 
 about = load_path("ABOUT_JSON")
 lifecycle = load_path("LIFECYCLE_JSON")
+foundations = load_path("FOUNDATIONS_JSON")
 distribution = load_path("DISTRIBUTION_JSON")
 surfaces = load_path("SURFACES_JSON")
 routes = load_path("ROUTES_JSON")
@@ -107,6 +111,13 @@ checks = [
         "title": "Lifecycle routes",
         "detail": f"{lifecycle.get('state', 'unknown')} at {lifecycle.get('score', 'unknown')}%.",
         "command": "seven lifecycle",
+    },
+    {
+        "key": "foundations",
+        "state": "OK" if foundations.get("state") in ("sevenos-owned", "mostly-owned") else "PART",
+        "title": "Owned foundations",
+        "detail": f"{foundations.get('state', 'unknown')} at {foundations.get('score', 'unknown')}%.",
+        "command": "seven foundations",
     },
     {
         "key": "distribution",
@@ -166,6 +177,7 @@ print(json.dumps({
     "public_shell": {
         "identity": about.get("state", "unknown"),
         "lifecycle": lifecycle.get("state", "unknown"),
+        "foundations": foundations.get("state", "unknown"),
         "distribution": distribution.get("state", "unknown"),
         "surfaces": surfaces.get("state", "unknown"),
         "routes": routes.get("state", "unknown"),
@@ -192,6 +204,12 @@ print(json.dumps({
             "command": "seven distribution",
         },
         {
+            "id": "foundations",
+            "title": "SevenOS Foundations",
+            "subtitle": f"{foundations.get('state', 'unknown')} · {foundations.get('score', 'unknown')}%",
+            "command": "seven foundations",
+        },
+        {
             "id": "surfaces",
             "title": "SevenOS Surfaces",
             "subtitle": f"{surfaces.get('state', 'unknown')} · routes {routes.get('state', 'unknown')}",
@@ -210,6 +228,7 @@ print(json.dumps({
         "status": "seven product",
         "about": "seven about",
         "lifecycle": "seven lifecycle",
+        "foundations": "seven foundations",
         "distribution": "seven distribution",
         "state": "seven state --json",
     },

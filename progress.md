@@ -1433,3 +1433,16 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   afin que les surfaces natives puissent parler SevenOS avant de parler backend.
 - `seven state --json`, le registre d'actions, README, la doc autonomie et
   `ux-check` savent maintenant valider cette facade produit.
+
+## 2026-05-21 - SevenOS foundations ownership pass
+
+- Ajout de `seven foundations` / `seven foundation`, contrat qui relie chaque
+  fondation technique a une surface SevenOS : Software, Smart Window System,
+  Shell, Settings, Mini OS Runtime, Shield, Windows Bridge, Installer et
+  Lifecycle.
+- Le contrat garde Arch, Hyprland, pacman, Waybar, libvirt, QEMU et systemd
+  comme fondations documentees, mais force une route SevenOS-first pour les
+  parcours normaux.
+- `seven state --json`, le registre d'actions, README, la doc autonomie et
+  `ux-check` savent maintenant valider cette carte de propriete produit, ce qui
+  reduit encore l'effet "Arch rice" visible.

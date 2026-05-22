@@ -32,6 +32,9 @@ lifecycle.doctor	System	Lifecycle Doctor	seven lifecycle doctor	safe	Validate th
 lifecycle.plan	System	Lifecycle Plan	seven lifecycle plan	safe	Show remaining maintenance gates before SevenOS feels like a complete autonomous distribution.
 product.status	System	SevenOS Product	seven product	safe	Show the compact SevenOS product snapshot used by Hub, Settings, Welcome and installer surfaces.
 product.json	System	SevenOS Product JSON	seven product --json	safe	Expose the SevenOS product facade as one machine-readable contract for native surfaces.
+foundations.status	System	SevenOS Foundations	seven foundations	safe	Show how SevenOS owns normal workflows while Arch, Hyprland, pacman and libvirt remain technical foundations.
+foundations.doctor	System	Foundations Doctor	seven foundations doctor	safe	Validate that each low-level foundation has a SevenOS-native route before backend tools are exposed.
+foundations.plan	System	Foundations Plan	seven foundations plan	safe	Show remaining backend-first gaps to make SevenOS feel autonomous and masked.
 autonomy.status	System	SevenOS Autonomy	seven autonomy	safe	Show whether SevenOS is presented as an autonomous OS layer instead of exposed Arch/Hyprland internals.
 autonomy.plan	System	Autonomy Plan	seven autonomy plan	safe	Show the remaining work to mask backend details behind SevenOS surfaces.
 autonomy.doctor	System	Autonomy Doctor	seven autonomy doctor	safe	Validate the SevenOS autonomy contract.
