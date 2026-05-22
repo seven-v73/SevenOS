@@ -331,6 +331,7 @@ Use these before pushing or testing a new machine:
 ```bash
 ./scripts/design-check.sh
 seven smoke --json | python -m json.tool
+seven doctor release --json | python -m json.tool
 ./scripts/ux-check.sh
 ./scripts/check.sh
 seven phase-gate --json | python -m json.tool
@@ -597,6 +598,7 @@ Run local checks:
 ```bash
 ./scripts/check.sh
 seven smoke doctor
+seven doctor release
 ./scripts/ux-check.sh
 ./scripts/phase-gate.sh
 ./scripts/post-install.sh

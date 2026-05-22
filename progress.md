@@ -1547,3 +1547,12 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   une verification courte avant les audits profonds de developpement.
 - Le registre d'actions, README, doc autonomie et `ux-check` savent maintenant
   distinguer le smoke test rapide du `ux-check` complet.
+
+## 2026-05-22 - SevenOS release doctor smoke pass
+
+- `seven doctor release` utilise maintenant le smoke gate rapide au lieu de
+  lancer `ux-check` par defaut.
+- L'audit UX complet reste disponible explicitement avec
+  `SEVENOS_RELEASE_DEEP=1 seven doctor release --json`.
+- La gate release distingue mieux daily-driver stable, release publique et
+  audits developpeur profonds sans bloquer l'utilisateur normal.
