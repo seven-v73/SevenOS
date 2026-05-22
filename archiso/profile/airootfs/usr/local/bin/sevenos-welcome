@@ -30,5 +30,5 @@ Start here:
   ./install.sh base --dry-run
 
 Build status:
-  This is an early Archiso foundation, not the final installer.
+  This is an early SevenOS live foundation, not the final installer.
 EOF

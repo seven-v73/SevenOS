@@ -106,6 +106,32 @@ for rel in public_desktop_entries:
     elif any(term.lower() in name.lower() for term in leak_terms):
         desktop_leaks.append({"path": rel, "name": name, "reason": "backend term in public name"})
 
+public_copy_checks = [
+    {
+        "path": "README.md",
+        "sample": "\n".join(read("README.md").splitlines()[:8]),
+    },
+    {
+        "path": "archiso/profile/airootfs/root/README-SevenOS.txt",
+        "sample": read("archiso/profile/airootfs/root/README-SevenOS.txt"),
+    },
+    {
+        "path": "archiso/profile/airootfs/usr/local/bin/sevenos-welcome",
+        "sample": read("archiso/profile/airootfs/usr/local/bin/sevenos-welcome"),
+    },
+]
+public_copy_leaks = []
+public_copy_forbidden = (
+    "Arch Linux based",
+    "modern Hyprland desktop",
+    "early Archiso foundation",
+)
+for item in public_copy_checks:
+    sample = item["sample"]
+    for term in public_copy_forbidden:
+        if term.lower() in sample.lower():
+            public_copy_leaks.append({"path": item["path"], "term": term})
+
 checks = [
     {
         "key": "platform-facade",
@@ -142,6 +168,14 @@ checks = [
         "detail": "Launcher names should present SevenOS surfaces before backend names.",
         "command": "grep -R '^Name=' seven-hub archiso/profile/airootfs/usr/share/applications",
         "leaks": desktop_leaks,
+    },
+    {
+        "key": "public-copy",
+        "state": "OK" if not public_copy_leaks else "PART",
+        "title": "SevenOS-first public copy",
+        "detail": "README and live welcome text should introduce SevenOS before naming backend projects.",
+        "command": "seven about",
+        "leaks": public_copy_leaks,
     },
     {
         "key": "identity-files",

@@ -24,4 +24,4 @@ Useful commands:
   ./install.sh installer-plan
   ./install.sh base --dry-run
 
-This ISO profile is an early Phase 3 foundation. It is not yet the final SevenOS installer.
+This ISO profile is an early SevenOS live foundation. It is not yet the final SevenOS installer.

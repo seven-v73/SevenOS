@@ -1501,3 +1501,12 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   locale, avec score de support et acces au bundle.
 - Le contrat Hub valide maintenant que `support` est present dans `seven
   state --json` et dans le registre d'actions.
+
+## 2026-05-22 - SevenOS public copy masking pass
+
+- Le README et les textes du live ISO presentent maintenant SevenOS comme
+  distribution intelligente d'abord, puis seulement ses fondations techniques.
+- `seven mask` verifie aussi la copie publique pour eviter que les premieres
+  lignes exposent Arch/Hyprland/Archiso comme identite principale.
+- Les textes live parlent de fondation SevenOS live, afin de conserver le
+  vocabulaire produit dans l'environnement ISO.

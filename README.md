@@ -1,8 +1,8 @@
 # SevenOS
 
-SevenOS is an experimental Arch Linux based ecosystem focused on a modern Hyprland desktop, context-aware work profiles, security tooling, creative production, Windows compatibility, local deployment, and the Beyond the Desktop product identity.
+SevenOS is an experimental intelligent Linux distribution focused on context-aware mini OS profiles, security tooling, creative production, Windows compatibility, local deployment, and the Beyond the Desktop product identity. It uses an Arch-compatible foundation and a Wayland compositor stack as implementation layers, while normal users operate the system through SevenOS surfaces first.
 
-This repository is currently in **Phase B2 — product consolidation before ISO**. It contains the post-install OS layer, Seven Hub Native, `seven`/`sevenpkg`, profile contracts, an app-first Windows compatibility layer, identity assets, Seven Server/Deploy foundations, Seven Shell AGS planning, repair planning, a persistent wallpaper/session runtime, and an early Archiso live profile.
+This repository is currently in **Phase B2 — product consolidation before ISO**. It contains the post-install OS layer, Seven Hub Native, `seven`/`sevenpkg`, profile contracts, an app-first Windows compatibility layer, identity assets, Seven Server/Deploy foundations, Seven Shell AGS planning, repair planning, a persistent wallpaper/session runtime, and an early SevenOS live profile.
 
 It is **not yet a complete standalone distribution**. The next major gate is **B3**, blocked until trust, server, installer and profile completeness improve.
 
