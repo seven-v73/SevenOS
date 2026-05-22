@@ -73,7 +73,11 @@ json_string() {
 
 core_health_json() {
   if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
-    "$ROOT_DIR/bin/seven-daemon" health --json 2>/dev/null || printf 'null'
+    if command -v timeout >/dev/null 2>&1; then
+      timeout "${SEVENOS_SHELL_HEALTH_TIMEOUT:-4s}" "$ROOT_DIR/bin/seven-daemon" health --json 2>/dev/null || printf '{"schema":"sevenos.daemon.health.v1","state":"PART","name":"seven-daemon","timeout":true,"checks":[]}'
+    else
+      "$ROOT_DIR/bin/seven-daemon" health --json 2>/dev/null || printf 'null'
+    fi
   else
     printf 'null'
   fi

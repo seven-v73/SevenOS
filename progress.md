@@ -1529,3 +1529,12 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   parser une sortie texte.
 - Le registre d'actions, README, doc autonomie et `ux-check` valident cette
   gate d'identite pour les surfaces publiques.
+
+## 2026-05-22 - SevenOS shell health timeout pass
+
+- `seven shell status --json` ne peut plus suspendre Hub, State ou Autonomy si
+  le daemon met trop longtemps a repondre.
+- Le statut shell encapsule maintenant `seven-daemon health --json` avec un
+  timeout court et un JSON de fallback explicite.
+- Ce durcissement garde les surfaces produit ouvrables pendant les travaux de
+  daemonisation sans exposer un terminal bloque a l'utilisateur.
