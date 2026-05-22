@@ -286,6 +286,13 @@ def handle_health(args):
     run_script(args, "scripts/health.sh", *extra)
 
 
+def handle_smoke(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/smoke.sh", *extra)
+
+
 def handle_support(args):
     extra = [args.action]
     if args.json:
@@ -766,6 +773,9 @@ def main():
     health_parser = subparsers.add_parser("health", help="show SevenOS daily health without backend-first diagnostics")
     health_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     health_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS health contract")
+    smoke_parser = subparsers.add_parser("smoke", help="run the fast SevenOS product smoke gate")
+    smoke_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    smoke_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS smoke contract")
     support_parser = subparsers.add_parser("support", help="create local-first SevenOS support diagnostics")
     support_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "bundle", "json"))
     support_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS support contract")
@@ -1042,6 +1052,8 @@ def main():
         handle_recovery(args)
     elif args.command == "health":
         handle_health(args)
+    elif args.command == "smoke":
+        handle_smoke(args)
     elif args.command == "support":
         handle_support(args)
     elif args.command == "welcome":

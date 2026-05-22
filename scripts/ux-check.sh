@@ -1692,6 +1692,8 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    "$ROOT_DIR/scripts/recovery.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/health.sh" json | grep -q '"schema": "sevenos.health.v1"' &&
    "$ROOT_DIR/scripts/health.sh" doctor >/dev/null &&
+   "$ROOT_DIR/scripts/smoke.sh" json | grep -q '"schema": "sevenos.smoke.v1"' &&
+   "$ROOT_DIR/scripts/smoke.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/support.sh" json | grep -q '"schema": "sevenos.support.v1"' &&
    "$ROOT_DIR/scripts/support.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/product.sh" json | grep -q '"schema": "sevenos.product.v1"' &&
@@ -1718,6 +1720,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    grep -q 'seven update' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven recovery' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven health' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven smoke' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven support' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven product' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven foundations' "$ROOT_DIR/scripts/actions.sh" &&
@@ -1747,6 +1750,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    grep -q 'seven update' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven recovery' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven health' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
+   grep -q 'seven smoke' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven support' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Foundations Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Platform Facade' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&

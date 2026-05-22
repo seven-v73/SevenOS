@@ -35,6 +35,8 @@ It is built around foundation pillars:
   backups, repair and installer/recovery gates
 - `seven health` as the daily SevenOS health surface above product, lifecycle,
   update, recovery, foundations, distribution and service diagnostics
+- `seven smoke` as the fast public-product gate for Hub, Settings and release
+  flows, before running the full developer UX audit
 - `seven support` as the local-first support route for health, product,
   recovery, events and optional diagnostic bundles without automatic upload
 - `seven product` as the compact public product facade for Hub, Settings,
@@ -328,6 +330,7 @@ Use these before pushing or testing a new machine:
 
 ```bash
 ./scripts/design-check.sh
+seven smoke --json | python -m json.tool
 ./scripts/ux-check.sh
 ./scripts/check.sh
 seven phase-gate --json | python -m json.tool
@@ -593,6 +596,7 @@ Run local checks:
 
 ```bash
 ./scripts/check.sh
+seven smoke doctor
 ./scripts/ux-check.sh
 ./scripts/phase-gate.sh
 ./scripts/post-install.sh

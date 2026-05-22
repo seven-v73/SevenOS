@@ -1538,3 +1538,12 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   timeout court et un JSON de fallback explicite.
 - Ce durcissement garde les surfaces produit ouvrables pendant les travaux de
   daemonisation sans exposer un terminal bloque a l'utilisateur.
+
+## 2026-05-22 - SevenOS smoke gate pass
+
+- Ajout de `seven smoke`, gate rapide de distribution pour verifier State,
+  About, Identity, Distribution, Health, Product, Actions et copie publique.
+- Le contrat `sevenos.smoke.v1` donne a Hub, Settings et aux surfaces release
+  une verification courte avant les audits profonds de developpement.
+- Le registre d'actions, README, doc autonomie et `ux-check` savent maintenant
+  distinguer le smoke test rapide du `ux-check` complet.

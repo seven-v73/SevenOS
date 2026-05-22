@@ -92,6 +92,7 @@ essential OS lifecycle to SevenOS routes:
 - collect local support diagnostics -> `seven support`;
 - check release readiness -> `seven distribution`;
 - check daily health -> `seven health`;
+- run the fast product smoke gate -> `seven smoke`;
 - prepare installer/recovery -> `seven installer release`.
 
 This is how SevenOS avoids becoming “Arch commands with a theme” during normal
@@ -113,6 +114,24 @@ the signals that Hub, Settings, Welcome and installer screens need most:
 
 The goal is performance and clarity: UI surfaces can read one product contract
 instead of re-implementing the product logic or exposing backend checks directly.
+
+## Smoke Gate
+
+`seven smoke` is the fast public-product gate. It validates the contracts that
+must stay responsive for normal users:
+
+- unified `seven state --json`;
+- public About identity;
+- visual identity doctor;
+- distribution gate;
+- daily health;
+- product facade;
+- action registry;
+- SevenOS-first public copy.
+
+It is intentionally not a replacement for `./scripts/ux-check.sh`. The UX check
+is a deep developer audit. Smoke is the quick gate Hub, Settings and release
+surfaces can run without making the system feel blocked or backend-first.
 
 ## Foundations Contract
 
@@ -288,6 +307,7 @@ Calamares from a trusted downstream repository or AUR build.
 
 SevenOS becomes a public distribution only when:
 
+- `seven smoke doctor` passes quickly;
 - `seven release doctor` is public-release-ready;
 - `seven distribution doctor` is public-release-candidate;
 - `seven autonomy doctor` passes at distribution-layer level;

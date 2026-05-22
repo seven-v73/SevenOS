@@ -41,6 +41,9 @@ recovery.backup	System	Create Recovery Backup	seven recovery backup	changes	Crea
 health.status	System	SevenOS Health	seven health	safe	Show product, lifecycle, update, recovery, foundations, distribution and service health in SevenOS language.
 health.plan	System	Health Plan	seven health plan	safe	Show the next SevenOS-first actions for any daily health issue.
 health.doctor	System	Health Doctor	seven health doctor	safe	Validate SevenOS daily health without exposing backend-first diagnostics.
+smoke.status	System	SevenOS Smoke Gate	seven smoke	safe	Run the fast public-product gate used before opening deeper developer audits.
+smoke.doctor	System	Smoke Doctor	seven smoke doctor	safe	Validate state, product, identity, distribution and health contracts with strict timeouts.
+smoke.json	System	Smoke Gate JSON	seven smoke --json	safe	Expose the fast SevenOS distribution smoke contract for Hub, Settings and release surfaces.
 support.status	System	SevenOS Support	seven support	safe	Show local-first support readiness, health, product, recovery and event summary.
 support.bundle	System	Create Support Bundle	seven support bundle	changes	Create a local support bundle under the user account; nothing is uploaded automatically.
 support.plan	System	Support Plan	seven support plan	safe	Show the SevenOS-first support flow before collecting diagnostics.
