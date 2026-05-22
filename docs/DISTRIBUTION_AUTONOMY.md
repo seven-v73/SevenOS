@@ -131,6 +131,7 @@ one clear answer:
 
 It aggregates:
 
+- `seven foundations`;
 - `seven autonomy`;
 - `seven platform`;
 - `seven mask`;

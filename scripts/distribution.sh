@@ -13,8 +13,8 @@ Usage:
   seven distro [status|doctor|plan|json] [--json]
   ./scripts/distribution.sh [status|doctor|plan|json] [--json]
 
-This is the top-level product gate above autonomy, masking, dynamic UI,
-native surfaces, routes, release channel and installer readiness.
+This is the top-level product gate above foundations, autonomy, masking,
+dynamic UI, native surfaces, routes, release channel and installer readiness.
 EOF
 }
 
@@ -36,6 +36,8 @@ distribution_json() {
   dirtyp="$tmp/dirty.txt"
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/platform.sh" json >"$tmp/platform.json" 2>/dev/null || printf '{}\n' >"$tmp/platform.json" &
   local pid_platform=$!
+  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/foundations.sh" json >"$tmp/foundations.json" 2>/dev/null || printf '{}\n' >"$tmp/foundations.json" &
+  local pid_foundations=$!
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/mask.sh" json >"$tmp/mask.json" 2>/dev/null || printf '{}\n' >"$tmp/mask.json" &
   local pid_mask=$!
   local pid_dynamic pid_surfaces pid_routes
@@ -62,10 +64,11 @@ distribution_json() {
   local pid_installer_runtime=$!
   git -C "$ROOT_DIR" status --short >"$dirtyp" 2>/dev/null || true
 
-  wait "$pid_platform" "$pid_mask" "$pid_dynamic" "$pid_surfaces" "$pid_routes" "$pid_channel" "$pid_installer_release" "$pid_installer_runtime" || true
+  wait "$pid_platform" "$pid_foundations" "$pid_mask" "$pid_dynamic" "$pid_surfaces" "$pid_routes" "$pid_channel" "$pid_installer_release" "$pid_installer_runtime" || true
 
   SEVENOS_ROOT="$ROOT_DIR" \
   PLATFORM_JSON="$tmp/platform.json" \
+  FOUNDATIONS_JSON="$tmp/foundations.json" \
   MASK_JSON="$tmp/mask.json" \
   DYNAMIC_JSON="$tmp/dynamic.json" \
   SURFACES_JSON="$tmp/surfaces.json" \
@@ -105,6 +108,7 @@ def dirty_count():
 
 
 platform = load_json_path("PLATFORM_JSON")
+foundations = load_json_path("FOUNDATIONS_JSON")
 mask = load_json_path("MASK_JSON")
 dynamic = load_json_path("DYNAMIC_JSON")
 surfaces = load_json_path("SURFACES_JSON")
@@ -115,6 +119,7 @@ installer_runtime = load_json_path("INSTALLER_RUNTIME_JSON")
 dirty = dirty_count()
 autonomy_ready = (
     platform.get("state") == "masked"
+    and foundations.get("state") in {"sevenos-owned", "mostly-owned"}
     and mask.get("state") == "masked"
     and int(dynamic.get("percent", 0) or 0) >= 90
     and surfaces.get("state") == "productized"
@@ -140,6 +145,13 @@ checks = [
         "title": "Distribution autonomy",
         "detail": "Derived from platform, mask, dynamic desktop, public surfaces and user routes.",
         "command": "seven autonomy",
+    },
+    {
+        "key": "foundations",
+        "state": "OK" if foundations.get("state") in {"sevenos-owned", "mostly-owned"} else "PART",
+        "title": "SevenOS-owned foundations",
+        "detail": f"Foundations state: {foundations.get('state', 'unknown')}; score: {foundations.get('score', 'unknown')}%.",
+        "command": "seven foundations",
     },
     {
         "key": "platform-facade",
@@ -254,6 +266,7 @@ print(json.dumps({
         "partial": part,
         "missing": missing,
         "dirty_count": dirty,
+        "foundations_state": foundations.get("state", "unknown"),
         "installer_state": installer_release.get("state", "unknown"),
         "calamares_runtime": installer_runtime.get("state", "unknown"),
         "channel": channel.get("channel", "unknown"),
@@ -287,6 +300,7 @@ print(f"Score:          {data.get('score')}%")
 print(f"Daily driver:   {str(data.get('daily_driver_ready')).lower()}")
 print(f"Public release: {str(data.get('public_release_ready')).lower()}")
 print(f"Channel:        {summary.get('channel')}")
+print(f"Foundations:    {summary.get('foundations_state')}")
 print(f"Installer:      {summary.get('installer_state')} / Calamares {summary.get('calamares_runtime')}")
 print(f"Dirty paths:    {summary.get('dirty_count')}")
 print()

@@ -1963,6 +1963,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"state": "routed"' <<<"$routes_json" &&
    grep -q '"schema": "sevenos.distribution.v1"' <<<"$distribution_json" &&
    grep -q '"daily_driver_ready": true' <<<"$distribution_json" &&
+   grep -q '"key": "foundations"' <<<"$distribution_json" &&
    grep -q '"dynamic_inputs"' <<<"$adaptive_json" &&
    grep -q '"profile-ui-bus"' <<<"$adaptive_json" &&
    grep -q '"wallpaper-palette"' <<<"$adaptive_json" &&
