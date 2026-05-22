@@ -5,6 +5,8 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 
@@ -29,6 +31,11 @@ def resolve_root() -> Path:
 ROOT = resolve_root()
 sys.path.insert(0, str(ROOT / "scripts"))
 from seven_i18n import tr  # noqa: E402
+
+STATE_CACHE: dict = {"data": None, "expires": 0.0}
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "sevenos"
+HUB_STATE_CACHE = CACHE_DIR / "hub-state.json"
+PREFER_STATE_ONLY = False
 
 
 def current_theme_mode() -> str:
@@ -73,9 +80,74 @@ def ensure_gtk_python() -> None:
 
 
 def run_text(*command: str) -> str:
+    if PREFER_STATE_ONLY and not (
+        len(command) >= 3
+        and Path(command[0]).name == "seven"
+        and command[1] == "state"
+        and command[2] == "--json"
+    ):
+        raise RuntimeError("state-only mode: fallback command skipped")
+    is_state_snapshot = len(command) >= 3 and Path(command[0]).name == "seven" and command[1] == "state" and command[2] == "--json"
+    timeout = 20 if is_state_snapshot else 8
     env = {**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_DRY_RUN": "0"}
-    output = subprocess.check_output(command, cwd=ROOT, text=True, env=env, timeout=8)
+    output = subprocess.check_output(command, cwd=ROOT, text=True, env=env, timeout=timeout)
     return output.strip()
+
+
+def load_persistent_state() -> dict:
+    try:
+        data = json.loads(HUB_STATE_CACHE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_persistent_state(data: dict) -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        tmp = HUB_STATE_CACHE.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        tmp.replace(HUB_STATE_CACHE)
+    except Exception:
+        pass
+
+
+def state_payload(force: bool = False) -> dict:
+    now = time.monotonic()
+    cached = STATE_CACHE.get("data")
+    if not force and isinstance(cached, dict) and float(STATE_CACHE.get("expires", 0.0)) > now:
+        return cached
+    try:
+        data = json.loads(run_text(str(ROOT / "bin" / "seven"), "state", "--json"))
+        if isinstance(data, dict):
+            STATE_CACHE["data"] = data
+            STATE_CACHE["expires"] = now + 20.0
+            save_persistent_state(data)
+            return data
+    except Exception:
+        pass
+    if isinstance(cached, dict):
+        return cached
+    persistent = load_persistent_state()
+    if persistent:
+        persistent["_hub_cache"] = "persistent"
+        STATE_CACHE["data"] = persistent
+        STATE_CACHE["expires"] = now + 8.0
+        return persistent
+    fallback = {"schema": "sevenos.state.v1", "state": "unavailable"}
+    STATE_CACHE["data"] = fallback
+    STATE_CACHE["expires"] = now + 5.0
+    return fallback
+
+
+def state_value(key: str, fallback):
+    data = state_payload()
+    value = data.get(key)
+    if isinstance(fallback, dict):
+        return value if isinstance(value, dict) else fallback
+    if isinstance(fallback, list):
+        return value if isinstance(value, list) else fallback
+    return value if value is not None else fallback
 
 
 def command_exists(command: str) -> bool:
@@ -92,6 +164,27 @@ def run_visible(*command: str, title: str = "SevenOS Action") -> None:
 
     if os.environ.get("SEVENOS_DRY_RUN") == "1":
         print(command_line)
+        return
+
+    interactive = False
+    if command:
+        first = Path(str(command[0])).name
+        command_text = " ".join(str(part) for part in command)
+        interactive = (
+            first in {"bash", "sh", "zsh", "fish", "seven-terminal"}
+            or " read " in f" {command_text} "
+            or "journalctl" in command_text
+        )
+
+    runner = ROOT / "bin" / "seven-action-runner"
+    if runner.is_file() and os.access(runner, os.X_OK) and not interactive:
+        subprocess.Popen(
+            [str(runner), "--title", title, "--", *[str(part) for part in command]],
+            cwd=ROOT,
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         return
 
     if os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"):
@@ -115,7 +208,15 @@ def run_visible(*command: str, title: str = "SevenOS Action") -> None:
 
 
 def profile_payload() -> list[dict]:
-    return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "status", "--json"))
+    value = state_value("profiles", [])
+    if value:
+        return value
+    if PREFER_STATE_ONLY:
+        return []
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "status", "--json"))
+    except Exception:
+        return []
 
 
 def profile_ui_payload() -> dict:
@@ -128,6 +229,9 @@ def profile_ui_payload() -> dict:
 
 
 def profile_gaps_payload() -> dict:
+    value = state_value("profile_gaps", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "gaps", "--json"))
     except Exception:
@@ -135,6 +239,9 @@ def profile_gaps_payload() -> dict:
 
 
 def profile_plan_payload() -> dict:
+    value = state_value("profile_plan", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "bin" / "seven"), "profile", "plan", "--json"))
     except Exception:
@@ -142,6 +249,9 @@ def profile_plan_payload() -> dict:
 
 
 def readiness_payload() -> dict:
+    value = state_value("readiness", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "readiness.sh"), "--json"))
     except Exception:
@@ -149,6 +259,9 @@ def readiness_payload() -> dict:
 
 
 def welcome_payload() -> dict:
+    value = state_value("welcome", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "bin" / "seven-welcome"), "status", "--json"))
     except Exception:
@@ -156,6 +269,9 @@ def welcome_payload() -> dict:
 
 
 def welcome_plan_payload() -> dict:
+    value = state_value("welcome_plan", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "bin" / "seven-welcome"), "plan", "--json"))
     except Exception:
@@ -163,6 +279,9 @@ def welcome_plan_payload() -> dict:
 
 
 def session_payload() -> dict:
+    value = state_value("session", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "bin" / "seven-session-status"), "--json"))
     except Exception:
@@ -170,6 +289,9 @@ def session_payload() -> dict:
 
 
 def identity_payload() -> dict:
+    value = state_value("identity", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "identity.sh"), "--json"))
     except Exception:
@@ -177,6 +299,9 @@ def identity_payload() -> dict:
 
 
 def actions_payload() -> dict:
+    value = state_value("actions", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "actions.sh"), "--json"))
     except Exception:
@@ -184,6 +309,9 @@ def actions_payload() -> dict:
 
 
 def ecosystem_payload() -> dict:
+    value = state_value("ecosystem", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "ecosystem.sh"), "json"))
     except Exception:
@@ -191,6 +319,9 @@ def ecosystem_payload() -> dict:
 
 
 def stack_payload() -> dict:
+    value = state_value("stack", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "stack.sh"), "--json"))
     except Exception:
@@ -198,6 +329,9 @@ def stack_payload() -> dict:
 
 
 def shell_payload() -> dict:
+    value = state_value("shell", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "shell.sh"), "status", "--json"))
     except Exception:
@@ -205,6 +339,9 @@ def shell_payload() -> dict:
 
 
 def core_payload() -> dict:
+    value = state_value("core", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "core.sh"), "status", "--json"))
     except Exception:
@@ -212,6 +349,9 @@ def core_payload() -> dict:
 
 
 def core_plan_payload() -> dict:
+    value = state_value("core_plan", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "core.sh"), "plan", "--json"))
     except Exception:
@@ -219,6 +359,9 @@ def core_plan_payload() -> dict:
 
 
 def experience_payload() -> dict:
+    value = state_value("experience", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "experience.sh"), "--json"))
     except Exception:
@@ -226,6 +369,9 @@ def experience_payload() -> dict:
 
 
 def shield_payload() -> dict:
+    value = state_value("shield", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "security" / "shield-status.sh"), "--json"))
     except Exception:
@@ -233,6 +379,9 @@ def shield_payload() -> dict:
 
 
 def shield_plan_payload() -> dict:
+    value = state_value("shield_plan", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "security" / "shield-status.sh"), "plan", "--json"))
     except Exception:
@@ -240,6 +389,9 @@ def shield_plan_payload() -> dict:
 
 
 def server_payload() -> dict:
+    value = state_value("server", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "server" / "seven-server.sh"), "status", "--json"))
     except Exception:
@@ -247,6 +399,9 @@ def server_payload() -> dict:
 
 
 def server_plan_payload() -> dict:
+    value = state_value("server_plan", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "server" / "seven-server.sh"), "plan", "--json"))
     except Exception:
@@ -254,6 +409,9 @@ def server_plan_payload() -> dict:
 
 
 def windows_payload() -> dict:
+    value = state_value("windows", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "bin" / "seven-windows-assistant"), "status", "--json"))
     except Exception:
@@ -261,6 +419,9 @@ def windows_payload() -> dict:
 
 
 def windows_plan_payload() -> dict:
+    value = state_value("windows_plan", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "bin" / "seven-windows-assistant"), "plan", "--json"))
     except Exception:
@@ -268,6 +429,9 @@ def windows_plan_payload() -> dict:
 
 
 def installer_payload() -> dict:
+    value = state_value("installer", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "installer-stack.sh"), "status", "--json"))
     except Exception:
@@ -275,6 +439,9 @@ def installer_payload() -> dict:
 
 
 def installer_plan_payload() -> dict:
+    value = state_value("installer_plan", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "installer-stack.sh"), "plan", "--json"))
     except Exception:
@@ -282,6 +449,9 @@ def installer_plan_payload() -> dict:
 
 
 def packages_plan_payload() -> dict:
+    value = state_value("packages_plan", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "plan", "--json"))
     except Exception:
@@ -289,6 +459,9 @@ def packages_plan_payload() -> dict:
 
 
 def control_payload() -> dict:
+    value = state_value("control", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "control-plane.sh"), "--json"))
     except Exception:
@@ -296,13 +469,31 @@ def control_payload() -> dict:
 
 
 def events_payload() -> dict:
+    value = state_value("events", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "events.sh"), "summary-json"))
     except Exception:
         return {"schema": "sevenos.events.summary.v1", "total": 0, "last": None}
 
 
+def support_payload() -> dict:
+    value = state_value("support", {})
+    if value:
+        return value
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "support.sh"), "json"))
+    except Exception:
+        return {"schema": "sevenos.support.v1", "state": "partial", "score": 0, "checks": []}
+
+
 def insights_payload() -> dict:
+    value = state_value("insights", {})
+    if value:
+        return value
+    if PREFER_STATE_ONLY:
+        return {"schema": "sevenos.insights.v1", "phase": "state-snapshot", "summary": {}, "insights": []}
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "insights.sh"), "--json"))
     except Exception:
@@ -310,6 +501,11 @@ def insights_payload() -> dict:
 
 
 def phase_gate_payload() -> dict:
+    value = state_value("phase_gate", {})
+    if value:
+        return value
+    if PREFER_STATE_ONLY:
+        return {"schema": "sevenos.phase-gate.v1", "decision": "state-snapshot", "summary": {}, "gates": []}
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "phase-gate.sh"), "--json"))
     except Exception:
@@ -317,6 +513,9 @@ def phase_gate_payload() -> dict:
 
 
 def b3_payload() -> dict:
+    value = state_value("b3", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "b3.sh"), "plan", "--json"))
     except Exception:
@@ -324,6 +523,9 @@ def b3_payload() -> dict:
 
 
 def daily_payload() -> dict:
+    value = state_value("daily", {})
+    if value:
+        return value
     try:
         return json.loads(run_text(str(ROOT / "scripts" / "daily-driver.sh"), "status", "--json"))
     except Exception:
@@ -331,6 +533,9 @@ def daily_payload() -> dict:
 
 
 def status_text() -> str:
+    global PREFER_STATE_ONLY
+    PREFER_STATE_ONLY = True
+    state_payload(force=True)
     welcome = welcome_payload()
     welcome_plan = welcome_plan_payload()
     session = session_payload()
@@ -348,6 +553,7 @@ def status_text() -> str:
     server = server_payload()
     control = control_payload()
     events = events_payload()
+    support = support_payload()
     insights = insights_payload()
     phase_gate = phase_gate_payload()
     b3 = b3_payload()
@@ -380,6 +586,7 @@ def status_text() -> str:
         f"Server: {server.get('state', server.get('service', {}).get('state', 'MISS'))}\n"
         f"Control: {control.get('overall', 0)}% · {control.get('summary', {}).get('total', 0)} actions\n"
         f"Events: {events.get('total', 0)} recorded\n"
+        f"Support: {support.get('state', 'unknown')} · {support.get('score', 0)}%\n"
         f"Insights: phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open items\n"
         f"Phase gate: {phase_gate.get('decision', 'unknown')} · {phase_gate.get('summary', {}).get('block', 0)} blockers\n"
         f"B3: {b3.get('overall', 0)}% · {b3.get('summary', {}).get('total', 0)} actions · {b3.get('state', 'blocked')}\n"
@@ -441,6 +648,9 @@ def icon_for_action(action_id: str, impact: str = "safe") -> str:
 
 
 def run_gui() -> int:
+    global PREFER_STATE_ONLY
+    PREFER_STATE_ONLY = True
+
     try:
         import gi
 
@@ -966,7 +1176,9 @@ def run_gui() -> int:
                 return button
 
             dashboard_nav = nav_button(tr("hub.dashboard", "Dashboard"), "view-dashboard-symbolic", "dashboard")
+            nav_button(tr("hub.search", "Search"), "system-search-symbolic", "search")
             nav_button(tr("hub.profiles", "Profiles"), "avatar-default-symbolic", "profiles")
+            nav_button(tr("hub.runtime", "Runtime"), "emblem-system-symbolic", "runtime")
             nav_button(tr("hub.actions", "Actions"), "system-run-symbolic", "actions")
             nav_button(tr("hub.ecosystem", "Ecosystem"), "network-workgroup-symbolic", "ecosystem")
             dashboard_nav.add_css_class("active")
@@ -1030,12 +1242,16 @@ def run_gui() -> int:
                 return box, scrolled
 
             dashboard, dashboard_scroll = page()
+            search_page, search_scroll = page()
             profiles_page, profiles_scroll = page()
+            runtime_page, runtime_scroll = page()
             actions_page, actions_scroll = page()
             ecosystem_page, ecosystem_scroll = page()
 
             stack.add_titled(dashboard_scroll, "dashboard", "Dashboard")
+            stack.add_titled(search_scroll, "search", "Search")
             stack.add_titled(profiles_scroll, "profiles", "Profiles")
+            stack.add_titled(runtime_scroll, "runtime", "Runtime")
             stack.add_titled(actions_scroll, "actions", "Actions")
             stack.add_titled(ecosystem_scroll, "ecosystem", "Ecosystem")
 
@@ -1842,6 +2058,7 @@ def run_gui() -> int:
                 server = server_payload()
                 windows = windows_payload()
                 daily = daily_payload()
+                support = support_payload()
                 profiles = profile_payload()
                 identity = identity_payload()
                 control = control_payload()
@@ -1863,10 +2080,11 @@ def run_gui() -> int:
                 readiness_percent = int(readiness.get("percent", 0) or 0)
                 shield_percent = int(shield.get("percent", 0) or 0)
                 experience_percent = int(experience.get("percent", 0) or 0)
+                support_score = int(support.get("score", 0) or 0)
                 metrics.append(metric_card(tr("hub.readiness", "Readiness"), f"{readiness_percent}%", tr("hub.metric.system_health", "system health"), metric_state(readiness_percent)))
                 metrics.append(metric_card(tr("hub.shield", "Shield"), f"{shield_percent}%", tr("hub.metric.security_posture", "security posture"), metric_state(shield_percent)))
                 metrics.append(metric_card("UX", f"{experience_percent}%", tr("hub.metric.interface_coherence", "interface coherence"), metric_state(experience_percent)))
-                metrics.append(metric_card(tr("hub.daily", "Daily"), state_short(daily_state), tr("hub.metric.ready_to_work", "ready to work"), "good" if daily_state == "ready" else "warn"))
+                metrics.append(metric_card("Support", f"{support_score}%", support.get("state", "local"), metric_state(support_score)))
                 dashboard.append(metrics)
 
                 strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -1876,8 +2094,9 @@ def run_gui() -> int:
                     ("view-grid-symbolic", "Launchpad", "seven-overview apps"),
                     ("seven-files", "Files", "seven-files"),
                     ("emblem-system-symbolic", "Mini OS Center", profile_ui.get("center_command", "seven profile center")),
-                    ("utilities-terminal-symbolic", tr("hub.action.terminal", "Terminal"), "seven-terminal classic"),
+                    ("utilities-terminal-symbolic", tr("hub.action.terminal", "Terminal"), "seven-terminal"),
                     ("seven-settings", "Settings", "seven-settings"),
+                    ("help-about-symbolic", "Support", "seven support"),
                     ("emblem-system-symbolic", tr("hub.action.quick_settings", "Quick Settings"), "seven-quick-settings"),
                     ("seven-ai", "Seven AI", "seven ai focus"),
                     ("system-shutdown-symbolic", tr("hub.action.power", "Power"), "seven-power"),
@@ -1894,6 +2113,7 @@ def run_gui() -> int:
                     tile_button("W", tr("hub.windows", "Windows"), windows.get("mode", "setup"), "seven-windows-assistant guide", "good" if windows.get("ready") else "warn"),
                     tile_button("S", tr("hub.server", "Server"), server.get("state", server.get("service", {}).get("state", "MISS")), "seven server status", "good" if str(server.get("state", "")).upper() == "RUN" else "warn"),
                     tile_button("A", tr("hub.apps", "Apps"), tr("hub.tile.apps_note", "install and update"), "sevenpkg status", "warn"),
+                    tile_button("?", "Support", support.get("state", "local-first"), "seven support", metric_state(support_score)),
                     tile_button("D", tr("hub.doctor", "Doctor"), tr("hub.tile.doctor_note", "repair SevenOS"), "seven doctor", "warn"),
                 ]
                 add_tiles(grid, tiles, 4)
@@ -1940,6 +2160,149 @@ def run_gui() -> int:
                 ]:
                     actions.append(icon_action(icon_name, tooltip, command))
                 profiles_page.append(actions)
+
+            def render_runtime_compact() -> None:
+                clear(runtime_page)
+                state = state_payload()
+                active_manifest = state.get("profile_runtime_manifest") if isinstance(state.get("profile_runtime_manifest"), dict) else {}
+                manifests = state.get("profile_runtime_manifests") if isinstance(state.get("profile_runtime_manifests"), dict) else {}
+                profile_index = manifests.get("profiles", {}) if isinstance(manifests.get("profiles"), dict) else {}
+                isolation = state.get("profile_run") if isinstance(state.get("profile_run"), dict) else {}
+                runtime = state.get("runtime") if isinstance(state.get("runtime"), dict) else {}
+
+                heading(
+                    runtime_page,
+                    "Runtime & Mini OS",
+                    "Live execution boundaries, profile manifests, isolated data roots and composition state from seven state --json.",
+                )
+
+                metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+                metrics.add_css_class("seven-metric-row")
+                metrics.append(metric_card("Active", active_manifest.get("profile", "unknown"), active_manifest.get("engine", "runtime"), "good" if active_manifest else "warn"))
+                metrics.append(metric_card("Manifests", str(manifests.get("count", len(profile_index))), "mini OS contracts", "good" if profile_index else "warn"))
+                metrics.append(metric_card("Container", "OK" if isolation.get("container_available") else "PART", "strict app-data", "good" if isolation.get("container_available") else "warn"))
+                metrics.append(metric_card("Composition", str((runtime.get("state") or runtime.get("mode") or "active"))[:14], "LAPA runtime", "good"))
+                runtime_page.append(metrics)
+
+                active_group = Adw.PreferencesGroup(title="Active runtime manifest")
+                workspace = active_manifest.get("workspace") if isinstance(active_manifest.get("workspace"), dict) else {}
+                roots = active_manifest.get("roots") if isinstance(active_manifest.get("roots"), dict) else {}
+                commands = active_manifest.get("commands") if isinstance(active_manifest.get("commands"), dict) else {}
+                for title_text, subtitle, command in [
+                    ("Profile", f"{active_manifest.get('profile', 'unknown')} · {active_manifest.get('engine', 'unknown')}", commands.get("inspect", "seven-profile-run --manifest")),
+                    ("Workspace", f"{workspace.get('default', 'unknown')} · {workspace.get('policy', 'explicit')}", commands.get("workspace_shell", "seven-profile-run --container --workspace-profile sh")),
+                    ("Data roots", f"home={roots.get('home', 'unknown')} · cache/data isolated", commands.get("strict_shell", "seven-profile-run --container sh")),
+                    ("Ephemeral", "temporary HOME/cache/data removed on exit", commands.get("ephemeral_shell", "seven-profile-run --ephemeral sh")),
+                ]:
+                    row = make_row(title_text, subtitle)
+                    button = Gtk.Button()
+                    button.set_icon_name("media-playback-start-symbolic")
+                    button.set_tooltip_text(command)
+                    button.connect("clicked", lambda _button, command=command, title_text=title_text: run_ecosystem_command(command, title=f"SevenOS Runtime - {title_text}"))
+                    row.add_suffix(button)
+                    active_group.add(row)
+                runtime_page.append(active_group)
+
+                profiles_group = Adw.PreferencesGroup(title="Mini OS runtime contracts")
+                for key, item in sorted(profile_index.items()):
+                    if not isinstance(item, dict):
+                        continue
+                    row = make_row(
+                        key.title(),
+                        f"{item.get('engine', 'runtime')} · workspace {item.get('workspace', 'unknown')}",
+                    )
+                    for icon_name, command, tooltip in [
+                        ("dialog-information-symbolic", f"seven-profile-run --profile {key} --manifest", "Manifest"),
+                        ("utilities-terminal-symbolic", item.get("strict_shell") or f"seven profile exec {key} --container sh", "Strict shell"),
+                        ("edit-clear-symbolic", item.get("ephemeral_shell") or f"seven profile exec {key} --ephemeral sh", "Ephemeral shell"),
+                    ]:
+                        button = Gtk.Button()
+                        button.set_icon_name(icon_name)
+                        button.set_tooltip_text(tooltip)
+                        button.connect("clicked", lambda _button, command=command, tooltip=tooltip: run_ecosystem_command(command, title=f"SevenOS Runtime - {tooltip}"))
+                        row.add_suffix(button)
+                    profiles_group.add(row)
+                runtime_page.append(profiles_group)
+
+            def search_items() -> list[dict]:
+                state = state_payload()
+                items: list[dict] = []
+                for action in (actions_payload().get("actions") or []):
+                    if not isinstance(action, dict):
+                        continue
+                    items.append({
+                        "kind": "Action",
+                        "title": action.get("title", action.get("id", "Action")),
+                        "subtitle": f"{action.get('category', 'System')} · {action.get('description', '')}",
+                        "command": f"seven actions run {action.get('id')}",
+                    })
+                for profile in profile_payload():
+                    if not isinstance(profile, dict):
+                        continue
+                    key = profile.get("key", "")
+                    items.append({
+                        "kind": "Mini OS",
+                        "title": profile.get("title", key),
+                        "subtitle": f"{profile.get('role', 'profile')} · {profile.get('state')} · {profile.get('workspace', '')}",
+                        "command": f"seven profile center {key}",
+                    })
+                manifests = state.get("profile_runtime_manifests") if isinstance(state.get("profile_runtime_manifests"), dict) else {}
+                for key, item in (manifests.get("profiles") or {}).items():
+                    if not isinstance(item, dict):
+                        continue
+                    items.append({
+                        "kind": "Runtime",
+                        "title": f"{key.title()} runtime",
+                        "subtitle": f"{item.get('engine', 'runtime')} · {item.get('workspace', 'workspace')}",
+                        "command": f"seven-profile-run --profile {key} --manifest",
+                    })
+                for label, command in [
+                    ("Wi-Fi and Bluetooth", "seven-quick-settings"),
+                    ("Windows Bridge", "seven windows enter"),
+                    ("Shield scope", "seven shield scope"),
+                    ("SevenStore", "seven-store"),
+                    ("Seven Reader", "seven-reader"),
+                    ("Updates and packages", "sevenpkg plan"),
+                    ("Doctor and repair", "seven doctor"),
+                ]:
+                    items.append({"kind": "Shortcut", "title": label, "subtitle": command, "command": command})
+                return items
+
+            def render_search_results(query: str = "") -> None:
+                clear(search_page)
+                heading(search_page, "Search SevenOS", "Find settings, mini OS, runtime contracts and safe actions without leaving Hub.")
+                search = Gtk.SearchEntry()
+                search.set_placeholder_text("Search Wi-Fi, Windows, Shield, Store, runtime, updates...")
+                search.set_text(query)
+                search_page.append(search)
+                results_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+                search_page.append(results_box)
+
+                def update_results(text: str) -> None:
+                    clear(results_box)
+                    group = Adw.PreferencesGroup(title="Results")
+                    normalized = text.strip().lower()
+                    matches = []
+                    for item in search_items():
+                        haystack = " ".join(str(item.get(part, "")) for part in ("kind", "title", "subtitle", "command")).lower()
+                        if not normalized or normalized in haystack:
+                            matches.append(item)
+                    for item in matches[:18]:
+                        row = make_row(f"{item.get('kind')} · {item.get('title')}", item.get("subtitle", ""))
+                        command = item.get("command", "")
+                        title_text = item.get("title", "Search")
+                        button = Gtk.Button()
+                        button.set_icon_name("media-playback-start-symbolic")
+                        button.set_tooltip_text(command)
+                        button.connect("clicked", lambda _button, command=command, title_text=title_text: run_ecosystem_command(command, title=f"SevenOS Search - {title_text}"))
+                        row.add_suffix(button)
+                        group.add(row)
+                    if not matches:
+                        group.add(make_row("No result", "Try network, windows, shield, profile, store, runtime or updates."))
+                    results_box.append(group)
+
+                update_results(query)
+                search.connect("search-changed", lambda entry: update_results(entry.get_text()))
 
             def render_actions_compact() -> None:
                 clear(actions_page)
@@ -2024,7 +2387,9 @@ def run_gui() -> int:
 
             def render_all() -> None:
                 render_dashboard_compact()
+                render_search_results()
                 render_profiles_compact()
+                render_runtime_compact()
                 render_actions_compact()
                 render_ecosystem_compact()
 
@@ -2055,18 +2420,57 @@ def run_gui() -> int:
 
             def update_live_status() -> bool:
                 try:
-                    daily = daily_payload()
-                    session = session_payload()
+                    cached = STATE_CACHE.get("data")
+                    state_snapshot = cached if isinstance(cached, dict) else {}
+                    daily = state_snapshot.get("daily") if isinstance(state_snapshot.get("daily"), dict) else {}
+                    session = state_snapshot.get("session") if isinstance(state_snapshot.get("session"), dict) else {}
                     state = daily.get("decision", session.get("mode", "live"))
                     running = session.get("summary", {}).get("running", 0)
-                    live_label.set_text(f"{state} · {running} services")
+                    cache_note = "cached" if state_snapshot.get("_hub_cache") == "persistent" else "live"
+                    live_label.set_text(f"{state} · {running} services · {cache_note}")
                 except Exception:
                     live_label.set_text("live · guarded")
                 return True
 
+            refresh_state = {"running": False}
+
+            def start_state_refresh(force: bool = False) -> bool:
+                if refresh_state["running"]:
+                    return False
+
+                refresh_state["running"] = True
+                live_label.set_text("loading · guarded")
+
+                def worker() -> None:
+                    error_message = None
+                    try:
+                        snapshot = state_payload(force=force)
+                        if not any(key in snapshot for key in ("profiles", "daily", "session", "actions")):
+                            error_message = "seven state --json is unavailable or returned a partial snapshot."
+                    except Exception as error:
+                        error_message = str(error)
+
+                    def finish() -> bool:
+                        refresh_state["running"] = False
+                        cached = STATE_CACHE.get("data")
+                        has_live_snapshot = isinstance(cached, dict) and any(
+                            key in cached for key in ("profiles", "daily", "session", "actions")
+                        )
+                        if error_message and not has_live_snapshot:
+                            live_label.set_text("live · guarded")
+                            render_error(error_message)
+                        else:
+                            safe_render_all()
+                            update_live_status()
+                        return False
+
+                    GLib.idle_add(finish)
+
+                threading.Thread(target=worker, name="seven-hub-state-refresh", daemon=True).start()
+                return False
+
             def refresh_live_surface() -> bool:
-                safe_render_all()
-                update_live_status()
+                start_state_refresh(True)
                 return True
 
             def render_loading_shell() -> None:
@@ -2083,7 +2487,15 @@ def run_gui() -> int:
 
                 clear(profiles_page)
                 heading(profiles_page, "Profiles", "Loading profile workspaces...")
-                profiles_page.append(status_card("Profile Engine", "Collecting Forge, Shield, Studio, Windows and Horizon state.", "LOAD", "info"))
+                profiles_page.append(status_card("Profile Engine", "Collecting Forge DevOps, Shield, Studio, Windows and Pulse state.", "LOAD", "info"))
+
+                clear(search_page)
+                heading(search_page, "Search", "Loading searchable actions and runtime contracts...")
+                search_page.append(status_card("Search Index", "Preparing actions, mini OS shortcuts and runtime manifests.", "LOAD", "info"))
+
+                clear(runtime_page)
+                heading(runtime_page, "Runtime & Mini OS", "Loading runtime manifests...")
+                runtime_page.append(status_card("Runtime Contracts", "Preparing profile isolation, composition and strict execution state.", "LOAD", "info"))
 
                 clear(actions_page)
                 heading(actions_page, "Actions", "Loading available repairs and system actions...")
@@ -2094,11 +2506,10 @@ def run_gui() -> int:
                 ecosystem_page.append(status_card("Seven Ecosystem", "Preparing Server, Store, Shell, Core and deployment state.", "LOAD", "info"))
 
             def load_after_present() -> bool:
-                safe_render_all()
-                update_live_status()
+                start_state_refresh(True)
                 return False
 
-            refresh.connect("clicked", lambda _button: refresh_live_surface())
+            refresh.connect("clicked", lambda _button: start_state_refresh(True))
             render_loading_shell()
             win.present()
             GLib.timeout_add(80, load_after_present)

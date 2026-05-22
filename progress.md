@@ -1491,3 +1491,13 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   `~/.local/share/sevenos/support` et n'envoie rien automatiquement.
 - `seven state --json`, le registre d'actions, README, la doc autonomie et
   `ux-check` valident maintenant cette surface de diagnostic partageable.
+
+## 2026-05-22 - Seven Hub support/cache pass
+
+- Seven Hub conserve maintenant un snapshot local dans
+  `~/.cache/sevenos/hub-state.json`, ce qui garde le cockpit ouvrable meme si
+  une commande backend devient lente ou indisponible.
+- Le dashboard expose la route `seven support` comme action de diagnostic
+  locale, avec score de support et acces au bundle.
+- Le contrat Hub valide maintenant que `support` est present dans `seven
+  state --json` et dans le registre d'actions.

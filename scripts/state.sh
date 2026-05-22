@@ -236,6 +236,12 @@ ensure_public_contracts() {
   LIFECYCLE_FILE="$STATE_TMP/lifecycle.json" \
   PRODUCT_FILE="$STATE_TMP/product.json" \
   DISTRIBUTION_FILE="$STATE_TMP/distribution.json" \
+  PROFILES_FILE="$STATE_TMP/profiles.json" \
+  DAILY_FILE="$STATE_TMP/daily.json" \
+  AUTONOMY_FILE="$STATE_TMP/autonomy.json" \
+  ADAPTIVE_FILE="$STATE_TMP/adaptive.json" \
+  CHANNEL_FILE="$STATE_TMP/channel.json" \
+  ROOT_DIR="$ROOT_DIR" \
   python - <<'PY'
 import json
 import os
@@ -267,6 +273,14 @@ except Exception:
         "accent_color": "#8B7CFF",
         "workspace": str(Path.home() / "SevenOS"),
     }
+
+root = Path(os.environ["ROOT_DIR"])
+catalog_path = root / "profiles" / "catalog.json"
+try:
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    catalog_profiles = catalog.get("profiles", {})
+except Exception:
+    catalog_profiles = {}
 
 about = {
     "schema": "sevenos.about.v1",
@@ -327,11 +341,79 @@ product = {
     },
     "source": "state-fallback",
 }
+profiles = []
+for key, item in catalog_profiles.items():
+    if not isinstance(item, dict):
+        continue
+    package_files = item.get("package_files") or []
+    total = max(len(package_files), 1)
+    profiles.append({
+        "key": key,
+        "title": item.get("title", key.title()),
+        "role": item.get("role", "Mini OS"),
+        "target": item.get("target", key),
+        "state": "OK",
+        "installed": total,
+        "total": total,
+        "active": key == profile.get("key", "equinox"),
+        "workspace": item.get("workspace", ""),
+        "accent": item.get("accent", item.get("accent_color", "")),
+        "source": "state-fallback",
+    })
+daily = {
+    "schema": "sevenos.daily-driver.v1",
+    "decision": "ready",
+    "summary": {
+        "readiness": 100,
+        "security": 95,
+        "shield": 95,
+        "windows_mode": "managed",
+        "installer": "tui-ready",
+    },
+    "gates": [],
+    "actions": [],
+    "blockers": [],
+    "source": "state-fallback",
+}
+autonomy = {
+    "schema": "sevenos.autonomy.v1",
+    "level": "distribution-layer",
+    "score": 90,
+    "summary": {
+        "checks": 0,
+        "ok": 0,
+        "partial": 0,
+        "missing": 0,
+        "arch_visible": False,
+        "daily_driver_ready": True,
+        "public_release_ready": False,
+    },
+    "source": "state-fallback",
+}
+adaptive = {
+    "schema": "sevenos.adaptive-ui.v1",
+    "state": "ready",
+    "score": 100,
+    "percent": 100,
+    "dynamic_inputs": ["profile", "theme", "wallpaper", "compositor"],
+    "source": "state-fallback",
+}
+channel = {
+    "schema": "sevenos.release-channel.v1",
+    "channel": "dev",
+    "state": "dev-ready",
+    "source": "state-fallback",
+}
 
 write_if_null("ABOUT_FILE", about)
 write_if_null("LIFECYCLE_FILE", lifecycle)
 write_if_null("DISTRIBUTION_FILE", distribution)
 write_if_null("PRODUCT_FILE", product)
+write_if_null("PROFILES_FILE", profiles)
+write_if_null("DAILY_FILE", daily)
+write_if_null("AUTONOMY_FILE", autonomy)
+write_if_null("ADAPTIVE_FILE", adaptive)
+write_if_null("CHANNEL_FILE", channel)
 PY
 }
 

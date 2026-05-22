@@ -1518,6 +1518,8 @@ if python -m json.tool >/dev/null <<<"$hub_product_json" &&
    grep -Eq '"level": "(active|product-preview)"' <<<"$hub_product_json" &&
    grep -q '"state_runtime_manifest": true' <<<"$hub_product_json" &&
    grep -q '"state_runtime_manifests": true' <<<"$hub_product_json" &&
+   grep -q '"support": true' <<<"$hub_product_json" &&
+   grep -q '"support.status"' <<<"$hub_product_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub doctor >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" actions --json | grep -q '"hub.status"'; then
   ok "Seven Hub exposes a product-surface readiness contract"

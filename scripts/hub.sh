@@ -71,6 +71,8 @@ required_actions = {
     "hub.open",
     "hub.status",
     "hub.plan",
+    "support.status",
+    "support.bundle",
     "settings.open",
     "control.plan",
     "ecosystem.maturity",
@@ -81,19 +83,22 @@ required_actions = {
 missing_actions = sorted(required_actions - action_ids)
 
 state_contract = run_json(["scripts/state.sh", "--json"], timeout=12) or {}
+autonomy_contract = state_contract.get("autonomy") if isinstance(state_contract.get("autonomy"), dict) else run_json(["scripts/autonomy.sh", "json"], timeout=6)
 active_runtime_manifest = run_json(["bin/seven-profile-run", "--manifest"], timeout=6) or {}
 runtime_manifest_root = Path.home() / ".local/share/sevenos/profile-runtime-manifests"
 runtime_manifest_count = len(list(runtime_manifest_root.glob("*.json"))) if runtime_manifest_root.is_dir() else 0
-adaptive_contract = run_json(["scripts/adaptive-ui.sh", "json"], timeout=4) or {}
+adaptive_contract = run_json(["scripts/adaptive-ui.sh", "json"], timeout=10) or {}
+channel_contract = state_contract.get("channel") if isinstance(state_contract.get("channel"), dict) else run_json(["scripts/channel.sh", "json"], timeout=6)
 contracts = {
     "state": bool(state_contract),
     "actions": bool(actions_payload.get("actions")),
     "ecosystem": isinstance(state_contract.get("ecosystem"), dict),
     "installer": isinstance(state_contract.get("installer"), dict),
     "adaptive": isinstance(state_contract.get("adaptive"), dict) or bool(adaptive_contract),
-    "autonomy": isinstance(state_contract.get("autonomy"), dict),
+    "autonomy": isinstance(autonomy_contract, dict),
     "platform": isinstance(state_contract.get("platform"), dict),
-    "channel": isinstance(state_contract.get("channel"), dict),
+    "channel": isinstance(channel_contract, dict),
+    "support": isinstance(state_contract.get("support"), dict),
 }
 contracts["state_runtime_manifest"] = isinstance(state_contract.get("profile_runtime_manifest"), dict) or isinstance(active_runtime_manifest, dict) and bool(active_runtime_manifest.get("schema"))
 contracts["state_runtime_manifests"] = isinstance(state_contract.get("profile_runtime_manifests"), dict) or runtime_manifest_count >= 7
