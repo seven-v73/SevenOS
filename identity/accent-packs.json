@@ -27,7 +27,7 @@
       "accent": "indigo",
       "pattern": "geometry",
       "signal": "architecture and navigation",
-      "description": "Indigo, stone and precise geometry for knowledge, networks and horizon workflows."
+      "description": "Indigo, stone and precise geometry for knowledge, networks and DevOps workflows."
     },
     {
       "key": "central-africa",
@@ -43,9 +43,9 @@
       "title": "East Africa",
       "state": "planned",
       "accent": "indigo",
-      "pattern": "horizon",
+      "pattern": "coastline",
       "signal": "movement, coast and exchange",
-      "description": "Light indigo and horizon rhythm for cloud, deployment, education and mobility."
+      "description": "Light indigo and coastline rhythm for deployment, education and mobility."
     },
     {
       "key": "southern-africa",

@@ -203,7 +203,9 @@ seven identity packs --json
 seven identity current
 seven identity current --json
 seven identity activate pan-african
+seven identity plan
 seven identity doctor
+seven identity doctor --json
 ```
 
 ## Current Status

@@ -316,6 +316,7 @@ shell.plan	Desktop	Seven Shell Plan	seven shell plan	safe	Show how Seven Shell w
 shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned AGS surfaces and fallback contracts.
 shell.install	Desktop	Install Shell Foundation	./install.sh shell-ags --yes	packages	Install GJS, TypeScript, GTK4 and libadwaita for the B3 shell foundation.
 identity.status	Ecosystem	SevenOS Visual Identity	seven identity	safe	Show SevenOS Beyond the Desktop product language.
+identity.plan	Ecosystem	Identity Plan	seven identity plan	safe	Show identity gaps before public surfaces rely on branding and theme assets.
 identity.design	Ecosystem	Seven Design Engine	seven identity design	safe	Show Seven Mocha/Latte palettes, icon resolution and design surfaces.
 identity.theme	Ecosystem	Theme Runtime	seven identity theme	safe	Show active GTK, Qt, icons, cursor and Kvantum runtime state.
 identity.theme.doctor	Ecosystem	Theme Doctor	seven identity theme-doctor	safe	Check dark/light parity, toolkit coherence and runtime theme state.
@@ -326,6 +327,7 @@ identity.packs	Ecosystem	Regional Accent Packs	seven identity packs	safe	Show pl
 identity.current	Ecosystem	Active Identity Pack	seven identity current	safe	Show the active SevenOS regional accent pack.
 identity.activate.pan	Ecosystem	Activate Accent Pack	seven identity activate pan-african	changes	Set the active SevenOS contextual accent pack.
 identity.doctor	Ecosystem	Identity Doctor	seven identity doctor	safe	Validate SevenOS identity files and components.
+identity.doctor.json	Ecosystem	Identity Doctor JSON	seven identity doctor --json	safe	Expose the identity readiness contract for Hub, Settings and release checks.
 EOF
 }
 

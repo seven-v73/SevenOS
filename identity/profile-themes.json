@@ -25,15 +25,15 @@
       "design_signal": "culture-first, quiet, no developer/security/cloud noise"
     },
     "forge": {
-      "label": "Forge Developer",
+      "label": "Forge DevOps",
       "icon": "󰙨",
       "short_label": "DEV",
       "accent": "#89B4FA",
       "secondary": "#A6E3A1",
       "catppuccin_role": "blue/green",
-      "waybar": "developer shell: profile, Spotlight, project flow, network, recorder and code-aware AI",
-      "ui_mood": "focused engineering cockpit, terminal clarity, git/build/container readiness",
-      "design_signal": "code, services and local builds are first-class"
+      "waybar": "DevOps shell: profile, Spotlight, project flow, network, recorder, services and code-aware AI",
+      "ui_mood": "focused engineering cockpit, terminal clarity, git/build/container/deploy readiness",
+      "design_signal": "code, services, local builds, cloud deploys and logs are first-class"
     },
     "shield": {
       "label": "Shield Cybersecurity",
@@ -67,17 +67,6 @@
       "waybar": "Windows bridge shell: VM readiness, app routing, network, audio, battery and assistant",
       "ui_mood": "complete Windows VM path, compatibility guidance, app-first bridge",
       "design_signal": "VM-first Windows experience, with Wine/Bottles as lighter fallbacks"
-    },
-    "horizon": {
-      "label": "Horizon Cloud",
-      "icon": "󰖟",
-      "short_label": "CLD",
-      "accent": "#89DCEB",
-      "secondary": "#94E2D5",
-      "catppuccin_role": "sky/teal",
-      "waybar": "cloud shell: profile, Spotlight, network, VPN, recorder and service-aware AI",
-      "ui_mood": "deployment navigator, services dashboard, endpoints and logs",
-      "design_signal": "server, deploy and network controls are primary"
     },
     "pulse": {
       "label": "Pulse Gaming",

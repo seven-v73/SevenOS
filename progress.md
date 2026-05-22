@@ -1519,3 +1519,13 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   publique sans revenir aux diagnostics backend.
 - Le registre d'actions, README, doc autonomie et `ux-check` valident maintenant
   la surface About comme contrat produit exploitable par Hub/Settings/installer.
+
+## 2026-05-22 - SevenOS identity doctor contract pass
+
+- `seven identity doctor --json` expose maintenant `sevenos.identity-doctor.v1`
+  avec fichiers source, icones natives, accent packs, design engine et themes
+  de mini OS.
+- Ajout de `seven identity plan` pour afficher les blocages d'identite sans
+  parser une sortie texte.
+- Le registre d'actions, README, doc autonomie et `ux-check` valident cette
+  gate d'identite pour les surfaces publiques.

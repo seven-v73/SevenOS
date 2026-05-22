@@ -855,6 +855,7 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'keyboard.apply' <<<"$actions_json" &&
    grep -q 'session.status' <<<"$actions_json" &&
    grep -q 'identity.status' <<<"$actions_json" &&
+   grep -q 'identity.plan' <<<"$actions_json" &&
    grep -q 'identity.design' <<<"$actions_json" &&
    grep -q 'identity.icons' <<<"$actions_json" &&
    grep -q 'identity.packs' <<<"$actions_json" &&
@@ -1894,6 +1895,7 @@ session_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" session status --json)"
 identity_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" identity --json)"
 identity_packs_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" identity packs --json)"
 identity_current_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" identity current --json)"
+identity_doctor_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" identity doctor --json)"
 windows_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows plan --json)"
 installer_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer status --json)"
 installer_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" installer plan --json)"
@@ -1947,6 +1949,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    python -m json.tool <<<"$identity_json" >/dev/null &&
    python -m json.tool <<<"$identity_packs_json" >/dev/null &&
    python -m json.tool <<<"$identity_current_json" >/dev/null &&
+   python -m json.tool <<<"$identity_doctor_json" >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null &&
    python -m json.tool <<<"$windows_plan_json" >/dev/null &&
    python -m json.tool <<<"$ecosystem_json" >/dev/null &&
@@ -2017,6 +2020,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'pan-african' <<<"$identity_packs_json" &&
    grep -q '"schema": "sevenos.identity-current.v1"' <<<"$identity_current_json" &&
    grep -q '"pack"' <<<"$identity_current_json" &&
+   grep -q '"schema": "sevenos.identity-doctor.v1"' <<<"$identity_doctor_json" &&
+   grep -Eq '"state"[[:space:]]*:[[:space:]]*"(ready|partial)"' <<<"$identity_doctor_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.shield.v1"' <<<"$shield_json" &&
    grep -q '"writer":"seven-daemon"' <<<"$shield_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.shield-plan.v1"' <<<"$shield_plan_json" &&

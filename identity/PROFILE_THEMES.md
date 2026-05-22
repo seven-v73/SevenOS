@@ -31,11 +31,10 @@ goal of the system itself without forcing their stack onto other profiles.
 | --- | --- | --- | --- |
 | `equinox` | Equinox Balance | Balanced general computing | General shell, broad readiness |
 | `baobab` | Baobab Culture | African culture and learning | Reader/media/language/culture surface |
-| `forge` | Forge Developer | Development | Code, builds, terminal and local services |
+| `forge` | Forge DevOps | Development and deployment | Code, builds, containers, services, deploys and logs |
 | `shield` | Shield Cybersecurity | Cybersecurity | VPN, audit, isolation and recorder awareness |
 | `studio` | Studio Creator | Creation | Media, audio, capture and production flow |
 | `windows` | Windows Bridge | Windows VM and compatibility | VM, app routing, snapshots and fallbacks |
-| `horizon` | Horizon Cloud | Cloud/server/deployment | Network, services, deployment and logs |
 | `pulse` | Pulse Gaming | Linux gaming/performance | Low latency, overlays, media and recording |
 
 The machine-readable contract lives in `identity/profile-themes.json` and

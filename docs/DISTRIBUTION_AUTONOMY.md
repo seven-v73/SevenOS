@@ -51,6 +51,7 @@ The contract checks:
 - release channel identity (`dev`, `testing`, `stable`) instead of raw Git as
   the only product state;
 - SevenOS identity in shell, release files and live ISO branding;
+- SevenOS visual identity readiness via `seven identity doctor`;
 - native surfaces: Hub, Settings, Store, Files, Reader and mini OS centers;
 - mini OS runtime manifests with strict HOME/cache/data/workspace boundaries;
 - SevenDaemon service path for future policy execution;

@@ -28,7 +28,10 @@ Usage:
   seven identity visuals
   seven identity visuals install --yes
   seven identity activate <pack>
-  ./scripts/identity.sh [status|json|doctor]
+  seven identity plan
+  seven identity doctor
+  seven identity doctor --json
+  ./scripts/identity.sh [status|json|plan|doctor]
 
 Shows the SevenOS futuristic product language used by profiles, onboarding,
 Hub, shell surfaces and future contextual accent packs.
@@ -91,15 +94,6 @@ profiles = [
         "symbol": "motif-cross",
         "principle": "compatibility without surrender",
         "story": "The bridge space: Windows apps inside a Linux-first life.",
-    },
-    {
-        "key": "horizon",
-        "title": "Horizon",
-        "role": "Navigator",
-        "accent": "seven-cyan",
-        "symbol": "motif-stripe",
-        "principle": "deployment and reach",
-        "story": "The navigator space: servers, networks, deployment and personal cloud.",
     },
     {
         "key": "griot",
@@ -402,56 +396,191 @@ print(json.dumps(json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")), inde
 PY
 }
 
-doctor() {
-  local missing=0
-  local file
-
-  for file in \
-    "$ROOT_DIR/identity/CHARTER.md" \
-    "$ROOT_DIR/identity/STYLE.md" \
-    "$ROOT_DIR/identity/design-engine.json" \
-    "$ROOT_DIR/identity/design-engine.css" \
-    "$ROOT_DIR/identity/icons/manifest.json" \
-    "$ROOT_DIR/identity/accent-packs.json" \
-    "$ROOT_DIR/identity/components/kente-divider.svg" \
-    "$ROOT_DIR/identity/components/adinkra-status-ok.svg" \
-    "$ROOT_DIR/identity/components/baobab-system-mark.svg" \
-    "$ROOT_DIR/identity/components/griot-doc-mark.svg" \
-    "$ROOT_DIR/identity/components/forge-profile-mark.svg" \
-    "$ROOT_DIR/identity/components/shield-profile-mark.svg"; do
-    if [[ -s "$file" ]]; then
-      printf '[OK] %s\n' "${file#"$ROOT_DIR/"}"
-    else
-      printf '[MISS] %s\n' "${file#"$ROOT_DIR/"}"
-      missing=$((missing + 1))
-    fi
-  done
-
-  while IFS= read -r icon_file; do
-    file="$ROOT_DIR/identity/icons/$icon_file"
-    if [[ -s "$file" ]]; then
-      printf '[OK] %s\n' "${file#"$ROOT_DIR/"}"
-    else
-      printf '[MISS] %s\n' "${file#"$ROOT_DIR/"}"
-      missing=$((missing + 1))
-    fi
-  done < <(python - "$ROOT_DIR/identity/icons/manifest.json" <<'PY'
+doctor_json() {
+  SEVENOS_IDENTITY_ROOT="$ROOT_DIR" SEVENOS_IDENTITY_CURRENT="$(current_pack_key)" python - <<'PY'
 import json
-import sys
+import os
 from pathlib import Path
 
-data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-for item in data.get("icons", []):
-    print(item.get("file", ""))
+root = Path(os.environ["SEVENOS_IDENTITY_ROOT"])
+current_key = os.environ.get("SEVENOS_IDENTITY_CURRENT") or "pan-african"
+
+required_files = [
+    "identity/CHARTER.md",
+    "identity/STYLE.md",
+    "identity/design-engine.json",
+    "identity/design-engine.css",
+    "identity/icons/manifest.json",
+    "identity/accent-packs.json",
+    "identity/profile-themes.json",
+    "identity/components/kente-divider.svg",
+    "identity/components/adinkra-status-ok.svg",
+    "identity/components/baobab-system-mark.svg",
+    "identity/components/griot-doc-mark.svg",
+    "identity/components/forge-profile-mark.svg",
+    "identity/components/shield-profile-mark.svg",
+]
+
+
+def load_json(rel, fallback):
+    try:
+        data = json.loads((root / rel).read_text(encoding="utf-8"))
+    except Exception:
+        return fallback
+    return data if isinstance(data, type(fallback)) else fallback
+
+
+files = []
+for rel in required_files:
+    path = root / rel
+    files.append({
+        "path": rel,
+        "state": "OK" if path.is_file() and path.stat().st_size > 0 else "MISS",
+    })
+
+icon_manifest = load_json("identity/icons/manifest.json", {})
+icons = []
+for item in icon_manifest.get("icons", []):
+    rel = f"identity/icons/{item.get('file', '')}"
+    path = root / rel
+    icons.append({
+        "name": item.get("name", ""),
+        "file": item.get("file", ""),
+        "state": "OK" if path.is_file() and path.stat().st_size > 0 else "MISS",
+    })
+
+accent_packs = load_json("identity/accent-packs.json", {})
+packs = accent_packs.get("packs", [])
+pack_keys = {item.get("key") for item in packs if isinstance(item, dict)}
+profile_themes = load_json("identity/profile-themes.json", {})
+profiles = profile_themes.get("profiles", {})
+if isinstance(profiles, list):
+    profile_count = len(profiles)
+elif isinstance(profiles, dict):
+    profile_count = len(profiles)
+else:
+    profile_count = 0
+
+design = load_json("identity/design-engine.json", {})
+
+checks = [
+    {
+        "key": "required-files",
+        "state": "OK" if all(item["state"] == "OK" for item in files) else "MISS",
+        "title": "Identity source files",
+        "detail": f"{sum(1 for item in files if item['state'] == 'OK')}/{len(files)} files present.",
+    },
+    {
+        "key": "native-icons",
+        "state": "OK" if icons and all(item["state"] == "OK" for item in icons) else "MISS",
+        "title": "Native SevenOS icons",
+        "detail": f"{sum(1 for item in icons if item['state'] == 'OK')}/{len(icons)} icons present.",
+    },
+    {
+        "key": "accent-packs",
+        "state": "OK" if accent_packs.get("schema") == "sevenos.accent-packs.v1" and len(packs) >= 3 else "PART",
+        "title": "Regional accent packs",
+        "detail": f"{len(packs)} pack(s), default={accent_packs.get('default_pack', 'unknown')}.",
+    },
+    {
+        "key": "current-pack",
+        "state": "OK" if current_key in pack_keys else "PART",
+        "title": "Active identity pack",
+        "detail": current_key,
+    },
+    {
+        "key": "design-engine",
+        "state": "OK" if design.get("schema") == "sevenos.design-engine.v1" and design.get("modes") else "PART",
+        "title": "Design engine",
+        "detail": design.get("engine", "unknown"),
+    },
+    {
+        "key": "profile-themes",
+        "state": "OK" if profile_themes.get("schema") == "sevenos.profile-themes.v1" and profile_count >= 7 else "PART",
+        "title": "Mini OS theme identities",
+        "detail": f"{profile_count} profile theme(s).",
+    },
+]
+
+ok = sum(1 for item in checks if item["state"] == "OK")
+part = sum(1 for item in checks if item["state"] == "PART")
+score = round((ok + part * 0.5) / max(len(checks), 1) * 100)
+state = "ready" if score >= 90 else "partial" if score >= 70 else "incomplete"
+
+print(json.dumps({
+    "schema": "sevenos.identity-doctor.v1",
+    "state": state,
+    "score": score,
+    "current_pack": current_key,
+    "checks": checks,
+    "files": files,
+    "icons": icons,
+    "issues": [item for item in checks if item["state"] != "OK"],
+    "commands": {
+        "status": "seven identity",
+        "plan": "seven identity plan",
+        "doctor": "seven identity doctor",
+        "packs": "seven identity packs",
+        "design": "seven identity design",
+    },
+}, indent=2))
 PY
-)
+}
 
-  if [[ "$missing" -gt 0 ]]; then
-    log_error "SevenOS identity layer is incomplete."
-    exit 1
+doctor() {
+  local payload
+  payload="$(doctor_json)"
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    printf '%s\n' "$payload"
+  else
+    IDENTITY_DOCTOR_JSON="$payload" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["IDENTITY_DOCTOR_JSON"])
+print("SevenOS Identity Doctor")
+print("=======================")
+print(f"State: {data.get('state')}")
+print(f"Score: {data.get('score')}%")
+print(f"Pack:  {data.get('current_pack')}")
+print()
+for item in data.get("checks", []):
+    print(f"{item.get('state', 'MISS'):<4} {item.get('title')}")
+    print(f"     {item.get('detail')}")
+PY
   fi
+  IDENTITY_DOCTOR_JSON="$payload" python - <<'PY'
+import json
+import os
+import sys
 
-  log_success "SevenOS identity layer is present."
+data = json.loads(os.environ["IDENTITY_DOCTOR_JSON"])
+sys.exit(0 if data.get("score", 0) >= 90 else 1)
+PY
+}
+
+plan() {
+  local payload
+  payload="$(doctor_json)"
+  IDENTITY_DOCTOR_JSON="$payload" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["IDENTITY_DOCTOR_JSON"])
+print("SevenOS Identity Plan")
+print("=====================")
+print(f"State: {data.get('state')}")
+print(f"Score: {data.get('score')}%")
+print()
+issues = data.get("issues", [])
+if not issues:
+    print("No identity blockers.")
+else:
+    for item in issues:
+        print(f"- {item.get('title', item.get('key', 'Identity check'))}")
+        print(f"  {item.get('detail', '')}")
+        print(f"  command: {data.get('commands', {}).get(item.get('key', ''), 'seven identity doctor')}")
+PY
 }
 
 packs_status() {
@@ -483,11 +612,10 @@ status() {
   printf '  Fluidity, Transparency, Intelligent minimalism, Depth, Contextuality, Visible security\n\n'
   printf 'Profile language:\n'
   printf '  Baobab  Roots      blue    adaptive base and health\n'
-  printf '  Forge   Builder    cyan    code, learning and construction\n'
+  printf '  Forge   Builder    cyan    code, services, deploy and construction\n'
   printf '  Shield  Guardian   green   audit, sandbox and cyber trust\n'
   printf '  Studio  Maker      violet  creative production\n'
   printf '  Windows Bridge     blue    compatibility without friction\n'
-  printf '  Horizon Navigator  cyan    deploy, network and cloud\n'
   printf '  Griot   Memory     violet  documentation and knowledge\n'
   printf '\nRegional accent packs:\n'
   printf '  seven identity packs\n'
@@ -557,6 +685,7 @@ case "$ACTION" in
   activate)
     activate_pack "$PACK_KEY"
     ;;
+  plan) plan ;;
   doctor) doctor ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown identity action: $ACTION"; usage; exit 1 ;;
