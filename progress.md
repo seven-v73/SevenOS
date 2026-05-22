@@ -1458,3 +1458,15 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   d'actions, README, la doc autonomie et `ux-check` savent maintenant valider
   cette route, afin que la maintenance courante ne commence plus par un
   workflow Arch brut.
+
+## 2026-05-22 - SevenOS recovery surface pass
+
+- Ajout de `seven recovery`, contrat de recuperation SevenOS-first qui regroupe
+  chemins proteges, backups de migration, plan de reparation, installer/recovery
+  et gate de distribution.
+- `seven recovery backup` delegue explicitement a `scripts/migrate.sh backup`,
+  mais le parcours utilisateur commence maintenant par une surface SevenOS.
+- `seven lifecycle`, `seven foundations`, `seven state --json`, le registre
+  d'actions, README, la doc autonomie et `ux-check` savent maintenant valider
+  cette route de recuperation, pour que SevenOS ressemble davantage a une
+  distribution autonome qu'a un ensemble de scripts de secours.

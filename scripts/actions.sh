@@ -33,6 +33,9 @@ lifecycle.plan	System	Lifecycle Plan	seven lifecycle plan	safe	Show remaining ma
 update.status	System	SevenOS Update	seven update	safe	Show SevenOS system, app, community and profile update state before backend commands run.
 update.plan	System	Update Plan	seven update plan	safe	Show the SevenOS-first update sequence.
 update.apply	System	Apply Updates	seven update apply	packages	Update through the SevenOS route, then delegate to package foundations.
+recovery.status	System	SevenOS Recovery	seven recovery	safe	Show protected user state, migration backups, repair routes and installer/recovery readiness.
+recovery.plan	System	Recovery Plan	seven recovery plan	safe	Show the SevenOS-first recovery sequence.
+recovery.backup	System	Create Recovery Backup	seven recovery backup	changes	Create a protected migration backup using the SevenOS manifest.
 product.status	System	SevenOS Product	seven product	safe	Show the compact SevenOS product snapshot used by Hub, Settings, Welcome and installer surfaces.
 product.json	System	SevenOS Product JSON	seven product --json	safe	Expose the SevenOS product facade as one machine-readable contract for native surfaces.
 foundations.status	System	SevenOS Foundations	seven foundations	safe	Show how SevenOS owns normal workflows while Arch, Hyprland, pacman and libvirt remain technical foundations.

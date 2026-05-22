@@ -179,10 +179,10 @@ layers = [
         "maintenance",
         "SevenOS Lifecycle",
         "systemd, journalctl, manifest backups, repair scripts",
-        "Lifecycle, Doctor, Repair, Release Gate",
-        "seven lifecycle",
+        "Lifecycle, Recovery, Doctor, Repair, Release Gate",
+        "seven recovery",
         command_ok("systemctl") or command_ok("journalctl"),
-        file_ok("scripts/lifecycle.sh") and file_ok("scripts/doctor.sh") and file_ok("scripts/repair.sh"),
+        file_ok("scripts/lifecycle.sh") and file_ok("scripts/recovery.sh") and file_ok("scripts/doctor.sh") and file_ok("scripts/repair.sh"),
         strict=False,
     ),
 ]

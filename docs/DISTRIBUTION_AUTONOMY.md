@@ -18,6 +18,7 @@ Run:
 seven about
 seven lifecycle
 seven update
+seven recovery
 seven product
 seven foundations
 seven autonomy
@@ -37,6 +38,7 @@ The contract checks:
 - public About/edition identity via `seven about`;
 - public lifecycle/maintenance routes via `seven lifecycle`;
 - SevenOS-first update state via `seven update`;
+- SevenOS-first recovery state via `seven recovery`;
 - compact public product facade via `seven product`;
 - SevenOS-owned foundation routes via `seven foundations`;
 - SevenOS-first commands: `seven`, `sevenpkg`, SevenStore and Settings;
@@ -77,7 +79,7 @@ essential OS lifecycle to SevenOS routes:
 - update apps and system -> SevenStore / `sevenpkg`;
 - inspect/apply updates -> `seven update`;
 - repair the OS -> Seven Doctor / `seven repair`;
-- protect user state -> `seven manifest restore-plan`;
+- protect/recover user state -> `seven recovery`;
 - check release readiness -> `seven distribution`;
 - prepare installer/recovery -> `seven installer release`.
 

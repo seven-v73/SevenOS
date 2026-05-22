@@ -40,17 +40,20 @@ lifecycle_json() {
   local pid_channel=$!
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/update.sh" json >"$tmp/update.json" 2>/dev/null || printf '{}\n' >"$tmp/update.json" &
   local pid_update=$!
+  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/recovery.sh" json >"$tmp/recovery.json" 2>/dev/null || printf '{}\n' >"$tmp/recovery.json" &
+  local pid_recovery=$!
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/manifest.sh" summary-json >"$tmp/manifest.json" 2>/dev/null || printf '{}\n' >"$tmp/manifest.json" &
   local pid_manifest=$!
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer.json" 2>/dev/null || printf '{}\n' >"$tmp/installer.json" &
   local pid_installer=$!
-  wait "$pid_about" "$pid_distribution" "$pid_channel" "$pid_update" "$pid_manifest" "$pid_installer" || true
+  wait "$pid_about" "$pid_distribution" "$pid_channel" "$pid_update" "$pid_recovery" "$pid_manifest" "$pid_installer" || true
 
   SEVENOS_ROOT="$ROOT_DIR" \
   ABOUT_JSON="$tmp/about.json" \
   DISTRIBUTION_JSON="$tmp/distribution.json" \
   CHANNEL_JSON="$tmp/channel.json" \
   UPDATE_JSON="$tmp/update.json" \
+  RECOVERY_JSON="$tmp/recovery.json" \
   MANIFEST_JSON="$tmp/manifest.json" \
   INSTALLER_JSON="$tmp/installer.json" \
   python - <<'PY'
@@ -85,6 +88,7 @@ about = load_path("ABOUT_JSON")
 distribution = load_path("DISTRIBUTION_JSON")
 channel = load_path("CHANNEL_JSON")
 update = load_path("UPDATE_JSON")
+recovery = load_path("RECOVERY_JSON")
 manifest = load_path("MANIFEST_JSON")
 installer = load_path("INSTALLER_JSON")
 
@@ -116,6 +120,13 @@ checks = [
         "title": "SevenOS software update facade",
         "detail": f"Update state: {update.get('state', 'unknown')}; score: {update.get('score', 'unknown')}%.",
         "command": "seven update",
+    },
+    {
+        "key": "recovery-route",
+        "state": "OK" if recovery.get("schema") == "sevenos.recovery.v1" and recovery.get("score", 0) >= 90 else "PART",
+        "title": "SevenOS recovery facade",
+        "detail": f"Recovery state: {recovery.get('state', 'unknown')}; score: {recovery.get('score', 'unknown')}%.",
+        "command": "seven recovery",
     },
     {
         "key": "repair-route",
@@ -176,7 +187,7 @@ print(json.dumps({
     "maintenance_routes": [
         {"intent": "Update apps and system", "surface": "SevenOS Update / SevenStore", "command": "seven update"},
         {"intent": "Repair the OS", "surface": "Seven Doctor / Repair", "command": "seven repair"},
-        {"intent": "Protect user state", "surface": "SevenOS Manifest", "command": "seven manifest restore-plan"},
+        {"intent": "Protect or recover user state", "surface": "SevenOS Recovery", "command": "seven recovery"},
         {"intent": "Check release readiness", "surface": "SevenOS Distribution", "command": "seven distribution"},
         {"intent": "Prepare installer/recovery", "surface": "SevenOS Installer", "command": "seven installer release"},
     ],

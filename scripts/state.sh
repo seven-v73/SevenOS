@@ -152,6 +152,8 @@ json_to_file "$STATE_TMP/lifecycle.json" env SEVENOS_LIFECYCLE_FAST=1 "$ROOT_DIR
 pid_lifecycle=$!
 json_to_file "$STATE_TMP/update.json" env SEVENOS_UPDATE_FAST=1 "$ROOT_DIR/scripts/update.sh" json &
 pid_update=$!
+json_to_file "$STATE_TMP/recovery.json" env SEVENOS_RECOVERY_FAST=1 "$ROOT_DIR/scripts/recovery.sh" json &
+pid_recovery=$!
 json_to_file "$STATE_TMP/product.json" env SEVENOS_PRODUCT_FAST=1 "$ROOT_DIR/scripts/product.sh" json &
 pid_product=$!
 json_to_file "$STATE_TMP/foundations.json" "$ROOT_DIR/scripts/foundations.sh" json &
@@ -222,7 +224,7 @@ json_to_file "$STATE_TMP/distribution.json" env SEVENOS_DISTRIBUTION_FAST=1 "$RO
 pid_distribution=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
-  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
   "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
 
 ensure_public_contracts() {
@@ -421,6 +423,9 @@ cat "$STATE_TMP/lifecycle.json"
 printf ','
 printf '"update":'
 cat "$STATE_TMP/update.json"
+printf ','
+printf '"recovery":'
+cat "$STATE_TMP/recovery.json"
 printf ','
 printf '"product":'
 cat "$STATE_TMP/product.json"
