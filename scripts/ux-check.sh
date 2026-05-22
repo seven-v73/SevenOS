@@ -1665,6 +1665,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'render_profiles_compact' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'render_runtime_compact' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'render_actions_compact' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'smoke_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Smoke Gate' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-tile' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-glass-strip' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'GLib.timeout_add' "$ROOT_DIR/bin/seven-hub-native" &&

@@ -1565,3 +1565,12 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   `seven smoke` et sans risquer une boucle `state -> smoke -> state`.
 - `ux-check`, README et la doc autonomie savent que le smoke gate existe aussi
   comme signal embarque dans la source d'etat centrale.
+
+## 2026-05-22 - Seven Hub smoke gate pass
+
+- Seven Hub lit maintenant `smoke` depuis `seven state --json` et l'affiche
+  comme jauge produit rapide dans le dashboard.
+- Le dashboard remplace une mesure UX trop developpeur par un signal public :
+  `Smoke Gate`, score, et action `seven smoke`.
+- `ux-check` valide que Hub consomme ce signal au lieu de forcer les surfaces a
+  relancer des diagnostics profonds.

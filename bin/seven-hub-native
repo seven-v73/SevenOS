@@ -488,6 +488,18 @@ def support_payload() -> dict:
         return {"schema": "sevenos.support.v1", "state": "partial", "score": 0, "checks": []}
 
 
+def smoke_payload() -> dict:
+    value = state_value("smoke", {})
+    if value:
+        return value
+    if PREFER_STATE_ONLY:
+        return {"schema": "sevenos.smoke.v1", "state": "state-snapshot", "score": 0, "checks": []}
+    try:
+        return json.loads(run_text(str(ROOT / "scripts" / "smoke.sh"), "json"))
+    except Exception:
+        return {"schema": "sevenos.smoke.v1", "state": "partial", "score": 0, "checks": []}
+
+
 def insights_payload() -> dict:
     value = state_value("insights", {})
     if value:
@@ -554,6 +566,7 @@ def status_text() -> str:
     control = control_payload()
     events = events_payload()
     support = support_payload()
+    smoke = smoke_payload()
     insights = insights_payload()
     phase_gate = phase_gate_payload()
     b3 = b3_payload()
@@ -586,6 +599,7 @@ def status_text() -> str:
         f"Server: {server.get('state', server.get('service', {}).get('state', 'MISS'))}\n"
         f"Control: {control.get('overall', 0)}% · {control.get('summary', {}).get('total', 0)} actions\n"
         f"Events: {events.get('total', 0)} recorded\n"
+        f"Smoke: {smoke.get('state', 'unknown')} · {smoke.get('score', 0)}%\n"
         f"Support: {support.get('state', 'unknown')} · {support.get('score', 0)}%\n"
         f"Insights: phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open items\n"
         f"Phase gate: {phase_gate.get('decision', 'unknown')} · {phase_gate.get('summary', {}).get('block', 0)} blockers\n"
@@ -2059,6 +2073,7 @@ def run_gui() -> int:
                 windows = windows_payload()
                 daily = daily_payload()
                 support = support_payload()
+                smoke = smoke_payload()
                 profiles = profile_payload()
                 identity = identity_payload()
                 control = control_payload()
@@ -2079,11 +2094,15 @@ def run_gui() -> int:
                 metrics.add_css_class("seven-metric-row")
                 readiness_percent = int(readiness.get("percent", 0) or 0)
                 shield_percent = int(shield.get("percent", 0) or 0)
-                experience_percent = int(experience.get("percent", 0) or 0)
+                smoke_score = int(smoke.get("score", 0) or 0)
                 support_score = int(support.get("score", 0) or 0)
+                smoke_state = smoke.get("state", "unknown")
+                smoke_label = "public gate"
+                if smoke.get("embedded"):
+                    smoke_label = "state snapshot"
                 metrics.append(metric_card(tr("hub.readiness", "Readiness"), f"{readiness_percent}%", tr("hub.metric.system_health", "system health"), metric_state(readiness_percent)))
+                metrics.append(metric_card("Smoke", f"{smoke_score}%", smoke_label, metric_state(smoke_score)))
                 metrics.append(metric_card(tr("hub.shield", "Shield"), f"{shield_percent}%", tr("hub.metric.security_posture", "security posture"), metric_state(shield_percent)))
-                metrics.append(metric_card("UX", f"{experience_percent}%", tr("hub.metric.interface_coherence", "interface coherence"), metric_state(experience_percent)))
                 metrics.append(metric_card("Support", f"{support_score}%", support.get("state", "local"), metric_state(support_score)))
                 dashboard.append(metrics)
 
@@ -2113,6 +2132,7 @@ def run_gui() -> int:
                     tile_button("W", tr("hub.windows", "Windows"), windows.get("mode", "setup"), "seven-windows-assistant guide", "good" if windows.get("ready") else "warn"),
                     tile_button("S", tr("hub.server", "Server"), server.get("state", server.get("service", {}).get("state", "MISS")), "seven server status", "good" if str(server.get("state", "")).upper() == "RUN" else "warn"),
                     tile_button("A", tr("hub.apps", "Apps"), tr("hub.tile.apps_note", "install and update"), "sevenpkg status", "warn"),
+                    tile_button("✓", "Smoke Gate", f"{smoke_state} · {smoke_score}%", "seven smoke", metric_state(smoke_score)),
                     tile_button("?", "Support", support.get("state", "local-first"), "seven support", metric_state(support_score)),
                     tile_button("D", tr("hub.doctor", "Doctor"), tr("hub.tile.doctor_note", "repair SevenOS"), "seven doctor", "warn"),
                 ]
