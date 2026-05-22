@@ -26,6 +26,8 @@ hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
 hub.status	Desktop	Hub Status	seven hub status	safe	Show whether Seven Hub is ready as the default product control surface.
 hub.plan	Desktop	Hub Product Plan	seven hub plan	safe	Show missing Hub productization work before changing the desktop.
 about.status	System	About SevenOS	seven about	safe	Show the public SevenOS identity, edition, active mini OS, channel and distribution state.
+about.plan	System	About Plan	seven about plan	safe	Show the next identity and public About actions without exposing backend-first checks.
+about.doctor	System	About Doctor	seven about doctor	safe	Validate the public About contract used by Settings, Hub and installer surfaces.
 about.json	System	About SevenOS JSON	seven about --json	safe	Expose the SevenOS public identity contract for Hub, Settings and installer surfaces.
 lifecycle.status	System	SevenOS Lifecycle	seven lifecycle	safe	Show the SevenOS-first maintenance routes for updates, repair, protected state, recovery and release gates.
 lifecycle.doctor	System	Lifecycle Doctor	seven lifecycle doctor	safe	Validate that SevenOS maintenance is exposed through SevenOS surfaces instead of raw backend commands.

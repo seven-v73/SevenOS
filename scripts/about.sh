@@ -9,8 +9,8 @@ usage() {
 SevenOS about contract
 
 Usage:
-  seven about [status|json|doctor] [--json]
-  ./scripts/about.sh [status|json|doctor] [--json]
+  seven about [status|plan|json|doctor] [--json]
+  ./scripts/about.sh [status|plan|json|doctor] [--json]
 
 This is the public "About SevenOS" identity surface. It describes SevenOS as a
 distribution product first, while keeping Arch/Hyprland/QEMU/pacman visible only
@@ -22,7 +22,7 @@ ACTION="status"
 JSON_OUTPUT=0
 for arg in "$@"; do
   case "$arg" in
-    status|json|doctor) ACTION="$arg" ;;
+    status|plan|json|doctor) ACTION="$arg" ;;
     --json) JSON_OUTPUT=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown about option: $arg"; usage; exit 1 ;;
@@ -205,6 +205,8 @@ print(json.dumps({
     "issues": [item for item in checks if item["state"] != "OK"],
     "commands": {
         "about": "seven about",
+        "plan": "seven about plan",
+        "doctor": "seven about doctor",
         "distribution": "seven distribution",
         "channel": "seven channel",
         "profile": "seven profile current",
@@ -245,9 +247,48 @@ for item in data.get("technical_foundations", []):
 PY
 }
 
+print_plan() {
+  ABOUT_JSON="$1" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["ABOUT_JSON"])
+issues = data.get("issues", [])
+print("SevenOS About Plan")
+print("==================")
+print(f"State: {data.get('state', 'unknown')}")
+print(f"Ready: {str(data.get('about_ready', False)).lower()}")
+print()
+if not issues:
+    print("No About identity blockers.")
+else:
+    print("Next actions:")
+    for item in issues:
+        print(f"- {item.get('title', item.get('key', 'About check'))}")
+        print(f"  {item.get('detail', '')}")
+        command = data.get("commands", {}).get(item.get("key", ""), "seven about")
+        print(f"  command: {command}")
+PY
+}
+
 payload="$(about_json)"
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   printf '%s\n' "$payload"
 else
-  print_human "$payload"
+  case "$ACTION" in
+    status) print_human "$payload" ;;
+    plan) print_plan "$payload" ;;
+    doctor)
+      print_human "$payload"
+      ABOUT_JSON="$payload" python - <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["ABOUT_JSON"])
+sys.exit(0 if data.get("about_ready") and data.get("state") == "ready" else 1)
+PY
+      ;;
+    json) print_human "$payload" ;;
+  esac
 fi

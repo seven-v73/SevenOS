@@ -1681,6 +1681,7 @@ fi
 
 if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v1"' &&
    "$ROOT_DIR/scripts/about.sh" json | grep -q '"schema": "sevenos.about.v1"' &&
+   "$ROOT_DIR/scripts/about.sh" plan | grep -q 'SevenOS About Plan' &&
    "$ROOT_DIR/scripts/about.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/lifecycle.sh" json | grep -q '"schema": "sevenos.lifecycle.v1"' &&
    "$ROOT_DIR/scripts/lifecycle.sh" doctor >/dev/null &&
@@ -1711,6 +1712,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    "$ROOT_DIR/scripts/distribution.sh" doctor >/dev/null &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-action-runner" --dry-run -- "$ROOT_DIR/bin/seven" status | grep -q 'seven status' &&
    grep -q 'seven about' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'about.doctor' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven lifecycle' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven update' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven recovery' "$ROOT_DIR/scripts/actions.sh" &&

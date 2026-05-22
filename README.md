@@ -25,6 +25,8 @@ It is built around foundation pillars:
 - `sevenpkg` as the package and application manager
 - `seven about` as the public identity and edition contract for About screens,
   Settings, Hub and installer surfaces
+- `seven about doctor` as the gate that validates this public identity before
+  release-facing surfaces rely on it
 - `seven lifecycle` as the SevenOS-first maintenance contract for updates,
   repair, protected state, recovery and release gates
 - `seven update` as the SevenOS-first update surface above pacman, Flatpak,

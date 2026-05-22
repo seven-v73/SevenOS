@@ -1510,3 +1510,12 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   lignes exposent Arch/Hyprland/Archiso comme identite principale.
 - Les textes live parlent de fondation SevenOS live, afin de conserver le
   vocabulaire produit dans l'environnement ISO.
+
+## 2026-05-22 - SevenOS about doctor pass
+
+- `seven about doctor` devient une vraie gate : elle echoue si le contrat About
+  n'est pas `ready` et `about_ready`.
+- Ajout de `seven about plan` pour exposer les prochaines actions d'identite
+  publique sans revenir aux diagnostics backend.
+- Le registre d'actions, README, doc autonomie et `ux-check` valident maintenant
+  la surface About comme contrat produit exploitable par Hub/Settings/installer.

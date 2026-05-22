@@ -16,6 +16,7 @@ Run:
 
 ```bash
 seven about
+seven about doctor
 seven lifecycle
 seven update
 seven recovery
@@ -74,6 +75,9 @@ It exposes:
 
 This turns “what system am I running?” into a SevenOS answer instead of a raw
 Arch/Hyprland answer.
+
+`seven about doctor` is the gate for this public identity. It must pass before
+Hub, Settings or installer screens can claim the About surface is release-ready.
 
 ## Lifecycle Contract
 
