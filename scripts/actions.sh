@@ -36,6 +36,9 @@ update.apply	System	Apply Updates	seven update apply	packages	Update through the
 recovery.status	System	SevenOS Recovery	seven recovery	safe	Show protected user state, migration backups, repair routes and installer/recovery readiness.
 recovery.plan	System	Recovery Plan	seven recovery plan	safe	Show the SevenOS-first recovery sequence.
 recovery.backup	System	Create Recovery Backup	seven recovery backup	changes	Create a protected migration backup using the SevenOS manifest.
+health.status	System	SevenOS Health	seven health	safe	Show product, lifecycle, update, recovery, foundations, distribution and service health in SevenOS language.
+health.plan	System	Health Plan	seven health plan	safe	Show the next SevenOS-first actions for any daily health issue.
+health.doctor	System	Health Doctor	seven health doctor	safe	Validate SevenOS daily health without exposing backend-first diagnostics.
 product.status	System	SevenOS Product	seven product	safe	Show the compact SevenOS product snapshot used by Hub, Settings, Welcome and installer surfaces.
 product.json	System	SevenOS Product JSON	seven product --json	safe	Expose the SevenOS product facade as one machine-readable contract for native surfaces.
 foundations.status	System	SevenOS Foundations	seven foundations	safe	Show how SevenOS owns normal workflows while Arch, Hyprland, pacman and libvirt remain technical foundations.

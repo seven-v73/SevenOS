@@ -279,6 +279,13 @@ def handle_recovery(args):
     run_script(args, "scripts/recovery.sh", *extra)
 
 
+def handle_health(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/health.sh", *extra)
+
+
 def handle_foundations(args):
     extra = [args.action]
     if args.json:
@@ -749,6 +756,9 @@ def main():
     recovery_parser = subparsers.add_parser("recovery", help="inspect SevenOS recovery and protected state routes")
     recovery_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "backup", "json"))
     recovery_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS recovery contract")
+    health_parser = subparsers.add_parser("health", help="show SevenOS daily health without backend-first diagnostics")
+    health_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    health_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS health contract")
     welcome_parser = subparsers.add_parser("welcome", help="show SevenOS onboarding overview")
     welcome_parser.add_argument("action", nargs="?", default="show", choices=("show", "status", "plan"))
     welcome_parser.add_argument("--json", action="store_true", help="print machine-readable first-run status or plan")
@@ -1020,6 +1030,8 @@ def main():
         handle_update(args)
     elif args.command == "recovery":
         handle_recovery(args)
+    elif args.command == "health":
+        handle_health(args)
     elif args.command == "welcome":
         handle_welcome(args)
     elif args.command == "dashboard":

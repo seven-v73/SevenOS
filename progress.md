@@ -1470,3 +1470,14 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   d'actions, README, la doc autonomie et `ux-check` savent maintenant valider
   cette route de recuperation, pour que SevenOS ressemble davantage a une
   distribution autonome qu'a un ensemble de scripts de secours.
+
+## 2026-05-22 - SevenOS health surface pass
+
+- Ajout de `seven health`, surface d'etat quotidien SevenOS-first qui resume
+  Product, Lifecycle, Update, Recovery, Foundations, Distribution, session et
+  services echoues.
+- Le contrat `sevenos.health.v1` donne une reponse produit rapide avant les
+  diagnostics backend comme `systemctl --failed`, `journalctl`, pacman ou
+  Hyprland.
+- `seven state --json`, le registre d'actions, README, la doc autonomie et
+  `ux-check` valident maintenant cette jauge de sante quotidienne.
