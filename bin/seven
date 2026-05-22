@@ -263,6 +263,15 @@ def handle_product(args):
     run_script(args, "scripts/product.sh", *extra)
 
 
+def handle_update(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    if args.yes:
+        extra.append("--yes")
+    run_script(args, "scripts/update.sh", *extra)
+
+
 def handle_foundations(args):
     extra = [args.action]
     if args.json:
@@ -726,7 +735,10 @@ def main():
     parser.add_argument("--dry-run", action="store_true", default=dry_run_requested, help="show commands without changing the system")
     subparsers = parser.add_subparsers(dest="command")
 
-    subparsers.add_parser("update", help="update SevenOS packages")
+    update_parser = subparsers.add_parser("update", help="inspect or apply SevenOS updates")
+    update_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "apply", "json"))
+    update_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS update contract")
+    update_parser.add_argument("--yes", action="store_true", help="run supported updates non-interactively")
     welcome_parser = subparsers.add_parser("welcome", help="show SevenOS onboarding overview")
     welcome_parser.add_argument("action", nargs="?", default="show", choices=("show", "status", "plan"))
     welcome_parser.add_argument("--json", action="store_true", help="print machine-readable first-run status or plan")
@@ -995,7 +1007,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "update":
-        sevenpkg(args, "update")
+        handle_update(args)
     elif args.command == "welcome":
         handle_welcome(args)
     elif args.command == "dashboard":

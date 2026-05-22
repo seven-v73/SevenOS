@@ -1446,3 +1446,15 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
 - `seven state --json`, le registre d'actions, README, la doc autonomie et
   `ux-check` savent maintenant valider cette carte de propriete produit, ce qui
   reduit encore l'effet "Arch rice" visible.
+
+## 2026-05-22 - SevenOS update surface pass
+
+- Ajout de `seven update`, contrat de mise a jour SevenOS-first au-dessus de
+  pacman, Flatpak, AUR helpers et bundles de profils.
+- Par defaut, `seven update` affiche l'etat systeme/apps/community/profils sans
+  lancer de commande destructive; `seven update apply` delegue ensuite a
+  `sevenpkg update` puis Flatpak si disponible.
+- `seven lifecycle`, `seven foundations`, `seven state --json`, le registre
+  d'actions, README, la doc autonomie et `ux-check` savent maintenant valider
+  cette route, afin que la maintenance courante ne commence plus par un
+  workflow Arch brut.

@@ -27,6 +27,8 @@ It is built around foundation pillars:
   Settings, Hub and installer surfaces
 - `seven lifecycle` as the SevenOS-first maintenance contract for updates,
   repair, protected state, recovery and release gates
+- `seven update` as the SevenOS-first update surface above pacman, Flatpak,
+  AUR helpers and profile bundles
 - `seven product` as the compact public product facade for Hub, Settings,
   Welcome and installer surfaces
 - `seven foundations` as the SevenOS ownership map that links public surfaces

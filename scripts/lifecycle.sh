@@ -38,16 +38,19 @@ lifecycle_json() {
   local pid_distribution=$!
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/channel.sh" json >"$tmp/channel.json" 2>/dev/null || printf '{}\n' >"$tmp/channel.json" &
   local pid_channel=$!
+  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/update.sh" json >"$tmp/update.json" 2>/dev/null || printf '{}\n' >"$tmp/update.json" &
+  local pid_update=$!
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/manifest.sh" summary-json >"$tmp/manifest.json" 2>/dev/null || printf '{}\n' >"$tmp/manifest.json" &
   local pid_manifest=$!
   SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer.json" 2>/dev/null || printf '{}\n' >"$tmp/installer.json" &
   local pid_installer=$!
-  wait "$pid_about" "$pid_distribution" "$pid_channel" "$pid_manifest" "$pid_installer" || true
+  wait "$pid_about" "$pid_distribution" "$pid_channel" "$pid_update" "$pid_manifest" "$pid_installer" || true
 
   SEVENOS_ROOT="$ROOT_DIR" \
   ABOUT_JSON="$tmp/about.json" \
   DISTRIBUTION_JSON="$tmp/distribution.json" \
   CHANNEL_JSON="$tmp/channel.json" \
+  UPDATE_JSON="$tmp/update.json" \
   MANIFEST_JSON="$tmp/manifest.json" \
   INSTALLER_JSON="$tmp/installer.json" \
   python - <<'PY'
@@ -81,6 +84,7 @@ def contains(rel, needle):
 about = load_path("ABOUT_JSON")
 distribution = load_path("DISTRIBUTION_JSON")
 channel = load_path("CHANNEL_JSON")
+update = load_path("UPDATE_JSON")
 manifest = load_path("MANIFEST_JSON")
 installer = load_path("INSTALLER_JSON")
 
@@ -108,10 +112,10 @@ checks = [
     },
     {
         "key": "software-update",
-        "state": "OK" if executable("bin/sevenpkg") else "MISS",
+        "state": "OK" if update.get("schema") == "sevenos.update.v1" and update.get("score", 0) >= 75 else "PART",
         "title": "SevenOS software update facade",
-        "detail": "Updates should start from SevenStore/sevenpkg before raw pacman.",
-        "command": "sevenpkg update",
+        "detail": f"Update state: {update.get('state', 'unknown')}; score: {update.get('score', 'unknown')}%.",
+        "command": "seven update",
     },
     {
         "key": "repair-route",
@@ -170,7 +174,7 @@ print(json.dumps({
         "installer": installer.get("state", "unknown"),
     },
     "maintenance_routes": [
-        {"intent": "Update apps and system", "surface": "SevenStore / sevenpkg", "command": "sevenpkg update"},
+        {"intent": "Update apps and system", "surface": "SevenOS Update / SevenStore", "command": "seven update"},
         {"intent": "Repair the OS", "surface": "Seven Doctor / Repair", "command": "seven repair"},
         {"intent": "Protect user state", "surface": "SevenOS Manifest", "command": "seven manifest restore-plan"},
         {"intent": "Check release readiness", "surface": "SevenOS Distribution", "command": "seven distribution"},

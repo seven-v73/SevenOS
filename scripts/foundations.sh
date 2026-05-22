@@ -103,10 +103,10 @@ layers = [
         "software",
         "SevenOS Software",
         "pacman, Flatpak, yay/paru",
-        "SevenStore, SevenPkg, profile bundles",
-        "seven store",
+        "SevenStore, SevenOS Update, SevenPkg, profile bundles",
+        "seven update",
         command_ok("pacman") or command_ok("flatpak"),
-        executable("bin/seven-store-native") and executable("bin/sevenpkg"),
+        executable("bin/seven-store-native") and file_ok("scripts/update.sh") and executable("bin/sevenpkg"),
     ),
     layer(
         "window-system",

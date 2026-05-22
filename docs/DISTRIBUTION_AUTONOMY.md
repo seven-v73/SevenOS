@@ -17,6 +17,7 @@ Run:
 ```bash
 seven about
 seven lifecycle
+seven update
 seven product
 seven foundations
 seven autonomy
@@ -35,6 +36,7 @@ The contract checks:
 
 - public About/edition identity via `seven about`;
 - public lifecycle/maintenance routes via `seven lifecycle`;
+- SevenOS-first update state via `seven update`;
 - compact public product facade via `seven product`;
 - SevenOS-owned foundation routes via `seven foundations`;
 - SevenOS-first commands: `seven`, `sevenpkg`, SevenStore and Settings;
@@ -73,6 +75,7 @@ Arch/Hyprland answer.
 essential OS lifecycle to SevenOS routes:
 
 - update apps and system -> SevenStore / `sevenpkg`;
+- inspect/apply updates -> `seven update`;
 - repair the OS -> Seven Doctor / `seven repair`;
 - protect user state -> `seven manifest restore-plan`;
 - check release readiness -> `seven distribution`;
