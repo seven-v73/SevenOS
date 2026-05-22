@@ -281,6 +281,7 @@ require_executable "scripts/lifecycle.sh"
 require_executable "scripts/update.sh"
 require_executable "scripts/recovery.sh"
 require_executable "scripts/health.sh"
+require_executable "scripts/support.sh"
 require_executable "scripts/product.sh"
 require_executable "scripts/foundations.sh"
 require_executable "scripts/platform.sh"
@@ -1687,6 +1688,8 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    "$ROOT_DIR/scripts/recovery.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/health.sh" json | grep -q '"schema": "sevenos.health.v1"' &&
    "$ROOT_DIR/scripts/health.sh" doctor >/dev/null &&
+   "$ROOT_DIR/scripts/support.sh" json | grep -q '"schema": "sevenos.support.v1"' &&
+   "$ROOT_DIR/scripts/support.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/product.sh" json | grep -q '"schema": "sevenos.product.v1"' &&
    "$ROOT_DIR/scripts/product.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/foundations.sh" json | grep -q '"schema": "sevenos.foundations.v1"' &&
@@ -1710,6 +1713,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    grep -q 'seven update' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven recovery' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven health' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven support' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven product' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven foundations' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven autonomy' "$ROOT_DIR/scripts/actions.sh" &&
@@ -1725,6 +1729,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    grep -q '"update":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"recovery":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"health":' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q '"support":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"product":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"foundations":' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"platform":' "$ROOT_DIR/scripts/state.sh" &&
@@ -1737,6 +1742,7 @@ if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v
    grep -q 'seven update' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven recovery' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'seven health' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
+   grep -q 'seven support' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Foundations Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Platform Facade' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
    grep -q 'Public Mask Contract' "$ROOT_DIR/docs/DISTRIBUTION_AUTONOMY.md" &&
@@ -1898,6 +1904,7 @@ lifecycle_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" lifecycle --json)"
 update_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" update --json)"
 recovery_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" recovery --json)"
 health_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" health --json)"
+support_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" support --json)"
 product_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" product --json)"
 foundations_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" foundations --json)"
 surfaces_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" surfaces --json)"
@@ -2046,6 +2053,8 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -Eq '"state"[[:space:]]*:[[:space:]]*"(ready|partial)"' <<<"$recovery_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.health.v1"' <<<"$health_json" &&
    grep -Eq '"state"[[:space:]]*:[[:space:]]*"(healthy|attention|degraded)"' <<<"$health_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.support.v1"' <<<"$support_json" &&
+   grep -Eq '"state"[[:space:]]*:[[:space:]]*"(ready|partial|foundation)"' <<<"$support_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.product.v1"' <<<"$product_json" &&
    grep -q '"state": "ready"' <<<"$product_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.foundations.v1"' <<<"$foundations_json" &&
@@ -2093,7 +2102,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) else 1)'; then
+   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","support","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) else 1)'; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"

@@ -1481,3 +1481,13 @@ Si la reponse est non, l'amelioration doit etre repoussee ou repensee.
   Hyprland.
 - `seven state --json`, le registre d'actions, README, la doc autonomie et
   `ux-check` valident maintenant cette jauge de sante quotidienne.
+
+## 2026-05-22 - SevenOS support surface pass
+
+- Ajout de `seven support`, route de support locale qui regroupe health,
+  product, recovery, evenements et chemins de logs sans exposer d'abord les
+  commandes backend.
+- `seven support bundle` cree un dossier local sous
+  `~/.local/share/sevenos/support` et n'envoie rien automatiquement.
+- `seven state --json`, le registre d'actions, README, la doc autonomie et
+  `ux-check` valident maintenant cette surface de diagnostic partageable.

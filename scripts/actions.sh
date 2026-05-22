@@ -39,6 +39,9 @@ recovery.backup	System	Create Recovery Backup	seven recovery backup	changes	Crea
 health.status	System	SevenOS Health	seven health	safe	Show product, lifecycle, update, recovery, foundations, distribution and service health in SevenOS language.
 health.plan	System	Health Plan	seven health plan	safe	Show the next SevenOS-first actions for any daily health issue.
 health.doctor	System	Health Doctor	seven health doctor	safe	Validate SevenOS daily health without exposing backend-first diagnostics.
+support.status	System	SevenOS Support	seven support	safe	Show local-first support readiness, health, product, recovery and event summary.
+support.bundle	System	Create Support Bundle	seven support bundle	changes	Create a local support bundle under the user account; nothing is uploaded automatically.
+support.plan	System	Support Plan	seven support plan	safe	Show the SevenOS-first support flow before collecting diagnostics.
 product.status	System	SevenOS Product	seven product	safe	Show the compact SevenOS product snapshot used by Hub, Settings, Welcome and installer surfaces.
 product.json	System	SevenOS Product JSON	seven product --json	safe	Expose the SevenOS product facade as one machine-readable contract for native surfaces.
 foundations.status	System	SevenOS Foundations	seven foundations	safe	Show how SevenOS owns normal workflows while Arch, Hyprland, pacman and libvirt remain technical foundations.

@@ -33,6 +33,8 @@ It is built around foundation pillars:
   backups, repair and installer/recovery gates
 - `seven health` as the daily SevenOS health surface above product, lifecycle,
   update, recovery, foundations, distribution and service diagnostics
+- `seven support` as the local-first support route for health, product,
+  recovery, events and optional diagnostic bundles without automatic upload
 - `seven product` as the compact public product facade for Hub, Settings,
   Welcome and installer surfaces
 - `seven foundations` as the SevenOS ownership map that links public surfaces

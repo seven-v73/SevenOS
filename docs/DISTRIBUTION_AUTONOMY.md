@@ -20,6 +20,7 @@ seven lifecycle
 seven update
 seven recovery
 seven health
+seven support
 seven product
 seven foundations
 seven autonomy
@@ -41,6 +42,7 @@ The contract checks:
 - SevenOS-first update state via `seven update`;
 - SevenOS-first recovery state via `seven recovery`;
 - SevenOS-first daily health via `seven health`;
+- local-first support bundles via `seven support`;
 - compact public product facade via `seven product`;
 - SevenOS-owned foundation routes via `seven foundations`;
 - SevenOS-first commands: `seven`, `sevenpkg`, SevenStore and Settings;
@@ -82,6 +84,7 @@ essential OS lifecycle to SevenOS routes:
 - inspect/apply updates -> `seven update`;
 - repair the OS -> Seven Doctor / `seven repair`;
 - protect/recover user state -> `seven recovery`;
+- collect local support diagnostics -> `seven support`;
 - check release readiness -> `seven distribution`;
 - check daily health -> `seven health`;
 - prepare installer/recovery -> `seven installer release`.
