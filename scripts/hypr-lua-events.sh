@@ -80,7 +80,7 @@ classify_context() {
     *Wireshark*|*BurpSuite*|*burpsuite*|*Nmap*) printf 'shield' ;;
     *krita*|*Blender*|*Gimp*|*Inkscape*|*obs*|*kdenlive*) printf 'studio' ;;
     *virt-manager*|*Bottles*|*Windows*) printf 'windows' ;;
-    *Grafana*|*Prometheus*|*Caddy*|*ssh*|*SSH*) printf 'horizon' ;;
+    *Grafana*|*Prometheus*|*Caddy*|*ssh*|*SSH*) printf 'forge' ;;
     *SevenReader*|*Foliate*|*foliate*) printf 'baobab' ;;
     *) printf 'equinox' ;;
   esac

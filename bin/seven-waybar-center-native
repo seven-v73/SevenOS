@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native SevenOS Waybar centers for network, Bluetooth, audio, power and system."""
+"""Native SevenOS shell bar centers for network, Bluetooth, audio, power and system."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def probe() -> int:
 
 def wifi_state() -> tuple[str, str]:
     if not shutil.which("nmcli"):
-        return tr_text("Missing"), tr_text("NetworkManager tools unavailable")
+        return tr_text("Missing"), tr_text("SevenOS network tools unavailable")
     radio = out(["nmcli", "radio", "wifi"])
     if radio == "disabled":
         return tr_text("Off"), tr_text("Wi-Fi radio disabled")
@@ -306,7 +306,7 @@ def run(panel: str) -> int:
         load, mem = probe_system()
         root.pack_start(metric_row(Gtk, [(load, tr_text("Load")), (mem, tr_text("Memory"))]), False, False, 0)
         root.pack_start(hint(Gtk, tr_text("Use Settings for normal controls; Monitor and Repair remain one-click utilities.")), False, False, 0)
-        actions = [("󰍛", tr_text("Monitor"), "seven-terminal classic -- bash -lc 'btop || top'"), ("󰚰", tr_text("Updates"), "seven-settings system"), ("󰜉", tr_text("Repair UI"), "seven-waybar repair"), ("󰒓", tr_text("Settings"), "seven-settings system")]
+        actions = [("󰍛", tr_text("Monitor"), "seven-terminal -- bash -lc 'btop || top'"), ("󰚰", tr_text("Updates"), "seven-settings system"), ("󰜉", tr_text("Repair UI"), "seven-waybar repair"), ("󰒓", tr_text("Settings"), "seven-settings system")]
 
     strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     strip.set_halign(Gtk.Align.CENTER)

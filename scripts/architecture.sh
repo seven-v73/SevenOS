@@ -41,7 +41,7 @@ layers() {
   printf '  %-22s %s\n' "UI Layer" "Hyprland, Waybar, Rofi, Kitty, SwayNC, Hyprlock, Wlogout, Seven Hub, Seven Files, Tauri GUI"
   printf '  %-22s %s\n' "Security Layer" "hardening, cyber audit, cyber lab, sandboxing"
   printf '  %-22s %s\n' "Compatibility Layer" "Wine, Bottles, Lutris, KVM, Windows Mode"
-  printf '  %-22s %s\n' "Deployment Layer" "Horizon, local API, deploy planner"
+  printf '  %-22s %s\n' "Deployment Layer" "Forge DevOps, local API, deploy planner"
   printf '  %-22s %s\n' "Identity Layer" "branding, palette, vocabulary, wallpaper, icons"
   printf '  %-22s %s\n' "Installer Layer" "archiso, install planner, generated script"
 }
@@ -207,7 +207,7 @@ layer_safety = {
 
 layer_actions = {
     "seven_ai": ["seven ai focus", "seven ai diagnose system --json", "seven ai shortcuts"],
-    "runtime": ["seven runtime status", "seven runtime plan equinox forge shield horizon pulse", "seven runtime doctor"],
+    "runtime": ["seven runtime status", "seven runtime plan equinox forge shield studio pulse", "seven runtime doctor"],
     "orchestration": ["seven control", "seven actions --json", "seven scheduler plan"],
     "services": ["seven core health --json", "seven context emit", "seven events --json"],
     "desktop_ui": ["seven hub", "seven-spotlight", "seven-quick-settings"],
@@ -359,7 +359,7 @@ payload = {
     ],
     "next": [
         {"command": "seven runtime status --json", "reason": "read the active capability-based runtime"},
-        {"command": "seven runtime plan forge shield horizon", "reason": "preview one primary runtime with injected capabilities"},
+        {"command": "seven runtime plan forge shield studio", "reason": "preview one primary runtime with injected capabilities"},
         {"command": "seven core health --json", "reason": "read daemon-owned runtime state"},
         {"command": "seven actions --json", "reason": "route UI and AI through stable action IDs"},
         {"command": "seven ai diagnose system --json", "reason": "inspect local context before repair"},

@@ -64,9 +64,9 @@ def probe() -> int:
         gi.require_version("GdkPixbuf", "2.0")
         from gi.repository import Gtk  # noqa: F401
     except Exception as exc:
-        print(f"Seven Reader native probe failed: {exc}", file=sys.stderr)
+        print(f"Seven Reader probe failed: {exc}", file=sys.stderr)
         return 1
-    print("Seven Reader Native: OK")
+    print("Seven Reader: OK")
     return 0
 
 

@@ -46,7 +46,7 @@ It must not:
 | Shield | audit, sandbox, network/security tools | isolated-analysis |
 | Studio | media, graphics, audio and 3D | media-low-latency |
 | Windows | Wine, Bottles and KVM/QEMU | vm-foreground |
-| Horizon | server, deploy and personal cloud | service-stability |
+| Forge DevOps | code, server, deploy and personal cloud | service-stability |
 
 Each group has:
 
@@ -67,7 +67,7 @@ seven-forge.slice    -> editors, compilers, containers
 seven-shield.slice   -> audit tools and sandboxed labs
 seven-studio.slice   -> creative apps, media and audio
 seven-windows.slice  -> Wine, Bottles, QEMU/KVM
-seven-horizon.slice  -> server, deploy and personal cloud
+seven-forge.slice  -> code, server, deploy and personal cloud
 ```
 
 In B3 this is exposed as policy metadata only. SevenOS should not silently move

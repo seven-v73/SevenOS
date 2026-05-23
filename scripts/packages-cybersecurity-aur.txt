@@ -1,0 +1,5 @@
+# SevenOS CYBERSECURITY optional AUR packages.
+# These are not required for the Shield baseline because they are large and/or
+# sourced outside the official Arch repositories.
+burpsuite
+autopsy

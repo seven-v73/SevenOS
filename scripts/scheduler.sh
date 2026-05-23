@@ -159,14 +159,14 @@ GROUPS = {
         "processes": ["qemu-system-x86_64", "virt-manager", "libvirtd", "wineserver", "wine", "bottles", "lutris"],
         "reason": "Give VM/Wine workloads enough foreground priority without replacing CFS.",
     },
-    "horizon": {
-        "title": "Horizon",
-        "role": "Server and deploy",
+    "devops": {
+        "title": "Forge DevOps",
+        "role": "Development and deploy",
         "policy": "service-stability",
         "nice": 2,
         "io": "best-effort",
         "power": "balanced",
-        "slice": "seven-horizon.slice",
+        "slice": "seven-forge.slice",
         "cpu_weight": 140,
         "io_weight": 130,
         "uclamp_min": "0",
@@ -310,7 +310,7 @@ print(json.dumps({
     "schema": "sevenos.scheduler.v1",
     "layer": "user-space scheduler orchestration",
     "kernel_scheduler": "Linux CFS",
-    "state": "foundation",
+    "state": "active-user-space-executor",
     "active_profile": active,
     "active_context": primary_context or {
         "key": active,
@@ -344,8 +344,8 @@ print(json.dumps({
         "has_ionice": shutil.which("ionice") is not None,
     },
     "semantic_controls": {
-        "implemented": ["context classification", "process matching", "safe nice preview", "JSON policy contract"],
-        "planned": ["systemd user scopes", "cgroups v2 CPUWeight/IOWeight", "uclamp hints", "SevenDaemon policy executor", "SevenBus foreground events"],
+        "implemented": ["context classification", "process matching", "safe nice preview", "safe renice executor", "scheduler apply state file", "systemd-run profile scopes through seven-profile-run", "JSON policy contract"],
+        "planned": ["automatic migration of already-running apps into cgroups", "cgroups v2 CPUWeight/IOWeight live writes", "uclamp hints", "SevenDaemon policy executor", "SevenBus foreground events"],
         "guardrails": ["no kernel scheduler replacement", "no silent affinity changes", "no opaque AI-driven resource changes"],
     },
     "groups": groups,
@@ -421,16 +421,19 @@ apply_plan() {
     printf 'Preview only. Add --apply to change nice values for owned processes.\n\n'
   fi
 
-  SCHEDULER_PAYLOAD="$payload" APPLY="$APPLY" DRY_RUN="$dry_run" python - <<'PY'
+  SCHEDULER_PAYLOAD="$payload" APPLY="$APPLY" DRY_RUN="$dry_run" STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos" python - <<'PY'
 import json
 import os
 import subprocess
+import time
+from pathlib import Path
 
 data = json.loads(os.environ["SCHEDULER_PAYLOAD"])
 apply = os.environ.get("APPLY") == "1"
 dry_run = os.environ.get("DRY_RUN") == "1"
 active = data.get("active_policy", {}).get("scheduler_group") or data.get("active_profile")
 target = data.get("active_policy", {}).get("nice", 0)
+state_dir = Path(os.environ.get("STATE_DIR", str(Path.home() / ".config/sevenos")))
 
 active_group = next((item for item in data.get("groups", []) if item.get("key") == active), {})
 sample = active_group.get("sample", [])
@@ -438,15 +441,35 @@ if not sample:
     print(f"DRY-RUN > Scheduler > {active} > no matching owned workload")
     raise SystemExit(0)
 
+results = []
 for process in sample:
     command = ["renice", "-n", str(target), "-p", str(process["pid"])]
     if not apply or dry_run:
         print(f"DRY-RUN > Scheduler > {active} > {' '.join(command)}")
+        results.append({"pid": process["pid"], "command": process.get("command"), "state": "DRY_RUN", "target_nice": target})
         continue
     result = subprocess.run(command, text=True, capture_output=True, check=False)
     state = "OK" if result.returncode == 0 else "MISS"
     detail = (result.stdout or result.stderr).strip()
     print(f"{state} > Scheduler > {active} > pid {process['pid']} > {detail}")
+    results.append({
+        "pid": process["pid"],
+        "command": process.get("command"),
+        "state": state,
+        "target_nice": target,
+        "returncode": result.returncode,
+        "detail": detail,
+    })
+
+state_dir.mkdir(parents=True, exist_ok=True)
+(state_dir / "scheduler-apply.json").write_text(json.dumps({
+    "schema": "sevenos.scheduler-apply.v1",
+    "generated_at": int(time.time()),
+    "applied": bool(apply and not dry_run),
+    "active_group": active,
+    "target_nice": target,
+    "results": results,
+}, indent=2) + "\n", encoding="utf-8")
 PY
 }
 

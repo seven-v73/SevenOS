@@ -24,6 +24,7 @@ seven health
 seven support
 seven product
 seven foundations
+seven runtime
 seven autonomy
 seven autonomy --json
 seven autonomy doctor
@@ -52,6 +53,7 @@ The contract checks:
   the only product state;
 - SevenOS identity in shell, release files and live ISO branding;
 - SevenOS visual identity readiness via `seven identity doctor`;
+- layered autonomous profile runtime via `seven runtime`;
 - native surfaces: Hub, Settings, Store, Files, Reader and mini OS centers;
 - mini OS runtime manifests with strict HOME/cache/data/workspace boundaries;
 - SevenDaemon service path for future policy execution;
@@ -167,6 +169,27 @@ The contract does not hide attribution from advanced users. It simply gives Hub,
 Settings, Welcome and Doctor a SevenOS-first route for every foundation before a
 normal user has to see backend commands.
 
+## Runtime Contract
+
+`seven runtime` is the contract that makes the mini OS model operational. It
+reads the profile catalog and exposes SevenOS as a layered autonomous runtime
+instead of a static set of desktop modes.
+
+The contract validates:
+
+- each profile is autonomous and does not depend on another profile;
+- capabilities can be composed explicitly without loading a full secondary
+  profile by surprise;
+- resource intent is visible through the Seven Resource Allocator;
+- conflicts such as Shield + Studio or Windows + Shield get a declared
+  resolution before activation;
+- activation writes local runtime state and user slices only when explicitly
+  confirmed.
+
+This is the practical bridge between “dynamic profile UI” and “real
+distribution behavior”: Hub, Settings, Scheduler, Context Engine and SevenAI can
+all read the same runtime contract before changing the system.
+
 ## Distribution Contract
 
 `seven distribution` is the top-level product gate. It does not replace the
@@ -182,6 +205,7 @@ It aggregates:
 
 - `seven foundations`;
 - `seven autonomy`;
+- `seven runtime`;
 - `seven platform`;
 - `seven mask`;
 - `seven dynamic`;
@@ -318,6 +342,26 @@ Calamares profile from the Calamares runtime package. This keeps the release
 gate honest on plain Arch hosts: SevenOS can validate its profile and live ISO
 entrypoint while still reporting that the ISO build environment must provide
 Calamares from a trusted downstream repository or AUR build.
+
+The expected states are:
+
+- `OK`: Calamares is present in the runtime and the graphical ISO path may
+  become release-ready if the other gates pass;
+- `aur-candidate`: SevenOS has a declared AUR/downstream source and an AUR
+  helper route, but the ISO runtime still needs the package installed;
+- `source-declared`: SevenOS has a declared source, but the build host still
+  needs a helper or repository route;
+- `MISS`: no usable runtime or source route is visible.
+
+Hub, Settings, Doctor and Release should show this as SevenOS installer policy,
+not as a raw package-manager error. `seven release plan --json` points to
+`seven installer runtime` when the next step is turning an AUR/source candidate
+into an ISO runtime package.
+
+`seven-installer status --json` also embeds this runtime source state in the
+installer portal. The live desktop can therefore say “graphical runtime
+candidate” and show the SevenOS route to prepare it, while still refusing to
+mark the public ISO as graphical-ready until Calamares is actually present.
 
 SevenOS becomes a public distribution only when:
 

@@ -6,6 +6,7 @@ source "$ROOT_DIR/scripts/lib.sh"
 
 log_info "Installing SevenOS WINDOWS compatibility layer..."
 install_package_file "$ROOT_DIR/scripts/packages-windows.txt"
+install_aur_package_file "$ROOT_DIR/scripts/packages-windows-aur.txt" || log_warn "Windows Bridge AUR helpers were skipped."
 
 log_info "Configuring virtualization services..."
 enable_service libvirtd.service || log_warn "libvirtd could not be enabled."
@@ -21,5 +22,5 @@ fi
 
 log_warn "GPU passthrough is not automated in Phase 1. See vm/README.md for the planned path."
 log_warn "If libvirt group membership changed, log out and back in before using Windows Mode."
-log_info "Next checks: ./install.sh post-install && seven windows status"
+log_info "Next checks: ./install.sh post-install && seven windows status && seven windows provision"
 log_success "WINDOWS compatibility layer installed."

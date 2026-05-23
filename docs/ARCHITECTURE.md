@@ -33,7 +33,7 @@ The promise is:
 | UI Layer | desktop shell, hub, files, theme and visible controls | Hyprland, Waybar, Rofi, Kitty, Mako, Seven Hub, Seven Files, Tauri prototype, native GTK target |
 | Security Layer | hardening, audit, sandbox and cyber workspaces | `security/`, Shield profile, UFW, Firejail, Bubblewrap |
 | Compatibility Layer | Windows apps, VM, Wine/Bottles/Lutris/KVM | `profiles/windows.sh`, `bin/seven-windows-assistant`, `vm/windows-mode.sh`, `vm/windows-vm.sh` |
-| Deployment Layer | local API, stack detection and personal cloud direction | `server/`, `docs/DEPLOYMENT.md`, Horizon profile |
+| Deployment Layer | local API, stack detection and personal cloud direction | `server/`, `docs/DEPLOYMENT.md`, Forge DevOps profile |
 | Identity Layer | product language, branding, palette and cultural coherence | `identity/`, `branding/`, `docs/VOCABULARY.md` |
 | Installer Layer | ISO, live profile and future disk install flow | `archiso/`, `installer/` |
 
@@ -211,7 +211,7 @@ Native Hub target modules:
 seven-hub/native
 ├── Dashboard  -> readiness, services, repair suggestions
 ├── First Run  -> welcome status, onboarding plan and post-install blockers
-├── Profiles   -> Forge, Shield, Studio, Windows, Horizon activation
+├── Profiles   -> Forge DevOps, Shield, Studio, Windows, Pulse activation
 ├── Actions    -> shared `seven actions --json` registry
 ├── Apps       -> sevenpkg, Flatpak, future SevenStore
 ├── Security   -> Shield, UFW, sandbox, Cyber Lab

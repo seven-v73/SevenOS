@@ -54,7 +54,7 @@ a public phase are:
 
 - install and activate Shield basics: UFW, Firejail, Bubblewrap
 - complete Windows compatibility: Wine, Bottles, Lutris, KVM
-- complete Horizon/server profile: Go, Podman, Caddy
+- complete Forge DevOps/server profile: Go, Podman, Caddy
 - complete Calamares installer profile and package path
 - mature Seven Hub Native beyond the current GTK/libadwaita foundation
 - prepare Seven Shell AGS/TypeScript without removing the stable fallback

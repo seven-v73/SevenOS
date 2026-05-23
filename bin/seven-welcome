@@ -120,9 +120,9 @@ status_rows() {
   printf 'command\tseven-hub\tSeven Hub launcher\t%s\t./install.sh hub\n' "$(command_state seven-hub)"
   printf 'command\tseven-files\tSeven Files launcher\t%s\t./install.sh cli\n' "$(command_state seven-files)"
   printf 'command\tseven-power\tSevenOS power menu\t%s\t./install.sh cli\n' "$(command_state seven-power)"
-  printf 'session\thyprland-config\tHyprland SevenOS config\t%s\t./install.sh theme\n' "$(file_state "$config_home/hypr/hyprland.conf")"
-  printf 'session\twaybar-config\tWaybar SevenOS config\t%s\t./install.sh theme\n' "$(file_state "$config_home/waybar/config.jsonc")"
-  printf 'session\trofi-config\tRofi SevenOS config\t%s\t./install.sh theme\n' "$(file_state "$config_home/rofi/apps.rasi")"
+  printf 'session\thyprland-config\tSevenOS window system config\t%s\t./install.sh theme\n' "$(file_state "$config_home/hypr/hyprland.conf")"
+  printf 'session\twaybar-config\tSevenOS shell bar config\t%s\t./install.sh theme\n' "$(file_state "$config_home/waybar/config.jsonc")"
+  printf 'session\trofi-config\tSevenOS Launchpad config\t%s\t./install.sh theme\n' "$(file_state "$config_home/rofi/apps.rasi")"
   printf 'session\tmako-config\tNotification theme\t%s\t./install.sh theme\n' "$(file_state "$config_home/mako/config")"
   printf 'session\tkitty-config\tTerminal identity\t%s\t./install.sh theme\n' "$(file_state "$config_home/kitty/kitty.conf")"
   printf 'session\twayland-entry\tSevenOS login session\t%s\t./install.sh theme\n' "$(file_state "$data_home/wayland-sessions/sevenos.desktop")"
@@ -181,8 +181,8 @@ metadata = {
     "seven-hub": ("high", "ux", "Install Seven Hub", "Users need a visible control center before SevenOS feels like an OS."),
     "seven-files": ("medium", "ux", "Install Seven Files", "File navigation should be accessible without terminal knowledge."),
     "seven-power": ("medium", "session", "Install session controls", "Power, lock and logout should be reachable from the shell."),
-    "hyprland-config": ("critical", "session", "Apply SevenOS Hyprland session", "Without the SevenOS session config, the user sees a basic Hyprland desktop."),
-    "waybar-config": ("high", "shell", "Apply SevenOS Waybar", "The system bar is the main daily surface for status and actions."),
+    "hyprland-config": ("critical", "session", "Apply SevenOS window system", "Without the SevenOS session config, the user sees a basic window manager desktop."),
+    "waybar-config": ("high", "shell", "Apply SevenOS shell bar", "The system bar is the main daily surface for status and actions."),
     "rofi-config": ("high", "apps", "Apply SevenOS app launcher", "Apps must be discoverable through a polished launcher."),
     "mako-config": ("medium", "shell", "Apply notification style", "System feedback should be visible and coherent."),
     "kitty-config": ("medium", "terminal", "Apply terminal identity", "The terminal should feel like a SevenOS tool, not a generic shell."),
@@ -314,23 +314,27 @@ printf 'Beyond the Desktop: the intelligent Linux experience for creators, devel
 
 printf 'SevenOS identity\n'
 printf '  Fluidity, transparency, intelligent minimalism, depth, contextuality and visible security.\n'
-printf '  Profiles are adaptive work modes: Baobab, Forge, Shield, Studio, Windows and Horizon.\n\n'
+printf '  Profiles are adaptive work modes: Baobab, Forge DevOps, Shield, Studio, Windows and Pulse.\n\n'
 
-printf 'Repository\n'
-printf '  %s\n\n' "$ROOT_DIR"
+printf 'Start here\n'
+printf '  seven hub                 Open your control center\n'
+printf '  seven settings            Tune desktop, profiles, devices and trust\n'
+printf '  seven profile status      Choose a mini OS for the way you work\n'
+printf '  seven doctor              Check what needs attention\n\n'
 
-printf 'Core commands\n'
-printf '  seven       %s\n' "$(command_state seven)"
-printf '  sevenpkg    %s\n' "$(command_state sevenpkg)"
-printf '  seven-hub   %s\n' "$(command_state seven-hub)"
-printf '  seven-power %s\n' "$(command_state seven-power)"
+printf 'Your workspace\n'
+printf '  Active root: %s\n' "$ROOT_DIR"
+printf '  Controller:  %s\n' "$(command_state seven)"
+printf '  Software:    %s\n' "$(command_state sevenpkg)"
+printf '  Hub:         %s\n' "$(command_state seven-hub)"
+printf '  Session:     %s\n' "$(user_service_state sevenos-session.target)"
 
-printf '\nServices\n'
-printf '  NetworkManager %s\n' "$(service_state NetworkManager.service)"
-printf '  libvirtd       %s\n' "$(service_state libvirtd.service)"
-printf '  ufw            %s\n' "$(service_state ufw.service)"
+printf '\nTrust and compatibility\n'
+printf '  Security posture: %s\n' "$(service_state ufw.service)"
+printf '  Windows Bridge:   %s\n' "$(service_state libvirtd.service)"
+printf '  Power controls:   %s\n' "$(command_state seven-power)"
 
-printf '\nProfiles\n'
+printf '\nMini OS profiles\n'
 if command -v sevenpkg >/dev/null 2>&1; then
   sevenpkg status 2>/dev/null || true
 elif [[ -x "$ROOT_DIR/bin/sevenpkg" ]]; then

@@ -31,7 +31,6 @@ hyprland/lua/
     shield.lua
     studio.lua
     windows.lua
-    horizon.lua
     pulse.lua
     baobab.lua
   rules/

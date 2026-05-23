@@ -58,8 +58,8 @@ def module_sort_key(item):
         "shield": 2,
         "studio": 3,
         "windows": 4,
-        "horizon": 5,
-        "griot": 6,
+        "pulse": 5,
+        "baobab": 6,
     }
     return (order.get(item["key"], 99), item["key"])
 
@@ -72,8 +72,8 @@ PROFILE_COLLECTIONS = {
         "apps": ["sevenos-core", "desktop", "visual", "reader"],
     },
     "forge": {
-        "title": "Forge Developer",
-        "description": "Editors, SDKs, containers and local development services.",
+        "title": "Forge DevOps",
+        "description": "Editors, SDKs, containers, local services, deploys and cloud workflows.",
         "accent": "gold",
         "apps": ["dev", "hub-gui", "server"],
     },
@@ -95,12 +95,6 @@ PROFILE_COLLECTIONS = {
         "accent": "sky",
         "apps": ["windows"],
     },
-    "horizon": {
-        "title": "Horizon Cloud",
-        "description": "Deployment, containers, reverse proxy, logs and server workflows.",
-        "accent": "cyan",
-        "apps": ["server"],
-    },
     "pulse": {
         "title": "Pulse Gaming",
         "description": "Linux gaming, overlays, low latency and frame pacing.",
@@ -108,8 +102,8 @@ PROFILE_COLLECTIONS = {
         "apps": ["performance", "performance-optional"],
     },
     "baobab": {
-        "title": "Baobab Culture",
-        "description": "African culture, learning, reading and language tools.",
+        "title": "Baobab Cultural OS",
+        "description": "African heritage, languages, stories, sound, maps, fashion, food, wisdom and offline memory.",
         "accent": "baobab",
         "apps": ["culture", "culture-optional"],
     },

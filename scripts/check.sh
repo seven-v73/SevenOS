@@ -51,6 +51,7 @@ bash -n \
   "$ROOT_DIR/scripts/events.sh" \
   "$ROOT_DIR/scripts/insights.sh" \
   "$ROOT_DIR/scripts/manifest.sh" \
+  "$ROOT_DIR/scripts/mini-os-relay.sh" \
   "$ROOT_DIR/scripts/package-plan.sh" \
   "$ROOT_DIR/scripts/migrate.sh" \
   "$ROOT_DIR/scripts/migrate-from-ml4w.sh" \
@@ -61,6 +62,7 @@ bash -n \
   "$ROOT_DIR/branding/apply-branding.sh" \
   "$ROOT_DIR/bin/seven" \
   "$ROOT_DIR/bin/seven-apps" \
+  "$ROOT_DIR/bin/seven-actions-native" \
   "$ROOT_DIR/bin/seven-country" \
   "$ROOT_DIR/bin/seven-language" \
   "$ROOT_DIR/bin/seven-daemon" \
@@ -109,9 +111,11 @@ bash -n \
   "$ROOT_DIR/bin/seven-wifi" \
   "$ROOT_DIR/bin/seven-notifications" \
   "$ROOT_DIR/bin/seven-idle" \
+  "$ROOT_DIR/bin/seven-mini-os-center" \
   "$ROOT_DIR/bin/seven-windows-assistant" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
+  "$ROOT_DIR/scripts/startup-audit.sh" \
   "$ROOT_DIR/security/hardening.sh" \
   "$ROOT_DIR/security/shield-control.sh" \
   "$ROOT_DIR/security/shield-status.sh" \
@@ -137,15 +141,19 @@ bash -n "$ROOT_DIR/security/hardening.sh"
 log_info "Checking desktop config syntax..."
 PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/seven" \
+  "$ROOT_DIR/bin/seven-actions-native" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/seven-files-native" \
   "$ROOT_DIR/bin/seven-reader-native" \
   "$ROOT_DIR/bin/seven-store-native" \
   "$ROOT_DIR/bin/seven-hub-native" \
+  "$ROOT_DIR/bin/seven-home-native" \
+  "$ROOT_DIR/bin/seven-actions-native" \
   "$ROOT_DIR/bin/seven-launchpad-native" \
   "$ROOT_DIR/bin/seven-settings-native" \
   "$ROOT_DIR/bin/seven-language" \
   "$ROOT_DIR/bin/seven-terminal-native" \
+  "$ROOT_DIR/bin/seven-mini-os-center" \
   "$ROOT_DIR/scripts/seven_i18n.py" \
   "$ROOT_DIR/scripts/seven_ai_agent.py" \
   "$ROOT_DIR/scripts/seven_ai_provider.py" \
@@ -294,10 +302,30 @@ fi
 
 log_info "Checking package names against pacman metadata..."
 missing=0
+external_package_files=()
+official_packages=""
+if command -v timeout >/dev/null 2>&1; then
+  official_packages="$(
+    timeout --kill-after=1s "${SEVENOS_PACKAGE_INDEX_TIMEOUT:-15s}" pacman -Sl 2>/dev/null |
+      awk '{print $2}' |
+      sort -u || true
+  )"
+else
+  official_packages="$(pacman -Sl 2>/dev/null | awk '{print $2}' | sort -u || true)"
+fi
+
+pacman_info() {
+  local package="$1"
+  if [[ -n "$official_packages" ]] && grep -Fxq "$package" <<<"$official_packages"; then
+    return 0
+  fi
+  pacman -Q "$package" >/dev/null 2>&1
+}
 
 for package_file in "$ROOT_DIR"/scripts/packages-*.txt; do
   case "$(basename "$package_file")" in
-    *-aur.txt)
+    *-aur.txt|packages-aur-helpers.txt|*-lab.txt)
+      external_package_files+=("$package_file")
       continue
       ;;
   esac
@@ -308,7 +336,7 @@ for package_file in "$ROOT_DIR"/scripts/packages-*.txt; do
 
     [[ -z "$package" ]] && continue
 
-    if ! pacman -Si "$package" >/dev/null 2>&1; then
+    if ! pacman_info "$package"; then
       printf '%s: missing package: %s\n' "${package_file#$ROOT_DIR/}" "$package" >&2
       missing=1
     fi
@@ -317,7 +345,7 @@ done
 
 while IFS= read -r package; do
   [[ -z "$package" ]] && continue
-  if ! pacman -Si "$package" >/dev/null 2>&1; then
+  if ! pacman_info "$package"; then
     printf 'sevenpkg/metapackages.json: missing package: %s\n' "$package" >&2
     missing=1
   fi
@@ -339,6 +367,32 @@ PY
 if [[ "$missing" -ne 0 ]]; then
   log_error "Some packages were not found in enabled pacman repositories."
   exit 1
+fi
+
+if ((${#external_package_files[@]})); then
+  log_info "Checking external/AUR/lab package manifests without blocking pacman validation..."
+  for package_file in "${external_package_files[@]}"; do
+    while IFS= read -r package; do
+      package="${package%%#*}"
+      package="${package//[[:space:]]/}"
+      [[ -z "$package" ]] && continue
+      if pacman_info "$package" || pacman -Q "$package" >/dev/null 2>&1 || command -v "$package" >/dev/null 2>&1; then
+        continue
+      fi
+      case "$package" in
+        yay)
+          pacman -Q yay-bin >/dev/null 2>&1 && continue
+          ;;
+        argos-translate)
+          command -v argos-translate >/dev/null 2>&1 || command -v trans >/dev/null 2>&1 && continue
+          ;;
+        open-webui)
+          command -v open-webui >/dev/null 2>&1 && continue
+          ;;
+      esac
+      log_warn "${package_file#$ROOT_DIR/}: external package not present on this machine: $package"
+    done < "$package_file"
+  done
 fi
 
 log_info "Checking installer dry-run..."
@@ -380,7 +434,13 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --json | python -m json.to
 "$ROOT_DIR/bin/seven" scheduler status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" scheduler plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" runtime status --json | python -m json.tool >/dev/null
-"$ROOT_DIR/bin/seven" runtime plan forge shield horizon --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" runtime plan forge shield studio --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" bridge init --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" bridge status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" bridge doctor --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" bridge relations --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" bridge graph --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" bridge session --profile baobab --json | python -m json.tool >/dev/null
 python -m json.tool "$ROOT_DIR/profiles/catalog.json" >/dev/null
 "$ROOT_DIR/bin/seven" profile catalog --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" profile health --json | python -m json.tool >/dev/null
@@ -452,6 +512,24 @@ SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-welcome" plan --json | python -m json.too
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-apps" open >/dev/null
 "$ROOT_DIR/bin/seven-apps" doctor >/dev/null
+"$ROOT_DIR/bin/seven-apps" doctor --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" launchpad doctor --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-home-native" --probe >/dev/null
+"$ROOT_DIR/bin/seven-home-native" --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" home --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run home >/dev/null
+"$ROOT_DIR/bin/seven-actions-native" --probe >/dev/null
+"$ROOT_DIR/bin/seven-actions-native" --filter-probe | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("ready") and d.get("all",0) > d.get("desktop",0) > 0 else 1)'
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run actions open >/dev/null
+"$ROOT_DIR/bin/seven" motion status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" motion ux-doctor >/dev/null
+"$ROOT_DIR/scripts/startup-audit.sh" --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-passage-overlay" --probe >/dev/null
+"$ROOT_DIR/bin/seven-passage-sound" --probe >/dev/null
+"$ROOT_DIR/bin/seven-passage-sound" --list | grep -q 'organic-breath'
+"$ROOT_DIR/bin/seven-passage-overlay" --from equinox --to baobab --json | python -m json.tool >/dev/null
+grep -q 'sevenos-motion.conf' "$ROOT_DIR/hyprland/hyprland.conf"
+grep -q 'Preset: premium' "$ROOT_DIR/hyprland/conf/sevenos-motion.conf"
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-overview" windows >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-quick-settings" >/dev/null
@@ -460,7 +538,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-panel" notifications >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-shell-preview" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" field >/dev/null
+"$ROOT_DIR/bin/seven-spotlight" index >/dev/null
 "$ROOT_DIR/bin/seven-spotlight" catalog >/dev/null
+"$ROOT_DIR/bin/seven" spotlight doctor --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-session-status" >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-session-status" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
@@ -481,6 +561,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" network-connect >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-workspace" json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-waybar-status" profile | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-profile-theme" apply >/dev/null
+"$ROOT_DIR/bin/seven-profile-theme" audit-waybars >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" connect >/dev/null
@@ -492,6 +573,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" plan --json | python -
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" catalog --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" resolve photoshop --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" run photoshop >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" repair >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
@@ -535,7 +617,13 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/improve.sh" deployment >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" security >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" deployment --apply --yes >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ux-check.sh" >/dev/null
+if command -v timeout >/dev/null 2>&1; then
+  if ! SEVENOS_DRY_RUN=1 timeout --kill-after=2s "${SEVENOS_UX_CHECK_TIMEOUT:-60s}" "$ROOT_DIR/scripts/ux-check.sh" >/dev/null; then
+    log_warn "UX check did not finish within ${SEVENOS_UX_CHECK_TIMEOUT:-60s}; run scripts/ux-check.sh for the full audit."
+  fi
+else
+  SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ux-check.sh" >/dev/null
+fi
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary >/dev/null
@@ -609,7 +697,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" sources >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install forge >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install shield core >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install horizon >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install server >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install nmap hashcat >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run remove nmap hashcat >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" info shield >/dev/null
@@ -647,6 +735,7 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer plan --json >/dev/nu
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer release --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer graphical >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run installer graphical --json >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-installer" status --json | python -c 'import json,sys; data=json.load(sys.stdin); runtime=data.get("runtime_source", {}); raise SystemExit(0 if data.get("schema") == "sevenos.installer-portal.v1" and runtime.get("state") else 1)'
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run hub-gui status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run hub-gui doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run flatpak status >/dev/null
@@ -682,8 +771,16 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run scheduler apply >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime status --json >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime plan forge shield horizon >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime capabilities >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime plan forge shield studio >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run runtime doctor >/dev/null
+SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime status --json | python -c 'import json,sys; data=json.load(sys.stdin); fusion=data.get("composite_runtime", {}).get("capability_fusion", {}); raise SystemExit(0 if data.get("schema") == "sevenos.runtime-orchestrator.v1" and fusion.get("profiles_are_autonomous") and fusion.get("no_profile_dependency") else 1)'
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run bridge status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run bridge doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run bridge switch --to studio >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate pulse | grep -q 'seven motion profile pulse'
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/profiles/profile-manager.sh" activate baobab | grep -q 'seven-passage-overlay --from'
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run bridge remember --profile studio --app check >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shell plan >/dev/null

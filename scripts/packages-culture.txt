@@ -1,4 +1,5 @@
-# SevenOS Baobab cultural profile
-# Keep this profile lightweight and human/culture focused.
+# SevenOS Baobab cultural mini OS
+# Core stays lightweight and offline-friendly: fonts first, content/runtime next.
 noto-fonts
 noto-fonts-emoji
+mpv

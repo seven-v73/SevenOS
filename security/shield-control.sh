@@ -18,7 +18,16 @@ Usage:
   seven shield open
   seven shield labs
   seven shield tools
+  seven shield persona
   seven shield scope
+  seven shield network
+  seven shield evidence
+  seven shield optional-tools
+  seven shield toolchain
+  seven shield bundles
+  seven shield wrappers
+  seven shield tool-doctor
+  seven shield performance
   seven shield scope --json
   seven shield report
 
@@ -30,7 +39,7 @@ EOF
 
 shift_if_action() {
   case "${1:-}" in
-    dashboard|open|labs|tools|scope|report)
+    dashboard|open|labs|tools|persona|scope|network|evidence|optional-tools|toolchain|bundles|wrappers|tool-doctor|performance|report)
       ACTION="$1"
       shift
       ;;
@@ -125,6 +134,17 @@ def load_scope(path):
 shield = command_json([str(root / "bin/seven-daemon"), "shield", "--json"], {"percent": 0, "posture": "unknown", "checks": []})
 plan = command_json([str(root / "bin/seven-daemon"), "shield-plan", "--json"], {"summary": {}, "next": []})
 profile = command_json([str(root / "bin/seven-daemon"), "profiles", "--json"], {"profiles": []})
+persona = command_json([str(root / "security/shield-persona.sh"), "status", "--json"], {"state": "MISS", "active": {"key": "safe", "title": "Safe Audit"}, "session": "persistent"})
+personas = command_json([str(root / "security/shield-persona.sh"), "personas", "--json"], {"personas": []})
+scope = command_json([str(root / "security/shield-scope.sh"), "status", "--json"], {"state": "MISS", "active": False, "targets": [], "target_count": 0})
+network = command_json([str(root / "security/shield-network-guard.sh"), "status", "--json"], {"state": "MISS"})
+evidence = command_json([str(root / "security/shield-evidence.sh"), "status", "--json"], {"state": "MISS", "items": 0})
+optional_tools = command_json([str(root / "security/shield-optional-tools.sh"), "status", "--json"], {"state": "MISS", "missing": []})
+toolchain = command_json([str(root / "security/shield-toolchain.sh"), "status", "--json"], {"state": "MISS", "sources": []})
+bundles = command_json([str(root / "security/shield-bundles.sh"), "status", "--json"], {"schema": "sevenos.shield-bundles.v1", "bundles": []})
+wrappers = command_json([str(root / "security/shield-wrappers.sh"), "status", "--json"], {"state": "MISS", "wrappers": []})
+tool_doctor = command_json([str(root / "security/shield-tool-doctor.sh"), "--json"], {"state": "MISS", "overall": 0, "domains": []})
+performance = command_json([str(root / "security/shield-performance.sh"), "status", "--json"], {"mode": "normal"})
 
 shield_profile = {}
 for item in profile.get("profiles", []):
@@ -208,10 +228,18 @@ workspace_state = {
     "labs_root": str(labs_root),
 }
 
-scope = load_scope(state_dir / "scope.json")
-
 quick_actions = [
     {"key": "open", "title": "Open Shield workspace", "command": "seven shield open", "impact": "safe"},
+    {"key": "persona", "title": "Switch Shield persona", "command": "seven shield personas", "impact": "safe"},
+    {"key": "network", "title": "Review Network Guard", "command": "seven shield network", "impact": "safe"},
+    {"key": "evidence", "title": "Open Evidence Manager", "command": "seven shield evidence", "impact": "safe"},
+    {"key": "optional-tools", "title": "Review Optional Tools", "command": "seven shield optional-tools", "impact": "packages"},
+    {"key": "toolchain", "title": "Open Toolchain Sources", "command": "seven shield toolchain", "impact": "safe"},
+    {"key": "bundles", "title": "Review Shield Bundles", "command": "seven shield bundles", "impact": "safe"},
+    {"key": "wrappers", "title": "Install GUI Wrappers", "command": "seven shield wrappers install", "impact": "safe"},
+    {"key": "tool-doctor", "title": "Run Tool Doctor", "command": "seven shield tool-doctor", "impact": "safe"},
+    {"key": "performance", "title": "Apply Performance Mode", "command": "seven shield performance apply", "impact": "safe"},
+    {"key": "session", "title": "Toggle ephemeral session", "command": "seven shield session ephemeral", "impact": "safe"},
     {"key": "scope", "title": "Review audit scope", "command": "seven shield scope", "impact": "safe"},
     {"key": "lab-web", "title": "Open Web Lab", "command": "seven shield lab --preset web", "impact": "safe"},
     {"key": "lab-forensics", "title": "Open Forensics Lab", "command": "seven shield lab --preset forensics", "impact": "safe"},
@@ -238,7 +266,17 @@ payload = {
         "missing": (shield_profile.get("packages") or {}).get("missing_count", 0),
     },
     "workspace": workspace_state,
+    "persona": persona,
+    "personas": personas.get("personas", []),
     "scope": scope,
+    "network": network,
+    "evidence": evidence,
+    "optional_tools": optional_tools,
+    "toolchain": toolchain,
+    "bundles": bundles,
+    "wrappers": wrappers,
+    "tool_doctor": tool_doctor,
+    "performance": performance,
     "labs": lab_presets,
     "tools": tool_groups,
     "plan": {
@@ -270,7 +308,17 @@ data = json.loads(os.environ["SHIELD_CONTROL_JSON"])
 posture = data.get("posture", {})
 profile = data.get("profile", {})
 workspace = data.get("workspace", {})
+persona = data.get("persona", {})
+active_persona = persona.get("active", {})
 scope = data.get("scope", {})
+network = data.get("network", {})
+evidence = data.get("evidence", {})
+optional_tools = data.get("optional_tools", {})
+toolchain = data.get("toolchain", {})
+bundles = data.get("bundles", {})
+wrappers = data.get("wrappers", {})
+tool_doctor = data.get("tool_doctor", {})
+performance = data.get("performance", {})
 plan = data.get("plan", {}).get("summary", {})
 
 print("SevenOS Shield Control")
@@ -278,7 +326,15 @@ print("======================")
 print(f"Posture:   {posture.get('label', 'unknown')} ({posture.get('percent', 0)}%)")
 print(f"Profile:   {profile.get('state', 'MISS')} {profile.get('installed', 0)}/{profile.get('total', 0)}")
 print(f"Workspace: {workspace.get('root')}")
+print(f"Persona:   {active_persona.get('title', 'Safe Audit')} · {persona.get('session', 'persistent')}")
 print(f"Scope:     {scope.get('state', 'MISS')} · {scope.get('target_count', 0)} target(s)")
+print(f"Network:   {network.get('state', 'MISS')} · {network.get('persona', {}).get('policy', 'normal-guarded')}")
+print(f"Evidence:  {evidence.get('items', 0)} item(s)")
+print(f"Optional:  {len(optional_tools.get('missing', []))} missing")
+print(f"Sources:   {sum(1 for item in toolchain.get('sources', []) if item.get('state') == 'OK')}/{len(toolchain.get('sources', []))} ready")
+print(f"Bundles:   {sum(1 for item in bundles.get('bundles', []) if item.get('state') == 'OK')}/{len(bundles.get('bundles', []))} complete")
+print(f"Tools:     {tool_doctor.get('overall', 0)}% · wrappers {sum(1 for item in wrappers.get('wrappers', []) if item.get('state') == 'OK')}/{len(wrappers.get('wrappers', []))}")
+print(f"Perf:      {performance.get('mode', 'normal')}")
 print(f"Open plan: {plan.get('total', 0)} action(s)")
 print()
 print("Quick actions")
@@ -404,8 +460,39 @@ case "$ACTION" in
       json_dashboard | python -c 'import json,sys; data=json.load(sys.stdin); [print(f"{group[\"title\"]}\\n" + "\\n".join(f"  {tool[\"state\"]:<4} {tool[\"name\"]}" for tool in group["tools"])) for group in data["tools"]]'
     fi
     ;;
+  persona)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      json_dashboard | python -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps({"schema":"sevenos.shield-persona-view.v1","active":data["persona"],"personas":data["personas"]}, indent=2))'
+    else
+      "$ROOT_DIR/security/shield-persona.sh" status
+    fi
+    ;;
   scope)
-    scope_output
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-scope.sh" status --json; else "$ROOT_DIR/security/shield-scope.sh" status; fi
+    ;;
+  network)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-network-guard.sh" status --json; else "$ROOT_DIR/security/shield-network-guard.sh" status; fi
+    ;;
+  evidence)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-evidence.sh" status --json; else "$ROOT_DIR/security/shield-evidence.sh" status; fi
+    ;;
+  optional-tools)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-optional-tools.sh" status --json; else "$ROOT_DIR/security/shield-optional-tools.sh" status; fi
+    ;;
+  toolchain)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-toolchain.sh" status --json; else "$ROOT_DIR/security/shield-toolchain.sh" status; fi
+    ;;
+  bundles)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-bundles.sh" status --json; else "$ROOT_DIR/security/shield-bundles.sh" status; fi
+    ;;
+  wrappers)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-wrappers.sh" status --json; else "$ROOT_DIR/security/shield-wrappers.sh" status; fi
+    ;;
+  tool-doctor)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-tool-doctor.sh" --json; else "$ROOT_DIR/security/shield-tool-doctor.sh"; fi
+    ;;
+  performance)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then "$ROOT_DIR/security/shield-performance.sh" status --json; else "$ROOT_DIR/security/shield-performance.sh" status; fi
     ;;
   report)
     create_report

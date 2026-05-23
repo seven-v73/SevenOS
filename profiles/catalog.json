@@ -6,18 +6,17 @@
   "profile_model": {
     "name": "Layered Autonomous Profiles Architecture",
     "short_name": "LAPA",
-    "contract": "Each profile is a self-contained mini OS with Kernel, Runtime, Experience and Intelligence layers.",
+    "contract": "Each visible profile is a self-contained mini OS with Kernel, Runtime, Experience and Intelligence layers. SevenOS exposes seven specialized mini OSes; retired aliases may redirect to a merged profile for compatibility.",
     "composition": "Profiles can collaborate through declared capabilities, but no profile may silently load another profile's full stack.",
     "equinox_role": "Equinox is the balanced general profile. It is not a hidden super-profile and it must not make another profile dominant by default."
   },
   "profile_naming": {
     "equinox": "Equinox Balance",
-    "baobab": "Baobab Culture",
-    "forge": "Forge Developer",
+    "baobab": "Baobab Cultural OS",
+    "forge": "Forge DevOps",
     "shield": "Shield Cybersecurity",
     "studio": "Studio Creator",
     "windows": "Windows Bridge",
-    "horizon": "Horizon Cloud",
     "pulse": "Pulse Gaming"
   },
   "state_files": {
@@ -107,7 +106,6 @@
           "shield",
           "studio",
           "windows",
-          "horizon",
           "pulse",
           "baobab"
         ],
@@ -130,33 +128,37 @@
       }
     },
     "baobab": {
-      "title": "Baobab Culture",
-      "role": "African culture and learning mini OS",
+      "title": "Baobab Cultural OS",
+      "role": "African cultural mini OS",
       "target": "culture",
-      "domain": "culture and learning",
-      "purpose": "A lightweight cultural and educational SevenOS experience for African knowledge, languages, community memory, reading and learning.",
+      "domain": "African heritage, learning, creativity and transmission",
+      "purpose": "A living African cultural mini OS: digital village, library, museum, language hub, story engine, soundscape, fashion bridge, food memory, wisdom center, cultural map and offline-first community archive.",
       "mini_os": true,
       "layers": {
         "kernel": [
-          "quiet resource use",
-          "battery-friendly defaults",
-          "low background activity"
+          "quiet resource use for reading and narration",
+          "battery-friendly offline learning defaults",
+          "foreground priority for media, maps and cultural study",
+          "low background activity for schools and low-power devices"
         ],
         "runtime": [
-          "local cultural archives",
-          "language resources",
-          "reader and media tools",
-          "community knowledge spaces"
+          "local heritage database and offline media cache",
+          "African language resources, dictionaries and keyboards",
+          "reader, audio, map and museum surfaces",
+          "community knowledge spaces and sync-ready archives",
+          "Baobab module manifest through seven baobab"
         ],
         "experience": [
-          "African cultural identity",
-          "simple learning navigation",
-          "calm media and reading surfaces"
+          "African digital village navigation",
+          "Baobab Heritage, Sound, Explore, Fashion, Food, Wisdom and Market modules",
+          "organic warm visual rhythm inspired by earth, textile, fire, wind and tree shade",
+          "calm media, reading and oral-tradition surfaces"
         ],
         "intelligence": [
-          "cultural assistant",
-          "translation and oral knowledge support",
-          "offline learning guidance"
+          "Seven Baobab AI cultural guide",
+          "story narration and oral knowledge support",
+          "African language tutoring and translation guidance",
+          "offline learning recommendations and provenance-aware cultural explanations"
         ]
       },
       "package_files": [
@@ -180,7 +182,16 @@
         "cultural-identity",
         "language-support",
         "community-space",
-        "local-knowledge"
+        "local-knowledge",
+        "heritage-library",
+        "storytelling",
+        "soundscape",
+        "explore-africa",
+        "museum-3d",
+        "fashion-bridge",
+        "food-memory",
+        "wisdom-center",
+        "offline-first"
       ],
       "anti_nuisance": [
         "no dev toolchain",
@@ -196,7 +207,6 @@
           "shield",
           "studio",
           "windows",
-          "horizon",
           "pulse"
         ],
         "composition_policy": "must stay culture-first; dev, cloud, security or gaming tools are added only by explicit composition"
@@ -206,49 +216,56 @@
         "ram": "small-local-cache",
         "gpu": "minimal-ui",
         "io": "archive-friendly",
-        "network": "optional-sharing"
+        "network": "offline-first-optional-sync"
       },
       "priority": 90,
       "center_command": "seven-mini-os-center baobab",
       "profile_surfaces": {
         "center": "seven-mini-os-center baobab",
-        "workspace": "seven profile open baobab",
+        "workspace": "seven baobab open",
         "apps": "seven profile apps baobab",
-        "runtime": "seven runtime plan baobab"
+        "runtime": "seven runtime plan baobab",
+        "village": "seven baobab",
+        "modules": "seven baobab modules",
+        "heritage": "seven baobab module heritage"
       }
     },
     "forge": {
-      "title": "Forge Developer",
-      "role": "Developer mini OS",
-      "target": "dev",
-      "domain": "development",
-      "purpose": "A developer-mode SevenOS environment for software engineering, code, local services, containers, builds and technical documentation.",
+      "title": "Forge DevOps",
+      "role": "Developer and cloud deployment mini OS",
+      "target": "devops",
+      "domain": "software engineering, local services and cloud deployment",
+      "purpose": "A developer and deployment SevenOS environment for code, SDKs, containers, local services, self-hosting, cloud operations, builds, logs and release workflows.",
       "mini_os": true,
       "layers": {
         "kernel": [
           "interactive build scheduling",
           "compiler-friendly CPU/RAM policy",
-          "fast project IO caches"
+          "fast project IO caches",
+          "stable service throughput and network QoS"
         ],
         "runtime": [
-          "editors and IDE helpers",
-          "Node, Python, Rust and system toolchains",
-          "Git workflows",
-          "containers and local services"
+          "editors, IDE helpers and technical documentation",
+          "Node, Python, Rust, Go and system toolchains",
+          "Git workflows, CI helpers and local services",
+          "Podman/Docker, Caddy, SSH, deploy tools and endpoint logs"
         ],
         "experience": [
-          "terminal-forward workspace",
-          "project and documentation panels",
-          "developer Waybar signals"
+          "terminal-forward developer cockpit",
+          "project, container and deployment panels",
+          "service dashboard, logs and endpoints",
+          "developer Waybar signals with network/deploy awareness"
         ],
         "intelligence": [
-          "code assistant",
-          "build and error explanation",
-          "project bootstrap and workflow suggestions"
+          "code assistant and build error explanation",
+          "project bootstrap and workflow suggestions",
+          "deployment analysis, health checks and rollback suggestions",
+          "service repair and release readiness guidance"
         ]
       },
       "package_files": [
-        "scripts/packages-dev.txt"
+        "scripts/packages-dev.txt",
+        "scripts/packages-server.txt"
       ],
       "waybar_modules": [
         "profile",
@@ -258,6 +275,7 @@
         "bluetooth",
         "audio",
         "battery",
+        "vpn",
         "recorder",
         "ai"
       ],
@@ -267,12 +285,19 @@
         "containers",
         "build-system",
         "git-workflows",
-        "local-services"
+        "local-services",
+        "server-services",
+        "reverse-proxy",
+        "deploy-pipeline",
+        "personal-cloud",
+        "logs-and-endpoints"
       ],
       "anti_nuisance": [
+        "no public service exposure without confirmation",
         "no security scans unless Shield is composed",
         "no media render stack unless Studio is composed",
-        "no gaming runtime unless Pulse is composed"
+        "no gaming runtime unless Pulse is composed",
+        "cloud daemons stay explicit and visible"
       ],
       "independence": {
         "standalone": true,
@@ -280,25 +305,30 @@
           "shield",
           "studio",
           "windows",
-          "horizon",
           "pulse",
           "baobab"
-        ]
+        ],
+        "legacy_aliases": [
+          "horizon"
+        ],
+        "composition_policy": "Forge owns development and deployment; Shield can add audit, Studio can add media pipelines, Pulse can add performance, without changing Forge identity."
       },
       "resource_intent": {
-        "cpu": "interactive-build",
+        "cpu": "interactive-build-and-service",
         "ram": "large-working-set",
         "gpu": "normal",
-        "io": "build-cache",
-        "network": "dev-services"
+        "io": "build-cache-and-service-logs",
+        "network": "devops-qos"
       },
-      "priority": 180,
+      "priority": 185,
       "center_command": "seven-mini-os-center forge",
       "profile_surfaces": {
         "center": "seven-mini-os-center forge",
         "workspace": "seven profile open forge",
         "apps": "seven profile apps forge",
-        "runtime": "seven runtime plan forge"
+        "runtime": "seven runtime plan forge",
+        "deploy": "seven deploy detect .",
+        "services": "seven server status"
       }
     },
     "shield": {
@@ -306,29 +336,32 @@
       "role": "Cybersecurity mini OS",
       "target": "cybersecurity",
       "domain": "security",
-      "purpose": "A cybersecurity and forensic SevenOS environment for authorized audit, sandboxing, network analysis, reversing and reporting.",
+      "purpose": "A dynamic cybersecurity mini OS for authorized audit, defensive monitoring, OSINT, forensics, DevSecOps, malware triage, isolated lab work and Kali/BlackArch-compatible tool access.",
       "mini_os": true,
       "layers": {
         "kernel": [
           "audit-aware scheduling",
-          "network visibility",
-          "sandbox and isolation readiness"
+          "guarded network policy",
+          "ephemeral workspace support",
+          "sandbox and namespace readiness"
         ],
         "runtime": [
-          "forensics tools",
-          "network tools",
-          "sandbox labs",
-          "reporting and evidence helpers"
+          "persona engine for safe/research/lab/osint/forensics/malware/devsecops/redteam/blueteam modes",
+          "forensics, network, web, reversing and sandbox tools",
+          "ephemeral and persistent Shield sessions",
+          "scope, evidence, capture and report helpers"
         ],
         "experience": [
-          "scope-first security UI",
-          "VPN and isolation signals",
-          "evidence-safe workspaces"
+          "SOC-style guarded interface",
+          "persona-aware CyberSpace contexts",
+          "VPN, isolation, scope and session signals",
+          "evidence-safe workspace layout"
         ],
         "intelligence": [
           "authorized-scope guard",
-          "risk explanation",
-          "repair and hardening playbooks"
+          "persona-aware risk explanation",
+          "log and posture analysis playbooks",
+          "mode-specific learning guidance"
         ]
       },
       "package_files": [
@@ -337,6 +370,10 @@
         "scripts/packages-cybersecurity-reversing.txt",
         "scripts/packages-cybersecurity-wireless.txt",
         "scripts/packages-cybersecurity-sandbox.txt"
+      ],
+      "optional_package_files": [
+        "scripts/packages-cybersecurity-optional.txt",
+        "scripts/packages-cybersecurity-aur.txt"
       ],
       "waybar_modules": [
         "profile",
@@ -355,15 +392,38 @@
         "audit",
         "sandboxing",
         "network-defense",
-        "forensics"
+        "forensics",
+        "osint",
+        "malware-triage",
+        "devsecops",
+        "monitoring",
+        "scope-gating",
+        "network-guard",
+        "evidence-chain",
+        "blackarch-bridge",
+        "kali-container-compatibility",
+        "tool-source-resolution",
+        "gui-tool-compatibility",
+        "cyber-tool-doctor",
+        "shield-performance-mode",
+        "focused-cyber-bundles"
       ],
       "optional_apps": [
-        "burpsuite"
+        "burpsuite",
+        "autopsy"
       ],
       "anti_nuisance": [
-        "no intrusive scans without confirmation",
+        "no intrusive scans without active scope and confirmation",
+        "unknown samples default to offline or ephemeral labs",
         "no dev containers unless Forge is composed",
-        "no cloud daemons unless Horizon is composed"
+        "no cloud daemons unless Forge DevOps is composed",
+        "no red-team behavior outside explicit authorization",
+        "intrusive contexts require an active Shield scope",
+        "network posture is advisory unless the user applies elevated firewall/VPN policy",
+        "evidence registration hashes originals without modifying them",
+        "prefer tool source resolution over installing huge catalogs by default",
+        "Kali compatibility runs in an isolated container instead of changing the host root",
+        "BlackArch remains opt-in and reviewed before repository activation"
       ],
       "independence": {
         "standalone": true,
@@ -371,7 +431,6 @@
           "forge",
           "studio",
           "windows",
-          "horizon",
           "pulse",
           "baobab"
         ]
@@ -389,7 +448,55 @@
         "center": "seven-shield-center-native",
         "workspace": "seven profile open shield",
         "apps": "seven profile apps shield",
-        "runtime": "seven runtime plan shield"
+        "runtime": "seven runtime plan shield",
+        "persona": "seven shield persona",
+        "cyberspace": "seven shield mode",
+        "cleanup": "seven shield cleanup",
+        "toolchain": "seven shield toolchain",
+        "bundles": "seven shield bundles",
+        "wrappers": "seven shield wrappers",
+        "tool_doctor": "seven shield tool-doctor",
+        "performance": "seven shield performance"
+      },
+      "personas": {
+        "safe": "Defensive posture and local audit baseline",
+        "research": "CVE/research notes with sandboxed browsing",
+        "lab": "Authorized web/network pentest lab",
+        "osint": "Privacy-aware open-source intelligence workspace",
+        "forensics": "Offline evidence and artifact analysis",
+        "malware": "Offline disposable sample triage",
+        "devsecops": "Code and dependency security review",
+        "redteam": "Authorized adversary emulation with active scope",
+        "blueteam": "Logs, monitoring, detection and hardening"
+      },
+      "session_modes": {
+        "persistent": "keeps reports, scope and evidence across sessions",
+        "ephemeral": "cleans disposable workspace data on closure via seven shield cleanup"
+      },
+      "surfaces": {
+        "scope": "seven shield scope",
+        "network": "seven shield network",
+        "evidence": "seven shield evidence",
+        "toolchain": "seven shield toolchain",
+        "bundles": "seven shield bundles",
+        "wrappers": "seven shield wrappers",
+        "tool_doctor": "seven shield tool-doctor",
+        "performance": "seven shield performance"
+      },
+      "toolchain_sources": {
+        "arch": "official repositories first for stable baseline tools",
+        "aur": "reviewed advanced community tools",
+        "blackarch": "optional large Arch-native security catalog",
+        "kali_container": "isolated Kali Rolling compatibility environment"
+      },
+      "bundles": {
+        "web": "web pentest and application assessment",
+        "forensics": "evidence and artifact analysis",
+        "osint": "open-source intelligence and privacy routing",
+        "reverse": "reverse engineering and exploit research",
+        "malware": "offline sample triage and sandbox support",
+        "devsecops": "dependency, code and container security",
+        "wireless": "wireless and packet analysis"
       }
     },
     "studio": {
@@ -454,7 +561,6 @@
           "forge",
           "shield",
           "windows",
-          "horizon",
           "pulse",
           "baobab"
         ]
@@ -490,6 +596,8 @@
         ],
         "runtime": [
           "QEMU/KVM and VirtIO",
+          "official Windows media provisioning",
+          "local qcow2 image build",
           "Windows VM lifecycle",
           "shared folders",
           "Wine and Bottles fallback"
@@ -500,6 +608,8 @@
           "snapshot and recovery flow"
         ],
         "intelligence": [
+          "legal source guidance",
+          "Windows media readiness",
           "compatibility diagnosis",
           "engine selection",
           "Office and installer guidance",
@@ -508,6 +618,9 @@
       },
       "package_files": [
         "scripts/packages-windows.txt"
+      ],
+      "optional_package_files": [
+        "scripts/packages-windows-aur.txt"
       ],
       "waybar_modules": [
         "profile",
@@ -521,6 +634,10 @@
       "runtime_slice": "seven-windows.slice",
       "capabilities": [
         "windows-vm",
+        "official-media-provisioning",
+        "quickget-bridge",
+        "local-qcow2-build",
+        "autounattend-template",
         "virtio",
         "snapshots",
         "windows-app-routing",
@@ -529,7 +646,7 @@
         "shared-folders"
       ],
       "anti_nuisance": [
-        "no VM autostart by default",
+        "VM starts only when Windows Bridge is explicitly activated or opened",
         "no Wine prefix mutation without confirmation",
         "no gaming tuning unless Pulse is composed"
       ],
@@ -539,7 +656,6 @@
           "forge",
           "shield",
           "studio",
-          "horizon",
           "pulse",
           "baobab"
         ]
@@ -558,92 +674,6 @@
         "workspace": "seven profile open windows",
         "apps": "seven profile apps windows",
         "runtime": "seven runtime plan windows"
-      }
-    },
-    "horizon": {
-      "title": "Horizon Cloud",
-      "role": "Cloud and server mini OS",
-      "target": "server",
-      "domain": "cloud deployment and server operations",
-      "purpose": "A cloud, server and deployment SevenOS environment for self-hosting, reverse proxies, containers, infrastructure and service operations.",
-      "mini_os": true,
-      "layers": {
-        "kernel": [
-          "stable service throughput",
-          "network QoS",
-          "background daemon control"
-        ],
-        "runtime": [
-          "containers",
-          "reverse proxy",
-          "SSH and deployment tools",
-          "local API and service helpers"
-        ],
-        "experience": [
-          "service dashboard",
-          "deploy planner",
-          "logs and endpoints",
-          "network-first controls"
-        ],
-        "intelligence": [
-          "deployment analysis",
-          "health checks",
-          "rollback suggestions",
-          "service repair"
-        ]
-      },
-      "package_files": [
-        "scripts/packages-server.txt"
-      ],
-      "waybar_modules": [
-        "profile",
-        "spotlight",
-        "wifi",
-        "bluetooth",
-        "audio",
-        "battery",
-        "vpn",
-        "recorder",
-        "ai"
-      ],
-      "runtime_slice": "seven-horizon.slice",
-      "capabilities": [
-        "server-services",
-        "containers",
-        "reverse-proxy",
-        "deploy-pipeline",
-        "personal-cloud"
-      ],
-      "anti_nuisance": [
-        "no public service exposure without confirmation",
-        "no security toolkit unless Shield is composed",
-        "no developer IDE stack unless Forge is composed"
-      ],
-      "independence": {
-        "standalone": true,
-        "does_not_require": [
-          "forge",
-          "shield",
-          "studio",
-          "windows",
-          "pulse",
-          "baobab"
-        ]
-      },
-      "resource_intent": {
-        "cpu": "service-stability",
-        "ram": "daemon-pools",
-        "gpu": "none",
-        "io": "service-cache",
-        "network": "qos-services"
-      },
-      "priority": 140,
-      "center_command": "seven-mini-os-center horizon",
-      "profile_surfaces": {
-        "center": "seven-mini-os-center horizon",
-        "workspace": "seven profile open horizon",
-        "apps": "seven profile apps horizon",
-        "runtime": "seven runtime plan horizon"
       }
     },
     "pulse": {
@@ -713,7 +743,6 @@
           "shield",
           "studio",
           "windows",
-          "horizon",
           "baobab"
         ]
       },
@@ -732,6 +761,13 @@
         "apps": "seven profile apps pulse",
         "runtime": "seven runtime plan pulse"
       }
+    }
+  },
+  "retired_profiles": {
+    "horizon": {
+      "title": "Horizon Cloud",
+      "merged_into": "forge",
+      "reason": "Development and deployment share the same workflow surface in SevenOS; Forge DevOps now owns code, services, containers and cloud deployment."
     }
   }
 }

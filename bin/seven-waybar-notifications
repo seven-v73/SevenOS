@@ -113,7 +113,7 @@ run_terminal() {
   fi
 
   if command -v seven-terminal >/dev/null 2>&1; then
-    run_detached seven-terminal classic -- bash -lc "$wrapped"
+    run_detached seven-terminal -- bash -lc "$wrapped"
   elif command -v kitty >/dev/null 2>&1; then
     run_detached kitty --title "$title" bash -lc "$wrapped"
   else
@@ -321,7 +321,7 @@ open_menu() {
   fi
 
   if ! command -v rofi >/dev/null 2>&1; then
-    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Rofi n’est pas installé.' || printf 'Rofi is not installed.')"
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Le menu de secours SevenOS n’est pas installé.' || printf 'SevenOS fallback menu is not installed.')"
     return 1
   fi
 

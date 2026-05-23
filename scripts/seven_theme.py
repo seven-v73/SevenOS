@@ -26,6 +26,26 @@ def seven_config_dir() -> Path:
     return config_home() / "sevenos"
 
 
+def active_profile_key(default: str = "equinox") -> str:
+    env = os.environ.get("SEVENOS_PROFILE_CONTAINER")
+    if env:
+        return env.strip().strip("'\"") or default
+    env_path = seven_config_dir() / "profile.env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == "SEVENOS_ACTIVE_PROFILE":
+                return value.strip().strip("'\"") or default
+    env = os.environ.get("SEVENOS_EXEC_PROFILE") or os.environ.get("SEVENOS_ACTIVE_PROFILE")
+    if env:
+        return env.strip().strip("'\"") or default
+    return default
+
+
+def profile_config_dir(profile: str | None = None) -> Path:
+    return seven_config_dir() / "profiles" / (profile or active_profile_key())
+
+
 def repo_root() -> Path:
     env_root = os.environ.get("SEVENOS_ROOT")
     if env_root and (Path(env_root) / "identity").is_dir():
@@ -37,14 +57,14 @@ def current_theme_mode(default: str = "dark") -> str:
     env = os.environ.get("SEVENOS_THEME_MODE")
     if env in {"dark", "light"}:
         return env
-    theme_file = seven_config_dir() / "theme.conf"
-    if theme_file.exists():
-        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-            key, _, value = line.partition("=")
-            if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
-                value = value.strip().strip("'\"").lower()
-                if value in {"dark", "light"}:
-                    return value
+    for theme_file in (profile_config_dir() / "theme.conf", seven_config_dir() / "theme.conf"):
+        if theme_file.exists():
+            for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                key, _, value = line.partition("=")
+                if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                    value = value.strip().strip("'\"").lower()
+                    if value in {"dark", "light"}:
+                        return value
     return default
 
 

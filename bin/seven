@@ -200,6 +200,45 @@ def handle_mini_os(args):
     run_script(args, "scripts/mini-os-bridge.sh", *extra)
 
 
+def handle_bridge(args):
+    extra = [args.action, *args.items]
+    if args.source:
+        extra.extend(["--from", args.source])
+    if args.target:
+        extra.extend(["--to", args.target])
+    if args.profile:
+        extra.extend(["--profile", args.profile])
+    if args.kind:
+        extra.extend(["--kind", args.kind])
+    if args.title:
+        extra.extend(["--title", args.title])
+    if args.rights:
+        extra.extend(["--rights", args.rights])
+    if args.limit is not None:
+        extra.extend(["--limit", str(args.limit)])
+    for flag_name, flag_value in (
+        ("--app", getattr(args, "app", None)),
+        ("--path", getattr(args, "path", None)),
+        ("--task", getattr(args, "task", None)),
+        ("--mood", getattr(args, "mood", None)),
+        ("--pin", getattr(args, "pin", None)),
+    ):
+        if flag_value:
+            extra.extend([flag_name, flag_value])
+    if getattr(args, "apply", False):
+        extra.append("--apply")
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/mini-os-relay.sh", *extra)
+
+
+def handle_baobab(args):
+    extra = [args.action, *args.extra]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/baobab.sh", *extra)
+
+
 def handle_autonomy(args):
     extra = [args.action]
     if args.json:
@@ -420,6 +459,16 @@ def handle_hub(args):
     run_script(args, "scripts/hub.sh", action)
 
 
+def handle_home(args):
+    if args.action == "doctor":
+        run_script(args, "bin/seven-home-native", "--probe")
+        return
+    if args.action in ("status", "json") or args.json:
+        run_script(args, "bin/seven-home-native", "--json")
+        return
+    run_script(args, "bin/seven-home-native")
+
+
 def handle_hub_native(args):
     extra = [args.action]
     if args.dry_run_native:
@@ -573,6 +622,13 @@ def handle_identity(args):
 def handle_hypr(args):
     extra = [args.action, *args.extra]
     run_script(args, "scripts/hypr-ecosystem.sh", *extra)
+
+
+def handle_motion(args):
+    extra = [args.action, *args.extra]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/motion.sh", *extra)
 
 
 def handle_experience(args):
@@ -754,6 +810,37 @@ def handle_actions(args):
     run_script(args, "scripts/actions.sh", *extra)
 
 
+def handle_spotlight(args):
+    extra = [args.action, *args.extra]
+    if args.json and "--json" not in extra:
+        extra.append("--json")
+    run_script(args, "bin/seven-spotlight", *extra)
+
+
+def handle_launchpad(args):
+    action = args.action
+    if action in ("open", "apps"):
+        run_script(args, "bin/seven-apps", "open")
+        return
+    if action == "refresh":
+        run_script(args, "bin/seven-launchpad-native", "--refresh")
+        return
+    if action == "doctor":
+        extra = ["--doctor"]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "bin/seven-launchpad-native", *extra)
+        return
+    if action in ("json", "status"):
+        run_script(args, "bin/seven-launchpad-native", "--json")
+        return
+    if action in ("catalog", "catalog-json"):
+        run_script(args, "bin/seven-launchpad-native", "--catalog-json")
+        return
+    print("seven launchpad: supported actions are open, refresh, doctor, status and catalog", file=sys.stderr)
+    sys.exit(2)
+
+
 def main():
     dry_run_requested = "--dry-run" in sys.argv[1:]
     if dry_run_requested:
@@ -839,6 +926,27 @@ def main():
     mini_os_parser.add_argument("items", nargs="*", help="primary mini OS and optional borrowed capability profiles")
     mini_os_parser.add_argument("--json", action="store_true", help="print machine-readable Mini OS Bridge state")
     mini_os_parser.add_argument("--yes", action="store_true", help="confirm explicit mini OS composition activation")
+    bridge_parser = subparsers.add_parser("bridge", help="send and inspect explicit objects between mini OS experiences")
+    bridge_parser.add_argument("action", nargs="?", default="status", choices=("status", "init", "send", "relations", "objects", "inbox", "outbox", "session", "remember", "switch", "graph", "doctor", "accept"))
+    bridge_parser.add_argument("items", nargs="*", help="asset path or label for send")
+    bridge_parser.add_argument("--from", dest="source", help="source mini OS")
+    bridge_parser.add_argument("--to", dest="target", help="target mini OS")
+    bridge_parser.add_argument("--profile", help="profile for inbox/outbox")
+    bridge_parser.add_argument("--kind", help="SevenOS object kind")
+    bridge_parser.add_argument("--title", help="SevenOS object title")
+    bridge_parser.add_argument("--rights", help="rights or license note")
+    bridge_parser.add_argument("--limit", type=int, default=None, help="maximum messages or objects to display")
+    bridge_parser.add_argument("--app", help="remember a recent app for a mini OS")
+    bridge_parser.add_argument("--path", help="remember a recent path for a mini OS")
+    bridge_parser.add_argument("--task", help="remember a task for a mini OS")
+    bridge_parser.add_argument("--mood", help="remember the current mood or ambience for a mini OS")
+    bridge_parser.add_argument("--pin", help="pin a SevenOS object id in a mini OS session")
+    bridge_parser.add_argument("--apply", action="store_true", help="apply a mini OS switch after preparing passage state")
+    bridge_parser.add_argument("--json", action="store_true", help="print machine-readable bridge state")
+    baobab_parser = subparsers.add_parser("baobab", help="inspect or open the Baobab cultural mini OS")
+    baobab_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "plan", "doctor", "bootstrap", "install-core", "install-optional", "capabilities", "capability-doctor", "config", "runtime", "config-doctor", "service-doctor", "app-doctor", "apply-config", "sound", "open", "native", "village", "heritage", "museum", "story", "explore", "countries", "country", "unesco", "datasets", "catalog", "search", "stats", "db", "engines", "tools", "tool-doctor", "languages", "integrations", "integration", "roadmap", "packs", "audit-packs", "seed-packs", "enrich-packs", "sample-fieldwork", "scaffold-pack", "import-pack", "modules", "module"))
+    baobab_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    baobab_parser.add_argument("--json", action="store_true", help="print machine-readable Baobab contract")
     window_parser = subparsers.add_parser("window", help="control the Seven Smart Window System")
     window_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "mode", "apply", "toggle-float", "toggle-floating", "smart-maximize", "maximize", "fullscreen", "split-left", "split-right", "mosaic", "layout-menu", "menu", "decor-status", "decor-apply", "doctor"))
     window_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -856,9 +964,13 @@ def main():
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
     identity_parser.add_argument("extra", nargs=argparse.REMAINDER)
-    hypr_parser = subparsers.add_parser("hypr", help="inspect or install the SevenOS Hyprland premium ecosystem")
+    hypr_parser = subparsers.add_parser("hypr", help="inspect or install the SevenOS window system layer")
     hypr_parser.add_argument("action", nargs="?", default="status", choices=("status", "install", "apply", "lua"))
     hypr_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    motion_parser = subparsers.add_parser("motion", help="inspect or apply SevenOS compositor motion")
+    motion_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "doctor", "ux-doctor", "profile", "set", "apply", "premium", "balanced", "reduced", "latency", "off"))
+    motion_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    motion_parser.add_argument("--json", action="store_true", help="print machine-readable motion state")
     experience_parser = subparsers.add_parser("experience", help="audit whether SevenOS feels like a coherent OS")
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
     control_parser = subparsers.add_parser("control", help="show prioritized SevenOS control plane actions")
@@ -913,6 +1025,13 @@ def main():
     actions_parser.add_argument("action", nargs="?", default="list")
     actions_parser.add_argument("--json", action="store_true", help="print machine-readable action registry")
     actions_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    spotlight_parser = subparsers.add_parser("spotlight", help="open, index or diagnose SevenOS Spotlight")
+    spotlight_parser.add_argument("action", nargs="?", default="open")
+    spotlight_parser.add_argument("--json", action="store_true", help="print machine-readable Spotlight diagnostics where supported")
+    spotlight_parser.add_argument("extra", nargs="*")
+    launchpad_parser = subparsers.add_parser("launchpad", help="open, refresh or diagnose SevenOS Launchpad")
+    launchpad_parser.add_argument("action", nargs="?", default="open")
+    launchpad_parser.add_argument("--json", action="store_true", help="print machine-readable Launchpad diagnostics")
     subparsers.add_parser("post-install", help="check common post-install blockers")
     readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
     readiness_parser.add_argument("--json", action="store_true", help="print machine-readable score output")
@@ -987,6 +1106,9 @@ def main():
     hub_parser = subparsers.add_parser("hub", help="launch or inspect Seven Hub")
     hub_parser.add_argument("action", nargs="?", default="open", choices=("open", "status", "plan", "doctor", "json"))
     hub_parser.add_argument("--json", action="store_true", help="print machine-readable Hub readiness")
+    home_parser = subparsers.add_parser("home", help="open SevenOS Home")
+    home_parser.add_argument("action", nargs="?", default="open", choices=("open", "status", "doctor", "json"))
+    home_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS Home state")
     files_parser = subparsers.add_parser("files", help="open Seven Files")
     files_parser.add_argument("extra", nargs=argparse.REMAINDER)
     reader_parser = subparsers.add_parser("reader", help="open Seven Reader")
@@ -1026,9 +1148,9 @@ def main():
     installer_parser.add_argument("--json", action="store_true", help="print machine-readable installer status or plan")
     installer_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
-    hub_gui_parser = subparsers.add_parser("hub-gui", help="Seven Hub native GUI stack controls")
+    hub_gui_parser = subparsers.add_parser("hub-gui", help="Seven Hub GUI stack controls")
     hub_gui_parser.add_argument("action", nargs="?", default="status")
-    hub_native_parser = subparsers.add_parser("hub-native", help="open or inspect the native Seven Hub prototype")
+    hub_native_parser = subparsers.add_parser("hub-native", help="open or inspect Seven Hub")
     hub_native_parser.add_argument("action", nargs="?", default="open", choices=("open", "status", "doctor"))
     hub_native_parser.add_argument("--dry-run", dest="dry_run_native", action="store_true", help="show native Hub launch command")
 
@@ -1036,7 +1158,7 @@ def main():
     settings_parser.add_argument("page", nargs="?", help="open a specific settings page")
     settings_parser.add_argument("--probe", action="store_true", help="check whether the native settings stack is available")
 
-    flatpak_parser = subparsers.add_parser("flatpak", help="SevenOS Flatpak bridge controls")
+    flatpak_parser = subparsers.add_parser("flatpak", help="SevenOS app source controls")
     flatpak_parser.add_argument("action", nargs="?", default="status")
     flatpak_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
@@ -1088,6 +1210,10 @@ def main():
         handle_runtime(args)
     elif args.command == "mini-os":
         handle_mini_os(args)
+    elif args.command == "bridge":
+        handle_bridge(args)
+    elif args.command == "baobab":
+        handle_baobab(args)
     elif args.command == "window":
         handle_window(args)
     elif args.command == "context":
@@ -1100,6 +1226,8 @@ def main():
         handle_identity(args)
     elif args.command == "hypr":
         handle_hypr(args)
+    elif args.command == "motion":
+        handle_motion(args)
     elif args.command == "experience":
         handle_experience(args)
     elif args.command == "control":
@@ -1130,6 +1258,10 @@ def main():
         handle_primary(args)
     elif args.command == "actions":
         handle_actions(args)
+    elif args.command == "spotlight":
+        handle_spotlight(args)
+    elif args.command == "launchpad":
+        handle_launchpad(args)
     elif args.command == "post-install":
         install_target("post-install", args)
     elif args.command == "readiness":
@@ -1203,6 +1335,8 @@ def main():
         handle_session(args)
     elif args.command == "hub":
         handle_hub(args)
+    elif args.command == "home":
+        handle_home(args)
     elif args.command == "files":
         run_script(args, "bin/seven-files", *args.extra)
     elif args.command == "reader":

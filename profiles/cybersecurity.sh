@@ -9,7 +9,7 @@ usage() {
 SevenOS CYBERSECURITY profile
 
 Usage:
-  ./install.sh cybersecurity [core|forensics|reversing|wireless|sandbox|all]
+  ./install.sh cybersecurity [core|forensics|reversing|wireless|sandbox|optional|all]
 
 Default:
   all
@@ -34,6 +34,9 @@ install_cyber_category() {
       ;;
     sandbox)
       install_package_file "$ROOT_DIR/scripts/packages-cybersecurity-sandbox.txt"
+      ;;
+    optional)
+      install_package_file "$ROOT_DIR/scripts/packages-cybersecurity-optional.txt"
       ;;
     all)
       install_cyber_category core

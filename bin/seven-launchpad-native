@@ -10,6 +10,7 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
 import time
 import unicodedata
 from pathlib import Path
@@ -27,6 +28,7 @@ PROFILE_UI_FILE = CONFIG_DIR / "profile-ui.json"
 PREFS_FILE = CONFIG_DIR / "launchpad.json"
 RECENTS_FILE = STATE_DIR / "launchpad-recents.json"
 CACHE_FILE = CACHE_DIR / "apps.json"
+CATALOG_SCHEMA = "sevenos.apps.v2"
 LOCK_FILE = RUNTIME_DIR / "launchpad.lock"
 LOG_FILE = STATE_DIR / "launchpad.log"
 LOCK_HANDLE = None
@@ -34,6 +36,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 CATEGORIES = [
     ("all", "All", "view-app-grid-symbolic"),
+    ("sevenos", "SevenOS", "computer-symbolic"),
     ("favorites", "Favorites", "emblem-favorite-symbolic"),
     ("recent", "Recent", "document-open-recent-symbolic"),
     ("dev", "Dev", "applications-development-symbolic"),
@@ -44,6 +47,156 @@ CATEGORIES = [
     ("office", "Office", "x-office-document-symbolic"),
     ("games", "Games", "applications-games-symbolic"),
     ("windows", "Windows", "computer-symbolic"),
+]
+
+PROFILE_SECTION_LABELS = {
+    "baobab": {"office": "Baobab", "media": "Écoute", "creative": "Atelier"},
+    "forge": {"dev": "Forge", "system": "Runtime", "network": "Ports"},
+    "shield": {"network": "Shield", "system": "Contrôles", "dev": "Analyse"},
+    "studio": {"creative": "Studio", "media": "Média", "office": "Briefs"},
+    "windows": {"windows": "Windows", "system": "VM", "office": "Travail"},
+    "pulse": {"games": "Pulse", "media": "Clips", "system": "Perf"},
+    "equinox": {"all": "Equinox", "system": "Système"},
+}
+
+MINI_OS_WORLDS = {
+    "equinox": {
+        "title": "Equinox",
+        "phrase": "Bureau quotidien",
+        "filter": "all",
+        "categories": ["system", "office", "media"],
+        "command": "seven profile activate equinox",
+    },
+    "baobab": {
+        "title": "Baobab",
+        "phrase": "Mémoire, langues, transmission",
+        "filter": "office",
+        "categories": ["office", "media", "creative"],
+        "command": "seven profile activate baobab",
+    },
+    "forge": {
+        "title": "Forge",
+        "phrase": "Code, builds, runtime",
+        "filter": "dev",
+        "categories": ["dev", "system", "network"],
+        "command": "seven profile activate forge",
+    },
+    "shield": {
+        "title": "Shield",
+        "phrase": "Sécurité, preuves, contrôle",
+        "filter": "network",
+        "categories": ["network", "system", "dev"],
+        "command": "seven profile activate shield",
+    },
+    "studio": {
+        "title": "Studio",
+        "phrase": "Image, son, vidéo",
+        "filter": "creative",
+        "categories": ["creative", "media", "office"],
+        "command": "seven profile activate studio",
+    },
+    "windows": {
+        "title": "Windows",
+        "phrase": "Compatibilité et VM",
+        "filter": "windows",
+        "categories": ["windows", "office", "system"],
+        "command": "seven profile activate windows",
+    },
+    "pulse": {
+        "title": "Pulse",
+        "phrase": "Jeux, performance, capture",
+        "filter": "games",
+        "categories": ["games", "media", "system"],
+        "command": "seven profile activate pulse",
+    },
+}
+
+WORLD_ORDER = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+
+CORE_DESKTOP_FILES = [
+    ROOT_DIR / "seven-hub" / "seven-home.desktop",
+    ROOT_DIR / "seven-hub" / "seven-actions.desktop",
+    ROOT_DIR / "seven-hub" / "seven-files.desktop",
+    ROOT_DIR / "seven-hub" / "seven-store.desktop",
+    ROOT_DIR / "seven-hub" / "seven-reader.desktop",
+    ROOT_DIR / "seven-hub" / "seven-settings.desktop",
+    ROOT_DIR / "seven-hub" / "seven-terminal.desktop",
+    ROOT_DIR / "seven-hub" / "seven-hub-native.desktop",
+    ROOT_DIR / "seven-hub" / "seven-doctor.desktop",
+    ROOT_DIR / "seven-hub" / "seven-spotlight.desktop",
+]
+
+CORE_APP_FALLBACKS = [
+    {
+        "name": "SevenOS Home",
+        "desktop_id": "seven-home.desktop",
+        "comment": "Open mini OS, settings, store, backup and daily actions",
+        "icon": "sevenos",
+        "exec": "seven home",
+    },
+    {
+        "name": "SevenOS Actions",
+        "desktop_id": "seven-actions.desktop",
+        "comment": "Run SevenOS actions from a graphical control center",
+        "icon": "system-run",
+        "exec": "seven actions open",
+    },
+    {
+        "name": "Seven Files",
+        "desktop_id": "seven-files.desktop",
+        "comment": "Open the SevenOS file manager",
+        "icon": "seven-files",
+        "exec": "seven-files open",
+    },
+    {
+        "name": "SevenStore",
+        "desktop_id": "seven-store.desktop",
+        "comment": "Discover, install and manage SevenOS apps",
+        "icon": "seven-store",
+        "exec": "seven-store open",
+    },
+    {
+        "name": "Seven Reader",
+        "desktop_id": "seven-reader.desktop",
+        "comment": "Read PDF, EPUB, Markdown and comics",
+        "icon": "seven-reader",
+        "exec": "seven-reader open",
+    },
+    {
+        "name": "SevenOS Settings",
+        "desktop_id": "seven-settings.desktop",
+        "comment": "Configure SevenOS desktop, profiles and devices",
+        "icon": "seven-settings",
+        "exec": "seven-settings",
+    },
+    {
+        "name": "Seven Terminal",
+        "desktop_id": "seven-terminal.desktop",
+        "comment": "Adaptive SevenOS terminal",
+        "icon": "utilities-terminal",
+        "exec": "seven-terminal",
+    },
+    {
+        "name": "Seven Hub",
+        "desktop_id": "seven-hub-native.desktop",
+        "comment": "Open the SevenOS dashboard",
+        "icon": "seven-hub",
+        "exec": "seven-hub-native",
+    },
+    {
+        "name": "Seven Doctor",
+        "desktop_id": "seven-doctor.desktop",
+        "comment": "Diagnose SevenOS and guided repairs",
+        "icon": "utilities-system-monitor",
+        "exec": "seven-doctor-native",
+    },
+    {
+        "name": "Seven Spotlight",
+        "desktop_id": "seven-spotlight.desktop",
+        "comment": "Search apps, actions and files",
+        "icon": "seven-spotlight",
+        "exec": "seven-spotlight",
+    },
 ]
 
 
@@ -114,11 +267,32 @@ def default_filter_for_profile(profile: dict) -> str:
         "forge": "dev",
         "studio": "creative",
         "windows": "windows",
-        "horizon": "network",
         "pulse": "games",
         "baobab": "office",
         "shield": "network",
     }.get(key, "all")
+
+
+def mini_os_section_label(key: str, fallback: str, profile: dict) -> str:
+    profile_key = str(profile.get("profile", active_profile_key()) or "equinox")
+    return PROFILE_SECTION_LABELS.get(profile_key, {}).get(key, fallback)
+
+
+def mini_os_worlds(profile: dict) -> list[dict]:
+    active = str(profile.get("profile", active_profile_key()) or "equinox")
+    order = [active, *[key for key in WORLD_ORDER if key != active]]
+    worlds = []
+    for key in order:
+        world = dict(MINI_OS_WORLDS[key])
+        world["key"] = key
+        world["active"] = key == active
+        worlds.append(world)
+    return worlds
+
+
+def world_app_count(apps: list[dict], world: dict) -> int:
+    categories = set(world.get("categories", []))
+    return sum(1 for app in apps if app.get("category", "all") in categories or (world.get("filter") == "all" and app.get("sevenos_core")))
 
 
 def write_json(path: Path, data) -> None:
@@ -130,15 +304,23 @@ def current_theme_mode() -> str:
     env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
     if env_mode in {"dark", "light"}:
         return env_mode
-    try:
-        for raw in THEME_CONF.read_text(encoding="utf-8", errors="replace").splitlines():
-            if "=" not in raw or raw.strip().startswith("#"):
-                continue
-            key, value = [part.strip().lower() for part in raw.split("=", 1)]
-            if key in {"mode", "theme_mode", "sevenos_theme_mode"} and value in {"dark", "light"}:
-                return value
-    except OSError:
-        pass
+    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
+    profile_env = CONFIG_DIR / "profile.env"
+    if profile_env.exists():
+        for raw in profile_env.read_text(encoding="utf-8", errors="replace").splitlines():
+            if raw.startswith("SEVENOS_ACTIVE_PROFILE="):
+                profile = raw.split("=", 1)[1].strip().strip("'\"") or profile
+                break
+    for theme_file in (CONFIG_DIR / "profiles" / profile / "theme.conf", THEME_CONF):
+        try:
+            for raw in theme_file.read_text(encoding="utf-8", errors="replace").splitlines():
+                if "=" not in raw or raw.strip().startswith("#"):
+                    continue
+                key, value = [part.strip().lower() for part in raw.split("=", 1)]
+                if key in {"mode", "theme_mode", "sevenos_theme_mode"} and value in {"dark", "light"}:
+                    return value
+        except OSError:
+            pass
     return "dark"
 
 
@@ -181,9 +363,23 @@ def record_recent(app: dict) -> None:
     write_json(RECENTS_FILE, keep)
 
 
+def active_profile_key() -> str:
+    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
+    profile_env = CONFIG_DIR / "profile.env"
+    if profile_env.exists():
+        for raw in profile_env.read_text(encoding="utf-8", errors="replace").splitlines():
+            if raw.startswith("SEVENOS_ACTIVE_PROFILE="):
+                profile = raw.split("=", 1)[1].strip().strip("'\"") or profile
+                break
+    return profile
+
+
 def app_dirs() -> list[Path]:
+    data_home = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
+    profile = active_profile_key()
     data_dirs = [
-        Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")),
+        data_home / "sevenos/profiles" / profile,
+        data_home,
         Path.home() / ".local/share/flatpak/exports/share",
         Path("/var/lib/flatpak/exports/share"),
     ]
@@ -205,10 +401,17 @@ def cache_signature() -> dict:
             newest = max(newest, int(path.stat().st_mtime))
         except OSError:
             continue
-    return {"count": len(paths), "newest": newest}
+    for path in CORE_DESKTOP_FILES:
+        try:
+            newest = max(newest, int(path.stat().st_mtime))
+        except OSError:
+            continue
+    return {"profile": active_profile_key(), "count": len(paths), "core_count": len(CORE_DESKTOP_FILES), "newest": newest}
 
 
 def category_for(data: dict) -> str:
+    if truthy(str(data.get("sevenos_core", "false"))):
+        return "sevenos"
     categories = {item for item in data.get("categories", "").split(";") if item}
     joined = normalize(" ".join((data.get("name", ""), data.get("desktop_id", ""), data.get("path", ""))))
     if {"Wine", "Bottles"} & categories or "wine" in joined or "bottles" in joined:
@@ -289,14 +492,147 @@ def read_desktop(path: Path):
         "icon": data.get("Icon") or fallback_icon(data.get("Categories", "")),
         "exec": data.get("Exec", ""),
     }
+    entry["sevenos_core"] = path in CORE_DESKTOP_FILES or "SevenOS" in {item for item in entry["categories"].split(";") if item}
     entry["category"] = category_for(entry)
     entry["search"] = normalize(" ".join((entry["name"], entry["comment"], entry["categories"], entry["desktop_id"])))
     return entry
 
 
+def core_app_entry(raw: dict, source_path: Path | None = None) -> dict:
+    entry = {
+        "name": raw["name"],
+        "desktop_id": raw["desktop_id"],
+        "path": str(source_path or ROOT_DIR / "seven-hub" / raw["desktop_id"]),
+        "comment": raw.get("comment", ""),
+        "categories": "SevenOS;System;Utility;",
+        "icon": raw.get("icon", "application-x-executable"),
+        "exec": raw.get("exec", ""),
+        "sevenos_core": True,
+        "category": "sevenos",
+    }
+    entry["search"] = normalize(" ".join((entry["name"], entry["comment"], entry["categories"], entry["desktop_id"], "sevenos core mini os base")))
+    return entry
+
+
+def core_apps() -> list[dict]:
+    entries: list[dict] = []
+    seen: set[str] = set()
+    for path in CORE_DESKTOP_FILES:
+        entry = read_desktop(path)
+        if not entry:
+            continue
+        entry["sevenos_core"] = True
+        entry["category"] = "sevenos"
+        entry["search"] = normalize(" ".join((entry["name"], entry["comment"], entry["categories"], entry["desktop_id"], "sevenos core mini os base")))
+        entries.append(entry)
+        seen.add(entry["desktop_id"])
+    for raw in CORE_APP_FALLBACKS:
+        if raw["desktop_id"] not in seen:
+            entries.append(core_app_entry(raw))
+    return entries
+
+
+def canonical_app_key(app: dict) -> str:
+    name = normalize(app.get("name", "")).strip()
+    desktop_id = normalize(Path(str(app.get("desktop_id", ""))).stem)
+    return name or desktop_id
+
+
+def app_priority(app: dict) -> tuple[int, str]:
+    path = str(app.get("path", ""))
+    score = 0
+    if app.get("sevenos_core"):
+        score += 1000
+    if "/sevenos/profiles/" in path:
+        score += 160
+    if path.startswith(str(Path.home() / ".local/share")):
+        score += 90
+    if "/flatpak/exports/share/" in path:
+        score += 70
+    if path.startswith("/usr/local/share"):
+        score += 50
+    if path.startswith("/usr/share"):
+        score += 20
+    if app.get("exec"):
+        score += 10
+    return score, normalize(app.get("desktop_id", ""))
+
+
+def dedupe_apps(apps: list[dict]) -> list[dict]:
+    by_desktop_id: dict[str, dict] = {}
+    for app in apps:
+        desktop_id = str(app.get("desktop_id", ""))
+        existing = by_desktop_id.get(desktop_id)
+        if existing is None or app_priority(app) > app_priority(existing):
+            by_desktop_id[desktop_id] = app
+
+    by_name: dict[str, dict] = {}
+    for app in by_desktop_id.values():
+        key = canonical_app_key(app)
+        existing = by_name.get(key)
+        if existing is None or app_priority(app) > app_priority(existing):
+            by_name[key] = app
+
+    return sorted(by_name.values(), key=lambda app: (0 if app.get("sevenos_core") else 1, app["name"].casefold()))
+
+
+def duplicate_groups(apps: list[dict]) -> list[dict]:
+    groups: dict[str, list[dict]] = {}
+    seen: set[tuple[str, str, str]] = set()
+    for app in apps:
+        signature = (
+            canonical_app_key(app),
+            str(app.get("desktop_id", "")),
+            str(app.get("path", "")),
+        )
+        if signature in seen:
+            continue
+        seen.add(signature)
+        groups.setdefault(canonical_app_key(app), []).append(app)
+    duplicates = []
+    for key, items in groups.items():
+        if len(items) < 2:
+            continue
+        duplicates.append(
+            {
+                "key": key,
+                "name": items[0].get("name", key),
+                "count": len(items),
+                "desktop_ids": sorted(str(item.get("desktop_id", "")) for item in items),
+            }
+        )
+    return sorted(duplicates, key=lambda item: (-item["count"], item["name"].casefold()))
+
+
+def read_cached_apps() -> list[dict]:
+    cached = read_json(CACHE_FILE, {})
+    if cached.get("signature") != cache_signature():
+        return []
+    if cached.get("schema") not in {CATALOG_SCHEMA, "sevenos.apps.v1"}:
+        return []
+    apps = cached.get("apps")
+    return apps if isinstance(apps, list) else []
+
+
+def write_apps_cache(apps: list[dict], raw_count: int, duplicates: list[dict]) -> None:
+    write_json(
+        CACHE_FILE,
+        {
+            "schema": CATALOG_SCHEMA,
+            "signature": cache_signature(),
+            "generated_at": time.time(),
+            "raw_count": raw_count,
+            "count": len(apps),
+            "duplicates": duplicates,
+            "apps": apps,
+        },
+    )
+
+
 def scan_apps() -> list[dict]:
     seen = set()
     apps = []
+    core_ids = {item["desktop_id"] for item in core_apps()}
     for base in app_dirs():
         app_dir = base / "applications"
         if not app_dir.is_dir():
@@ -307,18 +643,124 @@ def scan_apps() -> list[dict]:
             seen.add(str(path))
             entry = read_desktop(path)
             if entry:
+                if entry["desktop_id"] in core_ids:
+                    entry["sevenos_core"] = True
+                    entry["category"] = "sevenos"
                 apps.append(entry)
-    return sorted(apps, key=lambda app: app["name"].casefold())
+    for app in core_apps():
+        apps.append(app)
+    return dedupe_apps(apps)
 
 
-def load_apps() -> list[dict]:
-    signature = cache_signature()
-    cached = read_json(CACHE_FILE, {})
-    if cached.get("signature") == signature and isinstance(cached.get("apps"), list):
-        return cached["apps"]
-    apps = scan_apps()
-    write_json(CACHE_FILE, {"schema": "sevenos.apps.v1", "signature": signature, "apps": apps})
+def scan_apps_with_report() -> tuple[list[dict], int, list[dict]]:
+    seen = set()
+    raw_apps = []
+    core_ids = {item["desktop_id"] for item in core_apps()}
+    for base in app_dirs():
+        app_dir = base / "applications"
+        if not app_dir.is_dir():
+            continue
+        for path in app_dir.glob("*.desktop"):
+            if str(path) in seen:
+                continue
+            seen.add(str(path))
+            entry = read_desktop(path)
+            if entry:
+                if entry["desktop_id"] in core_ids:
+                    entry["sevenos_core"] = True
+                    entry["category"] = "sevenos"
+                raw_apps.append(entry)
+    raw_apps.extend(core_apps())
+    duplicates = duplicate_groups(raw_apps)
+    return dedupe_apps(raw_apps), len(raw_apps), duplicates
+
+
+def load_apps(force: bool = False) -> list[dict]:
+    if not force:
+        cached_apps = read_cached_apps()
+        if cached_apps:
+            return cached_apps
+    apps, raw_count, duplicates = scan_apps_with_report()
+    write_apps_cache(apps, raw_count, duplicates)
     return apps
+
+
+def category_counts(apps: list[dict]) -> dict[str, int]:
+    counts = {key: 0 for key, _label, _icon in CATEGORIES}
+    for app in apps:
+        counts["all"] += 1
+        category = app.get("category", "all")
+        if category in counts and category != "all":
+            counts[category] += 1
+    return counts
+
+
+def launchpad_doctor_payload(refresh: bool = False) -> dict:
+    start = time.perf_counter()
+    apps = load_apps(force=refresh)
+    elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
+    cached = read_json(CACHE_FILE, {})
+    duplicates = cached.get("duplicates", []) if isinstance(cached, dict) else []
+    state = "ready" if apps else "needs-apps"
+    return {
+        "schema": "sevenos.launchpad.doctor.v1",
+        "state": state,
+        "profile": active_profile_key(),
+        "profile_sections": PROFILE_SECTION_LABELS.get(active_profile_key(), {}),
+        "mini_os_worlds": [
+            {
+                "key": world["key"],
+                "title": world["title"],
+                "filter": world["filter"],
+                "categories": world["categories"],
+                "apps": world_app_count(apps, world),
+                "active": world["active"],
+            }
+            for world in mini_os_worlds(read_profile_ui())
+        ],
+        "cache": {
+            "path": str(CACHE_FILE),
+            "exists": CACHE_FILE.exists(),
+            "schema": cached.get("schema") if isinstance(cached, dict) else None,
+            "signature_valid": bool(read_cached_apps()),
+            "raw_count": int(cached.get("raw_count", len(apps))) if isinstance(cached, dict) else len(apps),
+            "count": len(apps),
+        },
+        "catalog": {
+            "apps": len(apps),
+            "sevenos_core": sum(1 for app in apps if app.get("sevenos_core")),
+            "categories": category_counts(apps),
+            "duplicates_grouped": len(duplicates) if isinstance(duplicates, list) else 0,
+            "duplicate_samples": duplicates[:12] if isinstance(duplicates, list) else [],
+        },
+        "performance": {
+            "load_ms": elapsed_ms,
+            "progressive_loading": True,
+            "background_refresh": True,
+        },
+        "commands": [
+            "seven launchpad open",
+            "seven launchpad refresh",
+            "seven launchpad doctor --json",
+            "seven launchpad catalog",
+        ],
+    }
+
+
+def print_launchpad_doctor(json_mode: bool = False, refresh: bool = False) -> int:
+    payload = launchpad_doctor_payload(refresh=refresh)
+    if json_mode:
+        print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0 if payload["state"] == "ready" else 1
+    print("SevenOS Launchpad Doctor")
+    print("========================")
+    print(f"State: {payload['state']}")
+    print(f"Profile: {payload['profile']}")
+    print(f"Apps: {payload['catalog']['apps']} ({payload['catalog']['sevenos_core']} SevenOS)")
+    print(f"Cache: {payload['cache']['path']}")
+    print(f"Load: {payload['performance']['load_ms']} ms")
+    print(f"Duplicates grouped: {payload['catalog']['duplicates_grouped']}")
+    return 0 if payload["state"] == "ready" else 1
 
 
 def shutil_which(command: str) -> str | None:
@@ -541,12 +983,32 @@ def launchpad_css(mode: str, profile: dict | None = None) -> str:
           background: rgba(255,255,255,0.46);
           border: 1px solid rgba(28,31,38,0.06);
         }
-        .launchpad-filter:checked {
-          color: white;
-          background: linear-gradient(135deg, #2F7BFF, #6A5CFF);
-          box-shadow: 0 8px 20px rgba(47,123,255,0.22);
-        }
-        .launchpad-scroll { background: transparent; border: 0; }
+	        .launchpad-filter:checked {
+	          color: white;
+	          background: linear-gradient(135deg, #2F7BFF, #6A5CFF);
+	          box-shadow: 0 8px 20px rgba(47,123,255,0.22);
+	        }
+	        .launchpad-worlds-scroll { background: transparent; border: 0; min-height: 86px; }
+	        .launchpad-worlds { padding: 2px 8px 8px 8px; }
+	        .launchpad-world-card {
+	          min-width: 142px;
+	          min-height: 66px;
+	          padding: 9px 12px;
+	          border-radius: 20px;
+	          color: #1C1F26;
+	          background: rgba(255,255,255,0.48);
+	          border: 1px solid rgba(28,31,38,0.07);
+	          box-shadow: 0 10px 28px rgba(43,63,100,0.10);
+	        }
+	        .launchpad-world-card:hover,
+	        .launchpad-world-active {
+	          background: rgba(255,255,255,0.74);
+	          border-color: rgba(47,123,255,0.18);
+	        }
+	        .launchpad-world-title { color: #182032; font: 600 12px "SF Pro Text", "Inter", system-ui; }
+	        .launchpad-world-phrase { color: rgba(28,31,38,0.58); font: 500 10px "SF Pro Text", "Inter", system-ui; }
+	        .launchpad-world-count { color: rgba(28,31,38,0.50); font: 600 10px "SF Pro Text", "Inter", system-ui; }
+	        .launchpad-scroll { background: transparent; border: 0; }
         .launchpad-tile {
           min-width: 116px;
           min-height: 124px;
@@ -608,12 +1070,32 @@ def launchpad_css(mode: str, profile: dict | None = None) -> str:
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.06);
     }
-    .launchpad-filter:checked {
-      color: white;
-      background: linear-gradient(135deg, #4DA3FF, #7A5CFF);
-      box-shadow: 0 8px 24px rgba(77,163,255,0.27);
-    }
-    .launchpad-scroll { background: transparent; border: 0; }
+	    .launchpad-filter:checked {
+	      color: white;
+	      background: linear-gradient(135deg, #4DA3FF, #7A5CFF);
+	      box-shadow: 0 8px 24px rgba(77,163,255,0.27);
+	    }
+	    .launchpad-worlds-scroll { background: transparent; border: 0; min-height: 86px; }
+	    .launchpad-worlds { padding: 2px 8px 8px 8px; }
+	    .launchpad-world-card {
+	      min-width: 142px;
+	      min-height: 66px;
+	      padding: 9px 12px;
+	      border-radius: 20px;
+	      color: #F5F7FA;
+	      background: rgba(255,255,255,0.08);
+	      border: 1px solid rgba(255,255,255,0.08);
+	      box-shadow: 0 12px 34px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.06);
+	    }
+	    .launchpad-world-card:hover,
+	    .launchpad-world-active {
+	      background: rgba(255,255,255,0.13);
+	      border-color: rgba(255,255,255,0.16);
+	    }
+	    .launchpad-world-title { color: #F5F7FA; font: 600 12px "SF Pro Text", "Inter", system-ui; }
+	    .launchpad-world-phrase { color: rgba(245,247,250,0.58); font: 500 10px "SF Pro Text", "Inter", system-ui; }
+	    .launchpad-world-count { color: rgba(245,247,250,0.50); font: 600 10px "SF Pro Text", "Inter", system-ui; }
+	    .launchpad-scroll { background: transparent; border: 0; }
     .launchpad-tile {
       min-width: 116px;
       min-height: 124px;
@@ -650,7 +1132,7 @@ def run_launchpad() -> int:
 
     gi.require_version("Gdk", "3.0")
     gi.require_version("Gtk", "3.0")
-    from gi.repository import Gdk, Gtk, Pango
+    from gi.repository import Gdk, GLib, Gtk, Pango
 
     mode = current_theme_mode()
     profile_ui = read_profile_ui()
@@ -660,9 +1142,14 @@ def run_launchpad() -> int:
     favorites = app_prefs["favorites"]
     hidden = app_prefs["hidden"]
     recent_map = recents()
-    apps = [app for app in load_apps() if app["desktop_id"] not in hidden]
+    cached_apps = read_cached_apps()
+    apps = [app for app in cached_apps if app["desktop_id"] not in hidden or app.get("sevenos_core")]
     active_filter = {"id": default_filter_for_profile(profile_ui)}
+    if active_filter["id"] not in {item[0] for item in CATEGORIES}:
+        active_filter["id"] = "all"
     visible_apps = list(apps)
+    filter_guard = {"active": False}
+    render_source = {"id": 0}
 
     provider = Gtk.CssProvider()
     provider.load_from_data(launchpad_css(mode, profile_ui).encode("utf-8"))
@@ -715,13 +1202,84 @@ def run_launchpad() -> int:
     ai_button.connect("clicked", lambda _button: run_detached(["bash", "-lc", center_command]))
     topbar.pack_start(ai_button, False, False, 0)
 
+    worlds = mini_os_worlds(profile_ui)
+    world_count_labels: dict[str, Gtk.Label] = {}
+    world_buttons: dict[str, Gtk.Button] = {}
+
+    worlds_scroll = Gtk.ScrolledWindow()
+    worlds_scroll.get_style_context().add_class("launchpad-worlds-scroll")
+    worlds_scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+    worlds_scroll.set_min_content_height(88)
+    root.pack_start(worlds_scroll, False, False, 0)
+
+    world_flow = Gtk.FlowBox()
+    world_flow.get_style_context().add_class("launchpad-worlds")
+    world_flow.set_halign(Gtk.Align.CENTER)
+    world_flow.set_selection_mode(Gtk.SelectionMode.NONE)
+    world_flow.set_min_children_per_line(3)
+    world_flow.set_max_children_per_line(7)
+    world_flow.set_column_spacing(10)
+    world_flow.set_row_spacing(8)
+    worlds_scroll.add(world_flow)
+
+    def open_world(world: dict) -> None:
+        if world["key"] == str(profile_ui.get("profile", active_profile_key())):
+            set_filter(str(world.get("filter", "all")))
+            return
+        run_detached(["bash", "-lc", str(world.get("command", ""))])
+        window.close()
+
+    def refresh_world_cards() -> None:
+        for world in worlds:
+            key = world["key"]
+            label = world_count_labels.get(key)
+            if label:
+                label.set_text(f"{world_app_count(apps, world)} apps")
+            button = world_buttons.get(key)
+            if not button:
+                continue
+            context = button.get_style_context()
+            if world.get("active") or active_filter["id"] == world.get("filter"):
+                context.add_class("launchpad-world-active")
+            else:
+                context.remove_class("launchpad-world-active")
+
+    for world in worlds:
+        child = Gtk.FlowBoxChild()
+        button = Gtk.Button()
+        button.get_style_context().add_class("launchpad-world-card")
+        button.set_relief(Gtk.ReliefStyle.NONE)
+        button.set_tooltip_text(world["phrase"])
+        button.connect("clicked", lambda _button, selected=world: open_world(selected))
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        title = Gtk.Label(label=world["title"])
+        title.set_xalign(0)
+        title.get_style_context().add_class("launchpad-world-title")
+        phrase = Gtk.Label(label=world["phrase"])
+        phrase.set_xalign(0)
+        phrase.set_max_width_chars(22)
+        phrase.set_ellipsize(Pango.EllipsizeMode.END)
+        phrase.get_style_context().add_class("launchpad-world-phrase")
+        count = Gtk.Label(label=f"{world_app_count(apps, world)} apps")
+        count.set_xalign(0)
+        count.get_style_context().add_class("launchpad-world-count")
+        box.pack_start(title, False, False, 0)
+        box.pack_start(phrase, False, False, 0)
+        box.pack_start(count, False, False, 0)
+        button.add(box)
+        child.add(button)
+        world_flow.add(child)
+        world_buttons[world["key"]] = button
+        world_count_labels[world["key"]] = count
+
     filters = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     filters.set_halign(Gtk.Align.CENTER)
     root.pack_start(filters, False, False, 0)
 
     filter_buttons: dict[str, Gtk.ToggleButton] = {}
     for key, label, _icon in CATEGORIES:
-        button = Gtk.ToggleButton(label=tr_text(label))
+        button = Gtk.ToggleButton(label=tr_text(mini_os_section_label(key, label, profile_ui)))
         button.get_style_context().add_class("launchpad-filter")
         button.set_active(key == active_filter["id"])
         filters.pack_start(button, False, False, 0)
@@ -755,7 +1313,7 @@ def run_launchpad() -> int:
         value = app.get("category", "all")
         for key, label, _icon in CATEGORIES:
             if key == value:
-                return tr_text(label)
+                return tr_text(mini_os_section_label(key, label, profile_ui))
         return tr_text("App")
 
     def show_app_info(app: dict) -> None:
@@ -789,6 +1347,8 @@ def run_launchpad() -> int:
         update_filter(search)
 
     def hide_app(app: dict) -> None:
+        if app.get("sevenos_core"):
+            return
         hidden.add(app["desktop_id"])
         save_prefs(favorites, hidden)
         update_filter(search)
@@ -803,8 +1363,9 @@ def run_launchpad() -> int:
             ),
             (tr_text("Show in Seven Files"), lambda _item: run_detached(["seven-files", str(Path(app["path"]).parent)])),
             (tr_text("Info"), lambda _item: show_app_info(app)),
-            (tr_text("Hide from Launchpad"), lambda _item: hide_app(app)),
         ]
+        if not app.get("sevenos_core"):
+            entries.append((tr_text("Hide from Launchpad"), lambda _item: hide_app(app)))
         for label, callback in entries:
             item = Gtk.MenuItem(label=label)
             item.connect("activate", callback)
@@ -858,12 +1419,19 @@ def run_launchpad() -> int:
         return child
 
     def render():
+        render_source["id"] = 0
         for child in flow.get_children():
             flow.remove(child)
         for app in visible_apps:
             flow.add(make_child(app))
         empty.set_visible(not visible_apps)
         flow.show_all()
+        return False
+
+    def schedule_render():
+        if render_source["id"]:
+            GLib.source_remove(render_source["id"])
+        render_source["id"] = GLib.idle_add(render)
 
     def update_filter(entry):
         nonlocal visible_apps
@@ -877,23 +1445,61 @@ def run_launchpad() -> int:
                 continue
             if selected == "recent" and desktop_id not in recent_map:
                 continue
-            if selected not in {"all", "favorites", "recent"} and category != selected:
+            keep_core = bool(app.get("sevenos_core")) and selected not in {"favorites", "recent"}
+            if selected not in {"all", "favorites", "recent"} and category != selected and not keep_core:
                 continue
             score = fuzzy_score(query, app, favorites, recent_map)
+            if keep_core and selected != "sevenos":
+                score += 12
             if score >= 0:
                 ranked.append((score, recent_map.get(desktop_id, 0), app["name"].casefold(), app))
         ranked.sort(key=lambda item: (-item[0], -item[1], item[2]))
         visible_apps = [item[3] for item in ranked]
-        render()
+        refresh_world_cards()
+        schedule_render()
+
+    def refresh_apps_async() -> None:
+        def worker() -> None:
+            refreshed = load_apps(force=True)
+
+            def apply_refresh():
+                nonlocal apps, recent_map
+                recent_map = recents()
+                apps = [app for app in refreshed if app["desktop_id"] not in hidden or app.get("sevenos_core")]
+                update_filter(search)
+                return False
+
+            GLib.idle_add(apply_refresh)
+
+        threading.Thread(target=worker, name="seven-launchpad-refresh", daemon=True).start()
 
     def set_filter(key: str) -> None:
+        if key not in filter_buttons:
+            key = "all"
         active_filter["id"] = key
-        for other_key, other_button in filter_buttons.items():
-            other_button.set_active(other_key == key)
+        filter_guard["active"] = True
+        try:
+            for other_key, other_button in filter_buttons.items():
+                other_button.set_active(other_key == key)
+        finally:
+            filter_guard["active"] = False
         update_filter(search)
 
     for key, button in filter_buttons.items():
-        button.connect("clicked", lambda _button, filter_key=key: set_filter(filter_key))
+        def on_filter_toggled(toggle_button, filter_key=key):
+            if filter_guard["active"]:
+                return
+            if toggle_button.get_active():
+                set_filter(filter_key)
+                return
+            if active_filter["id"] == filter_key:
+                filter_guard["active"] = True
+                try:
+                    toggle_button.set_active(True)
+                finally:
+                    filter_guard["active"] = False
+
+        button.connect("toggled", on_filter_toggled)
 
     def activate(_flow, child):
         if child is not None:
@@ -930,6 +1536,7 @@ def run_launchpad() -> int:
     window.connect("destroy", Gtk.main_quit)
     update_filter(search)
     window.show_all()
+    refresh_apps_async()
     search.grab_focus()
     Gtk.main()
     return 0
@@ -938,9 +1545,23 @@ def run_launchpad() -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--probe", action="store_true")
+    parser.add_argument("--doctor", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--refresh", action="store_true")
+    parser.add_argument("--catalog-json", action="store_true")
     args = parser.parse_args()
     if args.probe:
         return probe()
+    if args.catalog_json:
+        apps = load_apps(force=args.refresh)
+        print(json.dumps({"schema": CATALOG_SCHEMA, "count": len(apps), "apps": apps}, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    if args.doctor or args.json:
+        return print_launchpad_doctor(json_mode=args.json, refresh=args.refresh)
+    if args.refresh:
+        apps = load_apps(force=True)
+        print(f"Launchpad cache refreshed: {len(apps)} apps")
+        return 0
     if not acquire_launchpad_lock():
         close_existing_launchpad()
         return 0

@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+ROOT = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent))
+
+COLORS = {
+    "equinox": ("#8B7CFF", "#6EA8FF", "Équilibre"),
+    "baobab": ("#A6E3A1", "#FAB387", "Racines"),
+    "forge": ("#F9E2AF", "#89B4FA", "Établi"),
+    "shield": ("#00FFB3", "#94E2D5", "Sas"),
+    "studio": ("#CBA6F7", "#F5C2E7", "Canvas"),
+    "windows": ("#74C7EC", "#89B4FA", "Pont"),
+    "pulse": ("#00D4FF", "#89B4FA", "Scène"),
+}
+
+
+def active_profile() -> str:
+    path = Path.home() / ".config/sevenos/profile.env"
+    if not path.exists():
+        return "equinox"
+    for line in path.read_text(errors="ignore").splitlines():
+        if line.startswith("SEVENOS_ACTIVE_PROFILE="):
+            return line.split("=", 1)[1].strip().strip('"')
+    return "equinox"
+
+
+def payload_for(source: str, target: str) -> dict:
+    command = [
+        str(ROOT / "scripts" / "mini-os-relay.sh"),
+        "switch",
+        "--from",
+        source,
+        "--to",
+        target,
+        "--json",
+    ]
+    result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, check=False)
+    if result.returncode == 0:
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            pass
+    return {
+        "schema": "sevenos.passage-overlay.v1",
+        "from": source,
+        "to": target,
+        "phrase": f"Tu passes de {source} vers {target}.",
+        "transition": "SevenOS prépare le passage.",
+        "motion": "balanced fade",
+        "sound": "soft-chime",
+    }
+
+
+def print_payload(payload: dict) -> None:
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
+def gtk_available() -> bool:
+    return bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
+
+
+def run_overlay(payload: dict, duration_ms: int) -> int:
+    if not gtk_available():
+        print_payload(payload)
+        return 0
+
+    try:
+        import gi
+
+        gi.require_version("Gtk", "4.0")
+        from gi.repository import GLib, Gtk
+    except Exception:
+        print_payload(payload)
+        return 0
+
+    target = payload.get("to", "equinox")
+    accent, secondary, token = COLORS.get(target, COLORS["equinox"])
+    phrase = payload.get("phrase", "")
+    transition = payload.get("transition", "")
+    motion = payload.get("motion", "")
+    sound = payload.get("sound", "")
+    play_sound(sound)
+
+    class PassageApp(Gtk.Application):
+        def __init__(self) -> None:
+            super().__init__(application_id="dev.sevenos.PassageOverlay")
+            self.progress = None
+            self.step = 0
+
+        def do_activate(self) -> None:
+            css = f"""
+            window {{
+              background: rgba(5, 7, 12, 0.82);
+            }}
+            .shell {{
+              background:
+                radial-gradient(circle at 20% 15%, {accent}55, transparent 32%),
+                radial-gradient(circle at 80% 85%, {secondary}44, transparent 34%),
+                rgba(12, 15, 24, 0.90);
+              border: 1px solid {accent}99;
+              border-radius: 28px;
+              padding: 34px;
+              box-shadow: 0 24px 80px rgba(0,0,0,.45);
+            }}
+            .token {{
+              color: {accent};
+              font-size: 13px;
+              font-weight: 800;
+              letter-spacing: 0.12em;
+            }}
+            .title {{
+              color: #fffaf0;
+              font-size: 28px;
+              font-weight: 800;
+            }}
+            .body {{
+              color: #d7deea;
+              font-size: 15px;
+              line-height: 1.45;
+            }}
+            .meta {{
+              color: #aab4c4;
+              font-size: 12px;
+            }}
+            progressbar trough {{
+              min-height: 7px;
+              border-radius: 999px;
+              background: rgba(255,255,255,.12);
+            }}
+            progressbar progress {{
+              min-height: 7px;
+              border-radius: 999px;
+              background: linear-gradient(90deg, {accent}, {secondary});
+            }}
+            """
+            window = Gtk.ApplicationWindow(application=self)
+            window.set_title("SevenOS Passage")
+            window.set_decorated(False)
+            window.set_default_size(780, 380)
+            window.set_resizable(False)
+            provider = Gtk.CssProvider()
+            provider.load_from_data(css.encode())
+            Gtk.StyleContext.add_provider_for_display(
+                window.get_display(),
+                provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+            )
+
+            shell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+            shell.add_css_class("shell")
+            shell.set_margin_top(28)
+            shell.set_margin_bottom(28)
+            shell.set_margin_start(28)
+            shell.set_margin_end(28)
+
+            token_label = Gtk.Label(label=f"{token.upper()} · {motion}")
+            token_label.add_css_class("token")
+            token_label.set_xalign(0)
+
+            title = Gtk.Label(label=f"{payload.get('from')} → {target}")
+            title.add_css_class("title")
+            title.set_xalign(0)
+
+            body = Gtk.Label(label=phrase)
+            body.add_css_class("body")
+            body.set_xalign(0)
+            body.set_wrap(True)
+
+            detail = Gtk.Label(label=transition)
+            detail.add_css_class("body")
+            detail.set_xalign(0)
+            detail.set_wrap(True)
+
+            meta = Gtk.Label(label=f"motion: {motion} · son: {sound}")
+            meta.add_css_class("meta")
+            meta.set_xalign(0)
+
+            self.progress = Gtk.ProgressBar()
+            self.progress.set_fraction(0.0)
+
+            for widget in (token_label, title, body, detail, meta, self.progress):
+                shell.append(widget)
+            window.set_child(shell)
+            window.present()
+
+            tick_ms = 25
+            total_steps = max(1, duration_ms // tick_ms)
+
+            def tick() -> bool:
+                self.step += 1
+                if self.progress is not None:
+                    self.progress.set_fraction(min(1.0, self.step / total_steps))
+                if self.step >= total_steps:
+                    self.quit()
+                    return False
+                return True
+
+            GLib.timeout_add(tick_ms, tick)
+
+    app = PassageApp()
+    return app.run([])
+
+
+def play_sound(sound: str) -> None:
+    if os.environ.get("SEVENOS_PASSAGE_SOUND", "1") == "0":
+        return
+    if not sound:
+        return
+    passage_sound = ROOT / "bin" / "seven-passage-sound"
+    if passage_sound.exists():
+        try:
+            subprocess.Popen([str(passage_sound), sound], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        except Exception:
+            pass
+    candidates = {
+        "organic-breath": ["complete.oga", "message.oga"],
+        "precise-click": ["button-pressed.oga", "complete.oga"],
+        "lock-soft": ["service-login.oga", "complete.oga"],
+        "brush-air": ["message.oga", "complete.oga"],
+        "bridge-pulse": ["device-added.oga", "complete.oga"],
+        "low-latency-tick": ["button-pressed.oga", "complete.oga"],
+        "soft-chime": ["complete.oga", "message.oga"],
+    }.get(sound, ["complete.oga"])
+    sound_dirs = [
+        Path("/usr/share/sounds/freedesktop/stereo"),
+        Path("/usr/share/sounds/Yaru/stereo"),
+        Path("/usr/share/sounds"),
+    ]
+    for name in candidates:
+        for directory in sound_dirs:
+            path = directory / name
+            if path.exists():
+                try:
+                    subprocess.Popen(["paplay", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
+                return
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-passage-overlay")
+    parser.add_argument("--from", dest="source", default=None)
+    parser.add_argument("--to", dest="target", required=False)
+    parser.add_argument("--duration", type=int, default=950)
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--probe", action="store_true")
+    args = parser.parse_args()
+
+    if args.probe:
+        print("ready")
+        return 0
+    source = args.source or active_profile()
+    target = args.target or source
+    payload = payload_for(source, target)
+    payload["schema"] = "sevenos.passage-overlay.v1"
+    payload["duration_ms"] = args.duration
+    if args.json:
+        print_payload(payload)
+        return 0
+    return run_overlay(payload, args.duration)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

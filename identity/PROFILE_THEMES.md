@@ -16,7 +16,9 @@ goal of the system itself without forcing their stack onto other profiles.
 - No profile dependency, only profile collaboration.
 - Every profile must be useful alone.
 - Equinox is the balanced general mini OS, not a hidden super-profile.
-- Baobab is culture and learning only: no dev, security, cloud or gaming noise.
+- Baobab is the African cultural mini OS: heritage, languages, story,
+  soundscape, map exploration, fashion, food, wisdom and offline community
+  memory before any generic tooling.
 - Windows Bridge is VM-first; Wine and Bottles are fallback compatibility paths.
 - The Waybar always shows the active profile as a compact icon pill.
 - Wi-Fi, Bluetooth, audio, battery, clock and SevenAI are essential shell
@@ -30,7 +32,7 @@ goal of the system itself without forcing their stack onto other profiles.
 | ID | Public Name | Domain | Waybar Intent |
 | --- | --- | --- | --- |
 | `equinox` | Equinox Balance | Balanced general computing | General shell, broad readiness |
-| `baobab` | Baobab Culture | African culture and learning | Reader/media/language/culture surface |
+| `baobab` | Baobab Cultural OS | African heritage, learning and creation | Digital village, heritage, story, sound, language and offline memory |
 | `forge` | Forge DevOps | Development and deployment | Code, builds, containers, services, deploys and logs |
 | `shield` | Shield Cybersecurity | Cybersecurity | VPN, audit, isolation and recorder awareness |
 | `studio` | Studio Creator | Creation | Media, audio, capture and production flow |

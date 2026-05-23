@@ -144,6 +144,8 @@ json_to_file "$STATE_TMP/installer.json" "$ROOT_DIR/scripts/installer-stack.sh" 
 pid_installer=$!
 json_to_file "$STATE_TMP/installer_plan.json" "$ROOT_DIR/scripts/installer-stack.sh" plan --json &
 pid_installer_plan=$!
+json_to_file "$STATE_TMP/installer_portal.json" "$ROOT_DIR/bin/seven-installer" status --json &
+pid_installer_portal=$!
 json_to_file "$STATE_TMP/channel.json" "$ROOT_DIR/scripts/channel.sh" json &
 pid_channel=$!
 json_to_file "$STATE_TMP/about.json" env SEVENOS_ABOUT_FAST=1 "$ROOT_DIR/scripts/about.sh" json &
@@ -228,13 +230,15 @@ json_to_file "$STATE_TMP/distribution.json" env SEVENOS_DISTRIBUTION_FAST=1 "$RO
 pid_distribution=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
-  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_health" "$pid_support" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_installer_portal" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_health" "$pid_support" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
   "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
 
 ensure_public_contracts() {
   ABOUT_FILE="$STATE_TMP/about.json" \
   LIFECYCLE_FILE="$STATE_TMP/lifecycle.json" \
   PRODUCT_FILE="$STATE_TMP/product.json" \
+  INSTALLER_PORTAL_FILE="$STATE_TMP/installer_portal.json" \
+  RUNTIME_FILE="$STATE_TMP/runtime.json" \
   DISTRIBUTION_FILE="$STATE_TMP/distribution.json" \
   PROFILES_FILE="$STATE_TMP/profiles.json" \
   DAILY_FILE="$STATE_TMP/daily.json" \
@@ -245,6 +249,8 @@ ensure_public_contracts() {
   IDENTITY_FILE="$STATE_TMP/identity.json" \
   HEALTH_FILE="$STATE_TMP/health.json" \
   PRODUCT_FILE="$STATE_TMP/product.json" \
+  INSTALLER_PORTAL_FILE="$STATE_TMP/installer_portal.json" \
+  RUNTIME_FILE="$STATE_TMP/runtime.json" \
   ACTIONS_FILE="$STATE_TMP/actions.json" \
   ROOT_DIR="$ROOT_DIR" \
   python - <<'PY'
@@ -348,10 +354,58 @@ product = {
         "identity": "ready",
         "lifecycle": "managed",
         "distribution": "daily-driver-distribution",
+        "runtime": "planned",
+        "installer": "graphical-runtime-candidate",
         "surfaces": "productized",
         "routes": "routed",
         "mask": "masked",
         "dynamic": "ready",
+    },
+    "home_cards": [
+        {"id": "runtime", "title": "Autonomous Runtime", "subtitle": "Equinox Balance · planned", "command": "seven runtime"},
+        {"id": "installer", "title": "Installer Portal", "subtitle": "graphical-runtime-candidate · runtime aur-candidate", "command": "seven-installer portal"},
+    ],
+    "source": "state-fallback",
+}
+installer_portal = {
+    "schema": "sevenos.installer-portal.v1",
+    "state": "graphical-runtime-candidate",
+    "route": "sevenos-guided-tui",
+    "calamares_runtime": "MISS",
+    "runtime_source": {
+        "state": "aur-candidate",
+        "route": "aur-helper",
+        "readiness": "source-ready",
+    },
+    "archinstall_runtime": "OK",
+    "release_state": "tui-release-ready",
+    "safe_by_default": True,
+    "destructive_actions_require_confirmation": True,
+    "commands": {
+        "status": "seven-installer status",
+        "portal": "seven-installer portal",
+        "runtime": "seven installer runtime",
+    },
+    "source": "state-fallback",
+}
+runtime = {
+    "schema": "sevenos.runtime-orchestrator.v1",
+    "model": "layered-autonomous-profiles-architecture",
+    "state": "planned",
+    "active_profile": profile.get("key", "equinox"),
+    "primary_profile": {
+        "key": profile.get("key", "equinox"),
+        "title": profile.get("title", "Equinox Balance"),
+        "autonomous": True,
+    },
+    "capabilities": [],
+    "composite_runtime": {
+        "name": profile.get("key", "equinox"),
+        "capability_fusion": {
+            "profiles_are_autonomous": True,
+            "no_profile_dependency": True,
+            "composition_layer": "controlled-collaboration",
+        },
     },
     "source": "state-fallback",
 }
@@ -423,6 +477,8 @@ write_if_null("ABOUT_FILE", about)
 write_if_null("LIFECYCLE_FILE", lifecycle)
 write_if_null("DISTRIBUTION_FILE", distribution)
 write_if_null("PRODUCT_FILE", product)
+write_if_null("INSTALLER_PORTAL_FILE", installer_portal)
+write_if_null("RUNTIME_FILE", runtime)
 write_if_null("PROFILES_FILE", profiles)
 write_if_null("DAILY_FILE", daily)
 write_if_null("AUTONOMY_FILE", autonomy)
@@ -597,6 +653,9 @@ cat "$STATE_TMP/installer.json"
 printf ','
 printf '"installer_plan":'
 cat "$STATE_TMP/installer_plan.json"
+printf ','
+printf '"installer_portal":'
+cat "$STATE_TMP/installer_portal.json"
 printf ','
 printf '"channel":'
 cat "$STATE_TMP/channel.json"

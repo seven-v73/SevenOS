@@ -1,0 +1,7 @@
+# SevenOS CYBERSECURITY optional official packages.
+# These enhance Shield personas without being required for the stable baseline.
+tor
+proxychains-ng
+torsocks
+trivy
+obsidian

@@ -579,7 +579,7 @@ seven profile open
 
 Each profile should now contain `.sevenos/profile.json`,
 `.sevenos/CHECKLIST.md` and `.sevenos/launch.sh` inside its workspace. This
-turns Forge, Shield, Studio, Windows, Horizon and Baobab into visible working
+turns Forge DevOps, Shield, Studio, Windows, Pulse and Baobab into visible working
 spaces before the full profile package install is complete.
 
 ## 9. Validate The Result

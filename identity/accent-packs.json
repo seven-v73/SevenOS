@@ -1,7 +1,43 @@
 {
   "schema": "sevenos.accent-packs.v1",
-  "default_pack": "pan-african",
+  "default_pack": "baobab-cultural",
   "packs": [
+    {
+      "key": "baobab-cultural",
+      "title": "Baobab Rooted Technology",
+      "state": "active",
+      "accent": "copper-light",
+      "pattern": "root-geometry",
+      "signal": "transmission, memory, calm intelligence and rooted technology",
+      "description": "Premium Baobab identity for the African cultural mini OS: subtle African thinking, calm depth, ivory readability, volcanic dark surfaces, baobab green and textile indigo.",
+      "palette": {
+        "volcanic_black": "#070A08",
+        "deep_soil": "#15110D",
+        "warm_ivory": "#F3E8D2",
+        "soft_sand": "#D7C6A3",
+        "copper_light": "#B98248",
+        "baobab_green": "#315E4D",
+        "textile_indigo": "#243C63",
+        "root_shadow": "#0D1B17"
+      },
+      "visual_rules": [
+        "Baobab must feel African through philosophy and interaction, not through decorative excess.",
+        "Use copper, earth and gold only as restrained highlights; never flood the UI with red, yellow, brown or orange.",
+        "Keep indigo, ivory and baobab green visible to create premium contrast and calm depth.",
+        "Patterns are micro details for dividers, empty states and cultural moments; never place motifs everywhere.",
+        "Avoid safari, postcard, folklore, animal, mask-heavy or wax-heavy visual shortcuts.",
+        "Prefer root, branch, memory, oral transmission, community and learning metaphors over generic dashboard language.",
+        "Prioritize French-first public labels, generous spacing and offline-friendly navigation."
+      ],
+      "ux_philosophy": [
+        "Technologie enracinée",
+        "Mémoire vivante",
+        "Transmission calme",
+        "Communauté avant performance",
+        "IA guide, pas robot",
+        "Subtilité culturelle avant décoration"
+      ]
+    },
     {
       "key": "pan-african",
       "title": "Pan-African",

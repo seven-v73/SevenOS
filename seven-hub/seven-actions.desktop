@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS Actions
+Comment=Run SevenOS actions from a graphical control center
+Exec=seven actions open
+Icon=system-run
+Terminal=false
+Categories=Utility;
+Keywords=sevenos;actions;settings;profiles;repair;apps;
+StartupNotify=true

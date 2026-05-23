@@ -1,0 +1,7 @@
+# SevenOS Baobab cultural mini OS - external AI lab candidates
+# These tools are valuable for dedicated learning labs, but they are not part of
+# the default optional install path because they can be heavy or conflict with
+# system runtimes. Install them explicitly after checking the target machine.
+
+# AUR route can pull nodejs-lts and conflict with SevenOS' nodejs package.
+open-webui

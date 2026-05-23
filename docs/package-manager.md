@@ -73,12 +73,11 @@ Current meta-packages:
 | Name | Role |
 | --- | --- |
 | `equinox` | balanced general SevenOS mini OS |
-| `forge` | developer mini OS for code, toolchains, containers and builds |
+| `forge` | DevOps mini OS for code, toolchains, containers, services and deploys |
 | `shield` | cybersecurity mini OS for authorized audit, forensics and sandboxing |
 | `studio` | creator mini OS for logo, video, audio, 3D and design tools |
 | `windows` | Windows Bridge mini OS for VM-first compatibility with Wine/Bottles fallback |
-| `baobab` | culture and learning mini OS for African knowledge, languages and community memory |
-| `horizon` | cloud/server mini OS for deployment, services and self-hosting |
+| `baobab` | African cultural mini OS for heritage, languages, stories, sound, map, fashion, food, wisdom and offline memory |
 | `pulse` | Linux gaming mini OS for Proton, low latency, overlays and performance |
 | `griot` | documentation and knowledge toolkit |
 
@@ -89,7 +88,6 @@ sevenpkg install forge
 sevenpkg install shield
 sevenpkg install studio
 sevenpkg install windows
-sevenpkg install horizon
 sevenpkg install pulse
 sevenpkg install griot
 sevenpkg status

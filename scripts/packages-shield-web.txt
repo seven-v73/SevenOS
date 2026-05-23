@@ -1,0 +1,11 @@
+# SevenOS Shield Web Pentest bundle
+nmap
+zaproxy
+sqlmap
+nikto
+gobuster
+masscan
+metasploit
+openbsd-netcat
+exploitdb
+

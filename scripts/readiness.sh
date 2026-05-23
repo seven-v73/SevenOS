@@ -214,7 +214,7 @@ criterion "Deployment"
 file_ready "$ROOT_DIR/server/README.md" && pass "Server architecture documented" || miss "Server architecture missing"
 [[ -x "$ROOT_DIR/server/seven-server.sh" ]] && pass "seven-server available" || { miss "seven-server missing"; recommend "seven improve deployment" "restore local server backend"; }
 [[ -x "$ROOT_DIR/server/seven-deploy.sh" ]] && pass "seven-deploy available" || { miss "seven-deploy missing"; recommend "seven improve deployment" "restore deployment planner"; }
-profile_check "Horizon" "$ROOT_DIR/scripts/packages-server.txt" "seven improve deployment"
+profile_check "Forge DevOps deployment" "$ROOT_DIR/scripts/packages-server.txt" "seven improve deployment"
 if systemctl --user is-active --quiet seven-server.service 2>/dev/null; then
   pass "SevenOS local API active"
 else

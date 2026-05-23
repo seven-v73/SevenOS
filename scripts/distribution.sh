@@ -34,12 +34,14 @@ distribution_json() {
   local tmp dirtyp
   tmp="$(mktemp -d)"
   dirtyp="$tmp/dirty.txt"
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/platform.sh" json >"$tmp/platform.json" 2>/dev/null || printf '{}\n' >"$tmp/platform.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/platform.sh" json >"$tmp/platform.json" 2>/dev/null || printf '{}\n' >"$tmp/platform.json" &
   local pid_platform=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/foundations.sh" json >"$tmp/foundations.json" 2>/dev/null || printf '{}\n' >"$tmp/foundations.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/foundations.sh" json >"$tmp/foundations.json" 2>/dev/null || printf '{}\n' >"$tmp/foundations.json" &
   local pid_foundations=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/mask.sh" json >"$tmp/mask.json" 2>/dev/null || printf '{}\n' >"$tmp/mask.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/mask.sh" json >"$tmp/mask.json" 2>/dev/null || printf '{}\n' >"$tmp/mask.json" &
   local pid_mask=$!
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/runtime-orchestrator.sh" status --json >"$tmp/runtime.json" 2>/dev/null || printf '{}\n' >"$tmp/runtime.json" &
+  local pid_runtime=$!
   local pid_dynamic pid_surfaces pid_routes
   if [[ "${SEVENOS_DISTRIBUTION_FAST:-0}" == "1" ]]; then
     printf '{"schema":"sevenos.adaptive-ui.v1","state":"ready","percent":100}\n' >"$tmp/dynamic.json" &
@@ -49,27 +51,28 @@ distribution_json() {
     printf '{"schema":"sevenos.routes.v1","state":"routed","score":100}\n' >"$tmp/routes.json" &
     pid_routes=$!
   else
-    SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/adaptive-ui.sh" json >"$tmp/dynamic.json" 2>/dev/null || printf '{}\n' >"$tmp/dynamic.json" &
+    SEVENOS_DRY_RUN=0 timeout 30 "$ROOT_DIR/scripts/adaptive-ui.sh" json >"$tmp/dynamic.json" 2>/dev/null || printf '{}\n' >"$tmp/dynamic.json" &
     pid_dynamic=$!
-    SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/surfaces.sh" json >"$tmp/surfaces.json" 2>/dev/null || printf '{}\n' >"$tmp/surfaces.json" &
+    SEVENOS_DRY_RUN=0 timeout 30 "$ROOT_DIR/scripts/surfaces.sh" json >"$tmp/surfaces.json" 2>/dev/null || printf '{}\n' >"$tmp/surfaces.json" &
     pid_surfaces=$!
-    SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/routes.sh" json >"$tmp/routes.json" 2>/dev/null || printf '{}\n' >"$tmp/routes.json" &
+    SEVENOS_DRY_RUN=0 timeout 30 "$ROOT_DIR/scripts/routes.sh" json >"$tmp/routes.json" 2>/dev/null || printf '{}\n' >"$tmp/routes.json" &
     pid_routes=$!
   fi
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/channel.sh" json >"$tmp/channel.json" 2>/dev/null || printf '{}\n' >"$tmp/channel.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/channel.sh" json >"$tmp/channel.json" 2>/dev/null || printf '{}\n' >"$tmp/channel.json" &
   local pid_channel=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer-release.json" 2>/dev/null || printf '{}\n' >"$tmp/installer-release.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer-release.json" 2>/dev/null || printf '{}\n' >"$tmp/installer-release.json" &
   local pid_installer_release=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/installer-stack.sh" runtime --json >"$tmp/installer-runtime.json" 2>/dev/null || printf '{}\n' >"$tmp/installer-runtime.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/installer-stack.sh" runtime --json >"$tmp/installer-runtime.json" 2>/dev/null || printf '{}\n' >"$tmp/installer-runtime.json" &
   local pid_installer_runtime=$!
   git -C "$ROOT_DIR" status --short >"$dirtyp" 2>/dev/null || true
 
-  wait "$pid_platform" "$pid_foundations" "$pid_mask" "$pid_dynamic" "$pid_surfaces" "$pid_routes" "$pid_channel" "$pid_installer_release" "$pid_installer_runtime" || true
+  wait "$pid_platform" "$pid_foundations" "$pid_mask" "$pid_runtime" "$pid_dynamic" "$pid_surfaces" "$pid_routes" "$pid_channel" "$pid_installer_release" "$pid_installer_runtime" || true
 
   SEVENOS_ROOT="$ROOT_DIR" \
   PLATFORM_JSON="$tmp/platform.json" \
   FOUNDATIONS_JSON="$tmp/foundations.json" \
   MASK_JSON="$tmp/mask.json" \
+  RUNTIME_JSON="$tmp/runtime.json" \
   DYNAMIC_JSON="$tmp/dynamic.json" \
   SURFACES_JSON="$tmp/surfaces.json" \
   ROUTES_JSON="$tmp/routes.json" \
@@ -110,6 +113,7 @@ def dirty_count():
 platform = load_json_path("PLATFORM_JSON")
 foundations = load_json_path("FOUNDATIONS_JSON")
 mask = load_json_path("MASK_JSON")
+runtime = load_json_path("RUNTIME_JSON")
 dynamic = load_json_path("DYNAMIC_JSON")
 surfaces = load_json_path("SURFACES_JSON")
 routes = load_json_path("ROUTES_JSON")
@@ -117,10 +121,18 @@ channel = load_json_path("CHANNEL_JSON")
 installer_release = load_json_path("INSTALLER_RELEASE_JSON")
 installer_runtime = load_json_path("INSTALLER_RUNTIME_JSON")
 dirty = dirty_count()
+runtime_fusion = runtime.get("composite_runtime", {}).get("capability_fusion", {})
+runtime_ready = (
+    runtime.get("schema") == "sevenos.runtime-orchestrator.v1"
+    and runtime.get("model") == "layered-autonomous-profiles-architecture"
+    and bool(runtime_fusion.get("profiles_are_autonomous"))
+    and bool(runtime_fusion.get("no_profile_dependency"))
+)
 autonomy_ready = (
     platform.get("state") == "masked"
     and foundations.get("state") in {"sevenos-owned", "mostly-owned"}
     and mask.get("state") == "masked"
+    and runtime_ready
     and int(dynamic.get("percent", 0) or 0) >= 90
     and surfaces.get("state") == "productized"
     and routes.get("state") == "routed"
@@ -168,6 +180,13 @@ checks = [
         "command": "seven mask",
     },
     {
+        "key": "runtime-orchestrator",
+        "state": "OK" if runtime_ready else "PART",
+        "title": "Autonomous mini OS runtime",
+        "detail": f"Runtime model: {runtime.get('model', 'unknown')}; primary: {runtime.get('primary_profile', {}).get('key', 'unknown')}.",
+        "command": "seven runtime status",
+    },
+    {
         "key": "dynamic-desktop",
         "state": "OK" if int(dynamic.get("percent", 0) or 0) >= 90 else "PART",
         "title": "Dynamic SevenOS desktop",
@@ -206,7 +225,7 @@ checks = [
         "key": "calamares-runtime",
         "state": "OK" if installer_runtime.get("state") == "installed" else "PART",
         "title": "Graphical installer runtime",
-        "detail": f"Calamares runtime: {installer_runtime.get('state', 'unknown')}.",
+        "detail": f"Graphical installer runtime: {installer_runtime.get('state', 'unknown')}.",
         "command": "seven installer runtime",
     },
     {
@@ -267,6 +286,8 @@ print(json.dumps({
         "missing": missing,
         "dirty_count": dirty,
         "foundations_state": foundations.get("state", "unknown"),
+        "runtime_state": runtime.get("state", "unknown"),
+        "runtime_primary": runtime.get("primary_profile", {}).get("key", "unknown"),
         "installer_state": installer_release.get("state", "unknown"),
         "calamares_runtime": installer_runtime.get("state", "unknown"),
         "channel": channel.get("channel", "unknown"),
@@ -301,7 +322,8 @@ print(f"Daily driver:   {str(data.get('daily_driver_ready')).lower()}")
 print(f"Public release: {str(data.get('public_release_ready')).lower()}")
 print(f"Channel:        {summary.get('channel')}")
 print(f"Foundations:    {summary.get('foundations_state')}")
-print(f"Installer:      {summary.get('installer_state')} / Calamares {summary.get('calamares_runtime')}")
+print(f"Runtime:        {summary.get('runtime_state')} / {summary.get('runtime_primary')}")
+print(f"Installer:      {summary.get('installer_state')} / graphical runtime {summary.get('calamares_runtime')}")
 print(f"Dirty paths:    {summary.get('dirty_count')}")
 print()
 for item in data.get("checks", []):

@@ -125,12 +125,104 @@ public_copy_forbidden = (
     "Arch Linux based",
     "modern Hyprland desktop",
     "early Archiso foundation",
+    "Repository:\n",
 )
 for item in public_copy_checks:
     sample = item["sample"]
     for term in public_copy_forbidden:
         if term.lower() in sample.lower():
             public_copy_leaks.append({"path": item["path"], "term": term})
+
+public_interface_files = [
+    "session/sevenos.desktop",
+    "seven-hub/seven-hub-native.desktop",
+    "seven-hub/seven-wallpaper.desktop",
+    "seven-hub/seven-store.desktop",
+    "seven-hub/seven-terminal.desktop",
+    "seven-hub/bin/seven-hub",
+    "bin/seven",
+    "bin/seven-installer",
+    "bin/seven-help",
+    "bin/seven-hub-native",
+    "bin/seven-reader-native",
+    "bin/seven-quick-settings-native",
+    "bin/seven-session-status",
+    "bin/seven-shell-panel",
+    "bin/seven-spotlight",
+    "bin/seven-waybar-action",
+    "bin/seven-waybar-center-native",
+    "bin/seven-settings-native",
+    "bin/seven-store-native",
+    "bin/seven-shield-center-native",
+    "bin/seven-welcome",
+    "scripts/distribution.sh",
+    "scripts/seven_ai_provider.py",
+    "scripts/seven_ai_agent.py",
+    "identity/i18n/en.json",
+    "identity/i18n/fr.json",
+    "archiso/profile/airootfs/usr/local/bin/sevenos-welcome",
+    "archiso/profile/airootfs/root/README-SevenOS.txt",
+]
+public_interface_forbidden = (
+    "SevenOS Hyprland session",
+    "DesktopNames=SevenOS;Hyprland",
+    "Exec=Hyprland",
+    "Seven Hub Native",
+    "prototype",
+    "Hyprland session",
+    "Apply the selected image to the SevenOS Hyprland session",
+    "Update Arch packages",
+    "pacman, Flatpak",
+    "AUR packages",
+    "Kali / BlackArch Bridge",
+    "NetworkManager tools unavailable",
+    "Hyprland display configuration",
+    "Reload Hyprland",
+    "Hyprland fallback rules",
+    "editing Hyprland files",
+    "Repository:\n",
+    "Waybar and Control Center",
+    "Waybar et panneau de contrôle",
+    "Reload Desktop",
+    "Recharger le bureau",
+    "Reapply Hyprland config",
+    "Open Hyprland windows",
+    "Hyprland SevenOS",
+    "NetworkManager controls",
+    "NetworkManager tools are missing",
+    "PipeWire status",
+    "Mixer and PipeWire controls",
+    "Explain Bottles and KVM Windows paths",
+    "Open Bottles for Windows applications",
+    "Open Bottles for Windows apps",
+    "Open Bottles or Virt Manager",
+    "Explain Bottles, Wine and KVM paths",
+    "BlackArch Setup",
+    "Preview optional BlackArch bridge",
+    "Show Calamares and Archinstall readiness",
+    "Show Calamares integration plan",
+    "Rofi is required for Spotlight fallback",
+    "Rofi is not installed",
+    "native Seven Hub prototype",
+    "SevenOS Flatpak bridge controls",
+    "Hyprland-based intelligent Linux experience",
+    "based on Hyprland",
+    "Waybar cockpit",
+    "Windows VM-first mini OS, with Wine and Bottles",
+    "Mini OS Windows orienté VM complète, avec Wine et Bottles",
+    "SevenStore Native",
+    "Seven Reader Native",
+    "SevenOS Hyprland premium ecosystem",
+    "Calamares:",
+    "Archinstall:",
+    "Calamares runtime:",
+)
+interface_leaks = []
+for rel in public_interface_files:
+    sample = read(rel)
+    for term in public_interface_forbidden:
+        if term.lower() in sample.lower():
+            interface_leaks.append({"path": rel, "term": term.strip()})
 
 checks = [
     {
@@ -176,6 +268,14 @@ checks = [
         "detail": "README and live welcome text should introduce SevenOS before naming backend projects.",
         "command": "seven about",
         "leaks": public_copy_leaks,
+    },
+    {
+        "key": "personal-os-copy",
+        "state": "OK" if not interface_leaks else "PART",
+        "title": "Personal OS interface vocabulary",
+        "detail": "Normal surfaces should say SevenOS first and hide backend/rice vocabulary from primary copy.",
+        "command": "seven mask",
+        "leaks": interface_leaks,
     },
     {
         "key": "identity-files",

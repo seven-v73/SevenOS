@@ -45,7 +45,7 @@ workspace_hint() {
     5) printf 'réglages, fichiers, système' ;;
     6) printf 'messages, collaboration, appels' ;;
     7) printf 'lab, sécurité, Shield' ;;
-    8) printf 'serveurs, déploiement, Horizon' ;;
+    8) printf 'serveurs, déploiement, Forge DevOps' ;;
     9) printf 'privé, coffre, actions sensibles' ;;
     special:seven) printf 'surface spéciale SevenOS' ;;
     *) printf 'espace personnalisé' ;;

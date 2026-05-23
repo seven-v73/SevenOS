@@ -38,11 +38,10 @@ Arch Linux with African patterns added on top.
 | Profile | Cultural Role | Accent | Symbol | System Meaning |
 | --- | --- | --- | --- | --- |
 | Baobab | Roots | Baobab | Root mark | Stable base, health, identity and daily shell. |
-| Forge | Builder | Gold | Forge mark | Development, learning, construction and productive power. |
+| Forge DevOps | Builder | Gold | Forge mark | Development, deployment, learning, construction and productive power. |
 | Shield | Guardian | Indigo | Shield mark | Audit, sandbox, trust and careful defense. |
 | Studio | Maker | Clay | Studio mark | Image, sound, video, 3D and expressive production. |
 | Windows | Bridge | Baobab | Bridge mark | Compatibility without leaving the SevenOS environment. |
-| Horizon | Navigator | Indigo | Horizon mark | Server, deployment, network and personal cloud direction. |
 | Griot | Memory | Gold | Griot mark | Documentation, knowledge, notes and system explanation. |
 
 ## Daily Cultural Signal

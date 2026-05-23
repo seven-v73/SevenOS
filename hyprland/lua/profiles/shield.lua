@@ -6,7 +6,7 @@ return {
   ui_density = "guarded",
   runtime_signals = {
     context = "cybersecurity",
-    layout = "lab-audit-report",
+    layout = "persona-aware-lab-audit-report",
     priority = "containment",
   },
   workspace_intent = {
@@ -14,15 +14,26 @@ return {
     "2: analysis tools",
     "3: network inspection",
     "4: report and evidence",
+    "5: forensics and offline triage",
+    "9: disposable sandbox",
   },
   actions = {
+    "show Shield persona and session state",
+    "require active scope before exploitation contexts",
+    "surface Network Guard posture before sensitive actions",
+    "keep evidence and reports in ShieldLab chain-of-custody folders",
     "float confirmation panels",
     "separate network inspection from reporting",
     "keep intrusive tools visually scoped",
+    "route unknown samples to disposable sandbox workspace",
+    "prefer focused Shield bundles before huge BlackArch/Kali catalogs",
+    "use GUI wrappers for Java, Qt and Electron cyber tools on Wayland",
+    "offer Shield Performance Mode for long analysis sessions",
   },
   env_rules = {
     "env = SEVENOS_HYPR_PROFILE,shield",
     "env = SEVENOS_HYPR_LAYOUT,guarded",
+    "env = SEVENOS_SHIELD_PERSONA,safe",
   },
   layout_rules = {
     "general {",
@@ -48,5 +59,7 @@ return {
     "windowrule = match:class ^(BurpSuite|burpsuite)$, workspace 2",
     "windowrule = match:title ^(.*Nmap.*)$, workspace 1",
     "windowrule = match:title ^(SevenOS Shield)$, float on, center on",
+    "windowrule = match:title ^(.*Forensics.*)$, workspace 5",
+    "windowrule = match:title ^(.*Sandbox.*)$, workspace 9",
   },
 }

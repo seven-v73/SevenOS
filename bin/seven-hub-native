@@ -39,15 +39,24 @@ PREFER_STATE_ONLY = False
 
 
 def current_theme_mode() -> str:
-    theme_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/theme.conf"
+    config_dir = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
     if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
         return str(os.environ["SEVENOS_THEME_MODE"])
-    if theme_file.exists():
-        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-            if line.startswith("SEVENOS_THEME_MODE="):
-                value = line.split("=", 1)[1].strip().strip("'\"")
-                if value in {"dark", "light"}:
-                    return value
+    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
+    profile_env = config_dir / "profile.env"
+    if profile_env.exists():
+        for raw in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if raw.startswith("SEVENOS_ACTIVE_PROFILE="):
+                profile = raw.split("=", 1)[1].strip().strip("'\"") or profile
+                break
+    for theme_file in (config_dir / "profiles" / profile / "theme.conf", config_dir / "theme.conf"):
+        if theme_file.exists():
+            for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                key, _, value = line.partition("=")
+                if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                    value = value.strip().strip("'\"").lower()
+                    if value in {"dark", "light"}:
+                        return value
     return "dark"
 
 
@@ -117,6 +126,13 @@ def state_payload(force: bool = False) -> dict:
     cached = STATE_CACHE.get("data")
     if not force and isinstance(cached, dict) and float(STATE_CACHE.get("expires", 0.0)) > now:
         return cached
+    if not force and PREFER_STATE_ONLY:
+        persistent = load_persistent_state()
+        if persistent:
+            persistent["_hub_cache"] = "persistent"
+            STATE_CACHE["data"] = persistent
+            STATE_CACHE["expires"] = now + 8.0
+            return persistent
     try:
         data = json.loads(run_text(str(ROOT / "bin" / "seven"), "state", "--json"))
         if isinstance(data, dict):
@@ -547,7 +563,7 @@ def daily_payload() -> dict:
 def status_text() -> str:
     global PREFER_STATE_ONLY
     PREFER_STATE_ONLY = True
-    state_payload(force=True)
+    state_payload(force=False)
     welcome = welcome_payload()
     welcome_plan = welcome_plan_payload()
     session = session_payload()
@@ -581,7 +597,7 @@ def status_text() -> str:
     preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
     next_stack = ", ".join(stack.get("next_focus", [])[:2]) or "Seven Shell AGS, seven-daemon Rust"
     return (
-        "Seven Hub Native\n"
+        "Seven Hub\n"
         f"Root: {ROOT}\n"
         f"First run: {welcome.get('mode', 'unknown')} · {welcome.get('percent', 0)}% · {welcome_plan.get('summary', {}).get('total', 0)} actions\n"
         f"Session: {session.get('mode', 'unknown')} · {session.get('percent', 0)}% · {session.get('summary', {}).get('running', 0)} running\n"
@@ -1531,7 +1547,7 @@ def run_gui() -> int:
                     ("Shield", f"{shield.get('posture', 'unknown')} · {shield.get('percent', 0)}% trust posture"),
                     ("Shield plan", f"{shield_plan.get('summary', {}).get('total', 0)} trust actions · first: {(shield_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Server", f"{server.get('state', server.get('service', {}).get('state', 'MISS'))} · runtime={str(server.get('runtime_ready', False)).lower()} · deployment={str(server.get('deployment_stack_ready', False)).lower()}"),
-                    ("Server plan", f"{server_plan.get('summary', {}).get('total', 0)} backend actions · first: {(server_plan.get('next') or [{}])[0].get('title', 'none')}"),
+                    ("Server plan", f"{server_plan.get('summary', {}).get('total', 0)} service actions · first: {(server_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Windows Mode", f"{windows.get('mode', 'setup-needed')} · ready: {str(windows.get('ready', False)).lower()}"),
                     ("Windows plan", f"{windows_plan.get('summary', {}).get('total', 0)} compatibility actions · first: {(windows_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Installer", f"{installer.get('mode', 'foundation')} · ready: {str(installer.get('ready', False)).lower()}"),
@@ -2284,6 +2300,7 @@ def run_gui() -> int:
                     ("Seven Reader", "seven-reader"),
                     ("Updates and packages", "sevenpkg plan"),
                     ("Doctor and repair", "seven doctor"),
+                    ("Graphical installer runtime", "seven installer runtime"),
                 ]:
                     items.append({"kind": "Shortcut", "title": label, "subtitle": command, "command": command})
                 return items
@@ -2326,10 +2343,11 @@ def run_gui() -> int:
 
             def render_actions_compact() -> None:
                 clear(actions_page)
-                heading(actions_page, "Actions", "One tap operations for the system. Details stay in tooltips and terminal output.")
+                heading(actions_page, "Actions", "One tap operations for the system. Technical details stay tucked away until you ask.")
                 payload = actions_payload()
                 interesting = []
                 preferred = {
+                    "actions.open",
                     "apps.open",
                     "files.open",
                     "security.dashboard",
@@ -2341,6 +2359,7 @@ def run_gui() -> int:
                     "doctor.run",
                     "readiness.run",
                     "installer.status",
+                    "installer.runtime",
                     "flatpak.status",
                 }
                 for item in payload.get("actions", []):
@@ -2541,7 +2560,7 @@ def run_gui() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="seven-hub-native", description="Native SevenOS Control Center prototype")
+    parser = argparse.ArgumentParser(prog="seven-hub-native", description="SevenOS Control Center")
     parser.add_argument("action", nargs="?", default="open", choices=("open", "status", "doctor"))
     parser.add_argument("--dry-run", action="store_true", help="show what would happen")
     args = parser.parse_args()

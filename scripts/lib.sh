@@ -152,6 +152,61 @@ install_package_file() {
   fi
 }
 
+install_aur_package_file() {
+  local package_file="$1"
+  local helper=""
+  local packages=()
+  local installable_packages=()
+  local package
+
+  if [[ ! -f "$package_file" ]]; then
+    log_error "AUR package file not found: $package_file"
+    exit 1
+  fi
+
+  if command -v paru >/dev/null 2>&1; then
+    helper="paru"
+  elif command -v yay >/dev/null 2>&1; then
+    helper="yay"
+  fi
+
+  if [[ -z "$helper" ]]; then
+    log_warn "AUR helper missing; skipping ${package_file#${SEVENOS_ROOT:-}/}. Run: ./install.sh aur-helpers --yes"
+    return 0
+  fi
+
+  mapfile -t packages < <(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$package_file")
+
+  for package in "${packages[@]}"; do
+    if package_is_satisfied "$package"; then
+      continue
+    fi
+    installable_packages+=("$package")
+  done
+
+  if [[ "${#installable_packages[@]}" -eq 0 ]]; then
+    log_success "AUR package requirements already satisfied for ${package_file#${SEVENOS_ROOT:-}/}"
+    return 0
+  fi
+
+  log_info "Installing AUR packages from ${package_file#${SEVENOS_ROOT:-}/} with $helper"
+
+  if is_dry_run; then
+    if assume_yes; then
+      printf '%s -S --needed --noconfirm %s\n' "$helper" "${installable_packages[*]}"
+    else
+      printf '%s -S --needed %s\n' "$helper" "${installable_packages[*]}"
+    fi
+    return 0
+  fi
+
+  if assume_yes; then
+    "$helper" -S --needed --noconfirm "${installable_packages[@]}"
+  else
+    "$helper" -S --needed "${installable_packages[@]}"
+  fi
+}
+
 copy_config_dir() {
   local source_dir="$1"
   local target_dir="$2"

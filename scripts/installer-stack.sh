@@ -87,9 +87,72 @@ elif aur_manifest == "OK":
 else:
     state = "missing-source"
 
+if state == "installed":
+    route = "graphical-runtime"
+    readiness = "ready"
+    next_actions = [
+        {
+            "key": "open-installer",
+            "title": "Open SevenOS graphical installer",
+            "command": "seven-installer open",
+            "impact": "changes",
+            "reason": "Calamares is present; destructive disk steps still require installer confirmation.",
+        }
+    ]
+elif state == "official-candidate":
+    route = "official-package"
+    readiness = "installable"
+    next_actions = [
+        {
+            "key": "install-calamares",
+            "title": "Install graphical installer runtime",
+            "command": "sudo pacman -S --needed calamares",
+            "impact": "packages",
+            "reason": "The current package repositories expose Calamares directly.",
+        }
+    ]
+elif state == "aur-candidate":
+    route = "aur-helper"
+    readiness = "source-ready"
+    next_actions = [
+        {
+            "key": "install-calamares-aur",
+            "title": "Build graphical installer runtime",
+            "command": f"{helper} -S --needed calamares",
+            "impact": "packages",
+            "reason": "SevenOS has a Calamares AUR manifest and a local AUR helper is available.",
+        }
+    ]
+elif state == "source-declared":
+    route = "aur-source"
+    readiness = "helper-needed"
+    next_actions = [
+        {
+            "key": "install-aur-helper",
+            "title": "Prepare AUR helper route",
+            "command": "./install.sh aur-helpers --yes",
+            "impact": "packages",
+            "reason": "SevenOS has a Calamares source manifest, but no yay/paru helper is available yet.",
+        }
+    ]
+else:
+    route = "missing"
+    readiness = "blocked"
+    next_actions = [
+        {
+            "key": "declare-calamares-source",
+            "title": "Declare graphical installer runtime source",
+            "command": "seven installer runtime",
+            "impact": "changes",
+            "reason": "SevenOS needs an official, downstream or AUR runtime source before graphical release work can continue.",
+        }
+    ]
+
 print(json.dumps({
     "schema": "sevenos.calamares-runtime.v1",
     "state": state,
+    "route": route,
+    "readiness": readiness,
     "installed": calamares == "OK",
     "sources": {
         "pacman": pacman,
@@ -109,6 +172,7 @@ print(json.dumps({
         "aur_helpers": "./install.sh aur-helpers --yes",
         "aur_manifest": "scripts/packages-installer-aur.txt",
     },
+    "next": next_actions,
 }, indent=2))
 PY
 }

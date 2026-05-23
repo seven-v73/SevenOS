@@ -146,7 +146,7 @@ SevenOS answer:
 - Forge for development
 - Shield for cybersecurity
 - Studio for creative production
-- Horizon for cloud and networking
+- Forge DevOps for development, deployment and cloud/network workflows
 - Griot for knowledge and documentation
 - Windows Mode for compatibility
 

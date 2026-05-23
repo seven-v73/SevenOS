@@ -52,7 +52,7 @@ not unlocked administrator privileges yet.
 |-------|------|--------|
 | Trust | Shield, firewall, sandbox, cyber baseline | 70% |
 | Backend | Seven Server user service and deployment dependencies | 80% |
-| Profiles | Forge, Shield, Studio, Windows, Horizon as concrete modes | 70% |
+| Profiles | Forge DevOps, Shield, Studio, Windows and Pulse as concrete modes | 70% |
 | Shell | Seven Shell native foundation with stable fallback | 65% |
 | Installer | Archinstall/Calamares/Archiso path prepared | 50% |
 

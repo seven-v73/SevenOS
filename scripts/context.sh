@@ -113,14 +113,14 @@ CONTEXTS = {
         "signals": ["vm", "wine", "compatibility"],
         "scheduler_group": "windows",
     },
-    "horizon": {
-        "title": "Horizon Deploy",
-        "intent": "server deployment",
-        "profile": "horizon",
+    "devops": {
+        "title": "Forge DevOps",
+        "intent": "software development and deployment",
+        "profile": "forge",
         "classes": ["kitty", "code", "firefox"],
         "processes": ["podman", "conmon", "caddy", "go", "seven-server", "seven-deploy", "ssh", "rsync"],
-        "signals": ["container", "server", "network"],
-        "scheduler_group": "horizon",
+        "signals": ["container", "server", "network", "deploy"],
+        "scheduler_group": "forge",
     },
     "baobab": {
         "title": "Baobab System",

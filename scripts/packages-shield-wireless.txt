@@ -1,0 +1,8 @@
+# SevenOS Shield Wireless bundle
+aircrack-ng
+bettercap
+ettercap-gtk
+macchanger
+wireshark-qt
+tcpdump
+

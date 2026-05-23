@@ -5,6 +5,14 @@ export SEVENOS_TERMINAL_COUNTRY=0
 export SEVENOS_TERMINAL_CLASSIC=1
 export FASTFETCH_DISABLED=1
 
+# This file is loaded by an interactive shell. Some SevenOS wrappers run with
+# strict shell options, and Bash may inherit them through SHELLOPTS. Keep the
+# interactive prompt tolerant so a missing git repo, absent context marker or
+# empty runtime hint cannot terminate the terminal before the first prompt.
+set +e
+set +u
+set +o pipefail 2>/dev/null || true
+
 if [[ -r "$HOME/.config/sevenos/profile-isolation.env" ]]; then
   # shellcheck disable=SC1090
   source "$HOME/.config/sevenos/profile-isolation.env"
@@ -19,6 +27,25 @@ __sevenos_cmd_started=0
 __sevenos_last_duration=0
 __sevenos_last_command=""
 
+__sevenos_real_command() {
+  local name="$1" path part
+  local shims="${SEVENOS_PROFILE_SHIMS:-}"
+  IFS=':' read -r -a __sevenos_path_parts <<< "${PATH:-/usr/local/bin:/usr/bin:/bin}"
+  for part in "${__sevenos_path_parts[@]}"; do
+    [[ -n "$part" ]] || continue
+    [[ -n "$shims" && "$(cd "$part" 2>/dev/null && pwd -P)" == "$(cd "$shims" 2>/dev/null && pwd -P)" ]] && continue
+    path="$part/$name"
+    [[ -x "$path" ]] && { printf '%s\n' "$path"; return 0; }
+  done
+  return 1
+}
+
+__sevenos_git() {
+  local git_bin
+  git_bin="$(__sevenos_real_command git)" || return 1
+  "$git_bin" "$@"
+}
+
 __sevenos_preexec() {
   case "$BASH_COMMAND" in
     __sevenos_prompt*|__sevenos_preexec*|PROMPT_COMMAND=*|trap\ *) return ;;
@@ -29,13 +56,13 @@ __sevenos_preexec() {
 trap '__sevenos_preexec' DEBUG
 
 __sevenos_git_branch() {
-  command git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
+  __sevenos_git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 0
   local branch
-  branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || true)"
+  branch="$(__sevenos_git symbolic-ref --quiet --short HEAD 2>/dev/null || __sevenos_git rev-parse --short HEAD 2>/dev/null || true)"
   [[ -z "$branch" ]] && return 0
   local dirty=""
-  git diff --quiet --ignore-submodules -- 2>/dev/null || dirty="*"
-  git diff --cached --quiet --ignore-submodules -- 2>/dev/null || dirty="*"
+  __sevenos_git diff --quiet --ignore-submodules -- 2>/dev/null || dirty="*"
+  __sevenos_git diff --cached --quiet --ignore-submodules -- 2>/dev/null || dirty="*"
   printf ' git:%s%s' "$branch" "$dirty"
 }
 
@@ -58,13 +85,13 @@ __sevenos_runtime_context() {
 __sevenos_terminal_mode() {
   local explicit="${SEVENOS_TERMINAL_MODE:-}"
   case "$explicit" in
-    forge|cyber|focus|admin) printf '%s' "${explicit^}"; return ;;
+    forge|cyber|focus|admin|windows) printf '%s' "${explicit^}"; return ;;
   esac
   if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
     printf 'Admin'
   elif [[ "$__sevenos_last_command" =~ (nmap|tcpdump|wireshark|tshark|ufw|iptables|nft|ss\ |netstat|journalctl|auditctl) ]]; then
     printf 'Cyber'
-  elif command git rev-parse --is-inside-work-tree >/dev/null 2>&1 || [[ -f package.json || -f Cargo.toml || -f pyproject.toml ]]; then
+  elif __sevenos_git rev-parse --is-inside-work-tree >/dev/null 2>&1 || [[ -f package.json || -f Cargo.toml || -f pyproject.toml ]]; then
     printf 'Forge'
   else
     printf 'Classic'

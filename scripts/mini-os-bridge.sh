@@ -105,12 +105,14 @@ try:
 except json.JSONDecodeError:
     runtime = {}
 
-profiles = ["equinox", "baobab", "forge", "shield", "studio", "windows", "horizon", "pulse"]
+profiles = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+aliases = {"horizon": "forge"}
+items = [aliases.get(item, item) for item in items]
 capability_map = {
     "forge": {
-        "offers": ["dev-tools", "containers", "builds", "local-services"],
-        "helps": ["code", "terminal", "documentation", "container", "build"],
-        "borrow_label": "Developer capability",
+        "offers": ["dev-tools", "containers", "builds", "local-services", "deployments", "reverse-proxy", "server-logs"],
+        "helps": ["code", "terminal", "documentation", "container", "build", "server", "cloud", "ssh", "deploy", "endpoint", "service"],
+        "borrow_label": "DevOps capability",
     },
     "shield": {
         "offers": ["basic-security", "audit", "forensics", "sandbox"],
@@ -127,20 +129,15 @@ capability_map = {
         "helps": ["exe", "windows", "office", "vm", "compatibility"],
         "borrow_label": "Windows capability",
     },
-    "horizon": {
-        "offers": ["deployments", "containers", "reverse-proxy", "server-logs"],
-        "helps": ["server", "cloud", "ssh", "deploy", "endpoint", "service"],
-        "borrow_label": "Cloud capability",
-    },
     "pulse": {
         "offers": ["low-latency", "gaming", "overlays", "controllers"],
         "helps": ["game", "steam", "lutris", "fps", "latency", "controller"],
         "borrow_label": "Gaming capability",
     },
     "baobab": {
-        "offers": ["culture", "language", "learning", "oral-knowledge"],
-        "helps": ["read", "language", "culture", "learn", "translation", "book"],
-        "borrow_label": "Culture capability",
+        "offers": ["heritage", "language", "story", "sound", "map", "fashion", "food", "wisdom", "offline-memory"],
+        "helps": ["read", "language", "culture", "learn", "translation", "book", "story", "heritage", "fashion", "food", "map"],
+        "borrow_label": "Cultural heritage capability",
     },
 }
 
@@ -158,7 +155,7 @@ def suggest_caps(primary, active_caps=()):
         score = len(matches) * 25
         if key == "shield" and primary != "shield":
             score += 12
-        if primary == "equinox" and key in {"forge", "studio", "horizon"} and matches:
+        if primary == "equinox" and key in {"forge", "studio"} and matches:
             score += 10
         if score > 0:
             suggestions.append({

@@ -2,9 +2,9 @@
 
 SevenOS is an experimental intelligent Linux distribution focused on context-aware mini OS profiles, security tooling, creative production, Windows compatibility, local deployment, and the Beyond the Desktop product identity. It uses an Arch-compatible foundation and a Wayland compositor stack as implementation layers, while normal users operate the system through SevenOS surfaces first.
 
-This repository is currently in **Phase B2 — product consolidation before ISO**. It contains the post-install OS layer, Seven Hub Native, `seven`/`sevenpkg`, profile contracts, an app-first Windows compatibility layer, identity assets, Seven Server/Deploy foundations, Seven Shell AGS planning, repair planning, a persistent wallpaper/session runtime, and an early SevenOS live profile.
+This repository is currently in **test-machine consolidation before ISO**. It contains the post-install OS layer, SevenOS Home, Seven Hub Native, `seven`/`sevenpkg`, isolated mini OS profile contracts, an app-first Windows compatibility layer with VM provisioning, Baobab cultural OS foundations, identity assets, Seven Server/Deploy foundations, repair planning, a persistent wallpaper/session runtime, profile-specific Waybar and motion layers, and a live SevenOS desktop profile.
 
-It is **not yet a complete standalone distribution**. The next major gate is **B3**, blocked until trust, server, installer and profile completeness improve.
+It is **not yet a complete standalone distribution ISO**. The current goal is a stable, public-friendly SevenOS experience on real hardware before final installer and release-channel work.
 
 ## Vision
 
@@ -41,6 +41,12 @@ It is built around foundation pillars:
   release/product health without launching extra backend checks
 - `seven support` as the local-first support route for health, product,
   recovery, events and optional diagnostic bundles without automatic upload
+- `seven home` as the graphical front door for the seven mini OS worlds,
+  their state, mood and next actions
+- `seven launchpad` as the native app launcher with cache-first startup,
+  mini OS worlds, deduplication and JSON diagnostics
+- `seven spotlight` as the native search surface for apps, actions, files,
+  settings, clipboard, windows and mini OS switches
 - `seven product` as the compact public product facade for Hub, Settings,
   Welcome and installer surfaces
 - `seven foundations` as the SevenOS ownership map that links public surfaces
@@ -49,10 +55,15 @@ It is built around foundation pillars:
 - `sevenos.dotinst` as the install, restore, migration and packaging contract
 - Seven Hub as the user-facing control center
 - SevenOS Settings as the normal-user configuration center for wallpaper, displays, Wi-Fi, sound, keyboard, security, profiles, apps and system repair
+- SevenOS Actions as the graphical action runner for normal users who should
+  not need terminal commands for routine maintenance
 - Seven Server and Seven Deploy as the service/deployment foundation
 - Seven Core and SevenBus as the system experience layer foundation
 - Seven Context Engine as the semantic workflow layer above raw processes/windows
 - Seven Scheduler as the safe user-space process policy layer above Linux CFS
+- Seven Runtime Orchestrator as the Layered Autonomous Profiles Architecture
+  contract that composes mini OS capabilities without profile dependency or
+  hidden profile pollution
 - Windows App Layer as the app-first compatibility path before optional VM fallback
 - Calamares/Archinstall as the install path foundation
 - GTK/libadwaita as the native Seven Hub direction
@@ -90,12 +101,15 @@ SevenOS aims to provide:
 
 - a lightweight Arch Linux foundation
 - a Wayland desktop based on Hyprland
-- modular profiles for development, cybersecurity, and creation
+- isolated mini OS experiences for Equinox, Baobab, Forge, Shield, Studio,
+  Windows and Pulse
 - context-aware orchestration that understands Forge DevOps, Studio, Shield, Windows, Pulse and Streaming workflows
 - Windows application compatibility through Wine, Bottles, Proton/Lutris, and optional KVM/QEMU fallback
 - local deployment through `seven-server` and `seven-deploy`
 - future intelligent modules such as SevenAI, SevenCloud, SevenStore, SevenBox, SevenFlow, and SevenIdentity
 - a Seven Hub control center
+- a SevenOS Home surface and Launchpad that present each mini OS as a distinct
+  world instead of a simple theme
 - a future Seven Shell layer for AGS panels, launcher, dock and widgets
 - a premium dark glass identity with Seven Blue, Seven Violet, Seven Cyan, Cyber Green, contextual AI and subtle cinematic depth
 - a vocabulary and workflow model that makes Linux easier to live with
@@ -111,6 +125,13 @@ Calamares/Archiso distribution work.
 What is already testable:
 
 - `seven` as a unified system controller.
+- `seven home` as the public SevenOS front door for the seven mini OS worlds.
+- `seven launchpad` as a native, cache-first launcher with mini OS world cards,
+  app deduplication, profile-aware sections and `seven launchpad doctor --json`.
+- `seven spotlight` as a progressive native search surface for apps, actions,
+  files, settings, clipboard, active windows and mini OS switching.
+- `seven actions open` as a graphical action center for common OS tasks that
+  should not require terminal usage.
 - `seven about` as a SevenOS-first About surface with edition, active mini OS,
   channel and distribution state.
 - `seven lifecycle` as a SevenOS-first maintenance surface for update, repair,
@@ -119,18 +140,32 @@ What is already testable:
 - `sevenpkg` as the SevenOS software layer over pacman/meta-packages.
 - Seven Hub / Control Center entrypoints.
 - Native SevenOS Settings for daily desktop and system configuration.
-- Forge DevOps, Shield, Studio, Windows and Pulse profile contracts.
+- Equinox, Baobab, Forge, Shield, Studio, Windows and Pulse mini OS contracts,
+  with profile-specific config roots, Waybar identity and runtime state.
+- Baobab OS cultural foundations: native French-first UI, offline database,
+  provenance-aware cultural packs, language/country data and immersive tooling
+  contracts.
 - CyberSpace and Shield workspace foundations.
 - Seven Core, SevenBus and SevenDaemon foundations.
 - Seven Server local API foundation.
 - App-first Windows compatibility through `seven run <app>`.
+- Windows Bridge provisioning through `seven windows repair`, `seven windows
+  network` and `seven windows create`, documented in
+  `docs/WINDOWS_BRIDGE_PROVISIONING.md`.
 - Persistent Hyprpaper wallpaper runtime through `seven-wallpaper serve`.
+- Profile-aware motion and passage overlays through `seven motion` and the
+  SevenOS passage sound/overlay helpers.
+- Startup performance checks through `scripts/startup-audit.sh`, keeping public
+  surfaces cache-first and non-blocking.
 - Distribution autonomy checks through `seven autonomy` and
   `docs/DISTRIBUTION_AUTONOMY.md`.
 - Public masking checks through `seven mask`, so Hub/Settings can distinguish a
   SevenOS-first surface from a backend-visible Arch/Hyprland workflow.
 - Dynamic adaptation checks through `seven dynamic`, linking profile UI,
   wallpaper colors, theme runtime and the Hyprland dynamic layer.
+- Runtime orchestration checks through `seven runtime`, proving profiles are
+  autonomous mini OSes with explicit capability composition, resource intent and
+  conflict resolution.
 - Public surface checks through `seven surfaces`, covering Hub, Settings, Store,
   Files, Reader, Terminal, Launchpad, Spotlight, Shield, Windows and Doctor.
 - User-intent route checks through `seven routes`, so install, repair, network,
@@ -141,11 +176,15 @@ What is already testable:
   `seven-installer status --json`.
 - Calamares runtime source checks through `seven installer runtime`, keeping
   the graphical ISO gate explicit instead of silently assuming a package source.
+- The `seven-installer` portal exposes graphical runtime candidates as a
+  SevenOS route, so a missing Calamares package becomes a guided installer
+  policy state instead of a raw backend error.
 
 The current quality gate remains:
 
 ```bash
 ./scripts/design-check.sh
+./scripts/startup-audit.sh
 ./scripts/ux-check.sh
 ./scripts/check.sh
 ```
@@ -218,7 +257,16 @@ Implemented:
 
 - repository structure
 - base installer entrypoint
+- SevenOS Home native front door
+- SevenOS Actions native graphical action runner
+- SevenOS Launchpad with mini OS world cards, deduplication, cache-first
+  startup and diagnostics
+- SevenOS Spotlight with progressive catalog loading and a local index
+- profile-aware motion presets, passage overlay and smooth passage sounds
 - modular profile scripts
+- isolated mini OS runtime roots and bridge inbox/outbox/session state
+- Baobab cultural mini OS foundation, including native UI, offline data,
+  provenance-aware packs and cultural tooling contracts
 - package manifests
 - SevenOS install manifest with protected user paths
 - Hyprland, Waybar, Rofi, Kitty, Mako and Hyprpaper configuration
@@ -268,26 +316,26 @@ Implemented:
 - initial Archiso profile and ISO build script
 - Beyond the Desktop identity foundation
 - active SevenOS accent pack preference
-- Windows Mode helper workflow
+- Windows Mode helper workflow and Windows Bridge provisioning workflow
 
 Not implemented yet:
 
 - full Arch installation automation
 - final ISO installer flow
 - production-ready Seven Shell AGS desktop
-- production-ready Seven Hub settings panels
-- automated Windows VM provisioning
+- production-ready Seven Hub settings panels for every advanced backend
+- fully unattended Windows installation after VM creation
 - GPU passthrough automation
-- real SevenAI/SevenCloud/SevenStore implementations
+- production-grade SevenAI/SevenCloud/SevenStore service implementations
 
 Current phase gate snapshot:
 
 ```text
-Phase: B2
-Decision: blocked for B3
-Passing: user experience foundation
-Blocking: readiness, control plane score, Shield trust posture, Seven Server, installer path
-Warnings: Windows Mode, profile completeness, software plan, stack readiness
+Phase: test-machine consolidation
+Decision: ready-with-actions for daily SevenOS iteration
+Passing: public surfaces, mini OS runtime, startup performance, profile isolation
+Blocking: final ISO installer, release packaging, unattended Windows install
+Warnings: production AGS shell, GPU passthrough, service hardening
 ```
 
 Run the live status with:
@@ -334,8 +382,12 @@ Use these before pushing or testing a new machine:
 ./scripts/design-check.sh
 seven smoke --json | python -m json.tool
 seven doctor release --json | python -m json.tool
+./scripts/startup-audit.sh
 ./scripts/ux-check.sh
 ./scripts/check.sh
+seven launchpad doctor --json | python -m json.tool
+seven spotlight doctor --json | python -m json.tool
+seven motion ux-doctor --json | python -m json.tool
 seven phase-gate --json | python -m json.tool
 seven b3 plan --json | python -m json.tool
 seven state --json | python -m json.tool

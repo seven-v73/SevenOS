@@ -7,6 +7,7 @@ ACTION="${1:-status}"
 shift || true
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
 VM_PLAN="$CONFIG_DIR/windows-vm-plan.json"
+PROVISIONER="$ROOT_DIR/vm/windows-provisioner.sh"
 
 language_code() {
   local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
@@ -60,6 +61,18 @@ command_state() {
   command -v "$1" >/dev/null 2>&1 && printf 'OK' || printf 'MISS'
 }
 
+with_timeout() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout --kill-after=1s "${SEVENOS_WINDOWS_STATUS_TIMEOUT:-3s}" "$@"
+  else
+    "$@"
+  fi
+}
+
+virsh_system() {
+  with_timeout virsh -c qemu:///system "$@"
+}
+
 package_state() {
   pacman -Q "$1" >/dev/null 2>&1 && printf 'OK' || printf 'MISS'
 }
@@ -86,7 +99,7 @@ libvirt_group_state() {
 
 network_state() {
   command -v virsh >/dev/null 2>&1 &&
-    virsh -c qemu:///system net-info default >/dev/null 2>&1 &&
+    virsh_system net-info default >/dev/null 2>&1 &&
     printf 'OK' || printf 'MISS'
 }
 
@@ -96,17 +109,82 @@ vm_state() {
     return 0
   fi
 
-  if ! virsh -c qemu:///system dominfo "$VM_NAME" >/dev/null 2>&1; then
+  if ! virsh_system dominfo "$VM_NAME" >/dev/null 2>&1; then
     printf 'MISS'
     return 0
   fi
 
   local state
-  state="$(virsh -c qemu:///system domstate "$VM_NAME" 2>/dev/null || true)"
+  state="$(virsh_system domstate "$VM_NAME" 2>/dev/null || true)"
   case "$state" in
     running) printf 'RUN' ;;
     *) printf 'OK' ;;
   esac
+}
+
+vm_disk_bus() {
+  if ! command -v virsh >/dev/null 2>&1; then
+    printf 'MISS'
+    return 0
+  fi
+  if ! virsh_system dominfo "$VM_NAME" >/dev/null 2>&1; then
+    printf 'MISS'
+    return 0
+  fi
+
+  local xml
+  xml="$(virsh_system dumpxml "$VM_NAME" 2>/dev/null || true)"
+  WINDOWS_VM_XML="$xml" /usr/bin/python3 - <<'PY'
+import os
+import sys
+import xml.etree.ElementTree as ET
+
+try:
+    root = ET.fromstring(os.environ.get("WINDOWS_VM_XML", ""))
+except Exception:
+    print("UNKNOWN")
+    raise SystemExit(0)
+
+for disk in root.findall("./devices/disk"):
+    if disk.get("device") != "disk":
+        continue
+    target = disk.find("target")
+    if target is not None:
+        print(target.get("bus", "UNKNOWN"))
+        raise SystemExit(0)
+print("MISS")
+PY
+}
+
+vm_network_models() {
+  if ! command -v virsh >/dev/null 2>&1; then
+    printf 'MISS'
+    return 0
+  fi
+  if ! virsh_system dominfo "$VM_NAME" >/dev/null 2>&1; then
+    printf 'MISS'
+    return 0
+  fi
+
+  local xml
+  xml="$(virsh_system dumpxml "$VM_NAME" 2>/dev/null || true)"
+  WINDOWS_VM_XML="$xml" /usr/bin/python3 - <<'PY'
+import os
+import xml.etree.ElementTree as ET
+
+try:
+    root = ET.fromstring(os.environ.get("WINDOWS_VM_XML", ""))
+except Exception:
+    print("UNKNOWN")
+    raise SystemExit(0)
+
+models = []
+for iface in root.findall("./devices/interface"):
+    model = iface.find("model")
+    if model is not None and model.get("type"):
+        models.append(model.get("type"))
+print(",".join(models) if models else "MISS")
+PY
 }
 
 vm_plan_state() {
@@ -117,6 +195,7 @@ write_vm_plan() {
   mkdir -p "$CONFIG_DIR"
   python - "$VM_NAME" "$VM_PLAN" <<'PY'
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -124,11 +203,12 @@ vm_name, path = sys.argv[1:]
 payload = {
     "schema": "sevenos.windows-vm-plan.v1",
     "vm_name": vm_name,
-    "state": "waiting-for-user-iso",
-    "required_inputs": ["windows_iso"],
-    "optional_inputs": ["virtio_iso"],
-    "recommended_command": f"seven windows create --iso /path/to/windows.iso --virtio-iso /path/to/virtio-win.iso --os win11 --name {vm_name}",
-    "reason": "SevenOS cannot create a legal Windows VM without a user-provided Windows ISO.",
+    "state": "waiting-for-official-media",
+    "required_inputs": ["official_windows_iso_or_quickget"],
+    "optional_inputs": ["virtio_iso", "autounattend_template"],
+    "provision_command": "seven windows provision --yes",
+    "recommended_command": f"seven windows create --iso /path/to/windows.iso --virtio-iso ~/.local/share/sevenos/vm/windows/virtio-win.iso --disk-path ~/.local/share/sevenos/vm/windows/{vm_name}.qcow2 --os win11 --name {vm_name}",
+    "reason": "SevenOS cannot redistribute Windows. It must build the VM locally from official/user-authorized media.",
 }
 Path(path).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 print(path)
@@ -136,6 +216,12 @@ PY
 }
 
 status_json() {
+  local provision_json
+  local bridge_json
+  provision_json="$(with_timeout "$PROVISIONER" status --json 2>/dev/null || printf '{}')"
+  bridge_json="$(with_timeout "$ROOT_DIR/vm/windows-mode.sh" bridge-status --json 2>/dev/null || printf '{}')"
+  SEVENOS_WINDOWS_PROVISION_JSON="$provision_json" \
+  SEVENOS_WINDOWS_BRIDGE_JSON="$bridge_json" \
   python - "$VM_NAME" \
     "$(virt_cpu_state)" \
     "$(kvm_state)" \
@@ -151,8 +237,11 @@ status_json() {
     "$(libvirt_group_state)" \
     "$(network_state)" \
     "$(vm_state)" \
+    "$(vm_disk_bus)" \
+    "$(vm_network_models)" \
     "$(vm_plan_state)" <<'PY'
 import json
+import os
 import sys
 
 keys = [
@@ -171,10 +260,20 @@ keys = [
     "libvirt_group",
     "default_network",
     "windows_vm",
+    "windows_vm_disk_bus",
+    "windows_vm_network_models",
     "windows_vm_plan",
 ]
 payload = dict(zip(keys, sys.argv[1:]))
 payload["schema"] = "sevenos.windows.v1"
+try:
+    payload["provisioning"] = json.loads(os.environ.get("SEVENOS_WINDOWS_PROVISION_JSON", "{}") or "{}")
+except Exception:
+    payload["provisioning"] = {"schema": "sevenos.windows-provision.v1", "state": "unavailable"}
+try:
+    payload["bridge_runtime"] = json.loads(os.environ.get("SEVENOS_WINDOWS_BRIDGE_JSON", "{}") or "{}")
+except Exception:
+    payload["bridge_runtime"] = {"schema": "sevenos.windows-bridge-runtime.v1", "state": "unavailable"}
 payload["vm_ready"] = all(
     payload[key] in {"OK", "RUN"}
     for key in ("cpu_virtualization", "kvm_device", "qemu", "virt_manager", "virsh", "libvirtd", "default_network")
@@ -189,8 +288,26 @@ if payload["bottles_flatpak"] != "OK":
     payload["recommendations"].append({"command": "seven flatpak install", "reason": "Install Bottles through Flatpak for accessible Windows apps"})
 if not payload["vm_ready"]:
     payload["recommendations"].append({"command": "seven vm check", "reason": "Complete KVM/libvirt readiness"})
-if payload["windows_vm"] == "MISS" and payload["windows_vm_plan"] != "OK":
-    payload["recommendations"].append({"command": "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso", "reason": "Create the guided Windows VM"})
+if payload["windows_vm"] == "MISS":
+    provisioning = payload.get("provisioning", {})
+    artifacts = provisioning.get("artifacts", {})
+    recommended_next = provisioning.get("recommended_next", "seven windows provision --yes")
+    if provisioning.get("ready_to_create_vm") and artifacts.get("virtio_iso") == "OK":
+        payload["recommendations"].append({"command": recommended_next, "reason": "Create/register the Windows VM from prepared official media"})
+    elif recommended_next != "seven windows provision --yes":
+        payload["recommendations"].append({"command": recommended_next, "reason": "Complete the missing Windows VM provisioning artifact"})
+    else:
+        payload["recommendations"].append({"command": "seven windows provision --yes", "reason": "Prepare official Windows media, VirtIO drivers and local VM disk"})
+elif payload.get("windows_vm_disk_bus") == "virtio":
+    payload["recommendations"].append({
+        "command": "seven windows installer-help",
+        "reason": "The current VM uses a VirtIO disk. Load the VirtIO storage driver in Windows Setup or recreate the VM with the SevenOS SATA default.",
+    })
+if payload["windows_vm"] in {"OK", "RUN"} and "e1000e" not in payload.get("windows_vm_network_models", "").split(","):
+    payload["recommendations"].append({
+        "command": "seven windows fix-network",
+        "reason": "The current VM has no Windows-native e1000e network card. Attach one for internet access before VirtIO drivers are installed.",
+    })
 print(json.dumps(payload, indent=2))
 PY
 }
@@ -304,8 +421,8 @@ metadata = {
         "severity": "medium",
         "impact": "manual",
         "phase": "install",
-        "command": "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso",
-        "reason": "A Windows ISO and VirtIO ISO are needed before SevenOS can launch full Windows Desktop Mode.",
+        "command": "seven windows provision --yes",
+        "reason": "SevenOS needs official Windows media, VirtIO drivers and a local qcow2 plan before launching full Windows Desktop Mode.",
     },
 }
 
@@ -394,7 +511,7 @@ for item in data.get("next", []):
     reason = item.get('reason','')
     if os.environ.get("SEVENOS_LANG_CODE") == "fr":
         reason = {
-            "A Windows ISO and VirtIO ISO are needed before SevenOS can launch full Windows Desktop Mode.": "Une ISO Windows et une ISO VirtIO sont nécessaires avant de lancer le mode Bureau Windows complet.",
+            "SevenOS needs official Windows media, VirtIO drivers and a local qcow2 plan before launching full Windows Desktop Mode.": "SevenOS a besoin d’un média Windows officiel, des pilotes VirtIO et d’un plan qcow2 local avant de lancer le mode Bureau Windows complet.",
             "Install Wine/Lutris compatibility tooling": "Installer les outils de compatibilité Wine/Lutris.",
             "Install Bottles through Flatpak for accessible Windows apps": "Installer Bottles via Flatpak pour des apps Windows accessibles.",
             "Complete KVM/libvirt readiness": "Finaliser la préparation KVM/libvirt.",
@@ -420,6 +537,7 @@ daemon_json() {
 }
 
 status_human() {
+  local bridge_json
   printf 'SevenOS Windows Mode\n\n'
   printf '  %-20s %s\n' "CPU virtualization" "$(virt_cpu_state)"
   printf '  %-20s %s\n' "/dev/kvm" "$(kvm_state)"
@@ -433,6 +551,57 @@ status_human() {
   printf '  %-20s %s\n' "libvirt group" "$(libvirt_group_state)"
   printf '  %-20s %s\n' "default network" "$(network_state)"
   printf '  %-20s %s\n' "$VM_NAME" "$(vm_state)"
+  local disk_bus
+  disk_bus="$(vm_disk_bus)"
+  if [[ "$disk_bus" != "MISS" ]]; then
+    printf '  %-20s %s\n' "VM disk bus" "$disk_bus"
+  fi
+  local network_models
+  network_models="$(vm_network_models)"
+  if [[ "$network_models" != "MISS" ]]; then
+    printf '  %-20s %s\n' "VM network" "$network_models"
+  fi
+  if [[ "$network_models" != *"e1000e"* && "$network_models" != "MISS" ]]; then
+    printf '\n'
+    if [[ "$LANG_CODE" == "fr" ]]; then
+      printf 'Note: cette VM n’a pas de carte e1000e. Si Windows n’a pas internet,\n'
+      printf 'lance: seven windows fix-network\n'
+    else
+      printf 'Note: this VM has no e1000e card. If Windows has no internet,\n'
+      printf 'run: seven windows fix-network\n'
+    fi
+  fi
+  if [[ "$disk_bus" == "virtio" ]]; then
+    printf '\n'
+    if [[ "$LANG_CODE" == "fr" ]]; then
+      printf 'Note: cette VM utilise un disque VirtIO. Si Windows Setup ne montre aucun disque,\n'
+      printf 'lance: seven windows installer-help\n'
+    else
+      printf 'Note: this VM uses a VirtIO disk. If Windows Setup shows no disk,\n'
+      printf 'run: seven windows installer-help\n'
+    fi
+  fi
+  bridge_json="$("$ROOT_DIR/vm/windows-mode.sh" bridge-status --json 2>/dev/null || printf '{}')"
+  WINDOWS_BRIDGE_JSON="$bridge_json" python - <<'PY'
+import json
+import os
+
+try:
+    data = json.loads(os.environ.get("WINDOWS_BRIDGE_JSON", "{}") or "{}")
+except Exception:
+    data = {}
+
+if data:
+    print()
+    print("Bridge runtime:")
+    print(f"  active profile       {data.get('active_profile', 'unknown')}")
+    print(f"  desired state        {data.get('desired_state', 'unknown')}")
+    print(f"  VM state             {data.get('vm_state', 'unknown')}")
+    print(f"  console              {data.get('console', 'unknown')}")
+    print(f"  synchronized         {str(data.get('synchronized', False)).lower()}")
+    if data.get("recommended_action") and data.get("recommended_action") != "none":
+        print(f"  recommended action   {data.get('recommended_action')}")
+PY
   printf '\n'
   printf 'Friendly actions:\n'
   printf '  seven windows guide          Explain the setup path\n'
@@ -441,9 +610,83 @@ status_human() {
   printf '  seven windows prepare APP    Prepare a dedicated Wine prefix\n'
   printf '  seven windows diagnose APP   Explain a failed installer/app in human text\n'
   printf '  seven windows run APP        Launch an app through Wine/Bottles/Proton/VM\n'
-  printf '  seven windows apps           Open Bottles for Windows apps\n'
+  printf '  seven windows enter          Start Windows Bridge and open the VM console\n'
+  printf '  seven windows leave          Save/stop the VM when leaving Windows Bridge\n'
+  printf '  seven windows sync           Match the VM state to the active SevenOS profile\n'
+  printf '  seven windows bridge-status  Show profile/VM/console synchronization state\n'
+  printf '  seven windows apps           Open Windows apps\n'
   printf '  seven windows vm             Open Virt Manager for the Windows VM\n'
+  printf '  seven windows sources        Explain legal Windows media sources\n'
+  printf '  seven windows provision      Prepare official media/cache/qcow2 flow\n'
+  printf '  seven windows virtio         Fetch VirtIO driver media\n'
+  printf '  seven windows boot-installer Restart and press the ISO boot key automatically\n'
+  printf '  seven windows fix-network    Attach a Windows-friendly network card\n'
+  printf '  seven windows installer-help Explain the empty disk screen in Windows Setup\n'
   printf '  seven windows create --iso /path/windows.iso --virtio-iso /path/virtio.iso\n'
+}
+
+installer_help_action() {
+  if [[ "$LANG_CODE" == "fr" ]]; then
+    cat <<'EOF'
+SevenOS Windows Installer - aucun disque visible
+
+Pourquoi cela arrive :
+  La VM actuelle utilise un disque VirtIO. Windows Setup ne voit pas ce disque
+  tant que le pilote VirtIO n'est pas chargé depuis le CD de pilotes attaché.
+
+Solution rapide, sans recréer la VM :
+  1. Dans l'écran du choix de disque, clique sur "Charger un pilote".
+  2. Clique sur "Parcourir".
+  3. Ouvre le CD VirtIO.
+  4. Va dans : viostor > w11 > amd64
+  5. Sélectionne le pilote Red Hat VirtIO SCSI/block.
+  6. Reviens à la liste : le disque SevenOS doit apparaître.
+
+Solution SevenOS recommandée pour une nouvelle installation simple :
+  SevenOS crée maintenant les nouvelles VM avec un disque SATA par défaut,
+  donc Windows voit directement le disque sans pilote au moment du choix.
+
+  Si tu veux recommencer proprement cette installation :
+    virsh -c qemu:///system destroy sevenos-windows
+    virsh -c qemu:///system undefine sevenos-windows --nvram
+    rm -f ~/.local/share/sevenos/vm/windows/sevenos-windows.qcow2
+    seven windows create --iso ~/.cache/sevenos/vm/windows/quickget/windows-11/windows-11.iso --virtio-iso ~/.local/share/sevenos/vm/windows/virtio-win.iso --disk-path ~/.local/share/sevenos/vm/windows/sevenos-windows.qcow2
+
+Note :
+  VirtIO reste utile après installation pour de meilleures performances.
+  SATA est choisi par défaut seulement pour rendre l'installation Windows plus simple.
+EOF
+  else
+    cat <<'EOF'
+SevenOS Windows Installer - no disk visible
+
+Why this happens:
+  The current VM uses a VirtIO disk. Windows Setup cannot see this disk until
+  the VirtIO storage driver is loaded from the attached driver CD.
+
+Quick fix without recreating the VM:
+  1. On the disk selection screen, click "Load driver".
+  2. Click "Browse".
+  3. Open the VirtIO CD.
+  4. Go to: viostor > w11 > amd64
+  5. Select the Red Hat VirtIO SCSI/block driver.
+  6. Return to the list: the SevenOS disk should appear.
+
+Recommended SevenOS path for a simple new install:
+  SevenOS now creates new VMs with a SATA disk by default, so Windows sees the
+  disk directly during setup.
+
+  To restart this install cleanly:
+    virsh -c qemu:///system destroy sevenos-windows
+    virsh -c qemu:///system undefine sevenos-windows --nvram
+    rm -f ~/.local/share/sevenos/vm/windows/sevenos-windows.qcow2
+    seven windows create --iso ~/.cache/sevenos/vm/windows/quickget/windows-11/windows-11.iso --virtio-iso ~/.local/share/sevenos/vm/windows/virtio-win.iso --disk-path ~/.local/share/sevenos/vm/windows/sevenos-windows.qcow2
+
+Note:
+  VirtIO is still useful after installation for better performance.
+  SATA is only the default to make Windows installation simpler.
+EOF
+  fi
 }
 
 guide_action() {
@@ -469,12 +712,17 @@ SevenOS Windows Mode guide
    seven windows apps
 
 5. For full Windows desktop mode
-   seven windows create --iso /path/windows.iso --virtio-iso /path/virtio.iso --os win11
-   seven windows vm
+   seven windows sources
+  seven windows provision --yes
+  seven windows create --iso /path/windows.iso --virtio-iso /path/virtio.iso --os win11
+  seven windows vm
+  seven windows installer-help
 
 SevenOS keeps both paths separate:
 - Wine, Bottles, Proton and Lutris for app-like native windows.
 - KVM/QEMU for heavy apps, driver-sensitive workflows and full Windows sessions.
+- SevenOS does not redistribute a prebuilt Windows image. It builds the local
+  qcow2 VM disk from official/user-authorized Windows media.
 
 For Microsoft Office:
 - Use `seven windows prepare office` once; SevenOS remembers when the prefix is ready.
@@ -499,19 +747,102 @@ run_detached() {
 
 open_bottles() {
   if dry_run; then
-    dry_line "Open Bottles"
+    dry_line "Open Windows app manager"
     printf 'flatpak run com.usebottles.bottles\n'
     return 0
   fi
   if command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
-    run_detached "Open Bottles" flatpak run com.usebottles.bottles
+    run_detached "Open Windows app manager" flatpak run com.usebottles.bottles
   elif command -v bottles >/dev/null 2>&1; then
-    run_detached "Open Bottles" bottles
+    run_detached "Open Windows app manager" bottles
   else
     printf 'Bottles is not installed yet.\n\n'
     guide_action
     return 1
   fi
+}
+
+repair_action() {
+  local status
+  status="$(status_json)"
+  WINDOWS_STATUS="$status" python - <<'PY'
+import json
+import os
+
+status = json.loads(os.environ["WINDOWS_STATUS"])
+provision = status.get("provisioning", {}) if isinstance(status, dict) else {}
+recommended = provision.get("recommended_next") or "seven windows provision --yes"
+print("SevenOS Windows Bridge repair")
+print("=============================")
+print(f"libvirtd: {status.get('libvirtd', 'MISS')}")
+print(f"default network: {status.get('default_network', 'MISS')}")
+print(f"windows VM: {status.get('windows_vm', 'MISS')}")
+print(f"ready to create VM: {str(provision.get('ready_to_create_vm', False)).lower()}")
+print("")
+print("Planned actions:")
+actions = 0
+if status.get("libvirtd") != "OK":
+    print("- enable/start libvirtd.service")
+    actions += 1
+if status.get("default_network") != "OK":
+    print("- prepare libvirt default network")
+    actions += 1
+if status.get("windows_vm") == "MISS" and provision.get("ready_to_create_vm"):
+    print(f"- create/register VM: {recommended}")
+    actions += 1
+elif status.get("windows_vm") == "MISS":
+    print("- prepare official Windows media and VirtIO assets")
+    actions += 1
+if actions == 0:
+    print("- none: Windows Bridge is already registered and ready")
+PY
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    printf '\nDRY-RUN commands:\n'
+    WINDOWS_STATUS="$status" python - <<'PY'
+import json, os
+status=json.loads(os.environ["WINDOWS_STATUS"])
+if status.get("libvirtd") != "OK":
+    print("  sudo systemctl enable --now libvirtd.service")
+if status.get("default_network") != "OK":
+    print("  seven windows network")
+PY
+    WINDOWS_STATUS="$status" python - <<'PY'
+import json, os
+status=json.loads(os.environ["WINDOWS_STATUS"])
+cmd=(status.get("provisioning") or {}).get("recommended_next")
+if status.get("windows_vm") == "MISS" and cmd:
+    print(f"  {cmd}")
+PY
+    return 0
+  fi
+
+  if [[ "$(service_state libvirtd.service)" != "OK" ]]; then
+    if sudo -n true >/dev/null 2>&1; then
+      sudo systemctl enable --now libvirtd.service || true
+    else
+      printf '\nAdmin step needed:\n  sudo systemctl enable --now libvirtd.service\n'
+    fi
+  fi
+
+  if [[ "$(network_state)" != "OK" ]]; then
+    if sudo -n true >/dev/null 2>&1; then
+      "$ROOT_DIR/vm/network.sh" || true
+    else
+      printf 'Admin step needed:\n  seven windows network\n'
+    fi
+  fi
+
+  WINDOWS_STATUS="$status" python - <<'PY'
+import json
+import os
+
+status = json.loads(os.environ["WINDOWS_STATUS"])
+provision = status.get("provisioning", {}) if isinstance(status, dict) else {}
+if status.get("windows_vm") == "MISS" and provision.get("ready_to_create_vm"):
+    print("\nVM creation is ready. Run:")
+    print("  " + provision.get("recommended_next", "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio.iso"))
+PY
 }
 
 open_virt_manager() {
@@ -521,7 +852,11 @@ open_virt_manager() {
     return 0
   fi
   if command -v virt-manager >/dev/null 2>&1; then
-    run_detached "Open Virt Manager" virt-manager --connect qemu:///system
+    if virsh -c qemu:///system dominfo "$VM_NAME" >/dev/null 2>&1; then
+      "$ROOT_DIR/vm/windows-mode.sh" console --name "$VM_NAME"
+    else
+      run_detached "Open Virt Manager" virt-manager --connect qemu:///system
+    fi
   else
     printf 'Virt Manager is not installed yet.\n\n'
     guide_action
@@ -558,8 +893,23 @@ case "$ACTION" in
   guide|help)
     guide_action
     ;;
+  installer-help|disk-help)
+    installer_help_action
+    ;;
   open)
     open_best_surface
+    ;;
+  enter)
+    "$ROOT_DIR/vm/windows-mode.sh" enter "$@"
+    ;;
+  leave|exit)
+    "$ROOT_DIR/vm/windows-mode.sh" leave "$@"
+    ;;
+  sync|reconcile)
+    "$ROOT_DIR/vm/windows-mode.sh" sync "$@"
+    ;;
+  bridge-status|runtime-status|sync-status)
+    "$ROOT_DIR/vm/windows-mode.sh" bridge-status "$@"
     ;;
   apps|bottles)
     open_bottles
@@ -582,17 +932,35 @@ case "$ACTION" in
   vm|virt-manager)
     open_virt_manager
     ;;
+  provision)
+    "$PROVISIONER" provision "$@"
+    ;;
+  sources)
+    "$PROVISIONER" sources "$@"
+    ;;
+  virtio)
+    "$PROVISIONER" virtio "$@"
+    ;;
+  autounattend)
+    "$PROVISIONER" autounattend "$@"
+    ;;
   create)
     if [[ "$#" -eq 0 || " $* " != *" --iso "* ]]; then
       plan_path="$(write_vm_plan)"
       cat <<'EOF'
-Windows VM creation needs a Windows ISO before it can start.
+Windows VM creation needs official Windows media before it can start.
 
-Recommended command:
-  seven windows create --iso /path/to/windows.iso --virtio-iso /path/to/virtio-win.iso --os win11
+Recommended automatic path:
+  seven windows provision --yes
+
+Manual fallback:
+  seven windows create --iso /path/to/windows.iso --virtio-iso ~/.local/share/sevenos/vm/windows/virtio-win.iso --disk-path ~/.local/share/sevenos/vm/windows/sevenos-windows.qcow2 --os win11
 
 Why VirtIO?
   It helps Windows detect the virtual disk and network device during installation.
+
+Why not a SevenOS qcow2 download?
+  Windows is not redistributed by SevenOS. The qcow2 disk is built locally from official/user-authorized media.
 
 Open the guide any time with:
   seven windows guide
@@ -602,8 +970,14 @@ EOF
     fi
     "$ROOT_DIR/vm/windows-vm.sh" "$@"
     ;;
-  start|console|stop)
+  repair|fix|doctor-vm)
+    repair_action "$@"
+    ;;
+  start|console|stop|fix-network|network-fix)
     "$ROOT_DIR/vm/windows-mode.sh" "$ACTION" "$@"
+    ;;
+  boot-installer|installer-boot)
+    "$ROOT_DIR/vm/windows-mode.sh" boot-installer "$@"
     ;;
   network)
     "$ROOT_DIR/vm/network.sh" "$@"

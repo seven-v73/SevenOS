@@ -22,7 +22,10 @@ EOF
 
 action_rows() {
   cat <<'EOF'
+home.open	Desktop	Open SevenOS Home	seven home	safe	Open the public SevenOS Home surface for mini OS, settings, store, backup and recent actions.
 hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
+actions.open	Desktop	Open Action Center	seven actions open	safe	Open the graphical SevenOS action center for normal users.
+startup.audit	Desktop	Startup Performance Audit	./scripts/startup-audit.sh	safe	Check that public SevenOS apps open from cache and do not block on deep audits.
 hub.status	Desktop	Hub Status	seven hub status	safe	Show whether Seven Hub is ready as the default product control surface.
 hub.plan	Desktop	Hub Product Plan	seven hub plan	safe	Show missing Hub productization work before changing the desktop.
 about.status	System	About SevenOS	seven about	safe	Show the public SevenOS identity, edition, active mini OS, channel and distribution state.
@@ -137,6 +140,12 @@ improve.deployment.yes	System	Improve Deployment Batch	seven improve deployment 
 improve.compatibility	System	Improve Compatibility	seven improve compatibility	packages	Install or prepare Windows compatibility improvements.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.
+motion.status	Desktop	Motion Status	seven motion	safe	Show the active SevenOS animation preset and compositor motion state.
+motion.ux_doctor	Desktop	Motion UX Doctor	seven motion ux-doctor	safe	Validate mini OS passage overlays, declared motion and accessibility-ready presets.
+motion.premium	Desktop	Enable Premium Motion	seven motion premium	changes	Apply a visible SevenOS motion preset for windows, layers and workspaces.
+motion.profile	Desktop	Apply Profile Motion	seven motion profile	changes	Apply the active mini OS motion language.
+motion.auto	Desktop	Automatic Motion	seven motion set auto	changes	Let each mini OS choose its own motion preset.
+motion.reduced	Desktop	Reduced Motion	seven motion reduced	changes	Apply a calmer animation preset for accessibility and low-power sessions.
 profile.status	Profiles	Profile Status	seven profile status	safe	Show installed and active profile state.
 profile.current	Profiles	Current Profile	seven profile current	safe	Show the active profile in detail.
 profile.guide	Profiles	Profile Guide	seven profile guide	safe	Show recommended actions for the active profile.
@@ -162,8 +171,19 @@ profile.strict.pulse	Profiles	Strict Pulse Shell	seven profile exec pulse --cont
 profile.bootstrap.active	Profiles	Bootstrap Active Profile	seven profile bootstrap	safe	Create the manifest, checklist and launcher for the active profile workspace.
 profile.bootstrap.all	Profiles	Bootstrap All Profiles	seven profile bootstrap all	safe	Create workspace manifests, checklists and launchers for every SevenOS profile.
 profile.open	Profiles	Open Active Workspace	seven profile open	safe	Open the current profile workspace.
+profile.experience	Profiles	Profile Experience State	seven profile experience	safe	Show the active mini OS isolated experience manifest: config, theme, wallpaper and workspace.
+bridge.status	Profiles	Mini OS Bridge	seven bridge	safe	Show inbox, outbox and SevenOS object counts for every mini OS.
+bridge.init	Profiles	Initialize Mini OS Bridge	seven bridge init	safe	Create bridge inbox/outbox, session files and relation map for every mini OS.
+bridge.relations	Profiles	Mini OS Relations	seven bridge relations	safe	Show which mini OS can exchange assets, reports, captures and cultural objects.
+bridge.objects	Profiles	SevenOS Objects	seven bridge objects	safe	List explicit SevenOS objects exchanged between mini OS experiences.
+bridge.graph	Profiles	Mini OS Relation Graph	seven bridge graph	safe	Show the relation graph with nodes, channels, inboxes, outboxes and object counts.
+bridge.doctor	Profiles	Mini OS Bridge Doctor	seven bridge doctor	safe	Validate mini OS isolation, session memory, passage state, inbox/outbox and relations.
+bridge.session	Profiles	Mini OS Session Memory	seven bridge session	safe	Show the active mini OS recent apps, paths, objects, tasks and mood.
+bridge.switch.baobab	Profiles	Passage To Baobab	seven bridge switch --to baobab	safe	Preview the passage language, motion and boundaries before entering Baobab.
+bridge.switch.forge	Profiles	Passage To Forge	seven bridge switch --to forge	safe	Preview the passage language, motion and boundaries before entering Forge.
+bridge.baobab_studio	Profiles	Send Baobab To Studio	seven bridge send --from baobab --to studio --kind textile	safe	Send a declared cultural reference from Baobab to Studio without sharing hidden config state.
 profile.activate.equinox	Profiles	Activate Equinox	seven profile activate equinox	changes	Switch to the balanced general SevenOS mini OS.
-profile.activate.baobab	Profiles	Activate Baobab	seven profile activate baobab	changes	Switch to the African culture and learning mini OS.
+profile.activate.baobab	Profiles	Activate Baobab	seven profile activate baobab	changes	Switch to the African cultural mini OS.
 profile.activate.forge	Profiles	Activate Forge DevOps	seven profile activate forge	changes	Switch to the development, containers and deployment mini OS.
 profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch to the cybersecurity mini OS.
 profile.activate.studio	Profiles	Activate Studio	seven profile activate studio	changes	Switch to the creator mini OS.
@@ -175,6 +195,50 @@ runtime.capabilities	Profiles	Runtime Capabilities	seven runtime capabilities	sa
 runtime.doctor	Profiles	Runtime Doctor	seven runtime doctor	safe	Check cgroups, scheduler, context, zram and future checkpoint hooks for runtime orchestration.
 profile.equinox	Profiles	Install Equinox	seven profile install equinox	packages	Install the balanced global SevenOS profile.
 profile.baobab	Profiles	Install Baobab	seven profile install baobab	packages	Install the cultural SevenOS profile.
+baobab.status	Baobab	Baobab Status	seven baobab	safe	Show the Baobab cultural mini OS contract.
+baobab.bootstrap	Baobab	Bootstrap Baobab	seven baobab bootstrap	safe	Create the Baobab offline workspace, manifest and module directories.
+baobab.install_core	Baobab	Install Baobab Core	seven baobab install-core	packages	Install the lightweight Baobab core package set including fonts and MPV.
+baobab.install_optional	Baobab	Install Baobab Optional	seven baobab install-optional	packages	Install optional Baobab repo packages and AUR/community candidates when a helper is available.
+baobab.capabilities	Baobab	Baobab Capabilities	seven baobab capabilities	safe	Show how Baobab tools map to culture, offline use, education, AI, media, sync and creation.
+baobab.capability_doctor	Baobab	Baobab Capability Doctor	seven baobab capability-doctor	safe	Check Baobab product capabilities against the cultural OS tool strategy.
+baobab.config	Baobab	Baobab Config Roots	seven baobab config	safe	Show Baobab profile-owned config, data, cache and service config files.
+baobab.runtime	Baobab	Baobab Runtime	seven baobab runtime	safe	Show the Baobab runtime environment and profile-specific service roots.
+baobab.config_doctor	Baobab	Baobab Config Doctor	seven baobab config-doctor	safe	Validate that Baobab config, data and cache stay inside the Baobab mini OS profile.
+baobab.service_doctor	Baobab	Baobab Service Doctor	seven baobab service-doctor	safe	Validate profile-owned Baobab launchers for sound, local search, AI and narration.
+baobab.app_doctor	Baobab	Baobab App Doctor	seven baobab app-doctor	safe	Validate profile-owned Baobab desktop launchers and public app entries.
+baobab.apply_config	Baobab	Apply Baobab Config	seven baobab apply-config	safe	Materialize profile-owned Baobab configs for MPV, Waybar, Eww, Meilisearch, Ollama, Piper, Argos and sync.
+baobab.sound	Baobab	Baobab Sound	seven baobab sound	safe	Open Baobab Sound through the profile-owned MPV configuration and local audio library.
+baobab.open	Baobab	Open Baobab	seven baobab open	safe	Open the native Baobab cultural OS surface.
+baobab.native	Baobab	Baobab Native	seven baobab native	safe	Open the French-first native Baobab interface for patrimoine, pays, récits and musée.
+baobab.village	Baobab	Baobab Village Page	seven baobab village	safe	Show the generated local Village page path.
+baobab.heritage_gallery	Baobab	Heritage Gallery	seven baobab heritage	safe	Open the visual offline heritage gallery.
+baobab.museum	Baobab	Baobab Museum	seven baobab museum	safe	Open the generated offline Baobab museum scene.
+baobab.story	Baobab	Story Mode	seven baobab story	safe	Open the generated offline Baobab storytelling surface.
+baobab.explore_map	Baobab	Explore Africa	seven baobab explore	safe	Open the generated offline cultural map prototype.
+baobab.countries	Baobab	Africa Country Index	seven baobab countries	safe	Show the embedded offline Africa country index.
+baobab.country	Baobab	Country Detail	seven baobab country Burkina Faso	safe	Show an offline country detail from the Baobab Africa index.
+baobab.unesco	Baobab	UNESCO ICH Index	seven baobab unesco	safe	Show African-linked UNESCO intangible cultural heritage entries imported from the local CSV.
+baobab.datasets	Baobab	Cultural Datasets	seven baobab datasets	safe	Show local CSV, TSV and JSON sources available to Baobab.
+baobab.catalog	Baobab	Offline Catalog	seven baobab catalog	safe	Show the Baobab offline starter catalog.
+baobab.search	Baobab	Search Baobab	seven baobab search wisdom	safe	Search the Baobab offline cultural catalog.
+baobab.stats	Baobab	Catalog Stats	seven baobab stats	safe	Show Baobab offline catalog statistics.
+baobab.db	Baobab	SQLite Index	seven baobab db	safe	Show the Baobab local SQLite index status.
+baobab.engines	Baobab	Engine Readiness	seven baobab engines	safe	Show local readiness for Baobab shell, AI, reader, 3D and offline engines.
+baobab.tools	Baobab	Baobab Tools	seven baobab tools	safe	Show the cultural OS tool strategy: shell, identity, offline content, AI, education, media, sync and creation.
+baobab.tool_doctor	Baobab	Baobab Tool Doctor	seven baobab tool-doctor	safe	Validate Baobab core tools and optional immersive/community engines.
+baobab.languages	Baobab	African Languages	seven baobab languages	safe	Show Baobab starter African language metadata and local validation status.
+baobab.integrations	Baobab	Open Source Engines	seven baobab integrations	safe	List Baobab open source engine candidates.
+baobab.roadmap	Baobab	Integration Roadmap	seven baobab roadmap	safe	Show the Baobab shell, heritage, 3D, AI and offline integration roadmap.
+baobab.packs	Baobab	Cultural Packs	seven baobab packs	safe	List local Baobab cultural packs.
+baobab.audit_packs	Baobab	Audit Cultural Packs	seven baobab audit-packs	safe	Check Baobab packs for provenance, license, curator, confidence, language and country metadata.
+baobab.seed_packs	Baobab	Seed Starter Packs	seven baobab seed-packs	safe	Create and import starter packs for Burkina food, Mandingue sound and Faso Danfani fashion.
+baobab.enrich_packs	Baobab	Prepare Living Packs	seven baobab enrich-packs	safe	Add interview, consent, media and community review templates to Baobab packs.
+baobab.sample_fieldwork	Baobab	Sample Fieldwork	seven baobab sample-fieldwork	safe	Create sample-only fieldwork files to demonstrate collection readiness without claiming real validation.
+baobab.scaffold_pack	Baobab	New Cultural Pack	seven baobab scaffold-pack local-heritage	safe	Create a local Baobab cultural pack scaffold.
+baobab.modules	Baobab	Baobab Modules	seven baobab modules	safe	Show Heritage, Story, Sound, Explore, Museum, Languages, Fashion, Food, Wisdom and Market modules.
+baobab.heritage	Baobab	Baobab Heritage	seven baobab module heritage	safe	Show the heritage library module.
+baobab.explore	Baobab	Explore Africa	seven baobab module explore	safe	Show the interactive Africa exploration module.
+baobab.fashion	Baobab	Baobab Fashion	seven baobab module fashion	safe	Show the African fashion and ElegantStyle bridge module.
 profile.forge	Profiles	Install Forge DevOps	seven profile install forge	packages	Install the development, containers and deployment mini OS stack.
 profile.shield	Profiles	Install Shield	seven profile install shield	packages	Install the cybersecurity mini OS stack.
 profile.studio	Profiles	Install Studio	seven profile install studio	packages	Install the creator mini OS stack.
@@ -201,7 +265,7 @@ security.lab.forensics	Security	Open Forensics Lab	seven shield lab --preset for
 security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset reversing	safe	Open an offline reversing lab.
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
 windows.plan	Windows	Windows Plan	seven windows plan	safe	Show prioritized Windows Mode setup actions.
-windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Bottles, Wine and KVM Windows paths.
+windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Windows Bridge paths.
 windows.aur_helpers	Windows	Install AUR Helpers	./install.sh aur-helpers --yes	packages	Install yay and paru for SevenOS AUR-backed Windows helpers.
 windows.catalog	Windows	Windows App Catalog	seven windows catalog	safe	List app-first Windows workflows and preferred engines.
 windows.resolve.photoshop	Windows	Resolve Photoshop	seven windows resolve photoshop	safe	Show whether Photoshop should use Bottles, Wine or VM fallback.
@@ -212,8 +276,8 @@ windows.enter	Windows	Enter Windows Bridge	seven windows enter	changes	Start Win
 windows.leave	Windows	Leave Windows Bridge	seven windows leave	changes	Save or stop the Windows VM to free resources when leaving the mini OS.
 windows.sync	Windows	Sync Windows Bridge	seven windows sync	changes	Reconcile the Windows VM state with the active SevenOS mini OS.
 windows.bridge_status	Windows	Windows Bridge Runtime	seven windows bridge-status	safe	Show whether the active profile, VM, console and watchdog are synchronized.
-windows.open	Windows	Open Windows Mode	seven windows open	safe	Open Bottles or Virt Manager depending on what is available.
-windows.apps	Windows	Windows Apps	seven windows apps	safe	Open Bottles for Windows applications.
+windows.open	Windows	Open Windows Mode	seven windows open	safe	Open the best available Windows Bridge surface.
+windows.apps	Windows	Windows Apps	seven windows apps	safe	Open Windows applications.
 windows.vm	Windows	Windows VM	seven windows vm	safe	Open Virt Manager for the Windows VM.
 windows.sources	Windows	Windows Sources	seven windows sources	safe	Explain the legal Windows media sources used by SevenOS.
 windows.provision	Windows	Provision Windows	seven windows provision	safe	Prepare the local Windows Bridge media and qcow2 provisioning flow.
@@ -270,7 +334,7 @@ flatpak.install	Apps	Install Default Flatpaks	seven flatpak install	packages	Ins
 sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.
 sevenpkg.plan	Apps	Software Plan	sevenpkg plan	safe	Show prioritized software and app completion actions.
 sevenpkg.meta	Apps	Meta Packages	sevenpkg meta	safe	List SevenOS software bundles.
-sevenpkg.baobab	Apps	Install Baobab Bundle	sevenpkg install baobab	packages	Install the African culture and learning software bundle.
+sevenpkg.baobab	Apps	Install Baobab Bundle	sevenpkg install baobab	packages	Install the African cultural OS software bundle.
 sevenpkg.forge	Apps	Install Forge Bundle	sevenpkg install forge	packages	Install the developer software bundle.
 sevenpkg.shield	Apps	Install Shield Bundle	sevenpkg install shield	packages	Install the cybersecurity software bundle.
 sevenpkg.studio	Apps	Install Studio Bundle	sevenpkg install studio	packages	Install the creative production software bundle.
@@ -410,6 +474,13 @@ case "$ACTION" in
     ;;
   list)
     list_output
+    ;;
+  open|gui|center)
+    if is_dry_run; then
+      printf '%s\n' "$ROOT_DIR/bin/seven-actions-native"
+      exit 0
+    fi
+    "$ROOT_DIR/bin/seven-actions-native"
     ;;
   category)
     shift

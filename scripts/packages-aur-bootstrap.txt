@@ -1,0 +1,3 @@
+# Minimal official packages required to build SevenOS AUR helpers
+base-devel
+git

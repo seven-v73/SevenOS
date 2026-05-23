@@ -10,7 +10,10 @@ JSON_OUTPUT=0
 WORKSPACE="${SEVENOS_SHIELD_WORKSPACE:-$HOME/ShieldLab}"
 STATE_DIR="$WORKSPACE/.sevenos"
 POLICY_FILE="$STATE_DIR/shield.json"
+PERSONA_FILE="$STATE_DIR/persona.json"
 SCOPE_FILE="$STATE_DIR/scope.json"
+NETWORK_GUARD_FILE="$STATE_DIR/network-guard.json"
+EVIDENCE_INDEX_FILE="$STATE_DIR/evidence-index.json"
 CHECKLIST_FILE="$STATE_DIR/SHIELD_CHECKLIST.md"
 SANDBOX_FILE="$STATE_DIR/SANDBOXES.md"
 LAUNCHER_DIR="$STATE_DIR/launchers"
@@ -76,6 +79,12 @@ write_policy() {
     "preserve evidence",
     "never attack systems without permission"
   ],
+  "persona_engine": {
+    "status": "seven shield persona --json",
+    "switch": "seven shield persona <persona>",
+    "session": "seven shield session ephemeral",
+    "cleanup": "seven shield cleanup"
+  },
   "presets": {
     "web": {
       "command": "seven shield lab --preset web",
@@ -100,6 +109,18 @@ write_policy() {
 EOF
 }
 
+write_persona() {
+  if is_dry_run; then
+    printf 'write %q\n' "$PERSONA_FILE"
+    return 0
+  fi
+
+  mkdir -p "$STATE_DIR"
+  if [[ ! -s "$PERSONA_FILE" ]]; then
+    "$ROOT_DIR/security/shield-persona.sh" persona safe --json >/dev/null
+  fi
+}
+
 write_scope() {
   if is_dry_run; then
     printf 'write %q\n' "$SCOPE_FILE"
@@ -107,6 +128,7 @@ write_scope() {
   fi
 
   mkdir -p "$STATE_DIR"
+  [[ -s "$SCOPE_FILE" ]] && return 0
   cat > "$SCOPE_FILE" <<EOF
 {
   "schema": "sevenos.shield-scope.v1",
@@ -128,6 +150,22 @@ write_scope() {
 EOF
 }
 
+write_network_guard() {
+  if is_dry_run; then
+    printf 'write %q\n' "$NETWORK_GUARD_FILE"
+    return 0
+  fi
+  "$ROOT_DIR/security/shield-network-guard.sh" apply --json >/dev/null || true
+}
+
+write_evidence_index() {
+  if is_dry_run; then
+    printf 'write %q\n' "$EVIDENCE_INDEX_FILE"
+    return 0
+  fi
+  "$ROOT_DIR/security/shield-evidence.sh" init --json >/dev/null || true
+}
+
 write_checklist() {
   if is_dry_run; then
     printf 'write %q\n' "$CHECKLIST_FILE"
@@ -145,6 +183,7 @@ Shield is the SevenOS trust layer: firewall, sandbox, audit tools and safe labs.
 - [ ] Install security packages: \`seven improve security --apply --yes\`
 - [ ] Enable firewall posture: \`seven shield enable\`
 - [ ] Complete Shield profile: \`seven profile install shield\`
+- [ ] Choose a persona: \`seven shield personas\`
 - [ ] Open a web lab: \`seven shield lab --preset web\`
 - [ ] Define audit scope: \`seven shield scope\`
 
@@ -163,6 +202,9 @@ Shield is the SevenOS trust layer: firewall, sandbox, audit tools and safe labs.
 - Status source: \`seven shield status --json\`
 - Workspace source: \`seven shield workspace --json\`
 - Scope source: \`seven shield scope --json\`
+- Persona source: \`seven shield persona --json\`
+- Network Guard source: \`seven shield network --json\`
+- Evidence source: \`seven shield evidence --json\`
 EOF
 }
 
@@ -262,13 +304,16 @@ EOF
 
 bootstrap() {
   if is_dry_run; then
-    printf 'mkdir -p %q %q %q %q %q\n' "$WORKSPACE" "$WORKSPACE/Labs" "$WORKSPACE/Reports" "$WORKSPACE/Captures" "$WORKSPACE/Evidence"
+    printf 'mkdir -p %q %q %q %q %q %q %q %q\n' "$WORKSPACE" "$WORKSPACE/Labs" "$WORKSPACE/Reports" "$WORKSPACE/Captures" "$WORKSPACE/Evidence" "$WORKSPACE/Ephemeral" "$WORKSPACE/Quarantine" "$WORKSPACE/Cases"
   else
-    mkdir -p "$WORKSPACE/Labs" "$WORKSPACE/Reports" "$WORKSPACE/Captures" "$WORKSPACE/Evidence"
+    mkdir -p "$WORKSPACE/Labs" "$WORKSPACE/Reports" "$WORKSPACE/Captures" "$WORKSPACE/Evidence" "$WORKSPACE/Ephemeral" "$WORKSPACE/Quarantine" "$WORKSPACE/Cases"
   fi
 
   write_policy
+  write_persona
   write_scope
+  write_network_guard
+  write_evidence_index
   write_checklist
   write_sandbox_notes
   write_launchers
@@ -291,7 +336,10 @@ status_json() {
   printf '"workspace":%s,' "$(printf '%s' "$WORKSPACE" | json_string)"
   printf '"state_dir":%s,' "$(printf '%s' "$STATE_DIR" | json_string)"
   printf '"policy":%s,' "$(file_state "$POLICY_FILE" | json_string)"
+  printf '"persona":%s,' "$(file_state "$PERSONA_FILE" | json_string)"
   printf '"scope":%s,' "$(file_state "$SCOPE_FILE" | json_string)"
+  printf '"network_guard":%s,' "$(file_state "$NETWORK_GUARD_FILE" | json_string)"
+  printf '"evidence_index":%s,' "$(file_state "$EVIDENCE_INDEX_FILE" | json_string)"
   printf '"checklist":%s,' "$(file_state "$CHECKLIST_FILE" | json_string)"
   printf '"sandboxes":%s,' "$(file_state "$SANDBOX_FILE" | json_string)"
   printf '"secure_browser_launcher":%s,' "$(executable_state "$LAUNCHER_DIR/secure-browser.sh" | json_string)"
@@ -308,7 +356,10 @@ status_human() {
   printf '========================\n'
   printf 'Workspace:  %s\n' "$WORKSPACE"
   printf 'Policy:     %s\n' "$(file_state "$POLICY_FILE")"
+  printf 'Persona:    %s\n' "$(file_state "$PERSONA_FILE")"
   printf 'Scope:      %s\n' "$(file_state "$SCOPE_FILE")"
+  printf 'Network:    %s\n' "$(file_state "$NETWORK_GUARD_FILE")"
+  printf 'Evidence:   %s\n' "$(file_state "$EVIDENCE_INDEX_FILE")"
   printf 'Checklist:  %s\n' "$(file_state "$CHECKLIST_FILE")"
   printf 'Sandboxes:  %s\n' "$(file_state "$SANDBOX_FILE")"
   printf 'Browser:    %s\n' "$(executable_state "$LAUNCHER_DIR/secure-browser.sh")"

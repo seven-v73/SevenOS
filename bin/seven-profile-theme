@@ -8,9 +8,26 @@ WAYBAR_CONFIG="$CONFIG_HOME/waybar/config.jsonc"
 WAYBAR_STYLE="$CONFIG_HOME/waybar/style.css"
 PROFILE_UI="$CONFIG_HOME/sevenos/profile-ui.json"
 
+active_profile_key() {
+  local state_file="$CONFIG_HOME/sevenos/profile.env"
+  if [[ -f "$state_file" ]]; then
+    # shellcheck disable=SC1090
+    source "$state_file"
+    printf '%s' "${SEVENOS_ACTIVE_PROFILE:-equinox}"
+  else
+    printf 'equinox'
+  fi
+}
+
+profile_theme_conf() {
+  printf '%s/sevenos/profiles/%s/theme.conf' "$CONFIG_HOME" "$(active_profile_key)"
+}
+
 theme_mode() {
   local mode
-  if [[ -f "$THEME_CONF" ]]; then
+  if [[ -f "$(profile_theme_conf)" ]]; then
+    mode="$(awk -F= 'tolower($1) ~ /^(mode|theme_mode|sevenos_theme_mode)$/ {print $2; exit}' "$(profile_theme_conf)" | tr -d '[:space:]\"')"
+  elif [[ -f "$THEME_CONF" ]]; then
     mode="$(awk -F= 'tolower($1) ~ /^(mode|theme_mode|sevenos_theme_mode)$/ {print $2; exit}' "$THEME_CONF" | tr -d '[:space:]\"')"
   else
     mode=""
@@ -23,6 +40,15 @@ theme_mode() {
 
 profile_json() {
   "$ROOT_DIR/profiles/profile-manager.sh" current --json
+}
+
+profile_key() {
+  PROFILE_JSON="$(profile_json)" python - <<'PY'
+import json
+import os
+
+print(json.loads(os.environ["PROFILE_JSON"]).get("key", "equinox"))
+PY
 }
 
 base_config() {
@@ -118,6 +144,8 @@ dark_profiles = {
     "horizon": ("rgba(16, 42, 54, 0.50)", "cloud sky glass"),
     "pulse": ("rgba(12, 38, 58, 0.52)", "performance cyan glass"),
 }
+
+
 light_profiles = {
     "equinox": ("rgba(255, 255, 255, 0.66)", "balanced light glass"),
     "baobab": ("rgba(250, 255, 244, 0.76)", "warm cultural light"),
@@ -249,35 +277,688 @@ print(base_style.rstrip() + override)
 PY
 }
 
+is_specialized_waybar_profile() {
+  case "$1" in
+    forge|shield|studio|windows|pulse) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+render_specialized_config() {
+  local key="$1"
+  PROFILE_JSON="$(profile_json)" PROFILE_KEY="$key" python - <<'PY'
+import json
+import os
+
+profile = json.loads(os.environ["PROFILE_JSON"])
+key = os.environ["PROFILE_KEY"]
+
+profiles = {
+    "forge": {
+        "label": "Forge",
+        "context": "build rail",
+        "center": "Établi technique",
+        "accent": "Projet, build, conteneurs, services",
+        "switch_label": "OS",
+        "position": "top",
+        "height": 32,
+        "spacing": 6,
+        "margin_top": 6,
+        "margin_left": 8,
+        "margin_right": 8,
+        "modules_left": ["custom/identity", "custom/project", "custom/context"],
+        "modules_center": ["hyprland/workspaces"],
+        "modules_right": ["custom/containers", "custom/services", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"],
+        "modules": ["custom/project", "custom/containers", "custom/services"],
+        "custom": {
+            "project": {"format": "workspace", "tooltip": "Ouvrir l'espace Forge", "on-click": "seven profile open forge"},
+            "containers": {"exec": "docker info >/dev/null 2>&1 && echo 'Containers' || echo 'Containers off'", "interval": 20, "tooltip": "Docker/Podman et services locaux", "on-click": "seven-terminal forge -- bash -lc 'docker ps; printf \"\\n\"; podman ps 2>/dev/null || true; read -r'"},
+            "services": {"format": "daemons", "tooltip": "Inspecter les services Forge", "on-click": "seven-terminal forge -- bash -lc 'systemctl --user --no-pager --type=service --state=running; read -r'"},
+        },
+    },
+    "shield": {
+        "label": "Shield",
+        "context": "authorized scope",
+        "center": "Lab autorisé",
+        "accent": "Périmètre, VPN, capture, preuves",
+        "switch_label": "OS",
+        "position": "top",
+        "height": 38,
+        "spacing": 5,
+        "margin_top": 0,
+        "margin_left": 0,
+        "margin_right": 0,
+        "modules_left": ["custom/identity", "custom/scope", "custom/vpn"],
+        "modules_center": ["custom/context"],
+        "modules_right": ["custom/recorder", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"],
+        "modules": ["custom/scope", "custom/vpn", "custom/recorder"],
+        "custom": {
+            "scope": {"format": "Scope", "tooltip": "Centre Shield et périmètre autorisé", "on-click": "seven-shield-center-native"},
+            "vpn": {"exec": "seven-waybar-status vpn", "return-type": "json", "interval": 10, "tooltip": True, "on-click": "seven-waybar-action security"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-waybar-action system", "on-click-right": "seven-recorder area"},
+        },
+    },
+    "studio": {
+        "label": "Studio",
+        "context": "atelier vivant",
+        "center": "Canvas vivant",
+        "accent": "Canvas, média, capture, export",
+        "switch_label": "Changer",
+        "position": "top",
+        "height": 42,
+        "spacing": 10,
+        "margin_top": 12,
+        "margin_left": 18,
+        "margin_right": 18,
+        "modules_left": ["custom/identity", "custom/profile-switch"],
+        "modules_center": ["custom/context", "custom/media"],
+        "modules_right": ["custom/canvas", "custom/recorder", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock"],
+        "modules": ["custom/canvas", "custom/media", "custom/recorder"],
+        "custom": {
+            "canvas": {"format": "Canvas", "tooltip": "Ouvrir l'espace Studio", "on-click": "seven profile open studio"},
+            "media": {"exec": "seven-waybar-status media", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "playerctl play-pause", "on-click-right": "seven-quick-settings audio"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder stop", "on-click-right": "seven-recorder area"},
+        },
+    },
+    "windows": {
+        "label": "Windows",
+        "context": "compat bridge",
+        "center": "VM et apps",
+        "accent": "Bridge, VM, apps, dossiers partagés",
+        "switch_label": "OS",
+        "position": "bottom",
+        "height": 38,
+        "spacing": 7,
+        "margin_top": 0,
+        "margin_bottom": 8,
+        "margin_left": 10,
+        "margin_right": 10,
+        "modules_left": ["custom/identity", "custom/bridge", "custom/apps"],
+        "modules_center": ["custom/context"],
+        "modules_right": ["custom/vm", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"],
+        "modules": ["custom/bridge", "custom/vm", "custom/apps"],
+        "custom": {
+            "bridge": {"format": "Bridge", "tooltip": "Ouvrir Windows Bridge", "on-click": "seven windows enter"},
+            "vm": {"format": "VM", "tooltip": "Console et état de la VM", "on-click": "seven windows vm"},
+            "apps": {"format": "Apps", "tooltip": "Applications Windows et fallback", "on-click": "seven windows apps"},
+        },
+    },
+    "pulse": {
+        "label": "Pulse",
+        "context": "low latency stage",
+        "center": "Stage performance",
+        "accent": "FPS, latence, GameMode, capture",
+        "switch_label": "OS",
+        "position": "top",
+        "height": 34,
+        "spacing": 5,
+        "margin_top": 4,
+        "margin_left": 6,
+        "margin_right": 6,
+        "modules_left": ["custom/identity", "custom/performance", "custom/gamemode"],
+        "modules_center": ["hyprland/workspaces", "custom/context"],
+        "modules_right": ["custom/recorder", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"],
+        "modules": ["custom/performance", "custom/gamemode", "custom/recorder"],
+        "custom": {
+            "performance": {"format": "perf", "tooltip": "Plan performance Pulse", "on-click": "seven profile center pulse"},
+            "gamemode": {"exec": "pgrep -x gamemoded >/dev/null 2>&1 && echo 'GameMode' || echo 'GameMode prêt'", "interval": 30, "tooltip": "Optimisation gaming locale"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder stop", "on-click-right": "seven-recorder area"},
+        },
+    },
+}
+
+spec = profiles[key]
+config = {
+    "schema": "sevenos.profile.waybar.v1",
+    "profile": key,
+    "layer": "top",
+    "position": spec.get("position", "top"),
+    "height": spec.get("height", 36),
+    "spacing": spec.get("spacing", 8),
+    "margin-top": spec.get("margin_top", 8),
+    "margin-bottom": spec.get("margin_bottom", 0),
+    "margin-left": spec.get("margin_left", 12),
+    "margin-right": spec.get("margin_right", 12),
+    "modules-left": spec.get("modules_left", ["custom/identity", "custom/profile-switch", "custom/spotlight"]),
+    "modules-center": spec.get("modules_center", ["custom/context", "hyprland/workspaces"]),
+    "modules-right": spec.get("modules_right", [*spec["modules"], "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock"]),
+    "custom/identity": {
+        "format": spec["label"],
+        "tooltip": profile.get("title") or spec["label"],
+        "on-click": f"seven profile center {key}",
+        "on-click-right": f"seven profile open {key}",
+    },
+    "custom/profile-switch": {
+        "format": spec.get("switch_label", "OS"),
+        "tooltip": "Basculer vers un autre mini-OS SevenOS",
+        "on-click": "seven-waybar-action profile",
+        "on-click-right": "seven-profile-center-native",
+    },
+    "custom/spotlight": {
+        "format": "Rechercher",
+        "tooltip": "Spotlight SevenOS",
+        "on-click": "seven-spotlight field",
+    },
+    "custom/context": {
+        "format": spec["context"],
+        "tooltip": spec["accent"],
+    },
+    "hyprland/workspaces": {
+        "disable-scroll": True,
+        "all-outputs": True,
+        "active-only": False,
+        "persistent-workspaces": {"*": 5},
+        "format": "{icon}",
+        "format-icons": {"1": "1", "2": "2", "3": "3", "4": "4", "5": "5", "default": "•"},
+    },
+    "custom/wifi": {
+        "exec": "seven-waybar-status wifi",
+        "return-type": "json",
+        "interval": 5,
+        "tooltip": True,
+        "on-click": "seven-waybar-action network",
+        "on-click-right": "seven-quick-settings wifi",
+        "on-click-middle": "seven-wifi toggle",
+    },
+    "custom/bluetooth": {
+        "exec": "seven-waybar-status bluetooth",
+        "return-type": "json",
+        "interval": 5,
+        "tooltip": True,
+        "on-click": "seven-waybar-action bluetooth",
+        "on-click-right": "seven-quick-settings bluetooth",
+        "on-click-middle": "seven-bluetooth toggle",
+    },
+    "pulseaudio": {
+        "format": "{volume}%",
+        "format-muted": "muet",
+        "tooltip": False,
+        "on-click": "seven-waybar-action audio",
+        "on-click-right": "seven-quick-settings audio",
+        "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
+        "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
+        "on-click-middle": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    },
+    "battery": {
+        "format": "{capacity}%",
+        "states": {"warning": 30, "critical": 15},
+        "on-click": "seven-waybar-action battery",
+        "on-click-right": "seven-quick-settings power",
+    },
+    "clock": {
+        "format": "{:%H:%M}",
+        "tooltip-format": "{:%A %d %B %Y}",
+        "on-click": "seven-waybar-action clock",
+        "on-click-right": "seven-quick-settings time",
+    },
+}
+for name, payload in spec["custom"].items():
+    config[f"custom/{name}"] = payload
+print(json.dumps(config, indent=2, ensure_ascii=False))
+PY
+}
+
+render_specialized_style() {
+  local key="$1"
+  PROFILE_KEY="$key" python - <<'PY'
+import os
+
+key = os.environ["PROFILE_KEY"]
+common = """
+* {
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  font-family: "Noto Sans", "Noto Sans Symbols", "Noto Color Emoji", sans-serif;
+}
+
+#custom-wifi.connected,
+#custom-bluetooth.connected,
+#custom-bluetooth.on,
+#custom-vpn.active,
+#custom-gamemode {
+  color: @accent;
+}
+
+#custom-wifi.idle,
+#custom-wifi.weak,
+#custom-bluetooth.off {
+  color: @warn;
+}
+
+#custom-wifi.missing,
+#custom-wifi.off,
+#custom-bluetooth.missing,
+#battery.critical {
+  color: @danger;
+}
+
+#custom-vpn.hidden,
+#custom-recorder.hidden,
+#custom-media.stopped,
+#custom-media.paused {
+  opacity: 0.36;
+}
+
+tooltip {
+  background: @tooltip_bg;
+  color: @text;
+  border: 1px solid @line;
+  border-radius: @radius;
+}
+"""
+
+styles = {
+    "forge": {
+        "accent": "#F6B44B",
+        "warn": "#F9E2AF",
+        "danger": "#FF6B5E",
+        "text": "#F8EEDB",
+        "tooltip_bg": "rgba(24, 20, 16, 0.96)",
+        "line": "rgba(246, 180, 75, 0.42)",
+        "radius": "3px",
+        "css": """
+window#waybar {
+  background: linear-gradient(90deg, rgba(15, 14, 12, 0.94), rgba(38, 28, 18, 0.94));
+  color: @text;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 2px solid @accent;
+}
+
+#custom-identity {
+  background: @accent;
+  color: #15120E;
+  font-weight: 800;
+  font-size: 12px;
+  margin: 4px 0 4px 6px;
+  padding: 0 16px;
+  border-radius: 2px 0 0 2px;
+}
+
+#custom-project,
+#custom-context,
+#custom-containers,
+#custom-services {
+  background: rgba(255, 255, 255, 0.06);
+  color: @text;
+  border-left: 2px solid rgba(246, 180, 75, 0.54);
+  margin: 4px 2px;
+  padding: 0 10px;
+  border-radius: 2px;
+}
+
+#workspaces {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(246, 180, 75, 0.18);
+  margin: 4px 8px;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+#workspaces button {
+  color: rgba(248, 238, 219, 0.62);
+  background: transparent;
+  padding: 0 8px;
+  margin: 2px 1px;
+  border-radius: 2px;
+}
+
+#workspaces button.active {
+  color: #15120E;
+  background: @accent;
+}
+
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#clock,
+#custom-profile-switch {
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(248, 238, 219, 0.82);
+  margin: 4px 2px;
+  padding: 0 9px;
+  border-radius: 2px;
+}
+
+#custom-profile-switch {
+  background: rgba(246, 180, 75, 0.16);
+  border-right: 2px solid @accent;
+}
+""",
+    },
+    "shield": {
+        "accent": "#00FFB3",
+        "warn": "#F4D35E",
+        "danger": "#FF4D6D",
+        "text": "#DDFEF6",
+        "tooltip_bg": "rgba(2, 12, 11, 0.98)",
+        "line": "rgba(0, 255, 179, 0.46)",
+        "radius": "0px",
+        "css": """
+window#waybar {
+  background: #020807;
+  color: @text;
+  border-bottom: 1px solid @accent;
+}
+
+#custom-identity {
+  color: #00110D;
+  background: @accent;
+  font-weight: 900;
+  letter-spacing: 0;
+  margin: 0;
+  padding: 0 20px;
+  border-radius: 0;
+}
+
+#custom-scope,
+#custom-vpn,
+#custom-context,
+#custom-recorder {
+  color: @text;
+  background: rgba(0, 255, 179, 0.08);
+  border: 1px solid rgba(0, 255, 179, 0.22);
+  border-radius: 0;
+  margin: 5px 3px;
+  padding: 0 12px;
+}
+
+#custom-context {
+  color: @accent;
+  background: rgba(0, 0, 0, 0.40);
+  border-left: 3px solid @accent;
+  border-right: 3px solid @accent;
+}
+
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#clock,
+#custom-profile-switch {
+  color: rgba(221, 254, 246, 0.78);
+  background: transparent;
+  border: 1px solid rgba(221, 254, 246, 0.16);
+  border-radius: 0;
+  margin: 5px 2px;
+  padding: 0 10px;
+}
+
+#custom-profile-switch {
+  color: @accent;
+  border-color: rgba(0, 255, 179, 0.46);
+}
+""",
+    },
+    "studio": {
+        "accent": "#FF8BD1",
+        "warn": "#FFD166",
+        "danger": "#FF6B6B",
+        "text": "#322336",
+        "tooltip_bg": "rgba(255, 250, 253, 0.96)",
+        "line": "rgba(255, 139, 209, 0.42)",
+        "radius": "8px",
+        "css": """
+window#waybar {
+  background: rgba(255, 250, 253, 0.84);
+  color: @text;
+  border: 1px solid rgba(255, 139, 209, 0.22);
+  border-radius: 8px;
+}
+
+#custom-identity {
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #FF8BD1, #8BD3FF);
+  font-weight: 800;
+  margin: 6px 4px 6px 8px;
+  padding: 0 18px;
+  border-radius: 8px;
+}
+
+#custom-context {
+  color: @text;
+  background: transparent;
+  font-style: italic;
+  margin: 6px 4px;
+  padding: 0 16px;
+}
+
+#custom-media {
+  color: #FFFFFF;
+  background: #2D2233;
+  margin: 6px 4px;
+  padding: 0 18px;
+  border-radius: 8px;
+}
+
+#custom-canvas,
+#custom-recorder,
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#clock,
+#custom-profile-switch {
+  color: @text;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(50, 35, 54, 0.10);
+  margin: 6px 3px;
+  padding: 0 12px;
+  border-radius: 8px;
+}
+
+#custom-profile-switch {
+  background: rgba(139, 211, 255, 0.28);
+}
+""",
+    },
+    "windows": {
+        "accent": "#62B0FF",
+        "warn": "#FBCB6A",
+        "danger": "#FF6A7A",
+        "text": "#EEF7FF",
+        "tooltip_bg": "rgba(12, 22, 34, 0.96)",
+        "line": "rgba(98, 176, 255, 0.42)",
+        "radius": "5px",
+        "css": """
+window#waybar {
+  background: rgba(11, 19, 31, 0.92);
+  color: @text;
+  border: 1px solid rgba(98, 176, 255, 0.26);
+  border-radius: 5px;
+}
+
+#custom-identity {
+  color: #FFFFFF;
+  background: #126BC4;
+  font-weight: 800;
+  margin: 5px 3px 5px 6px;
+  padding: 0 16px;
+  border-radius: 5px;
+}
+
+#custom-bridge,
+#custom-apps,
+#custom-vm,
+#custom-context {
+  color: @text;
+  background: rgba(98, 176, 255, 0.12);
+  border: 1px solid rgba(98, 176, 255, 0.22);
+  margin: 5px 3px;
+  padding: 0 12px;
+  border-radius: 5px;
+}
+
+#custom-context {
+  color: #B9DCFF;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#clock,
+#custom-profile-switch {
+  color: rgba(238, 247, 255, 0.82);
+  background: rgba(255, 255, 255, 0.06);
+  margin: 5px 2px;
+  padding: 0 10px;
+  border-radius: 5px;
+}
+
+#custom-profile-switch {
+  border: 1px solid rgba(98, 176, 255, 0.36);
+}
+""",
+    },
+    "pulse": {
+        "accent": "#00E5FF",
+        "warn": "#FFE66D",
+        "danger": "#FF3366",
+        "text": "#EAFDFF",
+        "tooltip_bg": "rgba(1, 7, 13, 0.98)",
+        "line": "rgba(0, 229, 255, 0.48)",
+        "radius": "2px",
+        "css": """
+window#waybar {
+  background: linear-gradient(90deg, rgba(1, 8, 14, 0.96), rgba(3, 20, 31, 0.96));
+  color: @text;
+  border-top: 1px solid rgba(0, 229, 255, 0.22);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.38);
+}
+
+#custom-identity {
+  color: #001217;
+  background: @accent;
+  font-weight: 900;
+  margin: 4px 0 4px 6px;
+  padding: 0 16px;
+  border-radius: 2px;
+}
+
+#custom-performance,
+#custom-gamemode,
+#custom-context,
+#custom-recorder {
+  color: @text;
+  background: rgba(0, 229, 255, 0.10);
+  border-bottom: 2px solid rgba(0, 229, 255, 0.46);
+  margin: 4px 2px;
+  padding: 0 11px;
+  border-radius: 2px;
+}
+
+#workspaces {
+  margin: 4px 4px;
+  padding: 0 3px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 2px;
+}
+
+#workspaces button {
+  color: rgba(234, 253, 255, 0.58);
+  background: transparent;
+  margin: 2px 1px;
+  padding: 0 8px;
+  border-radius: 2px;
+}
+
+#workspaces button.active {
+  color: #001217;
+  background: @accent;
+}
+
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#clock,
+#custom-profile-switch {
+  color: rgba(234, 253, 255, 0.78);
+  background: rgba(255, 255, 255, 0.04);
+  margin: 4px 2px;
+  padding: 0 9px;
+  border-radius: 2px;
+}
+
+#custom-profile-switch {
+  color: @accent;
+  border: 1px solid rgba(0, 229, 255, 0.30);
+}
+""",
+    },
+}
+
+spec = styles[key]
+css = common + spec["css"]
+for name in ("accent", "warn", "danger", "text", "tooltip_bg", "line", "radius"):
+    css = css.replace(f"@{name}", spec[name])
+print(css.strip())
+PY
+}
+
 status() {
   local mode profile
   mode="$(theme_mode)"
   profile="$(profile_json)"
-  PROFILE_JSON="$profile" MODE="$mode" python - <<'PY'
+  PROFILE_JSON="$profile" MODE="$mode" PROFILE_THEME_CONF="$(profile_theme_conf)" python - <<'PY'
 import json
 import os
 
 profile = json.loads(os.environ["PROFILE_JSON"])
 print(f"{profile.get('title', profile.get('key'))} · {os.environ['MODE']} · {profile.get('waybar_modules', '')}")
+print(f"profile theme: {os.environ['PROFILE_THEME_CONF']}")
 PY
 }
 
 apply_profile() {
-  local mode config_base style_base
+  local mode config_base style_base key profile_ui
+  key="$(profile_key)"
+  profile_ui="$CONFIG_HOME/sevenos/profiles/$key/profile-ui.json"
   mode="$(theme_mode)"
   config_base="$(base_config "$mode")"
   style_base="$(base_style "$mode")"
+  local profile_waybar_config="$CONFIG_HOME/sevenos/profiles/$key/baobab/waybar/config.jsonc"
+  local profile_waybar_style="$CONFIG_HOME/sevenos/profiles/$key/baobab/waybar/style.css"
+  local profile_fontconfig="$CONFIG_HOME/sevenos/profiles/$key/baobab/fonts/fonts.conf"
+  local concept_waybar_dir="$CONFIG_HOME/sevenos/profiles/$key/waybar"
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
-    printf 'render profile Waybar config from %q to %q\n' "$config_base" "$WAYBAR_CONFIG"
-    printf 'render profile Waybar style from %q to %q\n' "$style_base" "$WAYBAR_STYLE"
+    if [[ "$key" == "baobab" && -s "$profile_waybar_config" && -s "$profile_waybar_style" ]]; then
+      printf 'project Baobab Waybar config from %q to %q\n' "$profile_waybar_config" "$WAYBAR_CONFIG"
+      printf 'project Baobab Waybar style from %q to %q\n' "$profile_waybar_style" "$WAYBAR_STYLE"
+    elif is_specialized_waybar_profile "$key"; then
+      printf 'render %s concept Waybar config to %q and project to %q\n' "$key" "$concept_waybar_dir/config.jsonc" "$WAYBAR_CONFIG"
+      printf 'render %s concept Waybar style to %q and project to %q\n' "$key" "$concept_waybar_dir/style.css" "$WAYBAR_STYLE"
+    else
+      printf 'render profile Waybar config from %q to %q\n' "$config_base" "$WAYBAR_CONFIG"
+      printf 'render profile Waybar style from %q to %q\n' "$style_base" "$WAYBAR_STYLE"
+    fi
     status
     return 0
   fi
   mkdir -p "$(dirname "$WAYBAR_CONFIG")"
   mkdir -p "$(dirname "$PROFILE_UI")"
-  render_config "$mode" "$config_base" > "$WAYBAR_CONFIG"
-  render_style "$mode" "$style_base" > "$WAYBAR_STYLE"
-  PROFILE_JSON="$(profile_json)" MODE="$mode" ROOT_DIR="$ROOT_DIR" python - <<'PY' > "$PROFILE_UI"
+  mkdir -p "$(dirname "$profile_ui")"
+  if [[ "$key" == "baobab" && -s "$profile_waybar_config" && -s "$profile_waybar_style" ]]; then
+    cp "$profile_waybar_config" "$WAYBAR_CONFIG"
+    cp "$profile_waybar_style" "$WAYBAR_STYLE"
+    if [[ -s "$profile_fontconfig" ]]; then
+      mkdir -p "$CONFIG_HOME/fontconfig/conf.d"
+      cp "$profile_fontconfig" "$CONFIG_HOME/fontconfig/conf.d/70-sevenos-baobab-fonts.conf"
+    fi
+  elif is_specialized_waybar_profile "$key"; then
+    mkdir -p "$concept_waybar_dir"
+    render_specialized_config "$key" | tee "$concept_waybar_dir/config.jsonc" > "$WAYBAR_CONFIG"
+    render_specialized_style "$key" | tee "$concept_waybar_dir/style.css" > "$WAYBAR_STYLE"
+    rm -f "$CONFIG_HOME/fontconfig/conf.d/70-sevenos-baobab-fonts.conf" 2>/dev/null || true
+  else
+    render_config "$mode" "$config_base" > "$WAYBAR_CONFIG"
+    render_style "$mode" "$style_base" > "$WAYBAR_STYLE"
+    rm -f "$CONFIG_HOME/fontconfig/conf.d/70-sevenos-baobab-fonts.conf" 2>/dev/null || true
+  fi
+  PROFILE_JSON="$(profile_json)" MODE="$mode" ROOT_DIR="$ROOT_DIR" python - <<'PY' | tee "$PROFILE_UI" > "$profile_ui"
 import json
 import os
 from pathlib import Path
@@ -299,6 +980,11 @@ try:
     bridge_state = json.loads((state_dir / "mini-os-bridge.json").read_text(encoding="utf-8"))
 except Exception:
     bridge_state = {}
+runtime_context = runtime_state.get("context", {}).get("primary_context", {}) if isinstance(runtime_state, dict) else {}
+scheduler_policy = runtime_state.get("scheduler", {}).get("active_policy", {}) if isinstance(runtime_state, dict) else {}
+context_profile = runtime_context.get("profile") or runtime_context.get("key") or key
+context_group = scheduler_policy.get("scheduler_group") or runtime_context.get("scheduler_group") or context_profile
+temporary_optimization = bool(context_group and context_group != key)
 
 mini_os = {
     "equinox": {
@@ -317,34 +1003,35 @@ mini_os = {
         "store_collection": "Getting Started",
     },
     "baobab": {
-        "home": "Culture and learning",
-        "focus": "African culture, languages, oral knowledge, reading and community memory without dev/security noise.",
-        "library": "Baobab Library",
-        "collections": ["African knowledge", "Languages", "Oral learning", "Community archives"],
+        "home": "African cultural OS",
+        "focus": "Digital village for heritage, languages, oral stories, sound, map, fashion, food, wisdom and offline memory.",
+        "library": "Baobab Village",
+        "collections": ["Heritage", "Languages", "Stories", "Sound", "Explore", "Fashion", "Food", "Wisdom"],
         "actions": [
-            ["Read", "Open Seven Reader", "seven-reader"],
-            ["Library", "Open Baobab workspace", "seven profile open baobab"],
+            ["Village", "Open Baobab", "seven baobab open"],
+            ["Catalog", "Show offline catalog", "seven baobab catalog"],
             ["Voice", "Try oral learning tools", "seven-profile-run espeak-ng 'SevenOS Baobab'"],
         ],
-        "ai": "cultural learning and translation assistant",
+        "ai": "cultural heritage guide, narrator and language tutor",
         "autonomy": 58,
         "launchpad_filter": "office",
         "store_collection": "Culture & Learning",
     },
     "forge": {
-        "home": "Developer cockpit",
-        "focus": "Code, terminals, SDKs, containers, local services, builds and documentation.",
-        "library": "Forge Projects",
-        "collections": ["Projects", "Containers", "SDKs", "Local servers"],
+        "home": "DevOps cockpit",
+        "focus": "Code, terminals, SDKs, containers, local services, builds, deploys and endpoint logs.",
+        "library": "Forge Projects & Deployments",
+        "collections": ["Projects", "Containers", "SDKs", "Services", "Deployments"],
         "actions": [
             ["Code", "Open development editor", "code"],
             ["Terminal", "Open Forge terminal", "seven-terminal forge"],
             ["Containers", "Check Docker", "docker info"],
+            ["Deploy", "Detect deployable project", "seven deploy detect ."],
         ],
-        "ai": "software engineering assistant",
-        "autonomy": 84,
+        "ai": "software engineering and deployment assistant",
+        "autonomy": 88,
         "launchpad_filter": "dev",
-        "store_collection": "Developer Tools",
+        "store_collection": "Developer & Cloud Tools",
     },
     "shield": {
         "home": "Authorized security lab",
@@ -382,7 +1069,10 @@ mini_os = {
         "library": "Windows Apps",
         "collections": ["Virtual machines", "Windows apps", "Shared folders", "Snapshots"],
         "actions": [
-            ["VM", "Open Windows VM assistant", "seven windows vm"],
+            ["Enter", "Start Windows Bridge", "seven windows enter"],
+            ["Sync", "Repair Windows Bridge runtime state", "seven windows sync"],
+            ["VM", "Open Windows VM console", "seven windows vm"],
+            ["Status", "Show Windows Bridge runtime status", "seven windows bridge-status"],
             ["Apps", "Open Windows apps", "seven windows apps"],
             ["Guide", "Open Windows guide", "seven windows guide"],
         ],
@@ -390,21 +1080,6 @@ mini_os = {
         "autonomy": 72,
         "launchpad_filter": "windows",
         "store_collection": "Windows Bridge",
-    },
-    "horizon": {
-        "home": "Cloud and services",
-        "focus": "Deployments, containers, reverse proxy, endpoints, logs and self-hosted services.",
-        "library": "Horizon Deployments",
-        "collections": ["Services", "Endpoints", "Deployments", "Logs"],
-        "actions": [
-            ["Deploy", "Detect deployable project", "seven deploy detect ."],
-            ["Services", "Check Caddy", "caddy version"],
-            ["Workspace", "Open Horizon workspace", "seven profile open horizon"],
-        ],
-        "ai": "cloud deployment and server operations assistant",
-        "autonomy": 74,
-        "launchpad_filter": "network",
-        "store_collection": "Cloud & Server",
     },
     "pulse": {
         "home": "Gaming performance",
@@ -447,6 +1122,20 @@ payload = {
     "capabilities": catalog_profile.get("capabilities", []),
     "anti_nuisance": catalog_profile.get("anti_nuisance", []),
     "resource_intent": catalog_profile.get("resource_intent", {}),
+    "runtime_context": {
+        "active_profile": key,
+        "detected_profile": context_profile,
+        "detected_title": runtime_context.get("title") or context_profile,
+        "scheduler_group": context_group,
+        "policy": scheduler_policy.get("policy", ""),
+        "confidence": runtime_context.get("confidence", 0),
+        "temporary_optimization": temporary_optimization,
+        "explanation": (
+            f"{profile.get('title') or key.title()} is active; SevenOS is temporarily optimizing foreground work as {context_group}."
+            if temporary_optimization
+            else "Active profile and detected runtime context are aligned."
+        ),
+    },
     "collaboration": {
         "primary": ((runtime_state.get("primary_profile") or {}).get("key") if isinstance(runtime_state.get("primary_profile"), dict) else key) or key,
         "capabilities": [item.get("key") for item in runtime_state.get("capabilities", []) if isinstance(item, dict) and item.get("key")],
@@ -470,17 +1159,100 @@ payload = {
 print(json.dumps(payload, indent=2, ensure_ascii=False))
 PY
   if [[ -x "$ROOT_DIR/bin/seven-wallpaper" ]]; then
-    "$ROOT_DIR/bin/seven-wallpaper" profile "$(PROFILE_JSON="$(profile_json)" python -c 'import json,os; print(json.loads(os.environ["PROFILE_JSON"]).get("key","equinox"))')" >/dev/null 2>&1 || true
+    SEVENOS_WALLPAPER_PROFILE="$(PROFILE_JSON="$(profile_json)" python -c 'import json,os; print(json.loads(os.environ["PROFILE_JSON"]).get("key","equinox"))')" \
+      "$ROOT_DIR/bin/seven-wallpaper" refresh >/dev/null 2>&1 || true
   fi
   status
+}
+
+refresh_specialized_waybars() {
+  local key dir
+  for key in forge shield studio windows pulse; do
+    dir="$CONFIG_HOME/sevenos/profiles/$key/waybar"
+    mkdir -p "$dir"
+    render_specialized_config "$key" > "$dir/config.jsonc"
+    render_specialized_style "$key" > "$dir/style.css"
+  done
+}
+
+audit_waybars() {
+  refresh_specialized_waybars
+  CONFIG_HOME="$CONFIG_HOME" python - <<'PY'
+import json
+import os
+import re
+from pathlib import Path
+
+config_home = Path(os.environ["CONFIG_HOME"])
+profiles = {
+    "forge": {"position": "top", "max_modules": 12, "identity": "Forge", "required": {"custom/project", "custom/containers", "custom/services"}},
+    "shield": {"position": "top", "max_modules": 11, "identity": "Shield", "required": {"custom/scope", "custom/vpn", "custom/recorder"}},
+    "studio": {"position": "top", "max_modules": 11, "identity": "Studio", "required": {"custom/canvas", "custom/media", "custom/recorder"}},
+    "windows": {"position": "bottom", "max_modules": 11, "identity": "Windows", "required": {"custom/bridge", "custom/vm", "custom/apps"}},
+    "pulse": {"position": "top", "max_modules": 12, "identity": "Pulse", "required": {"custom/performance", "custom/gamemode", "custom/recorder"}},
+}
+common_required = {"custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"}
+css_tokens = re.compile(r"@(accent|warn|danger|text|tooltip_bg|line|radius)\\b")
+errors = []
+warnings = []
+
+for key, spec in profiles.items():
+    root = config_home / "sevenos" / "profiles" / key / "waybar"
+    cfg_path = root / "config.jsonc"
+    css_path = root / "style.css"
+    if not cfg_path.exists() or not css_path.exists():
+        errors.append(f"{key}: missing isolated waybar files")
+        continue
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        errors.append(f"{key}: invalid JSON: {exc}")
+        continue
+    css = css_path.read_text(encoding="utf-8")
+    modules = cfg.get("modules-left", []) + cfg.get("modules-center", []) + cfg.get("modules-right", [])
+    module_set = set(modules)
+    missing = (spec["required"] | common_required) - module_set
+    if missing:
+        errors.append(f"{key}: missing modules {', '.join(sorted(missing))}")
+    if cfg.get("position") != spec["position"]:
+        errors.append(f"{key}: position {cfg.get('position')} != {spec['position']}")
+    if len(modules) > spec["max_modules"]:
+        warnings.append(f"{key}: dense layout ({len(modules)} modules)")
+    identity = (cfg.get("custom/identity") or {}).get("format", "")
+    if identity != spec["identity"]:
+        errors.append(f"{key}: identity label {identity!r} != {spec['identity']!r}")
+    switch = (cfg.get("custom/profile-switch") or {}).get("format", "")
+    if len(str(switch)) > 8:
+        warnings.append(f"{key}: profile switch label may be too wide ({switch!r})")
+    if css_tokens.search(css):
+        errors.append(f"{key}: unresolved CSS theme tokens")
+    if "tooltip" not in css or "window#waybar" not in css:
+        errors.append(f"{key}: incomplete CSS structure")
+    if "#custom-wifi.weak" not in css:
+        errors.append(f"{key}: weak Wi-Fi state is not styled")
+    print(f"{key}: OK · {cfg.get('position')} · {len(modules)} modules · {css_path}")
+
+if warnings:
+    print("Warnings:")
+    for item in warnings:
+        print(f"- {item}")
+if errors:
+    print("Errors:")
+    for item in errors:
+        print(f"- {item}")
+    raise SystemExit(1)
+print("Waybar UX audit: ready")
+PY
 }
 
 case "${1:-status}" in
   status) status ;;
   json) profile_json ;;
   apply) apply_profile ;;
+  refresh-waybars) refresh_specialized_waybars ;;
+  audit-waybars) audit_waybars ;;
   *)
-    printf 'Usage: seven-profile-theme [status|json|apply]\n' >&2
+    printf 'Usage: seven-profile-theme [status|json|apply|refresh-waybars|audit-waybars]\n' >&2
     exit 2
     ;;
 esac

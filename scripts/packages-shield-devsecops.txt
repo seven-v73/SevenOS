@@ -1,0 +1,6 @@
+# SevenOS Shield DevSecOps bundle
+trivy
+bandit
+yara
+python-pwntools
+

@@ -119,7 +119,7 @@ json_payload() {
   local arch_state pacman_state sudo_state memory_kb memory_gb virt_state uefi_state
   local swaync_state wlogout_state hypridle_state hyprlock_state hyprpaper_state hyprpicker_state hyprsunset_state matugen_state wallust_state glaze_state hyprsysteminfo_state waybar_state
   local waybar_unit notifications_unit idle_unit wallpaper_unit calamares_state archinstall_state system_repair_state
-  local installer_release windows_json ecosystem_json failed_json ufw_state ufw_detail profile_health_json profile_migration_json
+  local installer_release windows_json ecosystem_json failed_json ufw_state ufw_detail profile_health_json profile_migration_json bridge_json
 
   arch_state="$([[ -f /etc/arch-release ]] && printf OK || printf MISS)"
   pacman_state="$(command_state pacman)"
@@ -154,6 +154,7 @@ json_payload() {
   ecosystem_json="$("$ROOT_DIR/scripts/ecosystem.sh" json 2>/dev/null || printf '{}')"
   profile_health_json="$("$ROOT_DIR/profiles/profile-manager.sh" health --json 2>/dev/null || printf '{}')"
   profile_migration_json="$("$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --json 2>/dev/null || printf '{}')"
+  bridge_json="$("$ROOT_DIR/scripts/mini-os-relay.sh" doctor --json 2>/dev/null || printf '{}')"
   failed_json="$(failed_units_json)"
   IFS=$'\t' read -r ufw_state ufw_detail < <(ufw_state_detail) || true
 
@@ -165,7 +166,7 @@ json_payload() {
   GLAZE_STATE="$glaze_state" HYPRSYSTEMINFO_STATE="$hyprsysteminfo_state" WAYBAR_STATE="$waybar_state" \
   WAYBAR_UNIT="$waybar_unit" NOTIFICATIONS_UNIT="$notifications_unit" IDLE_UNIT="$idle_unit" WALLPAPER_UNIT="$wallpaper_unit" \
   CALAMARES_STATE="$calamares_state" ARCHINSTALL_STATE="$archinstall_state" INSTALLER_RELEASE="$installer_release" \
-  WINDOWS_JSON="$windows_json" ECOSYSTEM_JSON="$ecosystem_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" FAILED_JSON="$failed_json" UFW_STATE="$ufw_state" UFW_DETAIL="$ufw_detail" SYSTEM_REPAIR_STATE="$system_repair_state" \
+  WINDOWS_JSON="$windows_json" ECOSYSTEM_JSON="$ecosystem_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" FAILED_JSON="$failed_json" UFW_STATE="$ufw_state" UFW_DETAIL="$ufw_detail" SYSTEM_REPAIR_STATE="$system_repair_state" \
   python - <<'PY'
 import json
 import os
@@ -264,6 +265,10 @@ profile_total = int(profile_summary.get("total", 0) or 0)
 alias_pending = int(profile_summary.get("alias_migration_pending", 0) or 0)
 check("profiles", "mini-os-count", "OK" if profile_total == 7 else "PART", "Seven mini OS model", f"{profile_total}/7 active mini OS profiles exposed.", "seven profile status --json", "high")
 check("profiles", "alias-migration", "OK" if alias_pending == 0 else "PART", "Retired profile aliases", f"{alias_pending} stale profile alias reference(s).", "seven profile migrate-aliases --apply", "medium")
+bridge = load("BRIDGE_JSON")
+bridge_score = int(bridge.get("score", 0) or 0)
+bridge_checks = bridge.get("checks", {}) if isinstance(bridge.get("checks"), dict) else {}
+check("profiles", "mini-os-bridge", "OK" if bridge.get("state") == "ready" and bridge_score >= 95 else "PART", "Mini OS bridge and session isolation", f"{bridge_score}% bridge readiness; {bridge_checks.get('ready_profiles', 0)}/7 mini OS ready; {bridge_checks.get('relations', 0)} relation(s).", "seven bridge doctor", "high")
 
 severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 issues.sort(key=lambda item: (severity_rank.get(item["severity"], 9), item["area"], item["key"]))
@@ -286,7 +291,7 @@ PY
 }
 
 release_payload() {
-  local doctor_json git_dirty design_state smoke_state ux_state installer_json windows_json profile_json profile_health_json profile_migration_json status_json
+  local doctor_json git_dirty design_state smoke_state ux_state installer_json windows_json profile_json profile_health_json profile_migration_json bridge_json status_json
   doctor_json="$(SEVENOS_DOCTOR_AREA=all json_payload)"
   git_dirty="$(git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' ')"
   if timeout 30 "$ROOT_DIR/scripts/design-check.sh" >/dev/null 2>&1; then design_state="OK"; else design_state="PART"; fi
@@ -301,9 +306,10 @@ release_payload() {
   profile_json="$("$ROOT_DIR/profiles/profile-manager.sh" status --json 2>/dev/null || printf '[]')"
   profile_health_json="$("$ROOT_DIR/profiles/profile-manager.sh" health --json 2>/dev/null || printf '{}')"
   profile_migration_json="$("$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --json 2>/dev/null || printf '{}')"
+  bridge_json="$("$ROOT_DIR/scripts/mini-os-relay.sh" doctor --json 2>/dev/null || printf '{}')"
   status_json="$("$ROOT_DIR/scripts/status.sh" --json 2>/dev/null || printf '{}')"
   DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" DESIGN_STATE="$design_state" SMOKE_STATE="$smoke_state" UX_STATE="$ux_state" \
-  INSTALLER_JSON="$installer_json" WINDOWS_JSON="$windows_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" STATUS_JSON="$status_json" \
+  INSTALLER_JSON="$installer_json" WINDOWS_JSON="$windows_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" STATUS_JSON="$status_json" \
   python - <<'PY'
 import json
 import os
@@ -321,6 +327,7 @@ windows = load("WINDOWS_JSON", {})
 profiles = load("PROFILE_JSON", [])
 profile_health = load("PROFILE_HEALTH_JSON", {})
 profile_migration = load("PROFILE_MIGRATION_JSON", {})
+bridge = load("BRIDGE_JSON", {})
 status = load("STATUS_JSON", {})
 git_dirty = int(os.environ.get("GIT_DIRTY", "0") or 0)
 
@@ -351,6 +358,8 @@ profile_ready = sum(1 for item in profiles if isinstance(item, dict) and item.ge
 alias_pending = int((profile_health.get("summary") or {}).get("alias_migration_pending", profile_migration.get("pending", 0)) or 0)
 add("profiles", "OK" if profile_total == 7 else "PART", "Seven mini OS profiles", f"{profile_total}/7 profile(s) exposed, {profile_ready} package-complete", "seven profile health --json", "medium")
 add("profile-aliases", "OK" if alias_pending == 0 else "PART", "Retired profile alias cleanup", f"{alias_pending} stale alias reference(s)", "seven profile migrate-aliases --apply", "medium")
+bridge_checks = bridge.get("checks") or {}
+add("mini-os-bridge", "OK" if bridge.get("state") == "ready" and int(bridge.get("score", 0) or 0) >= 95 else "PART", "Mini OS bridge isolation", f"{bridge.get('score', 0)}% bridge readiness, {bridge_checks.get('ready_profiles', 0)}/7 ready profiles", "seven bridge doctor", "high")
 services = status.get("services", [])
 docker = next((item for item in services if item.get("key") == "docker"), {})
 add("forge-docker", "OK" if docker.get("state") in {"OK", "QUIET", "PART"} else "PART", "Forge Docker service contract", docker.get("detail", docker.get("state", "unknown")), "seven profile activate forge", "medium")

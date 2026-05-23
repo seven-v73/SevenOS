@@ -1,0 +1,405 @@
+#!/usr/bin/env python3
+"""Native SevenOS action center for public graphical workflows."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import unicodedata
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python3")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python.resolve():
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            env = {**os.environ, "SEVENOS_GI_PYTHON": "1"}
+            os.execve(str(system_python), [str(system_python), str(Path(__file__).resolve()), *sys.argv[1:]], env)
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").is_file():
+        return Path(env_root).resolve()
+    script_dir = Path(__file__).resolve().parent
+    candidate = script_dir.parent
+    if (candidate / "bin/seven").is_file():
+        return candidate
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").is_file():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+def normalize(value: str) -> str:
+    text = unicodedata.normalize("NFKD", value or "")
+    return "".join(ch for ch in text if not unicodedata.combining(ch)).casefold()
+
+
+def load_actions() -> list[dict]:
+    try:
+        output = subprocess.check_output(
+            [str(ROOT / "scripts/actions.sh"), "--json"],
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            text=True,
+        )
+        payload = json.loads(output)
+        actions = payload.get("actions", [])
+        return actions if isinstance(actions, list) else []
+    except Exception:
+        return []
+
+
+def action_categories(actions: list[dict]) -> list[str]:
+    preferred = ["All", "Desktop", "System", "Profiles", "Baobab", "Security", "Windows", "Apps", "Server", "Installer", "Ecosystem"]
+    found = {str(item.get("category", "System")) for item in actions}
+    ordered = [item for item in preferred if item == "All" or item in found]
+    ordered.extend(sorted(found - set(ordered)))
+    return ordered
+
+
+def impact_label(impact: str) -> str:
+    return {
+        "safe": "Sur",
+        "changes": "Modifie",
+        "packages": "Installe",
+    }.get(impact, impact or "Sur")
+
+
+def impact_class(impact: str) -> str:
+    if impact == "safe":
+        return "safe"
+    if impact == "changes":
+        return "changes"
+    return "packages"
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def filter_probe() -> int:
+    actions = load_actions()
+    all_count = len(actions)
+    desktop_count = sum(1 for item in actions if str(item.get("category", "System")) == "Desktop")
+    system_count = sum(1 for item in actions if str(item.get("category", "System")) == "System")
+    categories = action_categories(actions)
+    payload = {
+        "schema": "sevenos.actions-native-filter.v1",
+        "all": all_count,
+        "desktop": desktop_count,
+        "system": system_count,
+        "categories": categories,
+        "ready": all_count > 0 and desktop_count > 0 and "All" in categories and "Desktop" in categories,
+    }
+    print(json.dumps(payload, indent=2))
+    return 0 if payload["ready"] else 1
+
+
+class ActionCenter:
+    def __init__(self, Gtk, Gdk):
+        self.Gtk = Gtk
+        self.Gdk = Gdk
+        self.actions = load_actions()
+        self.category = "All"
+        self.query = ""
+        self.window = None
+        self.listbox = None
+        self.search = None
+        self.category_buttons = {}
+
+    def run_action(self, action: dict) -> None:
+        impact = str(action.get("impact", "safe"))
+        title = str(action.get("title", action.get("id", "Action")))
+        action_id = str(action.get("id", ""))
+        if not action_id:
+            return
+
+        if impact != "safe":
+            dialog = self.Gtk.MessageDialog(
+                transient_for=self.window,
+                flags=0,
+                message_type=self.Gtk.MessageType.WARNING,
+                buttons=self.Gtk.ButtonsType.CANCEL,
+                text=f"Lancer: {title}",
+            )
+            dialog.format_secondary_text(
+                "Cette action peut modifier le systeme, installer des paquets ou changer la session SevenOS."
+            )
+            dialog.add_button("Lancer", self.Gtk.ResponseType.OK)
+            response = dialog.run()
+            dialog.destroy()
+            if response != self.Gtk.ResponseType.OK:
+                return
+
+        runner = ROOT / "bin/seven-action-runner"
+        command = [str(ROOT / "bin/seven"), "actions", "run", action_id]
+        if runner.is_file() and os.access(runner, os.X_OK):
+            subprocess.Popen(
+                [str(runner), "--title", f"SevenOS - {title}", "--", *command],
+                cwd=ROOT,
+                env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            subprocess.Popen(command, cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
+
+    def show_details(self, action: dict) -> None:
+        title = str(action.get("title", action.get("id", "Action")))
+        body = "\n".join(
+            [
+                f"Identifiant: {action.get('id', '')}",
+                f"Categorie: {action.get('category', '')}",
+                f"Impact: {impact_label(str(action.get('impact', 'safe')))}",
+                "",
+                str(action.get("description", "")),
+                "",
+                f"Commande: {action.get('command', '')}",
+            ]
+        )
+        dialog = self.Gtk.MessageDialog(
+            transient_for=self.window,
+            flags=0,
+            message_type=self.Gtk.MessageType.INFO,
+            buttons=self.Gtk.ButtonsType.OK,
+            text=title,
+        )
+        dialog.format_secondary_text(body)
+        dialog.run()
+        dialog.destroy()
+
+    def filtered_actions(self) -> list[dict]:
+        needle = normalize(self.query)
+        items = []
+        for action in self.actions:
+            category = str(action.get("category", "System"))
+            if self.category != "All" and category != self.category:
+                continue
+            haystack = normalize(" ".join(str(action.get(key, "")) for key in ("id", "title", "category", "description", "command")))
+            if needle and needle not in haystack:
+                continue
+            items.append(action)
+        return items
+
+    def refresh(self) -> None:
+        self.update_category_buttons()
+        for child in list(self.listbox.get_children()):
+            self.listbox.remove(child)
+
+        items = self.filtered_actions()
+        if not items:
+            row = self.Gtk.ListBoxRow()
+            empty = self.Gtk.Label(label="Aucune action trouvee")
+            empty.set_margin_top(28)
+            empty.set_margin_bottom(28)
+            row.add(empty)
+            self.listbox.add(row)
+            self.listbox.show_all()
+            return
+
+        for action in items:
+            row = self.Gtk.ListBoxRow()
+            row.get_style_context().add_class("action-row")
+            box = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+            box.set_margin_top(10)
+            box.set_margin_bottom(10)
+            box.set_margin_start(12)
+            box.set_margin_end(12)
+
+            text = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+            text.set_hexpand(True)
+            title = self.Gtk.Label(label=str(action.get("title", action.get("id", "Action"))), xalign=0)
+            title.get_style_context().add_class("action-title")
+            description = self.Gtk.Label(label=str(action.get("description", "")), xalign=0)
+            description.set_line_wrap(True)
+            description.set_max_width_chars(70)
+            description.get_style_context().add_class("action-description")
+            meta = self.Gtk.Label(
+                label=f"{action.get('category', 'System')} · {impact_label(str(action.get('impact', 'safe')))}",
+                xalign=0,
+            )
+            meta.get_style_context().add_class(f"impact-{impact_class(str(action.get('impact', 'safe')))}")
+            text.pack_start(title, False, False, 0)
+            text.pack_start(description, False, False, 0)
+            text.pack_start(meta, False, False, 0)
+
+            detail = self.Gtk.Button(label="Details")
+            detail.get_style_context().add_class("secondary")
+            detail.connect("clicked", lambda _button, item=action: self.show_details(item))
+            run = self.Gtk.Button(label="Lancer")
+            run.get_style_context().add_class("primary" if action.get("impact") == "safe" else "warning")
+            run.connect("clicked", lambda _button, item=action: self.run_action(item))
+
+            box.pack_start(text, True, True, 0)
+            box.pack_start(detail, False, False, 0)
+            box.pack_start(run, False, False, 0)
+            row.add(box)
+            self.listbox.add(row)
+        self.listbox.show_all()
+
+    def category_button(self, label: str):
+        button = self.Gtk.Button(label=label)
+        button.get_style_context().add_class("category")
+
+        def activate(_button):
+            self.category = label
+            self.refresh()
+
+        button.connect("clicked", activate)
+        self.category_buttons[label] = button
+        return button
+
+    def update_category_buttons(self) -> None:
+        for label, button in self.category_buttons.items():
+            context = button.get_style_context()
+            if label == self.category:
+                context.add_class("active")
+            else:
+                context.remove_class("active")
+
+    def build(self) -> None:
+        css = b"""
+        * { font-family: "Inter", "Noto Sans", system-ui, sans-serif; }
+        window { background: #12141a; }
+        .root { padding: 18px; background: #12141a; }
+        .title { color: #f6f7fb; font-size: 26px; font-weight: 700; }
+        .subtitle { color: rgba(246,247,251,0.68); font-size: 12px; }
+        searchentry { min-height: 38px; border-radius: 10px; }
+        .category { min-height: 34px; border-radius: 10px; color: #f6f7fb; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.10); }
+        .category.active { background: rgba(125, 182, 255, 0.30); border-color: rgba(125, 182, 255, 0.55); color: #ffffff; }
+        list { background: transparent; }
+        .action-row { border-radius: 10px; background: rgba(255,255,255,0.055); border: 1px solid rgba(255,255,255,0.08); margin: 5px; }
+        .action-title { color: #f6f7fb; font-weight: 700; font-size: 14px; }
+        .action-description { color: rgba(246,247,251,0.68); font-size: 11px; }
+        .impact-safe { color: #a6e3a1; font-size: 10px; font-weight: 700; }
+        .impact-changes { color: #f9e2af; font-size: 10px; font-weight: 700; }
+        .impact-packages { color: #fab387; font-size: 10px; font-weight: 700; }
+        button.primary { border-radius: 10px; background: #7db6ff; color: #08111f; font-weight: 700; }
+        button.warning { border-radius: 10px; background: #f9e2af; color: #1f1608; font-weight: 700; }
+        button.secondary { border-radius: 10px; color: #f6f7fb; background: rgba(255,255,255,0.08); }
+        """
+        provider = self.Gtk.CssProvider()
+        provider.load_from_data(css)
+        self.Gtk.StyleContext.add_provider_for_screen(
+            self.Gdk.Screen.get_default(),
+            provider,
+            self.Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        self.window = self.Gtk.Window(title="SevenOS Actions")
+        self.window.set_default_size(1040, 720)
+        self.window.set_position(self.Gtk.WindowPosition.CENTER)
+
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        root.get_style_context().add_class("root")
+        self.window.add(root)
+
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Label(label="SevenOS Actions", xalign=0)
+        title.set_hexpand(True)
+        title.get_style_context().add_class("title")
+        close_button = self.Gtk.Button(label="Fermer")
+        close_button.get_style_context().add_class("secondary")
+        close_button.set_tooltip_text("Fermer SevenOS Actions")
+        close_button.connect("clicked", lambda *_: self.Gtk.main_quit())
+        header.pack_start(title, True, True, 0)
+        header.pack_start(close_button, False, False, 0)
+        subtitle = self.Gtk.Label(
+            label="Toutes les operations importantes de SevenOS, disponibles sans terminal.",
+            xalign=0,
+        )
+        subtitle.get_style_context().add_class("subtitle")
+        root.pack_start(header, False, False, 0)
+        root.pack_start(subtitle, False, False, 0)
+
+        self.search = self.Gtk.SearchEntry()
+        self.search.set_placeholder_text("Rechercher une action, un mini OS, une application...")
+        self.search.connect("search-changed", lambda entry: self.set_query(entry.get_text()))
+        root.pack_start(self.search, False, False, 0)
+
+        categories = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+        for category in action_categories(self.actions):
+            categories.pack_start(self.category_button(category), False, False, 0)
+        root.pack_start(categories, False, False, 0)
+
+        scroller = self.Gtk.ScrolledWindow()
+        scroller.set_policy(self.Gtk.PolicyType.NEVER, self.Gtk.PolicyType.AUTOMATIC)
+        self.listbox = self.Gtk.ListBox()
+        self.listbox.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        scroller.add(self.listbox)
+        root.pack_start(scroller, True, True, 0)
+
+        footer = self.Gtk.Label(
+            label="Les actions sensibles demandent confirmation. Les journaux restent locaux dans ~/.local/state/sevenos/actions.",
+            xalign=0,
+        )
+        footer.get_style_context().add_class("subtitle")
+        root.pack_start(footer, False, False, 0)
+
+        self.window.connect("destroy", self.Gtk.main_quit)
+        def key_close(_window, event):
+            ctrl = bool(event.state & self.Gdk.ModifierType.CONTROL_MASK)
+            if event.keyval == self.Gdk.KEY_Escape or (ctrl and event.keyval in {self.Gdk.KEY_q, self.Gdk.KEY_Q}):
+                self.Gtk.main_quit()
+                return True
+            return False
+
+        self.window.connect("key-press-event", key_close)
+        self.refresh()
+        self.window.show_all()
+
+    def set_query(self, query: str) -> None:
+        self.query = query
+        self.refresh()
+
+
+def main() -> int:
+    if "--probe" in sys.argv:
+        return probe()
+    if "--filter-probe" in sys.argv:
+        return filter_probe()
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, Gtk
+
+    app = ActionCenter(Gtk, Gdk)
+    app.build()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

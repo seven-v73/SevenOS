@@ -28,7 +28,7 @@ modules_tsv() {
 seven	1-2	active	System controller, repair entrypoint and OS command surface	bin/seven
 sevenpkg	2	active	Software, meta-packages and future app layer	bin/sevenpkg
 Seven Hub	2-4	active	Native control center, action launcher and user-facing OS surface	seven-hub/bin/seven-hub
-Seven Profiles	2-4	active	Adaptive Forge, Shield, Studio, Windows, Horizon and Baobab contexts	profiles/profile-manager.sh
+Seven Profiles	2-4	active	Adaptive Forge DevOps, Shield, Studio, Windows, Pulse and Baobab contexts	profiles/profile-manager.sh
 Seven Files	2	active	Profile-aware file entrypoint and workspace bridge	bin/seven-files
 Windows Mode	2-4	product-preview	Wine, Bottles, Lutris and KVM/QEMU compatibility	vm/windows-mode.sh
 SevenShield	2-4	product-preview	Security hardening, audit, sandbox and Cyber Lab	security/cyber-audit.sh
@@ -52,11 +52,11 @@ processes_tsv() {
 First Run	experience	active	seven welcome -> profile select -> theme -> readiness -> Hub	seven welcome
 Daily Control	desktop	active	Waybar -> Quick Settings -> Seven Hub -> actions registry	seven hub
 Install Apps	software	preview	SevenStore -> sevenpkg -> Flatpak -> profile apps	seven store
-Work Profiles	productivity	active	Forge/Shield/Studio/Windows/Horizon context -> workspace -> apps	seven profile current
+Work Profiles	productivity	active	Forge DevOps/Shield/Studio/Windows/Pulse context -> workspace -> apps	seven profile current
 Windows Apps	compatibility	preview	Windows profile -> Bottles/Wine or KVM VM -> shared workspace	seven windows guide
 Security Trust	security	preview	Shield audit -> UFW/Firejail/Bubblewrap -> Cyber Lab	seven shield audit
 Create & Media	creation	preview	Studio profile -> creative apps -> project workspace	seven profile guide studio
-Develop & Deploy	deployment	preview	Forge/Horizon -> stack detect -> local API -> deploy planner	seven deploy plan .
+Develop & Deploy	deployment	preview	Forge DevOps -> stack detect -> local API -> deploy planner	seven deploy plan .
 Personal Cloud	cloud	preview	SevenCloud -> local-first backup plan -> restore contract	seven cloud
 Marketplace	store	preview	SevenStore -> modules/apps/actions -> guided install	seven store
 Automation	automation	preview	SevenFlow -> recipes -> confirmed actions -> logs	seven flow
@@ -330,7 +330,7 @@ roadmap() {
   printf '  - SevenAI Local readiness guidance and provider-neutral command contract\n'
   printf '  - SevenDoctor guided repair suggestions\n'
   printf '  - SevenBox rootless container workflow\n'
-  printf '  - Adaptive UI signals for Forge, Shield, Studio and Horizon\n'
+  printf '  - Adaptive UI signals for Forge DevOps, Shield, Studio and Pulse\n'
   printf '  - Seven Hub dashboard cards for ecosystem modules\n\n'
   printf 'Phase 5 - Connected Ecosystem\n'
   printf '  - SevenCloud encrypted backup and restore\n'

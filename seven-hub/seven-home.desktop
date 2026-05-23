@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS Home
+Comment=Open the SevenOS home for mini OS, settings, store and backup
+Exec=seven home
+Icon=sevenos
+Terminal=false
+Categories=Utility;System;
+Keywords=sevenos;home;profiles;mini os;settings;store;backup;
+StartupNotify=true

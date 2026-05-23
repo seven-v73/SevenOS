@@ -32,19 +32,19 @@ done
 lifecycle_json() {
   local tmp
   tmp="$(mktemp -d)"
-  env SEVENOS_ABOUT_FAST="${SEVENOS_LIFECYCLE_FAST:-0}" SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/about.sh" json >"$tmp/about.json" 2>/dev/null || printf '{}\n' >"$tmp/about.json" &
+  env SEVENOS_ABOUT_FAST="${SEVENOS_LIFECYCLE_FAST:-0}" SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/about.sh" json >"$tmp/about.json" 2>/dev/null || printf '{}\n' >"$tmp/about.json" &
   local pid_about=$!
-  SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &
+  SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &
   local pid_distribution=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/channel.sh" json >"$tmp/channel.json" 2>/dev/null || printf '{}\n' >"$tmp/channel.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/channel.sh" json >"$tmp/channel.json" 2>/dev/null || printf '{}\n' >"$tmp/channel.json" &
   local pid_channel=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/update.sh" json >"$tmp/update.json" 2>/dev/null || printf '{}\n' >"$tmp/update.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/update.sh" json >"$tmp/update.json" 2>/dev/null || printf '{}\n' >"$tmp/update.json" &
   local pid_update=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/recovery.sh" json >"$tmp/recovery.json" 2>/dev/null || printf '{}\n' >"$tmp/recovery.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/recovery.sh" json >"$tmp/recovery.json" 2>/dev/null || printf '{}\n' >"$tmp/recovery.json" &
   local pid_recovery=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/manifest.sh" summary-json >"$tmp/manifest.json" 2>/dev/null || printf '{}\n' >"$tmp/manifest.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/manifest.sh" summary-json >"$tmp/manifest.json" 2>/dev/null || printf '{}\n' >"$tmp/manifest.json" &
   local pid_manifest=$!
-  SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer.json" 2>/dev/null || printf '{}\n' >"$tmp/installer.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer.json" 2>/dev/null || printf '{}\n' >"$tmp/installer.json" &
   local pid_installer=$!
   wait "$pid_about" "$pid_distribution" "$pid_channel" "$pid_update" "$pid_recovery" "$pid_manifest" "$pid_installer" || true
 

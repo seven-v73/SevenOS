@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Seven Hub Native
-Comment=Native SevenOS control center prototype
+Name=Seven Hub
+Comment=Control center for your SevenOS
 Exec=seven-hub-native
 Icon=seven-hub
 Terminal=false

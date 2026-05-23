@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+import argparse
+import math
+import os
+import shutil
+import struct
+import subprocess
+import tempfile
+import wave
+from pathlib import Path
+
+
+SOUNDS = {
+    "soft-chime": {
+        "notes": (392.00, 493.88, 659.25),
+        "duration": 0.56,
+        "gain": 0.20,
+        "delay": 0.055,
+    },
+    "organic-breath": {
+        "notes": (261.63, 329.63, 392.00),
+        "duration": 0.72,
+        "gain": 0.18,
+        "delay": 0.075,
+    },
+    "precise-click": {
+        "notes": (440.00, 554.37, 880.00),
+        "duration": 0.42,
+        "gain": 0.16,
+        "delay": 0.035,
+    },
+    "lock-soft": {
+        "notes": (293.66, 392.00, 523.25),
+        "duration": 0.50,
+        "gain": 0.17,
+        "delay": 0.045,
+    },
+    "brush-air": {
+        "notes": (349.23, 440.00, 587.33),
+        "duration": 0.64,
+        "gain": 0.17,
+        "delay": 0.065,
+    },
+    "bridge-pulse": {
+        "notes": (329.63, 493.88, 659.25),
+        "duration": 0.58,
+        "gain": 0.17,
+        "delay": 0.05,
+    },
+    "low-latency-tick": {
+        "notes": (523.25, 659.25),
+        "duration": 0.24,
+        "gain": 0.14,
+        "delay": 0.028,
+    },
+}
+
+
+def player() -> str | None:
+    for name in ("paplay", "pw-play"):
+        path = shutil.which(name)
+        if path:
+            return path
+    return None
+
+
+def envelope(t: float, duration: float) -> float:
+    attack = min(0.09, duration * 0.22)
+    release = min(0.22, duration * 0.38)
+    if t < attack:
+        return math.sin((t / attack) * math.pi / 2.0)
+    if t > duration - release:
+        return math.sin(((duration - t) / release) * math.pi / 2.0)
+    return 1.0
+
+
+def synthesize(sound: str, output: Path) -> None:
+    spec = SOUNDS.get(sound, SOUNDS["soft-chime"])
+    sample_rate = 44100
+    duration = float(spec["duration"])
+    gain = float(spec["gain"])
+    delay = float(spec["delay"])
+    notes = tuple(float(n) for n in spec["notes"])
+    total = int(sample_rate * duration)
+
+    with wave.open(str(output), "wb") as wav:
+        wav.setnchannels(2)
+        wav.setsampwidth(2)
+        wav.setframerate(sample_rate)
+        for index in range(total):
+            t = index / sample_rate
+            value = 0.0
+            for note_index, freq in enumerate(notes):
+                start = note_index * delay
+                if t < start:
+                    continue
+                local_t = t - start
+                local_duration = max(0.08, duration - start)
+                env = envelope(local_t, local_duration)
+                # A tiny second harmonic gives the tone presence without becoming sharp.
+                value += math.sin(2 * math.pi * freq * local_t) * env
+                value += math.sin(2 * math.pi * freq * 2 * local_t) * env * 0.08
+            value = max(-1.0, min(1.0, value * gain / max(1, len(notes))))
+            packed = struct.pack("<h", int(value * 32767))
+            wav.writeframesraw(packed + packed)
+
+
+def play(sound: str) -> int:
+    audio_player = player()
+    if not audio_player:
+        return 0
+    with tempfile.TemporaryDirectory(prefix="sevenos-passage-sound-") as tmp:
+        path = Path(tmp) / f"{sound}.wav"
+        synthesize(sound, path)
+        subprocess.run([audio_player, str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-passage-sound")
+    parser.add_argument("sound", nargs="?", default="soft-chime")
+    parser.add_argument("--probe", action="store_true")
+    parser.add_argument("--list", action="store_true")
+    args = parser.parse_args()
+
+    if args.probe:
+        print("ready" if player() else "no-player")
+        return 0
+    if args.list:
+        for name in sorted(SOUNDS):
+            print(name)
+        return 0
+    if os.environ.get("SEVENOS_PASSAGE_SOUND", "1") == "0":
+        return 0
+    return play(args.sound)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

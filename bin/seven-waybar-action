@@ -51,7 +51,7 @@ run_detached() {
     dry_line "Launch > $*"
     return 0
   fi
-  setsid -f "$@" >/tmp/sevenos-waybar-action.log 2>&1 || notify "SevenOS Waybar" "Action failed: $*"
+  setsid -f "$@" >/tmp/sevenos-waybar-action.log 2>&1 || notify "SevenOS Shell Bar" "Action failed: $*"
 }
 
 run_terminal() {
@@ -89,7 +89,7 @@ open_rofi_menu() {
   fi
 
   if ! command -v rofi >/dev/null 2>&1; then
-    notify "SevenOS Waybar" "Rofi is not installed."
+    notify "SevenOS Shell Bar" "SevenOS fallback menu is not installed."
     return 1
   fi
 
@@ -158,9 +158,13 @@ run_profile_action() {
     "Profile Center") run_detached seven-profile-center-native ;;
     "Workspace") run_detached seven-files profile ;;
     "Settings") run_detached seven-settings profiles ;;
+    "Activate Equinox") run_terminal "SevenOS Equinox" "seven profile activate equinox" ;;
+    "Activate Baobab") run_terminal "SevenOS Baobab" "seven profile activate baobab" ;;
     "Activate Forge") run_terminal "SevenOS Forge" "seven profile activate forge" ;;
     "Activate Shield") run_terminal "SevenOS Shield" "seven profile activate shield" ;;
     "Activate Studio") run_terminal "SevenOS Studio" "seven profile activate studio" ;;
+    "Activate Windows Bridge") run_terminal "SevenOS Windows Bridge" "seven profile activate windows" ;;
+    "Activate Pulse") run_terminal "SevenOS Pulse" "seven profile activate pulse" ;;
     *) return 0 ;;
   esac
 }
@@ -261,7 +265,7 @@ show_menu() {
     profile)
       prompt="Profiles"
       runner="run_profile_action"
-      options=("󰐃  Profile Center" "󰉋  Workspace" "󰒓  Settings" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio")
+      options=("󰐃  Profile Center" "󰉋  Workspace" "󰒓  Settings" "󰘦  Activate Equinox" "󰔱  Activate Baobab" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio" "󰖳  Activate Windows Bridge" "󰓅  Activate Pulse")
       ;;
     security)
       prompt="Security"

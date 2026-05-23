@@ -57,7 +57,7 @@ This path performs:
 - CLI, theme, session and wallpaper runtime refresh;
 - Seven Hub installation;
 - Shield/security consolidation;
-- Forge, Shield, Studio, Windows, Horizon and Baobab profile completion;
+- Forge DevOps, Shield, Studio, Windows, Pulse and Baobab profile completion;
 - Windows app compatibility setup;
 - Seven Server and deployment foundation;
 - installer tooling foundation;

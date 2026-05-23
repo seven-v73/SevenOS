@@ -1,0 +1,6 @@
+# SevenOS Baobab cultural mini OS - language lab candidates
+# Install these deliberately when a machine is ready for heavier offline
+# translation/language tooling. They are not part of the default immersive route
+# because the Python dependency chain can be fragile on rolling distributions.
+
+argos-translate

@@ -1,6 +1,6 @@
 # SevenOS Progress
 
-Derniere mise a jour : 2026-05-16
+Derniere mise a jour : 2026-05-22
 
 Ce document suit l'evolution de SevenOS : ce qui est deja en place, le niveau actuel du projet, les ameliorations recentes, et les prochaines etapes pour le faire passer d'une base Arch personnalisee a un vrai systeme d'exploitation coherent.
 
@@ -319,6 +319,17 @@ Les piliers du projet sont :
 - Ajout de `seven shield mode`, `seven shield workspaces`, `seven shield context <name>`, `seven shield layout <name>` et `seven shield hud` : naissance de CyberSpace, une couche cyber orientee contexte qui relie Shield aux workspaces Hyprland, aux scopes, aux labs et au HUD.
 - Hyprland expose maintenant `Super+C` pour CyberSpace et `Super+Ctrl+C` pour le Cyber HUD, avec les workspaces 1-9 alignes sur Recon, Web, Reversing, Network, Forensics, Exploit, Intel, Logs et Sandbox.
 - Migration CyberSpace vers Seven Core : `seven-daemon cyberspace --json` et `seven-daemon cyberspace-plan --json` exposent maintenant la carte des contextes, l'etat du scope et le plan de remediation cyber. `seven state --json` et Seven Server exposent aussi `cyberspace` / `cyberspace-plan`.
+- Alignement daemon/installer : SevenDaemon distingue maintenant Calamares installe, source declaree et candidat AUR (`aur-candidate`) au lieu d'exposer seulement `MISS`, ce qui rend les contrats `seven installer plan --json` et `seven distribution --json` plus justes pour une distribution autonome.
+- Correction du score installer daemon-native : les checks optionnels Calamares sont ponderes sur les 15% optionnels au lieu de pouvoir marquer trop tot `graphical-ready`.
+- Correction du plan release Windows Bridge : `seven release plan --json` lit maintenant la bonne action `windows-vm-provisioning`, pour garder la phase Windows en `USER_REQUIRED` quand l'ISO officielle utilisateur manque.
+- Alignement du release gate : `seven release status --json` et `seven release plan --json` remontent maintenant la politique Calamares (`aur-candidate` / `source-declared`) au lieu d'afficher seulement le runtime manquant, afin que Release, Distribution et Installer parlent le meme langage produit.
+- Seven Hub Native expose maintenant la route `seven installer runtime` dans la recherche et dans les actions compactes, pour que le passage Calamares AUR/source -> runtime ISO soit visible depuis une surface SevenOS et non seulement depuis le terminal.
+- Documentation de la politique release Calamares dans `docs/DISTRIBUTION_AUTONOMY.md` : `OK`, `aur-candidate`, `source-declared` et `MISS` sont maintenant definis comme etats produit, avec la regle Hub/Settings/Doctor/Release correspondante.
+- Renforcement de `seven product` : les timeouts rapides des contrats About, Lifecycle, Foundations, Distribution et Mask passent a 20s pour eviter qu'un pic CPU ponctuel degrade le facade produit en `unknown` alors que les contrats sous-jacents sont valides.
+- Correction du contrat Health/Session : `seven health --json` reconnait maintenant `seven session status --json` avec `mode=running` et `percent=100`, au lieu d'attendre uniquement un champ legacy `state`.
+- Renforcement de `seven lifecycle` : les sous-contrats About, Distribution, Channel, Update, Recovery, Manifest et Installer utilisent maintenant une fenetre de 20s pour eviter les faux `partial` sous charge lorsque Health/Product/Smoke tournent en parallele.
+- Stabilisation du Health gate : `seven health --json` accepte maintenant le facade produit comme sain a partir de 90%, afin d'eviter qu'un audit parallele ponctuellement `partial` a 94% degrade la sante quotidienne alors que le contrat direct est `ready`.
+- Renforcement de `seven distribution` : les timeouts des sous-contrats critiques passent a 20s/30s pour eviter qu'un audit parallele tres charge transforme un etat daily-driver valide en faux `development-layer`.
 
 ## Daily Driver Consolidation
 

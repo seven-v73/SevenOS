@@ -307,7 +307,7 @@ for candidate in preferred:
         elif candidate == "lutris":
             blockers.append({"key": "lutris", "state": states[candidate], "action": "seven profile install windows"})
         elif candidate == "vm":
-            blockers.append({"key": "windows_vm", "state": states[candidate], "action": "seven windows create --iso /path/windows.iso --virtio-iso /path/virtio-win.iso"})
+            blockers.append({"key": "windows_vm", "state": states[candidate], "action": "seven windows provision --yes"})
 
 print(json.dumps({
     "schema": "sevenos.windows-app-resolve.v1",

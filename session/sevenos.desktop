@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=SevenOS
-Comment=SevenOS Hyprland session
-Exec=Hyprland
+Comment=SevenOS personal OS session
+Exec=seven-session start
 Type=Application
-DesktopNames=SevenOS;Hyprland
+DesktopNames=SevenOS

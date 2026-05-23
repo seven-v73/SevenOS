@@ -1,0 +1,6 @@
+# SevenOS base AUR helpers
+#
+# These are built from AUR with makepkg by scripts/aur-helpers.sh because they
+# are not official pacman repository packages.
+yay
+paru

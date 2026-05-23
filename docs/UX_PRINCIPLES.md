@@ -16,7 +16,7 @@ Users should think in terms of outcomes:
 - Forge for building
 - Shield for protecting
 - Studio for creating
-- Horizon for connecting
+- Forge DevOps for building, connecting and deploying
 - Griot for learning
 - Baobab for system continuity
 

@@ -22,6 +22,7 @@ Targets:
   hub-gui-stack    Install Seven Hub Tauri GUI foundation packages
   shell-ags        Install Seven Shell AGS/TypeScript foundation packages
   runtime-tools    Install optional runtime orchestration tools such as CRIU
+  aur-helpers      Install yay and paru for SevenOS AUR-backed features
   hypr-ecosystem   Install premium Hyprland ecosystem tools
   shell-preview    Preview Seven Shell AGS migration plan
   flatpak          Manage Flatpak/Flathub bridge
@@ -143,6 +144,9 @@ case "$TARGET" in
     ;;
   runtime-tools)
     install_package_file "$ROOT_DIR/scripts/packages-runtime-optional.txt"
+    ;;
+  aur-helpers)
+    "$ROOT_DIR/scripts/aur-helpers.sh" install
     ;;
   hypr-ecosystem)
     "$ROOT_DIR/scripts/hypr-ecosystem.sh" install "${TARGET_ARGS[@]}"

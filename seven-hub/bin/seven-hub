@@ -282,7 +282,7 @@ load_actions() {
     "Dashboard")
       actions=(
         "Welcome|seven:welcome|Show onboarding and next steps"
-        "Native Hub Prototype|seven:hub-native open|Open GTK/libadwaita Seven Hub prototype"
+        "Seven Hub|seven:hub-native open|Open the SevenOS control center"
         "System Dashboard|dashboard:system|Open SevenOS overview"
         "Architecture Map|seven:architecture|Show SevenOS system architecture"
         "Hybrid OS Matrix|seven:architecture matrix|Show SevenOS hybrid layer readiness and contracts"
@@ -291,9 +291,9 @@ load_actions() {
         "Architecture Doctor|seven:architecture doctor|Validate product architecture"
         "Ecosystem Map|seven:ecosystem|Show all SevenOS ecosystem modules"
         "Experience Audit|seven:experience|Check OS coherence and UX blockers"
-        "Installer Stack|seven:installer status|Show Calamares and Archinstall readiness"
-        "Hub GUI Stack|seven:hub-gui status|Show Tauri readiness"
-        "Flatpak Bridge|seven:flatpak status|Show Flatpak and Flathub readiness"
+        "Installer Portal|seven:installer status|Show SevenOS installer readiness"
+        "Hub App Stack|seven:hub-gui status|Show Seven Hub app readiness"
+        "Software Sources|seven:flatpak status|Show external app source readiness"
         "Readiness Score|seven:readiness|Score SevenOS against OS choice criteria"
         "Improve Plan|seven:improve|Plan improvements for all OS criteria"
         "Repair Plan|seven:repair|Show guided repair plan"
@@ -303,7 +303,7 @@ load_actions() {
         "Improve Workspaces|seven:improve target|Plan Forge, Shield and Studio completion"
         "System Status|seven:status|Show installed profiles and services"
         "Doctor|doctor|Check host readiness"
-        "Seven Update|seven:update|Update pacman and AUR packages"
+        "Seven Update|seven:update|Update SevenOS system and app sources"
         "Preview Full Install|all --dry-run|Preview full installation"
       )
       ;;
@@ -329,7 +329,7 @@ load_actions() {
         "Cyber Lab Forensics|cyber-lab --preset forensics|Open forensic lab"
         "Cyber Lab Offline|cyber-lab --preset offline|Open offline lab"
         "Apply SECURITY|security|Apply base firewall and hardening"
-        "BlackArch Setup|blackarch-setup --dry-run|Preview optional BlackArch bridge"
+        "Toolchain Sources|blackarch-setup --dry-run|Preview optional Shield sources"
       )
       ;;
     "Desktop")
@@ -346,17 +346,17 @@ load_actions() {
       ;;
     "VM & Windows")
       actions=(
-        "Windows Mode Guide|seven:windows guide|Explain Bottles, Wine and KVM paths"
+        "Windows Bridge Guide|seven:windows guide|Explain Windows Bridge paths"
         "Windows Mode Status|seven:windows status|Show Windows compatibility readiness"
-        "Windows Apps|seven:windows apps|Open Bottles for Windows applications"
-        "Windows VM|seven:windows vm|Open Virt Manager for Windows desktop mode"
+        "Windows Apps|seven:windows apps|Open Windows applications"
+        "Windows VM|seven:windows vm|Open Windows desktop mode"
         "Windows Mode Start|seven:windows start|Start SevenOS Windows VM"
         "Windows Mode Console|seven:windows console|Open SevenOS Windows VM console"
-        "Install WINDOWS|windows|Install Wine, Lutris, QEMU, Bottles"
+        "Install Windows Bridge|windows|Install SevenOS Windows Bridge"
         "VM Check|vm-check|Check KVM and libvirt readiness"
         "VM Network|vm-network|Start libvirt default network"
         "Open Virt Manager|app:virt-manager|Launch VM manager"
-        "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"
+        "Windows App Manager|app:flatpak run com.usebottles.bottles|Launch Windows app manager"
       )
       ;;
     "Server & Deploy")
@@ -388,9 +388,9 @@ load_actions() {
       ;;
     "Installer")
       actions=(
-        "Installer Stack|seven:installer status|Show Calamares and Archinstall readiness"
+        "Installer Stack|seven:installer status|Show graphical and guided installer readiness"
         "Installer Stack Doctor|seven:installer doctor|Validate installer foundation"
-        "Installer Stack Plan|seven:installer plan|Show Calamares integration plan"
+        "Installer Stack Plan|seven:installer plan|Show graphical installer integration plan"
         "Install Installer Stack|installer-stack|Install official installer foundation packages"
         "ISO Tools|iso-tools|Install ISO build tooling"
         "Build ISO Dry Run|iso --dry-run|Preview ISO build"
@@ -401,14 +401,14 @@ load_actions() {
       ;;
     "Apps")
       actions=(
-        "Flatpak Bridge|seven:flatpak status|Show Flatpak and Flathub readiness"
-        "Flatpak Setup|seven:flatpak setup|Install Flatpak and add Flathub"
-        "Install Default Flatpaks|seven:flatpak install-defaults|Install SevenOS app candidates"
+        "Software Sources|seven:flatpak status|Show external app source readiness"
+        "Prepare App Sources|seven:flatpak setup|Prepare sandboxed app sources"
+        "Install Default Apps|seven:flatpak install-defaults|Install SevenOS app candidates"
         "Hub GUI Stack|seven:hub-gui status|Show native GUI readiness"
-        "Native Hub Status|seven:hub-native status|Inspect GTK/libadwaita Hub prototype"
+        "Seven Hub Status|seven:hub-native status|Inspect Seven Hub readiness"
         "Hub GUI Doctor|seven:hub-gui doctor|Validate Tauri scaffold"
         "Open Virt Manager|app:virt-manager|Launch VM manager"
-        "Open Bottles|app:flatpak run com.usebottles.bottles|Launch Bottles"
+        "Windows App Manager|app:flatpak run com.usebottles.bottles|Launch Windows app manager"
         "SevenPkg Meta|sevenpkg:meta|List SevenOS meta-packages"
         "SevenPkg Status|sevenpkg:status|Show meta-package installation status"
       )
@@ -497,7 +497,7 @@ action_badge() {
     "Install CYBER Sandbox") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity-sandbox.txt" ;;
     "Cyber Audit") printf 'RUN' ;;
     "Cyber Lab Web"|"Cyber Lab Forensics"|"Cyber Lab Offline") app_state firejail ;;
-    "BlackArch Setup") blackarch_state ;;
+    "Toolchain Sources") blackarch_state ;;
     "Install CREATION") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
     "Install WINDOWS") package_file_state "$SEVENOS_ROOT/scripts/packages-windows.txt" ;;
     "Install Server Layer") package_file_state "$SEVENOS_ROOT/scripts/packages-server.txt" ;;
@@ -530,7 +530,7 @@ action_badge() {
     "Install Installer Stack") package_file_state "$SEVENOS_ROOT/scripts/packages-installer.txt" ;;
     "ISO Tools") package_file_state "$SEVENOS_ROOT/scripts/packages-iso.txt" ;;
     "Open Virt Manager") app_state virt-manager ;;
-    "Open Bottles")
+    "Windows App Manager")
       if command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
         printf 'OK'
       else

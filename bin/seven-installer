@@ -36,9 +36,14 @@ run_or_print() {
 }
 
 status_json() {
-  local calamares_state archinstall_state release_state
+  local calamares_state archinstall_state release_state runtime_payload runtime_state runtime_route runtime_readiness runtime_next
   command -v calamares >/dev/null 2>&1 && calamares_state="OK" || calamares_state="MISS"
   command -v archinstall >/dev/null 2>&1 && archinstall_state="OK" || archinstall_state="MISS"
+  runtime_payload="$("$ROOT_DIR/scripts/installer-stack.sh" runtime --json 2>/dev/null || printf '{}')"
+  runtime_state="$(printf '%s\n' "$runtime_payload" | python -c 'import json,sys; data=json.load(sys.stdin); print(data.get("state","unknown"))' 2>/dev/null || printf unknown)"
+  runtime_route="$(printf '%s\n' "$runtime_payload" | python -c 'import json,sys; data=json.load(sys.stdin); print(data.get("route","unknown"))' 2>/dev/null || printf unknown)"
+  runtime_readiness="$(printf '%s\n' "$runtime_payload" | python -c 'import json,sys; data=json.load(sys.stdin); print(data.get("readiness","unknown"))' 2>/dev/null || printf unknown)"
+  runtime_next="$(printf '%s\n' "$runtime_payload" | python -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps(data.get("next", [])))' 2>/dev/null || printf '[]')"
   if [[ "$calamares_state" == "OK" ]]; then
     release_state="graphical-ready"
   elif [[ "$archinstall_state" == "OK" ]]; then
@@ -46,21 +51,35 @@ status_json() {
   else
     release_state="foundation"
   fi
-  CALAMARES_STATE="$calamares_state" ARCHINSTALL_STATE="$archinstall_state" RELEASE_STATE="$release_state" \
+  CALAMARES_STATE="$calamares_state" \
+  ARCHINSTALL_STATE="$archinstall_state" \
+  RELEASE_STATE="$release_state" \
+  RUNTIME_STATE="$runtime_state" \
+  RUNTIME_ROUTE="$runtime_route" \
+  RUNTIME_READINESS="$runtime_readiness" \
+  RUNTIME_NEXT="$runtime_next" \
   python - <<'PY'
 import json
 import os
 
 calamares = os.environ.get("CALAMARES_STATE", "MISS")
 archinstall = os.environ.get("ARCHINSTALL_STATE", "MISS")
+runtime_state = os.environ.get("RUNTIME_STATE", "unknown")
+runtime_route = os.environ.get("RUNTIME_ROUTE", "unknown")
+runtime_readiness = os.environ.get("RUNTIME_READINESS", "unknown")
+try:
+    runtime_next = json.loads(os.environ.get("RUNTIME_NEXT", "[]"))
+except json.JSONDecodeError:
+    runtime_next = []
+
 if calamares == "OK":
     state = "graphical-ready"
     route = "calamares"
 elif archinstall == "OK":
-    state = "guided-tui-ready"
+    state = "guided-tui-ready" if runtime_state in {"missing-source", "unknown"} else "graphical-runtime-candidate"
     route = "sevenos-guided-tui"
 else:
-    state = "foundation"
+    state = "foundation" if runtime_state in {"missing-source", "unknown"} else "graphical-runtime-candidate"
     route = "status-only"
 
 print(json.dumps({
@@ -68,6 +87,11 @@ print(json.dumps({
     "state": state,
     "route": route,
     "calamares_runtime": calamares,
+    "runtime_source": {
+        "state": runtime_state,
+        "route": runtime_route,
+        "readiness": runtime_readiness,
+    },
     "archinstall_runtime": archinstall,
     "release_state": os.environ.get("RELEASE_STATE", "foundation"),
     "safe_by_default": True,
@@ -79,6 +103,7 @@ print(json.dumps({
         "release": "seven installer release",
         "guide": "seven-installer guide",
     },
+    "next": runtime_next,
 }, indent=2))
 PY
 }
@@ -91,13 +116,21 @@ status() {
 
   printf 'SevenOS Graphical Installer\n'
   printf '===========================\n'
-  if command -v calamares >/dev/null 2>&1; then
-    printf 'calamares: OK\n'
-    printf 'command:   calamares -d\n'
-  else
-    printf 'calamares: MISS\n'
-    printf 'fallback:  seven installer release\n'
-  fi
+  PORTAL_JSON="$(status_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["PORTAL_JSON"])
+runtime = data.get("runtime_source", {})
+print(f"state:     {data.get('state')}")
+print(f"route:     {data.get('route')}")
+print(f"graphical: {data.get('calamares_runtime')}")
+print(f"source:    {runtime.get('state')} ({runtime.get('route')})")
+if data.get("route") == "calamares":
+    print("command:   calamares -d")
+else:
+    print("fallback:  seven installer release")
+PY
 }
 
 portal() {
@@ -114,8 +147,10 @@ print("SevenOS Installer Portal")
 print("========================")
 print(f"State: {data.get('state')}")
 print(f"Route: {data.get('route')}")
-print(f"Calamares: {data.get('calamares_runtime')}")
-print(f"Archinstall: {data.get('archinstall_runtime')}")
+print(f"Graphical runtime: {data.get('calamares_runtime')}")
+runtime = data.get("runtime_source", {})
+print(f"Runtime source: {runtime.get('state')} ({runtime.get('readiness')})")
+print(f"Guided runtime: {data.get('archinstall_runtime')}")
 print(f"Release gate: {data.get('release_state')}")
 print()
 print("Safe path:")
@@ -126,6 +161,8 @@ elif data.get("route") == "sevenos-guided-tui":
     print("  seven installer doctor")
 else:
     print("  seven installer release")
+for item in data.get("next", [])[:2]:
+    print(f"  {item.get('command')}")
 PY
 }
 
@@ -146,6 +183,8 @@ open_installer() {
 
   printf 'SevenOS graphical installer runtime is not installed yet.\n'
   printf 'Use the current safe installer path:\n\n'
+  "$ROOT_DIR/scripts/installer-stack.sh" runtime
+  printf '\n'
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'seven installer release\n'
     return 0

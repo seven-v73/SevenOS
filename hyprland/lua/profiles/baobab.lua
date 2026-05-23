@@ -1,23 +1,24 @@
 return {
   key = "baobab",
-  title = "Baobab Culture",
-  role = "culture and learning mini OS",
-  workspace_policy = "reading-media-community",
+  title = "Baobab Cultural OS",
+  role = "African cultural mini OS",
+  workspace_policy = "village-heritage-story-map",
   ui_density = "calm",
   runtime_signals = {
-    context = "culture-learning",
-    layout = "reader-media-community",
-    priority = "calm-learning",
+    context = "african-cultural-village",
+    layout = "heritage-story-sound-map",
+    priority = "offline-cultural-transmission",
   },
   workspace_intent = {
-    "1: cultural home and library",
-    "2: reading and study",
-    "3: audio, oral tradition and media",
-    "4: notes and community",
+    "1: Baobab Village, daily culture and heritage dashboard",
+    "2: Heritage Library, reading, archives and oral traditions",
+    "3: Cultural Stage, soundscape, radio, narration and media",
+    "4: Africa Map, atelier, food, fashion and community memory",
   },
   actions = {
-    "prefer quiet reading surfaces",
+    "prefer Baobab Village as the primary surface",
     "route Seven Reader as a primary learning tool",
+    "keep offline-first cultural memory available",
     "avoid developer, gaming or security assumptions",
   },
   env_rules = {
@@ -48,5 +49,6 @@ return {
     "windowrule = match:title ^(Seven Reader)$, workspace 2",
     "windowrule = match:class ^(foliate|com.github.johnfactotum.Foliate)$, workspace 2",
     "windowrule = match:class ^(vlc|mpv)$, workspace 3",
+    "windowrule = match:title ^(Baobab|Baobab Cultural Mini OS|Baobab Modules)$, workspace 1",
   },
 }

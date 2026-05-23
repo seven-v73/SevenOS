@@ -85,7 +85,7 @@ core = command_json([str(root / "scripts" / "core.sh"), "status", "--json"], {"s
 categories = readiness.get("categories", {})
 profile_items = profiles.get("profiles", [])
 profile_by_key = {item.get("key"): item for item in profile_items}
-daily_profile_keys = ("equinox", "baobab", "forge", "shield", "studio", "windows", "horizon", "pulse")
+daily_profile_keys = ("equinox", "baobab", "forge", "shield", "studio", "windows", "pulse")
 
 def category_percent(name):
     item = categories.get(name) or {}
@@ -165,7 +165,7 @@ gates = [
         "actual": ", ".join(f"{key}={server_deps.get(key, 'MISS')}" for key in ("go", "podman", "caddy")),
         "target": "go=OK, podman=OK, caddy=OK",
         "command": "seven improve deployment --apply --yes",
-        "reason": "Horizon needs Go, Podman and Caddy for the personal cloud/deployment workflow.",
+        "reason": "Forge DevOps needs Go, Podman and Caddy for the personal cloud/deployment workflow.",
     },
     {
         "key": "installer",

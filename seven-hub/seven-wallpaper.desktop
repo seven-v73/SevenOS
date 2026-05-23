@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Set as SevenOS Wallpaper
-Comment=Apply the selected image to the SevenOS Hyprland session
+Comment=Apply the selected image to your SevenOS desktop
 Exec=seven-wallpaper set %f
 Icon=preferences-desktop-wallpaper
 Terminal=false

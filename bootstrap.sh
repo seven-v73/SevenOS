@@ -6,6 +6,7 @@ source "$ROOT_DIR/scripts/lib.sh"
 
 log_info "Installing SevenOS base desktop layer..."
 install_package_file "$ROOT_DIR/scripts/packages-base.txt"
+"$ROOT_DIR/scripts/aur-helpers.sh" install || log_warn "AUR helper bootstrap did not complete. SevenOS remains usable; AUR features can be installed later with ./install.sh aur-helpers --yes."
 
 "$ROOT_DIR/branding/apply-branding.sh"
 "$ROOT_DIR/scripts/install-cli.sh"

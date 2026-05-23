@@ -1,0 +1,465 @@
+#!/usr/bin/env python3
+"""SevenOS Home: native public landing surface for mini OS experiences."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python3")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python.resolve():
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            env = {**os.environ, "SEVENOS_GI_PYTHON": "1"}
+            os.execve(str(system_python), [str(system_python), str(Path(__file__).resolve()), *sys.argv[1:]], env)
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").is_file():
+        return Path(env_root).resolve()
+    candidate = Path(__file__).resolve().parent.parent
+    if (candidate / "bin/seven").is_file():
+        return candidate
+    for path in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (path / "bin/seven").is_file():
+            return path
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+PROFILES = [
+    {
+        "key": "equinox",
+        "title": "Equinox",
+        "subtitle": "Bureau quotidien",
+        "mood": "Equilibre, fichiers recents, sante systeme.",
+        "accent": "#8B7CFF",
+        "command": "seven profile activate equinox",
+        "open": "seven profile open equinox",
+    },
+    {
+        "key": "baobab",
+        "title": "Baobab",
+        "subtitle": "Culture africaine",
+        "mood": "Memoire, langues, recits, collecte et patrimoine.",
+        "accent": "#A6E3A1",
+        "command": "seven profile activate baobab",
+        "open": "seven baobab open",
+    },
+    {
+        "key": "forge",
+        "title": "Forge",
+        "subtitle": "Developpement",
+        "mood": "Projets, builds, containers, services et deploys.",
+        "accent": "#F9E2AF",
+        "command": "seven profile activate forge",
+        "open": "seven profile center forge",
+    },
+    {
+        "key": "shield",
+        "title": "Shield",
+        "subtitle": "Cybersecurite",
+        "mood": "Scope autorise, preuves, rapports et isolation.",
+        "accent": "#00FFB3",
+        "command": "seven profile activate shield",
+        "open": "seven shield open",
+    },
+    {
+        "key": "studio",
+        "title": "Studio",
+        "subtitle": "Creation",
+        "mood": "Canvas, assets, palettes, capture et exports.",
+        "accent": "#CBA6F7",
+        "command": "seven profile activate studio",
+        "open": "seven profile center studio",
+    },
+    {
+        "key": "windows",
+        "title": "Windows",
+        "subtitle": "Pont VM",
+        "mood": "VM, snapshots, apps Windows et dossiers partages.",
+        "accent": "#74C7EC",
+        "command": "seven profile activate windows",
+        "open": "seven windows open",
+    },
+    {
+        "key": "pulse",
+        "title": "Pulse",
+        "subtitle": "Gaming",
+        "mood": "Jeux, performance, manettes, clips et overlays.",
+        "accent": "#00D4FF",
+        "command": "seven profile activate pulse",
+        "open": "seven profile center pulse",
+    },
+]
+
+QUICK_ACTIONS = [
+    ("Premiere configuration", "Langue, Wi-Fi, theme, profils, Store.", "seven welcome"),
+    ("Settings", "Configurer SevenOS, profils, motion et appareils.", "seven-settings"),
+    ("Mini OS Switcher", "Changer d'experience avec passage premium.", "seven profile center"),
+    ("SevenStore", "Installer apps et bundles par mini OS.", "seven store home"),
+    ("Sauvegarde", "Creer un backup local de SevenOS.", "seven recovery backup"),
+    ("Actions", "Toutes les actions SevenOS en graphique.", "seven actions open"),
+]
+
+
+def run_json(*args: str, fallback=None, timeout: float = 3.0, extra_env: dict[str, str] | None = None):
+    fallback = {} if fallback is None else fallback
+    try:
+        out = subprocess.check_output(
+            [str(ROOT / "bin/seven"), *args],
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT), **(extra_env or {})},
+            text=True,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+        )
+        return json.loads(out)
+    except Exception:
+        return fallback
+
+
+def run_detached(command: str) -> None:
+    subprocess.Popen(
+        ["bash", "-lc", command],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
+def home_payload() -> dict:
+    current = run_json("profile", "current", "--json", fallback={}, timeout=1.5)
+    health = run_json("health", "status", "--json", fallback={}, timeout=2.0, extra_env={"SEVENOS_HEALTH_FAST": "1"})
+    bridge = run_json("bridge", "status", "--json", fallback={}, timeout=2.0)
+    motion = run_json("motion", "status", "--json", fallback={}, timeout=1.5)
+    windows = run_json("windows", "status", "--json", fallback={}, timeout=2.0)
+    return {
+        "schema": "sevenos.home.v1",
+        "state": "ready",
+        "active_profile": current.get("key", bridge.get("active_profile", "equinox")),
+        "health": {
+            "state": health.get("state", "unknown"),
+            "score": health.get("score", 0),
+        },
+        "motion": {
+            "preset": motion.get("preset", "unknown"),
+            "mode": motion.get("mode", "auto"),
+            "profile_motion": motion.get("profile_motion", ""),
+        },
+        "bridge": {
+            "objects": bridge.get("object_count", 0),
+            "profiles_ready": sum(1 for item in bridge.get("profiles", []) if item.get("ready")),
+            "profiles_total": len(bridge.get("profiles", [])),
+        },
+        "windows": {
+            "mode": windows.get("mode", "unknown"),
+            "ready": bool(windows.get("ready", False)),
+        },
+        "profiles": PROFILES,
+        "quick_actions": [{"title": title, "description": desc, "command": command} for title, desc, command in QUICK_ACTIONS],
+    }
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+CSS = """
+window.seven-home {
+  background: #0b0f18;
+}
+.root {
+  padding: 22px;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(139,124,255,.24), transparent 30%),
+    radial-gradient(circle at 92% 15%, rgba(0,212,255,.14), transparent 32%),
+    #0b0f18;
+}
+.hero {
+  background: rgba(255,255,255,.055);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 20px;
+}
+.eyebrow {
+  color: rgba(255,255,255,.62);
+  font: 700 11px "SF Pro Text", "Inter", system-ui;
+  letter-spacing: .10em;
+}
+.title {
+  color: #f7f8fb;
+  font: 800 30px "SF Pro Display", "Inter", system-ui;
+}
+.subtitle {
+  color: rgba(247,248,251,.72);
+  font: 500 14px "SF Pro Text", "Inter", system-ui;
+}
+.pill {
+  color: #f7f8fb;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+.section-title {
+  color: #f7f8fb;
+  font: 800 16px "SF Pro Display", "Inter", system-ui;
+}
+.card {
+  background: rgba(255,255,255,.065);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 14px;
+}
+.card:hover {
+  background: rgba(255,255,255,.09);
+}
+.card-title {
+  color: #f7f8fb;
+  font: 800 16px "SF Pro Display", "Inter", system-ui;
+}
+.card-subtitle {
+  color: rgba(247,248,251,.66);
+  font: 600 11px "SF Pro Text", "Inter", system-ui;
+}
+.card-body {
+  color: rgba(247,248,251,.72);
+  font: 500 12px "SF Pro Text", "Inter", system-ui;
+}
+.active-card {
+  border: 1px solid rgba(255,255,255,.32);
+}
+button.primary {
+  color: #071018;
+  background: #f7f8fb;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 800;
+}
+button.soft {
+  color: #f7f8fb;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: 8px 12px;
+}
+"""
+
+
+class SevenHome:
+    def __init__(self, Gtk, Gdk):
+        self.Gtk = Gtk
+        self.Gdk = Gdk
+        self.payload = home_payload()
+        self.window = None
+
+    def label(self, text: str, css_class: str, xalign: float = 0.0):
+        widget = self.Gtk.Label(label=text)
+        widget.set_xalign(xalign)
+        widget.set_line_wrap(True)
+        widget.get_style_context().add_class(css_class)
+        return widget
+
+    def button(self, label: str, command: str, css_class: str = "soft"):
+        button = self.Gtk.Button(label=label)
+        button.get_style_context().add_class(css_class)
+        button.connect("clicked", lambda _button: run_detached(command))
+        return button
+
+    def hero(self):
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("hero")
+        active = self.payload.get("active_profile", "equinox")
+        health = self.payload.get("health", {})
+        motion = self.payload.get("motion", {})
+        bridge = self.payload.get("bridge", {})
+
+        box.pack_start(self.label("SEVENOS HOME", "eyebrow"), False, False, 0)
+        box.pack_start(self.label("Tes mini OS, un seul espace vivant", "title"), False, False, 0)
+        box.pack_start(
+            self.label(
+                "Choisis ton contexte, reprends tes activites, lance les reglages et garde chaque experience isolee.",
+                "subtitle",
+            ),
+            False,
+            False,
+            0,
+        )
+
+        row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+        for text in (
+            f"Actif: {active}",
+            f"Sante: {health.get('score', 0)}%",
+            f"Motion: {motion.get('preset', 'unknown')}",
+            f"Bridge: {bridge.get('profiles_ready', 0)}/{bridge.get('profiles_total', 0)}",
+        ):
+            pill = self.label(text, "pill")
+            row.pack_start(pill, False, False, 0)
+        box.pack_start(row, False, False, 0)
+
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.pack_start(self.button("Changer de mini OS", "seven profile center", "primary"), False, False, 0)
+        actions.pack_start(self.button("Ouvrir Settings", "seven-settings", "soft"), False, False, 0)
+        actions.pack_start(self.button("SevenStore", "seven store home", "soft"), False, False, 0)
+        box.pack_start(actions, False, False, 0)
+        return box
+
+    def quick_actions(self):
+        outer = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        outer.pack_start(self.label("Actions grand public", "section-title"), False, False, 0)
+        grid = self.Gtk.FlowBox()
+        grid.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        grid.set_max_children_per_line(3)
+        grid.set_column_spacing(10)
+        grid.set_row_spacing(10)
+        for title, desc, command in QUICK_ACTIONS:
+            card = self.action_card(title, desc, command)
+            grid.add(card)
+        outer.pack_start(grid, False, False, 0)
+        return outer
+
+    def action_card(self, title: str, desc: str, command: str):
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_size_request(250, 126)
+        box.get_style_context().add_class("card")
+        box.pack_start(self.label(title, "card-title"), False, False, 0)
+        box.pack_start(self.label(desc, "card-body"), True, True, 0)
+        box.pack_start(self.button("Ouvrir", command, "soft"), False, False, 0)
+        return box
+
+    def profile_grid(self):
+        outer = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        outer.pack_start(self.label("Mini OS", "section-title"), False, False, 0)
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(4)
+        flow.set_column_spacing(10)
+        flow.set_row_spacing(10)
+        active = self.payload.get("active_profile", "equinox")
+        for profile in PROFILES:
+            flow.add(self.profile_card(profile, active))
+        outer.pack_start(flow, False, False, 0)
+        return outer
+
+    def profile_card(self, profile: dict, active: str):
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_size_request(240, 174)
+        box.get_style_context().add_class("card")
+        if profile["key"] == active:
+            box.get_style_context().add_class("active-card")
+
+        accent = self.Gtk.DrawingArea()
+        accent.set_size_request(1, 4)
+        color = profile.get("accent", "#8B7CFF")
+
+        def draw(_widget, cr):
+            rgba = self.Gdk.RGBA()
+            rgba.parse(color)
+            cr.set_source_rgba(rgba.red, rgba.green, rgba.blue, 1.0)
+            cr.rectangle(0, 0, 240, 4)
+            cr.fill()
+            return False
+
+        accent.connect("draw", draw)
+        box.pack_start(accent, False, False, 0)
+        box.pack_start(self.label(profile["title"], "card-title"), False, False, 0)
+        box.pack_start(self.label(profile["subtitle"], "card-subtitle"), False, False, 0)
+        box.pack_start(self.label(profile["mood"], "card-body"), True, True, 0)
+        row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.pack_start(self.button("Activer", profile["command"], "primary" if profile["key"] != active else "soft"), False, False, 0)
+        row.pack_start(self.button("Ouvrir", profile["open"], "soft"), False, False, 0)
+        box.pack_start(row, False, False, 0)
+        return box
+
+    def build(self):
+        self.window = self.Gtk.Window(title="SevenOS Home")
+        self.window.set_default_size(1180, 760)
+        self.window.set_position(self.Gtk.WindowPosition.CENTER)
+        self.window.get_style_context().add_class("seven-home")
+        self.window.connect("destroy", self.Gtk.main_quit)
+        self.window.connect("key-press-event", self.on_key_press)
+
+        provider = self.Gtk.CssProvider()
+        provider.load_from_data(CSS.encode("utf-8"))
+        self.Gtk.StyleContext.add_provider_for_screen(
+            self.Gdk.Screen.get_default(),
+            provider,
+            self.Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=18)
+        root.get_style_context().add_class("root")
+        root.pack_start(self.hero(), False, False, 0)
+        root.pack_start(self.profile_grid(), False, False, 0)
+        root.pack_start(self.quick_actions(), False, False, 0)
+
+        scroll = self.Gtk.ScrolledWindow()
+        scroll.set_policy(self.Gtk.PolicyType.NEVER, self.Gtk.PolicyType.AUTOMATIC)
+        scroll.add(root)
+        self.window.add(scroll)
+        self.window.show_all()
+
+    def on_key_press(self, _widget, event) -> bool:
+        if event.keyval in (self.Gdk.KEY_Escape, self.Gdk.KEY_q):
+            self.Gtk.main_quit()
+            return True
+        return False
+
+
+def run_app() -> int:
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, Gtk
+
+    app = SevenHome(Gtk, Gdk)
+    app.build()
+    Gtk.main()
+    return 0
+
+
+def main() -> int:
+    if "--probe" in sys.argv:
+        return probe()
+    if "--json" in sys.argv:
+        print(json.dumps(home_payload(), indent=2, ensure_ascii=False))
+        return 0
+    return run_app()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

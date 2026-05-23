@@ -25,6 +25,7 @@ M.common_rules = {
   "windowrule = match:class ^(SevenTerminalLight)$, float on, center on, size 760 480",
   "windowrule = match:class ^(SevenTerminalForge)$, float on, center on, size 760 480",
   "windowrule = match:class ^(SevenTerminalCyber)$, float on, center on, size 760 480",
+  "windowrule = match:class ^(SevenTerminalWindows)$, float on, center on, size 820 500",
   "windowrule = match:class ^(SevenTerminalFocus)$, float on, center on, size 760 480",
   "windowrule = match:class ^(SevenTerminalAdmin)$, float on, center on, size 760 480",
   "windowrule = match:class ^(SevenLaunchpadNative)$, float on, center on, size 86% 82%",

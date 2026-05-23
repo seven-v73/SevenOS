@@ -5,30 +5,22 @@ cat <<'EOF'
 SevenOS Live
 Beyond the Desktop
 
-Repository:
-  /opt/SevenOS
+This live session lets you try SevenOS, inspect readiness and start the
+installer route without opening the repository first.
 
-Identity:
-  Deep Void shell, Seven Blue, Seven Violet, Seven Cyan and Cyber Green.
+Main routes:
+  Install SevenOS     seven-installer
+  Try SevenOS         seven welcome
+  Open Hub            seven hub
+  Check Readiness     seven doctor
 
-Start here:
-  cd /opt/SevenOS
-  seven welcome
-  seven dashboard
-  seven doctor
-  seven status
-  seven readiness
-  seven phase-gate
-  seven ecosystem
-  seven ecosystem roadmap
-  seven server status
-  seven deploy /opt/SevenOS
-  sevenpkg meta
-  ./install.sh doctor
-  ./install.sh status
-  ./install.sh installer-plan
-  ./install.sh base --dry-run
+Personal OS surfaces:
+  Settings            seven settings
+  Software            seven store
+  Mini OS profiles    seven profile status
+  Installer portal    seven-installer portal
 
 Build status:
-  This is an early SevenOS live foundation, not the final installer.
+  SevenOS can run as a daily-driver layer. Public ISO release remains gated by
+  the installer runtime and release freeze checks.
 EOF

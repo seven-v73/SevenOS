@@ -95,7 +95,7 @@ repair_compatibility() {
 
 repair_deployment() {
   section "Deployment Repair"
-  run_repair "Install Horizon server and deployment layer" "$ROOT_DIR/install.sh" server
+  run_repair "Install Forge DevOps server and deployment layer" "$ROOT_DIR/install.sh" server
   run_repair "Install seven-server user service" "$ROOT_DIR/server/seven-server.sh" install-user-service
   run_repair "Start seven-server user service" "$ROOT_DIR/server/seven-server.sh" start
   run_repair "Validate ecosystem foundation" "$ROOT_DIR/scripts/ecosystem.sh" doctor

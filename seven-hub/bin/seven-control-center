@@ -208,7 +208,7 @@ def render_dashboard():
     shield = package_profile(ROOT / "scripts/packages-cybersecurity.txt")
     studio = package_profile(ROOT / "scripts/packages-creation.txt")
     windows = package_profile(ROOT / "scripts/packages-windows.txt")
-    horizon = package_profile(ROOT / "scripts/packages-server.txt")
+    devops = package_profile(ROOT / "scripts/packages-server.txt")
     ufw = "OK" if command_state("ufw") == "OK" else "MISS"
     firewall = service_state("ufw.service")
     api = service_state("seven-server.service", user=True)
@@ -232,7 +232,7 @@ def render_dashboard():
         card("Shield", shield[0], f"Cybersecurity workspace packages: {shield[1]}.", "security-plan"),
         card("Studio", studio[0], f"Creative workspace packages: {studio[1]}.", "target-plan"),
         card("Windows Mode", "OK" if windows_state.get("app_ready") else windows[0], f"Mode: {windows_mode}. Packages: {windows[1]}.", "windows-status"),
-        card("Server & Deploy", "OK" if server_runtime == "RUN" else horizon[0], f"Horizon packages: {horizon[1]}. Runtime: {server_runtime}.", "deployment-plan"),
+        card("Server & Deploy", "OK" if server_runtime == "RUN" else devops[0], f"Forge DevOps service packages: {devops[1]}. Runtime: {server_runtime}.", "deployment-plan"),
         card("Theme & Session", "OK", "SevenOS Design System v2 across wallpaper, Waybar, Rofi, Kitty and Mako.", "theme"),
     ]
 

@@ -133,7 +133,7 @@ fn profile_cards_from_seven() -> Option<Vec<ProfileCard>> {
     let items: serde_json::Value = serde_json::from_str(&output).ok()?;
     let array = items.as_array()?;
 
-    let wanted = ["forge", "shield", "studio", "windows", "horizon"];
+    let wanted = ["forge", "shield", "studio", "windows", "pulse", "baobab"];
 
     let mut cards = Vec::new();
     for key in wanted {

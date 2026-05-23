@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """SevenOS mini OS center.
 
-This is a profile-aware surface used by Baobab, Forge, Studio, Windows,
-Horizon and Pulse while Profile Center remains the global compositor view.
+This is a profile-aware surface used by Baobab, Forge, Shield, Studio,
+Windows and Pulse while Profile Center remains the global compositor view.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -75,23 +76,13 @@ def load_profile_ui() -> dict:
 def default_home_contract(key: str, meta: dict) -> dict:
     fallback = {
         "equinox": ("Daily balance", "Everyday Workspace", 86, "general SevenOS assistant"),
-        "baobab": ("Culture and learning", "Baobab Library", 58, "cultural learning assistant"),
-        "forge": ("Developer cockpit", "Forge Projects", 84, "software engineering assistant"),
+        "baobab": ("African cultural OS", "Baobab Village", 86, "cultural heritage assistant"),
+        "forge": ("DevOps cockpit", "Forge Projects & Deployments", 88, "software engineering and deployment assistant"),
         "shield": ("Authorized security lab", "Shield Cases", 88, "defensive security assistant"),
         "studio": ("Creator studio", "Studio Assets", 78, "creative production assistant"),
         "windows": ("Windows bridge", "Windows Apps", 72, "Windows compatibility assistant"),
-        "horizon": ("Cloud and services", "Horizon Deployments", 74, "cloud deployment assistant"),
         "pulse": ("Gaming performance", "Pulse Games", 55, "gaming performance assistant"),
     }
-
-
-def bridge_state() -> dict:
-    try:
-        out = subprocess.check_output([str(ROOT / "bin/seven"), "mini-os", "suggest", "--json"], cwd=ROOT, text=True, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
-        data = json.loads(out)
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
     title, library, score, ai = fallback.get(key, fallback["equinox"])
     return {
         "title": title,
@@ -103,6 +94,27 @@ def bridge_state() -> dict:
         "autonomy_score": score,
         "ai_persona": ai,
     }
+
+
+def bridge_state() -> dict:
+    try:
+        out = subprocess.check_output([str(ROOT / "bin/seven"), "mini-os", "suggest", "--json"], cwd=ROOT, text=True, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
+        data = json.loads(out)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def windows_bridge_runtime() -> dict:
+    return run_json("windows", "bridge-status", "--json", fallback={})
+
+
+def bridge_status() -> dict:
+    return run_json("bridge", "status", "--json", fallback={})
+
+
+def bridge_session(key: str) -> dict:
+    return run_json("bridge", "session", "--profile", key, "--json", fallback={})
 
 
 def active_profile() -> str:
@@ -119,6 +131,58 @@ def compact(items, limit: int = 4) -> str:
     return " · ".join(values[:limit]) + f" +{len(values) - limit}"
 
 
+def workflow_lines(key: str) -> list[str]:
+    workflows = {
+        "equinox": [
+            "Continuity: recent files, active profile, system health",
+            "Balance: neutral resources and shared capabilities",
+            "Next: pick a mini OS only when the task needs a stronger context",
+        ],
+        "baobab": [
+            "Knowledge tree: roots, library, stories, sound, explore",
+            "Collect: source, license, curator, confidence, community review",
+            "Offline: local catalog, packs, narration and language tools",
+        ],
+        "forge": [
+            "Cockpit: project, build, containers, services, deploy targets",
+            "Observe: logs, health checks, local APIs, release readiness",
+            "Protect: secrets stay profile-owned; Shield can audit explicitly",
+        ],
+        "shield": [
+            "Case first: authorized scope, evidence, timeline, report",
+            "Guard rails: VPN, recorder, cleanup and visible risk state",
+            "Collaborate: audit Forge projects without merging workspaces",
+        ],
+        "studio": [
+            "Atelier: canvas, palettes, captures, assets, exports",
+            "Create: Krita, Blender, Kdenlive, Inkscape and media controls",
+            "Bridge: send textiles/assets to Baobab or Windows apps on demand",
+        ],
+        "windows": [
+            "Bridge: app-first Wine/Bottles/Lutris before VM",
+            "VM: official ISO, VirtIO, qcow2 disk and libvirt network",
+            "Sync: enter/leave keeps Windows resources quiet when inactive",
+        ],
+        "pulse": [
+            "Stage: game library, GameMode, recorder, low-latency focus",
+            "Tune: MangoHud/Gamescope optional overlays and frame pacing",
+            "Protect: gaming services stay quiet outside Pulse",
+        ],
+    }
+    return workflows.get(key, workflows["equinox"])
+
+
+def profile_terminal_mode(key: str) -> str:
+    return {
+        "forge": "forge",
+        "shield": "cyber",
+        "windows": "windows",
+        "studio": "focus",
+        "baobab": "focus",
+        "pulse": "dark",
+    }.get(key, "classic")
+
+
 def run_detached(command: str) -> None:
     subprocess.Popen(
         ["bash", "-lc", command],
@@ -129,37 +193,70 @@ def run_detached(command: str) -> None:
     )
 
 
+def memory_command(key: str, label: str, command: str) -> str:
+    return (
+        f"seven bridge remember --profile {shlex.quote(key)} --app {shlex.quote(label)} >/dev/null 2>&1 || true; "
+        f"exec {command}"
+    )
+
+
+def strict_app(key: str, command: str, workspace: bool = True) -> str:
+    workspace_arg = " --workspace-profile" if workspace else ""
+    return f"seven profile exec {key} --container{workspace_arg} {command}"
+
+
 def profile_actions(key: str) -> list[tuple[str, str, str]]:
     actions = {
         "baobab": [
-            ("Read", "Open Seven Reader", "seven-reader"),
-            ("Library", "Open Baobab workspace", "seven profile open baobab"),
-            ("Voice", "Test oral learning tools", "seven-profile-run espeak-ng 'SevenOS Baobab'"),
+            ("Baobab", "Open the native French-first cultural OS", "seven baobab open"),
+            ("Patrimoine", "Native heritage discovery interface", "seven baobab native"),
+            ("Museum", "Offline animated cultural scene", "seven baobab museum"),
+            ("Story", "Offline fire-circle storytelling surface", "seven baobab story"),
+            ("Explore", "Open the native country and heritage exploration view", "seven baobab explore"),
+            ("Countries", "Embedded offline Africa country index", "seven baobab countries"),
+            ("Country", "Open a country detail from the offline index", "seven baobab country Burkina Faso"),
+            ("UNESCO", "African-linked intangible heritage index", "seven baobab unesco"),
+            ("Catalog", "Offline starter index and seed content", "seven baobab catalog"),
+            ("Stats", "Local SQLite cultural index status", "seven baobab stats"),
+            ("Engines", "Local readiness for shell, AI, reader, 3D and offline engines", "seven baobab engines"),
+            ("Registry", "Open source shell, heritage, 3D, AI and offline candidates", "seven baobab integrations"),
+            ("Packs", "Local cultural packs and source-backed imports", "seven baobab packs"),
+            ("Audit", "Check pack provenance, license and confidence", "seven baobab audit-packs"),
+            ("Heritage", "Stories, archives and oral traditions", "seven baobab module heritage"),
+            ("Explore Module", "Africa map and cultural discovery contract", "seven baobab module explore"),
+            ("Fashion", "African style and ElegantStyle bridge", "seven baobab module fashion"),
         ],
         "forge": [
-            ("Code", "Open development editor", "code"),
-            ("Terminal", "Open Forge terminal", "seven-terminal forge"),
-            ("Containers", "Check Docker", "docker info"),
+            ("Code", "Open development editor in Forge boundary", strict_app("forge", "code")),
+            ("Terminal", "Open Forge strict workspace shell", "seven-terminal forge -- seven profile exec forge --container --workspace-profile sh"),
+            ("Containers", "Check Docker from Forge boundary", strict_app("forge", "docker info")),
+            ("Deploy", "Detect deployable project from Forge workspace", strict_app("forge", "seven deploy detect /workspace")),
+            ("Services", "Check Seven Server from Forge boundary", strict_app("forge", "seven server status")),
         ],
         "studio": [
-            ("Design", "Open Krita", "krita"),
-            ("Video", "Open Kdenlive", "kdenlive"),
+            ("Design", "Open Krita inside Studio boundary", strict_app("studio", "krita")),
+            ("Video", "Open Kdenlive inside Studio boundary", strict_app("studio", "kdenlive")),
             ("Record", "Open Seven Recorder", "seven recorder"),
         ],
+        "shield": [
+            ("Center", "Open Shield Center", "seven-shield-center-native"),
+            ("Lab", "Open Cyber Lab with Shield boundary", strict_app("shield", "seven shield lab --preset web")),
+            ("VPN", "Inspect VPN state from Shield boundary", strict_app("shield", "seven-waybar-status vpn", workspace=False)),
+            ("Report", "Open Shield workspace shell for reports", "seven-terminal cyber -- seven profile exec shield --container --workspace-profile sh"),
+        ],
         "windows": [
-            ("VM", "Open Windows VM assistant", "seven windows vm"),
+            ("Enter", "Start Windows Bridge", "seven windows enter"),
+            ("Sync", "Repair Windows Bridge profile and VM state", "seven windows sync"),
+            ("VM", "Open Windows VM console", "seven windows vm"),
+            ("Status", "Show Windows Bridge runtime state", "seven windows bridge-status"),
             ("Apps", "Open Windows app launcher", "seven windows apps"),
+            ("Repair", "Prepare libvirt/network/VM creation path", "seven windows repair"),
             ("Guide", "Open Windows guide", "seven windows guide"),
         ],
-        "horizon": [
-            ("Deploy", "Detect deployable project", "seven deploy detect ."),
-            ("Services", "Check Caddy", "caddy version"),
-            ("SSH", "Open Horizon workspace", "seven profile open horizon"),
-        ],
         "pulse": [
-            ("Games", "Open Lutris", "lutris"),
-            ("Boost", "Show GameMode", "gamemoderun --help"),
-            ("HUD", "Show MangoHud", "mangohud --help"),
+            ("Games", "Open Lutris inside Pulse boundary", strict_app("pulse", "lutris")),
+            ("Boost", "Show GameMode from Pulse boundary", strict_app("pulse", "gamemoderun --help", workspace=False)),
+            ("HUD", "Show MangoHud from Pulse boundary", strict_app("pulse", "mangohud --help", workspace=False)),
         ],
         "equinox": [
             ("Hub", "Open Seven Hub", "seven hub"),
@@ -203,11 +300,17 @@ def run() -> int:
     meta = profiles.get(key, {})
     profile_ui = load_profile_ui()
     home = profile_ui.get("home_screen") if profile_ui.get("profile") == key and isinstance(profile_ui.get("home_screen"), dict) else default_home_contract(key, meta)
+    if not isinstance(home, dict):
+        home = default_home_contract(key, meta)
     health = run_json("profile", "status", "--json", fallback=[])
     status = next((item for item in health if item.get("key") == key), {})
     runtime = run_json("runtime", "plan", key, "--json", fallback={})
     isolation = run_json("profile", "isolation", "plan", key, "--json", fallback={})
+    strict_runtime = (isolation.get("strict_runtime") or {}).get(key, {}) if isinstance(isolation, dict) else {}
     bridge = bridge_state()
+    bridge_overview = bridge_status()
+    session = bridge_session(key)
+    windows_runtime = windows_bridge_runtime() if key == "windows" else {}
 
     GLib.set_prgname("SevenMiniOSCenter")
     GLib.set_application_name(meta.get("title", "SevenOS Mini OS"))
@@ -300,33 +403,98 @@ def run() -> int:
     grid.attach(info_card(Gtk, "Isolation", compact([
         f"{isolation.get('active_package_count', 0)} active packages",
         f"{isolation.get('inactive_package_count', 0)} quiet packages",
+        f"strict {strict_runtime.get('score', 0)}% via {strict_runtime.get('engine', 'planned')}",
         f"{len(isolation.get('service_policy', []))} service rules",
     ])), 1, 2, 1, 1)
     grid.attach(info_card(Gtk, "Home", compact([home.get("title"), home.get("session_restore")])), 0, 3, 1, 1)
     grid.attach(info_card(Gtk, "Library", compact([home.get("library"), *(home.get("collections") or [])], 5)), 1, 3, 1, 1)
+    grid.attach(info_card(Gtk, "Workflow", compact(workflow_lines(key), 4)), 0, 4, 1, 1)
     grid.attach(info_card(Gtk, "Autonomy", compact([
         f"{home.get('autonomy_score', 0)}% mini OS score",
         f"AI: {home.get('ai_persona', 'SevenAI')}",
-    ])), 0, 4, 1, 1)
+    ])), 1, 4, 1, 1)
+    runtime_context = profile_ui.get("runtime_context", {}) if isinstance(profile_ui, dict) else {}
+    context_line = "aligned"
+    if isinstance(runtime_context, dict) and runtime_context:
+        detected = runtime_context.get("detected_title") or runtime_context.get("detected_profile") or "unknown"
+        scheduler_group = runtime_context.get("scheduler_group") or runtime_context.get("detected_profile") or "unknown"
+        if runtime_context.get("temporary_optimization"):
+            context_line = f"temporary: {detected} -> {scheduler_group}"
+        else:
+            context_line = f"detected: {detected}"
+
     grid.attach(info_card(Gtk, "Composition", compact([
         f"primary: {runtime.get('primary_profile', {}).get('key', key) if isinstance(runtime.get('primary_profile'), dict) else key}",
         f"injected: {compact((runtime.get('composite_runtime') or {}).get('injected_profiles'), 3)}",
+        f"context: {context_line}",
         f"conflicts: {len(runtime.get('conflicts', []))}",
-    ])), 1, 4, 1, 1)
-    suggestions = bridge.get("suggestions", []) if isinstance(bridge, dict) else []
-    grid.attach(info_card(Gtk, "Borrow", compact([
-        f"{item.get('profile')}: {item.get('label')}" for item in suggestions[:3] if isinstance(item, dict)
-    ] or ["no suggested capability now"], 3)), 0, 5, 2, 1)
+    ])), 0, 5, 2, 1)
+    profile_bridge = next((item for item in bridge_overview.get("profiles", []) if item.get("profile") == key), {}) if isinstance(bridge_overview, dict) else {}
+    session_tasks = session.get("tasks", []) if isinstance(session.get("tasks"), list) else []
+    session_apps = session.get("recent_apps", []) if isinstance(session.get("recent_apps"), list) else []
+    grid.attach(info_card(Gtk, "Session Memory", compact([
+        f"mood: {session.get('mood', 'ready')}",
+        f"apps: {compact(session_apps, 3)}",
+        f"tasks: {len(session_tasks)}",
+        f"pins: {len(session.get('pinned_objects', []) if isinstance(session.get('pinned_objects'), list) else [])}",
+    ], 4)), 0, 6, 1, 1)
+    grid.attach(info_card(Gtk, "Bridge", compact([
+        f"inbox: {profile_bridge.get('inbox_count', 0)}",
+        f"outbox: {profile_bridge.get('outbox_count', 0)}",
+        f"objects: {bridge_overview.get('object_count', 0) if isinstance(bridge_overview, dict) else 0}",
+        f"recent: {len(session.get('recent_objects', []) if isinstance(session.get('recent_objects'), list) else [])}",
+    ], 4)), 1, 6, 1, 1)
+    if key == "windows":
+        grid.attach(info_card(Gtk, "Windows Runtime", compact([
+            f"profile: {windows_runtime.get('active_profile', 'unknown')}",
+            f"VM: {windows_runtime.get('vm_state', 'unknown')}",
+            f"console: {windows_runtime.get('console', 'unknown')}",
+            f"sync: {str(windows_runtime.get('synchronized', False)).lower()}",
+            f"next: {windows_runtime.get('recommended_action', 'none')}",
+        ], 5)), 0, 7, 2, 1)
+    else:
+        suggestions = bridge.get("suggestions", []) if isinstance(bridge, dict) else []
+        grid.attach(info_card(Gtk, "Borrow", compact([
+            f"{item.get('profile')}: {item.get('label')}" for item in suggestions[:3] if isinstance(item, dict)
+        ] or ["no suggested capability now"], 3)), 0, 7, 2, 1)
 
     actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     root.pack_start(actions_box, False, False, 0)
     action_rows = [(str(item.get("label", "")), str(item.get("description", "")), str(item.get("command", ""))) for item in home.get("actions", []) if isinstance(item, dict)] or profile_actions(key)
-    for label, tooltip, command in action_rows[:4]:
+    for label, tooltip, command in action_rows[:5]:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("pill")
+        button.set_tooltip_text(tooltip)
+        button.connect("clicked", lambda _button, cmd=command, app_label=label: run_detached(memory_command(key, app_label, cmd)))
+        actions_box.pack_start(button, True, True, 0)
+
+    bridge_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    root.pack_start(bridge_box, False, False, 0)
+    for label, tooltip, command in [
+        ("Inbox", "Open received SevenOS objects for this mini OS", f"seven-terminal {profile_terminal_mode(key)} -- bash -lc 'seven bridge inbox --profile {key}; read -r -p \"Press Enter to close...\"'"),
+        ("Outbox", "Open sent SevenOS objects for this mini OS", f"seven-terminal {profile_terminal_mode(key)} -- bash -lc 'seven bridge outbox --profile {key}; read -r -p \"Press Enter to close...\"'"),
+        ("Relations", "Show allowed communication paths between mini OS experiences", f"seven-terminal classic -- bash -lc 'seven bridge relations; read -r -p \"Press Enter to close...\"'"),
+        ("Passage", "Preview the transition language toward this mini OS", f"seven-terminal {profile_terminal_mode(key)} -- bash -lc 'seven bridge switch --to {key}; read -r -p \"Press Enter to close...\"'"),
+    ]:
         button = Gtk.Button(label=label)
         button.get_style_context().add_class("pill")
         button.set_tooltip_text(tooltip)
         button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
-        actions_box.pack_start(button, True, True, 0)
+        bridge_box.pack_start(button, True, True, 0)
+
+    strict_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    root.pack_start(strict_box, False, False, 0)
+    for label, tooltip, command in [
+        ("Strict boundary", "Show the isolated HOME/cache/data contract for this mini OS", f"seven-terminal {profile_terminal_mode(key)} -- bash -lc 'seven-profile-run --profile {key} --json | python -m json.tool; read -r -p \"Press Enter to close...\"'"),
+        ("Strict shell", "Open a shell with this mini OS data boundary", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container sh"),
+        ("Workspace shell", "Open a strict shell with the mini OS workspace mounted at /workspace", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container --workspace-profile sh"),
+        ("Ephemeral shell", "Open a disposable strict shell cleaned on exit", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --ephemeral sh"),
+    ]:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("pill")
+        button.set_tooltip_text(tooltip)
+        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        strict_box.pack_start(button, True, True, 0)
 
     footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     root.pack_end(footer, False, False, 0)

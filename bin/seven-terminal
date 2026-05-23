@@ -32,9 +32,10 @@ KITTY_CONFIG_DIR="$CONFIG_HOME/kitty"
 usage() {
   cat <<'EOF'
 Usage:
-  seven-terminal [classic|dark|light|forge|cyber|focus|admin|menu|status|doctor] [-- command...]
+  seven-terminal [profile|classic|dark|light|forge|cyber|focus|admin|windows|menu|status|doctor] [-- command...]
 
 Profiles:
+  profile  Default terminal for the active SevenOS mini OS
   classic  SevenOS classic bright terminal
   dark     SevenOS graphite terminal
   light    SevenOS clarity-first light terminal
@@ -42,15 +43,48 @@ Profiles:
   cyber    network/security terminal with calm SOC contrast
   focus    quiet writing and long-reading terminal
   admin    cautious system-control terminal
+  windows  Windows Bridge VM and compatibility terminal
   menu     choose a terminal profile
 
 Examples:
-  seven-terminal classic
+  seven-terminal
   seven-terminal dark
   seven-terminal light
   seven-terminal forge
+  seven-terminal profile -- btop
   seven-terminal dark -- btop
 EOF
+}
+
+active_profile() {
+  local profile_env="$CONFIG_HOME/sevenos/profile.env"
+  if [[ -n "${SEVENOS_ACTIVE_PROFILE:-}" ]]; then
+    printf '%s\n' "$SEVENOS_ACTIVE_PROFILE"
+    return 0
+  fi
+  if [[ -r "$profile_env" ]]; then
+    # shellcheck disable=SC1090
+    source "$profile_env" >/dev/null 2>&1 || true
+    if [[ -n "${SEVENOS_ACTIVE_PROFILE:-}" ]]; then
+      printf '%s\n' "$SEVENOS_ACTIVE_PROFILE"
+      return 0
+    fi
+  fi
+  printf 'equinox\n'
+}
+
+profile_terminal_mode() {
+  local profile="${1:-$(active_profile)}"
+  case "$profile" in
+    forge) printf 'forge' ;;
+    shield) printf 'cyber' ;;
+    studio) printf 'focus' ;;
+    baobab) printf 'focus' ;;
+    horizon) printf 'forge' ;;
+    pulse) printf 'dark' ;;
+    windows) printf 'windows' ;;
+    equinox|*) printf 'classic' ;;
+  esac
 }
 
 terminal_shell() {
@@ -74,7 +108,7 @@ config_for_profile() {
     classic) printf '%s\n' "$KITTY_CONFIG_DIR/classic.conf" ;;
     dark) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
     light) printf '%s\n' "$KITTY_CONFIG_DIR/light.conf" ;;
-    forge|cyber|admin) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
+    forge|cyber|admin|windows) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
     focus) printf '%s\n' "$KITTY_CONFIG_DIR/light.conf" ;;
     *) return 1 ;;
   esac
@@ -85,7 +119,7 @@ repo_config_for_profile() {
     classic) printf '%s\n' "$ROOT_DIR/hyprland/kitty/classic.conf" ;;
     dark) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
     light) printf '%s\n' "$ROOT_DIR/hyprland-light/kitty/light.conf" ;;
-    forge|cyber|admin) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
+    forge|cyber|admin|windows) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
     focus) printf '%s\n' "$ROOT_DIR/hyprland-light/kitty/light.conf" ;;
     *) return 1 ;;
   esac
@@ -100,6 +134,7 @@ profile_label() {
     cyber) printf 'Cyber' ;;
     focus) printf 'Focus' ;;
     admin) printf 'Admin' ;;
+    windows) printf 'Windows' ;;
   esac
 }
 
@@ -112,6 +147,7 @@ profile_class() {
     cyber) printf 'SevenTerminalCyber' ;;
     focus) printf 'SevenTerminalFocus' ;;
     admin) printf 'SevenTerminalAdmin' ;;
+    windows) printf 'SevenTerminalWindows' ;;
   esac
 }
 
@@ -140,6 +176,12 @@ profile_overrides() {
         foreground=#FFF4F0 background=#130A0A background_opacity=0.91 \
         cursor=#FF9B70 selection_background=#62332C active_border_color=#FF9B70 \
         active_tab_background=#231111 tab_bar_background=#180D0D
+      ;;
+    windows)
+      printf '%s\n' \
+        foreground=#EEF7FF background=#07111F background_opacity=0.90 \
+        cursor=#74C7EC selection_background=#173B5C active_border_color=#74C7EC \
+        active_tab_background=#0D1B2F tab_bar_background=#081421
       ;;
   esac
 }
@@ -242,7 +284,7 @@ place_window() {
 
 open_menu() {
   local menu selected
-  menu=$'Classic Terminal\tDaily SevenOS terminal\nForge Terminal\tDevelopment, git and builds\nCyber Terminal\tSecurity and network workflow\nFocus Terminal\tQuiet writing and reading\nAdmin Terminal\tCautious system control\nDark Terminal\tSevenOS graphite terminal\nLight Terminal\tSevenOS clarity-first terminal'
+  menu=$'Classic Terminal\tDaily SevenOS terminal\nForge Terminal\tDevelopment, git and builds\nCyber Terminal\tSecurity and network workflow\nWindows Terminal\tWindows Bridge VM and compatibility\nFocus Terminal\tQuiet writing and reading\nAdmin Terminal\tCautious system control\nDark Terminal\tSevenOS graphite terminal\nLight Terminal\tSevenOS clarity-first terminal'
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'DRY-RUN > Terminal > Open profile chooser\n'
@@ -261,6 +303,7 @@ open_menu() {
     Classic*) open_terminal classic ;;
     Forge*) open_terminal forge ;;
     Cyber*) open_terminal cyber ;;
+    Windows*) open_terminal windows ;;
     Focus*) open_terminal focus ;;
     Admin*) open_terminal admin ;;
     Dark*) open_terminal dark ;;
@@ -270,11 +313,16 @@ open_menu() {
 }
 
 status() {
+  local current_profile current_mode
+  current_profile="$(active_profile)"
+  current_mode="$(profile_terminal_mode "$current_profile")"
   printf 'SevenOS Terminal Profiles\n'
+  printf 'active-profile: %s\n' "$current_profile"
+  printf 'profile-mode:   %s\n' "$current_mode"
   printf 'classic: %s\n' "$(ensure_config classic)"
   printf 'dark:    %s\n' "$(ensure_config dark)"
   printf 'light:   %s\n' "$(ensure_config light)"
-  printf 'modes:   forge cyber focus admin\n'
+  printf 'modes:   forge cyber windows focus admin\n'
   printf 'default: %s\n' "$KITTY_CONFIG_DIR/kitty.conf"
   printf 'backend: native VTE default with Kitty fallback; set SEVENOS_TERMINAL_NATIVE=0 for Kitty\n'
   if [[ -x "$ROOT_DIR/bin/seven-terminal-native" ]] && "$ROOT_DIR/bin/seven-terminal-native" --probe >/dev/null 2>&1; then
@@ -284,9 +332,20 @@ status() {
   fi
 }
 
-action="${1:-classic}"
+if [[ "${1:-}" == "--" ]]; then
+  action="profile"
+else
+  action="${1:-profile}"
+fi
 case "$action" in
-  classic|dark|light|forge|cyber|focus|admin)
+  profile|default)
+    [[ "$#" -gt 0 && "${1:-}" != "--" ]] && shift || true
+    if [[ "${1:-}" == "--" ]]; then
+      shift
+    fi
+    open_terminal "$(profile_terminal_mode)" "$@"
+    ;;
+  classic|dark|light|forge|cyber|windows|focus|admin)
     shift || true
     if [[ "${1:-}" == "--" ]]; then
       shift

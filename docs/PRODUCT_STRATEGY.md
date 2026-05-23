@@ -100,9 +100,9 @@ SevenOS should be:
 | Forge | development and engineering |
 | Shield | cybersecurity and hardening |
 | Studio | creative production |
-| Horizon | cloud, network, and infrastructure |
+| Forge DevOps | development, cloud, network, and infrastructure |
 | Griot | documentation, learning, and knowledge |
-| Baobab | African culture, learning, languages, and community memory |
+| Baobab | African cultural OS for heritage, languages, stories, sound, map, fashion, food, wisdom and offline memory |
 | Windows Bridge | complete Windows VM-first compatibility with Wine/Bottles fallback |
 | Pulse | Linux gaming, Proton, latency, overlays, and performance |
 | SevenAI | system assistant and automation contract |

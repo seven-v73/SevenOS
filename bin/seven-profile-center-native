@@ -70,10 +70,11 @@ def compact_list(items, limit: int = 3) -> str:
 
 
 def run_detached(command: str) -> None:
+    env = {**os.environ, "SEVENOS_ROOT": str(ROOT)}
     subprocess.Popen(
         ["bash", "-lc", command],
         cwd=ROOT,
-        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -115,58 +116,113 @@ def run() -> int:
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.profile-center-window { background: transparent; }
     .profile-root {
-      padding: 18px;
-      border-radius: 30px;
+      padding: 20px;
+      border-radius: 32px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06)),
-        radial-gradient(ellipse at 12% -12%, rgba(110,168,255,0.16), transparent 46%),
-        radial-gradient(ellipse at 88% -16%, rgba(139,124,255,0.13), transparent 40%),
-        rgba(18,19,26,0.88);
-      border: 1px solid rgba(255,255,255,0.12);
+        linear-gradient(180deg, rgba(255,255,255,0.17), rgba(255,255,255,0.045)),
+        radial-gradient(ellipse at 10% -10%, rgba(137,180,250,0.24), transparent 42%),
+        radial-gradient(ellipse at 88% -16%, rgba(203,166,247,0.18), transparent 42%),
+        radial-gradient(ellipse at 40% 106%, rgba(0,255,179,0.08), transparent 44%),
+        rgba(14,16,23,0.93);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.46);
     }
-    .title { color: rgba(245,247,250,0.98); font-size: 18px; font-weight: 500; }
-    .subtitle { color: rgba(245,247,250,0.62); font-size: 11px; }
+    .topbar { padding: 2px 2px 4px 2px; }
+    .traffic-box { margin-right: 4px; }
+    .traffic {
+      min-width: 14px;
+      min-height: 14px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.18);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
+    }
+    .traffic.red { background: #ff5f57; }
+    .traffic.yellow { background: #ffbd2e; }
+    .traffic.green { background: #28c840; }
+    .title { color: rgba(245,247,250,0.98); font-size: 22px; font-weight: 700; letter-spacing: 0; }
+    .subtitle { color: rgba(245,247,250,0.64); font-size: 11px; }
+    .pill {
+      padding: 7px 12px;
+      border-radius: 999px;
+      color: rgba(245,247,250,0.86);
+      background: rgba(255,255,255,0.075);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 11px;
+      font-weight: 600;
+    }
     .section {
       padding: 12px;
-      border-radius: 22px;
-      background: rgba(255,255,255,0.055);
-      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 24px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.085), rgba(255,255,255,0.040)),
+        rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.115);
     }
-    .section-title { color: rgba(245,247,250,0.96); font-size: 12px; font-weight: 500; }
+    .section-title { color: rgba(245,247,250,0.96); font-size: 12px; font-weight: 700; }
     .section-note { color: rgba(245,247,250,0.62); font-size: 11px; }
+    .alias-card {
+      padding: 10px 12px;
+      border-radius: 20px;
+      background:
+        linear-gradient(135deg, rgba(249,226,175,0.16), rgba(255,255,255,0.045)),
+        rgba(255,255,255,0.045);
+      border: 1px solid rgba(249,226,175,0.24);
+    }
+    .alias-title { color: rgba(255,244,199,0.96); font-size: 12px; font-weight: 800; }
+    .alias-note { color: rgba(245,247,250,0.66); font-size: 11px; }
+    .alias-button {
+      min-height: 34px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      color: rgba(22,24,31,0.96);
+      background: rgba(249,226,175,0.92);
+      border: 1px solid rgba(255,255,255,0.20);
+      font-size: 11px;
+      font-weight: 800;
+    }
     .layer-card {
       padding: 10px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.050);
-      border: 1px solid rgba(255,255,255,0.09);
+      background: rgba(255,255,255,0.052);
+      border: 1px solid rgba(255,255,255,0.085);
     }
-    .layer-name { color: rgba(245,247,250,0.90); font-size: 11px; font-weight: 500; }
+    .layer-name { color: rgba(245,247,250,0.90); font-size: 11px; font-weight: 700; }
     .layer-value { color: rgba(245,247,250,0.58); font-size: 10px; }
     .tile {
-      min-height: 122px;
+      min-height: 116px;
       padding: 12px;
-      border-radius: 22px;
-      background: rgba(255,255,255,0.065);
-      border: 1px solid rgba(255,255,255,0.11);
+      border-radius: 24px;
+      background:
+        linear-gradient(155deg, rgba(255,255,255,0.095), rgba(255,255,255,0.040)),
+        rgba(255,255,255,0.046);
+      border: 1px solid rgba(255,255,255,0.12);
       color: rgba(245,247,250,0.96);
     }
-    .tile:hover { background: rgba(255,255,255,0.105); border-color: rgba(156,203,255,0.30); }
+    .tile:hover {
+      background:
+        linear-gradient(155deg, rgba(255,255,255,0.14), rgba(255,255,255,0.060)),
+        rgba(255,255,255,0.065);
+      border-color: rgba(156,203,255,0.36);
+    }
     .tile.good { border-color: rgba(166,227,161,0.24); }
     .tile.warn { border-color: rgba(249,226,175,0.30); }
     .tile.bad { border-color: rgba(243,139,168,0.28); }
     .tile.active {
-      background: rgba(137,180,250,0.12);
-      border-color: rgba(137,180,250,0.36);
+      background:
+        linear-gradient(155deg, rgba(137,180,250,0.22), rgba(139,124,255,0.10)),
+        rgba(255,255,255,0.070);
+      border-color: rgba(137,180,250,0.52);
     }
     .tile.equinox { border-color: rgba(139,124,255,0.28); }
     .tile.baobab { border-color: rgba(166,227,161,0.28); }
-    .tile.forge { border-color: rgba(249,226,175,0.28); }
+    .tile.forge { border-color: rgba(249,226,175,0.34); }
     .tile.shield { border-color: rgba(0,255,179,0.30); }
     .tile.studio { border-color: rgba(203,166,247,0.28); }
-    .tile.windows, .tile.horizon { border-color: rgba(137,220,235,0.28); }
+    .tile.windows { border-color: rgba(137,220,235,0.28); }
     .tile.pulse { border-color: rgba(0,212,255,0.30); }
-    .glyph { font-size: 26px; }
-    .tile-title { font-size: 13px; font-weight: 500; }
+    .glyph { font-size: 28px; }
+    .tile-title { font-size: 13px; font-weight: 700; }
     .tile-note { color: rgba(245,247,250,0.62); font-size: 11px; }
     .action-strip {
       padding: 12px;
@@ -193,6 +249,7 @@ def run() -> int:
     profiles = run_json("profile", "status", "--json")
     runtime = run_json("runtime", "status", "--json")
     isolation = run_json("profile", "isolation", "status", "--json")
+    migration = run_json("profile", "migrate-aliases", "--json")
     catalog = load_catalog()
     active = next((item for item in profiles if item.get("active")), None)
 
@@ -202,16 +259,39 @@ def run() -> int:
     window.set_resizable(False)
     window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(860, 680)
+    window.set_default_size(900, 660)
     window.get_style_context().add_class("profile-center-window")
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
     root.get_style_context().add_class("profile-root")
     window.add(root)
 
-    title = Gtk.Label(label=tr_text("Profiles"), xalign=0)
+    topbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    topbar.get_style_context().add_class("topbar")
+    root.pack_start(topbar, False, False, 0)
+
+    traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    traffic.set_valign(Gtk.Align.CENTER)
+    traffic.get_style_context().add_class("traffic-box")
+    for color, handler in [
+        ("red", lambda _button: Gtk.main_quit()),
+        ("yellow", lambda _button: window.iconify()),
+        ("green", lambda _button: run_detached("seven-settings profiles")),
+    ]:
+        dot = Gtk.Button()
+        dot.get_style_context().add_class("traffic")
+        dot.get_style_context().add_class(color)
+        dot.connect("clicked", handler)
+        traffic.pack_start(dot, False, False, 0)
+    topbar.pack_start(traffic, False, False, 0)
+
+    title = Gtk.Label(label=tr_text("Mini OS"), xalign=0)
     title.get_style_context().add_class("title")
-    root.pack_start(title, False, False, 0)
+    topbar.pack_start(title, True, True, 0)
+    count_pill = Gtk.Label(label=tr_text("{count} specialized systems", count=str(len(profiles))))
+    count_pill.get_style_context().add_class("pill")
+    topbar.pack_end(count_pill, False, False, 0)
+
     active_label = active.get("title", tr_text("None")) if active else tr_text("None")
     context = runtime.get("context", {}).get("primary_context", {}) if isinstance(runtime, dict) else {}
     context_title = context.get("title") or context.get("key") or tr_text("none")
@@ -222,6 +302,9 @@ def run() -> int:
     subtitle = Gtk.Label(label=subtitle_text, xalign=0)
     subtitle.get_style_context().add_class("subtitle")
     root.pack_start(subtitle, False, False, 0)
+
+    if isinstance(migration, dict) and int(migration.get("pending") or 0) > 0:
+        root.pack_start(alias_migration_panel(Gtk, migration), False, False, 0)
 
     composition = composition_panel(Gtk, runtime if isinstance(runtime, dict) else {}, isolation if isinstance(isolation, dict) else {})
     root.pack_start(composition, False, False, 0)
@@ -247,7 +330,7 @@ def run() -> int:
     grid.set_row_spacing(10)
     root.pack_start(grid, True, True, 0)
 
-    for index, profile in enumerate(profiles[:8]):
+    for index, profile in enumerate(profiles):
         title_text = profile.get("title", profile.get("key", tr_text("Profile")))
         state = profile.get("state", "MISS")
         installed = profile.get("installed", 0)
@@ -328,6 +411,35 @@ def composition_panel(Gtk, runtime: dict, isolation: dict):
     )
     details.get_style_context().add_class("danger-note")
     panel.pack_start(details, False, False, 0)
+    return panel
+
+
+def alias_migration_panel(Gtk, migration: dict):
+    count = int(migration.get("pending") or 0)
+    panel = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    panel.get_style_context().add_class("alias-card")
+
+    text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+    text_box.set_hexpand(True)
+    title = Gtk.Label(label=tr_text("Profile aliases need cleanup"), xalign=0)
+    title.get_style_context().add_class("alias-title")
+    note = Gtk.Label(
+        label=tr_text(
+            "{count} local state file(s) still reference retired profiles. Horizon is now Forge DevOps.",
+            count=str(count),
+        ),
+        xalign=0,
+    )
+    note.set_line_wrap(True)
+    note.get_style_context().add_class("alias-note")
+    text_box.pack_start(title, False, False, 0)
+    text_box.pack_start(note, False, False, 0)
+    panel.pack_start(text_box, True, True, 0)
+
+    button = Gtk.Button(label=tr_text("Repair"))
+    button.get_style_context().add_class("alias-button")
+    button.connect("clicked", lambda _button: run_detached("seven profile migrate-aliases --apply"))
+    panel.pack_end(button, False, False, 0)
     return panel
 
 

@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 import unicodedata
 from dataclasses import dataclass
@@ -53,7 +54,7 @@ THEME_CONF = CONFIG_DIR / "theme.conf"
 PROFILE_UI_FILE = CONFIG_DIR / "profile-ui.json"
 CACHE_FILE = CACHE_DIR / "spotlight.json"
 LOCK_FILE = RUNTIME_DIR / "spotlight.lock"
-CACHE_TTL_SECONDS = 4
+CACHE_TTL_SECONDS = 45
 LOCK_HANDLE = None
 
 
@@ -145,15 +146,23 @@ def current_theme_mode() -> str:
     env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
     if env_mode in {"dark", "light"}:
         return env_mode
-    try:
-        for raw in THEME_CONF.read_text(encoding="utf-8", errors="replace").splitlines():
-            if "=" not in raw or raw.strip().startswith("#"):
-                continue
-            key, value = [part.strip().lower() for part in raw.split("=", 1)]
-            if key in {"mode", "theme_mode", "sevenos_theme_mode"} and value in {"dark", "light"}:
-                return value
-    except OSError:
-        pass
+    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
+    profile_env = CONFIG_DIR / "profile.env"
+    if profile_env.exists():
+        for raw in profile_env.read_text(encoding="utf-8", errors="replace").splitlines():
+            if raw.startswith("SEVENOS_ACTIVE_PROFILE="):
+                profile = raw.split("=", 1)[1].strip().strip("'\"") or profile
+                break
+    for theme_file in (CONFIG_DIR / "profiles" / profile / "theme.conf", THEME_CONF):
+        try:
+            for raw in theme_file.read_text(encoding="utf-8", errors="replace").splitlines():
+                if "=" not in raw or raw.strip().startswith("#"):
+                    continue
+                key, value = [part.strip().lower() for part in raw.split("=", 1)]
+                if key in {"mode", "theme_mode", "sevenos_theme_mode"} and value in {"dark", "light"}:
+                    return value
+        except OSError:
+            pass
     return "dark"
 
 
@@ -170,16 +179,27 @@ def icon_theme_name(mode: str) -> str:
     return "Papirus-Dark" if mode == "dark" else "Papirus"
 
 
-def load_catalog() -> list[Item]:
+def rows_to_items(rows) -> list[Item]:
+    return [Item(*row[:6]) for row in rows if isinstance(row, list) and len(row) >= 6]
+
+
+def read_cached_catalog(*, max_age: float | None = CACHE_TTL_SECONDS) -> list[Item]:
     cached = read_json(CACHE_FILE, {})
     now = time.time()
     if (
         cached.get("schema") == "sevenos.spotlight.v1"
         and isinstance(cached.get("items"), list)
-        and now - float(cached.get("created_at", 0)) <= CACHE_TTL_SECONDS
+        and (max_age is None or now - float(cached.get("created_at", 0)) <= max_age)
     ):
-        return [Item(*row[:6]) for row in cached["items"] if isinstance(row, list) and len(row) >= 6]
+        return rows_to_items(cached["items"])
+    return []
 
+
+def load_catalog(*, force: bool = False) -> list[Item]:
+    if not force:
+        cached_items = read_cached_catalog()
+        if cached_items:
+            return cached_items
     result = subprocess.run(
         [str(ROOT / "bin/seven-spotlight"), "catalog"],
         text=True,
@@ -193,7 +213,7 @@ def load_catalog() -> list[Item]:
         parts = raw.split("\t")
         if len(parts) >= 6:
             items.append(Item(*parts[:6]))
-    write_json(CACHE_FILE, {"schema": "sevenos.spotlight.v1", "created_at": now, "items": [[item.kind, item.label, item.key, item.command, item.detail, item.icon] for item in items]})
+    write_json(CACHE_FILE, {"schema": "sevenos.spotlight.v1", "created_at": time.time(), "items": [[item.kind, item.label, item.key, item.command, item.detail, item.icon] for item in items]})
     return items
 
 
@@ -541,7 +561,7 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     selected_index = 0
 
     profile_title = profile_ui.get("title") or "SevenOS"
-    items = profile_items(profile_ui) + load_catalog()
+    items = profile_items(profile_ui) + read_cached_catalog(max_age=None)
     window = Gtk.Window(title=f"{profile_title} Spotlight")
     window.set_decorated(False)
     window.set_resizable(False)
@@ -673,6 +693,20 @@ def run(mode: str, *, field_mode: bool = False) -> int:
             dispatch_query(query)
         window.destroy()
 
+    def refresh_catalog_async() -> None:
+        def worker() -> None:
+            fresh_items = load_catalog(force=True)
+
+            def apply_items() -> bool:
+                nonlocal items
+                items = profile_items(profile_ui) + fresh_items
+                refresh_results()
+                return False
+
+            GLib.idle_add(apply_items)
+
+        threading.Thread(target=worker, name="sevenos-spotlight-catalog", daemon=True).start()
+
     def on_key(_widget, event) -> bool:
         nonlocal selected_index
         if event.keyval == Gdk.KEY_Escape:
@@ -709,6 +743,7 @@ def run(mode: str, *, field_mode: bool = False) -> int:
     window.set_default_size(560 if field_mode else 684, 0)
     window.show_all()
     set_mode(current_mode)
+    refresh_catalog_async()
     entry.grab_focus()
     Gtk.main()
     return 0

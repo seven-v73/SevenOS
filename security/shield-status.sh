@@ -27,12 +27,14 @@ EOF
 shield_workspace_state() {
   local workspace="${SEVENOS_SHIELD_WORKSPACE:-$HOME/ShieldLab}"
   if [[ -s "$workspace/.sevenos/shield.json" &&
+        -s "$workspace/.sevenos/persona.json" &&
         -s "$workspace/.sevenos/SHIELD_CHECKLIST.md" &&
         -s "$workspace/.sevenos/SANDBOXES.md" &&
         -x "$workspace/.sevenos/launchers/secure-browser.sh" &&
         -x "$workspace/.sevenos/launchers/network-audit.sh" ]]; then
     printf OK
   elif [[ -e "$workspace/.sevenos/shield.json" ||
+          -e "$workspace/.sevenos/persona.json" ||
           -e "$workspace/.sevenos/SHIELD_CHECKLIST.md" ||
           -e "$workspace/.sevenos/SANDBOXES.md" ]]; then
     printf PART
@@ -102,6 +104,10 @@ service_state() {
 
 rows() {
   printf 'workspace\t%s\tShield workspace policy and launchers\tseven shield bootstrap\n' "$(shield_workspace_state)"
+  printf 'persona\t%s\tShield persona and session state\tseven shield persona safe\n' "$("$ROOT_DIR/security/shield-persona.sh" status --json >/dev/null 2>&1 && printf OK || printf MISS)"
+  printf 'scope\t%s\tShield authorization scope gate\tseven shield scope\n' "$("$ROOT_DIR/security/shield-scope.sh" validate >/dev/null 2>&1 && printf OK || printf PART)"
+  printf 'network_guard\t%s\tPersona-aware network posture\tseven shield network apply\n' "$("$ROOT_DIR/security/shield-network-guard.sh" status --json >/dev/null 2>&1 && printf OK || printf MISS)"
+  printf 'evidence\t%s\tEvidence hash and chain-of-custody index\tseven shield evidence init\n' "$("$ROOT_DIR/security/shield-evidence.sh" status --json >/dev/null 2>&1 && printf OK || printf MISS)"
   printf 'firewall\t%s\tUFW firewall service\tseven shield enable\n' "$(service_state ufw.service)"
   printf 'firejail\t%s\tFirejail app sandbox helper\tseven improve security --apply\n' "$(package_state firejail)"
   printf 'bubblewrap\t%s\tBubblewrap namespace sandbox helper\tseven improve security --apply\n' "$(package_state bubblewrap)"
@@ -130,6 +136,34 @@ metadata = {
         "impact": "safe",
         "phase": "workspace",
         "reason": "Shield needs visible policy, checklist and launchers before it feels like an OS trust layer.",
+    },
+    "persona": {
+        "title": "Initialize Shield Persona Engine",
+        "severity": "medium",
+        "impact": "safe",
+        "phase": "persona",
+        "reason": "Shield should expose a visible cybersecurity mode, session policy and isolation intent.",
+    },
+    "scope": {
+        "title": "Complete Shield scope",
+        "severity": "high",
+        "impact": "safe",
+        "phase": "authorization",
+        "reason": "Pentest and Red Team workflows need owner, engagement, time window and targets before execution.",
+    },
+    "network_guard": {
+        "title": "Record Network Guard posture",
+        "severity": "medium",
+        "impact": "safe",
+        "phase": "network",
+        "reason": "Shield personas should expose VPN/Tor/offline/scope requirements before tools launch.",
+    },
+    "evidence": {
+        "title": "Initialize Evidence Manager",
+        "severity": "medium",
+        "impact": "safe",
+        "phase": "forensics",
+        "reason": "Forensics needs hashes, metadata and chain-of-custody records.",
     },
     "firejail": {
         "title": "Install Firejail sandbox",

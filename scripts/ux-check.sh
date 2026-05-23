@@ -428,8 +428,15 @@ if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
    grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'icon_theme_name' "$ROOT_DIR/bin/seven-launchpad-native" &&
-   grep -q 'CACHE_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
-   grep -q 'RECENTS_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'CACHE_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'read_cached_apps' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'refresh_apps_async' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'dedupe_apps' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'launchpad_doctor_payload' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'MINI_OS_WORLDS' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'launchpad-world-card' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'refresh_world_cards' "$ROOT_DIR/bin/seven-launchpad-native" &&
+	   grep -q 'RECENTS_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'PREFS_FILE' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'fuzzy_score' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'launchpad-filter' "$ROOT_DIR/bin/seven-launchpad-native" &&
@@ -708,7 +715,7 @@ fi
 profile_theme_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-profile-theme" apply)"
 if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Equinox|Baobab|Forge|Shield|Studio|Windows|Pulse|Profiles|Profile' &&
    "$ROOT_DIR/bin/seven-waybar-status" profile | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("alt") and "profile-" in d.get("class","") else 1)' &&
-   grep -q 'render profile Waybar' <<<"$profile_theme_output" &&
+   grep -Eq 'render (profile|[a-z]+ concept) Waybar|project Baobab Waybar' <<<"$profile_theme_output" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-security" json | grep -q '󰒃' &&
    "$ROOT_DIR/bin/seven-profile-center-native" --probe >/dev/null 2>&1 &&
    "$ROOT_DIR/bin/seven-shield-center-native" --probe >/dev/null 2>&1 &&
@@ -737,6 +744,7 @@ else
 fi
 
 spotlight_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-spotlight" open)"
+"$ROOT_DIR/bin/seven-spotlight" index >/dev/null
 spotlight_catalog="$("$ROOT_DIR/bin/seven-spotlight" catalog)"
 if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
    grep -q '/apps · Applications' <<<"$spotlight_catalog" &&
@@ -755,6 +763,9 @@ if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
    grep -q 'Desktop · Open Seven Hub' <<<"$spotlight_catalog" &&
    grep -q 'App · ' <<<"$spotlight_catalog" &&
    grep -q 'Files · Home' <<<"$spotlight_catalog" &&
+   grep -q 'Indexed · ' <<<"$spotlight_catalog" &&
+   grep -q 'Mini OS · Baobab Cultural OS' <<<"$spotlight_catalog" &&
+   grep -q 'Mini OS · Forge DevOps' <<<"$spotlight_catalog" &&
    grep -q 'Settings · Network' <<<"$spotlight_catalog" &&
    grep -q 'Mail · Open mail client' <<<"$spotlight_catalog" &&
    grep -q 'Contacts · Open address book' <<<"$spotlight_catalog" &&
@@ -778,6 +789,8 @@ if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
    grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'spotlight_css' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'CACHE_FILE' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'read_cached_catalog' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'refresh_catalog_async' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'LOCK_FILE' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'fcntl.LOCK_EX' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'fuzzy_score' "$ROOT_DIR/bin/seven-spotlight-native" &&
@@ -1501,10 +1514,12 @@ else
 fi
 
 if "$ROOT_DIR/bin/seven-apps" doctor | grep -q 'desktop applications indexed' &&
+   "$ROOT_DIR/bin/seven-apps" doctor --json | python -m json.tool >/dev/null &&
+   "$ROOT_DIR/bin/seven" launchpad doctor --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-apps" list --json | python -m json.tool >/dev/null; then
-  ok "SevenOS Apps indexes installed desktop applications and exports JSON"
+  ok "SevenOS Apps indexes installed desktop applications and exposes Launchpad diagnostics"
 else
-  fail "SevenOS Apps should index installed desktop applications and expose JSON"
+  fail "SevenOS Apps should index installed desktop applications and expose Launchpad diagnostics"
 fi
 
 if "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null; then
@@ -1514,6 +1529,7 @@ else
 fi
 
 hub_product_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub status --json)"
+actions_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" actions --json)"
 if python -m json.tool >/dev/null <<<"$hub_product_json" &&
    grep -q '"schema": "sevenos.hub.v1"' <<<"$hub_product_json" &&
    grep -Eq '"level": "(active|product-preview)"' <<<"$hub_product_json" &&
@@ -1522,7 +1538,7 @@ if python -m json.tool >/dev/null <<<"$hub_product_json" &&
    grep -q '"support": true' <<<"$hub_product_json" &&
    grep -q '"support.status"' <<<"$hub_product_json" &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub doctor >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" actions --json | grep -q '"hub.status"'; then
+   grep -q '"hub.status"' <<<"$actions_json"; then
   ok "Seven Hub exposes a product-surface readiness contract"
 else
   fail "Seven Hub product-surface readiness contract failed"
@@ -1671,7 +1687,7 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'seven-glass-strip' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'GLib.timeout_add' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'run_visible' "$ROOT_DIR/bin/seven-hub-native" &&
-   "$ROOT_DIR/bin/seven-hub-native" status | grep -q 'Seven Hub Native' &&
+   "$ROOT_DIR/bin/seven-hub-native" status | grep -q 'Seven Hub' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" hub-native --dry-run | grep -q 'seven-hub-native open' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" | grep -q 'seven-hub-native open' &&
    ! grep -Rqi 'Horizon' "$ROOT_DIR/seven-hub/gui/README.md" "$ROOT_DIR/seven-hub/gui/src-tauri/src/main.rs" "$ROOT_DIR/seven-hub/bin/seven-control-center" &&
@@ -1682,40 +1698,58 @@ else
   fail "Seven Hub native UI strategy is missing, unstyled or unclear"
 fi
 
-if "$ROOT_DIR/scripts/autonomy.sh" json | grep -q '"schema": "sevenos.autonomy.v1"' &&
-   "$ROOT_DIR/scripts/about.sh" json | grep -q '"schema": "sevenos.about.v1"' &&
-   "$ROOT_DIR/scripts/about.sh" plan | grep -q 'SevenOS About Plan' &&
+autonomy_json="$("$ROOT_DIR/scripts/autonomy.sh" json)"
+about_json="$("$ROOT_DIR/scripts/about.sh" json)"
+about_plan="$("$ROOT_DIR/scripts/about.sh" plan)"
+lifecycle_json="$("$ROOT_DIR/scripts/lifecycle.sh" json)"
+update_json="$("$ROOT_DIR/scripts/update.sh" json)"
+recovery_json="$("$ROOT_DIR/scripts/recovery.sh" json)"
+health_json="$("$ROOT_DIR/scripts/health.sh" json)"
+smoke_json="$("$ROOT_DIR/scripts/smoke.sh" json)"
+support_json="$("$ROOT_DIR/scripts/support.sh" json)"
+product_json="$("$ROOT_DIR/scripts/product.sh" json)"
+foundations_json="$("$ROOT_DIR/scripts/foundations.sh" json)"
+platform_json="$("$ROOT_DIR/scripts/platform.sh" json)"
+channel_json="$("$ROOT_DIR/scripts/channel.sh" json)"
+mask_json="$("$ROOT_DIR/scripts/mask.sh" json)"
+surfaces_json="$("$ROOT_DIR/scripts/surfaces.sh" json)"
+routes_json="$("$ROOT_DIR/scripts/routes.sh" json)"
+distribution_json="$("$ROOT_DIR/scripts/distribution.sh" json)"
+action_runner_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-action-runner" --dry-run -- "$ROOT_DIR/bin/seven" status)"
+if grep -q '"schema": "sevenos.autonomy.v1"' <<<"$autonomy_json" &&
+   grep -q '"schema": "sevenos.about.v1"' <<<"$about_json" &&
+   grep -q 'SevenOS About Plan' <<<"$about_plan" &&
    "$ROOT_DIR/scripts/about.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/lifecycle.sh" json | grep -q '"schema": "sevenos.lifecycle.v1"' &&
+   grep -q '"schema": "sevenos.lifecycle.v1"' <<<"$lifecycle_json" &&
    "$ROOT_DIR/scripts/lifecycle.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/update.sh" json | grep -q '"schema": "sevenos.update.v1"' &&
+   grep -q '"schema": "sevenos.update.v1"' <<<"$update_json" &&
    "$ROOT_DIR/scripts/update.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/recovery.sh" json | grep -q '"schema": "sevenos.recovery.v1"' &&
+   grep -q '"schema": "sevenos.recovery.v1"' <<<"$recovery_json" &&
    "$ROOT_DIR/scripts/recovery.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/health.sh" json | grep -q '"schema": "sevenos.health.v1"' &&
+   grep -q '"schema": "sevenos.health.v1"' <<<"$health_json" &&
    "$ROOT_DIR/scripts/health.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/smoke.sh" json | grep -q '"schema": "sevenos.smoke.v1"' &&
+   grep -q '"schema": "sevenos.smoke.v1"' <<<"$smoke_json" &&
    "$ROOT_DIR/scripts/smoke.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/support.sh" json | grep -q '"schema": "sevenos.support.v1"' &&
+   grep -q '"schema": "sevenos.support.v1"' <<<"$support_json" &&
    "$ROOT_DIR/scripts/support.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/product.sh" json | grep -q '"schema": "sevenos.product.v1"' &&
+   grep -q '"schema": "sevenos.product.v1"' <<<"$product_json" &&
    "$ROOT_DIR/scripts/product.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/foundations.sh" json | grep -q '"schema": "sevenos.foundations.v1"' &&
+   grep -q '"schema": "sevenos.foundations.v1"' <<<"$foundations_json" &&
    "$ROOT_DIR/scripts/foundations.sh" doctor >/dev/null &&
    "$ROOT_DIR/scripts/autonomy.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/platform.sh" json | grep -q '"schema": "sevenos.platform.v1"' &&
+   grep -q '"schema": "sevenos.platform.v1"' <<<"$platform_json" &&
    "$ROOT_DIR/scripts/platform.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/channel.sh" json | grep -q '"schema": "sevenos.release-channel.v1"' &&
+   grep -q '"schema": "sevenos.release-channel.v1"' <<<"$channel_json" &&
    "$ROOT_DIR/scripts/channel.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/mask.sh" json | grep -q '"schema": "sevenos.mask.v1"' &&
+   grep -q '"schema": "sevenos.mask.v1"' <<<"$mask_json" &&
    "$ROOT_DIR/scripts/mask.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/surfaces.sh" json | grep -q '"schema": "sevenos.surfaces.v1"' &&
+   grep -q '"schema": "sevenos.surfaces.v1"' <<<"$surfaces_json" &&
    "$ROOT_DIR/scripts/surfaces.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/routes.sh" json | grep -q '"schema": "sevenos.routes.v1"' &&
+   grep -q '"schema": "sevenos.routes.v1"' <<<"$routes_json" &&
    "$ROOT_DIR/scripts/routes.sh" doctor >/dev/null &&
-   "$ROOT_DIR/scripts/distribution.sh" json | grep -q '"schema": "sevenos.distribution.v1"' &&
+   grep -q '"schema": "sevenos.distribution.v1"' <<<"$distribution_json" &&
    "$ROOT_DIR/scripts/distribution.sh" doctor >/dev/null &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-action-runner" --dry-run -- "$ROOT_DIR/bin/seven" status | grep -q 'seven status' &&
+   grep -q 'seven status' <<<"$action_runner_dry" &&
    grep -q 'seven about' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'about.doctor' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'seven lifecycle' "$ROOT_DIR/scripts/actions.sh" &&
@@ -2148,7 +2182,7 @@ if grep -q 'Workspace:' <<<"$profile_show_output" &&
    grep -q '"profile_model"' <<<"$profile_catalog_json" &&
    grep -q '"mini_os": true' <<<"$profile_catalog_json" &&
    grep -q '"Windows Bridge"' <<<"$profile_catalog_json" &&
-   grep -q '"Baobab Culture"' <<<"$profile_catalog_json" &&
+   grep -q '"Baobab Cultural OS"' <<<"$profile_catalog_json" &&
    grep -q '"redirects_to"[[:space:]]*:[[:space:]]*"forge"' <<<"$profile_aliases_output" &&
    grep -q '"pending"[[:space:]]*:[[:space:]]*0' <<<"$profile_migration_output" &&
    RUNTIME_ALIAS_PLAN_JSON="$runtime_alias_plan_json" python -c 'import json,os; data=json.loads(os.environ["RUNTIME_ALIAS_PLAN_JSON"]); raise SystemExit(0 if data.get("primary_profile", {}).get("key") == "forge" and "shield" in data.get("composite_runtime", {}).get("injected_profiles", []) else 1)' &&
@@ -2406,7 +2440,7 @@ if python -m json.tool <<<"$windows_json" >/dev/null &&
    grep -q 'DRY-RUN > Windows App >' <<<"$windows_run" &&
    grep -q 'Prepare Windows prefix office' <<<"$windows_office_prepare" &&
    grep -q 'SevenOS Windows Diagnostic' <<<"$windows_office_diagnose" &&
-   grep -q 'DRY-RUN > Windows Mode > Open Bottles' <<<"$windows_apps" &&
+   grep -q 'DRY-RUN > Windows Mode > Open Windows app manager' <<<"$windows_apps" &&
    grep -q 'seven windows fix-network' <<<"$windows_enter" &&
    grep -q 'seven windows console' <<<"$windows_enter" &&
    grep -q 'seven windows close-console' <<<"$windows_leave" &&

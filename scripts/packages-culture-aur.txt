@@ -1,0 +1,12 @@
+# SevenOS Baobab cultural mini OS - optional AUR/community candidates
+# These are tracked separately from packages-culture-optional.txt so the normal
+# Baobab install path stays lightweight and does not fail on systems without AUR.
+# Open WebUI is intentionally not listed here: the AUR package can pull
+# nodejs-lts and conflict with SevenOS' current nodejs runtime. Keep it as an
+# explicit external/lab route instead of blocking the Baobab immersive stack.
+# Argos Translate is also kept out of the default route for now: on rolling
+# Python stacks it can pull a heavy spaCy chain. Baobab uses translate-shell as
+# an immediate fallback and tracks Argos in the language lab manifest.
+eww
+piper-tts-bin
+llama.cpp

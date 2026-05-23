@@ -1734,6 +1734,29 @@ fn file_contains_state(root: &Path, relative: &str, needle: &str) -> &'static st
     }
 }
 
+fn package_manifest_contains(root: &Path, relative: &str, package: &str) -> bool {
+    let path = root.join(relative);
+    fs::read_to_string(path)
+        .unwrap_or_default()
+        .lines()
+        .map(|line| line.split('#').next().unwrap_or("").trim())
+        .any(|line| line == package)
+}
+
+fn calamares_runtime_state(root: &Path) -> &'static str {
+    if command_exists("calamares") {
+        "OK"
+    } else if package_manifest_contains(root, "scripts/packages-installer-aur.txt", "calamares")
+        && (command_exists("yay") || command_exists("paru"))
+    {
+        "aur-candidate"
+    } else if package_manifest_contains(root, "scripts/packages-installer-aur.txt", "calamares") {
+        "source-declared"
+    } else {
+        "MISS"
+    }
+}
+
 fn installer_tooling_item(key: &str, state: &str) -> Value {
     json!({
         "key": key,
@@ -1754,11 +1777,7 @@ fn installer_status_items(root: &Path) -> (Vec<Value>, Vec<Value>) {
         ),
         installer_tooling_item(
             "calamares",
-            if command_exists("calamares") {
-                "OK"
-            } else {
-                "MISS"
-            },
+            calamares_runtime_state(root),
         ),
     ];
     let foundation = vec![
@@ -1807,6 +1826,23 @@ fn installer_release_checks(root: &Path, tooling: &[Value], foundation: &[Value]
             "required": false,
             "title": "Graphical installer runtime",
             "command": "seven installer plan",
+            "reason": "Calamares must be installed in the ISO runtime for public graphical-ready status; candidate source policy is tracked separately.",
+            "writer": "seven-daemon",
+        }),
+        json!({
+            "key": "calamares-source-policy",
+            "state": if matches!(
+                item_state(tooling, "calamares").as_str(),
+                "OK" | "aur-candidate" | "source-declared"
+            ) {
+                "OK"
+            } else {
+                "MISS"
+            },
+            "required": false,
+            "title": "Calamares runtime source policy",
+            "command": "seven installer runtime --json",
+            "reason": format!("Runtime source state: {}.", item_state(tooling, "calamares")),
             "writer": "seven-daemon",
         }),
         json!({
@@ -1938,7 +1974,7 @@ fn installer_release_json(root: &Path, tooling: &[Value], foundation: &[Value]) 
         })
         .count();
     let score = (((required_ready as f64 / required_total.max(1) as f64) * 85.0)
-        + (optional_ready as f64 * 15.0))
+        + ((optional_ready as f64 / optional_total.max(1) as f64) * 15.0))
         .round()
         .min(100.0) as u64;
     let state = if score >= 95 {
@@ -1959,6 +1995,7 @@ fn installer_release_json(root: &Path, tooling: &[Value], foundation: &[Value]) 
         "required_total": required_total,
         "optional_ready": optional_ready,
         "optional_total": optional_total,
+        "calamares_runtime": item_state(tooling, "calamares"),
         "checks": checks,
         "portal": "seven-installer status --json",
         "runtime": "seven-daemon",

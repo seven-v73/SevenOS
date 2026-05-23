@@ -189,6 +189,7 @@ if context_file.is_file():
         active = {"key": "invalid", "state": "INVALID"}
 
 shield = command_json([str(root / "bin/seven"), "shield", "dashboard", "--json"], {})
+persona = command_json([str(root / "security/shield-persona.sh"), "status", "--json"], {"state": "MISS", "active": {"key": "safe", "title": "Safe Audit"}, "session": "persistent"})
 scope = shield.get("scope", {})
 payload = {
     "schema": "sevenos.cyberspace.v1",
@@ -196,6 +197,12 @@ payload = {
     "workspace": str(workspace),
     "state_dir": str(workspace / ".sevenos"),
     "active_context": active,
+    "persona": {
+        "active": persona.get("active", {}),
+        "session": persona.get("session", "persistent"),
+        "network": (persona.get("active") or {}).get("network", "normal-guarded"),
+        "isolation": (persona.get("active") or {}).get("isolation", "standard-sandbox"),
+    },
     "scope": {
         "state": scope.get("state", "MISS"),
         "active": scope.get("active", False),
@@ -278,6 +285,38 @@ dispatch_workspace() {
   fi
 }
 
+scope_is_active() {
+  local payload
+  payload="$("$ROOT_DIR/security/shield-scope.sh" status --json 2>/dev/null || true)"
+  SHIELD_SCOPE_JSON="$payload" python - <<'PY'
+import json
+import os
+import sys
+
+try:
+    data = json.loads(os.environ.get("SHIELD_SCOPE_JSON", "{}"))
+except Exception:
+    raise SystemExit(1)
+if data.get("active") and data.get("target_count", 0) > 0:
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
+guard_context() {
+  local context="$1"
+  case "$context" in
+    exploit)
+      if ! scope_is_active; then
+        log_error "CyberSpace exploit context needs an active Shield scope with targets."
+        log_info "Create it with: seven shield scope create --owner YOU --engagement NAME --window TEXT --target HOST"
+        log_info "Then activate it with: seven shield scope activate"
+        exit 1
+      fi
+      ;;
+  esac
+}
+
 activate_context() {
   local context="${1:-}"
   if [[ -z "$context" ]]; then
@@ -293,6 +332,7 @@ activate_context() {
     exit 1
   fi
 
+  guard_context "$context"
   write_context "$context" "$workspace_id"
   dispatch_workspace "$workspace_id"
 
@@ -336,6 +376,9 @@ scope = data.get("scope", {})
 print("SevenOS CyberSpace")
 print("==================")
 print(f"Active:    {active.get('key', 'none')} ({active.get('state', 'MISS')})")
+persona = data.get("persona", {})
+persona_active = persona.get("active", {})
+print(f"Persona:   {persona_active.get('title', 'Safe Audit')} · {persona.get('session', 'persistent')}")
 print(f"Workspace: {data.get('workspace')}")
 print(f"Scope:     {scope.get('state')} · active={scope.get('active')} · targets={scope.get('target_count')}")
 print()
@@ -360,6 +403,9 @@ scope = data.get("scope", {})
 print("CYBERSPACE HUD")
 print("==============")
 print(f"Context : {active.get('key', 'none')} / {active.get('state', 'MISS')}")
+persona = data.get("persona", {})
+persona_active = persona.get("active", {})
+print(f"Persona : {persona_active.get('key', 'safe')} / {persona.get('session', 'persistent')}")
 print(f"Scope   : {scope.get('state')} / active={scope.get('active')} / targets={scope.get('target_count')}")
 print(f"Posture : run `seven shield dashboard`")
 print(f"Reports : {data.get('workspace')}/Reports")
@@ -425,7 +471,7 @@ case "$ACTION" in
     ;;
   hud)
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
-      context_json | python -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps({"schema":"sevenos.cyberspace-hud.v1","active_context":data["active_context"],"scope":data["scope"],"workspace":data["workspace"]}, indent=2))'
+      context_json | python -c 'import json,sys; data=json.load(sys.stdin); print(json.dumps({"schema":"sevenos.cyberspace-hud.v1","active_context":data["active_context"],"persona":data["persona"],"scope":data["scope"],"workspace":data["workspace"]}, indent=2))'
     else
       human_hud
     fi

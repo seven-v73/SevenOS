@@ -7,7 +7,6 @@ local known_profiles = {
   "shield",
   "studio",
   "windows",
-  "horizon",
   "pulse",
 }
 

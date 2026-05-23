@@ -121,15 +121,24 @@ except Exception:  # pragma: no cover - fallback for standalone probes
 
 
 def read_theme_mode() -> str:
-    config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/theme.conf"
     if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
         return os.environ["SEVENOS_THEME_MODE"]
-    if config.exists():
-        for line in config.read_text(encoding="utf-8", errors="ignore").splitlines():
-            if line.startswith("SEVENOS_THEME_MODE="):
-                value = line.split("=", 1)[1].strip().strip("'\"")
-                if value in {"dark", "light"}:
-                    return value
+    config_dir = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
+    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
+    profile_env = config_dir / "profile.env"
+    if profile_env.exists():
+        for line in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("SEVENOS_ACTIVE_PROFILE="):
+                profile = line.split("=", 1)[1].strip().strip("'\"") or profile
+                break
+    for config in (config_dir / "profiles" / profile / "theme.conf", config_dir / "theme.conf"):
+        if config.exists():
+            for line in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+                key, _, value = line.partition("=")
+                if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                    value = value.strip().strip("'\"").lower()
+                    if value in {"dark", "light"}:
+                        return value
     return "dark"
 
 
@@ -168,7 +177,6 @@ def profile_label(profile: str) -> str:
         "forge": "Forge",
         "shield": "Shield",
         "studio": "Studio",
-        "horizon": "Horizon",
         "pulse": "Pulse",
         "windows": "Windows",
     }.get(profile, profile.title() or "Equinox")
@@ -696,10 +704,9 @@ def run_files(start_path: str) -> int:
         roots = [Path.home(), Path.home() / "Documents", Path.home() / "Downloads", Path.home() / "Projects"]
         profile_specific = {
             "baobab": [Path.home() / "Baobab", Path.home() / "Documents/Culture"],
-            "forge": [Path.home() / "Projects", Path.home() / "Code"],
+            "forge": [Path.home() / "Projects", Path.home() / "Code", Path.home() / "Deployments", Path.home() / "Cloud"],
             "shield": [Path.home() / "Shield", Path.home() / "Security"],
             "studio": [Path.home() / "Pictures", Path.home() / "Videos", Path.home() / "Studio"],
-            "horizon": [Path.home() / "Deployments", Path.home() / "Cloud"],
             "pulse": [Path.home() / "Games", Path.home() / "Videos"],
             "windows": [Path.home() / "Downloads/windows", Path.home() / ".local/share/sevenos/windows"],
         }

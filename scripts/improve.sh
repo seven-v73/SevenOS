@@ -127,7 +127,7 @@ improve_target() {
   run_step "Install Shield cybersecurity workspace" "$ROOT_DIR/install.sh" cybersecurity
   run_step "Install Studio creative workspace" "$ROOT_DIR/install.sh" creation
   run_step "Install Windows bridge workspace" "$ROOT_DIR/install.sh" windows
-  run_step "Install Horizon deployment workspace" "$ROOT_DIR/install.sh" server
+  run_step "Install Forge DevOps deployment workspace" "$ROOT_DIR/install.sh" server
 }
 
 improve_ecosystem() {

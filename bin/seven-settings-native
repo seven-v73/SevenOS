@@ -48,6 +48,8 @@ def resolve_root() -> Path:
 
 ROOT = resolve_root()
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "sevenos"
+HUB_STATE_CACHE = CACHE_DIR / "hub-state.json"
 REGION_PREFS = CONFIG_DIR / "region.conf"
 REGION_ENV = CONFIG_DIR / "region.env"
 HYPR_CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "hypr" / "conf"
@@ -56,6 +58,10 @@ MONITOR_BACKUP = HYPR_CONFIG_DIR / "monitor.conf.sevenos.bak"
 sys.path.insert(0, str(ROOT / "scripts"))
 from seven_i18n import tr, tr_text  # noqa: E402
 import seven_theme  # noqa: E402
+
+STATE_CACHE: dict | None = None
+PROFILE_STATUS_CACHE: list[dict] | None = None
+LANGUAGE_CACHE: dict | None = None
 
 
 def out(command: list[str], fallback: str = "") -> str:
@@ -70,6 +76,42 @@ def run_json(command: list[str], fallback):
         return fallback
 
 
+def run_json_timeout(command: list[str], fallback, timeout: float = 14.0):
+    try:
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_DRY_RUN": "0"},
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return json.loads(result.stdout)
+    except Exception:
+        pass
+    return fallback
+
+
+def state_snapshot() -> dict:
+    global STATE_CACHE
+    if isinstance(STATE_CACHE, dict):
+        return STATE_CACHE
+    if os.environ.get("SEVENOS_SETTINGS_DEEP") != "1":
+        try:
+            if HUB_STATE_CACHE.exists():
+                payload = json.loads(HUB_STATE_CACHE.read_text(encoding="utf-8"))
+                if isinstance(payload, dict):
+                    STATE_CACHE = payload
+                    return payload
+        except Exception:
+            pass
+    payload = run_json_timeout([str(ROOT / "bin/seven"), "state", "--json"], {}, timeout=3.0)
+    STATE_CACHE = payload if isinstance(payload, dict) else {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def run_detached(command: str) -> None:
     if command.strip() == "seven doctor open":
         command = "seven-doctor-native"
@@ -79,6 +121,7 @@ def run_detached(command: str) -> None:
         "seven doctor fix",
         "seven status",
         "seven update",
+        "seven smoke",
         "seven state",
         "seven manifest",
         "seven migrate",
@@ -103,7 +146,7 @@ def run_detached(command: str) -> None:
     )
     if command.strip().startswith(text_prefixes) and command_exists("seven-terminal"):
         quoted = command.replace("'", "'\"'\"'")
-        command = f"seven-terminal classic -- bash -lc '{quoted}; printf \"\\nPress Enter to close...\"; read -r'"
+        command = f"seven-terminal -- bash -lc '{quoted}; printf \"\\nPress Enter to close...\"; read -r'"
     subprocess.Popen(
         ["bash", "-lc", command],
         cwd=ROOT,
@@ -119,14 +162,21 @@ def command_exists(command: str) -> bool:
 
 
 def current_theme_mode() -> str:
-    theme_file = CONFIG_DIR / "theme.conf"
-    if theme_file.exists():
-        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-            key, _, value = line.partition("=")
-            if key.strip() == "SEVENOS_THEME_MODE":
-                value = value.strip().strip('"').strip("'").lower()
-                if value in {"dark", "light"}:
-                    return value
+    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
+    profile_env = CONFIG_DIR / "profile.env"
+    if profile_env.exists():
+        for line in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("SEVENOS_ACTIVE_PROFILE="):
+                profile = line.split("=", 1)[1].strip().strip("'\"") or profile
+                break
+    for theme_file in (CONFIG_DIR / "profiles" / profile / "theme.conf", CONFIG_DIR / "theme.conf"):
+        if theme_file.exists():
+            for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                key, _, value = line.partition("=")
+                if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                    value = value.strip().strip('"').strip("'").lower()
+                    if value in {"dark", "light"}:
+                        return value
     return "dark"
 
 
@@ -202,15 +252,28 @@ def system_about() -> dict[str, str]:
     release_file = Path("/etc/sevenos-release")
     if release_file.exists():
         release = release_file.read_text(encoding="utf-8", errors="ignore").strip().splitlines()[0] or release
-    readiness = run_json([str(ROOT / "scripts/readiness.sh"), "--json"], {"percent": "?"})
+    state = state_snapshot()
+    readiness = state.get("readiness") if isinstance(state.get("readiness"), dict) else run_json([str(ROOT / "scripts/readiness.sh"), "--json"], {"percent": "?"})
+    smoke = state.get("smoke") if isinstance(state.get("smoke"), dict) else {}
+    product = state.get("product") if isinstance(state.get("product"), dict) else {}
+    distribution = state.get("distribution") if isinstance(state.get("distribution"), dict) else {}
+    runtime = state.get("runtime") if isinstance(state.get("runtime"), dict) else {}
+    installer_portal = state.get("installer_portal") if isinstance(state.get("installer_portal"), dict) else {}
+    runtime_primary = runtime.get("primary_profile", {}) if isinstance(runtime.get("primary_profile"), dict) else {}
+    installer_source = installer_portal.get("runtime_source", {}) if isinstance(installer_portal.get("runtime_source"), dict) else {}
     profile_name, profile_status = active_profile()
     return {
         "release": release,
         "hostname": platform.node() or "sevenos",
         "kernel": platform.release(),
-        "session": os.environ.get("XDG_CURRENT_DESKTOP") or os.environ.get("DESKTOP_SESSION") or "Hyprland",
+        "session": "SevenOS" if os.environ.get("XDG_CURRENT_DESKTOP") == "Hyprland" else os.environ.get("XDG_CURRENT_DESKTOP") or os.environ.get("DESKTOP_SESSION") or "SevenOS",
         "profile": f"{profile_name} · {profile_status}",
         "readiness": f"{readiness.get('percent', '?')}%",
+        "smoke": f"{smoke.get('state', 'unknown')} · {smoke.get('score', 0)}%",
+        "product": f"{product.get('state', 'unknown')} · {product.get('score', 0)}%",
+        "distribution": f"{distribution.get('state', 'unknown')} · {distribution.get('score', 0)}%",
+        "runtime": f"{runtime.get('state', 'unknown')} · {runtime_primary.get('key', 'unknown')}",
+        "installer": f"{installer_portal.get('state', 'unknown')} · {installer_source.get('state', 'unknown')}",
     }
 
 
@@ -314,7 +377,7 @@ def restore_monitor_rule() -> bool:
 
 def wifi_state() -> tuple[str, str]:
     if not command_exists("nmcli"):
-        return tr_text("Missing"), tr_text("NetworkManager tools unavailable")
+        return tr_text("Missing"), tr_text("SevenOS network tools unavailable")
     radio = out(["nmcli", "radio", "wifi"], "unknown")
     ssid = out(["bash", "-lc", "nmcli -t -f active,ssid dev wifi | awk -F: '$1==\"yes\"{print $2; exit}'"])
     if radio == "disabled":
@@ -333,7 +396,11 @@ def battery_state() -> tuple[str, str]:
 
 
 def active_profile() -> tuple[str, str]:
-    payload = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
+    global PROFILE_STATUS_CACHE
+    if PROFILE_STATUS_CACHE is None:
+        payload = run_json_timeout([str(ROOT / "bin/seven"), "profile", "status", "--json"], [], timeout=2.0)
+        PROFILE_STATUS_CACHE = payload if isinstance(payload, list) else []
+    payload = PROFILE_STATUS_CACHE
     if isinstance(payload, list):
         item = next((row for row in payload if row.get("active")), None)
         if item:
@@ -342,7 +409,11 @@ def active_profile() -> tuple[str, str]:
 
 
 def active_profile_key() -> str:
-    payload = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
+    global PROFILE_STATUS_CACHE
+    if PROFILE_STATUS_CACHE is None:
+        payload = run_json_timeout([str(ROOT / "bin/seven"), "profile", "status", "--json"], [], timeout=2.0)
+        PROFILE_STATUS_CACHE = payload if isinstance(payload, list) else []
+    payload = PROFILE_STATUS_CACHE
     if isinstance(payload, list):
         item = next((row for row in payload if row.get("active")), None)
         if item:
@@ -361,12 +432,11 @@ def profile_catalog() -> dict:
     fallback = {
         "profile_naming": {
             "equinox": "Equinox Balance",
-            "baobab": "Baobab Culture",
-            "forge": "Forge Developer",
+            "baobab": "Baobab Cultural OS",
+            "forge": "Forge DevOps",
             "shield": "Shield Cybersecurity",
             "studio": "Studio Creator",
             "windows": "Windows Bridge",
-            "horizon": "Horizon Cloud",
             "pulse": "Pulse Gaming",
         },
         "profiles": {},
@@ -405,7 +475,10 @@ def font_state() -> dict:
 
 
 def language_state() -> dict:
-    return run_json(
+    global LANGUAGE_CACHE
+    if isinstance(LANGUAGE_CACHE, dict):
+        return LANGUAGE_CACHE
+    LANGUAGE_CACHE = run_json_timeout(
         [str(ROOT / "bin/seven-language"), "status", "--json"],
         {
             "current": os.environ.get("LANG", "C.UTF-8"),
@@ -421,7 +494,9 @@ def language_state() -> dict:
                 }
             ],
         },
+        timeout=2.5,
     )
+    return LANGUAGE_CACHE
 
 
 def probe() -> int:
@@ -975,7 +1050,7 @@ def run(initial_page: str = "overview") -> int:
         title = Gtk.Label(label=tr("settings.monitor_resolution", "Monitor size and resolution"))
         title.set_xalign(0)
         title.get_style_context().add_class("card-title")
-        note = Gtk.Label(label=tr("settings.monitor_resolution.note", "Choose a monitor resolution such as 1920x1080, then apply it without editing Hyprland files."))
+        note = Gtk.Label(label=tr("settings.monitor_resolution.note", "Choose a monitor resolution such as 1920x1080, then apply it through the SevenOS display engine."))
         note.set_xalign(0)
         note.set_line_wrap(True)
         note.get_style_context().add_class("card-note")
@@ -1012,16 +1087,16 @@ def run(initial_page: str = "overview") -> int:
             scale = scale_combo.get_active_id() or "1"
             write_monitor_rule(monitor_name, resolution, scale)
             run_detached("hyprctl reload")
-            show_feedback(tr("settings.monitor_applied", "Monitor resolution applied. Hyprland is reloading."))
+            show_feedback(tr("settings.monitor_applied", "Monitor resolution applied. SevenOS is refreshing the display engine."))
 
         row.pack_start(monitor_combo, True, True, 0)
         row.pack_start(resolution_combo, False, False, 0)
         row.pack_start(scale_combo, False, False, 0)
-        row.pack_start(callback_button(tr("settings.apply", "Apply"), "write Hyprland monitor rule", apply_monitor), False, False, 0)
+        row.pack_start(callback_button(tr("settings.apply", "Apply"), "apply SevenOS monitor rule", apply_monitor), False, False, 0)
         row.pack_start(
             callback_button(
                 tr("settings.restore", "Restore"),
-                "restore previous Hyprland monitor rule",
+                "restore previous SevenOS monitor rule",
                 lambda: (restore_monitor_rule() and run_detached("hyprctl reload")),
                 tr("settings.monitor_restore", "Previous monitor configuration restored when a backup exists."),
             ),
@@ -1036,7 +1111,7 @@ def run(initial_page: str = "overview") -> int:
         profile_theme_file = ROOT / "identity/profile-themes.json"
         profile_theme_payload = run_json(["python", "-m", "json.tool", str(profile_theme_file)], {}) if profile_theme_file.exists() else {}
         profile_themes = profile_theme_payload.get("profiles", {}) if isinstance(profile_theme_payload.get("profiles"), dict) else {}
-        profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "horizon", "pulse"]
+        profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
         selected = {"mode": theme_mode, "profile": active_profile_key()}
 
         def profile_override(key: str) -> dict:
@@ -1248,17 +1323,17 @@ def run(initial_page: str = "overview") -> int:
         "overview": page(tr("settings.title", "SevenOS Settings"), tr("settings.subtitle", "A complete control surface for desktop, security, profiles, devices and system runtime.")),
         "general": page(tr("settings.general", "General"), tr("settings.general.subtitle", "Language, region, theme entry points and everyday SevenOS behavior.")),
         "appearance": page(tr("settings.appearance", "Appearance"), tr("settings.appearance.subtitle", "Liquid glass, dock, terminal style and SevenOS visual identity.")),
-        "wallpaper": page(tr("settings.wallpaper", "Wallpaper"), tr("settings.wallpaper.subtitle", "Choose a wallpaper, refresh Hyprpaper and open the wallpaper library.")),
-        "display": page(tr("settings.displays", "Displays"), tr("settings.display.subtitle", "Brightness, monitor tools and Hyprland display configuration.")),
-        "network": page(tr("settings.network", "Wi-Fi & Network"), tr("settings.network.subtitle", "Connect, diagnose and configure NetworkManager.")),
-        "sound": page(tr("settings.sound", "Sound"), tr("settings.sound.subtitle", "Volume, mixer, mute and PipeWire status.")),
+        "wallpaper": page(tr("settings.wallpaper", "Wallpaper"), tr("settings.wallpaper.subtitle", "Choose a wallpaper, refresh the SevenOS wallpaper service and open the wallpaper library.")),
+        "display": page(tr("settings.displays", "Displays"), tr("settings.display.subtitle", "Brightness, monitor tools and SevenOS display configuration.")),
+        "network": page(tr("settings.network", "Wi-Fi & Network"), tr("settings.network.subtitle", "Connect, diagnose and configure SevenOS networking.")),
+        "sound": page(tr("settings.sound", "Sound"), tr("settings.sound.subtitle", "Volume, mixer, mute and SevenOS audio status.")),
         "keyboard": page(tr("settings.keyboard", "Keyboard"), tr("settings.keyboard.subtitle", "US/French layouts with Alt+Shift switching.")),
         "fonts": page(tr("settings.fonts", "Fonts"), tr("settings.fonts.subtitle", "Choose, import and refresh SevenOS typography roles without terminal work.")),
         "security": page(tr("settings.security", "Security"), tr("settings.security.subtitle", "Shield, firewall, sandbox and CyberSpace controls.")),
         "profiles": page(tr("settings.profiles", "Profiles"), tr("settings.profiles.subtitle", "Switch SevenOS work modes and open profile workspaces.")),
         "power": page(tr("settings.power", "Battery & Power"), tr("settings.power.subtitle", "Battery state, lock, sleep and power profiles.")),
         "defaults": page(tr("settings.default_apps", "Default apps"), tr("settings.default_apps.subtitle", "Choose the apps SevenOS uses for files, links, documents, media and archives.")),
-        "apps": page(tr("settings.apps", "Apps"), tr("settings.apps.subtitle", "SevenPkg, Flatpak, Launchpad and app management.")),
+        "apps": page(tr("settings.apps", "Apps"), tr("settings.apps.subtitle", "SevenOS software sources, Launchpad and app management.")),
         "privacy": page(tr("settings.privacy", "Privacy"), tr("settings.privacy.subtitle", "Local data, permissions, notifications and SevenAI privacy controls.")),
         "backup": page(tr("settings.backup_restore", "Backup & Restore"), tr("settings.backup_restore.subtitle", "Export SevenOS state, inspect restore plans and protect user configuration.")),
         "shortcuts": page(tr("settings.shortcuts", "Shortcuts"), tr("settings.shortcuts.subtitle", "Open, inspect and repair SevenOS keyboard shortcuts.")),
@@ -1297,7 +1372,7 @@ def run(initial_page: str = "overview") -> int:
         "keyboard": "keyboard clavier layout raccourcis shortcuts alt shift",
         "fonts": "fonts police typography typographie import sf pro mono",
         "security": "security sécurité shield firewall ufw sandbox apparmor",
-        "profiles": "profile profil mini os equinox forge baobab shield studio pulse horizon windows composition compare comparer",
+        "profiles": "profile profil mini os equinox forge devops baobab shield studio pulse windows composition compare comparer aliases alias migration horizon",
         "power": "power batterie battery sleep lock energy énergie hypridle hyprlock",
         "defaults": "default apps applications par défaut navigateur browser terminal files fichiers reader pdf epub media image mail archive",
         "apps": "apps store app applications flatpak launchpad installed updates",
@@ -1325,9 +1400,9 @@ def run(initial_page: str = "overview") -> int:
 
     search_items = [
         ("󰒓", tr("settings.general", "General"), tr("settings.general.subtitle", "Language, region, theme entry points and everyday SevenOS behavior."), "general"),
-        ("󰤨", "Wi-Fi", tr("settings.network.subtitle", "Connect, diagnose and configure NetworkManager."), "network"),
+        ("󰤨", "Wi-Fi", tr("settings.network.subtitle", "Connect, diagnose and configure SevenOS networking."), "network"),
         ("󰂯", "Bluetooth", tr("settings.bluetooth.note", "Pair headphones, keyboards, phones and nearby devices."), "network"),
-        ("󰍹", tr("settings.displays", "Displays"), tr("settings.display.subtitle", "Brightness, monitor tools and Hyprland display configuration."), "display"),
+        ("󰍹", tr("settings.displays", "Displays"), tr("settings.display.subtitle", "Brightness, monitor tools and SevenOS display configuration."), "display"),
         ("󰒓", tr("settings.default_apps", "Default apps"), tr("settings.default_apps.subtitle", "Choose the apps SevenOS uses for files, links, documents, media and archives."), "defaults"),
         ("󰐃", tr("settings.profiles", "Profiles"), tr("settings.profiles.subtitle", "Switch SevenOS work modes and open profile workspaces."), "profiles"),
         ("󰌾", tr("settings.privacy", "Privacy"), tr("settings.privacy.subtitle", "Local data, permissions, notifications and SevenAI privacy controls."), "privacy"),
@@ -1457,7 +1532,7 @@ def run(initial_page: str = "overview") -> int:
             (about["kernel"], "Kernel"),
             (about["session"], tr("settings.session", "Session")),
             (about["profile"], tr_text("Profile")),
-            (about["readiness"], tr("settings.readiness", "Readiness")),
+            (about["smoke"], "Smoke Gate"),
         ],
     )
     general.pack_start(
@@ -1475,6 +1550,10 @@ def run(initial_page: str = "overview") -> int:
     card_grid(
         general,
         [
+            setting_card("✓", "Smoke Gate", f"{about['smoke']} · {tr('settings.smoke.note', 'Fast SevenOS product readiness from the central state snapshot.')}", [action_button(tr("settings.run", "Run"), "seven smoke doctor")]),
+            setting_card("󰣇", tr("settings.product_state", "Product state"), f"{about['product']} · {about['distribution']}", [action_button(tr("settings.open", "Open"), "seven state --json")]),
+            setting_card("󰜉", tr("settings.runtime_state", "Runtime state"), about["runtime"], [action_button(tr("settings.open", "Open"), "seven runtime")]),
+            setting_card("󰦨", tr("settings.installer_portal", "Installer portal"), about["installer"], [action_button(tr("settings.open", "Open"), "seven-installer portal")]),
             setting_card("󰩂", tr("settings.doctor", "Doctor"), tr("settings.doctor.note", "Diagnose common system issues."), [action_button(tr("settings.open", "Open"), "seven doctor open")]),
             setting_card("󰅐", tr("settings.copy_system_info", "Copy system info"), tr("settings.copy_system_info.note", "Copy a clean SevenOS summary for support, logs or bug reports."), [callback_button(tr("settings.copy", "Copy"), "copy SevenOS system summary", copy_system_summary)]),
         ],
@@ -1514,7 +1593,7 @@ def run(initial_page: str = "overview") -> int:
         general,
         [
             setting_card("󰌢", tr("settings.language_status", "Language status"), tr("settings.language_status.note", "Show generated locales and current SevenOS language contract."), [action_button(tr("settings.status", "Status"), "seven language status")]),
-            setting_card("󰜉", tr("settings.session_refresh", "Session refresh"), tr("settings.session_refresh.note", "Reload Hyprland after changing global system preferences."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
+            setting_card("󰜉", tr("settings.session_refresh", "Session refresh"), tr("settings.session_refresh.note", "Refresh the SevenOS session after changing global preferences."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
         ],
     )
 
@@ -1529,15 +1608,15 @@ def run(initial_page: str = "overview") -> int:
         setting_card("󰀻", tr("settings.native_icons", "Native Icons"), tr("settings.native_icons.note", "Show SevenOS app marks installed over Catppuccin/Papirus."), [action_button(tr("settings.open", "Open"), "seven identity icons")]),
         setting_card("󰃣", tr("settings.dock", "Dock"), tr("settings.dock.note", "Toggle the SevenOS Dock layout."), [action_button(tr("settings.toggle", "Toggle"), "seven-dock toggle")]),
         setting_card("󰆍", tr("settings.terminal_style", "Terminal style"), tr("settings.terminal_style.note", "Choose classic, graphite or clarity-first SevenOS terminal."), [action_button(tr("settings.choose", "Choose"), "seven-terminal menu")]),
-        setting_card("󰇄", tr("settings.waybar", "Waybar"), tr("settings.waybar.note", "Repair and restart the liquid glass menu bar."), [action_button(tr("settings.repair", "Repair"), "seven-waybar repair")]),
+        setting_card("󰇄", tr("settings.shell_bar", "Shell bar"), tr("settings.shell_bar.note", "Repair and restart the liquid glass menu bar."), [action_button(tr("settings.repair", "Repair"), "seven-waybar repair")]),
     ])
 
     # Wallpaper
     wallpaper = pages["wallpaper"][0]
     section(wallpaper, tr("settings.desktop_picture", "Desktop picture"))
     card_grid(wallpaper, [
-        setting_card("󰸉", tr("settings.choose_image", "Choose image"), tr("settings.choose_image.note", "Select an image and apply it immediately through hyprpaper."), [file_wallpaper_button(tr("settings.choose", "Choose"))]),
-        setting_card("󰜉", tr("settings.refresh_default", "Refresh default"), tr("settings.refresh_default.note", "Render and reapply the SevenOS wallpaper."), [action_button(tr("settings.refresh", "Refresh"), "seven-wallpaper refresh")]),
+        setting_card("󰸉", tr("settings.choose_image", "Choose image"), tr("settings.choose_image.note", "Select an image and apply it immediately through the SevenOS wallpaper service."), [file_wallpaper_button(tr("settings.choose", "Choose"))]),
+        setting_card("󰜉", tr("settings.refresh_wallpaper", "Refresh wallpaper"), tr("settings.refresh_wallpaper.note", "Restore and reapply the saved SevenOS wallpaper."), [action_button(tr("settings.refresh", "Refresh"), "seven-wallpaper refresh")]),
         setting_card("󰉋", tr("settings.wallpaper_folder", "Wallpaper folder"), tr("settings.wallpaper_folder.note", "Open the active SevenOS wallpaper directory."), [action_button(tr("settings.open", "Open"), "xdg-open ~/.local/share/sevenos/wallpapers")]),
     ])
 
@@ -1548,8 +1627,8 @@ def run(initial_page: str = "overview") -> int:
     display.pack_start(monitor_resolution_card(), False, False, 0)
     card_grid(display, [
         setting_card("󰍹", tr("settings.display_layout", "Display layout"), tr("settings.display_layout.note", "Open a graphical display tool when available."), [action_button(tr("settings.open", "Open"), "wdisplays || nwg-displays || arandr || hyprctl monitors")]),
-        setting_card("󰌢", tr("settings.monitor_config", "Monitor config"), tr("settings.monitor_config.note", "Open SevenOS monitor override for precise Hyprland setup."), [action_button(tr("settings.edit", "Edit"), "xdg-open ~/.config/hypr/conf/monitor.conf")]),
-        setting_card("󰜉", tr("settings.reload_hyprland", "Reload Hyprland"), tr("settings.reload_hyprland.note", "Apply current compositor configuration."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
+        setting_card("󰌢", tr("settings.monitor_config", "Advanced monitor config"), tr("settings.monitor_config.note", "Open the managed SevenOS monitor override for precise display setup."), [action_button(tr("settings.edit", "Edit"), "xdg-open ~/.config/hypr/conf/monitor.conf")]),
+        setting_card("󰜉", tr("settings.reload_session", "Refresh session"), tr("settings.reload_session.note", "Apply the current SevenOS display configuration."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
     ])
 
     # Default apps
@@ -1585,8 +1664,8 @@ def run(initial_page: str = "overview") -> int:
     card_grid(network, [
         setting_card("󰤨", "Wi-Fi", f"{wifi_radio} · {wifi_detail}", [action_button(tr("settings.connect", "Connect"), "seven-wifi connect"), action_button(tr("settings.panel", "Panel"), "seven-waybar-center-native network")]),
         setting_card("󰂯", "Bluetooth", tr("settings.bluetooth.note", "Pair headphones, keyboards, phones and nearby devices."), [action_button(tr("settings.panel", "Panel"), "seven-waybar-center-native bluetooth"), action_button(tr("settings.manager", "Manager"), "seven-bluetooth manager")]),
-        setting_card("󰖩", tr("settings.network_settings", "Network settings"), tr("settings.network_settings.note", "Open NetworkManager connection editor."), [action_button(tr("settings.open", "Open"), "nm-connection-editor || seven-wifi settings")]),
-        setting_card("󰜉", tr("settings.restart_network", "Restart network"), tr("settings.restart_network.note", "Restart NetworkManager when the link is stuck."), [action_button(tr("settings.restart", "Restart"), "seven-wifi restart")]),
+        setting_card("󰖩", tr("settings.network_settings", "Network settings"), tr("settings.network_settings.note", "Open the SevenOS network editor."), [action_button(tr("settings.open", "Open"), "nm-connection-editor || seven-wifi settings")]),
+        setting_card("󰜉", tr("settings.restart_network", "Restart network"), tr("settings.restart_network.note", "Restart SevenOS networking when the link is stuck."), [action_button(tr("settings.restart", "Restart"), "seven-wifi restart")]),
     ])
 
     # Sound
@@ -1594,9 +1673,9 @@ def run(initial_page: str = "overview") -> int:
     section(sound, tr("settings.audio", "Audio"))
     sound.pack_start(slider_card("󰕾", tr("settings.output_volume", "Output volume"), f"{volume}%", volume, set_volume), False, False, 0)
     card_grid(sound, [
-        setting_card("󰕾", tr("settings.mixer", "Mixer"), tr("settings.mixer.note", "Open pavucontrol or PipeWire status."), [action_button(tr("settings.open", "Open"), "pavucontrol || wpctl status")]),
+        setting_card("󰕾", tr("settings.mixer", "Mixer"), tr("settings.mixer.note", "Open the SevenOS mixer or audio status."), [action_button(tr("settings.open", "Open"), "pavucontrol || wpctl status")]),
         setting_card("󰖁", tr("settings.mute", "Mute"), tr("settings.mute.note", "Toggle default output mute."), [action_button(tr("settings.toggle", "Toggle"), "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")]),
-        setting_card("󰄬", tr("settings.audio_status", "Audio status"), tr("settings.audio_status.note", "Inspect PipeWire devices and routes."), [action_button(tr("settings.status", "Status"), "seven-waybar-center-native audio")]),
+        setting_card("󰄬", tr("settings.audio_status", "Audio status"), tr("settings.audio_status.note", "Inspect SevenOS audio devices and routes."), [action_button(tr("settings.status", "Status"), "seven-waybar-center-native audio")]),
     ])
 
     # Keyboard
@@ -1605,8 +1684,8 @@ def run(initial_page: str = "overview") -> int:
     section(keyboard, tr("settings.input", "Input"))
     card_grid(keyboard, [
         setting_card("󰌌", tr("settings.layouts", "Layouts"), tr("settings.layouts.note", "{layouts} · Alt+Shift switch", layouts=kbd.get("layouts", "us,fr")), [action_button(tr("settings.apply", "Apply"), "seven keyboard apply")]),
-        setting_card("󰌢", tr("settings.keyboard_override", "Keyboard override"), tr("settings.keyboard_override.note", "Open the managed Hyprland keyboard configuration."), [action_button(tr("settings.edit", "Edit"), "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
-        setting_card("󰜉", tr("settings.reload_keyboard", "Reload keyboard"), tr("settings.reload_keyboard.note", "Reload Hyprland after input changes."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
+        setting_card("󰌢", tr("settings.keyboard_override", "Keyboard override"), tr("settings.keyboard_override.note", "Open the managed SevenOS keyboard configuration."), [action_button(tr("settings.edit", "Edit"), "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
+        setting_card("󰜉", tr("settings.reload_keyboard", "Reload keyboard"), tr("settings.reload_keyboard.note", "Refresh SevenOS input after keyboard changes."), [action_button(tr("settings.reload", "Reload"), "hyprctl reload")]),
     ])
 
     # Fonts
@@ -1657,17 +1736,15 @@ def run(initial_page: str = "overview") -> int:
         "shield": "󰒃",
         "studio": "󰏗",
         "windows": "󰖳",
-        "horizon": "󰒋",
         "pulse": "󰊴",
     }
     profile_notes = {
         "equinox": tr("settings.profile.equinox.note", "Balanced daily mini OS. Neutral base, no specialized stack forced by default."),
-        "baobab": tr("settings.profile.baobab.note", "African culture and learning mini OS. Reading, knowledge, language and community memory."),
-        "forge": tr("settings.profile.forge.note", "Developer mini OS for code, SDKs, local services, containers and builds."),
+        "baobab": tr("settings.profile.baobab.note", "African cultural mini OS. Digital village, heritage, languages, oral stories, sound, map, fashion, food, wisdom and offline memory."),
+        "forge": tr("settings.profile.forge.note", "DevOps mini OS for code, SDKs, containers, local services, cloud deploys and endpoint logs."),
         "shield": tr("settings.profile.shield.note", "Cybersecurity mini OS for authorized audit, forensics, sandboxing and reports."),
         "studio": tr("settings.profile.studio.note", "Creator mini OS for logos, design, video, audio, 3D, capture and assets."),
-        "windows": tr("settings.profile.windows.note", "Windows VM-first mini OS, with Wine and Bottles as lighter fallback paths."),
-        "horizon": tr("settings.profile.horizon.note", "Cloud and server mini OS for deployments, reverse proxy, endpoints and services."),
+        "windows": tr("settings.profile.windows.note", "Windows Bridge mini OS for full desktop sessions, app compatibility and shared workspaces."),
         "pulse": tr("settings.profile.pulse.note", "Linux gaming mini OS for Proton, low latency, frame pacing, controllers and overlays."),
     }
 
@@ -1702,11 +1779,12 @@ def run(initial_page: str = "overview") -> int:
             setting_card("󰮍", tr("settings.composition_layer", "Composition layer"), tr("settings.composition_layer.note", "Inspect active mini OS, borrowed capabilities and anti-pollution policy."), [action_button(tr("settings.open", "Open"), "seven mini-os status")]),
             setting_card("󰄬", tr("settings.compare_profiles", "Compare profiles"), tr("settings.compare_profiles.note", "Compare Equinox, Forge, Studio and Shield capabilities before switching."), [action_button(tr("settings.open", "Open"), "seven runtime plan equinox forge studio shield")]),
             setting_card("󰜉", tr("settings.profile_runtime", "Runtime plan"), tr("settings.profile_runtime.note", "Show what services, resources and UI behavior the active mini OS intends to use."), [action_button(tr("settings.open", "Open"), f"seven runtime plan {current_profile_key}")]),
+            setting_card("󰁨", tr("settings.profile_aliases", "Profile aliases"), tr("settings.profile_aliases.note", "Clean retired profile names like Horizon from local SevenOS state."), [action_button(tr("settings.repair", "Repair"), "seven profile migrate-aliases --apply")]),
         ],
     )
     section(profiles, tr("settings.mini_os_profiles", "Mini OS profiles"))
     profile_cards = []
-    profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "horizon", "pulse"]
+    profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
     for key in profile_order:
         data = profile_defs.get(key, {}) if isinstance(profile_defs.get(key), dict) else {}
         title = str(data.get("title") or naming.get(key) or key.title())
@@ -1719,7 +1797,11 @@ def run(initial_page: str = "overview") -> int:
                 title,
                 note,
                 [
-                    action_button(tr("settings.activate", "Activate"), f"seven profile activate {key}", tr("settings.profile_switching", "Profile switch requested.")),
+                    action_button(
+                        tr("settings.activate", "Activate"),
+                        f"seven profile activate {key}",
+                        tr("settings.profile_switching", "Profile switch requested."),
+                    ),
                     action_button(tr("settings.center", "Center"), center_command),
                 ],
             )
@@ -1764,9 +1846,9 @@ def run(initial_page: str = "overview") -> int:
     section(shortcuts, tr("settings.shortcuts", "Shortcuts"))
     card_grid(shortcuts, [
         setting_card("󰩂", tr("settings.help_center", "Help Center"), tr("settings.help_center.note", "Open the full Super+H documentation with commands and mini OS usage."), [action_button(tr("settings.open", "Open"), "seven-help")]),
-        setting_card("󰄬", tr("settings.shortcut_audit", "Shortcut audit"), tr("settings.shortcut_audit.note", "Validate generated Lua keybinds and Hyprland fallback rules."), [action_button(tr("settings.open", "Open"), "seven hypr lua audit")]),
-        setting_card("󰜉", tr("settings.regenerate_shortcuts", "Regenerate shortcuts"), tr("settings.regenerate_shortcuts.note", "Rebuild the generated Hyprland Lua config and reload the compositor."), [action_button(tr("settings.apply", "Apply"), "seven hypr lua apply")]),
-        setting_card("󰌢", tr("settings.keyboard_override", "Keyboard override"), tr("settings.keyboard_override.note", "Open the managed Hyprland keyboard configuration."), [action_button(tr("settings.edit", "Edit"), "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
+        setting_card("󰄬", tr("settings.shortcut_audit", "Shortcut audit"), tr("settings.shortcut_audit.note", "Validate generated SevenOS keybindings and fallback rules."), [action_button(tr("settings.open", "Open"), "seven hypr lua audit")]),
+        setting_card("󰜉", tr("settings.regenerate_shortcuts", "Regenerate shortcuts"), tr("settings.regenerate_shortcuts.note", "Rebuild the generated SevenOS keybinding layer and refresh the window system."), [action_button(tr("settings.apply", "Apply"), "seven hypr lua apply")]),
+        setting_card("󰌢", tr("settings.keyboard_override", "Keyboard override"), tr("settings.keyboard_override.note", "Open the managed SevenOS keyboard configuration."), [action_button(tr("settings.edit", "Edit"), "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
     ])
 
     # Apps
@@ -1775,7 +1857,7 @@ def run(initial_page: str = "overview") -> int:
     card_grid(apps, [
         setting_card("󰀻", "Launchpad", tr("settings.launchpad.apps.note", "Browse installed applications."), [action_button(tr("settings.open", "Open"), "seven-overview apps")]),
         setting_card("󰏗", "SevenPkg", tr("settings.sevenpkg.note", "Inspect packages and meta-bundles."), [action_button(tr("settings.status", "Status"), "sevenpkg status")]),
-        setting_card("󰈙", "Flatpak", tr("settings.flatpak.note", "Open Flatpak/Flathub management path."), [action_button(tr("settings.status", "Status"), "seven flatpak status || flatpak list")]),
+        setting_card("󰈙", tr("settings.software_sources", "Software sources"), tr("settings.software_sources.note", "Inspect external app sources through the SevenOS software route."), [action_button(tr("settings.status", "Status"), "seven flatpak status || flatpak list")]),
         setting_card("󰉋", tr("settings.applications_folder", "Applications folder"), tr("settings.applications_folder.note", "Open desktop application launchers."), [action_button(tr("settings.open", "Open"), "xdg-open /usr/share/applications")]),
     ])
 
@@ -1783,12 +1865,12 @@ def run(initial_page: str = "overview") -> int:
     system = pages["system"][0]
     section(system, tr("settings.maintenance", "Maintenance"))
     card_grid(system, [
-        setting_card("󰚰", tr("settings.system_updates", "System updates"), tr("settings.system_updates.note", "Update Arch packages and AUR packages through SevenPkg."), [action_button(tr("settings.update", "Update"), "seven update")]),
-        setting_card("󰏗", tr("settings.package_status", "Package status"), tr("settings.package_status.note", "Inspect SevenPkg, pacman, Flatpak and bundle readiness."), [action_button(tr("settings.open", "Open"), "sevenpkg status")]),
+        setting_card("󰚰", tr("settings.system_updates", "System updates"), tr("settings.system_updates.note", "Update SevenOS system components and app sources through SevenPkg."), [action_button(tr("settings.update", "Update"), "seven update")]),
+        setting_card("󰏗", tr("settings.package_status", "Software status"), tr("settings.package_status.note", "Inspect SevenPkg, app sources and profile bundle readiness."), [action_button(tr("settings.open", "Open"), "sevenpkg status")]),
         setting_card("󰄬", tr("settings.daily_gate", "Daily driver gate"), tr("settings.daily_gate.note", "Check if SevenOS is ready as a primary OS."), [action_button(tr("settings.check", "Check"), "seven daily")]),
         setting_card("󰩂", tr("settings.doctor", "Doctor"), tr("settings.doctor.note", "Diagnose common system issues."), [action_button(tr("settings.run", "Run"), "seven doctor")]),
         setting_card("󰒓", tr("settings.runtime_status", "Status"), tr("settings.runtime_status.note", "Open consolidated SevenOS runtime status."), [action_button(tr("settings.open", "Open"), "seven status")]),
-        setting_card("󰜉", tr("settings.repair_ui", "Repair UI"), tr("settings.repair_ui.note", "Reapply theme, reload Hyprland and restart Waybar."), [action_button(tr("settings.repair", "Repair"), "./install.sh theme && hyprctl reload && seven-waybar repair")]),
+        setting_card("󰜉", tr("settings.repair_ui", "Repair UI"), tr("settings.repair_ui.note", "Reapply the SevenOS theme, refresh the window system and restart the shell bar."), [action_button(tr("settings.repair", "Repair"), "./install.sh theme && hyprctl reload && seven-waybar repair")]),
         setting_card("󰌢", tr("settings.logs", "Logs"), tr("settings.logs.note", "Open recent system warnings."), [action_button(tr("settings.open", "Open"), "seven-terminal cyber -- bash -lc 'journalctl -p warning -b -n 120 --no-pager; read -r'")]),
     ])
 

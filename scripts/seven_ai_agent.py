@@ -537,15 +537,15 @@ def sevenos_knowledge(language: str | None = None) -> dict[str, Any]:
     language = language or active_language()
     if language == "fr":
         summary = (
-            "SevenOS est une expérience Linux intelligente de nouvelle génération basée sur Hyprland, "
-            "le contrôle système local, les profils contextuels, la cybersécurité, les workflows créatifs "
+            "SevenOS est un OS personnel intelligent de nouvelle génération, avec contrôle système local, "
+            "profils contextuels, cybersécurité, workflows créatifs "
             "et un langage visuel glass premium."
         )
         pillars = ["fluidité", "sécurité", "profils contextuels", "contrôle assisté par IA", "workflows création/dev/cyber"]
     else:
         summary = (
-            "SevenOS is a next-generation intelligent Linux experience based on Hyprland, "
-            "local-first system control, contextual profiles, cybersecurity tooling, "
+            "SevenOS is a next-generation intelligent personal OS with local-first system control, "
+            "contextual profiles, cybersecurity tooling, "
             "creative workflows and a premium glass design language."
         )
         pillars = ["fluidity", "security", "contextual profiles", "AI-assisted control", "creative/dev/cyber workflows"]
@@ -556,7 +556,7 @@ def sevenos_knowledge(language: str | None = None) -> dict[str, Any]:
         "language": language,
         "summary": summary,
         "pillars": pillars,
-        "primary_surfaces": ["Spotlight", "Seven Hub", "Seven Files", "Waybar cockpit", "SevenAI", "SevenShield"],
+        "primary_surfaces": ["Spotlight", "Seven Hub", "Seven Files", "SevenOS Bar", "SevenAI", "SevenShield"],
         "daily_shortcuts": shortcut_catalog(language)["shortcuts"],
         "workflow_tips": workflow_plan(language)["tips"],
     }

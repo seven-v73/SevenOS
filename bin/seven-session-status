@@ -77,13 +77,13 @@ json_string() {
 }
 
 session_rows() {
-  printf 'file\twayland-entry\tWayland session entry\t%s\t%s\n' "$(file_state "$DATA_HOME/wayland-sessions/sevenos.desktop")" "$DATA_HOME/wayland-sessions/sevenos.desktop"
+  printf 'file\twayland-entry\tSevenOS login entry\t%s\t%s\n' "$(file_state "$DATA_HOME/wayland-sessions/sevenos.desktop")" "$DATA_HOME/wayland-sessions/sevenos.desktop"
   printf 'file\tsession-target\tUser session target\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-session.target")" "$CONFIG_HOME/systemd/user/sevenos-session.target"
-  printf 'file\twaybar-service\tWaybar service\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-waybar.service")" "$CONFIG_HOME/systemd/user/sevenos-waybar.service"
+  printf 'file\twaybar-service\tShell bar service\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-waybar.service")" "$CONFIG_HOME/systemd/user/sevenos-waybar.service"
   printf 'file\tnotifications-service\tNotifications service\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-notifications.service")" "$CONFIG_HOME/systemd/user/sevenos-notifications.service"
   printf 'file\twallpaper-service\tWallpaper service\t%s\t%s\n' "$(file_state "$CONFIG_HOME/systemd/user/sevenos-wallpaper.service")" "$CONFIG_HOME/systemd/user/sevenos-wallpaper.service"
   printf 'service\tsevenos-session\tSevenOS session target\t%s\tsevenos-session.target\n' "$(service_state sevenos-session.target)"
-  printf 'service\tsevenos-waybar\tWaybar runtime\t%s\tsevenos-waybar.service\n' "$(service_state sevenos-waybar.service)"
+  printf 'service\tsevenos-waybar\tShell bar runtime\t%s\tsevenos-waybar.service\n' "$(service_state sevenos-waybar.service)"
   printf 'service\tsevenos-notifications\tNotifications runtime\t%s\tsevenos-notifications.service\n' "$(service_state sevenos-notifications.service)"
   printf 'service\tsevenos-wallpaper\tWallpaper runtime\t%s\tsevenos-wallpaper.service\n' "$(service_state sevenos-wallpaper.service)"
   printf 'service\tsevenos-idle\tIdle runtime\t%s\tsevenos-idle.service\n' "$(service_state sevenos-idle.service)"
@@ -131,9 +131,9 @@ printf 'SevenOS Session Status\n'
 printf '======================\n\n'
 
 printf 'Session Files\n'
-check_file "Wayland session entry" "$DATA_HOME/wayland-sessions/sevenos.desktop"
+check_file "SevenOS login entry" "$DATA_HOME/wayland-sessions/sevenos.desktop"
 check_file "User session target" "$CONFIG_HOME/systemd/user/sevenos-session.target"
-check_file "Waybar service" "$CONFIG_HOME/systemd/user/sevenos-waybar.service"
+check_file "Shell bar service" "$CONFIG_HOME/systemd/user/sevenos-waybar.service"
 check_file "Notifications service" "$CONFIG_HOME/systemd/user/sevenos-notifications.service"
 check_file "Wallpaper service" "$CONFIG_HOME/systemd/user/sevenos-wallpaper.service"
 printf '\n'

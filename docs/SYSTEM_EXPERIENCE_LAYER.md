@@ -405,7 +405,7 @@ semantic layer that answers: what is the user actually doing?
 ```text
 Processes + windows + profile + events
   -> Seven Context Engine
-  -> Forge / Studio / Shield / Windows / Horizon / Streaming context
+  -> Forge DevOps / Studio / Shield / Windows / Pulse / Streaming context
   -> Seven Scheduler, Seven Shell, Seven Hub, future SevenAI
 ```
 
@@ -463,7 +463,7 @@ It groups processes by SevenOS profile:
 - Shield: audit, sandbox and network security tools
 - Studio: media, graphics, audio and 3D production
 - Windows: Wine, Bottles, Lutris and KVM/QEMU
-- Horizon: containers, Caddy, deployment and services
+- Forge DevOps: containers, Caddy, deployment and services
 
 The current layer detects matching workloads, exposes a policy contract, and
 previews nice/power/IO hints plus future cgroups v2, systemd slice and `uclamp`

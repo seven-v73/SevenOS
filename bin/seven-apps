@@ -29,84 +29,29 @@ ROOT_DIR="$(resolve_root)"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 THEME="$CONFIG_HOME/rofi/apps.rasi"
 action="${1:-open}"
-if [[ "${2:-}" == "--json" && "$action" == "list" ]]; then
+format="${2:-}"
+if [[ "$format" == "--json" && "$action" == "list" ]]; then
   action="json"
 fi
 
 catalog() {
-  python - <<'PY'
+  ROOT_DIR="$ROOT_DIR" python - <<'PY'
+from importlib.machinery import SourceFileLoader
 import os
 from pathlib import Path
 
-def truthy(value):
-    return str(value).strip().lower() in {"1", "true", "yes"}
-
-def read_desktop(path):
-    data = {}
-    in_entry = False
-    try:
-        content = path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
-
-    for raw in content.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("[") and line.endswith("]"):
-            in_entry = line == "[Desktop Entry]"
-            continue
-        if not in_entry or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        data.setdefault(key.strip(), value.strip())
-
-    if data.get("Type", "Application") != "Application":
-        return None
-    if truthy(data.get("Hidden", "false")):
-        return None
-    if truthy(data.get("NoDisplay", "false")) and os.environ.get("SEVENOS_APPS_SHOW_HIDDEN") != "1":
-        return None
-
-    name = data.get("Name") or data.get("Name[en_US]") or path.stem
-    exec_value = data.get("Exec", "")
-    if not exec_value:
-        return None
-
-    comment = data.get("Comment", "")
-    categories = data.get("Categories", "")
-    icon = data.get("Icon") or "application-x-executable"
-    return name, path.name, str(path), comment, categories, icon
-
-data_dirs = []
-for candidate in (
-    Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")),
-    Path.home() / ".local/share/flatpak/exports/share",
-    Path("/var/lib/flatpak/exports/share"),
-):
-    data_dirs.append(candidate)
-
-for raw in os.environ.get("XDG_DATA_DIRS", "/usr/local/share:/usr/share").split(":"):
-    if raw:
-        data_dirs.append(Path(raw))
-
-seen_paths = set()
-apps = []
-for base in data_dirs:
-    app_dir = base / "applications"
-    if not app_dir.is_dir():
-        continue
-    for path in app_dir.glob("*.desktop"):
-        resolved = str(path)
-        if resolved in seen_paths:
-            continue
-        seen_paths.add(resolved)
-        entry = read_desktop(path)
-        if entry:
-            apps.append(entry)
-
-for entry in sorted(apps, key=lambda item: item[0].casefold()):
-    print("\t".join(value.replace("\t", " ") for value in entry))
+root = Path(os.environ["ROOT_DIR"])
+module = SourceFileLoader("seven_launchpad_native", str(root / "bin/seven-launchpad-native")).load_module()
+for app in module.load_apps():
+    values = [
+        app.get("name", ""),
+        app.get("desktop_id", ""),
+        app.get("path", ""),
+        app.get("comment", ""),
+        app.get("categories", ""),
+        app.get("icon", ""),
+    ]
+    print("\t".join(str(value).replace("\t", " ") for value in values))
 PY
 }
 
@@ -276,10 +221,17 @@ case "$action" in
   json)
     catalog_json
     ;;
+  refresh)
+    "$ROOT_DIR/bin/seven-launchpad-native" --refresh
+    ;;
   count)
     catalog | wc -l
     ;;
   doctor)
+    if [[ "$format" == "--json" ]]; then
+      "$ROOT_DIR/bin/seven-launchpad-native" --doctor --json
+      exit $?
+    fi
     count="$(catalog | wc -l)"
     printf 'SevenOS Apps: %s desktop applications indexed\n' "$count"
     if [[ "$count" -eq 0 ]]; then
@@ -288,7 +240,7 @@ case "$action" in
     fi
     ;;
   *)
-    printf 'Usage: seven-apps [open|list|json|count|doctor]\n' >&2
+    printf 'Usage: seven-apps [open|list|json|refresh|count|doctor]\n' >&2
     exit 2
     ;;
 esac

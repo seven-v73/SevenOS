@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Baobab OS
+Comment=Interface culturelle africaine native de SevenOS
+Exec=seven baobab open
+Icon=seven-hub
+Terminal=false
+Categories=Education;X-Culture;
+StartupNotify=true
+StartupWMClass=Baobab OS
+Keywords=Baobab;patrimoine;Afrique;culture;UNESCO;SevenOS;

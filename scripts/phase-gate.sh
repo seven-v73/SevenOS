@@ -154,7 +154,7 @@ gates = [
         "target": "RUNTIME_READY",
         "band": server_runtime_state,
         "command": "seven server plan",
-        "detail": "The ecosystem needs a local OS API surface. Go/Podman/Caddy complete Horizon deployment, but they are not required to prove that the local API is running.",
+        "detail": "The ecosystem needs a local OS API surface. Go/Podman/Caddy complete Forge DevOps deployment, but they are not required to prove that the local API is running.",
     },
     {
         "key": "installer",

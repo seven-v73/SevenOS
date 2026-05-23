@@ -47,9 +47,9 @@ def local_answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str
 
     if any(token in raw for token in ("wifi", "network", "réseau", "reseau")):
         answer = (
-            "Pour un problème Wi-Fi, SevenAI vérifie d’abord l’état de NetworkManager avant de proposer un redémarrage."
+            "Pour un problème Wi-Fi, SevenAI vérifie d’abord l’état du réseau SevenOS avant de proposer une réparation."
             if language == "fr"
-            else "For Wi-Fi issues, SevenAI should inspect NetworkManager state before restarting services."
+            else "For Wi-Fi issues, SevenAI should inspect SevenOS network state before proposing a repair."
         )
         suggestions = [
             "seven ai diagnose network --json",
@@ -80,9 +80,9 @@ def local_answer(prompt: str, context: dict[str, Any] | None = None) -> dict[str
         ]
     elif any(token in raw for token in ("sevenos", "raccourci", "shortcut", "theme", "thème")):
         answer = (
-            "SevenOS est une expérience Linux intelligente basée sur Hyprland, avec IA locale, profils contextuels et interfaces système premium."
+            "SevenOS est un OS personnel intelligent, local-first, avec profils contextuels et surfaces système premium."
             if language == "fr"
-            else "SevenOS is a Hyprland-based intelligent Linux experience with local-first AI, profiles and premium shell surfaces."
+            else "SevenOS is an intelligent personal OS with local-first AI, contextual profiles and premium system surfaces."
         )
         suggestions = [
             "seven ai knowledge",

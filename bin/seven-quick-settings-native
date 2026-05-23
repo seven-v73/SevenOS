@@ -88,15 +88,24 @@ def command_available(command: str) -> bool:
 
 
 def current_theme_mode() -> str:
-    theme_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/theme.conf"
     if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
         return str(os.environ["SEVENOS_THEME_MODE"])
-    if theme_file.exists():
-        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-            if line.startswith("SEVENOS_THEME_MODE="):
-                value = line.split("=", 1)[1].strip().strip("'\"")
-                if value in {"dark", "light"}:
-                    return value
+    config_dir = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
+    profile_env = config_dir / "profile.env"
+    if profile_env.exists():
+        for line in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("SEVENOS_ACTIVE_PROFILE="):
+                profile = line.split("=", 1)[1].strip().strip("'\"") or profile
+                break
+    for theme_file in (config_dir / "profiles" / profile / "theme.conf", config_dir / "theme.conf"):
+        if theme_file.exists():
+            for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+                key, _, value = line.partition("=")
+                if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                    value = value.strip().strip("'\"").lower()
+                    if value in {"dark", "light"}:
+                        return value
     return "dark"
 
 
@@ -363,7 +372,7 @@ def wifi_password_dialog(Gtk, parent, ssid: str) -> str:
 
 def connect_wifi_network(Gtk, parent, ssid: str, security: str) -> None:
     if not command_available("nmcli"):
-        notify("SevenOS Wi-Fi", "NetworkManager tools are missing.")
+        notify("SevenOS Wi-Fi", "SevenOS network tools are missing.")
         return
     known = known_wifi_connection(ssid)
     password = ""
@@ -900,7 +909,7 @@ def detail_loading(Gtk, label: str):
 def render_wifi_detail(Gtk, parent, body, status: str, networks: list[dict[str, str]]) -> None:
     clear_container(body)
     if status == "missing":
-        body.pack_start(detail_row(Gtk, tr_text("Network tools missing"), "NetworkManager"), False, False, 0)
+        body.pack_start(detail_row(Gtk, tr_text("Network tools missing"), tr_text("SevenOS network service")), False, False, 0)
     elif status == "off":
         body.pack_start(detail_row(Gtk, tr_text("Wi-Fi is off"), tr_text("Turn it on to see networks")), False, False, 0)
     elif not networks:

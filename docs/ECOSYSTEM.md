@@ -47,7 +47,8 @@ integration, continuity and predictable defaults.
 | Adaptive UI | profile-aware desktop behavior and visual modes | 4 | preview |
 | Windows Integration | guided VM, Wine, Bottles and future app integration | 2-4 | preview |
 | SevenDoctor | auto-repair and guided remediation through Control Plane | 3-4 | preview |
-| Seven Profiles | Baobab, Forge, Shield, Studio, Windows, Horizon and Griot | 2-4 | active |
+| Seven Profiles | Baobab, Forge DevOps, Shield, Studio, Windows, Pulse and Griot | 2-4 | active |
+| Baobab Cultural Mini OS | Heritage, African languages, story, sound, map, museum, fashion, food, wisdom and market | 2-4 | active contract |
 | SevenIdentity | user identity, cultural accents, permissions and environment | 5 | preview |
 | SevenCluster | multi-machine local cluster and resource sharing | 5 | preview |
 | SevenFlow | no-code automation rules for system workflows | 5 | preview |
@@ -66,7 +67,7 @@ cannot be reached from Seven Hub or `seven`, it is not productized yet.
 | Windows Apps | compatibility | preview | Windows profile, Bottles/Wine, KVM VM | `seven windows guide` |
 | Security Trust | security | preview | Shield audit, hardening, sandbox, Cyber Lab | `seven shield audit` |
 | Create & Media | creation | preview | Studio profile, creative apps, media workspace | `seven profile guide studio` |
-| Develop & Deploy | deployment | preview | Forge/Horizon, stack detection, local API, deploy plan | `seven deploy plan .` |
+| Develop & Deploy | deployment | preview | Forge DevOps, stack detection, local API, deploy plan | `seven deploy plan .` |
 | Local Guidance | intelligence | preview | state, insights, action registry, next best commands | `seven ai plan` |
 | Personal Cloud | cloud | preview | local-first backup plan and restore contract | `seven cloud` |
 | Marketplace | store | preview | modules, apps, actions and guided install | `seven store` |
@@ -147,7 +148,7 @@ sequence for Seven Hub and Windows Mode.
 
 `seven profile gaps --json` is the work-mode completeness contract. It lists
 missing packages and missing app launch surfaces for Baobab, Forge, Shield,
-Studio, Windows and Horizon.
+Studio, Windows and Pulse.
 
 `seven profile plan --json` sorts those gaps into a prioritized completion
 path, so Seven Hub and Control Plane can guide the user through real work-mode
@@ -247,7 +248,7 @@ Already present:
 - `seven` system controller
 - `sevenpkg` package and meta-package layer
 - Seven Hub categorized control center
-- Forge, Shield, Studio, Horizon, Griot and Baobab vocabulary
+- Forge DevOps, Shield, Studio, Pulse, Griot and Baobab vocabulary
 - Windows Mode helpers
 - `seven-server` local API foundation
 - `seven-deploy` deployment planner

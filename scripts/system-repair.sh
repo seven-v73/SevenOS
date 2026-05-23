@@ -30,7 +30,7 @@ set -Eeuo pipefail
 echo "[SevenOS] Repairing host-level service state..."
 
 if systemctl list-unit-files mongodb.service >/dev/null 2>&1; then
-  # MongoDB is a Horizon/Forge capability, not a base Equinox boot service.
+  # MongoDB is a Forge DevOps capability, not a base Equinox boot service.
   sudo systemctl disable --now mongodb.service || true
 fi
 

@@ -29,13 +29,99 @@ ROOT_DIR="$(resolve_root)"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
+STATE_DIR="$CONFIG_HOME/sevenos"
+PROFILE_STATE_DIR="$STATE_DIR/profiles"
+PROFILE_WALLPAPER_DIR="$WALLPAPER_DIR/profiles"
 SOURCE_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
 TARGET_SVG="$WALLPAPER_DIR/wallpaper-sevenos.svg"
 TARGET_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
 CUSTOM_WALLPAPER="$WALLPAPER_DIR/wallpaper-sevenos-custom.png"
 ACTIVE_WALLPAPER="$WALLPAPER_DIR/wallpaper-sevenos-active.png"
 HYPRPAPER_CONFIG="$CONFIG_HOME/hypr/hyprpaper.conf"
+GLOBAL_STATE_FILE="$STATE_DIR/wallpaper-state"
 SERVICE_NAME="sevenos-wallpaper.service"
+
+normalize_profile_key() {
+  case "${1:-}" in
+    horizon) printf 'forge' ;;
+    equinox|baobab|forge|shield|studio|windows|pulse) printf '%s' "$1" ;;
+    "") printf 'equinox' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+active_profile() {
+  local state_file="$STATE_DIR/profile.env"
+  if [[ -n "${SEVENOS_WALLPAPER_PROFILE:-}" ]]; then
+    normalize_profile_key "$SEVENOS_WALLPAPER_PROFILE"
+    return 0
+  fi
+  if [[ -f "$state_file" ]]; then
+    # shellcheck disable=SC1090
+    source "$state_file"
+    normalize_profile_key "${SEVENOS_ACTIVE_PROFILE:-equinox}"
+  else
+    normalize_profile_key "equinox"
+  fi
+}
+
+profile_state_file() {
+  local profile
+  profile="$(normalize_profile_key "${1:-$(active_profile)}")"
+  printf '%s/%s/wallpaper-state\n' "$PROFILE_STATE_DIR" "$profile"
+}
+
+profile_custom_wallpaper() {
+  local profile
+  profile="$(normalize_profile_key "${1:-$(active_profile)}")"
+  printf '%s/%s/wallpaper-custom.png\n' "$PROFILE_WALLPAPER_DIR" "$profile"
+}
+
+profile_active_wallpaper() {
+  local profile
+  profile="$(normalize_profile_key "${1:-$(active_profile)}")"
+  printf '%s/%s/wallpaper-active.png\n' "$PROFILE_WALLPAPER_DIR" "$profile"
+}
+
+save_wallpaper_state() {
+  local mode="$1"
+  local value="${2:-}"
+  local profile profile_state profile_active
+  profile="$(active_profile)"
+  profile_state="$(profile_state_file "$profile")"
+  profile_active="$(profile_active_wallpaper "$profile")"
+  mkdir -p "$STATE_DIR" "$(dirname "$profile_state")" "$(dirname "$profile_active")"
+  if [[ -f "$ACTIVE_WALLPAPER" ]]; then
+    cp "$ACTIVE_WALLPAPER" "$profile_active"
+  fi
+  {
+    printf 'profile\t%s\n' "$profile"
+    printf 'mode\t%s\n' "$mode"
+    printf 'value\t%s\n' "$value"
+    printf 'active\t%s\n' "$ACTIVE_WALLPAPER"
+    printf 'profile_active\t%s\n' "$profile_active"
+  } > "$profile_state"
+  {
+    printf 'profile\t%s\n' "$profile"
+    printf 'mode\t%s\n' "$mode"
+    printf 'value\t%s\n' "$value"
+    printf 'active\t%s\n' "$ACTIVE_WALLPAPER"
+    printf 'profile_state\t%s\n' "$profile_state"
+    printf 'profile_active\t%s\n' "$profile_active"
+  } > "$GLOBAL_STATE_FILE"
+}
+
+wallpaper_state_value() {
+  local key="$1"
+  local profile_state
+  profile_state="$(profile_state_file "$(active_profile)")"
+  if [[ -f "$profile_state" ]]; then
+    awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$profile_state"
+    return 0
+  fi
+  [[ -f "$GLOBAL_STATE_FILE" ]] || return 1
+  awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$GLOBAL_STATE_FILE"
+}
 
 profile_meta_json() {
   local profile="${1:-}"
@@ -75,8 +161,62 @@ render_wallpaper() {
   cp "$TARGET_PNG" "$ACTIVE_WALLPAPER"
 }
 
+restore_persistent_wallpaper() {
+  local mode value profile profile_png profile_active
+  profile="$(active_profile)"
+  mode="$(wallpaper_state_value mode 2>/dev/null || true)"
+  value="$(wallpaper_state_value value 2>/dev/null || true)"
+  profile_active="$(profile_active_wallpaper "$profile")"
+
+  case "$mode" in
+    custom)
+      if [[ -n "$value" && -f "$value" ]]; then
+        cp "$value" "$ACTIVE_WALLPAPER"
+        mkdir -p "$(dirname "$profile_active")"
+        cp "$ACTIVE_WALLPAPER" "$profile_active"
+        return 0
+      fi
+      if [[ -f "$(profile_custom_wallpaper "$profile")" ]]; then
+        cp "$(profile_custom_wallpaper "$profile")" "$ACTIVE_WALLPAPER"
+        mkdir -p "$(dirname "$profile_active")"
+        cp "$ACTIVE_WALLPAPER" "$profile_active"
+        return 0
+      fi
+      if [[ -f "$CUSTOM_WALLPAPER" ]]; then
+        cp "$CUSTOM_WALLPAPER" "$ACTIVE_WALLPAPER"
+        mkdir -p "$(dirname "$profile_active")"
+        cp "$ACTIVE_WALLPAPER" "$profile_active"
+        return 0
+      fi
+      ;;
+    profile)
+      profile_png="$WALLPAPER_DIR/wallpaper-sevenos-${value:-equinox}.png"
+      if [[ -f "$profile_png" ]]; then
+        cp "$profile_png" "$ACTIVE_WALLPAPER"
+        return 0
+      fi
+      render_profile_wallpaper "${value:-equinox}"
+      save_wallpaper_state profile "${value:-equinox}"
+      return 0
+      ;;
+    default)
+      render_profile_wallpaper "$profile"
+      save_wallpaper_state profile "$profile"
+      return 0
+      ;;
+  esac
+
+  if [[ -f "$profile_active" ]]; then
+    cp "$profile_active" "$ACTIVE_WALLPAPER"
+    return 0
+  fi
+  render_profile_wallpaper "$profile"
+  save_wallpaper_state profile "$profile"
+}
+
 set_custom_wallpaper() {
   local source_file="${1:-}"
+  local profile scoped_custom scoped_active
 
   if [[ -z "$source_file" ]]; then
     printf 'seven-wallpaper: missing image path\n' >&2
@@ -94,13 +234,18 @@ set_custom_wallpaper() {
     exit 1
   fi
 
-  mkdir -p "$WALLPAPER_DIR"
+  profile="$(active_profile)"
+  scoped_custom="$(profile_custom_wallpaper "$profile")"
+  scoped_active="$(profile_active_wallpaper "$profile")"
+  mkdir -p "$WALLPAPER_DIR" "$(dirname "$scoped_custom")"
   if command -v magick >/dev/null 2>&1; then
-    magick "$source_file" -auto-orient "$CUSTOM_WALLPAPER"
+    magick "$source_file" -auto-orient "$scoped_custom"
   else
-    cp "$source_file" "$CUSTOM_WALLPAPER"
+    cp "$source_file" "$scoped_custom"
   fi
-  cp "$CUSTOM_WALLPAPER" "$ACTIVE_WALLPAPER"
+  cp "$scoped_custom" "$scoped_active"
+  cp "$scoped_custom" "$ACTIVE_WALLPAPER"
+  save_wallpaper_state custom "$scoped_custom"
 }
 
 render_profile_wallpaper() {
@@ -131,7 +276,6 @@ palette = {
     "shield": ("#041411", "#09201B", "#123F38", "#071D23"),
     "studio": ("#130B1B", "#21122B", "#3E244D", "#171129"),
     "windows": ("#07111E", "#0D1C2B", "#183D5A", "#0B1626"),
-    "horizon": ("#061620", "#092635", "#16495A", "#071C28"),
     "pulse": ("#031522", "#082337", "#0A4961", "#061A2A"),
 }.get(key, ("#11111B", "#1B1F30", "#34365C", "#121528"))
 bg, mid, ridge, deep = palette
@@ -213,12 +357,15 @@ PY
     exit 1
   fi
   cp "$profile_png" "$ACTIVE_WALLPAPER"
+  if [[ "${SEVENOS_WALLPAPER_SKIP_STATE:-0}" != "1" ]]; then
+    SEVENOS_WALLPAPER_PROFILE="$key" save_wallpaper_state profile "$key"
+  fi
 }
 
 render_all_profile_wallpapers() {
   local profile
-  for profile in equinox baobab forge shield studio windows horizon pulse; do
-    render_profile_wallpaper "$profile"
+  for profile in equinox baobab forge shield studio windows pulse; do
+    SEVENOS_WALLPAPER_SKIP_STATE=1 render_profile_wallpaper "$profile"
   done
 }
 
@@ -275,9 +422,7 @@ apply_live() {
 }
 
 serve_hyprpaper() {
-  if [[ ! -f "$ACTIVE_WALLPAPER" ]]; then
-    render_wallpaper
-  fi
+  restore_persistent_wallpaper
   write_config
   if ! command -v hyprpaper >/dev/null 2>&1; then
     printf 'seven-wallpaper: hyprpaper is not installed.\n' >&2
@@ -307,13 +452,28 @@ restart_hyprpaper() {
 }
 
 print_status() {
+  local profile profile_state profile_active profile_custom
+  profile="$(active_profile)"
+  profile_state="$(profile_state_file "$profile")"
+  profile_active="$(profile_active_wallpaper "$profile")"
+  profile_custom="$(profile_custom_wallpaper "$profile")"
   printf 'SevenOS wallpaper status\n'
+  printf '  profile:     %s\n' "$profile"
   printf '  repo svg:    %s\n' "$SOURCE_SVG"
   printf '  copied svg:  %s\n' "$TARGET_SVG"
   printf '  rendered png:%s\n' "$TARGET_PNG"
-  printf '  custom png:  %s\n' "$CUSTOM_WALLPAPER"
+  printf '  custom png:  %s\n' "$profile_custom"
+  printf '  profile png: %s\n' "$profile_active"
   printf '  active png:  %s\n' "$ACTIVE_WALLPAPER"
   printf '  hypr config: %s\n' "$HYPRPAPER_CONFIG"
+  printf '  state file:  %s\n' "$profile_state"
+  printf '  global last: %s\n' "$GLOBAL_STATE_FILE"
+  if [[ -f "$profile_state" ]]; then
+    printf '  state mode:  %s\n' "$(wallpaper_state_value mode 2>/dev/null || printf unknown)"
+    printf '  state value: %s\n' "$(wallpaper_state_value value 2>/dev/null || printf unknown)"
+  else
+    printf '  state mode:  profile-default\n'
+  fi
 
   if [[ -f "$SOURCE_SVG" ]]; then
     printf '  repo svg sha: '
@@ -333,6 +493,10 @@ print_status() {
   else
     printf '  active: missing\n'
   fi
+  if [[ -f "$profile_active" ]]; then
+    printf '  profile sha: '
+    sha256sum "$profile_active" | awk '{print $1}'
+  fi
   if [[ -f "$HYPRPAPER_CONFIG" ]]; then
     printf '\nCurrent hyprpaper config:\n'
     sed 's/^/  /' "$HYPRPAPER_CONFIG"
@@ -350,15 +514,23 @@ print_status() {
 case "${1:-refresh}" in
   render)
     render_wallpaper
+    save_wallpaper_state default "$TARGET_PNG"
     write_config
     generate_palette
     printf '%s\n' "$TARGET_PNG"
     ;;
   refresh)
-    render_wallpaper
+    restore_persistent_wallpaper
     generate_palette
     restart_hyprpaper
     printf 'SevenOS wallpaper refreshed: %s\n' "$ACTIVE_WALLPAPER"
+    ;;
+  default|reset)
+    render_profile_wallpaper "$(active_profile)"
+    save_wallpaper_state profile "$(active_profile)"
+    generate_palette
+    restart_hyprpaper
+    printf 'SevenOS wallpaper reset: %s\n' "$ACTIVE_WALLPAPER"
     ;;
   set)
     set_custom_wallpaper "${2:-}"
@@ -391,6 +563,7 @@ case "${1:-refresh}" in
     ;;
   *)
     printf 'Usage: seven-wallpaper [refresh|render|serve|status|path|set IMAGE|profile [PROFILE]|profiles]\n' >&2
+    printf 'By default, set/reset/refresh are scoped to the active mini OS profile.\n' >&2
     exit 1
     ;;
 esac

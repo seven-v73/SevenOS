@@ -22,9 +22,9 @@ This document keeps SevenOS language consistent across commands, UI, and docs.
 | Shield Cybersecurity | cybersecurity mini OS for authorized audit, forensics, sandboxing, and network analysis |
 | Studio Creator | creator mini OS for logos, design, video, audio, 3D, and capture |
 | Windows Bridge | complete Windows VM-first mini OS |
-| Horizon Cloud | cloud/server mini OS for deployment, services, reverse proxy, and self-hosting |
+| Forge DevOps | mini OS for development, services, deployment, reverse proxy, and self-hosting |
 | Pulse Gaming | Linux gaming mini OS for Proton, low latency, overlays, and frame pacing |
-| Baobab Culture | culture and learning mini OS for African knowledge, languages, and community memory |
+| Baobab Cultural OS | African cultural mini OS for heritage, languages, stories, sound, map, fashion, food, wisdom and offline memory |
 | Griot | documentation, knowledge, and learning toolkit |
 
 ## Identity Tokens

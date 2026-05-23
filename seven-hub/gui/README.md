@@ -30,7 +30,7 @@ Seven Hub now exposes a Control Center structure:
 - system state pulled from `seven status --json`
 - profile state pulled from `seven profile status --json`
 - service cards for Network, Firewall, Windows Mode and Seven Server
-- profile cards for Forge, Shield, Studio, Windows and Horizon
+- profile cards for Forge DevOps, Shield, Studio, Windows, Pulse and Baobab
 - active profile, workspace and install/activate actions
 - recommendation cards mapped to safe SevenOS commands
 - output drawer for readable command results

@@ -196,7 +196,7 @@ service_owners = {
     "docker.service": ["forge"],
     "postgresql.service": ["forge"],
     "valkey.service": ["forge"],
-    "caddy.service": ["horizon"],
+    "caddy.service": ["forge"],
     "libvirtd.service": ["windows"],
     "virtqemud.service": ["windows"],
     "virtlogd.service": ["windows"],
@@ -223,13 +223,12 @@ for service, owners in service_owners.items():
     })
 
 profile_commands = {
-    "equinox": ["seven", "seven-files", "seven-hub", "kitty"],
+    "equinox": ["seven", "seven-files", "seven-hub", "kitty", "python", "python3"],
     "baobab": ["seven", "seven-files", "seven-hub", "seven-reader", "foliate", "calibre", "ebook-viewer", "espeak-ng", "festival", "trans"],
-    "forge": ["git", "gh", "node", "npm", "pnpm", "python", "pip", "pipx", "rustc", "cargo", "go", "docker", "docker-compose", "helix", "hx", "nvim", "code", "tmux", "make", "cmake", "ninja", "gcc", "clang", "lldb", "sqlite3", "psql", "valkey-server"],
+    "forge": ["git", "gh", "node", "npm", "pnpm", "python", "pip", "pipx", "rustc", "cargo", "go", "docker", "docker-compose", "podman", "buildah", "skopeo", "caddy", "jq", "rsync", "ssh", "seven-deploy", "helix", "hx", "nvim", "code", "tmux", "make", "cmake", "ninja", "gcc", "clang", "lldb", "sqlite3", "psql", "valkey-server"],
     "shield": ["nmap", "wireshark", "tcpdump", "nc", "john", "hashcat", "hydra", "medusa", "sqlmap", "nikto", "msfconsole", "gobuster", "zaproxy", "masscan", "impacket-secretsdump", "whois", "dig", "traceroute", "openvpn", "wg", "binwalk", "volatility3", "yara", "sleuthkit", "foremost", "testdisk", "exiftool", "gdb", "strace", "ltrace", "radare2", "rizin", "cutter", "ghidra", "jadx", "afl-fuzz", "aircrack-ng", "bettercap", "ettercap", "macchanger", "firejail", "bwrap", "bandit"],
     "studio": ["gimp", "krita", "inkscape", "blender", "kdenlive", "obs", "obs-studio", "audacity", "ardour", "lmms", "darktable", "rawtherapee", "scribus", "magick", "ffmpeg", "handbrake"],
     "windows": ["wine", "winetricks", "lutris", "protontricks", "bottles", "virt-manager", "virt-install", "virt-viewer", "qemu-system-x86_64"],
-    "horizon": ["go", "podman", "buildah", "skopeo", "caddy", "jq", "rsync", "ssh", "seven-deploy"],
     "pulse": ["gamemoderun", "game-mode", "gamescope", "mangohud", "vulkaninfo", "lutris"],
 }
 
@@ -249,6 +248,75 @@ for commands in profile_commands.values():
             all_commands.append(command)
 
 inactive_commands = [command for command in all_commands if command not in active_commands]
+
+profile_overlays = {
+    key: {
+        "upper": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "upper"),
+        "work": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "work"),
+        "merged": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "merged"),
+        "state": "prepared",
+        "selected": key in selected,
+    }
+    for key in profiles
+}
+
+profile_containers = {
+    key: {
+        "config": str(Path.home() / ".config/sevenos/profiles" / key),
+        "home": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "home"),
+        "cache": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "cache"),
+        "data": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "data"),
+        "state": "prepared",
+        "selected": key in selected,
+        "launch_mode": "available-via-seven-profile-run-container",
+        "exec": f"seven-profile-run --profile {key} --container <command>",
+        "engine": "bubblewrap" if shutil.which("bwrap") else "planned",
+    }
+    for key in profiles
+}
+
+profile_workspace_names = {
+    "equinox": "SevenOS",
+    "baobab": "Baobab",
+    "forge": "Forge",
+    "shield": "ShieldLab",
+    "studio": "Studio",
+    "windows": "WindowsMode",
+    "pulse": "Pulse",
+}
+
+manifest_root = Path.home() / ".local/share/sevenos/profile-runtime-manifests"
+strict_runtime = {}
+has_bwrap = shutil.which("bwrap") is not None
+has_systemd_run = shutil.which("systemd-run") is not None
+for key, item in profile_containers.items():
+    score = 40
+    if item.get("state") == "prepared":
+        score += 20
+    if has_bwrap:
+        score += 25
+    if has_systemd_run:
+        score += 10
+    if key in profiles:
+        score += 5
+    strict_runtime[key] = {
+        "state": "ready" if has_bwrap else "partial",
+        "score": min(score, 100),
+        "engine": item.get("engine", "planned"),
+        "app_data": "profile-home-cache-data",
+        "workspace": "explicit-bind-only",
+        "workspace_mount": "/workspace",
+        "ephemeral": "available",
+        "ephemeral_command": f"seven-profile-run --profile {key} --container --ephemeral <command>",
+        "profile_workspace": str(Path.home() / profile_workspace_names.get(key, "SevenOS")),
+        "profile_workspace_command": f"seven-profile-run --profile {key} --container --workspace-profile <command>",
+        "manifest": str(manifest_root / f"{key}.json"),
+        "manifest_command": f"seven-profile-run --profile {key} --manifest",
+        "packages": "global-pacman-store",
+        "runtime_scope": "systemd-user-scope" if has_systemd_run else "direct-process",
+        "command": item.get("exec"),
+        "selected": item.get("selected", False),
+    }
 
 payload = {
     "schema": "sevenos.profile-isolation.v1",
@@ -270,33 +338,18 @@ payload = {
         "inactive_packages": str(state_dir / "inactive-packages.json"),
         "service_policy": str(state_dir / "profile-services.json"),
         "shims": str(Path.home() / ".local/share/sevenos/profile-shims"),
+        "runtime_manifests": str(manifest_root),
     },
     "activation_depth": {
-        "current": "profile-scoped activation with global pacman store, per-profile command shims, prepared overlay roots and optional bubblewrap homes",
+        "current": "profile-scoped activation with global pacman store, per-profile config roots, command shims, prepared overlay roots and prepared bubblewrap HOME/cache/data roots",
         "commands": "inactive profile commands are routed through seven-profile-run and blocked unless selected",
         "services": "profile-owned services are allowed only for the selected runtime",
-        "containers": "profile commands can run with per-profile HOME/cache/data through seven-profile-run --container when bubblewrap is available",
+        "containers": "all mini OS config/HOME/cache/data roots are prepared; profile commands can run through seven-profile-run --profile <profile> --container with bubblewrap app-data isolation",
         "next": "mounted overlay package roots and CRIU rollback snapshots",
     },
-    "profile_overlays": {
-        key: {
-            "upper": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "upper"),
-            "work": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "work"),
-            "merged": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "merged"),
-            "state": "planned" if key not in selected else "prepared",
-        }
-        for key in profiles
-    },
-    "profile_containers": {
-        key: {
-            "home": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "home"),
-            "cache": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "cache"),
-            "data": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "data"),
-            "state": "planned" if key not in selected else "prepared",
-            "engine": "bubblewrap" if shutil.which("bwrap") else "planned",
-        }
-        for key in profiles
-    },
+    "profile_overlays": profile_overlays,
+    "profile_containers": profile_containers,
+    "strict_runtime": strict_runtime,
     "core_package_files": core_package_files,
     "active_packages": active_packages,
     "active_package_count": len(active_packages),
@@ -339,15 +392,73 @@ def apply_state():
     write_text(state_dir / "profile-services.json", json.dumps(service_policy, indent=2) + "\n")
     overlay_root = Path.home() / ".local/share/sevenos/profile-overlays"
     container_root = Path.home() / ".local/share/sevenos/profile-containers"
-    for key in selected:
+    manifest_root.mkdir(parents=True, exist_ok=True)
+    for key in profiles:
+        roots = profile_containers[key]
         for name in ("upper", "work", "merged"):
             (overlay_root / key / name).mkdir(parents=True, exist_ok=True)
+        Path(roots.get("config", state_dir / "profiles" / key)).mkdir(parents=True, exist_ok=True)
         for name in ("home", "cache", "data"):
             (container_root / key / name).mkdir(parents=True, exist_ok=True)
+        marker = container_root / key / "README.txt"
+        if not marker.exists():
+            marker.write_text(
+                f"SevenOS isolated data root for the {key} mini OS.\n"
+                f"Use `seven-profile-run --profile {key} --container <command>` to launch a command with this HOME/cache/data boundary.\n",
+                encoding="utf-8",
+            )
+        workspace = Path.home() / profile_workspace_names.get(key, "SevenOS")
+        manifest = {
+            "schema": "sevenos.profile-runtime-manifest.v1",
+            "profile": key,
+            "selected": key in selected,
+            "engine": roots.get("engine", "planned"),
+            "roots": {
+                "config": roots.get("config"),
+                "home": roots.get("home"),
+                "cache": roots.get("cache"),
+                "data": roots.get("data"),
+            },
+            "workspace": {
+                "default": str(workspace),
+                "exists": workspace.is_dir(),
+                "sandbox_path": "/workspace",
+                "policy": "explicit-bind-only",
+            },
+            "commands": {
+                "inspect": f"seven-profile-run --profile {key} --manifest",
+                "strict_shell": f"seven profile exec {key} --container sh",
+                "workspace_shell": f"seven profile exec {key} --container --workspace-profile sh",
+                "ephemeral_shell": f"seven profile exec {key} --ephemeral sh",
+                "run_app": f"seven profile exec {key} --container <command>",
+            },
+            "policy": {
+                "packages": "global-pacman-store",
+                "app_data": "profile-config-home-cache-data",
+                "workspace": "explicit-bind-only",
+                "ephemeral": "temporary-home-cache-data",
+                "runtime": "systemd-user-scope" if has_systemd_run else "direct-process",
+            },
+        }
+        write_text(manifest_root / f"{key}.json", json.dumps(manifest, indent=2) + "\n")
 
     runner = root / "bin" / "seven-profile-run"
+    protected_commands = {
+        "seven",
+        "seven-files",
+        "seven-hub",
+        "kitty",
+        "python",
+        "python3",
+        "env",
+        "bash",
+        "sh",
+        "bwrap",
+        "bubblewrap",
+        "firejail",
+    }
     for command in all_commands:
-        if command in {"seven", "seven-files", "seven-hub", "kitty"}:
+        if command in protected_commands:
             continue
         shim = shims_dir / command
         shim.write_text(
@@ -387,6 +498,14 @@ elif apply_requested and dry_run:
     payload["safe_execution"]["would_generate_shims"] = all_commands
 
 if action == "doctor":
+    profile_doctor = {}
+    for key, item in strict_runtime.items():
+        profile_doctor[key] = {
+            "state": item.get("state"),
+            "score": item.get("score"),
+            "container_root": "OK" if key in profile_containers else "MISS",
+            "command": item.get("command"),
+        }
     payload["doctor"] = {
         "catalog": "OK" if catalog_path.is_file() else "MISS",
         "bubblewrap": "OK" if shutil.which("bwrap") else "MISS",
@@ -395,6 +514,7 @@ if action == "doctor":
         "overlayfs": "OK" if Path("/proc/filesystems").read_text(encoding="utf-8", errors="ignore").find("overlay") >= 0 else "MISS",
         "runner": "OK" if (root / "bin" / "seven-profile-run").is_file() else "MISS",
         "state": "OK" if (state_dir / "profile-isolation.json").is_file() else "MISS",
+        "profiles": profile_doctor,
     }
 
 print(json.dumps(payload, indent=2))
@@ -417,6 +537,13 @@ print()
 print("Policy:")
 print(f"- pacman:  {data['policy']['pacman']}")
 print(f"- SevenOS: {data['policy']['sevenos']}")
+print()
+print("Strict runtime:")
+strict = data.get("strict_runtime", {})
+for key in sorted(strict):
+    item = strict[key]
+    marker = "selected" if item.get("selected") else item.get("state", "ready")
+    print(f"- {key:<8} {marker:<8} score={item.get('score', 0):>3}% {item.get('engine'):<10} {item.get('command')}")
 print()
 print("Service policy:")
 for item in data.get("service_policy", []):

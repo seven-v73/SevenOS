@@ -1,23 +1,24 @@
 return {
   key = "forge",
-  title = "Forge Developer",
-  role = "developer mini OS",
-  workspace_policy = "code-terminal-browser",
+  title = "Forge DevOps",
+  role = "development and deployment mini OS",
+  workspace_policy = "code-terminal-browser-services",
   ui_density = "productive",
   runtime_signals = {
-    context = "developer",
-    layout = "code-terminal-browser",
-    priority = "build-and-debug",
+    context = "devops",
+    layout = "code-terminal-browser-services",
+    priority = "build-debug-deploy",
   },
   workspace_intent = {
     "1: IDE and source tree",
     "2: terminals and local servers",
     "3: browser documentation",
-    "4: containers and logs",
+    "4: containers, services and logs",
+    "5: deploys and endpoints",
   },
   actions = {
     "prefer tiling for IDE, terminal and browsers",
-    "keep build tools visible",
+    "keep build and deploy tools visible",
     "route package/store surfaces away from coding workspace",
   },
   env_rules = {
@@ -45,5 +46,7 @@ return {
     "windowrule = match:class ^(SevenTerminal.*)$, workspace 2",
     "windowrule = match:class ^(Google-chrome|firefox)$, workspace 3",
     "windowrule = match:title ^(.*localhost.*)$, workspace 3",
+    "windowrule = match:class ^(org.wezfurlong.wezterm|kitty|Alacritty)$, workspace 2",
+    "windowrule = match:title ^(.*Caddy.*|.*Docker.*|.*Podman.*|.*Deploy.*)$, workspace 4",
   },
 }

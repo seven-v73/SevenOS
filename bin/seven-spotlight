@@ -29,8 +29,13 @@ ROOT_DIR="$(resolve_root)"
 export SEVENOS_ROOT="$ROOT_DIR"
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 THEME="$CONFIG_HOME/rofi/spotlight.rasi"
+PROFILE_CATALOG="$ROOT_DIR/profiles/catalog.json"
 STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 HISTORY_FILE="$STATE_HOME/sevenos/spotlight-history.tsv"
+CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+SPOTLIGHT_CACHE="$CACHE_HOME/sevenos/spotlight.json"
+SPOTLIGHT_INDEX="$CACHE_HOME/sevenos/spotlight-files.tsv"
+SPOTLIGHT_INDEX_TTL_SECONDS=900
 
 notify() {
   local title="$1"
@@ -233,14 +238,14 @@ mode	󰒓  /settings · Settings	mode.settings	__mode__	System controls and Seve
 mode	󰐊  /system · System Actions	mode.system	__mode__	SevenOS actions, profiles, security and runtime commands.	system-run
 mode	󰖟  /web · Web & Intelligence	mode.web	__mode__	Calculations, conversions, definitions, web, mail, contacts and calendar.	web-browser
 mode	󰅇  /clipboard · Clipboard	mode.clipboard	__mode__	Recent clipboard items from cliphist or wl-paste.	edit-paste
-mode	󰖲  /windows · Windows	mode.windows	__mode__	Open Hyprland windows and active app surfaces.	preferences-system-windows
+mode	󰖲  /windows · Windows	mode.windows	__mode__	Open SevenOS windows and active app surfaces.	preferences-system-windows
 mode	󰋚  /history · Search History	mode.history	__mode__	Previous Spotlight searches and commands.	document-open-recent
 intent	󰚩  Ask · Why is my system slow?	ai.system.slow	seven insights	Analyze SevenOS readiness, services and bottlenecks.	system-search
 intent	󰚩  SevenAI · Diagnose system	ai.diagnose	__sevenai__:diagnose system	Preview local diagnostics from SevenAI before opening repair actions.	system-search
 intent	󰖩  SevenAI · Repair Wi-Fi	ai.wifi	__sevenai__:mon wifi ne marche pas	Preview the Wi-Fi repair playbook before applying changes.	network-wireless
 intent	󰔎  SevenAI · Switch Light Mode	ai.theme.light	__sevenai__:mets le thème light	Preview the SevenOS Light Mode switch before applying.	preferences-desktop-theme
 intent	󰖲  SevenAI · Optimize workspace	ai.workflow	__sevenai__:optimise mon travail	Show workspace and focus recommendations.	preferences-system-windows
-intent	󰈙  SevenAI · Research with cache	ai.research	__sevenai_research__:Hyprland SevenOS	Use explicit web/cache research through SevenAI.	system-search
+intent	󰈙  SevenAI · Research with cache	ai.research	__sevenai_research__:SevenOS session	Use explicit web/cache research through SevenAI.	system-search
 intent	󰁹  Ask · Optimize battery	ai.battery	seven scheduler plan	Show power-aware scheduler recommendations.	battery
 intent	󰒃  Ask · Prepare Cyber workspace	ai.cyber	seven shield mode	Open CyberSpace context and actions.	security-high
 intent	󰅩  Ask · Prepare Dev workspace	ai.forge	seven profile activate forge	Switch to Forge development context.	applications-development
@@ -257,11 +262,142 @@ quick	󰔟  Quick Action · Start 25 minute focus timer	quick.timer.25	__timer_2
 quick	󰑊  Quick Action · Record audio	quick.audio.record	__record_audio__	Start a quick PipeWire audio recording when pw-record is available.	audio-input-microphone
 quick	󰑊  Quick Action · Record screen	quick.screen.record	seven-recorder area	Select an area and start a SevenOS screen recording.	camera-video
 quick	󰓛  Quick Action · Stop screen recording	quick.screen.stop	seven-recorder stop	Stop the active SevenOS screen recording.	media-playback-stop
-quick	󰐊  Quick Action · Open command terminal	quick.terminal	seven-terminal classic	Open SevenOS classic terminal.	utilities-terminal
+quick	󰐊  Quick Action · Open profile terminal	quick.terminal	seven-terminal	Open the active mini OS terminal.	utilities-terminal
 quick	󰆍  Quick Action · Open Forge terminal	quick.terminal.forge	seven-terminal forge	Open the SevenOS development terminal.	utilities-terminal
 quick	󰞀  Quick Action · Open Cyber terminal	quick.terminal.cyber	seven-terminal cyber	Open the SevenOS security and network terminal.	utilities-terminal
 quick	󰌵  Quick Action · Terminal actions	quick.terminal.palette	seven-terminal-palette	Open Seven Terminal quick actions.	system-search
 EOF
+}
+
+profile_catalog() {
+  PROFILE_CATALOG="$PROFILE_CATALOG" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+catalog_path = Path(os.environ.get("PROFILE_CATALOG", ""))
+icons = {
+    "equinox": "preferences-desktop",
+    "baobab": "folder-documents",
+    "forge": "applications-development",
+    "shield": "security-high",
+    "studio": "applications-graphics",
+    "windows": "computer",
+    "pulse": "applications-games",
+}
+
+try:
+    data = json.loads(catalog_path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+
+profiles = data.get("profiles", {}) if isinstance(data, dict) else {}
+for key in sorted(profiles, key=lambda name: profiles.get(name, {}).get("priority", 500)):
+    item = profiles.get(key, {})
+    if not isinstance(item, dict) or not item.get("mini_os", False):
+        continue
+    title = str(item.get("title") or key.title())
+    role = str(item.get("role") or item.get("domain") or "SevenOS mini OS")
+    purpose = str(item.get("purpose") or role)
+    icon = icons.get(key, "preferences-system")
+    rows = [
+        ("profile", f"󰀻  Mini OS · {title}", f"profile.activate.{key}", f"seven profile activate {key}", purpose, icon),
+        ("profile", f"󰎔  Ouvrir · {title}", f"profile.center.{key}", f"seven profile center {key}", f"{role} · centre et actions principales.", icon),
+    ]
+    for row in rows:
+        print("\t".join(value.replace("\t", " ") for value in row))
+PY
+}
+
+index_files() {
+  mkdir -p "$(dirname "$SPOTLIGHT_INDEX")"
+  SPOTLIGHT_INDEX="$SPOTLIGHT_INDEX" ROOT_DIR="$ROOT_DIR" python - <<'PY'
+import os
+import time
+from pathlib import Path
+
+home = Path.home()
+root = Path(os.environ.get("ROOT_DIR", ".")).resolve()
+index_path = Path(os.environ["SPOTLIGHT_INDEX"])
+max_rows = 360
+excluded_names = {".git", "node_modules", "__pycache__", "target", ".cache", "Trash"}
+roots = [
+    home / "Desktop",
+    home / "Documents",
+    home / "Downloads",
+    home / "Pictures",
+    home / "Music",
+    home / "Videos",
+    home / "Projects",
+    home / "Code",
+    root / "identity",
+    root / "docs",
+    Path(os.environ.get("XDG_CONFIG_HOME", home / ".config")) / "sevenos/profiles",
+    Path(os.environ.get("XDG_DATA_HOME", home / ".local/share")) / "sevenos/profiles",
+]
+
+def should_skip(path: Path) -> bool:
+    if path.name.startswith(".") and path.name not in {".config"}:
+        return True
+    return any(part in excluded_names for part in path.parts)
+
+candidates = []
+seen = set()
+for base in roots:
+    if not base.exists():
+        continue
+    stack = [base]
+    while stack and len(candidates) < max_rows * 5:
+        current = stack.pop(0)
+        if should_skip(current):
+            continue
+        try:
+            children = sorted(current.iterdir(), key=lambda item: item.name.casefold())
+        except OSError:
+            continue
+        for child in children:
+            if should_skip(child):
+                continue
+            resolved = str(child)
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            try:
+                stat = child.stat()
+            except OSError:
+                continue
+            candidates.append((stat.st_mtime, child))
+            try:
+                depth = len(child.relative_to(base).parts)
+            except ValueError:
+                depth = 99
+            if child.is_dir() and depth < 4:
+                stack.append(child)
+
+candidates.sort(key=lambda row: row[0], reverse=True)
+lines = []
+for index, (_mtime, path) in enumerate(candidates[:max_rows], 1):
+    icon = "folder" if path.is_dir() else "text-x-generic"
+    label = f"󰚰  Indexed · {path.name}"
+    row = ("file", label, f"local-index.{index}", str(path), str(path.parent), icon)
+    lines.append("\t".join(value.replace("\t", " ") for value in row))
+
+header = f"# sevenos.spotlight.file-index.v1\tcreated_at={int(time.time())}\trows={len(lines)}"
+index_path.write_text(header + "\n" + "\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+print(f"indexed {len(lines)} files -> {index_path}")
+PY
+}
+
+index_catalog() {
+  [[ -s "$SPOTLIGHT_INDEX" ]] || return 0
+  local now mtime age
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$SPOTLIGHT_INDEX" 2>/dev/null || printf 0)"
+  age=$((now - mtime))
+  if (( age > SPOTLIGHT_INDEX_TTL_SECONDS )); then
+    index_files >/dev/null 2>&1 || true
+  fi
+  awk -F '\t' 'NF >= 6 && $1 !~ /^#/' "$SPOTLIGHT_INDEX"
 }
 
 clipboard_catalog() {
@@ -360,9 +496,9 @@ PY
 system_catalog() {
   cat <<'EOF'
 setting	󰒓  Settings · SevenOS Settings	settings.sevenos	seven-settings	Configure wallpaper, displays, Wi-Fi, sound, keyboard, security, profiles, apps and system.	preferences-system
-setting	󰖩  Settings · Network	settings.network	seven-waybar-action network	Wi-Fi, Ethernet and NetworkManager controls.	network-wireless
+setting	󰖩  Settings · Network	settings.network	seven-waybar-action network	Wi-Fi, Ethernet and SevenOS networking controls.	network-wireless
 setting	󰤨  Settings · Connect Wi-Fi	settings.wifi	seven-wifi connect	Scan and connect to Wi-Fi.	network-wireless
-setting	󰕾  Settings · Audio	settings.audio	seven-waybar-action audio	Volume, mixer and PipeWire status.	audio-volume-high
+setting	󰕾  Settings · Audio	settings.audio	seven-waybar-action audio	Volume, mixer and SevenOS audio status.	audio-volume-high
 setting	󰁹  Settings · Power	settings.power	seven-waybar-action battery	Battery, power profile and lock controls.	battery
 setting	󰂚  Settings · Notifications	settings.notifications	seven-waybar-notifications menu	Notifications, restore, dismiss and Do Not Disturb.	preferences-system-notifications
 setting	󰸉  Settings · Wallpaper	settings.wallpaper	seven-wallpaper choose	Set or refresh SevenOS wallpaper.	preferences-desktop-wallpaper
@@ -466,10 +602,12 @@ build_catalog() {
     extra_catalog
     system_catalog
     file_catalog
+    index_catalog
     clipboard_catalog
     window_catalog
     history_catalog
     browser_catalog
+    profile_catalog
     action_catalog
     desktop_catalog
   } | awk -F '\t' 'NF >= 6 && !seen[$2]++'
@@ -482,7 +620,7 @@ filter_catalog() {
     apps) awk -F '\t' '$1 == "app"' ;;
     files) awk -F '\t' '$1 == "file"' ;;
     settings) awk -F '\t' '$1 == "setting"' ;;
-    system) awk -F '\t' '$1 == "action" || $1 == "intent" || $1 == "mode"' ;;
+    system) awk -F '\t' '$1 == "action" || $1 == "intent" || $1 == "mode" || $1 == "profile"' ;;
     web) awk -F '\t' '$1 == "calc" || $1 == "convert" || $1 == "define" || $1 == "web" || $1 == "mail" || $1 == "contacts" || $1 == "calendar" || $1 == "quick" || $1 == "bookmark"' ;;
     clipboard) awk -F '\t' '$1 == "clipboard"' ;;
     windows) awk -F '\t' '$1 == "window"' ;;
@@ -868,7 +1006,7 @@ open_spotlight() {
   fi
 
   if ! command -v rofi >/dev/null 2>&1; then
-    notify "SevenOS Spotlight" "Rofi is required for Spotlight fallback."
+    notify "SevenOS Spotlight" "SevenOS fallback menu is not installed."
     exit 1
   fi
 
@@ -891,7 +1029,7 @@ open_spotlight() {
     window) [[ -n "$command" ]] && hyprctl dispatch focuswindow "address:$command" >/dev/null 2>&1 || true ;;
     bookmark) open_url "$command" ;;
     history) handle_freeform "$command" ;;
-    action|intent|setting|calc|convert|define|web|mail|contacts|calendar|quick) run_command "$command" ;;
+    action|intent|setting|profile|calc|convert|define|web|mail|contacts|calendar|quick) run_command "$command" ;;
     *) notify "SevenOS Spotlight" "Unknown item type: $type" ;;
   esac
 }
@@ -924,7 +1062,7 @@ dispatch_item() {
     window) [[ -n "$command" ]] && hyprctl dispatch focuswindow "address:$command" >/dev/null 2>&1 || true ;;
     bookmark) open_url "$command" ;;
     history|query) handle_freeform "$command" ;;
-    action|intent|setting|calc|convert|define|web|mail|contacts|calendar|quick) run_command "$command" ;;
+    action|intent|setting|profile|calc|convert|define|web|mail|contacts|calendar|quick) run_command "$command" ;;
     *) handle_freeform "$command" ;;
   esac
 }
@@ -947,6 +1085,103 @@ copy_clipboard_entry() {
   printf '%s' "$entry" | wl-copy 2>/dev/null || printf '%s\n' "$entry"
 }
 
+spotlight_doctor() {
+  local json_output=0
+  if [[ "${1:-}" == "--json" ]]; then
+    json_output=1
+  fi
+
+  local catalog_file start_ns end_ns duration_ms native_probe cache_age index_rows state
+  catalog_file="$(mktemp)"
+  trap 'rm -f "$catalog_file"' RETURN
+  start_ns="$(date +%s%N)"
+  build_catalog > "$catalog_file"
+  end_ns="$(date +%s%N)"
+  duration_ms=$(( (end_ns - start_ns) / 1000000 ))
+  native_probe="$("$ROOT_DIR/bin/seven-spotlight-native" --probe >/dev/null 2>&1 && printf ready || printf miss)"
+  if [[ -e "$SPOTLIGHT_CACHE" ]]; then
+    cache_age=$(( $(date +%s) - $(stat -c %Y "$SPOTLIGHT_CACHE" 2>/dev/null || printf 0) ))
+  else
+    cache_age=-1
+  fi
+  index_rows="$(awk -F '\t' 'NF >= 6 && $1 !~ /^#/ { count++ } END { print count + 0 }' "$SPOTLIGHT_INDEX" 2>/dev/null || printf 0)"
+  state="ready"
+  if [[ "$native_probe" != "ready" || ! -s "$catalog_file" ]]; then
+    state="ready-with-actions"
+  fi
+
+  if (( json_output )); then
+    STATE="$state" \
+    NATIVE_PROBE="$native_probe" \
+    CATALOG_MS="$duration_ms" \
+    CACHE_FILE="$SPOTLIGHT_CACHE" \
+    CACHE_AGE="$cache_age" \
+    INDEX_FILE="$SPOTLIGHT_INDEX" \
+    INDEX_ROWS="$index_rows" \
+    CATALOG_FILE="$catalog_file" \
+    python - <<'PY'
+import json
+import os
+from collections import Counter
+from pathlib import Path
+
+catalog_file = Path(os.environ["CATALOG_FILE"])
+rows = [line.rstrip("\n").split("\t") for line in catalog_file.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip()]
+counts = Counter(row[0] for row in rows if row)
+payload = {
+    "schema": "sevenos.spotlight.doctor.v1",
+    "state": os.environ["STATE"],
+    "catalog": {
+        "entries": len(rows),
+        "latency_ms": int(os.environ["CATALOG_MS"]),
+        "kinds": dict(sorted(counts.items())),
+    },
+    "native": {
+        "probe": os.environ["NATIVE_PROBE"],
+        "progressive_loading": True,
+    },
+    "cache": {
+        "path": os.environ["CACHE_FILE"],
+        "exists": Path(os.environ["CACHE_FILE"]).exists(),
+        "age_seconds": int(os.environ["CACHE_AGE"]),
+        "native_ttl_seconds": 45,
+    },
+    "index": {
+        "path": os.environ["INDEX_FILE"],
+        "exists": Path(os.environ["INDEX_FILE"]).exists(),
+        "rows": int(os.environ["INDEX_ROWS"]),
+        "ttl_seconds": 900,
+    },
+    "coverage": {
+        "mini_os_switch_actions": counts.get("profile", 0),
+        "desktop_apps": counts.get("app", 0),
+        "sevenos_actions": counts.get("action", 0),
+        "files": counts.get("file", 0),
+        "settings": counts.get("setting", 0),
+    },
+    "actions": [
+        "seven spotlight index",
+        "seven spotlight doctor --json",
+        "seven-spotlight field",
+    ],
+}
+print(json.dumps(payload, ensure_ascii=False, indent=2))
+PY
+    return 0
+  fi
+
+  printf 'SevenOS Spotlight doctor\n'
+  printf '========================\n'
+  printf 'state: %s\n' "$state"
+  printf 'native: %s\n' "$native_probe"
+  printf 'catalog: %s entries in %sms\n' "$(wc -l < "$catalog_file")" "$duration_ms"
+  printf 'cache: %s (age: %ss)\n' "$SPOTLIGHT_CACHE" "$cache_age"
+  printf 'index: %s rows · %s\n' "$index_rows" "$SPOTLIGHT_INDEX"
+  printf '\nNext:\n'
+  printf '- seven spotlight index\n'
+  printf '- seven spotlight doctor --json\n'
+}
+
 case "${1:-open}" in
   open|spotlight) open_spotlight "${2:-all}" ;;
   field|input) open_field "${2:-all}" ;;
@@ -959,13 +1194,15 @@ case "${1:-open}" in
   clipboard|clip) open_spotlight clipboard ;;
   windows) open_spotlight windows ;;
   history) open_spotlight history ;;
+  index) index_files ;;
+  doctor) spotlight_doctor "${2:-}" ;;
   catalog) build_catalog ;;
   count) build_catalog | wc -l ;;
   eval) shift; eval_query "$*" ;;
   query) shift; handle_freeform "$*" ;;
   dispatch) shift; dispatch_item "$@" ;;
   *)
-    printf 'Usage: seven-spotlight [open [mode]|field [mode]|rofi [mode]|apps|files|settings|system|web|clipboard|windows|history|catalog|count|eval QUERY|query QUERY|dispatch TYPE KEY COMMAND]\n' >&2
+    printf 'Usage: seven-spotlight [open [mode]|field [mode]|rofi [mode]|apps|files|settings|system|web|clipboard|windows|history|index|doctor [--json]|catalog|count|eval QUERY|query QUERY|dispatch TYPE KEY COMMAND]\n' >&2
     exit 2
     ;;
 esac

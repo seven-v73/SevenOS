@@ -1,0 +1,99 @@
+{
+  "schema": "sevenos.baobab.languages.v1",
+  "curation_note": "Starter language metadata for Baobab. Phrases must be verified by local speakers before publication or teaching use.",
+  "languages": [
+    {
+      "key": "moore",
+      "name_fr": "Mooré",
+      "name_en": "Mooré",
+      "regions": ["Burkina Faso"],
+      "family": "Gur",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "phrases": []
+    },
+    {
+      "key": "dioula",
+      "name_fr": "Dioula",
+      "name_en": "Dyula",
+      "regions": ["Burkina Faso", "Côte d'Ivoire", "Mali"],
+      "family": "Manding",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "phrases": []
+    },
+    {
+      "key": "bambara",
+      "name_fr": "Bambara",
+      "name_en": "Bambara",
+      "regions": ["Mali"],
+      "family": "Manding",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "phrases": []
+    },
+    {
+      "key": "wolof",
+      "name_fr": "Wolof",
+      "name_en": "Wolof",
+      "regions": ["Sénégal", "Gambie", "Mauritanie"],
+      "family": "Senegambian",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "phrases": [
+        {
+          "fr": "Comment ça va ?",
+          "local": "Nanga def?",
+          "note": "Starter phrase, verify regional usage."
+        },
+        {
+          "fr": "Merci",
+          "local": "Jërëjëf",
+          "note": "Starter phrase, verify spelling and context."
+        }
+      ]
+    },
+    {
+      "key": "swahili",
+      "name_fr": "Swahili",
+      "name_en": "Swahili",
+      "regions": ["Tanzanie", "Kenya", "Ouganda", "Rwanda", "Burundi", "République démocratique du Congo"],
+      "family": "Bantu",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "phrases": [
+        {
+          "fr": "Bonjour",
+          "local": "Jambo",
+          "note": "Starter greeting, verify teaching context."
+        },
+        {
+          "fr": "Merci",
+          "local": "Asante",
+          "note": "Starter phrase."
+        }
+      ]
+    },
+    {
+      "key": "yoruba",
+      "name_fr": "Yoruba",
+      "name_en": "Yoruba",
+      "regions": ["Nigeria", "Bénin", "Togo"],
+      "family": "Yoruboid",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "phrases": [
+        {
+          "fr": "Comment ça va ?",
+          "local": "Bawo ni?",
+          "note": "Starter phrase, verify tone marks and context before publication."
+        },
+        {
+          "fr": "Merci",
+          "local": "E se",
+          "note": "Starter phrase, verify tone marks before publication."
+        }
+      ]
+    }
+  ]
+}

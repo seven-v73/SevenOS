@@ -9,6 +9,7 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 SEVENOS_CONFIG_DIR="$CONFIG_HOME/sevenos"
 THEME_PREF="$SEVENOS_CONFIG_DIR/theme.conf"
+WALLPAPER_STATE="$SEVENOS_CONFIG_DIR/wallpaper-state"
 SHELL_HOOK="$CONFIG_HOME/sevenos/shell/terminal-country.sh"
 WALLPAPER_DIR="$DATA_HOME/sevenos/wallpapers"
 WALLPAPER_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
@@ -25,6 +26,12 @@ read_persisted_theme() {
     source "$THEME_PREF" || true
   fi
   printf '%s' "${SEVENOS_THEME_MODE:-dark}"
+}
+
+wallpaper_state_value() {
+  local key="$1"
+  [[ -f "$WALLPAPER_STATE" ]] || return 1
+  awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$WALLPAPER_STATE"
 }
 
 case "$REQUESTED_THEME" in
@@ -400,9 +407,12 @@ configure_file_experience() {
 
   mkdir -p "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
   mkdir -p "$HOME/.local/share/applications"
+  cp "$ROOT_DIR/seven-hub/seven-actions.desktop" "$HOME/.local/share/applications/seven-actions.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-home.desktop" "$HOME/.local/share/applications/seven-home.desktop"
   cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$HOME/.local/share/applications/seven-files.desktop"
   cp "$ROOT_DIR/seven-hub/seven-spotlight.desktop" "$HOME/.local/share/applications/seven-spotlight.desktop"
   cp "$ROOT_DIR/seven-hub/seven-ai.desktop" "$HOME/.local/share/applications/seven-ai.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-baobab.desktop" "$HOME/.local/share/applications/seven-baobab.desktop"
   cp "$ROOT_DIR/seven-hub/seven-reader.desktop" "$HOME/.local/share/applications/seven-reader.desktop"
   cp "$ROOT_DIR/seven-hub/seven-store.desktop" "$HOME/.local/share/applications/seven-store.desktop"
   cp "$ROOT_DIR/seven-hub/seven-terminal.desktop" "$HOME/.local/share/applications/seven-terminal.desktop"
@@ -588,6 +598,29 @@ if monitors:
   cp "$WALLPAPER_PNG" "$WALLPAPER_ACTIVE"
 }
 
+restore_persisted_wallpaper() {
+  local mode value profile_png custom_png
+  mode="$(wallpaper_state_value mode 2>/dev/null || true)"
+  value="$(wallpaper_state_value value 2>/dev/null || true)"
+  custom_png="$WALLPAPER_DIR/wallpaper-sevenos-custom.png"
+
+  case "$mode" in
+    custom)
+      if [[ -f "$custom_png" ]]; then
+        log_info "Restoring saved custom SevenOS wallpaper..."
+        run_cmd cp "$custom_png" "$WALLPAPER_ACTIVE"
+      fi
+      ;;
+    profile)
+      profile_png="$WALLPAPER_DIR/wallpaper-sevenos-${value:-equinox}.png"
+      if [[ -f "$profile_png" ]]; then
+        log_info "Restoring saved profile SevenOS wallpaper..."
+        run_cmd cp "$profile_png" "$WALLPAPER_ACTIVE"
+      fi
+      ;;
+  esac
+}
+
 log_info "Applying SevenOS Beyond the Desktop theme: $THEME_LABEL..."
 persist_theme_mode
 copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.conf"
@@ -605,6 +638,7 @@ copy_config_file "$(theme_source_or_common hyprlock.conf)" "$CONFIG_HOME/hypr/hy
 copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-windows.conf" "$CONFIG_HOME/hypr/conf/sevenos-windows.conf"
 copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-lua-generated.conf" "$CONFIG_HOME/hypr/conf/sevenos-lua-generated.conf"
 copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-dynamic.conf" "$CONFIG_HOME/hypr/conf/sevenos-dynamic.conf"
+copy_config_file "$ROOT_DIR/hyprland/conf/sevenos-motion.conf" "$CONFIG_HOME/hypr/conf/sevenos-motion.conf"
 copy_config_file "$ROOT_DIR/hyprland-light/kitty/light.conf" "$CONFIG_HOME/kitty/light.conf"
 configure_toolkit_theme
 copy_config_file "$ROOT_DIR/branding/shell/terminal-country.sh" "$SHELL_HOOK"
@@ -638,6 +672,7 @@ run_cmd cp "$ROOT_DIR/identity/accent-packs.json" "$DATA_HOME/sevenos/identity/a
 run_cmd cp -r "$ROOT_DIR/identity/patterns" "$DATA_HOME/sevenos/identity/patterns"
 run_cmd cp -r "$ROOT_DIR/identity/components" "$DATA_HOME/sevenos/identity/components"
 render_wallpaper
+restore_persisted_wallpaper
 write_hyprpaper_config
 "$ROOT_DIR/scripts/wallpaper-theme.sh" generate "$WALLPAPER_ACTIVE" || true
 "$ROOT_DIR/scripts/theme-engine.sh" apply || true

@@ -1,0 +1,1240 @@
+#!/usr/bin/env python3
+"""Baobab OS native public interface.
+
+French-first GTK surface for the Baobab cultural mini OS. The generated HTML
+pages remain useful offline exports, but this is the normal public UI.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+PROFILE_CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/profiles/baobab"
+PROFILE_DATA = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "sevenos/profiles/baobab"
+PROFILE_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos/profiles/baobab"
+CONFIG = PROFILE_CONFIG / "baobab"
+DATA = PROFILE_DATA / "baobab"
+CACHE = PROFILE_CACHE / "baobab"
+WORKSPACE = Path.home() / "Baobab"
+SETTINGS_FILE = CONFIG / "native-settings.json"
+LANGUAGES_SOURCE = ROOT / "identity/baobab_languages.json"
+
+
+def run_seven(*args: str) -> str:
+    return subprocess.check_output([str(ROOT / "bin/seven"), *args], cwd=ROOT, text=True, env={**os.environ, "SEVENOS_ROOT": str(ROOT)})
+
+
+def load_json(path: Path, fallback):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return fallback
+
+
+def bootstrap() -> None:
+    try:
+        run_seven("baobab", "bootstrap")
+    except Exception:
+        pass
+
+
+def open_path(path: Path) -> None:
+    if path.exists():
+        subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def open_url(url: str) -> None:
+    if url:
+        subprocess.Popen(["xdg-open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def available(command: str) -> bool:
+    return shutil.which(command) is not None
+
+
+def command_path(*commands: str) -> str:
+    for command in commands:
+        if command.startswith("/") and Path(command).exists():
+            return command
+        resolved = shutil.which(command)
+        if resolved:
+            return resolved
+    return ""
+
+
+def text(value, fallback: str = "") -> str:
+    return str(value or fallback)
+
+
+def slugify(value: str, fallback: str = "collecte") -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or fallback
+
+
+def unique_path(path: Path) -> Path:
+    if not path.exists():
+        return path
+    stem = path.stem
+    suffix = path.suffix
+    for index in range(2, 1000):
+        candidate = path.with_name(f"{stem}-{index}{suffix}")
+        if not candidate.exists():
+            return candidate
+    return path.with_name(f"{stem}-new{suffix}")
+
+
+def save_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+class BaobabNative:
+    def __init__(self, Gtk, Gdk, initial_view: str = "home"):
+        self.Gtk = Gtk
+        self.Gdk = Gdk
+        self.initial_view = initial_view
+        self.catalog = load_json(DATA / "catalog.json", {"records": []})
+        self.countries_payload = load_json(DATA / "explore/africa-countries.json", {"countries": []})
+        self.unesco_payload = load_json(DATA / "heritage/african-unesco-ich.json", {"items": []})
+        self.datasets_payload = load_json(DATA / "offline/datasets.json", {"sources": []})
+        self.settings = load_json(SETTINGS_FILE, {"language": "fr", "country_focus": ""})
+        self.engines_payload = self.load_engines()
+        self.services_payload = self.load_services()
+        self.capabilities_payload = self.load_capabilities()
+        self.packs_payload = self.load_packs()
+        self.audit_payload = self.load_pack_audit()
+        self.languages_payload = self.load_languages()
+        self.records = self.catalog.get("records", [])
+        self.countries = self.countries_payload.get("countries", [])
+        self.heritage = self.unesco_payload.get("items", [])
+        self.datasets = self.datasets_payload.get("sources", [])
+        self.languages = self.languages_payload.get("languages", [])
+        self.active_country = ""
+
+    def load_engines(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "engines", "--json"))
+        except Exception:
+            return {"engines": [], "available": 0, "total": 0, "immersive_score": 0, "immersive_next": []}
+
+    def load_services(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "service-doctor", "--json"))
+        except Exception:
+            return {"services": [], "score": 0, "state": "unknown", "issues": []}
+
+    def load_capabilities(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "capability-doctor", "--json"))
+        except Exception:
+            return {"domains": [], "score": 0, "state": "unknown", "goals": []}
+
+    def load_packs(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "packs", "--json"))
+        except Exception:
+            return {"packs": [], "count": 0}
+
+    def load_pack_audit(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "audit-packs", "--json"))
+        except Exception:
+            return {"state": "unknown", "score": 0, "packs": []}
+
+    def load_languages(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "languages", "--json"))
+        except Exception:
+            return load_json(LANGUAGES_SOURCE, {"languages": []})
+
+    def run_action(self, *args: str) -> None:
+        try:
+            run_seven(*args)
+            self.reload()
+        except Exception as exc:
+            self.show_message("Action Baobab impossible", str(exc), error=True)
+
+    def show_message(self, title: str, body: str = "", error: bool = False) -> None:
+        message_type = self.Gtk.MessageType.ERROR if error else self.Gtk.MessageType.INFO
+        dialog = self.Gtk.MessageDialog(transient_for=self.window, flags=0, message_type=message_type, buttons=self.Gtk.ButtonsType.OK, text=title)
+        if body:
+            dialog.format_secondary_text(body)
+        dialog.connect("response", lambda dialog, _response: dialog.destroy())
+        dialog.show_all()
+
+    def localized(self, item: dict, key: str, fallback: str = "") -> str:
+        language = self.settings.get("language", "fr")
+        if language == "fr":
+            return text(item.get(f"{key}_fr") or item.get(f"{key}_en") or item.get(key), fallback)
+        return text(item.get(f"{key}_en") or item.get(f"{key}_fr") or item.get(key), fallback)
+
+    def set_language(self, language: str) -> None:
+        self.settings["language"] = language
+        save_json(SETTINGS_FILE, self.settings)
+
+    def apply_css(self) -> None:
+        css = b"""
+        * { font-family: "Noto Sans", "Noto Sans Symbols", "Noto Color Emoji", sans-serif; }
+        window { background: #080b0a; color: #f4ead8; }
+        .root { background: #080b0a; }
+        .rail { background: #0b0f0d; border-right: 1px solid rgba(221,204,168,.10); }
+        .brand { padding: 14px; border-radius: 8px; background: #101713; border: 1px solid rgba(139,170,123,.18); }
+        .brand-title { font-size: 24px; font-weight: 600; color: #f4ead8; }
+        .brand-subtitle { color: #b9c4a5; font-size: 12px; }
+        .nav-title { color: #8baa7b; font-size: 11px; font-weight: 600; }
+        .nav button { border-radius: 8px; padding: 9px 12px; background: transparent; border: 1px solid transparent; color: #e7dbc3; }
+        .nav button:hover { background: #121a16; border-color: rgba(139,170,123,.24); }
+        .hero { padding: 26px; border-radius: 8px; background: #101713; border: 1px solid rgba(139,170,123,.22); }
+        .title { font-size: 34px; font-weight: 500; color: #f4ead8; letter-spacing: 0; }
+        .subtitle { color: #d8ccb5; font-size: 15px; }
+        .eyebrow { color: #8baa7b; font-size: 12px; font-weight: 600; }
+        .stat { padding: 14px; border-radius: 8px; background: #111411; border: 1px solid rgba(216,204,181,.14); }
+        .stat-number { font-size: 26px; font-weight: 500; color: #c89b63; }
+        .chip { padding: 8px 10px; border-radius: 8px; background: #121915; border: 1px solid rgba(139,170,123,.18); }
+        .card { padding: 14px; border-radius: 8px; background: #0f1311; border: 1px solid rgba(216,204,181,.13); }
+        .card:hover { border-color: #4f735a; background: #121814; }
+        .station { padding: 18px; border-radius: 8px; background: #101411; border: 1px solid rgba(216,204,181,.14); }
+        .station:hover { border-color: rgba(200,155,99,.45); }
+        .card-title { font-size: 16px; font-weight: 500; color: #f4ead8; }
+        .card-meta { color: #c89b63; font-size: 12px; }
+        .card-body { color: #dfd2ba; }
+        .detail { padding: 16px; border-radius: 8px; background: #101411; border: 1px solid rgba(216,204,181,.14); }
+        .tree-canvas { border-radius: 8px; background: #0d120f; border: 1px solid rgba(139,170,123,.18); }
+        .tree-section { padding: 16px; border-radius: 8px; background: #0b100d; border-left: 2px solid #4f735a; border-top: 1px solid rgba(216,204,181,.10); }
+        .tree-root { border-left-color: #315e4d; }
+        .tree-trunk { border-left-color: #b98248; }
+        .tree-branch { border-left-color: #243c63; }
+        .tree-leaf { border-left-color: #5d7c62; }
+        .tree-collect { border-left-color: #a66a45; }
+        .tree-archive { border-left-color: #75664c; }
+        .pill { border-radius: 8px; padding: 8px 11px; }
+        entry { border-radius: 8px; min-height: 38px; }
+        """
+        provider = self.Gtk.CssProvider()
+        provider.load_from_data(css)
+        self.Gtk.StyleContext.add_provider_for_screen(self.Gdk.Screen.get_default(), provider, self.Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    def label(self, value: str, css: str | None = None, wrap: bool = True) -> object:
+        label = self.Gtk.Label(label=value)
+        label.set_xalign(0)
+        if hasattr(label, "set_wrap"):
+            label.set_wrap(wrap)
+        else:
+            label.set_line_wrap(wrap)
+        if css:
+            label.get_style_context().add_class(css)
+        return label
+
+    def button(self, label: str, callback) -> object:
+        button = self.Gtk.Button(label=label)
+        button.get_style_context().add_class("pill")
+        button.connect("clicked", callback)
+        return button
+
+    def chip(self, value: str) -> object:
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=6)
+        box.get_style_context().add_class("chip")
+        box.add(self.label(value, "card-meta", False))
+        return box
+
+    def scroll(self, child) -> object:
+        scroller = self.Gtk.ScrolledWindow()
+        scroller.set_policy(self.Gtk.PolicyType.NEVER, self.Gtk.PolicyType.AUTOMATIC)
+        scroller.add(child)
+        return scroller
+
+    def card(self, title: str, meta: str, body: str, on_click=None) -> object:
+        event = self.Gtk.EventBox()
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=7)
+        box.get_style_context().add_class("card")
+        box.add(self.label(title, "card-title"))
+        if meta:
+            box.add(self.label(meta, "card-meta"))
+        if body:
+            box.add(self.label(body, "card-body"))
+        event.add(box)
+        if on_click:
+            event.connect("button-press-event", lambda *_: on_click())
+        return event
+
+    def station(self, title: str, meta: str, body: str, target: str) -> object:
+        event = self.Gtk.EventBox()
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+        box.get_style_context().add_class("station")
+        box.add(self.label(title, "card-title"))
+        box.add(self.label(meta, "card-meta"))
+        box.add(self.label(body, "card-body"))
+        event.add(box)
+        event.connect("button-press-event", lambda *_: self.stack.set_visible_child_name(target))
+        return event
+
+    def tree_canvas(self) -> object:
+        area = self.Gtk.DrawingArea()
+        area.set_size_request(360, 300)
+        area.get_style_context().add_class("tree-canvas")
+
+        def draw(_area, cr):
+            width = _area.get_allocated_width()
+            height = _area.get_allocated_height()
+            cr.set_source_rgb(0.050, 0.070, 0.060)
+            cr.paint()
+            trunk_x = width * 0.50
+            base_y = height * 0.82
+            crown_y = height * 0.34
+            cr.set_line_cap(1)
+            cr.set_line_width(18)
+            cr.set_source_rgb(0.55, 0.38, 0.24)
+            cr.move_to(trunk_x, base_y)
+            cr.curve_to(trunk_x - 28, height * 0.62, trunk_x + 22, height * 0.50, trunk_x, crown_y)
+            cr.stroke()
+            branches = [
+                (-120, -34, 0.29, 0.18),
+                (-82, -92, 0.36, 0.11),
+                (90, -82, 0.64, 0.13),
+                (124, -25, 0.71, 0.23),
+                (-42, -124, 0.45, 0.07),
+                (38, -128, 0.56, 0.07),
+            ]
+            for dx, dy, ex, ey in branches:
+                cr.set_line_width(5)
+                cr.set_source_rgb(0.49, 0.34, 0.22)
+                cr.move_to(trunk_x, crown_y + 28)
+                cr.curve_to(trunk_x + dx * .26, crown_y + dy * .20, width * ex, height * ey + 40, width * ex, height * ey + 56)
+                cr.stroke()
+            leaves = [
+                (0.30, 0.26, 42), (0.42, 0.18, 52), (0.57, 0.18, 48),
+                (0.70, 0.28, 44), (0.48, 0.31, 60), (0.60, 0.36, 40)
+            ]
+            for x, y, radius in leaves:
+                cr.set_source_rgba(0.31, 0.45, 0.35, 0.72)
+                cr.arc(width * x, height * y, radius, 0, 6.283)
+                cr.fill()
+            cr.set_source_rgba(0.78, 0.61, 0.39, 0.82)
+            for x, y in [(0.31, .42), (.43, .27), (.58, .26), (.70, .42), (.50, .58)]:
+                cr.arc(width * x, height * y, 4, 0, 6.283)
+                cr.fill()
+            cr.set_source_rgba(0.93, 0.88, 0.78, 0.86)
+            cr.select_font_face("Noto Sans", 0, 0)
+            cr.set_font_size(12)
+            for label, x, y in [("Racines", .18, .86), ("Tronc", .47, .64), ("Branches", .62, .18), ("Feuilles", .70, .52), ("Collecte", .12, .50), ("Archives", .43, .91)]:
+                cr.move_to(width * x, height * y)
+                cr.show_text(label)
+            return False
+
+        area.connect("draw", draw)
+        return area
+
+    def clear(self, box) -> None:
+        for child in box.get_children():
+            box.remove(child)
+
+    def speak_text(self, value: str) -> None:
+        spoken = " ".join(value.split())[:900]
+        if not spoken:
+            return
+        piper_model = os.environ.get("SEVENOS_BAOBAB_PIPER_MODEL", "")
+        piper_bin = command_path("piper", "/opt/piper-tts/piper")
+        if piper_bin and piper_model and available("aplay"):
+            process = subprocess.Popen([piper_bin, "--model", piper_model, "--output-raw"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            subprocess.Popen(["aplay", "-r", "22050", "-f", "S16_LE", "-t", "raw", "-"], stdin=process.stdout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if process.stdin:
+                process.stdin.write(spoken.encode("utf-8"))
+                process.stdin.close()
+            return
+        if available("espeak-ng"):
+            subprocess.Popen(["espeak-ng", "-v", "fr", "-s", "150", spoken], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        dialog = self.Gtk.MessageDialog(transient_for=self.window, flags=0, message_type=self.Gtk.MessageType.INFO, buttons=self.Gtk.ButtonsType.OK, text="Narration non disponible")
+        dialog.format_secondary_text("Installe Piper avec un modèle français, ou espeak-ng, pour activer la lecture vocale hors ligne.")
+        dialog.connect("response", lambda dialog, _response: dialog.destroy())
+        dialog.show_all()
+
+    def open_sound_folder(self) -> None:
+        folder = WORKSPACE / "Sound"
+        folder.mkdir(parents=True, exist_ok=True)
+        try:
+            payload = json.loads(run_seven("baobab", "sound", "--json"))
+        except Exception:
+            payload = {"library": str(folder)}
+        audio_files = []
+        for library in (Path(payload.get("library", folder)), DATA / "sound"):
+            for pattern in ("*.mp3", "*.ogg", "*.flac", "*.wav", "*.m4a", "*.opus"):
+                audio_files.extend(library.glob(pattern))
+        if audio_files and available("mpv"):
+            subprocess.Popen([str(CONFIG / "bin/baobab-sound")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        if available("xdg-open"):
+            open_path(folder)
+        message = "Place des fichiers audio dans Baobab Sound. Ils seront lus via la configuration MPV propre au mini-OS Baobab."
+        dialog = self.Gtk.MessageDialog(transient_for=self.window, flags=0, message_type=self.Gtk.MessageType.INFO, buttons=self.Gtk.ButtonsType.OK, text="Baobab Sound prêt")
+        dialog.format_secondary_text(message)
+        dialog.connect("response", lambda dialog, _response: dialog.destroy())
+        dialog.show_all()
+
+    def heritage_detail(self, item: dict) -> object:
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("detail")
+        title = self.localized(item, "title", "Sans titre")
+        countries = ", ".join(item.get("countries", []))
+        concepts = ", ".join(item.get("concepts", [])[:10])
+        summary = self.localized(item, "summary")
+        box.add(self.label(title, "title"))
+        box.add(self.label(f"{countries} · {item.get('year', '')} · {item.get('type_fr') or item.get('type_en') or item.get('type_acronym', 'ICH')}", "card-meta"))
+        if concepts:
+            box.add(self.label(f"Thèmes: {concepts}", "subtitle"))
+        box.add(self.label(summary, "card-body"))
+        source = item.get("url_fr") or item.get("url_en")
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Lire le résumé", lambda *_: self.speak_text(summary)))
+        actions.add(self.button("Ouvrir la fiche source", lambda *_: open_url(source)))
+        actions.add(self.button("Voir dans l'export Patrimoine", lambda *_: open_path(WORKSPACE / "Heritage/index.html")))
+        box.add(actions)
+        return box
+
+    def stat(self, number: str, caption: str) -> object:
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        box.get_style_context().add_class("stat")
+        box.add(self.label(number, "stat-number", False))
+        box.add(self.label(caption, "subtitle"))
+        return box
+
+    def header(self) -> object:
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=18)
+        box.get_style_context().add_class("hero")
+        left = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        left.add(self.label("BAOBAB OS", "eyebrow", False))
+        left.add(self.label("Arbre de connaissance", "title"))
+        left.add(self.label("Technologie enracinée: mémoire vivante, transmission calme, apprentissage et création hors ligne.", "subtitle"))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Ouvrir l'arbre local", lambda *_: open_path(WORKSPACE / "Village/index.html")))
+        actions.add(self.button("Baobab Sound", lambda *_: self.open_sound_folder()))
+        actions.add(self.button("Widget mémoire", lambda *_: subprocess.Popen([str(CONFIG / "bin/baobab-widget")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)))
+        actions.add(self.button("Régénérer les données", lambda *_: self.reload()))
+        left.add(actions)
+        right = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+        right.set_size_request(260, -1)
+        right.add(self.chip(f"{self.capabilities_payload.get('score', 0)}% capacités"))
+        right.add(self.chip(f"{self.engines_payload.get('immersive_score', 0)}% moteurs immersifs"))
+        right.add(self.chip(f"{self.services_payload.get('state', 'runtime')} · runtime"))
+        right.add(self.chip("FR d'abord · local/offline"))
+        box.pack_start(left, True, True, 0)
+        box.pack_start(right, False, False, 0)
+        return box
+
+    def home_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        root.add(self.header())
+
+        os_surface = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=16)
+        os_surface.add(self.tree_canvas())
+        stations = self.Gtk.Grid(column_spacing=12, row_spacing=12)
+        stations.attach(self.station("Racines", "Orientation", "Recherche, sources, moteurs et santé du mini-OS.", "search"), 0, 0, 1, 1)
+        stations.attach(self.station("Tronc", "Mémoire", "Patrimoine, récits et modules de transmission.", "heritage"), 1, 0, 1, 1)
+        stations.attach(self.station("Branches", "Territoires", "Pays, langues, relations et futures cartes offline.", "explore"), 0, 1, 1, 1)
+        stations.attach(self.station("Feuilles", "Usages", "Son, cuisine, mode, marché et créations vivantes.", "modules"), 1, 1, 1, 1)
+        stations.attach(self.station("Collecte", "Terrain", "Ajouter un récit avec source, droits et consentement.", "collect"), 0, 2, 1, 1)
+        stations.attach(self.station("Archives", "Préservation", "Packs, musée et exports locaux contrôlés.", "packs"), 1, 2, 1, 1)
+        os_surface.pack_start(stations, True, True, 0)
+        root.add(os_surface)
+
+        stats = self.Gtk.Grid(column_spacing=12, row_spacing=12)
+        stats.attach(self.stat(str(len(self.countries)), "Pays africains"), 0, 0, 1, 1)
+        stats.attach(self.stat(str(len(self.heritage)), "Éléments UNESCO ICH"), 1, 0, 1, 1)
+        stats.attach(self.stat(str(len(self.records)), "Modules Baobab"), 2, 0, 1, 1)
+        stats.attach(self.stat(str(len(self.datasets)), "Sources locales"), 3, 0, 1, 1)
+        stats.attach(self.stat(f"{self.engines_payload.get('immersive_score', 0)}%", "Maturité immersive"), 0, 1, 1, 1)
+        stats.attach(self.stat(text(self.settings.get("language", "fr")).upper(), "Langue prioritaire"), 1, 1, 1, 1)
+        stats.attach(self.stat(str(self.packs_payload.get("count", 0)), "Packs culturels"), 2, 1, 1, 1)
+        stats.attach(self.stat(f"{self.audit_payload.get('score', 0)}%", "Qualité packs"), 3, 1, 1, 1)
+        root.add(stats)
+
+        root.add(self.label("Arbre de connaissance", "title"))
+        root.add(self.label("Baobab organise l'OS comme une mémoire vivante: comprendre, relier, transmettre, collecter et préserver.", "subtitle"))
+
+        def tree_section(title: str, meta: str, body: str, css: str, entries: list[tuple[str, str, str, str]]) -> object:
+            section = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+            section.get_style_context().add_class("tree-section")
+            section.get_style_context().add_class(css)
+            section.add(self.label(title, "card-title"))
+            section.add(self.label(meta, "card-meta"))
+            section.add(self.label(body, "card-body"))
+            flow = self.Gtk.FlowBox()
+            flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+            for entry_title, entry_meta, entry_body, target in entries:
+                flow.add(self.card(entry_title, entry_meta, entry_body, lambda target=target: self.stack.set_visible_child_name(target)))
+            section.add(flow)
+            return section
+
+        root.add(tree_section(
+            "Racines",
+            "Orientation et fondation",
+            "Voir l'état réel de Baobab: langues, pays, sources, moteurs et qualité des packs avant de produire du contenu.",
+            "tree-root",
+            [
+                ("Recherche", "Point d'entrée calme", "Trouver pays, récits, sources et patrimoine depuis une seule zone.", "search"),
+                ("Moteurs", "Capacités locales", "Vérifier narration, son, IA, recherche et shell culturel disponibles.", "engines"),
+                ("Sources", "Sol documentaire", "Contrôler les CSV, TSV et JSON qui nourrissent Baobab.", "datasets"),
+            ],
+        ))
+        root.add(tree_section(
+            "Tronc",
+            "Mémoire centrale",
+            "Lire, comprendre et relier les savoirs déjà présents dans la base locale, sans bruit décoratif.",
+            "tree-trunk",
+            [
+                ("Patrimoine", "Mémoire sourcée", "Découvrir pratiques, savoir-faire, musiques et récits avec contexte.", "heritage"),
+                ("Modules", "Transmission", "Langues, son, cuisine, mode, marché et sagesse en vues natives.", "modules"),
+                ("Récits", "Oralité guidée", "Lire les modules Baobab comme des histoires contextualisées.", "story"),
+            ],
+        ))
+        root.add(tree_section(
+            "Branches",
+            "Territoires et relations",
+            "Explorer les liens entre pays, langues, pratiques, archives et contenus communautaires.",
+            "tree-branch",
+            [
+                ("Explorer", "Branches du territoire", "Relier lieux, contenus, langues et récits.", "explore"),
+                ("Langues", "Apprentissage validable", "Consulter les premières langues africaines et leur statut.", "languages"),
+                ("Musée", "Archives contemplatives", "Voir les contenus comme objets, traces et archives.", "museum"),
+            ],
+        ))
+        root.add(tree_section(
+            "Feuilles",
+            "Usages vivants",
+            "Les feuilles sont les expériences quotidiennes: écouter, apprendre, créer, cuisiner, transmettre.",
+            "tree-leaf",
+            [
+                ("Son", "Écoute locale", "Ouvrir le dossier Baobab Sound et lire avec mpv quand disponible.", "modules"),
+                ("Mode", "Création enracinée", "Préparer textiles, créateurs et pont ElegantStyle.", "modules"),
+                ("Cuisine", "Mémoire familiale", "Structurer recettes, gestes et récits culinaires.", "modules"),
+            ],
+        ))
+        root.add(tree_section(
+            "Collecte",
+            "Mémoire vivante",
+            "Ajouter du contenu sans le déclarer validé trop tôt: brouillon, source, consentement, audit.",
+            "tree-collect",
+            [
+                ("Nouvelle collecte", "Terrain", "Créer interview, recette, audio, photo, textile ou proverbe.", "collect"),
+                ("Packs", "Contenants culturels", "Créer/importer les premiers packs culturels Baobab.", "packs"),
+                ("Audit", "Qualité", "Vérifier provenance, licence, curator, confiance, langue et pays.", "packs"),
+            ],
+        ))
+        root.add(tree_section(
+            "Archives",
+            "Préservation et continuité",
+            "Conserver les traces avec calme: sources, objets, exports offline et mémoire transmissible.",
+            "tree-archive",
+            [
+                ("Patrimoine", "Bibliothèque", "Relire les fiches sourcées et leurs références.", "heritage"),
+                ("Musée", "Objets et traces", "Préparer les futures expositions 3D sans surcharge.", "museum"),
+                ("Exports locaux", "Hors ligne", "Retrouver les sources et exports qui alimentent le workspace.", "datasets"),
+            ],
+        ))
+        return self.scroll(root)
+
+    def heritage_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=14)
+        root.set_border_width(18)
+        left = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        left.set_size_request(560, -1)
+        left.add(self.label("Patrimoine", "title"))
+        left.add(self.label("Galerie native en français d'abord, alimentée par la base UNESCO africaine locale.", "subtitle"))
+        search = self.Gtk.SearchEntry()
+        search.set_placeholder_text("Rechercher: pays, musique, danse, rituel, artisanat...")
+        left.add(search)
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        scroller = self.scroll(flow)
+        detail = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        detail.add(self.label("Choisis un élément", "title"))
+        detail.add(self.label("Clique une carte pour afficher une fiche lisible avec source et contexte.", "subtitle"))
+
+        def render(query: str = "") -> None:
+            for child in flow.get_children():
+                flow.remove(child)
+            q = query.lower().strip()
+            shown = 0
+            for item in sorted(self.heritage, key=lambda row: row.get("year", ""), reverse=True):
+                title = self.localized(item, "title", "Sans titre")
+                countries = ", ".join(item.get("countries", []))
+                body = self.localized(item, "summary")[:280]
+                haystack = " ".join([title, countries, " ".join(item.get("concepts", []))]).lower()
+                if q and q not in haystack:
+                    continue
+                flow.add(self.card(title, f"{countries} · {item.get('year', '')} · {item.get('type_acronym', 'ICH')}", body, lambda item=item: show_detail(item)))
+                shown += 1
+                if shown >= 80:
+                    break
+            flow.show_all()
+
+        def show_detail(item: dict) -> None:
+            self.clear(detail)
+            detail.add(self.heritage_detail(item))
+            detail.show_all()
+
+        search.connect("search-changed", lambda entry: render(entry.get_text()))
+        render()
+        left.add(scroller)
+        root.add(left)
+        root.add(self.scroll(detail))
+        return root
+
+    def explore_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=14)
+        root.set_border_width(18)
+        left = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        left.set_size_request(290, -1)
+        left.add(self.label("Explorer l'Afrique", "title"))
+        search = self.Gtk.SearchEntry()
+        search.set_placeholder_text("Pays ou capitale")
+        left.add(search)
+        listbox = self.Gtk.ListBox()
+        left.add(self.scroll(listbox))
+        detail = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        detail.add(self.label("Sélectionne un pays", "title"))
+        detail.add(self.label("Les éléments de patrimoine liés au pays s'afficheront ici.", "subtitle"))
+
+        def fill_list(query: str = "") -> None:
+            for row in listbox.get_children():
+                listbox.remove(row)
+            q = query.lower().strip()
+            for country in self.countries:
+                label = f"{country.get('flag', '')} {country.get('name', '')} · {country.get('capital', '')}"
+                if q and q not in label.lower():
+                    continue
+                row = self.Gtk.ListBoxRow()
+                row.country = country  # type: ignore[attr-defined]
+                row.add(self.label(label, None, False))
+                listbox.add(row)
+            listbox.show_all()
+
+        def select_country(_box, row) -> None:
+            if not row:
+                return
+            country = row.country  # type: ignore[attr-defined]
+            for child in detail.get_children():
+                detail.remove(child)
+            name = country.get("name", "")
+            related = [item for item in self.heritage if name in item.get("countries", [])]
+            detail.add(self.label(f"{country.get('flag', '')} {name}", "title"))
+            detail.add(self.label(f"Capitale: {country.get('capital', 'inconnue')} · Population: {country.get('population', 0):,}", "subtitle"))
+            detail.add(self.label(f"{len(related)} élément(s) de patrimoine dans la base locale", "card-meta"))
+            profile = self.Gtk.FlowBox()
+            profile.set_selection_mode(self.Gtk.SelectionMode.NONE)
+            for title, body in [
+                ("Patrimoine", f"{len(related)} éléments sourcés disponibles hors ligne."),
+                ("Langues", "À enrichir par packs locaux: dictionnaires, prononciation et expressions."),
+                ("Cuisine", "Prêt pour recettes régionales, gestes culinaires et récits familiaux."),
+                ("Musique", "Prêt pour instruments, playlists locales et lecture mpv."),
+                ("Mode", "Prêt pour textiles, gestes de fabrication, créateurs, usages sociaux et pont ElegantStyle."),
+                ("Récits", "Prêt pour contes, proverbes, interviews et narration française offline."),
+            ]:
+                profile.add(self.card(title, name, body))
+            detail.add(profile)
+            if related:
+                detail.add(self.label("Patrimoine associé", "card-title"))
+            for item in related[:18]:
+                detail.add(self.card(self.localized(item, "title", "Sans titre"), f"{item.get('year', '')} · {item.get('type_acronym', 'ICH')}", self.localized(item, "summary")[:220], lambda item=item: self.show_modal(item)))
+            detail.show_all()
+
+        listbox.connect("row-selected", select_country)
+        search.connect("search-changed", lambda entry: fill_list(entry.get_text()))
+        fill_list()
+        root.add(left)
+        root.add(self.scroll(detail))
+        return root
+
+    def global_search_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Recherche Baobab", "title"))
+        root.add(self.label("Recherche native unifiée: pays, patrimoine, modules et sources locales.", "subtitle"))
+        search = self.Gtk.SearchEntry()
+        search.set_placeholder_text("Exemple: Burkina, danse, musique, langue, textile...")
+        root.add(search)
+        results = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+
+        def render(query: str = "") -> None:
+            self.clear(results)
+            q = query.lower().strip()
+            if not q:
+                results.add(self.label("Entre un mot-clé pour chercher dans toute la mémoire Baobab locale.", "subtitle"))
+                results.show_all()
+                return
+            count = 0
+            for country in self.countries:
+                haystack = f"{country.get('name', '')} {country.get('capital', '')}".lower()
+                if q in haystack:
+                    results.add(self.card(country.get("name", "Pays"), "Pays africain", f"Capitale: {country.get('capital', 'inconnue')} · Population: {country.get('population', 0):,}", lambda country=country: self.stack.set_visible_child_name("explore")))
+                    count += 1
+            for item in self.heritage:
+                title = self.localized(item, "title", "Sans titre")
+                countries = ", ".join(item.get("countries", []))
+                summary = self.localized(item, "summary")
+                haystack = " ".join([title, countries, summary, " ".join(item.get("concepts", []))]).lower()
+                if q in haystack:
+                    results.add(self.card(title, f"Patrimoine · {countries} · {item.get('year', '')}", summary[:230], lambda item=item: self.show_modal(item)))
+                    count += 1
+                    if count >= 70:
+                        break
+            for item in self.records:
+                haystack = " ".join([text(item.get("title")), text(item.get("module")), text(item.get("summary")), text(item.get("region"))]).lower()
+                if q in haystack:
+                    results.add(self.card(text(item.get("title"), "Module"), f"Module · {item.get('module', '')}", text(item.get("summary"))[:230]))
+                    count += 1
+            for item in self.datasets:
+                haystack = " ".join([text(item.get("name")), text(item.get("kind")), text(item.get("role")), " ".join(item.get("fields", []))]).lower()
+                if q in haystack:
+                    results.add(self.card(text(item.get("name"), "Source"), f"Source locale · {item.get('kind', 'data')}", f"{item.get('rows', 0)} lignes · {item.get('role', 'source-dataset')}"))
+                    count += 1
+            if count == 0:
+                results.add(self.label("Aucun résultat local pour cette recherche.", "subtitle"))
+            results.show_all()
+
+        search.connect("search-changed", lambda entry: render(entry.get_text()))
+        render()
+        root.add(self.scroll(results))
+        return root
+
+    def modules_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=14)
+        root.set_border_width(18)
+        left = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        left.set_size_request(520, -1)
+        left.add(self.label("Modules Baobab", "title"))
+        left.add(self.label("Les espaces culturels sont présentés comme des usages publics, pas comme des composants techniques.", "subtitle"))
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        modules = [
+            ("languages", "Langues", "Apprendre et transmettre", "Dictionnaires, prononciation, traduction offline et claviers locaux. Priorité: français puis langues africaines."),
+            ("sound", "Son", "Écoute culturelle", "Musique, instruments, contes audio et ambiances. mpv sera utilisé quand il est présent sur la machine."),
+            ("food", "Cuisine", "Mémoire familiale", "Recettes, gestes, histoires culinaires et parcours par pays ou région."),
+            ("fashion", "Mode", "Textiles et création", "Tenues traditionnelles, styles contemporains et futur pont ElegantStyle."),
+            ("market", "Marché", "Créateurs africains", "Artisans, stylistes, musiciens, ebooks et objets culturels avec provenance."),
+            ("wisdom", "Sagesse", "Proverbes et pensée", "Proverbes, philosophie, cosmologie, récits d'anciens et explications guidées."),
+            ("museum", "Musée", "Objets et archives", "Collections, images, objets 3D futurs et fiches sourcées."),
+            ("explore", "Explorer", "Pays et peuples", "Fiches pays, patrimoine associé et future carte GeoJSON offline."),
+        ]
+        detail = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+
+        def show_module(key: str, title: str, meta: str, body: str) -> None:
+            self.clear(detail)
+            related_records = [item for item in self.records if item.get("module") == key]
+            concepts = [entry for entry in self.heritage if key in " ".join(entry.get("concepts", [])).lower() or title.lower() in " ".join(entry.get("concepts", [])).lower()]
+            detail.add(self.label(title, "title"))
+            detail.add(self.label(meta, "subtitle"))
+            detail.add(self.label(body, "card-body"))
+            detail.add(self.label("Workflow public", "card-title"))
+            workflows = {
+                "languages": ["Choisir une langue", "Lire expressions et proverbes", "Écouter la prononciation offline", "Préparer un pack local validé"],
+                "sound": ["Explorer instruments et chants", "Lire les fiches associées", "Ajouter fichiers audio locaux", "Lire avec mpv quand disponible"],
+                "food": ["Choisir un pays", "Ajouter recettes familiales", "Lier ingrédients et histoires", "Créer un parcours cuisine"],
+                "fashion": ["Explorer textile et tenue", "Lier pays, créateur et technique", "Préparer le pont ElegantStyle", "Publier un pack sourcé"],
+                "market": ["Créer fiche artisan", "Ajouter licence et provenance", "Classer par pays et discipline", "Préparer publication locale"],
+                "wisdom": ["Lire proverbes", "Associer contexte culturel", "Narration française", "Validation communautaire"],
+                "museum": ["Créer fiche objet", "Ajouter image ou modèle 3D", "Source et droits", "Exposition locale"],
+                "explore": ["Choisir un pays", "Voir patrimoine", "Ajouter langues/cuisine/mode", "Préparer GeoJSON offline"],
+            }
+            for step in workflows.get(key, []):
+                detail.add(self.label(f"- {step}", "card-body"))
+            if key == "sound":
+                actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+                actions.add(self.button("Ouvrir Baobab Sound", lambda *_: self.open_sound_folder()))
+                detail.add(actions)
+            if related_records:
+                detail.add(self.label("Données Baobab déjà présentes", "card-title"))
+                for item in related_records[:5]:
+                    detail.add(self.card(text(item.get("title"), "Sans titre"), f"{item.get('region', '')} · {item.get('confidence', '')}", text(item.get("summary"))[:220]))
+            if concepts:
+                detail.add(self.label("Patrimoine lié par concepts", "card-title"))
+                for item in concepts[:6]:
+                    detail.add(self.card(self.localized(item, "title", "Sans titre"), ", ".join(item.get("countries", [])), self.localized(item, "summary")[:200], lambda item=item: self.show_modal(item)))
+            detail.show_all()
+
+        for key, title, meta, body in modules:
+            flow.add(self.card(title, meta, body, lambda key=key, title=title, meta=meta, body=body: show_module(key, title, meta, body)))
+        left.add(flow)
+        root.add(self.scroll(left))
+        root.add(self.scroll(detail))
+        show_module(*modules[0])
+        return root
+
+    def engines_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Capacités Baobab", "title"))
+        root.add(self.label("Chaque outil sert un objectif: culture africaine, fonctionnement local/offline, expérience légère et intelligente.", "subtitle"))
+        stats = self.Gtk.Grid(column_spacing=12, row_spacing=12)
+        stats.attach(self.stat(f"{self.capabilities_payload.get('score', 0)}%", "Capacités"), 0, 0, 1, 1)
+        stats.attach(self.stat(f"{self.engines_payload.get('immersive_score', 0)}%", "Moteurs"), 1, 0, 1, 1)
+        stats.attach(self.stat(f"{self.services_payload.get('score', 0)}%", "Runtime Baobab"), 2, 0, 1, 1)
+        root.add(stats)
+        root.add(self.label("Objectifs", "card-title"))
+        for goal in self.capabilities_payload.get("goals", []):
+            root.add(self.label(f"- {goal}", "card-body"))
+        root.add(self.label("Domaines", "card-title"))
+        for domain in self.capabilities_payload.get("domains", []):
+            body = f"{domain.get('purpose', '')}\nSurface: {domain.get('public_surface', '')}"
+            if domain.get("missing"):
+                body = f"{body}\nÀ connecter: {', '.join(domain.get('missing', [])[:4])}"
+            root.add(self.card(text(domain.get("title"), "Domaine"), f"{domain.get('score', 0)}% · {domain.get('state', '')}", body))
+        root.add(self.label("Services Baobab", "card-title"))
+        root.add(self.label("Ces services passent par les lanceurs du profil Baobab et ne démarrent jamais sans action explicite.", "subtitle"))
+        root.add(self.button("Réappliquer la configuration Baobab", lambda *_: self.run_action("baobab", "apply-config")))
+        for service in self.services_payload.get("services", []):
+            body = f"Lanceur: {service.get('launcher') or service.get('command', '')}\nDémarrage automatique: non"
+            root.add(self.card(text(service.get("key"), "service"), text(service.get("state"), "unknown"), body))
+        root.add(self.label("Moteurs détectés", "card-title"))
+        for item in self.engines_payload.get("engines", []):
+            state = "Disponible" if item.get("state") == "available" else "À connecter"
+            body = f"{item.get('role', '')}\nCommande: {item.get('command', '')}\nPaquet: {item.get('package', '')}"
+            root.add(self.card(text(item.get("key"), "moteur"), f"{state} · {item.get('group', '')}", body))
+        if self.engines_payload.get("immersive_next"):
+            root.add(self.label("Prochaines connexions", "card-title"))
+            for item in self.engines_payload.get("immersive_next", [])[:8]:
+                root.add(self.label(f"- {item}", "card-body"))
+        return self.scroll(root)
+
+    def datasets_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Sources culturelles", "title"))
+        root.add(self.label("Baobab détecte automatiquement les CSV, TSV et JSON placés dans identity/baobab_db.", "subtitle"))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Régénérer l'index", lambda *_: self.reload()))
+        root.add(actions)
+        if not self.datasets:
+            root.add(self.label("Aucune source locale détectée pour le moment.", "subtitle"))
+        for item in self.datasets:
+            fields = ", ".join(item.get("fields", [])[:10])
+            body = f"{item.get('rows', 0)} lignes · {item.get('size', 0):,} octets"
+            if item.get("derived_african_records") is not None:
+                body = f"{body}\nProjection africaine: {item.get('derived_african_records')} éléments Baobab"
+            if fields:
+                body = f"{body}\nChamps: {fields}"
+            if item.get("error"):
+                body = f"{body}\nErreur: {item['error']}"
+            root.add(self.card(text(item.get("name"), "Source"), f"{item.get('kind', 'data')} · {item.get('role', 'source-dataset')}", body))
+        return self.scroll(root)
+
+    def save_collection_draft(self, fields: dict) -> None:
+        pack_name = fields["pack"].get_active_id() or ""
+        pack = next((item for item in self.packs_payload.get("packs", []) if item.get("name") == pack_name), None)
+        if not pack:
+            self.show_message("Choisis un pack culturel", "Crée d'abord les packs de départ ou sélectionne un pack existant.", error=True)
+            return
+        title = fields["title"].get_text().strip()
+        if not title:
+            self.show_message("Titre manquant", "Donne un titre simple à cette collecte.", error=True)
+            return
+        collection_type = fields["type"].get_active_id() or "interview"
+        country = fields["country"].get_text().strip() or "à préciser"
+        language = fields["language"].get_text().strip() or "fr"
+        source = fields["source"].get_text().strip() or "à documenter"
+        license_value = fields["license"].get_text().strip() or "à confirmer"
+        buffer = fields["notes"].get_buffer()
+        start, end = buffer.get_bounds()
+        notes = buffer.get_text(start, end, True).strip()
+        media_path = Path(fields["media"].get_filename()) if fields["media"].get_filename() else None
+
+        pack_dir = Path(pack.get("path", "")).parent
+        folder_by_type = {
+            "interview": "interviews",
+            "recette": "recipes",
+            "audio": "audio",
+            "photo": "media",
+            "textile": "creators",
+            "proverbe": "wisdom",
+        }
+        labels = {
+            "interview": "Interview",
+            "recette": "Recette",
+            "audio": "Audio",
+            "photo": "Photo",
+            "textile": "Textile / créateur",
+            "proverbe": "Proverbe / sagesse",
+        }
+        target_dir = pack_dir / folder_by_type.get(collection_type, "interviews")
+        target_dir.mkdir(parents=True, exist_ok=True)
+        slug = slugify(title)
+        draft_path = unique_path(target_dir / f"{slug}.md")
+        copied_media = ""
+        if media_path and media_path.exists():
+            media_dir = pack_dir / "media"
+            media_dir.mkdir(parents=True, exist_ok=True)
+            copied = unique_path(media_dir / f"{slug}{media_path.suffix.lower()}")
+            shutil.copy2(media_path, copied)
+            copied_media = str(copied.relative_to(pack_dir))
+
+        draft = f"""# {title}
+
+- Type: {labels.get(collection_type, collection_type)}
+- Statut: brouillon
+- Pays: {country}
+- Langue: {language}
+- Source / personne ressource: {source}
+- Licence / droits: {license_value}
+- Consentement: à confirmer
+- Média local: {copied_media or "aucun"}
+
+## Notes de collecte
+{notes or "À compléter avec un récit, une transcription, une recette, un contexte ou une description."}
+
+## Validation
+- [ ] Source identifiée
+- [ ] Consentement documenté
+- [ ] Langue et pays vérifiés
+- [ ] Média autorisé avant diffusion
+- [ ] Relu par une personne locale ou communautaire
+"""
+        draft_path.write_text(draft, encoding="utf-8")
+
+        consent_dir = pack_dir / "consent"
+        consent_dir.mkdir(parents=True, exist_ok=True)
+        consent_path = unique_path(consent_dir / f"{slug}-consent.md")
+        consent_path.write_text(f"""# Consentement - {title}
+
+- Pack: {pack_name}
+- Élément: {draft_path.relative_to(pack_dir)}
+- Personne / détenteur: {source}
+- Usage autorisé: à préciser
+- Usage interdit: à préciser
+- Licence: {license_value}
+- Date: à compléter
+- Signature ou validation locale: à compléter
+""", encoding="utf-8")
+
+        manifest_path = pack_dir / "media/media-manifest.json"
+        manifest = load_json(manifest_path, {"schema": "sevenos.baobab.media-manifest.v1", "items": []})
+        manifest.setdefault("items", []).append({
+            "id": draft_path.stem,
+            "kind": collection_type,
+            "path": str(draft_path.relative_to(pack_dir)),
+            "media": copied_media,
+            "rights": license_value,
+            "status": "draft",
+            "country": country,
+            "language": language,
+        })
+        save_json(manifest_path, manifest)
+        self.show_message("Collecte créée", f"Brouillon: {draft_path}\nConsentement: {consent_path}")
+        self.reload()
+
+    def collect_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Nouvelle collecte", "title"))
+        root.add(self.label("Assistant public pour ajouter une mémoire vivante en brouillon: interview, recette, audio, photo, textile ou proverbe.", "subtitle"))
+        if not self.packs_payload.get("packs"):
+            root.add(self.card("Aucun pack disponible", "Action requise", "Crée les packs de départ dans l'onglet Packs avant de lancer une collecte."))
+            root.add(self.button("Aller aux packs", lambda *_: self.stack.set_visible_child_name("packs")))
+            return self.scroll(root)
+
+        form = self.Gtk.Grid(column_spacing=12, row_spacing=12)
+        form.set_column_homogeneous(False)
+        pack = self.Gtk.ComboBoxText()
+        for item in self.packs_payload.get("packs", []):
+            pack.append(item.get("name", ""), item.get("title", item.get("name", "")))
+        pack.set_active(0)
+        collection_type = self.Gtk.ComboBoxText()
+        for key, label in [("interview", "Interview"), ("recette", "Recette"), ("audio", "Audio"), ("photo", "Photo"), ("textile", "Textile / créateur"), ("proverbe", "Proverbe / sagesse")]:
+            collection_type.append(key, label)
+        collection_type.set_active_id("interview")
+        title = self.Gtk.Entry()
+        title.set_placeholder_text("Titre public de la collecte")
+        country = self.Gtk.Entry()
+        country.set_placeholder_text("Pays ou région")
+        language = self.Gtk.Entry()
+        language.set_text("fr")
+        source = self.Gtk.Entry()
+        source.set_placeholder_text("Personne source, archive, famille, association...")
+        license_value = self.Gtk.Entry()
+        license_value.set_text("à confirmer")
+        media = self.Gtk.FileChooserButton(title="Choisir un média local", action=self.Gtk.FileChooserAction.OPEN)
+        notes = self.Gtk.TextView()
+        notes.set_wrap_mode(self.Gtk.WrapMode.WORD_CHAR)
+        notes.set_size_request(-1, 160)
+
+        rows = [
+            ("Pack", pack),
+            ("Type", collection_type),
+            ("Titre", title),
+            ("Pays", country),
+            ("Langue", language),
+            ("Source", source),
+            ("Licence", license_value),
+            ("Média", media),
+        ]
+        for index, (label, widget) in enumerate(rows):
+            form.attach(self.label(label, "card-title", False), 0, index, 1, 1)
+            form.attach(widget, 1, index, 1, 1)
+        root.add(form)
+        root.add(self.label("Notes, transcription ou contexte", "card-title"))
+        root.add(notes)
+        fields = {
+            "pack": pack,
+            "type": collection_type,
+            "title": title,
+            "country": country,
+            "language": language,
+            "source": source,
+            "license": license_value,
+            "media": media,
+            "notes": notes,
+        }
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Créer le brouillon", lambda *_: self.save_collection_draft(fields)))
+        actions.add(self.button("Auditer après collecte", lambda *_: self.run_action("baobab", "audit-packs")))
+        root.add(actions)
+        root.add(self.card("Qualité culturelle", "Brouillon par défaut", "Baobab crée les fichiers de collecte et de consentement, mais ne marque jamais un contenu comme validé sans source, droits et relecture locale."))
+        return self.scroll(root)
+
+    def languages_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Langues africaines", "title"))
+        root.add(self.label("Base de départ française-first. Les phrases sont volontairement marquées à valider par locuteurs locaux avant usage pédagogique.", "subtitle"))
+        root.add(self.stat(str(len(self.languages)), "Langues starter"))
+        for item in self.languages:
+            regions = ", ".join(item.get("regions", []))
+            phrases = item.get("phrases", [])
+            body = f"Famille: {item.get('family', 'à préciser')}\nValidation: {item.get('validation', 'needs-local-speaker')}\nRégions: {regions}"
+            root.add(self.card(text(item.get("name_fr") or item.get("name_en"), "Langue"), text(item.get("priority"), "starter"), body))
+            for phrase in phrases[:3]:
+                root.add(self.card(text(phrase.get("fr"), "Expression"), text(phrase.get("local"), ""), text(phrase.get("note"), "À valider localement.")))
+        return self.scroll(root)
+
+    def packs_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Packs culturels", "title"))
+        root.add(self.label("Les packs transforment Baobab en mémoire vivante: cuisine, son, mode, langues, récits et archives locales.", "subtitle"))
+        stats = self.Gtk.Grid(column_spacing=12, row_spacing=12)
+        stats.attach(self.stat(str(self.packs_payload.get("count", 0)), "Packs locaux"), 0, 0, 1, 1)
+        stats.attach(self.stat(f"{self.audit_payload.get('score', 0)}%", "Score provenance"), 1, 0, 1, 1)
+        stats.attach(self.stat(text(self.audit_payload.get("state", "unknown")), "Audit"), 2, 0, 1, 1)
+        root.add(stats)
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Créer les packs de départ", lambda *_: self.run_action("baobab", "seed-packs")))
+        actions.add(self.button("Préparer collecte vivante", lambda *_: self.run_action("baobab", "enrich-packs")))
+        actions.add(self.button("Nouvelle collecte", lambda *_: self.stack.set_visible_child_name("collect")))
+        actions.add(self.button("Créer exemples terrain", lambda *_: self.run_action("baobab", "sample-fieldwork")))
+        actions.add(self.button("Auditer les packs", lambda *_: self.run_action("baobab", "audit-packs")))
+        actions.add(self.button("Ouvrir le dossier packs", lambda *_: open_path(DATA / "packs")))
+        root.add(actions)
+        if not self.packs_payload.get("packs"):
+            root.add(self.label("Aucun pack local. Lance les packs de départ pour créer Burkina Food, Mandingue Sound et Faso Danfani Fashion.", "subtitle"))
+        for pack in self.packs_payload.get("packs", []):
+            audit = next((item for item in self.audit_payload.get("packs", []) if item.get("name") == pack.get("name")), {})
+            warnings = audit.get("warnings", [])
+            living_score = audit.get("living_score", 0)
+            collection_score = audit.get("collection_score", 0)
+            collection_status = audit.get("collection_status", "unknown")
+            fieldwork_state = audit.get("fieldwork_state", collection_status)
+            sample_count = audit.get("sample_count", 0)
+            body = f"{pack.get('records', 0)} fiche(s)\nWorkflow collecte: {living_score}%\nCollecte réelle: {collection_score}% · {fieldwork_state}\nÉléments sample: {sample_count}\n{pack.get('path', '')}"
+            if warnings:
+                body = f"{body}\nÀ revoir: {warnings[0]}"
+            root.add(self.card(text(pack.get("title"), "Pack"), f"{pack.get('name', '')} · {audit.get('score', 'n/a')}%", body, lambda pack=pack: open_path(Path(pack.get("path", "")).parent)))
+        return self.scroll(root)
+
+    def preferences_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Préférences Baobab", "title"))
+        root.add(self.label("La priorité actuelle reste le français. Ces réglages préparent le futur i18n complet et les langues africaines.", "subtitle"))
+        language_row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        language_row.add(self.label("Langue de lecture", "card-title", False))
+        language = self.Gtk.ComboBoxText()
+        for key, label in [("fr", "Français d'abord"), ("en", "Anglais fallback")]:
+            language.append(key, label)
+        language.set_active_id(text(self.settings.get("language"), "fr"))
+        language.connect("changed", lambda combo: self.set_language(combo.get_active_id() or "fr"))
+        language_row.add(language)
+        root.add(language_row)
+        root.add(self.card("Données multilingues", "Préparation", "Les titres et résumés UNESCO utilisent la préférence de langue. Les packs Baobab pourront ensuite déclarer language, country et curator pour un affichage propre."))
+        root.add(self.card("Langues africaines", "À enrichir par packs", "Mooré, Dioula, Bambara, Swahili, Wolof, Yoruba, Lingala, Peul et autres langues pourront être ajoutées comme datasets ou packs communautaires sourcés."))
+        return self.scroll(root)
+
+    def story_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Récits", "title"))
+        root.add(self.label("Lecture guidée des modules Baobab. Les contenus restent locaux et sourcés.", "subtitle"))
+        for item in self.records:
+            root.add(self.card(text(item.get("title"), "Sans titre"), f"{item.get('module', '')} · {item.get('region', '')}", text(item.get("summary"))))
+        return self.scroll(root)
+
+    def museum_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Musée", "title"))
+        root.add(self.label("Vue native des objets culturels et collections. L'expérience doit rester calme, sourcée et contemplative.", "subtitle"))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Ouvrir la scène immersive", lambda *_: open_path(WORKSPACE / "Museum 3D/index.html")))
+        root.add(actions)
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        for item in self.records:
+            flow.add(self.card(text(item.get("title"), "Sans titre"), f"{item.get('module', '')} · {item.get('kind', '')}", text(item.get("summary"))))
+        root.add(flow)
+        return self.scroll(root)
+
+    def show_modal(self, item: dict) -> None:
+        dialog = self.Gtk.Dialog(title="Fiche patrimoine", transient_for=self.window, flags=0)
+        dialog.set_default_size(680, 560)
+        area = dialog.get_content_area()
+        area.set_border_width(14)
+        area.add(self.scroll(self.heritage_detail(item)))
+        dialog.add_button("Fermer", self.Gtk.ResponseType.CLOSE)
+        dialog.connect("response", lambda dialog, _response: dialog.destroy())
+        dialog.show_all()
+
+    def build(self) -> object:
+        self.apply_css()
+        window = self.Gtk.Window(title="Baobab OS")
+        self.window = window
+        window.set_default_size(1280, 820)
+        window.connect("destroy", self.Gtk.main_quit)
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=0)
+        root.get_style_context().add_class("root")
+        sidebar = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+        sidebar.get_style_context().add_class("rail")
+        sidebar.get_style_context().add_class("nav")
+        sidebar.set_border_width(14)
+        sidebar.set_size_request(230, -1)
+        brand = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        brand.get_style_context().add_class("brand")
+        brand.add(self.label("Baobab", "brand-title", False))
+        brand.add(self.label("Mémoire · école · création", "brand-subtitle", False))
+        sidebar.add(brand)
+        self.stack = self.Gtk.Stack()
+        self.stack.set_transition_type(self.Gtk.StackTransitionType.CROSSFADE)
+        views = [
+            ("home", "Accueil", self.home_view(), "OS"),
+            ("search", "Recherche", self.global_search_view(), "OS"),
+            ("heritage", "Patrimoine", self.heritage_view(), "Mémoire"),
+            ("explore", "Explorer", self.explore_view(), "Mémoire"),
+            ("languages", "Langues", self.languages_view(), "Mémoire"),
+            ("story", "Récits", self.story_view(), "Mémoire"),
+            ("modules", "Modules", self.modules_view(), "Expériences"),
+            ("museum", "Musée", self.museum_view(), "Expériences"),
+            ("collect", "Collecte", self.collect_view(), "Transmission"),
+            ("packs", "Packs", self.packs_view(), "Transmission"),
+            ("datasets", "Sources", self.datasets_view(), "Transmission"),
+            ("engines", "Moteurs", self.engines_view(), "Système"),
+            ("preferences", "Préférences", self.preferences_view(), "Système"),
+        ]
+        current_group = ""
+        for key, label, widget, group in views:
+            self.stack.add_titled(widget, key, label)
+            if group != current_group:
+                sidebar.add(self.label(group.upper(), "nav-title", False))
+                current_group = group
+            button = self.Gtk.Button(label=label)
+            button.connect("clicked", lambda _button, key=key: self.stack.set_visible_child_name(key))
+            sidebar.add(button)
+        sidebar.pack_end(self.chip("Baobab isolé · profil dédié"), False, False, 0)
+        sidebar.pack_end(self.chip(f"{self.capabilities_payload.get('score', 0)}% prêt"), False, False, 0)
+        known_views = {key for key, _label, _widget, _group in views}
+        if self.initial_view in known_views:
+            self.stack.set_visible_child_name(self.initial_view)
+        root.add(sidebar)
+        root.add(self.stack)
+        window.add(root)
+        return window
+
+    def reload(self) -> None:
+        bootstrap()
+        self.catalog = load_json(DATA / "catalog.json", {"records": []})
+        self.countries_payload = load_json(DATA / "explore/africa-countries.json", {"countries": []})
+        self.unesco_payload = load_json(DATA / "heritage/african-unesco-ich.json", {"items": []})
+        self.datasets_payload = load_json(DATA / "offline/datasets.json", {"sources": []})
+        self.settings = load_json(SETTINGS_FILE, {"language": "fr", "country_focus": ""})
+        self.engines_payload = self.load_engines()
+        self.packs_payload = self.load_packs()
+        self.audit_payload = self.load_pack_audit()
+        self.languages_payload = self.load_languages()
+        self.records = self.catalog.get("records", [])
+        self.countries = self.countries_payload.get("countries", [])
+        self.heritage = self.unesco_payload.get("items", [])
+        self.datasets = self.datasets_payload.get("sources", [])
+        self.languages = self.languages_payload.get("languages", [])
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def main() -> int:
+    if "--probe" in sys.argv:
+        return probe()
+    initial_view = os.environ.get("SEVENOS_BAOBAB_VIEW", "home")
+    if "--view" in sys.argv:
+        index = sys.argv.index("--view")
+        if index + 1 < len(sys.argv):
+            initial_view = sys.argv[index + 1]
+    bootstrap()
+    ensure_gi_python()
+    import gi
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, Gtk
+
+    app = BaobabNative(Gtk, Gdk, initial_view=initial_view)
+    window = app.build()
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

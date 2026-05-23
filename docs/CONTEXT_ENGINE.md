@@ -105,7 +105,7 @@ semantic signal loop while staying local-only and reversible.
 | Studio Session | creative production | studio |
 | Shield Audit | cybersecurity | shield |
 | Windows Mode | compatibility | windows |
-| Horizon Deploy | server deployment | horizon |
+| Forge DevOps | software development and deployment | forge |
 | Streaming Context | streaming | studio |
 
 ## Future Signals

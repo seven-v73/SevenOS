@@ -38,6 +38,7 @@ seven shell plan --json
 seven profile status --json
 seven profile current --json
 seven profile apps --json
+seven-profile-run --manifest
 seven windows status --json
 seven experience --json
 seven phase-gate --json
@@ -63,6 +64,8 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Control | prioritized next actions | `seven control --json` |
 | B3 Consolidation | phase targets, blockers and next system actions | `seven b3 plan --json` |
 | Profiles | active profile, workspaces, install/activate | `seven profile status --json` |
+| Runtime | mini OS manifests, isolated roots and strict launch commands | `seven state --json` |
+| Search | actions, mini OS, shortcuts and runtime contracts | `seven state --json` + `seven actions --json` |
 | Actions | safe and state-changing OS actions | `seven actions --json` |
 | Ecosystem | modules, maturity and all-in-one user flows | `seven ecosystem --json` |
 | Apps | packages, metapackages, Flatpak bridge | `sevenpkg status --json` |
@@ -90,10 +93,10 @@ diagnostics, documentation, marketplace previews or developer dashboards.
 
 1. Keep Tauri as the visible prototype.
 2. Harden JSON contracts in `seven` and `sevenpkg`.
-3. Build the native Dashboard, Profiles, Actions and Ecosystem views first.
+3. Build the native Dashboard, Search, Profiles, Runtime, Actions and Ecosystem views first.
    `bin/seven-hub-native` now starts this path with live state from
-   `seven readiness --json`, `seven profile status --json` and
-   `seven actions --json`, plus `seven ecosystem --json`.
+   `seven state --json`, `seven profile status --json`,
+   `seven actions --json` and `seven ecosystem --json`.
 4. Add Security, Apps and Windows-specific pages.
 5. Keep Tauri as a prototype while `seven-hub` defaults to the native Hub
    whenever GTK/libadwaita is available.
@@ -111,9 +114,9 @@ seven hub-native status
 seven-hub
 ```
 
-The prototype is intentionally focused: Dashboard, Profiles, Actions and
-Ecosystem first, because these define how SevenOS becomes an adaptive OS instead
-of a static Arch theme.
+The prototype is intentionally focused: Dashboard, Search, Profiles, Runtime,
+Actions and Ecosystem first, because these define how SevenOS becomes an
+adaptive OS instead of a static Arch theme.
 
 Ecosystem process rows are action-oriented: each process carries a command and
 the native Hub exposes a start button for it. The user should be able to move

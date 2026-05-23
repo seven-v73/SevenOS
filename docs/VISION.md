@@ -86,7 +86,7 @@ marking every module as active, preview, or planned.
 ## Differentiators
 
 - Beyond the Desktop identity without reducing the system to decoration
-- profile-based workflows: Forge, Shield, Studio, Horizon, Griot, Baobab
+- profile-based workflows: Forge DevOps, Shield, Studio, Pulse, Griot, Baobab
 - integrated Windows compatibility through Wine, Bottles, Lutris, and KVM
 - cybersecurity as a first-class workspace, not a separate live ISO only
 - creative production as a native workflow

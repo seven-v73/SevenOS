@@ -1,8 +1,30 @@
 # SevenOS Baobab optional learning and cultural tools
-# Installed when the user wants the full Baobab Culture mini OS.
+# Installed when the user wants the full Baobab Cultural OS surface.
+# Reader, library, speech and translation helpers support offline transmission.
 foliate
 calibre
+kiwix-desktop
 espeak-ng
 festival
 translate-shell
 hyphen-fr
+# Cultural shell and widgets
+swaync
+python-pywal
+# Media and creative production
+tauon-music-box
+krita
+blender
+kdenlive
+# Local sync and community sharing
+syncthing
+nextcloud
+nextcloud-client
+packagekit
+# Local AI, narration, translation and search candidates
+ollama
+meilisearch
+# Piper, Argos Translate, llama.cpp, Kiwix Desktop, Eww and Open WebUI are
+# tracked in packages-culture-aur.txt. Kolibri is tracked as a pipx/external
+# education route because it is not available in the official repos or AUR
+# under the plain kolibri package name.

@@ -224,6 +224,20 @@ THEMES = {
             "#68433D", "#FF8DA4", "#A8F0BC", "#FFE0A3", "#9BCFFF", "#CBB6EA", "#B8EEF3", "#FFFFFF",
         ],
     },
+    "windows": {
+        "window": "#0D1B2F",
+        "titlebar": "#081421",
+        "titlebar_border": "#173B5C",
+        "terminal": "#07111F",
+        "foreground": "#EEF7FF",
+        "muted": "#A9CBE8",
+        "selection": "#173B5C",
+        "cursor": "#74C7EC",
+        "palette": [
+            "#07111F", "#FF6B8A", "#8EDAA6", "#FFD580", "#74C7EC", "#89B4FA", "#94E2D5", "#EEF7FF",
+            "#4A617A", "#FF8DA4", "#A8F0BC", "#FFE0A3", "#9BD7F4", "#A7C4FF", "#B2F2E8", "#FFFFFF",
+        ],
+    },
 }
 
 
@@ -339,10 +353,13 @@ def run_terminal(profile: str, command: list[str]) -> int:
 
     terminal = Vte.Terminal()
     terminal.get_style_context().add_class("seven-terminal")
+    terminal.set_can_focus(True)
     terminal.set_scrollback_lines(20000)
     terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
     terminal.set_cursor_shape(Vte.CursorShape.IBEAM)
     terminal.set_audible_bell(False)
+    if hasattr(terminal, "set_input_enabled"):
+        terminal.set_input_enabled(True)
     terminal.set_font(Pango.FontDescription("SF Mono 11"))
     if hasattr(terminal, "set_cell_height_scale"):
         terminal.set_cell_height_scale(1.10)
@@ -376,7 +393,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
         os.getcwd(),
         argv,
         [f"{key}={value}" for key, value in env.items()],
-        GLib.SpawnFlags.DEFAULT,
+        GLib.SpawnFlags.SEARCH_PATH,
         None,
         None,
         -1,
@@ -386,10 +403,12 @@ def run_terminal(profile: str, command: list[str]) -> int:
 
     terminal.connect("child-exited", lambda *_: window.close())
     terminal.connect("key-press-event", terminal_key_press)
-    terminal.connect("button-press-event", lambda _terminal, event: show_terminal_menu(_terminal, event))
+    terminal.connect("button-press-event", terminal_button_press)
     titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
+    window.connect("map-event", lambda *_: GLib.idle_add(focus_terminal, terminal))
     window.connect("destroy", Gtk.main_quit)
     window.show_all()
+    focus_terminal(terminal)
     window.resize(760, 480)
     Gtk.main()
     return 0
@@ -416,6 +435,17 @@ def terminal_key_press(terminal, event) -> bool:
         terminal.paste_clipboard()
         return True
     return False
+
+
+def focus_terminal(terminal) -> bool:
+    terminal.set_can_focus(True)
+    terminal.grab_focus()
+    return False
+
+
+def terminal_button_press(terminal, event) -> bool:
+    focus_terminal(terminal)
+    return show_terminal_menu(terminal, event)
 
 
 def copy_terminal_selection(terminal) -> None:
@@ -565,7 +595,7 @@ def begin_move(window, event) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--probe", action="store_true")
-    parser.add_argument("--profile", choices=("classic", "dark", "light", "forge", "cyber", "focus", "admin"), default="classic")
+    parser.add_argument("--profile", choices=("classic", "dark", "light", "forge", "cyber", "focus", "admin", "windows"), default=os.environ.get("SEVENOS_TERMINAL_MODE", "classic"))
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.probe:

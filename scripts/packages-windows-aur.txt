@@ -1,0 +1,5 @@
+# SevenOS Windows Bridge optional AUR helpers
+#
+# These are intentionally optional. SevenOS can still create a Windows VM from
+# a user-provided official ISO without them.
+quickemu

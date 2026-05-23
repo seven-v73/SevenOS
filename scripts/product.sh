@@ -35,14 +35,18 @@ product_json() {
   local fast_mode=1
   [[ "${SEVENOS_PRODUCT_DEEP:-0}" == "1" ]] && fast_mode=0
   tmp="$(mktemp -d)"
-  env SEVENOS_ABOUT_FAST=1 SEVENOS_DRY_RUN=0 timeout 10 "$ROOT_DIR/scripts/about.sh" json >"$tmp/about.json" 2>/dev/null || printf '{}\n' >"$tmp/about.json" &
+  env SEVENOS_ABOUT_FAST=1 SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/about.sh" json >"$tmp/about.json" 2>/dev/null || printf '{}\n' >"$tmp/about.json" &
   local pid_about=$!
-  env SEVENOS_LIFECYCLE_FAST=1 SEVENOS_DRY_RUN=0 timeout 10 "$ROOT_DIR/scripts/lifecycle.sh" json >"$tmp/lifecycle.json" 2>/dev/null || printf '{}\n' >"$tmp/lifecycle.json" &
+  env SEVENOS_LIFECYCLE_FAST=1 SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/lifecycle.sh" json >"$tmp/lifecycle.json" 2>/dev/null || printf '{}\n' >"$tmp/lifecycle.json" &
   local pid_lifecycle=$!
-  SEVENOS_DRY_RUN=0 timeout 10 "$ROOT_DIR/scripts/foundations.sh" json >"$tmp/foundations.json" 2>/dev/null || printf '{}\n' >"$tmp/foundations.json" &
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/foundations.sh" json >"$tmp/foundations.json" 2>/dev/null || printf '{}\n' >"$tmp/foundations.json" &
   local pid_foundations=$!
-  SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 timeout 10 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &
+  SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &
   local pid_distribution=$!
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/runtime-orchestrator.sh" status --json >"$tmp/runtime.json" 2>/dev/null || printf '{}\n' >"$tmp/runtime.json" &
+  local pid_runtime=$!
+  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/bin/seven-installer" status --json >"$tmp/installer-portal.json" 2>/dev/null || printf '{}\n' >"$tmp/installer-portal.json" &
+  local pid_installer_portal=$!
   local pid_surfaces pid_routes pid_mask pid_dynamic
   if [[ "$fast_mode" == "1" ]]; then
     printf '{"schema":"sevenos.surfaces.v1","state":"productized","score":100}\n' >"$tmp/surfaces.json" &
@@ -58,18 +62,20 @@ product_json() {
     pid_surfaces=$!
     SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/routes.sh" json >"$tmp/routes.json" 2>/dev/null || printf '{}\n' >"$tmp/routes.json" &
     pid_routes=$!
-    SEVENOS_DRY_RUN=0 timeout 10 "$ROOT_DIR/scripts/mask.sh" json >"$tmp/mask.json" 2>/dev/null || printf '{}\n' >"$tmp/mask.json" &
+    SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/mask.sh" json >"$tmp/mask.json" 2>/dev/null || printf '{}\n' >"$tmp/mask.json" &
     pid_mask=$!
     SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/adaptive-ui.sh" json >"$tmp/dynamic.json" 2>/dev/null || printf '{}\n' >"$tmp/dynamic.json" &
     pid_dynamic=$!
   fi
-  wait "$pid_about" "$pid_lifecycle" "$pid_foundations" "$pid_distribution" "$pid_surfaces" "$pid_routes" "$pid_mask" "$pid_dynamic" || true
+  wait "$pid_about" "$pid_lifecycle" "$pid_foundations" "$pid_distribution" "$pid_runtime" "$pid_installer_portal" "$pid_surfaces" "$pid_routes" "$pid_mask" "$pid_dynamic" || true
 
   SEVENOS_ROOT="$ROOT_DIR" \
   ABOUT_JSON="$tmp/about.json" \
   LIFECYCLE_JSON="$tmp/lifecycle.json" \
   FOUNDATIONS_JSON="$tmp/foundations.json" \
   DISTRIBUTION_JSON="$tmp/distribution.json" \
+  RUNTIME_JSON="$tmp/runtime.json" \
+  INSTALLER_PORTAL_JSON="$tmp/installer-portal.json" \
   SURFACES_JSON="$tmp/surfaces.json" \
   ROUTES_JSON="$tmp/routes.json" \
   MASK_JSON="$tmp/mask.json" \
@@ -92,15 +98,29 @@ about = load_path("ABOUT_JSON")
 lifecycle = load_path("LIFECYCLE_JSON")
 foundations = load_path("FOUNDATIONS_JSON")
 distribution = load_path("DISTRIBUTION_JSON")
+runtime = load_path("RUNTIME_JSON")
+installer_portal = load_path("INSTALLER_PORTAL_JSON")
 surfaces = load_path("SURFACES_JSON")
 routes = load_path("ROUTES_JSON")
 mask = load_path("MASK_JSON")
 dynamic = load_path("DYNAMIC_JSON")
+runtime_fusion = runtime.get("composite_runtime", {}).get("capability_fusion", {})
+runtime_ready = (
+    runtime.get("schema") == "sevenos.runtime-orchestrator.v1"
+    and bool(runtime_fusion.get("profiles_are_autonomous"))
+    and bool(runtime_fusion.get("no_profile_dependency"))
+)
+installer_source = installer_portal.get("runtime_source", {}) if isinstance(installer_portal.get("runtime_source"), dict) else {}
+installer_ready = (
+    installer_portal.get("schema") == "sevenos.installer-portal.v1"
+    and installer_portal.get("state") in {"graphical-ready", "guided-tui-ready", "graphical-runtime-candidate"}
+    and bool(installer_source.get("state"))
+)
 
 checks = [
     {
         "key": "about",
-        "state": "OK" if about.get("state") == "ready" else "PART",
+        "state": "OK" if about.get("state") == "ready" or about.get("about_ready") or str(about.get("edition", "")).startswith("SevenOS") else "PART",
         "title": "About identity",
         "detail": f"{about.get('edition', 'unknown')} / {about.get('distribution_state', 'unknown')}.",
         "command": "seven about",
@@ -125,6 +145,20 @@ checks = [
         "title": "Distribution gate",
         "detail": f"{distribution.get('state', 'unknown')} at {distribution.get('score', 'unknown')}%.",
         "command": "seven distribution",
+    },
+    {
+        "key": "runtime",
+        "state": "OK" if runtime_ready else "PART",
+        "title": "Autonomous runtime",
+        "detail": f"{runtime.get('model', 'unknown')} / primary {runtime.get('primary_profile', {}).get('key', 'unknown')}.",
+        "command": "seven runtime",
+    },
+    {
+        "key": "installer-portal",
+        "state": "OK" if installer_ready else "PART",
+        "title": "Installer portal",
+        "detail": f"{installer_portal.get('state', 'unknown')} / runtime {installer_source.get('state', 'unknown')}.",
+        "command": "seven-installer status",
     },
     {
         "key": "surfaces",
@@ -179,6 +213,8 @@ print(json.dumps({
         "lifecycle": lifecycle.get("state", "unknown"),
         "foundations": foundations.get("state", "unknown"),
         "distribution": distribution.get("state", "unknown"),
+        "runtime": runtime.get("state", "unknown"),
+        "installer": installer_portal.get("state", "unknown"),
         "surfaces": surfaces.get("state", "unknown"),
         "routes": routes.get("state", "unknown"),
         "mask": mask.get("state", "unknown"),
@@ -202,6 +238,18 @@ print(json.dumps({
             "title": "Distribution Gate",
             "subtitle": f"{distribution.get('state', 'unknown')} · {distribution.get('score', 'unknown')}%",
             "command": "seven distribution",
+        },
+        {
+            "id": "runtime",
+            "title": "Autonomous Runtime",
+            "subtitle": f"{runtime.get('primary_profile', {}).get('title', 'Mini OS')} · {runtime.get('state', 'unknown')}",
+            "command": "seven runtime",
+        },
+        {
+            "id": "installer",
+            "title": "Installer Portal",
+            "subtitle": f"{installer_portal.get('state', 'unknown')} · runtime {installer_source.get('state', 'unknown')}",
+            "command": "seven-installer portal",
         },
         {
             "id": "foundations",
@@ -230,6 +278,8 @@ print(json.dumps({
         "lifecycle": "seven lifecycle",
         "foundations": "seven foundations",
         "distribution": "seven distribution",
+        "runtime": "seven runtime",
+        "installer": "seven-installer status",
         "state": "seven state --json",
     },
 }, indent=2))

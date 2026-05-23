@@ -105,6 +105,15 @@ dirty_count = int(os.environ.get("DIRTY_COUNT", "0") or 0)
 summary = doctor.get("summary", {})
 doctor_blocked = summary.get("critical", 1) > 0 or summary.get("high", 1) > 0
 daily_ready = not doctor_blocked
+calamares_runtime = installer.get("calamares_runtime") or next(
+    (item.get("state") for item in installer.get("checks", []) if item.get("key") == "calamares-runtime"),
+    "unknown",
+)
+calamares_runtime_detail = (
+    "Calamares runtime installed in the ISO environment."
+    if calamares_runtime == "OK"
+    else f"Calamares runtime policy: {calamares_runtime}; graphical public release still requires the runtime package in the ISO."
+)
 
 release_actions = [
     {
@@ -125,7 +134,7 @@ release_actions = [
         "key": "calamares-iso",
         "state": "OK" if installer.get("state") == "graphical-ready" else "PENDING",
         "title": "Fournir Calamares dans l'environnement ISO",
-        "detail": f"Installer state: {installer.get('state', 'unknown')}.",
+        "detail": f"Installer state: {installer.get('state', 'unknown')}. {calamares_runtime_detail}",
         "command": "seven installer release",
     },
     {
@@ -156,7 +165,7 @@ print(json.dumps({
     },
     "installer": {
         "state": installer.get("state", "unknown"),
-        "calamares_runtime": next((item.get("state") for item in installer.get("checks", []) if item.get("key") == "calamares-runtime"), "unknown"),
+        "calamares_runtime": calamares_runtime,
     },
     "windows": {
         "vm_state": windows.get("windows_vm", "unknown"),
@@ -177,6 +186,18 @@ import os
 
 data = json.loads(os.environ["STATUS_JSON"])
 actions = data.get("release_actions", [])
+installer = data.get("installer", {})
+calamares_runtime = installer.get("calamares_runtime", "unknown")
+installer_command = (
+    "seven installer runtime"
+    if calamares_runtime in {"aur-candidate", "source-declared"}
+    else "seven installer release"
+)
+installer_goal = (
+    f"Transformer la source Calamares {calamares_runtime} en runtime embarqué dans l'ISO."
+    if calamares_runtime in {"aur-candidate", "source-declared"}
+    else "Installer ou embarquer Calamares dans l'environnement ISO."
+)
 plan = [
     {
         "phase": "daily-driver",
@@ -193,12 +214,12 @@ plan = [
     {
         "phase": "installer-iso",
         "state": next((item["state"] for item in actions if item["key"] == "calamares-iso"), "PENDING"),
-        "goal": "Installer ou embarquer Calamares dans l'environnement ISO.",
-        "command": "seven installer release",
+        "goal": installer_goal,
+        "command": installer_command,
     },
     {
         "phase": "windows-bridge",
-        "state": next((item["state"] for item in actions if item["key"] == "windows-vm-user-iso"), "USER_REQUIRED"),
+        "state": next((item["state"] for item in actions if item["key"] == "windows-vm-provisioning"), "USER_REQUIRED"),
         "goal": "Créer une VM Windows uniquement avec une ISO fournie légalement par l'utilisateur.",
         "command": "seven windows guide",
     },

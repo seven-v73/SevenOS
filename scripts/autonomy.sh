@@ -84,6 +84,7 @@ mask = run_json(["scripts/mask.sh", "json"], timeout=8) or {}
 adaptive = run_json(["scripts/adaptive-ui.sh", "json"], timeout=8) or {}
 surfaces = run_json(["scripts/surfaces.sh", "json"], timeout=8) or {}
 routes = run_json(["scripts/routes.sh", "json"], timeout=8) or {}
+runtime = run_json(["scripts/runtime-orchestrator.sh", "status", "--json"], timeout=8) or {}
 dirty_count = 0
 try:
     dirty = subprocess.run(["git", "status", "--short"], cwd=root, text=True, capture_output=True, check=False, timeout=5)
@@ -95,6 +96,14 @@ public_release_ready = installer.get("state") == "graphical-ready" and dirty_cou
 manifest_root = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "sevenos/profile-runtime-manifests"
 manifest_count = len(list(manifest_root.glob("*.json"))) if manifest_root.is_dir() else 0
 active_manifest = run_json(["bin/seven-profile-run", "--manifest"], timeout=8) or {}
+runtime_fusion = runtime.get("composite_runtime", {}).get("capability_fusion", {})
+runtime_ready = (
+    runtime.get("schema") == "sevenos.runtime-orchestrator.v1"
+    and runtime.get("model") == "layered-autonomous-profiles-architecture"
+    and bool(runtime_fusion.get("profiles_are_autonomous"))
+    and bool(runtime_fusion.get("no_profile_dependency"))
+    and runtime.get("resource_plan", {}).get("allocator") == "Seven Resource Allocator"
+)
 
 checks = [
     {
@@ -184,6 +193,13 @@ checks = [
         "title": "Mini OS runtime manifests",
         "detail": "Profiles expose strict HOME/cache/data/workspace contracts instead of only theme labels.",
         "command": "seven-profile-run --manifest",
+    },
+    {
+        "key": "runtime-orchestrator",
+        "state": "OK" if runtime_ready else "PART",
+        "title": "Layered autonomous runtime",
+        "detail": f"Runtime model: {runtime.get('model', 'unknown')}; primary profile: {runtime.get('primary_profile', {}).get('key', 'unknown')}.",
+        "command": "seven runtime status",
     },
     {
         "key": "daemon-foundation",

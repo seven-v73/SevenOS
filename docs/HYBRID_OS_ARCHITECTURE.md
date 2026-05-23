@@ -151,7 +151,7 @@ The rule is:
 No profile dependency, only profile collaboration.
 ```
 
-Baobab does not depend on Forge. Shield does not depend on Horizon. Studio does
+Baobab does not depend on Forge DevOps. Shield does not depend on Forge DevOps. Studio does
 not inherit developer services. Each profile can run alone.
 
 The global system adds a fifth invisible layer:
@@ -174,18 +174,17 @@ The rule is:
 | Profile | Domain | Rule |
 | --- | --- | --- |
 | Equinox Balance | balanced general computing | neutral daily mini OS; no specialized profile dominates |
-| Baobab Culture | culture and learning | African knowledge, languages and community memory; no dev/security/cloud/gaming stack |
-| Forge Developer | development | engineering, toolchains, containers and builds |
+| Baobab Cultural OS | African heritage and creation | Digital village, heritage, languages, oral stories, sound, map, fashion, food, wisdom and offline memory; no dev/security/cloud/gaming stack |
+| Forge DevOps | development and deployment | engineering, toolchains, containers, services, deploys and logs |
 | Shield Cybersecurity | security | authorized audit, sandbox, forensics, reports and safe scope |
 | Studio Creator | creation | logos, design, video, audio, capture and 3D production |
 | Windows Bridge | Windows compatibility | complete VM-first Windows path with Wine/Bottles fallback |
-| Horizon Cloud | cloud/server | server, deploy, reverse proxy, services and local API |
 | Pulse Gaming | Linux gaming | Proton, low latency, overlays, controllers and foreground responsiveness |
 
 For example:
 
 ```text
-seven runtime plan equinox forge shield studio horizon pulse
+seven runtime plan equinox forge shield studio pulse
 ```
 
 means:
@@ -193,18 +192,18 @@ means:
 - `equinox` stays neutral;
 - Forge contributes light dev capability only when needed;
 - Shield contributes basic safety rules without launching scans;
-- Studio/Horizon/Pulse remain controlled fragments instead of full noisy stacks.
+- Studio/Pulse remain controlled fragments instead of full noisy stacks.
 
 Another example:
 
 ```text
-seven runtime plan baobab shield horizon
+seven runtime plan baobab shield forge
 ```
 
 means:
 
 - `baobab` owns the visible cultural experience;
-- Shield and Horizon can collaborate only through explicit injected rules;
+- Shield and Forge DevOps can collaborate only through explicit injected rules;
 - Baobab remains clean: no Docker, no dev toolchain, no cloud daemons, no gaming runtime.
 
 The current implementation is deliberately safe. It exposes the composite
@@ -255,7 +254,7 @@ seven architecture matrix
 seven architecture matrix --json
 seven state --json
 seven runtime status --json
-seven runtime plan equinox forge shield horizon pulse --json
+seven runtime plan equinox forge shield studio pulse --json
 ```
 
 `seven architecture matrix --json` is the product contract for Hub, Spotlight,

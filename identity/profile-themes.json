@@ -14,15 +14,15 @@
       "design_signal": "no domain dominates; every control feels general and approachable"
     },
     "baobab": {
-      "label": "Baobab Culture",
+      "label": "Baobab Cultural OS",
       "icon": "󰔱",
       "short_label": "BAO",
       "accent": "#A6E3A1",
       "secondary": "#F9E2AF",
       "catppuccin_role": "green/yellow",
-      "waybar": "culture and learning shell: identity, reader/media, language, connectivity, battery and light AI",
-      "ui_mood": "warm cultural calm, community memory, African learning surfaces",
-      "design_signal": "culture-first, quiet, no developer/security/cloud noise"
+      "waybar": "digital village shell: identity, heritage, media, language, connectivity, battery and cultural AI",
+      "ui_mood": "warm African digital village, textile rhythm, oral memory, soundscape, heritage library and creative transmission",
+      "design_signal": "African heritage is the primary OS experience; backend tooling stays behind cultural places and offline memory"
     },
     "forge": {
       "label": "Forge DevOps",

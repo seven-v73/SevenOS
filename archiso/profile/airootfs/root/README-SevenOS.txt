@@ -1,27 +1,23 @@
 SevenOS Live ISO
 Beyond the Desktop
 
-This live environment contains the SevenOS repository at:
+Start from the SevenOS surfaces:
+
+  Install SevenOS      seven-installer
+  Try SevenOS          seven welcome
+  Open Hub             seven hub
+  Check Readiness      seven doctor
+
+Personal OS routes:
+
+  Settings             seven settings
+  Software             seven store
+  Mini OS profiles     seven profile status
+  Installer portal     seven-installer portal
+
+Repository for advanced inspection:
 
   /opt/SevenOS
 
-Useful commands:
-
-  sevenos-welcome
-  seven status
-  seven readiness
-  seven phase-gate
-  seven ecosystem
-  seven ecosystem roadmap
-  seven server status
-  seven deploy /opt/SevenOS
-  seven doctor
-  sevenpkg meta
-  sevenpkg status
-  cd /opt/SevenOS
-  ./install.sh doctor
-  ./install.sh status
-  ./install.sh installer-plan
-  ./install.sh base --dry-run
-
-This ISO profile is an early SevenOS live foundation. It is not yet the final SevenOS installer.
+This live profile is SevenOS-first. Advanced build and repository commands are
+available, but the normal route starts with Install, Hub, Settings and Doctor.

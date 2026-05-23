@@ -8,11 +8,20 @@
     ]
   },
   "forge": {
-    "description": "Forge Developer: autonomous developer mini OS for code, toolchains, containers and local builds",
+    "description": "Forge DevOps: autonomous mini OS for code, toolchains, containers, local services, deploys and logs",
     "kind": "sevenos-target",
     "target": "dev",
     "package_files": [
-      "scripts/packages-dev.txt"
+      "scripts/packages-dev.txt",
+      "scripts/packages-server.txt"
+    ]
+  },
+  "server": {
+    "description": "SevenOS Server Layer: local services, reverse proxy, databases and deployment runtime",
+    "kind": "sevenos-target",
+    "target": "server",
+    "package_files": [
+      "scripts/packages-server.txt"
     ]
   },
   "shield": {
@@ -52,14 +61,6 @@
     "target": "windows",
     "package_files": [
       "scripts/packages-windows.txt"
-    ]
-  },
-  "horizon": {
-    "description": "Horizon Cloud: autonomous cloud/server mini OS for deployment, services, reverse proxy and self-hosting",
-    "kind": "sevenos-target",
-    "target": "server",
-    "package_files": [
-      "scripts/packages-server.txt"
     ]
   },
   "pulse": {

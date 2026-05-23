@@ -16,3 +16,17 @@ out/design/wallpaper-sevenos.png
 ```
 
 Generated or commissioned bitmap wallpapers can be added later.
+
+## Profile Scope
+
+Wallpaper choices are mini-OS scoped. `seven-wallpaper set IMAGE` saves the
+custom wallpaper for the active SevenOS profile only:
+
+```text
+~/.config/sevenos/profiles/<profile>/wallpaper-state
+~/.local/share/sevenos/wallpapers/profiles/<profile>/wallpaper-custom.png
+```
+
+`~/.local/share/sevenos/wallpapers/wallpaper-sevenos-active.png` is only the
+current Hyprpaper projection. It is replaced when switching profiles, but each
+mini OS keeps its own source state.

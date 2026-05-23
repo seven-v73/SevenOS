@@ -8,4 +8,4 @@ Terminal=false
 Categories=Settings;PackageManager;
 StartupNotify=true
 StartupWMClass=SevenStoreNative
-Keywords=store;apps;software;packages;flatpak;aur;SevenOS;
+Keywords=store;apps;software;SevenOS;SevenStore;

@@ -1,0 +1,11 @@
+# SevenOS Shield OSINT bundle
+whois
+bind
+traceroute
+nmap
+tor
+proxychains-ng
+torsocks
+perl-image-exiftool
+obsidian
+

@@ -60,6 +60,29 @@ def run_detached(command: str) -> None:
     )
 
 
+def run_terminal(command: str, title: str = "SevenOS Shield") -> None:
+    escaped = command.replace("'", "'\"'\"'")
+    wrapped = f"{escaped}; printf '\\nPress Enter to close...'; read -r"
+    if shutil_which("seven-terminal"):
+        subprocess.Popen(
+            ["seven-terminal", "cyber", "--", "bash", "-lc", wrapped],
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return
+    run_detached(command)
+
+
+def shutil_which(name: str) -> str | None:
+    for folder in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = Path(folder) / name
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
 def probe() -> int:
     ensure_gi_python()
     try:
@@ -92,61 +115,80 @@ def run() -> int:
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.shield-center-window { background: transparent; }
     .shield-root {
-      padding: 16px;
-      border-radius: 30px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(230,244,249,0.66)), rgba(255,255,255,0.58);
-      border: 1px solid rgba(255,255,255,0.84);
+      padding: 18px;
+      border-radius: 28px;
+      background: linear-gradient(145deg, rgba(7,22,20,0.96), rgba(12,36,34,0.92)), rgba(6,18,18,0.92);
+      border: 1px solid rgba(129,255,218,0.22);
     }
-    .title { color: rgba(16,27,34,0.98); font-size: 18px; font-weight: 500; }
-    .subtitle { color: rgba(42,58,68,0.62); font-size: 11px; }
+    .title { color: rgba(232,255,248,0.98); font-size: 21px; font-weight: 500; }
+    .subtitle { color: rgba(179,224,213,0.70); font-size: 12px; }
     .metric {
-      min-height: 88px;
-      padding: 13px;
-      border-radius: 22px;
-      background: rgba(255,255,255,0.52);
-      border: 1px solid rgba(255,255,255,0.72);
+      min-height: 76px;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(129,255,218,0.14);
     }
-    .metric.good { border-color: rgba(90,173,114,0.30); background: rgba(90,173,114,0.08); }
-    .metric.warn { border-color: rgba(111,157,188,0.34); background: rgba(111,157,188,0.08); }
-    .metric.bad { border-color: rgba(196,103,58,0.28); background: rgba(196,103,58,0.08); }
-    .metric-value { color: rgba(16,27,34,0.98); font-family: "JetBrainsMono Nerd Font", "SF Mono", monospace; font-size: 24px; font-weight: 500; }
-    .metric-label { color: rgba(44,60,70,0.66); font-size: 11px; }
+    .metric.good { border-color: rgba(111,255,178,0.30); background: rgba(91,225,149,0.10); }
+    .metric.warn { border-color: rgba(250,210,110,0.30); background: rgba(250,210,110,0.08); }
+    .metric.bad { border-color: rgba(255,110,115,0.30); background: rgba(255,110,115,0.08); }
+    .metric-value { color: rgba(232,255,248,0.98); font-family: "JetBrainsMono Nerd Font", "SF Mono", monospace; font-size: 22px; font-weight: 500; }
+    .metric-label { color: rgba(179,224,213,0.68); font-size: 11px; }
     .plan-card {
       min-height: 58px;
       padding: 10px 12px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.50);
-      border: 1px solid rgba(255,255,255,0.68);
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(129,255,218,0.12);
     }
-    .plan-title { color: rgba(16,27,34,0.96); font-size: 13px; font-weight: 500; }
-    .plan-note { color: rgba(44,60,70,0.66); font-size: 11px; }
+    .plan-title { color: rgba(232,255,248,0.96); font-size: 13px; font-weight: 500; }
+    .plan-note { color: rgba(179,224,213,0.68); font-size: 11px; }
+    .section-title { color: rgba(232,255,248,0.92); font-size: 13px; font-weight: 500; margin-top: 4px; }
+    .row-title { color: rgba(232,255,248,0.94); font-size: 12px; font-weight: 500; }
+    .row-note { color: rgba(179,224,213,0.66); font-size: 11px; }
     .action-strip {
       padding: 12px;
       border-radius: 22px;
-      background: rgba(255,255,255,0.46);
-      border: 1px solid rgba(255,255,255,0.68);
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(129,255,218,0.12);
     }
     .icon-action {
       min-width: 44px;
       min-height: 44px;
       padding: 0;
       border-radius: 999px;
-      background: rgba(255,255,255,0.58);
-      border: 1px solid rgba(255,255,255,0.76);
+      color: rgba(232,255,248,0.96);
+      background: rgba(129,255,218,0.09);
+      border: 1px solid rgba(129,255,218,0.18);
     }
-    .icon-action:hover { background: rgba(255,255,255,0.84); }
+    .icon-action:hover { background: rgba(129,255,218,0.18); }
+    .pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      color: rgba(232,255,248,0.90);
+      background: rgba(129,255,218,0.10);
+      border: 1px solid rgba(129,255,218,0.16);
+      font-size: 11px;
+    }
     """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
-    shield = run_json([str(ROOT / "security/shield-status.sh"), "--json"], {"percent": 0, "posture": "unknown", "checks": []})
-    plan = run_json([str(ROOT / "security/shield-status.sh"), "plan", "--json"], {"next": []})
-    percent = int(shield.get("percent", 0) or 0)
-    posture = shield.get("posture", "unknown")
-    checks = shield.get("checks", [])
-    ok_count = sum(1 for item in checks if item.get("state") == "OK")
-    miss_count = sum(1 for item in checks if item.get("state") != "OK")
+    dashboard = run_json([str(ROOT / "security/shield-control.sh"), "dashboard", "--json"], {"posture": {"percent": 0, "label": "unknown"}, "plan": {"next": []}})
+    posture_payload = dashboard.get("posture", {})
+    persona = dashboard.get("persona", {}).get("active", {})
+    scope = dashboard.get("scope", {})
+    network = dashboard.get("network", {})
+    evidence = dashboard.get("evidence", {})
+    tool_doctor = dashboard.get("tool_doctor", {})
+    wrappers = dashboard.get("wrappers", {}).get("wrappers", [])
+    bundles = dashboard.get("bundles", {}).get("bundles", [])
+    toolchain = dashboard.get("toolchain", {}).get("sources", [])
+    percent = int(posture_payload.get("percent", 0) or 0)
+    posture = posture_payload.get("label", "unknown")
+    wrapper_ok = sum(1 for item in wrappers if item.get("state") == "OK")
+    bundle_ok = sum(1 for item in bundles if item.get("state") == "OK")
 
     window = Gtk.Window(title="SevenOS Shield")
     window.set_wmclass("SevenShieldCenterNative", "SevenShieldCenterNative")
@@ -154,7 +196,7 @@ def run() -> int:
     window.set_resizable(False)
     window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(500, 430)
+    window.set_default_size(760, 680)
     window.get_style_context().add_class("shield-center-window")
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -164,22 +206,53 @@ def run() -> int:
     title = Gtk.Label(label="Shield", xalign=0)
     title.get_style_context().add_class("title")
     root.pack_start(title, False, False, 0)
-    subtitle = Gtk.Label(label=f"{posture.title()} posture", xalign=0)
+    subtitle = Gtk.Label(label=f"{posture.title()} posture · {persona.get('title', 'Safe Audit')} · {scope.get('state', 'DRAFT')}", xalign=0)
     subtitle.get_style_context().add_class("subtitle")
     root.pack_start(subtitle, False, False, 0)
 
     metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     root.pack_start(metrics, False, False, 0)
     metrics.pack_start(metric(Gtk, f"{percent}%", "Trust", css_state(percent)), True, True, 0)
-    metrics.pack_start(metric(Gtk, str(ok_count), "Ready", "good"), True, True, 0)
-    metrics.pack_start(metric(Gtk, str(miss_count), "Open", "bad" if miss_count else "good"), True, True, 0)
+    metrics.pack_start(metric(Gtk, f"{tool_doctor.get('overall', 0)}%", "Tools", css_state(int(tool_doctor.get("overall", 0) or 0))), True, True, 0)
+    metrics.pack_start(metric(Gtk, f"{scope.get('target_count', 0)}", "Targets", "warn" if not scope.get("active") else "good"), True, True, 0)
+    metrics.pack_start(metric(Gtk, f"{wrapper_ok}/{len(wrappers)}", "Wrappers", "good" if wrappers and wrapper_ok == len(wrappers) else "warn"), True, True, 0)
 
-    list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-    root.pack_start(list_box, True, True, 0)
-    for item in (plan.get("next") or [])[:4]:
-        list_box.pack_start(plan_card(Gtk, item), False, False, 0)
-    if not (plan.get("next") or []):
-        list_box.pack_start(plan_card(Gtk, {"title": "Shield ready", "severity": "ok", "command": "seven shield dashboard", "reason": "No urgent Shield action."}), False, False, 0)
+    scroller = Gtk.ScrolledWindow()
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    scroller.set_min_content_height(420)
+    root.pack_start(scroller, True, True, 0)
+
+    content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    scroller.add(content)
+
+    content.pack_start(section_label(Gtk, "Operational State"), False, False, 0)
+    state_grid = Gtk.Grid()
+    state_grid.set_column_spacing(10)
+    state_grid.set_row_spacing(10)
+    content.pack_start(state_grid, False, False, 0)
+    state_grid.attach(detail_card(Gtk, "Persona", persona.get("title", "Safe Audit"), "seven shield personas"), 0, 0, 1, 1)
+    state_grid.attach(detail_card(Gtk, "Scope", f"{scope.get('state', 'DRAFT')} · {scope.get('target_count', 0)} target(s)", "seven shield scope"), 1, 0, 1, 1)
+    state_grid.attach(detail_card(Gtk, "Network", network.get("persona", {}).get("policy", "normal-guarded"), "seven shield network"), 0, 1, 1, 1)
+    state_grid.attach(detail_card(Gtk, "Evidence", f"{evidence.get('items', 0)} item(s)", "seven shield evidence"), 1, 1, 1, 1)
+
+    content.pack_start(section_label(Gtk, "Tool Doctor"), False, False, 0)
+    for domain in (tool_doctor.get("domains") or [])[:5]:
+        content.pack_start(row_card(Gtk, domain.get("title", "Domain"), f"{domain.get('percent', 0)}% · {domain.get('state', 'UNKNOWN')}", "seven shield tool-doctor"), False, False, 0)
+
+    content.pack_start(section_label(Gtk, "Shield Bundles"), False, False, 0)
+    for bundle in bundles[:5]:
+        note = f"{bundle.get('percent', 0)}% · persona {bundle.get('persona', '-')}"
+        content.pack_start(row_card(Gtk, bundle.get("title", bundle.get("key", "Bundle")), note, bundle.get("commands", {}).get("install", f"seven shield bundles status {bundle.get('key', '')}")), False, False, 0)
+
+    content.pack_start(section_label(Gtk, "Shield Toolchain Sources"), False, False, 0)
+    for source in toolchain:
+        content.pack_start(row_card(Gtk, source.get("title", source.get("key", "Source")), f"{source.get('state', 'MISS')} · {source.get('role', '')}", source.get("install", "seven shield toolchain")), False, False, 0)
+
+    next_actions = (dashboard.get("plan", {}).get("next") or [])[:3]
+    if next_actions:
+        content.pack_start(section_label(Gtk, "Next Actions"), False, False, 0)
+        for item in next_actions:
+            content.pack_start(plan_card(Gtk, item), False, False, 0)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     actions.set_halign(Gtk.Align.CENTER)
@@ -187,16 +260,16 @@ def run() -> int:
     root.pack_end(actions, False, False, 0)
     for glyph, tooltip, command in [
         ("󰒃", "Dashboard", "seven shield dashboard"),
-        ("󰄬", "Audit", "seven shield audit"),
-        ("󱗼", "Lab", "seven shield lab --preset web"),
+        ("󰄬", "Doctor", "seven shield tool-doctor"),
+        ("󱗼", "Bundles", "seven shield bundles"),
         ("󰉋", "Workspace", "seven shield open"),
-        ("󰞀", "Enable", "seven shield enable"),
+        ("󰾅", "Performance", "seven shield performance apply"),
     ]:
         button = Gtk.Button()
         button.get_style_context().add_class("icon-action")
         button.set_tooltip_text(tooltip)
         button.add(Gtk.Label(label=glyph))
-        button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        button.connect("clicked", lambda _button, cmd=command: run_terminal(cmd))
         actions.pack_start(button, False, False, 0)
 
     window.connect("destroy", Gtk.main_quit)
@@ -227,6 +300,47 @@ def metric(Gtk, value: str, label: str, state: str):
     return box
 
 
+def section_label(Gtk, text: str):
+    label = Gtk.Label(label=text, xalign=0)
+    label.get_style_context().add_class("section-title")
+    return label
+
+
+def detail_card(Gtk, title: str, note: str, command: str):
+    button = Gtk.Button()
+    button.get_style_context().add_class("plan-card")
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    title_label = Gtk.Label(label=title, xalign=0)
+    title_label.get_style_context().add_class("row-title")
+    note_label = Gtk.Label(label=note, xalign=0)
+    note_label.get_style_context().add_class("row-note")
+    box.pack_start(title_label, False, False, 0)
+    box.pack_start(note_label, False, False, 0)
+    button.add(box)
+    button.connect("clicked", lambda _button, cmd=command: run_terminal(cmd))
+    return button
+
+
+def row_card(Gtk, title: str, note: str, command: str):
+    button = Gtk.Button()
+    button.get_style_context().add_class("plan-card")
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+    title_label = Gtk.Label(label=title, xalign=0)
+    title_label.get_style_context().add_class("row-title")
+    note_label = Gtk.Label(label=note, xalign=0)
+    note_label.get_style_context().add_class("row-note")
+    text.pack_start(title_label, False, False, 0)
+    text.pack_start(note_label, False, False, 0)
+    row.pack_start(text, True, True, 0)
+    pill = Gtk.Label(label="Open")
+    pill.get_style_context().add_class("pill")
+    row.pack_end(pill, False, False, 0)
+    button.add(row)
+    button.connect("clicked", lambda _button, cmd=command: run_terminal(cmd))
+    return button
+
+
 def plan_card(Gtk, item: dict):
     button = Gtk.Button()
     button.get_style_context().add_class("plan-card")
@@ -239,7 +353,7 @@ def plan_card(Gtk, item: dict):
     box.pack_start(title, False, False, 0)
     box.pack_start(note, False, False, 0)
     button.add(box)
-    button.connect("clicked", lambda _button, cmd=item.get("command", "seven shield dashboard"): run_detached(cmd))
+    button.connect("clicked", lambda _button, cmd=item.get("command", "seven shield dashboard"): run_terminal(cmd))
     return button
 
 

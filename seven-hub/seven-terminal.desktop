@@ -2,9 +2,9 @@
 Type=Application
 Name=Seven Terminal
 Comment=Adaptive SevenOS terminal
-Exec=seven-terminal classic
+Exec=seven-terminal
 Icon=utilities-terminal
 Terminal=false
 Categories=System;TerminalEmulator;
 StartupWMClass=SevenTerminalNative
-Keywords=terminal;shell;console;SevenOS;
+Keywords=SevenOS;workspace;console;

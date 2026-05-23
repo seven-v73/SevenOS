@@ -25,8 +25,8 @@ Usage:
   seven runtime doctor [--json]
 
 Examples:
-  seven runtime plan equinox forge shield horizon pulse
-  seven runtime activate baobab + shield + horizon --apply --yes
+  seven runtime plan equinox forge shield studio pulse
+  seven runtime activate baobab + shield + forge --apply --yes
 
 Seven Runtime Orchestrator uses the Layered Autonomous Profiles Architecture:
 each profile is complete by itself, while Equinox can mix controlled
@@ -186,25 +186,17 @@ CONFLICT_RULES = {
         "conflict": "Windows compatibility needs permissive app bridges while Shield prefers isolation",
         "resolution": "keep Windows prefix/VM usability; enable guarded network and explicit sandbox prompts",
     },
-    frozenset(("horizon", "shield")): {
-        "conflict": "server services need stable throughput while Shield wants inspection",
-        "resolution": "keep Horizon service QoS; Shield uses event logs and policy checks instead of constant polling",
-    },
     frozenset(("studio", "windows")): {
         "conflict": "creative GPU workloads and Windows VM/Wine foreground workloads can both request high priority",
         "resolution": "primary runtime owns GPU priority; secondary compatibility runs foreground-only when focused",
-    },
-    frozenset(("forge", "horizon")): {
-        "conflict": "local builds and deploy services can duplicate container/runtime daemons",
-        "resolution": "share container capability; avoid starting duplicate service stacks",
     },
     frozenset(("pulse", "shield")): {
         "conflict": "low-latency gaming and active scans can create frame-time spikes",
         "resolution": "Pulse owns foreground latency; Shield only keeps passive rules unless explicitly confirmed",
     },
-    frozenset(("pulse", "horizon")): {
+    frozenset(("pulse", "forge")): {
         "conflict": "latency-sensitive workloads and server daemons compete for network/IO smoothness",
-        "resolution": "Pulse foreground traffic wins; Horizon services stay background-limited",
+        "resolution": "Pulse foreground traffic wins; Forge DevOps services stay background-limited",
     },
     frozenset(("baobab", "forge")): {
         "conflict": "Baobab is cultural-only while Forge can inject dev noise",
@@ -228,9 +220,18 @@ def read_state():
         return None
 
 
+ALIASES = {"horizon": "forge"}
+
+def normalize_key(item):
+    return ALIASES.get(item, item)
+
 def normalize_profiles(raw_items):
-    valid = [item for item in raw_items if item in PROFILES]
-    invalid = [item for item in raw_items if item and item not in PROFILES]
+    normalized_items = [normalize_key(item) for item in raw_items]
+    valid = [item for item in normalized_items if item in PROFILES]
+    invalid = [
+        raw for raw, normalized in zip(raw_items, normalized_items)
+        if raw and normalized not in PROFILES
+    ]
     if valid:
         primary = valid[0]
         capabilities = []
@@ -524,8 +525,8 @@ payload = {
         "requires_confirmation": action == "activate" and not (apply_requested and yes),
     },
     "next_actions": [
-        {"command": "seven runtime plan equinox forge shield studio horizon pulse", "reason": "preview the neutral global profile with controlled capability fragments"},
-        {"command": "seven runtime plan baobab shield horizon", "reason": "verify Baobab stays culturally clean while collaborating with other profiles"},
+        {"command": "seven runtime plan equinox forge shield studio pulse", "reason": "preview the neutral global profile with controlled capability fragments"},
+        {"command": "seven runtime plan baobab shield forge", "reason": "verify Baobab stays culturally clean while collaborating with other profiles"},
         {"command": "seven scheduler plan", "reason": "inspect CPU/IO/user-space scheduler hints"},
         {"command": "seven context status --json", "reason": "see what SevenOS currently detects from apps and windows"},
         {"command": "seven ai diagnose system --json", "reason": "let SevenAI explain local bottlenecks before repair"},

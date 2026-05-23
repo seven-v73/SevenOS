@@ -1,9 +1,10 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 import json
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -29,40 +30,217 @@ def active_profile() -> str:
     return "equinox"
 
 
+def known_profiles(isolation: dict) -> set[str]:
+    profiles = set()
+    profiles.update((isolation.get("profile_containers") or {}).keys())
+    profiles.update((isolation.get("profile_overlays") or {}).keys())
+    profiles.update(isolation.get("selected_profiles") or [])
+    return profiles or {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
+
+
+def profile_roots(profile: str, isolation: dict) -> dict:
+    containers = isolation.get("profile_containers") or {}
+    configured = containers.get(profile) if isinstance(containers, dict) else {}
+    if not isinstance(configured, dict):
+        configured = {}
+    base = Path.home() / ".local/share/sevenos/profile-containers" / profile
+    config_base = state_dir() / "profiles" / profile
+    return {
+        "config": Path(configured.get("config") or config_base),
+        "home": Path(configured.get("home") or base / "home"),
+        "cache": Path(configured.get("cache") or base / "cache"),
+        "data": Path(configured.get("data") or base / "data"),
+    }
+
+
+def default_workspace(profile: str) -> Path:
+    mapping = {
+        "equinox": "SevenOS",
+        "baobab": "Baobab",
+        "forge": "Forge",
+        "shield": "ShieldLab",
+        "studio": "Studio",
+        "windows": "WindowsMode",
+        "pulse": "Pulse",
+    }
+    return Path.home() / mapping.get(profile, "SevenOS")
+
+
+def runtime_manifest(profile: str, isolation: dict) -> dict:
+    roots = profile_roots(profile, isolation)
+    workspace = default_workspace(profile)
+    engine = "bubblewrap" if shutil.which("bwrap") else "host-scope"
+    return {
+        "schema": "sevenos.profile-runtime-manifest.v1",
+        "profile": profile,
+        "active_profile": active_profile(),
+        "engine": engine,
+        "container_available": shutil.which("bwrap") is not None,
+        "systemd_scope_available": shutil.which("systemd-run") is not None,
+        "roots": {key: str(path) for key, path in roots.items()},
+        "workspace": {
+            "default": str(workspace),
+            "exists": workspace.is_dir(),
+            "sandbox_path": "/workspace",
+            "policy": "explicit-bind-only",
+        },
+        "environment": {
+            "SEVENOS_EXEC_PROFILE": profile,
+            "SEVENOS_PROFILE_CONTAINER": profile,
+            "SEVENOS_WORKSPACE": "/workspace when --workspace or --workspace-profile is used",
+            "SEVENOS_EPHEMERAL": "1 when --ephemeral is used",
+            "HOME": "/profile/home in strict container mode",
+            "XDG_CONFIG_HOME": "/profile/config in strict container mode",
+            "XDG_CACHE_HOME": "/profile/cache in strict container mode",
+            "XDG_DATA_HOME": "/profile/data in strict container mode",
+        },
+        "commands": {
+            "inspect": f"seven-profile-run --profile {profile} --manifest",
+            "strict_shell": f"seven profile exec {profile} --container sh",
+            "workspace_shell": f"seven profile exec {profile} --container --workspace-profile sh",
+            "ephemeral_shell": f"seven profile exec {profile} --ephemeral sh",
+            "run_app": f"seven profile exec {profile} --container <command>",
+        },
+        "policy": {
+            "packages": "global-pacman-store",
+            "app_data": "profile-config-home-cache-data",
+            "workspace": "explicit-bind-only",
+            "ephemeral": "temporary-home-cache-data",
+            "runtime": "systemd-user-scope" if shutil.which("systemd-run") else "direct-process",
+        },
+    }
+
+
+def print_status(profile: str, isolation: dict) -> int:
+    manifest = runtime_manifest(profile, isolation)
+    payload = {
+        "schema": "sevenos.profile-run.v1",
+        "profile": profile,
+        "active_profile": active_profile(),
+        "engine": manifest["engine"],
+        "container_available": manifest["container_available"],
+        "systemd_scope_available": manifest["systemd_scope_available"],
+        "roots": manifest["roots"],
+        "boundary": {
+            "packages": "global-pacman-store",
+            "app_data": "profile-config-home-cache-data",
+            "workspace": "explicit-bind-only",
+            "ephemeral": "available-with-ephemeral-flag",
+            "runtime": "systemd-user-scope",
+            "note": "SevenOS isolates execution state and services; pacman packages remain globally installed on Arch.",
+        },
+        "workspace_mount": {
+            "supported": True,
+            "flag": "--workspace PATH",
+            "profile_flag": "--workspace-profile",
+            "sandbox_path": "/workspace",
+            "default": "disabled unless explicitly requested",
+            "profile_default": manifest["workspace"]["default"],
+            "profile_default_exists": manifest["workspace"]["exists"],
+        },
+        "ephemeral": {
+            "supported": True,
+            "flag": "--ephemeral",
+            "state": "temporary HOME/cache/data removed after command exit",
+            "workspace_policy": "workspace mounts remain explicit and are not deleted",
+        },
+        "manifest": manifest,
+    }
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
 def main() -> int:
     if len(sys.argv) < 2:
-        print("Usage: seven-profile-run [--container] <command> [args...]", file=sys.stderr)
+        print("Usage: seven-profile-run [--profile PROFILE] [--container] [--ephemeral] [--workspace PATH|--workspace-profile] [--json|--manifest] <command> [args...]", file=sys.stderr)
         return 2
 
     use_container = False
+    json_status = False
+    manifest_status = False
+    forced_profile = None
+    workspace_path = None
+    use_profile_workspace = False
+    ephemeral = False
     raw_args = sys.argv[1:]
-    if raw_args and raw_args[0] == "--container":
-        use_container = True
-        raw_args = raw_args[1:]
+    while raw_args:
+        if raw_args[0] == "--container":
+            use_container = True
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--ephemeral":
+            ephemeral = True
+            use_container = True
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] in ("--json", "status", "--status"):
+            json_status = True
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--manifest":
+            manifest_status = True
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--profile":
+            if len(raw_args) < 2:
+                print("[SevenOS] --profile requires a profile key", file=sys.stderr)
+                return 2
+            forced_profile = raw_args[1]
+            raw_args = raw_args[2:]
+            continue
+        if raw_args[0] in ("--workspace", "--project"):
+            if len(raw_args) < 2:
+                print("[SevenOS] --workspace requires a path", file=sys.stderr)
+                return 2
+            workspace_path = Path(raw_args[1]).expanduser().resolve()
+            if not workspace_path.exists() or not workspace_path.is_dir():
+                print(f"[SevenOS] workspace path not found or not a directory: {workspace_path}", file=sys.stderr)
+                return 2
+            raw_args = raw_args[2:]
+            continue
+        if raw_args[0] == "--workspace-profile":
+            use_profile_workspace = True
+            raw_args = raw_args[1:]
+            continue
+        break
+
+    isolation = load_json(state_dir() / "profile-isolation.json")
+    active = forced_profile or active_profile()
+    if active not in known_profiles(isolation):
+        print(f"[SevenOS] unknown profile: {active}", file=sys.stderr)
+        return 2
+
+    if json_status and not raw_args:
+        return print_status(active, isolation)
+    if manifest_status and not raw_args:
+        print(json.dumps(runtime_manifest(active, isolation), indent=2))
+        return 0
+
+    if use_profile_workspace and workspace_path is None:
+        workspace_path = default_workspace(active)
+        workspace_path.mkdir(parents=True, exist_ok=True)
+
     if not raw_args:
-        print("Usage: seven-profile-run [--container] <command> [args...]", file=sys.stderr)
+        print("Usage: seven-profile-run [--profile PROFILE] [--container] [--ephemeral] [--workspace PATH|--workspace-profile] <command> [args...]", file=sys.stderr)
         return 2
 
     command = raw_args[0]
     args = raw_args[1:]
-    isolation = load_json(state_dir() / "profile-isolation.json")
     runtime = load_json(state_dir() / "runtime.json")
-    active = active_profile()
     active_commands = set(isolation.get("active_commands") or [])
     inactive_commands = set(isolation.get("inactive_commands") or [])
 
     if not isolation:
         print("[SevenOS] WARN: profile isolation state missing; run: seven profile isolation apply --yes", file=sys.stderr)
-    elif command in inactive_commands and command not in active_commands:
+    elif not forced_profile and command in inactive_commands and command not in active_commands:
         selected = ", ".join(isolation.get("selected_profiles") or [active])
         owners = []
         for profile, commands in {
-            "forge": ["docker", "node", "npm", "pnpm", "python", "cargo", "go", "code", "nvim", "helix", "hx"],
+            "forge": ["docker", "node", "npm", "pnpm", "python", "cargo", "go", "code", "nvim", "helix", "hx", "podman", "buildah", "skopeo", "caddy", "seven-deploy", "ssh", "rsync", "jq"],
             "baobab": ["seven-reader", "foliate", "calibre", "ebook-viewer", "espeak-ng", "festival", "trans"],
             "shield": ["nmap", "wireshark", "tcpdump", "sqlmap", "zaproxy", "msfconsole", "aircrack-ng"],
             "studio": ["gimp", "krita", "inkscape", "blender", "kdenlive", "obs", "obs-studio", "audacity"],
             "windows": ["wine", "winetricks", "lutris", "virt-manager", "virt-install"],
-            "horizon": ["podman", "buildah", "skopeo", "caddy", "seven-deploy"],
             "pulse": ["gamemoderun", "game-mode", "gamescope", "mangohud", "vulkaninfo", "lutris"],
         }.items():
             if command in commands:
@@ -94,29 +272,84 @@ def main() -> int:
     env = os.environ.copy()
     env.setdefault("SEVENOS_ACTIVE_PROFILE", active)
     env.setdefault("SEVENOS_RUNTIME_SLICE", slice_name)
+    env["SEVENOS_EXEC_PROFILE"] = active
 
     if use_container and shutil.which("bwrap"):
-        container_root = Path.home() / ".local/share/sevenos/profile-containers" / active
-        home = container_root / "home"
-        cache = container_root / "cache"
-        data = container_root / "data"
-        for path in (home, cache, data):
+        temp_context = None
+        if ephemeral:
+            temp_context = tempfile.TemporaryDirectory(prefix=f"sevenos-{active}-ephemeral-")
+            temp_root = Path(temp_context.name)
+            roots = {
+                "config": temp_root / "config",
+                "home": temp_root / "home",
+                "cache": temp_root / "cache",
+                "data": temp_root / "data",
+            }
+        else:
+            roots = profile_roots(active, isolation)
+        config = roots["config"]
+        home = roots["home"]
+        cache = roots["cache"]
+        data = roots["data"]
+        for path in (config, home, cache, data):
             path.mkdir(parents=True, exist_ok=True)
+        sandbox_config = "/profile/config"
+        sandbox_home = "/profile/home"
+        sandbox_cache = "/profile/cache"
+        sandbox_data = "/profile/data"
+        sandbox_workspace = "/workspace"
         env.update({
-            "HOME": str(home),
-            "XDG_CACHE_HOME": str(cache),
-            "XDG_DATA_HOME": str(data),
+            "HOME": sandbox_home,
+            "XDG_CONFIG_HOME": sandbox_config,
+            "XDG_CACHE_HOME": sandbox_cache,
+            "XDG_DATA_HOME": sandbox_data,
             "SEVENOS_PROFILE_CONTAINER": active,
         })
+        if ephemeral:
+            env["SEVENOS_EPHEMERAL"] = "1"
+        if workspace_path:
+            env["SEVENOS_WORKSPACE"] = sandbox_workspace
+        runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
         command_line = [
             "bwrap",
-            "--dev-bind", "/", "/",
-            "--setenv", "HOME", str(home),
-            "--setenv", "XDG_CACHE_HOME", str(cache),
-            "--setenv", "XDG_DATA_HOME", str(data),
+            "--die-with-parent",
+            "--proc", "/proc",
+            "--dev", "/dev",
+            "--tmpfs", "/tmp",
+            "--ro-bind", "/usr", "/usr",
+            "--ro-bind-try", "/etc", "/etc",
+            "--ro-bind-try", "/opt", "/opt",
+            "--ro-bind-try", "/var/lib/flatpak", "/var/lib/flatpak",
+            "--dir", "/profile",
+            "--symlink", "usr/bin", "/bin",
+            "--symlink", "usr/sbin", "/sbin",
+            "--symlink", "usr/lib", "/lib",
+            "--symlink", "usr/lib", "/lib64",
+            "--bind", str(config), sandbox_config,
+            "--bind", str(home), sandbox_home,
+            "--bind", str(cache), sandbox_cache,
+            "--bind", str(data), sandbox_data,
+            "--setenv", "HOME", sandbox_home,
+            "--setenv", "XDG_CONFIG_HOME", sandbox_config,
+            "--setenv", "XDG_CACHE_HOME", sandbox_cache,
+            "--setenv", "XDG_DATA_HOME", sandbox_data,
+            "--setenv", "SEVENOS_PROFILE_CONTAINER", active,
+        ]
+        if workspace_path:
+            command_line.extend([
+                "--bind", str(workspace_path), sandbox_workspace,
+                "--setenv", "SEVENOS_WORKSPACE", sandbox_workspace,
+            ])
+        command_line.extend(["--chdir", sandbox_workspace if workspace_path else sandbox_home])
+        if runtime_dir:
+            command_line.extend([
+                "--bind-try", runtime_dir, runtime_dir,
+                "--setenv", "XDG_RUNTIME_DIR", runtime_dir,
+            ])
+        command_line.extend([
             executable,
             *args,
-        ]
+        ])
         if shutil.which("systemd-run"):
             command_line = [
                 "systemd-run",
@@ -126,8 +359,12 @@ def main() -> int:
                 "--quiet",
                 *command_line,
             ]
-        result = subprocess.run(command_line, env=env, check=False)
-        return int(result.returncode)
+        try:
+            result = subprocess.run(command_line, env=env, check=False)
+            return int(result.returncode)
+        finally:
+            if temp_context is not None:
+                temp_context.cleanup()
 
     if shutil.which("systemd-run"):
         result = subprocess.run(
@@ -141,11 +378,12 @@ def main() -> int:
                 *args,
             ],
             env=env,
+            cwd=str(workspace_path) if workspace_path else None,
             check=False,
         )
         return int(result.returncode)
 
-    result = subprocess.run([executable, *args], env=env, check=False)
+    result = subprocess.run([executable, *args], env=env, cwd=str(workspace_path) if workspace_path else None, check=False)
     return int(result.returncode)
 
 

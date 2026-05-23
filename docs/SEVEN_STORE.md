@@ -166,9 +166,9 @@ SevenStore is profile-aware. Each mini OS gets a curated store surface.
 | Shield | authorized audit, forensics, sandboxing and reporting |
 | Studio | design, video, audio, 3D, capture and export |
 | Windows | VM-first Windows apps and compatibility helpers |
-| Horizon | deploy, reverse proxy, containers, logs and endpoints |
+| Forge DevOps | code, deploy, reverse proxy, containers, logs and endpoints |
 | Pulse | Linux gaming, Proton, overlays, controllers and latency tools |
-| Baobab | African culture, learning, reading and language tools |
+| Baobab | African heritage, languages, stories, sound, maps, fashion, food, wisdom and offline memory |
 
 The store must recommend by profile without polluting other profiles. A profile
 collection is a curated path, not a forced global install.

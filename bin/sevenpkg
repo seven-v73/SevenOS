@@ -41,6 +41,9 @@ def resolve_root():
 
 ROOT_DIR = resolve_root()
 MANIFEST_PATH = ROOT_DIR / "sevenpkg" / "metapackages.json"
+ALIASES = {
+    "horizon": "forge",
+}
 
 
 def is_dry_run(args):
@@ -135,6 +138,15 @@ def load_manifest():
         return json.load(handle)
 
 
+def normalize_name(name):
+    return ALIASES.get(name, name)
+
+
+def alias_notice(name, normalized):
+    if name != normalized:
+        log(f"'{name}' is retired; using '{normalized}' instead")
+
+
 def read_package_file(relative_path):
     package_file = ROOT_DIR / relative_path
     packages = []
@@ -182,6 +194,10 @@ def install_meta(name, meta, args):
 
     if kind == "sevenos-target":
         target = meta["target"]
+        if name == "forge":
+            run([str(ROOT_DIR / "install.sh"), "dev", *args.meta_args], args)
+            run([str(ROOT_DIR / "install.sh"), "server", *args.meta_args], args)
+            return
         run([str(ROOT_DIR / "install.sh"), target, *args.meta_args], args)
         return
 
@@ -200,6 +216,9 @@ def install_meta(name, meta, args):
 def install_one(package, args):
     validate_package_name(package)
     manifest = load_manifest()
+    original = package
+    package = normalize_name(package)
+    alias_notice(original, package)
 
     if package in manifest:
         install_meta(package, manifest[package], args)
@@ -232,7 +251,9 @@ def install_one(package, args):
 
 def install_packages(args):
     manifest = load_manifest()
-    first_package = args.packages[0]
+    original_first = args.packages[0]
+    first_package = normalize_name(original_first)
+    alias_notice(original_first, first_package)
 
     if first_package in manifest:
         args.meta_args = args.packages[1:]
@@ -245,6 +266,9 @@ def install_packages(args):
 
     for package in args.packages:
         validate_package_name(package)
+        original = package
+        package = normalize_name(package)
+        alias_notice(original, package)
 
         source = args.source
         if source == "auto":
@@ -279,6 +303,9 @@ def install_packages(args):
 def remove_packages(args):
     for package in args.packages:
         validate_package_name(package)
+        if package in ALIASES:
+            error(f"'{package}' is a retired SevenOS alias, not a removable system package. Use '{ALIASES[package]}' or remove concrete packages explicitly.")
+            sys.exit(1)
     run(["sudo", "pacman", "-Rns", *args.packages], args)
 
 
@@ -293,6 +320,7 @@ def update_system(args):
 def search_package(query, args):
     validate_package_name(query)
     manifest = load_manifest()
+    query = normalize_name(query)
 
     for name, meta in manifest.items():
         if query.lower() in name.lower() or query.lower() in meta.get("description", "").lower():
@@ -416,7 +444,6 @@ def plan_payload(limit=None):
         "forge": "high",
         "studio": "high",
         "windows": "high",
-        "horizon": "high",
         "griot": "medium",
     }
     phase = {
@@ -425,7 +452,6 @@ def plan_payload(limit=None):
         "forge": "dev",
         "studio": "creative",
         "windows": "compatibility",
-        "horizon": "server",
         "griot": "knowledge",
     }
     actions = []
@@ -443,11 +469,11 @@ def plan_payload(limit=None):
             {
                 "key": name,
                 "state": state,
-                "title": f"Install {name.title()} software layer",
+                "title": f"Install {'Forge DevOps' if name == 'forge' else name.title()} software layer",
                 "severity": severity,
                 "impact": "packages",
                 "phase": phase.get(name, "software"),
-                "reason": f"{name.title()} is {state} with {missing} missing packages.",
+                "reason": f"{'Forge DevOps' if name == 'forge' else name.title()} is {state} with {missing} missing packages.",
                 "command": f"sevenpkg install {name}",
                 "missing_count": missing,
                 "installed": installed,

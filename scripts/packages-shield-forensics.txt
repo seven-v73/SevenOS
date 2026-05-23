@@ -1,0 +1,9 @@
+# SevenOS Shield Forensics bundle
+binwalk
+volatility3
+yara
+sleuthkit
+foremost
+testdisk
+perl-image-exiftool
+
