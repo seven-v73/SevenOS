@@ -69,7 +69,7 @@ profile_title() {
     forge) printf 'Forge DevOps' ;;
     shield) printf 'Shield Cybersecurity' ;;
     studio) printf 'Studio Creator' ;;
-    windows) printf 'Windows Bridge' ;;
+    windows) printf 'Windows' ;;
     pulse) printf 'Pulse Gaming' ;;
     baobab) printf 'Baobab Cultural OS' ;;
     *) printf '%s' "$1" ;;
@@ -84,7 +84,7 @@ profile_description() {
     forge) printf 'Developer and cloud deployment mini OS for code, toolchains, containers, local services, logs and releases.' ;;
     shield) printf 'Cybersecurity mini OS for authorized audit, forensics, sandboxing, network analysis and reports.' ;;
     studio) printf 'Creator mini OS for logos, design, video, audio, 3D, capture and asset production.' ;;
-    windows) printf 'Windows Bridge mini OS: VM-first Windows experience with Wine and Bottles as fallback paths.' ;;
+    windows) printf 'Espace Windows pour les applications Windows, les dossiers partagés et Windows complet à la demande.' ;;
     pulse) printf 'Linux gaming mini OS for Proton, low latency, overlays, controllers and frame pacing.' ;;
     baobab) printf 'African cultural mini OS for heritage, languages, oral traditions, music, maps, fashion, food, wisdom and offline community memory.' ;;
     *) printf 'SevenOS mini OS profile.' ;;
@@ -194,7 +194,7 @@ profile_short_label() {
     forge) printf 'DEV' ;;
     shield) printf 'SEC' ;;
     studio) printf 'CRT' ;;
-    windows) printf 'VM' ;;
+    windows) printf 'WIN' ;;
     pulse) printf 'GAME' ;;
     *) printf '%s' "$1" | tr '[:lower:]' '[:upper:]' | cut -c1-3 ;;
   esac
@@ -239,7 +239,7 @@ profile_ui_mood() {
     forge) printf 'developer cockpit, cloud deploys, containers, services, logs and release flow' ;;
     shield) printf 'cybersecurity dashboard, visible scope, VPN, audit and isolation emphasis' ;;
     studio) printf 'creator canvas, media actions, color, capture and export flow' ;;
-    windows) printf 'Windows VM bridge, snapshots, shared folders, Wine/Bottles fallback guidance' ;;
+    windows) printf 'Applications Windows, dossiers partagés, réparation et Windows complet si nécessaire' ;;
     pulse) printf 'Linux gaming HUD, low latency, overlays, controllers and recording awareness' ;;
     *) printf 'SevenOS adaptive profile surface' ;;
   esac
@@ -283,7 +283,7 @@ profile_role() {
     forge) printf 'DevOps' ;;
     shield) printf 'Cybersecurity' ;;
     studio) printf 'Creator' ;;
-    windows) printf 'Windows VM' ;;
+    windows) printf 'Windows' ;;
     pulse) printf 'Gaming' ;;
     baobab) printf 'Culture' ;;
     *) printf 'Mini OS' ;;
@@ -313,7 +313,7 @@ profile_principle() {
     forge) printf 'build, ship and observe' ;;
     shield) printf 'visible protection' ;;
     studio) printf 'expressive production' ;;
-    windows) printf 'compatibility without surrender' ;;
+    windows) printf 'windows when you need it' ;;
     pulse) printf 'responsive performance' ;;
     baobab) printf 'living heritage, offline-first' ;;
     *) printf 'sovereign workflow' ;;
@@ -337,7 +337,7 @@ profile_story() {
     forge) printf 'Turn SevenOS into a DevOps mini OS for code, SDKs, containers, builds, local services, deployments, logs and technical learning.' ;;
     shield) printf 'Use SevenOS as a cybersecurity mini OS for authorized scope, audit, sandboxing, forensics and careful reporting.' ;;
     studio) printf 'Use SevenOS as a creator mini OS for logos, design, video, audio, 3D, capture and export.' ;;
-    windows) printf 'Run a complete Windows VM-first experience from SevenOS, using Wine and Bottles only as lighter fallback paths.' ;;
+    windows) printf 'Ouvre les applications Windows, les dossiers partagés et Windows complet depuis SevenOS sans étapes manuelles.' ;;
     pulse) printf 'Use SevenOS as a Linux gaming mini OS tuned for Proton, low latency, controllers, overlays and frame pacing.' ;;
     baobab) printf 'Enter Baobab as an African digital village: heritage library, oral stories, language hub, cultural sound, map exploration, fashion, food, wisdom and offline community memory.' ;;
     *) printf 'Use SevenOS as a coherent sovereign workspace.' ;;
@@ -465,7 +465,7 @@ profile_workspace_dirs() {
     forge) printf '%s\n' "Projects" "Sandboxes" "Containers" "Deployments" "Services" "Logs" "Notes" ;;
     shield) printf '%s\n' "Labs" "Reports" "Captures" "Wordlists" "Evidence" ;;
     studio) printf '%s\n' "Images" "Video" "Audio" "3D" "Exports" "References" ;;
-    windows) printf '%s\n' "Bottles" "VMs" "Installers" "Shared" ;;
+    windows) printf '%s\n' "Applications" "Windows complet" "Installations" "Dossiers" ;;
     pulse) printf '%s\n' "Games" "Launchers" "Benchmarks" "Clips" ;;
     baobab) printf '%s\n' "Village" "Heritage" "Languages" "Stories" "Sound" "Explore" "Museum" "Fashion" "Food" "Wisdom" "Market" ;;
     *) return 1 ;;
@@ -526,8 +526,8 @@ profile_next_actions() {
     forge) printf '%s\t%s\n' "Detect deployable project" "seven deploy detect ." ;;
     shield) printf '%s\t%s\n' "Open Cyber Lab" "seven shield lab --preset web" ;;
     windows)
-      printf '%s\t%s\n' "Enter Windows Bridge" "seven windows enter"
-      printf '%s\t%s\n' "Open Windows Mode guide" "seven windows guide"
+      printf '%s\t%s\n' "Ouvrir Windows" "seven windows enter"
+      printf '%s\t%s\n' "Ouvrir le panneau Windows" "seven windows open"
       ;;
     equinox) printf '%s\t%s\n' "Preview balanced runtime" "seven runtime plan equinox forge shield studio pulse" ;;
     pulse) printf '%s\t%s\n' "Open performance runtime plan" "seven runtime plan pulse shield" ;;
@@ -1211,6 +1211,32 @@ print(json.dumps(payload, indent=2))
 PY
 }
 
+write_active_profile_json_fast() {
+  local key="$1"
+  local target="${2:-$STATE_JSON}"
+  printf '{'
+  printf '"key":%s,' "$(printf '%s' "$key" | json_escape)"
+  printf '"title":%s,' "$(profile_title "$key" | json_escape)"
+  printf '"description":%s,' "$(profile_description "$key" | json_escape)"
+  printf '"role":%s,' "$(profile_role "$key" | json_escape)"
+  printf '"symbol":%s,' "$(profile_symbol "$key" | json_escape)"
+  printf '"waybar_icon":%s,' "$(profile_waybar_icon "$key" | json_escape)"
+  printf '"short_label":%s,' "$(profile_short_label "$key" | json_escape)"
+  printf '"accent_color":%s,' "$(profile_accent_color "$key" | json_escape)"
+  printf '"secondary_color":%s,' "$(profile_secondary_color "$key" | json_escape)"
+  printf '"ui_mood":%s,' "$(profile_ui_mood "$key" | json_escape)"
+  printf '"waybar_modules":%s,' "$(profile_waybar_modules "$key" | json_escape)"
+  printf '"principle":%s,' "$(profile_principle "$key" | json_escape)"
+  printf '"story":%s,' "$(profile_story "$key" | json_escape)"
+  printf '"terminal_mode":%s,' "$(profile_terminal_mode "$key" | json_escape)"
+  printf '"workspace":%s,' "$(profile_workspace "$key" | json_escape)"
+  printf '"accent":%s,' "$(profile_accent "$key" | json_escape)"
+  printf '"state":"OK","bootstrap_state":"OK","active":true,'
+  printf '"updated_at":%s,' "$(date +%s)"
+  printf '"fast_state":true'
+  printf '}\n'
+}
+
 write_profile_experience() {
   local key="$1"
   local config_dir experience_file
@@ -1284,12 +1310,12 @@ defaults = {
         "primary_apps": ["krita", "blender", "kdenlive"],
     },
     "windows": {
-        "metaphor": "compatibility bridge",
+        "metaphor": "windows space",
         "density": "guided",
-        "pace": "vm-managed",
-        "home": "windows console",
-        "session_policy": "restore VM state, shared folders and bridge health",
-        "primary_apps": ["seven windows enter", "virt-manager", "bottles"],
+        "pace": "guided",
+        "home": "windows panel",
+        "session_policy": "restore Windows apps, shared folders and full Windows state",
+        "primary_apps": ["seven windows open", "seven windows apps", "bottles"],
     },
     "pulse": {
         "metaphor": "performance stage",
@@ -1338,11 +1364,11 @@ passages = {
         "motion": "canvas reveal",
     },
     "windows": {
-        "enter": "Tu entres dans le pont de compatibilite Windows.",
-        "leave": "Tu quittes le pont Windows, la VM et les dossiers partages restent controles.",
-        "transition": "SevenOS isole la compatibilite avant de revenir au mini OS cible.",
-        "sound": "bridge-pulse",
-        "motion": "bridge slide",
+        "enter": "Tu entres dans l'espace Windows.",
+        "leave": "Tu quittes Windows, tes dossiers et applications restent ranges.",
+        "transition": "SevenOS prepare Windows puis revient vers le mini OS cible.",
+        "sound": "soft-open",
+        "motion": "window slide",
     },
     "pulse": {
         "enter": "Tu entres sur la scene performance Pulse.",
@@ -1469,7 +1495,7 @@ print(json.dumps(payload, indent=2, ensure_ascii=False))
 PY
   if [[ ! -s "$config_dir/theme.conf" ]]; then
     cat > "$config_dir/theme.conf" <<EOF
-mode=dark
+mode=system
 profile=$key
 EOF
   fi
@@ -1549,6 +1575,63 @@ run_profile_background() {
   fi
 }
 
+profile_post_activate_refresh() {
+  local key="$1"
+  local previous_key="${2:-}"
+  local logfile="$STATE_DIR/profile-activate-$key.log"
+  run_profile_background "$logfile" bash -lc '
+    set +e
+    key="$1"
+    previous_key="$2"
+    root="$3"
+    state_dir="$4"
+    export SEVENOS_ROOT="$root"
+    is_current_profile() {
+      [[ -r "$state_dir/profile.env" ]] || return 1
+      # shellcheck disable=SC1090
+      source "$state_dir/profile.env" 2>/dev/null || return 1
+      [[ "${SEVENOS_ACTIVE_PROFILE:-}" == "$key" ]]
+    }
+    is_current_profile || exit 0
+    "$root/scripts/runtime-orchestrator.sh" activate "$key" --apply --yes >/dev/null 2>&1 || true
+    is_current_profile || exit 0
+    "$root/scripts/profile-isolation.sh" apply "$key" --yes >/dev/null 2>&1 || true
+    is_current_profile || exit 0
+    "$root/scripts/mini-os-bridge.sh" status --json >/dev/null 2>&1 || true
+    is_current_profile || exit 0
+    "$root/scripts/hypr-lua.sh" apply "$key" >/dev/null 2>&1 || true
+    is_current_profile || exit 0
+    if [[ -x "$root/scripts/motion.sh" ]]; then
+      "$root/scripts/motion.sh" profile "$key" >/dev/null 2>&1 || true
+    fi
+    is_current_profile || exit 0
+    SEVENOS_WALLPAPER_PROFILE="$key" "$root/bin/seven-wallpaper" refresh >/dev/null 2>&1 || true
+    is_current_profile || exit 0
+    "$root/scripts/events.sh" log \
+      --source profile \
+      --type profile \
+      --state OK \
+      --message "Active profile changed to $key" \
+      --command "seven profile activate $key" >/dev/null 2>&1 || true
+    is_current_profile || exit 0
+    "$root/profiles/profile-manager.sh" write-current-json "$key" >/dev/null 2>&1 || true
+    is_current_profile || exit 0
+    if [[ "${SEVENOS_PROFILE_RESTART_WAYBAR:-0}" == "1" ]]; then
+      "$root/bin/seven-profile-theme" apply >/dev/null 2>&1 || true
+      is_current_profile || exit 0
+      "$root/bin/seven-waybar" restart >/dev/null 2>&1 || true
+    else
+      pkill -RTMIN+8 -x waybar >/dev/null 2>&1 || true
+    fi
+  ' _ "$key" "$previous_key" "$ROOT_DIR" "$STATE_DIR"
+}
+
+signal_waybar_profile_refresh() {
+  if command -v pkill >/dev/null 2>&1; then
+    pkill -RTMIN+8 -x waybar >/dev/null 2>&1 || true
+  fi
+}
+
 snapshot_profile_session() {
   local key="$1"
   [[ -n "$key" ]] || return 0
@@ -1605,15 +1688,24 @@ activate_profile() {
   if [[ "$previous_key" == "windows" && "$key" != "windows" && "${SEVENOS_WINDOWS_AUTO_LEAVE:-1}" != "0" ]]; then
     should_leave_windows=1
   fi
-  if [[ "$key" == "windows" && "${SEVENOS_WINDOWS_AUTO_ENTER:-1}" != "0" ]]; then
+  if [[ "$key" == "windows" && "${SEVENOS_WINDOWS_AUTO_ENTER:-0}" == "1" ]]; then
     should_enter_windows=1
   fi
 
+  if [[ "$previous_key" == "$key" && "${SEVENOS_PROFILE_FORCE:-0}" != "1" ]]; then
+    log_success "Active profile: $(profile_title "$key")"
+    log_info "Workspace: $(profile_workspace "$key")"
+    return 0
+  fi
+
   log_info "Activating SevenOS profile: $(profile_title "$key")"
-  snapshot_profile_session "$previous_key" || true
-  write_workspace_readme "$key"
+  run_profile_background "$STATE_DIR/profile-session-$previous_key.log" bash -lc '
+    export SEVENOS_ROOT="$1"
+    "$1/profiles/profile-manager.sh" snapshot-session "$2" >/dev/null 2>&1 || true
+  ' _ "$ROOT_DIR" "$previous_key"
 
   if is_dry_run; then
+    write_workspace_readme "$key"
     printf 'mkdir -p %q\n' "$STATE_DIR"
     printf 'lock %q\n' "$LOCK_FILE"
     if [[ "$previous_key" != "$key" ]]; then
@@ -1628,7 +1720,7 @@ activate_profile() {
     if [[ "$previous_key" == "windows" && "$key" != "windows" && "${SEVENOS_WINDOWS_AUTO_LEAVE:-1}" != "0" ]]; then
       printf 'seven windows leave\n'
     fi
-    if [[ "$key" == "windows" && "${SEVENOS_WINDOWS_AUTO_ENTER:-1}" != "0" ]]; then
+    if [[ "$key" == "windows" && "${SEVENOS_WINDOWS_AUTO_ENTER:-0}" == "1" ]]; then
       printf 'seven windows enter\n'
       printf 'sleep 5; seven windows sync\n'
     fi
@@ -1636,6 +1728,9 @@ activate_profile() {
   fi
 
   mkdir -p "$STATE_DIR" "$STATE_DIR/profiles/$key"
+  mkdir -p "$(profile_workspace "$key")"
+  run_profile_background "$STATE_DIR/profile-workspace-$key.log" \
+    "$ROOT_DIR/profiles/profile-manager.sh" prepare-workspace "$key"
   write_profile_experience "$key"
   exec 9>"$LOCK_FILE"
   if ! flock -w 45 9; then
@@ -1643,13 +1738,14 @@ activate_profile() {
     return 1
   fi
 
-  profile_migration_json 1 >/dev/null || true
+  run_profile_background "$STATE_DIR/profile-migration.log" \
+    "$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --apply
 
   if [[ "$previous_key" != "$key" && "${SEVENOS_PASSAGE_OVERLAY:-1}" != "0" ]]; then
     if command -v seven-passage-overlay >/dev/null 2>&1; then
-      seven-passage-overlay --from "$previous_key" --to "$key" --duration "${SEVENOS_PASSAGE_DURATION:-950}" >/dev/null 2>&1 || true
+      run_profile_background "$STATE_DIR/profile-passage.log" seven-passage-overlay --from "$previous_key" --to "$key" --duration "${SEVENOS_PASSAGE_DURATION:-520}"
     elif [[ -x "$ROOT_DIR/bin/seven-passage-overlay" ]]; then
-      "$ROOT_DIR/bin/seven-passage-overlay" --from "$previous_key" --to "$key" --duration "${SEVENOS_PASSAGE_DURATION:-950}" >/dev/null 2>&1 || true
+      run_profile_background "$STATE_DIR/profile-passage.log" "$ROOT_DIR/bin/seven-passage-overlay" --from "$previous_key" --to "$key" --duration "${SEVENOS_PASSAGE_DURATION:-520}"
     fi
   fi
 
@@ -1665,38 +1761,10 @@ SEVENOS_PROFILE_WORKSPACE="$(profile_workspace "$key")"
 SEVENOS_PROFILE_CONFIG="$STATE_DIR/profiles/$key"
 SEVENOS_TERMINAL_MODE="$(profile_terminal_mode "$key")"
 EOF
-  STATE_JSON="$tmp_json" write_profile_json "$key"
+  write_active_profile_json_fast "$key" > "$tmp_json"
   mv -f "$tmp_env" "$STATE_FILE"
   mv -f "$tmp_json" "$STATE_JSON"
-
-  if [[ -x "$ROOT_DIR/scripts/runtime-orchestrator.sh" ]]; then
-    "$ROOT_DIR/scripts/runtime-orchestrator.sh" activate "$key" --apply --yes >/dev/null 2>&1 || true
-  fi
-  if [[ -x "$ROOT_DIR/scripts/profile-isolation.sh" ]]; then
-    "$ROOT_DIR/scripts/profile-isolation.sh" apply "$key" --yes >/dev/null 2>&1 || true
-  fi
-  if [[ -x "$ROOT_DIR/scripts/mini-os-bridge.sh" ]]; then
-    "$ROOT_DIR/scripts/mini-os-bridge.sh" status --json >/dev/null 2>&1 || true
-  fi
-  if [[ -x "$ROOT_DIR/scripts/hypr-lua.sh" ]]; then
-    "$ROOT_DIR/scripts/hypr-lua.sh" apply "$key" >/dev/null 2>&1 || true
-  fi
-  if [[ -x "$ROOT_DIR/scripts/motion.sh" ]]; then
-    "$ROOT_DIR/scripts/motion.sh" profile "$key" >/dev/null 2>&1 || true
-  fi
-  if command -v seven-wallpaper >/dev/null 2>&1; then
-    SEVENOS_WALLPAPER_PROFILE="$key" seven-wallpaper refresh >/dev/null 2>&1 || true
-  elif [[ -x "$ROOT_DIR/bin/seven-wallpaper" ]]; then
-    SEVENOS_WALLPAPER_PROFILE="$key" "$ROOT_DIR/bin/seven-wallpaper" refresh >/dev/null 2>&1 || true
-  fi
-
-  "$ROOT_DIR/scripts/events.sh" log \
-    --source profile \
-    --type profile \
-    --state OK \
-    --message "Active profile changed to $(profile_title "$key")" \
-    --command "seven profile activate $key" >/dev/null || true
-  snapshot_profile_session "$key" || true
+  signal_waybar_profile_refresh
 
   log_success "Active profile: $(profile_title "$key")"
   log_info "Workspace: $(profile_workspace "$key")"
@@ -1707,7 +1775,7 @@ EOF
   if [[ "$should_leave_windows" == "1" ]]; then
     mkdir -p "$STATE_DIR"
     if command -v notify-send >/dev/null 2>&1; then
-      notify-send -a "SevenOS Profile" -h string:x-canonical-private-synchronous:sevenos-windows-leave -t 1400 "󰖳  Windows Bridge" "Saving VM state to free resources." >/dev/null 2>&1 || true
+      notify-send -a "SevenOS Profile" -h string:x-canonical-private-synchronous:sevenos-windows-leave -t 1400 "󰖳  Windows" "Windows est rangé pour libérer les ressources." >/dev/null 2>&1 || true
     fi
     run_profile_background "$STATE_DIR/windows-enter.log" \
       env SEVENOS_ROOT="$ROOT_DIR" SEVENOS_WINDOWS_AUTO_STOPPED_BY_PROFILE=1 \
@@ -1721,7 +1789,7 @@ EOF
     if [[ -n "$enter_cmd" ]]; then
       mkdir -p "$STATE_DIR"
       if command -v notify-send >/dev/null 2>&1; then
-        notify-send -a "SevenOS Profile" -h string:x-canonical-private-synchronous:sevenos-windows-enter -t 1400 "󰖳  Windows Bridge" "Starting VM, checking network and opening the console." >/dev/null 2>&1 || true
+        notify-send -a "SevenOS Profile" -h string:x-canonical-private-synchronous:sevenos-windows-enter -t 1400 "󰖳  Windows" "SevenOS ouvre Windows et prépare l’accès internet." >/dev/null 2>&1 || true
       fi
       run_profile_background "$STATE_DIR/windows-enter.log" \
         env SEVENOS_ROOT="$ROOT_DIR" SEVENOS_WINDOWS_AUTO_STARTED_BY_PROFILE=1 \
@@ -1733,17 +1801,17 @@ EOF
         bash -lc 'sleep 5; "$SEVENOS_ROOT/bin/seven-windows-assistant" sync'
     fi
   fi
-  if command -v seven-profile-theme >/dev/null 2>&1; then
-    seven-profile-theme apply >/dev/null 2>&1 || true
-  elif [[ -x "$ROOT_DIR/bin/seven-profile-theme" ]]; then
-    "$ROOT_DIR/bin/seven-profile-theme" apply >/dev/null 2>&1 || true
-  fi
-  if command -v seven-waybar >/dev/null 2>&1; then
-    seven-waybar restart >/dev/null 2>&1 || true
-  elif [[ -x "$ROOT_DIR/bin/seven-waybar" ]]; then
-    "$ROOT_DIR/bin/seven-waybar" restart >/dev/null 2>&1 || true
-  fi
   flock -u 9
+  if [[ "${SEVENOS_PROFILE_SYNC_ACTIVATE:-0}" == "1" ]]; then
+    "$ROOT_DIR/scripts/runtime-orchestrator.sh" activate "$key" --apply --yes >/dev/null 2>&1 || true
+    "$ROOT_DIR/scripts/profile-isolation.sh" apply "$key" --yes >/dev/null 2>&1 || true
+    "$ROOT_DIR/scripts/mini-os-bridge.sh" status --json >/dev/null 2>&1 || true
+    "$ROOT_DIR/scripts/hypr-lua.sh" apply "$key" >/dev/null 2>&1 || true
+    "$ROOT_DIR/bin/seven-profile-theme" apply >/dev/null 2>&1 || true
+    "$ROOT_DIR/bin/seven-waybar" restart >/dev/null 2>&1 || true
+  else
+    profile_post_activate_refresh "$key" "$previous_key"
+  fi
 }
 
 open_profile() {
@@ -2128,6 +2196,10 @@ Usage:
   seven profile isolation [status|plan|apply|doctor] [profile] [capability ...] [--json] [--yes]
   seven profile requirements [profile] [--apply --yes] [--optional]
   seven profile exec <profile> [--container|--rootfs|--independent] [--ephemeral] [--workspace PATH|--workspace-profile] <command> [args...]
+  seven profile grant-folder [profile] <path> [--name NAME] [--rw|--ro] [--json]
+  seven profile folders [profile] [--json]
+  seven profile revoke-folder [profile] <name|path> [--json]
+  seven profile open-folder [profile] <path>
   seven profile bootstrap <profile|all>
   seven profile activate <profile>
   seven profile install <profile>
@@ -2139,13 +2211,125 @@ Profiles:
   forge    Forge DevOps: developer, containers and deployment mini OS
   shield   Shield Cybersecurity: cybersecurity mini OS
   studio   Studio Creator: creator mini OS
-  windows  Windows Bridge: VM-first Windows mini OS
+  windows  Windows: applications Windows, dossiers et Windows complet
   pulse    Pulse Gaming: Linux gaming mini OS
 EOF
 }
 
 command="${1:-status}"
 shift || true
+
+profile_folder_grants() {
+  local action="$1"
+  shift || true
+  PROFILE_ACTION="$action" ACTIVE_PROFILE="$(active_profile)" STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos" python - "$@" <<'PY'
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+profiles = {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
+action = os.environ.get("PROFILE_ACTION", "folders")
+active = os.environ.get("ACTIVE_PROFILE", "equinox")
+state_dir = Path(os.environ.get("STATE_DIR", str(Path.home() / ".config/sevenos")))
+state_path = state_dir / "profile-folder-grants.json"
+args = list(sys.argv[1:])
+
+def load():
+    try:
+        return json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"schema": "sevenos.profile-folder-grants.v1", "profiles": {}}
+
+def save(data):
+    state_dir.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+def safe_name(value):
+    value = re.sub(r"[^A-Za-z0-9_.-]+", "-", value.strip()).strip(".-")
+    return value[:48] or "folder"
+
+def parse_profile_path(rest):
+    if rest and rest[0] in profiles:
+        return rest[0], rest[1:]
+    return active, rest
+
+def print_payload(payload, json_output):
+    if json_output:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    profile = payload.get("profile", active)
+    print(f"SevenOS external folders for {profile}")
+    print("=" * 36)
+    grants = payload.get("folders", [])
+    if not grants:
+        print("No external folder grant.")
+    for item in grants:
+        print(f"- {item.get('name')} [{item.get('mode')}]: {item.get('path')}")
+        print(f"  container: /external/{item.get('name')}")
+
+json_output = "--json" in args or "json" in args
+args = [item for item in args if item not in {"--json", "json"}]
+data = load()
+data.setdefault("profiles", {})
+
+if action in {"folders", "list-folders"}:
+    profile, rest = parse_profile_path(args)
+    folders = data.get("profiles", {}).get(profile, [])
+    print_payload({"schema": data.get("schema"), "profile": profile, "folders": folders}, json_output)
+    raise SystemExit(0)
+
+if action in {"grant-folder", "allow-folder"}:
+    profile, rest = parse_profile_path(args)
+    mode = "ro"
+    name = ""
+    cleaned = []
+    i = 0
+    while i < len(rest):
+        if rest[i] == "--rw":
+            mode = "rw"; i += 1; continue
+        if rest[i] == "--ro":
+            mode = "ro"; i += 1; continue
+        if rest[i] == "--name" and i + 1 < len(rest):
+            name = rest[i + 1]; i += 2; continue
+        cleaned.append(rest[i]); i += 1
+    if not cleaned:
+        print("seven profile grant-folder needs a folder path", file=sys.stderr)
+        raise SystemExit(2)
+    path = Path(cleaned[0]).expanduser().resolve()
+    if not path.is_dir():
+        print(f"folder not found: {path}", file=sys.stderr)
+        raise SystemExit(2)
+    grant = {"name": safe_name(name or path.name), "path": str(path), "mode": mode}
+    folders = data["profiles"].setdefault(profile, [])
+    folders[:] = [item for item in folders if item.get("path") != str(path) and item.get("name") != grant["name"]]
+    folders.append(grant)
+    save(data)
+    print_payload({"schema": data.get("schema"), "profile": profile, "folders": folders, "added": grant}, json_output)
+    raise SystemExit(0)
+
+if action == "revoke-folder":
+    profile, rest = parse_profile_path(args)
+    if not rest:
+        print("seven profile revoke-folder needs a folder name or path", file=sys.stderr)
+        raise SystemExit(2)
+    target = rest[0]
+    try:
+        target_path = str(Path(target).expanduser().resolve())
+    except Exception:
+        target_path = target
+    folders = data["profiles"].setdefault(profile, [])
+    before = len(folders)
+    folders[:] = [item for item in folders if item.get("name") != target and item.get("path") != target_path]
+    save(data)
+    print_payload({"schema": data.get("schema"), "profile": profile, "folders": folders, "removed": before - len(folders)}, json_output)
+    raise SystemExit(0)
+
+print(f"unknown folder grant action: {action}", file=sys.stderr)
+raise SystemExit(2)
+PY
+}
 
 case "$command" in
   list|status)
@@ -2186,8 +2370,13 @@ case "$command" in
   current)
     key="$(active_profile)"
     if [[ "${1:-}" == "--json" ]]; then
-      profile_json_object "$key"
-      printf '\n'
+      if [[ "${SEVENOS_PROFILE_FULL_JSON:-0}" != "1" && -s "$STATE_JSON" ]]; then
+        cat "$STATE_JSON"
+        printf '\n'
+      else
+        profile_json_object "$key"
+        printf '\n'
+      fi
     else
       show_profile "$key"
     fi
@@ -2264,6 +2453,26 @@ PY
     done
     "$ROOT_DIR/bin/seven-profile-requirements" "$req_action" "$target" "$@"
     ;;
+  grant-folder|allow-folder)
+    profile_folder_grants grant-folder "$@"
+    ;;
+  folders|external-folders)
+    profile_folder_grants folders "$@"
+    ;;
+  revoke-folder)
+    profile_folder_grants revoke-folder "$@"
+    ;;
+  open-folder|access-folder)
+    target_profile="$(active_profile)"
+    if [[ -n "${1:-}" && "$1" =~ ^(equinox|baobab|forge|shield|studio|windows|pulse)$ ]]; then
+      target_profile="$1"
+      shift
+    fi
+    folder="${1:-}"
+    [[ -n "$folder" ]] || { log_error "seven profile open-folder needs a folder path"; exit 2; }
+    profile_folder_grants grant-folder "$target_profile" "$folder" --rw >/dev/null
+    "$ROOT_DIR/bin/seven-profile-run" --profile "$target_profile" --container --workspace "$folder" seven-files open /workspace
+    ;;
   health)
     if [[ "${1:-}" == "--json" ]]; then
       health_json
@@ -2295,6 +2504,18 @@ PY
   activate)
     [[ -n "${1:-}" ]] || { usage; exit 1; }
     activate_profile "$1"
+    ;;
+  snapshot-session)
+    [[ -n "${1:-}" ]] || { usage; exit 1; }
+    snapshot_profile_session "$(normalize_profile_key "$1")"
+    ;;
+  prepare-workspace)
+    [[ -n "${1:-}" ]] || { usage; exit 1; }
+    write_workspace_readme "$(normalize_profile_key "$1")"
+    ;;
+  write-current-json)
+    [[ -n "${1:-}" ]] || { usage; exit 1; }
+    write_profile_json "$(normalize_profile_key "$1")"
     ;;
   bootstrap)
     target="${1:-$(active_profile)}"

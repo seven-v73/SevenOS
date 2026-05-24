@@ -10,6 +10,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
 
 
 def probe() -> int:
@@ -66,6 +71,31 @@ ROWS = [
     ("stop", "󰓛", "Stop", "Arrêter"),
     ("audio", "󰕾", "Audio", "Mixer"),
 ]
+
+
+def cairo_palette() -> dict[str, tuple[float, float, float, float]]:
+    mode = seven_theme.current_theme_mode() if seven_theme else os.environ.get("SEVENOS_THEME_MODE", "dark")
+    if mode == "light":
+        return {
+            "bg": (0.96, 0.97, 0.99, 0.94),
+            "panel": (1.0, 1.0, 1.0, 0.92),
+            "border": (0.12, 0.18, 0.28, 0.16),
+            "card": (0.18, 0.48, 1.0, 0.10),
+            "text": (0.11, 0.12, 0.15, 0.95),
+            "muted": (0.28, 0.33, 0.40, 0.58),
+            "accent": (0.18, 0.48, 1.0, 0.90),
+            "hover": (0.18, 0.48, 1.0, 0.12),
+        }
+    return {
+        "bg": (0.055, 0.065, 0.09, 0.96),
+        "panel": (0.075, 0.085, 0.12, 0.96),
+        "border": (0.74, 0.88, 1.0, 0.46),
+        "card": (0.30, 0.72, 1.0, 0.16),
+        "text": (0.98, 0.99, 1.0, 0.94),
+        "muted": (0.86, 0.90, 0.98, 0.52),
+        "accent": (0.30, 0.72, 1.0, 0.90),
+        "hover": (1.0, 1.0, 1.0, 0.12),
+    }
 
 
 class MediaMenu(Gtk.Window):
@@ -135,34 +165,35 @@ class MediaMenu(Gtk.Window):
         PangoCairo.show_layout(cr, layout)
 
     def on_draw(self, _widget, cr) -> bool:
-        cr.set_source_rgb(0.055, 0.065, 0.09)
+        colors = cairo_palette()
+        cr.set_source_rgba(*colors["bg"])
         cr.paint()
         self.rounded_rect(cr, 1, 1, self.width - 2, self.height - 2, 16)
-        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.set_source_rgba(*colors["panel"])
         cr.fill_preserve()
-        cr.set_source_rgba(0.74, 0.88, 1.0, 0.60)
+        cr.set_source_rgba(*colors["border"])
         cr.set_line_width(1)
         cr.stroke()
 
-        cr.set_source_rgba(0.30, 0.72, 1.0, 0.16)
+        cr.set_source_rgba(*colors["card"])
         self.rounded_rect(cr, 14, 14, self.width - 28, 78, 13)
         cr.fill()
-        self.draw_text(cr, compact(self.title_text, 42), 26, 27, 260, "SF Pro Text SemiBold 14", (1, 1, 1, 0.96))
+        self.draw_text(cr, compact(self.title_text, 42), 26, 27, 260, "SF Pro Text SemiBold 14", colors["text"])
         subtitle = compact(self.artist_text or self.status_text, 44)
-        self.draw_text(cr, subtitle, 26, 50, 260, "SF Pro Text 11", (0.88, 0.92, 0.98, 0.58))
+        self.draw_text(cr, subtitle, 26, 50, 260, "SF Pro Text 11", colors["muted"])
         state = "En lecture" if self.status_text.lower() == "playing" else ("En pause" if self.status_text.lower() == "paused" else "Inactif")
-        self.draw_text(cr, state, 26, 70, 120, "SF Pro Text 10", (0.62, 0.82, 1.0, 0.75))
+        self.draw_text(cr, state, 26, 70, 120, "SF Pro Text 10", colors["accent"])
 
         for index, (_action, icon, label, detail) in enumerate(ROWS):
             y = 104 + index * 25
             active = index in {self.hover, self.selected}
             if active:
                 self.rounded_rect(cr, 10, y - 3, self.width - 20, 25, 8)
-                cr.set_source_rgba(1, 1, 1, 0.12)
+                cr.set_source_rgba(*colors["hover"])
                 cr.fill()
-            self.draw_text(cr, icon, 22, y + 2, 24, "Symbols Nerd Font 14", (0.54, 0.82, 1.0, 0.95))
-            self.draw_text(cr, label, 52, y + 2, 150, "SF Pro Text 12", (0.97, 0.98, 1.0, 0.93))
-            self.draw_text(cr, detail, 214, y + 3, 76, "SF Pro Text 10", (0.86, 0.90, 0.98, 0.48))
+            self.draw_text(cr, icon, 22, y + 2, 24, "Symbols Nerd Font 14", colors["accent"])
+            self.draw_text(cr, label, 52, y + 2, 150, "SF Pro Text 12", colors["text"])
+            self.draw_text(cr, detail, 214, y + 3, 76, "SF Pro Text 10", colors["muted"])
         return False
 
     def item_at(self, y: float) -> int:

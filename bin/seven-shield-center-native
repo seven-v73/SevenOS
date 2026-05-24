@@ -40,6 +40,8 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+import seven_theme  # noqa: E402
 
 
 def run_json(command: list[str], fallback):
@@ -111,66 +113,91 @@ def run() -> int:
     except Exception:
         pass
 
-    css = """
+    css = seven_theme.gtk_app_css("shield-center") + """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.shield-center-window { background: transparent; }
     .shield-root {
       padding: 18px;
       border-radius: 28px;
-      background: linear-gradient(145deg, rgba(7,22,20,0.96), rgba(12,36,34,0.92)), rgba(6,18,18,0.92);
-      border: 1px solid rgba(129,255,218,0.22);
+      background:
+        radial-gradient(ellipse at 14% 0%, alpha(@seven_success, 0.15), transparent 42%),
+        radial-gradient(ellipse at 86% 0%, alpha(@seven_wallpaper_secondary, 0.10), transparent 40%),
+        @seven_panel;
+      border: 1px solid @seven_border;
     }
-    .title { color: rgba(232,255,248,0.98); font-size: 21px; font-weight: 500; }
-    .subtitle { color: rgba(179,224,213,0.70); font-size: 12px; }
+    .title { color: @seven_text; font-size: 21px; font-weight: 500; }
+    .subtitle { color: @seven_muted; font-size: 12px; }
     .metric {
       min-height: 76px;
       padding: 12px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.055);
-      border: 1px solid rgba(129,255,218,0.14);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
-    .metric.good { border-color: rgba(111,255,178,0.30); background: rgba(91,225,149,0.10); }
-    .metric.warn { border-color: rgba(250,210,110,0.30); background: rgba(250,210,110,0.08); }
-    .metric.bad { border-color: rgba(255,110,115,0.30); background: rgba(255,110,115,0.08); }
-    .metric-value { color: rgba(232,255,248,0.98); font-family: "JetBrainsMono Nerd Font", "SF Mono", monospace; font-size: 22px; font-weight: 500; }
-    .metric-label { color: rgba(179,224,213,0.68); font-size: 11px; }
+    .metric.good { border-color: alpha(@seven_success, 0.30); background: alpha(@seven_success, 0.10); }
+    .metric.warn { border-color: alpha(@seven_warning, 0.30); background: alpha(@seven_warning, 0.08); }
+    .metric.bad { border-color: alpha(@seven_danger, 0.30); background: alpha(@seven_danger, 0.08); }
+    .metric-value { color: @seven_text; font-family: "JetBrainsMono Nerd Font", "SF Mono", monospace; font-size: 22px; font-weight: 500; }
+    .metric-label { color: @seven_muted; font-size: 11px; }
     .plan-card {
       min-height: 58px;
       padding: 10px 12px;
       border-radius: 18px;
-      background: rgba(255,255,255,0.055);
-      border: 1px solid rgba(129,255,218,0.12);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
-    .plan-title { color: rgba(232,255,248,0.96); font-size: 13px; font-weight: 500; }
-    .plan-note { color: rgba(179,224,213,0.68); font-size: 11px; }
-    .section-title { color: rgba(232,255,248,0.92); font-size: 13px; font-weight: 500; margin-top: 4px; }
-    .row-title { color: rgba(232,255,248,0.94); font-size: 12px; font-weight: 500; }
-    .row-note { color: rgba(179,224,213,0.66); font-size: 11px; }
+    .plan-title { color: @seven_text; font-size: 13px; font-weight: 500; }
+    .plan-note { color: @seven_muted; font-size: 11px; }
+    .section-title { color: @seven_text; font-size: 13px; font-weight: 500; margin-top: 4px; }
+    .row-title { color: @seven_text; font-size: 12px; font-weight: 500; }
+    .row-note { color: @seven_muted; font-size: 11px; }
     .action-strip {
       padding: 12px;
       border-radius: 22px;
-      background: rgba(255,255,255,0.055);
-      border: 1px solid rgba(129,255,218,0.12);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
     .icon-action {
       min-width: 44px;
       min-height: 44px;
       padding: 0;
       border-radius: 999px;
-      color: rgba(232,255,248,0.96);
-      background: rgba(129,255,218,0.09);
-      border: 1px solid rgba(129,255,218,0.18);
+      color: @seven_text;
+      background: alpha(@seven_success, 0.09);
+      border: 1px solid alpha(@seven_success, 0.18);
     }
-    .icon-action:hover { background: rgba(129,255,218,0.18); }
+    .icon-action:hover { background: alpha(@seven_success, 0.18); }
     .pill {
       padding: 4px 10px;
       border-radius: 999px;
-      color: rgba(232,255,248,0.90);
-      background: rgba(129,255,218,0.10);
-      border: 1px solid rgba(129,255,218,0.16);
+      color: @seven_text;
+      background: alpha(@seven_success, 0.10);
+      border: 1px solid alpha(@seven_success, 0.16);
       font-size: 11px;
     }
     """
+    if seven_theme.current_theme_mode() == "light":
+        css += """
+        .shield-root {
+          background:
+            linear-gradient(145deg, rgba(247,255,252,0.94), rgba(235,250,246,0.84)),
+            rgba(255,255,255,0.84);
+          border-color: rgba(0,122,92,0.18);
+          box-shadow: 0 24px 72px rgba(20,80,70,0.14);
+        }
+        .title, .metric-value, .plan-title, .section-title, .row-title { color: rgba(20,43,38,0.96); }
+        .subtitle, .metric-label, .plan-note, .row-note { color: rgba(20,43,38,0.60); }
+        .metric, .plan-card, .action-strip {
+          background: rgba(255,255,255,0.68);
+          border-color: rgba(0,122,92,0.12);
+        }
+        .icon-action, .pill {
+          color: rgba(20,43,38,0.92);
+          background: rgba(0,167,122,0.10);
+          border-color: rgba(0,122,92,0.16);
+        }
+        .icon-action:hover { background: rgba(0,167,122,0.16); }
+        """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)

@@ -45,6 +45,8 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+import seven_theme  # noqa: E402
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
 PROFILE_UI_FILE = CONFIG_DIR / "profile-ui.json"
 
@@ -172,6 +174,120 @@ def workflow_lines(key: str) -> list[str]:
     return workflows.get(key, workflows["equinox"])
 
 
+PUBLIC_MINI_OS = {"equinox", "baobab", "studio", "windows", "pulse"}
+
+
+def public_profile_contract(key: str, meta: dict, home: dict) -> dict:
+    """Friendly copy for public mini OS surfaces.
+
+    Forge and Shield keep their expert surfaces. The other mini OSes should
+    read like user spaces, not runtime dashboards.
+    """
+    contracts = {
+        "equinox": {
+            "kicker": "Usage quotidien",
+            "title": "Equinox",
+            "subtitle": "L'espace simple pour naviguer, travailler, ranger tes fichiers, régler SevenOS et lancer les apps du quotidien.",
+            "sections": [
+                ("Bureau", "Retrouve tes fenêtres, tes apps et ton espace de travail principal."),
+                ("Fichiers", "Ouvre Seven Files pour accéder à tes documents et dossiers importants."),
+                ("Réglages", "Ajuste le thème, le réseau, les mises à jour et les préférences sans terminal."),
+                ("Aide", "Trouve les commandes utiles et les explications dans le guide SevenOS."),
+            ],
+            "status": "Equinox est l'espace recommandé pour l'usage de tous les jours.",
+            "actions": [
+                ("Ouvrir le bureau", "seven-overview windows", "Vue des fenêtres"),
+                ("Mes fichiers", "seven-files profile equinox", "Documents Equinox"),
+                ("Réglages", "seven-settings", "Paramètres SevenOS"),
+                ("Applications", "seven-launchpad-native", "Launchpad SevenOS"),
+                ("Aide", "seven-help-native", "Guide SevenOS"),
+            ],
+        },
+        "baobab": {
+            "kicker": "Culture et mémoire",
+            "title": "Baobab",
+            "subtitle": "Un espace pour lire, écouter, classer et préserver tes contenus culturels sans te perdre dans les réglages.",
+            "sections": [
+                ("Bibliothèque", "Retrouve tes documents, récits, images et collections Baobab."),
+                ("Lecture", "Ouvre les contenus locaux avec une présentation calme et lisible."),
+                ("Collecte", "Ajoute de nouvelles sources avec un suivi clair des droits et de la provenance."),
+                ("Partage choisi", "Envoie seulement ce que tu décides vers un autre mini OS."),
+            ],
+            "status": "Tes contenus restent rangés dans l'espace Baobab.",
+            "actions": [
+                ("Ouvrir Baobab", "seven-baobab-native", "Surface culturelle"),
+                ("Mes collections", "seven profile open baobab", "Documents Baobab"),
+                ("Lire", "seven-reader", "Lecture locale"),
+                ("Ajouter du contenu", "seven-baobab-native packs", "Packs et sources"),
+                ("Préférences", "seven-baobab-native prefs", "Langue et affichage"),
+            ],
+        },
+        "studio": {
+            "kicker": "Création",
+            "title": "Studio",
+            "subtitle": "Un atelier pour images, vidéos, sons, captures et exports avec des actions directes.",
+            "sections": [
+                ("Médias", "Accède rapidement aux images, vidéos et fichiers de création."),
+                ("Captures", "Lance l'enregistrement d'écran sans passer par une commande."),
+                ("Exports", "Retrouve les rendus et fichiers prêts à partager."),
+                ("Applications", "Ouvre les outils créatifs dans l'espace Studio."),
+            ],
+            "status": "Les créations Studio sont gardées dans l'espace Studio.",
+            "actions": [
+                ("Ouvrir Studio", "seven profile open studio", "Dossier Studio"),
+                ("Enregistrer", "seven-recorder-native", "Capture écran"),
+                ("Images", "seven profile open-folder studio Pictures", "Bibliothèque images"),
+                ("Vidéos", "seven profile open-folder studio Videos", "Bibliothèque vidéos"),
+                ("Applications", "seven profile apps studio", "Outils créatifs"),
+            ],
+        },
+        "windows": {
+            "kicker": "Compatibilité",
+            "title": "Windows",
+            "subtitle": "Un espace guidé pour lancer des applications Windows et gérer les dossiers partagés simplement.",
+            "sections": [
+                ("Assistant", "Prépare Windows étape par étape avec une interface guidée."),
+                ("Applications", "Retrouve les logiciels Windows disponibles depuis SevenOS."),
+                ("Dossiers", "Accède aux fichiers partagés entre SevenOS et Windows."),
+                ("Aide", "Corrige les problèmes courants avec des boutons clairs."),
+            ],
+            "status": "Windows ne démarre que lorsque tu le demandes.",
+            "actions": [
+                ("Ouvrir l'assistant", "seven-windows-assistant guide", "Configuration guidée"),
+                ("Applications Windows", "seven-windows-assistant apps", "Lancer une app"),
+                ("Dossiers partagés", "seven profile open windows", "Fichiers Windows"),
+                ("Vérifier", "seven-windows-assistant status", "État simplifié"),
+                ("Réparer", "seven-windows-assistant repair", "Correction guidée"),
+            ],
+        },
+        "pulse": {
+            "kicker": "Jeux et captures",
+            "title": "Pulse",
+            "subtitle": "Un espace pour jouer, enregistrer, retrouver tes captures et garder les outils de jeu au bon endroit.",
+            "sections": [
+                ("Jeux", "Ouvre tes bibliothèques et lanceurs de jeux."),
+                ("Captures", "Retrouve les vidéos, screenshots et enregistrements."),
+                ("Confort", "Active les réglages utiles au jeu quand Pulse est ouvert."),
+                ("Silence", "Les outils de jeu restent discrets dans les autres mini OS."),
+            ],
+            "status": "Pulse se concentre sur les jeux quand tu l'actives.",
+            "actions": [
+                ("Ouvrir Pulse", "seven profile open pulse", "Espace jeux"),
+                ("Mes jeux", "seven-hub games", "Bibliothèque"),
+                ("Captures", "seven profile open-folder pulse Videos", "Vidéos et captures"),
+                ("Enregistrer", "seven-recorder-native", "Capture écran"),
+                ("Applications", "seven profile apps pulse", "Lanceurs de jeux"),
+            ],
+        },
+    }
+    contract = dict(contracts.get(key, {}))
+    if not contract:
+        return {}
+    contract.setdefault("title", meta.get("title", key.title()))
+    contract.setdefault("subtitle", home.get("focus") or meta.get("purpose", ""))
+    return contract
+
+
 def profile_terminal_mode(key: str) -> str:
     return {
         "forge": "forge",
@@ -208,23 +324,11 @@ def strict_app(key: str, command: str, workspace: bool = True) -> str:
 def profile_actions(key: str) -> list[tuple[str, str, str]]:
     actions = {
         "baobab": [
-            ("Baobab", "Open the native French-first cultural OS", "seven baobab open"),
-            ("Patrimoine", "Native heritage discovery interface", "seven baobab native"),
-            ("Museum", "Offline animated cultural scene", "seven baobab museum"),
-            ("Story", "Offline fire-circle storytelling surface", "seven baobab story"),
-            ("Explore", "Open the native country and heritage exploration view", "seven baobab explore"),
-            ("Countries", "Embedded offline Africa country index", "seven baobab countries"),
-            ("Country", "Open a country detail from the offline index", "seven baobab country Burkina Faso"),
-            ("UNESCO", "African-linked intangible heritage index", "seven baobab unesco"),
-            ("Catalog", "Offline starter index and seed content", "seven baobab catalog"),
-            ("Stats", "Local SQLite cultural index status", "seven baobab stats"),
-            ("Engines", "Local readiness for shell, AI, reader, 3D and offline engines", "seven baobab engines"),
-            ("Registry", "Open source shell, heritage, 3D, AI and offline candidates", "seven baobab integrations"),
-            ("Packs", "Local cultural packs and source-backed imports", "seven baobab packs"),
-            ("Audit", "Check pack provenance, license and confidence", "seven baobab audit-packs"),
-            ("Heritage", "Stories, archives and oral traditions", "seven baobab module heritage"),
-            ("Explore Module", "Africa map and cultural discovery contract", "seven baobab module explore"),
-            ("Fashion", "African style and ElegantStyle bridge", "seven baobab module fashion"),
+            ("Ouvrir Baobab", "Accéder à l'espace culturel Baobab", "seven-baobab-native"),
+            ("Mes collections", "Ouvrir les documents Baobab", "seven profile open baobab"),
+            ("Lire", "Ouvrir le lecteur", "seven-reader"),
+            ("Ajouter", "Ajouter ou organiser des contenus culturels", "seven-baobab-native packs"),
+            ("Préférences", "Ajuster langue et affichage Baobab", "seven-baobab-native prefs"),
         ],
         "forge": [
             ("Code", "Open development editor in Forge boundary", strict_app("forge", "code")),
@@ -234,9 +338,11 @@ def profile_actions(key: str) -> list[tuple[str, str, str]]:
             ("Services", "Check Seven Server from Forge boundary", strict_app("forge", "seven server status")),
         ],
         "studio": [
-            ("Design", "Open Krita inside Studio boundary", strict_app("studio", "krita")),
-            ("Video", "Open Kdenlive inside Studio boundary", strict_app("studio", "kdenlive")),
-            ("Record", "Open Seven Recorder", "seven recorder"),
+            ("Ouvrir Studio", "Accéder à l'espace créatif", "seven profile open studio"),
+            ("Images", "Ouvrir les images Studio", "seven profile open-folder studio Pictures"),
+            ("Vidéos", "Ouvrir les vidéos Studio", "seven profile open-folder studio Videos"),
+            ("Enregistrer", "Lancer Seven Recorder", "seven-recorder-native"),
+            ("Applications", "Voir les outils créatifs", "seven profile apps studio"),
         ],
         "shield": [
             ("Center", "Open Shield Center", "seven-shield-center-native"),
@@ -245,23 +351,25 @@ def profile_actions(key: str) -> list[tuple[str, str, str]]:
             ("Report", "Open Shield workspace shell for reports", "seven-terminal cyber -- seven profile exec shield --container --workspace-profile sh"),
         ],
         "windows": [
-            ("Enter", "Start Windows Bridge", "seven windows enter"),
-            ("Sync", "Repair Windows Bridge profile and VM state", "seven windows sync"),
-            ("VM", "Open Windows VM console", "seven windows vm"),
-            ("Status", "Show Windows Bridge runtime state", "seven windows bridge-status"),
-            ("Apps", "Open Windows app launcher", "seven windows apps"),
-            ("Repair", "Prepare libvirt/network/VM creation path", "seven windows repair"),
-            ("Guide", "Open Windows guide", "seven windows guide"),
+            ("Assistant", "Configurer Windows avec un guide", "seven-windows-assistant guide"),
+            ("Applications", "Ouvrir les applications Windows", "seven-windows-assistant apps"),
+            ("Dossiers", "Ouvrir les fichiers Windows", "seven profile open windows"),
+            ("Vérifier", "Voir si Windows est prêt", "seven-windows-assistant status"),
+            ("Réparer", "Corriger les problèmes courants", "seven-windows-assistant repair"),
         ],
         "pulse": [
-            ("Games", "Open Lutris inside Pulse boundary", strict_app("pulse", "lutris")),
-            ("Boost", "Show GameMode from Pulse boundary", strict_app("pulse", "gamemoderun --help", workspace=False)),
-            ("HUD", "Show MangoHud from Pulse boundary", strict_app("pulse", "mangohud --help", workspace=False)),
+            ("Ouvrir Pulse", "Accéder à l'espace jeux", "seven profile open pulse"),
+            ("Mes jeux", "Ouvrir la bibliothèque de jeux", "seven-hub games"),
+            ("Captures", "Ouvrir les captures Pulse", "seven profile open-folder pulse Videos"),
+            ("Enregistrer", "Lancer Seven Recorder", "seven-recorder-native"),
+            ("Applications", "Voir les lanceurs de jeux", "seven profile apps pulse"),
         ],
         "equinox": [
-            ("Hub", "Open Seven Hub", "seven hub"),
-            ("Files", "Open Seven Files", "seven-files profile"),
-            ("Profiles", "Open Profile Center", "seven-profile-center-native"),
+            ("Bureau", "Voir les fenêtres ouvertes", "seven-overview windows"),
+            ("Fichiers", "Ouvrir Seven Files", "seven-files profile equinox"),
+            ("Réglages", "Ouvrir les paramètres", "seven-settings"),
+            ("Applications", "Ouvrir le Launchpad", "seven-launchpad-native"),
+            ("Aide", "Ouvrir le guide SevenOS", "seven-help-native"),
         ],
     }
     return actions.get(key, actions["equinox"])
@@ -320,6 +428,7 @@ def run() -> int:
         pass
 
     accent = meta.get("resource_intent", {}).get("gpu", "foreground")
+    css = ""
     if key == "windows":
         css = """
         * { font-family: "SF Pro Display", "Inter", system-ui, sans-serif; }
@@ -356,8 +465,82 @@ def run() -> int:
         .accent { color: rgba(156,203,255,0.92); font-size: 11px; }
         .hidden-note { color: rgba(245,247,250,0.48); font-size: 10px; }
         """
-    else:
+    if not css:
         css = """
+        * { font-family: "SF Pro Display", "Inter", system-ui, sans-serif; }
+        window.mini-os-window { background: transparent; }
+        .root {
+          padding: 18px;
+          border-radius: 22px;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.105), rgba(255,255,255,0.035)),
+            rgba(16,18,25,0.955);
+          border: 1px solid rgba(255,255,255,0.135);
+          box-shadow: 0 24px 72px rgba(0,0,0,0.48);
+        }
+        .eyebrow {
+          color: rgba(245,247,250,0.58);
+          font-size: 11px;
+          letter-spacing: 0;
+        }
+        .title { color: rgba(245,247,250,0.98); font-size: 20px; font-weight: 500; }
+        .subtitle { color: rgba(245,247,250,0.66); font-size: 12px; }
+        .card {
+          padding: 11px;
+          border-radius: 14px;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.032)),
+            rgba(255,255,255,0.026);
+          border: 1px solid rgba(255,255,255,0.095);
+        }
+        .card-title { color: rgba(245,247,250,0.94); font-size: 12px; font-weight: 500; }
+        .card-text { color: rgba(245,247,250,0.62); font-size: 11px; }
+        .pill {
+          min-height: 34px;
+          padding: 0 11px;
+          border-radius: 10px;
+          color: rgba(245,247,250,0.92);
+          background: rgba(255,255,255,0.052);
+          border: 1px solid rgba(255,255,255,0.09);
+          font-size: 11px;
+        }
+        .pill:hover {
+          background: rgba(255,255,255,0.085);
+          border-color: rgba(156,203,255,0.26);
+        }
+        .signal { color: rgba(249,226,175,0.82); font-size: 10px; }
+        .accent { color: rgba(156,203,255,0.86); font-size: 11px; }
+        .hidden-note { color: rgba(245,247,250,0.48); font-size: 10px; }
+        """
+    if seven_theme.current_theme_mode() == "light":
+        css += """
+        .root {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,247,252,0.76)),
+            rgba(255,255,255,0.82);
+          border-color: rgba(28,31,38,0.10);
+          box-shadow: 0 24px 72px rgba(43,63,100,0.16);
+        }
+        .eyebrow, .subtitle, .card-text, .row-note, .hidden-note { color: rgba(28,31,38,0.58); }
+        .title, .card-title, .row-title { color: rgba(28,31,38,0.96); }
+        .card {
+          background: rgba(255,255,255,0.68);
+          border-color: rgba(28,31,38,0.08);
+        }
+        .pill {
+          color: rgba(28,31,38,0.90);
+          background: rgba(255,255,255,0.68);
+          border-color: rgba(28,31,38,0.09);
+        }
+        .pill:hover {
+          background: rgba(47,123,255,0.10);
+          border-color: rgba(47,123,255,0.22);
+        }
+        .signal { color: rgba(148,92,0,0.82); }
+        .accent { color: rgba(47,123,255,0.88); }
+        """
+    else:
+        css += """
         * { font-family: "SF Pro Display", "Inter", system-ui, sans-serif; }
         window.mini-os-window { background: transparent; }
         .root {
@@ -413,7 +596,7 @@ def run() -> int:
     window.set_resizable(False)
     window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(820, 760 if key == "windows" else 720)
+    window.set_default_size(760 if key in PUBLIC_MINI_OS else 820, 560 if key in PUBLIC_MINI_OS else 720)
     window.get_style_context().add_class("mini-os-window")
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -433,6 +616,56 @@ def run() -> int:
     subtitle.set_line_wrap(True)
     subtitle.get_style_context().add_class("subtitle")
     root.pack_start(subtitle, False, False, 0)
+
+    public_contract = public_profile_contract(key, meta, home)
+    if public_contract:
+        title.set_label(public_contract.get("title", meta.get("title", key.title())))
+        subtitle.set_label(public_contract.get("subtitle", ""))
+        eyebrow.set_label(f"{public_contract.get('kicker', 'SevenOS')} · espace indépendant")
+
+        public_grid = Gtk.Grid()
+        public_grid.set_column_spacing(10)
+        public_grid.set_row_spacing(10)
+        root.pack_start(public_grid, True, True, 0)
+
+        for index, (section_title, section_text) in enumerate(public_contract.get("sections", [])):
+            public_grid.attach(info_card(Gtk, section_title, section_text), index % 2, index // 2, 1, 1)
+
+        public_grid.attach(info_card(Gtk, "État", public_contract.get("status", "Prêt.")), 0, 2, 2, 1)
+
+        actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        root.pack_start(actions_box, False, False, 0)
+        for label, command, tooltip in public_contract.get("actions", [])[:5]:
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("pill")
+            button.set_tooltip_text(tooltip)
+            button.connect("clicked", lambda _button, cmd=command, app_label=label: run_detached(memory_command(key, app_label, cmd)))
+            actions_box.pack_start(button, True, True, 0)
+
+        footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        root.pack_end(footer, False, False, 0)
+        for label, command in [
+            ("Utiliser cet espace", f"seven profile activate {key}"),
+            ("Applications", f"seven profile apps {key}"),
+            ("Réglages", "seven-settings profiles"),
+            ("Aide", "seven-help-native mini-os"),
+        ]:
+            button = Gtk.Button(label=label)
+            button.get_style_context().add_class("pill")
+            button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+            footer.pack_start(button, True, True, 0)
+
+        lifecycle = str(status.get("runtime", {}).get("lifecycle", "")).lower()
+        readable_state = "prêt" if lifecycle in {"ok", "ready", "active", "running"} else "disponible"
+        state_line = Gtk.Label(label=f"{meta.get('title', key.title())} · {readable_state}", xalign=0)
+        state_line.get_style_context().add_class("hidden-note")
+        root.pack_end(state_line, False, False, 0)
+
+        window.connect("destroy", Gtk.main_quit)
+        window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+        window.show_all()
+        Gtk.main()
+        return 0
 
     grid = Gtk.Grid()
     grid.set_column_spacing(10)

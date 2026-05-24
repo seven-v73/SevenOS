@@ -262,6 +262,27 @@ persist_theme_mode() {
   printf 'SEVENOS_THEME_MODE=%q\n' "$THEME_MODE" > "$THEME_PREF"
 }
 
+normalize_profile_theme_modes() {
+  log_info "Normalizing mini OS theme modes to inherit the global SevenOS mode..."
+
+  if is_dry_run; then
+    printf 'for each %q/profiles/*/theme.conf: set mode=system and keep profile accent metadata\n' "$SEVENOS_CONFIG_DIR"
+    return 0
+  fi
+
+  local file profile
+  shopt -s nullglob
+  for file in "$SEVENOS_CONFIG_DIR"/profiles/*/theme.conf; do
+    profile="$(basename -- "$(dirname -- "$file")")"
+    {
+      printf 'mode=system\n'
+      printf 'profile=%s\n' "$profile"
+      printf 'inherits=global\n'
+    } > "$file"
+  done
+  shopt -u nullglob
+}
+
 install_preserved_config_file() {
   local source_file="$1"
   local target_file="$2"
@@ -390,7 +411,7 @@ configure_file_experience() {
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'install Seven Files desktop entry\n'
-    printf 'install SevenOS Spotlight, AI, Reader and Terminal desktop entries\n'
+    printf 'install SevenOS Spotlight, AI, Reader, Recorder and Terminal desktop entries\n'
     printf 'write SevenOS default terminal contract\n'
     printf 'write xdg-terminal-exec preference\n'
     printf 'xdg-mime default seven-files.desktop inode/directory\n'
@@ -414,6 +435,7 @@ configure_file_experience() {
   cp "$ROOT_DIR/seven-hub/seven-ai.desktop" "$HOME/.local/share/applications/seven-ai.desktop"
   cp "$ROOT_DIR/seven-hub/seven-baobab.desktop" "$HOME/.local/share/applications/seven-baobab.desktop"
   cp "$ROOT_DIR/seven-hub/seven-reader.desktop" "$HOME/.local/share/applications/seven-reader.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-recorder.desktop" "$HOME/.local/share/applications/seven-recorder.desktop"
   cp "$ROOT_DIR/seven-hub/seven-store.desktop" "$HOME/.local/share/applications/seven-store.desktop"
   cp "$ROOT_DIR/seven-hub/seven-terminal.desktop" "$HOME/.local/share/applications/seven-terminal.desktop"
   cp "$ROOT_DIR/seven-hub/seven-doctor.desktop" "$HOME/.local/share/applications/seven-doctor.desktop"
@@ -623,6 +645,7 @@ restore_persisted_wallpaper() {
 
 log_info "Applying SevenOS Beyond the Desktop theme: $THEME_LABEL..."
 persist_theme_mode
+normalize_profile_theme_modes
 copy_config_file "$ROOT_DIR/hyprland/hyprland.conf" "$CONFIG_HOME/hypr/hyprland.conf"
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/monitor.conf" "$CONFIG_HOME/hypr/conf/monitor.conf"
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/keyboard.conf" "$CONFIG_HOME/hypr/conf/keyboard.conf"

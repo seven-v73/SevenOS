@@ -16,7 +16,7 @@
     "forge": "Forge DevOps",
     "shield": "Shield Cybersecurity",
     "studio": "Studio Creator",
-    "windows": "Windows Bridge",
+    "windows": "Windows",
     "pulse": "Pulse Gaming"
   },
   "state_files": {
@@ -582,11 +582,11 @@
       }
     },
     "windows": {
-      "title": "Windows Bridge",
-      "role": "Windows VM and compatibility mini OS",
+      "title": "Windows",
+      "role": "Windows applications and full Windows when needed",
       "target": "windows",
       "domain": "windows compatibility",
-      "purpose": "A Windows-first compatibility environment centered on a complete Windows VM experience, with Wine and Bottles used as lighter fallback paths.",
+      "purpose": "A guided Windows space for Windows apps, shared folders and full Windows only when an app needs it.",
       "mini_os": true,
       "layers": {
         "kernel": [

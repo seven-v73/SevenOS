@@ -57,14 +57,14 @@ def current_theme_mode(default: str = "dark") -> str:
     env = os.environ.get("SEVENOS_THEME_MODE")
     if env in {"dark", "light"}:
         return env
-    for theme_file in (profile_config_dir() / "theme.conf", seven_config_dir() / "theme.conf"):
-        if theme_file.exists():
-            for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-                key, _, value = line.partition("=")
-                if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
-                    value = value.strip().strip("'\"").lower()
-                    if value in {"dark", "light"}:
-                        return value
+    theme_file = seven_config_dir() / "theme.conf"
+    if theme_file.exists():
+        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                value = value.strip().strip("'\"").lower()
+                if value in {"dark", "light"}:
+                    return value
     return default
 
 
@@ -233,6 +233,108 @@ def gtk_app_css(
       border: 1px solid @seven_border;
       border-radius: 18px;
     }}
+
+    * {{
+      font-family: "SF Pro Display", "SF Pro Text", "Inter", "Noto Sans", system-ui, sans-serif;
+      text-shadow: none;
+      box-shadow: none;
+    }}
+
+    window.seven-window,
+    .seven-window {{
+      color: @seven_text;
+      background: transparent;
+    }}
+
+    .seven-root,
+    .seven-panel,
+    .seven-popover {{
+      color: @seven_text;
+      background:
+        radial-gradient(ellipse at 14% 0%, alpha(@seven_wallpaper_accent, 0.14), transparent 42%),
+        radial-gradient(ellipse at 86% 0%, alpha(@seven_wallpaper_secondary, 0.10), transparent 40%),
+        @seven_panel;
+      border: 1px solid @seven_border;
+      border-radius: 24px;
+    }}
+
+    .seven-card,
+    .seven-tile,
+    .seven-section {{
+      color: @seven_text;
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
+      border-radius: 18px;
+    }}
+
+    .seven-title {{
+      color: @seven_text;
+      font-weight: 600;
+    }}
+
+    .seven-subtitle,
+    .seven-muted,
+    .seven-note {{
+      color: @seven_muted;
+    }}
+
+    button.seven-button,
+    .seven-button,
+    button.seven-pill,
+    .seven-pill {{
+      min-height: 32px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_text, 0.065);
+      border: 1px solid @seven_border;
+      padding: 0 12px;
+    }}
+
+    button.seven-button:hover,
+    .seven-button:hover,
+    button.seven-pill:hover,
+    .seven-pill:hover {{
+      background: @seven_hover;
+      border-color: alpha(@seven_accent, 0.28);
+    }}
+
+    button.seven-primary,
+    .seven-primary {{
+      color: #ffffff;
+      background: linear-gradient(135deg, @seven_accent, @seven_secondary);
+      border-color: alpha(@seven_accent, 0.34);
+    }}
+
+    button.seven-danger,
+    .seven-danger {{
+      color: @seven_danger;
+      background: alpha(@seven_danger, 0.10);
+      border-color: alpha(@seven_danger, 0.20);
+    }}
+
+    button:focus,
+    entry:focus,
+    searchentry:focus,
+    row:focus,
+    .seven-focus:focus {{
+      border-color: alpha(@seven_accent, 0.46);
+      box-shadow:
+        0 0 0 2px alpha(@seven_accent, 0.14),
+        inset 0 1px 0 alpha(@seven_text, 0.10);
+    }}
+
+    entry,
+    searchentry {{
+      min-height: 36px;
+      border-radius: 12px;
+      color: @seven_text;
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
+    }}
+
+    .seven-traffic-close {{ background: @seven_traffic_close; }}
+    .seven-traffic-minimize {{ background: @seven_traffic_minimize; }}
+    .seven-traffic-maximize {{ background: @seven_traffic_maximize; }}
     """
 
 

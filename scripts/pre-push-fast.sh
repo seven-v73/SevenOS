@@ -75,7 +75,8 @@ syntax_check() {
     "$ROOT_DIR/scripts/distribution.sh" \
     "$ROOT_DIR/scripts/lifecycle.sh" \
     "$ROOT_DIR/bin/seven-windows-assistant" \
-    "$ROOT_DIR/bin/seven-help"
+    "$ROOT_DIR/bin/seven-help" \
+    "$ROOT_DIR/bin/seven-help-native"
 }
 
 python_check() {
@@ -85,6 +86,7 @@ python_check() {
     "$ROOT_DIR/bin/seven-profile-rootfs" \
     "$ROOT_DIR/bin/seven-profile-run" \
     "$ROOT_DIR/bin/seven-waybar-context" \
+    "$ROOT_DIR/bin/seven-help-native" \
     "$ROOT_DIR/bin/seven_waybar_app_profiles.py" \
     "$ROOT_DIR/scripts/seven_ai_agent.py" \
     "$ROOT_DIR/scripts/seven_ai_provider.py" \

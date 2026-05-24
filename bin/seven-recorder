@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-action="${1:-area}"
+action="${1:-panel}"
 shift || true
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 record_dir="${SEVENOS_RECORDING_DIR:-$HOME/Videos/SevenOS-Records}"
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/recorder"
 pid_file="$state_dir/recorder.pid"
@@ -30,8 +31,8 @@ usage() {
 SevenOS Recorder
 
 Usage:
-  seven recorder [area|full|stop|status|path]
-  seven-recorder [area|full|stop|status|path]
+  seven recorder [panel|area|full|stop|status|path]
+  seven-recorder [panel|area|full|stop|status|path]
 
 Shortcuts:
   Super+Shift+R       Select an area and record, or stop if recording
@@ -40,6 +41,23 @@ Shortcuts:
 The recorder saves videos to ~/Videos/SevenOS-Records and copies the saved
 path to the clipboard when recording stops.
 EOF
+}
+
+open_panel() {
+  local native="seven-recorder-native"
+  if ! command -v "$native" >/dev/null 2>&1 && [[ -x "$script_dir/seven-recorder-native" ]]; then
+    native="$script_dir/seven-recorder-native"
+  fi
+  if command -v "$native" >/dev/null 2>&1 && { [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]] || [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; }; then
+    if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+      printf 'DRY-RUN > SevenOS Recorder > panel\n'
+      printf '%q\n' "$native"
+      return 0
+    fi
+    setsid -f "$native" >/tmp/sevenos-recorder-native.log 2>&1 || true
+    return 0
+  fi
+  status_recording
 }
 
 is_recording() {
@@ -51,6 +69,14 @@ is_recording() {
 
 current_file() {
   cat "$file_file" 2>/dev/null || true
+}
+
+status_recording() {
+  if is_recording; then
+    printf 'SevenOS Recorder: recording -> %s\n' "$(current_file)"
+  else
+    printf 'SevenOS Recorder: idle\n'
+  fi
 }
 
 stop_recording() {
@@ -127,6 +153,9 @@ start_recording() {
 }
 
 case "$action" in
+  panel|gui|open|menu)
+    open_panel
+    ;;
   area|region|select|toggle)
     start_recording area
     ;;
@@ -137,11 +166,7 @@ case "$action" in
     stop_recording
     ;;
   status)
-    if is_recording; then
-      printf 'SevenOS Recorder: recording -> %s\n' "$(current_file)"
-    else
-      printf 'SevenOS Recorder: idle\n'
-    fi
+    status_recording
     ;;
   path)
     current_file

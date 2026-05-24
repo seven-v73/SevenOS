@@ -10,6 +10,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
 
 
 def probe() -> int:
@@ -34,6 +39,67 @@ gi.require_version("PangoCairo", "1.0")
 from gi.repository import Gdk, Gtk, Pango, PangoCairo
 
 
+def css_to_cairo(value: str, alpha: float | None = None) -> tuple[float, float, float, float]:
+    color = Gdk.RGBA()
+    if not color.parse(str(value)):
+        color.parse("#4DA3FF")
+    return (color.red, color.green, color.blue, color.alpha if alpha is None else alpha)
+
+
+def cairo_palette(profile_key: str = "equinox") -> dict[str, tuple[float, float, float, float]]:
+    if seven_theme:
+        theme = seven_theme.resolved_theme("mini-context")
+        palette = theme.get("palette", {})
+        mode = str(theme.get("mode") or "dark")
+        text = css_to_cairo(str(palette.get("text") or "#EDEDED"), 0.96)
+        muted = css_to_cairo(str(palette.get("muted") or "#8A8F98"), 0.68)
+        accent = css_to_cairo(str(palette.get("accent") or "#4DA3FF"), 0.86)
+        secondary = css_to_cairo(str(palette.get("secondary") or "#7A5CFF"), 0.72)
+        if mode == "light":
+            return {
+                "bg": (0.965, 0.976, 0.992, 0.92),
+                "panel": (1.0, 1.0, 1.0, 0.96),
+                "border": (*accent[:3], 0.24),
+                "header": (*accent[:3], 0.10),
+                "row": (*accent[:3], 0.11),
+                "text": text,
+                "muted": muted,
+                "accent": accent,
+                "icon": secondary,
+            }
+        return {
+            "bg": (0.055, 0.065, 0.09, 0.98),
+            "panel": (0.055, 0.065, 0.09, 0.98),
+            "border": (*accent[:3], 0.44),
+            "header": (*accent[:3], 0.14),
+            "row": (1.0, 1.0, 1.0, 0.12),
+            "text": text,
+            "muted": muted,
+            "accent": accent,
+            "icon": secondary,
+        }
+    profile_accents = {
+        "forge": (1.0, 0.78, 0.34, 0.78),
+        "shield": (0.38, 1.0, 0.78, 0.78),
+        "studio": (0.86, 0.62, 1.0, 0.78),
+        "windows": (0.50, 0.82, 1.0, 0.78),
+        "pulse": (0.25, 0.86, 1.0, 0.78),
+        "baobab": (0.62, 0.92, 0.48, 0.78),
+    }
+    accent = profile_accents.get(profile_key, (0.54, 0.74, 1.0, 0.78))
+    return {
+        "bg": (0.055, 0.065, 0.09, 0.98),
+        "panel": (0.055, 0.065, 0.09, 0.98),
+        "border": (0.74, 0.88, 1.0, 0.58),
+        "header": (*accent[:3], 0.15),
+        "row": (1.0, 1.0, 1.0, 0.12),
+        "text": (1.0, 1.0, 1.0, 0.96),
+        "muted": (0.88, 0.92, 0.98, 0.58),
+        "accent": accent,
+        "icon": (0.54, 0.82, 1.0, 0.95),
+    }
+
+
 def run(command: list[str], timeout: float = 0.8) -> str:
     try:
         return subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout).stdout.strip()
@@ -53,14 +119,15 @@ def current_profile() -> dict:
 
 def rows_for(key: str) -> list[tuple[str, str, str, str]]:
     specs = {
+        "equinox": [("Daily Overview", "󰕰", "Bureau", "Fenêtres"), ("Daily Files", "󰉋", "Fichiers", "Ouvrir"), ("Daily Settings", "󰒓", "Réglages", "SevenOS"), ("Daily Help", "󰞋", "Aide", "Guide")],
         "forge": [("Forge Terminal", "󰆍", "Terminal Forge", "Shell projet"), ("Forge Logs", "󰑭", "Logs", "Git récent"), ("Forge Build", "󰒓", "Build", "Compiler"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
         "shield": [("Shield Center", "󰒃", "Shield Center", "Sécurité"), ("Shield Audit", "󰛵", "Audit rapide", "Contrôle"), ("Shield Sandbox", "󰞀", "Sandbox", "Isoler"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
-        "studio": [("Studio Media", "󰏗", "Médias", "Assets"), ("Studio Exports", "󰈙", "Exports", "Sorties"), ("Studio Recorder", "󰻂", "Recorder", "Capture"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
-        "windows": [("Windows Bridge", "󰖳", "Bridge", "Guide"), ("Windows Apps", "󰿭", "Apps Windows", "Lancer"), ("Windows Status", "󰄧", "Statut", "VM/Bridge"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
-        "pulse": [("Pulse Games", "󰓅", "Jeux", "Hub"), ("Pulse Captures", "󰹑", "Captures", "Dossier"), ("Pulse Performance", "󰓅", "Performance", "État"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
-        "baobab": [("Baobab Collections", "󰔱", "Collections", "Documents"), ("Baobab Reader", "󰈙", "Reader", "Lecture"), ("Baobab Culture", "󰐅", "Culture", "Surface"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
+        "studio": [("Studio Open", "󰏗", "Studio", "Espace"), ("Studio Pictures", "󰋩", "Images", "Ouvrir"), ("Studio Videos", "󰕧", "Vidéos", "Ouvrir"), ("Studio Recorder", "󰻂", "Enregistrer", "Capture")],
+        "windows": [("Windows Guide", "󰖳", "Assistant", "Guide"), ("Windows Apps", "󰿭", "Apps Windows", "Lancer"), ("Windows Folders", "󰉋", "Dossiers", "Partagés"), ("Windows Repair", "󰁨", "Réparer", "Aide")],
+        "pulse": [("Pulse Open", "󰓅", "Pulse", "Espace"), ("Pulse Games", "󰊴", "Mes jeux", "Lancer"), ("Pulse Captures", "󰹑", "Captures", "Ouvrir"), ("Pulse Recorder", "󰻂", "Enregistrer", "Capture")],
+        "baobab": [("Baobab Open", "󰔱", "Baobab", "Espace"), ("Baobab Collections", "󰉋", "Collections", "Ouvrir"), ("Baobab Reader", "󰈙", "Lire", "Lecteur"), ("Baobab Culture", "󰐅", "Culture", "Accueil")],
     }
-    return specs.get(key, [("Daily Overview", "󰕰", "Vue quotidienne", "Fenêtres"), ("Daily Files", "󰉋", "Fichiers", "Home"), ("Daily Doctor", "󰒓", "Doctor", "Santé"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")])
+    return specs.get(key, specs["equinox"])
 
 
 def compact(text: str, limit: int) -> str:
@@ -133,42 +200,36 @@ class MiniContextMenu(Gtk.Window):
         PangoCairo.show_layout(cr, layout)
 
     def accent(self) -> tuple[float, float, float, float]:
-        return {
-            "forge": (1.0, 0.78, 0.34, 0.78),
-            "shield": (0.38, 1.0, 0.78, 0.78),
-            "studio": (0.86, 0.62, 1.0, 0.78),
-            "windows": (0.50, 0.82, 1.0, 0.78),
-            "pulse": (0.25, 0.86, 1.0, 0.78),
-            "baobab": (0.62, 0.92, 0.48, 0.78),
-        }.get(self.key, (0.54, 0.74, 1.0, 0.78))
+        return cairo_palette(self.key)["accent"]
 
     def on_draw(self, _widget, cr) -> bool:
-        cr.set_source_rgb(0.055, 0.065, 0.09)
+        palette = cairo_palette(self.key)
+        cr.set_source_rgba(*palette["bg"])
         cr.paint()
         self.rounded_rect(cr, 1, 1, self.width - 2, self.height - 2, 16)
-        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.set_source_rgba(*palette["panel"])
         cr.fill_preserve()
-        cr.set_source_rgba(0.74, 0.88, 1.0, 0.58)
+        cr.set_source_rgba(*palette["border"])
         cr.set_line_width(1)
         cr.stroke()
 
         accent = self.accent()
-        cr.set_source_rgba(accent[0], accent[1], accent[2], 0.15)
+        cr.set_source_rgba(*palette["header"])
         self.rounded_rect(cr, 14, 14, self.width - 28, 70, 13)
         cr.fill()
-        self.draw_text(cr, compact(self.title_text, 34), 26, 27, 228, "SF Pro Text SemiBold 14", (1, 1, 1, 0.96))
-        self.draw_text(cr, compact(self.role_text, 34), 26, 50, 228, "SF Pro Text 11", (0.88, 0.92, 0.98, 0.58))
+        self.draw_text(cr, compact(self.title_text, 34), 26, 27, 228, "SF Pro Text SemiBold 14", palette["text"])
+        self.draw_text(cr, compact(self.role_text, 34), 26, 50, 228, "SF Pro Text 11", palette["muted"])
         self.draw_text(cr, "Actions rapides", 26, 68, 140, "SF Pro Text 10", accent)
 
         for index, (_action, icon, label, detail) in enumerate(self.rows):
             y = 98 + index * 30
             if index in {self.hover, self.selected}:
                 self.rounded_rect(cr, 10, y - 4, self.width - 20, 27, 8)
-                cr.set_source_rgba(1, 1, 1, 0.12)
+                cr.set_source_rgba(*palette["row"])
                 cr.fill()
-            self.draw_text(cr, icon, 22, y + 1, 24, "Symbols Nerd Font 14", (0.54, 0.82, 1.0, 0.95))
-            self.draw_text(cr, label, 52, y + 1, 160, "SF Pro Text 12", (0.97, 0.98, 1.0, 0.93))
-            self.draw_text(cr, detail, 224, y + 2, 74, "SF Pro Text 10", (0.86, 0.90, 0.98, 0.48))
+            self.draw_text(cr, icon, 22, y + 1, 24, "Symbols Nerd Font 14", palette["icon"])
+            self.draw_text(cr, label, 52, y + 1, 160, "SF Pro Text 12", palette["text"])
+            self.draw_text(cr, detail, 224, y + 2, 74, "SF Pro Text 10", palette["muted"])
         return False
 
     def item_at(self, y: float) -> int:

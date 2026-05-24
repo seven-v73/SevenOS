@@ -73,6 +73,11 @@ except Exception:  # pragma: no cover
     def tr_text(text: str, **values: object) -> str:
         return text.format(**values) if values else text
 
+try:
+    import seven_theme  # noqa: E402
+except Exception:  # pragma: no cover
+    seven_theme = None
+
 
 def resolve_shell() -> Path:
     root = ROOT_DIR
@@ -85,6 +90,11 @@ def resolve_shell() -> Path:
 def hex_to_rgba(value: str):
     value = value.lstrip("#")
     return tuple(int(value[index : index + 2], 16) / 255.0 for index in (0, 2, 4)) + (1.0,)
+
+
+def hex_to_rgba_with_alpha(value: str, alpha: float):
+    red, green, blue, _opaque = hex_to_rgba(value)
+    return (red, green, blue, max(0.0, min(1.0, alpha)))
 
 
 def terminal_state_file(profile: str) -> Path:
@@ -105,6 +115,166 @@ def terminal_log_path(profile: str) -> Path:
     runtime_root = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
     runtime_root.mkdir(parents=True, exist_ok=True)
     return runtime_root / f"terminal-{profile}-{os.getpid()}.log"
+
+
+def wallpaper_theme_state() -> dict:
+    config = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/wallpaper-theme.json"
+    try:
+        payload = json.loads(config.read_text(encoding="utf-8"))
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def normalize_hex(value: str, fallback: str) -> str:
+    value = str(value or "").strip()
+    if not value.startswith("#"):
+        value = f"#{value}"
+    value = value[:7]
+    if len(value) != 7:
+        return fallback
+    try:
+        int(value[1:], 16)
+        return value.upper()
+    except ValueError:
+        return fallback
+
+
+def blend_hex(a: str, b: str, amount: float) -> str:
+    amount = max(0.0, min(1.0, amount))
+    a = normalize_hex(a, "#000000").lstrip("#")
+    b = normalize_hex(b, "#000000").lstrip("#")
+    values = []
+    for index in (0, 2, 4):
+        left = int(a[index : index + 2], 16)
+        right = int(b[index : index + 2], 16)
+        values.append(round(left * (1 - amount) + right * amount))
+    return "#" + "".join(f"{value:02X}" for value in values)
+
+
+def hex_rgb_int(value: str) -> tuple[int, int, int]:
+    value = normalize_hex(value, "#000000").lstrip("#")
+    return tuple(int(value[index : index + 2], 16) for index in (0, 2, 4))
+
+
+def relative_luminance(value: str) -> float:
+    channels = []
+    for channel in hex_rgb_int(value):
+        normalized = channel / 255.0
+        if normalized <= 0.03928:
+            channels.append(normalized / 12.92)
+        else:
+            channels.append(((normalized + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+
+
+def contrast_ratio(a: str, b: str) -> float:
+    left = relative_luminance(a)
+    right = relative_luminance(b)
+    lighter = max(left, right)
+    darker = min(left, right)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def readable_wallpaper_color(value: str, backgrounds: list[str], fallback: str, target: float = 5.0) -> str:
+    color = normalize_hex(value, fallback)
+    if all(contrast_ratio(color, background) >= target for background in backgrounds):
+        return color
+    darkest_bg = min(backgrounds, key=relative_luminance)
+    lightest_bg = max(backgrounds, key=relative_luminance)
+    toward = "#F9FBFF" if relative_luminance(darkest_bg) < 0.42 else "#111827"
+    if relative_luminance(darkest_bg) < 0.42 and relative_luminance(lightest_bg) > 0.68:
+        toward = "#111827"
+    for step in range(1, 19):
+        candidate = blend_hex(color, toward, step / 18)
+        if all(contrast_ratio(candidate, background) >= target for background in backgrounds):
+            return candidate
+    return toward
+
+
+def wallpaper_dynamic_theme(profile: str, base: dict) -> dict:
+    if os.environ.get("SEVENOS_TERMINAL_WALLPAPER", "1") == "0":
+        return dict(base)
+    payload = wallpaper_theme_state()
+    colors = payload.get("colors", {}) if isinstance(payload.get("colors"), dict) else {}
+    if not colors:
+        return dict(base)
+    mode = current_theme_mode()
+    bg = normalize_hex(str(colors.get("background") or ""), base["window"])
+    surface = normalize_hex(str(colors.get("surface") or ""), base["terminal"])
+    accent = normalize_hex(str(colors.get("accent") or ""), base["cursor"])
+    secondary = normalize_hex(str(colors.get("secondary") or ""), base["selection"])
+    cyan = normalize_hex(str(colors.get("cyan") or ""), accent)
+    wall_text = normalize_hex(str(colors.get("text") or ""), base["foreground"])
+    dynamic = dict(base)
+    if mode == "light" or profile in {"light", "focus"}:
+        dynamic.update(
+            {
+                "window": blend_hex("#FFFFFF", surface, 0.18),
+                "titlebar": blend_hex("#FFFFFF", surface, 0.12),
+                "titlebar_border": blend_hex("#DDE3EA", accent, 0.24),
+                "terminal": blend_hex("#FAFBFF", surface, 0.16),
+                "selection": blend_hex("#CFE3FF", accent, 0.28),
+                "cursor": accent,
+            }
+        )
+        dynamic["foreground"] = readable_wallpaper_color(
+            wall_text,
+            [dynamic["terminal"], dynamic["window"], "#FFFFFF"],
+            "#1C1F26",
+            5.2,
+        )
+        dynamic["muted"] = readable_wallpaper_color(
+            blend_hex(dynamic["foreground"], bg, 0.22),
+            [dynamic["terminal"], dynamic["window"]],
+            "#5C6472",
+            3.4,
+        )
+    else:
+        dynamic.update(
+            {
+                "window": blend_hex("#09090B", bg, 0.42),
+                "titlebar": blend_hex("#12131A", surface, 0.44),
+                "titlebar_border": blend_hex("#2B3548", accent, 0.34),
+                "terminal": blend_hex("#09090B", bg, 0.26),
+                "selection": blend_hex(secondary, accent, 0.32),
+                "cursor": cyan,
+            }
+        )
+        dynamic["foreground"] = readable_wallpaper_color(
+            wall_text,
+            [dynamic["terminal"], dynamic["window"], bg],
+            "#F4F7FA",
+            5.2,
+        )
+        dynamic["muted"] = readable_wallpaper_color(
+            blend_hex(dynamic["foreground"], surface, 0.26),
+            [dynamic["terminal"], dynamic["window"], bg],
+            "#AEB8C6",
+            3.6,
+        )
+    dynamic["wallpaper_accent"] = accent
+    dynamic["wallpaper_secondary"] = secondary
+    dynamic["wallpaper_cyan"] = cyan
+    dynamic["wallpaper_source"] = str(payload.get("source") or "wallpaper")
+    return dynamic
+
+
+def current_theme_mode() -> str:
+    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
+    if env_mode in {"dark", "light"}:
+        return env_mode
+    config = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/theme.conf"
+    try:
+        for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                value = value.strip().strip("'\"").lower()
+                if value in {"dark", "light"}:
+                    return value
+    except OSError:
+        pass
+    return "dark"
 
 
 PROFILE_ROLES = {
@@ -305,8 +475,8 @@ def run_terminal(profile: str, command: list[str]) -> int:
     except Exception:
         pass
 
-    theme = THEMES.get(profile, THEMES["classic"])
-    dark = profile != "light"
+    theme = wallpaper_dynamic_theme(profile, THEMES.get(profile, THEMES["classic"]))
+    dark = not (current_theme_mode() == "light" or profile in {"light", "focus"})
     clean_mode = os.environ.get("SEVENOS_TERMINAL_CLEAN", "1") != "0"
     show_profile_pill = os.environ.get("SEVENOS_TERMINAL_SHOW_PROFILE", "0") == "1"
     show_status = os.environ.get("SEVENOS_TERMINAL_STATUS", "0") == "1"
@@ -326,27 +496,40 @@ def run_terminal(profile: str, command: list[str]) -> int:
     initial_height = max(380, min(1200, initial_height))
     title = "Terminal" if clean_mode else f"Seven Terminal · {profile.title()}"
     argv = command or [str(resolve_shell())]
-    control_bg = "rgba(255,255,255,0.055)" if dark else "rgba(20,28,40,0.055)"
-    control_bg_hover = "rgba(255,255,255,0.11)" if dark else "rgba(20,28,40,0.10)"
-    control_border = "rgba(255,255,255,0.09)" if dark else "rgba(20,28,40,0.12)"
+    wall_accent = theme.get("wallpaper_accent", theme["cursor"])
+    wall_secondary = theme.get("wallpaper_secondary", theme["selection"])
+    wall_cyan = theme.get("wallpaper_cyan", theme["cursor"])
+    terminal_alpha = float(os.environ.get("SEVENOS_TERMINAL_ALPHA", "0.66" if dark else "0.72"))
+    terminal_alpha = max(0.38, min(0.98, terminal_alpha))
+    frame_alpha = max(0.20, min(0.94, terminal_alpha + 0.06))
+    notebook_alpha = max(0.18, min(0.92, terminal_alpha + 0.02))
+    control_bg = f"alpha({wall_accent}, 0.10)" if dark else f"alpha({wall_accent}, 0.075)"
+    control_bg_hover = f"alpha({wall_accent}, 0.18)" if dark else f"alpha({wall_accent}, 0.13)"
+    control_border = f"alpha({wall_accent}, 0.18)" if dark else f"alpha({wall_accent}, 0.16)"
     panel_bg = f"alpha({theme['window']}, 0.98)" if dark else "#F8FAFD"
     panel_row_hover = "rgba(255,255,255,0.075)" if dark else "rgba(47,123,255,0.08)"
     panel_selected = "rgba(77,163,255,0.16)" if dark else "rgba(47,123,255,0.14)"
     dialog_border = "rgba(255,255,255,0.10)" if dark else "rgba(20,28,40,0.14)"
 
-    css = f"""
+    base_css = seven_theme.gtk_app_css("terminal", current_theme_mode()) if seven_theme else ""
+    css = base_css + f"""
     * {{
       font-family: "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }}
     window.seven-window {{
-      background: {theme['window']};
+      background: alpha({theme['window']}, {0.34 if dark else 0.26});
       border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid alpha({wall_accent}, {0.22 if dark else 0.16});
+      box-shadow:
+        0 24px 72px rgba(0,0,0,{0.34 if dark else 0.12}),
+        0 0 34px alpha({wall_accent}, {0.12 if dark else 0.10});
     }}
     .seven-titlebar {{
       min-height: 38px;
       padding: 0 12px;
-      background: alpha({theme['titlebar']}, 0.96);
+      background:
+        linear-gradient(90deg, alpha({wall_accent}, {0.12 if dark else 0.08}), alpha({wall_secondary}, {0.08 if dark else 0.06})),
+        alpha({theme['titlebar']}, {0.82 if dark else 0.72});
       border-bottom: 1px solid {theme['titlebar_border']};
     }}
     .seven-title {{
@@ -379,7 +562,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     .terminal-searchbar {{
       min-height: 34px;
       padding: 4px 10px;
-      background: alpha({theme['titlebar']}, 0.94);
+      background: alpha({theme['titlebar']}, {0.82 if dark else 0.72});
       border-bottom: 1px solid {theme['titlebar_border']};
     }}
     .terminal-search {{
@@ -397,7 +580,9 @@ def run_terminal(profile: str, command: list[str]) -> int:
     }}
     notebook {{
       border: 0;
-      background: {theme['terminal']};
+      background:
+        radial-gradient(ellipse at 22% 0%, alpha({wall_accent}, {0.11 if dark else 0.075}), transparent 44%),
+        alpha({theme['terminal']}, {notebook_alpha:.2f});
     }}
     notebook tab {{
       min-height: 26px;
@@ -411,7 +596,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     notebook tab:checked {{
       color: {theme['foreground']};
       background: alpha({theme['window']}, 0.96);
-      box-shadow: inset 0 -2px {theme['cursor']};
+      box-shadow: inset 0 -2px {wall_cyan};
     }}
     .tab-pill {{
       color: {theme['muted']};
@@ -419,7 +604,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     }}
     .tab-pill-active {{
       color: {theme['foreground']};
-      font: 700 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 600 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }}
     .tab-close {{
       min-width: 16px;
@@ -440,18 +625,34 @@ def run_terminal(profile: str, command: list[str]) -> int:
       min-height: 24px;
       padding: 0 14px;
       color: {theme['muted']};
-      background: alpha({theme['titlebar']}, 0.84);
+      background: alpha({theme['titlebar']}, {0.76 if dark else 0.66});
       border-bottom: 1px solid alpha({theme['titlebar_border']}, 0.78);
       font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }}
     .seven-terminal-frame {{
       padding: 13px 15px 15px 15px;
-      background: {theme['terminal']};
+      background:
+        radial-gradient(ellipse at 14% 0%, alpha({wall_accent}, {0.18 if dark else 0.13}), transparent 45%),
+        radial-gradient(ellipse at 86% 0%, alpha({wall_secondary}, {0.15 if dark else 0.10}), transparent 42%),
+        alpha({theme['terminal']}, {frame_alpha:.2f});
     }}
     .seven-terminal {{
       padding: 0;
-      background: {theme['terminal']};
+      background: alpha({theme['terminal']}, {terminal_alpha:.2f});
       color: {theme['foreground']};
+    }}
+    window.seven-window.opaque-bg {{
+      background: {theme['window']};
+    }}
+    window.seven-window.opaque-bg .seven-titlebar,
+    window.seven-window.opaque-bg .terminal-searchbar,
+    window.seven-window.opaque-bg .terminal-status {{
+      background: {theme['titlebar']};
+    }}
+    window.seven-window.opaque-bg notebook,
+    window.seven-window.opaque-bg .seven-terminal-frame,
+    window.seven-window.opaque-bg .seven-terminal {{
+      background: {theme['terminal']};
     }}
     .traffic {{
       min-width: 14px;
@@ -482,7 +683,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     }}
     .palette-title {{
       color: {theme['foreground']};
-      font: 700 14px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 600 14px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }}
     .palette-subtitle {{
       color: {theme['muted']};
@@ -543,6 +744,14 @@ def run_terminal(profile: str, command: list[str]) -> int:
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     window = Gtk.Window(title=title)
+    window.set_app_paintable(True)
+    try:
+        screen = window.get_screen()
+        visual = screen.get_rgba_visual() if screen else None
+        if visual:
+            window.set_visual(visual)
+    except Exception:
+        pass
     window.set_default_size(initial_width, initial_height)
     window.set_size_request(620, 380)
     window.set_resizable(True)
@@ -586,6 +795,21 @@ def run_terminal(profile: str, command: list[str]) -> int:
     status_flash = {"active": False}
     font_scale = {"value": saved_font_scale}
     close_state = {"confirmed": False}
+    saved_transparent = bool(saved_state.get("transparent", True))
+    transparency = {
+        "enabled": (
+            os.environ.get("SEVENOS_TERMINAL_TRANSPARENT", "1" if saved_transparent else "0") != "0"
+        )
+    }
+
+    def sync_transparency_class() -> None:
+        context = window.get_style_context()
+        if transparency["enabled"]:
+            context.remove_class("opaque-bg")
+        else:
+            context.add_class("opaque-bg")
+
+    sync_transparency_class()
 
     def tool_button(label: str, tooltip: str, callback):
         button = Gtk.Button(label=label)
@@ -810,6 +1034,43 @@ def run_terminal(profile: str, command: list[str]) -> int:
             feed_terminal_text(current_terminal() or _terminal, " ".join(paths))
             flash_status(tr_text("Path inserted"))
 
+    def apply_terminal_colors(terminal):
+        alpha = terminal_alpha if transparency["enabled"] else 1.0
+        terminal_bg = Gdk.RGBA(*hex_to_rgba_with_alpha(theme["terminal"], alpha))
+        terminal.set_colors(
+            Gdk.RGBA(*hex_to_rgba(theme["foreground"])),
+            terminal_bg,
+            [Gdk.RGBA(*hex_to_rgba(color)) for color in theme["palette"]],
+        )
+        terminal.set_color_cursor(Gdk.RGBA(*hex_to_rgba(theme["cursor"])))
+        terminal.set_color_highlight(Gdk.RGBA(*hex_to_rgba(theme["selection"])))
+
+    def toggle_transparency():
+        transparency["enabled"] = not transparency["enabled"]
+        sync_transparency_class()
+        for term in list(terminals):
+            apply_terminal_colors(term)
+        save_session()
+        flash_status(tr_text("Transparent background on") if transparency["enabled"] else tr_text("Transparent background off"))
+        return True
+
+    def install_transparency_shortcut() -> None:
+        try:
+            accel_group = Gtk.AccelGroup()
+            keyval, modifiers = Gtk.accelerator_parse("<Control><Shift>b")
+            if keyval:
+                accel_group.connect(
+                    keyval,
+                    modifiers,
+                    Gtk.AccelFlags.VISIBLE,
+                    lambda *_: toggle_transparency(),
+                )
+                window.add_accel_group(accel_group)
+        except Exception:
+            pass
+
+    install_transparency_shortcut()
+
     def configure_terminal(terminal):
         terminal.get_style_context().add_class("seven-terminal")
         terminal.set_can_focus(True)
@@ -832,13 +1093,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
         terminal.drag_dest_set(Gtk.DestDefaults.ALL, [], Gdk.DragAction.COPY)
         terminal.drag_dest_set_target_list(target_list)
         install_matchers(terminal)
-        terminal.set_colors(
-            Gdk.RGBA(*hex_to_rgba(theme["foreground"])),
-            Gdk.RGBA(*hex_to_rgba(theme["terminal"])),
-            [Gdk.RGBA(*hex_to_rgba(color)) for color in theme["palette"]],
-        )
-        terminal.set_color_cursor(Gdk.RGBA(*hex_to_rgba(theme["cursor"])))
-        terminal.set_color_highlight(Gdk.RGBA(*hex_to_rgba(theme["selection"])))
+        apply_terminal_colors(terminal)
         terminal.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.KEY_PRESS_MASK)
         terminal.connect("focus-in-event", lambda term, _event: active.update({"terminal": term}) or False)
         terminal.connect("key-press-event", terminal_key_press)
@@ -849,10 +1104,11 @@ def run_terminal(profile: str, command: list[str]) -> int:
         terminal.seven_split_horizontal = lambda: split_terminal(Gtk.Orientation.HORIZONTAL)
         terminal.seven_split_vertical = lambda: split_terminal(Gtk.Orientation.VERTICAL)
         terminal.seven_show_search = lambda: show_search()
-        terminal.seven_show_palette = lambda: show_native_palette(window, profile, terminal, new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here)
+        terminal.seven_show_palette = lambda: show_native_palette(window, profile, terminal, new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here, toggle_transparency)
         terminal.seven_zoom_in = zoom_all_in
         terminal.seven_zoom_out = zoom_all_out
         terminal.seven_zoom_reset = reset_zoom
+        terminal.seven_toggle_transparency = toggle_transparency
         terminal.seven_open_match_at_event = lambda event: open_match_at_event(terminal, event)
         terminal.seven_next_tab = lambda: switch_tab(1)
         terminal.seven_previous_tab = lambda: switch_tab(-1)
@@ -1162,6 +1418,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
             "profile": profile,
             "updated": time.time(),
             "font_scale": font_scale["value"],
+            "transparent": transparency["enabled"],
             "window_size": {"width": width, "height": height},
             "tabs": [],
         }
@@ -1226,14 +1483,18 @@ def run_terminal(profile: str, command: list[str]) -> int:
         return True
 
     toolbar_buttons = (
-        (tool_button("...", tr_text("Command palette"), lambda: show_native_palette(window, profile, current_terminal(), new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here)),)
+        (
+            tool_button("Bg", tr_text("Toggle transparent background"), toggle_transparency),
+            tool_button("...", tr_text("Command palette"), lambda: show_native_palette(window, profile, current_terminal(), new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here, toggle_transparency)),
+        )
         if clean_mode
         else (
             tool_button("+", tr_text("New tab"), lambda: new_tab()),
             tool_button("|", tr_text("Split vertical"), lambda: split_terminal(Gtk.Orientation.HORIZONTAL)),
             tool_button("-", tr_text("Split horizontal"), lambda: split_terminal(Gtk.Orientation.VERTICAL)),
             tool_button("Find", tr_text("Search scrollback"), show_search),
-            tool_button("...", tr_text("Command palette"), lambda: show_native_palette(window, profile, current_terminal(), new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here)),
+            tool_button("Bg", tr_text("Toggle transparent background"), toggle_transparency),
+            tool_button("...", tr_text("Command palette"), lambda: show_native_palette(window, profile, current_terminal(), new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here, toggle_transparency)),
         )
     )
     for button in toolbar_buttons:
@@ -1246,6 +1507,15 @@ def run_terminal(profile: str, command: list[str]) -> int:
     search_entry.connect("changed", lambda entry: find_text(False) if entry.get_text().strip() else None)
     search_entry.connect("key-press-event", lambda _entry, event: hide_search() if (Gdk.keyval_name(event.keyval) or "").lower() == "escape" else False)
 
+    def window_key_press(_window, event) -> bool:
+        state = event.state
+        ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK)
+        shift = bool(state & Gdk.ModifierType.SHIFT_MASK)
+        key_name = (Gdk.keyval_name(event.keyval) or "").lower()
+        if ctrl and shift and key_name == "b":
+            return toggle_transparency()
+        return False
+
     outer.pack_start(searchbar, False, False, 0)
     outer.pack_start(status_label, False, False, 0)
     outer.pack_start(notebook, True, True, 0)
@@ -1253,6 +1523,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     if not restore_session():
         new_tab(os.getcwd(), argv)
     titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
+    window.connect("key-press-event", window_key_press)
     window.connect("map-event", lambda *_: GLib.idle_add(focus_terminal, current_terminal()))
     notebook.connect("switch-page", lambda _notebook, page, page_num: GLib.idle_add(sync_active_page, _notebook, page, page_num))
     GLib.timeout_add_seconds(3, update_status)
@@ -1305,6 +1576,9 @@ def terminal_key_press(terminal, event) -> bool:
         return True
     if ctrl and shift and key_name in {"p", "space"} and hasattr(terminal, "seven_show_palette"):
         terminal.seven_show_palette()
+        return True
+    if ctrl and shift and key_name == "b" and hasattr(terminal, "seven_toggle_transparency"):
+        terminal.seven_toggle_transparency()
         return True
     if ctrl and key_name in {"plus", "equal", "kp_add"} and hasattr(terminal, "seven_zoom_in"):
         terminal.seven_zoom_in()
@@ -1421,6 +1695,7 @@ def show_terminal_menu(terminal, event) -> bool:
             (tr_text("Select All"), lambda *_: terminal.select_all()),
             (tr_text("Search"), lambda *_: terminal.seven_show_search() if hasattr(terminal, "seven_show_search") else None),
             (tr_text("Command Palette"), lambda *_: terminal.seven_show_palette() if hasattr(terminal, "seven_show_palette") else None),
+            (tr_text("Toggle Transparent Background"), lambda *_: terminal.seven_toggle_transparency() if hasattr(terminal, "seven_toggle_transparency") else None),
         )
     )
     for label, callback in primary_entries:
@@ -1567,6 +1842,7 @@ def show_native_palette(
     rename_tab=None,
     reset_tab_title=None,
     new_window_here=None,
+    toggle_transparency=None,
 ) -> None:
     from gi.repository import Gdk, Gtk, Pango
 
@@ -1619,6 +1895,14 @@ def show_native_palette(
         (tr_text("Open Current Folder"), cwd, lambda: run_detached(["seven-files", cwd], cwd)),
         (tr_text("Insert Current Path"), cwd, lambda: feed_terminal_text(terminal, shlex.quote(cwd))),
     ]
+    if toggle_transparency:
+        actions.append(
+            (
+                tr_text("Toggle Transparent Background"),
+                tr_text("Switch between wallpaper glass and solid terminal background"),
+                toggle_transparency,
+            )
+        )
     if zoom_in and zoom_out and zoom_reset:
         actions.extend(
             [
@@ -1822,6 +2106,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.probe:
         return probe()
+    if args.profile == "classic" and current_theme_mode() == "light" and not os.environ.get("SEVENOS_TERMINAL_MODE"):
+        args.profile = "light"
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     return run_terminal(args.profile, command)
 

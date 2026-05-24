@@ -6,7 +6,8 @@ usage() {
 Seven Files
 
 Usage:
-  seven-files [open|menu|profile|read|reader|wallpaper|home|downloads|documents|projects|pictures|videos|music|trash|recent] [path]
+  seven-files [open|menu|profile|read|reader|wallpaper|home|downloads|documents|code|projects|pictures|videos|music|trash|recent] [path]
+  seven-files resources [status|mini|shared|toggle]
 
 Seven Files opens the preferred graphical file manager with SevenOS fallbacks.
 Use "seven-files reader" to open Seven Reader, or "seven-files reader DOCUMENT" to open a document.
@@ -52,6 +53,101 @@ PY
   else
     printf '%s\n' "$target"
   fi
+}
+
+active_profile() {
+  local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
+  local profile="${SEVENOS_ACTIVE_PROFILE:-}"
+
+  if [[ -z "$profile" && -f "$config_dir/profile.env" ]]; then
+    profile="$(awk -F= '/^SEVENOS_ACTIVE_PROFILE=/{gsub(/["'\'']/, "", $2); print $2; exit}' "$config_dir/profile.env")"
+  fi
+  if [[ -z "$profile" && -f "$config_dir/runtime.json" ]]; then
+    profile="$(python - "$config_dir/runtime.json" <<'PY'
+import json, sys
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+    profile = data.get("active_profile") or data.get("profile") or ""
+    if isinstance(profile, dict):
+        profile = profile.get("key") or profile.get("id") or ""
+    print(str(profile))
+except Exception:
+    print("")
+PY
+)"
+  fi
+
+  profile="${profile:-equinox}"
+  profile="${profile//[^a-zA-Z0-9_-]/}"
+  printf '%s\n' "${profile:-equinox}"
+}
+
+files_prefs_path() {
+  printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/files-prefs.json"
+}
+
+grouped_resources_enabled() {
+  local prefs
+  prefs="$(files_prefs_path)"
+  [[ -f "$prefs" ]] || return 1
+  python - "$prefs" <<'PY'
+import json, sys
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+    raise SystemExit(0 if data.get("grouped_resources") is True else 1)
+except SystemExit:
+    raise
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
+set_grouped_resources() {
+  local value="$1"
+  local prefs
+  prefs="$(files_prefs_path)"
+  mkdir -p "$(dirname -- "$prefs")"
+  python - "$prefs" "$value" <<'PY'
+import json, sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+value = sys.argv[2].lower() == "true"
+try:
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if not isinstance(data, dict):
+        data = {}
+except Exception:
+    data = {}
+data["grouped_resources"] = value
+path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
+}
+
+resource_root() {
+  local profile
+  profile="$(active_profile)"
+  if [[ "$profile" == "equinox" ]] || grouped_resources_enabled; then
+    printf '%s\n' "$HOME"
+  else
+    printf '%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}/sevenos/profile-containers/$profile/home"
+  fi
+}
+
+resource_path() {
+  local key="${1:-home}"
+  local root
+  root="$(resource_root)"
+  case "$key" in
+    home) printf '%s\n' "$root" ;;
+    downloads|download|telechargements|téléchargements) printf '%s\n' "$root/Downloads" ;;
+    documents|docs) printf '%s\n' "$root/Documents" ;;
+    code|projects|project|projets) printf '%s\n' "$root/Code" ;;
+    pictures|images|photos) printf '%s\n' "$root/Pictures" ;;
+    videos|video|vidéos) printf '%s\n' "$root/Videos" ;;
+    music|musique|audio) printf '%s\n' "$root/Music" ;;
+    *) printf '%s\n' "$root" ;;
+  esac
 }
 
 open_path() {
@@ -108,11 +204,24 @@ configure_nautilus_preferences() {
 
 ensure_dirs() {
   local dir
+  local root
   is_dry_run && return 0
 
-  for dir in "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"; do
+  root="$(resource_root)"
+  for dir in "$root" "$root/Desktop" "$root/Documents" "$root/Downloads" "$root/Pictures" "$root/Videos" "$root/Music" "$root/Code" "$root/Templates" "$root/Public"; do
     [[ -d "$dir" ]] || mkdir -p "$dir"
   done
+  mkdir -p "$root/.config"
+  cat >"$root/.config/user-dirs.dirs" <<'EOF'
+XDG_DESKTOP_DIR="$HOME/Desktop"
+XDG_DOWNLOAD_DIR="$HOME/Downloads"
+XDG_TEMPLATES_DIR="$HOME/Templates"
+XDG_PUBLICSHARE_DIR="$HOME/Public"
+XDG_DOCUMENTS_DIR="$HOME/Documents"
+XDG_MUSIC_DIR="$HOME/Music"
+XDG_PICTURES_DIR="$HOME/Pictures"
+XDG_VIDEOS_DIR="$HOME/Videos"
+EOF
 }
 
 menu() {
@@ -122,12 +231,13 @@ menu() {
   options=$(
     cat <<EOF
 󰋜  Home
-󰲋  Projects
+󰲋  Code
 󰇚  Downloads
 󰈙  Documents
 󰉏  Pictures
 󰕧  Videos
 󰝚  Music
+󰉋  Shared Home
 󰋚  Recent
 󰩺  Trash
 󰉌  Root
@@ -152,13 +262,14 @@ EOF
   choice="${choice%%    *}"
 
   case "$choice" in
-    Home) open_path "$HOME" ;;
-    Projects) open_path "$HOME/Projects" ;;
-    Downloads) open_path "$HOME/Downloads" ;;
-    Documents) open_path "$HOME/Documents" ;;
-    Pictures) open_path "$HOME/Pictures" ;;
-    Videos) open_path "$HOME/Videos" ;;
-    Music) open_path "$HOME/Music" ;;
+    Home) open_path "$(resource_path home)" ;;
+    Code|Projects) open_path "$(resource_path code)" ;;
+    Downloads) open_path "$(resource_path downloads)" ;;
+    Documents) open_path "$(resource_path documents)" ;;
+    Pictures) open_path "$(resource_path pictures)" ;;
+    Videos) open_path "$(resource_path videos)" ;;
+    Music) open_path "$(resource_path music)" ;;
+    "Shared Home") open_path "$HOME" ;;
     Recent) open_path "recent:///" ;;
     Trash) open_path "trash:///" ;;
     Root) open_path "/" ;;
@@ -171,6 +282,47 @@ EOF
       ;;
     "") ;;
     *) open_path "$choice" ;;
+  esac
+}
+
+resources_command() {
+  local action="${1:-status}"
+  local profile root mode
+  profile="$(active_profile)"
+  root="$(resource_root)"
+  mode="mini-os"
+  grouped_resources_enabled && mode="shared"
+
+  case "$action" in
+    status|"")
+      printf 'Seven Files resources: %s\n' "$mode"
+      printf 'Active mini OS: %s\n' "$profile"
+      printf 'Root: %s\n' "$root"
+      ;;
+    mini|mini-os|isolated|profile)
+      set_grouped_resources false
+      ensure_dirs
+      printf 'Seven Files resources now follow the active mini OS.\n'
+      ;;
+    shared|global|grouped)
+      set_grouped_resources true
+      ensure_dirs
+      printf 'Seven Files resources now use shared user folders.\n'
+      ;;
+    toggle)
+      if grouped_resources_enabled; then
+        set_grouped_resources false
+        printf 'Seven Files resources now follow the active mini OS.\n'
+      else
+        set_grouped_resources true
+        printf 'Seven Files resources now use shared user folders.\n'
+      fi
+      ensure_dirs
+      ;;
+    *)
+      printf 'seven-files: unknown resources action: %s\n' "$action" >&2
+      return 1
+      ;;
   esac
 }
 
@@ -259,7 +411,7 @@ target="${2:-}"
 
 case "$action" in
   open)
-    open_path "${target:-$HOME}"
+    open_path "${target:-$(resource_path home)}"
     ;;
   menu|places)
     menu
@@ -274,25 +426,31 @@ case "$action" in
     read_document "$target"
     ;;
   home)
-    open_path "$HOME"
+    open_path "$(resource_path home)"
     ;;
   downloads)
-    open_path "$HOME/Downloads"
+    open_path "$(resource_path downloads)"
     ;;
   documents)
-    open_path "$HOME/Documents"
+    open_path "$(resource_path documents)"
+    ;;
+  code)
+    open_path "$(resource_path code)"
     ;;
   projects)
-    open_path "$HOME/Projects"
+    open_path "$(resource_path code)"
     ;;
   pictures)
-    open_path "$HOME/Pictures"
+    open_path "$(resource_path pictures)"
     ;;
   videos)
-    open_path "$HOME/Videos"
+    open_path "$(resource_path videos)"
     ;;
   music)
-    open_path "$HOME/Music"
+    open_path "$(resource_path music)"
+    ;;
+  resources|resource-mode)
+    resources_command "$target"
     ;;
   recent)
     open_path "recent:///"

@@ -37,6 +37,7 @@ mako
 swaync
 libnotify
 polkit-kde-agent
+plymouth
 grim
 slurp
 wf-recorder
@@ -47,6 +48,9 @@ nautilus
 gvfs
 gvfs-mtp
 gvfs-smb
+udisks2
+ntfs-3g
+exfatprogs
 file-roller
 sushi
 ffmpegthumbnailer

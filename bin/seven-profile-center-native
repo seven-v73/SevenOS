@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from seven_i18n import tr_text  # noqa: E402
+import seven_theme  # noqa: E402
 
 
 def ensure_gi_python() -> None:
@@ -97,6 +98,49 @@ def state_class(state: str) -> str:
     return {"OK": "good", "PART": "warn", "MISS": "bad"}.get(state, "warn")
 
 
+PUBLIC_PROFILE_NOTES = {
+    "equinox": "Bureau quotidien, fichiers, apps et réglages.",
+    "baobab": "Culture, lecture, collections et mémoire locale.",
+    "studio": "Images, vidéos, captures et exports.",
+    "windows": "Applications Windows et dossiers partagés.",
+    "pulse": "Jeux, captures et confort de jeu.",
+}
+
+
+PUBLIC_PROFILE_DETAILS = {
+    "equinox": [
+        ("Bureau", "L'espace recommandé pour l'usage de tous les jours."),
+        ("Fichiers", "Accède à tes documents, téléchargements et dossiers importants."),
+        ("Applications", "Ouvre rapidement les apps et outils SevenOS."),
+        ("Réglages", "Ajuste SevenOS sans utiliser le terminal."),
+    ],
+    "baobab": [
+        ("Collections", "Tes documents culturels restent rangés dans Baobab."),
+        ("Lecture", "Ouvre les récits et archives dans une interface calme."),
+        ("Ajout", "Importe de nouveaux contenus avec un suivi simple."),
+        ("Partage", "Partage uniquement ce que tu choisis."),
+    ],
+    "studio": [
+        ("Médias", "Images, vidéos et sons sont regroupés dans Studio."),
+        ("Capture", "Lance l'enregistrement d'écran depuis une action directe."),
+        ("Exports", "Retrouve vite les fichiers prêts à partager."),
+        ("Applications", "Ouvre les outils créatifs adaptés à Studio."),
+    ],
+    "windows": [
+        ("Assistant", "Prépare Windows avec un guide clair."),
+        ("Applications", "Lance les logiciels Windows disponibles."),
+        ("Dossiers", "Accède aux fichiers partagés facilement."),
+        ("Aide", "Corrige les problèmes courants sans terminal."),
+    ],
+    "pulse": [
+        ("Jeux", "Garde tes lanceurs et jeux dans Pulse."),
+        ("Captures", "Retrouve vidéos et enregistrements au même endroit."),
+        ("Confort", "Les réglages de jeu restent liés à Pulse."),
+        ("Silence", "Les outils de jeu restent discrets ailleurs."),
+    ],
+}
+
+
 def run() -> int:
     ensure_gi_python()
     import gi
@@ -106,33 +150,33 @@ def run() -> int:
     from gi.repository import Gdk, GLib, Gtk
 
     GLib.set_prgname("SevenProfileCenterNative")
-    GLib.set_application_name(tr_text("SevenOS Profiles"))
+    GLib.set_application_name(tr_text("Espaces SevenOS"))
     try:
         Gdk.set_program_class("SevenProfileCenterNative")
     except Exception:
         pass
 
-    css = """
+    css = seven_theme.gtk_app_css("profile-center") + """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.profile-center-window { background: transparent; }
     .profile-root {
       padding: 18px;
       border-radius: 22px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.105), rgba(255,255,255,0.035)),
-        rgba(16,18,25,0.955);
-      border: 1px solid rgba(255,255,255,0.135);
-      box-shadow: 0 24px 72px rgba(0,0,0,0.48);
+        radial-gradient(ellipse at 14% 0%, alpha(@seven_wallpaper_accent, 0.14), transparent 42%),
+        radial-gradient(ellipse at 86% 0%, alpha(@seven_wallpaper_secondary, 0.10), transparent 40%),
+        @seven_panel;
+      border: 1px solid @seven_border;
     }
     .topbar { padding: 0 0 2px 0; }
-    .title { color: rgba(245,247,250,0.98); font-size: 18px; font-weight: 600; letter-spacing: 0; }
-    .subtitle { color: rgba(245,247,250,0.64); font-size: 11px; }
+    .title { color: @seven_text; font-size: 18px; font-weight: 600; letter-spacing: 0; }
+    .subtitle { color: @seven_muted; font-size: 11px; }
     .pill {
       padding: 6px 11px;
       border-radius: 999px;
-      color: rgba(245,247,250,0.86);
-      background: rgba(255,255,255,0.065);
-      border: 1px solid rgba(255,255,255,0.12);
+      color: @seven_text;
+      background: alpha(@seven_text, 0.065);
+      border: 1px solid @seven_border;
       font-size: 11px;
       font-weight: 500;
     }
@@ -140,27 +184,25 @@ def run() -> int:
       min-height: 30px;
       padding: 5px 10px;
       border-radius: 9px;
-      color: rgba(245,247,250,0.82);
+      color: @seven_text;
       background: transparent;
       border: 1px solid transparent;
       font-size: 11px;
       font-weight: 500;
     }
     .window-action:hover {
-      color: rgba(245,247,250,0.96);
-      background: rgba(255,255,255,0.075);
-      border-color: rgba(255,255,255,0.10);
+      color: @seven_text;
+      background: @seven_hover;
+      border-color: alpha(@seven_accent, 0.24);
     }
     .section {
       padding: 11px;
       border-radius: 15px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.032)),
-        rgba(255,255,255,0.026);
-      border: 1px solid rgba(255,255,255,0.095);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
-    .section-title { color: rgba(245,247,250,0.96); font-size: 12px; font-weight: 500; }
-    .section-note { color: rgba(245,247,250,0.62); font-size: 11px; }
+    .section-title { color: @seven_text; font-size: 12px; font-weight: 500; }
+    .section-note { color: @seven_muted; font-size: 11px; }
     .alias-card {
       padding: 10px 12px;
       border-radius: 20px;
@@ -242,6 +284,44 @@ def run() -> int:
     }
     .icon-action:hover { background: rgba(255,255,255,0.14); }
     """
+    if seven_theme.current_theme_mode() == "light":
+        css += """
+        .profile-root {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.92), rgba(245,247,252,0.78)),
+            rgba(255,255,255,0.84);
+          border-color: rgba(28,31,38,0.10);
+          box-shadow: 0 24px 72px rgba(43,63,100,0.16);
+        }
+        .title, .section-title, .tile, .layer-name, .tile-title { color: rgba(28,31,38,0.96); }
+        .subtitle, .section-note, .layer-value, .tile-note, .alias-note { color: rgba(28,31,38,0.58); }
+        .pill, .window-action, .icon-action {
+          color: rgba(28,31,38,0.86);
+          background: rgba(255,255,255,0.66);
+          border-color: rgba(28,31,38,0.08);
+        }
+        .window-action:hover, .icon-action:hover {
+          color: rgba(28,31,38,0.96);
+          background: rgba(47,123,255,0.10);
+          border-color: rgba(47,123,255,0.18);
+        }
+        .section, .layer-card, .tile, .action-strip {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.52)),
+            rgba(255,255,255,0.50);
+          border-color: rgba(28,31,38,0.08);
+        }
+        .tile:hover, .tile.active {
+          background: rgba(47,123,255,0.11);
+          border-color: rgba(47,123,255,0.24);
+        }
+        .alias-card {
+          background: rgba(255,246,220,0.72);
+          border-color: rgba(176,120,0,0.18);
+        }
+        .alias-title, .danger-note { color: rgba(123,82,0,0.86); }
+        .glyph { color: rgba(28,31,38,0.82); }
+        """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -253,7 +333,7 @@ def run() -> int:
     catalog = load_catalog()
     active = next((item for item in profiles if item.get("active")), None)
 
-    window = Gtk.Window(title=tr_text("SevenOS Profiles"))
+    window = Gtk.Window(title=tr_text("Espaces SevenOS"))
     window.set_wmclass("SevenProfileCenterNative", "SevenProfileCenterNative")
     window.set_decorated(False)
     window.set_resizable(False)
@@ -270,12 +350,12 @@ def run() -> int:
     topbar.get_style_context().add_class("topbar")
     root.pack_start(topbar, False, False, 0)
 
-    title = Gtk.Label(label=tr_text("Profils SevenOS"), xalign=0)
+    title = Gtk.Label(label=tr_text("Espaces SevenOS"), xalign=0)
     title.get_style_context().add_class("title")
     topbar.pack_start(title, True, True, 0)
     controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     topbar.pack_end(controls, False, False, 0)
-    count_pill = Gtk.Label(label=tr_text("{count} profils", count=str(len(profiles))))
+    count_pill = Gtk.Label(label=tr_text("{count} espaces", count=str(len(profiles))))
     count_pill.get_style_context().add_class("pill")
     controls.pack_start(count_pill, False, False, 0)
     settings_button = Gtk.Button(label=tr_text("Réglages"))
@@ -288,12 +368,10 @@ def run() -> int:
     controls.pack_start(close_button, False, False, 0)
 
     active_label = active.get("title", tr_text("None")) if active else tr_text("None")
-    context = runtime.get("context", {}).get("primary_context", {}) if isinstance(runtime, dict) else {}
-    context_title = context.get("title") or context.get("key") or tr_text("none")
-    scheduler_policy = runtime.get("scheduler", {}).get("active_policy", {}) if isinstance(runtime, dict) else {}
-    subtitle_text = tr_text("Profil actif: {profile} · contexte détecté: {context}", profile=active_label, context=context_title)
-    if scheduler_policy.get("scheduler_group") and active and scheduler_policy.get("scheduler_group") != active.get("key"):
-        subtitle_text += tr_text(" · temporary optimization: {group}", group=scheduler_policy.get("scheduler_group"))
+    active_key = str(active.get("key", "")) if active else ""
+    subtitle_text = tr_text("Espace actif: {profile}", profile=active_label)
+    if active_key in PUBLIC_PROFILE_NOTES:
+        subtitle_text += f" · {PUBLIC_PROFILE_NOTES[active_key]}"
     subtitle = Gtk.Label(label=subtitle_text, xalign=0)
     subtitle.get_style_context().add_class("subtitle")
     root.pack_start(subtitle, False, False, 0)
@@ -301,10 +379,13 @@ def run() -> int:
     if isinstance(migration, dict) and int(migration.get("pending") or 0) > 0:
         root.pack_start(alias_migration_panel(Gtk, migration), False, False, 0)
 
-    composition = composition_panel(Gtk, runtime if isinstance(runtime, dict) else {}, isolation if isinstance(isolation, dict) else {})
-    root.pack_start(composition, False, False, 0)
+    if active_key in PUBLIC_PROFILE_DETAILS:
+        root.pack_start(public_profile_panel(Gtk, active_key), False, False, 0)
+    else:
+        composition = composition_panel(Gtk, runtime if isinstance(runtime, dict) else {}, isolation if isinstance(isolation, dict) else {})
+        root.pack_start(composition, False, False, 0)
 
-    if active:
+    if active and active_key not in PUBLIC_PROFILE_DETAILS:
         active_catalog = (catalog.get("profiles", {}) or {}).get(active.get("key", ""), {})
         layers = active_catalog.get("layers", {})
         layers_box = Gtk.Grid()
@@ -313,7 +394,7 @@ def run() -> int:
         layers_box.get_style_context().add_class("section")
         for index, (name, values) in enumerate([
             ("Noyau", layers.get("kernel")),
-            ("Runtime", layers.get("runtime")),
+            ("Préparation", layers.get("runtime")),
             ("Interface", layers.get("experience")),
             ("IA", layers.get("intelligence")),
         ]):
@@ -326,14 +407,17 @@ def run() -> int:
     root.pack_start(grid, True, True, 0)
 
     for index, profile in enumerate(profiles):
-        title_text = profile.get("title", profile.get("key", tr_text("Profile")))
+        title_text = profile.get("title", profile.get("key", tr_text("Espace")))
         state = profile.get("state", "MISS")
         installed = profile.get("installed", 0)
         total = profile.get("total", 0)
         key = profile.get("key", "")
         command = f"seven profile activate {key}"
         role = profile.get("role") or key
-        note = tr_text("en cours · prêt") if profile.get("active") else f"{role} · {state} · {installed}/{total}"
+        if key in PUBLIC_PROFILE_NOTES:
+            note = tr_text("en cours") if profile.get("active") else PUBLIC_PROFILE_NOTES[key]
+        else:
+            note = tr_text("en cours · prêt") if profile.get("active") else f"{role} · {state} · {installed}/{total}"
         glyph = profile.get("waybar_icon") or title_text[:1].upper()
         button = profile_tile(Gtk, glyph, title_text, note, command, state_class(state), key, bool(profile.get("active")))
         grid.attach(button, 0, index, 1, 1)
@@ -343,13 +427,12 @@ def run() -> int:
     actions.get_style_context().add_class("action-strip")
     root.pack_end(actions, False, False, 0)
     for glyph, tooltip, command in [
-        ("󰉋", tr_text("Open workspace"), "seven-files profile"),
-        ("󰡱", tr_text("Open active mini OS center"), f"seven profile center {active.get('key', '')}" if active else "seven profile center"),
-        ("󰞋", tr_text("Profile guide"), "seven profile guide"),
-        ("󰀻", tr_text("Profile apps"), "seven profile apps"),
-        ("󰐱", tr_text("Runtime composition"), "seven runtime status"),
-        ("󰌾", tr_text("Apply isolation policy"), "seven profile isolation apply --yes"),
-        ("󰒓", tr_text("Open Hub"), "seven-hub-native open"),
+        ("󰉋", tr_text("Ouvrir les fichiers"), "seven-files profile"),
+        ("󰡱", tr_text("Ouvrir l'espace actif"), f"seven profile center {active.get('key', '')}" if active else "seven profile center"),
+        ("󰀻", tr_text("Voir les applications"), "seven profile apps"),
+        ("󰁨", tr_text("Réparer cet espace"), "seven-settings profiles"),
+        ("󰞋", tr_text("Aide SevenOS"), "seven-help-native mini-os"),
+        ("󰒓", tr_text("Ouvrir le Hub"), "seven-hub-native open"),
     ]:
         button = Gtk.Button()
         button.get_style_context().add_class("icon-action")
@@ -377,15 +460,15 @@ def composition_panel(Gtk, runtime: dict, isolation: dict):
     active_count = isolation.get("active_package_count", 0)
     inactive_count = isolation.get("inactive_package_count", 0)
 
-    title = Gtk.Label(label=tr_text("État d'exécution"), xalign=0)
+    title = Gtk.Label(label=tr_text("Préparation de l’espace"), xalign=0)
     title.get_style_context().add_class("section-title")
     panel.pack_start(title, False, False, 0)
 
     summary = Gtk.Label(
         label=tr_text(
-            "Principal: {primary} · extensions: {injected} · paquets: {active} actifs / {inactive} silencieux",
+            "Espace principal: {primary} · outils ajoutés: {injected} · éléments prêts: {active} / {inactive} en attente",
             primary=primary.get("title") or composite.get("primary") or "unknown",
-            injected=", ".join(injected) if injected else "none",
+            injected=", ".join(injected) if injected else tr_text("aucun"),
             active=active_count,
             inactive=inactive_count,
         ),
@@ -396,16 +479,33 @@ def composition_panel(Gtk, runtime: dict, isolation: dict):
 
     details = Gtk.Label(
         label=tr_text(
-            "CPU: {cpu} · RAM: {ram} · services: {services} · instantané: {snapshot}",
+            "Performance: {cpu} · mémoire: {ram} · éléments isolés: {services} · reprise: {snapshot}",
             cpu=resource.get("cpu", {}).get("strategy", "unknown"),
             ram=resource.get("ram", {}).get("strategy", "unknown"),
             services=resource.get("isolation", {}).get("services", "unknown"),
-            snapshot="ready" if any(item.get("name") == "criu" and item.get("state") == "OK" for item in doctor.get("checks", [])) else "planned",
+            snapshot=tr_text("prête") if any(item.get("name") == "criu" and item.get("state") == "OK" for item in doctor.get("checks", [])) else tr_text("prévue"),
         ),
         xalign=0,
     )
     details.get_style_context().add_class("danger-note")
     panel.pack_start(details, False, False, 0)
+    return panel
+
+
+def public_profile_panel(Gtk, key: str):
+    panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    panel.get_style_context().add_class("section")
+
+    title = Gtk.Label(label=tr_text("Ce que cet espace prépare"), xalign=0)
+    title.get_style_context().add_class("section-title")
+    panel.pack_start(title, False, False, 0)
+
+    grid = Gtk.Grid()
+    grid.set_column_spacing(8)
+    grid.set_row_spacing(8)
+    panel.pack_start(grid, False, False, 0)
+    for index, (name, value) in enumerate(PUBLIC_PROFILE_DETAILS.get(key, [])):
+        grid.attach(layer_card(Gtk, name, value), index % 4, index // 4, 1, 1)
     return panel
 
 
@@ -416,11 +516,11 @@ def alias_migration_panel(Gtk, migration: dict):
 
     text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
     text_box.set_hexpand(True)
-    title = Gtk.Label(label=tr_text("Profile aliases need cleanup"), xalign=0)
+    title = Gtk.Label(label=tr_text("Anciens noms à nettoyer"), xalign=0)
     title.get_style_context().add_class("alias-title")
     note = Gtk.Label(
         label=tr_text(
-            "{count} local state file(s) still reference retired profiles. Horizon is now Forge DevOps.",
+            "{count} ancien(s) repère(s) peuvent encore créer de la confusion. SevenOS peut les nettoyer.",
             count=str(count),
         ),
         xalign=0,
@@ -431,7 +531,7 @@ def alias_migration_panel(Gtk, migration: dict):
     text_box.pack_start(note, False, False, 0)
     panel.pack_start(text_box, True, True, 0)
 
-    button = Gtk.Button(label=tr_text("Repair"))
+    button = Gtk.Button(label=tr_text("Nettoyer"))
     button.get_style_context().add_class("alias-button")
     button.connect("clicked", lambda _button: run_detached("seven profile migrate-aliases --apply"))
     panel.pack_end(button, False, False, 0)

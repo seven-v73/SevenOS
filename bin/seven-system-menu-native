@@ -11,6 +11,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
 
 
 def probe() -> int:
@@ -40,6 +45,35 @@ ROWS = [
     ("reboot", "↻", "Redémarrer", "Relancer la session"),
     ("update", "⇣", "Mise à jour", "Mettre SevenOS à jour"),
 ]
+
+
+def cairo_palette() -> dict[str, tuple[float, float, float, float]]:
+    if seven_theme:
+        resolved = seven_theme.resolved_theme("system-menu")
+        mode = resolved.get("mode")
+    else:
+        mode = os.environ.get("SEVENOS_THEME_MODE", "dark")
+    if mode == "light":
+        return {
+            "bg": (0.96, 0.97, 0.99, 0.94),
+            "panel": (1.0, 1.0, 1.0, 0.92),
+            "border": (0.12, 0.18, 0.28, 0.16),
+            "text": (0.11, 0.12, 0.15, 0.95),
+            "muted": (0.28, 0.33, 0.40, 0.58),
+            "accent": (0.18, 0.48, 1.0, 0.90),
+            "hover": (0.18, 0.48, 1.0, 0.12),
+            "armed": (0.82, 0.06, 0.22, 0.14),
+        }
+    return {
+        "bg": (0.055, 0.065, 0.09, 0.96),
+        "panel": (0.075, 0.085, 0.12, 0.96),
+        "border": (0.74, 0.88, 1.0, 0.46),
+        "text": (0.98, 0.99, 1.0, 0.94),
+        "muted": (0.86, 0.90, 0.98, 0.52),
+        "accent": (0.30, 0.72, 1.0, 0.86),
+        "hover": (0.35, 0.68, 1.0, 0.12),
+        "armed": (1.0, 0.32, 0.44, 0.18),
+    }
 
 
 def run_action(action: str) -> None:
@@ -123,18 +157,19 @@ class SystemMenu(Gtk.Window):
         PangoCairo.show_layout(cr, layout)
 
     def on_draw(self, _widget, cr) -> bool:
-        cr.set_source_rgb(0.055, 0.065, 0.09)
+        colors = cairo_palette()
+        cr.set_source_rgba(*colors["bg"])
         cr.paint()
         self.rounded_rect(cr, 1, 1, self.width - 2, self.height - 2, 15)
-        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.set_source_rgba(*colors["panel"])
         cr.fill_preserve()
-        cr.set_source_rgba(0.74, 0.88, 1.0, 0.62)
+        cr.set_source_rgba(*colors["border"])
         cr.set_line_width(1)
         cr.stroke()
-        self.draw_text(cr, "SevenOS", 16, 12, 120, "SF Pro Text SemiBold 13", (1, 1, 1, 0.94))
+        self.draw_text(cr, "SevenOS", 16, 12, 120, "SF Pro Text SemiBold 13", colors["text"])
         header = "Confirmer" if self.confirm_action else "Système"
-        self.draw_text(cr, header, 184, 13, 84, "SF Pro Text 11", (0.86, 0.91, 0.98, 0.54))
-        cr.set_source_rgba(0.30, 0.72, 1.0, 0.86)
+        self.draw_text(cr, header, 184, 13, 84, "SF Pro Text 11", colors["muted"])
+        cr.set_source_rgba(*colors["accent"])
         cr.rectangle(16, 35, 64, 2)
         cr.fill()
         for index, (_action, icon, label, detail) in enumerate(ROWS):
@@ -143,12 +178,12 @@ class SystemMenu(Gtk.Window):
             armed = self.confirm_action == action and time.time() < self.confirm_until
             if index in {self.hover, self.selected}:
                 self.rounded_rect(cr, 8, y - 2, self.width - 16, 32, 9)
-                cr.set_source_rgba(0.35, 0.68, 1.0, 0.18 if armed else 0.12)
+                cr.set_source_rgba(*(colors["armed"] if armed else colors["hover"]))
                 cr.fill()
-            self.draw_text(cr, icon, 18, y + 5, 24, "SF Pro Text 15", (0.60, 0.82, 1.0, 0.96))
-            self.draw_text(cr, label, 50, y + 3, 112, "SF Pro Text 12", (0.98, 0.99, 1.0, 0.94))
+            self.draw_text(cr, icon, 18, y + 5, 24, "SF Pro Text 15", colors["accent"])
+            self.draw_text(cr, label, 50, y + 3, 112, "SF Pro Text 12", colors["text"])
             row_detail = "Clique encore pour confirmer" if armed else detail
-            color = (0.64, 0.82, 1.0, 0.78) if armed else (0.86, 0.90, 0.98, 0.50)
+            color = colors["accent"] if armed else colors["muted"]
             self.draw_text(cr, row_detail, 154, y + 5, 112, "SF Pro Text 11", color)
         return False
 

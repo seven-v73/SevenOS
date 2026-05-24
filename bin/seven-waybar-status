@@ -27,7 +27,10 @@ RECORDER_FILE = STATE_HOME / "sevenos/recorder/current-file"
 
 
 def run(command: list[str]) -> str:
-    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    try:
+        result = subprocess.run(command, text=True, capture_output=True, check=False, timeout=1.6)
+    except subprocess.TimeoutExpired:
+        return ""
     return result.stdout.strip()
 
 
@@ -37,6 +40,28 @@ def emit(text: str, tooltip: str, css_class: str = "ready", alt: str = "") -> in
         payload["alt"] = alt
     print(json.dumps(payload, ensure_ascii=False))
     return 0
+
+
+def public_recommendation_label(value: str) -> str:
+    translations = {
+        "Open Spotlight": "Ouvrir la recherche",
+        "Search apps, actions, files and windows.": "Chercher apps, actions, fichiers et fenêtres.",
+        "Workspace changed; Spotlight is the fastest next action.": "L’espace a changé; la recherche est le chemin le plus rapide.",
+    }
+    return translations.get(value, value)
+
+
+def public_profile_mood(key: str, fallback: str) -> str:
+    moods = {
+        "equinox": "Bureau quotidien, fichiers, apps et réglages.",
+        "baobab": "Culture, lecture, collections et mémoire locale.",
+        "forge": "Projets, code et outils de développement avancés.",
+        "shield": "Vérification prudente, protection et rapports.",
+        "studio": "Images, vidéos, captures et exports.",
+        "windows": "Applications Windows et dossiers partagés.",
+        "pulse": "Jeux, captures et confort de jeu.",
+    }
+    return moods.get(key, fallback)
 
 
 def read_json(command: list[str]) -> dict:
@@ -158,7 +183,7 @@ def sevenos_menu() -> int:
     title = str(profile_data.get("title") or key.title())
     role = str(profile_data.get("role") or "Profile")
     state = str(profile_data.get("state") or "MISS")
-    mood = str(profile_data.get("ui_mood") or profile_data.get("description") or "")
+    mood = public_profile_mood(key, str(profile_data.get("ui_mood") or profile_data.get("description") or ""))
     css = f"sevenos-menu profile-{key}"
     if state == "OK":
         css += " ok"
@@ -172,19 +197,11 @@ def sevenos_menu() -> int:
             f"SevenOS · {title}",
             role,
             mood,
-            "Click: système · Right click: mini OS · Middle click: Spotlight",
+            "Clic: système · clic droit: espaces · clic milieu: recherche",
         ]
         if part
     )
-    marks = {
-        "baobab": "󰔱",
-        "forge": "󰙨",
-        "shield": "󰒃",
-        "studio": "󰏗",
-        "pulse": "󰓅",
-        "windows": "󰖳",
-    }
-    return emit(marks.get(key, ""), tooltip, css, key)
+    return emit("SevenOS", tooltip, css, key)
 
 
 def wifi() -> int:
@@ -228,8 +245,8 @@ def recorder() -> int:
         if pid and Path(f"/proc/{pid}").exists():
             current = RECORDER_FILE.read_text(encoding="utf-8", errors="ignore").strip() if RECORDER_FILE.exists() else ""
             name = Path(current).name if current else "recording"
-            return emit("●", f"Recording · {name}", "recording", "active")
-    return emit("", "Recorder idle", "hidden", "idle")
+            return emit("●", f"Seven Recorder · recording\n{name}\nClick: controls · Right click: area · Middle click: full screen", "recording", "active")
+    return emit("󰑊", "Seven Recorder\nClick: controls\nRight click: record area\nMiddle click: record full screen", "idle", "idle")
 
 
 def ai() -> int:
@@ -387,7 +404,7 @@ def media() -> int:
         for part in [
             "Média actif",
             f"{artist} · {title}" if artist else title,
-            "Click: contrôles média · Right click: audio",
+            "Clic: contrôles média · clic droit: audio",
         ]
         if part
     )
@@ -427,12 +444,12 @@ def profile() -> int:
     }.get(key, compact_label(title.split("·")[0].split()[0] if title else short, 12))
     profile_mission = {
         "baobab": "Culture · lecture · mémoire locale",
-        "forge": "DevOps · build · containers",
-        "shield": "Sécurité · audit · sandbox",
+        "forge": "Développement avancé",
+        "shield": "Sécurité avancée",
         "studio": "Création · médias · exports",
         "pulse": "Gaming · performance · capture",
     }.get(key, "")
-    role = str(data.get("role") or "Profile")
+    role = str(data.get("role") or "Espace")
     state = str(data.get("state") or "MISS")
     mood = str(data.get("ui_mood") or data.get("description") or "")
     modules = str(data.get("waybar_modules") or "")
@@ -441,10 +458,10 @@ def profile() -> int:
         for part in [
             f"{title} · {role}",
             profile_mission,
-            f"State: {state}",
+            f"État: {state}",
             mood,
-            f"Waybar: {modules}" if modules else "",
-            "Click: changer de mini OS · Right click: état courant",
+            f"Barre de menu: {modules}" if modules else "",
+            "Clic: changer d’espace · clic droit: état courant",
         ]
         if part
     )
@@ -464,12 +481,12 @@ def os_switch() -> int:
     title = str(profile_data.get("title") or key.title())
     tooltip = "\n".join(
         [
-            f"Mini OS actif: {title}",
+            f"Espace actif: {title}",
             "Click: changer de mini OS",
             "Right click: état du mini OS courant",
         ]
     )
-    return emit("Changer OS", tooltip, f"os-switch profile-{key}", key)
+    return emit("Changer", tooltip, f"os-switch profile-{key}", key)
 
 
 def mini_context() -> int:
@@ -489,13 +506,13 @@ def mini_context() -> int:
     priority = str(layout.get("priority") or "").strip()
     recommendation = str(experience_data.get("title") or "").strip()
     spec = {
-        "equinox": ("󰐃", "Daily", "Vue quotidienne, actions générales, état SevenOS", "balance"),
-        "baobab": ("󰔱", "Archive", "Bibliothèque culturelle, collections, lecture et mémoire locale", "culture"),
+        "equinox": ("󰐃", "Bureau", "Fichiers, apps, réglages et aide SevenOS", "balance"),
+        "baobab": ("󰔱", "Culture", "Collections, lecture et mémoire locale", "culture"),
         "forge": ("󰌢", "Build", "Projets, Git, terminaux, containers, logs et déploiements", "dev"),
         "shield": ("󰒃", "Audit", "Périmètre, sandbox, VPN, preuves et actions prudentes", "secure"),
-        "studio": ("󰏗", "Canvas", "Médias, captures, assets, exports et outils créatifs", "creative"),
-        "windows": ("󰖳", "Bridge", "Windows Bridge, VM, applications Windows", "bridge"),
-        "pulse": ("󰓅", "Boost", "Jeux, performance, captures, latence et mode immersif", "gaming"),
+        "studio": ("󰏗", "Studio", "Images, vidéos, captures et exports", "creative"),
+        "windows": ("󰖳", "Windows", "Applications Windows et dossiers partagés", "bridge"),
+        "pulse": ("󰓅", "Jeux", "Jeux, captures et confort de jeu", "gaming"),
     }.get(key, ("󰐃", compact_label(title, 10), "Actions rapides du mini OS", "custom"))
     icon, label, description, signal = spec
     signal_note = ""
@@ -505,11 +522,11 @@ def mini_context() -> int:
         vpn_name = active_vpn_name()
         signal_note = f"VPN: {vpn_name}" if vpn_name else "VPN: inactif · scope local"
     elif key == "studio":
-        signal_note = "Capture active" if recorder_is_active() else "Canvas prêt · exports rapides"
+        signal_note = "Capture active" if recorder_is_active() else "Studio prêt"
     elif key == "pulse":
-        signal_note = "Immersif: dock auto-hide" if density == "immersive" else "Performance: prêt"
+        signal_note = "Mode jeu actif" if density == "immersive" else "Prêt à jouer"
     elif key == "baobab":
-        signal_note = "Local-first · lecture et transmission"
+        signal_note = "Lecture locale · collections prêtes"
     tooltip = "\n".join(
         part
         for part in [
@@ -518,8 +535,8 @@ def mini_context() -> int:
             signal_note,
             f"Mode: {density} · {priority}" if density or priority else "",
             f"App active: {compact_label(app_title, 44)}" if app_title else "",
-            f"Suggestion: {compact_label(recommendation, 42)}" if recommendation else "",
-            "Click: actions rapides · Right click: centre mini OS",
+            f"Suggestion: {compact_label(public_recommendation_label(recommendation), 42)}" if recommendation else "",
+            "Clic: actions rapides · clic droit: centre mini OS",
         ]
         if part
     )
@@ -727,11 +744,11 @@ def experience() -> int:
     root = Path(__file__).resolve().parent.parent
     helper = root / "scripts/shell-experience.sh"
     if not helper.exists():
-        return emit("󰐃", "SevenOS Shell Experience missing", "missing", "missing")
+        return emit("󰐃", "Interface SevenOS indisponible", "missing", "missing")
     data = read_json([str(helper), "status", "--json"])
     score = read_json([str(helper), "score"])
     if not data:
-        return emit("󰐃", "SevenOS Shell Experience unavailable", "missing", "missing")
+        return emit("󰐃", "Interface SevenOS indisponible", "missing", "missing")
     profile = str(data.get("profile") or "equinox")
     motion = str((data.get("motion") or {}).get("profile_motion") or "balanced")
     recent = data.get("recent_events") if isinstance(data.get("recent_events"), list) else []
@@ -750,16 +767,16 @@ def experience() -> int:
     if state != "ready" or percent < 90:
         label = "󰐃"
     tooltip_parts = [
-        f"Shell Experience · {state} · {percent}%",
-        f"Profile: {profile}",
-        f"Motion: {motion}",
+        f"Interface SevenOS · {state} · {percent}%",
+        f"Espace: {profile}",
+        f"Animation: {motion}",
     ]
     if last:
-        tooltip_parts.append(f"Last: {last.get('kind', 'event')} · {last.get('label', '')}")
+        tooltip_parts.append(f"Dernière action: {last.get('kind', 'event')} · {last.get('label', '')}")
     if recommendation:
-        tooltip_parts.append(f"Next: {recommendation.get('title', 'Open Spotlight')}")
-        tooltip_parts.append(str(recommendation.get("reason", "")))
-    tooltip_parts.append("Click: warm up · Right click: recent events · Middle: recommendation")
+        tooltip_parts.append(f"Suggestion: {public_recommendation_label(str(recommendation.get('title', 'Open Spotlight')))}")
+        tooltip_parts.append(public_recommendation_label(str(recommendation.get("reason", ""))))
+    tooltip_parts.append("Clic: préparer · clic droit: événements · clic milieu: suggestion")
     return emit(label, "\n".join(tooltip_parts), css, state)
 
 

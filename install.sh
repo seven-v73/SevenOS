@@ -38,6 +38,7 @@ Targets:
   post-install     Check common post-install blockers
   status           Show SevenOS installation status
   branding         Apply SevenOS system branding
+  boot-splash      Apply SevenOS quiet boot/shutdown splash
   cli              Install SevenOS CLI tools
   theme [dark|light]
                    Apply SevenOS visual theme
@@ -204,6 +205,9 @@ case "$TARGET" in
     ;;
   branding)
     "$ROOT_DIR/branding/apply-branding.sh"
+    ;;
+  boot-splash)
+    "$ROOT_DIR/scripts/boot-splash.sh" apply "${TARGET_ARGS[@]}"
     ;;
   cli)
     "$ROOT_DIR/scripts/install-cli.sh"

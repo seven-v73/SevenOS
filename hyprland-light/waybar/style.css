@@ -242,12 +242,25 @@ window#waybar {
 }
 
 #custom-sevenos {
-  min-width: 70px;
-  padding-left: 9px;
-  padding-right: 9px;
+  min-width: 0;
+  padding-left: 10px;
+  padding-right: 11px;
+  color: rgba(245, 247, 252, 0.96);
+  font-family: "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0;
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 12px rgba(112, 164, 255, 0.035);
+}
+
+#custom-sevenos:hover {
   color: #FFFFFF;
-  font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
-  font-size: 14px;
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 #custom-sevenos.profile-forge,
@@ -269,7 +282,8 @@ window#waybar {
 
 #custom-sevenos.warn,
 #custom-sevenos.miss {
-  color: rgba(255, 228, 172, 0.96);
+  color: rgba(245, 247, 252, 0.96);
+  border-color: rgba(255, 228, 172, 0.24);
 }
 
 #window {
@@ -722,6 +736,18 @@ window#waybar {
   background: transparent;
 }
 
+#custom-recorder.idle {
+  color: rgba(235, 241, 255, 0.88);
+  border: 1px solid rgba(156, 203, 255, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+#custom-recorder.idle:hover {
+  color: #FFFFFF;
+  border-color: rgba(156, 203, 255, 0.30);
+  background: rgba(156, 203, 255, 0.12);
+}
+
 #battery {
   min-width: 52px;
 }
@@ -745,7 +771,6 @@ window#waybar {
 }
 
 #custom-vpn.hidden,
-#custom-recorder.hidden,
 #custom-system-status.hidden {
   min-width: 0;
   padding: 0;

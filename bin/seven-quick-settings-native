@@ -5,12 +5,15 @@ from __future__ import annotations
 
 import json
 import os
+import atexit
 import shutil
+import signal
 import subprocess
 import sys
 import threading
 import warnings
-from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -38,7 +41,7 @@ def resolve_root() -> Path:
     if env_root and (Path(env_root) / "bin/seven").exists():
         return Path(env_root)
     here = Path(__file__).resolve()
-    if (here.parent / "seven").exists():
+    if (here.parent / "seven").exists() and (here.parent.parent / "identity").exists():
         return here.parent.parent
     for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
         if (candidate / "bin/seven").exists():
@@ -56,6 +59,13 @@ except Exception:  # pragma: no cover
 
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
 DND_FILE = STATE_DIR / "notifications.dnd"
+WIFI_CACHE_FILE = STATE_DIR / "wifi-networks.json"
+BLUETOOTH_CACHE_FILE = STATE_DIR / "bluetooth-devices.json"
+SNAPSHOT_CACHE_FILE = STATE_DIR / "control-center-snapshot.json"
+QUICK_PID_FILE = STATE_DIR / "control-center.pid"
+QUICK_REQUEST_FILE = STATE_DIR / "control-center-request.json"
+PANEL_ORDER = ["system", "wifi", "bluetooth", "audio", "power"]
+PANELS = {*PANEL_ORDER, "time"}
 
 
 @dataclass(frozen=True)
@@ -87,25 +97,97 @@ def command_available(command: str) -> bool:
     return shutil.which(command) is not None
 
 
+def read_json_file(path: Path) -> object:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def write_json_file(path: Path, payload: object) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def process_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def process_is_control_center(pid: int) -> bool:
+    if not process_alive(pid):
+        return False
+    try:
+        comm = Path(f"/proc/{pid}/comm").read_text(encoding="utf-8", errors="ignore").strip()
+    except Exception:
+        comm = ""
+    if comm in {"timeout", "bash", "sh", "zsh", "fish"}:
+        return False
+    try:
+        cmdline = Path(f"/proc/{pid}/cmdline").read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return False
+    return "seven-quick-settings-native" in cmdline or "SevenQuickSettingsNative" in cmdline
+
+
+def request_existing_instance(panel: str, action: str = "show") -> bool:
+    try:
+        pid = int(QUICK_PID_FILE.read_text(encoding="utf-8").strip())
+    except Exception:
+        return False
+    if pid == os.getpid() or not process_is_control_center(pid):
+        try:
+            QUICK_PID_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return False
+    write_json_file(QUICK_REQUEST_FILE, {"panel": panel if panel in PANELS else "system", "action": action})
+    try:
+        os.kill(pid, signal.SIGUSR1)
+        return True
+    except OSError:
+        return False
+
+
+def claim_single_instance(panel: str, action: str = "show") -> bool:
+    if os.environ.get("SEVENOS_QUICK_MULTI") == "1":
+        return True
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    if request_existing_instance(panel, action):
+        return False
+    QUICK_PID_FILE.write_text(str(os.getpid()), encoding="utf-8")
+
+    def cleanup() -> None:
+        try:
+            if QUICK_PID_FILE.read_text(encoding="utf-8").strip() == str(os.getpid()):
+                QUICK_PID_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    atexit.register(cleanup)
+    return True
+
+
 def current_theme_mode() -> str:
     if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
         return str(os.environ["SEVENOS_THEME_MODE"])
     config_dir = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
-    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
-    profile_env = config_dir / "profile.env"
-    if profile_env.exists():
-        for line in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
-            if line.startswith("SEVENOS_ACTIVE_PROFILE="):
-                profile = line.split("=", 1)[1].strip().strip("'\"") or profile
-                break
-    for theme_file in (config_dir / "profiles" / profile / "theme.conf", config_dir / "theme.conf"):
-        if theme_file.exists():
-            for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-                key, _, value = line.partition("=")
-                if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
-                    value = value.strip().strip("'\"").lower()
-                    if value in {"dark", "light"}:
-                        return value
+    theme_file = config_dir / "theme.conf"
+    if theme_file.exists():
+        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                value = value.strip().strip("'\"").lower()
+                if value in {"dark", "light"}:
+                    return value
     return "dark"
 
 
@@ -142,22 +224,6 @@ def run_detached(*command: str) -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    if command and command[0] in {
-        "seven-settings",
-        "seven-spotlight",
-        "seven-wifi",
-        "seven-bluetooth",
-        "seven",
-        "pavucontrol",
-        "seven-quick-settings",
-    }:
-        try:
-            from gi.repository import GLib, Gtk
-
-            GLib.idle_add(Gtk.main_quit)
-        except Exception:
-            pass
-
 
 def active_profile() -> tuple[str, str]:
     profile_file = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/profile.json"
@@ -168,6 +234,52 @@ def active_profile() -> tuple[str, str]:
         except Exception:
             pass
     return "Equinox", "equinox"
+
+
+def placeholder_snapshot() -> SystemSnapshot:
+    profile_title, profile_key = active_profile()
+    cached = cached_snapshot()
+    if cached is not None and cached.profile_key == profile_key:
+        return cached
+    return SystemSnapshot(
+        profile_title=profile_title,
+        profile_key=profile_key,
+        wifi=tr_text("Loading"),
+        wifi_enabled=False,
+        bluetooth=tr_text("Loading"),
+        bluetooth_enabled=False,
+        volume=50,
+        brightness=60,
+        battery_percent=0,
+        battery_note=tr_text("Loading"),
+        battery_charging=False,
+        vpn_active=False,
+        recorder_active=False,
+    )
+
+
+def cached_snapshot() -> SystemSnapshot | None:
+    payload = read_json_file(SNAPSHOT_CACHE_FILE)
+    if not isinstance(payload, dict):
+        return None
+    try:
+        return SystemSnapshot(
+            profile_title=str(payload.get("profile_title") or "Equinox"),
+            profile_key=str(payload.get("profile_key") or "equinox"),
+            wifi=str(payload.get("wifi") or tr_text("Loading")),
+            wifi_enabled=bool(payload.get("wifi_enabled")),
+            bluetooth=str(payload.get("bluetooth") or tr_text("Loading")),
+            bluetooth_enabled=bool(payload.get("bluetooth_enabled")),
+            volume=max(0, min(100, int(payload.get("volume", 50)))),
+            brightness=max(0, min(100, int(payload.get("brightness", 60)))),
+            battery_percent=max(0, min(100, int(payload.get("battery_percent", 0)))),
+            battery_note=str(payload.get("battery_note") or tr_text("Loading")),
+            battery_charging=bool(payload.get("battery_charging")),
+            vpn_active=bool(payload.get("vpn_active")),
+            recorder_active=bool(payload.get("recorder_active")),
+        )
+    except Exception:
+        return None
 
 
 def wifi_state() -> str:
@@ -250,24 +362,38 @@ def recorder_active() -> bool:
 
 def snapshot() -> SystemSnapshot:
     profile_title, profile_key = active_profile()
-    wifi = wifi_state()
-    bluetooth = bluetooth_state()
-    percent, note, charging = battery_info()
-    return SystemSnapshot(
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        wifi_future = pool.submit(wifi_state)
+        bluetooth_future = pool.submit(bluetooth_state)
+        volume_future = pool.submit(volume_value)
+        brightness_future = pool.submit(brightness_value)
+        battery_future = pool.submit(battery_info)
+        vpn_future = pool.submit(vpn_active)
+        recorder_future = pool.submit(recorder_active)
+        wifi = wifi_future.result()
+        bluetooth = bluetooth_future.result()
+        volume = volume_future.result()
+        brightness = brightness_future.result()
+        percent, note, charging = battery_future.result()
+        vpn = vpn_future.result()
+        recording = recorder_future.result()
+    data = SystemSnapshot(
         profile_title=profile_title,
         profile_key=profile_key,
         wifi=wifi,
         wifi_enabled=wifi not in {tr_text("Off"), tr_text("Missing")},
         bluetooth=bluetooth,
         bluetooth_enabled=bluetooth == tr_text("On"),
-        volume=volume_value(),
-        brightness=brightness_value(),
+        volume=volume,
+        brightness=brightness,
         battery_percent=percent,
         battery_note=note,
         battery_charging=charging,
-        vpn_active=vpn_active(),
-        recorder_active=recorder_active(),
+        vpn_active=vpn,
+        recorder_active=recording,
     )
+    write_json_file(SNAPSHOT_CACHE_FILE, asdict(data))
+    return data
 
 
 def toggle_wifi() -> None:
@@ -314,7 +440,10 @@ def wifi_networks(limit: int = 8, rescan: bool = False) -> list[dict[str, str]]:
     if not command_available("nmcli"):
         return []
     scan = "yes" if rescan else "no"
-    raw = command_output(["nmcli", "-t", "--escape", "no", "-f", "SSID,SECURITY,SIGNAL,IN-USE", "dev", "wifi", "list", "--rescan", scan], timeout=2.8)
+    raw = command_output(
+        ["nmcli", "-t", "--escape", "no", "-f", "SSID,SECURITY,SIGNAL,IN-USE", "dev", "wifi", "list", "--rescan", scan],
+        timeout=2.8 if rescan else 0.9,
+    )
     rows: list[dict[str, str]] = []
     seen: set[str] = set()
     for line in raw.splitlines():
@@ -335,7 +464,36 @@ def wifi_networks(limit: int = 8, rescan: bool = False) -> list[dict[str, str]]:
         )
         if len(rows) >= limit:
             break
+    if rows:
+        write_json_file(WIFI_CACHE_FILE, {"networks": rows, "profile": active_profile()[1]})
     return rows
+
+
+def cached_wifi_networks(limit: int = 12) -> list[dict[str, str]]:
+    payload = read_json_file(WIFI_CACHE_FILE)
+    if not isinstance(payload, dict):
+        return []
+    rows = payload.get("networks")
+    if not isinstance(rows, list):
+        return []
+    valid: list[dict[str, str]] = []
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        ssid = str(item.get("ssid") or "").strip()
+        if not ssid:
+            continue
+        valid.append(
+            {
+                "ssid": ssid,
+                "security": str(item.get("security") or "open"),
+                "signal": str(item.get("signal") or "--"),
+                "active": "yes" if str(item.get("active") or "") == "yes" else "no",
+            }
+        )
+        if len(valid) >= limit:
+            break
+    return valid
 
 
 def known_wifi_connection(ssid: str) -> str:
@@ -370,7 +528,7 @@ def wifi_password_dialog(Gtk, parent, ssid: str) -> str:
     return password
 
 
-def connect_wifi_network(Gtk, parent, ssid: str, security: str) -> None:
+def connect_wifi_network(Gtk, parent, ssid: str, security: str, feedback_widget=None, feedback_label=None) -> None:
     if not command_available("nmcli"):
         notify("SevenOS Wi-Fi", "SevenOS network tools are missing.")
         return
@@ -380,6 +538,15 @@ def connect_wifi_network(Gtk, parent, ssid: str, security: str) -> None:
         password = wifi_password_dialog(Gtk, parent, ssid)
         if not password:
             return
+
+    if feedback_widget is not None:
+        try:
+            replace_state_classes(feedback_widget, ["active"])
+            feedback_widget.set_tooltip_text(tr_text("Connecting"))
+            if feedback_label is not None:
+                feedback_label.set_text(tr_text("Connecting"))
+        except Exception:
+            pass
 
     def work():
         try:
@@ -392,6 +559,17 @@ def connect_wifi_network(Gtk, parent, ssid: str, security: str) -> None:
                 status = subprocess.run(["nmcli", "device", "wifi", "connect", ssid], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=12.0).returncode
         except Exception:
             status = 1
+        if feedback_widget is not None:
+            from gi.repository import GLib
+
+            def update_feedback():
+                replace_state_classes(feedback_widget, ["connected" if status == 0 else "critical"])
+                feedback_widget.set_tooltip_text(tr_text("Connected") if status == 0 else tr_text("Connection failed"))
+                if feedback_label is not None:
+                    feedback_label.set_text(tr_text("Connected") if status == 0 else tr_text("Connection failed"))
+                return False
+
+            GLib.idle_add(update_feedback)
         notify("SevenOS Wi-Fi", f"Connected to {ssid}." if status == 0 else f"Could not connect to {ssid}.")
 
     notify("SevenOS Wi-Fi", f"Connecting to {ssid}...")
@@ -435,8 +613,32 @@ def bluetooth_device_rows(limit: int = 8) -> list[dict[str, str]]:
             seen.add(parts[1])
             rows.append({"mac": parts[1], "name": parts[2], "state": state})
             if len(rows) >= limit:
+                write_json_file(BLUETOOTH_CACHE_FILE, {"devices": rows, "profile": active_profile()[1]})
                 return rows
+    if rows:
+        write_json_file(BLUETOOTH_CACHE_FILE, {"devices": rows, "profile": active_profile()[1]})
     return rows
+
+
+def cached_bluetooth_device_rows(limit: int = 8) -> list[dict[str, str]]:
+    payload = read_json_file(BLUETOOTH_CACHE_FILE)
+    if not isinstance(payload, dict):
+        return []
+    rows = payload.get("devices")
+    if not isinstance(rows, list):
+        return []
+    valid: list[dict[str, str]] = []
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        mac = str(item.get("mac") or "").strip()
+        name = str(item.get("name") or "").strip()
+        if not mac or not name:
+            continue
+        valid.append({"mac": mac, "name": name, "state": str(item.get("state") or tr_text("Nearby"))})
+        if len(valid) >= limit:
+            break
+    return valid
 
 
 def bluetooth_action(mac: str, connected: bool) -> None:
@@ -462,6 +664,25 @@ def bluetooth_action(mac: str, connected: bool) -> None:
 
     notify("SevenOS Bluetooth", "Updating device...")
     threading.Thread(target=work, daemon=True).start()
+
+
+def bluetooth_action_with_feedback(mac: str, connected: bool, feedback_widget=None, feedback_label=None) -> None:
+    if feedback_widget is not None:
+        try:
+            replace_state_classes(feedback_widget, ["active"])
+            feedback_widget.set_tooltip_text(tr_text("Updating"))
+            if feedback_label is not None:
+                feedback_label.set_text(tr_text("Connecting") if not connected else tr_text("Disconnecting"))
+        except Exception:
+            pass
+
+    def done():
+        bluetooth_action(mac, connected)
+        return False
+
+    from gi.repository import GLib
+
+    GLib.timeout_add(120, done)
 
 
 def bluetooth_scan_async() -> None:
@@ -519,8 +740,11 @@ def probe() -> int:
     return 0
 
 
-def run(panel: str = "system") -> int:
+def run(panel: str = "system", action: str = "show") -> int:
     ensure_gi_python()
+    panel = panel if panel in PANELS else "system"
+    if not claim_single_instance(panel, action):
+        return 0
     import gi
 
     gi.require_version("Gdk", "3.0")
@@ -540,8 +764,8 @@ def run(panel: str = "system") -> int:
         pass
 
     theme_mode = current_theme_mode()
-    active_panel = panel if panel in {"system", "wifi", "bluetooth", "audio", "power", "time"} else "system"
-    state = snapshot()
+    active_panel = panel if panel in PANELS else "system"
+    state = placeholder_snapshot()
 
     provider = Gtk.CssProvider()
     provider.load_from_data(control_center_css(theme_mode).encode("utf-8"))
@@ -551,8 +775,16 @@ def run(panel: str = "system") -> int:
     monitor = display.get_primary_monitor() if display else None
     if monitor is None and display and display.get_n_monitors() > 0:
         monitor = display.get_monitor(0)
-    screen_height = monitor.get_geometry().height if monitor else 720
-    panel_height = min(500 if active_panel == "system" else 560, max(360, screen_height - 110))
+    geometry = monitor.get_geometry() if monitor else None
+    screen_width = geometry.width if geometry else 1280
+    screen_height = geometry.height if geometry else 720
+    compact_mode = screen_width < 900 or screen_height < 720
+    panel_width = min(384, max(330, screen_width - 44))
+    if compact_mode:
+        panel_width = min(356, max(318, screen_width - 32))
+    panel_height = min(500 if active_panel == "system" else 560, max(340, screen_height - 110))
+    if compact_mode:
+        panel_height = min(456 if active_panel == "system" else 512, max(320, screen_height - 76))
 
     window = Gtk.Window(title=f"SevenOS {tr_text('Control Center')}")
     window.set_wmclass("SevenQuickSettingsNative", "SevenQuickSettingsNative")
@@ -560,8 +792,8 @@ def run(panel: str = "system") -> int:
     window.set_resizable(False)
     window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.NONE)
-    window.set_default_size(384, panel_height)
-    window.set_size_request(384, min(panel_height, screen_height - 96))
+    window.set_default_size(panel_width, panel_height)
+    window.set_size_request(panel_width, min(panel_height, screen_height - 76))
     window.get_style_context().add_class("quick-window")
 
     layer_shell_active = False
@@ -573,38 +805,111 @@ def run(panel: str = "system") -> int:
             GtkLayerShell.set_layer(window, GtkLayerShell.Layer.OVERLAY)
             GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.TOP, True)
             GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.RIGHT, True)
-            GtkLayerShell.set_margin(window, GtkLayerShell.Edge.TOP, 74)
-            GtkLayerShell.set_margin(window, GtkLayerShell.Edge.RIGHT, 28)
+            GtkLayerShell.set_margin(window, GtkLayerShell.Edge.TOP, 58 if compact_mode else 74)
+            GtkLayerShell.set_margin(window, GtkLayerShell.Edge.RIGHT, 14 if compact_mode else 28)
             GtkLayerShell.set_exclusive_zone(window, -1)
-            # Keep the control center pointer-friendly without stealing focus from
-            # full Settings windows opened from it.
-            GtkLayerShell.set_keyboard_interactivity(window, False)
+            GtkLayerShell.set_keyboard_interactivity(window, True)
             layer_shell_active = True
         except Exception:
             layer_shell_active = False
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-    add_classes(root, ["quick-root", f"mode-{theme_mode}", "catppuccin-mocha" if theme_mode == "dark" else "catppuccin-latte"])
+    add_classes(root, ["quick-root", "compact" if compact_mode else "", f"mode-{theme_mode}", "catppuccin-mocha" if theme_mode == "dark" else "catppuccin-latte"])
     window.add(root)
 
-    refs: dict[str, object] = {}
-    root.pack_start(build_header(Gtk, state, active_panel), False, False, 0)
-    if active_panel == "system":
-        root.pack_start(build_primary_grid(Gtk, state, refs), False, False, 0)
-        root.pack_start(build_context_card(Gtk, state, refs), False, False, 0)
-        root.pack_start(build_slider_card(Gtk, tr_text("Volume"), "audio", "󰕾", state.volume, set_volume, refs), False, False, 0)
-        if command_available("brightnessctl"):
-            root.pack_start(build_slider_card(Gtk, tr_text("Brightness"), "brightness", "󰃠", state.brightness, set_brightness, refs), False, False, 0)
-        root.pack_start(build_battery_card(Gtk, state, refs), False, False, 0)
-    else:
-        scroller = Gtk.ScrolledWindow()
-        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroller.set_shadow_type(Gtk.ShadowType.NONE)
-        scroller.set_size_request(-1, max(260, panel_height - 128))
-        scroller.get_style_context().add_class("detail-scroll")
-        scroller.add(build_detail_card(Gtk, window, active_panel, state))
-        root.pack_start(scroller, True, True, 0)
-    root.pack_end(build_footer(Gtk), False, False, 0)
+    hydrated = False
+    refs: dict[str, object] = {"state": state}
+    content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    root.pack_start(content, True, True, 0)
+
+    def start_refresh() -> None:
+        nonlocal hydrated
+        hydrated = False
+        header_spinner = refs.get("header_spinner")
+        if header_spinner is not None:
+            try:
+                header_spinner.show()
+                header_spinner.start()
+            except Exception:
+                pass
+        header_subtitle = refs.get("header_subtitle")
+        if header_subtitle is not None:
+            header_subtitle.set_text(tr_text("Updating"))
+
+        def work():
+            fresh = snapshot()
+
+            def done():
+                nonlocal hydrated
+                hydrated = True
+                refs["state"] = fresh
+                if active_panel == "system":
+                    apply_snapshot_to_refs(refs, fresh)
+                else:
+                    render_panel(active_panel, fresh)
+                return False
+
+            GLib.idle_add(done)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def render_panel(panel_name: str, panel_state: SystemSnapshot | None = None) -> None:
+        nonlocal active_panel
+        active_panel = panel_name if panel_name in PANELS else "system"
+        state_now = panel_state or refs.get("state") or placeholder_snapshot()
+        refs.clear()
+        refs["state"] = state_now
+        clear_container(content)
+        content.pack_start(build_header(Gtk, state_now, active_panel, render_panel, refs, busy=not hydrated, refresh=start_refresh), False, False, 0)
+        content.pack_start(build_nav_strip(Gtk, active_panel, render_panel), False, False, 0)
+        if active_panel == "system":
+            content.pack_start(build_primary_grid(Gtk, state_now, refs, render_panel), False, False, 0)
+            content.pack_start(build_context_card(Gtk, state_now, refs), False, False, 0)
+            content.pack_start(build_slider_card(Gtk, tr_text("Volume"), "audio", "󰕾", state_now.volume, set_volume, refs), False, False, 0)
+            if command_available("brightnessctl"):
+                content.pack_start(build_slider_card(Gtk, tr_text("Brightness"), "brightness", "󰃠", state_now.brightness, set_brightness, refs), False, False, 0)
+            content.pack_start(build_battery_card(Gtk, state_now, refs), False, False, 0)
+        else:
+            scroller = Gtk.ScrolledWindow()
+            scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            scroller.set_shadow_type(Gtk.ShadowType.NONE)
+            scroller.set_size_request(-1, max(260, panel_height - 128))
+            scroller.get_style_context().add_class("detail-scroll")
+            scroller.add(build_detail_card(Gtk, window, active_panel, state_now, render_panel))
+            content.pack_start(scroller, True, True, 0)
+        content.pack_end(build_footer(Gtk, render_panel), False, False, 0)
+        content.show_all()
+
+    render_panel(active_panel, state)
+
+    def handle_panel_request() -> bool:
+        request = read_json_file(QUICK_REQUEST_FILE)
+        panel_name = "system"
+        action_name = "show"
+        if isinstance(request, dict):
+            panel_name = str(request.get("panel") or "system")
+            action_name = str(request.get("action") or "show")
+        try:
+            QUICK_REQUEST_FILE.unlink(missing_ok=True)
+        except Exception:
+            pass
+        if action_name == "toggle":
+            Gtk.main_quit()
+            return True
+        if panel_name not in PANELS:
+            panel_name = "system"
+        render_panel(panel_name)
+        start_refresh()
+        try:
+            window.present()
+        except Exception:
+            pass
+        return True
+
+    try:
+        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGUSR1, handle_panel_request)
+    except Exception:
+        pass
 
     def place_window(_window):
         if layer_shell_active:
@@ -616,21 +921,109 @@ def run(panel: str = "system") -> int:
                 monitor = display.get_monitor(0)
             if monitor:
                 geometry = monitor.get_geometry()
-                window.move(geometry.x + geometry.width - 404, geometry.y + 74)
+                top_margin = 58 if compact_mode else 74
+                right_margin = 14 if compact_mode else 28
+                window.move(geometry.x + geometry.width - panel_width - right_margin, geometry.y + top_margin)
         except Exception:
             pass
         return False
 
     window.connect("realize", lambda widget: GLib.idle_add(place_window, widget))
     window.connect("destroy", Gtk.main_quit)
-    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    panel_shortcuts = {
+        Gdk.KEY_1: "system",
+        Gdk.KEY_2: "wifi",
+        Gdk.KEY_3: "bluetooth",
+        Gdk.KEY_4: "audio",
+        Gdk.KEY_5: "power",
+        Gdk.KEY_s: "system",
+        Gdk.KEY_w: "wifi",
+        Gdk.KEY_b: "bluetooth",
+        Gdk.KEY_a: "audio",
+        Gdk.KEY_p: "power",
+    }
+
+    def navigate_offset(offset: int) -> None:
+        base_panel = active_panel if active_panel in PANEL_ORDER else "system"
+        index = PANEL_ORDER.index(base_panel)
+        render_panel(PANEL_ORDER[(index + offset) % len(PANEL_ORDER)])
+
+    def on_key(_window, event):
+        if event.keyval == Gdk.KEY_Escape:
+            if active_panel != "system":
+                render_panel("system")
+                return True
+            Gtk.main_quit()
+            return True
+        if event.keyval == Gdk.KEY_BackSpace and active_panel != "system":
+            render_panel("system")
+            return True
+        if event.keyval in panel_shortcuts:
+            render_panel(panel_shortcuts[event.keyval])
+            return True
+        if event.keyval == Gdk.KEY_r:
+            start_refresh()
+            return True
+        if event.keyval in {Gdk.KEY_Right, Gdk.KEY_Down}:
+            navigate_offset(1)
+            return True
+        if event.keyval in {Gdk.KEY_Left, Gdk.KEY_Up}:
+            navigate_offset(-1)
+            return True
+        if event.keyval == Gdk.KEY_Home:
+            render_panel(PANEL_ORDER[0])
+            return True
+        if event.keyval == Gdk.KEY_End:
+            render_panel(PANEL_ORDER[-1])
+            return True
+        return False
+
+    window.connect("key-press-event", on_key)
     GLib.timeout_add_seconds(2, update_live_refs, refs)
     window.show_all()
+
+    def hydrate_state():
+        nonlocal hydrated
+        fresh = snapshot()
+
+        def apply_fresh():
+            nonlocal hydrated
+            hydrated = True
+            refs["state"] = fresh
+            if active_panel == "system":
+                apply_snapshot_to_refs(refs, fresh)
+            else:
+                render_panel(active_panel, fresh)
+            return False
+
+        GLib.idle_add(apply_fresh)
+
+    threading.Thread(target=hydrate_state, daemon=True).start()
     Gtk.main()
     return 0
 
 
-def build_header(Gtk, state: SystemSnapshot, active_panel: str):
+def build_nav_strip(Gtk, active_panel: str, navigate):
+    strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    strip.get_style_context().add_class("nav-strip")
+    items = [
+        ("system", "󰒓", "1"),
+        ("wifi", "󰤨", "2"),
+        ("bluetooth", "󰂯", "3"),
+        ("audio", "󰕾", "4"),
+        ("power", "󰐥", "5"),
+    ]
+    for panel, icon, shortcut in items:
+        button = Gtk.Button(label=icon)
+        button.set_relief(Gtk.ReliefStyle.NONE)
+        button.set_tooltip_text(f"{panel.title()} · {shortcut}")
+        add_classes(button, ["nav-pill", "active" if panel == active_panel else ""])
+        button.connect("clicked", lambda _button, target=panel: navigate(target))
+        strip.pack_start(button, True, True, 0)
+    return strip
+
+
+def build_header(Gtk, state: SystemSnapshot, active_panel: str, navigate=None, refs: dict[str, object] | None = None, busy: bool = False, refresh=None):
     header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     header.get_style_context().add_class("quick-header")
     titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
@@ -649,6 +1042,21 @@ def build_header(Gtk, state: SystemSnapshot, active_panel: str):
     titles.pack_start(title, False, False, 0)
     titles.pack_start(subtitle, False, False, 0)
     header.pack_start(titles, True, True, 0)
+    if busy:
+        spinner = Gtk.Spinner()
+        spinner.start()
+        spinner.get_style_context().add_class("header-spinner")
+        header.pack_start(spinner, False, False, 0)
+        if refs is not None:
+            refs["header_spinner"] = spinner
+    if refs is not None:
+        refs["header_subtitle"] = subtitle
+    if active_panel != "system" and navigate is not None:
+        back_button = Gtk.Button(label="‹")
+        add_classes(back_button, ["quick-pill", "quick-icon-pill"])
+        back_button.set_relief(Gtk.ReliefStyle.NONE)
+        back_button.connect("clicked", lambda _button: navigate("system"))
+        header.pack_start(back_button, False, False, 0)
     close_button = Gtk.Button(label="×")
     add_classes(close_button, ["quick-close"])
     close_button.set_relief(Gtk.ReliefStyle.NONE)
@@ -657,20 +1065,26 @@ def build_header(Gtk, state: SystemSnapshot, active_panel: str):
     add_classes(settings_button, ["quick-pill", "quick-icon-pill"])
     settings_button.set_relief(Gtk.ReliefStyle.NONE)
     settings_button.connect("clicked", lambda _button: run_detached("seven-settings"))
+    refresh_button = Gtk.Button(label="󰑐")
+    add_classes(refresh_button, ["quick-pill", "quick-icon-pill"])
+    refresh_button.set_relief(Gtk.ReliefStyle.NONE)
+    refresh_button.set_tooltip_text("Refresh · r")
+    refresh_button.connect("clicked", lambda _button: refresh() if refresh is not None else None)
     header.pack_end(close_button, False, False, 0)
     header.pack_end(settings_button, False, False, 0)
+    header.pack_end(refresh_button, False, False, 0)
     return header
 
 
-def build_primary_grid(Gtk, state: SystemSnapshot, refs: dict[str, object]):
+def build_primary_grid(Gtk, state: SystemSnapshot, refs: dict[str, object], navigate):
     grid = Gtk.Grid()
     grid.get_style_context().add_class("control-grid")
     grid.set_row_spacing(8)
     grid.set_column_spacing(8)
     grid.set_column_homogeneous(True)
     controls = [
-        ("wifi", "Wi-Fi", state.wifi, "󰤨", toggle_wifi, ["connected" if state.wifi_enabled else "disabled"]),
-        ("bluetooth", "Bluetooth", state.bluetooth, "󰂯", toggle_bluetooth, ["connected" if state.bluetooth_enabled else "disabled"]),
+        ("wifi", "Wi-Fi", state.wifi, "󰤨", lambda: navigate("wifi"), ["connected" if state.wifi_enabled else "disabled"]),
+        ("bluetooth", "Bluetooth", state.bluetooth, "󰂯", lambda: navigate("bluetooth"), ["connected" if state.bluetooth_enabled else "disabled"]),
         ("focus", tr_text("Focus"), tr_text("On") if DND_FILE.exists() else tr_text("Off"), "󰂛", toggle_focus, ["active" if DND_FILE.exists() else ""]),
         ("brightness", tr_text("Brightness"), f"{state.brightness}%", "󰃠", lambda: run_detached("seven-settings", "display"), []),
     ]
@@ -793,8 +1207,18 @@ def update_slider_refs(refs: dict[str, object], name: str, value: int) -> None:
                 scale.handler_unblock(handler_id)
 
 
-def update_live_refs(refs: dict[str, object]) -> bool:
-    state = snapshot()
+def apply_snapshot_to_refs(refs: dict[str, object], state: SystemSnapshot) -> None:
+    refs["state"] = state
+    header_spinner = refs.get("header_spinner")
+    if header_spinner is not None:
+        try:
+            header_spinner.stop()
+            header_spinner.hide()
+        except Exception:
+            pass
+    header_subtitle = refs.get("header_subtitle")
+    if header_subtitle is not None:
+        header_subtitle.set_text(tr_text("{profile} mode", profile=state.profile_title))
     updates = {
         "wifi": (state.wifi, ["connected" if state.wifi_enabled else "disabled"]),
         "bluetooth": (state.bluetooth, ["connected" if state.bluetooth_enabled else "disabled"]),
@@ -833,6 +1257,21 @@ def update_live_refs(refs: dict[str, object]) -> bool:
         battery_percent.set_text(f"󰁹  {state.battery_percent}%")
     if battery_note is not None:
         battery_note.set_text(state.battery_note)
+
+
+def update_live_refs(refs: dict[str, object]) -> bool:
+    def work():
+        fresh = snapshot()
+
+        def done():
+            apply_snapshot_to_refs(refs, fresh)
+            return False
+
+        from gi.repository import GLib
+
+        GLib.idle_add(done)
+
+    threading.Thread(target=work, daemon=True).start()
     return True
 
 
@@ -862,6 +1301,35 @@ def detail_action(Gtk, label: str, command: tuple[str, ...], parent=None, danger
     return button
 
 
+def build_audio_panel(Gtk, state: SystemSnapshot):
+    body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    audio_refs: dict[str, object] = {}
+    body.pack_start(
+        build_slider_card(Gtk, tr_text("Output volume"), "detail_audio", "󰕾", state.volume, set_volume, audio_refs),
+        False,
+        False,
+        0,
+    )
+    presets = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    for label, value in (("25%", 25), ("50%", 50), ("75%", 75), ("100%", 100)):
+        button = Gtk.Button(label=label)
+        button.set_relief(Gtk.ReliefStyle.NONE)
+        add_classes(button, ["detail-button", "mini-action"])
+
+        def activate(_button, target=value):
+            set_volume(target)
+            update_slider_refs(audio_refs, "detail_audio", target)
+
+        button.connect("clicked", activate)
+        presets.pack_start(button, True, True, 0)
+    body.pack_start(presets, False, False, 0)
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    actions.pack_start(detail_action(Gtk, tr_text("Mute"), ("wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle")), True, True, 0)
+    actions.pack_start(detail_action(Gtk, tr_text("Mixer"), ("pavucontrol",)), True, True, 0)
+    body.pack_start(actions, False, False, 0)
+    return body
+
+
 def detail_row(Gtk, title: str, note: str = ""):
     row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     row.get_style_context().add_class("detail-row")
@@ -881,12 +1349,22 @@ def detail_button_row(Gtk, title: str, note: str, callback, css_class: str = "")
     row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     label = Gtk.Label(label=title, xalign=0)
     row.pack_start(label, True, True, 0)
+    note_label = None
     if note:
         note_label = Gtk.Label(label=note, xalign=1)
         note_label.get_style_context().add_class("detail-row-note")
         row.pack_end(note_label, False, False, 0)
     button.add(row)
-    button.connect("clicked", lambda _button: callback())
+    def activate(_button):
+        try:
+            callback(button, note_label)
+        except TypeError:
+            try:
+                callback(button)
+            except TypeError:
+                callback()
+
+    button.connect("clicked", activate)
     return button
 
 
@@ -906,8 +1384,10 @@ def detail_loading(Gtk, label: str):
     return row
 
 
-def render_wifi_detail(Gtk, parent, body, status: str, networks: list[dict[str, str]]) -> None:
+def render_wifi_detail(Gtk, parent, body, status: str, networks: list[dict[str, str]], cached: bool = False) -> None:
     clear_container(body)
+    if cached and networks:
+        body.pack_start(detail_row(Gtk, tr_text("Nearby networks"), tr_text("Refreshing in background")), False, False, 0)
     if status == "missing":
         body.pack_start(detail_row(Gtk, tr_text("Network tools missing"), tr_text("SevenOS network service")), False, False, 0)
     elif status == "off":
@@ -924,7 +1404,7 @@ def render_wifi_detail(Gtk, parent, body, status: str, networks: list[dict[str, 
                     Gtk,
                     row["ssid"],
                     note,
-                    lambda item=row: connect_wifi_network(Gtk, parent, item["ssid"], item["security"]),
+                    lambda button, note_label, item=row: connect_wifi_network(Gtk, parent, item["ssid"], item["security"], button, note_label),
                     "connected" if row["active"] == "yes" else "",
                 ),
                 False,
@@ -937,11 +1417,12 @@ def render_wifi_detail(Gtk, parent, body, status: str, networks: list[dict[str, 
 
 def append_wifi_actions(Gtk, parent, body) -> None:
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-    refresh_button = Gtk.Button(label=tr_text("Refresh"))
+    refresh_button = Gtk.Button(label=tr_text("Scan"))
     refresh_button.set_relief(Gtk.ReliefStyle.NONE)
     add_classes(refresh_button, ["detail-button"])
     refresh_button.connect("clicked", lambda _button: populate_wifi_detail(Gtk, parent, body, force_rescan=True))
     actions.pack_start(refresh_button, True, True, 0)
+    actions.pack_start(detail_action(Gtk, tr_text("On / Off"), ("seven-wifi", "toggle")), True, True, 0)
     actions.pack_start(detail_action(Gtk, tr_text("Disconnect"), ("seven-wifi", "disconnect")), True, True, 0)
     actions.pack_start(detail_action(Gtk, tr_text("Advanced"), ("seven-settings", "network")), True, True, 0)
     body.pack_start(actions, False, False, 0)
@@ -949,7 +1430,11 @@ def append_wifi_actions(Gtk, parent, body) -> None:
 
 def populate_wifi_detail(Gtk, parent, body, force_rescan: bool = False) -> None:
     clear_container(body)
-    body.pack_start(detail_loading(Gtk, tr_text("Loading nearby networks")), False, False, 0)
+    cached_rows = [] if force_rescan else cached_wifi_networks(limit=24)
+    if cached_rows:
+        render_wifi_detail(Gtk, parent, body, "ready", cached_rows, cached=True)
+    else:
+        body.pack_start(detail_loading(Gtk, tr_text("Loading nearby networks")), False, False, 0)
     body.show_all()
 
     def work():
@@ -959,7 +1444,7 @@ def populate_wifi_detail(Gtk, parent, body, force_rescan: bool = False) -> None:
             return "off", []
         if force_rescan:
             subprocess.run(["nmcli", "device", "wifi", "rescan"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=2.0)
-        return "ready", wifi_networks(limit=32)
+        return "ready", wifi_networks(limit=32, rescan=force_rescan)
 
     def done(result):
         status, networks = result
@@ -971,8 +1456,10 @@ def populate_wifi_detail(Gtk, parent, body, force_rescan: bool = False) -> None:
     threading.Thread(target=lambda: GLib.idle_add(done, work()), daemon=True).start()
 
 
-def render_bluetooth_detail(Gtk, parent, body, devices: list[dict[str, str]]) -> None:
+def render_bluetooth_detail(Gtk, parent, body, devices: list[dict[str, str]], cached: bool = False) -> None:
     clear_container(body)
+    if cached and devices:
+        body.pack_start(detail_row(Gtk, tr_text("Nearby devices"), tr_text("Refreshing in background")), False, False, 0)
     for item in devices or [{"mac": "", "name": tr_text("No device"), "state": tr_text("Scan to discover")}]:
         connected = item["state"] == tr_text("Connected")
         if item["mac"]:
@@ -981,7 +1468,7 @@ def render_bluetooth_detail(Gtk, parent, body, devices: list[dict[str, str]]) ->
                     Gtk,
                     item["name"],
                     item["state"],
-                    lambda dev=item, is_connected=connected: bluetooth_action(dev["mac"], is_connected),
+                    lambda button, note_label, dev=item, is_connected=connected: bluetooth_action_with_feedback(dev["mac"], is_connected, button, note_label),
                     "connected" if connected else "",
                 ),
                 False,
@@ -996,6 +1483,7 @@ def render_bluetooth_detail(Gtk, parent, body, devices: list[dict[str, str]]) ->
     add_classes(scan_button, ["detail-button"])
     scan_button.connect("clicked", lambda _button: populate_bluetooth_detail(Gtk, parent, body, force_scan=True))
     actions.pack_start(scan_button, True, True, 0)
+    actions.pack_start(detail_action(Gtk, tr_text("On / Off"), ("seven-bluetooth", "toggle")), True, True, 0)
     actions.pack_start(detail_action(Gtk, tr_text("Advanced"), ("seven-bluetooth", "manager")), True, True, 0)
     body.pack_start(actions, False, False, 0)
     body.show_all()
@@ -1003,7 +1491,11 @@ def render_bluetooth_detail(Gtk, parent, body, devices: list[dict[str, str]]) ->
 
 def populate_bluetooth_detail(Gtk, parent, body, force_scan: bool = False) -> None:
     clear_container(body)
-    body.pack_start(detail_loading(Gtk, tr_text("Loading Bluetooth devices")), False, False, 0)
+    cached_rows = [] if force_scan else cached_bluetooth_device_rows(limit=12)
+    if cached_rows:
+        render_bluetooth_detail(Gtk, parent, body, cached_rows, cached=True)
+    else:
+        body.pack_start(detail_loading(Gtk, tr_text("Loading Bluetooth devices")), False, False, 0)
     body.show_all()
 
     def work():
@@ -1022,7 +1514,7 @@ def populate_bluetooth_detail(Gtk, parent, body, force_scan: bool = False) -> No
     threading.Thread(target=lambda: GLib.idle_add(done, work()), daemon=True).start()
 
 
-def build_detail_card(Gtk, parent, panel: str, state: SystemSnapshot):
+def build_detail_card(Gtk, parent, panel: str, state: SystemSnapshot, navigate=None):
     card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
     card.get_style_context().add_class("detail-card")
     titles = {
@@ -1048,10 +1540,7 @@ def build_detail_card(Gtk, parent, panel: str, state: SystemSnapshot):
     elif panel == "bluetooth":
         populate_bluetooth_detail(Gtk, parent, body)
     elif panel == "audio":
-        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        actions.pack_start(detail_action(Gtk, tr_text("Mute"), ("wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle")), True, True, 0)
-        actions.pack_start(detail_action(Gtk, tr_text("Mixer"), ("pavucontrol",)), True, True, 0)
-        body.pack_start(actions, False, False, 0)
+        body.pack_start(build_audio_panel(Gtk, state), False, False, 0)
     elif panel == "power":
         actions = Gtk.Grid()
         actions.set_column_spacing(8)
@@ -1067,9 +1556,12 @@ def build_detail_card(Gtk, parent, panel: str, state: SystemSnapshot):
     return card
 
 
-def build_footer(Gtk):
-    footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+def build_footer(Gtk, navigate=None):
+    footer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
     footer.get_style_context().add_class("footer-card")
+    hint = Gtk.Label(label="1-5 · ←/→ · r · Esc", xalign=0.5)
+    hint.get_style_context().add_class("footer-hint")
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     settings = Gtk.Button(label="󰒓  " + tr_text("Settings"))
     settings.set_relief(Gtk.ReliefStyle.NONE)
     settings.get_style_context().add_class("footer-button")
@@ -1077,17 +1569,22 @@ def build_footer(Gtk):
     power = Gtk.Button(label="󰐥  " + tr_text("Power"))
     power.set_relief(Gtk.ReliefStyle.NONE)
     power.get_style_context().add_class("footer-button")
-    power.connect("clicked", lambda _button: run_detached("seven-quick-settings", "power"))
-    footer.pack_start(settings, True, True, 0)
-    footer.pack_start(power, True, True, 0)
+    power.connect("clicked", lambda _button: navigate("power") if navigate is not None else run_detached("seven-quick-settings", "power"))
+    row.pack_start(settings, True, True, 0)
+    row.pack_start(power, True, True, 0)
+    footer.pack_start(row, False, False, 0)
+    footer.pack_start(hint, False, False, 0)
     return footer
 
 
 def main() -> int:
     if len(sys.argv) > 1 and sys.argv[1] == "--probe":
         return probe()
+    if len(sys.argv) > 1 and sys.argv[1] == "toggle":
+        return run("system", "toggle")
     panel = sys.argv[1] if len(sys.argv) > 1 else "system"
-    return run(panel)
+    action = "toggle" if len(sys.argv) == 1 else "show"
+    return run(panel, action)
 
 
 if __name__ == "__main__":

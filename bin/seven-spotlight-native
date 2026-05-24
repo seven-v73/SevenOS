@@ -47,6 +47,11 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
 CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/sevenos-{os.getuid()}")) / "sevenos"
@@ -146,23 +151,15 @@ def current_theme_mode() -> str:
     env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
     if env_mode in {"dark", "light"}:
         return env_mode
-    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
-    profile_env = CONFIG_DIR / "profile.env"
-    if profile_env.exists():
-        for raw in profile_env.read_text(encoding="utf-8", errors="replace").splitlines():
-            if raw.startswith("SEVENOS_ACTIVE_PROFILE="):
-                profile = raw.split("=", 1)[1].strip().strip("'\"") or profile
-                break
-    for theme_file in (CONFIG_DIR / "profiles" / profile / "theme.conf", THEME_CONF):
-        try:
-            for raw in theme_file.read_text(encoding="utf-8", errors="replace").splitlines():
-                if "=" not in raw or raw.strip().startswith("#"):
-                    continue
-                key, value = [part.strip().lower() for part in raw.split("=", 1)]
-                if key in {"mode", "theme_mode", "sevenos_theme_mode"} and value in {"dark", "light"}:
-                    return value
-        except OSError:
-            pass
+    try:
+        for raw in THEME_CONF.read_text(encoding="utf-8", errors="replace").splitlines():
+            if "=" not in raw or raw.strip().startswith("#"):
+                continue
+            key, value = [part.strip().lower() for part in raw.split("=", 1)]
+            if key in {"mode", "theme_mode", "sevenos_theme_mode"} and value in {"dark", "light"}:
+                return value
+    except OSError:
+        pass
     return "dark"
 
 
@@ -399,8 +396,9 @@ def profile_css(profile: dict, mode: str) -> str:
 
 
 def spotlight_css(mode: str, profile: dict | None = None) -> str:
+    base = seven_theme.gtk_app_css("spotlight", mode) if seven_theme else ""
     if mode == "light":
-        return """
+        return base + """
         * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
         window.spotlight-window { background: transparent; }
         .spotlight-root {
@@ -465,7 +463,7 @@ def spotlight_css(mode: str, profile: dict | None = None) -> str:
           font-size: 11px;
         }
         """ + profile_css(profile or {}, mode)
-    return """
+    return base + """
     * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
     window.spotlight-window { background: transparent; }
     .spotlight-root {

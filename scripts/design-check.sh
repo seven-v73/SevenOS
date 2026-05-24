@@ -42,6 +42,12 @@ else
   ok "UI font weights stay at 500 or below"
 fi
 
+if rg -q "font-weight:[[:space:]]*[7-9]00|font:[[:space:]]*[7-9]00" "$ROOT_DIR/bin"/*native "$ROOT_DIR/identity/native" "$ROOT_DIR/scripts/seven_theme.py"; then
+  fail "Native SevenOS surfaces must avoid heavy 700+ typography."
+else
+  ok "Native SevenOS surfaces avoid heavy 700+ typography"
+fi
+
 if ! grep -q '@import "../../../identity/tokens.css";' "$ROOT_DIR/seven-hub/gui/src/styles.css"; then
   fail "Seven Hub must import identity/tokens.css."
 else
@@ -71,7 +77,7 @@ if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&
    [[ -s "$ROOT_DIR/profiles/catalog.json" ]] &&
    jq -e '.schema == "sevenos.design-engine.v1" and .modes."seven-mocha".palette.base == "#11111B" and .modes."seven-latte".palette.base == "#EFF1F5" and (.icon_strategy.rule | contains("Papirus")) and .profile_themes.contract == "identity/profile-themes.json" and .profile_themes.catalog == "profiles/catalog.json"' "$ROOT_DIR/identity/design-engine.json" >/dev/null &&
    jq -e '.schema == "sevenos.profile-themes.v1" and .profiles.equinox.short_label == "EQX" and .profiles.baobab.catppuccin_role == "green/yellow" and .profiles.shield.short_label == "SEC" and .profiles.pulse.short_label == "GAME"' "$ROOT_DIR/identity/profile-themes.json" >/dev/null &&
-   jq -e '.schema == "sevenos.profiles.catalog.v1" and .default_profile == "equinox" and .profile_model.short_name == "LAPA" and .profiles.forge.mini_os == true and .profiles.windows.title == "Windows Bridge" and .profiles.baobab.layers.experience and .isolation_policy.activation and .core_package_files[0] == "scripts/packages-base.txt" and .runtime_optional_package_files[0] == "scripts/packages-runtime-optional.txt" and any(.profiles.baobab.anti_nuisance[]; . == "no dev toolchain") and .profiles.pulse.optional_package_files[0] == "scripts/packages-performance-optional.txt"' "$ROOT_DIR/profiles/catalog.json" >/dev/null &&
+   jq -e '.schema == "sevenos.profiles.catalog.v1" and .default_profile == "equinox" and .profile_model.short_name == "LAPA" and .profiles.forge.mini_os == true and .profiles.windows.title == "Windows" and .profiles.baobab.layers.experience and .isolation_policy.activation and .core_package_files[0] == "scripts/packages-base.txt" and .runtime_optional_package_files[0] == "scripts/packages-runtime-optional.txt" and any(.profiles.baobab.anti_nuisance[]; . == "no dev toolchain") and .profiles.pulse.optional_package_files[0] == "scripts/packages-performance-optional.txt"' "$ROOT_DIR/profiles/catalog.json" >/dev/null &&
    grep -q -- '--cat-base: #11111B' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--cat-base: #EFF1F5' "$ROOT_DIR/identity/tokens-light.css" &&
    grep -q 'resolve_icon_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
@@ -105,7 +111,7 @@ fi
 
 if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
    [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
-   jq -e '."modules-left" == ["custom/sevenos","hyprland/window","custom/app-file","custom/app-edit","custom/app-view","custom/app-extra","custom/app-more","custom/app-tools","custom/app-window","custom/app-help"] and ."hyprland/window".format == "{class}" and ."hyprland/window"."max-length" == 18 and ."custom/app-file".exec == "seven-waybar-status app-menu-item file" and ."custom/app-file"."on-click" == "seven-waybar-action app-file" and ."custom/app-edit"."on-click" == "seven-waybar-action app-edit" and ."custom/app-view"."on-click" == "seven-waybar-action app-view" and ."custom/app-extra"."on-click" == "seven-waybar-action app-extra" and ."custom/app-more".exec == "seven-waybar-status app-menu-more" and ."custom/app-more"."on-click" == "seven-waybar-action app-menu" and ."custom/app-tools"."on-click" == "seven-waybar-action app-tools" and ."custom/app-window"."on-click" == "seven-waybar-action app-window" and ."custom/app-help"."on-click" == "seven-waybar-action app-help" and ."custom/sevenos".exec == "seven-waybar-status sevenos" and ."custom/sevenos"."return-type" == "json" and ."custom/sevenos"."on-click-right" == "seven-profile-center-native" and ."custom/sevenos"."on-click-middle" == "seven-spotlight field" and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["custom/profile","custom/mini-context","custom/experience","custom/media","custom/system-status","tray","custom/spotlight","clock","custom/control-center"] and .height == 28 and ."gtk-layer-shell" == true and ."custom/system-status".exec == "seven-waybar-status system-status" and ."custom/system-status"."return-type" == "json" and ."custom/spotlight".format == "󰍉" and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and .tray."icon-size" == 14 and ."custom/control-center".exec == "seven-waybar-status control-center"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
+   jq -e '."modules-left" == ["custom/sevenos","hyprland/window","custom/app-file","custom/app-edit","custom/app-view","custom/app-extra","custom/app-more","custom/app-tools","custom/app-window","custom/app-help"] and ."hyprland/window".format == "{class}" and ."hyprland/window"."max-length" == 18 and ."custom/app-file".exec == "seven-waybar-status app-menu-item file" and ."custom/app-file"."on-click" == "seven-waybar-action app-file" and ."custom/app-edit"."on-click" == "seven-waybar-action app-edit" and ."custom/app-view"."on-click" == "seven-waybar-action app-view" and ."custom/app-extra"."on-click" == "seven-waybar-action app-extra" and ."custom/app-more".exec == "seven-waybar-status app-menu-more" and ."custom/app-more"."on-click" == "seven-waybar-action app-menu" and ."custom/app-tools"."on-click" == "seven-waybar-action app-tools" and ."custom/app-window"."on-click" == "seven-waybar-action app-window" and ."custom/app-help"."on-click" == "seven-waybar-action app-help" and ."custom/sevenos".exec == "seven-waybar-status sevenos" and ."custom/sevenos"."return-type" == "json" and ."custom/sevenos"."on-click-right" == "seven-profile-center-native" and ."custom/sevenos"."on-click-middle" == "seven-spotlight field" and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["custom/profile","custom/recorder","custom/media","custom/system-status","custom/wifi","custom/bluetooth","custom/spotlight","clock","custom/control-center"] and .height == 28 and ."gtk-layer-shell" == true and ."custom/system-status".exec == "seven-waybar-status system-status" and ."custom/system-status"."return-type" == "json" and ."custom/spotlight".format == "󰍉" and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and ."custom/recorder".exec == "seven-waybar-status recorder" and ."custom/control-center".exec == "seven-waybar-status control-center"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
    grep -q '@define-color seven_blue #2F7BFF' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q '#custom-control-center' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
@@ -117,7 +123,7 @@ else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
 fi
 
-if jq -e '."modules-left" == ["custom/sevenos","hyprland/window","custom/app-file","custom/app-edit","custom/app-view","custom/app-extra","custom/app-more","custom/app-tools","custom/app-window","custom/app-help"] and ."hyprland/window".format == "{class}" and ."hyprland/window"."max-length" == 18 and ."custom/app-file".exec == "seven-waybar-status app-menu-item file" and ."custom/app-file"."on-click" == "seven-waybar-action app-file" and ."custom/app-edit"."on-click" == "seven-waybar-action app-edit" and ."custom/app-view"."on-click" == "seven-waybar-action app-view" and ."custom/app-extra"."on-click" == "seven-waybar-action app-extra" and ."custom/app-more".exec == "seven-waybar-status app-menu-more" and ."custom/app-more"."on-click" == "seven-waybar-action app-menu" and ."custom/app-tools"."on-click" == "seven-waybar-action app-tools" and ."custom/app-window"."on-click" == "seven-waybar-action app-window" and ."custom/app-help"."on-click" == "seven-waybar-action app-help" and ."custom/sevenos".exec == "seven-waybar-status sevenos" and ."custom/sevenos"."return-type" == "json" and ."custom/sevenos"."on-click-right" == "seven-profile-center-native" and ."custom/sevenos"."on-click-middle" == "seven-spotlight field" and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["custom/profile","custom/mini-context","custom/experience","custom/media","custom/system-status","tray","custom/spotlight","clock","custom/control-center"] and .height == 28 and .spacing == 4 and ."margin-top" == 0 and ."margin-left" == 0 and ."margin-right" == 0 and ."gtk-layer-shell" == true and ."custom/system-status".exec == "seven-waybar-status system-status" and ."custom/system-status"."return-type" == "json" and ."custom/spotlight".format == "󰍉" and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and .tray."icon-size" == 14 and ."custom/control-center".exec == "seven-waybar-status control-center" and ."custom/control-center"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
+if jq -e '."modules-left" == ["custom/sevenos","hyprland/window","custom/app-file","custom/app-edit","custom/app-view","custom/app-extra","custom/app-more","custom/app-tools","custom/app-window","custom/app-help"] and ."hyprland/window".format == "{class}" and ."hyprland/window"."max-length" == 18 and ."custom/app-file".exec == "seven-waybar-status app-menu-item file" and ."custom/app-file"."on-click" == "seven-waybar-action app-file" and ."custom/app-edit"."on-click" == "seven-waybar-action app-edit" and ."custom/app-view"."on-click" == "seven-waybar-action app-view" and ."custom/app-extra"."on-click" == "seven-waybar-action app-extra" and ."custom/app-more".exec == "seven-waybar-status app-menu-more" and ."custom/app-more"."on-click" == "seven-waybar-action app-menu" and ."custom/app-tools"."on-click" == "seven-waybar-action app-tools" and ."custom/app-window"."on-click" == "seven-waybar-action app-window" and ."custom/app-help"."on-click" == "seven-waybar-action app-help" and ."custom/sevenos".exec == "seven-waybar-status sevenos" and ."custom/sevenos"."return-type" == "json" and ."custom/sevenos"."on-click-right" == "seven-profile-center-native" and ."custom/sevenos"."on-click-middle" == "seven-spotlight field" and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["custom/profile","custom/recorder","custom/media","custom/system-status","custom/wifi","custom/bluetooth","custom/spotlight","clock","custom/control-center"] and .height == 28 and .spacing == 4 and ."margin-top" == 0 and ."margin-left" == 0 and ."margin-right" == 0 and ."gtk-layer-shell" == true and ."custom/system-status".exec == "seven-waybar-status system-status" and ."custom/system-status"."return-type" == "json" and ."custom/spotlight".format == "󰍉" and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and ."custom/recorder".exec == "seven-waybar-status recorder" and ."custom/control-center".exec == "seven-waybar-status control-center" and ."custom/control-center"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
   ok "Waybar uses the SevenOS public premium floating hierarchy"
 else
   fail "Waybar should use SevenOS/search left, workspaces center and essential controls right."
@@ -194,7 +200,7 @@ if [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]] &&
    grep -q 'ExecStart=%h/.local/bin/seven experience warmup' "$ROOT_DIR/systemd/user/sevenos-shell-experience.service" &&
    grep -q 'warmup_shell_experience' "$ROOT_DIR/bin/seven-session" &&
    grep -q 'def experience()' "$ROOT_DIR/bin/seven-waybar-status" &&
-   grep -q 'Next:' "$ROOT_DIR/bin/seven-waybar-status" &&
+   grep -q 'Suggestion:' "$ROOT_DIR/bin/seven-waybar-status" &&
    grep -q '"shell_experience"' "$ROOT_DIR/bin/seven-home-native" &&
    grep -q '"recommendation"' "$ROOT_DIR/bin/seven-home-native" &&
    grep -q 'Fluidifier' "$ROOT_DIR/bin/seven-home-native" &&
@@ -217,7 +223,7 @@ if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'build_detail_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'detail-card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'icon-action' "$ROOT_DIR/bin/seven-quick-settings-native" &&
-   grep -q 'set_keyboard_interactivity(window, False)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'set_keyboard_interactivity(window, True)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'control_center_css' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'context_signal' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'SystemSnapshot' "$ROOT_DIR/bin/seven-quick-settings-native" &&
@@ -255,6 +261,13 @@ if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    grep -q 'seven fonts apply-default' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven-wallpaper' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'current_theme_mode' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'compact_screen' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'content_width' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'sidebar_width' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'mark_action_running' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'search_key' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'page_button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'sevenos.settings.state.v1' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'region_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'default_app_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'copy_system_summary' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -281,16 +294,108 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    grep -q 'def surface_css' "$ROOT_DIR/scripts/seven_theme.py" &&
    grep -q 'def resolved_theme' "$ROOT_DIR/scripts/seven_theme.py" &&
    grep -q 'def wallpaper_state' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'seven-root' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'seven-button' "$ROOT_DIR/scripts/seven_theme.py" &&
+   grep -q 'seven-primary' "$ROOT_DIR/scripts/seven_theme.py" &&
    [[ -s "$ROOT_DIR/identity/native/store.css" ]] &&
    [[ -s "$ROOT_DIR/identity/native/reader.css" ]] &&
    [[ -s "$ROOT_DIR/identity/native/settings.css" ]] &&
    [[ -s "$ROOT_DIR/identity/native/settings-dark.css" ]] &&
    [[ -s "$ROOT_DIR/identity/native/files.css" ]] &&
-   grep -q 'theme_preview_card' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'preview_mode' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'profile_combo' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'seven-wallpaper.*set' "$ROOT_DIR/bin/seven-settings-native" &&
-   grep -q 'seven_wallpaper_accent' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'theme_preview_card' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'preview_mode' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'profile_combo' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'def settings_row' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'def settings_group' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'general_jump_strip' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'general_targets' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'show_command_output' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'should_show_output' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings.action.resources.title' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings.action.software.title' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'SEVENOS_SETTINGS_ACTION' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'SETTINGS_ACTION_LOG' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'show_settings_action_history' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Historique des actions' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings-progress' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'operation_stage' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'action_summary' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'update_status_payload' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'show_update_manager' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'collect_update_items' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'community_command' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings-sudo-askpass.sh' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'SUDO_ASKPASS' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings.update.install_community' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'update-summary-panel' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'update-kind-icon' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'add_update_section' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'update-section-row' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'update-impact' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings.update.impact.community' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'pkexec' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'append_install_line' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'start_pulse' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q './scripts/update.sh apply --yes' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings.update.activity.download' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings.update.activity.pacman_failed' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'SevenOS Settings update install' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings.update.install' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'set_update_state' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'set_action_state' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings.action.tooltip' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'ui_command = "seven smoke status"' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Résumé prêt dans Paramètres' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'selectors.DefaultSelector' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'SevenOS a arrêté l’attente graphique' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven update apply --yes' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'stdbuf -oL -eL' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'heartbeat_source' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Mise à jour SevenOS' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Installation des besoins essentiels' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'action-step-list' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Action en cours…' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Copier le compte rendu' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven profile requirements' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'mini_os_capability_panel' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven.*mini-os.*activate' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Mode d’utilisation SevenOS' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Entretien SevenOS' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Windows dans SevenOS' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Sauvegarde rapide' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Animations' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'profile requirements' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings-inline-status' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'settings-jump-strip' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'command-output' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'settings-progress' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'action-step-list' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'action-step-state' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'update-source-grid' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'state-ok' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'update-row' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'update-activity' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'update-summary-chip' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'update-total-value' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'update-badge-community' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'update-impact' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'update-section-title' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'primary-action' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'action-state-running' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'action-state-success' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'action-state-error' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'geteuid() == 0' "$ROOT_DIR/bin/sevenpkg" &&
+	   grep -q -- '--noconfirm' "$ROOT_DIR/bin/sevenpkg" &&
+	   grep -q 'capability_preview_detail' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'settings-row .action-button' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q 'set_transition_duration(140)' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'deep_settings_enabled' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Vérification à la demande' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven-wallpaper.*set' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven_wallpaper_accent' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q '.settings-row' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q '.settings-group' "$ROOT_DIR/identity/native/settings.css" &&
+	   grep -q '.action-button.busy' "$ROOT_DIR/identity/native/settings.css" &&
    grep -q 'seven_theme.gtk_app_css("settings"' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven_theme.surface_css("settings"' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven_theme.gtk_app_css("store"' "$ROOT_DIR/bin/seven-store-native" &&
@@ -299,7 +404,28 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    grep -q 'seven_theme.surface_css("reader"' "$ROOT_DIR/bin/seven-reader-native" &&
    grep -q 'seven_theme.gtk_app_css("files"' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'seven_theme.surface_css("files"' "$ROOT_DIR/bin/seven-files-native" &&
-   grep -q 'seven_theme.gtk_app_css("control-center"' "$ROOT_DIR/bin/seven-quick-settings-native"; then
+   grep -q 'seven_theme.gtk_app_css("control-center"' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'seven_theme.gtk_app_css("actions"' "$ROOT_DIR/bin/seven-actions-native" &&
+   grep -q 'seven_theme.gtk_app_css("recorder"' "$ROOT_DIR/bin/seven-recorder-native" &&
+   grep -q 'seven_theme.gtk_app_css("profile-center"' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'seven_theme.gtk_app_css("notification-center"' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   grep -q 'seven_theme.gtk_app_css("waybar-center"' "$ROOT_DIR/bin/seven-waybar-center-native" &&
+   grep -q 'seven_theme.gtk_app_css("doctor"' "$ROOT_DIR/bin/seven-doctor-native" &&
+   grep -q 'seven_theme.gtk_app_css("shield-center"' "$ROOT_DIR/bin/seven-shield-center-native" &&
+   grep -q 'seven_theme.gtk_app_css("window-controls"' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'seven_theme.gtk_app_css("spotlight"' "$ROOT_DIR/bin/seven-spotlight-native" &&
+   grep -q 'seven_theme.gtk_app_css("launchpad"' "$ROOT_DIR/bin/seven-launchpad-native" &&
+   grep -q 'seven_theme.gtk_app_css("dock"' "$ROOT_DIR/bin/seven-dock-native" &&
+   grep -q 'seven_theme.gtk_app_css("home"' "$ROOT_DIR/bin/seven-home-native" &&
+   grep -q 'seven_theme.gtk_app_css("terminal"' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q 'seven_theme.gtk_app_css("hub"' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'compact_screen' "$ROOT_DIR/bin/seven-help-native" &&
+   grep -q 'seven_theme.gtk_app_css("baobab"' "$ROOT_DIR/bin/seven-baobab-native" &&
+   grep -q 'def cairo_palette' "$ROOT_DIR/bin/seven-app-menu-native" &&
+   grep -q 'def cairo_palette' "$ROOT_DIR/bin/seven-mini-context-menu-native" &&
+   grep -q 'def cairo_palette' "$ROOT_DIR/bin/seven-system-menu-native" &&
+   grep -q 'def cairo_palette' "$ROOT_DIR/bin/seven-media-menu-native" &&
+   "$ROOT_DIR/bin/seven-recorder-native" --probe >/dev/null 2>&1; then
   ok "Native GTK surfaces consume the shared Seven Design Engine"
 else
   fail "Native GTK surfaces must consume scripts/seven_theme.py"
@@ -321,6 +447,8 @@ fi
 
 if grep -q 'seven-hub-window' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-sidebar' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'hub_width' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'sidebar_width' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-nav-item' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-hero' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'seven-metric-card' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -447,6 +575,9 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'properties_dialog' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'Keep Both' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'Connect to Server' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'screen_window_size' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'runtime_preview_visible' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'screen_compact' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'SevenTerminalNative' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'terminal-tool' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'terminal-searchbar' "$ROOT_DIR/bin/seven-terminal-native" &&

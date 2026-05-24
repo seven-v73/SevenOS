@@ -10,6 +10,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
+
 
 def subprocess_run(command: list[str]) -> int:
     return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode
@@ -93,23 +100,25 @@ def target_summary(target: dict) -> str:
 def load_css() -> None:
     from gi.repository import Gdk, Gtk
 
+    mode = seven_theme.current_theme_mode() if seven_theme else os.environ.get("SEVENOS_THEME_MODE", "dark")
+    base = seven_theme.gtk_app_css("window-controls", mode) if seven_theme else ""
     css = """
     window.seven-decor-overlay {
-      background: rgba(12, 15, 22, 0.82);
-      border: 1px solid rgba(255,255,255,0.10);
+      background: @seven_panel;
+      border: 1px solid @seven_border;
       border-radius: 18px;
     }
     .overlay-root {
       padding: 10px 12px;
-      background: rgba(12, 15, 22, 0.82);
+      background: @seven_panel;
       border-radius: 18px;
     }
     .overlay-title {
-      color: #f4f7fa;
+      color: @seven_text;
       font: 600 11px "SF Pro Text", "Inter", system-ui, sans-serif;
     }
     .overlay-subtitle {
-      color: rgba(244,247,250,0.62);
+      color: @seven_muted;
       font: 500 10px "SF Pro Text", "Inter", system-ui, sans-serif;
     }
     .traffic {
@@ -121,39 +130,39 @@ def load_css() -> None:
       border: 1px solid rgba(0,0,0,0.20);
       background-image: none;
     }
-    .traffic.close { background: #ff5f57; }
-    .traffic.float { background: #febc2e; }
-    .traffic.max { background: #28c840; }
+    .traffic.close { background: @seven_traffic_close; }
+    .traffic.float { background: @seven_traffic_minimize; }
+    .traffic.max { background: @seven_traffic_maximize; }
     .pill-action {
       min-height: 25px;
       padding: 0 10px;
       border-radius: 999px;
-      color: #eaf1ff;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.09);
+      color: @seven_text;
+      background: alpha(@seven_text, 0.07);
+      border: 1px solid @seven_border;
       font: 600 10px "SF Pro Text", "Inter", system-ui, sans-serif;
     }
     .pill-action:hover {
-      background: rgba(77,163,255,0.18);
-      border-color: rgba(77,163,255,0.34);
+      background: @seven_hover;
+      border-color: alpha(@seven_accent, 0.34);
     }
     .menu-card {
       padding: 14px;
-      background: rgba(12, 15, 22, 0.90);
+      background: @seven_panel;
       border-radius: 20px;
     }
     .menu-button {
       min-height: 34px;
       padding: 0 13px;
       border-radius: 12px;
-      color: #f4f7fa;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.08);
+      color: @seven_text;
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
       font: 600 11px "SF Pro Text", "Inter", system-ui, sans-serif;
     }
     """
     provider = Gtk.CssProvider()
-    provider.load_from_data(css.encode("utf-8"))
+    provider.load_from_data((base + css).encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
 

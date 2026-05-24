@@ -55,6 +55,7 @@ def resolve_root() -> Path:
 ROOT = resolve_root()
 sys.path.insert(0, str(ROOT / "scripts"))
 from seven_i18n import tr_text  # noqa: E402
+import seven_theme  # noqa: E402
 
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
 DND_FILE = STATE_DIR / "notifications.dnd"
@@ -167,36 +168,37 @@ def run() -> int:
     except Exception:
         pass
 
-    css = """
+    css = seven_theme.gtk_app_css("notification-center") + """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.notification-center-window { background: transparent; }
     .notification-root {
       padding: 16px;
       border-radius: 28px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.84), rgba(232,244,249,0.64)),
-        rgba(255,255,255,0.58);
-      border: 1px solid rgba(255,255,255,0.82);
+        radial-gradient(ellipse at 14% 0%, alpha(@seven_wallpaper_accent, 0.14), transparent 42%),
+        radial-gradient(ellipse at 86% 0%, alpha(@seven_wallpaper_secondary, 0.10), transparent 40%),
+        @seven_panel;
+      border: 1px solid @seven_border;
     }
     .header {
       padding: 4px 4px 12px 4px;
     }
     .header-title {
-      color: rgba(16,27,34,0.96);
+      color: @seven_text;
       font-size: 19px;
       font-weight: 500;
     }
     .header-subtitle {
-      color: rgba(42,58,68,0.58);
+      color: @seven_muted;
       font-size: 12px;
     }
     .dnd-pill {
       min-height: 28px;
       padding: 0 11px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.62);
-      border: 1px solid rgba(91,127,166,0.24);
-      color: rgba(30,48,58,0.78);
+      background: alpha(@seven_text, 0.065);
+      border: 1px solid @seven_border;
+      color: @seven_text;
       font-size: 11px;
       font-weight: 500;
     }
@@ -205,37 +207,37 @@ def run() -> int:
       padding: 12px;
       margin-bottom: 8px;
       border-radius: 20px;
-      background: rgba(255,255,255,0.56);
-      border: 1px solid rgba(255,255,255,0.70);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
     .notification-card:hover {
-      background: rgba(255,255,255,0.78);
-      border-color: rgba(91,127,166,0.28);
+      background: @seven_hover;
+      border-color: alpha(@seven_accent, 0.28);
     }
     .notification-icon {
       min-width: 40px;
       min-height: 40px;
       border-radius: 13px;
-      background: rgba(91,127,166,0.14);
-      color: rgba(54,86,108,0.92);
+      background: alpha(@seven_accent, 0.12);
+      color: @seven_accent;
       font-size: 18px;
     }
     .notification-title {
-      color: rgba(16,27,34,0.98);
+      color: @seven_text;
       font-size: 14px;
       font-weight: 500;
     }
     .notification-body,
     .notification-app {
-      color: rgba(43,58,68,0.62);
+      color: @seven_muted;
       font-size: 11px;
     }
     .empty-box {
       min-height: 250px;
       padding: 24px;
       border-radius: 24px;
-      background: rgba(255,255,255,0.34);
-      border: 1px solid rgba(255,255,255,0.58);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
     .empty-glyph {
       color: rgba(64,88,104,0.72);
@@ -284,6 +286,27 @@ def run() -> int:
       font-weight: 500;
     }
     """
+    if seven_theme.current_theme_mode() == "dark":
+        css += """
+        .notification-root {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0.035)),
+            rgba(16,18,25,0.94);
+          border-color: rgba(255,255,255,0.12);
+        }
+        .header-title, .notification-title, .empty-title, .primary-action { color: rgba(245,247,250,0.96); }
+        .header-subtitle, .notification-body, .notification-app, .empty-subtitle { color: rgba(245,247,250,0.60); }
+        .dnd-pill, .notification-card, .empty-box, .primary-action, .action-button {
+          background: rgba(255,255,255,0.07);
+          border-color: rgba(255,255,255,0.10);
+          color: rgba(245,247,250,0.88);
+        }
+        .notification-card:hover, .primary-action:hover, .action-button:hover {
+          background: rgba(77,163,255,0.13);
+          border-color: rgba(77,163,255,0.24);
+        }
+        .notification-icon, .empty-glyph { color: rgba(126,206,255,0.86); background: rgba(77,163,255,0.12); }
+        """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)

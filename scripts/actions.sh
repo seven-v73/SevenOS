@@ -35,6 +35,8 @@ about.json	System	About SevenOS JSON	seven about --json	safe	Expose the SevenOS 
 lifecycle.status	System	SevenOS Lifecycle	seven lifecycle	safe	Show the SevenOS-first maintenance routes for updates, repair, protected state, recovery and release gates.
 lifecycle.doctor	System	Lifecycle Doctor	seven lifecycle doctor	safe	Validate that SevenOS maintenance is exposed through SevenOS surfaces instead of raw backend commands.
 lifecycle.plan	System	Lifecycle Plan	seven lifecycle plan	safe	Show remaining maintenance gates before SevenOS feels like a complete autonomous distribution.
+boot.splash.status	System	Boot Splash Status	seven boot-splash status	safe	Show SevenOS quiet boot and shutdown splash readiness.
+boot.splash.apply	System	Apply Boot Splash	seven boot-splash apply	packages	Enable SevenOS Plymouth splash, quiet kernel parameters and initramfs integration.
 update.status	System	SevenOS Update	seven update	safe	Show SevenOS system, app, community and profile update state before backend commands run.
 update.plan	System	Update Plan	seven update plan	safe	Show the SevenOS-first update sequence.
 update.apply	System	Apply Updates	seven update apply	packages	Update through the SevenOS route, then delegate to package foundations.
@@ -76,9 +78,16 @@ apps.open	Desktop	Open Apps	seven-overview apps	safe	Open the SevenOS applicatio
 spotlight.open	Desktop	Open Spotlight	seven-spotlight	safe	Open SevenOS Spotlight search and action surface.
 launchpad.open	Desktop	Open Launchpad	seven-launchpad-native	safe	Open the SevenOS profile-aware application grid.
 files.open	Desktop	Open Files	seven-files	safe	Open Seven Files.
-files.downloads	Desktop	Downloads	seven-files downloads	safe	Open Downloads in Seven Files.
-files.projects	Desktop	Projects	seven-files projects	safe	Open Projects in Seven Files.
-files.pictures	Desktop	Pictures	seven-files pictures	safe	Open Pictures in Seven Files.
+files.downloads	Desktop	Downloads	seven-files downloads	safe	Open Downloads for the active mini OS in Seven Files.
+files.documents	Desktop	Documents	seven-files documents	safe	Open Documents for the active mini OS in Seven Files.
+files.code	Desktop	Code	seven-files code	safe	Open Code for the active mini OS in Seven Files.
+files.pictures	Desktop	Pictures	seven-files pictures	safe	Open Pictures for the active mini OS in Seven Files.
+files.videos	Desktop	Videos	seven-files videos	safe	Open Videos for the active mini OS in Seven Files.
+files.music	Desktop	Music	seven-files music	safe	Open Music for the active mini OS in Seven Files.
+files.resources.status	Desktop	Resource Mode	seven-files resources status	safe	Show whether Seven Files uses active mini OS resources or shared user folders.
+files.resources.toggle	Desktop	Toggle Resource Mode	seven-files resources toggle	changes	Switch Seven Files between active mini OS folders and shared user folders.
+files.resources.mini	Desktop	Use Mini OS Resources	seven-files resources mini	changes	Keep Downloads, Documents, Code, Music, Pictures and Videos inside the active mini OS.
+files.resources.shared	Desktop	Use Shared Resources	seven-files resources shared	changes	Use the global user folders for Downloads, Documents, Code, Music, Pictures and Videos.
 files.profile	Desktop	Profile Workspace	seven-files profile	safe	Open the active SevenOS profile workspace in Seven Files.
 reader.open	Desktop	Open Reader	seven-reader	safe	Open the Seven Reader immersive library.
 reader.library	Desktop	Reader Library	seven-reader library	safe	Open the Seven Reader visual library.
@@ -89,6 +98,7 @@ terminal.open	Desktop	Open Terminal	seven-terminal	safe	Open the active mini OS 
 terminal.forge	Desktop	Forge Terminal	seven-terminal forge	safe	Open a SevenOS terminal tuned for development, Git and builds.
 terminal.cyber	Desktop	Cyber Terminal	seven-terminal cyber	safe	Open a SevenOS terminal tuned for logs, diagnostics and security work.
 terminal.palette	Desktop	Terminal Actions	seven-terminal-palette	safe	Open Seven Terminal quick actions for history, diagnosis and SevenAI help.
+recorder.panel	Desktop	Seven Recorder	seven-recorder panel	safe	Open the SevenOS Recorder controls.
 recorder.area	Desktop	Record Area	seven-recorder area	safe	Select an area and start a smooth SevenOS screen recording.
 recorder.full	Desktop	Record Screen	seven-recorder full	safe	Start a full-screen SevenOS recording.
 recorder.stop	Desktop	Stop Recording	seven-recorder stop	safe	Stop the active SevenOS recording and copy the saved path.
@@ -188,6 +198,9 @@ profile.rootfs.maintenance	Profiles	RootFS Maintenance Shell	seven profile exec 
 profile.independent.shell	Profiles	Independent Mini OS Shell	seven profile exec $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --independent sh	root	Open the active mini OS with its sealed read-only rootfs and separated HOME/cache/data, without VM.
 profile.strict.workspace	Profiles	Strict Workspace Shell	seven-profile-run --container --workspace . sh	packages	Open a strict shell for the active mini OS with only the current folder mounted as workspace.
 profile.strict.profile_workspace	Profiles	Strict Profile Workspace	seven-profile-run --container --workspace-profile sh	packages	Open a strict shell for the active mini OS with its default workspace mounted.
+profile.folders	Profiles	External Folders	seven profile folders	safe	Show folders explicitly granted to the active mini OS.
+profile.grant.repo	Profiles	Grant SevenOS Repo	seven profile grant-folder forge /home/seven/Code/OS/SevenOS --name SevenOS --rw	changes	Allow Forge to access the SevenOS repository as an explicit external folder.
+profile.open.repo	Profiles	Open SevenOS Repo In Forge	seven profile open-folder forge /home/seven/Code/OS/SevenOS	changes	Open the SevenOS repository inside Forge through a strict workspace mount.
 profile.strict.ephemeral	Profiles	Ephemeral Strict Shell	seven-profile-run --ephemeral sh	packages	Open a strict shell with temporary HOME, cache and data removed after exit.
 profile.strict.equinox	Profiles	Strict Equinox Shell	seven profile exec equinox --container sh	packages	Open an Equinox shell with isolated HOME, cache and data.
 profile.strict.baobab	Profiles	Strict Baobab Shell	seven profile exec baobab --container sh	packages	Open a Baobab shell with isolated HOME, cache and data.
@@ -292,30 +305,30 @@ security.enable	Security	Enable Shield	seven shield enable	changes	Apply base Se
 security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
 security.lab.forensics	Security	Open Forensics Lab	seven shield lab --preset forensics	safe	Open an offline evidence-safe forensics lab.
 security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset reversing	safe	Open an offline reversing lab.
-windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
-windows.plan	Windows	Windows Plan	seven windows plan	safe	Show prioritized Windows Mode setup actions.
-windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Windows Bridge paths.
-windows.setup	Windows	Setup Windows Bridge	seven windows setup	packages	Run the public first-install Windows Bridge setup: dependencies, libvirt, disk, VirtIO and VM registration when media is available.
-windows.setup_iso	Windows	Setup Windows From ISO	seven windows setup --iso ~/Downloads/Win11.iso	packages	Create the Windows Bridge VM from an official Windows ISO after preparing the SevenOS VM layer.
+windows.status	Windows	État Windows	seven windows status	safe	Vérifier si Windows est prêt dans SevenOS.
+windows.plan	Windows	Préparer Windows	seven windows plan	safe	Voir les étapes simples avant d’utiliser Windows.
+windows.guide	Windows	Aide Windows	seven windows guide	safe	Expliquer comment utiliser Windows dans SevenOS.
+windows.setup	Windows	Configurer Windows	seven windows setup	packages	Préparer Windows, ses applications, ses dossiers et Windows complet quand le fichier officiel est disponible.
+windows.setup_iso	Windows	Installer Windows depuis un fichier	seven windows setup --iso ~/Downloads/Win11.iso	packages	Créer Windows complet depuis un fichier Windows officiel.
 windows.aur_helpers	Windows	Install AUR Helpers	./install.sh aur-helpers --yes	packages	Install yay and paru for SevenOS AUR-backed Windows helpers.
 windows.catalog	Windows	Windows App Catalog	seven windows catalog	safe	List app-first Windows workflows and preferred engines.
-windows.resolve.photoshop	Windows	Resolve Photoshop	seven windows resolve photoshop	safe	Show whether Photoshop should use Bottles, Wine or VM fallback.
-windows.prepare.office	Windows	Prepare Office	seven windows prepare office	changes	Prepare a dedicated Microsoft Office Wine prefix once and remember when it is ready.
-windows.diagnose.office	Windows	Diagnose Office	seven windows diagnose OfficeSetup.exe	safe	Explain Office installer, Click-to-Run and Wine crashes in human language.
+windows.resolve.photoshop	Windows	Ouvrir Photoshop	seven windows resolve photoshop	safe	Choisir le meilleur chemin pour ouvrir Photoshop.
+windows.prepare.office	Windows	Préparer Office	seven windows prepare office	changes	Préparer Microsoft Office une fois puis mémoriser l’état.
+windows.diagnose.office	Windows	Réparer Office	seven windows diagnose OfficeSetup.exe	safe	Expliquer un échec d’installation Office en langage simple.
 windows.run.photoshop	Windows	Run Photoshop	seven run photoshop	safe	Open Photoshop through the Windows App Layer when configured.
-windows.enter	Windows	Enter Windows Bridge	seven windows enter	changes	Start Windows Bridge, fix the VM network and open the console.
-windows.leave	Windows	Leave Windows Bridge	seven windows leave	changes	Save or stop the Windows VM to free resources when leaving the mini OS.
-windows.sync	Windows	Sync Windows Bridge	seven windows sync	changes	Reconcile the Windows VM state with the active SevenOS mini OS.
-windows.bridge_status	Windows	Windows Bridge Runtime	seven windows bridge-status	safe	Show whether the active profile, VM, console and watchdog are synchronized.
-windows.open	Windows	Open Windows Mode	seven windows open	safe	Open the best available Windows Bridge surface.
-windows.apps	Windows	Windows Apps	seven windows apps	safe	Open Windows applications.
-windows.vm	Windows	Windows VM	seven windows vm	safe	Open Virt Manager for the Windows VM.
-windows.sources	Windows	Windows Sources	seven windows sources	safe	Explain the legal Windows media sources used by SevenOS.
-windows.provision	Windows	Provision Windows	seven windows provision	safe	Prepare the local Windows Bridge media and qcow2 provisioning flow.
-windows.virtio	Windows	Download VirtIO	seven windows virtio	changes	Fetch VirtIO driver media for the Windows VM.
-windows.create	Windows	Create Windows VM	seven windows create	packages	Start the guided Windows VM creation command.
-windows.start	Windows	Start Windows VM	seven windows start	changes	Start the SevenOS Windows virtual machine.
-windows.fix_network	Windows	Fix Windows VM Network	seven windows fix-network	changes	Attach a Windows-friendly e1000e network card to the VM.
+windows.enter	Windows	Ouvrir Windows	seven windows enter	changes	Ouvrir Windows complet depuis SevenOS.
+windows.leave	Windows	Fermer Windows	seven windows leave	changes	Fermer ou mettre en pause Windows pour libérer les ressources.
+windows.sync	Windows	Ranger Windows	seven windows sync	changes	Remettre l’état Windows en ordre avec l’espace actif.
+windows.bridge_status	Windows	État Windows	seven windows bridge-status	safe	Vérifier si Windows est ouvert, fermé ou à préparer.
+windows.open	Windows	Panneau Windows	seven windows open	safe	Ouvrir l’interface Windows SevenOS.
+windows.apps	Windows	Applications Windows	seven windows apps	safe	Ouvrir les applications Windows.
+windows.vm	Windows	Windows complet	seven windows vm	safe	Ouvrir Windows complet.
+windows.sources	Windows	Fichier Windows officiel	seven windows sources	safe	Expliquer où obtenir un fichier Windows autorisé.
+windows.provision	Windows	Préparer les fichiers Windows	seven windows provision	safe	Préparer les fichiers nécessaires à Windows dans SevenOS.
+windows.virtio	Windows	Préparer l’aide Windows	seven windows virtio	changes	Ajouter les fichiers d’aide pour que Windows voie le disque et internet.
+windows.create	Windows	Créer Windows complet	seven windows create	packages	Lancer la création guidée de Windows complet.
+windows.start	Windows	Démarrer Windows	seven windows start	changes	Démarrer Windows complet.
+windows.fix_network	Windows	Réparer internet Windows	seven windows fix-network	changes	Réparer l’accès internet de Windows.
 server.status	Server	Server Status	seven server status	safe	Check the local SevenOS API service.
 server.plan	Server	Server Plan	seven server plan	safe	Show prioritized Seven Server backend actions.
 server.install	Server	Install Server Service	seven server install-user-service	changes	Install the local SevenOS API user service.
@@ -363,8 +376,15 @@ cluster.plan	Ecosystem	SevenCluster Plan	seven cluster plan	safe	Show next steps
 flatpak.status	Apps	Flatpak Status	seven flatpak status	safe	Check Flathub and Flatpak readiness.
 flatpak.install	Apps	Install Default Flatpaks	seven flatpak install	packages	Install default Flatpak apps including Bottles and creative tools.
 sevenpkg.status	Apps	SevenPkg Status	sevenpkg status	safe	Show SevenOS software layer state.
+sevenpkg.doctor	Apps	SevenPkg Doctor	sevenpkg doctor	safe	Diagnose SevenPkg sources, mini OS software layers, optional packages and removal guards.
 sevenpkg.plan	Apps	Software Plan	sevenpkg plan	safe	Show prioritized software and app completion actions.
 sevenpkg.meta	Apps	Meta Packages	sevenpkg meta	safe	List SevenOS software bundles.
+sevenpkg.owner	Apps	Package Owner	sevenpkg owner nmap	safe	Show which SevenOS mini OS owns a package before install/remove decisions.
+sevenpkg.optional	Apps	Optional Software	sevenpkg optional	safe	Show optional SevenOS software layers without installing them.
+sevenpkg.history	Apps	Package History	sevenpkg history	safe	Show recent guarded SevenPkg transactions.
+sevenpkg.transaction.forge	Apps	Preview Forge Install	sevenpkg transaction install forge	safe	Preview the guarded Forge software transaction and post-install SevenOS repair hooks.
+sevenpkg.transaction.remove	Apps	Preview Removal	sevenpkg transaction remove	safe	Show removal impact and SevenOS ownership guard before packages are removed.
+software.open	Apps	SevenOS Software	seven software plan	safe	Open the friendly SevenOS software CLI entrypoint.
 sevenpkg.baobab	Apps	Install Baobab Bundle	sevenpkg install baobab	packages	Install the African cultural OS software bundle.
 sevenpkg.forge	Apps	Install Forge Bundle	sevenpkg install forge	packages	Install the developer software bundle.
 sevenpkg.shield	Apps	Install Shield Bundle	sevenpkg install shield	packages	Install the cybersecurity software bundle.
@@ -484,12 +504,12 @@ for raw in os.environ.get("ACTION_ROWS", "").splitlines():
 
 quick_actions = {
     "equinox": ["spotlight.open", "files.profile", "settings.open", "experience.recommend"],
-    "baobab": ["baobab.open", "baobab.native", "reader.open", "bridge.switch.baobab"],
-    "forge": ["terminal.forge", "deploy.plan", "server.status", "profile.strict.forge"],
+    "baobab": ["baobab.open", "files.documents", "reader.open", "bridge.switch.baobab"],
+    "forge": ["terminal.forge", "files.code", "deploy.plan", "profile.strict.forge"],
     "shield": ["security.dashboard", "security.scope", "security.lab.forensics", "profile.strict.shield_ephemeral"],
-    "studio": ["files.pictures", "recorder.area", "sevenpkg.studio", "profile.strict.studio"],
+    "studio": ["files.pictures", "files.videos", "recorder.area", "profile.strict.studio"],
     "windows": ["windows.setup", "windows.enter", "windows.apps", "windows.bridge_status"],
-    "pulse": ["profile.activate.pulse", "recorder.full", "sevenpkg.pulse", "motion.reduced"],
+    "pulse": ["files.videos", "files.music", "recorder.full", "motion.reduced"],
 }
 
 print(json.dumps({

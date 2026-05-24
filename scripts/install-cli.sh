@@ -145,6 +145,7 @@ install_user_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_user_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
 install_user_command "$ROOT_DIR/bin/seven-ai-native" seven-ai-native
 install_user_command "$ROOT_DIR/bin/seven-help" seven-help
+install_user_command "$ROOT_DIR/bin/seven-help-native" seven-help-native
 install_user_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_user_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
 install_user_command "$ROOT_DIR/bin/seven-dock" seven-dock
@@ -153,6 +154,7 @@ install_user_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_user_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
 install_user_command "$ROOT_DIR/bin/seven-quick-settings-native" seven-quick-settings-native
 install_user_command "$ROOT_DIR/bin/seven-recorder" seven-recorder
+install_user_command "$ROOT_DIR/bin/seven-recorder-native" seven-recorder-native
 install_user_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_user_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_user_command "$ROOT_DIR/bin/seven-terminal" seven-terminal
@@ -217,6 +219,7 @@ install_system_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-nati
 install_system_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
 install_system_command "$ROOT_DIR/bin/seven-ai-native" seven-ai-native
 install_system_command "$ROOT_DIR/bin/seven-help" seven-help
+install_system_command "$ROOT_DIR/bin/seven-help-native" seven-help-native
 install_system_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_system_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
 install_system_command "$ROOT_DIR/bin/seven-dock" seven-dock
@@ -225,6 +228,7 @@ install_system_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_system_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
 install_system_command "$ROOT_DIR/bin/seven-quick-settings-native" seven-quick-settings-native
 install_system_command "$ROOT_DIR/bin/seven-recorder" seven-recorder
+install_system_command "$ROOT_DIR/bin/seven-recorder-native" seven-recorder-native
 install_system_command "$ROOT_DIR/bin/seven-screenshot" seven-screenshot
 install_system_command "$ROOT_DIR/bin/seven-shell-panel" seven-shell-panel
 install_system_command "$ROOT_DIR/bin/seven-terminal" seven-terminal

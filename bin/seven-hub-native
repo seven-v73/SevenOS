@@ -31,6 +31,10 @@ def resolve_root() -> Path:
 ROOT = resolve_root()
 sys.path.insert(0, str(ROOT / "scripts"))
 from seven_i18n import tr  # noqa: E402
+try:
+    import seven_theme  # noqa: E402
+except Exception:  # pragma: no cover
+    seven_theme = None
 
 STATE_CACHE: dict = {"data": None, "expires": 0.0}
 CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "sevenos"
@@ -39,24 +43,19 @@ PREFER_STATE_ONLY = False
 
 
 def current_theme_mode() -> str:
+    if seven_theme:
+        return seven_theme.current_theme_mode()
     config_dir = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
     if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
         return str(os.environ["SEVENOS_THEME_MODE"])
-    profile = os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox").strip().strip("'\"") or "equinox"
-    profile_env = config_dir / "profile.env"
-    if profile_env.exists():
-        for raw in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
-            if raw.startswith("SEVENOS_ACTIVE_PROFILE="):
-                profile = raw.split("=", 1)[1].strip().strip("'\"") or profile
-                break
-    for theme_file in (config_dir / "profiles" / profile / "theme.conf", config_dir / "theme.conf"):
-        if theme_file.exists():
-            for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
-                key, _, value = line.partition("=")
-                if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
-                    value = value.strip().strip("'\"").lower()
-                    if value in {"dark", "light"}:
-                        return value
+    theme_file = config_dir / "theme.conf"
+    if theme_file.exists():
+        for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip().lower() in {"sevenos_theme_mode", "theme_mode", "mode"}:
+                value = value.strip().strip("'\"").lower()
+                if value in {"dark", "light"}:
+                    return value
     return "dark"
 
 
@@ -703,7 +702,8 @@ def run_gui() -> int:
         pass
 
     def install_css() -> None:
-        css = """
+        base_css = seven_theme.gtk_app_css("hub") if seven_theme else ""
+        css = base_css + """
         * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
         window.seven-hub-window {
           background:
@@ -1160,7 +1160,21 @@ def run_gui() -> int:
             install_css()
             win = Adw.ApplicationWindow(application=app)
             win.set_title("Seven Hub")
-            win.set_default_size(1280, 780)
+            display = Gdk.Display.get_default()
+            screen_width, screen_height = 1280, 720
+            try:
+                monitors = display.get_monitors() if display else None
+                monitor = monitors.get_item(0) if monitors and monitors.get_n_items() else None
+                geometry = monitor.get_geometry() if monitor else None
+                if geometry:
+                    screen_width, screen_height = geometry.width, geometry.height
+            except Exception:
+                pass
+            compact_screen = screen_width < 1180 or screen_height < 720
+            hub_width = min(1180, max(760, int(screen_width * 0.78)))
+            hub_height = min(740, max(520, int(screen_height * 0.74)))
+            sidebar_width = 214 if compact_screen else 250
+            win.set_default_size(hub_width, hub_height)
             win.add_css_class("seven-hub-window")
 
             stack = Gtk.Stack()
@@ -1172,7 +1186,7 @@ def run_gui() -> int:
             refresh.add_css_class("pill")
 
             sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-            sidebar.set_size_request(250, -1)
+            sidebar.set_size_request(sidebar_width, -1)
             sidebar.add_css_class("seven-sidebar")
 
             brand = Gtk.Label(label="7  SevenOS")

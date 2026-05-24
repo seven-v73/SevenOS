@@ -25,9 +25,7 @@ profile_theme_conf() {
 
 theme_mode() {
   local mode
-  if [[ -f "$(profile_theme_conf)" ]]; then
-    mode="$(awk -F= 'tolower($1) ~ /^(mode|theme_mode|sevenos_theme_mode)$/ {print $2; exit}' "$(profile_theme_conf)" | tr -d '[:space:]\"')"
-  elif [[ -f "$THEME_CONF" ]]; then
+  if [[ -f "$THEME_CONF" ]]; then
     mode="$(awk -F= 'tolower($1) ~ /^(mode|theme_mode|sevenos_theme_mode)$/ {print $2; exit}' "$THEME_CONF" | tr -d '[:space:]\"')"
   else
     mode=""
@@ -394,10 +392,11 @@ profiles = {
         "margin_right": 0,
         "modules_left": ["custom/identity"],
         "modules_center": ["hyprland/workspaces"],
-        "modules_right": ["custom/project", "custom/context", "custom/containers", "custom/services", "custom/system-status", "clock", "custom/profile-switch"],
-        "modules": ["custom/project", "custom/containers", "custom/services"],
+        "modules_right": ["custom/project", "custom/context", "custom/recorder", "custom/containers", "custom/services", "custom/system-status", "clock", "custom/profile-switch"],
+        "modules": ["custom/project", "custom/recorder", "custom/containers", "custom/services"],
         "custom": {
             "project": {"format": "󰉋", "tooltip": "Forge workspace · ouvrir l'espace projet", "on-click": "seven profile open forge"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder panel", "on-click-right": "seven-recorder area", "on-click-middle": "seven-recorder full"},
             "containers": {"exec": "docker info >/dev/null 2>&1 && echo '󰡨' || echo '󰡨 off'", "interval": 20, "tooltip": "Docker/Podman et services locaux", "on-click": "seven-terminal forge -- bash -lc 'docker ps; printf \"\\n\"; podman ps 2>/dev/null || true; read -r'"},
             "services": {"format": "󰒓", "tooltip": "Inspecter les services Forge", "on-click": "seven-terminal forge -- bash -lc 'systemctl --user --no-pager --type=service --state=running; read -r'"},
         },
@@ -421,7 +420,7 @@ profiles = {
         "custom": {
             "scope": {"format": "󰒃", "tooltip": "Shield Center · périmètre autorisé", "on-click": "seven-shield-center-native"},
             "vpn": {"exec": "seven-waybar-status vpn", "return-type": "json", "interval": 10, "tooltip": True, "on-click": "seven-waybar-action security"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-waybar-action system", "on-click-right": "seven-recorder area"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder panel", "on-click-right": "seven-recorder area", "on-click-middle": "seven-recorder full"},
         },
     },
     "studio": {
@@ -443,14 +442,14 @@ profiles = {
         "custom": {
             "canvas": {"format": "󰽉", "tooltip": "Studio canvas · ouvrir l'espace créatif", "on-click": "seven profile open studio"},
             "media": {"exec": "seven-waybar-status media", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "seven-waybar-action media-menu", "on-click-right": "seven-quick-settings audio"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder stop", "on-click-right": "seven-recorder area"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder panel", "on-click-right": "seven-recorder area", "on-click-middle": "seven-recorder full"},
         },
     },
     "windows": {
         "label": "Windows",
-        "context": "compat bridge",
-        "center": "VM et apps",
-        "accent": "Bridge, VM, apps, dossiers partagés",
+        "context": "󰖳",
+        "center": "Applications Windows",
+        "accent": "Apps, dossiers, Windows complet",
         "switch_label": "OS",
         "position": "top",
         "height": 28,
@@ -459,14 +458,15 @@ profiles = {
         "margin_bottom": 0,
         "margin_left": 0,
         "margin_right": 0,
-        "modules_left": ["custom/identity", "custom/bridge", "custom/apps"],
+        "modules_left": ["custom/identity", "custom/windows-home", "custom/apps"],
         "modules_center": ["custom/context"],
-        "modules_right": ["custom/vm", "custom/system-status", "clock", "custom/profile-switch"],
-        "modules": ["custom/bridge", "custom/vm", "custom/apps"],
+        "modules_right": ["custom/windows-folders", "custom/windows-repair", "custom/system-status", "clock", "custom/profile-switch"],
+        "modules": ["custom/windows-home", "custom/apps", "custom/windows-folders", "custom/windows-repair"],
         "custom": {
-            "bridge": {"format": "Bridge", "tooltip": "Ouvrir Windows Bridge", "on-click": "seven windows enter"},
-            "vm": {"format": "VM", "tooltip": "Console et état de la VM", "on-click": "seven windows vm"},
-            "apps": {"format": "Apps", "tooltip": "Applications Windows et fallback", "on-click": "seven windows apps"},
+            "windows-home": {"format": "󰖳 Windows", "tooltip": "Ouvrir le panneau Windows SevenOS", "on-click": "seven windows open"},
+            "apps": {"format": "Apps", "tooltip": "Ouvrir les applications Windows", "on-click": "seven windows apps"},
+            "windows-folders": {"format": "Dossiers", "tooltip": "Ouvrir les dossiers Windows", "on-click": "seven profile open windows"},
+            "windows-repair": {"format": "Réparer", "tooltip": "Vérifier et réparer Windows", "on-click": "seven windows repair"},
         },
     },
     "pulse": {
@@ -488,7 +488,7 @@ profiles = {
         "custom": {
             "performance": {"format": "󰾆", "tooltip": "Pulse performance · latence et FPS", "on-click": "seven profile center pulse"},
             "gamemode": {"exec": "pgrep -x gamemoded >/dev/null 2>&1 && echo '󰊴' || echo '󰊴 off'", "interval": 30, "tooltip": "Optimisation gaming locale"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder stop", "on-click-right": "seven-recorder area"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder panel", "on-click-right": "seven-recorder area", "on-click-middle": "seven-recorder full"},
         },
     },
 }
@@ -509,10 +509,13 @@ config = {
     "modules-center": spec.get("modules_center", ["custom/context", "hyprland/workspaces"]),
     "modules-right": spec.get("modules_right", ["custom/profile", "custom/mini-context", *spec["modules"], "custom/system-status", "clock"]),
     "custom/identity": {
-        "format": spec["label"],
-        "tooltip": profile.get("title") or spec["label"],
-        "on-click": f"seven profile center {key}",
-        "on-click-right": f"seven profile open {key}",
+        "exec": "seven-waybar-status sevenos",
+        "return-type": "json",
+        "interval": 3,
+        "signal": 8,
+        "tooltip": True,
+        "on-click": "seven profile center",
+        "on-click-right": "seven profile open",
     },
     "custom/profile-switch": {
         "format": spec.get("switch_label", "OS"),
@@ -524,6 +527,7 @@ config = {
         "exec": "seven-waybar-status profile",
         "return-type": "json",
         "interval": 3,
+        "signal": 8,
         "tooltip": True,
         "on-click": "seven-profile-center-native",
         "on-click-right": "seven profile current",
@@ -1726,22 +1730,21 @@ mini_os = {
         "store_collection": "Creator Tools",
     },
     "windows": {
-        "home": "Windows bridge",
-        "focus": "VM-first Windows experience with snapshots, shared folders and Wine/Bottles as fallback.",
+        "home": "Windows",
+        "focus": "Applications Windows, dossiers partagés et Windows complet à la demande.",
         "library": "Windows Apps",
-        "collections": ["Virtual machines", "Windows apps", "Shared folders", "Snapshots"],
+        "collections": ["Applications Windows", "Dossiers Windows", "Windows complet", "Réparation"],
         "actions": [
-            ["Enter", "Start Windows Bridge", "seven windows enter"],
-            ["Sync", "Repair Windows Bridge runtime state", "seven windows sync"],
-            ["VM", "Open Windows VM console", "seven windows vm"],
-            ["Status", "Show Windows Bridge runtime status", "seven windows bridge-status"],
-            ["Apps", "Open Windows apps", "seven windows apps"],
-            ["Guide", "Open Windows guide", "seven windows guide"],
+            ["Ouvrir", "Ouvrir Windows", "seven windows enter"],
+            ["Applications", "Ouvrir les applications Windows", "seven windows apps"],
+            ["Dossiers", "Ouvrir les dossiers Windows", "seven profile open windows"],
+            ["Réparer", "Vérifier et réparer Windows", "seven windows repair"],
+            ["Préparer", "Installer ou configurer Windows", "seven windows setup"],
         ],
-        "ai": "Windows compatibility and VM assistant",
+        "ai": "Assistant Windows SevenOS",
         "autonomy": 72,
         "launchpad_filter": "windows",
-        "store_collection": "Windows Bridge",
+        "store_collection": "Windows",
     },
     "pulse": {
         "home": "Gaming performance",
@@ -1860,7 +1863,7 @@ profiles = {
     "forge": {"position": "top", "max_modules": 20, "identity": "Forge", "required": {"custom/project", "custom/containers", "custom/services"}},
     "shield": {"position": "top", "max_modules": 19, "identity": "Shield", "required": {"custom/scope", "custom/vpn", "custom/recorder"}},
     "studio": {"position": "top", "max_modules": 19, "identity": "Studio", "required": {"custom/canvas", "custom/media", "custom/recorder"}},
-    "windows": {"position": "top", "max_modules": 19, "identity": "Windows", "required": {"custom/bridge", "custom/vm", "custom/apps"}},
+    "windows": {"position": "top", "max_modules": 19, "identity": "Windows", "required": {"custom/windows-home", "custom/apps", "custom/windows-folders"}},
     "pulse": {"position": "top", "max_modules": 20, "identity": "Pulse", "required": {"custom/performance", "custom/gamemode", "custom/recorder"}},
     "baobab": {"position": "top", "max_modules": 19, "identity": "Baobab", "identity_module": "custom/baobab", "root": "baobab/waybar", "required": {"custom/memory", "custom/language", "custom/sound", "custom/ai"}},
 }

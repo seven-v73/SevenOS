@@ -224,7 +224,7 @@ for service, owners in service_owners.items():
     })
 
 profile_commands = {
-    "equinox": ["seven", "seven-files", "seven-hub", "kitty", "python", "python3"],
+    "equinox": ["seven", "seven-files", "seven-hub", "seven-mini-os-center", "seven-terminal", "kitty", "python", "python3"],
     "baobab": ["seven", "seven-files", "seven-hub", "seven-reader", "foliate", "calibre", "ebook-viewer", "espeak-ng", "festival", "trans"],
     "forge": ["git", "gh", "node", "npm", "pnpm", "python", "pip", "pipx", "rustc", "cargo", "go", "docker", "docker-compose", "podman", "buildah", "skopeo", "caddy", "jq", "rsync", "ssh", "seven-deploy", "helix", "hx", "nvim", "code", "tmux", "make", "cmake", "ninja", "gcc", "clang", "lldb", "sqlite3", "psql", "valkey-server"],
     "shield": ["nmap", "wireshark", "tcpdump", "nc", "john", "hashcat", "hydra", "medusa", "sqlmap", "nikto", "msfconsole", "gobuster", "zaproxy", "masscan", "impacket-secretsdump", "whois", "dig", "traceroute", "openvpn", "wg", "binwalk", "volatility3", "yara", "sleuthkit", "foremost", "testdisk", "exiftool", "gdb", "strace", "ltrace", "radare2", "rizin", "cutter", "ghidra", "jadx", "afl-fuzz", "aircrack-ng", "bettercap", "ettercap", "macchanger", "firejail", "bwrap", "bandit"],
@@ -232,6 +232,7 @@ profile_commands = {
     "windows": ["wine", "winetricks", "lutris", "protontricks", "bottles", "virt-manager", "virt-install", "virt-viewer", "qemu-system-x86_64"],
     "pulse": ["gamemoderun", "game-mode", "gamescope", "mangohud", "vulkaninfo", "lutris"],
 }
+global_package_commands = ["pacman", "paru", "yay", "makepkg"]
 
 active_commands = []
 for command in profile_commands.get("equinox", []):
@@ -247,6 +248,9 @@ for commands in profile_commands.values():
     for command in commands:
         if command not in all_commands:
             all_commands.append(command)
+for command in global_package_commands:
+    if command not in all_commands:
+        all_commands.append(command)
 
 inactive_commands = [command for command in all_commands if command not in active_commands]
 
@@ -350,6 +354,14 @@ payload = {
         "pacman": "global package store",
         "sevenos": "profile-scoped activation, service policy, runtime slices, app shims",
         "rule": "Installed does not mean active. Profiles own capabilities; SevenOS activates only the selected runtime.",
+        "global_package_commands": "raw pacman/AUR helpers are guarded by SevenOS profile shims in Seven Terminal and profiled launchers",
+    },
+    "shared_foundations": {
+        "kernel": "shared host kernel; not a VM boundary",
+        "compositor": "shared Hyprland/Wayland session with SevenOS profile routing",
+        "gpu": "shared hardware; foreground/profile policy controls access, not hardware partitioning",
+        "network": "shared host network by default; strict profiles can use bubblewrap network namespace",
+        "package_store": "pacman database remains physically global; profile views and rootfs seals define SevenOS boundaries",
     },
     "paths": {
         "state": str(state_dir / "profile-isolation.json"),
@@ -397,6 +409,7 @@ payload = {
         "implicit_capability_borrowing": False,
         "rootfs": "prepared per profile; used by seven-profile-run --rootfs when built",
         "isolation_modes": "balanced by default, strict for Shield, explicit --isolation strict|vm available",
+        "package_manager_guard": "raw pacman/paru/yay/makepkg are shimmed toward SevenOS Store or explicit rootfs maintenance",
     },
 }
 
@@ -509,6 +522,84 @@ def generate_desktop_overrides():
             generated.append(str(target))
     return generated
 
+def generate_profile_launchers():
+    launcher_root = Path.home() / ".local/share/applications"
+    launcher_root.mkdir(parents=True, exist_ok=True)
+    runner = root / "bin" / "seven-profile-run"
+    generated = []
+    launcher_specs = {
+        "equinox": ("Equinox Balance", "SevenOS balanced workspace", "sevenos"),
+        "baobab": ("Baobab Cultural OS", "African culture, heritage and language workspace", "seven-baobab"),
+        "forge": ("Forge DevOps", "Code, containers, services and deployment workspace", "utilities-terminal"),
+        "shield": ("Shield Cybersecurity", "Audit, forensics and sandbox workspace", "seven-security"),
+        "studio": ("Studio Creator", "Media, design and asset production workspace", "seven-studio"),
+        "windows": ("Windows Bridge", "Windows compatibility and VM workspace", "computer"),
+        "pulse": ("Pulse Gaming", "Gaming, performance and controller workspace", "applications-games"),
+    }
+    for key in profiles:
+        title, comment, icon = launcher_specs.get(key, (profiles[key].get("title", key.title()), f"{key} mini OS", "sevenos"))
+        center = profiles[key].get("center_command") or f"seven-mini-os-center {key}"
+        center_parts = shlex.split(center)
+        center_exec = " ".join([desktop_quote(str(runner)), "--profile", desktop_quote(key), "--container", "--workspace-profile", *[desktop_quote(part) for part in center_parts]])
+        terminal_exec = " ".join([desktop_quote(str(runner)), "--profile", desktop_quote(key), "--container", "--workspace-profile", "seven-terminal", desktop_quote(key)])
+        entries = {
+            f"sevenos-mini-{key}.desktop": [
+                "[Desktop Entry]",
+                "Type=Application",
+                f"Name={title}",
+                f"Comment={comment}",
+                f"Exec={center_exec}",
+                f"Icon={icon}",
+                "Terminal=false",
+                "Categories=System;SevenOS;",
+                "StartupNotify=true",
+                "X-SevenOS-Profiled=true",
+                f"X-SevenOS-Profile={key}",
+                "X-SevenOS-LaunchMode=strict-container",
+                "",
+            ],
+            f"sevenos-mini-{key}-terminal.desktop": [
+                "[Desktop Entry]",
+                "Type=Application",
+                f"Name={title} Terminal",
+                f"Comment=Open an isolated terminal for {title}",
+                f"Exec={terminal_exec}",
+                "Icon=utilities-terminal",
+                "Terminal=false",
+                "Categories=System;TerminalEmulator;SevenOS;",
+                "StartupNotify=true",
+                "X-SevenOS-Profiled=true",
+                f"X-SevenOS-Profile={key}",
+                "X-SevenOS-LaunchMode=strict-container",
+                "",
+            ],
+        }
+        for name, lines in entries.items():
+            path = launcher_root / name
+            path.write_text("\n".join(lines), encoding="utf-8")
+            generated.append(str(path))
+    return generated
+
+def archive_legacy_aliases():
+    archived = []
+    aliases = {"horizon": "forge"}
+    container_root = Path.home() / ".local/share/sevenos/profile-containers"
+    archive_root = container_root / "_legacy"
+    for alias, target in aliases.items():
+        source = container_root / alias
+        target_root = container_root / target
+        if not source.exists() or not target_root.exists():
+            continue
+        archive_root.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        destination = archive_root / f"{alias}-to-{target}-{stamp}"
+        try:
+            source.rename(destination)
+            archived.append({"alias": alias, "target": target, "archived_to": str(destination)})
+        except OSError as exc:
+            archived.append({"alias": alias, "target": target, "error": str(exc)})
+    return archived
+
 def generate_package_views():
     view_root = Path.home() / ".local/share/sevenos/profile-package-views"
     view_root.mkdir(parents=True, exist_ok=True)
@@ -526,7 +617,11 @@ def generate_package_views():
                 stale.unlink()
         exposed = []
         for command in sorted(core_commands | set(profile_commands.get(key, []))):
-            resolved = shutil.which(command, path=base_path)
+            resolved = str(root / "bin" / command) if command.startswith("seven") and (root / "bin" / command).is_file() else None
+            if not resolved:
+                resolved = shutil.which(command, path=base_path)
+            if not resolved and (root / "bin" / command).is_file():
+                resolved = str(root / "bin" / command)
             if not resolved:
                 continue
             target = bin_dir / command
@@ -649,11 +744,34 @@ def apply_state():
         if command in protected_commands:
             continue
         shim = shims_dir / command
-        shim.write_text(
-            "#!/usr/bin/env bash\n"
-            f"exec {runner} --container {command!r} \"$@\"\n",
-            encoding="utf-8",
-        )
+        if command in global_package_commands:
+            shim.write_text(
+                "#!/usr/bin/env bash\n"
+                "set -euo pipefail\n"
+                f"real=\"/usr/bin/{command}\"\n"
+                "[[ -x \"$real\" ]] || real=\"$(command -v " + command + " || true)\"\n"
+                "[[ -n \"$real\" && \"$real\" != \"$0\" ]] || { printf '[SevenOS] backend missing for " + command + "\\n' >&2; exit 127; }\n"
+                "if [[ \"${SEVENOS_ALLOW_GLOBAL_PACKAGES:-0}\" == \"1\" ]]; then\n"
+                "  exec \"$real\" \"$@\"\n"
+                "fi\n"
+                "case \" ${*:-} \" in\n"
+                "  *' -Q'*|*' --query '*|*' -Si '*|*' -Ss '*|*' --sync --search '*|*' --sync --info '*) exec \"$real\" \"$@\" ;;\n"
+                "esac\n"
+                "profile=\"$(sed -n 's/^SEVENOS_ACTIVE_PROFILE=//p' \"${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env\" 2>/dev/null | head -1 | tr -d '\"')\"\n"
+                "profile=\"${profile:-${SEVENOS_ACTIVE_PROFILE:-${SEVENOS_ISOLATION_PRIMARY:-equinox}}}\"\n"
+                f"printf '[SevenOS] {command} is a global package command.\\n' >&2\n"
+                "printf '[SevenOS] Use SevenStore/sevenpkg for normal installs, or profile rootfs maintenance for mini OS packages.\\n' >&2\n"
+                f"printf '[SevenOS] Suggested: seven profile exec %s --rootfs-writable {command} %s\\n' \"$profile\" \"$*\" >&2\n"
+                "printf '[SevenOS] Then run: seven profile-rootfs verify all && seven profile-rootfs seal all --apply --yes\\n' >&2\n"
+                "exit 126\n",
+                encoding="utf-8",
+            )
+        else:
+            shim.write_text(
+                "#!/usr/bin/env bash\n"
+                f"exec {runner} --container {command!r} \"$@\"\n",
+                encoding="utf-8",
+            )
         shim.chmod(0o755)
 
     package_views = generate_package_views()
@@ -665,8 +783,14 @@ def apply_state():
     payload["strict_boundaries"]["package_views"] = "per-profile PATH/bin view over global pacman store"
 
     desktop_overrides = generate_desktop_overrides()
-    payload["strict_boundaries"]["desktop_overrides"] = len(desktop_overrides)
+    profile_launchers = generate_profile_launchers()
+    legacy_archives = archive_legacy_aliases()
+    payload["strict_boundaries"]["desktop_overrides"] = len(desktop_overrides) + len(profile_launchers)
+    payload["strict_boundaries"]["profile_launchers"] = "one independent launcher and one independent terminal per mini OS"
+    payload["strict_boundaries"]["legacy_aliases"] = "archived, not deleted"
     payload["desktop_overrides"] = desktop_overrides[:200]
+    payload["profile_launchers"] = profile_launchers
+    payload["legacy_archives"] = legacy_archives
     write_text(state_dir / "profile-isolation.json", json.dumps(payload, indent=2) + "\n")
 
     changes = []
@@ -702,6 +826,8 @@ if action == "doctor":
     shims_dir = Path.home() / ".local/share/sevenos/profile-shims"
     sample_shims = [shims_dir / command for command in ("code", "gimp", "nmap", "gamemoderun") if (shims_dir / command).exists()]
     strict_shims_ok = bool(sample_shims) and all("--container" in path.read_text(encoding="utf-8", errors="ignore") for path in sample_shims)
+    package_guard_shims = [shims_dir / command for command in ("pacman", "paru", "yay", "makepkg") if (shims_dir / command).exists()]
+    package_guard_ok = bool(package_guard_shims) and all("SEVENOS_ALLOW_GLOBAL_PACKAGES" in path.read_text(encoding="utf-8", errors="ignore") for path in package_guard_shims)
     desktop_override_root = Path.home() / ".local/share/applications"
     desktop_override_count = 0
     if desktop_override_root.is_dir():
@@ -733,6 +859,7 @@ if action == "doctor":
         "runner": "OK" if (root / "bin" / "seven-profile-run").is_file() else "MISS",
         "profile_launcher": "OK" if (root / "bin" / "seven-profile-launch").is_file() else "MISS",
         "strict_shims": "OK" if strict_shims_ok else "MISS",
+        "package_manager_guard": "OK" if package_guard_ok else "MISS",
         "desktop_overrides": "OK" if desktop_override_count > 0 else "MISS",
         "desktop_override_count": desktop_override_count,
         "package_views": "OK" if package_view_count >= len(profiles) else "MISS",

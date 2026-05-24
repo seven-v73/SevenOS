@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 from seven_i18n import tr_text  # noqa: E402
+import seven_theme  # noqa: E402
 
 
 def ensure_gi_python() -> None:
@@ -520,7 +521,7 @@ def run_dock() -> int:
     reserve_space = bool(config.get("reserve_space", True)) and not bool(config.get("autohide", False))
     autohide = bool(config.get("autohide", False))
 
-    css = """
+    css = seven_theme.gtk_app_css("dock") + """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.seven-dock {
       background: transparent;
@@ -697,6 +698,32 @@ def run_dock() -> int:
       background: rgba(77,163,255,0.14);
     }
     """
+    if seven_theme.current_theme_mode() == "dark":
+        css += """
+        .dock-shell {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.045)),
+            rgba(15,18,26,0.72);
+          border-color: rgba(255,255,255,0.14);
+        }
+        .dock-tile:hover {
+          background: rgba(255,255,255,0.09);
+        }
+        .dock-icon {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.07)),
+            rgba(22,26,36,0.88);
+          border-color: rgba(255,255,255,0.12);
+        }
+        .dock-dot { background: rgba(245,247,250,0.80); }
+        .dock-separator { background: rgba(255,255,255,0.14); }
+        .dock-preview {
+          background: rgba(18,19,26,0.94);
+          border-color: rgba(255,255,255,0.12);
+        }
+        .dock-preview-title, .dock-preview-row { color: rgba(245,247,250,0.92); }
+        .dock-preview-meta { color: rgba(245,247,250,0.58); }
+        """
 
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))

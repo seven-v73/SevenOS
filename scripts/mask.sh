@@ -143,6 +143,7 @@ public_interface_files = [
     "bin/seven",
     "bin/seven-installer",
     "bin/seven-help",
+    "bin/seven-help-native",
     "bin/seven-hub-native",
     "bin/seven-reader-native",
     "bin/seven-quick-settings-native",

@@ -4,3 +4,4 @@ libisoburn
 squashfs-tools
 dosfstools
 mtools
+plymouth

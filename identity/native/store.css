@@ -68,7 +68,7 @@ window.seven-store {
 .editorial-title {
   color: @seven_text;
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .editorial-copy {
   color: @seven_text;

@@ -116,6 +116,26 @@ Use `--workspace-profile` when you want the default workspace of the selected
 mini OS: `~/Forge`, `~/ShieldLab`, `~/Studio`, `~/Baobab`, `~/WindowsMode`,
 `~/Pulse` or `~/SevenOS`. SevenOS creates the folder if it does not exist.
 
+## External Folders
+
+Some folders are intentionally outside every mini OS workspace. Grant them
+explicitly instead of weakening isolation:
+
+```bash
+seven profile grant-folder forge /home/seven/Code/OS/SevenOS --name SevenOS --rw
+seven profile folders forge
+seven profile open-folder forge /home/seven/Code/OS/SevenOS
+```
+
+Granted folders are mounted in strict profile containers under:
+
+```text
+/external/<name>
+```
+
+They remain outside the mini OS by default. The grant only says that the chosen
+mini OS may access that folder when launched through `seven-profile-run`.
+
 Use `--ephemeral` for a disposable strict session. SevenOS creates temporary
 config/HOME/cache/data roots, runs the command, then removes them after the command
 exits. Explicit workspaces mounted with `--workspace` or `--workspace-profile`

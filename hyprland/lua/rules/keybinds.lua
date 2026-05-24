@@ -5,7 +5,7 @@ local M = {
 
 M.common_binds = {
   "bind = $mod, Return, exec, $terminal",
-  "bind = $mod SHIFT, Return, exec, seven-terminal dark",
+  "bind = $mod SHIFT, Return, exec, seven-terminal profile",
   "bind = $mod CTRL, Return, exec, seven-terminal menu",
   "bindr = $mod, SUPER_L, exec, $launcher",
   "bindr = $mod, SUPER_R, exec, $launcher",

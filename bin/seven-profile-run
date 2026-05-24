@@ -8,6 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+
 
 def state_dir() -> Path:
     return Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
@@ -67,6 +69,48 @@ def default_workspace(profile: str) -> Path:
         "pulse": "Pulse",
     }
     return Path.home() / mapping.get(profile, "SevenOS")
+
+
+def safe_mount_name(value: str) -> str:
+    cleaned = "".join(ch if ch.isalnum() or ch in "-_." else "-" for ch in value.strip())
+    cleaned = cleaned.strip(".-")
+    return cleaned[:48] or "folder"
+
+
+def load_folder_grants(profile: str) -> list[dict]:
+    data = load_json(state_dir() / "profile-folder-grants.json")
+    grants = []
+    for raw in (data.get("profiles") or {}).get(profile, []):
+        if not isinstance(raw, dict):
+            continue
+        path = Path(str(raw.get("path", ""))).expanduser()
+        try:
+            resolved = path.resolve()
+        except OSError:
+            continue
+        if not resolved.is_dir():
+            continue
+        mode = "rw" if raw.get("mode") == "rw" else "ro"
+        name = safe_mount_name(str(raw.get("name") or resolved.name or "folder"))
+        grants.append({"name": name, "path": resolved, "mode": mode})
+    return grants
+
+
+def append_folder_grants(command_line: list[str], grants: list[dict]) -> list[str]:
+    used = set()
+    for grant in grants:
+        name = str(grant["name"])
+        if name in used:
+            suffix = 2
+            original = name
+            while f"{original}-{suffix}" in used:
+                suffix += 1
+            name = f"{original}-{suffix}"
+        used.add(name)
+        target = f"/external/{name}"
+        bind = "--bind" if grant.get("mode") == "rw" else "--ro-bind"
+        command_line.extend(["--dir", "/external", bind, str(grant["path"]), target])
+    return command_line
 
 
 def default_isolation_mode(profile: str, rootfs: bool = False) -> str:
@@ -183,6 +227,56 @@ def rootfs_fingerprint(rootfs: Path) -> dict:
     }
 
 
+USER_DIRS = {
+    "DESKTOP": "Desktop",
+    "DOWNLOAD": "Downloads",
+    "TEMPLATES": "Templates",
+    "PUBLICSHARE": "Public",
+    "DOCUMENTS": "Documents",
+    "MUSIC": "Music",
+    "PICTURES": "Pictures",
+    "VIDEOS": "Videos",
+    "CODE": "Code",
+}
+
+
+def ensure_profile_user_dirs(home: Path) -> None:
+    for dirname in USER_DIRS.values():
+        (home / dirname).mkdir(parents=True, exist_ok=True)
+    config = home / ".config"
+    config.mkdir(parents=True, exist_ok=True)
+    lines = [
+        'XDG_DESKTOP_DIR="$HOME/Desktop"',
+        'XDG_DOWNLOAD_DIR="$HOME/Downloads"',
+        'XDG_TEMPLATES_DIR="$HOME/Templates"',
+        'XDG_PUBLICSHARE_DIR="$HOME/Public"',
+        'XDG_DOCUMENTS_DIR="$HOME/Documents"',
+        'XDG_MUSIC_DIR="$HOME/Music"',
+        'XDG_PICTURES_DIR="$HOME/Pictures"',
+        'XDG_VIDEOS_DIR="$HOME/Videos"',
+    ]
+    (config / "user-dirs.dirs").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def xdg_user_dir_env(home_prefix: str) -> dict[str, str]:
+    return {
+        "XDG_DESKTOP_DIR": f"{home_prefix}/Desktop",
+        "XDG_DOWNLOAD_DIR": f"{home_prefix}/Downloads",
+        "XDG_TEMPLATES_DIR": f"{home_prefix}/Templates",
+        "XDG_PUBLICSHARE_DIR": f"{home_prefix}/Public",
+        "XDG_DOCUMENTS_DIR": f"{home_prefix}/Documents",
+        "XDG_MUSIC_DIR": f"{home_prefix}/Music",
+        "XDG_PICTURES_DIR": f"{home_prefix}/Pictures",
+        "XDG_VIDEOS_DIR": f"{home_prefix}/Videos",
+        "SEVENOS_CODE_DIR": f"{home_prefix}/Code",
+    }
+
+
+def append_setenv(command_line: list[str], values: dict[str, str]) -> None:
+    for key, value in values.items():
+        command_line.extend(["--setenv", key, value])
+
+
 def verify_rootfs_seal(profile: str, rootfs: Path, *, required: bool) -> tuple[bool, str]:
     seal_path = Path.home() / ".local/share/sevenos/profile-rootfs" / profile / "seal.json"
     seal = load_json(seal_path)
@@ -218,6 +312,10 @@ def runtime_manifest(profile: str, isolation: dict) -> dict:
             "sandbox_path": "/workspace",
             "policy": "explicit-bind-only",
         },
+        "external_folders": [
+            {"name": item["name"], "path": str(item["path"]), "mode": item["mode"], "sandbox_path": f"/external/{item['name']}"}
+            for item in load_folder_grants(profile)
+        ],
         "environment": {
             "SEVENOS_EXEC_PROFILE": profile,
             "SEVENOS_PROFILE_CONTAINER": profile,
@@ -228,6 +326,12 @@ def runtime_manifest(profile: str, isolation: dict) -> dict:
             "XDG_CONFIG_HOME": "/profile/config in strict container mode",
             "XDG_CACHE_HOME": "/profile/cache in strict container mode",
             "XDG_DATA_HOME": "/profile/data in strict container mode",
+            "XDG_DOWNLOAD_DIR": "/profile/home/Downloads",
+            "XDG_DOCUMENTS_DIR": "/profile/home/Documents",
+            "XDG_MUSIC_DIR": "/profile/home/Music",
+            "XDG_PICTURES_DIR": "/profile/home/Pictures",
+            "XDG_VIDEOS_DIR": "/profile/home/Videos",
+            "SEVENOS_CODE_DIR": "/profile/home/Code",
             "PATH": "/profile/bin first in strict container mode",
         },
         "commands": {
@@ -489,6 +593,24 @@ def main() -> int:
     isolation_mode = isolation_mode or default_isolation_mode(active, use_rootfs)
     policy = isolation_policy(active, isolation_mode)
     env["SEVENOS_ISOLATION_MODE"] = isolation_mode
+    folder_grants = load_folder_grants(active)
+    if folder_grants:
+        env["SEVENOS_EXTERNAL_FOLDERS"] = ":".join(f"/external/{item['name']}" for item in folder_grants)
+    host_config = roots["config"]
+    host_home = roots["home"]
+    host_cache = roots["cache"]
+    host_data = roots["data"]
+    for path in (host_config, host_home, host_cache, host_data):
+        path.mkdir(parents=True, exist_ok=True)
+    ensure_profile_user_dirs(host_home)
+    env.update({
+        "HOME": str(host_home),
+        "XDG_CONFIG_HOME": str(host_config),
+        "XDG_CACHE_HOME": str(host_cache),
+        "XDG_DATA_HOME": str(host_data),
+        "SEVENOS_PROFILE_CONTAINER": active,
+    })
+    env.update(xdg_user_dir_env(str(host_home)))
 
     if use_rootfs:
         rootfs = roots["rootfs"]
@@ -528,6 +650,7 @@ def main() -> int:
         data = roots["data"]
         for path in (config, home, cache, data):
             path.mkdir(parents=True, exist_ok=True)
+        ensure_profile_user_dirs(home)
         sandbox_config = "/profile/config"
         sandbox_home = "/profile/home"
         sandbox_cache = "/profile/cache"
@@ -545,6 +668,7 @@ def main() -> int:
             "SEVENOS_ISOLATION_MODE": isolation_mode,
             "PATH": "/usr/local/bin:/usr/bin:/bin",
         })
+        env.update(xdg_user_dir_env(sandbox_home))
         runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
         command_line = [
             "bwrap",
@@ -568,6 +692,7 @@ def main() -> int:
             "--setenv", "SEVENOS_ISOLATION_MODE", isolation_mode,
             "--setenv", "PATH", "/usr/local/bin:/usr/bin:/bin",
         ]
+        append_setenv(command_line, xdg_user_dir_env(sandbox_home))
         if policy["network"] == "disabled":
             command_line.insert(2, "--unshare-net")
         if policy["dev"] == "minimal":
@@ -579,6 +704,7 @@ def main() -> int:
                 "--bind", str(workspace_path), sandbox_workspace,
                 "--setenv", "SEVENOS_WORKSPACE", sandbox_workspace,
             ])
+        append_folder_grants(command_line, folder_grants)
         command_line.extend(["--chdir", sandbox_workspace if workspace_path else sandbox_home])
         if runtime_dir and policy["runtime_dir"] == "shared":
             command_line.extend(["--bind-try", runtime_dir, runtime_dir, "--setenv", "XDG_RUNTIME_DIR", runtime_dir])
@@ -607,9 +733,10 @@ def main() -> int:
         home = roots["home"]
         cache = roots["cache"]
         data = roots["data"]
-        package_view = roots["package_view"]
+        package_view = profile_roots(active, isolation)["package_view"]
         for path in (config, home, cache, data):
             path.mkdir(parents=True, exist_ok=True)
+        ensure_profile_user_dirs(home)
         package_view.mkdir(parents=True, exist_ok=True)
         sandbox_config = "/profile/config"
         sandbox_home = "/profile/home"
@@ -627,6 +754,7 @@ def main() -> int:
             "SEVENOS_ISOLATION_MODE": isolation_mode,
             "PATH": os.pathsep.join([sandbox_bin, "/usr/local/bin", "/usr/bin"]),
         })
+        env.update(xdg_user_dir_env(sandbox_home))
         if ephemeral:
             env["SEVENOS_EPHEMERAL"] = "1"
         if workspace_path:
@@ -643,6 +771,7 @@ def main() -> int:
             "--ro-bind", "/usr", "/usr",
             "--ro-bind-try", "/etc", "/etc",
             "--ro-bind-try", "/opt", "/opt",
+            "--ro-bind-try", str(ROOT), str(ROOT),
             "--ro-bind-try", "/var/lib/flatpak", "/var/lib/flatpak",
             "--dir", "/profile",
             "--symlink", "usr/bin", "/bin",
@@ -663,6 +792,7 @@ def main() -> int:
             "--setenv", "SEVENOS_ISOLATION_MODE", isolation_mode,
             "--setenv", "PATH", os.pathsep.join([sandbox_bin, "/usr/local/bin", "/usr/bin"]),
         ]
+        append_setenv(command_line, xdg_user_dir_env(sandbox_home))
         if policy["network"] == "disabled":
             command_line.insert(2, "--unshare-net")
         if policy["dev"] == "minimal":
@@ -674,6 +804,7 @@ def main() -> int:
                 "--bind", str(workspace_path), sandbox_workspace,
                 "--setenv", "SEVENOS_WORKSPACE", sandbox_workspace,
             ])
+        append_folder_grants(command_line, folder_grants)
         command_line.extend(["--chdir", sandbox_workspace if workspace_path else sandbox_home])
         if runtime_dir and policy["runtime_dir"] == "shared":
             command_line.extend([

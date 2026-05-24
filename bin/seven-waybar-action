@@ -187,7 +187,7 @@ run_sevenos_action() {
   case "$selected" in
     "Éteindre"|"Eteindre") run_detached seven-power poweroff ;;
     "Redémarrer"|"Redemarrer") run_detached seven-power reboot ;;
-    "Mise à jour") run_terminal "Mise à jour SevenOS" "seven update" ;;
+    "Mise à jour") run_detached seven-settings updates ;;
     *) return 0 ;;
   esac
 }
@@ -195,16 +195,16 @@ run_sevenos_action() {
 run_profile_action() {
   local selected="$1"
   case "$selected" in
-    "Profile Center") run_detached seven-profile-center-native ;;
-    "Workspace") run_detached seven-files profile ;;
-    "Settings") run_detached seven-settings profiles ;;
-    "Activate Equinox") run_terminal "SevenOS Equinox" "seven profile activate equinox" ;;
-    "Activate Baobab") run_terminal "SevenOS Baobab" "seven profile activate baobab" ;;
-    "Activate Forge") run_terminal "SevenOS Forge" "seven profile activate forge" ;;
-    "Activate Shield") run_terminal "SevenOS Shield" "seven profile activate shield" ;;
-    "Activate Studio") run_terminal "SevenOS Studio" "seven profile activate studio" ;;
-    "Activate Windows Bridge") run_terminal "SevenOS Windows Bridge" "seven profile activate windows" ;;
-    "Activate Pulse") run_terminal "SevenOS Pulse" "seven profile activate pulse" ;;
+    "Profile Center"|"Centre des espaces") run_detached seven-profile-center-native ;;
+    "Workspace"|"Fichiers") run_detached seven-files profile ;;
+    "Settings"|"Réglages") run_detached seven-settings profiles ;;
+    "Activate Equinox"|"Utiliser Equinox") run_detached seven profile activate equinox ;;
+    "Activate Baobab"|"Utiliser Baobab") run_detached seven profile activate baobab ;;
+    "Activate Forge"|"Utiliser Forge") run_terminal "SevenOS Forge" "seven profile activate forge" ;;
+    "Activate Shield"|"Utiliser Shield") run_terminal "SevenOS Shield" "seven profile activate shield" ;;
+    "Activate Studio"|"Utiliser Studio") run_detached seven profile activate studio ;;
+    "Activate Windows Bridge"|"Utiliser Windows") run_detached seven profile activate windows ;;
+    "Activate Pulse"|"Utiliser Pulse") run_detached seven profile activate pulse ;;
     *) return 0 ;;
   esac
 }
@@ -214,6 +214,8 @@ run_mini_context_action() {
   case "$selected" in
     "Daily Overview") run_detached seven-overview windows ;;
     "Daily Files") open_path_with_files "$HOME" ;;
+    "Daily Settings") run_detached seven-settings ;;
+    "Daily Help") run_detached seven-help-native ;;
     "Daily Doctor") run_terminal "SevenOS Doctor" "seven doctor check 2>/dev/null || seven status" ;;
     "Forge Terminal") run_detached seven-terminal forge ;;
     "Forge Logs") run_terminal "SevenOS Forge Logs" "git status --short; printf '\n'; git log --oneline -10" ;;
@@ -221,16 +223,24 @@ run_mini_context_action() {
     "Shield Center") run_detached seven-shield-center-native ;;
     "Shield Audit") run_terminal "SevenOS Shield Audit" "seven shield status 2>/dev/null || seven doctor check security" ;;
     "Shield Sandbox") run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
+    "Studio Open") run_detached seven-files profile studio ;;
+    "Studio Pictures") run_detached seven profile open-folder studio Pictures ;;
+    "Studio Videos") run_detached seven profile open-folder studio Videos ;;
     "Studio Media") open_path_with_files "$HOME/Pictures" ;;
     "Studio Exports") open_path_with_files "$HOME/Videos" ;;
-    "Studio Recorder") run_detached seven-recorder area ;;
-    "Windows Bridge") run_detached seven-windows-assistant guide ;;
+    "Studio Recorder") run_detached seven-recorder-native ;;
+    "Windows Guide"|"Windows Bridge") run_detached seven-windows-assistant guide ;;
     "Windows Apps") run_detached seven-windows-assistant apps ;;
-    "Windows Status") run_terminal "SevenOS Windows Bridge" "seven windows status 2>/dev/null || seven windows bridge-status" ;;
+    "Windows Folders") run_detached seven-files profile windows ;;
+    "Windows Repair") run_detached seven-windows-assistant repair ;;
+    "Windows Status") run_detached seven-windows-assistant status ;;
+    "Pulse Open") run_detached seven-files profile pulse ;;
     "Pulse Games") run_detached seven-hub games ;;
-    "Pulse Captures") open_path_with_files "$HOME/Videos" ;;
-    "Pulse Performance") run_terminal "SevenOS Pulse" "seven profile status --json 2>/dev/null || seven status" ;;
-    "Baobab Collections") open_path_with_files "$HOME/Documents" ;;
+    "Pulse Captures") run_detached seven profile open-folder pulse Videos ;;
+    "Pulse Recorder") run_detached seven-recorder-native ;;
+    "Pulse Performance") run_detached seven-mini-os-center pulse ;;
+    "Baobab Open") run_detached seven-baobab-native ;;
+    "Baobab Collections") run_detached seven-files profile baobab ;;
     "Baobab Reader") run_detached seven-reader ;;
     "Baobab Culture") run_detached seven-baobab-native ;;
     "Mini OS Center") run_detached seven-mini-os-center ;;
@@ -873,9 +883,9 @@ show_menu() {
       options=("󰒓  Settings" "󰍛  Monitor" "󰚰  Updates" "󰜉  Repair UI")
       ;;
     profile)
-      prompt="Profiles"
+      prompt="Espaces SevenOS"
       runner="run_profile_action"
-      options=("󰐃  Profile Center" "󰉋  Workspace" "󰒓  Settings" "󰘦  Activate Equinox" "󰔱  Activate Baobab" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio" "󰖳  Activate Windows Bridge" "󰓅  Activate Pulse")
+      options=("󰐃  Centre des espaces" "󰉋  Fichiers" "󰒓  Réglages" "󰘦  Utiliser Equinox" "󰔱  Utiliser Baobab" "󰏗  Utiliser Studio" "󰖳  Utiliser Windows" "󰓅  Utiliser Pulse" "󰌢  Utiliser Forge" "󰒃  Utiliser Shield")
       ;;
     mini-context)
       prompt="Mini OS"
@@ -883,11 +893,11 @@ show_menu() {
       case "$(current_profile_key)" in
         forge) options=("󰆍  Forge Terminal" "󰑭  Forge Logs" "󰒓  Forge Build" "󰐃  Mini OS Center") ;;
         shield) options=("󰒃  Shield Center" "󰛵  Shield Audit" "󰞀  Shield Sandbox" "󰐃  Mini OS Center") ;;
-        studio) options=("󰏗  Studio Media" "󰈙  Studio Exports" "󰻂  Studio Recorder" "󰐃  Mini OS Center") ;;
-        windows) options=("󰖳  Windows Bridge" "󰿭  Windows Apps" "󰄧  Windows Status" "󰐃  Mini OS Center") ;;
-        pulse) options=("󰓅  Pulse Games" "󰹑  Pulse Captures" "󰓅  Pulse Performance" "󰐃  Mini OS Center") ;;
-        baobab) options=("󰔱  Baobab Collections" "󰈙  Baobab Reader" "󰐅  Baobab Culture" "󰐃  Mini OS Center") ;;
-        *) options=("󰕰  Daily Overview" "󰉋  Daily Files" "󰒓  Daily Doctor" "󰐃  Mini OS Center") ;;
+        studio) options=("󰏗  Studio Open" "󰋩  Studio Pictures" "󰕧  Studio Videos" "󰻂  Studio Recorder") ;;
+        windows) options=("󰖳  Windows Guide" "󰿭  Windows Apps" "󰉋  Windows Folders" "󰁨  Windows Repair") ;;
+        pulse) options=("󰓅  Pulse Open" "󰊴  Pulse Games" "󰹑  Pulse Captures" "󰻂  Pulse Recorder") ;;
+        baobab) options=("󰔱  Baobab Open" "󰉋  Baobab Collections" "󰈙  Baobab Reader" "󰐅  Baobab Culture") ;;
+        equinox|*) options=("󰕰  Daily Overview" "󰉋  Daily Files" "󰒓  Daily Settings" "󰞋  Daily Help") ;;
       esac
       ;;
     security)

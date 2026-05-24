@@ -1,0 +1,678 @@
+#!/usr/bin/env python3
+"""Native SevenOS Help Center."""
+
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme  # noqa: E402
+except Exception:
+    seven_theme = None
+
+
+def language_code() -> str:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "en_US.UTF-8")
+    config = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/language.conf"
+    if not os.environ.get("SEVENOS_LANGUAGE") and config.exists():
+        for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip() in {"SEVENOS_LANGUAGE", "LANG"}:
+                language = value.strip().strip("'\"")
+                break
+    return "fr" if language.lower().startswith("fr") else "en"
+
+
+LANG_CODE = language_code()
+
+
+def t(fr: str, en: str) -> str:
+    return fr if LANG_CODE == "fr" else en
+
+
+def run_detached(command: str) -> None:
+    subprocess.Popen(
+        ["bash", "-lc", command],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def command_exists(command: str) -> bool:
+    return shutil.which(command) is not None or (ROOT / "bin" / command).exists()
+
+
+def terminal_command(command: str) -> None:
+    quoted = command.replace("'", "'\"'\"'")
+    if command_exists("seven-terminal"):
+        run_detached(f"seven-terminal -- bash -lc '{quoted}; printf \"\\nPress Enter to close...\"; read -r'")
+    else:
+        run_detached(command)
+
+
+SECTIONS = [
+    {
+        "id": "start",
+        "icon": "󰐥",
+        "title": t("Démarrer", "Start"),
+        "subtitle": t("Installation, premier lancement et repères", "Install, first launch and orientation"),
+        "body": [
+            t("SevenOS se veut utilisable sans chercher dans GitHub : une seule commande prépare une nouvelle machine, installe ce qui manque, applique les thèmes, prépare les espaces et lance les vérifications.", "SevenOS is meant to be usable without hunting through GitHub: one command prepares a new machine, installs what is missing, applies themes, prepares spaces and runs checks."),
+            t("Après installation, Super+H reste le manuel local, Super+Space cherche partout, et Super ouvre les apps.", "After installation, Super+H stays the local manual, Super+Space searches globally, and Super opens apps."),
+        ],
+        "commands": [
+            ("seven new", t("Configurer une nouvelle machine", "Set up a new machine")),
+            ("seven new --optional", t("Installer aussi les options avancées", "Install advanced options too")),
+            ("seven post-install", t("Vérifier la machine après installation", "Verify the machine after install")),
+            ("seven windows setup", t("Préparer Windows", "Prepare Windows")),
+        ],
+        "actions": [("󰐥", t("Installer", "Install"), "seven new"), ("󰒃", t("Post-install", "Post-install"), "seven post-install")],
+    },
+    {
+        "id": "architecture",
+        "icon": "󰚩",
+        "title": t("Architecture", "Architecture"),
+        "subtitle": t("Comment SevenOS est organisé", "How SevenOS is organized"),
+        "body": [
+            t("SevenOS unifie les animations, le focus, les actions et les retours visuels pour donner une sensation cohérente dans tout le système.", "SevenOS unifies animations, focus, actions and feedback for a coherent system feel."),
+            t("SevenOS garde les détails techniques derrière des interfaces : barre de menu, réglages, fichiers, Store, assistant et aide locale.", "SevenOS keeps technical details behind interfaces: menu bar, settings, files, Store, assistant and local help."),
+            t("Les surfaces importantes sont Seven Files, SevenStore, SevenAI, Réglages, Dock, Launchpad et les espaces SevenOS.", "Important surfaces are Seven Files, SevenStore, SevenAI, Settings, Dock, Launchpad and SevenOS spaces."),
+        ],
+        "commands": [
+            ("seven status", t("État général", "Global status")),
+            ("seven-settings", t("Ouvrir les réglages", "Open settings")),
+            ("seven-help-native", t("Ouvrir l’aide locale", "Open local help")),
+            ("seven-store", t("Ouvrir SevenStore", "Open SevenStore")),
+        ],
+        "actions": [("󰒃", t("Diagnostic", "Doctor"), "seven doctor"), ("󰌘", t("Actions", "Actions"), "seven actions")],
+    },
+    {
+        "id": "shortcuts",
+        "icon": "󰌌",
+        "title": t("Raccourcis", "Shortcuts"),
+        "subtitle": t("Les gestes à connaître", "The gestures to know"),
+        "body": [
+            "Super : " + t("ouvrir les apps / Launchpad", "open apps / Launchpad"),
+            "Super+Space : Spotlight",
+            "Super+H : " + t("aide SevenOS", "SevenOS Help"),
+            "Super+E : Seven Files",
+            "Super+D : Dock",
+            "Super+Tab : " + t("aperçu fenêtres", "window overview"),
+            "Super+N / Super+O : " + t("réglages rapides", "quick settings"),
+            "Super+Enter : Seven Terminal",
+            "Ctrl+Shift+B : " + t("transparent/opaque dans Seven Terminal", "transparent/solid inside Seven Terminal"),
+        ],
+        "commands": [("seven-help shortcuts", t("Ouvrir ce chapitre", "Open this chapter"))],
+        "actions": [("󰀻", t("Apps", "Apps"), "seven-overview apps"), ("󰖟", "Spotlight", "seven-spotlight")],
+    },
+    {
+        "id": "mini-os",
+        "icon": "󰣇",
+        "title": t("Mini OS", "Mini OS"),
+        "subtitle": t("Espaces séparés et partage choisi", "Separate spaces and explicit sharing"),
+        "body": [
+            t("Chaque espace adapte les apps, les fichiers, le Dock, la barre de menu et les actions visibles.", "Each space adapts apps, files, Dock, menu bar and visible actions."),
+            t("Equinox, Baobab, Studio, Windows et Pulse sont pensés pour un usage simple. Forge et Shield restent les espaces experts.", "Equinox, Baobab, Studio, Windows and Pulse are designed for simple use. Forge and Shield remain expert spaces."),
+            t("Un dossier extérieur doit être autorisé explicitement avant d’apparaître dans un autre espace.", "External folders must be explicitly allowed before appearing in another space."),
+        ],
+        "commands": [
+            ("seven profile center", t("Changer d’espace", "Change space")),
+            ("seven profile activate equinox", t("Utiliser Equinox", "Use Equinox")),
+            ("seven profile activate studio", t("Utiliser Studio", "Use Studio")),
+            ("seven profile grant-folder forge /chemin --name Projet --rw", t("Autoriser un dossier externe", "Grant an external folder")),
+        ],
+        "actions": [("󰣇", t("Centre des espaces", "Spaces Center"), "seven-profile-center-native"), ("󰉋", t("Fichiers", "Files"), "seven-files profile")],
+    },
+    {
+        "id": "apps",
+        "icon": "󰀻",
+        "title": t("Applications", "Applications"),
+        "subtitle": t("Surfaces natives SevenOS", "SevenOS native surfaces"),
+        "body": [
+            t("Seven Files gère fichiers, onglets, split view, Quick Look et dossiers externes autorisés.", "Seven Files handles files, tabs, split view, Quick Look and authorized external folders."),
+            t("SevenStore découvre, installe et vérifie les apps selon les mini OS.", "SevenStore discovers, installs and verifies apps by mini OS."),
+            t("SevenAI fournit une surface assistant local-first, avec actions et confirmations.", "SevenAI provides a local-first assistant surface with actions and confirmations."),
+            t("Seven Terminal offre onglets, splits, palette, recherche, thèmes clair/sombre et fond wallpaper.", "Seven Terminal provides tabs, splits, palette, search, light/dark themes and wallpaper background."),
+        ],
+        "commands": [
+            ("seven-files", "Seven Files"),
+            ("seven-store", "SevenStore"),
+            ("seven-ai", "SevenAI"),
+            ("seven-terminal profile", "Seven Terminal"),
+        ],
+        "actions": [("󰉋", "Files", "seven-files"), ("󰏗", "Store", "seven-store"), ("󰚩", "AI", "seven-ai")],
+    },
+    {
+        "id": "actions",
+        "icon": "󰌘",
+        "title": t("Actions", "Actions"),
+        "subtitle": t("La langue commune de SevenOS", "SevenOS common language"),
+        "body": [
+            t("Une action SevenOS peut apparaître dans Spotlight, Waybar, Seven Hub, SevenAI, notifications ou menus d'app.", "A SevenOS action can appear in Spotlight, Waybar, Seven Hub, SevenAI, notifications or app menus."),
+            t("Le registre machine-readable permet d'éviter que chaque surface invente sa propre logique.", "The machine-readable registry prevents every surface from inventing its own logic."),
+        ],
+        "commands": [
+            ("seven actions", t("Lister les actions", "List actions")),
+            ("seven actions --json", t("Format machine-readable", "Machine-readable format")),
+            ("seven-waybar-context --json", t("Contexte actif", "Active context")),
+            ("seven spotlight index", t("Indexer Spotlight", "Index Spotlight")),
+        ],
+        "actions": [("󰖟", "Spotlight", "seven-spotlight"), ("󰌘", t("Actions", "Actions"), "seven actions")],
+    },
+    {
+        "id": "themes",
+        "icon": "󰔎",
+        "title": t("Thèmes", "Themes"),
+        "subtitle": t("Clair, sombre, wallpaper et terminal", "Light, dark, wallpaper and terminal"),
+        "body": [
+            t("Le mode clair/sombre est global. Les mini OS changent surtout les accents, pas le mode complet.", "Light/dark mode is global. Mini OS profiles mostly change accents, not the full mode."),
+            t("Seven Terminal peut utiliser la couleur du wallpaper avec correction automatique de contraste.", "Seven Terminal can use wallpaper color with automatic contrast correction."),
+            t("Le bouton Bg ou Ctrl+Shift+B bascule entre fond transparent et opaque dans Seven Terminal.", "The Bg button or Ctrl+Shift+B toggles transparent/solid background inside Seven Terminal."),
+        ],
+        "commands": [
+            ("./install.sh theme light", t("Appliquer clair", "Apply light")),
+            ("./install.sh theme dark", t("Appliquer sombre", "Apply dark")),
+            ("seven theme doctor", t("Vérifier les thèmes", "Check themes")),
+            ("SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal", t("Terminal plus lisible", "More readable terminal")),
+        ],
+        "actions": [("󰔎", t("Clair", "Light"), "./install.sh theme light"), ("󰔎", t("Sombre", "Dark"), "./install.sh theme dark")],
+    },
+    {
+        "id": "store",
+        "icon": "󰏗",
+        "title": "SevenStore / sevenpkg",
+        "subtitle": t("Apps et éléments nécessaires", "Apps and required items"),
+        "body": [
+            t("SevenStore est la surface graphique pour découvrir, installer et mettre à jour les apps.", "SevenStore is the graphical surface to discover, install and update apps."),
+            t("SevenOS peut préparer automatiquement ce qui manque pour éviter que l’utilisateur cherche les dépendances.", "SevenOS can automatically prepare what is missing so users do not have to hunt dependencies."),
+        ],
+        "commands": [
+            ("seven-store", "SevenStore"),
+            ("seven-store", t("Ouvrir le Store", "Open Store")),
+            ("seven-settings updates", t("Voir les mises à jour", "See updates")),
+            ("seven profile requirements all --apply --yes", t("Préparer ce qui manque", "Prepare what is missing")),
+        ],
+        "actions": [("󰏗", "SevenStore", "seven-store"), ("󰐥", t("Préparer", "Prepare"), "seven profile requirements all --apply --yes")],
+    },
+    {
+        "id": "repair",
+        "icon": "󰒃",
+        "title": t("Dépannage", "Troubleshooting"),
+        "subtitle": t("Réparer sans chercher", "Repair without searching"),
+        "body": [
+            t("Pour une UI incohérente : réparer l'UX puis réappliquer Hyprland.", "For inconsistent UI: repair UX then reapply Hyprland."),
+            t("Pour une app mini OS hors isolation : relancer via le launcher profilé ou Seven Profile.", "For a mini OS app outside isolation: relaunch through the profiled launcher or Seven Profile."),
+            t("Avant un push final, lance le pré-push SevenOS.", "Before a final push, run the SevenOS pre-push gate."),
+        ],
+        "commands": [
+            ("seven doctor", t("Diagnostic", "Doctor")),
+            ("seven repair ux --apply", t("Réparer l'UX", "Repair UX")),
+            ("seven hypr apply", t("Réappliquer Hyprland", "Reapply Hyprland")),
+            ("seven pre-push", t("Pré-push", "Pre-push")),
+        ],
+        "actions": [("󰒃", "Doctor", "seven doctor"), ("󰁨", t("Repair UX", "Repair UX"), "seven repair ux --apply")],
+    },
+]
+
+
+class HelpApp:
+    def __init__(self, initial: str = "start"):
+        ensure_gi_python()
+        import gi
+
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gdk, Gtk, Pango
+
+        self.Gdk = Gdk
+        self.Gtk = Gtk
+        self.Pango = Pango
+        self.sections = SECTIONS
+        self.current_id = initial if any(section["id"] == initial for section in self.sections) else "start"
+        self.rows = []
+
+    def css(self) -> str:
+        base = seven_theme.gtk_app_css("help") if seven_theme else ""
+        return base + """
+        window.help-window {
+          background: @seven_bg;
+          color: @seven_text;
+        }
+        .help-shell {
+          background:
+            radial-gradient(ellipse at 12% 0%, alpha(@seven_wallpaper_accent, 0.16), transparent 42%),
+            radial-gradient(ellipse at 88% 0%, alpha(@seven_wallpaper_secondary, 0.12), transparent 40%),
+            @seven_bg;
+        }
+        .help-sidebar {
+          background: @seven_sidebar;
+          border-right: 1px solid @seven_border;
+          padding: 16px;
+        }
+        .help-brand {
+          color: @seven_text;
+          font: 600 22px "SF Pro Display", "SF Pro Text", sans-serif;
+        }
+        .help-subtitle, .help-muted {
+          color: @seven_muted;
+          font: 500 11px "SF Pro Text", sans-serif;
+        }
+        .help-search {
+          min-height: 38px;
+          border-radius: 12px;
+          background: @seven_panel_2;
+          color: @seven_text;
+          border: 1px solid @seven_border;
+          padding: 0 12px;
+        }
+        .help-nav {
+          background: transparent;
+        }
+        .help-nav row {
+          min-height: 52px;
+          border-radius: 12px;
+          margin: 2px 0;
+          padding: 0;
+          background: transparent;
+          color: @seven_text;
+        }
+        .help-nav row:hover {
+          background: @seven_hover;
+        }
+        .help-nav row:selected {
+          background: @seven_selected;
+        }
+        .help-content {
+          background: transparent;
+          padding: 24px;
+        }
+        .hero {
+          border-radius: 18px;
+          background:
+            linear-gradient(135deg, alpha(@seven_wallpaper_accent, 0.20), alpha(@seven_wallpaper_secondary, 0.12)),
+            @seven_panel;
+          border: 1px solid @seven_border;
+          padding: 22px;
+        }
+        .hero-title {
+          color: @seven_text;
+          font: 600 28px "SF Pro Display", "SF Pro Text", sans-serif;
+        }
+        .hero-subtitle {
+          color: @seven_muted;
+          font: 500 13px "SF Pro Text", sans-serif;
+        }
+        .help-card {
+          border-radius: 14px;
+          background: @seven_panel;
+          border: 1px solid @seven_border;
+          padding: 16px;
+        }
+        .card-title {
+          color: @seven_text;
+          font: 600 14px "SF Pro Text", sans-serif;
+        }
+        .body-text {
+          color: @seven_text;
+          font: 500 12px "SF Pro Text", sans-serif;
+        }
+        .command {
+          font: 600 12px "SF Mono", "JetBrainsMono Nerd Font", monospace;
+          color: @seven_text;
+          background: @seven_panel_2;
+          border: 1px solid @seven_border;
+          border-radius: 10px;
+          padding: 9px 10px;
+        }
+        button.action {
+          min-height: 34px;
+          border-radius: 999px;
+          background: @seven_panel_2;
+          color: @seven_text;
+          border: 1px solid @seven_border;
+          padding: 0 12px;
+          font: 600 11px "SF Pro Text", sans-serif;
+        }
+        button.action:hover {
+          background: @seven_hover;
+        }
+        button.primary {
+          background: alpha(@seven_accent, 0.22);
+          border-color: alpha(@seven_accent, 0.36);
+        }
+        """
+
+    def run(self) -> int:
+        Gtk = self.Gtk
+        Gdk = self.Gdk
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(self.css().encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+        self.window = Gtk.Window(title=t("Aide SevenOS", "SevenOS Help"))
+        screen = Gdk.Screen.get_default()
+        screen_width = screen.get_width() if screen else 1280
+        screen_height = screen.get_height() if screen else 720
+        compact_screen = screen_width < 1120 or screen_height < 680
+        default_width = min(980, max(680, int(screen_width * 0.74)))
+        default_height = min(660, max(480, int(screen_height * 0.72)))
+        min_width = 660 if compact_screen else 800
+        min_height = 460 if compact_screen else 520
+        sidebar_width = 236 if compact_screen else 280
+        self.window.set_default_size(default_width, default_height)
+        self.window.set_size_request(min_width, min_height)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+        self.window.get_style_context().add_class("help-window")
+        self.window.connect("destroy", Gtk.main_quit)
+        self.window.connect("key-press-event", self.on_key_press)
+
+        shell = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        shell.get_style_context().add_class("help-shell")
+        self.window.add(shell)
+
+        sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        sidebar.get_style_context().add_class("help-sidebar")
+        sidebar.set_size_request(sidebar_width, -1)
+        shell.pack_start(sidebar, False, False, 0)
+
+        brand = Gtk.Label(label="SevenOS", xalign=0)
+        brand.get_style_context().add_class("help-brand")
+        sidebar.pack_start(brand, False, False, 0)
+
+        subtitle = Gtk.Label(label=t("Manuel local, actions et architecture", "Local manual, actions and architecture"), xalign=0)
+        subtitle.get_style_context().add_class("help-subtitle")
+        subtitle.set_line_wrap(True)
+        sidebar.pack_start(subtitle, False, False, 0)
+
+        self.search = Gtk.SearchEntry()
+        self.search.get_style_context().add_class("help-search")
+        self.search.set_placeholder_text(t("Rechercher dans SevenOS", "Search SevenOS"))
+        self.search.connect("search-changed", self.on_search)
+        sidebar.pack_start(self.search, False, False, 4)
+
+        self.nav = Gtk.ListBox()
+        self.nav.get_style_context().add_class("help-nav")
+        self.nav.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self.nav.connect("row-selected", self.on_select)
+        nav_scroll = Gtk.ScrolledWindow()
+        nav_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        nav_scroll.add(self.nav)
+        sidebar.pack_start(nav_scroll, True, True, 0)
+
+        footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        sidebar.pack_start(footer, False, False, 0)
+        footer.pack_start(self.action_button("󰖟", "Spotlight", "seven-spotlight", True), True, True, 0)
+        footer.pack_start(self.action_button("󰒃", "Doctor", "seven doctor", False), True, True, 0)
+
+        self.stack = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        shell.pack_start(self.stack, True, True, 0)
+
+        self.populate_nav()
+        self.render_current()
+        self.window.show_all()
+        self.select_current_row()
+        Gtk.main()
+        return 0
+
+    def on_key_press(self, _window, event) -> bool:
+        key_name = (self.Gdk.keyval_name(event.keyval) or "").lower()
+        if key_name == "escape":
+            self.window.close()
+            return True
+        if key_name in {"slash", "f"} and event.state & self.Gdk.ModifierType.CONTROL_MASK:
+            self.search.grab_focus()
+            return True
+        return False
+
+    def populate_nav(self) -> None:
+        Gtk = self.Gtk
+        for child in list(self.nav.get_children()):
+            self.nav.remove(child)
+        self.rows = []
+        query = self.search.get_text().strip().lower() if hasattr(self, "search") else ""
+        for section in self.sections:
+            haystack = " ".join([
+                section["title"],
+                section["subtitle"],
+                " ".join(section["body"]),
+                " ".join(command for command, _label in section["commands"]),
+            ]).lower()
+            if query and query not in haystack:
+                continue
+            row = Gtk.ListBoxRow()
+            row.seven_id = section["id"]
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            box.set_margin_top(8)
+            box.set_margin_bottom(8)
+            box.set_margin_start(10)
+            box.set_margin_end(10)
+            icon = Gtk.Label(label=section["icon"])
+            icon.set_size_request(28, -1)
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+            title = Gtk.Label(label=section["title"], xalign=0)
+            title.get_style_context().add_class("card-title")
+            subtitle = Gtk.Label(label=section["subtitle"], xalign=0)
+            subtitle.get_style_context().add_class("help-muted")
+            subtitle.set_ellipsize(self.Pango.EllipsizeMode.END)
+            text.pack_start(title, False, False, 0)
+            text.pack_start(subtitle, False, False, 0)
+            box.pack_start(icon, False, False, 0)
+            box.pack_start(text, True, True, 0)
+            row.add(box)
+            self.nav.add(row)
+            self.rows.append(row)
+        self.nav.show_all()
+        self.select_current_row()
+
+    def select_current_row(self) -> None:
+        for row in self.rows:
+            if getattr(row, "seven_id", "") == self.current_id:
+                self.nav.select_row(row)
+                return
+        if self.rows:
+            self.nav.select_row(self.rows[0])
+
+    def on_search(self, _entry) -> None:
+        self.populate_nav()
+
+    def on_select(self, _listbox, row) -> None:
+        if row is None:
+            return
+        self.current_id = row.seven_id
+        self.render_current()
+
+    def current_section(self) -> dict:
+        for section in self.sections:
+            if section["id"] == self.current_id:
+                return section
+        return self.sections[0]
+
+    def clear_content(self) -> None:
+        for child in list(self.stack.get_children()):
+            self.stack.remove(child)
+
+    def render_current(self) -> None:
+        Gtk = self.Gtk
+        section = self.current_section()
+        self.clear_content()
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        content.get_style_context().add_class("help-content")
+        scroll.add(content)
+        self.stack.pack_start(scroll, True, True, 0)
+
+        hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        hero.get_style_context().add_class("hero")
+        title = Gtk.Label(label=f"{section['icon']}  {section['title']}", xalign=0)
+        title.get_style_context().add_class("hero-title")
+        subtitle = Gtk.Label(label=section["subtitle"], xalign=0)
+        subtitle.get_style_context().add_class("hero-subtitle")
+        subtitle.set_line_wrap(True)
+        hero.pack_start(title, False, False, 0)
+        hero.pack_start(subtitle, False, False, 0)
+        content.pack_start(hero, False, False, 0)
+
+        body_card = self.card(t("Comprendre", "Understand"))
+        for paragraph in section["body"]:
+            label = Gtk.Label(label=paragraph, xalign=0)
+            label.get_style_context().add_class("body-text")
+            label.set_line_wrap(True)
+            label.set_selectable(True)
+            body_card.pack_start(label, False, False, 5)
+        content.pack_start(body_card, False, False, 0)
+
+        action_box = self.card(t("Actions rapides", "Quick Actions"))
+        actions_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        for icon, label, command in section["actions"]:
+            actions_row.pack_start(self.action_button(icon, label, command, False), False, False, 0)
+        action_box.pack_start(actions_row, False, False, 6)
+        content.pack_start(action_box, False, False, 0)
+
+        command_card = self.card(t("Commandes utiles", "Useful Commands"))
+        for command, description in section["commands"]:
+            command_card.pack_start(self.command_row(command, description), False, False, 5)
+        content.pack_start(command_card, False, False, 0)
+
+        self.stack.show_all()
+
+    def card(self, title: str):
+        Gtk = self.Gtk
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.get_style_context().add_class("help-card")
+        label = Gtk.Label(label=title, xalign=0)
+        label.get_style_context().add_class("card-title")
+        card.pack_start(label, False, False, 0)
+        return card
+
+    def command_row(self, command: str, description: str):
+        Gtk = self.Gtk
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        label_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        command_label = Gtk.Label(label=command, xalign=0)
+        command_label.get_style_context().add_class("command")
+        command_label.set_selectable(True)
+        desc = Gtk.Label(label=description, xalign=0)
+        desc.get_style_context().add_class("help-muted")
+        desc.set_line_wrap(True)
+        label_box.pack_start(command_label, False, False, 0)
+        label_box.pack_start(desc, False, False, 0)
+        row.pack_start(label_box, True, True, 0)
+        copy = self.action_button("󰆏", t("Copier", "Copy"), f"copy:{command}", False)
+        run = self.action_button("󰐊", t("Lancer", "Run"), command, True)
+        row.pack_start(copy, False, False, 0)
+        row.pack_start(run, False, False, 0)
+        return row
+
+    def action_button(self, icon: str, label: str, command: str, primary: bool):
+        Gtk = self.Gtk
+        button = Gtk.Button(label=f"{icon} {label}")
+        button.get_style_context().add_class("action")
+        if primary:
+            button.get_style_context().add_class("primary")
+        button.set_tooltip_text(command)
+        button.connect("clicked", lambda *_: self.activate(command))
+        return button
+
+    def activate(self, command: str) -> None:
+        if command.startswith("copy:"):
+            clipboard = self.Gtk.Clipboard.get(self.Gdk.SELECTION_CLIPBOARD)
+            clipboard.set_text(command[5:], -1)
+            clipboard.store()
+            return
+        text_commands = (
+            "seven ",
+            "sevenpkg ",
+            "./install.sh ",
+            "SEVENOS_TERMINAL_ALPHA=",
+            "SEVENOS_TERMINAL_TRANSPARENT=",
+        )
+        if command.startswith(text_commands):
+            terminal_command(command)
+        else:
+            run_detached(command)
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk
+
+        app = HelpApp("start")
+        provider = Gtk.CssProvider()
+        provider.load_from_data(app.css().encode("utf-8"))
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def main() -> int:
+    if "--probe" in sys.argv:
+        return probe()
+    initial = sys.argv[1] if len(sys.argv) > 1 else "start"
+    aliases = {
+        "install": "start",
+        "quick": "start",
+        "commands": "start",
+        "shortcuts": "shortcuts",
+        "waybar": "actions",
+        "mini-os-collaboration": "mini-os",
+        "files": "apps",
+        "reader": "apps",
+        "terminal": "apps",
+        "ai": "apps",
+        "diagnostics": "repair",
+        "troubleshooting": "repair",
+        "windows": "start",
+    }
+    return HelpApp(aliases.get(initial, initial)).run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

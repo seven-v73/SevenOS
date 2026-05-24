@@ -13,6 +13,10 @@ RUNTIME_JSON="$STATE_DIR/theme-runtime.json"
 RUNTIME_CSS="$DATA_HOME/sevenos/identity/runtime-theme.css"
 
 theme_mode() {
+  if [[ "${SEVENOS_THEME_MODE:-}" == "dark" || "${SEVENOS_THEME_MODE:-}" == "light" ]]; then
+    printf '%s' "$SEVENOS_THEME_MODE"
+    return 0
+  fi
   if [[ -r "$THEME_CONF" ]]; then
     # shellcheck disable=SC1090
     source "$THEME_CONF" || true
@@ -135,6 +139,51 @@ ok_file(root / "hyprland-light" / "waybar" / "style.css", "light waybar")
 ok_file(root / "hyprland-light" / "swaync" / "style.css", "light swaync")
 ok_file(root / "hyprland-light" / "wlogout" / "style.css", "light wlogout")
 ok_file(root / "hyprland-light" / "hyprlock.conf", "light hyprlock")
+
+profile_modes = []
+for theme_file in sorted((config / "sevenos" / "profiles").glob("*/theme.conf")):
+    profile = theme_file.parent.name
+    try:
+        for raw in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip().lower() in {"mode", "theme_mode", "sevenos_theme_mode"}:
+                value = value.strip().strip("'\"").lower()
+                if value in {"dark", "light"}:
+                    profile_modes.append(f"{profile}:{value}")
+                break
+    except OSError:
+        pass
+if profile_modes:
+    warnings.append("Profile theme files still force a mode instead of inheriting global theme: " + ", ".join(profile_modes))
+
+keybinds = root / "hyprland" / "lua" / "rules" / "keybinds.lua"
+try:
+    if "seven-terminal dark" in keybinds.read_text(encoding="utf-8", errors="ignore"):
+        warnings.append("Hyprland keybinds still force seven-terminal dark")
+except OSError:
+    errors.append("Hyprland keybinds missing")
+
+native_surface_files = [
+    "bin/seven-actions-native",
+    "bin/seven-app-menu-native",
+    "bin/seven-profile-center-native",
+    "bin/seven-mini-os-center",
+    "bin/seven-notification-center-native",
+    "bin/seven-dock-native",
+    "bin/seven-shield-center-native",
+    "bin/seven-waybar-center-native",
+    "bin/seven-doctor-native",
+    "bin/seven-terminal-native",
+]
+for relative in native_surface_files:
+    path = root / relative
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        errors.append(f"native surface missing: {relative}")
+        continue
+    if "seven_theme" not in text and "current_theme_mode" not in text and "SEVENOS_THEME_MODE" not in text:
+        warnings.append(f"native surface is not theme-aware yet: {relative}")
 
 toolkits = runtime.get("toolkits", {})
 gtk = toolkits.get("gtk_theme", "")

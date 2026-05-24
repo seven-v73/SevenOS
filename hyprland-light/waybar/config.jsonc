@@ -9,11 +9,12 @@
   "gtk-layer-shell": true,
   "modules-left": ["custom/sevenos", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"],
   "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/mini-context", "custom/experience", "custom/media", "custom/system-status", "tray", "custom/spotlight", "clock", "custom/control-center"],
+  "modules-right": ["custom/profile", "custom/recorder", "custom/media", "custom/system-status", "custom/wifi", "custom/bluetooth", "custom/spotlight", "clock", "custom/control-center"],
   "custom/sevenos": {
     "exec": "seven-waybar-status sevenos",
     "return-type": "json",
     "interval": 3,
+    "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action sevenos-menu",
     "on-click-right": "seven-profile-center-native",
@@ -23,6 +24,7 @@
     "exec": "seven-waybar-status profile",
     "return-type": "json",
     "interval": 3,
+    "signal": 8,
     "tooltip": true,
     "on-click": "seven-profile-center-native",
     "on-click-right": "seven profile current"
@@ -240,8 +242,9 @@
     "return-type": "json",
     "interval": 2,
     "tooltip": true,
-    "on-click": "seven-recorder stop",
-    "on-click-right": "seven-recorder area"
+    "on-click": "seven-recorder panel",
+    "on-click-right": "seven-recorder area",
+    "on-click-middle": "seven-recorder full"
   },
   "custom/system-status": {
     "exec": "seven-waybar-status system-status",

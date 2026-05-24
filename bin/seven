@@ -1055,6 +1055,9 @@ def main():
     fonts_parser = subparsers.add_parser("fonts", help="inspect, import and apply SevenOS font roles")
     fonts_parser.add_argument("action", nargs="?", default="status")
     fonts_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    boot_splash_parser = subparsers.add_parser("boot-splash", help="configure SevenOS quiet boot and shutdown splash")
+    boot_splash_parser.add_argument("action", nargs="?", default="status", choices=("status", "apply", "theme"))
+    boot_splash_parser.add_argument("extra", nargs=argparse.REMAINDER)
     language_parser = subparsers.add_parser("language", help="inspect and apply SevenOS user language")
     language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply"))
     language_parser.add_argument("locale", nargs="?")
@@ -1096,6 +1099,10 @@ def main():
     launchpad_parser = subparsers.add_parser("launchpad", help="open, refresh or diagnose SevenOS Launchpad")
     launchpad_parser.add_argument("action", nargs="?", default="open")
     launchpad_parser.add_argument("--json", action="store_true", help="print machine-readable Launchpad diagnostics")
+    software_parser = subparsers.add_parser("software", help="manage SevenOS software through guarded SevenPkg transactions")
+    software_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    pkg_parser = subparsers.add_parser("pkg", help="alias for SevenOS software management")
+    pkg_parser.add_argument("extra", nargs=argparse.REMAINDER)
     subparsers.add_parser("post-install", help="check common post-install blockers")
     readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
     readiness_parser.add_argument("--json", action="store_true", help="print machine-readable score output")
@@ -1179,7 +1186,7 @@ def main():
     reader_parser.add_argument("extra", nargs="*")
     reader_parser.add_argument("--json", action="store_true", help="print machine-readable Seven Reader status")
     recorder_parser = subparsers.add_parser("recorder", help="record the screen with SevenOS Recorder")
-    recorder_parser.add_argument("action", nargs="?", default="area", choices=("area", "full", "stop", "status", "path", "help"))
+    recorder_parser.add_argument("action", nargs="?", default="panel", choices=("panel", "gui", "open", "menu", "area", "full", "stop", "status", "path", "help"))
 
     profile_parser = subparsers.add_parser("profile", help="list, inspect, activate, or install a SevenOS profile")
     profile_parser.add_argument("name")
@@ -1317,6 +1324,8 @@ def main():
         handle_keyboard(args)
     elif args.command == "fonts":
         handle_fonts(args)
+    elif args.command == "boot-splash":
+        run_script(args, "scripts/boot-splash.sh", args.action, *args.extra)
     elif args.command == "language":
         handle_language(args)
     elif args.command == "phase-gate":
@@ -1337,6 +1346,8 @@ def main():
         handle_spotlight(args)
     elif args.command == "launchpad":
         handle_launchpad(args)
+    elif args.command in ("software", "pkg"):
+        sevenpkg(args, *args.extra)
     elif args.command == "post-install":
         install_target("post-install", args)
     elif args.command == "readiness":

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=SevenOS
+Description=SevenOS quiet boot and shutdown surface
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/sevenos
+ScriptFile=/usr/share/plymouth/themes/sevenos/sevenos.script

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Seven Recorder
+Comment=Record an area or the full screen in SevenOS
+Exec=seven-recorder panel
+Icon=media-record
+Terminal=false
+Categories=AudioVideo;Recorder;X-SevenOS;
+StartupNotify=true
+StartupWMClass=SevenRecorderNative
+X-SevenOS-Core=true

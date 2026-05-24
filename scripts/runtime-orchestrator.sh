@@ -288,7 +288,7 @@ def resolve_conflicts(primary, capabilities):
     if not conflicts:
         resolutions.append({
             "profiles": selected,
-            "strategy": "no high-risk conflict detected; keep primary runtime and inject capabilities with shared services",
+            "strategy": "no high-risk conflict detected; keep primary runtime isolated" if not capabilities else "no high-risk conflict detected; keep primary runtime and inject explicit capabilities with shared services",
         })
     return conflicts, resolutions
 

@@ -45,31 +45,36 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
 
 PROFILES = [
     {
         "key": "equinox",
         "title": "Equinox",
         "subtitle": "Bureau quotidien",
-        "mood": "Equilibre, fichiers recents, sante systeme.",
+        "mood": "Équilibre, fichiers récents et SevenOS prêt.",
         "accent": "#8B7CFF",
         "command": "seven profile activate equinox",
-        "open": "seven profile open equinox",
+        "open": "seven-files profile equinox",
     },
     {
         "key": "baobab",
         "title": "Baobab",
-        "subtitle": "Culture africaine",
-        "mood": "Memoire, langues, recits, collecte et patrimoine.",
+        "subtitle": "Culture et mémoire",
+        "mood": "Lecture, collections, récits et documents culturels.",
         "accent": "#A6E3A1",
         "command": "seven profile activate baobab",
-        "open": "seven baobab open",
+        "open": "seven-baobab-native",
     },
     {
         "key": "forge",
         "title": "Forge",
-        "subtitle": "Developpement",
-        "mood": "Projets, builds, containers, services et deploys.",
+        "subtitle": "Développement avancé",
+        "mood": "Projets, code, publication et outils de développement.",
         "accent": "#F9E2AF",
         "command": "seven profile activate forge",
         "open": "seven profile center forge",
@@ -77,8 +82,8 @@ PROFILES = [
     {
         "key": "shield",
         "title": "Shield",
-        "subtitle": "Cybersecurite",
-        "mood": "Scope autorise, preuves, rapports et isolation.",
+        "subtitle": "Cybersécurité avancée",
+        "mood": "Vérification prudente, rapports et espace sécurisé.",
         "accent": "#00FFB3",
         "command": "seven profile activate shield",
         "open": "seven shield open",
@@ -86,8 +91,8 @@ PROFILES = [
     {
         "key": "studio",
         "title": "Studio",
-        "subtitle": "Creation",
-        "mood": "Canvas, assets, palettes, capture et exports.",
+        "subtitle": "Création",
+        "mood": "Images, vidéos, captures et fichiers prêts à partager.",
         "accent": "#CBA6F7",
         "command": "seven profile activate studio",
         "open": "seven profile center studio",
@@ -95,17 +100,17 @@ PROFILES = [
     {
         "key": "windows",
         "title": "Windows",
-        "subtitle": "Pont VM",
-        "mood": "VM, snapshots, apps Windows et dossiers partages.",
+        "subtitle": "Compatibilité",
+        "mood": "Applications Windows, assistant et dossiers partagés.",
         "accent": "#74C7EC",
         "command": "seven profile activate windows",
-        "open": "seven windows open",
+        "open": "seven-windows-assistant guide",
     },
     {
         "key": "pulse",
         "title": "Pulse",
-        "subtitle": "Gaming",
-        "mood": "Jeux, performance, manettes, clips et overlays.",
+        "subtitle": "Jeux et captures",
+        "mood": "Jeux, enregistrements, captures et confort de jeu.",
         "accent": "#00D4FF",
         "command": "seven profile activate pulse",
         "open": "seven profile center pulse",
@@ -113,11 +118,11 @@ PROFILES = [
 ]
 
 QUICK_ACTIONS = [
-    ("Premiere configuration", "Langue, Wi-Fi, theme, profils, Store.", "seven welcome"),
-    ("Settings", "Configurer SevenOS, profils, motion et appareils.", "seven-settings"),
-    ("Mini OS Switcher", "Changer d'experience avec passage premium.", "seven profile center"),
-    ("SevenStore", "Installer apps et bundles par mini OS.", "seven store home"),
-    ("Sauvegarde", "Creer un backup local de SevenOS.", "seven recovery backup"),
+    ("Première configuration", "Langue, Wi-Fi, thème, espaces et Store.", "seven welcome"),
+    ("Réglages", "Configurer SevenOS, les espaces et les appareils.", "seven-settings"),
+    ("Espaces", "Changer d'espace SevenOS.", "seven profile center"),
+    ("SevenStore", "Installer des apps graphiquement.", "seven store home"),
+    ("Sauvegarde", "Créer une sauvegarde locale de SevenOS.", "seven recovery backup"),
     ("Actions", "Toutes les actions SevenOS en graphique.", "seven actions open"),
 ]
 
@@ -223,12 +228,12 @@ window.seven-home {
 }
 .eyebrow {
   color: rgba(255,255,255,.62);
-  font: 700 11px "SF Pro Text", "Inter", system-ui;
+  font: 600 11px "SF Pro Text", "Inter", system-ui;
   letter-spacing: .10em;
 }
 .title {
   color: #f7f8fb;
-  font: 800 30px "SF Pro Display", "Inter", system-ui;
+  font: 600 30px "SF Pro Display", "Inter", system-ui;
 }
 .subtitle {
   color: rgba(247,248,251,.72);
@@ -243,7 +248,7 @@ window.seven-home {
 }
 .section-title {
   color: #f7f8fb;
-  font: 800 16px "SF Pro Display", "Inter", system-ui;
+  font: 600 16px "SF Pro Display", "Inter", system-ui;
 }
 .card {
   background: rgba(255,255,255,.065);
@@ -256,7 +261,7 @@ window.seven-home {
 }
 .card-title {
   color: #f7f8fb;
-  font: 800 16px "SF Pro Display", "Inter", system-ui;
+  font: 600 16px "SF Pro Display", "Inter", system-ui;
 }
 .card-subtitle {
   color: rgba(247,248,251,.66);
@@ -274,7 +279,7 @@ button.primary {
   background: #f7f8fb;
   border-radius: 999px;
   padding: 8px 14px;
-  font-weight: 800;
+  font-weight: 600;
 }
 button.soft {
   color: #f7f8fb;
@@ -316,10 +321,10 @@ class SevenHome:
         bridge = self.payload.get("bridge", {})
 
         box.pack_start(self.label("SEVENOS HOME", "eyebrow"), False, False, 0)
-        box.pack_start(self.label("Tes mini OS, un seul espace vivant", "title"), False, False, 0)
+        box.pack_start(self.label("Tes espaces SevenOS", "title"), False, False, 0)
         box.pack_start(
             self.label(
-                "Choisis ton contexte, reprends tes activites, lance les reglages et garde chaque experience isolee.",
+                "Choisis ton espace, reprends tes activités, ouvre les réglages et garde tes fichiers bien rangés.",
                 "subtitle",
             ),
             False,
@@ -327,13 +332,18 @@ class SevenHome:
             0,
         )
 
+        health_score = int(health.get("score", 0) or 0)
+        ready_count = int(bridge.get("profiles_ready", 0) or 0)
+        total_count = int(bridge.get("profiles_total", 0) or 0)
+        health_text = "SevenOS est prêt" if health_score >= 80 else "Configuration à vérifier"
+        spaces_text = "Espaces prêts" if total_count and ready_count >= total_count else "Préparation possible"
+        interface_text = "Interface fluide" if str(shell_experience.get("state", "")).lower() in {"ready", "prête", "ok"} else "Interface disponible"
         row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
         for text in (
-            f"Actif: {active}",
-            f"Sante: {health.get('score', 0)}%",
-            f"Motion: {motion.get('preset', 'unknown')}",
-            f"Experience: {shell_experience.get('state', 'unknown')}",
-            f"Bridge: {bridge.get('profiles_ready', 0)}/{bridge.get('profiles_total', 0)}",
+            f"Espace: {active}",
+            health_text,
+            interface_text,
+            spaces_text,
         ):
             pill = self.label(text, "pill")
             row.pack_start(pill, False, False, 0)
@@ -341,8 +351,8 @@ class SevenHome:
 
         actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
         recommendation = shell_experience.get("recommendation", {})
-        actions.pack_start(self.button("Changer de mini OS", "seven profile center", "primary"), False, False, 0)
-        actions.pack_start(self.button("Ouvrir Settings", "seven-settings", "soft"), False, False, 0)
+        actions.pack_start(self.button("Changer d’espace", "seven profile center", "primary"), False, False, 0)
+        actions.pack_start(self.button("Réglages", "seven-settings", "soft"), False, False, 0)
         actions.pack_start(self.button("Fluidifier", shell_experience.get("warmup", "seven experience warmup"), "soft"), False, False, 0)
         if recommendation.get("command"):
             actions.pack_start(self.button(str(recommendation.get("title", "Continuer")), str(recommendation.get("command")), "soft"), False, False, 0)
@@ -375,7 +385,7 @@ class SevenHome:
 
     def profile_grid(self):
         outer = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
-        outer.pack_start(self.label("Mini OS", "section-title"), False, False, 0)
+        outer.pack_start(self.label("Espaces SevenOS", "section-title"), False, False, 0)
         flow = self.Gtk.FlowBox()
         flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
         flow.set_max_children_per_line(4)
@@ -426,7 +436,8 @@ class SevenHome:
         self.window.connect("key-press-event", self.on_key_press)
 
         provider = self.Gtk.CssProvider()
-        provider.load_from_data(CSS.encode("utf-8"))
+        base = seven_theme.gtk_app_css("home") if seven_theme else ""
+        provider.load_from_data((base + CSS).encode("utf-8"))
         self.Gtk.StyleContext.add_provider_for_screen(
             self.Gdk.Screen.get_default(),
             provider,

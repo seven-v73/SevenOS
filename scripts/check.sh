@@ -76,6 +76,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-reader" \
   "$ROOT_DIR/bin/seven-store" \
   "$ROOT_DIR/bin/seven-help" \
+  "$ROOT_DIR/bin/seven-help-native" \
   "$ROOT_DIR/bin/seven-overview" \
   "$ROOT_DIR/bin/seven-quick-settings" \
   "$ROOT_DIR/bin/seven-quick-settings-native" \
@@ -719,7 +720,14 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" plan "$ROOT_DIR" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" meta >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" status >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" doctor >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" doctor --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" owner nmap --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" plan >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" optional >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" history >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" transaction install forge >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" transaction remove nmap >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" sources >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install forge >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install shield core >/dev/null

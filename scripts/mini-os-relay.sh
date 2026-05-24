@@ -245,7 +245,7 @@ def init_state():
                 "updated_at": None,
             })
         for name, default in (
-            ("theme", "mode=dark\nprofile=%s\n" % profile),
+            ("theme", "mode=system\nprofile=%s\n" % profile),
             ("wallpaper", "profile\t%s\nmode\tprofile-default\nvalue\t%s\n" % (profile, profile)),
         ):
             path = paths[name]

@@ -42,6 +42,7 @@ def resolve_root() -> Path:
 ROOT = resolve_root()
 sys.path.insert(0, str(ROOT / "scripts"))
 from seven_i18n import tr_text  # noqa: E402
+import seven_theme  # noqa: E402
 
 
 def out(command: list[str]) -> str:
@@ -195,39 +196,42 @@ def run(panel: str) -> int:
     except Exception:
         pass
 
-    css = """
+    css = seven_theme.gtk_app_css("waybar-center") + """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.waybar-center-window { background: transparent; }
     .center-root {
       padding: 16px;
       border-radius: 30px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(230,244,249,0.66)), rgba(255,255,255,0.58);
-      border: 1px solid rgba(255,255,255,0.84);
+      background:
+        radial-gradient(ellipse at 14% 0%, alpha(@seven_wallpaper_accent, 0.14), transparent 42%),
+        radial-gradient(ellipse at 86% 0%, alpha(@seven_wallpaper_secondary, 0.10), transparent 40%),
+        @seven_panel;
+      border: 1px solid @seven_border;
     }
-    .title { color: rgba(16,27,34,0.98); font-size: 18px; font-weight: 500; }
-    .subtitle { color: rgba(42,58,68,0.62); font-size: 11px; }
+    .title { color: @seven_text; font-size: 18px; font-weight: 500; }
+    .subtitle { color: @seven_muted; font-size: 11px; }
     .hint {
       padding: 10px 12px;
       border-radius: 20px;
-      color: rgba(36,52,62,0.70);
+      color: @seven_muted;
       font-size: 11px;
-      background: rgba(255,255,255,0.38);
-      border: 1px solid rgba(255,255,255,0.58);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
     .metric {
       min-height: 86px;
       padding: 13px;
       border-radius: 22px;
-      background: rgba(255,255,255,0.52);
-      border: 1px solid rgba(255,255,255,0.72);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
-    .metric-value { color: rgba(16,27,34,0.98); font-size: 24px; font-weight: 500; }
-    .metric-label { color: rgba(44,60,70,0.66); font-size: 11px; }
+    .metric-value { color: @seven_text; font-size: 24px; font-weight: 500; }
+    .metric-label { color: @seven_muted; font-size: 11px; }
     .wide-card {
       padding: 13px;
       border-radius: 24px;
-      background: rgba(255,255,255,0.50);
-      border: 1px solid rgba(255,255,255,0.70);
+      background: @seven_panel_2;
+      border: 1px solid @seven_border;
     }
     .scale trough { min-height: 8px; border-radius: 999px; background: rgba(94,116,130,0.18); }
     .scale highlight { border-radius: 999px; background: rgba(78,139,189,0.75); }
@@ -254,6 +258,24 @@ def run(panel: str) -> int:
     }
     .icon-action:hover { background: rgba(255,255,255,0.84); }
     """
+    if seven_theme.current_theme_mode() == "dark":
+        css += """
+        .center-root {
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0.035)),
+            rgba(16,18,25,0.94);
+          border-color: rgba(255,255,255,0.12);
+        }
+        .title, .metric-value { color: rgba(245,247,250,0.96); }
+        .subtitle, .hint, .metric-label { color: rgba(245,247,250,0.62); }
+        .hint, .metric, .wide-card, .action-strip, .icon-action {
+          background: rgba(255,255,255,0.07);
+          border-color: rgba(255,255,255,0.10);
+        }
+        .icon-action:hover { background: rgba(77,163,255,0.14); }
+        .scale trough { background: rgba(255,255,255,0.12); }
+        .scale highlight { background: rgba(77,163,255,0.74); }
+        """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)

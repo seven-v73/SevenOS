@@ -215,9 +215,10 @@ case "$ACTION" in
     if [[ "$JSON_OUTPUT" == "1" ]]; then
       printf '%s\n' "$payload"
     else
-      python - <<'PY' <<<"$payload"
+      PAYLOAD="$payload" python - <<'PY'
 import json, sys
-data = json.load(sys.stdin)
+import os
+data = json.loads(os.environ.get("PAYLOAD", "{}"))
 print(f"Mini OS Bridge: {data['primary']} + {', '.join(data.get('capabilities') or []) or 'no borrowed capability'}")
 print("Suggestions:")
 for item in data.get("suggestions", [])[:5]:

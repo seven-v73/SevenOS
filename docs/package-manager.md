@@ -42,6 +42,9 @@ seven vm start windows
 - SevenOS meta-packages
 - future SevenRepo packages
 
+`seven software ...` and `seven pkg ...` are friendly aliases for the same
+software layer.
+
 Examples:
 
 ```bash
@@ -52,9 +55,18 @@ sevenpkg search blender
 sevenpkg info forge
 sevenpkg meta
 sevenpkg status
+sevenpkg doctor
+sevenpkg owner nmap
 sevenpkg plan
 sevenpkg plan --json
+sevenpkg optional
+sevenpkg transaction install forge
+sevenpkg transaction install forge --apply --yes
+sevenpkg transaction remove blender
+sevenpkg history
 sevenpkg sources
+seven software transaction install forge
+seven pkg optional
 ```
 
 Preview any command:
@@ -62,6 +74,26 @@ Preview any command:
 ```bash
 sevenpkg --dry-run install blender
 seven --dry-run profile shield
+```
+
+Preview a guarded SevenOS transaction:
+
+```bash
+sevenpkg transaction install forge
+sevenpkg transaction remove nmap
+```
+
+Apply one after review:
+
+```bash
+sevenpkg transaction install forge --apply --yes
+```
+
+SevenPkg uses a local transaction lock, so two package transactions cannot run
+at the same time. Use `--wait` if the second transaction should wait:
+
+```bash
+sevenpkg transaction update --apply --yes --wait
 ```
 
 ## Meta-Packages
@@ -90,15 +122,33 @@ sevenpkg install studio
 sevenpkg install windows
 sevenpkg install pulse
 sevenpkg install griot
+sevenpkg install baobab --optional
 sevenpkg status
 sevenpkg plan
+sevenpkg optional
 sevenpkg info shield
 ```
+
+Optional packages declared by a mini OS stay visible through
+`sevenpkg optional`. This keeps the main plan calm while still showing richer
+tools that a user can install intentionally.
 
 ## Software Plan
 
 `sevenpkg plan --json` is the machine-readable software readiness contract for
 Seven Hub, Seven Server and the Control Plane.
+
+`sevenpkg doctor --json` is the machine-readable health report for the package
+manager itself. It checks the manifest, sources, mini OS layers, optional
+visibility, transaction journal, transaction lock and removal guard.
+
+`sevenpkg owner <package>` explains which SevenOS layer owns a package before
+you install or remove it:
+
+```bash
+sevenpkg owner nmap hashcat
+sevenpkg owner nmap --json
+```
 
 It combines:
 
@@ -127,8 +177,13 @@ Install multiple ordinary packages:
 
 ```bash
 sevenpkg install nmap hashcat wireshark-qt
-sevenpkg remove nmap hashcat
+sevenpkg transaction remove nmap hashcat
 ```
+
+Removal is guarded. If a package belongs to a SevenOS mini OS layer, SevenPkg
+shows the owning profile and blocks the real removal unless `--force` is used.
+This prevents accidental damage to Forge, Shield, Studio, Windows, Pulse,
+Baobab or Equinox.
 
 Pass profile-specific arguments to a SevenOS meta-package:
 

@@ -1,24 +1,101 @@
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "logo": {
-    "type": "small",
-    "source": "SevenOS"
+    "type": "data",
+    "source": "   _____                    ____  _____\n  / ___/___ _   _____  ____/ __ \\/ ___/\n  \\__ \\/ _ \\ | / / _ \\/ __/ / / /\\__ \\\n ___/ /  __/ |/ /  __/ /_/ /_/ /___/ /\n/____/\\___/|___/\\___/\\__/\\____//____/\n        Beyond the Desktop",
+    "padding": {
+      "right": 4
+    }
   },
   "display": {
-    "separator": "  "
+    "separator": "  ",
+    "color": {
+      "keys": "36",
+      "title": "35",
+      "output": "97",
+      "separator": "90"
+    },
+    "key": {
+      "width": 10
+    },
+    "percent": {
+      "type": [
+        "bar",
+        "num-color"
+      ],
+      "width": 3
+    },
+    "bar": {
+      "width": 12,
+      "char": {
+        "elapsed": "━",
+        "total": "─"
+      },
+      "border": {
+        "left": "",
+        "right": ""
+      }
+    }
   },
   "modules": [
-    "title",
-    "separator",
-    "os",
-    "kernel",
-    "wm",
-    "shell",
-    "terminal",
-    "cpu",
-    "gpu",
-    "memory",
-    "disk",
+    {
+      "type": "custom",
+      "key": "SevenOS",
+      "format": "Beyond the Desktop"
+    },
+    {
+      "type": "command",
+      "key": "Mini OS",
+      "text": "profile=$(sed -n 's/^SEVENOS_PROFILE=//p' ~/.config/sevenos/profile.env 2>/dev/null | head -1); printf '%s' \"${profile:-equinox}\""
+    },
+    {
+      "type": "command",
+      "key": "Session",
+      "text": "printf '%s' \"${XDG_CURRENT_DESKTOP:-Hyprland}\""
+    },
+    {
+      "type": "custom",
+      "key": "Base",
+      "format": "SevenOS layer on an Arch-compatible foundation"
+    },
+    {
+      "type": "kernel",
+      "key": "Kernel"
+    },
+    {
+      "type": "wm",
+      "key": "Windowing"
+    },
+    {
+      "type": "shell",
+      "key": "Shell"
+    },
+    {
+      "type": "terminal",
+      "key": "Terminal"
+    },
+    {
+      "type": "cpu",
+      "key": "CPU"
+    },
+    {
+      "type": "gpu",
+      "key": "GPU"
+    },
+    {
+      "type": "memory",
+      "key": "Memory"
+    },
+    {
+      "type": "disk",
+      "key": "Storage"
+    },
+    "break",
+    {
+      "type": "custom",
+      "key": "Start",
+      "format": "seven new  |  seven help  |  seven pre-push"
+    },
     "colors"
   ]
 }

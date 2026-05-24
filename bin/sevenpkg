@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 import argparse
+from contextlib import contextmanager
+from datetime import datetime, timezone
+import errno
+import fcntl
 from functools import lru_cache
 import json
 import os
@@ -41,13 +45,21 @@ def resolve_root():
 
 ROOT_DIR = resolve_root()
 MANIFEST_PATH = ROOT_DIR / "sevenpkg" / "metapackages.json"
+STATE_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "sevenos" / "sevenpkg"
+TRANSACTION_LOG = STATE_DIR / "transactions.jsonl"
+TRANSACTION_LOCK = STATE_DIR / "transaction.lock"
 ALIASES = {
     "horizon": "forge",
 }
+PROFILE_KEYS = {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
 
 
 def is_dry_run(args):
     return args.dry_run or os.environ.get("SEVENOS_DRY_RUN") == "1"
+
+
+def assume_yes() -> bool:
+    return os.environ.get("SEVENOS_YES") == "1" or os.environ.get("CI") == "1"
 
 
 def run(command, args, check=True):
@@ -55,6 +67,10 @@ def run(command, args, check=True):
         print(" ".join(shlex_quote(part) for part in command))
         return subprocess.CompletedProcess(command, 0)
     return subprocess.run(command, check=check)
+
+
+def run_quiet(command):
+    return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 
 def shlex_quote(value):
@@ -173,6 +189,20 @@ def meta_packages(meta):
     return packages
 
 
+def meta_optional_packages(meta):
+    packages = []
+    for package_file in meta.get("optional_package_files", []):
+        packages.extend(read_package_file(package_file))
+    return packages
+
+
+def meta_all_packages(meta, include_optional=False):
+    packages = list(meta_packages(meta))
+    if include_optional:
+        packages.extend(meta_optional_packages(meta))
+    return packages
+
+
 def meta_state(meta):
     packages = meta_packages(meta)
     if not packages:
@@ -186,6 +216,249 @@ def meta_state(meta):
     else:
         state = "MISS"
     return state, installed, len(packages)
+
+
+def package_owner_map(manifest=None, include_optional=True):
+    manifest = manifest or load_manifest()
+    owners = {}
+    for name, meta in manifest.items():
+        for package in meta_all_packages(meta, include_optional=include_optional):
+            owners.setdefault(package, []).append(name)
+            for alternative in package_alternatives(package):
+                owners.setdefault(alternative, []).append(name)
+    return owners
+
+
+def active_profile():
+    env_path = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos" / "profile.env"
+    try:
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("SEVENOS_ACTIVE_PROFILE="):
+                return line.split("=", 1)[1].strip().strip('"') or "equinox"
+    except OSError:
+        pass
+    return "equinox"
+
+
+def command_available(command):
+    path = ROOT_DIR / command
+    return path.exists() or shutil.which(command) is not None
+
+
+def record_transaction(payload):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    event = dict(payload)
+    event["timestamp"] = datetime.now(timezone.utc).isoformat()
+    with TRANSACTION_LOG.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+
+
+@contextmanager
+def transaction_lock(wait=False):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    with TRANSACTION_LOCK.open("w", encoding="utf-8") as handle:
+        try:
+            flags = fcntl.LOCK_EX if wait else fcntl.LOCK_EX | fcntl.LOCK_NB
+            fcntl.flock(handle.fileno(), flags)
+        except OSError as exc:
+            if exc.errno in (errno.EACCES, errno.EAGAIN):
+                raise RuntimeError("another SevenPkg transaction is already running") from exc
+            raise
+        handle.seek(0)
+        handle.truncate()
+        handle.write(json.dumps({
+            "pid": os.getpid(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
+        }))
+        handle.flush()
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def transaction_commands(action, packages, source="auto", include_optional=False, force=False):
+    manifest = load_manifest()
+    normalized = [normalize_name(package) for package in packages]
+    commands = []
+    resolved_packages = []
+    meta_targets = []
+    warnings = []
+    blockers = []
+
+    if action == "install" and normalized and normalized[0] in manifest:
+        name = normalized[0]
+        meta = manifest[name]
+        meta_targets.append(name)
+        if meta.get("kind") == "sevenos-target":
+            if name == "forge":
+                commands.append([str(ROOT_DIR / "install.sh"), "dev", *normalized[1:]])
+                commands.append([str(ROOT_DIR / "install.sh"), "server", *normalized[1:]])
+            else:
+                commands.append([str(ROOT_DIR / "install.sh"), meta.get("target", name), *normalized[1:]])
+        elif meta.get("kind") == "pacman":
+            resolved_packages.extend(meta.get("packages", []))
+            if resolved_packages:
+                commands.append(["sudo", "pacman", "-S", "--needed", *resolved_packages])
+        if include_optional:
+            optional = meta_optional_packages(meta)
+            if optional:
+                commands.append(["sudo", "pacman", "-S", "--needed", *optional])
+                resolved_packages.extend(optional)
+        resolved_packages.extend(meta_packages(meta))
+    elif action == "install":
+        pacman_packages = []
+        aur_packages = []
+        for package in normalized:
+            validate_package_name(package)
+            selected_source = source
+            if selected_source == "auto":
+                if pacman_has(package):
+                    selected_source = "pacman"
+                elif paru_has(package):
+                    selected_source = "aur"
+                else:
+                    blockers.append(f"package not found in pacman repos or AUR via paru: {package}")
+                    continue
+            if selected_source == "pacman":
+                pacman_packages.append(package)
+            elif selected_source == "aur":
+                if not command_exists("paru"):
+                    blockers.append("paru is required for AUR installs")
+                else:
+                    aur_packages.append(package)
+            elif selected_source == "sevenrepo":
+                blockers.append("SevenRepo is planned but not enabled yet")
+            else:
+                blockers.append(f"unknown source: {selected_source}")
+        if pacman_packages:
+            commands.append(["sudo", "pacman", "-S", "--needed", *pacman_packages])
+        if aur_packages:
+            commands.append(["paru", "-S", "--needed", *aur_packages])
+        resolved_packages.extend(pacman_packages + aur_packages)
+    elif action == "remove":
+        owners = package_owner_map(manifest)
+        protected = {}
+        for package in normalized:
+            validate_package_name(package)
+            if package in ALIASES:
+                blockers.append(f"{package} is a retired SevenOS alias, not a removable package")
+                continue
+            package_owners = owners.get(package, [])
+            if package_owners:
+                protected[package] = package_owners
+        if protected and not force:
+            for package, package_owners in protected.items():
+                warnings.append(f"{package} belongs to SevenOS layer(s): {', '.join(package_owners)}")
+            blockers.append("removing SevenOS-owned packages requires --force")
+        commands.append(["sudo", "pacman", "-Rns", *normalized])
+        resolved_packages.extend(normalized)
+    elif action == "update":
+        commands.append(["sudo", "pacman", "-Syu"])
+        if command_exists("paru"):
+            commands.append(["paru", "-Sua"])
+        else:
+            warnings.append("paru not found; AUR update will be skipped")
+    else:
+        blockers.append(f"unsupported transaction action: {action}")
+
+    owner_map = package_owner_map(manifest)
+    if meta_targets:
+        affected_profiles = sorted(item for item in meta_targets if item in PROFILE_KEYS)
+    else:
+        affected_profiles = sorted(
+            profile
+            for package in resolved_packages
+            for profile in owner_map.get(package, [])
+            if profile in PROFILE_KEYS
+        )
+    repairs = []
+    for profile in affected_profiles:
+        repairs.extend([
+            [str(ROOT_DIR / "profiles" / "profile-manager.sh"), "bootstrap", profile],
+            [str(ROOT_DIR / "scripts" / "profile-isolation.sh"), "apply", profile, "--yes"],
+            [str(ROOT_DIR / "bin" / "seven-profile-rootfs"), "prepare", profile, "--apply", "--yes"],
+        ])
+
+    impact = "packages" if action in {"install", "remove", "update"} else "safe"
+    if action == "remove":
+        impact = "destructive" if force else "guarded"
+    flag_hint = ""
+    if include_optional:
+        flag_hint += " --optional"
+    if force:
+        flag_hint += " --force"
+    elif action == "remove":
+        flag_hint += " --force"
+    items_text = f" {' '.join(normalized)}" if normalized else ""
+    return {
+        "schema": "sevenos.package-transaction.v1",
+        "action": action,
+        "items": normalized,
+        "source": source,
+        "include_optional": include_optional,
+        "force": force,
+        "impact": impact,
+        "active_profile": active_profile(),
+        "affected_profiles": affected_profiles,
+        "commands": commands,
+        "repairs": repairs,
+        "warnings": warnings,
+        "blockers": blockers,
+        "apply_hint": f"sevenpkg transaction {action}{items_text}{flag_hint} --apply --yes",
+    }
+
+
+def print_transaction(payload, json_output=False):
+    if json_output:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg Transaction")
+    print("====================")
+    print(f"Action:  {payload.get('action')}")
+    print(f"Impact:  {payload.get('impact')}")
+    profiles = payload.get("affected_profiles") or []
+    print(f"Profiles: {', '.join(profiles) if profiles else 'none'}")
+    if payload.get("warnings"):
+        print("\nWarnings:")
+        for warning in payload["warnings"]:
+            print(f"- {warning}")
+    if payload.get("blockers"):
+        print("\nBlocked:")
+        for blocker in payload["blockers"]:
+            print(f"- {blocker}")
+    print("\nCommands:")
+    for command in payload.get("commands", []):
+        print("  " + " ".join(shlex_quote(part) for part in command))
+    repairs = payload.get("repairs", [])
+    if repairs:
+        print("\nSevenOS repair after apply:")
+        for command in repairs:
+            print("  " + " ".join(shlex_quote(part) for part in command))
+    print(f"\nApply: {payload.get('apply_hint')}")
+
+
+def apply_transaction(payload, args, run_repairs=True):
+    if payload.get("blockers") and not getattr(args, "force", False):
+        record_transaction({**payload, "status": "blocked"})
+        print_transaction(payload, getattr(args, "json", False))
+        return 126
+    try:
+        with transaction_lock(wait=getattr(args, "wait", False)):
+            record_transaction({**payload, "status": "started"})
+            for command in payload.get("commands", []):
+                run(command, args)
+            if run_repairs:
+                for command in payload.get("repairs", []):
+                    if Path(command[0]).exists() or shutil.which(command[0]):
+                        run(command, args, check=False)
+            record_transaction({**payload, "status": "completed"})
+            return 0
+    except RuntimeError as exc:
+        blocked = {**payload, "status": "blocked", "blockers": [*payload.get("blockers", []), str(exc)]}
+        record_transaction(blocked)
+        print_transaction(blocked, getattr(args, "json", False))
+        return 126
 
 
 def install_meta(name, meta, args):
@@ -250,6 +523,14 @@ def install_one(package, args):
 
 
 def install_packages(args):
+    if getattr(args, "preview", False):
+        payload = transaction_commands("install", args.packages, source=args.source, include_optional=getattr(args, "optional", False))
+        print_transaction(payload, getattr(args, "json", False))
+        return
+    if getattr(args, "transaction", False):
+        payload = transaction_commands("install", args.packages, source=args.source, include_optional=getattr(args, "optional", False))
+        sys.exit(apply_transaction(payload, args))
+
     manifest = load_manifest()
     original_first = args.packages[0]
     first_package = normalize_name(original_first)
@@ -258,6 +539,10 @@ def install_packages(args):
     if first_package in manifest:
         args.meta_args = args.packages[1:]
         install_meta(first_package, manifest[first_package], args)
+        if getattr(args, "optional", False):
+            optional = meta_optional_packages(manifest[first_package])
+            if optional:
+                run(["sudo", "pacman", "-S", "--needed", *optional], args)
         return
 
     args.meta_args = []
@@ -301,6 +586,18 @@ def install_packages(args):
 
 
 def remove_packages(args):
+    payload = transaction_commands("remove", args.packages, force=getattr(args, "force", False))
+    if getattr(args, "preview", False):
+        print_transaction(payload, getattr(args, "json", False))
+        return
+    if payload.get("blockers") and not getattr(args, "force", False):
+        if is_dry_run(args):
+            for warning in payload.get("warnings", []):
+                log(f"WARN: {warning}")
+            log("dry-run only; real removal would require --force")
+        else:
+            print_transaction(payload, getattr(args, "json", False))
+            sys.exit(126)
     for package in args.packages:
         validate_package_name(package)
         if package in ALIASES:
@@ -310,7 +607,18 @@ def remove_packages(args):
 
 
 def update_system(args):
-    run(["sudo", "pacman", "-Syu"], args)
+    if getattr(args, "preview", False):
+        payload = transaction_commands("update", [])
+        print_transaction(payload, getattr(args, "json", False))
+        return
+    pacman_args = ["pacman", "-Syu"]
+    if assume_yes():
+        pacman_args.append("--noconfirm")
+    pacman_command = pacman_args if hasattr(os, "geteuid") and os.geteuid() == 0 else ["sudo", *pacman_args]
+    run(pacman_command, args)
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        log("AUR update skipped from privileged graphical update; use SevenStore or sevenpkg as a normal user for community packages.")
+        return
     if command_exists("paru"):
         run(["paru", "-Sua"], args)
     else:
@@ -585,6 +893,13 @@ def show_plan(args):
         print(f"{item.get('severity',''):<9} {item.get('phase',''):<13} {item.get('command','')}")
         print(f"{'':<9} {'':<13} {item.get('reason','')}")
 
+    optional = optional_payload()
+    if optional["items"]:
+        print()
+        print("Optional layers available:")
+        for item in optional["items"]:
+            print(f"- {item['name']}: {item['state']} {item['installed']}/{item['total']} · sevenpkg install {item['name']} --optional")
+
 
 def show_info(name, args):
     validate_package_name(name)
@@ -628,6 +943,255 @@ def show_sources(_args):
     print("sevenrepo planned SevenOS repository")
 
 
+def owner_payload(packages):
+    manifest = load_manifest()
+    owners = package_owner_map(manifest)
+    items = []
+    for package in packages:
+        validate_package_name(package)
+        normalized = normalize_name(package)
+        package_owners = sorted(set(owners.get(normalized, [])))
+        alternatives = package_alternatives(normalized)
+        if not package_owners:
+            for alternative in alternatives:
+                package_owners.extend(owners.get(alternative, []))
+            package_owners = sorted(set(package_owners))
+        items.append({
+            "package": package,
+            "normalized": normalized,
+            "installed": package_installed(normalized),
+            "owners": package_owners,
+            "profiles": [owner for owner in package_owners if owner in PROFILE_KEYS],
+            "optional": [
+                name for name, meta in manifest.items()
+                if normalized in meta_optional_packages(meta)
+            ],
+            "alternatives": list(alternatives),
+            "removal_guarded": bool(package_owners),
+            "remove_preview": f"sevenpkg transaction remove {normalized}",
+        })
+    return {"schema": "sevenos.package-owner.v1", "items": items}
+
+
+def show_owner(args):
+    payload = owner_payload(args.packages)
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg Ownership")
+    print("==================")
+    for item in payload["items"]:
+        owners = ", ".join(item["owners"]) if item["owners"] else "none"
+        state = "installed" if item["installed"] else "not installed"
+        print(f"{item['normalized']}: {owners} · {state}")
+        if item["removal_guarded"]:
+            print(f"  removal is guarded: {item['remove_preview']}")
+
+
+def optional_payload():
+    manifest = load_manifest()
+    items = []
+    for name in sorted(manifest):
+        meta = manifest[name]
+        optional_packages = meta_optional_packages(meta) if meta.get("optional") is not True else meta_packages(meta)
+        if not optional_packages:
+            continue
+        installed = sum(1 for package in optional_packages if package_installed(package))
+        total = len(optional_packages)
+        state = "OK" if installed == total else ("PART" if installed else "MISS")
+        items.append({
+            "name": name,
+            "state": state,
+            "installed": installed,
+            "total": total,
+            "packages": optional_packages,
+            "description": meta.get("description", ""),
+            "command": f"sevenpkg install {name} --optional",
+        })
+    return {"schema": "sevenos.optional-software.v1", "items": items}
+
+
+def show_optional(args):
+    payload = optional_payload()
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenOS Optional Software")
+    print("========================")
+    if not payload["items"]:
+        print("No optional software layer declared.")
+        return
+    for item in payload["items"]:
+        print(f"{item['name']:8} {item['state']:4} {item['installed']:>2}/{item['total']:<2} {item['description']}")
+        print(f"         {item['command']}")
+
+
+def show_history(args):
+    events = []
+    if TRANSACTION_LOG.is_file():
+        with TRANSACTION_LOG.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                try:
+                    events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    events = events[-args.limit :]
+    if args.json:
+        print(json.dumps({"schema": "sevenos.package-transaction-history.v1", "events": events}, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg Transaction History")
+    print("============================")
+    if not events:
+        print("No transaction recorded yet.")
+        return
+    for event in events:
+        print(f"{event.get('timestamp', '')} {event.get('status', ''):<9} {event.get('action', ''):<7} {' '.join(event.get('items', []))}")
+
+
+def doctor_payload():
+    manifest = load_manifest()
+    plan = plan_payload()
+    optional = optional_payload()
+    checks = []
+
+    def add_check(key, title, ok, severity, detail="", command=""):
+        checks.append({
+            "key": key,
+            "title": title,
+            "state": "OK" if ok else ("WARN" if severity in {"low", "medium"} else "BLOCK"),
+            "severity": severity,
+            "detail": detail,
+            "command": command,
+        })
+
+    add_check(
+        "manifest",
+        "SevenPkg manifest",
+        MANIFEST_PATH.is_file() and bool(manifest),
+        "high",
+        str(MANIFEST_PATH),
+        "python -m json.tool sevenpkg/metapackages.json",
+    )
+    required_profiles = {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
+    missing_profiles = sorted(required_profiles - set(manifest))
+    add_check(
+        "profile-layers",
+        "Mini OS software layers",
+        not missing_profiles,
+        "high",
+        "missing: " + ", ".join(missing_profiles) if missing_profiles else "all core mini OS layers are declared",
+        "sevenpkg meta",
+    )
+    add_check("pacman", "pacman source", command_exists("pacman"), "critical", "required Arch package source", "sevenpkg sources")
+    add_check("flatpak", "Flatpak source", command_exists("flatpak"), "medium", "used for mainstream apps", "seven flatpak setup")
+    add_check("flathub", "Flathub remote", flathub_present(), "medium", "default Flatpak application source", "seven flatpak setup")
+    add_check("aur-helper", "AUR helper", command_exists("paru"), "low", "optional; used for AUR packages", "sevenpkg sources")
+    add_check(
+        "transactions",
+        "Transaction journal",
+        TRANSACTION_LOG.exists() or STATE_DIR.exists(),
+        "low",
+        str(TRANSACTION_LOG),
+        "sevenpkg history",
+    )
+    add_check(
+        "transaction-lock",
+        "Transaction lock",
+        TRANSACTION_LOCK.parent.exists() or STATE_DIR.exists(),
+        "low",
+        str(TRANSACTION_LOCK),
+        "sevenpkg transaction install forge",
+    )
+    guarded = transaction_commands("remove", ["nmap"])
+    add_check(
+        "remove-guard",
+        "SevenOS removal guard",
+        bool(guarded.get("blockers")),
+        "critical",
+        "SevenOS-owned packages are blocked unless --force is explicit",
+        "sevenpkg transaction remove nmap",
+    )
+    add_check(
+        "software-plan",
+        "Software readiness plan",
+        plan["summary"]["critical"] == 0 and plan["summary"]["high"] == 0,
+        "high",
+        f"{plan['summary']['total']} open actions",
+        "sevenpkg plan",
+    )
+    optional_open = [item for item in optional["items"] if item["state"] != "OK"]
+    add_check(
+        "optional-visibility",
+        "Optional software visibility",
+        True,
+        "low",
+        f"{len(optional_open)} optional layer(s) not complete",
+        "sevenpkg optional",
+    )
+
+    score = 100
+    penalties = {"critical": 35, "high": 20, "medium": 10, "low": 4}
+    for check in checks:
+        if check["state"] != "OK":
+            score -= penalties.get(check["severity"], 5)
+    score = max(0, score)
+    blockers = [check for check in checks if check["state"] == "BLOCK"]
+    warnings = [check for check in checks if check["state"] == "WARN"]
+    return {
+        "schema": "sevenos.package-doctor.v1",
+        "score": score,
+        "state": "OK" if not blockers and score >= 85 else ("WARN" if not blockers else "BLOCK"),
+        "sources": plan["sources"],
+        "summary": {
+            "checks": len(checks),
+            "blockers": len(blockers),
+            "warnings": len(warnings),
+            "optional_open": len(optional_open),
+        },
+        "checks": checks,
+        "next": [
+            {"title": check["title"], "command": check["command"], "detail": check["detail"]}
+            for check in [*blockers, *warnings]
+            if check.get("command")
+        ][:6],
+    }
+
+
+def show_doctor(args):
+    payload = doctor_payload()
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg Doctor")
+    print("===============")
+    print(f"State: {payload['state']} · Score: {payload['score']}/100")
+    print(f"Checks: {payload['summary']['checks']} · Blockers: {payload['summary']['blockers']} · Warnings: {payload['summary']['warnings']}")
+    print()
+    for check in payload["checks"]:
+        print(f"[{check['state']}] {check['title']}")
+        if check.get("detail"):
+            print(f"     {check['detail']}")
+    if payload["next"]:
+        print()
+        print("Next actions:")
+        for item in payload["next"]:
+            print(f"- {item['command']}")
+
+
+def handle_transaction(args):
+    payload = transaction_commands(
+        args.tx_action,
+        args.items,
+        source=args.source,
+        include_optional=args.optional,
+        force=args.force,
+    )
+    if not args.apply:
+        print_transaction(payload, args.json)
+        return
+    sys.exit(apply_transaction(payload, args, run_repairs=not args.no_repair))
+
+
 def main():
     dry_run_requested = "--dry-run" in sys.argv[1:]
     if dry_run_requested:
@@ -640,9 +1204,16 @@ def main():
     install_parser = subparsers.add_parser("install", help="install a package or SevenOS meta-package")
     install_parser.add_argument("packages", nargs="+")
     install_parser.add_argument("--source", choices=("auto", "pacman", "aur", "sevenrepo"), default="auto")
+    install_parser.add_argument("--optional", action="store_true", help="include optional packages declared for this SevenOS layer")
+    install_parser.add_argument("--preview", action="store_true", help="preview the SevenOS transaction without changing the system")
+    install_parser.add_argument("--transaction", action="store_true", help="apply through the SevenOS transaction layer and run post-install repair")
+    install_parser.add_argument("--json", action="store_true", help="print machine-readable preview when using --preview")
 
     remove_parser = subparsers.add_parser("remove", help="remove a package")
     remove_parser.add_argument("packages", nargs="+")
+    remove_parser.add_argument("--force", action="store_true", help="allow removal of packages owned by SevenOS layers")
+    remove_parser.add_argument("--preview", action="store_true", help="show removal impact without changing the system")
+    remove_parser.add_argument("--json", action="store_true", help="print machine-readable preview when using --preview")
 
     search_parser = subparsers.add_parser("search", help="search packages and meta-packages")
     search_parser.add_argument("query")
@@ -650,14 +1221,37 @@ def main():
     info_parser = subparsers.add_parser("info", help="show package or meta-package details")
     info_parser.add_argument("name")
 
-    subparsers.add_parser("update", help="update system packages")
+    update_parser = subparsers.add_parser("update", help="update system packages")
+    update_parser.add_argument("--preview", action="store_true", help="show update commands without changing the system")
+    update_parser.add_argument("--json", action="store_true", help="print machine-readable preview when using --preview")
     meta_parser = subparsers.add_parser("meta", help="list SevenOS meta-packages")
     meta_parser.add_argument("--json", action="store_true", help="print machine-readable meta-packages")
     status_parser = subparsers.add_parser("status", help="show SevenOS meta-package installation status")
     status_parser.add_argument("--json", action="store_true", help="print machine-readable installation status")
+    owner_parser = subparsers.add_parser("owner", help="show which SevenOS layer owns packages")
+    owner_parser.add_argument("packages", nargs="+")
+    owner_parser.add_argument("--json", action="store_true", help="print machine-readable package ownership")
+    doctor_parser = subparsers.add_parser("doctor", help="diagnose SevenPkg sources, layers and guarded transactions")
+    doctor_parser.add_argument("--json", action="store_true", help="print machine-readable SevenPkg doctor report")
     plan_parser = subparsers.add_parser("plan", help="show prioritized software completion plan")
     plan_parser.add_argument("--json", action="store_true", help="print machine-readable software plan")
     plan_parser.add_argument("--limit", type=int, help="maximum actions to show")
+    optional_parser = subparsers.add_parser("optional", help="show optional SevenOS software layers")
+    optional_parser.add_argument("--json", action="store_true", help="print machine-readable optional software")
+    transaction_parser = subparsers.add_parser("transaction", help="preview or apply a guarded SevenOS package transaction")
+    transaction_parser.add_argument("tx_action", choices=("install", "remove", "update"))
+    transaction_parser.add_argument("items", nargs="*")
+    transaction_parser.add_argument("--source", choices=("auto", "pacman", "aur", "sevenrepo"), default="auto")
+    transaction_parser.add_argument("--optional", action="store_true", help="include optional packages for meta-package installs")
+    transaction_parser.add_argument("--force", action="store_true", help="allow guarded removals")
+    transaction_parser.add_argument("--apply", action="store_true", help="execute the transaction")
+    transaction_parser.add_argument("--yes", action="store_true", help="accepted for non-interactive SevenOS flows")
+    transaction_parser.add_argument("--wait", action="store_true", help="wait for another SevenPkg transaction to finish")
+    transaction_parser.add_argument("--no-repair", action="store_true", help="skip SevenOS post-transaction repair hooks")
+    transaction_parser.add_argument("--json", action="store_true", help="print machine-readable transaction")
+    history_parser = subparsers.add_parser("history", help="show recent SevenPkg transactions")
+    history_parser.add_argument("--json", action="store_true", help="print machine-readable transaction history")
+    history_parser.add_argument("--limit", type=int, default=12, help="maximum events to show")
     subparsers.add_parser("sources", help="show package sources")
 
     args = parser.parse_args()
@@ -676,8 +1270,18 @@ def main():
         show_meta(args)
     elif args.command == "status":
         show_status(args)
+    elif args.command == "owner":
+        show_owner(args)
+    elif args.command == "doctor":
+        show_doctor(args)
     elif args.command == "plan":
         show_plan(args)
+    elif args.command == "optional":
+        show_optional(args)
+    elif args.command == "transaction":
+        handle_transaction(args)
+    elif args.command == "history":
+        show_history(args)
     elif args.command == "sources":
         show_sources(args)
     else:

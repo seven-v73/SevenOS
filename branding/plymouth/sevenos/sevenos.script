@@ -1,0 +1,49 @@
+Window.SetBackgroundTopColor(0.06, 0.07, 0.10);
+Window.SetBackgroundBottomColor(0.08, 0.09, 0.14);
+
+screen_w = Window.GetWidth();
+screen_h = Window.GetHeight();
+center_x = screen_w / 2;
+center_y = screen_h / 2;
+
+brand = Image.Text("SevenOS", 1, 1, 1);
+brand_sprite = Sprite(brand);
+brand_sprite.SetX(center_x - brand.GetWidth() / 2);
+brand_sprite.SetY(center_y - 44);
+brand_sprite.SetZ(20);
+
+subtitle = Image.Text("Starting your workspace", 0.72, 0.76, 0.84);
+subtitle_sprite = Sprite(subtitle);
+subtitle_sprite.SetX(center_x - subtitle.GetWidth() / 2);
+subtitle_sprite.SetY(center_y + 2);
+subtitle_sprite.SetZ(20);
+
+bar_bg = Image(260, 4);
+bar_bg.Fill(0.22, 0.24, 0.32, 0.72);
+bar_bg_sprite = Sprite(bar_bg);
+bar_bg_sprite.SetX(center_x - 130);
+bar_bg_sprite.SetY(center_y + 42);
+bar_bg_sprite.SetZ(10);
+
+bar = Image(72, 4);
+bar.Fill(0.55, 0.70, 1.00, 0.96);
+bar_sprite = Sprite(bar);
+bar_sprite.SetY(center_y + 42);
+bar_sprite.SetZ(12);
+
+progress = 0;
+fun refresh_callback() {
+  progress++;
+  offset = (progress * 5) % 188;
+  bar_sprite.SetX(center_x - 130 + offset);
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
+
+fun quit_callback() {
+  subtitle = Image.Text("Ready", 0.72, 0.92, 0.84);
+  subtitle_sprite.SetImage(subtitle);
+  subtitle_sprite.SetX(center_x - subtitle.GetWidth() / 2);
+}
+
+Plymouth.SetQuitFunction(quit_callback);

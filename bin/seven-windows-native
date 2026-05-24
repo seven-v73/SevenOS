@@ -1,0 +1,349 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+BIN = ROOT / "bin"
+
+try:
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+except Exception as exc:
+    if "--probe" in sys.argv:
+        print(f"missing gtk: {exc}")
+        raise SystemExit(1)
+    raise
+
+
+def run_json(*args: str, timeout: float = 4.0) -> dict:
+    try:
+        result = subprocess.run(
+            [str(BIN / "seven-windows-assistant"), *args],
+            cwd=str(ROOT),
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+        return json.loads(result.stdout or "{}")
+    except Exception:
+        return {}
+
+
+def launch(*args: str) -> None:
+    subprocess.Popen(
+        [str(BIN / "seven-windows-assistant"), *args],
+        cwd=str(ROOT),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def open_files() -> None:
+    candidates = [
+        [str(BIN / "seven-files-native"), "--profile", "windows"],
+        [str(BIN / "seven-files-native"), os.path.expanduser("~/WindowsMode")],
+        ["xdg-open", os.path.expanduser("~/WindowsMode")],
+    ]
+    for command in candidates:
+        if not Path(command[0]).exists() and "/" in command[0]:
+            continue
+        try:
+            subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            return
+        except Exception:
+            continue
+
+
+def label_for_state(state: str) -> tuple[str, str]:
+    if state == "RUN":
+        return "Ouvert", "windows-ready"
+    if state == "OK":
+        return "Prêt", "windows-ready"
+    if state == "MISS":
+        return "À préparer", "windows-warning"
+    return "À vérifier", "windows-warning"
+
+
+def row(icon: str, title: str, note: str, state: str | None = None) -> Gtk.Box:
+    box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+    box.get_style_context().add_class("status-row")
+
+    icon_label = Gtk.Label(label=icon)
+    icon_label.get_style_context().add_class("status-icon")
+    box.pack_start(icon_label, False, False, 0)
+
+    text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+    title_label = Gtk.Label(label=title, xalign=0)
+    title_label.get_style_context().add_class("row-title")
+    note_label = Gtk.Label(label=note, xalign=0)
+    note_label.get_style_context().add_class("row-note")
+    note_label.set_line_wrap(True)
+    text_box.pack_start(title_label, False, False, 0)
+    text_box.pack_start(note_label, False, False, 0)
+    box.pack_start(text_box, True, True, 0)
+
+    if state is not None:
+        label, css = label_for_state(state)
+        pill = Gtk.Label(label=label)
+        pill.get_style_context().add_class("state-pill")
+        pill.get_style_context().add_class(css)
+        box.pack_end(pill, False, False, 0)
+
+    return box
+
+
+class WindowsPanel(Gtk.Window):
+    def __init__(self) -> None:
+        super().__init__(title="Windows SevenOS")
+        self.set_name("seven-windows-native")
+        self.set_default_size(680, 560)
+        self.set_resizable(False)
+        self.status: dict = {}
+
+        self.root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        self.root.set_border_width(18)
+        self.add(self.root)
+
+        self.header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        self.root.pack_start(self.header, False, False, 0)
+
+        self.badge = Gtk.Label(label="Windows")
+        self.badge.get_style_context().add_class("windows-badge")
+        self.header.pack_start(self.badge, False, False, 0)
+
+        title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        self.title_label = Gtk.Label(label="Windows dans SevenOS", xalign=0)
+        self.title_label.get_style_context().add_class("title")
+        self.subtitle_label = Gtk.Label(label="Chargement...", xalign=0)
+        self.subtitle_label.get_style_context().add_class("subtitle")
+        title_box.pack_start(self.title_label, False, False, 0)
+        title_box.pack_start(self.subtitle_label, False, False, 0)
+        self.header.pack_start(title_box, True, True, 0)
+
+        refresh = Gtk.Button(label="Actualiser")
+        refresh.get_style_context().add_class("soft-button")
+        refresh.connect("clicked", lambda *_: self.refresh_async())
+        self.header.pack_end(refresh, False, False, 0)
+
+        self.actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.root.pack_start(self.actions, False, False, 0)
+        self.add_action("Ouvrir Windows", "primary", lambda *_: self.fire("enter", "Ouverture de Windows..."))
+        self.add_action("Applications", "soft", lambda *_: self.fire("apps", "Ouverture des applications Windows..."))
+        self.add_action("Dossiers", "soft", lambda *_: self.fire_files())
+
+        self.status_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.status_box.get_style_context().add_class("status-card")
+        self.root.pack_start(self.status_box, True, True, 0)
+
+        bottom = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.root.pack_end(bottom, False, False, 0)
+        self.message = Gtk.Label(label="SevenOS choisit le meilleur chemin selon l’application.", xalign=0)
+        self.message.get_style_context().add_class("message")
+        bottom.pack_start(self.message, True, True, 0)
+        repair = Gtk.Button(label="Réparer")
+        repair.get_style_context().add_class("soft-button")
+        repair.connect("clicked", lambda *_: self.fire("repair", "Réparation Windows lancée..."))
+        setup = Gtk.Button(label="Préparer")
+        setup.get_style_context().add_class("primary-button")
+        setup.connect("clicked", lambda *_: self.fire("setup", "Préparation Windows lancée..."))
+        bottom.pack_end(setup, False, False, 0)
+        bottom.pack_end(repair, False, False, 0)
+
+        self.connect("key-press-event", self.on_key)
+        self.apply_css()
+        self.refresh_async()
+
+    def add_action(self, label: str, style: str, callback) -> None:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("primary-button" if style == "primary" else "soft-button")
+        button.connect("clicked", callback)
+        self.actions.pack_start(button, True, True, 0)
+
+    def on_key(self, _widget, event) -> bool:
+        if event.keyval == Gdk.KEY_Escape:
+            self.close()
+            return True
+        return False
+
+    def fire(self, action: str, message: str) -> None:
+        self.message.set_text(message)
+        launch(action)
+        GLib.timeout_add(1600, lambda: (self.refresh_async(), False)[1])
+
+    def fire_files(self) -> None:
+        self.message.set_text("Ouverture des dossiers Windows...")
+        open_files()
+
+    def refresh_async(self) -> None:
+        self.message.set_text("Vérification de Windows...")
+        self.status_box.foreach(lambda child: self.status_box.remove(child))
+        loading = Gtk.Label(label="Préparation de l’état Windows...", xalign=0)
+        loading.get_style_context().add_class("row-note")
+        self.status_box.pack_start(loading, False, False, 18)
+        self.status_box.show_all()
+
+        def worker() -> None:
+            data = run_json("status", "--json")
+            GLib.idle_add(self.render_status, data)
+
+        import threading
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def render_status(self, data: dict) -> bool:
+        self.status = data
+        self.status_box.foreach(lambda child: self.status_box.remove(child))
+
+        vm_state = str(data.get("windows_vm", "MISS"))
+        ready = bool(data.get("ready"))
+        if vm_state == "RUN":
+            subtitle = "Windows est ouvert et prêt à l’usage."
+        elif ready or vm_state == "OK":
+            subtitle = "Windows est prêt. Tu peux ouvrir tes apps ou le bureau complet."
+        else:
+            subtitle = "Windows doit être préparé une fois avant usage."
+        self.subtitle_label.set_text(subtitle)
+
+        app_state = "OK" if data.get("app_ready") else "MISS"
+        internet_state = str(data.get("default_network", "MISS"))
+        access_state = "OK" if data.get("kvm_device") == "OK" and data.get("cpu_virtualization") == "OK" else "MISS"
+
+        items = [
+            ("󰣇", "Applications Windows", "Ouvre les apps Windows simples sans afficher la mécanique interne.", app_state),
+            ("󰖳", "Windows complet", "Pour les applications lourdes ou celles qui demandent un vrai bureau Windows.", vm_state),
+            ("󰈙", "Dossiers Windows", "Accède aux documents et dossiers partagés de l’espace Windows.", "OK"),
+            ("󰖩", "Internet Windows", "Connexion disponible pour les applications et le bureau Windows.", internet_state),
+            ("󰄬", "Préparation de la machine", "Vérifie que ce PC peut ouvrir Windows correctement.", access_state),
+        ]
+        for item in items:
+            self.status_box.pack_start(row(*item), False, False, 0)
+
+        recommendations = data.get("recommendations") or []
+        if recommendations:
+            self.message.set_text("Une préparation est recommandée. Clique sur Préparer ou Réparer.")
+        else:
+            self.message.set_text("Windows est prêt dans SevenOS.")
+        self.status_box.show_all()
+        return False
+
+    def apply_css(self) -> None:
+        dark = os.environ.get("SEVENOS_THEME_MODE", "").lower() == "dark"
+        if not dark:
+            config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos" / "theme.conf"
+            if config.exists():
+                dark = "SEVENOS_THEME_MODE=dark" in config.read_text(errors="ignore")
+        bg = "#F7F9FF" if not dark else "#171A24"
+        panel = "rgba(255,255,255,0.78)" if not dark else "rgba(33,36,49,0.86)"
+        row_bg = "rgba(255,255,255,0.58)" if not dark else "rgba(48,52,68,0.66)"
+        fg = "#171A22" if not dark else "#F4F6FF"
+        muted = "#687084" if not dark else "#A7ADC3"
+        border = "rgba(119,139,201,0.24)" if not dark else "rgba(162,180,255,0.18)"
+        css = f"""
+        window#seven-windows-native {{
+          background: {bg};
+          color: {fg};
+        }}
+        .title {{
+          font-size: 22px;
+          font-weight: 650;
+          color: {fg};
+        }}
+        .subtitle, .row-note, .message {{
+          color: {muted};
+          font-size: 12px;
+        }}
+        .windows-badge {{
+          min-width: 82px;
+          min-height: 54px;
+          border-radius: 18px;
+          color: white;
+          font-weight: 650;
+          background: linear-gradient(135deg, #3B82F6, #55D1FF);
+        }}
+        .status-card {{
+          border-radius: 22px;
+          border: 1px solid {border};
+          background: {panel};
+          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+        }}
+        .status-row {{
+          padding: 15px 18px;
+          border-bottom: 1px solid {border};
+          background: {row_bg};
+        }}
+        .status-row:hover {{
+          background: rgba(132, 159, 255, 0.14);
+        }}
+        .status-icon {{
+          color: #5AA7FF;
+          font-size: 20px;
+          min-width: 26px;
+        }}
+        .row-title {{
+          color: {fg};
+          font-weight: 650;
+          font-size: 14px;
+        }}
+        .state-pill {{
+          min-width: 86px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 650;
+        }}
+        .windows-ready {{
+          color: #0F6B49;
+          background: rgba(52, 211, 153, 0.18);
+        }}
+        .windows-warning {{
+          color: #925A00;
+          background: rgba(251, 191, 36, 0.20);
+        }}
+        button {{
+          border-radius: 999px;
+          padding: 9px 18px;
+          font-weight: 650;
+          border: 1px solid {border};
+          box-shadow: none;
+        }}
+        button.primary-button {{
+          color: white;
+          background: linear-gradient(135deg, #2F7CF6, #57D4FF);
+          border-color: transparent;
+        }}
+        button.soft-button {{
+          color: {fg};
+          background: {panel};
+        }}
+        button:hover {{
+          filter: brightness(1.04);
+        }}
+        """
+        provider = Gtk.CssProvider()
+        provider.load_from_data(css.encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+
+def main() -> int:
+    if "--probe" in sys.argv:
+        print("ok")
+        return 0
+    window = WindowsPanel()
+    window.connect("destroy", Gtk.main_quit)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

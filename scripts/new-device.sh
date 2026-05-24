@@ -21,7 +21,7 @@ Usage:
 
 Installs and applies the ergonomic defaults for a fresh SevenOS machine:
 base desktop, CLI, fonts, visual layer, mini OS requirements, workspaces,
-profile isolation, rootfs metadata, theme, post-install checks.
+profile isolation, rootfs metadata, boot splash, theme, post-install checks.
 EOF
 }
 
@@ -122,6 +122,9 @@ fi
 step "reapplying SevenOS theme and branding"
 "$ROOT_DIR/branding/apply-branding.sh"
 "$ROOT_DIR/scripts/apply-theme.sh"
+
+step "applying quiet SevenOS boot and shutdown splash"
+run_optional "$ROOT_DIR/scripts/boot-splash.sh" apply
 
 step "running post-install ergonomics check"
 "$ROOT_DIR/scripts/post-install.sh"

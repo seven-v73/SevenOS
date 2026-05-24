@@ -94,6 +94,7 @@ run_cmd cp "$ROOT_DIR/seven-hub/seven-hub-native.desktop" "$APP_HOME/seven-hub-n
 run_cmd cp "$ROOT_DIR/seven-hub/seven-actions.desktop" "$APP_HOME/seven-actions.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-settings.desktop" "$APP_HOME/seven-settings.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$APP_HOME/seven-files.desktop"
+run_cmd cp "$ROOT_DIR/seven-hub/seven-recorder.desktop" "$APP_HOME/seven-recorder.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-store.desktop" "$APP_HOME/seven-store.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-wallpaper.desktop" "$APP_HOME/seven-wallpaper.desktop"
 run_cmd cp "$ROOT_DIR/identity/assets/logo-sevenos.svg" "$ICON_HOME/sevenos.svg"

@@ -107,7 +107,7 @@ case "$swap" in
 esac
 
 step "Base install"
-base_packages="base linux linux-firmware networkmanager sudo git"
+base_packages="base linux linux-firmware networkmanager sudo git plymouth"
 if [[ "$filesystem" == "btrfs" ]]; then
   base_packages="$base_packages btrfs-progs"
 fi
@@ -132,6 +132,7 @@ step "SevenOS bootstrap"
 run_preview "copy /opt/SevenOS or cloned repository into target"
 run_preview "arch-chroot /mnt /opt/SevenOS/install.sh base"
 run_preview "arch-chroot /mnt /opt/SevenOS/install.sh theme"
+run_preview "arch-chroot /mnt /opt/SevenOS/install.sh boot-splash"
 
 step "Profiles"
 IFS=',' read -r -a profile_list <<< "$profiles"
@@ -144,7 +145,7 @@ done
 step "Bootloader"
 if [[ "$bootloader" == "systemd-boot" ]]; then
   run_preview "arch-chroot /mnt bootctl install"
-  run_preview "write systemd-boot loader entries"
+  run_preview "write systemd-boot loader entries with quiet splash loglevel=3 rd.udev.log_level=3 vt.global_cursor_default=0 systemd.show_status=false"
 else
   run_preview "arch-chroot /mnt pacman -S --needed grub efibootmgr"
   run_preview "arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=SevenOS"

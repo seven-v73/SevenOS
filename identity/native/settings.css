@@ -7,6 +7,110 @@
         radial-gradient(circle at 82% 8%, alpha(@seven_accent, 0.18), transparent 34%);
       border: 1px solid @seven_border;
     }
+    window.settings-window.theme-dark .settings-shell {
+      background:
+        radial-gradient(circle at 84% 0%, alpha(@seven_accent, 0.16), transparent 34%),
+        linear-gradient(135deg, @seven_bg, @seven_panel_2 54%, @seven_bg);
+      border-color: alpha(@seven_text, 0.12);
+    }
+    window.settings-window.theme-light .settings-shell {
+      background:
+        radial-gradient(circle at 82% 0%, alpha(@seven_accent, 0.12), transparent 36%),
+        linear-gradient(135deg, @seven_panel, @seven_panel_2 58%, @seven_bg);
+      border-color: alpha(@seven_text, 0.10);
+    }
+    .settings-dialog,
+    .settings-dialog.background,
+    dialog.settings-dialog,
+    dialog.settings-dialog.background,
+    window.settings-dialog,
+    window.settings-dialog.background,
+    window.settings-dialog > box,
+    dialog.settings-dialog > box,
+    dialog.settings-dialog > box > box,
+    .settings-dialog-frame {
+      background: transparent;
+      background-color: transparent;
+      background-image: none;
+      border: 0;
+      box-shadow: none;
+    }
+    window.settings-dialog decoration,
+    dialog.settings-dialog decoration,
+    .settings-dialog decoration {
+      background: transparent;
+      background-color: transparent;
+      background-image: none;
+      border: 0;
+      box-shadow: none;
+    }
+    .settings-dialog-content {
+      color: @seven_text;
+      background:
+        linear-gradient(135deg, alpha(@seven_panel, 0.96), alpha(@seven_panel_2, 0.88)),
+        radial-gradient(circle at 90% 4%, alpha(@seven_accent, 0.10), transparent 34%);
+      border: 1px solid @seven_border;
+      border-radius: 22px;
+    }
+    .settings-dialog.theme-dark .settings-dialog-content {
+      color: @seven_text;
+      background:
+        radial-gradient(circle at 88% 0%, alpha(@seven_accent, 0.14), transparent 35%),
+        linear-gradient(135deg, @seven_bg, @seven_panel_2 58%, @seven_bg);
+      border-color: alpha(@seven_text, 0.14);
+    }
+    .settings-dialog.theme-light .settings-dialog-content {
+      color: @seven_text;
+      background:
+        radial-gradient(circle at 88% 0%, alpha(@seven_accent, 0.10), transparent 35%),
+        linear-gradient(135deg, @seven_panel, @seven_panel_2 58%, @seven_bg);
+      border-color: alpha(@seven_text, 0.11);
+    }
+    .settings-dialog-actions {
+      padding: 8px 12px 12px 12px;
+      background: transparent;
+      border: 0;
+    }
+    .settings-dialog button {
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: @seven_panel;
+      border: 1px solid @seven_border;
+    }
+    .settings-dialog button label,
+    .settings-dialog button image,
+    .settings-window button label,
+    .settings-window button image {
+      color: inherit;
+      -gtk-icon-shadow: none;
+    }
+    .settings-dialog.theme-dark button {
+      color: @seven_text;
+      background: alpha(@seven_panel_2, 0.94);
+      border-color: alpha(@seven_text, 0.13);
+    }
+    .settings-dialog.theme-light button {
+      color: @seven_text;
+      background: alpha(@seven_panel, 0.92);
+      border-color: alpha(@seven_text, 0.11);
+    }
+    .settings-dialog button:hover {
+      background: @seven_hover;
+      border-color: alpha(@seven_accent, 0.24);
+    }
+    .settings-dialog button.destructive-action,
+    button.destructive-action {
+      color: @seven_error;
+      border-color: alpha(@seven_error, 0.28);
+      background: alpha(@seven_error, 0.09);
+    }
+    .settings-dialog button.destructive-action:hover,
+    button.destructive-action:hover {
+      background: alpha(@seven_error, 0.16);
+      border-color: alpha(@seven_error, 0.38);
+    }
     .traffic { padding: 12px 0 6px 16px; }
     .traffic-dot {
       min-width: 13px; min-height: 13px;
@@ -22,7 +126,82 @@
       border-right: 1px solid @seven_border;
       background: alpha(@seven_sidebar, 0.74);
     }
-    .brand { color: @seven_text; font-family: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif; font-size: 20px; font-weight: 500; padding: 4px 8px 10px 8px; }
+    window.settings-window.theme-dark .sidebar {
+      background: alpha(@seven_bg, 0.84);
+      border-right-color: alpha(@seven_text, 0.10);
+    }
+    window.settings-window.theme-light .sidebar {
+      background: alpha(@seven_panel_2, 0.88);
+      border-right-color: alpha(@seven_text, 0.09);
+    }
+    .brand { color: @seven_text; font-family: "SF Pro Rounded", "SF Pro Display", "SF UI Display", system-ui, sans-serif; font-size: 19px; font-weight: 500; padding: 4px 8px 8px 8px; }
+    .user-account-button {
+      min-height: 50px;
+      margin: 0 0 7px 0;
+      padding: 7px 9px;
+      border-radius: 17px;
+      color: @seven_text;
+      background:
+        linear-gradient(135deg, alpha(@seven_panel, 0.84), alpha(@seven_panel_2, 0.62)),
+        alpha(@seven_accent, 0.06);
+      border: 1px solid alpha(@seven_border, 0.86);
+    }
+    .user-account-button:hover {
+      background:
+        linear-gradient(135deg, alpha(@seven_hover, 0.92), alpha(@seven_panel_2, 0.72)),
+        alpha(@seven_accent, 0.10);
+      border-color: alpha(@seven_accent, 0.24);
+    }
+    .user-account-button:focus {
+      border-color: alpha(@seven_accent, 0.42);
+      box-shadow: 0 0 0 2px alpha(@seven_accent, 0.12);
+    }
+    .user-avatar-small {
+      min-width: 28px;
+      min-height: 28px;
+      border-radius: 999px;
+      color: @seven_text;
+      background:
+        radial-gradient(circle at 34% 28%, alpha(@seven_profile_secondary, 0.36), transparent 48%),
+        alpha(@seven_accent, 0.20);
+      border: 1px solid alpha(@seven_accent, 0.28);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .user-avatar-large {
+      min-width: 46px;
+      min-height: 46px;
+      border-radius: 999px;
+      color: @seven_text;
+      background:
+        radial-gradient(circle at 32% 24%, alpha(@seven_profile_secondary, 0.42), transparent 52%),
+        alpha(@seven_accent, 0.24);
+      border: 1px solid alpha(@seven_accent, 0.34);
+      font-size: 18px;
+      font-weight: 500;
+    }
+    .user-account-name {
+      color: @seven_text;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .user-account-note,
+    .user-account-chevron {
+      color: @seven_muted;
+      font-size: 10px;
+    }
+    .account-list {
+      border-radius: 18px;
+      background: @seven_panel;
+      border: 1px solid @seven_border;
+    }
+    .account-row {
+      min-height: 52px;
+      padding: 9px 11px;
+      border-bottom: 1px solid alpha(@seven_border, 0.66);
+    }
+    .account-row:hover { background: @seven_hover; }
+    row:last-child .account-row { border-bottom: 0; }
     .nav-button {
       min-height: 36px;
       padding: 0 10px;
@@ -40,6 +219,12 @@
     .content {
       padding: 22px 24px;
       background: alpha(@seven_panel, 0.38);
+    }
+    window.settings-window.theme-dark .content {
+      background: alpha(@seven_bg, 0.58);
+    }
+    window.settings-window.theme-light .content {
+      background: alpha(@seven_panel, 0.48);
     }
     .settings-search {
       min-height: 38px;
@@ -90,11 +275,60 @@
     }
     .hero-title { color: @seven_text; font-size: 17px; font-weight: 500; }
     .hero-note { color: @seven_muted; font-size: 12px; }
+    .settings-dialog.theme-dark .hero-title,
+    .settings-dialog.theme-dark .action-hero-title,
+    window.settings-window.theme-dark .page-title,
+    window.settings-window.theme-dark .settings-row-title,
+    window.settings-window.theme-dark .card-title {
+      color: @seven_text;
+    }
+    .settings-dialog.theme-dark .hero-note,
+    .settings-dialog.theme-dark .action-hero-note,
+    .settings-dialog.theme-dark .update-version,
+    .settings-dialog.theme-dark .update-activity,
+    window.settings-window.theme-dark .page-subtitle,
+    window.settings-window.theme-dark .settings-row-note,
+    window.settings-window.theme-dark .card-note {
+      color: @seven_muted;
+    }
+    .settings-dialog.theme-light .hero-title,
+    .settings-dialog.theme-light .action-hero-title,
+    window.settings-window.theme-light .page-title,
+    window.settings-window.theme-light .settings-row-title,
+    window.settings-window.theme-light .card-title {
+      color: @seven_text;
+    }
+    .settings-dialog.theme-light .hero-note,
+    .settings-dialog.theme-light .action-hero-note,
+    .settings-dialog.theme-light .update-version,
+    .settings-dialog.theme-light .update-activity,
+    window.settings-window.theme-light .page-subtitle,
+    window.settings-window.theme-light .settings-row-note,
+    window.settings-window.theme-light .card-note {
+      color: @seven_muted;
+    }
     .quick-strip {
       padding: 9px;
       border-radius: 20px;
       background: @seven_panel;
       border: 1px solid @seven_border;
+    }
+    .settings-jump-strip {
+      margin: 2px 0 8px 0;
+      background:
+        linear-gradient(135deg, alpha(@seven_panel, 0.92), alpha(@seven_panel_2, 0.72)),
+        alpha(@seven_accent, 0.06);
+    }
+    .settings-jump-strip .jump-button {
+      min-height: 28px;
+      padding: 0 11px;
+      font-size: 11px;
+      border-color: alpha(@seven_accent, 0.18);
+      background: alpha(@seven_panel_2, 0.62);
+    }
+    .settings-jump-strip .jump-button:hover {
+      background: alpha(@seven_accent, 0.14);
+      border-color: alpha(@seven_accent, 0.30);
     }
     .quick-dot {
       min-width: 46px;
@@ -125,6 +359,359 @@
     .settings-card:hover { background: @seven_hover; }
     .card-title { color: @seven_text; font-size: 14px; font-weight: 500; }
     .card-note { color: @seven_muted; font-size: 11px; }
+    .settings-group {
+      margin: 6px 0 14px 0;
+      border-radius: 18px;
+      background: @seven_panel;
+      border: 1px solid @seven_border;
+      box-shadow: 0 10px 28px alpha(@seven_text, 0.06);
+    }
+    .settings-row {
+      min-height: 54px;
+      padding: 8px 12px;
+      border-bottom: 1px solid alpha(@seven_border, 0.70);
+      background: transparent;
+    }
+    .settings-row:hover {
+      background: @seven_hover;
+      transition: background 140ms ease-out;
+    }
+    .settings-row.last-row { border-bottom: 0; }
+    .settings-row-icon {
+      min-width: 34px;
+      color: @seven_accent;
+      font-size: 17px;
+    }
+    window.settings-window.theme-dark .settings-row-icon,
+    .settings-dialog.theme-dark .settings-row-icon,
+    .settings-dialog.theme-dark .update-kind-icon,
+    .settings-dialog.theme-dark .update-section-icon {
+      color: @seven_accent;
+    }
+    window.settings-window.theme-light .settings-row-icon,
+    .settings-dialog.theme-light .settings-row-icon,
+    .settings-dialog.theme-light .update-kind-icon,
+    .settings-dialog.theme-light .update-section-icon {
+      color: @seven_accent;
+    }
+    .settings-row-title {
+      color: @seven_text;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .settings-row-note {
+      color: @seven_muted;
+      font-size: 11px;
+    }
+    .settings-inline-status {
+      margin: 0 2px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.10);
+      border: 1px solid alpha(@seven_accent, 0.18);
+      font-size: 11px;
+    }
+    .settings-inline-status.action-state-running {
+      color: @seven_text;
+      background:
+        linear-gradient(90deg, alpha(@seven_accent, 0.16), alpha(@seven_profile_secondary, 0.10)),
+        alpha(@seven_panel_2, 0.54);
+      border-color: alpha(@seven_accent, 0.34);
+    }
+    .settings-inline-status.action-state-success {
+      color: @seven_text;
+      background: alpha(@seven_success, 0.14);
+      border-color: alpha(@seven_success, 0.34);
+    }
+    .settings-inline-status.action-state-error {
+      color: @seven_text;
+      background: alpha(@seven_error, 0.13);
+      border-color: alpha(@seven_error, 0.36);
+    }
+    .command-output {
+      padding: 10px;
+      color: @seven_text;
+      background: alpha(@seven_panel_2, 0.70);
+      border: 1px solid @seven_border;
+      border-radius: 14px;
+      font-size: 11px;
+    }
+    .action-hero-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        linear-gradient(135deg, alpha(@seven_accent, 0.13), alpha(@seven_profile_secondary, 0.07)),
+        alpha(@seven_panel_2, 0.66);
+      border: 1px solid alpha(@seven_accent, 0.22);
+    }
+    .settings-dialog.theme-dark .action-hero-card {
+      background:
+        linear-gradient(135deg, alpha(@seven_accent, 0.19), alpha(@seven_secondary, 0.08)),
+        @seven_panel_2;
+      border-color: alpha(@seven_accent, 0.28);
+    }
+    .settings-dialog.theme-light .action-hero-card {
+      background:
+        linear-gradient(135deg, alpha(@seven_accent, 0.13), alpha(@seven_secondary, 0.07)),
+        @seven_panel;
+      border-color: alpha(@seven_accent, 0.20);
+    }
+    .action-hero-glyph {
+      min-width: 38px;
+      min-height: 38px;
+      border-radius: 14px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.17);
+      border: 1px solid alpha(@seven_accent, 0.26);
+      font-size: 18px;
+    }
+    .settings-dialog.theme-dark .action-hero-glyph {
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.25);
+      border-color: alpha(@seven_accent, 0.38);
+    }
+    .settings-dialog.theme-light .action-hero-glyph {
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.14);
+      border-color: alpha(@seven_accent, 0.24);
+    }
+    .action-hero-title {
+      color: @seven_text;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .action-hero-note {
+      color: @seven_muted;
+      font-size: 11px;
+    }
+    .settings-progress trough {
+      min-height: 6px;
+      border-radius: 999px;
+      background: alpha(@seven_panel_2, 0.72);
+    }
+    .settings-progress progress {
+      border-radius: 999px;
+      background: alpha(@seven_accent, 0.82);
+    }
+    .operation-grid {
+      margin: 2px 0;
+    }
+    .update-source-grid {
+      margin: 2px 0;
+    }
+    .operation-plan {
+      margin: 1px 0 0 0;
+    }
+    .operation-step {
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.10);
+      border: 1px solid alpha(@seven_accent, 0.18);
+      font-size: 10px;
+    }
+    .operation-command {
+      color: @seven_muted;
+      font-size: 10px;
+    }
+    .technical-expander {
+      color: @seven_muted;
+      font-size: 11px;
+    }
+    .operation-cell {
+      min-width: 150px;
+      padding: 9px 10px;
+      border-radius: 14px;
+      background: alpha(@seven_panel_2, 0.62);
+      border: 1px solid alpha(@seven_border, 0.86);
+    }
+    .operation-cell.state-ok {
+      border-color: alpha(@seven_success, 0.28);
+      background: alpha(@seven_success, 0.08);
+    }
+    .operation-cell.state-warn {
+      border-color: alpha(@seven_warning, 0.30);
+      background: alpha(@seven_warning, 0.09);
+    }
+    .operation-cell.state-error {
+      border-color: alpha(@seven_error, 0.30);
+      background: alpha(@seven_error, 0.09);
+    }
+    .operation-cell.action-state-running {
+      border-color: alpha(@seven_accent, 0.32);
+      background:
+        linear-gradient(135deg, alpha(@seven_accent, 0.13), alpha(@seven_panel_2, 0.62)),
+        @seven_panel;
+    }
+    .operation-cell.action-state-success {
+      border-color: alpha(@seven_success, 0.34);
+      background: alpha(@seven_success, 0.10);
+    }
+    .operation-cell.action-state-error {
+      border-color: alpha(@seven_error, 0.36);
+      background: alpha(@seven_error, 0.11);
+    }
+    .operation-value {
+      color: @seven_text;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .operation-label {
+      color: @seven_muted;
+      font-size: 10px;
+    }
+    .update-list {
+      background: transparent;
+    }
+    .action-step-list {
+      margin-top: 2px;
+      border-radius: 17px;
+      background: alpha(@seven_panel, 0.34);
+      border: 1px solid alpha(@seven_border, 0.54);
+    }
+    .settings-dialog.theme-dark .action-step-list,
+    .settings-dialog.theme-dark .account-list,
+    .settings-dialog.theme-dark .update-summary-panel {
+      background: alpha(@seven_panel_2, 0.82);
+      border-color: alpha(@seven_text, 0.10);
+    }
+    .settings-dialog.theme-light .action-step-list,
+    .settings-dialog.theme-light .account-list,
+    .settings-dialog.theme-light .update-summary-panel {
+      background: alpha(@seven_panel, 0.82);
+      border-color: alpha(@seven_text, 0.09);
+    }
+    .action-step-state {
+      color: @seven_muted;
+    }
+    .update-row {
+      min-height: 58px;
+      padding: 10px 12px;
+      border-bottom: 1px solid alpha(@seven_border, 0.58);
+      background: transparent;
+    }
+    .settings-dialog.theme-dark .update-row,
+    .settings-dialog.theme-dark .account-row {
+      background: alpha(@seven_text, 0.015);
+      border-bottom-color: alpha(@seven_text, 0.08);
+    }
+    .settings-dialog.theme-light .update-row,
+    .settings-dialog.theme-light .account-row {
+      background: alpha(@seven_panel, 0.30);
+      border-bottom-color: alpha(@seven_text, 0.08);
+    }
+    .update-row:hover {
+      background: @seven_hover;
+    }
+    .update-section-row {
+      min-height: 34px;
+      padding: 10px 12px 5px 12px;
+      background: transparent;
+    }
+    .update-section-icon {
+      min-width: 24px;
+      color: @seven_accent;
+      font-size: 13px;
+    }
+    .update-section-title {
+      color: @seven_text;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .update-section-count {
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: @seven_muted;
+      background: alpha(@seven_panel_2, 0.54);
+      border: 1px solid alpha(@seven_border, 0.64);
+      font-size: 10px;
+    }
+    .update-name {
+      color: @seven_text;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .update-version {
+      color: @seven_muted;
+      font-size: 11px;
+    }
+    .update-kind-icon {
+      min-width: 28px;
+      color: @seven_accent;
+      font-size: 15px;
+    }
+    .update-activity {
+      color: @seven_muted;
+      font-size: 12px;
+      padding: 0 2px;
+    }
+    .update-impact {
+      color: @seven_text;
+      font-size: 11px;
+      padding: 7px 10px;
+      border-radius: 13px;
+      background: alpha(@seven_panel_2, 0.50);
+      border: 1px solid alpha(@seven_border, 0.68);
+    }
+    .update-summary-panel {
+      padding: 11px 12px;
+      border-radius: 17px;
+      background:
+        linear-gradient(135deg, alpha(@seven_panel_2, 0.74), alpha(@seven_accent, 0.08)),
+        alpha(@seven_panel, 0.70);
+      border: 1px solid alpha(@seven_border, 0.86);
+    }
+    .update-total-value {
+      color: @seven_text;
+      font-size: 28px;
+      font-weight: 500;
+    }
+    .update-total-label {
+      color: @seven_muted;
+      font-size: 10px;
+    }
+    .update-summary-row {
+      margin: 0 0 2px 0;
+    }
+    .update-summary-chip {
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_panel_2, 0.64);
+      border: 1px solid alpha(@seven_border, 0.76);
+      font-size: 10px;
+    }
+    .update-badge {
+      padding: 4px 9px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.10);
+      border: 1px solid alpha(@seven_accent, 0.18);
+      font-size: 10px;
+    }
+    .update-badge-system {
+      background: alpha(@seven_success, 0.10);
+      border-color: alpha(@seven_success, 0.24);
+    }
+    .update-badge-apps {
+      background: alpha(@seven_accent, 0.10);
+      border-color: alpha(@seven_accent, 0.24);
+    }
+    .update-badge-community {
+      background: alpha(@seven_warning, 0.10);
+      border-color: alpha(@seven_warning, 0.24);
+    }
+    .primary-action {
+      background: alpha(@seven_accent, 0.18);
+      border-color: alpha(@seven_accent, 0.34);
+    }
+    .primary-action.busy {
+      background:
+        linear-gradient(90deg, alpha(@seven_accent, 0.22), alpha(@seven_profile_secondary, 0.14)),
+        @seven_panel;
+      border-color: alpha(@seven_accent, 0.42);
+    }
     .icon-pill {
       min-width: 36px; min-height: 36px;
       border-radius: 12px;
@@ -140,6 +727,38 @@
       border: 1px solid @seven_border;
     }
     .action-button:hover { background: @seven_hover; }
+    .settings-entry {
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 14px;
+      color: @seven_text;
+      background: alpha(@seven_panel_2, 0.72);
+      border: 1px solid alpha(@seven_border, 0.82);
+      box-shadow: none;
+    }
+    .settings-entry:focus {
+      border-color: alpha(@seven_accent, 0.42);
+      background: alpha(@seven_panel_2, 0.88);
+    }
+    .action-button.destructive-action {
+      color: @seven_error;
+      border-color: alpha(@seven_error, 0.26);
+      background: alpha(@seven_error, 0.08);
+    }
+    .action-button.destructive-action:hover {
+      background: alpha(@seven_error, 0.14);
+      border-color: alpha(@seven_error, 0.34);
+    }
+    .action-button.busy {
+      background: alpha(@seven_accent, 0.16);
+      border-color: alpha(@seven_accent, 0.30);
+      color: @seven_text;
+    }
+    .settings-row .action-button {
+      min-height: 26px;
+      padding: 0 10px;
+      font-size: 11px;
+    }
     .scale-card {
       padding: 11px;
       border-radius: 17px;

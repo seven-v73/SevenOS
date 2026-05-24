@@ -46,6 +46,11 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme
+except Exception:  # pragma: no cover
+    seven_theme = None
 PROFILE_CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/profiles/baobab"
 PROFILE_DATA = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share")) / "sevenos/profiles/baobab"
 PROFILE_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos/profiles/baobab"
@@ -210,41 +215,42 @@ class BaobabNative:
         save_json(SETTINGS_FILE, self.settings)
 
     def apply_css(self) -> None:
-        css = b"""
+        base_css = seven_theme.gtk_app_css("baobab").encode("utf-8") if seven_theme else b""
+        css = base_css + b"""
         * { font-family: "Noto Sans", "Noto Sans Symbols", "Noto Color Emoji", sans-serif; }
-        window { background: #080b0a; color: #f4ead8; }
-        .root { background: #080b0a; }
-        .rail { background: #0b0f0d; border-right: 1px solid rgba(221,204,168,.10); }
-        .brand { padding: 14px; border-radius: 8px; background: #101713; border: 1px solid rgba(139,170,123,.18); }
-        .brand-title { font-size: 24px; font-weight: 600; color: #f4ead8; }
-        .brand-subtitle { color: #b9c4a5; font-size: 12px; }
-        .nav-title { color: #8baa7b; font-size: 11px; font-weight: 600; }
-        .nav button { border-radius: 8px; padding: 9px 12px; background: transparent; border: 1px solid transparent; color: #e7dbc3; }
-        .nav button:hover { background: #121a16; border-color: rgba(139,170,123,.24); }
-        .hero { padding: 26px; border-radius: 8px; background: #101713; border: 1px solid rgba(139,170,123,.22); }
-        .title { font-size: 34px; font-weight: 500; color: #f4ead8; letter-spacing: 0; }
-        .subtitle { color: #d8ccb5; font-size: 15px; }
-        .eyebrow { color: #8baa7b; font-size: 12px; font-weight: 600; }
-        .stat { padding: 14px; border-radius: 8px; background: #111411; border: 1px solid rgba(216,204,181,.14); }
-        .stat-number { font-size: 26px; font-weight: 500; color: #c89b63; }
-        .chip { padding: 8px 10px; border-radius: 8px; background: #121915; border: 1px solid rgba(139,170,123,.18); }
-        .card { padding: 14px; border-radius: 8px; background: #0f1311; border: 1px solid rgba(216,204,181,.13); }
-        .card:hover { border-color: #4f735a; background: #121814; }
-        .station { padding: 18px; border-radius: 8px; background: #101411; border: 1px solid rgba(216,204,181,.14); }
-        .station:hover { border-color: rgba(200,155,99,.45); }
-        .card-title { font-size: 16px; font-weight: 500; color: #f4ead8; }
-        .card-meta { color: #c89b63; font-size: 12px; }
-        .card-body { color: #dfd2ba; }
-        .detail { padding: 16px; border-radius: 8px; background: #101411; border: 1px solid rgba(216,204,181,.14); }
-        .tree-canvas { border-radius: 8px; background: #0d120f; border: 1px solid rgba(139,170,123,.18); }
-        .tree-section { padding: 16px; border-radius: 8px; background: #0b100d; border-left: 2px solid #4f735a; border-top: 1px solid rgba(216,204,181,.10); }
-        .tree-root { border-left-color: #315e4d; }
-        .tree-trunk { border-left-color: #b98248; }
-        .tree-branch { border-left-color: #243c63; }
-        .tree-leaf { border-left-color: #5d7c62; }
-        .tree-collect { border-left-color: #a66a45; }
-        .tree-archive { border-left-color: #75664c; }
-        .pill { border-radius: 8px; padding: 8px 11px; }
+        window { background: @seven_bg; color: @seven_text; }
+        .root { background: @seven_bg; color: @seven_text; }
+        .rail { background: @seven_sidebar; border-right: 1px solid @seven_border; }
+        .brand { padding: 14px; border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.22); }
+        .brand-title { font-size: 24px; font-weight: 600; color: @seven_text; }
+        .brand-subtitle { color: @seven_muted; font-size: 12px; }
+        .nav-title { color: @seven_profile_accent; font-size: 11px; font-weight: 600; }
+        .nav button { border-radius: 10px; padding: 9px 12px; background: transparent; border: 1px solid transparent; color: @seven_text; }
+        .nav button:hover { background: @seven_hover; border-color: alpha(@seven_profile_accent,.28); }
+        .hero { padding: 26px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.22); }
+        .title { font-size: 34px; font-weight: 500; color: @seven_text; letter-spacing: 0; }
+        .subtitle { color: @seven_muted; font-size: 15px; }
+        .eyebrow { color: @seven_profile_accent; font-size: 12px; font-weight: 600; }
+        .stat { padding: 14px; border-radius: 12px; background: @seven_panel_2; border: 1px solid @seven_border; }
+        .stat-number { font-size: 26px; font-weight: 500; color: @seven_profile_secondary; }
+        .chip { padding: 8px 10px; border-radius: 999px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.18); color: @seven_text; }
+        .card { padding: 14px; border-radius: 12px; background: @seven_panel_2; border: 1px solid @seven_border; color: @seven_text; }
+        .card:hover { border-color: alpha(@seven_profile_accent,.44); background: @seven_hover; }
+        .station { padding: 18px; border-radius: 12px; background: @seven_panel_2; border: 1px solid @seven_border; }
+        .station:hover { border-color: alpha(@seven_profile_secondary,.45); }
+        .card-title { font-size: 16px; font-weight: 500; color: @seven_text; }
+        .card-meta { color: @seven_profile_secondary; font-size: 12px; }
+        .card-body { color: @seven_text; }
+        .detail { padding: 16px; border-radius: 12px; background: @seven_panel_2; border: 1px solid @seven_border; }
+        .tree-canvas { border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.18); }
+        .tree-section { padding: 16px; border-radius: 12px; background: @seven_panel_2; border-left: 2px solid @seven_profile_accent; border-top: 1px solid @seven_border; }
+        .tree-root { border-left-color: @seven_profile_accent; }
+        .tree-trunk { border-left-color: @seven_profile_secondary; }
+        .tree-branch { border-left-color: @seven_wallpaper_cyan; }
+        .tree-leaf { border-left-color: @seven_success; }
+        .tree-collect { border-left-color: @seven_warning; }
+        .tree-archive { border-left-color: @seven_muted; }
+        .pill { border-radius: 999px; padding: 8px 11px; color: @seven_text; background: @seven_panel_2; border: 1px solid @seven_border; }
         entry { border-radius: 8px; min-height: 38px; }
         """
         provider = self.Gtk.CssProvider()
@@ -450,9 +456,9 @@ class BaobabNative:
         left.add(actions)
         right = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
         right.set_size_request(260, -1)
-        right.add(self.chip(f"{self.capabilities_payload.get('score', 0)}% capacités"))
-        right.add(self.chip(f"{self.engines_payload.get('immersive_score', 0)}% moteurs immersifs"))
-        right.add(self.chip(f"{self.services_payload.get('state', 'runtime')} · runtime"))
+        right.add(self.chip(f"{self.capabilities_payload.get('score', 0)}% prêt"))
+        right.add(self.chip(f"{self.engines_payload.get('immersive_score', 0)}% expérience"))
+        right.add(self.chip("Démarrage à la demande"))
         right.add(self.chip("FR d'abord · local/offline"))
         box.pack_start(left, True, True, 0)
         box.pack_start(right, False, False, 0)
@@ -466,7 +472,7 @@ class BaobabNative:
         os_surface = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=16)
         os_surface.add(self.tree_canvas())
         stations = self.Gtk.Grid(column_spacing=12, row_spacing=12)
-        stations.attach(self.station("Racines", "Orientation", "Recherche, sources, moteurs et santé du mini-OS.", "search"), 0, 0, 1, 1)
+        stations.attach(self.station("Racines", "Orientation", "Recherche, sources et préparation Baobab.", "search"), 0, 0, 1, 1)
         stations.attach(self.station("Tronc", "Mémoire", "Patrimoine, récits et modules de transmission.", "heritage"), 1, 0, 1, 1)
         stations.attach(self.station("Branches", "Territoires", "Pays, langues, relations et futures cartes offline.", "explore"), 0, 1, 1, 1)
         stations.attach(self.station("Feuilles", "Usages", "Son, cuisine, mode, marché et créations vivantes.", "modules"), 1, 1, 1, 1)
@@ -506,11 +512,11 @@ class BaobabNative:
         root.add(tree_section(
             "Racines",
             "Orientation et fondation",
-            "Voir l'état réel de Baobab: langues, pays, sources, moteurs et qualité des packs avant de produire du contenu.",
+            "Voir ce qui est prêt dans Baobab: langues, pays, sources et qualité des contenus avant d’ajouter ou de publier.",
             "tree-root",
             [
                 ("Recherche", "Point d'entrée calme", "Trouver pays, récits, sources et patrimoine depuis une seule zone.", "search"),
-                ("Moteurs", "Capacités locales", "Vérifier narration, son, IA, recherche et shell culturel disponibles.", "engines"),
+                ("Préparer Baobab", "Outils locaux", "Vérifier lecture, son, recherche et aide disponibles.", "engines"),
                 ("Sources", "Sol documentaire", "Contrôler les CSV, TSV et JSON qui nourrissent Baobab.", "datasets"),
             ],
         ))
@@ -550,12 +556,12 @@ class BaobabNative:
         root.add(tree_section(
             "Collecte",
             "Mémoire vivante",
-            "Ajouter du contenu sans le déclarer validé trop tôt: brouillon, source, consentement, audit.",
+            "Ajouter du contenu sans le déclarer validé trop tôt: brouillon, source, accord et relecture.",
             "tree-collect",
             [
                 ("Nouvelle collecte", "Terrain", "Créer interview, recette, audio, photo, textile ou proverbe.", "collect"),
                 ("Packs", "Contenants culturels", "Créer/importer les premiers packs culturels Baobab.", "packs"),
-                ("Audit", "Qualité", "Vérifier provenance, licence, curator, confiance, langue et pays.", "packs"),
+                ("Qualité", "Relecture", "Vérifier provenance, droits, responsable, confiance, langue et pays.", "packs"),
             ],
         ))
         root.add(tree_section(
@@ -566,7 +572,7 @@ class BaobabNative:
             [
                 ("Patrimoine", "Bibliothèque", "Relire les fiches sourcées et leurs références.", "heritage"),
                 ("Musée", "Objets et traces", "Préparer les futures expositions 3D sans surcharge.", "museum"),
-                ("Exports locaux", "Hors ligne", "Retrouver les sources et exports qui alimentent le workspace.", "datasets"),
+                ("Exports locaux", "Hors ligne", "Retrouver les sources et fichiers créés pour Baobab.", "datasets"),
             ],
         ))
         return self.scroll(root)
@@ -801,33 +807,33 @@ class BaobabNative:
     def engines_view(self) -> object:
         root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
         root.set_border_width(18)
-        root.add(self.label("Capacités Baobab", "title"))
-        root.add(self.label("Chaque outil sert un objectif: culture africaine, fonctionnement local/offline, expérience légère et intelligente.", "subtitle"))
+        root.add(self.label("Préparer Baobab", "title"))
+        root.add(self.label("Chaque élément sert un usage simple: lire, écouter, chercher, organiser et préserver les contenus localement.", "subtitle"))
         stats = self.Gtk.Grid(column_spacing=12, row_spacing=12)
-        stats.attach(self.stat(f"{self.capabilities_payload.get('score', 0)}%", "Capacités"), 0, 0, 1, 1)
-        stats.attach(self.stat(f"{self.engines_payload.get('immersive_score', 0)}%", "Moteurs"), 1, 0, 1, 1)
-        stats.attach(self.stat(f"{self.services_payload.get('score', 0)}%", "Runtime Baobab"), 2, 0, 1, 1)
+        stats.attach(self.stat(f"{self.capabilities_payload.get('score', 0)}%", "Prêt"), 0, 0, 1, 1)
+        stats.attach(self.stat(f"{self.engines_payload.get('immersive_score', 0)}%", "Expérience"), 1, 0, 1, 1)
+        stats.attach(self.stat(f"{self.services_payload.get('score', 0)}%", "Démarrage"), 2, 0, 1, 1)
         root.add(stats)
         root.add(self.label("Objectifs", "card-title"))
         for goal in self.capabilities_payload.get("goals", []):
             root.add(self.label(f"- {goal}", "card-body"))
-        root.add(self.label("Domaines", "card-title"))
+        root.add(self.label("Espaces", "card-title"))
         for domain in self.capabilities_payload.get("domains", []):
-            body = f"{domain.get('purpose', '')}\nSurface: {domain.get('public_surface', '')}"
+            body = f"{domain.get('purpose', '')}\nVue: {domain.get('public_surface', '')}"
             if domain.get("missing"):
-                body = f"{body}\nÀ connecter: {', '.join(domain.get('missing', [])[:4])}"
-            root.add(self.card(text(domain.get("title"), "Domaine"), f"{domain.get('score', 0)}% · {domain.get('state', '')}", body))
-        root.add(self.label("Services Baobab", "card-title"))
-        root.add(self.label("Ces services passent par les lanceurs du profil Baobab et ne démarrent jamais sans action explicite.", "subtitle"))
-        root.add(self.button("Réappliquer la configuration Baobab", lambda *_: self.run_action("baobab", "apply-config")))
+                body = f"{body}\nÀ préparer: {', '.join(domain.get('missing', [])[:4])}"
+            root.add(self.card(text(domain.get("title"), "Espace"), f"{domain.get('score', 0)}% · {text(domain.get('state'), 'à préparer')}", body))
+        root.add(self.label("Actions Baobab", "card-title"))
+        root.add(self.label("Ces éléments restent silencieux et ne s’ouvrent que lorsque tu les demandes.", "subtitle"))
+        root.add(self.button("Préparer Baobab", lambda *_: self.run_action("baobab", "apply-config")))
         for service in self.services_payload.get("services", []):
-            body = f"Lanceur: {service.get('launcher') or service.get('command', '')}\nDémarrage automatique: non"
-            root.add(self.card(text(service.get("key"), "service"), text(service.get("state"), "unknown"), body))
-        root.add(self.label("Moteurs détectés", "card-title"))
+            body = "Ouverture seulement à la demande"
+            root.add(self.card(text(service.get("key"), "Action"), text(service.get("state"), "à préparer"), body))
+        root.add(self.label("Outils détectés", "card-title"))
         for item in self.engines_payload.get("engines", []):
             state = "Disponible" if item.get("state") == "available" else "À connecter"
-            body = f"{item.get('role', '')}\nCommande: {item.get('command', '')}\nPaquet: {item.get('package', '')}"
-            root.add(self.card(text(item.get("key"), "moteur"), f"{state} · {item.get('group', '')}", body))
+            body = f"{item.get('role', '')}"
+            root.add(self.card(text(item.get("key"), "Outil"), f"{state} · {item.get('group', '')}", body))
         if self.engines_payload.get("immersive_next"):
             root.add(self.label("Prochaines connexions", "card-title"))
             for item in self.engines_payload.get("immersive_next", [])[:8]:
@@ -1023,7 +1029,7 @@ class BaobabNative:
         }
         actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
         actions.add(self.button("Créer le brouillon", lambda *_: self.save_collection_draft(fields)))
-        actions.add(self.button("Auditer après collecte", lambda *_: self.run_action("baobab", "audit-packs")))
+        actions.add(self.button("Vérifier après collecte", lambda *_: self.run_action("baobab", "audit-packs")))
         root.add(actions)
         root.add(self.card("Qualité culturelle", "Brouillon par défaut", "Baobab crée les fichiers de collecte et de consentement, mais ne marque jamais un contenu comme validé sans source, droits et relecture locale."))
         return self.scroll(root)
@@ -1051,14 +1057,14 @@ class BaobabNative:
         stats = self.Gtk.Grid(column_spacing=12, row_spacing=12)
         stats.attach(self.stat(str(self.packs_payload.get("count", 0)), "Packs locaux"), 0, 0, 1, 1)
         stats.attach(self.stat(f"{self.audit_payload.get('score', 0)}%", "Score provenance"), 1, 0, 1, 1)
-        stats.attach(self.stat(text(self.audit_payload.get("state", "unknown")), "Audit"), 2, 0, 1, 1)
+        stats.attach(self.stat(text(self.audit_payload.get("state", "unknown")), "Relecture"), 2, 0, 1, 1)
         root.add(stats)
         actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
         actions.add(self.button("Créer les packs de départ", lambda *_: self.run_action("baobab", "seed-packs")))
         actions.add(self.button("Préparer collecte vivante", lambda *_: self.run_action("baobab", "enrich-packs")))
         actions.add(self.button("Nouvelle collecte", lambda *_: self.stack.set_visible_child_name("collect")))
         actions.add(self.button("Créer exemples terrain", lambda *_: self.run_action("baobab", "sample-fieldwork")))
-        actions.add(self.button("Auditer les packs", lambda *_: self.run_action("baobab", "audit-packs")))
+        actions.add(self.button("Vérifier les packs", lambda *_: self.run_action("baobab", "audit-packs")))
         actions.add(self.button("Ouvrir le dossier packs", lambda *_: open_path(DATA / "packs")))
         root.add(actions)
         if not self.packs_payload.get("packs"):
@@ -1133,10 +1139,12 @@ class BaobabNative:
         self.apply_css()
         window = self.Gtk.Window(title="Baobab OS")
         self.window = window
+        window.get_style_context().add_class("seven-window")
         window.set_default_size(1280, 820)
         window.connect("destroy", self.Gtk.main_quit)
         root = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=0)
         root.get_style_context().add_class("root")
+        root.get_style_context().add_class("seven-root")
         sidebar = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
         sidebar.get_style_context().add_class("rail")
         sidebar.get_style_context().add_class("nav")
@@ -1161,8 +1169,8 @@ class BaobabNative:
             ("collect", "Collecte", self.collect_view(), "Transmission"),
             ("packs", "Packs", self.packs_view(), "Transmission"),
             ("datasets", "Sources", self.datasets_view(), "Transmission"),
-            ("engines", "Moteurs", self.engines_view(), "Système"),
-            ("preferences", "Préférences", self.preferences_view(), "Système"),
+            ("engines", "Préparer", self.engines_view(), "Réglages"),
+            ("preferences", "Préférences", self.preferences_view(), "Réglages"),
         ]
         current_group = ""
         for key, label, widget, group in views:
@@ -1173,7 +1181,7 @@ class BaobabNative:
             button = self.Gtk.Button(label=label)
             button.connect("clicked", lambda _button, key=key: self.stack.set_visible_child_name(key))
             sidebar.add(button)
-        sidebar.pack_end(self.chip("Baobab isolé · profil dédié"), False, False, 0)
+        sidebar.pack_end(self.chip("Espace Baobab séparé"), False, False, 0)
         sidebar.pack_end(self.chip(f"{self.capabilities_payload.get('score', 0)}% prêt"), False, False, 0)
         known_views = {key for key, _label, _widget, _group in views}
         if self.initial_view in known_views:

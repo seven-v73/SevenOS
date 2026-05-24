@@ -48,6 +48,9 @@ if [[ "$LANG_CODE" == "fr" ]]; then
 󰐥  Installer SevenOS    seven new
 󰖳  Configurer Windows Bridge    seven windows setup
 󰘦  Guide complet SevenOS    Documentation générale
+󰚩  Architecture SevenOS    Shell, profils, rootfs, actions
+󰌘  Actions SevenOS    Registre d'actions, Spotlight, Waybar
+󰔎  Thèmes et apparence    Clair, sombre, wallpaper, terminal
 󰌌  Raccourcis clavier    Super, fenêtres, workspaces, captures
 󰆍  Commandes terminal    seven, profils, runtime, store, doctor
 󰣇  Mini OS SevenOS    Equinox, Baobab, Forge, Shield, Studio, Windows, Pulse
@@ -63,9 +66,7 @@ if [[ "$LANG_CODE" == "fr" ]]; then
 󰹑  Smart Window System    Pastilles, flottant/tiling, layouts
 󰆍  Terminal classique    Super+Enter
 󰆍  Terminal sombre    Super+Shift+Enter
-󰆍  Terminal Dark    Super+Shift+Enter
 󰆍  Menu du terminal    Super+Ctrl+Enter
-󰆍  Terminal Classic    Super+Enter
 󰉋  Ouvrir Fichiers    Super+E
 󰉋  Seven Files    Gestionnaire de fichiers, Reader, tags, recherche
 󰉋  Seven Reader    PDF, EPUB, notes, recherche, mode livre
@@ -94,6 +95,9 @@ else
 󰐥  Install SevenOS    seven new
 󰖳  Setup Windows Bridge    seven windows setup
 󰘦  Complete SevenOS Guide    General documentation
+󰚩  SevenOS Architecture    Shell, profiles, rootfs, actions
+󰌘  SevenOS Actions    Action registry, Spotlight, Waybar
+󰔎  Themes and Appearance    Light, dark, wallpaper, terminal
 󰌌  Keyboard Shortcuts    Super, windows, workspaces, screenshots
 󰆍  Terminal Commands    seven, profiles, runtime, store, doctor
 󰣇  SevenOS Mini OS    Equinox, Baobab, Forge, Shield, Studio, Windows, Pulse
@@ -152,6 +156,23 @@ write_help_doc() {
 
 SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS autonomes et d'une couche de composition intelligente.
 
+## Sommaire
+
+| Section | Contenu |
+| --- | --- |
+| Première installation | installer une nouvelle machine et préparer Windows Bridge |
+| Lecture rapide | comprendre les trois niveaux : interface, commandes, moteur |
+| Commandes à connaître | commandes utiles au quotidien |
+| Architecture SevenOS | couches internes et fichiers de référence |
+| Raccourcis essentiels | clavier, fenêtres, captures, terminal |
+| Barre SevenOS | Waybar, contrôle système, actions rapides |
+| Actions SevenOS | registre d'actions et contexte actif |
+| Thèmes et apparence | clair/sombre, wallpaper, terminal transparent |
+| Mini OS SevenOS | isolation, rootfs, profils, collaboration |
+| Applications SevenOS | Files, Reader, Store, Terminal, SevenAI |
+| Diagnostics | réparation, checks, pré-push |
+| Dépannage rapide | solutions directes aux problèmes fréquents |
+
 ## Première installation
 
 Sur une nouvelle machine, la commande simple est :
@@ -175,6 +196,63 @@ seven windows setup
 seven windows setup --iso ~/Téléchargements/Win11.iso
 ```
 
+## Lecture rapide
+
+SevenOS se pilote avec trois niveaux :
+
+| Niveau | Usage |
+| --- | --- |
+| Interface | Waybar, Dock, Launchpad, Spotlight, Seven Files, SevenStore, SevenAI |
+| Commandes SevenOS | `seven`, `sevenpkg`, `seven-profile-*`, `seven-terminal`, `seven-files` |
+| Moteur système | Hyprland, profils runtime, rootfs mini OS, shims, actions, checks |
+
+Le principe : l'utilisateur reste dans des surfaces simples, tandis que SevenOS
+orchestré les profils, fenêtres, thèmes, dépendances et actions derrière.
+
+## Commandes à connaître
+
+| Besoin | Commande |
+| --- | --- |
+| Installer/configurer une nouvelle machine | `seven new` |
+| Voir l'état général | `seven status` |
+| Diagnostiquer | `seven doctor` |
+| Réparer l'expérience UI | `seven repair ux --apply` |
+| Ouvrir les actions disponibles | `seven actions` |
+| Chercher une app/action/fichier | `seven spotlight index` puis `Super+Space` |
+| Voir le mini OS actif | `seven profile current` |
+| Changer de mini OS | `seven profile activate forge` |
+| Installer les exigences d'un mini OS | `seven profile requirements forge --apply --yes` |
+| Vérifier les rootfs mini OS | `seven profile-rootfs verify all` |
+| Préparer Windows Bridge | `seven windows setup` |
+| Mettre à jour SevenOS | `seven update` |
+| Préparer un push final | `seven pre-push` |
+
+## Architecture SevenOS
+
+SevenOS est organisé comme un OS personnel avec plusieurs couches :
+
+| Couche | Rôle |
+| --- | --- |
+| Shell Experience | cohérence visuelle, feedback, animations, focus, événements |
+| Hyprland Lua Engine | règles fenêtres, workspaces, raccourcis, surfaces flottantes |
+| Action Registry | actions lisibles par Waybar, Spotlight, Hub, SevenAI et notifications |
+| Context Engine | app active, service web, mini OS courant, workspace, média, sécurité |
+| Profile Runtime | état actif, services autorisés, variables, shims, isolation |
+| Profile RootFS | racine séparée et scellée par mini OS pour les apps profilées |
+| SevenStore / sevenpkg | installation, paquets, sources, exigences par mini OS |
+| SevenAI | assistant local-first, diagnostics, cartes d'action et confirmations |
+
+Fichiers de référence :
+
+- `profiles/catalog.json` : identité et capacités des mini OS.
+- `scripts/shell-experience.sh` : contrat d'expérience système.
+- `bin/seven-actions` : actions machine-readable.
+- `bin/seven-waybar-context` : contexte actif pour Waybar et menus.
+- `bin/seven-profile-run` : lancement profilé/conteneur.
+- `bin/seven-profile-rootfs` : audit et vérification des rootfs.
+- `hyprland/lua/rules/keybinds.lua` : raccourcis principaux.
+- `hyprland/lua/profiles/*.lua` : comportement par mini OS.
+
 ## Raccourcis essentiels
 
 | Action | Raccourci |
@@ -192,6 +270,7 @@ seven windows setup --iso ~/Téléchargements/Win11.iso
 | Terminal | Super+Enter |
 | Terminal sombre | Super+Shift+Enter |
 | Menu terminal | Super+Ctrl+Enter |
+| Transparence terminal | Ctrl+Shift+B dans Seven Terminal |
 | Menu énergie | Super+Shift+P |
 | Verrouiller | Super+L |
 
@@ -257,6 +336,53 @@ seven-wifi status-json
 seven-bluetooth status-json
 ```
 
+## Actions SevenOS
+
+Les actions sont la langue commune du système. Une même action peut être
+exposée dans Spotlight, Waybar, Seven Hub, SevenAI, les notifications et les
+menus des apps.
+
+| Source | Rôle |
+| --- | --- |
+| `seven actions` | liste les actions utilisateur disponibles |
+| `seven actions --json` | format machine-readable pour les surfaces natives |
+| `seven-waybar-action` | exécute les actions depuis la barre SevenOS |
+| `seven-waybar-context` | donne le contexte actif : app, service, profil, média |
+| `seven-spotlight` | recherche et lance actions, apps, fichiers |
+| `seven ai` | prévisualise et applique des actions avec confirmation |
+
+Commandes utiles :
+
+```bash
+seven actions
+seven actions --json
+seven-waybar-context --json
+seven-waybar-action app-menu
+seven spotlight index
+seven ai "ouvre les fichiers"
+```
+
+## Thèmes et apparence
+
+Le mode clair/sombre est global à SevenOS. Les mini OS changent surtout les
+accents, les priorités et les surfaces, pas le mode complet.
+
+| Besoin | Commande |
+| --- | --- |
+| Appliquer le thème clair | `./install.sh theme light` |
+| Appliquer le thème sombre | `./install.sh theme dark` |
+| Vérifier l'état thème | `seven theme doctor` |
+| Réparer l'UX visuelle | `seven repair ux --apply` |
+| Recharger Hyprland/Waybar | `seven hypr apply` |
+| Terminal transparent/opaque | `Ctrl+Shift+B` dans Seven Terminal |
+
+Seven Terminal utilise le thème extrait du wallpaper quand il existe :
+
+- texte corrigé automatiquement pour garder le contraste ;
+- fond transparent par défaut avec bouton `Bg` ;
+- `SEVENOS_TERMINAL_TRANSPARENT=0 seven-terminal` démarre en opaque ;
+- `SEVENOS_TERMINAL_ALPHA=0.70 seven-terminal` règle l'opacité.
+
 ## Mini OS SevenOS
 
 Chaque profil est un mini OS autonome avec quatre couches :
@@ -276,6 +402,31 @@ Profils :
 - Windows : Windows Bridge complet avec chemins de compatibilité plus légers en fallback.
 - Pulse : gaming Linux, Proton, faible latence, overlays.
 
+Ce que chaque mini OS sépare :
+
+| Élément | Séparation |
+| --- | --- |
+| Données utilisateur | dossiers profilés et grants explicites |
+| HOME/cache/data | espaces par profil sous `profile-containers` |
+| Rootfs | rootfs séparé, scellé et vérifié par profil |
+| Commandes | shims et PATH profilé |
+| Launchers | `.desktop` profilés quand disponible |
+| Services | policy active/inactive selon le mini OS |
+| UI | Waybar, Dock, Terminal, fichiers et actions adaptés |
+
+Ce qui reste partagé par design :
+
+- kernel ;
+- session graphique Hyprland ;
+- GPU ;
+- réseau bas niveau ;
+- pacman physique ;
+- certains services système globaux.
+
+SevenOS ne cherche pas à faire des VM. Le but est une indépendance fonctionnelle
+forte avec collaboration explicite quand un profil doit accéder à une capacité
+ou à un dossier externe.
+
 Commandes :
 
 ```bash
@@ -285,10 +436,38 @@ seven profile activate forge
 seven profile center forge
 seven profile open forge
 seven profile apps forge
+seven profile grant-folder forge /home/seven/Code/OS/SevenOS --name SevenOS --rw
+seven profile folders forge
+seven profile open-folder forge /home/seven/Code/OS/SevenOS
 seven profile aliases
 seven profile migrate-aliases --apply
 seven profile health --json
 ```
+
+Pour ouvrir ponctuellement un dossier hors du mini OS courant sans casser
+l'isolation, accorde-le explicitement au profil voulu. Il sera visible dans le
+conteneur sous `/external/<nom>` et utilisable comme workspace via
+`seven profile open-folder`.
+
+Exemples :
+
+```bash
+seven profile grant-folder forge /home/seven/Code/OS/SevenOS --name SevenOS --rw
+seven profile open-folder forge /home/seven/Code/OS/SevenOS
+seven profile folders forge
+```
+
+## Usage recommandé par mini OS
+
+| Mini OS | À utiliser pour | Actions typiques |
+| --- | --- | --- |
+| Equinox | quotidien, navigation, documents | fichiers, web, réglages, dock |
+| Forge | code, Git, services, containers | terminal Forge, projets, logs, build |
+| Shield | audit autorisé, sécurité, sandbox | hash, réseau, isolation, rapports |
+| Studio | médias, design, assets | images, audio, vidéo, exports |
+| Baobab | culture, lecture, collections | reader, documents, mémoire locale |
+| Pulse | jeux, captures, performance | Steam, Lutris, recorder, overlays |
+| Windows | VM Windows et bridge | setup VM, dossiers partagés, apps Windows |
 
 ## Collaboration mini OS
 
@@ -314,7 +493,11 @@ seven runtime activate equinox forge --apply --yes
 
 ## Applications SevenOS
 
-Seven Files :
+### Seven Files
+
+Gestionnaire de fichiers SevenOS : onglets, split view, Quick Look, tags,
+recherche, corbeille, opérations, dossiers externes autorisés et adaptation par
+mini OS.
 
 ```bash
 seven-files
@@ -322,7 +505,10 @@ seven-files profile
 seven-files reader ~/Documents/book.pdf
 ```
 
-Seven Reader :
+### Seven Reader
+
+Lecture locale de PDF/EPUB/documents avec recherche, mode livre et intégration
+Seven Files.
 
 ```bash
 seven-reader
@@ -330,7 +516,11 @@ seven-reader open ~/Documents/book.pdf
 seven reader --json
 ```
 
-SevenStore :
+### SevenStore
+
+Store SevenOS pour installer, ouvrir, vérifier et découvrir les apps selon les
+mini OS. Le store s'appuie sur `sevenpkg`, Flatpak, pacman/AUR et les exigences
+profilées.
 
 ```bash
 seven-store
@@ -339,13 +529,52 @@ seven store detail vlc
 seven store apps
 ```
 
-Terminal :
+### Seven Terminal
+
+Terminal natif SevenOS : onglets, splits, palette, recherche, session restore,
+actions mini OS, thème clair/sombre et fond wallpaper transparent.
 
 ```bash
 seven-terminal classic
-seven-terminal dark
+seven-terminal profile
 seven-terminal forge
 seven-terminal menu
+```
+
+Raccourcis internes :
+
+| Action | Raccourci |
+| --- | --- |
+| Nouvel onglet | Ctrl+Shift+T |
+| Fermer onglet/pane | Ctrl+Shift+W |
+| Recherche | Ctrl+Shift+F |
+| Palette | Ctrl+Shift+P ou Ctrl+Shift+Space |
+| Transparent/opaque | Ctrl+Shift+B |
+| Zoom texte | Ctrl+Plus / Ctrl+Minus / Ctrl+0 |
+
+### SevenAI
+
+Assistant local-first de SevenOS. Il peut diagnostiquer, expliquer, préparer des
+actions et demander confirmation avant les changements sensibles.
+
+```bash
+seven-ai
+seven ai focus
+seven ai diagnose system --json
+seven ai "prépare un espace Forge pour coder"
+```
+
+### seven et sevenpkg
+
+`seven` orchestre l'OS. `sevenpkg` gère les couches logicielles et
+meta-packages SevenOS.
+
+```bash
+seven --help
+sevenpkg status
+sevenpkg plan --json
+sevenpkg install forge
+sevenpkg transaction plan forge --json
 ```
 
 ## Diagnostics et réparation
@@ -364,6 +593,20 @@ seven pre-push
 scripts/design-check.sh
 scripts/check.sh
 ```
+
+## Dépannage rapide
+
+| Problème | Action |
+| --- | --- |
+| Waybar ou UI incohérente | `seven repair ux --apply` puis `seven hypr apply` |
+| Thème clair/sombre incomplet | `seven theme doctor` puis `./install.sh theme light` ou `dark` |
+| App mini OS hors isolation | relancer via `seven profile open <profil>` ou launcher profilé |
+| Dossier externe invisible | `seven profile grant-folder <profil> <chemin> --name <nom> --rw` |
+| Dépendances manquantes | `seven profile requirements all --apply --yes` |
+| Rootfs mini OS suspect | `seven profile-rootfs verify all` |
+| Windows Bridge pas prêt | `seven windows setup` |
+| Terminal illisible | `Ctrl+Shift+B`, bouton `Bg`, ou `SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal` |
+| Avant push GitHub | `seven pre-push` |
 
 ## Système de fenêtres et raccourcis
 
@@ -390,12 +633,40 @@ Fichiers importants :
 4. Super+N pour Wi-Fi/Bluetooth/audio/batterie.
 5. Super+E pour les fichiers.
 6. `seven mini-os suggest` pour voir les capacités utiles au contexte.
+
+## Où trouver les informations localement
+
+- `Super+H` : cette documentation.
+- `seven-help architecture` : ouvrir directement un chapitre.
+- `Super+Space` : chercher une app, une action ou un fichier.
+- `seven --help` : commandes SevenOS.
+- `seven actions` : actions utilisateur.
+- `seven doctor` : diagnostic système.
+- `seven status` : état rapide.
+- `docs/` : documentation projet si le dépôt est présent localement.
 EOF
   else
     cat > "$HELP_DOC" <<'EOF'
 # SevenOS Help Center
 
 SevenOS is a personal OS built around native surfaces, autonomous mini OS profiles and an explicit capability-composition layer.
+
+## Table Of Contents
+
+| Section | Content |
+| --- | --- |
+| First Install | install a new machine and prepare Windows Bridge |
+| Quick Reading | understand the three levels: interface, commands, engine |
+| Commands To Know | useful daily commands |
+| SevenOS Architecture | internal layers and reference files |
+| Essential Shortcuts | keyboard, windows, screenshots, terminal |
+| SevenOS Bar | Waybar, system control, quick actions |
+| SevenOS Actions | action registry and active context |
+| Themes And Appearance | light/dark, wallpaper, transparent terminal |
+| SevenOS Mini OS | isolation, rootfs, profiles, collaboration |
+| SevenOS Applications | Files, Reader, Store, Terminal, SevenAI |
+| Diagnostics | repair, checks, pre-push |
+| Quick Troubleshooting | direct fixes for common problems |
 
 ## First Install
 
@@ -420,6 +691,63 @@ seven windows setup
 seven windows setup --iso ~/Downloads/Win11.iso
 ```
 
+## Quick Reading
+
+SevenOS is controlled through three levels:
+
+| Level | Usage |
+| --- | --- |
+| Interface | Waybar, Dock, Launchpad, Spotlight, Seven Files, SevenStore, SevenAI |
+| SevenOS Commands | `seven`, `sevenpkg`, `seven-profile-*`, `seven-terminal`, `seven-files` |
+| System Engine | Hyprland, runtime profiles, mini OS rootfs, shims, actions, checks |
+
+The principle: the user stays in simple native surfaces while SevenOS
+orchestrates profiles, windows, themes, dependencies and actions underneath.
+
+## Commands To Know
+
+| Need | Command |
+| --- | --- |
+| Install/configure a new machine | `seven new` |
+| See global status | `seven status` |
+| Diagnose | `seven doctor` |
+| Repair UI experience | `seven repair ux --apply` |
+| Open available actions | `seven actions` |
+| Search app/action/file | `seven spotlight index` then `Super+Space` |
+| See active mini OS | `seven profile current` |
+| Switch mini OS | `seven profile activate forge` |
+| Install mini OS requirements | `seven profile requirements forge --apply --yes` |
+| Verify mini OS rootfs | `seven profile-rootfs verify all` |
+| Prepare Windows Bridge | `seven windows setup` |
+| Update SevenOS | `seven update` |
+| Prepare a final push | `seven pre-push` |
+
+## SevenOS Architecture
+
+SevenOS is organized as a personal OS with several layers:
+
+| Layer | Role |
+| --- | --- |
+| Shell Experience | visual coherence, feedback, animations, focus, events |
+| Hyprland Lua Engine | window rules, workspaces, shortcuts, floating surfaces |
+| Action Registry | actions readable by Waybar, Spotlight, Hub, SevenAI and notifications |
+| Context Engine | active app, web service, current mini OS, workspace, media, security |
+| Profile Runtime | active state, allowed services, variables, shims, isolation |
+| Profile RootFS | separate sealed root per mini OS for profiled apps |
+| SevenStore / sevenpkg | installation, packages, sources, mini OS requirements |
+| SevenAI | local-first assistant, diagnostics, action cards and confirmations |
+
+Reference files:
+
+- `profiles/catalog.json`: mini OS identity and capabilities.
+- `scripts/shell-experience.sh`: system experience contract.
+- `bin/seven-actions`: machine-readable actions.
+- `bin/seven-waybar-context`: active context for Waybar and menus.
+- `bin/seven-profile-run`: profiled/containerized launch.
+- `bin/seven-profile-rootfs`: rootfs audit and verification.
+- `hyprland/lua/rules/keybinds.lua`: main shortcuts.
+- `hyprland/lua/profiles/*.lua`: mini OS behavior.
+
 ## Essential Shortcuts
 
 | Action | Shortcut |
@@ -437,6 +765,7 @@ seven windows setup --iso ~/Downloads/Win11.iso
 | Terminal Classic | Super+Enter |
 | Terminal Dark | Super+Shift+Enter |
 | Terminal Theme Menu | Super+Ctrl+Enter |
+| Terminal Transparency | Ctrl+Shift+B inside Seven Terminal |
 | Power menu | Super+Shift+P |
 | Lock screen | Super+L |
 
@@ -502,6 +831,52 @@ seven-wifi status-json
 seven-bluetooth status-json
 ```
 
+## SevenOS Actions
+
+Actions are the common language of the system. The same action can be exposed in
+Spotlight, Waybar, Seven Hub, SevenAI, notifications and app menus.
+
+| Source | Role |
+| --- | --- |
+| `seven actions` | lists available user actions |
+| `seven actions --json` | machine-readable format for native surfaces |
+| `seven-waybar-action` | executes actions from the SevenOS bar |
+| `seven-waybar-context` | reports active app, service, profile and media context |
+| `seven-spotlight` | searches and launches actions, apps and files |
+| `seven ai` | previews and applies actions with confirmation |
+
+Useful commands:
+
+```bash
+seven actions
+seven actions --json
+seven-waybar-context --json
+seven-waybar-action app-menu
+seven spotlight index
+seven ai "open files"
+```
+
+## Themes And Appearance
+
+Light/dark mode is global to SevenOS. Mini OS profiles mainly change accents,
+priorities and surfaces, not the complete mode.
+
+| Need | Command |
+| --- | --- |
+| Apply light theme | `./install.sh theme light` |
+| Apply dark theme | `./install.sh theme dark` |
+| Check theme state | `seven theme doctor` |
+| Repair visual UX | `seven repair ux --apply` |
+| Reload Hyprland/Waybar | `seven hypr apply` |
+| Terminal transparent/solid | `Ctrl+Shift+B` inside Seven Terminal |
+
+Seven Terminal uses the wallpaper-derived theme when available:
+
+- text is automatically corrected for contrast;
+- transparent background by default with the `Bg` button;
+- `SEVENOS_TERMINAL_TRANSPARENT=0 seven-terminal` starts solid;
+- `SEVENOS_TERMINAL_ALPHA=0.70 seven-terminal` tunes opacity.
+
 ## SevenOS Mini OS
 
 Each profile is an autonomous mini OS with four layers:
@@ -521,6 +896,31 @@ Profiles:
 - Windows: full Windows Bridge with lighter compatibility paths as fallback.
 - Pulse: Linux gaming, Proton, low latency and overlays.
 
+What each mini OS separates:
+
+| Element | Separation |
+| --- | --- |
+| User data | profiled folders and explicit grants |
+| HOME/cache/data | per-profile spaces under `profile-containers` |
+| Rootfs | separate sealed and verified rootfs per profile |
+| Commands | shims and profiled PATH |
+| Launchers | profiled `.desktop` files when available |
+| Services | active/inactive policy per mini OS |
+| UI | adapted Waybar, Dock, Terminal, files and actions |
+
+What remains shared by design:
+
+- kernel;
+- Hyprland graphical session;
+- GPU;
+- low-level network;
+- physical pacman;
+- some global system services.
+
+SevenOS does not try to be a set of VMs. The goal is strong functional
+independence with explicit collaboration when a profile needs a capability or
+external folder.
+
 Commands:
 
 ```bash
@@ -530,10 +930,38 @@ seven profile activate forge
 seven profile center forge
 seven profile open forge
 seven profile apps forge
+seven profile grant-folder forge /home/seven/Code/OS/SevenOS --name SevenOS --rw
+seven profile folders forge
+seven profile open-folder forge /home/seven/Code/OS/SevenOS
 seven profile aliases
 seven profile migrate-aliases --apply
 seven profile health --json
 ```
+
+To open a folder outside the current mini OS without weakening isolation,
+grant it explicitly to the target profile. It appears inside the container at
+`/external/<name>` and can be opened as a workspace with
+`seven profile open-folder`.
+
+Examples:
+
+```bash
+seven profile grant-folder forge /home/seven/Code/OS/SevenOS --name SevenOS --rw
+seven profile open-folder forge /home/seven/Code/OS/SevenOS
+seven profile folders forge
+```
+
+## Recommended Usage By Mini OS
+
+| Mini OS | Use for | Typical actions |
+| --- | --- | --- |
+| Equinox | daily work, browsing, documents | files, web, settings, dock |
+| Forge | code, Git, services, containers | Forge terminal, projects, logs, build |
+| Shield | authorized audit, security, sandbox | hash, network, isolation, reports |
+| Studio | media, design, assets | images, audio, video, exports |
+| Baobab | culture, reading, collections | reader, documents, local memory |
+| Pulse | games, captures, performance | Steam, Lutris, recorder, overlays |
+| Windows | Windows VM and bridge | VM setup, shared folders, Windows apps |
 
 ## Mini OS Collaboration
 
@@ -559,7 +987,10 @@ seven runtime activate equinox forge --apply --yes
 
 ## SevenOS Applications
 
-Seven Files:
+### Seven Files
+
+SevenOS file manager: tabs, split view, Quick Look, tags, search, trash,
+operations, authorized external folders and mini OS adaptation.
 
 ```bash
 seven-files
@@ -567,7 +998,10 @@ seven-files profile
 seven-files reader ~/Documents/book.pdf
 ```
 
-Seven Reader:
+### Seven Reader
+
+Local PDF/EPUB/document reading with search, book mode and Seven Files
+integration.
 
 ```bash
 seven-reader
@@ -575,7 +1009,10 @@ seven-reader open ~/Documents/book.pdf
 seven reader --json
 ```
 
-SevenStore:
+### SevenStore
+
+SevenOS store to install, open, verify and discover apps by mini OS. It uses
+`sevenpkg`, Flatpak, pacman/AUR and profiled requirements.
 
 ```bash
 seven-store
@@ -584,13 +1021,52 @@ seven store detail vlc
 seven store apps
 ```
 
-Terminal:
+### Seven Terminal
+
+Native SevenOS terminal: tabs, splits, palette, search, session restore, mini OS
+actions, light/dark theme and transparent wallpaper background.
 
 ```bash
 seven-terminal classic
-seven-terminal dark
+seven-terminal profile
 seven-terminal forge
 seven-terminal menu
+```
+
+Internal shortcuts:
+
+| Action | Shortcut |
+| --- | --- |
+| New tab | Ctrl+Shift+T |
+| Close tab/pane | Ctrl+Shift+W |
+| Search | Ctrl+Shift+F |
+| Palette | Ctrl+Shift+P or Ctrl+Shift+Space |
+| Transparent/solid | Ctrl+Shift+B |
+| Text zoom | Ctrl+Plus / Ctrl+Minus / Ctrl+0 |
+
+### SevenAI
+
+Local-first SevenOS assistant. It can diagnose, explain, prepare actions and ask
+for confirmation before sensitive changes.
+
+```bash
+seven-ai
+seven ai focus
+seven ai diagnose system --json
+seven ai "prepare a Forge space for coding"
+```
+
+### seven and sevenpkg
+
+`seven` orchestrates the OS. `sevenpkg` manages SevenOS software layers and
+meta-packages.
+
+```bash
+seven --help
+sevenpkg status
+sevenpkg plan --json
+sevenpkg install forge
+sevenpkg transaction plan forge --json
 ```
 
 ## Diagnostics And Repair
@@ -608,6 +1084,20 @@ seven insights
 scripts/design-check.sh
 scripts/check.sh
 ```
+
+## Quick Troubleshooting
+
+| Problem | Action |
+| --- | --- |
+| Waybar or UI inconsistency | `seven repair ux --apply` then `seven hypr apply` |
+| Light/dark theme incomplete | `seven theme doctor` then `./install.sh theme light` or `dark` |
+| Mini OS app outside isolation | relaunch with `seven profile open <profile>` or a profiled launcher |
+| External folder invisible | `seven profile grant-folder <profile> <path> --name <name> --rw` |
+| Missing dependencies | `seven profile requirements all --apply --yes` |
+| Suspicious mini OS rootfs | `seven profile-rootfs verify all` |
+| Windows Bridge not ready | `seven windows setup` |
+| Terminal hard to read | `Ctrl+Shift+B`, `Bg` button, or `SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal` |
+| Before GitHub push | `seven pre-push` |
 
 ## Window System And Shortcuts
 
@@ -634,26 +1124,95 @@ Important files:
 4. Super+N opens Wi-Fi/Bluetooth/audio/battery controls.
 5. Super+E opens files.
 6. `seven mini-os suggest` shows useful capabilities for the current context.
+
+## Where To Find Information Locally
+
+- `Super+H`: this documentation.
+- `seven-help architecture`: open a chapter directly.
+- `Super+Space`: search an app, action or file.
+- `seven --help`: SevenOS commands.
+- `seven actions`: user actions.
+- `seven doctor`: system diagnostics.
+- `seven status`: quick status.
+- `docs/`: project documentation when the repository is present locally.
 EOF
   fi
 
-  if [[ "$topic" != "all" ]]; then
-    printf '\n\n---\nTopic requested: %s\n' "$topic" >> "$HELP_DOC"
+}
+
+topic_heading() {
+  local topic="${1:-all}"
+  if [[ "$LANG_CODE" == "fr" ]]; then
+    case "$topic" in
+      install) printf 'Première installation\n' ;;
+      quick|commands) printf 'Commandes à connaître\n' ;;
+      architecture) printf 'Architecture SevenOS\n' ;;
+      shortcuts) printf 'Raccourcis essentiels\n' ;;
+      waybar) printf 'Barre SevenOS et panneau de contrôle\n' ;;
+      actions) printf 'Actions SevenOS\n' ;;
+      themes) printf 'Thèmes et apparence\n' ;;
+      mini-os|mini-os-collaboration) printf 'Mini OS SevenOS\n' ;;
+      files|reader|store|terminal|ai|apps) printf 'Applications SevenOS\n' ;;
+      diagnostics|troubleshooting) printf 'Diagnostics et réparation\n' ;;
+      windows) printf 'Système de fenêtres et raccourcis\n' ;;
+      *) return 1 ;;
+    esac
+  else
+    case "$topic" in
+      install) printf 'First Install\n' ;;
+      quick|commands) printf 'Commands To Know\n' ;;
+      architecture) printf 'SevenOS Architecture\n' ;;
+      shortcuts) printf 'Essential Shortcuts\n' ;;
+      waybar) printf 'SevenOS Bar And Control Center\n' ;;
+      actions) printf 'SevenOS Actions\n' ;;
+      themes) printf 'Themes And Appearance\n' ;;
+      mini-os|mini-os-collaboration) printf 'SevenOS Mini OS\n' ;;
+      files|reader|store|terminal|ai|apps) printf 'SevenOS Applications\n' ;;
+      diagnostics|troubleshooting) printf 'Diagnostics And Repair\n' ;;
+      windows) printf 'Window System And Shortcuts\n' ;;
+      *) return 1 ;;
+    esac
   fi
 }
 
 show_doc() {
   local topic="${1:-all}"
   write_help_doc "$topic"
-  local pager='less -R'
-  if ! command -v less >/dev/null 2>&1; then
-    pager='cat'
+  local viewer=""
+  local heading=""
+  heading="$(topic_heading "$topic" 2>/dev/null || true)"
+  if command -v less >/dev/null 2>&1; then
+    if [[ -n "$heading" ]]; then
+      viewer="less -R $(printf '%q' "+/^## ${heading}") $(printf '%q' "$HELP_DOC")"
+    else
+      viewer="less -R $(printf '%q' "$HELP_DOC")"
+    fi
+  elif command -v bat >/dev/null 2>&1; then
+    viewer="bat --paging=always --style=plain --language=markdown $(printf '%q' "$HELP_DOC")"
+  else
+    viewer="cat $(printf '%q' "$HELP_DOC")"
   fi
-  run_terminal "$pager $(printf '%q' "$HELP_DOC")"
+  run_terminal "$viewer"
 }
 
 open_command_doc() {
   show_doc commands
+}
+
+open_native_help() {
+  local topic="${1:-start}"
+  local native="$ROOT_DIR/bin/seven-help-native"
+  if [[ "${SEVENOS_HELP_LEGACY:-0}" != "1" && -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
+    if [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
+      "$native" "$topic" &
+      return 0
+    fi
+    if command -v seven-help-native >/dev/null 2>&1 && seven-help-native --probe >/dev/null 2>&1; then
+      seven-help-native "$topic" &
+      return 0
+    fi
+  fi
+  return 1
 }
 
 if [[ "${1:-}" == "--manual" || "${1:-}" == "manual" ]]; then
@@ -662,8 +1221,22 @@ if [[ "${1:-}" == "--manual" || "${1:-}" == "manual" ]]; then
   exit 0
 fi
 
+case "${1:-}" in
+  install|quick|commands|architecture|shortcuts|waybar|actions|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|diagnostics|troubleshooting|windows)
+    if open_native_help "$1"; then
+      exit 0
+    fi
+    show_doc "$1"
+    exit 0
+    ;;
+esac
+
 if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   printf '%s\n' "$menu"
+  exit 0
+fi
+
+if [[ $# -eq 0 ]] && open_native_help start; then
   exit 0
 fi
 
@@ -682,6 +1255,9 @@ case "$selected" in
   "Install SevenOS"|"Installer SevenOS") run_terminal "seven new" ;;
   "Setup Windows Bridge"|"Configurer Windows Bridge") run_terminal "seven windows setup" ;;
   "Complete SevenOS Guide"|"Guide complet SevenOS") show_doc all ;;
+  "SevenOS Architecture"|"Architecture SevenOS") show_doc architecture ;;
+  "SevenOS Actions"|"Actions SevenOS") show_doc actions ;;
+  "Themes and Appearance"|"Thèmes et apparence") show_doc themes ;;
   "Keyboard Shortcuts"|"Raccourcis clavier") show_doc shortcuts ;;
   "Terminal Commands"|"Commandes terminal") open_command_doc ;;
   "SevenOS Mini OS"|"Mini OS SevenOS") show_doc mini-os ;;
@@ -695,7 +1271,7 @@ case "$selected" in
   "SevenOS Bar and Control Center"|"Barre SevenOS et panneau de contrôle") show_doc waybar ;;
   "Smart Window System") show_doc windows ;;
   "Terminal Classic"|"Terminal classique") seven-terminal classic ;;
-  "Terminal Dark"|"Terminal sombre") seven-terminal dark ;;
+  "Terminal Dark"|"Terminal sombre") seven-terminal profile ;;
   "Terminal Theme Menu"|"Menu du terminal") seven-terminal menu ;;
   "Open Files"|"Ouvrir Fichiers") seven-files ;;
   "Seven Files") show_doc files ;;

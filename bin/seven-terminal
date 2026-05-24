@@ -73,8 +73,35 @@ active_profile() {
   printf 'equinox\n'
 }
 
+current_theme_mode() {
+  local theme_conf="$CONFIG_HOME/sevenos/theme.conf"
+  if [[ "${SEVENOS_THEME_MODE:-}" == "dark" || "${SEVENOS_THEME_MODE:-}" == "light" ]]; then
+    printf '%s\n' "$SEVENOS_THEME_MODE"
+    return 0
+  fi
+  if [[ -r "$theme_conf" ]]; then
+    # shellcheck disable=SC1090
+    source "$theme_conf" >/dev/null 2>&1 || true
+    if [[ "${SEVENOS_THEME_MODE:-}" == "dark" || "${SEVENOS_THEME_MODE:-}" == "light" ]]; then
+      printf '%s\n' "$SEVENOS_THEME_MODE"
+      return 0
+    fi
+  fi
+  printf 'dark\n'
+}
+
 profile_terminal_mode() {
   local profile="${1:-$(active_profile)}"
+  local theme_mode
+  theme_mode="$(current_theme_mode)"
+  if [[ "$theme_mode" == "light" ]]; then
+    case "$profile" in
+      windows) printf 'windows' ;;
+      studio|baobab) printf 'focus' ;;
+      *) printf 'light' ;;
+    esac
+    return 0
+  fi
   case "$profile" in
     forge) printf 'forge' ;;
     shield) printf 'cyber' ;;
