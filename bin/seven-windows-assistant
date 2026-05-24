@@ -8,6 +8,9 @@ shift || true
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
 VM_PLAN="$CONFIG_DIR/windows-vm-plan.json"
 PROVISIONER="$ROOT_DIR/vm/windows-provisioner.sh"
+WINDOWS_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/sevenos/vm/windows"
+WINDOWS_DISK_PATH="$WINDOWS_DATA_DIR/${VM_NAME}.qcow2"
+VIRTIO_ISO="$WINDOWS_DATA_DIR/virtio-win.iso"
 
 language_code() {
   local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
@@ -55,6 +58,30 @@ dry_run() {
 
 dry_line() {
   printf 'DRY-RUN > Windows Mode > %s\n' "$*"
+}
+
+run_setup_step() {
+  local title="$1"
+  shift
+  printf '\n[Windows Bridge] %s\n' "$title"
+  if dry_run; then
+    printf 'DRY-RUN > '
+    printf '%q ' "$@"
+    printf '\n'
+    return 0
+  fi
+  "$@"
+}
+
+run_setup_shell_step() {
+  local title="$1"
+  local command="$2"
+  printf '\n[Windows Bridge] %s\n' "$title"
+  if dry_run; then
+    printf 'DRY-RUN > %s\n' "$command"
+    return 0
+  fi
+  bash -lc "$command"
 }
 
 command_state() {
@@ -604,6 +631,8 @@ if data:
 PY
   printf '\n'
   printf 'Friendly actions:\n'
+  printf '  seven windows setup          Guided first-install path for everyone\n'
+  printf '  seven windows setup --iso /path/windows.iso\n'
   printf '  seven windows guide          Explain the setup path\n'
   printf '  seven windows catalog        List app-first Windows workflows\n'
   printf '  seven windows resolve APP    Show the best engine for an app\n'
@@ -693,6 +722,14 @@ guide_action() {
   cat <<'EOF'
 SevenOS Windows Mode guide
 
+Simple first-install path
+   seven windows setup
+   seven windows setup --iso /path/to/windows.iso
+
+This prepares the Windows Bridge packages, libvirt service, network, local
+qcow2 disk, VirtIO driver media and VM registration when official Windows
+media is available.
+
 1. Install the Windows layer
    seven profile install windows
 
@@ -731,6 +768,166 @@ For Microsoft Office:
 - Bottles or the Windows VM path is the recommended daily-use route when the
   Microsoft 365 online installer keeps failing under plain Wine.
 EOF
+}
+
+setup_next_action() {
+  local status
+  status="$(status_json)"
+  WINDOWS_STATUS="$status" python - <<'PY'
+import json, os
+
+status = json.loads(os.environ.get("WINDOWS_STATUS", "{}") or "{}")
+provision = status.get("provisioning", {}) if isinstance(status, dict) else {}
+artifacts = provision.get("artifacts", {}) if isinstance(provision, dict) else {}
+print(json.dumps({
+    "vm_state": status.get("windows_vm", "MISS"),
+    "ready_to_create_vm": bool(provision.get("ready_to_create_vm")),
+    "recommended_next": provision.get("recommended_next", "seven windows provision --yes"),
+    "windows_iso_path": artifacts.get("windows_iso_path") or provision.get("windows_iso_path"),
+    "virtio_iso": artifacts.get("virtio_iso"),
+}, indent=2))
+PY
+}
+
+setup_action() {
+  local iso=""
+  local open_after=1
+  local json=0
+  local assume_yes=0
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --iso)
+        iso="${2:-}"
+        shift 2
+        ;;
+      --yes|-y)
+        assume_yes=1
+        shift
+        ;;
+      --open)
+        open_after=1
+        shift
+        ;;
+      --no-open)
+        open_after=0
+        shift
+        ;;
+      --json)
+        json=1
+        shift
+        ;;
+      --dry-run)
+        export SEVENOS_DRY_RUN=1
+        shift
+        ;;
+      -h|--help)
+        cat <<'EOF'
+SevenOS Windows Bridge first-install setup
+
+Usage:
+  seven windows setup
+  seven windows setup --iso /path/to/windows.iso
+  seven windows setup --yes --no-open
+
+What it does:
+  - installs the Windows Bridge compatibility and VM requirements;
+  - prepares libvirt service/network;
+  - creates the local qcow2 disk;
+  - downloads/prepares VirtIO driver media when possible;
+  - creates/registers the Windows VM when an official Windows ISO is available;
+  - opens the console only when useful, unless --no-open is used.
+EOF
+        return 0
+        ;;
+      *)
+        if [[ -z "$iso" && "$1" == *.iso ]]; then
+          iso="$1"
+          shift
+        else
+          printf 'seven windows setup: unknown option: %s\n' "$1" >&2
+          return 1
+        fi
+        ;;
+    esac
+  done
+
+  local yes_args=()
+  [[ "$assume_yes" == "1" ]] && yes_args=(--yes)
+
+  if [[ "$json" == "1" ]]; then
+    setup_next_action
+    return 0
+  fi
+
+  printf 'SevenOS Windows Bridge first-install\n'
+  printf '====================================\n'
+  printf 'This path keeps Windows legal and local: SevenOS prepares the VM,\n'
+  printf 'but you provide or fetch official Windows media.\n'
+
+  if [[ -n "$iso" ]] && ! dry_run && [[ ! -f "$iso" ]]; then
+    printf '\nWindows ISO not found: %s\n' "$iso" >&2
+    printf 'Download the official Windows ISO from Microsoft, then run:\n'
+    printf '  seven windows setup --iso /path/to/windows.iso\n'
+    return 1
+  fi
+
+  run_setup_step "Install Windows Bridge requirements" "$ROOT_DIR/install.sh" windows "${yes_args[@]}"
+  run_setup_step "Prepare libvirt service/network and repair obvious VM prerequisites" "$ROOT_DIR/bin/seven-windows-assistant" repair
+  run_setup_step "Prepare Windows disk/media cache" "$PROVISIONER" provision "${yes_args[@]}"
+
+  if [[ -n "$iso" ]]; then
+    run_setup_step "Prepare VirtIO driver media" "$PROVISIONER" virtio "${yes_args[@]}"
+    run_setup_step "Create/register Windows VM" "$ROOT_DIR/vm/windows-vm.sh" \
+      --iso "$iso" \
+      --virtio-iso "$VIRTIO_ISO" \
+      --disk-path "$WINDOWS_DISK_PATH" \
+      --os win11 \
+      --name "$VM_NAME"
+  else
+    local next_json recommended ready vm_state
+    next_json="$(setup_next_action)"
+    ready="$(NEXT_JSON="$next_json" python - <<'PY'
+import json, os
+print("1" if json.loads(os.environ["NEXT_JSON"]).get("ready_to_create_vm") else "0")
+PY
+)"
+    vm_state="$(NEXT_JSON="$next_json" python - <<'PY'
+import json, os
+print(json.loads(os.environ["NEXT_JSON"]).get("vm_state", "MISS"))
+PY
+)"
+    recommended="$(NEXT_JSON="$next_json" python - <<'PY'
+import json, os
+print(json.loads(os.environ["NEXT_JSON"]).get("recommended_next", "seven windows provision --yes"))
+PY
+)"
+    if [[ "$vm_state" == "MISS" && "$ready" == "1" && "$recommended" == seven\ windows\ create* ]]; then
+      run_setup_shell_step "Create/register Windows VM from prepared official media" "$recommended"
+    elif [[ "$vm_state" == "MISS" ]]; then
+      printf '\nWindows Bridge is prepared, but Windows media is still missing.\n'
+      printf 'Next simple step:\n'
+      printf '  1. Download a Windows 10/11 ISO from Microsoft.\n'
+      printf '  2. Run: seven windows setup --iso /path/to/windows.iso\n'
+      printf '\nSevenOS also supports the source helper view:\n'
+      printf '  seven windows sources\n'
+      open_after=0
+    fi
+  fi
+
+  if [[ "$open_after" == "1" ]]; then
+    case "$(vm_state)" in
+      OK|RUN)
+        run_setup_step "Open Windows Bridge console" "$ROOT_DIR/vm/windows-mode.sh" enter
+        ;;
+      *)
+        printf '\nWindows Bridge setup is saved. Run this when media is ready:\n'
+        printf '  seven windows setup --iso /path/to/windows.iso\n'
+        ;;
+    esac
+  fi
+
+  printf '\nWindows Bridge status:\n'
+  status_human
 }
 
 run_detached() {
@@ -892,6 +1089,9 @@ case "$ACTION" in
     ;;
   guide|help)
     guide_action
+    ;;
+  setup|first-run|onboarding|install)
+    setup_action "$@"
     ;;
   installer-help|disk-help)
     installer_help_action

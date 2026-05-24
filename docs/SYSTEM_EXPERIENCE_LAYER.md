@@ -757,7 +757,7 @@ Focus:
 SevenOS should not:
 
 - rewrite the Linux kernel
-- become only a beautiful Hyprland rice
+- collapse into a compositor theme with scripts
 - add hundreds of scripts without contracts
 - copy other desktop systems directly
 - introduce every language at once

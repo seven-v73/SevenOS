@@ -27,6 +27,7 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root)"
 export SEVENOS_ROOT="$ROOT_DIR"
+TARGET_WINDOW_ADDRESS="${SEVENOS_TARGET_WINDOW_ADDRESS:-}"
 
 notify() {
   local title="$1"
@@ -81,6 +82,11 @@ run_terminal() {
 open_rofi_menu() {
   local prompt="$1"
   shift
+  local theme="${SEVENOS_ROFI_THEME:-$HOME/.config/rofi/sevenos.rasi}"
+  local message="${SEVENOS_ROFI_MESSAGE:-}"
+  if [[ ! -s "$theme" && -s "$ROOT_DIR/hyprland/rofi/$(basename "$theme")" ]]; then
+    theme="$ROOT_DIR/hyprland/rofi/$(basename "$theme")"
+  fi
 
   if dry_run; then
     dry_line "$prompt > Open panel"
@@ -93,7 +99,11 @@ open_rofi_menu() {
     return 1
   fi
 
-  printf '%s\n' "$@" | rofi -dmenu -p "$prompt" -theme "$HOME/.config/rofi/sevenos.rasi"
+  if [[ -n "$message" ]]; then
+    printf '%s\n' "$@" | rofi -dmenu -i -matching fuzzy -p "$prompt" -mesg "$message" -theme "$theme"
+  else
+    printf '%s\n' "$@" | rofi -dmenu -i -matching fuzzy -p "$prompt" -theme "$theme"
+  fi
 }
 
 clean_selection() {
@@ -130,6 +140,26 @@ native_panel() {
   return 1
 }
 
+native_app_menu_panel() {
+  local area="$1"
+  local runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+  local request_dir="$runtime_dir/sevenos"
+  local request_file="$request_dir/app-menu-request.json"
+  local status_file="$request_dir/app-menu-status.json"
+  mkdir -p "$request_dir"
+  printf '{"area":"%s","time":%s}\n' "$area" "$(date +%s%3N 2>/dev/null || date +%s)" > "$request_file"
+
+  # Keep app menus deterministic: the Waybar click opens a fresh painted panel.
+  # Persistent reuse was elegant, but stale GTK surfaces could stay visible while
+  # their child content stopped repainting on some Hyprland setups.
+  pgrep -u "$USER" -f '(^|/| )seven-app-menu-native( |$)' | while read -r stale_pid; do
+    [[ -n "$stale_pid" ]] && kill "$stale_pid" >/dev/null 2>&1 || true
+  done
+  rm -f "$status_file"
+  # UX contract: native_panel seven-app-menu-native file
+  native_panel seven-app-menu-native "$area"
+}
+
 run_wifi() {
   local helper="$ROOT_DIR/bin/seven-wifi"
   if [[ -x "$helper" ]]; then
@@ -152,6 +182,16 @@ run_system_action() {
   esac
 }
 
+run_sevenos_action() {
+  local selected="$1"
+  case "$selected" in
+    "Éteindre"|"Eteindre") run_detached seven-power poweroff ;;
+    "Redémarrer"|"Redemarrer") run_detached seven-power reboot ;;
+    "Mise à jour") run_terminal "Mise à jour SevenOS" "seven update" ;;
+    *) return 0 ;;
+  esac
+}
+
 run_profile_action() {
   local selected="$1"
   case "$selected" in
@@ -165,6 +205,35 @@ run_profile_action() {
     "Activate Studio") run_terminal "SevenOS Studio" "seven profile activate studio" ;;
     "Activate Windows Bridge") run_terminal "SevenOS Windows Bridge" "seven profile activate windows" ;;
     "Activate Pulse") run_terminal "SevenOS Pulse" "seven profile activate pulse" ;;
+    *) return 0 ;;
+  esac
+}
+
+run_mini_context_action() {
+  local selected="$1"
+  case "$selected" in
+    "Daily Overview") run_detached seven-overview windows ;;
+    "Daily Files") open_path_with_files "$HOME" ;;
+    "Daily Doctor") run_terminal "SevenOS Doctor" "seven doctor check 2>/dev/null || seven status" ;;
+    "Forge Terminal") run_detached seven-terminal forge ;;
+    "Forge Logs") run_terminal "SevenOS Forge Logs" "git status --short; printf '\n'; git log --oneline -10" ;;
+    "Forge Build") run_terminal "SevenOS Forge Build" "if [[ -x ./build.sh ]]; then ./build.sh; elif [[ -f package.json ]]; then npm run build; elif [[ -f Makefile ]]; then make; else git status --short; fi" ;;
+    "Shield Center") run_detached seven-shield-center-native ;;
+    "Shield Audit") run_terminal "SevenOS Shield Audit" "seven shield status 2>/dev/null || seven doctor check security" ;;
+    "Shield Sandbox") run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
+    "Studio Media") open_path_with_files "$HOME/Pictures" ;;
+    "Studio Exports") open_path_with_files "$HOME/Videos" ;;
+    "Studio Recorder") run_detached seven-recorder area ;;
+    "Windows Bridge") run_detached seven-windows-assistant guide ;;
+    "Windows Apps") run_detached seven-windows-assistant apps ;;
+    "Windows Status") run_terminal "SevenOS Windows Bridge" "seven windows status 2>/dev/null || seven windows bridge-status" ;;
+    "Pulse Games") run_detached seven-hub games ;;
+    "Pulse Captures") open_path_with_files "$HOME/Videos" ;;
+    "Pulse Performance") run_terminal "SevenOS Pulse" "seven profile status --json 2>/dev/null || seven status" ;;
+    "Baobab Collections") open_path_with_files "$HOME/Documents" ;;
+    "Baobab Reader") run_detached seven-reader ;;
+    "Baobab Culture") run_detached seven-baobab-native ;;
+    "Mini OS Center") run_detached seven-mini-os-center ;;
     *) return 0 ;;
   esac
 }
@@ -215,6 +284,18 @@ run_audio_action() {
   esac
 }
 
+run_media_action() {
+  local selected="$1"
+  case "$selected" in
+    "Lecture / pause") run_detached playerctl -p playerctld play-pause ;;
+    "Suivant") run_detached playerctl -p playerctld next ;;
+    "Précédent") run_detached playerctl -p playerctld previous ;;
+    "Stop") run_detached playerctl -p playerctld stop ;;
+    "Audio") run_detached seven-quick-settings audio ;;
+    *) return 0 ;;
+  esac
+}
+
 run_battery_action() {
   local selected="$1"
   case "$selected" in
@@ -237,19 +318,507 @@ run_clock_action() {
   esac
 }
 
-show_menu() {
+active_window_field() {
+  local field="$1"
+  if ! command -v hyprctl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
+    return 0
+  fi
+  hyprctl activewindow -j 2>/dev/null | jq -r ".$field // empty" 2>/dev/null || true
+}
+
+capture_target_window() {
+  if [[ -z "$TARGET_WINDOW_ADDRESS" ]]; then
+    TARGET_WINDOW_ADDRESS="$(active_window_field address)"
+  fi
+}
+
+focus_target_window() {
+  capture_target_window
+  if [[ -n "$TARGET_WINDOW_ADDRESS" ]] && command -v hyprctl >/dev/null 2>&1; then
+    hyprctl dispatch focuswindow "address:$TARGET_WINDOW_ADDRESS" >/dev/null 2>&1 || true
+    sleep 0.06
+  fi
+}
+
+current_profile_key() {
+  local manager="$ROOT_DIR/profiles/profile-manager.sh"
+  if [[ -x "$manager" ]] && command -v jq >/dev/null 2>&1; then
+    "$manager" current --json 2>/dev/null | jq -r '.key // "equinox"' 2>/dev/null || printf 'equinox\n'
+  else
+    printf '%s\n' "${SEVENOS_PROFILE:-equinox}"
+  fi
+}
+
+app_menu_mode() {
+  local app_class profile
+  app_class="$(active_window_field class)"
+  [[ -n "$app_class" ]] || app_class="$(active_window_field initialClass)"
+  app_class="${app_class,,}"
+  profile="$(current_profile_key)"
+  profile="${profile,,}"
+
+  if [[ "$app_class" =~ (code|codium|jetbrains|terminal|kitty) ]]; then
+    printf 'developer\n'
+  elif [[ "$app_class" =~ (firefox|chrom|brave|browser) ]]; then
+    printf 'browser\n'
+  elif [[ "$app_class" =~ (nautilus|seven-files|file) ]]; then
+    printf 'files\n'
+  elif [[ "$profile" == "studio" || "$profile" == "shield" || "$profile" == "windows" || "$profile" == "forge" || "$profile" == "pulse" || "$profile" == "baobab" ]]; then
+    printf '%s\n' "$profile"
+  else
+    printf 'default\n'
+  fi
+}
+
+app_menu_key() {
+  local app_class
+  app_class="$(active_window_field class)"
+  [[ -n "$app_class" ]] || app_class="$(active_window_field initialClass)"
+  app_class="${app_class,,}"
+  if [[ "$app_class" == *google-chrome* ]]; then
+    printf 'chrome\n'
+  elif [[ "$app_class" == *chromium* ]]; then
+    printf 'chromium\n'
+  elif [[ "$app_class" == *firefox* || "$app_class" == *librewolf* ]]; then
+    printf 'firefox\n'
+  elif [[ "$app_class" == "code" || "$app_class" == *visual-studio-code* ]]; then
+    printf 'vscode\n'
+  else
+    printf 'generic\n'
+  fi
+}
+
+app_service_key() {
+  local key title
+  key="$(app_menu_key)"
+  title="$(active_window_field title)"
+  title="${title,,}"
+  [[ "$key" =~ ^(chrome|chromium|firefox|brave)$ ]] || { printf '\n'; return 0; }
+  if [[ "$title" == *youtube* ]]; then
+    printf 'youtube\n'
+  elif [[ "$title" == *gmail* || ( "$title" == *inbox* && "$title" == *mail* ) ]]; then
+    printf 'gmail\n'
+  elif [[ "$title" == *"google docs"* || "$title" == *"docs.google"* ]]; then
+    printf 'google-docs\n'
+  elif [[ "$title" == *"google sheets"* || "$title" == *"sheets.google"* ]]; then
+    printf 'google-sheets\n'
+  elif [[ "$title" == *"google drive"* || "$title" == *"drive.google"* ]]; then
+    printf 'google-drive\n'
+  elif [[ "$title" == *github* ]]; then
+    printf 'github\n'
+  elif [[ "$title" == *figma* ]]; then
+    printf 'figma\n'
+  elif [[ "$title" == *notion* ]]; then
+    printf 'notion\n'
+  elif [[ "$title" == *spotify* ]]; then
+    printf 'spotify-web\n'
+  elif [[ "$title" == *netflix* || "$title" == *"prime video"* || "$title" == *"disney+"* ]]; then
+    printf 'streaming\n'
+  else
+    printf '\n'
+  fi
+}
+
+copy_active_window_title() {
+  local title
+  title="$(active_window_field title)"
+  if [[ -z "$title" ]]; then
+    notify "SevenOS Menu" "No active window title to copy."
+    return 0
+  fi
+  if dry_run; then
+    dry_line "Copy window title > $title"
+    return 0
+  fi
+  if command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$title" | wl-copy
+    notify "SevenOS Menu" "Window title copied."
+  else
+    notify "SevenOS Menu" "wl-copy is not installed."
+  fi
+}
+
+open_path_with_files() {
+  local path="$1"
+  if [[ -x "$ROOT_DIR/bin/seven-files" ]]; then
+    run_detached "$ROOT_DIR/bin/seven-files" "$path"
+  elif command -v seven-files >/dev/null 2>&1; then
+    run_detached seven-files "$path"
+  else
+    run_detached xdg-open "$path"
+  fi
+}
+
+send_menu_key() {
+  local key="$1"
+  if dry_run; then
+    dry_line "Active app menu > Alt+$key"
+    return 0
+  fi
+  if command -v wtype >/dev/null 2>&1; then
+    wtype -M alt -k "$key" -m alt
+    return 0
+  fi
+  if command -v ydotool >/dev/null 2>&1; then
+    ydotool key "56:1" "${key}:1" "${key}:0" "56:0" >/dev/null 2>&1 || true
+    return 0
+  fi
+  notify "SevenOS Menu" "Install wtype for native app-menu clicks."
+}
+
+send_shortcut() {
+  local spec="$1"
+  local key modifiers modifier
+  IFS='+' read -r -a parts <<<"$spec"
+  key="${parts[-1]}"
+  modifiers=("${parts[@]:0:${#parts[@]}-1}")
+  if dry_run; then
+    dry_line "Active app > ${spec}"
+    return 0
+  fi
+  if ! command -v wtype >/dev/null 2>&1; then
+    notify "SevenOS Menu" "Install wtype to control the active app from the menu bar."
+    return 0
+  fi
+  focus_target_window
+  local -a args=()
+  for modifier in "${modifiers[@]}"; do
+    [[ -n "$modifier" ]] || continue
+    args+=("-M" "${modifier,,}")
+  done
+  args+=("-k" "${key,,}")
+  for ((idx=${#modifiers[@]}-1; idx>=0; idx--)); do
+    modifier="${modifiers[$idx]}"
+    [[ -n "$modifier" ]] || continue
+    args+=("-m" "${modifier,,}")
+  done
+  wtype "${args[@]}"
+}
+
+send_function_key() {
+  local key="$1"
+  if dry_run; then
+    dry_line "Active app > $key"
+    return 0
+  fi
+  if ! command -v wtype >/dev/null 2>&1; then
+    notify "SevenOS Menu" "Install wtype to control the active app from the menu bar."
+    return 0
+  fi
+  focus_target_window
+  wtype -k "$key"
+}
+
+run_active_app_command() {
+  local selected="$1"
+  case "$selected" in
+    "Nouvel onglet") send_shortcut "ctrl+t" ;;
+    "Nouvelle fenêtre") send_shortcut "ctrl+n" ;;
+    "Nouvelle fenêtre privée") send_shortcut "ctrl+shift+n" ;;
+    "Ouvrir") send_shortcut "ctrl+o" ;;
+    "Enregistrer") send_shortcut "ctrl+s" ;;
+    "Imprimer") send_shortcut "ctrl+p" ;;
+    "Fermer") send_shortcut "ctrl+w" ;;
+    "Quitter") send_shortcut "ctrl+q" ;;
+    "Annuler") send_shortcut "ctrl+z" ;;
+    "Rétablir") send_shortcut "ctrl+shift+z" ;;
+    "Couper") send_shortcut "ctrl+x" ;;
+    "Copier") send_shortcut "ctrl+c" ;;
+    "Coller") send_shortcut "ctrl+v" ;;
+    "Tout sélectionner") send_shortcut "ctrl+a" ;;
+    "Rechercher") send_shortcut "ctrl+f" ;;
+    "Préférences") send_shortcut "ctrl+comma" ;;
+    "Recharger") send_shortcut "ctrl+r" ;;
+    "Zoom avant") send_shortcut "ctrl+plus" ;;
+    "Zoom arrière") send_shortcut "ctrl+minus" ;;
+    "Taille réelle") send_shortcut "ctrl+0" ;;
+    "Plein écran") send_function_key "F11" ;;
+    "Outils développeur") send_shortcut "ctrl+shift+i" ;;
+    "Historique") send_shortcut "ctrl+h" ;;
+    "Téléchargements") send_shortcut "ctrl+j" ;;
+    "Barre d'adresse") send_shortcut "ctrl+l" ;;
+    "Fenêtre privée") send_shortcut "ctrl+shift+n" ;;
+    "Rouvrir l'onglet fermé") send_shortcut "ctrl+shift+t" ;;
+    "Onglet suivant") send_shortcut "ctrl+Tab" ;;
+    "Onglet précédent") send_shortcut "ctrl+shift+Tab" ;;
+    "Fermer l'onglet") send_shortcut "ctrl+w" ;;
+    "Favoris"|"Marque-pages") send_shortcut "ctrl+shift+o" ;;
+    "Ajouter"|"Ajouter cette page") send_shortcut "ctrl+d" ;;
+    "Lecture / pause") send_shortcut "space" ;;
+    "Vidéo suivante") send_shortcut "shift+n" ;;
+    "Vidéo précédente") send_shortcut "shift+p" ;;
+    "Mode cinéma") send_shortcut "t" ;;
+    "Sous-titres") send_shortcut "c" ;;
+    "J'aime") send_shortcut "shift+=" ;;
+    "Nouveau message") send_shortcut "c" ;;
+    "Archiver") send_shortcut "e" ;;
+    "Spam") send_shortcut "shift+1" ;;
+    "Lien") send_shortcut "ctrl+k" ;;
+    "Palette commandes") send_shortcut "ctrl+shift+p" ;;
+    "Palette terminal") run_detached seven-terminal menu ;;
+    "Terminal doctor") run_terminal "Seven Terminal Doctor" "seven-terminal doctor 2>/dev/null || seven doctor check terminal" ;;
+    "Projet Forge") run_detached seven-terminal forge ;;
+    "Seven Files Home") open_path_with_files "$HOME" ;;
+    "Seven Files profil") run_detached seven-files profile ;;
+    "Exports Studio") open_path_with_files "$HOME/Videos" ;;
+    "Shield Center") run_detached seven-shield-center-native ;;
+    "Sandbox Shield") run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
+    "Windows Assistant") run_detached seven-windows-assistant guide ;;
+    "Windows Apps") run_detached seven-windows-assistant apps ;;
+    "Jeux Pulse") run_detached seven-hub games ;;
+    "Collections Baobab") open_path_with_files "$HOME/Documents" ;;
+    "Contrôles fenêtre") run_detached seven-window controls ;;
+    "Centrer") run_detached hyprctl dispatch centerwindow ;;
+    "Flottante") run_detached seven-window toggle-float ;;
+    "Split gauche") run_detached seven-window split-left ;;
+    "Split droite") run_detached seven-window split-right ;;
+    "Aide app active") send_function_key "F1" ;;
+    "Aide SevenOS") run_detached seven-help ;;
+    *) return 0 ;;
+  esac
+}
+
+show_active_app_menu() {
   local area="$1"
+  local mode prompt runner selected
+  local title
+  local -a options
+  capture_target_window
+  title="$(active_window_field title)"
+  mode="$(app_menu_mode)"
+  runner="run_active_app_command"
+  export SEVENOS_ROFI_THEME="$HOME/.config/rofi/app-menu.rasi"
+  export SEVENOS_ROFI_MESSAGE="${title:-Application active}"
+  case "$area" in
+    file)
+      if [[ "$(app_menu_key)" =~ ^(chrome|chromium)$ ]]; then
+        prompt="Onglets"
+        options=("󰝒  Nouvel onglet    Ctrl+T" "󰈔  Nouvelle fenêtre    Ctrl+N" "󰈹  Fenêtre privée    Ctrl+Shift+N" "󰑖  Rouvrir l'onglet fermé    Ctrl+Shift+T" "󰓩  Onglet suivant    Ctrl+Tab" "󰓪  Onglet précédent    Ctrl+Shift+Tab" "󰅖  Fermer l'onglet    Ctrl+W")
+      else
+        prompt="Fichier"
+        options=("󰝒  Nouvel onglet    Ctrl+T" "󰈔  Nouvelle fenêtre    Ctrl+N" "󰈹  Nouvelle fenêtre privée    Ctrl+Shift+N" "󰉋  Ouvrir    Ctrl+O" "󰆓  Enregistrer    Ctrl+S" "󰐪  Imprimer    Ctrl+P" "󰅖  Fermer    Ctrl+W")
+      fi
+      ;;
+    edit)
+      prompt="Édition"
+      options=("󰕌  Annuler    Ctrl+Z" "󰑎  Rétablir    Ctrl+Shift+Z" "󰅚  Couper    Ctrl+X" "󰆏  Copier    Ctrl+C" "󰆒  Coller    Ctrl+V" "󰒆  Tout sélectionner    Ctrl+A" "󰍉  Rechercher    Ctrl+F")
+      ;;
+    view)
+      prompt="Affichage"
+      options=("󰑓  Recharger    Ctrl+R" "󰍉  Zoom avant    Ctrl++" "󰍉  Zoom arrière    Ctrl+-" "󰾆  Taille réelle    Ctrl+0" "󰊓  Plein écran    F11")
+      [[ "$mode" == "developer" || "$mode" == "browser" ]] && options+=("󰙨  Outils développeur    Ctrl+Shift+I")
+      ;;
+    extra)
+      case "$mode" in
+        browser)
+          prompt="Historique"
+          options=("󰋚  Historique    Ctrl+H" "󰉍  Téléchargements    Ctrl+J" "󰀂  Barre d'adresse    Ctrl+L")
+          ;;
+        developer)
+          prompt="Terminal"
+          options=("󰆍  Palette terminal" "󰒓  Terminal doctor" "󰌢  Projet Forge")
+          ;;
+        forge)
+          prompt="Forge"
+          options=("󰌢  Projet Forge" "󰆍  Palette terminal")
+          ;;
+        files)
+          prompt="Aller"
+          options=("󰉋  Seven Files Home" "󰉋  Seven Files profil")
+          ;;
+        studio)
+          prompt="Export"
+          options=("󰈙  Exports Studio")
+          ;;
+        shield)
+          prompt="Sandbox"
+          options=("󰒃  Shield Center" "󰛵  Sandbox Shield")
+          ;;
+        windows)
+          prompt="Windows"
+          options=("󰖳  Windows Assistant" "󰿭  Windows Apps")
+          ;;
+        pulse)
+          prompt="Jeux"
+          options=("󰓅  Jeux Pulse")
+          ;;
+        baobab)
+          prompt="Collections"
+          options=("󰔱  Collections Baobab")
+          ;;
+        *)
+          prompt="Actions"
+          options=("󰍉  Rechercher" "󰊓  Plein écran")
+          ;;
+      esac
+      ;;
+    tools)
+      case "$mode" in
+        browser)
+          prompt="Favoris"
+          options=("󰃀  Favoris" "󰆤  Ajouter cette page    Ctrl+D" "󰈙  Importer")
+          ;;
+        developer|forge)
+          prompt="Terminal"
+          options=("󰆍  Nouveau terminal" "󰒓  Terminal doctor" "󰌢  Projet Forge")
+          ;;
+        files)
+          prompt="Actions"
+          options=("󰉋  Seven Files Home" "󰉋  Seven Files profil" "󰈙  Exporter sélection")
+          ;;
+        media)
+          prompt="Audio"
+          options=("󰕾  Volume" "󰝟  Muet" "󰊓  Plein écran")
+          ;;
+        shield)
+          prompt="Audit"
+          options=("󰒃  Shield Center" "󰛵  Audit rapide")
+          ;;
+        windows)
+          prompt="Apps"
+          options=("󰿭  Windows Apps" "󰖳  Windows Assistant")
+          ;;
+        *)
+          prompt="Actions"
+          options=("󰍉  Rechercher" "󰊓  Plein écran")
+          ;;
+      esac
+      ;;
+    window)
+      prompt="Fenêtre"
+      options=("󰖲  Contrôles fenêtre" "󰉌  Centrer" "󰹑  Flottante" "󰤼  Split gauche" "󰤽  Split droite" "󰅖  Fermer    Ctrl+W")
+      ;;
+    help)
+      prompt="Aide"
+      options=("󰋖  Aide app active" "󰋖  Aide SevenOS")
+      ;;
+    *)
+      show_menu app-menu
+      return 0
+      ;;
+  esac
+  if dry_run; then
+    open_rofi_menu "$prompt" "${options[@]}"
+    return 0
+  fi
+  selected="$(open_rofi_menu "$prompt" "${options[@]}")"
+  selected="$(clean_selection "$selected")"
+  "$runner" "$selected"
+}
+
+run_direct_app_menu() {
+  local area="$1"
+  local mode
+  mode="$(app_menu_mode)"
+  case "$area" in
+    file)
+      case "$(app_menu_key)" in
+        chrome|chromium) send_shortcut ctrl+t ;;
+        *) send_menu_key f ;;
+      esac
+      ;;
+    edit) send_menu_key e ;;
+    view)
+      case "$mode" in
+        developer) send_menu_key s ;;
+        shield) run_detached seven-shield-center-native ;;
+        windows) run_detached seven-windows-assistant guide ;;
+        *) send_menu_key v ;;
+      esac
+      ;;
+    extra)
+      case "$mode" in
+        browser) run_detached xdg-open "chrome://history" ;;
+        developer|forge) run_detached seven-terminal menu ;;
+        files) run_detached seven-files profile ;;
+        studio) open_path_with_files "$HOME/Videos" ;;
+        shield) run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
+        windows) run_detached seven-windows-assistant apps ;;
+        pulse) run_detached seven-hub games ;;
+        baobab) open_path_with_files "$HOME/Documents" ;;
+        *) send_menu_key g ;;
+      esac
+      ;;
+    tools)
+      case "$mode" in
+        browser) send_shortcut ctrl+d ;;
+        developer|forge) run_detached seven-terminal menu ;;
+        files) run_detached seven-files profile ;;
+        shield) run_detached seven-shield-center-native ;;
+        windows) run_detached seven-windows-assistant apps ;;
+        *) send_menu_key t ;;
+      esac
+      ;;
+    window) run_detached seven-window controls ;;
+    help) send_menu_key h ;;
+    *) show_menu app-menu ;;
+  esac
+}
+
+run_app_menu_action() {
+  local selected="$1"
+  case "$selected" in
+    "Fichier · Nouveau terminal") run_detached seven-terminal focus ;;
+    "Fichier · Ouvrir Seven Files") open_path_with_files "$HOME" ;;
+    "Fichier · Dossier personnel") open_path_with_files "$HOME" ;;
+    "Fichier · Téléchargements") open_path_with_files "$HOME/Downloads" ;;
+    "Édition · Copier titre fenêtre") copy_active_window_title ;;
+    "Édition · Presse-papiers") run_detached seven-clipboard ;;
+    "Affichage · Vue fenêtres") run_detached seven-overview windows ;;
+    "Fenêtre · Contrôles") run_detached seven-window controls ;;
+    "Fenêtre · Centrer") run_detached hyprctl dispatch centerwindow ;;
+    "Fenêtre · Flottante") run_detached seven-window toggle-float ;;
+    "Fenêtre · Plein écran") run_detached seven-window fullscreen ;;
+    "Fenêtre · Split gauche") run_detached seven-window split-left ;;
+    "Fenêtre · Split droite") run_detached seven-window split-right ;;
+    "Fenêtre · Fermer") run_detached hyprctl dispatch killactive ;;
+    "Terminal · Palette") run_detached seven-terminal menu ;;
+    "Terminal · Doctor") run_terminal "Seven Terminal Doctor" "seven-terminal doctor 2>/dev/null || seven doctor check terminal" ;;
+    "Forge · Projet Git") run_detached seven-terminal forge ;;
+    "Forge · Logs") run_terminal "SevenOS Forge Logs" "git status --short; printf '\n'; git log --oneline -10" ;;
+    "Navigateur · Nouvelle fenêtre") run_detached xdg-open about:blank ;;
+    "Navigateur · Téléchargements") open_path_with_files "$HOME/Downloads" ;;
+    "Seven Files · Home") open_path_with_files "$HOME" ;;
+    "Seven Files · Profil actif") run_detached seven-files profile ;;
+    "Studio · Médias") open_path_with_files "$HOME/Pictures" ;;
+    "Studio · Exports") open_path_with_files "$HOME/Videos" ;;
+    "Shield · Centre") run_detached seven-shield-center-native ;;
+    "Shield · Audit rapide") run_terminal "SevenOS Shield Audit" "seven shield status 2>/dev/null || seven doctor check security" ;;
+    "Windows · Assistant") run_detached seven-windows-assistant guide ;;
+    "Windows · Apps") run_detached seven-windows-assistant apps ;;
+    "Pulse · Captures") open_path_with_files "$HOME/Videos" ;;
+    "Pulse · Jeux") run_detached seven-hub games ;;
+    "Baobab · Collections") open_path_with_files "$HOME/Documents" ;;
+    "Aide · SevenOS") run_detached seven-help ;;
+    *) return 0 ;;
+  esac
+}
+
+show_menu() {
+  local area="${1:-system}"
+  shift || true
   local prompt runner
   local -a options
   local selected
 
   if ! dry_run; then
     case "$area" in
+      app-file) native_app_menu_panel file && return 0 ;;
+      app-edit) native_app_menu_panel edit && return 0 ;;
+      app-view) native_app_menu_panel view && return 0 ;;
+      app-extra) native_app_menu_panel extra && return 0 ;;
+      app-tools) native_app_menu_panel tools && return 0 ;;
+      app-window) native_app_menu_panel window && return 0 ;;
+      app-help) native_app_menu_panel help && return 0 ;;
+      sevenos-menu) native_panel seven-system-menu-native && return 0 ;;
+      app-menu-window) native_panel seven-window-controls-native && return 0 ;;
       profile) native_panel seven-profile-center-native && return 0 ;;
       security) native_panel seven-shield-center-native && return 0 ;;
       network) native_panel seven-waybar-center-native network && return 0 ;;
       bluetooth) native_panel seven-waybar-center-native bluetooth && return 0 ;;
       audio) native_panel seven-waybar-center-native audio && return 0 ;;
+      media-menu) native_panel seven-media-menu-native && return 0 ;;
+      mini-context) native_panel seven-mini-context-menu-native && return 0 ;;
       battery) native_panel seven-waybar-center-native power && return 0 ;;
       system) native_panel seven-waybar-center-native system && return 0 ;;
       clock) native_panel seven-waybar-center-native time && return 0 ;;
@@ -257,6 +826,47 @@ show_menu() {
   fi
 
   case "$area" in
+    app-command)
+      run_active_app_command "$*"
+      return 0
+      ;;
+    mini-command)
+      run_mini_context_action "$*"
+      return 0
+      ;;
+    sevenos-menu)
+      prompt="SevenOS"
+      runner="run_sevenos_action"
+      options=("⏻  Éteindre" "↻  Redémarrer" "⇣  Mise à jour")
+      ;;
+    app-file)
+      show_active_app_menu file
+      return 0
+      ;;
+    app-edit)
+      show_active_app_menu edit
+      return 0
+      ;;
+    app-view)
+      show_active_app_menu view
+      return 0
+      ;;
+    app-extra)
+      show_active_app_menu extra
+      return 0
+      ;;
+    app-tools)
+      show_active_app_menu tools
+      return 0
+      ;;
+    app-window)
+      show_active_app_menu window
+      return 0
+      ;;
+    app-help)
+      show_active_app_menu help
+      return 0
+      ;;
     system)
       prompt="System"
       runner="run_system_action"
@@ -266,6 +876,19 @@ show_menu() {
       prompt="Profiles"
       runner="run_profile_action"
       options=("󰐃  Profile Center" "󰉋  Workspace" "󰒓  Settings" "󰘦  Activate Equinox" "󰔱  Activate Baobab" "󰌢  Activate Forge" "󰒃  Activate Shield" "󰏗  Activate Studio" "󰖳  Activate Windows Bridge" "󰓅  Activate Pulse")
+      ;;
+    mini-context)
+      prompt="Mini OS"
+      runner="run_mini_context_action"
+      case "$(current_profile_key)" in
+        forge) options=("󰆍  Forge Terminal" "󰑭  Forge Logs" "󰒓  Forge Build" "󰐃  Mini OS Center") ;;
+        shield) options=("󰒃  Shield Center" "󰛵  Shield Audit" "󰞀  Shield Sandbox" "󰐃  Mini OS Center") ;;
+        studio) options=("󰏗  Studio Media" "󰈙  Studio Exports" "󰻂  Studio Recorder" "󰐃  Mini OS Center") ;;
+        windows) options=("󰖳  Windows Bridge" "󰿭  Windows Apps" "󰄧  Windows Status" "󰐃  Mini OS Center") ;;
+        pulse) options=("󰓅  Pulse Games" "󰹑  Pulse Captures" "󰓅  Pulse Performance" "󰐃  Mini OS Center") ;;
+        baobab) options=("󰔱  Baobab Collections" "󰈙  Baobab Reader" "󰐅  Baobab Culture" "󰐃  Mini OS Center") ;;
+        *) options=("󰕰  Daily Overview" "󰉋  Daily Files" "󰒓  Daily Doctor" "󰐃  Mini OS Center") ;;
+      esac
       ;;
     security)
       prompt="Security"
@@ -287,6 +910,11 @@ show_menu() {
       runner="run_audio_action"
       options=("󰕾  Volume Mixer" "󰖁  Mute Toggle" "󰝝  Volume Up" "󰝞  Volume Down" "󰒓  Settings")
       ;;
+    media-menu)
+      prompt="Média"
+      runner="run_media_action"
+      options=("󰐊  Lecture / pause" "󰒭  Suivant" "󰒮  Précédent" "󰓛  Stop" "󰕾  Audio")
+      ;;
     battery)
       prompt="Power"
       runner="run_battery_action"
@@ -296,6 +924,59 @@ show_menu() {
       prompt="Time"
       runner="run_clock_action"
       options=("󰃭  Calendar" "󰥔  Clock" "󰀗  World Time" "󰒓  Settings")
+      ;;
+    app-menu)
+      prompt="SevenOS Menu"
+      runner="run_app_menu_action"
+      options=(
+        "󰆍  Fichier · Nouveau terminal"
+        "󰉋  Fichier · Ouvrir Seven Files"
+        "󰅇  Édition · Copier titre fenêtre"
+        "󰅌  Édition · Presse-papiers"
+        "󰕰  Affichage · Vue fenêtres"
+        "󰖲  Fenêtre · Contrôles"
+        "󰉌  Fenêtre · Centrer"
+        "󰹑  Fenêtre · Flottante"
+        "󰊓  Fenêtre · Plein écran"
+        "󰤼  Fenêtre · Split gauche"
+        "󰤽  Fenêtre · Split droite"
+        "󰅖  Fenêtre · Fermer"
+      )
+      case "$(app_menu_mode)" in
+        developer)
+          options+=("󰆍  Terminal · Palette" "󰒓  Terminal · Doctor" "󰌢  Forge · Projet Git" "󰑭  Forge · Logs")
+          ;;
+        forge)
+          options+=("󰌢  Forge · Projet Git" "󰑭  Forge · Logs" "󰆍  Terminal · Palette")
+          ;;
+        browser)
+          options+=("󰈹  Navigateur · Nouvelle fenêtre" "󰉍  Navigateur · Téléchargements")
+          ;;
+        files)
+          options+=("󰉋  Seven Files · Home" "󰉋  Seven Files · Profil actif" "󰉍  Fichier · Téléchargements")
+          ;;
+        studio)
+          options+=("󰏗  Studio · Médias" "󰈙  Studio · Exports")
+          ;;
+        shield)
+          options+=("󰒃  Shield · Centre" "󰛵  Shield · Audit rapide")
+          ;;
+        windows)
+          options+=("󰖳  Windows · Assistant" "󰿭  Windows · Apps")
+          ;;
+        pulse)
+          options+=("󰓅  Pulse · Jeux" "󰹑  Pulse · Captures")
+          ;;
+        baobab)
+          options+=("󰔱  Baobab · Collections")
+          ;;
+      esac
+      options+=("󰋖  Aide · SevenOS")
+      ;;
+    app-menu-window)
+      prompt="Window"
+      runner="run_app_menu_action"
+      options=("󰖲  Fenêtre · Contrôles" "󰉌  Fenêtre · Centrer" "󰹑  Fenêtre · Flottante" "󰊓  Fenêtre · Plein écran" "󰤼  Fenêtre · Split gauche" "󰤽  Fenêtre · Split droite" "󰅖  Fenêtre · Fermer")
       ;;
     network-connect)
       run_wifi connect
@@ -329,4 +1010,4 @@ show_menu() {
   "$runner" "$selected"
 }
 
-show_menu "${1:-system}"
+show_menu "$@"

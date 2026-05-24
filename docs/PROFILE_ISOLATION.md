@@ -15,6 +15,8 @@ SevenOS separates three layers:
 - profile activation: only the selected LAPA runtime exposes its capabilities
 - execution policy: SevenOS commands run through profile-aware slices and shims
 - data boundary: strict launches can use per-profile config/HOME/cache/data roots
+- package view: SevenOS exposes a per-profile `PATH` over the global pacman store
+- rootfs boundary: optional per-profile rootfs targets can hold independent package installations
 - identity state: wallpaper and other user-facing mini OS preferences are stored per profile
 
 This avoids pretending pacman is per-profile while still preventing profile
@@ -37,6 +39,9 @@ Activation writes:
 - `~/.config/sevenos/inactive-packages.json`
 - `~/.config/sevenos/profile-services.json`
 - `~/.local/share/sevenos/profile-shims/`
+- `~/.local/share/sevenos/profile-package-views/<profile>/bin/`
+- `~/.local/share/sevenos/profile-rootfs/<profile>/rootfs/`
+- `~/.local/share/sevenos/profile-rootfs-manifests/<profile>.json`
 - `~/.local/share/sevenos/bridge/<profile>/bridge-inbox.jsonl`
 - `~/.local/share/sevenos/bridge/<profile>/bridge-outbox.jsonl`
 - `~/.local/share/sevenos/objects/`
@@ -45,6 +50,8 @@ Activation writes:
 - `~/.local/share/sevenos/profile-overlays/<profile>/{upper,work,merged}`
 
 Seven Terminal sources `profile-isolation.env` and prepends the shim directory.
+It also prepends the active `SEVENOS_PACKAGE_VIEW`, so commands that belong to
+another mini OS are hidden or routed before the host system can expose them.
 
 ## Commands
 
@@ -57,6 +64,15 @@ seven-profile-run --profile shield --container nmap --version
 seven-profile-run --profile forge --container --workspace . npm test
 seven-profile-run --profile forge --container --workspace-profile sh
 seven-profile-run --profile shield --ephemeral sh
+seven profile-rootfs status
+seven profile-rootfs audit all
+seven profile-rootfs seal all --apply --yes
+seven profile-rootfs verify all
+seven profile-rootfs prepare forge --apply --yes
+seven profile-rootfs build forge --apply --yes
+seven profile exec forge --rootfs sh
+seven profile exec shield --rootfs --isolation strict sh
+seven profile exec shield --rootfs --isolation strict --seal-required sh
 seven profile exec studio --container krita
 seven bridge status
 seven bridge doctor
@@ -104,6 +120,149 @@ Use `--ephemeral` for a disposable strict session. SevenOS creates temporary
 config/HOME/cache/data roots, runs the command, then removes them after the command
 exits. Explicit workspaces mounted with `--workspace` or `--workspace-profile`
 are not deleted.
+
+## Profile Package Views And RootFS
+
+SevenOS now has two package boundaries:
+
+- **profile package view**: a per-mini-OS `bin` directory that exposes only the
+  commands owned by the active mini OS. This is active by default and still uses
+  host pacman binaries physically.
+- **profile rootfs**: a per-mini-OS root filesystem target under
+  `~/.local/share/sevenos/profile-rootfs/<profile>/rootfs`. Once built, it can
+  run commands with `seven profile exec <profile> --rootfs <command>`.
+
+Preparing a rootfs is safe and creates directories, manifests and package
+lists. Building it needs `pacstrap` and root privileges because it installs a
+real Arch package set into the profile rootfs:
+
+```bash
+seven profile-rootfs prepare forge --apply --yes
+seven profile-rootfs build forge --apply --yes
+seven profile exec forge --rootfs sh
+```
+
+Until a profile rootfs contains `/usr/bin`, `--rootfs` refuses to launch and
+prints the build command instead of silently falling back to the host.
+
+Runtime rootfs sessions are mounted read-only by default. Profile HOME, cache
+and data stay writable through their own profile mounts, but `/usr`, `/etc`,
+`/var/lib/pacman` and the rest of the mini OS rootfs cannot be changed by a
+normal app launch. This keeps a built mini OS stable after sealing.
+
+Writable rootfs access is an explicit maintenance operation:
+
+```bash
+seven profile exec forge --rootfs-writable sh
+seven profile-rootfs verify all
+seven profile-rootfs seal all --apply --yes
+```
+
+Use it only for intentional package/rootfs maintenance, then verify and reseal
+so SevenOS can detect drift again on the next launch.
+
+## Automatic Mini OS Requirements
+
+Each mini OS owns package manifests in `profiles/catalog.json`. SevenOS exposes
+a single requirements route so users do not have to search package names
+manually:
+
+```bash
+seven profile requirements forge
+seven profile requirements forge --apply --yes
+seven profile requirements all --json
+seven profile requirements studio --optional --apply --yes
+```
+
+When a command is launched through `seven profile exec <profile> ...` and the
+command is not visible in that mini OS package view, SevenOS automatically runs
+the required profile installer, refreshes the profile isolation/package view,
+and retries resolution. Set `SEVENOS_PROFILE_REQUIREMENTS_AUTO=0` to disable
+that automatic repair path.
+
+## Runtime Isolation Modes
+
+`seven-profile-run` supports three declared modes:
+
+- `balanced`: daily graphical mode. It keeps the profile HOME/cache/data/rootfs
+  boundary, but shares runtime sockets, host GPU/dev and network so normal apps
+  can draw windows, play audio and access the session.
+- `strict`: hardened namespace mode. It disables network, exposes a minimal
+  `/dev`, removes the host runtime directory and blocks DBus/session sockets by
+  default. This is the default posture for Shield-style commands.
+- `independent`: native mini OS mode. It forces the profile rootfs path,
+  verifies the seal, mounts the rootfs read-only, and keeps HOME/cache/data
+  profile-scoped. It does not use a VM.
+
+Examples:
+
+```bash
+seven profile exec forge --rootfs --isolation balanced sh
+seven profile exec forge --independent sh
+seven profile exec shield --rootfs --isolation strict sh
+seven profile exec pulse --container --isolation strict sh
+seven profile-rootfs audit all --json
+seven profile-rootfs seal all --apply --yes
+seven profile-rootfs verify all --json
+```
+
+`strict` is the closest non-VM boundary currently available: it still shares the
+host kernel, but it no longer shares the normal network namespace, DBus/runtime
+sockets or host GPU devices.
+
+## Native Independent Mini OS Boundaries
+
+SevenOS mini OS profiles are intended to be independent without becoming VMs.
+The native independent path is:
+
+```bash
+seven profile-rootfs status
+seven profile-rootfs audit all
+seven profile-rootfs seal all --apply --yes
+seven profile exec forge --independent sh
+```
+
+This gives each mini OS its own command surface, rootfs, HOME, cache, data,
+workspace policy, systemd scope and seal checks while keeping the SevenOS shell
+fluid and native. The kernel, compositor, GPU and some host services remain
+shared by design.
+
+Windows Bridge is the exception: Windows compatibility may use libvirt/QEMU
+because Windows itself is not a native SevenOS mini OS.
+
+The practical boundary levels are now:
+
+- **package view**: filtered command surface on the shared host.
+- **container/rootfs**: separate HOME/cache/data, profile package view, optional
+  sealed read-only rootfs, shared kernel.
+- **independent**: sealed read-only profile rootfs plus profile HOME/cache/data
+  by default, no VM.
+- **strict rootfs**: no host network namespace, no DBus/runtime socket, minimal
+  `/dev`, shared kernel.
+
+## RootFS Seals
+
+After building rootfs profiles, SevenOS can write a lightweight local seal for
+each mini OS:
+
+```bash
+seven profile-rootfs seal all --apply --yes
+seven profile-rootfs verify all
+```
+
+The seal records the profile marker, `os-release` hash and a package database
+fingerprint. It is not a remote attestation system, but it gives SevenOS a fast
+way to detect rootfs drift or accidental modification before opening a mini OS.
+
+When `seven-profile-run --rootfs` starts a sealed rootfs, it verifies the seal
+before execution. In `strict` mode the seal is required; if the package
+fingerprint or OS marker has drifted, SevenOS refuses to launch and asks you to
+run:
+
+```bash
+seven profile-rootfs verify all
+seven profile-rootfs seal all --apply --yes
+```
 
 ## Profile Wallpaper State
 

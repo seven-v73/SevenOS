@@ -2,7 +2,8 @@
 
 SevenOS does not yet install itself to disk from the live ISO.
 
-For testing on an already installed Arch machine, follow:
+For testing before the standalone installer is ready, use the SevenOS route on
+top of an Arch-compatible foundation:
 
 ```text
 docs/TEST_MACHINE.md
@@ -62,7 +63,7 @@ Possible later:
 
 Build a scripted TUI installer first, then evaluate Calamares after the disk workflow is stable.
 
-Until then, SevenOS should be tested as a post-install layer:
+Until then, SevenOS should be tested as the SevenOS system layer:
 
 ```bash
 git clone https://github.com/seven-v73/SevenOS.git

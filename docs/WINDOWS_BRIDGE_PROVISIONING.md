@@ -4,40 +4,37 @@ SevenOS does not redistribute Windows images or prebuilt Windows `qcow2`
 templates. Windows Bridge builds the local VM artifacts from official or
 user-authorized Windows media.
 
-## Flow
+## First Install
 
-```text
-User enables Windows Bridge
-  -> SevenOS checks KVM/libvirt and storage
-  -> SevenOS prepares a local qcow2 disk
-  -> SevenOS fetches VirtIO driver media when confirmed
-  -> SevenOS uses quickget when available, or accepts a user ISO
-  -> SevenOS creates/launches the libvirt VM
-```
-
-## Commands
+Use one public command first:
 
 ```bash
-seven windows sources
-seven windows provision
-seven windows provision --yes
-seven windows virtio --yes
-seven windows autounattend
-seven windows create --iso /path/to/windows.iso --virtio-iso ~/.local/share/sevenos/vm/windows/virtio-win.iso --disk-path ~/.local/share/sevenos/vm/windows/sevenos-windows.qcow2
+seven windows setup
 ```
+
+When the official Windows ISO is available:
+
+```bash
+seven windows setup --iso ~/Downloads/Win11.iso
+```
+
+`seven windows setup` installs the Windows Bridge requirements, prepares
+libvirt/networking, creates the local `qcow2` disk, prepares VirtIO driver
+media when possible, and creates/registers the VM when an official Windows ISO
+is available. If the ISO is missing, it stops with one clear next step instead
+of exposing the whole expert command chain.
+
+## What SevenOS Prepares
+
+- KVM/libvirt readiness.
+- Local `qcow2` disk.
+- VirtIO driver media when confirmed.
+- Windows-friendly VM defaults.
+- Console launch after the VM is registered.
 
 `quickemu`/`quickget` is optional and is tracked in
 `scripts/packages-windows-aur.txt`. If it is unavailable, the user can provide
 an official Windows ISO manually.
-
-SevenOS base installation prepares AUR helpers with:
-
-```bash
-./install.sh aur-helpers --yes
-```
-
-This installs `yay` and `paru` so Windows Bridge can later install optional
-helpers such as `quickemu` without making them mandatory pacman packages.
 
 ## Policy
 

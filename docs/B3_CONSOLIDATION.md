@@ -15,36 +15,69 @@ Linux Kernel / Arch base
   -> Profiles / Ecosystem
 ```
 
-## Command
+## New Machine Install
 
-Use `seven b3` as the single B2 -> B3 orchestrator:
+For a fresh machine, keep the public install path simple:
+
+```bash
+git clone https://github.com/seven-v73/SevenOS.git
+cd SevenOS
+chmod +x install.sh bootstrap.sh profiles/*.sh
+seven new
+```
+
+If `seven` is not installed yet, use the repository entrypoint:
+
+```bash
+./install.sh new-device --yes
+```
+
+This applies the ergonomic baseline automatically: desktop packages, CLI, Hub,
+fonts, theme, visual layer, mini OS requirements, workspaces, profile isolation,
+rootfs metadata, Windows Bridge preparation and post-install checks.
+
+Optional full setup:
+
+```bash
+seven new --optional
+seven new --optional --rootfs
+```
+
+Windows Bridge first run:
+
+```bash
+seven windows setup
+seven windows setup --iso ~/Downloads/Win11.iso
+```
+
+After installation, check the machine:
+
+```bash
+seven post-install
+seven doctor
+seven profile-rootfs verify all
+```
+
+Before pushing the repository:
+
+```bash
+seven pre-push
+```
+
+Use `seven pre-push full` only for a long release audit.
+
+Do not run `sudo ./install.sh ...`. SevenOS asks for administrator privileges
+internally only when a step needs them.
+
+## B3 Command
+
+Use `seven b3` for developer consolidation after the machine is installed:
 
 ```bash
 seven b3 status
 seven b3 plan
-seven b3 plan --json
 seven b3 doctor
 ```
-
-Actions are preview-only by default:
-
-```bash
-seven b3 apply --phase trust --limit 4
-seven b3 apply --phase backend --limit 4
-seven b3 apply --phase profiles --limit 4
-```
-
-Execute only after reviewing the preview:
-
-```bash
-sudo -v
-seven b3 apply --phase trust --apply --yes
-```
-
-If `sudo` is not active, B3 does not execute package/security/profile changes.
-It marks those rows as blocked and continues with safe or manual rows. This
-keeps the flow usable inside Seven Hub and on test machines where the user has
-not unlocked administrator privileges yet.
 
 ## B3 Phases
 

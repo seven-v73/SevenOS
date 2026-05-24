@@ -116,50 +116,50 @@ def run() -> int:
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.profile-center-window { background: transparent; }
     .profile-root {
-      padding: 20px;
-      border-radius: 32px;
+      padding: 18px;
+      border-radius: 22px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.17), rgba(255,255,255,0.045)),
-        radial-gradient(ellipse at 10% -10%, rgba(137,180,250,0.24), transparent 42%),
-        radial-gradient(ellipse at 88% -16%, rgba(203,166,247,0.18), transparent 42%),
-        radial-gradient(ellipse at 40% 106%, rgba(0,255,179,0.08), transparent 44%),
-        rgba(14,16,23,0.93);
-      border: 1px solid rgba(255,255,255,0.16);
-      box-shadow: 0 28px 80px rgba(0,0,0,0.46);
+        linear-gradient(180deg, rgba(255,255,255,0.105), rgba(255,255,255,0.035)),
+        rgba(16,18,25,0.955);
+      border: 1px solid rgba(255,255,255,0.135);
+      box-shadow: 0 24px 72px rgba(0,0,0,0.48);
     }
-    .topbar { padding: 2px 2px 4px 2px; }
-    .traffic-box { margin-right: 4px; }
-    .traffic {
-      min-width: 14px;
-      min-height: 14px;
-      padding: 0;
-      border-radius: 999px;
-      border: 1px solid rgba(0,0,0,0.18);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
-    }
-    .traffic.red { background: #ff5f57; }
-    .traffic.yellow { background: #ffbd2e; }
-    .traffic.green { background: #28c840; }
-    .title { color: rgba(245,247,250,0.98); font-size: 22px; font-weight: 700; letter-spacing: 0; }
+    .topbar { padding: 0 0 2px 0; }
+    .title { color: rgba(245,247,250,0.98); font-size: 18px; font-weight: 600; letter-spacing: 0; }
     .subtitle { color: rgba(245,247,250,0.64); font-size: 11px; }
     .pill {
-      padding: 7px 12px;
+      padding: 6px 11px;
       border-radius: 999px;
       color: rgba(245,247,250,0.86);
-      background: rgba(255,255,255,0.075);
+      background: rgba(255,255,255,0.065);
       border: 1px solid rgba(255,255,255,0.12);
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 500;
+    }
+    .window-action {
+      min-height: 30px;
+      padding: 5px 10px;
+      border-radius: 9px;
+      color: rgba(245,247,250,0.82);
+      background: transparent;
+      border: 1px solid transparent;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .window-action:hover {
+      color: rgba(245,247,250,0.96);
+      background: rgba(255,255,255,0.075);
+      border-color: rgba(255,255,255,0.10);
     }
     .section {
-      padding: 12px;
-      border-radius: 24px;
+      padding: 11px;
+      border-radius: 15px;
       background:
-        linear-gradient(135deg, rgba(255,255,255,0.085), rgba(255,255,255,0.040)),
-        rgba(255,255,255,0.035);
-      border: 1px solid rgba(255,255,255,0.115);
+        linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.032)),
+        rgba(255,255,255,0.026);
+      border: 1px solid rgba(255,255,255,0.095);
     }
-    .section-title { color: rgba(245,247,250,0.96); font-size: 12px; font-weight: 700; }
+    .section-title { color: rgba(245,247,250,0.96); font-size: 12px; font-weight: 500; }
     .section-note { color: rgba(245,247,250,0.62); font-size: 11px; }
     .alias-card {
       padding: 10px 12px;
@@ -169,7 +169,7 @@ def run() -> int:
         rgba(255,255,255,0.045);
       border: 1px solid rgba(249,226,175,0.24);
     }
-    .alias-title { color: rgba(255,244,199,0.96); font-size: 12px; font-weight: 800; }
+    .alias-title { color: rgba(255,244,199,0.96); font-size: 12px; font-weight: 500; }
     .alias-note { color: rgba(245,247,250,0.66); font-size: 11px; }
     .alias-button {
       min-height: 34px;
@@ -179,40 +179,40 @@ def run() -> int:
       background: rgba(249,226,175,0.92);
       border: 1px solid rgba(255,255,255,0.20);
       font-size: 11px;
-      font-weight: 800;
+      font-weight: 500;
     }
     .layer-card {
-      padding: 10px;
-      border-radius: 18px;
-      background: rgba(255,255,255,0.052);
-      border: 1px solid rgba(255,255,255,0.085);
+      padding: 9px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.040);
+      border: 1px solid rgba(255,255,255,0.075);
     }
-    .layer-name { color: rgba(245,247,250,0.90); font-size: 11px; font-weight: 700; }
+    .layer-name { color: rgba(245,247,250,0.90); font-size: 11px; font-weight: 500; }
     .layer-value { color: rgba(245,247,250,0.58); font-size: 10px; }
     .tile {
-      min-height: 116px;
-      padding: 12px;
-      border-radius: 24px;
+      min-height: 56px;
+      padding: 10px 12px;
+      border-radius: 14px;
       background:
-        linear-gradient(155deg, rgba(255,255,255,0.095), rgba(255,255,255,0.040)),
-        rgba(255,255,255,0.046);
-      border: 1px solid rgba(255,255,255,0.12);
+        linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.032)),
+        rgba(255,255,255,0.032);
+      border: 1px solid rgba(255,255,255,0.095);
       color: rgba(245,247,250,0.96);
     }
     .tile:hover {
       background:
-        linear-gradient(155deg, rgba(255,255,255,0.14), rgba(255,255,255,0.060)),
-        rgba(255,255,255,0.065);
-      border-color: rgba(156,203,255,0.36);
+        linear-gradient(180deg, rgba(255,255,255,0.090), rgba(255,255,255,0.045)),
+        rgba(255,255,255,0.048);
+      border-color: rgba(156,203,255,0.30);
     }
     .tile.good { border-color: rgba(166,227,161,0.24); }
     .tile.warn { border-color: rgba(249,226,175,0.30); }
     .tile.bad { border-color: rgba(243,139,168,0.28); }
     .tile.active {
       background:
-        linear-gradient(155deg, rgba(137,180,250,0.22), rgba(139,124,255,0.10)),
-        rgba(255,255,255,0.070);
-      border-color: rgba(137,180,250,0.52);
+        linear-gradient(90deg, rgba(137,180,250,0.18), rgba(255,255,255,0.040)),
+        rgba(255,255,255,0.050);
+      border-color: rgba(137,180,250,0.45);
     }
     .tile.equinox { border-color: rgba(139,124,255,0.28); }
     .tile.baobab { border-color: rgba(166,227,161,0.28); }
@@ -221,24 +221,24 @@ def run() -> int:
     .tile.studio { border-color: rgba(203,166,247,0.28); }
     .tile.windows { border-color: rgba(137,220,235,0.28); }
     .tile.pulse { border-color: rgba(0,212,255,0.30); }
-    .glyph { font-size: 28px; }
-    .tile-title { font-size: 13px; font-weight: 700; }
+    .glyph { font-size: 20px; min-width: 34px; color: rgba(245,247,250,0.90); }
+    .tile-title { font-size: 12px; font-weight: 500; }
     .tile-note { color: rgba(245,247,250,0.62); font-size: 11px; }
     .action-strip {
-      padding: 12px;
-      border-radius: 22px;
-      background: rgba(255,255,255,0.055);
-      border: 1px solid rgba(255,255,255,0.10);
+      padding: 8px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.038);
+      border: 1px solid rgba(255,255,255,0.085);
     }
     .danger-note { color: rgba(249,226,175,0.82); font-size: 10px; }
     .icon-action {
-      min-width: 44px;
-      min-height: 44px;
+      min-width: 36px;
+      min-height: 36px;
       padding: 0;
-      border-radius: 999px;
+      border-radius: 10px;
       color: rgba(245,247,250,0.94);
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.052);
+      border: 1px solid rgba(255,255,255,0.09);
     }
     .icon-action:hover { background: rgba(255,255,255,0.14); }
     """
@@ -259,7 +259,7 @@ def run() -> int:
     window.set_resizable(False)
     window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(900, 660)
+    window.set_default_size(860, 640)
     window.get_style_context().add_class("profile-center-window")
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -270,33 +270,28 @@ def run() -> int:
     topbar.get_style_context().add_class("topbar")
     root.pack_start(topbar, False, False, 0)
 
-    traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-    traffic.set_valign(Gtk.Align.CENTER)
-    traffic.get_style_context().add_class("traffic-box")
-    for color, handler in [
-        ("red", lambda _button: Gtk.main_quit()),
-        ("yellow", lambda _button: window.iconify()),
-        ("green", lambda _button: run_detached("seven-settings profiles")),
-    ]:
-        dot = Gtk.Button()
-        dot.get_style_context().add_class("traffic")
-        dot.get_style_context().add_class(color)
-        dot.connect("clicked", handler)
-        traffic.pack_start(dot, False, False, 0)
-    topbar.pack_start(traffic, False, False, 0)
-
-    title = Gtk.Label(label=tr_text("Mini OS"), xalign=0)
+    title = Gtk.Label(label=tr_text("Profils SevenOS"), xalign=0)
     title.get_style_context().add_class("title")
     topbar.pack_start(title, True, True, 0)
-    count_pill = Gtk.Label(label=tr_text("{count} specialized systems", count=str(len(profiles))))
+    controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    topbar.pack_end(controls, False, False, 0)
+    count_pill = Gtk.Label(label=tr_text("{count} profils", count=str(len(profiles))))
     count_pill.get_style_context().add_class("pill")
-    topbar.pack_end(count_pill, False, False, 0)
+    controls.pack_start(count_pill, False, False, 0)
+    settings_button = Gtk.Button(label=tr_text("Réglages"))
+    settings_button.get_style_context().add_class("window-action")
+    settings_button.connect("clicked", lambda _button: run_detached("seven-settings profiles"))
+    controls.pack_start(settings_button, False, False, 0)
+    close_button = Gtk.Button(label=tr_text("Fermer"))
+    close_button.get_style_context().add_class("window-action")
+    close_button.connect("clicked", lambda _button: Gtk.main_quit())
+    controls.pack_start(close_button, False, False, 0)
 
     active_label = active.get("title", tr_text("None")) if active else tr_text("None")
     context = runtime.get("context", {}).get("primary_context", {}) if isinstance(runtime, dict) else {}
     context_title = context.get("title") or context.get("key") or tr_text("none")
     scheduler_policy = runtime.get("scheduler", {}).get("active_policy", {}) if isinstance(runtime, dict) else {}
-    subtitle_text = tr_text("Active: {profile} · Detected context: {context}", profile=active_label, context=context_title)
+    subtitle_text = tr_text("Profil actif: {profile} · contexte détecté: {context}", profile=active_label, context=context_title)
     if scheduler_policy.get("scheduler_group") and active and scheduler_policy.get("scheduler_group") != active.get("key"):
         subtitle_text += tr_text(" · temporary optimization: {group}", group=scheduler_policy.get("scheduler_group"))
     subtitle = Gtk.Label(label=subtitle_text, xalign=0)
@@ -317,10 +312,10 @@ def run() -> int:
         layers_box.set_row_spacing(8)
         layers_box.get_style_context().add_class("section")
         for index, (name, values) in enumerate([
-            ("Kernel", layers.get("kernel")),
+            ("Noyau", layers.get("kernel")),
             ("Runtime", layers.get("runtime")),
-            ("Experience", layers.get("experience")),
-            ("Intelligence", layers.get("intelligence")),
+            ("Interface", layers.get("experience")),
+            ("IA", layers.get("intelligence")),
         ]):
             layers_box.attach(layer_card(Gtk, name, compact_list(values)), index % 4, index // 4, 1, 1)
         root.pack_start(layers_box, False, False, 0)
@@ -338,10 +333,10 @@ def run() -> int:
         key = profile.get("key", "")
         command = f"seven profile activate {key}"
         role = profile.get("role") or key
-        note = tr_text("active") if profile.get("active") else f"{role} · {state} · {installed}/{total}"
+        note = tr_text("en cours · prêt") if profile.get("active") else f"{role} · {state} · {installed}/{total}"
         glyph = profile.get("waybar_icon") or title_text[:1].upper()
         button = profile_tile(Gtk, glyph, title_text, note, command, state_class(state), key, bool(profile.get("active")))
-        grid.attach(button, index % 4, index // 4, 1, 1)
+        grid.attach(button, 0, index, 1, 1)
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     actions.set_halign(Gtk.Align.CENTER)
@@ -382,13 +377,13 @@ def composition_panel(Gtk, runtime: dict, isolation: dict):
     active_count = isolation.get("active_package_count", 0)
     inactive_count = isolation.get("inactive_package_count", 0)
 
-    title = Gtk.Label(label=tr_text("Composition Layer"), xalign=0)
+    title = Gtk.Label(label=tr_text("État d'exécution"), xalign=0)
     title.get_style_context().add_class("section-title")
     panel.pack_start(title, False, False, 0)
 
     summary = Gtk.Label(
         label=tr_text(
-            "Primary: {primary} · injected: {injected} · packages: {active} active / {inactive} quiet",
+            "Principal: {primary} · extensions: {injected} · paquets: {active} actifs / {inactive} silencieux",
             primary=primary.get("title") or composite.get("primary") or "unknown",
             injected=", ".join(injected) if injected else "none",
             active=active_count,
@@ -401,7 +396,7 @@ def composition_panel(Gtk, runtime: dict, isolation: dict):
 
     details = Gtk.Label(
         label=tr_text(
-            "CPU: {cpu} · RAM: {ram} · services: {services} · snapshot: {snapshot}",
+            "CPU: {cpu} · RAM: {ram} · services: {services} · instantané: {snapshot}",
             cpu=resource.get("cpu", {}).get("strategy", "unknown"),
             ram=resource.get("ram", {}).get("strategy", "unknown"),
             services=resource.get("isolation", {}).get("services", "unknown"),
@@ -460,6 +455,7 @@ def layer_card(Gtk, name: str, value: str):
 
 def profile_tile(Gtk, glyph: str, title: str, note: str, command: str, css_class: str, key: str, active: bool):
     button = Gtk.Button()
+    button.set_hexpand(True)
     button.get_style_context().add_class("tile")
     button.get_style_context().add_class(css_class)
     if key:
@@ -467,16 +463,26 @@ def profile_tile(Gtk, glyph: str, title: str, note: str, command: str, css_class
     if active:
         button.get_style_context().add_class("active")
     button.set_tooltip_text(command)
-    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    box.set_valign(Gtk.Align.CENTER)
     icon = Gtk.Label(label=glyph)
     icon.get_style_context().add_class("glyph")
+    icon.set_valign(Gtk.Align.CENTER)
+    text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    text_box.set_hexpand(True)
     label = Gtk.Label(label=title)
+    label.set_xalign(0)
     label.get_style_context().add_class("tile-title")
     meta = Gtk.Label(label=note)
+    meta.set_xalign(0)
     meta.get_style_context().add_class("tile-note")
+    text_box.pack_start(label, False, False, 0)
+    text_box.pack_start(meta, False, False, 0)
+    state_label = Gtk.Label(label=tr_text("Actif") if active else tr_text("Activer"))
+    state_label.get_style_context().add_class("pill")
     box.pack_start(icon, False, False, 0)
-    box.pack_start(label, False, False, 0)
-    box.pack_start(meta, False, False, 0)
+    box.pack_start(text_box, True, True, 0)
+    box.pack_end(state_label, False, False, 0)
     button.add(box)
     button.connect("clicked", lambda _button: run_detached(command))
     return button

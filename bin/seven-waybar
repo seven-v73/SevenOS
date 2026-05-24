@@ -5,11 +5,140 @@ CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 CONFIG="$CONFIG_HOME/waybar/config.jsonc"
 STYLE="$CONFIG_HOME/waybar/style.css"
 
+resolve_root() {
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/../install.sh" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/install.sh" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+  for candidate in "$HOME/Code/OS/SevenOS" "$HOME/SevenOS" /opt/SevenOS; do
+    if [[ -x "$candidate/install.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+ROOT_DIR="$(resolve_root || true)"
+
 count_waybar() {
   pgrep -u "$USER" -x waybar | wc -l
 }
 
+count_waybar_context() {
+  pgrep -u "$USER" -f '(^|/| )seven-waybar-context daemon( |$)' | wc -l
+}
+
+json_string() {
+  python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
+}
+
+service_state() {
+  local unit="$1"
+  if ! command -v systemctl >/dev/null 2>&1; then
+    printf 'unavailable'
+    return 0
+  fi
+  systemctl --user is-active "$unit" 2>/dev/null || systemctl --user is-enabled "$unit" 2>/dev/null || printf 'unknown'
+}
+
+context_doctor() {
+  if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-waybar-context" ]]; then
+    "$ROOT_DIR/bin/seven-waybar-context" doctor 2>/dev/null || true
+  elif command -v seven-waybar-context >/dev/null 2>&1; then
+    seven-waybar-context doctor 2>/dev/null || true
+  fi
+}
+
+context_doctor_json() {
+  local doctor
+  doctor="$(context_doctor)"
+  if [[ "$doctor" == \{* ]]; then
+    printf '%s\n' "$doctor"
+  else
+    printf '{}\n'
+  fi
+}
+
+status_json() {
+  local waybar_count context_count doctor_json waybar_state context_state
+  waybar_count="$(count_waybar)"
+  context_count="$(count_waybar_context)"
+  doctor_json="$(context_doctor_json)"
+  waybar_state="$(service_state sevenos-waybar.service)"
+  context_state="$(service_state sevenos-waybar-context.service)"
+  WAYBAR_COUNT="$waybar_count" CONTEXT_COUNT="$context_count" DOCTOR_JSON="$doctor_json" \
+  WAYBAR_SERVICE="$waybar_state" CONTEXT_SERVICE="$context_state" CONFIG_PATH="$CONFIG" STYLE_PATH="$STYLE" python - <<'PY'
+import json
+import os
+
+try:
+    doctor = json.loads(os.environ.get("DOCTOR_JSON") or "{}")
+except Exception:
+    doctor = {}
+waybar_count = int(os.environ.get("WAYBAR_COUNT") or 0)
+context_count = int(os.environ.get("CONTEXT_COUNT") or 0)
+ok = waybar_count == 1 and context_count == 1 and doctor.get("state") == "OK"
+print(json.dumps({
+    "schema": "sevenos.waybar.status.v1",
+    "state": "OK" if ok else "WARN",
+    "waybar": {
+        "instances": waybar_count,
+        "service": os.environ.get("WAYBAR_SERVICE", "unknown"),
+        "config": os.environ.get("CONFIG_PATH", ""),
+        "style": os.environ.get("STYLE_PATH", ""),
+    },
+    "context": {
+        "instances": context_count,
+        "service": os.environ.get("CONTEXT_SERVICE", "unknown"),
+        "doctor": doctor,
+    },
+    "repair": "seven-waybar repair",
+}, ensure_ascii=False))
+PY
+}
+
+context_repair() {
+  if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-waybar-context" ]]; then
+    "$ROOT_DIR/bin/seven-waybar-context" repair 2>/dev/null || true
+  elif command -v seven-waybar-context >/dev/null 2>&1; then
+    seven-waybar-context repair 2>/dev/null || true
+  fi
+}
+
+wait_for_waybar() {
+  local attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    if [[ "$(count_waybar)" -gt 0 ]]; then
+      return 0
+    fi
+    sleep 0.35
+  done
+  return 1
+}
+
 start_waybar() {
+  if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-profile-theme" ]]; then
+    "$ROOT_DIR/bin/seven-profile-theme" apply >/tmp/sevenos-waybar-apply.log 2>&1 || true
+  fi
+
+  if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-waybar-context" ]]; then
+    if systemctl --user list-unit-files sevenos-waybar-context.service >/dev/null 2>&1; then
+      systemctl --user daemon-reload >/dev/null 2>&1 || true
+      systemctl --user restart sevenos-waybar-context.service >/dev/null 2>&1 || true
+    else
+      pkill -u "$USER" -f '(^|/| )seven-waybar-context daemon( |$)' >/dev/null 2>&1 || true
+      "$ROOT_DIR/bin/seven-waybar-context" once >/tmp/sevenos-waybar-context.log 2>&1 || true
+      setsid -f "$ROOT_DIR/bin/seven-waybar-context" daemon >>/tmp/sevenos-waybar-context.log 2>&1 || true
+    fi
+  fi
+
   if systemctl --user list-unit-files sevenos-waybar.service >/dev/null 2>&1; then
     systemctl --user daemon-reload >/dev/null 2>&1 || true
     systemctl --user restart sevenos-waybar.service
@@ -22,21 +151,39 @@ start_waybar() {
 
 case "${1:-status}" in
   status)
-    printf 'SevenOS Waybar: %s instance(s)\n' "$(count_waybar)"
-    pgrep -af '(^|/)waybar( |$)|waybar -c|waybar$' || true
+    if [[ "${2:-}" == "--json" || "${2:-}" == "json" ]]; then
+      status_json
+    else
+      printf 'SevenOS Waybar: %s instance(s)\n' "$(count_waybar)"
+      printf 'SevenOS Waybar Context: %s instance(s)\n' "$(count_waybar_context)"
+      context_doctor
+      pgrep -af '(^|/)waybar( |$)|waybar -c|waybar$' || true
+    fi
     ;;
-  start|restart|repair)
+  --json|json)
+    status_json
+    ;;
+  start|restart)
     start_waybar
-    sleep 1
+    wait_for_waybar || true
     printf 'SevenOS Waybar: %s instance(s)\n' "$(count_waybar)"
+    ;;
+  repair)
+    context_repair
+    start_waybar
+    wait_for_waybar || true
+    printf 'SevenOS Waybar: %s instance(s)\n' "$(count_waybar)"
+    printf 'SevenOS Waybar Context: %s instance(s)\n' "$(count_waybar_context)"
+    context_doctor
     ;;
   stop)
     systemctl --user stop sevenos-waybar.service >/dev/null 2>&1 || true
     pkill -u "$USER" -x waybar >/dev/null 2>&1 || true
+    pkill -u "$USER" -f '(^|/| )seven-waybar-context daemon( |$)' >/dev/null 2>&1 || true
     printf 'SevenOS Waybar: stopped\n'
     ;;
   *)
-    printf 'Usage: seven-waybar [status|start|restart|repair|stop]\n' >&2
+    printf 'Usage: seven-waybar [status [--json]|start|restart|repair|stop]\n' >&2
     exit 2
     ;;
 esac

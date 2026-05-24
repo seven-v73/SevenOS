@@ -6,7 +6,7 @@ SevenOS through SevenOS surfaces and contracts first.
 
 This document defines the line between:
 
-- a visible Arch/Hyprland rice;
+- a backend-visible desktop customization stack;
 - a SevenOS daily-driver layer;
 - a public SevenOS distribution.
 

@@ -8,10 +8,20 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
+
+from seven_waybar_app_profiles import (
+    active_window as waybar_active_window,
+    compact_label,
+    context_for_window,
+    items_for as shared_items_for,
+)
 
 
 STATE_HOME = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
+CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
 RECORDER_PID = STATE_HOME / "sevenos/recorder/recorder.pid"
 RECORDER_FILE = STATE_HOME / "sevenos/recorder/current-file"
 
@@ -36,9 +46,149 @@ def read_json(command: list[str]) -> dict:
         return {}
 
 
-def wifi() -> int:
+def current_profile() -> dict:
+    root = Path(__file__).resolve().parent.parent
+    manager = root / "profiles/profile-manager.sh"
+    fallback = {
+        "key": "equinox",
+        "title": "Equinox Balance",
+        "role": "Balance",
+        "state": "MISS",
+        "ui_mood": "balanced global SevenOS profile",
+    }
+    data = read_json([str(manager), "current", "--json"]) if manager.exists() else {}
+    if not data:
+        data = fallback
+    try:
+        context = json.loads(CONTEXT_FILE.read_text(encoding="utf-8"))
+        live_profile = context.get("profile") if isinstance(context.get("profile"), dict) else {}
+        manager_key = str(data.get("key") or "")
+        live_key = str(live_profile.get("key") or "")
+        if live_key and (not manager_key or live_key == manager_key):
+            data = {**data, **{k: v for k, v in live_profile.items() if v}}
+            data["live_context"] = True
+        elif live_key:
+            data["live_context_mismatch"] = live_key
+    except Exception:
+        pass
+    return data
+
+
+def wifi_data() -> dict:
     helper = shutil.which("seven-wifi") or str(Path(__file__).resolve().with_name("seven-wifi"))
-    data = read_json([helper, "status-json"]) if Path(helper).exists() or shutil.which("seven-wifi") else {}
+    if Path(helper).exists() or shutil.which("seven-wifi"):
+        return read_json([helper, "status-json"])
+    return {}
+
+
+def bluetooth_data() -> dict:
+    helper = shutil.which("seven-bluetooth") or str(Path(__file__).resolve().with_name("seven-bluetooth"))
+    if Path(helper).exists() or shutil.which("seven-bluetooth"):
+        return read_json([helper, "status-json"])
+    return {}
+
+
+def battery_data() -> tuple[str, str]:
+    for battery in sorted(Path("/sys/class/power_supply").glob("BAT*")):
+        capacity_file = battery / "capacity"
+        status_file = battery / "status"
+        if capacity_file.exists():
+            capacity = capacity_file.read_text(encoding="utf-8", errors="ignore").strip()
+            status = status_file.read_text(encoding="utf-8", errors="ignore").strip() if status_file.exists() else ""
+            return capacity, status
+    return "", ""
+
+
+def volume_data() -> tuple[str, bool]:
+    if not shutil.which("wpctl"):
+        return "", False
+    output = run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"])
+    muted = "[MUTED]" in output
+    volume = ""
+    for part in output.split():
+        try:
+            value = float(part)
+            volume = f"{round(value * 100)}%"
+            break
+        except ValueError:
+            continue
+    return volume, muted
+
+
+def active_vpn_name() -> str:
+    if not shutil.which("nmcli"):
+        return ""
+    return run(["bash", "-lc", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"])
+
+
+def recorder_is_active() -> bool:
+    if not RECORDER_PID.exists():
+        return False
+    pid = RECORDER_PID.read_text(encoding="utf-8", errors="ignore").strip()
+    return bool(pid and Path(f"/proc/{pid}").exists())
+
+
+def waybar_context_health() -> dict:
+    if not CONTEXT_FILE.exists():
+        return {"state": "missing", "fresh": False, "age": None, "profile": "", "app": ""}
+    try:
+        context = json.loads(CONTEXT_FILE.read_text(encoding="utf-8") or "{}")
+    except Exception:
+        return {"state": "invalid", "fresh": False, "age": None, "profile": "", "app": ""}
+    timestamp = context.get("time") if isinstance(context.get("time"), (int, float)) else 0
+    age = max(0.0, time.time() - float(timestamp)) if timestamp else None
+    fresh = age is not None and age <= 24.0
+    profile = context.get("profile") if isinstance(context.get("profile"), dict) else {}
+    app = context.get("app") if isinstance(context.get("app"), dict) else {}
+    layout = context.get("layout") if isinstance(context.get("layout"), dict) else {}
+    return {
+        "state": "ok" if context.get("schema") == "sevenos.waybar.context.v1" and fresh else "stale",
+        "fresh": fresh,
+        "age": age,
+        "profile": str(profile.get("key") or ""),
+        "app": str(app.get("key") or ""),
+        "density": str(layout.get("density") or ""),
+        "priority": str(layout.get("priority") or ""),
+    }
+
+
+def sevenos_menu() -> int:
+    profile_data = current_profile()
+    key = str(profile_data.get("key") or "equinox").lower()
+    title = str(profile_data.get("title") or key.title())
+    role = str(profile_data.get("role") or "Profile")
+    state = str(profile_data.get("state") or "MISS")
+    mood = str(profile_data.get("ui_mood") or profile_data.get("description") or "")
+    css = f"sevenos-menu profile-{key}"
+    if state == "OK":
+        css += " ok"
+    elif state == "PART":
+        css += " warn"
+    else:
+        css += " miss"
+    tooltip = "\n".join(
+        part
+        for part in [
+            f"SevenOS · {title}",
+            role,
+            mood,
+            "Click: système · Right click: mini OS · Middle click: Spotlight",
+        ]
+        if part
+    )
+    marks = {
+        "baobab": "󰔱",
+        "forge": "󰙨",
+        "shield": "󰒃",
+        "studio": "󰏗",
+        "pulse": "󰓅",
+        "windows": "󰖳",
+    }
+    return emit(marks.get(key, ""), tooltip, css, key)
+
+
+def wifi() -> int:
+    data = wifi_data()
     if not data.get("nmcli", False):
         return emit("󰤭", "Wi-Fi tools missing", "missing", "missing")
     if str(data.get("wifi_radio", "")).lower() not in {"enabled", "on"}:
@@ -57,8 +207,7 @@ def wifi() -> int:
 
 
 def bluetooth() -> int:
-    helper = shutil.which("seven-bluetooth") or str(Path(__file__).resolve().with_name("seven-bluetooth"))
-    data = read_json([helper, "status-json"]) if Path(helper).exists() or shutil.which("seven-bluetooth") else {}
+    data = bluetooth_data()
     if data:
         return emit(str(data.get("text", "󰂲")), str(data.get("tooltip", "Bluetooth")), str(data.get("class", "ready")))
     return emit("󰂲", "Bluetooth tools missing", "missing")
@@ -104,7 +253,124 @@ def ai() -> int:
 
 
 def control_center() -> int:
-    return emit("󰒓  Panneau", "Panneau de contrôle · Wi-Fi, Bluetooth, son, batterie", "control-center", "system")
+    wifi_state = wifi_data()
+    bluetooth_state = bluetooth_data()
+    battery_capacity, battery_status = battery_data()
+    vpn_active = active_vpn_name()
+    volume, muted = volume_data()
+    context_health = waybar_context_health()
+
+    wifi_label = "Wi-Fi: outils absents"
+    if wifi_state.get("nmcli", False):
+        radio = str(wifi_state.get("wifi_radio") or "").lower()
+        ssid = str(wifi_state.get("ssid") or wifi_state.get("active") or "").strip()
+        if radio not in {"enabled", "on"}:
+            wifi_label = "Wi-Fi: désactivé"
+        elif ssid:
+            wifi_label = f"Wi-Fi: {compact_label(ssid, 28)}"
+        else:
+            wifi_label = "Wi-Fi: non connecté"
+
+    bt_label = "Bluetooth: outils absents"
+    if bluetooth_state:
+        bt_class = str(bluetooth_state.get("class") or "")
+        bt_text = str(bluetooth_state.get("tooltip") or bluetooth_state.get("text") or "Bluetooth")
+        bt_label = f"Bluetooth: {compact_label(bt_text.replace('Bluetooth · ', ''), 32)}"
+        if bt_class in {"off", "missing"}:
+            bt_label = "Bluetooth: désactivé"
+
+    battery_label = "Batterie: inconnue"
+    battery_percent = 100
+    if battery_capacity:
+        try:
+            battery_percent = int(battery_capacity)
+        except ValueError:
+            battery_percent = 100
+        suffix = f" · {battery_status}" if battery_status else ""
+        battery_label = f"Batterie: {battery_capacity}%{suffix}"
+
+    recorder_active = recorder_is_active()
+    recorder_label = "Enregistrement: actif" if recorder_active else "Enregistrement: inactif"
+    vpn_label = f"VPN: {compact_label(vpn_active, 28)}" if vpn_active else "VPN: inactif"
+    audio_label = f"Audio: {'muet' if muted else (volume or 'actif')}"
+    context_label = "Contexte UI: actif"
+    if not context_health.get("fresh"):
+        age = context_health.get("age")
+        context_label = f"Contexte UI: à réparer" + (f" · {round(float(age))}s" if isinstance(age, (int, float)) else "")
+
+    css = "control-center"
+    if battery_percent <= 15 or recorder_active or not context_health.get("fresh"):
+        css += " attention"
+    elif vpn_active:
+        css += " secure"
+    tooltip = "\n".join([
+        "Centre de contrôle SevenOS",
+        wifi_label,
+        bt_label,
+        audio_label,
+        battery_label,
+        vpn_label,
+        recorder_label,
+        context_label,
+        "Click: réglages rapides · Right click: Settings · Middle: réparer UI",
+    ])
+    return emit("⌘", tooltip, css, "system")
+
+
+def system_status() -> int:
+    capacity, battery_state = battery_data()
+    volume, muted = volume_data()
+    vpn_active = active_vpn_name()
+    recording = recorder_is_active()
+    context_health = waybar_context_health()
+
+    parts: list[str] = []
+    tooltip_parts = ["État système SevenOS"]
+    css_parts = ["system-status"]
+
+    battery_percent = 100
+    if capacity:
+        try:
+            battery_percent = int(capacity)
+        except ValueError:
+            battery_percent = 100
+        if battery_percent <= 30 and battery_state.lower() not in {"charging", "full"}:
+            parts.append(f"{battery_percent}%")
+            tooltip_parts.append(f"Batterie faible: {battery_percent}%")
+            css_parts.append("battery-low" if battery_percent > 15 else "critical")
+
+    if muted:
+        parts.append("muet")
+        tooltip_parts.append("Audio muet")
+        css_parts.append("muted")
+    elif volume:
+        tooltip_parts.append(f"Audio: {volume}")
+
+    if vpn_active:
+        parts.append("VPN")
+        tooltip_parts.append(f"VPN actif: {vpn_active}")
+        css_parts.append("secure")
+
+    if recording:
+        parts.append("REC")
+        tooltip_parts.append("Enregistrement actif")
+        css_parts.append("recording")
+
+    if not context_health.get("fresh"):
+        age = context_health.get("age")
+        parts.append("UI")
+        tooltip_parts.append("Contexte Waybar à rafraîchir" + (f": {round(float(age))}s" if isinstance(age, (int, float)) else ""))
+        css_parts.append("context-warn")
+    elif context_health.get("density") or context_health.get("priority"):
+        tooltip_parts.append(
+            "Contexte UI: "
+            + " · ".join(part for part in [str(context_health.get("density") or ""), str(context_health.get("priority") or "")] if part)
+        )
+
+    if not parts:
+        return emit("", "Système normal", "hidden", "normal")
+    tooltip_parts.append("Click: réglages rapides · Right click: Settings · Middle: réparer UI")
+    return emit("  ".join(parts), "\n".join(tooltip_parts), " ".join(css_parts), "attention")
 
 
 def media() -> int:
@@ -115,8 +381,16 @@ def media() -> int:
     status = run(["playerctl", "status", "-p", "playerctld"])
     if not title:
         return emit("", "No media playing", "hidden")
-    label = f"󰝚  {title}"
-    tooltip = f"{artist} · {title}" if artist else title
+    label = f"󰝚 {compact_label(title, 18)}"
+    tooltip = "\n".join(
+        part
+        for part in [
+            "Média actif",
+            f"{artist} · {title}" if artist else title,
+            "Click: contrôles média · Right click: audio",
+        ]
+        if part
+    )
     css = "playing" if status.lower() == "playing" else "paused"
     return emit(label[:38], tooltip, css, css)
 
@@ -142,6 +416,22 @@ def profile() -> int:
     icon = str(data.get("waybar_icon") or "󰐃")
     short = str(data.get("short_label") or key[:3].upper())
     title = str(data.get("title") or key.title())
+    display = {
+        "equinox": "Equinox",
+        "baobab": "Baobab",
+        "forge": "Forge",
+        "shield": "Shield",
+        "studio": "Studio",
+        "windows": "Windows",
+        "pulse": "Pulse",
+    }.get(key, compact_label(title.split("·")[0].split()[0] if title else short, 12))
+    profile_mission = {
+        "baobab": "Culture · lecture · mémoire locale",
+        "forge": "DevOps · build · containers",
+        "shield": "Sécurité · audit · sandbox",
+        "studio": "Création · médias · exports",
+        "pulse": "Gaming · performance · capture",
+    }.get(key, "")
     role = str(data.get("role") or "Profile")
     state = str(data.get("state") or "MISS")
     mood = str(data.get("ui_mood") or data.get("description") or "")
@@ -150,10 +440,11 @@ def profile() -> int:
         part
         for part in [
             f"{title} · {role}",
+            profile_mission,
             f"State: {state}",
             mood,
             f"Waybar: {modules}" if modules else "",
-            "Click to change profile",
+            "Click: changer de mini OS · Right click: état courant",
         ]
         if part
     )
@@ -164,7 +455,312 @@ def profile() -> int:
         css += " warn"
     else:
         css += " ok"
-    return emit(f"{icon} {short}", tooltip, css, key)
+    return emit(display, tooltip, f"mini-os {css}", key)
+
+
+def os_switch() -> int:
+    profile_data = current_profile()
+    key = str(profile_data.get("key") or "equinox").lower()
+    title = str(profile_data.get("title") or key.title())
+    tooltip = "\n".join(
+        [
+            f"Mini OS actif: {title}",
+            "Click: changer de mini OS",
+            "Right click: état du mini OS courant",
+        ]
+    )
+    return emit("Changer OS", tooltip, f"os-switch profile-{key}", key)
+
+
+def mini_context() -> int:
+    profile_data = current_profile()
+    key = str(profile_data.get("key") or "equinox").lower()
+    title = str(profile_data.get("title") or key.title())
+    active = context_for_window(waybar_active_window(), key)
+    app_title = str(active.get("title") or "").strip()
+    runtime_context = {}
+    try:
+        runtime_context = json.loads(CONTEXT_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        runtime_context = {}
+    layout = runtime_context.get("layout") if isinstance(runtime_context.get("layout"), dict) else {}
+    experience_data = runtime_context.get("experience") if isinstance(runtime_context.get("experience"), dict) else {}
+    density = str(layout.get("density") or "").strip()
+    priority = str(layout.get("priority") or "").strip()
+    recommendation = str(experience_data.get("title") or "").strip()
+    spec = {
+        "equinox": ("󰐃", "Daily", "Vue quotidienne, actions générales, état SevenOS", "balance"),
+        "baobab": ("󰔱", "Archive", "Bibliothèque culturelle, collections, lecture et mémoire locale", "culture"),
+        "forge": ("󰌢", "Build", "Projets, Git, terminaux, containers, logs et déploiements", "dev"),
+        "shield": ("󰒃", "Audit", "Périmètre, sandbox, VPN, preuves et actions prudentes", "secure"),
+        "studio": ("󰏗", "Canvas", "Médias, captures, assets, exports et outils créatifs", "creative"),
+        "windows": ("󰖳", "Bridge", "Windows Bridge, VM, applications Windows", "bridge"),
+        "pulse": ("󰓅", "Boost", "Jeux, performance, captures, latence et mode immersif", "gaming"),
+    }.get(key, ("󰐃", compact_label(title, 10), "Actions rapides du mini OS", "custom"))
+    icon, label, description, signal = spec
+    signal_note = ""
+    if key == "forge":
+        signal_note = "Workflow: code → terminal → build"
+    elif key == "shield":
+        vpn_name = active_vpn_name()
+        signal_note = f"VPN: {vpn_name}" if vpn_name else "VPN: inactif · scope local"
+    elif key == "studio":
+        signal_note = "Capture active" if recorder_is_active() else "Canvas prêt · exports rapides"
+    elif key == "pulse":
+        signal_note = "Immersif: dock auto-hide" if density == "immersive" else "Performance: prêt"
+    elif key == "baobab":
+        signal_note = "Local-first · lecture et transmission"
+    tooltip = "\n".join(
+        part
+        for part in [
+            f"{title} · {label}",
+            description,
+            signal_note,
+            f"Mode: {density} · {priority}" if density or priority else "",
+            f"App active: {compact_label(app_title, 44)}" if app_title else "",
+            f"Suggestion: {compact_label(recommendation, 42)}" if recommendation else "",
+            "Click: actions rapides · Right click: centre mini OS",
+        ]
+        if part
+    )
+    css = f"mini-context profile-{key} signal-{signal}"
+    if density:
+        css += f" density-{density}"
+    if priority:
+        css += f" priority-{priority}"
+    if key in {"shield", "forge", "pulse"}:
+        css += " active"
+    return emit(icon, tooltip, css, key)
+
+
+def app_mode_from_class(app_class: str, profile_key: str = "") -> str:
+    klass = app_class.lower()
+    if any(token in klass for token in ("google-chrome", "chromium", "chrome", "firefox", "brave", "vivaldi", "librewolf", "browser", "edge")):
+        return "browser"
+    if any(token in klass for token in ("code", "codium", "cursor", "jetbrains", "idea", "pycharm", "webstorm")):
+        return "developer"
+    if any(token in klass for token in ("terminal", "kitty", "foot", "alacritty", "wezterm", "console")):
+        return "terminal"
+    if any(token in klass for token in ("nautilus", "seven-files", "thunar", "dolphin", "nemo", "file")):
+        return "files"
+    if any(token in klass for token in ("libreoffice", "onlyoffice", "writer", "calc", "impress", "evince", "okular", "zathura", "reader")):
+        return "documents"
+    if any(token in klass for token in ("vlc", "mpv", "spotify", "audacious", "rhythmbox", "celluloid")):
+        return "media"
+    if any(token in klass for token in ("gimp", "inkscape", "blender", "kdenlive", "obs", "krita", "studio")):
+        return "studio"
+    if profile_key in {"studio", "shield", "windows", "forge", "pulse", "baobab"}:
+        return profile_key
+    return "default"
+
+
+def app_key_from_class(app_class: str) -> str:
+    klass = app_class.lower()
+    if "google-chrome" in klass:
+        return "chrome"
+    if "chromium" in klass:
+        return "chromium"
+    if "firefox" in klass or "librewolf" in klass:
+        return "firefox"
+    if "brave" in klass:
+        return "brave"
+    if klass in {"code", "code-url-handler"} or "visual-studio-code" in klass:
+        return "vscode"
+    if "codium" in klass:
+        return "vscodium"
+    if "cursor" in klass:
+        return "cursor"
+    if "jetbrains" in klass or "pycharm" in klass or "webstorm" in klass or "idea" in klass:
+        return "jetbrains"
+    if "kitty" in klass:
+        return "kitty"
+    if "seventerminal" in klass or "terminal" in klass:
+        return "terminal"
+    if "sevenfiles" in klass or "seven-files" in klass:
+        return "seven-files"
+    if "nautilus" in klass:
+        return "nautilus"
+    if "libreoffice" in klass or "onlyoffice" in klass:
+        return "office"
+    if "vlc" in klass:
+        return "vlc"
+    if "mpv" in klass:
+        return "mpv"
+    if "spotify" in klass:
+        return "spotify"
+    if "obs" in klass:
+        return "obs"
+    if "gimp" in klass or "inkscape" in klass or "krita" in klass or "blender" in klass:
+        return "creative"
+    return "generic"
+
+
+def app_service_from_title(app_key: str, title: str) -> str:
+    text = title.lower()
+    if app_key not in {"chrome", "chromium", "firefox", "brave"}:
+        return ""
+    if "youtube" in text:
+        return "youtube"
+    if "gmail" in text or "inbox" in text and "mail" in text:
+        return "gmail"
+    if "google docs" in text or "docs.google" in text:
+        return "google-docs"
+    if "google sheets" in text or "sheets.google" in text:
+        return "google-sheets"
+    if "google drive" in text or "drive.google" in text:
+        return "google-drive"
+    if "github" in text:
+        return "github"
+    if "figma" in text:
+        return "figma"
+    if "notion" in text:
+        return "notion"
+    if "spotify" in text:
+        return "spotify-web"
+    if "netflix" in text or "prime video" in text or "disney+" in text:
+        return "streaming"
+    return ""
+
+
+def app_menu() -> int:
+    ctx = context_for_window(waybar_active_window(), str(current_profile().get("key") or "equinox"))
+    title = str(ctx.get("title") or "")
+    mode = str(ctx.get("mode") or "default")
+    app_key = str(ctx.get("key") or "generic")
+    service = str(ctx.get("service") or "")
+    menu = str(ctx.get("menu") or "Fichier  Édition  Affichage  Fenêtre  Aide")
+
+    tooltip_parts = ["Menus SevenOS"]
+    if title:
+        tooltip_parts.append(compact_label(title, 52))
+    if service:
+        tooltip_parts.append(f"Service actif: {service}")
+    tooltip_parts.append("Click: menu contextuel · Right click: fenêtre")
+    css = f"app-menu {mode} app-{app_key}"
+    if service:
+        css += f" service-{service}"
+    return emit(menu, "\n".join(tooltip_parts), css, service or mode)
+
+
+def app_menu_context() -> tuple[str, str, str, str]:
+    ctx = context_for_window(waybar_active_window(), str(current_profile().get("key") or "equinox"))
+    return str(ctx["mode"]), str(ctx["title"]), str(ctx["key"]), str(ctx["service"])
+
+
+def app_menu_item() -> int:
+    item = sys.argv[2] if len(sys.argv) > 2 else "file"
+    ctx = context_for_window(waybar_active_window(), str(current_profile().get("key") or "equinox"))
+    mode, title, app_key, service = str(ctx["mode"]), str(ctx["title"]), str(ctx["key"]), str(ctx["service"])
+    label = str(ctx.get("labels", {}).get(item) or "")
+    css = f"app-menu-item app-menu-{item} {mode} app-{app_key}"
+    if service:
+        css += f" service-{service}"
+    density = waybar_density()
+    if item in hidden_menu_items(density, str(ctx.get("profile") or ""), mode):
+        return emit("", f"{label or item} déplacé dans …", css + " hidden compact-hidden", item)
+    if not label:
+        return emit("", "Menu masqué", css + " hidden", item)
+    tooltip_parts = [f"{label} · menu de l'app active"]
+    if title:
+        tooltip_parts.append(compact_label(title, 52))
+    tooltip_parts.append("Click: ouvrir le menu natif · Right click: actions SevenOS")
+    return emit(label, "\n".join(tooltip_parts), css, item)
+
+
+def waybar_density() -> str:
+    override = os.environ.get("SEVENOS_WAYBAR_DENSITY", "").strip().lower()
+    if override in {"full", "normal", "cozy", "compact"}:
+        return "full" if override == "normal" else override
+    try:
+        context = json.loads(CONTEXT_FILE.read_text(encoding="utf-8"))
+        layout = context.get("layout") if isinstance(context.get("layout"), dict) else {}
+        density = str(layout.get("density") or "").strip().lower()
+        if density in {"compact", "immersive"}:
+            return "compact"
+        if density == "wide":
+            return "full"
+    except Exception:
+        pass
+    if not shutil.which("hyprctl"):
+        return "full"
+    monitors = read_json(["hyprctl", "monitors", "-j"])
+    if not isinstance(monitors, list):
+        return "full"
+    focused = next((item for item in monitors if item.get("focused")), monitors[0] if monitors else {})
+    try:
+        width = int(focused.get("width") or 1920)
+    except (TypeError, ValueError):
+        width = 1920
+    if width <= 1366:
+        return "compact"
+    if width <= 1600:
+        return "cozy"
+    return "full"
+
+
+def hidden_menu_items(density: str, profile: str = "", mode: str = "") -> set[str]:
+    if profile in {"forge", "shield", "studio", "pulse", "baobab"} or mode in {"forge", "shield", "studio", "pulse", "baobab"}:
+        return {"extra", "tools", "window", "help"}
+    if density == "compact":
+        return {"tools", "window", "help"}
+    if density == "cozy":
+        return {"help"}
+    return set()
+
+
+def app_menu_more() -> int:
+    ctx = context_for_window(waybar_active_window(), str(current_profile().get("key") or "equinox"))
+    density = waybar_density()
+    hidden = hidden_menu_items(density, str(ctx.get("profile") or ""), str(ctx.get("mode") or ""))
+    labels = [str(ctx.get("labels", {}).get(item) or "") for item in ("extra", "tools", "window", "help") if item in hidden and str(ctx.get("labels", {}).get(item) or "")]
+    css = f"app-menu-more {ctx.get('mode', 'default')} app-{ctx.get('key', 'generic')} density-{density}"
+    service = str(ctx.get("service") or "")
+    if service:
+        css += f" service-{service}"
+    if not labels:
+        return emit("", "Menus étendus visibles", css + " hidden", density)
+    tooltip = "\n".join(["Menus déplacés dans …", *labels, "Click: toutes les actions de l'app"])
+    return emit("…", tooltip, css, density)
+
+
+def experience() -> int:
+    root = Path(__file__).resolve().parent.parent
+    helper = root / "scripts/shell-experience.sh"
+    if not helper.exists():
+        return emit("󰐃", "SevenOS Shell Experience missing", "missing", "missing")
+    data = read_json([str(helper), "status", "--json"])
+    score = read_json([str(helper), "score"])
+    if not data:
+        return emit("󰐃", "SevenOS Shell Experience unavailable", "missing", "missing")
+    profile = str(data.get("profile") or "equinox")
+    motion = str((data.get("motion") or {}).get("profile_motion") or "balanced")
+    recent = data.get("recent_events") if isinstance(data.get("recent_events"), list) else []
+    last = recent[-1] if recent else {}
+    recommendation = data.get("recommendation") if isinstance(data.get("recommendation"), dict) else {}
+    state = str(score.get("state") or data.get("state") or "ready")
+    percent = int(score.get("score") or 0)
+    css = f"profile-{profile} "
+    css += "experience-ready" if state == "ready" and percent >= 90 else "experience-warn"
+    title = str(recommendation.get("title") or "").strip()
+    if recommendation:
+        css += " recommended"
+    if last and str(last.get("kind") or "").lower() in {"launch", "focus", "workspace"}:
+        css += " active"
+    label = ""
+    if state != "ready" or percent < 90:
+        label = "󰐃"
+    tooltip_parts = [
+        f"Shell Experience · {state} · {percent}%",
+        f"Profile: {profile}",
+        f"Motion: {motion}",
+    ]
+    if last:
+        tooltip_parts.append(f"Last: {last.get('kind', 'event')} · {last.get('label', '')}")
+    if recommendation:
+        tooltip_parts.append(f"Next: {recommendation.get('title', 'Open Spotlight')}")
+        tooltip_parts.append(str(recommendation.get("reason", "")))
+    tooltip_parts.append("Click: warm up · Right click: recent events · Middle: recommendation")
+    return emit(label, "\n".join(tooltip_parts), css, state)
 
 
 def main() -> int:
@@ -177,12 +773,23 @@ def main() -> int:
         "recording": recorder,
         "ai": ai,
         "control-center": control_center,
+        "system-status": system_status,
+        "system": system_status,
+        "sevenos": sevenos_menu,
+        "sevenos-menu": sevenos_menu,
         "panel": control_center,
         "media": media,
         "profile": profile,
+        "os-switch": os_switch,
+        "mini-context": mini_context,
+        "app-menu": app_menu,
+        "app-menu-item": app_menu_item,
+        "app-menu-more": app_menu_more,
+        "experience": experience,
+        "shell-experience": experience,
     }
     if command not in handlers:
-        print("Usage: seven-waybar-status [wifi|bluetooth|vpn|recorder|ai|control-center|media|profile]", file=sys.stderr)
+        print("Usage: seven-waybar-status [sevenos|wifi|bluetooth|vpn|recorder|ai|control-center|system-status|media|profile|mini-context|app-menu|app-menu-item|app-menu-more|experience]", file=sys.stderr)
         return 2
     return handlers[command]()
 

@@ -54,6 +54,8 @@ Targets:
   migrate-plan     Show SevenOS protected user-state migration plan
   migrate-backup   Back up protected SevenOS user state before upgrading
   daily-driver     Consolidate SevenOS for primary PC testing
+  new              One-command fresh machine setup
+  new-device       Fully prepare a fresh machine: fonts, deps, profiles, isolation
   all              Install base layer and all profiles
 
 Options:
@@ -186,6 +188,13 @@ case "$TARGET" in
     ;;
   daily-driver)
     "$ROOT_DIR/scripts/daily-driver.sh" apply "${TARGET_ARGS[@]}"
+    ;;
+  new|new-device|fresh-device|first-boot|setup)
+    if [[ "$YES" == "1" ]]; then
+      "$ROOT_DIR/scripts/new-device.sh" --yes "${TARGET_ARGS[@]}"
+    else
+      "$ROOT_DIR/scripts/new-device.sh" "${TARGET_ARGS[@]}"
+    fi
     ;;
   post-install)
     "$ROOT_DIR/scripts/post-install.sh"

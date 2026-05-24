@@ -1,0 +1,14 @@
+[Unit]
+Description=SevenOS Waybar active context daemon
+PartOf=sevenos-session.target
+After=seven-daemon.service sevenos-wallpaper.service
+Before=sevenos-waybar.service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/seven-waybar-context daemon
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=sevenos-session.target

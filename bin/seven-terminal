@@ -190,6 +190,13 @@ native_enabled() {
   [[ "${SEVENOS_TERMINAL_NATIVE:-1}" != "0" ]]
 }
 
+terminal_log_path() {
+  local profile="$1" runtime_root
+  runtime_root="${XDG_RUNTIME_DIR:-/tmp}/sevenos"
+  mkdir -p "$runtime_root"
+  printf '%s/seven-terminal-%s-%s.log\n' "$runtime_root" "$profile" "$$"
+}
+
 ensure_config() {
   local profile="$1"
   local active_config repo_config
@@ -212,13 +219,8 @@ ensure_config() {
 open_terminal() {
   local profile="$1"
   shift || true
-  local config title class width height shell_helper native label
+  local config title class width height shell_helper native label active_profile_name
   config="$(ensure_config "$profile")"
-
-  if ! command -v kitty >/dev/null 2>&1; then
-    printf 'seven-terminal: kitty is not installed\n' >&2
-    return 1
-  fi
 
   label="$(profile_label "$profile")"
   title="Seven Terminal · $label"
@@ -227,6 +229,7 @@ open_terminal() {
   height=480
   shell_helper="$(terminal_shell)"
   native="$ROOT_DIR/bin/seven-terminal-native"
+  active_profile_name="$(active_profile)"
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     if native_enabled && [[ -x "$native" ]]; then
@@ -238,9 +241,14 @@ open_terminal() {
   fi
 
   if native_enabled && [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
-    SEVENOS_TERMINAL_MODE="$profile" setsid -f "$native" --profile "$profile" "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
+    SEVENOS_ACTIVE_PROFILE="$active_profile_name" SEVENOS_TERMINAL_MODE="$profile" setsid -f "$native" --profile "$profile" "$@" >"$(terminal_log_path "$profile")" 2>&1 || return 1
     place_window SevenTerminalNative "$width" "$height" "$title"
     return 0
+  fi
+
+  if ! command -v kitty >/dev/null 2>&1; then
+    printf 'seven-terminal: kitty is not installed and native VTE is unavailable\n' >&2
+    return 1
   fi
 
   local overrides=()
@@ -249,7 +257,7 @@ open_terminal() {
   done < <(profile_overrides "$profile")
 
   if [[ "$#" -gt 0 ]]; then
-    SEVENOS_TERMINAL_MODE="$profile" setsid -f kitty --config "$config" \
+    SEVENOS_ACTIVE_PROFILE="$active_profile_name" SEVENOS_TERMINAL_MODE="$profile" setsid -f kitty --config "$config" \
       --class "$class" \
       --name "$class" \
       --title "$title" \
@@ -258,9 +266,9 @@ open_terminal() {
       --override initial_window_width=88c \
       --override initial_window_height=24c \
       "${overrides[@]}" \
-      "$@" >/tmp/sevenos-terminal.log 2>&1 || return 1
+      "$@" >"$(terminal_log_path "$profile")" 2>&1 || return 1
   else
-    SEVENOS_TERMINAL_MODE="$profile" setsid -f kitty --config "$config" \
+    SEVENOS_ACTIVE_PROFILE="$active_profile_name" SEVENOS_TERMINAL_MODE="$profile" setsid -f kitty --config "$config" \
       --class "$class" \
       --name "$class" \
       --title "$title" \
@@ -269,7 +277,7 @@ open_terminal() {
       --override initial_window_width=88c \
       --override initial_window_height=24c \
       "${overrides[@]}" \
-      "$shell_helper" >/tmp/sevenos-terminal.log 2>&1 || return 1
+      "$shell_helper" >"$(terminal_log_path "$profile")" 2>&1 || return 1
   fi
 
   place_window "$class" "$width" "$height"
@@ -324,7 +332,8 @@ status() {
   printf 'light:   %s\n' "$(ensure_config light)"
   printf 'modes:   forge cyber windows focus admin\n'
   printf 'default: %s\n' "$KITTY_CONFIG_DIR/kitty.conf"
-  printf 'backend: native VTE default with Kitty fallback; set SEVENOS_TERMINAL_NATIVE=0 for Kitty\n'
+  printf 'backend: native VTE default with tabs, splits, search, palette and Kitty fallback\n'
+  printf 'logs:    %s\n' "$(terminal_log_path "$current_mode")"
   if [[ -x "$ROOT_DIR/bin/seven-terminal-native" ]] && "$ROOT_DIR/bin/seven-terminal-native" --probe >/dev/null 2>&1; then
     printf 'native:  OK - GTK/VTE traffic-light terminal available\n'
   else

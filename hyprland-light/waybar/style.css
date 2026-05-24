@@ -1,38 +1,71 @@
-@define-color light_text rgba(28, 31, 38, 0.94);
-@define-color light_soft rgba(74, 82, 96, 0.74);
-@define-color light_edge rgba(28, 31, 38, 0.075);
-@define-color light_edge_hot rgba(47, 123, 255, 0.22);
+@define-color seven_bg rgba(34, 38, 76, 0.44);
+@define-color seven_glass rgba(255, 255, 255, 0.105);
+@define-color seven_glass_lift rgba(255, 255, 255, 0.16);
+@define-color seven_edge rgba(255, 255, 255, 0.14);
+@define-color seven_edge_hot rgba(180, 198, 255, 0.30);
+@define-color seven_text #F5F7FA;
+@define-color seven_text_soft rgba(245, 247, 250, 0.78);
 @define-color seven_blue #2F7BFF;
-@define-color seven_violet #6A5CFF;
-@define-color seven_cyan #00B8D9;
-@define-color seven_danger rgba(210, 54, 82, 0.94);
-@define-color light_hairline rgba(28, 31, 38, 0.055);
+@define-color seven_violet #8B7CFF;
+@define-color seven_cyan #9CCBFF;
+@define-color seven_shadow rgba(3, 8, 24, 0.34);
+@define-color seven_hairline rgba(255, 255, 255, 0.085);
 
-@keyframes aiPulseLight {
+@keyframes aiPulse {
   0% {
     opacity: 0.78;
+    text-shadow:
+      0 0 10px rgba(110, 168, 255, 0.78),
+      0 0 18px rgba(139, 124, 255, 0.42);
   }
 
   50% {
     opacity: 1;
+    text-shadow:
+      0 0 16px rgba(156, 203, 255, 0.96),
+      0 0 30px rgba(139, 124, 255, 0.64);
   }
 
   100% {
     opacity: 0.78;
+    text-shadow:
+      0 0 10px rgba(110, 168, 255, 0.78),
+      0 0 18px rgba(139, 124, 255, 0.42);
   }
 }
 
-@keyframes workspaceGlowLight {
+@keyframes workspaceGlow {
   0% {
-    border-color: rgba(47, 123, 255, 0.20);
+    border-color: rgba(255, 255, 255, 0.18);
   }
 
   50% {
-    border-color: rgba(106, 92, 255, 0.28);
+    border-color: rgba(156, 203, 255, 0.44);
   }
 
   100% {
-    border-color: rgba(47, 123, 255, 0.20);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+}
+
+/* seven-motion-system: Waybar uses the same calm 180ms hover/press rhythm as the shell. */
+@keyframes sevenExperiencePulse {
+  0% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 0 10px rgba(156, 203, 255, 0.10);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 18px rgba(156, 203, 255, 0.22);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 0 10px rgba(156, 203, 255, 0.10);
   }
 }
 
@@ -40,80 +73,81 @@
   border: none;
   border-radius: 0;
   font-family: "SF Pro Display", "SF UI Display", "Inter", "JetBrainsMono Nerd Font", sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0;
   min-height: 0;
 }
 
 window#waybar {
-  color: @light_text;
-  border: 1px solid rgba(28, 31, 38, 0.060);
-  border-radius: 24px;
+  color: @seven_text;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.105);
+  border-radius: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.60) 52%, rgba(245, 247, 250, 0.48)),
-    radial-gradient(ellipse at 8% -28%, rgba(47, 123, 255, 0.12), transparent 42%),
-    radial-gradient(ellipse at 94% -20%, rgba(106, 92, 255, 0.10), transparent 34%),
-    radial-gradient(ellipse at 52% -22%, rgba(0, 184, 217, 0.070), transparent 40%),
-    rgba(255, 255, 255, 0.62);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.145), rgba(255, 255, 255, 0.052)),
+    rgba(18, 20, 34, 0.72);
   box-shadow:
-    0 14px 34px rgba(28, 31, 38, 0.085),
-    0 0 22px rgba(47, 123, 255, 0.040),
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    inset 0 -1px 0 rgba(28, 31, 38, 0.030);
+    0 1px 0 rgba(255, 255, 255, 0.055),
+    0 10px 28px rgba(3, 8, 24, 0.22);
 }
 
 .modules-left,
 .modules-center,
 .modules-right {
-  min-height: 40px;
+  min-height: 26px;
   margin-top: 0;
-  padding: 4px 7px;
+  padding: 1px 7px;
   border: 1px solid transparent;
-  border-radius: 21px;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
   transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease;
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .modules-left {
-  min-width: 394px;
-  margin-left: 4px;
+  /* adaptive-waybar-layout: compact enough for laptops, elastic on wide displays. */
+  min-width: 0;
+  margin-left: 6px;
 }
 
 .modules-center {
-  min-width: 302px;
-  border-color: @light_hairline;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.42)),
-    radial-gradient(ellipse at 50% -18%, rgba(47, 123, 255, 0.075), transparent 60%),
-    rgba(255, 255, 255, 0.48);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.78),
-    0 3px 12px rgba(28, 31, 38, 0.045);
+  min-width: 108px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .modules-right {
-  min-width: 394px;
-  margin-right: 4px;
-  border-color: rgba(28, 31, 38, 0.035);
-  background: rgba(255, 255, 255, 0.18);
+  min-width: 0;
+  margin-right: 6px;
+  border-color: transparent;
+  background: transparent;
 }
 
 .modules-center:hover {
-  border-color: @light_edge_hot;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.52)),
-    radial-gradient(ellipse at 50% -18%, rgba(47, 123, 255, 0.11), transparent 60%),
-    rgba(255, 255, 255, 0.58);
+  background: transparent;
 }
 
 #custom-sevenos,
+#window,
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help,
 #custom-profile,
+#custom-os-switch,
+#custom-mini-context,
 #custom-spotlight,
+#custom-experience,
 #custom-media,
 #custom-workspace-prev,
 #custom-workspace-next,
@@ -123,25 +157,39 @@ window#waybar {
 #battery,
 #custom-vpn,
 #custom-recorder,
+#custom-system-status,
 #clock,
 #custom-control-center {
-  min-height: 30px;
+  min-height: 20px;
   margin: 0 1px;
-  padding: 0 9px;
-  border-radius: 15px;
-  color: @light_text;
+  padding: 0 7px;
+  border-radius: 6px;
+  color: @seven_text;
   background: transparent;
   transition:
-    background 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease,
-    border-color 160ms ease,
-    min-width 160ms ease;
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    min-width 180ms ease;
 }
 
 #custom-sevenos:hover,
+#window:hover,
+#custom-app-menu:hover,
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover,
 #custom-profile:hover,
+#custom-os-switch:hover,
+#custom-mini-context:hover,
 #custom-spotlight:hover,
+#custom-experience:hover,
 #custom-media:hover,
 #custom-workspace-prev:hover,
 #custom-workspace-next:hover,
@@ -151,110 +199,433 @@ window#waybar {
 #battery:hover,
 #custom-vpn:hover,
 #custom-recorder:hover,
+#custom-system-status:hover,
 #clock:hover,
 #custom-control-center:hover {
-  color: rgba(16, 20, 30, 0.98);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.54)),
-    rgba(255, 255, 255, 0.42);
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.105);
+  box-shadow: none;
+}
+
+#custom-sevenos:active,
+#window:active,
+#custom-app-menu:active,
+#custom-app-file:active,
+#custom-app-edit:active,
+#custom-app-view:active,
+#custom-app-extra:active,
+#custom-app-more:active,
+#custom-app-tools:active,
+#custom-app-window:active,
+#custom-app-help:active,
+#custom-profile:active,
+#custom-os-switch:active,
+#custom-mini-context:active,
+#custom-spotlight:active,
+#custom-experience:active,
+#custom-media:active,
+#custom-workspace-prev:active,
+#custom-workspace-next:active,
+#custom-wifi:active,
+#custom-bluetooth:active,
+#pulseaudio:active,
+#battery:active,
+#custom-vpn:active,
+#custom-recorder:active,
+#custom-system-status:active,
+#clock:active,
+#custom-control-center:active {
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 0 1px 3px rgba(0, 0, 0, 0.18),
+    0 0 10px rgba(110, 168, 255, 0.070);
 }
 
 #custom-sevenos {
-  min-width: 102px;
-  padding-left: 13px;
-  padding-right: 11px;
-  color: rgba(22, 28, 42, 0.96);
+  min-width: 70px;
+  padding-left: 9px;
+  padding-right: 9px;
+  color: #FFFFFF;
   font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
   font-size: 14px;
 }
 
-#custom-profile {
+#custom-sevenos.profile-forge,
+#custom-sevenos.profile-windows {
+  color: rgba(156, 203, 255, 0.96);
+}
+
+#custom-sevenos.profile-shield {
+  color: rgba(117, 232, 213, 0.96);
+}
+
+#custom-sevenos.profile-studio {
+  color: rgba(255, 204, 229, 0.96);
+}
+
+#custom-sevenos.profile-baobab {
+  color: rgba(218, 255, 210, 0.96);
+}
+
+#custom-sevenos.warn,
+#custom-sevenos.miss {
+  color: rgba(255, 228, 172, 0.96);
+}
+
+#window {
   min-width: 68px;
-  padding-left: 11px;
-  padding-right: 11px;
-  border: 1px solid rgba(28, 31, 38, 0.065);
-  border-radius: 999px;
-  color: rgba(28, 31, 38, 0.94);
+  padding-left: 8px;
+  padding-right: 10px;
+  color: rgba(245, 247, 250, 0.74);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+}
+
+#window.empty {
+  color: rgba(245, 247, 250, 0.46);
+}
+
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help {
+  padding-left: 9px;
+  padding-right: 9px;
+  color: rgba(245, 247, 250, 0.66);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help {
+  margin-left: 0;
+  margin-right: 0;
+  border-radius: 5px;
+}
+
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover {
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.095);
+}
+
+#custom-app-menu.developer,
+#custom-app-file.developer,
+#custom-app-edit.developer,
+#custom-app-view.developer,
+#custom-app-extra.developer,
+#custom-app-more.developer,
+#custom-app-tools.developer,
+#custom-app-window.developer,
+#custom-app-help.developer {
+  color: rgba(156, 203, 255, 0.78);
+}
+
+#custom-app-menu.files,
+#custom-app-file.files,
+#custom-app-edit.files,
+#custom-app-view.files,
+#custom-app-extra.files,
+#custom-app-more.files,
+#custom-app-tools.files,
+#custom-app-window.files,
+#custom-app-help.files {
+  color: rgba(225, 236, 255, 0.76);
+}
+
+#custom-app-menu.shield,
+#custom-app-file.shield,
+#custom-app-edit.shield,
+#custom-app-view.shield,
+#custom-app-extra.shield,
+#custom-app-more.shield,
+#custom-app-tools.shield,
+#custom-app-window.shield,
+#custom-app-help.shield {
+  color: rgba(117, 232, 213, 0.80);
+}
+
+#custom-app-menu.studio,
+#custom-app-file.studio,
+#custom-app-edit.studio,
+#custom-app-view.studio,
+#custom-app-extra.studio,
+#custom-app-more.studio,
+#custom-app-tools.studio,
+#custom-app-window.studio,
+#custom-app-help.studio {
+  color: rgba(255, 204, 229, 0.80);
+}
+
+#custom-app-menu.windows,
+#custom-app-file.windows,
+#custom-app-edit.windows,
+#custom-app-view.windows,
+#custom-app-extra.windows,
+#custom-app-more.windows,
+#custom-app-tools.windows,
+#custom-app-window.windows,
+#custom-app-help.windows {
+  color: rgba(116, 194, 255, 0.80);
+}
+
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context {
+  min-width: 60px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #FFFFFF;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.48)),
-    rgba(255, 255, 255, 0.46);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.045)),
+    radial-gradient(ellipse at 20% -18%, rgba(255, 255, 255, 0.12), transparent 58%),
+    rgba(255, 255, 255, 0.025);
   font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
   font-size: 12px;
 }
 
+#custom-os-switch,
+#custom-mini-context,
 #custom-profile.profile-equinox {
-  color: #4F46D8;
-  border-color: rgba(106, 92, 255, 0.18);
+  color: #EDEBFF;
+  border-color: rgba(139, 124, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(139, 124, 255, 0.14);
 }
 
 #custom-profile.profile-baobab {
-  color: #2A7B36;
-  border-color: rgba(64, 160, 43, 0.20);
+  color: #DFFFD9;
+  border-color: rgba(166, 227, 161, 0.30);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(166, 227, 161, 0.13);
 }
 
 #custom-profile.profile-forge {
-  color: #9A6200;
-  border-color: rgba(254, 100, 11, 0.18);
+  color: #FFF4C7;
+  border-color: rgba(249, 226, 175, 0.30);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(249, 226, 175, 0.13);
 }
 
 #custom-profile.profile-shield {
-  color: #007B67;
-  border-color: rgba(23, 146, 153, 0.22);
+  color: #D8FFF3;
+  border-color: rgba(0, 255, 179, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 18px rgba(0, 255, 179, 0.16);
 }
 
 #custom-profile.profile-studio {
-  color: #7B32D8;
-  border-color: rgba(136, 57, 239, 0.18);
+  color: #F4E3FF;
+  border-color: rgba(203, 166, 247, 0.30);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(203, 166, 247, 0.14);
 }
 
-#custom-profile.profile-windows,
-#custom-profile.profile-horizon {
-  color: #047099;
-  border-color: rgba(4, 165, 229, 0.18);
+#custom-profile.profile-windows {
+  color: #DFF7FF;
+  border-color: rgba(137, 220, 235, 0.30);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 16px rgba(137, 220, 235, 0.13);
 }
 
 #custom-profile.profile-pulse {
-  color: #006FA8;
-  border-color: rgba(4, 165, 229, 0.22);
+  color: #DBF8FF;
+  border-color: rgba(0, 212, 255, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 18px rgba(0, 212, 255, 0.16);
+}
+
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context {
+  min-width: 38px;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+#custom-profile {
+  margin-left: 18px;
+}
+
+#custom-os-switch {
+  margin-left: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border-color: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.050);
+}
+
+#custom-mini-context {
+  min-width: 42px;
+  margin-left: 5px;
+  padding-left: 9px;
+  padding-right: 9px;
+  color: rgba(245, 247, 250, 0.82);
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.075);
+}
+
+#custom-mini-context.active {
+  color: #FFFFFF;
+  border-color: rgba(156, 203, 255, 0.22);
+  background:
+    linear-gradient(180deg, rgba(156, 203, 255, 0.100), rgba(255, 255, 255, 0.026)),
+    rgba(255, 255, 255, 0.030);
+}
+
+#custom-mini-context.density-immersive {
+  color: rgba(255, 255, 255, 0.94);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.028);
+}
+
+#custom-mini-context.density-compact,
+#custom-mini-context.priority-workflow {
+  padding-left: 8px;
+  padding-right: 8px;
+  border-color: rgba(156, 203, 255, 0.18);
+}
+
+#custom-mini-context.priority-content {
+  color: rgba(255, 255, 255, 0.90);
+  border-color: rgba(137, 220, 235, 0.18);
+}
+
+#custom-mini-context.priority-assets {
+  color: rgba(244, 227, 255, 0.94);
+  border-color: rgba(203, 166, 247, 0.20);
+}
+
+#custom-mini-context.profile-shield {
+  color: rgba(216, 255, 243, 0.96);
+  border-color: rgba(0, 255, 179, 0.22);
+}
+
+#custom-mini-context.profile-forge {
+  color: rgba(255, 244, 199, 0.96);
+  border-color: rgba(249, 226, 175, 0.22);
+}
+
+#custom-mini-context.profile-studio {
+  color: rgba(244, 227, 255, 0.96);
+  border-color: rgba(203, 166, 247, 0.22);
+}
+
+#custom-mini-context.profile-windows {
+  color: rgba(223, 247, 255, 0.96);
+  border-color: rgba(137, 220, 235, 0.22);
+}
+
+#custom-mini-context.profile-pulse {
+  color: rgba(219, 248, 255, 0.96);
+  border-color: rgba(0, 212, 255, 0.22);
+}
+
+#custom-mini-context.profile-baobab {
+  color: rgba(223, 255, 217, 0.96);
+  border-color: rgba(166, 227, 161, 0.22);
 }
 
 #custom-profile.warn {
-  border-color: rgba(254, 100, 11, 0.22);
+  border-color: rgba(249, 226, 175, 0.36);
 }
 
 #custom-profile.miss {
-  border-color: rgba(210, 15, 57, 0.24);
+  border-color: rgba(243, 139, 168, 0.36);
 }
 
 #custom-spotlight {
-  min-width: 200px;
-  padding-left: 14px;
-  padding-right: 10px;
-  border: 1px solid rgba(28, 31, 38, 0.052);
-  border-radius: 999px;
-  color: rgba(54, 61, 76, 0.78);
+  min-width: 24px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.82);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.46)),
-    radial-gradient(ellipse at 20% -14%, rgba(47, 123, 255, 0.045), transparent 62%),
-    rgba(255, 255, 255, 0.40);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.74),
-    0 1px 0 rgba(28, 31, 38, 0.030);
+    transparent;
+  box-shadow: none;
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
   font-size: 12px;
 }
 
 #custom-spotlight:hover {
-  min-width: 210px;
-  color: rgba(28, 31, 38, 0.92);
-  border-color: rgba(47, 123, 255, 0.18);
+  min-width: 24px;
+  color: rgba(255, 255, 255, 0.96);
+  border-color: rgba(156, 203, 255, 0.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 16px rgba(110, 168, 255, 0.090);
+}
+
+#custom-experience {
+  min-width: 24px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: rgba(235, 241, 255, 0.88);
+  background:
+    linear-gradient(180deg, rgba(156, 203, 255, 0.120), rgba(255, 255, 255, 0.038)),
+    rgba(255, 255, 255, 0.018);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+}
+
+#custom-experience.recommended,
+#custom-experience.active {
+  color: #FFFFFF;
+  border-color: rgba(156, 203, 255, 0.24);
+  animation: sevenExperiencePulse 5.2s ease-in-out infinite;
+}
+
+#custom-experience.experience-warn {
+  color: rgba(255, 228, 172, 0.96);
+  border-color: rgba(249, 226, 175, 0.28);
+}
+
+#custom-experience.hidden {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+}
+
+#custom-app-more {
+  min-width: 18px;
+  padding-left: 7px;
+  padding-right: 7px;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+#custom-app-more.hidden,
+#custom-app-tools.hidden,
+#custom-app-window.hidden,
+#custom-app-help.hidden {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
 }
 
 #custom-media {
   min-width: 0;
   padding-left: 10px;
   padding-right: 10px;
-  color: rgba(74, 82, 96, 0.68);
+  color: rgba(255, 255, 255, 0.72);
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
   font-size: 12px;
 }
@@ -267,18 +638,18 @@ window#waybar {
 }
 
 #custom-media.playing {
-  color: rgba(28, 31, 38, 0.90);
+  color: rgba(255, 255, 255, 0.92);
 }
 
 #custom-workspace-prev,
 #custom-workspace-next {
-  min-width: 32px;
-  min-height: 30px;
-  padding: 0 6px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
   margin: 0 1px;
-  color: rgba(74, 82, 96, 0.84);
+  color: rgba(255, 255, 255, 0.84);
   font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
-  font-size: 21px;
+  font-size: 0;
 }
 
 #workspaces {
@@ -286,44 +657,40 @@ window#waybar {
 }
 
 #workspaces button {
-  min-width: 31px;
-  min-height: 30px;
+  min-width: 22px;
+  min-height: 22px;
   margin: 0 1px;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 1px solid transparent;
   border-radius: 14px;
-  color: @light_soft;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.50), rgba(255, 255, 255, 0.18)),
-    rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.58);
+  background: transparent;
   transition:
-    background 160ms ease,
-    color 160ms ease,
-    border-color 160ms ease,
-    min-width 160ms ease;
+    background 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    min-width 180ms ease;
 }
 
 #workspaces button:hover {
-  color: @light_text;
-  background: rgba(47, 123, 255, 0.080);
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.065);
 }
 
 #workspaces button.active {
-  min-width: 38px;
+  min-width: 24px;
   color: #FFFFFF;
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.24), transparent 38%),
-    linear-gradient(135deg, @seven_blue, @seven_violet);
-  border-color: rgba(47, 123, 255, 0.20);
-  box-shadow:
-    0 4px 14px rgba(47, 123, 255, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.24);
-  animation: workspaceGlowLight 4.8s ease-in-out infinite;
+    linear-gradient(180deg, rgba(80, 88, 112, 0.26), rgba(80, 88, 112, 0.12)),
+    rgba(80, 88, 112, 0.10);
+  border-color: rgba(80, 88, 112, 0.18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 
 #workspaces button.urgent {
-  color: @seven_danger;
-  background: rgba(210, 54, 82, 0.10);
+  color: #FFFFFF;
+  background: rgba(255, 91, 122, 0.26);
 }
 
 #custom-wifi,
@@ -331,12 +698,18 @@ window#waybar {
 #pulseaudio,
 #battery,
 #custom-vpn,
-#custom-recorder {
-  min-width: 28px;
-  padding-left: 8px;
-  padding-right: 8px;
+#custom-recorder,
+#tray {
+  min-width: 22px;
+  padding-left: 7px;
+  padding-right: 7px;
   font-size: 14px;
-  color: rgba(45, 52, 68, 0.88);
+  color: rgba(255, 255, 255, 0.90);
+}
+
+#tray {
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 #custom-wifi,
@@ -349,19 +722,8 @@ window#waybar {
   background: transparent;
 }
 
-#custom-bluetooth,
-#pulseaudio,
-#battery,
-#custom-vpn,
-#custom-recorder,
-#clock {
-  border-left: 1px solid rgba(28, 31, 38, 0.075);
-  border-image: linear-gradient(180deg, transparent, rgba(28, 31, 38, 0.090), transparent) 1;
-  border-radius: 0;
-}
-
 #battery {
-  min-width: 60px;
+  min-width: 52px;
 }
 
 #custom-wifi.off,
@@ -372,18 +734,19 @@ window#waybar {
 #pulseaudio.muted,
 #battery.warning:not(.charging),
 #battery.critical:not(.charging) {
-  color: @seven_danger;
+  color: rgba(255, 179, 195, 0.95);
 }
 
 #custom-wifi.connected,
 #custom-bluetooth.connected,
 #custom-bluetooth.on,
 #custom-vpn.active {
-  color: @seven_blue;
+  color: rgba(156, 203, 255, 0.96);
 }
 
 #custom-vpn.hidden,
-#custom-recorder.hidden {
+#custom-recorder.hidden,
+#custom-system-status.hidden {
   min-width: 0;
   padding: 0;
   margin: 0;
@@ -391,48 +754,184 @@ window#waybar {
   border-left: 0;
 }
 
+#custom-system-status {
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+}
+
+#custom-system-status.secure {
+  color: rgba(156, 203, 255, 0.96);
+}
+
+#custom-system-status.muted,
+#custom-system-status.battery-low,
+#custom-system-status.context-warn {
+  color: rgba(255, 228, 172, 0.96);
+}
+
+#custom-system-status.critical,
+#custom-system-status.recording {
+  color: rgba(255, 179, 195, 0.98);
+}
+
 #custom-recorder.recording {
-  color: @seven_danger;
+  color: rgba(255, 111, 139, 0.98);
+  text-shadow: 0 0 14px rgba(255, 91, 122, 0.50);
 }
 
 #clock {
-  min-width: 54px;
-  padding-left: 11px;
-  padding-right: 11px;
-  color: rgba(54, 61, 76, 0.76);
+  min-width: 43px;
+  padding-left: 7px;
+  padding-right: 7px;
+  color: rgba(255, 255, 255, 0.84);
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
   font-size: 12px;
 }
 
 #custom-control-center {
-  min-width: 104px;
-  min-height: 30px;
-  padding-left: 11px;
-  padding-right: 12px;
-  border-radius: 999px;
-  color: rgba(28, 31, 38, 0.88);
+  min-width: 24px;
+  min-height: 20px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.94);
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
   font-size: 12px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.54)),
-    radial-gradient(ellipse at 20% -20%, rgba(47, 123, 255, 0.14), transparent 58%),
-    rgba(255, 255, 255, 0.50);
-  border: 1px solid rgba(28, 31, 38, 0.070);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.150), rgba(255, 255, 255, 0.052)),
+    radial-gradient(ellipse at 20% -20%, rgba(156, 203, 255, 0.22), transparent 55%),
+    rgba(255, 255, 255, 0.056);
+  border: 1px solid rgba(156, 203, 255, 0.16);
   box-shadow:
-    0 0 12px rgba(47, 123, 255, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 14px rgba(110, 168, 255, 0.10);
+}
+
+#custom-control-center.secure {
+  color: rgba(156, 203, 255, 0.98);
+}
+
+#custom-control-center.attention {
+  color: rgba(255, 179, 195, 0.98);
+  border-color: rgba(255, 111, 139, 0.30);
 }
 
 tooltip {
   padding: 12px;
-  border: 1px solid rgba(28, 31, 38, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
-  color: @light_text;
+  color: #FFFFFF;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 247, 250, 0.92)),
-    rgba(255, 255, 255, 0.86);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.04)),
+    rgba(20, 20, 28, 0.92);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
 
 tooltip label {
-  color: @light_text;
+  color: #FFFFFF;
+}
+#custom-sevenos.profile-pulse {
+  color: rgba(16, 119, 156, 0.96);
+}
+
+#custom-app-menu.forge,
+#custom-app-file.forge,
+#custom-app-edit.forge,
+#custom-app-view.forge,
+#custom-app-extra.forge,
+#custom-app-more.forge,
+#custom-app-tools.forge,
+#custom-app-window.forge,
+#custom-app-help.forge {
+  color: rgba(132, 84, 12, 0.86);
+}
+
+#custom-app-menu.baobab,
+#custom-app-file.baobab,
+#custom-app-edit.baobab,
+#custom-app-view.baobab,
+#custom-app-extra.baobab,
+#custom-app-more.baobab,
+#custom-app-tools.baobab,
+#custom-app-window.baobab,
+#custom-app-help.baobab {
+  color: rgba(56, 111, 41, 0.86);
+}
+
+#custom-app-menu.pulse,
+#custom-app-file.pulse,
+#custom-app-edit.pulse,
+#custom-app-view.pulse,
+#custom-app-extra.pulse,
+#custom-app-more.pulse,
+#custom-app-tools.pulse,
+#custom-app-window.pulse,
+#custom-app-help.pulse {
+  color: rgba(16, 119, 156, 0.86);
+}
+
+#custom-profile.profile-forge,
+#custom-mini-context.profile-forge,
+#custom-experience.profile-forge {
+  color: #704909;
+  border-color: rgba(191, 129, 32, 0.28);
+  background: linear-gradient(180deg, rgba(255, 214, 138, 0.46), rgba(255, 255, 255, 0.18));
+}
+
+#custom-profile.profile-shield,
+#custom-mini-context.profile-shield,
+#custom-experience.profile-shield,
+#custom-vpn.active {
+  color: #056553;
+  border-color: rgba(3, 154, 127, 0.30);
+  background: linear-gradient(180deg, rgba(156, 239, 219, 0.44), rgba(255, 255, 255, 0.18));
+}
+
+#custom-profile.profile-studio,
+#custom-mini-context.profile-studio,
+#custom-experience.profile-studio,
+#custom-recorder.recording {
+  color: #8B3C6C;
+  border-color: rgba(196, 93, 151, 0.28);
+  background: linear-gradient(180deg, rgba(255, 196, 226, 0.44), rgba(255, 255, 255, 0.18));
+}
+
+#custom-profile.profile-pulse,
+#custom-mini-context.profile-pulse,
+#custom-experience.profile-pulse {
+  color: #075F84;
+  border-color: rgba(16, 157, 207, 0.32);
+  background: linear-gradient(180deg, rgba(168, 232, 255, 0.44), rgba(255, 255, 255, 0.18));
+}
+
+#custom-profile.profile-baobab,
+#custom-mini-context.profile-baobab,
+#custom-experience.profile-baobab {
+  color: #426B24;
+  border-color: rgba(115, 160, 72, 0.30);
+  background: linear-gradient(180deg, rgba(219, 244, 188, 0.46), rgba(255, 255, 255, 0.18));
+}
+
+#custom-mini-context.signal-dev,
+#custom-mini-context.signal-secure,
+#custom-mini-context.signal-gaming {
+  min-width: 24px;
+}
+
+#custom-mini-context.signal-creative,
+#custom-mini-context.signal-culture {
+  min-width: 24px;
+}
+
+#custom-experience.experience-ready {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
 }

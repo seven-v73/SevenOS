@@ -14,6 +14,10 @@ window.seven-store {
   border-radius: 8px;
   padding: 10px 12px;
 }
+.topbar .caption {
+  color: @seven_muted;
+  font-size: 11px;
+}
 .sidebar {
   background: @seven_sidebar;
   border-right: 1px solid @seven_border;
@@ -46,6 +50,31 @@ window.seven-store {
     @seven_panel;
   border: 1px solid @seven_border;
 }
+.editorial-hero {
+  min-height: 182px;
+  border-radius: 8px;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 18% 10%, alpha(@seven_text, 0.22), transparent 28%),
+    radial-gradient(circle at 86% 18%, alpha(@seven_secondary, 0.28), transparent 34%),
+    linear-gradient(135deg, alpha(@seven_accent, 0.34), alpha(@seven_panel_2, 0.96));
+  border: 1px solid alpha(@seven_accent, 0.28);
+}
+.editorial-kicker {
+  color: @seven_muted;
+  font-size: 11px;
+  font-weight: 600;
+}
+.editorial-title {
+  color: @seven_text;
+  font-size: 28px;
+  font-weight: 700;
+}
+.editorial-copy {
+  color: @seven_text;
+  opacity: 0.86;
+  font-size: 13px;
+}
 .hero-icon {
   min-width: 68px;
   min-height: 68px;
@@ -59,6 +88,15 @@ window.seven-store {
   border-radius: 8px;
   padding: 14px;
   background: @seven_panel;
+  border: 1px solid @seven_border;
+}
+.feature-card {
+  min-height: 126px;
+  border-radius: 8px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 100% 0%, alpha(@seven_accent, 0.16), transparent 36%),
+    @seven_panel;
   border: 1px solid @seven_border;
 }
 .card:hover {
@@ -88,6 +126,12 @@ window.seven-store {
   font-weight: 500;
   letter-spacing: 0;
 }
+.availability {
+  color: @seven_text;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.82;
+}
 .badge {
   border-radius: 999px;
   padding: 4px 8px;
@@ -103,14 +147,85 @@ window.seven-store {
   background: alpha(@seven_success, 0.11);
   border: 1px solid alpha(@seven_success, 0.18);
 }
+.risk-low {
+  color: @seven_success;
+}
+.risk-medium {
+  color: @seven_warning;
+}
+.metadata-grid {
+  border-radius: 8px;
+  padding: 12px;
+  background: @seven_panel_2;
+  border: 1px solid @seven_border;
+}
+.metadata-label {
+  color: @seven_muted;
+  font-size: 10px;
+  font-weight: 600;
+}
+.metadata-value {
+  color: @seven_text;
+  font-size: 12px;
+}
+.permission-panel {
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, alpha(@seven_success, 0.09), alpha(@seven_accent, 0.08)),
+    @seven_panel_2;
+  border: 1px solid alpha(@seven_success, 0.16);
+}
 .preview-panel {
-  min-height: 116px;
+  min-height: 142px;
   border-radius: 8px;
   padding: 16px;
   background:
     radial-gradient(circle at 20% 20%, alpha(@seven_accent, 0.20), transparent 42%),
     linear-gradient(145deg, @seven_panel_2, @seven_panel);
   border: 1px solid @seven_border;
+}
+.screenshot-strip {
+  min-height: 72px;
+  border-radius: 8px;
+  padding: 10px;
+  background:
+    linear-gradient(135deg, alpha(@seven_accent, 0.18), alpha(@seven_secondary, 0.12)),
+    @seven_panel_2;
+  border: 1px solid @seven_border;
+}
+.operation-panel {
+  border-radius: 8px;
+  padding: 12px;
+  background: alpha(@seven_accent, 0.11);
+  border: 1px solid alpha(@seven_accent, 0.22);
+}
+.loading-panel {
+  border-radius: 8px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 8% 8%, alpha(@seven_accent, 0.18), transparent 34%),
+    @seven_panel;
+  border: 1px solid @seven_border;
+}
+.operation-title {
+  color: @seven_text;
+  font-weight: 600;
+  font-size: 12px;
+}
+.operation-state {
+  color: @seven_muted;
+  font-size: 11px;
+}
+progressbar trough {
+  min-height: 6px;
+  border-radius: 999px;
+  background: @seven_panel_2;
+}
+progressbar progress {
+  min-height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, @seven_accent, @seven_secondary);
 }
 .mode-toggle {
   border-radius: 999px;
@@ -162,4 +277,21 @@ button.ghost {
     linear-gradient(135deg, alpha(@seven_accent, 0.14), alpha(@seven_secondary, 0.10)),
     @seven_panel;
   border: 1px solid @seven_border;
+}
+.filter-row {
+  border-radius: 8px;
+  padding: 8px;
+  background: @seven_panel;
+  border: 1px solid @seven_border;
+}
+.filter-row button {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: transparent;
+  color: @seven_muted;
+}
+.filter-row button:hover,
+.filter-row button.active {
+  background: @seven_selected;
+  color: @seven_text;
 }

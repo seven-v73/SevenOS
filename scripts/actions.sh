@@ -94,6 +94,9 @@ recorder.full	Desktop	Record Screen	seven-recorder full	safe	Start a full-screen
 recorder.stop	Desktop	Stop Recording	seven-recorder stop	safe	Stop the active SevenOS recording and copy the saved path.
 window.toggle-float	Desktop	Toggle Floating	seven window toggle-float	safe	Toggle the active window between tiled and floating mode.
 window.smart-maximize	Desktop	Smart Maximize	seven window smart-maximize	safe	Apply SevenOS smart maximize to the active window.
+window.remember	Desktop	Remember Window Layout	seven window remember	safe	Record active window, workspace, size and position for SevenOS session continuity.
+window.memory	Desktop	Window Memory	seven window memory --json	safe	Show remembered windows, workspaces and app layout state.
+window.restore	Desktop	Restore Window Layout	seven window restore	safe	Focus and restore the remembered active window layout when possible.
 settings.open	Desktop	Open Settings	seven-settings	safe	Open the native SevenOS Settings app for wallpaper, displays, network, sound, keyboard, security, profiles and system.
 welcome.open	System	Welcome	seven welcome	safe	Show the SevenOS onboarding overview.
 welcome.status	System	First-Run Status	seven welcome status	safe	Check whether this user session is really SevenOS.
@@ -105,8 +108,17 @@ keyboard.apply	Desktop	Apply US/FR Keyboard	seven keyboard apply	changes	Enable 
 postinstall.check	System	Post-Install Check	seven post-install	safe	Check common blockers after installation.
 session.status	Desktop	Session Status	seven session status	safe	Check SevenOS session services and desktop files.
 session.start	Desktop	Start Session	seven session start	changes	Start SevenOS desktop session components.
+waybar.status	Desktop	Waybar Status	seven-waybar status --json	safe	Show the machine-readable SevenOS Waybar, context daemon and repair contract.
+waybar.repair	Desktop	Repair Waybar	seven-waybar repair	changes	Repair the SevenOS Waybar and active context daemon, then verify the doctor state.
 readiness.run	System	Run Readiness	seven readiness	safe	Score SevenOS against product readiness checks.
 experience.run	System	Experience Audit	seven experience	safe	Check whether SevenOS behaves like a coherent OS.
+experience.status	Desktop	Shell Experience State	seven experience status	safe	Show the shared motion, feedback, focus and mini OS continuity contract.
+experience.apply	Desktop	Apply Shell Experience	seven experience apply	changes	Synchronize motion, focus feedback, workspace memory and mini OS behavior hints.
+experience.doctor	Desktop	Shell Experience Doctor	seven experience doctor	safe	Validate the unified SevenOS Shell Experience contract.
+experience.warmup	Desktop	Warm Up Shell Experience	seven experience warmup	safe	Prepare Spotlight, app and motion caches so SevenOS feels instant after session start.
+experience.events	Desktop	Shell Experience Events	seven experience events	safe	Show recent launch, focus, workspace and feedback events.
+experience.recommend	Desktop	Shell Experience Recommendation	seven experience recommend	safe	Show the next suggested action for the active mini OS and current shell state.
+experience.reduced_motion	Desktop	Reduced Motion Path	seven motion reduced	changes	Use the accessibility-ready reduced motion preset across the compositor.
 control.plan	System	Control Plane	seven control	safe	Show prioritized SevenOS actions across readiness, trust and services.
 control.preview	System	Preview Control Fixes	seven control apply --limit 5	safe	Preview the next prioritized SevenOS fixes without changing the system.
 events.open	System	Event Journal	seven events	safe	Show local SevenOS decision and action history.
@@ -126,12 +138,17 @@ b3.apply.backend	System	B3 Backend Preview	seven b3 apply --phase backend --limi
 b3.apply.profiles	System	B3 Profiles Preview	seven b3 apply --phase profiles --limit 4	safe	Preview the next profile completion actions without changing the system.
 doctor.run	System	Run Doctor	seven doctor	safe	Check common system blockers.
 doctor.open	System	Open Seven Doctor	seven doctor open	safe	Open the graphical Seven Doctor surface with guided repair actions.
+prepush.fast	System	Pre-Push Fast Gate	seven pre-push	safe	Run the fast GitHub push gate: syntax, JSON contracts, design, smoke, state and first-install dry-runs.
+prepush.full	System	Pre-Push Full Audit	seven pre-push full	safe	Run the long developer audit before a release tag.
 daily.status	System	Daily Driver Gate	seven daily	safe	Check whether SevenOS is ready for a primary PC.
 daily.plan	System	Daily Driver Plan	seven daily plan	safe	Show the ordered path to make SevenOS daily-driver ready.
 daily.apply	System	Apply Daily Driver Plan	seven daily apply --yes	packages	Install and enable the daily-driver security, profile, Windows, server and installer foundation.
 primary.status	System	Primary PC Gate	seven primary	safe	Show the consolidated primary-PC readiness gate across Shield, profiles, Windows, Core, Server and Flatpak.
 primary.json	System	Primary PC JSON	seven primary --json	safe	Expose primary-PC readiness as one machine-readable contract for Seven Hub and future Seven Core clients.
 primary.apply	System	Apply Primary PC Path	seven primary apply	packages	Run the daily-driver consolidation path from the primary-PC entrypoint.
+setup.new	System	Install SevenOS New Machine	seven new	packages	One-command fresh machine setup: fonts, dependencies, mini OS workspaces, isolation and post-install checks.
+setup.new_device	System	New Device Setup	seven setup new-device --yes	packages	Automatically prepare a fresh SevenOS machine with fonts, visual layer, mini OS requirements, workspaces and isolation.
+setup.new_device.optional	System	New Device Full Setup	seven setup new-device --yes --optional	packages	Prepare a fresh SevenOS machine and include optional mini OS package sets.
 improve.daily	System	Improve Daily Driver	seven improve daily --apply --yes	packages	Apply the daily-driver consolidation plan.
 improve.security	System	Improve Security	seven improve security --apply	packages	Install or prepare the core security improvements.
 improve.security.yes	System	Improve Security Batch	seven improve security --apply --yes	packages	Install core security improvements non-interactively.
@@ -151,12 +168,24 @@ profile.current	Profiles	Current Profile	seven profile current	safe	Show the act
 profile.guide	Profiles	Profile Guide	seven profile guide	safe	Show recommended actions for the active profile.
 profile.apps	Profiles	Profile Apps	seven profile apps	safe	Show apps and launch commands for the active profile.
 profile.gaps	Profiles	Profile Gaps	seven profile gaps	safe	Show incomplete profile packages, apps and next actions.
+profile.requirements	Profiles	Profile Requirements	seven profile requirements $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))')	safe	Show missing package requirements for the active mini OS.
+profile.requirements.install	Profiles	Install Profile Requirements	seven profile requirements $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --apply --yes	packages	Install missing required packages for the active mini OS.
+profile.requirements.optional	Profiles	Install Optional Requirements	seven profile requirements $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --optional --apply --yes	packages	Install optional/profile community packages when available.
 profile.plan	Profiles	Profile Plan	seven profile plan	safe	Show prioritized profile completion plan.
 profile.aliases	Profiles	Profile Aliases	seven profile aliases	safe	Show retired profile aliases and their active replacements.
 profile.migrate_aliases	Profiles	Migrate Profile Aliases	seven profile migrate-aliases --apply	changes	Rewrite stale local state from retired profile aliases to active mini OS names.
 profile.isolation	Profiles	Profile Isolation	seven profile isolation status	safe	Show active packages, quiet packages, services and strict app-data boundaries.
 profile.strict.active	Profiles	Strict Active Runtime	seven-profile-run --json	safe	Show the strict execution boundary for the active mini OS.
 profile.strict.manifest	Profiles	Runtime Manifest	seven-profile-run --manifest	safe	Show the full runtime manifest for the active mini OS.
+profile.rootfs.status	Profiles	Profile RootFS Status	seven profile-rootfs status	safe	Show real per-mini-OS rootfs readiness.
+profile.rootfs.audit	Profiles	Profile RootFS Audit	seven profile-rootfs audit all	safe	Test rootfs execution, profile marker, isolation mode, runtime sockets, GPU/dev and network posture.
+profile.rootfs.seal	Profiles	Seal Profile RootFS	seven profile-rootfs seal all --apply --yes	safe	Write local rootfs fingerprints for drift detection.
+profile.rootfs.verify	Profiles	Verify Profile RootFS	seven profile-rootfs verify all	safe	Compare current rootfs package/os fingerprints against the last seal.
+profile.rootfs.prepare	Profiles	Prepare Profile RootFS	seven profile-rootfs prepare --apply --yes	safe	Create rootfs directories, manifests and package lists for the active mini OS.
+profile.rootfs.build	Profiles	Build Profile RootFS	seven profile-rootfs build --apply --yes	root	Build the active mini OS rootfs with its own package set when pacstrap is available.
+profile.rootfs.shell	Profiles	Profile RootFS Shell	seven profile exec $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --rootfs sh	root	Open a shell inside the active mini OS rootfs when it is ready.
+profile.rootfs.maintenance	Profiles	RootFS Maintenance Shell	seven profile exec $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --rootfs-writable sh	root	Open an explicit writable maintenance shell for the active mini OS rootfs.
+profile.independent.shell	Profiles	Independent Mini OS Shell	seven profile exec $(seven profile current --json | python -c 'import json,sys; print(json.load(sys.stdin).get("key","equinox"))') --independent sh	root	Open the active mini OS with its sealed read-only rootfs and separated HOME/cache/data, without VM.
 profile.strict.workspace	Profiles	Strict Workspace Shell	seven-profile-run --container --workspace . sh	packages	Open a strict shell for the active mini OS with only the current folder mounted as workspace.
 profile.strict.profile_workspace	Profiles	Strict Profile Workspace	seven-profile-run --container --workspace-profile sh	packages	Open a strict shell for the active mini OS with its default workspace mounted.
 profile.strict.ephemeral	Profiles	Ephemeral Strict Shell	seven-profile-run --ephemeral sh	packages	Open a strict shell with temporary HOME, cache and data removed after exit.
@@ -266,6 +295,8 @@ security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset rev
 windows.status	Windows	Windows Status	seven windows status	safe	Check Wine, Bottles and VM readiness.
 windows.plan	Windows	Windows Plan	seven windows plan	safe	Show prioritized Windows Mode setup actions.
 windows.guide	Windows	Windows Guide	seven windows guide	safe	Explain Windows Bridge paths.
+windows.setup	Windows	Setup Windows Bridge	seven windows setup	packages	Run the public first-install Windows Bridge setup: dependencies, libvirt, disk, VirtIO and VM registration when media is available.
+windows.setup_iso	Windows	Setup Windows From ISO	seven windows setup --iso ~/Downloads/Win11.iso	packages	Create the Windows Bridge VM from an official Windows ISO after preparing the SevenOS VM layer.
 windows.aur_helpers	Windows	Install AUR Helpers	./install.sh aur-helpers --yes	packages	Install yay and paru for SevenOS AUR-backed Windows helpers.
 windows.catalog	Windows	Windows App Catalog	seven windows catalog	safe	List app-first Windows workflows and preferred engines.
 windows.resolve.photoshop	Windows	Resolve Photoshop	seven windows resolve photoshop	safe	Show whether Photoshop should use Bottles, Wine or VM fallback.
@@ -374,7 +405,7 @@ dynamic.doctor	Ecosystem	Dynamic OS Doctor	seven dynamic doctor	safe	Validate Se
 scheduler.status	Ecosystem	Seven Scheduler Status	seven scheduler status	safe	Show process groups, active profile policy and host scheduling hints.
 scheduler.plan	Ecosystem	Seven Scheduler Plan	seven scheduler plan	safe	Show context-aware CPU, priority and power actions.
 scheduler.apply	Ecosystem	Apply Scheduler Hints	seven scheduler apply	changes	Preview or apply safe user-space nice adjustments for owned processes.
-context.status	Ecosystem	Context Status	seven context status	safe	Show the current semantic workflow context.
+context.status	Ecosystem	Context Status	seven-context --json	safe	Show the unified active SevenOS context: app, profile, layout, window, workflow and recommendation.
 context.graph	Ecosystem	Context Graph	seven context graph	safe	Show process/window topology grouped into human workflows.
 context.plan	Ecosystem	Context Plan	seven context plan	safe	Show context-driven profile and scheduler recommendations.
 context.emit	Ecosystem	Emit Context Event	seven context emit	safe	Record the current semantic context into SevenBus for Hub, Shell and future daemon observation.
@@ -409,25 +440,72 @@ json_output() {
   ACTION_ROWS="$rows" python - <<'PY'
 import json
 import os
+from collections import defaultdict
+from datetime import datetime, timezone
 
 items = []
+categories = defaultdict(list)
+profile_map = {
+    "baobab": [],
+    "forge": [],
+    "shield": [],
+    "studio": [],
+    "windows": [],
+    "pulse": [],
+    "equinox": [],
+}
 for raw in os.environ.get("ACTION_ROWS", "").splitlines():
     raw = raw.rstrip("\n")
     if not raw:
         continue
     action_id, category, title, command, impact, description = raw.split("\t", 5)
-    items.append({
+    item = {
         "id": action_id,
         "category": category,
         "title": title,
         "command": command,
         "impact": impact,
         "description": description,
-    })
+        "safe": impact == "safe",
+        "profile": "",
+        "surface": "terminal" if command.startswith(("seven-terminal", "kitty")) else "native",
+    }
+    for profile in profile_map:
+        if action_id.startswith(f"{profile}.") or f" {profile}" in command or f".{profile}" in action_id:
+            item["profile"] = profile
+            profile_map[profile].append(action_id)
+            break
+    if action_id.startswith("profile.activate."):
+        profile = action_id.rsplit(".", 1)[-1]
+        item["profile"] = profile
+        profile_map.setdefault(profile, []).append(action_id)
+    items.append(item)
+    categories[category].append(action_id)
+
+quick_actions = {
+    "equinox": ["spotlight.open", "files.profile", "settings.open", "experience.recommend"],
+    "baobab": ["baobab.open", "baobab.native", "reader.open", "bridge.switch.baobab"],
+    "forge": ["terminal.forge", "deploy.plan", "server.status", "profile.strict.forge"],
+    "shield": ["security.dashboard", "security.scope", "security.lab.forensics", "profile.strict.shield_ephemeral"],
+    "studio": ["files.pictures", "recorder.area", "sevenpkg.studio", "profile.strict.studio"],
+    "windows": ["windows.setup", "windows.enter", "windows.apps", "windows.bridge_status"],
+    "pulse": ["profile.activate.pulse", "recorder.full", "sevenpkg.pulse", "motion.reduced"],
+}
 
 print(json.dumps({
     "schema": "sevenos.actions.v1",
+    "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "count": len(items),
     "actions": items,
+    "categories": dict(sorted(categories.items())),
+    "profiles": {key: value for key, value in sorted(profile_map.items()) if value},
+    "quick_actions": quick_actions,
+    "contract": {
+        "consumers": ["Waybar", "Spotlight", "Seven Hub", "Mini OS centers", "Notifications"],
+        "run_command": "seven actions run <id>",
+        "json_command": "seven-actions --json",
+        "seven_cli_json_command": "seven actions --json",
+    },
 }, indent=2))
 PY
 }
@@ -461,7 +539,14 @@ run_action() {
   fi
 
   log_info "Running SevenOS action: $action_id"
-  bash -lc "cd '$ROOT_DIR' && $command"
+  "$ROOT_DIR/scripts/shell-experience.sh" launch "$action_id" >/dev/null 2>&1 || true
+  if bash -lc "cd '$ROOT_DIR' && $command"; then
+    "$ROOT_DIR/scripts/shell-experience.sh" notify "SevenOS" "Action terminée: $action_id" >/dev/null 2>&1 || true
+  else
+    status=$?
+    "$ROOT_DIR/scripts/shell-experience.sh" notify "SevenOS" "Action échouée: $action_id" >/dev/null 2>&1 || true
+    return "$status"
+  fi
 }
 
 ACTION="${1:-list}"

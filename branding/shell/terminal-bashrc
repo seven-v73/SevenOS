@@ -17,6 +17,9 @@ if [[ -r "$HOME/.config/sevenos/profile-isolation.env" ]]; then
   # shellcheck disable=SC1090
   source "$HOME/.config/sevenos/profile-isolation.env"
 fi
+if [[ -d "${SEVENOS_PACKAGE_VIEW:-}" && ":$PATH:" != *":$SEVENOS_PACKAGE_VIEW:"* ]]; then
+  export PATH="$SEVENOS_PACKAGE_VIEW:$PATH"
+fi
 if [[ -d "${SEVENOS_PROFILE_SHIMS:-}" && ":$PATH:" != *":$SEVENOS_PROFILE_SHIMS:"* ]]; then
   export PATH="$SEVENOS_PROFILE_SHIMS:$PATH"
 fi
@@ -26,6 +29,7 @@ set +o histexpand 2>/dev/null || true
 __sevenos_cmd_started=0
 __sevenos_last_duration=0
 __sevenos_last_command=""
+__sevenos_last_notified_command=""
 
 __sevenos_real_command() {
   local name="$1" path part
@@ -46,12 +50,24 @@ __sevenos_git() {
   "$git_bin" "$@"
 }
 
+__sevenos_command_warning() {
+  local command_text="$1"
+  local mode="${SEVENOS_TERMINAL_MODE:-}"
+  [[ "$mode" =~ ^(admin|cyber|shield)$ ]] || return 0
+  case "$command_text" in
+    *"rm -rf "*|*"dd if="*|*"mkfs."*|*"chmod -R "*|*"chown -R "*|*"iptables "*|*"nft "*|*"ufw "*)
+      printf '\e[38;2;255;155;112m[SevenOS:%s] risky command: review target, permissions and profile scope.\e[0m\n' "${mode^}" >&2
+      ;;
+  esac
+}
+
 __sevenos_preexec() {
   case "$BASH_COMMAND" in
     __sevenos_prompt*|__sevenos_preexec*|PROMPT_COMMAND=*|trap\ *) return ;;
   esac
   __sevenos_cmd_started="$SECONDS"
   __sevenos_last_command="$BASH_COMMAND"
+  __sevenos_command_warning "$BASH_COMMAND"
 }
 trap '__sevenos_preexec' DEBUG
 
@@ -84,8 +100,14 @@ __sevenos_runtime_context() {
 
 __sevenos_terminal_mode() {
   local explicit="${SEVENOS_TERMINAL_MODE:-}"
+  local active_profile="${SEVENOS_ACTIVE_PROFILE:-}"
   case "$explicit" in
     forge|cyber|focus|admin|windows) printf '%s' "${explicit^}"; return ;;
+    shield) printf 'Cyber'; return ;;
+    studio|baobab) printf 'Focus'; return ;;
+    pulse) printf 'Pulse'; return ;;
+    dark) [[ "$active_profile" == "pulse" ]] && printf 'Pulse' || printf 'Classic'; return ;;
+    equinox|classic|light) printf 'Classic'; return ;;
   esac
   if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
     printf 'Admin'
@@ -103,6 +125,41 @@ __sevenos_duration() {
   [[ "$duration" -ge 2 ]] && printf ' %ss' "$duration"
 }
 
+__sevenos_terminal_notify_done() {
+  local exit_code="$1"
+  local duration="$2"
+  local command_text="$3"
+  [[ "${SEVENOS_TERMINAL_NOTIFY:-1}" == "1" ]] || return 0
+  [[ "$duration" -ge "${SEVENOS_TERMINAL_NOTIFY_AFTER:-12}" ]] || return 0
+  [[ -n "$command_text" && "$command_text" != "$__sevenos_last_notified_command" ]] || return 0
+  __sevenos_last_notified_command="$command_text"
+  command -v notify-send >/dev/null 2>&1 || return 0
+  local title body
+  if [[ "$exit_code" -eq 0 ]]; then
+    title="Terminal terminé"
+  else
+    title="Terminal terminé avec erreur"
+  fi
+  body="$(printf '%s' "$command_text" | tr '\n' ' ' | cut -c1-96) · ${duration}s"
+  notify-send -a "Seven Terminal" "$title" "$body" >/dev/null 2>&1 || true
+}
+
+__sevenos_terminal_osc() {
+  [[ -n "${SEVENOS_TERMINAL_NATIVE_SESSION:-}${VTE_VERSION:-}" ]] || return 0
+  local host path title
+  host="${HOSTNAME%%.*}"
+  path="$PWD"
+  path="${path//%/%25}"
+  path="${path// /%20}"
+  path="${path//\#/%23}"
+  path="${path//\?/%3F}"
+  title="${PWD##*/}"
+  [[ -n "$title" ]] || title="Terminal"
+  [[ "$PWD" == "$HOME" ]] && title="Home"
+  printf '\e]7;file://%s%s\a' "$host" "$path"
+  printf '\e]0;%s - Terminal\a' "$title"
+}
+
 __sevenos_prompt() {
   local exit_code="$?"
   if [[ "$__sevenos_cmd_started" -gt 0 ]]; then
@@ -110,6 +167,8 @@ __sevenos_prompt() {
   else
     __sevenos_last_duration=0
   fi
+  __sevenos_terminal_notify_done "$exit_code" "$__sevenos_last_duration" "$__sevenos_last_command"
+  __sevenos_terminal_osc
   local reset='\[\e[0m\]'
   local blue='\[\e[38;2;77;163;255m\]'
   local cyan='\[\e[38;2;0;212;255m\]'
@@ -130,7 +189,23 @@ __sevenos_prompt() {
     *) mode_color="$cyan" ;;
   esac
 
-  PS1="${blue}SevenOS${muted}:${mode_color}${mode}${muted} ${cyan}\w${violet}$(__sevenos_git_branch)${green}$(__sevenos_runtime_context)${muted}$(__sevenos_duration "$__sevenos_last_duration")${red}$(__sevenos_prompt_status "$exit_code")${reset}\n${muted}${USER}@${HOSTNAME%%.*} ${mode_color}${symbol}${reset} "
+  if [[ "${SEVENOS_TERMINAL_PROMPT_STYLE:-compact}" == "full" || "${SEVENOS_TERMINAL_PROMPT_DETAIL:-0}" == "1" ]]; then
+    PS1="${blue}SevenOS${muted}:${mode_color}${mode}${muted} ${cyan}\w${violet}$(__sevenos_git_branch)${green}$(__sevenos_runtime_context)${muted}$(__sevenos_duration "$__sevenos_last_duration")${red}$(__sevenos_prompt_status "$exit_code")${reset}\n${muted}${USER}@${HOSTNAME%%.*} ${mode_color}${symbol}${reset} "
+    return
+  fi
+
+  local compact_context=""
+  local compact_status=""
+  local compact_path='\W'
+  [[ "${SEVENOS_TERMINAL_PROMPT_PATH:-short}" == "full" ]] && compact_path='\w'
+  [[ "$mode" != "Classic" ]] && compact_context="${muted} ${mode_color}${mode}"
+  compact_status="$(__sevenos_prompt_status "$exit_code")"
+  if [[ -n "$compact_status" ]]; then
+    compact_status="${red}${compact_status}"
+  elif [[ "$__sevenos_last_duration" -ge 4 ]]; then
+    compact_status="${muted}$(__sevenos_duration "$__sevenos_last_duration")"
+  fi
+  PS1="${cyan}${compact_path}${compact_context}${compact_status}${reset}\n${mode_color}${symbol}${reset} "
 }
 
 PROMPT_COMMAND=__sevenos_prompt

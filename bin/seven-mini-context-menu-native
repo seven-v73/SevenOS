@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""Native SevenOS mini-OS context panel for the Waybar menu bar."""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def probe() -> int:
+    try:
+        import gi  # noqa: F401
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("PangoCairo", "1.0")
+    except Exception:
+        return 1
+    return 0
+
+
+if "--probe" in sys.argv:
+    raise SystemExit(probe())
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("PangoCairo", "1.0")
+from gi.repository import Gdk, Gtk, Pango, PangoCairo
+
+
+def run(command: list[str], timeout: float = 0.8) -> str:
+    try:
+        return subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout).stdout.strip()
+    except Exception:
+        return ""
+
+
+def current_profile() -> dict:
+    manager = ROOT / "profiles/profile-manager.sh"
+    if manager.exists():
+        try:
+            return json.loads(run([str(manager), "current", "--json"]) or "{}")
+        except json.JSONDecodeError:
+            pass
+    return {"key": "equinox", "title": "Equinox Balance", "role": "Balance"}
+
+
+def rows_for(key: str) -> list[tuple[str, str, str, str]]:
+    specs = {
+        "forge": [("Forge Terminal", "󰆍", "Terminal Forge", "Shell projet"), ("Forge Logs", "󰑭", "Logs", "Git récent"), ("Forge Build", "󰒓", "Build", "Compiler"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
+        "shield": [("Shield Center", "󰒃", "Shield Center", "Sécurité"), ("Shield Audit", "󰛵", "Audit rapide", "Contrôle"), ("Shield Sandbox", "󰞀", "Sandbox", "Isoler"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
+        "studio": [("Studio Media", "󰏗", "Médias", "Assets"), ("Studio Exports", "󰈙", "Exports", "Sorties"), ("Studio Recorder", "󰻂", "Recorder", "Capture"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
+        "windows": [("Windows Bridge", "󰖳", "Bridge", "Guide"), ("Windows Apps", "󰿭", "Apps Windows", "Lancer"), ("Windows Status", "󰄧", "Statut", "VM/Bridge"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
+        "pulse": [("Pulse Games", "󰓅", "Jeux", "Hub"), ("Pulse Captures", "󰹑", "Captures", "Dossier"), ("Pulse Performance", "󰓅", "Performance", "État"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
+        "baobab": [("Baobab Collections", "󰔱", "Collections", "Documents"), ("Baobab Reader", "󰈙", "Reader", "Lecture"), ("Baobab Culture", "󰐅", "Culture", "Surface"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
+    }
+    return specs.get(key, [("Daily Overview", "󰕰", "Vue quotidienne", "Fenêtres"), ("Daily Files", "󰉋", "Fichiers", "Home"), ("Daily Doctor", "󰒓", "Doctor", "Santé"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")])
+
+
+def compact(text: str, limit: int) -> str:
+    text = " ".join((text or "").split())
+    if len(text) <= limit:
+        return text
+    return text[: max(1, limit - 1)].rstrip() + "…"
+
+
+class MiniContextMenu(Gtk.Window):
+    def __init__(self) -> None:
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.profile = current_profile()
+        self.key = str(self.profile.get("key") or "equinox").lower()
+        self.title_text = str(self.profile.get("title") or self.key.title())
+        self.role_text = str(self.profile.get("role") or "Mini OS")
+        self.rows = rows_for(self.key)
+        self.width = 326
+        self.height = 118 + len(self.rows) * 30
+        self.hover = -1
+        self.selected = 0
+        self.set_title("Mini OS Menu")
+        self.set_wmclass("seven-mini-context-menu-native", "seven-mini-context-menu-native")
+        self.set_decorated(False)
+        self.set_keep_above(True)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_resizable(False)
+        self.set_type_hint(Gdk.WindowTypeHint.UTILITY)
+        self.canvas = Gtk.DrawingArea()
+        self.canvas.set_size_request(self.width, self.height)
+        self.canvas.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self.canvas.connect("draw", self.on_draw)
+        self.canvas.connect("motion-notify-event", self.on_motion)
+        self.canvas.connect("button-press-event", self.on_button)
+        self.canvas.connect("leave-notify-event", self.on_leave)
+        self.add(self.canvas)
+        self.connect("key-press-event", self.on_key)
+        self.place()
+
+    def place(self) -> None:
+        x, y = 900, 32
+        try:
+            display = Gdk.Display.get_default()
+            seat = display.get_default_seat() if display else None
+            pointer = seat.get_pointer() if seat else None
+            screen, pointer_x, _pointer_y = pointer.get_position() if pointer else (None, x, y)
+            if screen:
+                monitor = screen.get_monitor_geometry(screen.get_monitor_at_point(pointer_x, y))
+                x = max(monitor.x + 8, min(pointer_x - 82, monitor.x + monitor.width - self.width - 8))
+        except Exception:
+            pass
+        self.move(x, y)
+
+    def rounded_rect(self, cr, x: float, y: float, w: float, h: float, r: float) -> None:
+        cr.new_sub_path()
+        cr.arc(x + w - r, y + r, r, -1.5708, 0)
+        cr.arc(x + w - r, y + h - r, r, 0, 1.5708)
+        cr.arc(x + r, y + h - r, r, 1.5708, 3.14159)
+        cr.arc(x + r, y + r, r, 3.14159, 4.71239)
+        cr.close_path()
+
+    def draw_text(self, cr, text: str, x: int, y: int, width: int, font: str, color: tuple[float, float, float, float]) -> None:
+        layout = self.create_pango_layout(text)
+        layout.set_width(width * Pango.SCALE)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        layout.set_font_description(Pango.FontDescription(font))
+        cr.set_source_rgba(*color)
+        cr.move_to(x, y)
+        PangoCairo.show_layout(cr, layout)
+
+    def accent(self) -> tuple[float, float, float, float]:
+        return {
+            "forge": (1.0, 0.78, 0.34, 0.78),
+            "shield": (0.38, 1.0, 0.78, 0.78),
+            "studio": (0.86, 0.62, 1.0, 0.78),
+            "windows": (0.50, 0.82, 1.0, 0.78),
+            "pulse": (0.25, 0.86, 1.0, 0.78),
+            "baobab": (0.62, 0.92, 0.48, 0.78),
+        }.get(self.key, (0.54, 0.74, 1.0, 0.78))
+
+    def on_draw(self, _widget, cr) -> bool:
+        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.paint()
+        self.rounded_rect(cr, 1, 1, self.width - 2, self.height - 2, 16)
+        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.fill_preserve()
+        cr.set_source_rgba(0.74, 0.88, 1.0, 0.58)
+        cr.set_line_width(1)
+        cr.stroke()
+
+        accent = self.accent()
+        cr.set_source_rgba(accent[0], accent[1], accent[2], 0.15)
+        self.rounded_rect(cr, 14, 14, self.width - 28, 70, 13)
+        cr.fill()
+        self.draw_text(cr, compact(self.title_text, 34), 26, 27, 228, "SF Pro Text SemiBold 14", (1, 1, 1, 0.96))
+        self.draw_text(cr, compact(self.role_text, 34), 26, 50, 228, "SF Pro Text 11", (0.88, 0.92, 0.98, 0.58))
+        self.draw_text(cr, "Actions rapides", 26, 68, 140, "SF Pro Text 10", accent)
+
+        for index, (_action, icon, label, detail) in enumerate(self.rows):
+            y = 98 + index * 30
+            if index in {self.hover, self.selected}:
+                self.rounded_rect(cr, 10, y - 4, self.width - 20, 27, 8)
+                cr.set_source_rgba(1, 1, 1, 0.12)
+                cr.fill()
+            self.draw_text(cr, icon, 22, y + 1, 24, "Symbols Nerd Font 14", (0.54, 0.82, 1.0, 0.95))
+            self.draw_text(cr, label, 52, y + 1, 160, "SF Pro Text 12", (0.97, 0.98, 1.0, 0.93))
+            self.draw_text(cr, detail, 224, y + 2, 74, "SF Pro Text 10", (0.86, 0.90, 0.98, 0.48))
+        return False
+
+    def item_at(self, y: float) -> int:
+        index = int((y - 98) // 30)
+        return index if 0 <= index < len(self.rows) else -1
+
+    def on_motion(self, _widget, event) -> bool:
+        index = self.item_at(event.y)
+        if index != self.hover:
+            self.hover = index
+            if index >= 0:
+                self.selected = index
+            self.canvas.queue_draw()
+        return False
+
+    def on_button(self, _widget, event) -> bool:
+        index = self.item_at(event.y)
+        if index >= 0:
+            self.activate(index)
+            return True
+        return False
+
+    def on_leave(self, *_args) -> bool:
+        self.hover = -1
+        self.canvas.queue_draw()
+        return False
+
+    def activate(self, index: int) -> None:
+        action = self.rows[index][0]
+        subprocess.Popen([str(ROOT / "bin/seven-waybar-action"), "mini-command", action], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        self.close()
+
+    def on_key(self, _window, event) -> bool:
+        if event.keyval == Gdk.KEY_Escape:
+            self.close()
+            return True
+        if event.keyval in {Gdk.KEY_Down, Gdk.KEY_j}:
+            self.selected = (self.selected + 1) % len(self.rows)
+            self.canvas.queue_draw()
+            return True
+        if event.keyval in {Gdk.KEY_Up, Gdk.KEY_k}:
+            self.selected = (self.selected - 1) % len(self.rows)
+            self.canvas.queue_draw()
+            return True
+        if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space}:
+            self.activate(self.selected)
+            return True
+        return False
+
+
+def main() -> int:
+    window = MiniContextMenu()
+    window.show_all()
+    window.present()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

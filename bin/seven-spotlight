@@ -40,11 +40,27 @@ SPOTLIGHT_INDEX_TTL_SECONDS=900
 notify() {
   local title="$1"
   local message="$2"
+  experience_event notify "$title" "$message"
   if command -v notify-send >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
     notify-send "$title" "$message" || true
   else
     printf '%s: %s\n' "$title" "$message"
   fi
+}
+
+experience_event() {
+  local kind="$1"
+  local label="$2"
+  local detail="${3:-}"
+  [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]] || return 0
+  case "$kind" in
+    launch|focus|workspace)
+      "$ROOT_DIR/scripts/shell-experience.sh" "$kind" "$label" "$detail" >/dev/null 2>&1 || true
+      ;;
+    notify)
+      "$ROOT_DIR/scripts/shell-experience.sh" focus "Notification: $label" "$detail" >/dev/null 2>&1 || true
+      ;;
+  esac
 }
 
 dry_run() {
@@ -80,6 +96,7 @@ open_path() {
     return 0
   fi
   if command -v xdg-open >/dev/null 2>&1; then
+    experience_event launch "File $(basename "$path")" "$path"
     setsid -f xdg-open "$path" >/tmp/sevenos-spotlight.log 2>&1 || notify "SevenOS Spotlight" "Could not open path."
   else
     notify "SevenOS Spotlight" "xdg-open is not installed."
@@ -196,10 +213,14 @@ PY
 }
 
 action_catalog() {
-  ACTION_JSON="$("$ROOT_DIR/scripts/actions.sh" --json)" python - <<'PY'
+  local action_json_file
+  action_json_file="$(mktemp "${TMPDIR:-/tmp}/sevenos-actions.XXXXXX.json")"
+  "$ROOT_DIR/scripts/actions.sh" --json >"$action_json_file"
+  ACTION_JSON_FILE="$action_json_file" python - <<'PY'
 import json
 import os
 import sys
+from pathlib import Path
 
 icons = {
     "Desktop": ("󰇄", "preferences-desktop"),
@@ -214,7 +235,7 @@ icons = {
 }
 
 try:
-    payload = json.loads(os.environ.get("ACTION_JSON", "{}"))
+    payload = json.loads(Path(os.environ.get("ACTION_JSON_FILE", "")).read_text(encoding="utf-8"))
 except Exception:
     payload = {"actions": []}
 
@@ -228,6 +249,7 @@ for item in payload.get("actions", []):
     label = f"{glyph}  {category} · {title}"
     print("\t".join(value.replace("\t", " ") for value in ("action", label, action_id, command, description, icon)))
 PY
+  rm -f "$action_json_file"
 }
 
 extra_catalog() {
@@ -646,6 +668,7 @@ mode_message() {
 launch_desktop() {
   local desktop_id="$1"
   local desktop_path="$2"
+  experience_event launch "${desktop_id%.desktop}" "$desktop_path"
 
   if command -v gtk-launch >/dev/null 2>&1; then
     gtk-launch "${desktop_id%.desktop}" >/dev/null 2>&1 && return 0
@@ -702,6 +725,7 @@ run_command() {
     printf 'DRY-RUN > Spotlight > %s\n' "$command"
     return 0
   fi
+  experience_event launch "Spotlight Action" "$command"
   bash -lc "cd '$ROOT_DIR' && $command"
 }
 
@@ -1026,7 +1050,7 @@ open_spotlight() {
     app) launch_desktop "$key" "$command" ;;
     file) open_path "$command" ;;
     clipboard) copy_clipboard_entry "$command" ;;
-    window) [[ -n "$command" ]] && hyprctl dispatch focuswindow "address:$command" >/dev/null 2>&1 || true ;;
+    window) [[ -n "$command" ]] && experience_event focus "$label" "$command"; [[ -n "$command" ]] && hyprctl dispatch focuswindow "address:$command" >/dev/null 2>&1 || true ;;
     bookmark) open_url "$command" ;;
     history) handle_freeform "$command" ;;
     action|intent|setting|profile|calc|convert|define|web|mail|contacts|calendar|quick) run_command "$command" ;;
@@ -1059,7 +1083,7 @@ dispatch_item() {
     app) launch_desktop "$key" "$command" ;;
     file) open_path "$command" ;;
     clipboard) copy_clipboard_entry "$command" ;;
-    window) [[ -n "$command" ]] && hyprctl dispatch focuswindow "address:$command" >/dev/null 2>&1 || true ;;
+    window) [[ -n "$command" ]] && experience_event focus "$key" "$command"; [[ -n "$command" ]] && hyprctl dispatch focuswindow "address:$command" >/dev/null 2>&1 || true ;;
     bookmark) open_url "$command" ;;
     history|query) handle_freeform "$command" ;;
     action|intent|setting|profile|calc|convert|define|web|mail|contacts|calendar|quick) run_command "$command" ;;

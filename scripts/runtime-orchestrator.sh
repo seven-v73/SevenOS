@@ -645,6 +645,10 @@ PY
 
 payload="$(json_payload)"
 
+if [[ "$ACTION" == "activate" && "$APPLY" == "1" && "$YES" == "1" && "${SEVENOS_DRY_RUN:-0}" != "1" && -x "$ROOT_DIR/scripts/mini-os-bridge.sh" ]]; then
+  "$ROOT_DIR/scripts/mini-os-bridge.sh" status --json >/dev/null 2>&1 || true
+fi
+
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   printf '%s\n' "$payload"
 else

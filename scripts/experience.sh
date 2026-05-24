@@ -34,6 +34,13 @@ check_rows() {
   printf 'Identity\t%s\tSevenOS release, session and product identity\t./install.sh branding\n' "$state"
 
   state="MISS"
+  if [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]] &&
+     SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/shell-experience.sh" status --json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("schema") == "sevenos.shell-experience.v1" and d.get("continuity",{}).get("launch_feedback") else 1)' >/dev/null; then
+    state="OK"
+  fi
+  printf 'Shell Experience\t%s\tUnified motion, focus, launch feedback and mini OS behavior contract\tseven experience status\n' "$state"
+
+  state="MISS"
   if [[ -x "$ROOT_DIR/bin/seven-session" && -x "$ROOT_DIR/bin/seven-shell-panel" ]] &&
      grep -q 'custom/notifications' "$ROOT_DIR/hyprland/waybar/config.jsonc" &&
      grep -q 'seven-overview apps' "$ROOT_DIR/hyprland/hyprland.conf"; then

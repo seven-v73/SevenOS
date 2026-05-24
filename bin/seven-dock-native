@@ -8,6 +8,8 @@ import json
 import os
 import subprocess
 import sys
+import time
+import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
@@ -50,7 +52,53 @@ def resolve_root() -> Path:
 
 
 ROOT = resolve_root()
-CONFIG_PATH = Path.home() / ".config/sevenos/dock.json"
+CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
+CONFIG_PATH = CONFIG_HOME / "sevenos/dock.json"
+PROFILE_ENV_PATH = CONFIG_HOME / "sevenos/profile.env"
+PROFILE_UI_PATH = CONFIG_HOME / "sevenos/profile-ui.json"
+DOCK_STATE_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/sevenos-{os.getuid()}")) / "sevenos-dock-state.json"
+DOCK_HEIGHT = 82
+DOCK_MARGIN = 22
+DOCK_TILE_STEP = 61
+DOCK_SEPARATOR_STEP = 14
+DOCK_HORIZONTAL_PADDING = 22
+LAUNCHING_TTL = 6.0
+LAUNCHING: dict[str, float] = {}
+DOCK_FADE_STEP_MS = 16
+DOCK_FADE_STEP = 0.08
+TILE_FEEDBACK_MS = 180
+SPRING_LOADED_DELAY_MS = 700
+SPRING_OPEN: dict[str, int] = {}
+PREVIEW_POPOVER = None
+DOCK_TILE_TARGET = "SEVENOS_DOCK_TILE"
+URI_LIST_TARGET = "text/uri-list"
+
+PROFILE_PINNED = {
+    "equinox": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+    "baobab": ["files", "apps", "reader", "store", "terminal", "spotlight", "hub"],
+    "forge": ["files", "terminal", "browser", "apps", "hub", "settings"],
+    "shield": ["shield", "terminal", "files", "browser", "spotlight", "hub"],
+    "studio": ["files", "browser", "store", "recorder", "spotlight", "hub"],
+    "windows": ["windows", "files", "terminal", "browser", "settings", "hub"],
+    "pulse": ["browser", "terminal", "apps", "recorder", "settings", "hub"],
+}
+
+CLASS_TILE_HINTS = {
+    "code": "studio",
+    "codium": "studio",
+    "google-chrome": "browser",
+    "firefox": "browser",
+    "brave-browser": "browser",
+    "chromium": "browser",
+    "kitty": "terminal",
+    "seven-terminal-native": "terminal",
+    "seven-files-native": "files",
+    "org.gnome.nautilus": "files",
+    "nautilus": "files",
+    "seven-reader-native": "reader",
+    "seven-store-native": "store",
+    "virt-manager": "windows",
+}
 
 
 DEFAULT_CONFIG = {
@@ -58,7 +106,9 @@ DEFAULT_CONFIG = {
     "size": "compact",
     "magnification": True,
     "autohide": False,
+    "reserve_space": True,
     "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+    "profile_pins": {},
     "folders": ["downloads", "home"],
 }
 
@@ -101,6 +151,35 @@ def save_config(config: dict[str, object]) -> None:
     CONFIG_PATH.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def active_profile_key() -> str:
+    try:
+        for raw in PROFILE_ENV_PATH.read_text(encoding="utf-8").splitlines():
+            if raw.startswith("SEVENOS_ACTIVE_PROFILE="):
+                return raw.split("=", 1)[1].strip().strip('"') or "equinox"
+    except OSError:
+        pass
+    try:
+        data = json.loads(PROFILE_UI_PATH.read_text(encoding="utf-8"))
+        return str(data.get("profile") or "equinox")
+    except Exception:
+        return "equinox"
+
+
+def write_dock_state(payload: dict[str, object]) -> None:
+    try:
+        DOCK_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        DOCK_STATE_PATH.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
+def clear_dock_state() -> None:
+    try:
+        DOCK_STATE_PATH.unlink()
+    except OSError:
+        pass
+
+
 def process_running(names: list[str]) -> bool:
     for name in names:
         result = subprocess.run(
@@ -140,6 +219,69 @@ def run_action(command: list[str]) -> None:
     subprocess.Popen(resolve_command(command), cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def command_ready(command: list[str]) -> bool:
+    if not command:
+        return False
+    if command[0] in {"xdg-open", "sh", "bash"}:
+        return command_available(command[0])
+    return (ROOT / "bin" / command[0]).exists() or command_available(command[0])
+
+
+def hyprland_clients() -> list[dict[str, object]]:
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or not command_available("hyprctl"):
+        return []
+    try:
+        return json.loads(
+            subprocess.run(["hyprctl", "clients", "-j"], text=True, capture_output=True, check=False, timeout=0.45).stdout
+            or "[]"
+        )
+    except Exception:
+        return []
+
+
+def client_tile_id(client: dict[str, object]) -> str | None:
+    client_class = str(client.get("class") or client.get("initialClass") or "").casefold()
+    title = str(client.get("title") or "").casefold()
+    for key, tile_id in CLASS_TILE_HINTS.items():
+        if key in client_class:
+            return tile_id
+    if "seven files" in title:
+        return "files"
+    if "seven reader" in title:
+        return "reader"
+    if "seven store" in title:
+        return "store"
+    if "terminal" in title:
+        return "terminal"
+    return None
+
+
+def clients_by_tile(clients: list[dict[str, object]]) -> dict[str, list[dict[str, object]]]:
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for client in clients:
+        tile_id = client_tile_id(client)
+        if not tile_id:
+            continue
+        grouped.setdefault(tile_id, []).append(client)
+    return grouped
+
+
+def focus_client(client: dict[str, object]) -> bool:
+    address = str(client.get("address") or "").strip()
+    if not address or not command_available("hyprctl"):
+        return False
+    subprocess.run(["hyprctl", "dispatch", "focuswindow", f"address:{address}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    return True
+
+
+def focus_tile_window(tile: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]]) -> bool:
+    windows = grouped_clients.get(str(tile.get("id", "")), [])
+    if not windows:
+        return False
+    windows = sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))
+    return focus_client(windows[0])
+
+
 def place_hyprland_window() -> bool:
     if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or not command_available("hyprctl"):
         return False
@@ -166,8 +308,111 @@ def place_hyprland_window() -> bool:
     address = dock.get("address")
     if address:
         subprocess.run(["hyprctl", "dispatch", "movewindowpixel", f"exact {target_x} {target_y},address:{address}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.5)
-        subprocess.run(["hyprctl", "dispatch", "pin", f"address:{address}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.5)
+        if not dock.get("pinned"):
+            subprocess.run(["hyprctl", "dispatch", "pin", f"address:{address}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.5)
     return False
+
+
+def monitor_bounds(Gdk=None) -> tuple[int, int]:
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and command_available("hyprctl"):
+        try:
+            monitors = json.loads(
+                subprocess.run(["hyprctl", "monitors", "-j"], text=True, capture_output=True, check=False, timeout=0.5).stdout
+                or "[]"
+            )
+            focused = next((item for item in monitors if item.get("focused")), monitors[0] if monitors else {})
+            width = int(float(focused.get("width", 1920)) / float(focused.get("scale", 1) or 1))
+            height = int(float(focused.get("height", 1080)) / float(focused.get("scale", 1) or 1))
+            return max(320, width), max(240, height)
+        except Exception:
+            pass
+    if Gdk:
+        screen = Gdk.Screen.get_default()
+        if screen:
+            return max(320, screen.get_width()), max(240, screen.get_height())
+    return 1920, 1080
+
+
+def dock_dimensions(config: dict[str, object], monitor_width: int) -> tuple[int, int, bool]:
+    pinned, folders, system = dock_tiles(config)
+    groups = [group for group in (pinned, folders, system) if group]
+    tile_count = sum(len(group) for group in groups)
+    separator_count = max(0, len(groups) - 1)
+    natural_width = DOCK_HORIZONTAL_PADDING + tile_count * DOCK_TILE_STEP + separator_count * DOCK_SEPARATOR_STEP
+    max_width = max(320, monitor_width - DOCK_MARGIN * 2)
+    width = max(320, min(natural_width, max_width))
+    return width, DOCK_HEIGHT, natural_width > max_width
+
+
+def dock_limits_payload() -> dict[str, object]:
+    config = load_config()
+    active_profile = active_profile_key()
+    monitor_width, monitor_height = monitor_bounds()
+    pinned, folders, system = dock_tiles(config)
+    groups = [group for group in (pinned, folders, system) if group]
+    width, height, overflow = dock_dimensions(config, monitor_width)
+    reserve_space = bool(config.get("reserve_space", True)) and not bool(config.get("autohide", False))
+    autohide = bool(config.get("autohide", False))
+    layer_shell_available = False
+    try:
+        import gi
+
+        gi.require_version("GtkLayerShell", "0.1")
+        from gi.repository import GtkLayerShell  # noqa: F401
+
+        layer_shell_available = True
+    except Exception:
+        layer_shell_available = False
+    return {
+        "schema": "sevenos.dock.limits.v1",
+        "monitor": {"width": monitor_width, "height": monitor_height},
+        "dock": {
+            "width": width,
+            "height": height,
+            "max_width": max(320, monitor_width - DOCK_MARGIN * 2),
+            "margin": DOCK_MARGIN,
+            "overflow": overflow,
+            "reserve_space": reserve_space,
+            "exclusive_zone": height + DOCK_MARGIN if reserve_space else 0,
+            "layer_shell_available": layer_shell_available,
+            "overlay_fallback": not layer_shell_available,
+        },
+        "tiles": {
+            "pinned": len(pinned),
+            "folders": len(folders),
+            "system": len(system),
+            "total": sum(len(group) for group in groups),
+            "separators": max(0, len(groups) - 1),
+            "profile_pins": PROFILE_PINNED.get(active_profile, PROFILE_PINNED["equinox"]),
+        },
+        "config": {
+            "position": config.get("position", "bottom"),
+            "autohide": bool(config.get("autohide", False)),
+            "reserve_space": bool(config.get("reserve_space", True)),
+            "magnification": bool(config.get("magnification", True)),
+        },
+        "scope": {
+            "active_profile": active_profile,
+            "policy": "visible-on-all-workspaces-until-profile-change",
+            "state_file": str(DOCK_STATE_PATH),
+        },
+        "live": {
+            "hyprland_clients": len(hyprland_clients()),
+            "features": [
+                "window-counts",
+                "active-window-state",
+                "focus-existing-window",
+                "live-unpinned-apps",
+                "drag-reorder",
+                "file-drop-open",
+                "hover-window-preview",
+                "spring-loaded-folders",
+                "animated-autohide",
+                "press-launch-feedback",
+                "drag-target-feedback",
+            ],
+        },
+    }
 
 
 def tile_catalog() -> dict[str, dict[str, object]]:
@@ -179,18 +424,78 @@ def tile_catalog() -> dict[str, dict[str, object]]:
         "terminal": {"id": "terminal", "title": tr_text("Terminal"), "icon": "utilities-terminal", "style": "terminal", "command": ["seven-terminal", "classic"], "processes": ["seven-terminal-native", "kitty"], "kind": "app"},
         "spotlight": {"id": "spotlight", "title": tr_text("Spotlight"), "icon": "system-search", "style": "spotlight", "command": ["seven-spotlight"], "processes": ["rofi"], "kind": "system"},
         "hub": {"id": "hub", "title": tr_text("Hub"), "icon": "preferences-system", "style": "hub", "command": ["seven", "hub"], "processes": ["seven-hub-native"], "kind": "app"},
+        "reader": {"id": "reader", "title": tr_text("Reader"), "icon": "x-office-document", "style": "reader", "command": ["seven-reader"], "processes": ["seven-reader-native", "foliate"], "kind": "app"},
+        "store": {"id": "store", "title": tr_text("Store"), "icon": "system-software-install", "style": "store", "command": ["seven-store"], "processes": ["seven-store-native"], "kind": "app"},
+        "shield": {"id": "shield", "title": tr_text("Shield"), "icon": "security-high", "style": "shield", "command": ["seven-shield-center-native"], "processes": ["seven-shield-center-native"], "kind": "system"},
+        "windows": {"id": "windows", "title": tr_text("Windows"), "icon": "computer", "style": "windows", "command": ["seven-windows-assistant"], "processes": ["virt-manager", "virt-viewer"], "kind": "system"},
+        "recorder": {"id": "recorder", "title": tr_text("Recorder"), "icon": "media-record", "style": "recorder", "command": ["seven-recorder"], "processes": ["wf-recorder"], "kind": "system"},
         "settings": {"id": "settings", "title": tr_text("Settings"), "icon": "emblem-system", "style": "settings", "command": ["seven-settings"], "processes": ["seven-settings-native", "pavucontrol", "nm-connection-editor"], "kind": "system"},
+        "studio": {"id": "studio", "title": tr_text("Studio"), "icon": "applications-graphics", "style": "studio", "command": ["seven-profile-center-native"], "processes": ["code", "gimp", "inkscape", "blender"], "kind": "app"},
         "downloads": {"id": "downloads", "title": tr_text("Downloads"), "icon": "folder-download", "style": "folder", "command": ["xdg-open", str(Path.home() / "Downloads")], "path": str(Path.home() / "Downloads"), "kind": "folder"},
         "home": {"id": "home", "title": tr_text("Home"), "icon": "user-home", "style": "folder", "command": ["xdg-open", str(Path.home())], "path": str(Path.home()), "kind": "folder"},
     }
 
 
+def effective_pinned_ids(config: dict[str, object], profile: str | None = None) -> list[str]:
+    profile = profile or active_profile_key()
+    profile_pins = config.get("profile_pins", {})
+    if isinstance(profile_pins, dict) and isinstance(profile_pins.get(profile), list):
+        base_ids = [str(item) for item in profile_pins.get(profile, [])]
+    else:
+        base_ids = list(PROFILE_PINNED.get(profile, PROFILE_PINNED["equinox"]))
+    for tile_id in config.get("pinned", []):
+        tile_id = str(tile_id)
+        if tile_id not in base_ids:
+            base_ids.append(tile_id)
+    return list(dict.fromkeys(base_ids))
+
+
+def save_profile_pins(config: dict[str, object], profile: str, pinned_ids: list[str]) -> None:
+    profile_pins = config.get("profile_pins", {})
+    if not isinstance(profile_pins, dict):
+        profile_pins = {}
+    profile_pins[profile] = list(dict.fromkeys(pinned_ids))
+    config["profile_pins"] = profile_pins
+    save_config(config)
+
+
 def dock_tiles(config: dict[str, object]) -> tuple[list[dict[str, object]], list[dict[str, object]], list[dict[str, object]]]:
     catalog = tile_catalog()
-    pinned = [catalog[tile_id] for tile_id in config.get("pinned", []) if tile_id in catalog]
+    pinned = [catalog[tile_id] for tile_id in effective_pinned_ids(config) if tile_id in catalog]
     folders = [catalog[tile_id] for tile_id in config.get("folders", []) if tile_id in catalog]
     system = [catalog["settings"]]
     return pinned, folders, system
+
+
+def enrich_tile(tile: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]]) -> dict[str, object]:
+    enriched = dict(tile)
+    tile_id = str(tile.get("id", ""))
+    windows = grouped_clients.get(tile_id, [])
+    active = any(int(client.get("focusHistoryID", 9999) or 9999) == 0 for client in windows)
+    enriched["window_count"] = len(windows)
+    enriched["active"] = active
+    enriched["launching"] = time.monotonic() - LAUNCHING.get(tile_id, 0) < LAUNCHING_TTL
+    enriched["available"] = tile.get("kind") == "folder" or command_ready([str(part) for part in tile.get("command", [])])
+    return enriched
+
+
+def tile_groups(config: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]]) -> tuple[list[dict[str, object]], list[dict[str, object]], list[dict[str, object]], list[dict[str, object]]]:
+    catalog = tile_catalog()
+    pinned, folders, system = dock_tiles(config)
+    known_ids = {str(tile.get("id", "")) for group in (pinned, folders, system) for tile in group}
+    live = [
+        catalog[tile_id]
+        for tile_id, windows in grouped_clients.items()
+        if tile_id in catalog and tile_id not in known_ids and windows
+    ]
+    order = {tile_id: index for index, tile_id in enumerate(["browser", "terminal", "files", "reader", "store", "studio", "shield", "windows"])}
+    live.sort(key=lambda tile: order.get(str(tile.get("id", "")), 99))
+    return (
+        [enrich_tile(tile, grouped_clients) for tile in pinned],
+        [enrich_tile(tile, grouped_clients) for tile in live],
+        [enrich_tile(tile, grouped_clients) for tile in folders],
+        [enrich_tile(tile, grouped_clients) for tile in system],
+    )
 
 
 def run_dock() -> int:
@@ -209,6 +514,11 @@ def run_dock() -> int:
         pass
 
     config = load_config()
+    bound_profile = active_profile_key()
+    monitor_width, monitor_height = monitor_bounds(Gdk)
+    dock_width, dock_height, dock_overflow = dock_dimensions(config, monitor_width)
+    reserve_space = bool(config.get("reserve_space", True)) and not bool(config.get("autohide", False))
+    autohide = bool(config.get("autohide", False))
 
     css = """
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
@@ -223,6 +533,7 @@ def run_dock() -> int:
         linear-gradient(180deg, rgba(255,255,255,0.70), rgba(196,225,239,0.36)),
         rgba(255,255,255,0.40);
       border: 1px solid rgba(255,255,255,0.82);
+      transition: background 150ms ease-out, border-color 150ms ease-out;
     }
     .dock-tile {
       min-width: 56px;
@@ -230,11 +541,41 @@ def run_dock() -> int:
       border-radius: 18px;
       background: transparent;
       padding: 0;
+      transition: background 120ms ease-out, opacity 120ms ease-out;
     }
     .dock-tile:hover {
       background:
         linear-gradient(180deg, rgba(255,255,255,0.46), rgba(255,255,255,0.18)),
         rgba(255,255,255,0.18);
+    }
+    .dock-tile.running .dock-icon {
+      border-color: rgba(77,163,255,0.82);
+    }
+    .dock-tile.active {
+      background: rgba(77,163,255,0.15);
+    }
+    .dock-tile.pressed {
+      background:
+        linear-gradient(180deg, rgba(47,123,255,0.20), rgba(255,255,255,0.16)),
+        rgba(47,123,255,0.12);
+    }
+    .dock-tile.launching .dock-icon {
+      border-color: rgba(249,226,175,0.88);
+    }
+    .dock-tile.launch-feedback .dock-icon {
+      border-color: rgba(249,226,175,0.96);
+      background:
+        linear-gradient(180deg, rgba(255,246,215,0.98), rgba(255,255,255,0.74)),
+        rgba(249,226,175,0.34);
+    }
+    .dock-tile.drag-target {
+      background: rgba(47,123,255,0.12);
+    }
+    .dock-tile.spring-armed {
+      background: rgba(148,226,213,0.16);
+    }
+    .dock-tile.unavailable {
+      opacity: 0.48;
     }
     .dock-icon {
       min-width: 50px;
@@ -244,6 +585,7 @@ def run_dock() -> int:
         linear-gradient(180deg, rgba(255,255,255,0.98), rgba(230,241,247,0.78)),
         rgba(255,255,255,0.76);
       border: 1px solid rgba(255,255,255,0.78);
+      transition: min-width 115ms ease-out, min-height 115ms ease-out, border-color 140ms ease-out, background 140ms ease-out;
     }
     .dock-icon.files {
       background: linear-gradient(180deg, rgba(112,210,255,0.96), rgba(32,132,225,0.88));
@@ -265,6 +607,24 @@ def run_dock() -> int:
     }
     .dock-icon.settings {
       background: linear-gradient(180deg, rgba(240,245,248,0.98), rgba(146,160,170,0.88));
+    }
+    .dock-icon.reader {
+      background: linear-gradient(180deg, rgba(245,239,215,0.98), rgba(181,143,91,0.90));
+    }
+    .dock-icon.store {
+      background: linear-gradient(180deg, rgba(128,210,255,0.98), rgba(122,92,255,0.90));
+    }
+    .dock-icon.shield {
+      background: linear-gradient(180deg, rgba(148,226,213,0.98), rgba(10,132,116,0.92));
+    }
+    .dock-icon.windows {
+      background: linear-gradient(180deg, rgba(137,180,250,0.98), rgba(40,105,215,0.92));
+    }
+    .dock-icon.recorder {
+      background: linear-gradient(180deg, rgba(255,140,132,0.98), rgba(192,55,60,0.92));
+    }
+    .dock-icon.studio {
+      background: linear-gradient(180deg, rgba(245,194,231,0.98), rgba(138,92,220,0.90));
     }
     .dock-icon.folder {
       background: linear-gradient(180deg, rgba(112,210,255,0.98), rgba(72,154,224,0.90));
@@ -291,11 +651,50 @@ def run_dock() -> int:
       margin-left: 36px;
       margin-bottom: -18px;
     }
+    .dock-instance-badge {
+      min-width: 17px;
+      min-height: 17px;
+      border-radius: 999px;
+      padding: 0 5px;
+      color: white;
+      background: rgba(47, 123, 255, 0.96);
+      font-size: 10px;
+      font-weight: 500;
+      margin-left: 36px;
+      margin-bottom: -18px;
+    }
     .dock-separator {
       min-width: 1px;
       min-height: 40px;
       margin: 9px 3px 0 3px;
       background: rgba(34, 49, 59, 0.18);
+    }
+    .dock-preview {
+      padding: 8px;
+      border-radius: 16px;
+      background: rgba(245,250,252,0.96);
+      border: 1px solid rgba(255,255,255,0.82);
+    }
+    .dock-preview-title {
+      color: rgba(24,36,47,0.92);
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .dock-preview-meta {
+      color: rgba(78,95,107,0.86);
+      font-size: 10px;
+    }
+    .dock-preview-row {
+      min-width: 220px;
+      min-height: 30px;
+      border-radius: 10px;
+      padding: 4px 8px;
+      color: rgba(24,36,47,0.90);
+      background: transparent;
+    }
+    .dock-preview-row:hover,
+    .dock-preview-row.active-window {
+      background: rgba(77,163,255,0.14);
     }
     """
 
@@ -307,15 +706,19 @@ def run_dock() -> int:
     window = Gtk.Window(title="Seven Dock")
     window.set_decorated(False)
     window.set_resizable(False)
-    window.set_default_size(540, 82)
-    window.set_size_request(540, 82)
+    window.set_default_size(dock_width, dock_height)
+    window.set_size_request(dock_width, dock_height)
     window.set_app_paintable(True)
+    window.set_accept_focus(False)
+    window.set_focus_on_map(False)
     window.set_keep_above(True)
     if not force_window:
         window.set_skip_taskbar_hint(True)
         window.set_skip_pager_hint(True)
     window.set_wmclass("SevenDockNative", "SevenDockNative")
     window.get_style_context().add_class("seven-dock")
+    if autohide:
+        window.set_opacity(0.18)
 
     try:
         if force_window:
@@ -332,63 +735,176 @@ def run_dock() -> int:
         GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.BOTTOM, True)
         GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.LEFT, True)
         GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.RIGHT, True)
-        GtkLayerShell.set_margin(window, GtkLayerShell.Edge.BOTTOM, 11)
-        GtkLayerShell.set_exclusive_zone(window, -1)
+        GtkLayerShell.set_margin(window, GtkLayerShell.Edge.BOTTOM, DOCK_MARGIN)
+        GtkLayerShell.set_exclusive_zone(window, dock_height + DOCK_MARGIN if reserve_space else 0)
         GtkLayerShell.set_keyboard_interactivity(window, False)
+        layer_shell_mode = True
     except Exception:
-        screen = Gdk.Screen.get_default()
-        width = screen.get_width() if screen else 1920
-        height = screen.get_height() if screen else 1080
-        window.move(max(0, int((width - 540) / 2)), max(0, height - 104))
+        layer_shell_mode = False
+        width, height = monitor_width, monitor_height
+        window.move(max(0, int((width - dock_width) / 2)), max(0, height - dock_height - DOCK_MARGIN))
 
     shell = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
     shell.set_halign(Gtk.Align.CENTER)
-    shell.set_size_request(540, 82)
+    shell.set_size_request(dock_width, dock_height)
     shell.get_style_context().add_class("dock-shell")
-    window.add(shell)
+    if dock_overflow:
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER)
+        scroll.set_size_request(dock_width, dock_height)
+        scroll.add(shell)
+        window.add(scroll)
+    else:
+        window.add(shell)
 
-    pinned_tiles, folder_tiles, system_tiles = dock_tiles(config)
-    for group_index, group in enumerate((pinned_tiles, folder_tiles, system_tiles)):
-        if group_index > 0 and group:
-            separator = Gtk.Box()
-            separator.get_style_context().add_class("dock-separator")
-            shell.pack_start(separator, False, False, 0)
-        for tile in group:
-            add_tile(shell, tile, config, Gtk, Gdk)
+    hide_source = {"id": 0}
+    fade_source = {"id": 0}
+    # UX contract: window.set_opacity(0.18 if autohide else 1.0)
+    opacity_state = {"value": 0.18 if autohide else 1.0}
 
-    window.connect("destroy", Gtk.main_quit)
+    def animate_dock_opacity(target: float) -> bool:
+        current = float(opacity_state["value"])
+        if abs(current - target) <= DOCK_FADE_STEP:
+            opacity_state["value"] = target
+            window.set_opacity(target)
+            fade_source["id"] = 0
+            return False
+        current = current + DOCK_FADE_STEP if current < target else current - DOCK_FADE_STEP
+        opacity_state["value"] = current
+        window.set_opacity(current)
+        return True
+
+    def fade_dock_to(target: float) -> bool:
+        if fade_source["id"]:
+            GLib.source_remove(fade_source["id"])
+            fade_source["id"] = 0
+        fade_source["id"] = GLib.timeout_add(DOCK_FADE_STEP_MS, animate_dock_opacity, target)
+        return False
+
+    def reveal_dock(*_args) -> bool:
+        if hide_source["id"]:
+            GLib.source_remove(hide_source["id"])
+            hide_source["id"] = 0
+        fade_dock_to(1.0)
+        return False
+
+    def dim_dock() -> bool:
+        hide_source["id"] = 0
+        fade_dock_to(0.18 if autohide else 1.0)
+        return False
+
+    def schedule_dim(*_args) -> bool:
+        if not autohide:
+            return False
+        if hide_source["id"]:
+            GLib.source_remove(hide_source["id"])
+        hide_source["id"] = GLib.timeout_add(650, dim_dock)
+        return False
+
+    if autohide:
+        window.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        shell.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        window.connect("enter-notify-event", reveal_dock)
+        window.connect("leave-notify-event", schedule_dim)
+        shell.connect("enter-notify-event", reveal_dock)
+        shell.connect("leave-notify-event", schedule_dim)
+
+    grouped_clients_state: dict[str, list[dict[str, object]]] = {}
+    compact_tiles = dock_overflow or monitor_width < 900
+
+    def render_shell() -> bool:
+        nonlocal grouped_clients_state
+        for child in shell.get_children():
+            shell.remove(child)
+        grouped_clients_state = clients_by_tile(hyprland_clients())
+        groups = tile_groups(config, grouped_clients_state)
+        for group_index, group in enumerate(groups):
+            if group_index > 0 and group:
+                separator = Gtk.Box()
+                separator.get_style_context().add_class("dock-separator")
+                shell.pack_start(separator, False, False, 0)
+            for tile in group:
+                add_tile(shell, tile, config, Gtk, Gdk, GLib, grouped_clients_state, compact=compact_tiles)
+        shell.show_all()
+        return True
+
+    def on_destroy(_window):
+        clear_dock_state()
+        Gtk.main_quit()
+
+    window.connect("destroy", on_destroy)
+    render_shell()
     window.show_all()
-    window.resize(540, 82)
+    window.resize(dock_width, dock_height)
     if force_window:
-        screen = Gdk.Screen.get_default()
-        width = screen.get_width() if screen else 1920
-        height = screen.get_height() if screen else 1080
-        window.move(max(0, int((width - 540) / 2)), max(0, height - 104))
+        width, height = monitor_width, monitor_height
+        window.move(max(0, int((width - dock_width) / 2)), max(0, height - dock_height - DOCK_MARGIN))
         GLib.timeout_add(350, place_hyprland_window)
     window.present()
+    write_dock_state(
+        {
+            "schema": "sevenos.dock.runtime.v1",
+            "pid": os.getpid(),
+            "profile": bound_profile,
+            "policy": "visible-on-all-workspaces-until-profile-change",
+            "layer_shell": layer_shell_mode,
+            "reserve_space": reserve_space,
+            "width": dock_width,
+            "height": dock_height,
+        }
+    )
+
+    def enforce_profile_scope() -> bool:
+        if active_profile_key() != bound_profile:
+            window.close()
+            return False
+        return True
+
+    GLib.timeout_add_seconds(1, enforce_profile_scope)
+    GLib.timeout_add_seconds(2, render_shell)
     Gtk.main()
     return 0
 
 
-def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk) -> None:
+def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk, GLib, grouped_clients: dict[str, list[dict[str, object]]], compact: bool = False) -> None:
     event = Gtk.EventBox()
     event.set_visible_window(False)
-    event.set_tooltip_text(str(tile["title"]))
-    event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
-    event.connect("button-press-event", lambda widget, event_data, dock_tile=tile: on_tile_click(widget, event_data, dock_tile, config, Gtk))
-
+    window_count = int(tile.get("window_count", 0) or 0)
+    tooltip_parts = [str(tile["title"])]
+    if window_count:
+        tooltip_parts.append(f"{window_count} window{'s' if window_count > 1 else ''}")
+    if tile.get("launching"):
+        tooltip_parts.append("launching")
+    if not tile.get("available", True):
+        tooltip_parts.append("unavailable")
+    event.set_tooltip_text(" · ".join(tooltip_parts))
+    event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.KEY_PRESS_MASK)
+    event.set_can_focus(True)
+    event.connect("button-press-event", lambda widget, event_data, dock_tile=tile: on_tile_click(widget, event_data, dock_tile, config, Gtk, GLib, grouped_clients))
+    event.connect("key-press-event", lambda widget, key_event, dock_tile=tile: on_tile_key(widget, key_event, dock_tile, config, Gtk, Gdk, GLib, grouped_clients))
     button_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     button_box.set_halign(Gtk.Align.CENTER)
     button_box.get_style_context().add_class("dock-tile")
+    event.dock_tile_box = button_box
+    setup_tile_dnd(event, tile, config, Gtk, Gdk, GLib)
+    if window_count:
+        button_box.get_style_context().add_class("running")
+    if tile.get("active"):
+        button_box.get_style_context().add_class("active")
+    if tile.get("launching"):
+        button_box.get_style_context().add_class("launching")
+        GLib.timeout_add(120, animate_launch_feedback, button_box, GLib)
+    if not tile.get("available", True):
+        button_box.get_style_context().add_class("unavailable")
 
     icon_stack = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     icon_stack.set_halign(Gtk.Align.CENTER)
 
-    badge_count = notification_count() if tile.get("id") == "hub" else 0
+    badge_count = window_count if window_count > 1 else notification_count() if tile.get("id") == "hub" else 0
     if badge_count > 0:
         badge = Gtk.Label(label=str(min(badge_count, 99)))
         badge.set_halign(Gtk.Align.END)
-        badge.get_style_context().add_class("dock-badge")
+        badge.get_style_context().add_class("dock-instance-badge" if window_count > 1 else "dock-badge")
         icon_stack.pack_start(badge, False, False, 0)
 
     icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -397,17 +913,23 @@ def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk
     icon_box.get_style_context().add_class("dock-icon")
     icon_box.get_style_context().add_class(str(tile.get("style", "default")))
     icon = Gtk.Image.new_from_icon_name(str(tile["icon"]), Gtk.IconSize.DIALOG)
-    icon.set_pixel_size(34)
+    icon.set_pixel_size(30 if compact else 34)
     icon_box.pack_start(icon, True, True, 0)
     icon_stack.pack_start(icon_box, False, False, 0)
 
     event.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
-    event.connect("enter-notify-event", lambda _widget, _event, image=icon, box=icon_box: magnify_tile(image, box, True))
-    event.connect("leave-notify-event", lambda _widget, _event, image=icon, box=icon_box: magnify_tile(image, box, False))
+    event.connect(
+        "enter-notify-event",
+        lambda widget, _event, image=icon, box=icon_box, dock_tile=tile: on_tile_hover(widget, image, box, dock_tile, grouped_clients, Gtk, True, compact),
+    )
+    event.connect(
+        "leave-notify-event",
+        lambda widget, _event, image=icon, box=icon_box, dock_tile=tile: on_tile_hover(widget, image, box, dock_tile, grouped_clients, Gtk, False, compact),
+    )
 
     dot = Gtk.Box()
     dot.get_style_context().add_class("dock-dot")
-    if not tile_running(tile):
+    if not window_count and not tile_running(tile):
         dot.get_style_context().add_class("idle")
     dot.set_halign(Gtk.Align.CENTER)
 
@@ -417,9 +939,108 @@ def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk
     shell.pack_start(event, False, False, 0)
 
 
-def magnify_tile(icon, icon_box, active: bool) -> bool:
-    icon.set_pixel_size(39 if active else 34)
-    icon_box.set_size_request(56 if active else 50, 56 if active else 50)
+def magnify_tile(icon, icon_box, active: bool, compact: bool = False) -> bool:
+    idle_icon = 30 if compact else 34
+    active_icon = 35 if compact else 39
+    idle_box = 45 if compact else 50
+    active_box = 50 if compact else 56
+    icon.set_pixel_size(active_icon if active else idle_icon)
+    icon_box.set_size_request(active_box if active else idle_box, active_box if active else idle_box)
+    return False
+
+
+def on_tile_hover(widget, icon, icon_box, tile: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]], Gtk, active: bool, compact: bool) -> bool:
+    magnify_tile(icon, icon_box, active, compact)
+    if active:
+        show_window_preview(widget, tile, grouped_clients, Gtk)
+    else:
+        close_window_preview()
+    return False
+
+
+def flash_tile(widget, class_name: str, GLib, duration_ms: int = TILE_FEEDBACK_MS) -> bool:
+    box = getattr(widget, "dock_tile_box", None)
+    if box is None:
+        return False
+    style = box.get_style_context()
+    style.add_class(class_name)
+
+    def clear_class() -> bool:
+        style.remove_class(class_name)
+        return False
+
+    GLib.timeout_add(duration_ms, clear_class)
+    return False
+
+
+def animate_launch_feedback(tile_box, GLib) -> bool:
+    if tile_box is None:
+        return False
+    style = tile_box.get_style_context()
+    style.add_class("launch-feedback")
+
+    def clear_feedback() -> bool:
+        style.remove_class("launch-feedback")
+        return False
+
+    GLib.timeout_add(520, clear_feedback)
+    return False
+
+
+def close_window_preview() -> bool:
+    global PREVIEW_POPOVER
+    if PREVIEW_POPOVER is not None:
+        try:
+            PREVIEW_POPOVER.popdown()
+            PREVIEW_POPOVER.destroy()
+        except Exception:
+            pass
+        PREVIEW_POPOVER = None
+    return False
+
+
+def show_window_preview(widget, tile: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]], Gtk) -> bool:
+    global PREVIEW_POPOVER
+    windows = grouped_clients.get(str(tile.get("id", "")), [])
+    if not windows:
+        close_window_preview()
+        return False
+
+    close_window_preview()
+    windows = sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))
+    popover = Gtk.Popover(relative_to=widget)
+    popover.set_position(Gtk.PositionType.TOP)
+    popover.set_modal(False)
+    popover.get_style_context().add_class("dock-preview")
+
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    title = Gtk.Label(label=str(tile.get("title", tr_text("App"))))
+    title.set_xalign(0)
+    title.get_style_context().add_class("dock-preview-title")
+    meta = Gtk.Label(label=f"{len(windows)} window{'s' if len(windows) > 1 else ''}")
+    meta.set_xalign(0)
+    meta.get_style_context().add_class("dock-preview-meta")
+    box.pack_start(title, False, False, 0)
+    box.pack_start(meta, False, False, 0)
+
+    for client in windows[:5]:
+        label_text = str(client.get("title") or client.get("class") or tile.get("title", tr_text("Window")))
+        if len(label_text) > 46:
+            label_text = label_text[:43].rstrip() + "..."
+        row = Gtk.Button(label=label_text)
+        row.set_relief(Gtk.ReliefStyle.NONE)
+        row.set_halign(Gtk.Align.FILL)
+        row.get_child().set_xalign(0)
+        row.get_style_context().add_class("dock-preview-row")
+        if int(client.get("focusHistoryID", 9999) or 9999) == 0:
+            row.get_style_context().add_class("active-window")
+        row.connect("clicked", lambda _row, selected=client: (focus_client(selected), close_window_preview()))
+        box.pack_start(row, False, False, 0)
+
+    popover.add(box)
+    popover.show_all()
+    popover.popup()
+    PREVIEW_POPOVER = popover
     return False
 
 
@@ -430,11 +1051,150 @@ def tile_running(tile: dict[str, object]) -> bool:
     return process_running(processes)
 
 
-def on_tile_click(widget, event, tile: dict[str, object], config: dict[str, object], Gtk) -> bool:
+def setup_tile_dnd(widget, tile: dict[str, object], config: dict[str, object], Gtk, Gdk, GLib) -> None:
+    tile_target = Gtk.TargetEntry.new(DOCK_TILE_TARGET, Gtk.TargetFlags.SAME_APP, 1)
+    uri_target = Gtk.TargetEntry.new(URI_LIST_TARGET, 0, 2)
+    text_target = Gtk.TargetEntry.new("text/plain", 0, 3)
+    widget.drag_source_set(Gdk.ModifierType.BUTTON1_MASK, [tile_target], Gdk.DragAction.MOVE)
+    widget.drag_dest_set(Gtk.DestDefaults.ALL, [tile_target, uri_target, text_target], Gdk.DragAction.MOVE | Gdk.DragAction.COPY)
+    widget.connect("drag-data-get", lambda _widget, _context, data, _info, _time, dock_tile=tile: data.set_text(str(dock_tile.get("id", "")), -1))
+    widget.connect("drag-data-received", lambda drag_widget, context, _x, _y, data, info, time_value, dock_tile=tile: on_tile_drop(drag_widget, context, data, info, time_value, dock_tile, config, Gtk, GLib))
+    widget.connect("drag-motion", lambda drag_widget, context, _x, _y, time_value, dock_tile=tile: on_tile_drag_motion(drag_widget, context, time_value, dock_tile, Gdk, GLib))
+    widget.connect("drag-leave", lambda drag_widget, _context, _time, dock_tile=tile: cancel_spring_loaded(dock_tile, GLib, drag_widget))
+
+
+def on_tile_drag_motion(widget, context, time_value: int, tile: dict[str, object], Gdk, GLib) -> bool:
+    box = getattr(widget, "dock_tile_box", None)
+    if box is not None:
+        box.get_style_context().add_class("drag-target")
+    if tile.get("kind") == "folder":
+        tile_id = str(tile.get("id", ""))
+        if tile_id and tile_id not in SPRING_OPEN:
+            if box is not None:
+                box.get_style_context().add_class("spring-armed")
+            SPRING_OPEN[tile_id] = GLib.timeout_add(SPRING_LOADED_DELAY_MS, spring_open_folder, tile)
+    try:
+        context.drag_status(Gdk.DragAction.COPY, time_value)
+    except Exception:
+        pass
+    return False
+
+
+def cancel_spring_loaded(tile: dict[str, object], GLib, widget=None) -> None:
+    tile_id = str(tile.get("id", ""))
+    source_id = SPRING_OPEN.pop(tile_id, 0)
+    if source_id:
+        try:
+            GLib.source_remove(source_id)
+        except Exception:
+            pass
+    box = getattr(widget, "dock_tile_box", None)
+    if box is not None:
+        style = box.get_style_context()
+        style.remove_class("drag-target")
+        style.remove_class("spring-armed")
+
+
+def spring_open_folder(tile: dict[str, object]) -> bool:
+    tile_id = str(tile.get("id", ""))
+    SPRING_OPEN.pop(tile_id, None)
+    if tile.get("kind") != "folder":
+        return False
+    path = str(tile.get("path") or Path.home())
+    if path:
+        run_action(["seven-files", path])
+    return False
+
+
+def on_tile_drop(widget, context, data, info: int, time_value: int, target_tile: dict[str, object], config: dict[str, object], Gtk, GLib) -> None:
+    cancel_spring_loaded(target_tile, GLib, widget)
+    handled = False
+    if info == 1:
+        source_id = str(data.get_text() or "").strip()
+        handled = move_tile_to_target(source_id, str(target_tile.get("id", "")), config)
+    elif info == 2:
+        handled = handle_file_drop(target_tile, [str(uri) for uri in data.get_uris()])
+    elif info == 3:
+        text = str(data.get_text() or "").strip()
+        uris = [line for line in text.splitlines() if line.startswith("file://")]
+        handled = handle_file_drop(target_tile, uris)
+    context.finish(handled, False, time_value)
+
+
+def move_tile_to_target(source_id: str, target_id: str, config: dict[str, object]) -> bool:
+    if not source_id or not target_id or source_id == target_id:
+        return False
+    catalog = tile_catalog()
+    if source_id not in catalog:
+        return False
+    profile = active_profile_key()
+    pinned = effective_pinned_ids(config, profile)
+    if source_id in pinned:
+        pinned.remove(source_id)
+    if target_id in pinned:
+        pinned.insert(pinned.index(target_id), source_id)
+    else:
+        pinned.append(source_id)
+    save_profile_pins(config, profile, pinned)
+    return True
+
+
+def file_paths_from_uris(uris: list[str]) -> list[str]:
+    paths: list[str] = []
+    for uri in uris:
+        parsed = urllib.parse.urlparse(uri)
+        if parsed.scheme != "file":
+            continue
+        path = urllib.parse.unquote(parsed.path)
+        if path:
+            paths.append(path)
+    return paths
+
+
+def handle_file_drop(tile: dict[str, object], uris: list[str]) -> bool:
+    paths = file_paths_from_uris(uris)
+    if not paths:
+        return False
+    tile_id = str(tile.get("id", ""))
+    LAUNCHING[tile_id] = time.monotonic()
+    if tile_id == "files":
+        run_action(["seven-files", paths[0]])
+        return True
+    if tile_id == "reader":
+        for path in paths[:4]:
+            run_action(["seven-reader", path])
+        return True
+    if tile_id in {"browser", "studio"}:
+        for path in paths[:4]:
+            run_action(["xdg-open", path])
+        return True
+    return False
+
+
+def on_tile_click(widget, event, tile: dict[str, object], config: dict[str, object], Gtk, GLib, grouped_clients: dict[str, list[dict[str, object]]]) -> bool:
     if getattr(event, "button", 0) == 1 and isinstance(tile.get("command"), list):
+        flash_tile(widget, "pressed", GLib)
+        if tile.get("window_count") and focus_tile_window(tile, grouped_clients):
+            return True
+        if not tile.get("available", True):
+            show_context_menu(widget, tile, config, Gtk, event)
+            return True
+        LAUNCHING[str(tile.get("id", ""))] = time.monotonic()
+        animate_launch_feedback(getattr(widget, "dock_tile_box", None), GLib)
         run_action([str(part) for part in tile["command"]])
         return True
     if getattr(event, "button", 0) == 3:
+        show_context_menu(widget, tile, config, Gtk, event)
+        return True
+    return False
+
+
+def on_tile_key(widget, event, tile: dict[str, object], config: dict[str, object], Gtk, Gdk, GLib, grouped_clients: dict[str, list[dict[str, object]]]) -> bool:
+    if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space}:
+        class Event:
+            button = 1
+        return on_tile_click(widget, Event(), tile, config, Gtk, GLib, grouped_clients)
+    if event.keyval in {Gdk.KEY_Menu, Gdk.KEY_F10}:
         show_context_menu(widget, tile, config, Gtk, event)
         return True
     return False
@@ -448,14 +1208,19 @@ def show_context_menu(widget, tile: dict[str, object], config: dict[str, object]
         menu_item.connect("activate", lambda _item: callback())
         menu.append(menu_item)
 
-    item(tr_text("Open {item}", item=tile.get("title", tr_text("Item"))), lambda: run_action([str(part) for part in tile.get("command", [])]))
+    if tile.get("window_count"):
+        item(tr_text("Show Windows"), lambda: run_action(["seven-overview", "windows"]))
+        item(tr_text("Focus"), lambda: focus_tile_window(tile, clients_by_tile(hyprland_clients())))
+    if tile.get("available", True):
+        item(tr_text("Open {item}", item=tile.get("title", tr_text("Item"))), lambda: run_action([str(part) for part in tile.get("command", [])]))
+    else:
+        item(tr_text("Unavailable"), lambda: None)
 
     if tile.get("kind") == "folder":
         path = str(tile.get("path", Path.home()))
         item(tr_text("Open in Seven Files"), lambda: run_action(["seven-files", path]))
         item(tr_text("Reveal in Files"), lambda: run_action(["xdg-open", path]))
     else:
-        item(tr_text("Show Windows"), lambda: run_action(["seven-overview", "windows"]))
         if tile_running(tile):
             processes = [str(process) for process in tile.get("processes", [])]
             item(tr_text("Quit"), lambda: quit_processes(processes, force=False))
@@ -466,6 +1231,8 @@ def show_context_menu(widget, tile: dict[str, object], config: dict[str, object]
     if tile.get("kind") == "app" or tile.get("kind") == "system":
         if tile_id in pinned:
             item(tr_text("Remove from Dock"), lambda: update_pinned(tile_id, keep=False))
+            item(tr_text("Move Left"), lambda: move_pinned(tile_id, -1))
+            item(tr_text("Move Right"), lambda: move_pinned(tile_id, 1))
         else:
             item(tr_text("Keep in Dock"), lambda: update_pinned(tile_id, keep=True))
 
@@ -494,12 +1261,39 @@ def update_pinned(tile_id: str, keep: bool) -> None:
     save_config(config)
 
 
+def move_pinned(tile_id: str, direction: int) -> None:
+    config = load_config()
+    profile = active_profile_key()
+    pinned = effective_pinned_ids(config, profile)
+    if tile_id not in pinned:
+        return
+    index = pinned.index(tile_id)
+    target = max(0, min(len(pinned) - 1, index + direction))
+    if target == index:
+        return
+    pinned[index], pinned[target] = pinned[target], pinned[index]
+    save_profile_pins(config, profile, pinned)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--probe", action="store_true")
+    parser.add_argument("--limits", action="store_true")
+    parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.probe:
         return probe()
+    if args.limits:
+        payload = dock_limits_payload()
+        if args.json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            dock = payload["dock"]
+            tiles = payload["tiles"]
+            print(f"SevenOS Dock: {dock['width']}x{dock['height']} / max {dock['max_width']} px")
+            print(f"Tiles: {tiles['total']} ({tiles['pinned']} pinned, {tiles['folders']} folders, {tiles['system']} system)")
+            print(f"Overflow: {'yes' if dock['overflow'] else 'no'}")
+        return 0
     return run_dock()
 
 

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import fcntl
 import json
 import os
@@ -32,6 +33,7 @@ CATALOG_SCHEMA = "sevenos.apps.v2"
 LOCK_FILE = RUNTIME_DIR / "launchpad.lock"
 LOG_FILE = STATE_DIR / "launchpad.log"
 LOCK_HANDLE = None
+MODAL_SUBMAP_ACTIVE = False
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
 CATEGORIES = [
@@ -198,6 +200,20 @@ CORE_APP_FALLBACKS = [
         "exec": "seven-spotlight",
     },
 ]
+
+LOCAL_ICON_FILES = {
+    "seven-hub": ROOT_DIR / "identity/icons/seven-hub.svg",
+    "sevenos": ROOT_DIR / "identity/icons/seven-hub.svg",
+    "seven-files": ROOT_DIR / "identity/icons/seven-files.svg",
+    "seven-reader": ROOT_DIR / "identity/icons/seven-reader.svg",
+    "seven-store": ROOT_DIR / "identity/icons/seven-store.svg",
+    "seven-settings": ROOT_DIR / "identity/icons/seven-settings.svg",
+    "seven-spotlight": ROOT_DIR / "identity/icons/seven-spotlight.svg",
+    "seven-ai": ROOT_DIR / "identity/icons/seven-ai.svg",
+    "seven-security": ROOT_DIR / "identity/icons/seven-security.svg",
+    "seven-studio": ROOT_DIR / "identity/icons/seven-studio.svg",
+    "seven-baobab": ROOT_DIR / "identity/icons/seven-baobab.svg",
+}
 
 
 def ensure_gi_python() -> None:
@@ -435,6 +451,10 @@ def category_for(data: dict) -> str:
 
 def fallback_icon(categories: str) -> str:
     cats = {item for item in categories.split(";") if item}
+    if "SevenOS" in cats:
+        return "seven-hub"
+    if "Culture" in cats or "Education" in cats or "Maps" in cats:
+        return "seven-baobab"
     if "Development" in cats:
         return "applications-development"
     if "Graphics" in cats:
@@ -451,7 +471,24 @@ def fallback_icon(categories: str) -> str:
         return "applications-games"
     if "Office" in cats:
         return "applications-office"
-    return "application-x-executable"
+    return "applications-utilities"
+
+
+def icon_candidates(app: dict) -> list[str]:
+    raw_icon = str(app.get("icon", "")).strip()
+    categories = str(app.get("categories", ""))
+    desktop_id = normalize(str(app.get("desktop_id", "")))
+    name = normalize(str(app.get("name", "")))
+    candidates: list[str] = []
+    if raw_icon:
+        candidates.append(raw_icon)
+    if "baobab" in desktop_id or "baobab" in name or "Culture" in categories:
+        candidates.append("seven-baobab")
+    candidates.append(fallback_icon(categories))
+    if app.get("sevenos_core") or desktop_id.startswith("seven-") or "SevenOS" in categories:
+        candidates.append("seven-hub")
+    candidates.extend(["applications-utilities", "application-x-executable"])
+    return list(dict.fromkeys(item for item in candidates if item))
 
 
 def read_desktop(path: Path):
@@ -778,6 +815,36 @@ def run_detached(command: list[str]) -> None:
         pass
 
 
+def hyprctl_dispatch(*args: str) -> bool:
+    if not shutil_which("hyprctl"):
+        return False
+    try:
+        result = subprocess.run(
+            ["hyprctl", "dispatch", *args],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=1.5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
+def enter_modal_submap() -> None:
+    global MODAL_SUBMAP_ACTIVE
+    if hyprctl_dispatch("submap", "sevenos-launchpad"):
+        MODAL_SUBMAP_ACTIVE = True
+
+
+def leave_modal_submap() -> None:
+    global MODAL_SUBMAP_ACTIVE
+    if not MODAL_SUBMAP_ACTIVE:
+        return
+    hyprctl_dispatch("submap", "reset")
+    MODAL_SUBMAP_ACTIVE = False
+
+
 def log_launch(message: str) -> None:
     try:
         STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -818,6 +885,26 @@ def launch_desktop_exec(app: dict) -> bool:
     command = parse_desktop_exec(app.get("exec", ""))
     if not command:
         return False
+    shell_experience("launch", app.get("name") or app.get("desktop_id") or "Application", app.get("desktop_id", ""))
+    helper = ROOT_DIR / "bin" / "seven-profile-launch"
+    if helper.exists():
+        try:
+            result = subprocess.run(
+                [str(helper), app.get("desktop_id", ""), app.get("path", ""), "--", *command],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=launch_environment(),
+                check=False,
+                timeout=1.5,
+            )
+            if result.returncode == 0:
+                log_launch(f"profile launch ok: {' '.join(command)}")
+                record_recent(app)
+                return True
+            log_launch(f"profile launch blocked: {' '.join(command)} rc={result.returncode}")
+            return True
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            log_launch(f"profile launch failed: {' '.join(command)} :: {exc}")
     try:
         subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=launch_environment())
         log_launch(f"launch exec ok: {' '.join(command)}")
@@ -842,8 +929,11 @@ def close_existing_launchpad() -> bool:
     except (OSError, json.JSONDecodeError):
         return False
 
+    launchpad_classes = {"SevenLaunchpadNative", "seven-launchpad-native"}
     for client in clients:
-        if client.get("class") != "SevenLaunchpadNative":
+        client_class = str(client.get("class", ""))
+        client_title = str(client.get("title", ""))
+        if client_class not in launchpad_classes and client_title != "SevenOS Launchpad":
             continue
         address = str(client.get("address", "")).strip()
         if not address:
@@ -884,6 +974,7 @@ def launch_app(app) -> None:
         if not shutil_which(command[0]):
             continue
         try:
+            shell_experience("launch", app.get("name") or desktop_id, desktop_id)
             subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=launch_environment())
             log_launch(f"launch fallback ok: {' '.join(command)}")
             record_recent(app)
@@ -892,6 +983,16 @@ def launch_app(app) -> None:
             log_launch(f"launch fallback failed: {' '.join(command)} :: {exc}")
             continue
     log_launch(f"launch failed: {app.get('desktop_id', app.get('name', 'unknown'))}")
+
+
+def shell_experience(kind: str, label: str, detail: str = "") -> None:
+    helper = ROOT_DIR / "scripts/shell-experience.sh"
+    if not helper.exists():
+        return
+    try:
+        subprocess.Popen([str(helper), kind, label, detail], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        return
 
 
 def fuzzy_score(query: str, app: dict, favorites: list[str], recent_map: dict) -> int:
@@ -951,9 +1052,15 @@ def launchpad_css(mode: str, profile: dict | None = None) -> str:
         return """
         * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
         window.seven-launchpad {
-          background: rgba(244, 247, 252, 0.74);
+          background: rgba(244, 247, 252, 0.68);
         }
-        .launchpad-root { padding: 22px 58px 34px 58px; }
+        .launchpad-root {
+          padding: 22px 46px 30px 46px;
+          border-radius: 30px;
+          border: 1px solid rgba(27, 34, 48, 0.10);
+          background: rgba(255, 255, 255, 0.58);
+          box-shadow: 0 30px 80px rgba(43, 63, 100, 0.18);
+        }
         .launchpad-topbar {
           min-height: 52px;
           padding: 8px 12px;
@@ -1036,10 +1143,14 @@ def launchpad_css(mode: str, profile: dict | None = None) -> str:
     return """
     * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
     window.seven-launchpad {
-      background: rgba(9, 9, 11, 0.66);
+      background: rgba(5, 7, 10, 0.72);
     }
     .launchpad-root {
-      padding: 22px 58px 34px 58px;
+      padding: 22px 46px 30px 46px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      background: rgba(14, 16, 22, 0.72);
+      box-shadow: 0 34px 90px rgba(0, 0, 0, 0.44), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     }
     .launchpad-topbar {
       min-height: 52px;
@@ -1132,7 +1243,10 @@ def run_launchpad() -> int:
 
     gi.require_version("Gdk", "3.0")
     gi.require_version("Gtk", "3.0")
-    from gi.repository import Gdk, GLib, Gtk, Pango
+    from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, Pango
+
+    enter_modal_submap()
+    atexit.register(leave_modal_submap)
 
     mode = current_theme_mode()
     profile_ui = read_profile_ui()
@@ -1158,14 +1272,33 @@ def run_launchpad() -> int:
     window = Gtk.Window(title="SevenOS Launchpad")
     window.set_decorated(False)
     window.set_default_size(1320, 780)
-    window.set_size_request(980, 620)
-    window.set_resizable(True)
+    window.set_size_request(1, 1)
+    window.set_resizable(False)
+    window.set_accept_focus(True)
+    window.set_focus_on_map(True)
+    window.set_modal(True)
+    window.set_keep_above(True)
+    window.set_skip_taskbar_hint(True)
+    window.set_skip_pager_hint(True)
+    window.set_type_hint(Gdk.WindowTypeHint.DIALOG)
+    window.stick()
+    window.fullscreen()
     window.set_wmclass("SevenLaunchpadNative", "SevenLaunchpadNative")
     window.get_style_context().add_class("seven-launchpad")
 
+    stage = Gtk.Fixed()
+    stage.set_hexpand(True)
+    stage.set_vexpand(True)
+    stage.set_halign(Gtk.Align.FILL)
+    stage.set_valign(Gtk.Align.FILL)
+    stage.get_style_context().add_class("launchpad-stage")
+    window.add(stage)
+
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=22)
+    root.set_halign(Gtk.Align.CENTER)
+    root.set_valign(Gtk.Align.CENTER)
     root.get_style_context().add_class("launchpad-root")
-    window.add(root)
+    stage.put(root, 0, 0)
 
     topbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
     topbar.set_halign(Gtk.Align.CENTER)
@@ -1294,11 +1427,8 @@ def run_launchpad() -> int:
     flow.set_halign(Gtk.Align.CENTER)
     flow.set_valign(Gtk.Align.START)
     flow.set_selection_mode(Gtk.SelectionMode.SINGLE)
-    flow.set_min_children_per_line(5)
+    flow.set_min_children_per_line(4)
     flow.set_max_children_per_line(8)
-    screen_width = Gdk.Screen.get_default().get_width()
-    if screen_width < 1320:
-        flow.set_max_children_per_line(6)
     flow.set_column_spacing(34)
     flow.set_row_spacing(28)
     scroller.add(flow)
@@ -1308,6 +1438,52 @@ def run_launchpad() -> int:
     empty.set_halign(Gtk.Align.CENTER)
     empty.hide()
     root.pack_start(empty, False, False, 0)
+
+    def clamp(value: int, low: int, high: int) -> int:
+        return max(low, min(high, value))
+
+    def active_monitor_geometry():
+        screen = Gdk.Screen.get_default()
+        monitor = screen.get_primary_monitor()
+        if window.get_window():
+            monitor = screen.get_monitor_at_window(window.get_window())
+        if monitor < 0:
+            monitor = 0
+        return screen.get_monitor_geometry(monitor)
+
+    def apply_responsive_layout(width: int | None = None, height: int | None = None) -> bool:
+        if not width or not height:
+            geometry = active_monitor_geometry()
+            width = geometry.width
+            height = geometry.height
+
+        available_width = max(320, width - 32)
+        available_height = max(360, height - 32)
+        panel_width = clamp(int(width * 0.88), min(620, available_width), min(1360, available_width))
+        panel_height = clamp(int(height * 0.84), min(520, available_height), min(860, available_height))
+        stage.set_size_request(width, height)
+        root.set_size_request(panel_width, panel_height)
+        stage.move(root, max(0, (width - panel_width) // 2), max(0, (height - panel_height) // 2))
+
+        if panel_width >= 1260:
+            columns = 8
+        elif panel_width >= 1120:
+            columns = 7
+        elif panel_width >= 960:
+            columns = 6
+        elif panel_width >= 780:
+            columns = 5
+        elif panel_width >= 700:
+            columns = 4
+        else:
+            columns = 3
+
+        flow.set_min_children_per_line(min(4, columns))
+        flow.set_max_children_per_line(columns)
+        world_flow.set_max_children_per_line(min(7, max(3, columns)))
+        search.set_size_request(220 if panel_width < 700 else 240 if panel_width < 900 else 320, -1)
+        subtitle.set_max_width_chars(40 if panel_width < 900 else 72)
+        return False
 
     def category_label(app: dict) -> str:
         value = app.get("category", "all")
@@ -1374,6 +1550,33 @@ def run_launchpad() -> int:
         menu.popup_at_pointer(event)
         return True
 
+    def app_icon_image(app: dict):
+        icon_theme = Gtk.IconTheme.get_default()
+
+        def file_image(path: Path):
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 76, 76, True)
+                return Gtk.Image.new_from_pixbuf(pixbuf)
+            except Exception:
+                image = Gtk.Image.new_from_file(str(path))
+                image.set_pixel_size(76)
+                return image
+
+        for candidate in icon_candidates(app):
+            candidate_path = Path(candidate).expanduser()
+            if candidate_path.is_absolute() and candidate_path.exists():
+                return file_image(candidate_path)
+            local_path = LOCAL_ICON_FILES.get(candidate)
+            if local_path and local_path.exists():
+                return file_image(local_path)
+            if icon_theme.has_icon(candidate):
+                image = Gtk.Image.new_from_icon_name(candidate, Gtk.IconSize.DIALOG)
+                image.set_pixel_size(76)
+                return image
+        image = Gtk.Image.new_from_icon_name("applications-utilities", Gtk.IconSize.DIALOG)
+        image.set_pixel_size(76)
+        return image
+
     def make_child(app):
         child = Gtk.FlowBoxChild()
         child.get_style_context().add_class("launchpad-tile")
@@ -1385,8 +1588,7 @@ def run_launchpad() -> int:
         box.set_halign(Gtk.Align.CENTER)
         box.set_valign(Gtk.Align.CENTER)
 
-        image = Gtk.Image.new_from_icon_name(app["icon"], Gtk.IconSize.DIALOG)
-        image.set_pixel_size(76)
+        image = app_icon_image(app)
         image.set_halign(Gtk.Align.CENTER)
         box.pack_start(image, False, False, 0)
 
@@ -1533,11 +1735,31 @@ def run_launchpad() -> int:
     search.connect("search-changed", update_filter)
     flow.connect("child-activated", activate)
     window.connect("key-press-event", on_key)
-    window.connect("destroy", Gtk.main_quit)
+
+    def on_configure(_window, event):
+        apply_responsive_layout(event.width, event.height)
+        return False
+
+    window.connect("configure-event", on_configure)
+
+    def on_destroy(_window):
+        leave_modal_submap()
+        Gtk.main_quit()
+
+    window.connect("destroy", on_destroy)
     update_filter(search)
+    apply_responsive_layout()
     window.show_all()
+    GLib.idle_add(apply_responsive_layout)
     refresh_apps_async()
-    search.grab_focus()
+
+    def focus_launchpad():
+        window.fullscreen()
+        window.present()
+        search.grab_focus()
+        return False
+
+    GLib.idle_add(focus_launchpad)
     Gtk.main()
     return 0
 

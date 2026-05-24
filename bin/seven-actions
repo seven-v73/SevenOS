@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+resolve_root() {
+  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/scripts/actions.sh" ]]; then
+    printf '%s\n' "$SEVENOS_ROOT"
+    return 0
+  fi
+
+  local script_dir
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  if [[ -x "$script_dir/../scripts/actions.sh" ]]; then
+    cd -- "$script_dir/.." && pwd
+    return 0
+  fi
+
+  for candidate in "$HOME/Code/OS/SevenOS" "$HOME/SevenOS" /opt/SevenOS; do
+    if [[ -x "$candidate/scripts/actions.sh" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'seven-actions: could not find SevenOS action registry\n' >&2
+  exit 1
+}
+
+ROOT_DIR="$(resolve_root)"
+export SEVENOS_ROOT="$ROOT_DIR"
+exec "$ROOT_DIR/scripts/actions.sh" "$@"

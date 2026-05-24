@@ -94,10 +94,19 @@ M.mouse_binds = {
   "bindm = $mod, mouse:273, resizewindow",
 }
 
+M.launchpad_modal_binds = {
+  "submap = sevenos-launchpad",
+  "bind = , Escape, exec, hyprctl dispatch submap reset; pkill -f 'seven-launchpad-native' || true",
+  "bindr = $mod, SUPER_L, exec, hyprctl dispatch submap reset; pkill -f 'seven-launchpad-native' || true",
+  "bindr = $mod, SUPER_R, exec, hyprctl dispatch submap reset; pkill -f 'seven-launchpad-native' || true",
+  "submap = reset",
+}
+
 function M.rules()
   local out = {}
   for _, rule in ipairs(M.common_binds) do out[#out + 1] = rule end
   for _, rule in ipairs(M.mouse_binds) do out[#out + 1] = rule end
+  for _, rule in ipairs(M.launchpad_modal_binds) do out[#out + 1] = rule end
   return out
 end
 

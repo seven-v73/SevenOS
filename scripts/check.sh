@@ -28,6 +28,7 @@ bash -n \
   "$ROOT_DIR/scripts/improve.sh" \
   "$ROOT_DIR/scripts/repair.sh" \
   "$ROOT_DIR/scripts/system-repair.sh" \
+  "$ROOT_DIR/scripts/pre-push-fast.sh" \
   "$ROOT_DIR/scripts/ux-check.sh" \
   "$ROOT_DIR/scripts/design-check.sh" \
   "$ROOT_DIR/scripts/visual-packages.sh" \
@@ -61,7 +62,9 @@ bash -n \
   "$ROOT_DIR/branding/shell/terminal-country.sh" \
   "$ROOT_DIR/branding/apply-branding.sh" \
   "$ROOT_DIR/bin/seven" \
+  "$ROOT_DIR/bin/seven-actions" \
   "$ROOT_DIR/bin/seven-apps" \
+  "$ROOT_DIR/bin/seven-context" \
   "$ROOT_DIR/bin/seven-actions-native" \
   "$ROOT_DIR/bin/seven-country" \
   "$ROOT_DIR/bin/seven-language" \
@@ -99,10 +102,15 @@ bash -n \
   "$ROOT_DIR/bin/seven-welcome" \
   "$ROOT_DIR/bin/seven-installer" \
   "$ROOT_DIR/bin/seven-waybar-action" \
+  "$ROOT_DIR/bin/seven-app-menu-native" \
+  "$ROOT_DIR/bin/seven-system-menu-native" \
+  "$ROOT_DIR/bin/seven-media-menu-native" \
+  "$ROOT_DIR/bin/seven-mini-context-menu-native" \
   "$ROOT_DIR/bin/seven-waybar-notifications" \
   "$ROOT_DIR/bin/seven-waybar-profile" \
   "$ROOT_DIR/bin/seven-waybar-security" \
   "$ROOT_DIR/bin/seven-waybar" \
+  "$ROOT_DIR/bin/seven-waybar-context" \
   "$ROOT_DIR/bin/seven-waybar-status" \
   "$ROOT_DIR/bin/seven-workspace" \
   "$ROOT_DIR/bin/seven-window" \
@@ -154,6 +162,13 @@ PYTHONDONTWRITEBYTECODE=1 python -m py_compile \
   "$ROOT_DIR/bin/seven-language" \
   "$ROOT_DIR/bin/seven-terminal-native" \
   "$ROOT_DIR/bin/seven-mini-os-center" \
+  "$ROOT_DIR/bin/seven_waybar_app_profiles.py" \
+  "$ROOT_DIR/bin/seven-waybar-context" \
+  "$ROOT_DIR/bin/seven-waybar-status" \
+  "$ROOT_DIR/bin/seven-app-menu-native" \
+  "$ROOT_DIR/bin/seven-system-menu-native" \
+  "$ROOT_DIR/bin/seven-media-menu-native" \
+  "$ROOT_DIR/bin/seven-mini-context-menu-native" \
   "$ROOT_DIR/scripts/seven_i18n.py" \
   "$ROOT_DIR/scripts/seven_ai_agent.py" \
   "$ROOT_DIR/scripts/seven_ai_provider.py" \
@@ -263,6 +278,7 @@ done
 
 if command -v rofi >/dev/null 2>&1; then
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/apps.rasi" -dump-theme >/dev/null
+  rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/app-menu.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/hub.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/sevenos.rasi" -dump-theme >/dev/null
   rofi -no-config -theme "$ROOT_DIR/hyprland/rofi/quick-settings.rasi" -dump-theme >/dev/null
@@ -558,8 +574,15 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" profile >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" security >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" network >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" network-connect >/dev/null
+"$ROOT_DIR/bin/seven-app-menu-native" --probe >/dev/null
+"$ROOT_DIR/bin/seven-system-menu-native" --probe >/dev/null
+"$ROOT_DIR/bin/seven-media-menu-native" --probe >/dev/null
+"$ROOT_DIR/bin/seven-mini-context-menu-native" --probe >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-workspace" json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-waybar-status" profile | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-waybar" status --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven-waybar-context" doctor | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-context" repair | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-profile-theme" apply >/dev/null
 "$ROOT_DIR/bin/seven-profile-theme" audit-waybars >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-notifications" menu >/dev/null
@@ -583,6 +606,9 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" list >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" category Apps >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/actions.sh" run apps.open >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-actions" --json | python -m json.tool >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-actions" run waybar.status >/dev/null
+"$ROOT_DIR/bin/seven-context" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" map >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" layers >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/architecture.sh" hybrid >/dev/null
@@ -618,8 +644,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" security >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" deployment --apply --yes >/dev/null
 if command -v timeout >/dev/null 2>&1; then
-  if ! SEVENOS_DRY_RUN=1 timeout --kill-after=2s "${SEVENOS_UX_CHECK_TIMEOUT:-60s}" "$ROOT_DIR/scripts/ux-check.sh" >/dev/null; then
-    log_warn "UX check did not finish within ${SEVENOS_UX_CHECK_TIMEOUT:-60s}; run scripts/ux-check.sh for the full audit."
+  if ! SEVENOS_DRY_RUN=1 timeout --kill-after=2s "${SEVENOS_UX_CHECK_TIMEOUT:-180s}" "$ROOT_DIR/scripts/ux-check.sh" >/dev/null; then
+    log_warn "UX check did not finish within ${SEVENOS_UX_CHECK_TIMEOUT:-180s}; run scripts/ux-check.sh for the full audit."
   fi
 else
   SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ux-check.sh" >/dev/null
@@ -675,7 +701,7 @@ SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/keyboard.sh" status --json | python -m json
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/keyboard.sh" apply >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run manifest doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run manifest restore-plan >/dev/null
-SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null
+SEVENOS_UPDATE_FAST=1 SEVENOS_HEALTH_FAST=1 SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate backup >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate-ml4w plan >/dev/null

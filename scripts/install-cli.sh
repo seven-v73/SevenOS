@@ -143,6 +143,7 @@ install_user_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_user_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_user_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_user_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
+install_user_command "$ROOT_DIR/bin/seven-ai-native" seven-ai-native
 install_user_command "$ROOT_DIR/bin/seven-help" seven-help
 install_user_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_user_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
@@ -175,6 +176,10 @@ install_user_command "$ROOT_DIR/bin/seven-idle" seven-idle
 install_user_command "$ROOT_DIR/bin/seven-country" seven-country
 install_user_command "$ROOT_DIR/bin/seven-language" seven-language
 install_user_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
+install_user_command "$ROOT_DIR/bin/seven-app-menu-native" seven-app-menu-native
+install_user_command "$ROOT_DIR/bin/seven-system-menu-native" seven-system-menu-native
+install_user_command "$ROOT_DIR/bin/seven-media-menu-native" seven-media-menu-native
+install_user_command "$ROOT_DIR/bin/seven-mini-context-menu-native" seven-mini-context-menu-native
 install_user_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_user_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
 install_user_command "$ROOT_DIR/bin/seven-shield-center-native" seven-shield-center-native
@@ -183,6 +188,7 @@ install_user_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-not
 install_user_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_user_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_user_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
+install_user_command "$ROOT_DIR/bin/seven-waybar-context" seven-waybar-context
 install_user_command "$ROOT_DIR/bin/seven-waybar-status" seven-waybar-status
 install_user_command "$ROOT_DIR/bin/seven-workspace" seven-workspace
 install_user_command "$ROOT_DIR/bin/seven-window" seven-window
@@ -209,6 +215,7 @@ install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_system_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_system_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_system_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
+install_system_command "$ROOT_DIR/bin/seven-ai-native" seven-ai-native
 install_system_command "$ROOT_DIR/bin/seven-help" seven-help
 install_system_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_system_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
@@ -240,6 +247,10 @@ install_system_command "$ROOT_DIR/bin/seven-notifications" seven-notifications
 install_system_command "$ROOT_DIR/bin/seven-idle" seven-idle
 install_system_command "$ROOT_DIR/bin/seven-language" seven-language
 install_system_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
+install_system_command "$ROOT_DIR/bin/seven-app-menu-native" seven-app-menu-native
+install_system_command "$ROOT_DIR/bin/seven-system-menu-native" seven-system-menu-native
+install_system_command "$ROOT_DIR/bin/seven-media-menu-native" seven-media-menu-native
+install_system_command "$ROOT_DIR/bin/seven-mini-context-menu-native" seven-mini-context-menu-native
 install_system_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_system_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
 install_system_command "$ROOT_DIR/bin/seven-shield-center-native" seven-shield-center-native
@@ -248,6 +259,7 @@ install_system_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-n
 install_system_command "$ROOT_DIR/bin/seven-waybar-profile" seven-waybar-profile
 install_system_command "$ROOT_DIR/bin/seven-waybar-security" seven-waybar-security
 install_system_command "$ROOT_DIR/bin/seven-waybar" seven-waybar
+install_system_command "$ROOT_DIR/bin/seven-waybar-context" seven-waybar-context
 install_system_command "$ROOT_DIR/bin/seven-waybar-status" seven-waybar-status
 install_system_command "$ROOT_DIR/bin/seven-workspace" seven-workspace
 install_system_command "$ROOT_DIR/bin/seven-window" seven-window

@@ -9,7 +9,7 @@ usage() {
 SevenStore Preview
 
 Usage:
-  seven store [status|home|modules|apps|actions|doctor|json]
+  seven store [status|home|modules|apps|library|profile-library|activity|actions|doctor|refresh|json]
   seven store search <query> [--json]
   seven store detail <id> [--json]
   seven store install <module>
@@ -18,6 +18,7 @@ Usage:
   seven store remove-app <source> <id>
   seven store repair-app <source> <id>
   seven store add-profile <profile> <source> <id>
+  seven store remove-profile <profile> <source> <id>
 
 SevenStore is the user-facing catalog contract for SevenOS bundles, Flatpak
 apps and safe system actions. It does not install anything unless you call
@@ -33,6 +34,10 @@ import subprocess
 from pathlib import Path
 
 root = Path(os.environ["ROOT_DIR"])
+config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+state_home = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+activity_path = state_home / "sevenos" / "store-activity.json"
+profile_apps_dir = config_home / "sevenos" / "profile-apps"
 
 
 def run_json(command, fallback):
@@ -53,13 +58,13 @@ def run_json(command, fallback):
 
 def module_sort_key(item):
     order = {
-        "baobab": 0,
-        "forge": 1,
-        "shield": 2,
-        "studio": 3,
-        "windows": 4,
-        "pulse": 5,
-        "baobab": 6,
+        "equinox": 0,
+        "baobab": 1,
+        "forge": 2,
+        "shield": 3,
+        "studio": 4,
+        "windows": 5,
+        "pulse": 6,
     }
     return (order.get(item["key"], 99), item["key"])
 
@@ -169,6 +174,25 @@ actions_payload = run_json(
     [str(root / "scripts" / "actions.sh"), "--json"],
     {"actions": []},
 )
+try:
+    activity_payload = json.loads(activity_path.read_text(encoding="utf-8"))
+    recent_activity = activity_payload.get("events", [])
+    if not isinstance(recent_activity, list):
+        recent_activity = []
+except Exception:
+    recent_activity = []
+
+profile_apps = {}
+if profile_apps_dir.is_dir():
+    for path in sorted(profile_apps_dir.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        profile = str(payload.get("profile") or path.stem)
+        apps_for_profile = payload.get("apps", [])
+        if isinstance(apps_for_profile, list):
+            profile_apps[profile] = apps_for_profile[:80]
 
 state_by_key = {
     item.get("name"): item
@@ -227,6 +251,10 @@ for app in desktop_apps.get("apps", []) or []:
     desktop_id = app.get("desktop_id") or ""
     path = app.get("path", "")
     source = "flatpak" if "flatpak" in str(path).lower() else "desktop"
+    categories = app.get("categories") or []
+    if isinstance(categories, str):
+        categories = [part for part in categories.split(";") if part]
+    source_badge = "SANDBOXED" if source == "flatpak" else "LOCAL"
     installed_library.append({
         "id": desktop_id.removesuffix(".desktop"),
         "key": desktop_id,
@@ -237,12 +265,12 @@ for app in desktop_apps.get("apps", []) or []:
         "installed": True,
         "desktop_id": desktop_id,
         "desktop_path": path,
-        "categories": app.get("categories") or [],
+        "categories": categories,
         "kind": "graphical",
         "quality_score": 86,
         "quality_label": "Ready",
         "beginner_visible": True,
-        "badges": ["INSTALLED", "GRAPHICAL"],
+        "badges": ["INSTALLED", "GRAPHICAL", source_badge],
         "open_command": f"seven store open-app desktop {desktop_id.removesuffix('.desktop')}" if desktop_id else "",
     })
 
@@ -299,10 +327,14 @@ payload = {
         "flatpak_total": flatpak.get("total", len(apps)),
         "installed_apps": len(installed_library),
         "actions": len(catalog_actions),
+        "activity": len(recent_activity),
+        "profile_apps": sum(len(items) for items in profile_apps.values()),
     },
     "modules": modules,
     "apps": apps,
     "installed_library": installed_library,
+    "profile_apps": profile_apps,
+    "recent_activity": recent_activity[:40],
     "actions": catalog_actions,
 }
 print(json.dumps(payload, indent=2))
@@ -743,6 +775,98 @@ PY
   rm -f "$payload_file"
 }
 
+library() {
+  local payload payload_file
+  payload="$(payload_json)"
+  payload_file="$(mktemp)"
+  printf '%s\n' "$payload" >"$payload_file"
+  python - "$payload_file" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+apps = payload.get("installed_library", [])
+print("SevenStore Library")
+print("==================")
+if not apps:
+    print("No installed desktop app found.")
+else:
+    for item in sorted(apps, key=lambda row: (row.get("source", ""), row.get("name", "").lower())):
+        badges = " ".join(f"[{badge}]" for badge in item.get("badges", []))
+        print(f"{item.get('name', ''):<32} {item.get('source', ''):<8} {badges}")
+        if item.get("desktop_id"):
+            print(f"{'':<32} launcher: {item['desktop_id']}")
+PY
+  rm -f "$payload_file"
+}
+
+profile_library() {
+  local profile="${1:-}"
+  local payload payload_file
+  payload="$(payload_json)"
+  payload_file="$(mktemp)"
+  printf '%s\n' "$payload" >"$payload_file"
+  PROFILE="$profile" python - "$payload_file" <<'PY'
+import datetime as dt
+import json
+import os
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+requested = os.environ.get("PROFILE", "").strip()
+profiles = payload.get("profile_apps", {})
+print("SevenStore Profile Library")
+print("==========================")
+if requested:
+    profiles = {requested: profiles.get(requested, [])}
+if not profiles:
+    print("No profile app associations recorded yet.")
+else:
+    for profile, apps in sorted(profiles.items()):
+        print(f"\n[{profile}]")
+        if not apps:
+            print("  empty")
+            continue
+        for item in apps:
+            timestamp = item.get("installed_at", 0)
+            try:
+                when = dt.datetime.fromtimestamp(int(timestamp)).strftime("%Y-%m-%d")
+            except Exception:
+                when = "unknown"
+            print(f"  {item.get('source', ''):<8} {item.get('id', ''):<32} {when}")
+PY
+  rm -f "$payload_file"
+}
+
+activity() {
+  local payload payload_file
+  payload="$(payload_json)"
+  payload_file="$(mktemp)"
+  printf '%s\n' "$payload" >"$payload_file"
+  python - "$payload_file" <<'PY'
+import datetime as dt
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+events = payload.get("recent_activity", [])
+print("SevenStore Activity")
+print("===================")
+if not events:
+    print("No Store activity recorded yet.")
+else:
+    for item in events[:40]:
+        timestamp = item.get("time", 0)
+        try:
+            when = dt.datetime.fromtimestamp(int(timestamp)).strftime("%Y-%m-%d %H:%M")
+        except Exception:
+            when = "unknown"
+        profile = f" · {item.get('profile')}" if item.get("profile") else ""
+        print(f"{when}  {item.get('status', ''):<7} {item.get('action', ''):<10} {item.get('source', ''):<8} {item.get('id', '')}{profile}")
+PY
+  rm -f "$payload_file"
+}
+
 actions() {
   local payload payload_file
   payload="$(payload_json)"
@@ -878,6 +1002,24 @@ doctor() {
   log_success "SevenStore preview catalog is coherent."
 }
 
+refresh() {
+  local cache_home state_home
+  cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
+  state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
+  mkdir -p "$cache_home/sevenos" "$state_home/sevenos"
+  rm -f "$cache_home/sevenos/store.json" \
+        "$cache_home/sevenos/apps.json" \
+        "$cache_home/sevenos/launchpad-apps.json" \
+        "$cache_home/sevenos/spotlight.json" 2>/dev/null || true
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
+    update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
+  fi
+  printf '%s refresh\n' "$(date +%s)" > "$state_home/sevenos/store-refresh.stamp"
+  record_store_activity "refresh" "store" "catalog" "ok"
+  log_success "SevenStore catalog refresh requested."
+}
+
 install_module() {
   local module="${1:-}"
   if [[ -z "$module" ]]; then
@@ -940,6 +1082,7 @@ install_app() {
     log_success "$app_id is already installed."
     refresh_desktop_catalogs "$app_id"
     [[ -n "$profile" ]] && record_profile_app "$profile" "$source" "$app_id"
+    record_store_activity "install" "$source" "$app_id" "ready" "$profile"
     return 0
   fi
   log_info "Installing $app_id from $source..."
@@ -950,8 +1093,10 @@ install_app() {
   if [[ "$status" -eq 0 ]]; then
     refresh_desktop_catalogs "$app_id"
     [[ -n "$profile" ]] && record_profile_app "$profile" "$source" "$app_id"
+    record_store_activity "install" "$source" "$app_id" "ok" "$profile"
   elif [[ "$status" -ne 0 ]]; then
     explain_install_failure "$source" "$app_id" "$status" "${command[@]}"
+    record_store_activity "install" "$source" "$app_id" "failed" "$profile"
   fi
   return "$status"
 }
@@ -1113,6 +1258,9 @@ remove_app() {
   set -e
   if [[ "$status" -eq 0 ]]; then
     refresh_desktop_catalogs "$app_id"
+    record_store_activity "remove" "$source" "$app_id" "ok"
+  else
+    record_store_activity "remove" "$source" "$app_id" "failed"
   fi
   return "$status"
 }
@@ -1125,13 +1273,30 @@ repair_app() {
     return 1
   fi
   case "$source" in
-    pacman|aur) install_app "$source" "$app_id" ;;
+    pacman|aur)
+      set +e
+      install_app "$source" "$app_id"
+      local status=$?
+      set -e
+      if [[ "$status" -eq 0 ]]; then
+        record_store_activity "repair" "$source" "$app_id" "ok"
+      else
+        record_store_activity "repair" "$source" "$app_id" "failed"
+      fi
+      return "$status"
+      ;;
     flatpak)
       if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
         printf 'repair command: flatpak repair --user\n'
         return 0
       fi
-      flatpak repair --user && refresh_desktop_catalogs "$app_id"
+      if flatpak repair --user; then
+        refresh_desktop_catalogs "$app_id"
+        record_store_activity "repair" "$source" "$app_id" "ok"
+      else
+        record_store_activity "repair" "$source" "$app_id" "failed"
+        return 1
+      fi
       ;;
     *) log_error "Unknown source: $source"; return 1 ;;
   esac
@@ -1146,6 +1311,77 @@ add_profile_app() {
     return 1
   fi
   record_profile_app "$profile" "$source" "$app_id"
+  record_store_activity "profile" "$source" "$app_id" "ok" "$profile"
+}
+
+remove_profile_app() {
+  local profile="${1:-}"
+  local source="${2:-}"
+  local app_id="${3:-}"
+  if [[ -z "$profile" || -z "$source" || -z "$app_id" ]]; then
+    log_error "Usage: seven store remove-profile <profile> <source> <id>"
+    return 1
+  fi
+  local profile_dir app_file
+  profile_dir="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile-apps"
+  app_file="$profile_dir/$profile.json"
+  python - "$app_file" "$profile" "$source" "$app_id" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+profile, source, app_id = sys.argv[2:]
+try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    payload = {"schema": "sevenos.profile-apps.v1", "profile": profile, "apps": []}
+apps = payload.setdefault("apps", [])
+apps[:] = [item for item in apps if not (item.get("id") == app_id and item.get("source") == source)]
+payload["profile"] = profile
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+PY
+  record_store_activity "unprofile" "$source" "$app_id" "ok" "$profile"
+  log_success "Removed $app_id from profile $profile."
+}
+
+record_store_activity() {
+  local action="$1"
+  local source="$2"
+  local app_id="$3"
+  local status="${4:-ok}"
+  local profile="${5:-}"
+  local state_home activity_file
+  state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
+  activity_file="$state_home/sevenos/store-activity.json"
+  mkdir -p "$(dirname "$activity_file")"
+  python - "$activity_file" "$action" "$source" "$app_id" "$status" "$profile" <<'PY'
+import json
+import sys
+import time
+from pathlib import Path
+
+path = Path(sys.argv[1])
+action, source, app_id, status, profile = sys.argv[2:]
+try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    payload = {"schema": "sevenos.store-activity.v1", "events": []}
+events = payload.setdefault("events", [])
+entry = {
+    "time": int(time.time()),
+    "action": action,
+    "source": source,
+    "id": app_id,
+    "status": status,
+}
+if profile:
+    entry["profile"] = profile
+events.insert(0, entry)
+payload["events"] = events[:120]
+path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+PY
 }
 
 polkit_agent_running() {
@@ -1273,17 +1509,22 @@ case "$action" in
   home) home ;;
   modules|catalog) modules ;;
   apps) apps ;;
+  library) library ;;
+  profile-library) shift; profile_library "${1:-}" ;;
+  activity) activity ;;
   actions) actions ;;
   search) shift; search "${1:-}" "${2:-}" ;;
   detail) shift; detail "${1:-}" "${2:-}" ;;
   json|--json) payload_json ;;
   doctor) doctor ;;
+  refresh) refresh ;;
   install) shift; install_module "${1:-}" ;;
   install-app) shift; install_app "$@" ;;
   open-app) shift; open_app "$@" ;;
   remove-app) shift; remove_app "$@" ;;
   repair-app) shift; repair_app "$@" ;;
   add-profile) shift; add_profile_app "$@" ;;
+  remove-profile) shift; remove_profile_app "$@" ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown store action: $action"; usage; exit 1 ;;
 esac

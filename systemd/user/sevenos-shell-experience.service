@@ -1,0 +1,11 @@
+[Unit]
+Description=SevenOS shell experience warmup
+PartOf=sevenos-session.target
+After=sevenos-wallpaper.service sevenos-waybar.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/seven experience warmup
+
+[Install]
+WantedBy=sevenos-session.target

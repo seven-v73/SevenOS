@@ -1,19 +1,23 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 50,
-  "spacing": 6,
-  "margin-top": 10,
-  "margin-left": 18,
-  "margin-right": 18,
+  "height": 28,
+  "spacing": 4,
+  "margin-top": 0,
+  "margin-left": 0,
+  "margin-right": 0,
   "gtk-layer-shell": true,
-  "modules-left": ["custom/sevenos", "custom/profile", "custom/spotlight", "custom/media"],
-  "modules-center": ["custom/workspace-prev", "hyprland/workspaces", "custom/workspace-next"],
-  "modules-right": ["custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "custom/vpn", "custom/recorder", "clock", "custom/control-center"],
+  "modules-left": ["custom/sevenos", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"],
+  "modules-center": ["hyprland/workspaces"],
+  "modules-right": ["custom/profile", "custom/mini-context", "custom/experience", "custom/media", "custom/system-status", "tray", "custom/spotlight", "clock", "custom/control-center"],
   "custom/sevenos": {
-    "format": "7  SevenOS",
-    "tooltip": false,
-    "on-click": "seven hub"
+    "exec": "seven-waybar-status sevenos",
+    "return-type": "json",
+    "interval": 3,
+    "tooltip": true,
+    "on-click": "seven-waybar-action sevenos-menu",
+    "on-click-right": "seven-profile-center-native",
+    "on-click-middle": "seven-spotlight field"
   },
   "custom/profile": {
     "exec": "seven-waybar-status profile",
@@ -23,18 +27,138 @@
     "on-click": "seven-profile-center-native",
     "on-click-right": "seven profile current"
   },
+  "custom/mini-context": {
+    "exec": "seven-waybar-status mini-context",
+    "return-type": "json",
+    "interval": 4,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action mini-context",
+    "on-click-right": "seven-mini-os-center"
+  },
+  "hyprland/window": {
+    "format": "{class}",
+    "max-length": 18,
+    "separate-outputs": true,
+    "rewrite": {
+      "^$": "Bureau",
+      "^code$": "Code",
+      "^Code$": "Code",
+      "^chromium$": "Chromium",
+      "^Chromium$": "Chromium",
+      "^google-chrome$": "Chrome",
+      "^Google-chrome$": "Chrome",
+      "^firefox$": "Firefox",
+      "^Firefox$": "Firefox",
+      "^kitty$": "Terminal",
+      "^SevenTerminalNative$": "Terminal",
+      "^SevenFilesNative$": "Seven Files",
+      "^org\\.gnome\\.Nautilus$": "Files",
+      "^Nautilus$": "Files"
+    }
+  },
+  "custom/app-menu": {
+    "exec": "seven-waybar-status app-menu",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-menu",
+    "on-click-right": "seven-waybar-action app-menu-window"
+  },
+  "custom/app-file": {
+    "exec": "seven-waybar-status app-menu-item file",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-file",
+    "on-click-right": "seven-waybar-action app-menu"
+  },
+  "custom/app-edit": {
+    "exec": "seven-waybar-status app-menu-item edit",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-edit",
+    "on-click-right": "seven-waybar-action app-menu"
+  },
+  "custom/app-view": {
+    "exec": "seven-waybar-status app-menu-item view",
+    "return-type": "json",
+    "signal": 8,
+    "interval": 10,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-view",
+    "on-click-right": "seven-waybar-action app-menu"
+  },
+  "custom/app-extra": {
+    "exec": "seven-waybar-status app-menu-item extra",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-extra",
+    "on-click-right": "seven-waybar-action app-menu"
+  },
+  "custom/app-more": {
+    "exec": "seven-waybar-status app-menu-more",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-menu",
+    "on-click-right": "seven-waybar-action app-menu-window"
+  },
+  "custom/app-tools": {
+    "exec": "seven-waybar-status app-menu-item tools",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-tools",
+    "on-click-right": "seven-waybar-action app-menu"
+  },
+  "custom/app-window": {
+    "exec": "seven-waybar-status app-menu-item window",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-window",
+    "on-click-right": "seven-waybar-action app-menu-window"
+  },
+  "custom/app-help": {
+    "exec": "seven-waybar-status app-menu-item help",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": true,
+    "on-click": "seven-waybar-action app-help",
+    "on-click-right": "seven-help"
+  },
   "custom/spotlight": {
-    "format": "󰍉  Rechercher...   │",
+    "format": "󰍉",
     "tooltip": true,
     "tooltip-format": "Champ Spotlight · saisir avec Super + Space",
     "on-click": "seven-spotlight field"
+  },
+  "custom/experience": {
+    "exec": "seven-waybar-status experience",
+    "return-type": "json",
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "seven experience warmup",
+    "on-click-right": "seven experience events",
+    "on-click-middle": "seven experience recommend"
   },
   "custom/media": {
     "exec": "seven-waybar-status media",
     "return-type": "json",
     "interval": 5,
     "tooltip": true,
-    "on-click": "playerctl play-pause",
+    "on-click": "seven-waybar-action media-menu",
     "on-click-right": "seven-quick-settings"
   },
   "custom/workspace-prev": {
@@ -119,6 +243,19 @@
     "on-click": "seven-recorder stop",
     "on-click-right": "seven-recorder area"
   },
+  "custom/system-status": {
+    "exec": "seven-waybar-status system-status",
+    "return-type": "json",
+    "interval": 3,
+    "tooltip": true,
+    "on-click": "seven-quick-settings",
+    "on-click-right": "seven-settings",
+    "on-click-middle": "seven-waybar repair"
+  },
+  "tray": {
+    "icon-size": 14,
+    "spacing": 6
+  },
   "clock": {
     "format": "{:%H:%M}",
     "tooltip": false,
@@ -130,6 +267,7 @@
     "interval": 3,
     "tooltip": true,
     "on-click": "seven-quick-settings",
-    "on-click-right": "seven-settings"
+    "on-click-right": "seven-settings",
+    "on-click-middle": "seven-waybar repair"
   }
 }

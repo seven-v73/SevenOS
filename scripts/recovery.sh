@@ -65,7 +65,7 @@ PY
     pid_manifest=$!
     SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer.json" 2>/dev/null || printf '{}\n' >"$tmp/installer.json" &
     pid_installer=$!
-    SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &
+    SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/distribution.sh" json >"$tmp/distribution.json" 2>/dev/null || printf '{}\n' >"$tmp/distribution.json" &
     pid_distribution=$!
     SEVENOS_DRY_RUN=0 timeout 8 "$ROOT_DIR/scripts/channel.sh" json >"$tmp/channel.json" 2>/dev/null || printf '{}\n' >"$tmp/channel.json" &
     pid_channel=$!

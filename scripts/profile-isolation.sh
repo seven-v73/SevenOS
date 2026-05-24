@@ -110,6 +110,7 @@ json_payload() {
   python - <<'PY'
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -266,6 +267,7 @@ profile_containers = {
         "home": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "home"),
         "cache": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "cache"),
         "data": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "data"),
+        "rootfs": str(Path.home() / ".local/share/sevenos/profile-rootfs" / key / "rootfs"),
         "state": "prepared",
         "selected": key in selected,
         "launch_mode": "available-via-seven-profile-run-container",
@@ -283,6 +285,16 @@ profile_workspace_names = {
     "studio": "Studio",
     "windows": "WindowsMode",
     "pulse": "Pulse",
+}
+
+profile_isolation_modes = {
+    "equinox": "balanced",
+    "baobab": "balanced",
+    "forge": "balanced",
+    "shield": "strict",
+    "studio": "balanced",
+    "windows": "balanced",
+    "pulse": "balanced",
 }
 
 manifest_root = Path.home() / ".local/share/sevenos/profile-runtime-manifests"
@@ -313,6 +325,14 @@ for key, item in profile_containers.items():
         "manifest": str(manifest_root / f"{key}.json"),
         "manifest_command": f"seven-profile-run --profile {key} --manifest",
         "packages": "global-pacman-store",
+        "rootfs": item.get("rootfs"),
+        "rootfs_state": "ready" if (Path(item.get("rootfs", "")) / "usr/bin").is_dir() else "prepared",
+        "isolation_mode": profile_isolation_modes.get(key, "balanced"),
+        "isolation_policy": {
+            "balanced": "shared runtime, host GPU/dev/network for graphical daily apps",
+            "strict": "network namespace, minimal /dev, no runtime dir or DBus by default",
+            "independent": "sealed read-only profile rootfs plus profile HOME/cache/data, no VM",
+        },
         "runtime_scope": "systemd-user-scope" if has_systemd_run else "direct-process",
         "command": item.get("exec"),
         "selected": item.get("selected", False),
@@ -338,14 +358,17 @@ payload = {
         "inactive_packages": str(state_dir / "inactive-packages.json"),
         "service_policy": str(state_dir / "profile-services.json"),
         "shims": str(Path.home() / ".local/share/sevenos/profile-shims"),
+        "desktop_overrides": str(Path.home() / ".local/share/applications"),
+        "package_views": str(Path.home() / ".local/share/sevenos/profile-package-views"),
+        "rootfs": str(Path.home() / ".local/share/sevenos/profile-rootfs"),
         "runtime_manifests": str(manifest_root),
     },
     "activation_depth": {
-        "current": "profile-scoped activation with global pacman store, per-profile config roots, command shims, prepared overlay roots and prepared bubblewrap HOME/cache/data roots",
-        "commands": "inactive profile commands are routed through seven-profile-run and blocked unless selected",
+        "current": "profile-scoped activation with global pacman store, per-profile package views, per-profile config roots, command shims, prepared overlay roots and prepared bubblewrap HOME/cache/data roots",
+        "commands": "inactive profile commands are hidden from the profile package view, routed through seven-profile-run and blocked unless selected",
         "services": "profile-owned services are allowed only for the selected runtime",
         "containers": "all mini OS config/HOME/cache/data roots are prepared; profile commands can run through seven-profile-run --profile <profile> --container with bubblewrap app-data isolation",
-        "next": "mounted overlay package roots and CRIU rollback snapshots",
+        "next": "profile rootfs build for full per-mini-OS package installation",
     },
     "profile_overlays": profile_overlays,
     "profile_containers": profile_containers,
@@ -366,11 +389,161 @@ payload = {
         "system_service_changes": [],
         "requires_sudo_for_system_services": True,
     },
+    "strict_boundaries": {
+        "launcher": "seven-profile-launch",
+        "desktop_apps": "active profile container by default",
+        "shims": "generated with seven-profile-run --container",
+        "workspace": "mounted only as /workspace for profile launches",
+        "implicit_capability_borrowing": False,
+        "rootfs": "prepared per profile; used by seven-profile-run --rootfs when built",
+        "isolation_modes": "balanced by default, strict for Shield, explicit --isolation strict|vm available",
+    },
 }
 
 def write_text(path, content):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+def desktop_quote(value):
+    return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+def read_desktop_entry(path):
+    data = {}
+    in_entry = False
+    try:
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception:
+        return data
+    for line in lines:
+        raw = line.strip()
+        if raw == "[Desktop Entry]":
+            in_entry = True
+            continue
+        if in_entry and raw.startswith("[") and raw.endswith("]"):
+            break
+        if not in_entry or not raw or raw.startswith("#") or "=" not in raw:
+            continue
+        key, value = raw.split("=", 1)
+        data[key.strip()] = value.strip()
+    return data
+
+def exec_command_name(exec_line):
+    if not exec_line:
+        return ""
+    try:
+        parts = shlex.split(exec_line)
+    except ValueError:
+        parts = exec_line.split()
+    if not parts:
+        return ""
+    first = parts[0]
+    if "=" in first and not first.startswith("/"):
+        for item in parts:
+            if "=" not in item or item.startswith("/"):
+                first = item
+                break
+    return Path(first).name
+
+def generate_desktop_overrides():
+    launcher = root / "bin" / "seven-profile-launch"
+    if not launcher.is_file():
+        return []
+    override_root = Path.home() / ".local/share/applications"
+    override_root.mkdir(parents=True, exist_ok=True)
+    for stale in override_root.glob("*.desktop"):
+        try:
+            text = stale.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            continue
+        if "X-SevenOS-Profiled=true" in text:
+            stale.unlink()
+    search_roots = [
+        Path("/usr/share/applications"),
+        Path("/usr/local/share/applications"),
+        override_root,
+    ]
+    generated = []
+    protected = {
+        "seven-profile-launch", "seven-profile-run", "seven",
+        "seven-terminal", "seven-files", "seven-hub", "kitty",
+        "python", "python3", "hyprctl", "notify-send", "xdg-open", "gio", "gtk-launch",
+    }
+    for base in search_roots:
+        if not base.is_dir():
+            continue
+        for desktop in sorted(base.glob("*.desktop")):
+            if desktop.name.startswith("sevenos-profiled-"):
+                continue
+            entry = read_desktop_entry(desktop)
+            if entry.get("Type", "Application") != "Application":
+                continue
+            command = exec_command_name(entry.get("Exec", ""))
+            if not command or command in protected or command not in all_commands:
+                continue
+            target = override_root / desktop.name
+            if target.resolve() == desktop.resolve():
+                continue
+            keep_keys = [
+                "Name", "GenericName", "Comment", "Icon", "Terminal", "Type",
+                "Categories", "Keywords", "StartupNotify", "StartupWMClass",
+                "NoDisplay", "MimeType",
+            ]
+            lines = [
+                "[Desktop Entry]",
+                "Type=Application",
+                f"Name={entry.get('Name') or desktop.stem}",
+                f"Exec={desktop_quote(launcher)} {desktop_quote(desktop.name)} {desktop_quote(desktop)}",
+            ]
+            for key in keep_keys:
+                if key in {"Name", "Type"}:
+                    continue
+                value = entry.get(key)
+                if value is not None:
+                    lines.append(f"{key}={value}")
+            lines.extend([
+                "X-SevenOS-Profiled=true",
+                f"X-SevenOS-OriginalDesktop={desktop}",
+                "",
+            ])
+            target.write_text("\n".join(lines), encoding="utf-8")
+            generated.append(str(target))
+    return generated
+
+def generate_package_views():
+    view_root = Path.home() / ".local/share/sevenos/profile-package-views"
+    view_root.mkdir(parents=True, exist_ok=True)
+    generated = {}
+    base_path = os.pathsep.join(
+        item for item in os.environ.get("PATH", "").split(os.pathsep)
+        if item and "profile-shims" not in item and "profile-package-views" not in item
+    )
+    core_commands = set(profile_commands.get("equinox", []))
+    for key in profiles:
+        bin_dir = view_root / key / "bin"
+        bin_dir.mkdir(parents=True, exist_ok=True)
+        for stale in bin_dir.iterdir():
+            if stale.is_symlink() or stale.is_file():
+                stale.unlink()
+        exposed = []
+        for command in sorted(core_commands | set(profile_commands.get(key, []))):
+            resolved = shutil.which(command, path=base_path)
+            if not resolved:
+                continue
+            target = bin_dir / command
+            try:
+                target.symlink_to(resolved)
+                exposed.append(command)
+            except FileExistsError:
+                pass
+            except OSError:
+                continue
+        generated[key] = {
+            "bin": str(bin_dir),
+            "commands": exposed,
+            "command_count": len(exposed),
+            "policy": "profile-owned command view over the global pacman store",
+        }
+    return generated
 
 def apply_state():
     shims_dir = Path.home() / ".local/share/sevenos/profile-shims"
@@ -385,6 +558,8 @@ def apply_state():
         f'SEVENOS_ISOLATION_PRIMARY="{primary}"',
         f'SEVENOS_ISOLATION_CAPABILITIES="{",".join(capabilities)}"',
         f'SEVENOS_PROFILE_SHIMS="{shims_dir}"',
+        f'SEVENOS_PACKAGE_VIEW="{Path.home() / ".local/share/sevenos/profile-package-views" / primary / "bin"}"',
+        'SEVENOS_PROFILE_STRICT_LAUNCH="1"',
         "",
     ]))
     write_text(state_dir / "active-packages.txt", "\n".join(active_packages) + "\n")
@@ -400,6 +575,10 @@ def apply_state():
         Path(roots.get("config", state_dir / "profiles" / key)).mkdir(parents=True, exist_ok=True)
         for name in ("home", "cache", "data"):
             (container_root / key / name).mkdir(parents=True, exist_ok=True)
+        rootfs_root = Path(roots.get("rootfs") or Path.home() / ".local/share/sevenos/profile-rootfs" / key / "rootfs")
+        for path in (rootfs_root, rootfs_root / "etc", rootfs_root / "profile"):
+            path.mkdir(parents=True, exist_ok=True)
+        (rootfs_root / "etc/sevenos-profile").write_text(key + "\n", encoding="utf-8")
         marker = container_root / key / "README.txt"
         if not marker.exists():
             marker.write_text(
@@ -418,6 +597,8 @@ def apply_state():
                 "home": roots.get("home"),
                 "cache": roots.get("cache"),
                 "data": roots.get("data"),
+                "rootfs": roots.get("rootfs"),
+                "isolation_mode": profile_isolation_modes.get(key, "balanced"),
             },
             "workspace": {
                 "default": str(workspace),
@@ -431,10 +612,17 @@ def apply_state():
                 "workspace_shell": f"seven profile exec {key} --container --workspace-profile sh",
                 "ephemeral_shell": f"seven profile exec {key} --ephemeral sh",
                 "run_app": f"seven profile exec {key} --container <command>",
+                "independent_shell": f"seven profile exec {key} --independent sh",
+                "independent_app": f"seven profile exec {key} --independent <command>",
+                "rootfs_shell": f"seven profile exec {key} --rootfs sh",
+                "strict_rootfs_shell": f"seven profile exec {key} --rootfs --isolation strict sh",
             },
             "policy": {
-                "packages": "global-pacman-store",
+                "packages": "global-pacman-store with profile package view; rootfs available after seven profile-rootfs build",
                 "app_data": "profile-config-home-cache-data",
+                "rootfs": "prepared",
+                "native_independence": "sealed read-only profile rootfs plus profile HOME/cache/data; no VM required",
+                "isolation": profile_isolation_modes.get(key, "balanced"),
                 "workspace": "explicit-bind-only",
                 "ephemeral": "temporary-home-cache-data",
                 "runtime": "systemd-user-scope" if has_systemd_run else "direct-process",
@@ -463,10 +651,23 @@ def apply_state():
         shim = shims_dir / command
         shim.write_text(
             "#!/usr/bin/env bash\n"
-            f"exec {runner} {command!r} \"$@\"\n",
+            f"exec {runner} --container {command!r} \"$@\"\n",
             encoding="utf-8",
         )
         shim.chmod(0o755)
+
+    package_views = generate_package_views()
+    for key, view in package_views.items():
+        payload["profile_containers"].setdefault(key, {})["package_view"] = view.get("bin")
+        payload["strict_runtime"].setdefault(key, {})["package_view"] = view.get("bin")
+        payload["strict_runtime"].setdefault(key, {})["package_view_command_count"] = view.get("command_count", 0)
+    payload["package_views"] = package_views
+    payload["strict_boundaries"]["package_views"] = "per-profile PATH/bin view over global pacman store"
+
+    desktop_overrides = generate_desktop_overrides()
+    payload["strict_boundaries"]["desktop_overrides"] = len(desktop_overrides)
+    payload["desktop_overrides"] = desktop_overrides[:200]
+    write_text(state_dir / "profile-isolation.json", json.dumps(payload, indent=2) + "\n")
 
     changes = []
     if yes and shutil.which("systemctl"):
@@ -498,6 +699,23 @@ elif apply_requested and dry_run:
     payload["safe_execution"]["would_generate_shims"] = all_commands
 
 if action == "doctor":
+    shims_dir = Path.home() / ".local/share/sevenos/profile-shims"
+    sample_shims = [shims_dir / command for command in ("code", "gimp", "nmap", "gamemoderun") if (shims_dir / command).exists()]
+    strict_shims_ok = bool(sample_shims) and all("--container" in path.read_text(encoding="utf-8", errors="ignore") for path in sample_shims)
+    desktop_override_root = Path.home() / ".local/share/applications"
+    desktop_override_count = 0
+    if desktop_override_root.is_dir():
+        desktop_override_count = sum(1 for path in desktop_override_root.glob("*.desktop") if "X-SevenOS-Profiled=true" in path.read_text(encoding="utf-8", errors="ignore"))
+    package_view_root = Path.home() / ".local/share/sevenos/profile-package-views"
+    package_view_count = 0
+    if package_view_root.is_dir():
+        package_view_count = sum(1 for path in package_view_root.glob("*/bin") if path.is_dir())
+    rootfs_root = Path.home() / ".local/share/sevenos/profile-rootfs"
+    rootfs_count = 0
+    rootfs_ready_count = 0
+    if rootfs_root.is_dir():
+        rootfs_count = sum(1 for path in rootfs_root.glob("*/rootfs") if path.is_dir())
+        rootfs_ready_count = sum(1 for path in rootfs_root.glob("*/rootfs/usr/bin") if path.is_dir())
     profile_doctor = {}
     for key, item in strict_runtime.items():
         profile_doctor[key] = {
@@ -513,6 +731,15 @@ if action == "doctor":
         "criu": "OK" if shutil.which("criu") else "MISS",
         "overlayfs": "OK" if Path("/proc/filesystems").read_text(encoding="utf-8", errors="ignore").find("overlay") >= 0 else "MISS",
         "runner": "OK" if (root / "bin" / "seven-profile-run").is_file() else "MISS",
+        "profile_launcher": "OK" if (root / "bin" / "seven-profile-launch").is_file() else "MISS",
+        "strict_shims": "OK" if strict_shims_ok else "MISS",
+        "desktop_overrides": "OK" if desktop_override_count > 0 else "MISS",
+        "desktop_override_count": desktop_override_count,
+        "package_views": "OK" if package_view_count >= len(profiles) else "MISS",
+        "package_view_count": package_view_count,
+        "rootfs": "OK" if rootfs_count >= len(profiles) else "MISS",
+        "rootfs_count": rootfs_count,
+        "rootfs_ready_count": rootfs_ready_count,
         "state": "OK" if (state_dir / "profile-isolation.json").is_file() else "MISS",
         "profiles": profile_doctor,
     }

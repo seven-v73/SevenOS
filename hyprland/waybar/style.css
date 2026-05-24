@@ -48,11 +48,32 @@
   }
 }
 
+/* seven-motion-system: Waybar uses the same calm 180ms hover/press rhythm as the shell. */
+@keyframes sevenExperiencePulse {
+  0% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 0 10px rgba(156, 203, 255, 0.10);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      0 0 18px rgba(156, 203, 255, 0.22);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 0 10px rgba(156, 203, 255, 0.10);
+  }
+}
+
 * {
   border: none;
   border-radius: 0;
   font-family: "SF Pro Display", "SF UI Display", "Inter", "JetBrainsMono Nerd Font", sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0;
   min-height: 0;
@@ -60,29 +81,25 @@
 
 window#waybar {
   color: @seven_text;
-  border: 1px solid rgba(255, 255, 255, 0.105);
-  border-radius: 24px;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.105);
+  border-radius: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.205), rgba(255, 255, 255, 0.060) 52%, rgba(255, 255, 255, 0.024)),
-    radial-gradient(ellipse at 8% -30%, rgba(110, 168, 255, 0.24), transparent 44%),
-    radial-gradient(ellipse at 92% -24%, rgba(139, 124, 255, 0.18), transparent 36%),
-    radial-gradient(ellipse at 51% -28%, rgba(156, 203, 255, 0.115), transparent 42%),
-    rgba(34, 38, 76, 0.38);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.040)),
+    rgba(18, 20, 34, 0.72);
   box-shadow:
-    0 14px 38px @seven_shadow,
-    0 0 28px rgba(110, 168, 255, 0.070),
-    inset 0 1px 0 rgba(255, 255, 255, 0.20),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.035);
+    0 1px 0 rgba(255, 255, 255, 0.055),
+    0 10px 28px rgba(3, 8, 24, 0.22);
 }
 
 .modules-left,
 .modules-center,
 .modules-right {
-  min-height: 40px;
+  min-height: 26px;
   margin-top: 0;
-  padding: 4px 7px;
+  padding: 1px 7px;
   border: 1px solid transparent;
-  border-radius: 21px;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
   transition:
@@ -92,43 +109,45 @@ window#waybar {
 }
 
 .modules-left {
-  min-width: 394px;
-  margin-left: 4px;
+  /* adaptive-waybar-layout: compact enough for laptops, elastic on wide displays. */
+  min-width: 0;
+  margin-left: 6px;
 }
 
 .modules-center {
-  min-width: 302px;
-  border-color: @seven_hairline;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.145), rgba(255, 255, 255, 0.045)),
-    radial-gradient(ellipse at 50% -18%, rgba(154, 177, 255, 0.16), transparent 58%),
-    rgba(255, 255, 255, 0.042);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.15),
-    0 3px 14px rgba(3, 8, 24, 0.10);
+  min-width: 108px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .modules-right {
-  min-width: 394px;
-  margin-right: 4px;
-  border-color: rgba(255, 255, 255, 0.055);
-  background: rgba(255, 255, 255, 0.018);
+  min-width: 0;
+  margin-right: 6px;
+  border-color: transparent;
+  background: transparent;
 }
 
 .modules-center:hover {
-  border-color: @seven_edge_hot;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.058)),
-    radial-gradient(ellipse at 50% -18%, rgba(154, 177, 255, 0.22), transparent 58%),
-    rgba(255, 255, 255, 0.060);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 0 22px rgba(110, 168, 255, 0.090);
+  background: transparent;
 }
 
 #custom-sevenos,
+#window,
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help,
 #custom-profile,
+#custom-os-switch,
+#custom-mini-context,
 #custom-spotlight,
+#custom-experience,
 #custom-media,
 #custom-workspace-prev,
 #custom-workspace-next,
@@ -138,12 +157,13 @@ window#waybar {
 #battery,
 #custom-vpn,
 #custom-recorder,
+#custom-system-status,
 #clock,
 #custom-control-center {
-  min-height: 30px;
+  min-height: 20px;
   margin: 0 1px;
-  padding: 0 9px;
-  border-radius: 15px;
+  padding: 0 7px;
+  border-radius: 6px;
   color: @seven_text;
   background: transparent;
   transition:
@@ -155,8 +175,21 @@ window#waybar {
 }
 
 #custom-sevenos:hover,
+#window:hover,
+#custom-app-menu:hover,
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover,
 #custom-profile:hover,
+#custom-os-switch:hover,
+#custom-mini-context:hover,
 #custom-spotlight:hover,
+#custom-experience:hover,
 #custom-media:hover,
 #custom-workspace-prev:hover,
 #custom-workspace-next:hover,
@@ -166,41 +199,253 @@ window#waybar {
 #battery:hover,
 #custom-vpn:hover,
 #custom-recorder:hover,
+#custom-system-status:hover,
 #clock:hover,
 #custom-control-center:hover {
   color: #FFFFFF;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.130), rgba(255, 255, 255, 0.046)),
-    rgba(255, 255, 255, 0.070);
+  background: rgba(255, 255, 255, 0.105);
+  box-shadow: none;
+}
+
+#custom-sevenos:active,
+#window:active,
+#custom-app-menu:active,
+#custom-app-file:active,
+#custom-app-edit:active,
+#custom-app-view:active,
+#custom-app-extra:active,
+#custom-app-more:active,
+#custom-app-tools:active,
+#custom-app-window:active,
+#custom-app-help:active,
+#custom-profile:active,
+#custom-os-switch:active,
+#custom-mini-context:active,
+#custom-spotlight:active,
+#custom-experience:active,
+#custom-media:active,
+#custom-workspace-prev:active,
+#custom-workspace-next:active,
+#custom-wifi:active,
+#custom-bluetooth:active,
+#pulseaudio:active,
+#battery:active,
+#custom-vpn:active,
+#custom-recorder:active,
+#custom-system-status:active,
+#clock:active,
+#custom-control-center:active {
+  background: rgba(255, 255, 255, 0.11);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    0 0 18px rgba(110, 168, 255, 0.075);
+    inset 0 1px 3px rgba(0, 0, 0, 0.18),
+    0 0 10px rgba(110, 168, 255, 0.070);
 }
 
 #custom-sevenos {
-  min-width: 102px;
-  padding-left: 13px;
-  padding-right: 11px;
+  min-width: 24px;
+  padding-left: 8px;
+  padding-right: 8px;
   color: #FFFFFF;
   font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-#custom-profile {
+#custom-sevenos.profile-forge,
+#custom-sevenos.profile-windows {
+  color: rgba(156, 203, 255, 0.96);
+}
+
+#custom-sevenos.profile-shield {
+  color: rgba(117, 232, 213, 0.96);
+}
+
+#custom-sevenos.profile-studio {
+  color: rgba(255, 204, 229, 0.96);
+}
+
+#custom-sevenos.profile-baobab {
+  color: rgba(218, 255, 210, 0.96);
+}
+
+#custom-sevenos.profile-pulse {
+  color: rgba(121, 223, 255, 0.96);
+}
+
+#custom-sevenos.warn,
+#custom-sevenos.miss {
+  color: rgba(255, 228, 172, 0.96);
+}
+
+#window {
   min-width: 68px;
-  padding-left: 11px;
-  padding-right: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 999px;
+  padding-left: 8px;
+  padding-right: 10px;
+  color: rgba(245, 247, 250, 0.74);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+}
+
+#window.empty {
+  color: rgba(245, 247, 250, 0.46);
+}
+
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help {
+  padding-left: 9px;
+  padding-right: 9px;
+  color: rgba(245, 247, 250, 0.66);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help {
+  margin-left: 0;
+  margin-right: 0;
+  border-radius: 5px;
+}
+
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover {
+  color: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.095);
+}
+
+#custom-app-menu.developer,
+#custom-app-file.developer,
+#custom-app-edit.developer,
+#custom-app-view.developer,
+#custom-app-extra.developer,
+#custom-app-more.developer,
+#custom-app-tools.developer,
+#custom-app-window.developer,
+#custom-app-help.developer {
+  color: rgba(156, 203, 255, 0.78);
+}
+
+#custom-app-menu.files,
+#custom-app-file.files,
+#custom-app-edit.files,
+#custom-app-view.files,
+#custom-app-extra.files,
+#custom-app-more.files,
+#custom-app-tools.files,
+#custom-app-window.files,
+#custom-app-help.files {
+  color: rgba(225, 236, 255, 0.76);
+}
+
+#custom-app-menu.shield,
+#custom-app-file.shield,
+#custom-app-edit.shield,
+#custom-app-view.shield,
+#custom-app-extra.shield,
+#custom-app-more.shield,
+#custom-app-tools.shield,
+#custom-app-window.shield,
+#custom-app-help.shield {
+  color: rgba(117, 232, 213, 0.80);
+}
+
+#custom-app-menu.studio,
+#custom-app-file.studio,
+#custom-app-edit.studio,
+#custom-app-view.studio,
+#custom-app-extra.studio,
+#custom-app-more.studio,
+#custom-app-tools.studio,
+#custom-app-window.studio,
+#custom-app-help.studio {
+  color: rgba(255, 204, 229, 0.80);
+}
+
+#custom-app-menu.forge,
+#custom-app-file.forge,
+#custom-app-edit.forge,
+#custom-app-view.forge,
+#custom-app-extra.forge,
+#custom-app-more.forge,
+#custom-app-tools.forge,
+#custom-app-window.forge,
+#custom-app-help.forge {
+  color: rgba(255, 218, 138, 0.84);
+}
+
+#custom-app-menu.baobab,
+#custom-app-file.baobab,
+#custom-app-edit.baobab,
+#custom-app-view.baobab,
+#custom-app-extra.baobab,
+#custom-app-more.baobab,
+#custom-app-tools.baobab,
+#custom-app-window.baobab,
+#custom-app-help.baobab {
+  color: rgba(207, 245, 184, 0.84);
+}
+
+#custom-app-menu.pulse,
+#custom-app-file.pulse,
+#custom-app-edit.pulse,
+#custom-app-view.pulse,
+#custom-app-extra.pulse,
+#custom-app-more.pulse,
+#custom-app-tools.pulse,
+#custom-app-window.pulse,
+#custom-app-help.pulse {
+  color: rgba(116, 224, 255, 0.84);
+}
+
+#custom-app-menu.windows,
+#custom-app-file.windows,
+#custom-app-edit.windows,
+#custom-app-view.windows,
+#custom-app-extra.windows,
+#custom-app-more.windows,
+#custom-app-tools.windows,
+#custom-app-window.windows,
+#custom-app-help.windows {
+  color: rgba(116, 194, 255, 0.80);
+}
+
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context {
+  min-width: 24px;
+  padding-left: 8px;
+  padding-right: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
   color: #FFFFFF;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.045)),
     radial-gradient(ellipse at 20% -18%, rgba(255, 255, 255, 0.12), transparent 58%),
-    rgba(255, 255, 255, 0.052);
+    rgba(255, 255, 255, 0.025);
   font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
   font-size: 12px;
 }
 
+#custom-os-switch,
+#custom-mini-context,
 #custom-profile.profile-equinox {
   color: #EDEBFF;
   border-color: rgba(139, 124, 255, 0.28);
@@ -243,6 +488,184 @@ window#waybar {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 0 18px rgba(0, 212, 255, 0.16);
 }
 
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context {
+  min-width: 38px;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+#custom-profile {
+  margin-left: 16px;
+  padding-left: 9px;
+  padding-right: 9px;
+  min-width: 44px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+#custom-os-switch {
+  margin-left: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border-color: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.050);
+}
+
+#custom-mini-context {
+  min-width: 24px;
+  margin-left: 5px;
+  padding-left: 7px;
+  padding-right: 7px;
+  color: rgba(245, 247, 250, 0.82);
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.075);
+}
+
+#custom-mini-context.active {
+  color: #FFFFFF;
+  border-color: rgba(156, 203, 255, 0.22);
+  background:
+    linear-gradient(180deg, rgba(156, 203, 255, 0.100), rgba(255, 255, 255, 0.026)),
+    rgba(255, 255, 255, 0.030);
+}
+
+#custom-mini-context.density-immersive {
+  color: rgba(255, 255, 255, 0.94);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.028);
+}
+
+#custom-mini-context.density-compact,
+#custom-mini-context.priority-workflow {
+  padding-left: 8px;
+  padding-right: 8px;
+  border-color: rgba(156, 203, 255, 0.18);
+}
+
+#custom-mini-context.priority-content {
+  color: rgba(255, 255, 255, 0.90);
+  border-color: rgba(137, 220, 235, 0.18);
+}
+
+#custom-mini-context.priority-assets {
+  color: rgba(244, 227, 255, 0.94);
+  border-color: rgba(203, 166, 247, 0.20);
+}
+
+#custom-mini-context.profile-shield {
+  color: rgba(216, 255, 243, 0.96);
+  border-color: rgba(0, 255, 179, 0.22);
+}
+
+#custom-mini-context.profile-forge {
+  color: rgba(255, 244, 199, 0.96);
+  border-color: rgba(249, 226, 175, 0.22);
+}
+
+#custom-mini-context.profile-studio {
+  color: rgba(244, 227, 255, 0.96);
+  border-color: rgba(203, 166, 247, 0.22);
+}
+
+#custom-mini-context.profile-windows {
+  color: rgba(223, 247, 255, 0.96);
+  border-color: rgba(137, 220, 235, 0.22);
+}
+
+#custom-mini-context.profile-pulse {
+  color: rgba(219, 248, 255, 0.96);
+  border-color: rgba(0, 212, 255, 0.22);
+}
+
+#custom-mini-context.profile-baobab {
+  color: rgba(223, 255, 217, 0.96);
+  border-color: rgba(166, 227, 161, 0.22);
+}
+
+/* Profile-specific menu-bar identities. These are not theme clones: each mini OS
+   gets a restrained signal language aligned with its job. */
+#custom-profile.profile-forge,
+#custom-mini-context.profile-forge,
+#custom-experience.profile-forge {
+  color: #FFE4A3;
+  border-color: rgba(255, 198, 96, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 184, 76, 0.105), rgba(255, 255, 255, 0.018)),
+    rgba(18, 16, 12, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 238, 196, 0.11);
+}
+
+#custom-mini-context.signal-dev {
+  min-width: 24px;
+}
+
+#custom-profile.profile-shield,
+#custom-mini-context.profile-shield,
+#custom-experience.profile-shield,
+#custom-vpn.active {
+  color: #BFFFEF;
+  border-color: rgba(77, 255, 206, 0.28);
+  background:
+    linear-gradient(180deg, rgba(77, 255, 206, 0.110), rgba(255, 255, 255, 0.016)),
+    rgba(4, 18, 17, 0.12);
+  box-shadow: inset 0 1px 0 rgba(208, 255, 244, 0.12);
+}
+
+#custom-mini-context.signal-secure {
+  min-width: 24px;
+}
+
+#custom-profile.profile-studio,
+#custom-mini-context.profile-studio,
+#custom-experience.profile-studio,
+#custom-recorder.recording {
+  color: #FFE0F1;
+  border-color: rgba(255, 151, 204, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 151, 204, 0.105), rgba(155, 133, 255, 0.026)),
+    rgba(20, 13, 22, 0.10);
+  box-shadow: inset 0 1px 0 rgba(255, 230, 244, 0.12);
+}
+
+#custom-mini-context.signal-creative {
+  min-width: 24px;
+}
+
+#custom-profile.profile-pulse,
+#custom-mini-context.profile-pulse,
+#custom-experience.profile-pulse {
+  color: #B9F4FF;
+  border-color: rgba(64, 218, 255, 0.30);
+  background:
+    linear-gradient(180deg, rgba(64, 218, 255, 0.115), rgba(255, 255, 255, 0.014)),
+    rgba(3, 12, 22, 0.14);
+  box-shadow: inset 0 1px 0 rgba(210, 250, 255, 0.12);
+}
+
+#custom-mini-context.signal-gaming,
+#custom-mini-context.profile-pulse.density-immersive {
+  min-width: 24px;
+  border-color: rgba(64, 218, 255, 0.36);
+}
+
+#custom-profile.profile-baobab,
+#custom-mini-context.profile-baobab,
+#custom-experience.profile-baobab {
+  color: #E4FFD3;
+  border-color: rgba(186, 226, 133, 0.26);
+  background:
+    linear-gradient(180deg, rgba(186, 226, 133, 0.105), rgba(255, 233, 172, 0.020)),
+    rgba(13, 18, 11, 0.12);
+  box-shadow: inset 0 1px 0 rgba(240, 255, 224, 0.10);
+}
+
+#custom-mini-context.signal-culture {
+  min-width: 24px;
+}
+
 #custom-profile.warn {
   border-color: rgba(249, 226, 175, 0.36);
 }
@@ -252,30 +675,83 @@ window#waybar {
 }
 
 #custom-spotlight {
-  min-width: 200px;
-  padding-left: 14px;
-  padding-right: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.095);
-  border-radius: 999px;
+  min-width: 24px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   color: rgba(255, 255, 255, 0.82);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.135), rgba(255, 255, 255, 0.040)),
-    radial-gradient(ellipse at 20% -12%, rgba(255, 255, 255, 0.07), transparent 62%),
-    rgba(255, 255, 255, 0.064);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.11),
-    0 1px 0 rgba(255, 255, 255, 0.035);
+    transparent;
+  box-shadow: none;
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
   font-size: 12px;
 }
 
 #custom-spotlight:hover {
-  min-width: 210px;
+  min-width: 24px;
   color: rgba(255, 255, 255, 0.96);
   border-color: rgba(156, 203, 255, 0.26);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.16),
     0 0 16px rgba(110, 168, 255, 0.090);
+}
+
+#custom-experience {
+  min-width: 0;
+  padding-left: 7px;
+  padding-right: 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: rgba(235, 241, 255, 0.88);
+  background:
+    linear-gradient(180deg, rgba(156, 203, 255, 0.120), rgba(255, 255, 255, 0.038)),
+    rgba(255, 255, 255, 0.018);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+}
+
+#custom-experience.experience-ready {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+}
+
+#custom-experience.recommended,
+#custom-experience.active {
+  color: #FFFFFF;
+  border-color: rgba(156, 203, 255, 0.24);
+  animation: sevenExperiencePulse 5.2s ease-in-out infinite;
+}
+
+#custom-experience.experience-warn {
+  color: rgba(255, 228, 172, 0.96);
+  border-color: rgba(249, 226, 175, 0.28);
+}
+
+#custom-experience.hidden {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+}
+
+#custom-app-more {
+  min-width: 18px;
+  padding-left: 7px;
+  padding-right: 7px;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+#custom-app-more.hidden,
+#custom-app-tools.hidden,
+#custom-app-window.hidden,
+#custom-app-help.hidden {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
 }
 
 #custom-media {
@@ -300,13 +776,13 @@ window#waybar {
 
 #custom-workspace-prev,
 #custom-workspace-next {
-  min-width: 32px;
-  min-height: 30px;
-  padding: 0 6px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
   margin: 0 1px;
   color: rgba(255, 255, 255, 0.84);
   font-family: "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
-  font-size: 21px;
+  font-size: 0;
 }
 
 #workspaces {
@@ -314,16 +790,14 @@ window#waybar {
 }
 
 #workspaces button {
-  min-width: 31px;
-  min-height: 30px;
+  min-width: 22px;
+  min-height: 22px;
   margin: 0 1px;
-  padding: 0 8px;
+  padding: 0 6px;
   border: 1px solid transparent;
   border-radius: 14px;
-  color: rgba(255, 255, 255, 0.72);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.025)),
-    rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.58);
+  background: transparent;
   transition:
     background 180ms ease,
     color 180ms ease,
@@ -334,21 +808,19 @@ window#waybar {
 
 #workspaces button:hover {
   color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.065);
 }
 
 #workspaces button.active {
-  min-width: 38px;
+  min-width: 24px;
   color: #FFFFFF;
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.30), transparent 38%),
-    radial-gradient(circle at 50% 16%, rgba(156, 203, 255, 0.34), transparent 62%),
-    linear-gradient(135deg, @seven_blue, @seven_violet);
-  border-color: rgba(255, 255, 255, 0.18);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.055)),
+    rgba(255, 255, 255, 0.075);
+  border-color: rgba(255, 255, 255, 0.16);
   box-shadow:
-    0 4px 16px rgba(110, 168, 255, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.26);
-  animation: workspaceGlow 4.8s ease-in-out infinite;
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 12px rgba(255, 255, 255, 0.045);
 }
 
 #workspaces button.urgent {
@@ -361,12 +833,18 @@ window#waybar {
 #pulseaudio,
 #battery,
 #custom-vpn,
-#custom-recorder {
-  min-width: 28px;
-  padding-left: 8px;
-  padding-right: 8px;
+#custom-recorder,
+#tray {
+  min-width: 22px;
+  padding-left: 7px;
+  padding-right: 7px;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.90);
+}
+
+#tray {
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 #custom-wifi,
@@ -379,19 +857,8 @@ window#waybar {
   background: transparent;
 }
 
-#custom-bluetooth,
-#pulseaudio,
-#battery,
-#custom-vpn,
-#custom-recorder,
-#clock {
-  border-left: 1px solid rgba(255, 255, 255, 0.10);
-  border-image: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.13), transparent) 1;
-  border-radius: 0;
-}
-
 #battery {
-  min-width: 60px;
+  min-width: 52px;
 }
 
 #custom-wifi.off,
@@ -413,12 +880,37 @@ window#waybar {
 }
 
 #custom-vpn.hidden,
-#custom-recorder.hidden {
+#custom-recorder.hidden,
+#custom-system-status.hidden {
   min-width: 0;
   padding: 0;
   margin: 0;
   opacity: 0;
   border-left: 0;
+}
+
+#custom-system-status {
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
+  font-size: 12px;
+}
+
+#custom-system-status.secure {
+  color: rgba(156, 203, 255, 0.96);
+}
+
+#custom-system-status.muted,
+#custom-system-status.battery-low,
+#custom-system-status.context-warn {
+  color: rgba(255, 228, 172, 0.96);
+}
+
+#custom-system-status.critical,
+#custom-system-status.recording {
+  color: rgba(255, 179, 195, 0.98);
 }
 
 #custom-recorder.recording {
@@ -427,20 +919,20 @@ window#waybar {
 }
 
 #clock {
-  min-width: 54px;
-  padding-left: 11px;
-  padding-right: 11px;
+  min-width: 43px;
+  padding-left: 7px;
+  padding-right: 7px;
   color: rgba(255, 255, 255, 0.84);
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
   font-size: 12px;
 }
 
 #custom-control-center {
-  min-width: 104px;
-  min-height: 30px;
-  padding-left: 11px;
-  padding-right: 12px;
-  border-radius: 999px;
+  min-width: 24px;
+  min-height: 20px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border-radius: 6px;
   color: rgba(255, 255, 255, 0.94);
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
   font-size: 12px;
@@ -452,6 +944,15 @@ window#waybar {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 0 14px rgba(110, 168, 255, 0.10);
+}
+
+#custom-control-center.secure {
+  color: rgba(156, 203, 255, 0.98);
+}
+
+#custom-control-center.attention {
+  color: rgba(255, 179, 195, 0.98);
+  border-color: rgba(255, 111, 139, 0.30);
 }
 
 tooltip {

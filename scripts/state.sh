@@ -202,6 +202,8 @@ json_to_file "$STATE_TMP/context.json" "$ROOT_DIR/scripts/context.sh" status --j
 pid_context=$!
 json_to_file "$STATE_TMP/experience.json" "$ROOT_DIR/scripts/experience.sh" --json &
 pid_experience=$!
+json_to_file "$STATE_TMP/shell_experience.json" "$ROOT_DIR/scripts/shell-experience.sh" status --json &
+pid_shell_experience=$!
 json_to_file "$STATE_TMP/control.json" "$ROOT_DIR/scripts/control-plane.sh" --json &
 pid_control=$!
 json_to_file "$STATE_TMP/b3.json" "$ROOT_DIR/scripts/b3.sh" plan --json &
@@ -231,7 +233,7 @@ pid_distribution=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_installer_portal" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_health" "$pid_support" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
-  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
+  "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_shell_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
 
 ensure_public_contracts() {
   ABOUT_FILE="$STATE_TMP/about.json" \
@@ -743,6 +745,9 @@ cat "$STATE_TMP/context.json"
 printf ','
 printf '"experience":'
 cat "$STATE_TMP/experience.json"
+printf ','
+printf '"shell_experience":'
+cat "$STATE_TMP/shell_experience.json"
 printf ','
 printf '"control":'
 cat "$STATE_TMP/control.json"

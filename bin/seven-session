@@ -37,6 +37,11 @@ start_once() {
   local process="$1"
   shift
 
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN start $process: $*"
+    return 0
+  fi
+
   if pgrep -x "$process" >/dev/null 2>&1; then
     log "$process already running"
     return 0
@@ -54,6 +59,10 @@ stop_conflicting_shell_processes() {
   if [[ "${SEVENOS_SESSION_KEEP_EXISTING:-0}" == "1" ]]; then
     return 0
   fi
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN skip stopping conflicting shell surfaces"
+    return 0
+  fi
 
   log "stopping conflicting shell surfaces"
   pkill -x waybar >/dev/null 2>&1 || true
@@ -66,6 +75,10 @@ stop_conflicting_shell_processes() {
 }
 
 start_systemd_session() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN start systemd user target"
+    return 0
+  fi
   if [[ "${SEVENOS_SESSION_NO_SYSTEMD:-0}" == "1" ]]; then
     return 1
   fi
@@ -87,23 +100,66 @@ start_systemd_session() {
   return 1
 }
 
+start_waybar_context() {
+  if [[ ! -x "$ROOT_DIR/bin/seven-waybar-context" ]]; then
+    return 0
+  fi
+
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN start seven-waybar-context daemon"
+    return 0
+  fi
+
+  if pgrep -u "$USER" -f '(^|/| )seven-waybar-context daemon( |$)' >/dev/null 2>&1; then
+    log "seven-waybar-context already running"
+    return 0
+  fi
+
+  "$ROOT_DIR/bin/seven-waybar-context" once >/tmp/sevenos-waybar-context.log 2>&1 || true
+  log "starting seven-waybar-context"
+  "$ROOT_DIR/bin/seven-waybar-context" daemon >>/tmp/sevenos-waybar-context.log 2>&1 &
+}
+
+warmup_shell_experience() {
+  if [[ "${SEVENOS_SESSION_NO_WARMUP:-0}" == "1" ]]; then
+    return 0
+  fi
+  if [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]]; then
+    log "warming Shell Experience"
+    "$ROOT_DIR/scripts/shell-experience.sh" warmup >/tmp/sevenos-shell-experience.log 2>&1 || true
+  fi
+}
+
 if command -v dbus-update-activation-environment >/dev/null 2>&1; then
-  dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE >/dev/null 2>&1 || true
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN update dbus activation environment"
+  else
+    dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE >/dev/null 2>&1 || true
+  fi
 fi
 
 if command -v hyprctl >/dev/null 2>&1; then
-  hyprctl setcursor Bibata-Modern-Classic 24 >/dev/null 2>&1 || true
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN set cursor Bibata-Modern-Classic 24"
+  else
+    hyprctl setcursor Bibata-Modern-Classic 24 >/dev/null 2>&1 || true
+  fi
 fi
 
 stop_conflicting_shell_processes
 
 if [[ -x "$ROOT_DIR/bin/seven-wallpaper" ]]; then
-  "$ROOT_DIR/bin/seven-wallpaper" refresh >/tmp/sevenos-wallpaper.log 2>&1 || log "wallpaper refresh failed"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN refresh wallpaper"
+  else
+    "$ROOT_DIR/bin/seven-wallpaper" refresh >/tmp/sevenos-wallpaper.log 2>&1 || log "wallpaper refresh failed"
+  fi
 else
   start_once hyprpaper hyprpaper
 fi
 
 if ! start_systemd_session; then
+  start_waybar_context
   start_once waybar waybar -c "$CONFIG_HOME/waybar/config.jsonc" -s "$CONFIG_HOME/waybar/style.css"
   if [[ -x "$ROOT_DIR/bin/seven-notifications" ]]; then
     start_once seven-notifications "$ROOT_DIR/bin/seven-notifications"
@@ -119,11 +175,21 @@ fi
 
 if command -v /usr/lib/polkit-kde-authentication-agent-1 >/dev/null 2>&1 &&
    ! pgrep -f polkit-kde-authentication-agent-1 >/dev/null 2>&1; then
-  /usr/lib/polkit-kde-authentication-agent-1 >/tmp/sevenos-polkit.log 2>&1 &
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN start polkit authentication agent"
+  else
+    /usr/lib/polkit-kde-authentication-agent-1 >/tmp/sevenos-polkit.log 2>&1 &
+  fi
 fi
 
 if [[ -x "$ROOT_DIR/bin/seven-welcome" ]]; then
-  "$ROOT_DIR/bin/seven-welcome" --notify || true
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    log "DRY-RUN welcome notify"
+  else
+    "$ROOT_DIR/bin/seven-welcome" --notify || true
+  fi
 fi
+
+warmup_shell_experience
 
 log "session ready"

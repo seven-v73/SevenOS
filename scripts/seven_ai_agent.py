@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import shutil
 import sys
 import subprocess
@@ -29,6 +30,8 @@ from seven_i18n import language_code as sevenos_language_code
 
 ROOT_DIR = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parents[1]))
 DRY_RUN = os.environ.get("SEVENOS_DRY_RUN") == "1"
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
+WAYBAR_CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
 
 
 @dataclass
@@ -58,6 +61,7 @@ BUILTIN_APPS = [
     AppEntry("Seven Hub", "seven-hub.desktop", "seven hub", "gui", "system", "seven-hub", "sevenos"),
     AppEntry("Seven Terminal", "seven-terminal.desktop", "seven-terminal", "gui", "terminal", "utilities-terminal", "sevenos"),
     AppEntry("Seven Spotlight", "seven-spotlight.desktop", "seven-spotlight", "gui", "search", "seven-spotlight", "sevenos"),
+    AppEntry("SevenAI", "seven-ai.desktop", "seven ai open", "gui", "assistant", "seven-ai", "sevenos"),
 ]
 
 APP_ALIASES = {
@@ -70,6 +74,9 @@ APP_ALIASES = {
     "terminal": "Seven Terminal",
     "hub": "Seven Hub",
     "spotlight": "Seven Spotlight",
+    "ai": "SevenAI",
+    "seven ai": "SevenAI",
+    "sevenai": "SevenAI",
     "vscode": "code",
     "vs code": "code",
     "visual studio code": "code",
@@ -408,7 +415,7 @@ def parse_intent(text: str) -> Intent:
     if any(token in raw for token in ("optimise mon système", "optimise mon systeme", "optimize my system", "optimise system", "optimize system")):
         return Intent("OPTIMIZE_SYSTEM", "system", 0.84, "SYSTEM", True, "Optimization may alter services or cleanup state.")
 
-    if any(token in raw for token in ("optimise mon workspace", "optimise mon travail", "organise mon travail", "optimize my workspace", "optimize my workflow")):
+    if any(token in raw for token in ("optimise mon workspace", "optimise mon travail", "organise mon travail", "prepare mon espace", "prépare mon espace", "prepare my workspace", "optimize my workspace", "optimize my workflow")):
         return Intent("OPTIMIZE_WORKFLOW", "workspace", 0.84, "SAFE", False, "User asked for workspace and workflow guidance.")
 
     if any(token in raw for token in ("raccourcis", "shortcuts", "keybinds", "clavier", "hotkeys")):
@@ -446,7 +453,39 @@ def run(command: list[str], *, apply: bool, cwd: Path | None = None) -> dict[str
     }
 
 
+def confirmation_contract(intent: Intent, *, language: str | None = None) -> dict[str, Any]:
+    language = language or active_language()
+    safety = intent.safety.upper()
+    if safety == "ROOT":
+        level = "critical"
+        impact = "Installe ou modifie des paquets système." if language == "fr" else "Installs or changes system packages."
+        next_step = "Vérifie la source et applique seulement si tu fais confiance au paquet." if language == "fr" else "Review the source and apply only if you trust the package."
+    elif safety == "SYSTEM":
+        level = "warning"
+        impact = "Peut modifier la session, les services, le thème ou des processus." if language == "fr" else "May change the session, services, theme or processes."
+        next_step = "Prévisualise d’abord, puis applique si le résultat est attendu." if language == "fr" else "Preview first, then apply if the result is expected."
+    elif safety == "WEB":
+        level = "notice"
+        impact = "Peut nécessiter une recherche web explicite." if language == "fr" else "May require explicit web research."
+        next_step = "Le web reste désactivé tant que tu ne l’actives pas." if language == "fr" else "Web stays disabled until you enable it."
+    else:
+        level = "safe"
+        impact = "Lecture locale ou action sûre." if language == "fr" else "Local read or safe action."
+        next_step = "Tu peux lancer l’aperçu sans changer l’état système." if language == "fr" else "You can run the preview without changing system state."
+    return {
+        "schema": "sevenos.ai.confirmation.v1",
+        "level": level,
+        "safety": intent.safety,
+        "needs_apply": intent.needs_apply,
+        "impact": impact,
+        "next_step": next_step,
+    }
+
+
 def launch_app(app: AppEntry, *, apply: bool) -> dict[str, Any]:
+    launcher = ROOT_DIR / "bin" / "seven-profile-launch"
+    if app.source != "sevenos" and launcher.exists() and app.desktop_id:
+        return run([str(launcher), app.desktop_id, "--", *shlex.split(app.command)], apply=apply)
     if app.source != "sevenos" and shutil.which("gtk-launch") and app.desktop_id:
         desktop_id = app.desktop_id.removesuffix(".desktop")
         return run(["gtk-launch", desktop_id], apply=apply)
@@ -485,11 +524,17 @@ def system_context() -> dict[str, Any]:
             active_window = json.loads(result.stdout) if result.stdout.strip() else {}
         except json.JSONDecodeError:
             active_window = {"detail": result.stderr.strip()}
+    shell_context: dict[str, Any] = {}
+    try:
+        shell_context = json.loads(WAYBAR_CONTEXT_FILE.read_text(encoding="utf-8") or "{}")
+    except Exception:
+        shell_context = {}
     return {
         "schema": "sevenos.ai.context.v1",
         "load": {"1m": load[0], "5m": load[1], "15m": load[2]},
         "process_sample": processes[:25],
         "active_window": active_window,
+        "shell_context": shell_context if shell_context.get("schema") == "sevenos.waybar.context.v1" else {},
     }
 
 
@@ -931,6 +976,7 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
         "intent": asdict(intent),
         "mode": "apply" if apply else "preview",
         "dry_run": DRY_RUN,
+        "confirmation": confirmation_contract(intent),
         "action": None,
         "result": None,
     }
@@ -966,7 +1012,7 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
     elif intent.intent == "DIAGNOSE_SYSTEM":
         result["action"] = {"type": "diagnose_system", "target": intent.target}
         diag = diagnostics(intent.target)
-        result["result"] = {"applied": False, "diagnostics": diag, "provider": local_answer(text, {"diagnostics": diag, "language": active_language()})}
+        result["result"] = {"applied": False, "diagnostics": diag, "provider": local_answer(text, {"diagnostics": diag, "system_context": system_context(), "language": active_language()})}
     elif intent.intent == "INSTALL_PACKAGE":
         command = ["sevenpkg", "install", intent.target] if intent.target == "forge" else ["sudo", "pacman", "-S", "--needed", intent.target]
         result["action"] = {"type": "install_package", "target": intent.target, "command": " ".join(command)}
@@ -1158,7 +1204,7 @@ def main() -> int:
         return 0
     if args.action == "provider":
         prompt = " ".join(args.text).strip()
-        data = local_answer(prompt, {"diagnostics": diagnostics("system"), "memory": read_memory(8), "language": active_language()})
+        data = local_answer(prompt, {"diagnostics": diagnostics("system"), "memory": read_memory(8), "system_context": system_context(), "language": active_language()})
         print(json.dumps(data, indent=2, ensure_ascii=False) if args.json else data["answer"])
         return 0
     if args.action == "diagnose":

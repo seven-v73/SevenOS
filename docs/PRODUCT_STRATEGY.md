@@ -33,8 +33,8 @@ SevenOS should be:
 
 ### Phase 1: Foundations
 
-- Arch post-install layer
-- Hyprland desktop
+- SevenOS route on top of an Arch-compatible foundation
+- Seven Smart Window System foundation
 - package manifests
 - basic profiles
 - Git reproducibility

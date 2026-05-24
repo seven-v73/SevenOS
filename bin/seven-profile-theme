@@ -81,36 +81,108 @@ profile = json.loads(os.environ["PROFILE_JSON"])
 config = json.loads(Path(os.environ["BASE_CONFIG"]).read_text(encoding="utf-8"))
 modules = {item.strip() for item in str(profile.get("waybar_modules", "")).split(",") if item.strip()}
 essential_left = {"spotlight"}
-essential_right = {"wifi", "bluetooth", "audio", "battery", "ai"}
+essential_right = {"system-status"}
 modules |= essential_left | essential_right
 
-left = ["custom/sevenos", "custom/profile"]
-if "spotlight" in modules:
-    left.append("custom/spotlight")
-if "media" in modules:
-    left.append("custom/media")
+left = ["custom/sevenos", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"]
 config["modules-left"] = left
+config["modules-center"] = ["hyprland/workspaces"]
+config["hyprland/window"] = {
+    "format": "{class}",
+    "max-length": 18,
+    "separate-outputs": True,
+    "rewrite": {
+        "^$": "Bureau",
+        "^code$": "Code",
+        "^Code$": "Code",
+        "^chromium$": "Chromium",
+        "^Chromium$": "Chromium",
+        "^google-chrome$": "Chrome",
+        "^Google-chrome$": "Chrome",
+        "^firefox$": "Firefox",
+        "^Firefox$": "Firefox",
+        "^kitty$": "Terminal",
+        "^SevenTerminalNative$": "Terminal",
+        "^SevenFilesNative$": "Seven Files",
+        "^org\\.gnome\\.Nautilus$": "Files",
+        "^Nautilus$": "Files",
+    },
+}
+config["custom/app-menu"] = {
+    "exec": "seven-waybar-status app-menu",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": True,
+    "on-click": "seven-waybar-action app-menu",
+    "on-click-right": "seven-waybar-action app-menu-window",
+}
+for item in ("file", "edit", "view", "extra", "tools", "window", "help"):
+    key_name = f"custom/app-{item}"
+    config[key_name] = {
+        "exec": f"seven-waybar-status app-menu-item {item}",
+        "return-type": "json",
+        "interval": 10,
+        "signal": 8,
+        "tooltip": True,
+        "on-click": f"seven-waybar-action app-{item}",
+        "on-click-right": "seven-waybar-action app-menu-window" if item == "window" else "seven-waybar-action app-menu",
+    }
+config["custom/app-help"]["on-click-right"] = "seven-help"
+config["custom/app-more"] = {
+    "exec": "seven-waybar-status app-menu-more",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": True,
+    "on-click": "seven-waybar-action app-menu",
+    "on-click-right": "seven-waybar-action app-menu-window",
+}
 
 right_order = [
-    ("wifi", "custom/wifi"),
-    ("bluetooth", "custom/bluetooth"),
-    ("audio", "pulseaudio"),
-    ("battery", "battery"),
-    ("vpn", "custom/vpn"),
-    ("recorder", "custom/recorder"),
+    ("profile", "custom/profile"),
+    ("mini-context", "custom/mini-context"),
+    ("media", "custom/media"),
+    ("system-status", "custom/system-status"),
+    ("tray", "tray"),
+    ("spotlight", "custom/spotlight"),
     ("clock", "clock"),
-    ("ai", "custom/ai"),
+    ("control-center", "custom/control-center"),
 ]
-right = [module for key, module in right_order if key in modules or key == "clock"]
+right = [module for key, module in right_order if key in modules or key in {"profile", "mini-context", "clock", "control-center", "tray"}]
 config["modules-right"] = right
+config["tray"] = {"icon-size": 14, "spacing": 6}
+config["custom/system-status"] = {
+    "exec": "seven-waybar-status system-status",
+    "return-type": "json",
+    "interval": 3,
+    "tooltip": True,
+    "on-click": "seven-quick-settings",
+    "on-click-right": "seven-settings",
+    "on-click-middle": "seven-waybar repair",
+}
+config["custom/mini-context"] = {
+    "exec": "seven-waybar-status mini-context",
+    "return-type": "json",
+    "interval": 4,
+    "signal": 8,
+    "tooltip": True,
+    "on-click": "seven-waybar-action mini-context",
+    "on-click-right": "seven-mini-os-center",
+}
 
 key = profile.get("key", "equinox")
 label = profile.get("label") or profile.get("title") or key.title()
 icon = profile.get("waybar_icon") or profile.get("icon") or "7"
 short = profile.get("short_label") or key[:3].upper()
-config.setdefault("custom/sevenos", {})["format"] = f"{icon}  {label}"
+config.setdefault("custom/sevenos", {})["exec"] = "seven-waybar-status sevenos"
+config.setdefault("custom/sevenos", {})["return-type"] = "json"
+config.setdefault("custom/sevenos", {})["interval"] = 3
 config.setdefault("custom/sevenos", {})["tooltip"] = True
-config.setdefault("custom/sevenos", {})["tooltip-format"] = f"SevenOS · {label}"
+config.setdefault("custom/sevenos", {})["on-click"] = "seven-waybar-action sevenos-menu"
+config.setdefault("custom/sevenos", {})["on-click-right"] = "seven-profile-center-native"
+config.setdefault("custom/sevenos", {})["on-click-middle"] = "seven-spotlight field"
+config.setdefault("custom/spotlight", {})["format"] = "󰍉"
 
 print(json.dumps(config, indent=2, ensure_ascii=False))
 PY
@@ -236,6 +308,20 @@ window#waybar {{
   box-shadow: 0 0 18px alpha({accent}, {'0.18' if mode == 'light' else '0.16'});
 }}
 
+#custom-experience {{
+  color: {text};
+  border-color: alpha({accent}, {'0.18' if mode == 'light' else '0.22'});
+  background:
+    linear-gradient(180deg, alpha(#FFFFFF, {'0.68' if mode == 'light' else '0.12'}), alpha(#FFFFFF, {'0.32' if mode == 'light' else '0.036'})),
+    alpha({accent}, {'0.055' if mode == 'light' else '0.080'});
+}}
+
+#custom-experience.recommended,
+#custom-experience.active {{
+  border-color: alpha({accent}, {'0.30' if mode == 'light' else '0.34'});
+  box-shadow: 0 0 18px alpha({accent}, {'0.16' if mode == 'light' else '0.18'});
+}}
+
 #workspaces button.active {{
   background:
     radial-gradient(circle at 50% 0%, alpha(#FFFFFF, {'0.48' if mode == 'light' else '0.34'}), transparent 38%),
@@ -296,67 +382,67 @@ key = os.environ["PROFILE_KEY"]
 profiles = {
     "forge": {
         "label": "Forge",
-        "context": "build rail",
+        "context": "󰑭",
         "center": "Établi technique",
         "accent": "Projet, build, conteneurs, services",
         "switch_label": "OS",
         "position": "top",
-        "height": 32,
-        "spacing": 6,
-        "margin_top": 6,
-        "margin_left": 8,
-        "margin_right": 8,
-        "modules_left": ["custom/identity", "custom/project", "custom/context"],
+        "height": 28,
+        "spacing": 4,
+        "margin_top": 0,
+        "margin_left": 0,
+        "margin_right": 0,
+        "modules_left": ["custom/identity"],
         "modules_center": ["hyprland/workspaces"],
-        "modules_right": ["custom/containers", "custom/services", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"],
+        "modules_right": ["custom/project", "custom/context", "custom/containers", "custom/services", "custom/system-status", "clock", "custom/profile-switch"],
         "modules": ["custom/project", "custom/containers", "custom/services"],
         "custom": {
-            "project": {"format": "workspace", "tooltip": "Ouvrir l'espace Forge", "on-click": "seven profile open forge"},
-            "containers": {"exec": "docker info >/dev/null 2>&1 && echo 'Containers' || echo 'Containers off'", "interval": 20, "tooltip": "Docker/Podman et services locaux", "on-click": "seven-terminal forge -- bash -lc 'docker ps; printf \"\\n\"; podman ps 2>/dev/null || true; read -r'"},
-            "services": {"format": "daemons", "tooltip": "Inspecter les services Forge", "on-click": "seven-terminal forge -- bash -lc 'systemctl --user --no-pager --type=service --state=running; read -r'"},
+            "project": {"format": "󰉋", "tooltip": "Forge workspace · ouvrir l'espace projet", "on-click": "seven profile open forge"},
+            "containers": {"exec": "docker info >/dev/null 2>&1 && echo '󰡨' || echo '󰡨 off'", "interval": 20, "tooltip": "Docker/Podman et services locaux", "on-click": "seven-terminal forge -- bash -lc 'docker ps; printf \"\\n\"; podman ps 2>/dev/null || true; read -r'"},
+            "services": {"format": "󰒓", "tooltip": "Inspecter les services Forge", "on-click": "seven-terminal forge -- bash -lc 'systemctl --user --no-pager --type=service --state=running; read -r'"},
         },
     },
     "shield": {
         "label": "Shield",
-        "context": "authorized scope",
+        "context": "󰌾",
         "center": "Lab autorisé",
         "accent": "Périmètre, VPN, capture, preuves",
         "switch_label": "OS",
         "position": "top",
-        "height": 38,
-        "spacing": 5,
+        "height": 28,
+        "spacing": 4,
         "margin_top": 0,
         "margin_left": 0,
         "margin_right": 0,
-        "modules_left": ["custom/identity", "custom/scope", "custom/vpn"],
-        "modules_center": ["custom/context"],
-        "modules_right": ["custom/recorder", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"],
+        "modules_left": ["custom/identity"],
+        "modules_center": ["hyprland/workspaces"],
+        "modules_right": ["custom/scope", "custom/context", "custom/vpn", "custom/recorder", "custom/system-status", "clock", "custom/profile-switch"],
         "modules": ["custom/scope", "custom/vpn", "custom/recorder"],
         "custom": {
-            "scope": {"format": "Scope", "tooltip": "Centre Shield et périmètre autorisé", "on-click": "seven-shield-center-native"},
+            "scope": {"format": "󰒃", "tooltip": "Shield Center · périmètre autorisé", "on-click": "seven-shield-center-native"},
             "vpn": {"exec": "seven-waybar-status vpn", "return-type": "json", "interval": 10, "tooltip": True, "on-click": "seven-waybar-action security"},
             "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-waybar-action system", "on-click-right": "seven-recorder area"},
         },
     },
     "studio": {
         "label": "Studio",
-        "context": "atelier vivant",
+        "context": "󰏗",
         "center": "Canvas vivant",
         "accent": "Canvas, média, capture, export",
-        "switch_label": "Changer",
+        "switch_label": "OS",
         "position": "top",
-        "height": 42,
-        "spacing": 10,
-        "margin_top": 12,
-        "margin_left": 18,
-        "margin_right": 18,
-        "modules_left": ["custom/identity", "custom/profile-switch"],
-        "modules_center": ["custom/context", "custom/media"],
-        "modules_right": ["custom/canvas", "custom/recorder", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock"],
+        "height": 28,
+        "spacing": 4,
+        "margin_top": 0,
+        "margin_left": 0,
+        "margin_right": 0,
+        "modules_left": ["custom/identity"],
+        "modules_center": ["hyprland/workspaces"],
+        "modules_right": ["custom/canvas", "custom/context", "custom/media", "custom/recorder", "custom/system-status", "clock", "custom/profile-switch"],
         "modules": ["custom/canvas", "custom/media", "custom/recorder"],
         "custom": {
-            "canvas": {"format": "Canvas", "tooltip": "Ouvrir l'espace Studio", "on-click": "seven profile open studio"},
-            "media": {"exec": "seven-waybar-status media", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "playerctl play-pause", "on-click-right": "seven-quick-settings audio"},
+            "canvas": {"format": "󰽉", "tooltip": "Studio canvas · ouvrir l'espace créatif", "on-click": "seven profile open studio"},
+            "media": {"exec": "seven-waybar-status media", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "seven-waybar-action media-menu", "on-click-right": "seven-quick-settings audio"},
             "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder stop", "on-click-right": "seven-recorder area"},
         },
     },
@@ -366,16 +452,16 @@ profiles = {
         "center": "VM et apps",
         "accent": "Bridge, VM, apps, dossiers partagés",
         "switch_label": "OS",
-        "position": "bottom",
-        "height": 38,
-        "spacing": 7,
+        "position": "top",
+        "height": 28,
+        "spacing": 4,
         "margin_top": 0,
-        "margin_bottom": 8,
-        "margin_left": 10,
-        "margin_right": 10,
+        "margin_bottom": 0,
+        "margin_left": 0,
+        "margin_right": 0,
         "modules_left": ["custom/identity", "custom/bridge", "custom/apps"],
         "modules_center": ["custom/context"],
-        "modules_right": ["custom/vm", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"],
+        "modules_right": ["custom/vm", "custom/system-status", "clock", "custom/profile-switch"],
         "modules": ["custom/bridge", "custom/vm", "custom/apps"],
         "custom": {
             "bridge": {"format": "Bridge", "tooltip": "Ouvrir Windows Bridge", "on-click": "seven windows enter"},
@@ -385,23 +471,23 @@ profiles = {
     },
     "pulse": {
         "label": "Pulse",
-        "context": "low latency stage",
+        "context": "󰓅",
         "center": "Stage performance",
         "accent": "FPS, latence, GameMode, capture",
         "switch_label": "OS",
         "position": "top",
-        "height": 34,
-        "spacing": 5,
-        "margin_top": 4,
-        "margin_left": 6,
-        "margin_right": 6,
-        "modules_left": ["custom/identity", "custom/performance", "custom/gamemode"],
-        "modules_center": ["hyprland/workspaces", "custom/context"],
-        "modules_right": ["custom/recorder", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"],
+        "height": 28,
+        "spacing": 4,
+        "margin_top": 0,
+        "margin_left": 0,
+        "margin_right": 0,
+        "modules_left": ["custom/identity"],
+        "modules_center": ["hyprland/workspaces"],
+        "modules_right": ["custom/performance", "custom/context", "custom/gamemode", "custom/recorder", "custom/system-status", "clock", "custom/profile-switch"],
         "modules": ["custom/performance", "custom/gamemode", "custom/recorder"],
         "custom": {
-            "performance": {"format": "perf", "tooltip": "Plan performance Pulse", "on-click": "seven profile center pulse"},
-            "gamemode": {"exec": "pgrep -x gamemoded >/dev/null 2>&1 && echo 'GameMode' || echo 'GameMode prêt'", "interval": 30, "tooltip": "Optimisation gaming locale"},
+            "performance": {"format": "󰾆", "tooltip": "Pulse performance · latence et FPS", "on-click": "seven profile center pulse"},
+            "gamemode": {"exec": "pgrep -x gamemoded >/dev/null 2>&1 && echo '󰊴' || echo '󰊴 off'", "interval": 30, "tooltip": "Optimisation gaming locale"},
             "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder stop", "on-click-right": "seven-recorder area"},
         },
     },
@@ -413,15 +499,15 @@ config = {
     "profile": key,
     "layer": "top",
     "position": spec.get("position", "top"),
-    "height": spec.get("height", 36),
+    "height": spec.get("height", 28),
     "spacing": spec.get("spacing", 8),
     "margin-top": spec.get("margin_top", 8),
     "margin-bottom": spec.get("margin_bottom", 0),
     "margin-left": spec.get("margin_left", 12),
     "margin-right": spec.get("margin_right", 12),
-    "modules-left": spec.get("modules_left", ["custom/identity", "custom/profile-switch", "custom/spotlight"]),
+    "modules-left": spec.get("modules_left", ["custom/identity", "custom/profile-switch"]),
     "modules-center": spec.get("modules_center", ["custom/context", "hyprland/workspaces"]),
-    "modules-right": spec.get("modules_right", [*spec["modules"], "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock"]),
+    "modules-right": spec.get("modules_right", ["custom/profile", "custom/mini-context", *spec["modules"], "custom/system-status", "clock"]),
     "custom/identity": {
         "format": spec["label"],
         "tooltip": profile.get("title") or spec["label"],
@@ -434,10 +520,87 @@ config = {
         "on-click": "seven-waybar-action profile",
         "on-click-right": "seven-profile-center-native",
     },
+    "custom/profile": {
+        "exec": "seven-waybar-status profile",
+        "return-type": "json",
+        "interval": 3,
+        "tooltip": True,
+        "on-click": "seven-profile-center-native",
+        "on-click-right": "seven profile current",
+    },
+    "custom/mini-context": {
+        "exec": "seven-waybar-status mini-context",
+        "return-type": "json",
+        "interval": 4,
+        "signal": 8,
+        "tooltip": True,
+        "on-click": "seven-waybar-action mini-context",
+        "on-click-right": "seven-mini-os-center",
+    },
+    "hyprland/window": {
+        "format": "{class}",
+        "max-length": 18,
+        "separate-outputs": True,
+        "rewrite": {
+            "^$": "Bureau",
+            "^code$": "Code",
+            "^Code$": "Code",
+            "^chromium$": "Chromium",
+            "^Chromium$": "Chromium",
+            "^google-chrome$": "Chrome",
+            "^Google-chrome$": "Chrome",
+            "^firefox$": "Firefox",
+            "^Firefox$": "Firefox",
+            "^kitty$": "Terminal",
+            "^SevenTerminalNative$": "Terminal",
+            "^SevenFilesNative$": "Seven Files",
+            "^org\\.gnome\\.Nautilus$": "Files",
+            "^Nautilus$": "Files",
+        },
+    },
+    "custom/app-menu": {
+        "exec": "seven-waybar-status app-menu",
+        "return-type": "json",
+        "interval": 10,
+        "signal": 8,
+        "tooltip": True,
+        "on-click": "seven-waybar-action app-menu",
+        "on-click-right": "seven-waybar-action app-menu-window",
+    },
+    **{
+        f"custom/app-{item}": {
+            "exec": f"seven-waybar-status app-menu-item {item}",
+            "return-type": "json",
+            "interval": 10,
+            "signal": 8,
+            "tooltip": True,
+            "on-click": f"seven-waybar-action app-{item}",
+            "on-click-right": "seven-waybar-action app-menu-window" if item == "window" else ("seven-help" if item == "help" else "seven-waybar-action app-menu"),
+        }
+        for item in ("file", "edit", "view", "extra", "tools", "window", "help")
+    },
+    "custom/app-more": {
+        "exec": "seven-waybar-status app-menu-more",
+        "return-type": "json",
+        "interval": 10,
+        "signal": 8,
+        "tooltip": True,
+        "on-click": "seven-waybar-action app-menu",
+        "on-click-right": "seven-waybar-action app-menu-window",
+    },
     "custom/spotlight": {
-        "format": "Rechercher",
+        "format": "󰍉",
         "tooltip": "Spotlight SevenOS",
         "on-click": "seven-spotlight field",
+    },
+    "custom/system-status": {
+        "exec": "seven-waybar-status system-status",
+        "return-type": "json",
+        "interval": 3,
+        "tooltip": True,
+        "on-click": "seven-quick-settings",
+        "on-click-right": "seven-settings",
+        "on-click-middle": "seven-waybar repair",
     },
     "custom/context": {
         "format": spec["context"],
@@ -492,8 +655,38 @@ config = {
         "on-click-right": "seven-quick-settings time",
     },
 }
+if "hyprland/window" not in config["modules-left"]:
+    config["modules-left"].insert(1, "hyprland/window")
+app_menu_items = ["custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"]
+visible_app_menu_items = ["custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more"]
+config["modules-left"] = [item for item in config["modules-left"] if item != "custom/app-menu" and item not in app_menu_items]
+insert_at = config["modules-left"].index("hyprland/window") + 1 if "hyprland/window" in config["modules-left"] else 1
+for item in reversed(visible_app_menu_items):
+    config["modules-left"].insert(insert_at, item)
 for name, payload in spec["custom"].items():
     config[f"custom/{name}"] = payload
+if "custom/experience" not in config["modules-right"]:
+    insert_at = config["modules-right"].index("clock") if "clock" in config["modules-right"] else len(config["modules-right"])
+    config["modules-right"].insert(insert_at, "custom/experience")
+if "custom/mini-context" not in config["modules-right"]:
+    insert_at = config["modules-right"].index("custom/system-status") if "custom/system-status" in config["modules-right"] else 0
+    config["modules-right"].insert(insert_at, "custom/mini-context")
+if "custom/spotlight" not in config["modules-right"]:
+    insert_at = config["modules-right"].index("clock") if "clock" in config["modules-right"] else len(config["modules-right"])
+    config["modules-right"].insert(insert_at, "custom/spotlight")
+if "tray" not in config["modules-right"]:
+    insert_at = config["modules-right"].index("custom/spotlight") if "custom/spotlight" in config["modules-right"] else len(config["modules-right"])
+    config["modules-right"].insert(insert_at, "tray")
+config["tray"] = {"icon-size": 14, "spacing": 6}
+config["custom/experience"] = {
+    "exec": "seven-waybar-status experience",
+    "return-type": "json",
+    "interval": 2,
+    "tooltip": True,
+    "on-click": "seven experience warmup",
+    "on-click-right": "seven experience events",
+    "on-click-middle": "seven experience recommend",
+}
 print(json.dumps(config, indent=2, ensure_ascii=False))
 PY
 }
@@ -695,8 +888,8 @@ window#waybar {
         "accent": "#FF8BD1",
         "warn": "#FFD166",
         "danger": "#FF6B6B",
-        "text": "#322336",
-        "tooltip_bg": "rgba(255, 250, 253, 0.96)",
+        "text": "#FFF2FA",
+        "tooltip_bg": "rgba(34, 23, 42, 0.96)",
         "line": "rgba(255, 139, 209, 0.42)",
         "radius": "8px",
         "css": """
@@ -893,6 +1086,170 @@ window#waybar {
 
 spec = styles[key]
 css = common + spec["css"]
+css += """
+
+/* macOS-like SevenOS menu bar override */
+window#waybar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.045)),
+    rgba(12, 16, 24, 0.74);
+  color: @text;
+  border: 0;
+  border-bottom: 1px solid @line;
+  border-radius: 0;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.20);
+}
+
+#custom-identity,
+#custom-profile-switch,
+#custom-project,
+#custom-context,
+#custom-containers,
+#custom-services,
+#custom-scope,
+#custom-vpn,
+#custom-recorder,
+#custom-canvas,
+#custom-media,
+#custom-bridge,
+#custom-apps,
+#custom-vm,
+#custom-performance,
+#custom-gamemode,
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#clock,
+#custom-spotlight,
+#custom-experience {
+  min-height: 22px;
+  margin: 0 1px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: @text;
+  font-weight: 500;
+}
+
+#custom-identity {
+  color: @accent;
+  font-weight: 700;
+}
+
+#window {
+  min-height: 22px;
+  min-width: 54px;
+  margin: 0 3px 0 1px;
+  padding: 0 9px;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.045);
+  font-weight: 600;
+}
+
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help {
+  min-height: 22px;
+  margin: 0;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.68);
+  background: transparent;
+  font-weight: 500;
+}
+
+#custom-app-file.hidden,
+#custom-app-edit.hidden,
+#custom-app-view.hidden,
+#custom-app-extra.hidden,
+#custom-app-more.hidden,
+#custom-app-tools.hidden,
+#custom-app-window.hidden,
+#custom-app-help.hidden {
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+}
+
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover,
+#window:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.105);
+}
+
+#custom-identity:hover,
+#custom-profile-switch:hover,
+#custom-project:hover,
+#custom-context:hover,
+#custom-containers:hover,
+#custom-services:hover,
+#custom-scope:hover,
+#custom-vpn:hover,
+#custom-recorder:hover,
+#custom-canvas:hover,
+#custom-media:hover,
+#custom-bridge:hover,
+#custom-apps:hover,
+#custom-vm:hover,
+#custom-performance:hover,
+#custom-gamemode:hover,
+#custom-wifi:hover,
+#custom-bluetooth:hover,
+#pulseaudio:hover,
+#battery:hover,
+#clock:hover,
+#custom-spotlight:hover,
+#custom-experience:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+#workspaces {
+  margin: 0 2px;
+  padding: 0 3px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+#workspaces button {
+  min-height: 22px;
+  min-width: 22px;
+  margin: 0 1px;
+  padding: 0 5px;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.66);
+  background: transparent;
+}
+
+#workspaces button.active {
+  min-width: 28px;
+  color: #FFFFFF;
+  background: alpha(@accent, 0.34);
+}
+
+#custom-experience.recommended,
+#custom-experience.active {
+  color: #FFFFFF;
+  border-color: alpha(@accent, 0.28);
+  box-shadow: 0 0 14px alpha(@accent, 0.16);
+}
+"""
 for name in ("accent", "warn", "danger", "text", "tooltip_bg", "line", "radius"):
     css = css.replace(f"@{name}", spec[name])
 print(css.strip())
@@ -910,6 +1267,311 @@ import os
 profile = json.loads(os.environ["PROFILE_JSON"])
 print(f"{profile.get('title', profile.get('key'))} · {os.environ['MODE']} · {profile.get('waybar_modules', '')}")
 print(f"profile theme: {os.environ['PROFILE_THEME_CONF']}")
+PY
+}
+
+project_baobab_waybar_config() {
+  local source_config="$1"
+  BAOBAB_CONFIG="$source_config" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+cfg = json.loads(Path(os.environ["BAOBAB_CONFIG"]).read_text(encoding="utf-8"))
+cfg["height"] = 28
+cfg["spacing"] = 4
+cfg["margin-top"] = 0
+cfg["margin-left"] = 0
+cfg["margin-right"] = 0
+modules = cfg.get("modules-left", []) + cfg.get("modules-center", []) + cfg.get("modules-right", [])
+cfg["modules-center"] = ["hyprland/workspaces"]
+cfg["modules-right"] = [module for module in cfg.get("modules-right", []) if module != "custom/os-switch"]
+cfg["modules-right"] = [module for module in cfg.get("modules-right", []) if module not in {"custom/wifi", "custom/bluetooth", "pulseaudio", "battery"}]
+right = cfg.setdefault("modules-right", [])
+for module in ("custom/memory", "custom/language", "custom/sound", "custom/ai"):
+    if module in modules and module not in right:
+        right.append(module)
+for module in ("custom/profile", "custom/mini-context"):
+    if module in right:
+        right.remove(module)
+    right.insert(0, module)
+if "custom/media" in modules and "custom/media" not in cfg.get("modules-right", []):
+    right = cfg.setdefault("modules-right", [])
+    insert_at = right.index("custom/system-status") if "custom/system-status" in right else len(right)
+    right.insert(insert_at, "custom/media")
+if "hyprland/window" not in cfg.get("modules-left", []):
+    cfg.setdefault("modules-left", []).insert(1, "hyprland/window")
+app_menu_items = ["custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"]
+visible_app_menu_items = ["custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more"]
+left = cfg.setdefault("modules-left", [])
+left[:] = [item for item in left if item in {"custom/baobab", "hyprland/window"}]
+insert_at = left.index("hyprland/window") + 1 if "hyprland/window" in left else 1
+for item in reversed(visible_app_menu_items):
+    left.insert(insert_at, item)
+if "custom/experience" not in modules:
+    right = cfg.setdefault("modules-right", [])
+    insert_at = right.index("clock") if "clock" in right else len(right)
+    right.insert(insert_at, "custom/experience")
+if "custom/system-status" not in cfg.get("modules-right", []):
+    right = cfg.setdefault("modules-right", [])
+    insert_at = right.index("clock") if "clock" in right else len(right)
+    right.insert(insert_at, "custom/system-status")
+if "custom/spotlight" not in cfg.get("modules-right", []):
+    right = cfg.setdefault("modules-right", [])
+    insert_at = right.index("clock") if "clock" in right else len(right)
+    right.insert(insert_at, "custom/spotlight")
+if "tray" not in cfg.get("modules-right", []):
+    right = cfg.setdefault("modules-right", [])
+    insert_at = right.index("custom/spotlight") if "custom/spotlight" in right else len(right)
+    right.insert(insert_at, "tray")
+if "custom/profile-switch" not in cfg.get("modules-right", []):
+    right = cfg.setdefault("modules-right", [])
+    insert_at = right.index("clock") if "clock" in right else len(right)
+    right.insert(insert_at, "custom/profile-switch")
+cfg["hyprland/window"] = {
+    "format": "{class}",
+    "max-length": 18,
+    "separate-outputs": True,
+    "rewrite": {
+        "^$": "Bureau",
+        "^code$": "Code",
+        "^Code$": "Code",
+        "^chromium$": "Chromium",
+        "^Chromium$": "Chromium",
+        "^google-chrome$": "Chrome",
+        "^Google-chrome$": "Chrome",
+        "^firefox$": "Firefox",
+        "^Firefox$": "Firefox",
+        "^kitty$": "Terminal",
+        "^SevenTerminalNative$": "Terminal",
+        "^SevenFilesNative$": "Seven Files",
+        "^org\\.gnome\\.Nautilus$": "Files",
+        "^Nautilus$": "Files",
+    },
+}
+cfg["custom/app-menu"] = {
+    "exec": "seven-waybar-status app-menu",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": True,
+    "on-click": "seven-waybar-action app-menu",
+    "on-click-right": "seven-waybar-action app-menu-window",
+}
+cfg["custom/mini-context"] = {
+    "exec": "seven-waybar-status mini-context",
+    "return-type": "json",
+    "interval": 4,
+    "signal": 8,
+    "tooltip": True,
+    "on-click": "seven-waybar-action mini-context",
+    "on-click-right": "seven-mini-os-center",
+}
+for item in ("file", "edit", "view", "extra", "tools", "window", "help"):
+    cfg[f"custom/app-{item}"] = {
+        "exec": f"seven-waybar-status app-menu-item {item}",
+        "return-type": "json",
+        "interval": 10,
+        "signal": 8,
+        "tooltip": True,
+        "on-click": f"seven-waybar-action app-{item}",
+        "on-click-right": "seven-waybar-action app-menu-window" if item == "window" else ("seven-help" if item == "help" else "seven-waybar-action app-menu"),
+    }
+cfg["custom/app-more"] = {
+    "exec": "seven-waybar-status app-menu-more",
+    "return-type": "json",
+    "interval": 10,
+    "signal": 8,
+    "tooltip": True,
+    "on-click": "seven-waybar-action app-menu",
+    "on-click-right": "seven-waybar-action app-menu-window",
+}
+cfg["tray"] = {"icon-size": 14, "spacing": 6}
+cfg["custom/experience"] = {
+    "exec": "seven-waybar-status experience",
+    "return-type": "json",
+    "interval": 2,
+    "tooltip": True,
+    "on-click": "seven experience warmup",
+    "on-click-right": "seven experience events",
+    "on-click-middle": "seven experience recommend",
+}
+cfg["custom/system-status"] = {
+    "exec": "seven-waybar-status system-status",
+    "return-type": "json",
+    "interval": 3,
+    "tooltip": True,
+    "on-click": "seven-quick-settings",
+    "on-click-right": "seven-settings",
+    "on-click-middle": "seven-waybar repair",
+}
+cfg["custom/spotlight"] = {
+    "format": "󰍉",
+    "tooltip": "Spotlight SevenOS",
+    "on-click": "seven-spotlight field",
+}
+cfg.setdefault("custom/profile-switch", {})["format"] = "OS"
+cfg.setdefault("custom/language", {})["format"] = "󰗊"
+cfg.setdefault("custom/language", {})["tooltip"] = "Langue active · français"
+cfg.setdefault("custom/memory", {})["exec"] = "seven baobab capability-doctor --json >/dev/null 2>&1 && echo '󰧑' || echo '󰧑 off'"
+cfg.setdefault("custom/memory", {})["tooltip"] = "Mémoire Baobab · capacité locale"
+cfg.setdefault("custom/sound", {})["exec"] = "find \"/home/seven/Baobab/Sound\" \"/home/seven/.local/share/sevenos/profiles/baobab/baobab/sound\" -maxdepth 1 -type f 2>/dev/null | grep -q . && echo '󰝚' || echo '󰝚 off'"
+cfg.setdefault("custom/sound", {})["tooltip"] = "Paysages sonores Baobab"
+cfg.setdefault("custom/ai", {})["exec"] = "command -v ollama >/dev/null 2>&1 && echo '󰚩' || echo '󰚩 off'"
+cfg.setdefault("custom/ai", {})["tooltip"] = "Seven Baobab AI local"
+preferred_right = [
+    "custom/memory",
+    "custom/language",
+    "custom/sound",
+    "custom/ai",
+    "custom/mini-context",
+    "custom/system-status",
+    "custom/experience",
+    "tray",
+    "custom/spotlight",
+    "clock",
+    "custom/profile-switch",
+]
+existing_right = cfg.get("modules-right", [])
+cfg["modules-right"] = [module for module in preferred_right if module in existing_right]
+print(json.dumps(cfg, indent=2, ensure_ascii=False))
+PY
+}
+
+project_baobab_waybar_style() {
+  local source_style="$1"
+  BAOBAB_STYLE="$source_style" python - <<'PY'
+import os
+from pathlib import Path
+
+css = Path(os.environ["BAOBAB_STYLE"]).read_text(encoding="utf-8").rstrip()
+marker = "/* macOS-like SevenOS menu bar override */"
+if marker in css:
+    css = css.split(marker, 1)[0].rstrip()
+if "#custom-experience" not in css:
+    css += """
+
+#custom-experience {
+  background: rgba(49, 94, 77, 0.36);
+  color: #f4ead8;
+  border: 1px solid rgba(139, 170, 123, 0.28);
+  border-radius: 999px;
+  margin: 5px 3px;
+  padding: 0 10px;
+}
+
+#custom-experience.recommended,
+#custom-experience.active {
+  border-color: rgba(200, 155, 99, 0.44);
+  box-shadow: 0 0 14px rgba(139, 170, 123, 0.18);
+}
+
+#custom-experience.experience-warn {
+  color: #e0b15f;
+  border-color: rgba(224, 177, 95, 0.34);
+}
+"""
+css += """
+
+/* macOS-like SevenOS menu bar override */
+window#waybar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.040)),
+    rgba(8, 11, 10, 0.74);
+  border: 0;
+  border-bottom: 1px solid rgba(139, 170, 123, 0.20);
+  border-radius: 0;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.20);
+}
+
+#custom-baobab,
+#custom-profile-switch,
+#window,
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help,
+#custom-memory,
+#custom-language,
+#custom-sound,
+#custom-ai,
+#custom-wifi,
+#custom-bluetooth,
+#custom-experience,
+#custom-spotlight,
+#tray,
+#workspaces,
+#pulseaudio,
+#battery,
+#clock {
+  min-height: 22px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  margin: 0 1px;
+  padding: 0 7px;
+}
+
+#custom-baobab {
+  color: #f4ead8;
+  font-weight: 700;
+}
+
+#custom-baobab:hover,
+#custom-profile-switch:hover,
+#window:hover,
+#custom-app-menu:hover,
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover,
+#custom-memory:hover,
+#custom-language:hover,
+#custom-sound:hover,
+#custom-ai:hover,
+#custom-wifi:hover,
+#custom-bluetooth:hover,
+#custom-experience:hover,
+#custom-spotlight:hover,
+#tray:hover,
+#pulseaudio:hover,
+#battery:hover,
+#clock:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(216, 204, 181, 0.10);
+}
+
+#workspaces button {
+  min-height: 22px;
+  min-width: 22px;
+  margin: 0 1px;
+  padding: 0 5px;
+  border-radius: 7px;
+}
+
+#custom-wifi.weak,
+#custom-wifi.idle,
+#custom-bluetooth.off {
+  color: #e0b15f;
+}
+
+tooltip {
+  background: rgba(12, 16, 12, 0.94);
+  color: #f4ead8;
+  border: 1px solid rgba(139, 170, 123, 0.22);
+  border-radius: 9px;
+}
+"""
+print(css)
 PY
 }
 
@@ -942,8 +1604,8 @@ apply_profile() {
   mkdir -p "$(dirname "$PROFILE_UI")"
   mkdir -p "$(dirname "$profile_ui")"
   if [[ "$key" == "baobab" && -s "$profile_waybar_config" && -s "$profile_waybar_style" ]]; then
-    cp "$profile_waybar_config" "$WAYBAR_CONFIG"
-    cp "$profile_waybar_style" "$WAYBAR_STYLE"
+    project_baobab_waybar_config "$profile_waybar_config" > "$WAYBAR_CONFIG"
+    project_baobab_waybar_style "$profile_waybar_style" > "$WAYBAR_STYLE"
     if [[ -s "$profile_fontconfig" ]]; then
       mkdir -p "$CONFIG_HOME/fontconfig/conf.d"
       cp "$profile_fontconfig" "$CONFIG_HOME/fontconfig/conf.d/70-sevenos-baobab-fonts.conf"
@@ -1173,6 +1835,16 @@ refresh_specialized_waybars() {
     render_specialized_config "$key" > "$dir/config.jsonc"
     render_specialized_style "$key" > "$dir/style.css"
   done
+  local baobab_dir="$CONFIG_HOME/sevenos/profiles/baobab/baobab/waybar"
+  if [[ -s "$baobab_dir/config.jsonc" && -s "$baobab_dir/style.css" ]]; then
+    local tmp_config tmp_style
+    tmp_config="$(mktemp)"
+    tmp_style="$(mktemp)"
+    project_baobab_waybar_config "$baobab_dir/config.jsonc" > "$tmp_config"
+    project_baobab_waybar_style "$baobab_dir/style.css" > "$tmp_style"
+    mv "$tmp_config" "$baobab_dir/config.jsonc"
+    mv "$tmp_style" "$baobab_dir/style.css"
+  fi
 }
 
 audit_waybars() {
@@ -1185,19 +1857,20 @@ from pathlib import Path
 
 config_home = Path(os.environ["CONFIG_HOME"])
 profiles = {
-    "forge": {"position": "top", "max_modules": 12, "identity": "Forge", "required": {"custom/project", "custom/containers", "custom/services"}},
-    "shield": {"position": "top", "max_modules": 11, "identity": "Shield", "required": {"custom/scope", "custom/vpn", "custom/recorder"}},
-    "studio": {"position": "top", "max_modules": 11, "identity": "Studio", "required": {"custom/canvas", "custom/media", "custom/recorder"}},
-    "windows": {"position": "bottom", "max_modules": 11, "identity": "Windows", "required": {"custom/bridge", "custom/vm", "custom/apps"}},
-    "pulse": {"position": "top", "max_modules": 12, "identity": "Pulse", "required": {"custom/performance", "custom/gamemode", "custom/recorder"}},
+    "forge": {"position": "top", "max_modules": 20, "identity": "Forge", "required": {"custom/project", "custom/containers", "custom/services"}},
+    "shield": {"position": "top", "max_modules": 19, "identity": "Shield", "required": {"custom/scope", "custom/vpn", "custom/recorder"}},
+    "studio": {"position": "top", "max_modules": 19, "identity": "Studio", "required": {"custom/canvas", "custom/media", "custom/recorder"}},
+    "windows": {"position": "top", "max_modules": 19, "identity": "Windows", "required": {"custom/bridge", "custom/vm", "custom/apps"}},
+    "pulse": {"position": "top", "max_modules": 20, "identity": "Pulse", "required": {"custom/performance", "custom/gamemode", "custom/recorder"}},
+    "baobab": {"position": "top", "max_modules": 19, "identity": "Baobab", "identity_module": "custom/baobab", "root": "baobab/waybar", "required": {"custom/memory", "custom/language", "custom/sound", "custom/ai"}},
 }
-common_required = {"custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock", "custom/profile-switch"}
+common_required = {"hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more", "custom/mini-context", "custom/system-status", "clock", "tray", "custom/profile-switch", "custom/experience", "custom/spotlight"}
 css_tokens = re.compile(r"@(accent|warn|danger|text|tooltip_bg|line|radius)\\b")
 errors = []
 warnings = []
 
 for key, spec in profiles.items():
-    root = config_home / "sevenos" / "profiles" / key / "waybar"
+    root = config_home / "sevenos" / "profiles" / key / spec.get("root", "waybar")
     cfg_path = root / "config.jsonc"
     css_path = root / "style.css"
     if not cfg_path.exists() or not css_path.exists():
@@ -1218,7 +1891,8 @@ for key, spec in profiles.items():
         errors.append(f"{key}: position {cfg.get('position')} != {spec['position']}")
     if len(modules) > spec["max_modules"]:
         warnings.append(f"{key}: dense layout ({len(modules)} modules)")
-    identity = (cfg.get("custom/identity") or {}).get("format", "")
+    identity_module = spec.get("identity_module", "custom/identity")
+    identity = (cfg.get(identity_module) or {}).get("format", "")
     if identity != spec["identity"]:
         errors.append(f"{key}: identity label {identity!r} != {spec['identity']!r}")
     switch = (cfg.get("custom/profile-switch") or {}).get("format", "")
@@ -1226,6 +1900,8 @@ for key, spec in profiles.items():
         warnings.append(f"{key}: profile switch label may be too wide ({switch!r})")
     if css_tokens.search(css):
         errors.append(f"{key}: unresolved CSS theme tokens")
+    if key == "studio" and "color: #322336;" in css:
+        errors.append("studio: dark text token leaks into menu bar")
     if "tooltip" not in css or "window#waybar" not in css:
         errors.append(f"{key}: incomplete CSS structure")
     if "#custom-wifi.weak" not in css:

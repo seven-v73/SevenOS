@@ -1,0 +1,734 @@
+#!/usr/bin/env python3
+"""Native SevenOS app-menu panel for the Waybar menu bar."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import warnings
+import atexit
+from pathlib import Path
+
+from seven_waybar_app_profiles import (
+    active_window as shared_active_window,
+    context_for_window,
+    items_for as shared_items_for,
+)
+
+
+ROOT = Path(__file__).resolve().parent.parent
+AREA = sys.argv[1] if len(sys.argv) > 1 else "file"
+REQUEST_FILE = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos/app-menu-request.json"
+STATUS_FILE = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos/app-menu-status.json"
+ENGINE_VERSION = "cairo-pango-v2"
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+
+def run(command: list[str], timeout: float = 1.0) -> str:
+    try:
+        return subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout).stdout.strip()
+    except Exception:
+        return ""
+
+
+def active_window() -> dict:
+    return shared_active_window()
+
+
+def active_profile() -> str:
+    manager = ROOT / "profiles/profile-manager.sh"
+    if manager.exists():
+        text = run([str(manager), "current", "--json"], timeout=0.8)
+        try:
+            return str(json.loads(text or "{}").get("key") or "equinox").lower()
+        except json.JSONDecodeError:
+            pass
+    return os.environ.get("SEVENOS_PROFILE", "equinox").lower()
+
+
+def context_mode(window: dict) -> str:
+    return str(context_for_window(window, active_profile()).get("mode") or "default")
+    klass = str(window.get("class") or window.get("initialClass") or "").lower()
+    profile = active_profile()
+    if any(token in klass for token in ("google-chrome", "chromium", "chrome", "firefox", "brave", "vivaldi", "librewolf", "browser", "edge")):
+        return "browser"
+    if any(token in klass for token in ("code", "codium", "cursor", "jetbrains", "idea", "pycharm", "webstorm")):
+        return "developer"
+    if any(token in klass for token in ("terminal", "kitty", "foot", "alacritty", "wezterm", "console")):
+        return "terminal"
+    if any(token in klass for token in ("nautilus", "seven-files", "thunar", "dolphin", "nemo", "file")):
+        return "files"
+    if any(token in klass for token in ("libreoffice", "onlyoffice", "writer", "calc", "impress", "evince", "okular", "zathura", "reader")):
+        return "documents"
+    if any(token in klass for token in ("vlc", "mpv", "spotify", "audacious", "rhythmbox", "celluloid")):
+        return "media"
+    if any(token in klass for token in ("gimp", "inkscape", "blender", "kdenlive", "obs", "krita", "studio")):
+        return "studio"
+    if profile in {"studio", "shield", "windows", "forge", "pulse", "baobab"}:
+        return profile
+    return "default"
+
+
+def app_key(window: dict) -> str:
+    return str(context_for_window(window, active_profile()).get("key") or "generic")
+    klass = str(window.get("class") or window.get("initialClass") or "").lower()
+    if "google-chrome" in klass:
+        return "chrome"
+    if "chromium" in klass:
+        return "chromium"
+    if "firefox" in klass or "librewolf" in klass:
+        return "firefox"
+    if klass in {"code", "code-url-handler"} or "visual-studio-code" in klass:
+        return "vscode"
+    if "kitty" in klass:
+        return "kitty"
+    if "sevenfiles" in klass or "seven-files" in klass:
+        return "seven-files"
+    if "vlc" in klass:
+        return "vlc"
+    if "spotify" in klass:
+        return "spotify"
+    if "obs" in klass:
+        return "obs"
+    return "generic"
+
+
+def service_key(window: dict, key: str) -> str:
+    return str(context_for_window(window, active_profile()).get("service") or "")
+    title = str(window.get("title") or "").lower()
+    if key not in {"chrome", "chromium", "firefox"}:
+        return ""
+    if "youtube" in title:
+        return "youtube"
+    if "gmail" in title or ("inbox" in title and "mail" in title):
+        return "gmail"
+    if "google docs" in title or "docs.google" in title:
+        return "google-docs"
+    if "google sheets" in title or "sheets.google" in title:
+        return "google-sheets"
+    if "google drive" in title or "drive.google" in title:
+        return "google-drive"
+    if "github" in title:
+        return "github"
+    if "figma" in title:
+        return "figma"
+    if "notion" in title:
+        return "notion"
+    if "spotify" in title:
+        return "spotify-web"
+    if "netflix" in title or "prime video" in title or "disney+" in title:
+        return "streaming"
+    return ""
+
+
+def service_items(area: str, service: str) -> tuple[str, list[tuple[str, str, str]]] | None:
+    specs = {
+        "youtube": {
+            "file": ("Lecture", [("󰐊", "Lecture / pause", "Space"), ("󰐍", "Stop", ""), ("󰓩", "Vidéo suivante", "Shift+N"), ("󰓪", "Vidéo précédente", "Shift+P")]),
+            "view": ("Affichage", [("󰊓", "Plein écran", "F"), ("󰍉", "Mode cinéma", "T"), ("󰾆", "Taille normale", "Esc")]),
+            "extra": ("Vidéo", [("󰈐", "Qualité", ""), ("󰈈", "Sous-titres", "C"), ("󰕾", "Volume", "")]),
+            "tools": ("Abonnements", [("󰐕", "S'abonner", ""), ("󰚢", "J'aime", ""), ("󰈙", "Partager", "")]),
+        },
+        "streaming": {
+            "file": ("Lecture", [("󰐊", "Lecture / pause", "Space"), ("󰝚", "Avancer", "Right"), ("󰝙", "Reculer", "Left")]),
+            "view": ("Affichage", [("󰊓", "Plein écran", "F"), ("󰍉", "Zoom", "")]),
+            "extra": ("Vidéo", [("󰈐", "Qualité", ""), ("󰈈", "Sous-titres", "")]),
+            "tools": ("Audio", [("󰕾", "Volume", ""), ("󰝟", "Muet", "M")]),
+        },
+        "spotify-web": {
+            "file": ("Lecture", [("󰐊", "Lecture / pause", "Space"), ("󰒭", "Suivant", ""), ("󰒮", "Précédent", "")]),
+            "extra": ("Playlist", [("󰐕", "Ajouter à la playlist", ""), ("󰋋", "Bibliothèque", "")]),
+            "tools": ("Audio", [("󰕾", "Volume", ""), ("󰝟", "Muet", "")]),
+        },
+        "gmail": {
+            "file": ("Message", [("󰇮", "Nouveau message", "C"), ("󰈔", "Nouvelle fenêtre", "Shift+C"), ("󰅖", "Fermer", "Esc")]),
+            "view": ("Affichage", [("󰍉", "Rechercher mail", "/"), ("󰒆", "Tout afficher", "")]),
+            "extra": ("Libellés", [("󰌕", "Libellés", ""), ("󰈤", "Archiver", "E"), ("󰩹", "Spam", "!")]),
+            "tools": ("Outils", [("󰒓", "Paramètres Gmail", ""), ("󰅇", "Copier titre", "")]),
+        },
+        "google-docs": {
+            "file": ("Document", [("󰈙", "Exporter", ""), ("󰐪", "Imprimer", "Ctrl+P"), ("󰆓", "Enregistrer", "Ctrl+S")]),
+            "view": ("Insertion", [("󰉉", "Image", ""), ("󰌌", "Lien", "Ctrl+K"), ("󰉸", "Table", "")]),
+            "extra": ("Format", [("󰉿", "Styles", ""), ("󰈙", "Alignement", ""), ("󰘦", "Liste", "")]),
+            "tools": ("Outils", [("󰍉", "Rechercher", "Ctrl+F"), ("󰁨", "Orthographe", ""), ("󰒓", "Préférences", "")]),
+        },
+        "google-sheets": {
+            "file": ("Classeur", [("󰈙", "Exporter", ""), ("󰐪", "Imprimer", "Ctrl+P")]),
+            "view": ("Insertion", [("󰈛", "Ligne", ""), ("󰈜", "Colonne", ""), ("󰉸", "Graphique", "")]),
+            "extra": ("Données", [("󰓫", "Trier", ""), ("󰈲", "Filtrer", ""), ("󰘦", "Validation", "")]),
+            "tools": ("Outils", [("󰍉", "Rechercher", "Ctrl+F"), ("󰒓", "Paramètres", "")]),
+        },
+        "google-drive": {
+            "file": ("Drive", [("󰝒", "Nouveau", ""), ("󰉋", "Ouvrir", ""), ("󰈙", "Téléverser", "")]),
+            "extra": ("Nouveau", [("󰈔", "Dossier", ""), ("󰈙", "Importer", ""), ("󰉉", "Document", "")]),
+            "tools": ("Outils", [("󰍉", "Rechercher", "/"), ("󰒓", "Paramètres Drive", "")]),
+        },
+        "github": {
+            "file": ("Code", [("󰘬", "Cloner", ""), ("󰌢", "Ouvrir projet Forge", ""), ("󰆍", "Terminal repo", "")]),
+            "view": ("Projet", [("󰊢", "Issues", ""), ("󰘬", "Pull requests", ""), ("󰋚", "Historique", "")]),
+            "extra": ("Pull Request", [("󰘬", "Nouvelle PR", ""), ("󰑭", "Checks", ""), ("󰈙", "Review", "")]),
+            "tools": ("Actions", [("󰐊", "Workflows", ""), ("󰒓", "Settings", "")]),
+        },
+        "figma": {
+            "view": ("Objet", [("󰆏", "Dupliquer", ""), ("󰉿", "Grouper", ""), ("󰘬", "Dégrouper", "")]),
+            "extra": ("Prototype", [("󰐊", "Présenter", ""), ("󰌌", "Lien prototype", "")]),
+            "tools": ("Dev Mode", [("󰆍", "Inspecter", ""), ("󰈙", "Exporter assets", "")]),
+        },
+        "notion": {
+            "file": ("Page", [("󰝒", "Nouvelle page", ""), ("󰆏", "Dupliquer", ""), ("󰈙", "Exporter", "")]),
+            "extra": ("Base", [("󰉸", "Table", ""), ("󰃭", "Calendrier", ""), ("󰈲", "Filtrer", "")]),
+            "tools": ("Outils", [("󰍉", "Rechercher", "Ctrl+P"), ("󰒓", "Paramètres", "")]),
+        },
+    }
+    service_spec = specs.get(service, {})
+    if area in service_spec:
+        return service_spec[area]
+    return None
+
+
+def items_for(area: str, mode: str, key: str = "generic", service: str = "") -> tuple[str, list[tuple[str, str, str]]]:
+    return shared_items_for(area, mode, key, service)
+    service_spec = service_items(area, service)
+    if service_spec:
+        return service_spec
+    if key in {"chrome", "chromium", "firefox"}:
+        browser_titles = {
+            "file": "Onglets" if key in {"chrome", "chromium"} else "Fichier",
+            "edit": "Édition",
+            "view": "Affichage",
+            "extra": "Historique",
+            "tools": "Marque-pages" if key == "firefox" else "Favoris",
+            "window": "Fenêtre",
+            "help": "Aide",
+        }
+        if area == "extra":
+            return "Historique", [("󰋚", "Historique", "Ctrl+H"), ("󰉍", "Téléchargements", "Ctrl+J"), ("󰀂", "Barre d'adresse", "Ctrl+L")]
+        if area == "tools":
+            title = browser_titles["tools"]
+            return title, [("󰃀", title, "Ctrl+Shift+O"), ("󰆤", "Ajouter cette page", "Ctrl+D"), ("󰈙", "Importer", "")]
+        if area == "file" and key in {"chrome", "chromium"}:
+            return "Onglets", [
+                ("󰝒", "Nouvel onglet", "Ctrl+T"),
+                ("󰈔", "Nouvelle fenêtre", "Ctrl+N"),
+                ("󰈹", "Fenêtre privée", "Ctrl+Shift+N"),
+                ("󰑖", "Rouvrir l'onglet fermé", "Ctrl+Shift+T"),
+                ("󰓩", "Onglet suivant", "Ctrl+Tab"),
+                ("󰓪", "Onglet précédent", "Ctrl+Shift+Tab"),
+                ("󰅖", "Fermer l'onglet", "Ctrl+W"),
+            ]
+        if area == "view":
+            return browser_titles["view"], [("󰑓", "Recharger", "Ctrl+R"), ("󰍉", "Zoom avant", "Ctrl++"), ("󰍉", "Zoom arrière", "Ctrl+-"), ("󰾆", "Taille réelle", "Ctrl+0"), ("󰙨", "Outils développeur", "Ctrl+Shift+I")]
+    if key == "vscode":
+        if area == "view":
+            return "Sélection", [("󰒆", "Tout sélectionner", "Ctrl+A"), ("󰉿", "Étendre sélection", ""), ("󰘬", "Réduire sélection", "")]
+        if area == "extra":
+            return "Affichage", [("󰕰", "Palette commandes", "Ctrl+Shift+P"), ("󰍉", "Rechercher", "Ctrl+F"), ("󰊓", "Plein écran", "F11")]
+        if area == "tools":
+            return "Terminal", [("󰆍", "Nouveau terminal", "Ctrl+Shift+`"), ("󰒓", "Terminal doctor", ""), ("󰌢", "Projet Forge", "")]
+    if key == "kitty" or mode == "terminal":
+        if area == "tools":
+            return "Session", [("󰁯", "Restaurer session", ""), ("󰈔", "Nouvelle fenêtre", "Ctrl+Shift+N"), ("󰅖", "Fermer session", "")]
+    if key == "seven-files":
+        if area == "tools":
+            return "Actions", [("󰉋", "Seven Files Home", ""), ("󰉋", "Seven Files profil", ""), ("󰈙", "Exporter sélection", "")]
+    if key in {"vlc", "spotify"}:
+        if area == "tools":
+            return "Audio", [("󰕾", "Volume", ""), ("󰝟", "Muet", ""), ("󰊓", "Plein écran", "F11")]
+    if area == "file":
+        if mode == "terminal":
+            return "Shell", [
+                ("󰆍", "Nouvel onglet", "Ctrl+Shift+T"),
+                ("󰈔", "Nouvelle fenêtre", "Ctrl+Shift+N"),
+                ("󰒓", "Terminal doctor", ""),
+                ("󰅖", "Fermer", "Ctrl+Shift+W"),
+            ]
+        if mode == "media":
+            return "Lecture", [
+                ("󰐊", "Lecture / pause", "Space"),
+                ("󰒮", "Précédent", ""),
+                ("󰒭", "Suivant", ""),
+                ("󰊓", "Plein écran", "F11"),
+            ]
+        return "Fichier", [
+            ("󰝒", "Nouvel onglet", "Ctrl+T"),
+            ("󰈔", "Nouvelle fenêtre", "Ctrl+N"),
+            ("󰈹", "Nouvelle fenêtre privée", "Ctrl+Shift+N"),
+            ("󰉋", "Ouvrir", "Ctrl+O"),
+            ("󰆓", "Enregistrer", "Ctrl+S"),
+            ("󰐪", "Imprimer", "Ctrl+P"),
+            ("󰅖", "Fermer", "Ctrl+W"),
+        ]
+    if area == "edit":
+        return "Édition", [
+            ("󰕌", "Annuler", "Ctrl+Z"),
+            ("󰑎", "Rétablir", "Ctrl+Shift+Z"),
+            ("󰅚", "Couper", "Ctrl+X"),
+            ("󰆏", "Copier", "Ctrl+C"),
+            ("󰆒", "Coller", "Ctrl+V"),
+            ("󰒆", "Tout sélectionner", "Ctrl+A"),
+            ("󰍉", "Rechercher", "Ctrl+F"),
+        ]
+    if area == "view":
+        items = [
+            ("󰑓", "Recharger", "Ctrl+R"),
+            ("󰍉", "Zoom avant", "Ctrl++"),
+            ("󰍉", "Zoom arrière", "Ctrl+-"),
+            ("󰾆", "Taille réelle", "Ctrl+0"),
+            ("󰊓", "Plein écran", "F11"),
+        ]
+        if mode in {"developer", "browser"}:
+            items.append(("󰙨", "Outils développeur", "Ctrl+Shift+I"))
+        title = {
+            "developer": "Sélection",
+            "files": "Présentation",
+            "documents": "Présentation",
+            "shield": "Audit",
+            "windows": "Bridge",
+            "baobab": "Collections",
+        }.get(mode, "Affichage")
+        return title, items
+    if area == "extra":
+        mapping = {
+            "browser": ("Historique", [("󰋚", "Historique", "Ctrl+H"), ("󰉍", "Téléchargements", "Ctrl+J"), ("󰀂", "Barre d'adresse", "Ctrl+L")]),
+            "developer": ("Terminal", [("󰆍", "Palette terminal", ""), ("󰒓", "Terminal doctor", ""), ("󰌢", "Projet Forge", "")]),
+            "terminal": ("Profils", [("󰗀", "Profil terminal", ""), ("󰆍", "Palette terminal", ""), ("󰒓", "Terminal doctor", "")]),
+            "documents": ("Outils", [("󰈙", "Exporter", ""), ("󰐪", "Imprimer", "Ctrl+P"), ("󰍉", "Rechercher", "Ctrl+F")]),
+            "media": ("Contrôles", [("󰐊", "Lecture / pause", "Space"), ("󰝚", "Avancer", ""), ("󰝙", "Reculer", "")]),
+            "forge": ("Forge", [("󰌢", "Projet Forge", ""), ("󰆍", "Palette terminal", "")]),
+            "files": ("Aller", [("󰉋", "Seven Files Home", ""), ("󰉋", "Seven Files profil", "")]),
+            "studio": ("Export", [("󰈙", "Exports Studio", "")]),
+            "shield": ("Sandbox", [("󰒃", "Shield Center", ""), ("󰛵", "Sandbox Shield", "")]),
+            "windows": ("Windows", [("󰖳", "Windows Assistant", ""), ("󰿭", "Windows Apps", "")]),
+            "pulse": ("Jeux", [("󰓅", "Jeux Pulse", "")]),
+            "baobab": ("Collections", [("󰔱", "Collections Baobab", "")]),
+        }
+        return mapping.get(mode, ("Actions", [("󰍉", "Rechercher", "Ctrl+F"), ("󰊓", "Plein écran", "F11")]))
+    if area == "tools":
+        mapping = {
+            "browser": ("Favoris", [("󰃀", "Favoris", ""), ("󰆤", "Ajouter", "Ctrl+D")]),
+            "developer": ("Terminal", [("󰆍", "Nouveau terminal", ""), ("󰒓", "Terminal doctor", "")]),
+            "terminal": ("Session", [("󰁯", "Restaurer session", ""), ("󰈔", "Nouvelle fenêtre", "")]),
+            "files": ("Actions", [("󰉋", "Home", ""), ("󰈙", "Exporter", "")]),
+            "documents": ("Export", [("󰈙", "Exporter", ""), ("󰐪", "Imprimer", "Ctrl+P")]),
+            "media": ("Audio", [("󰕾", "Volume", ""), ("󰝟", "Muet", "")]),
+            "shield": ("Audit", [("󰒃", "Shield Center", ""), ("󰛵", "Audit rapide", "")]),
+            "windows": ("Apps", [("󰿭", "Windows Apps", ""), ("󰖳", "Assistant", "")]),
+        }
+        return mapping.get(mode, ("Actions", [("󰍉", "Rechercher", "Ctrl+F")]))
+    if area == "window":
+        return "Fenêtre", [
+            ("󰖲", "Contrôles fenêtre", ""),
+            ("󰉌", "Centrer", ""),
+            ("󰹑", "Flottante", ""),
+            ("󰤼", "Split gauche", ""),
+            ("󰤽", "Split droite", ""),
+            ("󰅖", "Fermer", "Ctrl+W"),
+        ]
+    return "Aide", [("󰋖", "Aide app active", "F1"), ("󰋖", "Aide SevenOS", "")]
+
+
+def run_action(label: str, address: str) -> None:
+    env = os.environ.copy()
+    if address:
+        env["SEVENOS_TARGET_WINDOW_ADDRESS"] = address
+    subprocess.Popen(
+        [str(ROOT / "bin/seven-waybar-action"), "app-command", label],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def request_payload() -> dict:
+    try:
+        return json.loads(REQUEST_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def write_status() -> None:
+    try:
+        STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        STATUS_FILE.write_text(
+            json.dumps(
+                {
+                    "pid": os.getpid(),
+                    "engine": ENGINE_VERSION,
+                    "script": str(Path(__file__).resolve()),
+                },
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+
+def clear_status() -> None:
+    try:
+        payload = json.loads(STATUS_FILE.read_text(encoding="utf-8"))
+        if int(payload.get("pid") or 0) == os.getpid():
+            STATUS_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def probe() -> int:
+    try:
+        import gi  # noqa: F401
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception:
+        return 1
+    return 0
+
+
+if "--probe" in sys.argv:
+    raise SystemExit(probe())
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+from gi.repository import Gdk, GLib, Gtk, Pango
+from gi.repository import PangoCairo
+
+
+CSS = """
+window.seven-app-menu {
+  background-color: transparent;
+}
+.panel {
+  background: rgba(16, 18, 26, 0.955);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.42);
+}
+.header {
+  padding: 12px 14px 9px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+}
+.accent {
+  min-height: 2px;
+  background: linear-gradient(90deg, rgba(74, 163, 255, 0.90), rgba(0, 212, 255, 0.10));
+}
+.title {
+  color: #ffffff;
+  font-family: "SF Pro Text", "Inter", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+.subtitle {
+  color: rgba(235, 241, 250, 0.56);
+  font-family: "SF Pro Text", "Inter", sans-serif;
+  font-size: 11px;
+}
+.items {
+  padding: 6px 6px 7px 6px;
+}
+.row {
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: transparent;
+  border: 1px solid transparent;
+}
+.row:hover,
+.row:focus,
+.row.selected {
+  background: rgba(255, 255, 255, 0.135);
+  border-color: rgba(255, 255, 255, 0.075);
+}
+.icon {
+  color: rgba(126, 206, 255, 0.92);
+  font-family: "Symbols Nerd Font", "SF Pro Text", sans-serif;
+  font-size: 16px;
+}
+.label {
+  color: rgba(247, 249, 252, 0.92);
+  font-family: "SF Pro Text", "Inter", sans-serif;
+  font-size: 12px;
+}
+.shortcut {
+  color: rgba(234, 240, 250, 0.45);
+  font-family: "SF Mono", "JetBrainsMono Nerd Font", monospace;
+  font-size: 11px;
+}
+"""
+
+
+def rgba(hex_color: str, alpha: float = 1.0) -> Gdk.RGBA:
+    color = Gdk.RGBA()
+    color.parse(hex_color)
+    color.alpha = alpha
+    return color
+
+
+def style_label(label: Gtk.Label, color: Gdk.RGBA, font: str) -> Gtk.Label:
+    label.override_color(Gtk.StateFlags.NORMAL, color)
+    label.override_font(Pango.FontDescription(font))
+    return label
+
+
+class AppMenu(Gtk.Window):
+    def __init__(self, area: str):
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        write_status()
+        atexit.register(clear_status)
+        self.current_area = area
+        self.last_request_time = ""
+        self.window = active_window()
+        self.address = str(self.window.get("address") or "")
+        self.mode = context_mode(self.window)
+        self.app_key = app_key(self.window)
+        self.service = service_key(self.window, self.app_key)
+        self.title, self.items = items_for(area, self.mode, self.app_key, self.service)
+        self.pointer_inside = True
+        self.close_source = 0
+        self.selected_index = 0
+        self.hover_index = -1
+        self.canvas: Gtk.DrawingArea | None = None
+        self.set_name("seven-app-menu-native")
+        self.set_title("App Menu")
+        self.set_wmclass("seven-app-menu-native", "seven-app-menu-native")
+        self.set_app_paintable(False)
+        self.get_style_context().add_class("seven-app-menu")
+        self.set_decorated(False)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_keep_above(True)
+        self.set_resizable(False)
+        self.set_type_hint(Gdk.WindowTypeHint.UTILITY)
+        self.panel_height = max(142, 58 + (len(self.items) * 36))
+        self.set_default_size(336, self.panel_height)
+        self.set_size_request(336, self.panel_height)
+        self.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK | Gdk.EventMask.KEY_PRESS_MASK)
+        self.connect("key-press-event", self.on_key)
+        self.connect("enter-notify-event", self.on_enter)
+        self.connect("leave-notify-event", self.on_leave)
+        self.build()
+        self.place(area)
+        GLib.timeout_add(80, self.place_after_map)
+        GLib.timeout_add(90, self.poll_request)
+
+    def build(self) -> None:
+        self.canvas = Gtk.DrawingArea()
+        self.canvas.set_size_request(336, self.panel_height)
+        self.canvas.add_events(
+            Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.POINTER_MOTION_MASK
+            | Gdk.EventMask.LEAVE_NOTIFY_MASK
+        )
+        self.canvas.connect("draw", self.on_draw)
+        self.canvas.connect("motion-notify-event", self.on_motion)
+        self.canvas.connect("button-press-event", self.on_button)
+        self.canvas.connect("leave-notify-event", self.on_canvas_leave)
+        self.add(self.canvas)
+
+    def populate_items(self) -> None:
+        self.selected_index = 0
+        self.hover_index = -1
+        self.panel_height = max(142, 58 + (len(self.items) * 36))
+        self.set_default_size(336, self.panel_height)
+        self.set_size_request(336, self.panel_height)
+        if self.canvas is not None:
+            self.canvas.set_size_request(336, self.panel_height)
+            self.canvas.queue_draw()
+
+    def rounded_rect(self, cr, x: float, y: float, width: float, height: float, radius: float) -> None:
+        cr.new_sub_path()
+        cr.arc(x + width - radius, y + radius, radius, -1.5708, 0)
+        cr.arc(x + width - radius, y + height - radius, radius, 0, 1.5708)
+        cr.arc(x + radius, y + height - radius, radius, 1.5708, 3.14159)
+        cr.arc(x + radius, y + radius, radius, 3.14159, 4.71239)
+        cr.close_path()
+
+    def draw_text(self, cr, text: str, x: int, y: int, width: int, font: str, color: tuple[float, float, float, float]) -> None:
+        layout = self.create_pango_layout(text)
+        layout.set_width(width * Pango.SCALE)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        layout.set_font_description(Pango.FontDescription(font))
+        cr.set_source_rgba(*color)
+        cr.move_to(x, y)
+        PangoCairo.show_layout(cr, layout)
+
+    def on_draw(self, _widget, cr) -> bool:
+        width = 336
+        height = self.panel_height
+        cr.set_source_rgb(0.055, 0.065, 0.090)
+        cr.paint()
+
+        self.rounded_rect(cr, 1, 1, width - 2, height - 2, 14)
+        cr.set_source_rgb(0.055, 0.065, 0.090)
+        cr.fill_preserve()
+        cr.set_source_rgba(0.72, 0.92, 1.0, 0.72)
+        cr.set_line_width(1.0)
+        cr.stroke()
+
+        self.draw_text(cr, self.title, 16, 12, 210, "SF Pro Text SemiBold 13", (1, 1, 1, 0.96))
+        subtitle = str(self.window.get("title") or "Application active")[:72]
+        self.draw_text(cr, subtitle, 16, 31, 300, "SF Pro Text 11", (0.88, 0.92, 0.98, 0.58))
+
+        cr.set_source_rgba(0.30, 0.72, 1.0, 0.85)
+        cr.rectangle(16, 51, 78, 2)
+        cr.fill()
+        cr.set_source_rgba(1, 1, 1, 0.08)
+        cr.rectangle(1, 56, width - 2, 1)
+        cr.fill()
+
+        for index, (icon_text, label_text, shortcut_text) in enumerate(self.items):
+            y = 64 + index * 34
+            active = index == self.selected_index or index == self.hover_index
+            if active:
+                self.rounded_rect(cr, 8, y - 1, width - 16, 30, 9)
+                cr.set_source_rgba(1, 1, 1, 0.13)
+                cr.fill_preserve()
+                cr.set_source_rgba(1, 1, 1, 0.08)
+                cr.set_line_width(1)
+                cr.stroke()
+            self.draw_text(cr, icon_text, 17, y + 5, 24, "Symbols Nerd Font 16", (0.49, 0.81, 1.0, 0.95))
+            self.draw_text(cr, label_text, 48, y + 6, 190, "SF Pro Text 12", (0.97, 0.98, 1.0, 0.94))
+            if shortcut_text:
+                self.draw_text(cr, shortcut_text, 238, y + 7, 80, "SF Mono 11", (0.88, 0.92, 0.98, 0.50))
+        return False
+
+    def item_at(self, y: float) -> int:
+        index = int((y - 64) // 34)
+        if 0 <= index < len(self.items):
+            return index
+        return -1
+
+    def on_motion(self, _widget, event) -> bool:
+        index = self.item_at(event.y)
+        if index != self.hover_index:
+            self.hover_index = index
+            if index >= 0:
+                self.selected_index = index
+            if self.canvas is not None:
+                self.canvas.queue_draw()
+        return False
+
+    def on_button(self, _widget, event) -> bool:
+        index = self.item_at(event.y)
+        if index >= 0:
+            _icon_text, label_text, _shortcut_text = self.items[index]
+            self.activate(label_text)
+            return True
+        return False
+
+    def on_canvas_leave(self, *_args) -> bool:
+        self.hover_index = -1
+        if self.canvas is not None:
+            self.canvas.queue_draw()
+        return False
+
+    def update_area(self, area: str) -> None:
+        if area not in {"file", "edit", "view", "extra", "tools", "window", "help"}:
+            return
+        self.current_area = area
+        self.window = active_window()
+        self.address = str(self.window.get("address") or "")
+        self.mode = context_mode(self.window)
+        self.app_key = app_key(self.window)
+        self.service = service_key(self.window, self.app_key)
+        self.title, self.items = items_for(area, self.mode, self.app_key, self.service)
+        self.populate_items()
+        self.place(area)
+        self.present()
+        self.show_all()
+
+    def poll_request(self) -> bool:
+        payload = request_payload()
+        stamp = str(payload.get("time") or "")
+        area = str(payload.get("area") or "")
+        if stamp and stamp != self.last_request_time:
+            self.last_request_time = stamp
+            self.pointer_inside = True
+            if self.close_source:
+                GLib.source_remove(self.close_source)
+                self.close_source = 0
+            self.update_area(area)
+        return True
+
+    def place(self, area: str) -> None:
+        offsets = {"file": 260, "edit": 316, "view": 382, "extra": 472, "tools": 568, "window": 638, "help": 708}
+        x = offsets.get(area, 260)
+        y = 32
+        try:
+            display = Gdk.Display.get_default()
+            seat = display.get_default_seat() if display else None
+            pointer = seat.get_pointer() if seat else None
+            screen, pointer_x, _pointer_y = pointer.get_position() if pointer else (None, x, y)
+            monitor = screen.get_monitor_geometry(screen.get_monitor_at_point(pointer_x, y)) if screen else None
+            if monitor:
+                x = max(monitor.x + 8, min(pointer_x - 44, monitor.x + monitor.width - 352))
+        except Exception:
+            pass
+        self.move(x, y)
+
+    def place_after_map(self) -> bool:
+        self.place(self.current_area)
+        if self.canvas is not None:
+            self.canvas.queue_draw()
+        return False
+
+    def activate(self, label: str) -> None:
+        run_action(label, self.address)
+        self.close()
+
+    def select_index(self, index: int) -> None:
+        if not self.items:
+            return
+        self.selected_index = index % len(self.items)
+        if self.canvas is not None:
+            self.canvas.queue_draw()
+
+    def on_enter(self, *_args) -> bool:
+        self.pointer_inside = True
+        if self.close_source:
+            GLib.source_remove(self.close_source)
+            self.close_source = 0
+        return False
+
+    def on_leave(self, *_args) -> bool:
+        self.pointer_inside = False
+        return False
+
+    def close_if_outside(self) -> bool:
+        self.close_source = 0
+        if not self.pointer_inside:
+            self.close()
+        return False
+
+    def on_key(self, _window, event) -> bool:
+        if event.keyval == Gdk.KEY_Escape:
+            self.close()
+            return True
+        if event.keyval in {Gdk.KEY_Down, Gdk.KEY_j}:
+            self.select_index(self.selected_index + 1)
+            return True
+        if event.keyval in {Gdk.KEY_Up, Gdk.KEY_k}:
+            self.select_index(self.selected_index - 1)
+            return True
+        if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space} and self.items:
+            icon_text, label_text, _shortcut_text = self.items[self.selected_index]
+            self.activate(label_text)
+            return True
+        return False
+
+
+def main() -> int:
+    app = AppMenu(AREA)
+    app.show_all()
+    app.present()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

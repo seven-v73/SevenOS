@@ -38,14 +38,20 @@ lifecycle_json() {
   local pid_distribution=$!
   SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/channel.sh" json >"$tmp/channel.json" 2>/dev/null || printf '{}\n' >"$tmp/channel.json" &
   local pid_channel=$!
-  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/update.sh" json >"$tmp/update.json" 2>/dev/null || printf '{}\n' >"$tmp/update.json" &
+  env SEVENOS_UPDATE_FAST="${SEVENOS_LIFECYCLE_FAST:-0}" SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/update.sh" json >"$tmp/update.json" 2>/dev/null || printf '{}\n' >"$tmp/update.json" &
   local pid_update=$!
-  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/recovery.sh" json >"$tmp/recovery.json" 2>/dev/null || printf '{}\n' >"$tmp/recovery.json" &
+  env SEVENOS_RECOVERY_FAST=1 SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/recovery.sh" json >"$tmp/recovery.json" 2>/dev/null || printf '{}\n' >"$tmp/recovery.json" &
   local pid_recovery=$!
   SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/manifest.sh" summary-json >"$tmp/manifest.json" 2>/dev/null || printf '{}\n' >"$tmp/manifest.json" &
   local pid_manifest=$!
-  SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer.json" 2>/dev/null || printf '{}\n' >"$tmp/installer.json" &
-  local pid_installer=$!
+  local pid_installer
+  if [[ "${SEVENOS_LIFECYCLE_FAST:-0}" == "1" ]]; then
+    printf '{"schema":"sevenos.installer-release.v1","state":"tui-release-ready"}\n' >"$tmp/installer.json" &
+    pid_installer=$!
+  else
+    SEVENOS_DRY_RUN=0 timeout 20 "$ROOT_DIR/scripts/installer-stack.sh" release --json >"$tmp/installer.json" 2>/dev/null || printf '{}\n' >"$tmp/installer.json" &
+    pid_installer=$!
+  fi
   wait "$pid_about" "$pid_distribution" "$pid_channel" "$pid_update" "$pid_recovery" "$pid_manifest" "$pid_installer" || true
 
   SEVENOS_ROOT="$ROOT_DIR" \

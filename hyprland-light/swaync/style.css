@@ -41,9 +41,23 @@
 }
 
 .close-button {
+  min-width: 24px;
+  min-height: 24px;
+  margin: 6px;
+  padding: 0;
   background: rgba(28, 31, 38, 0.06);
+  border: 1px solid rgba(28, 31, 38, 0.11);
   border-radius: 999px;
   color: rgba(28, 31, 38, 0.88);
+  opacity: 1;
+}
+
+.close-button image,
+.close-button label {
+  color: rgba(28, 31, 38, 0.94);
+  opacity: 1;
+  -gtk-icon-size: 14px;
+  font-size: 15px;
 }
 
 .control-center-clear-all,
@@ -56,6 +70,7 @@
 .control-center-clear-all:hover,
 .close-button:hover {
   background: rgba(47, 123, 255, 0.14);
+  border-color: rgba(47, 123, 255, 0.28);
 }
 
 .widget-title {

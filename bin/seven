@@ -596,6 +596,21 @@ def handle_runtime(args):
     run_script(args, "scripts/runtime-orchestrator.sh", *extra)
 
 
+def handle_profile_rootfs(args):
+    extra = [args.action]
+    if args.profile:
+        extra.append(args.profile)
+    if args.rootfs_command:
+        extra.extend(args.rootfs_command)
+    if args.json:
+        extra.append("--json")
+    if args.apply:
+        extra.append("--apply")
+    if args.yes:
+        extra.append("--yes")
+    run([str(ROOT_DIR / "bin" / "seven-profile-rootfs"), *extra], args)
+
+
 def handle_window(args):
     extra = [args.action, *args.extra]
     if args.json and args.action in {"status", "json"}:
@@ -632,7 +647,17 @@ def handle_motion(args):
 
 
 def handle_experience(args):
-    extra = ["--json"] if args.json else []
+    json_requested = args.json or "--json" in args.extra
+    extra_args = [item for item in args.extra if item != "--json"]
+    if args.action in {"status", "apply", "doctor", "launch", "focus", "workspace", "notify", "warmup", "events", "recommend", "score", "json"}:
+        extra = [args.action, *extra_args]
+        if json_requested and args.action in {"status", "json"}:
+            extra = ["status", "--json"]
+        elif json_requested:
+            extra.append("--json")
+        run_script(args, "scripts/shell-experience.sh", *extra)
+        return
+    extra = ["--json"] if json_requested else []
     run_script(args, "scripts/experience.sh", *extra)
 
 
@@ -743,6 +768,26 @@ def handle_primary(args):
         print(json.dumps(payload, indent=2))
     else:
         print_primary_human(payload)
+
+
+def handle_setup(args):
+    extra = []
+    if args.yes:
+        extra.append("--yes")
+    if args.optional:
+        extra.append("--optional")
+    if args.rootfs:
+        extra.append("--rootfs")
+    run_script(args, "scripts/new-device.sh", *extra)
+
+
+def handle_new(args):
+    extra = ["--yes"]
+    if args.optional:
+        extra.append("--optional")
+    if args.rootfs:
+        extra.append("--rootfs")
+    run_script(args, "scripts/new-device.sh", *extra)
 
 
 def handle_architecture(args):
@@ -866,6 +911,8 @@ def main():
     support_parser = subparsers.add_parser("support", help="create local-first SevenOS support diagnostics")
     support_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "bundle", "json"))
     support_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS support contract")
+    pre_push_parser = subparsers.add_parser("pre-push", help="run the fast SevenOS pre-push gate")
+    pre_push_parser.add_argument("action", nargs="?", default="fast", choices=("fast", "full"))
     welcome_parser = subparsers.add_parser("welcome", help="show SevenOS onboarding overview")
     welcome_parser.add_argument("action", nargs="?", default="show", choices=("show", "status", "plan"))
     welcome_parser.add_argument("--json", action="store_true", help="print machine-readable first-run status or plan")
@@ -921,6 +968,13 @@ def main():
     runtime_parser.add_argument("--json", action="store_true", help="print machine-readable runtime orchestration state")
     runtime_parser.add_argument("--apply", action="store_true", help="save an activated composite runtime")
     runtime_parser.add_argument("--yes", action="store_true", help="confirm safe non-root runtime state updates")
+    rootfs_parser = subparsers.add_parser("profile-rootfs", help="prepare or build real per-mini-OS rootfs boundaries")
+    rootfs_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "prepare", "build", "exec", "doctor", "audit", "seal", "verify"))
+    rootfs_parser.add_argument("profile", nargs="?")
+    rootfs_parser.add_argument("rootfs_command", nargs=argparse.REMAINDER)
+    rootfs_parser.add_argument("--json", action="store_true", help="print machine-readable rootfs state")
+    rootfs_parser.add_argument("--apply", action="store_true", help="create rootfs metadata or run the build command")
+    rootfs_parser.add_argument("--yes", action="store_true", help="confirm non-interactive rootfs actions")
     mini_os_parser = subparsers.add_parser("mini-os", help="inspect or activate explicit mini OS capability collaboration")
     mini_os_parser.add_argument("action", nargs="?", default="status", choices=("status", "suggest", "plan", "activate"))
     mini_os_parser.add_argument("items", nargs="*", help="primary mini OS and optional borrowed capability profiles")
@@ -971,7 +1025,9 @@ def main():
     motion_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "doctor", "ux-doctor", "profile", "set", "apply", "premium", "balanced", "reduced", "latency", "off"))
     motion_parser.add_argument("extra", nargs=argparse.REMAINDER)
     motion_parser.add_argument("--json", action="store_true", help="print machine-readable motion state")
-    experience_parser = subparsers.add_parser("experience", help="audit whether SevenOS feels like a coherent OS")
+    experience_parser = subparsers.add_parser("experience", help="inspect or apply the coherent SevenOS shell experience")
+    experience_parser.add_argument("action", nargs="?", default="audit", choices=("audit", "status", "json", "score", "apply", "doctor", "launch", "focus", "workspace", "notify", "warmup", "events", "recommend"))
+    experience_parser.add_argument("extra", nargs=argparse.REMAINDER)
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
     control_parser = subparsers.add_parser("control", help="show prioritized SevenOS control plane actions")
     control_parser.add_argument("action", nargs="?", default="plan", choices=("plan", "apply"))
@@ -1021,6 +1077,14 @@ def main():
     primary_parser = subparsers.add_parser("primary", help="inspect or apply SevenOS primary-PC readiness")
     primary_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "apply"))
     primary_parser.add_argument("--json", action="store_true", help="print machine-readable primary-PC gate")
+    setup_parser = subparsers.add_parser("setup", help="prepare a fresh SevenOS device ergonomically")
+    setup_parser.add_argument("action", nargs="?", default="new-device", choices=("new-device", "fresh-device", "first-boot"))
+    setup_parser.add_argument("--yes", action="store_true", help="run package installs non-interactively")
+    setup_parser.add_argument("--optional", action="store_true", help="include optional mini OS dependencies")
+    setup_parser.add_argument("--rootfs", action="store_true", help="also build all mini OS rootfs images")
+    new_parser = subparsers.add_parser("new", help="one-command fresh machine setup")
+    new_parser.add_argument("--optional", action="store_true", help="include optional mini OS dependencies")
+    new_parser.add_argument("--rootfs", action="store_true", help="also build all mini OS rootfs images")
     actions_parser = subparsers.add_parser("actions", help="show or run SevenOS registered UI/system actions")
     actions_parser.add_argument("action", nargs="?", default="list")
     actions_parser.add_argument("--json", action="store_true", help="print machine-readable action registry")
@@ -1178,6 +1242,11 @@ def main():
         handle_smoke(args)
     elif args.command == "support":
         handle_support(args)
+    elif args.command == "pre-push":
+        if args.action == "full":
+            run_script(args, "scripts/check.sh")
+        else:
+            run_script(args, "scripts/pre-push-fast.sh")
     elif args.command == "welcome":
         handle_welcome(args)
     elif args.command == "dashboard":
@@ -1208,6 +1277,8 @@ def main():
         handle_scheduler(args)
     elif args.command == "runtime":
         handle_runtime(args)
+    elif args.command == "profile-rootfs":
+        handle_profile_rootfs(args)
     elif args.command == "mini-os":
         handle_mini_os(args)
     elif args.command == "bridge":
@@ -1256,6 +1327,10 @@ def main():
         handle_daily(args)
     elif args.command == "primary":
         handle_primary(args)
+    elif args.command == "setup":
+        handle_setup(args)
+    elif args.command == "new":
+        handle_new(args)
     elif args.command == "actions":
         handle_actions(args)
     elif args.command == "spotlight":

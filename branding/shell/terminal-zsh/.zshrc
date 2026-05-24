@@ -8,6 +8,9 @@ export FASTFETCH_DISABLED=1
 if [[ -r "$HOME/.config/sevenos/profile-isolation.env" ]]; then
   source "$HOME/.config/sevenos/profile-isolation.env"
 fi
+if [[ -d "${SEVENOS_PACKAGE_VIEW:-}" && ":$PATH:" != *":$SEVENOS_PACKAGE_VIEW:"* ]]; then
+  export PATH="$SEVENOS_PACKAGE_VIEW:$PATH"
+fi
 if [[ -d "${SEVENOS_PROFILE_SHIMS:-}" && ":$PATH:" != *":$SEVENOS_PROFILE_SHIMS:"* ]]; then
   export PATH="$SEVENOS_PROFILE_SHIMS:$PATH"
 fi
@@ -20,9 +23,21 @@ typeset -g __sevenos_cmd_started=0
 typeset -g __sevenos_last_duration=0
 typeset -g __sevenos_last_command=""
 
+__sevenos_command_warning() {
+  local command="$1"
+  local mode="${SEVENOS_TERMINAL_MODE:-}"
+  [[ "$mode" != "admin" && "$mode" != "cyber" && "$mode" != "shield" ]] && return 0
+  case "$command" in
+    *"rm -rf"*|*"dd if="*|*"mkfs."*|*"chmod -R"*|*"chown -R"*|*"iptables"*|*"nft"*|*"ufw"*)
+      printf '\e[38;2;255;155;112m[SevenOS:%s] risky command: review target, permissions and profile scope.\e[0m\n' "${(C)mode}" >&2
+      ;;
+  esac
+}
+
 preexec() {
   __sevenos_cmd_started="$EPOCHSECONDS"
   __sevenos_last_command="$1"
+  __sevenos_command_warning "$1"
 }
 
 __sevenos_git_branch() {
@@ -59,6 +74,12 @@ __sevenos_terminal_mode() {
     cyber) print -n Cyber; return ;;
     focus) print -n Focus; return ;;
     admin) print -n Admin; return ;;
+    windows) print -n Windows; return ;;
+    shield) print -n Cyber; return ;;
+    studio|baobab) print -n Focus; return ;;
+    dark) [[ "${SEVENOS_ACTIVE_PROFILE:-}" == "pulse" ]] && print -n Pulse || print -n Classic; return ;;
+    pulse) print -n Pulse; return ;;
+    equinox|classic|light) print -n Classic; return ;;
   esac
   if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
     print -n Admin
@@ -91,6 +112,8 @@ precmd() {
     Admin) mode_color=209 ;;
     Forge) mode_color=39 ;;
     Focus) mode_color=105 ;;
+    Windows) mode_color=117 ;;
+    Pulse) mode_color=177 ;;
     *) mode_color=45 ;;
   esac
   git_info="$(__sevenos_git_branch)"

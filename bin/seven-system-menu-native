@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""Native SevenOS system menu for the Waybar brand button."""
+
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def probe() -> int:
+    try:
+        import gi  # noqa: F401
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("PangoCairo", "1.0")
+    except Exception:
+        return 1
+    return 0
+
+
+if "--probe" in sys.argv:
+    raise SystemExit(probe())
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("PangoCairo", "1.0")
+from gi.repository import Gdk, Gtk, Pango, PangoCairo
+
+
+ROWS = [
+    ("poweroff", "⏻", "Éteindre", "Arrêter SevenOS"),
+    ("reboot", "↻", "Redémarrer", "Relancer la session"),
+    ("update", "⇣", "Mise à jour", "Mettre SevenOS à jour"),
+]
+
+
+def run_action(action: str) -> None:
+    if action == "poweroff":
+        command = [str(ROOT / "bin/seven-power"), "poweroff"]
+    elif action == "reboot":
+        command = [str(ROOT / "bin/seven-power"), "reboot"]
+    else:
+        if (ROOT / "bin/seven-terminal").exists():
+            command = [
+                str(ROOT / "bin/seven-terminal"),
+                "focus",
+                "--",
+                "bash",
+                "-lc",
+                "seven update; printf '\\nEntrée pour fermer...'; read -r",
+            ]
+        else:
+            command = [str(ROOT / "bin/seven"), "update"]
+    subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+class SystemMenu(Gtk.Window):
+    def __init__(self) -> None:
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.set_title("SevenOS Menu")
+        self.set_wmclass("seven-system-menu-native", "seven-system-menu-native")
+        self.set_decorated(False)
+        self.set_keep_above(True)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_resizable(False)
+        self.set_type_hint(Gdk.WindowTypeHint.UTILITY)
+        self.width = 286
+        self.height = 166
+        self.hover = -1
+        self.selected = 0
+        self.confirm_action = ""
+        self.confirm_until = 0.0
+        self.canvas = Gtk.DrawingArea()
+        self.canvas.set_size_request(self.width, self.height)
+        self.canvas.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self.canvas.connect("draw", self.on_draw)
+        self.canvas.connect("motion-notify-event", self.on_motion)
+        self.canvas.connect("button-press-event", self.on_button)
+        self.canvas.connect("leave-notify-event", self.on_leave)
+        self.add(self.canvas)
+        self.connect("key-press-event", self.on_key)
+        self.set_size_request(self.width, self.height)
+        self.place()
+
+    def place(self) -> None:
+        x, y = 12, 32
+        try:
+            display = Gdk.Display.get_default()
+            seat = display.get_default_seat() if display else None
+            pointer = seat.get_pointer() if seat else None
+            screen, pointer_x, _pointer_y = pointer.get_position() if pointer else (None, x, y)
+            if screen:
+                monitor = screen.get_monitor_geometry(screen.get_monitor_at_point(pointer_x, y))
+                x = max(monitor.x + 8, min(pointer_x - 24, monitor.x + monitor.width - self.width - 8))
+        except Exception:
+            pass
+        self.move(x, y)
+
+    def rounded_rect(self, cr, x: float, y: float, w: float, h: float, r: float) -> None:
+        cr.new_sub_path()
+        cr.arc(x + w - r, y + r, r, -1.5708, 0)
+        cr.arc(x + w - r, y + h - r, r, 0, 1.5708)
+        cr.arc(x + r, y + h - r, r, 1.5708, 3.14159)
+        cr.arc(x + r, y + r, r, 3.14159, 4.71239)
+        cr.close_path()
+
+    def draw_text(self, cr, text: str, x: int, y: int, width: int, font: str, color: tuple[float, float, float, float]) -> None:
+        layout = self.create_pango_layout(text)
+        layout.set_width(width * Pango.SCALE)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        layout.set_font_description(Pango.FontDescription(font))
+        cr.set_source_rgba(*color)
+        cr.move_to(x, y)
+        PangoCairo.show_layout(cr, layout)
+
+    def on_draw(self, _widget, cr) -> bool:
+        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.paint()
+        self.rounded_rect(cr, 1, 1, self.width - 2, self.height - 2, 15)
+        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.fill_preserve()
+        cr.set_source_rgba(0.74, 0.88, 1.0, 0.62)
+        cr.set_line_width(1)
+        cr.stroke()
+        self.draw_text(cr, "SevenOS", 16, 12, 120, "SF Pro Text SemiBold 13", (1, 1, 1, 0.94))
+        header = "Confirmer" if self.confirm_action else "Système"
+        self.draw_text(cr, header, 184, 13, 84, "SF Pro Text 11", (0.86, 0.91, 0.98, 0.54))
+        cr.set_source_rgba(0.30, 0.72, 1.0, 0.86)
+        cr.rectangle(16, 35, 64, 2)
+        cr.fill()
+        for index, (_action, icon, label, detail) in enumerate(ROWS):
+            y = 48 + index * 36
+            action = ROWS[index][0]
+            armed = self.confirm_action == action and time.time() < self.confirm_until
+            if index in {self.hover, self.selected}:
+                self.rounded_rect(cr, 8, y - 2, self.width - 16, 32, 9)
+                cr.set_source_rgba(0.35, 0.68, 1.0, 0.18 if armed else 0.12)
+                cr.fill()
+            self.draw_text(cr, icon, 18, y + 5, 24, "SF Pro Text 15", (0.60, 0.82, 1.0, 0.96))
+            self.draw_text(cr, label, 50, y + 3, 112, "SF Pro Text 12", (0.98, 0.99, 1.0, 0.94))
+            row_detail = "Clique encore pour confirmer" if armed else detail
+            color = (0.64, 0.82, 1.0, 0.78) if armed else (0.86, 0.90, 0.98, 0.50)
+            self.draw_text(cr, row_detail, 154, y + 5, 112, "SF Pro Text 11", color)
+        return False
+
+    def item_at(self, y: float) -> int:
+        index = int((y - 48) // 36)
+        return index if 0 <= index < len(ROWS) else -1
+
+    def on_motion(self, _widget, event) -> bool:
+        index = self.item_at(event.y)
+        if index != self.hover:
+            self.hover = index
+            if index >= 0:
+                self.selected = index
+            self.canvas.queue_draw()
+        return False
+
+    def on_button(self, _widget, event) -> bool:
+        index = self.item_at(event.y)
+        if index >= 0:
+            self.activate(index)
+            return True
+        return False
+
+    def on_leave(self, *_args) -> bool:
+        self.hover = -1
+        self.canvas.queue_draw()
+        return False
+
+    def on_key(self, _window, event) -> bool:
+        if event.keyval == Gdk.KEY_Escape:
+            self.close()
+            return True
+        if event.keyval in {Gdk.KEY_Down, Gdk.KEY_j}:
+            self.selected = (self.selected + 1) % len(ROWS)
+            self.canvas.queue_draw()
+            return True
+        if event.keyval in {Gdk.KEY_Up, Gdk.KEY_k}:
+            self.selected = (self.selected - 1) % len(ROWS)
+            self.canvas.queue_draw()
+            return True
+        if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space}:
+            self.activate(self.selected)
+            return True
+        return False
+
+    def activate(self, index: int) -> None:
+        action = ROWS[index][0]
+        if action in {"poweroff", "reboot"}:
+            now = time.time()
+            if self.confirm_action != action or now >= self.confirm_until:
+                self.confirm_action = action
+                self.confirm_until = now + 4.0
+                self.selected = index
+                self.canvas.queue_draw()
+                return
+        run_action(action)
+        self.close()
+
+
+def main() -> int:
+    window = SystemMenu()
+    window.show_all()
+    window.present()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,82 @@
+@theme "sevenos.rasi"
+
+window {
+  location: north;
+  anchor: north;
+  y-offset: 34px;
+  width: 324px;
+  border: 1px;
+  border-color: rgba(255, 255, 255, 0.145);
+  border-radius: 14px;
+  background-color: rgba(18, 20, 28, 0.920);
+}
+
+mainbox {
+  padding: 7px;
+  spacing: 5px;
+  background-color: transparent;
+  children: [ message, listview ];
+}
+
+message {
+  padding: 8px 10px 7px 10px;
+  border: 0px 0px 1px 0px;
+  border-color: rgba(255, 255, 255, 0.075);
+  border-radius: 0px;
+  background-color: transparent;
+}
+
+textbox {
+  text-color: rgba(245, 247, 250, 0.68);
+  font: "SF Pro Text Medium 11";
+}
+
+prompt,
+textbox-prompt-colon {
+  text-color: rgba(113, 203, 255, 0.92);
+  font: "SF Pro Text Semibold 12";
+}
+
+listview {
+  lines: 8;
+  fixed-height: false;
+  scrollbar: false;
+  margin: 0px;
+  spacing: 2px;
+  background-color: transparent;
+}
+
+element {
+  min-height: 27px;
+  padding: 5px 9px;
+  border: 1px;
+  border-color: transparent;
+  border-radius: 7px;
+  background-color: transparent;
+  text-color: rgba(244, 246, 250, 0.88);
+}
+
+element selected {
+  background-color: rgba(255, 255, 255, 0.125);
+  border-color: rgba(255, 255, 255, 0.105);
+  text-color: #FFFFFF;
+}
+
+element alternate {
+  background-color: transparent;
+}
+
+element-text,
+element-icon {
+  text-color: inherit;
+  background-color: transparent;
+}
+
+element-text {
+  font: "SF Pro Text 12";
+}
+
+element-icon {
+  size: 17px;
+  margin: 0 8px 0 0;
+}

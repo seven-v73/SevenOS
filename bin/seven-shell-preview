@@ -64,6 +64,7 @@ printf '=====================\n\n'
 printf 'Surfaces\n'
 probe check_file "Waybar Frost capsule" "$ROOT_DIR/hyprland/waybar/style.css"
 probe check_file "Rofi Launchpad" "$ROOT_DIR/hyprland/rofi/apps.rasi"
+probe check_file "App menu panel" "$ROOT_DIR/hyprland/rofi/app-menu.rasi"
 probe check_file "Quick Settings panel" "$ROOT_DIR/hyprland/rofi/quick-settings.rasi"
 probe check_file "Power panel" "$ROOT_DIR/hyprland/rofi/power.rasi"
 probe check_file "Mako notifications" "$ROOT_DIR/hyprland/mako/config"

@@ -31,6 +31,7 @@ function M.render(context)
   local common_animation_rules = context.common_animation_rules or {}
   local common_keybinds = context.common_keybinds or {}
   local mouse_binds = context.mouse_binds or {}
+  local launchpad_modal_binds = context.launchpad_modal_binds or {}
   local common_window_rules = context.common_window_rules or {}
   local common_workspace_rules = context.common_workspace_rules or {}
   local out = {}
@@ -54,6 +55,7 @@ function M.render(context)
   emit_list(out, "# Profile animation rules", profile.animation_rules)
   emit_list(out, "# Common keybinds", common_keybinds)
   emit_list(out, "# Common mouse binds", mouse_binds)
+  emit_list(out, "# Launchpad modal submap", launchpad_modal_binds)
   emit_list(out, "# Common workspace rules", common_workspace_rules)
   emit_list(out, "# Profile layout rules", profile.layout_rules)
   emit_list(out, "# Profile workspace rules", profile.workspace_rules)

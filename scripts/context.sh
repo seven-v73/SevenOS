@@ -53,7 +53,20 @@ hypr_clients_json() {
 }
 
 json_payload() {
-  SEVENOS_ROOT="$ROOT_DIR" ACTIVE_PROFILE="$(active_profile)" CONTEXT_ACTION="$ACTION" HYPR_CLIENTS="$(hypr_clients_json)" python - <<'PY'
+  local waybar_context_file shell_recommendation_file
+  waybar_context_file="$(mktemp)"
+  shell_recommendation_file="$(mktemp)"
+  if [[ -x "$ROOT_DIR/bin/seven-waybar-context" ]]; then
+    "$ROOT_DIR/bin/seven-waybar-context" status >"$waybar_context_file" 2>/dev/null || printf '{}\n' >"$waybar_context_file"
+  else
+    printf '{}\n' >"$waybar_context_file"
+  fi
+  if [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]]; then
+    "$ROOT_DIR/scripts/shell-experience.sh" recommend >"$shell_recommendation_file" 2>/dev/null || printf '{}\n' >"$shell_recommendation_file"
+  else
+    printf '{}\n' >"$shell_recommendation_file"
+  fi
+  SEVENOS_ROOT="$ROOT_DIR" ACTIVE_PROFILE="$(active_profile)" CONTEXT_ACTION="$ACTION" HYPR_CLIENTS="$(hypr_clients_json)" WAYBAR_CONTEXT_FILE="$waybar_context_file" SHELL_RECOMMENDATION_FILE="$shell_recommendation_file" python - <<'PY'
 import json
 import os
 import subprocess
@@ -66,6 +79,18 @@ try:
     clients = json.loads(os.environ.get("HYPR_CLIENTS", "[]"))
 except json.JSONDecodeError:
     clients = []
+
+
+def read_json_file(path):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except Exception:
+        return {}
+
+
+waybar_context = read_json_file(os.environ.get("WAYBAR_CONTEXT_FILE", ""))
+shell_recommendation = read_json_file(os.environ.get("SHELL_RECOMMENDATION_FILE", ""))
 
 CONTEXTS = {
     "equinox": {
@@ -234,15 +259,88 @@ if primary.get("confidence", 0) < 25:
 classes = Counter(item.get("class") or "unknown" for item in window_nodes)
 commands = Counter(item.get("command") or "unknown" for item in processes)
 
+active_app = waybar_context.get("app") if isinstance(waybar_context.get("app"), dict) else {}
+active_layout = waybar_context.get("layout") if isinstance(waybar_context.get("layout"), dict) else {}
+active_key = str(active_app.get("key") or "")
+active_service = str(active_app.get("service") or "")
+active_density = str(active_layout.get("density") or "")
+active_priority = str(active_layout.get("priority") or "")
+
+
+def foreground_context():
+    if active_service in {"streaming", "youtube"} or active_density == "immersive" or active_priority == "content":
+        return {
+            "key": "foreground.content",
+            "title": "Foreground Content",
+            "intent": "immersive foreground use",
+            "profile": active_profile,
+            "scheduler_group": active_profile,
+            "confidence": 100,
+            "signals": ["foreground", "content", "fullscreen"],
+            "source": "active-window",
+        }
+    if active_key in {"developer", "terminal"}:
+        return {
+            "key": "foreground.forge",
+            "title": "Foreground Development",
+            "intent": "active development workflow",
+            "profile": "forge",
+            "scheduler_group": "forge",
+            "confidence": 92,
+            "signals": ["foreground", "developer", active_key],
+            "source": "active-window",
+        }
+    if active_key in {"studio", "media"}:
+        return {
+            "key": "foreground.studio",
+            "title": "Foreground Studio",
+            "intent": "active media or creative workflow",
+            "profile": "studio",
+            "scheduler_group": "studio",
+            "confidence": 90,
+            "signals": ["foreground", "media", active_key],
+            "source": "active-window",
+        }
+    if active_key in {"files"}:
+        return {
+            "key": "foreground.files",
+            "title": "Foreground Files",
+            "intent": "file management",
+            "profile": active_profile,
+            "scheduler_group": active_profile,
+            "confidence": 82,
+            "signals": ["foreground", "files"],
+            "source": "active-window",
+        }
+    return {}
+
+
+focused = foreground_context()
+effective = primary
+effective_reason = "semantic-background"
+if focused and (focused.get("confidence", 0) >= primary.get("confidence", 0) - 20 or active_density in {"immersive", "compact"}):
+    effective = focused
+    effective_reason = "active-window"
+
+alignment = {
+    "active_profile": active_profile,
+    "semantic_profile": primary.get("profile"),
+    "effective_profile": effective.get("profile"),
+    "foreground_profile": focused.get("profile", "") if focused else "",
+    "foreground_overrode_semantic": bool(focused and effective.get("key") == focused.get("key")),
+    "reason": effective_reason,
+    "profile_aligned": effective.get("profile") == active_profile,
+}
+
 actions = []
-if primary.get("profile") != active_profile and primary.get("confidence", 0) >= 50:
+if effective.get("profile") != active_profile and effective.get("confidence", 0) >= 50:
     actions.append({
         "key": "profile.switch-suggested",
         "severity": "medium",
         "impact": "changes",
-        "title": f"Switch to {primary.get('profile').title()} profile",
-        "command": f"seven profile activate {primary.get('profile')}",
-        "reason": f"Detected {primary.get('title')} with {primary.get('confidence')}% confidence.",
+        "title": f"Switch to {effective.get('profile').title()} profile",
+        "command": f"seven profile activate {effective.get('profile')}",
+        "reason": f"Detected {effective.get('title')} with {effective.get('confidence')}% confidence.",
     })
 actions.append({
     "key": "scheduler.context",
@@ -250,13 +348,20 @@ actions.append({
     "impact": "safe",
     "title": "Review scheduler policy for current context",
     "command": "seven scheduler plan",
-    "reason": f"Primary context maps to scheduler group {primary.get('scheduler_group')}.",
+    "reason": f"Effective context maps to scheduler group {effective.get('scheduler_group')}.",
 })
 
 print(json.dumps({
     "schema": "sevenos.context.v1",
     "state": "foundation",
     "active_profile": active_profile,
+    "active": {
+        "profile": waybar_context.get("profile", {}),
+        "app": waybar_context.get("app", {}),
+        "window": waybar_context.get("window", {}),
+        "layout": waybar_context.get("layout", {}),
+        "workspace": (waybar_context.get("app") or {}).get("workspace", ""),
+    },
     "primary_context": {
         "key": primary.get("key"),
         "title": primary.get("title"),
@@ -266,6 +371,18 @@ print(json.dumps({
         "scheduler_group": primary.get("scheduler_group"),
         "signals": primary.get("signals", []),
     },
+    "foreground_context": focused,
+    "effective_context": {
+        "key": effective.get("key"),
+        "title": effective.get("title"),
+        "intent": effective.get("intent"),
+        "confidence": effective.get("confidence"),
+        "profile": effective.get("profile"),
+        "scheduler_group": effective.get("scheduler_group"),
+        "signals": effective.get("signals", []),
+        "source": effective.get("source", effective_reason),
+    },
+    "alignment": alignment,
     "contexts": contexts,
     "graph": {
         "node_count": len(nodes),
@@ -279,9 +396,20 @@ print(json.dumps({
         "top_commands": commands.most_common(8),
         "top_window_classes": classes.most_common(8),
     },
+    "shell_recommendation": shell_recommendation,
+    "waybar_context": {
+        "schema": waybar_context.get("schema", ""),
+        "event": waybar_context.get("event", ""),
+        "time": waybar_context.get("time", 0),
+        "profile": waybar_context.get("profile", {}),
+        "app": waybar_context.get("app", {}),
+        "layout": waybar_context.get("layout", {}),
+        "window_memory": waybar_context.get("window_memory", {}),
+    },
     "actions": actions,
 }, indent=2))
 PY
+  rm -f "$waybar_context_file" "$shell_recommendation_file"
 }
 
 status() {
@@ -296,14 +424,18 @@ import os
 
 data = json.loads(os.environ["CONTEXT_PAYLOAD"])
 primary = data.get("primary_context", {})
+effective = data.get("effective_context", {})
+alignment = data.get("alignment", {})
 obs = data.get("observations", {})
 print("SevenOS Context Engine")
 print("======================")
 print(f"state:      {data.get('state')}")
 print(f"profile:    {data.get('active_profile')}")
 print(f"context:    {primary.get('title')} ({primary.get('confidence')}%)")
+print(f"effective:  {effective.get('title')} ({effective.get('confidence')}%)")
 print(f"intent:     {primary.get('intent')}")
-print(f"scheduler:  {primary.get('scheduler_group')}")
+print(f"scheduler:  {effective.get('scheduler_group') or primary.get('scheduler_group')}")
+print(f"alignment:  {alignment.get('reason')} / profile-aligned={alignment.get('profile_aligned')}")
 print(f"signals:    {', '.join(primary.get('signals', []))}")
 print(f"observed:   {obs.get('process_count', 0)} processes / {obs.get('window_count', 0)} windows")
 PY
@@ -344,6 +476,11 @@ import os
 data = json.loads(os.environ["CONTEXT_PAYLOAD"])
 print("SevenOS Context Plan")
 print("====================")
+effective = data.get("effective_context", {})
+alignment = data.get("alignment", {})
+if effective:
+    print(f"effective {effective.get('profile', ''):<8} {effective.get('title')} · {alignment.get('reason')}")
+    print()
 for item in data.get("actions", []):
     print(f"{item.get('severity', 'medium'):<8} {item.get('impact', 'safe'):<8} {item.get('command')}")
     print(f"         {item.get('reason')}")
@@ -364,6 +501,8 @@ print(json.dumps({
     "schema": "sevenos.context-event.v1",
     "active_profile": data.get("active_profile"),
     "primary_context": primary,
+    "effective_context": data.get("effective_context", {}),
+    "alignment": data.get("alignment", {}),
     "graph": data.get("graph", {}),
     "observations": data.get("observations", {}),
     "recommended_actions": data.get("actions", []),
@@ -377,7 +516,8 @@ import os
 
 data = json.loads(os.environ["CONTEXT_PAYLOAD"])
 primary = data.get("primary_context", {})
-print(f"Context detected: {primary.get('title')} ({primary.get('confidence')}%) -> {primary.get('scheduler_group')}")
+effective = data.get("effective_context", primary)
+print(f"Context detected: {primary.get('title')} ({primary.get('confidence')}%) · effective: {effective.get('title')} -> {effective.get('scheduler_group')}")
 PY
   )"
   state="$(
@@ -385,12 +525,30 @@ PY
 import json
 import os
 
-confidence = json.loads(os.environ["CONTEXT_PAYLOAD"]).get("primary_context", {}).get("confidence", 0) or 0
+data = json.loads(os.environ["CONTEXT_PAYLOAD"])
+confidence = data.get("effective_context", data.get("primary_context", {})).get("confidence", 0) or 0
 print("OK" if confidence >= 50 else "WARN")
 PY
   )"
 
   if is_dry_run; then
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      CONTEXT_PAYLOAD="$payload" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["CONTEXT_PAYLOAD"])
+print(json.dumps({
+    "schema": "sevenos.context.emit.v1",
+    "state": "DRY_RUN",
+    "message": "context event preview",
+    "primary_context": data.get("primary_context", {}),
+    "effective_context": data.get("effective_context", {}),
+    "alignment": data.get("alignment", {}),
+}, indent=2))
+PY
+      return 0
+    fi
     printf 'DRY-RUN > SevenBus > Context > %s\n' "$message"
     return 0
   fi
@@ -407,6 +565,8 @@ print(json.dumps({
     "state": os.environ["EMIT_STATE"],
     "message": os.environ["EMIT_OUTPUT"] or "context event recorded",
     "primary_context": data.get("primary_context", {}),
+    "effective_context": data.get("effective_context", {}),
+    "alignment": data.get("alignment", {}),
 }, indent=2))
 PY
   else

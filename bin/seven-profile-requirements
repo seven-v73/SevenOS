@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+ROOT_DIR = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+CATALOG = ROOT_DIR / "profiles/catalog.json"
+PROFILES = ("equinox", "baobab", "forge", "shield", "studio", "windows", "pulse")
+ALIASES = {
+    "default": "equinox",
+    "base": "equinox",
+    "dev": "forge",
+    "developer": "forge",
+    "cyber": "shield",
+    "cybersecurity": "shield",
+    "creation": "studio",
+    "creator": "studio",
+    "performance": "pulse",
+    "gaming": "pulse",
+    "culture": "baobab",
+}
+ALTERNATIVES = {
+    "code": ("visual-studio-code-bin", "vscodium-bin", "vscodium"),
+    "p7zip": ("7zip",),
+    "7zip": ("p7zip",),
+}
+
+
+def normalize(profile: str) -> str:
+    if profile == "all":
+        return "all"
+    key = ALIASES.get(profile, profile)
+    if key not in PROFILES:
+        raise SystemExit(f"seven-profile-requirements: unknown profile: {profile}")
+    return key
+
+
+def load_catalog() -> dict:
+    try:
+        return json.loads(CATALOG.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def package_files(profile: str, *, optional: bool = False) -> list[Path]:
+    catalog = load_catalog()
+    item = (catalog.get("profiles") or {}).get(profile) or {}
+    key = "optional_package_files" if optional else "package_files"
+    return [ROOT_DIR / rel for rel in item.get(key, [])]
+
+
+def packages_from_file(path: Path) -> list[str]:
+    packages = []
+    if not path.is_file():
+        return packages
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            packages.append(line)
+    return packages
+
+
+def package_set(files: list[Path]) -> list[str]:
+    seen = set()
+    packages = []
+    for path in files:
+        for package in packages_from_file(path):
+            if package not in seen:
+                seen.add(package)
+                packages.append(package)
+    return packages
+
+
+def installed_packages() -> set[str]:
+    if not shutil.which("pacman"):
+        return set()
+    result = subprocess.run(["pacman", "-Qq"], text=True, capture_output=True, check=False)
+    if result.returncode != 0:
+        return set()
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def is_satisfied(package: str, installed: set[str]) -> bool:
+    if package in installed:
+        return True
+    return any(alt in installed for alt in ALTERNATIVES.get(package, ()))
+
+
+def split_aur(packages: list[str], files: list[Path]) -> tuple[list[str], list[str]]:
+    aur_files = {str(path) for path in files if "aur" in path.name}
+    aur_packages = set()
+    for path in files:
+        if str(path) in aur_files:
+            aur_packages.update(packages_from_file(path))
+    repo = [package for package in packages if package not in aur_packages]
+    aur = [package for package in packages if package in aur_packages]
+    return repo, aur
+
+
+def status(profile: str, *, include_optional: bool) -> dict:
+    required_files = package_files(profile)
+    optional_files = package_files(profile, optional=True)
+    required = package_set(required_files)
+    optional = package_set(optional_files) if include_optional else []
+    installed = installed_packages()
+    missing_required = [package for package in required if not is_satisfied(package, installed)]
+    missing_optional = [package for package in optional if not is_satisfied(package, installed)]
+    repo_required, aur_required = split_aur(missing_required, required_files)
+    repo_optional, aur_optional = split_aur(missing_optional, optional_files)
+    return {
+        "schema": "sevenos.profile-requirements.v1",
+        "generated_at": int(time.time()),
+        "profile": profile,
+        "package_files": [str(path.relative_to(ROOT_DIR)) for path in required_files],
+        "optional_package_files": [str(path.relative_to(ROOT_DIR)) for path in optional_files],
+        "summary": {
+            "required": len(required),
+            "required_missing": len(missing_required),
+            "optional": len(optional),
+            "optional_missing": len(missing_optional),
+            "ready": len(missing_required) == 0,
+        },
+        "missing": {
+            "required": missing_required,
+            "required_repo": repo_required,
+            "required_aur": aur_required,
+            "optional": missing_optional,
+            "optional_repo": repo_optional,
+            "optional_aur": aur_optional,
+        },
+        "commands": {
+            "status": f"seven profile requirements {profile} --json",
+            "install_required": f"seven profile requirements {profile} --apply --yes",
+            "install_optional": f"seven profile requirements {profile} --optional --apply --yes",
+        },
+    }
+
+
+def run_install(packages: list[str], *, yes: bool, dry_run: bool, quiet: bool = False) -> int:
+    if not packages:
+        return 0
+    command = ["sudo", "pacman", "-S", "--needed"]
+    if yes:
+        command.append("--noconfirm")
+    command.extend(packages)
+    if dry_run:
+        print(" ".join(command))
+        return 0
+    if quiet:
+        return subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False).returncode
+    return subprocess.run(command, check=False).returncode
+
+
+def run_aur(packages: list[str], *, yes: bool, dry_run: bool, quiet: bool = False) -> int:
+    if not packages:
+        return 0
+    helper = shutil.which("paru") or shutil.which("yay")
+    if not helper:
+        print("[SevenOS] AUR helper missing; run: ./install.sh aur-helpers --yes", file=sys.stderr)
+        return 0
+    command = [helper, "-S", "--needed"]
+    if yes:
+        command.append("--noconfirm")
+    command.extend(packages)
+    if dry_run:
+        print(" ".join(command))
+        return 0
+    if quiet:
+        return subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False).returncode
+    return subprocess.run(command, check=False).returncode
+
+
+def install(profile: str, *, include_optional: bool, include_aur: bool, yes: bool, dry_run: bool, quiet: bool = False) -> dict:
+    payload = status(profile, include_optional=include_optional)
+    missing = payload["missing"]
+    actions = []
+    repo_packages = list(missing["required_repo"])
+    aur_packages = list(missing["required_aur"])
+    if include_optional:
+        repo_packages.extend(missing["optional_repo"])
+        aur_packages.extend(missing["optional_aur"])
+    rc = run_install(repo_packages, yes=yes, dry_run=dry_run, quiet=quiet)
+    actions.append({"type": "pacman", "packages": repo_packages, "returncode": rc})
+    if rc == 0 and include_aur:
+        aur_rc = run_aur(aur_packages, yes=yes, dry_run=dry_run, quiet=quiet)
+    else:
+        aur_rc = 0 if not aur_packages else 126
+    actions.append({"type": "aur", "packages": aur_packages if include_aur else [], "returncode": aur_rc})
+    isolation_rc = 0
+    if rc == 0 and aur_rc == 0:
+        isolation_cmd = [str(ROOT_DIR / "scripts/profile-isolation.sh"), "apply", profile, "--yes"]
+        if dry_run:
+            print(" ".join(isolation_cmd))
+        else:
+            isolation_rc = subprocess.run(isolation_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False).returncode
+    actions.append({"type": "profile-isolation", "profile": profile, "returncode": isolation_rc})
+    refreshed = status(profile, include_optional=include_optional)
+    return {
+        "schema": "sevenos.profile-requirements-install.v1",
+        "profile": profile,
+        "apply": not dry_run,
+        "actions": actions,
+        "before": payload["summary"],
+        "after": refreshed["summary"],
+        "missing_after": refreshed["missing"],
+        "returncode": rc if rc != 0 else aur_rc if aur_rc != 0 else isolation_rc,
+    }
+
+
+def human(payload: dict) -> str:
+    lines = [f"SevenOS Requirements · {payload['profile']}", "=============================="]
+    summary = payload["summary"]
+    lines.append(f"required: {summary['required'] - summary['required_missing']}/{summary['required']}")
+    lines.append(f"optional: {summary['optional'] - summary['optional_missing']}/{summary['optional']}")
+    missing = payload["missing"]["required"][:12]
+    if missing:
+        lines.append("missing required: " + ", ".join(missing))
+        if len(payload["missing"]["required"]) > len(missing):
+            lines.append(f"... +{len(payload['missing']['required']) - len(missing)}")
+        lines.append(f"install: {payload['commands']['install_required']}")
+    else:
+        lines.append("required: OK")
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-profile-requirements")
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "ensure", "install", "doctor"))
+    parser.add_argument("profile", nargs="?", default="equinox")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--yes", action="store_true")
+    parser.add_argument("--optional", action="store_true")
+    parser.add_argument("--aur", action="store_true")
+    parser.add_argument("--command", help="command that triggered the requirements check")
+    args = parser.parse_args()
+
+    profile = normalize(args.profile)
+    if profile == "all":
+        if args.action in {"status", "doctor"}:
+            payload = {
+                "schema": "sevenos.profile-requirements-set.v1",
+                "generated_at": int(time.time()),
+                "profiles": {item: status(item, include_optional=args.optional) for item in PROFILES},
+            }
+            payload["summary"] = {
+                "profiles": len(PROFILES),
+                "ready": sum(1 for item in payload["profiles"].values() if item["summary"]["ready"]),
+                "missing_required": sum(item["summary"]["required_missing"] for item in payload["profiles"].values()),
+                "missing_optional": sum(item["summary"]["optional_missing"] for item in payload["profiles"].values()),
+            }
+            print(json.dumps(payload, indent=2) if args.json else "\n\n".join(human(item) for item in payload["profiles"].values()))
+            if args.action == "doctor" and payload["summary"]["missing_required"]:
+                return 1
+            return 0
+        installs = [
+            install(item, include_optional=args.optional, include_aur=args.aur or args.optional, yes=args.yes, dry_run=not args.apply, quiet=args.json)
+            for item in PROFILES
+        ]
+        payload = {
+            "schema": "sevenos.profile-requirements-install-set.v1",
+            "generated_at": int(time.time()),
+            "profiles": installs,
+            "returncode": next((item["returncode"] for item in installs if item["returncode"] != 0), 0),
+        }
+        print(json.dumps(payload, indent=2) if args.json else f"requirements install all: rc={payload['returncode']}")
+        return int(payload["returncode"])
+    if args.action in {"status", "doctor"}:
+        payload = status(profile, include_optional=args.optional)
+        print(json.dumps(payload, indent=2) if args.json else human(payload))
+        if args.action == "doctor" and not payload["summary"]["ready"]:
+            return 1
+        return 0
+    payload = install(
+        profile,
+        include_optional=args.optional,
+        include_aur=args.aur or args.optional,
+        yes=args.yes,
+        dry_run=not args.apply,
+        quiet=args.json,
+    )
+    if args.command:
+        payload["trigger_command"] = args.command
+    print(json.dumps(payload, indent=2) if args.json else human(status(profile, include_optional=args.optional)))
+    return int(payload["returncode"])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

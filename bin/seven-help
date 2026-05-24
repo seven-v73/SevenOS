@@ -45,6 +45,8 @@ if [[ "$LANG_CODE" == "fr" ]]; then
   close_prompt="Appuyez sur Entrée pour fermer..."
   menu="$(cat <<'EOF'
 󰩂  Aide du bureau    Super+H
+󰐥  Installer SevenOS    seven new
+󰖳  Configurer Windows Bridge    seven windows setup
 󰘦  Guide complet SevenOS    Documentation générale
 󰌌  Raccourcis clavier    Super, fenêtres, workspaces, captures
 󰆍  Commandes terminal    seven, profils, runtime, store, doctor
@@ -89,6 +91,8 @@ else
   close_prompt="Press Enter to close..."
   menu="$(cat <<'EOF'
 󰩂  Desktop Helpers    Super+H
+󰐥  Install SevenOS    seven new
+󰖳  Setup Windows Bridge    seven windows setup
 󰘦  Complete SevenOS Guide    General documentation
 󰌌  Keyboard Shortcuts    Super, windows, workspaces, screenshots
 󰆍  Terminal Commands    seven, profiles, runtime, store, doctor
@@ -147,6 +151,29 @@ write_help_doc() {
 # SevenOS Help Center
 
 SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS autonomes et d'une couche de composition intelligente.
+
+## Première installation
+
+Sur une nouvelle machine, la commande simple est :
+
+```bash
+seven new
+```
+
+Elle installe et applique automatiquement la base SevenOS : paquets essentiels,
+CLI, Hub, polices, thème, couche visuelle, dépendances des mini OS, workspaces,
+isolation, rootfs metadata et vérification post-install.
+
+Variantes utiles :
+
+```bash
+seven new --optional
+seven new --optional --rootfs
+./install.sh new --yes
+seven setup new-device --yes
+seven windows setup
+seven windows setup --iso ~/Téléchargements/Win11.iso
+```
 
 ## Raccourcis essentiels
 
@@ -210,6 +237,17 @@ SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS aut
 Commandes utiles :
 
 ```bash
+seven new
+seven status
+seven doctor
+seven post-install
+seven repair ux --apply
+seven profile requirements all --json
+seven profile requirements forge --apply --yes
+seven profile-rootfs audit all
+seven profile-rootfs verify all
+seven actions
+seven spotlight index
 seven-quick-settings
 seven-quick-settings wifi
 seven-quick-settings bluetooth
@@ -322,6 +360,7 @@ seven status
 seven state --json
 seven events --limit 20
 seven insights
+seven pre-push
 scripts/design-check.sh
 scripts/check.sh
 ```
@@ -357,6 +396,29 @@ EOF
 # SevenOS Help Center
 
 SevenOS is a personal OS built around native surfaces, autonomous mini OS profiles and an explicit capability-composition layer.
+
+## First Install
+
+On a new machine, the simple command is:
+
+```bash
+seven new
+```
+
+It installs and applies the SevenOS baseline automatically: essential packages,
+CLI, Hub, fonts, theme, visual layer, mini OS dependencies, workspaces,
+isolation, rootfs metadata and post-install checks.
+
+Useful variants:
+
+```bash
+seven new --optional
+seven new --optional --rootfs
+./install.sh new --yes
+seven setup new-device --yes
+seven windows setup
+seven windows setup --iso ~/Downloads/Win11.iso
+```
 
 ## Essential Shortcuts
 
@@ -420,6 +482,17 @@ SevenOS is a personal OS built around native surfaces, autonomous mini OS profil
 Useful commands:
 
 ```bash
+seven new
+seven status
+seven doctor
+seven post-install
+seven repair ux --apply
+seven profile requirements all --json
+seven profile requirements forge --apply --yes
+seven profile-rootfs audit all
+seven profile-rootfs verify all
+seven actions
+seven spotlight index
 seven-quick-settings
 seven-quick-settings wifi
 seven-quick-settings bluetooth
@@ -606,6 +679,8 @@ selected="${selected%%    *}"
 
 case "$selected" in
   "Desktop Helpers"|"Aide du bureau") seven-help ;;
+  "Install SevenOS"|"Installer SevenOS") run_terminal "seven new" ;;
+  "Setup Windows Bridge"|"Configurer Windows Bridge") run_terminal "seven windows setup" ;;
   "Complete SevenOS Guide"|"Guide complet SevenOS") show_doc all ;;
   "Keyboard Shortcuts"|"Raccourcis clavier") show_doc shortcuts ;;
   "Terminal Commands"|"Commandes terminal") open_command_doc ;;

@@ -1549,6 +1549,51 @@ run_profile_background() {
   fi
 }
 
+snapshot_profile_session() {
+  local key="$1"
+  [[ -n "$key" ]] || return 0
+  PROFILE_KEY="$key" STATE_DIR="$STATE_DIR" python - <<'PY'
+import json
+import os
+import subprocess
+import time
+from pathlib import Path
+
+profile = os.environ.get("PROFILE_KEY", "equinox")
+state_dir = Path(os.environ["STATE_DIR"])
+session_path = state_dir / "profiles" / profile / "session.json"
+try:
+    clients = json.loads(subprocess.run(["hyprctl", "clients", "-j"], text=True, capture_output=True, check=False, timeout=1.0).stdout or "[]")
+except Exception:
+    clients = []
+windows = []
+for item in clients if isinstance(clients, list) else []:
+    klass = str(item.get("class") or item.get("initialClass") or "")
+    title = str(item.get("title") or "")
+    if not klass and not title:
+        continue
+    workspace = item.get("workspace") if isinstance(item.get("workspace"), dict) else {}
+    windows.append({
+        "class": klass,
+        "title": title,
+        "workspace": workspace.get("name") or workspace.get("id") or "",
+        "address": item.get("address", ""),
+        "floating": bool(item.get("floating", False)),
+    })
+session_path.parent.mkdir(parents=True, exist_ok=True)
+try:
+    session = json.loads(session_path.read_text(encoding="utf-8") or "{}")
+except Exception:
+    session = {}
+session.setdefault("schema", "sevenos.profile-session.v1")
+session["profile"] = profile
+session["last_windows"] = windows[:40]
+session["last_window_count"] = len(windows)
+session["updated_at"] = int(time.time())
+session_path.write_text(json.dumps(session, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+PY
+}
+
 activate_profile() {
   local key
   local tmp_env tmp_json previous_key should_leave_windows should_enter_windows
@@ -1565,6 +1610,7 @@ activate_profile() {
   fi
 
   log_info "Activating SevenOS profile: $(profile_title "$key")"
+  snapshot_profile_session "$previous_key" || true
   write_workspace_readme "$key"
 
   if is_dry_run; then
@@ -1629,6 +1675,9 @@ EOF
   if [[ -x "$ROOT_DIR/scripts/profile-isolation.sh" ]]; then
     "$ROOT_DIR/scripts/profile-isolation.sh" apply "$key" --yes >/dev/null 2>&1 || true
   fi
+  if [[ -x "$ROOT_DIR/scripts/mini-os-bridge.sh" ]]; then
+    "$ROOT_DIR/scripts/mini-os-bridge.sh" status --json >/dev/null 2>&1 || true
+  fi
   if [[ -x "$ROOT_DIR/scripts/hypr-lua.sh" ]]; then
     "$ROOT_DIR/scripts/hypr-lua.sh" apply "$key" >/dev/null 2>&1 || true
   fi
@@ -1647,6 +1696,7 @@ EOF
     --state OK \
     --message "Active profile changed to $(profile_title "$key")" \
     --command "seven profile activate $key" >/dev/null || true
+  snapshot_profile_session "$key" || true
 
   log_success "Active profile: $(profile_title "$key")"
   log_info "Workspace: $(profile_workspace "$key")"
@@ -2076,7 +2126,8 @@ Usage:
   seven profile migrate-aliases [--apply] [--json]
   seven profile catalog [--json]
   seven profile isolation [status|plan|apply|doctor] [profile] [capability ...] [--json] [--yes]
-  seven profile exec <profile> [--container] [--ephemeral] [--workspace PATH|--workspace-profile] <command> [args...]
+  seven profile requirements [profile] [--apply --yes] [--optional]
+  seven profile exec <profile> [--container|--rootfs|--independent] [--ephemeral] [--workspace PATH|--workspace-profile] <command> [args...]
   seven profile bootstrap <profile|all>
   seven profile activate <profile>
   seven profile install <profile>
@@ -2201,6 +2252,17 @@ PY
     else
       gaps_human
     fi
+    ;;
+  requirements|deps|ensure)
+    target="${1:-$(active_profile)}"
+    shift || true
+    req_action="status"
+    for arg in "$@"; do
+      case "$arg" in
+        --apply) req_action="ensure" ;;
+      esac
+    done
+    "$ROOT_DIR/bin/seven-profile-requirements" "$req_action" "$target" "$@"
     ;;
   health)
     if [[ "${1:-}" == "--json" ]]; then

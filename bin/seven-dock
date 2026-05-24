@@ -25,7 +25,29 @@ resolve_root() {
 ROOT_DIR="$(resolve_root || true)"
 native="${ROOT_DIR:+$ROOT_DIR/bin/seven-dock-native}"
 config_file="$HOME/.config/sevenos/dock.json"
-pid_file="${XDG_RUNTIME_DIR:-/tmp}/sevenos-dock.pid"
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp/sevenos-$(id -u)}"
+pid_file="$runtime_dir/sevenos-dock.pid"
+state_file="$runtime_dir/sevenos-dock-state.json"
+profile_change_scope="scope=closing-on-profile-change"
+
+active_profile() {
+  local profile_env="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env"
+  if [[ -f "$profile_env" ]]; then
+    # shellcheck disable=SC1090
+    source "$profile_env"
+    printf '%s' "${SEVENOS_ACTIVE_PROFILE:-equinox}"
+  else
+    printf 'equinox'
+  fi
+}
+
+experience_event() {
+  local kind="$1"
+  local label="$2"
+  if [[ -n "${ROOT_DIR:-}" && -x "$ROOT_DIR/scripts/shell-experience.sh" ]]; then
+    "$ROOT_DIR/scripts/shell-experience.sh" "$kind" "$label" >/dev/null 2>&1 || true
+  fi
+}
 
 is_running() {
   [[ -s "$pid_file" ]] || return 1
@@ -52,11 +74,14 @@ open_dock() {
     printf 'DRY-RUN > Dock > Open SevenOS Dock\n'
     return 0
   fi
+  experience_event launch "Seven Dock"
   if is_running; then
     return 0
   fi
   if [[ -n "$native" && -x "$native" ]]; then
-    SEVENOS_ROOT="$ROOT_DIR" SEVENOS_DOCK_FORCE_WINDOW=1 setsid "$native" >/tmp/sevenos-dock.log 2>&1 &
+    mkdir -p "$runtime_dir"
+    rm -f "$state_file"
+    SEVENOS_ROOT="$ROOT_DIR" setsid "$native" >/tmp/sevenos-dock.log 2>&1 &
     printf '%s\n' "$!" > "$pid_file"
     sleep 0.25
     if ! is_running; then
@@ -74,11 +99,12 @@ close_dock() {
     printf 'DRY-RUN > Dock > Close SevenOS Dock\n'
     return 0
   fi
+  experience_event focus "Seven Dock closed"
   if is_running; then
     kill "$(cat "$pid_file")" >/dev/null 2>&1 || true
   fi
   kill_dock_processes
-  rm -f "$pid_file"
+  rm -f "$pid_file" "$state_file"
 }
 
 case "${1:-toggle}" in
@@ -101,7 +127,23 @@ case "${1:-toggle}" in
     ;;
   status)
     if is_running; then
-      printf 'SevenOS Dock: RUN\n'
+      if [[ -s "$state_file" ]]; then
+        python - "$state_file" "$(active_profile)" <<'PY'
+import json
+import sys
+
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    data = {}
+profile = data.get("profile") or "unknown"
+current = sys.argv[2]
+scope = "active" if profile == current else "closing-on-profile-change"
+print(f"SevenOS Dock: RUN profile={profile} current={current} scope={scope}")
+PY
+      else
+        printf 'SevenOS Dock: RUN profile=%s scope=unknown\n' "$(active_profile)"
+      fi
     else
       printf 'SevenOS Dock: MISS\n'
     fi
@@ -115,7 +157,9 @@ case "${1:-toggle}" in
   "size": "compact",
   "magnification": true,
   "autohide": false,
+  "reserve_space": true,
   "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+  "profile_pins": {},
   "folders": ["downloads", "home"]
 }
 JSON
@@ -123,6 +167,14 @@ JSON
     printf 'SevenOS Dock Settings\n'
     printf '=====================\n'
     cat "$config_file"
+    ;;
+  limits|doctor)
+    if [[ -n "$native" && -x "$native" ]]; then
+      "$native" --limits --json
+    else
+      printf 'seven-dock: seven-dock-native not found\n' >&2
+      exit 1
+    fi
     ;;
   pin)
     shift || true
@@ -142,10 +194,12 @@ pinned = data.get("pinned", ["files", "apps", "browser", "terminal", "spotlight"
 if tile not in pinned:
     pinned.append(tile)
 data["pinned"] = pinned
+data.setdefault("profile_pins", {})
 data.setdefault("position", "bottom")
 data.setdefault("size", "compact")
 data.setdefault("magnification", True)
 data.setdefault("autohide", False)
+data.setdefault("reserve_space", True)
 data.setdefault("folders", ["downloads", "home"])
 path.write_text(json.dumps(data, indent=2) + "\n")
 PY
@@ -177,7 +231,7 @@ PY
     fi
     ;;
   *)
-    printf 'Usage: seven-dock [toggle|open|close|restart|repair|status|settings|pin <id>|unpin <id>|--probe]\n' >&2
+    printf 'Usage: seven-dock [toggle|open|close|restart|repair|status|settings|limits|doctor|pin <id>|unpin <id>|--probe]\n' >&2
     exit 1
     ;;
 esac

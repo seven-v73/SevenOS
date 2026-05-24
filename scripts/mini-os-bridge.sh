@@ -180,7 +180,7 @@ else:
     capabilities = [item.get("key") for item in runtime.get("capabilities", []) if isinstance(item, dict) and item.get("key") in profiles]
 
 selected = [primary, *capabilities]
-suggestions = suggest_caps(primary, capabilities)
+suggestions = suggest_caps(primary, capabilities) if action in {"suggest", "plan"} else []
 payload = {
     "schema": "sevenos.mini-os-bridge.v1",
     "action": action,
@@ -194,6 +194,8 @@ payload = {
         "rule": "autonomous profiles collaborate only through explicit capability borrowing",
         "active_bus": "profile-ui.json + runtime.json + profile-isolation.json",
         "no_pollution": True,
+        "implicit_borrowing": False,
+        "suggestions_visible": action in {"suggest", "plan"},
     },
     "next_actions": [
         {"label": item["label"], "command": item["command"], "reason": item["reason"]}
@@ -233,6 +235,9 @@ PY
       printf 'Refusing to activate mini OS composition without --yes.\n' >&2
       printf 'Preview first: seven mini-os plan %s --json\n' "${ITEMS[*]}" >&2
       exit 3
+    fi
+    if [[ -x "$ROOT_DIR/profiles/profile-manager.sh" ]]; then
+      "$ROOT_DIR/profiles/profile-manager.sh" activate "${ITEMS[0]}" >/dev/null 2>&1 || true
     fi
     "$ROOT_DIR/scripts/runtime-orchestrator.sh" activate "${ITEMS[@]}" --apply --yes >/dev/null
     "$ROOT_DIR/scripts/profile-isolation.sh" apply "${ITEMS[@]}" --yes >/dev/null

@@ -1,0 +1,736 @@
+#!/usr/bin/env python3
+"""Native SevenAI assistant surface."""
+
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import os
+import subprocess
+import sys
+import threading
+from pathlib import Path
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root).resolve()
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
+WAYBAR_CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
+
+
+def ensure_gtk_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        probe = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if probe.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def run_json(command: list[str], fallback, timeout: float = 18.0):
+    try:
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return fallback
+        return json.loads(result.stdout)
+    except Exception:
+        return fallback
+
+
+def run_text(command: list[str], timeout: float = 18.0) -> str:
+    try:
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=timeout,
+        )
+        return result.stdout.strip() or result.stderr.strip()
+    except Exception as exc:
+        return str(exc)
+
+
+def read_json_file(path: Path, fallback):
+    try:
+        return json.loads(path.read_text(encoding="utf-8") or "{}")
+    except Exception:
+        return fallback
+
+
+def probe() -> int:
+    available, error = gtk_available()
+    if available:
+        print("OK")
+        return 0
+    print(f"MISS: {error}", file=sys.stderr)
+    return 1
+
+
+def gtk_available() -> tuple[bool, str]:
+    ensure_gtk_python()
+    try:
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        return False, str(exc)
+    return True, ""
+
+
+ensure_gtk_python()
+
+import gi  # noqa: E402
+
+gi.require_version("Gdk", "3.0")
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
+
+from seven_i18n import tr_text  # noqa: E402
+import seven_theme  # noqa: E402
+
+
+CSS = seven_theme.surface_css("ai")
+
+
+class SevenAI(Gtk.Application):
+    def __init__(self) -> None:
+        super().__init__(application_id="os.seven.SevenAI")
+        self.window: Gtk.ApplicationWindow | None = None
+        self.timeline = Gtk.Box()
+        self.detail = Gtk.Box()
+        self.entry = Gtk.SearchEntry()
+        self.status = Gtk.Label()
+        self.payload: dict = {}
+        self.diagnostics: dict = {}
+        self.memory: dict = {}
+        self.shell_context: dict = {}
+        self.actions: dict = {}
+        self.last_prompt = ""
+        self.last_intent: dict = {}
+        self.last_agent_payload: dict = {}
+
+    def do_activate(self) -> None:
+        if self.window:
+            self.window.present()
+            return
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data((seven_theme.gtk_app_css("ai") + CSS).encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+        self.payload = run_json([str(ROOT / "scripts/ai.sh"), "json"], {"summary": {}, "recommendations": []})
+        self.diagnostics = run_json([str(ROOT / "scripts/ai.sh"), "diagnose", "system", "--json"], {})
+        self.memory = run_json([str(ROOT / "scripts/ai.sh"), "memory", "--json"], {"events": [], "summary": {}})
+        self.shell_context = self.load_shell_context()
+        self.actions = run_json([str(ROOT / "bin/seven-actions"), "--json"], {"actions": []}, timeout=12.0)
+
+        self.window = Gtk.ApplicationWindow(application=self)
+        self.window.set_name("seven-ai")
+        self.window.set_title("SevenAI")
+        self.window.set_default_size(860, 620)
+        self.window.set_wmclass("SevenAINative", "SevenAINative")
+        self.window.connect("key-press-event", self.on_key_press)
+
+        root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        root.get_style_context().add_class("root")
+        self.window.add(root)
+
+        root.pack_start(self.sidebar(), False, False, 0)
+
+        main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        main.set_margin_top(18)
+        main.set_margin_bottom(18)
+        main.set_margin_start(18)
+        main.set_margin_end(18)
+        root.pack_start(main, True, True, 0)
+
+        main.pack_start(self.topbar(), False, False, 0)
+
+        body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        main.pack_start(body, True, True, 0)
+
+        self.scroller = Gtk.ScrolledWindow()
+        self.scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.timeline = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.timeline.set_margin_bottom(8)
+        self.scroller.add(self.timeline)
+        body.pack_start(self.scroller, True, True, 0)
+
+        self.detail = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.detail.set_size_request(330, -1)
+        self.detail.get_style_context().add_class("detail")
+        body.pack_start(self.detail, False, False, 0)
+
+        self.input_bar(main)
+        self.render_home()
+        self.entry.grab_focus()
+        self.window.show_all()
+
+    def on_key_press(self, _window: Gtk.Widget, event: Gdk.EventKey) -> bool:
+        key = Gdk.keyval_name(event.keyval) or ""
+        ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
+        if key == "Escape":
+            if self.entry.get_text():
+                self.entry.set_text("")
+                self.entry.grab_focus()
+                return True
+            if self.window:
+                self.window.close()
+                return True
+        if ctrl and key.lower() in ("k", "l"):
+            self.entry.grab_focus()
+            self.entry.select_region(0, -1)
+            return True
+        return False
+
+    def sidebar(self) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.set_size_request(72, -1)
+        box.get_style_context().add_class("sidebar")
+        for icon, label, action in (
+            ("system-search-symbolic", tr_text("Assistant"), self.render_home),
+            ("view-grid-symbolic", tr_text("Context"), self.render_context),
+            ("system-run-symbolic", tr_text("Actions"), self.render_actions),
+            ("utilities-system-monitor-symbolic", tr_text("Diagnose"), self.render_diagnostics),
+            ("document-open-recent-symbolic", tr_text("Memory"), self.render_memory),
+            ("preferences-system-symbolic", tr_text("Playbooks"), self.render_playbooks),
+            ("security-high-symbolic", tr_text("Privacy"), self.render_privacy),
+        ):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.MENU)
+            image.set_pixel_size(16)
+            row.pack_start(image, False, False, 0)
+            button = Gtk.Button()
+            button.set_tooltip_text(label)
+            button.add(row)
+            button.connect("clicked", lambda _button, callback=action: callback())
+            box.pack_start(button, False, False, 0)
+        return box
+
+    def topbar(self) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.get_style_context().add_class("topbar")
+        title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        title = Gtk.Label(label="SevenAI", xalign=0)
+        title.get_style_context().add_class("title")
+        profile = seven_theme.resolved_theme("ai").get("profile_title", "SevenOS")
+        caption = Gtk.Label(label=tr_text("Ask anything · local · {profile}", profile=profile), xalign=0)
+        caption.get_style_context().add_class("caption")
+        title_box.pack_start(title, False, False, 0)
+        title_box.pack_start(caption, False, False, 0)
+        box.pack_start(title_box, True, True, 0)
+        refresh = Gtk.Button(label=tr_text("Refresh"))
+        refresh.get_style_context().add_class("ghost")
+        refresh.connect("clicked", lambda *_: self.refresh())
+        box.pack_start(refresh, False, False, 0)
+        return box
+
+    def input_bar(self, main: Gtk.Box) -> None:
+        bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        bar.get_style_context().add_class("input-bar")
+        self.entry.get_style_context().add_class("search")
+        self.entry.set_placeholder_text(tr_text("Ask SevenAI..."))
+        self.entry.connect("activate", self.on_submit)
+        bar.pack_start(self.entry, True, True, 0)
+        send = Gtk.Button(label=tr_text("Ask"))
+        send.get_style_context().add_class("primary")
+        send.connect("clicked", self.on_submit)
+        bar.pack_start(send, False, False, 0)
+        main.pack_start(bar, False, False, 0)
+        self.status = Gtk.Label(label=tr_text("SevenAI works locally. Web is off unless explicitly enabled."), xalign=0)
+        self.status.get_style_context().add_class("status")
+        main.pack_start(self.status, False, False, 0)
+
+    def clear(self, box: Gtk.Box | None = None) -> None:
+        target = box or self.timeline
+        for child in list(target.get_children()):
+            target.remove(child)
+
+    def show_detail(self, visible: bool = True) -> None:
+        self.detail.set_visible(visible)
+
+    def label(self, text: str, css: str | None = None, xalign: float = 0) -> Gtk.Label:
+        label = Gtk.Label(label=text)
+        label.set_xalign(xalign)
+        label.set_line_wrap(True)
+        if css:
+            label.get_style_context().add_class(css)
+        return label
+
+    def icon_frame(self, icon: str = "seven-ai", size: int = 36) -> Gtk.Box:
+        frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        frame.get_style_context().add_class("icon-frame")
+        image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.DIALOG)
+        image.set_pixel_size(size)
+        frame.pack_start(image, True, True, 0)
+        return frame
+
+    def card(self, title: str, detail: str, badges: list[str] | None = None, icon: str = "seven-ai") -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.get_style_context().add_class("card")
+        box.pack_start(self.icon_frame(icon), False, False, 0)
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        text.pack_start(self.label(title, "card-title"), False, False, 0)
+        text.pack_start(self.label(detail, "muted"), False, False, 0)
+        if badges:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            for badge in badges[:4]:
+                row.pack_start(self.label(str(badge), "badge"), False, False, 0)
+            text.pack_start(row, False, False, 0)
+        box.pack_start(text, True, True, 0)
+        return box
+
+    def prompt_button(self, label: str, prompt: str, css: str = "ghost") -> Gtk.Button:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class(css)
+        button.connect("clicked", lambda *_: self.submit_prompt(prompt))
+        return button
+
+    def copy_button(self, label: str, text: str) -> Gtk.Button:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("ghost")
+        button.connect("clicked", lambda *_: self.copy_text(text))
+        return button
+
+    def copy_text(self, text: str) -> None:
+        clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(text, -1)
+        clipboard.store()
+        self.status.set_text(tr_text("Copied to clipboard."))
+
+    def submit_prompt(self, prompt: str) -> None:
+        self.entry.set_text(prompt)
+        self.on_submit()
+
+    def scroll_to_bottom(self) -> bool:
+        if not hasattr(self, "scroller"):
+            return False
+        adjustment = self.scroller.get_vadjustment()
+        adjustment.set_value(max(0, adjustment.get_upper() - adjustment.get_page_size()))
+        return False
+
+    def load_shell_context(self) -> dict:
+        cached = read_json_file(WAYBAR_CONTEXT_FILE, {})
+        if cached.get("schema") == "sevenos.waybar.context.v1":
+            return cached
+        return run_json([str(ROOT / "bin/seven-waybar-context"), "status"], {}, timeout=2.0)
+
+    def context_summary(self) -> tuple[str, str, str]:
+        context = self.shell_context if isinstance(self.shell_context, dict) else {}
+        profile = context.get("profile") if isinstance(context.get("profile"), dict) else {}
+        app = context.get("app") if isinstance(context.get("app"), dict) else {}
+        layout = context.get("layout") if isinstance(context.get("layout"), dict) else {}
+        title = profile.get("title") or profile.get("key") or "SevenOS"
+        app_label = app.get("label") or app.get("key") or "desktop"
+        density = layout.get("density") or "normal"
+        return str(title), str(app_label), str(density)
+
+    def stat_flow(self, rows: list[tuple[str, str, str, str]]) -> Gtk.FlowBox:
+        flow = Gtk.FlowBox()
+        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        flow.set_min_children_per_line(2)
+        flow.set_max_children_per_line(4)
+        for title, value, detail, icon in rows:
+            flow.add(self.card(f"{value} {title}", detail, ["STATUS"], icon))
+        return flow
+
+    def render_home(self) -> None:
+        self.clear()
+        self.show_detail(False)
+        profile_title, app_label, density = self.context_summary()
+        hero = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        hero.get_style_context().add_class("ask-panel")
+        hero.pack_start(self.label("SevenAI", "hero-title", 0.5), False, False, 0)
+        hero.pack_start(self.label(tr_text("Ask a question or describe what you want to do."), "hero-copy", 0.5), False, False, 0)
+        hero.pack_start(self.label(f"{profile_title} · {app_label} · {density}", "context-line"), False, False, 0)
+        self.timeline.pack_start(hero, False, False, 0)
+        quick = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        quick.get_style_context().add_class("quick-row")
+        for label, prompt in (
+            (tr_text("Prepare workspace"), "prépare mon espace pour coder"),
+            (tr_text("Explain context"), "explique le contexte actif"),
+            (tr_text("Diagnose"), "diagnose system"),
+            (tr_text("Fix Wi-Fi"), "mon wifi ne marche pas"),
+        ):
+            quick.pack_start(self.prompt_button(label, prompt), False, False, 0)
+        self.timeline.pack_start(quick, False, False, 0)
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+
+    def render_context(self) -> None:
+        self.clear()
+        self.show_detail(True)
+        self.shell_context = self.load_shell_context()
+        context = self.shell_context if isinstance(self.shell_context, dict) else {}
+        profile = context.get("profile") if isinstance(context.get("profile"), dict) else {}
+        app = context.get("app") if isinstance(context.get("app"), dict) else {}
+        window = context.get("window") if isinstance(context.get("window"), dict) else {}
+        layout = context.get("layout") if isinstance(context.get("layout"), dict) else {}
+        workspace = window.get("workspace") if isinstance(window.get("workspace"), dict) else {}
+        self.timeline.pack_start(self.label(tr_text("Active Context"), "section-title"), False, False, 0)
+        self.timeline.pack_start(self.card(profile.get("title", "SevenOS"), profile.get("role") or tr_text("Active mini OS profile"), [profile.get("key", "equinox").upper()], "preferences-desktop-theme"), False, False, 0)
+        self.timeline.pack_start(self.card(app.get("label", "desktop"), window.get("title") or tr_text("No active window title"), [app.get("key", "app").upper(), f"WS {workspace.get('name') or workspace.get('id') or '-'}"], "applications-system"), False, False, 0)
+        self.timeline.pack_start(self.card(tr_text("Layout Policy"), f"{layout.get('density', 'normal')} · {layout.get('priority', 'balanced')}", [((layout.get("dock") or {}).get("behavior") or "dock").upper()], "view-grid"), False, False, 0)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.get_style_context().add_class("quick-row")
+        row.pack_start(self.prompt_button(tr_text("Explain context"), f"explique le contexte actif {app.get('label', '')} {profile.get('key', '')}"), False, False, 0)
+        row.pack_start(self.prompt_button(tr_text("Prepare workspace"), "prépare mon espace pour coder"), False, False, 0)
+        self.timeline.pack_start(row, False, False, 0)
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+
+    def render_actions(self) -> None:
+        self.clear()
+        self.show_detail(True)
+        self.actions = run_json([str(ROOT / "bin/seven-actions"), "--json"], self.actions or {"actions": []}, timeout=12.0)
+        actions = self.actions.get("actions", []) if isinstance(self.actions.get("actions"), list) else []
+        context = self.shell_context if isinstance(self.shell_context, dict) else {}
+        profile = (context.get("profile") or {}).get("key", "") if isinstance(context.get("profile"), dict) else ""
+        app = (context.get("app") or {}).get("key", "") if isinstance(context.get("app"), dict) else ""
+        self.timeline.pack_start(self.label(tr_text("Action Registry"), "section-title"), False, False, 0)
+        self.timeline.pack_start(self.card(tr_text("Machine-readable actions"), tr_text("SevenAI uses the same registry as Spotlight, Waybar and Hub, so suggestions stay coherent."), [str(len(actions)), "LOCAL"], "system-run"), False, False, 0)
+        ranked = []
+        for action in actions:
+            text = " ".join(str(action.get(key, "")) for key in ("id", "category", "title", "description", "profile", "command")).lower()
+            score = 0
+            if "ai" in text:
+                score += 4
+            if profile and profile in text:
+                score += 3
+            if app and app in text:
+                score += 2
+            if action.get("safe"):
+                score += 1
+            if action.get("surface") == "native":
+                score += 1
+            ranked.append((score, action))
+        for _score, action in sorted(ranked, key=lambda item: item[0], reverse=True)[:12]:
+            command = str(action.get("command", ""))
+            card = self.card(action.get("title", "Action"), action.get("description", command), [action.get("impact", "safe").upper(), action.get("category", "SevenOS")], "system-run")
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.pack_start(self.prompt_button(tr_text("Ask"), f"explique cette action SevenOS: {command}"), False, False, 0)
+            if command:
+                row.pack_start(self.prompt_button(tr_text("Preview"), command), False, False, 0)
+            card.pack_start(row, False, False, 0)
+            self.timeline.pack_start(card, False, False, 0)
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+
+    def render_detail(self, payload: dict | None = None) -> None:
+        self.show_detail(True)
+        self.clear(self.detail)
+        diag = self.diagnostics or {}
+        memory = diag.get("memory", {})
+        disk = diag.get("disk_home", {})
+        failed = diag.get("failed_units", [])
+        self.detail.pack_start(self.label(tr_text("System Snapshot"), "section-title"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Memory"), f"{memory.get('used_percent', 0)}% used · {memory.get('available_mb', 0)} MB available", ["LOCAL"], "utilities-system-monitor"), False, False, 0)
+        self.detail.pack_start(self.card(tr_text("Disk"), f"{disk.get('used_percent', 0)}% used · {disk.get('free_gb', 0)} GB free", ["HOME"], "drive-harddisk"), False, False, 0)
+        status = tr_text("No failed system service detected.") if not failed else ", ".join(failed[:4])
+        self.detail.pack_start(self.card(tr_text("Services"), status, ["OK" if not failed else "REVIEW"], "emblem-default" if not failed else "dialog-warning"), False, False, 0)
+        profile_title, app_label, density = self.context_summary()
+        self.detail.pack_start(self.card(tr_text("Active Context"), f"{profile_title} · {app_label} · {density}", ["LIVE"], "view-grid"), False, False, 0)
+        if payload:
+            intent = payload.get("intent", {})
+            action = payload.get("action", {})
+            result = payload.get("result") if isinstance(payload.get("result"), dict) else {}
+            confirmation = payload.get("confirmation") if isinstance(payload.get("confirmation"), dict) else {}
+            self.detail.pack_start(self.label(tr_text("Current Request"), "section-title"), False, False, 0)
+            self.detail.pack_start(self.card(intent.get("intent", "Intent"), intent.get("reason", ""), [intent.get("safety", "SAFE"), f"{intent.get('confidence', 0):.0%}"], "system-search"), False, False, 0)
+            if confirmation:
+                self.detail.pack_start(self.card(confirmation.get("level", "safe").title(), confirmation.get("impact", ""), [confirmation.get("safety", "SAFE"), "CONFIRM"], "dialog-information"), False, False, 0)
+            provider = result.get("provider") if isinstance(result.get("provider"), dict) else {}
+            why = provider.get("why") if isinstance(provider.get("why"), dict) else {}
+            if why:
+                signals = why.get("signals") if isinstance(why.get("signals"), list) else []
+                self.detail.pack_start(self.card(tr_text("Why"), why.get("summary", ""), [str(item) for item in signals[:2]], "dialog-information"), False, False, 0)
+            command = action.get("command") or (payload.get("result") or {}).get("command") or ""
+            if command:
+                self.detail.pack_start(self.label(command, "command"), False, False, 0)
+        self.detail.show_all()
+
+    def render_diagnostics(self) -> None:
+        self.clear()
+        self.show_detail(True)
+        self.timeline.pack_start(self.label(tr_text("Diagnostics"), "section-title"), False, False, 0)
+        self.timeline.pack_start(self.stat_flow([
+            (tr_text("Memory"), f"{(self.diagnostics.get('memory') or {}).get('used_percent', 0)}%", tr_text("current memory pressure"), "utilities-system-monitor"),
+            (tr_text("Disk"), f"{(self.diagnostics.get('disk_home') or {}).get('used_percent', 0)}%", tr_text("home disk usage"), "drive-harddisk"),
+            (tr_text("Load"), f"{(self.diagnostics.get('load') or {}).get('1m', 0):.2f}", tr_text("one minute average"), "speedometer"),
+            (tr_text("Services"), str(len(self.diagnostics.get("failed_units", []))), tr_text("failed units"), "dialog-warning"),
+        ]), False, False, 0)
+        for item in self.diagnostics.get("recommendations", []) or [tr_text("No urgent diagnostic issue found.")]:
+            self.timeline.pack_start(self.card(tr_text("Recommendation"), str(item), ["DIAGNOSE"], "dialog-information"), False, False, 0)
+        self.timeline.show_all()
+
+    def render_memory(self) -> None:
+        self.clear()
+        self.show_detail(False)
+        self.timeline.pack_start(self.label(tr_text("Local Timeline"), "section-title"), False, False, 0)
+        events = self.memory.get("events", [])
+        if not events:
+            self.timeline.pack_start(self.card(tr_text("No conversation yet"), tr_text("Ask SevenAI something to build a local-only timeline."), ["LOCAL"], "document-open-recent"), False, False, 0)
+        for event in events[-30:]:
+            when = ""
+            try:
+                when = dt.datetime.fromtimestamp(int(event.get("ts", 0))).strftime("%Y-%m-%d %H:%M")
+            except Exception:
+                when = tr_text("Unknown time")
+            self.timeline.pack_start(self.card(event.get("input") or event.get("intent", "SevenAI event"), f"{when} · {event.get('intent')} · {event.get('target')}", [event.get("safety", "SAFE")], "document-open-recent"), False, False, 0)
+        self.timeline.show_all()
+
+    def render_playbooks(self) -> None:
+        self.clear()
+        self.show_detail(False)
+        self.timeline.pack_start(self.label(tr_text("Playbooks"), "section-title"), False, False, 0)
+        for key in ("wifi_repair", "slow_system", "failed_services", "disk_cleanup"):
+            data = run_json([str(ROOT / "scripts/ai.sh"), "playbook", key, "--json"], {})
+            detail = " · ".join(step.get("explain", "") for step in data.get("steps", [])[:2])
+            card = self.card(data.get("title", key), detail, [data.get("safety", "SAFE"), "PREVIEW"], "preferences-system")
+            button = Gtk.Button(label=tr_text("Open"))
+            button.get_style_context().add_class("ghost")
+            button.connect("clicked", lambda _b, name=key: self.preview_command(f"seven ai playbook {name} --json"))
+            card.pack_start(button, False, False, 0)
+            self.timeline.pack_start(card, False, False, 0)
+        self.timeline.show_all()
+
+    def render_privacy(self) -> None:
+        self.clear()
+        self.show_detail(False)
+        self.timeline.pack_start(self.label(tr_text("Privacy"), "section-title"), False, False, 0)
+        self.timeline.pack_start(self.card(tr_text("Local provider"), tr_text("SevenAI uses deterministic local guidance by default. No account, token or cloud call is required."), ["LOCAL", "NO CLOUD"], "security-high"), False, False, 0)
+        self.timeline.pack_start(self.card(tr_text("Web access"), tr_text("Web research stays disabled unless the user explicitly enables it with SEVENAI_WEB=1 or --web."), ["OPT-IN"], "network-workgroup"), False, False, 0)
+        self.timeline.pack_start(self.card(tr_text("Confirmation"), tr_text("System-changing actions are previewed first and require confirmation."), ["SAFE"], "dialog-information"), False, False, 0)
+        self.timeline.show_all()
+
+    def preview_command(self, command: str) -> None:
+        if not command:
+            return
+        self.entry.set_text(command.replace("seven ai ", "", 1))
+        self.on_submit()
+
+    def on_submit(self, *_args) -> None:
+        prompt = self.entry.get_text().strip()
+        if not prompt:
+            return
+        self.show_detail(False)
+        self.last_prompt = prompt
+        self.status.set_text(tr_text("Understanding request locally..."))
+        self.timeline.pack_start(self.card(tr_text("You"), prompt, ["REQUEST"], "avatar-default"), False, False, 0)
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+        threading.Thread(target=self.ask_worker, args=(prompt,), daemon=True).start()
+
+    def ask_worker(self, prompt: str) -> None:
+        intent_payload = run_json([str(ROOT / "scripts/ai.sh"), "intent", prompt, "--json"], {"intent": {}})
+        provider = run_json([str(ROOT / "scripts/ai.sh"), "provider", prompt, "--json"], {})
+        GLib.idle_add(self.finish_preview, prompt, intent_payload, provider)
+
+    def finish_preview(self, prompt: str, intent_payload: dict, provider: dict) -> bool:
+        self.last_intent = intent_payload.get("intent", {}) if isinstance(intent_payload.get("intent"), dict) else {}
+        answer = provider.get("answer") or tr_text("SevenAI prepared a local preview.")
+        card = self.card("SevenAI", answer, [self.last_intent.get("safety", "SAFE"), self.last_intent.get("intent", "GUIDANCE")], "seven-ai")
+        card.pack_start(self.confirmation_strip(self.last_intent), False, False, 0)
+        why = provider.get("why") if isinstance(provider.get("why"), dict) else {}
+        if why:
+            card.pack_start(self.why_strip(why), False, False, 0)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        run = Gtk.Button(label=tr_text("Run Preview"))
+        run.get_style_context().add_class("ghost")
+        run.connect("clicked", lambda *_: self.run_agent(False))
+        row.pack_start(run, False, False, 0)
+        if self.last_intent.get("needs_apply"):
+            apply = Gtk.Button(label=tr_text("Apply"))
+            apply.get_style_context().add_class("primary")
+            apply.connect("clicked", lambda *_: self.confirm_apply())
+            row.pack_start(apply, False, False, 0)
+        for suggestion in provider.get("suggestions", [])[:3]:
+            row.pack_start(self.prompt_button(str(suggestion), str(suggestion)), False, False, 0)
+        card.pack_start(row, False, False, 0)
+        self.timeline.pack_start(card, False, False, 0)
+        self.status.set_text(tr_text("Preview ready. Sensitive actions need confirmation."))
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+        if self.last_intent.get("needs_apply"):
+            self.render_detail({"intent": self.last_intent, "confirmation": self.confirmation_data(self.last_intent), "action": {}})
+        return False
+
+    def why_strip(self, why: dict) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        box.get_style_context().add_class("why-strip")
+        box.pack_start(self.label(tr_text("Why this answer"), "risk-title"), False, False, 0)
+        summary = str(why.get("summary") or tr_text("SevenAI used local context only."))
+        signals = why.get("signals") if isinstance(why.get("signals"), list) else []
+        if signals:
+            summary = f"{summary} · " + " · ".join(str(item) for item in signals[:4])
+        box.pack_start(self.label(summary, "muted"), False, False, 0)
+        return box
+
+    def confirmation_strip(self, intent: dict) -> Gtk.Box:
+        data = self.confirmation_data(intent)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        box.get_style_context().add_class("risk-strip")
+        box.pack_start(self.label(f"{data['level']} · {data['safety']}", "risk-title"), False, False, 0)
+        box.pack_start(self.label(data["impact"], "muted"), False, False, 0)
+        return box
+
+    def confirmation_data(self, intent: dict) -> dict:
+        safety = str(intent.get("safety", "SAFE")).upper()
+        needs_apply = bool(intent.get("needs_apply"))
+        if safety == "ROOT":
+            level = tr_text("Critical")
+            detail = tr_text("System package or privileged change. Review before applying.")
+        elif safety == "SYSTEM":
+            level = tr_text("Warning")
+            detail = tr_text("Can change services, session state, theme or running processes.")
+        elif safety == "WEB":
+            level = tr_text("Notice")
+            detail = tr_text("Web stays disabled unless you explicitly enable it.")
+        else:
+            level = tr_text("Safe")
+            detail = tr_text("Local read or safe action. Preview does not change system state.")
+        if needs_apply:
+            detail = f"{detail} {tr_text('Apply requires confirmation.')}"
+        return {"level": level, "safety": safety, "impact": detail}
+
+    def confirm_apply(self) -> None:
+        if not self.window:
+            return
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            modal=True,
+            flags=0,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.CANCEL,
+            text=tr_text("Apply SevenAI action?"),
+        )
+        dialog.format_secondary_text(
+            tr_text(
+                "SevenAI understood this as {intent}. Safety level: {safety}. The action can change system state.",
+                intent=self.last_intent.get("intent", "ACTION"),
+                safety=self.last_intent.get("safety", "SYSTEM"),
+            )
+        )
+        dialog.add_button(tr_text("Apply"), Gtk.ResponseType.OK)
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK:
+            self.run_agent(True)
+
+    def run_agent(self, apply: bool) -> None:
+        if not self.last_prompt:
+            return
+        self.status.set_text(tr_text("Running SevenAI action..."))
+        threading.Thread(target=self.agent_worker, args=(self.last_prompt, apply), daemon=True).start()
+
+    def agent_worker(self, prompt: str, apply: bool) -> None:
+        command = [str(ROOT / "scripts/ai.sh"), "ask", prompt, "--json"]
+        if apply:
+            command.append("--apply")
+        payload = run_json(command, {"input": prompt, "intent": self.last_intent, "result": {"detail": "No result."}})
+        GLib.idle_add(self.finish_agent, payload)
+
+    def finish_agent(self, payload: dict) -> bool:
+        self.last_agent_payload = payload
+        intent = payload.get("intent", {})
+        result = payload.get("result") or {}
+        action = payload.get("action") or {}
+        detail = result.get("detail") or result.get("stderr") or result.get("stdout") or action.get("command") or tr_text("Action completed or previewed.")
+        badges = [payload.get("mode", "preview").upper(), intent.get("safety", "SAFE")]
+        card = self.card(tr_text("Result"), str(detail), badges, "emblem-default")
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.pack_start(self.copy_button(tr_text("Copy result"), str(detail)), False, False, 0)
+        command = str(action.get("command") or result.get("command") or "")
+        if command:
+            row.pack_start(self.copy_button(tr_text("Copy command"), command), False, False, 0)
+        card.pack_start(row, False, False, 0)
+        self.timeline.pack_start(card, False, False, 0)
+        self.status.set_text(tr_text("SevenAI result ready."))
+        self.memory = run_json([str(ROOT / "scripts/ai.sh"), "memory", "--json"], self.memory)
+        self.render_detail(payload)
+        self.timeline.show_all()
+        GLib.idle_add(self.scroll_to_bottom)
+        return False
+
+    def refresh(self) -> None:
+        self.status.set_text(tr_text("Refreshing SevenAI context..."))
+        threading.Thread(target=self.refresh_worker, daemon=True).start()
+
+    def refresh_worker(self) -> None:
+        payload = run_json([str(ROOT / "scripts/ai.sh"), "json"], {"summary": {}, "recommendations": []})
+        diagnostics = run_json([str(ROOT / "scripts/ai.sh"), "diagnose", "system", "--json"], {})
+        memory = run_json([str(ROOT / "scripts/ai.sh"), "memory", "--json"], {"events": []})
+        context = self.load_shell_context()
+        actions = run_json([str(ROOT / "bin/seven-actions"), "--json"], self.actions or {"actions": []}, timeout=12.0)
+        GLib.idle_add(self.finish_refresh, payload, diagnostics, memory, context, actions)
+
+    def finish_refresh(self, payload: dict, diagnostics: dict, memory: dict, context: dict, actions: dict) -> bool:
+        self.payload = payload
+        self.diagnostics = diagnostics
+        self.memory = memory
+        self.shell_context = context
+        self.actions = actions
+        self.status.set_text(tr_text("SevenAI context refreshed."))
+        self.render_home()
+        self.render_detail()
+        return False
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="SevenAI native assistant")
+    parser.add_argument("action", nargs="?", default="open", choices=("open", "status"))
+    parser.add_argument("--probe", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    if args.probe:
+        return probe()
+    if args.json:
+        available, error = gtk_available()
+        payload = run_json([str(ROOT / "scripts/ai.sh"), "json"], {"summary": {}})
+        print(json.dumps({"schema": "sevenos.ai-native.v1", "native": available, "error": error, "ai": payload}, indent=2))
+        return 0
+    if args.action == "status":
+        print("SevenAI Native")
+        print("==============")
+        print("Status: OK" if probe() == 0 else "Status: MISS")
+        return 0
+    app = SevenAI()
+    return app.run([])
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

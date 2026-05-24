@@ -180,14 +180,14 @@ What is already testable:
   SevenOS route, so a missing Calamares package becomes a guided installer
   policy state instead of a raw backend error.
 
-The current quality gate remains:
+The daily pre-push gate is:
 
 ```bash
-./scripts/design-check.sh
-./scripts/startup-audit.sh
-./scripts/ux-check.sh
-./scripts/check.sh
+seven pre-push
 ```
+
+For a release tag or a deep phase audit, run `seven pre-push full` and
+`./scripts/ux-check.sh` separately; those checks are intentionally longer.
 
 ## Inspirations And References
 
@@ -379,24 +379,17 @@ critical/high action remains open:
 Use these before pushing or testing a new machine:
 
 ```bash
-./scripts/design-check.sh
+seven pre-push
 seven smoke --json | python -m json.tool
 seven doctor release --json | python -m json.tool
-./scripts/startup-audit.sh
-./scripts/ux-check.sh
-./scripts/check.sh
 seven launchpad doctor --json | python -m json.tool
 seven spotlight doctor --json | python -m json.tool
-seven motion ux-doctor --json | python -m json.tool
-seven phase-gate --json | python -m json.tool
-seven b3 plan --json | python -m json.tool
 seven state --json | python -m json.tool
-seven stack --json | python -m json.tool
-seven shell status --json | python -m json.tool
-seven shell plan --json | python -m json.tool
 seven windows resolve photoshop --json | python -m json.tool
 seven-wallpaper status
 ```
+
+Use `seven pre-push full` only for a long release audit.
 
 Expected current truth:
 
@@ -497,223 +490,58 @@ seven architecture
 seven architecture doctor
 ```
 
-## Usage
+## Install On A New Machine
 
-For a complete test-machine flow, use:
-
-```text
-docs/TEST_MACHINE.md
-```
-
-Before pushing a phase to GitHub, use:
-
-```text
-docs/PRE_PUSH.md
-```
-
-Clone the repository:
+Clone SevenOS and enter the repository:
 
 ```bash
 git clone https://github.com/seven-v73/SevenOS.git
 cd SevenOS
 ```
 
-Install the base desktop layer:
+Run the public first-install path:
 
 ```bash
 chmod +x install.sh bootstrap.sh profiles/*.sh
-./install.sh base
+seven new
 ```
 
-Do not run `sudo ./install.sh ...`. The installer must run as your normal user;
-it asks for `sudo` internally only when needed.
-
-The base layer installs packages, SevenOS branding, `seven`, `sevenpkg`, the desktop theme, Kitty polish, terminal country signals, and the wallpaper.
-`sevenosctl` remains available only as a legacy compatibility helper.
-
-Install a profile:
+If `seven` is not available yet on that host, use:
 
 ```bash
-./install.sh dev
-./install.sh cybersecurity
-./install.sh cyber-audit
-./install.sh cyber-lab --name webapp
-./install.sh creation
-./install.sh windows
-./install.sh security
-./install.sh cli
-./install.sh branding
-./install.sh theme
-./install.sh hub
-./install.sh iso-tools
-./install.sh vm-check
-./install.sh vm-network
-./install.sh blackarch-setup --dry-run
-./install.sh installer-plan
-./install.sh installer-check
-./install.sh installer-script
-./install.sh server
-./install.sh installer-stack
-./install.sh hub-gui-stack
-./install.sh flatpak status
-./install.sh flatpak setup
+./install.sh new-device --yes
 ```
 
-Check whether the current host is ready for SevenOS features:
+`seven new` prepares the desktop layer, SevenOS CLI, Hub, fonts, theme,
+visual packages, mini OS dependencies, workspaces, isolation, rootfs metadata,
+Windows Bridge preparation and post-install checks.
+
+Do not run `sudo ./install.sh ...`. SevenOS asks for administrator privileges
+internally only when a step needs them.
+
+Optional full setup:
 
 ```bash
-./install.sh doctor
-./install.sh post-install
+seven new --optional
+seven new --optional --rootfs
 ```
 
-Show the current SevenOS installation status:
+Windows Bridge first run:
 
 ```bash
-./install.sh status
-seven status
+seven windows setup
+seven windows setup --iso ~/Downloads/Win11.iso
+```
+
+After installation:
+
+```bash
 seven post-install
-seven welcome
-seven welcome status --json
-seven welcome plan
-seven welcome plan --json
-seven session status
-seven session status --json
-seven hub
-seven dashboard
-seven architecture
-seven architecture doctor
-seven installer status
-seven installer status --json
-seven installer plan
-seven installer plan --json
-seven installer doctor
-seven-daemon packages --json
-seven-daemon packages-plan --json
-seven-daemon insights --json
-seven hub-gui status
-seven hub-gui doctor
-seven flatpak status
-seven ecosystem
-seven ecosystem processes
-seven ecosystem --json
-seven ecosystem roadmap
-seven stack
-seven stack --json
-seven stack doctor
-seven shell
-seven shell status --json
-seven shell plan
-seven shell preview
-seven experience
-seven experience --json
-seven control
-seven control --json
-seven control apply --limit 5
-seven events
-seven events --json
-seven insights
-seven insights --json
-seven phase-gate --json
-seven shield status
-seven shield status --json
-seven readiness
-seven primary
-seven primary --json
-seven migrate-ml4w plan
-seven migrate-ml4w switch
-seven keyboard status
-seven keyboard apply
-seven daily
-seven daily --json
-seven daily plan
-seven phase-gate
-seven repair
-seven repair ux --apply
-seven doctor fix
-seven improve
-seven improve security --apply --yes
-seven windows status
+seven doctor
+seven profile-rootfs verify all
 ```
 
-Install everything:
-
-```bash
-./install.sh all
-```
-
-Preview without installing packages:
-
-```bash
-./install.sh dev --dry-run
-```
-
-Run local checks:
-
-```bash
-./scripts/check.sh
-seven smoke doctor
-seven doctor release
-./scripts/ux-check.sh
-./scripts/phase-gate.sh
-./scripts/post-install.sh
-```
-
-Build a live ISO:
-
-```bash
-./install.sh iso-tools
-./install.sh iso
-```
-
-Preview the ISO build commands:
-
-```bash
-./install.sh iso --dry-run
-```
-
-Check VM readiness:
-
-```bash
-./install.sh vm-check
-```
-
-Start the libvirt default network:
-
-```bash
-./install.sh vm-network
-```
-
-Preview a Windows VM creation command:
-
-```bash
-./install.sh vm-windows \
-  --iso /path/to/windows.iso \
-  --virtio-iso /path/to/virtio-win.iso \
-  --os win11 \
-  --dry-run
-```
-
-Create a non-destructive installation plan:
-
-```bash
-./install.sh installer-plan
-./install.sh installer-check
-./install.sh installer-script
-```
-
-The installer plan currently covers disk target, hostname, user, LUKS, filesystem, bootloader, timezone, locale, keymap, swap strategy, and SevenOS profiles.
-
-Launch Seven Hub after installing it:
-
-```bash
-seven hub
-seven-hub
-```
-
-`seven hub` and `seven-hub` open the native GTK/libadwaita Control Center when
-the graphical stack is available. The Rofi/terminal command palette remains
-available as `seven-hub menu` or by opening a focused category such as
-`seven-hub Profiles`.
+For release and developer checks before pushing a phase, see `docs/PRE_PUSH.md`.
 
 ## Identity
 
@@ -957,57 +785,26 @@ DaVinci Resolve is not installed automatically because it is not distributed thr
 
 ### WINDOWS
 
-Installs compatibility tools such as Wine, Winetricks, Lutris, Flatpak, QEMU, and Virt Manager.
-
-The installer configures Flathub, installs Bottles through Flatpak when possible, enables `libvirtd`, and adds the current user to the `libvirt` group.
-
-Windows Mode is exposed as a guided user flow:
+Windows Bridge is exposed as a guided user flow:
 
 ```bash
-seven run photoshop
-seven windows catalog
-seven windows resolve photoshop --json
-seven windows run /path/to/setup.exe
-seven windows guide
-seven windows status
-seven windows status --json
-seven windows plan
-seven windows plan --json
-seven windows apps
-seven windows vm
+seven windows setup
+seven windows setup --iso ~/Downloads/Win11.iso
 ```
 
-SevenOS now treats Windows compatibility as an app-first layer:
+The setup installs the compatibility layer, prepares libvirt, creates the local
+VM disk, prepares VirtIO driver media when possible and registers the VM when
+official Windows media is available.
+
+SevenOS treats Windows compatibility as an app-first layer:
 
 - Wine for direct `.exe` / `.msi` launching.
 - Bottles for accessible non-terminal app bottles.
 - Proton / Lutris for games.
 - KVM/QEMU only as the optional fallback for heavy apps or full Windows sessions.
 
-The resolver exposes a machine-readable contract for Seven Hub, Seven Shell and
-SevenDaemon:
-
-```bash
-seven windows catalog --json | python -m json.tool
-seven windows resolve photoshop --json | python -m json.tool
-SEVENOS_DRY_RUN=1 seven run photoshop
-```
-
-This lets SevenOS decide whether an app should use Wine, Bottles, Proton/Lutris
-or the optional VM path without forcing users to download a Windows ISO first.
-
-VM creation still needs a user-provided Windows ISO and, for best
-storage/network support, the VirtIO driver ISO. SevenOS does not download or
-redistribute Windows images:
-
-```bash
-./install.sh vm-check
-./install.sh vm-network
-seven windows create \
-  --iso /path/to/windows.iso \
-  --virtio-iso /path/to/virtio-win.iso \
-  --os win11
-```
+SevenOS does not redistribute Windows images, does not inject a product key and
+does not bypass Windows activation.
 
 Use `--os win10` for a Windows 10 VM.
 
@@ -1030,8 +827,8 @@ Windows VM provisioning and GPU passthrough will be handled in later phases.
 
 ### Phase 1
 
-- Arch post-install scripts
-- Hyprland desktop layer
+- SevenOS route on top of an Arch-compatible foundation
+- Seven Smart Window System foundation
 - modular profiles
 - package manifests
 - first reproducible Git workflow

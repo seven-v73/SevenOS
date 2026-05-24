@@ -320,41 +320,89 @@ def run() -> int:
         pass
 
     accent = meta.get("resource_intent", {}).get("gpu", "foreground")
-    css = f"""
-    * {{ font-family: "SF Pro Display", "Inter", system-ui, sans-serif; }}
-    window.mini-os-window {{ background: transparent; }}
-    .root {{
-      padding: 18px;
-      border-radius: 30px;
-      background:
-        radial-gradient(ellipse at 10% 0%, rgba(137,180,250,0.18), transparent 42%),
-        radial-gradient(ellipse at 90% 0%, rgba(166,227,161,0.12), transparent 44%),
-        rgba(17,18,25,0.92);
-      border: 1px solid rgba(255,255,255,0.13);
-    }}
-    .eyebrow {{ color: rgba(245,247,250,0.58); font-size: 11px; }}
-    .title {{ color: rgba(245,247,250,0.98); font-size: 25px; font-weight: 600; }}
-    .subtitle {{ color: rgba(245,247,250,0.68); font-size: 12px; }}
-    .card {{
-      padding: 14px;
-      border-radius: 22px;
-      background: rgba(255,255,255,0.065);
-      border: 1px solid rgba(255,255,255,0.11);
-    }}
-    .card-title {{ color: rgba(245,247,250,0.95); font-size: 13px; font-weight: 600; }}
-    .card-text {{ color: rgba(245,247,250,0.63); font-size: 11px; }}
-    .pill {{
-      min-height: 42px;
-      border-radius: 999px;
-      color: rgba(245,247,250,0.95);
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-    }}
-    .pill:hover {{ background: rgba(255,255,255,0.13); }}
-    .signal {{ color: rgba(249,226,175,0.86); font-size: 10px; }}
-    .accent {{ color: rgba(156,203,255,0.92); font-size: 11px; }}
-    .hidden-note {{ color: rgba(245,247,250,0.48); font-size: 10px; }}
-    """
+    if key == "windows":
+        css = """
+        * { font-family: "SF Pro Display", "Inter", system-ui, sans-serif; }
+        window.mini-os-window { background: transparent; }
+        .root {
+          padding: 18px;
+          border-radius: 30px;
+          background:
+            radial-gradient(ellipse at 10% 0%, rgba(137,180,250,0.18), transparent 42%),
+            radial-gradient(ellipse at 90% 0%, rgba(166,227,161,0.12), transparent 44%),
+            rgba(17,18,25,0.92);
+          border: 1px solid rgba(255,255,255,0.13);
+        }
+        .eyebrow { color: rgba(245,247,250,0.58); font-size: 11px; }
+        .title { color: rgba(245,247,250,0.98); font-size: 25px; font-weight: 500; }
+        .subtitle { color: rgba(245,247,250,0.68); font-size: 12px; }
+        .card {
+          padding: 14px;
+          border-radius: 22px;
+          background: rgba(255,255,255,0.065);
+          border: 1px solid rgba(255,255,255,0.11);
+        }
+        .card-title { color: rgba(245,247,250,0.95); font-size: 13px; font-weight: 500; }
+        .card-text { color: rgba(245,247,250,0.63); font-size: 11px; }
+        .pill {
+          min-height: 42px;
+          border-radius: 999px;
+          color: rgba(245,247,250,0.95);
+          background: rgba(255,255,255,0.08);
+          border: 1px solid rgba(255,255,255,0.12);
+        }
+        .pill:hover { background: rgba(255,255,255,0.13); }
+        .signal { color: rgba(249,226,175,0.86); font-size: 10px; }
+        .accent { color: rgba(156,203,255,0.92); font-size: 11px; }
+        .hidden-note { color: rgba(245,247,250,0.48); font-size: 10px; }
+        """
+    else:
+        css = """
+        * { font-family: "SF Pro Display", "Inter", system-ui, sans-serif; }
+        window.mini-os-window { background: transparent; }
+        .root {
+          padding: 18px;
+          border-radius: 22px;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.105), rgba(255,255,255,0.035)),
+            rgba(16,18,25,0.955);
+          border: 1px solid rgba(255,255,255,0.135);
+          box-shadow: 0 24px 72px rgba(0,0,0,0.48);
+        }
+        .eyebrow {
+          color: rgba(245,247,250,0.58);
+          font-size: 11px;
+          letter-spacing: 0;
+        }
+        .title { color: rgba(245,247,250,0.98); font-size: 20px; font-weight: 500; }
+        .subtitle { color: rgba(245,247,250,0.66); font-size: 12px; }
+        .card {
+          padding: 11px;
+          border-radius: 14px;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.060), rgba(255,255,255,0.032)),
+            rgba(255,255,255,0.026);
+          border: 1px solid rgba(255,255,255,0.095);
+        }
+        .card-title { color: rgba(245,247,250,0.94); font-size: 12px; font-weight: 500; }
+        .card-text { color: rgba(245,247,250,0.62); font-size: 11px; }
+        .pill {
+          min-height: 34px;
+          padding: 0 11px;
+          border-radius: 10px;
+          color: rgba(245,247,250,0.92);
+          background: rgba(255,255,255,0.052);
+          border: 1px solid rgba(255,255,255,0.09);
+          font-size: 11px;
+        }
+        .pill:hover {
+          background: rgba(255,255,255,0.085);
+          border-color: rgba(156,203,255,0.26);
+        }
+        .signal { color: rgba(249,226,175,0.82); font-size: 10px; }
+        .accent { color: rgba(156,203,255,0.86); font-size: 11px; }
+        .hidden-note { color: rgba(245,247,250,0.48); font-size: 10px; }
+        """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -365,14 +413,15 @@ def run() -> int:
     window.set_resizable(False)
     window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(820, 760)
+    window.set_default_size(820, 760 if key == "windows" else 720)
     window.get_style_context().add_class("mini-os-window")
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
     root.get_style_context().add_class("root")
     window.add(root)
 
-    eyebrow = Gtk.Label(label=f"{key.upper()} · mini OS autonome · {accent}", xalign=0)
+    eyebrow_label = f"{key.upper()} · mini OS autonome · {accent}" if key == "windows" else f"{key.upper()} · profil indépendant · ressources {accent}"
+    eyebrow = Gtk.Label(label=eyebrow_label, xalign=0)
     eyebrow.get_style_context().add_class("eyebrow")
     root.pack_start(eyebrow, False, False, 0)
 
@@ -391,8 +440,15 @@ def run() -> int:
     root.pack_start(grid, True, True, 0)
 
     layers = meta.get("layers", {})
+    layer_titles = {
+        "kernel": "Noyau",
+        "runtime": "Runtime",
+        "experience": "Interface",
+        "intelligence": "IA",
+    }
     for index, name in enumerate(("kernel", "runtime", "experience", "intelligence")):
-        grid.attach(info_card(Gtk, name.title(), compact(layers.get(name))), index % 2, index // 2, 1, 1)
+        title_text = name.title() if key == "windows" else layer_titles.get(name, name.title())
+        grid.attach(info_card(Gtk, title_text, compact(layers.get(name))), index % 2, index // 2, 1, 1)
 
     runtime_summary = runtime.get("resource_plan", {})
     grid.attach(info_card(Gtk, "Resources", compact([

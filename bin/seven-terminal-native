@@ -4,8 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import shlex
+import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -81,6 +85,51 @@ def resolve_shell() -> Path:
 def hex_to_rgba(value: str):
     value = value.lstrip("#")
     return tuple(int(value[index : index + 2], 16) / 255.0 for index in (0, 2, 4)) + (1.0,)
+
+
+def terminal_state_file(profile: str) -> Path:
+    state_root = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "sevenos"
+    state_root.mkdir(parents=True, exist_ok=True)
+    return state_root / f"terminal-session-{profile}.json"
+
+
+def load_terminal_state(profile: str) -> dict:
+    try:
+        payload = json.loads(terminal_state_file(profile).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def terminal_log_path(profile: str) -> Path:
+    runtime_root = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
+    runtime_root.mkdir(parents=True, exist_ok=True)
+    return runtime_root / f"terminal-{profile}-{os.getpid()}.log"
+
+
+PROFILE_ROLES = {
+    "classic": ("Classic", "Daily shell, files, quick commands"),
+    "dark": ("Pulse", "Graphite shell for games, monitoring and long sessions"),
+    "light": ("Classic", "Clarity shell for daylight work"),
+    "forge": ("Forge", "Git, builds, tests and project workflows"),
+    "cyber": ("Shield", "Network, audit and cautious investigation"),
+    "focus": ("Baobab", "Writing, reading and calm long-form work"),
+    "admin": ("Admin", "System control with extra caution"),
+    "windows": ("Windows", "Bridge folders, VM and compatibility workflows"),
+}
+
+
+def profile_role(profile: str) -> tuple[str, str]:
+    active = os.environ.get("SEVENOS_ACTIVE_PROFILE", "").lower()
+    if profile == "dark" and active == "pulse":
+        return ("Pulse", "Games, captures, performance and long sessions")
+    if profile == "focus" and active == "studio":
+        return ("Studio", "Media, assets and creative batch work")
+    if profile == "focus" and active == "baobab":
+        return ("Baobab", "Documents, collections and calm reading")
+    if profile == "cyber" and active == "shield":
+        return ("Shield", "Network, audit and cautious investigation")
+    return PROFILE_ROLES.get(profile, PROFILE_ROLES["classic"])
 
 
 THEMES = {
@@ -258,8 +307,32 @@ def run_terminal(profile: str, command: list[str]) -> int:
 
     theme = THEMES.get(profile, THEMES["classic"])
     dark = profile != "light"
-    title = f"Seven Terminal · {profile.title()}"
+    clean_mode = os.environ.get("SEVENOS_TERMINAL_CLEAN", "1") != "0"
+    show_profile_pill = os.environ.get("SEVENOS_TERMINAL_SHOW_PROFILE", "0") == "1"
+    show_status = os.environ.get("SEVENOS_TERMINAL_STATUS", "0") == "1"
+    saved_state = load_terminal_state(profile)
+    try:
+        saved_font_scale = float(saved_state.get("font_scale", 1.0))
+    except (TypeError, ValueError):
+        saved_font_scale = 1.0
+    saved_font_scale = max(0.78, min(1.55, saved_font_scale))
+    saved_window_size = saved_state.get("window_size") if isinstance(saved_state.get("window_size"), dict) else {}
+    try:
+        initial_width = int(saved_window_size.get("width", 760))
+        initial_height = int(saved_window_size.get("height", 480))
+    except (TypeError, ValueError):
+        initial_width, initial_height = 760, 480
+    initial_width = max(620, min(1800, initial_width))
+    initial_height = max(380, min(1200, initial_height))
+    title = "Terminal" if clean_mode else f"Seven Terminal · {profile.title()}"
     argv = command or [str(resolve_shell())]
+    control_bg = "rgba(255,255,255,0.055)" if dark else "rgba(20,28,40,0.055)"
+    control_bg_hover = "rgba(255,255,255,0.11)" if dark else "rgba(20,28,40,0.10)"
+    control_border = "rgba(255,255,255,0.09)" if dark else "rgba(20,28,40,0.12)"
+    panel_bg = f"alpha({theme['window']}, 0.98)" if dark else "#F8FAFD"
+    panel_row_hover = "rgba(255,255,255,0.075)" if dark else "rgba(47,123,255,0.08)"
+    panel_selected = "rgba(77,163,255,0.16)" if dark else "rgba(47,123,255,0.14)"
+    dialog_border = "rgba(255,255,255,0.10)" if dark else "rgba(20,28,40,0.14)"
 
     css = f"""
     * {{
@@ -271,26 +344,108 @@ def run_terminal(profile: str, command: list[str]) -> int:
       border: 1px solid rgba(255,255,255,0.08);
     }}
     .seven-titlebar {{
-      min-height: 42px;
-      padding: 0 14px;
-      background: linear-gradient(180deg, alpha({theme['titlebar']}, 0.98), alpha({theme['window']}, 0.94));
+      min-height: 38px;
+      padding: 0 12px;
+      background: alpha({theme['titlebar']}, 0.96);
       border-bottom: 1px solid {theme['titlebar_border']};
     }}
     .seven-title {{
       color: {theme['foreground']};
-      font: 600 12px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+      font: 600 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
       letter-spacing: 0;
     }}
     .seven-profile-pill {{
       color: {theme['muted']};
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: {control_bg};
+      border: 1px solid {control_border};
       border-radius: 999px;
       padding: 3px 9px;
       font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }}
+    .terminal-tool {{
+      min-width: 24px;
+      min-height: 22px;
+      border-radius: 8px;
+      color: {theme['foreground']};
+      background: {control_bg};
+      border: 1px solid {control_border};
+      padding: 0 8px;
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .terminal-tool:hover {{
+      background: {control_bg_hover};
+      border-color: {control_border};
+    }}
+    .terminal-searchbar {{
+      min-height: 34px;
+      padding: 4px 10px;
+      background: alpha({theme['titlebar']}, 0.94);
+      border-bottom: 1px solid {theme['titlebar_border']};
+    }}
+    .terminal-search {{
+      min-height: 24px;
+      border-radius: 7px;
+      color: {theme['foreground']};
+      background: {control_bg};
+      border: 1px solid {control_border};
+      padding: 0 8px;
+    }}
+    .terminal-search text,
+    .terminal-search entry,
+    .terminal-search {{
+      color: {theme['foreground']};
+    }}
+    notebook {{
+      border: 0;
+      background: {theme['terminal']};
+    }}
+    notebook tab {{
+      min-height: 26px;
+      margin: 4px 3px 3px 3px;
+      padding: 0 10px;
+      border-radius: 8px 8px 0 0;
+      background: alpha({theme['titlebar']}, 0.58);
+      color: {theme['muted']};
+      border: 0;
+    }}
+    notebook tab:checked {{
+      color: {theme['foreground']};
+      background: alpha({theme['window']}, 0.96);
+      box-shadow: inset 0 -2px {theme['cursor']};
+    }}
+    .tab-pill {{
+      color: {theme['muted']};
+      font: 600 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .tab-pill-active {{
+      color: {theme['foreground']};
+      font: 700 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .tab-close {{
+      min-width: 16px;
+      min-height: 16px;
+      border-radius: 999px;
+      padding: 0;
+      margin: 0 0 0 5px;
+      color: {theme['muted']};
+      background: transparent;
+      border: 0;
+      font: 600 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .tab-close:hover {{
+      color: {theme['foreground']};
+      background: {control_bg_hover};
+    }}
+    .terminal-status {{
+      min-height: 24px;
+      padding: 0 14px;
+      color: {theme['muted']};
+      background: alpha({theme['titlebar']}, 0.84);
+      border-bottom: 1px solid alpha({theme['titlebar_border']}, 0.78);
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
     .seven-terminal-frame {{
-      padding: 14px 16px 16px 16px;
+      padding: 13px 15px 15px 15px;
       background: {theme['terminal']};
     }}
     .seven-terminal {{
@@ -310,6 +465,77 @@ def run_terminal(profile: str, command: list[str]) -> int:
     .traffic.close {{ background: #ff5f57; }}
     .traffic.min {{ background: #febc2e; }}
     .traffic.max {{ background: #28c840; }}
+    .palette-dialog {{
+      background: {panel_bg};
+      border-radius: 18px;
+      color: {theme['foreground']};
+      border: 1px solid {dialog_border};
+    }}
+    .palette-surface {{
+      background: {panel_bg};
+      color: {theme['foreground']};
+    }}
+    .palette-list {{
+      background: {panel_bg};
+      color: {theme['foreground']};
+      border: 0;
+    }}
+    .palette-title {{
+      color: {theme['foreground']};
+      font: 700 14px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .palette-subtitle {{
+      color: {theme['muted']};
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .palette-search {{
+      min-height: 34px;
+      border-radius: 10px;
+      color: {theme['foreground']};
+      background: {control_bg};
+      border: 1px solid {control_border};
+      padding: 0 12px;
+    }}
+    .palette-search text,
+    .palette-search entry,
+    .palette-search {{
+      color: {theme['foreground']};
+    }}
+    .palette-row {{
+      min-height: 48px;
+      padding: 7px 10px;
+      border-radius: 10px;
+      background: transparent;
+      color: {theme['foreground']};
+    }}
+    .palette-row:hover {{
+      background: {panel_row_hover};
+    }}
+    .palette-row:selected {{
+      background: {panel_selected};
+    }}
+    .palette-row-title {{
+      color: {theme['foreground']};
+      font: 600 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .palette-row-subtitle {{
+      color: {theme['muted']};
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }}
+    .terminal-dialog {{
+      background: {panel_bg};
+      color: {theme['foreground']};
+    }}
+    .terminal-dialog label {{
+      color: {theme['foreground']};
+    }}
+    .terminal-dialog entry {{
+      color: {theme['foreground']};
+      background: {control_bg};
+      border: 1px solid {control_border};
+      border-radius: 9px;
+      padding: 7px 10px;
+    }}
     """
 
     provider = Gtk.CssProvider()
@@ -317,7 +543,7 @@ def run_terminal(profile: str, command: list[str]) -> int:
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     window = Gtk.Window(title=title)
-    window.set_default_size(760, 480)
+    window.set_default_size(initial_width, initial_height)
     window.set_size_request(620, 380)
     window.set_resizable(True)
     window.set_decorated(False)
@@ -343,41 +569,50 @@ def run_terminal(profile: str, command: list[str]) -> int:
     title_label.set_hexpand(True)
     titlebar.pack_start(title_label, True, True, 0)
 
-    profile_pill = Gtk.Label(label=profile.upper())
-    profile_pill.get_style_context().add_class("seven-profile-pill")
-    titlebar.pack_start(profile_pill, False, False, 10)
+    role_name, role_hint = profile_role(profile)
+    if show_profile_pill:
+        profile_pill = Gtk.Label(label=role_name.upper())
+        profile_pill.set_tooltip_text(role_hint)
+        profile_pill.get_style_context().add_class("seven-profile-pill")
+        titlebar.pack_start(profile_pill, False, False, 10)
 
-    spacer = Gtk.Box()
-    spacer.set_size_request(51, 1)
-    titlebar.pack_start(spacer, False, False, 0)
+    if show_profile_pill:
+        spacer = Gtk.Box()
+        spacer.set_size_request(51, 1)
+        titlebar.pack_start(spacer, False, False, 0)
 
-    terminal = Vte.Terminal()
-    terminal.get_style_context().add_class("seven-terminal")
-    terminal.set_can_focus(True)
-    terminal.set_scrollback_lines(20000)
-    terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
-    terminal.set_cursor_shape(Vte.CursorShape.IBEAM)
-    terminal.set_audible_bell(False)
-    if hasattr(terminal, "set_input_enabled"):
-        terminal.set_input_enabled(True)
-    terminal.set_font(Pango.FontDescription("SF Mono 11"))
-    if hasattr(terminal, "set_cell_height_scale"):
-        terminal.set_cell_height_scale(1.10)
-    if hasattr(terminal, "set_cell_width_scale"):
-        terminal.set_cell_width_scale(1.01)
-    terminal.set_mouse_autohide(True)
-    terminal.set_colors(
-        Gdk.RGBA(*hex_to_rgba(theme["foreground"])),
-        Gdk.RGBA(*hex_to_rgba(theme["terminal"])),
-        [Gdk.RGBA(*hex_to_rgba(color)) for color in theme["palette"]],
-    )
-    terminal.set_color_cursor(Gdk.RGBA(*hex_to_rgba(theme["cursor"])))
-    terminal.set_color_highlight(Gdk.RGBA(*hex_to_rgba(theme["selection"])))
-    terminal_frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-    terminal_frame.get_style_context().add_class("seven-terminal-frame")
-    terminal_frame.pack_start(terminal, True, True, 0)
-    outer.pack_start(terminal_frame, True, True, 0)
-    terminal.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.KEY_PRESS_MASK)
+    active = {"terminal": None}
+    terminals: list[object] = []
+    status_flash = {"active": False}
+    font_scale = {"value": saved_font_scale}
+    close_state = {"confirmed": False}
+
+    def tool_button(label: str, tooltip: str, callback):
+        button = Gtk.Button(label=label)
+        button.set_relief(Gtk.ReliefStyle.NONE)
+        button.get_style_context().add_class("terminal-tool")
+        button.set_tooltip_text(tooltip)
+        button.connect("clicked", lambda *_: callback())
+        return button
+
+    notebook = Gtk.Notebook()
+    notebook.set_scrollable(True)
+    notebook.set_tab_pos(Gtk.PositionType.TOP)
+    notebook.set_show_tabs(False)
+
+    searchbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    searchbar.get_style_context().add_class("terminal-searchbar")
+    searchbar.set_no_show_all(True)
+    searchbar.hide()
+    search_entry = Gtk.Entry()
+    search_entry.get_style_context().add_class("terminal-search")
+    search_entry.set_placeholder_text(tr_text("Search scrollback"))
+    searchbar.pack_start(search_entry, True, True, 0)
+
+    status_label = Gtk.Label(xalign=0)
+    status_label.get_style_context().add_class("terminal-status")
+    status_label.set_no_show_all(True)
+    status_label.hide()
 
     env = os.environ.copy()
     env.update(
@@ -385,31 +620,647 @@ def run_terminal(profile: str, command: list[str]) -> int:
             "SEVENOS_TERMINAL_COUNTRY": "0",
             "SEVENOS_TERMINAL_CLASSIC": "1",
             "SEVENOS_TERMINAL_PROMPT": "1",
+            "SEVENOS_TERMINAL_MODE": profile,
+            "SEVENOS_TERMINAL_NATIVE_SESSION": "1",
+            "SEVENOS_TERMINAL_LOG": str(terminal_log_path(profile)),
+            "SEVENOS_TERMINAL_NOTIFY": os.environ.get("SEVENOS_TERMINAL_NOTIFY", "1"),
             "FASTFETCH_DISABLED": "1",
         }
     )
-    terminal.spawn_async(
-        Vte.PtyFlags.DEFAULT,
-        os.getcwd(),
-        argv,
-        [f"{key}={value}" for key, value in env.items()],
-        GLib.SpawnFlags.SEARCH_PATH,
-        None,
-        None,
-        -1,
-        None,
-        None,
-    )
 
-    terminal.connect("child-exited", lambda *_: window.close())
-    terminal.connect("key-press-event", terminal_key_press)
-    terminal.connect("button-press-event", terminal_button_press)
+    def current_terminal():
+        return active.get("terminal") or (terminals[-1] if terminals else None)
+
+    def current_cwd() -> str:
+        terminal = current_terminal()
+        try:
+            uri = terminal.get_current_directory_uri() if terminal else ""
+            if uri and uri.startswith("file://"):
+                return GLib.filename_from_uri(uri)[0]
+        except Exception:
+            pass
+        return os.getcwd()
+
+    def display_cwd(cwd: str) -> str:
+        short_cwd = str(Path(cwd).expanduser())
+        home = str(Path.home())
+        if short_cwd.startswith(home):
+            short_cwd = "~" + short_cwd[len(home) :]
+        return short_cwd
+
+    def tab_title(cwd: str) -> str:
+        path = Path(cwd)
+        if str(path) == str(Path.home()):
+            return "Home"
+        return path.name or profile.title()
+
+    def page_for_terminal(terminal):
+        for index in range(notebook.get_n_pages()):
+            page = notebook.get_nth_page(index)
+            if page and (
+                getattr(page, "seven_terminal", None) is terminal
+                or terminal in getattr(page, "seven_terminals", [])
+            ):
+                return page
+        return None
+
+    def effective_tab_title(page, cwd: str | None = None) -> str:
+        title = getattr(page, "seven_custom_title", "") if page else ""
+        if not title:
+            title = tab_title(cwd or getattr(page, "seven_cwd", current_cwd()) if page else current_cwd())
+        if page and getattr(page, "seven_activity", False) and notebook.page_num(page) != notebook.get_current_page():
+            return f"* {title}"
+        return title
+
+    def refresh_tab_styles() -> None:
+        current_page = notebook.get_current_page()
+        for index in range(notebook.get_n_pages()):
+            page = notebook.get_nth_page(index)
+            tab_widget = notebook.get_tab_label(page)
+            if not tab_widget:
+                continue
+            labels = [child for child in getattr(tab_widget, "get_children", lambda: [])() if isinstance(child, Gtk.Label)]
+            for label in labels:
+                label.get_style_context().remove_class("tab-pill")
+                label.get_style_context().remove_class("tab-pill-active")
+                label.get_style_context().add_class("tab-pill-active" if index == current_page else "tab-pill")
+
+    def update_tab_label(page, text: str) -> None:
+        tab_widget = notebook.get_tab_label(page) if page else None
+        if not tab_widget:
+            return
+        for child in getattr(tab_widget, "get_children", lambda: [])():
+            if isinstance(child, Gtk.Label):
+                child.set_text(text)
+                return
+
+    def update_window_title(cwd: str | None = None) -> None:
+        page = notebook.get_nth_page(notebook.get_current_page())
+        short_title = effective_tab_title(page, cwd)
+        if short_title.startswith("* "):
+            short_title = short_title[2:]
+        window.set_title(f"{short_title} - Terminal")
+        title_label.set_text(short_title if clean_mode else f"Seven Terminal - {short_title}")
+
+    def flash_status(message: str, seconds: int = 2) -> None:
+        status_flash["active"] = True
+        status_label.set_text(message)
+        status_label.show()
+
+        def clear_flash() -> bool:
+            status_flash["active"] = False
+            update_status()
+            return False
+
+        GLib.timeout_add_seconds(seconds, clear_flash)
+
+    def update_status() -> bool:
+        cwd = current_cwd()
+        short_cwd = display_cwd(cwd)
+        current_page = notebook.get_nth_page(notebook.get_current_page())
+        if current_page:
+            current_page.seven_cwd = cwd
+            current_page.seven_activity = False
+            update_tab_label(current_page, effective_tab_title(current_page, cwd))
+        split_count = sum(1 for index in range(notebook.get_n_pages()) if getattr(notebook.get_nth_page(index), "seven_split", False))
+        update_window_title(cwd)
+        refresh_tab_styles()
+        if status_flash["active"]:
+            return True
+        status_label.set_text(
+            f"{role_name} · {short_cwd} · {notebook.get_n_pages()} tab"
+            f"{'' if notebook.get_n_pages() == 1 else 's'}"
+            f"{' · ' + str(split_count) + ' split' + ('' if split_count == 1 else 's') if split_count else ''}"
+        )
+        notebook.set_show_tabs(notebook.get_n_pages() > 1)
+        if show_status:
+            status_label.show()
+        else:
+            status_label.hide()
+        return True
+
+    def mark_terminal_activity(terminal) -> bool:
+        page = page_for_terminal(terminal)
+        if not page:
+            return False
+        if notebook.page_num(page) != notebook.get_current_page():
+            page.seven_activity = True
+            update_tab_label(page, effective_tab_title(page))
+        return False
+
+    def install_matchers(terminal) -> None:
+        pcre2_multiline = 0x00000400
+        patterns = (
+            r"https?://[^\s<>\"]+",
+            r"file:///[^\s<>\"]+",
+            r"(/[A-Za-z0-9._~@%+=:,/ -]+)",
+        )
+        for pattern in patterns:
+            try:
+                regex = Vte.Regex.new_for_match(pattern, len(pattern), pcre2_multiline)
+                tag = terminal.match_add_regex(regex, 0)
+                terminal.match_set_cursor_name(tag, "pointer")
+            except Exception:
+                continue
+
+    def open_match_at_event(terminal, event) -> bool:
+        try:
+            matched = terminal.match_check_event(event)
+        except Exception:
+            return False
+        text = matched[0] if isinstance(matched, tuple) else matched
+        if not text:
+            return False
+        if text.startswith(("http://", "https://", "file://")):
+            run_detached(["xdg-open", text], current_cwd())
+            return True
+        path = Path(text).expanduser()
+        if not path.is_absolute():
+            path = Path(current_cwd()) / path
+        if path.exists():
+            run_detached(["xdg-open", str(path)], current_cwd())
+            return True
+        return False
+
+    def feed_terminal_text(terminal, text: str) -> None:
+        if not text:
+            return
+        data = text.encode("utf-8")
+        try:
+            terminal.feed_child(data)
+        except TypeError:
+            terminal.feed_child(data, len(data))
+
+    def dropped_uris(_terminal, _context, _x, _y, selection, _info, _time) -> None:
+        text = selection.get_text() or ""
+        paths = []
+        for raw in text.splitlines():
+            raw = raw.strip()
+            if not raw:
+                continue
+            if raw.startswith("file://"):
+                try:
+                    path = GLib.filename_from_uri(raw)[0]
+                except Exception:
+                    path = raw
+            else:
+                path = raw
+            paths.append(shlex.quote(path))
+        if paths:
+            feed_terminal_text(current_terminal() or _terminal, " ".join(paths))
+            flash_status(tr_text("Path inserted"))
+
+    def configure_terminal(terminal):
+        terminal.get_style_context().add_class("seven-terminal")
+        terminal.set_can_focus(True)
+        terminal.set_scrollback_lines(20000)
+        terminal.set_cursor_blink_mode(Vte.CursorBlinkMode.ON)
+        terminal.set_cursor_shape(Vte.CursorShape.IBEAM)
+        terminal.set_audible_bell(False)
+        if hasattr(terminal, "set_input_enabled"):
+            terminal.set_input_enabled(True)
+        terminal.set_font(Pango.FontDescription("SF Mono 11"))
+        if hasattr(terminal, "set_font_scale"):
+            terminal.set_font_scale(font_scale["value"])
+        if hasattr(terminal, "set_cell_height_scale"):
+            terminal.set_cell_height_scale(1.10)
+        if hasattr(terminal, "set_cell_width_scale"):
+            terminal.set_cell_width_scale(1.01)
+        terminal.set_mouse_autohide(True)
+        target_list = Gtk.TargetList.new([])
+        target_list.add_uri_targets(0)
+        terminal.drag_dest_set(Gtk.DestDefaults.ALL, [], Gdk.DragAction.COPY)
+        terminal.drag_dest_set_target_list(target_list)
+        install_matchers(terminal)
+        terminal.set_colors(
+            Gdk.RGBA(*hex_to_rgba(theme["foreground"])),
+            Gdk.RGBA(*hex_to_rgba(theme["terminal"])),
+            [Gdk.RGBA(*hex_to_rgba(color)) for color in theme["palette"]],
+        )
+        terminal.set_color_cursor(Gdk.RGBA(*hex_to_rgba(theme["cursor"])))
+        terminal.set_color_highlight(Gdk.RGBA(*hex_to_rgba(theme["selection"])))
+        terminal.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.KEY_PRESS_MASK)
+        terminal.connect("focus-in-event", lambda term, _event: active.update({"terminal": term}) or False)
+        terminal.connect("key-press-event", terminal_key_press)
+        terminal.connect("button-press-event", terminal_button_press)
+        terminal.connect("contents-changed", lambda term: mark_terminal_activity(term))
+        terminal.connect("drag-data-received", dropped_uris)
+        terminal.seven_new_tab = lambda: new_tab()
+        terminal.seven_split_horizontal = lambda: split_terminal(Gtk.Orientation.HORIZONTAL)
+        terminal.seven_split_vertical = lambda: split_terminal(Gtk.Orientation.VERTICAL)
+        terminal.seven_show_search = lambda: show_search()
+        terminal.seven_show_palette = lambda: show_native_palette(window, profile, terminal, new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here)
+        terminal.seven_zoom_in = zoom_all_in
+        terminal.seven_zoom_out = zoom_all_out
+        terminal.seven_zoom_reset = reset_zoom
+        terminal.seven_open_match_at_event = lambda event: open_match_at_event(terminal, event)
+        terminal.seven_next_tab = lambda: switch_tab(1)
+        terminal.seven_previous_tab = lambda: switch_tab(-1)
+        terminal.seven_close_tab = lambda: close_current_pane()
+        terminal.seven_rename_tab = lambda: rename_current_tab()
+
+    def terminal_frame_for(terminal):
+        frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        frame.get_style_context().add_class("seven-terminal-frame")
+        frame.pack_start(terminal, True, True, 0)
+        terminal.seven_frame = frame
+        return frame
+
+    def spawn_terminal(cwd: str | None = None, command: list[str] | None = None):
+        terminal = Vte.Terminal()
+        configure_terminal(terminal)
+        terminals.append(terminal)
+        active["terminal"] = terminal
+        terminal.spawn_async(
+            Vte.PtyFlags.DEFAULT,
+            cwd or os.getcwd(),
+            command or [str(resolve_shell())],
+            [f"{key}={value}" for key, value in env.items()],
+            GLib.SpawnFlags.SEARCH_PATH,
+            None,
+            None,
+            -1,
+            None,
+            None,
+        )
+        terminal.connect("child-exited", lambda term, *_: close_terminal_widget(term))
+        return terminal
+
+    def close_terminal_widget(terminal) -> None:
+        if terminal in terminals:
+            terminals.remove(terminal)
+        page = page_for_terminal(terminal)
+        if page:
+            close_terminal_from_page(page, terminal)
+            return
+        if not terminals:
+            window.close()
+            return
+        flash_status(tr_text("Session ended"))
+
+    def close_terminal_from_page(page, terminal) -> bool:
+        page_terminals = [term for term in getattr(page, "seven_terminals", []) if term is not terminal]
+        old_frame = getattr(terminal, "seven_frame", None)
+        old_parent = old_frame.get_parent() if old_frame else None
+        if old_parent and old_frame:
+            old_parent.remove(old_frame)
+
+        if getattr(page, "seven_split", False) and page_terminals:
+            remaining = page_terminals[-1]
+            remaining_frame = getattr(remaining, "seven_frame", None)
+            if remaining_frame:
+                parent = remaining_frame.get_parent()
+                if parent:
+                    parent.remove(remaining_frame)
+                for child in list(page.get_children()):
+                    page.remove(child)
+                page.pack_start(remaining_frame, True, True, 0)
+            page.seven_terminals = [remaining]
+            page.seven_terminal = remaining
+            page.seven_split = False
+            page.seven_paned = None
+            page.show_all()
+            active["terminal"] = remaining
+            focus_terminal(remaining)
+            update_status()
+            flash_status(tr_text("Pane closed"))
+            save_session()
+            try:
+                terminal.destroy()
+            except Exception:
+                pass
+            return True
+
+        return close_page(page, closing_child=True)
+
+    def close_page(page, closing_child: bool = False) -> bool:
+        page_index = notebook.page_num(page)
+        if page_index < 0:
+            return False
+        if notebook.get_n_pages() <= 1:
+            window.close()
+            return True
+        notebook.remove_page(page_index)
+        notebook.set_current_page(max(0, page_index - 1))
+        current_page = notebook.get_nth_page(notebook.get_current_page())
+        if current_page and getattr(current_page, "seven_terminal", None):
+            active["terminal"] = current_page.seven_terminal
+            focus_terminal(active["terminal"])
+        update_status()
+        flash_status(tr_text("Session ended") if closing_child else tr_text("Tab closed"))
+        save_session()
+        return True
+
+    def tab_label(text: str, page):
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        label = Gtk.Label(label=text)
+        label.set_ellipsize(Pango.EllipsizeMode.END)
+        label.set_max_width_chars(16)
+        label.get_style_context().add_class("tab-pill")
+        close_button = Gtk.Button(label="x")
+        close_button.set_relief(Gtk.ReliefStyle.NONE)
+        close_button.get_style_context().add_class("tab-close")
+        close_button.set_tooltip_text(tr_text("Close tab"))
+        close_button.connect("clicked", lambda *_: close_page(page))
+        box.pack_start(label, False, False, 0)
+        box.pack_start(close_button, False, False, 0)
+        box.show_all()
+        return box
+
+    def new_tab(cwd: str | None = None, command: list[str] | None = None):
+        terminal = spawn_terminal(cwd or current_cwd(), command)
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        page.pack_start(terminal_frame_for(terminal), True, True, 0)
+        page.seven_split = False
+        page.seven_cwd = cwd or current_cwd()
+        page.seven_terminal = terminal
+        page.seven_terminals = [terminal]
+        page.seven_custom_title = ""
+        page.seven_activity = False
+        notebook.append_page(page, tab_label(tab_title(cwd or current_cwd()), page))
+        notebook.set_tab_reorderable(page, True)
+        notebook.set_current_page(notebook.page_num(page))
+        notebook.show_all()
+        focus_terminal(terminal)
+        update_status()
+        flash_status(tr_text("New tab ready"))
+        save_session()
+        return terminal
+
+    def split_terminal(orientation):
+        terminal = current_terminal()
+        page = notebook.get_nth_page(notebook.get_current_page())
+        if not terminal or not page or getattr(page, "seven_split", False):
+            new_tab()
+            return
+        children = page.get_children()
+        if not children:
+            return
+        old_frame = children[0]
+        page.remove(old_frame)
+        paned = Gtk.Paned(orientation=orientation)
+        paned.pack1(old_frame, True, False)
+        new_terminal = spawn_terminal(current_cwd())
+        paned.pack2(terminal_frame_for(new_terminal), True, False)
+        page.pack_start(paned, True, True, 0)
+        page.seven_split = True
+        page.seven_terminal = new_terminal
+        page.seven_terminals = [terminal, new_terminal]
+        page.seven_paned = paned
+        page.show_all()
+        focus_terminal(new_terminal)
+        update_status()
+        flash_status(tr_text("Split ready"))
+        save_session()
+
+    def show_search():
+        searchbar.show()
+        search_entry.grab_focus()
+        search_entry.select_region(0, -1)
+        flash_status(tr_text("Search scrollback"))
+
+    def hide_search():
+        searchbar.hide()
+        terminal = current_terminal()
+        if terminal:
+            focus_terminal(terminal)
+
+    def find_text(backward: bool = False):
+        terminal = current_terminal()
+        text = search_entry.get_text()
+        if not terminal or not text:
+            return
+        try:
+            regex = Vte.Regex.new_for_search(text, len(text), 0)
+            terminal.search_set_regex(regex, 0)
+        except Exception:
+            try:
+                regex = GLib.Regex.new(text, GLib.RegexCompileFlags.CASELESS, 0)
+                terminal.search_set_gregex(regex, 0)
+            except Exception:
+                return
+        if backward:
+            found = terminal.search_find_previous()
+        else:
+            found = terminal.search_find_next()
+        if found is False:
+            flash_status(tr_text("No match"))
+
+    def switch_tab(delta: int) -> bool:
+        pages = notebook.get_n_pages()
+        if pages <= 1:
+            return False
+        current = notebook.get_current_page()
+        notebook.set_current_page((current + delta) % pages)
+        page = notebook.get_nth_page(notebook.get_current_page())
+        if page and getattr(page, "seven_terminal", None):
+            active["terminal"] = page.seven_terminal
+        focus_terminal(current_terminal())
+        update_status()
+        return True
+
+    def apply_font_scale() -> None:
+        for terminal in terminals:
+            if hasattr(terminal, "set_font_scale"):
+                terminal.set_font_scale(font_scale["value"])
+        save_session()
+
+    def zoom_all(delta: float) -> None:
+        font_scale["value"] = max(0.78, min(1.55, font_scale["value"] + delta))
+        apply_font_scale()
+        flash_status(f"{tr_text('Text size')} {int(font_scale['value'] * 100)}%")
+
+    def zoom_all_in() -> None:
+        zoom_all(0.08)
+
+    def zoom_all_out() -> None:
+        zoom_all(-0.08)
+
+    def reset_zoom() -> None:
+        font_scale["value"] = 1.0
+        apply_font_scale()
+        flash_status(tr_text("Text size reset"))
+
+    def duplicate_tab() -> None:
+        new_tab(current_cwd())
+
+    def new_window_here() -> None:
+        run_detached(["seven-terminal", profile], current_cwd())
+        flash_status(tr_text("New window opening"))
+
+    def rename_current_tab() -> None:
+        page = notebook.get_nth_page(notebook.get_current_page())
+        if not page:
+            return
+        current_title = getattr(page, "seven_custom_title", "") or tab_title(getattr(page, "seven_cwd", current_cwd()))
+        dialog = Gtk.Dialog(title=tr_text("Rename Tab"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.get_style_context().add_class("terminal-dialog")
+        dialog.add_button(tr_text("Cancel"), Gtk.ResponseType.CANCEL)
+        dialog.add_button(tr_text("Rename"), Gtk.ResponseType.OK)
+        dialog.set_default_size(320, 96)
+        content = dialog.get_content_area()
+        content.get_style_context().add_class("palette-surface")
+        content.set_margin_top(14)
+        content.set_margin_bottom(14)
+        content.set_margin_start(14)
+        content.set_margin_end(14)
+        entry = Gtk.Entry()
+        entry.set_text(current_title)
+        entry.select_region(0, -1)
+        content.pack_start(entry, False, False, 0)
+        entry.connect("activate", lambda *_: dialog.response(Gtk.ResponseType.OK))
+        dialog.show_all()
+        entry.grab_focus()
+        response = dialog.run()
+        new_title = entry.get_text().strip()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK and new_title:
+            page.seven_custom_title = new_title[:32]
+            update_tab_label(page, page.seven_custom_title)
+            update_window_title(getattr(page, "seven_cwd", current_cwd()))
+            flash_status(tr_text("Tab renamed"))
+            save_session()
+
+    def reset_current_tab_title() -> None:
+        page = notebook.get_nth_page(notebook.get_current_page())
+        if not page:
+            return
+        page.seven_custom_title = ""
+        update_tab_label(page, tab_title(getattr(page, "seven_cwd", current_cwd())))
+        update_status()
+        flash_status(tr_text("Tab title reset"))
+        save_session()
+
+    def sync_active_page(_notebook=None, page=None, _page_num=None) -> bool:
+        current_page = page or notebook.get_nth_page(notebook.get_current_page())
+        if current_page and getattr(current_page, "seven_terminal", None):
+            active["terminal"] = current_page.seven_terminal
+        focus_terminal(current_terminal())
+        update_status()
+        return False
+
+    def close_current_tab() -> bool:
+        pages = notebook.get_n_pages()
+        if pages <= 1:
+            window.close()
+            return True
+        page = notebook.get_nth_page(notebook.get_current_page())
+        return close_page(page)
+
+    def close_current_pane() -> bool:
+        page = notebook.get_nth_page(notebook.get_current_page())
+        terminal = current_terminal()
+        if page and terminal and getattr(page, "seven_split", False) and terminal in getattr(page, "seven_terminals", []):
+            if terminal in terminals:
+                terminals.remove(terminal)
+            return close_terminal_from_page(page, terminal)
+        return close_current_tab()
+
+    def save_session():
+        width, height = window.get_size()
+        payload = {
+            "profile": profile,
+            "updated": time.time(),
+            "font_scale": font_scale["value"],
+            "window_size": {"width": width, "height": height},
+            "tabs": [],
+        }
+        for index in range(notebook.get_n_pages()):
+            page = notebook.get_nth_page(index)
+            payload["tabs"].append({
+                "cwd": getattr(page, "seven_cwd", current_cwd()),
+                "split": bool(getattr(page, "seven_split", False)),
+                "title": getattr(page, "seven_custom_title", ""),
+            })
+        try:
+            terminal_state_file(profile).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        except OSError:
+            pass
+
+    def restore_session() -> bool:
+        if command or os.environ.get("SEVENOS_TERMINAL_RESTORE", "1") == "0":
+            return False
+        payload = saved_state
+        tabs = payload.get("tabs", [])
+        if not isinstance(tabs, list) or not tabs:
+            return False
+        for tab in tabs[:6]:
+            cwd = str(tab.get("cwd") or os.getcwd())
+            if not Path(cwd).exists():
+                cwd = os.getcwd()
+            terminal = new_tab(cwd)
+            page = notebook.get_nth_page(notebook.get_current_page())
+            title = str(tab.get("title") or "")
+            if page and title:
+                page.seven_custom_title = title[:32]
+                update_tab_label(page, page.seven_custom_title)
+            if tab.get("split"):
+                split_terminal(Gtk.Orientation.HORIZONTAL)
+        return True
+
+    def confirm_close_window() -> bool:
+        if close_state["confirmed"] or os.environ.get("SEVENOS_TERMINAL_CONFIRM_CLOSE", "1") == "0":
+            save_session()
+            return False
+        if notebook.get_n_pages() <= 1:
+            save_session()
+            return False
+        dialog = Gtk.MessageDialog(
+            transient_for=window,
+            flags=Gtk.DialogFlags.MODAL,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.NONE,
+            text=tr_text("Close Terminal?"),
+        )
+        dialog.get_style_context().add_class("terminal-dialog")
+        dialog.get_content_area().get_style_context().add_class("palette-surface")
+        dialog.format_secondary_text(tr_text("This window has multiple tabs. The session will be saved."))
+        dialog.add_button(tr_text("Cancel"), Gtk.ResponseType.CANCEL)
+        dialog.add_button(tr_text("Close"), Gtk.ResponseType.OK)
+        response = dialog.run()
+        dialog.destroy()
+        if response == Gtk.ResponseType.OK:
+            close_state["confirmed"] = True
+            save_session()
+            return False
+        return True
+
+    toolbar_buttons = (
+        (tool_button("...", tr_text("Command palette"), lambda: show_native_palette(window, profile, current_terminal(), new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here)),)
+        if clean_mode
+        else (
+            tool_button("+", tr_text("New tab"), lambda: new_tab()),
+            tool_button("|", tr_text("Split vertical"), lambda: split_terminal(Gtk.Orientation.HORIZONTAL)),
+            tool_button("-", tr_text("Split horizontal"), lambda: split_terminal(Gtk.Orientation.VERTICAL)),
+            tool_button("Find", tr_text("Search scrollback"), show_search),
+            tool_button("...", tr_text("Command palette"), lambda: show_native_palette(window, profile, current_terminal(), new_tab, split_terminal, show_search, zoom_all_in, zoom_all_out, reset_zoom, duplicate_tab, rename_current_tab, reset_current_tab_title, new_window_here)),
+        )
+    )
+    for button in toolbar_buttons:
+        titlebar.pack_start(button, False, False, 3)
+
+    searchbar.pack_start(tool_button("Prev", tr_text("Previous match"), lambda: find_text(True)), False, False, 0)
+    searchbar.pack_start(tool_button("Next", tr_text("Next match"), lambda: find_text(False)), False, False, 0)
+    searchbar.pack_start(tool_button("Close", tr_text("Close search"), hide_search), False, False, 0)
+    search_entry.connect("activate", lambda *_: find_text(False))
+    search_entry.connect("changed", lambda entry: find_text(False) if entry.get_text().strip() else None)
+    search_entry.connect("key-press-event", lambda _entry, event: hide_search() if (Gdk.keyval_name(event.keyval) or "").lower() == "escape" else False)
+
+    outer.pack_start(searchbar, False, False, 0)
+    outer.pack_start(status_label, False, False, 0)
+    outer.pack_start(notebook, True, True, 0)
+
+    if not restore_session():
+        new_tab(os.getcwd(), argv)
     titlebar.connect("button-press-event", lambda _widget, event: begin_move(window, event))
-    window.connect("map-event", lambda *_: GLib.idle_add(focus_terminal, terminal))
+    window.connect("map-event", lambda *_: GLib.idle_add(focus_terminal, current_terminal()))
+    notebook.connect("switch-page", lambda _notebook, page, page_num: GLib.idle_add(sync_active_page, _notebook, page, page_num))
+    GLib.timeout_add_seconds(3, update_status)
+    window.connect("delete-event", lambda *_: confirm_close_window())
     window.connect("destroy", Gtk.main_quit)
     window.show_all()
-    focus_terminal(terminal)
-    window.resize(760, 480)
+    focus_terminal(current_terminal())
+    window.resize(initial_width, initial_height)
     Gtk.main()
     return 0
 
@@ -426,18 +1277,56 @@ def terminal_key_press(terminal, event) -> bool:
         copy_terminal_selection(terminal)
         return True
     if ctrl and shift and key_name in {"v", "paste"}:
-        terminal.paste_clipboard()
+        paste_terminal_clipboard(terminal)
+        return True
+    if ctrl and shift and key_name == "t" and hasattr(terminal, "seven_new_tab"):
+        terminal.seven_new_tab()
+        return True
+    if ctrl and shift and key_name == "w" and hasattr(terminal, "seven_close_tab"):
+        terminal.seven_close_tab()
+        return True
+    if ctrl and shift and key_name == "r" and hasattr(terminal, "seven_rename_tab"):
+        terminal.seven_rename_tab()
+        return True
+    if ctrl and shift and key_name in {"bracketright", "right", "page_down"} and hasattr(terminal, "seven_next_tab"):
+        terminal.seven_next_tab()
+        return True
+    if ctrl and shift and key_name in {"bracketleft", "left", "page_up"} and hasattr(terminal, "seven_previous_tab"):
+        terminal.seven_previous_tab()
+        return True
+    if ctrl and shift and key_name in {"d", "bar"} and hasattr(terminal, "seven_split_vertical"):
+        terminal.seven_split_vertical()
+        return True
+    if ctrl and shift and key_name in {"underscore", "minus"} and hasattr(terminal, "seven_split_horizontal"):
+        terminal.seven_split_horizontal()
+        return True
+    if ctrl and shift and key_name == "f" and hasattr(terminal, "seven_show_search"):
+        terminal.seven_show_search()
+        return True
+    if ctrl and shift and key_name in {"p", "space"} and hasattr(terminal, "seven_show_palette"):
+        terminal.seven_show_palette()
+        return True
+    if ctrl and key_name in {"plus", "equal", "kp_add"} and hasattr(terminal, "seven_zoom_in"):
+        terminal.seven_zoom_in()
+        return True
+    if ctrl and key_name in {"minus", "kp_subtract"} and hasattr(terminal, "seven_zoom_out"):
+        terminal.seven_zoom_out()
+        return True
+    if ctrl and key_name in {"0", "kp_0"} and hasattr(terminal, "seven_zoom_reset"):
+        terminal.seven_zoom_reset()
         return True
     if ctrl and key_name == "insert":
         copy_terminal_selection(terminal)
         return True
     if shift and key_name == "insert":
-        terminal.paste_clipboard()
+        paste_terminal_clipboard(terminal)
         return True
     return False
 
 
 def focus_terminal(terminal) -> bool:
+    if terminal is None:
+        return False
     terminal.set_can_focus(True)
     terminal.grab_focus()
     return False
@@ -445,6 +1334,15 @@ def focus_terminal(terminal) -> bool:
 
 def terminal_button_press(terminal, event) -> bool:
     focus_terminal(terminal)
+    try:
+        from gi.repository import Gdk
+
+        if getattr(event, "button", 0) == 1 and event.state & Gdk.ModifierType.CONTROL_MASK:
+            opener = getattr(terminal, "seven_open_match_at_event", None)
+            if opener and opener(event):
+                return True
+    except Exception:
+        pass
     return show_terminal_menu(terminal, event)
 
 
@@ -460,6 +1358,51 @@ def copy_terminal_selection(terminal) -> None:
     terminal.copy_clipboard()
 
 
+def feed_terminal_text(terminal, text: str) -> None:
+    if terminal is None or not text:
+        return
+    data = text.encode("utf-8")
+    try:
+        terminal.feed_child(data)
+    except TypeError:
+        terminal.feed_child(data, len(data))
+
+
+def paste_terminal_clipboard(terminal) -> None:
+    from gi.repository import Gdk, Gtk
+
+    clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+    text = clipboard.wait_for_text()
+    if not text:
+        terminal.paste_clipboard()
+        return
+    dangerous = any(marker in text for marker in ("rm -rf", "mkfs.", "dd if=", "chmod -R", "chown -R", ":(){", "sudo "))
+    multiline = "\n" in text.rstrip("\n")
+    if multiline or dangerous:
+        window = terminal.get_toplevel() if hasattr(terminal, "get_toplevel") else None
+        dialog = Gtk.MessageDialog(
+            transient_for=window if isinstance(window, Gtk.Window) else None,
+            flags=Gtk.DialogFlags.MODAL,
+            message_type=Gtk.MessageType.WARNING if dangerous else Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.NONE,
+            text=tr_text("Paste into Terminal?"),
+        )
+        dialog.get_style_context().add_class("terminal-dialog")
+        dialog.get_content_area().get_style_context().add_class("palette-surface")
+        line_count = len([line for line in text.splitlines() if line.strip()])
+        detail = tr_text("The clipboard contains {count} command lines.", count=line_count)
+        if dangerous:
+            detail += " " + tr_text("Some text looks potentially destructive.")
+        dialog.format_secondary_text(detail)
+        dialog.add_button(tr_text("Cancel"), Gtk.ResponseType.CANCEL)
+        dialog.add_button(tr_text("Paste"), Gtk.ResponseType.OK)
+        response = dialog.run()
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK:
+            return
+    terminal.paste_clipboard()
+
+
 def show_terminal_menu(terminal, event) -> bool:
     from gi.repository import Gtk
 
@@ -467,19 +1410,298 @@ def show_terminal_menu(terminal, event) -> bool:
         return False
 
     menu = Gtk.Menu()
-    entries = (
-        (tr_text("Copy"), lambda *_: copy_terminal_selection(terminal)),
-        (tr_text("Paste"), lambda *_: terminal.paste_clipboard()),
-        (tr_text("Select All"), lambda *_: terminal.select_all()),
-        (tr_text("Clear"), lambda *_: terminal.reset(True, True)),
+    primary_entries = []
+    opener = getattr(terminal, "seven_open_match_at_event", None)
+    if opener:
+        primary_entries.append((tr_text("Open Link or Path"), lambda *_: opener(event)))
+    primary_entries.extend(
+        (
+            (tr_text("Copy"), lambda *_: copy_terminal_selection(terminal)),
+            (tr_text("Paste"), lambda *_: paste_terminal_clipboard(terminal)),
+            (tr_text("Select All"), lambda *_: terminal.select_all()),
+            (tr_text("Search"), lambda *_: terminal.seven_show_search() if hasattr(terminal, "seven_show_search") else None),
+            (tr_text("Command Palette"), lambda *_: terminal.seven_show_palette() if hasattr(terminal, "seven_show_palette") else None),
+        )
     )
-    for label, callback in entries:
+    for label, callback in primary_entries:
         item = Gtk.MenuItem(label=label)
         item.connect("activate", callback)
         menu.append(item)
+    menu.append(Gtk.SeparatorMenuItem())
+
+    cwd = terminal_cwd(terminal)
+    folder_menu = Gtk.Menu()
+    for label, callback in (
+        (tr_text("Open Current Folder"), lambda *_: run_detached(["seven-files", cwd], cwd)),
+        (tr_text("Copy Current Path"), lambda *_: copy_text_to_clipboard(cwd)),
+        (tr_text("Insert Current Path"), lambda *_: feed_terminal_text(terminal, shlex.quote(cwd))),
+        (tr_text("New Window Here"), lambda *_: run_detached(["seven-terminal", os.environ.get("SEVENOS_TERMINAL_MODE", "profile")], cwd)),
+    ):
+        item = Gtk.MenuItem(label=label)
+        item.connect("activate", callback)
+        folder_menu.append(item)
+    folder_item = Gtk.MenuItem(label=tr_text("Current Folder"))
+    folder_item.set_submenu(folder_menu)
+    menu.append(folder_item)
+
+    split_menu = Gtk.Menu()
+    for label, callback in (
+        (tr_text("New Tab"), lambda *_: terminal.seven_new_tab() if hasattr(terminal, "seven_new_tab") else None),
+        (tr_text("Split Vertical"), lambda *_: terminal.seven_split_vertical() if hasattr(terminal, "seven_split_vertical") else None),
+        (tr_text("Split Horizontal"), lambda *_: terminal.seven_split_horizontal() if hasattr(terminal, "seven_split_horizontal") else None),
+        (tr_text("Close Pane or Tab"), lambda *_: terminal.seven_close_tab() if hasattr(terminal, "seven_close_tab") else None),
+    ):
+        item = Gtk.MenuItem(label=label)
+        item.connect("activate", callback)
+        split_menu.append(item)
+    split_item = Gtk.MenuItem(label=tr_text("Layout"))
+    split_item.set_submenu(split_menu)
+    menu.append(split_item)
+
+    zoom_menu = Gtk.Menu()
+    for label, callback in (
+        (tr_text("Zoom In"), lambda *_: terminal.seven_zoom_in() if hasattr(terminal, "seven_zoom_in") else None),
+        (tr_text("Zoom Out"), lambda *_: terminal.seven_zoom_out() if hasattr(terminal, "seven_zoom_out") else None),
+        (tr_text("Reset Zoom"), lambda *_: terminal.seven_zoom_reset() if hasattr(terminal, "seven_zoom_reset") else None),
+    ):
+        item = Gtk.MenuItem(label=label)
+        item.connect("activate", callback)
+        zoom_menu.append(item)
+    zoom_item = Gtk.MenuItem(label=tr_text("Text Size"))
+    zoom_item.set_submenu(zoom_menu)
+    menu.append(zoom_item)
+
+    menu.append(Gtk.SeparatorMenuItem())
+    clear_item = Gtk.MenuItem(label=tr_text("Clear"))
+    clear_item.connect("activate", lambda *_: terminal.reset(True, True))
+    menu.append(clear_item)
     menu.show_all()
     menu.popup_at_pointer(event)
     return True
+
+
+def terminal_cwd(terminal) -> str:
+    try:
+        uri = terminal.get_current_directory_uri()
+        if uri and uri.startswith("file://"):
+            from gi.repository import GLib
+
+            return GLib.filename_from_uri(uri)[0]
+    except Exception:
+        pass
+    return os.getcwd()
+
+
+def run_detached(command: list[str], cwd: str | None = None) -> None:
+    try:
+        subprocess.Popen(command, cwd=cwd or os.getcwd(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
+
+
+def zoom_terminal(terminal, delta: float) -> None:
+    if not hasattr(terminal, "get_font_scale") or not hasattr(terminal, "set_font_scale"):
+        return
+    scale = max(0.72, min(1.65, float(terminal.get_font_scale()) + delta))
+    terminal.set_font_scale(scale)
+
+
+def profile_actions(profile: str, cwd: str) -> list[tuple[str, list[str]]]:
+    active = os.environ.get("SEVENOS_ACTIVE_PROFILE", "").lower()
+    actions = {
+        "forge": [
+            ("Forge · Git Status", ["bash", "-lc", "git status --short --branch; printf '\\nPress Enter...'; read -r"]),
+            ("Forge · Recent Commits", ["bash", "-lc", "git log --oneline --decorate -8 2>/dev/null || echo 'Not a git repository'; printf '\\nPress Enter...'; read -r"]),
+            ("Forge · Project Doctor", ["bash", "-lc", "for f in package.json pyproject.toml Cargo.toml Dockerfile compose.yml docker-compose.yml; do [ -e \"$f\" ] && echo \"found $f\"; done; printf '\\nPress Enter...'; read -r"]),
+        ],
+        "cyber": [
+            ("Shield · Listening Ports", ["bash", "-lc", "ss -tulpn 2>/dev/null | head -80 || netstat -tulpn 2>/dev/null | head -80; printf '\\nPress Enter...'; read -r"]),
+            ("Shield · Hash Selection CWD", ["bash", "-lc", "find . -maxdepth 1 -type f -printf '%f\\n' | sort | head -20 | xargs -r sha256sum; printf '\\nPress Enter...'; read -r"]),
+            ("Shield · Security Logs", ["bash", "-lc", "journalctl -p warning -n 80 --no-pager 2>/dev/null || echo 'journalctl unavailable'; printf '\\nPress Enter...'; read -r"]),
+        ],
+        "admin": [
+            ("Admin · Disk Usage", ["bash", "-lc", "df -h; printf '\\n'; du -sh . 2>/dev/null; printf '\\nPress Enter...'; read -r"]),
+            ("Admin · Services Failed", ["bash", "-lc", "systemctl --failed --no-pager 2>/dev/null || echo 'systemd unavailable'; printf '\\nPress Enter...'; read -r"]),
+            ("Admin · Processes", ["bash", "-lc", "ps aux --sort=-%mem | head -25; printf '\\nPress Enter...'; read -r"]),
+        ],
+        "windows": [
+            ("Windows · Bridge Status", ["bash", "-lc", "command -v sevenos-windows >/dev/null && sevenos-windows status || echo 'Windows Bridge helper unavailable'; printf '\\nPress Enter...'; read -r"]),
+            ("Windows · Open Bridge Folders", ["bash", "-lc", "seven-files \"$HOME\"; printf '\\nPress Enter...'; read -r"]),
+            ("Windows · EXE Check", ["bash", "-lc", "find . -maxdepth 2 -iname '*.exe' -o -iname '*.msi' | head -40; printf '\\nPress Enter...'; read -r"]),
+        ],
+        "focus": [
+            ("Baobab · Documents", ["bash", "-lc", "seven-files \"$HOME/Documents\"; printf '\\nPress Enter...'; read -r"]),
+            ("Baobab · Reading Files", ["bash", "-lc", "find . -maxdepth 2 \\( -iname '*.pdf' -o -iname '*.epub' -o -iname '*.md' -o -iname '*.txt' \\) | head -60; printf '\\nPress Enter...'; read -r"]),
+            ("Baobab · Word Count", ["bash", "-lc", "find . -maxdepth 1 -type f \\( -iname '*.md' -o -iname '*.txt' \\) -print0 | xargs -0 -r wc -w; printf '\\nPress Enter...'; read -r"]),
+        ],
+        "studio": [
+            ("Studio · Media Assets", ["bash", "-lc", "find . -maxdepth 2 \\( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.mp4' -o -iname '*.wav' \\) | head -80; printf '\\nPress Enter...'; read -r"]),
+            ("Studio · Open Pictures", ["bash", "-lc", "seven-files \"$HOME/Pictures\"; printf '\\nPress Enter...'; read -r"]),
+            ("Studio · Open Videos", ["bash", "-lc", "seven-files \"$HOME/Videos\"; printf '\\nPress Enter...'; read -r"]),
+        ],
+        "dark": [
+            ("Pulse · GPU/Session", ["bash", "-lc", "echo \"Session: ${XDG_SESSION_TYPE:-unknown}\"; command -v nvidia-smi >/dev/null && nvidia-smi || true; command -v mangohud >/dev/null && echo 'MangoHud available'; printf '\\nPress Enter...'; read -r"]),
+            ("Pulse · Captures", ["bash", "-lc", "seven-files \"$HOME/Videos\"; printf '\\nPress Enter...'; read -r"]),
+        ],
+    }
+    if profile == "focus" and active == "studio":
+        return actions.get("studio", [])
+    if profile == "focus" and active == "baobab":
+        return actions.get("focus", [])
+    if profile == "light":
+        return actions.get("classic", [])
+    return actions.get(profile, [])
+
+
+def show_native_palette(
+    window,
+    profile: str,
+    terminal,
+    new_tab,
+    split_terminal,
+    show_search,
+    zoom_in=None,
+    zoom_out=None,
+    zoom_reset=None,
+    duplicate_tab=None,
+    rename_tab=None,
+    reset_tab_title=None,
+    new_window_here=None,
+) -> None:
+    from gi.repository import Gdk, Gtk, Pango
+
+    dialog = Gtk.Dialog(title=tr_text("Seven Terminal"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+    dialog.set_default_size(460, 520)
+    dialog.get_style_context().add_class("palette-dialog")
+    content = dialog.get_content_area()
+    content.get_style_context().add_class("palette-surface")
+    content.set_margin_top(16)
+    content.set_margin_bottom(16)
+    content.set_margin_start(16)
+    content.set_margin_end(16)
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    content.pack_start(box, True, True, 0)
+    cwd = terminal_cwd(terminal) if terminal else os.getcwd()
+
+    header = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    title_label = Gtk.Label(label=tr_text("Terminal Actions"), xalign=0)
+    title_label.get_style_context().add_class("palette-title")
+    subtitle_label = Gtk.Label(label=tr_text("Search, split, inspect or switch context"), xalign=0)
+    subtitle_label.get_style_context().add_class("palette-subtitle")
+    header.pack_start(title_label, False, False, 0)
+    header.pack_start(subtitle_label, False, False, 0)
+    box.pack_start(header, False, False, 0)
+
+    search = Gtk.SearchEntry()
+    search.get_style_context().add_class("palette-search")
+    search.set_placeholder_text(tr_text("Type an action"))
+    box.pack_start(search, False, False, 0)
+
+    listbox = Gtk.ListBox()
+    listbox.get_style_context().add_class("palette-list")
+    listbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+    scroller = Gtk.ScrolledWindow()
+    scroller.get_style_context().add_class("palette-list")
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    scroller.set_min_content_height(340)
+    scroller.add(listbox)
+    box.pack_start(scroller, True, True, 0)
+
+    actions: list[tuple[str, str, object]] = [
+        (tr_text("New Tab"), tr_text("Open another shell in this folder"), lambda: new_tab(cwd)),
+        (tr_text("Duplicate Tab"), tr_text("Open a second shell in the same folder"), duplicate_tab or (lambda: new_tab(cwd))),
+        (tr_text("New Window Here"), tr_text("Open another Seven Terminal in this folder"), new_window_here or (lambda: run_detached(["seven-terminal", profile], cwd))),
+        (tr_text("Rename Tab"), tr_text("Give the current workspace a custom name"), rename_tab or (lambda: None)),
+        (tr_text("Reset Tab Title"), tr_text("Return to automatic folder naming"), reset_tab_title or (lambda: None)),
+        (tr_text("Split Vertical"), tr_text("Create a side-by-side terminal pane"), lambda: split_terminal(Gtk.Orientation.HORIZONTAL)),
+        (tr_text("Split Horizontal"), tr_text("Create a stacked terminal pane"), lambda: split_terminal(Gtk.Orientation.VERTICAL)),
+        (tr_text("Search Scrollback"), tr_text("Find text in terminal history"), show_search),
+        (tr_text("Open Current Folder"), cwd, lambda: run_detached(["seven-files", cwd], cwd)),
+        (tr_text("Insert Current Path"), cwd, lambda: feed_terminal_text(terminal, shlex.quote(cwd))),
+    ]
+    if zoom_in and zoom_out and zoom_reset:
+        actions.extend(
+            [
+                (tr_text("Bigger Text"), tr_text("Increase text size for this terminal profile"), zoom_in),
+                (tr_text("Smaller Text"), tr_text("Decrease text size for this terminal profile"), zoom_out),
+                (tr_text("Reset Text Size"), tr_text("Return terminal text to 100%"), zoom_reset),
+            ]
+        )
+    for label, command in profile_actions(profile, cwd):
+        actions.append((tr_text(label), tr_text("Mini OS contextual action"), lambda command=command: new_tab(cwd, command)))
+    actions.extend(
+        [
+            (tr_text("Copy Working Directory"), cwd, lambda: copy_text_to_clipboard(cwd)),
+            (tr_text("Explain Last Command"), tr_text("Ask SevenAI for terminal help"), lambda: new_tab(cwd, ["bash", "-lc", "seven ai terminal; printf '\\nPress Enter...'; read -r"])),
+            (tr_text("Terminal Doctor"), tr_text("Check Seven Terminal health"), lambda: new_tab(cwd, ["bash", "-lc", "seven-terminal status; printf '\\nPress Enter...'; read -r"])),
+            (tr_text("Switch Forge"), tr_text("Development terminal"), lambda: run_detached(["seven-terminal", "forge"], cwd)),
+            (tr_text("Switch Cyber"), tr_text("Security terminal"), lambda: run_detached(["seven-terminal", "cyber"], cwd)),
+            (tr_text("Switch Focus"), tr_text("Quiet writing terminal"), lambda: run_detached(["seven-terminal", "focus"], cwd)),
+            (tr_text("Switch Admin"), tr_text("Cautious system-control terminal"), lambda: run_detached(["seven-terminal", "admin"], cwd)),
+            (tr_text("Switch Windows"), tr_text("Bridge and compatibility terminal"), lambda: run_detached(["seven-terminal", "windows"], cwd)),
+        ]
+    )
+
+    rows = []
+
+    def add_row(title: str, subtitle: str, callback) -> None:
+        row = Gtk.ListBoxRow()
+        row.get_style_context().add_class("palette-row")
+        row.seven_terms = f"{title} {subtitle}".lower()
+        row.seven_callback = callback
+        row_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        row_box.set_margin_top(6)
+        row_box.set_margin_bottom(6)
+        row_box.set_margin_start(8)
+        row_box.set_margin_end(8)
+        row_title = Gtk.Label(label=title, xalign=0)
+        row_title.get_style_context().add_class("palette-row-title")
+        row_subtitle = Gtk.Label(label=subtitle, xalign=0)
+        row_subtitle.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+        row_subtitle.get_style_context().add_class("palette-row-subtitle")
+        row_box.pack_start(row_title, False, False, 0)
+        row_box.pack_start(row_subtitle, False, False, 0)
+        row.add(row_box)
+        listbox.add(row)
+        rows.append(row)
+
+    for title, subtitle, callback in actions:
+        add_row(title, subtitle, callback)
+
+    def filter_rows(*_args) -> None:
+        query = search.get_text().strip().lower()
+        first_visible = None
+        for row in rows:
+            visible = not query or all(part in row.seven_terms for part in query.split())
+            row.set_visible(visible)
+            if visible and first_visible is None:
+                first_visible = row
+        if first_visible:
+            listbox.select_row(first_visible)
+
+    def activate_row(_box, row) -> None:
+        if not row:
+            return
+        callback = getattr(row, "seven_callback", None)
+        if callback:
+            callback()
+            dialog.response(Gtk.ResponseType.CLOSE)
+
+    search.connect("search-changed", filter_rows)
+    search.connect("activate", lambda *_: activate_row(listbox, listbox.get_selected_row()))
+    search.connect("key-press-event", lambda _entry, event: dialog.response(Gtk.ResponseType.CLOSE) if (Gdk.keyval_name(event.keyval) or "").lower() == "escape" else False)
+    listbox.connect("row-activated", activate_row)
+    dialog.show_all()
+    filter_rows()
+    search.grab_focus()
+    dialog.run()
+    dialog.destroy()
+
+
+def copy_text_to_clipboard(text: str) -> None:
+    from gi.repository import Gdk, Gtk
+
+    Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(text, -1)
 
 
 def traffic_button(style: str, tooltip: str, callback):

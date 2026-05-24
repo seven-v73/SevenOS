@@ -65,7 +65,7 @@ PY
 payload_json() {
   local tmp_dir
   tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "$tmp_dir"' RETURN
+  trap "rm -rf '$tmp_dir'" RETURN
 
   command_json '{}' "$ROOT_DIR/scripts/state.sh" --json > "$tmp_dir/state.json"
   command_json '{"insights":[],"summary":{}}' "$ROOT_DIR/scripts/insights.sh" --json > "$tmp_dir/insights.json"
@@ -353,6 +353,10 @@ doctor() {
 
 action="${1:-brief}"
 case "$action" in
+  open|native|gui|interface)
+    shift || true
+    exec "$ROOT_DIR/bin/seven-ai-native" open "$@"
+    ;;
   brief|status) brief ;;
   plan) plan ;;
   focus) focus ;;

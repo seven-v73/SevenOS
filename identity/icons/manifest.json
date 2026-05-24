@@ -65,6 +65,13 @@
       "label": "Seven Studio",
       "role": "creation",
       "accent": "#FAB387"
+    },
+    {
+      "name": "seven-baobab",
+      "file": "seven-baobab.svg",
+      "label": "Baobab OS",
+      "role": "culture",
+      "accent": "#A6E3A1"
     }
   ]
 }

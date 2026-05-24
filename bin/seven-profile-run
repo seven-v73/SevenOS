@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import hashlib
 import json
 import os
 import shutil
@@ -50,6 +51,8 @@ def profile_roots(profile: str, isolation: dict) -> dict:
         "home": Path(configured.get("home") or base / "home"),
         "cache": Path(configured.get("cache") or base / "cache"),
         "data": Path(configured.get("data") or base / "data"),
+        "package_view": Path(configured.get("package_view") or Path.home() / ".local/share/sevenos/profile-package-views" / profile / "bin"),
+        "rootfs": Path(configured.get("rootfs") or Path.home() / ".local/share/sevenos/profile-rootfs" / profile / "rootfs"),
     }
 
 
@@ -64,6 +67,137 @@ def default_workspace(profile: str) -> Path:
         "pulse": "Pulse",
     }
     return Path.home() / mapping.get(profile, "SevenOS")
+
+
+def default_isolation_mode(profile: str, rootfs: bool = False) -> str:
+    if os.environ.get("SEVENOS_PROFILE_ISOLATION"):
+        return os.environ["SEVENOS_PROFILE_ISOLATION"]
+    if profile in {"shield"}:
+        return "strict"
+    if rootfs:
+        return "balanced"
+    return "balanced"
+
+
+def isolation_policy(profile: str, mode: str) -> dict:
+    policies = {
+        "balanced": {
+            "network": "shared",
+            "dev": "host",
+            "runtime_dir": "shared",
+            "dbus": "available-through-runtime",
+            "gpu": "host",
+            "audio": "host-runtime",
+            "vm_equivalent": False,
+        },
+        "strict": {
+            "network": "disabled",
+            "dev": "minimal",
+            "runtime_dir": "not-mounted-by-default",
+            "dbus": "blocked-by-default",
+            "gpu": "blocked-by-default",
+            "audio": "blocked-by-default",
+            "vm_equivalent": False,
+        },
+        "independent": {
+            "network": "shared-native",
+            "dev": "host",
+            "runtime_dir": "shared",
+            "dbus": "available-through-runtime",
+            "gpu": "host",
+            "audio": "host-runtime",
+            "vm_equivalent": False,
+            "rootfs_required": True,
+            "rootfs_mount": "read-only",
+            "package_boundary": "profile-rootfs",
+        },
+    }
+    policy = policies.get(mode, policies["balanced"]).copy()
+    policy["profile"] = profile
+    policy["mode"] = mode
+    return policy
+
+
+ROOTFS_MAINTENANCE_COMMANDS = {"pacman", "paru", "yay", "makepkg"}
+
+
+def ensure_profile_requirements(profile: str, command_name: str) -> bool:
+    runner = Path(__file__).resolve().parent / "seven-profile-requirements"
+    if not runner.exists():
+        return False
+    if os.environ.get("SEVENOS_PROFILE_REQUIREMENTS_AUTO", "1") == "0":
+        return False
+    args = [str(runner), "ensure", profile, "--apply", "--yes", "--command", command_name]
+    if os.environ.get("SEVENOS_PROFILE_REQUIREMENTS_OPTIONAL") == "1":
+        args.append("--optional")
+    result = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if result.returncode != 0 and result.stderr:
+        print(result.stderr.strip(), file=sys.stderr)
+    return result.returncode == 0
+
+
+def package_db(rootfs: Path) -> list[dict]:
+    local = rootfs / "var/lib/pacman/local"
+    packages = []
+    if not local.is_dir():
+        return packages
+    for desc in sorted(local.glob("*/desc")):
+        data = {"id": desc.parent.name}
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        key = None
+        for line in lines:
+            if line.startswith("%") and line.endswith("%"):
+                key = line.strip("%").lower()
+                continue
+            if key and line:
+                data[key] = line
+                key = None
+        packages.append({
+            "name": data.get("name", desc.parent.name.rsplit("-", 2)[0]),
+            "version": data.get("version", ""),
+        })
+    return packages
+
+
+def rootfs_fingerprint(rootfs: Path) -> dict:
+    packages = package_db(rootfs)
+    package_fingerprint = hashlib.sha256(
+        "\n".join(f"{item['name']}={item['version']}" for item in packages).encode("utf-8")
+    ).hexdigest()
+    try:
+        os_release_hash = hashlib.sha256((rootfs / "etc/os-release").read_bytes()).hexdigest()
+    except OSError:
+        os_release_hash = ""
+    try:
+        marker = (rootfs / "etc/sevenos-profile").read_text(encoding="utf-8", errors="ignore").strip()
+    except OSError:
+        marker = ""
+    return {
+        "marker": marker,
+        "os_release_sha256": os_release_hash,
+        "package_count": len(packages),
+        "package_fingerprint": package_fingerprint,
+    }
+
+
+def verify_rootfs_seal(profile: str, rootfs: Path, *, required: bool) -> tuple[bool, str]:
+    seal_path = Path.home() / ".local/share/sevenos/profile-rootfs" / profile / "seal.json"
+    seal = load_json(seal_path)
+    if not seal:
+        return (not required, f"rootfs seal missing: {seal_path}")
+    current = rootfs_fingerprint(rootfs)
+    checks = {
+        "marker": current["marker"] == profile,
+        "os_release": current["os_release_sha256"] == seal.get("os_release_sha256"),
+        "packages": current["package_fingerprint"] == seal.get("package_fingerprint"),
+    }
+    if all(checks.values()):
+        return True, "rootfs seal verified"
+    failed = ", ".join(key for key, ok in checks.items() if not ok)
+    return False, f"rootfs seal mismatch for {profile}: {failed}"
 
 
 def runtime_manifest(profile: str, isolation: dict) -> dict:
@@ -89,10 +223,12 @@ def runtime_manifest(profile: str, isolation: dict) -> dict:
             "SEVENOS_PROFILE_CONTAINER": profile,
             "SEVENOS_WORKSPACE": "/workspace when --workspace or --workspace-profile is used",
             "SEVENOS_EPHEMERAL": "1 when --ephemeral is used",
+            "SEVENOS_ROOTFS_WRITABLE": "1 only during explicit --rootfs-writable maintenance sessions",
             "HOME": "/profile/home in strict container mode",
             "XDG_CONFIG_HOME": "/profile/config in strict container mode",
             "XDG_CACHE_HOME": "/profile/cache in strict container mode",
             "XDG_DATA_HOME": "/profile/data in strict container mode",
+            "PATH": "/profile/bin first in strict container mode",
         },
         "commands": {
             "inspect": f"seven-profile-run --profile {profile} --manifest",
@@ -100,9 +236,18 @@ def runtime_manifest(profile: str, isolation: dict) -> dict:
             "workspace_shell": f"seven profile exec {profile} --container --workspace-profile sh",
             "ephemeral_shell": f"seven profile exec {profile} --ephemeral sh",
             "run_app": f"seven profile exec {profile} --container <command>",
+            "independent_shell": f"seven profile exec {profile} --independent sh",
+            "independent_app": f"seven profile exec {profile} --independent <command>",
+            "rootfs_shell": f"seven profile exec {profile} --rootfs sh",
+            "rootfs_maintenance": f"seven profile exec {profile} --rootfs-writable sh",
         },
         "policy": {
-            "packages": "global-pacman-store",
+            "packages": "global-pacman-store with profile package view",
+            "native_independence": "use --independent for sealed read-only rootfs plus profile HOME/cache/data without VM",
+            "rootfs": "read-only by default when --rootfs is requested and profile rootfs is ready",
+            "rootfs_writable": "explicit maintenance mode only with --rootfs-writable",
+            "seal": "verified before rootfs execution when a seal exists; required in strict mode",
+            "isolation": isolation_policy(profile, default_isolation_mode(profile)),
             "app_data": "profile-config-home-cache-data",
             "workspace": "explicit-bind-only",
             "ephemeral": "temporary-home-cache-data",
@@ -124,6 +269,8 @@ def print_status(profile: str, isolation: dict) -> int:
         "boundary": {
             "packages": "global-pacman-store",
             "app_data": "profile-config-home-cache-data",
+            "rootfs": "read-only-by-default",
+            "rootfs_writable": "explicit-maintenance-only",
             "workspace": "explicit-bind-only",
             "ephemeral": "available-with-ephemeral-flag",
             "runtime": "systemd-user-scope",
@@ -152,10 +299,15 @@ def print_status(profile: str, isolation: dict) -> int:
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print("Usage: seven-profile-run [--profile PROFILE] [--container] [--ephemeral] [--workspace PATH|--workspace-profile] [--json|--manifest] <command> [args...]", file=sys.stderr)
+        print("Usage: seven-profile-run [--profile PROFILE] [--container|--rootfs|--independent] [--rootfs-writable] [--isolation balanced|strict|independent] [--ephemeral] [--workspace PATH|--workspace-profile] [--json|--manifest] <command> [args...]", file=sys.stderr)
         return 2
 
     use_container = False
+    use_rootfs = False
+    rootfs_writable = False
+    isolation_mode = None
+    verify_seal = True
+    seal_required = False
     json_status = False
     manifest_status = False
     forced_profile = None
@@ -166,6 +318,41 @@ def main() -> int:
     while raw_args:
         if raw_args[0] == "--container":
             use_container = True
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--rootfs":
+            use_rootfs = True
+            use_container = True
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--independent":
+            use_rootfs = True
+            use_container = True
+            isolation_mode = "independent"
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--rootfs-writable":
+            rootfs_writable = True
+            use_rootfs = True
+            use_container = True
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--isolation":
+            if len(raw_args) < 2 or raw_args[1] not in {"balanced", "strict", "independent"}:
+                print("[SevenOS] --isolation requires: balanced, strict or independent", file=sys.stderr)
+                return 2
+            isolation_mode = raw_args[1]
+            if isolation_mode == "independent":
+                use_rootfs = True
+                use_container = True
+            raw_args = raw_args[2:]
+            continue
+        if raw_args[0] == "--no-seal-verify":
+            verify_seal = False
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--seal-required":
+            seal_required = True
             raw_args = raw_args[1:]
             continue
         if raw_args[0] == "--ephemeral":
@@ -221,10 +408,11 @@ def main() -> int:
         workspace_path.mkdir(parents=True, exist_ok=True)
 
     if not raw_args:
-        print("Usage: seven-profile-run [--profile PROFILE] [--container] [--ephemeral] [--workspace PATH|--workspace-profile] <command> [args...]", file=sys.stderr)
+        print("Usage: seven-profile-run [--profile PROFILE] [--container|--rootfs|--independent] [--rootfs-writable] [--isolation balanced|strict|independent] [--ephemeral] [--workspace PATH|--workspace-profile] <command> [args...]", file=sys.stderr)
         return 2
 
     command = raw_args[0]
+    command_name = Path(command).name
     args = raw_args[1:]
     runtime = load_json(state_dir() / "runtime.json")
     active_commands = set(isolation.get("active_commands") or [])
@@ -232,7 +420,7 @@ def main() -> int:
 
     if not isolation:
         print("[SevenOS] WARN: profile isolation state missing; run: seven profile isolation apply --yes", file=sys.stderr)
-    elif not forced_profile and command in inactive_commands and command not in active_commands:
+    elif not forced_profile and command_name in inactive_commands and command_name not in active_commands:
         selected = ", ".join(isolation.get("selected_profiles") or [active])
         owners = []
         for profile, commands in {
@@ -243,25 +431,47 @@ def main() -> int:
             "windows": ["wine", "winetricks", "lutris", "virt-manager", "virt-install"],
             "pulse": ["gamemoderun", "game-mode", "gamescope", "mangohud", "vulkaninfo", "lutris"],
         }.items():
-            if command in commands:
+            if command_name in commands:
                 owners.append(profile)
         owner_hint = ", ".join(owners) if owners else "another profile"
         print(
-            f"[SevenOS] {command} belongs to {owner_hint}, but the active runtime is {selected}.",
+            f"[SevenOS] {command_name} belongs to {owner_hint}, but the active runtime is {selected}.",
             file=sys.stderr,
         )
         print(f"[SevenOS] Activate a matching profile or run: seven runtime activate {active} {' '.join(owners)} --apply --yes", file=sys.stderr)
         return 126
 
     shims_dir = str(Path.home() / ".local/share/sevenos/profile-shims")
+    roots = profile_roots(active, isolation)
+    package_view = roots["package_view"]
     search_path = os.pathsep.join(
         item for item in os.environ.get("PATH", "").split(os.pathsep)
-        if item and os.path.abspath(item) != os.path.abspath(shims_dir)
+        if item
+        and os.path.abspath(item) != os.path.abspath(shims_dir)
+        and "profile-package-views" not in item
     )
-    executable = shutil.which(command, path=search_path)
+    profile_search_path = os.pathsep.join([str(package_view), search_path])
+    if os.path.isabs(command):
+        executable = command if Path(command).exists() else None
+        if command_name in inactive_commands and command_name not in active_commands:
+            selected = ", ".join(isolation.get("selected_profiles") or [active])
+            print(f"[SevenOS] absolute command blocked outside active package view: {command_name} ({selected})", file=sys.stderr)
+            return 126
+    else:
+        executable = shutil.which(command_name, path=profile_search_path)
     if not executable:
-        print(f"[SevenOS] command not found: {command}", file=sys.stderr)
-        return 127
+        if ensure_profile_requirements(active, command_name):
+            executable = shutil.which(command_name, path=profile_search_path)
+            if executable:
+                print(f"[SevenOS] Installed missing {active} requirements; continuing with {command_name}.", file=sys.stderr)
+            else:
+                print(f"[SevenOS] Installed {active} requirements, but {command_name} is still not visible in the active package view.", file=sys.stderr)
+                print(f"[SevenOS] Refresh isolation: seven profile isolation apply {active} --yes", file=sys.stderr)
+                return 127
+        else:
+            print(f"[SevenOS] Missing requirements for {active}. Run: seven profile requirements {active} --apply --yes", file=sys.stderr)
+            print(f"[SevenOS] command not visible in active mini OS package view: {command_name}", file=sys.stderr)
+            return 127
 
     slice_name = (
         runtime.get("resource_plan", {})
@@ -270,9 +480,115 @@ def main() -> int:
         or f"seven-{active}.slice"
     )
     env = os.environ.copy()
-    env.setdefault("SEVENOS_ACTIVE_PROFILE", active)
-    env.setdefault("SEVENOS_RUNTIME_SLICE", slice_name)
+    env["SEVENOS_ACTIVE_PROFILE"] = active
+    env["SEVENOS_PROFILE"] = active
+    env["SEVENOS_RUNTIME_SLICE"] = slice_name
     env["SEVENOS_EXEC_PROFILE"] = active
+    env["SEVENOS_PACKAGE_VIEW"] = str(package_view)
+    env["PATH"] = profile_search_path
+    isolation_mode = isolation_mode or default_isolation_mode(active, use_rootfs)
+    policy = isolation_policy(active, isolation_mode)
+    env["SEVENOS_ISOLATION_MODE"] = isolation_mode
+
+    if use_rootfs:
+        rootfs = roots["rootfs"]
+        if not shutil.which("bwrap"):
+            print("[SevenOS] --rootfs requires bubblewrap", file=sys.stderr)
+            return 126
+        if not (rootfs / "usr/bin").is_dir():
+            print(f"[SevenOS] rootfs for {active} is not ready: {rootfs}", file=sys.stderr)
+            print(f"[SevenOS] build it with: seven profile-rootfs build {active} --apply --yes", file=sys.stderr)
+            return 126
+        if not rootfs_writable and command_name in ROOTFS_MAINTENANCE_COMMANDS:
+            print(f"[SevenOS] {command_name} needs writable rootfs maintenance mode for {active}.", file=sys.stderr)
+            print(f"[SevenOS] Run: seven profile exec {active} --rootfs-writable {command_name} {' '.join(args)}", file=sys.stderr)
+            print("[SevenOS] Then verify and reseal: seven profile-rootfs verify all && seven profile-rootfs seal all --apply --yes", file=sys.stderr)
+            return 126
+        rootfs_path = shutil.which(command_name, path=os.pathsep.join([str(rootfs / "usr/local/bin"), str(rootfs / "usr/bin"), str(rootfs / "bin")]))
+        if not rootfs_path:
+            print(f"[SevenOS] command not found inside {active} rootfs: {command_name}", file=sys.stderr)
+            return 127
+        if verify_seal:
+            ok, message = verify_rootfs_seal(active, rootfs, required=seal_required or isolation_mode == "strict")
+            if not ok:
+                print(f"[SevenOS] {message}", file=sys.stderr)
+                print("[SevenOS] Run: seven profile-rootfs verify all", file=sys.stderr)
+                print("[SevenOS] To reseal after an intentional rebuild: seven profile-rootfs seal all --apply --yes", file=sys.stderr)
+                return 125
+            if message.startswith("rootfs seal missing"):
+                print(f"[SevenOS] WARN: {message}", file=sys.stderr)
+        if rootfs_writable:
+            print(
+                "[SevenOS] WARN: rootfs writable maintenance mode is active; run `seven profile-rootfs verify all` and reseal after intentional package changes.",
+                file=sys.stderr,
+            )
+        config = roots["config"]
+        home = roots["home"]
+        cache = roots["cache"]
+        data = roots["data"]
+        for path in (config, home, cache, data):
+            path.mkdir(parents=True, exist_ok=True)
+        sandbox_config = "/profile/config"
+        sandbox_home = "/profile/home"
+        sandbox_cache = "/profile/cache"
+        sandbox_data = "/profile/data"
+        sandbox_workspace = "/workspace"
+        rootfs_executable = "/" + str(Path(rootfs_path).relative_to(rootfs)).lstrip("/")
+        env.update({
+            "HOME": sandbox_home,
+            "XDG_CONFIG_HOME": sandbox_config,
+            "XDG_CACHE_HOME": sandbox_cache,
+            "XDG_DATA_HOME": sandbox_data,
+            "SEVENOS_PROFILE_CONTAINER": active,
+            "SEVENOS_ROOTFS": "/",
+            "SEVENOS_ROOTFS_WRITABLE": "1" if rootfs_writable else "0",
+            "SEVENOS_ISOLATION_MODE": isolation_mode,
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+        })
+        runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+        command_line = [
+            "bwrap",
+            "--die-with-parent",
+            "--unshare-ipc",
+            "--unshare-uts",
+            "--bind" if rootfs_writable else "--ro-bind", str(rootfs), "/",
+            "--proc", "/proc",
+            "--tmpfs", "/tmp",
+            "--bind", str(config), sandbox_config,
+            "--bind", str(home), sandbox_home,
+            "--bind", str(cache), sandbox_cache,
+            "--bind", str(data), sandbox_data,
+            "--setenv", "HOME", sandbox_home,
+            "--setenv", "XDG_CONFIG_HOME", sandbox_config,
+            "--setenv", "XDG_CACHE_HOME", sandbox_cache,
+            "--setenv", "XDG_DATA_HOME", sandbox_data,
+            "--setenv", "SEVENOS_PROFILE_CONTAINER", active,
+            "--setenv", "SEVENOS_ROOTFS", "/",
+            "--setenv", "SEVENOS_ROOTFS_WRITABLE", "1" if rootfs_writable else "0",
+            "--setenv", "SEVENOS_ISOLATION_MODE", isolation_mode,
+            "--setenv", "PATH", "/usr/local/bin:/usr/bin:/bin",
+        ]
+        if policy["network"] == "disabled":
+            command_line.insert(2, "--unshare-net")
+        if policy["dev"] == "minimal":
+            command_line.extend(["--dev", "/dev"])
+        else:
+            command_line.extend(["--dev-bind", "/dev", "/dev"])
+        if workspace_path:
+            command_line.extend([
+                "--bind", str(workspace_path), sandbox_workspace,
+                "--setenv", "SEVENOS_WORKSPACE", sandbox_workspace,
+            ])
+        command_line.extend(["--chdir", sandbox_workspace if workspace_path else sandbox_home])
+        if runtime_dir and policy["runtime_dir"] == "shared":
+            command_line.extend(["--bind-try", runtime_dir, runtime_dir, "--setenv", "XDG_RUNTIME_DIR", runtime_dir])
+        elif runtime_dir:
+            command_line.extend(["--unsetenv", "XDG_RUNTIME_DIR", "--unsetenv", "DBUS_SESSION_BUS_ADDRESS"])
+        command_line.extend([rootfs_executable, *args])
+        if shutil.which("systemd-run"):
+            command_line = ["systemd-run", "--user", "--scope", f"--slice={slice_name}", "--quiet", *command_line]
+        result = subprocess.run(command_line, env=env, check=False)
+        return int(result.returncode)
 
     if use_container and shutil.which("bwrap"):
         temp_context = None
@@ -291,12 +607,15 @@ def main() -> int:
         home = roots["home"]
         cache = roots["cache"]
         data = roots["data"]
+        package_view = roots["package_view"]
         for path in (config, home, cache, data):
             path.mkdir(parents=True, exist_ok=True)
+        package_view.mkdir(parents=True, exist_ok=True)
         sandbox_config = "/profile/config"
         sandbox_home = "/profile/home"
         sandbox_cache = "/profile/cache"
         sandbox_data = "/profile/data"
+        sandbox_bin = "/profile/bin"
         sandbox_workspace = "/workspace"
         env.update({
             "HOME": sandbox_home,
@@ -304,17 +623,22 @@ def main() -> int:
             "XDG_CACHE_HOME": sandbox_cache,
             "XDG_DATA_HOME": sandbox_data,
             "SEVENOS_PROFILE_CONTAINER": active,
+            "SEVENOS_PACKAGE_VIEW": sandbox_bin,
+            "SEVENOS_ISOLATION_MODE": isolation_mode,
+            "PATH": os.pathsep.join([sandbox_bin, "/usr/local/bin", "/usr/bin"]),
         })
         if ephemeral:
             env["SEVENOS_EPHEMERAL"] = "1"
         if workspace_path:
             env["SEVENOS_WORKSPACE"] = sandbox_workspace
         runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+        sandbox_executable = f"{sandbox_bin}/{command_name}" if Path(executable).parent == package_view else executable
         command_line = [
             "bwrap",
             "--die-with-parent",
+            "--unshare-ipc",
+            "--unshare-uts",
             "--proc", "/proc",
-            "--dev", "/dev",
             "--tmpfs", "/tmp",
             "--ro-bind", "/usr", "/usr",
             "--ro-bind-try", "/etc", "/etc",
@@ -329,25 +653,37 @@ def main() -> int:
             "--bind", str(home), sandbox_home,
             "--bind", str(cache), sandbox_cache,
             "--bind", str(data), sandbox_data,
+            "--ro-bind", str(package_view), sandbox_bin,
             "--setenv", "HOME", sandbox_home,
             "--setenv", "XDG_CONFIG_HOME", sandbox_config,
             "--setenv", "XDG_CACHE_HOME", sandbox_cache,
             "--setenv", "XDG_DATA_HOME", sandbox_data,
             "--setenv", "SEVENOS_PROFILE_CONTAINER", active,
+            "--setenv", "SEVENOS_PACKAGE_VIEW", sandbox_bin,
+            "--setenv", "SEVENOS_ISOLATION_MODE", isolation_mode,
+            "--setenv", "PATH", os.pathsep.join([sandbox_bin, "/usr/local/bin", "/usr/bin"]),
         ]
+        if policy["network"] == "disabled":
+            command_line.insert(2, "--unshare-net")
+        if policy["dev"] == "minimal":
+            command_line.extend(["--dev", "/dev"])
+        else:
+            command_line.extend(["--dev-bind", "/dev", "/dev"])
         if workspace_path:
             command_line.extend([
                 "--bind", str(workspace_path), sandbox_workspace,
                 "--setenv", "SEVENOS_WORKSPACE", sandbox_workspace,
             ])
         command_line.extend(["--chdir", sandbox_workspace if workspace_path else sandbox_home])
-        if runtime_dir:
+        if runtime_dir and policy["runtime_dir"] == "shared":
             command_line.extend([
                 "--bind-try", runtime_dir, runtime_dir,
                 "--setenv", "XDG_RUNTIME_DIR", runtime_dir,
             ])
+        elif runtime_dir:
+            command_line.extend(["--unsetenv", "XDG_RUNTIME_DIR", "--unsetenv", "DBUS_SESSION_BUS_ADDRESS"])
         command_line.extend([
-            executable,
+            sandbox_executable,
             *args,
         ])
         if shutil.which("systemd-run"):

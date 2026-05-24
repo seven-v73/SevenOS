@@ -99,6 +99,19 @@ def wallpaper_state() -> dict:
     )
 
 
+def motion_tokens() -> dict:
+    return {
+        "curve": "cubic-bezier(0.16, 1.00, 0.30, 1.00)",
+        "curve_open": "cubic-bezier(0.18, 1.00, 0.22, 1.00)",
+        "curve_exit": "cubic-bezier(0.30, 0.00, 0.80, 0.15)",
+        "duration_press": "120ms",
+        "duration_hover": "160ms",
+        "duration_open": "260ms",
+        "duration_close": "180ms",
+        "duration_workspace": "320ms",
+    }
+
+
 def mode_palette(mode: str | None = None) -> dict[str, str]:
     mode = mode or current_theme_mode()
     if mode == "light":
@@ -170,6 +183,7 @@ def gtk_app_css(
     profile_key = str(profile.get("profile") or "equinox")
     profile_title = str(profile.get("title") or "Equinox")
     runtime = runtime_state()
+    motion = motion_tokens()
     toolkits = runtime.get("toolkits", {}) if isinstance(runtime.get("toolkits"), dict) else {}
     icon_theme = str(toolkits.get("icon_theme") or "")
 
@@ -203,6 +217,7 @@ def gtk_app_css(
     @define-color seven_traffic_close {palette["traffic_close"]};
     @define-color seven_traffic_minimize {palette["traffic_minimize"]};
     @define-color seven_traffic_maximize {palette["traffic_maximize"]};
+    /* motion: curve={motion["curve"]} open={motion["duration_open"]} hover={motion["duration_hover"]} press={motion["duration_press"]} */
 
     .seven-design-surface {{
       color: @seven_text;

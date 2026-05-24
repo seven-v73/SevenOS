@@ -359,7 +359,7 @@ configure_user_session_services() {
   if command -v systemctl >/dev/null 2>&1; then
     systemctl --user daemon-reload >/dev/null 2>&1 || true
     systemctl --user enable sevenos-session.target >/dev/null 2>&1 || true
-    systemctl --user enable sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-idle.service >/dev/null 2>&1 || true
+    systemctl --user enable sevenos-waybar-context.service sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-idle.service sevenos-shell-experience.service >/dev/null 2>&1 || true
   fi
 }
 
@@ -655,6 +655,7 @@ run_cmd cp "$ROOT_DIR/identity/icons/seven-spotlight.svg" "$DATA_HOME/icons/hico
 run_cmd cp "$ROOT_DIR/identity/icons/seven-ai.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-ai.svg"
 run_cmd cp "$ROOT_DIR/identity/icons/seven-security.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-security.svg"
 run_cmd cp "$ROOT_DIR/identity/icons/seven-studio.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-studio.svg"
+run_cmd cp "$ROOT_DIR/identity/icons/seven-baobab.svg" "$DATA_HOME/icons/hicolor/scalable/apps/seven-baobab.svg"
 run_cmd cp "$ROOT_DIR/identity/countries/africa.tsv" "$DATA_HOME/sevenos/countries/africa.tsv"
 if [[ "$THEME_MODE" == "light" ]]; then
   run_cmd cp "$ROOT_DIR/identity/tokens-light.css" "$DATA_HOME/sevenos/identity/tokens.css"

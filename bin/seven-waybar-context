@@ -1,0 +1,388 @@
+#!/usr/bin/env python3
+"""Event-driven active-window cache for the SevenOS Waybar."""
+
+from __future__ import annotations
+
+import json
+import os
+import select
+import signal
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
+CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
+WAYBAR_SIGNAL = "RTMIN+8"
+WINDOW_MEMORY_EVENTS = {"startup", "manual", "activewindow", "activewindowv2", "workspace", "openwindow", "closewindow", "movewindow"}
+LAST_MEMORY_REFRESH = 0.0
+
+
+def run(command: list[str], timeout: float = 0.7) -> str:
+    try:
+        return subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout).stdout.strip()
+    except Exception:
+        return ""
+
+
+def active_window() -> dict:
+    if not shutil.which("hyprctl"):
+        return {}
+    try:
+        return json.loads(run(["hyprctl", "activewindow", "-j"], timeout=0.5) or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def active_profile() -> dict:
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+    profile_json = config_home / "profile.json"
+    if profile_json.exists():
+        try:
+            data = json.loads(profile_json.read_text(encoding="utf-8") or "{}")
+            if data.get("key"):
+                return data
+        except Exception:
+            pass
+    profile_env = config_home / "profile.env"
+    if profile_env.exists():
+        values: dict[str, str] = {}
+        for line in profile_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            values[key.strip()] = value.strip().strip("'\"")
+        if values.get("SEVENOS_ACTIVE_PROFILE"):
+            return {
+                "key": values.get("SEVENOS_ACTIVE_PROFILE", "equinox"),
+                "title": values.get("SEVENOS_PROFILE_TITLE", "Equinox Balance"),
+                "role": "",
+                "state": "",
+            }
+    manager = ROOT / "profiles/profile-manager.sh"
+    if not manager.exists():
+        return {"key": os.environ.get("SEVENOS_PROFILE", "equinox"), "title": "Equinox Balance"}
+    try:
+        return json.loads(run([str(manager), "current", "--json"], timeout=1.2) or "{}")
+    except json.JSONDecodeError:
+        return {"key": "equinox", "title": "Equinox Balance"}
+
+
+def service_from_title(app_key: str, title: str) -> str:
+    text = title.lower()
+    if app_key not in {"chrome", "chromium", "firefox", "brave", "browser"}:
+        return ""
+    rules = (
+        ("youtube", ("youtube", "youtu.be")),
+        ("gmail", ("gmail", "mail.google")),
+        ("google-docs", ("google docs", "docs.google")),
+        ("google-sheets", ("google sheets", "sheets.google")),
+        ("google-drive", ("google drive", "drive.google")),
+        ("github", ("github",)),
+        ("figma", ("figma",)),
+        ("notion", ("notion",)),
+        ("streaming", ("netflix", "prime video", "disney+", "canal+", "free movies")),
+    )
+    for service, tokens in rules:
+        if any(token in text for token in tokens):
+            return service
+    return ""
+
+
+def app_key(app_class: str) -> str:
+    klass = app_class.lower()
+    if "google-chrome" in klass:
+        return "chrome"
+    if "chromium" in klass:
+        return "chromium"
+    if "firefox" in klass or "librewolf" in klass:
+        return "firefox"
+    if "brave" in klass:
+        return "brave"
+    if "code" in klass or "codium" in klass or "cursor" in klass:
+        return "developer"
+    if "terminal" in klass or "kitty" in klass:
+        return "terminal"
+    if "sevenfiles" in klass or "seven-files" in klass or "nautilus" in klass:
+        return "files"
+    if any(token in klass for token in ("vlc", "mpv", "spotify")):
+        return "media"
+    if any(token in klass for token in ("krita", "blender", "gimp", "inkscape", "kdenlive", "obs")):
+        return "studio"
+    return klass or "desktop"
+
+
+def shell_experience() -> dict:
+    helper = ROOT / "scripts/shell-experience.sh"
+    if not helper.exists():
+        return {}
+    try:
+        return json.loads(run([str(helper), "recommend"], timeout=0.9) or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def window_memory() -> dict:
+    helper = ROOT / "bin/seven-window"
+    if not helper.exists():
+        return {}
+    try:
+        data = json.loads(run([str(helper), "memory", "--json"], timeout=0.9) or "{}")
+    except json.JSONDecodeError:
+        return {}
+    active = data.get("active") if isinstance(data.get("active"), dict) else {}
+    return {
+        "schema": data.get("schema", "sevenos.window-memory.v1"),
+        "updated_at": data.get("updated_at", ""),
+        "active": {
+            "class": active.get("class", ""),
+            "workspace": active.get("workspace", ""),
+            "floating": active.get("floating", False),
+            "fullscreen": active.get("fullscreen", False),
+        },
+        "count": len(data.get("windows") or []),
+    }
+
+
+def refresh_window_memory(event: str) -> None:
+    global LAST_MEMORY_REFRESH
+    if event not in WINDOW_MEMORY_EVENTS:
+        return
+    helper = ROOT / "bin/seven-window"
+    if not helper.exists():
+        return
+    now = time.time()
+    if event not in {"startup", "manual"} and now - LAST_MEMORY_REFRESH < 0.7:
+        return
+    LAST_MEMORY_REFRESH = now
+    try:
+        subprocess.run([str(helper), "remember"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1.2)
+    except Exception:
+        pass
+
+
+def layout_policy(profile_key: str, app: str, service: str, fullscreen: bool) -> dict:
+    density = "normal"
+    priority = "balanced"
+    if fullscreen or service in {"streaming", "youtube"} or profile_key == "pulse":
+        density = "immersive"
+        priority = "content"
+    elif profile_key in {"shield", "forge"} or app in {"developer", "terminal"}:
+        density = "compact"
+        priority = "workflow"
+    elif profile_key == "studio" or app == "studio":
+        density = "wide"
+        priority = "assets"
+    return {
+        "schema": "sevenos.shell-layout-policy.v1",
+        "density": density,
+        "priority": priority,
+        "waybar": {
+            "left": "app-menu" if density != "immersive" else "app-name",
+            "right": "system-compact" if density in {"compact", "immersive"} else "system-full",
+        },
+        "dock": {
+            "behavior": "autohide" if density == "immersive" else "visible",
+        },
+        "panels": {
+            "motion": "reduced" if profile_key == "shield" else "standard",
+        },
+    }
+
+
+def payload(event: str = "refresh") -> dict:
+    refresh_window_memory(event)
+    window = active_window()
+    profile = active_profile()
+    profile_key = str(profile.get("key") or "equinox")
+    key = app_key(str(window.get("class") or window.get("initialClass") or ""))
+    service = service_from_title(key, str(window.get("title") or ""))
+    workspace = window.get("workspace", {}) if isinstance(window.get("workspace"), dict) else {}
+    fullscreen = bool(window.get("fullscreen"))
+    return {
+        "schema": "sevenos.waybar.context.v1",
+        "event": event,
+        "time": time.time(),
+        "profile": {
+            "key": profile_key,
+            "title": str(profile.get("title") or "Equinox Balance"),
+            "role": str(profile.get("role") or ""),
+            "state": str(profile.get("state") or ""),
+        },
+        "window": {
+            "address": window.get("address", ""),
+            "class": window.get("class", ""),
+            "initialClass": window.get("initialClass", ""),
+            "title": window.get("title", ""),
+            "workspace": workspace,
+            "fullscreen": window.get("fullscreen", False),
+            "floating": window.get("floating", False),
+        },
+        "app": {
+            "key": key,
+            "service": service,
+            "label": service or key,
+            "fullscreen": fullscreen,
+            "workspace": workspace.get("name") or workspace.get("id") or "",
+        },
+        "layout": layout_policy(profile_key, key, service, fullscreen),
+        "experience": shell_experience(),
+        "window_memory": window_memory(),
+    }
+
+
+def write_context(event: str = "refresh", notify_waybar: bool = True) -> None:
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    CONTEXT_FILE.write_text(json.dumps(payload(event), ensure_ascii=False) + "\n", encoding="utf-8")
+    if notify_waybar:
+        subprocess.run(["pkill", f"-{WAYBAR_SIGNAL}", "-x", "waybar"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def daemon() -> int:
+    write_context("startup", notify_waybar=True)
+    if not shutil.which("hyprctl"):
+        return 1
+    while True:
+        write_context("reconnect", notify_waybar=False)
+        process = subprocess.Popen(["hyprctl", "events"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        assert process.stdout is not None
+        last_heartbeat = time.time()
+        while process.poll() is None:
+            readable, _, _ = select.select([process.stdout], [], [], 2.0)
+            if readable:
+                line = process.stdout.readline()
+                if not line:
+                    break
+                event = line.strip().split(">>", 1)[0]
+                if event in {"activewindow", "activewindowv2", "workspace", "focusedmon", "openwindow", "closewindow", "movewindow"}:
+                    write_context(event, notify_waybar=True)
+                    last_heartbeat = time.time()
+            elif time.time() - last_heartbeat >= 5.0:
+                write_context("heartbeat", notify_waybar=False)
+                last_heartbeat = time.time()
+        process.wait()
+        time.sleep(1.2)
+
+
+def status() -> int:
+    write_context("manual", notify_waybar=False)
+    print(CONTEXT_FILE.read_text(encoding="utf-8").strip())
+    return 0
+
+
+def process_count(pattern: str) -> int:
+    output = run(["pgrep", "-u", os.environ.get("USER", ""), "-f", pattern], timeout=0.4)
+    return len([line for line in output.splitlines() if line.strip()])
+
+
+def exact_process_count(name: str) -> int:
+    output = run(["pgrep", "-u", os.environ.get("USER", ""), "-x", name], timeout=0.4)
+    return len([line for line in output.splitlines() if line.strip()])
+
+
+def service_state(unit: str) -> str:
+    if not shutil.which("systemctl"):
+        return "unavailable"
+    state = run(["systemctl", "--user", "is-active", unit], timeout=0.6)
+    if state:
+        return state
+    enabled = run(["systemctl", "--user", "is-enabled", unit], timeout=0.6)
+    return enabled or "unknown"
+
+
+def read_cached_context() -> dict:
+    if not CONTEXT_FILE.exists():
+        return {}
+    try:
+        return json.loads(CONTEXT_FILE.read_text(encoding="utf-8") or "{}")
+    except Exception:
+        return {}
+
+
+def doctor() -> int:
+    context = read_cached_context()
+    timestamp = context.get("time") if isinstance(context.get("time"), (int, float)) else 0
+    age = max(0.0, time.time() - float(timestamp)) if timestamp else None
+    if age is None or age > 20.0:
+        write_context("doctor", notify_waybar=False)
+        context = read_cached_context()
+        timestamp = context.get("time") if isinstance(context.get("time"), (int, float)) else 0
+        age = max(0.0, time.time() - float(timestamp)) if timestamp else None
+    daemon_count = process_count(r"(^|/| )seven-waybar-context daemon( |$)")
+    waybar_count = exact_process_count("waybar")
+    service = service_state("sevenos-waybar-context.service")
+    hyprctl_ready = bool(shutil.which("hyprctl"))
+    fresh = age is not None and age <= 20.0
+    ok = bool(context.get("schema") == "sevenos.waybar.context.v1" and fresh and daemon_count == 1)
+    payload = {
+        "schema": "sevenos.waybar.context.doctor.v1",
+        "state": "OK" if ok else "WARN",
+        "context_file": str(CONTEXT_FILE),
+        "context_fresh": fresh,
+        "context_age_seconds": round(age, 2) if age is not None else None,
+        "daemon_count": daemon_count,
+        "waybar_count": waybar_count,
+        "service": service,
+        "hyprctl": hyprctl_ready,
+        "profile": (context.get("profile") or {}).get("key", "") if isinstance(context.get("profile"), dict) else "",
+        "app": (context.get("app") or {}).get("key", "") if isinstance(context.get("app"), dict) else "",
+        "layout": context.get("layout") if isinstance(context.get("layout"), dict) else {},
+    }
+    print(json.dumps(payload, ensure_ascii=False))
+    return 0
+
+
+def repair() -> int:
+    actions: list[str] = []
+    if os.environ.get("SEVENOS_DRY_RUN") == "1":
+        print(json.dumps({
+            "schema": "sevenos.waybar.context.repair.v1",
+            "state": "DRY_RUN",
+            "actions": ["dry-run"],
+            "context_file": str(CONTEXT_FILE),
+        }, ensure_ascii=False))
+        return 0
+    if shutil.which("systemctl") and service_state("sevenos-waybar-context.service") not in {"unavailable", "unknown"}:
+        subprocess.run(["systemctl", "--user", "daemon-reload"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["systemctl", "--user", "restart", "sevenos-waybar-context.service"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        actions.append("systemd-restart")
+    else:
+        subprocess.run(["pkill", "-u", os.environ.get("USER", ""), "-f", r"(^|/| )seven-waybar-context daemon( |$)"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        write_context("repair", notify_waybar=False)
+        subprocess.Popen([str(Path(__file__).resolve()), "daemon"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        actions.append("fallback-daemon")
+
+    time.sleep(0.8)
+    write_context("repair", notify_waybar=True)
+    context = read_cached_context()
+    payload_data = {
+        "schema": "sevenos.waybar.context.repair.v1",
+        "state": "OK",
+        "actions": actions,
+        "context_file": str(CONTEXT_FILE),
+        "profile": (context.get("profile") or {}).get("key", "") if isinstance(context.get("profile"), dict) else "",
+        "app": (context.get("app") or {}).get("key", "") if isinstance(context.get("app"), dict) else "",
+    }
+    print(json.dumps(payload_data, ensure_ascii=False))
+    return 0
+
+
+def main() -> int:
+    command = sys.argv[1] if len(sys.argv) > 1 else "status"
+    if command in {"daemon", "watch"}:
+        signal.signal(signal.SIGTERM, lambda *_args: sys.exit(0))
+        return daemon()
+    if command in {"status", "once", "refresh"}:
+        return status()
+    if command in {"doctor", "health", "--json"}:
+        return doctor()
+    if command in {"repair", "fix"}:
+        return repair()
+    print("Usage: seven-waybar-context [status|once|daemon|doctor|repair]", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

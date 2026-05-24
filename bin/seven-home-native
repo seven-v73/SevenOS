@@ -153,6 +153,7 @@ def home_payload() -> dict:
     health = run_json("health", "status", "--json", fallback={}, timeout=2.0, extra_env={"SEVENOS_HEALTH_FAST": "1"})
     bridge = run_json("bridge", "status", "--json", fallback={}, timeout=2.0)
     motion = run_json("motion", "status", "--json", fallback={}, timeout=1.5)
+    shell_experience = run_json("experience", "status", "--json", fallback={}, timeout=1.5)
     windows = run_json("windows", "status", "--json", fallback={}, timeout=2.0)
     return {
         "schema": "sevenos.home.v1",
@@ -166,6 +167,13 @@ def home_payload() -> dict:
             "preset": motion.get("preset", "unknown"),
             "mode": motion.get("mode", "auto"),
             "profile_motion": motion.get("profile_motion", ""),
+        },
+        "shell_experience": {
+            "state": shell_experience.get("state", "unknown"),
+            "profile_role": shell_experience.get("profile_role", ""),
+            "recent_events": shell_experience.get("recent_events", [])[-4:],
+            "recommendation": shell_experience.get("recommendation", {}),
+            "warmup": shell_experience.get("feedback", {}).get("warmup_command", "seven experience warmup"),
         },
         "bridge": {
             "objects": bridge.get("object_count", 0),
@@ -304,6 +312,7 @@ class SevenHome:
         active = self.payload.get("active_profile", "equinox")
         health = self.payload.get("health", {})
         motion = self.payload.get("motion", {})
+        shell_experience = self.payload.get("shell_experience", {})
         bridge = self.payload.get("bridge", {})
 
         box.pack_start(self.label("SEVENOS HOME", "eyebrow"), False, False, 0)
@@ -323,6 +332,7 @@ class SevenHome:
             f"Actif: {active}",
             f"Sante: {health.get('score', 0)}%",
             f"Motion: {motion.get('preset', 'unknown')}",
+            f"Experience: {shell_experience.get('state', 'unknown')}",
             f"Bridge: {bridge.get('profiles_ready', 0)}/{bridge.get('profiles_total', 0)}",
         ):
             pill = self.label(text, "pill")
@@ -330,8 +340,12 @@ class SevenHome:
         box.pack_start(row, False, False, 0)
 
         actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+        recommendation = shell_experience.get("recommendation", {})
         actions.pack_start(self.button("Changer de mini OS", "seven profile center", "primary"), False, False, 0)
         actions.pack_start(self.button("Ouvrir Settings", "seven-settings", "soft"), False, False, 0)
+        actions.pack_start(self.button("Fluidifier", shell_experience.get("warmup", "seven experience warmup"), "soft"), False, False, 0)
+        if recommendation.get("command"):
+            actions.pack_start(self.button(str(recommendation.get("title", "Continuer")), str(recommendation.get("command")), "soft"), False, False, 0)
         actions.pack_start(self.button("SevenStore", "seven store home", "soft"), False, False, 0)
         box.pack_start(actions, False, False, 0)
         return box

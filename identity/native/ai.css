@@ -1,0 +1,192 @@
+window.seven-ai {
+  background: @seven_bg;
+  color: @seven_text;
+}
+.root {
+  background:
+    radial-gradient(circle at 16% 0%, alpha(@seven_accent, 0.22), transparent 32%),
+    radial-gradient(circle at 100% 12%, alpha(@seven_secondary, 0.18), transparent 30%),
+    linear-gradient(135deg, @seven_bg, @seven_panel 58%, @seven_bg);
+}
+.sidebar {
+  background: @seven_sidebar;
+  border-right: 1px solid @seven_border;
+  padding: 14px 8px;
+}
+.sidebar button {
+  border-radius: 8px;
+  padding: 10px;
+  color: @seven_text;
+  background: transparent;
+}
+.sidebar button:hover {
+  background: @seven_selected;
+}
+.sidebar image {
+  color: @seven_muted;
+}
+.sidebar-label {
+  color: @seven_muted;
+  font-size: 13px;
+  font-weight: 500;
+}
+.topbar,
+.input-bar,
+.card,
+.detail {
+  border-radius: 8px;
+  background: @seven_panel;
+  border: 1px solid @seven_border;
+}
+.topbar,
+.input-bar {
+  padding: 10px 12px;
+}
+.detail {
+  padding: 18px;
+}
+.title {
+  color: @seven_text;
+  font-size: 18px;
+  font-weight: 600;
+}
+.caption,
+.muted,
+.status {
+  color: @seven_muted;
+  font-size: 12px;
+}
+.hero {
+  min-height: 176px;
+  border-radius: 8px;
+  padding: 28px;
+  background:
+    radial-gradient(circle at 16% 8%, alpha(@seven_text, 0.16), transparent 28%),
+    radial-gradient(circle at 86% 18%, alpha(@seven_secondary, 0.24), transparent 34%),
+    linear-gradient(135deg, alpha(@seven_accent, 0.30), alpha(@seven_panel_2, 0.96));
+  border: 1px solid alpha(@seven_accent, 0.26);
+}
+.ask-panel {
+  min-height: 300px;
+  border-radius: 8px;
+  padding: 72px 42px 34px;
+  background: transparent;
+}
+.kicker {
+  color: @seven_muted;
+  font-size: 11px;
+  font-weight: 700;
+}
+.hero-title {
+  color: @seven_text;
+  font-size: 28px;
+  font-weight: 700;
+}
+.hero-copy {
+  color: @seven_text;
+  opacity: 0.86;
+  font-size: 15px;
+}
+.context-line {
+  color: @seven_text;
+  opacity: 0.55;
+  font-size: 12px;
+  font-weight: 600;
+}
+.card {
+  padding: 14px;
+}
+.quick-row {
+  padding: 2px 0 6px;
+}
+.risk-strip {
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 4px;
+  background: alpha(@seven_secondary, 0.10);
+  border: 1px solid alpha(@seven_accent, 0.20);
+}
+.why-strip {
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 4px;
+  background: alpha(@seven_panel_2, 0.76);
+  border: 1px solid alpha(@seven_border, 0.92);
+}
+.risk-title {
+  color: @seven_text;
+  font-size: 12px;
+  font-weight: 700;
+}
+.card:hover {
+  background: @seven_hover;
+  border-color: alpha(@seven_accent, 0.35);
+}
+.card-title {
+  color: @seven_text;
+  font-size: 15px;
+  font-weight: 600;
+}
+.section-title {
+  color: @seven_text;
+  font-size: 16px;
+  font-weight: 600;
+}
+.icon-frame {
+  min-width: 54px;
+  min-height: 54px;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 34% 18%, alpha(@seven_text, 0.18), transparent 36%),
+    linear-gradient(145deg, alpha(@seven_accent, 0.24), alpha(@seven_secondary, 0.16));
+  border: 1px solid @seven_border;
+}
+.icon-frame image {
+  color: @seven_text;
+}
+.badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: @seven_text;
+  background: alpha(@seven_accent, 0.16);
+}
+.command {
+  border-radius: 8px;
+  padding: 10px;
+  color: @seven_muted;
+  background: @seven_panel_2;
+  border: 1px solid @seven_border;
+  font-family: monospace;
+  font-size: 11px;
+}
+entry.search {
+  min-height: 46px;
+  border-radius: 8px;
+  background: @seven_panel_2;
+  color: @seven_text;
+  border: 1px solid @seven_border;
+  font-size: 15px;
+}
+button.primary {
+  background: linear-gradient(135deg, @seven_accent, @seven_secondary);
+  color: @seven_text;
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 9px 14px;
+}
+button.ghost {
+  border-radius: 8px;
+  background: @seven_panel_2;
+  color: @seven_text;
+  padding: 8px 12px;
+}
+button.ghost:hover,
+button.primary:hover {
+  border-color: alpha(@seven_accent, 0.45);
+}
+dialog {
+  background: @seven_panel;
+  color: @seven_text;
+}

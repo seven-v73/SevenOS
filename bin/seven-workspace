@@ -99,6 +99,15 @@ notify_workspace() {
   fi
 }
 
+experience_workspace() {
+  local id="$1"
+  local root
+  root="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+  if [[ -x "$root/scripts/shell-experience.sh" ]]; then
+    "$root/scripts/shell-experience.sh" workspace "$id" >/dev/null 2>&1 || true
+  fi
+}
+
 dispatch_workspace() {
   local target="$1"
   if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
@@ -109,6 +118,7 @@ dispatch_workspace() {
   id="$(current_workspace_id)"
   write_state "$id"
   notify_workspace "$id"
+  experience_workspace "$id"
 }
 
 status_json() {

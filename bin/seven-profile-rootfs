@@ -1,0 +1,694 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+import tarfile
+import tempfile
+from pathlib import Path
+
+
+ROOT_DIR = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent))
+STATE_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "sevenos"
+ROOTFS_DIR = DATA_DIR / "profile-rootfs"
+MANIFEST_DIR = DATA_DIR / "profile-rootfs-manifests"
+PODMAN_ROOT = DATA_DIR / "profile-rootfs-podman"
+PODMAN_RUNROOT = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos-profile-rootfs-podman"
+ROOTFS_TMP = DATA_DIR / "profile-rootfs-tmp"
+
+
+def load_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def read_packages(paths: list[str]) -> list[str]:
+    packages: list[str] = []
+    for rel in paths:
+        path = ROOT_DIR / rel
+        if not path.is_file():
+            continue
+        for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            item = raw.split("#", 1)[0].strip()
+            if item and item not in packages:
+                packages.append(item)
+    return packages
+
+
+def catalog() -> dict:
+    return load_json(ROOT_DIR / "profiles" / "catalog.json")
+
+
+def profile_package_files(profile: str) -> list[str]:
+    data = catalog()
+    meta = (data.get("profiles") or {}).get(profile) or {}
+    core = data.get("core_package_files") or ["scripts/packages-base.txt"]
+    return [*core, *list(meta.get("package_files") or [])]
+
+
+def known_profiles() -> list[str]:
+    data = catalog()
+    profiles = data.get("profiles") or {}
+    return list(profiles.keys()) or ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+
+
+def active_profile() -> str:
+    try:
+        for line in (STATE_DIR / "profile.env").read_text(encoding="utf-8").splitlines():
+            if line.startswith("SEVENOS_ACTIVE_PROFILE="):
+                return line.split("=", 1)[1].strip().strip('"') or "equinox"
+    except OSError:
+        pass
+    return "equinox"
+
+
+def rootfs_path(profile: str) -> Path:
+    return ROOTFS_DIR / profile / "rootfs"
+
+
+def manifest_path(profile: str) -> Path:
+    return MANIFEST_DIR / f"{profile}.json"
+
+
+def rootfs_state(profile: str) -> dict:
+    rootfs = rootfs_path(profile)
+    manifest = manifest_path(profile)
+    packages = read_packages(profile_package_files(profile))
+    ready = (rootfs / "usr/bin").is_dir() and ((rootfs / "etc/os-release").is_file() or (rootfs / "etc").is_dir())
+    build_result = load_json(ROOTFS_DIR / profile / "build-result.json")
+    return {
+        "profile": profile,
+        "rootfs": str(rootfs),
+        "manifest": str(manifest),
+        "state": "ready" if ready else "prepared" if rootfs.exists() else "missing",
+        "build_state": (build_result.get("result") or {}).get("state") or ("ready-existing" if ready else None),
+        "build_engine": build_result.get("engine") or ("existing-rootfs" if ready else None),
+        "package_install_returncode": (build_result.get("result") or {}).get("package_install_returncode"),
+        "package_count": len(packages),
+        "packages": packages,
+        "engine": {
+            "pacstrap": "OK" if shutil.which("pacstrap") else "MISS",
+            "systemd_nspawn": "OK" if shutil.which("systemd-nspawn") else "MISS",
+            "bwrap": "OK" if shutil.which("bwrap") else "MISS",
+            "podman": "OK" if shutil.which("podman") else "MISS",
+        },
+        "commands": {
+            "prepare": f"seven profile-rootfs prepare {profile} --apply --yes",
+            "build": f"seven profile-rootfs build {profile} --apply --yes",
+            "exec": f"seven profile-rootfs exec {profile} -- <command>",
+            "run": f"seven profile exec {profile} --rootfs <command>",
+            "maintenance": f"seven profile exec {profile} --rootfs-writable sh",
+        },
+        "policy": {
+            "packages": "profile-owned rootfs package set",
+            "rootfs_mount": "read-only by default",
+            "writable_mode": "explicit maintenance only with --rootfs-writable",
+            "app_data": "profile HOME/cache/data still separated outside rootfs",
+            "workspace": "explicit mount only",
+            "network": "host network unless a stricter engine is configured",
+        },
+    }
+
+
+def write_manifest(profile: str) -> dict:
+    state = rootfs_state(profile)
+    MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
+    path = manifest_path(profile)
+    payload = {
+        "schema": "sevenos.profile-rootfs.v1",
+        "generated_at": int(time.time()),
+        **state,
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return payload
+
+
+def prepare(profile: str, *, apply: bool) -> dict:
+    rootfs = rootfs_path(profile)
+    packages = read_packages(profile_package_files(profile))
+    payload = write_manifest(profile)
+    payload["action"] = "prepare"
+    payload["apply"] = apply
+    payload["would_create"] = [str(rootfs), str(rootfs / "etc"), str(rootfs / "var/lib/pacman"), str(rootfs / "profile")]
+    if apply:
+        for path in (rootfs, rootfs / "etc", rootfs / "var/lib/pacman", rootfs / "profile"):
+            path.mkdir(parents=True, exist_ok=True)
+        (rootfs / "etc/sevenos-profile").write_text(profile + "\n", encoding="utf-8")
+        (ROOTFS_DIR / profile / "packages.txt").write_text("\n".join(packages) + "\n", encoding="utf-8")
+        payload = write_manifest(profile)
+        payload["action"] = "prepare"
+        payload["apply"] = True
+    return payload
+
+
+def build(profile: str, *, apply: bool, yes: bool) -> dict:
+    prepared = prepare(profile, apply=True)
+    rootfs = rootfs_path(profile)
+    packages = read_packages(profile_package_files(profile))
+    sudo_ready = subprocess.run(["sudo", "-n", "true"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0 if shutil.which("sudo") else False
+    engine = "pacstrap" if sudo_ready and shutil.which("pacstrap") else "podman" if shutil.which("podman") else "blocked"
+    command = ["sudo", "-n", "pacstrap", "-c", str(rootfs), *packages] if engine == "pacstrap" else ["podman", "run/export", "archlinux:latest", str(rootfs)]
+    payload = {
+        "schema": "sevenos.profile-rootfs-build.v1",
+        "profile": profile,
+        "rootfs": str(rootfs),
+        "package_count": len(packages),
+        "engine": engine,
+        "command": command,
+        "prepared": prepared.get("state"),
+        "apply": apply,
+        "yes": yes,
+        "result": None,
+    }
+    if not apply or not yes:
+        payload["result"] = {"state": "preview", "reason": "requires --apply --yes"}
+        return payload
+    if engine == "blocked":
+        payload["result"] = {"state": "blocked", "reason": "requires sudo pacstrap or rootless podman"}
+        return payload
+    if engine == "pacstrap":
+        result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        payload["result"] = {
+            "state": "ready" if result.returncode == 0 else "failed",
+            "returncode": result.returncode,
+            "stdout_tail": result.stdout[-2000:],
+            "stderr_tail": result.stderr[-2000:],
+        }
+        write_build_result(profile, payload)
+        write_manifest(profile)
+        if payload["result"].get("state") == "ready":
+            payload["seal"] = seal_profile(profile, write=True)
+        return payload
+    payload["result"] = build_with_podman(profile, packages, rootfs)
+    write_build_result(profile, payload)
+    write_manifest(profile)
+    if payload["result"].get("state") == "ready":
+        payload["seal"] = seal_profile(profile, write=True)
+    return payload
+
+
+def write_build_result(profile: str, payload: dict) -> None:
+    path = ROOTFS_DIR / profile / "build-result.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def build_with_podman(profile: str, packages: list[str], rootfs: Path) -> dict:
+    name = f"sevenos-rootfs-{profile}-{int(time.time())}"
+    image = "docker.io/library/archlinux:latest"
+    podman = podman_command()
+    pull = subprocess.run([*podman, "pull", image], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    if pull.returncode != 0:
+        return {
+            "state": "failed",
+            "step": "pull",
+            "returncode": pull.returncode,
+            "stdout_tail": pull.stdout[-2000:],
+            "stderr_tail": pull.stderr[-2000:],
+        }
+    install_script = "set +e\npacman -Sy --noconfirm archlinux-keyring\nkey_rc=$?\n"
+    if packages:
+        quoted = " ".join(sh_quote(item) for item in packages)
+        install_script += f"pacman -S --needed --noconfirm {quoted}\npkg_rc=$?\n"
+    else:
+        install_script += "pkg_rc=0\n"
+    install_script += "printf 'SEVENOS_KEY_RC=%s\\nSEVENOS_PKG_RC=%s\\n' \"$key_rc\" \"$pkg_rc\"\nexit 0\n"
+    run = subprocess.run(
+        [*podman, "run", "--name", name, "--user", "root", "--network", "host", image, "bash", "-lc", install_script],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    export_state = "skipped"
+    export_rc = 1
+    export_stderr = ""
+    if run.returncode == 0:
+        ROOTFS_TMP.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(prefix=f"sevenos-{profile}-", suffix=".tar", dir=ROOTFS_TMP) as handle:
+            export = subprocess.run([*podman, "export", "-o", handle.name, name], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+            export_rc = export.returncode
+            export_stderr = export.stderr
+            if export.returncode == 0:
+                try:
+                    if rootfs.exists():
+                        for child in rootfs.iterdir():
+                            if child.is_dir() and not child.is_symlink():
+                                shutil.rmtree(child)
+                            else:
+                                child.unlink()
+                    rootfs.mkdir(parents=True, exist_ok=True)
+                    with tarfile.open(handle.name) as tar:
+                        tar.extractall(rootfs, filter="fully_trusted")
+                    (rootfs / "etc").mkdir(parents=True, exist_ok=True)
+                    (rootfs / "etc/sevenos-profile").write_text(profile + "\n", encoding="utf-8")
+                    export_state = "exported"
+                except Exception as exc:
+                    export_state = f"extract-failed: {exc}"
+            else:
+                export_state = "failed"
+    subprocess.run([*podman, "rm", "-f", name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    ready = (rootfs / "usr/bin").is_dir()
+    pkg_rc = parse_marker(run.stdout, "SEVENOS_PKG_RC")
+    key_rc = parse_marker(run.stdout, "SEVENOS_KEY_RC")
+    return {
+        "state": "ready" if ready and pkg_rc == "0" else "ready-partial" if ready else "failed",
+        "engine": "podman",
+        "image": image,
+        "run_returncode": run.returncode,
+        "keyring_returncode": key_rc,
+        "package_install_returncode": pkg_rc,
+        "export_state": export_state,
+        "export_returncode": export_rc,
+        "stdout_tail": run.stdout[-2000:],
+        "stderr_tail": (run.stderr + "\n" + export_stderr)[-2000:],
+    }
+
+
+def podman_command() -> list[str]:
+    PODMAN_ROOT.mkdir(parents=True, exist_ok=True)
+    PODMAN_RUNROOT.mkdir(parents=True, exist_ok=True)
+    return [
+        "podman",
+        "--storage-driver", "vfs",
+        "--root", str(PODMAN_ROOT),
+        "--runroot", str(PODMAN_RUNROOT),
+    ]
+
+
+def sh_quote(value: str) -> str:
+    return "'" + value.replace("'", "'\"'\"'") + "'"
+
+
+def parse_marker(text: str, key: str) -> str | None:
+    prefix = f"{key}="
+    for line in text.splitlines():
+        if line.startswith(prefix):
+            return line.split("=", 1)[1].strip()
+    return None
+
+
+def build_many(profiles: list[str], *, apply: bool, yes: bool) -> dict:
+    results = []
+    for profile in profiles:
+        item = build(profile, apply=apply, yes=yes)
+        results.append({
+            "profile": profile,
+            "state": (item.get("result") or {}).get("state"),
+            "engine": item.get("engine"),
+            "package_count": item.get("package_count"),
+            "rootfs": item.get("rootfs"),
+            "result": item.get("result"),
+        })
+    ready = sum(1 for item in results if item.get("state") == "ready")
+    partial = sum(1 for item in results if item.get("state") == "ready-partial")
+    failed = sum(1 for item in results if item.get("state") in {"failed", "blocked"})
+    return {
+        "schema": "sevenos.profile-rootfs-build-all.v1",
+        "apply": apply,
+        "yes": yes,
+        "summary": {
+            "total": len(results),
+            "ready": ready,
+            "ready_partial": partial,
+            "failed_or_blocked": failed,
+        },
+        "results": results,
+    }
+
+
+def audit_profile(profile: str) -> dict:
+    rootfs = rootfs_path(profile)
+    expected_mode = "strict" if profile == "shield" else "balanced"
+    if not (rootfs / "usr/bin").is_dir():
+        return {
+            "profile": profile,
+            "state": "FAIL",
+            "reason": "rootfs is not ready",
+            "rootfs": str(rootfs),
+        }
+    command = [
+        str(ROOT_DIR / "bin" / "seven-profile-run"),
+        "--profile", profile,
+        "--rootfs",
+        "sh",
+        "-lc",
+        "\n".join([
+            'printf "profile=%s\\n" "$(cat /etc/sevenos-profile 2>/dev/null || true)"',
+            'printf "mode=%s\\n" "${SEVENOS_ISOLATION_MODE:-}"',
+            'test -e /dev/dri && printf "gpu=yes\\n" || printf "gpu=no\\n"',
+            'test -n "${XDG_RUNTIME_DIR:-}" && printf "runtime=yes\\n" || printf "runtime=no\\n"',
+            'touch /etc/sevenos-audit-write 2>/tmp/sevenos-audit-write.err; '
+            'write_rc=$?; '
+            'if [ "$write_rc" -ne 0 ] && grep -Eiq "read-only|permission" /tmp/sevenos-audit-write.err; '
+            'then printf "rootfs_readonly=yes\\n"; '
+            'else printf "rootfs_readonly=no\\n"; rm -f /etc/sevenos-audit-write; fi',
+            'ip link 2>/dev/null | sed -n "1,4p"',
+        ]),
+    ]
+    result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, timeout=12)
+    facts = {}
+    links = []
+    for line in result.stdout.splitlines():
+        if "=" in line and not line[0].isdigit():
+            key, value = line.split("=", 1)
+            facts[key.strip()] = value.strip()
+        elif line:
+            links.append(line.strip())
+    network_links = [line for line in links if line[:1].isdigit()]
+    expected = {
+        "profile": profile,
+        "mode": expected_mode,
+        "strict_network_loopback_only": expected_mode == "strict",
+        "runtime": "no" if expected_mode == "strict" else "yes",
+        "gpu": "no" if expected_mode == "strict" else "yes",
+        "rootfs_readonly": "yes",
+    }
+    checks = {
+        "exec": result.returncode == 0,
+        "profile_marker": facts.get("profile") == profile,
+        "mode": facts.get("mode") == expected_mode,
+        "runtime": facts.get("runtime") == expected["runtime"],
+        "gpu": facts.get("gpu") == expected["gpu"],
+        "rootfs_readonly": facts.get("rootfs_readonly") == "yes",
+        "network": True,
+    }
+    if expected_mode == "strict":
+        checks["network"] = all(" lo:" in f" {line}" or "LOOPBACK" in line for line in network_links) and bool(network_links)
+    state = "OK" if all(checks.values()) else "WARN" if result.returncode == 0 else "FAIL"
+    return {
+        "profile": profile,
+        "state": state,
+        "expected": expected,
+        "facts": facts,
+        "network_links": network_links,
+        "checks": checks,
+        "returncode": result.returncode,
+        "stderr_tail": result.stderr[-1000:],
+    }
+
+
+def audit_payload(profile: str | None = None) -> dict:
+    profiles = [profile] if profile else known_profiles()
+    results = [audit_profile(item) for item in profiles]
+    return {
+        "schema": "sevenos.profile-rootfs-audit.v1",
+        "generated_at": int(time.time()),
+        "summary": {
+            "profiles": len(results),
+            "ok": sum(1 for item in results if item.get("state") == "OK"),
+            "warn": sum(1 for item in results if item.get("state") == "WARN"),
+            "fail": sum(1 for item in results if item.get("state") == "FAIL"),
+        },
+        "results": results,
+    }
+
+
+def package_db(rootfs: Path) -> list[dict]:
+    local = rootfs / "var/lib/pacman/local"
+    packages = []
+    if not local.is_dir():
+        return packages
+    for desc in sorted(local.glob("*/desc")):
+        data = {"id": desc.parent.name}
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        key = None
+        for line in lines:
+            if line.startswith("%") and line.endswith("%"):
+                key = line.strip("%").lower()
+                continue
+            if key and line:
+                data[key] = line
+                key = None
+        packages.append({
+            "id": data.get("id", desc.parent.name),
+            "name": data.get("name", desc.parent.name.rsplit("-", 2)[0]),
+            "version": data.get("version", ""),
+        })
+    return packages
+
+
+def file_sha256(path: Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return ""
+
+
+def seal_profile(profile: str, *, write: bool) -> dict:
+    rootfs = rootfs_path(profile)
+    packages = package_db(rootfs)
+    package_fingerprint = hashlib.sha256(
+        "\n".join(f"{item['name']}={item['version']}" for item in packages).encode("utf-8")
+    ).hexdigest()
+    seal = {
+        "schema": "sevenos.profile-rootfs-seal.v1",
+        "profile": profile,
+        "generated_at": int(time.time()),
+        "rootfs": str(rootfs),
+        "state": "ready" if (rootfs / "usr/bin").is_dir() else "not-ready",
+        "marker": (rootfs / "etc/sevenos-profile").read_text(encoding="utf-8", errors="ignore").strip() if (rootfs / "etc/sevenos-profile").is_file() else "",
+        "os_release_sha256": file_sha256(rootfs / "etc/os-release"),
+        "package_count": len(packages),
+        "package_fingerprint": package_fingerprint,
+        "sample_packages": packages[:20],
+    }
+    if write:
+        path = ROOTFS_DIR / profile / "seal.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(seal, indent=2) + "\n", encoding="utf-8")
+        seal["seal_path"] = str(path)
+    return seal
+
+
+def seal_payload(profile: str | None, *, write: bool) -> dict:
+    profiles = [profile] if profile else known_profiles()
+    seals = [seal_profile(item, write=write) for item in profiles]
+    return {
+        "schema": "sevenos.profile-rootfs-seal-set.v1",
+        "write": write,
+        "summary": {
+            "profiles": len(seals),
+            "ready": sum(1 for item in seals if item.get("state") == "ready"),
+            "sealed": sum(1 for item in seals if item.get("seal_path")),
+        },
+        "seals": seals,
+    }
+
+
+def verify_profile(profile: str) -> dict:
+    seal_path = ROOTFS_DIR / profile / "seal.json"
+    expected = load_json(seal_path)
+    current = seal_profile(profile, write=False)
+    checks = {
+        "seal_exists": bool(expected),
+        "state": current.get("state") == "ready",
+        "marker": current.get("marker") == profile,
+        "os_release": expected.get("os_release_sha256") == current.get("os_release_sha256") if expected else False,
+        "packages": expected.get("package_fingerprint") == current.get("package_fingerprint") if expected else False,
+    }
+    return {
+        "profile": profile,
+        "state": "OK" if all(checks.values()) else "WARN" if current.get("state") == "ready" else "FAIL",
+        "seal": str(seal_path),
+        "checks": checks,
+        "expected": {
+            "package_count": expected.get("package_count"),
+            "package_fingerprint": expected.get("package_fingerprint"),
+        },
+        "current": {
+            "package_count": current.get("package_count"),
+            "package_fingerprint": current.get("package_fingerprint"),
+        },
+    }
+
+
+def verify_payload(profile: str | None) -> dict:
+    profiles = [profile] if profile else known_profiles()
+    results = [verify_profile(item) for item in profiles]
+    return {
+        "schema": "sevenos.profile-rootfs-verify.v1",
+        "generated_at": int(time.time()),
+        "summary": {
+            "profiles": len(results),
+            "ok": sum(1 for item in results if item.get("state") == "OK"),
+            "warn": sum(1 for item in results if item.get("state") == "WARN"),
+            "fail": sum(1 for item in results if item.get("state") == "FAIL"),
+        },
+        "results": results,
+    }
+
+
+def run_exec(profile: str, command: list[str]) -> int:
+    if not command:
+        print("seven-profile-rootfs: exec requires a command after --", file=sys.stderr)
+        return 2
+    rootfs = rootfs_path(profile)
+    if not (rootfs / "usr/bin").is_dir():
+        print(f"seven-profile-rootfs: rootfs for {profile} is not ready: {rootfs}", file=sys.stderr)
+        print(f"seven-profile-rootfs: build it with: seven profile-rootfs build {profile} --apply --yes", file=sys.stderr)
+        return 126
+    runner = ROOT_DIR / "bin" / "seven-profile-run"
+    return subprocess.run([str(runner), "--profile", profile, "--rootfs", *command], check=False).returncode
+
+
+def status_payload(profile: str | None = None) -> dict:
+    profiles = [profile] if profile else known_profiles()
+    states = {key: rootfs_state(key) for key in profiles}
+    ready = sum(1 for item in states.values() if item.get("state") == "ready")
+    prepared = sum(1 for item in states.values() if item.get("state") in {"prepared", "ready"})
+    return {
+        "schema": "sevenos.profile-rootfs-status.v1",
+        "active_profile": active_profile(),
+        "root": str(ROOTFS_DIR),
+        "summary": {
+            "profiles": len(states),
+            "ready": ready,
+            "prepared": prepared,
+            "missing": len(states) - prepared,
+        },
+        "profiles": states,
+        "note": "A ready rootfs requires pacstrap or another configured build engine. Prepared means SevenOS created manifests and target directories only.",
+    }
+
+
+def main() -> int:
+    argv = sys.argv[1:]
+    flag_json = False
+    flag_apply = False
+    flag_yes = False
+    cleaned: list[str] = []
+    for item in argv:
+        if item == "--json":
+            flag_json = True
+            continue
+        if item == "--apply":
+            flag_apply = True
+            continue
+        if item == "--yes":
+            flag_yes = True
+            continue
+        cleaned.append(item)
+    parser = argparse.ArgumentParser(prog="seven-profile-rootfs")
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "prepare", "build", "exec", "doctor", "audit", "seal", "verify"))
+    parser.add_argument("profile", nargs="?")
+    parser.add_argument("command", nargs=argparse.REMAINDER)
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--yes", action="store_true")
+    args = parser.parse_args(cleaned)
+    args.json = args.json or flag_json
+    args.apply = args.apply or flag_apply
+    args.yes = args.yes or flag_yes
+
+    all_profiles = known_profiles()
+    profile = args.profile or active_profile()
+    if profile != "all" and profile not in all_profiles:
+        print(f"seven-profile-rootfs: unknown profile: {profile}", file=sys.stderr)
+        return 2
+
+    if args.action in {"status", "plan", "doctor"}:
+        payload = status_payload(None if args.action == "doctor" or profile == "all" else profile if args.profile else None)
+        if args.action == "plan":
+            payload["next"] = [
+                {"title": f"Prepare {profile} rootfs metadata", "command": f"seven profile-rootfs prepare {profile} --apply --yes", "impact": "safe"},
+                {"title": f"Build {profile} rootfs", "command": f"seven profile-rootfs build {profile} --apply --yes", "impact": "root"},
+            ]
+        print(json.dumps(payload, indent=2) if args.json or args.action in {"plan", "doctor"} else human_status(payload))
+        return 0
+    if args.action == "audit":
+        payload = audit_payload(None if profile == "all" else profile if args.profile else None)
+        print(json.dumps(payload, indent=2) if args.json else human_audit(payload))
+        return 0
+    if args.action == "seal":
+        payload = seal_payload(None if profile == "all" else profile if args.profile else None, write=args.apply and args.yes)
+        print(json.dumps(payload, indent=2) if args.json else human_seal(payload))
+        return 0
+    if args.action == "verify":
+        payload = verify_payload(None if profile == "all" else profile if args.profile else None)
+        print(json.dumps(payload, indent=2) if args.json else human_verify(payload))
+        return 0
+    if args.action == "prepare":
+        if profile == "all":
+            payload = {
+                "schema": "sevenos.profile-rootfs-prepare-all.v1",
+                "profiles": [prepare(item, apply=args.apply and args.yes) for item in all_profiles],
+            }
+            print(json.dumps(payload, indent=2))
+            return 0
+        print(json.dumps(prepare(profile, apply=args.apply and args.yes), indent=2))
+        return 0
+    if args.action == "build":
+        if profile == "all":
+            print(json.dumps(build_many(all_profiles, apply=args.apply, yes=args.yes), indent=2))
+            return 0
+        print(json.dumps(build(profile, apply=args.apply, yes=args.yes), indent=2))
+        return 0
+    if args.action == "exec":
+        command = args.command[1:] if args.command[:1] == ["--"] else args.command
+        return run_exec(profile, command)
+    return 0
+
+
+def human_status(payload: dict) -> str:
+    lines = ["SevenOS Profile RootFS", "======================"]
+    summary = payload.get("summary", {})
+    lines.append(f"ready:    {summary.get('ready', 0)}/{summary.get('profiles', 0)}")
+    lines.append(f"prepared: {summary.get('prepared', 0)}/{summary.get('profiles', 0)}")
+    for key, item in (payload.get("profiles") or {}).items():
+        lines.append(f"- {key}: {item.get('state')} · {item.get('rootfs')}")
+    return "\n".join(lines)
+
+
+def human_audit(payload: dict) -> str:
+    lines = ["SevenOS Profile RootFS Audit", "============================"]
+    summary = payload.get("summary", {})
+    lines.append(f"ok:   {summary.get('ok', 0)}/{summary.get('profiles', 0)}")
+    lines.append(f"warn: {summary.get('warn', 0)}")
+    lines.append(f"fail: {summary.get('fail', 0)}")
+    for item in payload.get("results", []):
+        facts = item.get("facts") or {}
+        lines.append(
+            f"- {item.get('profile')}: {item.get('state')} "
+            f"mode={facts.get('mode')} runtime={facts.get('runtime')} "
+            f"gpu={facts.get('gpu')} rootfs_ro={facts.get('rootfs_readonly')}"
+        )
+    return "\n".join(lines)
+
+
+def human_seal(payload: dict) -> str:
+    lines = ["SevenOS Profile RootFS Seal", "==========================="]
+    summary = payload.get("summary", {})
+    lines.append(f"ready:  {summary.get('ready', 0)}/{summary.get('profiles', 0)}")
+    lines.append(f"sealed: {summary.get('sealed', 0)}")
+    for item in payload.get("seals", []):
+        lines.append(f"- {item.get('profile')}: {item.get('state')} packages={item.get('package_count')}")
+    return "\n".join(lines)
+
+
+def human_verify(payload: dict) -> str:
+    lines = ["SevenOS Profile RootFS Verify", "============================="]
+    summary = payload.get("summary", {})
+    lines.append(f"ok:   {summary.get('ok', 0)}/{summary.get('profiles', 0)}")
+    lines.append(f"warn: {summary.get('warn', 0)}")
+    lines.append(f"fail: {summary.get('fail', 0)}")
+    for item in payload.get("results", []):
+        current = item.get("current") or {}
+        lines.append(f"- {item.get('profile')}: {item.get('state')} packages={current.get('package_count')}")
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -85,10 +85,23 @@ print(json.dumps({"schema": "sevenos.apps.v1", "count": len(apps), "apps": apps}
 launch_desktop() {
   local desktop_id="$1"
   local desktop_path="$2"
+  local label="${3:-${desktop_id%.desktop}}"
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     printf 'launch %q %q\n' "$desktop_id" "$desktop_path"
     return 0
+  fi
+
+  if [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]]; then
+    "$ROOT_DIR/scripts/shell-experience.sh" launch "$label" >/dev/null 2>&1 || true
+  fi
+
+  if [[ -x "$ROOT_DIR/bin/seven-profile-launch" ]]; then
+    "$ROOT_DIR/bin/seven-profile-launch" "$desktop_id" "$desktop_path"
+    return $?
+  elif command -v seven-profile-launch >/dev/null 2>&1; then
+    seven-profile-launch "$desktop_id" "$desktop_path"
+    return $?
   fi
 
   if command -v gtk-launch >/dev/null 2>&1; then
@@ -121,8 +134,11 @@ try:
 except Exception:
     sys.exit(1)
 
+launchpad_classes = {"SevenLaunchpadNative", "seven-launchpad-native"}
 for client in clients:
-    if client.get("class") != "SevenLaunchpadNative":
+    client_class = str(client.get("class", ""))
+    client_title = str(client.get("title", ""))
+    if client_class not in launchpad_classes and client_title != "SevenOS Launchpad":
         continue
     address = str(client.get("address", "")).strip()
     if not address:
@@ -135,7 +151,7 @@ PY
 }
 
 open_apps() {
-  local catalog_file menu_file selected_index selected_line desktop_id desktop_path native
+  local catalog_file menu_file selected_index selected_line desktop_id desktop_path app_name native
   native="$ROOT_DIR/bin/seven-launchpad-native"
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
@@ -208,7 +224,8 @@ PY
 
   desktop_id="$(printf '%s\n' "$selected_line" | awk -F '\t' '{print $2}')"
   desktop_path="$(printf '%s\n' "$selected_line" | awk -F '\t' '{print $3}')"
-  launch_desktop "$desktop_id" "$desktop_path"
+  app_name="$(printf '%s\n' "$selected_line" | awk -F '\t' '{print $1}')"
+  launch_desktop "$desktop_id" "$desktop_path" "$app_name"
 }
 
 case "$action" in

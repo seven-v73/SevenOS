@@ -1,0 +1,231 @@
+#!/usr/bin/env python3
+"""Native SevenOS media panel for the Waybar menu bar."""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def probe() -> int:
+    try:
+        import gi  # noqa: F401
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("PangoCairo", "1.0")
+    except Exception:
+        return 1
+    return 0
+
+
+if "--probe" in sys.argv:
+    raise SystemExit(probe())
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("PangoCairo", "1.0")
+from gi.repository import Gdk, Gtk, Pango, PangoCairo
+
+
+def run(command: list[str], timeout: float = 0.7) -> str:
+    try:
+        return subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout).stdout.strip()
+    except Exception:
+        return ""
+
+
+def playerctl(*args: str) -> str:
+    if not shutil.which("playerctl"):
+        return ""
+    return run(["playerctl", "-p", "playerctld", *args])
+
+
+def command(*args: str) -> None:
+    if shutil.which("playerctl"):
+        subprocess.Popen(["playerctl", "-p", "playerctld", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def compact(text: str, limit: int) -> str:
+    text = " ".join((text or "").split())
+    if len(text) <= limit:
+        return text
+    return text[: max(1, limit - 1)].rstrip() + "…"
+
+
+ROWS = [
+    ("previous", "󰒮", "Précédent", "Revenir"),
+    ("play-pause", "󰐊", "Lecture / pause", "Basculer"),
+    ("next", "󰒭", "Suivant", "Avancer"),
+    ("stop", "󰓛", "Stop", "Arrêter"),
+    ("audio", "󰕾", "Audio", "Mixer"),
+]
+
+
+class MediaMenu(Gtk.Window):
+    def __init__(self) -> None:
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.set_title("Media Menu")
+        self.set_wmclass("seven-media-menu-native", "seven-media-menu-native")
+        self.set_decorated(False)
+        self.set_keep_above(True)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_resizable(False)
+        self.set_type_hint(Gdk.WindowTypeHint.UTILITY)
+        self.width = 318
+        self.height = 238
+        self.hover = -1
+        self.selected = 1
+        self.title_text = playerctl("metadata", "--format", "{{title}}") or "Aucun média"
+        self.artist_text = playerctl("metadata", "--format", "{{artist}}")
+        self.status_text = playerctl("status") or "Idle"
+        self.canvas = Gtk.DrawingArea()
+        self.canvas.set_size_request(self.width, self.height)
+        self.canvas.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.POINTER_MOTION_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        self.canvas.connect("draw", self.on_draw)
+        self.canvas.connect("motion-notify-event", self.on_motion)
+        self.canvas.connect("button-press-event", self.on_button)
+        self.canvas.connect("leave-notify-event", self.on_leave)
+        self.add(self.canvas)
+        self.connect("key-press-event", self.on_key)
+        self.place()
+
+    def refresh_state(self) -> None:
+        self.title_text = playerctl("metadata", "--format", "{{title}}") or "Aucun média"
+        self.artist_text = playerctl("metadata", "--format", "{{artist}}")
+        self.status_text = playerctl("status") or "Idle"
+        self.canvas.queue_draw()
+
+    def place(self) -> None:
+        x, y = 980, 32
+        try:
+            display = Gdk.Display.get_default()
+            seat = display.get_default_seat() if display else None
+            pointer = seat.get_pointer() if seat else None
+            screen, pointer_x, _pointer_y = pointer.get_position() if pointer else (None, x, y)
+            if screen:
+                monitor = screen.get_monitor_geometry(screen.get_monitor_at_point(pointer_x, y))
+                x = max(monitor.x + 8, min(pointer_x - self.width + 40, monitor.x + monitor.width - self.width - 8))
+        except Exception:
+            pass
+        self.move(x, y)
+
+    def rounded_rect(self, cr, x: float, y: float, w: float, h: float, r: float) -> None:
+        cr.new_sub_path()
+        cr.arc(x + w - r, y + r, r, -1.5708, 0)
+        cr.arc(x + w - r, y + h - r, r, 0, 1.5708)
+        cr.arc(x + r, y + h - r, r, 1.5708, 3.14159)
+        cr.arc(x + r, y + r, r, 3.14159, 4.71239)
+        cr.close_path()
+
+    def draw_text(self, cr, text: str, x: int, y: int, width: int, font: str, color: tuple[float, float, float, float]) -> None:
+        layout = self.create_pango_layout(text)
+        layout.set_width(width * Pango.SCALE)
+        layout.set_ellipsize(Pango.EllipsizeMode.END)
+        layout.set_font_description(Pango.FontDescription(font))
+        cr.set_source_rgba(*color)
+        cr.move_to(x, y)
+        PangoCairo.show_layout(cr, layout)
+
+    def on_draw(self, _widget, cr) -> bool:
+        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.paint()
+        self.rounded_rect(cr, 1, 1, self.width - 2, self.height - 2, 16)
+        cr.set_source_rgb(0.055, 0.065, 0.09)
+        cr.fill_preserve()
+        cr.set_source_rgba(0.74, 0.88, 1.0, 0.60)
+        cr.set_line_width(1)
+        cr.stroke()
+
+        cr.set_source_rgba(0.30, 0.72, 1.0, 0.16)
+        self.rounded_rect(cr, 14, 14, self.width - 28, 78, 13)
+        cr.fill()
+        self.draw_text(cr, compact(self.title_text, 42), 26, 27, 260, "SF Pro Text SemiBold 14", (1, 1, 1, 0.96))
+        subtitle = compact(self.artist_text or self.status_text, 44)
+        self.draw_text(cr, subtitle, 26, 50, 260, "SF Pro Text 11", (0.88, 0.92, 0.98, 0.58))
+        state = "En lecture" if self.status_text.lower() == "playing" else ("En pause" if self.status_text.lower() == "paused" else "Inactif")
+        self.draw_text(cr, state, 26, 70, 120, "SF Pro Text 10", (0.62, 0.82, 1.0, 0.75))
+
+        for index, (_action, icon, label, detail) in enumerate(ROWS):
+            y = 104 + index * 25
+            active = index in {self.hover, self.selected}
+            if active:
+                self.rounded_rect(cr, 10, y - 3, self.width - 20, 25, 8)
+                cr.set_source_rgba(1, 1, 1, 0.12)
+                cr.fill()
+            self.draw_text(cr, icon, 22, y + 2, 24, "Symbols Nerd Font 14", (0.54, 0.82, 1.0, 0.95))
+            self.draw_text(cr, label, 52, y + 2, 150, "SF Pro Text 12", (0.97, 0.98, 1.0, 0.93))
+            self.draw_text(cr, detail, 214, y + 3, 76, "SF Pro Text 10", (0.86, 0.90, 0.98, 0.48))
+        return False
+
+    def item_at(self, y: float) -> int:
+        index = int((y - 104) // 25)
+        return index if 0 <= index < len(ROWS) else -1
+
+    def on_motion(self, _widget, event) -> bool:
+        index = self.item_at(event.y)
+        if index != self.hover:
+            self.hover = index
+            if index >= 0:
+                self.selected = index
+            self.canvas.queue_draw()
+        return False
+
+    def on_button(self, _widget, event) -> bool:
+        index = self.item_at(event.y)
+        if index >= 0:
+            self.activate(index)
+            return True
+        return False
+
+    def on_leave(self, *_args) -> bool:
+        self.hover = -1
+        self.canvas.queue_draw()
+        return False
+
+    def activate(self, index: int) -> None:
+        action = ROWS[index][0]
+        if action == "audio":
+            subprocess.Popen(["seven-quick-settings", "audio"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            self.close()
+            return
+        command(action)
+        self.refresh_state()
+        if action == "stop":
+            self.close()
+
+    def on_key(self, _window, event) -> bool:
+        if event.keyval == Gdk.KEY_Escape:
+            self.close()
+            return True
+        if event.keyval in {Gdk.KEY_Down, Gdk.KEY_j}:
+            self.selected = (self.selected + 1) % len(ROWS)
+            self.canvas.queue_draw()
+            return True
+        if event.keyval in {Gdk.KEY_Up, Gdk.KEY_k}:
+            self.selected = (self.selected - 1) % len(ROWS)
+            self.canvas.queue_draw()
+            return True
+        if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space}:
+            self.activate(self.selected)
+            return True
+        return False
+
+
+def main() -> int:
+    window = MediaMenu()
+    window.show_all()
+    window.present()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -111,7 +111,7 @@ status_json() {
   printf '{"key":"nodejs","state":%s},' "$(printf '%s' "$(command_state node)" | json_string)"
   printf '{"key":"ags","state":%s}' "$(printf '%s' "$(command_state ags)" | json_string)"
   printf '],'
-  printf '"contracts":["seven state --json","seven actions --json","seven profile current --json","seven core health --json","seven shell status --json"],'
+  printf '"contracts":["seven state --json","seven-actions --json","seven-context --json","seven profile current --json","seven core health --json","seven shell status --json"],'
   printf '"commands":{"install":"./install.sh shell-ags","plan":"seven shell plan","preview":"seven shell preview"}'
   printf '}\n'
 }
@@ -276,7 +276,8 @@ preview() {
   printf '  - Dock: Native Hyprland-managed dock now -> AGS or stable layer-shell next\n\n'
   printf 'Contracts consumed:\n'
   printf '  - seven state --json\n'
-  printf '  - seven actions --json\n'
+  printf '  - seven-actions --json\n'
+  printf '  - seven-context --json\n'
   printf '  - seven profile current --json\n'
   printf '  - seven core health --json\n'
   printf '  - seven shell status --json\n'

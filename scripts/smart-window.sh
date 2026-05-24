@@ -3,8 +3,10 @@ set -Eeuo pipefail
 
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
+WINDOW_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/window"
 MODE_ENV="$STATE_DIR/window-mode.env"
 MODE_JSON="$STATE_DIR/window-mode.json"
+WINDOW_MEMORY_JSON="$WINDOW_STATE_DIR/memory.json"
 DRY_RUN="${SEVENOS_DRY_RUN:-0}"
 
 usage() {
@@ -22,6 +24,9 @@ Usage:
   seven-window mosaic
   seven-window layout-menu
   seven-window controls
+  seven-window remember
+  seven-window memory [--json]
+  seven-window restore [class]
   seven-window decor-status [--json]
   seven-window decor-apply
   seven-window doctor
@@ -64,8 +69,17 @@ hypr_available() {
 notify() {
   local title="$1"
   local body="$2"
+  experience_focus "$title" "$body"
   if command -v notify-send >/dev/null 2>&1; then
     notify-send "$title" "$body" >/dev/null 2>&1 || true
+  fi
+}
+
+experience_focus() {
+  local title="$1"
+  local body="${2:-}"
+  if [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]]; then
+    "$ROOT_DIR/scripts/shell-experience.sh" focus "$title" "$body" >/dev/null 2>&1 || true
   fi
 }
 
@@ -87,6 +101,125 @@ active_window_json() {
   else
     printf '{}\n'
   fi
+}
+
+window_memory_snapshot() {
+  local profile now active clients_json
+  profile="$(active_profile)"
+  now="$(date -Iseconds)"
+  active="$(active_window_json)"
+  clients_json="[]"
+  if hypr_available; then
+    clients_json="$(hyprctl -j clients 2>/dev/null || printf '[]')"
+  fi
+  PROFILE="$profile" UPDATED_AT="$now" ACTIVE_WINDOW_JSON="$active" CLIENTS_JSON="$clients_json" python - <<'PY'
+import json
+import os
+
+def norm_window(item):
+    workspace = item.get("workspace") if isinstance(item.get("workspace"), dict) else {}
+    return {
+        "address": item.get("address", ""),
+        "class": item.get("class") or item.get("initialClass") or "",
+        "title": item.get("title", ""),
+        "workspace": workspace.get("name") or workspace.get("id") or "",
+        "floating": bool(item.get("floating")),
+        "fullscreen": item.get("fullscreen", False),
+        "at": item.get("at") if isinstance(item.get("at"), list) else [],
+        "size": item.get("size") if isinstance(item.get("size"), list) else [],
+    }
+
+try:
+    active = json.loads(os.environ.get("ACTIVE_WINDOW_JSON") or "{}")
+except Exception:
+    active = {}
+try:
+    clients = json.loads(os.environ.get("CLIENTS_JSON") or "[]")
+except Exception:
+    clients = []
+
+windows = [norm_window(item) for item in clients if isinstance(item, dict)]
+classes = {}
+for item in windows:
+    key = str(item.get("class") or "window").lower()
+    if key and key not in classes:
+        classes[key] = item
+active_item = norm_window(active) if isinstance(active, dict) else {}
+if active_item.get("class"):
+    classes[str(active_item["class"]).lower()] = active_item
+
+print(json.dumps({
+    "schema": "sevenos.window-memory.v1",
+    "profile": os.environ.get("PROFILE", "equinox"),
+    "updated_at": os.environ.get("UPDATED_AT", ""),
+    "active": active_item,
+    "classes": classes,
+    "windows": windows,
+}, ensure_ascii=False, indent=2))
+PY
+}
+
+remember_window() {
+  if [[ "$DRY_RUN" == "1" ]]; then
+    printf 'DRY-RUN > Seven Window Memory > remember active window\n'
+    return 0
+  fi
+  mkdir -p "$WINDOW_STATE_DIR"
+  window_memory_snapshot >"$WINDOW_MEMORY_JSON"
+  experience_focus "Window memory" "remembered"
+}
+
+window_memory_json() {
+  mkdir -p "$WINDOW_STATE_DIR"
+  if [[ ! -s "$WINDOW_MEMORY_JSON" ]]; then
+    window_memory_snapshot >"$WINDOW_MEMORY_JSON"
+  fi
+  cat "$WINDOW_MEMORY_JSON"
+}
+
+restore_window() {
+  local requested="${1:-}"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    printf 'DRY-RUN > Seven Window Memory > restore %s\n' "${requested:-active}"
+    return 0
+  fi
+  remember_window >/dev/null 2>&1 || true
+  local restore_json
+  restore_json="$(REQUESTED_CLASS="$requested" python - "$WINDOW_MEMORY_JSON" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8") or "{}")
+requested = os.environ.get("REQUESTED_CLASS", "").lower()
+item = {}
+if requested:
+    item = (data.get("classes") or {}).get(requested, {})
+if not item:
+    item = data.get("active") or {}
+print(json.dumps(item))
+PY
+)"
+  local address workspace floating fullscreen at_x at_y size_w size_h
+  address="$(python -c 'import json,sys; print(json.loads(sys.argv[1]).get("address",""))' "$restore_json")"
+  workspace="$(python -c 'import json,sys; print(json.loads(sys.argv[1]).get("workspace",""))' "$restore_json")"
+  floating="$(python -c 'import json,sys; print("true" if json.loads(sys.argv[1]).get("floating") else "false")' "$restore_json")"
+  fullscreen="$(python -c 'import json,sys; print(json.loads(sys.argv[1]).get("fullscreen", False))' "$restore_json")"
+  at_x="$(python -c 'import json,sys; d=json.loads(sys.argv[1]); a=d.get("at") or []; print(a[0] if len(a)>0 else "")' "$restore_json")"
+  at_y="$(python -c 'import json,sys; d=json.loads(sys.argv[1]); a=d.get("at") or []; print(a[1] if len(a)>1 else "")' "$restore_json")"
+  size_w="$(python -c 'import json,sys; d=json.loads(sys.argv[1]); s=d.get("size") or []; print(s[0] if len(s)>0 else "")' "$restore_json")"
+  size_h="$(python -c 'import json,sys; d=json.loads(sys.argv[1]); s=d.get("size") or []; print(s[1] if len(s)>1 else "")' "$restore_json")"
+
+  [[ -n "$workspace" ]] && run_hypr dispatch workspace "$workspace"
+  [[ -n "$address" ]] && run_hypr dispatch focuswindow "address:$address"
+  if [[ "$floating" == "true" ]]; then
+    active_is_floating || run_hypr dispatch togglefloating active
+    [[ -n "$size_w" && -n "$size_h" ]] && run_hypr dispatch resizeactive exact "$size_w" "$size_h"
+    [[ -n "$at_x" && -n "$at_y" ]] && run_hypr dispatch moveactive exact "$at_x" "$at_y"
+  fi
+  [[ "$fullscreen" == "1" || "$fullscreen" == "true" || "$fullscreen" == "2" ]] && run_hypr dispatch fullscreen 0
+  experience_focus "Window memory" "restored ${requested:-active}"
 }
 
 active_is_floating() {
@@ -373,7 +506,8 @@ status_json() {
     "decor": "phase-2-overlay",
     "layout": "hyprland-backed",
     "effects": "hyprland-backed",
-    "ai": "planned-workspace-memory"
+    "memory": "sevenos.window-memory.v1",
+    "experience": "sevenos.shell-experience.v1"
   },
   "traffic_lights": {
     "red": "close",
@@ -396,7 +530,8 @@ status_json() {
   },
   "state_files": {
     "env": $(json_string "$MODE_ENV"),
-    "json": $(json_string "$MODE_JSON")
+    "json": $(json_string "$MODE_JSON"),
+    "window_memory": $(json_string "$WINDOW_MEMORY_JSON")
   }
 }
 EOF
@@ -411,7 +546,7 @@ status_text() {
   else
     printf 'Hyprland: MISS\n'
   fi
-  printf '\nActions: controls, toggle-float, smart-maximize, fullscreen, split-left, split-right, mosaic, layout-menu\n'
+  printf '\nActions: controls, toggle-float, smart-maximize, fullscreen, split-left, split-right, mosaic, layout-menu, remember, restore\n'
 }
 
 doctor() {
@@ -423,6 +558,7 @@ doctor() {
   [[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] || { printf 'MISS seven-window-controls-native\n'; failed=1; }
   grep -q 'SevenDecor phase 1' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" || { printf 'MISS GTK4 SevenDecor traffic CSS\n'; failed=1; }
   grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" || { printf 'MISS GTK decoration layout\n'; failed=1; }
+  grep -q 'sevenos.window-memory.v1' "$ROOT_DIR/scripts/smart-window.sh" || { printf 'MISS window memory contract\n'; failed=1; }
   if [[ "$failed" == "0" ]]; then
     printf 'Seven Smart Window System: OK\n'
   else
@@ -452,6 +588,15 @@ main() {
     mosaic) mosaic ;;
     layout-menu|menu) layout_menu ;;
     controls|overlay) controls ;;
+    remember) remember_window ;;
+    memory)
+      if [[ "${1:-}" == "--json" || "${1:-}" == "json" ]]; then
+        window_memory_json
+      else
+        window_memory_json | python -m json.tool
+      fi
+      ;;
+    restore) restore_window "${1:-}" ;;
     decor-status)
       if [[ "${1:-}" == "--json" || "${1:-}" == "json" ]]; then
         decor_status_json

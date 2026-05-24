@@ -2,8 +2,8 @@
 Type=Application
 Name=Seven AI
 Comment=Local SevenOS system assistant
-Exec=seven ai focus
+Exec=seven ai open
 Icon=seven-ai
 Terminal=false
-Categories=System;Utility;
+Categories=Utility;
 StartupNotify=true

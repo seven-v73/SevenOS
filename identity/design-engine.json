@@ -102,6 +102,20 @@
     "catalog": "profiles/catalog.json",
     "rule": "Equinox keeps the neutral SevenOS shell. Specialized profiles get distinct Catppuccin-inspired accents and Waybar identity pills without loading unrelated tools."
   },
+  "motion": {
+    "contract": "scripts/shell-experience.sh",
+    "compositor": "scripts/motion.sh",
+    "grammar": "seven-motion-system",
+    "curves": ["sevenMotion", "sevenMotionOpen", "sevenMotionExit", "sevenMotionWorkspace", "sevenMotionLayer"],
+    "durations_ms": {
+      "press": 120,
+      "hover": 160,
+      "open": 260,
+      "close": 180,
+      "workspace": 320
+    },
+    "rule": "Native apps, dock, launchpad, Spotlight, notifications and workspace changes should use the same SevenOS motion and feedback contract."
+  },
   "surfaces": [
     "Waybar",
     "Seven Spotlight",
