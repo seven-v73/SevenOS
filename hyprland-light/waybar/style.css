@@ -242,47 +242,55 @@ window#waybar {
 }
 
 #custom-sevenos {
-  min-width: 0;
-  padding-left: 10px;
-  padding-right: 11px;
-  color: rgba(245, 247, 252, 0.96);
-  font-family: "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
-  font-size: 12px;
-  font-weight: bold;
+  min-width: 28px;
+  padding-left: 0;
+  padding-right: 0;
+  color: rgba(8, 13, 24, 0.94);
+  font-family: "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+  font-size: 15px;
+  font-weight: 500;
   letter-spacing: 0;
-  background: rgba(255, 255, 255, 0.065);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.78), transparent 34%),
+    linear-gradient(135deg, rgba(77, 163, 255, 0.30), rgba(122, 92, 255, 0.22) 52%, rgba(0, 212, 255, 0.28)),
+    rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(77, 163, 255, 0.28);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    0 0 12px rgba(112, 164, 255, 0.035);
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    inset 0 -1px 0 rgba(0, 113, 188, 0.08),
+    0 0 12px rgba(77, 163, 255, 0.12);
 }
 
 #custom-sevenos:hover {
-  color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(8, 13, 24, 0.96);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.86), transparent 34%),
+    linear-gradient(135deg, rgba(77, 163, 255, 0.38), rgba(122, 92, 255, 0.28) 52%, rgba(0, 212, 255, 0.34)),
+    rgba(255, 255, 255, 0.58);
+  border-color: rgba(77, 163, 255, 0.42);
 }
 
 #custom-sevenos.profile-forge,
 #custom-sevenos.profile-windows {
-  color: rgba(156, 203, 255, 0.96);
+  color: rgba(20, 84, 156, 0.98);
 }
 
 #custom-sevenos.profile-shield {
-  color: rgba(117, 232, 213, 0.96);
+  color: rgba(0, 110, 88, 0.98);
+  border-color: rgba(0, 172, 122, 0.32);
 }
 
 #custom-sevenos.profile-studio {
-  color: rgba(255, 204, 229, 0.96);
+  color: rgba(132, 42, 105, 0.98);
 }
 
 #custom-sevenos.profile-baobab {
-  color: rgba(218, 255, 210, 0.96);
+  color: rgba(62, 119, 46, 0.98);
 }
 
 #custom-sevenos.warn,
 #custom-sevenos.miss {
-  color: rgba(245, 247, 252, 0.96);
+  color: rgba(8, 13, 24, 0.94);
   border-color: rgba(255, 228, 172, 0.24);
 }
 

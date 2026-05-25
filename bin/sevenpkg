@@ -45,13 +45,36 @@ def resolve_root():
 
 ROOT_DIR = resolve_root()
 MANIFEST_PATH = ROOT_DIR / "sevenpkg" / "metapackages.json"
-STATE_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "sevenos" / "sevenpkg"
-TRANSACTION_LOG = STATE_DIR / "transactions.jsonl"
-TRANSACTION_LOCK = STATE_DIR / "transaction.lock"
 ALIASES = {
     "horizon": "forge",
 }
 PROFILE_KEYS = {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
+SYSTEM_PROFILE = "equinox"
+
+
+def host_home() -> Path:
+    if os.environ.get("SEVENOS_HOST_HOME"):
+        return Path(os.environ["SEVENOS_HOST_HOME"])
+    raw = Path(os.environ.get("HOME", str(Path.home())))
+    marker = "/.local/share/sevenos/profile-containers/"
+    text = str(raw)
+    if marker in text and text.endswith("/home"):
+        return Path(text.split(marker, 1)[0])
+    user = os.environ.get("USER")
+    if user:
+        candidate = Path("/home") / user
+        if candidate.is_dir():
+            return candidate
+    return raw
+
+
+HOST_HOME = host_home()
+HOST_CONFIG_HOME = Path(os.environ.get("SEVENOS_HOST_CONFIG_HOME", str(HOST_HOME / ".config")))
+HOST_DATA_HOME = Path(os.environ.get("SEVENOS_HOST_DATA_HOME", str(HOST_HOME / ".local/share")))
+PROFILE_ROOTFS_DIR = HOST_DATA_HOME / "sevenos" / "profile-rootfs"
+STATE_DIR = Path(os.environ.get("SEVENPKG_STATE_DIR", str(HOST_DATA_HOME / "sevenos" / "sevenpkg")))
+TRANSACTION_LOG = STATE_DIR / "transactions.jsonl"
+TRANSACTION_LOCK = STATE_DIR / "transaction.lock"
 
 
 def is_dry_run(args):
@@ -139,6 +162,12 @@ def paru_has(package):
     if not command_exists("paru"):
         return False
     return subprocess.run(["paru", "-Si", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
+def yay_has(package):
+    if not command_exists("yay"):
+        return False
+    return subprocess.run(["yay", "-Si", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
 
 def validate_package_name(package):
@@ -230,7 +259,7 @@ def package_owner_map(manifest=None, include_optional=True):
 
 
 def active_profile():
-    env_path = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos" / "profile.env"
+    env_path = HOST_CONFIG_HOME / "sevenos" / "profile.env"
     try:
         for line in env_path.read_text(encoding="utf-8").splitlines():
             if line.startswith("SEVENOS_ACTIVE_PROFILE="):
@@ -238,6 +267,101 @@ def active_profile():
     except OSError:
         pass
     return "equinox"
+
+
+def normalize_profile(profile):
+    normalized = normalize_name(profile)
+    if normalized not in PROFILE_KEYS:
+        error(f"unknown SevenOS profile: {profile}")
+        sys.exit(2)
+    return normalized
+
+
+def profile_rootfs(profile):
+    return PROFILE_ROOTFS_DIR / profile / "rootfs"
+
+
+def profile_rootfs_ready(profile):
+    rootfs = profile_rootfs(profile)
+    return (rootfs / "usr/bin").is_dir() and (rootfs / "var/lib/pacman").exists()
+
+
+def rootfs_package_count(profile):
+    local = profile_rootfs(profile) / "var/lib/pacman/local"
+    if not local.is_dir():
+        return 0
+    return sum(1 for item in local.iterdir() if item.is_dir())
+
+
+def parse_pacman_local(local_dir):
+    packages = []
+    if not local_dir.is_dir():
+        return packages
+    for desc in sorted(local_dir.glob("*/desc")):
+        data = {"id": desc.parent.name}
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        key = None
+        values = {}
+        for line in lines:
+            if line.startswith("%") and line.endswith("%"):
+                key = line.strip("%").lower()
+                values.setdefault(key, [])
+                continue
+            if key and line:
+                values.setdefault(key, []).append(line)
+        name = values.get("name", [desc.parent.name.rsplit("-", 2)[0]])[0]
+        version = values.get("version", [""])[0]
+        desc_text = values.get("desc", [""])[0]
+        packages.append({
+            "id": data["id"],
+            "name": name,
+            "version": version,
+            "description": desc_text,
+        })
+    return packages
+
+
+def rootfs_packages(profile):
+    return parse_pacman_local(profile_rootfs(profile) / "var/lib/pacman/local")
+
+
+def rootfs_package_names(profile):
+    return {item.get("name") for item in rootfs_packages(profile) if item.get("name")}
+
+
+def host_packages():
+    local = Path("/var/lib/pacman/local")
+    if local.is_dir():
+        return parse_pacman_local(local)
+    installed = installed_package_set()
+    return [{"id": item, "name": item, "version": "", "description": ""} for item in sorted(installed)]
+
+
+def helper_available_for_profile(profile, helper):
+    if profile == SYSTEM_PROFILE:
+        return command_exists(helper)
+    return (profile_rootfs(profile) / "usr/bin" / helper).exists()
+
+
+def select_profile_source(package, requested):
+    if requested == "auto":
+        if pacman_has(package):
+            return "pacman"
+        if paru_has(package):
+            return "paru"
+        if yay_has(package):
+            return "yay"
+        return None
+    if requested == "aur":
+        if paru_has(package):
+            return "paru"
+        if yay_has(package):
+            return "yay"
+        return None
+    return requested
 
 
 def command_available(command):
@@ -316,17 +440,22 @@ def transaction_commands(action, packages, source="auto", include_optional=False
                 if pacman_has(package):
                     selected_source = "pacman"
                 elif paru_has(package):
-                    selected_source = "aur"
+                    selected_source = "paru"
+                elif yay_has(package):
+                    selected_source = "yay"
                 else:
-                    blockers.append(f"package not found in pacman repos or AUR via paru: {package}")
+                    blockers.append(f"package not found in pacman repos or AUR helpers: {package}")
                     continue
             if selected_source == "pacman":
                 pacman_packages.append(package)
-            elif selected_source == "aur":
-                if not command_exists("paru"):
-                    blockers.append("paru is required for AUR installs")
+            elif selected_source in {"aur", "paru", "yay"}:
+                helper = "paru" if selected_source == "aur" else selected_source
+                if selected_source == "aur" and not command_exists(helper) and command_exists("yay"):
+                    helper = "yay"
+                if not command_exists(helper):
+                    blockers.append(f"{helper} is required for AUR installs")
                 else:
-                    aur_packages.append(package)
+                    aur_packages.append((helper, package))
             elif selected_source == "sevenrepo":
                 blockers.append("SevenRepo is planned but not enabled yet")
             else:
@@ -334,8 +463,11 @@ def transaction_commands(action, packages, source="auto", include_optional=False
         if pacman_packages:
             commands.append(["sudo", "pacman", "-S", "--needed", *pacman_packages])
         if aur_packages:
-            commands.append(["paru", "-S", "--needed", *aur_packages])
-        resolved_packages.extend(pacman_packages + aur_packages)
+            for helper in ("paru", "yay"):
+                helper_packages = [package for item_helper, package in aur_packages if item_helper == helper]
+                if helper_packages:
+                    commands.append([helper, "-S", "--needed", *helper_packages])
+        resolved_packages.extend(pacman_packages + [package for _, package in aur_packages])
     elif action == "remove":
         owners = package_owner_map(manifest)
         protected = {}
@@ -409,6 +541,231 @@ def transaction_commands(action, packages, source="auto", include_optional=False
     }
 
 
+def profile_transaction_commands(profile, packages, source="auto", include_optional=False):
+    profile = normalize_profile(profile)
+    normalized = [normalize_name(package) for package in packages]
+    commands = []
+    repairs = []
+    warnings = []
+    blockers = []
+    resolved = []
+    grouped = {"pacman": [], "paru": [], "yay": []}
+
+    for package in normalized:
+        validate_package_name(package)
+
+    if profile == SYSTEM_PROFILE:
+        system_commands = []
+        if source in {"paru", "yay"}:
+            helper_packages = []
+            for package in normalized:
+                if not command_exists(source):
+                    blockers.append(f"{source} is not installed on Equinox")
+                else:
+                    helper_packages.append(package)
+            if helper_packages:
+                system_commands.append([source, "-S", "--needed", *helper_packages])
+        else:
+            selected_source = "aur" if source == "aur" else source
+            base = transaction_commands("install", normalized, source=selected_source, include_optional=include_optional)
+            system_commands.extend(base.get("commands", []))
+            blockers.extend(base.get("blockers", []))
+            warnings.extend(base.get("warnings", []))
+            resolved.extend(base.get("items", normalized))
+        return {
+            "schema": "sevenos.profile-package-transaction.v1",
+            "action": "install",
+            "profile": profile,
+            "profile_scope": "global-system",
+            "visibility": "global; available to mini OS package views when exposed by profile policy",
+            "items": normalized,
+            "source": source,
+            "impact": "global-system-packages",
+            "rootfs": "host-system",
+            "rootfs_ready": True,
+            "commands": system_commands,
+            "repairs": [[str(ROOT_DIR / "scripts" / "profile-isolation.sh"), "apply", SYSTEM_PROFILE, "--yes"]],
+            "warnings": warnings,
+            "blockers": blockers,
+            "apply_hint": f"sevenpkg install --profile equinox {' '.join(normalized)} --source {source}",
+        }
+
+    rootfs = profile_rootfs(profile)
+    if not profile_rootfs_ready(profile):
+        blockers.append(f"{profile} rootfs is not ready; build it first with: seven profile-rootfs build {profile} --apply --yes")
+
+    for package in normalized:
+        selected = select_profile_source(package, source)
+        if selected is None:
+            blockers.append(f"package not found in pacman repos or AUR helpers: {package}")
+            continue
+        if selected == "sevenrepo":
+            blockers.append("SevenRepo is planned but not enabled yet")
+            continue
+        if selected in {"paru", "yay"} and not helper_available_for_profile(profile, selected):
+            blockers.append(
+                f"{selected} is not installed inside the {profile} rootfs; install an AUR helper in that rootfs or use --source pacman"
+            )
+            continue
+        grouped[selected].append(package)
+        resolved.append(package)
+
+    runner = str(ROOT_DIR / "bin" / "seven-profile-run")
+    if grouped["pacman"]:
+        commands.append([runner, "--profile", profile, "--rootfs-writable", "pacman", "-S", "--needed", *grouped["pacman"]])
+    for helper in ("paru", "yay"):
+        if grouped[helper]:
+            commands.append([runner, "--profile", profile, "--rootfs-writable", helper, "-S", "--needed", *grouped[helper]])
+
+    repairs.extend([
+        [str(ROOT_DIR / "bin" / "seven-profile-rootfs"), "verify", profile],
+        [str(ROOT_DIR / "bin" / "seven-profile-rootfs"), "seal", profile, "--apply", "--yes"],
+        [str(ROOT_DIR / "scripts" / "profile-isolation.sh"), "apply", SYSTEM_PROFILE, "--yes"],
+    ])
+    if source in {"aur", "paru", "yay"}:
+        warnings.append("AUR installs stay private only when the AUR helper runs inside the target profile rootfs.")
+    return {
+        "schema": "sevenos.profile-package-transaction.v1",
+        "action": "install",
+        "profile": profile,
+        "profile_scope": "profile-rootfs",
+        "visibility": f"private to {profile}; not exposed to other mini OS package views",
+        "items": normalized,
+        "source": source,
+        "impact": "profile-rootfs-packages",
+        "rootfs": str(rootfs),
+        "rootfs_ready": profile_rootfs_ready(profile),
+        "commands": commands,
+        "repairs": repairs,
+        "warnings": warnings,
+        "blockers": blockers,
+        "apply_hint": f"sevenpkg install --profile {profile} {' '.join(normalized)} --source {source}",
+    }
+
+
+def profile_remove_transaction_commands(profile, packages, force=False):
+    profile = normalize_profile(profile)
+    normalized = [normalize_name(package) for package in packages]
+    warnings = []
+    blockers = []
+    commands = []
+    repairs = []
+
+    for package in normalized:
+        validate_package_name(package)
+
+    if profile == SYSTEM_PROFILE:
+        base = transaction_commands("remove", normalized, force=force)
+        return {
+            **base,
+            "schema": "sevenos.profile-package-transaction.v1",
+            "profile": profile,
+            "profile_scope": "global-system",
+            "visibility": "global; removal affects the host Arch system",
+            "impact": "destructive" if force else "guarded",
+            "rootfs": "host-system",
+            "rootfs_ready": True,
+            "apply_hint": f"sevenpkg remove --profile equinox {' '.join(normalized)} --force",
+        }
+
+    rootfs = profile_rootfs(profile)
+    if not profile_rootfs_ready(profile):
+        blockers.append(f"{profile} rootfs is not ready; build it first with: seven profile-rootfs build {profile} --apply --yes")
+
+    for package in normalized:
+        if package in ALIASES:
+            blockers.append(f"{package} is a retired SevenOS alias, not a rootfs package name")
+            continue
+        if profile_rootfs_ready(profile) and package not in rootfs_package_names(profile):
+            blockers.append(f"{package} is not installed inside the {profile} rootfs")
+
+    if not blockers:
+        commands.append([
+            str(ROOT_DIR / "bin" / "seven-profile-run"),
+            "--profile", profile,
+            "--rootfs-writable",
+            "pacman", "-Rns",
+            *normalized,
+        ])
+    repairs.extend([
+        [str(ROOT_DIR / "bin" / "seven-profile-rootfs"), "verify", profile],
+        [str(ROOT_DIR / "bin" / "seven-profile-rootfs"), "seal", profile, "--apply", "--yes"],
+        [str(ROOT_DIR / "scripts" / "profile-isolation.sh"), "apply", SYSTEM_PROFILE, "--yes"],
+    ])
+    warnings.append("This removes packages only from the target mini OS rootfs.")
+    return {
+        "schema": "sevenos.profile-package-transaction.v1",
+        "action": "remove",
+        "profile": profile,
+        "profile_scope": "profile-rootfs",
+        "visibility": f"private to {profile}; removal does not touch other mini OS package views",
+        "items": normalized,
+        "force": force,
+        "impact": "profile-rootfs-packages",
+        "rootfs": str(rootfs),
+        "rootfs_ready": profile_rootfs_ready(profile),
+        "commands": commands,
+        "repairs": repairs,
+        "warnings": warnings,
+        "blockers": blockers,
+        "apply_hint": f"sevenpkg remove --profile {profile} {' '.join(normalized)}",
+    }
+
+
+def profile_update_transaction_commands(profile):
+    profile = normalize_profile(profile)
+    if profile == SYSTEM_PROFILE:
+        base = transaction_commands("update", [])
+        return {
+            **base,
+            "schema": "sevenos.profile-package-transaction.v1",
+            "profile": profile,
+            "profile_scope": "global-system",
+            "visibility": "global; update affects the host Arch system",
+            "impact": "global-system-packages",
+            "rootfs": "host-system",
+            "rootfs_ready": True,
+            "apply_hint": "sevenpkg update --profile equinox",
+        }
+
+    rootfs = profile_rootfs(profile)
+    commands = []
+    warnings = []
+    blockers = []
+    if not profile_rootfs_ready(profile):
+        blockers.append(f"{profile} rootfs is not ready; build it first with: seven profile-rootfs build {profile} --apply --yes")
+    else:
+        runner = str(ROOT_DIR / "bin" / "seven-profile-run")
+        commands.append([runner, "--profile", profile, "--rootfs-writable", "pacman", "-Syu"])
+        if helper_available_for_profile(profile, "paru"):
+            commands.append([runner, "--profile", profile, "--rootfs-writable", "paru", "-Sua"])
+        elif helper_available_for_profile(profile, "yay"):
+            commands.append([runner, "--profile", profile, "--rootfs-writable", "yay", "-Sua"])
+        else:
+            warnings.append(f"{profile} has no AUR helper inside its rootfs; AUR updates are skipped.")
+    repairs = [
+        [str(ROOT_DIR / "bin" / "seven-profile-rootfs"), "verify", profile],
+        [str(ROOT_DIR / "bin" / "seven-profile-rootfs"), "seal", profile, "--apply", "--yes"],
+        [str(ROOT_DIR / "scripts" / "profile-isolation.sh"), "apply", SYSTEM_PROFILE, "--yes"],
+    ]
+    return {
+        "schema": "sevenos.profile-package-transaction.v1",
+        "action": "update",
+        "profile": profile,
+        "profile_scope": "profile-rootfs",
+        "visibility": f"private to {profile}; update does not touch other mini OS package views",
+        "items": [],
+        "impact": "profile-rootfs-packages",
+        "rootfs": str(rootfs),
+        "rootfs_ready": profile_rootfs_ready(profile),
+        "commands": commands,
+        "repairs": repairs,
+        "warnings": warnings,
+        "blockers": blockers,
+        "apply_hint": f"sevenpkg update --profile {profile}",
+    }
+
+
 def print_transaction(payload, json_output=False):
     if json_output:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
@@ -417,6 +774,8 @@ def print_transaction(payload, json_output=False):
     print("====================")
     print(f"Action:  {payload.get('action')}")
     print(f"Impact:  {payload.get('impact')}")
+    if payload.get("profile"):
+        print(f"Profile: {payload.get('profile')} · {payload.get('profile_scope')} · {payload.get('visibility')}")
     profiles = payload.get("affected_profiles") or []
     print(f"Profiles: {', '.join(profiles) if profiles else 'none'}")
     if payload.get("warnings"):
@@ -509,11 +868,14 @@ def install_one(package, args):
 
     if source == "pacman":
         run(["sudo", "pacman", "-S", "--needed", package], args)
-    elif source == "aur":
-        if not command_exists("paru"):
-            error("paru is required for AUR installs")
+    elif source in {"aur", "paru", "yay"}:
+        helper = "paru" if source == "aur" else source
+        if source == "aur" and not command_exists(helper) and command_exists("yay"):
+            helper = "yay"
+        if not command_exists(helper):
+            error(f"{helper} is required for AUR installs")
             sys.exit(1)
-        run(["paru", "-S", "--needed", package], args)
+        run([helper, "-S", "--needed", package], args)
     elif source == "sevenrepo":
         error("SevenRepo is planned but not enabled in this phase")
         sys.exit(1)
@@ -523,6 +885,41 @@ def install_one(package, args):
 
 
 def install_packages(args):
+    manifest = load_manifest()
+    original_first = args.packages[0]
+    first_package = normalize_name(original_first)
+    alias_notice(original_first, first_package)
+
+    if getattr(args, "profile", None):
+        payload = profile_transaction_commands(
+            args.profile,
+            args.packages,
+            source=args.source,
+            include_optional=getattr(args, "optional", False),
+        )
+        if getattr(args, "preview", False):
+            print_transaction(payload, getattr(args, "json", False))
+            return
+        sys.exit(apply_transaction(payload, args))
+
+    default_profile = active_profile()
+    if (
+        default_profile != SYSTEM_PROFILE
+        and first_package not in manifest
+        and not getattr(args, "global_install", False)
+    ):
+        payload = profile_transaction_commands(
+            default_profile,
+            args.packages,
+            source=args.source,
+            include_optional=getattr(args, "optional", False),
+        )
+        payload["default_profile_source"] = "active-profile"
+        if getattr(args, "preview", False):
+            print_transaction(payload, getattr(args, "json", False))
+            return
+        sys.exit(apply_transaction(payload, args))
+
     if getattr(args, "preview", False):
         payload = transaction_commands("install", args.packages, source=args.source, include_optional=getattr(args, "optional", False))
         print_transaction(payload, getattr(args, "json", False))
@@ -530,11 +927,6 @@ def install_packages(args):
     if getattr(args, "transaction", False):
         payload = transaction_commands("install", args.packages, source=args.source, include_optional=getattr(args, "optional", False))
         sys.exit(apply_transaction(payload, args))
-
-    manifest = load_manifest()
-    original_first = args.packages[0]
-    first_package = normalize_name(original_first)
-    alias_notice(original_first, first_package)
 
     if first_package in manifest:
         args.meta_args = args.packages[1:]
@@ -567,11 +959,14 @@ def install_packages(args):
 
         if source == "pacman":
             pacman_packages.append(package)
-        elif source == "aur":
-            if not command_exists("paru"):
-                error("paru is required for AUR installs")
+        elif source in {"aur", "paru", "yay"}:
+            helper = "paru" if source == "aur" else source
+            if source == "aur" and not command_exists(helper) and command_exists("yay"):
+                helper = "yay"
+            if not command_exists(helper):
+                error(f"{helper} is required for AUR installs")
                 sys.exit(1)
-            aur_packages.append(package)
+            aur_packages.append((helper, package))
         elif source == "sevenrepo":
             error("SevenRepo is planned but not enabled in this phase")
             sys.exit(1)
@@ -582,10 +977,29 @@ def install_packages(args):
     if pacman_packages:
         run(["sudo", "pacman", "-S", "--needed", *pacman_packages], args)
     if aur_packages:
-        run(["paru", "-S", "--needed", *aur_packages], args)
+        for helper in ("paru", "yay"):
+            helper_packages = [package for item_helper, package in aur_packages if item_helper == helper]
+            if helper_packages:
+                run([helper, "-S", "--needed", *helper_packages], args)
 
 
 def remove_packages(args):
+    if getattr(args, "profile", None):
+        payload = profile_remove_transaction_commands(args.profile, args.packages, force=getattr(args, "force", False))
+        if getattr(args, "preview", False):
+            print_transaction(payload, getattr(args, "json", False))
+            return
+        sys.exit(apply_transaction(payload, args))
+
+    default_profile = active_profile()
+    if default_profile != SYSTEM_PROFILE and not getattr(args, "global_install", False):
+        payload = profile_remove_transaction_commands(default_profile, args.packages, force=getattr(args, "force", False))
+        payload["default_profile_source"] = "active-profile"
+        if getattr(args, "preview", False):
+            print_transaction(payload, getattr(args, "json", False))
+            return
+        sys.exit(apply_transaction(payload, args))
+
     payload = transaction_commands("remove", args.packages, force=getattr(args, "force", False))
     if getattr(args, "preview", False):
         print_transaction(payload, getattr(args, "json", False))
@@ -607,6 +1021,17 @@ def remove_packages(args):
 
 
 def update_system(args):
+    target_profile = getattr(args, "profile", None)
+    default_profile = active_profile()
+    if target_profile or (default_profile != SYSTEM_PROFILE and not getattr(args, "global_install", False)):
+        payload = profile_update_transaction_commands(target_profile or default_profile)
+        if not target_profile:
+            payload["default_profile_source"] = "active-profile"
+        if getattr(args, "preview", False):
+            print_transaction(payload, getattr(args, "json", False))
+            return
+        sys.exit(apply_transaction(payload, args))
+
     if getattr(args, "preview", False):
         payload = transaction_commands("update", [])
         print_transaction(payload, getattr(args, "json", False))
@@ -937,10 +1362,202 @@ def show_info(name, args):
 
 
 def show_sources(_args):
-    print("pacman   Arch Linux repositories")
-    print("aur      AUR through paru, when installed")
-    print("sevenos  SevenOS meta-packages")
-    print("sevenrepo planned SevenOS repository")
+    payload = {
+        "schema": "sevenos.package-sources.v1",
+        "sources": [
+            {"key": "pacman", "state": "OK" if command_exists("pacman") else "MISS", "scope": "global-system", "detail": "Arch Linux repositories"},
+            {"key": "paru", "state": "OK" if command_exists("paru") else "MISS", "scope": "global-system", "detail": "AUR helper"},
+            {"key": "yay", "state": "OK" if command_exists("yay") else "MISS", "scope": "global-system", "detail": "AUR helper"},
+            {"key": "flatpak", "state": "OK" if command_exists("flatpak") else "MISS", "scope": "user-apps", "detail": "Flatpak applications"},
+            {"key": "sevenos", "state": "OK" if MANIFEST_PATH.is_file() else "MISS", "scope": "meta-packages", "detail": "SevenOS meta-packages"},
+            {"key": "sevenrepo", "state": "PLANNED", "scope": "future", "detail": "planned SevenOS repository"},
+        ],
+    }
+    if getattr(_args, "json", False):
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    for item in payload["sources"]:
+        print(f"{item['key']:<9} {item['state']:<7} {item['scope']:<15} {item['detail']}")
+
+
+def profile_limits_payload(profile_filter=None):
+    if profile_filter:
+        profile_filter = normalize_profile(profile_filter)
+    profiles = []
+    for profile in sorted(PROFILE_KEYS):
+        if profile_filter and profile != profile_filter:
+            continue
+        if profile == SYSTEM_PROFILE:
+            profiles.append({
+                "profile": profile,
+                "scope": "global-system",
+                "visibility": "global; mini OS can receive exposed commands through package-view policy",
+                "rootfs": "host-system",
+                "rootfs_ready": True,
+                "package_count": len(installed_package_set()),
+                "install_sources": {
+                    "pacman": command_exists("pacman"),
+                    "paru": command_exists("paru"),
+                    "yay": command_exists("yay"),
+                },
+                "commands": {
+                    "pacman": "sevenpkg install --profile equinox <package> --source pacman",
+                    "paru": "sevenpkg install --profile equinox <package> --source paru",
+                    "yay": "sevenpkg install --profile equinox <package> --source yay",
+                },
+                "next_actions": [],
+                "limits": [
+                    "Installs modify the host Arch system.",
+                    "Packages can be exposed to mini OS package views only through SevenOS policy.",
+                ],
+            })
+            continue
+
+        rootfs = profile_rootfs(profile)
+        ready = profile_rootfs_ready(profile)
+        has_paru = helper_available_for_profile(profile, "paru")
+        has_yay = helper_available_for_profile(profile, "yay")
+        next_actions = []
+        if not ready:
+            next_actions.append(f"seven profile-rootfs build {profile} --apply --yes")
+        if ready and not (has_paru or has_yay):
+            next_actions.append(f"add paru or yay to the {profile} rootfs before using --source paru|yay")
+        profiles.append({
+            "profile": profile,
+            "scope": "profile-rootfs",
+            "visibility": f"private to {profile}; not visible to other mini OS package views by default",
+            "rootfs": str(rootfs),
+            "rootfs_ready": ready,
+            "package_count": rootfs_package_count(profile),
+            "install_sources": {
+                "pacman": ready,
+                "paru": has_paru,
+                "yay": has_yay,
+            },
+            "commands": {
+                "pacman": f"sevenpkg install --profile {profile} <package> --source pacman",
+                "paru": f"sevenpkg install --profile {profile} <package> --source paru",
+                "yay": f"sevenpkg install --profile {profile} <package> --source yay",
+                "build": f"seven profile-rootfs build {profile} --apply --yes",
+            },
+            "next_actions": next_actions,
+            "limits": [
+                "Requires a ready profile rootfs before package installs can apply.",
+                "AUR helpers must be installed inside this profile rootfs.",
+                "Rootfs is resealed after package maintenance.",
+            ],
+        })
+    return {
+        "schema": "sevenos.profile-package-limits.v1",
+        "system_profile": SYSTEM_PROFILE,
+        "active_profile": active_profile(),
+        "profile_filter": profile_filter,
+        "profiles": profiles,
+        "summary": {
+            "profiles": len(profiles),
+            "global_system": sum(1 for item in profiles if item["scope"] == "global-system"),
+            "profile_rootfs": sum(1 for item in profiles if item["scope"] == "profile-rootfs"),
+            "ready_rootfs": sum(1 for item in profiles if item["scope"] == "profile-rootfs" and item["rootfs_ready"]),
+        },
+    }
+
+
+def show_profile_limits(args):
+    payload = profile_limits_payload(getattr(args, "profile", None))
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg Profile Package Limits")
+    print("===============================")
+    print(f"System profile: {payload['system_profile']} · Active: {payload['active_profile']}")
+    print()
+    print(f"{'Profile':<8} {'Scope':<15} {'RootFS':<8} {'pacman':<6} {'paru':<5} {'yay':<5}")
+    print(f"{'-------':<8} {'-----':<15} {'------':<8} {'------':<6} {'----':<5} {'---':<5}")
+    for item in payload["profiles"]:
+        sources = item["install_sources"]
+        print(
+            f"{item['profile']:<8} {item['scope']:<15} "
+            f"{'ready' if item['rootfs_ready'] else 'missing':<8} "
+            f"{'yes' if sources.get('pacman') else 'no':<6} "
+            f"{'yes' if sources.get('paru') else 'no':<5} "
+            f"{'yes' if sources.get('yay') else 'no':<5}"
+        )
+    if len(payload["profiles"]) == 1:
+        item = payload["profiles"][0]
+        print()
+        print(f"Visibility: {item['visibility']}")
+        print(f"RootFS:     {item['rootfs']}")
+        print("Commands:")
+        for key, command in item["commands"].items():
+            print(f"  {key:<6} {command}")
+        if item.get("next_actions"):
+            print("Next actions:")
+            for action in item["next_actions"]:
+                print(f"  {action}")
+    print()
+    print("Use: sevenpkg install --profile <profile> <package> --source pacman|paru|yay")
+
+
+def profile_packages_payload(profile_filter=None, query=None, limit=None):
+    if profile_filter:
+        profile_filter = normalize_profile(profile_filter)
+    profiles = []
+    for profile in sorted(PROFILE_KEYS):
+        if profile_filter and profile != profile_filter:
+            continue
+        scope = "global-system" if profile == SYSTEM_PROFILE else "profile-rootfs"
+        packages = host_packages() if profile == SYSTEM_PROFILE else rootfs_packages(profile)
+        if query:
+            query_lower = query.lower()
+            packages = [
+                item for item in packages
+                if query_lower in item.get("name", "").lower()
+                or query_lower in item.get("description", "").lower()
+            ]
+        total = len(packages)
+        shown = packages[:limit] if limit is not None else packages
+        profiles.append({
+            "profile": profile,
+            "scope": scope,
+            "rootfs": "host-system" if profile == SYSTEM_PROFILE else str(profile_rootfs(profile)),
+            "rootfs_ready": True if profile == SYSTEM_PROFILE else profile_rootfs_ready(profile),
+            "package_count": total,
+            "packages": shown,
+            "truncated": limit is not None and total > len(shown),
+        })
+    return {
+        "schema": "sevenos.profile-package-inventory.v1",
+        "system_profile": SYSTEM_PROFILE,
+        "active_profile": active_profile(),
+        "profile_filter": profile_filter,
+        "query": query,
+        "limit": limit,
+        "summary": {
+            "profiles": len(profiles),
+            "packages": sum(item["package_count"] for item in profiles),
+            "ready_rootfs": sum(1 for item in profiles if item["scope"] == "profile-rootfs" and item["rootfs_ready"]),
+        },
+        "profiles": profiles,
+    }
+
+
+def show_profile_packages(args):
+    payload = profile_packages_payload(args.profile, query=args.query, limit=args.limit)
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg Profile Packages")
+    print("=========================")
+    for profile in payload["profiles"]:
+        print(f"{profile['profile']} · {profile['scope']} · {profile['package_count']} package(s)")
+        if not profile["rootfs_ready"]:
+            print(f"  rootfs missing: {profile['rootfs']}")
+            continue
+        for item in profile["packages"]:
+            version = f" {item['version']}" if item.get("version") else ""
+            print(f"  {item['name']}{version}")
+        if profile["truncated"]:
+            print(f"  ... {profile['package_count'] - len(profile['packages'])} more")
 
 
 def owner_payload(packages):
@@ -1085,7 +1702,25 @@ def doctor_payload():
     add_check("pacman", "pacman source", command_exists("pacman"), "critical", "required Arch package source", "sevenpkg sources")
     add_check("flatpak", "Flatpak source", command_exists("flatpak"), "medium", "used for mainstream apps", "seven flatpak setup")
     add_check("flathub", "Flathub remote", flathub_present(), "medium", "default Flatpak application source", "seven flatpak setup")
-    add_check("aur-helper", "AUR helper", command_exists("paru"), "low", "optional; used for AUR packages", "sevenpkg sources")
+    add_check("aur-helper", "AUR helper", command_exists("paru") or command_exists("yay"), "low", "optional; used for AUR packages", "sevenpkg sources")
+    equinox_tx = profile_transaction_commands(SYSTEM_PROFILE, ["htop"], source="pacman")
+    forge_tx = profile_transaction_commands("forge", ["htop"], source="pacman")
+    add_check(
+        "profile-package-equinox",
+        "Equinox package scope",
+        equinox_tx.get("profile_scope") == "global-system" and equinox_tx.get("impact") == "global-system-packages",
+        "critical",
+        "Equinox package installs must target the global system",
+        "sevenpkg install --profile equinox htop --source pacman --preview",
+    )
+    add_check(
+        "profile-package-mini-os",
+        "Mini OS package scope",
+        forge_tx.get("profile_scope") == "profile-rootfs" and "private to forge" in forge_tx.get("visibility", ""),
+        "critical",
+        "Mini OS package installs must stay private to the target rootfs",
+        "sevenpkg profile-limits",
+    )
     add_check(
         "transactions",
         "Transaction journal",
@@ -1120,6 +1755,20 @@ def doctor_payload():
         "sevenpkg plan",
     )
     optional_open = [item for item in optional["items"] if item["state"] != "OK"]
+    limits = profile_limits_payload()
+    missing_rootfs = [
+        item["profile"]
+        for item in limits["profiles"]
+        if item["scope"] == "profile-rootfs" and not item["rootfs_ready"]
+    ]
+    add_check(
+        "profile-rootfs-readiness",
+        "Mini OS rootfs readiness",
+        not missing_rootfs,
+        "medium",
+        "missing rootfs: " + ", ".join(missing_rootfs) if missing_rootfs else "all mini OS rootfs targets are ready",
+        "sevenpkg profile-limits",
+    )
     add_check(
         "optional-visibility",
         "Optional software visibility",
@@ -1203,7 +1852,9 @@ def main():
 
     install_parser = subparsers.add_parser("install", help="install a package or SevenOS meta-package")
     install_parser.add_argument("packages", nargs="+")
-    install_parser.add_argument("--source", choices=("auto", "pacman", "aur", "sevenrepo"), default="auto")
+    install_parser.add_argument("--source", choices=("auto", "pacman", "aur", "paru", "yay", "sevenrepo"), default="auto")
+    install_parser.add_argument("--profile", choices=sorted(PROFILE_KEYS), help="install into one SevenOS profile; mini OS profiles use their private rootfs, Equinox uses the global system")
+    install_parser.add_argument("--global", dest="global_install", action="store_true", help="force the global Equinox/system package scope even when a mini OS is active")
     install_parser.add_argument("--optional", action="store_true", help="include optional packages declared for this SevenOS layer")
     install_parser.add_argument("--preview", action="store_true", help="preview the SevenOS transaction without changing the system")
     install_parser.add_argument("--transaction", action="store_true", help="apply through the SevenOS transaction layer and run post-install repair")
@@ -1211,6 +1862,8 @@ def main():
 
     remove_parser = subparsers.add_parser("remove", help="remove a package")
     remove_parser.add_argument("packages", nargs="+")
+    remove_parser.add_argument("--profile", choices=sorted(PROFILE_KEYS), help="remove from one SevenOS profile; mini OS profiles use their private rootfs")
+    remove_parser.add_argument("--global", dest="global_install", action="store_true", help="force the global Equinox/system package scope even when a mini OS is active")
     remove_parser.add_argument("--force", action="store_true", help="allow removal of packages owned by SevenOS layers")
     remove_parser.add_argument("--preview", action="store_true", help="show removal impact without changing the system")
     remove_parser.add_argument("--json", action="store_true", help="print machine-readable preview when using --preview")
@@ -1222,6 +1875,8 @@ def main():
     info_parser.add_argument("name")
 
     update_parser = subparsers.add_parser("update", help="update system packages")
+    update_parser.add_argument("--profile", choices=sorted(PROFILE_KEYS), help="update one SevenOS profile; mini OS profiles use their private rootfs")
+    update_parser.add_argument("--global", dest="global_install", action="store_true", help="force the global Equinox/system package scope even when a mini OS is active")
     update_parser.add_argument("--preview", action="store_true", help="show update commands without changing the system")
     update_parser.add_argument("--json", action="store_true", help="print machine-readable preview when using --preview")
     meta_parser = subparsers.add_parser("meta", help="list SevenOS meta-packages")
@@ -1241,7 +1896,7 @@ def main():
     transaction_parser = subparsers.add_parser("transaction", help="preview or apply a guarded SevenOS package transaction")
     transaction_parser.add_argument("tx_action", choices=("install", "remove", "update"))
     transaction_parser.add_argument("items", nargs="*")
-    transaction_parser.add_argument("--source", choices=("auto", "pacman", "aur", "sevenrepo"), default="auto")
+    transaction_parser.add_argument("--source", choices=("auto", "pacman", "aur", "paru", "yay", "sevenrepo"), default="auto")
     transaction_parser.add_argument("--optional", action="store_true", help="include optional packages for meta-package installs")
     transaction_parser.add_argument("--force", action="store_true", help="allow guarded removals")
     transaction_parser.add_argument("--apply", action="store_true", help="execute the transaction")
@@ -1252,12 +1907,45 @@ def main():
     history_parser = subparsers.add_parser("history", help="show recent SevenPkg transactions")
     history_parser.add_argument("--json", action="store_true", help="print machine-readable transaction history")
     history_parser.add_argument("--limit", type=int, default=12, help="maximum events to show")
-    subparsers.add_parser("sources", help="show package sources")
+    sources_parser = subparsers.add_parser("sources", help="show package sources")
+    sources_parser.add_argument("--json", action="store_true", help="print machine-readable package sources")
+    profile_limits_parser = subparsers.add_parser("profile-limits", help="show package installation limits for Equinox and mini OS profiles")
+    profile_limits_parser.add_argument("profile", nargs="?", choices=sorted(PROFILE_KEYS), help="show one profile instead of the full matrix")
+    profile_limits_parser.add_argument("--json", action="store_true", help="print machine-readable profile package limits")
+    profile_packages_parser = subparsers.add_parser("profile-packages", help="show installed packages by SevenOS profile/rootfs")
+    profile_packages_parser.add_argument("profile", nargs="?", choices=sorted(PROFILE_KEYS), help="show one profile instead of every profile")
+    profile_packages_parser.add_argument("--query", help="filter package names and descriptions")
+    profile_packages_parser.add_argument("--limit", type=int, default=25, help="maximum packages to print per profile; use 0 for all")
+    profile_packages_parser.add_argument("--json", action="store_true", help="print machine-readable package inventory")
+    profile_install_parser = subparsers.add_parser("profile-install", help="install packages into a specific SevenOS profile rootfs")
+    profile_install_parser.add_argument("profile", choices=sorted(PROFILE_KEYS))
+    profile_install_parser.add_argument("packages", nargs="+")
+    profile_install_parser.add_argument("--source", choices=("auto", "pacman", "aur", "paru", "yay", "sevenrepo"), default="auto")
+    profile_install_parser.add_argument("--preview", action="store_true", help="preview the profile-scoped transaction")
+    profile_install_parser.add_argument("--json", action="store_true", help="print machine-readable profile transaction")
+    profile_remove_parser = subparsers.add_parser("profile-remove", help="remove packages from a specific SevenOS profile rootfs")
+    profile_remove_parser.add_argument("profile", choices=sorted(PROFILE_KEYS))
+    profile_remove_parser.add_argument("packages", nargs="+")
+    profile_remove_parser.add_argument("--force", action="store_true", help="allow guarded global removals when profile is Equinox")
+    profile_remove_parser.add_argument("--preview", action="store_true", help="preview the profile-scoped removal")
+    profile_remove_parser.add_argument("--json", action="store_true", help="print machine-readable profile transaction")
 
     args = parser.parse_args()
 
     if args.command == "install":
         install_packages(args)
+    elif args.command == "profile-install":
+        payload = profile_transaction_commands(args.profile, args.packages, source=args.source)
+        if args.preview:
+            print_transaction(payload, args.json)
+            return
+        sys.exit(apply_transaction(payload, args))
+    elif args.command == "profile-remove":
+        payload = profile_remove_transaction_commands(args.profile, args.packages, force=args.force)
+        if args.preview:
+            print_transaction(payload, args.json)
+            return
+        sys.exit(apply_transaction(payload, args))
     elif args.command == "remove":
         remove_packages(args)
     elif args.command == "update":
@@ -1284,6 +1972,12 @@ def main():
         show_history(args)
     elif args.command == "sources":
         show_sources(args)
+    elif args.command == "profile-limits":
+        show_profile_limits(args)
+    elif args.command == "profile-packages":
+        if args.limit == 0:
+            args.limit = None
+        show_profile_packages(args)
     else:
         parser.print_help()
 

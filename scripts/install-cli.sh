@@ -4,10 +4,30 @@ set -Eeuo pipefail
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$ROOT_DIR/scripts/lib.sh"
 
-BIN_HOME="${HOME}/.local/bin"
-PROFILE_HOME="${HOME}/.profile"
-BASHRC_HOME="${HOME}/.bashrc"
-ZSHRC_HOME="${HOME}/.zshrc"
+host_home() {
+  local home="${SEVENOS_HOST_HOME:-$HOME}"
+  if [[ -n "${SEVENOS_HOST_HOME:-}" ]]; then
+    printf '%s\n' "$home"
+    return 0
+  fi
+  case "$home" in
+    */.local/share/sevenos/profile-containers/*/home)
+      printf '%s\n' "${home%%/.local/share/sevenos/profile-containers/*}"
+      return 0
+      ;;
+  esac
+  if [[ -n "${USER:-}" && -d "/home/$USER" ]]; then
+    printf '/home/%s\n' "$USER"
+  else
+    printf '%s\n' "$home"
+  fi
+}
+
+HOST_HOME="$(host_home)"
+BIN_HOME="${HOST_HOME}/.local/bin"
+PROFILE_HOME="${HOST_HOME}/.profile"
+BASHRC_HOME="${HOST_HOME}/.bashrc"
+ZSHRC_HOME="${HOST_HOME}/.zshrc"
 SYSTEM_BIN_HOME="/usr/local/bin"
 SYSTEM_INSTALL_WARNED=0
 
@@ -198,6 +218,8 @@ install_user_command "$ROOT_DIR/bin/seven-window-controls-native" seven-window-c
 install_user_command "$ROOT_DIR/bin/seven-profile-theme" seven-profile-theme
 install_user_command "$ROOT_DIR/scripts/hypr-lua.sh" seven-hypr-lua
 install_user_command "$ROOT_DIR/scripts/hypr-lua-events.sh" seven-hypr-lua-events
+install_user_command "$ROOT_DIR/scripts/network.sh" seven-network
+install_user_command "$ROOT_DIR/scripts/system-profile.sh" seven-system-profile
 install_user_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_user_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_user_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
@@ -270,6 +292,8 @@ install_system_command "$ROOT_DIR/bin/seven-window" seven-window
 install_system_command "$ROOT_DIR/bin/seven-profile-theme" seven-profile-theme
 install_system_command "$ROOT_DIR/scripts/hypr-lua.sh" seven-hypr-lua
 install_system_command "$ROOT_DIR/scripts/hypr-lua-events.sh" seven-hypr-lua-events
+install_system_command "$ROOT_DIR/scripts/network.sh" seven-network
+install_system_command "$ROOT_DIR/scripts/system-profile.sh" seven-system-profile
 install_system_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_system_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_system_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant

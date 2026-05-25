@@ -13,9 +13,19 @@ set +e
 set +u
 set +o pipefail 2>/dev/null || true
 
-if [[ -r "$HOME/.config/sevenos/profile-isolation.env" ]]; then
+__sevenos_host_home="${SEVENOS_HOST_HOME:-$HOME}"
+case "$__sevenos_host_home" in
+  */.local/share/sevenos/profile-containers/*/home)
+    __sevenos_host_home="${__sevenos_host_home%%/.local/share/sevenos/profile-containers/*}"
+    ;;
+esac
+if [[ ! -d "$__sevenos_host_home" && -n "${USER:-}" && -d "/home/$USER" ]]; then
+  __sevenos_host_home="/home/$USER"
+fi
+
+if [[ -r "$__sevenos_host_home/.config/sevenos/profile-isolation.env" ]]; then
   # shellcheck disable=SC1090
-  source "$HOME/.config/sevenos/profile-isolation.env"
+  source "$__sevenos_host_home/.config/sevenos/profile-isolation.env"
 fi
 if [[ -d "${SEVENOS_PACKAGE_VIEW:-}" && ":$PATH:" != *":$SEVENOS_PACKAGE_VIEW:"* ]]; then
   export PATH="$SEVENOS_PACKAGE_VIEW:$PATH"

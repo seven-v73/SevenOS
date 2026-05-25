@@ -32,6 +32,7 @@ fix the slow check separately before tagging a release.
 ```bash
 seven smoke --json | python -m json.tool
 seven state --json | python -m json.tool
+seven system-profile doctor
 seven post-install
 seven profile-rootfs verify all
 seven windows setup --yes --no-open --dry-run

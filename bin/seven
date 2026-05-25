@@ -821,6 +821,24 @@ def handle_fonts(args):
     run_script(args, "scripts/fonts.sh", *extra)
 
 
+def handle_network(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    if args.yes:
+        extra.append("--yes")
+    run_script(args, "scripts/network.sh", *extra)
+
+
+def handle_system_profile(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    if args.yes:
+        extra.append("--yes")
+    run_script(args, "scripts/system-profile.sh", *extra)
+
+
 def handle_language(args):
     extra = [args.action]
     if args.locale:
@@ -1055,6 +1073,14 @@ def main():
     fonts_parser = subparsers.add_parser("fonts", help="inspect, import and apply SevenOS font roles")
     fonts_parser.add_argument("action", nargs="?", default="status")
     fonts_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    network_parser = subparsers.add_parser("network", help="repair and inspect SevenOS Wi-Fi/NetworkManager")
+    network_parser.add_argument("action", nargs="?", default="status", choices=("status", "repair", "fix", "bootstrap", "apply"))
+    network_parser.add_argument("--json", action="store_true", help="print machine-readable network state")
+    network_parser.add_argument("--yes", action="store_true", help="do not open the connector after repair")
+    system_profile_parser = subparsers.add_parser("system-profile", help="inspect or restore Equinox host-system/admin contract")
+    system_profile_parser.add_argument("action", nargs="?", default="status", choices=("status", "apply", "doctor"))
+    system_profile_parser.add_argument("--json", action="store_true", help="print machine-readable system profile state")
+    system_profile_parser.add_argument("--yes", action="store_true", help="confirm supported repair steps")
     boot_splash_parser = subparsers.add_parser("boot-splash", help="configure SevenOS quiet boot and shutdown splash")
     boot_splash_parser.add_argument("action", nargs="?", default="status", choices=("status", "apply", "theme"))
     boot_splash_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -1324,6 +1350,10 @@ def main():
         handle_keyboard(args)
     elif args.command == "fonts":
         handle_fonts(args)
+    elif args.command == "network":
+        handle_network(args)
+    elif args.command == "system-profile":
+        handle_system_profile(args)
     elif args.command == "boot-splash":
         run_script(args, "scripts/boot-splash.sh", args.action, *args.extra)
     elif args.command == "language":

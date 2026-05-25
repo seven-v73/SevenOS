@@ -107,8 +107,8 @@ step "bootstrapping all mini OS workspaces and launchers"
 step "activating Equinox as the first balanced runtime"
 "$ROOT_DIR/profiles/profile-manager.sh" activate equinox
 
-step "applying profile isolation and command views"
-run_logged "$ROOT_DIR/scripts/profile-isolation.sh" apply equinox --yes
+step "applying Equinox system profile and mini OS command views"
+run_logged "$ROOT_DIR/scripts/system-profile.sh" apply --yes
 
 step "preparing rootfs metadata for all mini OS"
 run_logged "$ROOT_DIR/bin/seven-profile-rootfs" prepare all --apply --yes

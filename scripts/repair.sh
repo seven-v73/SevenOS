@@ -24,6 +24,7 @@ Areas:
   security
   compatibility
   deployment
+  core
   target
 
 Default mode prints a safe repair plan. Use --apply to execute the plan.
@@ -75,7 +76,15 @@ repair_ux() {
 
 repair_system() {
   section "System Repair"
+  run_repair "Restore Equinox host-system/admin profile contract" "$ROOT_DIR/scripts/system-profile.sh" apply --yes
   run_repair "Repair stale UFW marker and host-level failed service state" "$ROOT_DIR/scripts/system-repair.sh" apply
+}
+
+repair_core() {
+  section "SevenOS Core Repair"
+  run_repair "Restore Equinox host-system/admin profile contract" "$ROOT_DIR/scripts/system-profile.sh" apply --yes
+  run_repair "Refresh profile health diagnostics" "$ROOT_DIR/profiles/profile-manager.sh" health
+  run_repair "Run post-install contract checks" "$ROOT_DIR/scripts/post-install.sh"
 }
 
 repair_security() {
@@ -132,9 +141,11 @@ case "$AREA" in
     repair_security
     repair_compatibility
     repair_deployment
+    repair_core
     repair_target
     ;;
   system) repair_system ;;
+  core|equinox|system-profile) repair_core ;;
   ux) repair_ux ;;
   security) repair_security ;;
   compatibility|windows) repair_compatibility ;;

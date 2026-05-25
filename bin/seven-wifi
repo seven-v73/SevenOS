@@ -40,15 +40,15 @@ networkmanager_state() {
 }
 
 wifi_device() {
-  nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2 == "wifi" { print $1; exit }'
+  nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2 == "wifi" { print $1; exit }' || true
 }
 
 active_wifi() {
-  nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$2 == "802-11-wireless" { print $1; exit }'
+  nmcli -t -f NAME,TYPE connection show --active 2>/dev/null | awk -F: '$2 == "802-11-wireless" { print $1; exit }' || true
 }
 
 active_wifi_ssid() {
-  nmcli -t -f ACTIVE,SSID device wifi 2>/dev/null | awk -F: '$1 == "yes" { print $2; exit }'
+  nmcli -t -f ACTIVE,SSID device wifi 2>/dev/null | awk -F: '$1 == "yes" { print $2; exit }' || true
 }
 
 wifi_radio_state() {
@@ -116,7 +116,7 @@ status_json() {
     device="$(wifi_device)"
     active="$(active_wifi)"
     ssid="$(active_wifi_ssid)"
-    signal="$(nmcli -t -f ACTIVE,SIGNAL device wifi 2>/dev/null | awk -F: '$1 == "yes" { print $2; exit }')"
+    signal="$(nmcli -t -f ACTIVE,SIGNAL device wifi 2>/dev/null | awk -F: '$1 == "yes" { print $2; exit }' || true)"
   else
     radio="missing"
     device=""
@@ -330,6 +330,23 @@ restart_networkmanager() {
   fi
 }
 
+repair_network() {
+  if dry_run; then
+    dry_line "Repair"
+    return 0
+  fi
+  local root
+  root="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+  if [[ -x "$root/scripts/network.sh" ]]; then
+    "$root/scripts/network.sh" repair
+  else
+    restart_networkmanager
+    nmcli networking on >/dev/null 2>&1 || true
+    nmcli radio wifi on >/dev/null 2>&1 || true
+    connect_wifi
+  fi
+}
+
 menu() {
   if dry_run; then
     dry_line "Open panel"
@@ -387,8 +404,9 @@ case "${1:-menu}" in
   status) terminal_status ;;
   status-json|--json) status_json ;;
   restart) restart_networkmanager ;;
+  repair|fix) repair_network ;;
   *)
-    printf 'Usage: seven-wifi [menu|connect|disconnect|toggle|settings|status|status-json|restart]\n' >&2
+    printf 'Usage: seven-wifi [menu|connect|disconnect|toggle|settings|status|status-json|restart|repair]\n' >&2
     exit 1
     ;;
 esac

@@ -242,46 +242,54 @@ window#waybar {
 }
 
 #custom-sevenos {
-  min-width: 0;
-  padding-left: 10px;
-  padding-right: 11px;
+  min-width: 28px;
+  padding-left: 0;
+  padding-right: 0;
   color: #FFFFFF;
-  font-family: "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
-  font-size: 12px;
-  font-weight: bold;
+  font-family: "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+  font-size: 15px;
+  font-weight: 500;
   letter-spacing: 0;
-  background: rgba(255, 255, 255, 0.065);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(237, 237, 237, 0.22), transparent 34%),
+    linear-gradient(135deg, rgba(77, 163, 255, 0.20), rgba(122, 92, 255, 0.17) 52%, rgba(0, 212, 255, 0.18)),
+    rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(101, 186, 255, 0.22);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    0 0 12px rgba(112, 164, 255, 0.035);
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 212, 255, 0.06),
+    0 0 12px rgba(77, 163, 255, 0.10);
 }
 
 #custom-sevenos:hover {
   color: #FFFFFF;
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.18);
+  background:
+    radial-gradient(circle at 38% 30%, rgba(237, 237, 237, 0.28), transparent 34%),
+    linear-gradient(135deg, rgba(77, 163, 255, 0.30), rgba(122, 92, 255, 0.24) 52%, rgba(0, 212, 255, 0.28)),
+    rgba(255, 255, 255, 0.08);
+  border-color: rgba(141, 210, 255, 0.34);
 }
 
 #custom-sevenos.profile-forge,
 #custom-sevenos.profile-windows {
-  color: rgba(156, 203, 255, 0.96);
+  color: rgba(156, 203, 255, 0.98);
 }
 
 #custom-sevenos.profile-shield {
-  color: rgba(117, 232, 213, 0.96);
+  color: rgba(117, 232, 213, 0.98);
+  border-color: rgba(0, 255, 179, 0.30);
 }
 
 #custom-sevenos.profile-studio {
-  color: rgba(255, 204, 229, 0.96);
+  color: rgba(255, 204, 229, 0.98);
 }
 
 #custom-sevenos.profile-baobab {
-  color: rgba(218, 255, 210, 0.96);
+  color: rgba(218, 255, 210, 0.98);
 }
 
 #custom-sevenos.profile-pulse {
-  color: rgba(121, 223, 255, 0.96);
+  color: rgba(121, 223, 255, 0.98);
 }
 
 #custom-sevenos.warn,

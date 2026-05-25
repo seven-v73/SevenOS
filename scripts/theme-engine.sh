@@ -12,6 +12,26 @@ RUNTIME_ENV="$STATE_DIR/theme-runtime.env"
 RUNTIME_JSON="$STATE_DIR/theme-runtime.json"
 RUNTIME_CSS="$DATA_HOME/sevenos/identity/runtime-theme.css"
 
+ensure_runtime_paths() {
+  if mkdir -p "$STATE_DIR" "$(dirname -- "$RUNTIME_CSS")" 2>/dev/null &&
+     [[ -w "$STATE_DIR" && -w "$(dirname -- "$RUNTIME_CSS")" ]]; then
+    return 0
+  fi
+
+  local runtime_base="${XDG_RUNTIME_DIR:-/tmp}"
+  if ! mkdir -p "$runtime_base" 2>/dev/null || [[ ! -w "$runtime_base" ]]; then
+    runtime_base="/tmp"
+  fi
+  local runtime_root="$runtime_base/sevenos-theme-runtime-${UID:-$(id -u)}"
+  STATE_DIR="$runtime_root/config"
+  DATA_HOME="$runtime_root/data"
+  THEME_CONF="$STATE_DIR/theme.conf"
+  RUNTIME_ENV="$STATE_DIR/theme-runtime.env"
+  RUNTIME_JSON="$STATE_DIR/theme-runtime.json"
+  RUNTIME_CSS="$DATA_HOME/sevenos/identity/runtime-theme.css"
+  mkdir -p "$STATE_DIR" "$(dirname -- "$RUNTIME_CSS")"
+}
+
 theme_mode() {
   if [[ "${SEVENOS_THEME_MODE:-}" == "dark" || "${SEVENOS_THEME_MODE:-}" == "light" ]]; then
     printf '%s' "$SEVENOS_THEME_MODE"
@@ -47,7 +67,7 @@ write_runtime() {
   kvantum_theme="$(toolkit_value "$CONFIG_HOME/Kvantum/kvantum.kvconfig" theme)"
   color_scheme="$(gsettings_value org.gnome.desktop.interface color-scheme)"
 
-  mkdir -p "$STATE_DIR" "$(dirname -- "$RUNTIME_CSS")"
+  ensure_runtime_paths
   cat > "$RUNTIME_ENV" <<EOF
 SEVENOS_THEME_MODE="$mode"
 SEVENOS_GTK_THEME="$gtk_theme"

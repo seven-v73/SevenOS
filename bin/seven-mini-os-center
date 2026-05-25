@@ -317,8 +317,26 @@ def memory_command(key: str, label: str, command: str) -> str:
 
 
 def strict_app(key: str, command: str, workspace: bool = True) -> str:
+    if key == "equinox":
+        return command
     workspace_arg = " --workspace-profile" if workspace else ""
     return f"seven profile exec {key} --container{workspace_arg} {command}"
+
+
+def boundary_actions(key: str) -> list[tuple[str, str, str]]:
+    if key == "equinox":
+        return [
+            ("System boundary", "Show the host-system Equinox runtime contract", "seven-terminal classic -- bash -lc 'seven-profile-run --profile equinox --json | python -m json.tool; read -r -p \"Press Enter to close...\"'"),
+            ("System terminal", "Open a normal SevenOS terminal with the real HOME", "seven-terminal classic"),
+            ("Packages", "Open Arch package status from the Equinox admin side", "seven-terminal admin -- bash -lc 'pacman -Qq | less'"),
+            ("Isolation state", "Inspect mini OS isolation while staying in Equinox", "seven-terminal classic -- bash -lc 'seven profile isolation status; read -r -p \"Press Enter to close...\"'"),
+        ]
+    return [
+        ("Strict boundary", "Show the isolated HOME/cache/data contract for this mini OS", f"seven-terminal {profile_terminal_mode(key)} -- bash -lc 'seven-profile-run --profile {key} --json | python -m json.tool; read -r -p \"Press Enter to close...\"'"),
+        ("Strict shell", "Open a shell with this mini OS data boundary", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container sh"),
+        ("Workspace shell", "Open a strict shell with the mini OS workspace mounted at /workspace", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container --workspace-profile sh"),
+        ("Ephemeral shell", "Open a disposable strict shell cleaned on exit", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --ephemeral sh"),
+    ]
 
 
 def profile_actions(key: str) -> list[tuple[str, str, str]]:
@@ -773,12 +791,7 @@ def run() -> int:
 
     strict_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     root.pack_start(strict_box, False, False, 0)
-    for label, tooltip, command in [
-        ("Strict boundary", "Show the isolated HOME/cache/data contract for this mini OS", f"seven-terminal {profile_terminal_mode(key)} -- bash -lc 'seven-profile-run --profile {key} --json | python -m json.tool; read -r -p \"Press Enter to close...\"'"),
-        ("Strict shell", "Open a shell with this mini OS data boundary", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container sh"),
-        ("Workspace shell", "Open a strict shell with the mini OS workspace mounted at /workspace", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container --workspace-profile sh"),
-        ("Ephemeral shell", "Open a disposable strict shell cleaned on exit", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --ephemeral sh"),
-    ]:
+    for label, tooltip, command in boundary_actions(key):
         button = Gtk.Button(label=label)
         button.get_style_context().add_class("pill")
         button.set_tooltip_text(tooltip)

@@ -22,6 +22,8 @@ Targets:
   hub-gui-stack    Install Seven Hub Tauri GUI foundation packages
   shell-ags        Install Seven Shell AGS/TypeScript foundation packages
   runtime-tools    Install optional runtime orchestration tools such as CRIU
+  network          Prepare and repair Wi-Fi/NetworkManager stack
+  system-profile   Ensure Equinox is the host-system/admin side
   aur-helpers      Install yay and paru for SevenOS AUR-backed features
   hypr-ecosystem   Install premium Hyprland ecosystem tools
   shell-preview    Preview Seven Shell AGS migration plan
@@ -147,6 +149,16 @@ case "$TARGET" in
     ;;
   runtime-tools)
     install_package_file "$ROOT_DIR/scripts/packages-runtime-optional.txt"
+    ;;
+  network)
+    "$ROOT_DIR/scripts/network.sh" bootstrap "${TARGET_ARGS[@]}"
+    ;;
+  system-profile|equinox|equinox-system)
+    if [[ "$YES" == "1" ]]; then
+      "$ROOT_DIR/scripts/system-profile.sh" apply --yes "${TARGET_ARGS[@]}"
+    else
+      "$ROOT_DIR/scripts/system-profile.sh" apply "${TARGET_ARGS[@]}"
+    fi
     ;;
   aur-helpers)
     "$ROOT_DIR/scripts/aur-helpers.sh" install

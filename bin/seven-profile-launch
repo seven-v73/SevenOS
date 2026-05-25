@@ -12,7 +12,25 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
+
+
+def host_home() -> Path:
+    if os.environ.get("SEVENOS_HOST_HOME"):
+        return Path(os.environ["SEVENOS_HOST_HOME"])
+    raw = Path(os.environ.get("SEVENOS_HOST_HOME", str(Path.home())))
+    text = str(raw)
+    marker = "/.local/share/sevenos/profile-containers/"
+    if marker in text and text.endswith("/home"):
+        return Path(text.split(marker, 1)[0])
+    user = os.environ.get("USER")
+    if user:
+        candidate = Path("/home") / user
+        if candidate.is_dir():
+            return candidate
+    return raw
+
+
+CONFIG = Path(os.environ.get("SEVENOS_CONFIG_HOME", host_home() / ".config")) / "sevenos"
 
 
 def active_profile() -> str:

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">SevenOS Prism Mark</title>
+  <desc id="desc">Transparent SevenOS prism mark for bars, badges and monochrome surfaces.</desc>
+  <defs>
+    <linearGradient id="edge" x1="18" y1="14" x2="110" y2="114" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4DA3FF"/>
+      <stop offset=".48" stop-color="#7A5CFF"/>
+      <stop offset="1" stop-color="#00D4FF"/>
+    </linearGradient>
+    <linearGradient id="core" x1="32" y1="24" x2="96" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EDEDED" stop-opacity=".92"/>
+      <stop offset=".44" stop-color="#7A5CFF" stop-opacity=".40"/>
+      <stop offset="1" stop-color="#00D4FF" stop-opacity=".22"/>
+    </linearGradient>
+  </defs>
+  <path d="M64 8 112 36v56l-48 28-48-28V36z" fill="#09090B" fill-opacity=".72" stroke="url(#edge)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M64 22 96 41v38l-32 19-32-19V41z" fill="url(#core)" fill-opacity=".55" stroke="#FFFFFF" stroke-opacity=".24" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M64 22v76M32 41l64 38M96 41 32 79" fill="none" stroke="#FFFFFF" stroke-opacity=".32" stroke-width="2" stroke-linecap="round"/>
+</svg>

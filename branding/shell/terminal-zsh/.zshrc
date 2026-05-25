@@ -5,8 +5,18 @@ export SEVENOS_TERMINAL_COUNTRY=0
 export SEVENOS_TERMINAL_CLASSIC=1
 export FASTFETCH_DISABLED=1
 
-if [[ -r "$HOME/.config/sevenos/profile-isolation.env" ]]; then
-  source "$HOME/.config/sevenos/profile-isolation.env"
+__sevenos_host_home="${SEVENOS_HOST_HOME:-$HOME}"
+case "$__sevenos_host_home" in
+  */.local/share/sevenos/profile-containers/*/home)
+    __sevenos_host_home="${__sevenos_host_home%%/.local/share/sevenos/profile-containers/*}"
+    ;;
+esac
+if [[ ! -d "$__sevenos_host_home" && -n "${USER:-}" && -d "/home/$USER" ]]; then
+  __sevenos_host_home="/home/$USER"
+fi
+
+if [[ -r "$__sevenos_host_home/.config/sevenos/profile-isolation.env" ]]; then
+  source "$__sevenos_host_home/.config/sevenos/profile-isolation.env"
 fi
 if [[ -d "${SEVENOS_PACKAGE_VIEW:-}" && ":$PATH:" != *":$SEVENOS_PACKAGE_VIEW:"* ]]; then
   export PATH="$SEVENOS_PACKAGE_VIEW:$PATH"

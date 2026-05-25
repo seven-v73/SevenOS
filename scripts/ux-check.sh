@@ -337,6 +337,8 @@ require_executable "scripts/install-hyprsysteminfo.sh"
 require_executable "scripts/wallpaper-theme.sh"
 require_executable "scripts/smart-window.sh"
 require_executable "scripts/fonts.sh"
+require_executable "scripts/network.sh"
+require_executable "scripts/system-profile.sh"
 
 package_manifest_contains "mako" "scripts/packages-base.txt"
 package_manifest_contains "swaync" "scripts/packages-base.txt"
@@ -358,8 +360,11 @@ package_manifest_contains "wlogout" "scripts/packages-visual-aur.txt"
 package_manifest_contains "librsvg" "scripts/packages-base.txt"
 package_manifest_contains "fontconfig" "scripts/packages-base.txt"
 package_manifest_contains "7zip" "scripts/packages-base.txt"
+package_manifest_contains "inter-font" "scripts/packages-base.txt"
 package_manifest_contains "ttf-jetbrains-mono-nerd" "scripts/packages-base.txt"
 package_manifest_contains "noto-fonts" "scripts/packages-base.txt"
+package_manifest_contains "noto-fonts-extra" "scripts/packages-base.txt"
+package_manifest_contains "noto-fonts-cjk" "scripts/packages-base.txt"
 package_manifest_contains "noto-fonts-emoji" "scripts/packages-base.txt"
 package_manifest_contains "kitty" "scripts/packages-base.txt"
 package_manifest_contains "python-gobject" "scripts/packages-base.txt"
@@ -386,7 +391,27 @@ package_manifest_contains "flatpak" "scripts/packages-base.txt"
 package_manifest_contains "btop" "scripts/packages-base.txt"
 package_manifest_contains "pavucontrol" "scripts/packages-base.txt"
 package_manifest_contains "networkmanager" "scripts/packages-base.txt"
+package_manifest_contains "networkmanager" "scripts/packages-network.txt"
 package_manifest_contains "network-manager-applet" "scripts/packages-base.txt"
+package_manifest_contains "network-manager-applet" "scripts/packages-network.txt"
+package_manifest_contains "nm-connection-editor" "scripts/packages-base.txt"
+package_manifest_contains "nm-connection-editor" "scripts/packages-network.txt"
+package_manifest_contains "wpa_supplicant" "scripts/packages-base.txt"
+package_manifest_contains "wpa_supplicant" "scripts/packages-network.txt"
+package_manifest_contains "iwd" "scripts/packages-base.txt"
+package_manifest_contains "iwd" "scripts/packages-network.txt"
+package_manifest_contains "iw" "scripts/packages-base.txt"
+package_manifest_contains "iw" "scripts/packages-network.txt"
+package_manifest_contains "wireless-regdb" "scripts/packages-base.txt"
+package_manifest_contains "wireless-regdb" "scripts/packages-network.txt"
+package_manifest_contains "networkmanager-openvpn" "scripts/packages-base.txt"
+package_manifest_contains "networkmanager-openvpn" "scripts/packages-network.txt"
+package_manifest_contains "modemmanager" "scripts/packages-base.txt"
+package_manifest_contains "modemmanager" "scripts/packages-network.txt"
+package_manifest_contains "usb_modeswitch" "scripts/packages-base.txt"
+package_manifest_contains "usb_modeswitch" "scripts/packages-network.txt"
+package_manifest_contains "mobile-broadband-provider-info" "scripts/packages-base.txt"
+package_manifest_contains "mobile-broadband-provider-info" "scripts/packages-network.txt"
 package_manifest_contains "bluez" "scripts/packages-base.txt"
 package_manifest_contains "bluez-utils" "scripts/packages-base.txt"
 package_manifest_contains "blueman" "scripts/packages-base.txt"
@@ -1686,6 +1711,7 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'fixed="SF Mono,10' "$ROOT_DIR/hyprland/qt5ct/qt5ct.conf" &&
    grep -q 'font=SF Pro Display 10.5' "$ROOT_DIR/hyprland/mako/config" &&
    grep -q 'font_family SF Mono' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
+   grep -q 'SF Pro Display</family><prefer><family>Inter' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'SF Pro Rounded' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'SevenOS Cyber' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'apply-default' "$ROOT_DIR/scripts/fonts.sh" &&
@@ -2330,6 +2356,60 @@ routes_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" routes --json)"
 distribution_json="$(SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" distribution --json)"
 installer_open_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open)"
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
+package_sources_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" sources --json)"
+profile_limits_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-limits --json)"
+forge_limits_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-limits forge --json)"
+forge_packages_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-packages forge --query htop --json)"
+profile_package_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" install --profile forge htop --source pacman --preview --json)"
+profile_remove_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" remove --profile forge 7zip --preview --json)"
+profile_remove_missing_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" remove --profile forge definitely-not-installed-sevenos-test-package --preview --json)"
+profile_update_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" update --profile forge --preview --json)"
+system_package_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" install --profile equinox htop --source pacman --preview --json)"
+if grep -q 'profile-install' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'profile-remove' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'profile-limits' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'profile-packages' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'show_package_removal_dialog' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.package_remove.section' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings:package-remove' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'remove --profile' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.package_remove.confirm' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'profile-packages' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'package-result-list' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'package_search_generation' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'package_preview_generation' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'last_preview' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'preview_required' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'remove_button.set_sensitive(False)' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'payload.get("blockers")' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.package_remove.preview_running' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'GLib.idle_add(apply_preview' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'threading.Thread(target=worker' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'GLib.idle_add(apply_results' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'package-result-button' "$ROOT_DIR/identity/native/settings.css" &&
+   grep -q 'default_profile_source' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'global_install' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'sevenos.profile-package-transaction.v1' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'sevenos.profile-package-limits.v1' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'sevenos.package-sources.v1' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'global-system' <<<"$profile_limits_json" &&
+   grep -q 'profile-rootfs' <<<"$profile_limits_json" &&
+   grep -q 'sevenos.profile-package-inventory.v1' <<<"$forge_packages_json" &&
+   grep -q '"profile_filter": "forge"' <<<"$forge_limits_json" &&
+   grep -q 'next_actions' <<<"$forge_limits_json" &&
+   grep -q 'sevenrepo' <<<"$package_sources_json" &&
+   grep -q 'profile-rootfs-packages' <<<"$profile_package_json" &&
+   grep -q '"action": "remove"' <<<"$profile_remove_json" &&
+   grep -q 'not installed inside the forge rootfs' <<<"$profile_remove_missing_json" &&
+   grep -q '"action": "update"' <<<"$profile_update_json" &&
+   grep -q 'pacman' <<<"$profile_update_json" &&
+   grep -q 'does not touch other mini OS' <<<"$profile_remove_json" &&
+   grep -q 'global-system-packages' <<<"$system_package_json" &&
+   grep -q 'private to forge' <<<"$profile_package_json"; then
+  ok "SevenPkg separates mini OS rootfs packages from Equinox global packages"
+else
+  fail "SevenPkg should provide profile-scoped package transactions"
+fi
 core_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core status --json)"
 core_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core plan --json)"
 core_snapshot_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core snapshot --json)"
@@ -2559,7 +2639,7 @@ if grep -q 'Workspace:' <<<"$profile_show_output" &&
    RUNTIME_ALIAS_PLAN_JSON="$runtime_alias_plan_json" python -c 'import json,os; data=json.loads(os.environ["RUNTIME_ALIAS_PLAN_JSON"]); raise SystemExit(0 if data.get("primary_profile", {}).get("key") == "forge" and "shield" in data.get("composite_runtime", {}).get("injected_profiles", []) else 1)' &&
    MINI_OS_ALIAS_PLAN_JSON="$mini_os_alias_plan_json" python -c 'import json,os; data=json.loads(os.environ["MINI_OS_ALIAS_PLAN_JSON"]); raise SystemExit(0 if data.get("primary") == "forge" and "shield" in data.get("capabilities", []) else 1)' &&
    grep -q '"schema": "sevenos.profile-isolation.v1"' <<<"$profile_isolation_json" &&
-   PROFILE_ISOLATION_JSON="$profile_isolation_json" python -c 'import json,os; data=json.loads(os.environ["PROFILE_ISOLATION_JSON"]); overlays=data.get("profile_overlays",{}); containers=data.get("profile_containers",{}); strict=data.get("strict_runtime",{}); raise SystemExit(0 if overlays and containers and strict and all(item.get("state")=="prepared" for item in overlays.values()) and all(item.get("state")=="prepared" and item.get("launch_mode")=="available-via-seven-profile-run-container" for item in containers.values()) and all(item.get("score",0) >= 70 for item in strict.values()) else 1)' &&
+   PROFILE_ISOLATION_JSON="$profile_isolation_json" python -c 'import json,os; data=json.loads(os.environ["PROFILE_ISOLATION_JSON"]); overlays=data.get("profile_overlays",{}); containers=data.get("profile_containers",{}); strict=data.get("strict_runtime",{}); equinox=containers.get("equinox",{}); other=[item for key,item in containers.items() if key!="equinox"]; raise SystemExit(0 if overlays and containers and strict and all(item.get("state")=="prepared" for item in overlays.values()) and equinox.get("state")=="system" and equinox.get("launch_mode")=="host-system" and all(item.get("state")=="prepared" and item.get("launch_mode")=="available-via-seven-profile-run-container" for item in other) and all(item.get("score",0) >= 70 for item in strict.values()) else 1)' &&
    grep -q 'seven-profile-run' "$ROOT_DIR/bin/seven-profile-run" &&
    grep -q '^#!/usr/bin/python3' "$ROOT_DIR/bin/seven-profile-run" &&
    grep -q 'sevenos.profile-run.v1' "$ROOT_DIR/bin/seven-profile-run" &&
@@ -2575,6 +2655,15 @@ if grep -q 'Workspace:' <<<"$profile_show_output" &&
    grep -q 'profile-home-cache-data' "$ROOT_DIR/bin/seven-profile-run" &&
    grep -Fq 'seven profile exec <profile> [--container|--rootfs|--independent] [--ephemeral] [--workspace PATH|--workspace-profile]' "$ROOT_DIR/profiles/profile-manager.sh" &&
    grep -q 'profile-folder-grants.json' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'equinox_system_ready' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'runtime_contract' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'host-system' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'HOST_CONFIG_HOME' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'sevenos.system-profile.v1' "$ROOT_DIR/scripts/system-profile.sh" &&
+   grep -q 'system-profile' "$ROOT_DIR/install.sh" &&
+   grep -q 'system-profile' "$ROOT_DIR/bin/seven" &&
+   grep -q 'seven-system-profile' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q '"system_profile"' "$ROOT_DIR/scripts/status.sh" &&
    grep -q 'external_folders' "$ROOT_DIR/bin/seven-profile-run" &&
    grep -q 'profile.grant.repo' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'profile.open.repo' "$ROOT_DIR/scripts/actions.sh" &&

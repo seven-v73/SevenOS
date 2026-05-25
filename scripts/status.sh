@@ -221,6 +221,18 @@ command_json() {
     "$(printf '%s' "$state" | json_escape)"
 }
 
+system_profile_json() {
+  if [[ -x "$ROOT_DIR/scripts/system-profile.sh" ]]; then
+    "$ROOT_DIR/scripts/system-profile.sh" status --json 2>/dev/null || printf '{"schema":"sevenos.system-profile.v1","ready":false,"error":"status failed"}'
+  else
+    printf '{"schema":"sevenos.system-profile.v1","ready":false,"error":"script missing"}'
+  fi
+}
+
+system_profile_line() {
+  system_profile_json | python -c 'import json,sys; data=json.load(sys.stdin); system=data.get("system_profile",{}); detail="Equinox {} / {} / {}".format(system.get("state","missing"), system.get("launch_mode","missing"), system.get("engine","missing")); print(("OK" if data.get("ready") else "MISS") + "\t" + detail)'
+}
+
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   printf '{'
   printf '"identity":{'
@@ -260,6 +272,10 @@ if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   printf ','
   service_json firewall ufw.service
   printf '],'
+
+  printf '"system_profile":'
+  system_profile_json
+  printf ','
 
   IFS=$'\t' read -r ufw_state ufw_detail < <(ufw_status_line) || true
   printf '"security":{'
@@ -304,6 +320,11 @@ if command -v sevenosctl >/dev/null 2>&1; then
 fi
 
 section "Profiles"
+IFS=$'\t' read -r system_profile_state system_profile_detail < <(system_profile_line) || true
+case "$system_profile_state" in
+  OK) ok "$system_profile_detail" ;;
+  *) missing "$system_profile_detail"; printf '  run: seven system-profile apply --yes\n' ;;
+esac
 profile_status "Base desktop" "$ROOT_DIR/scripts/packages-base.txt"
 profile_status "DEV" "$ROOT_DIR/scripts/packages-dev.txt"
 profile_status "CYBERSECURITY" "$ROOT_DIR/scripts/packages-cybersecurity.txt"

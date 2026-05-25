@@ -8,6 +8,15 @@ zip
 rsync
 networkmanager
 network-manager-applet
+nm-connection-editor
+wpa_supplicant
+iwd
+iw
+wireless-regdb
+networkmanager-openvpn
+modemmanager
+usb_modeswitch
+mobile-broadband-provider-info
 bluez
 bluez-utils
 blueman
@@ -77,7 +86,10 @@ flatpak
 fastfetch
 btop
 pavucontrol
+inter-font
 ttf-jetbrains-mono-nerd
 noto-fonts
+noto-fonts-extra
+noto-fonts-cjk
 noto-fonts-emoji
 papirus-icon-theme

@@ -16,6 +16,16 @@ wget
 nano
 vim
 networkmanager
+network-manager-applet
+nm-connection-editor
+wpa_supplicant
+iwd
+iw
+wireless-regdb
+networkmanager-openvpn
+modemmanager
+usb_modeswitch
+mobile-broadband-provider-info
 openssh
 man-db
 man-pages
@@ -41,4 +51,10 @@ wl-clipboard
 swaylock
 swayidle
 fastfetch
+fontconfig
+inter-font
 ttf-jetbrains-mono-nerd
+noto-fonts
+noto-fonts-extra
+noto-fonts-cjk
+noto-fonts-emoji

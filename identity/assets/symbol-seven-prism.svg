@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">SevenOS Seven Prism Symbol</title>
+  <desc id="desc">Premium SevenOS prism symbol: one system splitting into focused mini OS worlds.</desc>
+  <defs>
+    <linearGradient id="bg" x1="28" y1="20" x2="232" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="0.52" stop-color="#09090B"/>
+      <stop offset="1" stop-color="#05070A"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="54" y1="42" x2="206" y2="214" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4DA3FF"/>
+      <stop offset="0.48" stop-color="#7A5CFF"/>
+      <stop offset="1" stop-color="#00D4FF"/>
+    </linearGradient>
+    <linearGradient id="facet-a" x1="82" y1="58" x2="128" y2="198" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EDEDED" stop-opacity=".88"/>
+      <stop offset=".45" stop-color="#4DA3FF" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#4DA3FF" stop-opacity=".16"/>
+    </linearGradient>
+    <linearGradient id="facet-b" x1="128" y1="54" x2="174" y2="198" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7A5CFF" stop-opacity=".50"/>
+      <stop offset="1" stop-color="#00D4FF" stop-opacity=".20"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="46" y1="194" x2="210" y2="194" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4DA3FF" stop-opacity="0"/>
+      <stop offset=".18" stop-color="#4DA3FF" stop-opacity=".65"/>
+      <stop offset=".52" stop-color="#7A5CFF" stop-opacity=".72"/>
+      <stop offset=".84" stop-color="#00D4FF" stop-opacity=".65"/>
+      <stop offset="1" stop-color="#00D4FF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.30 0 0 0 0 0.62 0 0 0 0 1.00 0 0 0 .46 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <circle cx="128" cy="128" r="94" fill="#4DA3FF" opacity=".045"/>
+  <path d="M128 30 210 78v100l-82 48-82-48V78z" fill="#0E111A" stroke="url(#edge)" stroke-width="7" stroke-linejoin="round" filter="url(#soft-glow)"/>
+  <path d="M128 49 190 86v77l-62 37-62-37V86z" fill="#101522" stroke="#EDEDED" stroke-opacity=".18" stroke-width="2.4" stroke-linejoin="round"/>
+  <path d="M128 49 66 86l62 37z" fill="url(#facet-a)"/>
+  <path d="M128 49 190 86l-62 37z" fill="url(#facet-b)"/>
+  <path d="M66 86v77l62-40z" fill="#4DA3FF" fill-opacity=".14"/>
+  <path d="M190 86v77l-62-40z" fill="#00D4FF" fill-opacity=".13"/>
+  <path d="M66 163l62 37v-77z" fill="#7A5CFF" fill-opacity=".18"/>
+  <path d="M190 163l-62 37v-77z" fill="#00D4FF" fill-opacity=".18"/>
+  <path d="M128 49v151M66 86l124 77M190 86 66 163" fill="none" stroke="#FFFFFF" stroke-opacity=".22" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M54 205c24-16 49-24 74-24s50 8 74 24" fill="none" stroke="url(#beam)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M128 25v-9M128 240v-9M28 128h9M219 128h9" stroke="#4DA3FF" stroke-opacity=".48" stroke-width="4.5" stroke-linecap="round"/>
+</svg>

@@ -26,6 +26,23 @@ ROOT_DIR="$(resolve_root)"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
 HELP_DOC="$STATE_DIR/help-center.md"
 
+prepare_help_state() {
+  local probe=""
+  if mkdir -p "$STATE_DIR" 2>/dev/null; then
+    probe="$STATE_DIR/.sevenos-help-write-test"
+    if (: >"$probe") 2>/dev/null; then
+      rm -f "$probe"
+      return 0
+    fi
+  fi
+
+  STATE_DIR="/tmp/sevenos-help-${UID:-user}"
+  HELP_DOC="$STATE_DIR/help-center.md"
+  mkdir -p "$STATE_DIR"
+}
+
+prepare_help_state
+
 language_code() {
   local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
   local config="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.conf"
@@ -48,6 +65,12 @@ if [[ "$LANG_CODE" == "fr" ]]; then
 󰐥  Installer SevenOS    seven new
 󰖳  Configurer Windows Bridge    seven windows setup
 󰘦  Guide complet SevenOS    Documentation générale
+󰱼  Rechercher dans l’aide    Recherche locale
+󰒓  Manuel système SevenOS    Réseau, polices, paquets, recovery
+󰩂  FAQ locale SevenOS    Questions fréquentes
+󰘦  Glossaire SevenOS    Vocabulaire SevenOS
+󰆍  Chapitres disponibles    Entrées directes du manuel
+󰆍  Mémo rapide SevenOS    Cheat sheet
 󰚩  Architecture SevenOS    Shell, profils, rootfs, actions
 󰌘  Actions SevenOS    Registre d'actions, Spotlight, Waybar
 󰔎  Thèmes et apparence    Clair, sombre, wallpaper, terminal
@@ -95,6 +118,12 @@ else
 󰐥  Install SevenOS    seven new
 󰖳  Setup Windows Bridge    seven windows setup
 󰘦  Complete SevenOS Guide    General documentation
+󰱼  Search Local Help    Local search
+󰒓  SevenOS System Manual    Network, fonts, packages, recovery
+󰩂  SevenOS FAQ    Frequent questions
+󰘦  SevenOS Glossary    SevenOS vocabulary
+󰆍  Available Chapters    Direct manual entries
+󰆍  SevenOS Cheat Sheet    Quick reference
 󰚩  SevenOS Architecture    Shell, profiles, rootfs, actions
 󰌘  SevenOS Actions    Action registry, Spotlight, Waybar
 󰔎  Themes and Appearance    Light, dark, wallpaper, terminal
@@ -170,6 +199,12 @@ SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS aut
 | Thèmes et apparence | clair/sombre, wallpaper, terminal transparent |
 | Mini OS SevenOS | isolation, rootfs, profils, collaboration |
 | Applications SevenOS | Files, Reader, Store, Terminal, SevenAI |
+| Manuel système | réseau, polices, paramètres, mises à jour, sauvegarde, ISO |
+| Paquets et installation | Equinox global, mini OS isolés, pacman/yay/paru |
+| Sécurité et Windows | Shield, sandbox, Windows Bridge, VM |
+| FAQ locale | réponses aux questions fréquentes sans internet |
+| Glossaire SevenOS | vocabulaire système et mots à connaître |
+| Développement SevenOS | checks, phase gate, contribution locale |
 | Diagnostics | réparation, checks, pré-push |
 | Dépannage rapide | solutions directes aux problèmes fréquents |
 
@@ -195,6 +230,56 @@ seven setup new-device --yes
 seven windows setup
 seven windows setup --iso ~/Téléchargements/Win11.iso
 ```
+
+Installation depuis GitHub :
+
+```bash
+git clone https://github.com/seven-v73/SevenOS.git
+cd SevenOS
+chmod +x install.sh bootstrap.sh profiles/*.sh
+./install.sh new-device --yes
+```
+
+Ne lance pas `sudo ./install.sh ...`. SevenOS demande les droits admin
+uniquement pendant les étapes qui en ont besoin.
+
+Après installation :
+
+```bash
+seven post-install
+seven status
+seven doctor
+seven profile-rootfs verify all
+```
+
+Préparer ou réparer le Wi-Fi :
+
+```bash
+./install.sh network --yes
+seven post-install
+```
+
+Construire une ISO depuis une machine déjà préparée :
+
+```bash
+./install.sh iso-tools --yes
+./install.sh iso
+```
+
+Exigences actuelles :
+
+- Arch Linux ou système basé sur Arch pour la couche post-install actuelle.
+- `pacman`, `sudo` et une connexion internet.
+- 8 Go de RAM minimum, 16 Go recommandés.
+- Virtualisation CPU pour Windows Bridge et les machines virtuelles.
+
+État produit :
+
+- SevenOS est prêt pour les tests sur machines réelles.
+- SevenOS n'est pas encore présenté comme ISO publique finale.
+- Equinox est le profil système/admin.
+- Les autres mini OS restent autonomes et séparés par état, rootfs, launchers
+  et politiques de paquets.
 
 ## Lecture rapide
 
@@ -255,15 +340,26 @@ Fichiers de référence :
 
 ## Raccourcis essentiels
 
+Dans SevenOS, `Super` désigne la touche Windows/Command du clavier. Ces
+raccourcis sont la base commune du profil Hyprland SevenOS. Les mini OS peuvent
+ajouter des actions contextuelles, mais cette carte reste le point de départ.
+
+### Lancement et navigation
+
 | Action | Raccourci |
 | --- | --- |
 | Apps / Launchpad | Super |
+| Apps / Launchpad, alternative | Super+A |
 | Spotlight | Super+Space |
+| Spotlight, alternative | Super+W ou Super+R |
 | Aide SevenOS | Super+H |
 | Seven Hub | Super+Shift+H |
 | Fichiers | Super+E |
+| Menu Fichiers | Super+Shift+E |
+| Fichiers du profil actif | Super+Ctrl+E |
 | Dock | Super+D |
 | Aperçu fenêtres | Super+Tab |
+| Aperçu fenêtres, alternative | Super+V |
 | Réglages rapides | Super+N ou Super+O |
 | Paramètres généraux | Super+I |
 | Paramètres | Super+, |
@@ -273,35 +369,84 @@ Fichiers de référence :
 | Transparence terminal | Ctrl+Shift+B dans Seven Terminal |
 | Menu énergie | Super+Shift+P |
 | Verrouiller | Super+L |
+| Suspendre | Super+Shift+L |
+| Mode Shield | Super+C |
+| Shield HUD | Super+Ctrl+C |
 
-## Fenêtres et workspaces
+### Fenêtres et workspaces
 
 | Action | Raccourci |
 | --- | --- |
 | Fermer fenêtre | Super+Q |
+| Quitter la session Hyprland | Super+M |
 | Plein écran | Super+F |
 | Smart maximize | Super+Shift+F |
 | Basculer flottant/tiling | Super+Alt+Space |
 | Menu layout | Super+Alt+L |
 | Contrôles fenêtre | Super+Alt+D |
+| Pseudo tiling | Super+P |
+| Scratchpad | Super+S |
+| Envoyer vers scratchpad | Super+Alt+S |
 | Focus gauche/droite/haut/bas | Super+Flèches |
 | Déplacer fenêtre | Super+Shift+Flèches |
 | Workspace 1-9 | Super+1..9 |
-| Déplacer vers workspace | Super+Shift+1..9 |
+| Déplacer vers workspace 1-9 | Super+Shift+1..9 |
 | Workspace suivant/précédent | Super+Ctrl+Droite/Gauche |
-| Scratchpad | Super+S |
+| Workspace suivant/précédent, alternative | Super+PageDown / Super+PageUp |
+| Déplacer vers workspace suivant/précédent | Super+Shift+PageDown / Super+Shift+PageUp |
+| Déplacer fenêtre à la souris | Super+clic gauche |
+| Redimensionner à la souris | Super+clic droit |
 
-## Capture et enregistrement
+### Capture, couleur et enregistrement
 
 | Action | Raccourci |
 | --- | --- |
-| Screenshot Save | Print |
+| Screenshot zone vers fichier | Print |
 | Screenshot plein écran | Super+Print |
-| Screenshot avec édition | Super+Shift+S |
-| Screenshot Copy | Super+Ctrl+S |
+| Screenshot zone avec édition | Super+Shift+S |
+| Screenshot zone vers presse-papiers | Super+Ctrl+S |
+| Sélecteur de couleur | Super+Shift+C |
 | Record Area | Super+Shift+R |
 | Record Full | Super+Ctrl+Shift+R |
-| Stop Recording | seven-recorder stop |
+| Stop Recording | `seven-recorder stop` |
+
+### Système, diagnostics et session
+
+| Action | Raccourci |
+| --- | --- |
+| Recharger Hyprland | Super+Alt+R |
+| Informations système | Super+Shift+I |
+| Statut Hyprland SevenOS | Super+Shift+U |
+| Augmenter volume | Touche volume + |
+| Baisser volume | Touche volume - |
+| Mute audio | Touche mute |
+| Augmenter luminosité | Touche luminosité + |
+| Baisser luminosité | Touche luminosité - |
+
+### Raccourcis internes des apps SevenOS
+
+| App | Raccourci | Action |
+| --- | --- | --- |
+| Seven Terminal | Ctrl+Shift+T | nouvel onglet |
+| Seven Terminal | Ctrl+Shift+W | fermer onglet/pane |
+| Seven Terminal | Ctrl+Shift+F | recherche |
+| Seven Terminal | Ctrl+Shift+P ou Ctrl+Shift+Space | palette |
+| Seven Terminal | Ctrl+Shift+B | transparent/opaque |
+| Seven Terminal | Ctrl+Plus / Ctrl+Minus / Ctrl+0 | zoom texte |
+| Seven Reader | Ctrl+F | recherche |
+| Seven Reader | Ctrl+B | marque-page |
+| Seven Reader | Ctrl+N | note |
+| Seven Launchpad | Esc | fermer |
+| Seven Launchpad | Ctrl+F | recherche |
+| Seven Launchpad | Entrée | ouvrir la sélection |
+| Seven Launchpad | 1..9 | filtre/catégorie rapide |
+
+Pour voir cette section directement :
+
+```bash
+seven-help shortcuts
+seven-help search "Super+Shift"
+```
 
 ## Barre SevenOS et panneau de contrôle
 
@@ -569,12 +714,409 @@ seven ai "prépare un espace Forge pour coder"
 `seven` orchestre l'OS. `sevenpkg` gère les couches logicielles et
 meta-packages SevenOS.
 
+Modèle d'installation :
+
+- Equinox utilise la portée système globale : pacman, yay, paru et paquets Arch
+  peuvent servir de base commune.
+- Forge, Shield, Studio, Baobab, Windows et Pulse installent leurs paquets dans
+  leur racine profilée quand tu utilises `sevenpkg --profile`.
+- Les apps installées dans un mini OS ne polluent pas les autres mini OS.
+- Les apps installées globalement par Equinox peuvent être exposées aux mini OS
+  seulement quand SevenOS le décide ou quand l'utilisateur l'autorise.
+
 ```bash
 seven --help
 sevenpkg status
 sevenpkg plan --json
+sevenpkg profile-limits
+sevenpkg install --profile forge htop --source pacman --preview
+sevenpkg install --profile studio blender --source paru --preview
+sevenpkg remove --profile forge htop --preview
 sevenpkg install forge
 sevenpkg transaction plan forge --json
+```
+
+## Manuel système
+
+Cette section regroupe les gestes qui doivent rester locaux à SevenOS. Elle est
+faite pour éviter de chercher sur internet quand un élément du système ne se
+comporte pas comme prévu.
+
+### Réglages et surfaces publiques
+
+| Besoin | Surface | Commande |
+| --- | --- | --- |
+| Paramètres généraux | SevenOS Settings | `seven settings` |
+| Supprimer une app sans terminal | Réglages > Suppression | `seven settings` |
+| Installer une app | SevenStore | `seven store` |
+| Lancer une app ou action | Spotlight | `seven spotlight` |
+| Voir les mini OS | SevenOS Home | `seven home` |
+| Changer de mini OS | Profile Center | `seven profile center` |
+| Aide locale | Help Center | `seven-help-native` |
+
+### Réseau et Wi-Fi
+
+SevenOS utilise NetworkManager comme couche bas niveau, mais l'utilisateur doit
+passer par SevenOS Settings, les réglages rapides ou `seven network`.
+
+```bash
+seven network status
+seven network status --json
+seven network repair
+seven network repair --yes
+./install.sh network --yes
+seven-wifi status-json
+seven-quick-settings wifi
+```
+
+Si le Wi-Fi n'apparaît pas après une installation sur une nouvelle machine :
+
+1. Lance `./install.sh network --yes`.
+2. Redémarre si le pilote ou NetworkManager vient d'être installé.
+3. Vérifie avec `seven network status`.
+4. Ouvre `seven-quick-settings wifi` pour connecter le réseau.
+5. Lance `seven post-install` pour confirmer que SevenOS voit le réseau.
+
+### Polices et rendu macOS-like
+
+SevenOS garde les rôles typographiques dans le système afin que l'apparence ne
+dépende pas de la machine d'installation.
+
+```bash
+seven fonts status
+seven fonts status --json
+seven fonts apply-default
+seven fonts import ~/Downloads/MaPolice.ttf
+seven fonts import ~/Downloads/DossierDePolices
+seven fonts refresh
+seven fonts prefs
+seven fonts open
+```
+
+Si une police ne s'applique pas :
+
+1. Lance `seven fonts apply-default`.
+2. Lance `seven fonts refresh`.
+3. Ferme puis rouvre l'application concernée.
+4. Lance `seven post-install` pour voir si un paquet de police manque.
+
+### Thème, wallpaper et boot
+
+```bash
+./install.sh theme dark
+./install.sh theme light
+seven theme doctor
+seven-wallpaper status
+seven-wallpaper refresh
+./install.sh branding
+./install.sh boot-splash
+```
+
+Le thème SevenOS synchronise GTK, Qt, terminal, Waybar, Rofi, Mako, wallpaper et
+icônes. Si seulement une application est incohérente, commence par `seven theme
+doctor`. Si toute l'interface est incohérente, utilise `seven repair ux --apply`.
+
+### Mises à jour, santé et récupération
+
+```bash
+seven update
+seven update --json
+seven lifecycle
+seven health
+seven recovery
+seven support
+seven state --json
+seven events --limit 30
+```
+
+SevenOS préfère les routes `seven update`, `seven recovery` et `seven health`
+aux commandes backend directes pour les utilisateurs. Les commandes Arch restent
+disponibles dans Equinox pour l'admin système.
+
+### Sauvegarde et migration
+
+```bash
+./install.sh migrate-plan
+./install.sh migrate-backup
+seven manifest
+seven cloud
+seven cloud --json
+```
+
+Avant une grosse modification, lance `./install.sh migrate-plan`. Pour protéger
+l'état utilisateur SevenOS, lance `./install.sh migrate-backup`.
+
+### ISO, installateur et canal de release
+
+```bash
+./install.sh installer-stack --yes
+./install.sh iso-tools --yes
+./install.sh iso
+seven installer status
+seven installer plan
+seven installer runtime
+seven release
+seven channel
+seven distribution
+```
+
+SevenOS peut être une bonne machine de test avant d'être une ISO publique. La
+commande `seven distribution` dit si l'état courant ressemble à une distribution
+quotidienne, à une release candidate ou à une couche de développement.
+
+## Paquets et installation
+
+SevenOS sépare trois cas :
+
+| Cas | Où installer | Commande conseillée |
+| --- | --- | --- |
+| App pour tout le système | Equinox/global | `sevenpkg install --global <pkg>` |
+| App pour un mini OS | rootfs du profil | `sevenpkg install --profile forge <pkg>` |
+| App graphique grand public | SevenStore | `seven store` |
+
+Commandes utiles :
+
+```bash
+sevenpkg search vlc
+sevenpkg info forge
+sevenpkg status
+sevenpkg sources
+sevenpkg doctor
+sevenpkg plan
+sevenpkg optional
+sevenpkg history
+sevenpkg owner nmap
+sevenpkg profile-limits
+sevenpkg profile-limits forge
+sevenpkg profile-packages
+sevenpkg profile-packages forge --query htop
+sevenpkg install --profile shield nmap --source pacman --preview
+sevenpkg install --profile studio blender --source paru --preview
+sevenpkg profile-install forge nodejs npm --source pacman --preview
+sevenpkg profile-remove forge nodejs --preview
+sevenpkg remove --profile forge htop --preview
+sevenpkg update --profile forge --preview
+sevenpkg update --global --preview
+```
+
+Règles importantes :
+
+- Equinox est l'espace admin : il peut utiliser pacman, yay et paru directement.
+- Les mini OS passent par `sevenpkg --profile` pour garder leurs paquets privés.
+- `--preview` montre l'impact avant modification.
+- Une suppression dans un mini OS est bloquée si le paquet n'est pas installé
+  dans son rootfs.
+- `sevenpkg profile-limits` explique ce qui est autorisé par profil.
+- `sevenpkg profile-packages` montre ce qui est réellement installé par profil.
+
+## Sécurité, Shield et Windows
+
+### Shield et sécurité
+
+Shield est réservé aux usages autorisés : audit, forensic, sandbox, rapports,
+analyse et durcissement. Il ne remplace pas les règles légales ou
+professionnelles ; il organise les outils pour éviter de casser l'OS principal.
+
+```bash
+seven shield status
+seven shield plan
+seven shield audit
+seven shield tools
+seven shield lab --preset web
+seven shield lab --preset forensics
+./install.sh security --yes
+./install.sh cybersecurity core --yes
+./install.sh cybersecurity sandbox --yes
+```
+
+Pour les outils spécialisés BlackArch :
+
+```bash
+./install.sh blackarch-setup --dry-run
+./install.sh blackarch-setup --yes
+./install.sh blackarch-category webapp --dry-run
+./install.sh blackarch-tool feroxbuster --dry-run
+```
+
+BlackArch est volontairement optionnel car il ajoute un dépôt externe.
+
+### Windows Bridge
+
+SevenOS privilégie les apps Windows légères via Wine/Bottles/Proton, puis passe
+à KVM/QEMU quand il faut un Windows complet.
+
+```bash
+seven windows setup
+seven windows setup --iso ~/Downloads/Win11.iso
+seven windows status
+seven windows plan
+seven windows repair
+seven windows network
+seven run ~/Downloads/setup.exe
+./install.sh windows-mode guide
+./install.sh vm-check
+./install.sh vm-network
+```
+
+SevenOS ne fournit pas d'image Windows, ne contourne pas l'activation et ne met
+pas de clé produit. L'utilisateur fournit son ISO officielle si une VM complète
+est nécessaire.
+
+## FAQ locale
+
+### Pourquoi SevenOS me dit de ne pas utiliser sudo devant install.sh ?
+
+L'installateur doit connaître l'utilisateur réel pour écrire les fichiers dans
+le bon HOME, préparer les mini OS, appliquer les polices et créer les services
+utilisateur. Lance `./install.sh new-device --yes` comme utilisateur normal :
+SevenOS demandera les droits admin seulement pour pacman, services système ou
+fichiers protégés.
+
+### Pourquoi mon Wi-Fi ne fonctionne pas après installation ?
+
+Sur une machine neuve, le paquet réseau, NetworkManager, le service ou le
+firmware peuvent manquer. Lance :
+
+```bash
+./install.sh network --yes
+seven network status
+seven-quick-settings wifi
+```
+
+Si un pilote vient d'être installé, redémarre puis lance `seven post-install`.
+
+### Pourquoi la police n'est pas identique à macOS ?
+
+SevenOS ne copie pas macOS ; il applique une pile de polices cohérente et
+stable. Si une machine n'a pas les polices ou le cache à jour :
+
+```bash
+seven fonts apply-default
+seven fonts refresh
+seven fonts status
+```
+
+### Où installer un logiciel ?
+
+Si le logiciel doit servir à tout le système, installe-le dans Equinox/global.
+S'il est lié à un mini OS, installe-le dans ce profil.
+
+```bash
+sevenpkg install --global firefox --preview
+sevenpkg install --profile forge nodejs --source pacman --preview
+sevenpkg install --profile studio blender --source paru --preview
+```
+
+### Pourquoi une app installée dans Forge n'apparaît pas dans Studio ?
+
+C'est volontaire. Les mini OS ont des racines et inventaires séparés. Pour
+partager une app globale, installe-la depuis Equinox/global puis laisse SevenOS
+l'exposer aux profils qui en ont besoin.
+
+### Comment supprimer une app sans terminal ?
+
+Ouvre `seven settings`, va dans la section Suppression, choisis le profil, puis
+supprime depuis l'interface. En terminal, l'équivalent est :
+
+```bash
+sevenpkg remove --profile forge <paquet> --preview
+```
+
+### Comment savoir si SevenOS est cassé ou juste incomplet ?
+
+Commence par les diagnostics rapides :
+
+```bash
+seven status
+seven doctor
+seven post-install
+seven health
+seven insights
+```
+
+Si le problème touche l'apparence, lance `seven repair ux --apply`. Si le
+problème touche le système, regarde `seven recovery`.
+
+### Pourquoi SevenOS parle encore d'Arch, pacman ou Hyprland ?
+
+SevenOS utilise ces technologies comme fondation. L'utilisateur public doit
+passer par SevenOS Settings, SevenStore, `seven` et `sevenpkg`. Equinox garde
+l'accès admin aux outils Arch pour ne pas enfermer l'utilisateur avancé.
+
+### Où sont les données des mini OS ?
+
+Les profils ont des dossiers dédiés sous l'état SevenOS et les conteneurs de
+profil. Les dossiers extérieurs doivent être ajoutés explicitement :
+
+```bash
+seven profile grant-folder forge ~/Projet --name Projet --rw
+seven profile folders forge
+seven profile open-folder forge ~/Projet
+```
+
+### Comment revenir à une interface propre ?
+
+```bash
+seven repair ux --apply
+seven hypr apply
+seven theme doctor
+seven-wallpaper refresh
+```
+
+## Glossaire SevenOS
+
+| Terme | Sens pratique |
+| --- | --- |
+| Equinox | profil principal, admin, quotidien, accès au HOME et aux paquets globaux |
+| Mini OS | espace spécialisé comme Forge, Shield, Studio, Baobab, Windows ou Pulse |
+| Profil actif | mini OS actuellement utilisé par l'interface et les actions |
+| Rootfs profilé | racine privée où un mini OS peut installer ses paquets |
+| Scope global | installation visible côté système, gérée par Equinox |
+| Scope profilé | installation limitée à un mini OS |
+| Grant | autorisation explicite pour partager un dossier externe avec un profil |
+| Bridge | passage contrôlé entre mini OS ou vers Windows |
+| SevenStore | surface graphique pour installer et gérer les apps |
+| sevenpkg | gestionnaire SevenOS au-dessus de pacman, yay, paru, Flatpak et profils |
+| SevenOS Settings | centre de réglages normal utilisateur |
+| SevenOS Home | porte d'entrée visuelle des mini OS |
+| Spotlight | recherche globale d'apps, actions et fichiers |
+| Shield | profil cybersécurité autorisée et sandbox |
+| Windows Bridge | couche Wine/Bottles/Proton/KVM pour apps Windows |
+| Recovery | route de réparation et restauration SevenOS |
+| Post-install | vérification des dépendances, services, polices, réseau et surfaces |
+
+## Développement SevenOS
+
+Ces commandes servent au développement du projet, aux tests avant push et aux
+audits plus longs. Elles ne sont pas nécessaires à un utilisateur normal.
+
+```bash
+seven smoke
+seven smoke --json
+seven pre-push
+seven pre-push full
+seven b3 status
+seven b3 plan
+seven b3 doctor
+seven phase-gate
+seven autonomy
+seven mask
+seven surfaces
+seven routes
+seven foundations
+seven architecture doctor
+./scripts/ux-check.sh
+./scripts/check.sh
+```
+
+Pour savoir quoi améliorer en priorité :
+
+```bash
+seven insights
+seven control
+seven control --safe-only --limit 5
+seven improve
+seven improve daily
 ```
 
 ## Diagnostics et réparation
@@ -665,6 +1207,12 @@ SevenOS is a personal OS built around native surfaces, autonomous mini OS profil
 | Themes And Appearance | light/dark, wallpaper, transparent terminal |
 | SevenOS Mini OS | isolation, rootfs, profiles, collaboration |
 | SevenOS Applications | Files, Reader, Store, Terminal, SevenAI |
+| System Manual | network, fonts, settings, updates, backup, ISO |
+| Packages And Install | global Equinox, isolated mini OS, pacman/yay/paru |
+| Security And Windows | Shield, sandbox, Windows Bridge, VM |
+| Local FAQ | frequent answers without internet |
+| SevenOS Glossary | system vocabulary and words to know |
+| SevenOS Development | checks, phase gate, local contribution |
 | Diagnostics | repair, checks, pre-push |
 | Quick Troubleshooting | direct fixes for common problems |
 
@@ -690,6 +1238,56 @@ seven setup new-device --yes
 seven windows setup
 seven windows setup --iso ~/Downloads/Win11.iso
 ```
+
+Install from GitHub:
+
+```bash
+git clone https://github.com/seven-v73/SevenOS.git
+cd SevenOS
+chmod +x install.sh bootstrap.sh profiles/*.sh
+./install.sh new-device --yes
+```
+
+Do not run `sudo ./install.sh ...`. SevenOS asks for administrator privileges
+only during the steps that need them.
+
+After installation:
+
+```bash
+seven post-install
+seven status
+seven doctor
+seven profile-rootfs verify all
+```
+
+Prepare or repair Wi-Fi:
+
+```bash
+./install.sh network --yes
+seven post-install
+```
+
+Build an ISO from an already prepared host:
+
+```bash
+./install.sh iso-tools --yes
+./install.sh iso
+```
+
+Current requirements:
+
+- Arch Linux or Arch-based host for the current post-install layer.
+- `pacman`, `sudo` and an internet connection.
+- 8 GB RAM minimum, 16 GB recommended.
+- CPU virtualization for Windows Bridge and virtual machines.
+
+Product state:
+
+- SevenOS is ready for real-machine testing.
+- SevenOS is not yet presented as a final public ISO.
+- Equinox is the system/admin profile.
+- Other mini OS profiles stay autonomous and separated by state, rootfs,
+  launchers and package policies.
 
 ## Quick Reading
 
@@ -750,15 +1348,26 @@ Reference files:
 
 ## Essential Shortcuts
 
+In SevenOS, `Super` means the Windows/Command key. These shortcuts are the
+shared SevenOS Hyprland base. Mini OS profiles can add contextual actions, but
+this map is the starting point.
+
+### Launch And Navigation
+
 | Action | Shortcut |
 | --- | --- |
 | Apps / Launchpad | Super |
+| Apps / Launchpad, alternative | Super+A |
 | Spotlight | Super+Space |
+| Spotlight, alternative | Super+W or Super+R |
 | SevenOS Help | Super+H |
 | Seven Hub | Super+Shift+H |
 | Files | Super+E |
+| Files menu | Super+Shift+E |
+| Active profile files | Super+Ctrl+E |
 | Dock | Super+D |
 | Window overview | Super+Tab |
+| Window overview, alternative | Super+V |
 | Quick Settings | Super+N or Super+O |
 | General Settings | Super+I |
 | Settings | Super+, |
@@ -768,35 +1377,84 @@ Reference files:
 | Terminal Transparency | Ctrl+Shift+B inside Seven Terminal |
 | Power menu | Super+Shift+P |
 | Lock screen | Super+L |
+| Suspend | Super+Shift+L |
+| Shield mode | Super+C |
+| Shield HUD | Super+Ctrl+C |
 
-## Windows And Workspaces
+### Windows And Workspaces
 
 | Action | Shortcut |
 | --- | --- |
 | Close window | Super+Q |
+| Exit Hyprland session | Super+M |
 | Fullscreen | Super+F |
 | Smart maximize | Super+Shift+F |
 | Toggle floating/tiling | Super+Alt+Space |
 | Layout menu | Super+Alt+L |
 | Window controls | Super+Alt+D |
+| Pseudo tiling | Super+P |
+| Scratchpad | Super+S |
+| Send to scratchpad | Super+Alt+S |
 | Focus direction | Super+Arrow keys |
 | Move window | Super+Shift+Arrow keys |
 | Workspace 1-9 | Super+1..9 |
 | Move to workspace | Super+Shift+1..9 |
 | Next/previous workspace | Super+Ctrl+Right/Left |
-| Scratchpad | Super+S |
+| Next/previous workspace, alternative | Super+PageDown / Super+PageUp |
+| Move to next/previous workspace | Super+Shift+PageDown / Super+Shift+PageUp |
+| Move window with mouse | Super+left click |
+| Resize with mouse | Super+right click |
 
-## Screenshots And Recording
+### Screenshots, Color And Recording
 
 | Action | Shortcut |
 | --- | --- |
-| Screenshot Save | Print |
+| Screenshot area to file | Print |
 | Screenshot full screen | Super+Print |
-| Screenshot Edit | Super+Shift+S |
-| Screenshot Copy | Super+Ctrl+S |
+| Screenshot area with edit | Super+Shift+S |
+| Screenshot area to clipboard | Super+Ctrl+S |
+| Color picker | Super+Shift+C |
 | Record Area | Super+Shift+R |
 | Record Full | Super+Ctrl+Shift+R |
 | Stop Recording | seven-recorder stop |
+
+### System, Diagnostics And Session
+
+| Action | Shortcut |
+| --- | --- |
+| Reload Hyprland | Super+Alt+R |
+| System information | Super+Shift+I |
+| SevenOS Hyprland status | Super+Shift+U |
+| Raise volume | Volume up key |
+| Lower volume | Volume down key |
+| Mute audio | Mute key |
+| Raise brightness | Brightness up key |
+| Lower brightness | Brightness down key |
+
+### Internal SevenOS App Shortcuts
+
+| App | Shortcut | Action |
+| --- | --- | --- |
+| Seven Terminal | Ctrl+Shift+T | new tab |
+| Seven Terminal | Ctrl+Shift+W | close tab/pane |
+| Seven Terminal | Ctrl+Shift+F | search |
+| Seven Terminal | Ctrl+Shift+P or Ctrl+Shift+Space | palette |
+| Seven Terminal | Ctrl+Shift+B | transparent/solid |
+| Seven Terminal | Ctrl+Plus / Ctrl+Minus / Ctrl+0 | text zoom |
+| Seven Reader | Ctrl+F | search |
+| Seven Reader | Ctrl+B | bookmark |
+| Seven Reader | Ctrl+N | note |
+| Seven Launchpad | Esc | close |
+| Seven Launchpad | Ctrl+F | search |
+| Seven Launchpad | Enter | open selection |
+| Seven Launchpad | 1..9 | quick filter/category |
+
+Open this section directly:
+
+```bash
+seven-help shortcuts
+seven-help search "Super+Shift"
+```
 
 ## SevenOS Bar And Control Center
 
@@ -1061,12 +1719,406 @@ seven ai "prepare a Forge space for coding"
 `seven` orchestrates the OS. `sevenpkg` manages SevenOS software layers and
 meta-packages.
 
+Installation model:
+
+- Equinox uses the global system scope: pacman, yay, paru and Arch packages can
+  serve as the shared base.
+- Forge, Shield, Studio, Baobab, Windows and Pulse install packages inside
+  their profiled root when you use `sevenpkg --profile`.
+- Apps installed inside one mini OS do not pollute the other mini OS profiles.
+- Apps installed globally by Equinox can be exposed to mini OS profiles only
+  when SevenOS decides it or the user authorizes it.
+
 ```bash
 seven --help
 sevenpkg status
 sevenpkg plan --json
+sevenpkg profile-limits
+sevenpkg install --profile forge htop --source pacman --preview
+sevenpkg install --profile studio blender --source paru --preview
+sevenpkg remove --profile forge htop --preview
 sevenpkg install forge
 sevenpkg transaction plan forge --json
+```
+
+## System Manual
+
+This section groups the operations that should stay local to SevenOS. It exists
+so users do not need to search the web when part of the system is unclear.
+
+### Settings And Public Surfaces
+
+| Need | Surface | Command |
+| --- | --- | --- |
+| General settings | SevenOS Settings | `seven settings` |
+| Remove an app without terminal | Settings > Removal | `seven settings` |
+| Install an app | SevenStore | `seven store` |
+| Launch an app or action | Spotlight | `seven spotlight` |
+| See mini OS profiles | SevenOS Home | `seven home` |
+| Switch mini OS | Profile Center | `seven profile center` |
+| Local help | Help Center | `seven-help-native` |
+
+### Network And Wi-Fi
+
+SevenOS uses NetworkManager underneath, but users should use SevenOS Settings,
+Quick Settings or `seven network`.
+
+```bash
+seven network status
+seven network status --json
+seven network repair
+seven network repair --yes
+./install.sh network --yes
+seven-wifi status-json
+seven-quick-settings wifi
+```
+
+If Wi-Fi does not appear after installing on a new machine:
+
+1. Run `./install.sh network --yes`.
+2. Reboot if a driver or NetworkManager was just installed.
+3. Check with `seven network status`.
+4. Open `seven-quick-settings wifi` to connect.
+5. Run `seven post-install` to confirm SevenOS sees the network.
+
+### Fonts And macOS-Like Rendering
+
+SevenOS keeps typography roles in the system so the visual result does not
+depend on the machine used for installation.
+
+```bash
+seven fonts status
+seven fonts status --json
+seven fonts apply-default
+seven fonts import ~/Downloads/MyFont.ttf
+seven fonts import ~/Downloads/FontFolder
+seven fonts refresh
+seven fonts prefs
+seven fonts open
+```
+
+If a font is not applied:
+
+1. Run `seven fonts apply-default`.
+2. Run `seven fonts refresh`.
+3. Close and reopen the affected app.
+4. Run `seven post-install` to check for missing font packages.
+
+### Theme, Wallpaper And Boot
+
+```bash
+./install.sh theme dark
+./install.sh theme light
+seven theme doctor
+seven-wallpaper status
+seven-wallpaper refresh
+./install.sh branding
+./install.sh boot-splash
+```
+
+The SevenOS theme synchronizes GTK, Qt, terminal, Waybar, Rofi, Mako, wallpaper
+and icons. If only one app looks wrong, start with `seven theme doctor`. If the
+whole interface looks wrong, use `seven repair ux --apply`.
+
+### Updates, Health And Recovery
+
+```bash
+seven update
+seven update --json
+seven lifecycle
+seven health
+seven recovery
+seven support
+seven state --json
+seven events --limit 30
+```
+
+SevenOS prefers `seven update`, `seven recovery` and `seven health` over direct
+backend commands for users. Arch commands remain available in Equinox for
+system administration.
+
+### Backup And Migration
+
+```bash
+./install.sh migrate-plan
+./install.sh migrate-backup
+seven manifest
+seven cloud
+seven cloud --json
+```
+
+Before a major change, run `./install.sh migrate-plan`. To protect SevenOS user
+state, run `./install.sh migrate-backup`.
+
+### ISO, Installer And Release Channel
+
+```bash
+./install.sh installer-stack --yes
+./install.sh iso-tools --yes
+./install.sh iso
+seven installer status
+seven installer plan
+seven installer runtime
+seven release
+seven channel
+seven distribution
+```
+
+SevenOS can be a good test machine before it is a public ISO. The
+`seven distribution` command says whether the current state looks like a daily
+driver distribution, a release candidate or a development layer.
+
+## Packages And Install
+
+SevenOS separates three cases:
+
+| Case | Where to install | Recommended command |
+| --- | --- | --- |
+| App for the whole system | Equinox/global | `sevenpkg install --global <pkg>` |
+| App for one mini OS | profile rootfs | `sevenpkg install --profile forge <pkg>` |
+| Public graphical app | SevenStore | `seven store` |
+
+Useful commands:
+
+```bash
+sevenpkg search vlc
+sevenpkg info forge
+sevenpkg status
+sevenpkg sources
+sevenpkg doctor
+sevenpkg plan
+sevenpkg optional
+sevenpkg history
+sevenpkg owner nmap
+sevenpkg profile-limits
+sevenpkg profile-limits forge
+sevenpkg profile-packages
+sevenpkg profile-packages forge --query htop
+sevenpkg install --profile shield nmap --source pacman --preview
+sevenpkg install --profile studio blender --source paru --preview
+sevenpkg profile-install forge nodejs npm --source pacman --preview
+sevenpkg profile-remove forge nodejs --preview
+sevenpkg remove --profile forge htop --preview
+sevenpkg update --profile forge --preview
+sevenpkg update --global --preview
+```
+
+Important rules:
+
+- Equinox is the admin space: it can use pacman, yay and paru directly.
+- Mini OS profiles should use `sevenpkg --profile` to keep packages private.
+- `--preview` shows the impact before changing anything.
+- Removing from a mini OS is blocked if the package is not installed inside its
+  rootfs.
+- `sevenpkg profile-limits` explains what each profile allows.
+- `sevenpkg profile-packages` shows what is actually installed by profile.
+
+## Security, Shield And Windows
+
+### Shield And Security
+
+Shield is for authorized use: audit, forensic, sandboxing, reports, analysis and
+hardening. It does not replace legal or professional rules; it organizes tools
+so the main OS remains stable.
+
+```bash
+seven shield status
+seven shield plan
+seven shield audit
+seven shield tools
+seven shield lab --preset web
+seven shield lab --preset forensics
+./install.sh security --yes
+./install.sh cybersecurity core --yes
+./install.sh cybersecurity sandbox --yes
+```
+
+For specialized BlackArch tools:
+
+```bash
+./install.sh blackarch-setup --dry-run
+./install.sh blackarch-setup --yes
+./install.sh blackarch-category webapp --dry-run
+./install.sh blackarch-tool feroxbuster --dry-run
+```
+
+BlackArch is intentionally optional because it adds an external repository.
+
+### Windows Bridge
+
+SevenOS prefers lightweight Windows apps through Wine/Bottles/Proton, then uses
+KVM/QEMU when a complete Windows environment is required.
+
+```bash
+seven windows setup
+seven windows setup --iso ~/Downloads/Win11.iso
+seven windows status
+seven windows plan
+seven windows repair
+seven windows network
+seven run ~/Downloads/setup.exe
+./install.sh windows-mode guide
+./install.sh vm-check
+./install.sh vm-network
+```
+
+SevenOS does not provide Windows images, bypass activation or inject product
+keys. The user provides an official ISO when a full VM is required.
+
+## Local FAQ
+
+### Why does SevenOS say not to put sudo before install.sh?
+
+The installer needs to know the real user to write files into the right HOME,
+prepare mini OS profiles, apply fonts and create user services. Run
+`./install.sh new-device --yes` as a normal user: SevenOS asks for admin rights
+only for pacman, system services or protected files.
+
+### Why does Wi-Fi not work after install?
+
+On a fresh machine, network packages, NetworkManager, the service or firmware
+may be missing. Run:
+
+```bash
+./install.sh network --yes
+seven network status
+seven-quick-settings wifi
+```
+
+If a driver was just installed, reboot and run `seven post-install`.
+
+### Why does the font not look identical to macOS?
+
+SevenOS does not copy macOS; it applies a coherent and stable font stack. If a
+machine is missing fonts or cache refresh:
+
+```bash
+seven fonts apply-default
+seven fonts refresh
+seven fonts status
+```
+
+### Where should I install software?
+
+If the software is for the whole system, install it in Equinox/global. If it
+belongs to one mini OS, install it into that profile.
+
+```bash
+sevenpkg install --global firefox --preview
+sevenpkg install --profile forge nodejs --source pacman --preview
+sevenpkg install --profile studio blender --source paru --preview
+```
+
+### Why does an app installed in Forge not appear in Studio?
+
+That is intentional. Mini OS profiles have separate roots and inventories. To
+share a global app, install it from Equinox/global and let SevenOS expose it to
+profiles that need it.
+
+### How do I remove an app without terminal?
+
+Open `seven settings`, go to Removal, choose the profile, then remove from the
+interface. The terminal equivalent is:
+
+```bash
+sevenpkg remove --profile forge <package> --preview
+```
+
+### How do I know whether SevenOS is broken or just incomplete?
+
+Start with fast diagnostics:
+
+```bash
+seven status
+seven doctor
+seven post-install
+seven health
+seven insights
+```
+
+If the problem is visual, run `seven repair ux --apply`. If it is system-level,
+check `seven recovery`.
+
+### Why does SevenOS still mention Arch, pacman or Hyprland?
+
+SevenOS uses those technologies as foundations. Public users should use SevenOS
+Settings, SevenStore, `seven` and `sevenpkg`. Equinox keeps admin access to Arch
+tools so advanced users are not locked out.
+
+### Where is mini OS data stored?
+
+Profiles have dedicated folders under SevenOS state and profile containers.
+External folders must be added explicitly:
+
+```bash
+seven profile grant-folder forge ~/Project --name Project --rw
+seven profile folders forge
+seven profile open-folder forge ~/Project
+```
+
+### How do I return to a clean interface?
+
+```bash
+seven repair ux --apply
+seven hypr apply
+seven theme doctor
+seven-wallpaper refresh
+```
+
+## SevenOS Glossary
+
+| Term | Practical meaning |
+| --- | --- |
+| Equinox | main/admin/daily profile with HOME and global package access |
+| Mini OS | specialized space such as Forge, Shield, Studio, Baobab, Windows or Pulse |
+| Active profile | mini OS currently used by interface and actions |
+| Profile rootfs | private root where a mini OS can install packages |
+| Global scope | system-visible install managed by Equinox |
+| Profile scope | install limited to one mini OS |
+| Grant | explicit permission to share an external folder with a profile |
+| Bridge | controlled passage between mini OS profiles or toward Windows |
+| SevenStore | graphical surface to install and manage apps |
+| sevenpkg | SevenOS manager above pacman, yay, paru, Flatpak and profiles |
+| SevenOS Settings | normal-user control center |
+| SevenOS Home | visual front door for mini OS profiles |
+| Spotlight | global search for apps, actions and files |
+| Shield | authorized cybersecurity and sandbox profile |
+| Windows Bridge | Wine/Bottles/Proton/KVM layer for Windows apps |
+| Recovery | SevenOS repair and restore route |
+| Post-install | check for dependencies, services, fonts, network and surfaces |
+
+## SevenOS Development
+
+These commands are for project development, pre-push testing and longer audits.
+Normal users do not need them.
+
+```bash
+seven smoke
+seven smoke --json
+seven pre-push
+seven pre-push full
+seven b3 status
+seven b3 plan
+seven b3 doctor
+seven phase-gate
+seven autonomy
+seven mask
+seven surfaces
+seven routes
+seven foundations
+seven architecture doctor
+./scripts/ux-check.sh
+./scripts/check.sh
+```
+
+To see what to improve first:
+
+```bash
+seven insights
+seven control
+seven control --safe-only --limit 5
+seven improve
+seven improve daily
 ```
 
 ## Diagnostics And Repair
@@ -1153,6 +2205,12 @@ topic_heading() {
       themes) printf 'Thèmes et apparence\n' ;;
       mini-os|mini-os-collaboration) printf 'Mini OS SevenOS\n' ;;
       files|reader|store|terminal|ai|apps) printf 'Applications SevenOS\n' ;;
+      system|manual|network|fonts|backup|iso|installer) printf 'Manuel système\n' ;;
+      packages|software|sevenpkg) printf 'Paquets et installation\n' ;;
+      security|shield|windows-bridge) printf 'Sécurité, Shield et Windows\n' ;;
+      faq|questions) printf 'FAQ locale\n' ;;
+      glossary|vocabulary|vocabulaire) printf 'Glossaire SevenOS\n' ;;
+      dev|development|checks) printf 'Développement SevenOS\n' ;;
       diagnostics|troubleshooting) printf 'Diagnostics et réparation\n' ;;
       windows) printf 'Système de fenêtres et raccourcis\n' ;;
       *) return 1 ;;
@@ -1168,6 +2226,12 @@ topic_heading() {
       themes) printf 'Themes And Appearance\n' ;;
       mini-os|mini-os-collaboration) printf 'SevenOS Mini OS\n' ;;
       files|reader|store|terminal|ai|apps) printf 'SevenOS Applications\n' ;;
+      system|manual|network|fonts|backup|iso|installer) printf 'System Manual\n' ;;
+      packages|software|sevenpkg) printf 'Packages And Install\n' ;;
+      security|shield|windows-bridge) printf 'Security, Shield And Windows\n' ;;
+      faq|questions) printf 'Local FAQ\n' ;;
+      glossary|vocabulary|vocabulaire) printf 'SevenOS Glossary\n' ;;
+      dev|development|checks) printf 'SevenOS Development\n' ;;
       diagnostics|troubleshooting) printf 'Diagnostics And Repair\n' ;;
       windows) printf 'Window System And Shortcuts\n' ;;
       *) return 1 ;;
@@ -1195,12 +2259,219 @@ show_doc() {
   run_terminal "$viewer"
 }
 
+search_doc() {
+  if [[ "$#" -eq 0 || -z "${*// /}" ]]; then
+    if [[ "$LANG_CODE" == "fr" ]]; then
+      printf 'Usage: seven-help search <mot ou phrase>\n'
+      printf 'Exemple: seven-help search wifi\n'
+    else
+      printf 'Usage: seven-help search <word or phrase>\n'
+      printf 'Example: seven-help search wifi\n'
+    fi
+    return 1
+  fi
+
+  local query="$*"
+  write_help_doc all
+  awk -v query="$query" '
+    function lower(value) { return tolower(value) }
+    /^## / { section=$0 }
+    /^### / { subsection=$0 }
+    {
+      haystack=lower($0)
+      needle=lower(query)
+      if (index(haystack, needle) > 0) {
+        place=section
+        if (subsection != "") {
+          place=place " / " subsection
+        }
+        if (place != last_place) {
+          if (printed) {
+            print ""
+          }
+          print place
+          last_place=place
+          printed=1
+        }
+        print "  " $0
+      }
+    }
+    END {
+      if (!printed) {
+        exit 2
+      }
+    }
+  ' "$HELP_DOC" || {
+    local status="$?"
+    if [[ "$status" -eq 2 ]]; then
+      if [[ "$LANG_CODE" == "fr" ]]; then
+        printf 'Aucun résultat local pour: %s\n' "$query"
+        printf 'Astuce: seven-help topics\n'
+      else
+        printf 'No local result for: %s\n' "$query"
+        printf 'Tip: seven-help topics\n'
+      fi
+      return 0
+    fi
+    return "$status"
+  }
+}
+
+print_cheatsheet() {
+  if [[ "$LANG_CODE" == "fr" ]]; then
+    cat <<'EOF'
+SevenOS Cheat Sheet
+
+Premiers réflexes :
+  seven status                  état rapide
+  seven doctor                  diagnostic système
+  seven post-install            vérification après installation
+  seven health                  santé quotidienne
+  seven insights                priorités à corriger
+  seven-help topics             chapitres du manuel local
+  seven-help search wifi        chercher dans l'aide locale
+
+Installation et machine neuve :
+  ./install.sh new-device --yes préparation complète depuis le dépôt
+  seven new                     préparation depuis SevenOS installé
+  ./install.sh network --yes    préparer ou réparer Wi-Fi/NetworkManager
+  seven fonts apply-default     réappliquer les polices SevenOS
+  seven repair ux --apply       réparer l'expérience visuelle
+
+Surfaces utilisateur :
+  seven settings                paramètres généraux et suppression
+  seven store                   installer et gérer les apps
+  seven home                    mini OS et état du système
+  seven-help-native             aide graphique
+  seven-quick-settings wifi     panneau Wi-Fi
+
+Mini OS et paquets :
+  seven profile status
+  seven profile activate forge
+  sevenpkg profile-limits
+  sevenpkg profile-packages forge --query htop
+  sevenpkg install --profile forge htop --source pacman --preview
+  sevenpkg remove --profile forge htop --preview
+  sevenpkg update --global --preview
+
+Raccourcis essentiels :
+  Super                         apps / Launchpad
+  Super+Space                   Spotlight
+  Super+H                       aide SevenOS
+  Super+E                       fichiers
+  Super+N / Super+O             réglages rapides
+  Super+I                       paramètres généraux
+  Super+Enter                   terminal
+  Super+Q                       fermer fenêtre
+  Super+1..9                    changer de workspace
+  Print                         capture zone
+  Super+Shift+S                 capture avec édition
+
+Réparation rapide :
+  seven network repair --yes
+  seven fonts refresh
+  seven theme doctor
+  seven hypr apply
+  seven recovery
+  seven events --limit 30
+
+Windows et sécurité :
+  seven windows setup
+  seven windows setup --iso ~/Downloads/Win11.iso
+  seven shield status
+  seven shield lab --preset web
+
+Développement SevenOS :
+  seven smoke
+  seven pre-push
+  seven phase-gate
+  ./scripts/ux-check.sh
+EOF
+  else
+    cat <<'EOF'
+SevenOS Cheat Sheet
+
+First reflexes:
+  seven status                  quick state
+  seven doctor                  system diagnosis
+  seven post-install            post-install verification
+  seven health                  daily health
+  seven insights                priorities to fix
+  seven-help topics             local manual chapters
+  seven-help search wifi        search local help
+
+Install and fresh machine:
+  ./install.sh new-device --yes full setup from repository
+  seven new                     setup from installed SevenOS
+  ./install.sh network --yes    prepare or repair Wi-Fi/NetworkManager
+  seven fonts apply-default     reapply SevenOS fonts
+  seven repair ux --apply       repair visual experience
+
+User surfaces:
+  seven settings                general settings and removal
+  seven store                   install and manage apps
+  seven home                    mini OS and system state
+  seven-help-native             graphical help
+  seven-quick-settings wifi     Wi-Fi panel
+
+Mini OS and packages:
+  seven profile status
+  seven profile activate forge
+  sevenpkg profile-limits
+  sevenpkg profile-packages forge --query htop
+  sevenpkg install --profile forge htop --source pacman --preview
+  sevenpkg remove --profile forge htop --preview
+  sevenpkg update --global --preview
+
+Essential shortcuts:
+  Super                         apps / Launchpad
+  Super+Space                   Spotlight
+  Super+H                       SevenOS help
+  Super+E                       files
+  Super+N / Super+O             quick settings
+  Super+I                       general settings
+  Super+Enter                   terminal
+  Super+Q                       close window
+  Super+1..9                    switch workspace
+  Print                         area screenshot
+  Super+Shift+S                 screenshot with edit
+
+Quick repair:
+  seven network repair --yes
+  seven fonts refresh
+  seven theme doctor
+  seven hypr apply
+  seven recovery
+  seven events --limit 30
+
+Windows and security:
+  seven windows setup
+  seven windows setup --iso ~/Downloads/Win11.iso
+  seven shield status
+  seven shield lab --preset web
+
+SevenOS development:
+  seven smoke
+  seven pre-push
+  seven phase-gate
+  ./scripts/ux-check.sh
+EOF
+  fi
+}
+
 open_command_doc() {
   show_doc commands
 }
 
 open_native_help() {
   local topic="${1:-start}"
+  case "$topic" in
+    network|fonts|backup|iso|installer|manual) topic="system" ;;
+    software|sevenpkg) topic="packages" ;;
+    security|shield|windows-bridge) topic="security-windows" ;;
+    faq|questions|glossary|vocabulary|vocabulaire) topic="repair" ;;
+    dev|development|checks) topic="developer" ;;
+  esac
   local native="$ROOT_DIR/bin/seven-help-native"
   if [[ "${SEVENOS_HELP_LEGACY:-0}" != "1" && -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
     if [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
@@ -1221,8 +2492,88 @@ if [[ "${1:-}" == "--manual" || "${1:-}" == "manual" ]]; then
   exit 0
 fi
 
+if [[ "${1:-}" == "search" || "${1:-}" == "--search" ]]; then
+  shift || true
+  search_doc "$@"
+  exit $?
+fi
+
+if [[ "${1:-}" == "cheat" || "${1:-}" == "cheatsheet" || "${1:-}" == "--cheat" ]]; then
+  print_cheatsheet
+  exit 0
+fi
+
+if [[ "${1:-}" == "topics" || "${1:-}" == "--topics" ]]; then
+  if [[ "$LANG_CODE" == "fr" ]]; then
+    cat <<'EOF'
+Chapitres SevenOS disponibles :
+
+  install         première installation
+  quick          commandes à connaître
+  architecture   couches SevenOS
+  shortcuts      raccourcis clavier
+  waybar         barre SevenOS et contrôle rapide
+  actions        actions système
+  themes         thèmes et apparence
+  mini-os        profils SevenOS
+  apps           applications SevenOS
+  system         réseau, polices, thème, mises à jour
+  network        aide réseau/Wi-Fi
+  fonts          aide polices
+  packages       paquets et scopes
+  sevenpkg       alias paquets
+  security       sécurité et Shield
+  windows-bridge Windows Bridge
+  faq            questions fréquentes
+  glossary       glossaire SevenOS
+  dev            checks développeur
+  diagnostics    diagnostic et réparation
+  troubleshooting dépannage rapide
+  search <mot>   recherche locale dans tout le manuel
+  cheat          mémo rapide SevenOS
+
+Exemple : seven-help network
+Exemple : seven-help search wifi
+Exemple : seven-help cheat
+EOF
+  else
+    cat <<'EOF'
+Available SevenOS chapters:
+
+  install         first install
+  quick          commands to know
+  architecture   SevenOS layers
+  shortcuts      keyboard shortcuts
+  waybar         SevenOS bar and quick control
+  actions        system actions
+  themes         themes and appearance
+  mini-os        SevenOS profiles
+  apps           SevenOS applications
+  system         network, fonts, theme, updates
+  network        network/Wi-Fi help
+  fonts          font help
+  packages       packages and scopes
+  sevenpkg       package alias
+  security       security and Shield
+  windows-bridge Windows Bridge
+  faq            frequent questions
+  glossary       SevenOS glossary
+  dev            developer checks
+  diagnostics    diagnostics and repair
+  troubleshooting quick troubleshooting
+  search <word>  local search inside the whole manual
+  cheat          quick SevenOS cheat sheet
+
+Example: seven-help network
+Example: seven-help search wifi
+Example: seven-help cheat
+EOF
+  fi
+  exit 0
+fi
+
 case "${1:-}" in
-  install|quick|commands|architecture|shortcuts|waybar|actions|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|diagnostics|troubleshooting|windows)
+  install|quick|commands|architecture|shortcuts|waybar|actions|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|manual|network|fonts|backup|iso|installer|packages|software|sevenpkg|security|shield|windows-bridge|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
     if open_native_help "$1"; then
       exit 0
     fi
@@ -1255,6 +2606,12 @@ case "$selected" in
   "Install SevenOS"|"Installer SevenOS") run_terminal "seven new" ;;
   "Setup Windows Bridge"|"Configurer Windows Bridge") run_terminal "seven windows setup" ;;
   "Complete SevenOS Guide"|"Guide complet SevenOS") show_doc all ;;
+  "Search Local Help"|"Rechercher dans l’aide") seven-help-native ;;
+  "SevenOS System Manual"|"Manuel système SevenOS") show_doc system ;;
+  "SevenOS FAQ"|"FAQ locale SevenOS") show_doc faq ;;
+  "SevenOS Glossary"|"Glossaire SevenOS") show_doc glossary ;;
+  "Available Chapters"|"Chapitres disponibles") run_terminal "seven-help topics" ;;
+  "SevenOS Cheat Sheet"|"Mémo rapide SevenOS") run_terminal "seven-help cheat" ;;
   "SevenOS Architecture"|"Architecture SevenOS") show_doc architecture ;;
   "SevenOS Actions"|"Actions SevenOS") show_doc actions ;;
   "Themes and Appearance"|"Thèmes et apparence") show_doc themes ;;

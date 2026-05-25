@@ -276,8 +276,32 @@ window#waybar {{
 }}
 
 #custom-sevenos {{
+  min-width: 28px;
+  padding-left: 0;
+  padding-right: 0;
   color: {text};
-  text-shadow: 0 0 12px alpha({accent}, {'0.12' if mode == 'light' else '0.30'});
+  font-family: "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0;
+  border-color: alpha({accent}, {'0.28' if mode == 'light' else '0.22'});
+  background:
+    radial-gradient(circle at 38% 30%, alpha(#FFFFFF, {'0.78' if mode == 'light' else '0.22'}), transparent 34%),
+    linear-gradient(135deg, alpha({secondary}, {'0.30' if mode == 'light' else '0.20'}), alpha({accent}, {'0.22' if mode == 'light' else '0.17'}) 52%, alpha(#00D4FF, {'0.28' if mode == 'light' else '0.18'})),
+    alpha(#FFFFFF, {'0.42' if mode == 'light' else '0.055'});
+  box-shadow:
+    inset 0 1px 0 alpha(#FFFFFF, {'0.62' if mode == 'light' else '0.16'}),
+    inset 0 -1px 0 alpha(#00D4FF, {'0.08' if mode == 'light' else '0.06'}),
+    0 0 12px alpha({secondary}, {'0.12' if mode == 'light' else '0.10'});
+  text-shadow: 0 0 12px alpha({accent}, {'0.10' if mode == 'light' else '0.30'});
+}}
+
+#custom-sevenos:hover {{
+  border-color: alpha({secondary}, {'0.42' if mode == 'light' else '0.34'});
+  background:
+    radial-gradient(circle at 38% 30%, alpha(#FFFFFF, {'0.86' if mode == 'light' else '0.28'}), transparent 34%),
+    linear-gradient(135deg, alpha({secondary}, {'0.38' if mode == 'light' else '0.30'}), alpha({accent}, {'0.28' if mode == 'light' else '0.24'}) 52%, alpha(#00D4FF, {'0.34' if mode == 'light' else '0.28'})),
+    alpha(#FFFFFF, {'0.58' if mode == 'light' else '0.08'});
 }}
 
 #custom-profile {{

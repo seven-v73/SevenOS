@@ -2848,6 +2848,316 @@ def run(initial_page: str = "overview") -> int:
         container.pack_start(group, False, False, 0)
         return group
 
+    def show_package_removal_dialog() -> None:
+        dialog = Gtk.Dialog(
+            title=tr("settings.package_remove.title", "Supprimer une application"),
+            transient_for=window,
+            flags=Gtk.DialogFlags.MODAL,
+        )
+        dialog.set_default_size(560, 430)
+        dialog.add_button(tr("settings.close", "Fermer"), Gtk.ResponseType.CLOSE)
+        box = style_dialog(dialog)
+        box.set_spacing(12)
+        box.set_border_width(16)
+
+        title = Gtk.Label(label=tr("settings.package_remove.title", "Supprimer une application"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(
+            label=tr(
+                "settings.package_remove.note",
+                "Choisis l’espace SevenOS et le paquet à retirer. SevenOS affiche d’abord l’impact, puis lance la suppression sans ouvrir le terminal.",
+            )
+        )
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        profile_combo = Gtk.ComboBoxText()
+        catalog = profile_catalog()
+        naming = catalog.get("profile_naming", {}) if isinstance(catalog.get("profile_naming"), dict) else {}
+        profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+        active_key = active_profile_key()
+        active_index = 0
+        for index, key in enumerate(profile_order):
+            profile_combo.append(key, str(naming.get(key) or key.title()))
+            if key == active_key:
+                active_index = index
+        profile_combo.set_active(active_index)
+
+        package_entry = Gtk.Entry()
+        package_entry.set_placeholder_text(tr("settings.package_remove.placeholder", "Nom du paquet, ex. htop"))
+        package_entry.get_style_context().add_class("settings-entry")
+        package_entry.set_hexpand(True)
+        controls.pack_start(profile_combo, False, False, 0)
+        controls.pack_start(package_entry, True, True, 0)
+
+        status = Gtk.Label(label=tr("settings.package_remove.ready", "Prêt à prévisualiser."))
+        status.set_xalign(0)
+        status.get_style_context().add_class("settings-inline-status")
+
+        package_list = Gtk.ListBox()
+        package_list.get_style_context().add_class("package-result-list")
+        package_list.set_selection_mode(Gtk.SelectionMode.NONE)
+        package_list_scroller = Gtk.ScrolledWindow()
+        package_list_scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        package_list_scroller.set_min_content_height(96)
+        package_list_scroller.get_style_context().add_class("package-result-panel")
+        package_list_scroller.add(package_list)
+
+        buffer = Gtk.TextBuffer()
+        buffer.set_text(tr("settings.package_remove.output", "Le résultat de la prévisualisation apparaîtra ici."))
+        text_view = Gtk.TextView(buffer=buffer)
+        text_view.set_editable(False)
+        text_view.set_cursor_visible(False)
+        text_view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroller.set_min_content_height(150)
+        scroller.get_style_context().add_class("command-output")
+        scroller.add(text_view)
+
+        button_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        preview_button = Gtk.Button(label=tr("settings.preview", "Prévisualiser"))
+        preview_button.get_style_context().add_class("action-button")
+        inventory_button = Gtk.Button(label=tr("settings.package_remove.inventory", "Voir les paquets"))
+        inventory_button.get_style_context().add_class("action-button")
+        remove_button = Gtk.Button(label=tr("settings.delete", "Supprimer"))
+        remove_button.get_style_context().add_class("action-button")
+        remove_button.get_style_context().add_class("destructive-action")
+
+        def selected_profile() -> str:
+            return profile_combo.get_active_id() or active_key or "equinox"
+
+        def package_name() -> str:
+            return package_entry.get_text().strip()
+
+        def validate_package() -> str | None:
+            package = package_name()
+            if not package:
+                status.set_text(tr("settings.package_remove.missing", "Entre le nom du paquet à supprimer."))
+                return None
+            if not re.match(r"^[A-Za-z0-9@._+-]+$", package):
+                status.set_text(tr("settings.package_remove.invalid", "Nom de paquet invalide."))
+                return None
+            return package
+
+        def clear_package_list() -> None:
+            for child in list(package_list.get_children()):
+                package_list.remove(child)
+
+        def add_package_result(item: dict) -> None:
+            name = str(item.get("name") or "")
+            if not name:
+                return
+            version = str(item.get("version") or "")
+            description = str(item.get("description") or "")
+            row = Gtk.ListBoxRow()
+            button = Gtk.Button()
+            button.get_style_context().add_class("package-result-button")
+            wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            title_label = Gtk.Label(label=f"{name} {version}".strip())
+            title_label.set_xalign(0)
+            title_label.get_style_context().add_class("settings-row-title")
+            note_label = Gtk.Label(label=description or tr("settings.package_remove.installed", "Installé"))
+            note_label.set_xalign(0)
+            note_label.set_ellipsize(Pango.EllipsizeMode.END)
+            note_label.get_style_context().add_class("settings-row-note")
+            wrapper.pack_start(title_label, False, False, 0)
+            wrapper.pack_start(note_label, False, False, 0)
+            button.add(wrapper)
+
+            def choose_package(_button: Gtk.Button, package: str = name) -> None:
+                package_entry.set_text(package)
+                status.set_text(tr("settings.package_remove.selected", "{package} sélectionné.", package=package))
+
+            button.connect("clicked", choose_package)
+            row.add(button)
+            package_list.add(row)
+
+        package_search_generation = {"value": 0}
+        package_preview_generation = {"value": 0}
+        last_preview: dict[str, object] = {"profile": "", "package": "", "payload": None}
+        remove_button.set_sensitive(False)
+
+        def invalidate_preview() -> None:
+            last_preview.update({"profile": "", "package": "", "payload": None})
+            remove_button.set_sensitive(False)
+
+        def refresh_package_results(*_args) -> None:
+            invalidate_preview()
+            package_search_generation["value"] += 1
+            generation = package_search_generation["value"]
+            profile = selected_profile()
+            query = package_name()
+            command = [str(ROOT / "bin/sevenpkg"), "profile-packages", profile, "--limit", "12", "--json"]
+            if query:
+                command.extend(["--query", query])
+            status.set_text(tr("settings.package_remove.searching", "Recherche des paquets installés…"))
+
+            def apply_results(payload: dict, expected_generation: int) -> bool:
+                if expected_generation != package_search_generation["value"]:
+                    return False
+                clear_package_list()
+                profiles = payload.get("profiles") if isinstance(payload, dict) else []
+                packages = []
+                if profiles and isinstance(profiles[0], dict):
+                    packages = profiles[0].get("packages") or []
+                for item in packages[:12]:
+                    if isinstance(item, dict):
+                        add_package_result(item)
+                if not packages:
+                    row = Gtk.ListBoxRow()
+                    label = Gtk.Label(label=tr("settings.package_remove.no_results", "Aucun paquet trouvé dans cet espace."))
+                    label.set_xalign(0)
+                    label.get_style_context().add_class("settings-row-note")
+                    row.add(label)
+                    package_list.add(row)
+                package_list.show_all()
+                status.set_text(tr("settings.package_remove.ready", "Prêt à prévisualiser."))
+                return False
+
+            def worker() -> None:
+                payload = run_json_timeout(command, {}, timeout=2.5)
+                GLib.idle_add(apply_results, payload, generation)
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        def removal_preview_text(payload: dict) -> str:
+            lines = [
+                tr("settings.package_remove.preview_title", "Prévisualisation SevenOS"),
+                "",
+                f"{tr('settings.profile', 'Profil')}: {payload.get('profile', selected_profile())}",
+                f"{tr('settings.scope', 'Portée')}: {payload.get('profile_scope', payload.get('impact', ''))}",
+                f"{tr('settings.rootfs', 'RootFS')}: {payload.get('rootfs', '')}",
+            ]
+            blockers = payload.get("blockers") or []
+            warnings = payload.get("warnings") or []
+            commands = payload.get("commands") or []
+            if blockers:
+                lines.extend(["", tr("settings.blocked", "Blocage:")])
+                lines.extend(f"- {item}" for item in blockers)
+            if warnings:
+                lines.extend(["", tr("settings.warnings", "Avertissements:")])
+                lines.extend(f"- {item}" for item in warnings)
+            if commands:
+                lines.extend(["", tr("settings.package_remove.commands", "Ce que SevenOS lancera:")])
+                for command in commands:
+                    lines.append("  " + " ".join(str(part) for part in command))
+            else:
+                lines.append("")
+                lines.append(tr("settings.package_remove.no_command", "Aucune commande ne sera lancée tant que le blocage n’est pas corrigé."))
+            return "\n".join(lines)
+
+        def preview_remove(_button: Gtk.Button) -> None:
+            package = validate_package()
+            if not package:
+                return
+            profile = selected_profile()
+            package_preview_generation["value"] += 1
+            generation = package_preview_generation["value"]
+            preview_button.set_sensitive(False)
+            remove_button.set_sensitive(False)
+            status.set_text(tr("settings.package_remove.preview_running", "Prévisualisation en cours…"))
+
+            def apply_preview(payload: dict, expected_generation: int) -> bool:
+                if expected_generation != package_preview_generation["value"]:
+                    return False
+                preview_button.set_sensitive(True)
+                if payload:
+                    blockers = payload.get("blockers") or []
+                    last_preview.update({"profile": profile, "package": package, "payload": payload})
+                    remove_button.set_sensitive(not bool(blockers))
+                    status.set_text(
+                        tr("settings.package_remove.preview_blocked", "Suppression bloquée.") if blockers
+                        else tr("settings.package_remove.preview_ready", "Prévisualisation prête.")
+                    )
+                    buffer.set_text(removal_preview_text(payload))
+                else:
+                    last_preview.update({"profile": "", "package": "", "payload": None})
+                    remove_button.set_sensitive(False)
+                    status.set_text(tr("settings.package_remove.preview_failed", "Prévisualisation indisponible."))
+                    buffer.set_text("")
+                return False
+
+            def worker() -> None:
+                payload = run_json_timeout(
+                    [str(ROOT / "bin/sevenpkg"), "remove", "--profile", profile, package, "--preview", "--json"],
+                    {},
+                    timeout=3.0,
+                )
+                GLib.idle_add(apply_preview, payload, generation)
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        def show_inventory(_button: Gtk.Button) -> None:
+            profile = selected_profile()
+            query = package_name()
+            query_flag = f" --query {shlex.quote(query)}" if query else ""
+            show_command_output(f"{shlex.quote(str(ROOT / 'bin/sevenpkg'))} profile-packages {shlex.quote(profile)}{query_flag} --limit 80", tr("settings.package_remove.inventory", "Voir les paquets"))
+
+        def run_remove(_button: Gtk.Button) -> None:
+            package = validate_package()
+            if not package:
+                return
+            profile = selected_profile()
+            payload = last_preview.get("payload")
+            if (
+                not isinstance(payload, dict)
+                or last_preview.get("profile") != profile
+                or last_preview.get("package") != package
+                or payload.get("blockers")
+            ):
+                status.set_text(tr("settings.package_remove.preview_required", "Prévisualise ce paquet avant de le supprimer."))
+                remove_button.set_sensitive(False)
+                return
+            confirm = Gtk.MessageDialog(
+                transient_for=dialog,
+                flags=Gtk.DialogFlags.MODAL,
+                message_type=Gtk.MessageType.WARNING,
+                buttons=Gtk.ButtonsType.NONE,
+                text=tr("settings.package_remove.confirm", "Supprimer {package} ?", package=package),
+            )
+            confirm.format_secondary_text(
+                tr(
+                    "settings.package_remove.confirm_note",
+                    "SevenOS retirera ce paquet de {profile}. L’opération sera suivie dans une fenêtre graphique.",
+                    profile=profile,
+                )
+            )
+            confirm.add_button(tr("settings.cancel", "Annuler"), Gtk.ResponseType.CANCEL)
+            delete_button = confirm.add_button(tr("settings.delete", "Supprimer"), Gtk.ResponseType.ACCEPT)
+            delete_button.get_style_context().add_class("destructive-action")
+            response = confirm.run()
+            confirm.destroy()
+            if response != Gtk.ResponseType.ACCEPT:
+                status.set_text(tr("settings.package_remove.cancelled", "Suppression annulée."))
+                return
+            command = f"{shlex.quote(str(ROOT / 'bin/sevenpkg'))} remove --profile {shlex.quote(profile)} {shlex.quote(package)}"
+            dialog.destroy()
+            show_command_output(command, tr("settings.package_remove.title", "Supprimer une application"))
+
+        preview_button.connect("clicked", preview_remove)
+        inventory_button.connect("clicked", show_inventory)
+        remove_button.connect("clicked", run_remove)
+        package_entry.connect("changed", refresh_package_results)
+        profile_combo.connect("changed", refresh_package_results)
+        button_row.pack_start(preview_button, False, False, 0)
+        button_row.pack_start(inventory_button, False, False, 0)
+        button_row.pack_start(remove_button, False, False, 0)
+
+        box.pack_start(title, False, False, 0)
+        box.pack_start(note, False, False, 0)
+        box.pack_start(controls, False, False, 0)
+        box.pack_start(package_list_scroller, False, False, 0)
+        box.pack_start(status, False, False, 0)
+        box.pack_start(scroller, True, True, 0)
+        box.pack_start(button_row, False, False, 0)
+        dialog.connect("response", lambda _dialog, _response: dialog.destroy())
+        dialog.show_all()
+        refresh_package_results()
+
     def general_jump_strip(targets: dict[str, Gtk.Widget]) -> Gtk.Box:
         strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         strip.set_size_request(content_width, -1)
@@ -2857,6 +3167,7 @@ def run(initial_page: str = "overview") -> int:
             ("󰐃", tr("settings.jump.usage", "Mode"), "usage"),
             ("󰮍", tr("settings.jump.mini_os", "Mini OS"), "mini-os"),
             ("󰩂", tr("settings.jump.maintenance", "Entretien"), "maintenance"),
+            ("󰆴", tr("settings.jump.removal", "Suppression"), "removal"),
             ("󰖳", tr("settings.jump.windows", "Windows"), "windows"),
             ("󰁯", tr("settings.jump.backup", "Backup"), "backup"),
             ("󰜉", tr("settings.jump.motion", "Animations"), "motion"),
@@ -3592,7 +3903,7 @@ def run(initial_page: str = "overview") -> int:
     initial_page = initial_page if initial_page in pages else "overview"
 
     settings_search_index = {
-        "general": "general language langue region région formats about a propos clavier keyboard essential essentiel mini os collaboration capabilities capacités injection fonctionnalités entretien maintenance vérifier installer update mise à jour réparer windows bridge sauvegarde backup animations motion usage quotidien développement création sécurité gaming culture",
+        "general": "general language langue region région formats about a propos clavier keyboard essential essentiel mini os collaboration capabilities capacités injection fonctionnalités entretien maintenance vérifier installer supprimer suppression désinstaller desinstaller paquets update mise à jour réparer windows bridge sauvegarde backup animations motion usage quotidien développement création sécurité gaming culture",
         "appearance": "appearance theme thème dark light glass dock terminal visual design",
         "wallpaper": "wallpaper fond écran hyprpaper matugen wallust image",
         "display": "display screen écran monitor brightness luminosité hyprland",
@@ -3604,7 +3915,7 @@ def run(initial_page: str = "overview") -> int:
         "profiles": "profile profil mini os equinox forge devops baobab shield studio pulse windows composition compare comparer aliases alias migration horizon",
         "power": "power batterie battery sleep lock energy énergie hypridle hyprlock",
         "defaults": "default apps applications par défaut navigateur browser terminal files fichiers reader pdf epub media image mail archive",
-        "apps": "apps store app applications flatpak launchpad installed updates",
+        "apps": "apps store app applications flatpak launchpad installed updates supprimer suppression désinstaller desinstaller paquets",
         "privacy": "privacy confidentialité permissions notifications ai history historique microphone camera caméra local",
         "backup": "backup sauvegarde restore restauration export migration cloud state état",
         "shortcuts": "shortcuts raccourcis clavier hotkeys keybinds super help aide",
@@ -3787,6 +4098,15 @@ def run(initial_page: str = "overview") -> int:
             settings_row("󰜉", tr("settings.repair_interface", "Réparer l’interface"), tr("settings.repair_interface.note", "Répare la barre de menu, le thème et les surfaces SevenOS en une action guidée."), [action_button(tr("settings.repair", "Réparer"), "seven repair ux --apply && seven-waybar repair && ./install.sh theme && hyprctl reload")]),
             settings_row("󰄬", tr("settings.post_install_check", "Vérification post-installation"), tr("settings.post_install_check.note", "Relance les contrôles de première installation pour détecter les éléments manquants."), [action_button(tr("settings.check", "Vérifier"), "seven post-install")]),
             settings_row("󰋚", tr("settings.action_history", "Historique des actions"), tr("settings.action_history.row_note", "Voir les dernières opérations lancées depuis Paramètres et copier le compte rendu si besoin."), [callback_button(tr("settings.open", "Ouvrir"), "settings:action-history", show_settings_action_history)]),
+        ],
+    )
+    general_targets["removal"] = settings_group(
+        general,
+        tr("settings.package_remove.section", "Suppression"),
+        [
+            settings_row("󰆴", tr("settings.package_remove.title", "Supprimer une application"), tr("settings.package_remove.row_note", "Retirer un paquet de l’espace actif ou d’un mini OS précis avec prévisualisation."), [callback_button(tr("settings.open", "Ouvrir"), "settings:package-remove", show_package_removal_dialog)]),
+            settings_row("󰏗", tr("settings.package_inventory", "Paquets installés"), tr("settings.package_inventory.note", "Voir les paquets présents dans le mini OS actif sans utiliser le terminal."), [action_button(tr("settings.open", "Ouvrir"), f"sevenpkg profile-packages {active_profile_key()} --limit 80")]),
+            settings_row("󰄬", tr("settings.package_limits", "Limites d’installation"), tr("settings.package_limits.note", "Voir où les paquets seront installés ou supprimés selon l’espace choisi."), [action_button(tr("settings.status", "Voir"), "sevenpkg profile-limits")]),
         ],
     )
     general_targets["windows"] = settings_group(

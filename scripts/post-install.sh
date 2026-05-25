@@ -189,6 +189,45 @@ service_check() {
   fi
 }
 
+network_check() {
+  section "Network"
+  if command -v nmcli >/dev/null 2>&1; then
+    ok_item "nmcli available"
+  else
+    warn_item "nmcli missing"
+    printf '  run: ./install.sh network --yes\n'
+  fi
+
+  if command -v nm-connection-editor >/dev/null 2>&1; then
+    ok_item "nm-connection-editor available"
+  else
+    warn_item "graphical network editor missing"
+    printf '  run: ./install.sh network --yes\n'
+  fi
+
+  if systemctl is-active --quiet NetworkManager.service 2>/dev/null; then
+    ok_item "NetworkManager active"
+  else
+    warn_item "NetworkManager is not active"
+    printf '  run: seven network repair\n'
+    printf '  or:  sudo systemctl enable --now NetworkManager.service\n'
+  fi
+
+  if command -v nmcli >/dev/null 2>&1; then
+    local wifi_device radio
+    wifi_device="$(nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2 == "wifi" { print $1; exit }' || true)"
+    radio="$(nmcli radio wifi 2>/dev/null || true)"
+    if [[ -n "$wifi_device" ]]; then
+      ok_item "Wi-Fi device detected: $wifi_device"
+      [[ "$radio" == "enabled" ]] || warn_item "Wi-Fi radio is $radio"
+    else
+      warn_item "no Wi-Fi device detected by NetworkManager"
+      printf '  check firmware, rfkill and BIOS/UEFI wireless switch\n'
+      printf '  run: seven network repair\n'
+    fi
+  fi
+}
+
 files_check() {
   section "Files Experience"
   local command_name
@@ -226,6 +265,45 @@ lab_check() {
   fi
 }
 
+profile_isolation_check() {
+  section "Profile Isolation"
+  local isolation_json
+  if [[ ! -s "$HOME/.config/sevenos/profile-isolation.json" ]]; then
+    warn_item "profile isolation state missing"
+    printf '  run: seven system-profile apply --yes\n'
+    return 0
+  fi
+
+  if ! isolation_json="$("$ROOT_DIR/scripts/profile-isolation.sh" status --json 2>/dev/null)"; then
+    warn_item "profile isolation status failed"
+    printf '  run: seven system-profile apply --yes\n'
+    return 0
+  fi
+
+  if PROFILE_ISOLATION_JSON="$isolation_json" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["PROFILE_ISOLATION_JSON"])
+equinox = (data.get("profile_containers") or {}).get("equinox") or {}
+strict = (data.get("strict_runtime") or {}).get("equinox") or {}
+ok = (
+    data.get("schema") == "sevenos.profile-isolation.v1"
+    and equinox.get("state") == "system"
+    and equinox.get("launch_mode") == "host-system"
+    and strict.get("engine") == "host"
+    and strict.get("isolation_mode") == "system"
+)
+raise SystemExit(0 if ok else 1)
+PY
+  then
+    ok_item "Equinox host-system/admin runtime"
+  else
+    warn_item "Equinox is not using the host-system/admin runtime"
+    printf '  run: seven system-profile apply --yes\n'
+  fi
+}
+
 next_steps() {
   section "Next Steps"
   printf '  seven status\n'
@@ -245,8 +323,10 @@ desktop_config_check
 toolkit_theme_check
 group_check
 service_check
+network_check
 files_check
 lab_check
+profile_isolation_check
 next_steps
 
 if [[ "$warnings" -gt 0 ]]; then

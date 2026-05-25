@@ -57,6 +57,7 @@ bash -n \
   "$ROOT_DIR/scripts/migrate.sh" \
   "$ROOT_DIR/scripts/migrate-from-ml4w.sh" \
   "$ROOT_DIR/scripts/keyboard.sh" \
+  "$ROOT_DIR/scripts/network.sh" \
   "$ROOT_DIR/server/seven-server.sh" \
   "$ROOT_DIR/server/seven-deploy.sh" \
   "$ROOT_DIR/branding/shell/terminal-country.sh" \
@@ -461,8 +462,11 @@ SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" bridge init --json | python -m json.tool
 python -m json.tool "$ROOT_DIR/profiles/catalog.json" >/dev/null
 "$ROOT_DIR/bin/seven" profile catalog --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" profile health --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/seven" system-profile status --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" profile isolation plan equinox forge shield --json | python -m json.tool >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/profile-isolation.sh" apply equinox --yes --json | python -m json.tool >/dev/null
+profile_isolation_preview="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/profile-isolation.sh" apply equinox --yes --json)"
+python -m json.tool <<<"$profile_isolation_preview" >/dev/null
+PROFILE_ISOLATION_PREVIEW="$profile_isolation_preview" python -c 'import json,os; data=json.loads(os.environ["PROFILE_ISOLATION_PREVIEW"]); eq=data.get("profile_containers",{}).get("equinox",{}); strict=data.get("strict_runtime",{}).get("equinox",{}); forge=data.get("profile_containers",{}).get("forge",{}); raise SystemExit(0 if eq.get("state")=="system" and eq.get("launch_mode")=="host-system" and strict.get("engine")=="host" and strict.get("isolation_mode")=="system" and forge.get("launch_mode")=="available-via-seven-profile-run-container" else 1)'
 "$ROOT_DIR/bin/seven" shell status --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("runtime_health", {}).get("schema") == "sevenos.daemon.health.v1" else 1)'
 "$ROOT_DIR/bin/seven" core doctor >/dev/null
 "$ROOT_DIR/bin/seven-daemon" --json | python -m json.tool >/dev/null
@@ -522,6 +526,39 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/security/shield-workspace.sh" bootstrap >/dev/null
 "$ROOT_DIR/bin/sevenpkg" status --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" meta --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" plan --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/sevenpkg" sources --json | python -m json.tool >/dev/null
+"$ROOT_DIR/bin/sevenpkg" profile-limits --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-limits.v1"; assert d["system_profile"] == "equinox"; assert any(i["profile"] == "equinox" and i["scope"] == "global-system" for i in d["profiles"]); assert any(i["profile"] == "forge" and i["scope"] == "profile-rootfs" for i in d["profiles"])'
+"$ROOT_DIR/bin/sevenpkg" profile-limits forge --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["profile_filter"] == "forge"; assert len(d["profiles"]) == 1; assert d["profiles"][0]["profile"] == "forge"; assert d["profiles"][0]["scope"] == "profile-rootfs"'
+"$ROOT_DIR/bin/sevenpkg" profile-packages forge --query htop --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-inventory.v1"; assert d["profile_filter"] == "forge"; assert len(d["profiles"]) == 1; assert "packages" in d["profiles"][0]'
+"$ROOT_DIR/bin/sevenpkg" install --profile equinox htop --source pacman --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-transaction.v1"; assert d["profile_scope"] == "global-system"; assert d["impact"] == "global-system-packages"'
+"$ROOT_DIR/bin/sevenpkg" install --profile forge htop --source pacman --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-transaction.v1"; assert d["profile_scope"] == "profile-rootfs"; assert d["impact"] == "profile-rootfs-packages"; assert "private to forge" in d["visibility"]'
+"$ROOT_DIR/bin/sevenpkg" remove --profile forge 7zip --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-transaction.v1"; assert d["action"] == "remove"; assert d["profile_scope"] == "profile-rootfs"; assert "does not touch other mini OS" in d["visibility"]'
+"$ROOT_DIR/bin/sevenpkg" remove --profile forge definitely-not-installed-sevenos-test-package --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-transaction.v1"; assert d["action"] == "remove"; assert d["blockers"]; assert "not installed inside the forge rootfs" in d["blockers"][0]'
+"$ROOT_DIR/bin/sevenpkg" update --profile forge --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-transaction.v1"; assert d["action"] == "update"; assert d["profile_scope"] == "profile-rootfs"; assert "does not touch other mini OS" in d["visibility"]'
+sevenpkg_test_config="$(mktemp -d)"
+mkdir -p "$sevenpkg_test_config/sevenos"
+printf 'SEVENOS_ACTIVE_PROFILE=forge\n' > "$sevenpkg_test_config/sevenos/profile.env"
+SEVENOS_HOST_CONFIG_HOME="$sevenpkg_test_config" "$ROOT_DIR/bin/sevenpkg" install htop --source pacman --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["profile"] == "forge"; assert d["profile_scope"] == "profile-rootfs"; assert d["default_profile_source"] == "active-profile"'
+SEVENOS_HOST_CONFIG_HOME="$sevenpkg_test_config" "$ROOT_DIR/bin/sevenpkg" remove htop --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["profile"] == "forge"; assert d["action"] == "remove"; assert d["profile_scope"] == "profile-rootfs"; assert d["default_profile_source"] == "active-profile"'
+SEVENOS_HOST_CONFIG_HOME="$sevenpkg_test_config" "$ROOT_DIR/bin/sevenpkg" update --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["profile"] == "forge"; assert d["action"] == "update"; assert d["profile_scope"] == "profile-rootfs"; assert d["default_profile_source"] == "active-profile"'
+SEVENOS_HOST_CONFIG_HOME="$sevenpkg_test_config" "$ROOT_DIR/bin/sevenpkg" install --global htop --source pacman --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.package-transaction.v1"; assert d["active_profile"] == "forge"'
+SEVENOS_HOST_CONFIG_HOME="$sevenpkg_test_config" "$ROOT_DIR/bin/sevenpkg" remove --global htop --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.package-transaction.v1"; assert d["active_profile"] == "forge"'
+SEVENOS_HOST_CONFIG_HOME="$sevenpkg_test_config" "$ROOT_DIR/bin/sevenpkg" update --global --preview --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.package-transaction.v1"; assert d["action"] == "update"; assert d["active_profile"] == "forge"'
+rm -rf "$sevenpkg_test_config"
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-power" lock >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-welcome" >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-welcome" status --json | python -m json.tool >/dev/null
@@ -728,6 +765,11 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" optional >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" history >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" transaction install forge >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" transaction remove nmap >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" profile-install forge htop --source pacman --preview >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" profile-remove forge htop --preview >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" profile-limits >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" profile-limits forge >/dev/null
+SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" profile-packages forge --query htop >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" sources >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install forge >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" --dry-run install shield core >/dev/null

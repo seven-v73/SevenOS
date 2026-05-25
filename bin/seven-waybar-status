@@ -194,14 +194,14 @@ def sevenos_menu() -> int:
     tooltip = "\n".join(
         part
         for part in [
-            f"SevenOS · {title}",
+            f"Seven Prism · SevenOS · {title}",
             role,
             mood,
             "Clic: système · clic droit: espaces · clic milieu: recherche",
         ]
         if part
     )
-    return emit("SevenOS", tooltip, css, key)
+    return emit("◆", tooltip, css, key)
 
 
 def wifi() -> int:

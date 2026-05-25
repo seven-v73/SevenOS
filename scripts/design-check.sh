@@ -64,10 +64,11 @@ if grep -q -- '--font-display: "SF Pro Display"' "$ROOT_DIR/identity/tokens.css"
    grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
    grep -q 'font_family SF Mono' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'SF Pro Display' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'SF Pro Display</family><prefer><family>Inter' "$ROOT_DIR/hyprland/fontconfig/fonts.conf" &&
    grep -q 'SF Pro Rounded' "$ROOT_DIR/hyprland/fontconfig/fonts.conf"; then
-  ok "SevenOS typography follows SF Pro Display/Text, SF Mono and SF Pro Rounded roles"
+  ok "SevenOS typography exposes SF Pro roles through the bundled Inter/JetBrains/Noto core"
 else
-  fail "SevenOS typography should follow SF Pro Display/Text, SF Mono and SF Pro Rounded roles"
+  fail "SevenOS typography should expose SF Pro roles through the bundled Inter/JetBrains/Noto core"
 fi
 
 if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&

@@ -205,6 +205,55 @@ Force a source:
 ```bash
 sevenpkg install blender --source pacman
 sevenpkg install visual-studio-code-bin --source aur
+sevenpkg install brave-bin --source yay
 ```
 
 `sevenrepo` is reserved for the future SevenOS repository.
+
+## Profile Installs
+
+`sevenpkg` can install packages for one SevenOS profile:
+
+```bash
+sevenpkg install --profile forge htop --source pacman
+sevenpkg remove --profile forge htop --preview
+sevenpkg update --profile forge --preview
+sevenpkg install --profile forge visual-studio-code-bin --source paru
+sevenpkg profile-install shield nmap --source pacman --preview
+sevenpkg profile-remove shield nmap --preview
+sevenpkg install --profile equinox htop --source pacman
+sevenpkg profile-limits
+sevenpkg profile-limits forge
+sevenpkg profile-packages forge --query htop
+```
+
+Equinox is the system/admin profile, so its installs use the normal global Arch
+system. Other mini OS profiles install into their own rootfs with
+`seven-profile-run --rootfs-writable`, then verify and reseal the rootfs. Those
+packages are private to the target mini OS and are not visible to other mini OS
+package views by default.
+
+When a mini OS is active, concrete package installs default to that mini OS:
+
+```bash
+sevenpkg install htop --source pacman
+sevenpkg remove htop --preview
+sevenpkg update --preview
+sevenpkg install --global htop --source pacman
+sevenpkg remove --global htop --preview
+sevenpkg update --global --preview
+```
+
+The unqualified install/remove/update commands target the active mini OS rootfs.
+The `--global` commands force the global Equinox/system scope. SevenOS
+meta-packages such as `forge` or `shield` keep their normal SevenOS layer
+behavior unless `--profile` is explicit.
+
+`sevenpkg profile-limits --json` exposes the machine-readable contract for
+installation scope, rootfs readiness and AUR helper availability per profile.
+Add a profile name, for example `sevenpkg profile-limits forge --json`, to focus
+the output on one mini OS.
+
+`sevenpkg profile-packages --json` exposes the installed package inventory per
+profile. Mini OS profiles read their own rootfs pacman database; Equinox reads
+the host pacman database.

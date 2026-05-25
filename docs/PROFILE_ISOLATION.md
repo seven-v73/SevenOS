@@ -7,6 +7,11 @@ The rule is:
 
 > Installed does not mean active.
 
+Equinox is the exception by design. It is the SevenOS system/admin side: it
+uses the real home directory, the normal host runtime and direct Arch package
+manager access. Forge, Shield, Studio, Baobab, Windows and Pulse remain mini OS
+profiles with their own runtime boundaries.
+
 ## Model
 
 SevenOS separates three layers:
@@ -52,6 +57,9 @@ Activation writes:
 Seven Terminal sources `profile-isolation.env` and prepends the shim directory.
 It also prepends the active `SEVENOS_PACKAGE_VIEW`, so commands that belong to
 another mini OS are hidden or routed before the host system can expose them.
+When Equinox is active, `SEVENOS_PACKAGE_VIEW` is empty and
+`SEVENOS_PROFILE_STRICT_LAUNCH=0`, so the terminal behaves like a normal Linux
+terminal over the host package store.
 
 ## Commands
 
@@ -59,6 +67,10 @@ another mini OS are hidden or routed before the host system can expose them.
 seven profile isolation status
 seven profile isolation plan equinox forge shield --json
 seven profile isolation apply equinox --yes
+seven system-profile status --json
+seven system-profile apply --yes
+seven system-profile doctor
+seven-profile-run --profile equinox --container env
 seven-profile-run docker ps
 seven-profile-run --profile shield --container nmap --version
 seven-profile-run --profile forge --container --workspace . npm test
@@ -84,6 +96,33 @@ seven bridge remember --profile baobab --app "seven baobab open" --mood "calm co
 seven bridge send --from baobab --to studio --kind textile ~/Baobab/Heritage/reference.png
 ```
 
+## Equinox System Profile
+
+Equinox is not isolated like the other mini OS profiles. It is the default,
+public-facing and admin-friendly SevenOS side:
+
+- `HOME` is the real host home, not `~/.local/share/sevenos/profile-containers/equinox/home`
+- `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` and `XDG_DATA_HOME` point to normal host paths
+- `pacman`, `paru`, `yay` and `makepkg` run directly because Equinox manages the system
+- Equinox launchers are marked `host-system`, not `strict-container`
+- `seven-profile-run --profile equinox --container <command>` intentionally downgrades to host execution
+
+This makes Equinox suitable for beginners and normal desktop use, while the
+other mini OSes keep stricter boundaries for work, security, creation, gaming
+or compatibility tasks.
+
+Use the system profile command when a fresh install, migration or test machine
+needs the core contract restored:
+
+```bash
+seven system-profile apply --yes
+seven system-profile doctor
+seven profile health
+```
+
+The same repair is available through `./install.sh system-profile --yes` and
+`seven repair core --apply --yes`.
+
 ## Strict Profile Launches
 
 `seven-profile-run --container` is the practical bridge between Arch's global
@@ -98,6 +137,9 @@ In this mode:
 - the command runs in a systemd user scope for the active runtime slice
 - bubblewrap exposes system files read-only where possible
 - Wayland/DBus runtime access is passed through for graphical apps
+
+This section applies to mini OS profiles other than Equinox. Equinox uses the
+host-system contract above.
 
 Use `seven-profile-run --profile <profile> --json` to inspect the exact runtime
 boundary before launching an app.
@@ -180,6 +222,56 @@ seven profile-rootfs seal all --apply --yes
 
 Use it only for intentional package/rootfs maintenance, then verify and reseal
 so SevenOS can detect drift again on the next launch.
+
+## Profile-Scoped Package Installs
+
+`sevenpkg` is the public package route for mini OS package installs. For
+Equinox, package installs target the normal Arch system. For every other mini OS
+profile, package installs target that profile rootfs and remain private to that
+mini OS unless SevenOS later exposes a command through policy.
+
+```bash
+sevenpkg install --profile forge htop --source pacman
+sevenpkg remove --profile forge htop --preview
+sevenpkg update --profile forge --preview
+sevenpkg install --profile forge visual-studio-code-bin --source paru
+sevenpkg install --profile forge brave-bin --source yay
+sevenpkg profile-install shield nmap --source pacman --preview
+sevenpkg profile-remove shield nmap --preview
+sevenpkg install --profile equinox htop --source pacman
+sevenpkg profile-limits
+sevenpkg profile-limits forge
+sevenpkg profile-limits --json
+sevenpkg profile-packages forge --query htop
+sevenpkg profile-packages --json
+```
+
+When a mini OS is active, `sevenpkg install <package>`, `sevenpkg remove
+<package>` and `sevenpkg update` automatically target that mini OS rootfs for
+concrete packages. Use `sevenpkg install --global <package>`, `sevenpkg remove
+--global <package>` or `sevenpkg update --global` to force the Equinox/global
+package scope.
+
+Mini OS package installs run through:
+
+```bash
+seven-profile-run --profile <profile> --rootfs-writable pacman -S --needed <package>
+seven-profile-run --profile <profile> --rootfs-writable paru -S --needed <package>
+seven-profile-run --profile <profile> --rootfs-writable yay -S --needed <package>
+```
+
+After a mini OS package transaction, SevenOS verifies and seals the target
+rootfs again. AUR installs stay private only when `paru` or `yay` exists inside
+the target profile rootfs, not just on the host.
+
+Equinox is intentionally different. It may use raw `pacman`, `paru`, `yay` or
+`sevenpkg install --profile equinox ...`; those packages belong to the global
+system side and can be exposed to mini OS package views when the profile policy
+allows it.
+
+Use `sevenpkg profile-packages <profile>` to inspect what is actually installed
+inside one mini OS rootfs. Use `sevenpkg profile-packages equinox` to inspect the
+host system package inventory.
 
 ## Automatic Mini OS Requirements
 

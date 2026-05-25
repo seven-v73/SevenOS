@@ -57,6 +57,7 @@ Use names that feel native to SevenOS:
 ## Current Implementation
 
 - `identity/CHARTER.md` as the official graphic charter
+- `identity/SYMBOL.md` as the SevenOS public symbol direction
 - `identity/STYLE.md` as the design contract
 - `identity/tokens.css` as CSS token source
 - `identity/palette.sh` as shell/script palette source
@@ -68,6 +69,8 @@ Use names that feel native to SevenOS:
 - Kitty terminal profiles
 - Seven Hub, Seven Files, Settings and native shell panels
 - SVG logo, wallpaper and mode icon foundations in `identity/assets/`
+- the recommended public symbol direction is the **Seven Prism**, with a first
+  reference asset at `identity/assets/symbol-seven-prism.svg`
 
 ## Components
 

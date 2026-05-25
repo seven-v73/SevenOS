@@ -1,0 +1,12 @@
+# SevenOS first-boot network and Wi-Fi stack
+networkmanager
+network-manager-applet
+nm-connection-editor
+wpa_supplicant
+iwd
+iw
+wireless-regdb
+networkmanager-openvpn
+modemmanager
+usb_modeswitch
+mobile-broadband-provider-info

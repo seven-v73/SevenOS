@@ -4,7 +4,29 @@ set -Eeuo pipefail
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$ROOT_DIR/scripts/lib.sh"
 
-STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos"
+host_home() {
+  local home="${SEVENOS_HOST_HOME:-$HOME}"
+  if [[ -n "${SEVENOS_HOST_HOME:-}" ]]; then
+    printf '%s\n' "$home"
+    return 0
+  fi
+  case "$home" in
+    */.local/share/sevenos/profile-containers/*/home)
+      printf '%s\n' "${home%%/.local/share/sevenos/profile-containers/*}"
+      return 0
+      ;;
+  esac
+  if [[ -n "${USER:-}" && -d "/home/$USER" ]]; then
+    printf '/home/%s\n' "$USER"
+  else
+    printf '%s\n' "$home"
+  fi
+}
+
+HOST_HOME="$(host_home)"
+HOST_CONFIG_HOME="${SEVENOS_HOST_CONFIG_HOME:-$HOST_HOME/.config}"
+HOST_DATA_HOME="${SEVENOS_HOST_DATA_HOME:-$HOST_HOME/.local/share}"
+STATE_DIR="$HOST_CONFIG_HOME/sevenos"
 STATE_FILE="$STATE_DIR/profile.env"
 STATE_JSON="$STATE_DIR/profile.json"
 LOCK_FILE="$STATE_DIR/profile.lock"
@@ -144,13 +166,13 @@ profile_workspace() {
   local key
   key="$(normalize_profile_key "$1")"
   case "$key" in
-    equinox) printf '%s/SevenOS' "$HOME" ;;
-    forge) printf '%s/Forge' "$HOME" ;;
-    shield) printf '%s/ShieldLab' "$HOME" ;;
-    studio) printf '%s/Studio' "$HOME" ;;
-    windows) printf '%s/WindowsMode' "$HOME" ;;
-    pulse) printf '%s/Pulse' "$HOME" ;;
-    baobab) printf '%s/Baobab' "$HOME" ;;
+    equinox) printf '%s/SevenOS' "$HOST_HOME" ;;
+    forge) printf '%s/Forge' "$HOST_HOME" ;;
+    shield) printf '%s/ShieldLab' "$HOST_HOME" ;;
+    studio) printf '%s/Studio' "$HOST_HOME" ;;
+    windows) printf '%s/WindowsMode' "$HOST_HOME" ;;
+    pulse) printf '%s/Pulse' "$HOST_HOME" ;;
+    baobab) printf '%s/Baobab' "$HOST_HOME" ;;
     *) return 1 ;;
   esac
 }
@@ -585,10 +607,26 @@ def load(path, default):
 isolation = load(isolation_path, {})
 services = load(services_path, [])
 inactive = load(inactive_path, [])
+containers = isolation.get("profile_containers") or {}
+strict_runtime = isolation.get("strict_runtime") or {}
+container = containers.get(key) if isinstance(containers, dict) else {}
+strict = strict_runtime.get(key) if isinstance(strict_runtime, dict) else {}
+if not isinstance(container, dict):
+    container = {}
+if not isinstance(strict, dict):
+    strict = {}
 selected = isolation.get("selected_profiles") or [active]
 capabilities = isolation.get("capabilities") or []
 primary = isolation.get("primary") or active
 schema_ok = isolation.get("schema") == "sevenos.profile-isolation.v1"
+system_contract = (
+    key == "equinox"
+    and schema_ok
+    and container.get("state") == "system"
+    and container.get("launch_mode") == "host-system"
+    and strict.get("engine") == "host"
+    and strict.get("isolation_mode") == "system"
+)
 
 if key == primary:
     lifecycle = "ACTIVE"
@@ -626,6 +664,11 @@ payload = {
     "allowed_services": allowed_services,
     "quiet_services": quiet_services,
     "service_state": "mixed" if allowed_services and quiet_services else ("allowed" if allowed_services else ("quiet" if quiet_services else "none")),
+    "runtime_contract": "host-system" if system_contract else ("mini-os-container" if schema_ok else "unknown"),
+    "system_contract": system_contract,
+    "launch_mode": container.get("launch_mode", ""),
+    "engine": strict.get("engine", container.get("engine", "")),
+    "app_data": strict.get("app_data", ""),
 }
 print(json.dumps(payload, separators=(",", ":")))
 PY
@@ -1244,7 +1287,7 @@ write_profile_experience() {
   config_dir="$(profile_config_dir "$key")"
   experience_file="$(profile_experience_path "$key")"
   mkdir -p "$config_dir"
-  python - "$key" "$(profile_title "$key")" "$(profile_role "$key")" "$(profile_workspace "$key")" "$config_dir" "$(profile_accent_color "$key")" "$(profile_secondary_color "$key")" "$(profile_ui_mood "$key")" "$(profile_principle "$key")" "$(profile_waybar_modules "$key")" "$(profile_terminal_mode "$key")" <<'PY' > "$experience_file"
+  PROFILE_HOST_DATA_HOME="$HOST_DATA_HOME" python - "$key" "$(profile_title "$key")" "$(profile_role "$key")" "$(profile_workspace "$key")" "$config_dir" "$(profile_accent_color "$key")" "$(profile_secondary_color "$key")" "$(profile_ui_mood "$key")" "$(profile_principle "$key")" "$(profile_waybar_modules "$key")" "$(profile_terminal_mode "$key")" <<'PY' > "$experience_file"
 import json
 import os
 import sys
@@ -1264,7 +1307,7 @@ from pathlib import Path
     terminal_mode,
 ) = sys.argv[1:]
 config = Path(config_dir)
-data_home = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
+data_home = Path(os.environ.get("PROFILE_HOST_DATA_HOME", str(Path.home() / ".local/share")))
 wallpaper_profile_dir = data_home / "sevenos/wallpapers/profiles" / key
 bridge_profile_dir = data_home / "sevenos/bridge" / key
 objects_dir = data_home / "sevenos/objects"
@@ -1423,7 +1466,7 @@ payload = {
     },
     "communication": {
         "rule": "Profiles communicate through SevenOS runtime, events and explicit capabilities; they do not share hidden user config state.",
-        "shared_bus": str(Path.home() / ".local/share/sevenos/events.jsonl"),
+        "shared_bus": str(data_home / "sevenos/events.jsonl"),
         "bridge_inbox": str(bridge_profile_dir / "bridge-inbox.jsonl"),
         "bridge_outbox": str(bridge_profile_dir / "bridge-outbox.jsonl"),
         "objects": str(objects_dir),
@@ -2087,6 +2130,10 @@ summary = {
     "needs_bootstrap": sum(1 for item in profiles if item.get("bootstrap_state") != "OK"),
     "isolation_ready": all(item.get("runtime", {}).get("isolation_ready") for item in profiles),
     "alias_migration_pending": migration.get("pending", 0),
+    "equinox_system_ready": any(
+        item.get("key") == "equinox" and item.get("runtime", {}).get("system_contract")
+        for item in profiles
+    ),
 }
 issues = []
 if migration.get("pending", 0):
@@ -2123,6 +2170,14 @@ for item in profiles:
             "detail": "profile isolation state is missing or stale",
             "command": "seven profile isolation apply equinox --yes",
         })
+    if item.get("key") == "equinox" and runtime.get("isolation_ready") and not runtime.get("system_contract"):
+        issues.append({
+            "profile": "equinox",
+            "severity": "high",
+            "kind": "system-contract",
+            "detail": "Equinox must be host-system/admin, not a strict mini OS container",
+            "command": "seven profile isolation apply equinox --yes",
+        })
 
 print(json.dumps({
     "schema": "sevenos.profile-health.v1",
@@ -2144,10 +2199,11 @@ print("SevenOS Profile Health")
 print("======================")
 print(f"profiles: {summary.get('total', 0)} · ready: {summary.get('ready', 0)} · active: {summary.get('active', 0)} · capabilities: {summary.get('capability', 0)} · quiet: {summary.get('quiet', 0)}")
 print(f"isolation: {'ready' if summary.get('isolation_ready') else 'needs apply'}")
+print(f"equinox:  {'host-system' if summary.get('equinox_system_ready') else 'needs system apply'}")
 print()
 for item in data.get("profiles", []):
     runtime = item.get("runtime", {})
-    print(f"{item.get('key'):<9} pkg={item.get('state'):<4} boot={item.get('bootstrap_state'):<4} runtime={runtime.get('lifecycle'):<10} isolation={runtime.get('isolation_state'):<8} quiet-packages={runtime.get('inactive_owned_packages', 0)}")
+    print(f"{item.get('key'):<9} pkg={item.get('state'):<4} boot={item.get('bootstrap_state'):<4} runtime={runtime.get('lifecycle'):<10} contract={runtime.get('runtime_contract'):<17} quiet-packages={runtime.get('inactive_owned_packages', 0)}")
 if data.get("issues"):
     print("\nIssues:")
     for issue in data["issues"]:
@@ -2222,7 +2278,7 @@ shift || true
 profile_folder_grants() {
   local action="$1"
   shift || true
-  PROFILE_ACTION="$action" ACTIVE_PROFILE="$(active_profile)" STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos" python - "$@" <<'PY'
+  PROFILE_ACTION="$action" ACTIVE_PROFILE="$(active_profile)" STATE_DIR="$STATE_DIR" python - "$@" <<'PY'
 import json
 import os
 import re
@@ -2470,6 +2526,10 @@ PY
     fi
     folder="${1:-}"
     [[ -n "$folder" ]] || { log_error "seven profile open-folder needs a folder path"; exit 2; }
+    if [[ "$target_profile" == "equinox" ]]; then
+      "$ROOT_DIR/bin/seven-files" open "$folder"
+      exit $?
+    fi
     profile_folder_grants grant-folder "$target_profile" "$folder" --rw >/dev/null
     "$ROOT_DIR/bin/seven-profile-run" --profile "$target_profile" --container --workspace "$folder" seven-files open /workspace
     ;;

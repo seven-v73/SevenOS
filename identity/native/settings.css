@@ -740,6 +740,26 @@
       border-color: alpha(@seven_accent, 0.42);
       background: alpha(@seven_panel_2, 0.88);
     }
+    .package-result-panel {
+      border-radius: 14px;
+      background: alpha(@seven_panel, 0.76);
+      border: 1px solid alpha(@seven_border, 0.72);
+    }
+    .package-result-list {
+      background: transparent;
+    }
+    .package-result-button {
+      min-height: 42px;
+      padding: 7px 10px;
+      border-radius: 12px;
+      color: @seven_text;
+      background: transparent;
+      border: 1px solid transparent;
+    }
+    .package-result-button:hover {
+      background: @seven_hover;
+      border-color: alpha(@seven_accent, 0.20);
+    }
     .action-button.destructive-action {
       color: @seven_error;
       border-color: alpha(@seven_error, 0.26);

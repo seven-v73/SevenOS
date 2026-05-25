@@ -13,6 +13,28 @@ YES=0
 PRIMARY=""
 CAPABILITIES=()
 
+host_home() {
+  local home="${SEVENOS_HOST_HOME:-$HOME}"
+  if [[ -n "${SEVENOS_HOST_HOME:-}" ]]; then
+    printf '%s\n' "$home"
+    return 0
+  fi
+  case "$home" in
+    */.local/share/sevenos/profile-containers/*/home)
+      printf '%s\n' "${home%%/.local/share/sevenos/profile-containers/*}"
+      return 0
+      ;;
+  esac
+  if [[ -n "${USER:-}" && -d "/home/$USER" ]]; then
+    printf '/home/%s\n' "$USER"
+  else
+    printf '%s\n' "$home"
+  fi
+}
+
+HOST_HOME="$(host_home)"
+HOST_CONFIG_HOME="${SEVENOS_HOST_CONFIG_HOME:-$HOST_HOME/.config}"
+
 usage() {
   cat <<'EOF'
 SevenOS Profile Isolation
@@ -50,7 +72,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 state_dir() {
-  printf '%s/sevenos\n' "${XDG_CONFIG_HOME:-$HOME/.config}"
+  printf '%s/sevenos\n' "$HOST_CONFIG_HOME"
 }
 
 active_profile() {
@@ -107,6 +129,7 @@ json_payload() {
   YES="$YES" \
   DRY_RUN="${SEVENOS_DRY_RUN:-0}" \
   STATE_DIR="$(state_dir)" \
+  HOST_HOME="$HOST_HOME" \
   python - <<'PY'
 import json
 import os
@@ -119,6 +142,8 @@ from pathlib import Path
 
 root = Path(os.environ["SEVENOS_ROOT"])
 state_dir = Path(os.environ["STATE_DIR"])
+host_home = Path(os.environ["HOST_HOME"])
+SYSTEM_PROFILE = "equinox"
 catalog_path = root / "profiles" / "catalog.json"
 action = os.environ.get("ACTION", "status")
 primary = os.environ.get("PRIMARY") or "equinox"
@@ -142,6 +167,7 @@ for key in valid[1:]:
     if key != primary and key not in capabilities:
         capabilities.append(key)
 selected = [primary, *capabilities]
+system_selected = primary == SYSTEM_PROFILE
 
 def read_packages(relative_paths):
     packages = []
@@ -176,7 +202,8 @@ active_packages = []
 for package in core_packages:
     if package not in active_packages:
         active_packages.append(package)
-for key in selected:
+package_profile_scope = profiles if system_selected else selected
+for key in package_profile_scope:
     for package in profile_packages.get(key, []):
         if package not in active_packages:
             active_packages.append(package)
@@ -204,7 +231,7 @@ service_owners = {
     "gamemoded.service": ["pulse"],
 }
 
-selected_set = set(selected) | {"sevenos-core"}
+selected_set = (set(profiles) if system_selected else set(selected)) | {"sevenos-core"}
 service_policy = []
 for service, owners in service_owners.items():
     allowed = bool(selected_set.intersection(owners))
@@ -252,13 +279,15 @@ for command in global_package_commands:
     if command not in all_commands:
         all_commands.append(command)
 
+if system_selected:
+    active_commands = list(all_commands)
 inactive_commands = [command for command in all_commands if command not in active_commands]
 
 profile_overlays = {
     key: {
-        "upper": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "upper"),
-        "work": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "work"),
-        "merged": str(Path.home() / ".local/share/sevenos/profile-overlays" / key / "merged"),
+        "upper": str(host_home / ".local/share/sevenos/profile-overlays" / key / "upper"),
+        "work": str(host_home / ".local/share/sevenos/profile-overlays" / key / "work"),
+        "merged": str(host_home / ".local/share/sevenos/profile-overlays" / key / "merged"),
         "state": "prepared",
         "selected": key in selected,
     }
@@ -267,11 +296,11 @@ profile_overlays = {
 
 profile_containers = {
     key: {
-        "config": str(Path.home() / ".config/sevenos/profiles" / key),
-        "home": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "home"),
-        "cache": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "cache"),
-        "data": str(Path.home() / ".local/share/sevenos/profile-containers" / key / "data"),
-        "rootfs": str(Path.home() / ".local/share/sevenos/profile-rootfs" / key / "rootfs"),
+        "config": str(host_home / ".config/sevenos/profiles" / key),
+        "home": str(host_home / ".local/share/sevenos/profile-containers" / key / "home"),
+        "cache": str(host_home / ".local/share/sevenos/profile-containers" / key / "cache"),
+        "data": str(host_home / ".local/share/sevenos/profile-containers" / key / "data"),
+        "rootfs": str(host_home / ".local/share/sevenos/profile-rootfs" / key / "rootfs"),
         "state": "prepared",
         "selected": key in selected,
         "launch_mode": "available-via-seven-profile-run-container",
@@ -280,6 +309,18 @@ profile_containers = {
     }
     for key in profiles
 }
+if SYSTEM_PROFILE in profile_containers:
+    profile_containers[SYSTEM_PROFILE].update({
+        "config": str(host_home / ".config"),
+        "home": str(host_home),
+        "cache": str(host_home / ".cache"),
+        "data": str(host_home / ".local/share"),
+        "rootfs": "host-system",
+        "state": "system",
+        "launch_mode": "host-system",
+        "exec": "host-direct",
+        "engine": "host",
+    })
 
 profile_workspace_names = {
     "equinox": "SevenOS",
@@ -292,7 +333,7 @@ profile_workspace_names = {
 }
 
 profile_isolation_modes = {
-    "equinox": "balanced",
+    "equinox": "system",
     "baobab": "balanced",
     "forge": "balanced",
     "shield": "strict",
@@ -301,11 +342,40 @@ profile_isolation_modes = {
     "pulse": "balanced",
 }
 
-manifest_root = Path.home() / ".local/share/sevenos/profile-runtime-manifests"
+manifest_root = host_home / ".local/share/sevenos/profile-runtime-manifests"
 strict_runtime = {}
 has_bwrap = shutil.which("bwrap") is not None
 has_systemd_run = shutil.which("systemd-run") is not None
 for key, item in profile_containers.items():
+    if key == SYSTEM_PROFILE:
+        strict_runtime[key] = {
+            "state": "system",
+            "score": 100,
+            "engine": "host",
+            "app_data": "host-home-cache-data",
+            "workspace": "host-home",
+            "workspace_mount": "native",
+            "ephemeral": "not-used-for-system-profile",
+            "ephemeral_command": f"seven-profile-run --profile {key} <command>",
+            "profile_workspace": str(host_home / profile_workspace_names.get(key, "SevenOS")),
+            "profile_workspace_command": f"seven-profile-run --profile {key} --workspace-profile <command>",
+            "manifest": str(manifest_root / f"{key}.json"),
+            "manifest_command": f"seven-profile-run --profile {key} --manifest",
+            "packages": "global-pacman-store",
+            "rootfs": "host-system",
+            "rootfs_state": "not-applicable",
+            "isolation_mode": "system",
+            "isolation_policy": {
+                "system": "admin host runtime with real HOME, normal PATH, and global package manager access",
+                "balanced": "used by other daily mini OSes",
+                "strict": "used by Shield and explicit strict launches",
+                "independent": "used by explicit profile rootfs launches",
+            },
+            "runtime_scope": "host-process",
+            "command": "host-direct",
+            "selected": item.get("selected", False),
+        }
+        continue
     score = 40
     if item.get("state") == "prepared":
         score += 20
@@ -324,7 +394,7 @@ for key, item in profile_containers.items():
         "workspace_mount": "/workspace",
         "ephemeral": "available",
         "ephemeral_command": f"seven-profile-run --profile {key} --container --ephemeral <command>",
-        "profile_workspace": str(Path.home() / profile_workspace_names.get(key, "SevenOS")),
+        "profile_workspace": str(host_home / profile_workspace_names.get(key, "SevenOS")),
         "profile_workspace_command": f"seven-profile-run --profile {key} --container --workspace-profile <command>",
         "manifest": str(manifest_root / f"{key}.json"),
         "manifest_command": f"seven-profile-run --profile {key} --manifest",
@@ -354,7 +424,8 @@ payload = {
         "pacman": "global package store",
         "sevenos": "profile-scoped activation, service policy, runtime slices, app shims",
         "rule": "Installed does not mean active. Profiles own capabilities; SevenOS activates only the selected runtime.",
-        "global_package_commands": "raw pacman/AUR helpers are guarded by SevenOS profile shims in Seven Terminal and profiled launchers",
+        "global_package_commands": "raw pacman/AUR helpers are direct in Equinox and guarded by SevenOS profile shims in other mini OS terminals and profiled launchers",
+        "system_profile": f"{SYSTEM_PROFILE} is the host admin OS: real HOME, normal PATH, and direct Arch package manager access",
     },
     "shared_foundations": {
         "kernel": "shared host kernel; not a VM boundary",
@@ -369,17 +440,17 @@ payload = {
         "active_packages": str(state_dir / "active-packages.txt"),
         "inactive_packages": str(state_dir / "inactive-packages.json"),
         "service_policy": str(state_dir / "profile-services.json"),
-        "shims": str(Path.home() / ".local/share/sevenos/profile-shims"),
-        "desktop_overrides": str(Path.home() / ".local/share/applications"),
-        "package_views": str(Path.home() / ".local/share/sevenos/profile-package-views"),
-        "rootfs": str(Path.home() / ".local/share/sevenos/profile-rootfs"),
+        "shims": str(host_home / ".local/share/sevenos/profile-shims"),
+        "desktop_overrides": str(host_home / ".local/share/applications"),
+        "package_views": str(host_home / ".local/share/sevenos/profile-package-views"),
+        "rootfs": str(host_home / ".local/share/sevenos/profile-rootfs"),
         "runtime_manifests": str(manifest_root),
     },
     "activation_depth": {
-        "current": "profile-scoped activation with global pacman store, per-profile package views, per-profile config roots, command shims, prepared overlay roots and prepared bubblewrap HOME/cache/data roots",
-        "commands": "inactive profile commands are hidden from the profile package view, routed through seven-profile-run and blocked unless selected",
-        "services": "profile-owned services are allowed only for the selected runtime",
-        "containers": "all mini OS config/HOME/cache/data roots are prepared; profile commands can run through seven-profile-run --profile <profile> --container with bubblewrap app-data isolation",
+        "current": "Equinox host-system activation plus profile-scoped activation for other mini OSes with global pacman store, per-profile package views, command shims, prepared overlay roots and prepared bubblewrap HOME/cache/data roots",
+        "commands": "Equinox can see all host commands; inactive profile commands are hidden from non-system profile package views, routed through seven-profile-run and blocked unless selected",
+        "services": "Equinox can administer all profile services; profile-owned services are otherwise allowed only for the selected runtime",
+        "containers": "Equinox runs on the host; other mini OS config/HOME/cache/data roots are prepared and run through seven-profile-run --profile <profile> --container with bubblewrap app-data isolation",
         "next": "profile rootfs build for full per-mini-OS package installation",
     },
     "profile_overlays": profile_overlays,
@@ -403,13 +474,13 @@ payload = {
     },
     "strict_boundaries": {
         "launcher": "seven-profile-launch",
-        "desktop_apps": "active profile container by default",
-        "shims": "generated with seven-profile-run --container",
+        "desktop_apps": "Equinox launches host apps directly; other mini OS apps use the active profile container by default",
+        "shims": "Equinox shims fall through to host commands; other profile shims route through seven-profile-run --container",
         "workspace": "mounted only as /workspace for profile launches",
         "implicit_capability_borrowing": False,
         "rootfs": "prepared per profile; used by seven-profile-run --rootfs when built",
         "isolation_modes": "balanced by default, strict for Shield, explicit --isolation strict|vm available",
-        "package_manager_guard": "raw pacman/paru/yay/makepkg are shimmed toward SevenOS Store or explicit rootfs maintenance",
+        "package_manager_guard": "pacman/paru/yay/makepkg are direct in Equinox and guarded in other mini OS sessions",
     },
 }
 
@@ -461,7 +532,7 @@ def generate_desktop_overrides():
     launcher = root / "bin" / "seven-profile-launch"
     if not launcher.is_file():
         return []
-    override_root = Path.home() / ".local/share/applications"
+    override_root = host_home / ".local/share/applications"
     override_root.mkdir(parents=True, exist_ok=True)
     for stale in override_root.glob("*.desktop"):
         try:
@@ -523,7 +594,7 @@ def generate_desktop_overrides():
     return generated
 
 def generate_profile_launchers():
-    launcher_root = Path.home() / ".local/share/applications"
+    launcher_root = host_home / ".local/share/applications"
     launcher_root.mkdir(parents=True, exist_ok=True)
     runner = root / "bin" / "seven-profile-run"
     generated = []
@@ -540,8 +611,16 @@ def generate_profile_launchers():
         title, comment, icon = launcher_specs.get(key, (profiles[key].get("title", key.title()), f"{key} mini OS", "sevenos"))
         center = profiles[key].get("center_command") or f"seven-mini-os-center {key}"
         center_parts = shlex.split(center)
-        center_exec = " ".join([desktop_quote(str(runner)), "--profile", desktop_quote(key), "--container", "--workspace-profile", *[desktop_quote(part) for part in center_parts]])
-        terminal_exec = " ".join([desktop_quote(str(runner)), "--profile", desktop_quote(key), "--container", "--workspace-profile", "seven-terminal", desktop_quote(key)])
+        if key == SYSTEM_PROFILE:
+            center_exec = " ".join(desktop_quote(part) for part in center_parts)
+            terminal_exec = " ".join(["seven-terminal", desktop_quote(key)])
+            launch_mode = "host-system"
+            terminal_comment = f"Open the system terminal for {title}"
+        else:
+            center_exec = " ".join([desktop_quote(str(runner)), "--profile", desktop_quote(key), "--container", "--workspace-profile", *[desktop_quote(part) for part in center_parts]])
+            terminal_exec = " ".join([desktop_quote(str(runner)), "--profile", desktop_quote(key), "--container", "--workspace-profile", "seven-terminal", desktop_quote(key)])
+            launch_mode = "strict-container"
+            terminal_comment = f"Open an isolated terminal for {title}"
         entries = {
             f"sevenos-mini-{key}.desktop": [
                 "[Desktop Entry]",
@@ -555,14 +634,14 @@ def generate_profile_launchers():
                 "StartupNotify=true",
                 "X-SevenOS-Profiled=true",
                 f"X-SevenOS-Profile={key}",
-                "X-SevenOS-LaunchMode=strict-container",
+                f"X-SevenOS-LaunchMode={launch_mode}",
                 "",
             ],
             f"sevenos-mini-{key}-terminal.desktop": [
                 "[Desktop Entry]",
                 "Type=Application",
                 f"Name={title} Terminal",
-                f"Comment=Open an isolated terminal for {title}",
+                f"Comment={terminal_comment}",
                 f"Exec={terminal_exec}",
                 "Icon=utilities-terminal",
                 "Terminal=false",
@@ -570,7 +649,7 @@ def generate_profile_launchers():
                 "StartupNotify=true",
                 "X-SevenOS-Profiled=true",
                 f"X-SevenOS-Profile={key}",
-                "X-SevenOS-LaunchMode=strict-container",
+                f"X-SevenOS-LaunchMode={launch_mode}",
                 "",
             ],
         }
@@ -583,7 +662,7 @@ def generate_profile_launchers():
 def archive_legacy_aliases():
     archived = []
     aliases = {"horizon": "forge"}
-    container_root = Path.home() / ".local/share/sevenos/profile-containers"
+    container_root = host_home / ".local/share/sevenos/profile-containers"
     archive_root = container_root / "_legacy"
     for alias, target in aliases.items():
         source = container_root / alias
@@ -601,14 +680,14 @@ def archive_legacy_aliases():
     return archived
 
 def generate_package_views():
-    view_root = Path.home() / ".local/share/sevenos/profile-package-views"
+    view_root = host_home / ".local/share/sevenos/profile-package-views"
     view_root.mkdir(parents=True, exist_ok=True)
     generated = {}
     base_path = os.pathsep.join(
         item for item in os.environ.get("PATH", "").split(os.pathsep)
         if item and "profile-shims" not in item and "profile-package-views" not in item
     )
-    core_commands = set(profile_commands.get("equinox", []))
+    core_commands = set(profile_commands.get(SYSTEM_PROFILE, []))
     for key in profiles:
         bin_dir = view_root / key / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
@@ -616,7 +695,8 @@ def generate_package_views():
             if stale.is_symlink() or stale.is_file():
                 stale.unlink()
         exposed = []
-        for command in sorted(core_commands | set(profile_commands.get(key, []))):
+        command_scope = set(all_commands) if key == SYSTEM_PROFILE else core_commands | set(profile_commands.get(key, []))
+        for command in sorted(command_scope):
             resolved = str(root / "bin" / command) if command.startswith("seven") and (root / "bin" / command).is_file() else None
             if not resolved:
                 resolved = shutil.which(command, path=base_path)
@@ -641,7 +721,7 @@ def generate_package_views():
     return generated
 
 def apply_state():
-    shims_dir = Path.home() / ".local/share/sevenos/profile-shims"
+    shims_dir = host_home / ".local/share/sevenos/profile-shims"
     shims_dir.mkdir(parents=True, exist_ok=True)
     state_dir.mkdir(parents=True, exist_ok=True)
     for stale in shims_dir.iterdir():
@@ -653,35 +733,39 @@ def apply_state():
         f'SEVENOS_ISOLATION_PRIMARY="{primary}"',
         f'SEVENOS_ISOLATION_CAPABILITIES="{",".join(capabilities)}"',
         f'SEVENOS_PROFILE_SHIMS="{shims_dir}"',
-        f'SEVENOS_PACKAGE_VIEW="{Path.home() / ".local/share/sevenos/profile-package-views" / primary / "bin"}"',
-        'SEVENOS_PROFILE_STRICT_LAUNCH="1"',
+        f'SEVENOS_PACKAGE_VIEW="{"" if primary == SYSTEM_PROFILE else host_home / ".local/share/sevenos/profile-package-views" / primary / "bin"}"',
+        f'SEVENOS_PROFILE_STRICT_LAUNCH="{"0" if primary == SYSTEM_PROFILE else "1"}"',
         "",
     ]))
     write_text(state_dir / "active-packages.txt", "\n".join(active_packages) + "\n")
     write_text(state_dir / "inactive-packages.json", json.dumps(inactive_packages, indent=2) + "\n")
     write_text(state_dir / "profile-services.json", json.dumps(service_policy, indent=2) + "\n")
-    overlay_root = Path.home() / ".local/share/sevenos/profile-overlays"
-    container_root = Path.home() / ".local/share/sevenos/profile-containers"
+    overlay_root = host_home / ".local/share/sevenos/profile-overlays"
+    container_root = host_home / ".local/share/sevenos/profile-containers"
     manifest_root.mkdir(parents=True, exist_ok=True)
     for key in profiles:
         roots = profile_containers[key]
         for name in ("upper", "work", "merged"):
             (overlay_root / key / name).mkdir(parents=True, exist_ok=True)
-        Path(roots.get("config", state_dir / "profiles" / key)).mkdir(parents=True, exist_ok=True)
-        for name in ("home", "cache", "data"):
-            (container_root / key / name).mkdir(parents=True, exist_ok=True)
-        rootfs_root = Path(roots.get("rootfs") or Path.home() / ".local/share/sevenos/profile-rootfs" / key / "rootfs")
-        for path in (rootfs_root, rootfs_root / "etc", rootfs_root / "profile"):
-            path.mkdir(parents=True, exist_ok=True)
-        (rootfs_root / "etc/sevenos-profile").write_text(key + "\n", encoding="utf-8")
-        marker = container_root / key / "README.txt"
-        if not marker.exists():
-            marker.write_text(
-                f"SevenOS isolated data root for the {key} mini OS.\n"
-                f"Use `seven-profile-run --profile {key} --container <command>` to launch a command with this HOME/cache/data boundary.\n",
-                encoding="utf-8",
-            )
-        workspace = Path.home() / profile_workspace_names.get(key, "SevenOS")
+        if key == SYSTEM_PROFILE:
+            for path in (host_home / ".config", host_home / ".cache", host_home / ".local/share"):
+                path.mkdir(parents=True, exist_ok=True)
+        else:
+            Path(roots.get("config", state_dir / "profiles" / key)).mkdir(parents=True, exist_ok=True)
+            for name in ("home", "cache", "data"):
+                (container_root / key / name).mkdir(parents=True, exist_ok=True)
+            rootfs_root = Path(roots.get("rootfs") or host_home / ".local/share/sevenos/profile-rootfs" / key / "rootfs")
+            for path in (rootfs_root, rootfs_root / "etc", rootfs_root / "profile"):
+                path.mkdir(parents=True, exist_ok=True)
+            (rootfs_root / "etc/sevenos-profile").write_text(key + "\n", encoding="utf-8")
+            marker = container_root / key / "README.txt"
+            if not marker.exists():
+                marker.write_text(
+                    f"SevenOS isolated data root for the {key} mini OS.\n"
+                    f"Use `seven-profile-run --profile {key} --container <command>` to launch a command with this HOME/cache/data boundary.\n",
+                    encoding="utf-8",
+                )
+        workspace = host_home / profile_workspace_names.get(key, "SevenOS")
         manifest = {
             "schema": "sevenos.profile-runtime-manifest.v1",
             "profile": key,
@@ -698,8 +782,8 @@ def apply_state():
             "workspace": {
                 "default": str(workspace),
                 "exists": workspace.is_dir(),
-                "sandbox_path": "/workspace",
-                "policy": "explicit-bind-only",
+                "sandbox_path": "native" if key == SYSTEM_PROFILE else "/workspace",
+                "policy": "host-home" if key == SYSTEM_PROFILE else "explicit-bind-only",
             },
             "commands": {
                 "inspect": f"seven-profile-run --profile {key} --manifest",
@@ -713,13 +797,13 @@ def apply_state():
                 "strict_rootfs_shell": f"seven profile exec {key} --rootfs --isolation strict sh",
             },
             "policy": {
-                "packages": "global-pacman-store with profile package view; rootfs available after seven profile-rootfs build",
-                "app_data": "profile-config-home-cache-data",
-                "rootfs": "prepared",
-                "native_independence": "sealed read-only profile rootfs plus profile HOME/cache/data; no VM required",
+                "packages": "global-pacman-store direct access" if key == SYSTEM_PROFILE else "global-pacman-store with profile package view; rootfs available after seven profile-rootfs build",
+                "app_data": "host-home-cache-data" if key == SYSTEM_PROFILE else "profile-config-home-cache-data",
+                "rootfs": "not-applicable" if key == SYSTEM_PROFILE else "prepared",
+                "native_independence": "system admin profile uses the host directly" if key == SYSTEM_PROFILE else "sealed read-only profile rootfs plus profile HOME/cache/data; no VM required",
                 "isolation": profile_isolation_modes.get(key, "balanced"),
-                "workspace": "explicit-bind-only",
-                "ephemeral": "temporary-home-cache-data",
+                "workspace": "host-home" if key == SYSTEM_PROFILE else "explicit-bind-only",
+                "ephemeral": "not-used-for-system-profile" if key == SYSTEM_PROFILE else "temporary-home-cache-data",
                 "runtime": "systemd-user-scope" if has_systemd_run else "direct-process",
             },
         }
@@ -757,10 +841,26 @@ def apply_state():
                 "case \" ${*:-} \" in\n"
                 "  *' -Q'*|*' --query '*|*' -Si '*|*' -Ss '*|*' --sync --search '*|*' --sync --info '*) exec \"$real\" \"$@\" ;;\n"
                 "esac\n"
-                "profile=\"$(sed -n 's/^SEVENOS_ACTIVE_PROFILE=//p' \"${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env\" 2>/dev/null | head -1 | tr -d '\"')\"\n"
+                f"profile=\"$(sed -n 's/^SEVENOS_ACTIVE_PROFILE=//p' {shlex.quote(str(state_dir / 'profile.env'))} 2>/dev/null | head -1 | tr -d '\"' || true)\"\n"
                 "profile=\"${profile:-${SEVENOS_ACTIVE_PROFILE:-${SEVENOS_ISOLATION_PRIMARY:-equinox}}}\"\n"
+                "if [[ \"$profile\" == \"equinox\" || \"${SEVENOS_SYSTEM_PROFILE:-0}\" == \"1\" ]]; then\n"
+                "  exec \"$real\" \"$@\"\n"
+                "fi\n"
+                "case \" ${*:-} \" in\n"
+                "  *' -S '*|*' --sync '*|*' -U '*|*' --upgrade '*|*' -R '*|*' --remove '*|*' -i '*|*' --install '*)\n"
+                "    if [[ -t 0 && -t 1 && \"${SEVENOS_PACKAGE_GUARD:-confirm}\" == \"confirm\" ]]; then\n"
+                f"      printf '[SevenOS] {command} will modify the global Arch package store, not only the %s mini OS.\\n' \"$profile\" >&2\n"
+                "      printf '[SevenOS] Continue? [y/N] ' >&2\n"
+                "      read -r answer\n"
+                "      case \"$answer\" in y|Y|yes|YES|oui|OUI) exec \"$real\" \"$@\" ;; esac\n"
+                "      printf '[SevenOS] Cancelled. Use SevenStore/sevenpkg or rerun with SEVENOS_ALLOW_GLOBAL_PACKAGES=1.\\n' >&2\n"
+                "      exit 126\n"
+                "    fi\n"
+                "    ;;\n"
+                "esac\n"
                 f"printf '[SevenOS] {command} is a global package command.\\n' >&2\n"
                 "printf '[SevenOS] Use SevenStore/sevenpkg for normal installs, or profile rootfs maintenance for mini OS packages.\\n' >&2\n"
+                "printf '[SevenOS] For a deliberate global install: SEVENOS_ALLOW_GLOBAL_PACKAGES=1 " + command + " %s\\n' \"$*\" >&2\n"
                 f"printf '[SevenOS] Suggested: seven profile exec %s --rootfs-writable {command} %s\\n' \"$profile\" \"$*\" >&2\n"
                 "printf '[SevenOS] Then run: seven profile-rootfs verify all && seven profile-rootfs seal all --apply --yes\\n' >&2\n"
                 "exit 126\n",
@@ -769,7 +869,23 @@ def apply_state():
         else:
             shim.write_text(
                 "#!/usr/bin/env bash\n"
-                f"exec {runner} --container {command!r} \"$@\"\n",
+                "set -euo pipefail\n"
+                f"command_name={shlex.quote(command)}\n"
+                f"profile=\"$(sed -n 's/^SEVENOS_ACTIVE_PROFILE=//p' {shlex.quote(str(state_dir / 'profile.env'))} 2>/dev/null | head -1 | tr -d '\"' || true)\"\n"
+                "profile=\"${profile:-${SEVENOS_ACTIVE_PROFILE:-${SEVENOS_ISOLATION_PRIMARY:-equinox}}}\"\n"
+                "if [[ \"$profile\" == \"equinox\" || \"${SEVENOS_SYSTEM_PROFILE:-0}\" == \"1\" ]]; then\n"
+                "  base_path=\"\"\n"
+                "  IFS=':' read -ra path_parts <<<\"${PATH:-}\"\n"
+                "  for path_part in \"${path_parts[@]}\"; do\n"
+                "    [[ -n \"$path_part\" ]] || continue\n"
+                "    case \"$path_part\" in *profile-shims*|*profile-package-views*|*/.local/share/sevenos/profile-containers/*) continue ;; esac\n"
+                "    base_path=\"${base_path:+$base_path:}$path_part\"\n"
+                "  done\n"
+                "  real=\"$(PATH=\"$base_path\" command -v \"$command_name\" || true)\"\n"
+                "  [[ -n \"$real\" && \"$real\" != \"$0\" ]] || { printf '[SevenOS] backend missing for %s\\n' \"$command_name\" >&2; exit 127; }\n"
+                "  exec \"$real\" \"$@\"\n"
+                "fi\n"
+                f"exec {runner} --container \"$command_name\" \"$@\"\n",
                 encoding="utf-8",
             )
         shim.chmod(0o755)
@@ -823,20 +939,20 @@ elif apply_requested and dry_run:
     payload["safe_execution"]["would_generate_shims"] = all_commands
 
 if action == "doctor":
-    shims_dir = Path.home() / ".local/share/sevenos/profile-shims"
+    shims_dir = host_home / ".local/share/sevenos/profile-shims"
     sample_shims = [shims_dir / command for command in ("code", "gimp", "nmap", "gamemoderun") if (shims_dir / command).exists()]
     strict_shims_ok = bool(sample_shims) and all("--container" in path.read_text(encoding="utf-8", errors="ignore") for path in sample_shims)
     package_guard_shims = [shims_dir / command for command in ("pacman", "paru", "yay", "makepkg") if (shims_dir / command).exists()]
     package_guard_ok = bool(package_guard_shims) and all("SEVENOS_ALLOW_GLOBAL_PACKAGES" in path.read_text(encoding="utf-8", errors="ignore") for path in package_guard_shims)
-    desktop_override_root = Path.home() / ".local/share/applications"
+    desktop_override_root = host_home / ".local/share/applications"
     desktop_override_count = 0
     if desktop_override_root.is_dir():
         desktop_override_count = sum(1 for path in desktop_override_root.glob("*.desktop") if "X-SevenOS-Profiled=true" in path.read_text(encoding="utf-8", errors="ignore"))
-    package_view_root = Path.home() / ".local/share/sevenos/profile-package-views"
+    package_view_root = host_home / ".local/share/sevenos/profile-package-views"
     package_view_count = 0
     if package_view_root.is_dir():
         package_view_count = sum(1 for path in package_view_root.glob("*/bin") if path.is_dir())
-    rootfs_root = Path.home() / ".local/share/sevenos/profile-rootfs"
+    rootfs_root = host_home / ".local/share/sevenos/profile-rootfs"
     rootfs_count = 0
     rootfs_ready_count = 0
     if rootfs_root.is_dir():
@@ -864,7 +980,7 @@ if action == "doctor":
         "desktop_override_count": desktop_override_count,
         "package_views": "OK" if package_view_count >= len(profiles) else "MISS",
         "package_view_count": package_view_count,
-        "rootfs": "OK" if rootfs_count >= len(profiles) else "MISS",
+        "rootfs": "OK" if rootfs_count >= max(len(profiles) - 1, 0) else "MISS",
         "rootfs_count": rootfs_count,
         "rootfs_ready_count": rootfs_ready_count,
         "state": "OK" if (state_dir / "profile-isolation.json").is_file() else "MISS",
