@@ -245,8 +245,8 @@ def recorder() -> int:
         if pid and Path(f"/proc/{pid}").exists():
             current = RECORDER_FILE.read_text(encoding="utf-8", errors="ignore").strip() if RECORDER_FILE.exists() else ""
             name = Path(current).name if current else "recording"
-            return emit("●", f"Seven Recorder · recording\n{name}\nClick: controls · Right click: area · Middle click: full screen", "recording", "active")
-    return emit("󰑊", "Seven Recorder\nClick: controls\nRight click: record area\nMiddle click: record full screen", "idle", "idle")
+            return emit("● REC", f"Seven Recorder · recording\n{name}\nClick: record area · Right click: controls · Middle click: full screen", "recording", "active")
+    return emit("●", "Seven Recorder\nClick: record area\nRight click: controls\nMiddle click: record full screen", "idle", "idle")
 
 
 def ai() -> int:
@@ -774,7 +774,7 @@ def experience() -> int:
     if last:
         tooltip_parts.append(f"Dernière action: {last.get('kind', 'event')} · {last.get('label', '')}")
     if recommendation:
-        tooltip_parts.append(f"Suggestion: {public_recommendation_label(str(recommendation.get('title', 'Open Spotlight')))}")
+        tooltip_parts.append(f"Next: {public_recommendation_label(str(recommendation.get('title', 'Open Spotlight')))}")
         tooltip_parts.append(public_recommendation_label(str(recommendation.get("reason", ""))))
     tooltip_parts.append("Clic: préparer · clic droit: événements · clic milieu: suggestion")
     return emit(label, "\n".join(tooltip_parts), css, state)

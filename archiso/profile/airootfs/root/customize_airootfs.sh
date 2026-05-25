@@ -25,6 +25,7 @@ install -Dm755 /opt/SevenOS/scripts/network.sh /usr/local/bin/seven-network
 install -d /usr/share/plymouth/themes/sevenos
 install -m0644 /opt/SevenOS/branding/plymouth/sevenos/sevenos.plymouth /usr/share/plymouth/themes/sevenos/sevenos.plymouth
 install -m0644 /opt/SevenOS/branding/plymouth/sevenos/sevenos.script /usr/share/plymouth/themes/sevenos/sevenos.script
+install -m0644 /opt/SevenOS/branding/plymouth/sevenos/seven-prism.png /usr/share/plymouth/themes/sevenos/seven-prism.png
 if command -v plymouth-set-default-theme >/dev/null 2>&1; then
   plymouth-set-default-theme sevenos || true
 fi

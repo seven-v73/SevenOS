@@ -772,6 +772,8 @@ def handle_primary(args):
 
 def handle_setup(args):
     extra = []
+    if args.action in {"doctor", "check"}:
+        extra.append("doctor")
     if args.yes:
         extra.append("--yes")
     if args.optional:
@@ -1082,7 +1084,7 @@ def main():
     system_profile_parser.add_argument("--json", action="store_true", help="print machine-readable system profile state")
     system_profile_parser.add_argument("--yes", action="store_true", help="confirm supported repair steps")
     boot_splash_parser = subparsers.add_parser("boot-splash", help="configure SevenOS quiet boot and shutdown splash")
-    boot_splash_parser.add_argument("action", nargs="?", default="status", choices=("status", "apply", "theme"))
+    boot_splash_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "apply", "theme"))
     boot_splash_parser.add_argument("extra", nargs=argparse.REMAINDER)
     language_parser = subparsers.add_parser("language", help="inspect and apply SevenOS user language")
     language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply"))
@@ -1107,7 +1109,7 @@ def main():
     primary_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "apply"))
     primary_parser.add_argument("--json", action="store_true", help="print machine-readable primary-PC gate")
     setup_parser = subparsers.add_parser("setup", help="prepare a fresh SevenOS device ergonomically")
-    setup_parser.add_argument("action", nargs="?", default="new-device", choices=("new-device", "fresh-device", "first-boot"))
+    setup_parser.add_argument("action", nargs="?", default="new-device", choices=("new-device", "fresh-device", "first-boot", "doctor", "check"))
     setup_parser.add_argument("--yes", action="store_true", help="run package installs non-interactively")
     setup_parser.add_argument("--optional", action="store_true", help="include optional mini OS dependencies")
     setup_parser.add_argument("--rootfs", action="store_true", help="also build all mini OS rootfs images")

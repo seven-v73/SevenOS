@@ -92,12 +92,20 @@ toolkit_theme_check() {
   done
 
   if command -v gsettings >/dev/null 2>&1; then
-    local color_scheme
+    local color_scheme expected_scheme theme_mode
+    theme_mode="dark"
+    if [[ -r "$HOME/.config/sevenos/theme.conf" ]]; then
+      theme_mode="$(awk -F= 'tolower($1) ~ /^(mode|theme_mode|sevenos_theme_mode)$/ {gsub(/[[:space:]"]/, "", $2); print $2; exit}' "$HOME/.config/sevenos/theme.conf")"
+    fi
+    case "$theme_mode" in
+      light) expected_scheme="prefer-light" ;;
+      *) expected_scheme="prefer-dark" ;;
+    esac
     color_scheme="$(gsettings get org.gnome.desktop.interface color-scheme 2>/dev/null || true)"
-    if [[ "$color_scheme" == *prefer-light* ]]; then
-      ok_item "GTK color-scheme prefer-light"
+    if [[ "$color_scheme" == *"$expected_scheme"* ]]; then
+      ok_item "GTK color-scheme $expected_scheme"
     else
-      warn_item "GTK color-scheme is not prefer-light"
+      warn_item "GTK color-scheme is not $expected_scheme"
       printf '  run: ./install.sh theme\n'
     fi
   fi

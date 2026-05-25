@@ -2,7 +2,26 @@
 set -Eeuo pipefail
 
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
-CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+host_home() {
+  local home="${SEVENOS_HOST_HOME:-$HOME}"
+  case "$home" in
+    */.local/share/sevenos/profile-containers/*/home)
+      printf '%s\n' "${home%%/.local/share/sevenos/profile-containers/*}"
+      ;;
+    *)
+      printf '%s\n' "$home"
+      ;;
+  esac
+}
+
+HOST_HOME="$(host_home)"
+if [[ -n "${SEVENOS_HOST_CONFIG_HOME:-}" ]]; then
+  CONFIG_HOME="$SEVENOS_HOST_CONFIG_HOME"
+elif [[ "$HOME" == */.local/share/sevenos/profile-containers/*/home ]]; then
+  CONFIG_HOME="$HOST_HOME/.config"
+else
+  CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+fi
 THEME_CONF="$CONFIG_HOME/sevenos/theme.conf"
 WAYBAR_CONFIG="$CONFIG_HOME/waybar/config.jsonc"
 WAYBAR_STYLE="$CONFIG_HOME/waybar/style.css"
@@ -82,7 +101,10 @@ essential_left = {"spotlight"}
 essential_right = {"system-status"}
 modules |= essential_left | essential_right
 
-left = ["custom/sevenos", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"]
+recorder_command = "sh -lc 'cmd=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin/seven-waybar-status\"; [ -x \"$cmd\" ] || cmd=seven-waybar-status; exec \"$cmd\" recorder'"
+recorder_click = "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder ACTION'"
+
+left = ["custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"]
 config["modules-left"] = left
 config["modules-center"] = ["hyprland/workspaces"]
 config["hyprland/window"] = {
@@ -167,6 +189,16 @@ config["custom/mini-context"] = {
     "tooltip": True,
     "on-click": "seven-waybar-action mini-context",
     "on-click-right": "seven-mini-os-center",
+}
+config["custom/recorder"] = {
+    "exec": recorder_command,
+    "return-type": "json",
+    "format": "{}",
+    "interval": 2,
+    "tooltip": True,
+    "on-click": recorder_click.replace("ACTION", "area"),
+    "on-click-right": recorder_click.replace("ACTION", "panel"),
+    "on-click-middle": recorder_click.replace("ACTION", "full"),
 }
 
 key = profile.get("key", "equinox")
@@ -401,6 +433,19 @@ import os
 profile = json.loads(os.environ["PROFILE_JSON"])
 key = os.environ["PROFILE_KEY"]
 
+recorder_command = "sh -lc 'cmd=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin/seven-waybar-status\"; [ -x \"$cmd\" ] || cmd=seven-waybar-status; exec \"$cmd\" recorder'"
+recorder_click = "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder ACTION'"
+recorder_module = {
+    "exec": recorder_command,
+    "return-type": "json",
+    "format": "{}",
+    "interval": 2,
+    "tooltip": True,
+    "on-click": recorder_click.replace("ACTION", "area"),
+    "on-click-right": recorder_click.replace("ACTION", "panel"),
+    "on-click-middle": recorder_click.replace("ACTION", "full"),
+}
+
 profiles = {
     "forge": {
         "label": "Forge",
@@ -409,7 +454,7 @@ profiles = {
         "accent": "Projet, build, conteneurs, services",
         "switch_label": "OS",
         "position": "top",
-        "height": 28,
+        "height": 30,
         "spacing": 4,
         "margin_top": 0,
         "margin_left": 0,
@@ -420,7 +465,7 @@ profiles = {
         "modules": ["custom/project", "custom/recorder", "custom/containers", "custom/services"],
         "custom": {
             "project": {"format": "󰉋", "tooltip": "Forge workspace · ouvrir l'espace projet", "on-click": "seven profile open forge"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder panel", "on-click-right": "seven-recorder area", "on-click-middle": "seven-recorder full"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 3, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
             "containers": {"exec": "docker info >/dev/null 2>&1 && echo '󰡨' || echo '󰡨 off'", "interval": 20, "tooltip": "Docker/Podman et services locaux", "on-click": "seven-terminal forge -- bash -lc 'docker ps; printf \"\\n\"; podman ps 2>/dev/null || true; read -r'"},
             "services": {"format": "󰒓", "tooltip": "Inspecter les services Forge", "on-click": "seven-terminal forge -- bash -lc 'systemctl --user --no-pager --type=service --state=running; read -r'"},
         },
@@ -432,7 +477,7 @@ profiles = {
         "accent": "Périmètre, VPN, capture, preuves",
         "switch_label": "OS",
         "position": "top",
-        "height": 28,
+        "height": 30,
         "spacing": 4,
         "margin_top": 0,
         "margin_left": 0,
@@ -444,7 +489,7 @@ profiles = {
         "custom": {
             "scope": {"format": "󰒃", "tooltip": "Shield Center · périmètre autorisé", "on-click": "seven-shield-center-native"},
             "vpn": {"exec": "seven-waybar-status vpn", "return-type": "json", "interval": 10, "tooltip": True, "on-click": "seven-waybar-action security"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder panel", "on-click-right": "seven-recorder area", "on-click-middle": "seven-recorder full"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 3, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
         },
     },
     "studio": {
@@ -454,7 +499,7 @@ profiles = {
         "accent": "Canvas, média, capture, export",
         "switch_label": "OS",
         "position": "top",
-        "height": 28,
+        "height": 30,
         "spacing": 4,
         "margin_top": 0,
         "margin_left": 0,
@@ -466,7 +511,7 @@ profiles = {
         "custom": {
             "canvas": {"format": "󰽉", "tooltip": "Studio canvas · ouvrir l'espace créatif", "on-click": "seven profile open studio"},
             "media": {"exec": "seven-waybar-status media", "return-type": "json", "interval": 5, "tooltip": True, "on-click": "seven-waybar-action media-menu", "on-click-right": "seven-quick-settings audio"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder panel", "on-click-right": "seven-recorder area", "on-click-middle": "seven-recorder full"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 3, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
         },
     },
     "windows": {
@@ -476,7 +521,7 @@ profiles = {
         "accent": "Apps, dossiers, Windows complet",
         "switch_label": "OS",
         "position": "top",
-        "height": 28,
+        "height": 30,
         "spacing": 4,
         "margin_top": 0,
         "margin_bottom": 0,
@@ -500,7 +545,7 @@ profiles = {
         "accent": "FPS, latence, GameMode, capture",
         "switch_label": "OS",
         "position": "top",
-        "height": 28,
+        "height": 30,
         "spacing": 4,
         "margin_top": 0,
         "margin_left": 0,
@@ -512,7 +557,7 @@ profiles = {
         "custom": {
             "performance": {"format": "󰾆", "tooltip": "Pulse performance · latence et FPS", "on-click": "seven profile center pulse"},
             "gamemode": {"exec": "pgrep -x gamemoded >/dev/null 2>&1 && echo '󰊴' || echo '󰊴 off'", "interval": 30, "tooltip": "Optimisation gaming locale"},
-            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 2, "tooltip": True, "on-click": "seven-recorder panel", "on-click-right": "seven-recorder area", "on-click-middle": "seven-recorder full"},
+            "recorder": {"exec": "seven-waybar-status recorder", "return-type": "json", "interval": 3, "tooltip": True, "on-click": "seven-recorder area", "on-click-right": "seven-recorder panel", "on-click-middle": "seven-recorder full"},
         },
     },
 }
@@ -523,7 +568,7 @@ config = {
     "profile": key,
     "layer": "top",
     "position": spec.get("position", "top"),
-    "height": spec.get("height", 28),
+    "height": spec.get("height", 30),
     "spacing": spec.get("spacing", 8),
     "margin-top": spec.get("margin_top", 8),
     "margin-bottom": spec.get("margin_bottom", 0),
@@ -693,6 +738,12 @@ for item in reversed(visible_app_menu_items):
     config["modules-left"].insert(insert_at, item)
 for name, payload in spec["custom"].items():
     config[f"custom/{name}"] = payload
+if "custom/recorder" in config.get("modules-right", []) or "custom/recorder" in config.get("modules-left", []):
+    config["custom/recorder"] = recorder_module
+    config["modules-right"] = [item for item in config["modules-right"] if item != "custom/recorder"]
+    config["modules-left"] = [item for item in config["modules-left"] if item != "custom/recorder"]
+    insert_at = 1 if config["modules-left"] else 0
+    config["modules-left"].insert(insert_at, "custom/recorder")
 if "custom/experience" not in config["modules-right"]:
     insert_at = config["modules-right"].index("clock") if "clock" in config["modules-right"] else len(config["modules-right"])
     config["modules-right"].insert(insert_at, "custom/experience")
@@ -709,7 +760,7 @@ config["tray"] = {"icon-size": 14, "spacing": 6}
 config["custom/experience"] = {
     "exec": "seven-waybar-status experience",
     "return-type": "json",
-    "interval": 2,
+    "interval": 8,
     "tooltip": True,
     "on-click": "seven experience warmup",
     "on-click-right": "seven experience events",
@@ -1277,6 +1328,29 @@ window#waybar {
   border-color: alpha(@accent, 0.28);
   box-shadow: 0 0 14px alpha(@accent, 0.16);
 }
+
+#custom-recorder {
+  min-width: 18px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: alpha(@danger, 0.76);
+  background: transparent;
+  border: 1px solid alpha(@danger, 0.14);
+}
+
+#custom-recorder:hover {
+  color: #FFFFFF;
+  background: alpha(@danger, 0.12);
+  border-color: alpha(@danger, 0.34);
+}
+
+#custom-recorder.recording {
+  min-width: 44px;
+  color: #FFFFFF;
+  background: alpha(@danger, 0.18);
+  border-color: alpha(@danger, 0.42);
+  box-shadow: 0 0 14px alpha(@danger, 0.18);
+}
 """
 for name in ("accent", "warn", "danger", "text", "tooltip_bg", "line", "radius"):
     css = css.replace(f"@{name}", spec[name])
@@ -1306,7 +1380,7 @@ import os
 from pathlib import Path
 
 cfg = json.loads(Path(os.environ["BAOBAB_CONFIG"]).read_text(encoding="utf-8"))
-cfg["height"] = 28
+cfg["height"] = 30
 cfg["spacing"] = 4
 cfg["margin-top"] = 0
 cfg["margin-left"] = 0
@@ -1418,7 +1492,7 @@ cfg["tray"] = {"icon-size": 14, "spacing": 6}
 cfg["custom/experience"] = {
     "exec": "seven-waybar-status experience",
     "return-type": "json",
-    "interval": 2,
+    "interval": 8,
     "tooltip": True,
     "on-click": "seven experience warmup",
     "on-click-right": "seven experience events",
@@ -1875,7 +1949,6 @@ refresh_specialized_waybars() {
 }
 
 audit_waybars() {
-  refresh_specialized_waybars
   CONFIG_HOME="$CONFIG_HOME" python - <<'PY'
 import json
 import os
@@ -1916,11 +1989,31 @@ for key, spec in profiles.items():
         errors.append(f"{key}: missing modules {', '.join(sorted(missing))}")
     if cfg.get("position") != spec["position"]:
         errors.append(f"{key}: position {cfg.get('position')} != {spec['position']}")
+    if cfg.get("height") != 30:
+        errors.append(f"{key}: height {cfg.get('height')} != 30")
     if len(modules) > spec["max_modules"]:
         warnings.append(f"{key}: dense layout ({len(modules)} modules)")
+    if "custom/recorder" in module_set:
+        left = cfg.get("modules-left", [])
+        right = cfg.get("modules-right", [])
+        recorder = cfg.get("custom/recorder") or {}
+        if "custom/recorder" in right:
+            errors.append(f"{key}: recorder must stay on the left for stable visibility")
+        if "custom/recorder" not in left:
+            errors.append(f"{key}: recorder is configured but not visible on the left")
+        elif left.index("custom/recorder") > 1:
+            warnings.append(f"{key}: recorder is visible but should stay near identity")
+        if recorder.get("format") != "{}":
+            errors.append(f"{key}: recorder format must be compact JSON text")
+        if int(recorder.get("interval", 99)) > 2:
+            errors.append(f"{key}: recorder interval is too slow for dynamic state")
+        if ".local/bin/seven-waybar-status" not in str(recorder.get("exec", "")):
+            errors.append(f"{key}: recorder must prefer the user-local status helper")
     identity_module = spec.get("identity_module", "custom/identity")
-    identity = (cfg.get(identity_module) or {}).get("format", "")
-    if identity != spec["identity"]:
+    identity_cfg = cfg.get(identity_module) or {}
+    identity = identity_cfg.get("format", "")
+    identity_exec = identity_cfg.get("exec", "")
+    if identity != spec["identity"] and identity_exec != "seven-waybar-status sevenos":
         errors.append(f"{key}: identity label {identity!r} != {spec['identity']!r}")
     switch = (cfg.get("custom/profile-switch") or {}).get("format", "")
     if len(str(switch)) > 8:

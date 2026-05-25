@@ -4,6 +4,7 @@ set -Eeuo pipefail
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 CONFIG="$CONFIG_HOME/waybar/config.jsonc"
 STYLE="$CONFIG_HOME/waybar/style.css"
+PREFS="$CONFIG_HOME/sevenos/waybar.conf"
 
 resolve_root() {
   local script_dir
@@ -112,6 +113,33 @@ context_repair() {
   fi
 }
 
+set_context_mode() {
+  local mode="$1"
+  mkdir -p "$(dirname -- "$PREFS")"
+  case "$mode" in
+    stable)
+      {
+        printf 'context=stable\n'
+        printf 'signal_min_interval=3.0\n'
+      } > "$PREFS"
+      ;;
+    dynamic)
+      {
+        printf 'context=dynamic\n'
+        printf 'signal_min_interval=1.2\n'
+      } > "$PREFS"
+      ;;
+    *)
+      printf 'seven-waybar: unsupported context mode: %s\n' "$mode" >&2
+      return 2
+      ;;
+  esac
+  if systemctl --user list-unit-files sevenos-waybar-context.service >/dev/null 2>&1; then
+    systemctl --user restart sevenos-waybar-context.service >/dev/null 2>&1 || true
+  fi
+  printf 'SevenOS Waybar context: %s\n' "$mode"
+}
+
 wait_for_waybar() {
   local attempt
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
@@ -176,6 +204,12 @@ case "${1:-status}" in
     printf 'SevenOS Waybar Context: %s instance(s)\n' "$(count_waybar_context)"
     context_doctor
     ;;
+  stable)
+    set_context_mode stable
+    ;;
+  dynamic)
+    set_context_mode dynamic
+    ;;
   stop)
     systemctl --user stop sevenos-waybar.service >/dev/null 2>&1 || true
     pkill -u "$USER" -x waybar >/dev/null 2>&1 || true
@@ -183,7 +217,7 @@ case "${1:-status}" in
     printf 'SevenOS Waybar: stopped\n'
     ;;
   *)
-    printf 'Usage: seven-waybar [status [--json]|start|restart|repair|stop]\n' >&2
+    printf 'Usage: seven-waybar [status [--json]|start|restart|repair|stable|dynamic|stop]\n' >&2
     exit 2
     ;;
 esac

@@ -1609,8 +1609,11 @@ bootstrap_all_profiles() {
 run_profile_background() {
   local logfile="$1"
   shift
-  mkdir -p "$(dirname "$logfile")"
-  printf '[%s] %s\n' "$(date -Is)" "$*" >>"$logfile"
+  mkdir -p "$(dirname "$logfile")" 2>/dev/null || true
+  if ! { touch "$logfile" 2>/dev/null && [[ -w "$logfile" ]]; }; then
+    logfile="${TMPDIR:-/tmp}/sevenos-profile-$(basename "$logfile")"
+  fi
+  printf '[%s] %s\n' "$(date -Is)" "$*" >>"$logfile" 2>/dev/null || true
   if command -v setsid >/dev/null 2>&1; then
     setsid -f "$@" >>"$logfile" 2>&1 </dev/null
   else

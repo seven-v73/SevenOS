@@ -17,9 +17,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
 CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
+CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
+PREFS_FILE = CONFIG_HOME / "sevenos" / "waybar.conf"
 WAYBAR_SIGNAL = "RTMIN+8"
 WINDOW_MEMORY_EVENTS = {"startup", "manual", "activewindow", "activewindowv2", "workspace", "openwindow", "closewindow", "movewindow"}
 LAST_MEMORY_REFRESH = 0.0
+LAST_NOTIFIED_CONTEXT = ""
 
 
 def run(command: list[str], timeout: float = 0.7) -> str:
@@ -27,6 +30,32 @@ def run(command: list[str], timeout: float = 0.7) -> str:
         return subprocess.run(command, text=True, capture_output=True, check=False, timeout=timeout).stdout.strip()
     except Exception:
         return ""
+
+
+def prefs() -> dict[str, str]:
+    values = {
+        "context": os.environ.get("SEVENOS_WAYBAR_CONTEXT", "dynamic"),
+        "signal_min_interval": os.environ.get("SEVENOS_WAYBAR_SIGNAL_MIN_INTERVAL", "1.2"),
+    }
+    if PREFS_FILE.exists():
+        for line in PREFS_FILE.read_text(encoding="utf-8", errors="ignore").splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            key, value = stripped.split("=", 1)
+            values[key.strip().lower()] = value.strip().strip("'\"")
+    return values
+
+
+def stable_context() -> bool:
+    return prefs().get("context", "dynamic").lower() in {"stable", "static", "locked", "freeze"}
+
+
+def signal_min_interval() -> float:
+    try:
+        return max(0.2, float(prefs().get("signal_min_interval", "1.2")))
+    except ValueError:
+        return 1.2
 
 
 def active_window() -> dict:
@@ -115,6 +144,8 @@ def app_key(app_class: str) -> str:
 
 
 def shell_experience() -> dict:
+    if stable_context():
+        return {}
     helper = ROOT / "scripts/shell-experience.sh"
     if not helper.exists():
         return {}
@@ -154,6 +185,8 @@ def refresh_window_memory(event: str) -> None:
     if not helper.exists():
         return
     now = time.time()
+    if stable_context() and event not in {"startup", "manual", "doctor", "repair"}:
+        return
     if event not in {"startup", "manual"} and now - LAST_MEMORY_REFRESH < 0.7:
         return
     LAST_MEMORY_REFRESH = now
@@ -234,9 +267,26 @@ def payload(event: str = "refresh") -> dict:
 
 
 def write_context(event: str = "refresh", notify_waybar: bool = True) -> None:
+    global LAST_NOTIFIED_CONTEXT
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
-    CONTEXT_FILE.write_text(json.dumps(payload(event), ensure_ascii=False) + "\n", encoding="utf-8")
+    data = payload(event)
+    CONTEXT_FILE.write_text(json.dumps(data, ensure_ascii=False) + "\n", encoding="utf-8")
+    if stable_context() and event not in {"startup", "manual", "doctor", "repair"}:
+        notify_waybar = False
+    signature = json.dumps({
+        "profile": data.get("profile", {}).get("key"),
+        "app": data.get("app", {}).get("key"),
+        "service": data.get("app", {}).get("service"),
+        "density": data.get("layout", {}).get("density"),
+        "priority": data.get("layout", {}).get("priority"),
+    }, sort_keys=True)
+    now = time.time()
+    last_signal = getattr(write_context, "_last_signal", 0.0)
+    if notify_waybar and signature == LAST_NOTIFIED_CONTEXT and now - last_signal < signal_min_interval():
+        notify_waybar = False
     if notify_waybar:
+        LAST_NOTIFIED_CONTEXT = signature
+        setattr(write_context, "_last_signal", now)
         subprocess.run(["pkill", f"-{WAYBAR_SIGNAL}", "-x", "waybar"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 

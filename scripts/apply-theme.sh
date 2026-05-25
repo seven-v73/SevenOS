@@ -651,6 +651,11 @@ install_preserved_config_file "$ROOT_DIR/hyprland/conf/monitor.conf" "$CONFIG_HO
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/keyboard.conf" "$CONFIG_HOME/hypr/conf/keyboard.conf"
 install_preserved_config_file "$ROOT_DIR/hyprland/conf/custom.conf" "$CONFIG_HOME/hypr/conf/custom.conf"
 copy_config_dir "$THEME_SOURCE_DIR/waybar" "$CONFIG_HOME/waybar"
+if is_dry_run; then
+  printf '%q refresh-waybars\n' "$ROOT_DIR/bin/seven-profile-theme"
+elif [[ -x "$ROOT_DIR/bin/seven-profile-theme" ]]; then
+  "$ROOT_DIR/bin/seven-profile-theme" refresh-waybars || log_warn "Mini OS Waybar refresh skipped; run: seven-profile-theme refresh-waybars"
+fi
 copy_config_dir "$THEME_SOURCE_DIR/rofi" "$CONFIG_HOME/rofi"
 copy_config_dir "$(theme_source_or_common mako)" "$CONFIG_HOME/mako"
 copy_config_dir "$(theme_source_or_common swaync)" "$CONFIG_HOME/swaync"
@@ -700,8 +705,13 @@ run_cmd cp -r "$ROOT_DIR/identity/components" "$DATA_HOME/sevenos/identity/compo
 render_wallpaper
 restore_persisted_wallpaper
 write_hyprpaper_config
-"$ROOT_DIR/scripts/wallpaper-theme.sh" generate "$WALLPAPER_ACTIVE" || true
-"$ROOT_DIR/scripts/theme-engine.sh" apply || true
+if is_dry_run; then
+  printf '%q generate %q\n' "$ROOT_DIR/scripts/wallpaper-theme.sh" "$WALLPAPER_ACTIVE"
+  printf '%q apply\n' "$ROOT_DIR/scripts/theme-engine.sh"
+else
+  "$ROOT_DIR/scripts/wallpaper-theme.sh" generate "$WALLPAPER_ACTIVE" || true
+  "$ROOT_DIR/scripts/theme-engine.sh" apply || true
+fi
 configure_file_experience
 configure_user_session_services
 "$ROOT_DIR/scripts/hypr-ecosystem.sh" apply || true

@@ -36,6 +36,7 @@ lifecycle.status	System	SevenOS Lifecycle	seven lifecycle	safe	Show the SevenOS-
 lifecycle.doctor	System	Lifecycle Doctor	seven lifecycle doctor	safe	Validate that SevenOS maintenance is exposed through SevenOS surfaces instead of raw backend commands.
 lifecycle.plan	System	Lifecycle Plan	seven lifecycle plan	safe	Show remaining maintenance gates before SevenOS feels like a complete autonomous distribution.
 boot.splash.status	System	Boot Splash Status	seven boot-splash status	safe	Show SevenOS quiet boot and shutdown splash readiness.
+boot.splash.doctor	System	Boot Splash Doctor	seven boot-splash doctor	safe	Validate the SevenOS Plymouth theme, Prism boot asset and ISO install hook.
 boot.splash.apply	System	Apply Boot Splash	seven boot-splash apply	packages	Enable SevenOS Plymouth splash, quiet kernel parameters and initramfs integration.
 update.status	System	SevenOS Update	seven update	safe	Show SevenOS system, app, community and profile update state before backend commands run.
 update.plan	System	Update Plan	seven update plan	safe	Show the SevenOS-first update sequence.
@@ -157,6 +158,7 @@ primary.status	System	Primary PC Gate	seven primary	safe	Show the consolidated p
 primary.json	System	Primary PC JSON	seven primary --json	safe	Expose primary-PC readiness as one machine-readable contract for Seven Hub and future Seven Core clients.
 primary.apply	System	Apply Primary PC Path	seven primary apply	packages	Run the daily-driver consolidation path from the primary-PC entrypoint.
 setup.new	System	Install SevenOS New Machine	seven new	packages	One-command fresh machine setup: fonts, dependencies, mini OS workspaces, isolation and post-install checks.
+setup.doctor	System	New Device Doctor	seven setup doctor	safe	Check fresh-machine package files, network, fonts, splash and profile contracts before installing.
 setup.new_device	System	New Device Setup	seven setup new-device --yes	packages	Automatically prepare a fresh SevenOS machine with fonts, visual layer, mini OS requirements, workspaces and isolation.
 setup.new_device.optional	System	New Device Full Setup	seven setup new-device --yes --optional	packages	Prepare a fresh SevenOS machine and include optional mini OS package sets.
 improve.daily	System	Improve Daily Driver	seven improve daily --apply --yes	packages	Apply the daily-driver consolidation plan.

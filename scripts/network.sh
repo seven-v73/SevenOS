@@ -37,6 +37,20 @@ command_state() {
   command -v "$1" >/dev/null 2>&1 && printf OK || printf MISS
 }
 
+require_interactive_admin() {
+  if is_dry_run || [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    return 0
+  fi
+  if [[ ! -t 0 ]] && ! sudo -n true >/dev/null 2>&1; then
+    log_error "Administrator permission is required, but no interactive password prompt is available."
+    log_info "Open Seven Terminal and run:"
+    log_info "  cd $ROOT_DIR"
+    log_info "  ./install.sh network --yes"
+    log_info "Then check with: seven network status"
+    return 1
+  fi
+}
+
 service_state() {
   local unit="$1"
   if systemctl is-active --quiet "$unit" 2>/dev/null; then
@@ -130,6 +144,7 @@ unblock_wifi() {
 
 bootstrap_network() {
   log_info "Preparing SevenOS network stack..."
+  require_interactive_admin
   install_package_file "$ROOT_DIR/scripts/packages-network.txt"
   enable_network_services
   unblock_wifi
@@ -138,6 +153,7 @@ bootstrap_network() {
 
 repair_network() {
   log_info "Repairing SevenOS network stack..."
+  require_interactive_admin
   enable_network_services
   unblock_wifi
   if is_dry_run; then

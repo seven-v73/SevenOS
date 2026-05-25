@@ -1,49 +1,110 @@
-Window.SetBackgroundTopColor(0.06, 0.07, 0.10);
-Window.SetBackgroundBottomColor(0.08, 0.09, 0.14);
+Window.SetBackgroundTopColor(0.030, 0.038, 0.060);
+Window.SetBackgroundBottomColor(0.055, 0.060, 0.095);
 
 screen_w = Window.GetWidth();
 screen_h = Window.GetHeight();
 center_x = screen_w / 2;
 center_y = screen_h / 2;
 
-brand = Image.Text("SevenOS", 1, 1, 1);
+halo = Image(360, 360);
+halo.Fill(0.10, 0.24, 0.42, 0.16);
+halo_sprite = Sprite(halo);
+halo_sprite.SetX(center_x - 180);
+halo_sprite.SetY(center_y - 236);
+halo_sprite.SetZ(2);
+
+prism = Image("seven-prism.png");
+prism_sprite = Sprite(prism);
+prism_sprite.SetX(center_x - prism.GetWidth() / 2);
+prism_sprite.SetY(center_y - 170);
+prism_sprite.SetZ(20);
+
+lane_a = Image(160, 2);
+lane_a.Fill(0.30, 0.64, 1.00, 0.46);
+lane_a_sprite = Sprite(lane_a);
+lane_a_sprite.SetY(center_y - 74);
+lane_a_sprite.SetZ(8);
+
+lane_b = Image(120, 2);
+lane_b.Fill(0.55, 0.38, 1.00, 0.34);
+lane_b_sprite = Sprite(lane_b);
+lane_b_sprite.SetY(center_y - 64);
+lane_b_sprite.SetZ(8);
+
+brand = Image.Text("SevenOS", 0.94, 0.97, 1.00);
 brand_sprite = Sprite(brand);
 brand_sprite.SetX(center_x - brand.GetWidth() / 2);
-brand_sprite.SetY(center_y - 44);
-brand_sprite.SetZ(20);
+brand_sprite.SetY(center_y + 8);
+brand_sprite.SetZ(30);
 
-subtitle = Image.Text("Starting your workspace", 0.72, 0.76, 0.84);
+subtitle = Image.Text("Starting system workspace", 0.60, 0.67, 0.78);
 subtitle_sprite = Sprite(subtitle);
 subtitle_sprite.SetX(center_x - subtitle.GetWidth() / 2);
-subtitle_sprite.SetY(center_y + 2);
-subtitle_sprite.SetZ(20);
+subtitle_sprite.SetY(center_y + 52);
+subtitle_sprite.SetZ(30);
 
-bar_bg = Image(260, 4);
-bar_bg.Fill(0.22, 0.24, 0.32, 0.72);
-bar_bg_sprite = Sprite(bar_bg);
-bar_bg_sprite.SetX(center_x - 130);
-bar_bg_sprite.SetY(center_y + 42);
-bar_bg_sprite.SetZ(10);
+track = Image(320, 4);
+track.Fill(0.18, 0.21, 0.30, 0.58);
+track_sprite = Sprite(track);
+track_sprite.SetX(center_x - 160);
+track_sprite.SetY(center_y + 92);
+track_sprite.SetZ(10);
 
-bar = Image(72, 4);
-bar.Fill(0.55, 0.70, 1.00, 0.96);
-bar_sprite = Sprite(bar);
-bar_sprite.SetY(center_y + 42);
-bar_sprite.SetZ(12);
+bar_a = Image(96, 4);
+bar_a.Fill(0.30, 0.64, 1.00, 0.98);
+bar_a_sprite = Sprite(bar_a);
+bar_a_sprite.SetY(center_y + 92);
+bar_a_sprite.SetZ(14);
 
-progress = 0;
+bar_b = Image(44, 4);
+bar_b.Fill(0.00, 0.83, 1.00, 0.72);
+bar_b_sprite = Sprite(bar_b);
+bar_b_sprite.SetY(center_y + 92);
+bar_b_sprite.SetZ(15);
+
+dot = Image(6, 6);
+dot.Fill(0.70, 0.84, 1.00, 0.96);
+dot_1 = Sprite(dot);
+dot_2 = Sprite(dot);
+dot_3 = Sprite(dot);
+dot_1.SetX(center_x - 18);
+dot_2.SetX(center_x - 3);
+dot_3.SetX(center_x + 12);
+dot_1.SetY(center_y + 116);
+dot_2.SetY(center_y + 116);
+dot_3.SetY(center_y + 116);
+dot_1.SetZ(30);
+dot_2.SetZ(30);
+dot_3.SetZ(30);
+
+tick = 0;
+
 fun refresh_callback() {
-  progress++;
-  offset = (progress * 5) % 188;
-  bar_sprite.SetX(center_x - 130 + offset);
+  tick++;
+
+  bar_a_offset = (tick * 4) % 224;
+  bar_b_offset = ((tick * 7) + 72) % 276;
+  lane_a_offset = (tick * 3) % (screen_w + 160);
+  lane_b_offset = ((tick * 2) + 180) % (screen_w + 120);
+
+  bar_a_sprite.SetX(center_x - 160 + bar_a_offset);
+  bar_b_sprite.SetX(center_x - 160 + bar_b_offset);
+  lane_a_sprite.SetX(lane_a_offset - 160);
+  lane_b_sprite.SetX(screen_w - lane_b_offset);
+
+  dot_1.SetOpacity(0.24 + ((tick % 36) / 72));
+  dot_2.SetOpacity(0.24 + (((tick + 12) % 36) / 72));
+  dot_3.SetOpacity(0.24 + (((tick + 24) % 36) / 72));
 }
 
 Plymouth.SetRefreshFunction(refresh_callback);
 
 fun quit_callback() {
-  subtitle = Image.Text("Ready", 0.72, 0.92, 0.84);
-  subtitle_sprite.SetImage(subtitle);
-  subtitle_sprite.SetX(center_x - subtitle.GetWidth() / 2);
+  subtitle_ready = Image.Text("Ready", 0.68, 0.94, 0.86);
+  subtitle_sprite.SetImage(subtitle_ready);
+  subtitle_sprite.SetX(center_x - subtitle_ready.GetWidth() / 2);
+  bar_a_sprite.SetX(center_x - 48);
+  bar_b_sprite.SetX(center_x + 28);
 }
 
 Plymouth.SetQuitFunction(quit_callback);

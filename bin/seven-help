@@ -809,12 +809,41 @@ seven theme doctor
 seven-wallpaper status
 seven-wallpaper refresh
 ./install.sh branding
+seven boot-splash status
+seven boot-splash doctor
 ./install.sh boot-splash
 ```
 
 Le thème SevenOS synchronise GTK, Qt, terminal, Waybar, Rofi, Mako, wallpaper et
 icônes. Si seulement une application est incohérente, commence par `seven theme
-doctor`. Si toute l'interface est incohérente, utilise `seven repair ux --apply`.
+doctor`. Le splash de démarrage utilise le Seven Prism avec Plymouth; `seven
+boot-splash doctor` vérifie l'asset, le script animé et l'intégration ISO avant
+d'appliquer avec sudo. Si toute l'interface est incohérente, utilise `seven
+repair ux --apply`.
+
+### Waybar stable et verrouillage
+
+```bash
+seven-waybar status --json
+seven-waybar restart
+seven-waybar stable
+seven-waybar dynamic
+seven-profile-theme audit-waybars
+```
+
+Waybar est générée depuis le profil actif et les mini OS ont leurs propres
+configs sous `~/.config/sevenos/profiles/*/waybar`. Pour éviter les changements
+visuels à chaque focus de fenêtre, SevenOS peut figer les signaux de contexte :
+
+```ini
+# ~/.config/sevenos/waybar.conf
+context=stable
+signal_min_interval=3.0
+```
+
+Le lock screen affiche l'utilisateur connecté avec `$USER`. Si tu réappliques le
+thème, SevenOS garde ce comportement depuis `hyprland/hyprlock.conf` et
+`hyprland-light/hyprlock.conf`.
 
 ### Mises à jour, santé et récupération
 
@@ -1819,6 +1848,30 @@ seven-wallpaper refresh
 The SevenOS theme synchronizes GTK, Qt, terminal, Waybar, Rofi, Mako, wallpaper
 and icons. If only one app looks wrong, start with `seven theme doctor`. If the
 whole interface looks wrong, use `seven repair ux --apply`.
+
+### Stable Waybar And Lock Screen
+
+```bash
+seven-waybar status --json
+seven-waybar restart
+seven-waybar stable
+seven-waybar dynamic
+seven-profile-theme audit-waybars
+```
+
+Waybar is generated from the active profile and mini OS profiles keep their own
+configs under `~/.config/sevenos/profiles/*/waybar`. To avoid visual changes on
+every window focus event, SevenOS can keep context signals stable:
+
+```ini
+# ~/.config/sevenos/waybar.conf
+context=stable
+signal_min_interval=3.0
+```
+
+The lock screen shows the connected user through `$USER`. Reapplying the theme
+keeps this behavior from `hyprland/hyprlock.conf` and
+`hyprland-light/hyprlock.conf`.
 
 ### Updates, Health And Recovery
 

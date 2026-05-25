@@ -861,6 +861,7 @@ window#waybar {
   padding-left: 7px;
   padding-right: 7px;
   font-size: 14px;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.90);
 }
 
@@ -880,15 +881,18 @@ window#waybar {
 }
 
 #custom-recorder.idle {
-  color: rgba(235, 241, 255, 0.86);
-  border: 1px solid rgba(156, 203, 255, 0.12);
-  background: rgba(255, 255, 255, 0.035);
+  min-width: 18px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: rgba(255, 91, 122, 0.78);
+  border: 1px solid rgba(255, 91, 122, 0.13);
+  background: transparent;
 }
 
 #custom-recorder.idle:hover {
   color: #FFFFFF;
-  border-color: rgba(156, 203, 255, 0.28);
-  background: rgba(156, 203, 255, 0.10);
+  border-color: rgba(255, 91, 122, 0.34);
+  background: rgba(255, 91, 122, 0.12);
 }
 
 #battery {

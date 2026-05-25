@@ -14,7 +14,9 @@ SevenOS New Device Setup
 
 Usage:
   seven new
+  seven setup doctor
   ./scripts/new-device.sh [--yes] [--optional] [--rootfs]
+  ./scripts/new-device.sh doctor
   ./install.sh new --yes
   ./install.sh new-device --yes
   seven setup new-device --yes
@@ -27,9 +29,11 @@ EOF
 
 OPTIONAL=0
 ROOTFS=0
+ACTION="apply"
 
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
+    doctor|check|status) ACTION="doctor" ;;
     --yes|-y) export SEVENOS_YES=1 ;;
     --optional) OPTIONAL=1 ;;
     --rootfs) ROOTFS=1 ;;
@@ -59,6 +63,122 @@ run_logged() {
   "$@" >>"$LOG_FILE" 2>&1
 }
 
+doctor_ok() {
+  printf '[OK] %s\n' "$*"
+}
+
+doctor_warn() {
+  printf '[WARN] %s\n' "$*"
+}
+
+doctor_fail() {
+  printf '[FAIL] %s\n' "$*" >&2
+}
+
+check_file() {
+  local label="$1"
+  local path="$2"
+  if [[ -s "$path" ]]; then
+    doctor_ok "$label"
+    return 0
+  fi
+  doctor_fail "$label missing: ${path#$ROOT_DIR/}"
+  return 1
+}
+
+setup_doctor() {
+  local failed=0
+  local package_file script_file
+  local package_files=(
+    scripts/packages-base.txt
+    scripts/packages-network.txt
+    scripts/packages-visual-aur.txt
+    scripts/packages-dev.txt
+    scripts/packages-cybersecurity.txt
+    scripts/packages-creation.txt
+    scripts/packages-windows.txt
+    scripts/packages-performance.txt
+    scripts/packages-culture.txt
+    scripts/packages-runtime-optional.txt
+  )
+  local script_files=(
+    bootstrap.sh
+    scripts/network.sh
+    scripts/fonts.sh
+    scripts/apply-theme.sh
+    scripts/boot-splash.sh
+    scripts/post-install.sh
+    scripts/system-profile.sh
+    profiles/profile-manager.sh
+    bin/seven-profile-requirements
+    bin/seven-profile-rootfs
+    bin/seven-profile-theme
+  )
+
+  printf 'SevenOS New Device Doctor\n'
+  printf '=========================\n'
+
+  if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+    doctor_fail "installer must run as a normal user, not root"
+    failed=1
+  else
+    doctor_ok "normal user context: $USER"
+  fi
+
+  for package_file in "${package_files[@]}"; do
+    check_file "package file ${package_file}" "$ROOT_DIR/$package_file" || failed=1
+  done
+
+  for script_file in "${script_files[@]}"; do
+    check_file "setup component ${script_file}" "$ROOT_DIR/$script_file" || failed=1
+  done
+
+  if "$ROOT_DIR/scripts/network.sh" status --json >/dev/null 2>&1; then
+    doctor_ok "network status contract"
+  else
+    doctor_warn "network status is incomplete; run ./install.sh network --yes after connecting"
+  fi
+
+  if "$ROOT_DIR/bin/seven-profile-requirements" status all --json >/dev/null 2>&1; then
+    doctor_ok "mini OS requirements contract"
+  else
+    doctor_fail "mini OS requirements contract failed"
+    failed=1
+  fi
+
+  if "$ROOT_DIR/scripts/fonts.sh" status >/dev/null 2>&1; then
+    doctor_ok "font status contract"
+  else
+    doctor_warn "font status is incomplete; new-device will run scripts/fonts.sh apply-default"
+  fi
+
+  if "$ROOT_DIR/scripts/boot-splash.sh" doctor >/dev/null 2>&1; then
+    doctor_ok "boot splash contract"
+  else
+    doctor_fail "boot splash contract failed"
+    failed=1
+  fi
+
+  if SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/boot-splash.sh" apply --yes >/dev/null 2>&1; then
+    doctor_ok "boot splash dry-run apply"
+  else
+    doctor_fail "boot splash dry-run apply failed"
+    failed=1
+  fi
+
+  if [[ -s "$ROOT_DIR/hyprland/waybar/config.jsonc" && -s "$ROOT_DIR/hyprland/hyprlock.conf" ]]; then
+    doctor_ok "desktop config templates"
+  else
+    doctor_fail "desktop config templates incomplete"
+    failed=1
+  fi
+
+  if (( failed )); then
+    return 1
+  fi
+  log_success "New device setup contract is ready"
+}
+
 open_first_run_surface() {
   if [[ -z "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
     return 0
@@ -81,8 +201,16 @@ if [[ "${SEVENOS_YES:-0}" == "1" ]]; then
   yes_args=(--yes)
 fi
 
+if [[ "$ACTION" == "doctor" ]]; then
+  setup_doctor
+  exit $?
+fi
+
 step "installing base desktop, CLI, hub, AUR helpers and theme"
 "$ROOT_DIR/bootstrap.sh"
+
+step "preparing NetworkManager and Wi-Fi before dependency installs"
+run_optional "$ROOT_DIR/scripts/network.sh" bootstrap "${yes_args[@]}"
 
 step "applying font roles and refreshing font cache"
 "$ROOT_DIR/scripts/fonts.sh" apply-default

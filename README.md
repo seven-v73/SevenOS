@@ -22,6 +22,7 @@ chmod +x install.sh bootstrap.sh profiles/*.sh
 After the first install:
 
 ```bash
+seven setup doctor
 seven post-install
 seven status
 seven doctor
@@ -55,6 +56,7 @@ seven-help
 seven settings
 seven home
 seven store
+seven setup doctor
 seven profile status
 sevenpkg plan
 sevenpkg profile-limits

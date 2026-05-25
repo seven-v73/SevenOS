@@ -22,6 +22,7 @@ SevenOS boot splash
 
 Usage:
   seven boot-splash status
+  seven boot-splash doctor
   seven boot-splash apply [--yes]
   seven boot-splash theme
 
@@ -47,6 +48,14 @@ need_root_command() {
   if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
     "$@"
   else
+    if [[ ! -t 0 ]] && ! sudo -n true >/dev/null 2>&1; then
+      log_error "Administrator permission is required, but no interactive password prompt is available."
+      log_info "Open Seven Terminal and run:"
+      log_info "  cd $ROOT_DIR"
+      log_info "  ./install.sh boot-splash --yes"
+      log_info "Preview first with: seven boot-splash doctor"
+      return 1
+    fi
     sudo "$@"
   fi
 }
@@ -85,6 +94,7 @@ install_theme() {
   need_root_command install -d "$THEME_DST"
   need_root_command install -m 0644 "$THEME_SRC/sevenos.plymouth" "$THEME_DST/sevenos.plymouth"
   need_root_command install -m 0644 "$THEME_SRC/sevenos.script" "$THEME_DST/sevenos.script"
+  need_root_command install -m 0644 "$THEME_SRC/seven-prism.png" "$THEME_DST/seven-prism.png"
 }
 
 set_plymouth_theme() {
@@ -269,6 +279,7 @@ PY
 status() {
   printf 'SevenOS Boot Splash\n'
   printf 'Theme source: %s\n' "$([[ -d "$THEME_SRC" ]] && printf OK || printf MISS)"
+  printf 'Prism asset:   %s\n' "$([[ -s "$THEME_SRC/seven-prism.png" ]] && printf OK || printf MISS)"
   printf 'Plymouth:     %s\n' "$(command -v plymouth >/dev/null 2>&1 && printf OK || printf MISS)"
   printf 'Theme active: '
   if command -v plymouth-set-default-theme >/dev/null 2>&1; then
@@ -288,6 +299,70 @@ status() {
   printf 'Kernel args:  %s\n' "$(cmdline_string)"
 }
 
+doctor_check_file() {
+  local label="$1"
+  local path="$2"
+  if [[ -s "$path" ]]; then
+    printf '[OK] %s\n' "$label"
+    return 0
+  fi
+  printf '[FAIL] %s: missing %s\n' "$label" "$path" >&2
+  return 1
+}
+
+doctor_check_text() {
+  local label="$1"
+  local pattern="$2"
+  local path="$3"
+  if grep -q -- "$pattern" "$path" 2>/dev/null; then
+    printf '[OK] %s\n' "$label"
+    return 0
+  fi
+  printf '[FAIL] %s: expected %s in %s\n' "$label" "$pattern" "$path" >&2
+  return 1
+}
+
+doctor() {
+  local failed=0
+  local script_file="$THEME_SRC/sevenos.script"
+  local theme_file="$THEME_SRC/sevenos.plymouth"
+  local prism_file="$THEME_SRC/seven-prism.png"
+  local archiso_hook="$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh"
+
+  printf 'SevenOS Boot Splash Doctor\n'
+  doctor_check_file "Plymouth theme descriptor" "$theme_file" || failed=1
+  doctor_check_file "Plymouth script" "$script_file" || failed=1
+  doctor_check_file "Seven Prism boot asset" "$prism_file" || failed=1
+
+  doctor_check_text "Theme declares SevenOS name" 'Name=SevenOS' "$theme_file" || failed=1
+  doctor_check_text "Theme uses script module" 'ModuleName=script' "$theme_file" || failed=1
+  doctor_check_text "Script loads the Seven Prism PNG" 'Image("seven-prism.png")' "$script_file" || failed=1
+  doctor_check_text "Script exposes a refresh callback" 'Plymouth.SetRefreshFunction' "$script_file" || failed=1
+  doctor_check_text "Script exposes a ready callback" 'Plymouth.SetQuitFunction' "$script_file" || failed=1
+  doctor_check_text "Script keeps SevenOS as boot brand" 'Image.Text("SevenOS"' "$script_file" || failed=1
+  doctor_check_text "Installer copies the Prism asset" 'seven-prism.png' "$0" || failed=1
+  doctor_check_text "Installer explains non-interactive sudo" 'no interactive password prompt' "$0" || failed=1
+  doctor_check_text "Archiso copies the Prism asset" 'seven-prism.png' "$archiso_hook" || failed=1
+
+  if command -v identify >/dev/null 2>&1 && [[ -s "$prism_file" ]]; then
+    local dimensions
+    dimensions="$(identify -format '%wx%h' "$prism_file" 2>/dev/null || true)"
+    if [[ "$dimensions" == "192x192" ]]; then
+      printf '[OK] Prism PNG dimensions are stable: %s\n' "$dimensions"
+    else
+      printf '[FAIL] Prism PNG should be 192x192, got %s\n' "${dimensions:-unknown}" >&2
+      failed=1
+    fi
+  elif [[ -s "$prism_file" ]]; then
+    printf '[OK] Prism PNG exists; install ImageMagick for dimension checks\n'
+  fi
+
+  if (( failed )); then
+    return 1
+  fi
+  log_success "SevenOS boot splash contract is complete"
+}
+
 apply() {
   ensure_plymouth
   install_theme
@@ -304,6 +379,7 @@ action="${1:-status}"
 shift || true
 case "$action" in
   status) status ;;
+  doctor) doctor ;;
   theme) install_theme; set_plymouth_theme || true ;;
   apply) apply "$@" ;;
   -h|--help|help) usage ;;

@@ -291,7 +291,11 @@ else
 fi
 
 if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
-  hypr_errors="$(hyprctl configerrors | sed '/^[[:space:]]*$/d')"
+  hypr_errors="$(hyprctl configerrors 2>&1 | sed '/^[[:space:]]*$/d' || true)"
+  if grep -qi "socket timeout" <<<"$hypr_errors"; then
+    log_warn "Hyprland socket is not reachable from this environment; skipping live Hyprland config check."
+    hypr_errors=""
+  fi
   if [[ -n "$hypr_errors" && "$hypr_errors" != "no errors" ]]; then
     printf '%s\n' "$hypr_errors"
     log_error "Hyprland reports config errors in the active session."

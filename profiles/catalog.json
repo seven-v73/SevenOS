@@ -6,9 +6,9 @@
   "profile_model": {
     "name": "Layered Autonomous Profiles Architecture",
     "short_name": "LAPA",
-    "contract": "Each visible profile is a self-contained mini OS with Kernel, Runtime, Experience and Intelligence layers. SevenOS exposes seven specialized mini OSes; retired aliases may redirect to a merged profile for compatibility.",
+    "contract": "Equinox is the host-system/admin profile. Every other visible profile is a self-contained mini OS with Kernel, Runtime, Experience and Intelligence layers. Retired aliases may redirect to a merged profile for compatibility.",
     "composition": "Profiles can collaborate through declared capabilities, but no profile may silently load another profile's full stack.",
-    "equinox_role": "Equinox is the balanced general profile. It is not a hidden super-profile and it must not make another profile dominant by default."
+    "equinox_role": "Equinox is the normal host/admin OS surface: it uses the primary HOME, direct package managers and unrestricted system resources. It may manage other mini OS profiles without silently loading their full stacks."
   },
   "profile_naming": {
     "equinox": "Equinox Balance",
@@ -42,11 +42,13 @@
   "profiles": {
     "equinox": {
       "title": "Equinox Balance",
-      "role": "Balanced general mini OS",
+      "role": "Host-system admin profile",
       "target": "base",
       "domain": "balanced general computing",
-      "purpose": "A neutral daily SevenOS environment for work, media, browsing, files and light creation without making any specialized profile dominant.",
-      "mini_os": true,
+      "purpose": "The normal SevenOS host/admin environment for daily use, package management, system settings, shared resources and guided control of the isolated mini OS profiles.",
+      "mini_os": false,
+      "system_profile": true,
+      "host_admin": true,
       "layers": {
         "kernel": [
           "balanced CPU scheduling",

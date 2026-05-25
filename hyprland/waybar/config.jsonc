@@ -1,15 +1,15 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 28,
+  "height": 30,
   "spacing": 4,
   "margin-top": 0,
   "margin-left": 0,
   "margin-right": 0,
   "gtk-layer-shell": true,
-  "modules-left": ["custom/sevenos", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"],
+  "modules-left": ["custom/sevenos", "custom/recorder", "hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-extra", "custom/app-more", "custom/app-tools", "custom/app-window", "custom/app-help"],
   "modules-center": ["hyprland/workspaces"],
-  "modules-right": ["custom/profile", "custom/recorder", "custom/media", "custom/system-status", "custom/wifi", "custom/bluetooth", "custom/spotlight", "clock", "custom/control-center"],
+  "modules-right": ["custom/profile", "custom/media", "custom/system-status", "custom/wifi", "custom/bluetooth", "custom/spotlight", "clock", "custom/control-center"],
   "custom/sevenos": {
     "exec": "seven-waybar-status sevenos",
     "return-type": "json",
@@ -238,13 +238,14 @@
     "on-click-right": "seven-quick-settings"
   },
   "custom/recorder": {
-    "exec": "seven-waybar-status recorder",
+    "exec": "sh -lc 'cmd=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin/seven-waybar-status\"; [ -x \"$cmd\" ] || cmd=seven-waybar-status; exec \"$cmd\" recorder'",
     "return-type": "json",
+    "format": "{}",
     "interval": 2,
     "tooltip": true,
-    "on-click": "seven-recorder panel",
-    "on-click-right": "seven-recorder area",
-    "on-click-middle": "seven-recorder full"
+    "on-click": "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder area'",
+    "on-click-right": "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder panel'",
+    "on-click-middle": "sh -lc 'PATH=\"${SEVENOS_HOST_HOME:-$HOME}/.local/bin:$PATH\"; exec seven-recorder full'"
   },
   "custom/system-status": {
     "exec": "seven-waybar-status system-status",

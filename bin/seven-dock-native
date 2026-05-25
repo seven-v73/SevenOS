@@ -134,9 +134,11 @@ def command_available(command: str) -> bool:
 
 
 def load_config() -> dict[str, object]:
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return dict(DEFAULT_CONFIG)
     if not CONFIG_PATH.exists():
-        save_config(DEFAULT_CONFIG)
         return dict(DEFAULT_CONFIG)
     try:
         data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
@@ -148,8 +150,11 @@ def load_config() -> dict[str, object]:
 
 
 def save_config(config: dict[str, object]) -> None:
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    try:
+        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        CONFIG_PATH.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    except OSError as exc:
+        print(f"seven-dock: config not writable: {exc}", file=sys.stderr)
 
 
 def active_profile_key() -> str:

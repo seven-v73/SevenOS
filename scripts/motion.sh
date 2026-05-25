@@ -4,7 +4,20 @@ set -Eeuo pipefail
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$ROOT_DIR/scripts/lib.sh"
 
-CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+host_home() {
+  local home="${SEVENOS_HOST_HOME:-$HOME}"
+  case "$home" in
+    */.local/share/sevenos/profile-containers/*/home)
+      printf '%s\n' "${home%%/.local/share/sevenos/profile-containers/*}"
+      ;;
+    *)
+      printf '%s\n' "$home"
+      ;;
+  esac
+}
+
+HOST_HOME="$(host_home)"
+CONFIG_HOME="${SEVENOS_HOST_CONFIG_HOME:-$HOST_HOME/.config}"
 HYPR_CONF="$CONFIG_HOME/hypr/hyprland.conf"
 MOTION_CONF="$CONFIG_HOME/hypr/conf/sevenos-motion.conf"
 STATE_CONF="$CONFIG_HOME/sevenos/motion.conf"
