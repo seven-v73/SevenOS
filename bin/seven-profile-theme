@@ -554,14 +554,14 @@ append_light_legibility_lock() {
 
 /* SevenOS light legibility lock: final pass on active Waybar file. */
 window#waybar {
-  color: rgba(6, 10, 20, 0.98);
-  border-bottom: 1px solid rgba(6, 10, 20, 0.24);
+  color: rgba(32, 38, 52, 0.94);
+  border-bottom: 1px solid rgba(32, 38, 52, 0.16);
   background:
-    linear-gradient(180deg, rgba(210, 220, 236, 0.96), rgba(166, 184, 214, 0.90)),
-    rgba(142, 164, 200, 0.92);
+    linear-gradient(180deg, rgba(224, 231, 242, 0.88), rgba(194, 207, 226, 0.78)),
+    rgba(176, 191, 214, 0.78);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.72),
-    0 10px 28px rgba(20, 30, 54, 0.24);
+    0 1px 0 rgba(255, 255, 255, 0.58),
+    0 8px 22px rgba(31, 42, 68, 0.16);
 }
 
 window#waybar label,
@@ -593,15 +593,15 @@ window#waybar label,
 #clock,
 #custom-control-center,
 #workspaces button {
-  color: rgba(6, 10, 20, 0.98);
+  color: rgba(32, 38, 52, 0.92);
   text-shadow: none;
 }
 
 .modules-left,
 .modules-center,
 .modules-right {
-  background: rgba(255, 255, 255, 0.20);
-  border-color: rgba(6, 10, 20, 0.09);
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(32, 38, 52, 0.065);
 }
 
 #custom-app-menu,
@@ -615,7 +615,7 @@ window#waybar label,
 #custom-app-help,
 #window.empty,
 #custom-spotlight {
-  color: rgba(18, 24, 38, 0.90);
+  color: rgba(48, 56, 74, 0.76);
 }
 
 #custom-sevenos,
@@ -623,11 +623,11 @@ window#waybar label,
 #custom-os-switch,
 #custom-mini-context,
 #custom-control-center {
-  color: rgba(3, 8, 18, 1);
+  color: rgba(24, 31, 46, 0.94);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.70), rgba(217, 228, 246, 0.50)),
-    rgba(47, 123, 255, 0.12);
-  border-color: rgba(47, 123, 255, 0.30);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(221, 230, 244, 0.34)),
+    rgba(88, 122, 196, 0.075);
+  border-color: rgba(88, 122, 196, 0.20);
 }
 
 #custom-sevenos:hover,
@@ -659,19 +659,19 @@ window#waybar label,
 #clock:hover,
 #custom-control-center:hover,
 #workspaces button:hover {
-  color: rgba(3, 8, 18, 1);
-  background: rgba(6, 10, 20, 0.12);
+  color: rgba(20, 26, 40, 0.96);
+  background: rgba(32, 38, 52, 0.070);
 }
 
 #workspaces button.active {
-  color: #FFFFFF;
+  color: rgba(255, 255, 255, 0.96);
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.48), transparent 38%),
-    linear-gradient(135deg, #7367F0, #2F7BFF);
-  border-color: rgba(255, 255, 255, 0.76);
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.36), transparent 38%),
+    linear-gradient(135deg, #8178e8, #5789e8);
+  border-color: rgba(255, 255, 255, 0.54);
   box-shadow:
-    0 5px 18px rgba(47, 123, 255, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    0 4px 14px rgba(71, 108, 190, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.54);
 }
 
 #custom-wifi.connected,
@@ -679,7 +679,7 @@ window#waybar label,
 #custom-bluetooth.on,
 #custom-vpn.active,
 #custom-ai {
-  color: rgba(24, 64, 185, 1);
+  color: rgba(54, 80, 168, 0.94);
 }
 EOF
 }
