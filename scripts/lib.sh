@@ -56,6 +56,19 @@ package_is_satisfied() {
   return 1
 }
 
+package_in_repo() {
+  local package="$1"
+  local alternative
+
+  pacman -Si "$package" >/dev/null 2>&1 && return 0
+  while IFS= read -r alternative; do
+    [[ -n "$alternative" ]] || continue
+    pacman -Si "$alternative" >/dev/null 2>&1 && return 0
+  done < <(package_alternatives "$package")
+
+  return 1
+}
+
 run_cmd() {
   if is_dry_run; then
     printf '%q ' "$@"
@@ -75,13 +88,21 @@ require_command() {
 }
 
 privileged_backend() {
-  if command -v pkexec >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
-    printf 'pkexec'
-  elif command -v sudo >/dev/null 2>&1; then
+  if [[ -n "${SEVENOS_AUTH_BACKEND:-}" ]]; then
+    command -v "$SEVENOS_AUTH_BACKEND" >/dev/null 2>&1 && printf '%s' "$SEVENOS_AUTH_BACKEND"
+    return 0
+  fi
+  if command -v sudo >/dev/null 2>&1; then
     printf 'sudo'
+  elif command -v pkexec >/dev/null 2>&1 && polkit_agent_running; then
+    printf 'pkexec'
   else
     printf ''
   fi
+}
+
+polkit_agent_running() {
+  pgrep -u "${UID:-$(id -u)}" -f 'polkit.*agent|polkit-kde-authentication-agent|lxqt-policykit-agent|mate-polkit|xfce-polkit|polkit-gnome-authentication-agent' >/dev/null 2>&1
 }
 
 privileged_backend_label() {
@@ -143,6 +164,7 @@ install_package_file() {
   local package_file="$1"
   local packages=()
   local installable_packages=()
+  local missing_repo_packages=()
   local package
 
   if [[ ! -f "$package_file" ]]; then
@@ -157,9 +179,21 @@ install_package_file() {
       if package_is_satisfied "$package"; then
         continue
       fi
+      if ! package_in_repo "$package"; then
+        missing_repo_packages+=("$package")
+        continue
+      fi
       installable_packages+=("$package")
     done
     packages=("${installable_packages[@]}")
+  fi
+
+  if [[ "${#missing_repo_packages[@]}" -gt 0 ]]; then
+    log_error "Some packages are not available in the enabled pacman repositories:"
+    printf '  - %s\n' "${missing_repo_packages[@]}" >&2
+    log_info "Run: sudo pacman -Syu"
+    log_info "Then retry the SevenOS install. If these are AUR packages, install the AUR helper route first."
+    return 1
   fi
 
   if [[ "${#packages[@]}" -eq 0 ]]; then
@@ -179,9 +213,19 @@ install_package_file() {
   fi
 
   if assume_yes; then
-    run_privileged_cmd pacman -S --needed --noconfirm "${packages[@]}"
+    run_privileged_cmd pacman -S --needed --noconfirm "${packages[@]}" || {
+      log_error "Package installation failed for ${package_file#${SEVENOS_ROOT:-}/}."
+      log_info "Common causes: stale mirrors, pacman database lock, broken keyring, or an interrupted previous update."
+      log_info "Repair path: sudo pacman -Syu archlinux-keyring && sudo pacman -Syu"
+      return 1
+    }
   else
-    run_privileged_cmd pacman -S --needed "${packages[@]}"
+    run_privileged_cmd pacman -S --needed "${packages[@]}" || {
+      log_error "Package installation failed for ${package_file#${SEVENOS_ROOT:-}/}."
+      log_info "Common causes: stale mirrors, pacman database lock, broken keyring, or an interrupted previous update."
+      log_info "Repair path: sudo pacman -Syu archlinux-keyring && sudo pacman -Syu"
+      return 1
+    }
   fi
 }
 

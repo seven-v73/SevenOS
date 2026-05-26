@@ -55,12 +55,28 @@ run_optional() {
 run_logged() {
   mkdir -p "$LOG_DIR"
   if is_dry_run; then
-    printf '%q ' "$@"
-    printf '\n'
-    return 0
+    "$@"
+    return $?
   fi
   printf '[%s] %s\n' "$(date -Is)" "$*" >>"$LOG_FILE"
   "$@" >>"$LOG_FILE" 2>&1
+}
+
+run_required_logged() {
+  mkdir -p "$LOG_DIR"
+  if is_dry_run; then
+    "$@"
+    return $?
+  fi
+  printf '[%s] %s\n' "$(date -Is)" "$*" >>"$LOG_FILE"
+  if "$@" 2>&1 | tee -a "$LOG_FILE"; then
+    return 0
+  fi
+  log_error "Required setup step failed: $*"
+  log_info "Install log: $LOG_FILE"
+  log_info "Last log lines:"
+  tail -n 24 "$LOG_FILE" >&2 || true
+  return 1
 }
 
 doctor_ok() {
@@ -224,7 +240,7 @@ if [[ "$ACTION" == "doctor" ]]; then
 fi
 
 step "installing base desktop, CLI, hub, AUR helpers and theme"
-"$ROOT_DIR/bootstrap.sh"
+run_required_logged "$ROOT_DIR/bootstrap.sh"
 
 step "installing SevenOS into /opt/SevenOS for public updates"
 run_optional "$ROOT_DIR/scripts/system-install.sh" "${yes_args[@]}"
