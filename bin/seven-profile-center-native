@@ -10,8 +10,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from seven_i18n import tr_text  # noqa: E402
+from seven_i18n import language_code, tr_text  # noqa: E402
 import seven_theme  # noqa: E402
+LANG_CODE = language_code()
+
+
+def t(fr: str, en: str) -> str:
+    return fr if LANG_CODE == "fr" else en
 
 
 def ensure_gi_python() -> None:
@@ -64,7 +69,7 @@ def load_catalog() -> dict:
 def compact_list(items, limit: int = 3) -> str:
     values = [str(item) for item in (items or []) if str(item).strip()]
     if not values:
-        return "none"
+        return t("aucun", "none")
     if len(values) <= limit:
         return " · ".join(values)
     return " · ".join(values[:limit]) + f" +{len(values) - limit}"
@@ -99,44 +104,44 @@ def state_class(state: str) -> str:
 
 
 PUBLIC_PROFILE_NOTES = {
-    "equinox": "Bureau quotidien, fichiers, apps et réglages.",
-    "baobab": "Culture, lecture, collections et mémoire locale.",
-    "studio": "Images, vidéos, captures et exports.",
-    "windows": "Applications Windows et dossiers partagés.",
-    "pulse": "Jeux, captures et confort de jeu.",
+    "equinox": t("Bureau quotidien, fichiers, apps et réglages.", "Daily desktop, files, apps and settings."),
+    "baobab": t("Culture, lecture, collections et mémoire locale.", "Culture, reading, collections and local memory."),
+    "studio": t("Images, vidéos, captures et exports.", "Pictures, videos, captures and exports."),
+    "windows": t("Applications Windows et dossiers partagés.", "Windows applications and shared folders."),
+    "pulse": t("Jeux, captures et confort de jeu.", "Games, captures and gaming comfort."),
 }
 
 
 PUBLIC_PROFILE_DETAILS = {
     "equinox": [
-        ("Bureau", "L'espace recommandé pour l'usage de tous les jours."),
-        ("Fichiers", "Accède à tes documents, téléchargements et dossiers importants."),
-        ("Applications", "Ouvre rapidement les apps et outils SevenOS."),
-        ("Réglages", "Ajuste SevenOS sans utiliser le terminal."),
+        (t("Bureau", "Desktop"), t("L'espace recommandé pour l'usage de tous les jours.", "The recommended space for everyday use.")),
+        (t("Fichiers", "Files"), t("Accède à tes documents, téléchargements et dossiers importants.", "Access documents, downloads and important folders.")),
+        (t("Applications", "Applications"), t("Ouvre rapidement les apps et outils SevenOS.", "Quickly open SevenOS apps and tools.")),
+        (t("Réglages", "Settings"), t("Ajuste SevenOS sans utiliser le terminal.", "Adjust SevenOS without using the terminal.")),
     ],
     "baobab": [
-        ("Collections", "Tes documents culturels restent rangés dans Baobab."),
-        ("Lecture", "Ouvre les récits et archives dans une interface calme."),
-        ("Ajout", "Importe de nouveaux contenus avec un suivi simple."),
-        ("Partage", "Partage uniquement ce que tu choisis."),
+        (t("Collections", "Collections"), t("Tes documents culturels restent rangés dans Baobab.", "Your cultural documents stay organized in Baobab.")),
+        (t("Lecture", "Reading"), t("Ouvre les récits et archives dans une interface calme.", "Open stories and archives in a calm interface.")),
+        (t("Ajout", "Add"), t("Importe de nouveaux contenus avec un suivi simple.", "Import new content with simple tracking.")),
+        (t("Partage", "Sharing"), t("Partage uniquement ce que tu choisis.", "Share only what you choose.")),
     ],
     "studio": [
-        ("Médias", "Images, vidéos et sons sont regroupés dans Studio."),
-        ("Capture", "Lance l'enregistrement d'écran depuis une action directe."),
-        ("Exports", "Retrouve vite les fichiers prêts à partager."),
-        ("Applications", "Ouvre les outils créatifs adaptés à Studio."),
+        (t("Médias", "Media"), t("Images, vidéos et sons sont regroupés dans Studio.", "Pictures, videos and sounds are grouped in Studio.")),
+        (t("Capture", "Capture"), t("Lance l'enregistrement d'écran depuis une action directe.", "Start screen recording from a direct action.")),
+        (t("Exports", "Exports"), t("Retrouve vite les fichiers prêts à partager.", "Quickly find files ready to share.")),
+        (t("Applications", "Applications"), t("Ouvre les outils créatifs adaptés à Studio.", "Open creative tools suited to Studio.")),
     ],
     "windows": [
-        ("Assistant", "Prépare Windows avec un guide clair."),
-        ("Applications", "Lance les logiciels Windows disponibles."),
-        ("Dossiers", "Accède aux fichiers partagés facilement."),
-        ("Aide", "Corrige les problèmes courants sans terminal."),
+        (t("Assistant", "Assistant"), t("Prépare Windows avec un guide clair.", "Prepare Windows with a clear guide.")),
+        (t("Applications", "Applications"), t("Lance les logiciels Windows disponibles.", "Launch available Windows software.")),
+        (t("Dossiers", "Folders"), t("Accède aux fichiers partagés facilement.", "Access shared files easily.")),
+        (t("Aide", "Help"), t("Corrige les problèmes courants sans terminal.", "Fix common issues without a terminal.")),
     ],
     "pulse": [
-        ("Jeux", "Garde tes lanceurs et jeux dans Pulse."),
-        ("Captures", "Retrouve vidéos et enregistrements au même endroit."),
-        ("Confort", "Les réglages de jeu restent liés à Pulse."),
-        ("Silence", "Les outils de jeu restent discrets ailleurs."),
+        (t("Jeux", "Games"), t("Garde tes lanceurs et jeux dans Pulse.", "Keep game launchers and games in Pulse.")),
+        (t("Captures", "Captures"), t("Retrouve vidéos et enregistrements au même endroit.", "Find videos and recordings in one place.")),
+        (t("Confort", "Comfort"), t("Les réglages de jeu restent liés à Pulse.", "Gaming settings stay linked to Pulse.")),
+        (t("Silence", "Quiet"), t("Les outils de jeu restent discrets ailleurs.", "Gaming tools stay quiet elsewhere.")),
     ],
 }
 
@@ -393,10 +398,10 @@ def run() -> int:
         layers_box.set_row_spacing(8)
         layers_box.get_style_context().add_class("section")
         for index, (name, values) in enumerate([
-            ("Noyau", layers.get("kernel")),
-            ("Préparation", layers.get("runtime")),
-            ("Interface", layers.get("experience")),
-            ("IA", layers.get("intelligence")),
+            (t("Noyau", "Core"), layers.get("kernel")),
+            (t("Préparation", "Preparation"), layers.get("runtime")),
+            (t("Interface", "Interface"), layers.get("experience")),
+            (t("IA", "AI"), layers.get("intelligence")),
         ]):
             layers_box.attach(layer_card(Gtk, name, compact_list(values)), index % 4, index // 4, 1, 1)
         root.pack_start(layers_box, False, False, 0)

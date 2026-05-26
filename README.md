@@ -23,6 +23,7 @@ After the first install:
 
 ```bash
 seven setup doctor
+./install.sh language
 seven post-install
 seven status
 seven doctor
@@ -40,6 +41,15 @@ Network/Wi-Fi repair route:
 ```bash
 ./install.sh network --yes
 seven post-install
+```
+
+Language repair route:
+
+```bash
+./install.sh language
+seven language doctor
+seven language set fr_FR.UTF-8
+seven language set en_US.UTF-8
 ```
 
 Build a live ISO from a prepared host:
@@ -60,6 +70,10 @@ seven setup doctor
 seven profile status
 sevenpkg plan
 sevenpkg profile-limits
+sevenpkg forge sources
+sevenpkg forge helper paru
+sevenpkg forge install code --source pacman
+sevenpkg studio packages --query blender
 seven pre-push
 ```
 
@@ -81,10 +95,14 @@ The full guide lives inside SevenOS:
 ```bash
 seven-help
 seven-help-native
+seven-help docs-index
+seven-help doc architecture
+seven-help future
 ```
 
 The helper contains installation details, shortcuts, mini OS behavior, package
-scopes, repair routes, Windows Bridge setup and developer checks.
+scopes, repair routes, Windows Bridge setup, developer checks and the full
+`docs/` architecture reference.
 
 ## Requirements
 

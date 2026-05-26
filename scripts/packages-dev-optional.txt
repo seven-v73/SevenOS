@@ -1,0 +1,4 @@
+# SevenOS Forge optional developer conveniences
+# These are useful, but not required for a stable Forge baseline.
+lazygit
+python-poetry

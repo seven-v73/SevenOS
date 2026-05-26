@@ -6,7 +6,7 @@ After=graphical-session.target
 [Service]
 Type=simple
 ExecStartPre=-/usr/bin/pkill -x waybar
-ExecStart=/usr/bin/env waybar -c %h/.config/waybar/config.jsonc -s %h/.config/waybar/style.css
+ExecStart=/usr/bin/env sh -lc 'if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"; fi; exec waybar -c "$HOME/.config/waybar/config.jsonc" -s "$HOME/.config/waybar/style.css"'
 Restart=on-failure
 RestartSec=2
 

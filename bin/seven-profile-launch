@@ -33,6 +33,45 @@ def host_home() -> Path:
 CONFIG = Path(os.environ.get("SEVENOS_CONFIG_HOME", host_home() / ".config")) / "sevenos"
 
 
+def read_language_env() -> dict[str, str]:
+    out: dict[str, str] = {}
+    host = host_home()
+    for path in (
+        Path(os.environ.get("XDG_CONFIG_HOME", str(host / ".config"))) / "sevenos/language.env",
+        CONFIG / "language.env",
+        host / ".config/sevenos/language.env",
+    ):
+        if not path.exists():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for raw in lines:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("export "):
+                line = line[len("export ") :]
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if key in {"SEVENOS_LANGUAGE", "LANG", "LANGUAGE", "LC_MESSAGES"}:
+                out[key] = value.strip().strip("'\"")
+        if out:
+            break
+    if out.get("LANG") and not out.get("SEVENOS_LANGUAGE"):
+        out["SEVENOS_LANGUAGE"] = out["LANG"]
+    if out.get("SEVENOS_LANGUAGE") and not out.get("LANG"):
+        out["LANG"] = out["SEVENOS_LANGUAGE"]
+    if out.get("SEVENOS_LANGUAGE") and not out.get("LANGUAGE"):
+        out["LANGUAGE"] = out["SEVENOS_LANGUAGE"].split("_", 1)[0].split(".", 1)[0]
+    if out.get("SEVENOS_LANGUAGE") and not out.get("LC_MESSAGES"):
+        out["LC_MESSAGES"] = out["SEVENOS_LANGUAGE"]
+    return out
+
+
 def active_profile() -> str:
     try:
         for raw in (CONFIG / "profile.env").read_text(encoding="utf-8").splitlines():
@@ -113,6 +152,7 @@ def main() -> int:
 
     env = os.environ.copy()
     env.setdefault("SEVENOS_ROOT", str(ROOT))
+    env.update(read_language_env())
     profile = active_profile()
 
     if os.environ.get("SEVENOS_DRY_RUN") == "1":

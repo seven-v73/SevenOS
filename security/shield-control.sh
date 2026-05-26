@@ -235,6 +235,7 @@ quick_actions = [
     {"key": "evidence", "title": "Open Evidence Manager", "command": "seven shield evidence", "impact": "safe"},
     {"key": "optional-tools", "title": "Review Optional Tools", "command": "seven shield optional-tools", "impact": "packages"},
     {"key": "toolchain", "title": "Open Toolchain Sources", "command": "seven shield toolchain", "impact": "safe"},
+    {"key": "blackarch-full", "title": "Preview Full BlackArch", "command": "seven shield toolchain blackarch-full --dry-run", "impact": "safe"},
     {"key": "bundles", "title": "Review Shield Bundles", "command": "seven shield bundles", "impact": "safe"},
     {"key": "wrappers", "title": "Install GUI Wrappers", "command": "seven shield wrappers install", "impact": "safe"},
     {"key": "tool-doctor", "title": "Run Tool Doctor", "command": "seven shield tool-doctor", "impact": "safe"},

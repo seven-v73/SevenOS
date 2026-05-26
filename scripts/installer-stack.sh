@@ -9,7 +9,7 @@ usage() {
 SevenOS installer stack
 
 Usage:
-  ./scripts/installer-stack.sh [status|install|doctor|plan|guide|release|graphical] [--json]
+  ./scripts/installer-stack.sh [status|install|doctor|plan|guide|release|graphical|runtime|iso-runtime] [--json]
 
 Actions:
   status   Show installer tooling state
@@ -25,6 +25,8 @@ Actions:
   graphical
            Show graphical installer route readiness
   runtime  Show Calamares runtime source/readiness policy
+  iso-runtime
+           Show or build the Calamares package source used by the ISO
 EOF
 }
 
@@ -52,11 +54,12 @@ contains_state() {
 }
 
 calamares_runtime_json() {
-  local calamares_state aur_manifest_state yay_state paru_state pacman_candidate
+  local calamares_state aur_manifest_state yay_state paru_state pacman_candidate iso_runtime_state
   calamares_state="$(state calamares)"
   aur_manifest_state="$(contains_state scripts/packages-installer-aur.txt "calamares")"
   yay_state="$(state yay)"
   paru_state="$(state paru)"
+  iso_runtime_state="$("$ROOT_DIR/scripts/calamares-runtime.sh" status --json 2>/dev/null | python -c 'import json,sys; print(json.load(sys.stdin).get("state","unknown"))' 2>/dev/null || printf unknown)"
   if timeout 4 pacman -Si calamares >/dev/null 2>&1; then
     pacman_candidate="OK"
   else
@@ -65,6 +68,7 @@ calamares_runtime_json() {
 
   CALAMARES_STATE="$calamares_state" AUR_MANIFEST_STATE="$aur_manifest_state" \
   YAY_STATE="$yay_state" PARU_STATE="$paru_state" PACMAN_CANDIDATE="$pacman_candidate" \
+  ISO_RUNTIME_STATE="$iso_runtime_state" \
   python - <<'PY'
 import json
 import os
@@ -74,10 +78,13 @@ aur_manifest = os.environ["AUR_MANIFEST_STATE"]
 yay = os.environ["YAY_STATE"]
 paru = os.environ["PARU_STATE"]
 pacman = os.environ["PACMAN_CANDIDATE"]
+iso_runtime = os.environ["ISO_RUNTIME_STATE"]
 helper = "yay" if yay == "OK" else "paru" if paru == "OK" else ""
 
 if calamares == "OK":
     state = "installed"
+elif iso_runtime == "iso-runtime-ready":
+    state = "iso-runtime-ready"
 elif pacman == "OK":
     state = "official-candidate"
 elif aur_manifest == "OK" and helper:
@@ -109,6 +116,18 @@ elif state == "official-candidate":
             "command": "sudo pacman -S --needed calamares",
             "impact": "packages",
             "reason": "The current package repositories expose Calamares directly.",
+        }
+    ]
+elif state == "iso-runtime-ready":
+    route = "archiso-local-repo"
+    readiness = "iso-ready"
+    next_actions = [
+        {
+            "key": "build-iso",
+            "title": "Build the graphical installer ISO",
+            "command": "./install.sh iso --dry-run",
+            "impact": "safe",
+            "reason": "The archiso profile declares Calamares and the local package repository is ready.",
         }
     ]
 elif state == "aur-candidate":
@@ -156,6 +175,7 @@ print(json.dumps({
     "installed": calamares == "OK",
     "sources": {
         "pacman": pacman,
+        "iso_runtime": iso_runtime,
         "aur_manifest": aur_manifest,
         "yay": yay,
         "paru": paru,
@@ -168,6 +188,7 @@ print(json.dumps({
     ],
     "commands": {
         "status": "seven installer runtime --json",
+        "iso_runtime": "seven installer iso-runtime --json",
         "graphical": "seven installer graphical",
         "aur_helpers": "./install.sh aur-helpers --yes",
         "aur_manifest": "scripts/packages-installer-aur.txt",
@@ -232,11 +253,19 @@ checks = [
     },
     {
         "key": "calamares-runtime",
-        "state": os.environ["CALAMARES_STATE"],
+        "state": "OK" if os.environ["CALAMARES_STATE"] == "OK" or os.environ["CALAMARES_SOURCE_STATE"] == "iso-runtime-ready" else os.environ["CALAMARES_STATE"],
         "required": False,
         "title": "Graphical installer runtime",
-        "command": "seven installer graphical",
-        "reason": "Install calamares from an Arch derivative repository, AUR package or ISO build environment where it is available.",
+        "command": "seven installer iso-runtime",
+        "reason": "Install calamares on the host or provide it through the archiso local package repository.",
+    },
+    {
+        "key": "calamares-iso-runtime",
+        "state": "OK" if os.environ["CALAMARES_SOURCE_STATE"] in {"installed", "iso-runtime-ready", "official-candidate"} else "MISS",
+        "required": False,
+        "title": "Calamares ISO package route",
+        "command": "seven installer iso-runtime --json",
+        "reason": f"ISO runtime source state: {os.environ['CALAMARES_SOURCE_STATE']}.",
     },
     {
         "key": "calamares-source-policy",
@@ -537,6 +566,24 @@ for item in data.get("policy", []):
 PY
 }
 
+iso_runtime() {
+  local runtime_args=()
+  local item
+  for item in "$@"; do
+    case "$item" in
+      --json|json) ;;
+      *) runtime_args+=("$item") ;;
+    esac
+  done
+  if [[ "${#runtime_args[@]}" -eq 0 ]]; then
+    runtime_args=(status)
+  fi
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    runtime_args+=(--json)
+  fi
+  exec "$ROOT_DIR/scripts/calamares-runtime.sh" "${runtime_args[@]}"
+}
+
 guide() {
   cat <<'EOF'
 SevenOS install guide
@@ -792,11 +839,18 @@ EOF
 
 action="${1:-status}"
 shift || true
+PASSTHROUGH_ARGS=()
 for arg in "$@"; do
   case "$arg" in
     --json|json) JSON_OUTPUT=1 ;;
     -h|--help|help) usage; exit 0 ;;
-    *) log_error "Unknown installer option: $arg"; usage; exit 1 ;;
+    *)
+      if [[ "$action" == "iso-runtime" || "$action" == "calamares-iso" ]]; then
+        PASSTHROUGH_ARGS+=("$arg")
+      else
+        log_error "Unknown installer option: $arg"; usage; exit 1
+      fi
+      ;;
   esac
 done
 case "$action" in
@@ -808,6 +862,7 @@ case "$action" in
   release) release_status ;;
   graphical) graphical ;;
   runtime|calamares) runtime ;;
+  iso-runtime|calamares-iso) iso_runtime "${PASSTHROUGH_ARGS[@]}" ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown installer stack action: $action"; usage; exit 1 ;;
 esac

@@ -350,13 +350,84 @@ search_json() {
   ROOT_DIR="$ROOT_DIR" QUERY="$query" python - <<'PY'
 import json
 import os
+import re
 import shutil
 import subprocess
+import unicodedata
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
 query = os.environ["QUERY"].strip()
+
+
+SEARCH_SYNONYMS = {
+    "navigateur": ["browser", "web", "firefox", "chromium"],
+    "internet": ["browser", "web"],
+    "web": ["browser"],
+    "bureau": ["office", "document", "libreoffice"],
+    "bureautique": ["office", "document", "libreoffice"],
+    "document": ["office", "writer", "libreoffice"],
+    "texte": ["office", "writer", "document"],
+    "tableur": ["office", "spreadsheet", "libreoffice"],
+    "code": ["editor", "developer", "forge", "vscode"],
+    "coder": ["code", "editor", "developer"],
+    "editeur": ["editor", "code", "vscode"],
+    "éditeur": ["editor", "code", "vscode"],
+    "developpement": ["developer", "code", "docker", "git"],
+    "développement": ["developer", "code", "docker", "git"],
+    "dev": ["developer", "code", "docker", "git"],
+    "dessin": ["design", "graphics", "krita", "inkscape"],
+    "graphisme": ["design", "graphics", "krita", "gimp"],
+    "image": ["photo", "graphics", "gimp", "krita"],
+    "photo": ["image", "graphics", "gimp"],
+    "video": ["video", "obs", "kdenlive", "vlc"],
+    "vidéo": ["video", "obs", "kdenlive", "vlc"],
+    "musique": ["music", "audio", "spotify", "vlc"],
+    "audio": ["music", "spotify", "vlc"],
+    "jeux": ["game", "gaming", "steam", "lutris"],
+    "jeu": ["game", "gaming", "steam", "lutris"],
+    "gaming": ["game", "steam", "lutris"],
+    "securite": ["security", "shield", "wireshark", "nmap"],
+    "sécurité": ["security", "shield", "wireshark", "nmap"],
+    "reseau": ["network", "wireshark", "nmap"],
+    "réseau": ["network", "wireshark", "nmap"],
+    "livre": ["reader", "book", "foliate"],
+    "lecture": ["reader", "book", "foliate"],
+    "langue": ["language", "baobab", "translate"],
+    "film": ["video", "vlc"],
+}
+
+
+def ascii_fold(value):
+    normalized = unicodedata.normalize("NFKD", str(value).lower())
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
+def raw_query_tokens(value):
+    return [part for part in re.split(r"[^a-z0-9]+", ascii_fold(value)) if part]
+
+
+def query_tokens(value):
+    raw = raw_query_tokens(value)
+    expanded = []
+    for token in raw:
+        expanded.append(token)
+        expanded.extend(SEARCH_SYNONYMS.get(token, []))
+    seen = []
+    for token in expanded:
+        if token and token not in seen:
+            seen.append(token)
+    return seen
+
+
+GENERIC_QUERY_TOKENS = {"app", "apps", "application", "logiciel", "logiciels"}
+RAW_TOKENS = raw_query_tokens(query)
+TOKENS = query_tokens(query)
+BACKEND_QUERY = next(
+    (token for token in TOKENS if token not in RAW_TOKENS and token not in GENERIC_QUERY_TOKENS),
+    next((token for token in TOKENS if token not in GENERIC_QUERY_TOKENS), query),
+)
 
 
 def run(command, timeout=8):
@@ -558,6 +629,64 @@ def recommendations_for(name):
     return groups.get(key, [])
 
 
+CURATED_APPS = [
+    {"id": "firefox", "name": "Firefox", "source": "pacman", "summary": "Fast private web browser", "tags": "browser web internet essential equinox"},
+    {"id": "chromium", "name": "Chromium", "source": "pacman", "summary": "Open source web browser", "tags": "browser web internet"},
+    {"id": "libreoffice-fresh", "name": "LibreOffice", "source": "pacman", "summary": "Office documents, spreadsheets and presentations", "tags": "office document writer spreadsheet equinox"},
+    {"id": "vlc", "name": "VLC", "source": "pacman", "summary": "Media player for video and audio", "tags": "video media music player"},
+    {"id": "code", "name": "Code", "source": "pacman", "summary": "Code editor for Forge and general development", "tags": "code editor vscode forge developer"},
+    {"id": "docker", "name": "Docker", "source": "pacman", "summary": "Container tooling for development workflows", "tags": "container devops forge server"},
+    {"id": "git", "name": "Git", "source": "pacman", "summary": "Version control for projects", "tags": "developer forge code"},
+    {"id": "obs-studio", "name": "OBS Studio", "source": "pacman", "summary": "Screen recording and streaming studio", "tags": "record video streaming studio creator"},
+    {"id": "blender", "name": "Blender", "source": "pacman", "summary": "3D creation suite", "tags": "3d design studio creator graphics"},
+    {"id": "krita", "name": "Krita", "source": "pacman", "summary": "Digital painting and illustration", "tags": "paint drawing design studio creator graphics"},
+    {"id": "gimp", "name": "GIMP", "source": "pacman", "summary": "Image editing and retouching", "tags": "photo image design studio"},
+    {"id": "inkscape", "name": "Inkscape", "source": "pacman", "summary": "Vector graphics editor", "tags": "vector logo design studio"},
+    {"id": "steam", "name": "Steam", "source": "pacman", "summary": "Game launcher and library", "tags": "game gaming pulse proton"},
+    {"id": "lutris", "name": "Lutris", "source": "pacman", "summary": "Game manager for Linux and compatibility layers", "tags": "game gaming pulse wine"},
+    {"id": "discord", "name": "Discord", "source": "pacman", "summary": "Voice and community chat", "tags": "chat gaming community"},
+    {"id": "wireshark-qt", "name": "Wireshark", "source": "pacman", "summary": "Network protocol analyzer", "tags": "security network shield audit"},
+    {"id": "nmap", "name": "Nmap", "source": "pacman", "summary": "Network discovery and authorized audit tool", "tags": "security network shield audit cli"},
+    {"id": "foliate", "name": "Foliate", "source": "pacman", "summary": "Ebook reader", "tags": "reader book baobab culture learning"},
+    {"id": "org.mozilla.firefox", "name": "Firefox Flatpak", "source": "flatpak", "summary": "Sandboxed Firefox browser", "tags": "browser web flatpak sandboxed"},
+    {"id": "com.spotify.Client", "name": "Spotify", "source": "flatpak", "summary": "Sandboxed music streaming app", "tags": "music audio flatpak"},
+    {"id": "brave-bin", "name": "Brave Browser", "source": "aur", "summary": "Privacy-focused browser from AUR", "tags": "browser web aur community"},
+    {"id": "visual-studio-code-bin", "name": "Visual Studio Code", "source": "aur", "summary": "Microsoft Visual Studio Code from AUR", "tags": "code editor vscode forge aur"},
+]
+
+
+def curated_results():
+    tokens = TOKENS
+    if not tokens:
+        return []
+    items = []
+    for index, item in enumerate(CURATED_APPS):
+        haystack = ascii_fold(" ".join(str(item.get(key, "")) for key in ("id", "name", "summary", "tags")))
+        matches = sum(1 for token in tokens if token in haystack)
+        if not matches:
+            continue
+        source = item["source"]
+        app_id = item["id"]
+        name = item["name"]
+        installed = flatpak_installed(app_id) if source == "flatpak" else pacman_installed(app_id)
+        kind_hint = "cli" if app_id in {"docker", "git", "nmap"} else "graphical"
+        items.append(enrich({
+            "id": app_id,
+            "name": name,
+            "source": source,
+            "summary": item["summary"],
+            "kind_hint": kind_hint,
+            "badges": ["CURATED"],
+            "icon": icon_for(name, app_id, source),
+            "installed": installed,
+            "install_command": f"seven store install-app {source} {app_id}",
+            "open_command": f"seven store open-app {source} {app_id}",
+            "score": 118 + matches * 8 - index,
+            "curated": True,
+        }))
+    return items
+
+
 def enrich(item):
     name = item.get("name", item.get("id", ""))
     app_id = item.get("id", name)
@@ -565,7 +694,7 @@ def enrich(item):
     summary = item.get("summary", "")
     installed = bool(item.get("installed"))
     has_desktop = desktop_available(name, app_id) or source == "flatpak"
-    kind = app_kind(name, summary, has_desktop)
+    kind = item.get("kind_hint") or app_kind(name, summary, has_desktop)
     score, label, quality_badges = quality_for(source, installed, kind, item.get("votes", 0), item.get("popularity", 0))
     existing = list(item.get("badges", []))
     merged = []
@@ -588,7 +717,7 @@ def enrich(item):
 def pacman_results():
     if not shutil.which("pacman"):
         return []
-    out = run(["pacman", "-Ss", query])
+    out = run(["pacman", "-Ss", BACKEND_QUERY])
     items = []
     current = None
     for line in out.splitlines():
@@ -611,7 +740,7 @@ def pacman_results():
                 "installed": pacman_installed(name),
                 "install_command": f"seven store install-app pacman {name}",
                 "open_command": f"seven store open-app pacman {name}",
-                "score": 120 if name.lower() == query.lower() else 90,
+                "score": 120 if name.lower() in {query.lower(), BACKEND_QUERY.lower()} else 90,
             }
         elif current:
             current["summary"] = line.strip()
@@ -621,7 +750,7 @@ def pacman_results():
 
 
 def aur_results():
-    url = "https://aur.archlinux.org/rpc/?" + urllib.parse.urlencode({"v": "5", "type": "search", "arg": query})
+    url = "https://aur.archlinux.org/rpc/?" + urllib.parse.urlencode({"v": "5", "type": "search", "arg": BACKEND_QUERY})
     try:
         with urllib.request.urlopen(url, timeout=8) as response:
             payload = json.loads(response.read().decode("utf-8"))
@@ -646,7 +775,7 @@ def aur_results():
             "installed": pacman_installed(name),
             "install_command": f"seven store install-app aur {name}",
             "open_command": f"seven store open-app aur {name}",
-            "score": (105 if name.lower() == query.lower() else 55) + min(int(item.get("NumVotes", 0) or 0), 35),
+            "score": (105 if name.lower() in {query.lower(), BACKEND_QUERY.lower()} else 55) + min(int(item.get("NumVotes", 0) or 0), 35),
         }))
     return items
 
@@ -654,7 +783,7 @@ def aur_results():
 def flatpak_results():
     if not shutil.which("flatpak"):
         return []
-    out = run(["flatpak", "search", "--columns=application,name,description", query])
+    out = run(["flatpak", "search", "--columns=application,name,description", BACKEND_QUERY])
     items = []
     for line in out.splitlines()[1:13]:
         parts = [part.strip() for part in line.split("\t") if part.strip()]
@@ -673,12 +802,12 @@ def flatpak_results():
             "installed": flatpak_installed(app_id),
             "install_command": f"seven store install-app flatpak {app_id}",
             "open_command": f"seven store open-app flatpak {app_id}",
-            "score": 110 if app_id.lower() == query.lower() or name.lower() == query.lower() else 80,
+            "score": 110 if app_id.lower() in {query.lower(), BACKEND_QUERY.lower()} or name.lower() in {query.lower(), BACKEND_QUERY.lower()} else 80,
         }))
     return items
 
 
-results = pacman_results() + flatpak_results() + aur_results()
+results = curated_results() + pacman_results() + flatpak_results() + aur_results()
 seen = set()
 deduped = []
 for item in sorted(results, key=lambda row: (-row.get("score", 0), row.get("source", ""), row.get("name", ""))):
@@ -691,12 +820,22 @@ for item in sorted(results, key=lambda row: (-row.get("score", 0), row.get("sour
 print(json.dumps({
     "schema": "sevenos.store-search.v1",
     "query": query,
+    "expanded_query": BACKEND_QUERY,
+    "tokens": TOKENS,
     "sources": {
         "pacman": bool(shutil.which("pacman")),
         "flatpak": bool(shutil.which("flatpak")),
         "aur_rpc": True,
     },
     "ranking": ["official repositories", "sandboxed Flatpak", "trusted/high-signal AUR"],
+    "suggestions": [
+        {"label": "Web", "query": "browser"},
+        {"label": "Office", "query": "office document"},
+        {"label": "Forge", "query": "code editor docker"},
+        {"label": "Studio", "query": "design video audio"},
+        {"label": "Games", "query": "steam lutris gamescope"},
+        {"label": "Security", "query": "wireshark nmap"},
+    ],
     "results": deduped[:30],
 }, indent=2))
 PY
@@ -1055,15 +1194,28 @@ install_app() {
   fi
   local command=()
   case "$source" in
-    pacman) command=($(pacman_install_command "$app_id")) ;;
-    aur)
-      if command -v paru >/dev/null 2>&1; then
-        command=(paru -S --needed "$app_id")
-      elif command -v yay >/dev/null 2>&1; then
-        command=(yay -S --needed "$app_id")
+    pacman)
+      if [[ -n "$profile" ]]; then
+        command=("$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source pacman)
       else
-        log_error "AUR installs require paru or yay."
-        return 1
+        command=($(pacman_install_command "$app_id"))
+      fi
+      ;;
+    aur)
+      if [[ -n "$profile" ]]; then
+        local helper_cmd install_cmd
+        printf -v helper_cmd '%q ' "$ROOT_DIR/bin/sevenpkg" "$profile" helper paru
+        printf -v install_cmd '%q ' "$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source aur
+        command=(bash -lc "${helper_cmd}&& ${install_cmd}")
+      elif command -v paru >/dev/null 2>&1; then
+        command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source paru --global)
+      elif command -v yay >/dev/null 2>&1; then
+        command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source yay --global)
+      else
+        local helper_cmd install_cmd
+        printf -v helper_cmd '%q ' "$ROOT_DIR/install.sh" aur-helpers --yes
+        printf -v install_cmd '%q ' "$ROOT_DIR/bin/sevenpkg" install "$app_id" --source aur --global
+        command=(bash -lc "${helper_cmd}&& ${install_cmd}")
       fi
       ;;
     flatpak) command=(flatpak install flathub "$app_id") ;;

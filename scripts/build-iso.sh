@@ -9,6 +9,8 @@ BUILD_ROOT="$ROOT_DIR/out/archiso"
 PROFILE_BUILD="$BUILD_ROOT/profile"
 WORK_DIR="$BUILD_ROOT/work"
 OUT_DIR="$ROOT_DIR/out/iso"
+LOCAL_REPO_SOURCE="${SEVENOS_LOCAL_REPO:-$ROOT_DIR/archiso/localrepo/x86_64}"
+LOCAL_REPO_BUILD="$PROFILE_BUILD/localrepo/x86_64"
 
 usage() {
   cat <<'EOF'
@@ -51,6 +53,30 @@ log_info "Preparing SevenOS archiso profile..."
 run_cmd rm -rf "$PROFILE_BUILD"
 run_cmd mkdir -p "$PROFILE_BUILD" "$WORK_DIR" "$OUT_DIR"
 run_cmd rsync -a --delete "$PROFILE_SOURCE"/ "$PROFILE_BUILD"/
+
+if [[ -s "$LOCAL_REPO_SOURCE/sevenos-local.db.tar.gz" ]]; then
+  log_info "Injecting SevenOS local package repository..."
+  run_cmd mkdir -p "$LOCAL_REPO_BUILD"
+  run_cmd rsync -a "$LOCAL_REPO_SOURCE"/ "$LOCAL_REPO_BUILD"/
+  run_cmd bash -lc "cat >>$(printf '%q' "$PROFILE_BUILD/pacman.conf") <<'EOF'
+
+[sevenos-local]
+SigLevel = Optional TrustAll
+Server = file://$LOCAL_REPO_BUILD
+EOF
+"
+else
+  package_list_for_check="$PROFILE_BUILD/packages.x86_64"
+  if is_dry_run; then
+    package_list_for_check="$PROFILE_SOURCE/packages.x86_64"
+  fi
+  if grep -Fxq "calamares" "$package_list_for_check" && ! timeout 4 pacman -Si calamares >/dev/null 2>&1; then
+    log_error "Calamares is listed for the ISO, but no package source is available."
+    log_info "Preview: seven installer iso-runtime build-local-repo --dry-run"
+    log_info "Build:   seven installer iso-runtime build-local-repo --yes"
+    exit 1
+  fi
+fi
 
 log_info "Injecting SevenOS repository into live ISO profile..."
 run_cmd mkdir -p "$PROFILE_BUILD/airootfs/opt"

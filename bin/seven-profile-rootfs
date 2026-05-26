@@ -327,6 +327,15 @@ def build_many(profiles: list[str], *, apply: bool, yes: bool) -> dict:
 
 
 def audit_profile(profile: str) -> dict:
+    if profile == "equinox":
+        return {
+            "profile": profile,
+            "state": "OK",
+            "reason": "Equinox is the host-system/admin profile; mini OS rootfs boundary checks do not apply.",
+            "checks": {
+                "host_system": True,
+            },
+        }
     rootfs = rootfs_path(profile)
     expected_mode = "strict" if profile == "shield" else "balanced"
     if not (rootfs / "usr/bin").is_dir():
@@ -336,6 +345,8 @@ def audit_profile(profile: str) -> dict:
             "reason": "rootfs is not ready",
             "rootfs": str(rootfs),
         }
+    expected_gpu = "no" if profile in {"baobab", "forge", "shield"} else "yes"
+    expected_runtime = "no" if profile == "shield" else "yes"
     command = [
         str(ROOT_DIR / "bin" / "seven-profile-run"),
         "--profile", profile,
@@ -369,8 +380,8 @@ def audit_profile(profile: str) -> dict:
         "profile": profile,
         "mode": expected_mode,
         "strict_network_loopback_only": expected_mode == "strict",
-        "runtime": "no" if expected_mode == "strict" else "yes",
-        "gpu": "no" if expected_mode == "strict" else "yes",
+        "runtime": expected_runtime,
+        "gpu": expected_gpu,
         "rootfs_readonly": "yes",
     }
     checks = {
@@ -398,7 +409,7 @@ def audit_profile(profile: str) -> dict:
 
 
 def audit_payload(profile: str | None = None) -> dict:
-    profiles = [profile] if profile else known_profiles()
+    profiles = [profile] if profile else [item for item in known_profiles() if item != "equinox"]
     results = [audit_profile(item) for item in profiles]
     return {
         "schema": "sevenos.profile-rootfs-audit.v1",

@@ -269,6 +269,9 @@
         "scripts/packages-dev.txt",
         "scripts/packages-server.txt"
       ],
+      "optional_package_files": [
+        "scripts/packages-dev-optional.txt"
+      ],
       "waybar_modules": [
         "profile",
         "spotlight",
@@ -534,6 +537,9 @@
       "package_files": [
         "scripts/packages-creation.txt"
       ],
+      "optional_package_files": [
+        "scripts/packages-creation-optional.txt"
+      ],
       "waybar_modules": [
         "profile",
         "spotlight",
@@ -695,7 +701,9 @@
           "Steam, Lutris and Proton helpers",
           "GameMode",
           "MangoHud and overlays",
-          "controller support"
+          "controller support",
+          "host GPU driver guidance",
+          "private Pulse rootfs package installs"
         ],
         "experience": [
           "game launcher surface",
@@ -730,7 +738,9 @@
         "low-latency",
         "gaming-runtime",
         "performance-overlay",
-        "foreground-boost"
+        "foreground-boost",
+        "private-game-launchers",
+        "driver-readiness-guidance"
       ],
       "anti_nuisance": [
         "no dev daemons",

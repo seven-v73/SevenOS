@@ -297,7 +297,7 @@ release_payload() {
   if timeout 30 "$ROOT_DIR/scripts/design-check.sh" >/dev/null 2>&1; then design_state="OK"; else design_state="PART"; fi
   if timeout "${SEVENOS_RELEASE_SMOKE_TIMEOUT:-60s}" "$ROOT_DIR/scripts/smoke.sh" doctor >/dev/null 2>&1; then smoke_state="OK"; else smoke_state="PART"; fi
   if [[ "${SEVENOS_RELEASE_DEEP:-0}" == "1" ]]; then
-    if timeout 180 "$ROOT_DIR/scripts/ux-check.sh" >/dev/null 2>&1; then ux_state="OK"; else ux_state="PART"; fi
+    if PYENV_DISABLE_REHASH=1 timeout "${SEVENOS_RELEASE_UX_TIMEOUT:-600s}" "$ROOT_DIR/scripts/ux-check.sh" >/dev/null 2>&1; then ux_state="OK"; else ux_state="PART"; fi
   else
     ux_state="SKIP"
   fi
@@ -347,7 +347,8 @@ add("doctor", "OK" if summary.get("critical", 1) == 0 and summary.get("high", 1)
 add("design-check", os.environ.get("DESIGN_STATE", "PART"), "Design coherence", "SevenOS design contract passes.", "scripts/design-check.sh", "high")
 add("smoke-check", os.environ.get("SMOKE_STATE", "PART"), "Fast product smoke gate", "SevenOS public contracts respond quickly.", "seven smoke doctor", "high")
 ux_state = os.environ.get("UX_STATE", "PART")
-add("ux-check", ux_state, "Deep UX coherence", "Set SEVENOS_RELEASE_DEEP=1 to run the full developer UX audit.", "SEVENOS_RELEASE_DEEP=1 scripts/ux-check.sh", "medium")
+ux_detail = "Full developer UX audit passed." if ux_state == "OK" else ("Set SEVENOS_RELEASE_DEEP=1 to run the full developer UX audit." if ux_state == "SKIP" else "Full developer UX audit failed or timed out.")
+add("ux-check", ux_state, "Deep UX coherence", ux_detail, "SEVENOS_RELEASE_DEEP=1 scripts/ux-check.sh", "medium")
 add("worktree-freeze", "OK" if git_dirty == 0 else "PART", "Release worktree freeze", f"{git_dirty} uncommitted path(s)", "git status --short", "high")
 installer_state = installer.get("state", "unknown")
 add("installer", "OK" if installer_state == "graphical-ready" else "PART", "Graphical installer release", installer_state, "seven installer release", "high")

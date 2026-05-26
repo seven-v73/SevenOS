@@ -255,7 +255,7 @@ package scope.
 Mini OS package installs run through:
 
 ```bash
-seven-profile-run --profile <profile> --rootfs-writable pacman -S --needed <package>
+seven-profile-run --profile <profile> --rootfs-admin pacman -S --needed <package>
 seven-profile-run --profile <profile> --rootfs-writable paru -S --needed <package>
 seven-profile-run --profile <profile> --rootfs-writable yay -S --needed <package>
 ```
@@ -263,11 +263,47 @@ seven-profile-run --profile <profile> --rootfs-writable yay -S --needed <package
 After a mini OS package transaction, SevenOS verifies and seals the target
 rootfs again. AUR installs stay private only when `paru` or `yay` exists inside
 the target profile rootfs, not just on the host.
+SevenPkg uses `--rootfs-admin` only for rootfs package database writes; AUR
+build steps still run as a normal profile user so `makepkg` is not executed as
+root.
 
 Equinox is intentionally different. It may use raw `pacman`, `paru`, `yay` or
 `sevenpkg install --profile equinox ...`; those packages belong to the global
 system side and can be exposed to mini OS package views when the profile policy
 allows it.
+
+Global exposure is explicit and command-based. A host package installed in
+Equinox remains restricted to Equinox until `sevenpkg global-expose` writes a
+policy entry under `~/.config/sevenos/global-package-policy.json` and refreshes
+the profile package views:
+
+```bash
+sevenpkg global-expose mongodb --profiles forge --commands mongod mongosh
+sevenpkg global-expose mongodb --all-mini-os --commands mongod mongosh
+sevenpkg global-restrict mongodb
+sevenpkg global-clear mongodb
+```
+
+This does not copy packages into mini OS rootfs trees. It only exposes selected
+host commands through the package view. For a private package database, install
+the package directly in the target mini OS rootfs, for example
+`sevenpkg forge install mongodb`.
+
+Private long-running services should run through profile services instead of
+host system services. SevenPkg writes a user systemd unit whose `ExecStart`
+enters the selected rootfs with `seven-profile-run`:
+
+```bash
+sevenpkg profile-service mongodb forge
+sevenpkg profile-service mongodb forge --enable --start
+sevenpkg profile-service create forge api -- node /workspace/server.js
+sevenpkg profile-service status forge mongodb
+sevenpkg profile-service remove forge mongodb
+```
+
+The MongoDB preset uses `/profile/data/mongodb` inside the mini OS, so the data
+belongs to the target profile container. Creating the unit does not start it
+unless `--start` is explicit.
 
 Use `sevenpkg profile-packages <profile>` to inspect what is actually installed
 inside one mini OS rootfs. Use `sevenpkg profile-packages equinox` to inspect the
@@ -285,6 +321,13 @@ seven profile requirements forge --apply --yes
 seven profile requirements all --json
 seven profile requirements studio --optional --apply --yes
 ```
+
+For Equinox, requirements are evaluated against the host Arch package database.
+For Forge, Shield, Studio, Baobab, Windows and Pulse, requirements are evaluated
+against the private profile rootfs package database first. This keeps the health
+and release checks aligned with the mini OS isolation model: a package installed
+inside Forge does not need to appear globally in Equinox to make Forge
+role-complete.
 
 When a command is launched through `seven profile exec <profile> ...` and the
 command is not visible in that mini OS package view, SevenOS automatically runs

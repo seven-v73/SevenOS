@@ -14,12 +14,15 @@ SevenOS BlackArch bridge
 
 Usage:
   ./install.sh blackarch-setup [--yes] [--dry-run]
+  ./install.sh blackarch-full --yes
   ./install.sh blackarch-category <category> [--dry-run]
   ./install.sh blackarch-tool <package> [--dry-run]
 
 Examples:
   ./install.sh blackarch-setup --dry-run
   ./install.sh blackarch-setup --yes
+  ./install.sh blackarch-full --dry-run
+  ./install.sh blackarch-full --yes
   ./install.sh blackarch-category webapp
   ./install.sh blackarch-tool feroxbuster
 
@@ -94,6 +97,39 @@ install_category() {
   run_cmd sudo pacman -S --needed "blackarch-$category"
 }
 
+install_full() {
+  local assume_yes=0
+
+  for arg in "$@"; do
+    case "$arg" in
+      --yes) assume_yes=1 ;;
+      --dry-run) export SEVENOS_DRY_RUN=1 ;;
+      -h|--help) usage; exit 0 ;;
+      *) log_error "Unknown blackarch-full option: $arg"; usage; exit 1 ;;
+    esac
+  done
+
+  log_warn "This installs the full BlackArch package set."
+  log_warn "It is very large and intended only for a dedicated Shield/security workstation."
+
+  if is_dry_run; then
+    if ! repo_enabled; then
+      log_info "Would require BlackArch repository first: ./install.sh blackarch-setup --yes"
+    fi
+    log_info "Would install the complete BlackArch suite: sudo pacman -S --needed blackarch"
+    return 0
+  fi
+
+  if [[ "$assume_yes" -ne 1 && "${SEVENOS_YES:-0}" != "1" ]]; then
+    log_error "Refusing to install the full BlackArch suite without --yes."
+    log_info "Preview first: ./install.sh blackarch-full --dry-run"
+    exit 1
+  fi
+
+  require_blackarch_repo
+  run_cmd sudo pacman -S --needed blackarch
+}
+
 install_tool() {
   local package="${1:-}"
   [[ -n "$package" ]] || { log_error "Missing BlackArch package."; usage; exit 1; }
@@ -114,6 +150,9 @@ shift || true
 case "$command_name" in
   setup)
     setup_repo "$@"
+    ;;
+  full)
+    install_full "$@"
     ;;
   category)
     install_category "$@"

@@ -1,0 +1,12 @@
+[Unit]
+Description=SevenOS session welcome popup
+PartOf=sevenos-session.target
+After=sevenos-wallpaper.service sevenos-waybar.service
+
+[Service]
+Type=simple
+Environment=SEVENOS_ROOT=%h/Code/OS/SevenOS
+ExecStart=/usr/bin/env sh -lc 'sleep "${SEVENOS_WELCOME_POPUP_DELAY:-5}"; if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"; fi; exec "$HOME/.local/bin/seven-welcome-popup"'
+
+[Install]
+WantedBy=sevenos-session.target

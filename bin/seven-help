@@ -24,7 +24,7 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root)"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
-HELP_DOC="$STATE_DIR/help-center.md"
+HELP_DOC=""
 
 prepare_help_state() {
   local probe=""
@@ -42,6 +42,8 @@ prepare_help_state() {
 }
 
 prepare_help_state
+
+HELP_DOC="$STATE_DIR/help-center-${$}.md"
 
 language_code() {
   local language="${SEVENOS_LANGUAGE:-${LANG:-en_US.UTF-8}}"
@@ -70,6 +72,9 @@ if [[ "$LANG_CODE" == "fr" ]]; then
 󰩂  FAQ locale SevenOS    Questions fréquentes
 󰘦  Glossaire SevenOS    Vocabulaire SevenOS
 󰆍  Chapitres disponibles    Entrées directes du manuel
+󰜘  Documentation projet    Tout le dossier docs intégré localement
+󰜘  Index documentation    Liste rapide des docs projet
+󰐰  Features futures    Roadmap et limites entre prêt/futur
 󰆍  Mémo rapide SevenOS    Cheat sheet
 󰚩  Architecture SevenOS    Shell, profils, rootfs, actions
 󰌘  Actions SevenOS    Registre d'actions, Spotlight, Waybar
@@ -123,6 +128,9 @@ else
 󰩂  SevenOS FAQ    Frequent questions
 󰘦  SevenOS Glossary    SevenOS vocabulary
 󰆍  Available Chapters    Direct manual entries
+󰜘  Project Documentation    Full docs folder integrated locally
+󰜘  Documentation Index    Quick project docs list
+󰐰  Future Features    Roadmap and ready/future boundaries
 󰆍  SevenOS Cheat Sheet    Quick reference
 󰚩  SevenOS Architecture    Shell, profiles, rootfs, actions
 󰌘  SevenOS Actions    Action registry, Spotlight, Waybar
@@ -207,6 +215,8 @@ SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS aut
 | Développement SevenOS | checks, phase gate, contribution locale |
 | Diagnostics | réparation, checks, pré-push |
 | Dépannage rapide | solutions directes aux problèmes fréquents |
+| Documentation projet | contenu complet du dossier `docs/` |
+| Features futures | feuille de route lisible sans quitter l'aide locale |
 
 ## Première installation
 
@@ -251,6 +261,11 @@ seven status
 seven doctor
 seven profile-rootfs verify all
 ```
+
+À chaque démarrage de session, `seven-welcome-popup` affiche un accueil flottant
+avec le Prism SevenOS, le nom de l'utilisateur, le rôle des mini OS et le rappel
+que l'aide locale reste accessible avec Super+H. Le texte suit la langue
+configurée dans SevenOS ou dans le système.
 
 Préparer ou réparer le Wi-Fi :
 
@@ -383,7 +398,8 @@ ajouter des actions contextuelles, mais cette carte reste le point de départ.
 | Smart maximize | Super+Shift+F |
 | Basculer flottant/tiling | Super+Alt+Space |
 | Menu layout | Super+Alt+L |
-| Contrôles fenêtre | Super+Alt+D |
+| Activer/désactiver le Prism SevenDecor | Super+Alt+D |
+| Contrôles fenêtre ponctuels | Super+Ctrl+Alt+D |
 | Pseudo tiling | Super+P |
 | Scratchpad | Super+S |
 | Envoyer vers scratchpad | Super+Alt+S |
@@ -396,6 +412,33 @@ ajouter des actions contextuelles, mais cette carte reste le point de départ.
 | Déplacer vers workspace suivant/précédent | Super+Shift+PageDown / Super+Shift+PageUp |
 | Déplacer fenêtre à la souris | Super+clic gauche |
 | Redimensionner à la souris | Super+clic droit |
+
+Le Prism SevenDecor est fourni par `sevenos-window-controls.service`. Il reste
+replié et transparent par défaut; un clic expose rouge, jaune et vert. Rouge
+ferme la fenêtre active, jaune bascule flottant/tiling, vert applique smart
+maximize et le double-clic vert passe en plein écran. Le Prism se déplace par
+glisser-déposer; un double-clic revient au suivi automatique de la fenêtre
+active. Le clic droit ou l'appui long ouvre le menu avancé : split gauche/droite,
+scratchpad, pin/unpin, déplacement vers workspace, verrouillage/déverrouillage
+de la cible, mode focus, masquage pour l'app active et reset de position. Quand
+le Prism est ouvert, une petite pastille indique la fenêtre ciblée; si elle est
+verrouillée, les actions restent sur cette fenêtre même après un changement de
+focus. Clique directement sur cette pastille pour verrouiller ou déverrouiller;
+utilise la molette dessus pour parcourir les fenêtres du workspace et verrouiller
+la cible choisie. Les libellés et tooltips du Prism suivent la langue configurée
+dans SevenOS ou dans le système.
+
+```bash
+seven-window controls-start
+seven-window controls-stop
+seven-window controls-toggle
+seven-window controls-status
+seven-window layout-menu
+seven-window advanced-menu
+seven-window controls-unlock
+seven-window controls-reset-hidden
+seven-window decor-status --json
+```
 
 ### Capture, couleur et enregistrement
 
@@ -481,6 +524,11 @@ seven-wifi status-json
 seven-bluetooth status-json
 ```
 
+Les exigences des mini OS suivent la frontière réelle : Equinox est vérifié
+contre le host, tandis que Forge, Shield, Studio, Baobab, Windows et Pulse sont
+vérifiés contre leur rootfs privé. Un paquet présent dans Forge n'a donc pas
+besoin d'être installé globalement dans Equinox pour que Forge soit complet.
+
 ## Actions SevenOS
 
 Les actions sont la langue commune du système. Une même action peut être
@@ -545,7 +593,7 @@ Profils :
 - Shield : cybersécurité autorisée, audit, forensic, sandbox.
 - Studio : création, logo, vidéo, audio, design.
 - Windows : Windows Bridge complet avec chemins de compatibilité plus légers en fallback.
-- Pulse : gaming Linux, Proton, faible latence, overlays.
+- Pulse : gaming Linux, Proton, faible latence, overlays, pilotes GPU guidés et paquets privés via `sevenpkg pulse`.
 
 Ce que chaque mini OS sépare :
 
@@ -626,6 +674,11 @@ seven mini-os suggest
 seven mini-os plan equinox forge shield
 seven mini-os activate equinox forge --yes
 seven mini-os activate equinox --yes
+seven mini-doctor
+seven mini-doctor forge
+seven mini-doctor studio plan --json
+seven-mini-doctor baobab install
+seven-mini-doctor shield rootfs
 ```
 
 Le runtime affiche :
@@ -800,6 +853,38 @@ Si une police ne s'applique pas :
 3. Ferme puis rouvre l'application concernée.
 4. Lance `seven post-install` pour voir si un paquet de police manque.
 
+### Langues français / anglais
+
+SevenOS garde deux packs système par défaut : anglais US et français France.
+La langue d'interface est séparée du clavier, des formats régionaux et des
+mini OS, pour éviter qu'un changement de langue ne casse les raccourcis ou les
+profils isolés.
+
+```bash
+seven language status
+seven language status --json
+seven language doctor
+seven language doctor --json
+seven language list
+seven language set fr_FR.UTF-8
+seven language set en_US.UTF-8
+seven language apply --live
+```
+
+À retenir :
+
+1. `seven language doctor` vérifie les catalogues FR/EN, l'ISO, l'installateur,
+   les locales générées et l'indicateur Waybar.
+2. `seven language set ...` change la langue pour les nouvelles fenêtres et
+   terminaux.
+3. `seven language apply --live` relance les surfaces visibles de SevenOS.
+4. Le clavier reste géré par `seven keyboard apply`, pas par la langue.
+5. Waybar affiche `FR` ou `EN` dynamiquement via `seven-waybar-language`.
+
+Si une app reste dans l'ancienne langue, ferme puis rouvre cette app. Si tout
+reste incohérent, lance `seven language doctor`, puis `seven language apply
+--live`.
+
 ### Thème, wallpaper et boot
 
 ```bash
@@ -825,6 +910,8 @@ repair ux --apply`.
 
 ```bash
 seven-waybar status --json
+seven-waybar limits --json
+seven-waybar doctor --json
 seven-waybar restart
 seven-waybar stable
 seven-waybar dynamic
@@ -884,6 +971,10 @@ l'état utilisateur SevenOS, lance `./install.sh migrate-backup`.
 seven installer status
 seven installer plan
 seven installer runtime
+seven installer iso-runtime
+seven installer iso-runtime deps --yes
+seven installer iso-runtime build-local-repo --dry-run
+seven installer iso-runtime build-local-repo --yes
 seven release
 seven channel
 seven distribution
@@ -892,6 +983,8 @@ seven distribution
 SevenOS peut être une bonne machine de test avant d'être une ISO publique. La
 commande `seven distribution` dit si l'état courant ressemble à une distribution
 quotidienne, à une release candidate ou à une couche de développement.
+Pour une ISO publique graphique, `seven installer iso-runtime` vérifie que
+Calamares est déclaré dans l'ISO et que le dépôt local de paquet est prêt.
 
 ## Paquets et installation
 
@@ -919,6 +1012,15 @@ sevenpkg profile-limits
 sevenpkg profile-limits forge
 sevenpkg profile-packages
 sevenpkg profile-packages forge --query htop
+sevenpkg global-policy mongodb
+sevenpkg global-expose mongodb --profiles forge --commands mongod mongosh
+sevenpkg global-expose mongodb --all-mini-os --commands mongod mongosh
+sevenpkg global-restrict mongodb
+sevenpkg global-clear mongodb
+sevenpkg profile-service mongodb forge
+sevenpkg profile-service mongodb forge --enable --start
+sevenpkg profile-service status forge mongodb
+sevenpkg profile-service remove forge mongodb
 sevenpkg install --profile shield nmap --source pacman --preview
 sevenpkg install --profile studio blender --source paru --preview
 sevenpkg profile-install forge nodejs npm --source pacman --preview
@@ -932,6 +1034,18 @@ Règles importantes :
 
 - Equinox est l'espace admin : il peut utiliser pacman, yay et paru directement.
 - Les mini OS passent par `sevenpkg --profile` pour garder leurs paquets privés.
+- Installer dans Forge, Shield, Studio, Baobab, Windows ou Pulse écrit dans le
+  rootfs privé du mini OS, puis SevenOS vérifie et rescelle ce rootfs.
+- Installer dans Equinox écrit sur le host. Le paquet reste Equinox-only par
+  défaut, sauf si une règle `sevenpkg global-expose` expose des commandes à un
+  ou plusieurs mini OS.
+- `sevenpkg global-restrict <pkg>` coupe l'exposition host vers les mini OS.
+- `sevenpkg global-clear <pkg>` supprime la règle explicite.
+- Pour un daemon privé comme MongoDB, utilise `sevenpkg profile-service
+  mongodb forge` : l'unité systemd utilisateur lance `mongod` dans le rootfs
+  Forge et stocke ses données dans `/profile/data/mongodb`.
+- Ajouter `--enable --start` active et démarre le service ; sans `--start`,
+  SevenOS crée seulement l'unité pour vérification.
 - `--preview` montre l'impact avant modification.
 - Une suppression dans un mini OS est bloquée si le paquet n'est pas installé
   dans son rootfs.
@@ -963,11 +1077,15 @@ Pour les outils spécialisés BlackArch :
 ```bash
 ./install.sh blackarch-setup --dry-run
 ./install.sh blackarch-setup --yes
+seven shield toolchain blackarch-full --dry-run
+seven shield toolchain blackarch-full --yes
 ./install.sh blackarch-category webapp --dry-run
 ./install.sh blackarch-tool feroxbuster --dry-run
 ```
 
-BlackArch est volontairement optionnel car il ajoute un dépôt externe.
+BlackArch est volontairement optionnel car il ajoute un dépôt externe. Le paquet
+complet est massif : utilise d'abord `--dry-run`, puis `--yes` seulement sur un
+poste Shield dédié.
 
 ### Windows Bridge
 
@@ -1289,6 +1407,11 @@ seven doctor
 seven profile-rootfs verify all
 ```
 
+At each session startup, `seven-welcome-popup` shows a floating welcome with the
+SevenOS Prism, the user's name, mini OS roles and the reminder that local help
+stays available with Super+H. The text follows the language configured in
+SevenOS or in the system.
+
 Prepare or repair Wi-Fi:
 
 ```bash
@@ -1420,7 +1543,8 @@ this map is the starting point.
 | Smart maximize | Super+Shift+F |
 | Toggle floating/tiling | Super+Alt+Space |
 | Layout menu | Super+Alt+L |
-| Window controls | Super+Alt+D |
+| Toggle SevenDecor Prism | Super+Alt+D |
+| One-shot window controls | Super+Ctrl+Alt+D |
 | Pseudo tiling | Super+P |
 | Scratchpad | Super+S |
 | Send to scratchpad | Super+Alt+S |
@@ -1433,6 +1557,31 @@ this map is the starting point.
 | Move to next/previous workspace | Super+Shift+PageDown / Super+Shift+PageUp |
 | Move window with mouse | Super+left click |
 | Resize with mouse | Super+right click |
+
+The SevenDecor Prism is provided by `sevenos-window-controls.service`. It stays
+collapsed and translucent by default; clicking it exposes red, yellow and green.
+Red closes the active window, yellow toggles floating/tiling, green applies
+smart maximize and green double-click enters fullscreen. Drag the Prism to move
+it; double-click it to return to automatic active-window follow mode. Right-click
+or long press opens the advanced menu: split left/right, scratchpad, pin/unpin,
+move to workspace, target lock/unlock, focus mode, hide for the active app and
+reset placement. When expanded, a compact chip shows the target window; when it
+is locked, actions keep applying to that window even after focus changes. Click
+that chip to lock or unlock directly; scroll on it to cycle through workspace
+windows and lock the chosen target. Prism labels and tooltips follow the
+language configured in SevenOS or in the system.
+
+```bash
+seven-window controls-start
+seven-window controls-stop
+seven-window controls-toggle
+seven-window controls-status
+seven-window layout-menu
+seven-window advanced-menu
+seven-window controls-unlock
+seven-window controls-reset-hidden
+seven-window decor-status --json
+```
 
 ### Screenshots, Color And Recording
 
@@ -1517,6 +1666,11 @@ seven-quick-settings power
 seven-wifi status-json
 seven-bluetooth status-json
 ```
+
+Mini OS requirements follow the real boundary: Equinox is checked against the
+host, while Forge, Shield, Studio, Baobab, Windows and Pulse are checked against
+their private rootfs. A package present in Forge does not need to be globally
+installed in Equinox for Forge to be complete.
 
 ## SevenOS Actions
 
@@ -1649,6 +1803,30 @@ seven profile folders forge
 | Baobab | culture, reading, collections | reader, documents, local memory |
 | Pulse | games, captures, performance | Steam, Lutris, recorder, overlays |
 | Windows | Windows VM and bridge | VM setup, shared folders, Windows apps |
+
+Pulse keeps gaming tools inside the Pulse mini OS when possible:
+
+```bash
+seven pulse doctor
+seven pulse plan --json
+seven pulse install
+seven pulse rootfs
+seven-pulse launchers
+seven-pulse hud
+seven-pulse helper
+seven pulse activate
+seven pulse open
+sevenpkg pulse install steam --source pacman
+sevenpkg pulse install lutris gamescope mangohud --source pacman
+sevenpkg pulse helper paru
+sevenpkg pulse install heroic-games-launcher-bin --source paru
+sevenpkg pulse limits
+```
+
+GPU drivers, kernel modules, Mesa and multilib remain host-level Equinox
+responsibilities because the Linux kernel and GPU stack are shared by every mini
+OS. `seven pulse doctor` shows the driver guidance without exposing users to
+guesswork.
 
 ## Mini OS Collaboration
 
@@ -1833,6 +2011,36 @@ If a font is not applied:
 3. Close and reopen the affected app.
 4. Run `seven post-install` to check for missing font packages.
 
+### French / English Languages
+
+SevenOS keeps two default system packs: US English and France French. The UI
+language is separate from keyboard layouts, regional formats and mini OS
+profiles, so switching language does not break shortcuts or isolated profiles.
+
+```bash
+seven language status
+seven language status --json
+seven language doctor
+seven language doctor --json
+seven language list
+seven language set fr_FR.UTF-8
+seven language set en_US.UTF-8
+seven language apply --live
+```
+
+Remember:
+
+1. `seven language doctor` checks FR/EN catalogs, the ISO, installer, generated
+   locales and the Waybar indicator.
+2. `seven language set ...` changes the language for new windows and terminals.
+3. `seven language apply --live` restarts visible SevenOS surfaces.
+4. Keyboard layouts stay managed by `seven keyboard apply`, not by the language.
+5. Waybar displays `FR` or `EN` dynamically through `seven-waybar-language`.
+
+If one app stays in the old language, close and reopen that app. If the whole
+session still feels inconsistent, run `seven language doctor`, then `seven
+language apply --live`.
+
 ### Theme, Wallpaper And Boot
 
 ```bash
@@ -1853,6 +2061,8 @@ whole interface looks wrong, use `seven repair ux --apply`.
 
 ```bash
 seven-waybar status --json
+seven-waybar limits --json
+seven-waybar doctor --json
 seven-waybar restart
 seven-waybar stable
 seven-waybar dynamic
@@ -1912,6 +2122,10 @@ state, run `./install.sh migrate-backup`.
 seven installer status
 seven installer plan
 seven installer runtime
+seven installer iso-runtime
+seven installer iso-runtime deps --yes
+seven installer iso-runtime build-local-repo --dry-run
+seven installer iso-runtime build-local-repo --yes
 seven release
 seven channel
 seven distribution
@@ -1920,6 +2134,8 @@ seven distribution
 SevenOS can be a good test machine before it is a public ISO. The
 `seven distribution` command says whether the current state looks like a daily
 driver distribution, a release candidate or a development layer.
+For a public graphical ISO, `seven installer iso-runtime` checks that
+Calamares is declared in the ISO and that the local package repository is ready.
 
 ## Packages And Install
 
@@ -1947,6 +2163,15 @@ sevenpkg profile-limits
 sevenpkg profile-limits forge
 sevenpkg profile-packages
 sevenpkg profile-packages forge --query htop
+sevenpkg global-policy mongodb
+sevenpkg global-expose mongodb --profiles forge --commands mongod mongosh
+sevenpkg global-expose mongodb --all-mini-os --commands mongod mongosh
+sevenpkg global-restrict mongodb
+sevenpkg global-clear mongodb
+sevenpkg profile-service mongodb forge
+sevenpkg profile-service mongodb forge --enable --start
+sevenpkg profile-service status forge mongodb
+sevenpkg profile-service remove forge mongodb
 sevenpkg install --profile shield nmap --source pacman --preview
 sevenpkg install --profile studio blender --source paru --preview
 sevenpkg profile-install forge nodejs npm --source pacman --preview
@@ -1960,6 +2185,18 @@ Important rules:
 
 - Equinox is the admin space: it can use pacman, yay and paru directly.
 - Mini OS profiles should use `sevenpkg --profile` to keep packages private.
+- Installing into Forge, Shield, Studio, Baobab, Windows or Pulse writes to the
+  target mini OS rootfs, then SevenOS verifies and reseals that rootfs.
+- Installing into Equinox writes to the host. The package stays Equinox-only by
+  default unless `sevenpkg global-expose` exposes selected commands to one or
+  more mini OS profiles.
+- `sevenpkg global-restrict <pkg>` disables host exposure to mini OS profiles.
+- `sevenpkg global-clear <pkg>` removes the explicit policy entry.
+- For a private daemon such as MongoDB, use `sevenpkg profile-service mongodb
+  forge`: the user systemd unit starts `mongod` inside the Forge rootfs and
+  stores data in `/profile/data/mongodb`.
+- Add `--enable --start` to enable and start the service; without `--start`,
+  SevenOS only creates the unit for inspection.
 - `--preview` shows the impact before changing anything.
 - Removing from a mini OS is blocked if the package is not installed inside its
   rootfs.
@@ -1991,11 +2228,15 @@ For specialized BlackArch tools:
 ```bash
 ./install.sh blackarch-setup --dry-run
 ./install.sh blackarch-setup --yes
+seven shield toolchain blackarch-full --dry-run
+seven shield toolchain blackarch-full --yes
 ./install.sh blackarch-category webapp --dry-run
 ./install.sh blackarch-tool feroxbuster --dry-run
 ```
 
-BlackArch is intentionally optional because it adds an external repository.
+BlackArch is intentionally optional because it adds an external repository. The
+full package set is massive: use `--dry-run` first, then `--yes` only on a
+dedicated Shield workstation.
 
 ### Windows Bridge
 
@@ -2234,6 +2475,8 @@ Important files:
 
 - `Super+H`: this documentation.
 - `seven-help architecture`: open a chapter directly.
+- `seven-help docs`: complete project documentation from `docs/`.
+- `seven-help future`: future feature roadmap.
 - `Super+Space`: search an app, action or file.
 - `seven --help`: SevenOS commands.
 - `seven actions`: user actions.
@@ -2243,6 +2486,246 @@ Important files:
 EOF
   fi
 
+  append_future_features
+  append_docs_reference
+}
+
+append_future_features() {
+  if [[ "$LANG_CODE" == "fr" ]]; then
+    cat >> "$HELP_DOC" <<'EOF'
+
+## Features futures
+
+Cette section sépare les fonctions déjà utilisables des directions futures.
+SevenOS doit rester honnête : une feature future ne doit pas être présentée
+comme disponible dans les surfaces grand public tant qu'elle n'a pas de commande,
+de test et de chemin de retour.
+
+| Domaine | Direction | État |
+| --- | --- | --- |
+| Installateur public | installation disque plus guidée, avec Calamares/Archinstall et checks SevenOS | planifié |
+| SevenRepo | dépôt SevenOS pour paquets, thèmes, helpers et composants natifs | réservé |
+| Seven Core | daemon Rust plus complet, événements locaux, santé système et contrats stables | en fondation |
+| SevenBus | bus local pour contexte, actions et événements sans parser le shell | en fondation |
+| SevenAI | assistant local-first plus profond, playbooks, diagnostics et explications | progressif |
+| Seven Shell | couche shell plus native, rapide et maintenable | progressif |
+| Store | permissions Flatpak, recommandations locales et vues par mini OS | progressif |
+| Baobab | packs culturels, langues africaines, cartes et collections offline | progressif |
+| Windows Bridge | intégration app-first plus fluide autour VM/Wine/Bottles | progressif |
+| Cloud personnel | synchronisation volontaire, backup, déploiement et serveur local | futur |
+| Performance | politiques systemd slices/uclamp exposées mais jamais silencieuses | futur |
+
+Règles pour ajouter une feature future :
+
+- documenter l'intention dans `docs/` ;
+- exposer une commande de status ou de plan avant une commande destructive ;
+- ajouter un test dans `scripts/ux-check.sh` ou un doctor ciblé ;
+- garder une UX compréhensible pour le grand public ;
+- ne pas casser Equinox comme profil admin/hôte ;
+- ne pas affaiblir l'isolation des mini OS.
+
+EOF
+  else
+    cat >> "$HELP_DOC" <<'EOF'
+
+## Future Features
+
+This section separates usable features from future direction. SevenOS should stay
+honest: a future feature must not look available in public surfaces until it has
+a command, a check and a recovery path.
+
+| Area | Direction | State |
+| --- | --- | --- |
+| Public installer | more guided disk install through Calamares/Archinstall and SevenOS checks | planned |
+| SevenRepo | SevenOS repository for packages, themes, helpers and native components | reserved |
+| Seven Core | deeper Rust daemon, local events, system health and stable contracts | foundation |
+| SevenBus | local bus for context, actions and events without shell scraping | foundation |
+| SevenAI | deeper local-first assistant, playbooks, diagnostics and explanations | progressive |
+| Seven Shell | more native, fast and maintainable shell layer | progressive |
+| Store | Flatpak permissions, local recommendations and mini OS views | progressive |
+| Baobab | cultural packs, African languages, maps and offline collections | progressive |
+| Windows Bridge | smoother app-first integration around VM/Wine/Bottles | progressive |
+| Personal cloud | opt-in sync, backup, deployment and local server workflows | future |
+| Performance | visible systemd slice/uclamp policies, never silent changes | future |
+
+Rules for adding a future feature:
+
+- document the intention in `docs/`;
+- expose a status or plan command before a destructive command;
+- add a test in `scripts/ux-check.sh` or a focused doctor;
+- keep the UX understandable for the general public;
+- keep Equinox as the admin/host profile;
+- do not weaken mini OS isolation.
+
+EOF
+  fi
+}
+
+append_docs_reference() {
+  [[ -d "$ROOT_DIR/docs" ]] || return 0
+  ROOT_DIR="$ROOT_DIR" HELP_DOC="$HELP_DOC" LANG_CODE="$LANG_CODE" python - <<'PY'
+import os
+from pathlib import Path
+
+root = Path(os.environ["ROOT_DIR"])
+help_doc = Path(os.environ["HELP_DOC"])
+lang = os.environ.get("LANG_CODE", "en")
+docs = sorted((root / "docs").glob("*.md"), key=lambda path: path.name.lower())
+
+if not docs:
+    return_code = 0
+else:
+    with help_doc.open("a", encoding="utf-8") as out:
+        if lang == "fr":
+            out.write("\n## Documentation projet\n\n")
+            out.write("Cette section reprend automatiquement le contenu complet du dossier `docs/` pour que le helper serve de référence locale sur l'architecture SevenOS.\n\n")
+            out.write("Les documents stratégiques peuvent mentionner des éléments futurs. Quand un passage parle de `future`, `planned`, `scaffold` ou `preview`, il décrit une direction ou une fondation, pas forcément une fonction prête pour le grand public.\n\n")
+        else:
+            out.write("\n## Project Documentation\n\n")
+            out.write("This section automatically includes the full `docs/` directory so the helper can act as the local SevenOS architecture reference.\n\n")
+            out.write("Strategic documents may mention future pieces. When a passage says `future`, `planned`, `scaffold` or `preview`, it describes direction or foundation work, not always a finished public feature.\n\n")
+
+        out.write("| Document | Title |\n| --- | --- |\n")
+        titles = {}
+        for path in docs:
+            title = path.stem.replace("_", " ").replace("-", " ").title()
+            for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                if raw.startswith("# "):
+                    title = raw[2:].strip()
+                    break
+            titles[path.name] = title
+            out.write(f"| `{path.name}` | {title} |\n")
+
+        for path in docs:
+            text = path.read_text(encoding="utf-8", errors="ignore").strip()
+            if not text:
+                continue
+            title = titles.get(path.name, path.stem)
+            out.write(f"\n## docs/{path.name}\n\n")
+            out.write(f"_Source locale : `docs/{path.name}`._\n\n" if lang == "fr" else f"_Local source: `docs/{path.name}`._\n\n")
+            for line in text.splitlines():
+                if line.startswith("#"):
+                    level = len(line) - len(line.lstrip("#"))
+                    content = line[level:].strip()
+                    out.write(f"{'#' * min(level + 2, 6)} {content}\n")
+                else:
+                    out.write(line + "\n")
+            out.write("\n")
+PY
+}
+
+write_docs_index() {
+  mkdir -p "$STATE_DIR"
+  ROOT_DIR="$ROOT_DIR" HELP_DOC="$HELP_DOC" LANG_CODE="$LANG_CODE" python - <<'PY'
+import os
+from pathlib import Path
+
+root = Path(os.environ["ROOT_DIR"])
+help_doc = Path(os.environ["HELP_DOC"])
+lang = os.environ.get("LANG_CODE", "en")
+docs = sorted((root / "docs").glob("*.md"), key=lambda path: path.name.lower())
+
+with help_doc.open("w", encoding="utf-8") as out:
+    if lang == "fr":
+        out.write("# Index documentation SevenOS\n\n")
+        out.write("Utilise `seven-help doc <nom>` pour ouvrir un seul document, par exemple `seven-help doc architecture`.\n\n")
+    else:
+        out.write("# SevenOS Documentation Index\n\n")
+        out.write("Use `seven-help doc <name>` to open one document, for example `seven-help doc architecture`.\n\n")
+    out.write("| Document | Title | Command |\n| --- | --- | --- |\n")
+    for path in docs:
+        title = path.stem.replace("_", " ").replace("-", " ").title()
+        for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if raw.startswith("# "):
+                title = raw[2:].strip()
+                break
+        key = path.stem.lower()
+        out.write(f"| `{path.name}` | {title} | `seven-help doc {key}` |\n")
+PY
+}
+
+write_single_project_doc() {
+  local query="${*:-}"
+  [[ -n "${query// /}" ]] || return 2
+  mkdir -p "$STATE_DIR"
+  ROOT_DIR="$ROOT_DIR" HELP_DOC="$HELP_DOC" LANG_CODE="$LANG_CODE" DOC_QUERY="$query" python - <<'PY'
+import os
+import re
+import sys
+from pathlib import Path
+
+root = Path(os.environ["ROOT_DIR"])
+help_doc = Path(os.environ["HELP_DOC"])
+lang = os.environ.get("LANG_CODE", "en")
+query = os.environ.get("DOC_QUERY", "").strip()
+docs = sorted((root / "docs").glob("*.md"), key=lambda path: path.name.lower())
+
+def key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+query_key = key(query)
+matches = []
+for path in docs:
+    title = path.stem
+    text = path.read_text(encoding="utf-8", errors="ignore")
+    for raw in text.splitlines():
+        if raw.startswith("# "):
+            title = raw[2:].strip()
+            break
+    haystacks = {key(path.name), key(path.stem), key(title)}
+    if query_key in haystacks or any(query_key and query_key in item for item in haystacks):
+        matches.append((path, title, text))
+
+if not matches:
+    with help_doc.open("w", encoding="utf-8") as out:
+        if lang == "fr":
+            out.write(f"# Document introuvable: {query}\n\n")
+            out.write("Documents disponibles:\n\n")
+        else:
+            out.write(f"# Document Not Found: {query}\n\n")
+            out.write("Available documents:\n\n")
+        for path in docs:
+            out.write(f"- `{path.name}`\n")
+    sys.exit(2)
+
+path, title, text = matches[0]
+with help_doc.open("w", encoding="utf-8") as out:
+    out.write(f"# {title}\n\n")
+    out.write(f"_Source locale : `docs/{path.name}`._\n\n" if lang == "fr" else f"_Local source: `docs/{path.name}`._\n\n")
+    skipped_title = False
+    skip_next_blank = False
+    for line in text.strip().splitlines():
+        if skip_next_blank and not line.strip():
+            skip_next_blank = False
+            continue
+        skip_next_blank = False
+        if line.startswith("#"):
+            level = len(line) - len(line.lstrip("#"))
+            content = line[level:].strip()
+            if not skipped_title and level == 1 and key(content) == key(title):
+                skipped_title = True
+                skip_next_blank = True
+                continue
+            out.write(f"{'#' * min(level + 1, 6)} {content}\n")
+        else:
+            out.write(line + "\n")
+PY
+}
+
+show_generated_doc() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    cat "$HELP_DOC"
+    return 0
+  fi
+  local viewer=""
+  if command -v less >/dev/null 2>&1; then
+    viewer="less -R $(printf '%q' "$HELP_DOC")"
+  elif command -v bat >/dev/null 2>&1; then
+    viewer="bat --paging=always --style=plain --language=markdown $(printf '%q' "$HELP_DOC")"
+  else
+    viewer="cat $(printf '%q' "$HELP_DOC")"
+  fi
+  run_terminal "$viewer"
 }
 
 topic_heading() {
@@ -2258,13 +2741,15 @@ topic_heading() {
       themes) printf 'Thèmes et apparence\n' ;;
       mini-os|mini-os-collaboration) printf 'Mini OS SevenOS\n' ;;
       files|reader|store|terminal|ai|apps) printf 'Applications SevenOS\n' ;;
-      system|manual|network|fonts|backup|iso|installer) printf 'Manuel système\n' ;;
-      packages|software|sevenpkg) printf 'Paquets et installation\n' ;;
+      system|manual|network|fonts|language|langue|backup|iso|installer) printf 'Manuel système\n' ;;
+      packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services) printf 'Paquets et installation\n' ;;
       security|shield|windows-bridge) printf 'Sécurité, Shield et Windows\n' ;;
       faq|questions) printf 'FAQ locale\n' ;;
       glossary|vocabulary|vocabulaire) printf 'Glossaire SevenOS\n' ;;
       dev|development|checks) printf 'Développement SevenOS\n' ;;
       diagnostics|troubleshooting) printf 'Diagnostics et réparation\n' ;;
+      docs|documentation|project-docs) printf 'Documentation projet\n' ;;
+      future|roadmap|features) printf 'Features futures\n' ;;
       windows) printf 'Système de fenêtres et raccourcis\n' ;;
       *) return 1 ;;
     esac
@@ -2279,13 +2764,15 @@ topic_heading() {
       themes) printf 'Themes And Appearance\n' ;;
       mini-os|mini-os-collaboration) printf 'SevenOS Mini OS\n' ;;
       files|reader|store|terminal|ai|apps) printf 'SevenOS Applications\n' ;;
-      system|manual|network|fonts|backup|iso|installer) printf 'System Manual\n' ;;
-      packages|software|sevenpkg) printf 'Packages And Install\n' ;;
+      system|manual|network|fonts|language|langue|backup|iso|installer) printf 'System Manual\n' ;;
+      packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services) printf 'Packages And Install\n' ;;
       security|shield|windows-bridge) printf 'Security, Shield And Windows\n' ;;
       faq|questions) printf 'Local FAQ\n' ;;
       glossary|vocabulary|vocabulaire) printf 'SevenOS Glossary\n' ;;
       dev|development|checks) printf 'SevenOS Development\n' ;;
       diagnostics|troubleshooting) printf 'Diagnostics And Repair\n' ;;
+      docs|documentation|project-docs) printf 'Project Documentation\n' ;;
+      future|roadmap|features) printf 'Future Features\n' ;;
       windows) printf 'Window System And Shortcuts\n' ;;
       *) return 1 ;;
     esac
@@ -2295,6 +2782,24 @@ topic_heading() {
 show_doc() {
   local topic="${1:-all}"
   write_help_doc "$topic"
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    local heading=""
+    heading="$(topic_heading "$topic" 2>/dev/null || true)"
+    if [[ -n "$heading" ]]; then
+      if [[ "$topic" == "docs" || "$topic" == "documentation" || "$topic" == "project-docs" ]]; then
+        awk -v heading="## ${heading}" '$0 == heading { printing=1 } printing { print }' "$HELP_DOC"
+      else
+        awk -v heading="## ${heading}" '
+          $0 == heading { printing=1 }
+          printing && /^## / && $0 != heading { exit }
+          printing { print }
+        ' "$HELP_DOC"
+      fi
+    else
+      cat "$HELP_DOC"
+    fi
+    return 0
+  fi
   local viewer=""
   local heading=""
   heading="$(topic_heading "$topic" 2>/dev/null || true)"
@@ -2328,7 +2833,7 @@ search_doc() {
   write_help_doc all
   awk -v query="$query" '
     function lower(value) { return tolower(value) }
-    /^## / { section=$0 }
+    /^## / { section=$0; subsection="" }
     /^### / { subsection=$0 }
     {
       haystack=lower($0)
@@ -2389,6 +2894,9 @@ Installation et machine neuve :
   seven new                     préparation depuis SevenOS installé
   ./install.sh network --yes    préparer ou réparer Wi-Fi/NetworkManager
   seven fonts apply-default     réappliquer les polices SevenOS
+  seven language doctor         vérifier les packs français/anglais
+  seven language set fr_FR.UTF-8 passer SevenOS en français
+  seven language set en_US.UTF-8 passer SevenOS en anglais
   seven repair ux --apply       réparer l'expérience visuelle
 
 Surfaces utilisateur :
@@ -2403,6 +2911,11 @@ Mini OS et paquets :
   seven profile activate forge
   sevenpkg profile-limits
   sevenpkg profile-packages forge --query htop
+  sevenpkg global-policy mongodb
+  sevenpkg global-expose mongodb --profiles forge --commands mongod mongosh
+  sevenpkg global-restrict mongodb
+  sevenpkg profile-service mongodb forge
+  sevenpkg profile-service status forge mongodb
   sevenpkg install --profile forge htop --source pacman --preview
   sevenpkg remove --profile forge htop --preview
   sevenpkg update --global --preview
@@ -2458,6 +2971,9 @@ Install and fresh machine:
   seven new                     setup from installed SevenOS
   ./install.sh network --yes    prepare or repair Wi-Fi/NetworkManager
   seven fonts apply-default     reapply SevenOS fonts
+  seven language doctor         check French/English packs
+  seven language set fr_FR.UTF-8 switch SevenOS to French
+  seven language set en_US.UTF-8 switch SevenOS to English
   seven repair ux --apply       repair visual experience
 
 User surfaces:
@@ -2472,6 +2988,11 @@ Mini OS and packages:
   seven profile activate forge
   sevenpkg profile-limits
   sevenpkg profile-packages forge --query htop
+  sevenpkg global-policy mongodb
+  sevenpkg global-expose mongodb --profiles forge --commands mongod mongosh
+  sevenpkg global-restrict mongodb
+  sevenpkg profile-service mongodb forge
+  sevenpkg profile-service status forge mongodb
   sevenpkg install --profile forge htop --source pacman --preview
   sevenpkg remove --profile forge htop --preview
   sevenpkg update --global --preview
@@ -2519,19 +3040,19 @@ open_command_doc() {
 open_native_help() {
   local topic="${1:-start}"
   case "$topic" in
-    network|fonts|backup|iso|installer|manual) topic="system" ;;
-    software|sevenpkg) topic="packages" ;;
+    network|fonts|language|langue|backup|iso|installer|manual) topic="system" ;;
+    software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services) topic="packages" ;;
     security|shield|windows-bridge) topic="security-windows" ;;
     faq|questions|glossary|vocabulary|vocabulaire) topic="repair" ;;
     dev|development|checks) topic="developer" ;;
   esac
   local native="$ROOT_DIR/bin/seven-help-native"
-  if [[ "${SEVENOS_HELP_LEGACY:-0}" != "1" && -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
-    if [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
+  if [[ "${SEVENOS_HELP_LEGACY:-0}" != "1" && "${SEVENOS_DRY_RUN:-0}" != "1" && -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
+    if [[ -x "$native" ]] && SEVENOS_HELP_REQUIRE_SCREEN=1 "$native" --probe >/dev/null 2>&1; then
       "$native" "$topic" &
       return 0
     fi
-    if command -v seven-help-native >/dev/null 2>&1 && seven-help-native --probe >/dev/null 2>&1; then
+    if command -v seven-help-native >/dev/null 2>&1 && SEVENOS_HELP_REQUIRE_SCREEN=1 seven-help-native --probe >/dev/null 2>&1; then
       seven-help-native "$topic" &
       return 0
     fi
@@ -2556,6 +3077,22 @@ if [[ "${1:-}" == "cheat" || "${1:-}" == "cheatsheet" || "${1:-}" == "--cheat" ]
   exit 0
 fi
 
+if [[ "${1:-}" == "docs-index" || "${1:-}" == "doc-index" || "${1:-}" == "documentation-index" ]]; then
+  write_docs_index
+  show_generated_doc
+  exit 0
+fi
+
+if [[ "${1:-}" == "doc" || "${1:-}" == "docs-file" ]]; then
+  shift || true
+  if ! write_single_project_doc "$@"; then
+    show_generated_doc
+    exit 1
+  fi
+  show_generated_doc
+  exit 0
+fi
+
 if [[ "${1:-}" == "topics" || "${1:-}" == "--topics" ]]; then
   if [[ "$LANG_CODE" == "fr" ]]; then
     cat <<'EOF'
@@ -2571,10 +3108,19 @@ Chapitres SevenOS disponibles :
   mini-os        profils SevenOS
   apps           applications SevenOS
   system         réseau, polices, thème, mises à jour
+  docs           documentation complète du dossier docs/
+  docs-index     index rapide de la documentation projet
+  doc <nom>      ouvrir un document, ex: doc architecture
+  future         features futures et feuille de route
   network        aide réseau/Wi-Fi
   fonts          aide polices
+  language       aide langues français/anglais
+  langue         alias langues
   packages       paquets et scopes
   sevenpkg       alias paquets
+  global-policy  exposition Equinox vers mini OS
+  profile-service services privés dans un mini OS
+  mongodb        exemple paquet + service privé
   security       sécurité et Shield
   windows-bridge Windows Bridge
   faq            questions fréquentes
@@ -2603,10 +3149,19 @@ Available SevenOS chapters:
   mini-os        SevenOS profiles
   apps           SevenOS applications
   system         network, fonts, theme, updates
+  docs           complete documentation from docs/
+  docs-index     quick project documentation index
+  doc <name>     open one document, ex: doc architecture
+  future         future features and roadmap
   network        network/Wi-Fi help
   fonts          font help
+  language       French/English language help
+  langue         language alias
   packages       packages and scopes
   sevenpkg       package alias
+  global-policy  Equinox exposure to mini OS profiles
+  profile-service private services inside one mini OS
+  mongodb        package + private service example
   security       security and Shield
   windows-bridge Windows Bridge
   faq            frequent questions
@@ -2626,7 +3181,11 @@ EOF
 fi
 
 case "${1:-}" in
-  install|quick|commands|architecture|shortcuts|waybar|actions|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|manual|network|fonts|backup|iso|installer|packages|software|sevenpkg|security|shield|windows-bridge|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
+  docs|documentation|project-docs|future|roadmap|features)
+    show_doc "$1"
+    exit 0
+    ;;
+  install|quick|commands|architecture|shortcuts|waybar|actions|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|manual|network|fonts|language|langue|backup|iso|installer|packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services|security|shield|windows-bridge|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
     if open_native_help "$1"; then
       exit 0
     fi
@@ -2664,6 +3223,9 @@ case "$selected" in
   "SevenOS FAQ"|"FAQ locale SevenOS") show_doc faq ;;
   "SevenOS Glossary"|"Glossaire SevenOS") show_doc glossary ;;
   "Available Chapters"|"Chapitres disponibles") run_terminal "seven-help topics" ;;
+  "Project Documentation"|"Documentation projet") run_terminal "seven-help docs" ;;
+  "Documentation Index"|"Index documentation") run_terminal "seven-help docs-index" ;;
+  "Future Features"|"Features futures") run_terminal "seven-help future" ;;
   "SevenOS Cheat Sheet"|"Mémo rapide SevenOS") run_terminal "seven-help cheat" ;;
   "SevenOS Architecture"|"Architecture SevenOS") show_doc architecture ;;
   "SevenOS Actions"|"Actions SevenOS") show_doc actions ;;

@@ -1,0 +1,14 @@
+[Unit]
+Description=SevenOS smart window traffic lights
+PartOf=sevenos-session.target
+After=sevenos-waybar.service
+
+[Service]
+Type=simple
+Environment=SEVENOS_ROOT=%h/Code/OS/SevenOS
+ExecStart=/usr/bin/env sh -lc 'pref="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/window-controls-enabled.env"; if [ -r "$pref" ]; then . "$pref"; fi; [ "${SEVENOS_WINDOW_CONTROLS_ENABLED:-1}" = "1" ] || exit 0; exec "$HOME/.local/bin/seven-window-controls-native" --daemon'
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=sevenos-session.target

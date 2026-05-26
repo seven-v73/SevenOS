@@ -216,14 +216,21 @@ sevenpkg install brave-bin --source yay
 
 ```bash
 sevenpkg install --profile forge htop --source pacman
+sevenpkg forge install code --source pacman
+sevenpkg studio install blender --source pacman
+sevenpkg forge sources
+sevenpkg pulse update --preview
+sevenpkg baobab packages --query foliate
 sevenpkg remove --profile forge htop --preview
 sevenpkg update --profile forge --preview
 sevenpkg install --profile forge visual-studio-code-bin --source paru
+sevenpkg forge helper paru
 sevenpkg profile-install shield nmap --source pacman --preview
 sevenpkg profile-remove shield nmap --preview
 sevenpkg install --profile equinox htop --source pacman
 sevenpkg profile-limits
 sevenpkg profile-limits forge
+sevenpkg profile-sources forge
 sevenpkg profile-packages forge --query htop
 ```
 
@@ -232,6 +239,53 @@ system. Other mini OS profiles install into their own rootfs with
 `seven-profile-run --rootfs-writable`, then verify and reseal the rootfs. Those
 packages are private to the target mini OS and are not visible to other mini OS
 package views by default.
+
+Equinox host packages are Equinox-only by default unless an explicit global
+package policy exposes selected commands to mini OS package views:
+
+```bash
+sevenpkg global-policy mongodb
+sevenpkg global-expose mongodb --profiles forge --commands mongod mongosh
+sevenpkg global-expose mongodb --all-mini-os --commands mongod mongosh
+sevenpkg global-restrict mongodb
+sevenpkg global-clear mongodb
+```
+
+This affects only command visibility from the host package store. Installing the
+same package with `sevenpkg forge install mongodb` still creates a private Forge
+rootfs install instead.
+
+Long-running daemons can also be attached to one mini OS through user systemd
+units that execute inside that profile rootfs:
+
+```bash
+sevenpkg profile-service mongodb forge
+sevenpkg profile-service mongodb forge --enable --start
+sevenpkg profile-service status forge mongodb
+sevenpkg profile-service stop forge mongodb
+sevenpkg profile-service remove forge mongodb
+```
+
+The MongoDB preset stores data under `/profile/data/mongodb`, which maps to the
+target mini OS data root, and binds to `127.0.0.1` by default. Use the generic
+form for other daemons:
+
+```bash
+sevenpkg profile-service create forge api -- node /workspace/server.js
+```
+
+The profile-first shortcuts are the easiest syntax for the public workflow:
+`sevenpkg forge install code`, `sevenpkg shield install nmap`,
+`sevenpkg studio packages --query blender`. Use `sevenpkg forge sources` to see
+whether `pacman`, `paru` or `yay` are ready for that mini OS. If the target
+rootfs is missing on a new machine, SevenPkg builds it before the
+profile-scoped pacman install. AUR packages stay private only when `paru` or
+`yay` is available inside the target rootfs; use `sevenpkg <profile> helper
+paru` or `sevenpkg <profile> helper yay` to build that helper inside the mini OS
+rootfs. SevenPkg installs the rootfs build dependencies, clones the helper from
+AUR, builds it with `makepkg` as a normal profile user, installs the built
+package through the rootfs admin path, then verifies and reseals the target
+rootfs.
 
 When a mini OS is active, concrete package installs default to that mini OS:
 
@@ -253,6 +307,14 @@ behavior unless `--profile` is explicit.
 installation scope, rootfs readiness and AUR helper availability per profile.
 Add a profile name, for example `sevenpkg profile-limits forge --json`, to focus
 the output on one mini OS.
+
+`sevenpkg profile-sources forge --json` exposes the same source readiness as a
+focused contract for one mini OS. The public shortcut is:
+
+```bash
+sevenpkg forge sources
+sevenpkg forge sources --json
+```
 
 `sevenpkg profile-packages --json` exposes the installed package inventory per
 profile. Mini OS profiles read their own rootfs pacman database; Equinox reads

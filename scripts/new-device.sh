@@ -22,7 +22,7 @@ Usage:
   seven setup new-device --yes
 
 Installs and applies the ergonomic defaults for a fresh SevenOS machine:
-base desktop, CLI, fonts, visual layer, mini OS requirements, workspaces,
+base desktop, CLI, fonts, French/English language packs, visual layer, mini OS requirements, workspaces,
 profile isolation, rootfs metadata, boot splash, theme, post-install checks.
 EOF
 }
@@ -105,6 +105,8 @@ setup_doctor() {
     bootstrap.sh
     scripts/network.sh
     scripts/fonts.sh
+    bin/seven-language
+    bin/seven-waybar-language
     scripts/apply-theme.sh
     scripts/boot-splash.sh
     scripts/post-install.sh
@@ -150,6 +152,12 @@ setup_doctor() {
     doctor_ok "font status contract"
   else
     doctor_warn "font status is incomplete; new-device will run scripts/fonts.sh apply-default"
+  fi
+
+  if "$ROOT_DIR/bin/seven-language" doctor --json >/dev/null 2>&1; then
+    doctor_ok "French/English language contract"
+  else
+    doctor_warn "language packs are incomplete; new-device will run ./install.sh language"
   fi
 
   if "$ROOT_DIR/scripts/boot-splash.sh" doctor >/dev/null 2>&1; then
@@ -214,6 +222,10 @@ run_optional "$ROOT_DIR/scripts/network.sh" bootstrap "${yes_args[@]}"
 
 step "applying font roles and refreshing font cache"
 "$ROOT_DIR/scripts/fonts.sh" apply-default
+
+step "preparing French and English language packs"
+"$ROOT_DIR/bin/seven-language" ensure en_US.UTF-8
+"$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8
 
 step "installing visual polish packages when available"
 run_optional "$ROOT_DIR/scripts/visual-packages.sh" install "${yes_args[@]}"

@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Waybar language status for SevenOS."""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import language_code, tr  # noqa: E402
+
+
+def main() -> int:
+    code = language_code()
+    text = "FR" if code == "fr" else "EN"
+    tooltip = tr("language.waybar.tooltip", "Active language: {language}", language=text)
+    print(json.dumps({"text": text, "tooltip": tooltip, "class": f"language-{code}"}, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

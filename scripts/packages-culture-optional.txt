@@ -1,13 +1,8 @@
 # SevenOS Baobab optional learning and cultural tools
 # Installed when the user wants the full Baobab Cultural OS surface.
 # Reader, library, speech and translation helpers support offline transmission.
-foliate
 calibre
-kiwix-desktop
-espeak-ng
 festival
-translate-shell
-hyphen-fr
 # Cultural shell and widgets
 swaync
 python-pywal

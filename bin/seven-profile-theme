@@ -159,18 +159,16 @@ config["custom/app-more"] = {
     "on-click-right": "seven-waybar-action app-menu-window",
 }
 
-right_order = [
-    ("profile", "custom/profile"),
-    ("mini-context", "custom/mini-context"),
-    ("media", "custom/media"),
-    ("system-status", "custom/system-status"),
-    ("tray", "tray"),
-    ("spotlight", "custom/spotlight"),
-    ("clock", "clock"),
-    ("control-center", "custom/control-center"),
+config["modules-right"] = [
+    "custom/profile",
+    "custom/media",
+    "custom/system-status",
+    "custom/wifi",
+    "custom/bluetooth",
+    "custom/spotlight",
+    "clock",
+    "custom/control-center",
 ]
-right = [module for key, module in right_order if key in modules or key in {"profile", "mini-context", "clock", "control-center", "tray"}]
-config["modules-right"] = right
 config["tray"] = {"icon-size": 14, "spacing": 6}
 config["custom/system-status"] = {
     "exec": "seven-waybar-status system-status",
@@ -1245,6 +1243,31 @@ window#waybar {
   font-weight: 500;
 }
 
+#custom-app-file {
+  min-width: 42px;
+}
+
+#custom-app-edit {
+  min-width: 50px;
+}
+
+#custom-app-view {
+  min-width: 66px;
+}
+
+#custom-app-extra {
+  min-width: 62px;
+}
+
+#custom-app-tools,
+#custom-app-window {
+  min-width: 56px;
+}
+
+#custom-app-help {
+  min-width: 38px;
+}
+
 #custom-app-file.hidden,
 #custom-app-edit.hidden,
 #custom-app-view.hidden,
@@ -1513,8 +1536,12 @@ cfg["custom/spotlight"] = {
     "on-click": "seven-spotlight field",
 }
 cfg.setdefault("custom/profile-switch", {})["format"] = "OS"
-cfg.setdefault("custom/language", {})["format"] = "󰗊"
-cfg.setdefault("custom/language", {})["tooltip"] = "Langue active · français"
+cfg.setdefault("custom/language", {})["exec"] = "seven-waybar-language"
+cfg.setdefault("custom/language", {})["return-type"] = "json"
+cfg.setdefault("custom/language", {})["interval"] = 30
+cfg.setdefault("custom/language", {})["tooltip"] = True
+cfg.setdefault("custom/language", {})["on-click"] = "seven-language menu"
+cfg.setdefault("custom/language", {})["on-click-right"] = "seven-settings general"
 cfg.setdefault("custom/memory", {})["exec"] = "seven baobab capability-doctor --json >/dev/null 2>&1 && echo '󰧑' || echo '󰧑 off'"
 cfg.setdefault("custom/memory", {})["tooltip"] = "Mémoire Baobab · capacité locale"
 cfg.setdefault("custom/sound", {})["exec"] = "find \"/home/seven/Baobab/Sound\" \"/home/seven/.local/share/sevenos/profiles/baobab/baobab/sound\" -maxdepth 1 -type f 2>/dev/null | grep -q . && echo '󰝚' || echo '󰝚 off'"
@@ -1658,6 +1685,42 @@ window#waybar {
   margin: 0 1px;
   padding: 0 5px;
   border-radius: 7px;
+}
+
+#custom-app-file {
+  min-width: 42px;
+}
+
+#custom-app-edit {
+  min-width: 50px;
+}
+
+#custom-app-view {
+  min-width: 66px;
+}
+
+#custom-app-extra {
+  min-width: 62px;
+}
+
+#custom-app-tools,
+#custom-app-window {
+  min-width: 56px;
+}
+
+#custom-app-help {
+  min-width: 38px;
+}
+
+#custom-app-more.hidden,
+#custom-app-extra.hidden,
+#custom-app-tools.hidden,
+#custom-app-window.hidden,
+#custom-app-help.hidden {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
 }
 
 #custom-wifi.weak,
@@ -1838,6 +1901,8 @@ mini_os = {
             ["Dossiers", "Ouvrir les dossiers Windows", "seven profile open windows"],
             ["Réparer", "Vérifier et réparer Windows", "seven windows repair"],
             ["Préparer", "Installer ou configurer Windows", "seven windows setup"],
+            ["Synchroniser", "Aligner Windows avec l'espace actif", "seven windows sync"],
+            ["État bridge", "Voir l'état Windows partagé", "seven windows bridge-status"],
         ],
         "ai": "Assistant Windows SevenOS",
         "autonomy": 72,

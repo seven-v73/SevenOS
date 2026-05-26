@@ -70,7 +70,8 @@ Open an isolated lab shell:
 ## BlackArch Bridge
 
 BlackArch is optional. SevenOS prefers a clean official Arch cyber base first,
-then offers BlackArch for specialized packages and categories.
+then offers BlackArch for specialized packages, categories, or the full suite
+when the user explicitly chooses a dedicated Shield workstation setup.
 
 See `security/BLACKARCH.md`.
 See `security/cyber-policy.md` for the full SevenOS cyber workflow.
@@ -118,6 +119,8 @@ Kali Rolling containers:
 seven shield toolchain
 seven shield toolchain search feroxbuster
 seven shield toolchain blackarch-setup --yes
+seven shield toolchain blackarch-full --dry-run
+seven shield toolchain blackarch-full --yes
 seven shield toolchain kali-prepare --yes
 seven shield toolchain kali-run "apt update && apt install -y kali-tools-top10"
 ```

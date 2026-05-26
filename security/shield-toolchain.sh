@@ -27,6 +27,7 @@ Usage:
   seven shield toolchain search <tool> [--json]
   seven shield toolchain install <tool> [--yes]
   seven shield toolchain blackarch-setup --yes
+  seven shield toolchain blackarch-full --yes
   seven shield toolchain blackarch-category <category> [--yes]
   seven shield toolchain kali-prepare [--yes]
   seven shield toolchain kali-warmup [--yes]
@@ -40,10 +41,11 @@ EOF
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
     status|toolchain) ACTION="status" ;;
-    sources|search|install|blackarch-setup|blackarch-category|kali-prepare|kali-warmup|kali-run)
+    sources|search|install|blackarch-setup|blackarch-full|blackarch-category|kali-prepare|kali-warmup|kali-run)
       ACTION="$1"
       ;;
     --json|json) JSON_OUTPUT=1 ;;
+    --dry-run) export SEVENOS_DRY_RUN=1 ;;
     --yes|-y) YES=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *)
@@ -136,6 +138,7 @@ sources = [
         "state": os.environ["BLACKARCH_REPO"],
         "role": "huge Arch-native security catalog",
         "install": "seven shield toolchain blackarch-setup --yes",
+        "install_full": "seven shield toolchain blackarch-full --yes",
     },
     {
         "key": "kali-container",
@@ -181,7 +184,8 @@ for item in data.get("sources", []):
     print("  {state:<8} {key:<16} {title}".format(**item))
 print()
 print("Kali: {}".format(data.get("kali", {}).get("command")))
-print("BlackArch: seven shield toolchain blackarch-setup --yes")'
+print("BlackArch setup: seven shield toolchain blackarch-setup --yes")
+print("BlackArch full:  seven shield toolchain blackarch-full --yes")'
 }
 
 sources_json() {
@@ -256,6 +260,16 @@ blackarch_category() {
     exit 1
   }
   "$ROOT_DIR/security/blackarch.sh" category "$CATEGORY"
+}
+
+blackarch_full() {
+  [[ "$YES" -eq 1 || "${SEVENOS_YES:-0}" == "1" || "${SEVENOS_DRY_RUN:-0}" == "1" ]] || {
+    log_error "Full BlackArch install requires explicit consent."
+    log_info "Preview first: seven shield toolchain blackarch-full --dry-run"
+    log_info "Then run: seven shield toolchain blackarch-full --yes"
+    exit 1
+  }
+  "$ROOT_DIR/security/blackarch.sh" full --yes
 }
 
 kali_prepare() {
@@ -333,6 +347,9 @@ case "$ACTION" in
     ;;
   blackarch-setup)
     blackarch_setup
+    ;;
+  blackarch-full)
+    blackarch_full
     ;;
   blackarch-category)
     blackarch_category

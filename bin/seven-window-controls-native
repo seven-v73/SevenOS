@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import cairo
 import json
 import os
 import subprocess
@@ -11,6 +12,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+CONTROL_STATE = CONFIG_DIR / "window-controls.json"
 sys.path.insert(0, str(ROOT / "scripts"))
 try:
     import seven_theme
@@ -18,8 +21,37 @@ except Exception:  # pragma: no cover
     seven_theme = None
 
 
+def language_code() -> str:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "en_US.UTF-8")
+    config = CONFIG_DIR / "language.conf"
+    if not os.environ.get("SEVENOS_LANGUAGE") and config.exists():
+        try:
+            for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+                key, _, value = raw.partition("=")
+                if key.strip() in {"SEVENOS_LANGUAGE", "LANG"}:
+                    language = value.strip().strip("'\"")
+                    break
+        except Exception:
+            pass
+    return "fr" if language.lower().startswith("fr") else "en"
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if language_code() == "fr" else en
+
+
 def subprocess_run(command: list[str]) -> int:
     return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode
+
+
+def seven_window_command(*args: str) -> list[str]:
+    local = ROOT / "bin/seven-window"
+    if local.exists():
+        return [str(local), *args]
+    user = Path.home() / ".local/bin/seven-window"
+    if user.exists():
+        return [str(user), *args]
+    return ["seven-window", *args]
 
 
 def ensure_gi_python() -> None:
@@ -67,22 +99,85 @@ def active_window() -> dict:
         return {}
 
 
+def hypr_clients() -> list[dict]:
+    try:
+        data = subprocess.check_output(["hyprctl", "-j", "clients"], text=True, stderr=subprocess.DEVNULL)
+        clients = json.loads(data)
+        return clients if isinstance(clients, list) else []
+    except Exception:
+        return []
+
+
+def hypr_monitors() -> list[dict]:
+    try:
+        data = subprocess.check_output(["hyprctl", "-j", "monitors"], text=True, stderr=subprocess.DEVNULL)
+        monitors = json.loads(data)
+        return monitors if isinstance(monitors, list) else []
+    except Exception:
+        return []
+
+
+def is_controls_window(item: dict) -> bool:
+    klass = str(item.get("class") or item.get("initialClass") or "")
+    title = str(item.get("title") or item.get("initialTitle") or "")
+    return klass == "SevenWindowControlsNative" or title in {
+        "Seven Window Controls",
+        "Seven Window Layout",
+        "Seven Window Advanced",
+        "Seven Window Traffic Lights",
+    }
+
+
+def target_window() -> dict:
+    active = active_window()
+    if active and not is_controls_window(active):
+        return active
+    clients = [item for item in hypr_clients() if isinstance(item, dict) and not is_controls_window(item)]
+    clients.sort(key=lambda item: int(item.get("focusHistoryID") or 9999))
+    return clients[0] if clients else {}
+
+
+def window_by_address(address: str) -> dict:
+    if not address:
+        return {}
+    wanted = address.lower()
+    for item in hypr_clients():
+        if isinstance(item, dict) and str(item.get("address") or "").lower() == wanted and not is_controls_window(item):
+            return item
+    return {}
+
+
+def controls_window() -> dict:
+    for item in hypr_clients():
+        if isinstance(item, dict) and str(item.get("title") or "") == "Seven Window Traffic Lights":
+            return item
+    return {}
+
+
 def focus_target(address: str) -> None:
     if address:
         subprocess_run(["hyprctl", "dispatch", "focuswindow", f"address:{address}"])
 
 
 def run_action(action: str, address: str) -> None:
+    if action.startswith("workspace:"):
+        focus_target(address)
+        workspace = action.split(":", 1)[1]
+        subprocess_run(["hyprctl", "dispatch", "movetoworkspacesilent", workspace])
+        return
     focus_target(address)
     command_map = {
         "close": ["hyprctl", "dispatch", "killactive"],
-        "float": ["seven-window", "toggle-float"],
-        "maximize": ["seven-window", "smart-maximize"],
-        "fullscreen": ["seven-window", "fullscreen"],
-        "split-left": ["seven-window", "split-left"],
-        "split-right": ["seven-window", "split-right"],
-        "mosaic": ["seven-window", "mosaic"],
-        "menu": ["seven-window", "layout-menu"],
+        "float": seven_window_command("toggle-float"),
+        "maximize": seven_window_command("smart-maximize"),
+        "fullscreen": seven_window_command("fullscreen"),
+        "split-left": seven_window_command("split-left"),
+        "split-right": seven_window_command("split-right"),
+        "mosaic": seven_window_command("mosaic"),
+        "scratchpad": ["hyprctl", "dispatch", "movetoworkspacesilent", "special:seven"],
+        "pin": ["hyprctl", "dispatch", "pin"],
+        "focus-mode": seven_window_command("mode", "focus"),
+        "menu": seven_window_command("layout-menu"),
     }
     command = command_map.get(action)
     if command:
@@ -94,7 +189,225 @@ def target_summary(target: dict) -> str:
     klass = (target.get("class") or "").strip()
     if title and klass:
         return f"{klass} · {title}"
-    return title or klass or "Active window"
+    return title or klass or tr("Fenêtre active", "Active window")
+
+
+def target_short_name(target: dict) -> str:
+    klass = (target.get("class") or target.get("initialClass") or "").strip()
+    title = (target.get("title") or "").strip()
+    text = klass or title or tr("Fenêtre", "Window")
+    if len(text) > 22:
+        return text[:19].rstrip() + "..."
+    return text
+
+
+def target_workspace_key(target: dict) -> str:
+    workspace = target.get("workspace") if isinstance(target.get("workspace"), dict) else {}
+    return str(workspace.get("id") or workspace.get("name") or "")
+
+
+def target_cycle_candidates(target: dict) -> list[dict]:
+    key = target_workspace_key(target)
+    candidates = []
+    for item in hypr_clients():
+        if not isinstance(item, dict) or is_controls_window(item):
+            continue
+        if key and target_workspace_key(item) != key:
+            continue
+        candidates.append(item)
+    candidates.sort(key=lambda item: int(item.get("focusHistoryID") or 9999))
+    return candidates
+
+
+def cycle_target_from(target: dict, direction: int) -> dict:
+    candidates = target_cycle_candidates(target or target_window())
+    if not candidates:
+        return target or {}
+    current_address = str((target or {}).get("address") or "").lower()
+    index = 0
+    for candidate_index, item in enumerate(candidates):
+        if str(item.get("address") or "").lower() == current_address:
+            index = candidate_index
+            break
+    next_index = (index + (1 if direction >= 0 else -1)) % len(candidates)
+    return candidates[next_index]
+
+
+def monitor_for_window(target: dict) -> dict:
+    monitors = hypr_monitors()
+    if not monitors:
+        return {"x": 0, "y": 0, "width": 1920, "height": 1080}
+    monitor_id = target.get("monitor")
+    for monitor in monitors:
+        if monitor.get("id") == monitor_id:
+            return monitor
+    return monitors[0]
+
+
+def clamp(value: int, low: int, high: int) -> int:
+    return max(low, min(value, high))
+
+
+def load_control_state() -> dict:
+    try:
+        return json.loads(CONTROL_STATE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"placement": "adaptive"}
+
+
+def save_control_state(data: dict) -> None:
+    try:
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        CONTROL_STATE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def hidden_classes() -> list[str]:
+    state = load_control_state()
+    classes = state.get("hidden_classes")
+    if not isinstance(classes, list):
+        return []
+    return [str(item).lower() for item in classes if str(item).strip()]
+
+
+def hide_class_for_target(target: dict) -> None:
+    klass = str(target.get("class") or target.get("initialClass") or "").strip()
+    if not klass:
+        return
+    state = load_control_state()
+    classes = state.get("hidden_classes")
+    if not isinstance(classes, list):
+        classes = []
+    lowered = {str(item).lower() for item in classes}
+    if klass.lower() not in lowered:
+        classes.append(klass)
+    state["hidden_classes"] = classes
+    state.setdefault("schema", "sevenos.window-controls.state.v1")
+    save_control_state(state)
+
+
+def clear_hidden_classes() -> None:
+    state = load_control_state()
+    state["hidden_classes"] = []
+    state.setdefault("schema", "sevenos.window-controls.state.v1")
+    save_control_state(state)
+
+
+def target_is_hidden(target: dict) -> bool:
+    klass = str(target.get("class") or target.get("initialClass") or "").lower()
+    return bool(klass and klass in hidden_classes())
+
+
+def locked_address() -> str:
+    state = load_control_state()
+    return str(state.get("locked_address") or "")
+
+
+def locked_target() -> dict:
+    return window_by_address(locked_address())
+
+
+def lock_target(target: dict) -> None:
+    address = str(target.get("address") or "")
+    if not address:
+        return
+    state = load_control_state()
+    state["schema"] = "sevenos.window-controls.state.v1"
+    state["locked_address"] = address
+    state["locked_class"] = target.get("class") or target.get("initialClass") or ""
+    state["locked_title"] = target.get("title") or ""
+    save_control_state(state)
+
+
+def unlock_target() -> None:
+    state = load_control_state()
+    for key in ("locked_address", "locked_class", "locked_title"):
+        state.pop(key, None)
+    state["schema"] = "sevenos.window-controls.state.v1"
+    save_control_state(state)
+
+
+def effective_target() -> dict:
+    locked = locked_target()
+    if locked:
+        return locked
+    return target_window()
+
+
+def save_manual_position() -> None:
+    controls = controls_window()
+    at = controls.get("at") if isinstance(controls.get("at"), list) else []
+    if len(at) < 2:
+        return
+    state = load_control_state()
+    state.update({
+        "schema": "sevenos.window-controls.state.v1",
+        "placement": "manual",
+        "x": int(at[0]),
+        "y": int(at[1]),
+    })
+    save_control_state(state)
+
+
+def reset_adaptive_position() -> None:
+    state = load_control_state()
+    state.update({
+        "schema": "sevenos.window-controls.state.v1",
+        "placement": "adaptive",
+    })
+    save_control_state(state)
+
+
+def desired_controls_position(target: dict, controls: dict) -> tuple[int, int]:
+    monitor = monitor_for_window(target)
+    monitor_x = int(monitor.get("x") or 0)
+    monitor_y = int(monitor.get("y") or 0)
+    monitor_w = int(monitor.get("width") or 1920)
+    monitor_h = int(monitor.get("height") or 1080)
+    controls_size = controls.get("size") if isinstance(controls.get("size"), list) else [100, 32]
+    controls_w = int(controls_size[0] if len(controls_size) > 0 else 100)
+    controls_h = int(controls_size[1] if len(controls_size) > 1 else 32)
+    state = load_control_state()
+    if state.get("placement") == "manual":
+        x = clamp(int(state.get("x") or monitor_x + 12), monitor_x + 8, monitor_x + monitor_w - controls_w - 8)
+        y = clamp(int(state.get("y") or monitor_y + 42), monitor_y + 32, monitor_y + monitor_h - controls_h - 8)
+        return x, y
+    at = target.get("at") if isinstance(target.get("at"), list) else [monitor_x, monitor_y]
+    target_x = int(at[0] if len(at) > 0 else monitor_x)
+    target_y = int(at[1] if len(at) > 1 else monitor_y)
+    x = target_x + int(os.environ.get("SEVENOS_WINDOW_CONTROLS_OFFSET_X", "12"))
+    y = target_y + int(os.environ.get("SEVENOS_WINDOW_CONTROLS_OFFSET_Y", "10"))
+    min_y = monitor_y + int(os.environ.get("SEVENOS_WINDOW_CONTROLS_MIN_Y", "42"))
+    x = clamp(x, monitor_x + 12, monitor_x + monitor_w - controls_w - 12)
+    y = clamp(y, min_y, monitor_y + monitor_h - controls_h - 12)
+    return x, y
+
+
+def move_controls_to_target(target: dict) -> None:
+    controls = controls_window()
+    address = controls.get("address") or ""
+    if not address or not target:
+        return
+    x, y = desired_controls_position(target, controls)
+    current_at = controls.get("at") if isinstance(controls.get("at"), list) else []
+    if len(current_at) >= 2 and abs(int(current_at[0]) - x) < 2 and abs(int(current_at[1]) - y) < 2:
+        return
+    subprocess_run(["hyprctl", "dispatch", "movewindowpixel", "exact", str(x), str(y) + f",address:{address}"])
+
+
+def resize_controls(width: int, height: int) -> None:
+    controls = controls_window()
+    address = controls.get("address") or ""
+    if address:
+        subprocess_run(["hyprctl", "dispatch", "resizewindowpixel", "exact", str(width), str(height) + f",address:{address}"])
+
+
+def move_controls_absolute(x: int, y: int) -> None:
+    controls = controls_window()
+    address = controls.get("address") or ""
+    if address:
+        subprocess_run(["hyprctl", "dispatch", "movewindowpixel", "exact", str(int(x)), str(int(y)) + f",address:{address}"])
 
 
 def load_css() -> None:
@@ -104,14 +417,36 @@ def load_css() -> None:
     base = seven_theme.gtk_app_css("window-controls", mode) if seven_theme else ""
     css = """
     window.seven-decor-overlay {
-      background: @seven_panel;
-      border: 1px solid @seven_border;
+      background: transparent;
       border-radius: 18px;
     }
     .overlay-root {
       padding: 10px 12px;
-      background: @seven_panel;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.055)),
+        rgba(18, 20, 30, 0.70);
+      border: 1px solid rgba(255,255,255,0.16);
       border-radius: 18px;
+    }
+    .compact-root {
+      padding: 5px 6px;
+      border-radius: 17px;
+    }
+    .prism-root {
+      padding: 3px;
+      border-radius: 18px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.10), rgba(255,255,255,0.030)),
+        rgba(12, 15, 28, 0.36);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+    .expanded-root {
+      padding: 5px 7px;
+      border-radius: 18px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.052)),
+        rgba(14, 17, 29, 0.62);
+      border: 1px solid rgba(255,255,255,0.15);
     }
     .overlay-title {
       color: @seven_text;
@@ -121,18 +456,19 @@ def load_css() -> None:
       color: @seven_muted;
       font: 500 10px "SF Pro Text", "Inter", system-ui, sans-serif;
     }
-    .traffic {
-      min-width: 15px;
-      min-height: 15px;
+    .target-chip {
+      min-height: 22px;
+      padding: 0 9px;
       border-radius: 999px;
-      padding: 0;
-      margin: 0 8px 0 0;
-      border: 1px solid rgba(0,0,0,0.20);
-      background-image: none;
+      color: @seven_text;
+      background: rgba(255,255,255,0.075);
+      border: 1px solid rgba(255,255,255,0.12);
+      font: 600 9px "SF Pro Text", "Inter", system-ui, sans-serif;
     }
-    .traffic.close { background: @seven_traffic_close; }
-    .traffic.float { background: @seven_traffic_minimize; }
-    .traffic.max { background: @seven_traffic_maximize; }
+    .target-chip.locked {
+      border-color: alpha(@seven_accent, 0.46);
+      background: alpha(@seven_accent, 0.15);
+    }
     .pill-action {
       min-height: 25px;
       padding: 0 10px;
@@ -151,6 +487,14 @@ def load_css() -> None:
       background: @seven_panel;
       border-radius: 20px;
     }
+    .advanced-card {
+      padding: 14px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.15), rgba(255,255,255,0.045)),
+        rgba(13, 16, 28, 0.74);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 22px;
+    }
     .menu-button {
       min-height: 34px;
       padding: 0 13px;
@@ -160,22 +504,447 @@ def load_css() -> None:
       border: 1px solid @seven_border;
       font: 600 11px "SF Pro Text", "Inter", system-ui, sans-serif;
     }
+    .danger-button {
+      color: #ffb6b3;
+    }
     """
     provider = Gtk.CssProvider()
     provider.load_from_data((base + css).encode("utf-8"))
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
 
-def traffic_button(style: str, label: str, callback=None):
-    from gi.repository import Gtk
+def hex_color(value: str) -> tuple[float, float, float]:
+    value = value.strip().lstrip("#")
+    return tuple(int(value[index:index + 2], 16) / 255 for index in (0, 2, 4))
 
-    button = Gtk.Button()
-    button.set_tooltip_text(label)
-    button.get_style_context().add_class("traffic")
-    button.get_style_context().add_class(style)
-    if callback is not None:
-        button.connect("clicked", lambda *_: callback())
-    return button
+
+def profile_accent() -> tuple[float, float, float]:
+    profile = "equinox"
+    profile_env = CONFIG_DIR / "profile.env"
+    try:
+        for line in profile_env.read_text(encoding="utf-8").splitlines():
+            if line.startswith("SEVENOS_PROFILE="):
+                profile = line.split("=", 1)[1].strip().strip('"').strip("'").lower()
+                break
+    except Exception:
+        pass
+    accents = {
+        "equinox": "#4aa3ff",
+        "baobab": "#33a06f",
+        "forge": "#6768d8",
+        "shield": "#2fa7a0",
+        "studio": "#c05aa0",
+        "windows": "#4597e6",
+        "pulse": "#de7a35",
+    }
+    return hex_color(accents.get(profile, accents["equinox"]))
+
+
+def target_window_flags(target: dict) -> tuple[bool, bool]:
+    floating = bool(target.get("floating"))
+    try:
+        fullscreen = int(target.get("fullscreen") or 0) > 0
+    except Exception:
+        fullscreen = bool(target.get("fullscreen"))
+    return floating, fullscreen
+
+
+def traffic_button(style: str, label: str, callback=None):
+    from gi.repository import Gdk, Gtk
+
+    palette = {
+        "close": ("#ff5f57", "#bf312b"),
+        "float": ("#febc2e", "#b97900"),
+        "max": ("#28c840", "#148a28"),
+    }
+    fill_hex, stroke_hex = palette.get(style, ("#8aa0b5", "#546579"))
+    fill = hex_color(fill_hex)
+    stroke = hex_color(stroke_hex)
+    state = {"hover": False, "press": False}
+
+    event_box = Gtk.EventBox()
+    event_box.set_visible_window(False)
+    event_box.set_above_child(True)
+    event_box.set_tooltip_text(label)
+    event_box.set_size_request(16, 16)
+    event_box.add_events(
+        Gdk.EventMask.ENTER_NOTIFY_MASK
+        | Gdk.EventMask.LEAVE_NOTIFY_MASK
+        | Gdk.EventMask.BUTTON_PRESS_MASK
+        | Gdk.EventMask.BUTTON_RELEASE_MASK
+    )
+
+    area = Gtk.DrawingArea()
+    area.set_size_request(16, 16)
+    event_box.add(area)
+
+    def draw(widget, cr) -> bool:
+        allocation = widget.get_allocation()
+        size = min(allocation.width, allocation.height)
+        cx = allocation.width / 2
+        cy = allocation.height / 2
+        radius = max(5.0, size / 2 - 2.2)
+
+        cr.save()
+        cr.set_source_rgba(0, 0, 0, 0.24)
+        cr.arc(cx, cy + 0.8, radius, 0, 6.28318)
+        cr.fill()
+
+        gradient = cairo.RadialGradient(cx - radius * 0.36, cy - radius * 0.45, radius * 0.2, cx, cy, radius)
+        lift = 0.10 if state["hover"] else 0.03
+        gradient.add_color_stop_rgba(0, min(fill[0] + 0.36, 1), min(fill[1] + 0.36, 1), min(fill[2] + 0.36, 1), 1)
+        gradient.add_color_stop_rgba(0.56, min(fill[0] + lift, 1), min(fill[1] + lift, 1), min(fill[2] + lift, 1), 1)
+        gradient.add_color_stop_rgba(1, fill[0] * 0.82, fill[1] * 0.82, fill[2] * 0.82, 1)
+        cr.set_source(gradient)
+        cr.arc(cx, cy, radius, 0, 6.28318)
+        cr.fill_preserve()
+        cr.set_source_rgba(stroke[0], stroke[1], stroke[2], 0.74)
+        cr.set_line_width(1.1)
+        cr.stroke()
+
+        cr.set_source_rgba(255 / 255, 255 / 255, 255 / 255, 0.24)
+        cr.arc(cx - radius * 0.26, cy - radius * 0.32, radius * 0.34, 0, 6.28318)
+        cr.fill()
+
+        if state["hover"] or state["press"]:
+            cr.set_source_rgba(0.18, 0.16, 0.18, 0.72)
+            cr.set_line_width(1.45)
+            cr.set_line_cap(1)
+            if style == "close":
+                d = radius * 0.36
+                cr.move_to(cx - d, cy - d)
+                cr.line_to(cx + d, cy + d)
+                cr.move_to(cx + d, cy - d)
+                cr.line_to(cx - d, cy + d)
+            elif style == "float":
+                d = radius * 0.38
+                cr.move_to(cx - d, cy)
+                cr.line_to(cx + d, cy)
+            else:
+                d = radius * 0.36
+                cr.rectangle(cx - d, cy - d, d * 2, d * 2)
+            cr.stroke()
+        cr.restore()
+        return True
+
+    def set_hover(value: bool) -> bool:
+        state["hover"] = value
+        area.queue_draw()
+        return False
+
+    def on_press(_widget, _event) -> bool:
+        state["press"] = True
+        area.queue_draw()
+        if callback is not None:
+            callback()
+            return True
+        return False
+
+    def on_release(_widget, _event) -> bool:
+        state["press"] = False
+        area.queue_draw()
+        return False
+
+    area.connect("draw", draw)
+    event_box.connect("enter-notify-event", lambda *_: set_hover(True))
+    event_box.connect("leave-notify-event", lambda *_: set_hover(False))
+    event_box.connect("button-press-event", on_press)
+    event_box.connect("button-release-event", on_release)
+    return event_box
+
+
+def drag_handle(window, target_state: dict):
+    from gi.repository import Gdk, GLib, Gtk
+
+    handle = Gtk.EventBox()
+    handle.set_visible_window(False)
+    handle.set_above_child(True)
+    handle.set_tooltip_text(tr("Glisser pour déplacer. Double-clic pour suivre la fenêtre active.", "Drag to move. Double-click to follow active window."))
+    handle.set_size_request(10, 16)
+    handle.add_events(
+        Gdk.EventMask.BUTTON_PRESS_MASK
+        | Gdk.EventMask.BUTTON_RELEASE_MASK
+        | Gdk.EventMask.ENTER_NOTIFY_MASK
+        | Gdk.EventMask.LEAVE_NOTIFY_MASK
+    )
+    area = Gtk.DrawingArea()
+    area.set_size_request(10, 16)
+    handle.add(area)
+    state = {"hover": False}
+
+    def draw(widget, cr) -> bool:
+        allocation = widget.get_allocation()
+        cx = allocation.width / 2
+        cr.save()
+        cr.set_line_width(1.4)
+        cr.set_line_cap(1)
+        alpha = 0.62 if state["hover"] else 0.34
+        cr.set_source_rgba(1, 1, 1, alpha)
+        for y in (5, 8, 11):
+            cr.move_to(cx - 2.5, y)
+            cr.line_to(cx + 2.5, y)
+        cr.stroke()
+        cr.restore()
+        return True
+
+    def set_hover(value: bool) -> bool:
+        state["hover"] = value
+        area.queue_draw()
+        return False
+
+    def on_press(_widget, event) -> bool:
+        if event.type == Gdk.EventType._2BUTTON_PRESS:
+            target_state["dragging"] = False
+            reset_adaptive_position()
+            unlock_target()
+            target_state["locked"] = False
+            move_controls_to_target(target_window())
+            return True
+        target_state["dragging"] = True
+        window.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
+        return True
+
+    def on_release(_widget, _event) -> bool:
+        def finish_drag() -> bool:
+            save_manual_position()
+            target_state["dragging"] = False
+            return False
+
+        GLib.timeout_add(220, finish_drag)
+        return True
+
+    area.connect("draw", draw)
+    handle.connect("enter-notify-event", lambda *_: set_hover(True))
+    handle.connect("leave-notify-event", lambda *_: set_hover(False))
+    handle.connect("button-press-event", on_press)
+    handle.connect("button-release-event", on_release)
+    return handle
+
+
+def prism_button(window, target_state: dict, activate, advanced=None):
+    from gi.repository import Gdk, GLib, Gtk
+
+    event_box = Gtk.EventBox()
+    event_box.set_visible_window(False)
+    event_box.set_above_child(True)
+    event_box.set_tooltip_text(tr(
+        "Prism SevenOS. Clic pour les actions fenêtre. Clic droit pour le menu avancé. Glisser pour déplacer.",
+        "SevenOS Prism. Click for window actions. Right-click for advanced menu. Drag to move.",
+    ))
+    event_box.set_size_request(30, 30)
+    event_box.add_events(
+        Gdk.EventMask.BUTTON_PRESS_MASK
+        | Gdk.EventMask.BUTTON_RELEASE_MASK
+        | Gdk.EventMask.BUTTON1_MOTION_MASK
+        | Gdk.EventMask.POINTER_MOTION_MASK
+        | Gdk.EventMask.ENTER_NOTIFY_MASK
+        | Gdk.EventMask.LEAVE_NOTIFY_MASK
+    )
+    area = Gtk.DrawingArea()
+    area.set_size_request(30, 30)
+    event_box.add(area)
+    state = {
+        "hover": False,
+        "press": False,
+        "dragging": False,
+        "longpress": False,
+        "button": 0,
+        "start": (0, 0),
+        "start_pos": (0, 0),
+    }
+
+    def draw(widget, cr) -> bool:
+        allocation = widget.get_allocation()
+        cx = allocation.width / 2
+        cy = allocation.height / 2
+        r = min(allocation.width, allocation.height) / 2 - 3
+        cr.save()
+        accent = profile_accent()
+        target = target_state.get("target") if isinstance(target_state.get("target"), dict) else {}
+        floating, fullscreen = target_window_flags(target)
+        locked = bool(target_state.get("locked"))
+        outside_alpha = 0.72 if state["hover"] else 0.36
+        if floating or fullscreen or locked:
+            cr.set_source_rgba(accent[0], accent[1], accent[2], 0.24 if state["hover"] else 0.15)
+            cr.arc(cx, cy, r + 4.4, 0, 6.28318)
+            cr.fill()
+        cr.set_source_rgba(0.02, 0.03, 0.06, 0.58 if state["hover"] else 0.34)
+        cr.arc(cx, cy, r + 3, 0, 6.28318)
+        cr.fill()
+        cr.set_line_width(1.45)
+        cr.set_line_join(1)
+        points = [
+            (cx, cy - r),
+            (cx + r * 0.84, cy - r * 0.48),
+            (cx + r * 0.84, cy + r * 0.48),
+            (cx, cy + r),
+            (cx - r * 0.84, cy + r * 0.48),
+            (cx - r * 0.84, cy - r * 0.48),
+        ]
+        gradient = cairo.LinearGradient(cx - r, cy - r, cx + r, cy + r)
+        gradient.add_color_stop_rgba(0, max(accent[0], 0.18), max(accent[1], 0.42), 1.0, outside_alpha + 0.20)
+        gradient.add_color_stop_rgba(0.52, 0.48, 0.36, 1.0, outside_alpha + 0.12)
+        gradient.add_color_stop_rgba(1, 0.00, 0.83, 1.0, outside_alpha + 0.14)
+        cr.move_to(*points[0])
+        for point in points[1:]:
+            cr.line_to(*point)
+        cr.close_path()
+        cr.set_source_rgba(0.05, 0.07, 0.13, 0.58)
+        cr.fill_preserve()
+        cr.set_source(gradient)
+        cr.stroke()
+
+        if floating or fullscreen or locked:
+            cr.set_line_width(1.0)
+            cr.set_source_rgba(accent[0], accent[1], accent[2], 0.76 if state["hover"] else 0.44)
+            cr.arc(cx, cy, r + 1.4, 0, 6.28318)
+            cr.stroke()
+        if locked:
+            cr.set_source_rgba(1, 1, 1, 0.78)
+            cr.arc(cx + r * 0.46, cy - r * 0.46, 2.1, 0, 6.28318)
+            cr.fill()
+
+        cr.set_source_rgba(1, 1, 1, 0.28 if state["hover"] else 0.18)
+        cr.set_line_width(1.0)
+        cr.move_to(cx, cy - r * 0.82)
+        cr.line_to(cx, cy + r * 0.82)
+        cr.move_to(cx - r * 0.72, cy - r * 0.40)
+        cr.line_to(cx + r * 0.72, cy + r * 0.40)
+        cr.move_to(cx + r * 0.72, cy - r * 0.40)
+        cr.line_to(cx - r * 0.72, cy + r * 0.40)
+        cr.stroke()
+        cr.restore()
+        return True
+
+    def set_hover(value: bool) -> bool:
+        state["hover"] = value
+        area.queue_draw()
+        return False
+
+    def on_press(_widget, event) -> bool:
+        if int(getattr(event, "button", 0) or 0) == 3 and advanced is not None:
+            advanced()
+            return True
+        if event.type == Gdk.EventType._2BUTTON_PRESS:
+            state["press"] = False
+            state["dragging"] = False
+            state["longpress"] = False
+            target_state["dragging"] = False
+            reset_adaptive_position()
+            move_controls_to_target(target_window())
+            return True
+        state["press"] = True
+        state["dragging"] = False
+        state["longpress"] = False
+        state["button"] = int(getattr(event, "button", 0) or 0)
+        state["start"] = (event.x_root, event.y_root)
+        controls = controls_window()
+        at = controls.get("at") if isinstance(controls.get("at"), list) else [0, 0]
+        state["start_pos"] = (int(at[0] if len(at) > 0 else 0), int(at[1] if len(at) > 1 else 0))
+        area.queue_draw()
+        if advanced is not None and state["button"] == 1:
+            def long_press() -> bool:
+                if state["press"] and not state["dragging"]:
+                    state["longpress"] = True
+                    state["press"] = False
+                    advanced()
+                return False
+
+            GLib.timeout_add(620, long_press)
+        return True
+
+    def on_motion(_widget, event) -> bool:
+        if not state["press"] or state.get("button") != 1:
+            return False
+        sx, sy = state["start"]
+        dx = int(event.x_root - sx)
+        dy = int(event.y_root - sy)
+        if abs(dx) + abs(dy) > 6:
+            state["dragging"] = True
+            target_state["dragging"] = True
+            px, py = state["start_pos"]
+            move_controls_absolute(px + dx, py + dy)
+        return True
+
+    def on_release(_widget, _event) -> bool:
+        was_dragging = state["dragging"]
+        was_longpress = state["longpress"]
+        state["press"] = False
+        state["dragging"] = False
+        state["longpress"] = False
+        area.queue_draw()
+
+        if was_dragging:
+            def finish_drag() -> bool:
+                save_manual_position()
+                target_state["dragging"] = False
+                return False
+
+            GLib.timeout_add(220, finish_drag)
+            return True
+
+        if was_longpress:
+            return True
+
+        activate()
+        return True
+
+    area.connect("draw", draw)
+    event_box.connect("enter-notify-event", lambda *_: set_hover(True))
+    event_box.connect("leave-notify-event", lambda *_: set_hover(False))
+    event_box.connect("button-press-event", on_press)
+    event_box.connect("motion-notify-event", on_motion)
+    event_box.connect("button-release-event", on_release)
+    return event_box
+
+
+def collapse_button(callback):
+    from gi.repository import Gdk, Gtk
+
+    event_box = Gtk.EventBox()
+    event_box.set_visible_window(False)
+    event_box.set_above_child(True)
+    event_box.set_tooltip_text(tr("Replier en Prism", "Collapse to Prism"))
+    event_box.set_size_request(16, 16)
+    event_box.add_events(
+        Gdk.EventMask.BUTTON_PRESS_MASK
+        | Gdk.EventMask.ENTER_NOTIFY_MASK
+        | Gdk.EventMask.LEAVE_NOTIFY_MASK
+    )
+    area = Gtk.DrawingArea()
+    area.set_size_request(16, 16)
+    event_box.add(area)
+    state = {"hover": False}
+
+    def draw(widget, cr) -> bool:
+        allocation = widget.get_allocation()
+        cx = allocation.width / 2
+        cy = allocation.height / 2
+        cr.save()
+        cr.set_source_rgba(1, 1, 1, 0.14 if state["hover"] else 0.08)
+        cr.arc(cx, cy, 7, 0, 6.28318)
+        cr.fill()
+        cr.set_source_rgba(1, 1, 1, 0.72 if state["hover"] else 0.48)
+        cr.set_line_width(1.35)
+        cr.set_line_cap(1)
+        cr.move_to(cx - 3, cy - 3)
+        cr.line_to(cx + 3, cy + 3)
+        cr.move_to(cx + 3, cy - 3)
+        cr.line_to(cx - 3, cy + 3)
+        cr.stroke()
+        cr.restore()
+        return True
+
+    def set_hover(value: bool) -> bool:
+        state["hover"] = value
+        area.queue_draw()
+        return False
+
+    area.connect("draw", draw)
+    event_box.connect("enter-notify-event", lambda *_: set_hover(True))
+    event_box.connect("leave-notify-event", lambda *_: set_hover(False))
+    event_box.connect("button-press-event", lambda *_: callback() or True)
+    return event_box
 
 
 def pill(label: str, callback):
@@ -187,12 +956,65 @@ def pill(label: str, callback):
     return button
 
 
+def target_chip(target_state: dict, on_toggle, on_cycle):
+    from gi.repository import Gdk, Gtk
+
+    event_box = Gtk.EventBox()
+    event_box.set_visible_window(False)
+    event_box.set_above_child(True)
+    event_box.add_events(
+        Gdk.EventMask.BUTTON_PRESS_MASK
+        | Gdk.EventMask.ENTER_NOTIFY_MASK
+        | Gdk.EventMask.LEAVE_NOTIFY_MASK
+        | Gdk.EventMask.SCROLL_MASK
+    )
+    label = Gtk.Label()
+    label.set_xalign(0.5)
+    label.get_style_context().add_class("target-chip")
+    event_box.add(label)
+
+    def refresh() -> bool:
+        target = target_state.get("target") if isinstance(target_state.get("target"), dict) else {}
+        prefix = tr("VERROU ", "LOCK ") if target_state.get("locked") else tr("CIBLE ", "TARGET ")
+        label.set_text(prefix + target_short_name(target))
+        context = label.get_style_context()
+        if target_state.get("locked"):
+            context.add_class("locked")
+        else:
+            context.remove_class("locked")
+        return True
+
+    refresh()
+    event_box.set_tooltip_text(tr(
+        "Cliquer pour verrouiller/déverrouiller la cible. Molette pour parcourir les fenêtres du workspace.",
+        "Click to lock/unlock target. Scroll to cycle windows on this workspace.",
+    ))
+    label.set_size_request(92, 22)
+
+    def on_press(_widget, event) -> bool:
+        if int(getattr(event, "button", 0) or 0) == 1:
+            on_toggle()
+            refresh()
+            return True
+        return False
+
+    def on_scroll(_widget, event) -> bool:
+        direction = -1 if event.direction == Gdk.ScrollDirection.UP else 1
+        on_cycle(direction)
+        refresh()
+        return True
+
+    event_box.connect("button-press-event", on_press)
+    event_box.connect("scroll-event", on_scroll)
+    return event_box, refresh
+
+
 def close_after(window, callback):
     callback()
     window.close()
 
 
-def show_controls(menu: bool = False) -> int:
+def show_controls(menu: bool = False, advanced: bool = False, daemon: bool = False, expanded: bool = False) -> int:
     ensure_gi_python()
     import gi
 
@@ -207,27 +1029,39 @@ def show_controls(menu: bool = False) -> int:
     except Exception:
         pass
 
-    target = active_window()
-    address = target.get("address") or ""
+    target = effective_target()
+    target_state = {
+        "target": target,
+        "address": target.get("address") or "",
+        "dragging": False,
+        "locked": bool(locked_address() and target),
+    }
     summary = target_summary(target)
     load_css()
 
-    window = Gtk.Window(title="Seven Window Controls")
+    title_name = "Seven Window Traffic Lights" if daemon else (
+        "Seven Window Advanced" if advanced else ("Seven Window Layout" if menu else "Seven Window Controls")
+    )
+    window = Gtk.Window(title=title_name)
     window.set_wmclass("SevenWindowControlsNative", "SevenWindowControlsNative")
     window.set_decorated(False)
     window.set_resizable(False)
+    window.set_app_paintable(True)
     window.set_keep_above(True)
     window.set_skip_taskbar_hint(True)
     window.set_skip_pager_hint(True)
     window.get_style_context().add_class("seven-decor-overlay")
+    visual = window.get_screen().get_rgba_visual()
+    if visual:
+        window.set_visual(visual)
     window.connect("destroy", Gtk.main_quit)
     window.connect("key-press-event", lambda _w, event: window.close() if Gdk.keyval_name(event.keyval) == "Escape" else False)
 
-    if menu:
+    if menu or advanced:
       root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-      root.get_style_context().add_class("menu-card")
+      root.get_style_context().add_class("advanced-card" if advanced else "menu-card")
       window.add(root)
-      title = Gtk.Label(label="Seven Window Layout")
+      title = Gtk.Label(label=tr("Prism avancé", "Seven Window Advanced") if advanced else tr("Disposition fenêtre", "Seven Window Layout"))
       title.set_xalign(0)
       title.get_style_context().add_class("overlay-title")
       root.pack_start(title, False, False, 0)
@@ -238,40 +1072,174 @@ def show_controls(menu: bool = False) -> int:
       root.pack_start(subtitle, False, False, 0)
       grid = Gtk.Grid(column_spacing=8, row_spacing=8)
       root.pack_start(grid, False, False, 4)
-      items = [
-          ("Smart Max", "maximize"), ("Fullscreen", "fullscreen"),
-          ("Split Left", "split-left"), ("Split Right", "split-right"),
-          ("Float / Tile", "float"), ("Mosaic", "mosaic"),
-      ]
+      if advanced:
+          items = [
+              (tr("Split gauche", "Split Left"), "split-left"), (tr("Split droite", "Split Right"), "split-right"),
+              ("Scratchpad", "scratchpad"), (tr("Épingler", "Pin / Unpin"), "pin"),
+              ("Workspace 1", "workspace:1"), ("Workspace 2", "workspace:2"),
+              ("Workspace 3", "workspace:3"), ("Workspace 4", "workspace:4"),
+              (tr("Verrouiller cible", "Lock Target"), "lock-target"), (tr("Déverrouiller cible", "Unlock Target"), "unlock-target"),
+              (tr("Mode focus", "Focus Mode"), "focus-mode"), (tr("Reset Prism", "Reset Prism"), "reset-prism"),
+              (tr("Masquer pour l'app", "Hide For App"), "hide-app"),
+          ]
+      else:
+          items = [
+              (tr("Smart max", "Smart Max"), "maximize"), (tr("Plein écran", "Fullscreen"), "fullscreen"),
+              (tr("Split gauche", "Split Left"), "split-left"), (tr("Split droite", "Split Right"), "split-right"),
+              (tr("Flottant / tiling", "Float / Tile"), "float"), (tr("Mosaïque", "Mosaic"), "mosaic"),
+          ]
       for index, (label, action) in enumerate(items):
           button = Gtk.Button(label=label)
           button.get_style_context().add_class("menu-button")
-          button.connect("clicked", lambda _b, act=action: close_after(window, lambda: run_action(act, address)))
+          if action == "hide-app":
+              button.get_style_context().add_class("danger-button")
+
+          def dispatch_advanced(act=action):
+              if act == "reset-prism":
+                  reset_adaptive_position()
+                  move_controls_to_target(target_window())
+              elif act == "hide-app":
+                  hide_class_for_target(target_state.get("target", {}))
+              elif act == "lock-target":
+                  lock_target(target_state.get("target", {}))
+              elif act == "unlock-target":
+                  unlock_target()
+              else:
+                  run_action(act, target_state["address"])
+
+          button.connect("clicked", lambda _b, callback=dispatch_advanced: close_after(window, callback))
           grid.attach(button, index % 2, index // 2, 1, 1)
-      window.set_default_size(330, 250)
+      window.set_default_size(350 if advanced else 330, 380 if advanced else 250)
     else:
-      root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-      root.get_style_context().add_class("overlay-root")
-      window.add(root)
-      root.pack_start(traffic_button("close", "Close active window", lambda: close_after(window, lambda: run_action("close", address))), False, False, 0)
-      root.pack_start(traffic_button("float", "Toggle floating / tiling", lambda: close_after(window, lambda: run_action("float", address))), False, False, 0)
-      max_button = traffic_button("max", "Smart maximize / double-click fullscreen")
-      max_button.connect("button-press-event", lambda _b, event: close_after(window, lambda: run_action("fullscreen" if event.type == Gdk.EventType._2BUTTON_PRESS else "maximize", address)) or True)
-      max_button.connect("button-release-event", lambda *_: True)
-      root.pack_start(max_button, False, False, 0)
-      title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-      title = Gtk.Label(label="SevenDecor")
-      title.set_xalign(0)
-      title.get_style_context().add_class("overlay-title")
-      subtitle = Gtk.Label(label=summary)
-      subtitle.set_xalign(0)
-      subtitle.set_ellipsize(3)
-      subtitle.get_style_context().add_class("overlay-subtitle")
-      title_box.pack_start(title, False, False, 0)
-      title_box.pack_start(subtitle, False, False, 0)
-      root.pack_start(title_box, True, True, 5)
-      root.pack_start(pill("Layout", lambda: close_after(window, lambda: run_action("menu", address))), False, False, 0)
-      window.set_default_size(420, 54)
+      def action_callback(action: str):
+          if daemon:
+              run_action(action, target_state["address"])
+          else:
+              close_after(window, lambda: run_action(action, target_state["address"]))
+
+      if not daemon:
+          root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+          root.get_style_context().add_class("overlay-root")
+          window.add(root)
+          root.pack_start(traffic_button("close", tr("Fermer la fenêtre ciblée", "Close target window"), lambda: action_callback("close")), False, False, 0)
+          root.pack_start(traffic_button("float", tr("Basculer flottant / tiling", "Toggle floating / tiling"), lambda: action_callback("float")), False, False, 0)
+          max_button = traffic_button("max", tr("Smart maximize / double-clic plein écran", "Smart maximize / double-click fullscreen"))
+          max_button.connect("button-press-event", lambda _b, event: action_callback("fullscreen" if event.type == Gdk.EventType._2BUTTON_PRESS else "maximize") or True)
+          max_button.connect("button-release-event", lambda *_: True)
+          root.pack_start(max_button, False, False, 0)
+          title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+          title = Gtk.Label(label="SevenDecor")
+          title.set_xalign(0)
+          title.get_style_context().add_class("overlay-title")
+          subtitle = Gtk.Label(label=summary)
+          subtitle.set_xalign(0)
+          subtitle.set_ellipsize(3)
+          subtitle.get_style_context().add_class("overlay-subtitle")
+          title_box.pack_start(title, False, False, 0)
+          title_box.pack_start(subtitle, False, False, 0)
+          root.pack_start(title_box, True, True, 5)
+          root.pack_start(pill(tr("Disposition", "Layout"), lambda: action_callback("menu")), False, False, 0)
+          window.set_default_size(420, 54)
+      else:
+          container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+          window.add(container)
+          target_state["expanded"] = expanded
+
+          def rebuild() -> None:
+              for child in list(container.get_children()):
+                  container.remove(child)
+              root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7 if target_state["expanded"] else 0)
+              root.get_style_context().add_class("compact-root")
+              root.get_style_context().add_class("expanded-root" if target_state["expanded"] else "prism-root")
+              container.pack_start(root, False, False, 0)
+              if not target_state["expanded"]:
+                  root.pack_start(prism_button(window, target_state, expand, open_advanced), False, False, 0)
+                  window.resize(38, 38)
+                  GLib.idle_add(lambda: resize_controls(38, 38) or move_controls_to_target(target_window()) or False)
+              else:
+                  root.pack_start(prism_button(window, target_state, collapse, open_advanced), False, False, 0)
+                  root.pack_start(traffic_button("close", tr("Fermer la fenêtre ciblée", "Close target window"), lambda: action_callback("close")), False, False, 0)
+                  root.pack_start(traffic_button("float", tr("Basculer flottant / tiling", "Toggle floating / tiling"), lambda: action_callback("float")), False, False, 0)
+                  max_button = traffic_button("max", tr("Smart maximize / double-clic plein écran", "Smart maximize / double-click fullscreen"))
+                  max_button.connect("button-press-event", lambda _b, event: action_callback("fullscreen" if event.type == Gdk.EventType._2BUTTON_PRESS else "maximize") or True)
+                  max_button.connect("button-release-event", lambda *_: True)
+                  root.pack_start(max_button, False, False, 0)
+                  chip, refresh_chip = target_chip(target_state, toggle_target_lock, cycle_prism_target)
+                  target_state["refresh_chip"] = refresh_chip
+                  root.pack_start(chip, False, False, 0)
+                  root.pack_start(collapse_button(collapse), False, False, 0)
+                  window.resize(224, 38)
+                  GLib.idle_add(lambda: resize_controls(224, 38) or move_controls_to_target(effective_target()) or False)
+              window.show_all()
+
+          def expand() -> None:
+              current = effective_target()
+              if current:
+                  target_state["target"] = current
+                  target_state["address"] = current.get("address") or ""
+                  target_state["locked"] = bool(locked_address() and window_by_address(locked_address()))
+              target_state["expanded"] = True
+              rebuild()
+
+          def collapse() -> None:
+              target_state["expanded"] = False
+              rebuild()
+
+          def toggle_target_lock() -> None:
+              if target_state.get("locked"):
+                  unlock_target()
+                  target_state["locked"] = False
+                  current = target_window()
+              else:
+                  current = target_state.get("target") if isinstance(target_state.get("target"), dict) else target_window()
+                  lock_target(current)
+                  target_state["locked"] = True
+              if current:
+                  target_state["target"] = current
+                  target_state["address"] = current.get("address") or ""
+                  move_controls_to_target(current)
+
+          def cycle_prism_target(direction: int) -> None:
+              current = target_state.get("target") if isinstance(target_state.get("target"), dict) else effective_target()
+              next_target = cycle_target_from(current, direction)
+              if next_target:
+                  lock_target(next_target)
+                  target_state["locked"] = True
+                  target_state["target"] = next_target
+                  target_state["address"] = next_target.get("address") or ""
+                  move_controls_to_target(next_target)
+
+          def open_advanced() -> None:
+              command = [sys.executable, str(Path(__file__).resolve()), "--advanced"]
+              try:
+                  subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+              except Exception:
+                  pass
+
+          rebuild()
+
+      if daemon:
+          def refresh_target() -> bool:
+              if target_state.get("dragging"):
+                  return True
+              current = effective_target()
+              if current:
+                  target_state["target"] = current
+                  target_state["address"] = current.get("address") or ""
+                  target_state["locked"] = bool(locked_address() and window_by_address(locked_address()))
+                  if target_is_hidden(current):
+                      window.hide()
+                      return True
+                  if not window.get_visible():
+                      window.show_all()
+                  move_controls_to_target(current)
+                  refresh_chip = target_state.get("refresh_chip")
+                  if callable(refresh_chip):
+                      refresh_chip()
+              return True
+
+          GLib.timeout_add(650, refresh_target)
+          refresh_target()
 
     window.show_all()
     Gtk.main()
@@ -282,14 +1250,17 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--probe", action="store_true")
     parser.add_argument("--menu", action="store_true")
+    parser.add_argument("--advanced", action="store_true")
+    parser.add_argument("--daemon", action="store_true")
+    parser.add_argument("--expanded", action="store_true")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.probe:
         return probe()
     if args.json:
-        print(json.dumps({"schema": "sevenos.window-controls.v1", "native": probe_ok()}))
+        print(json.dumps({"schema": "sevenos.window-controls.v1", "native": probe_ok(), "daemon": True}))
         return 0
-    return show_controls(menu=args.menu)
+    return show_controls(menu=args.menu, advanced=args.advanced, daemon=args.daemon, expanded=args.expanded)
 
 
 if __name__ == "__main__":

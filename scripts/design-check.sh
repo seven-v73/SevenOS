@@ -82,9 +82,13 @@ if [[ -s "$ROOT_DIR/branding/plymouth/sevenos/sevenos.plymouth" ]] &&
    grep -q 'Plymouth.SetRefreshFunction' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
    grep -q 'Plymouth.SetQuitFunction' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
    grep -q 'seven-prism.png' "$ROOT_DIR/scripts/boot-splash.sh" &&
+   grep -q 'ShowDelay=0' "$ROOT_DIR/scripts/boot-splash.sh" &&
+   grep -q 'update_kernel_cmdline_file' "$ROOT_DIR/scripts/boot-splash.sh" &&
+   grep -q 'kms", "plymouth"' "$ROOT_DIR/scripts/boot-splash.sh" &&
    grep -q 'doctor) doctor' "$ROOT_DIR/scripts/boot-splash.sh" &&
    grep -q 'no interactive password prompt' "$ROOT_DIR/scripts/boot-splash.sh" &&
    grep -q 'seven-prism.png' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
+   grep -q 'ShowDelay=0' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
    grep -q 'choices=("status", "doctor", "apply", "theme")' "$ROOT_DIR/bin/seven"; then
   ok "SevenOS boot splash uses the Seven Prism animated Plymouth contract"
 else

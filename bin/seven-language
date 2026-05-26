@@ -139,6 +139,38 @@ def language_code(locale_name: str) -> str:
     return locale_name.split("_", 1)[0].split(".", 1)[0]
 
 
+def catalog_health() -> dict[str, object]:
+    catalog_dir = ROOT / "identity" / "i18n"
+    catalogs: dict[str, dict[str, object]] = {}
+    raw: dict[str, dict[str, dict[str, str]]] = {}
+    for language in ("en", "fr"):
+        path = catalog_dir / f"{language}.json"
+        data: dict[str, object] = {}
+        if path.exists():
+            try:
+                loaded = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    data = loaded
+            except Exception:
+                data = {}
+        translations = data.get("translations", {})
+        text = data.get("text", {})
+        raw[language] = {
+            "translations": translations if isinstance(translations, dict) else {},
+            "text": text if isinstance(text, dict) else {},
+        }
+        catalogs[language] = {
+            "present": path.exists(),
+            "translations": len(raw[language]["translations"]),
+            "text": len(raw[language]["text"]),
+        }
+    missing = {
+        "fr": sorted((set(raw["en"]["translations"]) | set(raw["en"]["text"])) - (set(raw["fr"]["translations"]) | set(raw["fr"]["text"]))),
+        "en": sorted((set(raw["fr"]["translations"]) | set(raw["fr"]["text"])) - (set(raw["en"]["translations"]) | set(raw["en"]["text"]))),
+    }
+    return {"catalogs": catalogs, "missing": missing, "complete": not missing["fr"] and not missing["en"]}
+
+
 def language_entries() -> list[dict[str, object]]:
     current = current_locale()
     entries = []
@@ -159,6 +191,7 @@ def status_payload() -> dict[str, object]:
     current = current_locale()
     locales = installed_locales()
     catalog_dir = ROOT / "identity" / "i18n"
+    health = catalog_health()
     return {
         "schema": "sevenos.language.v1",
         "current": current,
@@ -167,6 +200,17 @@ def status_payload() -> dict[str, object]:
         "available": [item[0] for item in visible_locales()],
         "generated": locales,
         "languages": language_entries(),
+        "default_language_packs": [
+            {
+                "locale": locale_name,
+                "language": language_code(locale_name),
+                "label": label_for(locale_name),
+                "generated": locale_name in locales,
+                "selectable": True,
+                "catalog": bool(health["catalogs"].get(language_code(locale_name), {}).get("present")),
+            }
+            for locale_name in PREFERRED_LOCALES
+        ],
         "config": str(PREF_FILE),
         "env_file": str(ENV_FILE),
         "catalog_dir": str(catalog_dir),
@@ -175,6 +219,7 @@ def status_payload() -> dict[str, object]:
             "fr": (catalog_dir / "fr.json").exists(),
             "baobab": (catalog_dir / "baobab").is_dir(),
         },
+        "catalog_health": health,
         "separated_preferences": {
             "ui_language": True,
             "region_formats": True,
@@ -182,6 +227,180 @@ def status_payload() -> dict[str, object]:
             "units": True,
         },
         "active": current in locales,
+    }
+
+
+def file_contains(path: Path, needle: str) -> bool:
+    if not path.exists():
+        return False
+    try:
+        return needle in path.read_text(encoding="utf-8", errors="ignore")
+    except Exception:
+        return False
+
+
+def doctor_payload() -> dict[str, object]:
+    status = status_payload()
+    packs = status["default_language_packs"]
+    locale_gen = ROOT / "archiso/profile/airootfs/etc/locale.gen"
+    installer_lib = ROOT / "installer/lib.sh"
+    checks = []
+    for pack in packs:
+        locale_name = str(pack["locale"])
+        language = str(pack["language"])
+        checks.extend(
+            [
+                {
+                    "id": f"{language}.catalog",
+                    "label": f"{locale_name} translation catalog",
+                    "state": "ok" if pack.get("catalog") else "missing",
+                },
+                {
+                    "id": f"{language}.generated",
+                    "label": f"{locale_name} generated on this machine",
+                    "state": "ok" if pack.get("generated") else "installable",
+                },
+                {
+                    "id": f"{language}.iso-locale",
+                    "label": f"{locale_name} enabled in ISO locale.gen",
+                    "state": "ok" if file_contains(locale_gen, f"{locale_name} UTF-8") else "missing",
+                },
+                {
+                    "id": f"{language}.installer",
+                    "label": f"{locale_name} offered by installer",
+                    "state": "ok" if file_contains(installer_lib, locale_name) else "missing",
+                },
+            ]
+        )
+    checks.append(
+        {
+            "id": "catalog.coverage",
+            "label": "French and English catalogs have matching keys",
+            "state": "ok" if status["catalog_health"].get("complete") else "missing",
+            "missing": status["catalog_health"].get("missing", {}),
+        }
+    )
+    checks.append(
+        {
+            "id": "waybar.dynamic",
+            "label": "Waybar language module is dynamic",
+            "state": "ok" if (ROOT / "bin/seven-waybar-language").exists() else "missing",
+        }
+    )
+    checks.append(
+        {
+            "id": "cli.language-env",
+            "label": "SevenOS command wrappers load language.env",
+            "state": "ok"
+            if file_contains(ROOT / "scripts/install-cli.sh", "sevenos/language.env")
+            and file_contains(ROOT / "scripts/install-cli.sh", "seven-waybar-language")
+            else "missing",
+        }
+    )
+    active_env = Path(os.environ.get("XDG_CONFIG_HOME", str(host_home() / ".config"))) / "sevenos/language.env"
+    checks.append(
+        {
+            "id": "session.language-env",
+            "label": "SevenOS session language.env exports SEVENOS_LANGUAGE",
+            "state": "ok" if file_contains(active_env, "export SEVENOS_LANGUAGE=") else "missing",
+        }
+    )
+    service_files = [
+        ROOT / "systemd/user/sevenos-waybar.service",
+        ROOT / "systemd/user/sevenos-wallpaper.service",
+        ROOT / "systemd/user/sevenos-polkit-agent.service",
+        ROOT / "systemd/user/sevenos-hyprsunset.service",
+    ]
+    checks.append(
+        {
+            "id": "services.language-env",
+            "label": "SevenOS user services load language.env",
+            "state": "ok" if all(file_contains(path, "sevenos/language.env") for path in service_files) else "missing",
+        }
+    )
+    native_missing = []
+    language_markers = ("seven_i18n", "SEVENOS_LANGUAGE", "LANG_CODE", "language_code", "tr_text", "tr(")
+    for path in sorted((ROOT / "bin").glob("*native")):
+        if path.is_file() and not any(file_contains(path, marker) for marker in language_markers):
+            native_missing.append(path.name)
+    checks.append(
+        {
+            "id": "native-surfaces.i18n",
+            "label": "Native SevenOS app surfaces expose language/i18n hooks",
+            "state": "ok" if not native_missing else "missing",
+            "missing": native_missing,
+        }
+    )
+    checks.append(
+        {
+            "id": "mini-os.public-surfaces.i18n",
+            "label": "Public mini OS centers and context menus follow system language",
+            "state": "ok"
+            if file_contains(ROOT / "bin/seven-mini-os-center", "language_code")
+            and file_contains(ROOT / "bin/seven-mini-os-center", "def t(")
+            and file_contains(ROOT / "bin/seven-profile-center-native", "PUBLIC_PROFILE_DETAILS")
+            and file_contains(ROOT / "bin/seven-profile-center-native", "language_code")
+            and file_contains(ROOT / "bin/seven-mini-context-menu-native", "language_code")
+            else "missing",
+        }
+    )
+    checks.append(
+        {
+            "id": "waybar.app-menu.i18n",
+            "label": "Waybar app menu labels follow system language",
+            "state": "ok"
+            if file_contains(ROOT / "bin/seven_waybar_app_profiles.py", "FR_TO_EN")
+            and file_contains(ROOT / "bin/seven_waybar_app_profiles.py", "language_code")
+            and file_contains(ROOT / "bin/seven_waybar_app_profiles.py", "localize_items")
+            and file_contains(ROOT / "bin/seven-waybar-status", "ui(")
+            else "missing",
+        }
+    )
+    checks.append(
+        {
+            "id": "mini-os.language-env",
+            "label": "Mini OS runners inherit the host language contract",
+            "state": "ok"
+            if file_contains(ROOT / "bin/seven-profile-run", "read_language_env")
+            and file_contains(ROOT / "bin/seven-profile-run", "SEVENOS_LANGUAGE")
+            and file_contains(ROOT / "bin/seven-profile-launch", "read_language_env")
+            and file_contains(ROOT / "bin/seven-profile-launch", "LC_MESSAGES")
+            else "missing",
+        }
+    )
+    profile_missing = []
+    profiles_dir = host_home() / ".config/sevenos/profiles"
+    for profile in ("equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"):
+        path = profiles_dir / profile / "sevenos/language.env"
+        if not file_contains(path, "export SEVENOS_LANGUAGE="):
+            profile_missing.append(profile)
+    checks.append(
+        {
+            "id": "mini-os.language-projection",
+            "label": "Mini OS profile configs contain projected system language",
+            "state": "ok" if not profile_missing else "missing",
+            "missing": profile_missing,
+        }
+    )
+    blocking = [item for item in checks if item["state"] == "missing"]
+    ready = not blocking
+    return {
+        "schema": "sevenos.language-doctor.v1",
+        "ready": ready,
+        "state": "ready" if ready else "partial",
+        "current": status["current"],
+        "default_language_packs": packs,
+        "checks": checks,
+        "repair": [
+            "./install.sh cli",
+            "seven language ensure en_US.UTF-8",
+            "seven language ensure fr_FR.UTF-8",
+            "seven language set en_US.UTF-8",
+            "seven language set fr_FR.UTF-8",
+            "seven language apply --live",
+            "systemctl --user daemon-reload",
+            "seven-waybar repair",
+        ],
     }
 
 
@@ -228,7 +447,27 @@ def notify(locale_name: str) -> None:
         )
 
 
-def run_live_command(label: str, command: list[str], quiet: bool = False) -> dict[str, object]:
+def host_home() -> Path:
+    env_home = os.environ.get("SEVENOS_HOST_HOME")
+    if env_home:
+        return Path(env_home)
+    home = Path.home()
+    text = str(home)
+    marker = "/.local/share/sevenos/profile-containers/"
+    if marker in text:
+        return Path(text.split(marker, 1)[0])
+    return home
+
+
+def run_live_command(
+    label: str,
+    command: list[str],
+    quiet: bool = False,
+    ok_codes: set[int] | None = None,
+    skipped_codes: set[int] | None = None,
+) -> dict[str, object]:
+    ok_codes = ok_codes or {0}
+    skipped_codes = skipped_codes or set()
     if DRY_RUN:
         if not quiet:
             print(f"DRY-RUN > Language > {label}: {' '.join(command)}")
@@ -236,28 +475,49 @@ def run_live_command(label: str, command: list[str], quiet: bool = False) -> dic
     if not shutil.which(command[0]):
         return {"label": label, "command": command, "state": "missing"}
     result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
-    return {"label": label, "command": command, "state": "ok" if result.returncode == 0 else "failed", "code": result.returncode}
+    if result.returncode in ok_codes:
+        state = "ok"
+    elif result.returncode in skipped_codes:
+        state = "skipped"
+    else:
+        state = "failed"
+    return {"label": label, "command": command, "state": state, "code": result.returncode}
 
 
 def apply_live(json_mode: bool = False) -> int:
     current = current_locale()
     lang = language_code(current)
+    host = host_home()
     import_environment(current)
     commands = [
-        ("profile-theme", [str(ROOT / "bin/seven-profile-theme"), "apply"]),
-        ("waybar", [str(ROOT / "bin/seven-waybar"), "repair"]),
-        ("notifications", ["systemctl", "--user", "restart", "mako.service"]),
-        ("shell-panel", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-shell-panel"]),
-        ("quick-settings", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-quick-settings-native"]),
-        ("spotlight", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-spotlight-native"]),
-        ("launchpad", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-launchpad-native"]),
+        (
+            "profile-theme",
+            [
+                "env",
+                f"SEVENOS_HOST_HOME={host}",
+                f"SEVENOS_HOST_CONFIG_HOME={host / '.config'}",
+                f"SEVENOS_HOST_DATA_HOME={host / '.local/share'}",
+                f"XDG_CONFIG_HOME={host / '.config'}",
+                f"XDG_DATA_HOME={host / '.local/share'}",
+                str(ROOT / "bin/seven-profile-theme"),
+                "apply",
+            ],
+            {0},
+            {1},
+        ),
+        ("waybar", [str(ROOT / "bin/seven-waybar"), "repair"], {0}, set()),
+        ("notifications", ["systemctl", "--user", "restart", "sevenos-notifications.service"], {0}, {1}),
+        ("shell-panel", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-shell-panel"], {0}, {1}),
+        ("quick-settings", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-quick-settings-native"], {0}, {1}),
+        ("spotlight", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-spotlight-native"], {0}, {1}),
+        ("launchpad", ["pkill", "-u", os.environ.get("USER", ""), "-f", "seven-launchpad-native"], {0}, {1}),
     ]
     results = []
-    for label, command in commands:
+    for label, command, ok_codes, skipped_codes in commands:
         if "" in command:
             results.append({"label": label, "command": command, "state": "skipped"})
             continue
-        results.append(run_live_command(label, command, quiet=json_mode))
+        results.append(run_live_command(label, command, quiet=json_mode, ok_codes=ok_codes, skipped_codes=skipped_codes))
     payload = {
         "schema": "sevenos.language.apply.v1",
         "locale": current,
@@ -382,6 +642,7 @@ def set_language(locale_name: str) -> int:
         "\n".join(
             [
                 "# SevenOS language session environment",
+                f"export SEVENOS_LANGUAGE={shlex.quote(normalized)}",
                 f"export LANG={shlex.quote(normalized)}",
                 f"export LANGUAGE={shlex.quote(lang)}",
                 f"export LC_MESSAGES={shlex.quote(normalized)}",
@@ -414,6 +675,22 @@ def print_status() -> None:
         print(f" {marker} {item['locale']:<16} {item['label']} [{state}]")
 
 
+def print_doctor() -> int:
+    payload = doctor_payload()
+    print("SevenOS Language Doctor")
+    print("=======================")
+    for item in payload["checks"]:
+        state = item["state"]
+        marker = "OK" if state == "ok" else "TODO" if state == "installable" else "MISS"
+        print(f"[{marker}] {item['label']}")
+    print(f"\nState: {payload['state']}")
+    if not payload["ready"]:
+        print("Repair:")
+        for command in payload["repair"]:
+            print(f"  {command}")
+    return 0 if payload["ready"] else 1
+
+
 def open_menu() -> int:
     entries = language_entries()
     lines = [f"{item['label']}|{item['locale']}" for item in entries]
@@ -439,7 +716,7 @@ def open_menu() -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="SevenOS language manager")
-    parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply"))
+    parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply", "doctor"))
     parser.add_argument("locale", nargs="?")
     parser.add_argument("--json", action="store_true", help="print machine-readable output")
     parser.add_argument("--live", action="store_true", help="restart visible SevenOS surfaces after a language change")
@@ -451,6 +728,12 @@ def main() -> int:
         else:
             print_status()
         return 0
+    if args.action == "doctor":
+        if args.json:
+            payload = doctor_payload()
+            print(json.dumps(payload, ensure_ascii=False))
+            return 0 if payload["ready"] else 1
+        return print_doctor()
     if args.action == "list":
         payload = {"schema": "sevenos.language-list.v1", "languages": language_entries()}
         if args.json:

@@ -236,6 +236,24 @@ network_check() {
   fi
 }
 
+language_check() {
+  section "Languages"
+  if "$ROOT_DIR/bin/seven-language" doctor --json >/dev/null 2>&1; then
+    ok_item "French/English language packs ready"
+  else
+    warn_item "French/English language packs are incomplete"
+    printf '  run: ./install.sh language\n'
+    printf '  run: seven language doctor\n'
+  fi
+
+  if command -v seven-waybar-language >/dev/null 2>&1 || [[ -x "$ROOT_DIR/bin/seven-waybar-language" ]]; then
+    ok_item "dynamic Waybar language indicator available"
+  else
+    warn_item "dynamic Waybar language indicator missing"
+    printf '  run: ./install.sh cli\n'
+  fi
+}
+
 files_check() {
   section "Files Experience"
   local command_name
@@ -332,6 +350,7 @@ toolkit_theme_check
 group_check
 service_check
 network_check
+language_check
 files_check
 lab_check
 profile_isolation_check

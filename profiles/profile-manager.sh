@@ -455,6 +455,12 @@ profile_missing_packages() {
   local key="$1"
   local package package_file
 
+  if [[ -x "$ROOT_DIR/bin/seven-profile-requirements" ]]; then
+    "$ROOT_DIR/bin/seven-profile-requirements" status "$key" --json 2>/dev/null |
+      python -c 'import json,sys; data=json.load(sys.stdin); print("\n".join((data.get("missing") or {}).get("required", [])))' 2>/dev/null &&
+      return 0
+  fi
+
   while IFS= read -r package_file; do
     [[ -f "$package_file" ]] || continue
     while IFS= read -r package; do
@@ -502,6 +508,25 @@ profile_config_dir() {
   local key
   key="$(normalize_profile_key "$1")"
   printf '%s/profiles/%s' "$STATE_DIR" "$key"
+}
+
+sync_profile_language() {
+  local key config_dir profile_sevenos_dir source_file target_file
+  key="$(normalize_profile_key "$1")"
+  config_dir="$(profile_config_dir "$key")"
+  profile_sevenos_dir="$config_dir/sevenos"
+
+  if is_dry_run; then
+    printf 'sync SevenOS language preference into %q\n' "$profile_sevenos_dir"
+    return 0
+  fi
+
+  mkdir -p "$profile_sevenos_dir"
+  for source_file in "$STATE_DIR/language.conf" "$STATE_DIR/language.env"; do
+    [[ -s "$source_file" ]] || continue
+    target_file="$profile_sevenos_dir/$(basename "$source_file")"
+    cp "$source_file" "$target_file"
+  done
 }
 
 profile_manifest_path() {
@@ -979,6 +1004,16 @@ profile_counts() {
   local installed=0
   local total=0
   local package package_file
+
+  if [[ -x "$ROOT_DIR/bin/seven-profile-requirements" ]]; then
+    local counts
+    counts="$("$ROOT_DIR/bin/seven-profile-requirements" status "$key" --json 2>/dev/null |
+      python -c 'import json,sys; data=json.load(sys.stdin); s=data.get("summary") or {}; total=int(s.get("required") or 0); missing=int(s.get("required_missing") or 0); print(f"{total - missing} {total}")' 2>/dev/null || true)"
+    if [[ "$counts" =~ ^[0-9]+[[:space:]][0-9]+$ ]]; then
+      printf '%s\n' "$counts"
+      return 0
+    fi
+  fi
 
   while IFS= read -r package_file; do
     [[ -f "$package_file" ]] || continue
@@ -1585,6 +1620,7 @@ bootstrap_profile() {
 
   if ! is_dry_run; then
     write_profile_experience "$key"
+    sync_profile_language "$key"
     "$ROOT_DIR/scripts/events.sh" log \
       --source profile \
       --type profile \

@@ -2,8 +2,12 @@
 # These improve the Pulse experience but should not block the profile.
 gamescope
 mangohud
+goverlay
 vulkan-tools
 lutris
-# Steam/ProtonUp-Qt are intentionally kept out of the official package check
-# because availability depends on multilib/AUR policy. SevenOS exposes them
-# through Pulse guidance when those sources are enabled.
+wine
+winetricks
+protontricks
+# Steam and 32-bit runtime packages require Arch multilib on many machines.
+# SevenOS exposes them through `seven-pulse doctor` and `sevenpkg pulse install`
+# so the user gets a clear guided action instead of a failing hidden install.

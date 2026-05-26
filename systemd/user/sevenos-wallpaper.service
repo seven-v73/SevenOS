@@ -5,7 +5,7 @@ After=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/env seven-wallpaper serve
+ExecStart=/usr/bin/env sh -lc 'if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"; fi; exec seven-wallpaper serve'
 Restart=on-failure
 RestartSec=2
 

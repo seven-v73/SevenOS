@@ -21,7 +21,19 @@ SevenOS native apps use macOS-style traffic lights as the public mental model:
 - Yellow toggles tiled/floating mode through `seven-window toggle-float`.
 - Green performs smart maximize through `seven-window smart-maximize`.
 - Green double-click or explicit fullscreen uses `seven-window fullscreen`.
-- Long-press equivalent is exposed today as `seven-window layout-menu`.
+- The Prism keeps the main click simple: click to expose red/yellow/green, click
+  the Prism again or the small close glyph to collapse.
+- Prism right-click or long press opens `seven-window advanced-menu` with split,
+  scratchpad, pin/unpin, workspace move, target lock/unlock, focus mode,
+  hide-for-app and reset placement actions.
+- When expanded, the Prism shows a compact target chip. If a target is locked,
+  the chip is marked `LOCK` and red/yellow/green keep acting on that window
+  until unlocked.
+- The target chip is interactive: click it to lock/unlock immediately, or scroll
+  over it to cycle through windows on the current workspace and lock the chosen
+  target.
+- Double-clicking the Prism resets it to adaptive follow mode and clears target
+  lock.
 - For non-native apps, `seven-window controls` opens a small SevenDecor overlay
   above the active window. It stores the target window address before the
   overlay takes focus, then forwards red/yellow/green actions back to that
@@ -59,7 +71,16 @@ seven-window split-left
 seven-window split-right
 seven-window mosaic
 seven-window layout-menu
+seven-window advanced-menu
+seven-window controls-unlock
 seven-window controls
+seven-window controls-start
+seven-window controls-stop
+seven-window controls-toggle
+seven-window controls-enable
+seven-window controls-disable
+seven-window controls-status
+seven-window controls-reset-hidden
 seven-window decor-status
 seven-window decor-apply
 ```
@@ -115,6 +136,27 @@ seven-window decor-status --json
 Phase 2:
 
 - SevenDecor overlay for non-native apps through `seven-window controls`;
+- permanent Prism control through `seven-window controls-start` and
+  `sevenos-window-controls.service`; the Prism is collapsed by default and
+  expands to red/yellow/green actions on click;
+- advanced Prism menu through right-click/long press or `seven-window
+  advanced-menu`;
+- target disambiguation for crowded workspaces through the expanded target chip
+  and lock/unlock actions;
+- Prism visible labels and tooltips follow `SEVENOS_LANGUAGE`,
+  `~/.config/sevenos/language.conf` or the system `LANG`;
+- discreet Prism indicators: mini OS accent color, halo for floating/fullscreen
+  targets, lower opacity when idle;
+- `Super+Alt+D` toggles the Prism on/off globally; `Super+Ctrl+Alt+D` opens the
+  one-shot controls overlay;
+- when enabled, the Prism is a user session service, so it remains present
+  across mini OS changes until explicitly disabled;
+- adaptive placement near the active window's top-left corner, clamped to the
+  monitor so the controls do not leave the visible screen;
+- manual placement by dragging the Prism; double-clicking the Prism returns to
+  adaptive placement;
+- per-app hiding from the advanced menu; `seven-window controls-reset-hidden`
+  clears hidden app rules;
 - profile-aware layouts from `profile-ui.json`;
 - workspace memory;
 - app category learning;

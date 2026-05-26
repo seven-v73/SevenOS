@@ -6,6 +6,7 @@ source "$ROOT_DIR/scripts/lib.sh"
 
 THEME_SRC="$ROOT_DIR/branding/plymouth/sevenos"
 THEME_DST="/usr/share/plymouth/themes/sevenos"
+PLYMOUTH_CONF="/etc/plymouth/plymouthd.conf"
 CMDLINE_ARGS=(
   quiet
   splash
@@ -97,6 +98,68 @@ install_theme() {
   need_root_command install -m 0644 "$THEME_SRC/seven-prism.png" "$THEME_DST/seven-prism.png"
 }
 
+write_plymouth_daemon_config() {
+  log_info "Configuring Plymouth to show SevenOS immediately"
+  if is_dry_run; then
+    printf 'sudo install -d /etc/plymouth\n'
+    printf 'sudo update %q with Theme=sevenos and ShowDelay=0\n' "$PLYMOUTH_CONF"
+    return 0
+  fi
+  need_root_command install -d /etc/plymouth
+  [[ -f "$PLYMOUTH_CONF" ]] && need_root_command cp "$PLYMOUTH_CONF" "$(backup_path "$PLYMOUTH_CONF")"
+  need_root_command python - "$PLYMOUTH_CONF" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8", errors="ignore").splitlines() if path.exists() else []
+out = []
+in_daemon = False
+daemon_seen = False
+theme_written = False
+delay_written = False
+
+def finish_daemon():
+    global theme_written, delay_written
+    extra = []
+    if not theme_written:
+        extra.append("Theme=sevenos")
+    if not delay_written:
+        extra.append("ShowDelay=0")
+    return extra
+
+for line in lines:
+    stripped = line.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        if in_daemon:
+            out.extend(finish_daemon())
+        in_daemon = stripped.lower() == "[daemon]"
+        daemon_seen = daemon_seen or in_daemon
+        if in_daemon:
+            theme_written = False
+            delay_written = False
+        out.append(line)
+        continue
+    if in_daemon and stripped.startswith("Theme="):
+        out.append("Theme=sevenos")
+        theme_written = True
+    elif in_daemon and stripped.startswith("ShowDelay="):
+        out.append("ShowDelay=0")
+        delay_written = True
+    else:
+        out.append(line)
+
+if in_daemon:
+    out.extend(finish_daemon())
+elif not daemon_seen:
+    if out and out[-1].strip():
+        out.append("")
+    out.extend(["[Daemon]", "Theme=sevenos", "ShowDelay=0"])
+
+path.write_text("\n".join(out).rstrip() + "\n", encoding="utf-8")
+PY
+}
+
 set_plymouth_theme() {
   if ! command -v plymouth-set-default-theme >/dev/null 2>&1; then
     log_warn "plymouth-set-default-theme not found. Install package: plymouth"
@@ -113,11 +176,7 @@ set_plymouth_theme() {
 update_mkinitcpio_hooks() {
   local file="/etc/mkinitcpio.conf"
   [[ -f "$file" ]] || return 0
-  if grep -Eq '^HOOKS=.*plymouth' "$file"; then
-    log_info "mkinitcpio already includes plymouth hook"
-    return 0
-  fi
-  log_info "Adding plymouth hook to mkinitcpio"
+  log_info "Ensuring mkinitcpio loads KMS before Plymouth"
   need_root_command cp "$file" "$(backup_path "$file")"
   need_root_command python - "$file" <<'PY'
 from pathlib import Path
@@ -128,15 +187,22 @@ lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
 out = []
 changed = False
 for line in lines:
-    if line.startswith("HOOKS=(") and "plymouth" not in line:
+    if line.startswith("HOOKS=("):
         inner = line.removeprefix("HOOKS=(").removesuffix(")")
-        hooks = inner.split()
-        if "udev" in hooks:
-            hooks.insert(hooks.index("udev") + 1, "plymouth")
+        hooks = [hook for hook in inner.split() if hook not in {"kms", "plymouth"}]
+        if "modconf" in hooks:
+            insert_at = hooks.index("modconf") + 1
+        elif "microcode" in hooks:
+            insert_at = hooks.index("microcode") + 1
+        elif "autodetect" in hooks:
+            insert_at = hooks.index("autodetect") + 1
+        elif "udev" in hooks:
+            insert_at = hooks.index("udev") + 1
         elif "systemd" in hooks:
-            hooks.insert(hooks.index("systemd") + 1, "plymouth")
+            insert_at = hooks.index("systemd") + 1
         else:
-            hooks.insert(0, "plymouth")
+            insert_at = min(1, len(hooks))
+        hooks[insert_at:insert_at] = ["kms", "plymouth"]
         line = "HOOKS=(" + " ".join(hooks) + ")"
         changed = True
     out.append(line)
@@ -243,13 +309,14 @@ PY
 }
 
 update_systemd_boot() {
-  local entries_dir="/boot/loader/entries"
-  [[ -d "$entries_dir" ]] || return 0
-  log_info "Updating systemd-boot entries"
+  local entries_dir
   local entry
-  while IFS= read -r -d '' entry; do
-    need_root_command cp "$entry" "$(backup_path "$entry")"
-    need_root_command python - "$entry" "$(cmdline_string)" <<'PY'
+  for entries_dir in /boot/loader/entries /efi/loader/entries /boot/efi/loader/entries; do
+    [[ -d "$entries_dir" ]] || continue
+    log_info "Updating systemd-boot entries in $entries_dir"
+    while IFS= read -r -d '' entry; do
+      need_root_command cp "$entry" "$(backup_path "$entry")"
+      need_root_command python - "$entry" "$(cmdline_string)" <<'PY'
 from pathlib import Path
 import sys
 
@@ -273,7 +340,26 @@ if not written:
     out.append("options " + " ".join(needed))
 path.write_text("\n".join(out) + "\n", encoding="utf-8")
 PY
-  done < <(find "$entries_dir" -maxdepth 1 -type f -name '*.conf' -print0)
+    done < <(find "$entries_dir" -maxdepth 1 -type f -name '*.conf' -print0)
+  done
+}
+
+update_kernel_cmdline_file() {
+  local file="/etc/kernel/cmdline"
+  [[ -e "$file" || -d /etc/kernel ]] || return 0
+  log_info "Updating kernel-install command line"
+  if [[ -f "$file" ]]; then
+    need_root_command cp "$file" "$(backup_path "$file")"
+  fi
+  need_root_command install -d /etc/kernel
+  local merged current
+  current="$([[ -f "$file" ]] && tr '\n' ' ' <"$file" || true)"
+  merged="$(merge_cmdline "$current" "${CMDLINE_ARGS[@]}")"
+  if is_dry_run; then
+    printf 'printf %q | sudo tee %q >/dev/null\n' "$merged" "$file"
+  else
+    printf '%s\n' "$merged" | need_root_command tee "$file" >/dev/null
+  fi
 }
 
 status() {
@@ -293,6 +379,35 @@ status() {
     quit_state="$(systemctl is-enabled plymouth-quit.service 2>/dev/null || true)"
     wait_state="$(systemctl is-enabled plymouth-quit-wait.service 2>/dev/null || true)"
     printf 'quit=%s wait=%s\n' "${quit_state:-unknown}" "${wait_state:-unknown}"
+  else
+    printf 'unknown\n'
+  fi
+  printf 'Show delay:   '
+  if [[ -r "$PLYMOUTH_CONF" ]]; then
+    awk -F= 'tolower($1)=="showdelay" {print $2; found=1} END {if (!found) print "default"}' "$PLYMOUTH_CONF"
+  else
+    printf 'unknown\n'
+  fi
+  printf 'mkinitcpio:   '
+  if [[ -r /etc/mkinitcpio.conf ]]; then
+    python - <<'PY'
+from pathlib import Path
+line = next((item for item in Path("/etc/mkinitcpio.conf").read_text(errors="ignore").splitlines() if item.startswith("HOOKS=(")), "")
+hooks = line.removeprefix("HOOKS=(").removesuffix(")").split()
+if "kms" in hooks and "plymouth" in hooks and hooks.index("kms") < hooks.index("plymouth"):
+    print("kms-before-plymouth")
+elif "plymouth" in hooks:
+    print("plymouth-present-needs-kms-order")
+else:
+    print("plymouth-missing")
+PY
+  else
+    printf 'unknown\n'
+  fi
+  printf 'Live cmdline: '
+  if [[ -r /proc/cmdline ]]; then
+    tr '\0' ' ' </proc/cmdline | sed 's/[[:space:]]$//'
+    printf '\n'
   else
     printf 'unknown\n'
   fi
@@ -342,6 +457,9 @@ doctor() {
   doctor_check_text "Script keeps SevenOS as boot brand" 'Image.Text("SevenOS"' "$script_file" || failed=1
   doctor_check_text "Installer copies the Prism asset" 'seven-prism.png' "$0" || failed=1
   doctor_check_text "Installer explains non-interactive sudo" 'no interactive password prompt' "$0" || failed=1
+  doctor_check_text "Installer writes zero splash delay" 'ShowDelay=0' "$0" || failed=1
+  doctor_check_text "Installer orders KMS before Plymouth" 'kms", "plymouth"' "$0" || failed=1
+  doctor_check_text "Installer updates kernel-install cmdline" 'update_kernel_cmdline_file' "$0" || failed=1
   doctor_check_text "Archiso copies the Prism asset" 'seven-prism.png' "$archiso_hook" || failed=1
 
   if command -v identify >/dev/null 2>&1 && [[ -s "$prism_file" ]]; then
@@ -357,6 +475,24 @@ doctor() {
     printf '[OK] Prism PNG exists; install ImageMagick for dimension checks\n'
   fi
 
+  if [[ -r "$PLYMOUTH_CONF" ]] && grep -Eq '^ShowDelay=0$' "$PLYMOUTH_CONF"; then
+    printf '[OK] Live Plymouth ShowDelay is zero\n'
+  else
+    printf '[WARN] Live Plymouth ShowDelay is not zero yet; run ./install.sh boot-splash --yes with sudo\n'
+  fi
+
+  if [[ -r /etc/mkinitcpio.conf ]] && python - <<'PY'
+from pathlib import Path
+line = next((item for item in Path("/etc/mkinitcpio.conf").read_text(errors="ignore").splitlines() if item.startswith("HOOKS=(")), "")
+hooks = line.removeprefix("HOOKS=(").removesuffix(")").split()
+raise SystemExit(0 if "kms" in hooks and "plymouth" in hooks and hooks.index("kms") < hooks.index("plymouth") else 1)
+PY
+  then
+    printf '[OK] Live mkinitcpio orders KMS before Plymouth\n'
+  else
+    printf '[WARN] Live mkinitcpio should be refreshed so KMS loads before Plymouth\n'
+  fi
+
   if (( failed )); then
     return 1
   fi
@@ -366,11 +502,13 @@ doctor() {
 apply() {
   ensure_plymouth
   install_theme
+  write_plymouth_daemon_config
   set_plymouth_theme || true
   configure_services
   update_mkinitcpio_hooks
   update_grub
   update_systemd_boot
+  update_kernel_cmdline_file
   refresh_initramfs
   log_success "SevenOS quiet boot configured. Reboot to see the splash."
 }

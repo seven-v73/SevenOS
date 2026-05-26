@@ -1,7 +1,33 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+host_home() {
+  local home="${SEVENOS_HOST_HOME:-$HOME}"
+  if [[ -n "${SEVENOS_HOST_HOME:-}" ]]; then
+    printf '%s\n' "$home"
+    return 0
+  fi
+  case "$home" in
+    */.local/share/sevenos/profile-containers/*/home)
+      printf '%s\n' "${home%%/.local/share/sevenos/profile-containers/*}"
+      return 0
+      ;;
+  esac
+  if [[ -n "${USER:-}" && -d "/home/$USER" ]]; then
+    printf '/home/%s\n' "$USER"
+  else
+    printf '%s\n' "$home"
+  fi
+}
+
+HOST_HOME="$(host_home)"
+if [[ -n "${SEVENOS_HOST_CONFIG_HOME:-}" ]]; then
+  CONFIG_HOME="$SEVENOS_HOST_CONFIG_HOME"
+elif [[ "${HOME:-}" == */.local/share/sevenos/profile-containers/*/home ]]; then
+  CONFIG_HOME="$HOST_HOME/.config"
+else
+  CONFIG_HOME="${XDG_CONFIG_HOME:-$HOST_HOME/.config}"
+fi
 CONFIG="$CONFIG_HOME/waybar/config.jsonc"
 STYLE="$CONFIG_HOME/waybar/style.css"
 PREFS="$CONFIG_HOME/sevenos/waybar.conf"
@@ -105,6 +131,245 @@ print(json.dumps({
 PY
 }
 
+limits_json() {
+  local source_config source_style
+  source_config="$CONFIG"
+  source_style="$STYLE"
+  if [[ ! -s "$source_config" && -n "$ROOT_DIR" ]]; then
+    source_config="$ROOT_DIR/hyprland/waybar/config.jsonc"
+  fi
+  if [[ ! -s "$source_style" && -n "$ROOT_DIR" ]]; then
+    source_style="$ROOT_DIR/hyprland/waybar/style.css"
+  fi
+  CONFIG_PATH="$source_config" STYLE_PATH="$source_style" python - <<'PY'
+import json
+import os
+import re
+from pathlib import Path
+
+config_path = Path(os.environ.get("CONFIG_PATH", ""))
+style_path = Path(os.environ.get("STYLE_PATH", ""))
+checks = []
+
+
+def strip_jsonc(text):
+    output = []
+    in_string = False
+    escape = False
+    i = 0
+    while i < len(text):
+        char = text[i]
+        nxt = text[i + 1] if i + 1 < len(text) else ""
+        if in_string:
+            output.append(char)
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            i += 1
+            continue
+        if char == '"':
+            in_string = True
+            output.append(char)
+            i += 1
+            continue
+        if char == "/" and nxt == "/":
+            while i < len(text) and text[i] not in "\r\n":
+                i += 1
+            continue
+        if char == "/" and nxt == "*":
+            i += 2
+            while i + 1 < len(text) and not (text[i] == "*" and text[i + 1] == "/"):
+                i += 1
+            i += 2
+            continue
+        output.append(char)
+        i += 1
+    return re.sub(r",\s*([}\]])", r"\1", "".join(output))
+
+
+def add(identifier, ok, detail, limit=""):
+    checks.append({
+        "id": identifier,
+        "state": "OK" if ok else "WARN",
+        "detail": detail,
+        "limit": limit,
+    })
+
+
+try:
+    config = json.loads(strip_jsonc(config_path.read_text(encoding="utf-8")))
+except Exception:
+    config = {}
+style = style_path.read_text(encoding="utf-8", errors="ignore") if style_path.exists() else ""
+
+left = config.get("modules-left", [])
+center = config.get("modules-center", [])
+right = config.get("modules-right", [])
+total_modules = len(left) + len(center) + len(right)
+add("module-count", total_modules <= 22, f"{total_modules} visible module slots", "<=22")
+add("left-menu-density", len(left) <= 12, f"{len(left)} left module slots", "<=12")
+add("right-control-density", len(right) <= 9, f"{len(right)} right module slots", "<=9")
+add("height", int(config.get("height") or 0) <= 30, f"height={config.get('height')}", "<=30")
+add("spacing", int(config.get("spacing") or 0) <= 4, f"spacing={config.get('spacing')}", "<=4")
+add("window-max-length", int((config.get("hyprland/window") or {}).get("max-length") or 99) <= 18, f"window max-length={(config.get('hyprland/window') or {}).get('max-length')}", "<=18")
+
+dynamic_modules = {
+    key: value for key, value in config.items()
+    if isinstance(key, str) and key.startswith("custom/") and isinstance(value, dict) and value.get("exec")
+}
+too_fast = []
+for key, value in dynamic_modules.items():
+    interval = value.get("interval")
+    if interval is None:
+        continue
+    try:
+        interval_value = float(interval)
+    except Exception:
+        too_fast.append(f"{key}=invalid")
+        continue
+    if key.startswith("custom/app-"):
+        minimum = 8.0
+    elif key in {"custom/wifi", "custom/bluetooth", "custom/media"}:
+        minimum = 4.0
+    elif key in {"custom/recorder", "custom/experience"}:
+        minimum = 2.0
+    else:
+        minimum = 3.0
+    if interval_value < minimum:
+        too_fast.append(f"{key}={interval_value:g}< {minimum:g}")
+add("polling-budget", not too_fast, ", ".join(too_fast) if too_fast else "polling intervals are calm", "app>=8s net>=4s shell>=2s")
+
+json_missing = [key for key, value in dynamic_modules.items() if value.get("return-type") != "json"]
+add("json-contracts", not json_missing, ", ".join(json_missing) if json_missing else "dynamic modules return JSON", "all dynamic custom modules")
+
+add("no-min-width-transition", "min-width 180ms" not in style, "min-width is not animated" if "min-width 180ms" not in style else "min-width transition can cause layout swim", "avoid width animation")
+add("recorder-fixed-width", bool(re.search(r"#custom-recorder\.idle\s*\{[^}]*min-width:\s*24px", style, re.S)), "recorder idle slot is fixed", "24px")
+add("workspace-fixed-width", bool(re.search(r"#workspaces button\s*\{[^}]*min-width:\s*24px", style, re.S)), "workspace buttons keep stable width", "24px")
+add("profile-fixed-width", bool(re.search(r"#custom-profile\s*\{[^}]*min-width:\s*58px", style, re.S)), "profile capsule has stable width", ">=58px")
+stable_app_slots = all(
+    re.search(pattern, style, re.S)
+    for pattern in (
+        r"#custom-app-file\s*\{[^}]*min-width:\s*42px",
+        r"#custom-app-edit\s*\{[^}]*min-width:\s*50px",
+        r"#custom-app-view\s*\{[^}]*min-width:\s*66px",
+        r"#custom-app-extra\s*\{[^}]*min-width:\s*62px",
+    )
+)
+add("app-menu-fixed-slots", stable_app_slots, "active app menu slots keep stable width", "file/edit/view/extra fixed")
+add("app-menu-hidden-collapse", "#custom-app-extra.hidden" in style and "#custom-app-tools.hidden" in style, "compact app menus collapse cleanly", "hidden app menu slots")
+add("hidden-collapse-contained", "#custom-app-more.hidden" in style and "#custom-system-status.hidden" in style, "hidden dynamic modules collapse intentionally", "explicit hidden rules")
+add("context-signal-throttle", "signal_min_interval" in (Path(os.environ.get("HOME", "")) / ".config/sevenos/waybar.conf").read_text(encoding="utf-8", errors="ignore") if (Path(os.environ.get("HOME", "")) / ".config/sevenos/waybar.conf").exists() else True, "context signal throttle supported", ">=1.2s dynamic")
+
+state = "OK" if all(item["state"] == "OK" for item in checks) else "WARN"
+print(json.dumps({
+    "schema": "sevenos.waybar.limits.v1",
+    "state": state,
+    "config": str(config_path),
+    "style": str(style_path),
+    "summary": {
+        "modules": total_modules,
+        "left": len(left),
+        "center": len(center),
+        "right": len(right),
+        "dynamic_custom_modules": len(dynamic_modules),
+        "visible_custom_modules": len([module for module in left + center + right if isinstance(module, str) and module.startswith("custom/")]),
+    },
+    "checks": checks,
+    "modes": {
+        "stable": "seven-waybar stable",
+        "dynamic": "seven-waybar dynamic",
+        "repair": "seven-waybar repair",
+    },
+}, ensure_ascii=False))
+PY
+}
+
+doctor_json() {
+  local status limits
+  status="$(status_json)"
+  limits="$(limits_json)"
+  STATUS_JSON="$status" LIMITS_JSON="$limits" python - <<'PY'
+import json
+import os
+
+try:
+    status = json.loads(os.environ.get("STATUS_JSON") or "{}")
+except Exception:
+    status = {}
+try:
+    limits = json.loads(os.environ.get("LIMITS_JSON") or "{}")
+except Exception:
+    limits = {}
+
+states = [status.get("state"), limits.get("state")]
+ok = all(state == "OK" for state in states)
+recommendations = []
+if status.get("state") != "OK":
+    recommendations.append("seven-waybar repair")
+if limits.get("state") != "OK":
+    recommendations.append("seven-waybar limits")
+print(json.dumps({
+    "schema": "sevenos.waybar.doctor.v1",
+    "state": "OK" if ok else "WARN",
+    "status": status,
+    "limits": limits,
+    "recommendations": recommendations,
+}, ensure_ascii=False))
+PY
+}
+
+doctor_human() {
+  local payload
+  payload="$(doctor_json)"
+  PAYLOAD="$payload" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ.get("PAYLOAD") or "{}")
+status = data.get("status") or {}
+limits = data.get("limits") or {}
+summary = limits.get("summary") or {}
+waybar = status.get("waybar") or {}
+context = status.get("context") or {}
+print("SevenOS Waybar Doctor")
+print(f"State: {data.get('state')}")
+print(f"Runtime: waybar={waybar.get('instances', 0)} context={context.get('instances', 0)}")
+print(f"Limits: modules={summary.get('modules')} left={summary.get('left')} center={summary.get('center')} right={summary.get('right')}")
+for check in limits.get("checks", []):
+    if check.get("state") != "OK":
+        print(f"[WARN] {check.get('id')}: {check.get('detail')}")
+recommendations = data.get("recommendations") or []
+if recommendations:
+    print("Repair: " + " · ".join(recommendations))
+else:
+    print("Repair: none")
+PY
+}
+
+limits_human() {
+  local payload
+  payload="$(limits_json)"
+  PAYLOAD="$payload" python - <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ.get("PAYLOAD") or "{}")
+print("SevenOS Waybar Dynamic Limits")
+print(f"State: {data.get('state')}")
+summary = data.get("summary", {})
+print(f"Modules: {summary.get('modules')} · left={summary.get('left')} center={summary.get('center')} right={summary.get('right')}")
+for check in data.get("checks", []):
+    marker = "OK" if check.get("state") == "OK" else "WARN"
+    limit = f" · limit: {check.get('limit')}" if check.get("limit") else ""
+    print(f"[{marker}] {check.get('id')}: {check.get('detail')}{limit}")
+print("Modes: seven-waybar stable · seven-waybar dynamic · seven-waybar repair")
+PY
+}
+
 context_repair() {
   if [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/bin/seven-waybar-context" ]]; then
     "$ROOT_DIR/bin/seven-waybar-context" repair 2>/dev/null || true
@@ -191,6 +456,20 @@ case "${1:-status}" in
   --json|json)
     status_json
     ;;
+  limits)
+    if [[ "${2:-}" == "--json" || "${2:-}" == "json" ]]; then
+      limits_json
+    else
+      limits_human
+    fi
+    ;;
+  doctor)
+    if [[ "${2:-}" == "--json" || "${2:-}" == "json" ]]; then
+      doctor_json
+    else
+      doctor_human
+    fi
+    ;;
   start|restart)
     start_waybar
     wait_for_waybar || true
@@ -217,7 +496,7 @@ case "${1:-status}" in
     printf 'SevenOS Waybar: stopped\n'
     ;;
   *)
-    printf 'Usage: seven-waybar [status [--json]|start|restart|repair|stable|dynamic|stop]\n' >&2
+    printf 'Usage: seven-waybar [status [--json]|limits [--json]|doctor [--json]|start|restart|repair|stable|dynamic|stop]\n' >&2
     exit 2
     ;;
 esac

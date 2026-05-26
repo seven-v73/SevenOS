@@ -86,6 +86,47 @@ def installed_packages() -> set[str]:
     return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
+def host_home() -> Path:
+    if os.environ.get("SEVENOS_HOST_HOME"):
+        return Path(os.environ["SEVENOS_HOST_HOME"])
+    raw = Path(os.environ.get("HOME", str(Path.home())))
+    marker = "/.local/share/sevenos/profile-containers/"
+    text = str(raw)
+    if marker in text and text.endswith("/home"):
+        return Path(text.split(marker, 1)[0])
+    return raw
+
+
+def rootfs_path(profile: str) -> Path:
+    data_home = Path(os.environ.get("SEVENOS_HOST_DATA_HOME", str(host_home() / ".local/share")))
+    return data_home / "sevenos/profile-rootfs" / profile / "rootfs"
+
+
+def rootfs_packages(profile: str) -> set[str]:
+    local = rootfs_path(profile) / "var/lib/pacman/local"
+    packages = set()
+    if not local.is_dir():
+        return packages
+    for desc in local.glob("*/desc"):
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for index, line in enumerate(lines):
+            if line == "%NAME%" and index + 1 < len(lines):
+                packages.add(lines[index + 1].strip())
+                break
+    return packages
+
+
+def installed_for_profile(profile: str) -> set[str]:
+    if profile != "equinox":
+        private = rootfs_packages(profile)
+        if private:
+            return private
+    return installed_packages()
+
+
 def is_satisfied(package: str, installed: set[str]) -> bool:
     if package in installed:
         return True
@@ -108,7 +149,7 @@ def status(profile: str, *, include_optional: bool) -> dict:
     optional_files = package_files(profile, optional=True)
     required = package_set(required_files)
     optional = package_set(optional_files) if include_optional else []
-    installed = installed_packages()
+    installed = installed_for_profile(profile)
     missing_required = [package for package in required if not is_satisfied(package, installed)]
     missing_optional = [package for package in optional if not is_satisfied(package, installed)]
     repo_required, aur_required = split_aur(missing_required, required_files)
@@ -125,6 +166,7 @@ def status(profile: str, *, include_optional: bool) -> dict:
             "optional": len(optional),
             "optional_missing": len(missing_optional),
             "ready": len(missing_required) == 0,
+            "scope": "host-system" if profile == "equinox" else "profile-rootfs",
         },
         "missing": {
             "required": missing_required,

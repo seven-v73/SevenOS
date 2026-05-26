@@ -7,6 +7,7 @@ WINDOW_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/window"
 MODE_ENV="$STATE_DIR/window-mode.env"
 MODE_JSON="$STATE_DIR/window-mode.json"
 WINDOW_MEMORY_JSON="$WINDOW_STATE_DIR/memory.json"
+CONTROLS_PREF="$STATE_DIR/window-controls-enabled.env"
 DRY_RUN="${SEVENOS_DRY_RUN:-0}"
 
 usage() {
@@ -23,7 +24,16 @@ Usage:
   seven-window split-right
   seven-window mosaic
   seven-window layout-menu
+  seven-window advanced-menu
+  seven-window controls-unlock
   seven-window controls
+  seven-window controls-start
+  seven-window controls-stop
+  seven-window controls-toggle
+  seven-window controls-enable
+  seven-window controls-disable
+  seven-window controls-status
+  seven-window controls-reset-hidden
   seven-window remember
   seven-window memory [--json]
   seven-window restore [class]
@@ -376,6 +386,22 @@ layout_menu() {
   esac
 }
 
+advanced_menu() {
+  if [[ "$DRY_RUN" == "1" ]]; then
+    printf 'DRY-RUN > SevenDecor Prism > Open advanced menu\n'
+    return 0
+  fi
+  if command -v seven-window-controls-native >/dev/null 2>&1 && seven-window-controls-native --probe >/dev/null 2>&1; then
+    seven-window-controls-native --advanced
+    return 0
+  fi
+  if [[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] && "$ROOT_DIR/bin/seven-window-controls-native" --probe >/dev/null 2>&1; then
+    "$ROOT_DIR/bin/seven-window-controls-native" --advanced
+    return 0
+  fi
+  layout_menu
+}
+
 controls() {
   if [[ "$DRY_RUN" == "1" ]]; then
     printf 'DRY-RUN > SevenDecor > Open universal window controls overlay\n'
@@ -390,6 +416,98 @@ controls() {
     return 0
   fi
   layout_menu
+}
+
+controls_reset_hidden() {
+  local state_file="$STATE_DIR/window-controls.json"
+  mkdir -p "$STATE_DIR"
+  python - "$state_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+data["schema"] = "sevenos.window-controls.state.v1"
+data["hidden_classes"] = []
+path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
+  notify "SevenDecor Prism" "hidden app rules cleared"
+}
+
+controls_unlock() {
+  local state_file="$STATE_DIR/window-controls.json"
+  mkdir -p "$STATE_DIR"
+  python - "$state_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    data = {}
+for key in ("locked_address", "locked_class", "locked_title"):
+    data.pop(key, None)
+data["schema"] = "sevenos.window-controls.state.v1"
+path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+PY
+  notify "SevenDecor Prism" "target lock cleared"
+}
+
+controls_service() {
+  local action="${1:-status}"
+  case "$action" in
+    start)
+      ensure_state_dir
+      printf 'SEVENOS_WINDOW_CONTROLS_ENABLED=1\n' >"$CONTROLS_PREF"
+      if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user enable sevenos-window-controls.service >/dev/null 2>&1 || true
+        systemctl --user start sevenos-window-controls.service
+      else
+        controls
+      fi
+      notify "SevenDecor Prism" "enabled"
+      ;;
+    stop)
+      ensure_state_dir
+      printf 'SEVENOS_WINDOW_CONTROLS_ENABLED=0\n' >"$CONTROLS_PREF"
+      command -v systemctl >/dev/null 2>&1 && {
+        systemctl --user stop sevenos-window-controls.service
+        systemctl --user disable sevenos-window-controls.service >/dev/null 2>&1 || true
+      }
+      notify "SevenDecor Prism" "disabled"
+      ;;
+    restart)
+      command -v systemctl >/dev/null 2>&1 && systemctl --user restart sevenos-window-controls.service
+      ;;
+    toggle)
+      if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet sevenos-window-controls.service; then
+        controls_service stop
+      else
+        controls_service start
+      fi
+      ;;
+    status)
+      if command -v systemctl >/dev/null 2>&1; then
+        systemctl --user --no-pager status sevenos-window-controls.service
+      else
+        printf 'seven-window: systemctl unavailable\n' >&2
+        return 1
+      fi
+      ;;
+    is-active)
+      command -v systemctl >/dev/null 2>&1 && systemctl --user is-active sevenos-window-controls.service
+      ;;
+    *)
+      printf 'seven-window: unknown controls service action: %s\n' "$action" >&2
+      return 1
+      ;;
+  esac
 }
 
 gtk_decoration_layout() {
@@ -512,10 +630,15 @@ status_json() {
   "traffic_lights": {
     "red": "close",
     "yellow": "toggle-floating",
-    "green": "smart-maximize",
-    "green_double": "fullscreen",
-    "green_hold": "layout-menu"
-  },
+	    "green": "smart-maximize",
+	    "green_double": "fullscreen",
+	    "green_hold": "layout-menu",
+	    "prism_right_click": "advanced-menu",
+	    "prism_long_press": "advanced-menu",
+	    "prism_double_click": "reset-adaptive-and-unlock",
+	    "target_chip_click": "lock-unlock-target",
+	    "target_chip_scroll": "cycle-and-lock-target-on-current-workspace"
+	  },
   "decor_coverage": {
     "sevenos_native": "full",
     "gtk": "good-for-csd",
@@ -525,7 +648,15 @@ status_json() {
     "universal_override": "seven-window-controls-native-overlay"
   },
   "overlay": {
-    "command": "seven-window controls",
+	    "command": "seven-window controls",
+	    "advanced_menu": "seven-window advanced-menu",
+	    "unlock_target": "seven-window controls-unlock",
+	    "daemon": "seven-window controls-start",
+    "service": "sevenos-window-controls.service",
+    "mode": "prism-collapsed-expand-on-click",
+    "placement": "adaptive-active-window-top-left-or-manual",
+    "state": $(json_string "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/window-controls.json"),
+    "preference": $(json_string "$CONTROLS_PREF"),
     "native": $([[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] && "$ROOT_DIR/bin/seven-window-controls-native" --probe >/dev/null 2>&1 && printf true || printf false)
   },
   "state_files": {
@@ -546,7 +677,7 @@ status_text() {
   else
     printf 'Hyprland: MISS\n'
   fi
-  printf '\nActions: controls, toggle-float, smart-maximize, fullscreen, split-left, split-right, mosaic, layout-menu, remember, restore\n'
+  printf '\nActions: controls, advanced-menu, toggle-float, smart-maximize, fullscreen, split-left, split-right, mosaic, layout-menu, remember, restore\n'
 }
 
 doctor() {
@@ -556,6 +687,8 @@ doctor() {
   grep -q 'sevenos-windows.conf' "$ROOT_DIR/hyprland/hyprland.conf" || { printf 'MISS hyprland source include\n'; failed=1; }
   grep -q 'seven-window toggle-float' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" || { printf 'MISS toggle-float bind\n'; failed=1; }
   [[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] || { printf 'MISS seven-window-controls-native\n'; failed=1; }
+  [[ -s "$ROOT_DIR/systemd/user/sevenos-window-controls.service" ]] || { printf 'MISS sevenos-window-controls.service\n'; failed=1; }
+  grep -q 'Seven Window Traffic Lights' "$ROOT_DIR/hyprland/lua/rules/windows.lua" || { printf 'MISS traffic light Hyprland rule\n'; failed=1; }
   grep -q 'SevenDecor phase 1' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" || { printf 'MISS GTK4 SevenDecor traffic CSS\n'; failed=1; }
   grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" || { printf 'MISS GTK decoration layout\n'; failed=1; }
   grep -q 'sevenos.window-memory.v1' "$ROOT_DIR/scripts/smart-window.sh" || { printf 'MISS window memory contract\n'; failed=1; }
@@ -587,7 +720,15 @@ main() {
     split-right) split_right ;;
     mosaic) mosaic ;;
     layout-menu|menu) layout_menu ;;
+    advanced-menu|prism-menu) advanced_menu ;;
     controls|overlay) controls ;;
+    controls-start|controls-enable|overlay-start|overlay-enable) controls_service start ;;
+    controls-stop|controls-disable|overlay-stop|overlay-disable) controls_service stop ;;
+    controls-toggle|overlay-toggle|toggle-controls|toggle-prism) controls_service toggle ;;
+    controls-restart|overlay-restart) controls_service restart ;;
+    controls-status|overlay-status) controls_service status ;;
+    controls-reset-hidden|prism-reset-hidden) controls_reset_hidden ;;
+    controls-unlock|prism-unlock|unlock-target) controls_unlock ;;
     remember) remember_window ;;
     memory)
       if [[ "${1:-}" == "--json" || "${1:-}" == "json" ]]; then

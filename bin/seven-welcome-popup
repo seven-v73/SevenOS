@@ -1,0 +1,394 @@
+#!/usr/bin/env python3
+"""SevenOS session welcome popup."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import pwd
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+def language_code() -> str:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "en_US.UTF-8")
+    config = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/language.conf"
+    if not os.environ.get("SEVENOS_LANGUAGE") and config.exists():
+        for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip() in {"SEVENOS_LANGUAGE", "LANG"}:
+                language = value.strip().strip("'\"")
+                break
+    return "fr" if language.lower().startswith("fr") else "en"
+
+
+LANG = language_code()
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if LANG == "fr" else en
+
+
+def display_name() -> str:
+    for key in ("SEVENOS_USER_NAME", "USER_FULL_NAME"):
+        value = os.environ.get(key, "").strip()
+        if value:
+            return value
+    try:
+        gecos = pwd.getpwuid(os.getuid()).pw_gecos.split(",", 1)[0].strip()
+        if gecos:
+            return gecos
+    except Exception:
+        pass
+    return os.environ.get("USER", "Seven")
+
+
+def active_profile_key() -> str:
+    for key in ("SEVENOS_ACTIVE_PROFILE", "SEVENOS_PROFILE", "SEVENOS_EXEC_PROFILE"):
+        value = os.environ.get(key, "").strip().lower()
+        if value:
+            return value
+    seven = ROOT / "bin/seven"
+    command = [str(seven), "profile", "current", "--json"] if seven.exists() else ["seven", "profile", "current", "--json"]
+    try:
+        result = subprocess.run(command, cwd=str(ROOT), text=True, capture_output=True, timeout=1.5, check=False)
+        if result.returncode == 0:
+            payload = json.loads(result.stdout or "{}")
+            value = str(payload.get("key") or "").strip().lower()
+            if value:
+                return value
+    except Exception:
+        pass
+    return "equinox"
+
+
+MINI_OS = [
+    ("Equinox", "EQ", "equinox", tr("Hôte admin, réglages, paquets globaux et ressources partagées.", "Admin host, settings, global packages and shared resources.")),
+    ("Baobab", "BA", "baobab", tr("Culture, langues, mémoire locale et savoirs communautaires.", "Culture, languages, local memory and community knowledge.")),
+    ("Forge", "FG", "forge", tr("Code, outils dev, services locaux et déploiement.", "Code, dev tools, local services and deployment.")),
+    ("Shield", "SH", "shield", tr("Sécurité, audit autorisé, forensic et durcissement.", "Security, authorized audit, forensics and hardening.")),
+    ("Studio", "ST", "studio", tr("Création, design, vidéo, audio, 3D et assets.", "Creation, design, video, audio, 3D and assets.")),
+    ("Windows", "WI", "windows", tr("Compatibilité Windows, Wine, Proton et VM si nécessaire.", "Windows compatibility, Wine, Proton and VM when needed.")),
+    ("Pulse", "PU", "pulse", tr("Jeu Linux, Proton, Vulkan, overlays et performance.", "Linux gaming, Proton, Vulkan, overlays and performance.")),
+]
+
+
+def prism_logo_path() -> Path:
+    for relative in (
+        "identity/assets/symbol-seven-prism.svg",
+        "identity/assets/symbol-seven-prism-mark.svg",
+        "branding/plymouth/sevenos/seven-prism.png",
+    ):
+        candidate = ROOT / relative
+        if candidate.exists():
+            return candidate
+    return ROOT / "identity/assets/logo-sevenos-symbol.svg"
+
+
+def launch_help() -> None:
+    candidates = [
+        [str(ROOT / "bin/seven-help-native")],
+        ["seven-help-native"],
+        [str(ROOT / "bin/seven-help"), "mini-os"],
+        ["seven-help", "mini-os"],
+    ]
+    for command in candidates:
+        if "/" in command[0] and not Path(command[0]).exists():
+            continue
+        try:
+            subprocess.Popen(command, cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            return
+        except Exception:
+            continue
+
+
+def probe() -> int:
+    print(json.dumps({
+        "schema": "sevenos.welcome-popup.v1",
+        "language": LANG,
+        "active_profile": active_profile_key(),
+        "profiles": [item[2] for item in MINI_OS],
+        "logo": str(prism_logo_path()),
+    }, ensure_ascii=False))
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-welcome-popup")
+    parser.add_argument("--probe", action="store_true")
+    args = parser.parse_args()
+    if args.probe:
+        return probe()
+    if not (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")):
+        return 0
+
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("GdkPixbuf", "2.0")
+    from gi.repository import Gdk, GdkPixbuf, Gtk  # noqa: E402
+
+    class WelcomeWindow(Gtk.Window):
+        def __init__(self) -> None:
+            super().__init__(title="SevenOS Welcome")
+            self.set_name("seven-welcome-popup")
+            self.active_profile = active_profile_key()
+            self.set_default_size(900, 600)
+            self.set_size_request(760, 520)
+            self.set_resizable(True)
+            self.set_position(Gtk.WindowPosition.CENTER)
+            self.set_decorated(False)
+            self.set_app_paintable(True)
+            self.connect("destroy", Gtk.main_quit)
+            self.get_style_context().add_class("welcome-window")
+            visual = self.get_screen().get_rgba_visual()
+            if visual:
+                self.set_visual(visual)
+
+            outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+            outer.set_margin_top(14)
+            outer.set_margin_bottom(14)
+            outer.set_margin_start(14)
+            outer.set_margin_end(14)
+            outer.get_style_context().add_class("glass-panel")
+            self.add(outer)
+
+            header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+            header.get_style_context().add_class("header")
+            logo_path = prism_logo_path()
+            if logo_path.exists():
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(logo_path), 72, 72, True)
+                logo = Gtk.Image.new_from_pixbuf(pixbuf)
+            else:
+                logo = Gtk.Label(label="✦")
+                logo.get_style_context().add_class("logo-fallback")
+            logo_wrap = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            logo_wrap.get_style_context().add_class("logo-shell")
+            logo_wrap.pack_start(logo, True, True, 0)
+            header.pack_start(logo_wrap, False, False, 0)
+
+            title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+            eyebrow = Gtk.Label(label=tr("SevenOS · accueil de session", "SevenOS · session welcome"), xalign=0)
+            eyebrow.get_style_context().add_class("eyebrow")
+            hello = Gtk.Label(label=tr(f"Salut {display_name()},", f"Hi {display_name()},"), xalign=0)
+            hello.get_style_context().add_class("hello")
+            title = Gtk.Label(label=tr("bon retour sur SevenOS", "welcome back to SevenOS"), xalign=0)
+            title.get_style_context().add_class("title")
+            note = Gtk.Label(
+                label=tr(
+                    f"Profil actif : {self.active_profile.title()}. Voici les espaces SevenOS et leur rôle. Pour l'aide : Super+H.",
+                    f"Active profile: {self.active_profile.title()}. Here are the SevenOS spaces and their role. For help: Super+H.",
+                ),
+                xalign=0,
+            )
+            note.set_line_wrap(True)
+            note.set_max_width_chars(70)
+            note.get_style_context().add_class("note")
+            title_box.pack_start(eyebrow, False, False, 0)
+            title_box.pack_start(hello, False, False, 0)
+            title_box.pack_start(title, False, False, 0)
+            title_box.pack_start(note, False, False, 0)
+            header.pack_start(title_box, True, True, 0)
+            outer.pack_start(header, False, False, 0)
+
+            scroller = Gtk.ScrolledWindow()
+            scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            scroller.set_shadow_type(Gtk.ShadowType.NONE)
+            scroller.set_vexpand(True)
+            scroller.get_style_context().add_class("welcome-scroll")
+
+            grid = Gtk.Grid()
+            grid.set_row_spacing(10)
+            grid.set_column_spacing(10)
+            grid.set_column_homogeneous(True)
+            grid.set_row_homogeneous(True)
+            grid.get_style_context().add_class("profile-grid")
+            for index, (name, initials, css, summary) in enumerate(MINI_OS):
+                card = self.profile_card(name, initials, css, summary, css == self.active_profile)
+                if index == len(MINI_OS) - 1:
+                    grid.attach(card, 0, 2, 3, 1)
+                else:
+                    grid.attach(card, index % 3, index // 3, 1, 1)
+            scroller.add(grid)
+            outer.pack_start(scroller, True, True, 0)
+
+            actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            actions.set_halign(Gtk.Align.END)
+            actions.get_style_context().add_class("actions")
+            close_btn = Gtk.Button(label=tr("Fermer", "Close"))
+            close_btn.get_style_context().add_class("secondary")
+            close_btn.connect("clicked", lambda *_: Gtk.main_quit())
+            help_btn = Gtk.Button(label=tr("Ouvrir l'aide (Super+H)", "Open Help (Super+H)"))
+            help_btn.get_style_context().add_class("primary")
+            help_btn.connect("clicked", lambda *_: launch_help())
+            actions.pack_start(close_btn, False, False, 0)
+            actions.pack_start(help_btn, False, False, 0)
+            outer.pack_start(actions, False, False, 0)
+
+        def profile_card(self, name: str, initials: str, css: str, summary: str, active: bool) -> Gtk.Box:
+            card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            card.set_hexpand(True)
+            card.set_vexpand(True)
+            card.get_style_context().add_class("profile-card")
+            card.get_style_context().add_class(css)
+            if active:
+                card.get_style_context().add_class("active-profile")
+
+            badge = Gtk.Label(label=initials)
+            badge.set_valign(Gtk.Align.CENTER)
+            badge.get_style_context().add_class("badge")
+            card.pack_start(badge, False, False, 0)
+
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+            text.set_valign(Gtk.Align.CENTER)
+            title_text = name
+            if active:
+                title_text = tr(f"{name} - actif", f"{name} - active")
+            title = Gtk.Label(label=title_text, xalign=0)
+            title.set_ellipsize(3)
+            title.get_style_context().add_class("card-title")
+            body = Gtk.Label(label=summary, xalign=0)
+            body.set_line_wrap(True)
+            body.set_max_width_chars(27)
+            body.get_style_context().add_class("card-body")
+            text.pack_start(title, False, False, 0)
+            text.pack_start(body, False, False, 0)
+            card.pack_start(text, True, True, 0)
+            return card
+
+    css = b"""
+    window#welcome-window, .welcome-window {
+      background: transparent;
+      color: #F5F7FA;
+    }
+    .welcome-scroll {
+      background: transparent;
+      border: none;
+    }
+    .glass-panel {
+      padding: 18px;
+      border-radius: 28px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.142), rgba(255,255,255,0.052)),
+        rgba(12, 15, 28, 0.70);
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .header {
+      min-height: 100px;
+    }
+    .logo-shell {
+      min-width: 92px; min-height: 92px;
+      padding: 9px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.075);
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+    .eyebrow {
+      color: rgba(156,203,255,0.92);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .hello { color: rgba(245,247,250,0.76); font-size: 15px; }
+    .title { color: #ffffff; font-size: 28px; font-weight: 800; }
+    .note { color: rgba(245,247,250,0.74); font-size: 13px; }
+    .logo-fallback {
+      min-width: 72px; min-height: 72px; border-radius: 22px;
+      background: rgba(110,168,255,0.18); color: #ffffff; font-size: 32px; font-weight: 900;
+    }
+    .profile-grid {
+      margin-top: 2px;
+    }
+    .profile-card {
+      min-height: 88px;
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.070);
+      border: 1px solid rgba(255,255,255,0.105);
+    }
+    .profile-card:hover { background: rgba(255,255,255,0.105); }
+    .active-profile {
+      background: rgba(110,168,255,0.145);
+      border: 1px solid rgba(156,203,255,0.58);
+    }
+    .badge {
+      min-width: 42px; min-height: 54px; border-radius: 13px;
+      color: #ffffff; font-size: 13px; font-weight: 800;
+      background: #4DA3FF;
+    }
+    .baobab .badge { background: #2f8f63; }
+    .forge .badge { background: #6d73d9; }
+    .shield .badge { background: #2c9c95; }
+    .studio .badge { background: #bd5f9c; }
+    .windows .badge { background: #3f8ee8; }
+    .pulse .badge { background: #d8793c; }
+    .card-title { color: #ffffff; font-size: 14px; font-weight: 800; }
+    .card-body { color: rgba(245,247,250,0.72); font-size: 12px; }
+    .actions {
+      margin-top: 2px;
+      min-height: 42px;
+    }
+    button {
+      border-radius: 14px;
+      padding: 9px 15px;
+      background: rgba(255,255,255,0.095);
+      color: #ffffff;
+      border: 1px solid rgba(255,255,255,0.14);
+    }
+    button.primary {
+      background: linear-gradient(135deg, #4DA3FF, #7A5CFF);
+      color: #ffffff;
+    }
+    button.secondary {
+      color: rgba(245,247,250,0.82);
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css)
+    screen = Gdk.Screen.get_default()
+    if screen:
+        Gtk.StyleContext.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = WelcomeWindow()
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

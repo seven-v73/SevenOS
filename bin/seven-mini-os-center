@@ -46,9 +46,15 @@ def resolve_root() -> Path:
 
 ROOT = resolve_root()
 sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import language_code  # noqa: E402
 import seven_theme  # noqa: E402
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
 PROFILE_UI_FILE = CONFIG_DIR / "profile-ui.json"
+LANG_CODE = language_code()
+
+
+def t(fr: str, en: str) -> str:
+    return fr if LANG_CODE == "fr" else en
 
 
 def run_json(*args: str, fallback=None):
@@ -127,7 +133,7 @@ def active_profile() -> str:
 def compact(items, limit: int = 4) -> str:
     values = [str(item) for item in (items or []) if str(item).strip()]
     if not values:
-        return "none"
+        return t("aucun", "none")
     if len(values) <= limit:
         return " · ".join(values)
     return " · ".join(values[:limit]) + f" +{len(values) - limit}"
@@ -136,39 +142,39 @@ def compact(items, limit: int = 4) -> str:
 def workflow_lines(key: str) -> list[str]:
     workflows = {
         "equinox": [
-            "Continuity: recent files, active profile, system health",
-            "Balance: neutral resources and shared capabilities",
-            "Next: pick a mini OS only when the task needs a stronger context",
+            t("Continuité: fichiers récents, espace actif, santé système", "Continuity: recent files, active profile, system health"),
+            t("Équilibre: ressources neutres et capacités partagées", "Balance: neutral resources and shared capabilities"),
+            t("Suite: choisir un mini OS seulement quand la tâche demande un contexte plus fort", "Next: pick a mini OS only when the task needs a stronger context"),
         ],
         "baobab": [
-            "Knowledge tree: roots, library, stories, sound, explore",
-            "Collect: source, license, curator, confidence, community review",
-            "Offline: local catalog, packs, narration and language tools",
+            t("Arbre de savoir: racines, bibliothèque, récits, sons, exploration", "Knowledge tree: roots, library, stories, sound, explore"),
+            t("Collecte: source, licence, curator, confiance, revue communautaire", "Collect: source, license, curator, confidence, community review"),
+            t("Hors ligne: catalogue local, packs, narration et outils de langue", "Offline: local catalog, packs, narration and language tools"),
         ],
         "forge": [
-            "Cockpit: project, build, containers, services, deploy targets",
-            "Observe: logs, health checks, local APIs, release readiness",
-            "Protect: secrets stay profile-owned; Shield can audit explicitly",
+            t("Cockpit: projet, build, conteneurs, services, cibles de déploiement", "Cockpit: project, build, containers, services, deploy targets"),
+            t("Observer: logs, santé, API locales, préparation release", "Observe: logs, health checks, local APIs, release readiness"),
+            t("Protéger: les secrets restent dans Forge; Shield peut auditer explicitement", "Protect: secrets stay profile-owned; Shield can audit explicitly"),
         ],
         "shield": [
-            "Case first: authorized scope, evidence, timeline, report",
-            "Guard rails: VPN, recorder, cleanup and visible risk state",
-            "Collaborate: audit Forge projects without merging workspaces",
+            t("Dossier d'abord: périmètre autorisé, preuves, chronologie, rapport", "Case first: authorized scope, evidence, timeline, report"),
+            t("Garde-fous: VPN, recorder, nettoyage et état de risque visible", "Guard rails: VPN, recorder, cleanup and visible risk state"),
+            t("Collaboration: auditer Forge sans fusionner les espaces", "Collaborate: audit Forge projects without merging workspaces"),
         ],
         "studio": [
-            "Atelier: canvas, palettes, captures, assets, exports",
-            "Create: Krita, Blender, Kdenlive, Inkscape and media controls",
-            "Bridge: send textiles/assets to Baobab or Windows apps on demand",
+            t("Atelier: canvas, palettes, captures, assets, exports", "Atelier: canvas, palettes, captures, assets, exports"),
+            t("Créer: Krita, Blender, Kdenlive, Inkscape et contrôles média", "Create: Krita, Blender, Kdenlive, Inkscape and media controls"),
+            t("Pont: envoyer textiles/assets vers Baobab ou Windows à la demande", "Bridge: send textiles/assets to Baobab or Windows apps on demand"),
         ],
         "windows": [
-            "Bridge: app-first Wine/Bottles/Lutris before VM",
-            "VM: official ISO, VirtIO, qcow2 disk and libvirt network",
-            "Sync: enter/leave keeps Windows resources quiet when inactive",
+            t("Pont: Wine/Bottles/Lutris avant la VM quand possible", "Bridge: app-first Wine/Bottles/Lutris before VM"),
+            t("VM: ISO officiel, VirtIO, disque qcow2 et réseau libvirt", "VM: official ISO, VirtIO, qcow2 disk and libvirt network"),
+            t("Sync: entrée/sortie garde Windows silencieux hors usage", "Sync: enter/leave keeps Windows resources quiet when inactive"),
         ],
         "pulse": [
-            "Stage: game library, GameMode, recorder, low-latency focus",
-            "Tune: MangoHud/Gamescope optional overlays and frame pacing",
-            "Protect: gaming services stay quiet outside Pulse",
+            t("Scène: bibliothèque jeux, GameMode, recorder, faible latence", "Stage: game library, GameMode, recorder, low-latency focus"),
+            t("Ajuster: overlays MangoHud/Gamescope et frame pacing optionnels", "Tune: MangoHud/Gamescope optional overlays and frame pacing"),
+            t("Protéger: les services de jeu restent silencieux hors Pulse", "Protect: gaming services stay quiet outside Pulse"),
         ],
     }
     return workflows.get(key, workflows["equinox"])
@@ -185,98 +191,106 @@ def public_profile_contract(key: str, meta: dict, home: dict) -> dict:
     """
     contracts = {
         "equinox": {
-            "kicker": "Usage quotidien",
+            "kicker": t("Usage quotidien", "Daily use"),
             "title": "Equinox",
-            "subtitle": "L'espace simple pour naviguer, travailler, ranger tes fichiers, régler SevenOS et lancer les apps du quotidien.",
+            "subtitle": t("L'espace simple pour naviguer, travailler, ranger tes fichiers, régler SevenOS et lancer les apps du quotidien.", "The simple space to browse, work, organize files, adjust SevenOS and launch everyday apps."),
             "sections": [
-                ("Bureau", "Retrouve tes fenêtres, tes apps et ton espace de travail principal."),
-                ("Fichiers", "Ouvre Seven Files pour accéder à tes documents et dossiers importants."),
-                ("Réglages", "Ajuste le thème, le réseau, les mises à jour et les préférences sans terminal."),
-                ("Aide", "Trouve les commandes utiles et les explications dans le guide SevenOS."),
+                (t("Bureau", "Desktop"), t("Retrouve tes fenêtres, tes apps et ton espace de travail principal.", "Find your windows, apps and main workspace.")),
+                (t("Fichiers", "Files"), t("Ouvre Seven Files pour accéder à tes documents et dossiers importants.", "Open Seven Files to access documents and important folders.")),
+                (t("Réglages", "Settings"), t("Ajuste le thème, le réseau, les mises à jour et les préférences sans terminal.", "Adjust theme, network, updates and preferences without the terminal.")),
+                (t("Aide", "Help"), t("Trouve les commandes utiles et les explications dans le guide SevenOS.", "Find useful commands and explanations in the SevenOS guide.")),
             ],
-            "status": "Equinox est l'espace recommandé pour l'usage de tous les jours.",
+            "status": t("Equinox est l'espace recommandé pour l'usage de tous les jours.", "Equinox is the recommended space for daily use."),
             "actions": [
-                ("Ouvrir le bureau", "seven-overview windows", "Vue des fenêtres"),
-                ("Mes fichiers", "seven-files profile equinox", "Documents Equinox"),
-                ("Réglages", "seven-settings", "Paramètres SevenOS"),
-                ("Applications", "seven-launchpad-native", "Launchpad SevenOS"),
-                ("Aide", "seven-help-native", "Guide SevenOS"),
+                (t("Ouvrir le bureau", "Open desktop"), "seven-overview windows", t("Vue des fenêtres", "Window overview")),
+                (t("Mes fichiers", "My files"), "seven-files profile equinox", t("Documents Equinox", "Equinox documents")),
+                (t("Réglages", "Settings"), "seven-settings", t("Paramètres SevenOS", "SevenOS settings")),
+                (t("Applications", "Applications"), "seven-launchpad-native", "Launchpad SevenOS"),
+                (t("Aide", "Help"), "seven-help-native", t("Guide SevenOS", "SevenOS guide")),
             ],
         },
         "baobab": {
-            "kicker": "Culture et mémoire",
+            "kicker": t("Culture et mémoire", "Culture and memory"),
             "title": "Baobab",
-            "subtitle": "Un espace pour lire, écouter, classer et préserver tes contenus culturels sans te perdre dans les réglages.",
+            "subtitle": t("Un espace pour lire, écouter, classer et préserver tes contenus culturels sans te perdre dans les réglages.", "A space to read, listen, organize and preserve cultural content without getting lost in settings."),
             "sections": [
-                ("Bibliothèque", "Retrouve tes documents, récits, images et collections Baobab."),
-                ("Lecture", "Ouvre les contenus locaux avec une présentation calme et lisible."),
-                ("Collecte", "Ajoute de nouvelles sources avec un suivi clair des droits et de la provenance."),
-                ("Partage choisi", "Envoie seulement ce que tu décides vers un autre mini OS."),
+                (t("Bibliothèque", "Library"), t("Retrouve tes documents, récits, images et collections Baobab.", "Find Baobab documents, stories, images and collections.")),
+                (t("Lecture", "Reading"), t("Ouvre les contenus locaux avec une présentation calme et lisible.", "Open local content with a calm, readable presentation.")),
+                (t("Collecte", "Collecting"), t("Ajoute de nouvelles sources avec un suivi clair des droits et de la provenance.", "Add sources with clear rights and provenance tracking.")),
+                (t("Partage choisi", "Chosen sharing"), t("Envoie seulement ce que tu décides vers un autre mini OS.", "Send only what you choose to another mini OS.")),
             ],
-            "status": "Tes contenus restent rangés dans l'espace Baobab.",
+            "status": t("Tes contenus restent rangés dans l'espace Baobab.", "Your content stays organized inside Baobab."),
             "actions": [
-                ("Ouvrir Baobab", "seven-baobab-native", "Surface culturelle"),
-                ("Mes collections", "seven profile open baobab", "Documents Baobab"),
-                ("Lire", "seven-reader", "Lecture locale"),
-                ("Ajouter du contenu", "seven-baobab-native packs", "Packs et sources"),
-                ("Préférences", "seven-baobab-native prefs", "Langue et affichage"),
+                (t("Ouvrir Baobab", "Open Baobab"), "seven-baobab-native", t("Surface culturelle", "Cultural surface")),
+                (t("Mes collections", "My collections"), "seven profile open baobab", t("Documents Baobab", "Baobab documents")),
+                (t("Lire", "Read"), "seven-reader", t("Lecture locale", "Local reading")),
+                (t("Vérifier", "Check"), "seven-mini-doctor baobab", t("Dépendances et rootfs", "Dependencies and rootfs")),
+                (t("Préparer", "Prepare"), "seven-mini-doctor baobab install", t("Installer l'essentiel", "Install essentials")),
+                (t("Ajouter du contenu", "Add content"), "seven-baobab-native packs", t("Packs et sources", "Packs and sources")),
+                (t("Préférences", "Preferences"), "seven-baobab-native prefs", t("Langue et affichage", "Language and display")),
             ],
         },
         "studio": {
-            "kicker": "Création",
+            "kicker": t("Création", "Creation"),
             "title": "Studio",
-            "subtitle": "Un atelier pour images, vidéos, sons, captures et exports avec des actions directes.",
+            "subtitle": t("Un atelier pour images, vidéos, sons, captures et exports avec des actions directes.", "A studio for images, video, sound, captures and exports with direct actions."),
             "sections": [
-                ("Médias", "Accède rapidement aux images, vidéos et fichiers de création."),
-                ("Captures", "Lance l'enregistrement d'écran sans passer par une commande."),
-                ("Exports", "Retrouve les rendus et fichiers prêts à partager."),
-                ("Applications", "Ouvre les outils créatifs dans l'espace Studio."),
+                (t("Médias", "Media"), t("Accède rapidement aux images, vidéos et fichiers de création.", "Quickly access images, videos and creative files.")),
+                (t("Captures", "Captures"), t("Lance l'enregistrement d'écran sans passer par une commande.", "Start screen recording without a command.")),
+                (t("Exports", "Exports"), t("Retrouve les rendus et fichiers prêts à partager.", "Find renders and files ready to share.")),
+                (t("Applications", "Applications"), t("Ouvre les outils créatifs dans l'espace Studio.", "Open creative tools inside Studio.")),
             ],
-            "status": "Les créations Studio sont gardées dans l'espace Studio.",
+            "status": t("Les créations Studio sont gardées dans l'espace Studio.", "Studio creations stay inside Studio."),
             "actions": [
-                ("Ouvrir Studio", "seven profile open studio", "Dossier Studio"),
-                ("Enregistrer", "seven-recorder-native", "Capture écran"),
-                ("Images", "seven profile open-folder studio Pictures", "Bibliothèque images"),
-                ("Vidéos", "seven profile open-folder studio Videos", "Bibliothèque vidéos"),
-                ("Applications", "seven profile apps studio", "Outils créatifs"),
+                (t("Ouvrir Studio", "Open Studio"), "seven profile open studio", t("Dossier Studio", "Studio folder")),
+                (t("Enregistrer", "Record"), "seven-recorder-native", t("Capture écran", "Screen capture")),
+                (t("Images", "Pictures"), "seven profile open-folder studio Pictures", t("Bibliothèque images", "Picture library")),
+                (t("Vidéos", "Videos"), "seven profile open-folder studio Videos", t("Bibliothèque vidéos", "Video library")),
+                (t("Vérifier", "Check"), "seven-mini-doctor studio", t("Dépendances et rootfs", "Dependencies and rootfs")),
+                (t("Préparer", "Prepare"), "seven-mini-doctor studio install", t("Installer l'essentiel", "Install essentials")),
+                (t("Applications", "Applications"), "seven profile apps studio", t("Outils créatifs", "Creative tools")),
             ],
         },
         "windows": {
-            "kicker": "Compatibilité",
+            "kicker": t("Compatibilité", "Compatibility"),
             "title": "Windows",
-            "subtitle": "Un espace guidé pour lancer des applications Windows et gérer les dossiers partagés simplement.",
+            "subtitle": t("Un espace guidé pour lancer des applications Windows et gérer les dossiers partagés simplement.", "A guided space to launch Windows applications and manage shared folders simply."),
             "sections": [
-                ("Assistant", "Prépare Windows étape par étape avec une interface guidée."),
-                ("Applications", "Retrouve les logiciels Windows disponibles depuis SevenOS."),
-                ("Dossiers", "Accède aux fichiers partagés entre SevenOS et Windows."),
-                ("Aide", "Corrige les problèmes courants avec des boutons clairs."),
+                (t("Assistant", "Assistant"), t("Prépare Windows étape par étape avec une interface guidée.", "Prepare Windows step by step with a guided interface.")),
+                (t("Applications", "Applications"), t("Retrouve les logiciels Windows disponibles depuis SevenOS.", "Find Windows software available from SevenOS.")),
+                (t("Dossiers", "Folders"), t("Accède aux fichiers partagés entre SevenOS et Windows.", "Access shared files between SevenOS and Windows.")),
+                (t("Aide", "Help"), t("Corrige les problèmes courants avec des boutons clairs.", "Fix common problems with clear buttons.")),
             ],
-            "status": "Windows ne démarre que lorsque tu le demandes.",
+            "status": t("Windows ne démarre que lorsque tu le demandes.", "Windows starts only when you ask."),
             "actions": [
-                ("Ouvrir l'assistant", "seven-windows-assistant guide", "Configuration guidée"),
-                ("Applications Windows", "seven-windows-assistant apps", "Lancer une app"),
-                ("Dossiers partagés", "seven profile open windows", "Fichiers Windows"),
-                ("Vérifier", "seven-windows-assistant status", "État simplifié"),
-                ("Réparer", "seven-windows-assistant repair", "Correction guidée"),
+                (t("Ouvrir l'assistant", "Open assistant"), "seven-windows-assistant guide", t("Configuration guidée", "Guided setup")),
+                (t("Applications Windows", "Windows apps"), "seven-windows-assistant apps", t("Lancer une app", "Launch an app")),
+                (t("Dossiers partagés", "Shared folders"), "seven profile open windows", t("Fichiers Windows", "Windows files")),
+                (t("Vérifier", "Check"), "seven-windows-assistant status", t("État simplifié", "Simple status")),
+                (t("Réparer", "Repair"), "seven-windows-assistant repair", t("Correction guidée", "Guided repair")),
             ],
         },
         "pulse": {
-            "kicker": "Jeux et captures",
+            "kicker": t("Jeux et captures", "Games and captures"),
             "title": "Pulse",
-            "subtitle": "Un espace pour jouer, enregistrer, retrouver tes captures et garder les outils de jeu au bon endroit.",
+            "subtitle": t("Un espace pour jouer, enregistrer, retrouver tes captures et garder les outils de jeu au bon endroit.", "A space to play, record, find captures and keep gaming tools in the right place."),
             "sections": [
-                ("Jeux", "Ouvre tes bibliothèques et lanceurs de jeux."),
-                ("Captures", "Retrouve les vidéos, screenshots et enregistrements."),
-                ("Confort", "Active les réglages utiles au jeu quand Pulse est ouvert."),
-                ("Silence", "Les outils de jeu restent discrets dans les autres mini OS."),
+                (t("Jeux", "Games"), t("Ouvre tes bibliothèques et lanceurs de jeux.", "Open your game libraries and launchers.")),
+                (t("Captures", "Captures"), t("Retrouve les vidéos, screenshots et enregistrements.", "Find videos, screenshots and recordings.")),
+                (t("Confort", "Comfort"), t("Active les réglages utiles au jeu quand Pulse est ouvert.", "Enable gaming settings when Pulse is open.")),
+                (t("Silence", "Quiet"), t("Les outils de jeu restent discrets dans les autres mini OS.", "Gaming tools stay quiet in other mini OSes.")),
             ],
-            "status": "Pulse se concentre sur les jeux quand tu l'actives.",
+            "status": t("Pulse se concentre sur les jeux quand tu l'actives.", "Pulse focuses on games when you activate it."),
             "actions": [
-                ("Ouvrir Pulse", "seven profile open pulse", "Espace jeux"),
-                ("Mes jeux", "seven-hub games", "Bibliothèque"),
-                ("Captures", "seven profile open-folder pulse Videos", "Vidéos et captures"),
-                ("Enregistrer", "seven-recorder-native", "Capture écran"),
-                ("Applications", "seven profile apps pulse", "Lanceurs de jeux"),
+                (t("Ouvrir Pulse", "Open Pulse"), "seven profile open pulse", t("Espace jeux", "Gaming space")),
+                (t("Mes jeux", "My games"), "seven-hub games", t("Bibliothèque", "Library")),
+                (t("Captures", "Captures"), "seven profile open-folder pulse Videos", t("Vidéos et captures", "Videos and captures")),
+                (t("Enregistrer", "Record"), "seven-recorder-native", t("Capture écran", "Screen capture")),
+                (t("Vérifier", "Check"), "seven-pulse doctor", t("Dépendances et pilotes", "Dependencies and drivers")),
+                (t("Préparer", "Prepare"), "seven-pulse install", t("Installer l'essentiel", "Install essentials")),
+                (t("Launchers", "Launchers"), "seven-pulse launchers", t("Steam et Lutris dans Pulse", "Steam and Lutris inside Pulse")),
+                (t("HUD", "HUD"), "seven-pulse hud", t("MangoHud et Gamescope", "MangoHud and Gamescope")),
+                (t("Applications", "Applications"), "seven profile apps pulse", t("Lanceurs de jeux", "Game launchers")),
             ],
         },
     }
@@ -326,68 +340,72 @@ def strict_app(key: str, command: str, workspace: bool = True) -> str:
 def boundary_actions(key: str) -> list[tuple[str, str, str]]:
     if key == "equinox":
         return [
-            ("System boundary", "Show the host-system Equinox runtime contract", "seven-terminal classic -- bash -lc 'seven-profile-run --profile equinox --json | python -m json.tool; read -r -p \"Press Enter to close...\"'"),
-            ("System terminal", "Open a normal SevenOS terminal with the real HOME", "seven-terminal classic"),
-            ("Packages", "Open Arch package status from the Equinox admin side", "seven-terminal admin -- bash -lc 'pacman -Qq | less'"),
-            ("Isolation state", "Inspect mini OS isolation while staying in Equinox", "seven-terminal classic -- bash -lc 'seven profile isolation status; read -r -p \"Press Enter to close...\"'"),
+            (t("Limite système", "System boundary"), t("Afficher le contrat runtime Equinox côté système hôte", "Show the host-system Equinox runtime contract"), "seven-terminal classic -- bash -lc 'seven-profile-run --profile equinox --json | python -m json.tool; read -r -p \"Press Enter to close...\"'"),
+            (t("Terminal système", "System terminal"), t("Ouvrir un terminal SevenOS normal avec le vrai HOME", "Open a normal SevenOS terminal with the real HOME"), "seven-terminal classic"),
+            (t("Paquets", "Packages"), t("Voir les paquets Arch depuis le côté admin Equinox", "Open Arch package status from the Equinox admin side"), "seven-terminal admin -- bash -lc 'pacman -Qq | less'"),
+            (t("État isolation", "Isolation state"), t("Inspecter l'isolation des mini OS depuis Equinox", "Inspect mini OS isolation while staying in Equinox"), "seven-terminal classic -- bash -lc 'seven profile isolation status; read -r -p \"Press Enter to close...\"'"),
         ]
     return [
-        ("Strict boundary", "Show the isolated HOME/cache/data contract for this mini OS", f"seven-terminal {profile_terminal_mode(key)} -- bash -lc 'seven-profile-run --profile {key} --json | python -m json.tool; read -r -p \"Press Enter to close...\"'"),
-        ("Strict shell", "Open a shell with this mini OS data boundary", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container sh"),
-        ("Workspace shell", "Open a strict shell with the mini OS workspace mounted at /workspace", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container --workspace-profile sh"),
-        ("Ephemeral shell", "Open a disposable strict shell cleaned on exit", f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --ephemeral sh"),
+        (t("Limite stricte", "Strict boundary"), t("Afficher le contrat HOME/cache/data isolé de ce mini OS", "Show the isolated HOME/cache/data contract for this mini OS"), f"seven-terminal {profile_terminal_mode(key)} -- bash -lc 'seven-profile-run --profile {key} --json | python -m json.tool; read -r -p \"Press Enter to close...\"'"),
+        (t("Shell strict", "Strict shell"), t("Ouvrir un shell dans la limite de données de ce mini OS", "Open a shell with this mini OS data boundary"), f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container sh"),
+        (t("Shell espace", "Workspace shell"), t("Ouvrir un shell strict avec l'espace monté sur /workspace", "Open a strict shell with the mini OS workspace mounted at /workspace"), f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --container --workspace-profile sh"),
+        (t("Shell temporaire", "Ephemeral shell"), t("Ouvrir un shell strict jetable nettoyé à la sortie", "Open a disposable strict shell cleaned on exit"), f"seven-terminal {profile_terminal_mode(key)} -- seven profile exec {key} --ephemeral sh"),
     ]
 
 
 def profile_actions(key: str) -> list[tuple[str, str, str]]:
     actions = {
         "baobab": [
-            ("Ouvrir Baobab", "Accéder à l'espace culturel Baobab", "seven-baobab-native"),
-            ("Mes collections", "Ouvrir les documents Baobab", "seven profile open baobab"),
-            ("Lire", "Ouvrir le lecteur", "seven-reader"),
-            ("Ajouter", "Ajouter ou organiser des contenus culturels", "seven-baobab-native packs"),
-            ("Préférences", "Ajuster langue et affichage Baobab", "seven-baobab-native prefs"),
+            (t("Ouvrir Baobab", "Open Baobab"), t("Accéder à l'espace culturel Baobab", "Open the Baobab cultural space"), "seven-baobab-native"),
+            (t("Mes collections", "My collections"), t("Ouvrir les documents Baobab", "Open Baobab documents"), "seven profile open baobab"),
+            (t("Lire", "Read"), t("Ouvrir le lecteur", "Open the reader"), "seven-reader"),
+            (t("Ajouter", "Add"), t("Ajouter ou organiser des contenus culturels", "Add or organize cultural content"), "seven-baobab-native packs"),
+            (t("Préférences", "Preferences"), t("Ajuster langue et affichage Baobab", "Adjust Baobab language and display"), "seven-baobab-native prefs"),
         ],
         "forge": [
             ("Code", "Open development editor in Forge boundary", strict_app("forge", "code")),
             ("Terminal", "Open Forge strict workspace shell", "seven-terminal forge -- seven profile exec forge --container --workspace-profile sh"),
+            ("Check", "Verify Forge dependencies and rootfs", "seven-mini-doctor forge"),
+            ("Prepare", "Install the Forge essentials", "seven-mini-doctor forge install"),
             ("Containers", "Check Docker from Forge boundary", strict_app("forge", "docker info")),
             ("Deploy", "Detect deployable project from Forge workspace", strict_app("forge", "seven deploy detect /workspace")),
             ("Services", "Check Seven Server from Forge boundary", strict_app("forge", "seven server status")),
         ],
         "studio": [
-            ("Ouvrir Studio", "Accéder à l'espace créatif", "seven profile open studio"),
-            ("Images", "Ouvrir les images Studio", "seven profile open-folder studio Pictures"),
-            ("Vidéos", "Ouvrir les vidéos Studio", "seven profile open-folder studio Videos"),
-            ("Enregistrer", "Lancer Seven Recorder", "seven-recorder-native"),
-            ("Applications", "Voir les outils créatifs", "seven profile apps studio"),
+            (t("Ouvrir Studio", "Open Studio"), t("Accéder à l'espace créatif", "Open the creative space"), "seven profile open studio"),
+            (t("Images", "Pictures"), t("Ouvrir les images Studio", "Open Studio pictures"), "seven profile open-folder studio Pictures"),
+            (t("Vidéos", "Videos"), t("Ouvrir les vidéos Studio", "Open Studio videos"), "seven profile open-folder studio Videos"),
+            (t("Enregistrer", "Record"), t("Lancer Seven Recorder", "Launch Seven Recorder"), "seven-recorder-native"),
+            (t("Applications", "Applications"), t("Voir les outils créatifs", "View creative tools"), "seven profile apps studio"),
         ],
         "shield": [
             ("Center", "Open Shield Center", "seven-shield-center-native"),
+            ("Check", "Verify Shield dependencies and rootfs", "seven-mini-doctor shield"),
+            ("Prepare", "Install the Shield essentials", "seven-mini-doctor shield install"),
             ("Lab", "Open Cyber Lab with Shield boundary", strict_app("shield", "seven shield lab --preset web")),
             ("VPN", "Inspect VPN state from Shield boundary", strict_app("shield", "seven-waybar-status vpn", workspace=False)),
             ("Report", "Open Shield workspace shell for reports", "seven-terminal cyber -- seven profile exec shield --container --workspace-profile sh"),
         ],
         "windows": [
-            ("Assistant", "Configurer Windows avec un guide", "seven-windows-assistant guide"),
-            ("Applications", "Ouvrir les applications Windows", "seven-windows-assistant apps"),
-            ("Dossiers", "Ouvrir les fichiers Windows", "seven profile open windows"),
-            ("Vérifier", "Voir si Windows est prêt", "seven-windows-assistant status"),
-            ("Réparer", "Corriger les problèmes courants", "seven-windows-assistant repair"),
+            (t("Assistant", "Assistant"), t("Configurer Windows avec un guide", "Configure Windows with a guide"), "seven-windows-assistant guide"),
+            (t("Applications", "Applications"), t("Ouvrir les applications Windows", "Open Windows applications"), "seven-windows-assistant apps"),
+            (t("Dossiers", "Folders"), t("Ouvrir les fichiers Windows", "Open Windows files"), "seven profile open windows"),
+            (t("Vérifier", "Check"), t("Voir si Windows est prêt", "Check whether Windows is ready"), "seven-windows-assistant status"),
+            (t("Réparer", "Repair"), t("Corriger les problèmes courants", "Fix common problems"), "seven-windows-assistant repair"),
         ],
         "pulse": [
-            ("Ouvrir Pulse", "Accéder à l'espace jeux", "seven profile open pulse"),
-            ("Mes jeux", "Ouvrir la bibliothèque de jeux", "seven-hub games"),
-            ("Captures", "Ouvrir les captures Pulse", "seven profile open-folder pulse Videos"),
-            ("Enregistrer", "Lancer Seven Recorder", "seven-recorder-native"),
-            ("Applications", "Voir les lanceurs de jeux", "seven profile apps pulse"),
+            (t("Ouvrir Pulse", "Open Pulse"), t("Accéder à l'espace jeux", "Open the gaming space"), "seven profile open pulse"),
+            (t("Mes jeux", "My games"), t("Ouvrir la bibliothèque de jeux", "Open the game library"), "seven-hub games"),
+            (t("Captures", "Captures"), t("Ouvrir les captures Pulse", "Open Pulse captures"), "seven profile open-folder pulse Videos"),
+            (t("Enregistrer", "Record"), t("Lancer Seven Recorder", "Launch Seven Recorder"), "seven-recorder-native"),
+            (t("Applications", "Applications"), t("Voir les lanceurs de jeux", "View game launchers"), "seven profile apps pulse"),
         ],
         "equinox": [
-            ("Bureau", "Voir les fenêtres ouvertes", "seven-overview windows"),
-            ("Fichiers", "Ouvrir Seven Files", "seven-files profile equinox"),
-            ("Réglages", "Ouvrir les paramètres", "seven-settings"),
-            ("Applications", "Ouvrir le Launchpad", "seven-launchpad-native"),
-            ("Aide", "Ouvrir le guide SevenOS", "seven-help-native"),
+            (t("Bureau", "Desktop"), t("Voir les fenêtres ouvertes", "View open windows"), "seven-overview windows"),
+            (t("Fichiers", "Files"), t("Ouvrir Seven Files", "Open Seven Files"), "seven-files profile equinox"),
+            (t("Réglages", "Settings"), t("Ouvrir les paramètres", "Open settings"), "seven-settings"),
+            (t("Applications", "Applications"), t("Ouvrir le Launchpad", "Open Launchpad"), "seven-launchpad-native"),
+            (t("Aide", "Help"), t("Ouvrir le guide SevenOS", "Open the SevenOS guide"), "seven-help-native"),
         ],
     }
     return actions.get(key, actions["equinox"])
@@ -758,6 +776,7 @@ def run() -> int:
             f"console: {windows_runtime.get('console', 'unknown')}",
             f"sync: {str(windows_runtime.get('synchronized', False)).lower()}",
             f"next: {windows_runtime.get('recommended_action', 'none')}",
+            "status: seven windows bridge-status",
         ], 5)), 0, 7, 2, 1)
     else:
         suggestions = bridge.get("suggestions", []) if isinstance(bridge, dict) else []

@@ -11,10 +11,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import language_code  # noqa: E402
 try:
     import seven_theme
 except Exception:  # pragma: no cover
     seven_theme = None
+LANG_CODE = language_code()
+
+
+def t(fr: str, en: str) -> str:
+    return fr if LANG_CODE == "fr" else en
 
 
 def probe() -> int:
@@ -119,13 +125,13 @@ def current_profile() -> dict:
 
 def rows_for(key: str) -> list[tuple[str, str, str, str]]:
     specs = {
-        "equinox": [("Daily Overview", "󰕰", "Bureau", "Fenêtres"), ("Daily Files", "󰉋", "Fichiers", "Ouvrir"), ("Daily Settings", "󰒓", "Réglages", "SevenOS"), ("Daily Help", "󰞋", "Aide", "Guide")],
-        "forge": [("Forge Terminal", "󰆍", "Terminal Forge", "Shell projet"), ("Forge Logs", "󰑭", "Logs", "Git récent"), ("Forge Build", "󰒓", "Build", "Compiler"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
-        "shield": [("Shield Center", "󰒃", "Shield Center", "Sécurité"), ("Shield Audit", "󰛵", "Audit rapide", "Contrôle"), ("Shield Sandbox", "󰞀", "Sandbox", "Isoler"), ("Mini OS Center", "󰐃", "Centre mini OS", "Détails")],
-        "studio": [("Studio Open", "󰏗", "Studio", "Espace"), ("Studio Pictures", "󰋩", "Images", "Ouvrir"), ("Studio Videos", "󰕧", "Vidéos", "Ouvrir"), ("Studio Recorder", "󰻂", "Enregistrer", "Capture")],
-        "windows": [("Windows Guide", "󰖳", "Assistant", "Guide"), ("Windows Apps", "󰿭", "Apps Windows", "Lancer"), ("Windows Folders", "󰉋", "Dossiers", "Partagés"), ("Windows Repair", "󰁨", "Réparer", "Aide")],
-        "pulse": [("Pulse Open", "󰓅", "Pulse", "Espace"), ("Pulse Games", "󰊴", "Mes jeux", "Lancer"), ("Pulse Captures", "󰹑", "Captures", "Ouvrir"), ("Pulse Recorder", "󰻂", "Enregistrer", "Capture")],
-        "baobab": [("Baobab Open", "󰔱", "Baobab", "Espace"), ("Baobab Collections", "󰉋", "Collections", "Ouvrir"), ("Baobab Reader", "󰈙", "Lire", "Lecteur"), ("Baobab Culture", "󰐅", "Culture", "Accueil")],
+        "equinox": [("Daily Overview", "󰕰", t("Bureau", "Desktop"), t("Fenêtres", "Windows")), ("Daily Files", "󰉋", t("Fichiers", "Files"), t("Ouvrir", "Open")), ("Daily Settings", "󰒓", t("Réglages", "Settings"), "SevenOS"), ("Daily Help", "󰞋", t("Aide", "Help"), t("Guide", "Guide"))],
+        "forge": [("Forge Terminal", "󰆍", t("Terminal Forge", "Forge terminal"), t("Shell projet", "Project shell")), ("Forge Logs", "󰑭", "Logs", t("Git récent", "Recent Git")), ("Forge Build", "󰒓", "Build", t("Compiler", "Compile")), ("Mini OS Center", "󰐃", t("Centre mini OS", "Mini OS center"), t("Détails", "Details"))],
+        "shield": [("Shield Center", "󰒃", "Shield Center", t("Sécurité", "Security")), ("Shield Audit", "󰛵", t("Audit rapide", "Quick audit"), t("Contrôle", "Check")), ("Shield Sandbox", "󰞀", "Sandbox", t("Isoler", "Isolate")), ("Mini OS Center", "󰐃", t("Centre mini OS", "Mini OS center"), t("Détails", "Details"))],
+        "studio": [("Studio Open", "󰏗", "Studio", t("Espace", "Space")), ("Studio Pictures", "󰋩", t("Images", "Pictures"), t("Ouvrir", "Open")), ("Studio Videos", "󰕧", t("Vidéos", "Videos"), t("Ouvrir", "Open")), ("Studio Recorder", "󰻂", t("Enregistrer", "Record"), t("Capture", "Capture"))],
+        "windows": [("Windows Guide", "󰖳", t("Assistant", "Assistant"), t("Guide", "Guide")), ("Windows Apps", "󰿭", t("Apps Windows", "Windows apps"), t("Lancer", "Launch")), ("Windows Folders", "󰉋", t("Dossiers", "Folders"), t("Partagés", "Shared")), ("Windows Repair", "󰁨", t("Réparer", "Repair"), t("Aide", "Help"))],
+        "pulse": [("Pulse Open", "󰓅", "Pulse", t("Espace", "Space")), ("Pulse Games", "󰊴", t("Mes jeux", "My games"), t("Lancer", "Launch")), ("Pulse Captures", "󰹑", t("Captures", "Captures"), t("Ouvrir", "Open")), ("Pulse Recorder", "󰻂", t("Enregistrer", "Record"), t("Capture", "Capture"))],
+        "baobab": [("Baobab Open", "󰔱", "Baobab", t("Espace", "Space")), ("Baobab Collections", "󰉋", t("Collections", "Collections"), t("Ouvrir", "Open")), ("Baobab Reader", "󰈙", t("Lire", "Read"), t("Lecteur", "Reader")), ("Baobab Culture", "󰐅", "Culture", t("Accueil", "Home"))],
     }
     return specs.get(key, specs["equinox"])
 
@@ -219,7 +225,7 @@ class MiniContextMenu(Gtk.Window):
         cr.fill()
         self.draw_text(cr, compact(self.title_text, 34), 26, 27, 228, "SF Pro Text SemiBold 14", palette["text"])
         self.draw_text(cr, compact(self.role_text, 34), 26, 50, 228, "SF Pro Text 11", palette["muted"])
-        self.draw_text(cr, "Actions rapides", 26, 68, 140, "SF Pro Text 10", accent)
+        self.draw_text(cr, t("Actions rapides", "Quick actions"), 26, 68, 140, "SF Pro Text 10", accent)
 
         for index, (_action, icon, label, detail) in enumerate(self.rows):
             y = 98 + index * 30

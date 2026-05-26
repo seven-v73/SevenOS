@@ -1,0 +1,307 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+ROOT = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+CATALOG = ROOT / "profiles/catalog.json"
+PROFILES = ("forge", "studio", "baobab", "shield", "windows", "pulse")
+
+
+def host_home() -> Path:
+    if os.environ.get("SEVENOS_HOST_HOME"):
+        return Path(os.environ["SEVENOS_HOST_HOME"])
+    raw = Path(os.environ.get("HOME", str(Path.home())))
+    marker = "/.local/share/sevenos/profile-containers/"
+    text = str(raw)
+    if marker in text and text.endswith("/home"):
+        return Path(text.split(marker, 1)[0])
+    user = os.environ.get("USER")
+    if user:
+        candidate = Path("/home") / user
+        if candidate.is_dir():
+            return candidate
+    return raw
+
+
+HOST_HOME = host_home()
+HOST_DATA_HOME = Path(os.environ.get("SEVENOS_HOST_DATA_HOME", str(HOST_HOME / ".local/share")))
+PROFILE_ROOTFS_DIR = HOST_DATA_HOME / "sevenos/profile-rootfs"
+
+
+KEY_TOOLS = {
+    "forge": ("git", "code", "nodejs", "python", "docker", "podman", "jq", "ripgrep", "caddy"),
+    "studio": ("gimp", "krita", "inkscape", "blender", "kdenlive", "obs-studio", "ffmpeg", "pipewire-jack"),
+    "baobab": ("foliate", "mpv", "espeak-ng", "translate-shell", "kiwix-desktop", "libreoffice-fresh"),
+    "shield": ("nmap", "wireshark-qt", "tcpdump", "sqlmap", "zaproxy", "metasploit", "firejail", "bubblewrap"),
+    "windows": ("wine", "winetricks", "lutris", "qemu-full", "libvirt", "virt-manager", "edk2-ovmf", "swtpm"),
+    "pulse": ("gamemode", "vulkan-icd-loader", "vulkan-tools", "pipewire", "wireplumber", "alsa-utils", "gamescope", "mangohud"),
+}
+
+OPTIONAL_ACTIONS = {
+    "forge": [
+        ("forge.optional.dev", "Installer les conforts Forge", "seven profile requirements forge --optional --apply --yes"),
+        ("forge.private.ide", "Installer VS Code dans Forge", "sevenpkg forge install code --source pacman"),
+    ],
+    "studio": [
+        ("studio.optional.creator", "Installer les extras Studio", "seven profile requirements studio --optional --apply --yes"),
+        ("studio.private.obs", "Installer OBS dans Studio", "sevenpkg studio install obs-studio --source pacman"),
+    ],
+    "baobab": [
+        ("baobab.optional.culture", "Installer la bibliotheque complete", "seven profile requirements baobab --optional --apply --yes"),
+        ("baobab.private.calibre", "Installer Calibre dans Baobab", "sevenpkg baobab install calibre --source pacman"),
+    ],
+    "shield": [
+        ("shield.optional.security", "Installer les extras Shield", "seven profile requirements shield --optional --apply --yes"),
+        ("shield.private.burp", "Installer Burp Suite dans Shield", "sevenpkg shield install burpsuite --source paru"),
+    ],
+    "windows": [
+        ("windows.optional.quickemu", "Installer l'assistant Quickemu", "seven profile requirements windows --optional --apply --aur --yes"),
+        ("windows.private.bottles", "Installer Bottles dans Windows", "sevenpkg windows install bottles --source paru"),
+    ],
+    "pulse": [
+        ("pulse.optional.gaming", "Installer les extras Pulse", "seven profile requirements pulse --optional --apply --yes"),
+        ("pulse.private.launchers", "Installer Steam et Lutris dans Pulse", "seven-pulse launchers"),
+        ("pulse.private.hud", "Installer HUD et frame pacing", "seven-pulse hud"),
+    ],
+}
+
+
+def run_json(command: list[str]) -> dict:
+    result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True, check=False)
+    if result.returncode != 0:
+        return {}
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {}
+
+
+def load_catalog() -> dict:
+    try:
+        return json.loads(CATALOG.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def rootfs_path(profile: str) -> Path:
+    return PROFILE_ROOTFS_DIR / profile / "rootfs"
+
+
+def rootfs_ready(profile: str) -> bool:
+    rootfs = rootfs_path(profile)
+    return (rootfs / "usr/bin").is_dir() and (rootfs / "var/lib/pacman").exists()
+
+
+def rootfs_packages(profile: str) -> set[str]:
+    local = rootfs_path(profile) / "var/lib/pacman/local"
+    packages = set()
+    if not local.is_dir():
+        return packages
+    for desc in local.glob("*/desc"):
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for index, line in enumerate(lines):
+            if line == "%NAME%" and index + 1 < len(lines):
+                packages.add(lines[index + 1].strip())
+                break
+    return packages
+
+
+def installed_packages() -> set[str]:
+    if not shutil.which("pacman"):
+        return set()
+    result = subprocess.run(["pacman", "-Qq"], text=True, capture_output=True, check=False)
+    if result.returncode != 0:
+        return set()
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def requirements(profile: str, optional: bool = False) -> dict:
+    command = [str(ROOT / "bin/seven-profile-requirements"), "status", profile, "--json"]
+    if optional:
+        command.append("--optional")
+    return run_json(command)
+
+
+def profile_payload(profile: str) -> dict:
+    catalog = load_catalog()
+    meta = ((catalog.get("profiles") or {}).get(profile) or {})
+    req = requirements(profile, optional=True)
+    summary = req.get("summary", {})
+    missing = req.get("missing", {})
+    private = rootfs_packages(profile)
+    installed = installed_packages()
+    ready_rootfs = rootfs_ready(profile)
+    key_tools = {tool: tool in private or tool in installed for tool in KEY_TOOLS.get(profile, ())}
+    blockers = []
+    if summary.get("required_missing", 0):
+        blockers.append(f"{profile}-required-packages")
+    if not ready_rootfs:
+        blockers.append(f"{profile}-rootfs")
+    commands = {
+        "open": f"seven-mini-os-center {profile}",
+        "activate": f"seven profile activate {profile}",
+        "prepare_rootfs": f"seven profile-rootfs prepare {profile} --apply --yes",
+        "build_rootfs": f"seven profile-rootfs build {profile} --apply --yes",
+        "install_required": f"seven profile requirements {profile} --apply --yes",
+        "install_optional": f"seven profile requirements {profile} --optional --apply --yes",
+        "packages": f"sevenpkg {profile} packages",
+        "limits": f"sevenpkg {profile} limits",
+    }
+    plan = []
+    if summary.get("required_missing", 0):
+        plan.append({
+            "id": f"{profile}.install.required",
+            "label": f"Installer les essentiels {profile.title()}",
+            "command": commands["install_required"],
+            "scope": "profile-rootfs",
+            "reason": "Install the role baseline inside this mini OS rootfs before relying on this mini OS.",
+        })
+    if not ready_rootfs:
+        plan.append({
+            "id": f"{profile}.rootfs.prepare",
+            "label": f"Preparer le rootfs {profile.title()}",
+            "command": commands["prepare_rootfs"],
+            "scope": "profile-rootfs",
+            "reason": "A private rootfs is required before profile-scoped package installs can stay isolated.",
+        })
+    for action_id, label, command in OPTIONAL_ACTIONS.get(profile, ()):
+        scope = "profile-rootfs"
+        plan.append({"id": action_id, "label": label, "command": command, "scope": scope, "reason": "Optional tools stay profile-specific and user-controlled."})
+    return {
+        "schema": "sevenos.mini-os.doctor.v1",
+        "generated_at": int(time.time()),
+        "profile": profile,
+        "title": meta.get("title", profile.title()),
+        "ready": not blockers,
+        "summary": {
+            "required": summary.get("required", 0),
+            "required_missing": summary.get("required_missing", 0),
+            "optional": summary.get("optional", 0),
+            "optional_missing": summary.get("optional_missing", 0),
+            "rootfs_ready": ready_rootfs,
+            "private_package_count": len(private),
+        },
+        "package_files": req.get("package_files", []),
+        "optional_package_files": req.get("optional_package_files", []),
+        "missing": missing,
+        "key_tools": key_tools,
+        "blockers": blockers,
+        "commands": commands,
+        "plan": plan,
+        "notes": [
+	            "Mini OS role requirements are evaluated against the private profile rootfs, not the Equinox host.",
+            "The mini OS remains independent: extra tools are opt-in and do not leak to other mini OS package views.",
+        ],
+    }
+
+
+def set_payload(profiles: list[str]) -> dict:
+    items = {profile: profile_payload(profile) for profile in profiles}
+    return {
+        "schema": "sevenos.mini-os.doctor-set.v1",
+        "generated_at": int(time.time()),
+        "profiles": items,
+        "summary": {
+            "profiles": len(items),
+            "ready": sum(1 for item in items.values() if item["ready"]),
+            "missing_required": sum(item["summary"]["required_missing"] for item in items.values()),
+            "missing_rootfs": sum(1 for item in items.values() if not item["summary"]["rootfs_ready"]),
+        },
+    }
+
+
+def print_human(data: dict) -> None:
+    if data.get("schema") == "sevenos.mini-os.doctor-set.v1":
+        print("SevenOS Mini OS Doctor")
+        print("======================")
+        for profile, item in data["profiles"].items():
+            summary = item["summary"]
+            print(f"{profile}: {'OK' if item['ready'] else 'needs setup'} · required {summary['required'] - summary['required_missing']}/{summary['required']} · rootfs {'ready' if summary['rootfs_ready'] else 'missing'}")
+        return
+    summary = data["summary"]
+    print(f"SevenOS Mini OS Doctor · {data['title']}")
+    print("====================================")
+    print(f"State: {'OK' if data['ready'] else 'needs setup'}")
+    print(f"Required packages: {summary['required'] - summary['required_missing']}/{summary['required']}")
+    print(f"Optional tools: {summary['optional'] - summary['optional_missing']}/{summary['optional']}")
+    print(f"Rootfs: {'ready' if summary['rootfs_ready'] else 'missing'}")
+    print(f"Private packages: {summary['private_package_count']}")
+    missing = data["missing"].get("required", [])[:10]
+    if missing:
+        print()
+        print("Missing essentials:")
+        for package in missing:
+            print(f"- {package}")
+    print()
+    print("Plan:")
+    for item in data["plan"][:8]:
+        print(f"- {item['label']}: {item['command']}")
+
+
+def run(command: list[str], dry_run: bool) -> int:
+    if dry_run:
+        print(" ".join(command))
+        return 0
+    return subprocess.run(command, cwd=ROOT, check=False).returncode
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-mini-doctor")
+    parser.add_argument("profile", nargs="?", default="all", choices=("all", *PROFILES))
+    parser.add_argument("action", nargs="?", default="doctor", choices=("doctor", "status", "json", "plan", "install", "optional", "rootfs", "open", "activate", "packages", "limits"))
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    profiles = list(PROFILES) if args.profile == "all" else [args.profile]
+    if args.action in {"doctor", "status", "json", "plan"}:
+        data = set_payload(profiles) if len(profiles) > 1 else profile_payload(profiles[0])
+        if args.action == "plan":
+            plan = {
+                "schema": "sevenos.mini-os.plan.v1",
+                "profiles": profiles,
+                "actions": [action for profile in profiles for action in profile_payload(profile)["plan"]],
+            }
+            print(json.dumps(plan, indent=2) if args.json else "\n".join(f"{item['label']}: {item['command']}" for item in plan["actions"]))
+            return 0
+        if args.json or args.action == "json":
+            print(json.dumps(data, indent=2))
+        else:
+            print_human(data)
+        return 0
+
+    if len(profiles) != 1:
+        print("seven-mini-doctor: choose one profile for this action", file=sys.stderr)
+        return 2
+    profile = profiles[0]
+    commands = profile_payload(profile)["commands"]
+    if args.action == "install":
+        return run([str(ROOT / "bin/seven"), "profile", "requirements", profile, "--apply", "--yes"], args.dry_run)
+    if args.action == "optional":
+        return run([str(ROOT / "bin/seven"), "profile", "requirements", profile, "--optional", "--apply", "--yes"], args.dry_run)
+    if args.action == "rootfs":
+        return run([str(ROOT / "bin/seven"), "profile-rootfs", "prepare", profile, "--apply", "--yes"], args.dry_run)
+    if args.action == "open":
+        return run([str(ROOT / "bin/seven-mini-os-center"), profile], args.dry_run)
+    if args.action == "activate":
+        return run([str(ROOT / "bin/seven"), "profile", "activate", profile], args.dry_run)
+    if args.action == "packages":
+        return run([str(ROOT / "bin/sevenpkg"), profile, "packages"], args.dry_run)
+    if args.action == "limits":
+        return run([str(ROOT / "bin/sevenpkg"), profile, "limits"], args.dry_run)
+    print(commands)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

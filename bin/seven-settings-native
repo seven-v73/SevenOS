@@ -3539,6 +3539,7 @@ def run(initial_page: str = "overview") -> int:
         actions.set_valign(Gtk.Align.CENTER)
         actions.pack_start(selector, False, False, 0)
         actions.pack_start(action_button(tr("settings.status", "Voir"), "seven language status"), False, False, 0)
+        actions.pack_start(action_button(tr("settings.check", "Vérifier"), "seven language doctor"), False, False, 0)
 
         card.pack_start(icon_box, False, False, 0)
         card.pack_start(text_box, True, True, 0)
@@ -4078,7 +4079,11 @@ def run(initial_page: str = "overview") -> int:
             settings_row("󰅩", tr("settings.usage.dev", "Développement avancé"), tr("settings.usage.dev.note", "Ouvre Forge pour le code, les projets et les outils de développement."), [action_button(tr("settings.activate", "Activer"), "seven profile activate forge")]),
             settings_row("󰏗", tr("settings.usage.creation", "Création"), tr("settings.usage.creation.note", "Oriente SevenOS vers médias, assets, design, audio, vidéo et capture."), [action_button(tr("settings.activate", "Activer"), "seven profile activate studio")]),
             settings_row("󰒃", tr("settings.usage.security", "Sécurité"), tr("settings.usage.security.note", "Active Shield pour vérifier, protéger et travailler avec plus de prudence."), [action_button(tr("settings.activate", "Activer"), "seven profile activate shield")]),
-            settings_row("󰊴", tr("settings.usage.gaming", "Gaming"), tr("settings.usage.gaming.note", "Bascule vers Pulse pour jeux, performance, captures et contrôleurs."), [action_button(tr("settings.activate", "Activer"), "seven profile activate pulse")]),
+            settings_row("󰊴", tr("settings.usage.gaming", "Gaming"), tr("settings.usage.gaming.note", "Bascule vers Pulse pour jeux, performance, captures et contrôleurs."), [
+                action_button(tr("settings.activate", "Activer"), "seven profile activate pulse"),
+                action_button(tr("settings.check", "Vérifier"), "seven-pulse doctor"),
+                action_button(tr("settings.prepare", "Préparer"), "seven-pulse install"),
+            ]),
             settings_row("󰖳", tr("settings.usage.windows", "Windows"), tr("settings.usage.windows.note", "Prépare les applications Windows, l’assistant et les dossiers partagés."), [action_button(tr("settings.activate", "Activer"), "seven profile activate windows")]),
             settings_row("󰣇", tr("settings.usage.culture", "Culture"), tr("settings.usage.culture.note", "Ouvre l’expérience Baobab pour patrimoine, lecture, langues, récits et médias culturels."), [action_button(tr("settings.activate", "Activer"), "seven profile activate baobab")]),
         ],
@@ -4197,6 +4202,7 @@ def run(initial_page: str = "overview") -> int:
         tr("settings.language_region", "Langue et région"),
         [
             settings_row("󰗊", tr("settings.available_languages", "Langues disponibles"), tr("settings.available_languages.note", "{count} langue(s) prêtes ou installables sur cette machine.", count=len(lang_payload.get("languages", []))), [action_button(tr("settings.list", "Voir"), "seven language list")]),
+            settings_row("󰄬", tr("settings.language_doctor", "Vérification des langues"), tr("settings.language_doctor.note", "Vérifie que français et anglais sont prêts dans l’ISO, l’installateur, la session et Waybar."), [action_button(tr("settings.check", "Vérifier"), "seven language doctor")]),
             settings_row("󰗊", "Français", tr("settings.french.note", "Installer le français si besoin, puis l’utiliser pour l’interface SevenOS."), [action_button(tr("settings.install_apply", "Installer et appliquer"), "seven language set fr_FR.UTF-8")]),
             settings_row("󰜉", tr("settings.apply_now", "Appliquer maintenant"), tr("settings.apply_now.note", "Actualise les surfaces SevenOS après un changement de langue, thème ou région."), [action_button(tr("language.apply_live", "Appliquer"), "seven language apply --live && hyprctl reload", tr("language.needs_restart", "Certaines apps ouvertes doivent être relancées pour appliquer toute la langue."))]),
             settings_row("󰅐", tr("settings.region_contract", "Formats régionaux"), f"{REGION_PREFS.name} · {REGION_ENV.name}", [action_button(tr("settings.reload", "Actualiser"), "hyprctl reload", tr("settings.action_started", "Action lancée."))]),

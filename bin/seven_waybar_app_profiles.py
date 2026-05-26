@@ -7,14 +7,182 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import language_code  # noqa: E402
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
 CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
 MENU_AREAS = ("file", "edit", "view", "extra", "tools", "window", "help")
+LANG_CODE = language_code()
+
+
+FR_TO_EN = {
+    "Fichier": "File",
+    "Édition": "Edit",
+    "Affichage": "View",
+    "Historique": "History",
+    "Signets": "Bookmarks",
+    "Fenêtre": "Window",
+    "Aide": "Help",
+    "Shell": "Shell",
+    "Profils": "Profiles",
+    "Session": "Session",
+    "Présentation": "Layout",
+    "Aller": "Go",
+    "Actions": "Actions",
+    "Outils": "Tools",
+    "Export": "Export",
+    "Lecture": "Playback",
+    "Contrôles": "Controls",
+    "Audio": "Audio",
+    "Audit": "Audit",
+    "Analyse": "Analysis",
+    "Jeux": "Games",
+    "Captures": "Captures",
+    "Collections": "Collections",
+    "Culture": "Culture",
+    "Onglets": "Tabs",
+    "Favoris": "Favorites",
+    "Marque-pages": "Bookmarks",
+    "Média": "Media",
+    "Vidéo": "Video",
+    "Sous-titres": "Subtitles",
+    "Scènes": "Scenes",
+    "Profil": "Profile",
+    "Abonnements": "Subscriptions",
+    "Message": "Message",
+    "Libellés": "Labels",
+    "Document": "Document",
+    "Insertion": "Insert",
+    "Format": "Format",
+    "Classeur": "Workbook",
+    "Données": "Data",
+    "Nouveau": "New",
+    "Projet": "Project",
+    "Objet": "Object",
+    "Page": "Page",
+    "Base": "Database",
+    "Actions": "Actions",
+    "Lecture / pause": "Play / pause",
+    "Vidéo suivante": "Next video",
+    "Vidéo précédente": "Previous video",
+    "Plein écran": "Full screen",
+    "Mode cinéma": "Theater mode",
+    "Taille normale": "Normal size",
+    "Qualité": "Quality",
+    "Volume": "Volume",
+    "S'abonner": "Subscribe",
+    "J'aime": "Like",
+    "Partager": "Share",
+    "Nouveau message": "New message",
+    "Nouvelle fenêtre": "New window",
+    "Fermer": "Close",
+    "Rechercher mail": "Search mail",
+    "Tout afficher": "Show all",
+    "Archiver": "Archive",
+    "Spam": "Spam",
+    "Paramètres Gmail": "Gmail settings",
+    "Copier titre": "Copy title",
+    "Exporter": "Export",
+    "Imprimer": "Print",
+    "Enregistrer": "Save",
+    "Image": "Image",
+    "Lien": "Link",
+    "Table": "Table",
+    "Styles": "Styles",
+    "Alignement": "Alignment",
+    "Liste": "List",
+    "Rechercher": "Search",
+    "Orthographe": "Spelling",
+    "Préférences": "Preferences",
+    "Ligne": "Row",
+    "Colonne": "Column",
+    "Graphique": "Chart",
+    "Trier": "Sort",
+    "Filtrer": "Filter",
+    "Validation": "Validation",
+    "Ouvrir": "Open",
+    "Téléverser": "Upload",
+    "Dossier": "Folder",
+    "Importer": "Import",
+    "Cloner": "Clone",
+    "Ouvrir projet Forge": "Open Forge project",
+    "Terminal repo": "Repo terminal",
+    "Historique": "History",
+    "Nouvelle PR": "New PR",
+    "Dupliquer": "Duplicate",
+    "Grouper": "Group",
+    "Dégrouper": "Ungroup",
+    "Présenter": "Present",
+    "Lien prototype": "Prototype link",
+    "Inspecter": "Inspect",
+    "Nouvelle page": "New page",
+    "Calendrier": "Calendar",
+    "Avancer": "Forward",
+    "Reculer": "Back",
+    "Zoom": "Zoom",
+    "Muet": "Mute",
+    "Suivant": "Next",
+    "Précédent": "Previous",
+    "Ajouter à la playlist": "Add to playlist",
+    "Bibliothèque": "Library",
+    "Nouvel onglet": "New tab",
+    "Fenêtre privée": "Private window",
+    "Rouvrir l'onglet fermé": "Reopen closed tab",
+    "Onglet suivant": "Next tab",
+    "Onglet précédent": "Previous tab",
+    "Fermer l'onglet": "Close tab",
+    "Téléchargements": "Downloads",
+    "Barre d'adresse": "Address bar",
+    "Ajouter cette page": "Bookmark this page",
+    "Recharger": "Reload",
+    "Zoom avant": "Zoom in",
+    "Zoom arrière": "Zoom out",
+    "Taille réelle": "Actual size",
+    "Outils développeur": "Developer tools",
+    "Tout sélectionner": "Select all",
+    "Étendre sélection": "Expand selection",
+    "Réduire sélection": "Shrink selection",
+    "Palette commandes": "Command palette",
+    "Nouveau terminal": "New terminal",
+    "Annuler": "Undo",
+    "Rétablir": "Redo",
+    "Couper": "Cut",
+    "Copier": "Copy",
+    "Coller": "Paste",
+    "Profil terminal": "Terminal profile",
+    "Restaurer session": "Restore session",
+    "Exporter sélection": "Export selection",
+    "Audit rapide": "Quick audit",
+    "Jeux Pulse": "Pulse games",
+    "Contrôles fenêtre": "Window controls",
+    "Centrer": "Center",
+    "Flottante": "Floating",
+    "Split gauche": "Split left",
+    "Split droite": "Split right",
+    "Aide app active": "Active app help",
+    "Aide SevenOS": "SevenOS help",
+    "Menus SevenOS": "SevenOS menus",
+    "Service actif": "Active service",
+    "Click: menu contextuel · Right click: fenêtre": "Click: context menu · Right click: window",
+    "déplacé dans": "moved to",
+    "Menu masqué": "Hidden menu",
+    "menu de l'app active": "active app menu",
+    "Click: ouvrir le menu natif · Right click: actions SevenOS": "Click: open native menu · Right click: SevenOS actions",
+}
+
+
+def ui(text: str) -> str:
+    return FR_TO_EN.get(text, text) if LANG_CODE != "fr" else text
+
+
+def localize_items(items: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
+    return [(icon, ui(label), shortcut) for icon, label, shortcut in items]
 
 
 def run(command: list[str], timeout: float = 0.6) -> str:
@@ -208,7 +376,7 @@ SERVICE_LABELS = {
 
 def labels_for(mode: str, app_key: str, service: str) -> dict[str, str]:
     raw = SERVICE_LABELS.get(service) or APP_LABELS.get(app_key) or MODE_LABELS.get(mode) or MODE_LABELS["default"]
-    return dict(zip(MENU_AREAS, raw))
+    return dict(zip(MENU_AREAS, [ui(label) for label in raw]))
 
 
 def service_items(area: str, service: str) -> tuple[str, list[tuple[str, str, str]]] | None:
@@ -271,7 +439,11 @@ def service_items(area: str, service: str) -> tuple[str, list[tuple[str, str, st
         },
     }
     spec = specs.get(service, {})
-    return spec.get(area)
+    selected = spec.get(area)
+    if not selected:
+        return None
+    title, items = selected
+    return ui(title), localize_items(items)
 
 
 def items_for(area: str, mode: str, key: str = "generic", service: str = "") -> tuple[str, list[tuple[str, str, str]]]:
@@ -282,26 +454,26 @@ def items_for(area: str, mode: str, key: str = "generic", service: str = "") -> 
     title = labels.get(area, "") or "Actions"
     if key in {"chrome", "chromium", "brave", "firefox"}:
         if area == "file" and key in {"chrome", "chromium", "brave"}:
-            return title, [("󰝒", "Nouvel onglet", "Ctrl+T"), ("󰈔", "Nouvelle fenêtre", "Ctrl+N"), ("󰈹", "Fenêtre privée", "Ctrl+Shift+N"), ("󰑖", "Rouvrir l'onglet fermé", "Ctrl+Shift+T"), ("󰓩", "Onglet suivant", "Ctrl+Tab"), ("󰓪", "Onglet précédent", "Ctrl+Shift+Tab"), ("󰅖", "Fermer l'onglet", "Ctrl+W")]
+            return title, localize_items([("󰝒", "Nouvel onglet", "Ctrl+T"), ("󰈔", "Nouvelle fenêtre", "Ctrl+N"), ("󰈹", "Fenêtre privée", "Ctrl+Shift+N"), ("󰑖", "Rouvrir l'onglet fermé", "Ctrl+Shift+T"), ("󰓩", "Onglet suivant", "Ctrl+Tab"), ("󰓪", "Onglet précédent", "Ctrl+Shift+Tab"), ("󰅖", "Fermer l'onglet", "Ctrl+W")])
         if area == "extra":
-            return title, [("󰋚", "Historique", "Ctrl+H"), ("󰉍", "Téléchargements", "Ctrl+J"), ("󰀂", "Barre d'adresse", "Ctrl+L")]
+            return title, localize_items([("󰋚", "Historique", "Ctrl+H"), ("󰉍", "Téléchargements", "Ctrl+J"), ("󰀂", "Barre d'adresse", "Ctrl+L")])
         if area == "tools":
-            return title, [("󰃀", title, "Ctrl+Shift+O"), ("󰆤", "Ajouter cette page", "Ctrl+D"), ("󰈙", "Importer", "")]
+            return title, localize_items([("󰃀", title, "Ctrl+Shift+O"), ("󰆤", "Ajouter cette page", "Ctrl+D"), ("󰈙", "Importer", "")])
         if area == "view":
-            return title, [("󰑓", "Recharger", "Ctrl+R"), ("󰍉", "Zoom avant", "Ctrl++"), ("󰍉", "Zoom arrière", "Ctrl+-"), ("󰾆", "Taille réelle", "Ctrl+0"), ("󰙨", "Outils développeur", "Ctrl+Shift+I")]
+            return title, localize_items([("󰑓", "Recharger", "Ctrl+R"), ("󰍉", "Zoom avant", "Ctrl++"), ("󰍉", "Zoom arrière", "Ctrl+-"), ("󰾆", "Taille réelle", "Ctrl+0"), ("󰙨", "Outils développeur", "Ctrl+Shift+I")])
     if key in {"vscode", "vscodium", "cursor", "jetbrains"}:
         if area == "view":
-            return title, [("󰒆", "Tout sélectionner", "Ctrl+A"), ("󰉿", "Étendre sélection", ""), ("󰘬", "Réduire sélection", "")]
+            return title, localize_items([("󰒆", "Tout sélectionner", "Ctrl+A"), ("󰉿", "Étendre sélection", ""), ("󰘬", "Réduire sélection", "")])
         if area == "extra":
-            return title, [("󰕰", "Palette commandes", "Ctrl+Shift+P"), ("󰍉", "Rechercher", "Ctrl+F"), ("󰊓", "Plein écran", "F11")]
+            return title, localize_items([("󰕰", "Palette commandes", "Ctrl+Shift+P"), ("󰍉", "Rechercher", "Ctrl+F"), ("󰊓", "Plein écran", "F11")])
         if area == "tools":
-            return title, [("󰆍", "Nouveau terminal", "Ctrl+Shift+`"), ("󰒓", "Terminal doctor", ""), ("󰌢", "Projet Forge", "")]
+            return title, localize_items([("󰆍", "Nouveau terminal", "Ctrl+Shift+`"), ("󰒓", "Terminal doctor", ""), ("󰌢", "Projet Forge", "")])
     if area == "file":
-        return title, [("󰝒", "Nouvel onglet", "Ctrl+T"), ("󰈔", "Nouvelle fenêtre", "Ctrl+N"), ("󰉋", "Ouvrir", "Ctrl+O"), ("󰆓", "Enregistrer", "Ctrl+S"), ("󰐪", "Imprimer", "Ctrl+P"), ("󰅖", "Fermer", "Ctrl+W")]
+        return title, localize_items([("󰝒", "Nouvel onglet", "Ctrl+T"), ("󰈔", "Nouvelle fenêtre", "Ctrl+N"), ("󰉋", "Ouvrir", "Ctrl+O"), ("󰆓", "Enregistrer", "Ctrl+S"), ("󰐪", "Imprimer", "Ctrl+P"), ("󰅖", "Fermer", "Ctrl+W")])
     if area == "edit":
-        return title, [("󰕌", "Annuler", "Ctrl+Z"), ("󰑎", "Rétablir", "Ctrl+Shift+Z"), ("󰅚", "Couper", "Ctrl+X"), ("󰆏", "Copier", "Ctrl+C"), ("󰆒", "Coller", "Ctrl+V"), ("󰒆", "Tout sélectionner", "Ctrl+A"), ("󰍉", "Rechercher", "Ctrl+F")]
+        return title, localize_items([("󰕌", "Annuler", "Ctrl+Z"), ("󰑎", "Rétablir", "Ctrl+Shift+Z"), ("󰅚", "Couper", "Ctrl+X"), ("󰆏", "Copier", "Ctrl+C"), ("󰆒", "Coller", "Ctrl+V"), ("󰒆", "Tout sélectionner", "Ctrl+A"), ("󰍉", "Rechercher", "Ctrl+F")])
     if area == "view":
-        return title, [("󰑓", "Recharger", "Ctrl+R"), ("󰍉", "Zoom avant", "Ctrl++"), ("󰍉", "Zoom arrière", "Ctrl+-"), ("󰾆", "Taille réelle", "Ctrl+0"), ("󰊓", "Plein écran", "F11")]
+        return title, localize_items([("󰑓", "Recharger", "Ctrl+R"), ("󰍉", "Zoom avant", "Ctrl++"), ("󰍉", "Zoom arrière", "Ctrl+-"), ("󰾆", "Taille réelle", "Ctrl+0"), ("󰊓", "Plein écran", "F11")])
     if area == "extra":
         mapping = {
             "terminal": [("󰗀", "Profil terminal", ""), ("󰆍", "Palette terminal", ""), ("󰒓", "Terminal doctor", "")],
@@ -314,7 +486,7 @@ def items_for(area: str, mode: str, key: str = "generic", service: str = "") -> 
             "forge": [("󰌢", "Projet Forge", ""), ("󰆍", "Palette terminal", "")],
             "media": [("󰐊", "Lecture / pause", "Space"), ("󰝚", "Avancer", ""), ("󰝙", "Reculer", "")],
         }
-        return title, mapping.get(mode, [("󰍉", "Rechercher", "Ctrl+F"), ("󰊓", "Plein écran", "F11")])
+        return title, localize_items(mapping.get(mode, [("󰍉", "Rechercher", "Ctrl+F"), ("󰊓", "Plein écran", "F11")]))
     if area == "tools":
         mapping = {
             "terminal": [("󰁯", "Restaurer session", ""), ("󰈔", "Nouvelle fenêtre", "Ctrl+Shift+N")],
@@ -327,10 +499,10 @@ def items_for(area: str, mode: str, key: str = "generic", service: str = "") -> 
             "pulse": [("󰹑", "Captures", ""), ("󰓅", "Jeux Pulse", "")],
             "baobab": [("󰔱", "Collections", ""), ("󰐅", "Lecture", "")],
         }
-        return title, mapping.get(mode, [("󰍉", "Rechercher", "Ctrl+F")])
+        return title, localize_items(mapping.get(mode, [("󰍉", "Rechercher", "Ctrl+F")]))
     if area == "window":
-        return title, [("󰖲", "Contrôles fenêtre", ""), ("󰉌", "Centrer", ""), ("󰹑", "Flottante", ""), ("󰤼", "Split gauche", ""), ("󰤽", "Split droite", ""), ("󰅖", "Fermer", "Ctrl+W")]
-    return title, [("󰋖", "Aide app active", "F1"), ("󰋖", "Aide SevenOS", "")]
+        return title, localize_items([("󰖲", "Contrôles fenêtre", ""), ("󰉌", "Centrer", ""), ("󰹑", "Flottante", ""), ("󰤼", "Split gauche", ""), ("󰤽", "Split droite", ""), ("󰅖", "Fermer", "Ctrl+W")])
+    return title, localize_items([("󰋖", "Aide app active", "F1"), ("󰋖", "Aide SevenOS", "")])
 
 
 def context_for_window(window: dict | None = None, profile_key: str | None = None) -> dict:
@@ -353,3 +525,55 @@ def context_for_window(window: dict | None = None, profile_key: str | None = Non
         "labels": labels,
         "menu": "  ".join(label for label in labels.values() if label),
     }
+
+
+def contract_matrix() -> dict:
+    samples = [
+        {"id": "browser.youtube", "class": "firefox", "title": "YouTube - Free Movies", "profile": "equinox", "expect": {"mode": "browser", "key": "firefox", "service": "youtube", "file": "Lecture"}},
+        {"id": "browser.gmail", "class": "firefox", "title": "Gmail - Inbox", "profile": "equinox", "expect": {"mode": "browser", "key": "firefox", "service": "gmail", "file": "Message"}},
+        {"id": "developer.vscode", "class": "Code", "title": "SevenOS - Visual Studio Code", "profile": "forge", "expect": {"mode": "developer", "key": "vscode", "service": "", "file": "Fichier"}},
+        {"id": "terminal.kitty", "class": "kitty", "title": "Forge", "profile": "forge", "expect": {"mode": "terminal", "key": "kitty", "service": "", "file": "Shell"}},
+        {"id": "files.native", "class": "SevenFilesNative", "title": "Seven Files", "profile": "equinox", "expect": {"mode": "files", "key": "seven-files", "service": "", "file": "Fichier"}},
+        {"id": "media.vlc", "class": "vlc", "title": "Movie", "profile": "studio", "expect": {"mode": "media", "key": "vlc", "service": "", "file": "Média"}},
+    ]
+    checks = []
+    for sample in samples:
+        ctx = context_for_window({"class": sample["class"], "title": sample["title"]}, sample["profile"])
+        label = str(ctx.get("labels", {}).get("file") or "")
+        expected = sample["expect"]
+        ok = (
+            ctx.get("mode") == expected["mode"]
+            and ctx.get("key") == expected["key"]
+            and ctx.get("service") == expected["service"]
+            and label == ui(expected["file"])
+        )
+        checks.append({
+            "id": sample["id"],
+            "state": "OK" if ok else "WARN",
+            "mode": ctx.get("mode"),
+            "key": ctx.get("key"),
+            "service": ctx.get("service"),
+            "file_label": label,
+        })
+    return {
+        "schema": "sevenos.waybar.app-menu-contract.v1",
+        "state": "OK" if all(item["state"] == "OK" for item in checks) else "WARN",
+        "language": LANG_CODE,
+        "menu_areas": list(MENU_AREAS),
+        "checks": checks,
+    }
+
+
+def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] in {"contract", "doctor", "--json"}:
+        print(json.dumps(contract_matrix(), ensure_ascii=False))
+        return 0
+    if len(sys.argv) > 1 and sys.argv[1] == "context":
+        print(json.dumps(context_for_window(), ensure_ascii=False))
+        return 0
+    print("Usage: seven_waybar_app_profiles.py [contract|context]", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -65,6 +65,8 @@ ENGLISH_TRANSLATIONS = {
     "settings.french.note": "Generate fr_FR.UTF-8 if needed, then switch the SevenOS interface to French.",
     "settings.language_status": "Language status",
     "settings.language_status.note": "Show generated locales and the active SevenOS language contract.",
+    "settings.language_doctor": "Language check",
+    "settings.language_doctor.note": "Check that French and English are ready in the ISO, installer, session and Waybar.",
     "language.system_default": "System default",
     "language.english_us": "English (United States)",
     "language.french_fr": "French (France)",
@@ -84,6 +86,7 @@ ENGLISH_TRANSLATIONS = {
     "language.apply_live": "Apply live",
     "language.apply_live.note": "Restart visible SevenOS surfaces so new windows use the active language.",
     "language.needs_restart": "Some open apps need to be reopened to fully switch language.",
+    "language.waybar.tooltip": "Active language: {language}",
 }
 
 
@@ -227,6 +230,8 @@ TRANSLATIONS = {
         "settings.advanced": "Avancé",
         "settings.language_status": "État de la langue",
         "settings.language_status.note": "Afficher les locales générées et le contrat de langue SevenOS actif.",
+        "settings.language_doctor": "Vérification des langues",
+        "settings.language_doctor.note": "Vérifie que français et anglais sont prêts dans l’ISO, l’installateur, la session et Waybar.",
         "settings.reload": "Recharger",
         "settings.general_card": "Réglages généraux",
         "settings.general_card.note": "Langue, thèmes et comportement quotidien de SevenOS.",
@@ -415,6 +420,10 @@ TRANSLATIONS = {
         "language.locale": "Locale",
         "language.available": "Disponibles",
         "language.languages": "Langues",
+        "language.apply_live": "Appliquer en direct",
+        "language.apply_live.note": "Redémarre les surfaces SevenOS visibles pour que les nouvelles fenêtres utilisent la langue active.",
+        "language.needs_restart": "Certaines apps ouvertes doivent être relancées pour changer complètement de langue.",
+        "language.waybar.tooltip": "Langue active : {language}",
     }
 }
 

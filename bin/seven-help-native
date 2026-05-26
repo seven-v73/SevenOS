@@ -99,6 +99,7 @@ SECTIONS = [
             t("SevenOS se veut utilisable sans chercher dans GitHub : une seule commande prépare une nouvelle machine, installe ce qui manque, applique les thèmes, prépare les espaces et lance les vérifications.", "SevenOS is meant to be usable without hunting through GitHub: one command prepares a new machine, installs what is missing, applies themes, prepares spaces and runs checks."),
             t("Depuis GitHub, lance l'installation comme utilisateur normal avec ./install.sh new-device --yes. N'utilise pas sudo devant l'installateur : SevenOS demande les droits admin uniquement quand une étape en a besoin.", "From GitHub, run the installer as a normal user with ./install.sh new-device --yes. Do not prefix the installer with sudo: SevenOS asks for admin rights only when a step needs them."),
             t("Equinox est la partie système/admin. Les autres mini OS gardent leurs paquets, données et rootfs séparés, sauf partage explicite.", "Equinox is the system/admin side. Other mini OS profiles keep packages, data and rootfs separated unless sharing is explicit."),
+            t("Au démarrage de session, un pop-up flottant avec le Prism SevenOS souhaite le retour de l'utilisateur, rappelle le rôle des mini OS et renvoie vers l'aide avec Super+H.", "At session startup, a floating welcome popup with the SevenOS Prism greets the user, summarizes mini OS roles and points to help with Super+H."),
             t("Après installation, Super+H reste le manuel local, Super+Space cherche partout, et Super ouvre les apps.", "After installation, Super+H stays the local manual, Super+Space searches globally, and Super opens apps."),
         ],
         "commands": [
@@ -108,6 +109,7 @@ SECTIONS = [
             ("seven post-install", t("Vérifier la machine après installation", "Verify the machine after install")),
             ("./install.sh network --yes", t("Préparer ou réparer le Wi-Fi", "Prepare or repair Wi-Fi")),
             ("seven windows setup", t("Préparer Windows", "Prepare Windows")),
+            ("seven-welcome-popup", t("Afficher l'accueil de session", "Show the session welcome")),
         ],
         "actions": [("󰐥", t("Installer", "Install"), "seven new"), ("󰒃", t("Post-install", "Post-install"), "seven post-install")],
     },
@@ -128,6 +130,25 @@ SECTIONS = [
             ("seven-store", t("Ouvrir SevenStore", "Open SevenStore")),
         ],
         "actions": [("󰒃", t("Diagnostic", "Doctor"), "seven doctor"), ("󰌘", t("Actions", "Actions"), "seven actions")],
+    },
+    {
+        "id": "docs",
+        "icon": "󰜘",
+        "title": t("Documentation", "Documentation"),
+        "subtitle": t("Tout le dossier docs dans le manuel local", "The full docs folder inside local help"),
+        "body": [
+            t("Le helper terminal intègre automatiquement tous les fichiers Markdown de docs/ avec un index et une recherche locale.", "The terminal helper automatically includes every Markdown file from docs/ with an index and local search."),
+            t("Les documents d'architecture expliquent Seven Core, SevenBus, les mini OS, l'isolation, SevenStore, le shell, l'installateur et la stratégie produit.", "Architecture documents explain Seven Core, SevenBus, mini OS profiles, isolation, SevenStore, the shell, installer and product strategy."),
+            t("Les passages marqués future, planned, scaffold ou preview décrivent une direction ou une fondation, pas forcément une fonction prête pour le grand public.", "Passages marked future, planned, scaffold or preview describe direction or foundation work, not always a finished public feature."),
+        ],
+        "commands": [
+            ("seven-help docs", t("Ouvrir la documentation complète", "Open complete documentation")),
+            ("seven-help docs-index", t("Afficher l'index des documents", "Show the documentation index")),
+            ("seven-help doc architecture", t("Ouvrir seulement l'architecture", "Open only the architecture document")),
+            ("seven-help search architecture", t("Chercher dans tout le manuel", "Search the whole manual")),
+            ("seven-help future", t("Voir les features futures", "View future features")),
+        ],
+        "actions": [("󰜘", t("Docs", "Docs"), "seven-help docs"), ("󰐰", t("Futur", "Future"), "seven-help future")],
     },
     {
         "id": "shortcuts",
@@ -152,6 +173,9 @@ SECTIONS = [
             "Super+Q : " + t("fermer la fenêtre", "close window"),
             "Super+F / Super+Shift+F : " + t("plein écran / smart maximize", "fullscreen / smart maximize"),
             "Super+Alt+Space : " + t("flottant/tiling", "floating/tiling"),
+            t("Prism SevenDecor : clic pour afficher rouge/jaune/vert et la cible; clic sur la pastille cible pour verrouiller/déverrouiller; molette sur la pastille pour choisir une autre fenêtre du workspace.", "SevenDecor Prism: click for red/yellow/green and the target; click the target chip to lock/unlock; scroll on the chip to choose another window on the workspace."),
+            "Super+Alt+D : " + t("activer/désactiver le Prism SevenDecor", "toggle the SevenDecor Prism"),
+            "Super+Ctrl+Alt+D : " + t("contrôles fenêtre ponctuels", "one-shot window controls"),
             "Super+1..9 : " + t("changer de workspace", "switch workspace"),
             "Super+Shift+1..9 : " + t("déplacer vers workspace", "move to workspace"),
             "Print / Super+Print : " + t("capture zone / plein écran", "area / fullscreen screenshot"),
@@ -161,6 +185,12 @@ SECTIONS = [
         "commands": [
             ("seven-help shortcuts", t("Ouvrir le chapitre complet", "Open the full chapter")),
             ("seven-help search Super+Shift", t("Chercher les raccourcis avancés", "Search advanced shortcuts")),
+            ("seven-window controls-start", t("Afficher les pastilles globales", "Show global traffic lights")),
+            ("seven-window controls-toggle", t("Activer/désactiver le Prism", "Toggle the Prism")),
+            ("seven-window advanced-menu", t("Menu avancé du Prism", "Prism advanced menu")),
+            ("seven-window controls-unlock", t("Déverrouiller la cible Prism", "Unlock the Prism target")),
+            ("seven-window controls-reset-hidden", t("Réafficher le Prism pour les apps masquées", "Show the Prism again for hidden apps")),
+            ("seven-window controls-status", t("État des pastilles globales", "Global traffic light status")),
         ],
         "actions": [("󰀻", t("Apps", "Apps"), "seven-overview apps"), ("󰖟", "Spotlight", "seven-spotlight")],
     },
@@ -251,6 +281,8 @@ SECTIONS = [
         ],
         "commands": [
             ("seven-waybar status --json", t("État Waybar", "Waybar state")),
+            ("seven-waybar limits --json", t("Limites dynamiques", "Dynamic limits")),
+            ("seven-waybar doctor --json", t("Diagnostic complet", "Full diagnostic")),
             ("seven-waybar restart", t("Redémarrer Waybar", "Restart Waybar")),
             ("seven-profile-theme audit-waybars", t("Auditer les mini Waybar", "Audit mini Waybars")),
             ("seven-waybar stable", t("Activer mode stable", "Enable stable mode")),
@@ -268,12 +300,18 @@ SECTIONS = [
             t("SevenStore est la surface graphique pour découvrir, installer et mettre à jour les apps.", "SevenStore is the graphical surface to discover, install and update apps."),
             t("SevenOS peut préparer automatiquement ce qui manque pour éviter que l’utilisateur cherche les dépendances.", "SevenOS can automatically prepare what is missing so users do not have to hunt dependencies."),
             t("Equinox installe dans la portée système globale. Les mini OS installent avec sevenpkg dans leur portée profilée pour éviter que Forge, Shield, Studio, Baobab, Windows ou Pulse polluent les autres espaces.", "Equinox installs in the global system scope. Mini OS profiles install with sevenpkg in their profiled scope so Forge, Shield, Studio, Baobab, Windows or Pulse do not pollute other spaces."),
+            t("Un paquet installé dans Equinox reste réservé à Equinox sauf exposition explicite avec sevenpkg global-expose.", "A package installed in Equinox stays reserved to Equinox unless explicitly exposed with sevenpkg global-expose."),
+            t("Les services privés comme MongoDB peuvent être lancés dans un mini OS avec sevenpkg profile-service, sans devenir des services host globaux.", "Private services such as MongoDB can run inside a mini OS with sevenpkg profile-service without becoming global host services."),
         ],
         "commands": [
             ("seven-store", "SevenStore"),
             ("seven-store", t("Ouvrir le Store", "Open Store")),
             ("seven-settings updates", t("Voir les mises à jour", "See updates")),
             ("sevenpkg profile-limits", t("Voir les limites par mini OS", "See limits by mini OS")),
+            ("sevenpkg global-policy mongodb", t("Voir la policy globale d'un paquet", "Show one package global policy")),
+            ("sevenpkg global-expose mongodb --profiles forge --commands mongod mongosh", t("Exposer un paquet Equinox à Forge", "Expose an Equinox package to Forge")),
+            ("sevenpkg global-restrict mongodb", t("Restreindre à Equinox", "Restrict to Equinox")),
+            ("sevenpkg profile-service mongodb forge", t("Créer un service MongoDB privé à Forge", "Create a private MongoDB service for Forge")),
             ("sevenpkg install --profile forge htop --source pacman --preview", t("Prévisualiser une installation Forge", "Preview a Forge install")),
             ("sevenpkg remove --profile forge htop --preview", t("Prévisualiser une suppression Forge", "Preview a Forge removal")),
             ("seven profile requirements all --apply --yes", t("Préparer ce qui manque", "Prepare what is missing")),
@@ -310,11 +348,15 @@ SECTIONS = [
         "body": [
             t("Equinox est la portée système/admin : les paquets Arch globaux y sont naturels.", "Equinox is the system/admin scope: global Arch packages belong there."),
             t("Les mini OS installent via sevenpkg dans leur rootfs profilé pour garder chaque monde propre.", "Mini OS profiles install through sevenpkg into their profiled rootfs to keep every space clean."),
+            t("Les paquets Equinox ne deviennent visibles dans les mini OS que via une policy globale explicite.", "Equinox packages become visible inside mini OS profiles only through an explicit global policy."),
+            t("Les daemons privés se gèrent avec profile-service pour rester attachés au bon mini OS.", "Private daemons are managed with profile-service so they stay attached to the right mini OS."),
             t("Utilise --preview pour voir l'impact avant installation, suppression ou mise à jour.", "Use --preview to see the impact before install, removal or update."),
         ],
         "commands": [
             ("sevenpkg profile-limits", t("Voir les règles par profil", "See profile rules")),
             ("sevenpkg profile-packages forge --query htop", t("Chercher dans Forge", "Search inside Forge")),
+            ("sevenpkg global-policy mongodb", t("Policy globale MongoDB", "MongoDB global policy")),
+            ("sevenpkg profile-service status forge mongodb", t("État du service MongoDB Forge", "Forge MongoDB service state")),
             ("sevenpkg install --profile forge htop --source pacman --preview", t("Prévisualiser installation mini OS", "Preview mini OS install")),
             ("sevenpkg remove --profile forge htop --preview", t("Prévisualiser suppression mini OS", "Preview mini OS removal")),
             ("sevenpkg update --global --preview", t("Prévisualiser mise à jour globale", "Preview global update")),
@@ -328,12 +370,18 @@ SECTIONS = [
         "subtitle": t("Shield, sandbox, Windows Bridge", "Shield, sandbox, Windows Bridge"),
         "body": [
             t("Shield sert aux audits autorisés, au sandbox, au forensic et au durcissement sans casser l'espace quotidien.", "Shield is for authorized audits, sandboxing, forensic work and hardening without breaking the daily space."),
+            t("BlackArch reste optionnel dans Shield : commence par les outils Arch/AUR ou les bundles ciblés, puis active BlackArch seulement quand tu veux un catalogue cyber beaucoup plus large.", "BlackArch stays optional in Shield: start with Arch/AUR tools or focused bundles, then enable BlackArch only when you want a much larger cyber catalog."),
+            t("Le paquet complet BlackArch est massif et réservé à un poste Shield dédié. SevenOS impose un dry-run ou un --yes explicite pour éviter une installation accidentelle.", "The full BlackArch package set is massive and reserved for a dedicated Shield workstation. SevenOS requires a dry-run or explicit --yes to avoid accidental installation."),
             t("Windows Bridge commence par Wine/Bottles/Proton puis passe à la VM quand une session Windows complète est nécessaire.", "Windows Bridge starts with Wine/Bottles/Proton and moves to VM when a full Windows session is required."),
             t("SevenOS ne fournit pas d'image Windows et ne contourne pas l'activation.", "SevenOS does not provide Windows images and does not bypass activation."),
         ],
         "commands": [
             ("seven shield status", t("État Shield", "Shield state")),
             ("seven shield lab --preset web", t("Lab web isolé", "Isolated web lab")),
+            ("seven shield toolchain", t("Sources cyber disponibles", "Available cyber sources")),
+            ("seven shield toolchain blackarch-setup --yes", t("Activer le dépôt BlackArch", "Enable the BlackArch repository")),
+            ("seven shield toolchain blackarch-full --dry-run", t("Prévisualiser BlackArch complet", "Preview full BlackArch")),
+            ("seven shield toolchain blackarch-full --yes", t("Installer BlackArch complet", "Install full BlackArch")),
             ("./install.sh security --yes", t("Durcissement de base", "Base hardening")),
             ("seven windows setup", t("Préparer Windows Bridge", "Prepare Windows Bridge")),
             ("seven windows setup --iso ~/Downloads/Win11.iso", t("Préparer une VM Windows", "Prepare a Windows VM")),
@@ -537,10 +585,13 @@ class HelpApp:
 
         provider = Gtk.CssProvider()
         provider.load_from_data(self.css().encode("utf-8"))
-        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        screen = Gdk.Screen.get_default()
+        if screen is None:
+            print("MISS: no graphical screen is available for SevenOS Help", file=sys.stderr)
+            return 1
+        Gtk.StyleContext.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         self.window = Gtk.Window(title=t("Aide SevenOS", "SevenOS Help"))
-        screen = Gdk.Screen.get_default()
         screen_width = screen.get_width() if screen else 1280
         screen_height = screen.get_height() if screen else 720
         compact_screen = screen_width < 1120 or screen_height < 680
@@ -790,11 +841,13 @@ def probe() -> int:
         import gi
 
         gi.require_version("Gtk", "3.0")
-        from gi.repository import Gtk
+        from gi.repository import Gdk, Gtk
 
         app = HelpApp("start")
         provider = Gtk.CssProvider()
         provider.load_from_data(app.css().encode("utf-8"))
+        if Gdk.Screen.get_default() is None and os.environ.get("SEVENOS_HELP_REQUIRE_SCREEN") == "1":
+            raise RuntimeError("no graphical screen is available")
     except Exception as exc:
         print(f"MISS: {exc}", file=sys.stderr)
         return 1

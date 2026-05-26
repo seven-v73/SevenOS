@@ -151,9 +151,24 @@ capabilities = json.loads(os.environ.get("CAPABILITIES_JSON", "[]"))
 apply_requested = os.environ.get("APPLY") == "1" or action == "apply"
 yes = os.environ.get("YES") == "1"
 dry_run = os.environ.get("DRY_RUN") == "1"
+global_package_policy_path = state_dir / "global-package-policy.json"
 
 with catalog_path.open(encoding="utf-8") as handle:
     catalog = json.load(handle)
+
+def load_global_package_policy():
+    if not global_package_policy_path.is_file():
+        return {"schema": "sevenos.global-package-policy.v1", "packages": {}}
+    try:
+        with global_package_policy_path.open(encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return {"schema": "sevenos.global-package-policy.v1", "packages": {}}
+    data.setdefault("schema", "sevenos.global-package-policy.v1")
+    data.setdefault("packages", {})
+    return data
+
+global_package_policy = load_global_package_policy()
 
 profiles = catalog.get("profiles", {})
 core_package_files = catalog.get("core_package_files") or ["scripts/packages-base.txt"]
@@ -242,12 +257,31 @@ for service, owners in service_owners.items():
         stderr=subprocess.DEVNULL,
         check=False,
     ).stdout.strip() != ""
+    active = False
+    enabled = False
+    if exists and shutil.which("systemctl"):
+        active = subprocess.run(
+            ["systemctl", "is-active", "--quiet", service],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode == 0
+        enabled = subprocess.run(
+            ["systemctl", "is-enabled", "--quiet", service],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode == 0
     service_policy.append({
         "service": service,
         "owners": owners,
         "allowed": allowed,
         "exists": exists,
+        "active": active,
+        "enabled": enabled,
         "desired": "enabled-or-unchanged" if allowed else "disabled-when-profile-inactive",
+        "state": "OK" if allowed or not active else "WARN",
+        "quiet_command": f"sudo -n systemctl disable --now {service}",
     })
 
 profile_commands = {
@@ -341,6 +375,19 @@ profile_isolation_modes = {
     "windows": "balanced",
     "pulse": "balanced",
 }
+profile_balanced_overrides = {
+    "baobab": {
+        "gpu": "blocked-by-default",
+        "dev": "minimal",
+        "reason": "culture, reading and narration do not need broad device/GPU access by default",
+    },
+    "forge": {
+        "gpu": "blocked-by-default",
+        "dev": "minimal",
+        "audio": "blocked-by-default",
+        "reason": "development keeps network/runtime access but does not need broad media devices by default",
+    },
+}
 
 manifest_root = host_home / ".local/share/sevenos/profile-runtime-manifests"
 strict_runtime = {}
@@ -407,6 +454,7 @@ for key, item in profile_containers.items():
             "strict": "network namespace, minimal /dev, no runtime dir or DBus by default",
             "independent": "sealed read-only profile rootfs plus profile HOME/cache/data, no VM",
         },
+        "balanced_overrides": profile_balanced_overrides.get(key, {}),
         "runtime_scope": "systemd-user-scope" if has_systemd_run else "direct-process",
         "command": item.get("exec"),
         "selected": item.get("selected", False),
@@ -439,6 +487,7 @@ payload = {
         "env": str(state_dir / "profile-isolation.env"),
         "active_packages": str(state_dir / "active-packages.txt"),
         "inactive_packages": str(state_dir / "inactive-packages.json"),
+        "global_package_policy": str(global_package_policy_path),
         "service_policy": str(state_dir / "profile-services.json"),
         "shims": str(host_home / ".local/share/sevenos/profile-shims"),
         "desktop_overrides": str(host_home / ".local/share/applications"),
@@ -461,6 +510,7 @@ payload = {
     "active_package_count": len(active_packages),
     "inactive_packages": inactive_packages,
     "inactive_package_count": len(inactive_packages),
+    "global_package_policy": global_package_policy,
     "package_owners": package_owners,
     "service_policy": service_policy,
     "active_commands": active_commands,
@@ -471,6 +521,12 @@ payload = {
         "applied": False,
         "system_service_changes": [],
         "requires_sudo_for_system_services": True,
+        "sudo_noninteractive": shutil.which("sudo") is not None and subprocess.run(
+            ["sudo", "-n", "true"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode == 0,
     },
     "strict_boundaries": {
         "launcher": "seven-profile-launch",
@@ -695,7 +751,19 @@ def generate_package_views():
             if stale.is_symlink() or stale.is_file():
                 stale.unlink()
         exposed = []
+        policy_exposed = []
         command_scope = set(all_commands) if key == SYSTEM_PROFILE else core_commands | set(profile_commands.get(key, []))
+        if key != SYSTEM_PROFILE:
+            for package, entry in global_package_policy.get("packages", {}).items():
+                if entry.get("visibility") != "exposed":
+                    continue
+                targets = entry.get("profiles", [])
+                if "*" not in targets and key not in targets:
+                    continue
+                for command in entry.get("commands", []):
+                    if command:
+                        command_scope.add(command)
+                        policy_exposed.append({"package": package, "command": command})
         for command in sorted(command_scope):
             resolved = str(root / "bin" / command) if command.startswith("seven") and (root / "bin" / command).is_file() else None
             if not resolved:
@@ -716,6 +784,7 @@ def generate_package_views():
             "bin": str(bin_dir),
             "commands": exposed,
             "command_count": len(exposed),
+            "global_policy_commands": policy_exposed,
             "policy": "profile-owned command view over the global pacman store",
         }
     return generated
@@ -802,6 +871,7 @@ def apply_state():
                 "rootfs": "not-applicable" if key == SYSTEM_PROFILE else "prepared",
                 "native_independence": "system admin profile uses the host directly" if key == SYSTEM_PROFILE else "sealed read-only profile rootfs plus profile HOME/cache/data; no VM required",
                 "isolation": profile_isolation_modes.get(key, "balanced"),
+                "balanced_overrides": profile_balanced_overrides.get(key, {}),
                 "workspace": "host-home" if key == SYSTEM_PROFILE else "explicit-bind-only",
                 "ephemeral": "not-used-for-system-profile" if key == SYSTEM_PROFILE else "temporary-home-cache-data",
                 "runtime": "systemd-user-scope" if has_systemd_run else "direct-process",

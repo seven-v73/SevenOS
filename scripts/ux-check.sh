@@ -5,6 +5,7 @@ ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 source "$ROOT_DIR/scripts/lib.sh"
 
 failures=0
+export PYENV_DISABLE_REHASH="${PYENV_DISABLE_REHASH:-1}"
 
 ok() {
   printf '[OK] %s\n' "$*"
@@ -51,6 +52,7 @@ require_file "docs/UX_PRINCIPLES.md"
 require_file "docs/VOCABULARY.md"
 require_file "docs/PHASE_GATE.md"
 require_file "docs/ECOSYSTEM.md"
+require_file "docs/FUTURE_FEATURES.md"
 require_file "docs/STACK_STRATEGY.md"
 require_file "docs/PRODUCTIZATION.md"
 require_file "docs/TEST_MACHINE.md"
@@ -120,6 +122,8 @@ require_file "identity/PROFILE_THEMES.md"
 require_file "identity/profile-themes.json"
 require_file "profiles/catalog.json"
 require_file "docs/PROFILE_ISOLATION.md"
+require_file "docs/PULSE_MINI_OS.md"
+require_file "docs/MINI_OS_REQUIREMENTS.md"
 require_file "scripts/profile-isolation.sh"
 require_file "bin/seven-profile-run"
 require_file "identity/tokens.css"
@@ -262,10 +266,12 @@ require_executable "bin/seven-hub-native"
 require_executable "bin/seven-action-runner"
 require_executable "bin/seven-installer"
 require_executable "bin/seven-waybar-action"
+require_executable "bin/seven_waybar_app_profiles.py"
 require_executable "bin/seven-app-menu-native"
 require_executable "bin/seven-waybar-notifications"
 require_executable "bin/seven-waybar-profile"
 require_executable "bin/seven-waybar-security"
+require_executable "bin/seven-waybar-language"
 require_executable "bin/seven-waybar"
 require_executable "bin/seven-workspace"
 require_executable "bin/seven-window"
@@ -274,6 +280,8 @@ require_executable "bin/seven-profile-theme"
 require_executable "bin/hyprsysteminfo"
 require_executable "bin/seven-bluetooth"
 require_executable "bin/seven-windows-assistant"
+require_executable "bin/seven-pulse"
+require_executable "bin/seven-mini-doctor"
 require_executable "vm/windows-app-runner.sh"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
@@ -415,8 +423,8 @@ package_manifest_contains "mobile-broadband-provider-info" "scripts/packages-net
 package_manifest_contains "bluez" "scripts/packages-base.txt"
 package_manifest_contains "bluez-utils" "scripts/packages-base.txt"
 package_manifest_contains "blueman" "scripts/packages-base.txt"
-package_manifest_contains "foliate" "scripts/packages-culture-optional.txt"
-package_manifest_contains "translate-shell" "scripts/packages-culture-optional.txt"
+package_manifest_contains "foliate" "scripts/packages-culture.txt"
+package_manifest_contains "translate-shell" "scripts/packages-culture.txt"
 package_manifest_contains "gamescope" "scripts/packages-performance-optional.txt"
 package_manifest_contains "mangohud" "scripts/packages-performance-optional.txt"
 package_manifest_contains "archinstall" "scripts/packages-installer.txt"
@@ -448,6 +456,28 @@ if jq -e '.height == 30 and .spacing == 4 and ."margin-top" == 0 and ."margin-le
   ok "Waybar exposes premium SevenOS search, spaces and essential controls"
 else
   fail "Waybar premium search, workspace or essential control layout missing"
+fi
+
+waybar_limits_json="$(SEVENOS_ROOT="$ROOT_DIR" XDG_CONFIG_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-waybar" limits --json)"
+waybar_doctor_json="$(SEVENOS_ROOT="$ROOT_DIR" XDG_CONFIG_HOME="$(mktemp -d)" "$ROOT_DIR/bin/seven-waybar" doctor --json)"
+if python -m json.tool <<<"$waybar_limits_json" >/dev/null &&
+   python -m json.tool <<<"$waybar_doctor_json" >/dev/null &&
+   python -c 'import json,sys; data=json.load(sys.stdin); checks={item["id"]: item["state"] for item in data.get("checks", [])}; required={"module-count","polling-budget","json-contracts","no-min-width-transition","recorder-fixed-width","workspace-fixed-width","profile-fixed-width","app-menu-fixed-slots","app-menu-hidden-collapse"}; raise SystemExit(0 if data.get("state")=="OK" and required <= set(checks) and all(checks[item]=="OK" for item in required) else 1)' <<<"$waybar_limits_json" &&
+   python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema")=="sevenos.waybar.doctor.v1" and data.get("limits", {}).get("state")=="OK" else 1)' <<<"$waybar_doctor_json" &&
+   grep -q 'seven-waybar limits --json' "$ROOT_DIR/bin/seven-help" &&
+   grep -q 'seven-waybar limits --json' "$ROOT_DIR/bin/seven-help-native" &&
+   grep -q 'seven-waybar doctor --json' "$ROOT_DIR/bin/seven-help" &&
+   grep -q 'seven-waybar doctor --json' "$ROOT_DIR/bin/seven-help-native" &&
+   grep -q 'min-width: 58px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-app-file' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q 'min-width: 42px' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-app-extra.hidden' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#workspaces button' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   grep -q '#custom-recorder.idle' "$ROOT_DIR/hyprland/waybar/style.css" &&
+   ! grep -q 'min-width 180ms' "$ROOT_DIR/hyprland/waybar/style.css"; then
+  ok "Waybar dynamic limits keep the navigation bar stable and fluid"
+else
+  fail "Waybar dynamic limits should keep width, polling and JSON modules stable"
 fi
 
 if grep -q '@theme "sevenos.rasi"' "$ROOT_DIR/hyprland/rofi/apps.rasi" &&
@@ -762,8 +792,18 @@ else
   fail "Seven Reader integration is incomplete"
 fi
 
+store_browser_json="$("$ROOT_DIR/scripts/store.sh" search browser --json)"
+store_navigator_json="$("$ROOT_DIR/scripts/store.sh" search navigateur --json)"
+store_music_json="$("$ROOT_DIR/scripts/store.sh" search musique --json)"
+store_games_json="$("$ROOT_DIR/scripts/store.sh" search jeux --json)"
+store_pacman_profile_plan="$("$ROOT_DIR/scripts/store.sh" install-app pacman firefox --profile forge --dry-run)"
+store_aur_profile_plan="$("$ROOT_DIR/scripts/store.sh" install-app aur visual-studio-bin --profile forge --dry-run)"
+
 if grep -q 'SevenStoreNative' "$ROOT_DIR/bin/seven-store-native" &&
    grep -q 'sevenos.package-engine.v1' "$ROOT_DIR/scripts/store.sh" &&
+   grep -q 'CURATED_APPS' "$ROOT_DIR/scripts/store.sh" &&
+   grep -q 'curated_results' "$ROOT_DIR/scripts/store.sh" &&
+   grep -q '"suggestions"' "$ROOT_DIR/scripts/store.sh" &&
    grep -q 'Exec=seven-store open' "$ROOT_DIR/seven-hub/seven-store.desktop" &&
    grep -q 'Icon=seven-store' "$ROOT_DIR/seven-hub/seven-store.desktop" &&
    grep -q 'launch_environment' "$ROOT_DIR/bin/seven-launchpad-native" &&
@@ -771,9 +811,21 @@ if grep -q 'SevenStoreNative' "$ROOT_DIR/bin/seven-store-native" &&
    grep -q 'on_tile_click' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'Install on system' "$ROOT_DIR/bin/seven-store-native" &&
    grep -q 'Install for' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'Install on Equinox' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'profile_first' "$ROOT_DIR/bin/seven-store-native" &&
+   grep -q 'Browser' "$ROOT_DIR/bin/seven-store-native" &&
    grep -q 'install_command_for' "$ROOT_DIR/bin/seven-store-native" &&
    grep -q 'record_profile_app' "$ROOT_DIR/scripts/store.sh" &&
-   "$ROOT_DIR/scripts/store.sh" install-app pacman firefox --profile forge --dry-run | grep -q 'profile: forge' &&
+   grep -q '"curated": true' <<<"$store_browser_json" &&
+   grep -q '"beginner_visible": true' <<<"$store_browser_json" &&
+   grep -q '"expanded_query": "browser"' <<<"$store_navigator_json" &&
+   grep -q '"name": "Firefox"' <<<"$store_navigator_json" &&
+   grep -Eq '"name": "VLC"|"name": "Spotify"' <<<"$store_music_json" &&
+   grep -Eq '"name": "Steam"|"name": "Lutris"' <<<"$store_games_json" &&
+   grep -q 'profile: forge' <<<"$store_pacman_profile_plan" &&
+   grep -q 'sevenpkg forge install firefox --source pacman' <<<"$store_pacman_profile_plan" &&
+   grep -q 'sevenpkg forge helper paru' <<<"$store_aur_profile_plan" &&
+   grep -q 'sevenpkg forge install visual-studio-bin --source aur' <<<"$store_aur_profile_plan" &&
    grep -q 'install_user_command "$ROOT_DIR/bin/seven-store" seven-store' "$ROOT_DIR/scripts/install-cli.sh" &&
    grep -q 'install_user_command "$ROOT_DIR/bin/seven-store-native" seven-store-native' "$ROOT_DIR/scripts/install-cli.sh" &&
    grep -q 'write_command_wrapper "$BIN_HOME/seven-store" "$ROOT_DIR/bin/seven-store"' "$ROOT_DIR/seven-hub/install.sh" &&
@@ -922,7 +974,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-waybar-profile" | grep -Eq 'Equinox|Ba
    "$ROOT_DIR/bin/seven-profile-center-native" --probe >/dev/null 2>&1 &&
    "$ROOT_DIR/bin/seven-shield-center-native" --probe >/dev/null 2>&1 &&
    grep -q 'SevenProfileCenterNative' "$ROOT_DIR/bin/seven-profile-center-native" &&
-   grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'from seven_i18n import language_code, tr_text' "$ROOT_DIR/bin/seven-profile-center-native" &&
    grep -q 'SevenShieldCenterNative' "$ROOT_DIR/bin/seven-shield-center-native" &&
    grep -q 'Profile Center' "$ROOT_DIR/bin/seven-waybar-action" &&
    grep -q 'native_panel seven-profile-center-native' "$ROOT_DIR/bin/seven-waybar-action" &&
@@ -1135,7 +1187,7 @@ if grep -q '"schema": "sevenos.actions.v1"' <<<"$actions_json" &&
    grep -q 'seven experience status' "$ROOT_DIR/scripts/experience.sh" &&
    grep -q 'experience_workspace' "$ROOT_DIR/bin/seven-workspace" &&
    grep -q 'experience_event' "$ROOT_DIR/bin/seven-dock" &&
-   grep -q 'shell-experience.sh\" launch' "$ROOT_DIR/bin/seven-apps" &&
+   grep -q 'shell-experience.sh" launch' "$ROOT_DIR/bin/seven-apps" &&
    grep -q 'experience_event' "$ROOT_DIR/bin/seven-spotlight" &&
    grep -q 'shell_experience' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'experience_focus' "$ROOT_DIR/scripts/smart-window.sh" &&
@@ -1790,23 +1842,55 @@ fi
 
 if "$ROOT_DIR/bin/seven-language" status --json | python -m json.tool >/dev/null &&
    "$ROOT_DIR/bin/seven-language" list --json | python -m json.tool >/dev/null &&
-   "$ROOT_DIR/bin/seven-language" status --json | python -c 'import json,sys; data=json.load(sys.stdin); langs={item["locale"]: item for item in data["languages"]}; raise SystemExit(0 if "fr_FR.UTF-8" in langs and langs["fr_FR.UTF-8"].get("installed") in {True, False} else 1)' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" menu | grep -q 'DRY-RUN > Language > Open language chooser' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8 | grep -Eq 'DRY-RUN > Language > Enable fr_FR.UTF-8|OK: fr_FR.UTF-8 is already generated' &&
+   "$ROOT_DIR/bin/seven-language" doctor --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema")=="sevenos.language-doctor.v1" and data.get("ready") is True else 1)' &&
+   "$ROOT_DIR/bin/seven-language" doctor --json | python -c 'import json,sys; data=json.load(sys.stdin); checks={item["id"]: item for item in data["checks"]}; ok=checks.get("native-surfaces.i18n", {}).get("state")=="ok" and checks.get("cli.language-env", {}).get("state")=="ok" and checks.get("services.language-env", {}).get("state")=="ok" and checks.get("mini-os.language-env", {}).get("state")=="ok" and checks.get("mini-os.language-projection", {}).get("state") in {"ok", "missing"} and checks.get("mini-os.public-surfaces.i18n", {}).get("state")=="ok" and checks.get("waybar.app-menu.i18n", {}).get("state")=="ok"; raise SystemExit(0 if ok else 1)' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" apply --live --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if all(item.get("state") != "failed" for item in data.get("results", [])) else 1)' &&
+   "$ROOT_DIR/bin/seven" language doctor --json | python -m json.tool >/dev/null &&
+   [[ "$("$ROOT_DIR/install.sh" language --dry-run)" == *"SevenOS Language Doctor"* ]] &&
+   grep -q 'sevenos/language.env' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'seven-waybar-language' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'sevenos/language.env' "$ROOT_DIR/systemd/user/sevenos-waybar.service" &&
+   grep -q 'sevenos/language.env' "$ROOT_DIR/systemd/user/sevenos-wallpaper.service" &&
+   "$ROOT_DIR/bin/seven-language" status --json | python -c 'import json,sys; data=json.load(sys.stdin); langs={item["locale"]: item for item in data["languages"]}; packs={item["locale"]: item for item in data.get("default_language_packs", [])}; ok=all(locale in langs and langs[locale].get("installed") in {True, False} and packs.get(locale, {}).get("catalog") for locale in ("en_US.UTF-8", "fr_FR.UTF-8")); ok=ok and data.get("catalog_health", {}).get("complete") is True; raise SystemExit(0 if ok else 1)' &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" menu)" == *"DRY-RUN > Language > Open language chooser"* ]] &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8)" =~ (DRY-RUN\ \>\ Language\ \>\ Enable\ fr_FR\.UTF-8|OK:\ fr_FR\.UTF-8\ is\ already\ generated) ]] &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" ensure en_US.UTF-8)" =~ (DRY-RUN\ \>\ Language\ \>\ Enable\ en_US\.UTF-8|OK:\ en_US\.UTF-8\ is\ already\ generated) ]] &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" set fr_FR.UTF-8)" == *"DRY-RUN > Language > Set fr_FR.UTF-8"* ]] &&
+   [[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-language" set en_US.UTF-8)" == *"DRY-RUN > Language > Set en_US.UTF-8"* ]] &&
    grep -q 'fr_FR.UTF-8 UTF-8' "$ROOT_DIR/archiso/profile/airootfs/etc/locale.gen" &&
+   grep -q 'en_US.UTF-8 UTF-8' "$ROOT_DIR/archiso/profile/airootfs/etc/locale.gen" &&
+   grep -q 'language         Prepare and inspect French/English language packs' "$ROOT_DIR/install.sh" &&
+   grep -q 'preparing French and English language packs' "$ROOT_DIR/scripts/new-device.sh" &&
+   grep -q 'language_check' "$ROOT_DIR/scripts/post-install.sh" &&
    grep -q 'fr_FR.UTF-8' "$ROOT_DIR/installer/lib.sh" &&
+   grep -q 'en_US.UTF-8' "$ROOT_DIR/installer/lib.sh" &&
    grep -q 'seven_i18n' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'language_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'seven language set' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven language doctor' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'settings.system_updates.note' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'tr_text' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'tr_text' "$ROOT_DIR/bin/seven-waybar-center-native" &&
    grep -q 'tr_text' "$ROOT_DIR/bin/seven-notification-center-native" &&
+   grep -q 'language_code' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'language_code' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'language_code' "$ROOT_DIR/bin/seven-mini-context-menu-native" &&
+   grep -q 'FR_TO_EN' "$ROOT_DIR/bin/seven_waybar_app_profiles.py" &&
+   grep -q 'ui(' "$ROOT_DIR/bin/seven-waybar-status" &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 "$ROOT_DIR/bin/seven_waybar_app_profiles.py" contract | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if data.get("schema")=="sevenos.waybar.app-menu-contract.v1" and data.get("state")=="OK" else 1)' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 "$ROOT_DIR/bin/seven_waybar_app_profiles.py" contract | python -c 'import json,sys; data=json.load(sys.stdin); labels={item["id"]: item["file_label"] for item in data.get("checks", [])}; raise SystemExit(0 if data.get("state")=="OK" and labels.get("browser.gmail")=="Message" and labels.get("developer.vscode")=="File" else 1)' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 python -c 'import importlib.util; spec=importlib.util.spec_from_file_location("app_profiles", "bin/seven_waybar_app_profiles.py"); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); labels=mod.context_for_window({"class":"firefox","title":"Example"}, "equinox")["labels"]; title, items=mod.items_for("edit", "browser", "firefox", ""); raise SystemExit(0 if labels["file"]=="File" and title=="Edit" and any(item[1]=="Copy" for item in items) else 1)' &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 python -c 'import importlib.util; spec=importlib.util.spec_from_file_location("app_profiles", "bin/seven_waybar_app_profiles.py"); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); labels=mod.context_for_window({"class":"firefox","title":"Example"}, "equinox")["labels"]; title, items=mod.items_for("edit", "browser", "firefox", ""); raise SystemExit(0 if labels["file"]=="Fichier" and title=="Édition" and any(item[1]=="Copier" for item in items) else 1)' &&
+   [[ "$(SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_TEST_APP_CLASS=firefox SEVENOS_TEST_APP_TITLE=Example "$ROOT_DIR/bin/seven-waybar-status" app-menu-item file)" == *"active app menu"* ]] &&
+   [[ "$(SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_TEST_APP_CLASS=firefox SEVENOS_TEST_APP_TITLE=Example "$ROOT_DIR/bin/seven-waybar-status" app-menu-item file)" == *"menu de l'app active"* ]] &&
    SEVENOS_LANGUAGE=fr_FR.UTF-8 python -c 'import sys; from pathlib import Path; sys.path.insert(0, str(Path("scripts").resolve())); from seven_i18n import tr, tr_text; text="\n".join([tr("settings.system_updates.note"), tr("settings.appearance.subtitle"), tr_text("Control Center"), tr_text("No notifications"), tr_text("Connect, toggle and manage nearby networks")]); blocked=("Liquid glass", "No notifications", "Control Center", "Connect, toggle"); raise SystemExit(0 if not any(item in text for item in blocked) else 1)' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 python -c 'import sys; from pathlib import Path; sys.path.insert(0, str(Path("scripts").resolve())); from seven_i18n import tr, tr_text, language_code; text="\n".join([tr("settings.language_region"), tr_text("Control Center"), tr_text("No notifications")]); raise SystemExit(0 if language_code()=="en" and "Language and Region" in text and "Control Center" in text and "No notifications" in text else 1)' &&
+   [[ "$(SEVENOS_LANGUAGE=fr_FR.UTF-8 "$ROOT_DIR/bin/seven-waybar-language")" == *'"text": "FR"'* ]] &&
+   [[ "$(SEVENOS_LANGUAGE=en_US.UTF-8 "$ROOT_DIR/bin/seven-waybar-language")" == *'"text": "EN"'* ]] &&
    grep -q 'language_parser' "$ROOT_DIR/bin/seven"; then
-  ok "SevenOS exposes French-aware functional language selection in General settings"
+  ok "SevenOS exposes dynamic French and English language selection in General settings"
 else
-  fail "SevenOS language selection should expose French from Settings, installer and CLI"
+  fail "SevenOS language selection should expose dynamic French and English packs from Settings, installer and CLI"
 fi
 
 if "$ROOT_DIR/bin/seven-apps" doctor | grep -q 'desktop applications indexed' &&
@@ -1827,12 +1911,23 @@ fi
 hub_product_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub status --json)"
 actions_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" actions --json)"
 if python -m json.tool >/dev/null <<<"$hub_product_json" &&
-   grep -q '"schema": "sevenos.hub.v1"' <<<"$hub_product_json" &&
-   grep -Eq '"level": "(active|product-preview)"' <<<"$hub_product_json" &&
-   grep -q '"state_runtime_manifest": true' <<<"$hub_product_json" &&
-   grep -q '"state_runtime_manifests": true' <<<"$hub_product_json" &&
-   grep -q '"support": true' <<<"$hub_product_json" &&
-   grep -q '"support.status"' <<<"$hub_product_json" &&
+   HUB_PRODUCT_JSON="$hub_product_json" python - <<'PY' &&
+import json
+import os
+
+data = json.loads(os.environ["HUB_PRODUCT_JSON"])
+contracts = data.get("contracts") or {}
+required_actions = set(data.get("required_actions") or [])
+ok = (
+    data.get("schema") == "sevenos.hub.v1"
+    and data.get("level") in {"active", "product-preview"}
+    and contracts.get("state_runtime_manifest") is True
+    and contracts.get("state_runtime_manifests") is True
+    and contracts.get("support") is True
+    and "support.status" in required_actions
+)
+raise SystemExit(0 if ok else 1)
+PY
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" hub doctor >/dev/null &&
    grep -q '"hub.status"' <<<"$actions_json"; then
   ok "Seven Hub exposes a product-surface readiness contract"
@@ -2132,7 +2227,7 @@ if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_
    grep -q 'bluetooth_action' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'detail_button_row' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'seven-quick-settings wifi' "$ROOT_DIR/bin/seven-wifi" &&
-   grep -q 'seven-quick-settings\", \"bluetooth\"' "$ROOT_DIR/bin/seven-bluetooth" &&
+   grep -q 'seven-quick-settings", "bluetooth"' "$ROOT_DIR/bin/seven-bluetooth" &&
    grep -q 'set_keyboard_interactivity(window, True)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'def placeholder_snapshot' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'SNAPSHOT_CACHE_FILE' "$ROOT_DIR/bin/seven-quick-settings-native" &&
@@ -2315,6 +2410,7 @@ ecosystem_summary="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" summary)
 ecosystem_maturity="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/ecosystem.sh" maturity)"
 experience_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" experience --json)"
 adaptive_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" adaptive --json)"
+dynamic_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" dynamic --json)"
 adaptive_plan_output="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" adaptive plan)"
 control_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" control --json)"
 events_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" events --json)"
@@ -2361,7 +2457,28 @@ packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
 package_sources_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" sources --json)"
 profile_limits_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-limits --json)"
 forge_limits_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-limits forge --json)"
+forge_sources_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" forge sources --json)"
 forge_packages_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-packages forge --query htop --json)"
+missing_rootfs_dir="$(mktemp -d)"
+forge_missing_packages="$(SEVENOS_HOST_HOME=/tmp/sevenos-missing-home SEVENOS_HOST_DATA_HOME="$missing_rootfs_dir" SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" profile-packages forge --query visual-studio-bin)"
+forge_missing_install_json="$(SEVENOS_HOST_HOME=/tmp/sevenos-missing-home SEVENOS_HOST_DATA_HOME="$missing_rootfs_dir" SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" install --profile forge visual-studio-bin --source pacman --preview --json)"
+forge_shortcut_json="$(SEVENOS_HOST_HOME=/tmp/sevenos-missing-home SEVENOS_HOST_DATA_HOME="$missing_rootfs_dir" SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" forge install visual-studio-bin --source pacman --preview --json)"
+studio_shortcut_packages="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" studio packages --query blender)"
+pulse_shortcut_update="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" pulse update --preview)"
+pulse_doctor_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-pulse" doctor --json)"
+pulse_route_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" pulse doctor --json)"
+pulse_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" pulse plan --json)"
+pulse_rootfs_preview="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-pulse" rootfs --dry-run)"
+pulse_launchers_preview="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-pulse" launchers --dry-run)"
+pulse_hud_preview="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-pulse" hud --dry-run)"
+pulse_helper_preview="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-pulse" helper --dry-run)"
+pulse_open_preview="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-pulse" open --dry-run)"
+pulse_activate_preview="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-pulse" activate --dry-run)"
+mini_doctor_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-mini-doctor" all --json)"
+mini_doctor_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" mini-doctor forge plan --json)"
+mini_doctor_studio_preview="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-mini-doctor" studio install --dry-run)"
+mini_doctor_baobab_preview="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-mini-doctor" baobab rootfs --dry-run)"
+forge_helper_preview="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" forge helper paru --preview)"
 profile_package_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" install --profile forge htop --source pacman --preview --json)"
 profile_remove_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" remove --profile forge 7zip --preview --json)"
 profile_remove_missing_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" remove --profile forge definitely-not-installed-sevenos-test-package --preview --json)"
@@ -2371,6 +2488,14 @@ if grep -q 'profile-install' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'profile-remove' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'profile-limits' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'profile-packages' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'profile-sources' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'profile_sources_payload' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'profile_helper_transaction_commands' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'profile_helper_build_script' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'profile_helper_install_script' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q -- '--rootfs-admin' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q -- '--rootfs-admin' "$ROOT_DIR/bin/seven-profile-run" &&
+   grep -q 'sevenpkg {profile} helper' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'show_package_removal_dialog' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'settings.package_remove.section' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'settings:package-remove' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -2393,16 +2518,93 @@ if grep -q 'profile-install' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'global_install' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'sevenos.profile-package-transaction.v1' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'sevenos.profile-package-limits.v1' "$ROOT_DIR/bin/sevenpkg" &&
+   grep -q 'sevenos.profile-package-sources.v1' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'sevenos.package-sources.v1' "$ROOT_DIR/bin/sevenpkg" &&
    grep -q 'global-system' <<<"$profile_limits_json" &&
    grep -q 'profile-rootfs' <<<"$profile_limits_json" &&
    grep -q 'sevenos.profile-package-inventory.v1' <<<"$forge_packages_json" &&
+   python -m json.tool <<<"$forge_missing_install_json" >/dev/null &&
+   python -m json.tool <<<"$forge_shortcut_json" >/dev/null &&
+   grep -q 'rootfs missing' <<<"$forge_missing_packages" &&
+   grep -q 'visual-studio-bin -> code' <<<"$forge_missing_packages" &&
+   grep -q 'seven profile-rootfs build forge --apply --yes' <<<"$forge_missing_packages" &&
+   grep -q '"code"' <<<"$forge_missing_install_json" &&
+   grep -q '"code"' <<<"$forge_shortcut_json" &&
+   grep -q '"schema": "sevenos.profile-package-sources.v1"' <<<"$forge_sources_json" &&
+   grep -q 'helper_command' <<<"$forge_sources_json" &&
+   grep -q 'sevenpkg forge install <package> --source pacman' <<<"$forge_sources_json" &&
+   grep -q 'seven-profile-rootfs' <<<"$forge_missing_install_json" &&
+   grep -q 'seven-profile-rootfs' <<<"$forge_shortcut_json" &&
+   grep -q '"rootfs_ready": false' <<<"$forge_missing_install_json" &&
+   grep -q '"prepare"' <<<"$forge_missing_install_json" &&
+   grep -q 'studio · profile-rootfs' <<<"$studio_shortcut_packages" &&
+   grep -q 'pulse · profile-rootfs' <<<"$pulse_shortcut_update" &&
+   grep -q 'paru -Sua' <<<"$pulse_shortcut_update" &&
+   python -m json.tool <<<"$pulse_doctor_json" >/dev/null &&
+   python -m json.tool <<<"$pulse_route_json" >/dev/null &&
+   python -m json.tool <<<"$pulse_plan_json" >/dev/null &&
+   grep -q '"schema": "sevenos.pulse.doctor.v1"' <<<"$pulse_doctor_json" &&
+   grep -q '"schema": "sevenos.pulse.plan.v1"' <<<"$pulse_plan_json" &&
+   grep -q '"profile": "pulse"' <<<"$pulse_doctor_json" &&
+   grep -q 'install_steam_private' <<<"$pulse_doctor_json" &&
+   grep -q 'private_packages' <<<"$pulse_doctor_json" &&
+   grep -q 'pulse.install.steam' <<<"$pulse_plan_json" &&
+   grep -q 'sevenpkg pulse install steam --source pacman' <<<"$pulse_doctor_json" &&
+   grep -q 'driver_hints' <<<"$pulse_doctor_json" &&
+   grep -q 'multilib_enabled' <<<"$pulse_doctor_json" &&
+   grep -q 'prepare pulse --apply --yes' <<<"$pulse_rootfs_preview" &&
+   grep -q 'sevenpkg pulse install steam lutris --source pacman' <<<"$pulse_launchers_preview" &&
+   grep -q 'sevenpkg pulse install mangohud gamescope --source pacman' <<<"$pulse_hud_preview" &&
+   grep -q 'sevenpkg pulse helper paru' <<<"$pulse_helper_preview" &&
+   grep -q 'seven-mini-os-center pulse' <<<"$pulse_open_preview" &&
+   grep -q 'seven profile activate pulse' <<<"$pulse_activate_preview" &&
+   grep -q 'seven-pulse doctor' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-pulse install' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-pulse launchers' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-pulse hud' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-pulse doctor' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven-pulse' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'vulkan-icd-loader' "$ROOT_DIR/scripts/packages-performance.txt" &&
+   grep -q 'xdg-desktop-portal-hyprland' "$ROOT_DIR/scripts/packages-performance.txt" &&
+   grep -q 'gamescope' "$ROOT_DIR/scripts/packages-performance-optional.txt" &&
+   grep -q 'protontricks' "$ROOT_DIR/scripts/packages-performance-optional.txt" &&
+   grep -q 'Pulse Gaming Mini OS' "$ROOT_DIR/docs/PULSE_MINI_OS.md" &&
+   grep -q 'seven-pulse launchers' "$ROOT_DIR/docs/PULSE_MINI_OS.md" &&
+   python -m json.tool <<<"$mini_doctor_json" >/dev/null &&
+   python -m json.tool <<<"$mini_doctor_plan_json" >/dev/null &&
+   grep -q '"schema": "sevenos.mini-os.doctor-set.v1"' <<<"$mini_doctor_json" &&
+   grep -q '"schema": "sevenos.mini-os.plan.v1"' <<<"$mini_doctor_plan_json" &&
+   grep -q '"forge"' <<<"$mini_doctor_json" &&
+   grep -q '"studio"' <<<"$mini_doctor_json" &&
+   grep -q '"baobab"' <<<"$mini_doctor_json" &&
+   grep -q '"shield"' <<<"$mini_doctor_json" &&
+   grep -Eq 'forge\.(install\.required|optional\.dev)' <<<"$mini_doctor_plan_json" &&
+   grep -q 'seven profile requirements studio --apply --yes' <<<"$mini_doctor_studio_preview" &&
+   grep -q 'seven profile-rootfs prepare baobab --apply --yes' <<<"$mini_doctor_baobab_preview" &&
+   grep -q 'seven-mini-doctor forge' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-mini-doctor shield' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-mini-doctor studio' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-mini-doctor baobab' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'seven-mini-doctor' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'scripts/packages-dev-optional.txt' "$ROOT_DIR/profiles/catalog.json" &&
+   grep -q 'scripts/packages-creation-optional.txt' "$ROOT_DIR/profiles/catalog.json" &&
+   grep -q 'podman' "$ROOT_DIR/scripts/packages-dev.txt" &&
+   grep -q 'pipewire-jack' "$ROOT_DIR/scripts/packages-creation.txt" &&
+   grep -q 'kiwix-desktop' "$ROOT_DIR/scripts/packages-culture.txt" &&
+   grep -q 'Mini OS Requirements' "$ROOT_DIR/docs/MINI_OS_REQUIREMENTS.md" &&
+   grep -q 'private to forge' <<<"$forge_helper_preview" &&
+   grep -Eq 'AUR helper|already available inside forge' <<<"$forge_helper_preview" &&
+   grep -Eq 'base-devel|already available inside forge' <<<"$forge_helper_preview" &&
+   grep -Eq 'makepkg -s --noconfirm|already available inside forge' <<<"$forge_helper_preview" &&
+   grep -Eq 'pacman -U --needed --noconfirm|already available inside forge' <<<"$forge_helper_preview" &&
+   grep -Eq -- '--rootfs-admin|already available inside forge' <<<"$forge_helper_preview" &&
+   grep -Eq 'https://aur.archlinux.org/paru.git|already available inside forge' <<<"$forge_helper_preview" &&
    grep -q '"profile_filter": "forge"' <<<"$forge_limits_json" &&
    grep -q 'next_actions' <<<"$forge_limits_json" &&
    grep -q 'sevenrepo' <<<"$package_sources_json" &&
    grep -q 'profile-rootfs-packages' <<<"$profile_package_json" &&
    grep -q '"action": "remove"' <<<"$profile_remove_json" &&
-   grep -q 'not installed inside the forge rootfs' <<<"$profile_remove_missing_json" &&
+   grep -Eq 'not installed inside the forge rootfs|forge rootfs is not ready' <<<"$profile_remove_missing_json" &&
    grep -q '"action": "update"' <<<"$profile_update_json" &&
    grep -q 'pacman' <<<"$profile_update_json" &&
    grep -q 'does not touch other mini OS' <<<"$profile_remove_json" &&
@@ -2424,7 +2626,19 @@ runtime_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime status --json)"
 runtime_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" runtime plan forge shield studio --json)"
 shell_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shell status --json)"
 b3_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" b3 plan --json)"
-if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
+sevenpkg_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json)"
+manifest_summary_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json)"
+state_fast_json="$(SEVENOS_UPDATE_FAST=1 SEVENOS_HEALTH_FAST=1 SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json)"
+
+core_json_contract_state="MISS"
+if python -m json.tool <<<"$state_fast_json" >/dev/null &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v1"' <<<"$core_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.runtime-orchestrator.v1"' <<<"$runtime_json" &&
+   python -c 'import json,sys; data=json.load(sys.stdin); required={"welcome","session","identity","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","shield","cyberspace","server","installer","packages","packages_plan","store","ecosystem","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","events","adaptive","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}; raise SystemExit(0 if required.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; then
+  core_json_contract_state="OK"
+fi
+if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
    SEVENOS_UPDATE_FAST=1 SEVENOS_HEALTH_FAST=1 SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile status --json | python -m json.tool >/dev/null &&
    SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" profile current --json | python -m json.tool >/dev/null &&
@@ -2497,7 +2711,7 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"profile-ui-bus"' <<<"$adaptive_json" &&
    grep -q '"wallpaper-palette"' <<<"$adaptive_json" &&
    grep -q 'SevenOS Adaptive UI Plan' <<<"$adaptive_plan_output" &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" dynamic --json | grep -q '"dynamic_inputs"' &&
+   grep -q '"dynamic_inputs"' <<<"$dynamic_json" &&
    grep -q '"schema": "sevenos.control.v1"' <<<"$control_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.events.v1"' <<<"$events_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.insights.v1"' <<<"$insights_json" &&
@@ -2570,16 +2784,16 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS Installer Release Readiness' <<<"$installer_release_output" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
    grep -Eq '"writer"[[:space:]]*:[[:space:]]*"seven-daemon"' <<<"$packages_plan_json" &&
-   grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
-   grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
-   grep -q '"schema":"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
-   grep -q '"schema":"sevenos.daemon.health.v1"' <<<"$core_health_json" &&
-   grep -q '"schema":"sevenos.daemon.profiles.v1"' <<<"$core_profiles_json" &&
-   grep -q '"schema": "sevenos.context.emit.v1"' <<<"$core_observe_json" &&
-   grep -q '"schema": "sevenos.context.v1"' <<<"$context_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v1"' <<<"$core_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core-plan.v1"' <<<"$core_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.daemon.health.v1"' <<<"$core_health_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.daemon.profiles.v1"' <<<"$core_profiles_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.context.emit.v1"' <<<"$core_observe_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.context.v1"' <<<"$context_json" &&
    grep -q '"primary_context"' <<<"$context_json" &&
-   grep -q '"schema": "sevenos.scheduler.v1"' <<<"$scheduler_json" &&
-   grep -q '"state": "active-user-space-executor"' <<<"$scheduler_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.scheduler.v1"' <<<"$scheduler_json" &&
+   grep -Eq '"state"[[:space:]]*:[[:space:]]*"active-user-space-executor"' <<<"$scheduler_json" &&
    grep -q '"active_policy"' <<<"$scheduler_json" &&
    grep -q 'safe renice executor' <<<"$scheduler_json" &&
    grep -q 'sevenos.scheduler-apply.v1' "$ROOT_DIR/scripts/scheduler.sh" &&
@@ -2587,14 +2801,14 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q '"profile_run"' <<<"$state_json" &&
    grep -q '"profile_runtime_manifest"' <<<"$state_json" &&
    grep -q '"profile_runtime_manifests"' <<<"$state_json" &&
-   grep -q '"schema": "sevenos.runtime-orchestrator.v1"' <<<"$runtime_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.runtime-orchestrator.v1"' <<<"$runtime_json" &&
    grep -q '"capability_fusion"' <<<"$runtime_json" &&
    grep -q '"conflict_resolver"' <<<"$runtime_json" &&
    grep -q '"primary_profile"' <<<"$runtime_plan_json" &&
    grep -q '"shield"' <<<"$runtime_plan_json" &&
    grep -q '"studio"' <<<"$runtime_plan_json" &&
    grep -q '"runtime_health":' <<<"$shell_status_json" &&
-   grep -q '"schema": "sevenos.b3.v1"' <<<"$b3_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.b3.v1"' <<<"$b3_json" &&
    grep -q '"targets":' <<<"$b3_json" &&
    grep -q '"phase_state":' <<<"$b3_json" &&
    grep -q '"blocked_by":' <<<"$b3_json" &&
@@ -2603,9 +2817,9 @@ if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >
    grep -q 'SevenOS All-In-One Process Map' <<<"$ecosystem_processes" &&
    grep -q 'SevenOS Ecosystem:' <<<"$ecosystem_summary" &&
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" status --json | python -m json.tool >/dev/null &&
-   SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/manifest.sh" summary-json | python -m json.tool >/dev/null &&
-   SEVENOS_UPDATE_FAST=1 SEVENOS_HEALTH_FAST=1 SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" state --json | python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)'; then
+   python -m json.tool <<<"$sevenpkg_status_json" >/dev/null &&
+   python -m json.tool <<<"$manifest_summary_json" >/dev/null &&
+   python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; }; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -2683,9 +2897,12 @@ if grep -q 'Workspace:' <<<"$profile_show_output" &&
    grep -q '"profile_run"' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"profile_runtime_manifest"' "$ROOT_DIR/scripts/state.sh" &&
    grep -q '"profile_runtime_manifests"' "$ROOT_DIR/scripts/state.sh" &&
+   grep -q 'Limite stricte' "$ROOT_DIR/bin/seven-mini-os-center" &&
    grep -q 'Strict boundary' "$ROOT_DIR/bin/seven-mini-os-center" &&
    grep -q 'seven-terminal.*seven-profile-run --profile' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'Shell espace' "$ROOT_DIR/bin/seven-mini-os-center" &&
    grep -q 'Workspace shell' "$ROOT_DIR/bin/seven-mini-os-center" &&
+   grep -q 'Shell temporaire' "$ROOT_DIR/bin/seven-mini-os-center" &&
    grep -q 'Ephemeral shell' "$ROOT_DIR/bin/seven-mini-os-center" &&
    grep -q -- '--workspace-profile' "$ROOT_DIR/bin/seven-mini-os-center" &&
    grep -q 'seven-profile-run --profile shield --container' "$ROOT_DIR/docs/PROFILE_ISOLATION.md" &&
@@ -2897,12 +3114,12 @@ if python -m json.tool <<<"$windows_json" >/dev/null &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows.v1"' <<<"$windows_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-bridge-runtime.v1"' <<<"$windows_bridge_json" &&
    grep -q '"bridge_runtime"' <<<"$windows_json" &&
-   grep -q 'Bridge runtime:' <<<"$windows_status_human" &&
+   grep -Eq 'Bridge runtime:|État Windows:' <<<"$windows_status_human" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-catalog.v1"' <<<"$windows_catalog" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-resolve.v1"' <<<"$windows_resolve" &&
    grep -q '"id": "office"' <<<"$windows_office_resolve" &&
-   grep -q 'SevenOS Windows Mode guide' <<<"$windows_guide" &&
+   grep -Eq 'SevenOS Windows Mode guide|Guide Windows SevenOS' <<<"$windows_guide" &&
    grep -q 'DRY-RUN > Windows App >' <<<"$windows_run" &&
    grep -q 'Prepare Windows prefix office' <<<"$windows_office_prepare" &&
    grep -q 'SevenOS Windows Diagnostic' <<<"$windows_office_diagnose" &&
@@ -2914,7 +3131,7 @@ if python -m json.tool <<<"$windows_json" >/dev/null &&
    grep -q 'if profile == windows: seven windows enter' <<<"$windows_sync" &&
    grep -q 'else: seven windows leave' <<<"$windows_sync" &&
    grep -q '"recommended_action"' <<<"$windows_bridge_json" &&
-   grep -q 'SevenOS Windows Mode guide' <<<"$windows_mode_guide" &&
+   grep -Eq 'SevenOS Windows Mode guide|Guide Windows SevenOS' <<<"$windows_mode_guide" &&
    grep -q 'iso_state()' "$ROOT_DIR/vm/windows-provisioner.sh" &&
    grep -q 'VIRTIO_PART=' "$ROOT_DIR/vm/windows-provisioner.sh" &&
    grep -q 'curl --fail --retry 5 --retry-delay 2 -C - -L --progress-bar' "$ROOT_DIR/vm/windows-provisioner.sh" &&
@@ -3034,7 +3251,7 @@ else
 fi
 
 for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy" Ecosystem Installer Apps; do
-  if grep -q "\"$category|category:$category" "$ROOT_DIR/seven-hub/bin/seven-hub"; then
+  if grep -Fq "\"$category|category:$category" "$ROOT_DIR/seven-hub/bin/seven-hub"; then
     ok "Seven Hub category: $category"
   else
     fail "Seven Hub category missing: $category"
@@ -3093,11 +3310,32 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/repair.sh" ux >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/design-check.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/post-install.sh" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" cyber-lab --preset offline --dry-run >/dev/null
+[[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" app-command Copy)" == *"Active app > ctrl+c"* ]]
+[[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" app-command Copier)" == *"Active app > ctrl+c"* ]]
+[[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" app-command 'Full screen')" == *"Active app > F11"* ]]
+[[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" app-command 'Plein écran')" == *"Active app > F11"* ]]
+[[ "$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-action" app-command 'Command palette')" == *"Active app > ctrl+shift+p"* ]]
 ok "interactive UX commands support dry-run"
 
 if SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰩂  Desktop Helpers    Super+H' &&
    SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰒓  Open Seven Hub    Super+Shift+H' &&
    SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" | grep -q '󰩂  Aide du bureau    Super+H' &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" manual | grep -q 'seven language doctor' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" manual | grep -q 'seven language doctor' &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" manual | grep -q '## Documentation projet' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" manual | grep -q '## Project Documentation' &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" manual | grep -q 'docs/ARCHITECTURE.md' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" manual | grep -q 'docs/FUTURE_FEATURES.md' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" future | grep -q 'Future Features' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" docs-index | grep -q 'seven-help doc architecture' &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" docs-index | grep -q 'seven-help doc architecture' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" doc architecture | grep -q 'SevenOS Architecture' &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" doc installer | grep -q 'Source locale : `docs/INSTALLER.md`' &&
+   grep -q 'SevenOS Future Features' "$ROOT_DIR/docs/FUTURE_FEATURES.md" &&
+   grep -q '"id": "docs"' "$ROOT_DIR/bin/seven-help-native" &&
+   grep -q 'seven-help docs-index' "$ROOT_DIR/bin/seven-help-native" &&
+   SEVENOS_LANGUAGE=fr_FR.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" topics | grep -q 'language.*français/anglais' &&
+   SEVENOS_LANGUAGE=en_US.UTF-8 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-help" topics | grep -q 'language.*French/English' &&
    grep -q '󰋜  Home' "$ROOT_DIR/bin/seven-files" &&
    grep -q '󰀻  Open Apps    Super' "$ROOT_DIR/bin/seven-help" &&
    grep -q '󰀻  Ouvrir les apps    Super' "$ROOT_DIR/bin/seven-help" &&

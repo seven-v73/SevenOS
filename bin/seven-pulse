@@ -1,0 +1,383 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+ROOT = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+REQUIRED_FILE = ROOT / "scripts/packages-performance.txt"
+OPTIONAL_FILE = ROOT / "scripts/packages-performance-optional.txt"
+
+
+def host_home() -> Path:
+    if os.environ.get("SEVENOS_HOST_HOME"):
+        return Path(os.environ["SEVENOS_HOST_HOME"])
+    raw = Path(os.environ.get("HOME", str(Path.home())))
+    marker = "/.local/share/sevenos/profile-containers/"
+    text = str(raw)
+    if marker in text and text.endswith("/home"):
+        return Path(text.split(marker, 1)[0])
+    user = os.environ.get("USER")
+    if user:
+        candidate = Path("/home") / user
+        if candidate.is_dir():
+            return candidate
+    return raw
+
+
+HOST_HOME = host_home()
+HOST_DATA_HOME = Path(os.environ.get("SEVENOS_HOST_DATA_HOME", str(HOST_HOME / ".local/share")))
+PROFILE_ROOT = HOST_DATA_HOME / "sevenos/profile-rootfs/pulse/rootfs"
+PROFILE_LOCAL = PROFILE_ROOT / "var/lib/pacman/local"
+
+
+def package_file(path: Path) -> list[str]:
+    if not path.is_file():
+        return []
+    packages = []
+    for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        item = raw.split("#", 1)[0].strip()
+        if item:
+            packages.append(item)
+    return packages
+
+
+def command_output(command: list[str]) -> str:
+    result = subprocess.run(command, text=True, capture_output=True, check=False)
+    return result.stdout if result.returncode == 0 else ""
+
+
+def installed_packages() -> set[str]:
+    if not shutil.which("pacman"):
+        return set()
+    return {line.strip() for line in command_output(["pacman", "-Qq"]).splitlines() if line.strip()}
+
+
+def rootfs_ready() -> bool:
+    return (PROFILE_ROOT / "usr/bin").is_dir() and (PROFILE_ROOT / "var/lib/pacman").exists()
+
+
+def rootfs_packages() -> set[str]:
+    packages = set()
+    if not PROFILE_LOCAL.is_dir():
+        return packages
+    for desc in PROFILE_LOCAL.glob("*/desc"):
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for index, line in enumerate(lines):
+            if line == "%NAME%" and index + 1 < len(lines):
+                packages.add(lines[index + 1].strip())
+                break
+    return packages
+
+
+def multilib_enabled() -> bool:
+    conf = Path("/etc/pacman.conf")
+    if not conf.is_file():
+        return False
+    active_repo = None
+    for raw in conf.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            active_repo = line[1:-1]
+            if active_repo == "multilib":
+                return True
+    return active_repo == "multilib"
+
+
+def gpu_vendors() -> list[str]:
+    text = command_output(["lspci", "-nnk"]) if shutil.which("lspci") else ""
+    found = []
+    lowered = text.lower()
+    for key, needles in {
+        "nvidia": ("nvidia",),
+        "amd": ("amd", "advanced micro devices", "radeon"),
+        "intel": ("intel corporation", "intel graphics", "uhd graphics", "iris"),
+    }.items():
+        if any(needle in lowered for needle in needles):
+            found.append(key)
+    return found
+
+
+def driver_hints(vendors: list[str], multilib: bool) -> list[dict]:
+    hints = []
+    if "nvidia" in vendors:
+        packages = ["nvidia-utils"]
+        if multilib:
+            packages.append("lib32-nvidia-utils")
+        hints.append({
+            "vendor": "nvidia",
+            "packages": packages,
+            "note": "NVIDIA needs matching kernel/module packages outside the Pulse rootfs.",
+            "command": "sevenpkg install --profile equinox nvidia-utils --source pacman",
+        })
+    if "amd" in vendors:
+        packages = ["mesa", "vulkan-radeon"]
+        if multilib:
+            packages.extend(["lib32-mesa", "lib32-vulkan-radeon"])
+        hints.append({
+            "vendor": "amd",
+            "packages": packages,
+            "note": "AMD gaming relies on Mesa plus the Radeon Vulkan ICD.",
+            "command": "sevenpkg install --profile equinox mesa vulkan-radeon --source pacman",
+        })
+    if "intel" in vendors:
+        packages = ["mesa", "vulkan-intel"]
+        if multilib:
+            packages.extend(["lib32-mesa", "lib32-vulkan-intel"])
+        hints.append({
+            "vendor": "intel",
+            "packages": packages,
+            "note": "Intel gaming relies on Mesa plus the Intel Vulkan ICD.",
+            "command": "sevenpkg install --profile equinox mesa vulkan-intel --source pacman",
+        })
+    return hints
+
+
+def action_plan(data: dict) -> list[dict]:
+    actions = []
+    if data["missing"]["required"]:
+        actions.append({
+            "id": "pulse.install.required",
+            "label": "Installer les essentiels Pulse",
+            "command": data["commands"]["install_required"],
+            "scope": "host-equinox",
+            "reason": "Vulkan, audio and desktop portal basics must be present before gaming feels normal.",
+        })
+    if not data["summary"]["rootfs_ready"]:
+        actions.append({
+            "id": "pulse.rootfs.prepare",
+            "label": "Préparer le rootfs Pulse",
+            "command": data["commands"]["prepare_rootfs"],
+            "scope": "profile-rootfs",
+            "reason": "Pulse needs its own package space before private game launchers can be installed.",
+        })
+    if not data["summary"]["multilib_enabled"]:
+        actions.append({
+            "id": "pulse.multilib.guidance",
+            "label": "Activer multilib pour Steam/Proton",
+            "command": data["commands"]["multilib_help"],
+            "scope": "host-equinox",
+            "reason": "Steam and many Proton games need 32-bit libraries from Arch multilib.",
+        })
+    private_packages = data.get("private_packages", {})
+    if not private_packages.get("steam"):
+        actions.append({
+            "id": "pulse.install.steam",
+            "label": "Installer Steam dans Pulse",
+            "command": data["commands"]["install_steam_private"],
+            "scope": "pulse-rootfs",
+            "reason": "Steam should stay in the Pulse mini OS package view.",
+        })
+    if not private_packages.get("lutris"):
+        actions.append({
+            "id": "pulse.install.lutris",
+            "label": "Installer Lutris dans Pulse",
+            "command": data["commands"]["install_lutris_private"],
+            "scope": "pulse-rootfs",
+            "reason": "Lutris belongs to Pulse unless explicitly shared through Equinox.",
+        })
+    if not private_packages.get("mangohud") or not private_packages.get("gamescope"):
+        actions.append({
+            "id": "pulse.install.hud",
+            "label": "Installer HUD et frame pacing",
+            "command": data["commands"]["install_mangohud_private"],
+            "scope": "pulse-rootfs",
+            "reason": "MangoHud and Gamescope provide performance visibility and smoother game sessions.",
+        })
+    return actions
+
+
+def payload() -> dict:
+    required = package_file(REQUIRED_FILE)
+    optional = package_file(OPTIONAL_FILE)
+    installed = installed_packages()
+    missing_required = [pkg for pkg in required if pkg not in installed]
+    missing_optional = [pkg for pkg in optional if pkg not in installed]
+    vendors = gpu_vendors()
+    multilib = multilib_enabled()
+    ready_rootfs = rootfs_ready()
+    private = rootfs_packages()
+    private_status = {
+        "steam": "steam" in private,
+        "lutris": "lutris" in private,
+        "gamescope": "gamescope" in private,
+        "mangohud": "mangohud" in private,
+        "heroic": "heroic-games-launcher-bin" in private or "heroic" in private,
+        "paru": "paru" in private,
+        "yay": "yay" in private,
+    }
+    blockers = []
+    warnings = []
+    if missing_required:
+        blockers.append("pulse-required-packages")
+    if not ready_rootfs:
+        blockers.append("pulse-rootfs")
+    if not vendors:
+        warnings.append("gpu-vendor-unknown")
+    if not multilib:
+        warnings.append("multilib-disabled")
+    ready = not blockers
+    data = {
+        "schema": "sevenos.pulse.doctor.v1",
+        "generated_at": int(time.time()),
+        "profile": "pulse",
+        "ready": ready,
+        "summary": {
+            "required": len(required),
+            "required_missing": len(missing_required),
+            "optional": len(optional),
+            "optional_missing": len(missing_optional),
+            "rootfs_ready": ready_rootfs,
+            "multilib_enabled": multilib,
+            "gpu_vendors": vendors,
+        },
+        "rootfs": {
+            "path": str(PROFILE_ROOT),
+            "package_count": len(private),
+        },
+        "private_packages": private_status,
+        "missing": {
+            "required": missing_required,
+            "optional": missing_optional,
+        },
+        "driver_hints": driver_hints(vendors, multilib),
+        "blockers": blockers,
+        "warnings": warnings,
+        "commands": {
+            "open": "seven-mini-os-center pulse",
+            "activate": "seven profile activate pulse",
+            "prepare_rootfs": "seven profile-rootfs prepare pulse --apply --yes",
+            "build_rootfs": "seven profile-rootfs build pulse --apply --yes",
+            "install_required": "seven profile requirements pulse --apply --yes",
+            "install_optional": "seven profile requirements pulse --optional --apply --yes",
+            "multilib_help": "seven-pulse multilib",
+            "install_steam_private": "sevenpkg pulse install steam --source pacman",
+            "install_lutris_private": "sevenpkg pulse install lutris --source pacman",
+            "install_heroic_private": "sevenpkg pulse install heroic-games-launcher-bin --source paru",
+            "install_mangohud_private": "sevenpkg pulse install mangohud gamescope --source pacman",
+            "install_launchers": "seven-pulse launchers",
+            "install_hud": "seven-pulse hud",
+            "prepare_aur_helper": "sevenpkg pulse helper paru",
+            "packages": "sevenpkg pulse packages",
+            "limits": "sevenpkg pulse limits",
+        },
+        "notes": [
+            "Game launchers and user games belong inside the Pulse profile rootfs through sevenpkg pulse install.",
+            "GPU drivers, kernel modules, Mesa and multilib are host-level Equinox responsibilities because the kernel and GPU stack are shared.",
+            "Pulse stays gaming-only: no dev, cyber, cloud or creator stacks are required.",
+        ],
+    }
+    data["plan"] = action_plan(data)
+    return data
+
+
+def print_human(data: dict) -> None:
+    summary = data["summary"]
+    print("SevenOS Pulse Doctor")
+    print("====================")
+    print(f"State: {'OK' if data['ready'] else 'needs setup'}")
+    print(f"Required packages: {summary['required'] - summary['required_missing']}/{summary['required']}")
+    print(f"Optional gaming tools: {summary['optional'] - summary['optional_missing']}/{summary['optional']}")
+    print(f"Pulse rootfs: {'ready' if summary['rootfs_ready'] else 'missing'}")
+    print(f"Pulse private packages: {data['rootfs']['package_count']}")
+    print(f"Multilib: {'enabled' if summary['multilib_enabled'] else 'disabled or unavailable'}")
+    print(f"GPU: {', '.join(summary['gpu_vendors']) if summary['gpu_vendors'] else 'unknown'}")
+    if data["missing"]["required"]:
+        print()
+        print("Missing essentials:")
+        for item in data["missing"]["required"]:
+            print(f"- {item}")
+    if data["driver_hints"]:
+        print()
+        print("Driver guidance:")
+        for item in data["driver_hints"]:
+            print(f"- {item['vendor']}: {' '.join(item['packages'])}")
+    print()
+    if data["plan"]:
+        print("Plan:")
+        for item in data["plan"][:6]:
+            print(f"- {item['label']}: {item['command']}")
+        print()
+    print("Guided actions:")
+    for label in ("install_required", "prepare_rootfs", "install_launchers", "install_hud", "prepare_aur_helper"):
+        print(f"- {data['commands'][label]}")
+
+
+def run(command: list[str], dry_run: bool) -> int:
+    if dry_run:
+        print(" ".join(command))
+        return 0
+    return subprocess.run(command, check=False).returncode
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-pulse")
+    parser.add_argument("action", nargs="?", default="doctor", choices=("status", "doctor", "json", "plan", "open", "activate", "install", "optional", "rootfs", "launchers", "steam", "lutris", "heroic", "hud", "helper", "multilib", "limits", "packages"))
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    if args.action in {"status", "doctor", "json", "plan"}:
+        data = payload()
+        if args.action == "plan":
+            output = {"schema": "sevenos.pulse.plan.v1", "profile": "pulse", "ready": data["ready"], "actions": data["plan"], "commands": data["commands"]}
+            if args.json:
+                print(json.dumps(output, indent=2))
+            else:
+                for item in output["actions"]:
+                    print(f"{item['label']}: {item['command']}")
+            return 0
+        if args.json or args.action == "json":
+            print(json.dumps(data, indent=2))
+        else:
+            print_human(data)
+        return 0
+    if args.action == "install":
+        return run([str(ROOT / "bin/seven"), "profile", "requirements", "pulse", "--apply", "--yes"], args.dry_run)
+    if args.action == "open":
+        return run([str(ROOT / "bin/seven-mini-os-center"), "pulse"], args.dry_run)
+    if args.action == "activate":
+        return run([str(ROOT / "bin/seven"), "profile", "activate", "pulse"], args.dry_run)
+    if args.action == "optional":
+        return run([str(ROOT / "bin/seven"), "profile", "requirements", "pulse", "--optional", "--apply", "--yes"], args.dry_run)
+    if args.action == "rootfs":
+        return run([str(ROOT / "bin/seven"), "profile-rootfs", "prepare", "pulse", "--apply", "--yes"], args.dry_run)
+    if args.action == "launchers":
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "install", "steam", "lutris", "--source", "pacman"], args.dry_run)
+    if args.action == "steam":
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "install", "steam", "--source", "pacman"], args.dry_run)
+    if args.action == "lutris":
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "install", "lutris", "--source", "pacman"], args.dry_run)
+    if args.action == "heroic":
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "install", "heroic-games-launcher-bin", "--source", "paru"], args.dry_run)
+    if args.action == "hud":
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "install", "mangohud", "gamescope", "--source", "pacman"], args.dry_run)
+    if args.action == "helper":
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "helper", "paru"], args.dry_run)
+    if args.action == "multilib":
+        print("Pulse uses Equinox for GPU drivers and Arch multilib.")
+        print("Enable the [multilib] repository in /etc/pacman.conf, then run:")
+        print("  sudo pacman -Syu")
+        print("  seven pulse doctor")
+        print("After multilib is enabled, install Steam privately with:")
+        print("  sevenpkg pulse install steam --source pacman")
+        return 0
+    if args.action == "limits":
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "limits"], args.dry_run)
+    if args.action == "packages":
+        return run([str(ROOT / "bin/sevenpkg"), "pulse", "packages"], args.dry_run)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

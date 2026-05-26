@@ -19,10 +19,13 @@ Targets:
   windows          Install Windows compatibility layer
   server           Install SevenOS server and deployment layer
   installer-stack  Install graphical installer foundation packages
+  calamares-runtime
+                   Prepare the Calamares package source for public ISO builds
   hub-gui-stack    Install Seven Hub Tauri GUI foundation packages
   shell-ags        Install Seven Shell AGS/TypeScript foundation packages
   runtime-tools    Install optional runtime orchestration tools such as CRIU
   network          Prepare and repair Wi-Fi/NetworkManager stack
+  language         Prepare and inspect French/English language packs
   system-profile   Ensure Equinox is the host-system/admin side
   aur-helpers      Install yay and paru for SevenOS AUR-backed features
   hypr-ecosystem   Install premium Hyprland ecosystem tools
@@ -32,6 +35,7 @@ Targets:
   cyber-audit      Show cybersecurity profile readiness
   cyber-lab        Open an isolated cybersecurity lab shell
   blackarch-setup  Add the optional BlackArch repository bridge
+  blackarch-full   Install the complete BlackArch package set
   blackarch-category <name>
                    Install one BlackArch category, for example webapp
   blackarch-tool <pkg>
@@ -107,7 +111,7 @@ export SEVENOS_ROOT="$ROOT_DIR"
 export SEVENOS_DRY_RUN="$DRY_RUN"
 export SEVENOS_YES="$YES"
 
-if [[ "$TARGET" != "doctor" && "$TARGET" != "status" && "$TARGET" != "migrate-plan" && "$TARGET" != "migrate-backup" ]]; then
+if [[ "$TARGET" != "doctor" && "$TARGET" != "status" && "$TARGET" != "language" && "$TARGET" != "languages" && "$TARGET" != "locale" && "$TARGET" != "migrate-plan" && "$TARGET" != "migrate-backup" && "$TARGET" != "calamares-runtime" ]]; then
   require_arch
   require_command sudo
   require_command pacman
@@ -141,6 +145,13 @@ case "$TARGET" in
   installer-stack)
     "$ROOT_DIR/scripts/installer-stack.sh" install
     ;;
+  calamares-runtime)
+    if [[ "${#TARGET_ARGS[@]}" -eq 0 ]]; then
+      "$ROOT_DIR/scripts/calamares-runtime.sh" status
+    else
+      "$ROOT_DIR/scripts/calamares-runtime.sh" "${TARGET_ARGS[@]}"
+    fi
+    ;;
   hub-gui-stack)
     "$ROOT_DIR/seven-hub/gui-stack.sh" install
     ;;
@@ -152,6 +163,15 @@ case "$TARGET" in
     ;;
   network)
     "$ROOT_DIR/scripts/network.sh" bootstrap "${TARGET_ARGS[@]}"
+    ;;
+  language|languages|locale)
+    if [[ "${#TARGET_ARGS[@]}" -eq 0 || "${TARGET_ARGS[0]}" == "prepare" || "${TARGET_ARGS[0]}" == "apply" || "${TARGET_ARGS[0]}" == "defaults" ]]; then
+      "$ROOT_DIR/bin/seven-language" ensure en_US.UTF-8
+      "$ROOT_DIR/bin/seven-language" ensure fr_FR.UTF-8
+      "$ROOT_DIR/bin/seven-language" doctor
+    else
+      "$ROOT_DIR/bin/seven-language" "${TARGET_ARGS[@]}"
+    fi
     ;;
   system-profile|equinox|equinox-system)
     if [[ "$YES" == "1" ]]; then
@@ -183,6 +203,9 @@ case "$TARGET" in
     ;;
   blackarch-setup)
     "$ROOT_DIR/security/blackarch.sh" setup "${TARGET_ARGS[@]}"
+    ;;
+  blackarch-full)
+    "$ROOT_DIR/security/blackarch.sh" full "${TARGET_ARGS[@]}"
     ;;
   blackarch-category)
     "$ROOT_DIR/security/blackarch.sh" category "${TARGET_ARGS[@]}"

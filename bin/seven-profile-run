@@ -53,6 +53,45 @@ def active_profile() -> str:
     return "equinox"
 
 
+def read_language_env() -> dict[str, str]:
+    out: dict[str, str] = {}
+    for path in (
+        Path(os.environ.get("XDG_CONFIG_HOME", str(HOST_HOME / ".config"))) / "sevenos/language.env",
+        state_dir() / "language.env",
+        HOST_HOME / ".config/sevenos/language.env",
+    ):
+        if not path.exists():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for raw in lines:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("export "):
+                line = line[len("export ") :]
+            if "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if key not in {"SEVENOS_LANGUAGE", "LANG", "LANGUAGE", "LC_MESSAGES"}:
+                continue
+            out[key] = value.strip().strip("'\"")
+        if out:
+            break
+    if out.get("LANG") and not out.get("SEVENOS_LANGUAGE"):
+        out["SEVENOS_LANGUAGE"] = out["LANG"]
+    if out.get("SEVENOS_LANGUAGE") and not out.get("LANG"):
+        out["LANG"] = out["SEVENOS_LANGUAGE"]
+    if out.get("SEVENOS_LANGUAGE") and not out.get("LANGUAGE"):
+        out["LANGUAGE"] = out["SEVENOS_LANGUAGE"].split("_", 1)[0].split(".", 1)[0]
+    if out.get("SEVENOS_LANGUAGE") and not out.get("LC_MESSAGES"):
+        out["LC_MESSAGES"] = out["SEVENOS_LANGUAGE"]
+    return out
+
+
 def known_profiles(isolation: dict) -> set[str]:
     profiles = set()
     profiles.update((isolation.get("profile_containers") or {}).keys())
@@ -126,6 +165,9 @@ def load_folder_grants(profile: str) -> list[dict]:
 
 
 def append_folder_grants(command_line: list[str], grants: list[dict]) -> list[str]:
+    if not grants:
+        return command_line
+    command_line.extend(["--tmpfs", "/external"])
     used = set()
     for grant in grants:
         name = str(grant["name"])
@@ -138,7 +180,7 @@ def append_folder_grants(command_line: list[str], grants: list[dict]) -> list[st
         used.add(name)
         target = f"/external/{name}"
         bind = "--bind" if grant.get("mode") == "rw" else "--ro-bind"
-        command_line.extend(["--dir", "/external", bind, str(grant["path"]), target])
+        command_line.extend([bind, str(grant["path"]), target])
     return command_line
 
 
@@ -155,6 +197,17 @@ def default_isolation_mode(profile: str, rootfs: bool = False) -> str:
 
 
 def isolation_policy(profile: str, mode: str) -> dict:
+    balanced_overrides = {
+        "baobab": {
+            "dev": "minimal",
+            "gpu": "blocked-by-default",
+        },
+        "forge": {
+            "dev": "minimal",
+            "gpu": "blocked-by-default",
+            "audio": "blocked-by-default",
+        },
+    }
     policies = {
         "system": {
             "network": "host",
@@ -198,6 +251,8 @@ def isolation_policy(profile: str, mode: str) -> dict:
         },
     }
     policy = policies.get(mode, policies["balanced"]).copy()
+    if mode == "balanced":
+        policy.update(balanced_overrides.get(profile, {}))
     policy["profile"] = profile
     policy["mode"] = mode
     return policy
@@ -322,6 +377,17 @@ def append_setenv(command_line: list[str], values: dict[str, str]) -> None:
         command_line.extend(["--setenv", key, value])
 
 
+def host_resolv_conf() -> Path:
+    for path in (
+        Path("/run/systemd/resolve/resolv.conf"),
+        Path("/run/systemd/resolve/stub-resolv.conf"),
+        Path("/etc/resolv.conf"),
+    ):
+        if path.is_file():
+            return path
+    return Path("/etc/resolv.conf")
+
+
 def verify_rootfs_seal(profile: str, rootfs: Path, *, required: bool) -> tuple[bool, str]:
     seal_path = HOST_HOME / ".local/share/sevenos/profile-rootfs" / profile / "seal.json"
     seal = load_json(seal_path)
@@ -375,6 +441,7 @@ def runtime_manifest(profile: str, isolation: dict) -> dict:
             "SEVENOS_WORKSPACE": "native host path" if system_profile else "/workspace when --workspace or --workspace-profile is used",
             "SEVENOS_EPHEMERAL": "not used for system profile" if system_profile else "1 when --ephemeral is used",
             "SEVENOS_ROOTFS_WRITABLE": "not used for system profile" if system_profile else "1 only during explicit --rootfs-writable maintenance sessions",
+            "SEVENOS_ROOTFS_ADMIN": "not used for system profile" if system_profile else "1 only for SevenPkg rootfs package maintenance",
             "HOME": home_hint,
             "XDG_CONFIG_HOME": config_hint,
             "XDG_CACHE_HOME": cache_hint,
@@ -403,9 +470,11 @@ def runtime_manifest(profile: str, isolation: dict) -> dict:
             "native_independence": "system admin profile uses the host directly" if system_profile else "use --independent for sealed read-only rootfs plus profile HOME/cache/data without VM",
             "rootfs": "not applicable for system profile" if system_profile else "read-only by default when --rootfs is requested and profile rootfs is ready",
             "rootfs_writable": "not applicable for system profile" if system_profile else "explicit maintenance mode only with --rootfs-writable",
+            "rootfs_admin": "not applicable for system profile" if system_profile else "user-namespace root only for rootfs package transactions",
             "seal": "verified before rootfs execution when a seal exists; required in strict mode",
             "isolation": isolation_policy(profile, default_isolation_mode(profile)),
             "app_data": "host-home-cache-data" if system_profile else "profile-config-home-cache-data",
+            "legacy_app_data_contract": "profile-home-cache-data",
             "workspace": workspace_policy,
             "ephemeral": "not used for system profile" if system_profile else "temporary-home-cache-data",
             "runtime": "host-process" if system_profile else ("systemd-user-scope" if shutil.which("systemd-run") else "direct-process"),
@@ -456,12 +525,13 @@ def print_status(profile: str, isolation: dict) -> int:
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print("Usage: seven-profile-run [--profile PROFILE] [--container|--rootfs|--independent] [--rootfs-writable] [--isolation balanced|strict|independent] [--ephemeral] [--workspace PATH|--workspace-profile] [--json|--manifest] <command> [args...]", file=sys.stderr)
+        print("Usage: seven-profile-run [--profile PROFILE] [--container|--rootfs|--independent] [--rootfs-writable] [--rootfs-admin] [--isolation balanced|strict|independent] [--ephemeral] [--workspace PATH|--workspace-profile] [--json|--manifest] <command> [args...]", file=sys.stderr)
         return 2
 
     use_container = False
     use_rootfs = False
     rootfs_writable = False
+    rootfs_admin = False
     isolation_mode = None
     verify_seal = True
     seal_required = False
@@ -489,6 +559,13 @@ def main() -> int:
             raw_args = raw_args[1:]
             continue
         if raw_args[0] == "--rootfs-writable":
+            rootfs_writable = True
+            use_rootfs = True
+            use_container = True
+            raw_args = raw_args[1:]
+            continue
+        if raw_args[0] == "--rootfs-admin":
+            rootfs_admin = True
             rootfs_writable = True
             use_rootfs = True
             use_container = True
@@ -558,6 +635,7 @@ def main() -> int:
         use_container = False
         use_rootfs = False
         rootfs_writable = False
+        rootfs_admin = False
         ephemeral = False
 
     if json_status and not raw_args:
@@ -571,7 +649,7 @@ def main() -> int:
         workspace_path.mkdir(parents=True, exist_ok=True)
 
     if not raw_args:
-        print("Usage: seven-profile-run [--profile PROFILE] [--container|--rootfs|--independent] [--rootfs-writable] [--isolation balanced|strict|independent] [--ephemeral] [--workspace PATH|--workspace-profile] <command> [args...]", file=sys.stderr)
+        print("Usage: seven-profile-run [--profile PROFILE] [--container|--rootfs|--independent] [--rootfs-writable] [--rootfs-admin] [--isolation balanced|strict|independent] [--ephemeral] [--workspace PATH|--workspace-profile] <command> [args...]", file=sys.stderr)
         return 2
 
     command = raw_args[0]
@@ -653,6 +731,8 @@ def main() -> int:
     env["SEVENOS_EXEC_PROFILE"] = active
     env["SEVENOS_PACKAGE_VIEW"] = "" if system_profile else str(package_view)
     env["PATH"] = profile_search_path
+    language_env = read_language_env()
+    env.update(language_env)
     isolation_mode = isolation_mode or default_isolation_mode(active, use_rootfs)
     policy = isolation_policy(active, isolation_mode)
     env["SEVENOS_ISOLATION_MODE"] = isolation_mode
@@ -719,6 +799,8 @@ def main() -> int:
         home = roots["home"]
         cache = roots["cache"]
         data = roots["data"]
+        if folder_grants:
+            (rootfs / "external").mkdir(parents=True, exist_ok=True)
         for path in (config, home, cache, data):
             path.mkdir(parents=True, exist_ok=True)
         ensure_profile_user_dirs(home)
@@ -736,6 +818,7 @@ def main() -> int:
             "SEVENOS_PROFILE_CONTAINER": active,
             "SEVENOS_ROOTFS": "/",
             "SEVENOS_ROOTFS_WRITABLE": "1" if rootfs_writable else "0",
+            "SEVENOS_ROOTFS_ADMIN": "1" if rootfs_admin else "0",
             "SEVENOS_ISOLATION_MODE": isolation_mode,
             "PATH": "/usr/local/bin:/usr/bin:/bin",
         })
@@ -760,9 +843,15 @@ def main() -> int:
             "--setenv", "SEVENOS_PROFILE_CONTAINER", active,
             "--setenv", "SEVENOS_ROOTFS", "/",
             "--setenv", "SEVENOS_ROOTFS_WRITABLE", "1" if rootfs_writable else "0",
+            "--setenv", "SEVENOS_ROOTFS_ADMIN", "1" if rootfs_admin else "0",
             "--setenv", "SEVENOS_ISOLATION_MODE", isolation_mode,
             "--setenv", "PATH", "/usr/local/bin:/usr/bin:/bin",
         ]
+        if policy["network"] != "disabled":
+            command_line.extend(["--ro-bind-try", str(host_resolv_conf()), "/etc/resolv.conf"])
+        if rootfs_admin:
+            command_line[1:1] = ["--unshare-user", "--uid", "0", "--gid", "0"]
+        append_setenv(command_line, {key: env[key] for key in ("SEVENOS_LANGUAGE", "LANG", "LANGUAGE", "LC_MESSAGES") if key in env})
         append_setenv(command_line, xdg_user_dir_env(sandbox_home))
         if policy["network"] == "disabled":
             command_line.insert(2, "--unshare-net")
@@ -863,6 +952,7 @@ def main() -> int:
             "--setenv", "SEVENOS_ISOLATION_MODE", isolation_mode,
             "--setenv", "PATH", os.pathsep.join([sandbox_bin, "/usr/local/bin", "/usr/bin"]),
         ]
+        append_setenv(command_line, {key: env[key] for key in ("SEVENOS_LANGUAGE", "LANG", "LANGUAGE", "LC_MESSAGES") if key in env})
         append_setenv(command_line, xdg_user_dir_env(sandbox_home))
         if policy["network"] == "disabled":
             command_line.insert(2, "--unshare-net")

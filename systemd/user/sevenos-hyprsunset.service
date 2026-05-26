@@ -6,7 +6,7 @@ After=graphical-session.target
 [Service]
 Type=simple
 Environment=SEVENOS_HYPRSUNSET_TEMP=4500
-ExecStart=/usr/bin/env sh -lc 'exec hyprsunset -t "${SEVENOS_HYPRSUNSET_TEMP:-4500}"'
+ExecStart=/usr/bin/env sh -lc 'if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"; fi; exec hyprsunset -t "${SEVENOS_HYPRSUNSET_TEMP:-4500}"'
 Restart=on-failure
 RestartSec=2
 

@@ -14,6 +14,9 @@
     "package_files": [
       "scripts/packages-dev.txt",
       "scripts/packages-server.txt"
+    ],
+    "optional_package_files": [
+      "scripts/packages-dev-optional.txt"
     ]
   },
   "server": {
@@ -42,6 +45,9 @@
     "target": "creation",
     "package_files": [
       "scripts/packages-creation.txt"
+    ],
+    "optional_package_files": [
+      "scripts/packages-creation-optional.txt"
     ]
   },
   "baobab": {

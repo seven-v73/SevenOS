@@ -304,6 +304,7 @@ security.tools	Security	Shield Tools	seven shield tools	safe	Show grouped Shield
 security.scope	Security	Shield Scope	seven shield scope	safe	Show authorized audit scope before any network action.
 security.report	Security	New Shield Report	seven shield report	safe	Create a structured Shield report in the workspace.
 security.enable	Security	Enable Shield	seven shield enable	changes	Apply base SevenOS security hardening.
+security.blackarch.full	Security	Full BlackArch Preview	seven shield toolchain blackarch-full --dry-run	safe	Preview the complete BlackArch package set before explicit installation.
 security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
 security.lab.forensics	Security	Open Forensics Lab	seven shield lab --preset forensics	safe	Open an offline evidence-safe forensics lab.
 security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset reversing	safe	Open an offline reversing lab.

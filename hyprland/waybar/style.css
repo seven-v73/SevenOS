@@ -170,8 +170,7 @@ window#waybar {
     background 180ms ease,
     color 180ms ease,
     box-shadow 180ms ease,
-    border-color 180ms ease,
-    min-width 180ms ease;
+    border-color 180ms ease;
 }
 
 #custom-sevenos:hover,
@@ -326,6 +325,31 @@ window#waybar {
   font-family: "SF Pro Text", "SF UI Text", "Inter", sans-serif;
   font-size: 12px;
   font-weight: 500;
+}
+
+#custom-app-file {
+  min-width: 42px;
+}
+
+#custom-app-edit {
+  min-width: 50px;
+}
+
+#custom-app-view {
+  min-width: 66px;
+}
+
+#custom-app-extra {
+  min-width: 62px;
+}
+
+#custom-app-tools,
+#custom-app-window {
+  min-width: 56px;
+}
+
+#custom-app-help {
+  min-width: 38px;
 }
 
 #custom-app-file,
@@ -523,7 +547,7 @@ window#waybar {
   margin-left: 16px;
   padding-left: 9px;
   padding-right: 9px;
-  min-width: 44px;
+  min-width: 58px;
   font-size: 12px;
   font-weight: 500;
 }
@@ -767,6 +791,7 @@ window#waybar {
 }
 
 #custom-app-more.hidden,
+#custom-app-extra.hidden,
 #custom-app-tools.hidden,
 #custom-app-window.hidden,
 #custom-app-help.hidden {
@@ -812,7 +837,7 @@ window#waybar {
 }
 
 #workspaces button {
-  min-width: 22px;
+  min-width: 24px;
   min-height: 22px;
   margin: 0 1px;
   padding: 0 6px;
@@ -824,8 +849,7 @@ window#waybar {
     background 180ms ease,
     color 180ms ease,
     border-color 180ms ease,
-    box-shadow 180ms ease,
-    min-width 180ms ease;
+    box-shadow 180ms ease;
 }
 
 #workspaces button:hover {
@@ -857,7 +881,7 @@ window#waybar {
 #custom-vpn,
 #custom-recorder,
 #tray {
-  min-width: 22px;
+  min-width: 24px;
   padding-left: 7px;
   padding-right: 7px;
   font-size: 14px;
@@ -881,7 +905,7 @@ window#waybar {
 }
 
 #custom-recorder.idle {
-  min-width: 18px;
+  min-width: 24px;
   padding-left: 5px;
   padding-right: 5px;
   color: rgba(255, 91, 122, 0.78);

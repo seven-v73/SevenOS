@@ -1243,8 +1243,12 @@ EOF
     "interval": 3600
   },
   "custom/language": {
-    "format": "FR",
-    "tooltip": "Français d'abord, langues africaines ensuite"
+    "exec": "seven-waybar-language",
+    "return-type": "json",
+    "interval": 30,
+    "tooltip": true,
+    "on-click": "seven-language menu",
+    "on-click-right": "seven-settings general"
   },
   "custom/sound": {
     "exec": "find \"$BAOBAB_WORKSPACE/Sound\" \"$BAOBAB_DATA/sound\" -maxdepth 1 -type f 2>/dev/null | wc -l | awk '{print \$1\" sons\"}'",

@@ -60,6 +60,16 @@ def run_script(args, relative_path, *extra):
     run([str(ROOT_DIR / relative_path), *extra], args)
 
 
+def run_script_with_dry_env(relative_path, *extra):
+    env = os.environ.copy()
+    env["SEVENOS_DRY_RUN"] = "1"
+    try:
+        subprocess.run([str(ROOT_DIR / relative_path), *extra], check=True, env=env)
+    except subprocess.CalledProcessError as exc:
+        print(f"seven: command failed with exit code {exc.returncode}: {relative_path}", file=sys.stderr)
+        sys.exit(exc.returncode)
+
+
 def capture_json(command, fallback):
     result = subprocess.run(command, cwd=ROOT_DIR, text=True, capture_output=True, check=False)
     if result.returncode != 0:
@@ -375,7 +385,10 @@ def handle_shield(args):
         run_script(args, "security/shield-optional-tools.sh", *extra, *shield_extra)
     elif args.action == "toolchain":
         extra = ["--json"] if shield_json else []
-        run_script(args, "security/shield-toolchain.sh", *extra, *shield_extra)
+        if is_dry_run(args):
+            run_script_with_dry_env("security/shield-toolchain.sh", *extra, *shield_extra)
+        else:
+            run_script(args, "security/shield-toolchain.sh", *extra, *shield_extra)
     elif args.action == "bundles":
         extra = ["--json"] if shield_json else []
         run_script(args, "security/shield-bundles.sh", *extra, *shield_extra)
@@ -443,6 +456,11 @@ def handle_installer(args):
     extra = [args.action, *args.extra]
     if args.json:
         extra.append("--json")
+    if args.action in {"iso-runtime", "calamares-iso"} and is_dry_run(args):
+        if "--dry-run" not in extra:
+            extra.append("--dry-run")
+        run_script_with_dry_env("scripts/installer-stack.sh", *extra)
+        return
     run_script(args, "scripts/installer-stack.sh", *extra)
 
 
@@ -1000,6 +1018,11 @@ def main():
     mini_os_parser.add_argument("items", nargs="*", help="primary mini OS and optional borrowed capability profiles")
     mini_os_parser.add_argument("--json", action="store_true", help="print machine-readable Mini OS Bridge state")
     mini_os_parser.add_argument("--yes", action="store_true", help="confirm explicit mini OS composition activation")
+    mini_doctor_parser = subparsers.add_parser("mini-doctor", help="diagnose mini OS dependencies, rootfs and package boundaries")
+    mini_doctor_parser.add_argument("profile", nargs="?", default="all")
+    mini_doctor_parser.add_argument("action", nargs="?", default="doctor")
+    mini_doctor_parser.add_argument("--json", action="store_true", help="print machine-readable mini OS doctor state")
+    mini_doctor_parser.add_argument("--dry-run", action="store_true", help="preview mini OS maintenance commands")
     bridge_parser = subparsers.add_parser("bridge", help="send and inspect explicit objects between mini OS experiences")
     bridge_parser.add_argument("action", nargs="?", default="status", choices=("status", "init", "send", "relations", "objects", "inbox", "outbox", "session", "remember", "switch", "graph", "doctor", "accept"))
     bridge_parser.add_argument("items", nargs="*", help="asset path or label for send")
@@ -1087,7 +1110,7 @@ def main():
     boot_splash_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "apply", "theme"))
     boot_splash_parser.add_argument("extra", nargs=argparse.REMAINDER)
     language_parser = subparsers.add_parser("language", help="inspect and apply SevenOS user language")
-    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply"))
+    language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply", "doctor"))
     language_parser.add_argument("locale", nargs="?")
     language_parser.add_argument("--json", action="store_true", help="print machine-readable language state")
     language_parser.add_argument("--live", action="store_true", help="restart visible SevenOS surfaces after a language change")
@@ -1234,6 +1257,11 @@ def main():
     windows_parser.add_argument("action", nargs="?", default="status")
     windows_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
+    pulse_parser = subparsers.add_parser("pulse", help="guided Pulse Gaming controls")
+    pulse_parser.add_argument("action", nargs="?", default="doctor")
+    pulse_parser.add_argument("--json", action="store_true", help="print machine-readable Pulse readiness")
+    pulse_parser.add_argument("--dry-run", action="store_true", help="preview Pulse setup commands")
+
     run_parser = subparsers.add_parser("run", help="run an app through the SevenOS compatibility resolver")
     run_parser.add_argument("target", help="app name or Windows executable path")
     run_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -1316,6 +1344,13 @@ def main():
         handle_profile_rootfs(args)
     elif args.command == "mini-os":
         handle_mini_os(args)
+    elif args.command == "mini-doctor":
+        extra = [args.profile, args.action]
+        if args.json:
+            extra.append("--json")
+        if args.dry_run:
+            extra.append("--dry-run")
+        run_script(args, "bin/seven-mini-doctor", *extra)
     elif args.command == "bridge":
         handle_bridge(args)
     elif args.command == "baobab":
@@ -1470,6 +1505,13 @@ def main():
         handle_vm(args)
     elif args.command == "windows":
         handle_windows(args)
+    elif args.command == "pulse":
+        extra = [args.action]
+        if args.json:
+            extra.append("--json")
+        if args.dry_run:
+            extra.append("--dry-run")
+        run_script(args, "bin/seven-pulse", *extra)
     elif args.command == "run":
         handle_run(args)
     elif args.command == "server":

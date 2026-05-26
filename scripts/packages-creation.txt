@@ -8,9 +8,14 @@ obs-studio
 audacity
 ardour
 lmms
+pipewire-jack
+calf
+lsp-plugins
+easyeffects
 darktable
 rawtherapee
 scribus
 imagemagick
 ffmpeg
 handbrake
+yt-dlp

@@ -118,10 +118,17 @@ seven shield toolchain
 seven shield toolchain search feroxbuster
 seven shield toolchain install feroxbuster --yes
 seven shield toolchain blackarch-setup --yes
+seven shield toolchain blackarch-full --dry-run
+seven shield toolchain blackarch-full --yes
 seven shield toolchain blackarch-category webapp --yes
 seven shield toolchain kali-prepare --yes
 seven shield toolchain kali-run "apt update && apt install -y kali-tools-web"
 ```
+
+The full BlackArch command installs the complete `blackarch` package set. It is
+intentionally guarded by `--dry-run` and `--yes` because it is large enough to
+belong on a dedicated Shield/security workstation rather than a casual daily
+profile.
 
 The Kali container mounts `~/ShieldLab` at `/ShieldLab` so reports and evidence
 stay in the Shield workspace.

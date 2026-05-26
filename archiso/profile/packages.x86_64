@@ -5,6 +5,7 @@ amd-ucode
 intel-ucode
 arch-install-scripts
 archiso
+calamares
 syslinux
 systemd
 efibootmgr

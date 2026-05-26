@@ -1,5 +1,11 @@
 # SevenOS Baobab cultural mini OS
-# Core stays lightweight and offline-friendly: fonts first, content/runtime next.
+# Core stays offline-friendly: reading, fonts, narration and simple translation.
 noto-fonts
 noto-fonts-emoji
+foliate
+espeak-ng
+translate-shell
+hyphen-fr
+libreoffice-fresh
+kiwix-desktop
 mpv

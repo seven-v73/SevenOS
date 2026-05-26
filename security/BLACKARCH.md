@@ -30,6 +30,18 @@ Install one BlackArch category:
 ./install.sh blackarch-category webapp
 ```
 
+Preview the complete BlackArch catalog install:
+
+```bash
+seven shield toolchain blackarch-full --dry-run
+```
+
+Install the complete BlackArch catalog after explicit confirmation:
+
+```bash
+seven shield toolchain blackarch-full --yes
+```
+
 Install one BlackArch package:
 
 ```bash
@@ -40,5 +52,6 @@ Install one BlackArch package:
 
 - Prefer SevenOS Cyber Core first.
 - Install BlackArch categories only when needed.
-- Avoid installing the complete BlackArch catalog on a daily workstation.
+- Install the complete BlackArch catalog only on a dedicated Shield/security
+  workstation; it is intentionally blocked without `--yes`.
 - Use these tools only on systems and networks where you have authorization.

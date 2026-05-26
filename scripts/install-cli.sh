@@ -99,6 +99,16 @@ write_command_wrapper() {
   {
     printf '#!/usr/bin/env bash\n'
     printf 'export SEVENOS_ROOT=%q\n' "$ROOT_DIR"
+    printf '__sevenos_requested_language="${SEVENOS_LANGUAGE:-}"\n'
+    printf 'if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then\n'
+    printf '  . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"\n'
+    printf 'fi\n'
+    printf 'if [ -n "$__sevenos_requested_language" ]; then\n'
+    printf '  export SEVENOS_LANGUAGE="$__sevenos_requested_language"\n'
+    printf '  export LANG="$__sevenos_requested_language"\n'
+    printf '  export LC_MESSAGES="$__sevenos_requested_language"\n'
+    printf '  export LANGUAGE="${__sevenos_requested_language%%.*}"\n'
+    printf 'fi\n'
     printf 'exec %q "$@"\n' "$source_file"
   } > "$target_file"
   chmod +x "$target_file"
@@ -158,6 +168,7 @@ install_user_command "$ROOT_DIR/bin/seven" seven
 install_user_command "$ROOT_DIR/bin/seven-daemon" seven-daemon
 install_user_command "$ROOT_DIR/bin/seven-power" seven-power
 install_user_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
+install_user_command "$ROOT_DIR/bin/seven-welcome-popup" seven-welcome-popup
 install_user_command "$ROOT_DIR/bin/seven-installer" seven-installer
 install_user_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_user_command "$ROOT_DIR/bin/seven-settings" seven-settings
@@ -197,11 +208,14 @@ install_user_command "$ROOT_DIR/bin/seven-notifications" seven-notifications
 install_user_command "$ROOT_DIR/bin/seven-idle" seven-idle
 install_user_command "$ROOT_DIR/bin/seven-country" seven-country
 install_user_command "$ROOT_DIR/bin/seven-language" seven-language
+install_user_command "$ROOT_DIR/bin/seven-waybar-language" seven-waybar-language
 install_user_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
+install_user_command "$ROOT_DIR/bin/seven_waybar_app_profiles.py" seven_waybar_app_profiles.py
 install_user_command "$ROOT_DIR/bin/seven-app-menu-native" seven-app-menu-native
 install_user_command "$ROOT_DIR/bin/seven-system-menu-native" seven-system-menu-native
 install_user_command "$ROOT_DIR/bin/seven-media-menu-native" seven-media-menu-native
 install_user_command "$ROOT_DIR/bin/seven-mini-context-menu-native" seven-mini-context-menu-native
+install_user_command "$ROOT_DIR/bin/seven-mini-os-center" seven-mini-os-center
 install_user_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_user_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
 install_user_command "$ROOT_DIR/bin/seven-shield-center-native" seven-shield-center-native
@@ -223,6 +237,8 @@ install_user_command "$ROOT_DIR/scripts/system-profile.sh" seven-system-profile
 install_user_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_user_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_user_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
+install_user_command "$ROOT_DIR/bin/seven-pulse" seven-pulse
+install_user_command "$ROOT_DIR/bin/seven-mini-doctor" seven-mini-doctor
 install_user_command "$ROOT_DIR/bin/sevenpkg" sevenpkg
 install_user_command "$ROOT_DIR/bin/sevenosctl" sevenosctl
 ensure_user_bin_path
@@ -234,6 +250,7 @@ install_system_command "$ROOT_DIR/bin/sevenpkg" sevenpkg
 install_system_command "$ROOT_DIR/bin/seven-country" seven-country
 install_system_command "$ROOT_DIR/bin/seven-power" seven-power
 install_system_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
+install_system_command "$ROOT_DIR/bin/seven-welcome-popup" seven-welcome-popup
 install_system_command "$ROOT_DIR/bin/seven-installer" seven-installer
 install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_system_command "$ROOT_DIR/bin/seven-settings" seven-settings
@@ -272,11 +289,14 @@ install_system_command "$ROOT_DIR/bin/seven-session-status" seven-session-status
 install_system_command "$ROOT_DIR/bin/seven-notifications" seven-notifications
 install_system_command "$ROOT_DIR/bin/seven-idle" seven-idle
 install_system_command "$ROOT_DIR/bin/seven-language" seven-language
+install_system_command "$ROOT_DIR/bin/seven-waybar-language" seven-waybar-language
 install_system_command "$ROOT_DIR/bin/seven-waybar-action" seven-waybar-action
+install_system_command "$ROOT_DIR/bin/seven_waybar_app_profiles.py" seven_waybar_app_profiles.py
 install_system_command "$ROOT_DIR/bin/seven-app-menu-native" seven-app-menu-native
 install_system_command "$ROOT_DIR/bin/seven-system-menu-native" seven-system-menu-native
 install_system_command "$ROOT_DIR/bin/seven-media-menu-native" seven-media-menu-native
 install_system_command "$ROOT_DIR/bin/seven-mini-context-menu-native" seven-mini-context-menu-native
+install_system_command "$ROOT_DIR/bin/seven-mini-os-center" seven-mini-os-center
 install_system_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_system_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
 install_system_command "$ROOT_DIR/bin/seven-shield-center-native" seven-shield-center-native
@@ -297,6 +317,8 @@ install_system_command "$ROOT_DIR/scripts/system-profile.sh" seven-system-profil
 install_system_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_system_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
 install_system_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
+install_system_command "$ROOT_DIR/bin/seven-pulse" seven-pulse
+install_system_command "$ROOT_DIR/bin/seven-mini-doctor" seven-mini-doctor
 install_system_command "$ROOT_DIR/bin/sevenosctl" sevenosctl
 
 log_success "SevenOS CLI installed. Run: seven status or sevenpkg meta"

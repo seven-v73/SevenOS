@@ -16,6 +16,7 @@ from seven_waybar_app_profiles import (
     compact_label,
     context_for_window,
     items_for as shared_items_for,
+    ui,
 )
 
 
@@ -245,7 +246,7 @@ def recorder() -> int:
         if pid and Path(f"/proc/{pid}").exists():
             current = RECORDER_FILE.read_text(encoding="utf-8", errors="ignore").strip() if RECORDER_FILE.exists() else ""
             name = Path(current).name if current else "recording"
-            return emit("● REC", f"Seven Recorder · recording\n{name}\nClick: record area · Right click: controls · Middle click: full screen", "recording", "active")
+            return emit("●", f"Seven Recorder · recording\n{name}\nClick: record area · Right click: controls · Middle click: full screen", "recording", "active")
     return emit("●", "Seven Recorder\nClick: record area\nRight click: controls\nMiddle click: record full screen", "idle", "idle")
 
 
@@ -645,14 +646,14 @@ def app_menu() -> int:
     mode = str(ctx.get("mode") or "default")
     app_key = str(ctx.get("key") or "generic")
     service = str(ctx.get("service") or "")
-    menu = str(ctx.get("menu") or "Fichier  Édition  Affichage  Fenêtre  Aide")
+    menu = str(ctx.get("menu") or f"{ui('Fichier')}  {ui('Édition')}  {ui('Affichage')}  {ui('Fenêtre')}  {ui('Aide')}")
 
-    tooltip_parts = ["Menus SevenOS"]
+    tooltip_parts = [ui("Menus SevenOS")]
     if title:
         tooltip_parts.append(compact_label(title, 52))
     if service:
-        tooltip_parts.append(f"Service actif: {service}")
-    tooltip_parts.append("Click: menu contextuel · Right click: fenêtre")
+        tooltip_parts.append(f"{ui('Service actif')}: {service}")
+    tooltip_parts.append(ui("Click: menu contextuel · Right click: fenêtre"))
     css = f"app-menu {mode} app-{app_key}"
     if service:
         css += f" service-{service}"
@@ -673,14 +674,15 @@ def app_menu_item() -> int:
     if service:
         css += f" service-{service}"
     density = waybar_density()
-    if item in hidden_menu_items(density, str(ctx.get("profile") or ""), mode):
-        return emit("", f"{label or item} déplacé dans …", css + " hidden compact-hidden", item)
     if not label:
-        return emit("", "Menu masqué", css + " hidden", item)
-    tooltip_parts = [f"{label} · menu de l'app active"]
+        return emit("", ui("Menu masqué"), css + " hidden", item)
+    if item in hidden_menu_items(density, str(ctx.get("profile") or ""), mode):
+        return emit("", f"{label or item} {ui('déplacé dans')} …", css + " hidden compact-hidden", item)
+    active_menu_label = ui("menu de l'app active")
+    tooltip_parts = [f"{label} · {active_menu_label}"]
     if title:
         tooltip_parts.append(compact_label(title, 52))
-    tooltip_parts.append("Click: ouvrir le menu natif · Right click: actions SevenOS")
+    tooltip_parts.append(ui("Click: ouvrir le menu natif · Right click: actions SevenOS"))
     return emit(label, "\n".join(tooltip_parts), css, item)
 
 

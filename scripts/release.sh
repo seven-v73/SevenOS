@@ -111,8 +111,13 @@ calamares_runtime = installer.get("calamares_runtime") or next(
 )
 calamares_runtime_detail = (
     "Calamares runtime installed in the ISO environment."
-    if calamares_runtime == "OK"
+    if calamares_runtime in {"OK", "iso-runtime-ready"}
     else f"Calamares runtime policy: {calamares_runtime}; graphical public release still requires the runtime package in the ISO."
+)
+calamares_command = (
+    "seven installer iso-runtime build-local-repo --dry-run"
+    if calamares_runtime in {"aur-candidate", "source-declared", "iso-source-ready"}
+    else "seven installer release"
 )
 
 release_actions = [
@@ -135,7 +140,7 @@ release_actions = [
         "state": "OK" if installer.get("state") == "graphical-ready" else "PENDING",
         "title": "Fournir Calamares dans l'environnement ISO",
         "detail": f"Installer state: {installer.get('state', 'unknown')}. {calamares_runtime_detail}",
-        "command": "seven installer release",
+        "command": calamares_command,
     },
     {
         "key": "windows-vm-provisioning",
@@ -189,13 +194,13 @@ actions = data.get("release_actions", [])
 installer = data.get("installer", {})
 calamares_runtime = installer.get("calamares_runtime", "unknown")
 installer_command = (
-    "seven installer runtime"
-    if calamares_runtime in {"aur-candidate", "source-declared"}
+    "seven installer iso-runtime build-local-repo --dry-run"
+    if calamares_runtime in {"aur-candidate", "source-declared", "iso-source-ready"}
     else "seven installer release"
 )
 installer_goal = (
     f"Transformer la source Calamares {calamares_runtime} en runtime embarqué dans l'ISO."
-    if calamares_runtime in {"aur-candidate", "source-declared"}
+    if calamares_runtime in {"aur-candidate", "source-declared", "iso-source-ready"}
     else "Installer ou embarquer Calamares dans l'environnement ISO."
 )
 plan = [
