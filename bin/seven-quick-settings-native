@@ -508,10 +508,19 @@ def known_wifi_connection(ssid: str) -> str:
 
 
 def wifi_password_dialog(Gtk, parent, ssid: str) -> str:
-    dialog = Gtk.Dialog(title=tr_text("Wi-Fi password"), transient_for=parent, modal=True)
+    try:
+        parent.hide()
+    except Exception:
+        pass
+    dialog = Gtk.Dialog(title=tr_text("Wi-Fi password"), transient_for=None, modal=True)
     dialog.add_button(tr_text("Cancel"), Gtk.ResponseType.CANCEL)
     dialog.add_button(tr_text("Connect"), Gtk.ResponseType.OK)
     dialog.set_default_response(Gtk.ResponseType.OK)
+    dialog.set_position(Gtk.WindowPosition.CENTER)
+    try:
+        dialog.set_keep_above(True)
+    except Exception:
+        pass
     box = dialog.get_content_area()
     box.set_spacing(10)
     box.set_border_width(14)
@@ -522,6 +531,12 @@ def wifi_password_dialog(Gtk, parent, ssid: str) -> str:
     box.pack_start(label, False, False, 0)
     box.pack_start(entry, False, False, 0)
     dialog.show_all()
+    try:
+        from gi.repository import GLib
+
+        GLib.idle_add(entry.grab_focus)
+    except Exception:
+        pass
     response = dialog.run()
     password = entry.get_text().strip() if response == Gtk.ResponseType.OK else ""
     dialog.destroy()
@@ -534,9 +549,12 @@ def connect_wifi_network(Gtk, parent, ssid: str, security: str, feedback_widget=
         return
     known = known_wifi_connection(ssid)
     password = ""
+    close_after_prompt = False
     if not known and security and security not in {"open", "--"}:
+        close_after_prompt = True
         password = wifi_password_dialog(Gtk, parent, ssid)
         if not password:
+            Gtk.main_quit()
             return
 
     if feedback_widget is not None:
@@ -567,9 +585,13 @@ def connect_wifi_network(Gtk, parent, ssid: str, security: str, feedback_widget=
                 feedback_widget.set_tooltip_text(tr_text("Connected") if status == 0 else tr_text("Connection failed"))
                 if feedback_label is not None:
                     feedback_label.set_text(tr_text("Connected") if status == 0 else tr_text("Connection failed"))
+                if close_after_prompt:
+                    Gtk.main_quit()
                 return False
 
             GLib.idle_add(update_feedback)
+        elif close_after_prompt:
+            GLib.idle_add(Gtk.main_quit)
         notify("SevenOS Wi-Fi", f"Connected to {ssid}." if status == 0 else f"Could not connect to {ssid}.")
 
     notify("SevenOS Wi-Fi", f"Connecting to {ssid}...")
