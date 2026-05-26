@@ -411,8 +411,277 @@ tooltip {{
 }}
 """
 
+if mode == "light":
+    override += f"""
+
+/* SevenOS light legibility lock: final pass after profile runtime skin. */
+window#waybar {{
+  color: rgba(8, 13, 24, 0.98);
+  border-bottom: 1px solid rgba(8, 13, 24, 0.22);
+  background:
+    linear-gradient(180deg, rgba(220, 228, 242, 0.92), rgba(185, 200, 224, 0.82)),
+    rgba(160, 177, 205, 0.88);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.70),
+    0 10px 30px rgba(21, 30, 52, 0.22);
+}}
+
+window#waybar label,
+#window,
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help,
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context,
+#custom-spotlight,
+#custom-experience,
+#custom-media,
+#custom-workspace-prev,
+#custom-workspace-next,
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#custom-vpn,
+#custom-recorder,
+#custom-system-status,
+#clock,
+#custom-control-center,
+#workspaces button {{
+  color: rgba(8, 13, 24, 0.96);
+  text-shadow: none;
+}}
+
+.modules-left,
+.modules-center,
+.modules-right {{
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(8, 13, 24, 0.08);
+}}
+
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help,
+#window.empty,
+#custom-spotlight {{
+  color: rgba(24, 31, 48, 0.82);
+}}
+
+#custom-sevenos,
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context,
+#custom-control-center {{
+  color: rgba(5, 10, 22, 0.98);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.64), rgba(222, 232, 248, 0.44)),
+    rgba(47, 123, 255, 0.10);
+  border-color: rgba(47, 123, 255, 0.28);
+}}
+
+#custom-sevenos:hover,
+#window:hover,
+#custom-app-menu:hover,
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover,
+#custom-profile:hover,
+#custom-os-switch:hover,
+#custom-mini-context:hover,
+#custom-spotlight:hover,
+#custom-experience:hover,
+#custom-media:hover,
+#custom-workspace-prev:hover,
+#custom-workspace-next:hover,
+#custom-wifi:hover,
+#custom-bluetooth:hover,
+#pulseaudio:hover,
+#battery:hover,
+#custom-vpn:hover,
+#custom-recorder:hover,
+#custom-system-status:hover,
+#clock:hover,
+#custom-control-center:hover,
+#workspaces button:hover {{
+  color: rgba(5, 10, 22, 1);
+  background: rgba(8, 13, 24, 0.10);
+}}
+
+#workspaces button.active {{
+  color: #FFFFFF;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.46), transparent 38%),
+    linear-gradient(135deg, {accent}, {secondary});
+  border-color: rgba(255, 255, 255, 0.70);
+  box-shadow:
+    0 5px 18px alpha({accent}, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.70);
+}}
+
+#custom-wifi.connected,
+#custom-bluetooth.connected,
+#custom-bluetooth.on,
+#custom-vpn.active,
+#custom-ai {{
+  color: rgba(37, 74, 186, 0.98);
+}}
+"""
+
 print(base_style.rstrip() + override)
 PY
+}
+
+append_light_legibility_lock() {
+  cat >> "$WAYBAR_STYLE" <<'EOF'
+
+/* SevenOS light legibility lock: final pass on active Waybar file. */
+window#waybar {
+  color: rgba(6, 10, 20, 0.98);
+  border-bottom: 1px solid rgba(6, 10, 20, 0.24);
+  background:
+    linear-gradient(180deg, rgba(210, 220, 236, 0.96), rgba(166, 184, 214, 0.90)),
+    rgba(142, 164, 200, 0.92);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 28px rgba(20, 30, 54, 0.24);
+}
+
+window#waybar label,
+#window,
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help,
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context,
+#custom-spotlight,
+#custom-experience,
+#custom-media,
+#custom-workspace-prev,
+#custom-workspace-next,
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#custom-vpn,
+#custom-recorder,
+#custom-system-status,
+#clock,
+#custom-control-center,
+#workspaces button {
+  color: rgba(6, 10, 20, 0.98);
+  text-shadow: none;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+  background: rgba(255, 255, 255, 0.20);
+  border-color: rgba(6, 10, 20, 0.09);
+}
+
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help,
+#window.empty,
+#custom-spotlight {
+  color: rgba(18, 24, 38, 0.90);
+}
+
+#custom-sevenos,
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context,
+#custom-control-center {
+  color: rgba(3, 8, 18, 1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.70), rgba(217, 228, 246, 0.50)),
+    rgba(47, 123, 255, 0.12);
+  border-color: rgba(47, 123, 255, 0.30);
+}
+
+#custom-sevenos:hover,
+#window:hover,
+#custom-app-menu:hover,
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover,
+#custom-profile:hover,
+#custom-os-switch:hover,
+#custom-mini-context:hover,
+#custom-spotlight:hover,
+#custom-experience:hover,
+#custom-media:hover,
+#custom-workspace-prev:hover,
+#custom-workspace-next:hover,
+#custom-wifi:hover,
+#custom-bluetooth:hover,
+#pulseaudio:hover,
+#battery:hover,
+#custom-vpn:hover,
+#custom-recorder:hover,
+#custom-system-status:hover,
+#clock:hover,
+#custom-control-center:hover,
+#workspaces button:hover {
+  color: rgba(3, 8, 18, 1);
+  background: rgba(6, 10, 20, 0.12);
+}
+
+#workspaces button.active {
+  color: #FFFFFF;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.48), transparent 38%),
+    linear-gradient(135deg, #7367F0, #2F7BFF);
+  border-color: rgba(255, 255, 255, 0.76);
+  box-shadow:
+    0 5px 18px rgba(47, 123, 255, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+#custom-wifi.connected,
+#custom-bluetooth.connected,
+#custom-bluetooth.on,
+#custom-vpn.active,
+#custom-ai {
+  color: rgba(24, 64, 185, 1);
+}
+EOF
 }
 
 is_specialized_waybar_profile() {
@@ -1784,6 +2053,9 @@ apply_profile() {
     render_config "$mode" "$config_base" > "$WAYBAR_CONFIG"
     render_style "$mode" "$style_base" > "$WAYBAR_STYLE"
     rm -f "$CONFIG_HOME/fontconfig/conf.d/70-sevenos-baobab-fonts.conf" 2>/dev/null || true
+  fi
+  if [[ "$mode" == "light" ]]; then
+    append_light_legibility_lock
   fi
   PROFILE_JSON="$(profile_json)" MODE="$mode" ROOT_DIR="$ROOT_DIR" python - <<'PY' | tee "$PROFILE_UI" > "$profile_ui"
 import json
