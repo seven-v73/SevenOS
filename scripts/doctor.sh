@@ -366,7 +366,7 @@ docker = next((item for item in services if item.get("key") == "docker"), {})
 add("forge-docker", "OK" if docker.get("state") in {"OK", "QUIET", "PART"} else "PART", "Forge Docker service contract", docker.get("detail", docker.get("state", "unknown")), "seven profile activate forge", "medium")
 
 rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-issues = [item for item in checks if item["state"] not in {"OK", "READY", "RUN"}]
+issues = [item for item in checks if item["state"] not in {"OK", "READY", "RUN", "SKIP"}]
 issues.sort(key=lambda item: (rank.get(item["severity"], 9), item["key"]))
 daily_scope_ignored = {"worktree-freeze", "installer", "windows-vm", "ux-check"}
 public_ready = not issues
