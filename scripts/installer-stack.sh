@@ -269,7 +269,7 @@ checks = [
     },
     {
         "key": "calamares-source-policy",
-        "state": "OK" if os.environ["CALAMARES_SOURCE_STATE"] in {"installed", "official-candidate", "aur-candidate", "source-declared"} else "MISS",
+        "state": "OK" if os.environ["CALAMARES_SOURCE_STATE"] in {"installed", "iso-runtime-ready", "official-candidate", "aur-candidate", "source-declared"} else "MISS",
         "required": False,
         "title": "Calamares runtime source policy",
         "command": "seven installer runtime --json",

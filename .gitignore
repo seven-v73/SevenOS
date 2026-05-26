@@ -11,6 +11,7 @@ out/
 work/
 iso/
 dist/
+archiso/localrepo/
 target/
 node_modules/
 seven-core/bus-c/build/
