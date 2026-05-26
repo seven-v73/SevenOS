@@ -936,6 +936,9 @@ thème, SevenOS garde ce comportement depuis `hyprland/hyprlock.conf` et
 
 ```bash
 seven update
+seven update check
+seven update install --yes
+seven upgrade --yes
 seven update --json
 seven lifecycle
 seven health
@@ -948,6 +951,9 @@ seven events --limit 30
 SevenOS préfère les routes `seven update`, `seven recovery` et `seven health`
 aux commandes backend directes pour les utilisateurs. Les commandes Arch restent
 disponibles dans Equinox pour l'admin système.
+Sur une machine publique, SevenOS vit dans `/opt/SevenOS`; `seven update install`
+met à jour ce dépôt, sauvegarde l'état protégé, rafraîchit les commandes et
+applique ensuite les mises à jour système/apps.
 
 ### Sauvegarde et migration
 
@@ -2087,6 +2093,9 @@ keeps this behavior from `hyprland/hyprlock.conf` and
 
 ```bash
 seven update
+seven update check
+seven update install --yes
+seven upgrade --yes
 seven update --json
 seven lifecycle
 seven health
@@ -2099,6 +2108,9 @@ seven events --limit 30
 SevenOS prefers `seven update`, `seven recovery` and `seven health` over direct
 backend commands for users. Arch commands remain available in Equinox for
 system administration.
+On public machines, SevenOS lives in `/opt/SevenOS`; `seven update install`
+updates that tree, backs up protected state, refreshes commands and then applies
+system/app updates.
 
 ### Backup And Migration
 

@@ -27,6 +27,7 @@ Targets:
   network          Prepare and repair Wi-Fi/NetworkManager stack
   language         Prepare and inspect French/English language packs
   system-profile   Ensure Equinox is the host-system/admin side
+  system-install    Install SevenOS into /opt/SevenOS for public updates
   aur-helpers      Install yay and paru for SevenOS AUR-backed features
   hypr-ecosystem   Install premium Hyprland ecosystem tools
   shell-preview    Preview Seven Shell AGS migration plan
@@ -178,6 +179,13 @@ case "$TARGET" in
       "$ROOT_DIR/scripts/system-profile.sh" apply --yes "${TARGET_ARGS[@]}"
     else
       "$ROOT_DIR/scripts/system-profile.sh" apply "${TARGET_ARGS[@]}"
+    fi
+    ;;
+  system-install|public-install|opt-install)
+    if [[ "$YES" == "1" ]]; then
+      "$ROOT_DIR/scripts/system-install.sh" --yes "${TARGET_ARGS[@]}"
+    else
+      "$ROOT_DIR/scripts/system-install.sh" "${TARGET_ARGS[@]}"
     fi
     ;;
   aur-helpers)

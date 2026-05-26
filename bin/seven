@@ -934,9 +934,12 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
 
     update_parser = subparsers.add_parser("update", help="inspect or apply SevenOS updates")
-    update_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "apply", "json"))
+    update_parser.add_argument("action", nargs="?", default="status", choices=("status", "check", "plan", "doctor", "apply", "install", "json"))
     update_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS update contract")
     update_parser.add_argument("--yes", action="store_true", help="run supported updates non-interactively")
+    upgrade_parser = subparsers.add_parser("upgrade", help="natural alias for SevenOS update install")
+    upgrade_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS update contract")
+    upgrade_parser.add_argument("--yes", action="store_true", help="run supported updates non-interactively")
     recovery_parser = subparsers.add_parser("recovery", help="inspect SevenOS recovery and protected state routes")
     recovery_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "backup", "json"))
     recovery_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS recovery contract")
@@ -1296,6 +1299,9 @@ def main():
     args = parser.parse_args()
 
     if args.command == "update":
+        handle_update(args)
+    elif args.command == "upgrade":
+        args.action = "install"
         handle_update(args)
     elif args.command == "recovery":
         handle_recovery(args)

@@ -9,11 +9,12 @@ usage() {
 SevenOS update
 
 Usage:
-  seven update [status|plan|doctor|apply|json] [--json] [--yes]
-  ./scripts/update.sh [status|plan|doctor|apply|json] [--json] [--yes]
+  seven update [status|check|plan|doctor|apply|install|json] [--json] [--yes] [--dry-run]
+  ./scripts/update.sh [status|check|plan|doctor|apply|install|json] [--json] [--yes] [--dry-run]
 
-This is the SevenOS-first update route. It explains system, app and profile
-updates before delegating to pacman, Flatpak or AUR helpers.
+This is the SevenOS-first update route. It updates the SevenOS system tree,
+refreshes command wrappers and then delegates package updates to pacman,
+Flatpak or AUR helpers.
 EOF
 }
 
@@ -22,14 +23,52 @@ JSON_OUTPUT=0
 YES=0
 for arg in "$@"; do
   case "$arg" in
-    status|plan|doctor|apply|json) ACTION="$arg" ;;
+    status|check|plan|doctor|apply|install|json) ACTION="$arg" ;;
     --json) JSON_OUTPUT=1 ;;
+    --dry-run) export SEVENOS_DRY_RUN=1 ;;
     --yes|-y) YES=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown update option: $arg"; usage; exit 1 ;;
   esac
 done
 [[ "$ACTION" == "json" ]] && JSON_OUTPUT=1
+[[ "$ACTION" == "check" ]] && ACTION="doctor"
+[[ "$ACTION" == "install" ]] && ACTION="apply"
+
+git_run() {
+  if [[ -w "$ROOT_DIR/.git" || -w "$ROOT_DIR" ]]; then
+    run_cmd git -C "$ROOT_DIR" "$@"
+  else
+    run_cmd sudo git -C "$ROOT_DIR" "$@"
+  fi
+}
+
+repo_update_preview() {
+  printf 'seven migrate backup\n'
+  printf 'git -C %q fetch --prune\n' "$ROOT_DIR"
+  printf 'git -C %q pull --ff-only\n' "$ROOT_DIR"
+  printf 'env SEVENOS_ROOT=%q %q cli\n' "$ROOT_DIR" "$ROOT_DIR/install.sh"
+  printf 'env SEVENOS_ROOT=%q %q post-install\n' "$ROOT_DIR" "$ROOT_DIR/install.sh"
+}
+
+apply_repo_update() {
+  if [[ ! -d "$ROOT_DIR/.git" ]]; then
+    log_warn "SevenOS root is not a Git checkout: $ROOT_DIR"
+    log_warn "Repository updates skipped; package updates will continue."
+    return 0
+  fi
+
+  log_info "Backing up protected SevenOS user state before update..."
+  "$ROOT_DIR/scripts/migrate.sh" backup || log_warn "Migration backup failed; continuing cautiously."
+
+  log_info "Updating SevenOS system tree: $ROOT_DIR"
+  git_run fetch --prune
+  git_run pull --ff-only
+
+  log_info "Refreshing SevenOS public commands and post-update checks..."
+  env SEVENOS_ROOT="$ROOT_DIR" "$ROOT_DIR/install.sh" cli
+  env SEVENOS_ROOT="$ROOT_DIR" "$ROOT_DIR/install.sh" post-install || true
+}
 
 update_json() {
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
@@ -63,8 +102,26 @@ def run_lines(command, timeout=8):
 def command_ok(command):
     return shutil.which(command) is not None
 
+def git_text(args, timeout=5):
+    try:
+        result = subprocess.run(["git", "-C", str(root), *args], text=True, capture_output=True, check=False, timeout=timeout)
+    except Exception:
+        return ""
+    return result.stdout.strip() if result.returncode == 0 else ""
 
 fast_mode = os.environ.get("SEVENOS_UPDATE_FAST") == "1"
+is_git = (root / ".git").exists()
+branch = git_text(["rev-parse", "--abbrev-ref", "HEAD"]) if is_git else ""
+commit = git_text(["rev-parse", "--short", "HEAD"]) if is_git else ""
+upstream = git_text(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]) if is_git else ""
+dirty = len(git_text(["status", "--short"]).splitlines()) if is_git else None
+behind = None
+ahead = None
+if is_git and upstream:
+    counts = git_text(["rev-list", "--left-right", "--count", f"HEAD...{upstream}"]).split()
+    if len(counts) == 2:
+        ahead = int(counts[0])
+        behind = int(counts[1])
 pacman_updates = run_lines(["pacman", "-Qu"]) if command_ok("pacman") and not fast_mode else None
 flatpak_updates = run_lines(["flatpak", "remote-ls", "--updates", "--columns=application,version", "flathub"]) if command_ok("flatpak") and not fast_mode else None
 aur_helper = "paru" if command_ok("paru") else "yay" if command_ok("yay") else ""
@@ -117,7 +174,8 @@ known_pending = [
     if isinstance(item.get("pending"), int)
 ]
 pending_total = sum(known_pending)
-state = "updates-available" if pending_total > 0 else "ready" if not missing else "partial"
+repo_pending = isinstance(behind, int) and behind > 0
+state = "updates-available" if pending_total > 0 or repo_pending else "ready" if not missing else "partial"
 if fast_mode and not missing:
     state = "ready"
 score = round((sum(1 for item in sources if item["state"] == "OK") + len(partial) * 0.5) / len(sources) * 100)
@@ -127,11 +185,28 @@ print(json.dumps({
     "state": state,
     "score": score,
     "pending_total": pending_total,
+    "repo_pending": repo_pending,
     "pending_known": len(known_pending) == 3,
     "fast_mode": fast_mode,
+    "root": str(root),
+    "preferred_root": "/opt/SevenOS",
+    "repository": {
+        "state": "OK" if is_git and upstream else "PART" if is_git else "MISS",
+        "git": is_git,
+        "branch": branch,
+        "commit": commit,
+        "upstream": upstream,
+        "ahead": ahead,
+        "behind": behind,
+        "dirty_count": dirty,
+        "public_location": str(root) == "/opt/SevenOS",
+        "command": "seven update install --yes",
+    },
     "sources": sources,
     "policy": [
         "SevenOS explains updates before backend commands run.",
+        "Public installs should live in /opt/SevenOS so commands work from any directory.",
+        "SevenOS updates its own system tree before refreshing wrappers and package sources.",
         "System packages use pacman through the SevenOS route.",
         "Flatpak and AUR are app sources, not the public product identity.",
         "Profile bundles remain visible through sevenpkg and SevenStore.",
@@ -139,12 +214,17 @@ print(json.dumps({
     "plan": [
         {
             "title": "Review update state",
-            "command": "seven update",
+            "command": "seven update check",
+            "impact": "safe",
+        },
+        {
+            "title": "Back up protected SevenOS state",
+            "command": "seven migrate backup",
             "impact": "safe",
         },
         {
             "title": "Apply SevenOS update route",
-            "command": "seven update apply",
+            "command": "seven update install --yes",
             "impact": "packages",
         },
         {
@@ -156,8 +236,9 @@ print(json.dumps({
     "issues": missing + partial,
     "commands": {
         "status": "seven update",
+        "check": "seven update check",
         "json": "seven update --json",
-        "apply": "seven update apply",
+        "apply": "seven update install --yes",
         "store": "seven store",
     },
 }, indent=2))
@@ -175,6 +256,12 @@ print("==============")
 print(f"State:    {data.get('state')}")
 print(f"Score:    {data.get('score')}%")
 print(f"Pending:  {data.get('pending_total')} known update(s)")
+repo = data.get("repository", {})
+if repo:
+    behind = repo.get("behind")
+    pending = "yes" if data.get("repo_pending") else "no" if behind is not None else "unknown"
+    print(f"SevenOS:  {repo.get('commit') or 'unknown'} on {repo.get('branch') or 'unknown'} · repo update: {pending}")
+    print(f"Root:     {data.get('root')}")
 print()
 for item in data.get("sources", []):
     pending = item.get("pending")
@@ -200,6 +287,7 @@ PY
 apply_updates() {
   log_info "Applying SevenOS update route"
   if is_dry_run; then
+    repo_update_preview
     printf '%q ' "$ROOT_DIR/bin/sevenpkg" update
     printf '\n'
     if command -v flatpak >/dev/null 2>&1; then
@@ -208,6 +296,7 @@ apply_updates() {
     return 0
   fi
 
+  apply_repo_update
   "$ROOT_DIR/bin/sevenpkg" update
   if command -v flatpak >/dev/null 2>&1; then
     if [[ "$YES" -eq 1 || "${SEVENOS_YES:-0}" == "1" ]]; then

@@ -19,6 +19,13 @@ chmod +x install.sh bootstrap.sh profiles/*.sh
 ./install.sh new-device --yes
 ```
 
+For a public-style machine, install the managed SevenOS tree into `/opt/SevenOS`
+and refresh the global command wrappers:
+
+```bash
+./install.sh system-install --yes
+```
+
 After the first install:
 
 ```bash
@@ -28,6 +35,17 @@ seven post-install
 seven status
 seven doctor
 ```
+
+Public update route from anywhere:
+
+```bash
+seven update check
+seven update install --yes
+seven upgrade --yes
+```
+
+This updates `/opt/SevenOS`, backs up protected user state, refreshes command
+wrappers and then applies package/app updates through the SevenOS route.
 
 Optional extended setup:
 

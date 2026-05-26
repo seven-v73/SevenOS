@@ -254,6 +254,18 @@ seven post-install
 hyprctl reload
 ```
 
+For a public-style install, keep the managed tree in `/opt/SevenOS` and use the
+SevenOS update route from any directory:
+
+```bash
+./install.sh system-install --yes
+seven update check
+seven update install --yes
+```
+
+`seven upgrade --yes` is the same natural update path for users who expect an
+OS-style upgrade command.
+
 For the current daily-driver consolidation push, run the gate before applying
 heavy packages:
 
