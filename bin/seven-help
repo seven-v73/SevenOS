@@ -935,6 +935,7 @@ thème, SevenOS garde ce comportement depuis `hyprland/hyprlock.conf` et
 ### Mises à jour, santé et récupération
 
 ```bash
+./install.sh system-install --yes
 seven update
 seven update check
 seven update install --yes
@@ -954,6 +955,8 @@ disponibles dans Equinox pour l'admin système.
 Sur une machine publique, SevenOS vit dans `/opt/SevenOS`; `seven update install`
 met à jour ce dépôt, sauvegarde l'état protégé, rafraîchit les commandes et
 applique ensuite les mises à jour système/apps.
+`./install.sh system-install --yes` est la route qui place ou rafraîchit ce
+dépôt système et les commandes utilisables depuis partout.
 
 ### Sauvegarde et migration
 
@@ -2092,6 +2095,7 @@ keeps this behavior from `hyprland/hyprlock.conf` and
 ### Updates, Health And Recovery
 
 ```bash
+./install.sh system-install --yes
 seven update
 seven update check
 seven update install --yes
@@ -2111,6 +2115,8 @@ system administration.
 On public machines, SevenOS lives in `/opt/SevenOS`; `seven update install`
 updates that tree, backs up protected state, refreshes commands and then applies
 system/app updates.
+`./install.sh system-install --yes` is the route that places or refreshes this
+system tree and the commands available from anywhere.
 
 ### Backup And Migration
 
