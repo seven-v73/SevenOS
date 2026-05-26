@@ -872,6 +872,193 @@ tooltip {
 tooltip label {
   color: #FFFFFF;
 }
+
+/* SevenOS light contrast pass: keep glass, restore readability on bright wallpapers. */
+window#waybar {
+  color: rgba(18, 24, 38, 0.94);
+  border-bottom: 1px solid rgba(18, 24, 38, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(235, 241, 250, 0.64)),
+    rgba(214, 224, 238, 0.70);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.62),
+    0 12px 30px rgba(31, 42, 68, 0.18);
+}
+
+#custom-sevenos,
+#window,
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help,
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context,
+#custom-spotlight,
+#custom-experience,
+#custom-media,
+#custom-workspace-prev,
+#custom-workspace-next,
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#custom-vpn,
+#custom-recorder,
+#custom-system-status,
+#clock,
+#custom-control-center {
+  color: rgba(18, 24, 38, 0.92);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+
+#custom-sevenos:hover,
+#window:hover,
+#custom-app-menu:hover,
+#custom-app-file:hover,
+#custom-app-edit:hover,
+#custom-app-view:hover,
+#custom-app-extra:hover,
+#custom-app-more:hover,
+#custom-app-tools:hover,
+#custom-app-window:hover,
+#custom-app-help:hover,
+#custom-profile:hover,
+#custom-os-switch:hover,
+#custom-mini-context:hover,
+#custom-spotlight:hover,
+#custom-experience:hover,
+#custom-media:hover,
+#custom-workspace-prev:hover,
+#custom-workspace-next:hover,
+#custom-wifi:hover,
+#custom-bluetooth:hover,
+#pulseaudio:hover,
+#battery:hover,
+#custom-vpn:hover,
+#custom-recorder:hover,
+#custom-system-status:hover,
+#clock:hover,
+#custom-control-center:hover {
+  color: rgba(8, 13, 24, 0.98);
+  background: rgba(18, 24, 38, 0.075);
+}
+
+#window,
+#custom-app-menu,
+#custom-app-file,
+#custom-app-edit,
+#custom-app-view,
+#custom-app-extra,
+#custom-app-more,
+#custom-app-tools,
+#custom-app-window,
+#custom-app-help {
+  color: rgba(30, 38, 56, 0.78);
+}
+
+#window.empty {
+  color: rgba(30, 38, 56, 0.46);
+}
+
+#custom-profile,
+#custom-os-switch,
+#custom-mini-context,
+#custom-spotlight,
+#custom-experience,
+#custom-media,
+#custom-wifi,
+#custom-bluetooth,
+#pulseaudio,
+#battery,
+#custom-vpn,
+#custom-system-status,
+#clock,
+#custom-control-center {
+  border-color: rgba(18, 24, 38, 0.08);
+  background: rgba(255, 255, 255, 0.34);
+}
+
+#custom-profile.profile-equinox,
+#custom-os-switch,
+#custom-mini-context.active,
+#custom-experience.recommended,
+#custom-experience.active,
+#custom-control-center {
+  color: rgba(14, 29, 56, 0.98);
+  border-color: rgba(47, 123, 255, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(224, 233, 248, 0.44)),
+    rgba(47, 123, 255, 0.08);
+}
+
+#custom-profile.profile-baobab,
+#custom-mini-context.profile-baobab {
+  color: rgba(36, 96, 52, 0.98);
+}
+
+#custom-profile.profile-forge,
+#custom-mini-context.profile-forge {
+  color: rgba(132, 82, 14, 0.98);
+}
+
+#custom-profile.profile-shield,
+#custom-mini-context.profile-shield {
+  color: rgba(0, 105, 90, 0.98);
+}
+
+#custom-profile.profile-studio,
+#custom-mini-context.profile-studio {
+  color: rgba(124, 48, 112, 0.98);
+}
+
+#custom-profile.profile-windows,
+#custom-mini-context.profile-windows,
+#custom-profile.profile-pulse,
+#custom-mini-context.profile-pulse {
+  color: rgba(18, 86, 156, 0.98);
+}
+
+#workspaces button {
+  color: rgba(30, 38, 56, 0.70);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+#workspaces button:hover {
+  color: rgba(8, 13, 24, 0.96);
+  background: rgba(18, 24, 38, 0.070);
+}
+
+#workspaces button.active {
+  color: rgba(8, 13, 24, 0.98);
+  border-color: rgba(47, 123, 255, 0.30);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(221, 232, 249, 0.52)),
+    rgba(47, 123, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 0 12px rgba(47, 123, 255, 0.12);
+}
+
+#custom-recorder.recording,
+#custom-system-status.warn,
+#battery.warning {
+  color: rgba(140, 78, 8, 0.98);
+  border-color: rgba(216, 132, 18, 0.28);
+  background: rgba(255, 194, 92, 0.14);
+}
+
+#custom-system-status.error,
+#battery.critical {
+  color: rgba(148, 28, 52, 0.98);
+  border-color: rgba(214, 54, 86, 0.30);
+  background: rgba(255, 91, 122, 0.14);
+}
 #custom-sevenos.profile-pulse {
   color: rgba(16, 119, 156, 0.96);
 }
