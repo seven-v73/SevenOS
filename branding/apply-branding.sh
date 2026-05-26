@@ -15,22 +15,22 @@ copy_system_file() {
   log_info "Installing system branding: ${source_file#$ROOT_DIR/} -> $target_file"
 
   if is_dry_run; then
-    printf 'sudo mkdir -p %q\n' "$target_dir"
+    printf '%q mkdir -p %q\n' "$(privileged_backend_label)" "$target_dir"
     if [[ -e "$target_file" ]]; then
-      printf 'sudo cp -a %q %q\n' "$target_file" "$(backup_path "$target_file")"
+      printf '%q cp -a %q %q\n' "$(privileged_backend_label)" "$target_file" "$(backup_path "$target_file")"
     fi
-    printf 'sudo cp %q %q\n' "$source_file" "$target_file"
+    printf '%q cp %q %q\n' "$(privileged_backend_label)" "$source_file" "$target_file"
     return 0
   fi
 
-  sudo mkdir -p "$target_dir"
+  run_privileged_cmd mkdir -p "$target_dir"
   if [[ -e "$target_file" ]]; then
     local backup_file
     backup_file="$(backup_path "$target_file")"
-    sudo cp -a "$target_file" "$backup_file"
+    run_privileged_cmd cp -a "$target_file" "$backup_file"
     log_warn "Existing system file backed up to $backup_file"
   fi
-  sudo cp "$source_file" "$target_file"
+  run_privileged_cmd cp "$source_file" "$target_file"
 }
 
 log_info "Applying SevenOS system branding..."

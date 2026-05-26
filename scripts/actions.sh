@@ -41,6 +41,7 @@ boot.splash.apply	System	Apply Boot Splash	seven boot-splash apply	packages	Enab
 update.status	System	SevenOS Update	seven update	safe	Show SevenOS system, app, community and profile update state before backend commands run.
 update.plan	System	Update Plan	seven update plan	safe	Show the SevenOS-first update sequence.
 update.apply	System	Apply Updates	seven update apply	packages	Update through the SevenOS route, then delegate to package foundations.
+update.rollback	System	Roll Back SevenOS Update	seven update rollback	changes	Restore the last SevenOS tree snapshot after an update problem.
 recovery.status	System	SevenOS Recovery	seven recovery	safe	Show protected user state, migration backups, repair routes and installer/recovery readiness.
 recovery.plan	System	Recovery Plan	seven recovery plan	safe	Show the SevenOS-first recovery sequence.
 recovery.backup	System	Create Recovery Backup	seven recovery backup	changes	Create a protected migration backup using the SevenOS manifest.
@@ -50,6 +51,9 @@ health.doctor	System	Health Doctor	seven health doctor	safe	Validate SevenOS dai
 smoke.status	System	SevenOS Smoke Gate	seven smoke	safe	Run the fast public-product gate used before opening deeper developer audits.
 smoke.doctor	System	Smoke Doctor	seven smoke doctor	safe	Validate state, product, identity, distribution and health contracts with strict timeouts.
 smoke.json	System	Smoke Gate JSON	seven smoke --json	safe	Expose the fast SevenOS distribution smoke contract for Hub, Settings and release surfaces.
+quality.status	System	Public Quality Gate	seven quality	safe	Show the product-quality aggregate for health, surfaces, update, mini OS, Shell, Server/Deploy and release freeze.
+quality.doctor	System	Public Quality Doctor	seven quality doctor	safe	Validate the user-experience gates before public release or a major phase claim.
+quality.json	System	Public Quality JSON	seven quality json	safe	Expose the public-quality aggregate to Hub, Settings and future Shell surfaces.
 support.status	System	SevenOS Support	seven support	safe	Show local-first support readiness, health, product, recovery and event summary.
 support.bundle	System	Create Support Bundle	seven support bundle	changes	Create a local support bundle under the user account; nothing is uploaded automatically.
 support.plan	System	Support Plan	seven support plan	safe	Show the SevenOS-first support flow before collecting diagnostics.
@@ -336,7 +340,24 @@ server.status	Server	Server Status	seven server status	safe	Check the local Seve
 server.plan	Server	Server Plan	seven server plan	safe	Show prioritized Seven Server backend actions.
 server.install	Server	Install Server Service	seven server install-user-service	changes	Install the local SevenOS API user service.
 server.start	Server	Start Server Service	seven server start	changes	Start the local SevenOS API user service.
-deploy.plan	Server	Deployment Plan	seven deploy plan .	safe	Detect and plan deployment for the current project.
+deploy.plan	Server	Deployment Plan	seven deploy plan .	safe	Forge only: detect and plan deployment for the current project.
+deploy.inspect	Server	Inspect Project	seven deploy inspect .	safe	Forge only: detect stack, tools and natural dev commands for the current project.
+deploy.dev	Server	Dev Loop	seven deploy dev .	safe	Forge only: show the natural development loop for the current project.
+deploy.doctor	Server	Deploy Doctor	seven deploy doctor .	safe	Forge only: check project-specific deployment tools.
+deploy.publish	Server	Publish Web App	seven deploy publish .	changes	Forge only: save a durable build snapshot and start it as a local hosting service.
+deploy.publish_public	Server	Publish Public Preview	seven deploy publish . --provider cloudflare	changes	Forge only: expose the hosted snapshot through a generated public tunnel when cloudflared is available.
+deploy.publish_domain	Server	Publish With Domain	seven deploy publish . --domain app.example.com	changes	Forge only: prepare a hosted snapshot for a custom domain route.
+deploy.domain_tunnel	Server	Domain Tunnel Plan	seven deploy domain app.example.com --target tunnel	safe	Forge only: show DNS steps for a purchased domain on a personal SevenOS machine through a tunnel.
+deploy.domain_vps	Server	Domain VPS Plan	seven deploy domain app.example.com --target vps --public-ip 203.0.113.10	safe	Forge only: show DNS A/AAAA records for a VPS or public SevenOS host.
+deploy.dns_check_ip	Server	DNS IP Check	seven deploy dns-check app.example.com --expected-ip 203.0.113.10	safe	Forge only: check whether a domain resolves to the expected VPS or public host IP.
+deploy.dns_check_tunnel	Server	DNS Tunnel Check	seven deploy dns-check app.example.com --expected-cname tunnel.cfargotunnel.com	safe	Forge only: check whether a domain CNAME points to the expected tunnel hostname.
+deploy.route_check	Server	Route Check	seven deploy route-check app.example.com	safe	Forge only: check DNS plus local/public HTTP reachability for a hosted app or domain.
+deploy.diagnose	Server	Hosting Diagnose	seven deploy diagnose app.example.com	safe	Forge only: run the full hosting diagnosis: service, route, DNS, versions and next actions.
+deploy.versions	Server	Hosted Versions	seven deploy versions .	safe	Forge only: show saved build snapshots for a hosted project.
+deploy.rollback	Server	Rollback Hosted App	seven deploy rollback .	changes	Forge only: switch a hosted project back to a previous saved snapshot.
+deploy.remove	Server	Remove Hosted App	seven deploy remove .	changes	Forge only: stop a hosted project and remove its SevenOS deploy snapshots.
+deploy.services	Server	Hosting Services	seven deploy services	safe	Forge only: show active SevenOS hosted services.
+deploy.panel	Server	Hosting Panel	seven deploy panel	safe	Forge only: show the local deployment management panel contract.
 installer.status	Installer	Installer Status	seven installer status	safe	Check Calamares and ISO foundations.
 installer.plan	Installer	Installer Plan	seven installer plan	safe	Show prioritized installer and ISO actions.
 installer.release	Installer	Installer Release Readiness	seven installer release	safe	Show public-ISO release readiness, required checks and graphical installer gap.
@@ -436,6 +457,7 @@ shell.status	Desktop	Seven Shell Status	seven shell	safe	Show the AGS/TypeScript
 shell.plan	Desktop	Seven Shell Plan	seven shell plan	safe	Show how Seven Shell will replace Rofi panels gradually.
 shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned AGS surfaces and fallback contracts.
 shell.install	Desktop	Install Shell Foundation	./install.sh shell-ags --yes	packages	Install GJS, TypeScript, GTK4 and libadwaita for the B3 shell foundation.
+shell.ags_runtime	Desktop	Install AGS Runtime	./install.sh shell-ags-runtime --yes	packages	Install Aylur's Gtk Shell runtime from the explicit AUR route after review.
 identity.status	Ecosystem	SevenOS Visual Identity	seven identity	safe	Show SevenOS Beyond the Desktop product language.
 identity.plan	Ecosystem	Identity Plan	seven identity plan	safe	Show identity gaps before public surfaces rely on branding and theme assets.
 identity.design	Ecosystem	Seven Design Engine	seven identity design	safe	Show Seven Mocha/Latte palettes, icon resolution and design surfaces.

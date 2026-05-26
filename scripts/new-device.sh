@@ -111,6 +111,9 @@ setup_doctor() {
     scripts/boot-splash.sh
     scripts/post-install.sh
     scripts/system-profile.sh
+    scripts/system-install.sh
+    scripts/public-experience.sh
+    scripts/shell-ags-runtime.sh
     profiles/profile-manager.sh
     bin/seven-profile-requirements
     bin/seven-profile-rootfs
@@ -146,6 +149,12 @@ setup_doctor() {
   else
     doctor_fail "mini OS requirements contract failed"
     failed=1
+  fi
+
+  if "$ROOT_DIR/scripts/public-experience.sh" json >/dev/null 2>&1; then
+    doctor_ok "public quality contract"
+  else
+    doctor_warn "public quality contract reports remaining release/runtime actions"
   fi
 
   if "$ROOT_DIR/scripts/fonts.sh" status >/dev/null 2>&1; then
@@ -217,6 +226,9 @@ fi
 step "installing base desktop, CLI, hub, AUR helpers and theme"
 "$ROOT_DIR/bootstrap.sh"
 
+step "installing SevenOS into /opt/SevenOS for public updates"
+run_optional "$ROOT_DIR/scripts/system-install.sh" "${yes_args[@]}"
+
 step "preparing NetworkManager and Wi-Fi before dependency installs"
 run_optional "$ROOT_DIR/scripts/network.sh" bootstrap "${yes_args[@]}"
 
@@ -239,6 +251,9 @@ run_optional run_logged "$ROOT_DIR/bin/seven-windows-assistant" setup --yes --no
 if [[ "$OPTIONAL" -eq 1 ]]; then
   step "installing optional mini OS dependencies"
   run_optional run_logged "$ROOT_DIR/bin/seven-profile-requirements" ensure all --optional --aur --apply "${yes_args[@]}"
+
+  step "installing Seven Shell AGS runtime"
+  run_optional "$ROOT_DIR/scripts/shell-ags-runtime.sh" install
 fi
 
 step "bootstrapping all mini OS workspaces and launchers"
@@ -268,6 +283,9 @@ run_optional "$ROOT_DIR/scripts/boot-splash.sh" apply
 
 step "running post-install ergonomics check"
 "$ROOT_DIR/scripts/post-install.sh"
+
+step "running public quality gate"
+run_optional "$ROOT_DIR/scripts/public-experience.sh" doctor
 
 step "opening SevenOS first-run surface when possible"
 open_first_run_surface

@@ -583,7 +583,7 @@ run_active_app_command() {
     "Split gauche"|"Split left") run_detached seven-window split-left ;;
     "Split droite"|"Split right") run_detached seven-window split-right ;;
     "Aide app active"|"Active app help") send_function_key "F1" ;;
-    "Aide SevenOS"|"SevenOS help") run_detached seven-help ;;
+    "Aide SevenOS"|"SevenOS help") run_detached seven-help-native ;;
     *) return 0 ;;
   esac
 }
@@ -799,7 +799,7 @@ run_app_menu_action() {
     "Pulse · Captures") open_path_with_files "$HOME/Videos" ;;
     "Pulse · Jeux") run_detached seven-hub games ;;
     "Baobab · Collections") open_path_with_files "$HOME/Documents" ;;
-    "Aide · SevenOS") run_detached seven-help ;;
+    "Aide · SevenOS") run_detached seven-help-native ;;
     *) return 0 ;;
   esac
 }

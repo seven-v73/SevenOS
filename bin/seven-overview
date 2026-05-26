@@ -55,7 +55,13 @@ case "$action" in
     fi
     ;;
   windows|overview|activities)
-    rofi_or_fallback rofi -show window -show-icons -theme "$SHELL_THEME"
+    if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+      printf 'seven-spotlight windows\n'
+    elif command -v seven-spotlight >/dev/null 2>&1; then
+      seven-spotlight windows
+    else
+      "$ROOT_DIR/bin/seven-spotlight" windows
+    fi
     ;;
   search)
     if command -v seven-spotlight >/dev/null 2>&1; then

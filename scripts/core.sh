@@ -15,6 +15,7 @@ OBSERVER_SERVICE_SOURCE="$ROOT_DIR/systemd/user/seven-context-observer.service"
 OBSERVER_SERVICE_TARGET="$SYSTEMD_USER_DIR/seven-context-observer.service"
 JSON_OUTPUT=0
 ACTION="${1:-status}"
+COMPACT_KEEP="${SEVENOS_CORE_EVENT_KEEP:-5000}"
 
 usage() {
   cat <<'EOF'
@@ -39,6 +40,7 @@ Usage:
   seven core health --json
   seven core profiles --json
   seven core observe --json
+  seven core compact-bus [--keep N]
 
 Seven Core is the system experience layer foundation above Linux and Arch:
 contracts, local event bus, daemon scaffold, API handoff and policy surface.
@@ -46,12 +48,18 @@ EOF
 }
 
 shift || true
-for arg in "$@"; do
+while [[ "$#" -gt 0 ]]; do
+  arg="$1"
   case "$arg" in
     --json|json) JSON_OUTPUT=1 ;;
+    --keep)
+      COMPACT_KEEP="${2:-$COMPACT_KEEP}"
+      shift
+      ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown core option: $arg"; usage; exit 1 ;;
   esac
+  shift || true
 done
 
 json_string() {
@@ -138,6 +146,9 @@ status_json() {
   if [[ "$state" == FOUNDATION && "$rust" == OK && "$cargo" == OK ]]; then
     state="READY_FOR_DAEMON"
   fi
+  if [[ "$state" == READY_FOR_DAEMON && "$service" == RUN && "$observer_service" == RUN ]]; then
+    state="RUNTIME_READY"
+  fi
 
   CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_JSON_STATE="$daemon_json" DAEMON_PROFILES_STATE="$daemon_profiles" DAEMON_SHIELD_STATE="$daemon_shield" DAEMON_SERVER_STATE="$daemon_server" DAEMON_WINDOWS_STATE="$daemon_windows" DAEMON_INSTALLER_STATE="$daemon_installer" DAEMON_PACKAGES_STATE="$daemon_packages" DAEMON_INSIGHTS_STATE="$daemon_insights" DAEMON_PHASE_GATE_STATE="$daemon_phase_gate" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" OBSERVER_SERVICE_STATE="$observer_service" OBSERVER_UNIT_STATE="$observer_unit" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
 import json
@@ -179,7 +190,7 @@ print(json.dumps({
     "role": "System Experience Layer foundation above Linux and Arch",
     "bus": {
         "schema": "sevenos.bus.v1",
-        "transport": "jsonl-user-state-now, typed-local-ipc-later",
+        "transport": "jsonl-user-state-now, typed-local-ipc-next",
         "low_level_probe": "sevenbus-probe",
         "event_file": os.environ["EVENT_FILE"],
         "event_count": int(os.environ["EVENT_COUNT"]),
@@ -187,7 +198,7 @@ print(json.dumps({
     "daemon": {
         "name": "seven-daemon",
         "language": "Rust",
-        "state": "scaffold" if os.environ["DAEMON_STATE"] == "OK" else "missing",
+        "state": "runtime" if os.environ["DAEMON_SERVICE_STATE"] == "RUN" else "available" if os.environ["DAEMON_STATE"] == "OK" else "missing",
         "manifest": "seven-core/daemon/Cargo.toml",
         "command": "seven-daemon",
         "service": os.environ["DAEMON_SERVICE_STATE"],
@@ -206,8 +217,8 @@ print(json.dumps({
         "Keep every system-facing command JSON-clean",
         "Expose Core through Seven Server and Seven Hub Native",
         "Promote SevenBus from JSONL audit trail to typed local IPC",
-        "Compile and supervise seven-daemon as a user service",
-        "Run seven-context-observer as the first continuous context loop",
+        "Keep seven-daemon supervised as a user service",
+        "Keep seven-context-observer running as the first continuous context loop",
         "Move profile state consumers from Bash to seven-daemon profiles",
         "Move Shield posture consumers from Bash to seven-daemon shield",
         "Move Server readiness consumers from Bash to seven-daemon server",
@@ -367,6 +378,14 @@ observe_json() {
   fi
 }
 
+compact_bus_json() {
+  if [[ -x "$ROOT_DIR/bin/seven-daemon" ]]; then
+    "$ROOT_DIR/bin/seven-daemon" compact-bus --keep "$COMPACT_KEEP" --json
+  else
+    printf '{"schema":"sevenos.bus.compact.v1","state":"MISS","message":"seven-daemon missing"}\n'
+  fi
+}
+
 doctor() {
   local missing=0
   printf 'SevenOS Core Doctor\n'
@@ -520,6 +539,13 @@ case "$ACTION" in
       observe_json
     else
       observe_json | python -m json.tool
+    fi
+    ;;
+  compact-bus|bus-compact|compact-events)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      compact_bus_json
+    else
+      compact_bus_json | python -m json.tool
     fi
     ;;
   -h|--help|help)

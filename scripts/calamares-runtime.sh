@@ -251,10 +251,13 @@ install_deps() {
     log_info "Missing: ${missing[*]}"
     exit 1
   fi
-  require_command sudo
   require_command pacman
   log_info "Installing Calamares build dependencies: ${missing[*]}"
-  run_cmd sudo pacman -S --needed "${missing[@]}"
+  if assume_yes; then
+    run_privileged_cmd pacman -S --needed --noconfirm "${missing[@]}"
+  else
+    run_privileged_cmd pacman -S --needed "${missing[@]}"
+  fi
 }
 
 build_local_repo() {

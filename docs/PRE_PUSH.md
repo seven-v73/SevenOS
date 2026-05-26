@@ -10,8 +10,9 @@ git status --short
 ```
 
 This is the fast GitHub push gate. It checks shell syntax, Python entrypoints,
-JSON contracts, whitespace, design-check, smoke/state contracts, `seven new`
-dry-run and Windows Bridge first-run dry-run.
+JSON contracts, whitespace, design-check, smoke/state contracts, native surface
+legacy-screen guards, `seven new` dry-run and Windows Bridge first-run dry-run.
+It also runs the public quality aggregate as an optional warning gate.
 
 ## Release Audit
 
@@ -31,6 +32,8 @@ fix the slow check separately before tagging a release.
 
 ```bash
 seven smoke --json | python -m json.tool
+seven surfaces doctor
+seven quality doctor
 seven state --json | python -m json.tool
 seven system-profile doctor
 seven post-install

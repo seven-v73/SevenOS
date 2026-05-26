@@ -74,6 +74,39 @@ require_command() {
   fi
 }
 
+privileged_backend() {
+  if command -v pkexec >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
+    printf 'pkexec'
+  elif command -v sudo >/dev/null 2>&1; then
+    printf 'sudo'
+  else
+    printf ''
+  fi
+}
+
+privileged_backend_label() {
+  local backend
+  backend="$(privileged_backend)"
+  printf '%s' "${backend:-sudo}"
+}
+
+run_privileged_cmd() {
+  local backend
+  backend="$(privileged_backend)"
+  if [[ -z "$backend" ]]; then
+    log_error "No graphical admin prompt or sudo backend is available."
+    return 1
+  fi
+
+  if is_dry_run; then
+    printf '%q ' "$backend" "$@"
+    printf '\n'
+    return 0
+  fi
+
+  "$backend" "$@"
+}
+
 require_arch() {
   if [[ ! -f /etc/arch-release ]]; then
     log_error "SevenOS Phase 1 expects Arch Linux or an Arch-based system."
@@ -84,7 +117,7 @@ require_arch() {
 enable_service() {
   local service="$1"
   log_info "Enabling service: $service"
-  run_cmd sudo systemctl enable --now "$service"
+  run_privileged_cmd systemctl enable --now "$service"
 }
 
 add_user_to_group() {
@@ -92,13 +125,13 @@ add_user_to_group() {
   local user="${2:-$USER}"
 
   if is_dry_run; then
-    printf 'sudo usermod -aG %q %q\n' "$group" "$user"
+    printf '%q usermod -aG %q %q\n' "$(privileged_backend_label)" "$group" "$user"
     return 0
   fi
 
   if getent group "$group" >/dev/null 2>&1; then
     if ! groups "$user" | grep -qw "$group"; then
-      sudo usermod -aG "$group" "$user"
+      run_privileged_cmd usermod -aG "$group" "$user"
       log_warn "Log out and back in for the '$group' group membership to apply."
     fi
   else
@@ -138,17 +171,17 @@ install_package_file() {
 
   if is_dry_run; then
     if assume_yes; then
-      printf 'sudo pacman -S --needed --noconfirm %s\n' "${packages[*]}"
+      printf '%q pacman -S --needed --noconfirm %s\n' "$(privileged_backend_label)" "${packages[*]}"
     else
-      printf 'sudo pacman -S --needed %s\n' "${packages[*]}"
+      printf '%q pacman -S --needed %s\n' "$(privileged_backend_label)" "${packages[*]}"
     fi
     return 0
   fi
 
   if assume_yes; then
-    sudo pacman -S --needed --noconfirm "${packages[@]}"
+    run_privileged_cmd pacman -S --needed --noconfirm "${packages[@]}"
   else
-    sudo pacman -S --needed "${packages[@]}"
+    run_privileged_cmd pacman -S --needed "${packages[@]}"
   fi
 }
 

@@ -28,10 +28,18 @@ export type SevenActions = {
 export type SevenShellStatus = {
   schema: "sevenos.shell.v1";
   phase: "B3";
-  state: "READY" | "FOUNDATION" | "PLANNED" | string;
+  state: "READY" | "NATIVE_READY" | "FOUNDATION" | "PLANNED" | string;
   strategy: string;
   fallback: string;
   surfaces: SevenShellSurface[];
+  profile_gates?: Record<
+    string,
+    {
+      required_profile: string;
+      blocked_contract: string;
+      fallback_commands: string[];
+    }
+  >;
 };
 
 export type SevenShellSurface = {

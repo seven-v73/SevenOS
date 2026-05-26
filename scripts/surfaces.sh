@@ -75,6 +75,95 @@ action_ids = {item.get("id") for item in actions.get("actions", []) if isinstanc
 mask = run_json(["scripts/mask.sh", "json"], {})
 adaptive = run_json(["scripts/adaptive-ui.sh", "json"], {})
 
+
+def text(rel):
+    try:
+        return (root / rel).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def add_legacy(issues, key, path, detail, command, severity="medium"):
+    issues.append({
+        "key": key,
+        "path": path,
+        "severity": severity,
+        "detail": detail,
+        "command": command,
+    })
+
+
+legacy_issues = []
+overview_text = text("bin/seven-overview")
+if "rofi -show window" in overview_text and "seven-spotlight\" windows" not in overview_text and "seven-spotlight windows" not in overview_text:
+    add_legacy(
+        legacy_issues,
+        "overview.windows.rofi",
+        "bin/seven-overview",
+        "Window overview still opens the raw Rofi window switcher instead of the native Spotlight window surface.",
+        "route seven-overview windows through seven-spotlight windows",
+        "high",
+    )
+
+waybar_text = text("hyprland/waybar/config.jsonc")
+if '"on-click-right": "seven-help"' in waybar_text:
+    add_legacy(
+        legacy_issues,
+        "waybar.help.legacy",
+        "hyprland/waybar/config.jsonc",
+        "Waybar still opens the old helper on right-click help.",
+        "replace seven-help with seven-help-native",
+        "high",
+    )
+
+waybar_action_text = text("bin/seven-waybar-action")
+if "run_detached seven-help ;;" in waybar_action_text:
+    add_legacy(
+        legacy_issues,
+        "waybar.action.help.legacy",
+        "bin/seven-waybar-action",
+        "Waybar contextual actions still route SevenOS help through the legacy helper.",
+        "replace run_detached seven-help with seven-help-native",
+        "high",
+    )
+
+settings_text = text("bin/seven-settings-native")
+if '"seven-help")' in settings_text or '"seven-help",' in settings_text:
+    add_legacy(
+        legacy_issues,
+        "settings.help.legacy",
+        "bin/seven-settings-native",
+        "Settings still exposes a button to the legacy helper instead of the premium manual.",
+        "replace seven-help with seven-help-native for visible help actions",
+        "medium",
+    )
+
+hypr_generated = text("hyprland/conf/sevenos-lua-generated.conf")
+if "bind = $mod, H, exec, seven-help\n" in hypr_generated:
+    add_legacy(
+        legacy_issues,
+        "hypr.help.legacy",
+        "hyprland/conf/sevenos-lua-generated.conf",
+        "Super+H still targets the legacy helper in generated Hyprland config.",
+        "route Super+H to seven-help-native",
+        "high",
+    )
+
+active_hypr = Path.home() / ".config/hypr/conf/sevenos-lua-generated.conf"
+try:
+    active_hypr_text = active_hypr.read_text(encoding="utf-8", errors="replace")
+except OSError:
+    active_hypr_text = ""
+if "bind = $mod, H, exec, seven-help\n" in active_hypr_text:
+    add_legacy(
+        legacy_issues,
+        "hypr.active.help.legacy",
+        str(active_hypr),
+        "The active Hyprland generated config still targets the legacy helper.",
+        "sync generated config and reload Hyprland",
+        "high",
+    )
+
 surfaces = [
     {
         "key": "hub",
@@ -271,7 +360,8 @@ for item in surfaces:
 ok = sum(1 for item in surfaces if item["state"] == "OK")
 part = sum(1 for item in surfaces if item["state"] == "PART")
 score = round((ok + part * 0.5) / max(len(surfaces), 1) * 100)
-state = "productized" if score >= 90 else "usable" if score >= 75 else "fragmented"
+legacy_blockers = [item for item in legacy_issues if item.get("severity") == "high"]
+state = "legacy-screens-detected" if legacy_blockers else "productized" if score >= 90 else "usable" if score >= 75 else "fragmented"
 
 print(json.dumps({
     "schema": "sevenos.surfaces.v1",
@@ -284,10 +374,13 @@ print(json.dumps({
         "missing": sum(1 for item in surfaces if item["state"] == "MISS"),
         "native": sum(1 for item in surfaces if item.get("native_ready")),
         "dynamic": sum(1 for item in surfaces if item.get("dynamic_ready")),
+        "legacy_screens": len(legacy_issues),
+        "legacy_blockers": len(legacy_blockers),
     },
     "surfaces": surfaces,
+    "legacy_screens": legacy_issues,
     "issues": [item for item in surfaces if item["state"] != "OK"],
-    "next": [item for item in surfaces if item["state"] != "OK"][:6],
+    "next": legacy_issues[:6] if legacy_issues else [item for item in surfaces if item["state"] != "OK"][:6],
 }, indent=2))
 PY
 }
@@ -304,11 +397,18 @@ print("=======================")
 print(f"State:    {data.get('state')}")
 print(f"Score:    {data.get('score')}%")
 print(f"Surfaces: {summary.get('ok')}/{summary.get('surfaces')} OK, {summary.get('partial')} partial")
+print(f"Legacy screens: {summary.get('legacy_screens', 0)} ({summary.get('legacy_blockers', 0)} blocker)")
 print()
 for item in data.get("surfaces", []):
     print(f"{item.get('state','MISS'):<4} {item.get('title')}")
     print(f"     {item.get('role')}")
     print(f"     command: {item.get('command')}")
+if data.get("legacy_screens"):
+    print()
+    print("Legacy screen routes:")
+    for item in data.get("legacy_screens", []):
+        print(f"- {item.get('severity','medium').upper()} {item.get('key')}: {item.get('path')}")
+        print(f"  {item.get('detail')}")
 PY
 }
 
@@ -323,6 +423,12 @@ print("=====================")
 if not data.get("next"):
     print("No public surface gaps.")
 for item in data.get("next", []):
+    if "detail" in item and "path" in item:
+        print(f"- {item.get('key')}")
+        print(f"  severity: {item.get('severity')}")
+        print(f"  path: {item.get('path')}")
+        print(f"  fix: {item.get('command')}")
+        continue
     print(f"- {item.get('title')}")
     print(f"  state: {item.get('state')}")
     print(f"  native: {item.get('native')} ready={item.get('native_ready')}")
@@ -346,7 +452,12 @@ import json, os
 print(json.loads(os.environ["SURFACES_JSON"]).get("score", 0))
 PY
 )"
-    if [[ "$score" -ge 90 ]]; then
+    legacy_blockers="$(SURFACES_JSON="$payload" python - <<'PY'
+import json, os
+print((json.loads(os.environ["SURFACES_JSON"]).get("summary") or {}).get("legacy_blockers", 0))
+PY
+)"
+    if [[ "$score" -ge 90 && "$legacy_blockers" -eq 0 ]]; then
       log_success "SevenOS public surfaces are productized."
       exit 0
     fi

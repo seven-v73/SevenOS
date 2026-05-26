@@ -1532,7 +1532,7 @@ def run(initial_page: str = "overview") -> int:
             "seven-files",
             "seven-overview",
             "seven-spotlight",
-            "seven-help",
+            "seven-help-native",
             "seven-terminal",
             "seven-profile-center-native",
             "seven-waybar-center-native",
@@ -4497,7 +4497,7 @@ def run(initial_page: str = "overview") -> int:
     shortcuts = pages["shortcuts"][0]
     shortcuts.pack_start(hero_card(tr("settings.shortcuts.hero.title", "Tout a un chemin visible"), tr("settings.shortcuts.hero.note", "Les raccourcis importants sont dans Aide, et Settings garde les actions accessibles sans console.")), False, False, 0)
     settings_group(shortcuts, tr("settings.shortcuts", "Raccourcis"), [
-        settings_row("󰩂", tr("settings.help_center", "Aide SevenOS"), tr("settings.help_center.note", "Ouvrir la documentation Super+H avec les commandes utiles et les mini OS."), [action_button(tr("settings.open", "Ouvrir"), "seven-help")]),
+        settings_row("󰩂", tr("settings.help_center", "Aide SevenOS"), tr("settings.help_center.note", "Ouvrir la documentation Super+H avec les commandes utiles et les mini OS."), [action_button(tr("settings.open", "Ouvrir"), "seven-help-native")]),
         settings_row("󰄬", tr("settings.shortcut_audit", "Vérifier les raccourcis"), tr("settings.shortcut_audit.note", "Contrôler que les raccourcis SevenOS sont bien générés."), [action_button(tr("settings.check", "Vérifier"), "seven hypr lua audit")]),
         settings_row("󰜉", tr("settings.regenerate_shortcuts", "Reconstruire les raccourcis"), tr("settings.regenerate_shortcuts.note", "Reconstruire les raccourcis SevenOS et rafraîchir l’interface."), [action_button(tr("settings.apply", "Appliquer"), "seven hypr lua apply")]),
         settings_row("󰌢", tr("settings.keyboard_override", "Réglage clavier avancé"), tr("settings.keyboard_override.note", "Ouvrir le réglage clavier manuel si nécessaire."), [action_button(tr("settings.edit", "Modifier"), "xdg-open ~/.config/hypr/conf/keyboard.conf")]),

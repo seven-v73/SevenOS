@@ -11,6 +11,7 @@ Hyprland + Waybar + GTK shell panels + Rofi fallback
 The AGS layer becomes active only when:
 
 - the runtime workflow is chosen;
+- the explicit AUR package is `aylurs-gtk-shell`, not `ags`;
 - `seven shell doctor` passes;
 - Quick Settings and Notifications can use the same JSON contracts as the Hub;
 - Rofi remains available as fallback.
@@ -28,3 +29,13 @@ The AGS layer becomes active only when:
 
 The TypeScript files in `src/` define contracts and structure first. They are
 not meant to be a finished shell yet.
+
+## Runtime Route
+
+```bash
+scripts/shell-ags-runtime.sh status --json
+./install.sh shell-ags-runtime --yes
+```
+
+SevenOS keeps this explicit because AGS is sourced from AUR here. Review the
+route before replacing native Waybar/GTK surfaces.

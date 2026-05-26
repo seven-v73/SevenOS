@@ -4,6 +4,7 @@ podman
 buildah
 skopeo
 caddy
+cloudflared
 jq
 git
 rsync

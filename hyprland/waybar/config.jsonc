@@ -138,7 +138,7 @@
     "signal": 8,
     "tooltip": true,
     "on-click": "seven-waybar-action app-help",
-    "on-click-right": "seven-help"
+    "on-click-right": "seven-help-native"
   },
   "custom/spotlight": {
     "format": "󰍉",

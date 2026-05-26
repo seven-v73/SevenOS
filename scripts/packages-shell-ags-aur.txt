@@ -1,0 +1,4 @@
+# Seven Shell AGS runtime from AUR.
+# Do not use the AUR package named "ags"; that is Adventure Game Studio.
+# Seven Shell needs Aylur's Gtk Shell.
+aylurs-gtk-shell

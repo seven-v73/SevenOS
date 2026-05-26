@@ -109,10 +109,11 @@ status_json() {
   printf '{"key":"libadwaita","state":%s},' "$(printf '%s' "$(package_state libadwaita)" | json_string)"
   printf '{"key":"gtk-layer-shell","state":%s},' "$(printf '%s' "$(package_state gtk-layer-shell)" | json_string)"
   printf '{"key":"nodejs","state":%s},' "$(printf '%s' "$(command_state node)" | json_string)"
-  printf '{"key":"ags","state":%s}' "$(printf '%s' "$(command_state ags)" | json_string)"
+  printf '{"key":"ags","state":%s,"package":"aylurs-gtk-shell","source":"AUR","warning":"Do not install AUR package ags; Seven Shell needs Aylur'\''s Gtk Shell."}' "$(printf '%s' "$(command_state ags)" | json_string)"
   printf '],'
-  printf '"contracts":["seven state --json","seven-actions --json","seven-context --json","seven profile current --json","seven core health --json","seven shell status --json"],'
-  printf '"commands":{"install":"./install.sh shell-ags","plan":"seven shell plan","preview":"seven shell preview"}'
+  printf '"contracts":["seven state --json","seven actions --json","seven core snapshot --json","seven core health --json","seven profile current --json","seven shell status --json","seven deploy inspect . --json","seven deploy status --json","seven deploy services --json","seven deploy panel --json","seven deploy versions <project> --json","seven deploy domain <domain> --target tunnel|vps --json","seven deploy dns-check <domain> --expected-ip|--expected-cname ... --json","seven deploy route-check <project-or-domain> --json","seven deploy diagnose <project-or-domain> --json"],'
+  printf '"profile_gates":{"deploy":{"required_profile":"forge","blocked_contract":"sevenos.profile-gate.v1","fallback_commands":["seven profile activate forge","seven-terminal forge"]}},'
+  printf '"commands":{"install":"./install.sh shell-ags","runtime":"./install.sh shell-ags-runtime --yes","runtime_status":"scripts/shell-ags-runtime.sh status --json","plan":"seven shell plan","preview":"seven shell preview"}'
   printf '}\n'
 }
 
@@ -130,7 +131,7 @@ meta = {
     "libadwaita": ("Install libadwaita", "medium", "packages", "Seven Shell should stay visually native with GNOME-like components."),
     "gtk-layer-shell": ("Install GTK layer shell support", "high", "packages", "Native SevenOS panels and dock need stable layer-shell support where the compositor allows it."),
     "nodejs": ("Install Node.js", "medium", "packages", "TypeScript tooling needs Node.js."),
-    "ags": ("Choose AGS runtime workflow", "high", "manual", "AGS is not in the core Arch repo here; keep installation explicit until the AUR policy is settled."),
+    "ags": ("Install Aylur's Gtk Shell runtime", "high", "manual", "AGS is not in the core Arch repo here; install the explicit AUR package aylurs-gtk-shell only after review."),
 }
 
 actions = []
@@ -139,7 +140,7 @@ for dep in status.get("dependencies", []):
         continue
     key = dep.get("key")
     title, severity, impact, reason = meta.get(key, (f"Prepare {key}", "medium", "packages", f"Prepare {key}."))
-    command = "./install.sh shell-ags" if key != "ags" else "seven stack roadmap"
+    command = "./install.sh shell-ags" if key != "ags" else "./install.sh shell-ags-runtime --yes"
     actions.append({
         "key": key,
         "title": title,
@@ -255,6 +256,17 @@ doctor() {
   [[ -x "$ROOT_DIR/bin/seven-dock-native" ]] && printf '[OK] native dock\n' || printf '[MISS] native dock\n'
   [[ -s "$ROOT_DIR/hyprland/waybar/config.jsonc" ]] && printf '[OK] waybar config\n' || printf '[MISS] waybar config\n'
   command -v ags >/dev/null 2>&1 && printf '[OK] ags\n' || printf '[AUR] ags runtime pending explicit workflow\n'
+  "$ROOT_DIR/scripts/shell-ags-runtime.sh" status --json >/dev/null && printf '[OK] ags runtime contract\n' || { printf '[MISS] ags runtime contract\n'; failures=$((failures + 1)); }
+  if [[ -f "$ROOT_DIR/seven-shell/ags/package.json" && "$(command_state npm)" == OK ]]; then
+    if (cd "$ROOT_DIR/seven-shell/ags" && npm run typecheck >/dev/null 2>&1); then
+      printf '[OK] ags typecheck\n'
+    else
+      printf '[MISS] ags typecheck\n'
+      failures=$((failures + 1))
+    fi
+  else
+    printf '[SKIP] ags typecheck (npm unavailable)\n'
+  fi
 
   if [[ "$failures" -gt 0 ]]; then
     log_error "Seven Shell foundation has $failures missing file(s)."
@@ -276,11 +288,17 @@ preview() {
   printf '  - Dock: Native Hyprland-managed dock now -> AGS or stable layer-shell next\n\n'
   printf 'Contracts consumed:\n'
   printf '  - seven state --json\n'
-  printf '  - seven-actions --json\n'
-  printf '  - seven-context --json\n'
+  printf '  - seven actions --json\n'
+  printf '  - seven core snapshot --json\n'
   printf '  - seven profile current --json\n'
   printf '  - seven core health --json\n'
   printf '  - seven shell status --json\n'
+  printf '  - seven deploy inspect/status/services/panel --json (Forge only)\n'
+  printf '  - seven deploy domain/dns-check/route-check/diagnose --json (Forge only)\n'
+  printf '\nAGS runtime:\n'
+  printf '  - status: scripts/shell-ags-runtime.sh status --json\n'
+  printf '  - install: ./install.sh shell-ags-runtime --yes\n'
+  printf '  - package: aylurs-gtk-shell (AUR), not ags\n'
 }
 
 case "$ACTION" in

@@ -37,19 +37,26 @@ if [[ "$YES" -ne 1 && ! is_dry_run ]]; then
 fi
 
 require_command rsync
-require_command sudo
+if [[ -z "$(privileged_backend)" ]]; then
+  log_error "System install needs sudo or a graphical Polkit prompt."
+  exit 1
+fi
 
 log_info "Installing SevenOS system repository into $TARGET_DIR"
-run_cmd sudo mkdir -p "$TARGET_DIR"
-run_cmd sudo rsync -a --delete \
-  --exclude out \
-  --exclude work \
-  --exclude iso \
-  --exclude dist \
-  --exclude target \
-  --exclude node_modules \
-  --exclude archiso/localrepo \
-  "$ROOT_DIR"/ "$TARGET_DIR"/
+if [[ "$(readlink -f "$ROOT_DIR")" == "$(readlink -f "$TARGET_DIR" 2>/dev/null || printf '%s' "$TARGET_DIR")" ]]; then
+  log_info "SevenOS already runs from $TARGET_DIR; repository copy skipped."
+else
+  run_privileged_cmd mkdir -p "$TARGET_DIR"
+  run_privileged_cmd rsync -a --delete \
+    --exclude out \
+    --exclude work \
+    --exclude iso \
+    --exclude dist \
+    --exclude target \
+    --exclude node_modules \
+    --exclude archiso/localrepo \
+    "$ROOT_DIR"/ "$TARGET_DIR"/
+fi
 
 log_info "Refreshing public SevenOS command wrappers from $TARGET_DIR"
 run_cmd env SEVENOS_ROOT="$TARGET_DIR" "$TARGET_DIR/install.sh" cli

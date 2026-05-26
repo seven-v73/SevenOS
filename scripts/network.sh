@@ -41,7 +41,7 @@ require_interactive_admin() {
   if is_dry_run || [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
     return 0
   fi
-  if [[ ! -t 0 ]] && ! sudo -n true >/dev/null 2>&1; then
+  if [[ -z "$(privileged_backend)" ]]; then
     log_error "Administrator permission is required, but no interactive password prompt is available."
     log_info "Open Seven Terminal and run:"
     log_info "  cd $ROOT_DIR"
@@ -118,16 +118,16 @@ enable_network_services() {
   fi
 
   if is_dry_run; then
-    printf 'sudo systemctl enable --now NetworkManager.service\n'
-    printf 'sudo systemctl enable --now ModemManager.service # when installed\n'
+    printf '%q systemctl enable --now NetworkManager.service\n' "$(privileged_backend_label)"
+    printf '%q systemctl enable --now ModemManager.service # when installed\n' "$(privileged_backend_label)"
     return 0
   fi
 
   if systemctl list-unit-files NetworkManager.service >/dev/null 2>&1; then
-    sudo systemctl enable --now NetworkManager.service
+    run_privileged_cmd systemctl enable --now NetworkManager.service
   fi
   if systemctl list-unit-files ModemManager.service >/dev/null 2>&1; then
-    sudo systemctl enable --now ModemManager.service || true
+    run_privileged_cmd systemctl enable --now ModemManager.service || true
   fi
 }
 

@@ -6,6 +6,7 @@ After=graphical-session.target
 [Service]
 Type=simple
 Environment=SEVENOS_ROOT=%h/Code/OS/SevenOS
+PassEnvironment=WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE
 ExecStart=%h/.local/bin/seven-daemon serve
 Restart=on-failure
 RestartSec=3

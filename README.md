@@ -41,11 +41,16 @@ Public update route from anywhere:
 ```bash
 seven update check
 seven update install --yes
+seven update rollback
+seven quality doctor
 seven upgrade --yes
 ```
 
-This updates `/opt/SevenOS`, backs up protected user state, refreshes command
-wrappers and then applies package/app updates through the SevenOS route.
+This creates a SevenOS rollback snapshot, updates `/opt/SevenOS`, backs up
+protected user state, refreshes command wrappers and then applies package/app
+updates through the SevenOS route. `seven quality doctor` is the public
+experience gate for health, native surfaces, update, mini OS readiness, Shell
+runtime, Server/Deploy policy and release freeze.
 
 Optional extended setup:
 

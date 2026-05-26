@@ -73,7 +73,7 @@ status() {
     log_success "SevenOS visual package layer is complete."
   else
     log_warn "$missing visual package(s) missing."
-    log_info "Run: sudo -v && seven identity visuals install --yes"
+    log_info "Run: seven identity visuals install --yes"
   fi
 }
 
@@ -84,14 +84,14 @@ install_packages() {
   fi
 
   if is_dry_run; then
-    printf 'sudo pacman -S --needed %s %s\n' "$([[ "$yes" -eq 1 ]] && printf -- '--noconfirm')" "${PACMAN_PACKAGES[*]}"
+    printf '%q pacman -S --needed %s %s\n' "$(privileged_backend_label)" "$([[ "$yes" -eq 1 ]] && printf -- '--noconfirm')" "${PACMAN_PACKAGES[*]}"
     printf 'yay --needed %s -S %s\n' "$([[ "$yes" -eq 1 ]] && printf -- '--noconfirm')" "${AUR_PACKAGES[*]}"
     printf './install.sh theme\n'
     return 0
   fi
 
-  if ! command -v sudo >/dev/null 2>&1; then
-    log_error "sudo is required to install visual packages."
+  if [[ -z "$(privileged_backend)" ]]; then
+    log_error "A graphical admin prompt or sudo is required to install visual packages."
     exit 1
   fi
   if ! command -v yay >/dev/null 2>&1; then
@@ -100,12 +100,11 @@ install_packages() {
     exit 1
   fi
 
-  sudo -v
   if [[ "$yes" -eq 1 ]]; then
-    sudo pacman -S --needed --noconfirm "${PACMAN_PACKAGES[@]}"
+    run_privileged_cmd pacman -S --needed --noconfirm "${PACMAN_PACKAGES[@]}"
     yay --needed --noconfirm -S "${AUR_PACKAGES[@]}"
   else
-    sudo pacman -S --needed "${PACMAN_PACKAGES[@]}"
+    run_privileged_cmd pacman -S --needed "${PACMAN_PACKAGES[@]}"
     yay --needed -S "${AUR_PACKAGES[@]}"
   fi
 

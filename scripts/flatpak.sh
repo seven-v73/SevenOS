@@ -96,22 +96,21 @@ PY
 setup() {
   if is_dry_run; then
     if assume_yes; then
-      printf 'sudo pacman -S --needed --noconfirm flatpak\n'
+      printf '%q pacman -S --needed --noconfirm flatpak\n' "$(privileged_backend_label)"
     else
-      printf 'sudo pacman -S --needed flatpak\n'
+      printf '%q pacman -S --needed flatpak\n' "$(privileged_backend_label)"
     fi
     printf 'flatpak remote-add --if-not-exists flathub %q\n' "$FLATHUB_URL"
     return 0
   fi
 
   require_arch
-  require_command sudo
   if ! command -v flatpak >/dev/null 2>&1; then
     log_info "Installing Flatpak package manager"
     if assume_yes; then
-      sudo pacman -S --needed --noconfirm flatpak
+      run_privileged_cmd pacman -S --needed --noconfirm flatpak
     else
-      sudo pacman -S --needed flatpak
+      run_privileged_cmd pacman -S --needed flatpak
     fi
   fi
   require_command flatpak

@@ -7,6 +7,7 @@ After=seven-daemon.service graphical-session.target
 Type=simple
 Environment=SEVENOS_ROOT=%h/Code/OS/SevenOS
 Environment=SEVENOS_CONTEXT_INTERVAL=60
+PassEnvironment=WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE
 ExecStart=%h/.local/bin/seven-daemon observe-loop
 Restart=on-failure
 RestartSec=5

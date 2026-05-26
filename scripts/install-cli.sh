@@ -132,22 +132,13 @@ install_system_command() {
   local tmp_file
 
   if is_dry_run; then
-    printf 'sudo install SevenOS wrapper %q -> %q\n' "$source_file" "$SYSTEM_BIN_HOME/$command_name"
+    printf '%q install SevenOS wrapper %q -> %q\n' "$(privileged_backend_label)" "$source_file" "$SYSTEM_BIN_HOME/$command_name"
     return 0
   fi
 
-  if ! command -v sudo >/dev/null 2>&1; then
+  if [[ -z "$(privileged_backend)" ]]; then
     if [[ "$SYSTEM_INSTALL_WARNED" -eq 0 ]]; then
-      log_warn "sudo unavailable; skipping /usr/local/bin command install."
-      SYSTEM_INSTALL_WARNED=1
-    fi
-    return 0
-  fi
-
-  if [[ ! -t 0 ]] && ! sudo -n true >/dev/null 2>&1; then
-    if [[ "$SYSTEM_INSTALL_WARNED" -eq 0 ]]; then
-      log_warn "Skipping /usr/local/bin command install because sudo needs an interactive password."
-      log_warn "User commands are still installed in $BIN_HOME."
+      log_warn "No admin prompt available; skipping /usr/local/bin command install."
       SYSTEM_INSTALL_WARNED=1
     fi
     return 0
@@ -155,7 +146,7 @@ install_system_command() {
 
   tmp_file="$(mktemp)"
   write_command_wrapper "$tmp_file" "$source_file"
-  if ! sudo install -Dm755 "$tmp_file" "$SYSTEM_BIN_HOME/$command_name"; then
+  if ! run_privileged_cmd install -Dm755 "$tmp_file" "$SYSTEM_BIN_HOME/$command_name"; then
     log_warn "Could not install $command_name into $SYSTEM_BIN_HOME."
     log_warn "The user command is still available at $BIN_HOME/$command_name."
   fi

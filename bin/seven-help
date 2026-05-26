@@ -78,6 +78,9 @@ if [[ "$LANG_CODE" == "fr" ]]; then
 󰆍  Mémo rapide SevenOS    Cheat sheet
 󰚩  Architecture SevenOS    Shell, profils, rootfs, actions
 󰌘  Actions SevenOS    Registre d'actions, Spotlight, Waybar
+󰒋  Server & Deploy    Forge, hébergement, domaines, snapshots
+󰚩  Seven Core    Runtime local, SevenBus, santé système
+󰙵  Seven Shell    AGS, contrats JSON, fallback Waybar/GTK
 󰔎  Thèmes et apparence    Clair, sombre, wallpaper, terminal
 󰌌  Raccourcis clavier    Super, fenêtres, workspaces, captures
 󰆍  Commandes terminal    seven, profils, runtime, store, doctor
@@ -134,6 +137,9 @@ else
 󰆍  SevenOS Cheat Sheet    Quick reference
 󰚩  SevenOS Architecture    Shell, profiles, rootfs, actions
 󰌘  SevenOS Actions    Action registry, Spotlight, Waybar
+󰒋  Server & Deploy    Forge, hosting, domains, snapshots
+󰚩  Seven Core    Local runtime, SevenBus, system health
+󰙵  Seven Shell    AGS, JSON contracts, Waybar/GTK fallback
 󰔎  Themes and Appearance    Light, dark, wallpaper, terminal
 󰌌  Keyboard Shortcuts    Super, windows, workspaces, screenshots
 󰆍  Terminal Commands    seven, profiles, runtime, store, doctor
@@ -204,6 +210,7 @@ SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS aut
 | Raccourcis essentiels | clavier, fenêtres, captures, terminal |
 | Barre SevenOS | Waybar, contrôle système, actions rapides |
 | Actions SevenOS | registre d'actions et contexte actif |
+| Seven Server et Seven Core | Forge, hébergement, domaines, Core, SevenBus, AGS |
 | Thèmes et apparence | clair/sombre, wallpaper, terminal transparent |
 | Mini OS SevenOS | isolation, rootfs, profils, collaboration |
 | Applications SevenOS | Files, Reader, Store, Terminal, SevenAI |
@@ -939,8 +946,11 @@ thème, SevenOS garde ce comportement depuis `hyprland/hyprlock.conf` et
 seven update
 seven update check
 seven update install --yes
+seven update rollback
 seven upgrade --yes
 seven update --json
+seven quality
+seven quality doctor
 seven lifecycle
 seven health
 seven recovery
@@ -953,10 +963,13 @@ SevenOS préfère les routes `seven update`, `seven recovery` et `seven health`
 aux commandes backend directes pour les utilisateurs. Les commandes Arch restent
 disponibles dans Equinox pour l'admin système.
 Sur une machine publique, SevenOS vit dans `/opt/SevenOS`; `seven update install`
-met à jour ce dépôt, sauvegarde l'état protégé, rafraîchit les commandes et
-applique ensuite les mises à jour système/apps.
+crée un snapshot de rollback, met à jour ce dépôt, sauvegarde l'état protégé,
+rafraîchit les commandes et applique ensuite les mises à jour système/apps.
 `./install.sh system-install --yes` est la route qui place ou rafraîchit ce
 dépôt système et les commandes utilisables depuis partout.
+`seven quality doctor` rassemble les gates qui comptent pour une expérience
+publique : santé, surfaces natives, smoke, update, mini OS, Shell AGS,
+Server/Deploy et release freeze.
 
 ### Sauvegarde et migration
 
@@ -1249,6 +1262,8 @@ audits plus longs. Elles ne sont pas nécessaires à un utilisateur normal.
 ```bash
 seven smoke
 seven smoke --json
+seven quality
+seven quality doctor
 seven pre-push
 seven pre-push full
 seven b3 status
@@ -1258,6 +1273,7 @@ seven phase-gate
 seven autonomy
 seven mask
 seven surfaces
+seven surfaces doctor
 seven routes
 seven foundations
 seven architecture doctor
@@ -1342,6 +1358,65 @@ Fichiers importants :
 - `seven doctor` : diagnostic système.
 - `seven status` : état rapide.
 - `docs/` : documentation projet si le dépôt est présent localement.
+
+## Seven Server et Seven Core
+
+Commandes utiles :
+
+```bash
+seven server status --json
+seven server plan --json
+seven server doctor
+seven profile activate forge
+seven-terminal forge
+seven deploy inspect . --json
+seven deploy dev .
+seven deploy doctor .
+seven deploy publish .
+seven deploy publish . --provider cloudflare
+seven deploy publish . --domain app.example.com
+seven deploy domain app.example.com --target tunnel
+seven deploy domain app.example.com --target vps --public-ip 203.0.113.10
+seven deploy dns-check app.example.com --expected-ip 203.0.113.10
+seven deploy dns-check app.example.com --expected-cname <tunnel-id>.cfargotunnel.com
+seven deploy route-check app.example.com
+seven deploy route-check my-project
+seven deploy diagnose app.example.com
+seven deploy diagnose my-project
+seven deploy versions .
+seven deploy rollback .
+seven deploy remove .
+seven deploy services --json
+seven deploy panel --json
+seven deploy status --json
+seven core status --json
+seven core health --json
+seven core compact-bus --keep 5000 --json
+seven shell status --json
+seven shell doctor
+scripts/shell-ags-runtime.sh status --json
+./install.sh shell-ags-runtime --yes
+```
+
+Règles importantes :
+
+- Seven Server reste local par défaut sur `127.0.0.1`.
+- Server et Deploy sont des surfaces Forge : développement, services, logs et hébergement se lancent depuis `seven-terminal forge`.
+- Hors Forge, `seven deploy ...` et `/deploy/*` renvoient `sevenos.profile-gate.v1` avec `seven profile activate forge` comme prochaine action.
+- `seven server status/plan/doctor` restent lisibles; `serve/start/stop/logs/install-user-service` demandent Forge.
+- `seven deploy inspect . --json` donne le contrat projet pour Hub/Shell : stack, outils, commandes dev/build/preview.
+- `seven deploy publish .` crée un snapshot durable et un service systemd utilisateur qui survit au redémarrage.
+- Chaque publication garde une version; `seven deploy rollback .` revient à la version précédente et `seven deploy remove .` supprime l’état d’hébergement local.
+- Sans domaine, `--provider cloudflare` utilise `cloudflared` si disponible pour générer une URL publique; avec domaine, SevenOS prépare la route explicite.
+- Pour un VPS, `seven deploy domain app.example.com --target vps --public-ip <ip>` indique les records A/AAAA. Pour une machine personnelle sans IP fixe, `--target tunnel` explique le CNAME stable à utiliser.
+- Après modification DNS, `seven deploy dns-check app.example.com --expected-ip <ip>` ou `--expected-cname <host>` vérifie la propagation.
+- `seven deploy route-check <projet-ou-domaine>` vérifie ensuite le chemin complet : service local, DNS et HTTP/HTTPS public.
+- `seven deploy diagnose <projet-ou-domaine>` rassemble service, route, DNS, versions, score et prochaines actions.
+- Via Seven Server, les mêmes contrats sont disponibles avec `/deploy/domain`, `/deploy/dns-check`, `/deploy/route-check` et `/deploy/diagnose`.
+- AGS est explicite : Seven Shell utilise le paquet AUR `aylurs-gtk-shell`; ne pas installer le paquet AUR `ags` qui correspond à Adventure Game Studio.
+- Un bind non local est refusé sans `SEVENOS_SERVER_EXPOSE_UNSAFE=1`, car auth/TLS/policy broker ne sont pas encore publics.
+- Seven Core doit annoncer `RUNTIME_READY` quand `seven-daemon.service` et `seven-context-observer.service` tournent.
+- Le bus SevenBus actuel reste un journal JSONL local; `seven core compact-bus` archive l'ancien journal et garde les derniers événements.
 EOF
   else
     cat > "$HELP_DOC" <<'EOF'
@@ -1360,6 +1435,7 @@ SevenOS is a personal OS built around native surfaces, autonomous mini OS profil
 | Essential Shortcuts | keyboard, windows, screenshots, terminal |
 | SevenOS Bar | Waybar, system control, quick actions |
 | SevenOS Actions | action registry and active context |
+| Seven Server And Seven Core | Forge, hosting, domains, Core, SevenBus, AGS |
 | Themes And Appearance | light/dark, wallpaper, transparent terminal |
 | SevenOS Mini OS | isolation, rootfs, profiles, collaboration |
 | SevenOS Applications | Files, Reader, Store, Terminal, SevenAI |
@@ -2099,8 +2175,11 @@ keeps this behavior from `hyprland/hyprlock.conf` and
 seven update
 seven update check
 seven update install --yes
+seven update rollback
 seven upgrade --yes
 seven update --json
+seven quality
+seven quality doctor
 seven lifecycle
 seven health
 seven recovery
@@ -2113,10 +2192,13 @@ SevenOS prefers `seven update`, `seven recovery` and `seven health` over direct
 backend commands for users. Arch commands remain available in Equinox for
 system administration.
 On public machines, SevenOS lives in `/opt/SevenOS`; `seven update install`
-updates that tree, backs up protected state, refreshes commands and then applies
-system/app updates.
+creates a rollback snapshot, updates that tree, backs up protected state,
+refreshes commands and then applies system/app updates.
 `./install.sh system-install --yes` is the route that places or refreshes this
 system tree and the commands available from anywhere.
+`seven quality doctor` combines the gates that matter for a public experience:
+health, native surfaces, smoke, update, mini OS, Shell AGS, Server/Deploy and
+release freeze.
 
 ### Backup And Migration
 
@@ -2407,6 +2489,8 @@ Normal users do not need them.
 ```bash
 seven smoke
 seven smoke --json
+seven quality
+seven quality doctor
 seven pre-push
 seven pre-push full
 seven b3 status
@@ -2416,6 +2500,7 @@ seven phase-gate
 seven autonomy
 seven mask
 seven surfaces
+seven surfaces doctor
 seven routes
 seven foundations
 seven architecture doctor
@@ -2501,6 +2586,65 @@ Important files:
 - `seven doctor`: system diagnostics.
 - `seven status`: quick status.
 - `docs/`: project documentation when the repository is present locally.
+
+## Seven Server And Seven Core
+
+Useful commands:
+
+```bash
+seven server status --json
+seven server plan --json
+seven server doctor
+seven profile activate forge
+seven-terminal forge
+seven deploy inspect . --json
+seven deploy dev .
+seven deploy doctor .
+seven deploy publish .
+seven deploy publish . --provider cloudflare
+seven deploy publish . --domain app.example.com
+seven deploy domain app.example.com --target tunnel
+seven deploy domain app.example.com --target vps --public-ip 203.0.113.10
+seven deploy dns-check app.example.com --expected-ip 203.0.113.10
+seven deploy dns-check app.example.com --expected-cname <tunnel-id>.cfargotunnel.com
+seven deploy route-check app.example.com
+seven deploy route-check my-project
+seven deploy diagnose app.example.com
+seven deploy diagnose my-project
+seven deploy versions .
+seven deploy rollback .
+seven deploy remove .
+seven deploy services --json
+seven deploy panel --json
+seven deploy status --json
+seven core status --json
+seven core health --json
+seven core compact-bus --keep 5000 --json
+seven shell status --json
+seven shell doctor
+scripts/shell-ags-runtime.sh status --json
+./install.sh shell-ags-runtime --yes
+```
+
+Important rules:
+
+- Seven Server stays local by default on `127.0.0.1`.
+- Server and Deploy are Forge surfaces: development, services, logs and hosting run from `seven-terminal forge`.
+- Outside Forge, `seven deploy ...` and `/deploy/*` return `sevenos.profile-gate.v1` with `seven profile activate forge` as the next action.
+- `seven server status/plan/doctor` remain readable; `serve/start/stop/logs/install-user-service` require Forge.
+- `seven deploy inspect . --json` gives Hub/Shell the project contract: stack, tools, dev/build/preview commands.
+- `seven deploy publish .` creates a durable snapshot and a user systemd service that survives reboot.
+- Every publish keeps a version; `seven deploy rollback .` returns to the previous version and `seven deploy remove .` deletes local hosting state.
+- Without a domain, `--provider cloudflare` uses `cloudflared` when available to generate a public URL; with a domain, SevenOS prepares the explicit route.
+- For a VPS, `seven deploy domain app.example.com --target vps --public-ip <ip>` shows A/AAAA records. For a personal machine without fixed public IP, `--target tunnel` explains the stable CNAME route.
+- After DNS changes, `seven deploy dns-check app.example.com --expected-ip <ip>` or `--expected-cname <host>` verifies propagation.
+- `seven deploy route-check <project-or-domain>` then verifies the full path: local service, DNS and public HTTP/HTTPS.
+- `seven deploy diagnose <project-or-domain>` combines service, route, DNS, versions, score and next actions.
+- Through Seven Server, the same contracts are available at `/deploy/domain`, `/deploy/dns-check`, `/deploy/route-check` and `/deploy/diagnose`.
+- AGS is explicit: Seven Shell uses AUR package `aylurs-gtk-shell`; do not install AUR package `ags`, which is Adventure Game Studio.
+- A non-local bind is refused unless `SEVENOS_SERVER_EXPOSE_UNSAFE=1` is set, because auth/TLS/policy broker are not public yet.
+- Seven Core should report `RUNTIME_READY` when `seven-daemon.service` and `seven-context-observer.service` are running.
+- The current SevenBus remains a local JSONL journal; `seven core compact-bus` archives the old journal and keeps the latest events.
 EOF
   fi
 
@@ -2523,8 +2667,8 @@ de test et de chemin de retour.
 | --- | --- | --- |
 | Installateur public | installation disque plus guidée, avec Calamares/Archinstall et checks SevenOS | planifié |
 | SevenRepo | dépôt SevenOS pour paquets, thèmes, helpers et composants natifs | réservé |
-| Seven Core | daemon Rust plus complet, événements locaux, santé système et contrats stables | en fondation |
-| SevenBus | bus local pour contexte, actions et événements sans parser le shell | en fondation |
+| Seven Core | daemon Rust plus complet, événements locaux, santé système et contrats stables | runtime local |
+| SevenBus | bus local pour contexte, actions et événements sans parser le shell | journal JSONL, IPC typé ensuite |
 | SevenAI | assistant local-first plus profond, playbooks, diagnostics et explications | progressif |
 | Seven Shell | couche shell plus native, rapide et maintenable | progressif |
 | Store | permissions Flatpak, recommandations locales et vues par mini OS | progressif |
@@ -2556,8 +2700,8 @@ a command, a check and a recovery path.
 | --- | --- | --- |
 | Public installer | more guided disk install through Calamares/Archinstall and SevenOS checks | planned |
 | SevenRepo | SevenOS repository for packages, themes, helpers and native components | reserved |
-| Seven Core | deeper Rust daemon, local events, system health and stable contracts | foundation |
-| SevenBus | local bus for context, actions and events without shell scraping | foundation |
+| Seven Core | deeper Rust daemon, local events, system health and stable contracts | local runtime |
+| SevenBus | local bus for context, actions and events without shell scraping | JSONL journal, typed IPC next |
 | SevenAI | deeper local-first assistant, playbooks, diagnostics and explanations | progressive |
 | Seven Shell | more native, fast and maintainable shell layer | progressive |
 | Store | Flatpak permissions, local recommendations and mini OS views | progressive |
@@ -2756,6 +2900,10 @@ topic_heading() {
       shortcuts) printf 'Raccourcis essentiels\n' ;;
       waybar) printf 'Barre SevenOS et panneau de contrôle\n' ;;
       actions) printf 'Actions SevenOS\n' ;;
+      server|deploy|hosting|domain|dns) printf 'Seven Server et Seven Core\n' ;;
+      core|seven-core|sevenbus) printf 'Seven Server et Seven Core\n' ;;
+      shell|ags|seven-shell) printf 'Seven Server et Seven Core\n' ;;
+      quality|public-quality|public-experience) printf 'Développement SevenOS\n' ;;
       themes) printf 'Thèmes et apparence\n' ;;
       mini-os|mini-os-collaboration) printf 'Mini OS SevenOS\n' ;;
       files|reader|store|terminal|ai|apps) printf 'Applications SevenOS\n' ;;
@@ -2779,6 +2927,10 @@ topic_heading() {
       shortcuts) printf 'Essential Shortcuts\n' ;;
       waybar) printf 'SevenOS Bar And Control Center\n' ;;
       actions) printf 'SevenOS Actions\n' ;;
+      server|deploy|hosting|domain|dns) printf 'Seven Server And Seven Core\n' ;;
+      core|seven-core|sevenbus) printf 'Seven Server And Seven Core\n' ;;
+      shell|ags|seven-shell) printf 'Seven Server And Seven Core\n' ;;
+      quality|public-quality|public-experience) printf 'SevenOS Development\n' ;;
       themes) printf 'Themes And Appearance\n' ;;
       mini-os|mini-os-collaboration) printf 'SevenOS Mini OS\n' ;;
       files|reader|store|terminal|ai|apps) printf 'SevenOS Applications\n' ;;
@@ -3063,6 +3215,9 @@ open_native_help() {
     security|shield|windows-bridge) topic="security-windows" ;;
     faq|questions|glossary|vocabulary|vocabulaire) topic="repair" ;;
     dev|development|checks) topic="developer" ;;
+    deploy|hosting|domain|dns) topic="server" ;;
+    seven-core|sevenbus) topic="core" ;;
+    ags|seven-shell) topic="shell" ;;
   esac
   local native="$ROOT_DIR/bin/seven-help-native"
   if [[ "${SEVENOS_HELP_LEGACY:-0}" != "1" && "${SEVENOS_DRY_RUN:-0}" != "1" && -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
@@ -3122,6 +3277,11 @@ Chapitres SevenOS disponibles :
   shortcuts      raccourcis clavier
   waybar         barre SevenOS et contrôle rapide
   actions        actions système
+  server         Server/Deploy, Forge, hébergement, domaines
+  deploy         alias Server/Deploy
+  core           Seven Core, SevenBus, daemon local
+  shell          Seven Shell, AGS, contrats JSON
+  quality        gate qualité publique
   themes         thèmes et apparence
   mini-os        profils SevenOS
   apps           applications SevenOS
@@ -3163,6 +3323,11 @@ Available SevenOS chapters:
   shortcuts      keyboard shortcuts
   waybar         SevenOS bar and quick control
   actions        system actions
+  server         Server/Deploy, Forge, hosting, domains
+  deploy         Server/Deploy alias
+  core           Seven Core, SevenBus, local daemon
+  shell          Seven Shell, AGS, JSON contracts
+  quality        public quality gate
   themes         themes and appearance
   mini-os        SevenOS profiles
   apps           SevenOS applications
@@ -3203,7 +3368,7 @@ case "${1:-}" in
     show_doc "$1"
     exit 0
     ;;
-  install|quick|commands|architecture|shortcuts|waybar|actions|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|manual|network|fonts|language|langue|backup|iso|installer|packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services|security|shield|windows-bridge|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
+  install|quick|commands|architecture|shortcuts|waybar|actions|server|deploy|hosting|domain|dns|core|seven-core|sevenbus|shell|ags|seven-shell|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|manual|network|fonts|language|langue|backup|iso|installer|packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services|security|shield|windows-bridge|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
     if open_native_help "$1"; then
       exit 0
     fi
@@ -3247,6 +3412,9 @@ case "$selected" in
   "SevenOS Cheat Sheet"|"Mémo rapide SevenOS") run_terminal "seven-help cheat" ;;
   "SevenOS Architecture"|"Architecture SevenOS") show_doc architecture ;;
   "SevenOS Actions"|"Actions SevenOS") show_doc actions ;;
+  "Server & Deploy") show_doc server ;;
+  "Seven Core") show_doc core ;;
+  "Seven Shell") show_doc shell ;;
   "Themes and Appearance"|"Thèmes et apparence") show_doc themes ;;
   "Keyboard Shortcuts"|"Raccourcis clavier") show_doc shortcuts ;;
   "Terminal Commands"|"Commandes terminal") open_command_doc ;;

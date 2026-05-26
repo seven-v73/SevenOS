@@ -113,6 +113,18 @@ smoke_check() {
     "$ROOT_DIR/bin/seven" smoke --json | python -m json.tool >/dev/null
 }
 
+surfaces_check() {
+  "$ROOT_DIR/bin/seven" surfaces json | python -m json.tool >/dev/null
+  "$ROOT_DIR/bin/seven" surfaces doctor >/dev/null
+}
+
+public_quality_check() {
+  SEVENOS_DISTRIBUTION_FAST=1 \
+  SEVENOS_HEALTH_FAST=1 \
+  SEVENOS_UPDATE_FAST=1 \
+    "$ROOT_DIR/bin/seven" quality doctor --json | python -m json.tool >/dev/null
+}
+
 state_check() {
   SEVENOS_DISTRIBUTION_FAST=1 \
   SEVENOS_HEALTH_FAST=1 \
@@ -136,6 +148,7 @@ run_required "JSON and JSONC contracts" json_check
 run_required "git diff whitespace" git -C "$ROOT_DIR" diff --check
 run_required "SevenOS design contract" "$ROOT_DIR/scripts/design-check.sh"
 run_required_timeout "${SEVENOS_PRE_PUSH_SMOKE_TIMEOUT:-60s}" "SevenOS smoke contract" smoke_check
+run_required_timeout "${SEVENOS_PRE_PUSH_SURFACES_TIMEOUT:-30s}" "SevenOS native surfaces contract" surfaces_check
 run_required_timeout "${SEVENOS_PRE_PUSH_STATE_TIMEOUT:-90s}" "SevenOS state contract" state_check
 run_required_timeout "${SEVENOS_PRE_PUSH_NEW_TIMEOUT:-120s}" "new machine dry-run" new_device_dry_run
 run_required_timeout "${SEVENOS_PRE_PUSH_WINDOWS_TIMEOUT:-60s}" "Windows Bridge first-run dry-run" windows_dry_run
@@ -147,6 +160,7 @@ run_optional_timeout "${SEVENOS_PRE_PUSH_UX_TIMEOUT:-180s}" "deep UX smoke windo
   SEVENOS_UPDATE_FAST=1 \
   SEVENOS_LIFECYCLE_FAST=1 \
   bash -c '"$1" >/dev/null' _ "$ROOT_DIR/scripts/ux-check.sh"
+run_optional_timeout "${SEVENOS_PRE_PUSH_QUALITY_TIMEOUT:-180s}" "public quality aggregate" public_quality_check
 
 if [[ "$failures" -gt 0 ]]; then
   log_error "Pre-push fast gate failed: $failures failure(s), $warnings warning(s)."

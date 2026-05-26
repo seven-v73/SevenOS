@@ -23,6 +23,8 @@ Targets:
                    Prepare the Calamares package source for public ISO builds
   hub-gui-stack    Install Seven Hub Tauri GUI foundation packages
   shell-ags        Install Seven Shell AGS/TypeScript foundation packages
+  shell-ags-runtime
+                   Install Aylur's Gtk Shell runtime from the explicit AUR route
   runtime-tools    Install optional runtime orchestration tools such as CRIU
   network          Prepare and repair Wi-Fi/NetworkManager stack
   language         Prepare and inspect French/English language packs
@@ -114,7 +116,10 @@ export SEVENOS_YES="$YES"
 
 if [[ "$TARGET" != "doctor" && "$TARGET" != "status" && "$TARGET" != "language" && "$TARGET" != "languages" && "$TARGET" != "locale" && "$TARGET" != "migrate-plan" && "$TARGET" != "migrate-backup" && "$TARGET" != "calamares-runtime" ]]; then
   require_arch
-  require_command sudo
+  if [[ -z "$(privileged_backend)" ]]; then
+    log_error "SevenOS needs sudo or a graphical Polkit prompt for package/system changes."
+    exit 1
+  fi
   require_command pacman
 fi
 
@@ -158,6 +163,9 @@ case "$TARGET" in
     ;;
   shell-ags)
     install_package_file "$ROOT_DIR/scripts/packages-shell-ags.txt"
+    ;;
+  shell-ags-runtime)
+    "$ROOT_DIR/scripts/shell-ags-runtime.sh" install
     ;;
   runtime-tools)
     install_package_file "$ROOT_DIR/scripts/packages-runtime-optional.txt"

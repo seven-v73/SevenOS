@@ -587,6 +587,8 @@ def handle_shell(args):
 
 def handle_core(args):
     extra = [args.action]
+    if getattr(args, "keep", None) is not None:
+        extra.extend(["--keep", str(args.keep)])
     if args.json:
         extra.append("--json")
     run_script(args, "scripts/core.sh", *extra)
@@ -677,6 +679,13 @@ def handle_experience(args):
         return
     extra = ["--json"] if json_requested else []
     run_script(args, "scripts/experience.sh", *extra)
+
+
+def handle_quality(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/public-experience.sh", *extra)
 
 
 def handle_adaptive(args):
@@ -934,7 +943,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
 
     update_parser = subparsers.add_parser("update", help="inspect or apply SevenOS updates")
-    update_parser.add_argument("action", nargs="?", default="status", choices=("status", "check", "plan", "doctor", "apply", "install", "json"))
+    update_parser.add_argument("action", nargs="?", default="status", choices=("status", "check", "plan", "doctor", "apply", "install", "rollback", "json"))
     update_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS update contract")
     update_parser.add_argument("--yes", action="store_true", help="run supported updates non-interactively")
     upgrade_parser = subparsers.add_parser("upgrade", help="natural alias for SevenOS update install")
@@ -996,8 +1005,9 @@ def main():
     shell_parser.add_argument("--json", action="store_true", help="print machine-readable shell status or plan")
     shell_parser.add_argument("extra", nargs=argparse.REMAINDER)
     core_parser = subparsers.add_parser("core", help="inspect Seven Core and SevenBus foundation")
-    core_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "bus", "schema", "snapshot", "health", "profiles", "observe", "install-service", "install-observer", "start", "start-observer", "stop", "stop-observer", "logs", "observer-logs"))
+    core_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "bus", "schema", "snapshot", "health", "profiles", "observe", "compact-bus", "bus-compact", "compact-events", "install-service", "install-observer", "start", "start-observer", "stop", "stop-observer", "logs", "observer-logs"))
     core_parser.add_argument("--json", action="store_true", help="print machine-readable core status, health, plan or bus schema")
+    core_parser.add_argument("--keep", type=int, help="events to keep when compacting SevenBus")
     scheduler_parser = subparsers.add_parser("scheduler", help="inspect SevenOS process and thread orchestration")
     scheduler_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "apply"))
     scheduler_parser.add_argument("--json", action="store_true", help="print machine-readable scheduler state or plan")
@@ -1075,6 +1085,12 @@ def main():
     experience_parser.add_argument("action", nargs="?", default="audit", choices=("audit", "status", "json", "score", "apply", "doctor", "launch", "focus", "workspace", "notify", "warmup", "events", "recommend"))
     experience_parser.add_argument("extra", nargs=argparse.REMAINDER)
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
+    quality_parser = subparsers.add_parser("quality", help="inspect SevenOS public user-experience quality gates")
+    quality_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    quality_parser.add_argument("--json", action="store_true", help="print machine-readable public quality gate")
+    public_experience_parser = subparsers.add_parser("public-experience", help="alias for SevenOS public quality gates")
+    public_experience_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    public_experience_parser.add_argument("--json", action="store_true", help="print machine-readable public quality gate")
     control_parser = subparsers.add_parser("control", help="show prioritized SevenOS control plane actions")
     control_parser.add_argument("action", nargs="?", default="plan", choices=("plan", "apply"))
     control_parser.add_argument("--json", action="store_true", help="print machine-readable control plane")
@@ -1377,6 +1393,8 @@ def main():
         handle_motion(args)
     elif args.command == "experience":
         handle_experience(args)
+    elif args.command in ("quality", "public-experience"):
+        handle_quality(args)
     elif args.command == "control":
         handle_control(args)
     elif args.command == "events":

@@ -9,8 +9,8 @@ usage() {
 SevenOS update
 
 Usage:
-  seven update [status|check|plan|doctor|apply|install|json] [--json] [--yes] [--dry-run]
-  ./scripts/update.sh [status|check|plan|doctor|apply|install|json] [--json] [--yes] [--dry-run]
+  seven update [status|check|plan|doctor|apply|install|rollback|json] [--json] [--yes] [--dry-run]
+  ./scripts/update.sh [status|check|plan|doctor|apply|install|rollback|json] [--json] [--yes] [--dry-run]
 
 This is the SevenOS-first update route. It updates the SevenOS system tree,
 refreshes command wrappers and then delegates package updates to pacman,
@@ -23,7 +23,7 @@ JSON_OUTPUT=0
 YES=0
 for arg in "$@"; do
   case "$arg" in
-    status|check|plan|doctor|apply|install|json) ACTION="$arg" ;;
+    status|check|plan|doctor|apply|install|rollback|json) ACTION="$arg" ;;
     --json) JSON_OUTPUT=1 ;;
     --dry-run) export SEVENOS_DRY_RUN=1 ;;
     --yes|-y) YES=1 ;;
@@ -39,8 +39,61 @@ git_run() {
   if [[ -w "$ROOT_DIR/.git" || -w "$ROOT_DIR" ]]; then
     run_cmd git -C "$ROOT_DIR" "$@"
   else
-    run_cmd sudo git -C "$ROOT_DIR" "$@"
+    run_privileged_cmd git -C "$ROOT_DIR" "$@"
   fi
+}
+
+UPDATE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/update"
+LAST_SNAPSHOT_LINK="$UPDATE_STATE_DIR/last-successful-tree"
+
+snapshot_excludes() {
+  printf '%s\n' \
+    "--exclude=.git" \
+    "--exclude=out" \
+    "--exclude=work" \
+    "--exclude=iso" \
+    "--exclude=dist" \
+    "--exclude=target" \
+    "--exclude=node_modules" \
+    "--exclude=archiso/localrepo"
+}
+
+create_update_snapshot() {
+  local target
+  target="$UPDATE_STATE_DIR/snapshots/$(date +%Y%m%d-%H%M%S)"
+  mkdir -p "$(dirname -- "$target")"
+  log_info "Creating SevenOS rollback snapshot: $target"
+  if is_dry_run; then
+    printf 'mkdir -p %q\n' "$target"
+    printf 'rsync -a --delete <excludes> %q/ %q/\n' "$ROOT_DIR" "$target"
+    return 0
+  fi
+  local excludes=()
+  mapfile -t excludes < <(snapshot_excludes)
+  rsync -a --delete "${excludes[@]}" "$ROOT_DIR"/ "$target"/
+  ln -sfn "$target" "$LAST_SNAPSHOT_LINK"
+  printf '%s\n' "$target"
+}
+
+restore_update_snapshot() {
+  local snapshot="${1:-}"
+  if [[ -z "$snapshot" || ! -d "$snapshot" ]]; then
+    log_warn "No valid SevenOS rollback snapshot was found."
+    return 1
+  fi
+  log_warn "Restoring SevenOS from rollback snapshot: $snapshot"
+  if is_dry_run; then
+    printf 'rsync -a --delete %q/ %q/\n' "$snapshot" "$ROOT_DIR"
+    return 0
+  fi
+  local excludes=()
+  mapfile -t excludes < <(snapshot_excludes)
+  if [[ -w "$ROOT_DIR" ]]; then
+    rsync -a --delete "${excludes[@]}" "$snapshot"/ "$ROOT_DIR"/
+  else
+    run_privileged_cmd rsync -a --delete "${excludes[@]}" "$snapshot"/ "$ROOT_DIR"/
+  fi
+  env SEVENOS_ROOT="$ROOT_DIR" "$ROOT_DIR/install.sh" cli || true
 }
 
 repo_update_preview() {
@@ -79,6 +132,7 @@ import subprocess
 from pathlib import Path
 
 root = Path(os.environ["SEVENOS_ROOT"])
+last_snapshot = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos/update/last-successful-tree"
 
 
 def run_lines(command, timeout=8):
@@ -202,6 +256,11 @@ print(json.dumps({
         "public_location": str(root) == "/opt/SevenOS",
         "command": "seven update install --yes",
     },
+    "rollback": {
+        "available": last_snapshot.exists(),
+        "snapshot": str(last_snapshot.resolve()) if last_snapshot.exists() else "",
+        "command": "seven update rollback",
+    },
     "sources": sources,
     "policy": [
         "SevenOS explains updates before backend commands run.",
@@ -228,6 +287,11 @@ print(json.dumps({
             "impact": "packages",
         },
         {
+            "title": "Rollback the last SevenOS tree snapshot if needed",
+            "command": "seven update rollback",
+            "impact": "safe",
+        },
+        {
             "title": "Refresh SevenOS health after updates",
             "command": "seven doctor",
             "impact": "safe",
@@ -239,6 +303,7 @@ print(json.dumps({
         "check": "seven update check",
         "json": "seven update --json",
         "apply": "seven update install --yes",
+        "rollback": "seven update rollback",
         "store": "seven store",
     },
 }, indent=2))
@@ -285,6 +350,7 @@ PY
 }
 
 apply_updates() {
+  local snapshot=""
   log_info "Applying SevenOS update route"
   if is_dry_run; then
     repo_update_preview
@@ -296,16 +362,31 @@ apply_updates() {
     return 0
   fi
 
-  apply_repo_update
-  "$ROOT_DIR/bin/sevenpkg" update
-  if command -v flatpak >/dev/null 2>&1; then
-    if [[ "$YES" -eq 1 || "${SEVENOS_YES:-0}" == "1" ]]; then
-      flatpak update --assumeyes || true
-    else
-      flatpak update || true
+  snapshot="$(create_update_snapshot | tail -n 1 || true)"
+  if ! (
+    apply_repo_update
+    "$ROOT_DIR/bin/sevenpkg" update
+    if command -v flatpak >/dev/null 2>&1; then
+      if [[ "$YES" -eq 1 || "${SEVENOS_YES:-0}" == "1" ]]; then
+        flatpak update --assumeyes || true
+      else
+        flatpak update || true
+      fi
     fi
+  ); then
+    log_error "SevenOS update failed; attempting rollback."
+    restore_update_snapshot "$snapshot" || true
+    return 1
   fi
   log_success "SevenOS update route completed."
+}
+
+rollback_update() {
+  local snapshot="${1:-}"
+  if [[ -z "$snapshot" && -L "$LAST_SNAPSHOT_LINK" ]]; then
+    snapshot="$(readlink -f "$LAST_SNAPSHOT_LINK")"
+  fi
+  restore_update_snapshot "$snapshot"
 }
 
 payload="$(update_json)"
@@ -337,4 +418,5 @@ sys.exit(0 if data.get("score", 0) >= 75 else 1)
 PY
     ;;
   apply) apply_updates ;;
+  rollback) rollback_update ;;
 esac

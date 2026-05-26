@@ -70,6 +70,7 @@ seven-daemon cyberspace --json
 seven-daemon cyberspace-plan --json
 seven-daemon events --json
 seven-daemon summary --json
+seven-daemon compact-bus --keep 5000 --json
 seven-daemon emit --source core --type event --message "SevenBus event"
 seven-daemon serve
 seven core install-service
@@ -96,6 +97,11 @@ local `/proc` data, session variables, event integrity and SevenOS state paths
 from Rust, giving Hub and Shell a fast OS-level signal without walking the
 whole Bash stack.
 
+`seven core compact-bus --keep 5000 --json` is the local SevenBus retention
+command. It archives the current JSONL journal and rewrites the active journal
+with the most recent valid events. This keeps the current JSONL transport usable
+until typed local IPC replaces it.
+
 `seven-daemon cyberspace --json` and `seven-daemon cyberspace-plan --json`
 turn Shield CyberSpace into a daemon-readable contract. The Bash surface still
 handles human commands and Hyprland dispatch, while Rust owns the context map,
@@ -120,6 +126,8 @@ seven core plan --json
 seven core doctor
 seven core bus --json
 seven core snapshot --json
+seven core health --json
+seven core compact-bus --keep 5000 --json
 seven core install-service
 seven core start
 ```

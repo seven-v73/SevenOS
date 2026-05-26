@@ -41,7 +41,7 @@ done
 
 need_root_command() {
   if is_dry_run; then
-    printf 'sudo'
+    printf '%q' "$(privileged_backend_label)"
     printf ' %q' "$@"
     printf '\n'
     return 0
@@ -49,7 +49,7 @@ need_root_command() {
   if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
     "$@"
   else
-    if [[ ! -t 0 ]] && ! sudo -n true >/dev/null 2>&1; then
+    if [[ -z "$(privileged_backend)" ]]; then
       log_error "Administrator permission is required, but no interactive password prompt is available."
       log_info "Open Seven Terminal and run:"
       log_info "  cd $ROOT_DIR"
@@ -57,7 +57,7 @@ need_root_command() {
       log_info "Preview first with: seven boot-splash doctor"
       return 1
     fi
-    sudo "$@"
+    run_privileged_cmd "$@"
   fi
 }
 
@@ -73,9 +73,9 @@ ensure_plymouth() {
   log_info "Installing Plymouth for SevenOS quiet boot"
   if is_dry_run; then
     if assume_yes; then
-      printf 'sudo pacman -S --needed --noconfirm plymouth\n'
+      printf '%q pacman -S --needed --noconfirm plymouth\n' "$(privileged_backend_label)"
     else
-      printf 'sudo pacman -S --needed plymouth\n'
+      printf '%q pacman -S --needed plymouth\n' "$(privileged_backend_label)"
     fi
     return 0
   fi
@@ -101,8 +101,8 @@ install_theme() {
 write_plymouth_daemon_config() {
   log_info "Configuring Plymouth to show SevenOS immediately"
   if is_dry_run; then
-    printf 'sudo install -d /etc/plymouth\n'
-    printf 'sudo update %q with Theme=sevenos and ShowDelay=0\n' "$PLYMOUTH_CONF"
+    printf '%q install -d /etc/plymouth\n' "$(privileged_backend_label)"
+    printf '%q update %q with Theme=sevenos and ShowDelay=0\n' "$(privileged_backend_label)" "$PLYMOUTH_CONF"
     return 0
   fi
   need_root_command install -d /etc/plymouth
@@ -167,7 +167,7 @@ set_plymouth_theme() {
   fi
   log_info "Selecting SevenOS Plymouth theme"
   if is_dry_run; then
-    printf 'sudo plymouth-set-default-theme sevenos\n'
+    printf '%q plymouth-set-default-theme sevenos\n' "$(privileged_backend_label)"
     return 0
   fi
   need_root_command plymouth-set-default-theme sevenos
@@ -215,7 +215,7 @@ refresh_initramfs() {
   if command -v mkinitcpio >/dev/null 2>&1; then
     log_info "Refreshing initramfs"
     if is_dry_run; then
-      printf 'sudo mkinitcpio -P\n'
+      printf '%q mkinitcpio -P\n' "$(privileged_backend_label)"
       return 0
     fi
     need_root_command mkinitcpio -P
@@ -231,7 +231,7 @@ configure_services() {
     if systemctl list-unit-files "$unit" >/dev/null 2>&1; then
       log_info "Enabling $unit"
       if is_dry_run; then
-        printf 'sudo systemctl enable %q\n' "$unit"
+        printf '%q systemctl enable %q\n' "$(privileged_backend_label)" "$unit"
       else
         need_root_command systemctl enable "$unit" >/dev/null 2>&1 || true
       fi
@@ -356,7 +356,7 @@ update_kernel_cmdline_file() {
   current="$([[ -f "$file" ]] && tr '\n' ' ' <"$file" || true)"
   merged="$(merge_cmdline "$current" "${CMDLINE_ARGS[@]}")"
   if is_dry_run; then
-    printf 'printf %q | sudo tee %q >/dev/null\n' "$merged" "$file"
+    printf 'printf %q | %q tee %q >/dev/null\n' "$merged" "$(privileged_backend_label)" "$file"
   else
     printf '%s\n' "$merged" | need_root_command tee "$file" >/dev/null
   fi

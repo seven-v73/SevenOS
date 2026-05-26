@@ -291,11 +291,13 @@ PY
 }
 
 release_payload() {
-  local doctor_json git_dirty design_state smoke_state ux_state installer_json windows_json profile_json profile_health_json profile_migration_json bridge_json status_json
+  local doctor_json git_dirty design_state smoke_state surfaces_state quality_state ux_state installer_json windows_json profile_json profile_health_json profile_migration_json bridge_json status_json
   doctor_json="$(SEVENOS_DOCTOR_AREA=all json_payload)"
   git_dirty="$(git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' ')"
   if timeout 30 "$ROOT_DIR/scripts/design-check.sh" >/dev/null 2>&1; then design_state="OK"; else design_state="PART"; fi
   if timeout "${SEVENOS_RELEASE_SMOKE_TIMEOUT:-60s}" "$ROOT_DIR/scripts/smoke.sh" doctor >/dev/null 2>&1; then smoke_state="OK"; else smoke_state="PART"; fi
+  if timeout "${SEVENOS_RELEASE_SURFACES_TIMEOUT:-40s}" "$ROOT_DIR/scripts/surfaces.sh" doctor >/dev/null 2>&1; then surfaces_state="OK"; else surfaces_state="PART"; fi
+  if timeout "${SEVENOS_RELEASE_QUALITY_TIMEOUT:-180s}" "$ROOT_DIR/scripts/public-experience.sh" doctor >/dev/null 2>&1; then quality_state="OK"; else quality_state="PART"; fi
   if [[ "${SEVENOS_RELEASE_DEEP:-0}" == "1" ]]; then
     if PYENV_DISABLE_REHASH=1 timeout "${SEVENOS_RELEASE_UX_TIMEOUT:-600s}" "$ROOT_DIR/scripts/ux-check.sh" >/dev/null 2>&1; then ux_state="OK"; else ux_state="PART"; fi
   else
@@ -308,7 +310,7 @@ release_payload() {
   profile_migration_json="$("$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --json 2>/dev/null || printf '{}')"
   bridge_json="$("$ROOT_DIR/scripts/mini-os-relay.sh" doctor --json 2>/dev/null || printf '{}')"
   status_json="$("$ROOT_DIR/scripts/status.sh" --json 2>/dev/null || printf '{}')"
-  DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" DESIGN_STATE="$design_state" SMOKE_STATE="$smoke_state" UX_STATE="$ux_state" \
+  DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" DESIGN_STATE="$design_state" SMOKE_STATE="$smoke_state" SURFACES_STATE="$surfaces_state" QUALITY_STATE="$quality_state" UX_STATE="$ux_state" \
   INSTALLER_JSON="$installer_json" WINDOWS_JSON="$windows_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" STATUS_JSON="$status_json" \
   python - <<'PY'
 import json
@@ -346,6 +348,8 @@ summary = doctor.get("summary", {})
 add("doctor", "OK" if summary.get("critical", 1) == 0 and summary.get("high", 1) == 0 else "PART", "Seven Doctor clean", f"{summary.get('critical', 0)} critical, {summary.get('high', 0)} high issue(s)", "seven doctor check", "high")
 add("design-check", os.environ.get("DESIGN_STATE", "PART"), "Design coherence", "SevenOS design contract passes.", "scripts/design-check.sh", "high")
 add("smoke-check", os.environ.get("SMOKE_STATE", "PART"), "Fast product smoke gate", "SevenOS public contracts respond quickly.", "seven smoke doctor", "high")
+add("surfaces-check", os.environ.get("SURFACES_STATE", "PART"), "Native surfaces and old-screen guard", "SevenOS visible surfaces are native and legacy screens stay blocked.", "seven surfaces doctor", "high")
+add("public-quality", os.environ.get("QUALITY_STATE", "PART"), "Public experience aggregate", "Health, update, Shell, mini OS and Server/Deploy gates are coherent for users.", "seven quality doctor", "high")
 ux_state = os.environ.get("UX_STATE", "PART")
 ux_detail = "Full developer UX audit passed." if ux_state == "OK" else ("Set SEVENOS_RELEASE_DEEP=1 to run the full developer UX audit." if ux_state == "SKIP" else "Full developer UX audit failed or timed out.")
 add("ux-check", ux_state, "Deep UX coherence", ux_detail, "SEVENOS_RELEASE_DEEP=1 scripts/ux-check.sh", "medium")
@@ -368,7 +372,7 @@ add("forge-docker", "OK" if docker.get("state") in {"OK", "QUIET", "PART"} else 
 rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 issues = [item for item in checks if item["state"] not in {"OK", "READY", "RUN", "SKIP"}]
 issues.sort(key=lambda item: (rank.get(item["severity"], 9), item["key"]))
-daily_scope_ignored = {"worktree-freeze", "installer", "windows-vm", "ux-check"}
+daily_scope_ignored = {"worktree-freeze", "installer", "windows-vm", "ux-check", "public-quality"}
 public_ready = not issues
 daily_ready = not any(item["severity"] in {"critical", "high"} and item["key"] not in daily_scope_ignored for item in issues)
 print(json.dumps({

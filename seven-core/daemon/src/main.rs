@@ -53,6 +53,63 @@ fn event_file() -> PathBuf {
     state_dir().join("events.jsonl")
 }
 
+fn runtime_dir() -> Option<PathBuf> {
+    if let Ok(value) = env::var("XDG_RUNTIME_DIR") {
+        return Some(PathBuf::from(value));
+    }
+    if let Ok(uid) = env::var("UID") {
+        return Some(PathBuf::from("/run/user").join(uid));
+    }
+    let output = Command::new("id").arg("-u").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let uid = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if uid.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from("/run/user").join(uid))
+    }
+}
+
+fn detect_wayland_display() -> String {
+    if let Ok(value) = env::var("WAYLAND_DISPLAY") {
+        if !value.is_empty() {
+            return value;
+        }
+    }
+
+    let Some(dir) = runtime_dir() else {
+        return String::new();
+    };
+    let Ok(entries) = fs::read_dir(dir) else {
+        return String::new();
+    };
+    let mut displays = entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .filter(|name| name.starts_with("wayland-") && !name.ends_with(".lock"))
+        .collect::<Vec<_>>();
+    displays.sort();
+    displays.into_iter().next().unwrap_or_default()
+}
+
+fn detect_desktop() -> String {
+    for key in ["XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION"] {
+        if let Ok(value) = env::var(key) {
+            if !value.is_empty() {
+                return value;
+            }
+        }
+    }
+    let output = Command::new("pgrep").arg("-x").arg("Hyprland").output();
+    if matches!(output, Ok(result) if result.status.success()) {
+        "Hyprland".to_string()
+    } else {
+        String::new()
+    }
+}
+
 fn path_state(path: &PathBuf) -> &'static str {
     if path.exists() {
         "OK"
@@ -528,13 +585,77 @@ fn summary_json() {
     );
 }
 
+fn compact_events_json(args: &[String]) {
+    let keep = arg_value(args, "--keep", "5000")
+        .parse::<usize>()
+        .unwrap_or(5000)
+        .max(100);
+    let path = event_file();
+    let before_bytes = fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
+    let (events, invalid, raw_lines) = parsed_events();
+    let keep_start = events.len().saturating_sub(keep);
+    let kept = &events[keep_start..];
+    let archive = path.with_extension(format!("jsonl.{}.bak", unix_timestamp()));
+
+    let state = if path.exists() {
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        match fs::rename(&path, &archive) {
+            Ok(_) => {
+                let mut body = String::new();
+                for event in kept {
+                    if let Ok(line) = serde_json::to_string(event) {
+                        body.push_str(&line);
+                        body.push('\n');
+                    }
+                }
+                match fs::write(&path, body) {
+                    Ok(_) => "OK",
+                    Err(_) => {
+                        let _ = fs::rename(&archive, &path);
+                        "FAIL"
+                    }
+                }
+            }
+            Err(_) => "FAIL",
+        }
+    } else {
+        "EMPTY"
+    };
+
+    let after_bytes = fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
+    let payload = json!({
+        "schema": "sevenos.bus.compact.v1",
+        "state": state,
+        "event_file": path.to_string_lossy(),
+        "archive": if archive.exists() { json!(archive.to_string_lossy()) } else { Value::Null },
+        "keep": keep,
+        "before": {
+            "events": events.len(),
+            "raw_line_count": raw_lines,
+            "invalid_event_count": invalid,
+            "bytes": before_bytes,
+        },
+        "after": {
+            "events": kept.len(),
+            "bytes": after_bytes,
+        },
+        "writer": "seven-daemon",
+    });
+    println!(
+        "{}",
+        serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string())
+    );
+}
+
 fn health_json() {
     let state_path = state_dir();
     let events_path = event_file();
     let state_writable = can_write_state_dir();
-    let wayland_display = env::var("WAYLAND_DISPLAY").unwrap_or_default();
-    let desktop = env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
-    let session = env::var("XDG_SESSION_DESKTOP").unwrap_or_default();
+    let wayland_display = detect_wayland_display();
+    let desktop = detect_desktop();
+    let session = env::var("XDG_SESSION_DESKTOP").unwrap_or_else(|_| desktop.clone());
     let user = env::var("USER").unwrap_or_default();
     let (events, invalid, raw_lines) = parsed_events();
 
@@ -610,14 +731,35 @@ fn config_dir() -> PathBuf {
 }
 
 fn active_profile_key() -> String {
+    for key in [
+        "SEVENOS_ACTIVE_PROFILE",
+        "SEVENOS_PROFILE_CONTAINER",
+        "SEVENOS_EXEC_PROFILE",
+    ] {
+        if let Ok(value) = env::var(key) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return if trimmed == "horizon" {
+                    "forge".to_string()
+                } else {
+                    trimmed.to_string()
+                };
+            }
+        }
+    }
     let path = config_dir().join("profile.env");
     let content = fs::read_to_string(path).unwrap_or_default();
     for line in content.lines() {
         if let Some(raw) = line.strip_prefix("SEVENOS_ACTIVE_PROFILE=") {
-            return raw.trim_matches('"').trim_matches('\'').to_string();
+            let value = raw.trim_matches('"').trim_matches('\'');
+            return if value == "horizon" {
+                "forge".to_string()
+            } else {
+                value.to_string()
+            };
         }
     }
-    "baobab".to_string()
+    "equinox".to_string()
 }
 
 fn command_exists(command_name: &str) -> bool {
@@ -929,6 +1071,8 @@ fn server_json() {
     let port = server_port();
     let service = user_service_state("seven-server.service");
     let dependencies = server_dependencies(&root);
+    let active_profile = active_profile_key();
+    let server_profile_allowed = active_profile == "forge";
     let runtime_ready = service == "RUN";
     let required_runtime_ready = dependencies.iter().all(|item| {
         let key = item.get("key").and_then(Value::as_str).unwrap_or("");
@@ -953,6 +1097,13 @@ fn server_json() {
         "ready": runtime_ready && deployment_stack_ready,
         "runtime_ready": runtime_ready && required_runtime_ready,
         "deployment_stack_ready": deployment_stack_ready,
+        "profile_gate": {
+            "required_profile": "forge",
+            "active_profile": active_profile,
+            "server_runtime_allowed": server_profile_allowed,
+            "deploy_api_allowed": server_profile_allowed,
+            "blocked_contract": "sevenos.profile-gate.v1"
+        },
         "bind": {
             "host": host,
             "port": port,
@@ -1010,7 +1161,16 @@ fn server_json() {
             "/b3",
             "/daily",
             "/events",
-            "/insights"
+            "/insights",
+            "/deploy/status",
+            "/deploy/inspect",
+            "/deploy/doctor",
+            "/deploy/services",
+            "/deploy/panel",
+            "/deploy/domain",
+            "/deploy/dns-check",
+            "/deploy/route-check",
+            "/deploy/diagnose"
         ],
         "recommendations": server_recommendations(service, &dependencies),
         "runtime": "seven-daemon",
@@ -3139,10 +3299,15 @@ fn daemon_phase_gate_json() {
     let stack_total = 9usize;
     let stack_percent = ((stack_ok as f64 / stack_total as f64) * 100.0).round() as u64;
 
-    let core_state = if root.join("seven-core/daemon/Cargo.toml").is_file()
+    let core_foundation = root.join("seven-core/daemon/Cargo.toml").is_file()
         && root.join("bin/seven-daemon").is_file()
-        && root.join("seven-core/bus-schema.json").is_file()
+        && root.join("seven-core/bus-schema.json").is_file();
+    let core_state = if core_foundation
+        && user_service_state("seven-daemon.service") == "RUN"
+        && user_service_state("seven-context-observer.service") == "RUN"
     {
+        "RUNTIME_READY"
+    } else if core_foundation {
         "READY_FOR_DAEMON"
     } else {
         "MISS"
@@ -3304,13 +3469,13 @@ fn daemon_phase_gate_json() {
         phase_gate_item(
             "core",
             "Seven Core foundation",
-            if core_state == "READY_FOR_DAEMON" {
+            if matches!(core_state, "READY_FOR_DAEMON" | "RUNTIME_READY") {
                 "PASS"
             } else {
                 "WARN"
             },
             json!(core_state),
-            json!("FOUNDATION"),
+            json!("RUNTIME_READY"),
             core_state.to_lowercase().as_str(),
             "seven core plan",
             "SevenOS needs a named system experience layer before replacing script surfaces with daemon-backed UI.",
@@ -4360,6 +4525,8 @@ fn main() {
         events_json(&args);
     } else if action == "summary" || action == "summary-json" {
         summary_json();
+    } else if action == "compact-bus" || action == "bus-compact" || action == "compact-events" {
+        compact_events_json(&args);
     } else if action == "health" {
         health_json();
     } else if action == "profiles" {

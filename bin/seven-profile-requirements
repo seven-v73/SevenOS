@@ -187,7 +187,8 @@ def status(profile: str, *, include_optional: bool) -> dict:
 def run_install(packages: list[str], *, yes: bool, dry_run: bool, quiet: bool = False) -> int:
     if not packages:
         return 0
-    command = ["sudo", "pacman", "-S", "--needed"]
+    backend = "pkexec" if shutil.which("pkexec") and (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")) else "sudo"
+    command = [backend, "pacman", "-S", "--needed"]
     if yes:
         command.append("--noconfirm")
     command.extend(packages)
@@ -197,6 +198,20 @@ def run_install(packages: list[str], *, yes: bool, dry_run: bool, quiet: bool = 
     if quiet:
         return subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False).returncode
     return subprocess.run(command, check=False).returncode
+
+
+def run_profile_install(profile: str, packages: list[str], *, source: str, dry_run: bool, quiet: bool = False) -> int:
+    if not packages:
+        return 0
+    command = [str(ROOT_DIR / "bin" / "sevenpkg"), "install", "--profile", profile, "--source", source, *packages]
+    env = os.environ.copy()
+    if dry_run:
+        env["SEVENOS_DRY_RUN"] = "1"
+    if dry_run and not quiet:
+        print(" ".join(command))
+    if quiet:
+        return subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False, env=env).returncode
+    return subprocess.run(command, check=False, env=env).returncode
 
 
 def run_aur(packages: list[str], *, yes: bool, dry_run: bool, quiet: bool = False) -> int:
@@ -227,13 +242,21 @@ def install(profile: str, *, include_optional: bool, include_aur: bool, yes: boo
     if include_optional:
         repo_packages.extend(missing["optional_repo"])
         aur_packages.extend(missing["optional_aur"])
-    rc = run_install(repo_packages, yes=yes, dry_run=dry_run, quiet=quiet)
-    actions.append({"type": "pacman", "packages": repo_packages, "returncode": rc})
+    if profile == "equinox":
+        rc = run_install(repo_packages, yes=yes, dry_run=dry_run, quiet=quiet)
+        actions.append({"type": "pacman", "scope": "host-system", "packages": repo_packages, "returncode": rc})
+    else:
+        rc = run_profile_install(profile, repo_packages, source="pacman", dry_run=dry_run, quiet=quiet)
+        actions.append({"type": "pacman", "scope": "profile-rootfs", "packages": repo_packages, "returncode": rc})
     if rc == 0 and include_aur:
-        aur_rc = run_aur(aur_packages, yes=yes, dry_run=dry_run, quiet=quiet)
+        if profile == "equinox":
+            aur_rc = run_aur(aur_packages, yes=yes, dry_run=dry_run, quiet=quiet)
+        else:
+            aur_source = "paru" if shutil.which("paru") else "yay" if shutil.which("yay") else "aur"
+            aur_rc = run_profile_install(profile, aur_packages, source=aur_source, dry_run=dry_run, quiet=quiet)
     else:
         aur_rc = 0 if not aur_packages else 126
-    actions.append({"type": "aur", "packages": aur_packages if include_aur else [], "returncode": aur_rc})
+    actions.append({"type": "aur", "scope": "host-system" if profile == "equinox" else "profile-rootfs", "packages": aur_packages if include_aur else [], "returncode": aur_rc})
     isolation_rc = 0
     if rc == 0 and aur_rc == 0:
         isolation_cmd = [str(ROOT_DIR / "scripts/profile-isolation.sh"), "apply", profile, "--yes"]
