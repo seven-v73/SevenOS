@@ -740,8 +740,8 @@ seven runtime activate equinox forge --apply --yes
 ### Seven Files
 
 Gestionnaire de fichiers SevenOS : onglets, split view, Quick Look, tags,
-recherche, corbeille, opérations, dossiers externes autorisés et adaptation par
-mini OS.
+recherche, corbeille, opérations, inspecteur de décision, dossiers externes
+autorisés et adaptation par mini OS.
 
 ```bash
 seven-files
@@ -2058,7 +2058,8 @@ seven runtime activate equinox forge --apply --yes
 ### Seven Files
 
 SevenOS file manager: tabs, split view, Quick Look, tags, search, trash,
-operations, authorized external folders and mini OS adaptation.
+operations, decision inspector, authorized external folders and mini OS
+adaptation.
 
 ```bash
 seven-files

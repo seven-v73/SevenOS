@@ -305,7 +305,9 @@ close. Rofi remains only the fallback for machines missing GTK bindings.
 
 `seven-files` now prefers the native Seven Files surface before
 falling back to Nautilus. The native surface provides a SevenOS sidebar,
-traffic-light controls, toolbar navigation and large icon grid:
+traffic-light controls, toolbar navigation, tabs, a context strip, Quick Look,
+progressive rendering for large folders, a right-side decision inspector and a
+large icon grid:
 
 ```bash
 seven-files
@@ -318,6 +320,15 @@ terminal:
 
 ```bash
 seven-files-native --probe
+```
+
+Seven Files follows the active Mini OS. Resource folders can stay isolated per
+Mini OS or switch to shared user folders:
+
+```bash
+seven-files resources status
+seven-files resources mini
+seven-files resources shared
 ```
 
 If an old fullscreen Kitty window keeps appearing, close all Kitty windows and

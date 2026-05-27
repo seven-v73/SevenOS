@@ -9,7 +9,9 @@ window.seven-store {
     linear-gradient(135deg, @seven_bg, @seven_panel 54%, @seven_bg);
 }
 .topbar {
-  background: @seven_panel;
+  background:
+    radial-gradient(circle at 0% 0%, alpha(@seven_accent, 0.10), transparent 36%),
+    alpha(@seven_panel, 0.94);
   border: 1px solid @seven_border;
   border-radius: 8px;
   padding: 10px 12px;
@@ -19,9 +21,28 @@ window.seven-store {
   font-size: 11px;
 }
 .sidebar {
-  background: @seven_sidebar;
+  background:
+    radial-gradient(circle at 50% 0%, alpha(@seven_accent, 0.16), transparent 28%),
+    @seven_sidebar;
   border-right: 1px solid @seven_border;
   padding: 14px 10px;
+}
+.store-brand {
+  border-radius: 8px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at 18% 20%, alpha(@seven_text, 0.18), transparent 38%),
+    linear-gradient(135deg, alpha(@seven_accent, 0.18), alpha(@seven_secondary, 0.10));
+  border: 1px solid alpha(@seven_accent, 0.22);
+}
+.store-brand-title {
+  color: @seven_text;
+  font-size: 14px;
+  font-weight: 600;
+}
+.store-brand-subtitle {
+  color: @seven_muted;
+  font-size: 11px;
 }
 .sidebar button {
   border-radius: 8px;
@@ -34,13 +55,31 @@ window.seven-store {
 }
 .sidebar button:hover,
 .sidebar button.active {
-  background: @seven_selected;
+  background:
+    linear-gradient(135deg, alpha(@seven_accent, 0.20), alpha(@seven_secondary, 0.12)),
+    @seven_selected;
   color: @seven_text;
+  border: 1px solid alpha(@seven_accent, 0.28);
 }
 .sidebar-label {
   font-size: 13px;
   font-weight: 500;
   color: @seven_muted;
+}
+.sidebar button.active .sidebar-label,
+.sidebar button:hover .sidebar-label {
+  color: @seven_text;
+}
+.sidebar-footer {
+  border-radius: 8px;
+  padding: 10px;
+  background: alpha(@seven_panel, 0.78);
+  border: 1px solid @seven_border;
+}
+.sidebar-footer-title {
+  color: @seven_text;
+  font-size: 12px;
+  font-weight: 600;
 }
 .hero {
   border-radius: 8px;
@@ -51,14 +90,14 @@ window.seven-store {
   border: 1px solid @seven_border;
 }
 .editorial-hero {
-  min-height: 182px;
+  min-height: 176px;
   border-radius: 8px;
-  padding: 28px;
+  padding: 24px;
   background:
-    radial-gradient(circle at 18% 10%, alpha(@seven_text, 0.22), transparent 28%),
-    radial-gradient(circle at 86% 18%, alpha(@seven_secondary, 0.28), transparent 34%),
-    linear-gradient(135deg, alpha(@seven_accent, 0.34), alpha(@seven_panel_2, 0.96));
-  border: 1px solid alpha(@seven_accent, 0.28);
+    radial-gradient(circle at 12% 8%, alpha(@seven_text, 0.20), transparent 24%),
+    radial-gradient(circle at 92% 0%, alpha(@seven_secondary, 0.30), transparent 34%),
+    linear-gradient(135deg, alpha(@seven_accent, 0.30), alpha(@seven_panel_2, 0.96));
+  border: 1px solid alpha(@seven_accent, 0.34);
 }
 .editorial-kicker {
   color: @seven_muted;
@@ -87,8 +126,37 @@ window.seven-store {
 .card {
   border-radius: 8px;
   padding: 14px;
-  background: @seven_panel;
+  background:
+    radial-gradient(circle at 100% 0%, alpha(@seven_accent, 0.06), transparent 26%),
+    @seven_panel;
   border: 1px solid @seven_border;
+}
+.card.source-flatpak {
+  border-color: alpha(@seven_success, 0.20);
+}
+.card.source-aur {
+  border-color: alpha(@seven_warning, 0.24);
+}
+.card.source-profile {
+  border-color: alpha(@seven_accent, 0.30);
+}
+.card.source-pacman {
+  border-color: alpha(@seven_secondary, 0.22);
+}
+.card.trust-high {
+  background:
+    radial-gradient(circle at 100% 0%, alpha(@seven_success, 0.07), transparent 28%),
+    @seven_panel;
+}
+.card.trust-review {
+  background:
+    radial-gradient(circle at 100% 0%, alpha(@seven_warning, 0.10), transparent 28%),
+    @seven_panel;
+}
+.card.trust-preview {
+  background:
+    radial-gradient(circle at 100% 0%, alpha(@seven_accent, 0.08), transparent 28%),
+    @seven_panel;
 }
 .feature-card {
   min-height: 126px;
@@ -103,9 +171,31 @@ window.seven-store {
   background: @seven_hover;
   border-color: alpha(@seven_accent, 0.35);
 }
+.card-chevron {
+  color: @seven_muted;
+  font-size: 24px;
+  font-weight: 300;
+}
+.card-meta {
+  min-width: 66px;
+}
+.card-trust {
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: @seven_text;
+  background: alpha(@seven_panel_2, 0.88);
+  border: 1px solid @seven_border;
+  font-size: 10px;
+  font-weight: 500;
+}
+.card-score {
+  color: @seven_success;
+  font-size: 10px;
+  font-weight: 500;
+}
 .app-icon-frame {
-  min-width: 58px;
-  min-height: 58px;
+  min-width: 54px;
+  min-height: 54px;
   border-radius: 8px;
   background:
     radial-gradient(circle at 35% 18%, alpha(@seven_text, 0.20), transparent 36%),
@@ -140,6 +230,94 @@ window.seven-store {
   color: @seven_text;
   background: alpha(@seven_accent, 0.16);
 }
+.store-health {
+  border-radius: 8px;
+}
+.health-tile {
+  min-width: 208px;
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, alpha(@seven_panel_2, 0.96), alpha(@seven_panel, 0.94));
+  border: 1px solid @seven_border;
+}
+.health-value {
+  color: @seven_text;
+  font-size: 18px;
+  font-weight: 600;
+}
+.health-label {
+  color: @seven_muted;
+  font-size: 11px;
+}
+.workflow-panel {
+  border-radius: 8px;
+  padding: 10px;
+  background:
+    linear-gradient(135deg, alpha(@seven_panel_2, 0.76), alpha(@seven_panel, 0.92));
+  border: 1px solid @seven_border;
+}
+.workflow-step {
+  border-radius: 8px;
+  padding: 10px;
+  background: alpha(@seven_panel_2, 0.62);
+  border: 1px solid alpha(@seven_border, 0.84);
+}
+.workflow-index {
+  min-width: 24px;
+  min-height: 24px;
+  border-radius: 999px;
+  color: @seven_text;
+  background: alpha(@seven_accent, 0.20);
+  border: 1px solid alpha(@seven_accent, 0.32);
+  font-size: 11px;
+  font-weight: 600;
+}
+.workflow-title {
+  color: @seven_text;
+  font-size: 12px;
+  font-weight: 600;
+}
+.workflow-note {
+  color: @seven_muted;
+  font-size: 11px;
+}
+.source-guide {
+  border-radius: 8px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 100% 0%, alpha(@seven_secondary, 0.10), transparent 34%),
+    alpha(@seven_panel, 0.90);
+  border: 1px solid @seven_border;
+}
+.source-guide-tile {
+  min-width: 214px;
+  border-radius: 8px;
+  padding: 10px;
+  background: alpha(@seven_panel_2, 0.76);
+  border: 1px solid @seven_border;
+}
+.source-guide-tile.trust-system {
+  border-color: alpha(@seven_secondary, 0.24);
+}
+.source-guide-tile.trust-flatpak {
+  border-color: alpha(@seven_success, 0.24);
+}
+.source-guide-tile.trust-community {
+  border-color: alpha(@seven_warning, 0.24);
+}
+.source-guide-tile.trust-profile {
+  border-color: alpha(@seven_accent, 0.28);
+}
+.source-guide-title {
+  color: @seven_text;
+  font-size: 12px;
+  font-weight: 600;
+}
+.source-guide-note {
+  color: @seven_muted;
+  font-size: 11px;
+}
 .quality {
   border-radius: 8px;
   padding: 10px;
@@ -167,6 +345,31 @@ window.seven-store {
 .metadata-value {
   color: @seven_text;
   font-size: 12px;
+}
+.decision-panel {
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 100% 0%, alpha(@seven_accent, 0.10), transparent 32%),
+    @seven_panel_2;
+  border: 1px solid @seven_border;
+}
+.decision-title {
+  color: @seven_text;
+  font-size: 13px;
+  font-weight: 600;
+}
+.decision-tile {
+  min-width: 90px;
+  border-radius: 8px;
+  padding: 8px;
+  background: alpha(@seven_panel, 0.78);
+  border: 1px solid alpha(@seven_border, 0.84);
+}
+.decision-value {
+  color: @seven_text;
+  font-size: 11px;
+  font-weight: 500;
 }
 .permission-panel {
   border-radius: 8px;
@@ -266,9 +469,19 @@ button.ghost {
   color: @seven_text;
 }
 .detail {
-  background: @seven_panel;
+  background:
+    radial-gradient(circle at 100% 0%, alpha(@seven_accent, 0.10), transparent 28%),
+    @seven_panel;
   border-left: 1px solid @seven_border;
   padding: 18px;
+}
+.detail-empty {
+  border-radius: 8px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, alpha(@seven_accent, 0.16), transparent 34%),
+    @seven_panel_2;
+  border: 1px solid @seven_border;
 }
 .detail-hero {
   border-radius: 8px;
@@ -283,6 +496,28 @@ button.ghost {
   padding: 8px;
   background: @seven_panel;
   border: 1px solid @seven_border;
+}
+.result-insights {
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, alpha(@seven_accent, 0.10), alpha(@seven_secondary, 0.08)),
+    @seven_panel;
+  border: 1px solid @seven_border;
+}
+.result-lead {
+  color: @seven_text;
+  font-size: 13px;
+  font-weight: 600;
+}
+.insight-pill {
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: @seven_text;
+  background: alpha(@seven_panel_2, 0.88);
+  border: 1px solid @seven_border;
+  font-size: 10px;
+  font-weight: 500;
 }
 .filter-row button {
   border-radius: 999px;

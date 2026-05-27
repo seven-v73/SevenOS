@@ -25,6 +25,32 @@
       min-height: 15px;
       margin-right: 9px;
     }
+    .files-identity-card {
+      border-radius: 16px;
+      padding: 11px;
+      margin: 0 0 14px 0;
+      background:
+        radial-gradient(circle at 18% 10%, alpha(@files_accent, 0.28), transparent 34%),
+        linear-gradient(135deg, alpha(@files_sidebar, 0.76), alpha(@files_panel, 0.46));
+      border: 1px solid alpha(@files_accent, 0.28);
+    }
+    .files-prism-badge {
+      min-width: 36px;
+      min-height: 36px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, alpha(@files_accent, 0.34), alpha(@seven_secondary, 0.22));
+      border: 1px solid alpha(@files_accent, 0.44);
+      color: @files_text;
+      font: 500 17px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .files-identity-title {
+      color: @files_text;
+      font: 500 13px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .files-identity-subtitle {
+      color: @files_muted;
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
     .sidebar-heading {
       color: @files_muted;
       font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
@@ -74,6 +100,76 @@
     .preview-action:hover {
       background: @files_hover;
     }
+    .preview-action-grid {
+      border-radius: 13px;
+      padding: 8px;
+      margin: 4px 0 8px 0;
+      background: alpha(@files_sidebar, 0.28);
+      border: 1px solid alpha(@files_border, 0.42);
+    }
+    .preview-mini-action {
+      min-height: 27px;
+      border-radius: 9px;
+      padding: 1px 8px;
+      color: @files_text;
+      background: alpha(@files_panel, 0.34);
+      border: 1px solid alpha(@files_border, 0.42);
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .preview-mini-action:hover {
+      background: @files_hover;
+      border-color: alpha(@files_accent, 0.25);
+    }
+    .preview-decision {
+      border-radius: 15px;
+      padding: 11px 12px;
+      margin: 6px 0 9px 0;
+      background: linear-gradient(135deg, alpha(@files_accent, 0.16), alpha(@files_sidebar, 0.28));
+      border: 1px solid alpha(@files_accent, 0.28);
+    }
+    .preview-decision.warn {
+      background: linear-gradient(135deg, alpha(@seven_danger, 0.16), alpha(@files_sidebar, 0.28));
+      border-color: alpha(@seven_danger, 0.34);
+    }
+    .preview-decision-title {
+      color: @files_text;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .preview-decision-body {
+      color: @files_muted;
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .files-dialog-surface {
+      border-radius: 18px;
+      padding: 16px;
+      background:
+        radial-gradient(circle at 10% 0%, alpha(@files_accent, 0.16), transparent 34%),
+        linear-gradient(145deg, alpha(@files_panel, 0.94), alpha(@files_bg, 0.78));
+      border: 1px solid alpha(@files_border, 0.72);
+    }
+    .files-dialog-hero {
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, alpha(@files_accent, 0.16), alpha(@files_sidebar, 0.24));
+      border: 1px solid alpha(@files_accent, 0.24);
+    }
+    .files-dialog-title {
+      color: @files_text;
+      font: 500 16px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .files-dialog-subtitle {
+      color: @files_muted;
+      font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .files-dialog-entry {
+      min-height: 34px;
+      border-radius: 10px;
+      padding: 0 10px;
+      color: @files_text;
+      background: alpha(@files_sidebar, 0.48);
+      border: 1px solid alpha(@files_border, 0.56);
+    }
     .preview-icon {
       margin: 8px 0 12px 0;
     }
@@ -105,6 +201,29 @@
       padding: 0 16px 0 12px;
       background: alpha(@files_panel, 0.86);
       border-bottom: 1px solid @files_border;
+    }
+    .files-context-strip {
+      min-height: 42px;
+      padding: 7px 12px;
+      border-bottom: 1px solid alpha(@files_border, 0.46);
+      background:
+        linear-gradient(90deg, alpha(@files_accent, 0.10), alpha(@files_panel, 0.42));
+    }
+    .files-context-title {
+      color: @files_text;
+      font: 500 13px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .files-context-subtitle {
+      color: @files_muted;
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .files-context-chip {
+      border-radius: 999px;
+      padding: 3px 9px;
+      color: @files_text;
+      background: alpha(@files_sidebar, 0.56);
+      border: 1px solid alpha(@files_border, 0.54);
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
     .toolbar-group {
       min-height: 40px;
@@ -196,6 +315,20 @@
       color: @files_muted;
       font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
+    .file-kind-chip {
+      min-height: 18px;
+      padding: 0 7px;
+      border-radius: 999px;
+      color: @files_muted;
+      background: alpha(@files_sidebar, 0.54);
+      border: 1px solid alpha(@files_border, 0.46);
+      font: 500 9px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .file-risk-chip {
+      color: @seven_danger;
+      background: alpha(@seven_danger, 0.12);
+      border-color: alpha(@seven_danger, 0.36);
+    }
     .tag-pill {
       min-height: 18px;
       padding: 0 7px;
@@ -227,9 +360,41 @@
       color: @files_muted;
       font: 500 11px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
     }
+    .selection-bar {
+      min-height: 42px;
+      padding: 6px 10px;
+      background:
+        radial-gradient(circle at 4% 50%, alpha(@files_accent, 0.18), transparent 26%),
+        linear-gradient(90deg, alpha(@files_accent, 0.14), alpha(@files_sidebar, 0.24));
+      border-top: 1px solid alpha(@files_accent, 0.22);
+      border-bottom: 1px solid alpha(@files_border, 0.38);
+    }
+    .selection-action {
+      min-height: 26px;
+      border-radius: 999px;
+      padding: 2px 10px;
+      color: @files_text;
+      background: alpha(@files_panel, 0.48);
+      border: 1px solid alpha(@files_border, 0.52);
+      font: 500 10px "SF Pro Text", "SF UI Text", "San Francisco", system-ui, sans-serif;
+    }
+    .selection-action:hover {
+      background: @files_hover;
+      border-color: alpha(@files_accent, 0.28);
+    }
     .file-tile-box {
       min-width: 120px;
       min-height: 124px;
+    }
+    .files-list-row {
+      border-radius: 12px;
+      margin: 3px 0;
+      background: alpha(@files_sidebar, 0.28);
+      border: 1px solid alpha(@files_border, 0.34);
+    }
+    .files-list-row:selected {
+      background: linear-gradient(90deg, alpha(@files_accent, 0.22), alpha(@files_sidebar, 0.22));
+      border-color: alpha(@files_accent, 0.32);
     }
     menu {
       border-radius: 12px;

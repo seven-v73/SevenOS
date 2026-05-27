@@ -2242,7 +2242,7 @@ if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_
    grep -q 'detail_button_row' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'seven-quick-settings wifi' "$ROOT_DIR/bin/seven-wifi" &&
    grep -q 'seven-quick-settings", "bluetooth"' "$ROOT_DIR/bin/seven-bluetooth" &&
-   grep -q 'set_keyboard_interactivity(window, True)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -q 'SEVENOS_CONTROL_CENTER_KEYBOARD' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'def placeholder_snapshot' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'SNAPSHOT_CACHE_FILE' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'QUICK_PID_FILE' "$ROOT_DIR/bin/seven-quick-settings-native" &&
@@ -3034,40 +3034,40 @@ else
   fail "SevenOS migration planner is missing"
 fi
 
-if grep -q 'self.path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/welcome"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/welcome-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/session"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/identity"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/profile-gaps"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/profile-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/windows-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/installer-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/packages-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/store"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/box"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/cloud"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/flow"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/cluster"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/stack"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/shell"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/shell-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/core-snapshot"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/core-health"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/shield-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/cyberspace"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/cyberspace-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/server-plan"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/control"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/b3"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/daily"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/events"' "$ROOT_DIR/server/seven-server.sh" &&
-   grep -q 'self.path == "/insights"' "$ROOT_DIR/server/seven-server.sh" &&
+if grep -q 'path == "/state"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/welcome"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/welcome-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/session"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/identity"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/profiles"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/profile-gaps"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/profile-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/windows-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/installer-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/packages-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/store"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/box"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/cloud"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/flow"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/cluster"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/manifest"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/actions"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/stack"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/shell"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/shell-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/core-snapshot"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/core-health"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/experience"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/shield"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/shield-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/cyberspace"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/cyberspace-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/server-plan"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/control"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/b3"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/daily"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/events"' "$ROOT_DIR/server/seven-server.sh" &&
+   grep -q 'path == "/insights"' "$ROOT_DIR/server/seven-server.sh" &&
    grep -q 'curl http://127.0.0.1:7777/state' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/welcome' "$ROOT_DIR/server/README.md" &&
    grep -q 'curl http://127.0.0.1:7777/welcome-plan' "$ROOT_DIR/server/README.md" &&

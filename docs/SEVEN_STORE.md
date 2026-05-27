@@ -262,6 +262,24 @@ Sections:
 - Cloud
 - African Culture
 
+### Native AppCenter Quality Pass
+
+The native SevenStore surface must stay usable for a non-technical user:
+
+- active navigation state is always visible;
+- the home screen shows catalog health, installed library, sandbox state and recent activity;
+- cards show source, availability and trust before installation;
+- source guidance explains System, Sandboxed, Community and Mini OS installs in plain language;
+- the home page explains the natural flow: discover, review, install;
+- search results summarize best match, source counts and active Mini OS ranking;
+- app detail pages expose a decision panel for source, trust and install scope before technical metadata;
+- profile-aware recommendations adapt to the active Mini OS;
+- installation actions queue into a visible review panel before execution;
+- the detail panel explains source, permissions, install scope and Mini OS association.
+
+SevenStore should never feel like a raw package frontend. It is the reference
+place to discover, install, repair and understand software on SevenOS.
+
 ### Cards
 
 Cards are screenshot-first and restrained.

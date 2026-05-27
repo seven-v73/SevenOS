@@ -29,7 +29,7 @@ def resolve_root() -> Path:
 
 ROOT = resolve_root()
 sys.path.insert(0, str(ROOT / "scripts"))
-from seven_i18n import tr_text  # noqa: E402
+from seven_i18n import language_code, tr_text  # noqa: E402
 import seven_theme  # noqa: E402
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
@@ -169,6 +169,12 @@ class SevenStore(Gtk.Application):
         self.advanced_mode = False
         self.source_filter = "all"
         self.current_view = "home"
+        self.nav_buttons: dict[str, Gtk.Button] = {}
+        self.active_nav = "discover"
+
+    def tx(self, en: str, fr: str, **values: object) -> str:
+        text = fr if language_code().startswith("fr") else en
+        return text.format(**values) if values else text
 
     def do_activate(self) -> None:
         if self.window:
@@ -226,15 +232,28 @@ class SevenStore(Gtk.Application):
 
     def sidebar(self) -> Gtk.Box:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        box.set_size_request(168, -1)
+        box.set_size_request(188, -1)
         box.get_style_context().add_class("sidebar")
-        for icon, label, action in (
-            ("go-home-symbolic", tr_text("Discover"), self.render_home),
-            ("view-grid-symbolic", tr_text("Apps"), self.render_categories),
-            ("emblem-default-symbolic", tr_text("Installed"), self.render_installed),
-            ("software-update-available-symbolic", tr_text("Updates"), self.render_updates),
-            ("preferences-system-symbolic", tr_text("Profiles"), self.render_profiles),
-            ("document-open-recent-symbolic", tr_text("Activity"), self.render_activity),
+
+        brand = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        brand.get_style_context().add_class("store-brand")
+        logo = Gtk.Image.new_from_icon_name("seven-store", Gtk.IconSize.DIALOG)
+        logo.set_pixel_size(30)
+        brand.pack_start(logo, False, False, 0)
+        brand_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+        brand_text.pack_start(self.label("SevenStore", "store-brand-title"), False, False, 0)
+        brand_text.pack_start(self.label(self.tx("Software Center", "Centre logiciel"), "store-brand-subtitle"), False, False, 0)
+        brand.pack_start(brand_text, True, True, 0)
+        box.pack_start(brand, False, False, 6)
+
+        for key, icon, label, action in (
+            ("discover", "go-home-symbolic", self.tx("Discover", "Découvrir"), self.render_home),
+            ("apps", "view-grid-symbolic", self.tx("Categories", "Catégories"), self.render_categories),
+            ("installed", "emblem-default-symbolic", self.tx("Installed", "Installées"), self.render_installed),
+            ("updates", "software-update-available-symbolic", self.tx("Updates", "Mises à jour"), self.render_updates),
+            ("profiles", "preferences-system-symbolic", self.tx("Mini OS", "Mini OS"), self.render_profiles),
+            ("permissions", "security-high-symbolic", self.tx("Trust", "Confiance"), self.render_permissions),
+            ("activity", "document-open-recent-symbolic", self.tx("Activity", "Activité"), self.render_activity),
         ):
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
             row.set_halign(Gtk.Align.FILL)
@@ -248,10 +267,30 @@ class SevenStore(Gtk.Application):
             row.pack_start(button_label, True, True, 0)
             button = Gtk.Button()
             button.add(row)
-            button.connect("clicked", lambda _button, callback=action: callback())
+            button.connect("clicked", lambda _button, nav=key, callback=action: self.navigate(nav, callback))
+            self.nav_buttons[key] = button
             box.pack_start(button, False, False, 0)
-        box.pack_end(Gtk.Label(label=tr_text("SevenOS AppCenter")), False, False, 0)
+        self.update_nav_state()
+
+        footer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        footer.get_style_context().add_class("sidebar-footer")
+        footer.pack_start(self.label(self.active_profile_key().title(), "sidebar-footer-title"), False, False, 0)
+        footer.pack_start(self.label(self.tx("Recommendations adapt to this Mini OS.", "Les recommandations suivent ce Mini OS."), "muted"), False, False, 0)
+        box.pack_end(footer, False, False, 0)
         return box
+
+    def navigate(self, key: str, callback) -> None:
+        self.active_nav = key
+        self.update_nav_state()
+        callback()
+
+    def update_nav_state(self) -> None:
+        for key, button in self.nav_buttons.items():
+            context = button.get_style_context()
+            if key == self.active_nav:
+                context.add_class("active")
+            else:
+                context.remove_class("active")
 
     def topbar(self) -> Gtk.Box:
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -259,25 +298,25 @@ class SevenStore(Gtk.Application):
         title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
         title = Gtk.Label(label="SevenStore", xalign=0)
         title.get_style_context().add_class("title")
-        caption = Gtk.Label(label=tr_text("Apps, profiles and trusted installs"), xalign=0)
+        caption = Gtk.Label(label=self.tx("Apps, Mini OS profiles and trusted installs", "Apps, Mini OS et installations de confiance"), xalign=0)
         caption.get_style_context().add_class("caption")
         title_box.pack_start(title, False, False, 0)
         title_box.pack_start(caption, False, False, 0)
         box.pack_start(title_box, False, False, 0)
         self.search_entry.get_style_context().add_class("search")
-        self.search_entry.set_placeholder_text(tr_text("Search apps, tools, games..."))
+        self.search_entry.set_placeholder_text(self.tx("Search apps, tools, games...", "Rechercher apps, outils, jeux..."))
         self.search_entry.connect("activate", self.on_search)
         self.search_entry.connect("search-changed", self.on_search_changed)
         box.pack_start(self.search_entry, True, True, 0)
-        profile = Gtk.Label(label=self.active_profile_label())
+        profile = Gtk.Label(label=f"{self.active_profile_label()} · {self.active_profile_key().title()}")
         profile.get_style_context().add_class("badge")
         box.pack_start(profile, False, False, 0)
-        mode = Gtk.CheckButton(label=tr_text("Advanced"))
+        mode = Gtk.CheckButton(label=self.tx("Advanced", "Avancé"))
         mode.get_style_context().add_class("mode-toggle")
         mode.set_active(self.advanced_mode)
         mode.connect("toggled", self.on_mode_toggled)
         box.pack_start(mode, False, False, 0)
-        refresh = Gtk.Button(label=tr_text("Refresh"))
+        refresh = Gtk.Button(label=self.tx("Refresh", "Actualiser"))
         refresh.get_style_context().add_class("ghost")
         refresh.connect("clicked", self.refresh_catalog)
         box.pack_start(refresh, False, False, 0)
@@ -536,6 +575,8 @@ class SevenStore(Gtk.Application):
             self.render_home()
 
     def render_home(self) -> None:
+        self.active_nav = "discover"
+        self.update_nav_state()
         self.set_view("home")
         self.clear()
         profile_ui = read_profile_ui()
@@ -544,14 +585,19 @@ class SevenStore(Gtk.Application):
         store_collection = home.get("store_collection") or "Profile Apps"
         editorial = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         editorial.get_style_context().add_class("editorial-hero")
+        editorial.pack_start(self.label(self.tx("SevenOS reference space for software", "L’espace logiciel de référence SevenOS"), "editorial-kicker"), False, False, 0)
         editorial.pack_start(self.label("SevenStore", "editorial-title"), False, False, 0)
-        editorial.pack_start(self.label(tr_text("{profile}: search, install and keep apps scoped to the right mini OS.", profile=profile_title), "editorial-copy"), False, False, 0)
+        editorial.pack_start(self.label(self.tx(
+            "{profile}: discover, install and keep apps scoped to the right Mini OS.",
+            "{profile} : découvrir, installer et garder les apps dans le bon Mini OS.",
+            profile=profile_title,
+        ), "editorial-copy"), False, False, 0)
         action_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         for label, query in (
-            (tr_text("Browser"), "browser"),
-            (tr_text("Office"), "office document"),
-            (tr_text("Code"), "code editor docker"),
-            (tr_text("Media"), "video music"),
+            (self.tx("Browser", "Navigateur"), "browser"),
+            (self.tx("Office", "Bureau"), "office document"),
+            (self.tx("Code", "Code"), "code editor docker"),
+            (self.tx("Media", "Média"), "video music"),
         ):
             button = Gtk.Button(label=label)
             button.get_style_context().add_class("ghost")
@@ -559,20 +605,30 @@ class SevenStore(Gtk.Application):
             action_row.pack_start(button, False, False, 0)
         editorial.pack_start(action_row, False, False, 0)
         self.content.pack_start(editorial, False, False, 0)
+
+        self.content.pack_start(self.store_health_panel(), False, False, 0)
+        self.content.pack_start(self.workflow_panel(), False, False, 0)
+        self.content.pack_start(self.source_guide_panel(), False, False, 0)
+
         if home:
-            self.section("Active mini OS")
+            self.section(self.tx("Active Mini OS", "Mini OS actif"))
             active = self.card(str(home.get("title", profile_title)), str(home.get("focus", "")), ["ACTIVE", f"AUTONOMY {home.get('autonomy_score', 0)}%"], {"source": "profile", "key": profile_ui.get("profile", "equinox")})
             active.connect("button-press-event", lambda *_: open_hidden(str(profile_ui.get("center_command") or "seven-profile-center-native")))
             self.content.pack_start(active, False, False, 0)
         active_profile_apps = self.profile_app_entries(self.active_profile_key())
         if active_profile_apps:
-            self.section("Mini OS Library")
-            self.content.pack_start(self.card(f"{len(active_profile_apps)} apps for {self.active_profile_key().title()}", "Apps explicitly associated with this mini OS. They stay visible here even when the broader catalog changes.", ["PROFILE", "LIBRARY"], {"source": "profile", "key": self.active_profile_key()}), False, False, 0)
+            self.section(self.tx("Mini OS Library", "Bibliothèque Mini OS"))
+            self.content.pack_start(self.card(
+                self.tx("{count} apps for {profile}", "{count} apps pour {profile}", count=len(active_profile_apps), profile=self.active_profile_key().title()),
+                self.tx("Apps explicitly associated with this Mini OS. They stay visible here even when the broader catalog changes.", "Apps associées à ce Mini OS. Elles restent visibles ici même si le catalogue global évolue."),
+                ["PROFILE", "LIBRARY"],
+                {"source": "profile", "key": self.active_profile_key()},
+            ), False, False, 0)
             for item in active_profile_apps[:6]:
                 card = self.card(item.get("name", item.get("id", "")), item.get("summary", ""), self.state_badges_for(item), item)
                 card.connect("button-press-event", lambda _widget, _event, row=item: self.render_detail(row))
                 self.content.pack_start(card, False, False, 0)
-        self.section("Recommended now")
+        self.section(self.tx("Recommended now", "Recommandé maintenant"))
         featured = Gtk.FlowBox()
         featured.set_selection_mode(Gtk.SelectionMode.NONE)
         featured.set_min_children_per_line(2)
@@ -584,19 +640,94 @@ class SevenStore(Gtk.Application):
         self.content.pack_start(featured, False, False, 0)
         self.content.show_all()
 
+    def workflow_panel(self) -> Gtk.Box:
+        panel = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        panel.get_style_context().add_class("workflow-panel")
+        for index, (title, note, icon) in enumerate((
+            (self.tx("Discover", "Découvrir"), self.tx("Search by intent, not package names.", "Chercher par besoin, pas par nom de paquet."), "system-search"),
+            (self.tx("Review", "Vérifier"), self.tx("Source, permissions and Mini OS scope stay visible.", "Source, permissions et portée Mini OS restent visibles."), "security-high"),
+            (self.tx("Install", "Installer"), self.tx("SevenStore queues a clear plan before execution.", "SevenStore prépare un plan clair avant l’exécution."), "system-software-install"),
+        ), start=1):
+            step = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            step.get_style_context().add_class("workflow-step")
+            badge = self.label(str(index), "workflow-index", 0.5)
+            step.pack_start(badge, False, False, 0)
+            step.pack_start(self.icon_frame(icon, 20), False, False, 0)
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            text.pack_start(self.label(title, "workflow-title"), False, False, 0)
+            text.pack_start(self.label(note, "workflow-note"), False, False, 0)
+            step.pack_start(text, True, True, 0)
+            panel.pack_start(step, True, True, 0)
+        return panel
+
+    def source_guide_panel(self) -> Gtk.Box:
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        panel.get_style_context().add_class("source-guide")
+        panel.pack_start(self.label(self.tx("Choose with confidence", "Choisir en confiance"), "section-title"), False, False, 0)
+        grid = Gtk.FlowBox()
+        grid.set_selection_mode(Gtk.SelectionMode.NONE)
+        grid.set_min_children_per_line(2)
+        grid.set_max_children_per_line(4)
+        for title, note, icon, css in (
+            (self.tx("System", "Système"), self.tx("Official packages, integrated with SevenOS.", "Paquets officiels, intégrés à SevenOS."), "preferences-system", "trust-system"),
+            (self.tx("Sandboxed", "Sandbox"), self.tx("Flatpak apps with clearer desktop isolation.", "Apps Flatpak avec isolation plus claire."), "security-high", "trust-flatpak"),
+            (self.tx("Community", "Communauté"), self.tx("AUR appears in Advanced mode with review first.", "AUR apparaît en mode avancé avec revue d’abord."), "applications-development", "trust-community"),
+            (self.tx("Mini OS", "Mini OS"), self.tx("Keep tools attached to the right SevenOS space.", "Garder les outils attachés au bon espace SevenOS."), "emblem-default", "trust-profile"),
+        ):
+            item = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            item.get_style_context().add_class("source-guide-tile")
+            item.get_style_context().add_class(css)
+            item.pack_start(self.icon_frame(icon, 22), False, False, 0)
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            text.pack_start(self.label(title, "source-guide-title"), False, False, 0)
+            text.pack_start(self.label(note, "source-guide-note"), False, False, 0)
+            item.pack_start(text, True, True, 0)
+            grid.add(item)
+        panel.pack_start(grid, False, False, 0)
+        return panel
+
+    def store_health_panel(self) -> Gtk.FlowBox:
+        summary = self.payload.get("summary", {}) if isinstance(self.payload.get("summary"), dict) else {}
+        modules_ready = int(summary.get("modules_ready") or 0)
+        modules = int(summary.get("modules") or 0)
+        installed = int(summary.get("installed_apps") or len(self.payload.get("installed_library", [])))
+        flatpak_ready = bool(summary.get("flatpak_ready"))
+        activity = int(summary.get("activity") or len(self.payload.get("recent_activity", [])))
+        rows = [
+            (self.tx("Catalog", "Catalogue"), f"{modules_ready}/{modules}" if modules else self.tx("Ready", "Prêt"), self.tx("SevenOS bundles", "bundles SevenOS"), "view-grid"),
+            (self.tx("Library", "Bibliothèque"), str(installed), self.tx("visible apps", "apps visibles"), "emblem-default"),
+            (self.tx("Sandbox", "Sandbox"), self.tx("Ready", "Prête") if flatpak_ready else self.tx("Setup", "À configurer"), self.tx("Flatpak source", "source Flatpak"), "security-high"),
+            (self.tx("Activity", "Activité"), str(activity), self.tx("recent actions", "actions récentes"), "document-open-recent"),
+        ]
+        flow = Gtk.FlowBox()
+        flow.get_style_context().add_class("store-health")
+        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        flow.set_min_children_per_line(2)
+        flow.set_max_children_per_line(4)
+        for title, value, desc, icon in rows:
+            tile = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            tile.get_style_context().add_class("health-tile")
+            tile.pack_start(self.icon_frame(icon, 24), False, False, 0)
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            text.pack_start(self.label(str(value), "health-value"), False, False, 0)
+            text.pack_start(self.label(f"{title} · {desc}", "health-label"), False, False, 0)
+            tile.pack_start(text, True, True, 0)
+            flow.add(tile)
+        return flow
+
     def recommended_tiles(self) -> list[tuple[str, str, str, str]]:
         profile = self.active_profile_key()
         by_profile = {
-            "forge": [("Ship faster", "Editors, containers and project tooling.", "code docker git", "applications-development")],
-            "shield": [("Authorized audit", "Security tools with clear boundaries.", "wireshark nmap forensic", "security-high")],
-            "studio": [("Creator desk", "Design, video, audio and capture apps.", "design video audio obs", "applications-graphics")],
-            "windows": [("Bridge ready", "Windows compatibility and VM-first workflows.", "windows bridge bottles wine", "computer")],
-            "pulse": [("Play smooth", "Launchers, overlays and performance helpers.", "steam lutris gamescope", "applications-games")],
-            "baobab": [("Culture library", "Reading, language and memory tools.", "reader books language", "accessories-dictionary")],
+            "forge": [(self.tx("Ship faster", "Livrer plus vite"), self.tx("Editors, containers and project tooling.", "Éditeurs, containers et outils projet."), "code docker git", "applications-development")],
+            "shield": [(self.tx("Authorized audit", "Audit autorisé"), self.tx("Security tools with clear boundaries.", "Outils sécurité avec limites claires."), "wireshark nmap forensic", "security-high")],
+            "studio": [(self.tx("Creator desk", "Atelier création"), self.tx("Design, video, audio and capture apps.", "Design, vidéo, audio et capture."), "design video audio obs", "applications-graphics")],
+            "windows": [(self.tx("Bridge ready", "Pont prêt"), self.tx("Windows compatibility and VM-first workflows.", "Compatibilité Windows et workflows VM."), "windows bridge bottles wine", "computer")],
+            "pulse": [(self.tx("Play smooth", "Jouer fluide"), self.tx("Launchers, overlays and performance helpers.", "Launchers, overlays et performance."), "steam lutris gamescope", "applications-games")],
+            "baobab": [(self.tx("Culture library", "Bibliothèque culture"), self.tx("Reading, language and memory tools.", "Lecture, langues et mémoire."), "reader books language", "accessories-dictionary")],
         }
         common = [
-            ("Essentials", "A calm first setup for daily use.", "browser office media", "starred"),
-            ("Sandboxed apps", "Flatpak-first graphical applications.", "flatpak graphical", "system-software-install"),
+            (self.tx("Essentials", "Essentiels"), self.tx("A calm first setup for daily use.", "Une base calme pour l’usage quotidien."), "browser office media", "starred"),
+            (self.tx("Sandboxed apps", "Apps sandboxées"), self.tx("Flatpak-first graphical applications.", "Applications graphiques en priorité Flatpak."), "flatpak graphical", "system-software-install"),
         ]
         return by_profile.get(profile, []) + common
 
@@ -766,6 +897,9 @@ class SevenStore(Gtk.Application):
         event = Gtk.EventBox()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         box.get_style_context().add_class("card")
+        if item and item.get("source"):
+            box.get_style_context().add_class(f"source-{str(item.get('source')).lower()}")
+            box.get_style_context().add_class(self.trust_class_for(item))
         event.add(box)
         box.pack_start(self.icon_frame(self.icon_name_for(item)), False, False, 0)
         text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -786,12 +920,48 @@ class SevenStore(Gtk.Application):
             button.get_style_context().add_class("primary")
             text_box.pack_start(button, False, False, 0)
         box.pack_start(text_box, True, True, 0)
+        if item:
+            meta = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            meta.set_halign(Gtk.Align.END)
+            meta.set_valign(Gtk.Align.CENTER)
+            meta.get_style_context().add_class("card-meta")
+            meta.pack_start(self.label(self.trust_short_label(item), "card-trust", 1), False, False, 0)
+            if item.get("quality_score"):
+                meta.pack_start(self.label(f"{item.get('quality_score')}/100", "card-score", 1), False, False, 0)
+            box.pack_start(meta, False, False, 0)
+        chevron = Gtk.Label(label="›")
+        chevron.get_style_context().add_class("card-chevron")
+        box.pack_start(chevron, False, False, 0)
         return event
 
+    def trust_class_for(self, item: dict) -> str:
+        source = str(item.get("source") or "").lower()
+        if item.get("installed") or source in {"pacman", "flatpak", "profile", "desktop", "collection", "category"}:
+            return "trust-high"
+        if source == "aur":
+            return "trust-review"
+        return "trust-preview"
+
+    def trust_short_label(self, item: dict) -> str:
+        if item.get("installed"):
+            return self.tx("Ready", "Prête")
+        source = str(item.get("source") or "").lower()
+        if source == "flatpak":
+            return self.tx("Sandbox", "Sandbox")
+        if source == "pacman":
+            return self.tx("System", "Système")
+        if source == "aur":
+            return self.tx("Review", "Revue")
+        if source == "profile":
+            return self.tx("Mini OS", "Mini OS")
+        return self.tx("Preview", "Aperçu")
+
     def render_profiles(self) -> None:
+        self.active_nav = "profiles"
+        self.update_nav_state()
         self.set_view("profiles")
         self.clear()
-        self.section("Profile collections")
+        self.section(self.tx("Mini OS collections", "Collections Mini OS"))
         active_profile = self.active_profile_key()
         active_entries = self.profile_app_entries(active_profile)
         self.content.pack_start(self.stats_flow([
@@ -832,7 +1002,7 @@ class SevenStore(Gtk.Application):
     def render_modules(self) -> None:
         self.set_view("modules")
         self.clear()
-        self.section("Installed profile bundles")
+        self.section(self.tx("Installed profile bundles", "Bundles de profils installés"))
         for item in self.payload.get("modules", []):
             desc = f"{item.get('installed', 0)}/{item.get('total', 0)} packages · {item.get('description', '')}"
             card = self.card(item.get("title", item.get("key", "")), desc, item.get("badges", []), item)
@@ -841,9 +1011,11 @@ class SevenStore(Gtk.Application):
         self.content.show_all()
 
     def render_installed(self) -> None:
+        self.active_nav = "installed"
+        self.update_nav_state()
         self.set_view("installed")
         self.clear()
-        self.section("Library")
+        self.section(self.tx("Library", "Bibliothèque"))
         apps = sorted(self.payload.get("installed_library", []), key=lambda item: (str(item.get("source", "")), str(item.get("name", "")).lower()))
         self.content.pack_start(self.library_stats(apps), False, False, 0)
         if not apps:
@@ -863,16 +1035,18 @@ class SevenStore(Gtk.Application):
         self.content.show_all()
 
     def render_categories(self) -> None:
+        self.active_nav = "apps"
+        self.update_nav_state()
         self.set_view("categories")
         self.clear()
-        self.section("Categories")
+        self.section(self.tx("Categories", "Catégories"))
         for title, query, desc, icon in (
-            ("Video & Media", "video player editor", "Players, editors and streaming tools.", "applications-multimedia"),
-            ("Design", "design graphics photo", "Image, vector, typography and creative apps.", "applications-graphics"),
-            ("Developer", "code editor terminal docker", "Code, SDKs, containers and local servers.", "applications-development"),
-            ("Gaming", "steam lutris gamescope", "Game launchers and performance helpers.", "applications-games"),
-            ("Security", "wireshark nmap forensic", "Authorized audit and network tools.", "security-high"),
-            ("Learning", "reader books language", "Reading, office and learning surfaces.", "accessories-dictionary"),
+            (self.tx("Video & Media", "Vidéo et média"), "video player editor", self.tx("Players, editors and streaming tools.", "Lecteurs, montage et streaming."), "applications-multimedia"),
+            (self.tx("Design", "Design"), "design graphics photo", self.tx("Image, vector, typography and creative apps.", "Image, vectoriel, typographie et création."), "applications-graphics"),
+            (self.tx("Developer", "Développement"), "code editor terminal docker", self.tx("Code, SDKs, containers and local servers.", "Code, SDK, containers et serveurs locaux."), "applications-development"),
+            (self.tx("Gaming", "Jeux"), "steam lutris gamescope", self.tx("Game launchers and performance helpers.", "Launchers et aides performance."), "applications-games"),
+            (self.tx("Security", "Sécurité"), "wireshark nmap forensic", self.tx("Authorized audit and network tools.", "Audit autorisé et réseau."), "security-high"),
+            (self.tx("Learning", "Apprentissage"), "reader books language", self.tx("Reading, office and learning surfaces.", "Lecture, bureau et apprentissage."), "accessories-dictionary"),
         ):
             card = self.card(title, desc, ["CATEGORY"], {"icon": icon, "source": "category"})
             card.connect("button-press-event", lambda _w, _e, q=query: self.search_for(q))
@@ -896,9 +1070,11 @@ class SevenStore(Gtk.Application):
             self.on_search(self.search_entry)
 
     def render_updates(self) -> None:
+        self.active_nav = "updates"
+        self.update_nav_state()
         self.set_view("updates")
         self.clear()
-        self.section("Updates")
+        self.section(self.tx("Updates", "Mises à jour"))
         summary = self.payload.get("summary", {}) if isinstance(self.payload.get("summary"), dict) else {}
         modules = self.payload.get("modules", [])
         apps = self.payload.get("apps", [])
@@ -924,9 +1100,11 @@ class SevenStore(Gtk.Application):
         self.content.show_all()
 
     def render_activity(self) -> None:
+        self.active_nav = "activity"
+        self.update_nav_state()
         self.set_view("activity")
         self.clear()
-        self.section("Activity")
+        self.section(self.tx("Activity", "Activité"))
         events = self.payload.get("recent_activity", [])
         summary = self.payload.get("summary", {}) if isinstance(self.payload.get("summary"), dict) else {}
         success = sum(1 for item in events if item.get("status") in {"ok", "ready"})
@@ -966,9 +1144,11 @@ class SevenStore(Gtk.Application):
         return card
 
     def render_permissions(self) -> None:
+        self.active_nav = "permissions"
+        self.update_nav_state()
         self.set_view("permissions")
         self.clear()
-        self.section("Privacy & Permissions")
+        self.section(self.tx("Trust & Permissions", "Confiance et permissions"))
         installed = self.payload.get("installed_library", [])
         sandboxed = [item for item in installed if item.get("source") == "flatpak"]
         local = [item for item in installed if item.get("source") == "desktop"]
@@ -978,8 +1158,13 @@ class SevenStore(Gtk.Application):
             (tr_text("Community"), "AUR", tr_text("shown only in Advanced search"), "applications-development"),
             (tr_text("System"), "Admin", tr_text("global packages require authorization"), "preferences-system"),
         ]), False, False, 0)
-        self.content.pack_start(self.card("Permission model", "SevenStore separates sandboxed desktop apps, local launchers, community packages and system packages so risky actions stay explicit.", ["PRIVACY", "TRUST"]), False, False, 0)
-        self.section("Review tools")
+        self.content.pack_start(self.source_guide_panel(), False, False, 0)
+        self.content.pack_start(self.card(
+            self.tx("Permission model", "Modèle de permissions"),
+            self.tx("SevenStore separates sandboxed desktop apps, local launchers, community packages and system packages so risky actions stay explicit.", "SevenStore sépare apps sandboxées, lanceurs locaux, paquets communautaires et paquets système pour rendre les actions sensibles explicites."),
+            ["PRIVACY", "TRUST"],
+        ), False, False, 0)
+        self.section(self.tx("Review tools", "Outils de revue"))
         for card in (
             self.action_card("Sandboxed apps", "List Flatpak apps. Use Flatseal when installed for detailed permission editing.", ["FLATPAK", "SANDBOXED"], "security-high", "flatpak list --app; printf '\\nTip: install Flatseal for visual permission control.\\n'"),
             self.action_card("Local launchers", "Show desktop apps visible to SevenStore and Launchpad.", ["LOCAL"], "emblem-default", "seven store library"),
@@ -1058,12 +1243,13 @@ class SevenStore(Gtk.Application):
         if generation != self.search_generation:
             return False
         self.clear()
-        self.section(f"Results for {query}")
+        self.section(self.tx("Results for {query}", "Résultats pour {query}", query=query))
         results = payload.get("results", [])
         if not self.advanced_mode:
             results = [item for item in results if item.get("beginner_visible", True)]
         results = self.apply_source_filter(results)
         self.content.pack_start(self.filter_row(query), False, False, 0)
+        self.content.pack_start(self.result_insights_panel(query, payload, results), False, False, 0)
         self.content.pack_start(self.search_status_panel(query, payload, results), False, False, 0)
         if not results:
             self.render_empty_search(query, payload)
@@ -1074,6 +1260,36 @@ class SevenStore(Gtk.Application):
             self.content.pack_start(card, False, False, 0)
         self.content.show_all()
         return False
+
+    def result_insights_panel(self, query: str, payload: dict, results: list[dict]) -> Gtk.Box:
+        counts = {
+            "flatpak": sum(1 for item in results if item.get("source") == "flatpak"),
+            "pacman": sum(1 for item in results if item.get("source") == "pacman"),
+            "aur": sum(1 for item in results if item.get("source") == "aur"),
+            "installed": sum(1 for item in results if item.get("installed")),
+        }
+        panel = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        panel.get_style_context().add_class("result-insights")
+        if results:
+            top = results[0]
+            lead = self.tx("Best match: {name}", "Meilleur choix : {name}", name=top.get("name") or top.get("id") or query)
+            note = self.tx("{count} result(s), ranked for {profile}.", "{count} résultat(s), triés pour {profile}.", count=len(results), profile=self.active_profile_key().title())
+        else:
+            lead = self.tx("No app selected yet", "Aucune app sélectionnée")
+            note = self.tx("Try a broader word or switch source filter.", "Essaie un mot plus large ou change le filtre de source.")
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        text.pack_start(self.label(lead, "result-lead"), False, False, 0)
+        text.pack_start(self.label(note, "muted"), False, False, 0)
+        panel.pack_start(text, True, True, 0)
+        for label, value in (
+            (self.tx("System", "Système"), counts["pacman"]),
+            (self.tx("Sandbox", "Sandbox"), counts["flatpak"]),
+            (self.tx("Community", "Communauté"), counts["aur"]),
+            (self.tx("Ready", "Prêtes"), counts["installed"]),
+        ):
+            pill = self.label(f"{value} {label}", "insight-pill")
+            panel.pack_start(pill, False, False, 0)
+        return panel
 
     def search_status_panel(self, query: str, payload: dict, results: list[dict]) -> Gtk.Box:
         expanded = str(payload.get("expanded_query") or query)
@@ -1090,8 +1306,13 @@ class SevenStore(Gtk.Application):
 
     def render_empty_search(self, query: str, payload: dict) -> None:
         sources = payload.get("sources", {}) if isinstance(payload.get("sources"), dict) else {}
-        self.content.pack_start(self.card("No visible result", "Try one of the common searches below, switch source filter, or enable Advanced mode for CLI tools, libraries and community packages.", ["EMPTY"], {"source": "collection", "icon": "system-search"}), False, False, 0)
-        self.section("Try next")
+        self.content.pack_start(self.card(
+            self.tx("No visible result", "Aucun résultat visible"),
+            self.tx("Try one of the common searches below, switch source filter, or enable Advanced mode for CLI tools, libraries and community packages.", "Essaie une recherche courante, change le filtre de source ou active le mode avancé pour les outils CLI, bibliothèques et paquets communautaires."),
+            ["EMPTY"],
+            {"source": "collection", "icon": "system-search"},
+        ), False, False, 0)
+        self.section(self.tx("Try next", "Essayer ensuite"))
         raw_suggestions = payload.get("suggestions") if isinstance(payload.get("suggestions"), list) else []
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         row.get_style_context().add_class("filter-row")
@@ -1104,7 +1325,9 @@ class SevenStore(Gtk.Application):
             button.connect("clicked", lambda _button, value=query_text: self.search_for(value))
             row.pack_start(button, False, False, 0)
         self.content.pack_start(row, False, False, 0)
-        source_text = ", ".join(f"{key}: {'ready' if value else 'missing'}" for key, value in sources.items()) or tr_text("Source status unavailable")
+        ready = self.tx("ready", "prête")
+        missing = self.tx("missing", "manquante")
+        source_text = ", ".join(f"{key}: {ready if value else missing}" for key, value in sources.items()) or self.tx("Source status unavailable", "État des sources indisponible")
         self.content.pack_start(self.label(source_text, "muted"), False, False, 0)
 
     def apply_source_filter(self, results: list[dict]) -> list[dict]:
@@ -1261,11 +1484,54 @@ class SevenStore(Gtk.Application):
             return tr_text("Native system package integrated with SevenOS.")
         return tr_text("SevenStore preview uses local metadata until screenshots are cached.")
 
+    def install_scope_label(self, item: dict) -> str:
+        source = str(item.get("source") or "").lower()
+        profile = self.active_profile_key().title()
+        if item.get("installed"):
+            return self.tx("Already on this system", "Déjà sur ce système")
+        if source in {"pacman", "aur"} and self.active_profile_key() != "equinox":
+            return self.tx("Recommended scope: {profile}", "Portée recommandée : {profile}", profile=profile)
+        if source == "flatpak":
+            return self.tx("Sandboxed app install", "Installation app sandboxée")
+        if source == "profile":
+            return self.tx("Mini OS capability", "Capacité Mini OS")
+        return self.tx("Preview before install", "Aperçu avant installation")
+
+    def decision_panel(self, item: dict) -> Gtk.Box:
+        panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        panel.get_style_context().add_class("decision-panel")
+        panel.pack_start(self.label(self.tx("Before you continue", "Avant de continuer"), "decision-title"), False, False, 0)
+        flow = Gtk.FlowBox()
+        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        flow.set_min_children_per_line(1)
+        flow.set_max_children_per_line(3)
+        source = str(item.get("source") or "SevenOS")
+        rows = [
+            (self.tx("Source", "Source"), self.public_source_label(source), "preferences-system"),
+            (self.tx("Trust", "Confiance"), self.trust_short_label(item), "security-high"),
+            (self.tx("Scope", "Portée"), self.install_scope_label(item), "emblem-default"),
+        ]
+        for title, value, icon in rows:
+            tile = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            tile.get_style_context().add_class("decision-tile")
+            tile.pack_start(self.icon_frame(icon, 18), False, False, 0)
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+            text.pack_start(self.label(title, "metadata-label"), False, False, 0)
+            text.pack_start(self.label(value, "decision-value"), False, False, 0)
+            tile.pack_start(text, True, True, 0)
+            flow.add(tile)
+        panel.pack_start(flow, False, False, 0)
+        return panel
+
     def render_detail(self, item: dict | None) -> None:
         self.clear(self.detail_box)
         if not item:
-            self.detail_box.pack_start(self.label("Select an app", "section-title"), False, False, 0)
-            self.detail_box.pack_start(self.label("Search or open a collection to inspect source, trust and installation plan.", "muted"), False, False, 0)
+            empty = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            empty.get_style_context().add_class("detail-empty")
+            empty.pack_start(self.icon_frame("seven-store", 44), False, False, 0)
+            empty.pack_start(self.label(self.tx("Select an app", "Sélectionne une app"), "section-title", 0.5), False, False, 0)
+            empty.pack_start(self.label(self.tx("Search or open a collection to inspect source, trust and installation plan.", "Cherche ou ouvre une collection pour voir la source, la confiance et le plan d’installation."), "muted", 0.5), False, False, 0)
+            self.detail_box.pack_start(empty, True, True, 0)
             self.detail_box.show_all()
             return
         name = item.get("name") or item.get("title") or item.get("key") or item.get("id") or "App"
@@ -1276,7 +1542,7 @@ class SevenStore(Gtk.Application):
         detail_text.pack_start(self.label(str(name), "title"), False, False, 0)
         detail_text.pack_start(self.label(str(item.get("summary") or item.get("description") or "SevenStore item."), "muted"), False, False, 0)
         if item.get("installed"):
-            detail_text.pack_start(self.label("Installed and ready", "success"), False, False, 0)
+            detail_text.pack_start(self.label(self.tx("Installed and ready", "Installée et prête"), "success"), False, False, 0)
         detail_hero.pack_start(detail_text, True, True, 0)
         self.detail_box.pack_start(detail_hero, False, False, 0)
         badges = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
@@ -1284,12 +1550,13 @@ class SevenStore(Gtk.Application):
             badges.pack_start(self.label(self.public_badge_label(str(badge)), "badge"), False, False, 0)
         self.detail_box.pack_start(badges, False, False, 0)
         source = item.get("source") or item.get("category") or "SevenOS"
-        self.detail_box.pack_start(self.label(f"Source: {self.public_source_label(str(source))}", "muted"), False, False, 0)
+        self.detail_box.pack_start(self.label(self.tx("Source: {source}", "Source : {source}", source=self.public_source_label(str(source))), "muted"), False, False, 0)
+        self.detail_box.pack_start(self.decision_panel(item), False, False, 0)
         self.detail_box.pack_start(self.metadata_grid(item), False, False, 0)
         self.detail_box.pack_start(self.label(self.source_identity(item), "store-source"), False, False, 0)
         quality = item.get("quality_score")
         if quality:
-            self.detail_box.pack_start(self.label(f"Quality score: {quality}/100 · {item.get('quality_label', 'Ready')}", "quality"), False, False, 0)
+            self.detail_box.pack_start(self.label(self.tx("Quality score: {quality}/100 · {label}", "Score qualité : {quality}/100 · {label}", quality=quality, label=item.get("quality_label", "Ready")), "quality"), False, False, 0)
         self.detail_box.pack_start(self.label(self.trust_summary(item), "risk-low" if str(source).lower() in {"flatpak", "pacman", "profile", "desktop"} else "risk-medium"), False, False, 0)
         self.detail_box.pack_start(self.permission_summary(item), False, False, 0)
         explanation = item.get("explanation")
