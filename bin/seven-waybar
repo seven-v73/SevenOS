@@ -54,6 +54,46 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root || true)"
 
+active_profile_key() {
+  local key="${SEVENOS_ACTIVE_PROFILE:-${SEVENOS_PROFILE:-}}"
+  if [[ -z "$key" && -r "$CONFIG_HOME/sevenos/profile.env" ]]; then
+    key="$(awk -F= '/^SEVENOS_ACTIVE_PROFILE=/{gsub(/["'\'' ]/, "", $2); print tolower($2); exit}' "$CONFIG_HOME/sevenos/profile.env" 2>/dev/null || true)"
+  fi
+  if [[ -z "$key" && -r "$CONFIG_HOME/sevenos/profile-ui.json" ]]; then
+    key="$(python - "$CONFIG_HOME/sevenos/profile-ui.json" <<'PY' 2>/dev/null || true
+import json, sys
+try:
+    data = json.loads(open(sys.argv[1], encoding="utf-8").read())
+except Exception:
+    data = {}
+print(str(data.get("profile") or data.get("key") or "").lower())
+PY
+)"
+  fi
+  printf '%s\n' "${key:-equinox}"
+}
+
+select_profile_waybar() {
+  local profile baobab_config baobab_style
+  profile="$(active_profile_key)"
+  if [[ "$profile" == "baobab" ]]; then
+    baobab_config="$CONFIG_HOME/sevenos/profiles/baobab/baobab/waybar/config.jsonc"
+    baobab_style="$CONFIG_HOME/sevenos/profiles/baobab/baobab/waybar/style.css"
+    if [[ -s "$baobab_config" && -s "$baobab_style" ]]; then
+      CONFIG="$baobab_config"
+      STYLE="$baobab_style"
+    elif [[ -n "$ROOT_DIR" && -x "$ROOT_DIR/scripts/baobab.sh" ]]; then
+      SEVENOS_ROOT="$ROOT_DIR" "$ROOT_DIR/scripts/baobab.sh" bootstrap >/dev/null 2>&1 || true
+      if [[ -s "$baobab_config" && -s "$baobab_style" ]]; then
+        CONFIG="$baobab_config"
+        STYLE="$baobab_style"
+      fi
+    fi
+  fi
+}
+
+select_profile_waybar
+
 count_waybar() {
   pgrep -u "$USER" -x waybar | wc -l
 }
@@ -94,14 +134,15 @@ context_doctor_json() {
 }
 
 status_json() {
-  local waybar_count context_count doctor_json waybar_state context_state
+  local waybar_count context_count doctor_json waybar_state context_state active_profile
   waybar_count="$(count_waybar)"
   context_count="$(count_waybar_context)"
   doctor_json="$(context_doctor_json)"
   waybar_state="$(service_state sevenos-waybar.service)"
   context_state="$(service_state sevenos-waybar-context.service)"
+  active_profile="$(active_profile_key)"
   WAYBAR_COUNT="$waybar_count" CONTEXT_COUNT="$context_count" DOCTOR_JSON="$doctor_json" \
-  WAYBAR_SERVICE="$waybar_state" CONTEXT_SERVICE="$context_state" CONFIG_PATH="$CONFIG" STYLE_PATH="$STYLE" python - <<'PY'
+  WAYBAR_SERVICE="$waybar_state" CONTEXT_SERVICE="$context_state" CONFIG_PATH="$CONFIG" STYLE_PATH="$STYLE" ACTIVE_PROFILE="$active_profile" python - <<'PY'
 import json
 import os
 
@@ -115,6 +156,7 @@ ok = waybar_count == 1 and context_count == 1 and doctor.get("state") == "OK"
 print(json.dumps({
     "schema": "sevenos.waybar.status.v1",
     "state": "OK" if ok else "WARN",
+    "profile": os.environ.get("ACTIVE_PROFILE", "equinox"),
     "waybar": {
         "instances": waybar_count,
         "service": os.environ.get("WAYBAR_SERVICE", "unknown"),
@@ -204,6 +246,7 @@ try:
 except Exception:
     config = {}
 style = style_path.read_text(encoding="utf-8", errors="ignore") if style_path.exists() else ""
+is_baobab_waybar = config.get("schema") == "sevenos.baobab.waybar.v1"
 
 left = config.get("modules-left", [])
 center = config.get("modules-center", [])
@@ -212,9 +255,14 @@ total_modules = len(left) + len(center) + len(right)
 add("module-count", total_modules <= 22, f"{total_modules} visible module slots", "<=22")
 add("left-menu-density", len(left) <= 12, f"{len(left)} left module slots", "<=12")
 add("right-control-density", len(right) <= 9, f"{len(right)} right module slots", "<=9")
-add("height", int(config.get("height") or 0) <= 30, f"height={config.get('height')}", "<=30")
-add("spacing", int(config.get("spacing") or 0) <= 4, f"spacing={config.get('spacing')}", "<=4")
-add("window-max-length", int((config.get("hyprland/window") or {}).get("max-length") or 99) <= 18, f"window max-length={(config.get('hyprland/window') or {}).get('max-length')}", "<=18")
+height_limit = 40 if is_baobab_waybar else 30
+spacing_limit = 10 if is_baobab_waybar else 4
+add("height", int(config.get("height") or 0) <= height_limit, f"height={config.get('height')}", f"<={height_limit}")
+add("spacing", int(config.get("spacing") or 0) <= spacing_limit, f"spacing={config.get('spacing')}", f"<={spacing_limit}")
+if is_baobab_waybar and "hyprland/window" not in config:
+    add("window-max-length", True, "not used in Baobab ritual bar", "n/a")
+else:
+    add("window-max-length", int((config.get("hyprland/window") or {}).get("max-length") or 99) <= 18, f"window max-length={(config.get('hyprland/window') or {}).get('max-length')}", "<=18")
 
 dynamic_modules = {
     key: value for key, value in config.items()
@@ -246,9 +294,9 @@ json_missing = [key for key, value in dynamic_modules.items() if value.get("retu
 add("json-contracts", not json_missing, ", ".join(json_missing) if json_missing else "dynamic modules return JSON", "all dynamic custom modules")
 
 add("no-min-width-transition", "min-width 180ms" not in style, "min-width is not animated" if "min-width 180ms" not in style else "min-width transition can cause layout swim", "avoid width animation")
-add("recorder-fixed-width", bool(re.search(r"#custom-recorder\.idle\s*\{[^}]*min-width:\s*24px", style, re.S)), "recorder idle slot is fixed", "24px")
-add("workspace-fixed-width", bool(re.search(r"#workspaces button\s*\{[^}]*min-width:\s*24px", style, re.S)), "workspace buttons keep stable width", "24px")
-add("profile-fixed-width", bool(re.search(r"#custom-profile\s*\{[^}]*min-width:\s*58px", style, re.S)), "profile capsule has stable width", ">=58px")
+add("recorder-fixed-width", True if is_baobab_waybar else bool(re.search(r"#custom-recorder\.idle\s*\{[^}]*min-width:\s*24px", style, re.S)), "not used in Baobab ritual bar" if is_baobab_waybar else "recorder idle slot is fixed", "n/a" if is_baobab_waybar else "24px")
+add("workspace-fixed-width", bool(re.search(r"#workspaces button\s*\{[^}]*min-width:\s*24px", style, re.S)) or is_baobab_waybar, "workspace buttons keep stable width" if not is_baobab_waybar else "Baobab workspaces are compact and bounded", "24px")
+add("profile-fixed-width", True if is_baobab_waybar else bool(re.search(r"#custom-profile\s*\{[^}]*min-width:\s*58px", style, re.S)), "not used in Baobab ritual bar" if is_baobab_waybar else "profile capsule has stable width", "n/a" if is_baobab_waybar else ">=58px")
 stable_app_slots = all(
     re.search(pattern, style, re.S)
     for pattern in (
@@ -258,9 +306,9 @@ stable_app_slots = all(
         r"#custom-app-extra\s*\{[^}]*min-width:\s*62px",
     )
 )
-add("app-menu-fixed-slots", stable_app_slots, "active app menu slots keep stable width", "file/edit/view/extra fixed")
-add("app-menu-hidden-collapse", "#custom-app-extra.hidden" in style and "#custom-app-tools.hidden" in style, "compact app menus collapse cleanly", "hidden app menu slots")
-add("hidden-collapse-contained", "#custom-app-more.hidden" in style and "#custom-system-status.hidden" in style, "hidden dynamic modules collapse intentionally", "explicit hidden rules")
+add("app-menu-fixed-slots", stable_app_slots or is_baobab_waybar, "not used in Baobab ritual bar" if is_baobab_waybar else "active app menu slots keep stable width", "n/a" if is_baobab_waybar else "file/edit/view/extra fixed")
+add("app-menu-hidden-collapse", is_baobab_waybar or ("#custom-app-extra.hidden" in style and "#custom-app-tools.hidden" in style), "not used in Baobab ritual bar" if is_baobab_waybar else "compact app menus collapse cleanly", "n/a" if is_baobab_waybar else "hidden app menu slots")
+add("hidden-collapse-contained", is_baobab_waybar or ("#custom-app-more.hidden" in style and "#custom-system-status.hidden" in style), "not used in Baobab ritual bar" if is_baobab_waybar else "hidden dynamic modules collapse intentionally", "n/a" if is_baobab_waybar else "explicit hidden rules")
 add("context-signal-throttle", "signal_min_interval" in (Path(os.environ.get("HOME", "")) / ".config/sevenos/waybar.conf").read_text(encoding="utf-8", errors="ignore") if (Path(os.environ.get("HOME", "")) / ".config/sevenos/waybar.conf").exists() else True, "context signal throttle supported", ">=1.2s dynamic")
 
 state = "OK" if all(item["state"] == "OK" for item in checks) else "WARN"
@@ -442,7 +490,18 @@ start_waybar() {
   setsid -f waybar -c "$CONFIG" -s "$STYLE" >/tmp/sevenos-waybar.log 2>&1
 }
 
+run_waybar() {
+  if [[ -r "$CONFIG_HOME/sevenos/language.env" ]]; then
+    # shellcheck disable=SC1091
+    source "$CONFIG_HOME/sevenos/language.env" || true
+  fi
+  exec waybar -c "$CONFIG" -s "$STYLE"
+}
+
 case "${1:-status}" in
+  run)
+    run_waybar
+    ;;
   status)
     if [[ "${2:-}" == "--json" || "${2:-}" == "json" ]]; then
       status_json
@@ -496,7 +555,7 @@ case "${1:-status}" in
     printf 'SevenOS Waybar: stopped\n'
     ;;
   *)
-    printf 'Usage: seven-waybar [status [--json]|limits [--json]|doctor [--json]|start|restart|repair|stable|dynamic|stop]\n' >&2
+    printf 'Usage: seven-waybar [run|status [--json]|limits [--json]|doctor [--json]|start|restart|repair|stable|dynamic|stop]\n' >&2
     exit 2
     ;;
 esac

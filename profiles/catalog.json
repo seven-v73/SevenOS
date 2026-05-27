@@ -130,8 +130,8 @@
       }
     },
     "baobab": {
-      "title": "Baobab Cultural OS",
-      "role": "African cultural mini OS",
+      "title": "Baobab Immersion OS",
+      "role": "African cultural immersion and transmission space",
       "target": "culture",
       "domain": "African heritage, oral memory, language, learning and transmission",
       "purpose": "A living African cultural mini OS: digital village, heritage library, language hub, oral memory, story engine, soundscape, fashion bridge, food memory, wisdom center and offline-first community archive. Baobab does not own general documents, OCR or map/GIS workflows; Atlas owns those.",
@@ -151,6 +151,8 @@
           "Baobab module manifest through seven baobab"
         ],
         "experience": [
+          "Racines, Mémoire, Scène and Terrain workspace flow",
+          "daily ritual and route-first shell orientation",
           "African digital village navigation",
           "Baobab Heritage, Sound, Story, Fashion, Food, Wisdom and Market modules",
           "organic warm visual rhythm inspired by earth, textile, fire, wind and tree shade",
@@ -171,9 +173,11 @@
         "scripts/packages-culture-aur.txt"
       ],
       "waybar_modules": [
-        "profile",
-        "spotlight",
-        "media",
+        "baobab",
+        "ritual",
+        "route",
+        "sound",
+        "language",
         "wifi",
         "bluetooth",
         "audio",
@@ -230,6 +234,9 @@
         "apps": "seven profile apps baobab",
         "runtime": "seven runtime plan baobab",
         "village": "seven baobab",
+        "shell": "seven baobab shell",
+        "immersions": "seven baobab native --view immersions",
+        "journal": "seven baobab native --view journal",
         "modules": "seven baobab modules",
         "heritage": "seven baobab module heritage"
       }

@@ -1,6 +1,25 @@
 {
-  "schema": "sevenos.baobab.languages.v1",
-  "curation_note": "Starter language metadata for Baobab. Phrases must be verified by local speakers before publication or teaching use.",
+  "schema": "sevenos.baobab.languages.v2",
+  "curation_note": "Starter language metadata for Baobab. Phrases, tone marks, audio and teaching use must be verified by local speakers before publication.",
+  "sources": [
+    {
+      "name": "Unicode CLDR",
+      "url": "https://cldr.unicode.org/",
+      "purpose": "Locale orientation, scripts, language codes and region-aware software behavior."
+    },
+    {
+      "name": "Community validation",
+      "url": "local",
+      "purpose": "Required for phrases, pronunciation, variants, cultural context and teaching use."
+    }
+  ],
+  "validation_workflow": [
+    "collect-source",
+    "speaker-review",
+    "tone-and-orthography-review",
+    "audio-consent",
+    "community-publication-decision"
+  ],
   "languages": [
     {
       "key": "moore",
@@ -8,8 +27,13 @@
       "name_en": "Mooré",
       "regions": ["Burkina Faso"],
       "family": "Gur",
+      "script": "Latin",
+      "keyboard": "latin-extended",
+      "cldr_status": "limited-orientation",
+      "audio_status": "needed",
       "priority": "starter",
       "validation": "needs-local-speaker",
+      "starter_tasks": ["collect alphabet notes", "record greetings", "document regional variants"],
       "phrases": []
     },
     {
@@ -18,8 +42,13 @@
       "name_en": "Dyula",
       "regions": ["Burkina Faso", "Côte d'Ivoire", "Mali"],
       "family": "Manding",
+      "script": "Latin",
+      "keyboard": "latin-extended",
+      "cldr_status": "limited-orientation",
+      "audio_status": "needed",
       "priority": "starter",
       "validation": "needs-local-speaker",
+      "starter_tasks": ["collect phrases by region", "review spelling", "record pronunciation with consent"],
       "phrases": []
     },
     {
@@ -28,8 +57,13 @@
       "name_en": "Bambara",
       "regions": ["Mali"],
       "family": "Manding",
+      "script": "Latin / N'Ko where locally used",
+      "keyboard": "latin-extended; nko-research",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
       "priority": "starter",
       "validation": "needs-local-speaker",
+      "starter_tasks": ["review Latin and N'Ko paths", "collect beginner phrases", "document usage context"],
       "phrases": []
     },
     {
@@ -38,8 +72,13 @@
       "name_en": "Wolof",
       "regions": ["Sénégal", "Gambie", "Mauritanie"],
       "family": "Senegambian",
+      "script": "Latin",
+      "keyboard": "latin-extended",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
       "priority": "starter",
       "validation": "needs-local-speaker",
+      "starter_tasks": ["verify starter phrases", "record regional pronunciation", "add usage notes"],
       "phrases": [
         {
           "fr": "Comment ça va ?",
@@ -59,8 +98,13 @@
       "name_en": "Swahili",
       "regions": ["Tanzanie", "Kenya", "Ouganda", "Rwanda", "Burundi", "République démocratique du Congo"],
       "family": "Bantu",
+      "script": "Latin",
+      "keyboard": "latin",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
       "priority": "starter",
       "validation": "needs-local-speaker",
+      "starter_tasks": ["separate coastal and regional usage", "record audio", "add classroom-safe examples"],
       "phrases": [
         {
           "fr": "Bonjour",
@@ -80,8 +124,13 @@
       "name_en": "Yoruba",
       "regions": ["Nigeria", "Bénin", "Togo"],
       "family": "Yoruboid",
+      "script": "Latin with tone marks",
+      "keyboard": "latin-extended-tone-marks",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
       "priority": "starter",
       "validation": "needs-local-speaker",
+      "starter_tasks": ["restore tone marks", "record pronunciation", "validate context before teaching"],
       "phrases": [
         {
           "fr": "Comment ça va ?",
@@ -94,6 +143,111 @@
           "note": "Starter phrase, verify tone marks before publication."
         }
       ]
+    },
+    {
+      "key": "hausa",
+      "name_fr": "Haoussa",
+      "name_en": "Hausa",
+      "regions": ["Nigeria", "Niger", "Ghana", "Cameroun", "Tchad"],
+      "family": "Chadic",
+      "script": "Latin / Ajami where locally used",
+      "keyboard": "latin-extended; arabic-ajami-research",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "starter_tasks": ["separate Latin and Ajami needs", "collect greetings", "record pronunciation with consent"],
+      "phrases": []
+    },
+    {
+      "key": "amharic",
+      "name_fr": "Amharique",
+      "name_en": "Amharic",
+      "regions": ["Éthiopie"],
+      "family": "Semitic",
+      "script": "Ethiopic",
+      "keyboard": "ethiopic",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "starter_tasks": ["verify Ethiopic input", "collect beginner phrases", "record pronunciation"],
+      "phrases": []
+    },
+    {
+      "key": "somali",
+      "name_fr": "Somali",
+      "name_en": "Somali",
+      "regions": ["Somalie", "Djibouti", "Éthiopie", "Kenya"],
+      "family": "Cushitic",
+      "script": "Latin",
+      "keyboard": "latin",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "starter_tasks": ["collect regional variants", "record pronunciation", "review teaching examples"],
+      "phrases": []
+    },
+    {
+      "key": "zulu",
+      "name_fr": "Zoulou",
+      "name_en": "Zulu",
+      "regions": ["Afrique du Sud"],
+      "family": "Bantu",
+      "script": "Latin",
+      "keyboard": "latin",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "starter_tasks": ["collect click consonant notes", "record pronunciation", "review classroom examples"],
+      "phrases": []
+    },
+    {
+      "key": "xhosa",
+      "name_fr": "Xhosa",
+      "name_en": "Xhosa",
+      "regions": ["Afrique du Sud"],
+      "family": "Bantu",
+      "script": "Latin",
+      "keyboard": "latin",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "starter_tasks": ["collect click consonant notes", "record pronunciation", "review regional usage"],
+      "phrases": []
+    },
+    {
+      "key": "kinyarwanda",
+      "name_fr": "Kinyarwanda",
+      "name_en": "Kinyarwanda",
+      "regions": ["Rwanda", "République démocratique du Congo", "Ouganda"],
+      "family": "Bantu",
+      "script": "Latin",
+      "keyboard": "latin",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "starter_tasks": ["collect greetings", "record pronunciation", "document variants"],
+      "phrases": []
+    },
+    {
+      "key": "malagasy",
+      "name_fr": "Malgache",
+      "name_en": "Malagasy",
+      "regions": ["Madagascar"],
+      "family": "Austronesian",
+      "script": "Latin",
+      "keyboard": "latin",
+      "cldr_status": "locale-oriented",
+      "audio_status": "needed",
+      "priority": "starter",
+      "validation": "needs-local-speaker",
+      "starter_tasks": ["collect regional variants", "record pronunciation", "link to island heritage packs"],
+      "phrases": []
     }
   ]
 }

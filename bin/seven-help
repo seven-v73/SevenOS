@@ -725,10 +725,85 @@ seven mini-doctor forge
 seven mini-doctor studio plan --json
 seven-mini-doctor baobab install
 seven-mini-doctor shield rootfs
+seven baobab today
+seven baobab native --view entry
+seven baobab native --view veillee
+seven baobab native --view session
+seven baobab native --view sessions
+seven baobab native --view carnet
+seven baobab native --view constellation
+seven baobab native --view media
+seven baobab native --view protocols
+seven baobab session
+seven baobab languages
+seven baobab protocols
+seven baobab protocol-doctor
+seven baobab validation-kit
+seven baobab validation-doctor
+seven baobab seed-packs
+seven baobab enrich-packs
+seven baobab evidence-packs
+seven baobab audit-packs
+seven baobab native --view immersions
+seven baobab ritual
+seven baobab route
+seven baobab ambiance
+seven baobab compass
+seven baobab trail
+seven baobab remember J'ai lu une fiche locale
+seven baobab shell
+seven baobab journal
+seven baobab immersions
+seven baobab immersion sahel
 seven mini-boundaries
 seven mini-boundaries --open
 seven mini-boundaries --json
 ```
+
+Baobab expose des immersions régionales offline: Sahel, Mandé, côte swahilie,
+Grands Lacs, Kongo Atlantique, Corne de l'Afrique, Afrique australe et îles.
+Chaque immersion donne un ton culturel, des pays liés, des ancres et des rituels
+d'usage pour explorer sans réduire les cultures à une décoration.
+La vue native garde aussi un focus d'immersion, un rituel du jour et un focus
+pays pour que l'exploration reste fluide entre région, pays, langue et collecte.
+La vue `Entrée` agit comme un sas d'immersion: région, pays, trace locale et
+transmission responsable avant d'ouvrir les vues plus riches.
+La vue `Veillée` ralentit l'usage: lire, écouter, noter, relier puis transmettre
+avec prudence. C'est la surface la plus identitaire pour une session Baobab.
+La vue `Séance` transforme ce rythme en phases temporelles adaptées à
+l'ambiance active, pour guider sans surcharger.
+La vue `Carnet` regroupe notes, traces et séance active pour relire la mémoire
+Baobab comme un fil culturel, pas comme une liste technique.
+La vue `Constellation` montre les relations entre région, pays, langues, sons,
+sources, traces et transmission pour garder Baobab relié.
+La vue `Médiathèque` retrouve les sons, images, vidéos et documents locaux
+issus de Sound, du workspace et des packs culturels.
+La barre latérale garde un `État Baobab` permanent: immersion, pays, ambiance,
+traces et prochain geste pour ne jamais perdre le fil.
+Les gestes rapides de cet état changent avec l'ambiance: lecture, langues,
+collecte, Sound ou Musée selon le contexte.
+La `Carte de transmission` résume immersion, pays, rituel, prochain geste et
+garde-fous; elle peut être copiée ou devenir une note locale.
+Le bouton `Session` crée un dossier local avec carte, checklist de respect et
+zone médias pour atelier, classe ou collecte terrain.
+La vue `Sessions` retrouve ces dossiers, montre leur état et ouvre carte,
+médias ou dossier racine en un clic.
+La vue `Protocoles` ajoute les niveaux public, familial, communautaire,
+sacré/réservé et à clarifier, afin qu'un contenu sensible reste local tant que
+source, autorité, consentement et relecture ne sont pas explicites.
+Les changements de focus sont dynamiques: immersion, pays et langue rafraîchissent
+les vues utiles et ajoutent une trace locale sans quitter Baobab.
+Quand Baobab est actif, son shell devient un espace culturel dédié: Waybar de
+rituel/carnet de route, Launchpad filtré Baobab, espaces Racines/Mémoire/Scène/
+Terrain et lanceurs Immersions, Journal, Packs, Explorer, Sound et Collecte.
+`seven baobab today` est le point d'entrée quotidien: rituel, ambiance,
+boussole, route, prochaine action et raccourcis utiles.
+`seven baobab ambiance` règle le rythme public de Baobab: calme,
+apprentissage, terrain ou scène.
+`seven baobab compass` affiche la boussole d'usage responsable: comprendre,
+relier, écouter, collecter, sourcer, préserver et transmettre.
+`seven baobab trail` affiche la trace locale privée de Baobab, et
+`seven baobab remember ...` ajoute un mémo court sans cloud ni compte.
 
 `seven mini-boundaries --open` ouvre la vue Prism Baobab / Equinox / Atlas.
 `seven mini-boundaries` affiche le rapport dans le terminal, et `--json`
@@ -2053,10 +2128,82 @@ seven mini-os suggest
 seven mini-os plan equinox forge shield
 seven mini-os activate equinox forge --yes
 seven mini-os activate equinox --yes
+seven baobab today
+seven baobab native --view entry
+seven baobab native --view veillee
+seven baobab native --view session
+seven baobab native --view sessions
+seven baobab native --view carnet
+seven baobab native --view constellation
+seven baobab native --view media
+seven baobab native --view protocols
+seven baobab session
+seven baobab languages
+seven baobab protocols
+seven baobab protocol-doctor
+seven baobab validation-kit
+seven baobab validation-doctor
+seven baobab seed-packs
+seven baobab enrich-packs
+seven baobab evidence-packs
+seven baobab audit-packs
+seven baobab native --view immersions
+seven baobab ritual
+seven baobab route
+seven baobab ambiance
+seven baobab compass
+seven baobab trail
+seven baobab remember I read a local heritage note
+seven baobab shell
+seven baobab journal
+seven baobab immersions
+seven baobab immersion sahel
 seven mini-boundaries
 seven mini-boundaries --open
 seven mini-boundaries --json
 ```
+
+Baobab exposes offline regional immersions: Sahel, Mande, Swahili Coast,
+Great Lakes, Kongo Atlantic, Horn of Africa, Southern Africa and islands.
+Each immersion gives a cultural tone, related countries, anchors and daily
+rituals so exploration feels rooted rather than decorative.
+The native view also keeps an immersion focus, a daily ritual and a country
+focus so exploration stays fluid across region, country, language and fieldwork.
+The `Entry` view acts as an immersion passage: region, country, local trail and
+responsible transmission before opening the richer views.
+The `Veillée` view slows the session down: read, listen, note, connect and then
+transmit carefully. It is the most identity-first surface for a Baobab session.
+The `Session` view turns that rhythm into timed phases adapted to the active
+ambiance, guiding without crowding the interface.
+The `Carnet` view gathers notes, traces and active session context so Baobab
+memory reads as a cultural thread, not a technical list.
+The `Constellation` view shows relations between region, country, languages,
+sounds, sources, traces and transmission so Baobab stays connected.
+The `Media` view finds local sounds, images, videos and documents from Sound,
+the workspace and cultural packs.
+The sidebar keeps a persistent `Baobab State`: immersion, country, ambiance,
+trail and next gesture, so the user never loses the thread.
+Its quick gestures adapt to the ambiance: reading, languages, collection,
+Sound or Museum depending on context.
+The `Transmission Card` summarizes immersion, country, ritual, next gesture and
+guardrails; it can be copied or turned into a local note.
+The `Session` button creates a local folder with card, respect checklist and a
+media drop zone for workshops, classes or fieldwork.
+The `Sessions` view finds these folders, shows their state and opens card,
+media or root folder in one click.
+Focus changes are dynamic: immersion, country and language refresh the useful
+views and add a local trail event without leaving Baobab.
+When Baobab is active, its shell becomes a dedicated cultural space: ritual/
+route Waybar, Baobab-filtered Launchpad, Roots/Memory/Stage/Field workspaces
+and dedicated Immersions, Journal, Packs, Explore, Sound and Collect apps.
+`seven baobab today` is the daily entry point: ritual, ambiance, compass,
+route, next action and useful shortcuts.
+`seven baobab ambiance` adjusts Baobab's public rhythm: calm, learning,
+fieldwork or stage.
+`seven baobab compass` shows the responsible-use compass: understand, link,
+listen, collect, source, preserve and transmit.
+`seven baobab trail` shows Baobab's private local trail, and
+`seven baobab remember ...` adds a short memo without cloud or account.
 
 `seven mini-boundaries --open` opens the Baobab / Equinox / Atlas Prism view.
 `seven mini-boundaries` prints the terminal report, and `--json` is used by

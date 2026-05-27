@@ -1,0 +1,112 @@
+{
+  "schema": "sevenos.baobab.protocols.v1",
+  "updated": "2026-05-27",
+  "sources": [
+    {
+      "name": "UNESCO DataHub - Intangible Heritage List",
+      "url": "https://data.unesco.org/explore/dataset/ich001/api/",
+      "use": "source-aware intangible heritage metadata, not unrestricted media redistribution"
+    },
+    {
+      "name": "Unicode CLDR",
+      "url": "https://cldr.unicode.org/",
+      "use": "language and locale engineering reference"
+    },
+    {
+      "name": "Local Contexts",
+      "url": "https://localcontexts.org/",
+      "use": "protocol inspiration for Traditional Knowledge and Biocultural labels; do not copy or alter protected label icons"
+    },
+    {
+      "name": "CARE Principles for Indigenous Data Governance",
+      "url": "https://datascience.codata.org/articles/dsj-2020-043",
+      "use": "governance principles: Collective Benefit, Authority to Control, Responsibility and Ethics"
+    }
+  ],
+  "principles": [
+    {
+      "key": "collective-benefit",
+      "title_fr": "Bénéfice collectif",
+      "title_en": "Collective benefit",
+      "body_fr": "Un contenu Baobab doit renforcer la communauté, l'apprentissage, la mémoire locale ou la transmission responsable.",
+      "body_en": "A Baobab record should benefit community, learning, local memory or responsible transmission."
+    },
+    {
+      "key": "authority-to-control",
+      "title_fr": "Autorité de contrôle",
+      "title_en": "Authority to control",
+      "body_fr": "Les détenteurs, locuteurs, familles ou communautés doivent pouvoir définir ce qui est public, privé, réservé ou à corriger.",
+      "body_en": "Knowledge holders, speakers, families or communities should define what is public, private, restricted or corrected."
+    },
+    {
+      "key": "responsibility",
+      "title_fr": "Responsabilité",
+      "title_en": "Responsibility",
+      "body_fr": "Baobab privilégie la source, le contexte, le consentement, la relecture locale et la capacité à retirer un contenu.",
+      "body_en": "Baobab prioritizes source, context, consent, local review and the ability to withdraw material."
+    },
+    {
+      "key": "ethics",
+      "title_fr": "Éthique",
+      "title_en": "Ethics",
+      "body_fr": "Aucun élément sensible, rituel, familial, sacré ou communautaire ne doit être transformé en contenu public par défaut.",
+      "body_en": "Sensitive, ritual, family, sacred or community material must not become public content by default."
+    }
+  ],
+  "sensitivity_levels": [
+    {
+      "key": "public",
+      "title_fr": "Public",
+      "title_en": "Public",
+      "default_action_fr": "Peut être affiché si source, licence et contexte sont présents.",
+      "default_action_en": "May be displayed when source, license and context are present."
+    },
+    {
+      "key": "family",
+      "title_fr": "Familial",
+      "title_en": "Family",
+      "default_action_fr": "Rester local sauf accord explicite des personnes ou familles concernées.",
+      "default_action_en": "Keep local unless concerned people or families explicitly agree."
+    },
+    {
+      "key": "community",
+      "title_fr": "Communautaire",
+      "title_en": "Community",
+      "default_action_fr": "Demander une relecture communautaire avant partage ou publication.",
+      "default_action_en": "Require community review before sharing or publishing."
+    },
+    {
+      "key": "sacred-restricted",
+      "title_fr": "Sacré / réservé",
+      "title_en": "Sacred / restricted",
+      "default_action_fr": "Ne pas publier. Garder local, protégé, ou retirer si la communauté le demande.",
+      "default_action_en": "Do not publish. Keep local, protected, or remove if the community requests it."
+    },
+    {
+      "key": "unknown",
+      "title_fr": "À clarifier",
+      "title_en": "To clarify",
+      "default_action_fr": "Traiter comme sensible jusqu'à clarification.",
+      "default_action_en": "Treat as sensitive until clarified."
+    }
+  ],
+  "workflow": [
+    "source",
+    "context",
+    "rights",
+    "sensitivity",
+    "consent",
+    "community_review",
+    "publication_decision"
+  ],
+  "default_record_protocol": {
+    "sensitivity": "unknown",
+    "access": "local-first",
+    "protocols": [
+      "CARE",
+      "source-context-consent",
+      "community-review-before-publication"
+    ],
+    "publication": "draft-local"
+  }
+}

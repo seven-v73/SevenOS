@@ -12,6 +12,7 @@ libreoffice-fresh
 swaync
 python-pywal
 # Media and creative production
+audacity
 tauon-music-box
 krita
 blender

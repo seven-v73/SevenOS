@@ -43,6 +43,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 CATEGORIES = [
     ("all", "All", "view-app-grid-symbolic"),
     ("sevenos", "SevenOS", "computer-symbolic"),
+    ("baobab", "Baobab", "seven-baobab"),
     ("favorites", "Favorites", "emblem-favorite-symbolic"),
     ("recent", "Recent", "document-open-recent-symbolic"),
     ("dev", "Dev", "applications-development-symbolic"),
@@ -56,7 +57,7 @@ CATEGORIES = [
 ]
 
 PROFILE_SECTION_LABELS = {
-    "baobab": {"office": "Baobab", "media": "Écoute", "creative": "Atelier"},
+    "baobab": {"baobab": "Baobab", "office": "Journal", "media": "Écoute", "creative": "Atelier"},
     "forge": {"dev": "Forge", "system": "Runtime", "network": "Ports"},
     "shield": {"network": "Shield", "system": "Contrôles", "dev": "Analyse"},
     "studio": {"creative": "Studio", "media": "Média", "office": "Briefs"},
@@ -75,9 +76,9 @@ MINI_OS_WORLDS = {
     },
     "baobab": {
         "title": "Baobab",
-        "phrase": "Mémoire, langues, transmission",
-        "filter": "office",
-        "categories": ["office", "media", "creative"],
+        "phrase": "Immersion culturelle africaine",
+        "filter": "baobab",
+        "categories": ["baobab", "office", "media", "creative"],
         "command": "seven profile activate baobab",
     },
     "forge": {
@@ -288,7 +289,7 @@ def default_filter_for_profile(profile: dict) -> str:
         "studio": "creative",
         "atlas": "atlas",
         "pulse": "games",
-        "baobab": "office",
+        "baobab": "baobab",
         "shield": "network",
     }.get(key, "all")
 
@@ -308,6 +309,10 @@ def mini_os_worlds(profile: dict) -> list[dict]:
         world["active"] = key == active
         worlds.append(world)
     return worlds
+
+
+def is_baobab_profile(profile: dict) -> bool:
+    return str(profile.get("profile") or profile.get("key") or active_profile_key()).lower() == "baobab"
 
 
 def world_app_count(apps: list[dict], world: dict) -> int:
@@ -426,6 +431,8 @@ def category_for(data: dict) -> str:
         return "sevenos"
     categories = {item for item in data.get("categories", "").split(";") if item}
     joined = normalize(" ".join((data.get("name", ""), data.get("desktop_id", ""), data.get("path", ""))))
+    if "Culture" in categories or "baobab" in joined:
+        return "baobab"
     if {"Wine", "Bottles"} & categories or "wine" in joined or "bottles" in joined:
         return "atlas"
     if "Development" in categories:
@@ -1022,6 +1029,9 @@ def fuzzy_score(query: str, app: dict, favorites: list[str], recent_map: dict) -
 def profile_css(profile: dict, mode: str) -> str:
     accent = profile.get("accent") or "#8B7CFF"
     secondary = profile.get("secondary") or "#6EA8FF"
+    if str(profile.get("profile") or profile.get("key") or "").lower() == "baobab":
+        accent = "#315E4D"
+        secondary = "#C89B63"
     return f"""
     .launchpad-topbar {{
       border-color: alpha({accent}, 0.26);
@@ -1040,11 +1050,38 @@ def profile_css(profile: dict, mode: str) -> str:
       border-color: alpha({secondary}, 0.22);
       background: alpha({secondary}, {'0.12' if mode == 'light' else '0.13'});
     }}
+    .launchpad-filter {{
+      border-color: alpha({accent}, 0.16);
+    }}
+    .launchpad-world-active .launchpad-world-title {{
+      color: {secondary};
+    }}
     """
 
 
 def launchpad_css(mode: str, profile: dict | None = None) -> str:
     base = seven_theme.gtk_app_css("launchpad", mode) if seven_theme else ""
+    baobab_extra = ""
+    if is_baobab_profile(profile or {}):
+        baobab_extra = """
+        .baobab-immersion-strip {
+          padding: 10px 14px;
+          border-radius: 22px;
+          background: rgba(49, 94, 77, 0.18);
+          border: 1px solid rgba(200, 155, 99, 0.20);
+        }
+        .baobab-quick {
+          padding: 8px 13px;
+          border-radius: 18px;
+          color: #F4EAD8;
+          background: rgba(18, 27, 21, 0.64);
+          border: 1px solid rgba(139, 170, 123, 0.22);
+        }
+        .baobab-quick:hover {
+          background: rgba(49, 94, 77, 0.42);
+          border-color: rgba(200, 155, 99, 0.34);
+        }
+        """
     if mode == "light":
         return base + """
         * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
@@ -1136,7 +1173,7 @@ def launchpad_css(mode: str, profile: dict | None = None) -> str:
           background: rgba(255,255,255,0.62);
           border: 1px solid rgba(47,123,255,0.12);
         }
-        """ + profile_css(profile or {}, mode)
+        """ + baobab_extra + profile_css(profile or {}, mode)
     return base + """
     * { font-family: "SF Pro Display", "SF UI Display", "Inter", system-ui, sans-serif; }
     window.seven-launchpad {
@@ -1231,7 +1268,7 @@ def launchpad_css(mode: str, profile: dict | None = None) -> str:
       background: rgba(255,255,255,0.10);
       border: 1px solid rgba(255,255,255,0.08);
     }
-    """ + profile_css(profile or {}, mode)
+    """ + baobab_extra + profile_css(profile or {}, mode)
 
 
 def run_launchpad() -> int:
@@ -1331,6 +1368,25 @@ def run_launchpad() -> int:
     ai_button.set_tooltip_text("Open the active mini OS home")
     ai_button.connect("clicked", lambda _button: run_detached(["bash", "-lc", center_command]))
     topbar.pack_start(ai_button, False, False, 0)
+
+    if is_baobab_profile(profile_ui):
+        baobab_strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
+        baobab_strip.set_halign(Gtk.Align.CENTER)
+        baobab_strip.get_style_context().add_class("baobab-immersion-strip")
+        baobab_actions = [
+            ("Immersions", "seven baobab native --view immersions"),
+            ("Journal", "seven baobab native --view journal"),
+            ("Packs", "seven baobab native --view packs"),
+            ("Sound", "seven baobab sound"),
+            ("Route", "seven baobab route"),
+        ]
+        for label, command in baobab_actions:
+            quick = Gtk.Button(label=label)
+            quick.get_style_context().add_class("baobab-quick")
+            quick.set_tooltip_text(command)
+            quick.connect("clicked", lambda _button, command=command: (run_detached(["bash", "-lc", command]), window.close()))
+            baobab_strip.pack_start(quick, False, False, 0)
+        root.pack_start(baobab_strip, False, False, 0)
 
     worlds = mini_os_worlds(profile_ui)
     world_count_labels: dict[str, Gtk.Label] = {}

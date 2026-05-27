@@ -264,6 +264,13 @@ baobab.apply_config	Baobab	Apply Baobab Config	seven baobab apply-config	safe	Ma
 baobab.sound	Baobab	Baobab Sound	seven baobab sound	safe	Open Baobab Sound through the profile-owned MPV configuration and local audio library.
 baobab.open	Baobab	Open Baobab	seven baobab open	safe	Open the native Baobab cultural OS surface.
 baobab.native	Baobab	Baobab Native	seven baobab native	safe	Open the French-first native Baobab interface for patrimoine, pays, récits and musée.
+baobab.entry	Baobab	Baobab Entry	seven baobab native --view entry	safe	Open the Baobab entry passage: region, country, trace and responsible transmission.
+baobab.veillee	Baobab	Baobab Veillée	seven baobab native --view veillee	safe	Open the slow Baobab presence surface for reading, listening, tracing and transmitting.
+baobab.session	Baobab	Baobab Session	seven baobab native --view session	safe	Open the guided Baobab session with phases adapted to the active ambiance.
+baobab.sessions	Baobab	Baobab Session Folders	seven baobab native --view sessions	safe	Open local Baobab workshop and fieldwork session folders.
+baobab.carnet	Baobab	Baobab Carnet	seven baobab native --view carnet	safe	Open the Baobab cultural notebook with notes, traces and session context.
+baobab.constellation	Baobab	Baobab Constellation	seven baobab native --view constellation	safe	Open the Baobab relation map between immersion, country, languages, sound, traces and sources.
+baobab.media	Baobab	Baobab Media	seven baobab native --view media	safe	Open Baobab's local living media library for sounds, images, videos and documents.
 baobab.village	Baobab	Baobab Village Page	seven baobab village	safe	Show the generated local Village page path.
 baobab.heritage_gallery	Baobab	Heritage Gallery	seven baobab heritage	safe	Open the visual offline heritage gallery.
 baobab.museum	Baobab	Baobab Museum	seven baobab museum	safe	Open the generated offline Baobab museum scene.
@@ -271,6 +278,18 @@ baobab.story	Baobab	Story Mode	seven baobab story	safe	Open the generated offlin
 baobab.explore_map	Baobab	Explore Africa	seven baobab explore	safe	Open the generated offline cultural map prototype.
 baobab.countries	Baobab	Africa Country Index	seven baobab countries	safe	Show the embedded offline Africa country index.
 baobab.country	Baobab	Country Detail	seven baobab country Burkina Faso	safe	Show an offline country detail from the Baobab Africa index.
+baobab.immersions	Baobab	Cultural Immersions	seven baobab immersions	safe	Show Baobab regional cultural immersion paths.
+baobab.immersion	Baobab	Open Immersion	seven baobab immersion sahel	safe	Show a specific Baobab cultural immersion.
+baobab.ritual	Baobab	Daily Ritual	seven baobab ritual	safe	Show today's Baobab immersion ritual and suggested next actions.
+baobab.journal	Baobab	Ritual Journal	seven baobab journal	safe	List local Baobab ritual notes and their Markdown folder.
+baobab.route	Baobab	Baobab Route	seven baobab route	safe	Show the daily Baobab route progress across immersion, country, notes, sources and packs.
+baobab.ambiance	Baobab	Baobab Ambiance	seven baobab ambiance	safe	Show or change Baobab's public ambiance: calm, learning, fieldwork or stage.
+baobab.compass	Baobab	Baobab Compass	seven baobab compass	safe	Show the responsible-use compass for Baobab: understand, link, listen, collect, source, preserve and transmit.
+baobab.today	Baobab	Baobab Today	seven baobab today	safe	Show today's Baobab entry point: ritual, route, ambiance, next action and quick actions.
+baobab.session_json	Baobab	Baobab Session JSON	seven baobab session	safe	Show the guided Baobab session contract in terminal form.
+baobab.trail	Baobab	Baobab Trace	seven baobab trail	safe	Show Baobab's local living trail of focus, ambiance, journal and memory events.
+baobab.remember	Baobab	Remember In Baobab	seven baobab remember Mémoire locale	safe	Add a short local memory note to Baobab's private trail.
+baobab.shell	Baobab	Baobab Shell	seven baobab shell	safe	Show Baobab's dedicated Waybar, Launchpad, workspace and app identity.
 baobab.unesco	Baobab	UNESCO ICH Index	seven baobab unesco	safe	Show African-linked UNESCO intangible cultural heritage entries imported from the local CSV.
 baobab.datasets	Baobab	Cultural Datasets	seven baobab datasets	safe	Show local CSV, TSV and JSON sources available to Baobab.
 baobab.catalog	Baobab	Offline Catalog	seven baobab catalog	safe	Show the Baobab offline starter catalog.
@@ -281,12 +300,17 @@ baobab.engines	Baobab	Engine Readiness	seven baobab engines	safe	Show local read
 baobab.tools	Baobab	Baobab Tools	seven baobab tools	safe	Show the cultural OS tool strategy: shell, identity, offline content, AI, education, media, sync and creation.
 baobab.tool_doctor	Baobab	Baobab Tool Doctor	seven baobab tool-doctor	safe	Validate Baobab core tools and optional immersive/community engines.
 baobab.languages	Baobab	African Languages	seven baobab languages	safe	Show Baobab starter African language metadata and local validation status.
+baobab.protocols	Baobab	Cultural Protocols	seven baobab native --view protocols	safe	Open Baobab sensitivity, access, consent and publication protocol guidance.
+baobab.protocol_doctor	Baobab	Protocol Doctor	seven baobab protocol-doctor	safe	Check Baobab packs for sensitivity, access, consent and publication protocol metadata.
+baobab.validation_kit	Baobab	Validation Kit	seven baobab validation-kit	safe	Create validator registry, validation requests and attestation templates for real community review.
+baobab.validation_doctor	Baobab	Validation Doctor	seven baobab validation-doctor	safe	Check validators, pending requests and completed community attestations.
 baobab.integrations	Baobab	Open Source Engines	seven baobab integrations	safe	List Baobab open source engine candidates.
 baobab.roadmap	Baobab	Integration Roadmap	seven baobab roadmap	safe	Show the Baobab shell, heritage, 3D, AI and offline integration roadmap.
 baobab.packs	Baobab	Cultural Packs	seven baobab packs	safe	List local Baobab cultural packs.
 baobab.audit_packs	Baobab	Audit Cultural Packs	seven baobab audit-packs	safe	Check Baobab packs for provenance, license, curator, confidence, language and country metadata.
 baobab.seed_packs	Baobab	Seed Starter Packs	seven baobab seed-packs	safe	Create and import starter packs for Burkina food, Mandingue sound and Faso Danfani fashion.
 baobab.enrich_packs	Baobab	Prepare Living Packs	seven baobab enrich-packs	safe	Add interview, consent, media and community review templates to Baobab packs.
+baobab.evidence_packs	Baobab	Public Evidence Kits	seven baobab evidence-packs	safe	Add public-source notes, rights limits, metadata manifests and protocol checklists without claiming field validation.
 baobab.sample_fieldwork	Baobab	Sample Fieldwork	seven baobab sample-fieldwork	safe	Create sample-only fieldwork files to demonstrate collection readiness without claiming real validation.
 baobab.scaffold_pack	Baobab	New Cultural Pack	seven baobab scaffold-pack local-heritage	safe	Create a local Baobab cultural pack scaffold.
 baobab.modules	Baobab	Baobab Modules	seven baobab modules	safe	Show Heritage, Story, Sound, Explore, Museum, Languages, Fashion, Food, Wisdom and Market modules.
@@ -527,7 +551,7 @@ for raw in os.environ.get("ACTION_ROWS", "").splitlines():
 
 quick_actions = {
     "equinox": ["spotlight.open", "files.profile", "settings.open", "experience.recommend"],
-    "baobab": ["baobab.open", "reader.open", "bridge.switch.baobab", "mini.boundaries"],
+    "baobab": ["baobab.open", "baobab.entry", "baobab.veillee", "baobab.session", "baobab.sessions", "baobab.carnet", "baobab.constellation", "baobab.media", "baobab.today", "baobab.compass", "baobab.trail", "baobab.ritual", "baobab.route", "baobab.ambiance", "baobab.shell", "baobab.journal", "baobab.immersions", "baobab.protocols", "baobab.protocol_doctor", "baobab.evidence_packs", "baobab.validation_kit", "baobab.validation_doctor", "reader.open", "bridge.switch.baobab", "mini.boundaries"],
     "forge": ["terminal.forge", "files.code", "deploy.plan", "profile.strict.forge"],
     "shield": ["security.dashboard", "security.scope", "security.lab.forensics", "profile.strict.shield_ephemeral"],
     "studio": ["files.pictures", "files.videos", "recorder.area", "profile.strict.studio"],

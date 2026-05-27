@@ -1,0 +1,194 @@
+{
+  "schema": "sevenos.baobab.immersions.v1",
+  "updated": "2026-05-27",
+  "principles": [
+    "local-first",
+    "source-aware",
+    "community-review",
+    "no-folklore-shortcuts"
+  ],
+  "regions": [
+    {
+      "id": "sahel",
+      "name_fr": "Sahel vivant",
+      "name_en": "Living Sahel",
+      "tone_fr": "Sobriete, transmission orale, savoirs de resilience et routes de memoire.",
+      "tone_en": "Sobriety, oral transmission, resilience knowledge and memory routes.",
+      "countries": ["Burkina Faso", "Mali", "Niger", "Senegal", "Mauritania", "Chad"],
+      "anchors": ["oralite", "griots", "textiles", "architecture de terre", "poesie", "marches"],
+      "daily_rituals_fr": [
+        "Lire un proverbe et noter son contexte.",
+        "Ecouter un instrument ou un conte local si un fichier audio existe.",
+        "Relier un pays, une langue et une pratique de patrimoine."
+      ],
+      "daily_rituals_en": [
+        "Read a proverb and note its context.",
+        "Listen to an instrument or local story when local audio exists.",
+        "Connect one country, one language and one heritage practice."
+      ]
+    },
+    {
+      "id": "mande",
+      "name_fr": "Mande et memoires mandingues",
+      "name_en": "Mande and Manding memory",
+      "tone_fr": "Genealogies, epopees, cordes, voix, commerce et transmission familiale.",
+      "tone_en": "Genealogies, epics, strings, voices, trade and family transmission.",
+      "countries": ["Mali", "Guinea", "Cote d'Ivoire", "Burkina Faso", "Gambia", "Senegal"],
+      "anchors": ["kora", "balafon", "epopee", "griot", "langues mande", "recits"],
+      "daily_rituals_fr": [
+        "Ouvrir Sound et ajouter une ecoute annotee.",
+        "Creer une fiche recit en brouillon avec source et personne ressource.",
+        "Comparer une expression en francais et dans une langue locale."
+      ],
+      "daily_rituals_en": [
+        "Open Sound and add an annotated listening note.",
+        "Create a draft story sheet with source and local contact.",
+        "Compare one expression in French and a local language."
+      ]
+    },
+    {
+      "id": "swahili-coast",
+      "name_fr": "Cote swahilie",
+      "name_en": "Swahili Coast",
+      "tone_fr": "Ocean Indien, villes, architecture, poesie, commerce et langues de contact.",
+      "tone_en": "Indian Ocean, cities, architecture, poetry, trade and contact languages.",
+      "countries": ["Kenya", "Tanzania", "Mozambique", "Comoros", "Somalia"],
+      "anchors": ["swahili", "poesie", "architecture", "navigation", "cuisine", "archives"],
+      "daily_rituals_fr": [
+        "Explorer une ville ou une cote comme point de depart culturel.",
+        "Associer une recette, un mot et une route maritime.",
+        "Noter ce qui doit etre verifie par une source locale."
+      ],
+      "daily_rituals_en": [
+        "Explore a city or coast as a cultural starting point.",
+        "Connect one recipe, one word and one maritime route.",
+        "Mark what needs local-source review."
+      ]
+    },
+    {
+      "id": "great-lakes",
+      "name_fr": "Grands Lacs",
+      "name_en": "Great Lakes",
+      "tone_fr": "Collines, royaumes, tambours, pastoralisme, memoire politique et langues voisines.",
+      "tone_en": "Hills, kingdoms, drums, pastoral life, political memory and neighboring languages.",
+      "countries": ["Rwanda", "Burundi", "Uganda", "Tanzania", "DR Congo"],
+      "anchors": ["tambours", "royautes", "langues bantoues", "vannerie", "danse", "memoire"],
+      "daily_rituals_fr": [
+        "Lire une fiche patrimoine avec attention au contexte historique.",
+        "Creer une note sur instrument, danse ou objet.",
+        "Classer la note en brouillon jusqu'a validation locale."
+      ],
+      "daily_rituals_en": [
+        "Read one heritage card with care for historical context.",
+        "Create a note about an instrument, dance or object.",
+        "Keep the note as draft until local validation."
+      ]
+    },
+    {
+      "id": "kongo-atlantic",
+      "name_fr": "Kongo Atlantique",
+      "name_en": "Kongo Atlantic",
+      "tone_fr": "Fleuve, royaumes, diasporas, arts, spiritualites et circulations atlantiques.",
+      "tone_en": "River, kingdoms, diasporas, arts, spiritualities and Atlantic circulation.",
+      "countries": ["Angola", "Republic of the Congo", "DR Congo", "Gabon"],
+      "anchors": ["fleuve Congo", "diaspora", "arts", "spiritualites", "langues kongo", "archives"],
+      "daily_rituals_fr": [
+        "Relier une pratique locale a une circulation plus large.",
+        "Verifier droits, sensibilite et contexte avant toute publication.",
+        "Ajouter une source ou un temoignage avec consentement."
+      ],
+      "daily_rituals_en": [
+        "Connect one local practice to a broader circulation.",
+        "Review rights, sensitivity and context before publishing.",
+        "Add a source or testimony with consent."
+      ]
+    },
+    {
+      "id": "horn",
+      "name_fr": "Corne de l'Afrique",
+      "name_en": "Horn of Africa",
+      "tone_fr": "Hautes terres, manuscrits, routes, cafe, langues afro-asiatiques et memoires anciennes.",
+      "tone_en": "Highlands, manuscripts, routes, coffee, Afro-Asiatic languages and ancient memories.",
+      "countries": ["Ethiopia", "Eritrea", "Djibouti", "Somalia", "Sudan"],
+      "anchors": ["manuscrits", "cafe", "routes", "langues", "architecture", "chants"],
+      "daily_rituals_fr": [
+        "Associer objet, langue et pratique quotidienne.",
+        "Preparer une fiche source avant interpretation.",
+        "Comparer ce qui est archive, transmis oralement et encore vivant."
+      ],
+      "daily_rituals_en": [
+        "Connect one object, language and daily practice.",
+        "Prepare a source card before interpretation.",
+        "Compare what is archived, orally transmitted and still living."
+      ]
+    },
+    {
+      "id": "southern-africa",
+      "name_fr": "Afrique australe",
+      "name_en": "Southern Africa",
+      "tone_fr": "Migrations, mines, chants, paysages, langues a clics, design et memoires urbaines.",
+      "tone_en": "Migrations, mines, songs, landscapes, click languages, design and urban memory.",
+      "countries": ["South Africa", "Botswana", "Namibia", "Zimbabwe", "Zambia", "Lesotho"],
+      "anchors": ["chants", "langues", "design", "archives urbaines", "paysages", "artisanat"],
+      "daily_rituals_fr": [
+        "Demarrer par une langue ou un chant, pas seulement par un pays.",
+        "Noter les liens entre ville, travail, famille et memoire.",
+        "Garder les recits sensibles en brouillon protege."
+      ],
+      "daily_rituals_en": [
+        "Start from a language or song, not only from a country.",
+        "Note links between city, work, family and memory.",
+        "Keep sensitive stories as protected drafts."
+      ]
+    },
+    {
+      "id": "islands",
+      "name_fr": "Iles et Afriques oceanes",
+      "name_en": "Islands and oceanic Africas",
+      "tone_fr": "Creolites, musiques, cuisines, routes maritimes, memoires insulaires et metissages.",
+      "tone_en": "Creolities, music, food, maritime routes, island memories and mixed identities.",
+      "countries": ["Madagascar", "Comoros", "Seychelles", "Mauritius", "Cape Verde", "Sao Tome and Principe"],
+      "anchors": ["creole", "musique", "cuisine", "ocean", "diaspora", "langues"],
+      "daily_rituals_fr": [
+        "Relier une recette a une route et une langue.",
+        "Ajouter une ecoute musicale avec contexte.",
+        "Noter les influences sans simplifier les identites."
+      ],
+      "daily_rituals_en": [
+        "Connect one recipe to one route and one language.",
+        "Add a music listening note with context.",
+        "Record influences without flattening identities."
+      ]
+    }
+  ],
+  "pathways": [
+    {
+      "id": "journey-country",
+      "title_fr": "Voyage par pays",
+      "title_en": "Country journey",
+      "steps_fr": ["Choisir un pays", "Lire capitale et contexte", "Voir patrimoine lie", "Ajouter une langue", "Creer une note en brouillon"],
+      "steps_en": ["Choose a country", "Read capital and context", "See linked heritage", "Add one language", "Create a draft note"]
+    },
+    {
+      "id": "journey-language",
+      "title_fr": "Voyage par langue",
+      "title_en": "Language journey",
+      "steps_fr": ["Choisir une langue", "Lire famille et regions", "Comparer une expression", "Marquer validation locale", "Ajouter audio si disponible"],
+      "steps_en": ["Choose a language", "Read family and regions", "Compare one expression", "Mark local validation", "Add audio if available"]
+    },
+    {
+      "id": "journey-sound",
+      "title_fr": "Voyage par son",
+      "title_en": "Sound journey",
+      "steps_fr": ["Ouvrir Baobab Sound", "Ecouter un fichier local", "Noter instrument ou contexte", "Relier pays/langue", "Verifier droits"],
+      "steps_en": ["Open Baobab Sound", "Listen to a local file", "Note instrument or context", "Link country/language", "Review rights"]
+    },
+    {
+      "id": "journey-fieldwork",
+      "title_fr": "Collecte responsable",
+      "title_en": "Responsible fieldwork",
+      "steps_fr": ["Choisir un pack", "Creer brouillon", "Documenter source", "Ajouter consentement", "Demander relecture locale"],
+      "steps_en": ["Choose a pack", "Create draft", "Document source", "Add consent", "Request local review"]
+    }
+  ]
+}

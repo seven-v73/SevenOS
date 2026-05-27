@@ -33,6 +33,8 @@ BAOBAB_PROFILE_UI="$BAOBAB_PROFILE_CONFIG/profile-ui.json"
 BAOBAB_SESSION="$BAOBAB_PROFILE_CONFIG/session.json"
 BAOBAB_PASSAGE="$BAOBAB_PROFILE_CONFIG/passage.json"
 BAOBAB_WALLPAPER_STATE="$BAOBAB_PROFILE_CONFIG/wallpaper-state"
+BAOBAB_NATIVE_SETTINGS="$BAOBAB_CONFIG/native-settings.json"
+BAOBAB_TRAIL="$BAOBAB_DATA/trail/events.jsonl"
 AFRICA_TSV="$ROOT_DIR/identity/countries/africa.tsv"
 BAOBAB_DB_DIR="$ROOT_DIR/identity/baobab_db"
 UNESCO_CSV="$ROOT_DIR/identity/baobab_db/africanUnesco.csv"
@@ -41,6 +43,12 @@ UNESCO_JSON="$BAOBAB_DATA/heritage/african-unesco-ich.json"
 DATASETS_JSON="$BAOBAB_DATA/offline/datasets.json"
 LANGUAGES_SOURCE="$ROOT_DIR/identity/baobab_languages.json"
 LANGUAGES_JSON="$BAOBAB_DATA/languages/african-languages.json"
+IMMERSIONS_SOURCE="$ROOT_DIR/identity/baobab_immersions.json"
+IMMERSIONS_JSON="$BAOBAB_DATA/immersions/baobab-immersions.json"
+PROTOCOLS_SOURCE="$ROOT_DIR/identity/baobab_protocols.json"
+PROTOCOLS_JSON="$BAOBAB_DATA/protocols/cultural-protocols.json"
+VALIDATION_DIR="$BAOBAB_DATA/validation"
+VALIDATORS_JSON="$VALIDATION_DIR/validators.json"
 VILLAGE_HTML="$BAOBAB_WORKSPACE/Village/index.html"
 HERITAGE_HTML="$BAOBAB_WORKSPACE/Heritage/index.html"
 MUSEUM_HTML="$BAOBAB_WORKSPACE/Museum 3D/index.html"
@@ -53,14 +61,15 @@ MODULE_NAME=""
 SEARCH_QUERY=""
 PACK_TARGET=""
 COUNTRY_QUERY=""
+VIEW_TARGET=""
 
 usage() {
   cat <<'EOF'
 SevenOS Baobab
 
 Usage:
-  seven baobab [status|json|plan|doctor|bootstrap|install-core|install-optional|capabilities|capability-doctor|config|runtime|config-doctor|service-doctor|app-doctor|apply-config|sound|open|native|village|heritage|museum|story|explore|countries|country NAME|unesco|datasets|catalog|search QUERY|stats|db|engines|tools|tool-doctor|languages|integrations|integration NAME|roadmap|packs|audit-packs|seed-packs|enrich-packs|sample-fieldwork|scaffold-pack NAME|import-pack PATH|modules|module NAME] [--json]
-  ./scripts/baobab.sh [status|json|plan|doctor|bootstrap|install-core|install-optional|capabilities|capability-doctor|config|runtime|config-doctor|service-doctor|app-doctor|apply-config|sound|open|native|village|heritage|museum|story|explore|countries|country NAME|unesco|datasets|catalog|search QUERY|stats|db|engines|tools|tool-doctor|languages|integrations|integration NAME|roadmap|packs|audit-packs|seed-packs|enrich-packs|sample-fieldwork|scaffold-pack NAME|import-pack PATH|modules|module NAME] [--json]
+  seven baobab [status|json|plan|doctor|bootstrap|install-core|install-optional|capabilities|capability-doctor|config|runtime|config-doctor|service-doctor|app-doctor|apply-config|sound|open|native|village|heritage|museum|story|explore|countries|country NAME|immersions|immersion ID|ritual|journal|route|ambiance [calme|apprentissage|terrain|scene]|compass|today|session|trail|remember TEXT|shell|unesco|datasets|catalog|search QUERY|stats|db|engines|tools|tool-doctor|languages|protocols|protocol-doctor|validation-kit|validation-doctor|integrations|integration NAME|roadmap|packs|audit-packs|seed-packs|enrich-packs|evidence-packs|sample-fieldwork|scaffold-pack NAME|import-pack PATH|modules|module NAME] [--json]
+  ./scripts/baobab.sh [status|json|plan|doctor|bootstrap|install-core|install-optional|capabilities|capability-doctor|config|runtime|config-doctor|service-doctor|app-doctor|apply-config|sound|open|native|village|heritage|museum|story|explore|countries|country NAME|immersions|immersion ID|ritual|journal|route|ambiance [calme|apprentissage|terrain|scene]|compass|today|session|trail|remember TEXT|shell|unesco|datasets|catalog|search QUERY|stats|db|engines|tools|tool-doctor|languages|protocols|protocol-doctor|validation-kit|validation-doctor|integrations|integration NAME|roadmap|packs|audit-packs|seed-packs|enrich-packs|evidence-packs|sample-fieldwork|scaffold-pack NAME|import-pack PATH|modules|module NAME] [--json]
 
 Baobab is the African cultural mini OS inside SevenOS: heritage, languages,
 storytelling, sound, map exploration, fashion, food, wisdom and offline memory.
@@ -69,18 +78,31 @@ EOF
 
 for arg in "$@"; do
   case "$arg" in
-    status|json|plan|doctor|bootstrap|install-core|install-optional|capabilities|capability-doctor|config|runtime|config-doctor|service-doctor|app-doctor|apply-config|sound|open|native|village|heritage|museum|story|explore|countries|country|unesco|datasets|catalog|search|stats|db|engines|tools|tool-doctor|languages|integrations|integration|roadmap|packs|audit-packs|seed-packs|enrich-packs|sample-fieldwork|scaffold-pack|import-pack|modules|module) ACTION="$arg" ;;
+    status|json|plan|doctor|bootstrap|install-core|install-optional|capabilities|capability-doctor|config|runtime|config-doctor|service-doctor|app-doctor|apply-config|sound|open|native|village|heritage|museum|story|explore|countries|country|immersions|immersion|ritual|journal|route|ambiance|compass|today|session|trail|remember|shell|unesco|datasets|catalog|search|stats|db|engines|tools|tool-doctor|languages|protocols|protocol-doctor|validation-kit|validation-doctor|integrations|integration|roadmap|packs|audit-packs|seed-packs|enrich-packs|evidence-packs|sample-fieldwork|scaffold-pack|import-pack|modules|module)
+      if [[ "$VIEW_TARGET" == "__next__" ]]; then
+        VIEW_TARGET="$arg"
+      else
+        ACTION="$arg"
+      fi
+      ;;
     --json) JSON_OUTPUT=1 ;;
+    --view) VIEW_TARGET="__next__" ;;
     -h|--help|help) usage; exit 0 ;;
     *)
       if [[ "$ACTION" == "module" && -z "$MODULE_NAME" ]]; then
         MODULE_NAME="$arg"
       elif [[ "$ACTION" == "integration" && -z "$MODULE_NAME" ]]; then
         MODULE_NAME="$arg"
-      elif [[ "$ACTION" == "search" ]]; then
+      elif [[ "$ACTION" == "search" || "$ACTION" == "remember" ]]; then
         SEARCH_QUERY="${SEARCH_QUERY:+$SEARCH_QUERY }$arg"
       elif [[ "$ACTION" == "country" ]]; then
         COUNTRY_QUERY="${COUNTRY_QUERY:+$COUNTRY_QUERY }$arg"
+      elif [[ "$ACTION" == "immersion" ]]; then
+        COUNTRY_QUERY="${COUNTRY_QUERY:+$COUNTRY_QUERY }$arg"
+      elif [[ "$ACTION" == "ambiance" ]]; then
+        COUNTRY_QUERY="${COUNTRY_QUERY:+$COUNTRY_QUERY }$arg"
+      elif [[ "$VIEW_TARGET" == "__next__" ]]; then
+        VIEW_TARGET="$arg"
       elif [[ "$ACTION" == "scaffold-pack" || "$ACTION" == "import-pack" ]]; then
         PACK_TARGET="${PACK_TARGET:+$PACK_TARGET }$arg"
       fi
@@ -185,6 +207,7 @@ education	foliate	Foliate	foliate	command:foliate	optional	Lecteur EPUB/PDF pour
 education	kiwix	Kiwix	kiwix-desktop-git	command-any:kiwix-desktop,kiwix	optional	Encyclopédies offline pour écoles et faible connectivité.
 education	kolibri	Kolibri	pipx:kolibri	command:kolibri	optional	Plateforme pédagogique locale pour salles de classe et communautés.
 media	mpv	MPV	mpv	command:mpv	core	Lecture audio/vidéo légère pour Sound, Story et Museum.
+media	audacity	Audacity	audacity	command:audacity	optional	Montage local pour interviews, récits, sons et archives orales.
 media	tauon	Tauon Music Box	tauon-music-box	command:tauon	optional	Bibliothèque musicale culturelle locale.
 media	radio-browser	Radio Browser API	radio-browser-api	contract:online-api	optional	Radios africaines quand internet est disponible, cache local ensuite.
 store	packagekit	PackageKit	packagekit	command-any:pkcon,pkgcli	optional	Backend store propre pour exposer sources sans jargon technique.
@@ -248,9 +271,10 @@ baobab_json() {
   UNESCO_CSV="$UNESCO_CSV" \
   COUNTRIES_JSON="$COUNTRIES_JSON" \
   UNESCO_JSON="$UNESCO_JSON" \
-  DATASETS_JSON="$DATASETS_JSON" \
-  LANGUAGES_JSON="$LANGUAGES_JSON" \
-  MODULE_ROWS="$(module_rows)" \
+	  DATASETS_JSON="$DATASETS_JSON" \
+	  LANGUAGES_JSON="$LANGUAGES_JSON" \
+	  PROTOCOLS_JSON="$PROTOCOLS_JSON" \
+	  MODULE_ROWS="$(module_rows)" \
   INTEGRATION_ROWS="$(integration_rows)" \
   ENGINE_ROWS="$(engine_rows)" \
   TOOL_ROWS="$(tool_rows)" \
@@ -442,6 +466,7 @@ print(json.dumps({
         "unesco_source": os.environ["UNESCO_CSV"],
         "datasets": os.environ["DATASETS_JSON"],
         "languages": os.environ["LANGUAGES_JSON"],
+        "protocols": os.environ["PROTOCOLS_JSON"],
         "datasets_source": str(Path(os.environ["UNESCO_CSV"]).parent),
         "ai_memory": str(Path(paths["data"]) / "ai-memory"),
         "sync_policy": "manual or low-bandwidth sync; never require internet for core heritage content",
@@ -507,6 +532,8 @@ print(json.dumps({
         "apply_config": "seven baobab apply-config",
         "sound": "seven baobab sound",
         "open": "seven baobab open",
+        "entry": "seven baobab native --view entry",
+        "today": "seven baobab today",
         "native": "seven baobab native",
         "village": "seven baobab village",
         "heritage": "seven baobab heritage",
@@ -525,15 +552,21 @@ print(json.dumps({
         "tools": "seven baobab tools",
         "tool_doctor": "seven baobab tool-doctor",
         "languages": "seven baobab languages",
+        "protocols": "seven baobab protocols",
+        "protocol_doctor": "seven baobab protocol-doctor",
+        "validation_kit": "seven baobab validation-kit",
+        "validation_doctor": "seven baobab validation-doctor",
         "packs": "seven baobab packs",
         "audit_packs": "seven baobab audit-packs",
         "seed_packs": "seven baobab seed-packs",
         "enrich_packs": "seven baobab enrich-packs",
+        "evidence_packs": "seven baobab evidence-packs",
         "sample_fieldwork": "seven baobab sample-fieldwork",
         "scaffold_pack": "seven baobab scaffold-pack <name>",
         "import_pack": "seven baobab import-pack <path>",
         "modules": "seven baobab modules",
         "activate": "seven profile activate baobab",
+        "ambiance": "seven baobab ambiance",
         "reader": "seven-reader",
     },
 }, indent=2))
@@ -704,6 +737,12 @@ for item in data.get("records", []):
         "confidence": "starter" if not source_pack else "draft",
         "language": item.get("language") or "en",
         "country": item.get("country") or ("local" if source_pack else "pan-african"),
+        "cultural_protocol": item.get("cultural_protocol") or {
+            "sensitivity": "unknown",
+            "access": "local-first",
+            "protocols": ["CARE", "source-context-consent", "community-review-before-publication"],
+            "publication": "draft-local",
+        },
     }
     for key, value in defaults.items():
         if not item.get(key):
@@ -759,6 +798,14 @@ for pack_file in Path(os.environ["PACKS_DIR"]).glob("*/pack.json"):
             if not record.get(key):
                 record[key] = value
                 changed = True
+        if not record.get("cultural_protocol"):
+            record["cultural_protocol"] = {
+                "sensitivity": "unknown",
+                "access": "local-first",
+                "protocols": ["CARE", "source-context-consent", "community-review-before-publication"],
+                "publication": "draft-local",
+            }
+            changed = True
         if record.get("confidence") not in required_confidence:
             record["confidence"] = "draft"
             changed = True
@@ -990,6 +1037,1195 @@ EOF
   fi
 }
 
+sync_immersions() {
+  mkdir -p "$(dirname "$IMMERSIONS_JSON")"
+  if [[ -s "$IMMERSIONS_SOURCE" ]]; then
+    cp "$IMMERSIONS_SOURCE" "$IMMERSIONS_JSON"
+  elif [[ ! -s "$IMMERSIONS_JSON" ]]; then
+    cat > "$IMMERSIONS_JSON" <<'EOF'
+{
+  "schema": "sevenos.baobab.immersions.v1",
+  "regions": [],
+  "pathways": []
+}
+EOF
+  fi
+}
+
+sync_protocols() {
+  mkdir -p "$(dirname "$PROTOCOLS_JSON")"
+  if [[ -s "$PROTOCOLS_SOURCE" ]]; then
+    cp "$PROTOCOLS_SOURCE" "$PROTOCOLS_JSON"
+  elif [[ ! -s "$PROTOCOLS_JSON" ]]; then
+    cat > "$PROTOCOLS_JSON" <<'EOF'
+{
+  "schema": "sevenos.baobab.protocols.v1",
+  "principles": [],
+  "sensitivity_levels": [],
+  "workflow": ["source", "context", "rights", "sensitivity", "consent", "community_review", "publication_decision"],
+  "default_record_protocol": {
+    "sensitivity": "unknown",
+    "access": "local-first",
+    "protocols": ["source-context-consent"],
+    "publication": "draft-local"
+  }
+}
+EOF
+  fi
+}
+
+print_protocols() {
+  bootstrap_baobab >/dev/null
+  PROTOCOLS_JSON="$PROTOCOLS_JSON" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+payload = json.loads(Path(os.environ["PROTOCOLS_JSON"]).read_text(encoding="utf-8"))
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Cultural Protocols")
+    print("=========================")
+    print("Principles:")
+    for item in payload.get("principles", []):
+        print(f"- {item.get('title_fr') or item.get('title_en')}: {item.get('body_fr') or item.get('body_en')}")
+    print()
+    print("Sensitivity levels:")
+    for item in payload.get("sensitivity_levels", []):
+        print(f"- {item.get('title_fr') or item.get('title_en')} ({item.get('key')}): {item.get('default_action_fr') or item.get('default_action_en')}")
+    print()
+    print("Workflow: " + " -> ".join(payload.get("workflow", [])))
+PY
+}
+
+protocol_doctor() {
+  bootstrap_baobab >/dev/null
+  PACKS_DIR="$PACKS_DIR" PROTOCOLS_JSON="$PROTOCOLS_JSON" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+packs_dir = Path(os.environ["PACKS_DIR"])
+protocols = json.loads(Path(os.environ["PROTOCOLS_JSON"]).read_text(encoding="utf-8"))
+valid_sensitivity = {item.get("key") for item in protocols.get("sensitivity_levels", [])}
+valid_sensitivity.discard(None)
+required_protocol_fields = {"sensitivity", "access", "protocols", "publication"}
+reports = []
+warnings = 0
+errors = 0
+
+for pack_file in sorted(packs_dir.glob("*/pack.json")):
+    try:
+        pack = json.loads(pack_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        reports.append({"name": pack_file.parent.name, "state": "invalid", "errors": [str(exc)], "warnings": []})
+        errors += 1
+        continue
+    pack_warnings = []
+    pack_errors = []
+    for record in pack.get("records", []):
+        rid = record.get("id", "record")
+        protocol = record.get("cultural_protocol") or {}
+        missing = sorted(field for field in required_protocol_fields if not protocol.get(field))
+        if missing:
+            pack_warnings.append(f"{rid}: missing cultural protocol fields: {', '.join(missing)}")
+        sensitivity = protocol.get("sensitivity", "unknown")
+        if sensitivity not in valid_sensitivity:
+            pack_errors.append(f"{rid}: invalid sensitivity level: {sensitivity}")
+        if sensitivity in {"family", "community", "sacred-restricted", "unknown"} and record.get("confidence") in {"high", "community-validated"} and protocol.get("publication") == "public":
+            pack_errors.append(f"{rid}: sensitive record cannot be public by default")
+        if sensitivity == "sacred-restricted" and protocol.get("publication") not in {"do-not-publish", "local-protected"}:
+            pack_errors.append(f"{rid}: sacred/restricted material must stay protected")
+    warnings += len(pack_warnings)
+    errors += len(pack_errors)
+    reports.append({
+        "name": pack.get("name", pack_file.parent.name),
+        "path": str(pack_file),
+        "records": len(pack.get("records", [])),
+        "state": "pass" if not pack_errors else "fail",
+        "warnings": pack_warnings,
+        "errors": pack_errors,
+    })
+
+payload = {
+    "schema": "sevenos.baobab.protocol-doctor.v1",
+    "state": "pass" if errors == 0 else "fail",
+    "score": max(0, 100 - errors * 25 - warnings * 4),
+    "protocols": str(Path(os.environ["PROTOCOLS_JSON"])),
+    "errors": errors,
+    "warnings": warnings,
+    "packs": reports,
+    "rules": {
+        "valid_sensitivity": sorted(valid_sensitivity),
+        "required_protocol_fields": sorted(required_protocol_fields),
+        "principle": "unknown or sensitive cultural material stays local-first until authority, consent and review are explicit",
+    },
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Protocol Doctor")
+    print("======================")
+    print(f"State: {payload['state']} · Score: {payload['score']}%")
+    print(f"Warnings: {warnings} · Errors: {errors}")
+    for pack in reports:
+        print(f"- {pack['name']}: {pack['state']} ({pack['records']} records)")
+        for item in (pack.get("errors") or pack.get("warnings") or [])[:2]:
+            print(f"  {item}")
+PY
+}
+
+validation_kit() {
+  evidence_packs >/dev/null
+  PACKS_DIR="$PACKS_DIR" VALIDATION_DIR="$VALIDATION_DIR" VALIDATORS_JSON="$VALIDATORS_JSON" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+
+packs_dir = Path(os.environ["PACKS_DIR"])
+validation_dir = Path(os.environ["VALIDATION_DIR"])
+validators_path = Path(os.environ["VALIDATORS_JSON"])
+validation_dir.mkdir(parents=True, exist_ok=True)
+
+roles = [
+    {"key": "protocol-steward", "title_fr": "Gardien de protocole", "purpose": "Décide du niveau d'accès culturel et de la publication."},
+    {"key": "local-speaker", "title_fr": "Locuteur local", "purpose": "Valide langue, orthographe, ton, prononciation et contexte."},
+    {"key": "family-reviewer", "title_fr": "Relecteur familial", "purpose": "Valide mémoire familiale, recettes, photos et récits privés."},
+    {"key": "creator-or-artisan", "title_fr": "Créateur ou artisan", "purpose": "Valide textiles, objets, photos, styles, crédit et conditions d'usage."},
+    {"key": "practitioner", "title_fr": "Praticien", "purpose": "Valide son, instrument, geste, performance ou pratique vivante."},
+    {"key": "archivist", "title_fr": "Archiviste / documentaliste", "purpose": "Valide source, provenance, citation, droits et conservation."},
+]
+if validators_path.exists():
+    validators = json.loads(validators_path.read_text(encoding="utf-8"))
+else:
+    validators = {
+        "schema": "sevenos.baobab.validators.v1",
+        "updated": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "principle": "A validator is a local authority for a scope; registering a validator is not the same as validating content.",
+        "roles": roles,
+        "people": [],
+    }
+    validators_path.write_text(json.dumps(validators, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+created = [str(validators_path)]
+requests = []
+
+def roles_for(record):
+    module = record.get("module")
+    sensitivity = (record.get("cultural_protocol") or {}).get("sensitivity", "unknown")
+    result = {"protocol-steward"}
+    if module == "languages":
+        result.add("local-speaker")
+    if module == "food" or sensitivity == "family":
+        result.add("family-reviewer")
+    if module == "fashion":
+        result.add("creator-or-artisan")
+    if module == "sound":
+        result.add("practitioner")
+    if module in {"heritage", "museum", "explore"}:
+        result.add("archivist")
+    if sensitivity == "sacred-restricted":
+        result.update({"protocol-steward", "archivist"})
+    return sorted(result)
+
+for pack_file in sorted(packs_dir.glob("*/pack.json")):
+    try:
+        pack = json.loads(pack_file.read_text(encoding="utf-8"))
+    except Exception:
+        continue
+    pack_dir = pack_file.parent
+    pack_validation = pack_dir / "validation"
+    attestations = pack_validation / "attestations"
+    attestations.mkdir(parents=True, exist_ok=True)
+    request = {
+        "schema": "sevenos.baobab.validation-request.v1",
+        "pack": pack.get("name", pack_dir.name),
+        "created": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "state": "pending-community-validation",
+        "records": [
+            {
+                "id": record.get("id"),
+                "title": record.get("title"),
+                "module": record.get("module"),
+                "sensitivity": (record.get("cultural_protocol") or {}).get("sensitivity", "unknown"),
+                "publication": (record.get("cultural_protocol") or {}).get("publication", "draft-local"),
+                "required_roles": roles_for(record),
+                "attestation_file": f"validation/attestations/{record.get('id')}.json",
+            }
+            for record in pack.get("records", [])
+        ],
+    }
+    request_path = pack_validation / "validation-request.json"
+    request_path.write_text(json.dumps(request, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    created.append(str(request_path))
+    requests.append(request)
+
+    template = {
+        "schema": "sevenos.baobab.community-attestation.v1",
+        "record_id": "<record id>",
+        "validator": {
+            "display_name": "",
+            "role": "protocol-steward",
+            "community_or_scope": "",
+            "contact_optional": "",
+        },
+        "decision": "pending",
+        "allowed_publication": "draft-local",
+        "sensitivity": "unknown",
+        "statements": {
+            "source_reviewed": False,
+            "context_reviewed": False,
+            "rights_reviewed": False,
+            "language_reviewed": False,
+            "publication_reviewed": False,
+        },
+        "notes": "",
+        "date": "",
+        "local_signature": "",
+        "warning": "This template becomes validation only when completed by a real validator with local authority.",
+    }
+    template_path = attestations / "attestation-template.json"
+    template_path.write_text(json.dumps(template, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    created.append(str(template_path))
+
+board = {
+    "schema": "sevenos.baobab.validation-board.v1",
+    "updated": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "packs": len(requests),
+    "requests": sum(len(item.get("records", [])) for item in requests),
+    "validators_registered": len(validators.get("people", [])),
+    "state": "ready-for-real-validators",
+    "next": [
+        "Register real validators in validators.json",
+        "Complete one attestation JSON per record after review",
+        "Run seven baobab validation-doctor",
+        "Run seven baobab audit-packs",
+    ],
+}
+board_path = validation_dir / "board.json"
+board_path.write_text(json.dumps(board, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+created.append(str(board_path))
+
+payload = {
+    "schema": "sevenos.baobab.validation-kit.v1",
+    "state": "ready-for-real-validators",
+    "validators": str(validators_path),
+    "board": str(board_path),
+    "created": sorted(set(created)),
+    "requests": board["requests"],
+    "validators_registered": board["validators_registered"],
+    "principle": "Baobab can prepare validation, but only real people with local authority can validate content.",
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab validation kit ready")
+    print("===========================")
+    print(f"Requests: {payload['requests']} · Validators: {payload['validators_registered']}")
+    print("Next: add real validators, complete attestations, run validation-doctor.")
+PY
+}
+
+validation_doctor() {
+  bootstrap_baobab >/dev/null
+  PACKS_DIR="$PACKS_DIR" VALIDATORS_JSON="$VALIDATORS_JSON" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+packs_dir = Path(os.environ["PACKS_DIR"])
+validators_path = Path(os.environ["VALIDATORS_JSON"])
+validators = json.loads(validators_path.read_text(encoding="utf-8")) if validators_path.exists() else {"people": [], "roles": []}
+people = validators.get("people", [])
+people_roles = {person.get("role") for person in people if person.get("role")}
+reports = []
+requests = 0
+attestations = 0
+valid_attestations = 0
+missing_roles = set()
+
+def attestation_valid(payload):
+    validator = payload.get("validator") or {}
+    statements = payload.get("statements") or {}
+    required = ["source_reviewed", "context_reviewed", "rights_reviewed", "publication_reviewed"]
+    return (
+        payload.get("record_id")
+        and validator.get("display_name")
+        and validator.get("role")
+        and payload.get("decision") in {"validated-local", "validated-community", "do-not-publish", "revise"}
+        and payload.get("date")
+        and payload.get("local_signature")
+        and all(statements.get(key) is True for key in required)
+    )
+
+for request_file in sorted(packs_dir.glob("*/validation/validation-request.json")):
+    try:
+        request = json.loads(request_file.read_text(encoding="utf-8"))
+    except Exception:
+        continue
+    pack_name = request.get("pack", request_file.parents[1].name)
+    pack_requests = request.get("records", [])
+    requests += len(pack_requests)
+    pack_valid = 0
+    pack_attestations = 0
+    for item in pack_requests:
+        for role in item.get("required_roles", []):
+            if role not in people_roles:
+                missing_roles.add(role)
+        attestation_path = request_file.parents[1] / item.get("attestation_file", "")
+        if attestation_path.exists() and attestation_path.name != "attestation-template.json":
+            try:
+                payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+            except Exception:
+                payload = {}
+            pack_attestations += 1
+            attestations += 1
+            if attestation_valid(payload):
+                pack_valid += 1
+                valid_attestations += 1
+    reports.append({
+        "pack": pack_name,
+        "requests": len(pack_requests),
+        "attestations": pack_attestations,
+        "valid_attestations": pack_valid,
+        "state": "validated" if pack_requests and pack_valid == len(pack_requests) else "pending",
+    })
+
+ready = requests > 0 and validators_path.exists()
+payload = {
+    "schema": "sevenos.baobab.validation-doctor.v1",
+    "state": "ready-with-actions" if ready and valid_attestations < requests else ("validated" if requests and valid_attestations == requests else "not-ready"),
+    "workflow_ready": ready,
+    "requests": requests,
+    "validators_registered": len(people),
+    "missing_validator_roles": sorted(missing_roles),
+    "attestations": attestations,
+    "valid_attestations": valid_attestations,
+    "community_validation_score": round((valid_attestations / requests) * 100) if requests else 0,
+    "packs": reports,
+    "next": [
+        "Add real validators to validators.json" if not people else "",
+        "Complete attestation JSON files after real review",
+        "Run seven baobab audit-packs to reflect validation scores",
+    ],
+}
+payload["next"] = [item for item in payload["next"] if item]
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Validation Doctor")
+    print("========================")
+    print(f"State: {payload['state']} · Community validation: {payload['community_validation_score']}%")
+    print(f"Requests: {requests} · Validators: {len(people)} · Valid attestations: {valid_attestations}")
+PY
+}
+
+print_immersions() {
+  bootstrap_baobab >/dev/null
+  IMMERSIONS_JSON="$IMMERSIONS_JSON" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+payload = json.loads(Path(os.environ["IMMERSIONS_JSON"]).read_text(encoding="utf-8"))
+regions = payload.get("regions", [])
+pathways = payload.get("pathways", [])
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Immersions")
+    print("=================")
+    print("Regions:")
+    for item in regions:
+        countries = ", ".join(item.get("countries", [])[:5])
+        print(f"- {item.get('id')}: {item.get('name_fr') or item.get('name_en')}")
+        print(f"  {item.get('tone_fr') or item.get('tone_en', '')}")
+        print(f"  Pays: {countries}")
+    print()
+    print("Parcours:")
+    for item in pathways:
+        print(f"- {item.get('id')}: {item.get('title_fr') or item.get('title_en')}")
+PY
+}
+
+print_immersion() {
+  local query="${1:-}"
+  if [[ -z "$query" ]]; then
+    log_error "Missing immersion id."
+    return 1
+  fi
+  bootstrap_baobab >/dev/null
+  IMMERSIONS_JSON="$IMMERSIONS_JSON" QUERY="$query" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+query = os.environ["QUERY"].lower()
+payload = json.loads(Path(os.environ["IMMERSIONS_JSON"]).read_text(encoding="utf-8"))
+regions = payload.get("regions", [])
+matches = [
+    item for item in regions
+    if query in item.get("id", "").lower()
+    or query in item.get("name_fr", "").lower()
+    or query in item.get("name_en", "").lower()
+    or any(query in country.lower() for country in item.get("countries", []))
+]
+if not matches:
+    print(f"No Baobab immersion match: {query}", file=sys.stderr)
+    sys.exit(1)
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps({"schema": "sevenos.baobab.immersion.v1", "query": query, "count": len(matches), "immersions": matches}, indent=2, ensure_ascii=False))
+else:
+    for item in matches:
+        print(item.get("name_fr") or item.get("name_en"))
+        print("=" * len(item.get("name_fr") or item.get("name_en") or "Immersion"))
+        print(item.get("tone_fr") or item.get("tone_en", ""))
+        print("Pays: " + ", ".join(item.get("countries", [])))
+        print("Ancres: " + ", ".join(item.get("anchors", [])))
+        print("Rituels:")
+        for step in item.get("daily_rituals_fr", []):
+            print(f"- {step}")
+        print()
+PY
+}
+
+print_ritual() {
+  bootstrap_baobab >/dev/null
+  IMMERSIONS_JSON="$IMMERSIONS_JSON" BAOBAB_NATIVE_SETTINGS="$BAOBAB_NATIVE_SETTINGS" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from datetime import date
+from pathlib import Path
+
+immersions = json.loads(Path(os.environ["IMMERSIONS_JSON"]).read_text(encoding="utf-8"))
+settings_path = Path(os.environ["BAOBAB_NATIVE_SETTINGS"])
+settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
+regions = immersions.get("regions", [])
+focus_id = settings.get("immersion_focus") or (regions[0].get("id") if regions else "")
+region = next((item for item in regions if item.get("id") == focus_id), regions[0] if regions else {})
+rituals = region.get("daily_rituals_fr") or region.get("daily_rituals_en") or ["Choisir un pays, lire une fiche et créer une note en brouillon."]
+ritual = rituals[date.today().toordinal() % len(rituals)]
+payload = {
+    "schema": "sevenos.baobab.ritual.v1",
+    "date": date.today().isoformat(),
+    "immersion": region,
+    "country_focus": settings.get("country_focus", ""),
+    "ritual": ritual,
+    "suggested_commands": [
+        "seven baobab native --view immersions",
+        f"seven baobab immersion {region.get('id', 'sahel')}",
+        "seven baobab native --view collect",
+    ],
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Ritual")
+    print("=============")
+    print(f"Date: {payload['date']}")
+    print(f"Immersion: {region.get('name_fr') or region.get('name_en') or 'Baobab'}")
+    if payload["country_focus"]:
+        print(f"Pays focus: {payload['country_focus']}")
+    print(f"Rituel: {ritual}")
+    print()
+    print("Commandes:")
+    for command in payload["suggested_commands"]:
+        print(f"- {command}")
+PY
+}
+
+print_journal() {
+  bootstrap_baobab >/dev/null
+  JOURNAL_DIR="$BAOBAB_WORKSPACE/Rituels du jour" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+
+folder = Path(os.environ["JOURNAL_DIR"])
+notes = []
+if folder.exists():
+    for path in sorted(folder.glob("*.md"), key=lambda item: item.stat().st_mtime, reverse=True):
+        preview = []
+        try:
+            for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+                text = line.strip()
+                if text and not text.startswith("#"):
+                    preview.append(text)
+                if len(preview) >= 3:
+                    break
+        except OSError:
+            preview = []
+        notes.append({
+            "name": path.name,
+            "path": str(path),
+            "modified": datetime.fromtimestamp(path.stat().st_mtime).isoformat(timespec="seconds"),
+            "size": path.stat().st_size,
+            "preview": preview,
+        })
+payload = {
+    "schema": "sevenos.baobab.journal.v1",
+    "folder": str(folder),
+    "count": len(notes),
+    "notes": notes,
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Journal")
+    print("==============")
+    print(f"Dossier: {folder}")
+    print(f"Notes: {len(notes)}")
+    if not notes:
+        print()
+        print("Aucune note rituelle pour l'instant.")
+        print("Créez-en une depuis la vue native Journal ou avec le rituel du jour.")
+        print("Commandes utiles:")
+        print("- seven baobab ritual")
+        print("- seven baobab native --view journal")
+    else:
+        for item in notes[:20]:
+            print(f"- {item['name']} · {item['modified']}")
+            for line in item.get("preview", [])[:2]:
+                print(f"  {line}")
+PY
+}
+
+print_route() {
+  bootstrap_baobab >/dev/null
+  IMMERSIONS_JSON="$IMMERSIONS_JSON" BAOBAB_NATIVE_SETTINGS="$BAOBAB_NATIVE_SETTINGS" JOURNAL_DIR="$BAOBAB_WORKSPACE/Rituels du jour" BAOBAB_DATA="$BAOBAB_DATA" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from datetime import date
+from pathlib import Path
+
+immersions = json.loads(Path(os.environ["IMMERSIONS_JSON"]).read_text(encoding="utf-8"))
+settings_path = Path(os.environ["BAOBAB_NATIVE_SETTINGS"])
+settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
+regions = immersions.get("regions", [])
+focus_id = settings.get("immersion_focus") or (regions[0].get("id") if regions else "")
+active = next((item for item in regions if item.get("id") == focus_id), regions[0] if regions else {})
+country = settings.get("country_focus", "")
+journal_dir = Path(os.environ["JOURNAL_DIR"])
+today_note = next(iter(sorted(journal_dir.glob(f"{date.today().isoformat()}-rituel-baobab*.md"))), None) if journal_dir.exists() else None
+data = Path(os.environ["BAOBAB_DATA"])
+datasets_path = data / "offline/datasets.json"
+packs_path = data / "packs/manifest.json"
+datasets = json.loads(datasets_path.read_text(encoding="utf-8")) if datasets_path.exists() else {"sources": []}
+packs = json.loads(packs_path.read_text(encoding="utf-8")) if packs_path.exists() else {"packs": []}
+steps = [
+    {"label": "Immersion choisie", "done": bool(active), "value": active.get("name_fr") or active.get("name_en") or "Baobab"},
+    {"label": "Pays focus", "done": bool(country), "value": country or "a choisir"},
+    {"label": "Note du jour", "done": today_note is not None, "value": str(today_note) if today_note else "non creee"},
+    {"label": "Sources locales", "done": bool(datasets.get("sources")), "value": f"{len(datasets.get('sources', []))} source(s)"},
+    {"label": "Packs culturels", "done": bool(packs.get("packs")), "value": f"{len(packs.get('packs', []))} pack(s)"},
+]
+done = sum(1 for item in steps if item["done"])
+payload = {
+    "schema": "sevenos.baobab.route.v1",
+    "date": date.today().isoformat(),
+    "score": round(done / max(len(steps), 1) * 100),
+    "done": done,
+    "total": len(steps),
+    "immersion": active,
+    "country_focus": country,
+    "today_note": str(today_note) if today_note else "",
+    "steps": steps,
+    "suggested_commands": [
+        "seven baobab native --view immersions",
+        "seven baobab native --view journal",
+        "seven baobab native --view collect",
+    ],
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Route")
+    print("============")
+    print(f"Progression: {done}/{len(steps)} ({payload['score']}%)")
+    print(f"Immersion: {payload['immersion'].get('name_fr') or payload['immersion'].get('name_en') or 'Baobab'}")
+    if country:
+        print(f"Pays focus: {country}")
+    print()
+    for item in steps:
+        marker = "OK" if item["done"] else ".."
+        print(f"[{marker}] {item['label']}: {item['value']}")
+    print()
+    print("Commandes:")
+    for command in payload["suggested_commands"]:
+        print(f"- {command}")
+PY
+}
+
+print_ambiance() {
+  bootstrap_baobab >/dev/null
+  local requested="${1:-}"
+  BAOBAB_NATIVE_SETTINGS="$BAOBAB_NATIVE_SETTINGS" REQUESTED="$requested" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+settings_path = Path(os.environ["BAOBAB_NATIVE_SETTINGS"])
+settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
+modes = {
+    "calme": {
+        "label": "Calme",
+        "subtitle": "lecture, écoute douce et mémoire personnelle",
+        "waybar": "Calme · mémoire",
+        "accent": "#8baa7b",
+        "workspace_hint": "Racines",
+        "actions": ["seven baobab native --view heritage", "seven baobab native --view journal"],
+    },
+    "apprentissage": {
+        "label": "Apprentissage",
+        "subtitle": "langues, patrimoine, parcours et transmission",
+        "waybar": "Apprendre · transmettre",
+        "accent": "#6aaed6",
+        "workspace_hint": "Mémoire",
+        "actions": ["seven baobab native --view languages", "seven baobab native --view immersions"],
+    },
+    "terrain": {
+        "label": "Terrain",
+        "subtitle": "collecte, source, consentement et relecture locale",
+        "waybar": "Terrain · collecte",
+        "accent": "#c89b63",
+        "workspace_hint": "Terrain",
+        "actions": ["seven baobab native --view collect", "seven baobab native --view packs"],
+    },
+    "scene": {
+        "label": "Scène",
+        "subtitle": "son, récit, musée, création et présentation",
+        "waybar": "Scène · création",
+        "accent": "#b78fe8",
+        "workspace_hint": "Scène",
+        "actions": ["seven baobab sound", "seven baobab native --view story"],
+    },
+}
+requested = os.environ.get("REQUESTED", "").strip().lower()
+changed = False
+if requested:
+    aliases = {"apprendre": "apprentissage", "learning": "apprentissage", "field": "terrain", "collecte": "terrain", "stage": "scene", "scène": "scene", "sound": "scene", "quiet": "calme"}
+    requested = aliases.get(requested, requested)
+    if requested not in modes:
+        print(f"Unknown Baobab ambiance: {requested}", file=sys.stderr)
+        sys.exit(2)
+    settings["ambiance"] = requested
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    settings_path.write_text(json.dumps(settings, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    changed = True
+current = settings.get("ambiance", "calme")
+if current not in modes:
+    current = "calme"
+mode = modes[current]
+payload = {
+    "schema": "sevenos.baobab.ambiance.v1",
+    "state": "updated" if changed else "ready",
+    "current": current,
+    "label": mode["label"],
+    "subtitle": mode["subtitle"],
+    "waybar": mode["waybar"],
+    "accent": mode["accent"],
+    "workspace_hint": mode["workspace_hint"],
+    "actions": mode["actions"],
+    "modes": modes,
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Ambiance")
+    print("================")
+    print(f"Mode: {mode['label']}")
+    print(mode["subtitle"])
+    print(f"Workspace conseillé: {mode['workspace_hint']}")
+    print()
+    print("Modes disponibles:")
+    for key, item in modes.items():
+        marker = "*" if key == current else "-"
+        print(f"{marker} {key}: {item['subtitle']}")
+PY
+}
+
+print_compass() {
+  bootstrap_baobab >/dev/null
+  IMMERSIONS_JSON="$IMMERSIONS_JSON" BAOBAB_NATIVE_SETTINGS="$BAOBAB_NATIVE_SETTINGS" JOURNAL_DIR="$BAOBAB_WORKSPACE/Rituels du jour" BAOBAB_DATA="$BAOBAB_DATA" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from datetime import date
+from pathlib import Path
+
+settings_path = Path(os.environ["BAOBAB_NATIVE_SETTINGS"])
+settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
+immersions_path = Path(os.environ["IMMERSIONS_JSON"])
+immersions = json.loads(immersions_path.read_text(encoding="utf-8")) if immersions_path.exists() else {"regions": []}
+regions = immersions.get("regions", [])
+focus_id = settings.get("immersion_focus") or (regions[0].get("id") if regions else "")
+region = next((item for item in regions if item.get("id") == focus_id), regions[0] if regions else {})
+country = settings.get("country_focus", "")
+journal_dir = Path(os.environ["JOURNAL_DIR"])
+today_note = next(iter(sorted(journal_dir.glob(f"{date.today().isoformat()}-rituel-baobab*.md"))), None) if journal_dir.exists() else None
+packs_manifest = Path(os.environ["BAOBAB_DATA"]) / "packs/manifest.json"
+packs = json.loads(packs_manifest.read_text(encoding="utf-8")) if packs_manifest.exists() else {"packs": []}
+ambiance = settings.get("ambiance", "calme")
+directions = [
+    {
+        "key": "comprendre",
+        "title": "Comprendre",
+        "body": "Lire le contexte avant de classer ou transmettre.",
+        "state": "ready" if region else "todo",
+        "command": "seven baobab native --view immersions",
+    },
+    {
+        "key": "relier",
+        "title": "Relier",
+        "body": "Associer pays, langue, son, geste et source.",
+        "state": "ready" if country else "todo",
+        "command": "seven baobab native --view explore",
+    },
+    {
+        "key": "ecouter",
+        "title": "Écouter",
+        "body": "Passer par le son, la voix ou la lecture lente.",
+        "state": "ready",
+        "command": "seven baobab sound",
+    },
+    {
+        "key": "collecter",
+        "title": "Collecter",
+        "body": "Créer un brouillon, jamais une vérité publique immédiate.",
+        "state": "ready" if today_note else "todo",
+        "command": "seven baobab native --view collect",
+    },
+    {
+        "key": "sourcer",
+        "title": "Sourcer",
+        "body": "Documenter provenance, personne ressource, droits et contexte.",
+        "state": "ready" if packs.get("packs") else "todo",
+        "command": "seven baobab native --view packs",
+    },
+    {
+        "key": "preserver",
+        "title": "Préserver",
+        "body": "Garder les contenus local-first, lisibles et exportables.",
+        "state": "ready",
+        "command": "seven baobab native --view datasets",
+    },
+    {
+        "key": "transmettre",
+        "title": "Transmettre",
+        "body": "Partager seulement après consentement et relecture locale.",
+        "state": "guided",
+        "command": "seven baobab native --view story",
+    },
+]
+priority_by_ambiance = {
+    "calme": "comprendre",
+    "apprentissage": "transmettre",
+    "terrain": "collecter",
+    "scene": "ecouter",
+}
+priority = priority_by_ambiance.get(ambiance, "comprendre")
+next_item = next((item for item in directions if item["key"] == priority), directions[0])
+payload = {
+    "schema": "sevenos.baobab.compass.v1",
+    "date": date.today().isoformat(),
+    "ambiance": ambiance,
+    "immersion": region,
+    "country_focus": country,
+    "today_note": str(today_note) if today_note else "",
+    "directions": directions,
+    "next": next_item,
+    "principles": [
+        "source before sharing",
+        "draft before publication",
+        "community review before authority",
+        "local-first before cloud",
+        "context before aesthetics",
+    ],
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Compass")
+    print("==============")
+    print(f"Ambiance: {ambiance}")
+    print(f"Immersion: {region.get('name_fr') or region.get('name_en') or 'Baobab'}")
+    if country:
+        print(f"Pays focus: {country}")
+    print(f"Prochain geste: {next_item['title']} · {next_item['body']}")
+    print()
+    for item in directions:
+        marker = "OK" if item["state"] == "ready" else ".." if item["state"] == "todo" else "->"
+        print(f"[{marker}] {item['title']}: {item['body']}")
+    print()
+    print("Principes:")
+    for principle in payload["principles"]:
+        print(f"- {principle}")
+PY
+}
+
+print_today() {
+  bootstrap_baobab >/dev/null
+  IMMERSIONS_JSON="$IMMERSIONS_JSON" BAOBAB_NATIVE_SETTINGS="$BAOBAB_NATIVE_SETTINGS" JOURNAL_DIR="$BAOBAB_WORKSPACE/Rituels du jour" BAOBAB_DATA="$BAOBAB_DATA" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from datetime import date
+from pathlib import Path
+
+settings_path = Path(os.environ["BAOBAB_NATIVE_SETTINGS"])
+settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
+immersions_path = Path(os.environ["IMMERSIONS_JSON"])
+immersions = json.loads(immersions_path.read_text(encoding="utf-8")) if immersions_path.exists() else {"regions": []}
+regions = immersions.get("regions", [])
+focus_id = settings.get("immersion_focus") or (regions[0].get("id") if regions else "")
+region = next((item for item in regions if item.get("id") == focus_id), regions[0] if regions else {})
+rituals = region.get("daily_rituals_fr") or region.get("daily_rituals_en") or ["Choisir un pays, lire une fiche et créer une note en brouillon."]
+ritual = rituals[date.today().toordinal() % len(rituals)]
+country = settings.get("country_focus", "")
+journal_dir = Path(os.environ["JOURNAL_DIR"])
+today_note = next(iter(sorted(journal_dir.glob(f"{date.today().isoformat()}-rituel-baobab*.md"))), None) if journal_dir.exists() else None
+data = Path(os.environ["BAOBAB_DATA"])
+datasets = json.loads((data / "offline/datasets.json").read_text(encoding="utf-8")) if (data / "offline/datasets.json").exists() else {"sources": []}
+packs = json.loads((data / "packs/manifest.json").read_text(encoding="utf-8")) if (data / "packs/manifest.json").exists() else {"packs": []}
+steps = [
+    {"label": "Immersion choisie", "done": bool(region), "value": region.get("name_fr") or region.get("name_en") or "Baobab"},
+    {"label": "Pays focus", "done": bool(country), "value": country or "à choisir"},
+    {"label": "Note du jour", "done": today_note is not None, "value": str(today_note) if today_note else "non créée"},
+    {"label": "Sources locales", "done": bool(datasets.get("sources")), "value": f"{len(datasets.get('sources', []))} source(s)"},
+    {"label": "Packs culturels", "done": bool(packs.get("packs")), "value": f"{len(packs.get('packs', []))} pack(s)"},
+]
+done = sum(1 for item in steps if item["done"])
+route_score = round(done / max(len(steps), 1) * 100)
+ambiance = settings.get("ambiance", "calme")
+compass_next = {
+    "calme": ("Comprendre", "Lire le contexte avant de classer ou transmettre.", "seven baobab native --view immersions"),
+    "apprentissage": ("Transmettre", "Partager un parcours d'apprentissage avec contexte et prudence.", "seven baobab native --view languages"),
+    "terrain": ("Collecter", "Créer un brouillon avec source, droits et consentement.", "seven baobab native --view collect"),
+    "scene": ("Écouter", "Passer par le son, le récit, la scène ou le musée.", "seven baobab sound"),
+}.get(ambiance, ("Comprendre", "Lire le contexte avant de classer ou transmettre.", "seven baobab native --view immersions"))
+if not country:
+    compass_next = ("Relier", "Choisir un pays focus pour relier territoire, langue, son et source.", "seven baobab native --view explore")
+elif today_note is None:
+    compass_next = ("Collecter", "Créer la note du jour comme brouillon local.", "seven baobab native --view journal")
+payload = {
+    "schema": "sevenos.baobab.today.v1",
+    "date": date.today().isoformat(),
+    "ambiance": ambiance,
+    "immersion": region,
+    "country_focus": country,
+    "ritual": ritual,
+    "today_note": str(today_note) if today_note else "",
+    "route": {"score": route_score, "done": done, "total": len(steps), "steps": steps},
+    "next": {"title": compass_next[0], "body": compass_next[1], "command": compass_next[2]},
+    "quick_actions": [
+        {"title": "Créer la note", "command": "seven baobab native --view journal"},
+        {"title": "Explorer", "command": "seven baobab native --view explore"},
+        {"title": "Collecter", "command": "seven baobab native --view collect"},
+        {"title": "Écouter", "command": "seven baobab sound"},
+    ],
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Aujourd'hui")
+    print("==================")
+    print(f"Date: {payload['date']}")
+    print(f"Ambiance: {ambiance}")
+    print(f"Immersion: {region.get('name_fr') or region.get('name_en') or 'Baobab'}")
+    if country:
+        print(f"Pays focus: {country}")
+    print(f"Rituel: {ritual}")
+    print(f"Route: {done}/{len(steps)} ({route_score}%)")
+    print(f"Prochain geste: {compass_next[0]} · {compass_next[1]}")
+    print()
+    print("Actions:")
+    for item in payload["quick_actions"]:
+        print(f"- {item['title']}: {item['command']}")
+PY
+}
+
+print_session() {
+  bootstrap_baobab >/dev/null
+  IMMERSIONS_JSON="$IMMERSIONS_JSON" BAOBAB_NATIVE_SETTINGS="$BAOBAB_NATIVE_SETTINGS" BAOBAB_TRAIL="$BAOBAB_TRAIL" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from datetime import date
+from pathlib import Path
+
+settings_path = Path(os.environ["BAOBAB_NATIVE_SETTINGS"])
+settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
+immersions_path = Path(os.environ["IMMERSIONS_JSON"])
+immersions = json.loads(immersions_path.read_text(encoding="utf-8")) if immersions_path.exists() else {"regions": []}
+regions = immersions.get("regions", [])
+focus_id = settings.get("immersion_focus") or (regions[0].get("id") if regions else "")
+region = next((item for item in regions if item.get("id") == focus_id), regions[0] if regions else {})
+ambiance = settings.get("ambiance", "calme")
+country = settings.get("country_focus", "")
+trail_path = Path(os.environ["BAOBAB_TRAIL"])
+trail_count = 0
+if trail_path.exists():
+    trail_count = sum(1 for line in trail_path.read_text(encoding="utf-8", errors="ignore").splitlines() if line.strip())
+
+templates = {
+    "calme": {
+        "title": "Séance calme",
+        "duration": 24,
+        "intent": "Lire lentement, écouter sans surcharge et garder une trace personnelle.",
+        "phases": [
+            ("Ouverture", 3, "Respirer, regarder l'immersion active et choisir une intention.", "seven baobab native --view entry"),
+            ("Lecture", 8, "Lire une fiche patrimoine ou une immersion sans changer de contexte.", "seven baobab native --view heritage"),
+            ("Écoute", 5, "Écouter un son local ou ouvrir le module Sound.", "seven baobab sound"),
+            ("Trace", 5, "Ajouter un mémo court ou créer la note rituelle.", "seven baobab native --view trail"),
+            ("Clôture", 3, "Relire la boussole avant de partager ou d'archiver.", "seven baobab native --view compass"),
+        ],
+    },
+    "apprentissage": {
+        "title": "Séance d'apprentissage",
+        "duration": 32,
+        "intent": "Relier langue, pays, patrimoine et transmission claire.",
+        "phases": [
+            ("Orientation", 4, "Choisir l'immersion et le pays focus.", "seven baobab native --view immersions"),
+            ("Langues", 8, "Explorer une langue, un mot ou une expression.", "seven baobab native --view languages"),
+            ("Patrimoine", 8, "Lire un contenu sourcé lié au pays ou à la région.", "seven baobab native --view heritage"),
+            ("Synthèse", 8, "Créer une trace ou une note pédagogique.", "seven baobab native --view trail"),
+            ("Transmission", 4, "Vérifier contexte, source et prudence.", "seven baobab native --view compass"),
+        ],
+    },
+    "terrain": {
+        "title": "Séance terrain",
+        "duration": 36,
+        "intent": "Préparer une collecte responsable avec source, accord et relecture.",
+        "phases": [
+            ("Préparation", 5, "Définir pays, personne ressource, source ou sujet.", "seven baobab native --view explore"),
+            ("Brouillon", 10, "Créer une collecte sans prétendre à une vérité publique.", "seven baobab native --view collect"),
+            ("Consentement", 7, "Vérifier droits, accord, contexte et limites.", "seven baobab native --view packs"),
+            ("Trace", 7, "Ajouter un mémo local sur ce qui reste à vérifier.", "seven baobab native --view trail"),
+            ("Relecture", 7, "Passer par la boussole et préparer la suite.", "seven baobab native --view compass"),
+        ],
+    },
+    "scene": {
+        "title": "Séance scène",
+        "duration": 30,
+        "intent": "Écouter, raconter, créer et présenter sans perdre le contexte.",
+        "phases": [
+            ("Accordage", 4, "Choisir un son, un récit ou une scène.", "seven baobab sound"),
+            ("Récit", 8, "Lire ou préparer une histoire contextualisée.", "seven baobab native --view story"),
+            ("Objet", 6, "Relier le récit à un objet, une image ou une archive.", "seven baobab native --view museum"),
+            ("Création", 8, "Créer une trace, un texte, un croquis ou un plan.", "seven baobab native --view trail"),
+            ("Partage prudent", 4, "Vérifier source, consentement et public visé.", "seven baobab native --view compass"),
+        ],
+    },
+}
+session = templates.get(ambiance, templates["calme"])
+phases = [
+    {"title": title, "minutes": minutes, "body": body, "command": command}
+    for title, minutes, body, command in session["phases"]
+]
+payload = {
+    "schema": "sevenos.baobab.session.v1",
+    "date": date.today().isoformat(),
+    "ambiance": ambiance,
+    "title": session["title"],
+    "duration_minutes": session["duration"],
+    "intent": session["intent"],
+    "immersion": region,
+    "country_focus": country,
+    "trail_count": trail_count,
+    "phases": phases,
+    "start_command": "seven baobab native --view session",
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print(payload["title"])
+    print("=" * len(payload["title"]))
+    print(f"Durée: {payload['duration_minutes']} min")
+    print(f"Ambiance: {ambiance}")
+    print(f"Immersion: {region.get('name_fr') or region.get('name_en') or 'Baobab'}")
+    if country:
+        print(f"Pays focus: {country}")
+    print(payload["intent"])
+    print()
+    for item in phases:
+        print(f"- {item['title']} · {item['minutes']} min")
+        print(f"  {item['body']}")
+        print(f"  {item['command']}")
+PY
+}
+
+append_trail_event() {
+  local kind="${1:-note}"
+  local title="${2:-Trace Baobab}"
+  local body="${3:-}"
+  mkdir -p "$(dirname "$BAOBAB_TRAIL")"
+  BAOBAB_TRAIL="$BAOBAB_TRAIL" KIND="$kind" TITLE="$title" BODY="$body" BAOBAB_NATIVE_SETTINGS="$BAOBAB_NATIVE_SETTINGS" python - <<'PY'
+import json
+import os
+from datetime import datetime
+from pathlib import Path
+
+trail = Path(os.environ["BAOBAB_TRAIL"])
+settings_path = Path(os.environ["BAOBAB_NATIVE_SETTINGS"])
+settings = json.loads(settings_path.read_text(encoding="utf-8")) if settings_path.exists() else {}
+event = {
+    "schema": "sevenos.baobab.trail.event.v1",
+    "time": datetime.now().isoformat(timespec="seconds"),
+    "kind": os.environ.get("KIND", "note"),
+    "title": os.environ.get("TITLE", "Trace Baobab"),
+    "body": os.environ.get("BODY", ""),
+    "ambiance": settings.get("ambiance", "calme"),
+    "immersion_focus": settings.get("immersion_focus", ""),
+    "country_focus": settings.get("country_focus", ""),
+}
+trail.parent.mkdir(parents=True, exist_ok=True)
+with trail.open("a", encoding="utf-8") as handle:
+    handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+PY
+}
+
+print_trail() {
+  bootstrap_baobab >/dev/null
+  BAOBAB_TRAIL="$BAOBAB_TRAIL" BAOBAB_WORKSPACE="$BAOBAB_WORKSPACE" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+trail = Path(os.environ["BAOBAB_TRAIL"])
+events = []
+if trail.exists():
+    for line in trail.read_text(encoding="utf-8", errors="ignore").splitlines():
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(item, dict):
+            events.append(item)
+events = events[-80:]
+payload = {
+    "schema": "sevenos.baobab.trail.v1",
+    "state": "ready",
+    "path": str(trail),
+    "workspace": os.environ["BAOBAB_WORKSPACE"],
+    "count": len(events),
+    "events": list(reversed(events[-24:])),
+    "suggested_commands": [
+        "seven baobab remember J'ai écouté une archive orale",
+        "seven baobab native --view trail",
+        "seven baobab journal",
+    ],
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Trace")
+    print("============")
+    print(f"Journal local: {trail}")
+    print(f"Événements: {len(events)}")
+    if not events:
+        print()
+        print("Aucune trace pour l'instant.")
+        print("Ajoutez une trace avec: seven baobab remember J'ai lu une fiche sur le balafon")
+    for item in payload["events"][:20]:
+        body = item.get("body", "")
+        suffix = f" · {body}" if body else ""
+        print(f"- {item.get('time', '')} · {item.get('title', 'Trace')}{suffix}")
+PY
+}
+
+remember_trail() {
+  local body="${1:-}"
+  if [[ -z "$body" ]]; then
+    log_error "Usage: seven baobab remember TEXT"
+    return 2
+  fi
+  append_trail_event "memoire" "Mémoire ajoutée" "$body"
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    print_trail
+  else
+    printf 'Trace Baobab ajoutée.\n'
+    printf 'Voir: seven baobab trail\n'
+  fi
+}
+
+print_shell() {
+  bootstrap_baobab >/dev/null
+  BAOBAB_CONFIG="$BAOBAB_CONFIG" BAOBAB_BIN="$BAOBAB_BIN" BAOBAB_APP_MANIFEST="$BAOBAB_APP_MANIFEST" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+config = Path(os.environ["BAOBAB_CONFIG"])
+shell_path = config / "shell/baobab-shell.json"
+waybar_config = config / "waybar/config.jsonc"
+waybar_style = config / "waybar/style.css"
+apps_path = Path(os.environ["BAOBAB_APP_MANIFEST"])
+apps = []
+app_state = "ready"
+if apps_path.exists():
+    try:
+        apps = json.loads(apps_path.read_text(encoding="utf-8")).get("apps", [])
+    except Exception as exc:
+        app_state = f"manifest-refreshing: {exc}"
+payload = {
+    "schema": "sevenos.baobab.shell.status.v1",
+    "state": "ready" if shell_path.exists() and waybar_config.exists() and waybar_style.exists() else "attention",
+    "surface": "espace d'immersion culturelle",
+    "waybar": {
+        "launcher": str(Path(os.environ["BAOBAB_BIN"]) / "baobab-waybar"),
+        "config": str(waybar_config),
+        "style": str(waybar_style),
+        "modules": ["Baobab Today", "Entrée", "Boussole", "Rituel", "Carnet de route", "Sessions", "Ambiance", "Trace", "Sound", "Langue", "IA locale"],
+    },
+    "launchpad": {
+        "filter": "baobab",
+        "category": "Culture",
+    },
+    "hyprland": {
+        "profile": "hyprland/lua/profiles/baobab.lua",
+        "workspaces": ["Racines", "Mémoire", "Scène", "Terrain"],
+    },
+    "apps_state": app_state,
+    "apps": apps,
+    "commands": {
+        "open": "seven baobab open",
+        "entry": "seven baobab native --view entry",
+        "veillee": "seven baobab native --view veillee",
+        "today": "seven baobab today",
+        "session": "seven baobab session",
+        "sessions": "seven baobab native --view sessions",
+        "carnet": "seven baobab native --view carnet",
+        "constellation": "seven baobab native --view constellation",
+        "media": "seven baobab native --view media",
+        "waybar": str(Path(os.environ["BAOBAB_BIN"]) / "baobab-waybar"),
+        "launchpad": "seven-apps",
+        "route": "seven baobab route",
+        "ritual": "seven baobab ritual",
+        "ambiance": "seven baobab ambiance",
+        "compass": "seven baobab compass",
+        "trail": "seven baobab trail",
+        "remember": "seven baobab remember Texte de mémoire",
+    },
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab Shell")
+    print("============")
+    print(f"État: {payload['state']}")
+    print("Surface: espace d'immersion culturelle")
+    print(f"Waybar: {payload['waybar']['launcher']}")
+    print("Modules: " + ", ".join(payload["waybar"]["modules"]))
+    print("Launchpad: filtre Baobab")
+    print("Workspaces: " + ", ".join(payload["hyprland"]["workspaces"]))
+    print("Apps dédiées:")
+    for app in payload["apps"]:
+        print(f"- {app.get('title')}: {app.get('command')}")
+PY
+}
+
 write_baobab_profile_configs() {
   mkdir -p \
     "$BAOBAB_CONFIG"/{bin,fonts,mpv,waybar,eww,meilisearch,ollama,piper,argos,syncthing,kolibri,kiwix,services,shell,soundscape,store} \
@@ -1218,29 +2454,60 @@ EOF
   "profile": "baobab",
   "layer": "top",
   "position": "top",
-  "height": 34,
-  "spacing": 8,
-  "margin-top": 8,
-  "margin-left": 12,
-  "margin-right": 12,
-  "modules-left": ["custom/baobab", "custom/profile-switch", "hyprland/workspaces"],
-  "modules-center": ["custom/memory", "custom/language"],
-  "modules-right": ["custom/sound", "custom/ai", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock"],
+  "height": 38,
+  "spacing": 10,
+  "margin-top": 10,
+  "margin-left": 18,
+  "margin-right": 18,
+  "modules-left": ["custom/baobab", "custom/entry", "custom/compass", "custom/ritual", "hyprland/workspaces"],
+  "modules-center": ["custom/route"],
+  "modules-right": ["custom/ambiance", "custom/sound", "custom/language", "custom/ai", "custom/wifi", "custom/bluetooth", "pulseaudio", "battery", "clock"],
   "custom/baobab": {
-    "format": "Baobab",
-    "tooltip": "Baobab OS - arbre de connaissance",
+    "format": "󰣇 Baobab",
+    "tooltip": "Baobab OS - espace d'immersion culturelle",
+    "on-click": "seven baobab native --view today",
+    "on-click-right": "$BAOBAB_BIN/baobab-widget",
+    "on-click-middle": "seven baobab native --view immersions"
+  },
+  "custom/entry": {
+    "exec": "seven baobab trail --json | python -c 'import json,sys; d=json.load(sys.stdin); n=d.get(\"count\",0); print(json.dumps({\"text\": \"Entrée · \"+str(n)+\" traces\", \"tooltip\": \"Entrée Baobab: région, pays, trace, transmission\", \"class\": \"entry\"}, ensure_ascii=False))'",
+    "return-type": "json",
+    "interval": 60,
+    "tooltip": true,
+    "on-click": "seven baobab native --view entry",
+    "on-click-right": "seven baobab native --view trail"
+  },
+  "custom/compass": {
+    "exec": "seven baobab compass --json | python -c 'import json,sys; d=json.load(sys.stdin); n=d.get(\"next\",{}); print(json.dumps({\"text\": \"Boussole · \"+str(n.get(\"title\", \"Baobab\")), \"tooltip\": str(n.get(\"body\", \"\")), \"class\": str(d.get(\"ambiance\", \"calme\"))}, ensure_ascii=False))'",
+    "return-type": "json",
+    "interval": 120,
+    "tooltip": true,
+    "on-click": "seven baobab native --view compass",
+    "on-click-right": "seven baobab compass"
+  },
+  "custom/ritual": {
+    "exec": "seven baobab ritual --json | python -c 'import json,sys; d=json.load(sys.stdin); text=\"Rituel · \"+str(d.get(\"ritual\", \"Baobab\"))[:42]; print(json.dumps({\"text\": text, \"tooltip\": str(d.get(\"ritual\", \"\")), \"class\": \"ritual\"}, ensure_ascii=False))'",
+    "return-type": "json",
+    "interval": 3600,
+    "tooltip": true,
+    "on-click": "seven baobab native --view journal",
+    "on-click-right": "seven baobab native --view immersions"
+  },
+  "custom/route": {
+    "exec": "seven baobab route --json | python -c 'import json,sys; d=json.load(sys.stdin); text=\"Carnet de route · \"+str(d.get(\"done\",0))+\"/\"+str(d.get(\"total\",0))+\" · \"+str(d.get(\"score\",0))+\"%\"; tip=\"\\n\".join([(\"OK\" if i.get(\"done\") else \"..\")+\" \"+str(i.get(\"label\"))+\": \"+str(i.get(\"value\")) for i in d.get(\"steps\", [])]); print(json.dumps({\"text\": text, \"tooltip\": tip, \"class\": \"route\"}, ensure_ascii=False))'",
+    "return-type": "json",
+    "interval": 300,
+    "tooltip": true,
     "on-click": "seven baobab open",
-    "on-click-right": "$BAOBAB_BIN/baobab-widget"
+    "on-click-right": "seven baobab route"
   },
-  "custom/profile-switch": {
-    "format": "Changer d'OS",
-    "tooltip": "Basculer vers un autre mini-OS SevenOS",
-    "on-click": "seven-waybar-action profile",
-    "on-click-right": "seven-profile-center-native"
-  },
-  "custom/memory": {
-    "exec": "seven baobab capability-doctor --json | python -c 'import json,sys; d=json.load(sys.stdin); print(\"Mémoire vivante · \"+str(d.get(\"score\",0))+\"%\")'",
-    "interval": 3600
+  "custom/ambiance": {
+    "exec": "seven baobab ambiance --json | python -c 'import json,sys; d=json.load(sys.stdin); print(json.dumps({\"text\": str(d.get(\"waybar\", \"Ambiance\")), \"tooltip\": str(d.get(\"subtitle\", \"Baobab\")), \"class\": str(d.get(\"current\", \"calme\"))}, ensure_ascii=False))'",
+    "return-type": "json",
+    "interval": 30,
+    "tooltip": true,
+    "on-click": "seven baobab native --view preferences",
+    "on-click-right": "seven baobab ambiance"
   },
   "custom/language": {
     "exec": "seven-waybar-language",
@@ -1251,12 +2518,16 @@ EOF
     "on-click-right": "seven-settings general"
   },
   "custom/sound": {
-    "exec": "find \"$BAOBAB_WORKSPACE/Sound\" \"$BAOBAB_DATA/sound\" -maxdepth 1 -type f 2>/dev/null | wc -l | awk '{print \$1\" sons\"}'",
+    "exec": "python -c 'import json, pathlib; roots=[pathlib.Path(\"$BAOBAB_WORKSPACE/Sound\"), pathlib.Path(\"$BAOBAB_DATA/sound\")]; n=sum(1 for root in roots if root.exists() for p in root.iterdir() if p.suffix.lower() in {\".mp3\",\".ogg\",\".flac\",\".wav\",\".m4a\",\".opus\"}); print(json.dumps({\"text\": str(n)+\" sons\", \"tooltip\": \"Baobab Sound\", \"class\": \"sound\"}, ensure_ascii=False))'",
+    "return-type": "json",
     "interval": 30,
-    "on-click": "$BAOBAB_BIN/baobab-sound"
+    "tooltip": "Baobab Sound - sons, contes, instruments et archives audio",
+    "on-click": "$BAOBAB_BIN/baobab-sound",
+    "on-click-right": "seven baobab native --view modules"
   },
   "custom/ai": {
-    "exec": "command -v ollama >/dev/null 2>&1 && echo 'IA locale' || echo 'IA prête'",
+    "exec": "python -c 'import json, shutil; ok=bool(shutil.which(\"ollama\") or shutil.which(\"llama-cli\")); print(json.dumps({\"text\": \"IA locale\" if ok else \"IA prête\", \"tooltip\": \"Seven Baobab AI local\", \"class\": \"ready\" if ok else \"planned\"}, ensure_ascii=False))'",
+    "return-type": "json",
     "interval": 300,
     "tooltip": "Seven Baobab AI local"
   },
@@ -1314,15 +2585,18 @@ EOF
 }
 
 window#waybar {
-  background: rgba(8, 11, 10, 0.82);
+  background: rgba(6, 10, 8, 0.76);
   color: #f4ead8;
-  border: 1px solid rgba(139, 170, 123, 0.16);
-  border-radius: 8px;
+  border: 1px solid rgba(139, 170, 123, 0.20);
+  border-radius: 18px;
 }
 
 #custom-baobab,
-#custom-profile-switch,
-#custom-memory,
+#custom-entry,
+#custom-compass,
+#custom-ritual,
+#custom-route,
+#custom-ambiance,
 #custom-language,
 #custom-sound,
 #custom-ai,
@@ -1332,34 +2606,84 @@ window#waybar {
 #pulseaudio,
 #battery,
 #clock {
-  background: rgba(16, 23, 19, 0.78);
+  background: rgba(18, 27, 21, 0.70);
   color: #d8ccb5;
   border: 1px solid rgba(216, 204, 181, 0.12);
-  border-radius: 8px;
+  border-radius: 14px;
   margin: 5px 3px;
-  padding: 0 10px;
+  padding: 0 11px;
 }
 
 #custom-baobab {
   color: #f4ead8;
-  background: rgba(49, 94, 77, 0.44);
-  border-color: rgba(139, 170, 123, 0.35);
-  padding: 0 14px;
+  background: linear-gradient(135deg, rgba(49, 94, 77, 0.70), rgba(36, 60, 99, 0.44));
+  border-color: rgba(139, 170, 123, 0.42);
+  padding: 0 16px;
 }
 
-#custom-profile-switch {
+#custom-entry {
   color: #f4ead8;
-  background: rgba(36, 60, 99, 0.42);
-  border-color: rgba(116, 147, 194, 0.28);
+  background: rgba(26, 42, 37, 0.62);
+  border-color: rgba(139, 170, 123, 0.28);
+  min-width: 118px;
 }
 
-#custom-profile-switch:hover {
-  background: rgba(36, 60, 99, 0.58);
-  border-color: rgba(200, 155, 99, 0.42);
-}
-
-#custom-memory {
+#custom-entry:hover {
   color: #c89b63;
+  background: rgba(31, 43, 33, 0.94);
+}
+
+#custom-compass {
+  color: #f4ead8;
+  background: rgba(34, 46, 32, 0.56);
+  border-color: rgba(139, 170, 123, 0.32);
+  min-width: 120px;
+}
+
+#custom-compass:hover {
+  color: #c89b63;
+  background: rgba(31, 43, 33, 0.94);
+}
+
+#custom-ritual {
+  color: #f4ead8;
+  background: rgba(91, 67, 38, 0.48);
+  border-color: rgba(200, 155, 99, 0.34);
+  min-width: 220px;
+}
+
+#custom-route {
+  color: #f4ead8;
+  background: rgba(28, 48, 39, 0.72);
+  border-color: rgba(139, 170, 123, 0.35);
+  min-width: 210px;
+}
+
+#custom-ambiance {
+  color: #f4ead8;
+  min-width: 126px;
+}
+
+#custom-ambiance.calme {
+  color: #8baa7b;
+}
+
+#custom-ambiance.apprentissage {
+  color: #6aaed6;
+}
+
+#custom-ambiance.terrain {
+  color: #c89b63;
+}
+
+#custom-ambiance.scene {
+  color: #b78fe8;
+}
+
+#custom-ritual:hover,
+#custom-route:hover {
+  color: #c89b63;
+  background: rgba(31, 43, 33, 0.92);
 }
 
 #custom-language {
@@ -1396,7 +2720,9 @@ window#waybar {
 #custom-bluetooth:hover,
 #pulseaudio:hover,
 #battery:hover,
-#clock:hover {
+#clock:hover,
+#custom-sound:hover,
+#custom-ai:hover {
   border-color: rgba(200, 155, 99, 0.42);
   background: rgba(16, 23, 19, 0.95);
 }
@@ -1411,7 +2737,8 @@ window#waybar {
 
 #workspaces button.active {
   color: #f4ead8;
-  background: rgba(200, 155, 99, 0.28);
+  background: rgba(49, 94, 77, 0.58);
+  border: 1px solid rgba(200, 155, 99, 0.30);
 }
 
 #workspaces button:hover {
@@ -1493,8 +2820,23 @@ EOF
 {
   "schema": "sevenos.baobab.shell.v1",
   "home": "arbre de connaissance",
-  "surface": "native-gtk-first",
-  "widgets": ["memory", "readiness", "language", "sound", "country", "collection"],
+  "surface": "espace d'immersion culturelle",
+  "widgets": ["entry", "veillee", "session", "sessions", "carnet", "constellation", "media", "today", "compass", "ritual", "route", "ambiance", "trail", "memory", "language", "sound", "country", "collection"],
+  "launchpad_filter": "baobab",
+  "world": "Racines, Tronc, Branches, Feuilles, Collecte, Archives",
+  "ritual": "seven baobab ritual",
+  "entry": "seven baobab native --view entry",
+  "veillee": "seven baobab native --view veillee",
+  "session": "seven baobab session",
+  "sessions": "seven baobab native --view sessions",
+  "carnet": "seven baobab native --view carnet",
+  "constellation": "seven baobab native --view constellation",
+  "media": "seven baobab native --view media",
+  "trail": "seven baobab trail",
+  "today": "seven baobab today",
+  "route": "seven baobab route",
+  "ambiance": "seven baobab ambiance",
+  "compass": "seven baobab compass",
   "config_roots": {
     "waybar": "$BAOBAB_CONFIG/waybar",
     "eww": "$BAOBAB_CONFIG/eww",
@@ -1502,6 +2844,10 @@ EOF
   },
   "launchers": {
     "native": "seven-baobab-native",
+    "veillee": "seven-baobab-native --view veillee",
+    "carnet": "seven-baobab-native --view carnet",
+    "constellation": "seven-baobab-native --view constellation",
+    "media": "seven-baobab-native --view media",
     "memory_widget": "$BAOBAB_BIN/baobab-widget",
     "sound": "$BAOBAB_BIN/baobab-sound"
   }
@@ -1640,6 +2986,48 @@ X-SevenOS-Profile=baobab
 X-SevenOS-Isolated=true
 EOF
 
+  cat > "$BAOBAB_DESKTOP_DIR/seven-baobab-immersions.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Baobab Immersions
+Comment=Enter Baobab through regions, languages, routes, sounds and memory
+Exec=env SEVENOS_ROOT=$ROOT_DIR $ROOT_DIR/bin/seven-baobab-native --view immersions
+Icon=seven-baobab
+Terminal=false
+Categories=Education;Culture;SevenOS;
+StartupNotify=true
+X-SevenOS-Profile=baobab
+X-SevenOS-Isolated=true
+EOF
+
+  cat > "$BAOBAB_DESKTOP_DIR/seven-baobab-journal.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Baobab Journal
+Comment=Open the daily ritual journal and local cultural notes
+Exec=env SEVENOS_ROOT=$ROOT_DIR $ROOT_DIR/bin/seven-baobab-native --view journal
+Icon=seven-baobab
+Terminal=false
+Categories=Education;Culture;Office;SevenOS;
+StartupNotify=true
+X-SevenOS-Profile=baobab
+X-SevenOS-Isolated=true
+EOF
+
+  cat > "$BAOBAB_DESKTOP_DIR/seven-baobab-packs.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Baobab Packs
+Comment=Prepare cultural packs, source review and community collection workflows
+Exec=env SEVENOS_ROOT=$ROOT_DIR $ROOT_DIR/bin/seven-baobab-native --view packs
+Icon=seven-baobab
+Terminal=false
+Categories=Education;Culture;SevenOS;
+StartupNotify=true
+X-SevenOS-Profile=baobab
+X-SevenOS-Isolated=true
+EOF
+
   cat > "$BAOBAB_DESKTOP_DIR/seven-baobab-explore.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -1668,6 +3056,34 @@ X-SevenOS-Profile=baobab
 X-SevenOS-Isolated=true
 EOF
 
+  cat > "$BAOBAB_DESKTOP_DIR/seven-baobab-media.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Baobab Médiathèque
+Comment=Browse local Baobab sounds, images, videos and cultural documents
+Exec=env SEVENOS_ROOT=$ROOT_DIR $ROOT_DIR/bin/seven-baobab-native --view media
+Icon=seven-baobab
+Terminal=false
+Categories=AudioVideo;Graphics;Education;Culture;SevenOS;
+StartupNotify=true
+X-SevenOS-Profile=baobab
+X-SevenOS-Isolated=true
+EOF
+
+  cat > "$BAOBAB_DESKTOP_DIR/seven-baobab-sessions.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Baobab Sessions
+Comment=Open local Baobab workshop and fieldwork session folders
+Exec=env SEVENOS_ROOT=$ROOT_DIR $ROOT_DIR/bin/seven-baobab-native --view sessions
+Icon=seven-baobab
+Terminal=false
+Categories=Education;Culture;Office;SevenOS;
+StartupNotify=true
+X-SevenOS-Profile=baobab
+X-SevenOS-Isolated=true
+EOF
+
   cat > "$BAOBAB_APP_MANIFEST" <<EOF
 {
   "schema": "sevenos.baobab.apps.v1",
@@ -1677,8 +3093,13 @@ EOF
   "apps": [
     {"id": "seven-baobab-os", "title": "Baobab OS", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-os.desktop", "command": "seven baobab open"},
     {"id": "seven-baobab-collect", "title": "Baobab Collecte", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-collect.desktop", "command": "seven-baobab-native --view collect"},
+    {"id": "seven-baobab-immersions", "title": "Baobab Immersions", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-immersions.desktop", "command": "seven-baobab-native --view immersions"},
+    {"id": "seven-baobab-journal", "title": "Baobab Journal", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-journal.desktop", "command": "seven-baobab-native --view journal"},
+    {"id": "seven-baobab-packs", "title": "Baobab Packs", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-packs.desktop", "command": "seven-baobab-native --view packs"},
     {"id": "seven-baobab-explore", "title": "Baobab Explorer", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-explore.desktop", "command": "seven baobab explore"},
-    {"id": "seven-baobab-sound", "title": "Baobab Sound", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-sound.desktop", "command": "seven baobab sound"}
+    {"id": "seven-baobab-sound", "title": "Baobab Sound", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-sound.desktop", "command": "seven baobab sound"},
+    {"id": "seven-baobab-media", "title": "Baobab Médiathèque", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-media.desktop", "command": "seven-baobab-native --view media"},
+    {"id": "seven-baobab-sessions", "title": "Baobab Sessions", "desktop": "$BAOBAB_DESKTOP_DIR/seven-baobab-sessions.desktop", "command": "seven-baobab-native --view sessions"}
   ]
 }
 EOF
@@ -1696,9 +3117,33 @@ EOF
   "home": {
     "metaphor": "Racines, Tronc, Branches, Feuilles, Collecte, Archives",
     "open": "seven baobab open",
-    "explore": "seven baobab explore"
+    "explore": "seven baobab explore",
+    "launchpad_filter": "baobab"
+  },
+  "home_screen": {
+    "launchpad_filter": "baobab",
+    "primary_surface": "seven baobab native --view today",
+    "secondary_surface": "seven baobab native --view immersions",
+    "daily_surface": "seven baobab native --view journal"
+  },
+  "shell": {
+    "waybar": "$BAOBAB_BIN/baobab-waybar",
+    "launchpad_world": "baobab",
+    "dock_policy": "culture-first"
   },
   "config_policy": "profile-owned"
+}
+EOF
+  fi
+
+  if [[ ! -s "$BAOBAB_NATIVE_SETTINGS" ]]; then
+    cat > "$BAOBAB_NATIVE_SETTINGS" <<'EOF'
+{
+  "schema": "sevenos.baobab.native-settings.v1",
+  "language": "fr",
+  "immersion_focus": "sahel",
+  "country_focus": "",
+  "ambiance": "calme"
 }
 EOF
   fi
@@ -1879,10 +3324,16 @@ pack = {
             "source": "sources/README.md",
             "license": "custom-local",
             "curator": "local",
-            "confidence": "draft",
-            "language": "und",
-            "country": "local"
-        }
+	            "confidence": "draft",
+	            "language": "und",
+	            "country": "local",
+	            "cultural_protocol": {
+	                "sensitivity": "unknown",
+	                "access": "local-first",
+	                "protocols": ["CARE", "source-context-consent", "community-review-before-publication"],
+	                "publication": "draft-local"
+	            }
+	        }
     ],
 }
 Path(os.environ["PACK_FILE"]).write_text(json.dumps(pack, indent=2) + "\n", encoding="utf-8")
@@ -1942,7 +3393,9 @@ PY
 }
 
 seed_curated_packs() {
-  bootstrap_baobab >/dev/null
+  if [[ "${BAOBAB_SKIP_BOOTSTRAP:-0}" != "1" ]]; then
+    bootstrap_baobab >/dev/null
+  fi
   PACKS_DIR="$PACKS_DIR" CONTENT_INDEX="$CONTENT_INDEX" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
 import json
 import os
@@ -1976,10 +3429,16 @@ packs = [
                 "source": "sources/burkina-food.md",
                 "license": "CC-BY-SA-4.0-metadata",
                 "curator": "SevenOS Baobab",
-                "confidence": "starter",
-                "language": "fr",
-                "country": "Burkina Faso"
-            }
+	                "confidence": "starter",
+	                "language": "fr",
+	                "country": "Burkina Faso",
+	                "cultural_protocol": {
+	                    "sensitivity": "family",
+	                    "access": "local-first",
+	                    "protocols": ["CARE", "source-context-consent", "family-review-before-publication"],
+	                    "publication": "draft-local"
+	                }
+	            }
         ],
     },
     {
@@ -2005,10 +3464,16 @@ packs = [
                 "source": "sources/mandingue-sound.md",
                 "license": "UNESCO metadata; verify media rights before redistribution",
                 "curator": "SevenOS Baobab / UNESCO ICH metadata",
-                "confidence": "starter",
-                "language": "fr",
-                "country": "Mali; Burkina Faso; Ivory Coast; Guinea"
-            }
+	                "confidence": "starter",
+	                "language": "fr",
+	                "country": "Mali; Burkina Faso; Ivory Coast; Guinea",
+	                "cultural_protocol": {
+	                    "sensitivity": "community",
+	                    "access": "local-first",
+	                    "protocols": ["CARE", "source-context-consent", "community-review-before-publication", "media-rights-required"],
+	                    "publication": "draft-local"
+	                }
+	            }
         ],
     },
     {
@@ -2034,9 +3499,295 @@ packs = [
                 "source": "sources/faso-danfani-fashion.md",
                 "license": "CC-BY-SA-4.0-metadata",
                 "curator": "SevenOS Baobab",
+	                "confidence": "starter",
+	                "language": "fr",
+	                "country": "Burkina Faso",
+	                "cultural_protocol": {
+	                    "sensitivity": "community",
+	                    "access": "local-first",
+	                    "protocols": ["CARE", "source-context-consent", "creator-permission-required"],
+	                    "publication": "draft-local"
+	                }
+	            }
+        ],
+    },
+    {
+        "name": "sahel-oral-memory",
+        "title": "Sahel Oral Memory Starter Pack",
+        "description": "Veillées, proverbes, récits de migration, arbres de parenté et transmission orale sahélienne.",
+        "curator": "SevenOS Baobab",
+        "license": "CC-BY-SA-4.0-metadata",
+        "source_notes": "Starter pack: métadonnées et pistes de collecte. Les récits doivent rester privés tant que la personne, la famille ou la communauté n'a pas validé la publication.",
+        "community_review": "starter-review-needed",
+        "sources": {
+            "sources/sahel-oral-memory.md": "# Sources - Sahel Oral Memory\n\n- CARE principles for governance and community benefit.\n- Local Contexts labels for cultural authority and sharing expectations.\n- Future local validation: conteurs, familles, détenteurs de récits, traductions et droits audio.\n"
+        },
+        "records": [
+            {
+                "id": "sahel-oral-memory-veillee",
+                "module": "story",
+                "title": "Veillée: récit, silence et transmission",
+                "kind": "story-workflow",
+                "region": "sahel",
+                "summary": "Parcours de collecte pour enregistrer une veillée sans extraire le récit de son contexte: personne ressource, moment, langue, audience autorisée et limites de partage.",
+                "tags": ["story", "oral-memory", "sahel", "consent", "family-review"],
+                "source": "sources/sahel-oral-memory.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
                 "confidence": "starter",
                 "language": "fr",
-                "country": "Burkina Faso"
+                "country": "pan-sahel",
+                "cultural_protocol": {
+                    "sensitivity": "family",
+                    "access": "local-first",
+                    "protocols": ["CARE", "source-context-consent", "family-review-before-publication", "audio-rights-required"],
+                    "publication": "draft-local"
+                }
+            },
+            {
+                "id": "sahel-oral-memory-proverbes",
+                "module": "wisdom",
+                "title": "Proverbes: contexte avant citation",
+                "kind": "wisdom-workflow",
+                "region": "sahel",
+                "summary": "Modèle pour documenter un proverbe avec langue, contexte d'usage, variantes, personne ressource et niveau de partage autorisé.",
+                "tags": ["wisdom", "proverb", "language", "context", "needs-local-speaker"],
+                "source": "sources/sahel-oral-memory.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "und",
+                "country": "pan-sahel",
+                "cultural_protocol": {
+                    "sensitivity": "community",
+                    "access": "local-first",
+                    "protocols": ["CARE", "source-context-consent", "community-review-before-publication"],
+                    "publication": "draft-local"
+                }
+            }
+        ],
+    },
+    {
+        "name": "swahili-coast-routes",
+        "title": "Swahili Coast Routes Starter Pack",
+        "description": "Langue swahili, routes côtières, cuisine, manuscrits, ports et mémoire de l'océan Indien.",
+        "curator": "SevenOS Baobab / public heritage metadata",
+        "license": "CC-BY-SA-4.0-metadata",
+        "source_notes": "Starter pack: utiliser CLDR pour les locales, sources patrimoniales publiques pour les lieux, validation locale pour phrases et récits.",
+        "community_review": "starter-review-needed",
+        "sources": {
+            "sources/swahili-coast-routes.md": "# Sources - Swahili Coast Routes\n\n- Unicode CLDR for locale and writing-system orientation.\n- Public heritage references for coastal history and Indian Ocean routes.\n- Future local validation: locuteurs swahili, guides, cuisiniers, chercheurs, archives familiales.\n"
+        },
+        "records": [
+            {
+                "id": "swahili-coast-language-route",
+                "module": "languages",
+                "title": "Swahili: langue-pont de la côte",
+                "kind": "language-route",
+                "region": "east-africa",
+                "summary": "Base de parcours pour relier expressions validées, audio de prononciation, variantes régionales et lieux de mémoire de la côte swahilie.",
+                "tags": ["swahili", "language", "coast", "audio-needed", "cldr"],
+                "source": "sources/swahili-coast-routes.md",
+                "license": "CC-BY-SA-4.0-metadata",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "sw",
+                "country": "Kenya; Tanzania; Uganda; Rwanda; Burundi; DRC",
+                "cultural_protocol": {
+                    "sensitivity": "public",
+                    "access": "source-first",
+                    "protocols": ["CLDR", "source-context-consent", "local-speaker-validation"],
+                    "publication": "draft-local"
+                }
+            },
+            {
+                "id": "swahili-coast-food-memory",
+                "module": "food",
+                "title": "Cuisine côtière: gestes, épices et mémoire familiale",
+                "kind": "food-route",
+                "region": "east-africa",
+                "summary": "Parcours pour documenter une recette sans la réduire à une fiche: origine familiale, variantes, saison, droits photo et récit du geste.",
+                "tags": ["food", "coast", "family-memory", "recipe", "media-rights"],
+                "source": "sources/swahili-coast-routes.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "sw",
+                "country": "Kenya; Tanzania",
+                "cultural_protocol": {
+                    "sensitivity": "family",
+                    "access": "local-first",
+                    "protocols": ["CARE", "source-context-consent", "family-review-before-publication"],
+                    "publication": "draft-local"
+                }
+            }
+        ],
+    },
+    {
+        "name": "great-lakes-drums",
+        "title": "Great Lakes Sound & Museum Starter Pack",
+        "description": "Tambours, cérémonies publiques, ateliers de facture, musée local et droits audio/vidéo.",
+        "curator": "SevenOS Baobab",
+        "license": "CC-BY-SA-4.0-metadata",
+        "source_notes": "Starter pack: les pratiques rituelles ou cérémonielles doivent être classées au minimum communautaires jusqu'à validation explicite.",
+        "community_review": "starter-review-needed",
+        "sources": {
+            "sources/great-lakes-drums.md": "# Sources - Great Lakes Drums\n\n- UNESCO ICH DataHub for public intangible heritage metadata where applicable.\n- Local Contexts labels for culturally specific access and reuse expectations.\n- Future local validation: praticiens, ateliers, musiciens, autorités culturelles et droits audio/vidéo.\n"
+        },
+        "records": [
+            {
+                "id": "great-lakes-drums-sound-rights",
+                "module": "sound",
+                "title": "Tambours: son, contexte et droits",
+                "kind": "sound-workflow",
+                "region": "great-lakes",
+                "summary": "Workflow pour différencier démonstration publique, pratique d'apprentissage, cérémonie et contenu à accès restreint.",
+                "tags": ["sound", "drums", "ceremony", "media-rights", "community-review"],
+                "source": "sources/great-lakes-drums.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "und",
+                "country": "Burundi; Rwanda; Uganda; DRC; Tanzania",
+                "cultural_protocol": {
+                    "sensitivity": "community",
+                    "access": "local-first",
+                    "protocols": ["CARE", "source-context-consent", "community-review-before-publication", "media-rights-required"],
+                    "publication": "draft-local"
+                }
+            },
+            {
+                "id": "great-lakes-drums-museum-object",
+                "module": "museum",
+                "title": "Objet sonore: fiche musée locale",
+                "kind": "museum-template",
+                "region": "great-lakes",
+                "summary": "Fiche pour documenter un instrument avec fabricant, matière, usage, statut de reproduction photo et lien vers récit sonore validé.",
+                "tags": ["museum", "object", "instrument", "photo-rights", "archive"],
+                "source": "sources/great-lakes-drums.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "fr",
+                "country": "great-lakes",
+                "cultural_protocol": {
+                    "sensitivity": "community",
+                    "access": "local-first",
+                    "protocols": ["CARE", "source-context-consent", "creator-permission-required", "community-review-before-publication"],
+                    "publication": "draft-local"
+                }
+            }
+        ],
+    },
+    {
+        "name": "horn-manuscripts-coffee",
+        "title": "Horn Manuscripts & Coffee Starter Pack",
+        "description": "Manuscrits, alphabets, café, hospitalité, archives familiales et niveaux de confidentialité.",
+        "curator": "SevenOS Baobab",
+        "license": "CC-BY-SA-4.0-metadata",
+        "source_notes": "Starter pack: aucune image de manuscrit, rituel ou document familial ne doit être publiée sans source, droits et autorité claire.",
+        "community_review": "starter-review-needed",
+        "sources": {
+            "sources/horn-manuscripts-coffee.md": "# Sources - Horn Manuscripts & Coffee\n\n- Unicode CLDR for locale orientation where applicable.\n- CARE and Local Contexts for cultural governance and rights.\n- Future local validation: familles, archivistes, chercheurs, praticiens, locuteurs et détenteurs d'objets.\n"
+        },
+        "records": [
+            {
+                "id": "horn-manuscripts-archive-protocol",
+                "module": "heritage",
+                "title": "Manuscrits et archives: protocole avant image",
+                "kind": "archive-protocol",
+                "region": "horn-of-africa",
+                "summary": "Parcours pour décrire une archive sans publier l'image: propriétaire, autorité, langue, date approximative, interdits, niveau de diffusion.",
+                "tags": ["archive", "manuscript", "rights", "sensitive", "metadata-only"],
+                "source": "sources/horn-manuscripts-coffee.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "und",
+                "country": "Ethiopia; Eritrea; Somalia; Djibouti",
+                "cultural_protocol": {
+                    "sensitivity": "sacred-restricted",
+                    "access": "local-only",
+                    "protocols": ["CARE", "source-context-consent", "authority-to-control", "restricted-content-review"],
+                    "publication": "local-protected"
+                }
+            },
+            {
+                "id": "horn-coffee-hospitality",
+                "module": "food",
+                "title": "Café, hospitalité et récit familial",
+                "kind": "food-ritual-workflow",
+                "region": "horn-of-africa",
+                "summary": "Fiche de collecte pour documenter gestes, mots, objets, invités, photos autorisées et contexte familial d'une préparation de café.",
+                "tags": ["food", "coffee", "hospitality", "family-memory", "photo-rights"],
+                "source": "sources/horn-manuscripts-coffee.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "und",
+                "country": "Ethiopia; Eritrea",
+                "cultural_protocol": {
+                    "sensitivity": "family",
+                    "access": "local-first",
+                    "protocols": ["CARE", "source-context-consent", "family-review-before-publication"],
+                    "publication": "draft-local"
+                }
+            }
+        ],
+    },
+    {
+        "name": "kongo-atlantic-memory",
+        "title": "Kongo Atlantic Memory Starter Pack",
+        "description": "Mémoires atlantiques, langues kongo, objets, lignages, musique et archives de transmission.",
+        "curator": "SevenOS Baobab",
+        "license": "CC-BY-SA-4.0-metadata",
+        "source_notes": "Starter pack: privilégier les récits validés, éviter les généralisations et classer les contenus familiaux/communautaires avec prudence.",
+        "community_review": "starter-review-needed",
+        "sources": {
+            "sources/kongo-atlantic-memory.md": "# Sources - Kongo Atlantic Memory\n\n- CARE principles for collective benefit and authority to control.\n- Local Contexts labels to clarify culturally specific access and use.\n- Future local validation: familles, chercheurs, artistes, associations, locuteurs et archives locales.\n"
+        },
+        "records": [
+            {
+                "id": "kongo-atlantic-memory-map",
+                "module": "explore",
+                "title": "Carte sensible: lieux, routes et mémoire",
+                "kind": "map-workflow",
+                "region": "central-africa-atlantic",
+                "summary": "Modèle de carte qui sépare lieu public, lieu familial, lieu de mémoire sensible et point non publiable.",
+                "tags": ["map", "memory", "atlantic", "sensitive-place", "review-needed"],
+                "source": "sources/kongo-atlantic-memory.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "fr",
+                "country": "Angola; Congo; DRC; Gabon",
+                "cultural_protocol": {
+                    "sensitivity": "community",
+                    "access": "local-first",
+                    "protocols": ["CARE", "source-context-consent", "community-review-before-publication", "location-sensitivity-review"],
+                    "publication": "draft-local"
+                }
+            },
+            {
+                "id": "kongo-atlantic-memory-language",
+                "module": "languages",
+                "title": "Langues kongo: variantes et locuteurs",
+                "kind": "language-workflow",
+                "region": "central-africa-atlantic",
+                "summary": "Base pour collecter variantes, prononciation, familles de mots et contexte d'usage avec validation par locuteurs.",
+                "tags": ["language", "kongo", "variants", "audio-needed", "local-speaker"],
+                "source": "sources/kongo-atlantic-memory.md",
+                "license": "custom-local",
+                "curator": "SevenOS Baobab",
+                "confidence": "starter",
+                "language": "kg",
+                "country": "Angola; Congo; DRC; Gabon",
+                "cultural_protocol": {
+                    "sensitivity": "community",
+                    "access": "local-first",
+                    "protocols": ["CLDR", "CARE", "source-context-consent", "local-speaker-validation"],
+                    "publication": "draft-local"
+                }
             }
         ],
     },
@@ -2131,7 +3882,7 @@ common_files = {
 - Validateur local:
 - Date:
 """,
-    "consent/consent-template.md": """# Consentement et droits
+	    "consent/consent-template.md": """# Consentement et droits
 
 Ce fichier doit documenter l'autorisation avant d'ajouter une interview, une photo,
 un son, une recette familiale ou une fiche créateur dans Baobab.
@@ -2142,6 +3893,8 @@ un son, une recette familiale ou une fiche créateur dans Baobab.
 - Usage autorisé:
 - Usage interdit:
 - Licence:
+- Sensibilité: public / familial / communautaire / sacré-réservé / à clarifier
+- Publication: locale seulement / partage communautaire / public / ne pas publier
 - Date:
 - Signature ou validation locale:
 """,
@@ -2150,11 +3903,13 @@ un son, une recette familiale ou une fiche créateur dans Baobab.
   "items": []
 }
 """,
-    "validation/community-review.md": """# Validation communautaire
+	    "validation/community-review.md": """# Validation communautaire
 
 ## Checklist
 - [ ] Source identifiée
 - [ ] Permission documentée
+- [ ] Niveau de sensibilité choisi
+- [ ] Publication autorisée ou refusée explicitement
 - [ ] Langue et pays renseignés
 - [ ] Contexte culturel relu
 - [ ] Média vérifié avant diffusion
@@ -2233,6 +3988,12 @@ for pack_file in sorted(packs_dir.glob("*/pack.json")):
                 path.write_text(content, encoding="utf-8")
                 created_files.append(str(path))
     pack["living_status"] = "collection-ready"
+    pack["governance"] = {
+        "principles": ["CARE", "Local Contexts inspired protocol awareness"],
+        "sensitivity_required": True,
+        "default_publication": "draft-local",
+        "sacred_or_restricted": "do-not-publish",
+    }
     pack["evidence"] = {
         "interviews": "interviews/",
         "consent": "consent/",
@@ -2260,6 +4021,183 @@ else:
     print("=======================================")
     print(f"Packs updated: {len(updated)}")
     print(f"Files created: {len(created_files)}")
+PY
+}
+
+evidence_packs() {
+  enrich_packs >/dev/null
+  PACKS_DIR="$PACKS_DIR" JSON_OUTPUT="$JSON_OUTPUT" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+packs_dir = Path(os.environ["PACKS_DIR"])
+created = []
+updated = []
+
+for pack_file in sorted(packs_dir.glob("*/pack.json")):
+    try:
+        pack = json.loads(pack_file.read_text(encoding="utf-8"))
+    except Exception:
+        continue
+    pack_dir = pack_file.parent
+    pack_name = pack.get("name", pack_dir.name)
+    modules = sorted({record.get("module", "heritage") for record in pack.get("records", [])})
+    records = pack.get("records", [])
+
+    public_note = pack_dir / "interviews/public-source-note.md"
+    public_note.parent.mkdir(parents=True, exist_ok=True)
+    source_lines = [
+        "# Source publique / note documentaire",
+        "",
+        "Cette note n'est pas une interview communautaire.",
+        "Elle documente uniquement les sources publiques et les limites de publication",
+        "pour sortir le pack de l'état vide sans prétendre à une validation terrain.",
+        "",
+        f"- Pack: {pack_name}",
+        f"- Modules: {', '.join(modules)}",
+        f"- Statut: public-source-only",
+        "",
+        "## Enregistrements",
+    ]
+    for record in records:
+        source_lines.append(f"- {record.get('id')}: {record.get('title')} · source: {record.get('source')} · sensibilité: {(record.get('cultural_protocol') or {}).get('sensitivity', 'unknown')}")
+    public_note.write_text("\n".join(source_lines) + "\n", encoding="utf-8")
+    created.append(str(public_note))
+
+    rights_note = pack_dir / "consent/public-source-rights.md"
+    rights_note.parent.mkdir(parents=True, exist_ok=True)
+    rights_note.write_text(
+        "# Droits et limites - sources publiques\n\n"
+        "Ce fichier ne remplace pas un consentement communautaire.\n"
+        "Il indique que Baobab peut utiliser les métadonnées publiques du pack pour l'orientation locale,\n"
+        "mais que les médias, voix, photos, recettes familiales, rites et contenus sensibles restent bloqués\n"
+        "jusqu'à consentement et relecture locale.\n\n"
+        f"- Pack: {pack_name}\n"
+        f"- Licence métadonnées: {pack.get('license', 'custom-local')}\n"
+        "- Publication par défaut: locale / brouillon\n"
+        "- Validation communautaire: non acquise\n",
+        encoding="utf-8",
+    )
+    created.append(str(rights_note))
+
+    media_manifest = pack_dir / "media/media-manifest.json"
+    media_manifest.parent.mkdir(parents=True, exist_ok=True)
+    items = []
+    for record in records:
+        protocol = record.get("cultural_protocol") or {}
+        items.append({
+            "id": f"{record.get('id')}-metadata",
+            "kind": "metadata",
+            "record": record.get("id"),
+            "path": record.get("source", "sources/README.md"),
+            "rights": record.get("license", pack.get("license", "custom-local")),
+            "status": "public-source" if protocol.get("sensitivity") == "public" else "local-protected-metadata",
+            "publication": protocol.get("publication", "draft-local"),
+        })
+    media_manifest.write_text(json.dumps({"schema": "sevenos.baobab.media-manifest.v1", "items": items}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    created.append(str(media_manifest))
+
+    if "food" in modules:
+        recipe_note = pack_dir / "recipes/public-source-recipe-note.md"
+        recipe_note.parent.mkdir(parents=True, exist_ok=True)
+        recipe_note.write_text(
+            "# Note cuisine - source publique\n\n"
+            "Cette note ne remplace pas une recette familiale validée.\n"
+            "Elle sert à préparer le parcours cuisine avec sources, droits, variantes et entretien futur.\n\n"
+            f"- Pack: {pack_name}\n"
+            "- Statut: public-source-only\n",
+            encoding="utf-8",
+        )
+        created.append(str(recipe_note))
+
+    if "sound" in modules:
+        audio_note = pack_dir / "audio/public-source-audio-note.md"
+        audio_note.parent.mkdir(parents=True, exist_ok=True)
+        audio_note.write_text(
+            "# Note sonore - source publique\n\n"
+            "Cette note ne remplace pas un enregistrement autorisé.\n"
+            "Elle prépare le contexte sonore, les droits, les interprètes à contacter et les restrictions.\n\n"
+            f"- Pack: {pack_name}\n"
+            "- Statut: public-source-only\n",
+            encoding="utf-8",
+        )
+        audio_manifest = pack_dir / "audio/audio-manifest.json"
+        audio_manifest.write_text(json.dumps({
+            "schema": "sevenos.baobab.audio-manifest.v1",
+            "items": [
+                {
+                    "id": f"{pack_name}-public-source-audio-note",
+                    "kind": "audio-metadata",
+                    "path": "audio/public-source-audio-note.md",
+                    "rights": "metadata-only",
+                    "status": "public-source",
+                }
+            ],
+        }, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        created.extend([str(audio_note), str(audio_manifest)])
+
+    if "fashion" in modules:
+        creator_note = pack_dir / "creators/public-source-creator-note.md"
+        creator_note.parent.mkdir(parents=True, exist_ok=True)
+        creator_note.write_text(
+            "# Note créateur / textile - source publique\n\n"
+            "Cette note ne remplace pas une autorisation de créateur, d'atelier ou de coopérative.\n"
+            "Elle prépare les droits photo, les conditions d'usage et les personnes ressources.\n\n"
+            f"- Pack: {pack_name}\n"
+            "- Statut: public-source-only\n",
+            encoding="utf-8",
+        )
+        created.append(str(creator_note))
+
+    review = pack_dir / "validation/community-review.md"
+    review.parent.mkdir(parents=True, exist_ok=True)
+    review_text = review.read_text(encoding="utf-8") if review.exists() else "# Validation communautaire\n\n"
+    marker = "## Public source evidence kit"
+    if marker not in review_text:
+        review_text += (
+            "\n## Public source evidence kit\n"
+            "- [x] Source publique ou note documentaire créée\n"
+            "- [x] Sensibilité culturelle renseignée par enregistrement\n"
+            "- [x] Politique local-first appliquée\n"
+            "- [x] Manifest média-métadonnées créé\n"
+            "- [ ] Interview communautaire réelle ajoutée\n"
+            "- [ ] Consentement réel ajouté\n"
+            "- [ ] Relecture locale signée ou nommée\n"
+        )
+    review.write_text(review_text, encoding="utf-8")
+    created.append(str(review))
+
+    pack["evidence_state"] = "public-source-ready"
+    pack["evidence_note"] = "Public-source documentation exists; community validation still requires real fieldwork."
+    pack["evidence"] = pack.get("evidence") or {}
+    pack["evidence"].update({
+        "public_source_note": "interviews/public-source-note.md",
+        "public_source_rights": "consent/public-source-rights.md",
+        "media_manifest": "media/media-manifest.json",
+        "community_review": "validation/community-review.md",
+    })
+    pack_file.write_text(json.dumps(pack, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    updated.append(pack_name)
+
+payload = {
+    "schema": "sevenos.baobab.evidence-packs.v1",
+    "state": "ready",
+    "updated": updated,
+    "created": sorted(set(created)),
+    "meaning": {
+        "public_source_ready": "The pack is no longer empty: it has source notes, rights limits, metadata manifests and protocol review.",
+        "not_community_validated": "This does not claim real interviews, consent, media rights or community validation.",
+        "next": "Replace public-source notes with real fieldwork when a community, family, creator or speaker validates it.",
+    },
+}
+if os.environ.get("JSON_OUTPUT") == "1":
+    print(json.dumps(payload, indent=2, ensure_ascii=False))
+else:
+    print("Baobab public-source evidence kits ready")
+    print("=======================================")
+    print(f"Packs updated: {len(updated)}")
+    print("Community validation is still separate and must come from real fieldwork.")
 PY
 }
 
@@ -2367,6 +4305,7 @@ confidence_levels = {"draft", "starter", "low", "medium", "high", "community-val
 pack_required = {"schema", "name", "title", "description", "curator", "license", "source_notes", "records"}
 record_required = {"id", "module", "title", "kind", "region", "summary", "tags", "source", "license", "curator", "confidence", "language", "country"}
 evidence_paths = ("interviews", "consent", "media_manifest", "community_review")
+valid_sensitivity = {"public", "family", "community", "sacred-restricted", "unknown"}
 reports = []
 errors = 0
 warnings = 0
@@ -2407,16 +4346,22 @@ for pack_file in sorted(packs_dir.glob("*/pack.json")):
     collection_checks = []
     collection_ready = 0
     sample_count = 0
+    public_source_count = 0
+    real_collection_ready = 0
 
     interview_files = [path for path in (pack_file.parent / "interviews").glob("*.md") if path.name != "interview-template.md"]
     sample_count += sum(1 for path in interview_files if "sample" in path.name.lower())
+    public_source_count += sum(1 for path in interview_files if "public-source" in path.name.lower())
     collection_checks.append("interviews")
     collection_ready += 1 if interview_files else 0
+    real_collection_ready += 1 if any("sample" not in path.name.lower() and "public-source" not in path.name.lower() for path in interview_files) else 0
 
     consent_files = [path for path in (pack_file.parent / "consent").glob("*.md") if path.name != "consent-template.md"]
     sample_count += sum(1 for path in consent_files if "sample" in path.name.lower())
+    public_source_count += sum(1 for path in consent_files if "public-source" in path.name.lower())
     collection_checks.append("consent")
     collection_ready += 1 if consent_files else 0
+    real_collection_ready += 1 if any("sample" not in path.name.lower() and "public-source" not in path.name.lower() for path in consent_files) else 0
 
     media_manifest = pack_file.parent / "media/media-manifest.json"
     media_items = []
@@ -2428,17 +4373,42 @@ for pack_file in sorted(packs_dir.glob("*/pack.json")):
     collection_checks.append("media")
     collection_ready += 1 if media_items else 0
     sample_count += sum(1 for item in media_items if item.get("status") == "sample" or item.get("rights") == "sample-only")
+    public_source_count += sum(1 for item in media_items if str(item.get("status", "")).startswith("public-source") or str(item.get("status", "")).startswith("local-protected"))
+    real_collection_ready += 1 if any(item.get("status") not in {"sample", "public-source", "local-protected-metadata"} and item.get("rights") != "sample-only" for item in media_items) else 0
 
     review_file = pack_file.parent / "validation/community-review.md"
     review_text = review_file.read_text(encoding="utf-8").lower() if review_file.exists() else ""
+    attestations = []
+    for attestation_file in (pack_file.parent / "validation/attestations").glob("*.json"):
+        if attestation_file.name == "attestation-template.json":
+            continue
+        try:
+            payload = json.loads(attestation_file.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        validator = payload.get("validator") or {}
+        statements = payload.get("statements") or {}
+        if (
+            payload.get("record_id")
+            and validator.get("display_name")
+            and validator.get("role")
+            and payload.get("decision") in {"validated-local", "validated-community", "do-not-publish", "revise"}
+            and payload.get("date")
+            and payload.get("local_signature")
+            and all(statements.get(key) is True for key in ("source_reviewed", "context_reviewed", "rights_reviewed", "publication_reviewed"))
+        ):
+            attestations.append(payload)
     collection_checks.append("community_review")
     collection_ready += 1 if "- [x]" in review_text else 0
+    public_source_count += 1 if "public source evidence kit" in review_text else 0
+    real_collection_ready += 1 if attestations else 0
 
     if "food" in modules:
         recipe_files = [path for path in (pack_file.parent / "recipes").glob("*.md") if path.name != "recipe-template.md"]
         sample_count += sum(1 for path in recipe_files if "sample" in path.name.lower())
         collection_checks.append("recipes")
         collection_ready += 1 if recipe_files else 0
+        real_collection_ready += 1 if any("sample" not in path.name.lower() and "public-source" not in path.name.lower() for path in recipe_files) else 0
     if "sound" in modules:
         audio_manifest = pack_file.parent / "audio/audio-manifest.json"
         audio_items = []
@@ -2453,11 +4423,14 @@ for pack_file in sorted(packs_dir.glob("*/pack.json")):
         collection_checks.append("audio")
         collection_ready += 1 if audio_items or audio_files else 0
         sample_count += sum(1 for item in audio_items if item.get("status") == "sample" or item.get("rights") == "sample-only")
+        public_source_count += sum(1 for item in audio_items if str(item.get("status", "")).startswith("public-source") or str(item.get("status", "")).startswith("local-protected"))
+        real_collection_ready += 1 if audio_files or any(item.get("status") not in {"sample", "public-source", "local-protected-metadata"} and item.get("rights") != "sample-only" for item in audio_items) else 0
     if "fashion" in modules:
         creator_files = [path for path in (pack_file.parent / "creators").glob("*.md") if path.name != "creator-template.md"]
         sample_count += sum(1 for path in creator_files if "sample" in path.name.lower())
         collection_checks.append("creators")
         collection_ready += 1 if creator_files else 0
+        real_collection_ready += 1 if any("sample" not in path.name.lower() and "public-source" not in path.name.lower() for path in creator_files) else 0
 
     for index, record in enumerate(pack.get("records", [])):
         rid = record.get("id") or f"record[{index}]"
@@ -2484,6 +4457,13 @@ for pack_file in sorted(packs_dir.glob("*/pack.json")):
             pack_warnings.append(f"{rid}: source file not found: {source}")
         if record.get("country") in {"local", "pan-african", "unknown"} and record.get("confidence") not in {"draft", "starter"}:
             pack_warnings.append(f"{rid}: high-confidence records should name a specific country or scope")
+        protocol = record.get("cultural_protocol") or {}
+        if not protocol:
+            pack_warnings.append(f"{rid}: missing cultural protocol")
+        elif protocol.get("sensitivity", "unknown") not in valid_sensitivity:
+            pack_errors.append(f"{rid}: invalid sensitivity {protocol.get('sensitivity')}")
+        elif protocol.get("sensitivity") in {"family", "community", "sacred-restricted", "unknown"} and protocol.get("publication") == "public":
+            pack_errors.append(f"{rid}: sensitive material cannot be public by default")
 
     pack_error_count = len(pack_errors)
     pack_warning_count = len(pack_warnings)
@@ -2492,12 +4472,19 @@ for pack_file in sorted(packs_dir.glob("*/pack.json")):
     score = max(0, 100 - pack_error_count * 25 - pack_warning_count * 5)
     living_score = round((living_ready / living_checks) * 100) if living_checks else 0
     collection_score = round((collection_ready / len(collection_checks)) * 100) if collection_checks else 0
+    community_validation_score = round((real_collection_ready / len(collection_checks)) * 100) if collection_checks else 0
     if collection_score == 0:
         collection_status = "empty"
     elif collection_score < 100:
         collection_status = "partial"
     else:
-        collection_status = "field-ready"
+        collection_status = "field-ready" if community_validation_score >= 100 else "public-source-ready"
+    if sample_count and collection_score:
+        fieldwork_state = "sample-only"
+    elif public_source_count and not community_validation_score:
+        fieldwork_state = "public-source-only"
+    else:
+        fieldwork_state = collection_status
     reports.append({
         "name": pack.get("name", pack_file.parent.name),
         "path": str(pack_file),
@@ -2505,10 +4492,13 @@ for pack_file in sorted(packs_dir.glob("*/pack.json")):
         "living_score": living_score,
         "living_status": pack.get("living_status", "not-ready"),
         "collection_score": collection_score,
+        "community_validation_score": community_validation_score,
         "collection_status": collection_status,
         "collection_checks": collection_checks,
         "sample_count": sample_count,
-        "fieldwork_state": "sample-only" if sample_count and collection_score else collection_status,
+        "public_source_count": public_source_count,
+        "attestation_count": len(attestations),
+        "fieldwork_state": fieldwork_state,
         "records": len(pack.get("records", [])),
         "errors": pack_errors,
         "warnings": pack_warnings,
@@ -2527,8 +4517,9 @@ payload = {
         "required_record_fields": sorted(record_required),
         "confidence_levels": sorted(confidence_levels),
         "living_evidence_fields": list(evidence_paths),
-        "collection_fields": ["interviews", "consent", "media", "community_review", "recipes", "audio", "creators"],
-    },
+	        "collection_fields": ["interviews", "consent", "media", "community_review", "recipes", "audio", "creators"],
+	        "sensitivity_levels": sorted(valid_sensitivity),
+	    },
 }
 if os.environ.get("JSON_OUTPUT") == "1":
     print(json.dumps(payload, indent=2))
@@ -3510,14 +5501,19 @@ bootstrap_baobab() {
   baobab_json > "$manifest_tmp"
   mv "$manifest_tmp" "$MANIFEST"
   write_seed_catalog
+  if ! find "$PACKS_DIR" -mindepth 2 -maxdepth 2 -name pack.json -print -quit | grep -q .; then
+    BAOBAB_SKIP_BOOTSTRAP=1 seed_curated_packs >/dev/null || true
+  fi
   sync_database
   write_village_html
   write_heritage_html
   write_museum_html
   write_story_html
-  write_explore_html
-  sync_languages
-  write_baobab_profile_configs
+	  write_explore_html
+	  sync_languages
+	  sync_immersions
+	  sync_protocols
+	  write_baobab_profile_configs
   cat > "$BAOBAB_WORKSPACE/README.md" <<'EOF'
 # Baobab Cultural Mini OS
 
@@ -4882,14 +6878,15 @@ doctor() {
 }
 
 doctor_json() {
-  local payload tools_json config_json_payload service_json_payload app_json_payload capability_json_payload
+  local payload tools_json config_json_payload service_json_payload app_json_payload capability_json_payload protocol_json_payload
   payload="$(baobab_json)"
   tools_json="$(JSON_OUTPUT=1 print_tools)"
   config_json_payload="$(config_doctor_json)"
   service_json_payload="$(service_doctor_json)"
   app_json_payload="$(app_doctor_json)"
   capability_json_payload="$(capability_doctor_json)"
-  BAOBAB_JSON="$payload" BAOBAB_TOOLS="$tools_json" BAOBAB_CONFIG_DOCTOR="$config_json_payload" BAOBAB_SERVICE_DOCTOR="$service_json_payload" BAOBAB_APP_DOCTOR="$app_json_payload" BAOBAB_CAPABILITY_DOCTOR="$capability_json_payload" python - <<'PY'
+  protocol_json_payload="$(JSON_OUTPUT=1 protocol_doctor)"
+  BAOBAB_JSON="$payload" BAOBAB_TOOLS="$tools_json" BAOBAB_CONFIG_DOCTOR="$config_json_payload" BAOBAB_SERVICE_DOCTOR="$service_json_payload" BAOBAB_APP_DOCTOR="$app_json_payload" BAOBAB_CAPABILITY_DOCTOR="$capability_json_payload" BAOBAB_PROTOCOL_DOCTOR="$protocol_json_payload" python - <<'PY'
 import json
 import os
 
@@ -4899,6 +6896,7 @@ config = json.loads(os.environ["BAOBAB_CONFIG_DOCTOR"])
 services = json.loads(os.environ["BAOBAB_SERVICE_DOCTOR"])
 apps = json.loads(os.environ["BAOBAB_APP_DOCTOR"])
 capabilities = json.loads(os.environ["BAOBAB_CAPABILITY_DOCTOR"])
+protocols = json.loads(os.environ["BAOBAB_PROTOCOL_DOCTOR"])
 issues = []
 if base.get("state") != "ready":
     issues.append({
@@ -4939,6 +6937,14 @@ if apps.get("state") != "ready":
         "detail": apps.get("policy", ""),
         "command": "seven baobab apply-config",
     })
+if protocols.get("state") != "pass":
+    issues.append({
+        "area": "protocols",
+        "severity": "high",
+        "title": "Baobab cultural protocols need attention",
+        "detail": "Sensitive or unknown material must stay local-first until source, consent and local review are explicit.",
+        "command": "seven baobab protocol-doctor",
+    })
 state = "ready" if not issues else "ready-with-actions" if base.get("state") == "ready" else "needs-bootstrap"
 print(json.dumps({
     "schema": "sevenos.baobab.doctor.v1",
@@ -4954,6 +6960,7 @@ print(json.dumps({
     "service_score": services.get("score", 0),
     "app_score": apps.get("score", 0),
     "capability_score": capabilities.get("score", 0),
+    "protocol_score": protocols.get("score", 0),
     "immersive_score": tools.get("immersive_score", 0),
     "issues": issues,
     "next": issues[:8],
@@ -4962,6 +6969,7 @@ print(json.dumps({
     "services": services,
     "apps": apps,
     "capabilities": capabilities,
+    "protocols": protocols,
 }, indent=2, ensure_ascii=False))
 PY
 }
@@ -5043,7 +7051,11 @@ case "$ACTION" in
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       printf '{"schema":"sevenos.baobab.native.v1","path":%s}\n' "$(python -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$ROOT_DIR/bin/seven-baobab-native")"
     else
-      "$ROOT_DIR/bin/seven-baobab-native"
+      if [[ -n "$VIEW_TARGET" && "$VIEW_TARGET" != "__next__" ]]; then
+        "$ROOT_DIR/bin/seven-baobab-native" --view "$VIEW_TARGET"
+      else
+        "$ROOT_DIR/bin/seven-baobab-native"
+      fi
     fi
     ;;
   village)
@@ -5104,6 +7116,42 @@ case "$ACTION" in
   country)
     print_country "$COUNTRY_QUERY"
     ;;
+  immersions)
+    print_immersions
+    ;;
+  immersion)
+    print_immersion "$COUNTRY_QUERY"
+    ;;
+  ritual)
+    print_ritual
+    ;;
+  journal)
+    print_journal
+    ;;
+  route)
+    print_route
+    ;;
+  ambiance)
+    print_ambiance "$COUNTRY_QUERY"
+    ;;
+  compass)
+    print_compass
+    ;;
+  today)
+    print_today
+    ;;
+  session)
+    print_session
+    ;;
+  trail)
+    print_trail
+    ;;
+  remember)
+    remember_trail "$SEARCH_QUERY"
+    ;;
+  shell)
+    print_shell
+    ;;
   unesco)
     print_unesco
     ;;
@@ -5128,13 +7176,19 @@ case "$ACTION" in
   tools)
     print_tools
     ;;
-  tool-doctor)
-    tool_doctor
-    ;;
-  languages)
-    print_languages
-    ;;
-  integrations)
+	  tool-doctor)
+	    tool_doctor
+	    ;;
+	  languages)
+	    print_languages
+	    ;;
+	  protocols)
+	    print_protocols
+	    ;;
+	  protocol-doctor)
+	    protocol_doctor
+	    ;;
+	  integrations)
     print_integrations
     ;;
   integration)
@@ -5157,6 +7211,15 @@ case "$ACTION" in
     ;;
   enrich-packs)
     enrich_packs
+    ;;
+  evidence-packs)
+    evidence_packs
+    ;;
+  validation-kit)
+    validation_kit
+    ;;
+  validation-doctor)
+    validation_doctor
     ;;
   sample-fieldwork)
     sample_fieldwork

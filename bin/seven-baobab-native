@@ -10,9 +10,11 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 
@@ -59,7 +61,10 @@ DATA = PROFILE_DATA / "baobab"
 CACHE = PROFILE_CACHE / "baobab"
 WORKSPACE = Path.home() / "Baobab"
 SETTINGS_FILE = CONFIG / "native-settings.json"
+TRAIL_FILE = DATA / "trail/events.jsonl"
 LANGUAGES_SOURCE = ROOT / "identity/baobab_languages.json"
+IMMERSIONS_SOURCE = ROOT / "identity/baobab_immersions.json"
+PROTOCOLS_SOURCE = ROOT / "identity/baobab_protocols.json"
 
 
 def run_seven(*args: str) -> str:
@@ -130,6 +135,14 @@ def save_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+MEDIA_EXTENSIONS = {
+    ".mp3": "audio", ".ogg": "audio", ".flac": "audio", ".wav": "audio", ".m4a": "audio", ".opus": "audio",
+    ".png": "image", ".jpg": "image", ".jpeg": "image", ".webp": "image", ".gif": "image",
+    ".mp4": "video", ".mkv": "video", ".webm": "video", ".mov": "video",
+    ".pdf": "document", ".epub": "document",
+}
+
+
 class BaobabNative:
     def __init__(self, Gtk, Gdk, initial_view: str = "home"):
         self.Gtk = Gtk
@@ -139,19 +152,52 @@ class BaobabNative:
         self.countries_payload = load_json(DATA / "explore/africa-countries.json", {"countries": []})
         self.unesco_payload = load_json(DATA / "heritage/african-unesco-ich.json", {"items": []})
         self.datasets_payload = load_json(DATA / "offline/datasets.json", {"sources": []})
-        self.settings = load_json(SETTINGS_FILE, {"language": "fr", "country_focus": ""})
+        self.settings = load_json(SETTINGS_FILE, {"language": "fr", "country_focus": "", "ambiance": "calme"})
         self.engines_payload = self.load_engines()
         self.services_payload = self.load_services()
         self.capabilities_payload = self.load_capabilities()
         self.packs_payload = self.load_packs()
         self.audit_payload = self.load_pack_audit()
         self.languages_payload = self.load_languages()
+        self.protocols_payload = self.load_protocols()
+        self.immersions_payload = self.load_immersions()
+        self.compass_payload = self.load_compass()
+        self.today_payload = self.load_today()
+        self.trail_payload = self.load_trail()
+        self.session_payload = self.load_session()
+        self.nav_buttons = {}
+        self.view_labels = {}
         self.records = self.catalog.get("records", [])
         self.countries = self.countries_payload.get("countries", [])
         self.heritage = self.unesco_payload.get("items", [])
         self.datasets = self.datasets_payload.get("sources", [])
         self.languages = self.languages_payload.get("languages", [])
+        self.protocols = self.protocols_payload.get("principles", [])
+        self.sensitivity_levels = self.protocols_payload.get("sensitivity_levels", [])
+        self.immersions = self.immersions_payload.get("regions", [])
+        self.pathways = self.immersions_payload.get("pathways", [])
         self.active_country = ""
+
+    def view_label(self, key: str) -> str:
+        return text(getattr(self, "view_labels", {}).get(key), key)
+
+    def navigate(self, key: str) -> None:
+        if not hasattr(self, "stack"):
+            return
+        current = self.stack.get_visible_child_name()
+        if current == key:
+            return
+        self.stack.set_visible_child_name(key)
+        self.update_nav_state()
+
+    def update_nav_state(self) -> None:
+        current = self.stack.get_visible_child_name() if hasattr(self, "stack") else ""
+        for key, button in getattr(self, "nav_buttons", {}).items():
+            context = button.get_style_context()
+            if key == current:
+                context.add_class("nav-active")
+            else:
+                context.remove_class("nav-active")
 
     def load_engines(self) -> dict:
         try:
@@ -189,6 +235,42 @@ class BaobabNative:
         except Exception:
             return load_json(LANGUAGES_SOURCE, {"languages": []})
 
+    def load_protocols(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "protocols", "--json"))
+        except Exception:
+            return load_json(PROTOCOLS_SOURCE, {"principles": [], "sensitivity_levels": []})
+
+    def load_immersions(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "immersions", "--json"))
+        except Exception:
+            return load_json(IMMERSIONS_SOURCE, {"regions": [], "pathways": []})
+
+    def load_compass(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "compass", "--json"))
+        except Exception:
+            return {"directions": [], "next": {}, "principles": []}
+
+    def load_today(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "today", "--json"))
+        except Exception:
+            return {"next": {}, "route": {"steps": []}, "quick_actions": []}
+
+    def load_trail(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "trail", "--json"))
+        except Exception:
+            return {"events": [], "count": 0, "path": str(TRAIL_FILE)}
+
+    def load_session(self) -> dict:
+        try:
+            return json.loads(run_seven("baobab", "session", "--json"))
+        except Exception:
+            return {"phases": [], "duration_minutes": 0, "title": "Séance Baobab", "intent": ""}
+
     def run_action(self, *args: str) -> None:
         try:
             run_seven(*args)
@@ -213,6 +295,698 @@ class BaobabNative:
     def set_language(self, language: str) -> None:
         self.settings["language"] = language
         save_json(SETTINGS_FILE, self.settings)
+        self.add_trail_event("preference", "Langue Baobab", language)
+        self.reload()
+        self.refresh_views()
+
+    def set_immersion_focus(self, immersion_id: str) -> None:
+        self.settings["immersion_focus"] = immersion_id
+        save_json(SETTINGS_FILE, self.settings)
+        self.add_trail_event("focus", "Immersion choisie", immersion_id)
+
+    def set_country_focus(self, country_name: str) -> None:
+        self.settings["country_focus"] = country_name
+        save_json(SETTINGS_FILE, self.settings)
+        self.add_trail_event("focus", "Pays focus", country_name)
+
+    def commit_focus(self, immersion_id: str = "", country_name: str = "", target: str = "entry") -> None:
+        if immersion_id:
+            self.settings["immersion_focus"] = immersion_id
+            self.add_trail_event("focus", "Immersion choisie", immersion_id)
+        if country_name:
+            self.settings["country_focus"] = country_name
+            self.add_trail_event("focus", "Pays focus", country_name)
+        save_json(SETTINGS_FILE, self.settings)
+        self.reload()
+        self.refresh_views(target)
+
+    def refresh_views(self, target: str | None = None) -> None:
+        if not hasattr(self, "stack"):
+            return
+        current = target or self.stack.get_visible_child_name() or "home"
+        refresh = {
+            "home": ("Accueil", self.home_view),
+            "entry": ("Entrée", self.entry_view),
+            "veillee": ("Veillée", self.veillee_view),
+            "session": ("Séance", self.session_view),
+            "carnet": ("Carnet", self.carnet_view),
+            "sessions": ("Sessions", self.sessions_view),
+            "constellation": ("Constellation", self.constellation_view),
+            "today": ("Aujourd'hui", self.today_view),
+            "compass": ("Boussole", self.compass_view),
+            "trail": ("Trace", self.trail_view),
+            "explore": ("Explorer", self.explore_view),
+            "immersions": ("Immersions", self.immersions_view),
+            "media": ("Médiathèque", self.media_view),
+            "journal": ("Journal", self.journal_view),
+            "protocols": ("Protocoles", self.protocols_view),
+            "preferences": ("Préférences", self.preferences_view),
+        }
+        for view_key, (label, builder) in refresh.items():
+            old = self.stack.get_child_by_name(view_key)
+            if old is not None:
+                self.stack.remove(old)
+            self.stack.add_titled(builder(), view_key, label)
+        self.stack.set_visible_child_name(current if current in refresh else "home")
+        self.update_nav_state()
+        self.update_context_panel()
+
+    def add_trail_event(self, kind: str, title: str, body: str = "") -> None:
+        TRAIL_FILE.parent.mkdir(parents=True, exist_ok=True)
+        event = {
+            "schema": "sevenos.baobab.trail.event.v1",
+            "time": datetime.now().isoformat(timespec="seconds"),
+            "kind": kind,
+            "title": title,
+            "body": body,
+            "ambiance": self.active_ambiance_key() if hasattr(self, "settings") else "calme",
+            "immersion_focus": self.settings.get("immersion_focus", ""),
+            "country_focus": self.settings.get("country_focus", ""),
+        }
+        with TRAIL_FILE.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+    def add_memory_dialog(self) -> None:
+        dialog = self.Gtk.Dialog(title="Ajouter une trace Baobab", transient_for=self.window, flags=0)
+        dialog.set_default_size(520, 220)
+        area = dialog.get_content_area()
+        area.set_border_width(16)
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.add(self.label("Mémoire locale", "card-title", False))
+        box.add(self.label("Note une lecture, une écoute, une personne ressource, une source à vérifier ou un lien culturel.", "card-body"))
+        entry = self.Gtk.Entry()
+        entry.set_placeholder_text("Ex: J'ai noté une source sur le balafon...")
+        box.add(entry)
+        area.add(box)
+        dialog.add_button("Annuler", self.Gtk.ResponseType.CANCEL)
+        dialog.add_button("Ajouter", self.Gtk.ResponseType.OK)
+
+        def on_response(dialog, response):
+            if response == self.Gtk.ResponseType.OK:
+                value = entry.get_text().strip()
+                if value:
+                    self.add_trail_event("memoire", "Mémoire ajoutée", value)
+                    self.reload()
+                    if hasattr(self, "stack"):
+                        old = self.stack.get_child_by_name("trail")
+                        if old is not None:
+                            self.stack.remove(old)
+                        self.stack.add_titled(self.trail_view(), "trail", "Trace")
+                        self.stack.set_visible_child_name("trail")
+            dialog.destroy()
+
+        dialog.connect("response", on_response)
+        dialog.show_all()
+
+    def ambiance_modes(self) -> dict[str, dict[str, str]]:
+        return {
+            "calme": {
+                "label": "Calme",
+                "subtitle": "lecture, écoute douce et mémoire personnelle",
+                "hint": "Racines",
+                "body": "Un Baobab contemplatif pour lire, écouter, prendre des notes et ne pas brusquer l'utilisateur.",
+            },
+            "apprentissage": {
+                "label": "Apprentissage",
+                "subtitle": "langues, patrimoine, parcours et transmission",
+                "hint": "Mémoire",
+                "body": "Un Baobab pédagogique qui met en avant langues, patrimoine, rituels et parcours guidés.",
+            },
+            "terrain": {
+                "label": "Terrain",
+                "subtitle": "collecte, source, consentement et relecture locale",
+                "hint": "Terrain",
+                "body": "Un Baobab orienté collecte responsable: brouillons, sources, droits et validation communautaire.",
+            },
+            "scene": {
+                "label": "Scène",
+                "subtitle": "son, récit, musée, création et présentation",
+                "hint": "Scène",
+                "body": "Un Baobab plus expressif pour écouter, raconter, créer et préparer une présentation culturelle.",
+            },
+        }
+
+    def active_ambiance_key(self) -> str:
+        key = text(self.settings.get("ambiance"), "calme")
+        return key if key in self.ambiance_modes() else "calme"
+
+    def active_ambiance(self) -> dict[str, str]:
+        return self.ambiance_modes()[self.active_ambiance_key()]
+
+    def set_ambiance(self, key: str) -> None:
+        if key not in self.ambiance_modes():
+            return
+        self.settings["ambiance"] = key
+        save_json(SETTINGS_FILE, self.settings)
+        self.add_trail_event("ambiance", "Ambiance Baobab", self.ambiance_modes()[key]["label"])
+        self.reload()
+        self.refresh_views("preferences")
+
+    def matching_immersions(self, country_name: str) -> list[dict]:
+        normalized = country_name.lower()
+        return [
+            item for item in self.immersions
+            if any(normalized == text(country).lower() for country in item.get("countries", []))
+        ]
+
+    def active_immersion(self) -> dict:
+        wanted = text(self.settings.get("immersion_focus"))
+        return next((item for item in self.immersions if item.get("id") == wanted), self.immersions[0] if self.immersions else {})
+
+    def daily_ritual(self) -> str:
+        active = self.active_immersion()
+        rituals = active.get("daily_rituals_fr", []) or active.get("daily_rituals_en", [])
+        if not rituals:
+            return "Choisir un pays, lire une fiche et créer une note en brouillon."
+        return text(rituals[date.today().toordinal() % len(rituals)])
+
+    def todays_ritual_note(self) -> Path | None:
+        folder = WORKSPACE / "Rituels du jour"
+        if not folder.exists():
+            return None
+        prefix = f"{date.today().isoformat()}-rituel-baobab"
+        return next(iter(sorted(folder.glob(f"{prefix}*.md"))), None)
+
+    def route_progress(self) -> list[tuple[str, bool, str]]:
+        active = self.active_immersion()
+        country = text(self.settings.get("country_focus"))
+        return [
+            ("Immersion choisie", bool(active), text(active.get("name_fr") or active.get("name_en"), "Baobab")),
+            ("Pays focus", bool(country), country or "à choisir"),
+            ("Note du jour", self.todays_ritual_note() is not None, "Markdown local"),
+            ("Sources locales", bool(self.datasets), f"{len(self.datasets)} source(s)"),
+            ("Packs culturels", bool(self.packs_payload.get("packs")), f"{self.packs_payload.get('count', 0)} pack(s)"),
+        ]
+
+    def entry_steps(self) -> list[dict[str, str]]:
+        active = self.active_immersion()
+        country = text(self.settings.get("country_focus"))
+        note = self.todays_ritual_note()
+        return [
+            {
+                "title": "Entrer par une région",
+                "body": text(active.get("tone_fr") or active.get("tone_en"), "Choisir une immersion culturelle comme point d'ancrage."),
+                "meta": text(active.get("name_fr") or active.get("name_en"), "Immersion à choisir"),
+                "target": "immersions",
+                "state": "ready" if active else "todo",
+            },
+            {
+                "title": "Relier un pays",
+                "body": "Associer territoire, langue, pratique, source et récit avant de collecter.",
+                "meta": country or "Pays à choisir",
+                "target": "explore",
+                "state": "ready" if country else "todo",
+            },
+            {
+                "title": "Créer une trace",
+                "body": "Garder une note locale courte pour ne pas perdre le fil de l'exploration.",
+                "meta": f"{self.trail_payload.get('count', 0)} trace(s)",
+                "target": "trail",
+                "state": "ready" if self.trail_payload.get("count", 0) else "todo",
+            },
+            {
+                "title": "Préparer la transmission",
+                "body": "Passer par le journal, la collecte et les packs avant tout partage public.",
+                "meta": "Note du jour prête" if note else "Note du jour à créer",
+                "target": "journal",
+                "state": "ready" if note else "todo",
+            },
+        ]
+
+    def entry_panel(self, compact: bool = False) -> object:
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("entry-panel")
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=14)
+        header.pack_start(self.baobab_mark(48), False, False, 0)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+        title.pack_start(self.label("Entrée Baobab", "card-title", False), False, False, 0)
+        title.pack_start(self.label("Un passage calme: région, pays, trace, transmission.", "card-meta"), False, False, 0)
+        header.pack_start(title, True, True, 0)
+        header.pack_end(self.chip(self.active_ambiance()["label"]), False, False, 0)
+        box.add(header)
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(4 if compact else 2)
+        for step in self.entry_steps():
+            card = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=6)
+            card.get_style_context().add_class("entry-step")
+            card.get_style_context().add_class("entry-ready" if step["state"] == "ready" else "entry-todo")
+            card.add(self.label(step["title"], "card-title", False))
+            card.add(self.label(step["meta"], "card-meta", False))
+            if not compact:
+                card.add(self.label(step["body"], "card-body"))
+            event = self.Gtk.EventBox()
+            event.add(card)
+            event.connect("button-press-event", lambda _event, _button, target=step["target"]: self.stack.set_visible_child_name(target))
+            flow.add(event)
+        box.add(flow)
+        return box
+
+    def veillee_panel(self, compact: bool = True) -> object:
+        active = self.active_immersion()
+        ambiance = self.active_ambiance()
+        next_item = (self.today_payload or {}).get("next", {})
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        box.get_style_context().add_class("veillee-panel")
+        top = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=16)
+        orbit = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=0)
+        orbit.get_style_context().add_class("veillee-orbit")
+        orbit.pack_start(self.baobab_mark(66), False, False, 0)
+        top.pack_start(orbit, False, False, 0)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=5)
+        title.pack_start(self.label("Veillée Baobab", "card-title", False), False, False, 0)
+        title.pack_start(self.label("Un espace de présence: lire, écouter, noter, puis transmettre avec soin.", "card-body"), False, False, 0)
+        meta = f"{text(active.get('name_fr') or active.get('name_en'), 'Baobab')} · {ambiance['label']} · {self.trail_payload.get('count', 0)} trace(s)"
+        title.pack_start(self.label(meta, "card-meta", False), False, False, 0)
+        top.pack_start(title, True, True, 0)
+        top.pack_end(self.button("Ouvrir", lambda *_: self.stack.set_visible_child_name("veillee")), False, False, 0)
+        box.add(top)
+        if not compact:
+            ritual = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=6)
+            ritual.get_style_context().add_class("veillee-step")
+            ritual.add(self.label("Rituel", "card-title", False))
+            ritual.add(self.label(self.daily_ritual(), "card-body"))
+            box.add(ritual)
+        actions = self.Gtk.FlowBox()
+        actions.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        actions.set_max_children_per_line(4)
+        for title_text, meta_text, target in [
+            ("Lire", "Patrimoine", "heritage"),
+            ("Écouter", "Sound", "modules"),
+            ("Noter", "Trace", "trail"),
+            ("Transmettre", text(next_item.get("title"), "Boussole"), "compass"),
+        ]:
+            card = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=5)
+            card.get_style_context().add_class("veillee-step")
+            card.add(self.label(title_text, "card-title", False))
+            card.add(self.label(meta_text, "card-meta", False))
+            event = self.Gtk.EventBox()
+            event.add(card)
+            event.connect("button-press-event", lambda _event, _button, target=target: self.stack.set_visible_child_name(target))
+            actions.add(event)
+        box.add(actions)
+        return box
+
+    def session_panel(self, compact: bool = True) -> object:
+        payload = self.session_payload or {}
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("session-panel")
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        title.pack_start(self.label(text(payload.get("title"), "Séance Baobab"), "card-title", False), False, False, 0)
+        title.pack_start(self.label(text(payload.get("intent"), "Un rythme culturel guidé."), "card-body"), False, False, 0)
+        title.pack_start(self.label(f"{payload.get('duration_minutes', 0)} min · {text(payload.get('ambiance'), 'calme')} · {payload.get('trail_count', 0)} trace(s)", "card-meta", False), False, False, 0)
+        header.pack_start(title, True, True, 0)
+        header.pack_end(self.button("Ouvrir", lambda *_: self.stack.set_visible_child_name("session")), False, False, 0)
+        box.add(header)
+        phases = payload.get("phases", [])
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(5 if compact else 2)
+        for phase in phases[:5 if compact else len(phases)]:
+            phase_box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=5)
+            phase_box.get_style_context().add_class("session-phase")
+            phase_box.add(self.label(text(phase.get("title"), "Phase"), "card-title", False))
+            phase_box.add(self.label(f"{phase.get('minutes', 0)} min", "card-meta", False))
+            if not compact:
+                phase_box.add(self.label(text(phase.get("body")), "card-body"))
+            event = self.Gtk.EventBox()
+            event.add(phase_box)
+            command = text(phase.get("command"))
+            event.connect("button-press-event", lambda _event, _button, command=command: self.launch_today_action(command))
+            flow.add(event)
+        box.add(flow)
+        return box
+
+    def recent_sessions_panel(self) -> object:
+        sessions = self.session_folders()[:3]
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("recent-sessions-panel")
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        title.pack_start(self.label("Dernières séances", "card-title", False), False, False, 0)
+        title.pack_start(self.label("Dossiers d'atelier et de terrain prêts à reprendre.", "card-body"), False, False, 0)
+        header.pack_start(title, True, True, 0)
+        header.pack_end(self.button("Tout voir", lambda *_: self.navigate("sessions")), False, False, 0)
+        box.add(header)
+        if not sessions:
+            empty = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=6)
+            empty.get_style_context().add_class("recent-session-empty")
+            empty.add(self.label("Aucune séance enregistrée", "card-title", False))
+            empty.add(self.label("Crée une séance pour générer carte, checklist et dossier médias.", "card-body"))
+            empty.add(self.button("Créer une séance", lambda *_: self.create_session_folder()))
+            box.add(empty)
+            return box
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(3)
+        for item in sessions:
+            card = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=6)
+            card.get_style_context().add_class("recent-session-card")
+            card.get_style_context().add_class("session-ready" if item["state"] == "ready" else "session-partial")
+            state_label = "complète" if item["state"] == "ready" else "à compléter"
+            card.add(self.label(text(item["name"]), "card-title", False))
+            card.add(self.label(f"{item['modified']} · {item['media_count']} média(s)", "card-meta", False))
+            card.add(self.label(state_label, "card-body"))
+            row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.add(self.button("Ouvrir", lambda *_args, path=item["path"]: open_path(path)))
+            row.add(self.button("Carte", lambda *_args, path=item["path"]: open_path(path / "carte-transmission.md")))
+            card.add(row)
+            flow.add(card)
+        box.add(flow)
+        return box
+
+    def carnet_panel(self, compact: bool = True) -> object:
+        notes = self.ritual_notes()
+        events = (self.trail_payload or {}).get("events", [])
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("carnet-panel")
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        title.pack_start(self.label("Carnet culturel", "card-title", False), False, False, 0)
+        title.pack_start(self.label("Notes, traces et séance active dans une mémoire lisible.", "card-body"), False, False, 0)
+        title.pack_start(self.label(f"{len(notes)} note(s) · {len(events)} trace(s) · {text((self.session_payload or {}).get('title'), 'Séance Baobab')}", "card-meta", False), False, False, 0)
+        header.pack_start(title, True, True, 0)
+        header.pack_end(self.button("Ouvrir", lambda *_: self.stack.set_visible_child_name("carnet")), False, False, 0)
+        box.add(header)
+        if compact:
+            preview = []
+            if notes:
+                preview.append(("Note récente", notes[0].name, str(notes[0])))
+            if events:
+                preview.append((text(events[0].get("title"), "Trace"), text(events[0].get("time")), text(events[0].get("body"))))
+            if not preview:
+                box.add(self.label("Le carnet est prêt. Crée une note ou une trace pour commencer.", "card-body"))
+            for title_text, meta_text, body_text in preview[:2]:
+                item = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+                item.get_style_context().add_class("carnet-item")
+                item.add(self.label(title_text, "card-title", False))
+                item.add(self.label(meta_text, "card-meta", False))
+                item.add(self.label(body_text, "card-body"))
+                box.add(item)
+        return box
+
+    def constellation_nodes(self) -> list[tuple[str, str, str, str]]:
+        active = self.active_immersion()
+        country = text(self.settings.get("country_focus"), "à relier")
+        languages = ", ".join(text(item.get("name_fr") or item.get("name_en")) for item in self.languages[:2]) or "langues à enrichir"
+        sound_count = 0
+        for library in (WORKSPACE / "Sound", DATA / "sound"):
+            if library.exists():
+                sound_count += sum(1 for path in library.iterdir() if path.suffix.lower() in {".mp3", ".ogg", ".flac", ".wav", ".m4a", ".opus"})
+        return [
+            ("Immersion", text(active.get("name_fr") or active.get("name_en"), "Baobab"), "Région active", "immersions"),
+            ("Pays", country, "Territoire focus", "explore"),
+            ("Langues", languages, "Mots et transmission", "languages"),
+            ("Son", f"{sound_count} fichier(s)", "Voix, instruments, archives", "modules"),
+            ("Trace", f"{self.trail_payload.get('count', 0)} trace(s)", "Mémoire locale", "trail"),
+            ("Sources", f"{len(self.datasets)} source(s)", "CSV, JSON, index local", "datasets"),
+            ("Transmission", text((self.compass_payload or {}).get("next", {}).get("title"), "Boussole"), "Garde-fous", "compass"),
+        ]
+
+    def constellation_canvas(self) -> object:
+        area = self.Gtk.DrawingArea()
+        area.set_size_request(520, 320)
+        area.get_style_context().add_class("constellation-canvas")
+
+        def draw(_area, cr):
+            width = _area.get_allocated_width()
+            height = _area.get_allocated_height()
+            cx = width * 0.50
+            cy = height * 0.50
+            cr.set_source_rgba(.035, .050, .045, .96)
+            cr.paint()
+            cr.set_line_cap(1)
+            cr.set_source_rgba(.72, .58, .36, .16)
+            for radius in (58, 102, 146):
+                cr.set_line_width(1)
+                cr.arc(cx, cy, radius, 0, 6.283)
+                cr.stroke()
+            nodes = [
+                ("Immersion", .50, .18, .55, .70, .48),
+                ("Pays", .78, .34, .72, .58, .36),
+                ("Langues", .74, .70, .42, .68, .84),
+                ("Son", .50, .84, .72, .52, .82),
+                ("Trace", .24, .70, .82, .66, .42),
+                ("Sources", .20, .34, .48, .72, .55),
+                ("Transmission", .50, .50, .86, .80, .58),
+            ]
+            for label, x, y, r, g, b in nodes:
+                px = width * x
+                py = height * y
+                if label != "Transmission":
+                    cr.set_source_rgba(r, g, b, .34)
+                    cr.set_line_width(1.5)
+                    cr.move_to(cx, cy)
+                    cr.line_to(px, py)
+                    cr.stroke()
+            for label, x, y, r, g, b in nodes:
+                px = width * x
+                py = height * y
+                radius = 16 if label == "Transmission" else 11
+                cr.set_source_rgba(r, g, b, .18)
+                cr.arc(px, py, radius + 10, 0, 6.283)
+                cr.fill()
+                cr.set_source_rgba(r, g, b, .90)
+                cr.arc(px, py, radius, 0, 6.283)
+                cr.fill()
+                cr.set_source_rgba(.95, .91, .80, .88)
+                cr.select_font_face("Noto Sans", 0, 0)
+                cr.set_font_size(11)
+                cr.move_to(px + radius + 5, py + 4)
+                cr.show_text(label)
+            cr.set_source_rgba(.95, .91, .80, .92)
+            cr.set_font_size(13)
+            cr.move_to(cx - 24, cy + 4)
+            cr.show_text("Baobab")
+            return False
+
+        area.connect("draw", draw)
+        return area
+
+    def constellation_panel(self, compact: bool = True) -> object:
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("constellation-panel")
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        title.pack_start(self.label("Constellation Baobab", "card-title", False), False, False, 0)
+        title.pack_start(self.label("Voir les liens entre région, pays, langues, sons, traces, sources et transmission.", "card-body"), False, False, 0)
+        header.pack_start(title, True, True, 0)
+        header.pack_end(self.button("Ouvrir", lambda *_: self.stack.set_visible_child_name("constellation")), False, False, 0)
+        box.add(header)
+        if not compact:
+            box.add(self.constellation_canvas())
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(4 if compact else 3)
+        for title_text, value, meta, target in self.constellation_nodes():
+            node = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+            node.get_style_context().add_class("constellation-node")
+            node.add(self.label(title_text, "card-title", False))
+            node.add(self.label(value, "card-meta", False))
+            if not compact:
+                node.add(self.label(meta, "card-body"))
+            event = self.Gtk.EventBox()
+            event.add(node)
+            event.connect("button-press-event", lambda _event, _button, target=target: self.stack.set_visible_child_name(target))
+            flow.add(event)
+        box.add(flow)
+        return box
+
+    def media_items(self) -> list[dict]:
+        roots = [
+            ("Sound", WORKSPACE / "Sound"),
+            ("Baobab data", DATA / "sound"),
+            ("Packs", DATA / "packs"),
+            ("Workspace", WORKSPACE),
+        ]
+        items: list[dict] = []
+        seen: set[str] = set()
+        for source, root in roots:
+            if not root.exists():
+                continue
+            iterator = root.rglob("*") if source in {"Packs", "Workspace"} else root.glob("*")
+            for path in iterator:
+                if not path.is_file():
+                    continue
+                kind = MEDIA_EXTENSIONS.get(path.suffix.lower())
+                if not kind:
+                    continue
+                key = str(path.resolve())
+                if key in seen:
+                    continue
+                seen.add(key)
+                try:
+                    stat = path.stat()
+                except OSError:
+                    continue
+                items.append({
+                    "path": path,
+                    "name": path.name,
+                    "kind": kind,
+                    "source": source,
+                    "size": stat.st_size,
+                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="minutes"),
+                })
+        return sorted(items, key=lambda item: item["modified"], reverse=True)[:120]
+
+    def media_panel(self, compact: bool = True) -> object:
+        items = self.media_items()
+        counts = {kind: sum(1 for item in items if item["kind"] == kind) for kind in ("audio", "image", "video", "document")}
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("media-panel")
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        title.pack_start(self.label("Médiathèque vivante", "card-title", False), False, False, 0)
+        title.pack_start(self.label("Sons, images, vidéos et documents culturels retrouvés localement.", "card-body"), False, False, 0)
+        title.pack_start(self.label(f"{len(items)} média(s) · {counts['audio']} sons · {counts['image']} images · {counts['document']} documents", "card-meta", False), False, False, 0)
+        header.pack_start(title, True, True, 0)
+        header.pack_end(self.button("Ouvrir", lambda *_: self.stack.set_visible_child_name("media")), False, False, 0)
+        box.add(header)
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(4 if compact else 3)
+        shown = items[:4 if compact else 30]
+        if not shown:
+            box.add(self.label("Ajoute des médias dans ~/Baobab/Sound ou dans les packs culturels pour les voir ici.", "card-body"))
+            return box
+        for item in shown:
+            card = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+            card.get_style_context().add_class("media-item")
+            card.get_style_context().add_class(f"media-{item['kind']}")
+            card.add(self.label(text(item["name"]), "card-title", False))
+            card.add(self.label(f"{item['kind']} · {item['source']}", "card-meta", False))
+            if not compact:
+                card.add(self.label(f"{item['modified']} · {self.format_size(item['size'])}", "card-body"))
+            event = self.Gtk.EventBox()
+            event.add(card)
+            event.connect("button-press-event", lambda _event, _button, path=item["path"]: open_path(path))
+            flow.add(event)
+        box.add(flow)
+        return box
+
+    def next_route_action(self) -> tuple[str, str, str]:
+        for label, done, _meta in self.route_progress():
+            if done:
+                continue
+            if label == "Pays focus":
+                return ("Choisir un pays focus", "Relier l’immersion active à un territoire précis.", "explore")
+            if label == "Note du jour":
+                return ("Créer la note du jour", "Transformer le rituel en trace locale Markdown.", "journal")
+            if label == "Packs culturels":
+                return ("Préparer les packs", "Créer les contenants culturels pour collecter proprement.", "packs")
+        return ("Continuer le journal", "Relire, enrichir et sourcer les notes déjà créées.", "journal")
+
+    def focus_country(self, country_name: str) -> None:
+        self.commit_focus(country_name=country_name, target="explore")
+
+    def create_daily_ritual_note(self) -> None:
+        active = self.active_immersion()
+        folder = WORKSPACE / "Rituels du jour"
+        folder.mkdir(parents=True, exist_ok=True)
+        path = unique_path(folder / f"{date.today().isoformat()}-rituel-baobab.md")
+        country = text(self.settings.get("country_focus"), "à choisir")
+        title = text(active.get("name_fr") or active.get("name_en"), "Baobab")
+        body = f"""# Rituel Baobab - {date.today().isoformat()}
+
+- Immersion: {title}
+- Pays focus: {country}
+- Statut: brouillon personnel
+
+## Rituel du jour
+{self.daily_ritual()}
+
+## Notes
+- Ce que j'ai lu:
+- Ce que j'ai écouté:
+- Langue, mot ou expression:
+- Source ou personne à consulter:
+- À vérifier avant partage:
+
+## Respect culturel
+- [ ] Source identifiée
+- [ ] Contexte noté
+- [ ] Consentement nécessaire vérifié
+- [ ] Relecture locale à prévoir si le contenu est partagé
+"""
+        path.write_text(body, encoding="utf-8")
+        self.add_trail_event("journal", "Note rituelle créée", str(path))
+        open_path(path)
+        if hasattr(self, "stack"):
+            self.reload()
+            self.refresh_views("journal")
+
+    def create_session_folder(self) -> None:
+        payload = self.transmission_payload()
+        slug = slugify(f"{payload['immersion']}-{payload['country']}-{date.today().isoformat()}", "session-baobab")
+        folder = unique_path(WORKSPACE / "Sessions Baobab" / slug)
+        media_folder = folder / "media"
+        media_folder.mkdir(parents=True, exist_ok=True)
+        (folder / "carte-transmission.md").write_text(
+            "# Carte de transmission\n\n"
+            f"{self.transmission_text()}\n\n"
+            "## Notes de séance\n"
+            "- Ce qui a été compris:\n"
+            "- Ce qui reste à vérifier:\n"
+            "- Personnes ou sources à consulter:\n",
+            encoding="utf-8",
+        )
+        (folder / "checklist-respect.md").write_text(
+            "# Checklist respect culturel\n\n"
+            "- [ ] Source identifiée\n"
+            "- [ ] Contexte noté\n"
+            "- [ ] Pays, région ou communauté clarifiés\n"
+            "- [ ] Consentement vérifié si une personne ou une famille est concernée\n"
+            "- [ ] Droits des médias vérifiés\n"
+            "- [ ] Relecture locale prévue avant partage public\n",
+            encoding="utf-8",
+        )
+        (folder / "README.md").write_text(
+            "# Session Baobab\n\n"
+            "Ce dossier est local. Place les sons, images, vidéos ou documents dans `media/`.\n"
+            "Baobab peut ensuite les retrouver dans la Médiathèque vivante.\n",
+            encoding="utf-8",
+        )
+        self.add_trail_event("session", "Dossier de séance créé", str(folder))
+        open_path(folder)
+        if hasattr(self, "stack"):
+            self.reload()
+            self.refresh_views("carnet")
+
+    def session_folders(self) -> list[dict]:
+        root = WORKSPACE / "Sessions Baobab"
+        if not root.exists():
+            return []
+        sessions = []
+        for folder in root.iterdir():
+            if not folder.is_dir():
+                continue
+            media_dir = folder / "media"
+            media_count = 0
+            if media_dir.exists():
+                media_count = sum(1 for path in media_dir.rglob("*") if path.is_file())
+            card = folder / "carte-transmission.md"
+            checklist = folder / "checklist-respect.md"
+            try:
+                modified = datetime.fromtimestamp(folder.stat().st_mtime).isoformat(timespec="minutes")
+            except OSError:
+                modified = ""
+            sessions.append({
+                "path": folder,
+                "name": folder.name.replace("-", " ").title(),
+                "modified": modified,
+                "media_count": media_count,
+                "has_card": card.exists(),
+                "has_checklist": checklist.exists(),
+                "state": "ready" if card.exists() and checklist.exists() else "partial",
+            })
+        return sorted(sessions, key=lambda item: item["modified"], reverse=True)
+
+    def ritual_notes(self) -> list[Path]:
+        folder = WORKSPACE / "Rituels du jour"
+        if not folder.exists():
+            return []
+        return sorted(folder.glob("*.md"), key=lambda path: path.stat().st_mtime, reverse=True)
 
     def apply_css(self) -> None:
         base_css = seven_theme.gtk_app_css("baobab").encode("utf-8") if seven_theme else b""
@@ -224,9 +998,16 @@ class BaobabNative:
         .brand { padding: 14px; border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.22); }
         .brand-title { font-size: 24px; font-weight: 600; color: @seven_text; }
         .brand-subtitle { color: @seven_muted; font-size: 12px; }
+        .context-card { padding: 13px; border-radius: 14px; background: alpha(@seven_profile_accent,.09); border: 1px solid alpha(@seven_profile_secondary,.28); }
+        .context-row { padding: 8px 0; border-bottom: 1px solid alpha(@seven_border,.35); }
+        .context-action { padding: 10px; border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.18); }
+        .context-action:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.42); }
+        .context-quick { border-radius: 10px; padding: 7px 9px; background: alpha(@seven_profile_accent,.10); border: 1px solid alpha(@seven_profile_accent,.16); color: @seven_text; }
+        .context-quick:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.40); }
         .nav-title { color: @seven_profile_accent; font-size: 11px; font-weight: 600; }
         .nav button { border-radius: 10px; padding: 9px 12px; background: transparent; border: 1px solid transparent; color: @seven_text; }
         .nav button:hover { background: @seven_hover; border-color: alpha(@seven_profile_accent,.28); }
+        .nav-active { background: alpha(@seven_profile_accent,.18); border-color: alpha(@seven_profile_secondary,.46); }
         .hero { padding: 26px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.22); }
         .title { font-size: 34px; font-weight: 500; color: @seven_text; letter-spacing: 0; }
         .subtitle { color: @seven_muted; font-size: 15px; }
@@ -250,6 +1031,75 @@ class BaobabNative:
         .tree-leaf { border-left-color: @seven_success; }
         .tree-collect { border-left-color: @seven_warning; }
         .tree-archive { border-left-color: @seven_muted; }
+        .immersion-band { padding: 18px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.24); }
+        .entry-panel { padding: 18px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.28); }
+        .entry-step { padding: 13px; border-radius: 12px; background: alpha(@seven_profile_accent,.08); border: 1px solid alpha(@seven_profile_accent,.18); }
+        .entry-step:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.48); }
+        .entry-ready { border-color: alpha(@seven_success,.38); }
+        .entry-todo { border-color: alpha(@seven_warning,.34); }
+        .ambiance-panel { padding: 16px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.24); }
+        .ambiance-button { padding: 13px; border-radius: 12px; background: @seven_panel_2; border: 1px solid @seven_border; }
+        .ambiance-button:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.48); }
+        .ambiance-active { border-color: alpha(@seven_profile_secondary,.70); background: alpha(@seven_profile_accent,.16); }
+        .immersion-map { border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.22); }
+        .region-card { padding: 14px; border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.20); }
+        .region-card:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.46); }
+        .route-card { padding: 16px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.22); }
+        .route-row { padding: 7px 0; border-bottom: 1px solid alpha(@seven_border,.45); }
+        .route-ok { color: @seven_success; font-weight: 500; }
+        .route-wait { color: @seven_warning; font-weight: 500; }
+        .compass-panel { padding: 17px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.24); }
+        .compass-direction { padding: 13px; border-radius: 12px; background: @seven_panel_2; border: 1px solid @seven_border; }
+        .compass-direction:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.46); }
+        .compass-ready { border-color: alpha(@seven_success,.38); }
+        .compass-todo { border-color: alpha(@seven_warning,.36); }
+        .today-panel { padding: 20px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.28); }
+        .today-hero { padding: 18px; border-radius: 14px; background: alpha(@seven_profile_accent,.13); border: 1px solid alpha(@seven_profile_secondary,.28); }
+        .today-action { padding: 12px; border-radius: 12px; background: @seven_panel_2; border: 1px solid @seven_border; }
+        .today-action:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.44); }
+        .transmission-card { padding: 18px; border-radius: 16px; background: alpha(@seven_profile_secondary,.10); border: 1px solid alpha(@seven_profile_secondary,.30); }
+        .transmission-line { padding: 9px 0; border-bottom: 1px solid alpha(@seven_border,.38); }
+        .transmission-guard { padding: 12px; border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_warning,.28); }
+        .veillee-panel { padding: 22px; border-radius: 16px; background: alpha(@seven_profile_accent,.10); border: 1px solid alpha(@seven_profile_secondary,.30); }
+        .veillee-orbit { padding: 16px; border-radius: 999px; background: alpha(@seven_profile_secondary,.10); border: 1px solid alpha(@seven_profile_secondary,.24); }
+        .veillee-step { padding: 13px; border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.20); }
+        .veillee-step:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.42); }
+        .session-panel { padding: 18px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.26); }
+        .session-phase { padding: 13px; border-radius: 12px; background: alpha(@seven_profile_accent,.08); border: 1px solid alpha(@seven_profile_accent,.18); }
+        .session-phase:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.42); }
+        .session-folder { padding: 15px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.22); }
+        .session-folder:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.46); }
+        .session-ready { border-left: 2px solid @seven_success; }
+        .session-partial { border-left: 2px solid @seven_warning; }
+        .recent-sessions-panel { padding: 18px; border-radius: 16px; background: linear-gradient(135deg, alpha(@seven_profile_accent,.09), alpha(@seven_profile_secondary,.08)); border: 1px solid alpha(@seven_profile_secondary,.28); }
+        .recent-session-card { padding: 14px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.20); }
+        .recent-session-card:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.46); }
+        .recent-session-empty { padding: 14px; border-radius: 14px; background: alpha(@seven_profile_accent,.07); border: 1px dashed alpha(@seven_profile_secondary,.28); }
+        .carnet-panel { padding: 18px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.24); }
+        .carnet-item { padding: 13px; border-radius: 12px; background: alpha(@seven_profile_accent,.07); border-left: 2px solid @seven_profile_secondary; border-top: 1px solid alpha(@seven_border,.55); }
+        .constellation-panel { padding: 18px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.26); }
+        .constellation-canvas { border-radius: 14px; background: alpha(@seven_profile_accent,.08); border: 1px solid alpha(@seven_profile_accent,.20); }
+        .constellation-node { padding: 12px; border-radius: 12px; background: alpha(@seven_profile_accent,.07); border: 1px solid alpha(@seven_profile_secondary,.18); }
+        .media-panel { padding: 18px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_secondary,.24); }
+        .media-item { padding: 13px; border-radius: 12px; background: alpha(@seven_profile_accent,.07); border: 1px solid alpha(@seven_profile_accent,.18); }
+        .media-item:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.42); }
+        .media-filter { padding: 13px; border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.18); }
+        .media-active { background: alpha(@seven_profile_accent,.18); border-color: alpha(@seven_profile_secondary,.54); }
+        .media-audio { border-left: 2px solid @seven_profile_secondary; }
+        .media-image { border-left: 2px solid @seven_success; }
+        .media-video { border-left: 2px solid @seven_wallpaper_cyan; }
+        .media-document { border-left: 2px solid @seven_warning; }
+        .journey-strip { padding: 14px; border-radius: 14px; background: alpha(@seven_profile_accent,.08); border: 1px solid alpha(@seven_profile_secondary,.24); }
+        .journey-step { padding: 11px; border-radius: 12px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.18); }
+        .journey-step:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.42); }
+        .trail-panel { padding: 16px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.20); }
+        .trail-row { padding: 11px; border-radius: 12px; background: alpha(@seven_profile_accent,.08); border: 1px solid alpha(@seven_profile_secondary,.20); }
+        .trail-row:hover { background: @seven_hover; border-color: alpha(@seven_profile_secondary,.42); }
+        .next-card { padding: 18px; border-radius: 14px; background: @seven_panel_2; border: 1px solid alpha(@seven_profile_accent,.34); }
+        .empty-state { padding: 22px; border-radius: 14px; background: @seven_panel_2; border: 1px dashed alpha(@seven_profile_secondary,.38); }
+        .baobab-mark { border-radius: 999px; background: alpha(@seven_profile_accent,.15); border: 1px solid alpha(@seven_profile_secondary,.35); }
+        progressbar trough { min-height: 8px; border-radius: 999px; background: alpha(@seven_border,.38); }
+        progressbar progress { min-height: 8px; border-radius: 999px; background: @seven_profile_secondary; }
         .pill { border-radius: 999px; padding: 8px 11px; color: @seven_text; background: @seven_panel_2; border: 1px solid @seven_border; }
         entry { border-radius: 8px; min-height: 38px; }
         """
@@ -280,11 +1130,250 @@ class BaobabNative:
         box.add(self.label(value, "card-meta", False))
         return box
 
+    def format_size(self, size: int) -> str:
+        value = float(size)
+        for unit in ("o", "Ko", "Mo", "Go"):
+            if value < 1024 or unit == "Go":
+                return f"{value:.1f} {unit}" if unit != "o" else f"{int(value)} o"
+            value /= 1024
+        return f"{size} o"
+
+    def journey_strip(self) -> object:
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("journey-strip")
+        top = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        top.pack_start(self.label("Chemin Baobab", "card-title", False), True, True, 0)
+        top.pack_end(self.chip(self.active_ambiance()["label"]), False, False, 0)
+        box.add(top)
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(6)
+        for title, meta, target in [
+            ("Entrée", "région + pays", "entry"),
+            ("Veillée", "lire + écouter", "veillee"),
+            ("Séance", "rythme guidé", "session"),
+            ("Dossiers", "atelier + terrain", "sessions"),
+            ("Carnet", "mémoire locale", "carnet"),
+            ("Médiathèque", "sons + images", "media"),
+            ("Boussole", "transmettre", "compass"),
+        ]:
+            item = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+            item.get_style_context().add_class("journey-step")
+            item.add(self.label(title, "card-title", False))
+            item.add(self.label(meta, "card-meta", False))
+            event = self.Gtk.EventBox()
+            event.add(item)
+            event.connect("button-press-event", lambda _event, _button, target=target: self.navigate(target))
+            flow.add(event)
+        box.add(flow)
+        return box
+
+    def transmission_payload(self) -> dict[str, str]:
+        active = self.active_immersion()
+        title, body, target = self.next_route_action()
+        return {
+            "immersion": text(active.get("name_fr") or active.get("name_en"), "Baobab"),
+            "country": text(self.settings.get("country_focus"), "à choisir"),
+            "ambiance": self.active_ambiance()["label"],
+            "ritual": self.daily_ritual(),
+            "next_title": title,
+            "next_body": body,
+            "next_target": target,
+            "trace_count": str(self.trail_payload.get("count", 0)),
+        }
+
+    def transmission_text(self) -> str:
+        payload = self.transmission_payload()
+        return "\n".join([
+            f"Carte de transmission Baobab - {date.today().isoformat()}",
+            f"Immersion: {payload['immersion']}",
+            f"Pays focus: {payload['country']}",
+            f"Ambiance: {payload['ambiance']}",
+            f"Rituel: {payload['ritual']}",
+            f"Prochain geste: {payload['next_title']} - {payload['next_body']}",
+            "Garde-fous: source identifiée, contexte noté, consentement vérifié si partage public.",
+        ])
+
+    def copy_transmission_card(self) -> None:
+        clipboard = self.Gtk.Clipboard.get(self.Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(self.transmission_text(), -1)
+        clipboard.store()
+        self.add_trail_event("transmission", "Carte copiée", self.transmission_payload()["next_title"])
+        self.show_message("Carte Baobab copiée", "La carte de transmission est dans le presse-papiers.")
+
+    def transmission_card(self, compact: bool = True) -> object:
+        payload = self.transmission_payload()
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("transmission-card")
+        top = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        title.pack_start(self.label("Carte de transmission", "card-title", False), False, False, 0)
+        title.pack_start(self.label("Résumé prêt à noter, partager en brouillon ou relire avant collecte.", "card-meta"), False, False, 0)
+        top.pack_start(title, True, True, 0)
+        top.pack_end(self.button("Copier", lambda *_: self.copy_transmission_card()), False, False, 0)
+        top.pack_end(self.button("Session", lambda *_: self.create_session_folder()), False, False, 0)
+        top.pack_end(self.button("Note", lambda *_: self.create_daily_ritual_note()), False, False, 0)
+        box.add(top)
+        for label, value in [
+            ("Immersion", payload["immersion"]),
+            ("Pays", payload["country"]),
+            ("Rituel", payload["ritual"]),
+            ("Prochain geste", payload["next_title"]),
+        ]:
+            row = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+            row.get_style_context().add_class("transmission-line")
+            row.add(self.label(label, "card-meta", False))
+            row.add(self.label(value, "card-body", True))
+            box.add(row)
+            if compact and label == "Rituel":
+                break
+        guard = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        guard.get_style_context().add_class("transmission-guard")
+        guard.add(self.label("Avant partage", "card-title", False))
+        guard.add(self.label("Source, contexte, droits et consentement restent à vérifier avant toute transmission publique.", "card-body"))
+        box.add(guard)
+        return box
+
+    def context_panel(self) -> object:
+        active = self.active_immersion()
+        country = text(self.settings.get("country_focus"), "à choisir")
+        title, body, target = self.next_route_action()
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("context-card")
+        box.add(self.label("État Baobab", "card-title", False))
+        self.context_labels = {}
+        for label, value in [
+            ("Immersion", text(active.get("name_fr") or active.get("name_en"), "Baobab")),
+            ("Pays", country),
+            ("Ambiance", self.active_ambiance()["label"]),
+            ("Trace", f"{self.trail_payload.get('count', 0)} locale(s)"),
+        ]:
+            row = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=2)
+            row.get_style_context().add_class("context-row")
+            row.add(self.label(label, "card-meta", False))
+            value_label = self.label(value, "card-body", False)
+            self.context_labels[label] = value_label
+            row.add(value_label)
+            box.add(row)
+        next_box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        next_box.get_style_context().add_class("context-action")
+        self.context_next_title = self.label(title, "card-title", False)
+        self.context_next_body = self.label(body, "card-meta", True)
+        next_box.add(self.context_next_title)
+        next_box.add(self.context_next_body)
+        event = self.Gtk.EventBox()
+        event.add(next_box)
+        event.connect("button-press-event", lambda *_: self.navigate(self.next_route_action()[2]))
+        box.add(event)
+        box.add(self.context_quick_actions())
+        return box
+
+    def context_quick_button(self, label: str, callback) -> object:
+        button = self.Gtk.Button(label=label)
+        button.get_style_context().add_class("context-quick")
+        button.connect("clicked", callback)
+        return button
+
+    def context_quick_actions(self) -> object:
+        box = self.Gtk.FlowBox()
+        box.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        box.set_max_children_per_line(2)
+        self.context_quick_box = box
+        self.fill_context_quick_actions(box)
+        return box
+
+    def fill_context_quick_actions(self, box) -> None:
+        for child in box.get_children():
+            box.remove(child)
+        ambiance = self.active_ambiance_key()
+        actions = [
+            ("Note", lambda *_: self.create_daily_ritual_note()),
+            ("Trace", lambda *_: self.add_memory_dialog()),
+            ("Carte", lambda *_: self.copy_transmission_card()),
+            ("Session", lambda *_: self.create_session_folder()),
+        ]
+        if ambiance == "calme":
+            actions.extend([("Veillée", lambda *_: self.navigate("veillee")), ("Lire", lambda *_: self.navigate("heritage"))])
+        elif ambiance == "apprentissage":
+            actions.extend([("Langues", lambda *_: self.navigate("languages")), ("Séance", lambda *_: self.navigate("session"))])
+        elif ambiance == "terrain":
+            actions.extend([("Collecte", lambda *_: self.navigate("collect")), ("Pays", lambda *_: self.navigate("explore"))])
+        else:
+            actions.extend([("Sound", lambda *_: self.open_sound_folder()), ("Musée", lambda *_: self.navigate("museum"))])
+        for label, callback in actions:
+            box.add(self.context_quick_button(label, callback))
+        box.show_all()
+
+    def update_context_panel(self) -> None:
+        if not hasattr(self, "context_labels"):
+            return
+        active = self.active_immersion()
+        values = {
+            "Immersion": text(active.get("name_fr") or active.get("name_en"), "Baobab"),
+            "Pays": text(self.settings.get("country_focus"), "à choisir"),
+            "Ambiance": self.active_ambiance()["label"],
+            "Trace": f"{self.trail_payload.get('count', 0)} locale(s)",
+        }
+        for key, value in values.items():
+            label = self.context_labels.get(key)
+            if label is not None:
+                label.set_text(value)
+        title, body, _target = self.next_route_action()
+        if hasattr(self, "context_next_title"):
+            self.context_next_title.set_text(title)
+        if hasattr(self, "context_next_body"):
+            self.context_next_body.set_text(body)
+        if hasattr(self, "context_quick_box"):
+            self.fill_context_quick_actions(self.context_quick_box)
+
+    def baobab_mark(self, size: int = 54) -> object:
+        area = self.Gtk.DrawingArea()
+        area.set_size_request(size, size)
+        area.get_style_context().add_class("baobab-mark")
+
+        def draw(_area, cr):
+            width = _area.get_allocated_width()
+            height = _area.get_allocated_height()
+            cx = width / 2
+            cy = height / 2
+            radius = min(width, height) * .38
+            cr.set_source_rgba(.14, .44, .28, .22)
+            cr.arc(cx, cy, radius, 0, 6.283)
+            cr.fill()
+            cr.set_line_cap(1)
+            cr.set_line_width(max(2, size * .055))
+            cr.set_source_rgba(.70, .52, .30, .95)
+            cr.move_to(cx, cy + radius * .54)
+            cr.curve_to(cx - radius * .18, cy + radius * .08, cx + radius * .14, cy - radius * .16, cx, cy - radius * .48)
+            cr.stroke()
+            cr.set_line_width(max(1.4, size * .035))
+            cr.set_source_rgba(.43, .72, .46, .96)
+            for dx, dy in [(-.58, -.22), (-.38, -.52), (.0, -.62), (.40, -.50), (.60, -.20)]:
+                cr.move_to(cx, cy - radius * .26)
+                cr.curve_to(cx + dx * radius * .36, cy + dy * radius * .20, cx + dx * radius, cy + dy * radius, cx + dx * radius, cy + dy * radius)
+                cr.stroke()
+            cr.set_source_rgba(.87, .70, .42, .90)
+            cr.arc(cx, cy - radius * .52, max(2.2, size * .055), 0, 6.283)
+            cr.fill()
+            return False
+
+        area.connect("draw", draw)
+        return area
+
     def scroll(self, child) -> object:
         scroller = self.Gtk.ScrolledWindow()
         scroller.set_policy(self.Gtk.PolicyType.NEVER, self.Gtk.PolicyType.AUTOMATIC)
         scroller.add(child)
         return scroller
+
+    def empty_state(self, title: str, body: str, action_label: str = "", action=None) -> object:
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("empty-state")
+        box.add(self.label(title, "card-title"))
+        box.add(self.label(body, "card-body"))
+        if action_label and action:
+            box.add(self.button(action_label, action))
+        return box
 
     def card(self, title: str, meta: str, body: str, on_click=None) -> object:
         event = self.Gtk.EventBox()
@@ -300,6 +1389,127 @@ class BaobabNative:
             event.connect("button-press-event", lambda *_: on_click())
         return event
 
+    def ambiance_card(self, key: str, item: dict[str, str], compact: bool = False) -> object:
+        event = self.Gtk.EventBox()
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=5)
+        box.get_style_context().add_class("ambiance-button")
+        if key == self.active_ambiance_key():
+            box.get_style_context().add_class("ambiance-active")
+        box.add(self.label(item["label"], "card-title", False))
+        box.add(self.label(item["subtitle"], "card-meta", True))
+        if not compact:
+            box.add(self.label(item["body"], "card-body", True))
+        event.add(box)
+        event.connect("button-press-event", lambda *_: self.set_ambiance(key))
+        return event
+
+    def ambiance_panel(self) -> object:
+        active = self.active_ambiance()
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("ambiance-panel")
+        top = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        text_box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+        text_box.pack_start(self.label("Ambiance Baobab", "card-title", False), False, False, 0)
+        text_box.pack_start(self.label(f"{active['label']} · {active['subtitle']}", "card-meta"), False, False, 0)
+        top.pack_start(text_box, True, True, 0)
+        top.pack_end(self.chip(f"Sommet · {active['hint']}"), False, False, 0)
+        box.add(top)
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(4)
+        for key, item in self.ambiance_modes().items():
+            flow.add(self.ambiance_card(key, item, compact=True))
+        box.add(flow)
+        return box
+
+    def compass_panel(self, compact: bool = True) -> object:
+        payload = getattr(self, "compass_payload", {}) or {}
+        next_item = payload.get("next", {})
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("compass-panel")
+        top = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+        title.pack_start(self.label("Boussole Baobab", "card-title", False), False, False, 0)
+        title.pack_start(self.label(f"Prochain geste · {next_item.get('title', 'Comprendre')}", "card-meta"), False, False, 0)
+        top.pack_start(title, True, True, 0)
+        top.pack_end(self.button("Ouvrir", lambda *_: self.stack.set_visible_child_name("compass")), False, False, 0)
+        box.add(top)
+        if next_item.get("body"):
+            box.add(self.label(text(next_item.get("body")), "card-body"))
+        if not compact:
+            flow = self.Gtk.FlowBox()
+            flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+            flow.set_max_children_per_line(3)
+            for item in payload.get("directions", []):
+                card = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=6)
+                card.get_style_context().add_class("compass-direction")
+                card.get_style_context().add_class("compass-ready" if item.get("state") == "ready" else "compass-todo")
+                card.add(self.label(text(item.get("title")), "card-title", False))
+                card.add(self.label(text(item.get("body")), "card-body"))
+                flow.add(card)
+            box.add(flow)
+        return box
+
+    def today_panel(self, compact: bool = True) -> object:
+        payload = getattr(self, "today_payload", {}) or {}
+        next_item = payload.get("next", {})
+        route = payload.get("route", {})
+        immersion = payload.get("immersion", {})
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.get_style_context().add_class("today-panel")
+        hero = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=14)
+        hero.get_style_context().add_class("today-hero")
+        hero.pack_start(self.baobab_mark(52), False, False, 0)
+        text_box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+        text_box.pack_start(self.label("Aujourd'hui dans Baobab", "card-title", False), False, False, 0)
+        text_box.pack_start(self.label(text(payload.get("ritual"), self.daily_ritual()), "card-body"), False, False, 0)
+        text_box.pack_start(self.label(f"{text(immersion.get('name_fr') or immersion.get('name_en'), 'Baobab')} · Route {route.get('done', 0)}/{route.get('total', 0)} · {route.get('score', 0)}%", "card-meta"), False, False, 0)
+        hero.pack_start(text_box, True, True, 0)
+        hero.pack_end(self.button("Continuer", lambda *_: self.stack.set_visible_child_name("today")), False, False, 0)
+        box.add(hero)
+        if next_item:
+            box.add(self.card(text(next_item.get("title"), "Prochain geste"), "Recommandé maintenant", text(next_item.get("body")), lambda: self.launch_today_action(text(next_item.get("command")))))
+        if not compact:
+            actions = self.Gtk.FlowBox()
+            actions.set_selection_mode(self.Gtk.SelectionMode.NONE)
+            actions.set_max_children_per_line(4)
+            for item in payload.get("quick_actions", []):
+                actions.add(self.card(text(item.get("title")), text(item.get("command")), "", lambda item=item: self.launch_today_action(text(item.get("command")))))
+            box.add(actions)
+        return box
+
+    def trail_panel(self, compact: bool = True) -> object:
+        payload = getattr(self, "trail_payload", {}) or {}
+        events = payload.get("events", [])
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("trail-panel")
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=12)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+        title.pack_start(self.label("Trace vivante", "card-title", False), False, False, 0)
+        title.pack_start(self.label(f"{payload.get('count', 0)} trace(s) locales · jamais envoyées", "card-meta"), False, False, 0)
+        header.pack_start(title, True, True, 0)
+        header.pack_end(self.button("Ajouter", lambda *_: self.add_memory_dialog()), False, False, 0)
+        header.pack_end(self.button("Ouvrir", lambda *_: self.stack.set_visible_child_name("trail")), False, False, 0)
+        box.add(header)
+        if not events:
+            box.add(self.label("Aucune trace pour l’instant. Les choix Baobab importants apparaîtront ici.", "card-body"))
+            return box
+        for item in events[:4 if compact else 12]:
+            row = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=3)
+            row.get_style_context().add_class("trail-row")
+            row.add(self.label(text(item.get("title"), "Trace"), "card-title", False))
+            meta = " · ".join(part for part in [text(item.get("time")), text(item.get("kind")), text(item.get("country_focus"))] if part)
+            row.add(self.label(meta, "card-meta", False))
+            if item.get("body"):
+                row.add(self.label(text(item.get("body")), "card-body"))
+            box.add(row)
+        return box
+
+    def launch_today_action(self, command: str) -> None:
+        if not command:
+            return
+        subprocess.Popen(shlex.split(command), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
     def station(self, title: str, meta: str, body: str, target: str) -> object:
         event = self.Gtk.EventBox()
         box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
@@ -310,6 +1520,53 @@ class BaobabNative:
         event.add(box)
         event.connect("button-press-event", lambda *_: self.stack.set_visible_child_name(target))
         return event
+
+    def route_card(self) -> object:
+        steps = self.route_progress()
+        done = sum(1 for _label, state, _meta in steps if state)
+        fraction = done / max(len(steps), 1)
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        box.get_style_context().add_class("route-card")
+        header = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        title = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=2)
+        title.pack_start(self.label("Carnet de route", "card-title"), False, False, 0)
+        title.pack_start(self.label("Un fil clair pour explorer sans se perdre.", "card-meta"), False, False, 0)
+        header.pack_start(title, True, True, 0)
+        header.pack_end(self.chip(f"{done}/{len(steps)}"), False, False, 0)
+        box.add(header)
+        progress = self.Gtk.ProgressBar()
+        progress.set_fraction(fraction)
+        box.add(progress)
+        for label, state, meta in steps:
+            row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.get_style_context().add_class("route-row")
+            row.pack_start(self.label("✓" if state else "•", "route-ok" if state else "route-wait", False), False, False, 0)
+            row.pack_start(self.label(label, "card-body", False), False, False, 0)
+            row.pack_end(self.label(meta, "card-meta", False), False, False, 0)
+            box.add(row)
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        note = self.todays_ritual_note()
+        actions.add(self.button("Ouvrir la note" if note else "Créer la note", lambda *_: open_path(note) if note else self.create_daily_ritual_note()))
+        actions.add(self.button("Choisir un pays", lambda *_: self.stack.set_visible_child_name("explore")))
+        actions.add(self.button("Changer d’immersion", lambda *_: self.stack.set_visible_child_name("immersions")))
+        box.add(actions)
+        return box
+
+    def next_action_card(self) -> object:
+        title, body, target = self.next_route_action()
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=14)
+        box.get_style_context().add_class("next-card")
+        box.pack_start(self.baobab_mark(46), False, False, 0)
+        content = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=5)
+        content.pack_start(self.label("Prochain geste", "card-meta", False), False, False, 0)
+        content.pack_start(self.label(title, "card-title"), False, False, 0)
+        content.pack_start(self.label(body, "card-body"), False, False, 0)
+        box.pack_start(content, True, True, 0)
+        if target == "journal" and self.todays_ritual_note() is None:
+            box.pack_end(self.button("Créer", lambda *_: self.create_daily_ritual_note()), False, False, 0)
+        else:
+            box.pack_end(self.button("Continuer", lambda *_: self.stack.set_visible_child_name(target)), False, False, 0)
+        return box
 
     def tree_canvas(self) -> object:
         area = self.Gtk.DrawingArea()
@@ -362,6 +1619,67 @@ class BaobabNative:
             for label, x, y in [("Racines", .18, .86), ("Tronc", .47, .64), ("Branches", .62, .18), ("Feuilles", .70, .52), ("Collecte", .12, .50), ("Archives", .43, .91)]:
                 cr.move_to(width * x, height * y)
                 cr.show_text(label)
+            return False
+
+        area.connect("draw", draw)
+        return area
+
+    def immersion_canvas(self) -> object:
+        area = self.Gtk.DrawingArea()
+        area.set_size_request(420, 260)
+        area.get_style_context().add_class("immersion-map")
+        active_id = text(self.active_immersion().get("id"))
+
+        def draw(_area, cr):
+            width = _area.get_allocated_width()
+            height = _area.get_allocated_height()
+            cr.set_source_rgb(0.045, 0.060, 0.055)
+            cr.paint()
+            center_x = width * 0.50
+            center_y = height * 0.53
+            cr.set_line_width(1.2)
+            for radius, alpha in [(92, .20), (132, .13), (172, .08)]:
+                cr.set_source_rgba(0.72, 0.58, 0.36, alpha)
+                cr.arc(center_x, center_y, radius, 0, 6.283)
+                cr.stroke()
+            points = [
+                ("sahel", "Sahel", .38, .26, .52, .70, .40),
+                ("mande", "Mandé", .30, .42, .48, .68, .38),
+                ("swahili-coast", "Swahili", .68, .48, .40, .65, .78),
+                ("great-lakes", "Lacs", .58, .54, .58, .82, .58),
+                ("kongo-atlantic", "Kongo", .48, .60, .67, .54, .82),
+                ("horn", "Corne", .68, .30, .75, .66, .45),
+                ("southern-africa", "Australe", .54, .78, .43, .74, .62),
+                ("islands", "Îles", .78, .72, .62, .82, .74),
+            ]
+            for key, label, x, y, r, g, b in points:
+                px = width * x
+                py = height * y
+                is_active = key == active_id
+                cr.set_source_rgba(r, g, b, .42 if is_active else .24)
+                cr.set_line_width(2.2 if is_active else 1.0)
+                cr.move_to(center_x, center_y)
+                cr.line_to(px, py)
+                cr.stroke()
+                if is_active:
+                    cr.set_source_rgba(r, g, b, .18)
+                    cr.arc(px, py, 19, 0, 6.283)
+                    cr.fill()
+                cr.set_source_rgba(r, g, b, .88)
+                cr.arc(px, py, 9 if is_active else 7, 0, 6.283)
+                cr.fill()
+                cr.set_source_rgba(.94, .90, .80, .82)
+                cr.select_font_face("Noto Sans", 0, 0)
+                cr.set_font_size(11)
+                cr.move_to(px + 11, py + 4)
+                cr.show_text(label)
+            cr.set_source_rgba(.82, .67, .42, .96)
+            cr.arc(center_x, center_y, 9, 0, 6.283)
+            cr.fill()
+            cr.set_source_rgba(.95, .91, .80, .90)
+            cr.set_font_size(12)
+            cr.move_to(center_x - 34, center_y + 28)
+            cr.show_text("Baobab")
             return False
 
         area.connect("draw", draw)
@@ -445,11 +1763,17 @@ class BaobabNative:
         box = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=18)
         box.get_style_context().add_class("hero")
         left = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
-        left.add(self.label("BAOBAB OS", "eyebrow", False))
-        left.add(self.label("Arbre de connaissance", "title"))
+        identity = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=14)
+        identity.pack_start(self.baobab_mark(62), False, False, 0)
+        identity_text = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=2)
+        identity_text.pack_start(self.label("BAOBAB OS", "eyebrow", False), False, False, 0)
+        identity_text.pack_start(self.label("Arbre de connaissance", "title"), False, False, 0)
+        identity.pack_start(identity_text, True, True, 0)
+        left.add(identity)
         left.add(self.label("Technologie enracinée: mémoire vivante, transmission calme, apprentissage et création hors ligne.", "subtitle"))
         actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
         actions.add(self.button("Ouvrir l'arbre local", lambda *_: open_path(WORKSPACE / "Village/index.html")))
+        actions.add(self.button("Veillée", lambda *_: self.stack.set_visible_child_name("veillee")))
         actions.add(self.button("Baobab Sound", lambda *_: self.open_sound_folder()))
         actions.add(self.button("Widget mémoire", lambda *_: subprocess.Popen([str(CONFIG / "bin/baobab-widget")], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)))
         actions.add(self.button("Régénérer les données", lambda *_: self.reload()))
@@ -458,6 +1782,11 @@ class BaobabNative:
         right.set_size_request(260, -1)
         right.add(self.chip(f"{self.capabilities_payload.get('score', 0)}% prêt"))
         right.add(self.chip(f"{self.engines_payload.get('immersive_score', 0)}% expérience"))
+        active = self.active_immersion()
+        if active:
+            right.add(self.chip(f"Focus · {active.get('name_fr') or active.get('name_en')}"))
+        ambiance = self.active_ambiance()
+        right.add(self.chip(f"Ambiance · {ambiance['label']}"))
         right.add(self.chip("Démarrage à la demande"))
         right.add(self.chip("FR d'abord · local/offline"))
         box.pack_start(left, True, True, 0)
@@ -468,13 +1797,42 @@ class BaobabNative:
         root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
         root.set_border_width(18)
         root.add(self.header())
+        root.add(self.journey_strip())
+        root.add(self.transmission_card(compact=True))
+        root.add(self.entry_panel(compact=True))
+        root.add(self.veillee_panel(compact=True))
+        root.add(self.session_panel(compact=True))
+        root.add(self.recent_sessions_panel())
+        root.add(self.carnet_panel(compact=True))
+        root.add(self.constellation_panel(compact=True))
+        root.add(self.media_panel(compact=True))
+        root.add(self.today_panel(compact=True))
+        root.add(self.ambiance_panel())
+        root.add(self.compass_panel(compact=True))
+        root.add(self.trail_panel(compact=True))
+        active = self.active_immersion()
+        ritual = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+        ritual.get_style_context().add_class("immersion-band")
+        ritual.add(self.label("Rituel du jour", "card-title"))
+        ritual.add(self.label(self.daily_ritual(), "card-body"))
+        if active:
+            ritual.add(self.label(f"Focus: {active.get('name_fr') or active.get('name_en')}", "card-meta"))
+        ritual_actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        ritual_actions.add(self.button("Créer une note", lambda *_: self.create_daily_ritual_note()))
+        ritual_actions.add(self.button("Journal", lambda *_: self.stack.set_visible_child_name("journal")))
+        ritual_actions.add(self.button("Immersions", lambda *_: self.stack.set_visible_child_name("immersions")))
+        ritual_actions.add(self.button("Collecte", lambda *_: self.stack.set_visible_child_name("collect")))
+        ritual.add(ritual_actions)
+        root.add(ritual)
+        root.add(self.route_card())
+        root.add(self.next_action_card())
 
         os_surface = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=16)
         os_surface.add(self.tree_canvas())
         stations = self.Gtk.Grid(column_spacing=12, row_spacing=12)
         stations.attach(self.station("Racines", "Orientation", "Recherche, sources et préparation Baobab.", "search"), 0, 0, 1, 1)
         stations.attach(self.station("Tronc", "Mémoire", "Patrimoine, récits et modules de transmission.", "heritage"), 1, 0, 1, 1)
-        stations.attach(self.station("Branches", "Territoires", "Pays, langues, relations et futures cartes offline.", "explore"), 0, 1, 1, 1)
+        stations.attach(self.station("Branches", "Territoires", "Pays, langues, immersions et relations culturelles.", "immersions"), 0, 1, 1, 1)
         stations.attach(self.station("Feuilles", "Usages", "Son, cuisine, mode, marché et créations vivantes.", "modules"), 1, 1, 1, 1)
         stations.attach(self.station("Collecte", "Terrain", "Ajouter un récit avec source, droits et consentement.", "collect"), 0, 2, 1, 1)
         stations.attach(self.station("Archives", "Préservation", "Packs, musée et exports locaux contrôlés.", "packs"), 1, 2, 1, 1)
@@ -486,7 +1844,7 @@ class BaobabNative:
         stats.attach(self.stat(str(len(self.heritage)), "Éléments UNESCO ICH"), 1, 0, 1, 1)
         stats.attach(self.stat(str(len(self.records)), "Modules Baobab"), 2, 0, 1, 1)
         stats.attach(self.stat(str(len(self.datasets)), "Sources locales"), 3, 0, 1, 1)
-        stats.attach(self.stat(f"{self.engines_payload.get('immersive_score', 0)}%", "Maturité immersive"), 0, 1, 1, 1)
+        stats.attach(self.stat(str(len(self.immersions)), "Immersions"), 0, 1, 1, 1)
         stats.attach(self.stat(text(self.settings.get("language", "fr")).upper(), "Langue prioritaire"), 1, 1, 1, 1)
         stats.attach(self.stat(str(self.packs_payload.get("count", 0)), "Packs culturels"), 2, 1, 1, 1)
         stats.attach(self.stat(f"{self.audit_payload.get('score', 0)}%", "Qualité packs"), 3, 1, 1, 1)
@@ -538,6 +1896,7 @@ class BaobabNative:
             "tree-branch",
             [
                 ("Explorer", "Branches du territoire", "Relier lieux, contenus, langues et récits.", "explore"),
+                ("Immersions", "Voyages culturels", "Entrer par régions, routes, sons, gestes et mémoires.", "immersions"),
                 ("Langues", "Apprentissage validable", "Consulter les premières langues africaines et leur statut.", "languages"),
                 ("Musée", "Archives contemplatives", "Voir les contenus comme objets, traces et archives.", "museum"),
             ],
@@ -643,6 +2002,8 @@ class BaobabNative:
             for row in listbox.get_children():
                 listbox.remove(row)
             q = query.lower().strip()
+            focus = text(self.settings.get("country_focus")).lower()
+            focused_row = None
             for country in self.countries:
                 label = f"{country.get('flag', '')} {country.get('name', '')} · {country.get('capital', '')}"
                 if q and q not in label.lower():
@@ -651,7 +2012,11 @@ class BaobabNative:
                 row.country = country  # type: ignore[attr-defined]
                 row.add(self.label(label, None, False))
                 listbox.add(row)
+                if not q and focus and focus == text(country.get("name")).lower():
+                    focused_row = row
             listbox.show_all()
+            if focused_row is not None:
+                listbox.select_row(focused_row)
 
         def select_country(_box, row) -> None:
             if not row:
@@ -661,9 +2026,26 @@ class BaobabNative:
                 detail.remove(child)
             name = country.get("name", "")
             related = [item for item in self.heritage if name in item.get("countries", [])]
+            regions = self.matching_immersions(name)
             detail.add(self.label(f"{country.get('flag', '')} {name}", "title"))
             detail.add(self.label(f"Capitale: {country.get('capital', 'inconnue')} · Population: {country.get('population', 0):,}", "subtitle"))
             detail.add(self.label(f"{len(related)} élément(s) de patrimoine dans la base locale", "card-meta"))
+            focus_actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+            focus_actions.add(self.button("Définir comme pays focus", lambda *_: self.commit_focus(country_name=name, target="entry")))
+            focus_actions.add(self.button("Collecter depuis ce pays", lambda *_: self.commit_focus(country_name=name, target="collect")))
+            detail.add(focus_actions)
+            if regions:
+                detail.add(self.label("Immersions liées", "card-title"))
+                region_flow = self.Gtk.FlowBox()
+                region_flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+                for region in regions:
+                    region_flow.add(self.card(
+                        text(region.get("name_fr") or region.get("name_en"), "Immersion"),
+                        text(region.get("id"), ""),
+                        text(region.get("tone_fr") or region.get("tone_en"))[:220],
+                        lambda region=region: self.show_immersion(region),
+                    ))
+                detail.add(region_flow)
             profile = self.Gtk.FlowBox()
             profile.set_selection_mode(self.Gtk.SelectionMode.NONE)
             for title, body in [
@@ -689,6 +2071,449 @@ class BaobabNative:
         root.add(self.scroll(detail))
         return root
 
+    def immersions_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        root.add(self.label("Immersions culturelles", "title"))
+        root.add(self.label("Entrer dans Baobab par des régions, routes, sons, langues et gestes quotidiens. Tout reste local, sourcé et à valider par les communautés concernées.", "subtitle"))
+        active = self.active_immersion()
+        if active:
+            focus = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+            focus.get_style_context().add_class("immersion-band")
+            focus.add(self.label(f"Focus actuel · {active.get('name_fr') or active.get('name_en')}", "card-title"))
+            focus.add(self.label(text(active.get("tone_fr") or active.get("tone_en")), "card-body"))
+            focus.add(self.label(f"Rituel: {self.daily_ritual()}", "card-meta"))
+            countries_row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+            for country in active.get("countries", [])[:5]:
+                countries_row.add(self.button(text(country), lambda _button, country=country: self.focus_country(text(country))))
+            focus.add(countries_row)
+            root.add(focus)
+
+        top = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=16)
+        top.add(self.immersion_canvas())
+        intro = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+        intro.get_style_context().add_class("immersion-band")
+        intro.add(self.label("Mode d’usage", "card-title"))
+        intro.add(self.label("Choisis une immersion, puis ouvre un pays, une langue, un son ou une collecte. Baobab garde le fil culturel; Atlas reste réservé aux documents, OCR et cartes générales.", "card-body"))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Explorer les pays", lambda *_: self.stack.set_visible_child_name("explore")))
+        actions.add(self.button("Langues", lambda *_: self.stack.set_visible_child_name("languages")))
+        actions.add(self.button("Nouvelle collecte", lambda *_: self.stack.set_visible_child_name("collect")))
+        intro.add(actions)
+        top.pack_start(intro, True, True, 0)
+        root.add(top)
+        search = self.Gtk.SearchEntry()
+        search.set_placeholder_text("Filtrer par région, pays, langue, son, route...")
+        root.add(search)
+
+        if self.pathways:
+            root.add(self.label("Parcours guidés", "card-title"))
+            path_flow = self.Gtk.FlowBox()
+            path_flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+            for item in self.pathways:
+                steps = item.get("steps_fr", []) or item.get("steps_en", [])
+                body = "\n".join(f"{index + 1}. {step}" for index, step in enumerate(steps[:5]))
+                path_flow.add(self.card(text(item.get("title_fr") or item.get("title_en"), "Parcours"), text(item.get("id"), ""), body))
+            root.add(path_flow)
+
+        root.add(self.label("Régions d’immersion", "card-title"))
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        def render(query: str = "") -> None:
+            for child in flow.get_children():
+                flow.remove(child)
+            q = query.lower().strip()
+            for item in self.immersions:
+                countries = ", ".join(item.get("countries", [])[:6])
+                anchors = ", ".join(item.get("anchors", [])[:6])
+                haystack = " ".join([
+                    text(item.get("id")),
+                    text(item.get("name_fr")),
+                    text(item.get("name_en")),
+                    text(item.get("tone_fr")),
+                    text(item.get("tone_en")),
+                    " ".join(item.get("countries", [])),
+                    " ".join(item.get("anchors", [])),
+                ]).lower()
+                if q and q not in haystack:
+                    continue
+                body = f"{item.get('tone_fr') or item.get('tone_en', '')}\n\nPays: {countries}\nAncres: {anchors}"
+                flow.add(self.card(text(item.get("name_fr") or item.get("name_en"), "Immersion"), text(item.get("id"), ""), body, lambda item=item: self.show_immersion(item)))
+            flow.show_all()
+        search.connect("search-changed", lambda entry: render(entry.get_text()))
+        render()
+        root.add(flow)
+        return self.scroll(root)
+
+    def compass_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        payload = self.compass_payload
+        next_item = payload.get("next", {})
+        root.add(self.label("Boussole Baobab", "title"))
+        root.add(self.label("Un repère d'usage pour que chaque geste reste culturellement responsable, local-first et lisible.", "subtitle"))
+        root.add(self.compass_panel(compact=False))
+        if next_item:
+            action = text(next_item.get("command"), "seven baobab open")
+            box = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+            box.get_style_context().add_class("next-card")
+            content = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+            content.pack_start(self.label("Action conseillée", "card-meta", False), False, False, 0)
+            content.pack_start(self.label(text(next_item.get("title"), "Comprendre"), "card-title"), False, False, 0)
+            content.pack_start(self.label(text(next_item.get("body")), "card-body"), False, False, 0)
+            box.pack_start(content, True, True, 0)
+            box.pack_end(self.button("Lancer", lambda *_: subprocess.Popen(shlex.split(action), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)), False, False, 0)
+            root.add(box)
+        root.add(self.label("Principes de transmission", "card-title"))
+        for principle in payload.get("principles", []):
+            root.add(self.label(f"- {principle}", "card-body"))
+        root.add(self.card("Pourquoi cette boussole ?", "Identité Baobab", "Baobab ne doit pas seulement afficher des contenus africains. Il doit guider l'usage: comprendre avant de classer, sourcer avant de partager, collecter en brouillon, préserver localement et transmettre avec consentement."))
+        return self.scroll(root)
+
+    def today_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        payload = self.today_payload
+        route = payload.get("route", {})
+        root.add(self.label("Aujourd'hui", "title"))
+        root.add(self.label("La porte d'entrée quotidienne de Baobab: un rituel, une direction, une action et des garde-fous clairs.", "subtitle"))
+        root.add(self.today_panel(compact=False))
+        root.add(self.label("Progression du jour", "card-title"))
+        progress = self.Gtk.ProgressBar()
+        progress.set_fraction((route.get("score", 0) or 0) / 100)
+        root.add(progress)
+        for item in route.get("steps", []):
+            root.add(self.card(text(item.get("label")), "OK" if item.get("done") else "à faire", text(item.get("value"))))
+        root.add(self.label("Actions rapides", "card-title"))
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(4)
+        for item in payload.get("quick_actions", []):
+            flow.add(self.card(text(item.get("title")), text(item.get("command")), "", lambda item=item: self.launch_today_action(text(item.get("command")))))
+        root.add(flow)
+        root.add(self.label("Trace récente", "card-title"))
+        root.add(self.trail_panel(compact=False))
+        return self.scroll(root)
+
+    def veillee_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        root.add(self.label("Veillée Baobab", "title"))
+        root.add(self.label("Une surface plus lente et plus humaine pour lire, écouter, noter et transmettre sans perdre le fil culturel.", "subtitle"))
+        root.add(self.veillee_panel(compact=False))
+        root.add(self.label("Séquence recommandée", "card-title"))
+        sequence = [
+            ("1. Lire", "Commencer par le patrimoine ou une immersion pour comprendre le contexte.", "heritage"),
+            ("2. Écouter", "Ouvrir Baobab Sound ou le module Son pour laisser la voix et les instruments guider l’attention.", "modules"),
+            ("3. Noter", "Ajouter une trace courte ou une note rituelle, sans publier trop vite.", "trail"),
+            ("4. Relier", "Choisir un pays, une langue, un récit ou une source à vérifier.", "explore"),
+            ("5. Transmettre", "Utiliser la boussole avant de partager: source, consentement, contexte.", "compass"),
+        ]
+        for title, body, target in sequence:
+            root.add(self.card(title, "Veillée", body, lambda target=target: self.stack.set_visible_child_name(target)))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Créer une trace", lambda *_: self.add_memory_dialog()))
+        actions.add(self.button("Créer la note du jour", lambda *_: self.create_daily_ritual_note()))
+        actions.add(self.button("Séance guidée", lambda *_: self.stack.set_visible_child_name("session")))
+        actions.add(self.button("Carnet", lambda *_: self.stack.set_visible_child_name("carnet")))
+        actions.add(self.button("Ouvrir Sound", lambda *_: self.open_sound_folder()))
+        root.add(actions)
+        return self.scroll(root)
+
+    def session_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        payload = self.session_payload or {}
+        root.add(self.label("Séance Baobab", "title"))
+        root.add(self.label("Un parcours temporel adapté à l’ambiance active. Chaque phase reste simple, actionnable et local-first.", "subtitle"))
+        root.add(self.session_panel(compact=False))
+        root.add(self.label("Commandes de séance", "card-title"))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Changer l’ambiance", lambda *_: self.stack.set_visible_child_name("preferences")))
+        actions.add(self.button("Ajouter une trace", lambda *_: self.add_memory_dialog()))
+        actions.add(self.button("Créer la note du jour", lambda *_: self.create_daily_ritual_note()))
+        actions.add(self.button("Créer dossier", lambda *_: self.create_session_folder()))
+        actions.add(self.button("Dossiers", lambda *_: self.navigate("sessions")))
+        root.add(actions)
+        for phase in payload.get("phases", []):
+            root.add(self.card(
+                text(phase.get("title"), "Phase"),
+                f"{phase.get('minutes', 0)} min · {text(phase.get('command'))}",
+                text(phase.get("body")),
+                lambda phase=phase: self.launch_today_action(text(phase.get("command"))),
+            ))
+        return self.scroll(root)
+
+    def sessions_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        sessions = self.session_folders()
+        root.add(self.label("Dossiers de séance", "title"))
+        root.add(self.label("Ateliers, classes et collectes préparés localement avec carte, checklist et zone médias.", "subtitle"))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Créer une séance", lambda *_: self.create_session_folder()))
+        actions.add(self.button("Ouvrir le dossier racine", lambda *_: open_path(WORKSPACE / "Sessions Baobab")))
+        actions.add(self.button("Médiathèque", lambda *_: self.navigate("media")))
+        root.add(actions)
+        stats = self.Gtk.Grid(column_spacing=12, row_spacing=12)
+        media_total = sum(item["media_count"] for item in sessions)
+        ready_total = sum(1 for item in sessions if item["state"] == "ready")
+        stats.attach(self.stat(str(len(sessions)), "Séances"), 0, 0, 1, 1)
+        stats.attach(self.stat(str(ready_total), "Complètes"), 1, 0, 1, 1)
+        stats.attach(self.stat(str(media_total), "Médias"), 2, 0, 1, 1)
+        root.add(stats)
+        if not sessions:
+            root.add(self.empty_state("Aucun dossier de séance", "Crée une séance depuis la Carte de transmission. Baobab préparera carte, checklist et dossier media.", "Créer une séance", lambda *_: self.create_session_folder()))
+            return self.scroll(root)
+        for item in sessions:
+            box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=8)
+            box.get_style_context().add_class("session-folder")
+            box.get_style_context().add_class("session-ready" if item["state"] == "ready" else "session-partial")
+            box.add(self.label(text(item["name"]), "card-title", False))
+            box.add(self.label(f"{item['modified']} · {item['media_count']} média(s) · {item['state']}", "card-meta", False))
+            box.add(self.label(str(item["path"]), "card-body"))
+            row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+            row.add(self.button("Ouvrir", lambda *_args, path=item["path"]: open_path(path)))
+            row.add(self.button("Carte", lambda *_args, path=item["path"]: open_path(path / "carte-transmission.md")))
+            row.add(self.button("Médias", lambda *_args, path=item["path"]: open_path(path / "media")))
+            box.add(row)
+            root.add(box)
+        root.add(self.card("Principe", "Local-first", "Ces dossiers restent dans ~/Baobab. Ils servent de support de préparation avant toute publication ou partage public."))
+        return self.scroll(root)
+
+    def carnet_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        notes = self.ritual_notes()
+        events = (self.trail_payload or {}).get("events", [])
+        root.add(self.label("Carnet culturel", "title"))
+        root.add(self.label("La mémoire lisible de Baobab: notes rituelles, traces locales, séance active et repères de transmission.", "subtitle"))
+        root.add(self.carnet_panel(compact=False))
+        stats = self.Gtk.Grid(column_spacing=12, row_spacing=12)
+        stats.attach(self.stat(str(len(notes)), "Notes"), 0, 0, 1, 1)
+        stats.attach(self.stat(str(len(events)), "Traces"), 1, 0, 1, 1)
+        stats.attach(self.stat(str((self.session_payload or {}).get("duration_minutes", 0)), "Minutes séance"), 2, 0, 1, 1)
+        stats.attach(self.stat(text(self.active_ambiance().get("label"), "Calme"), "Ambiance"), 3, 0, 1, 1)
+        root.add(stats)
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Créer une note", lambda *_: self.create_daily_ritual_note()))
+        actions.add(self.button("Ajouter une trace", lambda *_: self.add_memory_dialog()))
+        actions.add(self.button("Séance", lambda *_: self.stack.set_visible_child_name("session")))
+        actions.add(self.button("Ouvrir le dossier", lambda *_: open_path(WORKSPACE / "Rituels du jour")))
+        root.add(actions)
+        root.add(self.label("Fil récent", "card-title"))
+        timeline = []
+        for path in notes[:8]:
+            timeline.append(("note", date.fromtimestamp(path.stat().st_mtime).isoformat(), path.stem.replace("-", " ").title(), str(path), lambda path=path: open_path(path)))
+        for event in events[:12]:
+            timeline.append(("trace", text(event.get("time")), text(event.get("title"), "Trace"), text(event.get("body")), None))
+        timeline.sort(key=lambda item: item[1], reverse=True)
+        if not timeline:
+            root.add(self.empty_state("Carnet vide", "Crée une note ou une trace. Baobab gardera tout localement dans ton espace culturel.", "Créer une trace", lambda *_: self.add_memory_dialog()))
+            return self.scroll(root)
+        for kind, when, title, body, callback in timeline[:16]:
+            item = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=5)
+            item.get_style_context().add_class("carnet-item")
+            item.add(self.label(title, "card-title", False))
+            item.add(self.label(f"{kind} · {when}", "card-meta", False))
+            item.add(self.label(body[:460], "card-body"))
+            if callback:
+                event_box = self.Gtk.EventBox()
+                event_box.add(item)
+                event_box.connect("button-press-event", lambda *_args, callback=callback: callback())
+                root.add(event_box)
+            else:
+                root.add(item)
+        root.add(self.label("Qualité de transmission", "card-title"))
+        for title, body in [
+            ("Brouillon avant publication", "Toute note reste privée tant que la source, le contexte et l'accord ne sont pas clarifiés."),
+            ("Trace courte, mémoire longue", "Les mémos courts servent à retrouver le fil sans transformer Baobab en réseau social."),
+            ("Relier avant exposer", "Associe pays, langue, source et personne ressource avant toute présentation."),
+        ]:
+            root.add(self.card(title, "Garde-fou Baobab", body))
+        return self.scroll(root)
+
+    def constellation_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        root.add(self.label("Constellation Baobab", "title"))
+        root.add(self.label("Une carte relationnelle calme: Baobab au centre, puis les liens culturels autour de lui.", "subtitle"))
+        root.add(self.constellation_panel(compact=False))
+        root.add(self.label("Lecture de la constellation", "card-title"))
+        for title_text, value, meta, target in self.constellation_nodes():
+            root.add(self.card(title_text, value, meta, lambda target=target: self.stack.set_visible_child_name(target)))
+        root.add(self.label("Pourquoi cette vue ?", "card-title"))
+        root.add(self.card("Baobab relie avant de montrer", "Identité", "Le mini OS garde les relations visibles: un pays sans langue, son ou source reste incomplet."))
+        root.add(self.card("La trace reste au centre de l’usage", "Mémoire locale", "Chaque lecture, écoute ou collecte peut devenir une trace privée avant de devenir une transmission."))
+        return self.scroll(root)
+
+    def media_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        items = self.media_items()
+        active_kind = {"value": "all"}
+        root.add(self.label("Médiathèque vivante", "title"))
+        root.add(self.label("Une vue locale pour retrouver les sons, images, vidéos et documents sans sortir de Baobab.", "subtitle"))
+        root.add(self.media_panel(compact=False))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Ouvrir Sound", lambda *_: self.open_sound_folder()))
+        actions.add(self.button("Ouvrir les packs", lambda *_: open_path(DATA / "packs")))
+        actions.add(self.button("Collecte", lambda *_: self.stack.set_visible_child_name("collect")))
+        root.add(actions)
+        if not items:
+            root.add(self.empty_state("Aucun média local", "Ajoute des fichiers audio, images, vidéos ou PDF dans ~/Baobab/Sound ou dans un pack culturel.", "Ouvrir Sound", lambda *_: self.open_sound_folder()))
+            return self.scroll(root)
+        search = self.Gtk.SearchEntry()
+        search.set_placeholder_text("Rechercher dans les sons, images, vidéos, documents...")
+        root.add(search)
+        filters = self.Gtk.FlowBox()
+        filters.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        filters.set_max_children_per_line(5)
+        filter_cards = {}
+        counts = {kind: sum(1 for item in items if item["kind"] == kind) for kind in ("audio", "image", "video", "document")}
+        result_box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=10)
+
+        def filter_card(kind: str, label: str, count: int) -> object:
+            card = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
+            card.get_style_context().add_class("media-filter")
+            if kind == active_kind["value"]:
+                card.get_style_context().add_class("media-active")
+            card.add(self.label(label, "card-title", False))
+            card.add(self.label(f"{count} élément(s)", "card-meta", False))
+            filter_cards[kind] = card
+            event = self.Gtk.EventBox()
+            event.add(card)
+            event.connect("button-press-event", lambda _event, _button, kind=kind: set_kind(kind))
+            return event
+
+        def set_kind(kind: str) -> None:
+            active_kind["value"] = kind
+            for card_kind, card in filter_cards.items():
+                context = card.get_style_context()
+                if card_kind == kind:
+                    context.add_class("media-active")
+                else:
+                    context.remove_class("media-active")
+            render(search.get_text())
+
+        def render(query: str = "") -> None:
+            self.clear(result_box)
+            q = query.lower().strip()
+            kind = active_kind["value"]
+            shown = 0
+            for item in items:
+                haystack = f"{item['name']} {item['kind']} {item['source']} {item['path']}".lower()
+                if kind != "all" and item["kind"] != kind:
+                    continue
+                if q and q not in haystack:
+                    continue
+                body = f"{item['path']}\n{item['modified']} · {self.format_size(item['size'])}"
+                card = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=7)
+                card.get_style_context().add_class("media-item")
+                card.get_style_context().add_class(f"media-{item['kind']}")
+                card.add(self.label(text(item["name"]), "card-title"))
+                card.add(self.label(f"{item['kind']} · {item['source']}", "card-meta"))
+                card.add(self.label(body, "card-body"))
+                event = self.Gtk.EventBox()
+                event.add(card)
+                event.connect("button-press-event", lambda _event, _button, item=item: open_path(item["path"]))
+                result_box.add(event)
+                shown += 1
+                if shown >= 80:
+                    break
+            if shown == 0:
+                result_box.add(self.empty_state("Aucun résultat", "Change le filtre ou ajoute de nouveaux médias dans Baobab Sound et les packs."))
+            result_box.show_all()
+
+        filters.add(filter_card("all", "Tout", len(items)))
+        filters.add(filter_card("audio", "Sons", counts["audio"]))
+        filters.add(filter_card("image", "Images", counts["image"]))
+        filters.add(filter_card("video", "Vidéos", counts["video"]))
+        filters.add(filter_card("document", "Documents", counts["document"]))
+        root.add(filters)
+        root.add(self.label("Fichiers récents", "card-title"))
+        search.connect("search-changed", lambda entry: render(entry.get_text()))
+        render()
+        root.add(result_box)
+        root.add(self.label("Garde-fous", "card-title"))
+        root.add(self.card("Média local avant publication", "Respect", "Un média dans Baobab reste local tant que droits, contexte et consentement ne sont pas clarifiés."))
+        return self.scroll(root)
+
+    def entry_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        root.add(self.label("Entrée Baobab", "title"))
+        root.add(self.label("Un sas d’immersion pour commencer sans bruit: tu entres par une région, tu relies un pays, tu gardes une trace, puis tu transmets avec prudence.", "subtitle"))
+        root.add(self.entry_panel(compact=False))
+        root.add(self.label("Pourquoi ce passage ?", "card-title"))
+        root.add(self.card("Région avant décor", "Méthode Baobab", "On part d’une immersion et d’un contexte, pas d’un thème visuel générique."))
+        root.add(self.card("Pays avant collecte", "Repère", "Le pays focus aide à relier territoire, langue, pratique, source et responsabilité."))
+        root.add(self.card("Trace avant publication", "Local-first", "Baobab garde des traces privées pour construire une mémoire sans exposer trop tôt."))
+        root.add(self.card("Transmission avant vitrine", "Respect", "Le partage public doit venir après source, consentement et relecture locale."))
+        return self.scroll(root)
+
+    def trail_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=16)
+        root.set_border_width(18)
+        payload = self.trail_payload
+        root.add(self.label("Trace vivante", "title"))
+        root.add(self.label("Une mémoire locale et légère des gestes Baobab: focus, ambiance, notes et repères. Elle reste dans le profil Baobab.", "subtitle"))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Ajouter une trace", lambda *_: self.add_memory_dialog()))
+        actions.add(self.button("Journal", lambda *_: self.stack.set_visible_child_name("journal")))
+        actions.add(self.button("Collecte", lambda *_: self.stack.set_visible_child_name("collect")))
+        root.add(actions)
+        events = payload.get("events", [])
+        if not events:
+            root.add(self.empty_state("Aucune trace locale", "Change une ambiance, choisis une immersion, crée une note ou ajoute une mémoire avec `seven baobab remember ...`."))
+            return self.scroll(root)
+        for item in events:
+            title = text(item.get("title"), "Trace Baobab")
+            kind = text(item.get("kind"), "memoire")
+            meta = " · ".join(part for part in [text(item.get("time")), kind, text(item.get("ambiance")), text(item.get("country_focus"))] if part)
+            root.add(self.card(title, meta, text(item.get("body"))))
+        return self.scroll(root)
+
+    def show_immersion(self, item: dict) -> None:
+        dialog = self.Gtk.Dialog(title=text(item.get("name_fr") or item.get("name_en"), "Immersion"), transient_for=self.window, flags=0)
+        dialog.set_default_size(720, 620)
+        area = dialog.get_content_area()
+        area.set_border_width(16)
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=12)
+        box.add(self.label(text(item.get("name_fr") or item.get("name_en"), "Immersion"), "title"))
+        box.add(self.label(text(item.get("tone_fr") or item.get("tone_en")), "subtitle"))
+        box.add(self.card("Pays reliés", text(item.get("id"), ""), ", ".join(item.get("countries", []))))
+        box.add(self.card("Ancres culturelles", "À explorer avec sources", ", ".join(item.get("anchors", []))))
+        countries = item.get("countries", [])[:4]
+        if countries:
+            box.add(self.label("Entrées pays rapides", "card-title"))
+            country_actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=8)
+            for country in countries:
+                country_actions.add(self.button(text(country), lambda _button, country=country: (dialog.destroy(), self.focus_country(country))))
+            box.add(country_actions)
+        rituals = item.get("daily_rituals_fr", []) or item.get("daily_rituals_en", [])
+        box.add(self.label("Rituels d’usage", "card-title"))
+        for ritual in rituals:
+            box.add(self.label(f"- {ritual}", "card-body"))
+        box.add(self.label("Passage conseillé", "card-title"))
+        for title, body in [
+            ("1. Choisir le focus", "Baobab met à jour l’accueil, la constellation, le chemin et le rituel du jour."),
+            ("2. Relier un pays", "Le pays donne un territoire précis à la mémoire et aux recherches."),
+            ("3. Garder une trace", "Une trace locale rend l’exploration retrouvable sans publier trop vite."),
+        ]:
+            box.add(self.card(title, "Chemin Baobab", body))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Définir comme focus", lambda *_: (dialog.destroy(), self.commit_focus(text(item.get("id")), target="entry"))))
+        actions.add(self.button("Focus + note du jour", lambda *_: (dialog.destroy(), self.commit_focus(text(item.get("id")), target="journal"), self.create_daily_ritual_note())))
+        actions.add(self.button("Explorer les pays", lambda *_: (dialog.destroy(), self.navigate("explore"))))
+        actions.add(self.button("Créer une collecte", lambda *_: (dialog.destroy(), self.navigate("collect"))))
+        actions.add(self.button("Lire au son", lambda *_: self.speak_text(" ".join([text(item.get("name_fr") or item.get("name_en")), text(item.get("tone_fr") or item.get("tone_en"))]))))
+        box.add(actions)
+        area.add(self.scroll(box))
+        dialog.add_button("Fermer", self.Gtk.ResponseType.CLOSE)
+        dialog.connect("response", lambda dialog, _response: dialog.destroy())
+        dialog.show_all()
+
     def global_search_view(self) -> object:
         root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
         root.set_border_width(18)
@@ -710,7 +2535,20 @@ class BaobabNative:
             for country in self.countries:
                 haystack = f"{country.get('name', '')} {country.get('capital', '')}".lower()
                 if q in haystack:
-                    results.add(self.card(country.get("name", "Pays"), "Pays africain", f"Capitale: {country.get('capital', 'inconnue')} · Population: {country.get('population', 0):,}", lambda country=country: self.stack.set_visible_child_name("explore")))
+                    results.add(self.card(country.get("name", "Pays"), "Pays africain", f"Capitale: {country.get('capital', 'inconnue')} · Population: {country.get('population', 0):,}", lambda country=country: self.focus_country(text(country.get("name")))))
+                    count += 1
+            for item in self.immersions:
+                haystack = " ".join([
+                    text(item.get("id")),
+                    text(item.get("name_fr")),
+                    text(item.get("name_en")),
+                    text(item.get("tone_fr")),
+                    text(item.get("tone_en")),
+                    " ".join(item.get("countries", [])),
+                    " ".join(item.get("anchors", [])),
+                ]).lower()
+                if q in haystack:
+                    results.add(self.card(text(item.get("name_fr") or item.get("name_en"), "Immersion"), "Immersion culturelle", text(item.get("tone_fr") or item.get("tone_en"))[:230], lambda item=item: self.show_immersion(item)))
                     count += 1
             for item in self.heritage:
                 title = self.localized(item, "title", "Sans titre")
@@ -877,6 +2715,8 @@ class BaobabNative:
         language = fields["language"].get_text().strip() or "fr"
         source = fields["source"].get_text().strip() or "à documenter"
         license_value = fields["license"].get_text().strip() or "à confirmer"
+        sensitivity = fields["sensitivity"].get_active_id() or "unknown"
+        publication = "do-not-publish" if sensitivity == "sacred-restricted" else "draft-local"
         buffer = fields["notes"].get_buffer()
         start, end = buffer.get_bounds()
         notes = buffer.get_text(start, end, True).strip()
@@ -919,6 +2759,8 @@ class BaobabNative:
 - Langue: {language}
 - Source / personne ressource: {source}
 - Licence / droits: {license_value}
+- Sensibilité: {sensitivity}
+- Publication: {publication}
 - Consentement: à confirmer
 - Média local: {copied_media or "aucun"}
 
@@ -945,6 +2787,8 @@ class BaobabNative:
 - Usage autorisé: à préciser
 - Usage interdit: à préciser
 - Licence: {license_value}
+- Sensibilité: {sensitivity}
+- Publication: {publication}
 - Date: à compléter
 - Signature ou validation locale: à compléter
 """, encoding="utf-8")
@@ -958,6 +2802,8 @@ class BaobabNative:
             "media": copied_media,
             "rights": license_value,
             "status": "draft",
+            "sensitivity": sensitivity,
+            "publication": publication,
             "country": country,
             "language": language,
         })
@@ -995,6 +2841,10 @@ class BaobabNative:
         source.set_placeholder_text("Personne source, archive, famille, association...")
         license_value = self.Gtk.Entry()
         license_value.set_text("à confirmer")
+        sensitivity = self.Gtk.ComboBoxText()
+        for item in self.sensitivity_levels or [{"key": "unknown", "title_fr": "À clarifier"}]:
+            sensitivity.append(item.get("key", "unknown"), text(item.get("title_fr") or item.get("title_en"), item.get("key", "unknown")))
+        sensitivity.set_active_id("unknown")
         media = self.Gtk.FileChooserButton(title="Choisir un média local", action=self.Gtk.FileChooserAction.OPEN)
         notes = self.Gtk.TextView()
         notes.set_wrap_mode(self.Gtk.WrapMode.WORD_CHAR)
@@ -1008,6 +2858,7 @@ class BaobabNative:
             ("Langue", language),
             ("Source", source),
             ("Licence", license_value),
+            ("Sensibilité", sensitivity),
             ("Média", media),
         ]
         for index, (label, widget) in enumerate(rows):
@@ -1024,6 +2875,7 @@ class BaobabNative:
             "language": language,
             "source": source,
             "license": license_value,
+            "sensitivity": sensitivity,
             "media": media,
             "notes": notes,
         }
@@ -1034,19 +2886,103 @@ class BaobabNative:
         root.add(self.card("Qualité culturelle", "Brouillon par défaut", "Baobab crée les fichiers de collecte et de consentement, mais ne marque jamais un contenu comme validé sans source, droits et relecture locale."))
         return self.scroll(root)
 
+    def journal_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Journal Baobab", "title"))
+        root.add(self.label("Notes quotidiennes issues des rituels: lectures, écoutes, mots, sources et vérifications avant partage.", "subtitle"))
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Créer la note du jour", lambda *_: self.create_daily_ritual_note()))
+        actions.add(self.button("Ouvrir le dossier", lambda *_: open_path(WORKSPACE / "Rituels du jour")))
+        actions.add(self.button("Immersions", lambda *_: self.stack.set_visible_child_name("immersions")))
+        root.add(actions)
+        notes = self.ritual_notes()
+        root.add(self.stat(str(len(notes)), "Notes de rituel"))
+        if not notes:
+            root.add(self.empty_state(
+                "Aucune note pour le moment",
+                "Crée une note depuis l’accueil ou depuis ce journal. Elle restera locale dans ~/Baobab/Rituels du jour/ avec les lectures, écoutes, sources et vérifications.",
+                "Créer la note du jour",
+                lambda *_: self.create_daily_ritual_note(),
+            ))
+            return self.scroll(root)
+        for path in notes[:40]:
+            try:
+                preview = "\n".join(path.read_text(encoding="utf-8", errors="ignore").splitlines()[:9])
+            except Exception:
+                preview = str(path)
+            meta = f"{path.name} · {date.fromtimestamp(path.stat().st_mtime).isoformat()}"
+            root.add(self.card(path.stem.replace("-", " ").title(), meta, preview[:420], lambda path=path: open_path(path)))
+        return self.scroll(root)
+
     def languages_view(self) -> object:
         root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
         root.set_border_width(18)
         root.add(self.label("Langues africaines", "title"))
         root.add(self.label("Base de départ française-first. Les phrases sont volontairement marquées à valider par locuteurs locaux avant usage pédagogique.", "subtitle"))
         root.add(self.stat(str(len(self.languages)), "Langues starter"))
+        workflow = self.languages_payload.get("validation_workflow") if isinstance(self.languages_payload, dict) else []
+        if workflow:
+            root.add(self.card("Workflow de validation", "Local-first", " -> ".join(str(step) for step in workflow)))
         for item in self.languages:
             regions = ", ".join(item.get("regions", []))
             phrases = item.get("phrases", [])
-            body = f"Famille: {item.get('family', 'à préciser')}\nValidation: {item.get('validation', 'needs-local-speaker')}\nRégions: {regions}"
+            tasks = item.get("starter_tasks", [])
+            body = (
+                f"Famille: {item.get('family', 'à préciser')}\n"
+                f"Écriture: {item.get('script', 'à préciser')} · Clavier: {item.get('keyboard', 'à préparer')}\n"
+                f"CLDR: {item.get('cldr_status', 'à vérifier')} · Audio: {item.get('audio_status', 'needed')}\n"
+                f"Validation: {item.get('validation', 'needs-local-speaker')}\n"
+                f"Régions: {regions}"
+            )
+            if tasks:
+                body += "\nÀ faire: " + ", ".join(str(task) for task in tasks[:3])
             root.add(self.card(text(item.get("name_fr") or item.get("name_en"), "Langue"), text(item.get("priority"), "starter"), body))
             for phrase in phrases[:3]:
                 root.add(self.card(text(phrase.get("fr"), "Expression"), text(phrase.get("local"), ""), text(phrase.get("note"), "À valider localement.")))
+        return self.scroll(root)
+
+    def protocols_view(self) -> object:
+        root = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=14)
+        root.set_border_width(18)
+        root.add(self.label("Protocoles culturels", "title"))
+        root.add(self.label("Garde-fous Baobab pour sources, droits, sensibilité, consentement, relecture locale et décision de publication.", "subtitle"))
+        stats = self.Gtk.Grid(column_spacing=12, row_spacing=12)
+        stats.attach(self.stat(str(len(self.protocols)), "Principes"), 0, 0, 1, 1)
+        stats.attach(self.stat(str(len(self.sensitivity_levels)), "Niveaux"), 1, 0, 1, 1)
+        stats.attach(self.stat(text(self.protocols_payload.get("updated"), "local"), "Version"), 2, 0, 1, 1)
+        root.add(stats)
+        actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions.add(self.button("Vérifier protocoles", lambda *_: self.run_action("baobab", "protocol-doctor")))
+        actions.add(self.button("Collecte", lambda *_: self.navigate("collect")))
+        actions.add(self.button("Packs", lambda *_: self.navigate("packs")))
+        root.add(actions)
+        root.add(self.card(
+            "Règle par défaut",
+            "Local-first",
+            "Tout contenu inconnu, familial, communautaire ou sacré/réservé reste local jusqu'à source, consentement, autorité et relecture explicites.",
+        ))
+        for item in self.protocols:
+            root.add(self.card(
+                text(item.get("title_fr") or item.get("title_en"), "Principe"),
+                text(item.get("key"), "CARE"),
+                text(item.get("body_fr") or item.get("body_en"), ""),
+            ))
+        root.add(self.label("Niveaux de sensibilité", "card-title"))
+        for item in self.sensitivity_levels:
+            root.add(self.card(
+                text(item.get("title_fr") or item.get("title_en"), "Niveau"),
+                text(item.get("key"), ""),
+                text(item.get("default_action_fr") or item.get("default_action_en"), ""),
+            ))
+        workflow = self.protocols_payload.get("workflow", [])
+        if workflow:
+            root.add(self.card("Flux de transmission", "Avant publication", " -> ".join(workflow)))
+        sources = self.protocols_payload.get("sources", [])
+        if sources:
+            root.add(self.label("Références ouvertes", "card-title"))
+            for source in sources:
+                root.add(self.card(text(source.get("name"), "Source"), text(source.get("url"), ""), text(source.get("use"), "")))
         return self.scroll(root)
 
     def packs_view(self) -> object:
@@ -1062,7 +2998,11 @@ class BaobabNative:
         actions = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
         actions.add(self.button("Créer les packs de départ", lambda *_: self.run_action("baobab", "seed-packs")))
         actions.add(self.button("Préparer collecte vivante", lambda *_: self.run_action("baobab", "enrich-packs")))
+        actions.add(self.button("Kits sources publiques", lambda *_: self.run_action("baobab", "evidence-packs")))
+        actions.add(self.button("Kit validation", lambda *_: self.run_action("baobab", "validation-kit")))
+        actions.add(self.button("Doctor validation", lambda *_: self.run_action("baobab", "validation-doctor")))
         actions.add(self.button("Nouvelle collecte", lambda *_: self.stack.set_visible_child_name("collect")))
+        actions.add(self.button("Protocoles", lambda *_: self.navigate("protocols")))
         actions.add(self.button("Créer exemples terrain", lambda *_: self.run_action("baobab", "sample-fieldwork")))
         actions.add(self.button("Vérifier les packs", lambda *_: self.run_action("baobab", "audit-packs")))
         actions.add(self.button("Ouvrir le dossier packs", lambda *_: open_path(DATA / "packs")))
@@ -1074,10 +3014,13 @@ class BaobabNative:
             warnings = audit.get("warnings", [])
             living_score = audit.get("living_score", 0)
             collection_score = audit.get("collection_score", 0)
+            validation_score = audit.get("community_validation_score", 0)
             collection_status = audit.get("collection_status", "unknown")
             fieldwork_state = audit.get("fieldwork_state", collection_status)
             sample_count = audit.get("sample_count", 0)
-            body = f"{pack.get('records', 0)} fiche(s)\nWorkflow collecte: {living_score}%\nCollecte réelle: {collection_score}% · {fieldwork_state}\nÉléments sample: {sample_count}\n{pack.get('path', '')}"
+            public_sources = audit.get("public_source_count", 0)
+            attestations = audit.get("attestation_count", 0)
+            body = f"{pack.get('records', 0)} fiche(s)\nWorkflow collecte: {living_score}%\nPreuves locales: {collection_score}% · {fieldwork_state}\nValidation communautaire: {validation_score}%\nSources publiques: {public_sources} · Attestations: {attestations} · Éléments sample: {sample_count}\n{pack.get('path', '')}"
             if warnings:
                 body = f"{body}\nÀ revoir: {warnings[0]}"
             root.add(self.card(text(pack.get("title"), "Pack"), f"{pack.get('name', '')} · {audit.get('score', 'n/a')}%", body, lambda pack=pack: open_path(Path(pack.get("path", "")).parent)))
@@ -1097,7 +3040,25 @@ class BaobabNative:
         language.connect("changed", lambda combo: self.set_language(combo.get_active_id() or "fr"))
         language_row.add(language)
         root.add(language_row)
+        immersion_row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        immersion_row.add(self.label("Immersion de départ", "card-title", False))
+        immersion = self.Gtk.ComboBoxText()
+        for item in self.immersions:
+            immersion.append(text(item.get("id")), text(item.get("name_fr") or item.get("name_en"), item.get("id", "")))
+        immersion.set_active_id(text(self.settings.get("immersion_focus"), text(self.immersions[0].get("id") if self.immersions else "")))
+        immersion.connect("changed", lambda combo: self.commit_focus(immersion_id=combo.get_active_id() or "", target="preferences"))
+        immersion_row.add(immersion)
+        root.add(immersion_row)
+        root.add(self.label("Ambiance de l'espace", "card-title"))
+        root.add(self.label("L'ambiance change le rythme public de Baobab sans toucher aux données: lecture calme, apprentissage, collecte terrain ou scène créative.", "subtitle"))
+        flow = self.Gtk.FlowBox()
+        flow.set_selection_mode(self.Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(2)
+        for key, item in self.ambiance_modes().items():
+            flow.add(self.ambiance_card(key, item))
+        root.add(flow)
         root.add(self.card("Données multilingues", "Préparation", "Les titres et résumés UNESCO utilisent la préférence de langue. Les packs Baobab pourront ensuite déclarer language, country et curator pour un affichage propre."))
+        root.add(self.card("Immersions", "Expérience quotidienne", "Le focus régional apparaît dans l’accueil Baobab et sert de point de départ pour les pays, sons, langues et collectes responsables."))
         root.add(self.card("Langues africaines", "À enrichir par packs", "Mooré, Dioula, Bambara, Swahili, Wolof, Yoruba, Lingala, Peul et autres langues pourront être ajoutées comme datasets ou packs communautaires sourcés."))
         return self.scroll(root)
 
@@ -1152,26 +3113,49 @@ class BaobabNative:
         sidebar.set_size_request(230, -1)
         brand = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=4)
         brand.get_style_context().add_class("brand")
-        brand.add(self.label("Baobab", "brand-title", False))
-        brand.add(self.label("Mémoire · école · création", "brand-subtitle", False))
+        brand_row = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=10)
+        brand_row.pack_start(self.baobab_mark(38), False, False, 0)
+        brand_text = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=2)
+        brand_text.pack_start(self.label("Baobab", "brand-title", False), False, False, 0)
+        brand_text.pack_start(self.label("Mémoire · école · création", "brand-subtitle", False), False, False, 0)
+        brand_row.pack_start(brand_text, True, True, 0)
+        brand.add(brand_row)
+        title, _body, _target = self.next_route_action()
+        brand.add(self.label(f"À faire · {title}", "brand-subtitle", True))
         sidebar.add(brand)
         self.stack = self.Gtk.Stack()
         self.stack.set_transition_type(self.Gtk.StackTransitionType.CROSSFADE)
+        self.stack.set_transition_duration(360)
+        sidebar.add(self.context_panel())
         views = [
             ("home", "Accueil", self.home_view(), "OS"),
+            ("entry", "Entrée", self.entry_view(), "OS"),
+            ("veillee", "Veillée", self.veillee_view(), "OS"),
+            ("session", "Séance", self.session_view(), "OS"),
+            ("sessions", "Sessions", self.sessions_view(), "OS"),
+            ("carnet", "Carnet", self.carnet_view(), "OS"),
+            ("constellation", "Constellation", self.constellation_view(), "OS"),
+            ("today", "Aujourd'hui", self.today_view(), "OS"),
+            ("compass", "Boussole", self.compass_view(), "OS"),
+            ("trail", "Trace", self.trail_view(), "OS"),
             ("search", "Recherche", self.global_search_view(), "OS"),
             ("heritage", "Patrimoine", self.heritage_view(), "Mémoire"),
             ("explore", "Explorer", self.explore_view(), "Mémoire"),
+            ("immersions", "Immersions", self.immersions_view(), "Mémoire"),
             ("languages", "Langues", self.languages_view(), "Mémoire"),
             ("story", "Récits", self.story_view(), "Mémoire"),
+            ("media", "Médiathèque", self.media_view(), "Expériences"),
             ("modules", "Modules", self.modules_view(), "Expériences"),
             ("museum", "Musée", self.museum_view(), "Expériences"),
+            ("journal", "Journal", self.journal_view(), "Transmission"),
             ("collect", "Collecte", self.collect_view(), "Transmission"),
+            ("protocols", "Protocoles", self.protocols_view(), "Transmission"),
             ("packs", "Packs", self.packs_view(), "Transmission"),
             ("datasets", "Sources", self.datasets_view(), "Transmission"),
             ("engines", "Préparer", self.engines_view(), "Réglages"),
             ("preferences", "Préférences", self.preferences_view(), "Réglages"),
         ]
+        self.view_labels = {key: label for key, label, _widget, _group in views}
         current_group = ""
         for key, label, widget, group in views:
             self.stack.add_titled(widget, key, label)
@@ -1179,13 +3163,16 @@ class BaobabNative:
                 sidebar.add(self.label(group.upper(), "nav-title", False))
                 current_group = group
             button = self.Gtk.Button(label=label)
-            button.connect("clicked", lambda _button, key=key: self.stack.set_visible_child_name(key))
+            button.connect("clicked", lambda _button, key=key: self.navigate(key))
+            self.nav_buttons[key] = button
             sidebar.add(button)
         sidebar.pack_end(self.chip("Espace Baobab séparé"), False, False, 0)
         sidebar.pack_end(self.chip(f"{self.capabilities_payload.get('score', 0)}% prêt"), False, False, 0)
         known_views = {key for key, _label, _widget, _group in views}
         if self.initial_view in known_views:
             self.stack.set_visible_child_name(self.initial_view)
+        self.stack.connect("notify::visible-child-name", lambda *_: self.update_nav_state())
+        self.update_nav_state()
         root.add(sidebar)
         root.add(self.stack)
         window.add(root)
@@ -1197,16 +3184,26 @@ class BaobabNative:
         self.countries_payload = load_json(DATA / "explore/africa-countries.json", {"countries": []})
         self.unesco_payload = load_json(DATA / "heritage/african-unesco-ich.json", {"items": []})
         self.datasets_payload = load_json(DATA / "offline/datasets.json", {"sources": []})
-        self.settings = load_json(SETTINGS_FILE, {"language": "fr", "country_focus": ""})
+        self.settings = load_json(SETTINGS_FILE, {"language": "fr", "country_focus": "", "ambiance": "calme"})
         self.engines_payload = self.load_engines()
         self.packs_payload = self.load_packs()
         self.audit_payload = self.load_pack_audit()
         self.languages_payload = self.load_languages()
+        self.protocols_payload = self.load_protocols()
+        self.immersions_payload = self.load_immersions()
+        self.compass_payload = self.load_compass()
+        self.today_payload = self.load_today()
+        self.trail_payload = self.load_trail()
+        self.session_payload = self.load_session()
         self.records = self.catalog.get("records", [])
         self.countries = self.countries_payload.get("countries", [])
         self.heritage = self.unesco_payload.get("items", [])
         self.datasets = self.datasets_payload.get("sources", [])
         self.languages = self.languages_payload.get("languages", [])
+        self.protocols = self.protocols_payload.get("principles", [])
+        self.sensitivity_levels = self.protocols_payload.get("sensitivity_levels", [])
+        self.immersions = self.immersions_payload.get("regions", [])
+        self.pathways = self.immersions_payload.get("pathways", [])
 
 
 def probe() -> int:
