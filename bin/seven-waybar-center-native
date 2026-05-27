@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -141,6 +142,53 @@ def battery_state() -> tuple[str, str]:
     return f"{capacity}%", status
 
 
+def local_command(name: str) -> str:
+    candidate = ROOT / "bin" / name
+    return str(candidate) if candidate.exists() else name
+
+
+def idle_policy_status() -> dict:
+    try:
+        result = subprocess.run(
+            [local_command("seven-idle"), "status", "--json"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=0.45,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            data = json.loads(result.stdout)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        pass
+    return {}
+
+
+def idle_policy_label() -> tuple[str, str]:
+    data = idle_policy_status()
+    mode = str(data.get("mode") or "standard")
+    service = str(data.get("service") or "unknown")
+    service_label = tr_text("Running") if service == "active" else service
+    if mode == "never":
+        return tr_text("Never"), tr_text("Display stays active") + f" · {service_label}"
+    sleep = int(data.get("sleep_minutes") or 0)
+    screen = int(data.get("screen_minutes") or 0)
+    lock = int(data.get("lock_minutes") or 0)
+    if sleep > 0:
+        return tr_text("After {minutes} min", minutes=sleep), f"{tr_text('Lock')} {lock} · {tr_text('Display')} {screen}"
+    return tr_text("SevenOS standard"), tr_text("Lock 10 · Display 15 · no forced sleep")
+
+
+def set_idle_policy(value: str) -> None:
+    if value == "standard":
+        command = f"{local_command('seven-idle')} standard"
+    elif value == "never":
+        command = f"{local_command('seven-idle')} never"
+    else:
+        command = f"{local_command('seven-idle')} set {value}"
+    run_detached(command)
+
+
 def probe_system() -> tuple[str, str]:
     load = out(["bash", "-lc", "awk '{print $1}' /proc/loadavg"])
     mem = out(["bash", "-lc", "free -h | awk '/Mem:/ {print $3\" / \"$2}'"])
@@ -233,6 +281,29 @@ def run(panel: str) -> int:
       background: @seven_panel_2;
       border: 1px solid @seven_border;
     }
+    .idle-card {
+      padding: 13px;
+      border-radius: 24px;
+      background:
+        linear-gradient(135deg, alpha(@seven_accent, 0.10), transparent),
+        @seven_panel_2;
+      border: 1px solid @seven_border;
+    }
+    .idle-title { color: @seven_text; font-size: 13px; font-weight: 500; }
+    .idle-note { color: @seven_muted; font-size: 11px; }
+    .idle-button {
+      min-height: 30px;
+      padding: 0 11px;
+      border-radius: 999px;
+      background: alpha(@seven_panel, 0.72);
+      color: @seven_text;
+      border: 1px solid @seven_border;
+    }
+    .idle-button:hover { background: @seven_hover; }
+    .idle-button.active {
+      background: alpha(@seven_accent, 0.20);
+      border-color: alpha(@seven_accent, 0.36);
+    }
     .scale trough { min-height: 8px; border-radius: 999px; background: rgba(94,116,130,0.18); }
     .scale highlight { border-radius: 999px; background: rgba(78,139,189,0.75); }
     .scale slider {
@@ -268,9 +339,18 @@ def run(panel: str) -> int:
         }
         .title, .metric-value { color: rgba(245,247,250,0.96); }
         .subtitle, .hint, .metric-label { color: rgba(245,247,250,0.62); }
-        .hint, .metric, .wide-card, .action-strip, .icon-action {
+        .hint, .metric, .wide-card, .idle-card, .action-strip, .icon-action {
           background: rgba(255,255,255,0.07);
           border-color: rgba(255,255,255,0.10);
+        }
+        .idle-button {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.12);
+          color: rgba(245,247,250,0.94);
+        }
+        .idle-button.active {
+          background: rgba(77,163,255,0.18);
+          border-color: rgba(77,163,255,0.34);
         }
         .icon-action:hover { background: rgba(77,163,255,0.14); }
         .scale trough { background: rgba(255,255,255,0.12); }
@@ -318,6 +398,7 @@ def run(panel: str) -> int:
     elif panel == "power":
         capacity, status = battery_state()
         root.pack_start(metric_row(Gtk, [(capacity, tr_text("Battery")), (status, tr_text("State"))]), False, False, 0)
+        root.pack_start(idle_card(Gtk), False, False, 0)
         actions = [("󰍁", tr_text("Lock"), "seven-power lock"), ("󰒲", tr_text("Sleep"), "seven-power suspend"), ("󰐥", tr_text("Power"), "seven-power"), ("󰒓", tr_text("Settings"), "seven-settings power")]
     elif panel == "time":
         now = out(["date", "+%H:%M"])
@@ -362,6 +443,62 @@ def metric_row(Gtk, items: list[tuple[str, str]]):
         box.pack_start(note, False, False, 0)
         row.pack_start(box, True, True, 0)
     return row
+
+
+def idle_card(Gtk):
+    card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    card.get_style_context().add_class("idle-card")
+    title_text, note_text = idle_policy_label()
+    heading = Gtk.Label(label=tr_text("Automatic sleep"), xalign=0)
+    heading.get_style_context().add_class("idle-title")
+    state = Gtk.Label(label=f"{title_text} · {note_text}", xalign=0)
+    state.set_line_wrap(True)
+    state.get_style_context().add_class("idle-note")
+    card.pack_start(heading, False, False, 0)
+    card.pack_start(state, False, False, 0)
+    buttons = {}
+
+    def current_choice() -> str:
+        data = idle_policy_status()
+        mode = str(data.get("mode") or "standard")
+        if mode == "never":
+            return "never"
+        sleep = int(data.get("sleep_minutes") or 0)
+        if sleep <= 0:
+            return "standard"
+        return str(sleep)
+
+    def refresh_state() -> bool:
+        fresh_title, fresh_note = idle_policy_label()
+        state.set_text(f"{fresh_title} · {fresh_note}")
+        active = current_choice()
+        for value, button in buttons.items():
+            base = button.get_tooltip_text() or value
+            if value == active:
+                button.set_label(f"✓ {base}")
+                button.get_style_context().add_class("active")
+            else:
+                button.set_label(base)
+                button.get_style_context().remove_class("active")
+        return False
+
+    def apply(value: str) -> None:
+        set_idle_policy(value)
+        from gi.repository import GLib
+
+        GLib.timeout_add(450, refresh_state)
+
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)
+    for label, value in ((tr_text("Standard"), "standard"), ("15", "15"), ("30", "30"), ("1h", "60"), (tr_text("Never"), "never")):
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("idle-button")
+        button.set_tooltip_text(label)
+        buttons[value] = button
+        button.connect("clicked", lambda _button, selected=value: apply(selected))
+        row.pack_start(button, True, True, 0)
+    card.pack_start(row, False, False, 0)
+    refresh_state()
+    return card
 
 
 def hint(Gtk, text: str):

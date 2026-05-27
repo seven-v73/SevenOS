@@ -1,16 +1,286 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-if command -v hypridle >/dev/null 2>&1; then
-  exec hypridle
-fi
+CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+CONFIG_DIR="$CONFIG_HOME/sevenos"
+HYPR_DIR="$CONFIG_HOME/hypr"
+POLICY_FILE="$CONFIG_DIR/idle-policy.json"
+GENERATED_HYPRIDLE="$HYPR_DIR/hypridle-sevenos.conf"
 
-if command -v swayidle >/dev/null 2>&1; then
-  exec swayidle -w \
-    timeout 600 'seven-power lock' \
-    timeout 900 'hyprctl dispatch dpms off' \
-    resume 'hyprctl dispatch dpms on'
-fi
+mkdir -p "$CONFIG_DIR" "$HYPR_DIR"
 
-printf 'seven-idle: install hypridle or swayidle for idle management.\n' >&2
-exit 1
+json_escape() {
+  local value="${1:-}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  printf '%s' "$value"
+}
+
+policy_value() {
+  local key="$1" fallback="${2:-}"
+  python - "$POLICY_FILE" "$key" "$fallback" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+key = sys.argv[2]
+fallback = sys.argv[3]
+try:
+    data = json.loads(path.read_text())
+    value = data.get(key, fallback)
+except Exception:
+    value = fallback
+print(value)
+PY
+}
+
+has_policy() {
+  [[ -s "$POLICY_FILE" ]]
+}
+
+service_state() {
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user is-active sevenos-idle.service 2>/dev/null || printf 'unknown\n'
+  else
+    printf 'unknown\n'
+  fi
+}
+
+write_policy() {
+  local mode="$1" minutes="${2:-0}"
+  local lock_minutes screen_minutes sleep_minutes
+
+  if [[ "$mode" == "never" ]]; then
+    lock_minutes=0
+    screen_minutes=0
+    sleep_minutes=0
+  else
+    sleep_minutes="$minutes"
+    if (( sleep_minutes <= 5 )); then
+      lock_minutes=2
+      screen_minutes="$sleep_minutes"
+    elif (( sleep_minutes <= 10 )); then
+      lock_minutes=5
+      screen_minutes="$sleep_minutes"
+    else
+      lock_minutes=10
+      screen_minutes=$(( sleep_minutes - 5 ))
+    fi
+  fi
+
+  local now
+  now="$(date -Iseconds 2>/dev/null || date)"
+  cat >"$POLICY_FILE" <<JSON
+{
+  "schema": "sevenos.idle-policy.v1",
+  "mode": "$(json_escape "$mode")",
+  "sleep_minutes": $sleep_minutes,
+  "screen_minutes": $screen_minutes,
+  "lock_minutes": $lock_minutes,
+  "updated_at": "$(json_escape "$now")"
+}
+JSON
+}
+
+generate_hypridle_config() {
+  local mode lock_minutes screen_minutes sleep_minutes
+  mode="$(policy_value mode standard)"
+  lock_minutes="$(policy_value lock_minutes 10)"
+  screen_minutes="$(policy_value screen_minutes 15)"
+  sleep_minutes="$(policy_value sleep_minutes 0)"
+
+  cat >"$GENERATED_HYPRIDLE" <<'CONF'
+general {
+    lock_cmd = pidof hyprlock || hyprlock
+    before_sleep_cmd = loginctl lock-session
+    after_sleep_cmd = hyprctl dispatch dpms on
+}
+CONF
+
+  if [[ "$mode" == "never" ]]; then
+    cat >>"$GENERATED_HYPRIDLE" <<'CONF'
+
+# SevenOS idle policy: never sleep, never turn the display off automatically.
+CONF
+    return 0
+  fi
+
+  local lock_seconds=$(( lock_minutes * 60 ))
+  local screen_seconds=$(( screen_minutes * 60 ))
+  local sleep_seconds=$(( sleep_minutes * 60 ))
+
+  if (( lock_seconds > 0 )); then
+    cat >>"$GENERATED_HYPRIDLE" <<CONF
+
+listener {
+    timeout = $lock_seconds
+    on-timeout = loginctl lock-session
+}
+CONF
+  fi
+
+  if (( screen_seconds > 0 )); then
+    cat >>"$GENERATED_HYPRIDLE" <<CONF
+
+listener {
+    timeout = $screen_seconds
+    on-timeout = hyprctl dispatch dpms off
+    on-resume = hyprctl dispatch dpms on
+}
+CONF
+  fi
+
+  if (( sleep_seconds > 0 )); then
+    cat >>"$GENERATED_HYPRIDLE" <<CONF
+
+listener {
+    timeout = $sleep_seconds
+    on-timeout = systemctl suspend
+}
+CONF
+  fi
+}
+
+restart_idle_service() {
+  if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    return 0
+  fi
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user restart sevenos-idle.service >/dev/null 2>&1 || true
+  fi
+}
+
+status_json() {
+  local mode lock_minutes screen_minutes sleep_minutes generated service
+  if has_policy; then
+    mode="$(policy_value mode standard)"
+    lock_minutes="$(policy_value lock_minutes 10)"
+    screen_minutes="$(policy_value screen_minutes 15)"
+    sleep_minutes="$(policy_value sleep_minutes 0)"
+    generated="$GENERATED_HYPRIDLE"
+  else
+    mode="standard"
+    lock_minutes=10
+    screen_minutes=15
+    sleep_minutes=0
+    generated="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hypridle.conf"
+  fi
+  service="$(service_state)"
+  printf '{"schema":"sevenos.idle-status.v1","ready":true,"mode":"%s","lock_minutes":%s,"screen_minutes":%s,"sleep_minutes":%s,"policy_file":"%s","generated_config":"%s","service":"%s"}\n' \
+    "$(json_escape "$mode")" "$lock_minutes" "$screen_minutes" "$sleep_minutes" \
+    "$(json_escape "$POLICY_FILE")" "$(json_escape "$generated")" "$(json_escape "$service")"
+}
+
+set_policy() {
+  local value="${1:-}"
+  if [[ "$value" =~ ^(standard|default|reset|auto)$ ]]; then
+    if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+      printf 'seven-idle: dry-run would reset idle policy to SevenOS standard.\n' >&2
+      return 0
+    fi
+    rm -f "$POLICY_FILE" "$GENERATED_HYPRIDLE"
+    restart_idle_service
+    return 0
+  fi
+
+  if [[ "$value" =~ ^(never|jamais|off|disabled)$ ]]; then
+    if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+      printf 'seven-idle: dry-run would set idle policy to never.\n' >&2
+      return 0
+    fi
+    write_policy never 0
+    generate_hypridle_config
+    restart_idle_service
+    return 0
+  fi
+
+  if [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 1 && value <= 240 )); then
+    if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+      printf 'seven-idle: dry-run would set idle policy to %s minutes.\n' "$value" >&2
+      return 0
+    fi
+    write_policy timeout "$value"
+    generate_hypridle_config
+    restart_idle_service
+    return 0
+  fi
+
+  printf 'seven-idle: expected minutes from 1 to 240 or never.\n' >&2
+  exit 2
+}
+
+run_idle() {
+  if has_policy; then
+    generate_hypridle_config
+    if command -v hypridle >/dev/null 2>&1; then
+      exec hypridle -c "$GENERATED_HYPRIDLE"
+    fi
+    local mode lock_seconds screen_seconds sleep_seconds
+    mode="$(policy_value mode standard)"
+    lock_seconds=$(( $(policy_value lock_minutes 10) * 60 ))
+    screen_seconds=$(( $(policy_value screen_minutes 15) * 60 ))
+    sleep_seconds=$(( $(policy_value sleep_minutes 0) * 60 ))
+    if command -v swayidle >/dev/null 2>&1; then
+      if [[ "$mode" == "never" ]]; then
+        exec sleep infinity
+      fi
+      exec swayidle -w \
+        timeout "$lock_seconds" 'seven-power lock' \
+        timeout "$screen_seconds" 'hyprctl dispatch dpms off' \
+        resume 'hyprctl dispatch dpms on' \
+        timeout "$sleep_seconds" 'systemctl suspend'
+    fi
+  else
+    if command -v hypridle >/dev/null 2>&1; then
+      exec hypridle
+    fi
+    if command -v swayidle >/dev/null 2>&1; then
+      exec swayidle -w \
+        timeout 600 'seven-power lock' \
+        timeout 900 'hyprctl dispatch dpms off' \
+        resume 'hyprctl dispatch dpms on'
+    fi
+  fi
+
+  printf 'seven-idle: install hypridle or swayidle for idle management.\n' >&2
+  exit 1
+}
+
+case "${1:-run}" in
+  run|"")
+    run_idle
+    ;;
+  status|doctor)
+    if [[ "${2:-}" == "--json" || "${1:-}" == "status" ]]; then
+      status_json
+    else
+      status_json
+    fi
+    ;;
+  set)
+    set_policy "${2:-}"
+    status_json
+    ;;
+  never)
+    set_policy never
+    status_json
+    ;;
+  standard|default)
+    set_policy standard
+    status_json
+    ;;
+  reset)
+    set_policy standard
+    status_json
+    ;;
+  generate)
+    generate_hypridle_config
+    printf '%s\n' "$GENERATED_HYPRIDLE"
+    ;;
+  *)
+    printf 'Usage: seven-idle [status --json|set MINUTES|never|reset|run]\n' >&2
+    exit 2
+    ;;
+esac

@@ -574,9 +574,22 @@ seven-quick-settings wifi
 seven-quick-settings bluetooth
 seven-quick-settings audio
 seven-quick-settings power
+seven-settings power
+seven-idle status --json
+seven-idle set 30
+seven-idle standard
+seven-idle never
+seven-idle reset
 seven-wifi status-json
 seven-bluetooth status-json
 ```
+
+La veille et l’écran se règlent dans **Paramètres > Énergie** ou rapidement
+depuis **Panneau de contrôle > Énergie**. `seven-idle set 30` met la machine en
+veille après 30 minutes d’inactivité; tu peux choisir une valeur personnalisée
+de 1 à 240 minutes. `seven-idle standard` revient au comportement recommandé.
+`seven-idle never` garde l’écran actif et désactive la veille automatique
+jusqu’à réinitialisation.
 
 Les exigences des mini OS suivent la frontière réelle : Equinox est vérifié
 contre le host, tandis que Forge, Shield, Studio, Baobab, Atlas et Pulse sont
@@ -1973,9 +1986,21 @@ seven-quick-settings wifi
 seven-quick-settings bluetooth
 seven-quick-settings audio
 seven-quick-settings power
+seven-settings power
+seven-idle status --json
+seven-idle set 30
+seven-idle standard
+seven-idle never
+seven-idle reset
 seven-wifi status-json
 seven-bluetooth status-json
 ```
+
+Energy and sleep are managed from **Settings > Energy** or quickly from
+**Control Center > Power**. `seven-idle set 30` puts the machine to sleep after
+30 minutes of inactivity; you can choose any custom value from 1 to 240 minutes.
+`seven-idle standard` returns to the recommended behavior. `seven-idle never`
+keeps the display active and disables automatic sleep until the policy is reset.
 
 Mini OS requirements follow the real boundary: Equinox is checked against the
 host, while Forge, Shield, Studio, Baobab, Atlas and Pulse are checked against
