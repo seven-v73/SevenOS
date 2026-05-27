@@ -26,6 +26,7 @@ Targets:
   shell-ags-runtime
                    Install Aylur's Gtk Shell runtime from the explicit AUR route
   runtime-tools    Install optional runtime orchestration tools such as CRIU
+  windows-compat   Install global Windows app compatibility tools
   network          Prepare and repair Wi-Fi/NetworkManager stack
   language         Prepare and inspect French/English language packs
   system-profile   Ensure Equinox is the host-system/admin side
@@ -169,6 +170,18 @@ case "$TARGET" in
     ;;
   runtime-tools)
     install_package_file "$ROOT_DIR/scripts/packages-runtime-optional.txt"
+    ;;
+  windows-compat|wincompat|windows-apps)
+    install_package_file "$ROOT_DIR/scripts/packages-windows-compat.txt"
+    "$ROOT_DIR/scripts/flatpak.sh" setup
+    if command -v flatpak >/dev/null 2>&1; then
+      if is_dry_run; then
+        printf 'flatpak install --noninteractive --or-update -y flathub com.usebottles.bottles\n'
+      elif ! flatpak info com.usebottles.bottles >/dev/null 2>&1; then
+        flatpak install --noninteractive --or-update -y flathub com.usebottles.bottles
+      fi
+    fi
+    "$ROOT_DIR/bin/seven-wincompat" status
     ;;
   network)
     "$ROOT_DIR/scripts/network.sh" bootstrap "${TARGET_ARGS[@]}"

@@ -6,12 +6,13 @@ usage() {
 Seven Files
 
 Usage:
-  seven-files [open|menu|profile|read|reader|wallpaper|home|downloads|documents|code|projects|pictures|videos|music|trash|recent] [path]
+  seven-files [open|menu|profile|read|reader|wallpaper|windows|home|downloads|documents|code|projects|pictures|videos|music|trash|recent] [path]
   seven-files resources [status|mini|shared|toggle]
 
 Seven Files opens the preferred graphical file manager with SevenOS fallbacks.
 Use "seven-files reader" to open Seven Reader, or "seven-files reader DOCUMENT" to open a document.
 Use "seven-files wallpaper IMAGE" to set a Hyprland/SevenOS wallpaper from a file manager action.
+Use "seven-files windows FILE" to launch .exe/.msi files through Bottles, Wine or Lutris.
 EOF
 }
 
@@ -404,6 +405,34 @@ read_document() {
   return 1
 }
 
+run_windows_file() {
+  local file="${1:-}"
+  local root helper
+  if [[ -z "$file" ]]; then
+    printf 'seven-files: missing Windows app file\n' >&2
+    return 1
+  fi
+  file="$(normalize_target "$file")"
+  root="$(resolve_root || true)"
+  helper="$root/bin/seven-wincompat"
+  if is_dry_run; then
+    if [[ -n "$root" && -x "$helper" ]]; then
+      SEVENOS_DRY_RUN=1 "$helper" run "$file" --dry-run
+    else
+      printf 'run Windows app file %q through SevenOS compatibility layer\n' "$file"
+    fi
+    return 0
+  fi
+  if [[ -n "$root" && -x "$helper" ]]; then
+    "$helper" run "$file"
+  elif command -v seven-wincompat >/dev/null 2>&1; then
+    seven-wincompat run "$file"
+  else
+    printf 'seven-files: seven-wincompat command not found\n' >&2
+    return 1
+  fi
+}
+
 ensure_dirs
 
 action="${1:-open}"
@@ -421,6 +450,9 @@ case "$action" in
     ;;
   wallpaper|set-wallpaper)
     set_wallpaper "$target"
+    ;;
+  windows|win|exe|msi)
+    run_windows_file "$target"
     ;;
   read|reader|book)
     read_document "$target"

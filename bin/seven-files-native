@@ -76,6 +76,7 @@ TEXT_SUFFIXES = {
 }
 DOCUMENT_SUFFIXES = {".pdf", ".docx", ".odt", ".rtf"}
 READER_SUFFIXES = {".pdf", ".epub", ".md", ".markdown", ".txt", ".cbz"}
+WINDOWS_APP_SUFFIXES = {".exe", ".msi", ".msp", ".bat", ".cmd", ".com", ".scr", ".lnk"}
 PREVIEW_SUFFIXES = IMAGE_SUFFIXES | VIDEO_SUFFIXES | AUDIO_SUFFIXES | TEXT_SUFFIXES | DOCUMENT_SUFFIXES | READER_SUFFIXES
 CLIPBOARD_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos" / "files-clipboard.json"
 TAG_CACHE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/files-tags.json"
@@ -123,6 +124,10 @@ def is_audio(path: Path) -> bool:
 
 def is_previewable(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in PREVIEW_SUFFIXES
+
+
+def is_windows_app_file(path: Path) -> bool:
+    return path.is_file() and path.suffix.lower() in WINDOWS_APP_SUFFIXES
 
 
 def resolve_root() -> Path | None:
@@ -843,6 +848,8 @@ def folder_icon(path: Path) -> str:
         return "video-x-generic"
     if suffix in AUDIO_SUFFIXES:
         return "audio-x-generic"
+    if suffix in WINDOWS_APP_SUFFIXES:
+        return "application-x-ms-dos-executable"
     if suffix in {".zip", ".tar", ".gz", ".xz", ".7z"}:
         return "package-x-generic"
     if suffix == ".pdf":
@@ -877,7 +884,7 @@ def file_paths_from_uri_payload(payload: str) -> list[Path]:
 def is_risky_file(path: Path) -> bool:
     if not path.is_file():
         return False
-    if path.suffix.lower() in {".sh", ".bash", ".zsh", ".fish", ".py", ".js", ".ts", ".jar", ".desktop", ".exe", ".msi", ".bat", ".cmd", ".scr"}:
+    if path.suffix.lower() in {".sh", ".bash", ".zsh", ".fish", ".py", ".js", ".ts", ".jar", ".desktop"} | WINDOWS_APP_SUFFIXES:
         return True
     try:
         return bool(path.stat().st_mode & 0o111)
@@ -3361,11 +3368,20 @@ def run_files(start_path: str) -> int:
                 t("Ouvre, trie ou dépose des fichiers ici. Les actions restent non destructives tant que tu ne confirmes pas.", "Open, sort or drop files here. Actions stay non-destructive until you confirm."),
             )
         elif is_risky_file(target):
-            preview_decision(
-                t("À vérifier avant ouverture", "Review before opening"),
-                t("Ce fichier peut exécuter du code. Utilise l’ouverture sûre ou vérifie son empreinte.", "This file may execute code. Use Safe Open or verify its fingerprint."),
-                True,
-            )
+            if is_windows_app_file(target):
+                plan = wincompat_plan(target)
+                engine = str(plan.get("selected_engine") or "Bottles/Wine/Lutris")
+                preview_decision(
+                    t("App Windows détectée", "Windows app detected"),
+                    t("SevenOS peut lancer ce fichier via {engine}. Vérifie sa source avant exécution.", "SevenOS can launch this file through {engine}. Verify its source before running it.", engine=engine),
+                    True,
+                )
+            else:
+                preview_decision(
+                    t("À vérifier avant ouverture", "Review before opening"),
+                    t("Ce fichier peut exécuter du code. Utilise l’ouverture sûre ou vérifie son empreinte.", "This file may execute code. Use Safe Open or verify its fingerprint."),
+                    True,
+                )
         elif target.suffix.lower() in READER_SUFFIXES:
             preview_decision(
                 t("Lecture recommandée", "Reader recommended"),
@@ -3556,6 +3572,11 @@ def run_files(start_path: str) -> int:
             if target.is_file():
                 if is_risky_file(target):
                     detail_row(t("Sécurité", "Security"), t("Vérifier avant ouverture", "Review before opening"))
+                    if is_windows_app_file(target):
+                        preview_action(t("Ouvrir avec Windows Apps", "Open with Windows Apps"), lambda target=target: open_windows_compat(target))
+                        preview_action("Bottles", lambda target=target: open_windows_compat(target, "bottles"))
+                        preview_action("Wine", lambda target=target: open_windows_compat(target, "wine"))
+                        preview_action("Lutris", lambda target=target: open_windows_compat(target, "lutris"))
                     preview_action(t("Ouverture sûre", "Safe Open"), lambda target=target: safe_open_path(target))
                 preview_action(t("Copier SHA256", "Copy SHA256"), hash_selected)
                 preview_action(t("Demander à SevenAI", "Ask SevenAI"), sevenai_selected)
@@ -3878,9 +3899,62 @@ def run_files(start_path: str) -> int:
         else:
             open_quicklook_preview(path)
 
+    def wincompat_command(*args: str) -> list[str] | None:
+        root = resolve_root()
+        if root and (root / "bin/seven-wincompat").exists():
+            return [str(root / "bin/seven-wincompat"), *args]
+        if shutil.which("seven-wincompat"):
+            return ["seven-wincompat", *args]
+        return None
+
+    def wincompat_plan(path: Path) -> dict:
+        command = wincompat_command("plan", str(path), "--json")
+        if not command:
+            return {"state": "missing-helper", "available_engines": [], "selected_engine": "", "blocker": "seven-wincompat is missing"}
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, check=False)
+            if result.returncode == 0:
+                return json.loads(result.stdout)
+        except Exception:
+            pass
+        return {"state": "unknown", "available_engines": [], "selected_engine": "", "blocker": "Unable to resolve Windows compatibility plan"}
+
+    def open_windows_compat(path: Path, engine: str = "auto", confirm: bool = True):
+        plan = wincompat_plan(path)
+        if plan.get("state") not in {"ready"}:
+            blocker = plan.get("blocker") or t("Installe Bottles, Wine ou Lutris depuis SevenStore.", "Install Bottles, Wine or Lutris from SevenStore.")
+            status_label.set_text(t("Compatibilité Windows indisponible: {blocker}", "Windows compatibility unavailable: {blocker}", blocker=blocker))
+            set_status(t("Installe Bottles, Wine ou Lutris pour ouvrir ce fichier.", "Install Bottles, Wine or Lutris to open this file."))
+            update_preview(path)
+            return
+        selected = str(plan.get("selected_engine") or "auto")
+        if confirm and not confirm_dialog(
+            t("Ouvrir une app Windows", "Open Windows app"),
+            t(
+                "SevenOS va lancer {name} via {engine}. Les fichiers Windows exécutent du code: vérifie la source avant de continuer.",
+                "SevenOS will launch {name} through {engine}. Windows files execute code: verify the source before continuing.",
+                name=path.name,
+                engine=selected,
+            ),
+            t("Ouvrir", "Open"),
+        ):
+            return
+        command = wincompat_command("run", str(path), "--engine", engine)
+        if not command:
+            return
+        log = Path("/tmp/sevenos-wincompat.log")
+        with log.open("ab") as handle:
+            subprocess.Popen(command, stdout=handle, stderr=handle, start_new_session=True)
+        remember_recent(path)
+        status_label.set_text(t("Lancement Windows via {engine}: {name}", "Windows launch via {engine}: {name}", engine=selected, name=path.name))
+        set_status(t("Compatibilité Windows lancée", "Windows compatibility launched"))
+
     def open_file(path: Path):
         remember_recent(path)
         set_busy_cursor(tr_text("Opening {name}...", name=path.name), 620)
+        if is_windows_app_file(path):
+            open_windows_compat(path)
+            return
         if is_risky_file(path) and active_profile in {"shield", "baobab"}:
             status_label.set_text("Risky file detected. Use Safe Open or context menu to continue.")
             update_preview(path)
@@ -5138,6 +5212,12 @@ def run_files(start_path: str) -> int:
             add_menu_item(menu, t("Lire dans Seven Reader", "Read in Seven Reader"), lambda: open_in_reader(path))
         if path.is_file() and is_previewable(path):
             add_menu_item(menu, "Quick Look", lambda: open_quicklook_preview(path))
+        if path.is_file() and is_windows_app_file(path):
+            menu.append(Gtk.SeparatorMenuItem())
+            add_menu_item(menu, t("Ouvrir avec Windows Apps", "Open with Windows Apps"), lambda: open_windows_compat(path))
+            add_menu_item(menu, "Bottles", lambda: open_windows_compat(path, "bottles"))
+            add_menu_item(menu, "Wine", lambda: open_windows_compat(path, "wine"))
+            add_menu_item(menu, "Lutris", lambda: open_windows_compat(path, "lutris"))
         if path.is_file() and is_risky_file(path):
             add_menu_item(menu, t("Ouverture sûre", "Safe Open"), lambda: safe_open_path(path))
         add_menu_item(menu, t("Copier", "Copy"), lambda: copy_items(active_paths))
@@ -5830,6 +5910,10 @@ def run_files(start_path: str) -> int:
 
         add("Open", "Open selected item", lambda: open_selected(), bool(target))
         add("Quick Look", "Preview selected file", lambda: open_quicklook_preview(target), bool(target and is_previewable(target)))
+        add("Open Windows App", "Run selected .exe/.msi through Bottles, Wine or Lutris", lambda: open_windows_compat(target), bool(target and is_windows_app_file(target)))
+        add("Open Windows App with Bottles", "Use Bottles for a friendlier Windows app bottle flow", lambda: open_windows_compat(target, "bottles"), bool(target and is_windows_app_file(target)))
+        add("Open Windows App with Wine", "Use Wine directly for installers and portable apps", lambda: open_windows_compat(target, "wine"), bool(target and is_windows_app_file(target)))
+        add("Open Windows App with Lutris", "Use Lutris for game or DirectX-heavy installers", lambda: open_windows_compat(target, "lutris"), bool(target and is_windows_app_file(target)))
         add("Open With", "Use the default system app", lambda: open_externally(target), bool(target and target.is_file()))
         add("Rename", "Rename selected item", lambda: rename_path(target), bool(target))
         add("Properties", "Inspect selected item or current folder", lambda: properties_dialog(target or current))

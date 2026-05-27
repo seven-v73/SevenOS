@@ -823,12 +823,18 @@ seven runtime activate equinox forge --apply --yes
 
 Gestionnaire de fichiers SevenOS : onglets, split view, Quick Look, tags,
 recherche, corbeille, opérations, inspecteur de décision, dossiers externes
-autorisés et adaptation par mini OS.
+autorisés, adaptation par mini OS et lancement app-first des fichiers Windows
+`.exe`, `.msi`, `.bat`, `.cmd` via Bottles, Wine ou Lutris.
 
 ```bash
 seven-files
 seven-files profile
 seven-files reader ~/Documents/book.pdf
+./install.sh windows-compat --yes
+seven-files windows ~/Downloads/setup.exe
+seven windows run ~/Downloads/setup.exe
+seven-wincompat status --json
+seven-wincompat plan ~/Downloads/setup.msi --json
 ```
 
 ### Seven Reader
@@ -2223,12 +2229,18 @@ seven runtime activate equinox forge --apply --yes
 
 SevenOS file manager: tabs, split view, Quick Look, tags, search, trash,
 operations, decision inspector, authorized external folders and mini OS
-adaptation.
+adaptation, plus app-first Windows file launching for `.exe`, `.msi`, `.bat`
+and `.cmd` through Bottles, Wine or Lutris.
 
 ```bash
 seven-files
 seven-files profile
 seven-files reader ~/Documents/book.pdf
+./install.sh windows-compat --yes
+seven-files windows ~/Downloads/setup.exe
+seven windows run ~/Downloads/setup.exe
+seven-wincompat status --json
+seven-wincompat plan ~/Downloads/setup.msi --json
 ```
 
 ### Seven Reader

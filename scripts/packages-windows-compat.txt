@@ -1,0 +1,7 @@
+# SevenOS global Windows app compatibility layer
+# Bottles is installed through Flatpak/Flathub by the windows-compat target.
+wine
+winetricks
+lutris
+cabextract
+icoutils

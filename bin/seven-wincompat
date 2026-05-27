@@ -1,0 +1,294 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ACTION="${1:-status}"
+shift || true
+
+WINDOWS_SUFFIXES_RE='\.((exe)|(msi)|(msp)|(bat)|(cmd)|(com)|(scr)|(lnk))$'
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/wincompat"
+LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos/wincompat"
+DEFAULT_WINEPREFIX="${WINEPREFIX:-$HOME/.local/share/sevenos/windows/prefixes/default}"
+
+usage() {
+  cat <<'EOF'
+SevenOS Windows App Compatibility
+
+Usage:
+  seven-wincompat status [--json]
+  seven-wincompat plan FILE [--json]
+  seven-wincompat run FILE [--engine auto|wine|bottles|lutris] [--dry-run]
+  seven-wincompat open-bottles [FILE]
+
+Runs Windows app files through app-first compatibility layers: Bottles, Wine and
+Lutris. This is global SevenOS infrastructure, not a Windows mini OS or VM.
+EOF
+}
+
+json_escape() {
+  python -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+flatpak_has() {
+  have flatpak && flatpak info "$1" >/dev/null 2>&1
+}
+
+is_windows_file() {
+  [[ "${1,,}" =~ $WINDOWS_SUFFIXES_RE ]]
+}
+
+file_kind() {
+  local suffix="${1##*.}"
+  suffix="${suffix,,}"
+  case "$suffix" in
+    exe) printf 'executable' ;;
+    msi) printf 'installer-msi' ;;
+    msp) printf 'patch-msi' ;;
+    bat|cmd) printf 'batch-script' ;;
+    com) printf 'dos-command' ;;
+    scr) printf 'screensaver-executable' ;;
+    lnk) printf 'shortcut' ;;
+    *) printf 'unknown' ;;
+  esac
+}
+
+engine_available() {
+  case "$1" in
+    wine) have wine ;;
+    bottles) have bottles || flatpak_has com.usebottles.bottles ;;
+    lutris) have lutris ;;
+    *) return 1 ;;
+  esac
+}
+
+available_engines_json() {
+  python - "$@" <<'PY'
+import json, sys
+print(json.dumps([item for item in sys.argv[1:] if item], ensure_ascii=False))
+PY
+}
+
+available_engines() {
+  local engines=()
+  engine_available bottles && engines+=("bottles")
+  engine_available wine && engines+=("wine")
+  engine_available lutris && engines+=("lutris")
+  printf '%s\n' "${engines[@]}"
+}
+
+status_json() {
+  local engines_json
+  engines_json="$(available_engines_json $(available_engines))"
+  cat <<JSON
+{
+  "schema": "sevenos.wincompat.status.v1",
+  "state": "$([[ "$engines_json" != "[]" ]] && printf ready || printf missing)",
+  "global": true,
+  "mini_os": "all",
+  "vm_required": false,
+  "supported_suffixes": [".exe", ".msi", ".msp", ".bat", ".cmd", ".com", ".scr", ".lnk"],
+  "engines": {
+    "bottles": $(engine_available bottles && printf true || printf false),
+    "wine": $(engine_available wine && printf true || printf false),
+    "lutris": $(engine_available lutris && printf true || printf false)
+  },
+  "available_engines": $engines_json,
+  "wineprefix": $(json_escape "$DEFAULT_WINEPREFIX"),
+  "install_hint": "Install Bottles from Flatpak or Wine/Lutris from SevenStore."
+}
+JSON
+}
+
+choose_engine() {
+  local file="$1"
+  local requested="${2:-auto}"
+  if [[ "$requested" != "auto" ]]; then
+    engine_available "$requested" && printf '%s\n' "$requested" && return 0
+    return 1
+  fi
+  if engine_available bottles; then
+    printf 'bottles\n'
+  elif engine_available wine; then
+    printf 'wine\n'
+  elif engine_available lutris; then
+    printf 'lutris\n'
+  else
+    return 1
+  fi
+}
+
+plan_json() {
+  local file="$1"
+  local requested="${2:-auto}"
+  local kind engine engines_json state blocker
+  kind="$(file_kind "$file")"
+  engines_json="$(available_engines_json $(available_engines))"
+  if ! is_windows_file "$file"; then
+    state="unsupported"
+    blocker="File extension is not a known Windows app format."
+    engine=""
+  elif engine="$(choose_engine "$file" "$requested" 2>/dev/null)"; then
+    state="ready"
+    blocker=""
+  else
+    state="missing-engine"
+    blocker="No Bottles, Wine or Lutris engine is currently available."
+    engine=""
+  fi
+  cat <<JSON
+{
+  "schema": "sevenos.wincompat.plan.v1",
+  "state": "$state",
+  "file": $(json_escape "$file"),
+  "kind": "$kind",
+  "selected_engine": $(json_escape "$engine"),
+  "requested_engine": $(json_escape "$requested"),
+  "available_engines": $engines_json,
+  "global": true,
+  "vm_required": false,
+  "safety": {
+    "review_required": true,
+    "reason": "Windows app files execute code through compatibility layers."
+  },
+  "blocker": $(json_escape "$blocker")
+}
+JSON
+}
+
+run_with_wine() {
+  local file="$1"
+  mkdir -p "$DEFAULT_WINEPREFIX" "$LOG_DIR"
+  export WINEPREFIX="$DEFAULT_WINEPREFIX"
+  case "${file##*.}" in
+    msi|MSI)
+      setsid -f wine msiexec /i "$file" >"$LOG_DIR/wine-msi.log" 2>&1
+      ;;
+    msp|MSP)
+      setsid -f wine msiexec /p "$file" >"$LOG_DIR/wine-msp.log" 2>&1
+      ;;
+    bat|BAT|cmd|CMD)
+      setsid -f wine cmd /c "$file" >"$LOG_DIR/wine-cmd.log" 2>&1
+      ;;
+    *)
+      setsid -f wine "$file" >"$LOG_DIR/wine.log" 2>&1
+      ;;
+  esac
+}
+
+run_with_bottles() {
+  local file="$1"
+  mkdir -p "$LOG_DIR"
+  if have bottles; then
+    setsid -f bottles "$file" >"$LOG_DIR/bottles.log" 2>&1
+  else
+    setsid -f flatpak run com.usebottles.bottles "$file" >"$LOG_DIR/bottles-flatpak.log" 2>&1
+  fi
+}
+
+run_with_lutris() {
+  local file="$1"
+  mkdir -p "$LOG_DIR"
+  # Lutris' GUI handles Windows installers best from its add/install flow, so
+  # launch the app and keep the selected file in recents for the user.
+  setsid -f lutris "$file" >"$LOG_DIR/lutris.log" 2>&1 || setsid -f lutris >"$LOG_DIR/lutris.log" 2>&1
+}
+
+remember_recent() {
+  local file="$1" engine="$2"
+  mkdir -p "$STATE_DIR"
+  python - "$STATE_DIR/recents.json" "$file" "$engine" <<'PY'
+import json, sys, time
+from pathlib import Path
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+    if not isinstance(data, list):
+        data = []
+except Exception:
+    data = []
+entry = {"file": sys.argv[2], "engine": sys.argv[3], "time": int(time.time())}
+data = [entry] + [item for item in data if item.get("file") != entry["file"]]
+path.write_text(json.dumps(data[:30], indent=2) + "\n", encoding="utf-8")
+PY
+}
+
+run_file() {
+  local file="" engine="auto" dry_run=0
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --engine) engine="${2:-auto}"; shift 2 ;;
+      --dry-run) dry_run=1; shift ;;
+      --json) shift ;;
+      *) file="${file:-$1}"; shift ;;
+    esac
+  done
+  [[ -n "$file" ]] || { usage >&2; return 2; }
+  file="$(realpath -m "$file")"
+  [[ -e "$file" ]] || { printf 'seven-wincompat: file not found: %s\n' "$file" >&2; return 1; }
+  is_windows_file "$file" || { printf 'seven-wincompat: unsupported Windows file: %s\n' "$file" >&2; return 1; }
+  local selected
+  selected="$(choose_engine "$file" "$engine")" || {
+    printf 'seven-wincompat: Bottles, Wine or Lutris is required.\n' >&2
+    printf 'Install Bottles from SevenStore/Flatpak or install wine/lutris.\n' >&2
+    return 1
+  }
+  if [[ "$dry_run" == "1" ]]; then
+    plan_json "$file" "$engine"
+    return 0
+  fi
+  remember_recent "$file" "$selected"
+  case "$selected" in
+    bottles) run_with_bottles "$file" ;;
+    wine) run_with_wine "$file" ;;
+    lutris) run_with_lutris "$file" ;;
+  esac
+  printf 'SevenOS Windows compatibility launched %s with %s\n' "$file" "$selected"
+}
+
+case "$ACTION" in
+  -h|--help|help)
+    usage
+    ;;
+  status)
+    if [[ " $* " == *" --json "* ]]; then
+      status_json
+    else
+      status_json | python -c 'import json,sys; data=json.load(sys.stdin); engines=", ".join(data.get("available_engines", [])) or "none"; print("SevenOS Windows App Compatibility: {}".format(data.get("state", "unknown"))); print("Available engines: {}".format(engines)); print("Scope: global, all mini OS")'
+    fi
+    ;;
+  plan)
+    file="${1:-}"
+    [[ -n "$file" ]] || { usage >&2; exit 2; }
+    shift || true
+    engine="auto"
+    while [[ "$#" -gt 0 ]]; do
+      case "$1" in
+        --engine) engine="${2:-auto}"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    plan_json "$(realpath -m "$file")" "$engine"
+    ;;
+  run)
+    run_file "$@"
+    ;;
+  open-bottles)
+    if [[ "$#" -gt 0 ]]; then
+      run_with_bottles "$(realpath -m "$1")"
+    elif have bottles; then
+      setsid -f bottles >/dev/null 2>&1
+    elif flatpak_has com.usebottles.bottles; then
+      setsid -f flatpak run com.usebottles.bottles >/dev/null 2>&1
+    else
+      printf 'seven-wincompat: Bottles is not installed.\n' >&2
+      exit 1
+    fi
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

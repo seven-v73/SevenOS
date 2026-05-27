@@ -22,6 +22,7 @@
       "paths": [
         "bin/seven",
         "bin/seven-daemon",
+        "bin/seven-wincompat",
         "bin/sevenbus-probe",
         "bin/sevenpkg",
         "bin/seven-windows-assistant",

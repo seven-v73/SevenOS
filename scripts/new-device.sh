@@ -117,6 +117,7 @@ setup_doctor() {
     scripts/packages-performance.txt
     scripts/packages-culture.txt
     scripts/packages-runtime-optional.txt
+    scripts/packages-windows-compat.txt
   )
   local script_files=(
     bootstrap.sh
@@ -294,6 +295,9 @@ run_optional run_logged "$ROOT_DIR/bin/seven-profile-requirements" status atlas 
 if [[ "$OPTIONAL" -eq 1 ]]; then
   step "installing optional mini OS dependencies"
   run_optional run_logged "$ROOT_DIR/bin/seven-profile-requirements" ensure all --optional --aur --apply "${yes_args[@]}"
+
+  step "installing global Windows app compatibility layer"
+  run_optional "$ROOT_DIR/install.sh" windows-compat "${yes_args[@]}"
 
   step "installing Seven Shell AGS runtime"
   run_optional "$ROOT_DIR/scripts/shell-ags-runtime.sh" install

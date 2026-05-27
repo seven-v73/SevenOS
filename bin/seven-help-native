@@ -290,13 +290,17 @@ SECTIONS = [
         "title": t("Applications", "Applications"),
         "subtitle": t("Surfaces natives SevenOS", "SevenOS native surfaces"),
         "body": [
-            t("Seven Files gère fichiers, onglets, split view, Quick Look et dossiers externes autorisés.", "Seven Files handles files, tabs, split view, Quick Look and authorized external folders."),
+            t("Seven Files gère fichiers, onglets, split view, Quick Look, dossiers externes autorisés et fichiers Windows .exe/.msi via Bottles, Wine ou Lutris.", "Seven Files handles files, tabs, split view, Quick Look, authorized external folders and Windows .exe/.msi files through Bottles, Wine or Lutris."),
             t("SevenStore découvre, installe et vérifie les apps selon les mini OS.", "SevenStore discovers, installs and verifies apps by mini OS."),
             t("SevenAI fournit une surface assistant local-first, avec actions et confirmations.", "SevenAI provides a local-first assistant surface with actions and confirmations."),
             t("Seven Terminal suit le mini OS actif, affiche le Prism/profil, et range les actions avancées dans une palette par sections.", "Seven Terminal follows the active mini OS, shows the Prism/profile identity, and keeps advanced actions in a sectioned palette."),
         ],
         "commands": [
             ("seven-files", "Seven Files"),
+            ("./install.sh windows-compat --yes", t("Installer Bottles/Wine/Lutris", "Install Bottles/Wine/Lutris")),
+            ("seven-files windows ~/Downloads/setup.exe", t("Lancer un installateur Windows depuis Files", "Launch a Windows installer from Files")),
+            ("seven windows run ~/Downloads/setup.exe", t("Lancer via la commande SevenOS", "Launch through the SevenOS command")),
+            ("seven-wincompat status --json", t("Vérifier Bottles/Wine/Lutris", "Check Bottles/Wine/Lutris")),
             ("seven-store", "SevenStore"),
             ("seven-ai", "SevenAI"),
             ("seven-terminal", "Seven Terminal"),

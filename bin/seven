@@ -463,8 +463,54 @@ def handle_atlas(args):
 
 
 def handle_run(args):
-    print("seven: Windows VM app runner has been retired. Use native Linux apps, Pulse/Proton, or Bottles/Lutris from the Store when needed.", file=sys.stderr)
+    target = args.target
+    suffix = Path(target).suffix.lower()
+    if suffix in {".exe", ".msi", ".msp", ".bat", ".cmd", ".com", ".scr", ".lnk"}:
+        run_script(args, "bin/seven-wincompat", "run", target, *args.extra)
+        return
+    print("seven: app-name resolution is not enabled here yet. For Windows installers use: seven files windows <file> or seven windows run <file>.", file=sys.stderr)
     sys.exit(2)
+
+
+def handle_windows(args):
+    action = args.action
+    extra = list(args.extra)
+    wants_json = getattr(args, "json", False) or "--json" in extra
+    extra = [item for item in extra if item != "--json"]
+    if extra and extra[0] == "--":
+        extra = extra[1:]
+    if action in {"status", "catalog", "apps", "guide"}:
+        payload = ["status"]
+        if wants_json or action in {"catalog", "apps"}:
+            payload.append("--json")
+        run_script(args, "bin/seven-wincompat", *payload)
+        return
+    if action in {"open", "bottles"}:
+        run_script(args, "bin/seven-wincompat", "open-bottles", *extra)
+        return
+    if action in {"plan", "resolve"}:
+        if not extra:
+            payload = ["status"]
+            if wants_json:
+                payload.append("--json")
+            run_script(args, "bin/seven-wincompat", *payload)
+            return
+        payload = ["plan", extra[0], *extra[1:]]
+        if wants_json and "--json" not in payload:
+            payload.append("--json")
+        run_script(args, "bin/seven-wincompat", *payload)
+        return
+    if action in {"run", "install"}:
+        if not extra:
+            print("seven windows run: missing .exe/.msi path", file=sys.stderr)
+            sys.exit(2)
+        run_script(args, "bin/seven-wincompat", "run", *extra)
+        return
+    if action in {"setup", "prepare"}:
+        print("SevenOS Windows VM is retired. App compatibility is global: install Bottles, Wine or Lutris from SevenStore, then use Seven Files or seven windows run <file>.")
+        return
+    print(f"seven: unknown windows compatibility action: {action}", file=sys.stderr)
+    sys.exit(1)
 
 
 def handle_server(args):
@@ -1327,6 +1373,11 @@ def main():
     pulse_parser.add_argument("--json", action="store_true", help="print machine-readable Pulse readiness")
     pulse_parser.add_argument("--dry-run", action="store_true", help="preview Pulse setup commands")
 
+    windows_parser = subparsers.add_parser("windows", help="run Windows app files through Bottles, Wine or Lutris")
+    windows_parser.add_argument("action", nargs="?", default="status", choices=("status", "catalog", "apps", "guide", "open", "bottles", "plan", "resolve", "run", "install", "setup", "prepare"))
+    windows_parser.add_argument("--json", action="store_true", help="print machine-readable Windows compatibility state")
+    windows_parser.add_argument("extra", nargs=argparse.REMAINDER)
+
     run_parser = subparsers.add_parser("run", help="run an app through the SevenOS compatibility resolver")
     run_parser.add_argument("target", help="app name or Windows executable path")
     run_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -1592,6 +1643,8 @@ def main():
         if args.dry_run:
             extra.append("--dry-run")
         run_script(args, "bin/seven-pulse", *extra)
+    elif args.command == "windows":
+        handle_windows(args)
     elif args.command == "run":
         handle_run(args)
     elif args.command == "server":
