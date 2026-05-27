@@ -97,7 +97,7 @@ CATEGORIES = [
     ("system", "system-run", "Actions"),
     ("web", "web-browser", "Web"),
     ("clipboard", "edit-paste", "Clipboard"),
-    ("windows", "preferences-system-windows", "Windows"),
+    ("atlas", "folder-documents", "Atlas"),
     ("history", "document-open-recent", "History"),
 ]
 

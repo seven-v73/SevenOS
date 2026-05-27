@@ -17,11 +17,11 @@ COLORS = {
     "forge": ("#F9E2AF", "#89B4FA", "Établi"),
     "shield": ("#00FFB3", "#94E2D5", "Sas"),
     "studio": ("#CBA6F7", "#F5C2E7", "Canvas"),
-    "windows": ("#74C7EC", "#89B4FA", "Pont"),
+    "atlas": ("#5AD7B7", "#74C7EC", "Atlas"),
     "pulse": ("#00D4FF", "#89B4FA", "Scène"),
 }
 
-PROFILE_ORDER = ["baobab", "forge", "shield", "pulse", "windows", "studio"]
+PROFILE_ORDER = ["baobab", "forge", "shield", "pulse", "atlas", "studio"]
 
 
 def hex_rgba(value: str, alpha: float = 1.0) -> tuple[float, float, float, float]:

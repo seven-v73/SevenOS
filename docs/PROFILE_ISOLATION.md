@@ -9,7 +9,7 @@ The rule is:
 
 Equinox is the exception by design. It is the SevenOS system/admin side: it
 uses the real home directory, the normal host runtime and direct Arch package
-manager access. Forge, Shield, Studio, Baobab, Windows and Pulse remain mini OS
+manager access. Forge, Shield, Studio, Baobab, Atlas and Pulse remain mini OS
 profiles with their own runtime boundaries.
 
 ## Model
@@ -155,7 +155,7 @@ there. This keeps the real home directory private while still allowing Forge,
 Studio or Shield tools to work on an explicit project/case folder.
 
 Use `--workspace-profile` when you want the default workspace of the selected
-mini OS: `~/Forge`, `~/ShieldLab`, `~/Studio`, `~/Baobab`, `~/WindowsMode`,
+mini OS: `~/Forge`, `~/ShieldLab`, `~/Studio`, `~/Baobab`, `~/Atlas`,
 `~/Pulse` or `~/SevenOS`. SevenOS creates the folder if it does not exist.
 
 ## External Folders
@@ -323,7 +323,7 @@ seven profile requirements studio --optional --apply --yes
 ```
 
 For Equinox, requirements are evaluated against the host Arch package database.
-For Forge, Shield, Studio, Baobab, Windows and Pulse, requirements are evaluated
+For Forge, Shield, Studio, Baobab, Atlas and Pulse, requirements are evaluated
 against the private profile rootfs package database first. This keeps the health
 and release checks aligned with the mini OS isolation model: a package installed
 inside Forge does not need to appear globally in Equinox to make Forge
@@ -382,8 +382,7 @@ workspace policy, systemd scope and seal checks while keeping the SevenOS shell
 fluid and native. The kernel, compositor, GPU and some host services remain
 shared by design.
 
-Windows Bridge is the exception: Windows compatibility may use libvirt/QEMU
-because Windows itself is not a native SevenOS mini OS.
+Atlas replaces the old Windows mini OS so the seven official profiles stay native. Compatibility tools may exist as normal apps, but no Windows VM is part of the mini OS model.
 
 The practical boundary levels are now:
 
@@ -429,7 +428,7 @@ the image is saved under:
 ~/.config/sevenos/profiles/baobab/wallpaper-state
 ```
 
-Switching to Forge, Shield, Studio, Windows, Pulse or Equinox restores that
+Switching to Forge, Shield, Studio, Atlas, Pulse or Equinox restores that
 mini OS wallpaper state instead of overwriting Baobab. The global
 `wallpaper-sevenos-active.png` remains only the current Hyprpaper projection.
 
@@ -535,7 +534,7 @@ plain profile menu.
 Services are owned by profiles. For example:
 
 - Forge DevOps owns `docker.service`, `postgresql.service`, `valkey.service` and `caddy.service`
-- Windows owns `libvirtd.service`, `virtqemud.service`, `virtlogd.service`
+- Atlas owns no virtualization service; document/map/OCR tools stay profile-scoped
 - Pulse owns `gamemoded.service`
 
 When a profile is inactive, SevenOS writes the quieting plan and attempts

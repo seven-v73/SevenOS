@@ -133,7 +133,7 @@ fn profile_cards_from_seven() -> Option<Vec<ProfileCard>> {
     let items: serde_json::Value = serde_json::from_str(&output).ok()?;
     let array = items.as_array()?;
 
-    let wanted = ["forge", "shield", "studio", "windows", "pulse", "baobab"];
+    let wanted = ["forge", "shield", "studio", "atlas", "pulse", "baobab"];
 
     let mut cards = Vec::new();
     for key in wanted {
@@ -239,16 +239,14 @@ fn get_hub_snapshot() -> Result<String, String> {
             detail: "UFW trust baseline".into(),
         },
         ServiceCard {
-            label: "Windows Mode".into(),
-            state: if command_ok(
-                "command -v virt-manager >/dev/null 2>&1 && command -v virsh >/dev/null 2>&1",
-            ) {
+            label: "Atlas Explorer".into(),
+            state: if command_ok("test -f scripts/packages-atlas.txt") {
                 "OK"
             } else {
                 "PART"
             }
             .into(),
-            detail: "Wine, Bottles, QEMU and libvirt path".into(),
+            detail: "Documents, maps, OCR and research path".into(),
         },
         ServiceCard {
             label: "Seven Server".into(),
@@ -304,14 +302,13 @@ fn get_hub_snapshot() -> Result<String, String> {
                 workspace: "~/Studio".into(),
             },
             ProfileCard {
-                key: "windows".into(),
-                title: "Windows".into(),
-                description: "Compatibility layer with Wine, Bottles, Lutris and KVM helpers."
-                    .into(),
-                state: profile_state("scripts/packages-windows.txt"),
-                action: "seven profile install windows".into(),
+                key: "atlas".into(),
+                title: "Atlas".into(),
+                description: "Documents, maps, OCR, references and travel research.".into(),
+                state: profile_state("scripts/packages-atlas.txt"),
+                action: "seven atlas install --yes".into(),
                 active: false,
-                workspace: "~/WindowsMode".into(),
+                workspace: "~/Atlas".into(),
             },
         ]
     });
@@ -339,7 +336,7 @@ fn run_seven_command(command: String) -> Result<String, String> {
         "seven status",
         "seven profile",
         "seven shield",
-        "seven windows",
+        "seven atlas",
         "seven server",
         "seven installer",
         "seven flatpak",

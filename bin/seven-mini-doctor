@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
 CATALOG = ROOT / "profiles/catalog.json"
-PROFILES = ("forge", "studio", "baobab", "shield", "windows", "pulse")
+PROFILES = ("forge", "studio", "baobab", "shield", "atlas", "pulse")
 
 
 def host_home() -> Path:
@@ -40,7 +40,7 @@ KEY_TOOLS = {
     "studio": ("gimp", "krita", "inkscape", "blender", "kdenlive", "obs-studio", "ffmpeg", "pipewire-jack"),
     "baobab": ("foliate", "mpv", "espeak-ng", "translate-shell", "kiwix-desktop", "libreoffice-fresh"),
     "shield": ("nmap", "wireshark-qt", "tcpdump", "sqlmap", "zaproxy", "metasploit", "firejail", "bubblewrap"),
-    "windows": ("wine", "winetricks", "lutris", "qemu-full", "libvirt", "virt-manager", "edk2-ovmf", "swtpm"),
+    "atlas": ("evince", "foliate", "calibre", "marble", "gnome-maps", "pdfarranger", "tesseract", "syncthing"),
     "pulse": ("gamemode", "vulkan-icd-loader", "vulkan-tools", "pipewire", "wireplumber", "alsa-utils", "gamescope", "mangohud"),
 }
 
@@ -61,9 +61,9 @@ OPTIONAL_ACTIONS = {
         ("shield.optional.security", "Installer les extras Shield", "seven profile requirements shield --optional --apply --yes"),
         ("shield.private.burp", "Installer Burp Suite dans Shield", "sevenpkg shield install burpsuite --source paru"),
     ],
-    "windows": [
-        ("windows.optional.quickemu", "Installer l'assistant Quickemu", "seven profile requirements windows --optional --apply --aur --yes"),
-        ("windows.private.bottles", "Installer Bottles dans Windows", "sevenpkg windows install bottles --source paru"),
+    "atlas": [
+        ("atlas.optional.research", "Installer les extras Atlas", "seven-profile-requirements status atlas --optional --apply --yes"),
+        ("atlas.private.docs", "Installer Calibre et outils documents dans Atlas", "sevenpkg atlas install calibre pdfarranger --source pacman"),
     ],
     "pulse": [
         ("pulse.optional.gaming", "Installer les extras Pulse", "seven profile requirements pulse --optional --apply --yes"),

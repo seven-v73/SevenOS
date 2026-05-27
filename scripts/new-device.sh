@@ -113,7 +113,7 @@ setup_doctor() {
     scripts/packages-dev.txt
     scripts/packages-cybersecurity.txt
     scripts/packages-creation.txt
-    scripts/packages-windows.txt
+    scripts/packages-atlas.txt
     scripts/packages-performance.txt
     scripts/packages-culture.txt
     scripts/packages-runtime-optional.txt
@@ -288,8 +288,8 @@ run_optional install_package_file "$ROOT_DIR/scripts/packages-identity.txt"
 step "installing required mini OS dependencies"
 run_logged "$ROOT_DIR/bin/seven-profile-requirements" ensure all --apply "${yes_args[@]}"
 
-step "preparing Windows Bridge first-install path"
-run_optional run_logged "$ROOT_DIR/bin/seven-windows-assistant" setup --yes --no-open
+step "preparing Atlas Explorer first-install path"
+run_optional run_logged "$ROOT_DIR/bin/seven-profile-requirements" status atlas --json
 
 if [[ "$OPTIONAL" -eq 1 ]]; then
   step "installing optional mini OS dependencies"

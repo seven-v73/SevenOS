@@ -77,7 +77,7 @@ syntax_check() {
     "$ROOT_DIR/scripts/distribution.sh" \
     "$ROOT_DIR/scripts/identity-experience.sh" \
     "$ROOT_DIR/scripts/lifecycle.sh" \
-    "$ROOT_DIR/bin/seven-windows-assistant" \
+    "$ROOT_DIR/bin/seven-profile-requirements" \
     "$ROOT_DIR/bin/seven-help" \
     "$ROOT_DIR/bin/seven-help-native"
 }
@@ -151,7 +151,7 @@ new_device_dry_run() {
 }
 
 windows_dry_run() {
-  SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" setup --yes --no-open >/dev/null
+  SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-profile-requirements" status atlas --json >/dev/null
 }
 
 run_required "shell syntax" syntax_check
@@ -164,7 +164,7 @@ run_required_timeout "${SEVENOS_PRE_PUSH_SMOKE_TIMEOUT:-60s}" "SevenOS smoke con
 run_required_timeout "${SEVENOS_PRE_PUSH_SURFACES_TIMEOUT:-30s}" "SevenOS native surfaces contract" surfaces_check
 run_required_timeout "${SEVENOS_PRE_PUSH_STATE_TIMEOUT:-90s}" "SevenOS state contract" state_check
 run_required_timeout "${SEVENOS_PRE_PUSH_NEW_TIMEOUT:-120s}" "new machine dry-run" new_device_dry_run
-run_required_timeout "${SEVENOS_PRE_PUSH_WINDOWS_TIMEOUT:-60s}" "Windows Bridge first-run dry-run" windows_dry_run
+run_required_timeout "${SEVENOS_PRE_PUSH_WINDOWS_TIMEOUT:-60s}" "Atlas Explorer requirements" windows_dry_run
 run_optional_timeout "${SEVENOS_PRE_PUSH_UX_TIMEOUT:-180s}" "deep UX smoke window" \
   env \
   SEVENOS_DRY_RUN=1 \

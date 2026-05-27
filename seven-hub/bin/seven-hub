@@ -37,7 +37,7 @@ categories=(
   "Profiles|category:Profiles|Forge, Shield, Studio and SevenPkg status"
   "Cyber|category:Cyber|Cyber audit, labs and BlackArch bridge"
   "Desktop|category:Desktop|Theme, branding, power and session controls"
-  "VM & Windows|category:VM & Windows|Windows compatibility and libvirt"
+  "Atlas Explorer|category:Atlas Explorer|Documents, maps, OCR and references"
   "Server & Deploy|category:Server & Deploy|Local API, personal cloud and project deploy"
   "Ecosystem|category:Ecosystem|AI, cloud, store, containers and automation roadmap"
   "Installer|category:Installer|ISO and installation planning"
@@ -68,7 +68,7 @@ Categories:
   Profiles
   Cyber
   Desktop
-  VM & Windows
+  Atlas Explorer
   Server & Deploy
   Ecosystem
   Installer
@@ -100,7 +100,7 @@ doctor() {
   fi
 
   printf '\nAction wiring:\n'
-  for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy" Ecosystem Installer Apps; do
+  for category in Dashboard Profiles Cyber Desktop "Atlas Explorer" "Server & Deploy" Ecosystem Installer Apps; do
     load_actions "$category"
     for item in "${actions[@]}"; do
       IFS='|' read -r label action description <<<"$item"
@@ -127,10 +127,10 @@ validate_action() {
       return 0
       ;;
     sevenpkg:*)
-      SEVENOS_DRY_RUN=1 "$SEVENOS_ROOT/bin/sevenpkg" --dry-run ${action#sevenpkg:} >/dev/null
+      SEVENOS_DRY_RUN=1 timeout 12s "$SEVENOS_ROOT/bin/sevenpkg" --dry-run ${action#sevenpkg:} >/dev/null
       ;;
     seven:*)
-      SEVENOS_DRY_RUN=1 "$SEVENOS_ROOT/bin/seven" --dry-run ${action#seven:} >/dev/null
+      SEVENOS_DRY_RUN=1 timeout 12s "$SEVENOS_ROOT/bin/seven" --dry-run ${action#seven:} >/dev/null
       ;;
     *)
       target="${action%% *}"
@@ -245,7 +245,7 @@ item_icon() {
     *Profile*|Forge|Shield|Studio) printf '󰌢' ;;
     *Cyber*|*Security*|*Shield*|*Firewall*) printf '󰌾' ;;
     *Files*|*Installer*|*ISO*) printf '󰉋' ;;
-    *Windows*|*VM*|*Bottles*|*Virt*) printf '󰖳' ;;
+    *Atlas*|*OCR*|*Maps*|*Documents*) printf '󰙅' ;;
     *Server*|*Deploy*|*API*) printf '󰒋' ;;
     *Apps*|*Flatpak*|*SevenPkg*|*Software*) printf '󰀻' ;;
     *Power*|*Lock*|*Session*) printf '󰐥' ;;
@@ -298,7 +298,7 @@ load_actions() {
         "Improve Plan|seven:improve|Plan improvements for all OS criteria"
         "Repair Plan|seven:repair|Show guided repair plan"
         "Improve Security|seven:improve security|Plan trust and hardening improvements"
-        "Improve Compatibility|seven:improve compatibility|Plan Windows and app compatibility improvements"
+        "Improve Compatibility|seven:improve compatibility|Plan Atlas and app compatibility improvements"
         "Improve Deployment|seven:improve deployment|Plan server and deployment improvements"
         "Improve Workspaces|seven:improve target|Plan Forge, Shield and Studio completion"
         "System Status|seven:status|Show installed profiles and services"
@@ -344,19 +344,14 @@ load_actions() {
         "Lock Session|app:seven-power lock|Lock the desktop"
       )
       ;;
-    "VM & Windows")
+    "Atlas Explorer")
       actions=(
-        "Windows Bridge Guide|seven:windows guide|Explain Windows Bridge paths"
-        "Windows Mode Status|seven:windows status|Show Windows compatibility readiness"
-        "Windows Apps|seven:windows apps|Open Windows applications"
-        "Windows VM|seven:windows vm|Open Windows desktop mode"
-        "Windows Mode Start|seven:windows start|Start SevenOS Windows VM"
-        "Windows Mode Console|seven:windows console|Open SevenOS Windows VM console"
-        "Install Windows Bridge|windows|Install SevenOS Windows Bridge"
-        "VM Check|vm-check|Check KVM and libvirt readiness"
-        "VM Network|vm-network|Start libvirt default network"
-        "Open Virt Manager|app:virt-manager|Launch VM manager"
-        "Windows App Manager|app:flatpak run com.usebottles.bottles|Launch Windows app manager"
+        "Atlas Guide|seven:atlas open|Open Atlas Explorer"
+        "Atlas Status|seven:atlas status|Show Atlas readiness"
+        "Atlas Apps|seven:profile apps atlas|Open Atlas applications"
+        "Atlas Folders|app:seven-files profile atlas|Open Atlas folders"
+        "Install Atlas|atlas|Install Atlas Explorer"
+        "Atlas Optional Tools|app:seven-profile-requirements status atlas --optional --apply --yes|Install optional Atlas tools"
       )
       ;;
     "Server & Deploy")
@@ -407,8 +402,7 @@ load_actions() {
         "Hub GUI Stack|seven:hub-gui status|Show native GUI readiness"
         "Seven Hub Status|seven:hub-native status|Inspect Seven Hub readiness"
         "Hub GUI Doctor|seven:hub-gui doctor|Validate Tauri scaffold"
-        "Open Virt Manager|app:virt-manager|Launch VM manager"
-        "Windows App Manager|app:flatpak run com.usebottles.bottles|Launch Windows app manager"
+        "Compatibility Apps|app:flatpak run com.usebottles.bottles|Launch optional Bottles compatibility manager"
         "SevenPkg Meta|sevenpkg:meta|List SevenOS meta-packages"
         "SevenPkg Status|sevenpkg:status|Show meta-package installation status"
       )
@@ -483,8 +477,8 @@ action_badge() {
   local label="$1"
 
   case "$label" in
-    "Control Center"|"Dashboard"|"Profiles"|"Cyber"|"Desktop"|"VM & Windows"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
-    "Welcome"|"System Dashboard"|"Architecture Map"|"Architecture Doctor"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Preview Full Install"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Installer Stack"|"Installer Stack Doctor"|"Installer Stack Plan"|"Hub GUI Stack"|"Hub GUI Doctor"|"Flatpak Bridge"|"Flatpak Setup"|"Install Default Flatpaks"|"Build ISO Dry Run"|"Windows Mode Status"|"Windows Mode Start"|"Windows Mode Console"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
+    "Control Center"|"Dashboard"|"Profiles"|"Cyber"|"Desktop"|"Atlas Explorer"|"Server & Deploy"|"Ecosystem"|"Installer"|"Apps") printf 'OPEN' ;;
+    "Welcome"|"System Dashboard"|"Architecture Map"|"Architecture Doctor"|"Ecosystem Map"|"Ecosystem Roadmap"|"Ecosystem Doctor"|"Phase Gate"|"Readiness Score"|"Improve Plan"|"Repair Plan"|"Improve Security"|"Improve Compatibility"|"Improve Deployment"|"Improve Workspaces"|"System Status"|"Doctor"|"SevenPkg Meta"|"SevenPkg Status"|"SevenPkg Sources"|"Seven Update"|"Preview Full Install"|"Power Menu"|"Lock Session"|"Seven Files"|"Seven Files Places"|"Installer Stack"|"Installer Stack Doctor"|"Installer Stack Plan"|"Hub GUI Stack"|"Hub GUI Doctor"|"Flatpak Bridge"|"Flatpak Setup"|"Install Default Flatpaks"|"Build ISO Dry Run"|"Atlas Status"|"Atlas Guide"|"Atlas Apps"|"Atlas Folders"|"Server Status"|"Server Doctor"|"Deploy Status"|"Deploy Current Project") printf 'RUN' ;;
     "Profile Forge") package_file_state "$SEVENOS_ROOT/scripts/packages-dev.txt" ;;
     "Profile Shield") package_file_state "$SEVENOS_ROOT/scripts/packages-cybersecurity.txt" ;;
     "Profile Studio") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
@@ -499,7 +493,7 @@ action_badge() {
     "Cyber Lab Web"|"Cyber Lab Forensics"|"Cyber Lab Offline") app_state firejail ;;
     "Toolchain Sources") blackarch_state ;;
     "Install CREATION") package_file_state "$SEVENOS_ROOT/scripts/packages-creation.txt" ;;
-    "Install WINDOWS") package_file_state "$SEVENOS_ROOT/scripts/packages-windows.txt" ;;
+    "Install Atlas") package_file_state "$SEVENOS_ROOT/scripts/packages-atlas.txt" ;;
     "Install Server Layer") package_file_state "$SEVENOS_ROOT/scripts/packages-server.txt" ;;
     "Install User Service")
       if systemctl --user is-enabled --quiet seven-server.service 2>/dev/null; then
@@ -518,25 +512,10 @@ action_badge() {
     "Stop Server") printf 'RUN' ;;
     "Apply SECURITY") package_file_state "$SEVENOS_ROOT/scripts/packages-security.txt" ;;
     "Install ALL") printf 'RUN' ;;
-    "VM Check") service_state libvirtd.service ;;
-    "VM Network")
-      if command -v virsh >/dev/null 2>&1 && virsh -c qemu:///system net-info default 2>/dev/null | grep -q 'Active:.*yes'; then
-        printf 'OK'
-      else
-        printf 'MISS'
-      fi
-      ;;
+    "Atlas Optional Tools") package_file_state "$SEVENOS_ROOT/scripts/packages-atlas-optional.txt" ;;
     "Installer Plan"|"Installer Plan Preview"|"Installer Script Preview") printf 'RUN' ;;
     "Install Installer Stack") package_file_state "$SEVENOS_ROOT/scripts/packages-installer.txt" ;;
     "ISO Tools") package_file_state "$SEVENOS_ROOT/scripts/packages-iso.txt" ;;
-    "Open Virt Manager") app_state virt-manager ;;
-    "Windows App Manager")
-      if command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
-        printf 'OK'
-      else
-        printf 'MISS'
-      fi
-      ;;
     *) printf 'RUN' ;;
   esac
 }

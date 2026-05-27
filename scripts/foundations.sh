@@ -157,12 +157,12 @@ layers = [
     ),
     layer(
         "windows-bridge",
-        "Windows Bridge",
+        "Atlas Explorer",
         "Wine, Bottles, libvirt, QEMU/KVM",
         "Windows Assistant, VM lifecycle, app resolver",
-        "seven windows status",
+        "seven atlas status",
         command_ok("virsh") or command_ok("qemu-system-x86_64") or command_ok("wine"),
-        executable("bin/seven-windows-assistant") and file_ok("vm/windows-mode.sh"),
+        file_ok("scripts/packages-atlas.txt") and file_ok("hyprland/lua/profiles/atlas.lua"),
         strict=False,
     ),
     layer(

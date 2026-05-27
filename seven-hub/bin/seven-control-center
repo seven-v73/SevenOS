@@ -104,10 +104,10 @@ def shield_summary():
     )
 
 
-def windows_summary():
+def atlas_summary():
     return json_command(
-        [str(ROOT / "bin/seven"), "windows", "status", "--json"],
-        {"schema": "sevenos.windows.v1", "mode": "unknown", "ready": False, "app_ready": False},
+        [str(ROOT / "bin/seven"), "atlas", "status", "--json"],
+        {"schema": "sevenos.profile-requirements.v1", "state": "unknown", "missing_required": []},
         timeout=12,
     )
 
@@ -158,7 +158,7 @@ ACTIONS = {
     "target-plan": ("Target Plan", ["./bin/seven", "improve", "target"]),
     "deployment-plan": ("Deployment Plan", ["./bin/seven", "improve", "deployment"]),
     "server-status": ("Server Status", ["./bin/seven", "server", "status"]),
-    "windows-status": ("Windows Status", ["./bin/seven", "windows", "status"]),
+    "atlas-status": ("Atlas Status", ["./bin/seven", "atlas", "status"]),
     "files": ("Seven Files", ["./bin/seven", "files"]),
     "files-menu": ("Seven Files Places", ["./bin/seven", "files", "menu"]),
     "phase-gate": ("Phase Gate", ["./bin/seven", "phase-gate"]),
@@ -202,12 +202,12 @@ def render_dashboard():
     primary = primary_summary()
     daily = daily_summary()
     shield_state = shield_summary()
-    windows_state = windows_summary()
+    atlas_state = atlas_summary()
     server_state = server_summary()
     forge = package_profile(ROOT / "scripts/packages-dev.txt")
     shield = package_profile(ROOT / "scripts/packages-cybersecurity.txt")
     studio = package_profile(ROOT / "scripts/packages-creation.txt")
-    windows = package_profile(ROOT / "scripts/packages-windows.txt")
+    atlas = package_profile(ROOT / "scripts/packages-atlas.txt")
     devops = package_profile(ROOT / "scripts/packages-server.txt")
     ufw = "OK" if command_state("ufw") == "OK" else "MISS"
     firewall = service_state("ufw.service")
@@ -219,7 +219,7 @@ def render_dashboard():
     daily_summary_block = daily.get("summary", {}) if isinstance(daily.get("summary", {}), dict) else {}
     blocker_count = len(daily.get("blockers", []) or [])
     shield_percent = int(shield_state.get("percent", daily_summary_block.get("shield", 0)) or 0)
-    windows_mode = str(windows_state.get("mode", "unknown"))
+    atlas_mode = str(atlas_state.get("state", "unknown"))
     server_runtime = "RUN" if server_state.get("runtime_ready") else str(server_state.get("state", api))
 
     cards = [
@@ -231,7 +231,7 @@ def render_dashboard():
         card("Forge", forge[0], f"Development workspace packages: {forge[1]}.", "target-plan"),
         card("Shield", shield[0], f"Cybersecurity workspace packages: {shield[1]}.", "security-plan"),
         card("Studio", studio[0], f"Creative workspace packages: {studio[1]}.", "target-plan"),
-        card("Windows Mode", "OK" if windows_state.get("app_ready") else windows[0], f"Mode: {windows_mode}. Packages: {windows[1]}.", "windows-status"),
+        card("Atlas Explorer", "OK" if not atlas_state.get("missing_required") else atlas[0], f"State: {atlas_mode}. Packages: {atlas[1]}.", "atlas-status"),
         card("Server & Deploy", "OK" if server_runtime == "RUN" else devops[0], f"Forge DevOps service packages: {devops[1]}. Runtime: {server_runtime}.", "deployment-plan"),
         card("Theme & Session", "OK", "SevenOS Design System v2 across wallpaper, Waybar, Rofi, Kitty and Mako.", "theme"),
     ]

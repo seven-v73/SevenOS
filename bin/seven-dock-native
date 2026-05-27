@@ -88,7 +88,7 @@ PROFILE_PINNED = {
     "forge": ["files", "terminal", "browser", "apps", "hub", "settings"],
     "shield": ["shield", "terminal", "files", "browser", "spotlight", "hub"],
     "studio": ["files", "browser", "store", "recorder", "spotlight", "hub"],
-    "windows": ["windows", "files", "terminal", "browser", "settings", "hub"],
+    "atlas": ["atlas", "files", "terminal", "browser", "settings", "hub"],
     "pulse": ["browser", "terminal", "apps", "recorder", "settings", "hub"],
 }
 
@@ -106,7 +106,11 @@ CLASS_TILE_HINTS = {
     "nautilus": "files",
     "seven-reader-native": "reader",
     "seven-store-native": "store",
-    "virt-manager": "windows",
+    "evince": "atlas",
+    "foliate": "atlas",
+    "calibre": "atlas",
+    "marble": "atlas",
+    "org.gnome.maps": "atlas",
 }
 
 
@@ -441,7 +445,7 @@ def tile_catalog() -> dict[str, dict[str, object]]:
         "reader": {"id": "reader", "title": tr_text("Reader"), "icon": "x-office-document", "style": "reader", "command": ["seven-reader"], "processes": ["seven-reader-native", "foliate"], "kind": "app"},
         "store": {"id": "store", "title": tr_text("Store"), "icon": "system-software-install", "style": "store", "command": ["seven-store"], "processes": ["seven-store-native"], "kind": "app"},
         "shield": {"id": "shield", "title": tr_text("Shield"), "icon": "security-high", "style": "shield", "command": ["seven-shield-center-native"], "processes": ["seven-shield-center-native"], "kind": "system"},
-        "windows": {"id": "windows", "title": tr_text("Windows"), "icon": "computer", "style": "windows", "command": ["seven-windows-assistant"], "processes": ["virt-manager", "virt-viewer"], "kind": "system"},
+        "atlas": {"id": "atlas", "title": "Atlas", "icon": "folder-documents", "style": "atlas", "command": ["seven", "atlas", "open"], "processes": ["evince", "foliate", "calibre", "marble"], "kind": "system"},
         "recorder": {"id": "recorder", "title": tr_text("Recorder"), "icon": "media-record", "style": "recorder", "command": ["seven-recorder"], "processes": ["wf-recorder"], "kind": "system"},
         "settings": {"id": "settings", "title": tr_text("Settings"), "icon": "emblem-system", "style": "settings", "command": ["seven-settings"], "processes": ["seven-settings-native", "pavucontrol", "nm-connection-editor"], "kind": "system"},
         "studio": {"id": "studio", "title": tr_text("Studio"), "icon": "applications-graphics", "style": "studio", "command": ["seven-profile-center-native"], "processes": ["code", "gimp", "inkscape", "blender"], "kind": "app"},
@@ -502,7 +506,7 @@ def tile_groups(config: dict[str, object], grouped_clients: dict[str, list[dict[
         for tile_id, windows in grouped_clients.items()
         if tile_id in catalog and tile_id not in known_ids and windows
     ]
-    order = {tile_id: index for index, tile_id in enumerate(["browser", "terminal", "files", "reader", "store", "studio", "shield", "windows"])}
+    order = {tile_id: index for index, tile_id in enumerate(["browser", "terminal", "files", "reader", "store", "studio", "shield", "atlas"])}
     live.sort(key=lambda tile: order.get(str(tile.get("id", "")), 99))
     return (
         [enrich_tile(tile, grouped_clients) for tile in pinned],
@@ -648,8 +652,8 @@ def run_dock() -> int:
     .dock-icon.shield {
       background: linear-gradient(180deg, rgba(148,226,213,0.98), rgba(10,132,116,0.92));
     }
-    .dock-icon.windows {
-      background: linear-gradient(180deg, rgba(137,180,250,0.98), rgba(40,105,215,0.92));
+    .dock-icon.atlas {
+      background: linear-gradient(180deg, rgba(120,230,206,0.98), rgba(31,137,117,0.92));
     }
     .dock-icon.recorder {
       background: linear-gradient(180deg, rgba(255,140,132,0.98), rgba(192,55,60,0.92));

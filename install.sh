@@ -16,7 +16,7 @@ Targets:
   dev              Install development profile
   cybersecurity    Install cybersecurity profile, optionally by category
   creation         Install creation profile
-  windows          Install Windows compatibility layer
+  atlas            Install Atlas Explorer mini OS
   server           Install SevenOS server and deployment layer
   installer-stack  Install graphical installer foundation packages
   calamares-runtime
@@ -58,8 +58,6 @@ Targets:
   iso              Build SevenOS live ISO
   vm-check         Check KVM/libvirt readiness
   vm-network       Start and autostart libvirt default network
-  vm-windows       Create a Windows VM with virt-install
-  windows-mode     Guided Windows compatibility and VM workflow
   installer-plan   Create a non-destructive install plan
   installer-check  Validate an install plan
   installer-script Generate non-destructive install step script
@@ -144,8 +142,8 @@ case "$TARGET" in
   creation)
     "$ROOT_DIR/profiles/creation.sh"
     ;;
-  windows)
-    "$ROOT_DIR/profiles/windows.sh"
+  atlas)
+    "$ROOT_DIR/profiles/atlas.sh"
     ;;
   server)
     install_package_file "$ROOT_DIR/scripts/packages-server.txt"
@@ -290,12 +288,6 @@ case "$TARGET" in
     ;;
   vm-network)
     "$ROOT_DIR/vm/network.sh"
-    ;;
-  vm-windows)
-    "$ROOT_DIR/vm/windows-vm.sh" "${TARGET_ARGS[@]}"
-    ;;
-  windows-mode)
-    "$ROOT_DIR/vm/windows-mode.sh" "${TARGET_ARGS[@]}"
     ;;
   installer-plan)
     "$ROOT_DIR/installer/plan.sh" "${TARGET_ARGS[@]}"

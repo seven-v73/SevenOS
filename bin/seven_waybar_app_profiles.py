@@ -256,7 +256,7 @@ def mode_from_class(app_class: str, profile_key: str = "") -> str:
         return "media"
     if any(token in klass for token in ("gimp", "inkscape", "blender", "kdenlive", "obs", "krita", "studio")):
         return "studio"
-    if profile_key in {"studio", "shield", "windows", "forge", "pulse", "baobab"}:
+    if profile_key in {"studio", "shield", "atlas", "forge", "pulse", "baobab"}:
         return profile_key
     return "default"
 
@@ -337,7 +337,7 @@ MODE_LABELS = {
     "media": ["Lecture", "Édition", "Affichage", "Contrôles", "Audio", "Fenêtre", "Aide"],
     "studio": ["Fichier", "Édition", "Présentation", "Export", "Outils", "Fenêtre", "Aide"],
     "shield": ["Fichier", "Édition", "Audit", "Sandbox", "Analyse", "Fenêtre", "Aide"],
-    "windows": ["Fichier", "Édition", "Bridge", "VM", "Apps", "Fenêtre", "Aide"],
+    "atlas": ["Fichier", "Édition", "Bridge", "Maps", "Apps", "Fenêtre", "Aide"],
     "forge": ["Fichier", "Édition", "Affichage", "", "", "", ""],
     "pulse": ["Fichier", "Édition", "Affichage", "Jeux", "Captures", "Fenêtre", "Aide"],
     "baobab": ["Fichier", "Édition", "Collections", "Culture", "Lecture", "Fenêtre", "Aide"],
@@ -480,7 +480,7 @@ def items_for(area: str, mode: str, key: str = "generic", service: str = "") -> 
             "files": [("󰉋", "Seven Files Home", ""), ("󰉋", "Seven Files profil", "")],
             "studio": [("󰈙", "Exports Studio", "")],
             "shield": [("󰒃", "Shield Center", ""), ("󰛵", "Sandbox Shield", "")],
-            "windows": [("󰖳", "Windows Assistant", ""), ("󰿭", "Windows Apps", "")],
+            "atlas": [("󰖳", "Atlas Assistant", ""), ("󰿭", "Atlas Apps", "")],
             "pulse": [("󰓅", "Jeux Pulse", "")],
             "baobab": [("󰔱", "Collections Baobab", "")],
             "forge": [("󰌢", "Projet Forge", ""), ("󰆍", "Palette terminal", "")],
@@ -494,7 +494,7 @@ def items_for(area: str, mode: str, key: str = "generic", service: str = "") -> 
             "documents": [("󰈙", "Exporter", ""), ("󰐪", "Imprimer", "Ctrl+P")],
             "media": [("󰕾", "Volume", ""), ("󰝟", "Muet", "")],
             "shield": [("󰒃", "Shield Center", ""), ("󰛵", "Audit rapide", "")],
-            "windows": [("󰿭", "Windows Apps", ""), ("󰖳", "Assistant", "")],
+            "atlas": [("󰿭", "Atlas Apps", ""), ("󰖳", "Assistant", "")],
             "forge": [("󰒓", "Build", ""), ("󰑭", "Logs", "")],
             "pulse": [("󰹑", "Captures", ""), ("󰓅", "Jeux Pulse", "")],
             "baobab": [("󰔱", "Collections", ""), ("󰐅", "Lecture", "")],

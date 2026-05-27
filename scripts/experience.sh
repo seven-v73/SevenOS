@@ -18,7 +18,7 @@ Usage:
   ./scripts/experience.sh [--json]
 
 This audit checks whether SevenOS feels like a coherent OS:
-identity, shell, native Hub, profiles, actions, Windows Mode,
+identity, shell, native Hub, profiles, actions, Atlas Explorer,
 security, deployment, installer and ecosystem contracts.
 EOF
       exit 0
@@ -69,19 +69,19 @@ check_rows() {
   printf 'Ecosystem\t%s\tModules and all-in-one processes are machine-readable\tseven ecosystem processes\n' "$state"
 
   state="MISS"
-  if SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/actions.sh" --json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); ids={a.get("id") for a in d.get("actions", [])}; raise SystemExit(0 if {"apps.open","windows.guide","ecosystem.processes"}.issubset(ids) else 1)' >/dev/null; then
+  if SEVENOS_DRY_RUN=0 "$ROOT_DIR/scripts/actions.sh" --json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); ids={a.get("id") for a in d.get("actions", [])}; raise SystemExit(0 if {"apps.open","atlas.open","ecosystem.processes"}.issubset(ids) else 1)' >/dev/null; then
     state="OK"
   fi
   printf 'Actions\t%s\tHub, Waybar and panels share a concrete action registry\tseven actions --json\n' "$state"
 
   state="MISS"
-  if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-windows-assistant" status --json 2>/dev/null | python -m json.tool >/dev/null; then
+  if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" atlas status --json 2>/dev/null | python -m json.tool >/dev/null; then
     state="PART"
-    if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-windows-assistant" status --json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("ready") else 1)' >/dev/null; then
+    if SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" atlas status --json 2>/dev/null | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if not d.get("missing_required") else 1)' >/dev/null; then
       state="OK"
     fi
   fi
-  printf 'Windows Mode\t%s\tGuided Bottles/Wine/KVM path with status JSON\tseven windows guide\n' "$state"
+  printf 'Atlas Explorer\t%s\tNative documents, maps, OCR and references path with status JSON\tseven atlas status\n' "$state"
 
   state="MISS"
   if SEVENOS_DRY_RUN=0 "$ROOT_DIR/security/shield-status.sh" --json 2>/dev/null | python -m json.tool >/dev/null; then

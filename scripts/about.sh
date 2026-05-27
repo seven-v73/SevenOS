@@ -105,8 +105,8 @@ if state == "public-release-candidate":
     edition = "SevenOS Release Candidate"
 elif profile.get("key") == "shield":
     edition = "SevenOS Shield"
-elif profile.get("key") == "windows":
-    edition = "SevenOS Windows Bridge"
+elif profile.get("key") == "atlas":
+    edition = "SevenOS Atlas Explorer"
 elif profile.get("key") == "pulse":
     edition = "SevenOS Pulse"
 
@@ -180,7 +180,7 @@ print(json.dumps({
         "Seven Reader",
         "Seven Smart Window System",
         "Seven Mini OS Runtime",
-        "Windows Bridge",
+        "Atlas Explorer",
         "Shield Cybersecurity",
     ],
     "technical_foundations": [

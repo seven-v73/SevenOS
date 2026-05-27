@@ -39,7 +39,7 @@ seven profile status --json
 seven profile current --json
 seven profile apps --json
 seven-profile-run --manifest
-seven windows status --json
+seven atlas status --json
 seven experience --json
 seven phase-gate --json
 seven b3 plan --json
@@ -71,7 +71,7 @@ contract to `seven`, `sevenpkg`, or a future local `seven-server` endpoint.
 | Apps | packages, metapackages, Flatpak bridge | `sevenpkg status --json` |
 | Security | Shield, firewall, sandbox, Cyber Lab | `seven shield status --json` |
 | Server | local API, user service, deployment endpoints | `seven server status --json` |
-| Windows | Wine, Bottles, KVM, VM state | `seven windows status --json` |
+| Atlas | documents, maps, OCR and research readiness | `seven atlas status --json` |
 | System | theme, session, updates, logs | `seven status --json` |
 | Files | workspace shortcuts and file manager actions | `seven profile current --json` |
 

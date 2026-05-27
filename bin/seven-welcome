@@ -129,7 +129,7 @@ status_rows() {
   printf 'service\tsevenos-session\tSevenOS user session service\t%s\t./install.sh theme\n' "$(user_service_state sevenos-session.target)"
   printf 'service\tnetwork\tNetwork manager service\t%s\t./install.sh base\n' "$(service_state NetworkManager.service)"
   printf 'service\tfirewall\tFirewall trust baseline\t%s\tseven shield plan\n' "$(service_state ufw.service)"
-  printf 'service\twindows-vm\tWindows VM service layer\t%s\tseven windows plan\n' "$(service_state libvirtd.service)"
+  printf 'profile\tatlas\tAtlas Explorer readiness\t%s\tseven atlas status\n' "$(command_state evince)"
 }
 
 status_json() {
@@ -190,7 +190,7 @@ metadata = {
     "sevenos-session": ("high", "session", "Enable SevenOS session services", "Wallpaper, bar, notifications and idle handling need supervised startup."),
     "network": ("high", "base", "Enable networking", "A first-run experience needs internet access for packages and profiles."),
     "firewall": ("high", "trust", "Prepare Shield firewall", "SevenOS should communicate trust posture from the first session."),
-    "windows-vm": ("medium", "compatibility", "Prepare Windows VM services", "Windows Mode needs libvirt before it can be guided for non-technical users."),
+    "atlas": ("medium", "identity", "Prepare Atlas Explorer", "Atlas keeps SevenOS at seven native mini OS identities without requiring a Windows VM."),
 }
 
 rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -201,7 +201,7 @@ for raw in os.environ["STATUS_ROWS"].splitlines():
         continue
     severity, phase, title, reason = metadata.get(key, ("medium", category, f"Fix {label}", f"Resolve {label}."))
     impact = "packages" if command.startswith("./install.sh") or "install" in command else "changes"
-    if command.endswith("plan") or command.startswith("seven windows"):
+    if command.endswith("plan") or command.startswith("seven atlas"):
         impact = "safe"
     actions.append({
         "key": key,
@@ -331,7 +331,7 @@ printf '  Session:     %s\n' "$(user_service_state sevenos-session.target)"
 
 printf '\nTrust and compatibility\n'
 printf '  Security posture: %s\n' "$(service_state ufw.service)"
-printf '  Windows Bridge:   %s\n' "$(service_state libvirtd.service)"
+printf '  Atlas Explorer:   %s\n' "$(command_state evince)"
 printf '  Power controls:   %s\n' "$(command_state seven-power)"
 
 printf '\nMini OS profiles\n'

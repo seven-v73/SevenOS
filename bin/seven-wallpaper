@@ -46,7 +46,7 @@ SERVICE_NAME="sevenos-wallpaper.service"
 normalize_profile_key() {
   case "${1:-}" in
     horizon) printf 'forge' ;;
-    equinox|baobab|forge|shield|studio|windows|pulse) printf '%s' "$1" ;;
+    equinox|baobab|forge|shield|studio|atlas|pulse) printf '%s' "$1" ;;
     "") printf 'equinox' ;;
     *) printf '%s' "$1" ;;
   esac
@@ -296,7 +296,7 @@ palette = {
     "forge": ("#120F0B", "#21170E", "#45321E", "#15111B"),
     "shield": ("#041411", "#09201B", "#123F38", "#071D23"),
     "studio": ("#130B1B", "#21122B", "#3E244D", "#171129"),
-    "windows": ("#07111E", "#0D1C2B", "#183D5A", "#0B1626"),
+    "atlas": ("#061914", "#0B2A23", "#174E45", "#071F24"),
     "pulse": ("#031522", "#082337", "#0A4961", "#061A2A"),
 }.get(key, ("#11111B", "#1B1F30", "#34365C", "#121528"))
 bg, mid, ridge, deep = palette
@@ -648,7 +648,7 @@ PY
 
 render_all_profile_wallpapers() {
   local profile
-  for profile in equinox baobab forge shield studio windows pulse; do
+  for profile in equinox baobab forge shield studio atlas pulse; do
     SEVENOS_WALLPAPER_SKIP_STATE=1 render_profile_wallpaper "$profile"
   done
 }

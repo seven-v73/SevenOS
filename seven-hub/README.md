@@ -4,7 +4,7 @@ Seven Hub is the user-facing control surface for SevenOS Phase 2.
 
 The primary entrypoint is now the SevenOS Control Center, a local dashboard
 served on `127.0.0.1`. It shows system readiness, security state, profile
-coverage, Windows Mode, server/deploy status, theme/session actions, and
+coverage, Atlas Explorer, server/deploy status, theme/session actions, and
 contextual "Fix now" actions.
 
 The Rofi-powered Seven Hub remains available as a fast command palette for

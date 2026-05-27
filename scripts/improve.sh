@@ -89,11 +89,9 @@ improve_ux() {
 
 improve_compatibility() {
   section "Software Compatibility"
-  run_step "Install Windows compatibility profile" "$ROOT_DIR/install.sh" windows
+  run_step "Install Atlas Explorer native profile" "$ROOT_DIR/install.sh" atlas
   run_step "Install Flatpak defaults for accessible app compatibility" "$ROOT_DIR/scripts/flatpak.sh" install-defaults
-  run_step "Check KVM/libvirt readiness" "$ROOT_DIR/install.sh" vm-check
-  run_step "Start libvirt default network" "$ROOT_DIR/install.sh" vm-network
-  run_step "Show guided Windows Mode assistant" "$ROOT_DIR/bin/seven-windows-assistant" plan
+  run_step "Show Atlas Explorer requirements" "$ROOT_DIR/bin/seven-profile-requirements" status atlas
 }
 
 improve_ease() {
@@ -126,7 +124,7 @@ improve_target() {
   run_step "Install Forge development workspace" "$ROOT_DIR/install.sh" dev
   run_step "Install Shield cybersecurity workspace" "$ROOT_DIR/install.sh" cybersecurity
   run_step "Install Studio creative workspace" "$ROOT_DIR/install.sh" creation
-  run_step "Install Windows bridge workspace" "$ROOT_DIR/install.sh" windows
+  run_step "Install Atlas Explorer workspace" "$ROOT_DIR/install.sh" atlas
   run_step "Install Forge DevOps deployment workspace" "$ROOT_DIR/install.sh" server
 }
 

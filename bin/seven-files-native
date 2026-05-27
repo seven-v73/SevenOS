@@ -204,7 +204,7 @@ def profile_label(profile: str) -> str:
         "shield": "Shield",
         "studio": "Studio",
         "pulse": "Pulse",
-        "windows": "Windows",
+        "atlas": "Atlas",
     }.get(profile, profile.title() or "Equinox")
 
 
@@ -239,7 +239,7 @@ def profile_role(profile: str) -> str:
         "shield": t("cybersécurité", "cybersecurity"),
         "studio": t("création média", "media creation"),
         "pulse": t("jeu et performance", "gaming and performance"),
-        "windows": t("compatibilité Windows", "Windows compatibility"),
+        "atlas": t("documents, cartes et recherche", "documents, maps and research"),
     }.get(profile, t("espace SevenOS", "SevenOS space"))
 
 
@@ -1535,11 +1535,11 @@ def run_files(start_path: str) -> int:
                 "tooltip": tr_text("Games, saves, captures and mods"),
             },
             {
-                "label": "Windows",
-                "profile": "windows",
-                "icon": "folder-remote",
-                "path": home / ".local/share/sevenos/windows",
-                "tooltip": tr_text("Windows bridge files and shared VM documents"),
+                "label": "Atlas",
+                "profile": "atlas",
+                "icon": "folder-documents",
+                "path": home / "Atlas",
+                "tooltip": tr_text("Atlas documents, maps, references and scans"),
             },
         ]
 
@@ -2567,7 +2567,7 @@ def run_files(start_path: str) -> int:
             "shield": [Path.home() / "Shield"],
             "studio": [Path.home() / "Studio"],
             "pulse": [Path.home() / "Games"],
-            "windows": [Path.home() / ".local/share/sevenos/windows"],
+            "atlas": [Path.home() / "Atlas"],
         }
         roots.extend(profile_specific.get(active_profile, []))
         unique: list[Path] = []
@@ -4442,8 +4442,6 @@ def run_files(start_path: str) -> int:
             open_externally(path)
         elif active_profile == "shield" and path.is_file():
             hash_selected()
-        elif active_profile == "windows" and path.suffix.lower() == ".exe":
-            xdg_open(path)
         elif active_profile == "pulse":
             reveal_in_parent(path)
         else:
@@ -4915,7 +4913,7 @@ def run_files(start_path: str) -> int:
         title.get_style_context().add_class("preview-title")
         box.pack_start(title, False, False, 0)
         guide_items = [
-            ("Mini OS", "Use the colored sidebar section to jump into Baobab, Forge, Shield, Studio, Pulse, Windows or SevenOS folders."),
+            ("Mini OS", "Use the colored sidebar section to jump into Baobab, Forge, Shield, Studio, Atlas, Pulse or SevenOS folders."),
             ("Resources", "Downloads, Documents, Code, Music, Pictures and Videos follow the active mini OS by default. Use shared resources from the system menu if you want one global library."),
             ("Actions", "Press Ctrl+K to search every file action. Use Ctrl+G for favorites, recents and network places."),
             ("Files", "Double-click opens, Space previews, F2 renames, Ctrl+Z undoes supported actions."),

@@ -58,7 +58,7 @@ def profile_package_files(profile: str) -> list[str]:
 def known_profiles() -> list[str]:
     data = catalog()
     profiles = data.get("profiles") or {}
-    return list(profiles.keys()) or ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+    return list(profiles.keys()) or ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"]
 
 
 def active_profile() -> str:

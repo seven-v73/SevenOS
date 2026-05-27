@@ -65,7 +65,7 @@ if [[ "$LANG_CODE" == "fr" ]]; then
   menu="$(cat <<'EOF'
 󰩂  Aide du bureau    Super+H
 󰐥  Installer SevenOS    seven new
-󰖳  Configurer Windows Bridge    seven windows setup
+󰙅  Installer Atlas Explorer    seven atlas install --yes
 󰘦  Guide complet SevenOS    Documentation générale
 󰱼  Rechercher dans l’aide    Recherche locale
 󰒓  Manuel système SevenOS    Réseau, polices, paquets, recovery
@@ -84,7 +84,7 @@ if [[ "$LANG_CODE" == "fr" ]]; then
 󰔎  Thèmes et apparence    Clair, sombre, wallpaper, terminal
 󰌌  Raccourcis clavier    Super, fenêtres, workspaces, captures
 󰆍  Commandes terminal    seven, profils, runtime, store, doctor
-󰣇  Mini OS SevenOS    Equinox, Baobab, Forge, Shield, Studio, Windows, Pulse
+󰣇  Mini OS SevenOS    Equinox, Baobab, Forge, Shield, Studio, Atlas, Pulse
 󰮍  Collaboration mini OS    Capacités empruntées, composition, anti-pollution
 󰖟  Spotlight SevenOS    Super+Space
 󰒓  Ouvrir Seven Hub    Super+Shift+H
@@ -125,7 +125,7 @@ else
   menu="$(cat <<'EOF'
 󰩂  Desktop Helpers    Super+H
 󰐥  Install SevenOS    seven new
-󰖳  Setup Windows Bridge    seven windows setup
+󰙅  Install Atlas Explorer    seven atlas install --yes
 󰘦  Complete SevenOS Guide    General documentation
 󰱼  Search Local Help    Local search
 󰒓  SevenOS System Manual    Network, fonts, packages, recovery
@@ -144,7 +144,7 @@ else
 󰔎  Themes and Appearance    Light, dark, wallpaper, terminal
 󰌌  Keyboard Shortcuts    Super, windows, workspaces, screenshots
 󰆍  Terminal Commands    seven, profiles, runtime, store, doctor
-󰣇  SevenOS Mini OS    Equinox, Baobab, Forge, Shield, Studio, Windows, Pulse
+󰣇  SevenOS Mini OS    Equinox, Baobab, Forge, Shield, Studio, Atlas, Pulse
 󰮍  Mini OS Collaboration    Borrowed capabilities, composition, anti-pollution
 󰖟  SevenOS Spotlight    Super+Space
 󰒓  Open Seven Hub    Super+Shift+H
@@ -205,7 +205,7 @@ SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS aut
 
 | Section | Contenu |
 | --- | --- |
-| Première installation | installer une nouvelle machine et préparer Windows Bridge |
+| Première installation | installer une nouvelle machine et préparer Atlas Explorer |
 | Lecture rapide | comprendre les trois niveaux : interface, commandes, moteur |
 | Commandes à connaître | commandes utiles au quotidien |
 | Architecture SevenOS | couches internes et fichiers de référence |
@@ -218,7 +218,7 @@ SevenOS est un OS personnel organisé autour de surfaces natives, de mini OS aut
 | Applications SevenOS | Files, Reader, Store, Terminal, SevenAI |
 | Manuel système | réseau, polices, paramètres, mises à jour, sauvegarde, ISO |
 | Paquets et installation | Equinox global, mini OS isolés, pacman/yay/paru |
-| Sécurité et Windows | Shield, sandbox, Windows Bridge, VM |
+| Sécurité et Atlas | Shield, sandbox, Atlas Explorer |
 | FAQ locale | réponses aux questions fréquentes sans internet |
 | Glossaire SevenOS | vocabulaire système et mots à connaître |
 | Développement SevenOS | checks, phase gate, contribution locale |
@@ -246,8 +246,8 @@ seven new --optional
 seven new --optional --rootfs
 ./install.sh new --yes
 seven setup new-device --yes
-seven windows setup
-seven windows setup --iso ~/Téléchargements/Win11.iso
+seven atlas status
+seven profile requirements atlas --optional --apply --yes
 ```
 
 Installation depuis GitHub :
@@ -296,7 +296,7 @@ Exigences actuelles :
 - Arch Linux ou système basé sur Arch pour la couche post-install actuelle.
 - `pacman`, `sudo` et une connexion internet.
 - 8 Go de RAM minimum, 16 Go recommandés.
-- Virtualisation CPU pour Windows Bridge et les machines virtuelles.
+- Virtualisation CPU pour Atlas Explorer et les machines virtuelles.
 
 État produit :
 
@@ -335,7 +335,7 @@ orchestré les profils, fenêtres, thèmes, dépendances et actions derrière.
 | Changer de mini OS | `seven profile activate forge` |
 | Installer les exigences d'un mini OS | `seven profile requirements forge --apply --yes` |
 | Vérifier les rootfs mini OS | `seven profile-rootfs verify all` |
-| Préparer Windows Bridge | `seven windows setup` |
+| Préparer Atlas Explorer | `seven atlas status` |
 | Mettre à jour SevenOS | `seven update` |
 | Préparer un push final | `seven pre-push` |
 
@@ -571,7 +571,7 @@ seven-bluetooth status-json
 ```
 
 Les exigences des mini OS suivent la frontière réelle : Equinox est vérifié
-contre le host, tandis que Forge, Shield, Studio, Baobab, Windows et Pulse sont
+contre le host, tandis que Forge, Shield, Studio, Baobab, Atlas et Pulse sont
 vérifiés contre leur rootfs privé. Un paquet présent dans Forge n'a donc pas
 besoin d'être installé globalement dans Equinox pour que Forge soit complet.
 
@@ -638,7 +638,7 @@ Profils :
 - Forge DevOps : développement, SDKs, conteneurs, services, déploiement et logs.
 - Shield : cybersécurité autorisée, audit, forensic, sandbox.
 - Studio : création, logo, vidéo, audio, design.
-- Windows : Windows Bridge complet avec chemins de compatibilité plus légers en fallback.
+- Atlas : documents, cartes, OCR, références, voyages et recherche locale.
 - Pulse : gaming Linux, Proton, faible latence, overlays, pilotes GPU guidés et paquets privés via `sevenpkg pulse`.
 
 Ce que chaque mini OS sépare :
@@ -706,7 +706,7 @@ seven profile folders forge
 | Studio | médias, design, assets | images, audio, vidéo, exports |
 | Baobab | culture, lecture, collections | reader, documents, mémoire locale |
 | Pulse | jeux, captures, performance | Steam, Lutris, recorder, overlays |
-| Windows | VM Windows et bridge | setup VM, dossiers partagés, apps Windows |
+| Atlas | Atlas Explorer | documents, cartes, OCR, références et voyages |
 
 ## Collaboration mini OS
 
@@ -827,7 +827,7 @@ Modèle d'installation :
 
 - Equinox utilise la portée système globale : pacman, yay, paru et paquets Arch
   peuvent servir de base commune.
-- Forge, Shield, Studio, Baobab, Windows et Pulse installent leurs paquets dans
+- Forge, Shield, Studio, Baobab, Atlas et Pulse installent leurs paquets dans
   leur racine profilée quand tu utilises `sevenpkg --profile`.
 - Les apps installées dans un mini OS ne polluent pas les autres mini OS.
 - Les apps installées globalement par Equinox peuvent être exposées aux mini OS
@@ -1141,7 +1141,7 @@ Règles importantes :
 
 - Equinox est l'espace admin : il peut utiliser pacman, yay et paru directement.
 - Les mini OS passent par `sevenpkg --profile` pour garder leurs paquets privés.
-- Installer dans Forge, Shield, Studio, Baobab, Windows ou Pulse écrit dans le
+- Installer dans Forge, Shield, Studio, Baobab, Atlas ou Pulse écrit dans le
   rootfs privé du mini OS, puis SevenOS vérifie et rescelle ce rootfs.
 - Installer dans Equinox écrit sur le host. Le paquet reste Equinox-only par
   défaut, sauf si une règle `sevenpkg global-expose` expose des commandes à un
@@ -1159,7 +1159,7 @@ Règles importantes :
 - `sevenpkg profile-limits` explique ce qui est autorisé par profil.
 - `sevenpkg profile-packages` montre ce qui est réellement installé par profil.
 
-## Sécurité, Shield et Windows
+## Sécurité, Shield et Atlas
 
 ### Shield et sécurité
 
@@ -1194,39 +1194,25 @@ BlackArch est volontairement optionnel car il ajoute un dépôt externe. Le paqu
 complet est massif : utilise d'abord `--dry-run`, puis `--yes` seulement sur un
 poste Shield dédié.
 
-### Windows Bridge
+### Atlas Explorer
 
-SevenOS privilégie les apps Windows légères via Wine/Bottles/Lutris/Proton,
-puis passe à KVM/QEMU quand il faut un Windows complet. Cette couche est
-globale : le panneau Windows et les commandes restent accessibles depuis
-Equinox comme depuis Forge, Studio, Shield, Pulse, Baobab ou Windows.
+Atlas remplace l'ancien sommet Windows : SevenOS garde maintenant sept mini OS
+natifs sans dépendre d'une VM Windows. Atlas sert aux documents, cartes, OCR,
+références, voyages, archives et recherche locale.
 
 ```bash
-seven windows open
-seven-windows-native
-seven windows setup
-seven windows setup --iso ~/Downloads/Win11.iso
-seven windows status
-seven windows plan
-seven windows repair
-seven windows network
-seven windows apps
-seven windows resolve photoshop
-seven run ~/Downloads/setup.exe
-./install.sh windows-mode guide
-./install.sh vm-check
-./install.sh vm-network
+seven atlas open
+seven atlas status
+seven atlas install --yes
+seven profile activate atlas
+seven profile open atlas
+seven profile apps atlas
+seven profile requirements atlas --optional --apply --yes
 ```
 
-Le panneau natif contient aussi un lanceur rapide : tape `photoshop`, `office`
-ou choisis un fichier `.exe/.msi`; SevenOS affiche le moteur recommandé avant de
-lancer. Il garde les apps récentes localement et propose aussi Préparer ou
-Diagnostiquer depuis le même endroit. La ligne de décision montre pourquoi
-SevenOS choisit Wine, Bottles, Lutris, Proton ou la VM.
-
-SevenOS ne fournit pas d'image Windows, ne contourne pas l'activation et ne met
-pas de clé produit. L'utilisateur fournit son ISO officielle si une VM complète
-est nécessaire.
+`seven atlas status` explique ce qui manque. `seven atlas install --yes` installe
+les paquets essentiels. Les options ajoutent Anki, Recoll, Zeal, QGIS/JOSM ou
+d'autres outils avancés selon les dépôts disponibles.
 
 ## FAQ locale
 
@@ -1334,20 +1320,20 @@ seven-wallpaper refresh
 | Terme | Sens pratique |
 | --- | --- |
 | Equinox | profil principal, admin, quotidien, accès au HOME et aux paquets globaux |
-| Mini OS | espace spécialisé comme Forge, Shield, Studio, Baobab, Windows ou Pulse |
+| Mini OS | espace spécialisé comme Forge, Shield, Studio, Baobab, Atlas ou Pulse |
 | Profil actif | mini OS actuellement utilisé par l'interface et les actions |
 | Rootfs profilé | racine privée où un mini OS peut installer ses paquets |
 | Scope global | installation visible côté système, gérée par Equinox |
 | Scope profilé | installation limitée à un mini OS |
 | Grant | autorisation explicite pour partager un dossier externe avec un profil |
-| Bridge | passage contrôlé entre mini OS ou vers Windows |
+| Bridge | passage contrôlé entre mini OS |
 | SevenStore | surface graphique pour installer et gérer les apps |
 | sevenpkg | gestionnaire SevenOS au-dessus de pacman, yay, paru, Flatpak et profils |
 | SevenOS Settings | centre de réglages normal utilisateur |
 | SevenOS Home | porte d'entrée visuelle des mini OS |
 | Spotlight | recherche globale d'apps, actions et fichiers |
 | Shield | profil cybersécurité autorisée et sandbox |
-| Windows Compatibility | couche Wine/Bottles/Lutris/Proton avec VM en secours |
+| Atlas Explorer | documents, cartes, OCR, références et voyages |
 | Recovery | route de réparation et restauration SevenOS |
 | Post-install | vérification des dépendances, services, polices, réseau et surfaces |
 
@@ -1415,7 +1401,7 @@ scripts/check.sh
 | Dossier externe invisible | `seven profile grant-folder <profil> <chemin> --name <nom> --rw` |
 | Dépendances manquantes | `seven profile requirements all --apply --yes` |
 | Rootfs mini OS suspect | `seven profile-rootfs verify all` |
-| Windows Bridge pas prêt | `seven windows setup` |
+| Atlas Explorer pas prêt | `seven atlas status` |
 | Terminal illisible | `Ctrl+Shift+B`, bouton `◐`, ou `SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal` |
 | Avant push GitHub | `seven pre-push` |
 
@@ -1530,7 +1516,7 @@ SevenOS is a personal OS built around native surfaces, autonomous mini OS profil
 
 | Section | Content |
 | --- | --- |
-| First Install | install a new machine and prepare Windows Bridge |
+| First Install | install a new machine and prepare Atlas Explorer |
 | Quick Reading | understand the three levels: interface, commands, engine |
 | Commands To Know | useful daily commands |
 | SevenOS Architecture | internal layers and reference files |
@@ -1543,7 +1529,7 @@ SevenOS is a personal OS built around native surfaces, autonomous mini OS profil
 | SevenOS Applications | Files, Reader, Store, Terminal, SevenAI |
 | System Manual | network, fonts, settings, updates, backup, ISO |
 | Packages And Install | global Equinox, isolated mini OS, pacman/yay/paru |
-| Security And Windows | Shield, sandbox, Windows Bridge, VM |
+| Security And Atlas | Shield, sandbox, Atlas Explorer |
 | Local FAQ | frequent answers without internet |
 | SevenOS Glossary | system vocabulary and words to know |
 | SevenOS Development | checks, phase gate, local contribution |
@@ -1569,8 +1555,8 @@ seven new --optional
 seven new --optional --rootfs
 ./install.sh new --yes
 seven setup new-device --yes
-seven windows setup
-seven windows setup --iso ~/Downloads/Win11.iso
+seven atlas status
+seven profile requirements atlas --optional --apply --yes
 ```
 
 Install from GitHub:
@@ -1618,7 +1604,7 @@ Current requirements:
 - Arch Linux or Arch-based host for the current post-install layer.
 - `pacman`, `sudo` and an internet connection.
 - 8 GB RAM minimum, 16 GB recommended.
-- CPU virtualization for Windows Bridge and virtual machines.
+- CPU virtualization for Atlas Explorer and virtual machines.
 
 Product state:
 
@@ -1657,7 +1643,7 @@ orchestrates profiles, windows, themes, dependencies and actions underneath.
 | Switch mini OS | `seven profile activate forge` |
 | Install mini OS requirements | `seven profile requirements forge --apply --yes` |
 | Verify mini OS rootfs | `seven profile-rootfs verify all` |
-| Prepare Windows Bridge | `seven windows setup` |
+| Prepare Atlas Explorer | `seven atlas status` |
 | Update SevenOS | `seven update` |
 | Prepare a final push | `seven pre-push` |
 
@@ -1883,7 +1869,7 @@ seven-bluetooth status-json
 ```
 
 Mini OS requirements follow the real boundary: Equinox is checked against the
-host, while Forge, Shield, Studio, Baobab, Windows and Pulse are checked against
+host, while Forge, Shield, Studio, Baobab, Atlas and Pulse are checked against
 their private rootfs. A package present in Forge does not need to be globally
 installed in Equinox for Forge to be complete.
 
@@ -1949,7 +1935,7 @@ Profiles:
 - Forge DevOps: development, SDKs, containers, services, deployments and logs.
 - Shield: authorized cybersecurity, audit, forensic and sandbox.
 - Studio: creator tools, logos, video, audio and design.
-- Windows: full Windows Bridge with lighter compatibility paths as fallback.
+- Atlas: documents, maps, OCR, references, trips and local research.
 - Pulse: Linux gaming, Proton, low latency and overlays.
 
 What each mini OS separates:
@@ -2017,7 +2003,7 @@ seven profile folders forge
 | Studio | media, design, assets | images, audio, video, exports |
 | Baobab | culture, reading, collections | reader, documents, local memory |
 | Pulse | games, captures, performance | Steam, Lutris, recorder, overlays |
-| Windows | Windows Compatibility | app-first tools, shared folders, VM fallback |
+| Atlas | Atlas Explorer | documents, maps, OCR, references and local research |
 
 Pulse keeps gaming tools inside the Pulse mini OS when possible:
 
@@ -2156,7 +2142,7 @@ Installation model:
 
 - Equinox uses the global system scope: pacman, yay, paru and Arch packages can
   serve as the shared base.
-- Forge, Shield, Studio, Baobab, Windows and Pulse install packages inside
+- Forge, Shield, Studio, Baobab, Atlas and Pulse install packages inside
   their profiled root when you use `sevenpkg --profile`.
 - Apps installed inside one mini OS do not pollute the other mini OS profiles.
 - Apps installed globally by Equinox can be exposed to mini OS profiles only
@@ -2461,7 +2447,7 @@ Important rules:
 
 - Equinox is the admin space: it can use pacman, yay and paru directly.
 - Mini OS profiles should use `sevenpkg --profile` to keep packages private.
-- Installing into Forge, Shield, Studio, Baobab, Windows or Pulse writes to the
+- Installing into Forge, Shield, Studio, Baobab, Atlas or Pulse writes to the
   target mini OS rootfs, then SevenOS verifies and reseals that rootfs.
 - Installing into Equinox writes to the host. The package stays Equinox-only by
   default unless `sevenpkg global-expose` exposes selected commands to one or
@@ -2479,7 +2465,7 @@ Important rules:
 - `sevenpkg profile-limits` explains what each profile allows.
 - `sevenpkg profile-packages` shows what is actually installed by profile.
 
-## Security, Shield And Windows
+## Security, Shield And Atlas
 
 ### Shield And Security
 
@@ -2514,38 +2500,25 @@ BlackArch is intentionally optional because it adds an external repository. The
 full package set is massive: use `--dry-run` first, then `--yes` only on a
 dedicated Shield workstation.
 
-### Windows Bridge
+### Atlas Explorer
 
-SevenOS prefers lightweight Windows apps through Wine/Bottles/Lutris/Proton,
-then uses KVM/QEMU when a complete Windows environment is required. This layer
-is global: the Windows panel and commands stay available from Equinox and from
-Forge, Studio, Shield, Pulse, Baobab or Windows.
+Atlas replaces the old Windows vertex: SevenOS now keeps seven native mini OS
+identities without depending on a Windows VM. Atlas is for documents, maps, OCR,
+references, trips, archives and local research.
 
 ```bash
-seven windows open
-seven-windows-native
-seven windows setup
-seven windows setup --iso ~/Downloads/Win11.iso
-seven windows status
-seven windows plan
-seven windows repair
-seven windows network
-seven windows apps
-seven windows resolve photoshop
-seven run ~/Downloads/setup.exe
-./install.sh windows-mode guide
-./install.sh vm-check
-./install.sh vm-network
+seven atlas open
+seven atlas status
+seven atlas install --yes
+seven profile activate atlas
+seven profile open atlas
+seven profile apps atlas
+seven profile requirements atlas --optional --apply --yes
 ```
 
-The native panel also includes a quick launcher: type `photoshop`, `office` or
-choose an `.exe/.msi`; SevenOS shows the recommended engine before launch.
-It keeps recent apps locally and exposes Prepare or Diagnose from the same
-place. The decision path shows why SevenOS selected Wine, Bottles, Lutris,
-Proton or the VM.
-
-SevenOS does not provide Windows images, bypass activation or inject product
-keys. The user provides an official ISO when a full VM is required.
+`seven atlas status` explains what is missing. `seven atlas install --yes` installs
+the essential packages. Optional requirements add Anki, Recoll, Zeal, QGIS/JOSM
+or other advanced tools depending on enabled repositories.
 
 ## Local FAQ
 
@@ -2652,20 +2625,20 @@ seven-wallpaper refresh
 | Term | Practical meaning |
 | --- | --- |
 | Equinox | main/admin/daily profile with HOME and global package access |
-| Mini OS | specialized space such as Forge, Shield, Studio, Baobab, Windows or Pulse |
+| Mini OS | specialized space such as Forge, Shield, Studio, Baobab, Atlas or Pulse |
 | Active profile | mini OS currently used by interface and actions |
 | Profile rootfs | private root where a mini OS can install packages |
 | Global scope | system-visible install managed by Equinox |
 | Profile scope | install limited to one mini OS |
 | Grant | explicit permission to share an external folder with a profile |
-| Bridge | controlled passage between mini OS profiles or toward Windows |
+| Bridge | controlled passage between mini OS profiles |
 | SevenStore | graphical surface to install and manage apps |
 | sevenpkg | SevenOS manager above pacman, yay, paru, Flatpak and profiles |
 | SevenOS Settings | normal-user control center |
 | SevenOS Home | visual front door for mini OS profiles |
 | Spotlight | global search for apps, actions and files |
 | Shield | authorized cybersecurity and sandbox profile |
-| Windows Compatibility | Wine/Bottles/Lutris/Proton layer with VM fallback |
+| Atlas Explorer | documents, maps, OCR, references and trips |
 | Recovery | SevenOS repair and restore route |
 | Post-install | check for dependencies, services, fonts, network and surfaces |
 
@@ -2732,7 +2705,7 @@ scripts/check.sh
 | External folder invisible | `seven profile grant-folder <profile> <path> --name <name> --rw` |
 | Missing dependencies | `seven profile requirements all --apply --yes` |
 | Suspicious mini OS rootfs | `seven profile-rootfs verify all` |
-| Windows Bridge not ready | `seven windows setup` |
+| Atlas Explorer not ready | `seven atlas status` |
 | Terminal hard to read | `Ctrl+Shift+B`, `◐` button, or `SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal` |
 | Before GitHub push | `seven pre-push` |
 
@@ -2866,7 +2839,7 @@ de test et de chemin de retour.
 | Seven Shell | couche shell plus native, rapide et maintenable | progressif |
 | Store | permissions Flatpak, recommandations locales et vues par mini OS | progressif |
 | Baobab | packs culturels, langues africaines, cartes et collections offline | progressif |
-| Windows Bridge | intégration app-first plus fluide autour VM/Wine/Bottles | progressif |
+| Atlas Explorer | documents, cartes, OCR et recherche locale | actif |
 | Cloud personnel | synchronisation volontaire, backup, déploiement et serveur local | futur |
 | Performance | politiques systemd slices/uclamp exposées mais jamais silencieuses | futur |
 
@@ -2899,7 +2872,7 @@ a command, a check and a recovery path.
 | Seven Shell | more native, fast and maintainable shell layer | progressive |
 | Store | Flatpak permissions, local recommendations and mini OS views | progressive |
 | Baobab | cultural packs, African languages, maps and offline collections | progressive |
-| Windows Bridge | smoother app-first integration around VM/Wine/Bottles | progressive |
+| Atlas Explorer | documents, maps, OCR and local research | active |
 | Personal cloud | opt-in sync, backup, deployment and local server workflows | future |
 | Performance | visible systemd slice/uclamp policies, never silent changes | future |
 
@@ -3102,7 +3075,7 @@ topic_heading() {
       files|reader|store|terminal|ai|apps) printf 'Applications SevenOS\n' ;;
       system|manual|network|fonts|language|langue|backup|iso|installer) printf 'Manuel système\n' ;;
       packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services) printf 'Paquets et installation\n' ;;
-      security|shield|windows-bridge) printf 'Sécurité, Shield et Windows\n' ;;
+      security|shield|atlas) printf 'Sécurité, Shield et Atlas\n' ;;
       faq|questions) printf 'FAQ locale\n' ;;
       glossary|vocabulary|vocabulaire) printf 'Glossaire SevenOS\n' ;;
       dev|development|checks) printf 'Développement SevenOS\n' ;;
@@ -3129,7 +3102,7 @@ topic_heading() {
       files|reader|store|terminal|ai|apps) printf 'SevenOS Applications\n' ;;
       system|manual|network|fonts|language|langue|backup|iso|installer) printf 'System Manual\n' ;;
       packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services) printf 'Packages And Install\n' ;;
-      security|shield|windows-bridge) printf 'Security, Shield And Windows\n' ;;
+      security|shield|atlas) printf 'Security, Shield And Atlas\n' ;;
       faq|questions) printf 'Local FAQ\n' ;;
       glossary|vocabulary|vocabulaire) printf 'SevenOS Glossary\n' ;;
       dev|development|checks) printf 'SevenOS Development\n' ;;
@@ -3304,9 +3277,9 @@ Réparation rapide :
   seven recovery
   seven events --limit 30
 
-Windows et sécurité :
-  seven windows setup
-  seven windows setup --iso ~/Downloads/Win11.iso
+Atlas et sécurité :
+  seven atlas status
+  seven atlas install --yes
   seven shield status
   seven shield lab --preset web
 
@@ -3381,9 +3354,9 @@ Quick repair:
   seven recovery
   seven events --limit 30
 
-Windows and security:
-  seven windows setup
-  seven windows setup --iso ~/Downloads/Win11.iso
+Atlas and security:
+  seven atlas status
+  seven atlas install --yes
   seven shield status
   seven shield lab --preset web
 
@@ -3405,7 +3378,7 @@ open_native_help() {
   case "$topic" in
     network|fonts|language|langue|backup|iso|installer|manual) topic="system" ;;
     software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services) topic="packages" ;;
-    security|shield|windows-bridge) topic="security-windows" ;;
+    security|shield|atlas) topic="security-atlas" ;;
     faq|questions|glossary|vocabulary|vocabulaire) topic="repair" ;;
     dev|development|checks) topic="developer" ;;
     deploy|hosting|domain|dns) topic="server" ;;
@@ -3493,7 +3466,7 @@ Chapitres SevenOS disponibles :
   profile-service services privés dans un mini OS
   mongodb        exemple paquet + service privé
   security       sécurité et Shield
-  windows-bridge Windows Bridge
+  atlas Atlas Explorer
   faq            questions fréquentes
   glossary       glossaire SevenOS
   dev            checks développeur
@@ -3539,7 +3512,7 @@ Available SevenOS chapters:
   profile-service private services inside one mini OS
   mongodb        package + private service example
   security       security and Shield
-  windows-bridge Windows Bridge
+  atlas Atlas Explorer
   faq            frequent questions
   glossary       SevenOS glossary
   dev            developer checks
@@ -3561,7 +3534,7 @@ case "${1:-}" in
     show_doc "$1"
     exit 0
     ;;
-  install|quick|commands|architecture|shortcuts|waybar|actions|server|deploy|hosting|domain|dns|core|seven-core|sevenbus|shell|ags|seven-shell|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|manual|network|fonts|language|langue|backup|iso|installer|packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services|security|shield|windows-bridge|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
+  install|quick|commands|architecture|shortcuts|waybar|actions|server|deploy|hosting|domain|dns|core|seven-core|sevenbus|shell|ags|seven-shell|themes|mini-os|mini-os-collaboration|files|reader|store|terminal|ai|apps|system|manual|network|fonts|language|langue|backup|iso|installer|packages|software|sevenpkg|global-policy|global-expose|global-restrict|profile-service|mongodb|mongo|service|services|security|shield|atlas|faq|questions|glossary|vocabulary|vocabulaire|dev|development|checks|diagnostics|troubleshooting|windows)
     if open_native_help "$1"; then
       exit 0
     fi
@@ -3592,7 +3565,7 @@ selected="${selected%%    *}"
 case "$selected" in
   "Desktop Helpers"|"Aide du bureau") seven-help ;;
   "Install SevenOS"|"Installer SevenOS") run_terminal "seven new" ;;
-  "Setup Windows Bridge"|"Configurer Windows Bridge") run_terminal "seven windows setup" ;;
+  "Setup Atlas Explorer"|"Configurer Atlas Explorer") run_terminal "seven atlas status" ;;
   "Complete SevenOS Guide"|"Guide complet SevenOS") show_doc all ;;
   "Search Local Help"|"Rechercher dans l’aide") seven-help-native ;;
   "SevenOS System Manual"|"Manuel système SevenOS") show_doc system ;;

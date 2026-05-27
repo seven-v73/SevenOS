@@ -295,7 +295,7 @@ PROFILE_ROLES = {
     "cyber": ("Shield", t("Réseau, audit et investigation prudente", "Network, audit and cautious investigation")),
     "focus": ("Baobab", t("Écriture, lecture et travail long au calme", "Writing, reading and calm long-form work")),
     "admin": ("Admin", t("Contrôle système avec prudence renforcée", "System control with extra caution")),
-    "windows": ("Windows", t("Dossiers passerelle, VM et compatibilité", "Bridge folders, VM and compatibility workflows")),
+    "atlas": ("Atlas", t("Documents, cartes, OCR et références", "Documents, maps, OCR and references")),
 }
 
 
@@ -320,7 +320,7 @@ PROFILE_ACCENTS = {
     "cyber": "#00FFB3",
     "focus": "#7A5CFF",
     "admin": "#FF9B70",
-    "windows": "#74C7EC",
+    "atlas": "#5AD7B7",
 }
 
 
@@ -332,7 +332,7 @@ PROFILE_LABELS = {
     "cyber": t("Shield", "Shield"),
     "focus": t("Focus", "Focus"),
     "admin": t("Admin", "Admin"),
-    "windows": t("Windows", "Windows"),
+    "atlas": t("Atlas", "Atlas"),
 }
 
 PROFILE_GLYPHS = {
@@ -343,7 +343,7 @@ PROFILE_GLYPHS = {
     "cyber": "SH",
     "focus": "BA",
     "admin": "AD",
-    "windows": "WI",
+    "atlas": "AT",
 }
 
 PROFILE_MICROCOPY = {
@@ -354,7 +354,7 @@ PROFILE_MICROCOPY = {
     "cyber": t("audit & défense", "audit & defense"),
     "focus": t("lecture & écriture", "reading & writing"),
     "admin": t("contrôle prudent", "careful control"),
-    "windows": t("pont compatibilité", "compatibility bridge"),
+    "atlas": t("documents & cartes", "documents & maps"),
 }
 
 
@@ -507,18 +507,18 @@ THEMES = {
             "#68433D", "#FF8DA4", "#A8F0BC", "#FFE0A3", "#9BCFFF", "#CBB6EA", "#B8EEF3", "#FFFFFF",
         ],
     },
-    "windows": {
-        "window": "#0D1B2F",
-        "titlebar": "#081421",
-        "titlebar_border": "#173B5C",
-        "terminal": "#07111F",
-        "foreground": "#EEF7FF",
-        "muted": "#A9CBE8",
-        "selection": "#173B5C",
-        "cursor": "#74C7EC",
+    "atlas": {
+        "window": "#0B201D",
+        "titlebar": "#071A18",
+        "titlebar_border": "#1D5F55",
+        "terminal": "#061412",
+        "foreground": "#ECFFF9",
+        "muted": "#9CD9CB",
+        "selection": "#1D5F55",
+        "cursor": "#5AD7B7",
         "palette": [
-            "#07111F", "#FF6B8A", "#8EDAA6", "#FFD580", "#74C7EC", "#89B4FA", "#94E2D5", "#EEF7FF",
-            "#4A617A", "#FF8DA4", "#A8F0BC", "#FFE0A3", "#9BD7F4", "#A7C4FF", "#B2F2E8", "#FFFFFF",
+            "#061412", "#FF6B8A", "#8EDAA6", "#FFD580", "#5AD7B7", "#89B4FA", "#94E2D5", "#ECFFF9",
+            "#456C66", "#FF8DA4", "#A8F0BC", "#FFE0A3", "#82E3CD", "#A7C4FF", "#B2F2E8", "#FFFFFF",
         ],
     },
 }
@@ -2000,10 +2000,10 @@ def profile_actions(profile: str, cwd: str) -> list[tuple[str, list[str]]]:
             (t("Admin · Services en échec", "Admin · Failed Services"), ["bash", "-lc", "systemctl --failed --no-pager 2>/dev/null || echo 'systemd unavailable'; printf '\\nPress Enter...'; read -r"]),
             (t("Admin · Processus", "Admin · Processes"), ["bash", "-lc", "ps aux --sort=-%mem | head -25; printf '\\nPress Enter...'; read -r"]),
         ],
-        "windows": [
-            (t("Windows · État passerelle", "Windows · Bridge Status"), ["bash", "-lc", "command -v sevenos-windows >/dev/null && sevenos-windows status || echo 'Windows Bridge helper unavailable'; printf '\\nPress Enter...'; read -r"]),
-            (t("Windows · Dossiers passerelle", "Windows · Open Bridge Folders"), ["bash", "-lc", "seven-files \"$HOME\"; printf '\\nPress Enter...'; read -r"]),
-            (t("Windows · Recherche EXE", "Windows · EXE Check"), ["bash", "-lc", "find . -maxdepth 2 -iname '*.exe' -o -iname '*.msi' | head -40; printf '\\nPress Enter...'; read -r"]),
+        "atlas": [
+            (t("Atlas · État", "Atlas · Status"), ["bash", "-lc", "seven atlas status; printf '\\nPress Enter...'; read -r"]),
+            (t("Atlas · Dossiers", "Atlas · Open Folders"), ["bash", "-lc", "seven-files \"$HOME/Atlas\"; printf '\\nPress Enter...'; read -r"]),
+            (t("Atlas · Documents", "Atlas · Documents"), ["bash", "-lc", "find \"$HOME/Atlas\" -maxdepth 3 \\( -iname '*.pdf' -o -iname '*.epub' -o -iname '*.md' -o -iname '*.txt' \\) | head -60; printf '\\nPress Enter...'; read -r"]),
         ],
         "focus": [
             (t("Baobab · Documents", "Baobab · Documents"), ["bash", "-lc", "seven-files \"$HOME/Documents\"; printf '\\nPress Enter...'; read -r"]),
@@ -2140,7 +2140,7 @@ def show_native_palette(
             (t("Changer d’espace", "Switch Space"), t("Ouvrir Shield", "Switch Cyber"), t("Terminal sécurité", "Security terminal"), lambda: run_detached(["seven-terminal", "cyber"], cwd)),
             (t("Changer d’espace", "Switch Space"), t("Ouvrir Focus", "Switch Focus"), t("Terminal calme pour lecture/écriture", "Quiet writing terminal"), lambda: run_detached(["seven-terminal", "focus"], cwd)),
             (t("Changer d’espace", "Switch Space"), t("Ouvrir Admin", "Switch Admin"), t("Terminal système prudent", "Cautious system-control terminal"), lambda: run_detached(["seven-terminal", "admin"], cwd)),
-            (t("Changer d’espace", "Switch Space"), t("Ouvrir Windows", "Switch Windows"), t("Terminal passerelle et compatibilité", "Bridge and compatibility terminal"), lambda: run_detached(["seven-terminal", "windows"], cwd)),
+            (t("Changer d’espace", "Switch Space"), t("Ouvrir Atlas", "Switch Atlas"), t("Terminal documents, cartes et recherche", "Documents, maps and research terminal"), lambda: run_detached(["seven-terminal", "atlas"], cwd)),
         ]
     )
 
@@ -2339,7 +2339,7 @@ def begin_move(window, event) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--probe", action="store_true")
-    parser.add_argument("--profile", choices=("classic", "dark", "light", "forge", "cyber", "focus", "admin", "windows"), default=os.environ.get("SEVENOS_TERMINAL_MODE", "classic"))
+    parser.add_argument("--profile", choices=("classic", "dark", "light", "forge", "cyber", "focus", "admin", "atlas"), default=os.environ.get("SEVENOS_TERMINAL_MODE", "classic"))
     parser.add_argument("command", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.probe:

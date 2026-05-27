@@ -1,0 +1,15 @@
+# SevenOS Atlas optional extensions
+# These improve offline knowledge, map workflows and document capture when
+# available in the enabled repositories.
+anki
+recoll
+zeal
+sigil
+geeqie
+gthumb
+simple-scan
+paperwork
+osmo
+viking
+josm
+qgis

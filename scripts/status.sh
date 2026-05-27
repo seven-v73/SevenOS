@@ -258,7 +258,7 @@ if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   printf ','
   profile_json studio "Studio" "$ROOT_DIR/scripts/packages-creation.txt"
   printf ','
-  profile_json windows "Windows" "$ROOT_DIR/scripts/packages-windows.txt"
+  profile_json atlas "Atlas" "$ROOT_DIR/scripts/packages-atlas.txt"
   printf ','
   profile_json security "Security" "$ROOT_DIR/scripts/packages-security.txt"
   printf '],'
@@ -333,7 +333,7 @@ profile_status "CYBER REVERSING" "$ROOT_DIR/scripts/packages-cybersecurity-rever
 profile_status "CYBER WIRELESS" "$ROOT_DIR/scripts/packages-cybersecurity-wireless.txt"
 profile_status "CYBER SANDBOX" "$ROOT_DIR/scripts/packages-cybersecurity-sandbox.txt"
 profile_status "CREATION" "$ROOT_DIR/scripts/packages-creation.txt"
-profile_status "WINDOWS" "$ROOT_DIR/scripts/packages-windows.txt"
+profile_status "ATLAS" "$ROOT_DIR/scripts/packages-atlas.txt"
 profile_status "SECURITY" "$ROOT_DIR/scripts/packages-security.txt"
 
 section "Services"
@@ -347,16 +347,15 @@ if group_member docker; then ok "$USER is in docker"; else missing "$USER is not
 if group_member libvirt; then ok "$USER is in libvirt"; else missing "$USER is not in libvirt"; fi
 if group_member wireshark; then ok "$USER is in wireshark"; else missing "$USER is not in wireshark"; fi
 
-section "Windows Compatibility"
-package_status wine "Wine"
-package_status lutris "Lutris"
-package_status virt-manager "Virt Manager"
-package_status qemu-full "QEMU"
-if flatpak_installed com.usebottles.bottles; then
-  ok "Bottles Flatpak"
-else
-  missing "Bottles Flatpak"
-fi
+section "Atlas Explorer"
+package_status evince "Evince"
+package_status foliate "Foliate"
+package_status calibre "Calibre"
+package_status marble "Marble"
+package_status gnome-maps "GNOME Maps"
+package_status pdfarranger "PDF Arranger"
+package_status tesseract "Tesseract OCR"
+package_status syncthing "Syncthing"
 
 section "Security"
 IFS=$'\t' read -r ufw_state ufw_detail < <(ufw_status_line) || true

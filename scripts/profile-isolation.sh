@@ -240,9 +240,6 @@ service_owners = {
     "postgresql.service": ["forge"],
     "valkey.service": ["forge"],
     "caddy.service": ["forge"],
-    "libvirtd.service": ["windows"],
-    "virtqemud.service": ["windows"],
-    "virtlogd.service": ["windows"],
     "gamemoded.service": ["pulse"],
 }
 
@@ -290,7 +287,7 @@ profile_commands = {
     "forge": ["git", "gh", "node", "npm", "pnpm", "python", "pip", "pipx", "rustc", "cargo", "go", "docker", "docker-compose", "podman", "buildah", "skopeo", "caddy", "jq", "rsync", "ssh", "seven-deploy", "helix", "hx", "nvim", "code", "tmux", "make", "cmake", "ninja", "gcc", "clang", "lldb", "sqlite3", "psql", "valkey-server"],
     "shield": ["nmap", "wireshark", "tcpdump", "nc", "john", "hashcat", "hydra", "medusa", "sqlmap", "nikto", "msfconsole", "gobuster", "zaproxy", "masscan", "impacket-secretsdump", "whois", "dig", "traceroute", "openvpn", "wg", "binwalk", "volatility3", "yara", "sleuthkit", "foremost", "testdisk", "exiftool", "gdb", "strace", "ltrace", "radare2", "rizin", "cutter", "ghidra", "jadx", "afl-fuzz", "aircrack-ng", "bettercap", "ettercap", "macchanger", "firejail", "bwrap", "bandit"],
     "studio": ["gimp", "krita", "inkscape", "blender", "kdenlive", "obs", "obs-studio", "audacity", "ardour", "lmms", "darktable", "rawtherapee", "scribus", "magick", "ffmpeg", "handbrake"],
-    "windows": ["wine", "winetricks", "lutris", "protontricks", "bottles", "virt-manager", "virt-install", "virt-viewer", "qemu-system-x86_64"],
+    "atlas": ["evince", "foliate", "calibre", "marble", "tesseract", "ocrmypdf", "kiwix-desktop"],
     "pulse": ["gamemoderun", "game-mode", "gamescope", "mangohud", "vulkaninfo", "lutris"],
 }
 global_package_commands = ["pacman", "paru", "yay", "makepkg"]
@@ -362,7 +359,7 @@ profile_workspace_names = {
     "forge": "Forge",
     "shield": "ShieldLab",
     "studio": "Studio",
-    "windows": "WindowsMode",
+    "atlas": "Atlas",
     "pulse": "Pulse",
 }
 
@@ -372,7 +369,7 @@ profile_isolation_modes = {
     "forge": "balanced",
     "shield": "strict",
     "studio": "balanced",
-    "windows": "balanced",
+    "atlas": "balanced",
     "pulse": "balanced",
 }
 profile_balanced_overrides = {
@@ -660,7 +657,7 @@ def generate_profile_launchers():
         "forge": ("Forge DevOps", "Code, containers, services and deployment workspace", "utilities-terminal"),
         "shield": ("Shield Cybersecurity", "Audit, forensics and sandbox workspace", "seven-security"),
         "studio": ("Studio Creator", "Media, design and asset production workspace", "seven-studio"),
-        "windows": ("Windows Bridge", "Windows compatibility and VM workspace", "computer"),
+        "atlas": ("Atlas Explorer", "Research, maps and document navigation workspace", "applications-science"),
         "pulse": ("Pulse Gaming", "Gaming, performance and controller workspace", "applications-games"),
     }
     for key in profiles:

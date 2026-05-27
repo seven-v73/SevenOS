@@ -96,10 +96,8 @@ repair_security() {
 
 repair_compatibility() {
   section "Compatibility Repair"
-  run_repair "Install Windows compatibility layer" "$ROOT_DIR/install.sh" windows
-  run_repair "Check VM readiness" "$ROOT_DIR/install.sh" vm-check
-  run_repair "Start libvirt default network" "$ROOT_DIR/install.sh" vm-network
-  run_repair "Show Windows Mode status" "$ROOT_DIR/install.sh" windows-mode status
+  run_repair "Install Atlas Explorer native workspace" "$ROOT_DIR/install.sh" atlas
+  run_repair "Show Atlas requirements" "$ROOT_DIR/bin/seven-profile-requirements" status atlas
 }
 
 repair_deployment() {
@@ -148,7 +146,7 @@ case "$AREA" in
   core|equinox|system-profile) repair_core ;;
   ux) repair_ux ;;
   security) repair_security ;;
-  compatibility|windows) repair_compatibility ;;
+  compatibility|atlas) repair_compatibility ;;
   deployment|server) repair_deployment ;;
   target|profiles) repair_target ;;
   *)

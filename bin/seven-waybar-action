@@ -203,7 +203,7 @@ run_profile_action() {
     "Activate Forge"|"Utiliser Forge") run_terminal "SevenOS Forge" "seven profile activate forge" ;;
     "Activate Shield"|"Utiliser Shield") run_terminal "SevenOS Shield" "seven profile activate shield" ;;
     "Activate Studio"|"Utiliser Studio") run_detached seven profile activate studio ;;
-    "Activate Windows Bridge"|"Utiliser Windows") run_detached seven profile activate windows ;;
+    "Activate Atlas Explorer"|"Utiliser Atlas") run_detached seven profile activate atlas ;;
     "Activate Pulse"|"Utiliser Pulse") run_detached seven profile activate pulse ;;
     *) return 0 ;;
   esac
@@ -229,11 +229,13 @@ run_mini_context_action() {
     "Studio Media") open_path_with_files "$HOME/Pictures" ;;
     "Studio Exports") open_path_with_files "$HOME/Videos" ;;
     "Studio Recorder") run_detached seven-recorder-native ;;
-    "Windows Guide"|"Windows Bridge") run_detached seven-windows-assistant guide ;;
-    "Windows Apps") run_detached seven-windows-assistant apps ;;
-    "Windows Folders") run_detached seven-files profile windows ;;
-    "Windows Repair") run_detached seven-windows-assistant repair ;;
-    "Windows Status") run_detached seven-windows-assistant status ;;
+    "Atlas Guide"|"Atlas Explorer") run_detached seven atlas open ;;
+    "Atlas Documents") run_detached seven profile open-folder atlas Documents ;;
+    "Atlas Maps") run_detached seven profile open-folder atlas Maps ;;
+    "Atlas Apps") run_detached seven profile apps atlas ;;
+    "Atlas Folders") run_detached seven-files profile atlas ;;
+    "Atlas Requirements") run_terminal "SevenOS Atlas" "seven atlas status" ;;
+    "Atlas Status") run_terminal "SevenOS Atlas" "seven atlas status" ;;
     "Pulse Open") run_detached seven-files profile pulse ;;
     "Pulse Games") run_detached seven-hub games ;;
     "Pulse Captures") run_detached seven profile open-folder pulse Videos ;;
@@ -373,7 +375,7 @@ app_menu_mode() {
     printf 'browser\n'
   elif [[ "$app_class" =~ (nautilus|seven-files|file) ]]; then
     printf 'files\n'
-  elif [[ "$profile" == "studio" || "$profile" == "shield" || "$profile" == "windows" || "$profile" == "forge" || "$profile" == "pulse" || "$profile" == "baobab" ]]; then
+  elif [[ "$profile" == "studio" || "$profile" == "shield" || "$profile" == "atlas" || "$profile" == "forge" || "$profile" == "pulse" || "$profile" == "baobab" ]]; then
     printf '%s\n' "$profile"
   else
     printf 'default\n'
@@ -573,8 +575,8 @@ run_active_app_command() {
     "Exports Studio"|"Studio exports") open_path_with_files "$HOME/Videos" ;;
     "Shield Center") run_detached seven-shield-center-native ;;
     "Sandbox Shield"|"Shield sandbox") run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
-    "Windows Assistant") run_detached seven-windows-assistant guide ;;
-    "Windows Apps") run_detached seven-windows-assistant apps ;;
+    "Atlas Explorer") run_detached seven atlas open ;;
+    "Atlas Apps") run_detached seven profile apps atlas ;;
     "Jeux Pulse"|"Pulse games") run_detached seven-hub games ;;
     "Collections Baobab"|"Baobab collections") open_path_with_files "$HOME/Documents" ;;
     "Contrôles fenêtre"|"Window controls") run_detached seven-window controls ;;
@@ -644,9 +646,9 @@ show_active_app_menu() {
           prompt="Sandbox"
           options=("󰒃  Shield Center" "󰛵  Sandbox Shield")
           ;;
-        windows)
-          prompt="Windows"
-          options=("󰖳  Windows Assistant" "󰿭  Windows Apps")
+        atlas)
+          prompt="Atlas"
+          options=("󰙅  Atlas Explorer" "󰉋  Atlas Folders")
           ;;
         pulse)
           prompt="Jeux"
@@ -684,9 +686,9 @@ show_active_app_menu() {
           prompt="Audit"
           options=("󰒃  Shield Center" "󰛵  Audit rapide")
           ;;
-        windows)
-          prompt="Apps"
-          options=("󰿭  Windows Apps" "󰖳  Windows Assistant")
+        atlas)
+          prompt="Atlas"
+          options=("󰙅  Atlas Explorer" "󰉋  Atlas Folders")
           ;;
         *)
           prompt="Actions"
@@ -732,7 +734,7 @@ run_direct_app_menu() {
       case "$mode" in
         developer) send_menu_key s ;;
         shield) run_detached seven-shield-center-native ;;
-        windows) run_detached seven-windows-assistant guide ;;
+        atlas) run_detached seven atlas open ;;
         *) send_menu_key v ;;
       esac
       ;;
@@ -743,7 +745,7 @@ run_direct_app_menu() {
         files) run_detached seven-files profile ;;
         studio) open_path_with_files "$HOME/Videos" ;;
         shield) run_terminal "SevenOS Shield Sandbox" "seven shield lab --preset web" ;;
-        windows) run_detached seven-windows-assistant apps ;;
+        atlas) run_detached seven profile apps atlas ;;
         pulse) run_detached seven-hub games ;;
         baobab) open_path_with_files "$HOME/Documents" ;;
         *) send_menu_key g ;;
@@ -755,7 +757,7 @@ run_direct_app_menu() {
         developer|forge) run_detached seven-terminal menu ;;
         files) run_detached seven-files profile ;;
         shield) run_detached seven-shield-center-native ;;
-        windows) run_detached seven-windows-assistant apps ;;
+        atlas) run_detached seven profile apps atlas ;;
         *) send_menu_key t ;;
       esac
       ;;
@@ -794,8 +796,8 @@ run_app_menu_action() {
     "Studio · Exports") open_path_with_files "$HOME/Videos" ;;
     "Shield · Centre") run_detached seven-shield-center-native ;;
     "Shield · Audit rapide") run_terminal "SevenOS Shield Audit" "seven shield status 2>/dev/null || seven doctor check security" ;;
-    "Windows · Assistant") run_detached seven-windows-assistant guide ;;
-    "Windows · Apps") run_detached seven-windows-assistant apps ;;
+    "Atlas · Explorer") run_detached seven atlas open ;;
+    "Atlas · Apps") run_detached seven profile apps atlas ;;
     "Pulse · Captures") open_path_with_files "$HOME/Videos" ;;
     "Pulse · Jeux") run_detached seven-hub games ;;
     "Baobab · Collections") open_path_with_files "$HOME/Documents" ;;
@@ -885,7 +887,7 @@ show_menu() {
     profile)
       prompt="Espaces SevenOS"
       runner="run_profile_action"
-      options=("󰐃  Centre des espaces" "󰉋  Fichiers" "󰒓  Réglages" "󰘦  Utiliser Equinox" "󰔱  Utiliser Baobab" "󰏗  Utiliser Studio" "󰖳  Utiliser Windows" "󰓅  Utiliser Pulse" "󰌢  Utiliser Forge" "󰒃  Utiliser Shield")
+      options=("󰐃  Centre des espaces" "󰉋  Fichiers" "󰒓  Réglages" "󰘦  Utiliser Equinox" "󰔱  Utiliser Baobab" "󰏗  Utiliser Studio" "󰙅  Utiliser Atlas" "󰓅  Utiliser Pulse" "󰌢  Utiliser Forge" "󰒃  Utiliser Shield")
       ;;
     mini-context)
       prompt="Mini OS"
@@ -894,7 +896,7 @@ show_menu() {
         forge) options=("󰆍  Forge Terminal" "󰑭  Forge Logs" "󰒓  Forge Build" "󰐃  Mini OS Center") ;;
         shield) options=("󰒃  Shield Center" "󰛵  Shield Audit" "󰞀  Shield Sandbox" "󰐃  Mini OS Center") ;;
         studio) options=("󰏗  Studio Open" "󰋩  Studio Pictures" "󰕧  Studio Videos" "󰻂  Studio Recorder") ;;
-        windows) options=("󰖳  Windows Guide" "󰿭  Windows Apps" "󰉋  Windows Folders" "󰁨  Windows Repair") ;;
+        atlas) options=("󰙅  Atlas Explorer" "󰉋  Atlas Documents" "󰆋  Atlas Maps" "󰿭  Atlas Apps") ;;
         pulse) options=("󰓅  Pulse Open" "󰊴  Pulse Games" "󰹑  Pulse Captures" "󰻂  Pulse Recorder") ;;
         baobab) options=("󰔱  Baobab Open" "󰉋  Baobab Collections" "󰈙  Baobab Reader" "󰐅  Baobab Culture") ;;
         equinox|*) options=("󰕰  Daily Overview" "󰉋  Daily Files" "󰒓  Daily Settings" "󰞋  Daily Help") ;;
@@ -971,8 +973,8 @@ show_menu() {
         shield)
           options+=("󰒃  Shield · Centre" "󰛵  Shield · Audit rapide")
           ;;
-        windows)
-          options+=("󰖳  Windows · Assistant" "󰿭  Windows · Apps")
+        atlas)
+          options+=("󰙅  Atlas · Explorer" "󰿭  Atlas · Apps")
           ;;
         pulse)
           options+=("󰓅  Pulse · Jeux" "󰹑  Pulse · Captures")

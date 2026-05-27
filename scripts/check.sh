@@ -124,8 +124,6 @@ bash -n \
   "$ROOT_DIR/bin/seven-notifications" \
   "$ROOT_DIR/bin/seven-idle" \
   "$ROOT_DIR/bin/seven-mini-os-center" \
-  "$ROOT_DIR/bin/seven-windows-assistant" \
-  "$ROOT_DIR/bin/seven-windows-native" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
   "$ROOT_DIR/scripts/startup-audit.sh" \
@@ -139,9 +137,6 @@ bash -n \
   "$ROOT_DIR/security/blackarch.sh" \
   "$ROOT_DIR/vm/check.sh" \
   "$ROOT_DIR/vm/network.sh" \
-  "$ROOT_DIR/vm/windows-app-runner.sh" \
-  "$ROOT_DIR/vm/windows-mode.sh" \
-  "$ROOT_DIR/vm/windows-vm.sh" \
   "$ROOT_DIR/installer/plan.sh" \
   "$ROOT_DIR/installer/validate-plan.sh" \
   "$ROOT_DIR/installer/generate-script.sh" \
@@ -486,8 +481,6 @@ PROFILE_ISOLATION_PREVIEW="$profile_isolation_preview" python -c 'import json,os
 "$ROOT_DIR/bin/seven-daemon" cyberspace-plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" server --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" server-plan --json | python -m json.tool >/dev/null
-"$ROOT_DIR/bin/seven-daemon" windows --json | python -m json.tool >/dev/null
-"$ROOT_DIR/bin/seven-daemon" windows-plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" installer --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" installer-plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven-daemon" packages --json | python -m json.tool >/dev/null
@@ -527,9 +520,6 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" shield report >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/security/shield-workspace.sh" bootstrap >/dev/null
 "$ROOT_DIR/bin/seven" shield workspace --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/seven" server plan --json >/dev/null
-"$ROOT_DIR/bin/seven" windows status --json | python -m json.tool >/dev/null
-"$ROOT_DIR/bin/seven" windows catalog --json | python -m json.tool >/dev/null
-"$ROOT_DIR/bin/seven" windows resolve photoshop --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenpkg" status --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" meta --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" plan --json | python -m json.tool >/dev/null
@@ -639,13 +629,6 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" menu >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" connect >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wifi" disconnect >/dev/null
 "$ROOT_DIR/bin/seven-wifi" status-json | python -m json.tool >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" status --json >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" plan --json | python -m json.tool >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" catalog --json | python -m json.tool >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" resolve photoshop --json | python -m json.tool >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" run photoshop >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" repair >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-hub" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/seven-hub/bin/seven-control-center" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-waybar-profile" >/dev/null
@@ -757,15 +740,15 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate-ml4w plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run migrate-ml4w switch >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" keyboard status --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run keyboard apply >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status --json | python -m json.tool >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" plan >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" plan --json | python -m json.tool >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" doctor >/dev/null || true
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" install-user-service >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" detect "$ROOT_DIR" >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" plan "$ROOT_DIR" >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" status >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" status --json | python -m json.tool >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" plan >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" plan --json | python -m json.tool >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" doctor >/dev/null || true
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-server.sh" install-user-service >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" detect "$ROOT_DIR" >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" plan "$ROOT_DIR" >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/server/seven-deploy.sh" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" meta >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/sevenpkg" doctor >/dev/null
@@ -799,7 +782,6 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile bootstrap forge >/dev/
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile bootstrap all >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server plan >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run welcome plan >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run session status >/dev/null
@@ -934,32 +916,19 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run doctor fix deployment >/dev/nu
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server status >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server status --json >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run server doctor >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run deploy detect "$ROOT_DIR" >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run deploy plan "$ROOT_DIR" >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run deploy detect "$ROOT_DIR" >/dev/null
+SEVENOS_ACTIVE_PROFILE=forge SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run deploy plan "$ROOT_DIR" >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run profile shield >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run shield audit >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run vm start windows >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows status >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows guide >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows catalog >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows resolve photoshop >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run run photoshop >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows apps >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows vm >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run windows start >/dev/null
+if SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven" --dry-run run photoshop >/dev/null 2>&1; then
+  log_error "Retired Windows VM app runner should not be available"
+  exit 1
+fi
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" branding --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" security --dry-run --yes >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" theme --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" iso --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-network --dry-run >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --dry-run >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" vm-windows --iso /tmp/windows.iso --virtio-iso /tmp/virtio.iso --os win10 --dry-run >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode status --dry-run >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode plan --json >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode guide --dry-run >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode apps --dry-run >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode vm --dry-run >/dev/null
-SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode start --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" server --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" shell-ags --dry-run >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" shell-preview --dry-run >/dev/null

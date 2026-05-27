@@ -28,9 +28,9 @@ modules_tsv() {
 seven	1-2	active	System controller, repair entrypoint and OS command surface	bin/seven
 sevenpkg	2	active	Software, meta-packages and future app layer	bin/sevenpkg
 Seven Hub	2-4	active	Native control center, action launcher and user-facing OS surface	seven-hub/bin/seven-hub
-Seven Profiles	2-4	active	Adaptive Forge DevOps, Shield, Studio, Windows, Pulse and Baobab contexts	profiles/profile-manager.sh
+Seven Profiles	2-4	active	Adaptive Forge DevOps, Shield, Studio, Atlas, Pulse and Baobab contexts	profiles/profile-manager.sh
 Seven Files	2	active	Profile-aware file entrypoint and workspace bridge	bin/seven-files
-Windows Mode	2-4	product-preview	Wine, Bottles, Lutris and KVM/QEMU compatibility	vm/windows-mode.sh
+Atlas Explorer	2-4	active	Native documents, maps, OCR and references mini OS	profiles/atlas.sh
 SevenShield	2-4	product-preview	Security hardening, audit, sandbox and Cyber Lab	security/cyber-audit.sh
 Seven Server	3	guided-preview	Local API, monitoring and orchestration backend	server/seven-server.sh
 Seven Deploy	3	product-preview	Project detection and deployment planner	server/seven-deploy.sh
@@ -52,8 +52,8 @@ processes_tsv() {
 First Run	experience	active	seven welcome -> profile select -> theme -> readiness -> Hub	seven welcome
 Daily Control	desktop	active	Waybar -> Quick Settings -> Seven Hub -> actions registry	seven hub
 Install Apps	software	preview	SevenStore -> sevenpkg -> Flatpak -> profile apps	seven store
-Work Profiles	productivity	active	Forge DevOps/Shield/Studio/Windows/Pulse context -> workspace -> apps	seven profile current
-Windows Apps	compatibility	preview	Windows profile -> Bottles/Wine or KVM VM -> shared workspace	seven windows guide
+Work Profiles	productivity	active	Forge DevOps/Shield/Studio/Atlas/Pulse context -> workspace -> apps	seven profile current
+Atlas Explorer	knowledge	active	Atlas profile -> documents, maps, OCR, references -> local workspace	seven atlas status
 Security Trust	security	preview	Shield audit -> UFW/Firejail/Bubblewrap -> Cyber Lab	seven shield audit
 Create & Media	creation	preview	Studio profile -> creative apps -> project workspace	seven profile guide studio
 Develop & Deploy	deployment	preview	Forge DevOps -> stack detect -> local API -> deploy planner	seven deploy plan .
@@ -132,7 +132,7 @@ json_checks = {
     "Seven Hub": ["scripts/hub.sh", "json"],
     "Seven Profiles": ["profiles/profile-manager.sh", "status", "--json"],
     "Seven Files": ["bin/seven-files", "--help"],
-    "Windows Mode": ["bin/seven-windows-assistant", "status", "--json"],
+    "Atlas Explorer": ["bin/seven", "atlas", "status", "--json"],
     "SevenShield": ["security/shield-status.sh", "--json"],
     "Seven Server": ["server/seven-server.sh", "status", "--json"],
     "Seven Deploy": ["server/seven-deploy.sh", "detect", "."],
@@ -150,7 +150,7 @@ json_checks = {
 
 product_next = {
     "Seven Hub": "Promote the native Control Center from foundation to default graphical surface for every settings path.",
-    "Windows Mode": "Finish the ISO/VirtIO guided path so VM creation no longer depends on terminal memory.",
+    "Atlas Explorer": "Keep the seventh mini OS native and complete its document/map/OCR flow on fresh installs.",
     "SevenShield": "Expose audit reports, scope and sandbox state inside one native Shield center.",
     "Seven Server": "Move the Python preview API toward the documented low-footprint backend path.",
     "Seven Deploy": "Add one-click local preview start/stop around generated deployment plans.",
@@ -177,14 +177,14 @@ product_commands = {
     "SevenFlow": "seven flow recipes",
     "Seven Deploy": "seven deploy status",
     "SevenIdentity": "seven identity current",
-    "Windows Mode": "seven windows guide",
+    "Atlas Explorer": "seven atlas status",
     "SevenShield": "seven shield dashboard",
     "SevenStore": "seven store modules",
 }
 
 release_gaps = {
     "Seven Hub": 0,
-    "Windows Mode": 12,
+    "Atlas Explorer": 2,
     "SevenShield": 8,
     "Seven Server": 8,
     "Seven Deploy": 8,
@@ -202,7 +202,7 @@ release_gaps = {
 process_counts = {}
 for raw in os.environ["PROCESSES_TSV"].splitlines():
     name, layer, state, flow, command = raw.split("\t", 4)
-    for token in ("SevenStore", "SevenCloud", "SevenFlow", "SevenIdentity", "SevenCluster", "Windows", "Shield", "Deploy"):
+    for token in ("SevenStore", "SevenCloud", "SevenFlow", "SevenIdentity", "SevenCluster", "Atlas", "Shield", "Deploy"):
         if token.lower().replace("seven", "") in command.lower() or token.lower() in flow.lower():
             process_counts[token] = process_counts.get(token, 0) + 1
 
@@ -221,8 +221,8 @@ for raw in os.environ["MODULES_TSV"].splitlines():
     executable = path.is_file() and os.access(path, os.X_OK)
     contract = command_ok(json_checks.get(name, []))
     process_count = process_counts.get(name, 0)
-    if name == "Windows Mode":
-        process_count = process_counts.get("Windows", 0)
+    if name == "Atlas Explorer":
+        process_count = process_counts.get("Atlas", 0)
     elif name == "SevenShield":
         process_count = process_counts.get("Shield", 0)
     elif name == "Seven Deploy":

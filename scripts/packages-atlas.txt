@@ -1,0 +1,34 @@
+# SevenOS Atlas Explorer mini OS
+# Research, maps, documents, OCR, archives and calm knowledge navigation.
+evince
+foliate
+zathura
+zathura-pdf-poppler
+calibre
+libreoffice-fresh
+pdfarranger
+poppler
+poppler-glib
+tesseract
+tesseract-data-eng
+tesseract-data-fra
+imagemagick
+perl-image-exiftool
+sqlite
+ripgrep
+fd
+fzf
+tealdeer
+translate-shell
+kiwix-desktop
+marble
+gnome-maps
+geoclue
+geocode-glib
+osm-gps-map
+gpsbabel
+gpxsee
+qalculate-gtk
+planner
+evolution
+syncthing

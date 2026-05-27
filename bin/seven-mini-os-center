@@ -2,7 +2,7 @@
 """SevenOS mini OS center.
 
 This is a profile-aware surface used by Baobab, Forge, Shield, Studio,
-Windows and Pulse while Profile Center remains the global compositor view.
+Atlas and Pulse while Profile Center remains the global compositor view.
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ def default_home_contract(key: str, meta: dict) -> dict:
         "forge": ("DevOps cockpit", "Forge Projects & Deployments", 88, "software engineering and deployment assistant"),
         "shield": ("Authorized security lab", "Shield Cases", 88, "defensive security assistant"),
         "studio": ("Creator studio", "Studio Assets", 78, "creative production assistant"),
-        "windows": ("Windows bridge", "Windows Apps", 72, "Windows compatibility assistant"),
+        "atlas": ("Atlas explorer", "Atlas Apps", 72, "Atlas exploration assistant"),
         "pulse": ("Gaming performance", "Pulse Games", 55, "gaming performance assistant"),
     }
     title, library, score, ai = fallback.get(key, fallback["equinox"])
@@ -113,8 +113,29 @@ def bridge_state() -> dict:
         return {}
 
 
-def windows_bridge_runtime() -> dict:
-    return run_json("windows", "bridge-status", "--json", fallback={})
+def atlas_requirements() -> dict:
+    return run_json("atlas", "status", "--json", fallback={})
+
+
+def atlas_readiness_lines(payload: dict) -> list[str]:
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    missing = payload.get("missing", {}) if isinstance(payload.get("missing"), dict) else {}
+    required = int(summary.get("required", 0) or 0)
+    missing_count = int(summary.get("required_missing", 0) or 0)
+    ready = bool(summary.get("ready")) and missing_count == 0
+    if ready:
+        return [
+            t("Prêt pour documents, cartes, OCR et références.", "Ready for documents, maps, OCR and references."),
+            t(f"Essentiels installés: {required}/{required}.", f"Essentials installed: {required}/{required}."),
+            t("Atlas n’indexe rien lourdement sans demande explicite.", "Atlas does not run heavy indexing without an explicit request."),
+        ]
+    missing_required = missing.get("required", []) if isinstance(missing.get("required"), list) else []
+    preview = compact(missing_required, 3)
+    return [
+        t(f"Préparation incomplète: {max(required - missing_count, 0)}/{required} essentiels.", f"Preparation incomplete: {max(required - missing_count, 0)}/{required} essentials."),
+        t(f"À installer: {preview}.", f"To install: {preview}."),
+        "seven atlas install --yes",
+    ]
 
 
 def bridge_status() -> dict:
@@ -164,12 +185,12 @@ def workflow_lines(key: str) -> list[str]:
         "studio": [
             t("Atelier: canvas, palettes, captures, assets, exports", "Atelier: canvas, palettes, captures, assets, exports"),
             t("Créer: Krita, Blender, Kdenlive, Inkscape et contrôles média", "Create: Krita, Blender, Kdenlive, Inkscape and media controls"),
-            t("Pont: envoyer textiles/assets vers Baobab ou Windows à la demande", "Bridge: send textiles/assets to Baobab or Windows apps on demand"),
+            t("Pont: envoyer textiles/assets vers Baobab ou Atlas à la demande", "Bridge: send textiles/assets to Baobab or Atlas apps on demand"),
         ],
-        "windows": [
-            t("Pont: Wine/Bottles/Lutris avant la VM quand possible", "Bridge: app-first Wine/Bottles/Lutris before VM"),
-            t("VM: ISO officiel, VirtIO, disque qcow2 et réseau libvirt", "VM: official ISO, VirtIO, qcow2 disk and libvirt network"),
-            t("Sync: entrée/sortie garde Windows silencieux hors usage", "Sync: enter/leave keeps Windows resources quiet when inactive"),
+        "atlas": [
+            t("Explorer: documents, PDF, ebooks, cartes et références restent lisibles.", "Explore: documents, PDFs, ebooks, maps and references stay readable."),
+            t("Indexer: OCR et métadonnées restent au service de la recherche locale.", "Index: OCR and metadata support local research."),
+            t("Relier: Atlas relie lieux, fichiers, notes et collections sans dépendre d’un autre OS.", "Connect: Atlas links places, files, notes and collections without depending on another OS."),
         ],
         "pulse": [
             t("Scène: bibliothèque jeux, GameMode, recorder, faible latence", "Stage: game library, GameMode, recorder, low-latency focus"),
@@ -180,7 +201,7 @@ def workflow_lines(key: str) -> list[str]:
     return workflows.get(key, workflows["equinox"])
 
 
-PUBLIC_MINI_OS = {"equinox", "baobab", "studio", "windows", "pulse"}
+PUBLIC_MINI_OS = {"equinox", "baobab", "studio", "atlas", "pulse"}
 
 
 def public_profile_contract(key: str, meta: dict, home: dict) -> dict:
@@ -202,7 +223,7 @@ def public_profile_contract(key: str, meta: dict, home: dict) -> dict:
             ],
             "status": t("Equinox est l'espace recommandé pour l'usage de tous les jours.", "Equinox is the recommended space for daily use."),
             "actions": [
-                (t("Ouvrir le bureau", "Open desktop"), "seven-overview windows", t("Vue des fenêtres", "Window overview")),
+                (t("Ouvrir le bureau", "Open desktop"), "seven-overview atlas", t("Vue des fenêtres", "Window overview")),
                 (t("Mes fichiers", "My files"), "seven-files profile equinox", t("Documents Equinox", "Equinox documents")),
                 (t("Réglages", "Settings"), "seven-settings", t("Paramètres SevenOS", "SevenOS settings")),
                 (t("Applications", "Applications"), "seven-launchpad-native", "Launchpad SevenOS"),
@@ -251,23 +272,25 @@ def public_profile_contract(key: str, meta: dict, home: dict) -> dict:
                 (t("Applications", "Applications"), "seven profile apps studio", t("Outils créatifs", "Creative tools")),
             ],
         },
-        "windows": {
-            "kicker": t("Compatibilité", "Compatibility"),
-            "title": "Windows",
-            "subtitle": t("Un espace guidé pour lancer des applications Windows et gérer les dossiers partagés simplement.", "A guided space to launch Windows applications and manage shared folders simply."),
+        "atlas": {
+            "kicker": t("Exploration", "Exploration"),
+            "title": "Atlas",
+            "subtitle": t("Un espace SevenOS pour documents, cartes, OCR, références et voyages.", "A SevenOS space for documents, maps, OCR, references and trips."),
             "sections": [
-                (t("Assistant", "Assistant"), t("Prépare Windows étape par étape avec une interface guidée.", "Prepare Windows step by step with a guided interface.")),
-                (t("Applications", "Applications"), t("Retrouve les logiciels Windows disponibles depuis SevenOS.", "Find Windows software available from SevenOS.")),
-                (t("Dossiers", "Folders"), t("Accède aux fichiers partagés entre SevenOS et Windows.", "Access shared files between SevenOS and Windows.")),
-                (t("Aide", "Help"), t("Corrige les problèmes courants avec des boutons clairs.", "Fix common problems with clear buttons.")),
+                (t("Documents", "Documents"), t("PDF, ebooks, scans et archives restent ensemble.", "PDFs, ebooks, scans and archives stay together.")),
+                (t("Cartes", "Maps"), t("Lieux, trajets, GPX et cartes sont liés aux projets.", "Places, routes, GPX and maps link to projects.")),
+                (t("Références", "References"), t("Notes, sources et collections deviennent retrouvables.", "Notes, sources and collections become searchable.")),
+                (t("OCR", "OCR"), t("Les documents scannés peuvent devenir du texte exploitable.", "Scanned documents can become usable text.")),
             ],
-            "status": t("Windows ne démarre que lorsque tu le demandes.", "Windows starts only when you ask."),
+            "status": t("Atlas reste calme et n’indexe rien lourdement sans demande.", "Atlas stays calm and does not run heavy indexing unless asked."),
             "actions": [
-                (t("Ouvrir l'assistant", "Open assistant"), "seven-windows-assistant guide", t("Configuration guidée", "Guided setup")),
-                (t("Applications Windows", "Windows apps"), "seven-windows-assistant apps", t("Lancer une app", "Launch an app")),
-                (t("Dossiers partagés", "Shared folders"), "seven profile open windows", t("Fichiers Windows", "Windows files")),
-                (t("Vérifier", "Check"), "seven-windows-assistant status", t("État simplifié", "Simple status")),
-                (t("Réparer", "Repair"), "seven-windows-assistant repair", t("Correction guidée", "Guided repair")),
+                (t("Dossiers", "Folders"), "seven profile open atlas", t("Fichiers Atlas", "Atlas files")),
+                (t("Documents", "Documents"), "seven profile open-folder atlas Documents", t("PDF, ebooks et notes", "PDFs, ebooks and notes")),
+                (t("Cartes", "Maps"), "seven profile open-folder atlas Maps", t("Lieux, trajets et GPX", "Places, routes and GPX")),
+                (t("Scans", "Scans"), "seven profile open-folder atlas Scans", t("OCR et numérisations", "OCR and scans")),
+                (t("Applications", "Applications"), "seven profile apps atlas", t("Lecteurs, cartes, OCR", "Readers, maps, OCR")),
+                (t("Vérifier", "Check"), "seven atlas status", t("Requirements", "Requirements")),
+                (t("Installer", "Install"), "seven atlas install --yes", t("Installer l’essentiel", "Install essentials")),
             ],
         },
         "pulse": {
@@ -306,7 +329,7 @@ def profile_terminal_mode(key: str) -> str:
     return {
         "forge": "forge",
         "shield": "cyber",
-        "windows": "windows",
+        "atlas": "atlas",
         "studio": "focus",
         "baobab": "focus",
         "pulse": "dark",
@@ -386,12 +409,14 @@ def profile_actions(key: str) -> list[tuple[str, str, str]]:
             ("VPN", "Inspect VPN state from Shield boundary", strict_app("shield", "seven-waybar-status vpn", workspace=False)),
             ("Report", "Open Shield workspace shell for reports", "seven-terminal cyber -- seven profile exec shield --container --workspace-profile sh"),
         ],
-        "windows": [
-            (t("Assistant", "Assistant"), t("Configurer Windows avec un guide", "Configure Windows with a guide"), "seven-windows-assistant guide"),
-            (t("Applications", "Applications"), t("Ouvrir les applications Windows", "Open Windows applications"), "seven-windows-assistant apps"),
-            (t("Dossiers", "Folders"), t("Ouvrir les fichiers Windows", "Open Windows files"), "seven profile open windows"),
-            (t("Vérifier", "Check"), t("Voir si Windows est prêt", "Check whether Windows is ready"), "seven-windows-assistant status"),
-            (t("Réparer", "Repair"), t("Corriger les problèmes courants", "Fix common problems"), "seven-windows-assistant repair"),
+        "atlas": [
+            (t("Dossiers", "Folders"), t("Ouvrir les fichiers Atlas", "Open Atlas files"), "seven profile open atlas"),
+            (t("Documents", "Documents"), t("PDF, ebooks et notes Atlas", "Atlas PDFs, ebooks and notes"), "seven profile open-folder atlas Documents"),
+            (t("Cartes", "Maps"), t("Lieux, trajets et GPX", "Places, routes and GPX"), "seven profile open-folder atlas Maps"),
+            (t("Scans", "Scans"), t("Scans et OCR", "Scans and OCR"), "seven profile open-folder atlas Scans"),
+            (t("Applications", "Applications"), t("Lecteurs, cartes, OCR et recherche", "Readers, maps, OCR and search"), "seven profile apps atlas"),
+            (t("Vérifier", "Check"), t("Voir si Atlas est prêt", "Check whether Atlas is ready"), "seven atlas status"),
+            (t("Installer", "Install"), t("Installer les paquets Atlas", "Install Atlas packages"), "seven atlas install --yes"),
         ],
         "pulse": [
             (t("Ouvrir Pulse", "Open Pulse"), t("Accéder à l'espace jeux", "Open the gaming space"), "seven profile open pulse"),
@@ -401,7 +426,7 @@ def profile_actions(key: str) -> list[tuple[str, str, str]]:
             (t("Applications", "Applications"), t("Voir les lanceurs de jeux", "View game launchers"), "seven profile apps pulse"),
         ],
         "equinox": [
-            (t("Bureau", "Desktop"), t("Voir les fenêtres ouvertes", "View open windows"), "seven-overview windows"),
+            (t("Bureau", "Desktop"), t("Voir les fenêtres ouvertes", "View open windows"), "seven-overview atlas"),
             (t("Fichiers", "Files"), t("Ouvrir Seven Files", "Open Seven Files"), "seven-files profile equinox"),
             (t("Réglages", "Settings"), t("Ouvrir les paramètres", "Open settings"), "seven-settings"),
             (t("Applications", "Applications"), t("Ouvrir le Launchpad", "Open Launchpad"), "seven-launchpad-native"),
@@ -454,7 +479,7 @@ def run() -> int:
     bridge = bridge_state()
     bridge_overview = bridge_status()
     session = bridge_session(key)
-    windows_runtime = windows_bridge_runtime() if key == "windows" else {}
+    atlas_runtime = atlas_requirements() if key == "atlas" else {}
 
     GLib.set_prgname("SevenMiniOSCenter")
     GLib.set_application_name(meta.get("title", "SevenOS Mini OS"))
@@ -465,7 +490,7 @@ def run() -> int:
 
     accent = meta.get("resource_intent", {}).get("gpu", "foreground")
     css = ""
-    if key == "windows":
+    if key == "atlas":
         css = """
         * { font-family: "SF Pro Display", "Inter", system-ui, sans-serif; }
         window.mini-os-window { background: transparent; }
@@ -473,28 +498,40 @@ def run() -> int:
           padding: 18px;
           border-radius: 30px;
           background:
-            radial-gradient(ellipse at 10% 0%, rgba(137,180,250,0.18), transparent 42%),
-            radial-gradient(ellipse at 90% 0%, rgba(166,227,161,0.12), transparent 44%),
-            rgba(17,18,25,0.92);
-          border: 1px solid rgba(255,255,255,0.13);
+            radial-gradient(ellipse at 12% 0%, rgba(116,199,236,0.22), transparent 42%),
+            radial-gradient(ellipse at 88% 4%, rgba(90,215,183,0.16), transparent 44%),
+            linear-gradient(135deg, rgba(255,255,255,0.090), rgba(255,255,255,0.025)),
+            rgba(12,17,24,0.94);
+          border: 1px solid rgba(116,199,236,0.18);
+          box-shadow: 0 28px 82px rgba(0,0,0,0.50);
         }
         .eyebrow { color: rgba(245,247,250,0.58); font-size: 11px; }
         .title { color: rgba(245,247,250,0.98); font-size: 25px; font-weight: 500; }
         .subtitle { color: rgba(245,247,250,0.68); font-size: 12px; }
         .card {
-          padding: 14px;
-          border-radius: 22px;
-          background: rgba(255,255,255,0.065);
-          border: 1px solid rgba(255,255,255,0.11);
+          padding: 13px;
+          border-radius: 20px;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.075), rgba(255,255,255,0.035)),
+            rgba(255,255,255,0.035);
+          border: 1px solid rgba(255,255,255,0.105);
+        }
+        .status-card {
+          background:
+            radial-gradient(ellipse at 12% 0%, rgba(90,215,183,0.18), transparent 52%),
+            linear-gradient(180deg, rgba(116,199,236,0.12), rgba(255,255,255,0.035)),
+            rgba(255,255,255,0.04);
+          border-color: rgba(90,215,183,0.26);
         }
         .card-title { color: rgba(245,247,250,0.95); font-size: 13px; font-weight: 500; }
         .card-text { color: rgba(245,247,250,0.63); font-size: 11px; }
         .pill {
-          min-height: 42px;
+          min-height: 36px;
           border-radius: 999px;
           color: rgba(245,247,250,0.95);
           background: rgba(255,255,255,0.08);
           border: 1px solid rgba(255,255,255,0.12);
+          font-size: 11px;
         }
         .pill:hover { background: rgba(255,255,255,0.13); }
         .signal { color: rgba(249,226,175,0.86); font-size: 10px; }
@@ -562,6 +599,12 @@ def run() -> int:
         .card {
           background: rgba(255,255,255,0.68);
           border-color: rgba(28,31,38,0.08);
+        }
+        .status-card {
+          background:
+            radial-gradient(ellipse at 12% 0%, rgba(90,215,183,0.15), transparent 50%),
+            linear-gradient(180deg, rgba(255,255,255,0.88), rgba(245,249,252,0.70));
+          border-color: rgba(47,123,255,0.18);
         }
         .pill {
           color: rgba(28,31,38,0.90);
@@ -639,7 +682,7 @@ def run() -> int:
     root.get_style_context().add_class("root")
     window.add(root)
 
-    eyebrow_label = f"{key.upper()} · mini OS autonome · {accent}" if key == "windows" else f"{key.upper()} · profil indépendant · ressources {accent}"
+    eyebrow_label = f"{key.upper()} · mini OS autonome · {accent}" if key == "atlas" else f"{key.upper()} · profil indépendant · ressources {accent}"
     eyebrow = Gtk.Label(label=eyebrow_label, xalign=0)
     eyebrow.get_style_context().add_class("eyebrow")
     root.pack_start(eyebrow, False, False, 0)
@@ -667,24 +710,30 @@ def run() -> int:
         for index, (section_title, section_text) in enumerate(public_contract.get("sections", [])):
             public_grid.attach(info_card(Gtk, section_title, section_text), index % 2, index // 2, 1, 1)
 
-        public_grid.attach(info_card(Gtk, "État", public_contract.get("status", "Prêt.")), 0, 2, 2, 1)
+        status_lines = atlas_readiness_lines(atlas_runtime) if key == "atlas" else [public_contract.get("status", t("Prêt.", "Ready."))]
+        status_card = info_card(Gtk, t("État", "State"), compact(status_lines, 3))
+        status_card.get_style_context().add_class("status-card")
+        public_grid.attach(status_card, 0, 2, 2, 1)
 
-        actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        actions_box = Gtk.Grid()
+        actions_box.set_column_spacing(10)
+        actions_box.set_row_spacing(10)
         root.pack_start(actions_box, False, False, 0)
-        for label, command, tooltip in public_contract.get("actions", [])[:5]:
+        for index, (label, command, tooltip) in enumerate(public_contract.get("actions", [])[:6]):
             button = Gtk.Button(label=label)
             button.get_style_context().add_class("pill")
             button.set_tooltip_text(tooltip)
             button.connect("clicked", lambda _button, cmd=command, app_label=label: run_detached(memory_command(key, app_label, cmd)))
-            actions_box.pack_start(button, True, True, 0)
+            button.set_hexpand(True)
+            actions_box.attach(button, index % 3, index // 3, 1, 1)
 
         footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         root.pack_end(footer, False, False, 0)
         for label, command in [
-            ("Utiliser cet espace", f"seven profile activate {key}"),
-            ("Applications", f"seven profile apps {key}"),
-            ("Réglages", "seven-settings profiles"),
-            ("Aide", "seven-help-native mini-os"),
+            (t("Utiliser cet espace", "Use this space"), f"seven profile activate {key}"),
+            (t("Applications", "Applications"), f"seven profile apps {key}"),
+            (t("Réglages", "Settings"), "seven-settings profiles"),
+            (t("Aide", "Help"), "seven-help-native mini-os"),
         ]:
             button = Gtk.Button(label=label)
             button.get_style_context().add_class("pill")
@@ -692,8 +741,15 @@ def run() -> int:
             footer.pack_start(button, True, True, 0)
 
         lifecycle = str(status.get("runtime", {}).get("lifecycle", "")).lower()
-        readable_state = "prêt" if lifecycle in {"ok", "ready", "active", "running"} else "disponible"
-        state_line = Gtk.Label(label=f"{meta.get('title', key.title())} · {readable_state}", xalign=0)
+        readable_state = t("prêt", "ready") if lifecycle in {"ok", "ready", "active", "running"} else t("disponible", "available")
+        if key == "atlas":
+            summary = atlas_runtime.get("summary", {}) if isinstance(atlas_runtime.get("summary"), dict) else {}
+            req = int(summary.get("required", 0) or 0)
+            missing = int(summary.get("required_missing", 0) or 0)
+            state_suffix = t(f"requirements {req - missing}/{req}", f"requirements {req - missing}/{req}")
+        else:
+            state_suffix = readable_state
+        state_line = Gtk.Label(label=f"{meta.get('title', key.title())} · {state_suffix}", xalign=0)
         state_line.get_style_context().add_class("hidden-note")
         root.pack_end(state_line, False, False, 0)
 
@@ -716,7 +772,7 @@ def run() -> int:
         "intelligence": "IA",
     }
     for index, name in enumerate(("kernel", "runtime", "experience", "intelligence")):
-        title_text = name.title() if key == "windows" else layer_titles.get(name, name.title())
+        title_text = name.title() if key == "atlas" else layer_titles.get(name, name.title())
         grid.attach(info_card(Gtk, title_text, compact(layers.get(name))), index % 2, index // 2, 1, 1)
 
     runtime_summary = runtime.get("resource_plan", {})
@@ -769,14 +825,15 @@ def run() -> int:
         f"objects: {bridge_overview.get('object_count', 0) if isinstance(bridge_overview, dict) else 0}",
         f"recent: {len(session.get('recent_objects', []) if isinstance(session.get('recent_objects'), list) else [])}",
     ], 4)), 1, 6, 1, 1)
-    if key == "windows":
-        grid.attach(info_card(Gtk, "Windows Runtime", compact([
-            f"profile: {windows_runtime.get('active_profile', 'unknown')}",
-            f"VM: {windows_runtime.get('vm_state', 'unknown')}",
-            f"console: {windows_runtime.get('console', 'unknown')}",
-            f"sync: {str(windows_runtime.get('synchronized', False)).lower()}",
-            f"next: {windows_runtime.get('recommended_action', 'none')}",
-            "status: seven windows bridge-status",
+    if key == "atlas":
+        summary = atlas_runtime.get("summary", {}) if isinstance(atlas_runtime.get("summary"), dict) else {}
+        missing = atlas_runtime.get("missing", {}) if isinstance(atlas_runtime.get("missing"), dict) else {}
+        grid.attach(info_card(Gtk, t("État Atlas", "Atlas State"), compact([
+            f"ready: {str(summary.get('ready', False)).lower()}",
+            f"required: {summary.get('required', 0)}",
+            f"missing: {summary.get('required_missing', 0)}",
+            f"optional: {summary.get('optional', 0)}",
+            f"next: seven atlas install --yes",
         ], 5)), 0, 7, 2, 1)
     else:
         suggestions = bridge.get("suggestions", []) if isinstance(bridge, dict) else []

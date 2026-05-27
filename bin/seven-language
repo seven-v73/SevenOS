@@ -370,7 +370,7 @@ def doctor_payload() -> dict[str, object]:
     )
     profile_missing = []
     profiles_dir = host_home() / ".config/sevenos/profiles"
-    for profile in ("equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"):
+    for profile in ("equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"):
         path = profiles_dir / profile / "sevenos/language.env"
         if not file_contains(path, "export SEVENOS_LANGUAGE="):
             profile_missing.append(profile)

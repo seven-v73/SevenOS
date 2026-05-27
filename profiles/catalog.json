@@ -16,8 +16,8 @@
     "forge": "Forge DevOps",
     "shield": "Shield Cybersecurity",
     "studio": "Studio Creator",
-    "windows": "Windows",
-    "pulse": "Pulse Gaming"
+    "pulse": "Pulse Gaming",
+    "atlas": "Atlas Explorer"
   },
   "state_files": {
     "active_env": "~/.config/sevenos/profile.env",
@@ -99,7 +99,7 @@
         "no security scans by default",
         "no cloud daemons by default",
         "no gaming overlays by default",
-        "no Windows VM by default"
+        "no foreign OS VM by default"
       ],
       "independence": {
         "standalone": true,
@@ -107,7 +107,7 @@
           "forge",
           "shield",
           "studio",
-          "windows",
+          "atlas",
           "pulse",
           "baobab"
         ],
@@ -208,7 +208,7 @@
           "forge",
           "shield",
           "studio",
-          "windows",
+          "atlas",
           "pulse"
         ],
         "composition_policy": "must stay culture-first; dev, cloud, security or gaming tools are added only by explicit composition"
@@ -309,7 +309,7 @@
         "does_not_require": [
           "shield",
           "studio",
-          "windows",
+          "atlas",
           "pulse",
           "baobab"
         ],
@@ -435,7 +435,7 @@
         "does_not_require": [
           "forge",
           "studio",
-          "windows",
+          "atlas",
           "pulse",
           "baobab"
         ]
@@ -568,7 +568,7 @@
         "does_not_require": [
           "forge",
           "shield",
-          "windows",
+          "atlas",
           "pulse",
           "baobab"
         ]
@@ -589,74 +589,74 @@
         "runtime": "seven runtime plan studio"
       }
     },
-    "windows": {
-      "title": "Windows",
-      "role": "Windows applications and full Windows when needed",
-      "target": "windows",
-      "domain": "windows compatibility",
-      "purpose": "A guided Windows space for Windows apps, shared folders and full Windows only when an app needs it.",
+    "atlas": {
+      "title": "Atlas Explorer",
+      "role": "Research, maps, documents and knowledge navigation mini OS",
+      "target": "atlas",
+      "domain": "exploration, documents, maps, research and personal knowledge",
+      "purpose": "A SevenOS mini OS for exploring the world, organizing documents, reading maps, managing PDFs, planning trips, collecting references and turning scattered information into navigable knowledge.",
       "mini_os": true,
       "layers": {
         "kernel": [
-          "KVM and libvirt readiness",
-          "VM CPU/RAM reservation",
-          "foreground compatibility scheduling"
+          "quiet foreground scheduling for reading and research",
+          "battery-aware map/document sessions",
+          "responsive search and indexing without noisy background work"
         ],
         "runtime": [
-          "QEMU/KVM and VirtIO",
-          "official Windows media provisioning",
-          "local qcow2 image build",
-          "Windows VM lifecycle",
-          "shared folders",
-          "Wine and Bottles fallback"
+          "PDF, ebook, map and archive tools",
+          "OCR, metadata, tagging and document conversion helpers",
+          "local knowledge folders, notebooks and reference collections",
+          "offline-first map and travel utilities when available"
         ],
         "experience": [
-          "guided Windows assistant",
-          "Windows app launcher",
-          "snapshot and recovery flow"
+          "Prism map of places, documents and collections",
+          "calm reader/research interface",
+          "document preview, citation and location-aware organization",
+          "soft exploratory visual identity"
         ],
         "intelligence": [
-          "legal source guidance",
-          "Windows media readiness",
-          "compatibility diagnosis",
-          "engine selection",
-          "Office and installer guidance",
-          "VM repair suggestions"
+          "research summarization and source organization",
+          "travel/document checklist suggestions",
+          "local knowledge retrieval and citation-aware assistance",
+          "Atlas route guidance between places, files and notes"
         ]
       },
       "package_files": [
-        "scripts/packages-windows.txt"
+        "scripts/packages-atlas.txt"
       ],
       "optional_package_files": [
-        "scripts/packages-windows-aur.txt"
+        "scripts/packages-atlas-optional.txt",
+        "scripts/packages-atlas-aur.txt"
       ],
       "waybar_modules": [
         "profile",
         "spotlight",
+        "media",
         "wifi",
         "bluetooth",
         "audio",
         "battery",
         "ai"
       ],
-      "runtime_slice": "seven-windows.slice",
+      "runtime_slice": "seven-atlas.slice",
       "capabilities": [
-        "windows-vm",
-        "official-media-provisioning",
-        "quickget-bridge",
-        "local-qcow2-build",
-        "autounattend-template",
-        "virtio",
-        "snapshots",
-        "windows-app-routing",
-        "wine",
-        "bottles",
-        "shared-folders"
+        "document-research",
+        "pdf-and-ebook-reading",
+        "maps-and-navigation",
+        "ocr",
+        "archives",
+        "knowledge-collections",
+        "offline-reference",
+        "travel-planning",
+        "citation-workflow",
+        "local-search"
       ],
       "anti_nuisance": [
-        "VM starts only when Windows Bridge is explicitly activated or opened",
-        "no Wine prefix mutation without confirmation",
-        "no gaming tuning unless Pulse is composed"
+        "no dev daemons unless Forge is composed",
+        "no security scans unless Shield is composed",
+        "no render stack unless Studio is composed",
+        "no gaming overlays unless Pulse is composed",
+        "no external sync without explicit confirmation"
       ],
       "independence": {
         "standalone": true,
@@ -666,22 +666,23 @@
           "studio",
           "pulse",
           "baobab"
-        ]
+        ],
+        "composition_policy": "Atlas owns exploration, documents and knowledge navigation; it can borrow Forge automation, Studio media or Baobab heritage only by explicit composition."
       },
       "resource_intent": {
-        "cpu": "foreground-vm",
-        "ram": "vm-reserve",
-        "gpu": "compatibility",
-        "io": "disk-image",
-        "network": "bridged-or-nat"
+        "cpu": "quiet-indexing-and-reading",
+        "ram": "document-cache",
+        "gpu": "map-and-preview-light",
+        "io": "archive-and-search-friendly",
+        "network": "research-qos"
       },
-      "priority": 200,
-      "center_command": "seven-mini-os-center windows",
+      "priority": 175,
+      "center_command": "seven-mini-os-center atlas",
       "profile_surfaces": {
-        "center": "seven-mini-os-center windows",
-        "workspace": "seven profile open windows",
-        "apps": "seven profile apps windows",
-        "runtime": "seven runtime plan windows"
+        "center": "seven-mini-os-center atlas",
+        "workspace": "seven profile open atlas",
+        "apps": "seven profile apps atlas",
+        "runtime": "seven runtime plan atlas"
       }
     },
     "pulse": {
@@ -746,7 +747,7 @@
         "no dev daemons",
         "no background scans",
         "no cloud services",
-        "no Windows VM unless Windows Bridge is composed"
+        "no foreign OS VM dependency"
       ],
       "independence": {
         "standalone": true,
@@ -754,7 +755,7 @@
           "forge",
           "shield",
           "studio",
-          "windows",
+          "atlas",
           "baobab"
         ]
       },

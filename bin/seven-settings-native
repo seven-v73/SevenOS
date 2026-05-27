@@ -602,7 +602,7 @@ def profile_catalog() -> dict:
             "forge": "Forge DevOps",
             "shield": "Shield Cybersecurity",
             "studio": "Studio Creator",
-            "windows": "Windows SevenOS",
+            "atlas": "Atlas SevenOS",
             "pulse": "Pulse Gaming",
         },
         "profiles": {},
@@ -2370,11 +2370,11 @@ def run(initial_page: str = "overview") -> int:
         profile_defs = catalog.get("profiles", {}) if isinstance(catalog.get("profiles"), dict) else {}
         current_key = active_profile_key()
         rows: list[tuple[str, str, str, str | None]] = []
-        for key in ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]:
+        for key in ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"]:
             data = profile_defs.get(key, {}) if isinstance(profile_defs.get(key), dict) else {}
             rows.append(
                 (
-                    {"equinox": "󰐃", "baobab": "󰣇", "forge": "󰅩", "shield": "󰒃", "studio": "󰏗", "windows": "󰖳", "pulse": "󰊴"}.get(key, "󰐃"),
+                    {"equinox": "󰐃", "baobab": "󰣇", "forge": "󰅩", "shield": "󰒃", "studio": "󰏗", "atlas": "󰙅", "pulse": "󰊴"}.get(key, "󰐃"),
                     str(data.get("title") or key.title()),
                     str(data.get("purpose") or tr("settings.profile_space", "Espace SevenOS")),
                     tr("settings.active", "Actif") if key == current_key else None,
@@ -2579,7 +2579,7 @@ def run(initial_page: str = "overview") -> int:
         "seven update",
         "seven profile requirements",
         "seven post-install",
-        "seven windows",
+        "seven atlas",
         "seven recovery",
         "seven repair",
         "seven-waybar repair",
@@ -3145,10 +3145,10 @@ def run(initial_page: str = "overview") -> int:
                     tr("settings.action.health.note", "SevenOS regarde les points essentiels et te donne un résultat simple."),
                     [tr("settings.step.inspect", "Observer"), tr("settings.step.verify", "Vérifier"), tr("settings.step.report", "Résumer")],
                 )
-            if stripped.startswith("seven windows"):
+            if stripped.startswith("seven atlas"):
                 return (
-                    tr("settings.action.windows.title", "Windows dans SevenOS"),
-                    tr("settings.action.windows.note", "SevenOS prépare ou vérifie l’espace Windows sans étapes manuelles."),
+                    tr("settings.action.atlas.title", "Atlas Explorer"),
+                    tr("settings.action.atlas.note", "SevenOS vérifie Atlas pour documents, cartes, OCR et références."),
                     [tr("settings.step.prepare", "Préparer"), tr("settings.step.check", "Vérifier"), tr("settings.step.report", "Résumer")],
                 )
             if stripped.startswith("seven recovery"):
@@ -3609,8 +3609,8 @@ def run(initial_page: str = "overview") -> int:
                 return tr("settings.action.post_install.title", "Vérification post-installation")
             if stripped.startswith("seven repair") or "seven-waybar repair" in stripped:
                 return tr("settings.action.repair.title", "Réparation de l’interface")
-            if stripped.startswith("seven windows"):
-                return tr("settings.action.windows.title", "Windows dans SevenOS")
+            if stripped.startswith("seven atlas"):
+                return tr("settings.action.atlas.title", "Atlas Explorer")
             if stripped.startswith("seven recovery"):
                 return tr("settings.action.backup.title", "Sauvegarde et restauration")
             if stripped.startswith("seven profile activate"):
@@ -4480,7 +4480,7 @@ def run(initial_page: str = "overview") -> int:
         profile_combo = Gtk.ComboBoxText()
         catalog = profile_catalog()
         naming = catalog.get("profile_naming", {}) if isinstance(catalog.get("profile_naming"), dict) else {}
-        profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+        profile_order = ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"]
         active_key = active_profile_key()
         active_index = 0
         for index, key in enumerate(profile_order):
@@ -4772,7 +4772,7 @@ def run(initial_page: str = "overview") -> int:
             ("󰩂", tr("settings.jump.maintenance", "Entretien"), "maintenance"),
             ("◈", tr("settings.jump.prism", "Prism"), "prism"),
             ("󰆴", tr("settings.jump.removal", "Suppression"), "removal"),
-            ("󰖳", tr("settings.jump.windows", "Windows"), "windows"),
+            ("󰙅", tr("settings.jump.atlas", "Atlas"), "atlas"),
             ("󰁯", tr("settings.jump.backup", "Backup"), "backup"),
             ("󰜉", tr("settings.jump.motion", "Animations"), "motion"),
         ]
@@ -5536,7 +5536,7 @@ def run(initial_page: str = "overview") -> int:
             "forge": "󰅩",
             "shield": "󰒃",
             "studio": "󰏗",
-            "windows": "󰖳",
+            "atlas": "󰙅",
             "pulse": "󰊴",
             "equinox": "󰐃",
         }
@@ -5582,7 +5582,7 @@ def run(initial_page: str = "overview") -> int:
             "equinox": tr("settings.space.equinox.note", "Bureau quotidien, fichiers, apps et réglages."),
             "baobab": tr("settings.space.baobab.note", "Lecture, collections, récits et documents culturels."),
             "studio": tr("settings.space.studio.note", "Images, vidéos, captures et fichiers créatifs."),
-            "windows": tr("settings.space.windows.note", "Applications Windows et dossiers partagés."),
+            "atlas": tr("settings.space.atlas.note", "Documents, cartes, OCR, références et voyages."),
             "pulse": tr("settings.space.pulse.note", "Jeux, captures et confort de jeu."),
             "forge": tr("settings.space.forge.note", "Outils de développement avancés."),
             "shield": tr("settings.space.shield.note", "Outils de vérification et protection avancés."),
@@ -5590,7 +5590,7 @@ def run(initial_page: str = "overview") -> int:
         intent_presets = [
             ("󰏗", tr("settings.intent.create", "Créer"), ["studio"]),
             ("󰊴", tr("settings.intent.play", "Jouer"), ["pulse"]),
-            ("󰖳", tr("settings.intent.windows", "Ouvrir Windows"), ["windows"]),
+            ("󰙅", tr("settings.intent.atlas", "Explorer et organiser"), ["atlas"]),
             ("󰣇", tr("settings.intent.culture", "Lire et collecter"), ["baobab"]),
         ]
 
@@ -5612,7 +5612,7 @@ def run(initial_page: str = "overview") -> int:
                 )
             )
 
-        order = ["forge", "shield", "studio", "baobab", "pulse", "windows", "equinox"]
+        order = ["forge", "shield", "studio", "baobab", "pulse", "atlas", "equinox"]
         for key in order:
             if key == current_key:
                 continue
@@ -5987,7 +5987,7 @@ def run(initial_page: str = "overview") -> int:
         except Exception:
             profile_theme_payload = {}
         profile_themes = profile_theme_payload.get("profiles", {}) if isinstance(profile_theme_payload.get("profiles"), dict) else {}
-        profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+        profile_order = ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"]
         selected = {"mode": theme_mode, "profile": active_profile_key()}
 
         def profile_override(key: str) -> dict:
@@ -6250,7 +6250,7 @@ def run(initial_page: str = "overview") -> int:
     initial_page = initial_page if initial_page in pages else "overview"
 
     settings_search_index = {
-        "general": "general language langue region région formats about a propos clavier keyboard essential essentiel mini os collaboration capabilities capacités injection fonctionnalités entretien maintenance vérifier installer supprimer suppression désinstaller desinstaller paquets update mise à jour réparer windows bridge sauvegarde backup animations motion usage quotidien développement création sécurité gaming culture",
+        "general": "general language langue region région formats about a propos clavier keyboard essential essentiel mini os collaboration capabilities capacités injection fonctionnalités entretien maintenance vérifier installer supprimer suppression désinstaller desinstaller paquets update mise à jour réparer atlas bridge sauvegarde backup animations motion usage quotidien développement création sécurité gaming culture",
         "prism": "prism sevencor sevenDecor window controls smart window pastilles fenêtre rouge jaune vert electric électrique cible target lock flottant tiling maximize fullscreen",
         "appearance": "appearance theme thème dark light glass dock terminal visual design",
         "wallpaper": "wallpaper fond écran hyprpaper matugen wallust image collection dynamique clair sombre équilibré sevenos",
@@ -6260,7 +6260,7 @@ def run(initial_page: str = "overview") -> int:
         "keyboard": "keyboard clavier layout raccourcis shortcuts alt shift",
         "fonts": "fonts police typography typographie import sf pro mono",
         "security": "security sécurité shield firewall ufw sandbox apparmor",
-        "profiles": "profile profil mini os equinox forge devops baobab shield studio pulse windows composition compare comparer aliases alias migration horizon",
+        "profiles": "profile profil mini os equinox forge devops baobab shield studio pulse atlas composition compare comparer aliases alias migration horizon",
         "power": "power batterie battery sleep lock energy énergie hypridle hyprlock",
         "defaults": "default apps applications par défaut navigateur browser terminal files fichiers reader pdf epub media image mail archive",
         "apps": "apps store app applications flatpak launchpad installed updates supprimer suppression désinstaller desinstaller paquets",
@@ -6447,7 +6447,7 @@ def run(initial_page: str = "overview") -> int:
                 action_button(tr("settings.check", "Vérifier"), "seven-pulse doctor"),
                 action_button(tr("settings.prepare", "Préparer"), "seven-pulse install"),
             ]),
-            settings_row("󰖳", tr("settings.usage.windows", "Windows"), tr("settings.usage.windows.note", "Prépare les applications Windows, l’assistant et les dossiers partagés."), [action_button(tr("settings.activate", "Activer"), "seven profile activate windows")]),
+            settings_row("󰙅", tr("settings.usage.atlas", "Atlas"), tr("settings.usage.atlas.note", "Ouvre Atlas pour documents, cartes, OCR, références et voyages."), [action_button(tr("settings.activate", "Activer"), "seven profile activate atlas")]),
             settings_row("󰣇", tr("settings.usage.culture", "Culture"), tr("settings.usage.culture.note", "Ouvre l’expérience Baobab pour patrimoine, lecture, langues, récits et médias culturels."), [action_button(tr("settings.activate", "Activer"), "seven profile activate baobab")]),
         ],
     )
@@ -6478,13 +6478,18 @@ def run(initial_page: str = "overview") -> int:
             settings_row("󰄬", tr("settings.package_limits", "Limites d’installation"), tr("settings.package_limits.note", "Voir où les paquets seront installés ou supprimés selon l’espace choisi."), [action_button(tr("settings.status", "Voir"), "sevenpkg profile-limits")]),
         ],
     )
-    general_targets["windows"] = settings_group(
+    general_targets["atlas"] = settings_group(
         general,
-        tr("settings.windows_bridge_setup", "Windows dans SevenOS"),
+        tr("settings.atlas_setup", "Atlas Explorer"),
         [
-            settings_row("󰖳", tr("settings.open_windows_panel", "Ouvrir Windows"), tr("settings.open_windows_panel.note", "Ouvre le panneau Windows avec apps, dossiers, réparation et préparation guidée."), [action_button(tr("settings.open", "Ouvrir"), "seven windows open")]),
-            settings_row("󰣇", tr("settings.open_windows_apps", "Applications Windows"), tr("settings.open_windows_apps.note", "Ouvre les applications Windows sans afficher les étapes techniques."), [action_button(tr("settings.open", "Ouvrir"), "seven windows apps")]),
-            settings_row("󰄬", tr("settings.repair_windows", "Réparer Windows"), tr("settings.repair_windows.note", "Vérifie Windows et corrige les points connus quand c’est possible."), [action_button(tr("settings.repair", "Réparer"), "seven windows repair")]),
+            settings_row("󰙅", tr("settings.open_atlas_panel", "Ouvrir Atlas"), tr("settings.open_atlas_panel.note", "Ouvre le centre Atlas avec readiness, documents, cartes, références et actions rapides."), [action_button(tr("settings.open", "Ouvrir"), "seven-mini-os-center atlas")]),
+            settings_row("󰈙", tr("settings.open_atlas_apps", "Applications Atlas"), tr("settings.open_atlas_apps.note", "Ouvre les lecteurs, cartes, OCR, ebooks et outils de recherche liés à Atlas."), [action_button(tr("settings.open", "Ouvrir"), "seven profile apps atlas")]),
+            settings_row("󰉋", tr("settings.open_atlas_documents", "Documents Atlas"), tr("settings.open_atlas_documents.note", "Ouvre les PDF, ebooks, notes et documents rangés dans Atlas."), [action_button(tr("settings.open", "Ouvrir"), "seven profile open-folder atlas Documents")]),
+            settings_row("󰆋", tr("settings.open_atlas_maps", "Cartes et trajets"), tr("settings.open_atlas_maps.note", "Ouvre l’espace Maps d’Atlas pour lieux, trajets, GPX et exploration locale."), [action_button(tr("settings.open", "Ouvrir"), "seven profile open-folder atlas Maps")]),
+            settings_row("󰄬", tr("settings.repair_atlas", "Requirements Atlas"), tr("settings.repair_atlas.note", "Vérifie ou installe les paquets Atlas sans mélanger les autres mini OS."), [
+                action_button(tr("settings.status", "Voir"), "seven atlas status"),
+                action_button(tr("settings.install", "Installer"), "seven atlas install --yes"),
+            ]),
         ],
     )
     general_targets["backup"] = settings_group(
@@ -6768,7 +6773,7 @@ def run(initial_page: str = "overview") -> int:
         "forge": "󰅩",
         "shield": "󰒃",
         "studio": "󰏗",
-        "windows": "󰖳",
+        "atlas": "󰙅",
         "pulse": "󰊴",
     }
     profile_notes = {
@@ -6777,7 +6782,7 @@ def run(initial_page: str = "overview") -> int:
         "forge": tr("settings.profile.forge.note", "Espace de développement pour code, projets, services locaux et livraisons."),
         "shield": tr("settings.profile.shield.note", "Espace sécurité pour vérifications autorisées, protection et rapports."),
         "studio": tr("settings.profile.studio.note", "Espace création pour design, vidéo, audio, 3D, capture et assets."),
-        "windows": tr("settings.profile.windows.note", "Espace Windows pour les applications compatibles et les dossiers partagés."),
+        "atlas": tr("settings.profile.atlas.note", "Espace d’exploration pour documents, cartes, OCR, références et voyages."),
         "pulse": tr("settings.profile.pulse.note", "Espace gaming pour jeux, manettes, performance et captures."),
     }
 
@@ -6818,7 +6823,7 @@ def run(initial_page: str = "overview") -> int:
     )
     section(profiles, tr("settings.mini_os_profiles", "Mini OS"))
     profile_rows = []
-    profile_order = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+    profile_order = ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"]
     for key in profile_order:
         data = profile_defs.get(key, {}) if isinstance(profile_defs.get(key), dict) else {}
         title = str(data.get("title") or naming.get(key) or key.title())

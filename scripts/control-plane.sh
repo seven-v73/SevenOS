@@ -74,8 +74,8 @@ shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"
 shield_plan = command_json([os.path.join(ROOT, "security/shield-status.sh"), "plan", "--json"], {"next": []})
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}, "recommendations": []})
 server_plan = command_json([os.path.join(ROOT, "server/seven-server.sh"), "plan", "--json"], {"next": []})
-windows = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "status", "--json"], {"ready": False, "mode": "setup-needed"})
-windows_plan = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "plan", "--json"], {"next": []})
+atlas = command_json([os.path.join(ROOT, "bin/seven"), "atlas", "status", "--json"], {"state": "unknown", "missing_required": []})
+atlas_plan = command_json([os.path.join(ROOT, "bin/seven-profile-requirements"), "status", "atlas", "--json"], {"next": []})
 installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
 installer_plan = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "plan", "--json"], {"next": []})
 packages_plan = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"next": []})
@@ -192,13 +192,13 @@ for item in daily.get("warnings", []):
 for rec in readiness.get("recommendations", []):
     add("readiness", "medium", "Improve Readiness", rec.get("command", "seven readiness"), rec.get("reason", "Improve SevenOS readiness"), "changes")
 
-for item in windows_plan.get("next", []):
+for item in atlas_plan.get("next", []):
     add(
-        "windows",
+        "atlas",
         item.get("severity", "medium"),
-        item.get("title", "Complete Windows Mode"),
-        item.get("command", "seven windows plan"),
-        item.get("reason", "Improve Windows compatibility"),
+        item.get("title", "Complete Atlas Explorer"),
+        item.get("command", "seven atlas status"),
+        item.get("reason", "Improve Atlas Explorer readiness"),
         item.get("impact", "changes"),
     )
 
@@ -296,7 +296,7 @@ scores = {
     "experience": experience.get("percent", 0),
     "shield": shield.get("percent", 0),
     "server": 100 if bool(server.get("deployment_stack_ready")) else 75 if bool(server.get("runtime_ready")) else 50 if server.get("service", {}).get("state") == "READY" else 0,
-    "windows": 100 if windows.get("ready") else 60 if windows.get("mode") == "vm-ready" else 0,
+    "atlas": 100 if not atlas.get("missing_required") else 70,
     "installer": 100 if installer.get("ready") else 60 if installer.get("mode") in ("tui-ready", "graphical") else 35,
     "b3": round((shield.get("percent", 0) * 0.45) + ((100 if bool(server.get("deployment_stack_ready")) else 75 if bool(server.get("runtime_ready")) else 60 if server.get("service", {}).get("state") == "READY" else 0) * 0.35) + ((100 if installer.get("ready") else 35) * 0.2)),
 }
@@ -316,7 +316,7 @@ cluster_score = 100 if not cluster_summary else round((cluster_summary.get("tool
 ecosystem_maturity = round(((active_modules + preview_modules * 0.85) / ecosystem_total) * 100)
 product_maturity = ecosystem_maturity_summary.get("average", ecosystem_maturity)
 scores["ecosystem"] = round((product_maturity * 0.35) + (store_score * 0.13) + (box_score * 0.13) + (cloud_score * 0.13) + (flow_score * 0.13) + (cluster_score * 0.13))
-overall = round((scores["readiness"] * 0.22) + (scores["experience"] * 0.22) + (scores["shield"] * 0.18) + (scores["server"] * 0.13) + (scores["windows"] * 0.13) + (scores["installer"] * 0.12))
+overall = round((scores["readiness"] * 0.22) + (scores["experience"] * 0.22) + (scores["shield"] * 0.18) + (scores["server"] * 0.13) + (scores["atlas"] * 0.13) + (scores["installer"] * 0.12))
 overall = round((overall * 0.85) + (scores["ecosystem"] * 0.15))
 
 for module in ecosystem_maturity_modules[:3]:

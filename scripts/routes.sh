@@ -205,12 +205,12 @@ routes = [
         "backend": "Shield contracts, firejail, tools, labs",
     },
     {
-        "intent": "windows-workflow",
-        "label": "Run Windows apps or VM",
-        "surface": "windows-bridge",
-        "action_id": "windows.status",
-        "command": "seven windows status",
-        "backend": "Wine, Bottles, libvirt, QEMU/KVM",
+        "intent": "atlas-workflow",
+        "label": "Explore documents, maps and OCR",
+        "surface": "atlas-explorer",
+        "action_id": "atlas.status",
+        "command": "seven atlas status",
+        "backend": "Atlas requirements, documents, maps, OCR",
     },
     {
         "intent": "repair-system",

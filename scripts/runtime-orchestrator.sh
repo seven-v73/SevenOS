@@ -182,13 +182,13 @@ CONFLICT_RULES = {
         "conflict": "GPU/media rendering and heavy security scans can create latency spikes",
         "resolution": "prioritize Studio media path; Shield stays audit-only unless user confirms deep scans",
     },
-    frozenset(("windows", "shield")): {
-        "conflict": "Windows compatibility needs permissive app bridges while Shield prefers isolation",
-        "resolution": "keep Windows prefix/VM usability; enable guarded network and explicit sandbox prompts",
+    frozenset(("atlas", "shield")): {
+        "conflict": "offline knowledge indexing and active security scans can compete for disk and CPU",
+        "resolution": "keep Atlas indexing low-priority; Shield scans stay explicit and event-driven",
     },
-    frozenset(("studio", "windows")): {
-        "conflict": "creative GPU workloads and Windows VM/Wine foreground workloads can both request high priority",
-        "resolution": "primary runtime owns GPU priority; secondary compatibility runs foreground-only when focused",
+    frozenset(("studio", "atlas")): {
+        "conflict": "creative media imports and Atlas OCR/indexing can both create disk pressure",
+        "resolution": "prioritize Studio foreground exports; Atlas pauses heavy indexing while media work is active",
     },
     frozenset(("pulse", "shield")): {
         "conflict": "low-latency gaming and active scans can create frame-time spikes",

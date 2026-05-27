@@ -129,14 +129,14 @@ CONTEXTS = {
         "signals": ["network-audit", "sandbox", "forensics"],
         "scheduler_group": "shield",
     },
-    "windows": {
-        "title": "Windows Mode",
-        "intent": "compatibility",
-        "profile": "windows",
-        "classes": ["virt-manager", "Bottles", "lutris"],
-        "processes": ["qemu-system-x86_64", "virt-manager", "wineserver", "wine", "bottles", "lutris"],
-        "signals": ["vm", "wine", "compatibility"],
-        "scheduler_group": "windows",
+    "atlas": {
+        "title": "Atlas Explorer",
+        "intent": "documents maps OCR and research",
+        "profile": "atlas",
+        "classes": ["evince", "foliate", "calibre", "marble", "org.gnome.Maps", "zathura"],
+        "processes": ["evince", "foliate", "calibre", "marble", "gnome-maps", "tesseract", "syncthing"],
+        "signals": ["documents", "maps", "ocr", "research"],
+        "scheduler_group": "atlas",
     },
     "devops": {
         "title": "Forge DevOps",

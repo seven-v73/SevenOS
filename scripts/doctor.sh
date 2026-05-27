@@ -24,9 +24,9 @@ for arg in "$@"; do
 SevenOS Doctor
 
 Usage:
-  seven doctor check [all|system|desktop|installer|ecosystem|windows] [--json]
+  seven doctor check [all|system|desktop|installer|ecosystem|atlas] [--json]
   seven doctor release [--json]
-  ./scripts/doctor.sh [all|system|desktop|installer|ecosystem|windows|release] [--json]
+  ./scripts/doctor.sh [all|system|desktop|installer|ecosystem|atlas|release] [--json]
 
 Seven Doctor is a human-facing quality gate. It reports what is ready, what is
 degraded, and which command should fix or guide each issue.
@@ -119,7 +119,7 @@ json_payload() {
   local arch_state pacman_state sudo_state memory_kb memory_gb virt_state uefi_state
   local swaync_state wlogout_state hypridle_state hyprlock_state hyprpaper_state hyprpicker_state hyprsunset_state matugen_state wallust_state glaze_state hyprsysteminfo_state waybar_state
   local waybar_unit notifications_unit idle_unit wallpaper_unit calamares_state archinstall_state system_repair_state
-  local installer_release windows_json ecosystem_json failed_json ufw_state ufw_detail profile_health_json profile_migration_json bridge_json
+  local installer_release atlas_json ecosystem_json failed_json ufw_state ufw_detail profile_health_json profile_migration_json bridge_json
 
   arch_state="$([[ -f /etc/arch-release ]] && printf OK || printf MISS)"
   pacman_state="$(command_state pacman)"
@@ -150,7 +150,7 @@ json_payload() {
   system_repair_state="$([[ -x "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/system-repair-required.sh" ]] && printf PENDING || printf OK)"
   archinstall_state="$(command_state archinstall)"
   installer_release="$("$ROOT_DIR/scripts/installer-stack.sh" release --json 2>/dev/null || printf '{}')"
-  windows_json="$("$ROOT_DIR/bin/seven-windows-assistant" status --json 2>/dev/null || printf '{}')"
+  atlas_json="$("$ROOT_DIR/bin/seven" atlas status --json 2>/dev/null || printf '{}')"
   ecosystem_json="$("$ROOT_DIR/scripts/ecosystem.sh" json 2>/dev/null || printf '{}')"
   profile_health_json="$("$ROOT_DIR/profiles/profile-manager.sh" health --json 2>/dev/null || printf '{}')"
   profile_migration_json="$("$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --json 2>/dev/null || printf '{}')"
@@ -166,7 +166,7 @@ json_payload() {
   GLAZE_STATE="$glaze_state" HYPRSYSTEMINFO_STATE="$hyprsysteminfo_state" WAYBAR_STATE="$waybar_state" \
   WAYBAR_UNIT="$waybar_unit" NOTIFICATIONS_UNIT="$notifications_unit" IDLE_UNIT="$idle_unit" WALLPAPER_UNIT="$wallpaper_unit" \
   CALAMARES_STATE="$calamares_state" ARCHINSTALL_STATE="$archinstall_state" INSTALLER_RELEASE="$installer_release" \
-  WINDOWS_JSON="$windows_json" ECOSYSTEM_JSON="$ecosystem_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" FAILED_JSON="$failed_json" UFW_STATE="$ufw_state" UFW_DETAIL="$ufw_detail" SYSTEM_REPAIR_STATE="$system_repair_state" \
+  ATLAS_JSON="$atlas_json" ECOSYSTEM_JSON="$ecosystem_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" FAILED_JSON="$failed_json" UFW_STATE="$ufw_state" UFW_DETAIL="$ufw_detail" SYSTEM_REPAIR_STATE="$system_repair_state" \
   python - <<'PY'
 import json
 import os
@@ -202,7 +202,7 @@ check("system", "pacman", env("PACMAN_STATE"), "Pacman", "Package manager availa
 check("system", "sudo", env("SUDO_STATE"), "Sudo", "Admin workflow availability.", "command -v sudo", "high")
 mem_state = "OK" if int(env("MEMORY_GB", "0")) >= 16 else "PART" if int(env("MEMORY_GB", "0")) >= 8 else "MISS"
 check("system", "memory", mem_state, "Memory", f"{env('MEMORY_GB')} GB RAM detected.", "free -h", "medium")
-check("system", "virtualization", env("VIRT_STATE"), "CPU virtualization", "Required for Windows VM mode.", "seven vm check", "medium")
+check("system", "virtualization", env("VIRT_STATE"), "CPU virtualization", "Optional for advanced VM workflows; not required by SevenOS mini OS identities.", "seven vm check", "low")
 check("system", "uefi", env("UEFI_STATE"), "UEFI boot", "Recommended for public install consistency.", "ls /sys/firmware/efi", "low")
 check("security", "ufw", env("UFW_STATE"), "Firewall status", env("UFW_DETAIL"), "seven shield enable", "high")
 
@@ -246,13 +246,9 @@ cal_detail = "Calamares runtime available." if cal_state == "OK" else f"Calamare
 check("installer", "calamares", cal_ready_state, "Graphical installer route", cal_detail, "seven installer graphical", "medium")
 check("installer", "release", "OK" if release_state in ("graphical-ready", "tui-release-ready") else "PART", "Installer release contract", release_state, "seven installer release", "high")
 
-windows = load("WINDOWS_JSON")
-check("windows", "vm-ready", "OK" if windows.get("vm_ready") else "PART", "Windows VM stack", "KVM/libvirt readiness.", "seven windows guide", "medium")
-vm_state = windows.get("windows_vm")
-vm_plan = windows.get("windows_vm_plan")
-vm_created_state = "OK" if vm_state in ("OK", "RUN") or vm_plan == "OK" else "PART"
-vm_detail = "Windows VM exists." if vm_state in ("OK", "RUN") else ("VM stack ready; guided ISO plan saved; user Windows ISO is still required for a real VM." if vm_plan == "OK" else "No VM is required to boot SevenOS, but daily Windows Bridge use needs one guided VM.")
-check("windows", "vm-created", vm_created_state, "Windows VM instance", vm_detail, "seven windows provision --yes", "medium")
+atlas = load("ATLAS_JSON")
+missing_atlas = atlas.get("missing_required") or []
+check("atlas", "requirements", "OK" if not missing_atlas else "PART", "Atlas Explorer requirements", f"{len(missing_atlas)} required package(s) missing.", "seven atlas install --yes", "medium")
 
 ecosystem = load("ECOSYSTEM_JSON")
 modules = ecosystem.get("modules", [])
@@ -291,7 +287,7 @@ PY
 }
 
 release_payload() {
-  local doctor_json git_dirty design_state identity_state smoke_state surfaces_state quality_state ux_state installer_json windows_json profile_json profile_health_json profile_migration_json bridge_json status_json
+  local doctor_json git_dirty design_state identity_state smoke_state surfaces_state quality_state ux_state installer_json atlas_json profile_json profile_health_json profile_migration_json bridge_json status_json
   doctor_json="$(SEVENOS_DOCTOR_AREA=all json_payload)"
   git_dirty="$(git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' ')"
   if timeout 30 "$ROOT_DIR/scripts/design-check.sh" >/dev/null 2>&1; then design_state="OK"; else design_state="PART"; fi
@@ -305,14 +301,14 @@ release_payload() {
     ux_state="SKIP"
   fi
   installer_json="$("$ROOT_DIR/scripts/installer-stack.sh" release --json 2>/dev/null || printf '{}')"
-  windows_json="$("$ROOT_DIR/bin/seven-windows-assistant" status --json 2>/dev/null || printf '{}')"
+  atlas_json="$("$ROOT_DIR/bin/seven" atlas status --json 2>/dev/null || printf '{}')"
   profile_json="$("$ROOT_DIR/profiles/profile-manager.sh" status --json 2>/dev/null || printf '[]')"
   profile_health_json="$("$ROOT_DIR/profiles/profile-manager.sh" health --json 2>/dev/null || printf '{}')"
   profile_migration_json="$("$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --json 2>/dev/null || printf '{}')"
   bridge_json="$("$ROOT_DIR/scripts/mini-os-relay.sh" doctor --json 2>/dev/null || printf '{}')"
   status_json="$("$ROOT_DIR/scripts/status.sh" --json 2>/dev/null || printf '{}')"
   DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" DESIGN_STATE="$design_state" IDENTITY_STATE="$identity_state" SMOKE_STATE="$smoke_state" SURFACES_STATE="$surfaces_state" QUALITY_STATE="$quality_state" UX_STATE="$ux_state" \
-  INSTALLER_JSON="$installer_json" WINDOWS_JSON="$windows_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" STATUS_JSON="$status_json" \
+  INSTALLER_JSON="$installer_json" ATLAS_JSON="$atlas_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" STATUS_JSON="$status_json" \
   python - <<'PY'
 import json
 import os
@@ -326,7 +322,7 @@ def load(name, fallback):
 
 doctor = load("DOCTOR_JSON", {})
 installer = load("INSTALLER_JSON", {})
-windows = load("WINDOWS_JSON", {})
+atlas = load("ATLAS_JSON", {})
 profiles = load("PROFILE_JSON", [])
 profile_health = load("PROFILE_HEALTH_JSON", {})
 profile_migration = load("PROFILE_MIGRATION_JSON", {})
@@ -358,8 +354,8 @@ add("ux-check", ux_state, "Deep UX coherence", ux_detail, "SEVENOS_RELEASE_DEEP=
 add("worktree-freeze", "OK" if git_dirty == 0 else "PART", "Release worktree freeze", f"{git_dirty} uncommitted path(s)", "git status --short", "high")
 installer_state = installer.get("state", "unknown")
 add("installer", "OK" if installer_state == "graphical-ready" else "PART", "Graphical installer release", installer_state, "seven installer release", "high")
-vm_state = windows.get("windows_vm", "MISS")
-add("windows-vm", "OK" if vm_state in {"OK", "RUN"} else "PART", "Windows Bridge VM", "VM exists." if vm_state in {"OK", "RUN"} else "Provisioning path is ready; official Windows media is still required.", "seven windows provision --yes", "medium")
+missing_atlas = atlas.get("missing_required") or []
+add("atlas", "OK" if not missing_atlas else "PART", "Atlas Explorer", f"{len(missing_atlas)} required package(s) missing", "seven atlas install --yes", "medium")
 profile_total = len([item for item in profiles if isinstance(item, dict)])
 profile_ready = sum(1 for item in profiles if isinstance(item, dict) and item.get("state") == "OK")
 alias_pending = int((profile_health.get("summary") or {}).get("alias_migration_pending", profile_migration.get("pending", 0)) or 0)
@@ -374,7 +370,7 @@ add("forge-docker", "OK" if docker.get("state") in {"OK", "QUIET", "PART"} else 
 rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 issues = [item for item in checks if item["state"] not in {"OK", "READY", "RUN", "SKIP"}]
 issues.sort(key=lambda item: (rank.get(item["severity"], 9), item["key"]))
-daily_scope_ignored = {"worktree-freeze", "installer", "windows-vm", "ux-check", "public-quality"}
+daily_scope_ignored = {"worktree-freeze", "installer", "ux-check", "public-quality"}
 public_ready = not issues
 daily_ready = not any(item["severity"] in {"critical", "high"} and item["key"] not in daily_scope_ignored for item in issues)
 print(json.dumps({

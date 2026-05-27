@@ -124,10 +124,10 @@ print(json.dumps({
 }, indent=2))
 PY
 pid_profile_runtime_manifests=$!
-json_to_file "$STATE_TMP/windows.json" "$ROOT_DIR/bin/seven-windows-assistant" status --json &
-pid_windows=$!
-json_to_file "$STATE_TMP/windows_plan.json" "$ROOT_DIR/bin/seven-windows-assistant" plan --json &
-pid_windows_plan=$!
+json_to_file "$STATE_TMP/atlas.json" "$ROOT_DIR/bin/seven" atlas status --json &
+pid_atlas=$!
+json_to_file "$STATE_TMP/atlas_plan.json" "$ROOT_DIR/bin/seven-profile-requirements" status atlas --json &
+pid_atlas_plan=$!
 json_to_file "$STATE_TMP/shield.json" "$ROOT_DIR/security/shield-status.sh" --json &
 pid_shield=$!
 json_to_file "$STATE_TMP/shield_plan.json" "$ROOT_DIR/security/shield-status.sh" plan --json &
@@ -231,7 +231,7 @@ pid_routes=$!
 json_to_file "$STATE_TMP/distribution.json" env SEVENOS_DISTRIBUTION_FAST=1 "$ROOT_DIR/scripts/distribution.sh" json &
 pid_distribution=$!
 
-wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_windows" "$pid_windows_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
+wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_atlas" "$pid_atlas_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
   "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_installer_portal" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_health" "$pid_support" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
   "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_shell_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
 
@@ -626,11 +626,11 @@ printf ','
 printf '"profile_runtime_manifests":'
 cat "$STATE_TMP/profile_runtime_manifests.json"
 printf ','
-printf '"windows":'
-cat "$STATE_TMP/windows.json"
+printf '"atlas":'
+cat "$STATE_TMP/atlas.json"
 printf ','
-printf '"windows_plan":'
-cat "$STATE_TMP/windows_plan.json"
+printf '"atlas_plan":'
+cat "$STATE_TMP/atlas_plan.json"
 printf ','
 printf '"shield":'
 cat "$STATE_TMP/shield.json"

@@ -88,7 +88,7 @@ PROFILE_PINNED = {
     "forge": ["files", "terminal", "browser", "apps", "hub", "settings"],
     "shield": ["shield", "terminal", "files", "browser", "spotlight", "hub"],
     "studio": ["files", "browser", "store", "recorder", "spotlight", "hub"],
-    "windows": ["windows", "files", "terminal", "browser", "settings", "hub"],
+    "atlas": ["atlas", "files", "terminal", "browser", "settings", "hub"],
     "pulse": ["browser", "terminal", "apps", "recorder", "settings", "hub"],
 }
 
@@ -106,7 +106,11 @@ CLASS_TILE_HINTS = {
     "nautilus": "files",
     "seven-reader-native": "reader",
     "seven-store-native": "store",
-    "virt-manager": "windows",
+    "evince": "atlas",
+    "foliate": "atlas",
+    "calibre": "atlas",
+    "marble": "atlas",
+    "org.gnome.maps": "atlas",
 }
 
 DEFAULT_CONFIG = {
@@ -256,7 +260,7 @@ def catalog() -> dict[str, dict[str, object]]:
         "reader": {"id": "reader", "title": "Reader", "icon": "x-office-document", "style": (0.72, 0.56, 0.34), "command": ["seven-reader"], "kind": "app"},
         "store": {"id": "store", "title": "Store", "icon": "system-software-install", "style": (0.42, 0.32, 0.90), "command": ["seven-store"], "kind": "app"},
         "shield": {"id": "shield", "title": "Shield", "icon": "security-high", "style": (0.04, 0.52, 0.45), "command": ["seven-shield-center-native"], "kind": "system"},
-        "windows": {"id": "windows", "title": "Windows", "icon": "computer", "style": (0.20, 0.46, 0.88), "command": ["seven-windows-assistant"], "kind": "system"},
+        "atlas": {"id": "atlas", "title": "Atlas", "icon": "folder-documents", "style": (0.35, 0.84, 0.72), "command": ["seven", "atlas", "open"], "kind": "system"},
         "recorder": {"id": "recorder", "title": "Recorder", "icon": "media-record", "style": (0.78, 0.22, 0.25), "command": ["seven-recorder"], "kind": "system"},
         "downloads": {"id": "downloads", "title": "Downloads", "icon": "folder-download", "style": (0.28, 0.60, 0.88), "command": ["xdg-open", str(Path.home() / "Downloads")], "kind": "folder"},
         "home": {"id": "home", "title": "Home", "icon": "user-home", "style": (0.30, 0.62, 0.88), "command": ["xdg-open", str(Path.home())], "kind": "folder"},

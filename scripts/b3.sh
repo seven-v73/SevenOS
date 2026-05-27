@@ -166,7 +166,7 @@ if not runtime_ready and service_state != "READY":
 if not runtime_ready:
     add("server.start", "backend", "high", "Start Seven Server runtime", "seven server start", "Expose SevenOS state to Hub and future shell surfaces.", "changes")
 
-profile_priority = {"shield": "critical", "studio": "high", "windows": "high", "baobab": "medium", "forge": "high", "pulse": "medium"}
+profile_priority = {"shield": "critical", "studio": "high", "atlas": "medium", "baobab": "medium", "forge": "high", "pulse": "medium"}
 profile_bootstrap_total = len(profile_status) if isinstance(profile_status, list) else 0
 profile_bootstrap_ok = sum(1 for item in profile_status if item.get("bootstrap_state") == "OK") if isinstance(profile_status, list) else 0
 if profile_bootstrap_total and profile_bootstrap_ok < profile_bootstrap_total:
@@ -273,7 +273,7 @@ preferred_commands = {
     "seven profile bootstrap forge": "seven profile bootstrap all",
     "seven profile bootstrap shield": "seven profile bootstrap all",
     "seven profile bootstrap studio": "seven profile bootstrap all",
-    "seven profile bootstrap windows": "seven profile bootstrap all",
+    "seven profile bootstrap atlas": "seven profile bootstrap all",
     "seven profile bootstrap forge": "seven profile bootstrap all",
 }
 available_commands = {item["command"] for item in actions}

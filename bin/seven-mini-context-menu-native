@@ -88,7 +88,7 @@ def cairo_palette(profile_key: str = "equinox") -> dict[str, tuple[float, float,
         "forge": (1.0, 0.78, 0.34, 0.78),
         "shield": (0.38, 1.0, 0.78, 0.78),
         "studio": (0.86, 0.62, 1.0, 0.78),
-        "windows": (0.50, 0.82, 1.0, 0.78),
+        "atlas": (0.35, 0.84, 0.72, 0.78),
         "pulse": (0.25, 0.86, 1.0, 0.78),
         "baobab": (0.62, 0.92, 0.48, 0.78),
     }
@@ -129,7 +129,7 @@ def rows_for(key: str) -> list[tuple[str, str, str, str]]:
         "forge": [("Forge Terminal", "󰆍", t("Terminal Forge", "Forge terminal"), t("Shell projet", "Project shell")), ("Forge Logs", "󰑭", "Logs", t("Git récent", "Recent Git")), ("Forge Build", "󰒓", "Build", t("Compiler", "Compile")), ("Mini OS Center", "󰐃", t("Centre mini OS", "Mini OS center"), t("Détails", "Details"))],
         "shield": [("Shield Center", "󰒃", "Shield Center", t("Sécurité", "Security")), ("Shield Audit", "󰛵", t("Audit rapide", "Quick audit"), t("Contrôle", "Check")), ("Shield Sandbox", "󰞀", "Sandbox", t("Isoler", "Isolate")), ("Mini OS Center", "󰐃", t("Centre mini OS", "Mini OS center"), t("Détails", "Details"))],
         "studio": [("Studio Open", "󰏗", "Studio", t("Espace", "Space")), ("Studio Pictures", "󰋩", t("Images", "Pictures"), t("Ouvrir", "Open")), ("Studio Videos", "󰕧", t("Vidéos", "Videos"), t("Ouvrir", "Open")), ("Studio Recorder", "󰻂", t("Enregistrer", "Record"), t("Capture", "Capture"))],
-        "windows": [("Windows Guide", "󰖳", t("Assistant", "Assistant"), t("Guide", "Guide")), ("Windows Apps", "󰿭", t("Apps Windows", "Windows apps"), t("Lancer", "Launch")), ("Windows Folders", "󰉋", t("Dossiers", "Folders"), t("Partagés", "Shared")), ("Windows Repair", "󰁨", t("Réparer", "Repair"), t("Aide", "Help"))],
+        "atlas": [("Atlas Explorer", "󰙅", t("Atlas", "Atlas"), t("Centre", "Center")), ("Atlas Documents", "󰉋", t("Documents", "Documents"), t("PDF", "PDF")), ("Atlas Maps", "󰆋", t("Cartes", "Maps"), "GPX"), ("Atlas Apps", "󰿭", t("Apps Atlas", "Atlas apps"), t("Lancer", "Launch"))],
         "pulse": [("Pulse Open", "󰓅", "Pulse", t("Espace", "Space")), ("Pulse Games", "󰊴", t("Mes jeux", "My games"), t("Lancer", "Launch")), ("Pulse Captures", "󰹑", t("Captures", "Captures"), t("Ouvrir", "Open")), ("Pulse Recorder", "󰻂", t("Enregistrer", "Record"), t("Capture", "Capture"))],
         "baobab": [("Baobab Open", "󰔱", "Baobab", t("Espace", "Space")), ("Baobab Collections", "󰉋", t("Collections", "Collections"), t("Ouvrir", "Open")), ("Baobab Reader", "󰈙", t("Lire", "Read"), t("Lecteur", "Reader")), ("Baobab Culture", "󰐅", "Culture", t("Accueil", "Home"))],
     }

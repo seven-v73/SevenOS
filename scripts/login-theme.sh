@@ -67,7 +67,7 @@ PY
 )"
   fi
   case "$key" in
-    equinox|baobab|forge|shield|studio|windows|pulse) printf '%s\n' "$key" ;;
+    equinox|baobab|forge|shield|studio|atlas|pulse) printf '%s\n' "$key" ;;
     *) printf 'equinox\n' ;;
   esac
 }

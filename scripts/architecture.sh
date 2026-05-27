@@ -40,7 +40,7 @@ layers() {
   printf '  %-22s %s\n' "Service Layer" "seven-session, seven-server, seven-deploy, systemd"
   printf '  %-22s %s\n' "UI Layer" "Hyprland, Waybar, Rofi, Kitty, SwayNC, Hyprlock, Wlogout, Seven Hub, Seven Files, Tauri GUI"
   printf '  %-22s %s\n' "Security Layer" "hardening, cyber audit, cyber lab, sandboxing"
-  printf '  %-22s %s\n' "Compatibility Layer" "Wine, Bottles, Lutris, KVM, Windows Mode"
+  printf '  %-22s %s\n' "Explorer Layer" "Atlas, documents, maps, OCR and references"
   printf '  %-22s %s\n' "Deployment Layer" "Forge DevOps, local API, deploy planner"
   printf '  %-22s %s\n' "Identity Layer" "branding, palette, vocabulary, wallpaper, icons"
   printf '  %-22s %s\n' "Installer Layer" "archiso, install planner, generated script"
@@ -51,7 +51,7 @@ map() {
   printf '========================\n\n'
   printf 'Product problem:\n'
   printf '  Linux is powerful but fragmented. SevenOS unifies daily desktop, dev,\n'
-  printf '  cyber, creation, Windows compatibility and deployment into one system.\n\n'
+  printf '  cyber, creation, Atlas exploration and deployment into one system.\n\n'
   printf 'Control plane:\n'
   printf '  User -> Seven Hub / CLI -> seven -> profiles/scripts/services -> system\n\n'
   printf 'Core entrypoints:\n'
@@ -455,7 +455,7 @@ doctor() {
     "scripts/packages-base.txt" \
     "sevenpkg/metapackages.json" \
     "security/hardening.sh" \
-    "vm/windows-mode.sh" \
+    "profiles/atlas.sh" \
     "installer/plan.sh" \
     "archiso/README.md"; do
     if [[ -s "$ROOT_DIR/$path" ]]; then

@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Windows SevenOS
-Comment=Open Windows applications, folders and full Windows from SevenOS
-Exec=seven windows open
-Icon=computer
-Terminal=false
-Categories=Utility;
-StartupNotify=true

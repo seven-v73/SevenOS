@@ -529,7 +529,7 @@ class SevenStore(Gtk.Application):
             "forge": "applications-development",
             "shield": "security-high",
             "studio": "applications-graphics",
-            "windows": "computer",
+            "atlas": "folder-documents",
             "pulse": "applications-games",
             "baobab": "accessories-dictionary",
         }
@@ -721,7 +721,7 @@ class SevenStore(Gtk.Application):
             "forge": [(self.tx("Ship faster", "Livrer plus vite"), self.tx("Editors, containers and project tooling.", "Éditeurs, containers et outils projet."), "code docker git", "applications-development")],
             "shield": [(self.tx("Authorized audit", "Audit autorisé"), self.tx("Security tools with clear boundaries.", "Outils sécurité avec limites claires."), "wireshark nmap forensic", "security-high")],
             "studio": [(self.tx("Creator desk", "Atelier création"), self.tx("Design, video, audio and capture apps.", "Design, vidéo, audio et capture."), "design video audio obs", "applications-graphics")],
-            "windows": [(self.tx("Bridge ready", "Pont prêt"), self.tx("Windows compatibility and VM-first workflows.", "Compatibilité Windows et workflows VM."), "windows bridge bottles wine", "computer")],
+            "atlas": [(self.tx("Explore clearly", "Explorer clairement"), self.tx("Documents, maps, OCR and references.", "Documents, cartes, OCR et références."), "documents maps ocr reference", "folder-documents")],
             "pulse": [(self.tx("Play smooth", "Jouer fluide"), self.tx("Launchers, overlays and performance helpers.", "Launchers, overlays et performance."), "steam lutris gamescope", "applications-games")],
             "baobab": [(self.tx("Culture library", "Bibliothèque culture"), self.tx("Reading, language and memory tools.", "Lecture, langues et mémoire."), "reader books language", "accessories-dictionary")],
         }
@@ -1182,8 +1182,8 @@ class SevenStore(Gtk.Application):
     def render_vm(self) -> None:
         self.set_view("vm")
         self.clear()
-        self.section("Windows Bridge Apps")
-        self.content.pack_start(self.card("VM-first compatibility", "Installers and Windows apps should be routed through SevenOS Windows Bridge instead of being mixed with Linux packages.", ["VM", "WINDOWS"]), False, False, 0)
+        self.section("Atlas Explorer Apps")
+        self.content.pack_start(self.card("Native exploration", "Documents, maps, OCR and reference tools stay inside Atlas as a native SevenOS mini OS.", ["ATLAS", "OCR"]), False, False, 0)
         self.content.show_all()
 
     def render_ai(self) -> None:
@@ -1346,7 +1346,7 @@ class SevenStore(Gtk.Application):
             "studio": ("design", "graphics", "video", "audio", "photo", "obs", "blender", "krita"),
             "pulse": ("steam", "lutris", "game", "proton", "mango", "gamescope"),
             "baobab": ("reader", "book", "language", "culture", "dictionary", "map"),
-            "windows": ("windows", "wine", "bottles", "vm", "bridge"),
+            "atlas": ("documents", "pdf", "ocr", "maps", "reference", "reader"),
         }.get(profile, ())
 
         def score(item: dict) -> tuple[int, int, int, int, str]:
@@ -1453,7 +1453,7 @@ class SevenStore(Gtk.Application):
         if source == "aur":
             return tr_text("Publisher: community build recipe · Install path: advanced review")
         if source == "vm":
-            return tr_text("Publisher: Windows Bridge · Install path: isolated VM workflow")
+            return tr_text("Publisher: legacy compatibility route · Install path: external app workflow")
         if source == "profile":
             return tr_text("Publisher: SevenOS profile catalog · Install path: mini OS bundle")
         return tr_text("Publisher: SevenStore local catalog · Install path: preview first")
@@ -1467,7 +1467,7 @@ class SevenStore(Gtk.Application):
         if source == "aur":
             return tr_text("Community source. Review the install plan before continuing.")
         if source == "vm":
-            return tr_text("Windows Bridge route. Keep Windows apps isolated from native packages.")
+            return tr_text("External compatibility route. Prefer native or Flatpak applications when possible.")
         if source == "profile":
             return tr_text("Mini OS profile bundle. Adds curated capabilities for this SevenOS mode.")
         return tr_text("SevenStore will show source and trust before installation.")

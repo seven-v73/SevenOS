@@ -97,7 +97,7 @@ def known_profiles(isolation: dict) -> set[str]:
     profiles.update((isolation.get("profile_containers") or {}).keys())
     profiles.update((isolation.get("profile_overlays") or {}).keys())
     profiles.update(isolation.get("selected_profiles") or [])
-    return profiles or {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
+    return profiles or {"equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"}
 
 
 def profile_roots(profile: str, isolation: dict) -> dict:
@@ -133,7 +133,7 @@ def default_workspace(profile: str) -> Path:
         "forge": "Forge",
         "shield": "ShieldLab",
         "studio": "Studio",
-        "windows": "WindowsMode",
+        "atlas": "Atlas",
         "pulse": "Pulse",
     }
     return HOST_HOME / mapping.get(profile, "SevenOS")
@@ -669,7 +669,7 @@ def main() -> int:
             "baobab": ["seven-reader", "foliate", "calibre", "ebook-viewer", "espeak-ng", "festival", "trans"],
             "shield": ["nmap", "wireshark", "tcpdump", "sqlmap", "zaproxy", "msfconsole", "aircrack-ng"],
             "studio": ["gimp", "krita", "inkscape", "blender", "kdenlive", "obs", "obs-studio", "audacity"],
-            "windows": ["wine", "winetricks", "lutris", "virt-manager", "virt-install"],
+            "atlas": ["evince", "foliate", "calibre", "marble", "tesseract"],
             "pulse": ["gamemoderun", "game-mode", "gamescope", "mangohud", "vulkaninfo", "lutris"],
         }.items():
             if command_name in commands:

@@ -106,7 +106,7 @@ event_count() {
 }
 
 status_json() {
-  local contracts api bus_schema daemon daemon_src daemon_bin daemon_json daemon_profiles daemon_shield daemon_server daemon_windows daemon_installer daemon_packages daemon_insights daemon_phase_gate bus_c bus_c_bin cc_state make_state service observer_service observer_unit rust cargo events state
+  local contracts api bus_schema daemon daemon_src daemon_bin daemon_json daemon_profiles daemon_shield daemon_server daemon_atlas daemon_installer daemon_packages daemon_insights daemon_phase_gate bus_c bus_c_bin cc_state make_state service observer_service observer_unit rust cargo events state
   contracts=0
   [[ "$(exec_state scripts/state.sh)" == OK ]] && contracts=$((contracts + 1))
   [[ "$(exec_state scripts/control-plane.sh)" == OK ]] && contracts=$((contracts + 1))
@@ -123,7 +123,7 @@ status_json() {
   daemon_profiles="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.daemon.profiles.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_shield="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.shield.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_server="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.server.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
-  daemon_windows="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.windows.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
+  daemon_atlas="$([[ -x "$ROOT_DIR/bin/seven" ]] && "$ROOT_DIR/bin/seven" atlas status --json >/dev/null 2>&1 && printf OK || printf MISS)"
   daemon_installer="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.installer.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_packages="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.packages-plan.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
   daemon_insights="$([[ -s "$ROOT_DIR/seven-core/daemon/src/main.rs" ]] && grep -q 'sevenos.insights.v1' "$ROOT_DIR/seven-core/daemon/src/main.rs" && printf OK || printf MISS)"
@@ -150,7 +150,7 @@ status_json() {
     state="RUNTIME_READY"
   fi
 
-  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_JSON_STATE="$daemon_json" DAEMON_PROFILES_STATE="$daemon_profiles" DAEMON_SHIELD_STATE="$daemon_shield" DAEMON_SERVER_STATE="$daemon_server" DAEMON_WINDOWS_STATE="$daemon_windows" DAEMON_INSTALLER_STATE="$daemon_installer" DAEMON_PACKAGES_STATE="$daemon_packages" DAEMON_INSIGHTS_STATE="$daemon_insights" DAEMON_PHASE_GATE_STATE="$daemon_phase_gate" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" OBSERVER_SERVICE_STATE="$observer_service" OBSERVER_UNIT_STATE="$observer_unit" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
+  CORE_STATE="$state" CONTRACTS="$contracts" API_STATE="$api" BUS_SCHEMA_STATE="$bus_schema" DAEMON_STATE="$daemon" DAEMON_SRC_STATE="$daemon_src" DAEMON_BIN_STATE="$daemon_bin" DAEMON_JSON_STATE="$daemon_json" DAEMON_PROFILES_STATE="$daemon_profiles" DAEMON_SHIELD_STATE="$daemon_shield" DAEMON_SERVER_STATE="$daemon_server" DAEMON_ATLAS_STATE="$daemon_atlas" DAEMON_INSTALLER_STATE="$daemon_installer" DAEMON_PACKAGES_STATE="$daemon_packages" DAEMON_INSIGHTS_STATE="$daemon_insights" DAEMON_PHASE_GATE_STATE="$daemon_phase_gate" BUS_C_STATE="$bus_c" BUS_C_BIN_STATE="$bus_c_bin" CC_STATE="$cc_state" MAKE_STATE="$make_state" DAEMON_SERVICE_STATE="$service" OBSERVER_SERVICE_STATE="$observer_service" OBSERVER_UNIT_STATE="$observer_unit" RUST_STATE="$rust" CARGO_STATE="$cargo" EVENT_COUNT="$events" EVENT_FILE="$EVENT_FILE" BUS_SCHEMA="$BUS_SCHEMA" python - <<'PY'
 import json
 import os
 
@@ -170,7 +170,7 @@ components = [
     {"key": "profile_engine", "title": "Rust profile inventory engine", "state": os.environ["DAEMON_PROFILES_STATE"], "detail": "seven-daemon profiles"},
     {"key": "shield_engine", "title": "Rust Shield posture engine", "state": os.environ["DAEMON_SHIELD_STATE"], "detail": "seven-daemon shield / shield-plan"},
     {"key": "server_engine", "title": "Rust Server readiness engine", "state": os.environ["DAEMON_SERVER_STATE"], "detail": "seven-daemon server / server-plan"},
-    {"key": "windows_engine", "title": "Rust Windows Mode readiness engine", "state": os.environ["DAEMON_WINDOWS_STATE"], "detail": "seven-daemon windows / windows-plan"},
+    {"key": "atlas_engine", "title": "Atlas Explorer readiness contract", "state": os.environ["DAEMON_ATLAS_STATE"], "detail": "seven atlas status"},
     {"key": "installer_engine", "title": "Rust Installer readiness engine", "state": os.environ["DAEMON_INSTALLER_STATE"], "detail": "seven-daemon installer / installer-plan"},
     {"key": "packages_engine", "title": "Rust software readiness engine", "state": os.environ["DAEMON_PACKAGES_STATE"], "detail": "seven-daemon packages / packages-plan"},
     {"key": "insights_engine", "title": "Rust product insights engine", "state": os.environ["DAEMON_INSIGHTS_STATE"], "detail": "seven-daemon insights"},
@@ -206,7 +206,7 @@ print(json.dumps({
         "profile_engine": os.environ["DAEMON_PROFILES_STATE"],
         "shield_engine": os.environ["DAEMON_SHIELD_STATE"],
         "server_engine": os.environ["DAEMON_SERVER_STATE"],
-        "windows_engine": os.environ["DAEMON_WINDOWS_STATE"],
+        "atlas_engine": os.environ["DAEMON_ATLAS_STATE"],
         "installer_engine": os.environ["DAEMON_INSTALLER_STATE"],
         "packages_engine": os.environ["DAEMON_PACKAGES_STATE"],
         "insights_engine": os.environ["DAEMON_INSIGHTS_STATE"],
@@ -222,7 +222,7 @@ print(json.dumps({
         "Move profile state consumers from Bash to seven-daemon profiles",
         "Move Shield posture consumers from Bash to seven-daemon shield",
         "Move Server readiness consumers from Bash to seven-daemon server",
-        "Move Windows Mode consumers from Bash to seven-daemon windows",
+        "Move Atlas Explorer consumers toward the native Core contract",
         "Move Installer readiness consumers from Bash to seven-daemon installer",
         "Move SevenPkg software consumers from Python to seven-daemon packages",
         "Move product diagnosis consumers from Bash to seven-daemon insights",

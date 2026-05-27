@@ -52,7 +52,7 @@ ALIASES = {
     "visual-studio-code": "code",
     "visual-studio-code-bin": "code",
 }
-PROFILE_KEYS = {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
+PROFILE_KEYS = {"equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"}
 SYSTEM_PROFILE = "equinox"
 
 
@@ -1909,7 +1909,7 @@ def plan_payload(limit=None):
         "shield": "critical",
         "forge": "high",
         "studio": "high",
-        "windows": "high",
+        "atlas": "high",
         "griot": "medium",
     }
     phase = {
@@ -1917,7 +1917,7 @@ def plan_payload(limit=None):
         "shield": "security",
         "forge": "dev",
         "studio": "creative",
-        "windows": "compatibility",
+        "atlas": "knowledge",
         "griot": "knowledge",
     }
     actions = []
@@ -2556,7 +2556,7 @@ def doctor_payload():
         str(MANIFEST_PATH),
         "python -m json.tool sevenpkg/metapackages.json",
     )
-    required_profiles = {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
+    required_profiles = {"equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"}
     missing_profiles = sorted(required_profiles - set(manifest))
     add_check(
         "profile-layers",

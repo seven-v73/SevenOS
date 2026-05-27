@@ -77,7 +77,7 @@ def command_json(command, fallback):
 
 
 def command_exists(name):
-    return subprocess.run(["bash", "-lc", f"command -v {name} >/dev/null 2>&1"], check=False).returncode == 0
+    return subprocess.run(["bash", "--noprofile", "--norc", "-c", f"command -v {name} >/dev/null 2>&1"], check=False).returncode == 0
 
 
 def path_state(path):

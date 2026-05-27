@@ -94,11 +94,11 @@ PROFILE_COLLECTIONS = {
         "accent": "mauve",
         "apps": ["creation", "visual"],
     },
-    "windows": {
-        "title": "Windows Bridge",
-        "description": "VM-first Windows compatibility with Wine and Bottles fallback paths.",
-        "accent": "sky",
-        "apps": ["windows"],
+    "atlas": {
+        "title": "Atlas Explorer",
+        "description": "Documents, maps, OCR, references and local exploration.",
+        "accent": "mint",
+        "apps": ["atlas"],
     },
     "pulse": {
         "title": "Pulse Gaming",
@@ -305,7 +305,7 @@ payload = {
             {"key": "pacman", "priority": 1, "trust": "official Arch/SevenOS repositories", "install": "seven store install-app pacman <package>"},
             {"key": "flatpak", "priority": 2, "trust": "sandboxed Flathub applications", "install": "seven store install-app flatpak <app-id>"},
             {"key": "aur", "priority": 3, "trust": "community build recipes; advanced users", "install": "seven store install-app aur <package>"},
-            {"key": "vm", "priority": 4, "trust": "Windows Bridge managed VM applications", "install": "seven windows run <installer>"},
+            {"key": "profile", "priority": 4, "trust": "curated mini OS profile bundles", "install": "seven profile apps <profile>"},
         ],
         "install_policy": "never install silently; generate a plan, show trust/source/dependencies, then execute with polkit or user confirmation",
     },
@@ -359,6 +359,7 @@ import urllib.request
 from pathlib import Path
 
 query = os.environ["QUERY"].strip()
+DRY_RUN = os.environ.get("SEVENOS_DRY_RUN") == "1"
 
 
 SEARCH_SYNONYMS = {
@@ -750,6 +751,8 @@ def pacman_results():
 
 
 def aur_results():
+    if DRY_RUN:
+        return []
     url = "https://aur.archlinux.org/rpc/?" + urllib.parse.urlencode({"v": "5", "type": "search", "arg": BACKEND_QUERY})
     try:
         with urllib.request.urlopen(url, timeout=8) as response:
@@ -781,6 +784,8 @@ def aur_results():
 
 
 def flatpak_results():
+    if DRY_RUN:
+        return []
     if not shutil.which("flatpak"):
         return []
     out = run(["flatpak", "search", "--columns=application,name,description", BACKEND_QUERY])
@@ -1037,7 +1042,7 @@ import sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 print("SevenStore Home")
 print("===============")
-print("Premium AppCenter for SevenOS profiles, apps, updates, sandbox permissions and Windows Bridge apps.")
+print("Premium AppCenter for SevenOS profiles, apps, updates, sandbox permissions and Atlas collections.")
 print()
 print("Featured profile collections:")
 for key, item in payload.get("profile_collections", {}).items():
@@ -1219,7 +1224,7 @@ install_app() {
       fi
       ;;
     flatpak) command=(flatpak install flathub "$app_id") ;;
-    vm) command=(seven windows run "$app_id") ;;
+    profile) command=(seven profile apps "$app_id") ;;
     *) log_error "Unknown source: $source"; return 1 ;;
   esac
   if [[ "$dry_run" == "1" || "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then

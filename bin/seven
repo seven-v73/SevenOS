@@ -93,9 +93,9 @@ def primary_payload():
         [str(ROOT_DIR / "profiles" / "profile-manager.sh"), "plan", "--json"],
         {"summary": {}, "next": []},
     )
-    windows = capture_json(
-        [str(ROOT_DIR / "bin" / "seven-windows-assistant"), "status", "--json"],
-        {"mode": "unknown", "ready": False, "app_ready": False},
+    atlas = capture_json(
+        [str(ROOT_DIR / "bin" / "seven-profile-requirements"), "status", "atlas", "--json"],
+        {"summary": {"ready": False, "required_missing": 0}},
     )
     core = capture_json(
         [str(ROOT_DIR / "scripts" / "core.sh"), "health", "--json"],
@@ -157,8 +157,8 @@ def primary_payload():
             "shield": shield.get("percent", daily_summary.get("shield", 0)),
             "profiles_open": profiles.get("summary", {}).get("total", len(profile_next)),
             "critical_profiles": len(critical_profiles),
-            "windows_mode": windows.get("mode", "unknown"),
-            "windows_app_ready": bool(windows.get("app_ready", False)),
+            "atlas_ready": bool((atlas.get("summary") or {}).get("ready", False)),
+            "atlas_missing": int((atlas.get("summary") or {}).get("required_missing", 0) or 0),
             "core_state": core.get("state", "unknown"),
             "server_state": "RUN" if server.get("runtime_ready") else server.get("state", "unknown"),
             "flatpak_ready": bool(flatpak.get("ready", False)),
@@ -179,7 +179,7 @@ def print_primary_human(payload):
     print(f"Readiness: {summary.get('readiness', 0)}%")
     print(f"Shield: {summary.get('shield', 0)}%")
     print(f"Profiles open: {summary.get('profiles_open', 0)} ({summary.get('critical_profiles', 0)} critical/high)")
-    print(f"Windows Mode: {summary.get('windows_mode', 'unknown')} (app-ready: {summary.get('windows_app_ready', False)})")
+    print(f"Atlas: {'ready' if summary.get('atlas_ready') else 'not ready'} ({summary.get('atlas_missing', 0)} missing)")
     print(f"Core: {summary.get('core_state', 'unknown')}")
     print(f"Server: {summary.get('server_state', 'unknown')}")
     print(f"Flatpak: {'ready' if summary.get('flatpak_ready') else 'not ready'} ({summary.get('flatpak_apps', '0/0')})")
@@ -432,20 +432,39 @@ def handle_vm(args):
     elif args.action == "network":
         install_target("vm-network", args)
     elif args.action == "start" and args.name == "windows":
-        run(["virsh", "-c", "qemu:///system", "start", "sevenos-windows"], args)
+        print("seven: Windows VM has been retired from SevenOS. Use Atlas as the seventh mini OS and app-native alternatives instead.", file=sys.stderr)
+        sys.exit(2)
     elif args.action == "console" and args.name == "windows":
-        run(["virt-manager", "--connect", "qemu:///system", "--show-domain-console", "sevenos-windows"], args)
+        print("seven: Windows VM console is retired from SevenOS.", file=sys.stderr)
+        sys.exit(2)
     else:
         print("seven: supported VM actions are check, network, start windows, console windows", file=sys.stderr)
         sys.exit(1)
 
 
-def handle_windows(args):
-    run_script(args, "bin/seven-windows-assistant", args.action, *args.extra)
+def handle_atlas(args):
+    if args.action in ("open", "center"):
+        run_script(args, "bin/seven-mini-os-center", "atlas")
+    elif args.action == "install":
+        extra = []
+        if getattr(args, "yes", False):
+            extra.append("--yes")
+        install_target("atlas", args, extra)
+    elif args.action in ("status", "requirements"):
+        extra = ["status", "atlas"]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "bin/seven-profile-requirements", *extra)
+    elif args.action == "activate":
+        run_script(args, "profiles/profile-manager.sh", "activate", "atlas")
+    else:
+        print(f"seven: unknown atlas action: {args.action}", file=sys.stderr)
+        sys.exit(1)
 
 
 def handle_run(args):
-    run_script(args, "vm/windows-app-runner.sh", "run", args.target, *args.extra)
+    print("seven: Windows VM app runner has been retired. Use native Linux apps, Pulse/Proton, or Bottles/Lutris from the Store when needed.", file=sys.stderr)
+    sys.exit(2)
 
 
 def handle_server(args):
@@ -1295,9 +1314,10 @@ def main():
     vm_parser.add_argument("action")
     vm_parser.add_argument("name", nargs="?")
 
-    windows_parser = subparsers.add_parser("windows", help="guided Windows Mode controls")
-    windows_parser.add_argument("action", nargs="?", default="status")
-    windows_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    atlas_parser = subparsers.add_parser("atlas", help="Atlas Explorer mini OS controls")
+    atlas_parser.add_argument("action", nargs="?", default="open", choices=("open", "center", "status", "requirements", "install", "activate"))
+    atlas_parser.add_argument("--json", action="store_true", help="print machine-readable Atlas requirements")
+    atlas_parser.add_argument("--yes", action="store_true", help="install Atlas requirements non-interactively")
 
     pulse_parser = subparsers.add_parser("pulse", help="guided Pulse Gaming controls")
     pulse_parser.add_argument("action", nargs="?", default="doctor")
@@ -1554,8 +1574,8 @@ def main():
         handle_shield(args)
     elif args.command == "vm":
         handle_vm(args)
-    elif args.command == "windows":
-        handle_windows(args)
+    elif args.command == "atlas":
+        handle_atlas(args)
     elif args.command == "pulse":
         extra = [args.action]
         if args.json:

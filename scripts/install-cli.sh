@@ -229,8 +229,6 @@ install_user_command "$ROOT_DIR/scripts/network.sh" seven-network
 install_user_command "$ROOT_DIR/scripts/system-profile.sh" seven-system-profile
 install_user_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_user_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
-install_user_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
-install_user_command "$ROOT_DIR/bin/seven-windows-native" seven-windows-native
 install_user_command "$ROOT_DIR/bin/seven-pulse" seven-pulse
 install_user_command "$ROOT_DIR/bin/seven-mini-doctor" seven-mini-doctor
 install_user_command "$ROOT_DIR/bin/sevenpkg" sevenpkg
@@ -311,8 +309,6 @@ install_system_command "$ROOT_DIR/scripts/network.sh" seven-network
 install_system_command "$ROOT_DIR/scripts/system-profile.sh" seven-system-profile
 install_system_command "$ROOT_DIR/bin/seven-wifi" seven-wifi
 install_system_command "$ROOT_DIR/bin/seven-bluetooth" seven-bluetooth
-install_system_command "$ROOT_DIR/bin/seven-windows-assistant" seven-windows-assistant
-install_system_command "$ROOT_DIR/bin/seven-windows-native" seven-windows-native
 install_system_command "$ROOT_DIR/bin/seven-pulse" seven-pulse
 install_system_command "$ROOT_DIR/bin/seven-mini-doctor" seven-mini-doctor
 install_system_command "$ROOT_DIR/bin/sevenosctl" sevenosctl

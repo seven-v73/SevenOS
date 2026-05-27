@@ -45,7 +45,7 @@ Usage:
 Par défaut, Seven Terminal suit le mini OS actif et choisit le bon contexte.
 
 Profils avancés:
-  forge | cyber | focus | admin | windows | classic | dark | light
+  forge | cyber | focus | admin | atlas | classic | dark | light
 
 Exemples:
   seven-terminal
@@ -62,7 +62,7 @@ Usage:
 By default, Seven Terminal follows the active mini OS and chooses the right context.
 
 Advanced profiles:
-  forge | cyber | focus | admin | windows | classic | dark | light
+  forge | cyber | focus | admin | atlas | classic | dark | light
 
 Examples:
   seven-terminal
@@ -112,7 +112,7 @@ profile_terminal_mode() {
   theme_mode="$(current_theme_mode)"
   if [[ "$theme_mode" == "light" ]]; then
     case "$profile" in
-      windows) printf 'windows' ;;
+      atlas) printf 'atlas' ;;
       studio|baobab) printf 'focus' ;;
       *) printf 'light' ;;
     esac
@@ -125,7 +125,7 @@ profile_terminal_mode() {
     baobab) printf 'focus' ;;
     horizon) printf 'forge' ;;
     pulse) printf 'dark' ;;
-    windows) printf 'windows' ;;
+    atlas) printf 'atlas' ;;
     equinox|*) printf 'classic' ;;
   esac
 }
@@ -151,7 +151,7 @@ config_for_profile() {
     classic) printf '%s\n' "$KITTY_CONFIG_DIR/classic.conf" ;;
     dark) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
     light) printf '%s\n' "$KITTY_CONFIG_DIR/light.conf" ;;
-    forge|cyber|admin|windows) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
+    forge|cyber|admin|atlas) printf '%s\n' "$KITTY_CONFIG_DIR/dark.conf" ;;
     focus) printf '%s\n' "$KITTY_CONFIG_DIR/light.conf" ;;
     *) return 1 ;;
   esac
@@ -162,7 +162,7 @@ repo_config_for_profile() {
     classic) printf '%s\n' "$ROOT_DIR/hyprland/kitty/classic.conf" ;;
     dark) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
     light) printf '%s\n' "$ROOT_DIR/hyprland-light/kitty/light.conf" ;;
-    forge|cyber|admin|windows) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
+    forge|cyber|admin|atlas) printf '%s\n' "$ROOT_DIR/hyprland/kitty/dark.conf" ;;
     focus) printf '%s\n' "$ROOT_DIR/hyprland-light/kitty/light.conf" ;;
     *) return 1 ;;
   esac
@@ -177,7 +177,7 @@ profile_label() {
     cyber) printf 'Shield' ;;
     focus) printf 'Focus' ;;
     admin) printf 'Admin' ;;
-    windows) printf 'Windows' ;;
+    atlas) printf 'Atlas' ;;
   esac
 }
 
@@ -190,7 +190,7 @@ profile_class() {
     cyber) printf 'SevenTerminalCyber' ;;
     focus) printf 'SevenTerminalFocus' ;;
     admin) printf 'SevenTerminalAdmin' ;;
-    windows) printf 'SevenTerminalWindows' ;;
+    atlas) printf 'SevenTerminalAtlas' ;;
   esac
 }
 
@@ -220,11 +220,11 @@ profile_overrides() {
         cursor=#FF9B70 selection_background=#62332C active_border_color=#FF9B70 \
         active_tab_background=#231111 tab_bar_background=#180D0D
       ;;
-    windows)
+    atlas)
       printf '%s\n' \
-        foreground=#EEF7FF background=#07111F background_opacity=0.90 \
-        cursor=#74C7EC selection_background=#173B5C active_border_color=#74C7EC \
-        active_tab_background=#0D1B2F tab_bar_background=#081421
+        foreground=#ECFFF9 background=#061412 background_opacity=0.90 \
+        cursor=#5AD7B7 selection_background=#1D5F55 active_border_color=#5AD7B7 \
+        active_tab_background=#0B201D tab_bar_background=#071A18
       ;;
   esac
 }
@@ -338,11 +338,11 @@ open_menu() {
   if lang_is_fr; then
     prompt="Terminal"
     message="Seven Terminal suit le mini OS actif. Choisis un contexte avancé seulement au besoin."
-    menu=$'Terminal du mini OS actif\tContexte naturel SevenOS\nForge\tDéveloppement, Git et builds\nShield\tSécurité, réseau et audit\nWindows\tPasserelle, VM et compatibilité\nFocus\tLecture, écriture et travail calme\nAdmin\tContrôle système prudent\nGraphite\tTerminal sombre SevenOS\nClair\tTerminal clair et doux'
+    menu=$'Terminal du mini OS actif\tContexte naturel SevenOS\nForge\tDéveloppement, Git et builds\nShield\tSécurité, réseau et audit\nAtlas\tDocuments, cartes et recherche\nFocus\tLecture, écriture et travail calme\nAdmin\tContrôle système prudent\nGraphite\tTerminal sombre SevenOS\nClair\tTerminal clair et doux'
   else
     prompt="Terminal"
     message="Seven Terminal follows the active mini OS. Choose an advanced context only when needed."
-    menu=$'Active mini OS Terminal\tNatural SevenOS context\nForge\tDevelopment, Git and builds\nShield\tSecurity, network and audit\nWindows\tBridge, VM and compatibility\nFocus\tReading, writing and calm work\nAdmin\tCautious system control\nGraphite\tSevenOS dark terminal\nLight\tSoft light terminal'
+    menu=$'Active mini OS Terminal\tNatural SevenOS context\nForge\tDevelopment, Git and builds\nShield\tSecurity, network and audit\nAtlas\tDocuments, maps and research\nFocus\tReading, writing and calm work\nAdmin\tCautious system control\nGraphite\tSevenOS dark terminal\nLight\tSoft light terminal'
   fi
 
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
@@ -362,7 +362,7 @@ open_menu() {
     "Terminal du mini OS actif"*|"Active mini OS Terminal"*) open_terminal "$(profile_terminal_mode)" ;;
     Forge*) open_terminal forge ;;
     Shield*|Cyber*) open_terminal cyber ;;
-    Windows*) open_terminal windows ;;
+    Atlas*) open_terminal atlas ;;
     Focus*) open_terminal focus ;;
     Admin*) open_terminal admin ;;
     Graphite*|Dark*) open_terminal dark ;;
@@ -381,7 +381,7 @@ status() {
   printf 'classic: %s\n' "$(ensure_config classic)"
   printf 'dark:    %s\n' "$(ensure_config dark)"
   printf 'light:   %s\n' "$(ensure_config light)"
-  printf 'modes:   forge cyber windows focus admin\n'
+  printf 'modes:   forge cyber atlas focus admin\n'
   printf 'default: %s\n' "$KITTY_CONFIG_DIR/kitty.conf"
   printf 'backend: native VTE default with tabs, splits, search, palette and Kitty fallback\n'
   printf 'logs:    %s\n' "$(terminal_log_path "$current_mode")"
@@ -405,7 +405,7 @@ case "$action" in
     fi
     open_terminal "$(profile_terminal_mode)" "$@"
     ;;
-  classic|dark|light|forge|cyber|windows|focus|admin)
+  classic|dark|light|forge|cyber|atlas|focus|admin)
     shift || true
     if [[ "${1:-}" == "--" ]]; then
       shift

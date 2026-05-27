@@ -55,7 +55,7 @@ profile_role() {
     forge) printf 'Development, Git, containers, build feedback' ;;
     shield) printf 'Security, audit, sandbox, cautious opening' ;;
     studio) printf 'Media, assets, previews, creative flow' ;;
-    windows) printf 'Windows Bridge, compatibility, shared folders' ;;
+    atlas) printf 'Atlas Explorer, documents, maps, OCR and references' ;;
     pulse) printf 'Games, captures, performance, low-latency focus' ;;
     *) printf 'Balanced SevenOS daily workspace' ;;
   esac
@@ -131,7 +131,7 @@ write_state() {
     "forge": ["terminal", "git", "containers", "logs"],
     "shield": ["sandbox", "hash", "audit", "read-only open"],
     "studio": ["media previews", "assets", "metadata"],
-    "windows": ["bridge folders", "vm status", "exe actions"],
+    "atlas": ["documents", "maps", "OCR", "references"],
     "pulse": ["games", "captures", "performance"]
   },
   "surfaces": {
@@ -204,7 +204,7 @@ profile_actions = {
     "forge": ("Open Forge Terminal", "seven-terminal forge", "Jump into Git, builds and project logs."),
     "shield": ("Open Shield Center", "seven-shield-center-native", "Review scope, audit state and safe-open paths."),
     "studio": ("Open Studio Assets", "seven-files pictures", "Resume media, assets and creative previews."),
-    "windows": ("Open Windows Bridge", "seven windows status", "Check bridge folders, VM status and compatibility actions."),
+    "atlas": ("Open Atlas Explorer", "seven atlas status", "Check documents, maps, OCR and reference readiness."),
     "pulse": ("Open Pulse Captures", "seven-files videos", "Review captures, games and performance context."),
     "equinox": ("Open Spotlight", "seven-spotlight field", "Search apps, actions, files and windows."),
 }

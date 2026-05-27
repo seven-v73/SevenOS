@@ -61,8 +61,8 @@ shield = state.get("shield") or {}
 shield_plan = state.get("shield_plan") or {}
 server = state.get("server") or {}
 server_plan = state.get("server_plan") or {}
-windows = state.get("windows") or {}
-windows_plan = state.get("windows_plan") or {}
+atlas = state.get("atlas") or {}
+atlas_plan = state.get("atlas_plan") or {}
 installer = state.get("installer") or {}
 installer_plan = state.get("installer_plan") or {}
 packages_plan = state.get("packages_plan") or {}
@@ -107,7 +107,7 @@ experience_percent = experience.get("percent", 0)
 control_percent = control.get("overall", 0)
 shield_percent = shield.get("percent", 0)
 server_state = (server.get("service") or {}).get("state", "MISS")
-windows_ready = bool(windows.get("ready"))
+atlas_ready = not bool(atlas.get("missing_required"))
 installer_ready = bool(installer.get("ready"))
 
 if readiness_percent < 80:
@@ -169,16 +169,16 @@ if server_state != "RUN":
         "server",
     )
 
-if not windows_ready:
-    next_windows = (windows_plan.get("next") or [{}])[0]
+if not atlas_ready:
+    next_atlas = (atlas_plan.get("next") or [{}])[0]
     add(
-        "windows",
+        "atlas",
         "medium",
-        "Complete Windows Mode",
-        "Windows compatibility is not fully ready; guide Bottles/Wine/KVM through one accessible path.",
-        next_windows.get("command", "seven windows plan"),
-        "compatibility",
-        "windows",
+        "Complete Atlas Explorer",
+        "Atlas Explorer is not fully ready; complete documents, maps, OCR and references.",
+        next_atlas.get("command", "seven atlas status"),
+        "knowledge",
+        "atlas",
     )
 
 if not installer_ready:
@@ -265,10 +265,10 @@ signals = {
         "total": (server_plan.get("summary") or {}).get("total", 0),
         "next": (server_plan.get("next") or [{}])[0].get("command"),
     },
-    "windows": {"ready": windows_ready},
-    "windows_plan": {
-        "total": (windows_plan.get("summary") or {}).get("total", 0),
-        "next": (windows_plan.get("next") or [{}])[0].get("command"),
+    "atlas": {"ready": atlas_ready},
+    "atlas_plan": {
+        "total": (atlas_plan.get("summary") or {}).get("total", 0),
+        "next": (atlas_plan.get("next") or [{}])[0].get("command"),
     },
     "installer": {"ready": installer_ready, "mode": installer.get("mode", "foundation")},
     "installer_plan": {
@@ -292,7 +292,7 @@ signals = {
 phase = "B2"
 if readiness_percent >= 85 and experience_percent >= 85 and shield_percent >= 75 and server_state in ("RUN", "READY"):
     phase = "B3"
-if readiness_percent >= 90 and experience_percent >= 90 and shield_percent >= 85 and server_state == "RUN" and windows_ready and installer_ready:
+if readiness_percent >= 90 and experience_percent >= 90 and shield_percent >= 85 and server_state == "RUN" and atlas_ready and installer_ready:
     phase = "4-preview"
 
 print(json.dumps({

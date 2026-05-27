@@ -423,24 +423,24 @@ def server_plan_payload() -> dict:
         return {"schema": "sevenos.server-plan.v1", "summary": {}, "next": []}
 
 
-def windows_payload() -> dict:
-    value = state_value("windows", {})
+def atlas_payload() -> dict:
+    value = state_value("atlas", {})
     if value:
         return value
     try:
-        return json.loads(run_text(str(ROOT / "bin" / "seven-windows-assistant"), "status", "--json"))
+        return json.loads(run_text(str(ROOT / "bin" / "seven"), "atlas", "status", "--json"))
     except Exception:
-        return {"schema": "sevenos.windows.v1", "ready": False, "mode": "setup-needed"}
+        return {"schema": "sevenos.profile-requirements.v1", "state": "unknown", "missing_required": []}
 
 
-def windows_plan_payload() -> dict:
-    value = state_value("windows_plan", {})
+def atlas_plan_payload() -> dict:
+    value = state_value("atlas_plan", {})
     if value:
         return value
     try:
-        return json.loads(run_text(str(ROOT / "bin" / "seven-windows-assistant"), "plan", "--json"))
+        return json.loads(run_text(str(ROOT / "bin" / "seven-profile-requirements"), "status", "atlas", "--json"))
     except Exception:
-        return {"schema": "sevenos.windows-plan.v1", "summary": {}, "next": []}
+        return {"schema": "sevenos.profile-requirements.v1", "summary": {}, "next": []}
 
 
 def installer_payload() -> dict:
@@ -657,8 +657,8 @@ def icon_for_action(action_id: str, impact: str = "safe") -> str:
         return "avatar-default-symbolic"
     if action_id.startswith("security."):
         return "security-high-symbolic"
-    if action_id.startswith("windows."):
-        return "computer-symbolic"
+    if action_id.startswith("atlas."):
+        return "folder-documents-symbolic"
     if action_id.startswith("server.") or action_id.startswith("deploy."):
         return "network-server-symbolic"
     if action_id.startswith("installer."):
@@ -1500,8 +1500,8 @@ def run_gui() -> int:
                 shield_plan = shield_plan_payload()
                 server = server_payload()
                 server_plan = server_plan_payload()
-                windows = windows_payload()
-                windows_plan = windows_plan_payload()
+                atlas = atlas_payload()
+                atlas_plan = atlas_plan_payload()
                 installer = installer_payload()
                 installer_plan = installer_plan_payload()
                 packages_plan = packages_plan_payload()
@@ -1562,8 +1562,8 @@ def run_gui() -> int:
                     ("Shield plan", f"{shield_plan.get('summary', {}).get('total', 0)} trust actions · first: {(shield_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Server", f"{server.get('state', server.get('service', {}).get('state', 'MISS'))} · runtime={str(server.get('runtime_ready', False)).lower()} · deployment={str(server.get('deployment_stack_ready', False)).lower()}"),
                     ("Server plan", f"{server_plan.get('summary', {}).get('total', 0)} service actions · first: {(server_plan.get('next') or [{}])[0].get('title', 'none')}"),
-                    ("Windows Mode", f"{windows.get('mode', 'setup-needed')} · ready: {str(windows.get('ready', False)).lower()}"),
-                    ("Windows plan", f"{windows_plan.get('summary', {}).get('total', 0)} compatibility actions · first: {(windows_plan.get('next') or [{}])[0].get('title', 'none')}"),
+                    ("Atlas Explorer", f"{atlas.get('state', 'unknown')} · missing: {len(atlas.get('missing_required') or [])}"),
+                    ("Atlas plan", f"{atlas_plan.get('summary', {}).get('total', 0)} requirement actions · first: {(atlas_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Installer", f"{installer.get('mode', 'foundation')} · ready: {str(installer.get('ready', False)).lower()}"),
                     ("Installer plan", f"{installer_plan.get('summary', {}).get('total', 0)} distribution actions · first: {(installer_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Software plan", f"{packages_plan.get('summary', {}).get('total', 0)} app actions · first: {(packages_plan.get('next') or [{}])[0].get('title', 'none')}"),
@@ -1806,27 +1806,27 @@ def run_gui() -> int:
                         server_group.add(row)
                     dashboard.append(server_group)
 
-                windows_actions = windows_plan.get("next") or []
-                if windows_actions:
-                    windows_group = Adw.PreferencesGroup(title="Windows plan")
-                    for item in windows_actions[:5]:
+                atlas_actions = atlas_plan.get("next") or []
+                if atlas_actions:
+                    atlas_group = Adw.PreferencesGroup(title="Atlas plan")
+                    for item in atlas_actions[:5]:
                         row = make_row(
-                            item.get("title", item.get("key", "Windows")),
+                            item.get("title", item.get("key", "Atlas")),
                             f"{item.get('severity', 'medium')} · {item.get('phase', 'apps')} · {item.get('reason', '')}",
                         )
                         button = Gtk.Button()
-                        button.set_icon_name("computer-symbolic")
-                        button.set_tooltip_text(item.get("command", "seven windows plan"))
+                        button.set_icon_name("folder-documents-symbolic")
+                        button.set_tooltip_text(item.get("command", "seven atlas status"))
                         button.connect(
                             "clicked",
-                            lambda _button, command=item.get("command", "seven windows plan"), title_text=item.get("title", "Windows Plan"): run_ecosystem_command(
+                            lambda _button, command=item.get("command", "seven atlas status"), title_text=item.get("title", "Atlas Plan"): run_ecosystem_command(
                                 command,
-                                title=f"SevenOS Windows - {title_text}",
+                                title=f"SevenOS Atlas - {title_text}",
                             ),
                         )
                         row.add_suffix(button)
-                        windows_group.add(row)
-                    dashboard.append(windows_group)
+                        atlas_group.add(row)
+                    dashboard.append(atlas_group)
 
                 installer_actions = installer_plan.get("next") or []
                 if installer_actions:
@@ -2020,7 +2020,7 @@ def run_gui() -> int:
                 for action in payload.get("actions", []):
                     by_category.setdefault(action.get("category", "System"), []).append(action)
 
-                wanted = ("Desktop", "System", "Profiles", "Security", "Apps", "Windows", "Server", "Ecosystem", "Installer")
+                wanted = ("Desktop", "System", "Profiles", "Security", "Apps", "Atlas", "Server", "Ecosystem", "Installer")
                 for category in wanted:
                     items = by_category.get(category, [])
                     if not items:
@@ -2046,7 +2046,7 @@ def run_gui() -> int:
                 heading(
                     ecosystem_page,
                     "Seven Ecosystem",
-                    "All-in-one process map: desktop, profiles, apps, Windows, security, deployment and future cloud/store layers.",
+                    "All-in-one process map: desktop, profiles, apps, Atlas, security, deployment and future cloud/store layers.",
                 )
 
                 modules = payload.get("modules", [])
@@ -2100,7 +2100,7 @@ def run_gui() -> int:
                 experience = experience_payload()
                 shield = shield_payload()
                 server = server_payload()
-                windows = windows_payload()
+                atlas = atlas_payload()
                 daily = daily_payload()
                 support = support_payload()
                 smoke = smoke_payload()
@@ -2159,7 +2159,7 @@ def run_gui() -> int:
                     tile_button("⌘", tr("hub.settings", "Settings"), tr("hub.tile.settings_note", "appearance, language, theme"), "seven-settings", "good"),
                     tile_button("AI", "Seven AI", tr("hub.tile.ai_note", "local system assistant"), "seven ai focus", "good"),
                     tile_button("!", tr("hub.security", "Security"), shield.get("posture", "unknown"), "seven shield dashboard", metric_state(shield_percent)),
-                    tile_button("W", tr("hub.windows", "Windows"), windows.get("mode", "setup"), "seven-windows-assistant guide", "good" if windows.get("ready") else "warn"),
+                    tile_button("AT", tr("hub.atlas", "Atlas"), atlas.get("state", "unknown"), "seven atlas status", "good" if not atlas.get("missing_required") else "warn"),
                     tile_button("S", tr("hub.server", "Server"), server.get("state", server.get("service", {}).get("state", "MISS")), "seven server status", "good" if str(server.get("state", "")).upper() == "RUN" else "warn"),
                     tile_button("A", tr("hub.apps", "Apps"), tr("hub.tile.apps_note", "install and update"), "sevenpkg status", "warn"),
                     tile_button("✓", "Smoke Gate", f"{smoke_state} · {smoke_score}%", "seven smoke", metric_state(smoke_score)),
@@ -2308,7 +2308,7 @@ def run_gui() -> int:
                     })
                 for label, command in [
                     ("Wi-Fi and Bluetooth", "seven-quick-settings"),
-                    ("Windows Bridge", "seven windows enter"),
+                    ("Atlas Explorer", "seven atlas open"),
                     ("Shield scope", "seven shield scope"),
                     ("SevenStore", "seven-store"),
                     ("Seven Reader", "seven-reader"),
@@ -2323,7 +2323,7 @@ def run_gui() -> int:
                 clear(search_page)
                 heading(search_page, "Search SevenOS", "Find settings, mini OS, runtime contracts and safe actions without leaving Hub.")
                 search = Gtk.SearchEntry()
-                search.set_placeholder_text("Search Wi-Fi, Windows, Shield, Store, runtime, updates...")
+                search.set_placeholder_text("Search Wi-Fi, Atlas, Shield, Store, runtime, updates...")
                 search.set_text(query)
                 search_page.append(search)
                 results_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
@@ -2349,7 +2349,7 @@ def run_gui() -> int:
                         row.add_suffix(button)
                         group.add(row)
                     if not matches:
-                        group.add(make_row("No result", "Try network, windows, shield, profile, store, runtime or updates."))
+                        group.add(make_row("No result", "Try network, Atlas, Shield, profile, store, runtime or updates."))
                     results_box.append(group)
 
                 update_results(query)
@@ -2366,8 +2366,8 @@ def run_gui() -> int:
                     "files.open",
                     "security.dashboard",
                     "security.audit",
-                    "windows.guide",
-                    "windows.apps",
+                    "atlas.open",
+                    "atlas.status",
                     "server.status",
                     "daily.status",
                     "doctor.run",
@@ -2421,7 +2421,7 @@ def run_gui() -> int:
                     tile_button("C", "Seven Core", core.get("state", "foundation"), "seven core status", "good" if core.get("state") == "ready" else "warn"),
                     tile_button("S", "Seven Shell", shell.get("state", "foundation"), "seven shell status", "warn"),
                     tile_button("P", "Profiles", "work modes", "seven profile status", "warn"),
-                    tile_button("W", "Windows", "app layer", "seven windows status", "warn"),
+                    tile_button("AT", "Atlas", "knowledge layer", "seven atlas status", "warn"),
                     tile_button("H", "Hub", "control center", "seven hub", "good"),
                     tile_button("D", "Deploy", "server layer", "seven server status", "warn"),
                 ]
@@ -2540,7 +2540,7 @@ def run_gui() -> int:
 
                 clear(profiles_page)
                 heading(profiles_page, "Profiles", "Loading profile workspaces...")
-                profiles_page.append(status_card("Profile Engine", "Collecting Forge DevOps, Shield, Studio, Windows and Pulse state.", "LOAD", "info"))
+                profiles_page.append(status_card("Profile Engine", "Collecting Forge DevOps, Shield, Studio, Atlas and Pulse state.", "LOAD", "info"))
 
                 clear(search_page)
                 heading(search_page, "Search", "Loading searchable actions and runtime contracts...")

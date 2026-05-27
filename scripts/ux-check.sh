@@ -190,7 +190,7 @@ require_file "hyprland/lua/profiles/equinox.lua"
 require_file "hyprland/lua/profiles/forge.lua"
 require_file "hyprland/lua/profiles/shield.lua"
 require_file "hyprland/lua/profiles/studio.lua"
-require_file "hyprland/lua/profiles/windows.lua"
+require_file "hyprland/lua/profiles/atlas.lua"
 require_file "hyprland/lua/profiles/pulse.lua"
 require_file "hyprland/lua/profiles/baobab.lua"
 require_file "hyprland/lua/profile_runtime.json"
@@ -280,11 +280,8 @@ require_executable "bin/seven-window-controls-native"
 require_executable "bin/seven-profile-theme"
 require_executable "bin/hyprsysteminfo"
 require_executable "bin/seven-bluetooth"
-require_executable "bin/seven-windows-assistant"
-require_executable "bin/seven-windows-native"
 require_executable "bin/seven-pulse"
 require_executable "bin/seven-mini-doctor"
-require_executable "vm/windows-app-runner.sh"
 require_executable "scripts/phase-gate.sh"
 require_executable "scripts/architecture.sh"
 require_executable "scripts/state.sh"
@@ -1678,7 +1675,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q '"cyber": {' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q '"focus": {' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q '"admin": {' "$ROOT_DIR/bin/seven-terminal-native" &&
-   grep -q '"windows": {' "$ROOT_DIR/bin/seven-terminal-native" &&
+   grep -q '"forge": {' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'SF Mono 11' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'set_cell_height_scale(1.10)' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'seven-terminal-frame' "$ROOT_DIR/bin/seven-terminal-native" &&
@@ -2229,7 +2226,7 @@ if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_
    grep -q 'PROFILE_ACTIONS' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'Forge Apps' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-shell-panel" &&
-   grep -q 'seven-windows-assistant' "$ROOT_DIR/bin/seven-shell-panel" &&
+   grep -q '"atlas":' "$ROOT_DIR/bin/seven-shell-panel" &&
    "$ROOT_DIR/bin/seven-quick-settings-native" --probe >/dev/null 2>&1 &&
    grep -q 'SevenQuickSettingsNative' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'from seven_i18n import tr_text' "$ROOT_DIR/bin/seven-quick-settings-native" &&
@@ -2650,7 +2647,7 @@ if python -m json.tool <<<"$state_fast_json" >/dev/null &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v1"' <<<"$core_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.runtime-orchestrator.v1"' <<<"$runtime_json" &&
-   python -c 'import json,sys; data=json.load(sys.stdin); required={"welcome","session","identity","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","shield","cyberspace","server","installer","packages","packages_plan","store","ecosystem","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","events","adaptive","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}; raise SystemExit(0 if required.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; then
+   python -c 'import json,sys; data=json.load(sys.stdin); required={"welcome","session","identity","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","shield","cyberspace","server","installer","packages","packages_plan","store","ecosystem","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","events","adaptive","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}; raise SystemExit(0 if required.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; then
   core_json_contract_state="OK"
 fi
 if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -2834,7 +2831,7 @@ if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/b
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
    python -m json.tool <<<"$sevenpkg_status_json" >/dev/null &&
    python -m json.tool <<<"$manifest_summary_json" >/dev/null &&
-   python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","windows","windows_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; }; then
+   python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","atlas_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; }; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"
@@ -3104,122 +3101,14 @@ else
   fail "Seven Server should expose state and profile API endpoints"
 fi
 
-windows_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" status --json)"
-windows_plan="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" plan --json)"
-windows_catalog="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" catalog --json)"
-windows_resolve="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" resolve photoshop --json)"
-windows_office_resolve="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" resolve OfficeSetup.exe --json)"
-windows_run="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" run photoshop)"
-windows_office_prepare="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" prepare office)"
-windows_office_diagnose="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" diagnose OfficeSetup.exe)"
-windows_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" guide)"
-windows_status_human="$("$ROOT_DIR/bin/seven-windows-assistant" status)"
-windows_apps="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" apps)"
-windows_enter="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" enter)"
-windows_leave="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" leave)"
-windows_sync="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-windows-assistant" sync)"
-windows_bridge_json="$("$ROOT_DIR/bin/seven-windows-assistant" bridge-status --json)"
-windows_mode_guide="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/install.sh" windows-mode guide --dry-run)"
-if python -m json.tool <<<"$windows_json" >/dev/null &&
-   python -m json.tool <<<"$windows_plan" >/dev/null &&
-   python -m json.tool <<<"$windows_catalog" >/dev/null &&
-   python -m json.tool <<<"$windows_resolve" >/dev/null &&
-   python -m json.tool <<<"$windows_office_resolve" >/dev/null &&
-   python -m json.tool <<<"$windows_bridge_json" >/dev/null &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows.v1"' <<<"$windows_json" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-bridge-runtime.v1"' <<<"$windows_bridge_json" &&
-   grep -q '"bridge_runtime"' <<<"$windows_json" &&
-   grep -q '"compatibility_policy": "app-first-global-vm-optional"' <<<"$windows_json" &&
-   grep -q '"global_available": true' <<<"$windows_json" &&
-   grep -Eq 'Bridge runtime:|État Windows:' <<<"$windows_status_human" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-catalog.v1"' <<<"$windows_catalog" &&
-   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-resolve.v1"' <<<"$windows_resolve" &&
-   grep -q '"id": "office"' <<<"$windows_office_resolve" &&
-   grep -Eq 'SevenOS Windows Mode guide|Guide Windows SevenOS' <<<"$windows_guide" &&
-   grep -q 'DRY-RUN > Windows App >' <<<"$windows_run" &&
-   grep -q 'Prepare Windows prefix office' <<<"$windows_office_prepare" &&
-   grep -q 'SevenOS Windows Diagnostic' <<<"$windows_office_diagnose" &&
-   grep -q 'DRY-RUN > Windows Mode > Open Windows app manager' <<<"$windows_apps" &&
-   grep -q 'seven windows fix-network' <<<"$windows_enter" &&
-   grep -q 'seven windows console' <<<"$windows_enter" &&
-   grep -q 'seven windows close-console' <<<"$windows_leave" &&
-   grep -q 'managedsave' <<<"$windows_leave" &&
-   grep -q 'if profile == windows: seven windows enter' <<<"$windows_sync" &&
-   grep -q 'else: seven windows leave' <<<"$windows_sync" &&
-   grep -q '"recommended_action"' <<<"$windows_bridge_json" &&
-   grep -Eq 'SevenOS Windows Mode guide|Guide Windows SevenOS' <<<"$windows_mode_guide" &&
-   grep -q 'iso_state()' "$ROOT_DIR/vm/windows-provisioner.sh" &&
-   grep -q 'VIRTIO_PART=' "$ROOT_DIR/vm/windows-provisioner.sh" &&
-   grep -q 'curl --fail --retry 5 --retry-delay 2 -C - -L --progress-bar' "$ROOT_DIR/vm/windows-provisioner.sh" &&
-   grep -q 'Resume it with: seven windows virtio --yes' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'ensure_tun()' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'sudo modprobe tun' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'NETWORK_MODE="${SEVENOS_WINDOWS_NETWORK_MODE:-user}"' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'NETWORK_MODEL="${SEVENOS_WINDOWS_NETWORK_MODEL:-e1000e}"' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'model=${NETWORK_MODEL}' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'fix-network' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'enter_action()' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'leave_action()' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'sync_action()' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'bridge_status_json()' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'watchdog_state()' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'Windows Runtime' "$ROOT_DIR/bin/seven-mini-os-center" &&
-   grep -q 'windows_bridge_runtime()' "$ROOT_DIR/bin/seven-mini-os-center" &&
-   grep -q 'seven windows bridge-status' "$ROOT_DIR/bin/seven-mini-os-center" &&
-   grep -q 'seven windows sync' "$ROOT_DIR/bin/seven-profile-theme" &&
-   grep -q 'seven windows bridge-status' "$ROOT_DIR/bin/seven-profile-theme" &&
-   grep -q 'vm_domstate()' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'LC_ALL=C LANG=C virsh -c qemu:///system domstate' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'release_vm_lock' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'watch_enter_action()' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'WATCH_PID_FILE' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'python3 /usr/bin/virt-manager .*${VM_NAME}' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'watch detected closed console' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'watch detected VM state' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'watch alive: profile=windows' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'SEVENOS_WINDOWS_AUTO_ENTER' "$ROOT_DIR/profiles/profile-manager.sh" &&
-   grep -q 'SEVENOS_WINDOWS_AUTO_LEAVE' "$ROOT_DIR/profiles/profile-manager.sh" &&
-   grep -q 'SEVENOS_WINDOWS_AUTO_LEAVE_MODE:-managedsave' "$ROOT_DIR/profiles/profile-manager.sh" &&
-   grep -q 'SEVENOS_WINDOWS_AUTO_CONSOLE:-virt-manager' "$ROOT_DIR/profiles/profile-manager.sh" &&
-   grep -q 'sleep 5; seven windows sync' "$ROOT_DIR/profiles/profile-manager.sh" &&
-   grep -q 'DISK_BUS="${SEVENOS_WINDOWS_DISK_BUS:-sata}"' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'bus=${DISK_BUS}' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q -- '--noautoconsole' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'seven windows console' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'remote-viewer "$display_uri"' "$ROOT_DIR/vm/windows-mode.sh" &&
-   grep -q 'grant_libvirt_file_access()' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q 'grant_libvirt_file_access "$VM_DISK_PATH" "rw-"' "$ROOT_DIR/vm/windows-vm.sh" &&
-   grep -q '"recommended_next"' <<<"$windows_json" &&
-   grep -q 'windows.catalog' <<<"$actions_json" &&
-   grep -q 'windows.prepare.office' <<<"$actions_json" &&
-   grep -q 'windows.diagnose.office' <<<"$actions_json" &&
-   grep -q 'windows.resolve.photoshop' <<<"$actions_json" &&
-   grep -q 'windows.run.photoshop' <<<"$actions_json" &&
-   grep -q 'windows.enter' <<<"$actions_json" &&
-   grep -q 'windows.leave' <<<"$actions_json" &&
-   grep -q 'windows.sync' <<<"$actions_json" &&
-   grep -q 'windows.bridge_status' <<<"$actions_json" &&
-   grep -q 'windows.fix_network' <<<"$actions_json" &&
-   grep -q 'windows.guide' <<<"$actions_json" &&
-   grep -q 'windows.apps' <<<"$actions_json" &&
-   grep -q 'windows.plan' <<<"$actions_json" &&
-   grep -q 'install_user_command "$ROOT_DIR/bin/seven-windows-native" seven-windows-native' "$ROOT_DIR/scripts/install-cli.sh" &&
-   grep -q 'install_system_command "$ROOT_DIR/bin/seven-windows-native" seven-windows-native' "$ROOT_DIR/scripts/install-cli.sh" &&
-   grep -q 'Compatibility Engines' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'Global Mode' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'quick_launch_card' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'choose_installer' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'render_quick_resolution' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'native-recents.json' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'prepare_quick_target' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'diagnose_quick_target' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'render_decision_path' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'engine-step-active' "$ROOT_DIR/bin/seven-windows-native" &&
-   grep -q 'engine_pills' "$ROOT_DIR/bin/seven-windows-native"; then
-  ok "Windows Mode exposes an app-first resolver, guided assistant and shared actions"
+atlas_json="$("$ROOT_DIR/bin/seven" atlas status --json)"
+if grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-requirements.v1"' <<<"$atlas_json" &&
+   grep -q 'scripts/packages-atlas.txt' "$ROOT_DIR/profiles/catalog.json" &&
+   grep -q 'Atlas Explorer' "$ROOT_DIR/identity/profile-themes.json" &&
+   grep -q 'seven atlas open' "$ROOT_DIR/scripts/surfaces.sh"; then
+  pass "Atlas Explorer replaces Windows VM as a native seventh mini OS"
 else
-  fail "Windows Mode should expose status JSON, app resolver, guide, app surface and actions"
+  fail "Atlas Explorer native seventh mini OS contract is incomplete"
 fi
 
 if "$ROOT_DIR/scripts/installer-stack.sh" doctor >/dev/null &&

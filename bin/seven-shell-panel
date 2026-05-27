@@ -157,11 +157,12 @@ PROFILE_ACTIONS = {
         ("󰀻", tr_text("Creative Apps"), tr_text("Open the application library"), ["seven-overview", "apps"]),
         ("󰌢", tr_text("Install Studio"), tr_text("Complete creative profile packages"), ["seven", "profile", "install", "studio"]),
     ],
-    "windows": [
-        ("󰖳", tr_text("Windows Guide"), tr_text("Explain Windows Bridge paths"), ["seven-windows-assistant", "guide"]),
-        ("󰀻", tr_text("Windows Apps"), tr_text("Show Windows app readiness"), ["seven", "profile", "apps", "windows"]),
-        ("󰿭", tr_text("Windows Apps"), tr_text("Open Windows applications"), ["seven-windows-assistant", "apps"]),
-        ("󰢹", tr_text("Windows VM"), tr_text("Open Virt Manager for Windows Mode"), ["seven-windows-assistant", "vm"]),
+    "atlas": [
+        ("󰙅", tr_text("Atlas"), tr_text("Open documents, maps and research center"), ["seven", "atlas", "open"]),
+        ("󰉋", tr_text("Atlas Documents"), tr_text("Open PDFs, ebooks and notes"), ["seven", "profile", "open-folder", "atlas", "Documents"]),
+        ("󰆋", tr_text("Atlas Maps"), tr_text("Open routes, places and GPX files"), ["seven", "profile", "open-folder", "atlas", "Maps"]),
+        ("󰀻", tr_text("Atlas Apps"), tr_text("Open readers, maps, OCR and reference apps"), ["seven", "profile", "apps", "atlas"]),
+        ("󰄬", tr_text("Install Atlas"), tr_text("Complete Atlas packages"), ["seven", "atlas", "install", "--yes"]),
     ],
 }
 

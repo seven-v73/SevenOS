@@ -22,8 +22,8 @@ Usage:
   seven release doctor [--json]
 
 This command separates the stable daily-driver state from the public release
-gates: clean git freeze, graphical installer availability, and a user-supplied
-legal Windows ISO for Windows Bridge.
+gates: clean git freeze, graphical installer availability, and complete native
+mini OS identity requirements.
 EOF
       exit 0
       ;;
@@ -96,8 +96,8 @@ installer_release_json() {
   "$ROOT_DIR/scripts/installer-stack.sh" release --json 2>/dev/null || printf '{}'
 }
 
-windows_status_json() {
-  "$ROOT_DIR/bin/seven-windows-assistant" status --json 2>/dev/null || printf '{}'
+atlas_status_json() {
+  "$ROOT_DIR/bin/seven" atlas status --json 2>/dev/null || printf '{}'
 }
 
 channel_status_json() {
@@ -105,10 +105,10 @@ channel_status_json() {
 }
 
 release_status_json() {
-  local doctor installer windows channel dirty_count dirty_summary branch commit freeze_state freeze_path
+  local doctor installer atlas channel dirty_count dirty_summary branch commit freeze_state freeze_path
   doctor="$(doctor_check_json)"
   installer="$(installer_release_json)"
-  windows="$(windows_status_json)"
+  atlas="$(atlas_status_json)"
   channel="$(channel_status_json)"
   dirty_count="$(git_dirty_count)"
   dirty_summary="$(git_dirty_summary_json)"
@@ -120,7 +120,7 @@ release_status_json() {
     freeze_state="OK"
     freeze_path="$FREEZE_JSON"
   fi
-  DOCTOR_JSON="$doctor" INSTALLER_JSON="$installer" WINDOWS_JSON="$windows" CHANNEL_JSON="$channel" \
+  DOCTOR_JSON="$doctor" INSTALLER_JSON="$installer" ATLAS_JSON="$atlas" CHANNEL_JSON="$channel" \
   DIRTY_COUNT="$dirty_count" DIRTY_SUMMARY="$dirty_summary" BRANCH="$branch" COMMIT="$commit" \
   FREEZE_STATE="$freeze_state" FREEZE_PATH="$freeze_path" ROOT_DIR="$ROOT_DIR" \
   python - <<'PY'
@@ -135,7 +135,7 @@ def load(name):
 
 doctor = load("DOCTOR_JSON")
 installer = load("INSTALLER_JSON")
-windows = load("WINDOWS_JSON")
+atlas = load("ATLAS_JSON")
 channel = load("CHANNEL_JSON")
 dirty_summary = load("DIRTY_SUMMARY")
 dirty_count = int(os.environ.get("DIRTY_COUNT", "0") or 0)
@@ -180,11 +180,11 @@ release_actions = [
         "command": calamares_command,
     },
     {
-        "key": "windows-vm-provisioning",
-        "state": "OK" if windows.get("windows_vm") in {"OK", "RUN"} else "USER_REQUIRED",
-        "title": "Créer la VM Windows depuis un média officiel",
-        "detail": "SevenOS ne redistribue pas Windows; la VM doit être provisionnée depuis un média officiel ou autorisé par l'utilisateur.",
-        "command": "seven windows provision --yes",
+        "key": "atlas-readiness",
+        "state": "OK" if not atlas.get("missing_required") else "PENDING",
+        "title": "Compléter Atlas Explorer",
+        "detail": f"Atlas state: {atlas.get('state', 'unknown')}; missing: {len(atlas.get('missing_required') or [])}.",
+        "command": "seven atlas install --yes",
     },
 ]
 release_issues = [item for item in release_actions if item["state"] not in {"OK", "READY", "RUN"}]
@@ -215,9 +215,9 @@ print(json.dumps({
         "state": installer.get("state", "unknown"),
         "calamares_runtime": calamares_runtime,
     },
-    "windows": {
-        "vm_state": windows.get("windows_vm", "unknown"),
-        "vm_plan": windows.get("windows_vm_plan", "unknown"),
+    "atlas": {
+        "state": atlas.get("state", "unknown"),
+        "missing_required": atlas.get("missing_required", []),
     },
     "issues": doctor.get("issues", []) + release_issues,
     "release_actions": release_actions,
@@ -266,10 +266,10 @@ plan = [
         "command": installer_command,
     },
     {
-        "phase": "windows-bridge",
-        "state": next((item["state"] for item in actions if item["key"] == "windows-vm-provisioning"), "USER_REQUIRED"),
-        "goal": "Créer une VM Windows uniquement avec une ISO fournie légalement par l'utilisateur.",
-        "command": "seven windows guide",
+        "phase": "atlas-explorer",
+        "state": next((item["state"] for item in actions if item["key"] == "atlas-readiness"), "PENDING"),
+        "goal": "Garder SevenOS à sept identités natives avec Atlas Explorer complet.",
+        "command": "seven atlas status",
     },
 ]
 print(json.dumps({

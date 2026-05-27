@@ -159,13 +159,13 @@ LOCALIZED_PROFILE_TEXT = {
             "Creative space for producing, capturing, editing and finding exports without mixing the daily desktop.",
         ),
     },
-    "windows": {
-        "title": t("Windows", "Windows"),
-        "short": t("Compatibilité", "Compatibility"),
-        "note": t("Applications Windows, Wine/Proton et dossiers partagés.", "Windows applications, Wine/Proton and shared folders."),
+    "atlas": {
+        "title": t("Atlas Explorer", "Atlas Explorer"),
+        "short": t("Explorer", "Explore"),
+        "note": t("Documents, cartes, recherche, OCR et références.", "Documents, maps, research, OCR and references."),
         "mood": t(
-            "Espace de compatibilité pour lancer les logiciels Windows et garder leurs données au bon endroit.",
-            "Compatibility space for launching Windows software and keeping its data in the right place.",
+            "Espace d’exploration pour lire, cartographier, scanner, classer et retrouver le savoir local.",
+            "Exploration space for reading, mapping, scanning, classifying and finding local knowledge.",
         ),
     },
     "pulse": {
@@ -217,11 +217,11 @@ PUBLIC_PROFILE_DETAILS = {
         (t("Exports", "Exports"), t("Retrouve vite les fichiers prêts à partager.", "Quickly find files ready to share.")),
         (t("Applications", "Applications"), t("Ouvre les outils créatifs adaptés à Studio.", "Open creative tools suited to Studio.")),
     ],
-    "windows": [
-        (t("Assistant", "Assistant"), t("Prépare Windows avec un guide clair.", "Prepare Windows with a clear guide.")),
-        (t("Applications", "Applications"), t("Lance les logiciels Windows disponibles.", "Launch available Windows software.")),
-        (t("Dossiers", "Folders"), t("Accède aux fichiers partagés facilement.", "Access shared files easily.")),
-        (t("Aide", "Help"), t("Corrige les problèmes courants sans terminal.", "Fix common issues without a terminal.")),
+    "atlas": [
+        (t("Documents", "Documents"), t("PDF, ebooks, scans et archives restent ensemble.", "PDFs, ebooks, scans and archives stay together.")),
+        (t("Cartes", "Maps"), t("Lieux, trajets, GPX et cartes ouvrent dans Atlas.", "Places, routes, GPX and maps open in Atlas.")),
+        (t("Références", "References"), t("Notes, sources et collections restent retrouvables.", "Notes, sources and collections remain searchable.")),
+        (t("OCR", "OCR"), t("Les scans peuvent devenir du texte exploitable.", "Scans can become usable text.")),
     ],
     "pulse": [
         (t("Jeux", "Games"), t("Garde tes lanceurs et jeux dans Pulse.", "Keep game launchers and games in Pulse.")),
@@ -352,7 +352,7 @@ def run() -> int:
     .tile.forge { border-color: rgba(249,226,175,0.34); }
     .tile.shield { border-color: rgba(0,255,179,0.30); }
     .tile.studio { border-color: rgba(203,166,247,0.28); }
-    .tile.windows { border-color: rgba(137,220,235,0.28); }
+    .tile.atlas { border-color: rgba(137,220,235,0.28); }
     .tile.pulse { border-color: rgba(0,212,255,0.30); }
     .glyph { font-size: 20px; min-width: 34px; color: rgba(245,247,250,0.90); }
     .tile-title { font-size: 12px; font-weight: 500; }
@@ -449,7 +449,7 @@ def run() -> int:
     .prism-node.forge { border-color: rgba(137,180,250,0.40); }
     .prism-node.shield { border-color: rgba(148,226,213,0.38); }
     .prism-node.studio { border-color: rgba(245,194,231,0.34); }
-    .prism-node.windows { border-color: rgba(116,199,236,0.34); }
+    .prism-node.atlas { border-color: rgba(116,199,236,0.34); }
     .prism-node.pulse { border-color: rgba(166,227,161,0.34); }
     .node-glyph { font-size: 20px; min-width: 24px; color: rgba(245,247,250,0.94); }
     .node-title { font-size: 11px; font-weight: 500; color: @seven_text; }
@@ -704,15 +704,15 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
     profile_by_key = {str(item.get("key", "")): item for item in profiles if isinstance(item, dict)}
     naming = catalog.get("profile_naming", {}) if isinstance(catalog.get("profile_naming"), dict) else {}
     profile_defs = catalog.get("profiles", {}) if isinstance(catalog.get("profiles"), dict) else {}
-    order = ["equinox", "baobab", "forge", "shield", "pulse", "windows", "studio"]
-    outer_order = ["baobab", "forge", "shield", "pulse", "windows", "studio"]
+    order = ["equinox", "baobab", "forge", "shield", "pulse", "atlas", "studio"]
+    outer_order = ["baobab", "forge", "shield", "pulse", "atlas", "studio"]
     positions = {
         "equinox": (242, 172, 176, 68),
         "baobab": (257, 20, 146, 64),
         "forge": (476, 96, 146, 64),
         "shield": (476, 260, 146, 64),
         "pulse": (257, 330, 146, 66),
-        "windows": (38, 260, 146, 64),
+        "atlas": (38, 260, 146, 64),
         "studio": (38, 96, 146, 64),
     }
     centers = {key: (x + w / 2, y + h / 2) for key, (x, y, w, h) in positions.items()}
@@ -876,7 +876,7 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
         Gdk.KEY_3: "forge",
         Gdk.KEY_4: "shield",
         Gdk.KEY_5: "pulse",
-        Gdk.KEY_6: "windows",
+        Gdk.KEY_6: "atlas",
         Gdk.KEY_7: "studio",
     }
 

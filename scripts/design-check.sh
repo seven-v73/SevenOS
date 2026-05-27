@@ -143,7 +143,7 @@ if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&
    [[ -s "$ROOT_DIR/profiles/catalog.json" ]] &&
    jq -e '.schema == "sevenos.design-engine.v1" and .modes."seven-mocha".palette.base == "#11111B" and .modes."seven-latte".palette.base == "#EFF1F5" and (.icon_strategy.rule | contains("Papirus")) and .profile_themes.contract == "identity/profile-themes.json" and .profile_themes.catalog == "profiles/catalog.json"' "$ROOT_DIR/identity/design-engine.json" >/dev/null &&
    jq -e '.schema == "sevenos.profile-themes.v1" and .profiles.equinox.short_label == "EQX" and .profiles.baobab.catppuccin_role == "green/yellow" and .profiles.shield.short_label == "SEC" and .profiles.pulse.short_label == "GAME"' "$ROOT_DIR/identity/profile-themes.json" >/dev/null &&
-   jq -e '.schema == "sevenos.profiles.catalog.v1" and .default_profile == "equinox" and .profile_model.short_name == "LAPA" and .profiles.forge.mini_os == true and .profiles.windows.title == "Windows" and .profiles.baobab.layers.experience and .isolation_policy.activation and .core_package_files[0] == "scripts/packages-base.txt" and .runtime_optional_package_files[0] == "scripts/packages-runtime-optional.txt" and any(.profiles.baobab.anti_nuisance[]; . == "no dev toolchain") and .profiles.pulse.optional_package_files[0] == "scripts/packages-performance-optional.txt"' "$ROOT_DIR/profiles/catalog.json" >/dev/null &&
+   jq -e '.schema == "sevenos.profiles.catalog.v1" and .default_profile == "equinox" and .profile_model.short_name == "LAPA" and .profiles.forge.mini_os == true and .profiles.atlas.title == "Atlas Explorer" and .profiles.baobab.layers.experience and .isolation_policy.activation and .core_package_files[0] == "scripts/packages-base.txt" and .runtime_optional_package_files[0] == "scripts/packages-runtime-optional.txt" and any(.profiles.baobab.anti_nuisance[]; . == "no dev toolchain") and .profiles.pulse.optional_package_files[0] == "scripts/packages-performance-optional.txt"' "$ROOT_DIR/profiles/catalog.json" >/dev/null &&
    grep -q -- '--cat-base: #11111B' "$ROOT_DIR/identity/tokens.css" &&
    grep -q -- '--cat-base: #EFF1F5' "$ROOT_DIR/identity/tokens-light.css" &&
    grep -q 'resolve_icon_theme' "$ROOT_DIR/scripts/apply-theme.sh" &&
@@ -475,7 +475,7 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
 	   grep -q 'seven.*mini-os.*activate' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'Mode d’utilisation SevenOS' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'Entretien SevenOS' "$ROOT_DIR/bin/seven-settings-native" &&
-	   grep -q 'Windows dans SevenOS' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'Atlas Explorer' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'Sauvegarde rapide' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'Animations' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'profile requirements' "$ROOT_DIR/bin/seven-settings-native" &&

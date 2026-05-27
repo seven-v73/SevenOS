@@ -171,11 +171,11 @@ command_ready seven-welcome && pass "Welcome flow available" || partial "Welcome
 command_ready seven-power && pass "Power flow available" || partial "Power flow not installed in PATH"
 
 criterion "Software Compatibility"
-profile_check "Windows" "$ROOT_DIR/scripts/packages-windows.txt" "seven improve compatibility"
-command_ready virt-manager && pass "Virt Manager available" || { partial "Virt Manager not installed"; recommend "seven improve compatibility" "complete Windows Mode and VM tooling"; }
-command_ready flatpak && pass "Flatpak available" || { partial "Flatpak not installed"; recommend "seven improve compatibility" "install app compatibility layer"; }
-command_ready wine && pass "Wine available" || { partial "Wine not installed"; recommend "seven improve compatibility" "install Windows app compatibility"; }
-[[ -x "$ROOT_DIR/vm/windows-mode.sh" ]] && pass "Windows Mode assistant available" || { miss "Windows Mode assistant missing"; recommend "seven improve compatibility" "restore Windows Mode assistant"; }
+profile_check "Atlas" "$ROOT_DIR/scripts/packages-atlas.txt" "seven atlas install --yes"
+command_ready marble && pass "Atlas map tools available" || { partial "Atlas map tools not installed"; recommend "seven atlas install --yes" "complete Atlas Explorer tooling"; }
+command_ready flatpak && pass "Flatpak available" || { partial "Flatpak not installed"; recommend "seven flatpak setup" "prepare global app compatibility"; }
+command_ready bottles || command_ready lutris || command_ready wine && pass "App compatibility tools available" || { partial "App compatibility tools not installed"; recommend "seven store" "install Bottles, Lutris or Wine from SevenStore"; }
+[[ -f "$ROOT_DIR/scripts/packages-atlas.txt" ]] && pass "Atlas requirements available" || { miss "Atlas requirements missing"; recommend "seven atlas install --yes" "restore Atlas package baseline"; }
 
 criterion "Ease Of Use"
 command_ready seven && pass "seven controller available" || partial "seven controller only available in repo"

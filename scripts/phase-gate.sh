@@ -92,7 +92,7 @@ experience = command_json([os.path.join(ROOT, "scripts/experience.sh"), "--json"
 control = command_json([os.path.join(ROOT, "scripts/control-plane.sh"), "--json"], {"overall": 0, "summary": {}, "actions": []})
 shield = command_json([os.path.join(ROOT, "security/shield-status.sh"), "--json"], {"percent": 0, "posture": "unknown"})
 server = command_json([os.path.join(ROOT, "server/seven-server.sh"), "status", "--json"], {"service": {"state": "MISS"}})
-windows = command_json([os.path.join(ROOT, "bin/seven-windows-assistant"), "status", "--json"], {"ready": False, "mode": "setup-needed"})
+atlas = command_json([os.path.join(ROOT, "bin/seven"), "atlas", "status", "--json"], {"state": "unknown", "missing_required": []})
 installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
 profiles = command_json([os.path.join(ROOT, "bin/seven"), "profile", "plan", "--json"], {"summary": {"total": 0}, "next": []})
 packages = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"summary": {"total": 0}, "next": []})
@@ -167,14 +167,14 @@ gates = [
         "detail": "A real OS needs a reproducible install path, not a manual post-install story.",
     },
     {
-        "key": "windows",
-        "title": "Windows Mode",
-        "state": "PASS" if windows.get("ready") else "WARN",
-        "actual": windows.get("mode", "setup-needed"),
+        "key": "atlas",
+        "title": "Atlas Explorer",
+        "state": "PASS" if not atlas.get("missing_required") else "WARN",
+        "actual": atlas.get("state", "unknown"),
         "target": "ready",
-        "band": windows.get("mode", "setup-needed"),
-        "command": "seven windows plan",
-        "detail": "All-in-one accessibility improves when Wine, Bottles and VM setup are guided.",
+        "band": atlas.get("state", "unknown"),
+        "command": "seven atlas status",
+        "detail": "SevenOS keeps its seventh identity native through documents, maps, OCR and references.",
     },
     {
         "key": "profiles",

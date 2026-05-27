@@ -90,13 +90,13 @@ profiles = [
         "story": "The maker space: image, sound, motion, 3D and cultural output.",
     },
     {
-        "key": "windows",
-        "title": "Windows",
-        "role": "Bridge",
-        "accent": "seven-blue",
-        "symbol": "motif-cross",
-        "principle": "compatibility without surrender",
-        "story": "The bridge space: Windows apps inside a Linux-first life.",
+        "key": "atlas",
+        "title": "Atlas",
+        "role": "Explorer",
+        "accent": "seven-mint",
+        "symbol": "motif-prism-map",
+        "principle": "knowledge without dependency",
+        "story": "The explorer space: documents, maps, OCR and references in a native SevenOS life.",
     },
     {
         "key": "griot",
@@ -618,7 +618,7 @@ status() {
   printf '  Forge   Builder    cyan    code, services, deploy and construction\n'
   printf '  Shield  Guardian   green   audit, sandbox and cyber trust\n'
   printf '  Studio  Maker      violet  creative production\n'
-  printf '  Windows Bridge     blue    compatibility without friction\n'
+  printf '  Atlas Explorer     teal    documents, maps and research\n'
   printf '  Griot   Memory     violet  documentation and knowledge\n'
   printf '\nRegional accent packs:\n'
   printf '  seven identity packs\n'

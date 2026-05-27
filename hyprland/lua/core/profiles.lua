@@ -6,7 +6,7 @@ local known_profiles = {
   "forge",
   "shield",
   "studio",
-  "windows",
+  "atlas",
   "pulse",
 }
 

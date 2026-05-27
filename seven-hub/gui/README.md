@@ -29,8 +29,8 @@ Seven Hub now exposes a Control Center structure:
 - readiness score pulled from `seven readiness --json`
 - system state pulled from `seven status --json`
 - profile state pulled from `seven profile status --json`
-- service cards for Network, Firewall, Windows Mode and Seven Server
-- profile cards for Forge DevOps, Shield, Studio, Windows, Pulse and Baobab
+- service cards for Network, Firewall, Atlas Explorer and Seven Server
+- profile cards for Forge DevOps, Shield, Studio, Atlas, Pulse and Baobab
 - active profile, workspace and install/activate actions
 - recommendation cards mapped to safe SevenOS commands
 - output drawer for readable command results

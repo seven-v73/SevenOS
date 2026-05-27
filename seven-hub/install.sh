@@ -95,7 +95,7 @@ run_cmd cp "$ROOT_DIR/identity/icons/seven-store.svg" "$ICON_HOME/seven-store.sv
 run_cmd cp "$ROOT_DIR/identity/assets/icon-dev.svg" "$ICON_HOME/sevenos-dev.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-security.svg" "$ICON_HOME/sevenos-security.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-creation.svg" "$ICON_HOME/sevenos-creation.svg"
-run_cmd cp "$ROOT_DIR/identity/assets/icon-windows.svg" "$ICON_HOME/sevenos-windows.svg"
+run_cmd cp "$ROOT_DIR/identity/assets/icon-atlas.svg" "$ICON_HOME/sevenos-atlas.svg"
 run_cmd cp "$ROOT_DIR/identity/assets/icon-installer.svg" "$ICON_HOME/sevenos-installer.svg"
 
 log_success "Seven Hub installed. Launch it with: seven hub"

@@ -6,14 +6,14 @@ const fallbackSnapshot = {
   services: [
     { label: "Network", state: "MISS", detail: "Waiting for SevenOS backend" },
     { label: "Firewall", state: "MISS", detail: "Waiting for SevenOS backend" },
-    { label: "Windows Mode", state: "MISS", detail: "Waiting for SevenOS backend" },
+    { label: "Atlas Explorer", state: "MISS", detail: "Waiting for SevenOS backend" },
     { label: "Server", state: "MISS", detail: "Waiting for SevenOS backend" }
   ],
   profiles: [
     { key: "forge", title: "Forge", description: "Development workspace", state: "MISS", action: "seven profile install forge", active: false, workspace: "~/Forge" },
     { key: "shield", title: "Shield", description: "Cybersecurity workspace", state: "MISS", action: "seven profile install shield", active: false, workspace: "~/ShieldLab" },
     { key: "studio", title: "Studio", description: "Creative production workspace", state: "MISS", action: "seven profile install studio", active: false, workspace: "~/Studio" },
-    { key: "windows", title: "Windows", description: "Compatibility layer", state: "MISS", action: "seven profile install windows", active: false, workspace: "~/WindowsMode" }
+    { key: "atlas", title: "Atlas", description: "Documents, maps and OCR workspace", state: "MISS", action: "seven profile install atlas", active: false, workspace: "~/Atlas" }
   ],
   recommendations: []
 };
@@ -28,6 +28,7 @@ const fallbackActionRegistry = {
     { id: "sevenpkg.status", category: "Apps", title: "SevenPkg Status", command: "sevenpkg status", impact: "safe", description: "Show SevenOS software layer state." },
     { id: "flatpak.status", category: "Apps", title: "Flatpak Status", command: "seven flatpak status", impact: "safe", description: "Check Flathub and Flatpak readiness." },
     { id: "profile.studio", category: "Profiles", title: "Install Studio", command: "seven profile install studio", impact: "packages", description: "Install the creative workspace." },
+    { id: "profile.atlas", category: "Profiles", title: "Install Atlas", command: "seven profile install atlas", impact: "packages", description: "Install the documents, maps and OCR workspace." },
     { id: "readiness.run", category: "System", title: "Run Readiness", command: "seven readiness", impact: "safe", description: "Score SevenOS against product readiness checks." },
     { id: "doctor.run", category: "System", title: "Run Doctor", command: "seven doctor", impact: "safe", description: "Check common system blockers." },
     { id: "repair.ux", category: "System", title: "Repair UX", command: "seven repair ux", impact: "changes", description: "Review desktop and shell repair actions." }
@@ -36,7 +37,7 @@ const fallbackActionRegistry = {
 
 const actionGroups = {
   security: ["security.audit", "security.enable", "security.lab", "repair.ux"],
-  apps: ["apps.open", "sevenpkg.status", "flatpak.status", "profile.studio", "profile.windows"],
+  apps: ["apps.open", "sevenpkg.status", "flatpak.status", "profile.studio", "profile.atlas"],
   system: ["readiness.run", "doctor.run", "server.status", "installer.status", "theme.apply", "files.open", "quick.open"]
 };
 

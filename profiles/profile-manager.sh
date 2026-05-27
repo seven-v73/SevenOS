@@ -44,7 +44,7 @@ profile_aliases_json() {
   cat <<'JSON'
 {
   "schema": "sevenos.profile-aliases.v1",
-  "active_profiles": ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"],
+  "active_profiles": ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"],
   "retired_profiles": {
     "horizon": {
       "redirects_to": "forge",
@@ -62,7 +62,7 @@ profile_aliases_human() {
 SevenOS profile aliases
 
 Active mini OS:
-  equinox, baobab, forge, shield, studio, windows, pulse
+  equinox, baobab, forge, shield, studio, atlas, pulse
 
 Retired aliases:
   horizon -> forge
@@ -91,7 +91,7 @@ profile_title() {
     forge) printf 'Forge DevOps' ;;
     shield) printf 'Shield Cybersecurity' ;;
     studio) printf 'Studio Creator' ;;
-    windows) printf 'Windows' ;;
+    atlas) printf 'Atlas' ;;
     pulse) printf 'Pulse Gaming' ;;
     baobab) printf 'Baobab Cultural OS' ;;
     *) printf '%s' "$1" ;;
@@ -106,7 +106,7 @@ profile_description() {
     forge) printf 'Developer and cloud deployment mini OS for code, toolchains, containers, local services, logs and releases.' ;;
     shield) printf 'Cybersecurity mini OS for authorized audit, forensics, sandboxing, network analysis and reports.' ;;
     studio) printf 'Creator mini OS for logos, design, video, audio, 3D, capture and asset production.' ;;
-    windows) printf 'Espace Windows pour les applications Windows, les dossiers partagés et Windows complet à la demande.' ;;
+    atlas) printf 'Espace Atlas pour documents, cartes, OCR, références et voyages.' ;;
     pulse) printf 'Linux gaming mini OS for Proton, low latency, overlays, controllers and frame pacing.' ;;
     baobab) printf 'African cultural mini OS for heritage, languages, oral traditions, music, maps, fashion, food, wisdom and offline community memory.' ;;
     *) printf 'SevenOS mini OS profile.' ;;
@@ -130,7 +130,7 @@ profile_package_files() {
       printf '%s\n' "$ROOT_DIR/scripts/packages-cybersecurity-sandbox.txt"
       ;;
     studio) printf '%s\n' "$ROOT_DIR/scripts/packages-creation.txt" ;;
-    windows) printf '%s\n' "$ROOT_DIR/scripts/packages-windows.txt" ;;
+    atlas) printf '%s\n' "$ROOT_DIR/scripts/packages-atlas.txt" ;;
     pulse) printf '%s\n' "$ROOT_DIR/scripts/packages-performance.txt" ;;
     baobab) printf '%s\n' "$ROOT_DIR/scripts/packages-culture.txt" ;;
     *) return 1 ;;
@@ -155,7 +155,7 @@ profile_target() {
     forge) printf 'dev' ;;
     shield) printf 'cybersecurity' ;;
     studio) printf 'creation' ;;
-    windows) printf 'windows' ;;
+    atlas) printf 'atlas' ;;
     pulse) printf 'performance' ;;
     baobab) printf 'culture' ;;
     *) return 1 ;;
@@ -170,7 +170,7 @@ profile_workspace() {
     forge) printf '%s/Forge' "$HOST_HOME" ;;
     shield) printf '%s/ShieldLab' "$HOST_HOME" ;;
     studio) printf '%s/Studio' "$HOST_HOME" ;;
-    windows) printf '%s/WindowsMode' "$HOST_HOME" ;;
+    atlas) printf '%s/Atlas' "$HOST_HOME" ;;
     pulse) printf '%s/Pulse' "$HOST_HOME" ;;
     baobab) printf '%s/Baobab' "$HOST_HOME" ;;
     *) return 1 ;;
@@ -185,7 +185,7 @@ profile_accent() {
     forge) printf 'gold' ;;
     shield) printf 'green' ;;
     studio) printf 'mauve' ;;
-    windows) printf 'sky' ;;
+    atlas) printf 'teal' ;;
     pulse) printf 'cyan' ;;
     baobab) printf 'baobab' ;;
     *) printf 'gold' ;;
@@ -201,7 +201,7 @@ profile_waybar_icon() {
     forge) printf '󰙨' ;;
     shield) printf '󰒃' ;;
     studio) printf '󰏘' ;;
-    windows) printf '󰖳' ;;
+    atlas) printf '󰙅' ;;
     pulse) printf '󰓅' ;;
     *) printf '󰐃' ;;
   esac
@@ -216,7 +216,7 @@ profile_short_label() {
     forge) printf 'DEV' ;;
     shield) printf 'SEC' ;;
     studio) printf 'CRT' ;;
-    windows) printf 'WIN' ;;
+    atlas) printf 'ATLAS' ;;
     pulse) printf 'GAME' ;;
     *) printf '%s' "$1" | tr '[:lower:]' '[:upper:]' | cut -c1-3 ;;
   esac
@@ -231,7 +231,7 @@ profile_accent_color() {
     forge) printf '#F9E2AF' ;;
     shield) printf '#00FFB3' ;;
     studio) printf '#CBA6F7' ;;
-    windows) printf '#74C7EC' ;;
+    atlas) printf '#5AD7B7' ;;
     pulse) printf '#00D4FF' ;;
     *) printf '#4DA3FF' ;;
   esac
@@ -246,7 +246,7 @@ profile_secondary_color() {
     forge) printf '#89B4FA' ;;
     shield) printf '#94E2D5' ;;
     studio) printf '#F5C2E7' ;;
-    windows) printf '#89B4FA' ;;
+    atlas) printf '#74C7EC' ;;
     pulse) printf '#89B4FA' ;;
     *) printf '#00D4FF' ;;
   esac
@@ -261,7 +261,7 @@ profile_ui_mood() {
     forge) printf 'developer cockpit, cloud deploys, containers, services, logs and release flow' ;;
     shield) printf 'cybersecurity dashboard, visible scope, VPN, audit and isolation emphasis' ;;
     studio) printf 'creator canvas, media actions, color, capture and export flow' ;;
-    windows) printf 'Applications Windows, dossiers partagés, réparation et Windows complet si nécessaire' ;;
+    atlas) printf 'Documents, cartes, OCR, références et voyages' ;;
     pulse) printf 'Linux gaming HUD, low latency, overlays, controllers and recording awareness' ;;
     *) printf 'SevenOS adaptive profile surface' ;;
   esac
@@ -275,7 +275,7 @@ profile_terminal_mode() {
     forge) printf 'forge' ;;
     shield) printf 'cyber' ;;
     studio) printf 'focus' ;;
-    windows) printf 'windows' ;;
+    atlas) printf 'atlas' ;;
     pulse) printf 'dark' ;;
     baobab) printf 'focus' ;;
     *) printf 'classic' ;;
@@ -291,7 +291,7 @@ profile_waybar_modules() {
     forge) printf 'profile,spotlight,media,wifi,bluetooth,audio,battery,vpn,recorder,ai' ;;
     shield) printf 'profile,spotlight,wifi,bluetooth,audio,battery,vpn,recorder,ai' ;;
     studio) printf 'profile,spotlight,media,wifi,bluetooth,audio,battery,recorder,ai' ;;
-    windows) printf 'profile,spotlight,wifi,bluetooth,audio,battery,ai' ;;
+    atlas) printf 'profile,spotlight,media,wifi,bluetooth,audio,battery,ai' ;;
     pulse) printf 'profile,spotlight,media,wifi,bluetooth,audio,battery,recorder,ai' ;;
     *) printf 'profile,spotlight,wifi,bluetooth,audio,battery,ai' ;;
   esac
@@ -305,7 +305,7 @@ profile_role() {
     forge) printf 'DevOps' ;;
     shield) printf 'Cybersecurity' ;;
     studio) printf 'Creator' ;;
-    windows) printf 'Windows' ;;
+    atlas) printf 'Atlas' ;;
     pulse) printf 'Gaming' ;;
     baobab) printf 'Culture' ;;
     *) printf 'Mini OS' ;;
@@ -320,7 +320,7 @@ profile_symbol() {
     forge) printf 'forge-profile-mark' ;;
     shield) printf 'shield-profile-mark' ;;
     studio) printf 'motif-diamond' ;;
-    windows) printf 'motif-cross' ;;
+    atlas) printf 'motif-map' ;;
     pulse) printf 'motif-triangle' ;;
     baobab) printf 'baobab-system-mark' ;;
     *) printf 'logo-sevenos-symbol' ;;
@@ -335,7 +335,7 @@ profile_principle() {
     forge) printf 'build, ship and observe' ;;
     shield) printf 'visible protection' ;;
     studio) printf 'expressive production' ;;
-    windows) printf 'windows when you need it' ;;
+    atlas) printf 'explore and organize' ;;
     pulse) printf 'responsive performance' ;;
     baobab) printf 'living heritage, offline-first' ;;
     *) printf 'sovereign workflow' ;;
@@ -346,7 +346,7 @@ profile_enter_command() {
   local key
   key="$(normalize_profile_key "$1")"
   case "$key" in
-    windows) printf 'seven windows enter' ;;
+    atlas) printf 'seven atlas open' ;;
     *) return 1 ;;
   esac
 }
@@ -359,7 +359,7 @@ profile_story() {
     forge) printf 'Turn SevenOS into a DevOps mini OS for code, SDKs, containers, builds, local services, deployments, logs and technical learning.' ;;
     shield) printf 'Use SevenOS as a cybersecurity mini OS for authorized scope, audit, sandboxing, forensics and careful reporting.' ;;
     studio) printf 'Use SevenOS as a creator mini OS for logos, design, video, audio, 3D, capture and export.' ;;
-    windows) printf 'Ouvre les applications Windows, les dossiers partagés et Windows complet depuis SevenOS sans étapes manuelles.' ;;
+    atlas) printf 'Explore les documents, cartes, OCR, références et voyages depuis SevenOS.' ;;
     pulse) printf 'Use SevenOS as a Linux gaming mini OS tuned for Proton, low latency, controllers, overlays and frame pacing.' ;;
     baobab) printf 'Enter Baobab as an African digital village: heritage library, oral stories, language hub, cultural sound, map exploration, fashion, food, wisdom and offline community memory.' ;;
     *) printf 'Use SevenOS as a coherent sovereign workspace.' ;;
@@ -374,7 +374,7 @@ profile_apps() {
     forge) printf '%s\n' "kitty" "code" "helix" "docker" "podman" "caddy" "ssh" ;;
     shield) printf '%s\n' "kitty" "wireshark" "nmap" "zaproxy" ;;
     studio) printf '%s\n' "gimp" "krita" "inkscape" "blender" "kdenlive" ;;
-    windows) printf '%s\n' "virt-manager" "bottles" "lutris" ;;
+    atlas) printf '%s\n' "evince" "foliate" "calibre" "marble" "gnome-maps" "pdfarranger" ;;
     pulse) printf '%s\n' "lutris" "gamescope" "mangohud" "gamemoderun" ;;
     baobab) printf '%s\n' "seven hub" "seven baobab" "seven baobab modules" "seven reader" "foliate" "calibre" "mpv" ;;
     *) return 1 ;;
@@ -406,8 +406,6 @@ profile_app_command() {
     "seven baobab modules") printf 'seven baobab modules' ;;
     "seven files") printf 'seven-files profile' ;;
     "seven reader") printf 'seven-reader' ;;
-    bottles) printf 'seven windows apps' ;;
-    "virt-manager") printf 'seven windows vm' ;;
     docker) printf 'docker info' ;;
     podman) printf 'podman info' ;;
     caddy) printf 'caddy version' ;;
@@ -493,7 +491,7 @@ profile_workspace_dirs() {
     forge) printf '%s\n' "Projects" "Sandboxes" "Containers" "Deployments" "Services" "Logs" "Notes" ;;
     shield) printf '%s\n' "Labs" "Reports" "Captures" "Wordlists" "Evidence" ;;
     studio) printf '%s\n' "Images" "Video" "Audio" "3D" "Exports" "References" ;;
-    windows) printf '%s\n' "Applications" "Windows complet" "Installations" "Dossiers" ;;
+    atlas) printf '%s\n' "Documents" "Cartes" "OCR" "Références" ;;
     pulse) printf '%s\n' "Games" "Launchers" "Benchmarks" "Clips" ;;
     baobab) printf '%s\n' "Village" "Heritage" "Languages" "Stories" "Sound" "Explore" "Museum" "Fashion" "Food" "Wisdom" "Market" ;;
     *) return 1 ;;
@@ -546,7 +544,7 @@ profile_launcher_path() {
 }
 
 profile_keys() {
-  printf '%s\n' equinox baobab forge shield studio windows pulse
+  printf '%s\n' equinox baobab forge shield studio atlas pulse
 }
 
 profile_next_actions() {
@@ -572,9 +570,9 @@ profile_next_actions() {
   case "$key" in
     forge) printf '%s\t%s\n' "Detect deployable project" "seven deploy detect ." ;;
     shield) printf '%s\t%s\n' "Open Cyber Lab" "seven shield lab --preset web" ;;
-    windows)
-      printf '%s\t%s\n' "Ouvrir Windows" "seven windows enter"
-      printf '%s\t%s\n' "Ouvrir le panneau Windows" "seven windows open"
+    atlas)
+      printf '%s\t%s\n' "Ouvrir Atlas" "seven atlas open"
+      printf '%s\t%s\n' "Vérifier Atlas" "seven atlas status"
       ;;
     equinox) printf '%s\t%s\n' "Preview balanced runtime" "seven runtime plan equinox forge shield studio pulse" ;;
     pulse) printf '%s\t%s\n' "Open performance runtime plan" "seven runtime plan pulse shield" ;;
@@ -901,7 +899,7 @@ gap_json_object() {
   case "$key:$state" in
     shield:*) priority="critical" ;;
     studio:MISS) priority="high" ;;
-    studio:PART|windows:PART|windows:MISS) priority="high" ;;
+    studio:PART|atlas:PART|atlas:MISS) priority="high" ;;
     *:PART) priority="medium" ;;
     *:MISS) priority="high" ;;
     *) priority="low" ;;
@@ -1387,13 +1385,13 @@ defaults = {
         "session_policy": "restore assets, references, exports and capture tools",
         "primary_apps": ["krita", "blender", "kdenlive"],
     },
-    "windows": {
-        "metaphor": "windows space",
-        "density": "guided",
-        "pace": "guided",
-        "home": "windows panel",
-        "session_policy": "restore Windows apps, shared folders and full Windows state",
-        "primary_apps": ["seven windows open", "seven windows apps", "bottles"],
+    "atlas": {
+        "metaphor": "atlas map",
+        "density": "calm",
+        "pace": "research-flow",
+        "home": "atlas center",
+        "session_policy": "restore documents, maps, references and research context",
+        "primary_apps": ["seven atlas open", "seven profile apps atlas", "seven profile open atlas"],
     },
     "pulse": {
         "metaphor": "performance stage",
@@ -1441,10 +1439,10 @@ passages = {
         "sound": "brush-air",
         "motion": "canvas reveal",
     },
-    "windows": {
-        "enter": "Tu entres dans l'espace Windows.",
-        "leave": "Tu quittes Windows, tes dossiers et applications restent ranges.",
-        "transition": "SevenOS prepare Windows puis revient vers le mini OS cible.",
+    "atlas": {
+        "enter": "Tu entres dans Atlas Explorer.",
+        "leave": "Tu quittes Atlas, tes documents restent ranges.",
+        "transition": "SevenOS prepare Atlas puis revient vers le mini OS cible.",
         "sound": "soft-open",
         "motion": "window slide",
     },
@@ -1840,18 +1838,10 @@ PY
 
 activate_profile() {
   local key
-  local tmp_env tmp_json previous_key should_leave_windows should_enter_windows passage_status_file
+  local tmp_env tmp_json previous_key passage_status_file
   key="$(normalize_profile_key "$1")"
   profile_target "$key" >/dev/null
   previous_key="$(active_profile 2>/dev/null || printf 'equinox')"
-  should_leave_windows=0
-  should_enter_windows=0
-  if [[ "$previous_key" == "windows" && "$key" != "windows" && "${SEVENOS_WINDOWS_AUTO_LEAVE:-1}" != "0" ]]; then
-    should_leave_windows=1
-  fi
-  if [[ "$key" == "windows" && "${SEVENOS_WINDOWS_AUTO_ENTER:-0}" == "1" ]]; then
-    should_enter_windows=1
-  fi
 
   if [[ "$previous_key" == "$key" && "${SEVENOS_PROFILE_FORCE:-0}" != "1" ]]; then
     log_success "Active profile: $(profile_title "$key")"
@@ -1879,13 +1869,6 @@ activate_profile() {
     printf 'seven runtime activate %q --apply --yes\n' "$key"
     printf 'seven hypr lua apply %q\n' "$key"
     printf 'seven motion profile %q\n' "$key"
-    if [[ "$previous_key" == "windows" && "$key" != "windows" && "${SEVENOS_WINDOWS_AUTO_LEAVE:-1}" != "0" ]]; then
-      printf 'seven windows leave\n'
-    fi
-    if [[ "$key" == "windows" && "${SEVENOS_WINDOWS_AUTO_ENTER:-0}" == "1" ]]; then
-      printf 'seven windows enter\n'
-      printf 'sleep 5; seven windows sync\n'
-    fi
     return 0
   fi
 
@@ -1936,35 +1919,6 @@ EOF
     notify-send -a "SevenOS Profile" -h string:x-canonical-private-synchronous:sevenos-profile -t 1200 "$(profile_waybar_icon "$key")  $(profile_title "$key")" "$(profile_ui_mood "$key")" >/dev/null 2>&1 || true
   fi
 
-  if [[ "$should_leave_windows" == "1" ]]; then
-    mkdir -p "$STATE_DIR"
-    if command -v notify-send >/dev/null 2>&1; then
-      notify-send -a "SevenOS Profile" -h string:x-canonical-private-synchronous:sevenos-windows-leave -t 1400 "󰖳  Windows" "Windows est rangé pour libérer les ressources." >/dev/null 2>&1 || true
-    fi
-    run_profile_background "$STATE_DIR/windows-enter.log" \
-      env SEVENOS_ROOT="$ROOT_DIR" SEVENOS_WINDOWS_AUTO_STOPPED_BY_PROFILE=1 \
-      SEVENOS_WINDOWS_LEAVE_MODE="${SEVENOS_WINDOWS_AUTO_LEAVE_MODE:-managedsave}" \
-      "$ROOT_DIR/bin/seven-windows-assistant" leave
-  fi
-
-  if [[ "$should_enter_windows" == "1" ]]; then
-    local enter_cmd
-    enter_cmd="$(profile_enter_command "$key" 2>/dev/null || true)"
-    if [[ -n "$enter_cmd" ]]; then
-      mkdir -p "$STATE_DIR"
-      if command -v notify-send >/dev/null 2>&1; then
-        notify-send -a "SevenOS Profile" -h string:x-canonical-private-synchronous:sevenos-windows-enter -t 1400 "󰖳  Windows" "SevenOS ouvre Windows et prépare l’accès internet." >/dev/null 2>&1 || true
-      fi
-      run_profile_background "$STATE_DIR/windows-enter.log" \
-        env SEVENOS_ROOT="$ROOT_DIR" SEVENOS_WINDOWS_AUTO_STARTED_BY_PROFILE=1 \
-        SEVENOS_WINDOWS_CONSOLE="${SEVENOS_WINDOWS_AUTO_CONSOLE:-virt-manager}" \
-        "$ROOT_DIR/bin/seven-windows-assistant" enter
-      run_profile_background "$STATE_DIR/windows-enter.log" \
-        env SEVENOS_ROOT="$ROOT_DIR" SEVENOS_WINDOWS_AUTO_STARTED_BY_PROFILE=1 \
-        SEVENOS_WINDOWS_CONSOLE="${SEVENOS_WINDOWS_AUTO_CONSOLE:-virt-manager}" \
-        bash -lc 'sleep 5; "$SEVENOS_ROOT/bin/seven-windows-assistant" sync'
-    fi
-  fi
   flock -u 9
   if [[ "${SEVENOS_PROFILE_SYNC_ACTIVATE:-0}" == "1" ]]; then
     write_profile_passage_status "$key" "$previous_key" "running" "SevenOS applique le runtime du nouvel espace." "runtime"
@@ -2031,9 +1985,9 @@ post_install_profile() {
       log_info "Running Shield post-install audit..."
       "$ROOT_DIR/security/shield-status.sh" status || true
       ;;
-    windows)
-      log_info "Preparing Windows Mode post-install guidance..."
-      "$ROOT_DIR/bin/seven-windows-assistant" plan || true
+    atlas)
+      log_info "Preparing Atlas Explorer post-install guidance..."
+      "$ROOT_DIR/bin/seven-profile-requirements" status atlas || true
       ;;
     equinox)
       log_info "Equinox global profile ready."
@@ -2392,7 +2346,7 @@ Profiles:
   forge    Forge DevOps: developer, containers and deployment mini OS
   shield   Shield Cybersecurity: cybersecurity mini OS
   studio   Studio Creator: creator mini OS
-  windows  Windows: applications Windows, dossiers et Windows complet
+  atlas    Atlas: documents, cartes, OCR, références et voyages
   pulse    Pulse Gaming: Linux gaming mini OS
 EOF
 }
@@ -2410,7 +2364,7 @@ import re
 import sys
 from pathlib import Path
 
-profiles = {"equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"}
+profiles = {"equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"}
 action = os.environ.get("PROFILE_ACTION", "folders")
 active = os.environ.get("ACTIVE_PROFILE", "equinox")
 state_dir = Path(os.environ.get("STATE_DIR", str(Path.home() / ".config/sevenos")))
@@ -2645,7 +2599,7 @@ PY
     ;;
   open-folder|access-folder)
     target_profile="$(active_profile)"
-    if [[ -n "${1:-}" && "$1" =~ ^(equinox|baobab|forge|shield|studio|windows|pulse)$ ]]; then
+    if [[ -n "${1:-}" && "$1" =~ ^(equinox|baobab|forge|shield|studio|atlas|pulse)$ ]]; then
       target_profile="$1"
       shift
     fi

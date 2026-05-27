@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
 CATALOG = ROOT_DIR / "profiles/catalog.json"
-PROFILES = ("equinox", "baobab", "forge", "shield", "studio", "windows", "pulse")
+PROFILES = ("equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse")
 ALIASES = {
     "default": "equinox",
     "base": "equinox",
@@ -24,6 +24,10 @@ ALIASES = {
     "performance": "pulse",
     "gaming": "pulse",
     "culture": "baobab",
+    "explore": "atlas",
+    "exploration": "atlas",
+    "documents": "atlas",
+    "maps": "atlas",
 }
 ALTERNATIVES = {
     "code": ("visual-studio-code-bin", "vscodium-bin", "vscodium"),
@@ -177,9 +181,9 @@ def status(profile: str, *, include_optional: bool) -> dict:
             "optional_aur": aur_optional,
         },
         "commands": {
-            "status": f"seven profile requirements {profile} --json",
-            "install_required": f"seven profile requirements {profile} --apply --yes",
-            "install_optional": f"seven profile requirements {profile} --optional --apply --yes",
+            "status": f"seven-profile-requirements status {profile} --json",
+            "install_required": f"seven-profile-requirements status {profile} --apply --yes",
+            "install_optional": f"seven-profile-requirements status {profile} --optional --apply --yes",
         },
     }
 

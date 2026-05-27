@@ -61,12 +61,16 @@
       "scripts/packages-culture-optional.txt"
     ]
   },
-  "windows": {
-    "description": "Windows Bridge: autonomous Windows VM-first mini OS with Wine and Bottles fallback",
+  "atlas": {
+    "description": "Atlas Explorer: native documents, maps, OCR, references and travel mini OS",
     "kind": "sevenos-target",
-    "target": "windows",
+    "target": "knowledge",
     "package_files": [
-      "scripts/packages-windows.txt"
+      "scripts/packages-atlas.txt"
+    ],
+    "optional_package_files": [
+      "scripts/packages-atlas-optional.txt",
+      "scripts/packages-atlas-aur.txt"
     ]
   },
   "pulse": {

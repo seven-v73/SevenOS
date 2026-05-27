@@ -1,0 +1,51 @@
+return {
+  key = "atlas",
+  title = "Atlas Explorer",
+  role = "research, maps and document-navigation mini OS",
+  workspace_policy = "documents-maps-research",
+  ui_density = "calm",
+  runtime_signals = {
+    context = "exploration",
+    layout = "reader-map-notes",
+    priority = "research-flow",
+  },
+  workspace_intent = {
+    "1: documents and PDFs",
+    "2: maps, routes and places",
+    "3: notes, references and search",
+    "4: scans, OCR and archives",
+    "5: browser research",
+  },
+  actions = {
+    "keep reading and map windows spacious",
+    "route OCR/archive tools away from main reading workspace",
+    "prefer calm previews over noisy background indexing",
+  },
+  env_rules = {
+    "env = SEVENOS_HYPR_PROFILE,atlas",
+    "env = SEVENOS_HYPR_LAYOUT,exploration",
+  },
+  layout_rules = {
+    "general {",
+    "    gaps_in = 4",
+    "    gaps_out = 9",
+    "    border_size = 1",
+    "    layout = dwindle",
+    "    resize_on_border = true",
+    "}",
+  },
+  animation_rules = {
+    "animations {",
+    "    animation = windows, 1, 5, sevenOpen, popin 93%",
+    "    animation = workspaces, 1, 7, sevenWorkspace, slidefade 18%",
+    "}",
+  },
+  window_rules = {
+    "windowrule = match:class ^(org.gnome.Evince|org.pwmt.zathura|com.github.johnfactotum.Foliate)$, workspace 1",
+    "windowrule = match:class ^(calibre|libreoffice.*)$, workspace 1",
+    "windowrule = match:class ^(org.gnome.Maps|marble|qgis|josm|viking|gpxsee)$, workspace 2",
+    "windowrule = match:class ^(zeal|anki|goldendict|recoll)$, workspace 3",
+    "windowrule = match:class ^(simple-scan|paperwork|pdfarranger)$, workspace 4",
+    "windowrule = match:class ^(firefox|Google-chrome|chromium)$, workspace 5",
+  },
+}

@@ -52,7 +52,7 @@ CATEGORIES = [
     ("media", "Media", "applications-multimedia-symbolic"),
     ("office", "Office", "x-office-document-symbolic"),
     ("games", "Games", "applications-games-symbolic"),
-    ("windows", "Windows", "computer-symbolic"),
+    ("atlas", "Atlas", "emblem-documents-symbolic"),
 ]
 
 PROFILE_SECTION_LABELS = {
@@ -60,7 +60,7 @@ PROFILE_SECTION_LABELS = {
     "forge": {"dev": "Forge", "system": "Runtime", "network": "Ports"},
     "shield": {"network": "Shield", "system": "Contrôles", "dev": "Analyse"},
     "studio": {"creative": "Studio", "media": "Média", "office": "Briefs"},
-    "windows": {"windows": "Windows", "system": "VM", "office": "Travail"},
+    "atlas": {"atlas": "Atlas", "system": "Cartes", "office": "Références"},
     "pulse": {"games": "Pulse", "media": "Clips", "system": "Perf"},
     "equinox": {"all": "Equinox", "system": "Système"},
 }
@@ -101,12 +101,12 @@ MINI_OS_WORLDS = {
         "categories": ["creative", "media", "office"],
         "command": "seven profile activate studio",
     },
-    "windows": {
-        "title": "Windows",
-        "phrase": "Compatibilité et VM",
-        "filter": "windows",
-        "categories": ["windows", "office", "system"],
-        "command": "seven profile activate windows",
+    "atlas": {
+        "title": "Atlas",
+        "phrase": "Documents, cartes, recherche",
+        "filter": "atlas",
+        "categories": ["atlas", "office", "system"],
+        "command": "seven profile activate atlas",
     },
     "pulse": {
         "title": "Pulse",
@@ -117,7 +117,7 @@ MINI_OS_WORLDS = {
     },
 }
 
-WORLD_ORDER = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+WORLD_ORDER = ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"]
 
 CORE_DESKTOP_FILES = [
     ROOT_DIR / "seven-hub" / "seven-home.desktop",
@@ -286,7 +286,7 @@ def default_filter_for_profile(profile: dict) -> str:
     return {
         "forge": "dev",
         "studio": "creative",
-        "windows": "windows",
+        "atlas": "atlas",
         "pulse": "games",
         "baobab": "office",
         "shield": "network",
@@ -427,7 +427,7 @@ def category_for(data: dict) -> str:
     categories = {item for item in data.get("categories", "").split(";") if item}
     joined = normalize(" ".join((data.get("name", ""), data.get("desktop_id", ""), data.get("path", ""))))
     if {"Wine", "Bottles"} & categories or "wine" in joined or "bottles" in joined:
-        return "windows"
+        return "atlas"
     if "Development" in categories:
         return "dev"
     if "Graphics" in categories:

@@ -163,8 +163,8 @@ prepush.fast	System	Pre-Push Fast Gate	seven pre-push	safe	Run the fast GitHub p
 prepush.full	System	Pre-Push Full Audit	seven pre-push full	safe	Run the long developer audit before a release tag.
 daily.status	System	Daily Driver Gate	seven daily	safe	Check whether SevenOS is ready for a primary PC.
 daily.plan	System	Daily Driver Plan	seven daily plan	safe	Show the ordered path to make SevenOS daily-driver ready.
-daily.apply	System	Apply Daily Driver Plan	seven daily apply --yes	packages	Install and enable the daily-driver security, profile, Windows, server and installer foundation.
-primary.status	System	Primary PC Gate	seven primary	safe	Show the consolidated primary-PC readiness gate across Shield, profiles, Windows, Core, Server and Flatpak.
+daily.apply	System	Apply Daily Driver Plan	seven daily apply --yes	packages	Install and enable the daily-driver security, profile, Atlas, server and installer foundation.
+primary.status	System	Primary PC Gate	seven primary	safe	Show the consolidated primary-PC readiness gate across Shield, profiles, Atlas, Core, Server and Flatpak.
 primary.json	System	Primary PC JSON	seven primary --json	safe	Expose primary-PC readiness as one machine-readable contract for Seven Hub and future Seven Core clients.
 primary.apply	System	Apply Primary PC Path	seven primary apply	packages	Run the daily-driver consolidation path from the primary-PC entrypoint.
 setup.new	System	Install SevenOS New Machine	seven new	packages	One-command fresh machine setup: fonts, dependencies, mini OS workspaces, isolation and post-install checks.
@@ -176,12 +176,12 @@ improve.security	System	Improve Security	seven improve security --apply	packages
 improve.security.yes	System	Improve Security Batch	seven improve security --apply --yes	packages	Install core security improvements non-interactively.
 improve.deployment	System	Improve Deployment	seven improve deployment --apply	packages	Install or prepare server and deployment dependencies.
 improve.deployment.yes	System	Improve Deployment Batch	seven improve deployment --apply --yes	packages	Install server and deployment dependencies non-interactively.
-improve.compatibility	System	Improve Compatibility	seven improve compatibility	packages	Install or prepare Windows compatibility improvements.
+improve.compatibility	System	Improve Compatibility	seven improve compatibility	packages	Install or prepare Atlas exploration improvements.
 repair.ux	System	Repair UX	seven repair ux	changes	Review desktop and shell repair actions.
 theme.apply	System	Apply Theme	./install.sh theme	changes	Reapply SevenOS shell, toolkit and wallpaper identity.
 motion.status	Desktop	Motion Status	seven motion	safe	Show the active SevenOS animation preset and compositor motion state.
 motion.ux_doctor	Desktop	Motion UX Doctor	seven motion ux-doctor	safe	Validate mini OS passage overlays, declared motion and accessibility-ready presets.
-motion.premium	Desktop	Enable Premium Motion	seven motion premium	changes	Apply a visible SevenOS motion preset for windows, layers and workspaces.
+motion.premium	Desktop	Enable Premium Motion	seven motion premium	changes	Apply a visible SevenOS motion preset for atlas, layers and workspaces.
 motion.profile	Desktop	Apply Profile Motion	seven motion profile	changes	Apply the active mini OS motion language.
 motion.auto	Desktop	Automatic Motion	seven motion set auto	changes	Let each mini OS choose its own motion preset.
 motion.reduced	Desktop	Reduced Motion	seven motion reduced	changes	Apply a calmer animation preset for accessibility and low-power sessions.
@@ -220,7 +220,7 @@ profile.strict.forge	Profiles	Strict Forge Shell	seven profile exec forge --cont
 profile.strict.shield	Profiles	Strict Shield Shell	seven profile exec shield --container sh	packages	Open a Shield shell with isolated HOME, cache and data.
 profile.strict.shield_ephemeral	Profiles	Ephemeral Shield Shell	seven profile exec shield --ephemeral sh	packages	Open a disposable Shield shell for labs, OSINT or risky investigation.
 profile.strict.studio	Profiles	Strict Studio Shell	seven profile exec studio --container sh	packages	Open a Studio shell with isolated HOME, cache and data.
-profile.strict.windows	Profiles	Strict Windows Shell	seven profile exec windows --container sh	packages	Open a Windows Bridge shell with isolated HOME, cache and data.
+profile.strict.atlas	Profiles	Strict Atlas Shell	seven profile exec atlas --container sh	packages	Open a Atlas Explorer shell with isolated HOME, cache and data.
 profile.strict.pulse	Profiles	Strict Pulse Shell	seven profile exec pulse --container sh	packages	Open a Pulse shell with isolated HOME, cache and data.
 profile.bootstrap.active	Profiles	Bootstrap Active Profile	seven profile bootstrap	safe	Create the manifest, checklist and launcher for the active profile workspace.
 profile.bootstrap.all	Profiles	Bootstrap All Profiles	seven profile bootstrap all	safe	Create workspace manifests, checklists and launchers for every SevenOS profile.
@@ -241,7 +241,7 @@ profile.activate.baobab	Profiles	Activate Baobab	seven profile activate baobab	c
 profile.activate.forge	Profiles	Activate Forge DevOps	seven profile activate forge	changes	Switch to the development, containers and deployment mini OS.
 profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch to the cybersecurity mini OS.
 profile.activate.studio	Profiles	Activate Studio	seven profile activate studio	changes	Switch to the creator mini OS.
-profile.activate.windows	Profiles	Activate Windows	seven profile activate windows	changes	Switch to the Windows Compatibility mini OS with app-first tools and VM fallback.
+profile.activate.atlas	Profiles	Activate Atlas	seven profile activate atlas	changes	Switch to the Atlas Explorer mini OS for documents, maps, OCR and research.
 profile.activate.pulse	Profiles	Activate Pulse	seven profile activate pulse	changes	Switch to the Linux gaming mini OS.
 runtime.status	Profiles	Runtime Status	seven runtime status	safe	Show the active SevenOS layered autonomous runtime without changing resources.
 runtime.plan	Profiles	Runtime Fusion Plan	seven runtime plan equinox forge shield studio pulse	safe	Preview Equinox with controlled capability fragments from multiple profiles.
@@ -296,7 +296,7 @@ baobab.fashion	Baobab	Baobab Fashion	seven baobab module fashion	safe	Show the A
 profile.forge	Profiles	Install Forge DevOps	seven profile install forge	packages	Install the development, containers and deployment mini OS stack.
 profile.shield	Profiles	Install Shield	seven profile install shield	packages	Install the cybersecurity mini OS stack.
 profile.studio	Profiles	Install Studio	seven profile install studio	packages	Install the creator mini OS stack.
-profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install the Windows Compatibility app-first stack with VM fallback.
+profile.atlas	Profiles	Install Atlas Explorer	seven profile install atlas	packages	Install the Atlas Explorer app-first stack with Maps fallback.
 profile.pulse	Profiles	Install Pulse	seven profile install pulse	packages	Install the Linux gaming mini OS stack.
 security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, sandbox and cyber tooling.
 security.dashboard	Security	Shield Control	seven shield dashboard	safe	Open the native Shield workspace dashboard.
@@ -318,30 +318,17 @@ security.blackarch.full	Security	Full BlackArch Preview	seven shield toolchain b
 security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an isolated web testing lab.
 security.lab.forensics	Security	Open Forensics Lab	seven shield lab --preset forensics	safe	Open an offline evidence-safe forensics lab.
 security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset reversing	safe	Open an offline reversing lab.
-windows.status	Windows	État Windows	seven windows status	safe	Vérifier si Windows est prêt dans SevenOS.
-windows.plan	Windows	Préparer Windows	seven windows plan	safe	Voir les étapes simples avant d’utiliser Windows.
-windows.guide	Windows	Aide Windows	seven windows guide	safe	Expliquer comment utiliser Windows dans SevenOS.
-windows.setup	Windows	Configurer Windows	seven windows setup	packages	Préparer Windows, ses applications, ses dossiers et Windows complet quand le fichier officiel est disponible.
-windows.setup_iso	Windows	Installer Windows depuis un fichier	seven windows setup --iso ~/Downloads/Win11.iso	packages	Créer Windows complet depuis un fichier Windows officiel.
-windows.aur_helpers	Windows	Install AUR Helpers	./install.sh aur-helpers --yes	packages	Install yay and paru for SevenOS AUR-backed Windows helpers.
-windows.catalog	Windows	Windows App Catalog	seven windows catalog	safe	List app-first Windows workflows and preferred engines.
-windows.resolve.photoshop	Windows	Ouvrir Photoshop	seven windows resolve photoshop	safe	Choisir le meilleur chemin pour ouvrir Photoshop.
-windows.prepare.office	Windows	Préparer Office	seven windows prepare office	changes	Préparer Microsoft Office une fois puis mémoriser l’état.
-windows.diagnose.office	Windows	Réparer Office	seven windows diagnose OfficeSetup.exe	safe	Expliquer un échec d’installation Office en langage simple.
-windows.run.photoshop	Windows	Run Photoshop	seven run photoshop	safe	Open Photoshop through the Windows App Layer when configured.
-windows.enter	Windows	Ouvrir Windows	seven windows enter	changes	Ouvrir Windows complet depuis SevenOS.
-windows.leave	Windows	Fermer Windows	seven windows leave	changes	Fermer ou mettre en pause Windows pour libérer les ressources.
-windows.sync	Windows	Ranger Windows	seven windows sync	changes	Remettre l’état Windows en ordre avec l’espace actif.
-windows.bridge_status	Windows	État Windows	seven windows bridge-status	safe	Vérifier si Windows est ouvert, fermé ou à préparer.
-windows.open	Windows	Panneau Windows	seven windows open	safe	Ouvrir l’interface Windows SevenOS.
-windows.apps	Windows	Applications Windows	seven windows apps	safe	Ouvrir les applications Windows.
-windows.vm	Windows	Windows complet	seven windows vm	safe	Ouvrir Windows complet.
-windows.sources	Windows	Fichier Windows officiel	seven windows sources	safe	Expliquer où obtenir un fichier Windows autorisé.
-windows.provision	Windows	Préparer les fichiers Windows	seven windows provision	safe	Préparer les fichiers nécessaires à Windows dans SevenOS.
-windows.virtio	Windows	Préparer l’aide Windows	seven windows virtio	changes	Ajouter les fichiers d’aide pour que Windows voie le disque et internet.
-windows.create	Windows	Créer Windows complet	seven windows create	packages	Lancer la création guidée de Windows complet.
-windows.start	Windows	Démarrer Windows	seven windows start	changes	Démarrer Windows complet.
-windows.fix_network	Windows	Réparer internet Windows	seven windows fix-network	changes	Réparer l’accès internet de Windows.
+atlas.status	Atlas	État Atlas	seven atlas status	safe	Vérifier si Atlas Explorer est prêt dans SevenOS.
+atlas.open	Atlas	Ouvrir Atlas	seven-mini-os-center atlas	safe	Ouvrir le centre Atlas avec readiness, documents, cartes, références et actions.
+atlas.activate	Atlas	Activer Atlas	seven profile activate atlas	changes	Basculer vers le mini OS Atlas Explorer.
+atlas.install	Atlas	Installer Atlas	seven atlas install --yes	packages	Installer les paquets Atlas pour documents, cartes, OCR, archives et recherche.
+atlas.optional	Atlas	Installer les extensions Atlas	seven-profile-requirements status atlas --optional --apply --yes	packages	Ajouter les outils Atlas avancés quand ils sont disponibles.
+atlas.files	Atlas	Fichiers Atlas	seven profile open atlas	safe	Ouvrir l’espace Atlas dans Seven Files.
+atlas.documents	Atlas	Documents Atlas	seven profile open-folder atlas Documents	safe	Ouvrir les PDF, ebooks, notes et documents Atlas.
+atlas.maps	Atlas	Cartes Atlas	seven profile open-folder atlas Maps	safe	Ouvrir les cartes, trajets et GPX Atlas.
+atlas.scans	Atlas	Scans Atlas	seven profile open-folder atlas Scans	safe	Ouvrir les scans et documents OCR Atlas.
+atlas.apps	Atlas	Applications Atlas	seven profile apps atlas	safe	Ouvrir les applications liées à Atlas.
+atlas.rootfs	Atlas	Vérifier Atlas rootfs	seven-profile-rootfs audit atlas	safe	Vérifier que le rootfs Atlas est cohérent.
 server.status	Server	Server Status	seven server status	safe	Check the local SevenOS API service.
 server.plan	Server	Server Plan	seven server plan	safe	Show prioritized Seven Server backend actions.
 server.install	Server	Install Server Service	seven server install-user-service	changes	Install the local SevenOS API user service.
@@ -419,7 +406,7 @@ sevenpkg.baobab	Apps	Install Baobab Bundle	sevenpkg install baobab	packages	Inst
 sevenpkg.forge	Apps	Install Forge Bundle	sevenpkg install forge	packages	Install the developer software bundle.
 sevenpkg.shield	Apps	Install Shield Bundle	sevenpkg install shield	packages	Install the cybersecurity software bundle.
 sevenpkg.studio	Apps	Install Studio Bundle	sevenpkg install studio	packages	Install the creative production software bundle.
-sevenpkg.windows	Apps	Install Windows Bundle	sevenpkg install windows	packages	Install the Windows Compatibility app-first bundle with VM fallback.
+sevenpkg.atlas	Apps	Install Atlas Bundle	sevenpkg install atlas	packages	Install the Atlas Explorer bundle for documents, maps, OCR and research.
 sevenpkg.pulse	Apps	Install Pulse Bundle	sevenpkg install pulse	packages	Install the Linux gaming software bundle.
 sevenpkg.griot	Apps	Install Griot Bundle	sevenpkg install griot	packages	Install the documentation and knowledge software bundle.
 ecosystem.status	Ecosystem	Ecosystem Map	seven ecosystem	safe	Show modules and maturity states.
@@ -505,7 +492,7 @@ profile_map = {
     "forge": [],
     "shield": [],
     "studio": [],
-    "windows": [],
+    "atlas": [],
     "pulse": [],
     "equinox": [],
 }
@@ -543,7 +530,7 @@ quick_actions = {
     "forge": ["terminal.forge", "files.code", "deploy.plan", "profile.strict.forge"],
     "shield": ["security.dashboard", "security.scope", "security.lab.forensics", "profile.strict.shield_ephemeral"],
     "studio": ["files.pictures", "files.videos", "recorder.area", "profile.strict.studio"],
-    "windows": ["windows.setup", "windows.enter", "windows.apps", "windows.bridge_status"],
+    "atlas": ["atlas.open", "atlas.documents", "atlas.maps", "atlas.apps"],
     "pulse": ["files.videos", "files.music", "recorder.full", "motion.reduced"],
 }
 

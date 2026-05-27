@@ -21,7 +21,7 @@ Usage:
 
 Purpose:
   Decide whether this SevenOS installation is safe and complete enough for a
-  primary PC. The gate focuses on security, profiles, Windows Mode, server,
+  primary PC. The gate focuses on security, profiles, Atlas Explorer, server,
   installer foundation and rollback hygiene.
 
   `seven daily apply --yes` is the one-command consolidation path for a
@@ -77,7 +77,7 @@ def command_json(command, fallback):
 readiness = command_json([str(root / "bin/seven"), "readiness", "--json"], {"percent": 0, "categories": {}})
 shield = command_json([str(root / "bin/seven-daemon"), "shield", "--json"], {"percent": 0, "posture": "unknown"})
 profiles = command_json([str(root / "bin/seven-daemon"), "profiles", "--json"], {"profiles": []})
-windows = command_json([str(root / "bin/seven-daemon"), "windows", "--json"], {"ready": False, "mode": "unknown"})
+atlas = command_json([str(root / "bin/seven"), "atlas", "status", "--json"], {"state": "unknown", "ready": False})
 installer = command_json([str(root / "bin/seven-daemon"), "installer", "--json"], {"ready": False, "mode": "unknown", "tooling": []})
 server = command_json([str(root / "bin/seven-daemon"), "server", "--json"], {"dependencies": [], "service": {"state": "MISS"}})
 core = command_json([str(root / "scripts" / "core.sh"), "status", "--json"], {"state": "unknown", "daemon": {}})
@@ -85,7 +85,7 @@ core = command_json([str(root / "scripts" / "core.sh"), "status", "--json"], {"s
 categories = readiness.get("categories", {})
 profile_items = profiles.get("profiles", [])
 profile_by_key = {item.get("key"): item for item in profile_items}
-daily_profile_keys = ("equinox", "baobab", "forge", "shield", "studio", "windows", "pulse")
+daily_profile_keys = ("equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse")
 
 def category_percent(name):
     item = categories.get(name) or {}
@@ -141,13 +141,13 @@ gates = [
         "reason": "SevenOS should expose real workspaces, not decorative profile names.",
     },
     {
-        "key": "windows",
-        "title": "Windows Mode",
-        "state": "PASS" if windows.get("ready") else "WARN" if windows.get("vm_ready") else "BLOCK",
-        "actual": windows.get("mode", "unknown"),
+        "key": "atlas",
+        "title": "Atlas Explorer",
+        "state": "PASS" if atlas.get("state") in ("ready", "complete") or not atlas.get("missing_required") else "WARN",
+        "actual": atlas.get("state", "unknown"),
         "target": "complete",
         "command": "seven improve compatibility --apply --yes",
-        "reason": "A main PC often needs Wine/Bottles/Lutris and a guided KVM path.",
+        "reason": "SevenOS keeps seven native mini OS identities through a complete document, map, OCR and research workspace.",
     },
     {
         "key": "server",
@@ -217,8 +217,8 @@ actions = [
         "impact": "packages",
     },
     {
-        "key": "windows",
-        "title": "Complete Windows Mode bridge",
+        "key": "atlas",
+        "title": "Complete Atlas Explorer",
         "command": "seven improve compatibility --apply --yes",
         "impact": "packages",
     },
@@ -264,7 +264,7 @@ print(json.dumps({
         "target_use": category_percent("Target Use"),
         "compatibility": category_percent("Software Compatibility"),
         "deployment": category_percent("Deployment"),
-        "windows_mode": windows.get("mode", "unknown"),
+        "atlas": atlas.get("state", "unknown"),
         "server": server_service,
         "installer": installer.get("mode", "unknown"),
     },
@@ -295,7 +295,7 @@ print(f"Shield:        {summary['shield']}%")
 print(f"Target Use:    {summary['target_use']}%")
 print(f"Compatibility: {summary['compatibility']}%")
 print(f"Deployment:    {summary['deployment']}%")
-print(f"Windows Mode:  {summary['windows_mode']}")
+print(f"Atlas:         {summary['atlas']}")
 print(f"Server:        {summary['server']}")
 print(f"Installer:     {summary['installer']}")
 print()

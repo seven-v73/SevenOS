@@ -57,16 +57,16 @@
       "ui_mood": "creative canvas, asset-first layout, color/media/export emphasis",
       "design_signal": "design, video, audio and capture tools come forward"
     },
-    "windows": {
-      "label": "Windows Bridge",
-      "icon": "󰖳",
-      "short_label": "VM",
-      "accent": "#74C7EC",
-      "secondary": "#89B4FA",
-      "catppuccin_role": "sapphire/blue",
-      "waybar": "Windows bridge shell: VM readiness, app routing, network, audio, battery and assistant",
-      "ui_mood": "complete Windows VM path, compatibility guidance, app-first bridge",
-      "design_signal": "VM-first Windows experience, with Wine/Bottles as lighter fallbacks"
+    "atlas": {
+      "label": "Atlas Explorer",
+      "icon": "󰙅",
+      "short_label": "ATLAS",
+      "accent": "#5AD7B7",
+      "secondary": "#74C7EC",
+      "catppuccin_role": "teal/sapphire",
+      "waybar": "exploration shell: profile, Spotlight, maps, documents, network, battery and research AI",
+      "ui_mood": "clear glass atlas, maps, documents, routes, references and calm research",
+      "design_signal": "places, PDFs, notes, routes and collections become first-class"
     },
     "pulse": {
       "label": "Pulse Gaming",

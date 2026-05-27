@@ -115,10 +115,10 @@ layers = [
     },
     {
         "key": "windows",
-        "public_name": "Windows Bridge",
+        "public_name": "Atlas Explorer",
         "user_surface": "Windows mini OS, assistant, VM lifecycle",
         "backend": "Wine, Bottles, libvirt, QEMU/KVM",
-        "state": "OK" if (root / "bin/seven-windows-assistant").is_file() else "PART",
+        "state": "OK" if (root / "scripts/packages-atlas.txt").is_file() else "PART",
         "masking": "vm-first",
     },
 ]

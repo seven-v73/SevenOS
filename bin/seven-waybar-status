@@ -59,7 +59,7 @@ def public_profile_mood(key: str, fallback: str) -> str:
         "forge": "Projets, code et outils de développement avancés.",
         "shield": "Vérification prudente, protection et rapports.",
         "studio": "Images, vidéos, captures et exports.",
-        "windows": "Applications Windows et dossiers partagés.",
+        "atlas": "Documents, cartes, OCR et références.",
         "pulse": "Jeux, captures et confort de jeu.",
     }
     return moods.get(key, fallback)
@@ -144,7 +144,7 @@ def volume_data() -> tuple[str, bool]:
 def active_vpn_name() -> str:
     if not shutil.which("nmcli"):
         return ""
-    return run(["bash", "-lc", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"])
+    return run(["bash", "--noprofile", "--norc", "-c", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"])
 
 
 def recorder_is_active() -> bool:
@@ -234,7 +234,7 @@ def bluetooth() -> int:
 def vpn() -> int:
     if not shutil.which("nmcli"):
         return emit("", "VPN tools missing", "hidden")
-    active = run(["bash", "-lc", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"])
+    active = run(["bash", "--noprofile", "--norc", "-c", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"])
     if active:
         return emit("󰖂", f"VPN active · {active}", "active", "active")
     return emit("", "VPN inactive", "hidden", "idle")
@@ -440,7 +440,7 @@ def profile() -> int:
         "forge": "Forge",
         "shield": "Shield",
         "studio": "Studio",
-        "windows": "Windows",
+        "atlas": "Atlas",
         "pulse": "Pulse",
     }.get(key, compact_label(title.split("·")[0].split()[0] if title else short, 12))
     profile_mission = {
@@ -512,7 +512,7 @@ def mini_context() -> int:
         "forge": ("󰌢", "Build", "Projets, Git, terminaux, containers, logs et déploiements", "dev"),
         "shield": ("󰒃", "Audit", "Périmètre, sandbox, VPN, preuves et actions prudentes", "secure"),
         "studio": ("󰏗", "Studio", "Images, vidéos, captures et exports", "creative"),
-        "windows": ("󰖳", "Windows", "Applications Windows et dossiers partagés", "bridge"),
+        "atlas": ("󰙅", "Atlas", "Documents, cartes, OCR et références", "knowledge"),
         "pulse": ("󰓅", "Jeux", "Jeux, captures et confort de jeu", "gaming"),
     }.get(key, ("󰐃", compact_label(title, 10), "Actions rapides du mini OS", "custom"))
     icon, label, description, signal = spec
@@ -567,7 +567,7 @@ def app_mode_from_class(app_class: str, profile_key: str = "") -> str:
         return "media"
     if any(token in klass for token in ("gimp", "inkscape", "blender", "kdenlive", "obs", "krita", "studio")):
         return "studio"
-    if profile_key in {"studio", "shield", "windows", "forge", "pulse", "baobab"}:
+    if profile_key in {"studio", "shield", "atlas", "forge", "pulse", "baobab"}:
         return profile_key
     return "default"
 

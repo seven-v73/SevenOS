@@ -103,7 +103,7 @@ MINI_OS = [
     ("Forge", "FG", "forge", tr("Code, outils dev, services locaux et déploiement.", "Code, dev tools, local services and deployment.")),
     ("Shield", "SH", "shield", tr("Sécurité, audit autorisé, forensic et durcissement.", "Security, authorized audit, forensics and hardening.")),
     ("Studio", "ST", "studio", tr("Création, design, vidéo, audio, 3D et assets.", "Creation, design, video, audio, 3D and assets.")),
-    ("Windows", "WI", "windows", tr("Compatibilité Windows, Wine, Proton et VM si nécessaire.", "Windows compatibility, Wine, Proton and VM when needed.")),
+    ("Atlas", "AT", "atlas", tr("Documents, cartes, OCR, références et exploration locale.", "Documents, maps, OCR, references and local exploration.")),
     ("Pulse", "PU", "pulse", tr("Jeu Linux, Proton, Vulkan, overlays et performance.", "Linux gaming, Proton, Vulkan, overlays and performance.")),
 ]
 
@@ -464,7 +464,7 @@ def main() -> int:
     .forge .badge { background: #6d73d9; }
     .shield .badge { background: #2c9c95; }
     .studio .badge { background: #bd5f9c; }
-    .windows .badge { background: #3f8ee8; }
+    .atlas .badge { background: #35b99a; }
     .pulse .badge { background: #d8793c; }
     .card-title { color: #ffffff; font-size: 14px; font-weight: 800; }
     .card-body { color: rgba(245,247,250,0.72); font-size: 12px; }
