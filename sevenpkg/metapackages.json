@@ -51,18 +51,19 @@
     ]
   },
   "baobab": {
-    "description": "Baobab Culture: autonomous culture and learning mini OS for African knowledge, languages and community memory",
+    "description": "Baobab Culture: autonomous cultural mini OS for African heritage, oral memory, languages and community transmission",
     "kind": "sevenos-target",
     "target": "culture",
     "package_files": [
       "scripts/packages-culture.txt"
     ],
     "optional_package_files": [
-      "scripts/packages-culture-optional.txt"
+      "scripts/packages-culture-optional.txt",
+      "scripts/packages-culture-aur.txt"
     ]
   },
   "atlas": {
-    "description": "Atlas Explorer: native documents, maps, OCR, references and travel mini OS",
+    "description": "Atlas Explorer: native documents, scanning/OCR, maps, references, archives and travel mini OS",
     "kind": "sevenos-target",
     "target": "knowledge",
     "package_files": [

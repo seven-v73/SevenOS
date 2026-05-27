@@ -84,6 +84,7 @@ run_cmd cp "$ROOT_DIR/seven-hub/seven-home.desktop" "$APP_HOME/seven-home.deskto
 run_cmd cp "$ROOT_DIR/seven-hub/seven-hub-native.desktop" "$APP_HOME/seven-hub-native.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-actions.desktop" "$APP_HOME/seven-actions.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-settings.desktop" "$APP_HOME/seven-settings.desktop"
+run_cmd cp "$ROOT_DIR/seven-hub/seven-mini-boundaries.desktop" "$APP_HOME/seven-mini-boundaries.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$APP_HOME/seven-files.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-recorder.desktop" "$APP_HOME/seven-recorder.desktop"
 run_cmd cp "$ROOT_DIR/seven-hub/seven-store.desktop" "$APP_HOME/seven-store.desktop"

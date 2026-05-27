@@ -1,3 +1,2 @@
 # SevenOS Atlas optional AUR helpers
 ocrmypdf
-goldendict

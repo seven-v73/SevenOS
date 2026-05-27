@@ -1,11 +1,11 @@
 # SevenOS Baobab cultural mini OS
-# Core stays offline-friendly: reading, fonts, narration and simple translation.
+# Core stays offline-friendly: culture, reading, narration and language memory.
+# General office, document routing, OCR and cartography belong to Atlas.
 noto-fonts
 noto-fonts-emoji
 foliate
 espeak-ng
 translate-shell
 hyphen-fr
-libreoffice-fresh
 kiwix-desktop
 mpv

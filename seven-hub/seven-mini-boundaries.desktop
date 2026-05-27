@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS Mini OS Boundaries
+Comment=Understand the difference between Baobab cultural memory and Atlas documents, maps and OCR
+Exec=seven mini-boundaries --open
+Icon=seven-hub
+Terminal=false
+Categories=System;Settings;Education;
+StartupNotify=true
+StartupWMClass=SevenMiniBoundaries
+Keywords=SevenOS;Mini OS;Baobab;Atlas;boundaries;frontiere;culture;documents;OCR;maps;

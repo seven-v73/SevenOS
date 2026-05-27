@@ -133,26 +133,26 @@
       "title": "Baobab Cultural OS",
       "role": "African cultural mini OS",
       "target": "culture",
-      "domain": "African heritage, learning, creativity and transmission",
-      "purpose": "A living African cultural mini OS: digital village, library, museum, language hub, story engine, soundscape, fashion bridge, food memory, wisdom center, cultural map and offline-first community archive.",
+      "domain": "African heritage, oral memory, language, learning and transmission",
+      "purpose": "A living African cultural mini OS: digital village, heritage library, language hub, oral memory, story engine, soundscape, fashion bridge, food memory, wisdom center and offline-first community archive. Baobab does not own general documents, OCR or map/GIS workflows; Atlas owns those.",
       "mini_os": true,
       "layers": {
         "kernel": [
           "quiet resource use for reading and narration",
           "battery-friendly offline learning defaults",
-          "foreground priority for media, maps and cultural study",
+          "foreground priority for reading, narration and cultural study",
           "low background activity for schools and low-power devices"
         ],
         "runtime": [
           "local heritage database and offline media cache",
           "African language resources, dictionaries and keyboards",
-          "reader, audio, map and museum surfaces",
+          "reader, audio, language and museum surfaces",
           "community knowledge spaces and sync-ready archives",
           "Baobab module manifest through seven baobab"
         ],
         "experience": [
           "African digital village navigation",
-          "Baobab Heritage, Sound, Explore, Fashion, Food, Wisdom and Market modules",
+          "Baobab Heritage, Sound, Story, Fashion, Food, Wisdom and Market modules",
           "organic warm visual rhythm inspired by earth, textile, fire, wind and tree shade",
           "calm media, reading and oral-tradition surfaces"
         ],
@@ -167,7 +167,8 @@
         "scripts/packages-culture.txt"
       ],
       "optional_package_files": [
-        "scripts/packages-culture-optional.txt"
+        "scripts/packages-culture-optional.txt",
+        "scripts/packages-culture-aur.txt"
       ],
       "waybar_modules": [
         "profile",
@@ -184,11 +185,10 @@
         "cultural-identity",
         "language-support",
         "community-space",
-        "local-knowledge",
+        "local-cultural-knowledge",
         "heritage-library",
         "storytelling",
         "soundscape",
-        "explore-africa",
         "museum-3d",
         "fashion-bridge",
         "food-memory",
@@ -196,6 +196,8 @@
         "offline-first"
       ],
       "anti_nuisance": [
+        "no general document/OCR workflow",
+        "no GIS/travel stack",
         "no dev toolchain",
         "no docker",
         "no security toolkit",
@@ -217,7 +219,7 @@
         "cpu": "light-cultural",
         "ram": "small-local-cache",
         "gpu": "minimal-ui",
-        "io": "archive-friendly",
+        "io": "cultural-archive-friendly",
         "network": "offline-first-optional-sync"
       },
       "priority": 90,
@@ -591,10 +593,10 @@
     },
     "atlas": {
       "title": "Atlas Explorer",
-      "role": "Research, maps, documents and knowledge navigation mini OS",
+      "role": "Documents, maps, OCR and research navigation mini OS",
       "target": "atlas",
       "domain": "exploration, documents, maps, research and personal knowledge",
-      "purpose": "A SevenOS mini OS for exploring the world, organizing documents, reading maps, managing PDFs, planning trips, collecting references and turning scattered information into navigable knowledge.",
+      "purpose": "A SevenOS mini OS for exploring the world, organizing documents, reading maps, scanning/OCR, managing PDFs, planning trips, collecting references and turning scattered information into navigable knowledge. Atlas does not own cultural identity packs or oral heritage workflows; Baobab owns those.",
       "mini_os": true,
       "layers": {
         "kernel": [
@@ -603,9 +605,9 @@
           "responsive search and indexing without noisy background work"
         ],
         "runtime": [
-          "PDF, ebook, map and archive tools",
-          "OCR, metadata, tagging and document conversion helpers",
-          "local knowledge folders, notebooks and reference collections",
+          "PDF, ebook, office, scan, map and archive tools",
+          "OCR, metadata, annotation, tagging and document conversion helpers",
+          "local knowledge folders, research notes and reference collections",
           "offline-first map and travel utilities when available"
         ],
         "experience": [
@@ -648,10 +650,12 @@
         "knowledge-collections",
         "offline-reference",
         "travel-planning",
-        "citation-workflow",
+        "annotation-and-citation-workflow",
         "local-search"
       ],
       "anti_nuisance": [
+        "no cultural identity packs unless Baobab is composed",
+        "no language tutoring/oral heritage workflow unless Baobab is composed",
         "no dev daemons unless Forge is composed",
         "no security scans unless Shield is composed",
         "no render stack unless Studio is composed",

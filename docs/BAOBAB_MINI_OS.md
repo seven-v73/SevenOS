@@ -117,6 +117,18 @@ Baobab tools serve three goals:
 - work locally and offline first;
 - create a light, immersive and intelligent public experience.
 
+Boundary with Atlas:
+
+- Baobab owns culture, oral memory, African languages, storytelling, local
+  heritage packs, cultural collections and community transmission.
+- Atlas owns general documents, scan/OCR, PDF annotation, office files, maps,
+  GPX, archives, references and trip/research navigation.
+- Shared tools must have an explicit reason. Check the boundary with:
+
+```bash
+seven mini-boundaries
+```
+
 Core tools are kept small and essential:
 
 | Area | Tools | Role |

@@ -38,9 +38,9 @@ PROFILE_ROOTFS_DIR = HOST_DATA_HOME / "sevenos/profile-rootfs"
 KEY_TOOLS = {
     "forge": ("git", "code", "nodejs", "python", "docker", "podman", "jq", "ripgrep", "caddy"),
     "studio": ("gimp", "krita", "inkscape", "blender", "kdenlive", "obs-studio", "ffmpeg", "pipewire-jack"),
-    "baobab": ("foliate", "mpv", "espeak-ng", "translate-shell", "kiwix-desktop", "libreoffice-fresh"),
+    "baobab": ("foliate", "mpv", "espeak-ng", "translate-shell", "kiwix-desktop"),
     "shield": ("nmap", "wireshark-qt", "tcpdump", "sqlmap", "zaproxy", "metasploit", "firejail", "bubblewrap"),
-    "atlas": ("evince", "foliate", "calibre", "marble", "gnome-maps", "pdfarranger", "tesseract", "syncthing"),
+    "atlas": ("evince", "calibre", "marble", "gnome-maps", "pdfarranger", "tesseract", "simple-scan", "paperwork", "recoll", "xournalpp"),
     "pulse": ("gamemode", "vulkan-icd-loader", "vulkan-tools", "pipewire", "wireplumber", "alsa-utils", "gamescope", "mangohud"),
 }
 
@@ -62,7 +62,7 @@ OPTIONAL_ACTIONS = {
         ("shield.private.burp", "Installer Burp Suite dans Shield", "sevenpkg shield install burpsuite --source paru"),
     ],
     "atlas": [
-        ("atlas.optional.research", "Installer les extras Atlas", "seven-profile-requirements status atlas --optional --apply --yes"),
+        ("atlas.optional.research", "Installer les extras Atlas", "seven-profile-requirements install atlas --optional --apply --yes"),
         ("atlas.required.native", "Installer le socle documents, cartes et OCR Atlas", "seven atlas install --yes"),
     ],
     "pulse": [

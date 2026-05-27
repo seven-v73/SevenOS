@@ -207,6 +207,8 @@ install_user_command "$ROOT_DIR/bin/seven-app-menu-native" seven-app-menu-native
 install_user_command "$ROOT_DIR/bin/seven-system-menu-native" seven-system-menu-native
 install_user_command "$ROOT_DIR/bin/seven-media-menu-native" seven-media-menu-native
 install_user_command "$ROOT_DIR/bin/seven-mini-context-menu-native" seven-mini-context-menu-native
+install_user_command "$ROOT_DIR/bin/seven-mini-boundaries" seven-mini-boundaries
+install_user_command "$ROOT_DIR/bin/seven-mini-boundaries-native" seven-mini-boundaries-native
 install_user_command "$ROOT_DIR/bin/seven-mini-os-center" seven-mini-os-center
 install_user_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_user_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
@@ -289,6 +291,8 @@ install_system_command "$ROOT_DIR/bin/seven-app-menu-native" seven-app-menu-nati
 install_system_command "$ROOT_DIR/bin/seven-system-menu-native" seven-system-menu-native
 install_system_command "$ROOT_DIR/bin/seven-media-menu-native" seven-media-menu-native
 install_system_command "$ROOT_DIR/bin/seven-mini-context-menu-native" seven-mini-context-menu-native
+install_system_command "$ROOT_DIR/bin/seven-mini-boundaries" seven-mini-boundaries
+install_system_command "$ROOT_DIR/bin/seven-mini-boundaries-native" seven-mini-boundaries-native
 install_system_command "$ROOT_DIR/bin/seven-mini-os-center" seven-mini-os-center
 install_system_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_system_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native

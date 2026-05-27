@@ -3148,7 +3148,7 @@ def run(initial_page: str = "overview") -> int:
             if stripped.startswith("seven atlas"):
                 return (
                     tr("settings.action.atlas.title", "Atlas Explorer"),
-                    tr("settings.action.atlas.note", "SevenOS vérifie Atlas pour documents, cartes, OCR et références."),
+                    tr("settings.action.atlas.note", "SevenOS vérifie Atlas pour documents, scans, cartes, OCR et références."),
                     [tr("settings.step.prepare", "Préparer"), tr("settings.step.check", "Vérifier"), tr("settings.step.report", "Résumer")],
                 )
             if stripped.startswith("seven recovery"):
@@ -5580,9 +5580,9 @@ def run(initial_page: str = "overview") -> int:
         summary_label.get_style_context().add_class("settings-inline-status")
         friendly_notes = {
             "equinox": tr("settings.space.equinox.note", "Bureau quotidien, fichiers, apps et réglages."),
-            "baobab": tr("settings.space.baobab.note", "Lecture, collections, récits et documents culturels."),
+            "baobab": tr("settings.space.baobab.note", "Patrimoine, oralité, langues, récits et mémoire culturelle."),
             "studio": tr("settings.space.studio.note", "Images, vidéos, captures et fichiers créatifs."),
-            "atlas": tr("settings.space.atlas.note", "Documents, cartes, OCR, références et voyages."),
+            "atlas": tr("settings.space.atlas.note", "Documents, scans, OCR, cartes, annotations et références."),
             "pulse": tr("settings.space.pulse.note", "Jeux, captures et confort de jeu."),
             "forge": tr("settings.space.forge.note", "Outils de développement avancés."),
             "shield": tr("settings.space.shield.note", "Outils de vérification et protection avancés."),
@@ -6447,8 +6447,8 @@ def run(initial_page: str = "overview") -> int:
                 action_button(tr("settings.check", "Vérifier"), "seven-pulse doctor"),
                 action_button(tr("settings.prepare", "Préparer"), "seven-pulse install"),
             ]),
-            settings_row("󰙅", tr("settings.usage.atlas", "Atlas"), tr("settings.usage.atlas.note", "Ouvre Atlas pour documents, cartes, OCR, références et voyages."), [action_button(tr("settings.activate", "Activer"), "seven profile activate atlas")]),
-            settings_row("󰣇", tr("settings.usage.culture", "Culture"), tr("settings.usage.culture.note", "Ouvre l’expérience Baobab pour patrimoine, lecture, langues, récits et médias culturels."), [action_button(tr("settings.activate", "Activer"), "seven profile activate baobab")]),
+            settings_row("󰙅", tr("settings.usage.atlas", "Atlas"), tr("settings.usage.atlas.note", "Ouvre Atlas pour documents, scans, OCR, cartes, annotations, références et voyages."), [action_button(tr("settings.activate", "Activer"), "seven profile activate atlas")]),
+            settings_row("󰣇", tr("settings.usage.culture", "Culture"), tr("settings.usage.culture.note", "Ouvre Baobab pour patrimoine, oralité, langues, récits et mémoire culturelle."), [action_button(tr("settings.activate", "Activer"), "seven profile activate baobab")]),
         ],
     )
     section(general, tr("settings.capability_collaboration", "Mini OS collaboration"))
@@ -6482,13 +6482,31 @@ def run(initial_page: str = "overview") -> int:
         general,
         tr("settings.atlas_setup", "Atlas Explorer"),
         [
-            settings_row("󰙅", tr("settings.open_atlas_panel", "Ouvrir Atlas"), tr("settings.open_atlas_panel.note", "Ouvre le centre Atlas avec readiness, documents, cartes, références et actions rapides."), [action_button(tr("settings.open", "Ouvrir"), "seven-mini-os-center atlas")]),
-            settings_row("󰈙", tr("settings.open_atlas_apps", "Applications Atlas"), tr("settings.open_atlas_apps.note", "Ouvre les lecteurs, cartes, OCR, ebooks et outils de recherche liés à Atlas."), [action_button(tr("settings.open", "Ouvrir"), "seven profile apps atlas")]),
-            settings_row("󰉋", tr("settings.open_atlas_documents", "Documents Atlas"), tr("settings.open_atlas_documents.note", "Ouvre les PDF, ebooks, notes et documents rangés dans Atlas."), [action_button(tr("settings.open", "Ouvrir"), "seven profile open-folder atlas Documents")]),
+            settings_row("󰙅", tr("settings.open_atlas_panel", "Ouvrir Atlas"), tr("settings.open_atlas_panel.note", "Ouvre le centre Atlas avec readiness, documents, scans, cartes, références et actions rapides."), [action_button(tr("settings.open", "Ouvrir"), "seven-mini-os-center atlas")]),
+            settings_row("󰈙", tr("settings.open_atlas_apps", "Applications Atlas"), tr("settings.open_atlas_apps.note", "Ouvre les lecteurs, scan/OCR, cartes, annotations et outils de recherche liés à Atlas."), [action_button(tr("settings.open", "Ouvrir"), "seven profile apps atlas")]),
+            settings_row("󰉋", tr("settings.open_atlas_documents", "Documents Atlas"), tr("settings.open_atlas_documents.note", "Ouvre les PDF, office, ebooks, notes et documents rangés dans Atlas."), [action_button(tr("settings.open", "Ouvrir"), "seven profile open-folder atlas Documents")]),
             settings_row("󰆋", tr("settings.open_atlas_maps", "Cartes et trajets"), tr("settings.open_atlas_maps.note", "Ouvre l’espace Maps d’Atlas pour lieux, trajets, GPX et exploration locale."), [action_button(tr("settings.open", "Ouvrir"), "seven profile open-folder atlas Maps")]),
             settings_row("󰄬", tr("settings.repair_atlas", "Requirements Atlas"), tr("settings.repair_atlas.note", "Vérifie ou installe les paquets Atlas sans mélanger les autres mini OS."), [
                 action_button(tr("settings.status", "Voir"), "seven atlas status"),
                 action_button(tr("settings.install", "Installer"), "seven atlas install --yes"),
+            ]),
+        ],
+    )
+    general_targets["baobab-atlas"] = settings_group(
+        general,
+        tr("settings.baobab_atlas_boundary", "Frontière Baobab / Atlas"),
+        [
+            settings_row("󰣇", tr("settings.baobab_boundary", "Baobab garde la mémoire culturelle"), tr("settings.baobab_boundary.note", "Patrimoine, oralité, langues, récits, sons, collections culturelles et packs communautaires."), [
+                action_button(tr("settings.open", "Ouvrir"), "seven-mini-os-center baobab"),
+                action_button(tr("settings.check", "Vérifier"), "seven mini-boundaries --open"),
+            ]),
+            settings_row("󰙅", tr("settings.atlas_boundary", "Atlas garde les documents explorables"), tr("settings.atlas_boundary.note", "PDF, office, scans, OCR, annotations, cartes, GPX, références, archives et voyages."), [
+                action_button(tr("settings.open", "Ouvrir"), "seven-mini-os-center atlas"),
+                action_button(tr("settings.status", "Voir"), "seven atlas status"),
+            ]),
+            settings_row("󰄬", tr("settings.boundary_report", "Rapport de frontière"), tr("settings.boundary_report.note", "Affiche les chevauchements autorisés et bloque les mélanges non revus entre Baobab et Atlas."), [
+                action_button(tr("settings.open", "Ouvrir"), "seven mini-boundaries --open"),
+                action_button(tr("settings.status", "Voir"), "seven mini-boundaries"),
             ]),
         ],
     )
@@ -6778,11 +6796,11 @@ def run(initial_page: str = "overview") -> int:
     }
     profile_notes = {
         "equinox": tr("settings.profile.equinox.note", "Espace équilibré pour l’usage quotidien."),
-        "baobab": tr("settings.profile.baobab.note", "Espace culturel pour patrimoine, langues, récits, sons, cartes et mémoire hors ligne."),
+        "baobab": tr("settings.profile.baobab.note", "Espace culturel pour patrimoine, oralité, langues, récits, sons et mémoire hors ligne."),
         "forge": tr("settings.profile.forge.note", "Espace de développement pour code, projets, services locaux et livraisons."),
         "shield": tr("settings.profile.shield.note", "Espace sécurité pour vérifications autorisées, protection et rapports."),
         "studio": tr("settings.profile.studio.note", "Espace création pour design, vidéo, audio, 3D, capture et assets."),
-        "atlas": tr("settings.profile.atlas.note", "Espace d’exploration pour documents, cartes, OCR, références et voyages."),
+        "atlas": tr("settings.profile.atlas.note", "Espace d’exploration pour documents, scans, OCR, cartes, annotations et références."),
         "pulse": tr("settings.profile.pulse.note", "Espace gaming pour jeux, manettes, performance et captures."),
     }
 

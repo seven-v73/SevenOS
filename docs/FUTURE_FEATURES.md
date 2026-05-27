@@ -25,7 +25,7 @@ it has a command, a doctor/check path, documentation and a recovery route.
 | Seven Shell | more native, fast and maintainable shell layer | progressive |
 | SevenAI | local-first assistant with playbooks, explanations and safe actions | progressive |
 | SevenStore | permissions, recommendations and profile-aware source clarity | progressive |
-| Baobab | cultural packs, African languages, maps and offline collections | progressive |
+| Baobab | cultural packs, African languages, oral memory and offline heritage collections | progressive |
 | Windows Bridge | app-first Windows workflows around VM, Wine and Bottles | progressive |
 | Personal cloud | opt-in backup, sync, deployment and local server workflows | future |
 | Performance | explicit systemd slice/uclamp/power policies with user visibility | future |
@@ -40,4 +40,3 @@ A future feature becomes a SevenOS feature only when it has:
 - a doctor/check path;
 - a UI or helper entry that a normal user can understand;
 - an entry in the relevant UX or integration check.
-

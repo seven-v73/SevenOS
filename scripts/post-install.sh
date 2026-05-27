@@ -122,7 +122,7 @@ command_check() {
     control_command="$ROOT_DIR/seven-hub/bin/seven-control-center"
   fi
 
-  for command_name in seven sevenpkg seven-country seven-files seven-hub seven-control-center seven-session seven-power; do
+  for command_name in seven sevenpkg seven-country seven-files seven-hub seven-control-center seven-session seven-power seven-mini-boundaries seven-mini-boundaries-native; do
     if command -v "$command_name" >/dev/null 2>&1; then
       ok_item "$command_name available"
     elif [[ -x "$HOME/.local/bin/$command_name" ]]; then
@@ -156,6 +156,25 @@ command_check() {
       warn_item "seven-control-center exists but status failed"
       printf '  run: ./install.sh hub\n'
     fi
+  fi
+
+  if command -v seven >/dev/null 2>&1 || [[ -x "$ROOT_DIR/bin/seven" ]]; then
+    if env SEVENOS_ROOT="$ROOT_DIR" "$ROOT_DIR/bin/seven" mini-boundaries --json >/dev/null 2>&1; then
+      ok_item "Baobab / Atlas boundary report"
+    else
+      warn_item "Baobab / Atlas boundary report failed"
+      printf '  run: seven mini-boundaries\n'
+      printf '  UI:  seven mini-boundaries --open\n'
+    fi
+  fi
+
+  if [[ -s "${XDG_DATA_HOME:-$HOME/.local/share}/applications/seven-mini-boundaries.desktop" ]]; then
+    ok_item "Baobab / Atlas boundary desktop launcher"
+  elif [[ -s "$ROOT_DIR/seven-hub/seven-mini-boundaries.desktop" ]]; then
+    warn_item "Baobab / Atlas boundary launcher exists in repository but is not installed"
+    printf '  run: ./install.sh hub\n'
+  else
+    warn_item "Baobab / Atlas boundary desktop launcher missing"
   fi
 }
 

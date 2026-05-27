@@ -84,11 +84,11 @@ def load_profile_ui() -> dict:
 def default_home_contract(key: str, meta: dict) -> dict:
     fallback = {
         "equinox": ("Daily balance", "Everyday Workspace", 86, "general SevenOS assistant"),
-        "baobab": ("African cultural OS", "Baobab Village", 86, "cultural heritage assistant"),
+        "baobab": ("African cultural OS", "Baobab Village", 86, "oral memory and heritage assistant"),
         "forge": ("DevOps cockpit", "Forge Projects & Deployments", 88, "software engineering and deployment assistant"),
         "shield": ("Authorized security lab", "Shield Cases", 88, "defensive security assistant"),
         "studio": ("Creator studio", "Studio Assets", 78, "creative production assistant"),
-        "atlas": ("Atlas explorer", "Atlas Apps", 72, "Atlas exploration assistant"),
+        "atlas": ("Atlas explorer", "Atlas Library", 72, "document, map and OCR assistant"),
         "pulse": ("Gaming performance", "Pulse Games", 55, "gaming performance assistant"),
     }
     title, library, score, ai = fallback.get(key, fallback["equinox"])
@@ -117,6 +117,30 @@ def atlas_requirements() -> dict:
     return run_json("atlas", "status", "--json", fallback={})
 
 
+def mini_boundaries() -> dict:
+    return run_json("mini-boundaries", "--json", fallback={})
+
+
+def baobab_atlas_boundary_lines(report: dict, key: str) -> list[str]:
+    profiles = report.get("profiles", {}) if isinstance(report.get("profiles"), dict) else {}
+    overlap = report.get("overlap", {}) if isinstance(report.get("overlap"), dict) else {}
+    item = profiles.get(key, {}) if isinstance(profiles.get(key), dict) else {}
+    owns = item.get("owns", []) if isinstance(item.get("owns"), list) else []
+    avoids = item.get("does_not_own", []) if isinstance(item.get("does_not_own"), list) else []
+    if key == "baobab":
+        first = t("Baobab garde la culture, l’oralité, les langues et les packs de patrimoine.", "Baobab keeps culture, oral memory, languages and heritage packs.")
+    elif key == "atlas":
+        first = t("Atlas garde les documents, scans, OCR, annotations, cartes et références.", "Atlas keeps documents, scans, OCR, annotations, maps and references.")
+    else:
+        first = t("Chaque mini OS garde son rôle sans absorber les autres.", "Each mini OS keeps its role without absorbing the others.")
+    return [
+        first,
+        t(f"Possède: {compact(owns, 2)}", f"Owns: {compact(owns, 2)}"),
+        t(f"Évite: {compact(avoids, 2)}", f"Avoids: {compact(avoids, 2)}"),
+        t(f"Chevauchements revus: {overlap.get('count', 0)} · non revus: {len(overlap.get('unreviewed', []) if isinstance(overlap.get('unreviewed'), list) else [])}", f"Reviewed overlap: {overlap.get('count', 0)} · unreviewed: {len(overlap.get('unreviewed', []) if isinstance(overlap.get('unreviewed'), list) else [])}"),
+    ]
+
+
 def atlas_readiness_lines(payload: dict) -> list[str]:
     summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
     missing = payload.get("missing", {}) if isinstance(payload.get("missing"), dict) else {}
@@ -125,7 +149,7 @@ def atlas_readiness_lines(payload: dict) -> list[str]:
     ready = bool(summary.get("ready")) and missing_count == 0
     if ready:
         return [
-            t("Prêt pour documents, cartes, OCR et références.", "Ready for documents, maps, OCR and references."),
+            t("Prêt pour documents, scans, cartes, OCR et références.", "Ready for documents, scans, maps, OCR and references."),
             t(f"Essentiels installés: {required}/{required}.", f"Essentials installed: {required}/{required}."),
             t("Atlas n’indexe rien lourdement sans demande explicite.", "Atlas does not run heavy indexing without an explicit request."),
         ]
@@ -168,7 +192,7 @@ def workflow_lines(key: str) -> list[str]:
             t("Suite: choisir un mini OS seulement quand la tâche demande un contexte plus fort", "Next: pick a mini OS only when the task needs a stronger context"),
         ],
         "baobab": [
-            t("Arbre de savoir: racines, bibliothèque, récits, sons, exploration", "Knowledge tree: roots, library, stories, sound, explore"),
+            t("Arbre de savoir: racines, bibliothèque, récits, sons et langues", "Knowledge tree: roots, library, stories, sound and languages"),
             t("Collecte: source, licence, curator, confiance, revue communautaire", "Collect: source, license, curator, confidence, community review"),
             t("Hors ligne: catalogue local, packs, narration et outils de langue", "Offline: local catalog, packs, narration and language tools"),
         ],
@@ -188,9 +212,9 @@ def workflow_lines(key: str) -> list[str]:
             t("Pont: envoyer textiles/assets vers Baobab ou Atlas à la demande", "Bridge: send textiles/assets to Baobab or Atlas apps on demand"),
         ],
         "atlas": [
-            t("Explorer: documents, PDF, ebooks, cartes et références restent lisibles.", "Explore: documents, PDFs, ebooks, maps and references stay readable."),
-            t("Indexer: OCR et métadonnées restent au service de la recherche locale.", "Index: OCR and metadata support local research."),
-            t("Relier: Atlas relie lieux, fichiers, notes et collections sans dépendre d’un autre OS.", "Connect: Atlas links places, files, notes and collections without depending on another OS."),
+            t("Explorer: documents, PDF, ebooks, scans, cartes et références restent lisibles.", "Explore: documents, PDFs, ebooks, scans, maps and references stay readable."),
+            t("Annoter: OCR, notes et métadonnées restent au service de la recherche locale.", "Annotate: OCR, notes and metadata support local research."),
+            t("Relier: Atlas relie lieux, fichiers, trajets et collections sans devenir un espace culturel.", "Connect: Atlas links places, files, routes and collections without becoming a cultural space."),
         ],
         "pulse": [
             t("Scène: bibliothèque jeux, GameMode, recorder, faible latence", "Stage: game library, GameMode, recorder, low-latency focus"),
@@ -233,9 +257,9 @@ def public_profile_contract(key: str, meta: dict, home: dict) -> dict:
         "baobab": {
             "kicker": t("Culture et mémoire", "Culture and memory"),
             "title": "Baobab",
-            "subtitle": t("Un espace pour lire, écouter, classer et préserver tes contenus culturels sans te perdre dans les réglages.", "A space to read, listen, organize and preserve cultural content without getting lost in settings."),
+            "subtitle": t("Un espace pour lire, écouter, raconter et préserver la mémoire culturelle sans devenir un gestionnaire de documents.", "A space to read, listen, tell stories and preserve cultural memory without becoming a document manager."),
             "sections": [
-                (t("Bibliothèque", "Library"), t("Retrouve tes documents, récits, images et collections Baobab.", "Find Baobab documents, stories, images and collections.")),
+                (t("Patrimoine", "Heritage"), t("Retrouve récits, images, sons, langues et collections Baobab.", "Find Baobab stories, images, sounds, languages and collections.")),
                 (t("Lecture", "Reading"), t("Ouvre les contenus locaux avec une présentation calme et lisible.", "Open local content with a calm, readable presentation.")),
                 (t("Collecte", "Collecting"), t("Ajoute de nouvelles sources avec un suivi clair des droits et de la provenance.", "Add sources with clear rights and provenance tracking.")),
                 (t("Partage choisi", "Chosen sharing"), t("Envoie seulement ce que tu décides vers un autre mini OS.", "Send only what you choose to another mini OS.")),
@@ -243,7 +267,7 @@ def public_profile_contract(key: str, meta: dict, home: dict) -> dict:
             "status": t("Tes contenus restent rangés dans l'espace Baobab.", "Your content stays organized inside Baobab."),
             "actions": [
                 (t("Ouvrir Baobab", "Open Baobab"), "seven-baobab-native", t("Surface culturelle", "Cultural surface")),
-                (t("Mes collections", "My collections"), "seven profile open baobab", t("Documents Baobab", "Baobab documents")),
+                (t("Mémoire locale", "Local memory"), "seven profile open baobab", t("Collections Baobab", "Baobab collections")),
                 (t("Lire", "Read"), "seven-reader", t("Lecture locale", "Local reading")),
                 (t("Vérifier", "Check"), "seven-mini-doctor baobab", t("Dépendances et rootfs", "Dependencies and rootfs")),
                 (t("Préparer", "Prepare"), "seven-mini-doctor baobab install", t("Installer l'essentiel", "Install essentials")),
@@ -275,20 +299,20 @@ def public_profile_contract(key: str, meta: dict, home: dict) -> dict:
         "atlas": {
             "kicker": t("Exploration", "Exploration"),
             "title": "Atlas",
-            "subtitle": t("Un espace SevenOS pour documents, cartes, OCR, références et voyages.", "A SevenOS space for documents, maps, OCR, references and trips."),
+            "subtitle": t("Un espace SevenOS pour documents, scans, cartes, OCR, annotations, références et voyages.", "A SevenOS space for documents, scans, maps, OCR, annotations, references and trips."),
             "sections": [
-                (t("Documents", "Documents"), t("PDF, ebooks, scans et archives restent ensemble.", "PDFs, ebooks, scans and archives stay together.")),
+                (t("Documents", "Documents"), t("PDF, ebooks, office, scans et archives restent ensemble.", "PDFs, ebooks, office files, scans and archives stay together.")),
                 (t("Cartes", "Maps"), t("Lieux, trajets, GPX et cartes sont liés aux projets.", "Places, routes, GPX and maps link to projects.")),
                 (t("Références", "References"), t("Notes, sources et collections deviennent retrouvables.", "Notes, sources and collections become searchable.")),
-                (t("OCR", "OCR"), t("Les documents scannés peuvent devenir du texte exploitable.", "Scanned documents can become usable text.")),
+                (t("Annotation", "Annotation"), t("Scans, PDF et notes peuvent devenir du texte exploitable.", "Scans, PDFs and notes can become usable text.")),
             ],
             "status": t("Atlas reste calme et n’indexe rien lourdement sans demande.", "Atlas stays calm and does not run heavy indexing unless asked."),
             "actions": [
                 (t("Dossiers", "Folders"), "seven profile open atlas", t("Fichiers Atlas", "Atlas files")),
-                (t("Documents", "Documents"), "seven profile open-folder atlas Documents", t("PDF, ebooks et notes", "PDFs, ebooks and notes")),
+                (t("Documents", "Documents"), "seven profile open-folder atlas Documents", t("PDF, office, ebooks et notes", "PDFs, office files, ebooks and notes")),
                 (t("Cartes", "Maps"), "seven profile open-folder atlas Maps", t("Lieux, trajets et GPX", "Places, routes and GPX")),
                 (t("Scans", "Scans"), "seven profile open-folder atlas Scans", t("OCR et numérisations", "OCR and scans")),
-                (t("Applications", "Applications"), "seven profile apps atlas", t("Lecteurs, cartes, OCR", "Readers, maps, OCR")),
+                (t("Applications", "Applications"), "seven profile apps atlas", t("Lecteurs, scan, cartes, OCR", "Readers, scan, maps, OCR")),
                 (t("Vérifier", "Check"), "seven atlas status", t("Requirements", "Requirements")),
                 (t("Installer", "Install"), "seven atlas install --yes", t("Installer l’essentiel", "Install essentials")),
             ],
@@ -380,7 +404,7 @@ def profile_actions(key: str) -> list[tuple[str, str, str]]:
     actions = {
         "baobab": [
             (t("Ouvrir Baobab", "Open Baobab"), t("Accéder à l'espace culturel Baobab", "Open the Baobab cultural space"), "seven-baobab-native"),
-            (t("Mes collections", "My collections"), t("Ouvrir les documents Baobab", "Open Baobab documents"), "seven profile open baobab"),
+            (t("Mémoire locale", "Local memory"), t("Ouvrir les collections Baobab", "Open Baobab collections"), "seven profile open baobab"),
             (t("Lire", "Read"), t("Ouvrir le lecteur", "Open the reader"), "seven-reader"),
             (t("Ajouter", "Add"), t("Ajouter ou organiser des contenus culturels", "Add or organize cultural content"), "seven-baobab-native packs"),
             (t("Préférences", "Preferences"), t("Ajuster langue et affichage Baobab", "Adjust Baobab language and display"), "seven-baobab-native prefs"),
@@ -411,10 +435,10 @@ def profile_actions(key: str) -> list[tuple[str, str, str]]:
         ],
         "atlas": [
             (t("Dossiers", "Folders"), t("Ouvrir les fichiers Atlas", "Open Atlas files"), "seven profile open atlas"),
-            (t("Documents", "Documents"), t("PDF, ebooks et notes Atlas", "Atlas PDFs, ebooks and notes"), "seven profile open-folder atlas Documents"),
+            (t("Documents", "Documents"), t("PDF, office, ebooks et notes Atlas", "Atlas PDFs, office files, ebooks and notes"), "seven profile open-folder atlas Documents"),
             (t("Cartes", "Maps"), t("Lieux, trajets et GPX", "Places, routes and GPX"), "seven profile open-folder atlas Maps"),
             (t("Scans", "Scans"), t("Scans et OCR", "Scans and OCR"), "seven profile open-folder atlas Scans"),
-            (t("Applications", "Applications"), t("Lecteurs, cartes, OCR et recherche", "Readers, maps, OCR and search"), "seven profile apps atlas"),
+            (t("Applications", "Applications"), t("Lecteurs, scan, cartes, OCR et recherche", "Readers, scan, maps, OCR and search"), "seven profile apps atlas"),
             (t("Vérifier", "Check"), t("Voir si Atlas est prêt", "Check whether Atlas is ready"), "seven atlas status"),
             (t("Installer", "Install"), t("Installer les paquets Atlas", "Install Atlas packages"), "seven atlas install --yes"),
         ],
@@ -477,6 +501,7 @@ def run() -> int:
     isolation = run_json("profile", "isolation", "plan", key, "--json", fallback={})
     strict_runtime = (isolation.get("strict_runtime") or {}).get(key, {}) if isinstance(isolation, dict) else {}
     bridge = bridge_state()
+    boundary_report = mini_boundaries() if key in {"baobab", "atlas"} else {}
     bridge_overview = bridge_status()
     session = bridge_session(key)
     atlas_runtime = atlas_requirements() if key == "atlas" else {}
@@ -714,6 +739,14 @@ def run() -> int:
         status_card = info_card(Gtk, t("État", "State"), compact(status_lines, 3))
         status_card.get_style_context().add_class("status-card")
         public_grid.attach(status_card, 0, 2, 2, 1)
+        if key in {"baobab", "atlas"}:
+            public_grid.attach(
+                info_card(Gtk, t("Frontière Baobab / Atlas", "Baobab / Atlas Boundary"), compact(baobab_atlas_boundary_lines(boundary_report, key), 4)),
+                0,
+                3,
+                2,
+                1,
+            )
 
         actions_box = Gtk.Grid()
         actions_box.set_column_spacing(10)
@@ -732,6 +765,7 @@ def run() -> int:
         for label, command in [
             (t("Utiliser cet espace", "Use this space"), f"seven profile activate {key}"),
             (t("Applications", "Applications"), f"seven profile apps {key}"),
+            (t("Frontière", "Boundary"), "seven mini-boundaries --open" if key in {"baobab", "atlas"} else "seven mini-os suggest"),
             (t("Réglages", "Settings"), "seven-settings profiles"),
             (t("Aide", "Help"), "seven-help-native mini-os"),
         ]:
@@ -835,6 +869,9 @@ def run() -> int:
             f"optional: {summary.get('optional', 0)}",
             f"next: seven atlas install --yes",
         ], 5)), 0, 7, 2, 1)
+        grid.attach(info_card(Gtk, t("Frontière Baobab / Atlas", "Baobab / Atlas Boundary"), compact(baobab_atlas_boundary_lines(boundary_report, key), 4)), 0, 8, 2, 1)
+    elif key == "baobab":
+        grid.attach(info_card(Gtk, t("Frontière Baobab / Atlas", "Baobab / Atlas Boundary"), compact(baobab_atlas_boundary_lines(boundary_report, key), 4)), 0, 7, 2, 1)
     else:
         suggestions = bridge.get("suggestions", []) if isinstance(bridge, dict) else []
         grid.attach(info_card(Gtk, "Borrow", compact([

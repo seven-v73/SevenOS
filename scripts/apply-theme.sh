@@ -427,6 +427,7 @@ configure_file_experience() {
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'install Seven Files desktop entry\n'
     printf 'install SevenOS Spotlight, AI, Reader, Recorder and Terminal desktop entries\n'
+    printf 'install SevenOS Mini OS Boundaries desktop entry\n'
     printf 'write SevenOS default terminal contract\n'
     printf 'write xdg-terminal-exec preference\n'
     printf 'xdg-mime default seven-files.desktop inode/directory\n'
@@ -445,6 +446,7 @@ configure_file_experience() {
   mkdir -p "$HOME/.local/share/applications"
   cp "$ROOT_DIR/seven-hub/seven-actions.desktop" "$HOME/.local/share/applications/seven-actions.desktop"
   cp "$ROOT_DIR/seven-hub/seven-home.desktop" "$HOME/.local/share/applications/seven-home.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-mini-boundaries.desktop" "$HOME/.local/share/applications/seven-mini-boundaries.desktop"
   cp "$ROOT_DIR/seven-hub/seven-files.desktop" "$HOME/.local/share/applications/seven-files.desktop"
   cp "$ROOT_DIR/seven-hub/seven-spotlight.desktop" "$HOME/.local/share/applications/seven-spotlight.desktop"
   cp "$ROOT_DIR/seven-hub/seven-ai.desktop" "$HOME/.local/share/applications/seven-ai.desktop"

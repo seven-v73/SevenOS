@@ -1,0 +1,419 @@
+#!/usr/bin/env python3
+"""Native SevenOS Baobab / Atlas boundary surface."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin/seven").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent / "seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+sys.path.insert(0, str(ROOT / "scripts"))
+from seven_i18n import language_code  # noqa: E402
+import seven_theme  # noqa: E402
+
+LANG_CODE = language_code()
+
+
+def t(fr: str, en: str) -> str:
+    return fr if LANG_CODE == "fr" else en
+
+
+def run_detached(command: str) -> None:
+    subprocess.Popen(
+        ["bash", "-lc", command],
+        cwd=ROOT,
+        env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+
+
+def report() -> dict:
+    try:
+        out = subprocess.check_output(
+            [str(ROOT / "bin/seven"), "mini-boundaries", "--json"],
+            cwd=ROOT,
+            text=True,
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            timeout=3.0,
+        )
+        data = json.loads(out)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def localized(profile: str, key: str, values: list[str]) -> list[str]:
+    if LANG_CODE != "fr":
+        return values
+    if profile == "baobab" and key == "owns":
+        return [
+            "Patrimoine africain et packs culturels",
+            "Oralité, narration et apprentissage des langues",
+            "Collections culturelles offline et transmission communautaire",
+            "Baobab Village, Heritage, Story et archive vivante",
+        ]
+    if profile == "baobab":
+        return [
+            "Routage documentaire général",
+            "Pipelines OCR/scan",
+            "Cartes/GIS/voyage général",
+            "Indexation plein texte de références",
+        ]
+    if profile == "atlas" and key == "owns":
+        return [
+            "PDF, ebooks, documents office et annotations",
+            "OCR, scans, métadonnées et recherche documentaire locale",
+            "Cartes, GPX, lieux, voyages et exploration locale",
+            "Références, archives et projets de connaissance navigables",
+        ]
+    return [
+        "Packs d'identité culturelle",
+        "Oralité et patrimoine comme workflow principal",
+        "Tutorat linguistique comme objectif culturel",
+        "Curation de mémoire communautaire",
+    ]
+
+
+def bullet_list(Gtk, items: list[str]) -> Gtk.Box:
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    for item in items:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        dot = Gtk.Label(label="•")
+        dot.get_style_context().add_class("dot")
+        label = Gtk.Label(label=item, xalign=0)
+        label.set_line_wrap(True)
+        label.get_style_context().add_class("card-text")
+        row.pack_start(dot, False, False, 0)
+        row.pack_start(label, True, True, 0)
+        box.pack_start(row, False, False, 0)
+    return box
+
+
+def chip_row(Gtk, items: list[str], empty_label: str) -> Gtk.Box:
+    row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    if not items:
+        items = [empty_label]
+    for item in items[:4]:
+        chip = Gtk.Label(label=item)
+        chip.get_style_context().add_class("chip")
+        row.pack_start(chip, False, False, 0)
+    if len(items) > 4:
+        more = Gtk.Label(label=f"+{len(items) - 4}")
+        more.get_style_context().add_class("chip")
+        more.get_style_context().add_class("muted")
+        row.pack_start(more, False, False, 0)
+    return row
+
+
+def prism_bridge(Gtk, payload: dict) -> Gtk.Box:
+    overlap = payload.get("overlap", {}) if isinstance(payload.get("overlap"), dict) else {}
+    reviewed = sorted((overlap.get("allowed") or {}).keys()) if isinstance(overlap.get("allowed"), dict) else []
+
+    card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    card.get_style_context().add_class("bridge")
+
+    nodes = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    for title, subtitle, css_class in [
+        ("Baobab", t("Culture vivante", "Living culture"), "node-baobab"),
+        ("Equinox", t("Arbitre central", "Central arbiter"), "node-equinox"),
+        ("Atlas", t("Savoir navigable", "Navigable knowledge"), "node-atlas"),
+    ]:
+        node = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        node.get_style_context().add_class("bridge-node")
+        node.get_style_context().add_class(css_class)
+        top = Gtk.Label(label=title)
+        top.get_style_context().add_class("bridge-title")
+        bottom = Gtk.Label(label=subtitle)
+        bottom.get_style_context().add_class("bridge-subtitle")
+        node.pack_start(top, False, False, 0)
+        node.pack_start(bottom, False, False, 0)
+        nodes.pack_start(node, True, True, 0)
+    card.pack_start(nodes, False, False, 0)
+
+    lane = Gtk.Label(
+        label=t(
+            "Baobab garde l'identité culturelle. Equinox tranche les frontières. Atlas transforme les documents en repères utilisables.",
+            "Baobab keeps cultural identity. Equinox arbitrates boundaries. Atlas turns documents into usable reference points.",
+        ),
+        xalign=0.5,
+    )
+    lane.set_line_wrap(True)
+    lane.get_style_context().add_class("bridge-lane")
+    card.pack_start(lane, False, False, 0)
+
+    shared_title = Gtk.Label(label=t("Chevauchements autorisés et expliqués", "Allowed and explained overlap"), xalign=0)
+    shared_title.get_style_context().add_class("section-title")
+    card.pack_start(shared_title, False, False, 0)
+    card.pack_start(chip_row(Gtk, reviewed, t("aucun chevauchement", "no overlap")), False, False, 0)
+    return card
+
+
+def profile_card(Gtk, profile: str, payload: dict) -> Gtk.Box:
+    item = payload.get("profiles", {}).get(profile, {}) if isinstance(payload.get("profiles"), dict) else {}
+    owns = localized(profile, "owns", item.get("owns", []) if isinstance(item.get("owns"), list) else [])
+    avoids = localized(profile, "avoids", item.get("does_not_own", []) if isinstance(item.get("does_not_own"), list) else [])
+    is_baobab = profile == "baobab"
+    card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    card.get_style_context().add_class("profile-card")
+    card.get_style_context().add_class(profile)
+
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    mark = Gtk.Label(label="󰣇" if is_baobab else "󰙅")
+    mark.get_style_context().add_class("profile-mark")
+    titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    title = Gtk.Label(label="Baobab" if is_baobab else "Atlas", xalign=0)
+    title.get_style_context().add_class("card-title")
+    subtitle = Gtk.Label(
+        label=t(
+            "Culture, oralité, langues et mémoire" if is_baobab else "Documents, scans, cartes et OCR",
+            "Culture, oral memory, languages and memory" if is_baobab else "Documents, scans, maps and OCR",
+        ),
+        xalign=0,
+    )
+    subtitle.get_style_context().add_class("card-subtitle")
+    titles.pack_start(title, False, False, 0)
+    titles.pack_start(subtitle, False, False, 0)
+    header.pack_start(mark, False, False, 0)
+    header.pack_start(titles, True, True, 0)
+    card.pack_start(header, False, False, 0)
+
+    owns_title = Gtk.Label(label=t("Ce que cet espace possède", "What this space owns"), xalign=0)
+    owns_title.get_style_context().add_class("section-title")
+    avoids_title = Gtk.Label(label=t("Ce qu’il évite", "What it avoids"), xalign=0)
+    avoids_title.get_style_context().add_class("section-title")
+    card.pack_start(owns_title, False, False, 0)
+    card.pack_start(bullet_list(Gtk, owns), False, False, 0)
+    card.pack_start(avoids_title, False, False, 0)
+    card.pack_start(bullet_list(Gtk, avoids), False, False, 0)
+
+    counts = Gtk.Label(
+        label=t(
+            f"{len(item.get('required', []))} requis · {len(item.get('optional', []))} optionnels",
+            f"{len(item.get('required', []))} required · {len(item.get('optional', []))} optional",
+        ),
+        xalign=0,
+    )
+    counts.get_style_context().add_class("meta")
+    card.pack_end(counts, False, False, 0)
+    return card
+
+
+def run() -> int:
+    if "--probe" in sys.argv:
+        ensure_gi_python()
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gtk  # noqa: F401
+        print("OK")
+        return 0
+
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gdk", "3.0")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gdk, Gtk
+
+    payload = report()
+    overlap = payload.get("overlap", {}) if isinstance(payload.get("overlap"), dict) else {}
+    ready = bool(payload.get("ready"))
+
+    css = f"""
+    * {{ font-family: {seven_theme.font_stack()}; font-weight: 400; }}
+    .window {{
+      background:
+        radial-gradient(circle at 20% 0%, rgba(166,227,161,0.16), transparent 34%),
+        radial-gradient(circle at 82% 12%, rgba(116,199,236,0.18), transparent 32%),
+        linear-gradient(145deg, rgba(16,18,28,0.96), rgba(8,10,16,0.94));
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+    }}
+    .root {{ padding: 22px; }}
+    .eyebrow {{ color: rgba(166,227,161,0.82); font-size: 11px; }}
+    .title {{ color: rgba(248,250,252,0.96); font-size: 24px; font-weight: 500; }}
+    .subtitle {{ color: rgba(248,250,252,0.66); font-size: 12px; }}
+    .bridge {{
+      padding: 14px;
+      border-radius: 20px;
+      background:
+        radial-gradient(circle at 18% 40%, rgba(166,227,161,0.13), transparent 26%),
+        radial-gradient(circle at 82% 40%, rgba(116,199,236,0.15), transparent 27%),
+        linear-gradient(90deg, rgba(255,255,255,0.052), rgba(255,255,255,0.072), rgba(255,255,255,0.052));
+      border: 1px solid rgba(255,255,255,0.11);
+    }}
+    .bridge-node {{
+      min-height: 50px;
+      border-radius: 16px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.10);
+    }}
+    .node-baobab {{ border-color: rgba(166,227,161,0.30); }}
+    .node-equinox {{
+      border-color: rgba(186,194,255,0.38);
+      background: rgba(186,194,255,0.11);
+    }}
+    .node-atlas {{ border-color: rgba(116,199,236,0.32); }}
+    .bridge-title {{ color: rgba(248,250,252,0.95); font-size: 13px; font-weight: 600; }}
+    .bridge-subtitle {{ color: rgba(248,250,252,0.56); font-size: 10px; }}
+    .bridge-lane {{ color: rgba(248,250,252,0.66); font-size: 11px; }}
+    .chip {{
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.065);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: rgba(248,250,252,0.76);
+      font-size: 10px;
+    }}
+    .chip.muted {{ color: rgba(248,250,252,0.52); }}
+    .profile-card {{
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.052);
+      border: 1px solid rgba(255,255,255,0.105);
+    }}
+    .profile-card.baobab {{ border-color: rgba(166,227,161,0.28); }}
+    .profile-card.atlas {{ border-color: rgba(116,199,236,0.30); }}
+    .profile-mark {{
+      min-width: 42px; min-height: 42px;
+      border-radius: 15px;
+      color: rgba(248,250,252,0.95);
+      background: rgba(255,255,255,0.075);
+      font-size: 20px;
+    }}
+    .card-title {{ color: rgba(248,250,252,0.96); font-size: 16px; font-weight: 500; }}
+    .card-subtitle {{ color: rgba(248,250,252,0.58); font-size: 11px; }}
+    .section-title {{ color: rgba(248,250,252,0.90); font-size: 11px; font-weight: 500; }}
+    .card-text {{ color: rgba(248,250,252,0.68); font-size: 11px; }}
+    .dot {{ color: rgba(156,203,255,0.82); font-size: 14px; }}
+    .meta {{ color: rgba(248,250,252,0.48); font-size: 10px; }}
+    .status {{
+      padding: 12px;
+      border-radius: 15px;
+      color: rgba(248,250,252,0.82);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.095);
+      font-size: 11px;
+    }}
+    .pill {{
+      min-height: 36px;
+      border-radius: 12px;
+      padding: 0 12px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.10);
+      color: rgba(248,250,252,0.90);
+      font-size: 11px;
+    }}
+    .pill:hover {{ background: rgba(255,255,255,0.11); }}
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css.encode("utf-8"))
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title=t("Frontière Baobab / Atlas", "Baobab / Atlas Boundary"))
+    window.set_wmclass("SevenMiniBoundaries", "SevenMiniBoundaries")
+    window.set_decorated(False)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.set_default_size(900, 680)
+    window.set_resizable(False)
+    window.get_style_context().add_class("window")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+    root.get_style_context().add_class("root")
+    window.add(root)
+
+    eyebrow = Gtk.Label(label=t("SEVENOS · RÔLES DES ESPACES", "SEVENOS · SPACE ROLES"), xalign=0)
+    eyebrow.get_style_context().add_class("eyebrow")
+    title = Gtk.Label(label=t("Baobab et Atlas ne font pas le même travail", "Baobab and Atlas do different jobs"), xalign=0)
+    title.get_style_context().add_class("title")
+    subtitle = Gtk.Label(
+        label=t(
+            "Baobab protège la mémoire culturelle. Atlas organise les documents explorables. Les chevauchements restent explicitement revus.",
+            "Baobab protects cultural memory. Atlas organizes explorable documents. Overlap stays explicitly reviewed.",
+        ),
+        xalign=0,
+    )
+    subtitle.set_line_wrap(True)
+    subtitle.get_style_context().add_class("subtitle")
+    root.pack_start(eyebrow, False, False, 0)
+    root.pack_start(title, False, False, 0)
+    root.pack_start(subtitle, False, False, 0)
+    root.pack_start(prism_bridge(Gtk, payload), False, False, 0)
+
+    grid = Gtk.Grid()
+    grid.set_column_spacing(14)
+    grid.set_row_spacing(14)
+    root.pack_start(grid, True, True, 0)
+    grid.attach(profile_card(Gtk, "baobab", payload), 0, 0, 1, 1)
+    grid.attach(profile_card(Gtk, "atlas", payload), 1, 0, 1, 1)
+
+    status = Gtk.Label(
+        label=t(
+            f"État: {'prêt' if ready else 'attention'} · chevauchements revus: {len(overlap.get('allowed', {}))} · non revus: {len(overlap.get('unreviewed', []) if isinstance(overlap.get('unreviewed'), list) else [])}",
+            f"State: {'ready' if ready else 'attention'} · reviewed overlap: {len(overlap.get('allowed', {}))} · unreviewed: {len(overlap.get('unreviewed', []) if isinstance(overlap.get('unreviewed'), list) else [])}",
+        ),
+        xalign=0,
+    )
+    status.get_style_context().add_class("status")
+    root.pack_start(status, False, False, 0)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    root.pack_end(actions, False, False, 0)
+    for label, command in [
+        (t("Ouvrir Baobab", "Open Baobab"), "seven-mini-os-center baobab"),
+        (t("Ouvrir Atlas", "Open Atlas"), "seven-mini-os-center atlas"),
+        (t("Rapport terminal", "Terminal report"), "seven-terminal classic -- bash -lc 'seven mini-boundaries; read -r -p \"Press Enter to close...\"'"),
+        (t("Fermer", "Close"), "__close__"),
+    ]:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("pill")
+        if command == "__close__":
+            button.connect("clicked", lambda _button: Gtk.main_quit())
+        else:
+            button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
+        actions.pack_start(button, True, True, 0)
+
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(run())

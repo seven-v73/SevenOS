@@ -247,7 +247,7 @@ seven new --optional --rootfs
 ./install.sh new --yes
 seven setup new-device --yes
 seven atlas status
-seven profile requirements atlas --optional --apply --yes
+seven-profile-requirements install atlas --optional --apply --yes
 ```
 
 Installation depuis GitHub :
@@ -634,11 +634,11 @@ Chaque profil est un mini OS autonome avec quatre couches :
 Profils :
 
 - Equinox : usage général équilibré.
-- Baobab : mini-OS culturel africain, village numérique, patrimoine, langues, oralité, musique, carte, mode, cuisine et mémoire offline.
+- Baobab : mini-OS culturel africain, village numérique, patrimoine, langues, oralité, musique, mode, cuisine et mémoire offline.
 - Forge DevOps : développement, SDKs, conteneurs, services, déploiement et logs.
 - Shield : cybersécurité autorisée, audit, forensic, sandbox.
 - Studio : création, logo, vidéo, audio, design.
-- Atlas : documents, cartes, OCR, références, voyages et recherche locale.
+- Atlas : documents, scans, cartes, OCR, annotations, références, voyages et recherche locale.
 - Pulse : gaming Linux, Proton, faible latence, overlays, pilotes GPU guidés et paquets privés via `sevenpkg pulse`.
 
 Ce que chaque mini OS sépare :
@@ -704,9 +704,9 @@ seven profile folders forge
 | Forge | code, Git, services, containers | terminal Forge, projets, logs, build |
 | Shield | audit autorisé, sécurité, sandbox | hash, réseau, isolation, rapports |
 | Studio | médias, design, assets | images, audio, vidéo, exports |
-| Baobab | culture, lecture, collections | reader, documents, mémoire locale |
+| Baobab | culture, oralité, langues, collections | reader, récits, mémoire locale |
 | Pulse | jeux, captures, performance | Steam, Lutris, recorder, overlays |
-| Atlas | Atlas Explorer | documents, cartes, OCR, références et voyages |
+| Atlas | Atlas Explorer | documents, scans, cartes, OCR, annotations et voyages |
 
 ## Collaboration mini OS
 
@@ -725,7 +725,14 @@ seven mini-doctor forge
 seven mini-doctor studio plan --json
 seven-mini-doctor baobab install
 seven-mini-doctor shield rootfs
+seven mini-boundaries
+seven mini-boundaries --open
+seven mini-boundaries --json
 ```
+
+`seven mini-boundaries --open` ouvre la vue Prism Baobab / Equinox / Atlas.
+`seven mini-boundaries` affiche le rapport dans le terminal, et `--json`
+sert aux doctors, au post-install et à l'automatisation.
 
 Le runtime affiche :
 
@@ -1197,7 +1204,7 @@ poste Shield dédié.
 ### Atlas Explorer
 
 Atlas remplace l'ancien sommet Windows : SevenOS garde maintenant sept mini OS
-natifs sans dépendre d'une VM Windows. Atlas sert aux documents, cartes, OCR,
+natifs sans dépendre d'une VM Windows. Atlas sert aux documents, scans, cartes, OCR,
 références, voyages, archives et recherche locale.
 
 ```bash
@@ -1207,12 +1214,17 @@ seven atlas install --yes
 seven profile activate atlas
 seven profile open atlas
 seven profile apps atlas
-seven profile requirements atlas --optional --apply --yes
+seven-profile-requirements install atlas --optional --apply --yes
+seven mini-boundaries
+seven mini-boundaries --open
 ```
 
 `seven atlas status` explique ce qui manque. `seven atlas install --yes` installe
-les paquets essentiels. Les options ajoutent Anki, Recoll, Zeal, QGIS/JOSM ou
+les paquets essentiels. Les options ajoutent Zeal, Kiwix, QGIS/JOSM ou
 d'autres outils avancés selon les dépôts disponibles.
+Sur une nouvelle machine, `./install.sh cli` installe aussi les commandes
+`seven-mini-boundaries` et `seven-mini-boundaries-native`; `./install.sh hub`
+installe le lanceur graphique dans les applications.
 
 ## FAQ locale
 
@@ -1333,7 +1345,7 @@ seven-wallpaper refresh
 | SevenOS Home | porte d'entrée visuelle des mini OS |
 | Spotlight | recherche globale d'apps, actions et fichiers |
 | Shield | profil cybersécurité autorisée et sandbox |
-| Atlas Explorer | documents, cartes, OCR, références et voyages |
+| Atlas Explorer | documents, scans, cartes, OCR, annotations et voyages |
 | Recovery | route de réparation et restauration SevenOS |
 | Post-install | vérification des dépendances, services, polices, réseau et surfaces |
 
@@ -1556,7 +1568,7 @@ seven new --optional --rootfs
 ./install.sh new --yes
 seven setup new-device --yes
 seven atlas status
-seven profile requirements atlas --optional --apply --yes
+seven-profile-requirements install atlas --optional --apply --yes
 ```
 
 Install from GitHub:
@@ -1935,7 +1947,7 @@ Profiles:
 - Forge DevOps: development, SDKs, containers, services, deployments and logs.
 - Shield: authorized cybersecurity, audit, forensic and sandbox.
 - Studio: creator tools, logos, video, audio and design.
-- Atlas: documents, maps, OCR, references, trips and local research.
+- Atlas: documents, scans, maps, OCR, annotations, references, trips and local research.
 - Pulse: Linux gaming, Proton, low latency and overlays.
 
 What each mini OS separates:
@@ -2001,9 +2013,9 @@ seven profile folders forge
 | Forge | code, Git, services, containers | Forge terminal, projects, logs, build |
 | Shield | authorized audit, security, sandbox | hash, network, isolation, reports |
 | Studio | media, design, assets | images, audio, video, exports |
-| Baobab | culture, reading, collections | reader, documents, local memory |
+| Baobab | culture, oral memory, languages, collections | reader, stories, local memory |
 | Pulse | games, captures, performance | Steam, Lutris, recorder, overlays |
-| Atlas | Atlas Explorer | documents, maps, OCR, references and local research |
+| Atlas | Atlas Explorer | documents, scans, maps, OCR, annotations and local research |
 
 Pulse keeps gaming tools inside the Pulse mini OS when possible:
 
@@ -2041,7 +2053,14 @@ seven mini-os suggest
 seven mini-os plan equinox forge shield
 seven mini-os activate equinox forge --yes
 seven mini-os activate equinox --yes
+seven mini-boundaries
+seven mini-boundaries --open
+seven mini-boundaries --json
 ```
+
+`seven mini-boundaries --open` opens the Baobab / Equinox / Atlas Prism view.
+`seven mini-boundaries` prints the terminal report, and `--json` is used by
+doctors, post-install checks and automation.
 
 Runtime commands:
 
@@ -2503,7 +2522,7 @@ dedicated Shield workstation.
 ### Atlas Explorer
 
 Atlas replaces the old Windows vertex: SevenOS now keeps seven native mini OS
-identities without depending on a Windows VM. Atlas is for documents, maps, OCR,
+identities without depending on a Windows VM. Atlas is for documents, scans, maps, OCR,
 references, trips, archives and local research.
 
 ```bash
@@ -2513,12 +2532,17 @@ seven atlas install --yes
 seven profile activate atlas
 seven profile open atlas
 seven profile apps atlas
-seven profile requirements atlas --optional --apply --yes
+seven-profile-requirements install atlas --optional --apply --yes
+seven mini-boundaries
+seven mini-boundaries --open
 ```
 
 `seven atlas status` explains what is missing. `seven atlas install --yes` installs
-the essential packages. Optional requirements add Anki, Recoll, Zeal, QGIS/JOSM
+the essential packages. Optional requirements add Zeal, Kiwix, QGIS/JOSM
 or other advanced tools depending on enabled repositories.
+On a fresh machine, `./install.sh cli` also installs the
+`seven-mini-boundaries` and `seven-mini-boundaries-native` commands; `./install.sh hub`
+installs the graphical launcher in the app menu.
 
 ## Local FAQ
 
@@ -2638,7 +2662,7 @@ seven-wallpaper refresh
 | SevenOS Home | visual front door for mini OS profiles |
 | Spotlight | global search for apps, actions and files |
 | Shield | authorized cybersecurity and sandbox profile |
-| Atlas Explorer | documents, maps, OCR, references and trips |
+| Atlas Explorer | documents, scans, maps, OCR, annotations and trips |
 | Recovery | SevenOS repair and restore route |
 | Post-install | check for dependencies, services, fonts, network and surfaces |
 
@@ -2838,8 +2862,8 @@ de test et de chemin de retour.
 | SevenAI | assistant local-first plus profond, playbooks, diagnostics et explications | progressif |
 | Seven Shell | couche shell plus native, rapide et maintenable | progressif |
 | Store | permissions Flatpak, recommandations locales et vues par mini OS | progressif |
-| Baobab | packs culturels, langues africaines, cartes et collections offline | progressif |
-| Atlas Explorer | documents, cartes, OCR et recherche locale | actif |
+| Baobab | packs culturels, langues africaines, oralité et collections patrimoniales offline | progressif |
+| Atlas Explorer | documents, scans, cartes, OCR et recherche locale | actif |
 | Cloud personnel | synchronisation volontaire, backup, déploiement et serveur local | futur |
 | Performance | politiques systemd slices/uclamp exposées mais jamais silencieuses | futur |
 
@@ -2871,8 +2895,8 @@ a command, a check and a recovery path.
 | SevenAI | deeper local-first assistant, playbooks, diagnostics and explanations | progressive |
 | Seven Shell | more native, fast and maintainable shell layer | progressive |
 | Store | Flatpak permissions, local recommendations and mini OS views | progressive |
-| Baobab | cultural packs, African languages, maps and offline collections | progressive |
-| Atlas Explorer | documents, maps, OCR and local research | active |
+| Baobab | cultural packs, African languages, oral memory and offline heritage collections | progressive |
+| Atlas Explorer | documents, scans, maps, OCR and local research | active |
 | Personal cloud | opt-in sync, backup, deployment and local server workflows | future |
 | Performance | visible systemd slice/uclamp policies, never silent changes | future |
 

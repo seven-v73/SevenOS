@@ -1,12 +1,13 @@
 # SevenOS Atlas Explorer mini OS
-# Research, maps, documents, OCR, archives and calm knowledge navigation.
+# Documents, OCR, maps, archives and calm knowledge navigation.
+# Baobab owns culture, oral memory, language learning and heritage packs.
 evince
-foliate
 zathura
 zathura-pdf-poppler
 calibre
 libreoffice-fresh
 pdfarranger
+xournalpp
 poppler
 poppler-glib
 tesseract
@@ -14,13 +15,16 @@ tesseract-data-eng
 tesseract-data-fra
 imagemagick
 perl-image-exiftool
+simple-scan
+paperwork
+recoll
 sqlite
 ripgrep
 fd
 fzf
 tealdeer
-translate-shell
-kiwix-desktop
+ghostwriter
+minder
 marble
 gnome-maps
 geoclue
@@ -31,4 +35,3 @@ gpxsee
 qalculate-gtk
 planner
 evolution
-syncthing

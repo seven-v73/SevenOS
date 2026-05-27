@@ -10,3 +10,4 @@
 eww
 piper-tts-bin
 llama.cpp
+goldendict

@@ -95,6 +95,7 @@ public_desktop_entries = [
     "seven-hub/seven-store.desktop",
     "seven-hub/seven-terminal.desktop",
     "seven-hub/seven-settings.desktop",
+    "seven-hub/seven-mini-boundaries.desktop",
     "archiso/profile/airootfs/usr/share/applications/seven-installer.desktop",
 ]
 leak_terms = ("Arch", "Hyprland", "pacman", "systemd")

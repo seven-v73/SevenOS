@@ -1072,6 +1072,9 @@ def main():
     mini_doctor_parser.add_argument("action", nargs="?", default="doctor")
     mini_doctor_parser.add_argument("--json", action="store_true", help="print machine-readable mini OS doctor state")
     mini_doctor_parser.add_argument("--dry-run", action="store_true", help="preview mini OS maintenance commands")
+    mini_boundaries_parser = subparsers.add_parser("mini-boundaries", help="check Baobab/Atlas and mini OS role boundaries")
+    mini_boundaries_parser.add_argument("--json", action="store_true", help="print machine-readable role boundary report")
+    mini_boundaries_parser.add_argument("--open", action="store_true", help="open the native Baobab/Atlas boundary surface")
     bridge_parser = subparsers.add_parser("bridge", help="send and inspect explicit objects between mini OS experiences")
     bridge_parser.add_argument("action", nargs="?", default="status", choices=("status", "init", "send", "relations", "objects", "inbox", "outbox", "session", "remember", "switch", "graph", "doctor", "accept"))
     bridge_parser.add_argument("items", nargs="*", help="asset path or label for send")
@@ -1416,6 +1419,12 @@ def main():
         if args.dry_run:
             extra.append("--dry-run")
         run_script(args, "bin/seven-mini-doctor", *extra)
+    elif args.command == "mini-boundaries":
+        if args.open:
+            run_script(args, "bin/seven-mini-boundaries-native")
+        else:
+            extra = ["--json"] if args.json else []
+            run_script(args, "bin/seven-mini-boundaries", *extra)
     elif args.command == "bridge":
         handle_bridge(args)
     elif args.command == "baobab":

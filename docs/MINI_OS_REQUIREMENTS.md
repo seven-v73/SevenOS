@@ -42,9 +42,9 @@ sevenpkg pulse install steam lutris --source pacman
 | --- | --- | --- |
 | Forge | Git, SSH, Node, Python, Rust, Go, containers, editors, build tools, local services | Lazygit, Poetry, extra IDEs |
 | Studio | Image, vector, video, audio, 3D, capture, codecs, audio plugins | Office/export extras |
-| Baobab | Fonts, reading, narration, translation, offline knowledge, media | Calibre, sync, cultural AI/search |
+| Baobab | Fonts, reading, narration, African-language memory, offline cultural collections, oral/story workflows | Calibre/Anki for learning, cultural AI/search, optional community sync |
 | Shield | Authorized audit, forensics, reversing, wireless, sandbox and evidence tools | Burp Suite, Autopsy, advanced catalogs |
-| Atlas | Documents, PDFs/ebooks, maps, OCR, archives, references and local research | Anki, Recoll, Zeal, QGIS/JOSM and advanced map tools |
+| Atlas | Documents, PDFs/ebooks, office files, scans, OCR, annotations, maps, archives, references and local research | Zeal, Kiwix, QGIS/JOSM and advanced map tools |
 | Pulse | GameMode, Vulkan/audio/portal basics, performance rootfs and GPU guidance | Steam, Lutris, MangoHud, Gamescope, Proton helpers |
 
 ## Public User Flow
@@ -58,3 +58,11 @@ sevenpkg pulse install steam lutris --source pacman
 For Atlas, the public path is `seven atlas status` and
 `seven atlas install --yes`. It prepares the native document, map, OCR and
 reference baseline without reintroducing a Windows/VM dependency.
+
+Baobab/Atlas boundary:
+- Baobab owns culture, oral memory, African languages, storytelling, local
+  heritage packs and community transmission.
+- Atlas owns general documents, scan/OCR, annotations, maps, GPX, references,
+  archives and travel/research navigation.
+- Run `seven mini-boundaries` to check that future package changes keep the
+  overlap explicit and reviewed.

@@ -241,7 +241,7 @@ profile.activate.baobab	Profiles	Activate Baobab	seven profile activate baobab	c
 profile.activate.forge	Profiles	Activate Forge DevOps	seven profile activate forge	changes	Switch to the development, containers and deployment mini OS.
 profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch to the cybersecurity mini OS.
 profile.activate.studio	Profiles	Activate Studio	seven profile activate studio	changes	Switch to the creator mini OS.
-profile.activate.atlas	Profiles	Activate Atlas	seven profile activate atlas	changes	Switch to the Atlas Explorer mini OS for documents, maps, OCR and research.
+profile.activate.atlas	Profiles	Activate Atlas	seven profile activate atlas	changes	Switch to the Atlas Explorer mini OS for documents, scans, maps, OCR and research.
 profile.activate.pulse	Profiles	Activate Pulse	seven profile activate pulse	changes	Switch to the Linux gaming mini OS.
 runtime.status	Profiles	Runtime Status	seven runtime status	safe	Show the active SevenOS layered autonomous runtime without changing resources.
 runtime.plan	Profiles	Runtime Fusion Plan	seven runtime plan equinox forge shield studio pulse	safe	Preview Equinox with controlled capability fragments from multiple profiles.
@@ -319,12 +319,13 @@ security.lab	Security	Open Cyber Lab	seven shield lab --preset web	safe	Open an 
 security.lab.forensics	Security	Open Forensics Lab	seven shield lab --preset forensics	safe	Open an offline evidence-safe forensics lab.
 security.lab.reversing	Security	Open Reversing Lab	seven shield lab --preset reversing	safe	Open an offline reversing lab.
 atlas.status	Atlas	État Atlas	seven atlas status	safe	Vérifier si Atlas Explorer est prêt dans SevenOS.
-atlas.open	Atlas	Ouvrir Atlas	seven-mini-os-center atlas	safe	Ouvrir le centre Atlas avec readiness, documents, cartes, références et actions.
+atlas.open	Atlas	Ouvrir Atlas	seven-mini-os-center atlas	safe	Ouvrir le centre Atlas avec readiness, documents, scans, cartes, références et actions.
 atlas.activate	Atlas	Activer Atlas	seven profile activate atlas	changes	Basculer vers le mini OS Atlas Explorer.
-atlas.install	Atlas	Installer Atlas	seven atlas install --yes	packages	Installer les paquets Atlas pour documents, cartes, OCR, archives et recherche.
-atlas.optional	Atlas	Installer les extensions Atlas	seven-profile-requirements status atlas --optional --apply --yes	packages	Ajouter les outils Atlas avancés quand ils sont disponibles.
+atlas.install	Atlas	Installer Atlas	seven atlas install --yes	packages	Installer les paquets Atlas pour documents, scans, cartes, OCR, archives et recherche.
+atlas.optional	Atlas	Installer les extensions Atlas	seven-profile-requirements install atlas --optional --apply --yes	packages	Ajouter les outils Atlas avancés quand ils sont disponibles.
+mini.boundaries	Profiles	Frontières Mini OS	seven mini-boundaries --open	safe	Vérifier visuellement que Baobab garde la culture et qu'Atlas garde documents, scans, cartes et OCR sans chevauchement non revu.
 atlas.files	Atlas	Fichiers Atlas	seven profile open atlas	safe	Ouvrir l’espace Atlas dans Seven Files.
-atlas.documents	Atlas	Documents Atlas	seven profile open-folder atlas Documents	safe	Ouvrir les PDF, ebooks, notes et documents Atlas.
+atlas.documents	Atlas	Documents Atlas	seven profile open-folder atlas Documents	safe	Ouvrir les PDF, office, ebooks, notes et documents Atlas.
 atlas.maps	Atlas	Cartes Atlas	seven profile open-folder atlas Maps	safe	Ouvrir les cartes, trajets et GPX Atlas.
 atlas.scans	Atlas	Scans Atlas	seven profile open-folder atlas Scans	safe	Ouvrir les scans et documents OCR Atlas.
 atlas.apps	Atlas	Applications Atlas	seven profile apps atlas	safe	Ouvrir les applications liées à Atlas.
@@ -526,11 +527,11 @@ for raw in os.environ.get("ACTION_ROWS", "").splitlines():
 
 quick_actions = {
     "equinox": ["spotlight.open", "files.profile", "settings.open", "experience.recommend"],
-    "baobab": ["baobab.open", "files.documents", "reader.open", "bridge.switch.baobab"],
+    "baobab": ["baobab.open", "reader.open", "bridge.switch.baobab", "mini.boundaries"],
     "forge": ["terminal.forge", "files.code", "deploy.plan", "profile.strict.forge"],
     "shield": ["security.dashboard", "security.scope", "security.lab.forensics", "profile.strict.shield_ephemeral"],
     "studio": ["files.pictures", "files.videos", "recorder.area", "profile.strict.studio"],
-    "atlas": ["atlas.open", "atlas.documents", "atlas.maps", "atlas.apps"],
+    "atlas": ["atlas.open", "atlas.documents", "atlas.maps", "mini.boundaries"],
     "pulse": ["files.videos", "files.music", "recorder.full", "motion.reduced"],
 }
 

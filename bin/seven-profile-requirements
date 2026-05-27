@@ -182,8 +182,8 @@ def status(profile: str, *, include_optional: bool) -> dict:
         },
         "commands": {
             "status": f"seven-profile-requirements status {profile} --json",
-            "install_required": f"seven-profile-requirements status {profile} --apply --yes",
-            "install_optional": f"seven-profile-requirements status {profile} --optional --apply --yes",
+            "install_required": f"seven-profile-requirements install {profile} --apply --yes",
+            "install_optional": f"seven-profile-requirements install {profile} --optional --apply --yes",
         },
     }
 

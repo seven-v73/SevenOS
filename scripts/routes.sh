@@ -97,6 +97,7 @@ surface_natives = {
     "terminal": "bin/seven-terminal-native",
     "profile-center": "bin/seven-profile-center-native",
     "mini-os-center": "bin/seven-mini-os-center",
+    "mini-os-boundaries": "bin/seven-mini-boundaries-native",
     "quick-settings": "bin/seven-quick-settings-native",
     "shield-center": "bin/seven-shield-center-native",
     "windows-bridge": "bin/seven-windows-assistant",
@@ -187,6 +188,14 @@ routes = [
         "action_id": "runtime.status",
         "command": "seven-mini-os-center",
         "backend": "LAPA runtime, cgroups, profile manifests",
+    },
+    {
+        "intent": "understand-baobab-atlas",
+        "label": "Understand Baobab versus Atlas",
+        "surface": "mini-os-boundaries",
+        "action_id": "mini.boundaries",
+        "command": "seven mini-boundaries --open",
+        "backend": "Baobab/Atlas package and role boundary report",
     },
     {
         "intent": "control-network-audio",

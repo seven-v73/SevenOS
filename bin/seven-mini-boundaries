@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    from seven_i18n import language_code
+except Exception:
+    def language_code() -> str:
+        return "fr" if os.environ.get("LANG", "").lower().startswith("fr") else "en"
+
+
+LANG_CODE = language_code()
+
+
+def t(fr: str, en: str) -> str:
+    return fr if LANG_CODE == "fr" else en
+
+FILES = {
+    "baobab": {
+        "required": ["scripts/packages-culture.txt"],
+        "optional": ["scripts/packages-culture-optional.txt", "scripts/packages-culture-aur.txt"],
+    },
+    "atlas": {
+        "required": ["scripts/packages-atlas.txt"],
+        "optional": ["scripts/packages-atlas-optional.txt", "scripts/packages-atlas-aur.txt"],
+    },
+}
+
+ALLOWED_SHARED = {
+    "calibre": "Baobab uses it as a cultural library; Atlas uses it for document/reference management.",
+    "libreoffice-fresh": "Optional in Baobab for community publishing; core in Atlas for general documents.",
+    "kiwix-desktop": "Core in Baobab for offline cultural collections; optional in Atlas for broad offline reference.",
+    "syncthing": "Optional explicit sync in both, never a silent default.",
+    "ghostwriter": "Baobab uses field notes; Atlas uses research notes.",
+    "minder": "Baobab uses knowledge trees; Atlas uses project/reference maps.",
+}
+
+BOUNDARIES = {
+    "baobab": {
+        "owns": [
+            "African heritage and cultural packs",
+            "oral memory, narration, language learning",
+            "offline cultural collections and community transmission",
+            "Baobab Village, Heritage, Story and living archive workflows",
+        ],
+        "does_not_own": [
+            "general office/document routing",
+            "OCR/scanning pipelines",
+            "general maps/GIS/travel tooling",
+            "full-text reference indexing",
+        ],
+    },
+    "atlas": {
+        "owns": [
+            "PDFs, ebooks, office documents and annotations",
+            "OCR, scans, metadata and local document search",
+            "maps, GPX, places, trip planning and local exploration",
+            "references, archives and navigable knowledge projects",
+        ],
+        "does_not_own": [
+            "cultural identity packs",
+            "oral-tradition and heritage-first workflows",
+            "language tutoring as a cultural goal",
+            "community memory curation",
+        ],
+    },
+}
+
+
+def packages(path: Path) -> list[str]:
+    if not path.is_file():
+        return []
+    result = []
+    for raw in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if line:
+            result.append(line)
+    return result
+
+
+def collect(profile: str) -> dict:
+    payload = {"required": [], "optional": []}
+    for scope, rels in FILES[profile].items():
+        seen = set()
+        for rel in rels:
+            for package in packages(ROOT / rel):
+                if package not in seen:
+                    seen.add(package)
+                    payload[scope].append(package)
+    return payload
+
+
+def build_report() -> dict:
+    baobab = collect("baobab")
+    atlas = collect("atlas")
+    b_all = set(baobab["required"]) | set(baobab["optional"])
+    a_all = set(atlas["required"]) | set(atlas["optional"])
+    overlap = sorted(b_all & a_all)
+    unreviewed = [item for item in overlap if item not in ALLOWED_SHARED]
+    return {
+        "schema": "sevenos.mini-os-boundaries.v1",
+        "profiles": {
+            "baobab": {
+                **BOUNDARIES["baobab"],
+                "required": baobab["required"],
+                "optional": baobab["optional"],
+            },
+            "atlas": {
+                **BOUNDARIES["atlas"],
+                "required": atlas["required"],
+                "optional": atlas["optional"],
+            },
+        },
+        "overlap": {
+            "count": len(overlap),
+            "allowed": {item: ALLOWED_SHARED[item] for item in overlap if item in ALLOWED_SHARED},
+            "unreviewed": unreviewed,
+        },
+        "commands": {
+            "baobab": "seven-mini-os-center baobab",
+            "atlas": "seven atlas status && seven-mini-os-center atlas",
+            "doctor": "seven mini-boundaries --json",
+        },
+        "ready": not unreviewed,
+    }
+
+
+def human(report: dict) -> str:
+    lines = [t("Frontières des mini OS SevenOS", "SevenOS Mini OS Boundaries"), "===========================", ""]
+    for key in ("baobab", "atlas"):
+        item = report["profiles"][key]
+        title = "Baobab" if key == "baobab" else "Atlas"
+        owns = item["owns"]
+        avoids = item["does_not_own"]
+        if LANG_CODE == "fr":
+            owns = [
+                "patrimoine africain et packs culturels",
+                "oralité, narration et apprentissage des langues",
+                "collections culturelles offline et transmission communautaire",
+                "Baobab Village, Heritage, Story et archive vivante",
+            ] if key == "baobab" else [
+                "PDF, ebooks, documents office et annotations",
+                "OCR, scans, métadonnées et recherche documentaire locale",
+                "cartes, GPX, lieux, voyages et exploration locale",
+                "références, archives et projets de connaissance navigables",
+            ]
+            avoids = [
+                "routage documentaire général",
+                "pipelines OCR/scan",
+                "cartes/GIS/voyage général",
+                "indexation plein texte de références",
+            ] if key == "baobab" else [
+                "packs d'identité culturelle",
+                "oralité et patrimoine comme workflow principal",
+                "tutorat linguistique comme objectif culturel",
+                "curation de mémoire communautaire",
+            ]
+        lines.append(title)
+        lines.append(f"  {t('possède', 'owns')}: " + "; ".join(owns))
+        lines.append(f"  {t('évite', 'not')}:  " + "; ".join(avoids))
+        lines.append(f"  {t('requis', 'required')}: {len(item['required'])} {t('paquets', 'packages')}")
+        lines.append(f"  {t('optionnels', 'optional')}: {len(item['optional'])} {t('paquets', 'packages')}")
+        lines.append("")
+    overlap = report["overlap"]
+    lines.append(f"{t('Chevauchements revus', 'Overlap reviewed')}: {len(overlap['allowed'])}")
+    if overlap["unreviewed"]:
+        lines.append(f"{t('Chevauchements non revus', 'Unreviewed overlap')}: " + ", ".join(overlap["unreviewed"]))
+    else:
+        lines.append(f"{t('Chevauchements non revus', 'Unreviewed overlap')}: {t('aucun', 'none')}")
+    lines.append(f"{t('État', 'State')}: " + (t("prêt", "ready") if report["ready"] else "attention"))
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-mini-boundaries")
+    parser.add_argument("--json", action="store_true")
+    args = parser.parse_args()
+    report = build_report()
+    print(json.dumps(report, indent=2) if args.json else human(report))
+    return 0 if report["ready"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

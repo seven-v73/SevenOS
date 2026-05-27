@@ -286,6 +286,16 @@ surfaces = [
         "dynamic": True,
     },
     {
+        "key": "mini-os-boundaries",
+        "title": "Mini OS Boundaries",
+        "role": "Baobab and Atlas role clarity surface",
+        "command": "seven mini-boundaries --open",
+        "native": "bin/seven-mini-boundaries-native",
+        "desktop": "seven-hub/seven-mini-boundaries.desktop",
+        "actions": ["mini.boundaries"],
+        "dynamic": True,
+    },
+    {
         "key": "shield-center",
         "title": "Shield Center",
         "role": "cybersecurity cockpit",

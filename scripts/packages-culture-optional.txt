@@ -1,8 +1,13 @@
 # SevenOS Baobab optional learning and cultural tools
 # Installed when the user wants the full Baobab Cultural OS surface.
-# Reader, library, speech and translation helpers support offline transmission.
+# Library, language, oral memory and community helpers support transmission.
+# Atlas owns general documents, OCR, maps and reference indexing.
 calibre
 festival
+anki
+ghostwriter
+minder
+libreoffice-fresh
 # Cultural shell and widgets
 swaync
 python-pywal
@@ -11,7 +16,7 @@ tauon-music-box
 krita
 blender
 kdenlive
-# Local sync and community sharing
+# Local sync and community sharing, only when the user wants it
 syncthing
 nextcloud
 nextcloud-client
