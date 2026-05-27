@@ -12,6 +12,13 @@ Use one public command first:
 seven windows setup
 ```
 
+For the native SevenOS surface:
+
+```bash
+seven windows open
+seven-windows-native
+```
+
 When the official Windows ISO is available:
 
 ```bash
@@ -23,6 +30,10 @@ libvirt/networking, creates the local `qcow2` disk, prepares VirtIO driver
 media when possible, and creates/registers the VM when an official Windows ISO
 is available. If the ISO is missing, it stops with one clear next step instead
 of exposing the whole expert command chain.
+
+The app-first layer remains available everywhere in SevenOS, independently of
+the active Mini OS. Wine, Bottles, Lutris and Proton are preferred for normal
+apps; the VM path is only for apps that need a real Windows session.
 
 ## What SevenOS Prepares
 

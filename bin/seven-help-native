@@ -510,7 +510,8 @@ SECTIONS = [
             t("Shield sert aux audits autorisés, au sandbox, au forensic et au durcissement sans casser l'espace quotidien.", "Shield is for authorized audits, sandboxing, forensic work and hardening without breaking the daily space."),
             t("BlackArch reste optionnel dans Shield : commence par les outils Arch/AUR ou les bundles ciblés, puis active BlackArch seulement quand tu veux un catalogue cyber beaucoup plus large.", "BlackArch stays optional in Shield: start with Arch/AUR tools or focused bundles, then enable BlackArch only when you want a much larger cyber catalog."),
             t("Le paquet complet BlackArch est massif et réservé à un poste Shield dédié. SevenOS impose un dry-run ou un --yes explicite pour éviter une installation accidentelle.", "The full BlackArch package set is massive and reserved for a dedicated Shield workstation. SevenOS requires a dry-run or explicit --yes to avoid accidental installation."),
-            t("Windows Bridge commence par Wine/Bottles/Proton puis passe à la VM quand une session Windows complète est nécessaire.", "Windows Bridge starts with Wine/Bottles/Proton and moves to VM when a full Windows session is required."),
+            t("Windows Bridge commence par Wine/Bottles/Lutris/Proton puis passe à la VM quand une session Windows complète est nécessaire.", "Windows Bridge starts with Wine/Bottles/Lutris/Proton and moves to VM when a full Windows session is required."),
+            t("Le panneau Windows est global : il reste accessible depuis Equinox et tous les Mini OS, pour que l'utilisateur puisse lancer ses apps Windows sans changer d'espace.", "The Windows panel is global: it remains available from Equinox and every Mini OS, so users can launch Windows apps without changing spaces."),
             t("SevenOS ne fournit pas d'image Windows et ne contourne pas l'activation.", "SevenOS does not provide Windows images and does not bypass activation."),
         ],
         "commands": [
@@ -523,9 +524,12 @@ SECTIONS = [
             ("./install.sh security --yes", t("Durcissement de base", "Base hardening")),
             ("seven windows setup", t("Préparer Windows Bridge", "Prepare Windows Bridge")),
             ("seven windows setup --iso ~/Downloads/Win11.iso", t("Préparer une VM Windows", "Prepare a Windows VM")),
+            ("seven windows open", t("Ouvrir le panneau Windows natif", "Open the native Windows panel")),
+            ("seven windows apps", t("Ouvrir Bottles / apps Windows", "Open Bottles / Windows apps")),
+            ("seven windows resolve photoshop", t("Résoudre le meilleur moteur", "Resolve the best engine")),
             ("seven run ~/Downloads/setup.exe", t("Lancer un installeur Windows", "Run a Windows installer")),
         ],
-        "actions": [("󰒃", "Shield", "seven shield status"), ("󰖳", "Windows", "seven windows setup")],
+        "actions": [("󰒃", "Shield", "seven shield status"), ("󰖳", "Windows", "seven windows open")],
     },
     {
         "id": "faq",

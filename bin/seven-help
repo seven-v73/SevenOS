@@ -1196,21 +1196,33 @@ poste Shield dédié.
 
 ### Windows Bridge
 
-SevenOS privilégie les apps Windows légères via Wine/Bottles/Proton, puis passe
-à KVM/QEMU quand il faut un Windows complet.
+SevenOS privilégie les apps Windows légères via Wine/Bottles/Lutris/Proton,
+puis passe à KVM/QEMU quand il faut un Windows complet. Cette couche est
+globale : le panneau Windows et les commandes restent accessibles depuis
+Equinox comme depuis Forge, Studio, Shield, Pulse, Baobab ou Windows.
 
 ```bash
+seven windows open
+seven-windows-native
 seven windows setup
 seven windows setup --iso ~/Downloads/Win11.iso
 seven windows status
 seven windows plan
 seven windows repair
 seven windows network
+seven windows apps
+seven windows resolve photoshop
 seven run ~/Downloads/setup.exe
 ./install.sh windows-mode guide
 ./install.sh vm-check
 ./install.sh vm-network
 ```
+
+Le panneau natif contient aussi un lanceur rapide : tape `photoshop`, `office`
+ou choisis un fichier `.exe/.msi`; SevenOS affiche le moteur recommandé avant de
+lancer. Il garde les apps récentes localement et propose aussi Préparer ou
+Diagnostiquer depuis le même endroit. La ligne de décision montre pourquoi
+SevenOS choisit Wine, Bottles, Lutris, Proton ou la VM.
 
 SevenOS ne fournit pas d'image Windows, ne contourne pas l'activation et ne met
 pas de clé produit. L'utilisateur fournit son ISO officielle si une VM complète
@@ -1335,7 +1347,7 @@ seven-wallpaper refresh
 | SevenOS Home | porte d'entrée visuelle des mini OS |
 | Spotlight | recherche globale d'apps, actions et fichiers |
 | Shield | profil cybersécurité autorisée et sandbox |
-| Windows Bridge | couche Wine/Bottles/Proton/KVM pour apps Windows |
+| Windows Compatibility | couche Wine/Bottles/Lutris/Proton avec VM en secours |
 | Recovery | route de réparation et restauration SevenOS |
 | Post-install | vérification des dépendances, services, polices, réseau et surfaces |
 
@@ -2005,7 +2017,7 @@ seven profile folders forge
 | Studio | media, design, assets | images, audio, video, exports |
 | Baobab | culture, reading, collections | reader, documents, local memory |
 | Pulse | games, captures, performance | Steam, Lutris, recorder, overlays |
-| Windows | Windows VM and bridge | VM setup, shared folders, Windows apps |
+| Windows | Windows Compatibility | app-first tools, shared folders, VM fallback |
 
 Pulse keeps gaming tools inside the Pulse mini OS when possible:
 
@@ -2504,21 +2516,33 @@ dedicated Shield workstation.
 
 ### Windows Bridge
 
-SevenOS prefers lightweight Windows apps through Wine/Bottles/Proton, then uses
-KVM/QEMU when a complete Windows environment is required.
+SevenOS prefers lightweight Windows apps through Wine/Bottles/Lutris/Proton,
+then uses KVM/QEMU when a complete Windows environment is required. This layer
+is global: the Windows panel and commands stay available from Equinox and from
+Forge, Studio, Shield, Pulse, Baobab or Windows.
 
 ```bash
+seven windows open
+seven-windows-native
 seven windows setup
 seven windows setup --iso ~/Downloads/Win11.iso
 seven windows status
 seven windows plan
 seven windows repair
 seven windows network
+seven windows apps
+seven windows resolve photoshop
 seven run ~/Downloads/setup.exe
 ./install.sh windows-mode guide
 ./install.sh vm-check
 ./install.sh vm-network
 ```
+
+The native panel also includes a quick launcher: type `photoshop`, `office` or
+choose an `.exe/.msi`; SevenOS shows the recommended engine before launch.
+It keeps recent apps locally and exposes Prepare or Diagnose from the same
+place. The decision path shows why SevenOS selected Wine, Bottles, Lutris,
+Proton or the VM.
 
 SevenOS does not provide Windows images, bypass activation or inject product
 keys. The user provides an official ISO when a full VM is required.
@@ -2641,7 +2665,7 @@ seven-wallpaper refresh
 | SevenOS Home | visual front door for mini OS profiles |
 | Spotlight | global search for apps, actions and files |
 | Shield | authorized cybersecurity and sandbox profile |
-| Windows Bridge | Wine/Bottles/Proton/KVM layer for Windows apps |
+| Windows Compatibility | Wine/Bottles/Lutris/Proton layer with VM fallback |
 | Recovery | SevenOS repair and restore route |
 | Post-install | check for dependencies, services, fonts, network and surfaces |
 

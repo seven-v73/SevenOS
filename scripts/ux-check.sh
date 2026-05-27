@@ -281,6 +281,7 @@ require_executable "bin/seven-profile-theme"
 require_executable "bin/hyprsysteminfo"
 require_executable "bin/seven-bluetooth"
 require_executable "bin/seven-windows-assistant"
+require_executable "bin/seven-windows-native"
 require_executable "bin/seven-pulse"
 require_executable "bin/seven-mini-doctor"
 require_executable "vm/windows-app-runner.sh"
@@ -3128,6 +3129,8 @@ if python -m json.tool <<<"$windows_json" >/dev/null &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows.v1"' <<<"$windows_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-bridge-runtime.v1"' <<<"$windows_bridge_json" &&
    grep -q '"bridge_runtime"' <<<"$windows_json" &&
+   grep -q '"compatibility_policy": "app-first-global-vm-optional"' <<<"$windows_json" &&
+   grep -q '"global_available": true' <<<"$windows_json" &&
    grep -Eq 'Bridge runtime:|État Windows:' <<<"$windows_status_human" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-plan.v1"' <<<"$windows_plan" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.windows-app-catalog.v1"' <<<"$windows_catalog" &&
@@ -3200,7 +3203,20 @@ if python -m json.tool <<<"$windows_json" >/dev/null &&
    grep -q 'windows.fix_network' <<<"$actions_json" &&
    grep -q 'windows.guide' <<<"$actions_json" &&
    grep -q 'windows.apps' <<<"$actions_json" &&
-   grep -q 'windows.plan' <<<"$actions_json"; then
+   grep -q 'windows.plan' <<<"$actions_json" &&
+   grep -q 'install_user_command "$ROOT_DIR/bin/seven-windows-native" seven-windows-native' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'install_system_command "$ROOT_DIR/bin/seven-windows-native" seven-windows-native' "$ROOT_DIR/scripts/install-cli.sh" &&
+   grep -q 'Compatibility Engines' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'Global Mode' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'quick_launch_card' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'choose_installer' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'render_quick_resolution' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'native-recents.json' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'prepare_quick_target' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'diagnose_quick_target' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'render_decision_path' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'engine-step-active' "$ROOT_DIR/bin/seven-windows-native" &&
+   grep -q 'engine_pills' "$ROOT_DIR/bin/seven-windows-native"; then
   ok "Windows Mode exposes an app-first resolver, guided assistant and shared actions"
 else
   fail "Windows Mode should expose status JSON, app resolver, guide, app surface and actions"

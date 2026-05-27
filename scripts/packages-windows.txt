@@ -27,6 +27,7 @@ virglrenderer
 # bottles is commonly installed through Flatpak or AUR.
 # dxvk is often managed by Bottles, Lutris or Proton rather than pacman.
 # lib32-gamemode and lib32-vulkan-icd-loader require the Arch multilib repo.
+# Steam/Proton can be added from SevenStore/Pulse when multilib is enabled.
 # virtio-win is required during Windows installation, but is often provided as
 # a downloaded ISO rather than a pacman package.
 # quickemu/quickget is optional and tracked in packages-windows-aur.txt for

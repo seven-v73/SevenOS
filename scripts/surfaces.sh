@@ -297,12 +297,12 @@ surfaces = [
     },
     {
         "key": "windows-bridge",
-        "title": "Windows Bridge",
-        "role": "VM/Wine/Bottles compatibility surface",
-        "command": "seven windows status",
-        "native": "bin/seven-windows-assistant",
+        "title": "Windows Compatibility",
+        "role": "global Wine/Bottles/Lutris/Proton/VM app-first surface",
+        "command": "seven windows open",
+        "native": "bin/seven-windows-native",
         "desktop": None,
-        "actions": ["windows.status", "windows.enter"],
+        "actions": ["windows.open", "windows.apps", "windows.resolve.photoshop"],
         "dynamic": True,
     },
     {

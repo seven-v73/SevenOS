@@ -15,7 +15,7 @@ SevenStore combines:
 - AUR community packages
 - Flatpak sandboxed applications
 - SevenOS profile bundles
-- Windows Bridge / VM apps
+- Windows Compatibility apps
 - future SevenCloud recommendations
 
 The store must make installation feel:
@@ -131,15 +131,18 @@ flatpak install flathub <app-id>
 Flatpak entries should expose permission controls through a future Seven
 Permissions panel.
 
-### Windows Bridge
+### Windows Compatibility
 
 Windows apps should not be mixed silently with Linux apps. They appear under
-the Windows Bridge source and open VM-first flows.
+the Windows Compatibility source and open app-first flows: Wine, Bottles,
+Lutris and Proton first, then full Windows VM only when the app really needs it.
 
 Install/run plan:
 
 ```bash
+seven windows open
 seven windows run <installer>
+seven windows resolve photoshop
 ```
 
 ## Ranking Policy
@@ -149,7 +152,7 @@ Default result priority:
 1. official pacman package
 2. Flatpak sandboxed app
 3. high-signal AUR package
-4. Windows Bridge app
+4. Windows Compatibility app
 
 SevenStore can override the priority when a profile explicitly prefers a source.
 For example, Studio may prefer Flatpak for sandboxed creator apps, while Forge
@@ -165,7 +168,7 @@ SevenStore is profile-aware. Each mini OS gets a curated store surface.
 | Forge | editors, SDKs, containers, Git and local services |
 | Shield | authorized audit, forensics, sandboxing and reporting |
 | Studio | design, video, audio, 3D, capture and export |
-| Windows | VM-first Windows apps and compatibility helpers |
+| Windows | app-first Windows compatibility helpers with VM fallback |
 | Forge DevOps | code, deploy, reverse proxy, containers, logs and endpoints |
 | Pulse | Linux gaming, Proton, overlays, controllers and latency tools |
 | Baobab | African heritage, languages, stories, sound, maps, fashion, food, wisdom and offline memory |

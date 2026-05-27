@@ -241,7 +241,7 @@ profile.activate.baobab	Profiles	Activate Baobab	seven profile activate baobab	c
 profile.activate.forge	Profiles	Activate Forge DevOps	seven profile activate forge	changes	Switch to the development, containers and deployment mini OS.
 profile.activate.shield	Profiles	Activate Shield	seven profile activate shield	changes	Switch to the cybersecurity mini OS.
 profile.activate.studio	Profiles	Activate Studio	seven profile activate studio	changes	Switch to the creator mini OS.
-profile.activate.windows	Profiles	Activate Windows	seven profile activate windows	changes	Switch to the Windows Bridge VM-first mini OS.
+profile.activate.windows	Profiles	Activate Windows	seven profile activate windows	changes	Switch to the Windows Compatibility mini OS with app-first tools and VM fallback.
 profile.activate.pulse	Profiles	Activate Pulse	seven profile activate pulse	changes	Switch to the Linux gaming mini OS.
 runtime.status	Profiles	Runtime Status	seven runtime status	safe	Show the active SevenOS layered autonomous runtime without changing resources.
 runtime.plan	Profiles	Runtime Fusion Plan	seven runtime plan equinox forge shield studio pulse	safe	Preview Equinox with controlled capability fragments from multiple profiles.
@@ -296,7 +296,7 @@ baobab.fashion	Baobab	Baobab Fashion	seven baobab module fashion	safe	Show the A
 profile.forge	Profiles	Install Forge DevOps	seven profile install forge	packages	Install the development, containers and deployment mini OS stack.
 profile.shield	Profiles	Install Shield	seven profile install shield	packages	Install the cybersecurity mini OS stack.
 profile.studio	Profiles	Install Studio	seven profile install studio	packages	Install the creator mini OS stack.
-profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install the Windows Bridge VM-first compatibility stack.
+profile.windows	Profiles	Install Windows Mode	seven profile install windows	packages	Install the Windows Compatibility app-first stack with VM fallback.
 profile.pulse	Profiles	Install Pulse	seven profile install pulse	packages	Install the Linux gaming mini OS stack.
 security.audit	Security	Shield Audit	seven shield audit	safe	Audit firewall, sandbox and cyber tooling.
 security.dashboard	Security	Shield Control	seven shield dashboard	safe	Open the native Shield workspace dashboard.
@@ -419,7 +419,7 @@ sevenpkg.baobab	Apps	Install Baobab Bundle	sevenpkg install baobab	packages	Inst
 sevenpkg.forge	Apps	Install Forge Bundle	sevenpkg install forge	packages	Install the developer software bundle.
 sevenpkg.shield	Apps	Install Shield Bundle	sevenpkg install shield	packages	Install the cybersecurity software bundle.
 sevenpkg.studio	Apps	Install Studio Bundle	sevenpkg install studio	packages	Install the creative production software bundle.
-sevenpkg.windows	Apps	Install Windows Bundle	sevenpkg install windows	packages	Install the Windows Bridge VM-first compatibility bundle.
+sevenpkg.windows	Apps	Install Windows Bundle	sevenpkg install windows	packages	Install the Windows Compatibility app-first bundle with VM fallback.
 sevenpkg.pulse	Apps	Install Pulse Bundle	sevenpkg install pulse	packages	Install the Linux gaming software bundle.
 sevenpkg.griot	Apps	Install Griot Bundle	sevenpkg install griot	packages	Install the documentation and knowledge software bundle.
 ecosystem.status	Ecosystem	Ecosystem Map	seven ecosystem	safe	Show modules and maturity states.

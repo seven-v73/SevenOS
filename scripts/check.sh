@@ -125,6 +125,7 @@ bash -n \
   "$ROOT_DIR/bin/seven-idle" \
   "$ROOT_DIR/bin/seven-mini-os-center" \
   "$ROOT_DIR/bin/seven-windows-assistant" \
+  "$ROOT_DIR/bin/seven-windows-native" \
   "$ROOT_DIR/bin/sevenpkg" \
   "$ROOT_DIR/bin/sevenosctl" \
   "$ROOT_DIR/scripts/startup-audit.sh" \

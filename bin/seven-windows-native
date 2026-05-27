@@ -3,19 +3,23 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BIN = ROOT / "bin"
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "sevenos" / "windows"
+RECENTS_FILE = STATE_DIR / "native-recents.json"
 
 try:
     import gi
 
     gi.require_version("Gtk", "3.0")
     gi.require_version("Gdk", "3.0")
-    from gi.repository import Gdk, GLib, Gtk
+    from gi.repository import Gdk, GLib, Gtk, Pango
 except Exception as exc:
     if "--probe" in sys.argv:
         print(f"missing gtk: {exc}")
@@ -23,7 +27,25 @@ except Exception as exc:
     raise
 
 
-def run_json(*args: str, timeout: float = 4.0) -> dict:
+def language_code() -> str:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "en_US.UTF-8")
+    config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos" / "language.conf"
+    if not os.environ.get("SEVENOS_LANGUAGE") and config.exists():
+        for raw in config.read_text(errors="ignore").splitlines():
+            if raw.startswith(("SEVENOS_LANGUAGE=", "LANG=")):
+                language = raw.split("=", 1)[1].strip().strip('"').strip("'")
+                break
+    return "fr" if language.startswith("fr") else "en"
+
+
+LANG_CODE = language_code()
+
+
+def t(fr: str, en: str) -> str:
+    return fr if LANG_CODE == "fr" else en
+
+
+def run_json(*args: str, timeout: float = 5.0) -> dict:
     try:
         result = subprocess.run(
             [str(BIN / "seven-windows-assistant"), *args],
@@ -48,6 +70,26 @@ def launch(*args: str) -> None:
     )
 
 
+def terminal_command(*args: str) -> None:
+    title = t("Windows SevenOS", "SevenOS Windows")
+    command = " ".join(shlex.quote(arg) for arg in [str(BIN / "seven-windows-assistant"), *args])
+    candidates = [
+        [str(BIN / "seven-terminal-native"), "--title", title, "--", "bash", "-lc", f"{command}; echo; read -r -p 'Enter' _"],
+        [str(BIN / "seven-terminal"), "windows", "-e", "bash", "-lc", f"{command}; echo; read -r -p 'Enter' _"],
+        ["x-terminal-emulator", "-e", "bash", "-lc", f"{command}; echo; read -r -p 'Enter' _"],
+        ["kitty", "bash", "-lc", f"{command}; echo; read -r -p 'Enter' _"],
+    ]
+    for candidate in candidates:
+        if "/" in candidate[0] and not Path(candidate[0]).exists():
+            continue
+        try:
+            subprocess.Popen(candidate, cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            return
+        except Exception:
+            continue
+    launch(*args)
+
+
 def open_files() -> None:
     candidates = [
         [str(BIN / "seven-files-native"), "--profile", "windows"],
@@ -55,7 +97,7 @@ def open_files() -> None:
         ["xdg-open", os.path.expanduser("~/WindowsMode")],
     ]
     for command in candidates:
-        if not Path(command[0]).exists() and "/" in command[0]:
+        if "/" in command[0] and not Path(command[0]).exists():
             continue
         try:
             subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
@@ -64,274 +106,872 @@ def open_files() -> None:
             continue
 
 
-def label_for_state(state: str) -> tuple[str, str]:
-    if state == "RUN":
-        return "Ouvert", "windows-ready"
-    if state == "OK":
-        return "Prêt", "windows-ready"
-    if state == "MISS":
-        return "À préparer", "windows-warning"
-    return "À vérifier", "windows-warning"
+def state_css(state: str | bool | None) -> tuple[str, str]:
+    value = str(state).upper()
+    if state is True or value in {"OK", "RUN", "READY", "TRUE"}:
+        return t("Prêt", "Ready"), "state-ok"
+    if value in {"WARN", "PART"}:
+        return t("À surveiller", "Check"), "state-warn"
+    return t("À préparer", "Prepare"), "state-miss"
 
 
-def row(icon: str, title: str, note: str, state: str | None = None) -> Gtk.Box:
-    box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
-    box.get_style_context().add_class("status-row")
+def clear_box(box: Gtk.Container) -> None:
+    for child in list(box.get_children()):
+        box.remove(child)
 
-    icon_label = Gtk.Label(label=icon)
-    icon_label.get_style_context().add_class("status-icon")
-    box.pack_start(icon_label, False, False, 0)
 
-    text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-    title_label = Gtk.Label(label=title, xalign=0)
-    title_label.get_style_context().add_class("row-title")
-    note_label = Gtk.Label(label=note, xalign=0)
-    note_label.get_style_context().add_class("row-note")
-    note_label.set_line_wrap(True)
-    text_box.pack_start(title_label, False, False, 0)
-    text_box.pack_start(note_label, False, False, 0)
-    box.pack_start(text_box, True, True, 0)
+def small_label(text: str, css: str = "muted", xalign: float = 0) -> Gtk.Label:
+    label = Gtk.Label(label=text, xalign=xalign)
+    label.set_line_wrap(True)
+    label.set_ellipsize(Pango.EllipsizeMode.END)
+    label.get_style_context().add_class(css)
+    return label
 
-    if state is not None:
-        label, css = label_for_state(state)
-        pill = Gtk.Label(label=label)
-        pill.get_style_context().add_class("state-pill")
-        pill.get_style_context().add_class(css)
-        box.pack_end(pill, False, False, 0)
 
-    return box
+def load_recents() -> list[str]:
+    try:
+        data = json.loads(RECENTS_FILE.read_text(encoding="utf-8"))
+        items = data.get("items", []) if isinstance(data, dict) else data
+        return [str(item) for item in items if str(item).strip()][:8]
+    except Exception:
+        return []
+
+
+def save_recents(items: list[str]) -> None:
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        RECENTS_FILE.write_text(json.dumps({"schema": "sevenos.windows-native-recents.v1", "items": items[:8]}, indent=2) + "\n", encoding="utf-8")
+    except Exception:
+        pass
 
 
 class WindowsPanel(Gtk.Window):
     def __init__(self) -> None:
-        super().__init__(title="Windows SevenOS")
+        super().__init__(title=t("Compatibilité Windows SevenOS", "SevenOS Windows Compatibility"))
+        self.set_wmclass("seven-windows-native", "SevenWindowsNative")
         self.set_name("seven-windows-native")
-        self.set_default_size(680, 560)
-        self.set_resizable(False)
+        screen = Gdk.Screen.get_default()
+        width = screen.get_width() if screen else 1280
+        height = screen.get_height() if screen else 800
+        self.set_default_size(min(980, max(760, int(width * 0.68))), min(680, max(560, int(height * 0.72))))
+        self.set_size_request(720, 520)
+        self.set_position(Gtk.WindowPosition.CENTER)
         self.status: dict = {}
+        self.catalog: dict = {}
+        self.nav_buttons: dict[str, Gtk.Button] = {}
+        self.current_view = "overview"
+        self.quick_entry: Gtk.Entry | None = None
+        self.quick_result_title: Gtk.Label | None = None
+        self.quick_result_note: Gtk.Label | None = None
+        self.quick_result_engine: Gtk.Label | None = None
+        self.quick_actions: Gtk.Box | None = None
+        self.quick_decision_box: Gtk.Box | None = None
+        self.recents = load_recents()
 
-        self.root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
-        self.root.set_border_width(18)
+        self.root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        self.root.get_style_context().add_class("windows-shell")
         self.add(self.root)
 
-        self.header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
-        self.root.pack_start(self.header, False, False, 0)
+        self.sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.sidebar.set_size_request(245, -1)
+        self.sidebar.get_style_context().add_class("windows-sidebar")
+        self.root.pack_start(self.sidebar, False, False, 0)
 
-        self.badge = Gtk.Label(label="Windows")
-        self.badge.get_style_context().add_class("windows-badge")
-        self.header.pack_start(self.badge, False, False, 0)
+        identity = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        identity.get_style_context().add_class("windows-identity")
+        self.sidebar.pack_start(identity, False, False, 0)
+        prism = Gtk.Label(label="󰣇")
+        prism.get_style_context().add_class("windows-prism")
+        identity.pack_start(prism, False, False, 0)
+        title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        identity.pack_start(title_box, True, True, 0)
+        title = Gtk.Label(label=t("Windows", "Windows"), xalign=0)
+        title.get_style_context().add_class("sidebar-title")
+        title_box.pack_start(title, False, False, 0)
+        subtitle = Gtk.Label(label=t("Compatibilité globale", "Global compatibility"), xalign=0)
+        subtitle.get_style_context().add_class("sidebar-subtitle")
+        title_box.pack_start(subtitle, False, False, 0)
 
-        title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-        self.title_label = Gtk.Label(label="Windows dans SevenOS", xalign=0)
-        self.title_label.get_style_context().add_class("title")
-        self.subtitle_label = Gtk.Label(label="Chargement...", xalign=0)
-        self.subtitle_label.get_style_context().add_class("subtitle")
-        title_box.pack_start(self.title_label, False, False, 0)
-        title_box.pack_start(self.subtitle_label, False, False, 0)
-        self.header.pack_start(title_box, True, True, 0)
+        self.add_nav("overview", "󰕮", t("Vue native", "Native View"))
+        self.add_nav("apps", "󰣇", t("Apps Windows", "Windows Apps"))
+        self.add_nav("engines", "󰐱", t("Moteurs", "Engines"))
+        self.add_nav("full", "󰖳", t("Windows complet", "Full Windows"))
 
-        refresh = Gtk.Button(label="Actualiser")
-        refresh.get_style_context().add_class("soft-button")
-        refresh.connect("clicked", lambda *_: self.refresh_async())
-        self.header.pack_end(refresh, False, False, 0)
+        self.sidebar.pack_end(self.sidebar_footer(), False, False, 0)
 
-        self.actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        self.root.pack_start(self.actions, False, False, 0)
-        self.add_action("Ouvrir Windows", "primary", lambda *_: self.fire("enter", "Ouverture de Windows..."))
-        self.add_action("Applications", "soft", lambda *_: self.fire("apps", "Ouverture des applications Windows..."))
-        self.add_action("Dossiers", "soft", lambda *_: self.fire_files())
-
-        self.status_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        self.status_box.get_style_context().add_class("status-card")
-        self.root.pack_start(self.status_box, True, True, 0)
-
-        bottom = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        self.root.pack_end(bottom, False, False, 0)
-        self.message = Gtk.Label(label="SevenOS choisit le meilleur chemin selon l’application.", xalign=0)
-        self.message.get_style_context().add_class("message")
-        bottom.pack_start(self.message, True, True, 0)
-        repair = Gtk.Button(label="Réparer")
-        repair.get_style_context().add_class("soft-button")
-        repair.connect("clicked", lambda *_: self.fire("repair", "Réparation Windows lancée..."))
-        setup = Gtk.Button(label="Préparer")
-        setup.get_style_context().add_class("primary-button")
-        setup.connect("clicked", lambda *_: self.fire("setup", "Préparation Windows lancée..."))
-        bottom.pack_end(setup, False, False, 0)
-        bottom.pack_end(repair, False, False, 0)
+        self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        self.content.get_style_context().add_class("windows-content")
+        self.root.pack_start(self.content, True, True, 0)
 
         self.connect("key-press-event", self.on_key)
         self.apply_css()
         self.refresh_async()
 
-    def add_action(self, label: str, style: str, callback) -> None:
-        button = Gtk.Button(label=label)
-        button.get_style_context().add_class("primary-button" if style == "primary" else "soft-button")
-        button.connect("clicked", callback)
-        self.actions.pack_start(button, True, True, 0)
+    def sidebar_footer(self) -> Gtk.Widget:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        box.get_style_context().add_class("sidebar-footer")
+        box.pack_start(small_label(t("Disponible depuis Equinox, Forge, Studio, Shield, Pulse, Baobab et Windows.", "Available from Equinox, Forge, Studio, Shield, Pulse, Baobab and Windows.")), False, False, 0)
+        refresh = Gtk.Button(label=t("Actualiser", "Refresh"))
+        refresh.get_style_context().add_class("soft-button")
+        refresh.connect("clicked", lambda *_: self.refresh_async())
+        box.pack_start(refresh, False, False, 0)
+        return box
+
+    def add_nav(self, key: str, icon: str, label: str) -> None:
+        button = Gtk.Button()
+        button.get_style_context().add_class("nav-button")
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        row.pack_start(Gtk.Label(label=icon), False, False, 0)
+        row.pack_start(Gtk.Label(label=label, xalign=0), True, True, 0)
+        button.add(row)
+        button.connect("clicked", lambda *_key, view=key: self.set_view(view))
+        self.nav_buttons[key] = button
+        self.sidebar.pack_start(button, False, False, 0)
 
     def on_key(self, _widget, event) -> bool:
         if event.keyval == Gdk.KEY_Escape:
             self.close()
             return True
+        if event.keyval == Gdk.KEY_r and event.state & Gdk.ModifierType.CONTROL_MASK:
+            self.refresh_async()
+            return True
+        if event.keyval == Gdk.KEY_l and event.state & Gdk.ModifierType.CONTROL_MASK:
+            self.set_view("overview")
+            if self.quick_entry:
+                self.quick_entry.grab_focus()
+            return True
         return False
 
-    def fire(self, action: str, message: str) -> None:
-        self.message.set_text(message)
-        launch(action)
-        GLib.timeout_add(1600, lambda: (self.refresh_async(), False)[1])
-
-    def fire_files(self) -> None:
-        self.message.set_text("Ouverture des dossiers Windows...")
-        open_files()
+    def set_view(self, view: str) -> None:
+        self.current_view = view
+        for key, button in self.nav_buttons.items():
+            ctx = button.get_style_context()
+            if key == view:
+                ctx.add_class("active")
+            else:
+                ctx.remove_class("active")
+        self.render()
 
     def refresh_async(self) -> None:
-        self.message.set_text("Vérification de Windows...")
-        self.status_box.foreach(lambda child: self.status_box.remove(child))
-        loading = Gtk.Label(label="Préparation de l’état Windows...", xalign=0)
-        loading.get_style_context().add_class("row-note")
-        self.status_box.pack_start(loading, False, False, 18)
-        self.status_box.show_all()
+        clear_box(self.content)
+        loading = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        loading.get_style_context().add_class("loading-card")
+        loading.pack_start(small_label(t("SevenOS vérifie Wine, Bottles, Lutris, Proton et Windows complet...", "SevenOS is checking Wine, Bottles, Lutris, Proton and full Windows..."), "hero-title"), False, False, 0)
+        loading.pack_start(small_label(t("Cette couche est globale : elle suit l'utilisateur dans tous les Mini OS.", "This layer is global: it follows the user across every Mini OS.")), False, False, 0)
+        self.content.pack_start(loading, True, True, 0)
+        self.content.show_all()
 
         def worker() -> None:
-            data = run_json("status", "--json")
-            GLib.idle_add(self.render_status, data)
-
-        import threading
+            status = run_json("status", "--json")
+            catalog = run_json("catalog", "--json")
+            GLib.idle_add(self.finish_refresh, status, catalog)
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def render_status(self, data: dict) -> bool:
-        self.status = data
-        self.status_box.foreach(lambda child: self.status_box.remove(child))
-
-        vm_state = str(data.get("windows_vm", "MISS"))
-        ready = bool(data.get("ready"))
-        if vm_state == "RUN":
-            subtitle = "Windows est ouvert et prêt à l’usage."
-        elif ready or vm_state == "OK":
-            subtitle = "Windows est prêt. Tu peux ouvrir tes apps ou le bureau complet."
-        else:
-            subtitle = "Windows doit être préparé une fois avant usage."
-        self.subtitle_label.set_text(subtitle)
-
-        app_state = "OK" if data.get("app_ready") else "MISS"
-        internet_state = str(data.get("default_network", "MISS"))
-        access_state = "OK" if data.get("kvm_device") == "OK" and data.get("cpu_virtualization") == "OK" else "MISS"
-
-        items = [
-            ("󰣇", "Applications Windows", "Ouvre les apps Windows simples sans afficher la mécanique interne.", app_state),
-            ("󰖳", "Windows complet", "Pour les applications lourdes ou celles qui demandent un vrai bureau Windows.", vm_state),
-            ("󰈙", "Dossiers Windows", "Accède aux documents et dossiers partagés de l’espace Windows.", "OK"),
-            ("󰖩", "Internet Windows", "Connexion disponible pour les applications et le bureau Windows.", internet_state),
-            ("󰄬", "Préparation de la machine", "Vérifie que ce PC peut ouvrir Windows correctement.", access_state),
-        ]
-        for item in items:
-            self.status_box.pack_start(row(*item), False, False, 0)
-
-        recommendations = data.get("recommendations") or []
-        if recommendations:
-            self.message.set_text("Une préparation est recommandée. Clique sur Préparer ou Réparer.")
-        else:
-            self.message.set_text("Windows est prêt dans SevenOS.")
-        self.status_box.show_all()
+    def finish_refresh(self, status: dict, catalog: dict) -> bool:
+        self.status = status
+        self.catalog = catalog
+        self.set_view(self.current_view)
         return False
+
+    def render(self) -> None:
+        clear_box(self.content)
+        if self.current_view == "apps":
+            self.render_apps()
+        elif self.current_view == "engines":
+            self.render_engines()
+        elif self.current_view == "full":
+            self.render_full_windows()
+        else:
+            self.render_overview()
+        self.content.show_all()
+
+    def hero(self, title: str, subtitle: str, actions: list[Gtk.Button] | None = None) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        box.get_style_context().add_class("hero")
+        icon = Gtk.Label(label="󰣇")
+        icon.get_style_context().add_class("hero-prism")
+        box.pack_start(icon, False, False, 0)
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        title_label = Gtk.Label(label=title, xalign=0)
+        title_label.get_style_context().add_class("hero-title")
+        text.pack_start(title_label, False, False, 0)
+        text.pack_start(small_label(subtitle), False, False, 0)
+        box.pack_start(text, True, True, 0)
+        if actions:
+            action_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            for button in actions:
+                action_box.pack_start(button, False, False, 0)
+            box.pack_end(action_box, False, False, 0)
+        return box
+
+    def action_button(self, label: str, callback, primary: bool = False) -> Gtk.Button:
+        button = Gtk.Button(label=label)
+        button.get_style_context().add_class("primary-button" if primary else "soft-button")
+        button.connect("clicked", callback)
+        return button
+
+    def quiet_button(self, label: str, callback) -> Gtk.Button:
+        button = self.action_button(label, callback, False)
+        button.get_style_context().add_class("quiet-button")
+        return button
+
+    def metric_card(self, icon: str, title: str, note: str, state: str | bool | None, action=None) -> Gtk.EventBox:
+        label, css = state_css(state)
+        event = Gtk.EventBox()
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.get_style_context().add_class("metric-card")
+        event.add(card)
+        top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        icon_label = Gtk.Label(label=icon)
+        icon_label.get_style_context().add_class("metric-icon")
+        top.pack_start(icon_label, False, False, 0)
+        pill = Gtk.Label(label=label)
+        pill.get_style_context().add_class("state-pill")
+        pill.get_style_context().add_class(css)
+        top.pack_end(pill, False, False, 0)
+        card.pack_start(top, False, False, 0)
+        title_label = Gtk.Label(label=title, xalign=0)
+        title_label.get_style_context().add_class("metric-title")
+        card.pack_start(title_label, False, False, 0)
+        card.pack_start(small_label(note), False, False, 0)
+        if action:
+            event.connect("button-release-event", lambda *_: action())
+            event.get_style_context().add_class("clickable")
+        return event
+
+    def render_overview(self) -> None:
+        ready = bool(self.status.get("app_ready"))
+        mode = str(self.status.get("mode", "setup-needed"))
+        subtitle = (
+            t("Les apps Windows légères s'ouvrent comme des apps SevenOS. La VM reste un dernier recours.", "Light Windows apps open like SevenOS apps. The VM stays a fallback.")
+            if ready
+            else t("Prépare une fois Wine/Bottles/Lutris pour que les apps Windows restent proches du natif.", "Prepare Wine/Bottles/Lutris once so Windows apps feel close to native.")
+        )
+        self.content.pack_start(
+            self.hero(
+                t("Compatibilité Windows native-like", "Native-like Windows Compatibility"),
+                subtitle,
+                [
+                    self.action_button(t("Installer / réparer", "Install / Repair"), lambda *_: terminal_command("setup"), True),
+                    self.action_button(t("Ouvrir apps", "Open Apps"), lambda *_: launch("apps")),
+                ],
+            ),
+            False,
+            False,
+            0,
+        )
+        self.content.pack_start(self.quick_launch_card(), False, False, 0)
+
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_column_homogeneous(True)
+        grid.attach(self.metric_card("󰣇", t("Apps sans VM", "Apps without VM"), t("Wine, Bottles, Lutris et Proton avant toute VM.", "Wine, Bottles, Lutris and Proton before any VM."), ready, lambda: self.set_view("apps")), 0, 0, 1, 1)
+        grid.attach(self.metric_card("󰐱", t("Moteurs", "Engines"), t("État des moteurs de compatibilité installés.", "Installed compatibility engines state."), ready, lambda: self.set_view("engines")), 1, 0, 1, 1)
+        grid.attach(self.metric_card("󰈙", t("Dossiers", "Folders"), t("Espace Windows partagé et accessible partout.", "Shared Windows space, accessible everywhere."), "OK", open_files), 2, 0, 1, 1)
+        grid.attach(self.metric_card("󰖳", t("Windows complet", "Full Windows"), t("Seulement pour les apps qui exigent un vrai Windows.", "Only for apps that need a real Windows."), self.status.get("windows_vm"), lambda: self.set_view("full")), 0, 1, 1, 1)
+        grid.attach(self.metric_card("󰖩", t("Réseau", "Network"), t("Internet pour les installateurs et launchers Windows.", "Internet for Windows installers and launchers."), self.status.get("default_network")), 1, 1, 1, 1)
+        grid.attach(self.metric_card("󰄬", t("Mode global", "Global Mode"), t("Même panneau et mêmes commandes depuis chaque Mini OS.", "Same panel and commands from every Mini OS."), "OK"), 2, 1, 1, 1)
+        self.content.pack_start(grid, False, False, 0)
+
+        recommendations = self.status.get("recommendations") or []
+        self.content.pack_start(self.recommendations_card(mode, recommendations), True, True, 0)
+
+    def quick_launch_card(self) -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.get_style_context().add_class("quick-card")
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        title = Gtk.Label(label=t("Lancer une app Windows", "Launch a Windows app"), xalign=0)
+        title.get_style_context().add_class("section-title")
+        text.pack_start(title, False, False, 0)
+        text.pack_start(small_label(t("Tape un nom d'app ou choisis un installateur. SevenOS choisit le moteur le plus fluide.", "Type an app name or choose an installer. SevenOS picks the smoothest engine.")), False, False, 0)
+        header.pack_start(text, True, True, 0)
+        header.pack_end(self.quiet_button(t("Choisir .exe/.msi", "Choose .exe/.msi"), lambda *_: self.choose_installer()), False, False, 0)
+        card.pack_start(header, False, False, 0)
+
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.quick_entry = Gtk.Entry()
+        self.quick_entry.set_placeholder_text(t("photoshop, office, epic ou ~/Téléchargements/setup.exe", "photoshop, office, epic or ~/Downloads/setup.exe"))
+        self.quick_entry.get_style_context().add_class("quick-entry")
+        self.quick_entry.connect("activate", lambda *_: self.resolve_quick_target())
+        row.pack_start(self.quick_entry, True, True, 0)
+        row.pack_start(self.action_button(t("Résoudre", "Resolve"), lambda *_: self.resolve_quick_target()), False, False, 0)
+        row.pack_start(self.action_button(t("Préparer", "Prepare"), lambda *_: self.prepare_quick_target()), False, False, 0)
+        row.pack_start(self.action_button(t("Lancer", "Launch"), lambda *_: self.run_quick_target(), True), False, False, 0)
+        card.pack_start(row, False, False, 0)
+
+        recents = self.recents_row()
+        if recents:
+            card.pack_start(recents, False, False, 0)
+
+        result = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        result.get_style_context().add_class("quick-result")
+        self.quick_result_engine = Gtk.Label(label="--")
+        self.quick_result_engine.get_style_context().add_class("engine-badge")
+        result.pack_start(self.quick_result_engine, False, False, 0)
+        result_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        self.quick_result_title = Gtk.Label(label=t("Aucune app sélectionnée", "No app selected"), xalign=0)
+        self.quick_result_title.get_style_context().add_class("metric-title")
+        self.quick_result_note = small_label(t("Le résultat apparaîtra ici avant le lancement.", "The result appears here before launch."))
+        result_text.pack_start(self.quick_result_title, False, False, 0)
+        result_text.pack_start(self.quick_result_note, False, False, 0)
+        result.pack_start(result_text, True, True, 0)
+        self.quick_actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.quick_actions.pack_start(self.quiet_button(t("Diagnostiquer", "Diagnose"), lambda *_: self.diagnose_quick_target()), False, False, 0)
+        self.quick_actions.pack_start(self.quiet_button(t("Apps", "Apps"), lambda *_: launch("apps")), False, False, 0)
+        result.pack_end(self.quick_actions, False, False, 0)
+        card.pack_start(result, False, False, 0)
+        self.quick_decision_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.quick_decision_box.get_style_context().add_class("decision-path")
+        self.quick_decision_box.pack_start(small_label(t("La décision SevenOS apparaîtra ici.", "The SevenOS decision will appear here.")), False, False, 0)
+        card.pack_start(self.quick_decision_box, False, False, 0)
+        return card
+
+    def recents_row(self) -> Gtk.Box | None:
+        suggestions = self.recents[:5] or ["office", "photoshop", "epic", "generic-exe"]
+        if not suggestions:
+            return None
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        row.get_style_context().add_class("recent-row")
+        row.pack_start(small_label(t("Récents", "Recent"), "muted"), False, False, 0)
+        for item in suggestions[:5]:
+            label = Path(item).name if "/" in item else item
+            button = self.quiet_button(label[:18], lambda *_b, target=item: self.use_recent(target))
+            button.get_style_context().add_class("recent-chip")
+            row.pack_start(button, False, False, 0)
+        return row
+
+    def use_recent(self, target: str) -> None:
+        if self.quick_entry:
+            self.quick_entry.set_text(target)
+        self.resolve_quick_target()
+
+    def remember_target(self, target: str) -> None:
+        target = target.strip()
+        if not target:
+            return
+        self.recents = [target] + [item for item in self.recents if item != target]
+        save_recents(self.recents)
+
+    def quick_target(self) -> str:
+        if not self.quick_entry:
+            return ""
+        return self.quick_entry.get_text().strip()
+
+    def resolve_quick_target(self) -> None:
+        target = self.quick_target()
+        if not target:
+            self.set_quick_result(t("Aucune app sélectionnée", "No app selected"), t("Ajoute un nom d'app ou un chemin .exe/.msi.", "Add an app name or .exe/.msi path."), "--", "miss")
+            return
+        self.set_quick_result(t("Résolution en cours...", "Resolving..."), target, "...", "warn")
+        self.remember_target(target)
+
+        def worker() -> None:
+            data = run_json("resolve", target, "--json")
+            GLib.idle_add(self.render_quick_resolution, data)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def render_quick_resolution(self, data: dict) -> bool:
+        app = data.get("app") or {}
+        engine = str(data.get("engine") or "--")
+        ready = bool(data.get("ready"))
+        blockers = data.get("blockers") or []
+        title = f"{app.get('name') or data.get('target') or t('App Windows', 'Windows App')} · {engine}"
+        if ready:
+            note = t("Prêt à lancer en fenêtre native SevenOS.", "Ready to launch as a native SevenOS window.")
+            css = "ok"
+        elif blockers:
+            note = blockers[0].get("action", t("Préparation nécessaire avant lancement.", "Preparation is required before launch."))
+            css = "miss"
+        else:
+            note = t("SevenOS peut préparer cette app avant le lancement.", "SevenOS can prepare this app before launch.")
+            css = "warn"
+        self.set_quick_result(title, note, engine.upper(), css)
+        self.render_decision_path(data)
+        return False
+
+    def set_quick_result(self, title: str, note: str, engine: str, state: str) -> None:
+        if self.quick_result_title:
+            self.quick_result_title.set_text(title)
+        if self.quick_result_note:
+            self.quick_result_note.set_text(note)
+        if self.quick_result_engine:
+            ctx = self.quick_result_engine.get_style_context()
+            for css in ("engine-ok", "engine-warn", "engine-miss"):
+                ctx.remove_class(css)
+            ctx.add_class(f"engine-{state}")
+            self.quick_result_engine.set_text(engine)
+
+    def render_decision_path(self, data: dict) -> None:
+        if not self.quick_decision_box:
+            return
+        clear_box(self.quick_decision_box)
+        engine = str(data.get("engine") or "")
+        preferred = [str(item) for item in data.get("preferred_engines", [])]
+        if not preferred:
+            preferred = ["wine", "bottles", "lutris", "proton", "vm"]
+        states = data.get("states") or {}
+        available = set(str(item) for item in data.get("available_engines", []))
+        blockers = data.get("blockers") or []
+        iso_required = bool(data.get("iso_required"))
+        native_window = bool(data.get("native_window"))
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        header.pack_start(small_label(t("Décision", "Decision"), "decision-label"), False, False, 0)
+        summary = (
+            t("Fenêtre native SevenOS", "Native SevenOS window")
+            if native_window
+            else t("Windows complet requis", "Full Windows required")
+        )
+        if not iso_required:
+            summary += " · " + t("pas d'ISO demandé", "no ISO requested")
+        header.pack_start(small_label(summary), True, True, 0)
+        self.quick_decision_box.pack_start(header, False, False, 0)
+
+        path = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)
+        path.get_style_context().add_class("engine-path")
+        for candidate in preferred[:5]:
+            state = states.get(candidate, "OK" if candidate in available else "MISS")
+            pill = Gtk.Label(label=candidate.upper())
+            pill.get_style_context().add_class("engine-step")
+            if candidate == engine:
+                pill.get_style_context().add_class("engine-step-active")
+            elif str(state).upper() in {"OK", "RUN"}:
+                pill.get_style_context().add_class("engine-step-ok")
+            else:
+                pill.get_style_context().add_class("engine-step-miss")
+            path.pack_start(pill, False, False, 0)
+        self.quick_decision_box.pack_start(path, False, False, 0)
+
+        if blockers:
+            note = blockers[0].get("action", t("Préparation recommandée.", "Preparation recommended."))
+        elif engine:
+            note = t("SevenOS utilisera ce moteur en priorité pour garder l'app proche du natif.", "SevenOS will use this engine first to keep the app close to native.")
+        else:
+            note = t("Résous une app pour voir le chemin choisi.", "Resolve an app to see the chosen path.")
+        self.quick_decision_box.pack_start(small_label(note), False, False, 0)
+        self.quick_decision_box.show_all()
+
+    def run_quick_target(self) -> None:
+        target = self.quick_target()
+        if not target:
+            self.resolve_quick_target()
+            return
+        self.remember_target(target)
+        self.set_quick_result(t("Lancement demandé", "Launch requested"), target, "RUN", "ok")
+        launch("run", target)
+
+    def prepare_quick_target(self) -> None:
+        target = self.quick_target()
+        if not target:
+            self.resolve_quick_target()
+            return
+        self.remember_target(target)
+        self.set_quick_result(t("Préparation demandée", "Preparation requested"), target, "PREP", "warn")
+        terminal_command("prepare", target)
+
+    def diagnose_quick_target(self) -> None:
+        target = self.quick_target()
+        if not target:
+            self.resolve_quick_target()
+            return
+        self.remember_target(target)
+        terminal_command("diagnose", target)
+
+    def choose_installer(self) -> None:
+        dialog = Gtk.FileChooserDialog(
+            title=t("Choisir une app Windows", "Choose a Windows app"),
+            parent=self,
+            action=Gtk.FileChooserAction.OPEN,
+        )
+        dialog.add_buttons(t("Annuler", "Cancel"), Gtk.ResponseType.CANCEL, t("Choisir", "Choose"), Gtk.ResponseType.OK)
+        for label, patterns in (
+            (t("Applications Windows", "Windows applications"), ["*.exe", "*.msi", "*.bat", "*.cmd"]),
+            (t("Tous les fichiers", "All files"), ["*"]),
+        ):
+            file_filter = Gtk.FileFilter()
+            file_filter.set_name(label)
+            for pattern in patterns:
+                file_filter.add_pattern(pattern)
+            dialog.add_filter(file_filter)
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK and self.quick_entry:
+            filename = dialog.get_filename()
+            if filename:
+                self.quick_entry.set_text(filename)
+                self.resolve_quick_target()
+        dialog.destroy()
+
+    def recommendations_card(self, mode: str, recommendations: list[dict]) -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.get_style_context().add_class("panel-card")
+        title = Gtk.Label(label=t("Chemin recommandé", "Recommended Path"), xalign=0)
+        title.get_style_context().add_class("section-title")
+        card.pack_start(title, False, False, 0)
+        if not recommendations:
+            card.pack_start(small_label(t("Tout est prêt : lance une app Windows, ouvre Bottles/Lutris, ou garde Windows complet en secours.", "Everything is ready: launch a Windows app, open Bottles/Lutris, or keep full Windows as fallback.")), False, False, 0)
+            return card
+        for item in recommendations[:4]:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            row.get_style_context().add_class("recommendation-row")
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+            command = item.get("command", "seven windows setup")
+            reason = item.get("reason", "")
+            text.pack_start(Gtk.Label(label=command, xalign=0), False, False, 0)
+            text.pack_start(small_label(reason), False, False, 0)
+            row.pack_start(text, True, True, 0)
+            run = self.action_button(t("Lancer", "Run"), lambda *_b, cmd=command: terminal_command(*cmd.split()))
+            row.pack_end(run, False, False, 0)
+            card.pack_start(row, False, False, 0)
+        mode_label = small_label(t(f"État actuel : {mode}", f"Current mode: {mode}"))
+        card.pack_end(mode_label, False, False, 0)
+        return card
+
+    def render_engines(self) -> None:
+        self.content.pack_start(
+            self.hero(
+                t("Moteurs de compatibilité", "Compatibility Engines"),
+                t("SevenOS choisit le moteur le plus naturel selon l'application, puis garde la VM en secours.", "SevenOS picks the most natural engine per app, then keeps the VM as fallback."),
+                [self.action_button(t("Installer le bundle", "Install bundle"), lambda *_: terminal_command("setup"), True)],
+            ),
+            False,
+            False,
+            0,
+        )
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_column_homogeneous(True)
+        engines = [
+            ("W", "Wine", t("Exécute directement .exe/.msi dans une fenêtre SevenOS.", "Runs .exe/.msi directly in a SevenOS window."), self.status.get("wine"), lambda: terminal_command("run", "~/Downloads/setup.exe")),
+            ("B", "Bottles", t("Bouteilles isolées, réglages par app, UX graphique.", "Isolated bottles, per-app settings, graphical UX."), self.status.get("bottles_flatpak"), lambda: launch("apps")),
+            ("L", "Lutris", t("Launchers, jeux et recettes communautaires.", "Launchers, games and community recipes."), self.status.get("lutris"), lambda: launch("apps")),
+            ("P", "Proton", t("Jeux et DirectX via Steam/Protontricks.", "Games and DirectX through Steam/Protontricks."), self.status.get("proton", self.status.get("bridge_runtime", {}).get("proton", "MISS"))),
+            ("V", "Vulkan/DX", t("Vulkan, VKD3D, Gamemode et accélération graphique.", "Vulkan, VKD3D, Gamemode and graphics acceleration."), "OK" if self.status.get("wine") == "OK" else "MISS"),
+            ("VM", t("VM", "VM"), t("Windows complet seulement si nécessaire.", "Full Windows only when needed."), self.status.get("windows_vm"), lambda: self.set_view("full")),
+        ]
+        for idx, item in enumerate(engines):
+            grid.attach(self.metric_card(*item), idx % 3, idx // 3, 1, 1)
+        self.content.pack_start(grid, True, True, 0)
+
+    def render_apps(self) -> None:
+        self.content.pack_start(
+            self.hero(
+                t("Apps Windows sans friction", "Frictionless Windows Apps"),
+                t("Choisis l'app : SevenOS résout le meilleur moteur et prépare le préfixe quand c'est utile.", "Pick the app: SevenOS resolves the best engine and prepares the prefix when useful."),
+                [
+                    self.action_button(t("Catalogue", "Catalog"), lambda *_: terminal_command("catalog"), False),
+                    self.action_button(t("Ouvrir Bottles", "Open Bottles"), lambda *_: launch("apps"), True),
+                ],
+            ),
+            False,
+            False,
+            0,
+        )
+        apps = self.catalog.get("apps") or []
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_column_homogeneous(True)
+        for idx, app in enumerate(apps[:9]):
+            grid.attach(self.app_card(app), idx % 3, idx // 3, 1, 1)
+        self.content.pack_start(grid, True, True, 0)
+
+    def app_card(self, app: dict) -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.get_style_context().add_class("app-card")
+        top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        badge = Gtk.Label(label=(app.get("id", "?")[:2] or "?").upper())
+        badge.get_style_context().add_class("app-badge")
+        top.pack_start(badge, False, False, 0)
+        title = Gtk.Label(label=app.get("name", app.get("id", "App")), xalign=0)
+        title.get_style_context().add_class("metric-title")
+        top.pack_start(title, True, True, 0)
+        card.pack_start(top, False, False, 0)
+        card.pack_start(self.engine_pills(app.get("preferred_engines", [])), False, False, 0)
+        card.pack_start(small_label(app.get("note", "")), True, True, 0)
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        app_id = app.get("id", "generic-exe")
+        actions.pack_start(self.action_button(t("Résoudre", "Resolve"), lambda *_: terminal_command("resolve", app_id)), True, True, 0)
+        actions.pack_start(self.action_button(t("Préparer", "Prepare"), lambda *_: terminal_command("prepare", app_id), app_id in {"office", "word", "excel"}), True, True, 0)
+        actions.pack_start(self.action_button(t("Lancer", "Launch"), lambda *_: launch("run", app_id)), True, True, 0)
+        card.pack_end(actions, False, False, 0)
+        return card
+
+    def engine_pills(self, engines: list[str]) -> Gtk.Box:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        row.get_style_context().add_class("engine-pills")
+        for engine in engines[:4]:
+            pill = Gtk.Label(label=str(engine).upper())
+            pill.get_style_context().add_class("engine-mini-pill")
+            row.pack_start(pill, False, False, 0)
+        return row
+
+    def render_full_windows(self) -> None:
+        vm_state = self.status.get("windows_vm", "MISS")
+        self.content.pack_start(
+            self.hero(
+                t("Windows complet en dernier recours", "Full Windows as Fallback"),
+                t("SevenOS ne fournit pas Windows : l'utilisateur apporte son média officiel. Les apps légères restent Wine/Bottles/Lutris.", "SevenOS does not ship Windows: the user provides official media. Light apps stay on Wine/Bottles/Lutris."),
+                [
+                    self.action_button(t("Ouvrir", "Open"), lambda *_: launch("enter"), True),
+                    self.action_button(t("Réparer", "Repair"), lambda *_: terminal_command("repair")),
+                ],
+            ),
+            False,
+            False,
+            0,
+        )
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_column_homogeneous(True)
+        checks = [
+            ("CPU", t("Virtualisation", "Virtualization"), t("VT-x/AMD-V actif côté machine.", "VT-x/AMD-V enabled on the machine."), self.status.get("cpu_virtualization")),
+            ("KVM", t("Accès KVM", "KVM access"), t("Accélération locale pour une VM fluide.", "Local acceleration for a smooth VM."), self.status.get("kvm_device")),
+            ("Q", "QEMU", t("Moteur de Windows complet.", "Full Windows engine."), self.status.get("qemu")),
+            ("LV", "libvirt", t("Service système Windows Bridge.", "Windows Bridge system service."), self.status.get("libvirtd")),
+            ("NET", t("Internet", "Internet"), t("Réseau compatible Windows.", "Windows-compatible network."), self.status.get("default_network")),
+            ("VM", t("VM Windows", "Windows VM"), t("Instance locale créée depuis un ISO officiel.", "Local instance created from an official ISO."), vm_state),
+        ]
+        for idx, item in enumerate(checks):
+            grid.attach(self.metric_card(*item), idx % 3, idx // 3, 1, 1)
+        self.content.pack_start(grid, False, False, 0)
+        self.content.pack_start(self.recommendations_card(str(self.status.get("mode", "setup-needed")), self.status.get("recommendations") or []), True, True, 0)
 
     def apply_css(self) -> None:
         dark = os.environ.get("SEVENOS_THEME_MODE", "").lower() == "dark"
-        if not dark:
-            config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos" / "theme.conf"
-            if config.exists():
-                dark = "SEVENOS_THEME_MODE=dark" in config.read_text(errors="ignore")
-        bg = "#F7F9FF" if not dark else "#171A24"
-        panel = "rgba(255,255,255,0.78)" if not dark else "rgba(33,36,49,0.86)"
-        row_bg = "rgba(255,255,255,0.58)" if not dark else "rgba(48,52,68,0.66)"
-        fg = "#171A22" if not dark else "#F4F6FF"
-        muted = "#687084" if not dark else "#A7ADC3"
-        border = "rgba(119,139,201,0.24)" if not dark else "rgba(162,180,255,0.18)"
+        config = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos" / "theme.conf"
+        if not os.environ.get("SEVENOS_THEME_MODE") and config.exists():
+            dark = "SEVENOS_THEME_MODE=dark" in config.read_text(errors="ignore")
+        bg = "#11131C" if dark else "#EDF3FC"
+        sidebar = "rgba(11, 14, 24, 0.92)" if dark else "rgba(247, 250, 255, 0.84)"
+        panel = "rgba(30, 34, 48, 0.78)" if dark else "rgba(255, 255, 255, 0.70)"
+        panel_2 = "rgba(43, 48, 66, 0.76)" if dark else "rgba(244, 248, 255, 0.76)"
+        fg = "#F6F7FF" if dark else "#182033"
+        muted = "#A9B0C7" if dark else "#62708A"
+        border = "rgba(154, 174, 255, 0.18)" if dark else "rgba(106, 128, 190, 0.22)"
+        hover = "rgba(128, 155, 255, 0.18)" if dark else "rgba(104, 136, 232, 0.16)"
         css = f"""
         window#seven-windows-native {{
           background: {bg};
           color: {fg};
         }}
-        .title {{
-          font-size: 22px;
-          font-weight: 650;
-          color: {fg};
+        .windows-shell {{
+          background:
+            radial-gradient(ellipse at 18% 0%, rgba(78, 132, 255, 0.20), transparent 44%),
+            radial-gradient(ellipse at 88% 4%, rgba(93, 220, 255, 0.14), transparent 38%),
+            {bg};
         }}
-        .subtitle, .row-note, .message {{
+        .windows-sidebar {{
+          padding: 18px;
+          background: {sidebar};
+          border-right: 1px solid {border};
+        }}
+        .windows-content {{
+          padding: 20px;
+          background: transparent;
+        }}
+        .windows-identity, .sidebar-footer, .loading-card, .hero, .panel-card, .metric-card, .app-card, .quick-card {{
+          border-radius: 18px;
+          border: 1px solid {border};
+          background: {panel};
+        }}
+        .windows-identity, .sidebar-footer, .loading-card, .hero, .panel-card, .metric-card, .app-card, .quick-card {{
+          padding: 14px;
+        }}
+        .windows-prism, .hero-prism {{
+          min-width: 42px;
+          min-height: 42px;
+          border-radius: 14px;
+          color: #DDE8FF;
+          background: linear-gradient(135deg, #3357FF, #28D7FF);
+          font-size: 20px;
+        }}
+        .hero-prism {{
+          min-width: 58px;
+          min-height: 58px;
+          border-radius: 20px;
+          font-size: 28px;
+        }}
+        .sidebar-title, .hero-title {{
+          color: {fg};
+          font-weight: 650;
+        }}
+        .hero-title {{
+          font-size: 24px;
+        }}
+        .sidebar-subtitle, .muted {{
           color: {muted};
           font-size: 12px;
         }}
-        .windows-badge {{
-          min-width: 82px;
-          min-height: 54px;
-          border-radius: 18px;
-          color: white;
-          font-weight: 650;
+        .nav-button {{
+          min-height: 42px;
+          border-radius: 13px;
+          border: 1px solid transparent;
+          background: transparent;
+          color: {fg};
+          box-shadow: none;
+          padding: 0 10px;
+        }}
+        .nav-button:hover {{
+          background: {hover};
+        }}
+        .nav-button.active {{
+          background: linear-gradient(135deg, rgba(66, 128, 255, 0.24), rgba(47, 210, 255, 0.12));
+          border-color: rgba(95, 143, 255, 0.34);
+        }}
+        .metric-card, .app-card {{
+          min-height: 138px;
+        }}
+        .metric-card:hover, .app-card:hover {{
+          background: {panel_2};
+        }}
+        .metric-icon, .app-badge {{
+          min-width: 38px;
+          min-height: 34px;
+          border-radius: 12px;
+          color: #DDE8FF;
           background: linear-gradient(135deg, #3B82F6, #55D1FF);
         }}
-        .status-card {{
-          border-radius: 22px;
-          border: 1px solid {border};
-          background: {panel};
-          box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
-        }}
-        .status-row {{
-          padding: 15px 18px;
-          border-bottom: 1px solid {border};
-          background: {row_bg};
-        }}
-        .status-row:hover {{
-          background: rgba(132, 159, 255, 0.14);
-        }}
-        .status-icon {{
-          color: #5AA7FF;
-          font-size: 20px;
-          min-width: 26px;
-        }}
-        .row-title {{
+        .metric-title, .section-title {{
           color: {fg};
           font-weight: 650;
-          font-size: 14px;
+          font-size: 13px;
+        }}
+        .section-title {{
+          font-size: 15px;
         }}
         .state-pill {{
-          min-width: 86px;
-          padding: 7px 12px;
+          min-width: 76px;
+          padding: 6px 10px;
           border-radius: 999px;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 650;
         }}
-        .windows-ready {{
-          color: #0F6B49;
-          background: rgba(52, 211, 153, 0.18);
+        .state-ok {{
+          color: #2CE3A5;
+          background: rgba(31, 190, 129, 0.16);
         }}
-        .windows-warning {{
-          color: #925A00;
-          background: rgba(251, 191, 36, 0.20);
+        .state-warn {{
+          color: #FFD166;
+          background: rgba(245, 181, 54, 0.18);
+        }}
+        .state-miss {{
+          color: #FF8D8D;
+          background: rgba(255, 100, 120, 0.16);
+        }}
+        .recommendation-row {{
+          padding: 10px;
+          border-radius: 13px;
+          background: {panel_2};
+          border: 1px solid {border};
+        }}
+        .quick-entry {{
+          min-height: 38px;
+          border-radius: 14px;
+          padding: 0 13px;
+          color: {fg};
+          background: {panel_2};
+          border: 1px solid {border};
+        }}
+        .quick-result {{
+          padding: 10px;
+          border-radius: 14px;
+          background: {panel_2};
+          border: 1px solid {border};
+        }}
+        .decision-path {{
+          padding: 10px;
+          border-radius: 14px;
+          background: rgba(91, 126, 255, 0.08);
+          border: 1px solid {border};
+        }}
+        .decision-label {{
+          color: {fg};
+          font-weight: 650;
+        }}
+        .engine-path, .engine-pills {{
+          min-height: 28px;
+        }}
+        .engine-step, .engine-mini-pill {{
+          min-width: 52px;
+          padding: 5px 8px;
+          border-radius: 999px;
+          font-size: 10px;
+          font-weight: 650;
+          color: {muted};
+          background: {panel_2};
+          border: 1px solid {border};
+        }}
+        .engine-mini-pill {{
+          min-width: 0;
+          padding: 4px 7px;
+        }}
+        .engine-step-ok {{
+          color: #7CE6BF;
+          background: rgba(31, 190, 129, 0.12);
+        }}
+        .engine-step-miss {{
+          color: #C5CADB;
+          background: rgba(150, 156, 179, 0.08);
+        }}
+        .engine-step-active {{
+          color: #F8FBFF;
+          background: linear-gradient(135deg, #336DFF, #52D8FF);
+          border-color: transparent;
+        }}
+        .recent-row {{
+          min-height: 32px;
+        }}
+        button.recent-chip {{
+          min-height: 28px;
+          padding: 0 11px;
+          background: transparent;
+          border-color: {border};
+        }}
+        .engine-badge {{
+          min-width: 70px;
+          min-height: 36px;
+          border-radius: 13px;
+          color: #F8FBFF;
+          font-weight: 650;
+          background: linear-gradient(135deg, #5F73FF, #47D6FF);
+        }}
+        .engine-ok {{
+          background: linear-gradient(135deg, #1FBE81, #47D6FF);
+        }}
+        .engine-warn {{
+          background: linear-gradient(135deg, #F5B536, #8A7CFF);
+        }}
+        .engine-miss {{
+          background: linear-gradient(135deg, #FF6578, #7A5CFF);
         }}
         button {{
           border-radius: 999px;
-          padding: 9px 18px;
+          min-height: 34px;
+          padding: 0 14px;
           font-weight: 650;
           border: 1px solid {border};
           box-shadow: none;
         }}
         button.primary-button {{
-          color: white;
-          background: linear-gradient(135deg, #2F7CF6, #57D4FF);
+          color: #F8FBFF;
+          background: linear-gradient(135deg, #336DFF, #52D8FF);
           border-color: transparent;
         }}
         button.soft-button {{
           color: {fg};
-          background: {panel};
+          background: {panel_2};
+        }}
+        button.quiet-button {{
+          min-height: 30px;
+          padding: 0 12px;
         }}
         button:hover {{
-          filter: brightness(1.04);
+          background: {hover};
         }}
         """
         provider = Gtk.CssProvider()
         provider.load_from_data(css.encode("utf-8"))
-        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        screen = Gdk.Screen.get_default()
+        if screen:
+            Gtk.StyleContext.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
 
 def main() -> int:

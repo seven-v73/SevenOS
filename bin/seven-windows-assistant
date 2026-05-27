@@ -88,6 +88,16 @@ command_state() {
   command -v "$1" >/dev/null 2>&1 && printf 'OK' || printf 'MISS'
 }
 
+proton_state() {
+  if command -v proton >/dev/null 2>&1 ||
+    command -v protontricks-launch >/dev/null 2>&1 ||
+    command -v protontricks >/dev/null 2>&1; then
+    printf 'OK'
+    return 0
+  fi
+  compgen -G "$HOME/.steam/steam/steamapps/common/Proton*" >/dev/null 2>&1 && printf 'OK' || printf 'MISS'
+}
+
 with_timeout() {
   if command -v timeout >/dev/null 2>&1; then
     timeout --kill-after=1s "${SEVENOS_WINDOWS_STATUS_TIMEOUT:-3s}" "$@"
@@ -254,6 +264,7 @@ status_json() {
     "$(kvm_state)" \
     "$(command_state wine)" \
     "$(command_state lutris)" \
+    "$(proton_state)" \
     "$(command_state flatpak)" \
     "$(flatpak_app_state com.usebottles.bottles)" \
     "$(command_state qemu-system-x86_64)" \
@@ -277,6 +288,7 @@ keys = [
     "kvm_device",
     "wine",
     "lutris",
+    "proton",
     "flatpak",
     "bottles_flatpak",
     "qemu",
@@ -305,7 +317,9 @@ payload["vm_ready"] = all(
     payload[key] in {"OK", "RUN"}
     for key in ("cpu_virtualization", "kvm_device", "qemu", "virt_manager", "virsh", "libvirtd", "default_network")
 )
-payload["app_ready"] = payload["wine"] == "OK" and (payload["bottles_flatpak"] == "OK" or payload["lutris"] == "OK")
+payload["app_ready"] = payload["wine"] == "OK" and (payload["bottles_flatpak"] == "OK" or payload["lutris"] == "OK" or payload["proton"] == "OK")
+payload["global_available"] = True
+payload["compatibility_policy"] = "app-first-global-vm-optional"
 payload["ready"] = payload["vm_ready"] and payload["app_ready"]
 payload["mode"] = "complete" if payload["ready"] else "vm-ready" if payload["vm_ready"] else "setup-needed"
 payload["recommendations"] = []
@@ -313,6 +327,8 @@ if payload["wine"] != "OK" or payload["lutris"] != "OK":
     payload["recommendations"].append({"command": "seven profile install windows", "reason": "Install Wine/Lutris compatibility tooling"})
 if payload["bottles_flatpak"] != "OK":
     payload["recommendations"].append({"command": "seven flatpak install", "reason": "Install Bottles through Flatpak for accessible Windows apps"})
+if payload["proton"] != "OK":
+    payload["recommendations"].append({"command": "seven windows guide", "reason": "Install Steam/Proton or protontricks for game and DirectX-heavy workflows"})
 if not payload["vm_ready"]:
     payload["recommendations"].append({"command": "seven vm check", "reason": "Finish Windows preparation"})
 if payload["windows_vm"] == "MISS":
@@ -585,6 +601,7 @@ status_human() {
   printf '  %-20s %s\n' "Accès Windows" "$(kvm_state)"
   printf '  %-20s %s\n' "Wine" "$(command_state wine)"
   printf '  %-20s %s\n' "Lutris" "$(command_state lutris)"
+  printf '  %-20s %s\n' "Proton" "$(proton_state)"
   printf '  %-20s %s\n' "Bottles" "$(flatpak_app_state com.usebottles.bottles)"
   printf '  %-20s %s\n' "Windows complet" "$(command_state qemu-system-x86_64)"
   printf '  %-20s %s\n' "Gestion graphique" "$(command_state virt-manager)"
