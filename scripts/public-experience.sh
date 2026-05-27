@@ -85,6 +85,7 @@ smoke = run_json([str(root / "scripts/smoke.sh"), "json"], {"score": 0, "state":
 release = run_json([str(root / "scripts/release.sh"), "status", "--json"], {"state": "unknown", "worktree": {}}, timeout=80)
 update = run_json([str(root / "scripts/update.sh"), "json"], {"score": 0, "state": "unknown"}, env={"SEVENOS_UPDATE_FAST": "1"})
 shell = run_json([str(root / "scripts/shell-ags-runtime.sh"), "status", "--json"], {"state": "unknown", "ready": False})
+identity = run_json([str(root / "scripts/identity-experience.sh"), "json"], {"score": 0, "state": "unknown"}, timeout=25)
 mini = run_json([str(root / "bin/seven-mini-doctor"), "all", "doctor", "--json"], {"score": 0, "state": "unknown"}, timeout=45)
 rootfs = run_json([str(root / "bin/seven-profile-rootfs"), "audit", "all", "--json"], {"summary": {}}, timeout=60)
 server = run_json([str(root / "server/seven-server.sh"), "status", "--json"], {"state": "unknown"}, timeout=20)
@@ -119,7 +120,13 @@ gate("release-freeze", "OK" if dirty_count == 0 else "PART", "Clean release free
 installer = release.get("installer") or {}
 gate("installer", "OK" if installer.get("state") == "graphical-ready" else "PART", "Graphical installer runtime", installer.get("state", "unknown"), "seven installer release", "high")
 
-gate("shell-ags", "OK" if shell.get("ready") else "PART", "Seven Shell AGS runtime", f"{shell.get('state', 'unknown')}; package={shell.get('aur_package', 'aylurs-gtk-shell')}.", "./install.sh shell-ags-runtime --yes", "medium")
+shell_detail = f"{shell.get('state', 'unknown')}; package={shell.get('aur_package', 'aylurs-gtk-shell')}"
+if shell.get("report"):
+    shell_detail += f"; report={shell.get('report')}"
+gate("shell-ags", "OK" if shell.get("ready") else "PART", "Seven Shell AGS runtime", shell_detail + ".", shell.get("safe_install_command") or "./install.sh shell-ags-runtime --yes", "medium")
+
+identity_score = int(identity.get("score", 0) or 0)
+gate("identity-experience", "OK" if identity_score >= 92 and identity.get("signature_ready") else "PART", "SevenOS identity experience", f"{identity.get('state', 'unknown')} at {identity_score}%.", "seven identity experience", "high")
 
 mini_profiles = mini.get("profiles") if isinstance(mini.get("profiles"), dict) else {}
 if mini_profiles:
@@ -174,6 +181,8 @@ print(json.dumps({
         "status": "seven quality",
         "doctor": "seven quality doctor",
         "release": "seven release doctor",
+        "release_review": "seven release open",
+        "identity": "seven identity experience",
         "update": "seven update check",
         "shell_runtime": "./install.sh shell-ags-runtime --yes",
     },

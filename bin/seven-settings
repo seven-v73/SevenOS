@@ -28,10 +28,30 @@ resolve_root() {
 ROOT_DIR="$(resolve_root)"
 export SEVENOS_ROOT="$ROOT_DIR"
 
+close_control_center() {
+  local state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+  local pid_file="$state_dir/control-center.pid"
+  local request_file="$state_dir/control-center-request.json"
+  local pid cmdline
+
+  [[ -r "$pid_file" ]] || return 0
+  pid="$(tr -cd '0-9' <"$pid_file" 2>/dev/null || true)"
+  [[ -n "$pid" && -r "/proc/$pid/cmdline" ]] || return 0
+  cmdline="$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)"
+  [[ "$cmdline" == *"seven-quick-settings-native"* || "$cmdline" == *"SevenQuickSettingsNative"* ]] || return 0
+
+  mkdir -p "$state_dir"
+  printf '{"panel":"system","action":"toggle"}\n' >"$request_file"
+  kill -USR1 "$pid" 2>/dev/null || true
+  sleep 0.06
+}
+
 if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   printf 'DRY-RUN > Settings > Open SevenOS Settings\n'
   exit 0
 fi
+
+close_control_center
 
 if "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1; then
   exec "$ROOT_DIR/bin/seven-settings-native" "$@"

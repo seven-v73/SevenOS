@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+"""Native SevenOS identity experience surface."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "scripts/identity-experience.sh").exists():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "scripts/identity-experience.sh").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "scripts/identity-experience.sh").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+
+
+def language_code() -> str:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "en_US.UTF-8")
+    config = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/language.conf"
+    if not os.environ.get("SEVENOS_LANGUAGE") and config.exists():
+        for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip() in {"SEVENOS_LANGUAGE", "LANG"}:
+                language = value.strip().strip("'\"")
+                break
+    return "fr" if language.lower().startswith("fr") else "en"
+
+
+LANG = language_code()
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if LANG == "fr" else en
+
+
+def identity_json() -> dict[str, object]:
+    try:
+        result = subprocess.run(
+            [str(ROOT / "scripts/identity-experience.sh"), "json"],
+            cwd=str(ROOT),
+            env={**os.environ, "SEVENOS_ROOT": str(ROOT)},
+            text=True,
+            capture_output=True,
+            timeout=35,
+            check=False,
+        )
+        return json.loads(result.stdout or "{}") if result.stdout.strip() else {}
+    except Exception:
+        return {}
+
+
+def run_detached(*command: str) -> None:
+    subprocess.Popen(command, cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def open_terminal(command: str) -> None:
+    wrapped = f"cd {json.dumps(str(ROOT))}; {command}; printf '\\nPress Enter to close...'; read -r"
+    if (ROOT / "bin/seven-terminal").exists():
+        run_detached(str(ROOT / "bin/seven-terminal"), "--", "bash", "-lc", wrapped)
+    else:
+        run_detached("bash", "-lc", wrapped)
+
+
+def probe() -> int:
+    data = identity_json()
+    print(json.dumps({"schema": "sevenos.identity-native.v1", "root": str(ROOT), "state": data.get("state", "unknown"), "score": data.get("score", 0)}, ensure_ascii=False))
+    return 0
+
+
+def main() -> int:
+    if len(sys.argv) > 1 and sys.argv[1] == "--probe":
+        return probe()
+    data = identity_json()
+    if not (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")):
+        print(json.dumps(data, ensure_ascii=False))
+        return 0
+
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, Gtk  # noqa: E402
+
+    checks = data.get("checks") if isinstance(data.get("checks"), list) else []
+    principles = data.get("principles") if isinstance(data.get("principles"), list) else []
+
+    css = b"""
+    .identity-window { background: transparent; color: #f7f9ff; }
+    .identity-root {
+      padding: 18px;
+      border-radius: 28px;
+      background: rgba(15, 18, 31, 0.90);
+      border: 1px solid rgba(145, 166, 255, 0.30);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
+    }
+    .hero {
+      padding: 18px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(92, 140, 255, 0.22), rgba(77, 224, 255, 0.10), rgba(139, 112, 255, 0.15));
+      border: 1px solid rgba(170, 194, 255, 0.25);
+    }
+    .title { font-size: 23px; font-weight: 500; color: #ffffff; }
+    .subtitle { font-size: 12px; color: rgba(238, 243, 255, 0.74); }
+    .score {
+      min-width: 88px;
+      min-height: 88px;
+      border-radius: 44px;
+      background: rgba(246, 248, 255, 0.12);
+      border: 1px solid rgba(190, 205, 255, 0.28);
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 500;
+    }
+    .score-label { font-size: 11px; color: rgba(238, 243, 255, 0.68); }
+    .section-title { font-size: 12px; font-weight: 500; color: rgba(255, 255, 255, 0.86); }
+    .pill {
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(248, 250, 255, 0.82);
+      font-size: 11px;
+    }
+    .check-card {
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.075);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+    }
+    .check-card.ok { border-color: rgba(99, 235, 178, 0.30); }
+    .check-card.part { border-color: rgba(255, 202, 110, 0.34); }
+    .check-card.miss { border-color: rgba(255, 112, 136, 0.34); }
+    .check-title { font-size: 12px; font-weight: 500; color: #ffffff; }
+    .check-detail { font-size: 11px; color: rgba(238, 243, 255, 0.64); }
+    .state-pill {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(99, 235, 178, 0.14);
+      color: #b8ffe2;
+      font-size: 10px;
+      font-weight: 500;
+    }
+    button {
+      border-radius: 14px;
+      padding: 9px 14px;
+      background: rgba(255, 255, 255, 0.09);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: #f8faff;
+    }
+    button.primary {
+      background: linear-gradient(135deg, rgba(80, 151, 255, 0.94), rgba(126, 104, 255, 0.92));
+      border-color: rgba(180, 200, 255, 0.38);
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title=tr("Identité SevenOS", "SevenOS Identity"))
+    window.set_default_size(760, 680)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.get_style_context().add_class("identity-window")
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+    root.get_style_context().add_class("identity-root")
+    window.add(root)
+
+    hero = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+    hero.get_style_context().add_class("hero")
+    prism_path = ROOT / "identity/assets/symbol-seven-prism.svg"
+    if prism_path.exists():
+        image = Gtk.Image.new_from_file(str(prism_path))
+        image.set_pixel_size(86)
+        hero.pack_start(image, False, False, 0)
+
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    title = Gtk.Label(label=tr("Signature SevenOS", "SevenOS Signature"), xalign=0)
+    title.get_style_context().add_class("title")
+    subtitle = Gtk.Label(label=str(data.get("positioning", "")), xalign=0)
+    subtitle.set_line_wrap(True)
+    subtitle.get_style_context().add_class("subtitle")
+    state = Gtk.Label(label=str(data.get("state", "unknown")), xalign=0)
+    state.get_style_context().add_class("state-pill")
+    state.set_halign(Gtk.Align.START)
+    text.pack_start(title, False, False, 0)
+    text.pack_start(subtitle, False, False, 0)
+    text.pack_start(state, False, False, 0)
+    hero.pack_start(text, True, True, 0)
+
+    score_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+    score_box.set_halign(Gtk.Align.CENTER)
+    score = Gtk.Label(label=f"{data.get('score', 0)}%")
+    score.get_style_context().add_class("score")
+    score_label = Gtk.Label(label=tr("cohérence", "coherence"))
+    score_label.get_style_context().add_class("score-label")
+    score_box.pack_start(score, False, False, 0)
+    score_box.pack_start(score_label, False, False, 0)
+    hero.pack_end(score_box, False, False, 0)
+    root.pack_start(hero, False, False, 0)
+
+    principles_title = Gtk.Label(label=tr("Principes visibles", "Visible Principles"), xalign=0)
+    principles_title.get_style_context().add_class("section-title")
+    root.pack_start(principles_title, False, False, 0)
+    flow = Gtk.FlowBox()
+    flow.set_selection_mode(Gtk.SelectionMode.NONE)
+    flow.set_column_spacing(8)
+    flow.set_row_spacing(8)
+    for principle in principles:
+        pill = Gtk.Label(label=str(principle))
+        pill.get_style_context().add_class("pill")
+        flow.add(pill)
+    root.pack_start(flow, False, False, 0)
+
+    checks_title = Gtk.Label(label=tr("Garde-fous de l'expérience", "Experience Guardrails"), xalign=0)
+    checks_title.get_style_context().add_class("section-title")
+    root.pack_start(checks_title, False, False, 0)
+
+    scroller = Gtk.ScrolledWindow()
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    scroller.add(body)
+    root.pack_start(scroller, True, True, 0)
+
+    for item in checks:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        card.get_style_context().add_class("check-card")
+        card.get_style_context().add_class(str(item.get("state", "MISS")).lower())
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        badge = Gtk.Label(label=str(item.get("state", "MISS")))
+        badge.get_style_context().add_class("state-pill")
+        heading = Gtk.Label(label=str(item.get("title", "")), xalign=0)
+        heading.get_style_context().add_class("check-title")
+        row.pack_start(heading, True, True, 0)
+        row.pack_end(badge, False, False, 0)
+        note = Gtk.Label(label=str(item.get("detail", "")), xalign=0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("check-detail")
+        card.pack_start(row, False, False, 0)
+        card.pack_start(note, False, False, 0)
+        body.pack_start(card, False, False, 0)
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    actions.set_halign(Gtk.Align.END)
+    terminal = Gtk.Button(label=tr("Rapport JSON", "JSON Report"))
+    terminal.connect("clicked", lambda *_: open_terminal("seven identity experience --json | python -m json.tool"))
+    quality = Gtk.Button(label=tr("Qualité publique", "Public Quality"))
+    quality.connect("clicked", lambda *_: open_terminal("seven quality doctor"))
+    close = Gtk.Button(label=tr("Fermer", "Close"))
+    close.connect("clicked", lambda *_: Gtk.main_quit())
+    quality.get_style_context().add_class("primary")
+    actions.pack_start(terminal, False, False, 0)
+    actions.pack_start(quality, False, False, 0)
+    actions.pack_start(close, False, False, 0)
+    root.pack_end(actions, False, False, 0)
+
+    window.connect("destroy", Gtk.main_quit)
+    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

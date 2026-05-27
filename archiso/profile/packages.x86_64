@@ -46,6 +46,11 @@ kitty
 mako
 libnotify
 plymouth
+sddm
+xorg-server
+xorg-xauth
+polkit-kde-agent
+qt6-declarative
 grim
 slurp
 wl-clipboard

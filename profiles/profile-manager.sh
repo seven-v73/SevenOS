@@ -1657,6 +1657,46 @@ run_profile_background() {
   fi
 }
 
+profile_passage_status_file() {
+  printf '%s/profile-passage-status.json' "$STATE_DIR"
+}
+
+write_profile_passage_status() {
+  local key="$1"
+  local previous_key="$2"
+  local status="$3"
+  local message="$4"
+  local step="${5:-}"
+  local target
+  target="$(profile_passage_status_file)"
+  mkdir -p "$(dirname "$target")"
+  SEVENOS_PASSAGE_STATUS_FILE="$target" \
+  SEVENOS_PASSAGE_TO="$key" \
+  SEVENOS_PASSAGE_FROM="$previous_key" \
+  SEVENOS_PASSAGE_STATUS="$status" \
+  SEVENOS_PASSAGE_MESSAGE="$message" \
+  SEVENOS_PASSAGE_STEP="$step" \
+  python - <<'PY'
+import json
+import os
+import time
+from pathlib import Path
+
+target = Path(os.environ["SEVENOS_PASSAGE_STATUS_FILE"])
+payload = {
+    "schema": "sevenos.profile-passage-state.v1",
+    "from": os.environ.get("SEVENOS_PASSAGE_FROM", ""),
+    "to": os.environ.get("SEVENOS_PASSAGE_TO", ""),
+    "status": os.environ.get("SEVENOS_PASSAGE_STATUS", "running"),
+    "message": os.environ.get("SEVENOS_PASSAGE_MESSAGE", ""),
+    "step": os.environ.get("SEVENOS_PASSAGE_STEP", ""),
+    "updated_at": time.time(),
+}
+target.parent.mkdir(parents=True, exist_ok=True)
+target.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
+}
+
 profile_post_activate_refresh() {
   local key="$1"
   local previous_key="${2:-}"
@@ -1667,45 +1707,84 @@ profile_post_activate_refresh() {
     previous_key="$2"
     root="$3"
     state_dir="$4"
+    passage_status_file="$5"
     export SEVENOS_ROOT="$root"
+    mark_passage() {
+      status="$1"
+      message="$2"
+      step="${3:-}"
+      SEVENOS_PASSAGE_STATUS_FILE="$passage_status_file" \
+      SEVENOS_PASSAGE_TO="$key" \
+      SEVENOS_PASSAGE_FROM="$previous_key" \
+      SEVENOS_PASSAGE_STATUS="$status" \
+      SEVENOS_PASSAGE_MESSAGE="$message" \
+      SEVENOS_PASSAGE_STEP="$step" \
+      python - <<'"'"'PY'"'"' >/dev/null 2>&1 || true
+import json
+import os
+import time
+from pathlib import Path
+
+target = Path(os.environ["SEVENOS_PASSAGE_STATUS_FILE"])
+target.parent.mkdir(parents=True, exist_ok=True)
+target.write_text(json.dumps({
+    "schema": "sevenos.profile-passage-state.v1",
+    "from": os.environ.get("SEVENOS_PASSAGE_FROM", ""),
+    "to": os.environ.get("SEVENOS_PASSAGE_TO", ""),
+    "status": os.environ.get("SEVENOS_PASSAGE_STATUS", "running"),
+    "message": os.environ.get("SEVENOS_PASSAGE_MESSAGE", ""),
+    "step": os.environ.get("SEVENOS_PASSAGE_STEP", ""),
+    "updated_at": time.time(),
+}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
+    }
     is_current_profile() {
       [[ -r "$state_dir/profile.env" ]] || return 1
       # shellcheck disable=SC1090
       source "$state_dir/profile.env" 2>/dev/null || return 1
       [[ "${SEVENOS_ACTIVE_PROFILE:-}" == "$key" ]]
     }
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
+    mark_passage running "SevenOS prépare le runtime du nouvel espace." "runtime"
     "$root/scripts/runtime-orchestrator.sh" activate "$key" --apply --yes >/dev/null 2>&1 || true
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
+    mark_passage running "SevenOS ajuste les limites et l’isolation du mini OS." "isolation"
     "$root/scripts/profile-isolation.sh" apply "$key" --yes >/dev/null 2>&1 || true
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
+    mark_passage running "SevenOS vérifie les capacités collaboratives." "mini-os"
     "$root/scripts/mini-os-bridge.sh" status --json >/dev/null 2>&1 || true
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
+    mark_passage running "SevenOS applique les règles Hyprland et les raccourcis." "hyprland"
     "$root/scripts/hypr-lua.sh" apply "$key" >/dev/null 2>&1 || true
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
     if [[ -x "$root/scripts/motion.sh" ]]; then
+      mark_passage running "SevenOS ajuste le mouvement et les animations." "motion"
       "$root/scripts/motion.sh" profile "$key" >/dev/null 2>&1 || true
     fi
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
+    mark_passage running "SevenOS prépare le fond, la couleur et le shell." "theme"
     SEVENOS_WALLPAPER_PROFILE="$key" "$root/bin/seven-wallpaper" refresh >/dev/null 2>&1 || true
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
     "$root/scripts/events.sh" log \
       --source profile \
       --type profile \
       --state OK \
       --message "Active profile changed to $key" \
       --command "seven profile activate $key" >/dev/null 2>&1 || true
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
     "$root/profiles/profile-manager.sh" write-current-json "$key" >/dev/null 2>&1 || true
-    is_current_profile || exit 0
+    is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
     if [[ "${SEVENOS_PROFILE_RESTART_WAYBAR:-0}" == "1" ]]; then
+      mark_passage running "SevenOS relance la barre et finalise l’espace." "shell"
       "$root/bin/seven-profile-theme" apply >/dev/null 2>&1 || true
-      is_current_profile || exit 0
+      is_current_profile || { mark_passage complete "SevenOS a reçu un autre passage d’espace." "cancelled"; exit 0; }
       "$root/bin/seven-waybar" restart >/dev/null 2>&1 || true
     else
+      mark_passage running "SevenOS signale la barre et finalise l’espace." "shell"
       pkill -RTMIN+8 -x waybar >/dev/null 2>&1 || true
     fi
-  ' _ "$key" "$previous_key" "$ROOT_DIR" "$STATE_DIR"
+    mark_passage complete "SevenOS a terminé le chargement de l’espace." "complete"
+  ' _ "$key" "$previous_key" "$ROOT_DIR" "$STATE_DIR" "$(profile_passage_status_file)"
 }
 
 signal_waybar_profile_refresh() {
@@ -1761,7 +1840,7 @@ PY
 
 activate_profile() {
   local key
-  local tmp_env tmp_json previous_key should_leave_windows should_enter_windows
+  local tmp_env tmp_json previous_key should_leave_windows should_enter_windows passage_status_file
   key="$(normalize_profile_key "$1")"
   profile_target "$key" >/dev/null
   previous_key="$(active_profile 2>/dev/null || printf 'equinox')"
@@ -1791,7 +1870,8 @@ activate_profile() {
     printf 'mkdir -p %q\n' "$STATE_DIR"
     printf 'lock %q\n' "$LOCK_FILE"
     if [[ "$previous_key" != "$key" ]]; then
-      printf 'seven-passage-overlay --from %q --to %q --duration 950\n' "$previous_key" "$key"
+      printf 'write %q status=running\n' "$(profile_passage_status_file)"
+      printf 'seven-passage-overlay --from %q --to %q --duration 1550 --watch %q --max-duration 9000\n' "$previous_key" "$key" "$(profile_passage_status_file)"
     fi
     printf 'seven profile migrate-aliases --apply\n'
     printf 'write %q\n' "$STATE_FILE"
@@ -1823,11 +1903,13 @@ activate_profile() {
   run_profile_background "$STATE_DIR/profile-migration.log" \
     "$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --apply
 
+  passage_status_file="$(profile_passage_status_file)"
   if [[ "$previous_key" != "$key" && "${SEVENOS_PASSAGE_OVERLAY:-1}" != "0" ]]; then
+    write_profile_passage_status "$key" "$previous_key" "running" "SevenOS prépare le passage vers $(profile_title "$key")." "start"
     if command -v seven-passage-overlay >/dev/null 2>&1; then
-      run_profile_background "$STATE_DIR/profile-passage.log" seven-passage-overlay --from "$previous_key" --to "$key" --duration "${SEVENOS_PASSAGE_DURATION:-520}"
+      run_profile_background "$STATE_DIR/profile-passage.log" seven-passage-overlay --from "$previous_key" --to "$key" --duration "${SEVENOS_PASSAGE_DURATION:-1550}" --watch "$passage_status_file" --max-duration "${SEVENOS_PASSAGE_MAX_DURATION:-9000}"
     elif [[ -x "$ROOT_DIR/bin/seven-passage-overlay" ]]; then
-      run_profile_background "$STATE_DIR/profile-passage.log" "$ROOT_DIR/bin/seven-passage-overlay" --from "$previous_key" --to "$key" --duration "${SEVENOS_PASSAGE_DURATION:-520}"
+      run_profile_background "$STATE_DIR/profile-passage.log" "$ROOT_DIR/bin/seven-passage-overlay" --from "$previous_key" --to "$key" --duration "${SEVENOS_PASSAGE_DURATION:-1550}" --watch "$passage_status_file" --max-duration "${SEVENOS_PASSAGE_MAX_DURATION:-9000}"
     fi
   fi
 
@@ -1885,12 +1967,16 @@ EOF
   fi
   flock -u 9
   if [[ "${SEVENOS_PROFILE_SYNC_ACTIVATE:-0}" == "1" ]]; then
+    write_profile_passage_status "$key" "$previous_key" "running" "SevenOS applique le runtime du nouvel espace." "runtime"
     "$ROOT_DIR/scripts/runtime-orchestrator.sh" activate "$key" --apply --yes >/dev/null 2>&1 || true
+    write_profile_passage_status "$key" "$previous_key" "running" "SevenOS ajuste l’isolation et les règles d’interface." "isolation"
     "$ROOT_DIR/scripts/profile-isolation.sh" apply "$key" --yes >/dev/null 2>&1 || true
     "$ROOT_DIR/scripts/mini-os-bridge.sh" status --json >/dev/null 2>&1 || true
     "$ROOT_DIR/scripts/hypr-lua.sh" apply "$key" >/dev/null 2>&1 || true
+    write_profile_passage_status "$key" "$previous_key" "running" "SevenOS finalise le thème et la barre." "shell"
     "$ROOT_DIR/bin/seven-profile-theme" apply >/dev/null 2>&1 || true
     "$ROOT_DIR/bin/seven-waybar" restart >/dev/null 2>&1 || true
+    write_profile_passage_status "$key" "$previous_key" "complete" "SevenOS a terminé le chargement de l’espace." "complete"
   else
     profile_post_activate_refresh "$key" "$previous_key"
   fi

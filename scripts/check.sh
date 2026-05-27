@@ -19,6 +19,8 @@ bash -n \
   "$ROOT_DIR/scripts/install-cli.sh" \
   "$ROOT_DIR/scripts/apply-theme.sh" \
   "$ROOT_DIR/scripts/build-iso.sh" \
+  "$ROOT_DIR/scripts/system-assets.sh" \
+  "$ROOT_DIR/scripts/identity-assets.sh" \
   "$ROOT_DIR/scripts/dashboard.sh" \
   "$ROOT_DIR/scripts/actions.sh" \
   "$ROOT_DIR/scripts/architecture.sh" \
@@ -603,6 +605,10 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-session-status" >/dev/null
 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven-session-status" --json | python -m json.tool >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" path >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-wallpaper" status >/dev/null
+"$ROOT_DIR/scripts/system-assets.sh" json | python -m json.tool >/dev/null
+"$ROOT_DIR/scripts/system-assets.sh" doctor >/dev/null
+"$ROOT_DIR/scripts/identity-assets.sh" json | python -m json.tool >/dev/null
+"$ROOT_DIR/scripts/identity-assets.sh" doctor >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-country" plain >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-screenshot" --help >/dev/null
 SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-files" open >/dev/null

@@ -173,14 +173,24 @@ SEVENOS_SPOTLIGHT_NATIVE=0 seven-spotlight rofi
 
 Waybar should expose a SevenOS top bar: `7 + Apps + time` on the left,
 workspaces in the center, and compact system controls on the right. Files and
-favorite launchers live in the Dock through `Super+D`. The Dock separates apps,
-folders and system actions, shows running indicators, supports right-click
-menus, and persists pins in `~/.config/sevenos/dock.json`. If the bar is missing,
+favorite launchers live in the macOS-style floating Dock through `Super+D`. The
+Dock separates apps, folders and system actions, shows running indicators,
+supports right-click menus, drag reorder, file drops and hover window previews,
+and persists pins in `~/.config/sevenos/dock.json`. If the top bar is missing,
 run:
 
 ```bash
 seven-waybar repair
 seven-waybar status
+```
+
+If the Dock is missing or stale, run:
+
+```bash
+seven-dock repair
+seven-dock limits
+SEVENOS_DOCK_RENDERER=canvas seven-dock repair
+SEVENOS_DOCK_RENDERER=native seven-dock repair
 ```
 
 If the wallpaper does not change after a theme update:

@@ -125,8 +125,20 @@ is_mako_running() {
   pgrep -x mako >/dev/null 2>&1
 }
 
+swaync_available() {
+  command -v swaync >/dev/null 2>&1 && command -v swaync-client >/dev/null 2>&1
+}
+
+is_swaync_running() {
+  pgrep -x swaync >/dev/null 2>&1
+}
+
+swaync_count() {
+  timeout 0.8s swaync-client -sw -c 2>/dev/null || printf '0'
+}
+
 mako_missing() {
-  ! command -v mako >/dev/null 2>&1
+  ! command -v mako >/dev/null 2>&1 && ! swaync_available
 }
 
 status() {
@@ -134,6 +146,8 @@ status() {
     printf '󰂛\n'
   elif mako_missing; then
     printf '󰂜\n'
+  elif is_swaync_running; then
+    printf '󰂚\n'
   elif is_mako_running; then
     printf '󰂚\n'
   else
@@ -146,6 +160,8 @@ status_json() {
     printf '{"text":"󰂛","tooltip":"%s","class":"dnd"}\n' "$(printf '%s' "$dnd_tooltip" | sed ':a;N;$!ba;s/\n/\\n/g')"
   elif mako_missing; then
     printf '{"text":"󰂜","tooltip":"%s","class":"miss"}\n' "$(printf '%s' "$missing_backend_tooltip" | sed ':a;N;$!ba;s/\n/\\n/g')"
+  elif is_swaync_running; then
+    printf '{"text":"󰂚","tooltip":"%s","class":"ok"}\n' "$(printf '%s' "$active_tooltip" | sed ':a;N;$!ba;s/\n/\\n/g')"
   elif is_mako_running; then
     printf '{"text":"󰂚","tooltip":"%s","class":"ok"}\n' "$(printf '%s' "$active_tooltip" | sed ':a;N;$!ba;s/\n/\\n/g')"
   else
@@ -154,6 +170,15 @@ status_json() {
 }
 
 notification_feed() {
+  if command -v swaync-client >/dev/null 2>&1; then
+    local count
+    count="$(swaync_count)"
+    if [[ "$count" =~ ^[0-9]+$ && "$count" -gt 0 ]]; then
+      printf '󰂚  %s    %s\n' "$notification_label" "$count"
+      return 0
+    fi
+  fi
+
   if command -v makoctl >/dev/null 2>&1; then
     local raw
     raw="$(makoctl list 2>/dev/null || true)"
@@ -198,14 +223,19 @@ PY
 }
 
 start_mako() {
+  if is_swaync_running; then
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Le service de notifications est déjà lancé.' || printf 'Notification service is already running.')"
+    return 0
+  fi
+
   if is_mako_running; then
-    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Mako est déjà lancé.' || printf 'Mako is already running.')"
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Le service de notifications est déjà lancé.' || printf 'Notification service is already running.')"
     return 0
   fi
 
   if mako_missing; then
     systemctl --user reset-failed sevenos-notifications.service >/dev/null 2>&1 || true
-    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Mako n’est pas installé. Ouvre le centre de notifications et utilise Installer.' || printf 'Mako is not installed. Open the notification center and use Install.')"
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Installe SwayNC ou Mako depuis le centre de notifications.' || printf 'Install SwayNC or Mako from the notification center.')"
     dry_run && return 0
     return 1
   fi
@@ -215,9 +245,9 @@ start_mako() {
     sleep 0.3
   fi
 
-  if is_mako_running; then
+  if is_swaync_running || is_mako_running; then
     notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Service de notifications démarré.' || printf 'Notification service started.')"
-  else
+  elif command -v mako >/dev/null 2>&1; then
     run_detached mako
     notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Service de notifications démarré.' || printf 'Notification service started.')"
   fi
@@ -231,27 +261,42 @@ restart_mako() {
 
   if mako_missing; then
     systemctl --user reset-failed sevenos-notifications.service >/dev/null 2>&1 || true
-    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Mako n’est pas installé. Utilise Installer dans le centre de notifications.' || printf 'Mako is not installed. Use Install in the notification center.')"
+    notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Installe SwayNC ou Mako depuis le centre de notifications.' || printf 'Install SwayNC or Mako from the notification center.')"
     dry_run && return 0
     return 1
   fi
 
+  pkill -x swaync >/dev/null 2>&1 || true
   pkill -x mako >/dev/null 2>&1 || true
-  systemctl --user restart sevenos-notifications.service >/dev/null 2>&1 || run_detached mako
+  systemctl --user restart sevenos-notifications.service >/dev/null 2>&1 || {
+    if command -v swaync >/dev/null 2>&1; then
+      run_detached swaync
+    else
+      run_detached mako
+    fi
+  }
   notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Service de notifications redémarré.' || printf 'Notification service restarted.')"
 }
 
 install_mako() {
-  run_terminal "$notifications_title" "sudo pacman -S --needed mako libnotify && systemctl --user daemon-reload && systemctl --user reset-failed sevenos-notifications.service && systemctl --user enable --now sevenos-notifications.service"
+  run_terminal "$notifications_title" "sudo pacman -S --needed swaync mako libnotify && systemctl --user daemon-reload && systemctl --user reset-failed sevenos-notifications.service && systemctl --user enable --now sevenos-notifications.service"
 }
 
 dismiss_visible() {
+  if command -v swaync-client >/dev/null 2>&1; then
+    dry_run && dry_line "Dismiss visible notifications" && return 0
+    timeout 1s swaync-client -C >/dev/null 2>&1 || true
+    if timeout 1s swaync-client -sw -C >/dev/null 2>&1; then
+      return 0
+    fi
+  fi
+
   if command -v makoctl >/dev/null 2>&1; then
     dry_run && dry_line "Dismiss visible notifications" && return 0
     makoctl dismiss --all >/dev/null 2>&1 || true
     return 0
   fi
-  notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'makoctl n’est pas disponible.' || printf 'makoctl is not available.')"
+  notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Aucun client de notifications compatible n’est disponible.' || printf 'No compatible notification client is available.')"
 }
 
 restore_last() {
@@ -260,7 +305,7 @@ restore_last() {
     makoctl restore >/dev/null 2>&1 || true
     return 0
   fi
-  notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'makoctl n’est pas disponible.' || printf 'makoctl is not available.')"
+  notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'La restauration est disponible avec Mako. Avec SwayNC, utilise le centre ou l’historique.' || printf 'Restore is available with Mako. With SwayNC, use the center or history.')"
 }
 
 toggle_dnd() {
@@ -272,12 +317,18 @@ toggle_dnd() {
     if command -v makoctl >/dev/null 2>&1; then
       dry_run || makoctl mode -r do-not-disturb >/dev/null 2>&1 || true
     fi
+    if command -v swaync-client >/dev/null 2>&1; then
+      dry_run || timeout 1s swaync-client -sw -df >/dev/null 2>&1 || true
+    fi
     notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Ne pas déranger désactivé.' || printf 'Do Not Disturb disabled.')"
   else
     dry_run && dry_line "Toggle Do Not Disturb > on"
     dry_run || touch "$DND_FILE"
     if command -v makoctl >/dev/null 2>&1; then
       dry_run || makoctl mode -a do-not-disturb >/dev/null 2>&1 || true
+    fi
+    if command -v swaync-client >/dev/null 2>&1; then
+      dry_run || timeout 1s swaync-client -sw -dn >/dev/null 2>&1 || true
     fi
     notify "$notifications_title" "$([[ "$LANG_CODE" == "fr" ]] && printf 'Ne pas déranger activé.' || printf 'Do Not Disturb enabled.')"
   fi
@@ -310,13 +361,6 @@ open_menu() {
      native_center="$(resolve_native_center)" &&
      "$native_center" --probe >/dev/null 2>&1; then
     "$native_center"
-    return $?
-  fi
-
-  if [[ "${SEVENOS_PANEL_FALLBACK:-0}" != "1" ]] &&
-     command -v seven-shell-panel >/dev/null 2>&1 &&
-     seven-shell-panel status >/dev/null 2>&1; then
-    seven-shell-panel notifications
     return $?
   fi
 

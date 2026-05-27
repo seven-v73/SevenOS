@@ -130,6 +130,18 @@ precmd() {
   fail_info="$(__sevenos_status "$exit_code")"
   runtime_info="$(__sevenos_runtime_context)"
   duration_info="$(__sevenos_duration "$__sevenos_last_duration")"
-  PROMPT="%F{39}SevenOS%f:%F{${mode_color}}${mode}%f %F{245}%~%f%F{105}${git_info}%f%F{48}${runtime_info}%f%F{245}${duration_info}%f%F{203}${fail_info}%f"$'\n'"%F{245}%n@%m%f %F{${mode_color}}%#%f "
+  if [[ "${SEVENOS_TERMINAL_PROMPT_STYLE:-minimal}" == "full" || "${SEVENOS_TERMINAL_PROMPT_DETAIL:-0}" == "1" ]]; then
+    PROMPT="%F{39}SevenOS%f:%F{${mode_color}}${mode}%f %F{245}%~%f%F{105}${git_info}%f%F{48}${runtime_info}%f%F{245}${duration_info}%f%F{203}${fail_info}%f"$'\n'"%F{245}%n@%m%f %F{${mode_color}}%#%f "
+    return
+  fi
+  local minimal_context=""
+  local minimal_status=""
+  [[ "$mode" != "Classic" ]] && minimal_context=" %F{${mode_color}}${mode}%f"
+  if [[ -n "$fail_info" ]]; then
+    minimal_status="%F{203}${fail_info}%f"
+  elif [[ "$__sevenos_last_duration" -ge 8 ]]; then
+    minimal_status="%F{245}${duration_info}%f"
+  fi
+  PROMPT="%F{39}◇ %1~%f${minimal_context}${minimal_status}"$'\n'"%F{${mode_color}}%#%f "
 }
 RPROMPT=''

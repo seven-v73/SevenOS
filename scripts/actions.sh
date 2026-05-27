@@ -38,6 +38,9 @@ lifecycle.plan	System	Lifecycle Plan	seven lifecycle plan	safe	Show remaining ma
 boot.splash.status	System	Boot Splash Status	seven boot-splash status	safe	Show SevenOS quiet boot and shutdown splash readiness.
 boot.splash.doctor	System	Boot Splash Doctor	seven boot-splash doctor	safe	Validate the SevenOS Plymouth theme, Prism boot asset and ISO install hook.
 boot.splash.apply	System	Apply Boot Splash	seven boot-splash apply	packages	Enable SevenOS Plymouth splash, quiet kernel parameters and initramfs integration.
+login.theme.status	System	Login Theme Status	seven login-theme status	safe	Show SevenOS SDDM login screen readiness.
+login.theme.doctor	System	Login Theme Doctor	seven login-theme doctor	safe	Validate the SevenOS Prism SDDM theme and locale-aware login contract.
+login.theme.apply	System	Apply Login Theme	seven login-theme apply	packages	Install and select the SevenOS SDDM login screen after boot.
 update.status	System	SevenOS Update	seven update	safe	Show SevenOS system, app, community and profile update state before backend commands run.
 update.plan	System	Update Plan	seven update plan	safe	Show the SevenOS-first update sequence.
 update.apply	System	Apply Updates	seven update apply	packages	Update through the SevenOS route, then delegate to package foundations.
@@ -54,6 +57,9 @@ smoke.json	System	Smoke Gate JSON	seven smoke --json	safe	Expose the fast SevenO
 quality.status	System	Public Quality Gate	seven quality	safe	Show the product-quality aggregate for health, surfaces, update, mini OS, Shell, Server/Deploy and release freeze.
 quality.doctor	System	Public Quality Doctor	seven quality doctor	safe	Validate the user-experience gates before public release or a major phase claim.
 quality.json	System	Public Quality JSON	seven quality json	safe	Expose the public-quality aggregate to Hub, Settings and future Shell surfaces.
+release.review	System	Release Freeze Review	seven release review	safe	Show grouped dirty-worktree guidance before freezing or committing a public release.
+release.review_native	System	Release Review UI	seven release open	safe	Open the native SevenOS release freeze review surface.
+release.freeze	System	Write Release Freeze	seven release freeze --json	safe	Write the current release-freeze manifest with git status and diff stat paths.
 support.status	System	SevenOS Support	seven support	safe	Show local-first support readiness, health, product, recovery and event summary.
 support.bundle	System	Create Support Bundle	seven support bundle	changes	Create a local support bundle under the user account; nothing is uploaded automatically.
 support.plan	System	Support Plan	seven support plan	safe	Show the SevenOS-first support flow before collecting diagnostics.
@@ -98,7 +104,7 @@ reader.open	Desktop	Open Reader	seven-reader	safe	Open the Seven Reader immersiv
 reader.library	Desktop	Reader Library	seven-reader library	safe	Open the Seven Reader visual library.
 reader.status	System	Reader Status	seven-reader --json	safe	Show Seven Reader formats, modes and local state.
 quick.open	Desktop	Open Quick Settings	seven-quick-settings	safe	Open SevenOS quick controls.
-notifications.open	Desktop	Open Notifications	seven-shell-panel notifications	safe	Open the SevenOS notification center.
+notifications.open	Desktop	Open Notifications	seven-waybar-notifications menu	safe	Open the SevenOS notification center.
 terminal.open	Desktop	Open Terminal	seven-terminal	safe	Open the active mini OS terminal.
 terminal.forge	Desktop	Forge Terminal	seven-terminal forge	safe	Open a SevenOS terminal tuned for development, Git and builds.
 terminal.cyber	Desktop	Cyber Terminal	seven-terminal cyber	safe	Open a SevenOS terminal tuned for logs, diagnostics and security work.
@@ -458,7 +464,11 @@ shell.plan	Desktop	Seven Shell Plan	seven shell plan	safe	Show how Seven Shell w
 shell.preview	Desktop	Seven Shell Preview	seven shell preview	safe	Show planned AGS surfaces and fallback contracts.
 shell.install	Desktop	Install Shell Foundation	./install.sh shell-ags --yes	packages	Install GJS, TypeScript, GTK4 and libadwaita for the B3 shell foundation.
 shell.ags_runtime	Desktop	Install AGS Runtime	./install.sh shell-ags-runtime --yes	packages	Install Aylur's Gtk Shell runtime from the explicit AUR route after review.
+shell.ags_runtime.open	Desktop	Open AGS Install	scripts/shell-ags-runtime.sh open	packages	Open the AGS runtime install route inside Seven Terminal with a readable report.
+shell.ags_runtime.report	Desktop	AGS Runtime Report	scripts/shell-ags-runtime.sh report	safe	Show the last AGS runtime install report and next action.
 identity.status	Ecosystem	SevenOS Visual Identity	seven identity	safe	Show SevenOS Beyond the Desktop product language.
+identity.experience	Ecosystem	Identity Experience Gate	seven identity experience	safe	Check whether SevenOS feels like a coherent OS identity instead of a set of scripts.
+identity.open	Ecosystem	Identity Experience Surface	seven identity open	safe	Open the native Prism-first identity report for SevenOS.
 identity.plan	Ecosystem	Identity Plan	seven identity plan	safe	Show identity gaps before public surfaces rely on branding and theme assets.
 identity.design	Ecosystem	Seven Design Engine	seven identity design	safe	Show Seven Mocha/Latte palettes, icon resolution and design surfaces.
 identity.theme	Ecosystem	Theme Runtime	seven identity theme	safe	Show active GTK, Qt, icons, cursor and Kvantum runtime state.

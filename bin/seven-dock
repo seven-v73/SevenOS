@@ -2,20 +2,21 @@
 set -Eeuo pipefail
 
 resolve_root() {
-  if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven-dock-native" ]]; then
+  if [[ -n "${SEVENOS_ROOT:-}" ]] &&
+     { [[ -x "$SEVENOS_ROOT/bin/seven-dock-canvas" ]] || [[ -x "$SEVENOS_ROOT/bin/seven-dock-native" ]]; }; then
     printf '%s\n' "$SEVENOS_ROOT"
     return 0
   fi
 
   local script_dir
   script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-  if [[ -x "$script_dir/seven-dock-native" ]]; then
+  if [[ -x "$script_dir/seven-dock-canvas" || -x "$script_dir/seven-dock-native" ]]; then
     cd -- "$script_dir/.." && pwd
     return 0
   fi
 
   for candidate in /opt/SevenOS "$HOME/Code/OS/SevenOS" "$HOME/SevenOS"; do
-    if [[ -x "$candidate/bin/seven-dock-native" ]]; then
+    if [[ -x "$candidate/bin/seven-dock-canvas" || -x "$candidate/bin/seven-dock-native" ]]; then
       printf '%s\n' "$candidate"
       return 0
     fi
@@ -23,12 +24,40 @@ resolve_root() {
 }
 
 ROOT_DIR="$(resolve_root || true)"
+canvas="${ROOT_DIR:+$ROOT_DIR/bin/seven-dock-canvas}"
 native="${ROOT_DIR:+$ROOT_DIR/bin/seven-dock-native}"
 config_file="$HOME/.config/sevenos/dock.json"
 runtime_dir="${XDG_RUNTIME_DIR:-/tmp/sevenos-$(id -u)}"
 pid_file="$runtime_dir/sevenos-dock.pid"
 state_file="$runtime_dir/sevenos-dock-state.json"
 profile_change_scope="scope=closing-on-profile-change"
+
+dock_binary() {
+  local renderer="${SEVENOS_DOCK_RENDERER:-canvas}"
+  case "$renderer" in
+    canvas)
+      if [[ -n "${canvas:-}" && -x "$canvas" ]] && "$canvas" --probe >/dev/null 2>&1; then
+        printf '%s\n' "$canvas"
+        return 0
+      fi
+      ;;
+    native|gtk|gtk3)
+      if [[ -n "${native:-}" && -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
+        printf '%s\n' "$native"
+        return 0
+      fi
+      ;;
+  esac
+  if [[ -n "${canvas:-}" && -x "$canvas" ]] && "$canvas" --probe >/dev/null 2>&1; then
+    printf '%s\n' "$canvas"
+    return 0
+  fi
+  if [[ -n "${native:-}" && -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
+    printf '%s\n' "$native"
+    return 0
+  fi
+  return 1
+}
 
 active_profile() {
   local profile_env="${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env"
@@ -63,10 +92,13 @@ kill_dock_processes() {
     [[ "$pid" =~ ^[0-9]+$ ]] || continue
     [[ "$pid" != "$$" && "$pid" != "${PPID:-}" ]] || continue
     cmdline="$(tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null || true)"
-    if [[ "$cmdline" == *"seven-dock-native"* ]] || [[ -n "${native:-}" && "$cmdline" == *"$native"* ]]; then
+    if [[ "$cmdline" == *"seven-dock-canvas"* ]] ||
+       [[ "$cmdline" == *"seven-dock-native"* ]] ||
+       [[ -n "${canvas:-}" && "$cmdline" == *"$canvas"* ]] ||
+       [[ -n "${native:-}" && "$cmdline" == *"$native"* ]]; then
       kill "$pid" >/dev/null 2>&1 || true
     fi
-  done < <(pgrep -u "$USER" -f 'seven-dock-native|SevenDockNative' 2>/dev/null || true)
+  done < <(pgrep -u "$USER" -f 'seven-dock-canvas|SevenDockCanvas|seven-dock-native|SevenDockNative' 2>/dev/null || true)
 }
 
 open_dock() {
@@ -78,10 +110,11 @@ open_dock() {
   if is_running; then
     return 0
   fi
-  if [[ -n "$native" && -x "$native" ]]; then
+  local binary
+  if binary="$(dock_binary)"; then
     mkdir -p "$runtime_dir"
     rm -f "$state_file"
-    SEVENOS_ROOT="$ROOT_DIR" setsid "$native" >/tmp/sevenos-dock.log 2>&1 &
+    SEVENOS_ROOT="$ROOT_DIR" setsid "$binary" >/tmp/sevenos-dock.log 2>&1 &
     printf '%s\n' "$!" > "$pid_file"
     sleep 0.25
     if ! is_running; then
@@ -89,7 +122,7 @@ open_dock() {
       return 1
     fi
   else
-    printf 'seven-dock: seven-dock-native not found\n' >&2
+    printf 'seven-dock: no usable dock renderer found\n' >&2
     return 1
   fi
 }
@@ -169,10 +202,10 @@ JSON
     cat "$config_file"
     ;;
   limits|doctor)
-    if [[ -n "$native" && -x "$native" ]]; then
-      "$native" --limits --json
+    if binary="$(dock_binary)"; then
+      "$binary" --limits --json
     else
-      printf 'seven-dock: seven-dock-native not found\n' >&2
+      printf 'seven-dock: no usable dock renderer found\n' >&2
       exit 1
     fi
     ;;
@@ -223,15 +256,16 @@ path.write_text(json.dumps(data, indent=2) + "\n")
 PY
     ;;
   --probe)
-    if [[ -n "$native" && -x "$native" ]]; then
-      "$native" --probe
+    if binary="$(dock_binary)"; then
+      "$binary" --probe
     else
-      printf 'MISS: seven-dock-native not found\n' >&2
+      printf 'MISS: no usable dock renderer found\n' >&2
       exit 1
     fi
     ;;
   *)
     printf 'Usage: seven-dock [toggle|open|close|restart|repair|status|settings|limits|doctor|pin <id>|unpin <id>|--probe]\n' >&2
+    printf 'Env: SEVENOS_DOCK_RENDERER=canvas|native\n' >&2
     exit 1
     ;;
 esac

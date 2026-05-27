@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -18,6 +20,28 @@ COLORS = {
     "windows": ("#74C7EC", "#89B4FA", "Pont"),
     "pulse": ("#00D4FF", "#89B4FA", "Scène"),
 }
+
+PROFILE_ORDER = ["baobab", "forge", "shield", "pulse", "windows", "studio"]
+
+
+def hex_rgba(value: str, alpha: float = 1.0) -> tuple[float, float, float, float]:
+    text = str(value or "").strip().lstrip("#")
+    if len(text) != 6:
+        return (0.54, 0.49, 1.0, alpha)
+    try:
+        return (
+            int(text[0:2], 16) / 255,
+            int(text[2:4], 16) / 255,
+            int(text[4:6], 16) / 255,
+            alpha,
+        )
+    except Exception:
+        return (0.54, 0.49, 1.0, alpha)
+
+
+def ease_out_cubic(value: float) -> float:
+    value = max(0.0, min(1.0, value))
+    return 1 - pow(1 - value, 3)
 
 
 def active_profile() -> str:
@@ -65,7 +89,23 @@ def gtk_available() -> bool:
     return bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
 
 
-def run_overlay(payload: dict, duration_ms: int) -> int:
+def read_watch_status(watch_path: Path | None) -> dict:
+    if watch_path is None:
+        return {"status": "complete", "message": ""}
+    try:
+        payload = json.loads(watch_path.read_text(encoding="utf-8") or "{}")
+    except Exception:
+        return {"status": "running", "message": ""}
+    if not isinstance(payload, dict):
+        return {"status": "running", "message": ""}
+    return {
+        "status": str(payload.get("status") or "running"),
+        "message": str(payload.get("message") or ""),
+        "step": str(payload.get("step") or ""),
+    }
+
+
+def run_overlay(payload: dict, duration_ms: int, watch: str | None = None, max_duration_ms: int | None = None) -> int:
     if not gtk_available():
         print_payload(payload)
         return 0
@@ -85,6 +125,9 @@ def run_overlay(payload: dict, duration_ms: int) -> int:
     transition = payload.get("transition", "")
     motion = payload.get("motion", "")
     sound = payload.get("sound", "")
+    watch_path = Path(watch).expanduser() if watch else None
+    max_duration_ms = max_duration_ms or int(os.environ.get("SEVENOS_PASSAGE_MAX_DURATION", "9000"))
+    max_duration_ms = max(max_duration_ms, duration_ms + 700)
     play_sound(sound)
 
     class PassageApp(Gtk.Application):
@@ -94,34 +137,38 @@ def run_overlay(payload: dict, duration_ms: int) -> int:
             self.step = 0
 
         def do_activate(self) -> None:
+            tick_ms = 25
+            total_steps = max(1, duration_ms // tick_ms)
+            max_steps = max(total_steps + 1, max_duration_ms // tick_ms)
+            started_at = time.monotonic()
             css = f"""
             window {{
-              background: rgba(5, 7, 12, 0.82);
+              background: rgba(5, 7, 12, 0.78);
             }}
             .shell {{
               background:
-                radial-gradient(circle at 20% 15%, {accent}55, transparent 32%),
-                radial-gradient(circle at 80% 85%, {secondary}44, transparent 34%),
-                rgba(12, 15, 24, 0.90);
+                radial-gradient(circle at 50% 28%, {accent}38, transparent 34%),
+                radial-gradient(circle at 18% 82%, {secondary}30, transparent 32%),
+                radial-gradient(circle at 82% 82%, {accent}24, transparent 30%),
+                rgba(12, 15, 24, 0.88);
               border: 1px solid {accent}99;
-              border-radius: 28px;
-              padding: 34px;
-              box-shadow: 0 24px 80px rgba(0,0,0,.45);
+              border-radius: 30px;
+              padding: 26px;
             }}
             .token {{
               color: {accent};
-              font-size: 13px;
-              font-weight: 800;
-              letter-spacing: 0.12em;
+              font-size: 12px;
+              font-weight: 600;
+              letter-spacing: 0.08em;
             }}
             .title {{
               color: #fffaf0;
-              font-size: 28px;
-              font-weight: 800;
+              font-size: 25px;
+              font-weight: 600;
             }}
             .body {{
               color: #d7deea;
-              font-size: 15px;
+              font-size: 14px;
               line-height: 1.45;
             }}
             .meta {{
@@ -142,7 +189,7 @@ def run_overlay(payload: dict, duration_ms: int) -> int:
             window = Gtk.ApplicationWindow(application=self)
             window.set_title("SevenOS Passage")
             window.set_decorated(False)
-            window.set_default_size(780, 380)
+            window.set_default_size(860, 500)
             window.set_resizable(False)
             provider = Gtk.CssProvider()
             provider.load_from_data(css.encode())
@@ -154,10 +201,111 @@ def run_overlay(payload: dict, duration_ms: int) -> int:
 
             shell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
             shell.add_css_class("shell")
-            shell.set_margin_top(28)
-            shell.set_margin_bottom(28)
-            shell.set_margin_start(28)
-            shell.set_margin_end(28)
+            shell.set_margin_top(26)
+            shell.set_margin_bottom(26)
+            shell.set_margin_start(26)
+            shell.set_margin_end(26)
+
+            prism = Gtk.DrawingArea()
+            prism.set_content_width(800)
+            prism.set_content_height(260)
+            prism.set_hexpand(True)
+
+            def draw_prism(_area, cr, width, height) -> None:
+                progress = ease_out_cubic(min(1.0, self.step / max(1, total_steps)))
+                phase = progress * math.pi * 1.75
+                cx = width / 2
+                cy = height / 2 + 8
+                outer_radius = min(width, height) * 0.38
+                inner_radius = outer_radius * 0.44
+                target_index = PROFILE_ORDER.index(target) if target in PROFILE_ORDER else -1
+
+                outer_points = []
+                inner_points = []
+                for index, key in enumerate(PROFILE_ORDER):
+                    angle = -math.pi / 2 + (index * math.pi * 2 / len(PROFILE_ORDER)) + phase * 0.18
+                    wobble = 1.0 + (0.035 * math.sin(phase * 3 + index))
+                    is_target = index == target_index
+                    zoom = 1.12 if is_target else 1.0
+                    outer_points.append((cx + math.cos(angle) * outer_radius * wobble * zoom, cy + math.sin(angle) * outer_radius * wobble * zoom, key))
+                    inner_points.append((cx + math.cos(angle) * inner_radius, cy + math.sin(angle) * inner_radius, key))
+
+                cr.set_source_rgba(0.86, 0.91, 1.0, 0.035)
+                cr.arc(cx, cy, outer_radius * 1.16, 0, math.pi * 2)
+                cr.fill()
+                cr.set_source_rgba(*hex_rgba(accent, 0.08 + 0.06 * progress))
+                cr.arc(cx, cy, outer_radius * (0.58 + progress * 0.10), 0, math.pi * 2)
+                cr.fill()
+
+                for index, (x, y, key) in enumerate(outer_points):
+                    nx, ny, _ = outer_points[(index + 1) % len(outer_points)]
+                    color = COLORS.get(key, COLORS["equinox"])[0]
+                    cr.set_source_rgba(*hex_rgba(color, 0.035 + 0.030 * progress))
+                    cr.move_to(cx, cy)
+                    cr.line_to(x, y)
+                    cr.line_to(nx, ny)
+                    cr.close_path()
+                    cr.fill()
+
+                cr.set_line_width(1.4)
+                for index, (x, y, key) in enumerate(outer_points):
+                    nx, ny, _ = outer_points[(index + 1) % len(outer_points)]
+                    color = COLORS.get(key, COLORS["equinox"])[0]
+                    cr.set_source_rgba(*hex_rgba(color, 0.22))
+                    cr.move_to(x, y)
+                    cr.line_to(nx, ny)
+                    cr.stroke()
+
+                for index, (x, y, key) in enumerate(outer_points):
+                    color = COLORS.get(key, COLORS["equinox"])[0]
+                    is_target = index == target_index or (target == "equinox" and key == "baobab")
+                    cr.set_line_width(3.0 if is_target else 1.2)
+                    cr.set_source_rgba(*hex_rgba(color, 0.54 if is_target else 0.18))
+                    cr.move_to(cx, cy)
+                    cr.line_to(x, y)
+                    cr.stroke()
+                    if is_target:
+                        halo = 27 + 16 * math.sin(progress * math.pi)
+                        cr.set_source_rgba(*hex_rgba(color, 0.20))
+                        cr.arc(x, y, halo, 0, math.pi * 2)
+                        cr.fill()
+                    cr.set_source_rgba(*hex_rgba(color, 0.84 if is_target else 0.42))
+                    cr.arc(x, y, 8.5 if is_target else 4.8, 0, math.pi * 2)
+                    cr.fill()
+
+                cr.set_source_rgba(0.04, 0.05, 0.09, 0.24)
+                cr.move_to(inner_points[0][0], inner_points[0][1])
+                for x, y, _key in inner_points[1:]:
+                    cr.line_to(x, y)
+                cr.close_path()
+                cr.fill()
+
+                mark_radius = 48 + 7 * math.sin(phase * 2)
+                mark_points = []
+                for index in range(6):
+                    angle = -math.pi / 2 + index * math.pi / 3 - phase * 0.28
+                    mark_points.append((cx + math.cos(angle) * mark_radius, cy + math.sin(angle) * mark_radius))
+                cr.set_line_width(1.8)
+                cr.set_source_rgba(*hex_rgba(accent, 0.42))
+                cr.move_to(mark_points[0][0], mark_points[0][1])
+                for point in mark_points[1:]:
+                    cr.line_to(point[0], point[1])
+                cr.close_path()
+                cr.stroke()
+                for x, y in mark_points:
+                    cr.set_source_rgba(*hex_rgba(secondary, 0.22))
+                    cr.move_to(cx, cy)
+                    cr.line_to(x, y)
+                    cr.stroke()
+
+                cr.set_source_rgba(*hex_rgba(accent, 0.22))
+                cr.arc(cx, cy, 72 + 9 * math.sin(progress * math.pi * 2), 0, math.pi * 2)
+                cr.stroke()
+                cr.set_source_rgba(0.96, 0.98, 1.0, 0.90)
+                cr.arc(cx, cy, 5.5, 0, math.pi * 2)
+                cr.fill()
+
+            prism.set_draw_func(draw_prism)
 
             token_label = Gtk.Label(label=f"{token.upper()} · {motion}")
             token_label.add_css_class("token")
@@ -184,19 +332,28 @@ def run_overlay(payload: dict, duration_ms: int) -> int:
             self.progress = Gtk.ProgressBar()
             self.progress.set_fraction(0.0)
 
-            for widget in (token_label, title, body, detail, meta, self.progress):
+            for widget in (prism, token_label, title, body, detail, meta, self.progress):
                 shell.append(widget)
             window.set_child(shell)
             window.present()
 
-            tick_ms = 25
-            total_steps = max(1, duration_ms // tick_ms)
-
             def tick() -> bool:
                 self.step += 1
+                watch_state = read_watch_status(watch_path)
+                watch_done = watch_state.get("status") in {"complete", "done", "ok", "error", "failed"}
+                elapsed_ms = int((time.monotonic() - started_at) * 1000)
+                if watch_state.get("message"):
+                    detail.set_text(watch_state["message"])
+                elif watch_state.get("step"):
+                    detail.set_text(watch_state["step"])
                 if self.progress is not None:
-                    self.progress.set_fraction(min(1.0, self.step / total_steps))
-                if self.step >= total_steps:
+                    if watch_done and elapsed_ms >= duration_ms:
+                        self.progress.set_fraction(1.0)
+                    else:
+                        base = ease_out_cubic(min(1.0, self.step / total_steps))
+                        self.progress.set_fraction(min(0.92 if watch_path else 1.0, base))
+                prism.queue_draw()
+                if (elapsed_ms >= duration_ms and watch_done) or self.step >= max_steps:
                     self.quit()
                     return False
                 return True
@@ -249,6 +406,8 @@ def main() -> int:
     parser.add_argument("--from", dest="source", default=None)
     parser.add_argument("--to", dest="target", required=False)
     parser.add_argument("--duration", type=int, default=950)
+    parser.add_argument("--watch", default=None)
+    parser.add_argument("--max-duration", type=int, default=None)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--probe", action="store_true")
     args = parser.parse_args()
@@ -261,10 +420,12 @@ def main() -> int:
     payload = payload_for(source, target)
     payload["schema"] = "sevenos.passage-overlay.v1"
     payload["duration_ms"] = args.duration
+    if args.watch:
+        payload["watch"] = args.watch
     if args.json:
         print_payload(payload)
         return 0
-    return run_overlay(payload, args.duration)
+    return run_overlay(payload, args.duration, args.watch, args.max_duration)
 
 
 if __name__ == "__main__":

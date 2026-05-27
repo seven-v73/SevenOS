@@ -199,15 +199,30 @@ __sevenos_prompt() {
     *) mode_color="$cyan" ;;
   esac
 
-  if [[ "${SEVENOS_TERMINAL_PROMPT_STYLE:-compact}" == "full" || "${SEVENOS_TERMINAL_PROMPT_DETAIL:-0}" == "1" ]]; then
+  local compact_path='\W'
+  [[ "${SEVENOS_TERMINAL_PROMPT_PATH:-short}" == "full" ]] && compact_path='\w'
+
+  if [[ "${SEVENOS_TERMINAL_PROMPT_STYLE:-minimal}" == "full" || "${SEVENOS_TERMINAL_PROMPT_DETAIL:-0}" == "1" ]]; then
     PS1="${blue}SevenOS${muted}:${mode_color}${mode}${muted} ${cyan}\w${violet}$(__sevenos_git_branch)${green}$(__sevenos_runtime_context)${muted}$(__sevenos_duration "$__sevenos_last_duration")${red}$(__sevenos_prompt_status "$exit_code")${reset}\n${muted}${USER}@${HOSTNAME%%.*} ${mode_color}${symbol}${reset} "
+    return
+  fi
+
+  if [[ "${SEVENOS_TERMINAL_PROMPT_STYLE:-minimal}" == "minimal" ]]; then
+    local minimal_context=""
+    local minimal_status=""
+    [[ "$mode" != "Classic" ]] && minimal_context="${muted} ${mode_color}${mode}"
+    minimal_status="$(__sevenos_prompt_status "$exit_code")"
+    if [[ -n "$minimal_status" ]]; then
+      minimal_status="${red}${minimal_status}"
+    elif [[ "$__sevenos_last_duration" -ge 8 ]]; then
+      minimal_status="${muted}$(__sevenos_duration "$__sevenos_last_duration")"
+    fi
+    PS1="${cyan}◇ ${compact_path}${minimal_context}${minimal_status}${reset}\n${mode_color}${symbol}${reset} "
     return
   fi
 
   local compact_context=""
   local compact_status=""
-  local compact_path='\W'
-  [[ "${SEVENOS_TERMINAL_PROMPT_PATH:-short}" == "full" ]] && compact_path='\w'
   [[ "$mode" != "Classic" ]] && compact_context="${muted} ${mode_color}${mode}"
   compact_status="$(__sevenos_prompt_status "$exit_code")"
   if [[ -n "$compact_status" ]]; then

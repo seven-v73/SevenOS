@@ -172,10 +172,19 @@ It indexes:
 
 Use `Super` alone when you want the full app grid. `Super+A` remains a
 compatibility shortcut. `Super+D` toggles the SevenOS Dock for Files, Apps,
-Browser, Terminal, Spotlight, Hub and Settings. The Dock also separates folders
-from apps, shows running indicators, provides right-click actions such as show
-windows, quit and force quit, and stores pinned items in
-`~/.config/sevenos/dock.json`.
+Browser, Terminal, Spotlight, Hub and Settings. The Dock is a macOS-style
+floating surface: the default renderer is the premium canvas Dock, with the
+native GTK Dock kept as fallback. It separates folders from apps, shows running
+indicators, magnifies on hover, previews open windows, accepts file drops, provides
+right-click actions such as show windows, quit and force quit, and stores pinned
+items in `~/.config/sevenos/dock.json`. The canvas Dock floats as an overlay by
+default, so it does not push normal windows upward. It uses a subtle magnetic
+focus effect with spring motion, hover-intent previews and a smooth slide reveal instead of an aggressive layout-stealing zoom, and also supports
+drag reorder, middle-click new instance, scroll-to-cycle windows and macOS-style
+folder stacks for Downloads/Home. Spotlight from the Dock opens the current
+native Spotlight surface directly. Use `seven-dock repair` if the Dock is
+missing after a session refresh. Use `SEVENOS_DOCK_RENDERER=native seven-dock repair`
+only when the canvas renderer is unavailable.
 Use `Super+Shift+H` or the
 Spotlight action `Desktop · Open Seven Hub` for the Control Center.
 
@@ -325,13 +334,18 @@ hyprctl reload
 The Waybar notification icon opens a native SevenOS Notification Center first:
 
 ```bash
+seven-quick-settings notifications
 seven-waybar-notifications menu
 seven-notification-center-native --probe
 ```
 
-The center is content-first: active notifications appear as cards, an empty
-state appears when the desktop is clear, and actions are compact icon buttons
-with tooltips. Rofi is only a fallback if GTK bindings are unavailable.
+The Control Center exposes a Notifications panel for quick open, clear, focus
+and restart actions. The full center is content-first: active notifications
+appear as cards, an empty state appears when the desktop is clear, and actions
+are compact icon buttons with tooltips. Rofi is only a fallback if GTK bindings
+are unavailable.
+The clear action supports the modern SwayNC backend (`swaync-client -C`) and
+falls back to Mako (`makoctl dismiss --all`) on lighter installs.
 
 ## Settings From Waybar
 

@@ -92,6 +92,7 @@ if [[ "$LANG_CODE" == "fr" ]]; then
 󰟀  Basculer le Dock    Super+D
 󰖲  Vue des fenêtres    Super+Tab
 󰒓  Réglages rapides    Super+N / Super+O
+󰂚  Centre de notifications    Historique, focus, effacer
 󰒓  Paramètres généraux    Super+I
 󰉋  Barre SevenOS et panneau de contrôle    Wi-Fi, Bluetooth, son, batterie, profil
 󰹑  Smart Window System    Pastilles, flottant/tiling, layouts
@@ -151,6 +152,7 @@ else
 󰟀  Toggle Dock    Super+D
 󰖲  Window Overview    Super+Tab
 󰒓  Quick Settings    Super+N / Super+O
+󰂚  Notification Center    History, focus, clear
 󰒓  General Settings    Super+I
 󰉋  SevenOS Bar and Control Center    Wi-Fi, Bluetooth, sound, battery, profile
 󰹑  Smart Window System    Traffic lights, floating/tiling, layouts
@@ -271,8 +273,9 @@ seven profile-rootfs verify all
 
 À chaque démarrage de session, `seven-welcome-popup` affiche un accueil flottant
 avec le Prism SevenOS, le nom de l'utilisateur, le rôle des mini OS et le rappel
-que l'aide locale reste accessible avec Super+H. Le texte suit la langue
-configurée dans SevenOS ou dans le système.
+que l'aide locale reste accessible avec Super+H. Il affiche aussi la langue, le
+thème, le mini OS actif et l'état rapide des mises à jour. Le texte suit la
+langue configurée dans SevenOS ou dans le système.
 
 Préparer ou réparer le Wi-Fi :
 
@@ -323,6 +326,8 @@ orchestré les profils, fenêtres, thèmes, dépendances et actions derrière.
 | Installer/configurer une nouvelle machine | `seven new` |
 | Voir l'état général | `seven status` |
 | Diagnostiquer | `seven doctor` |
+| Vérifier l'identité ressentie | `seven identity experience` |
+| Ouvrir le rapport identité natif | `seven identity open` |
 | Réparer l'expérience UI | `seven repair ux --apply` |
 | Ouvrir les actions disponibles | `seven actions` |
 | Chercher une app/action/fichier | `seven spotlight index` puis `Super+Space` |
@@ -341,6 +346,11 @@ SevenOS est organisé comme un OS personnel avec plusieurs couches :
 | Couche | Rôle |
 | --- | --- |
 | Shell Experience | cohérence visuelle, feedback, animations, focus, événements |
+
+Le gate `seven identity experience` vérifie que l'usage ressemble à un vrai OS
+SevenOS : Prism, surfaces natives, langue système, thème clair/sombre, profils,
+maintenance guidée et absence d'anciens écrans visibles.
+`seven identity open` affiche ce signal dans une surface native SevenOS.
 | Hyprland Lua Engine | règles fenêtres, workspaces, raccourcis, surfaces flottantes |
 | Action Registry | actions lisibles par Waybar, Spotlight, Hub, SevenAI et notifications |
 | Context Engine | app active, service web, mini OS courant, workspace, média, sécurité |
@@ -380,9 +390,22 @@ ajouter des actions contextuelles, mais cette carte reste le point de départ.
 | Menu Fichiers | Super+Shift+E |
 | Fichiers du profil actif | Super+Ctrl+E |
 | Dock | Super+D |
+| Réparer / relancer le Dock | `seven-dock repair` |
+| Voir taille et limites du Dock | `seven-dock limits` |
+| Forcer le Dock canvas premium | `SEVENOS_DOCK_RENDERER=canvas seven-dock repair` |
+| Revenir au Dock GTK de secours | `SEVENOS_DOCK_RENDERER=native seven-dock repair` |
+| Dock flottant overlay | Le Dock ne réserve plus d'espace par défaut |
+| Réordonner le Dock | Glisser une icône du Dock |
+| Fenêtres d'une app | Survol, molette ou clic droit sur l'app |
+| Piles de dossiers | Cliquer Downloads/Home dans le Dock |
 | Aperçu fenêtres | Super+Tab |
 | Aperçu fenêtres, alternative | Super+V |
 | Réglages rapides | Super+N ou Super+O |
+| Notifications dans le panneau de contrôle | `seven-quick-settings notifications` |
+| Centre de notifications | `seven-waybar-notifications menu` |
+| Effacer les notifications | `seven-waybar-notifications dismiss` |
+| Ne pas déranger | `seven-waybar-notifications toggle-dnd` |
+| Panneau non bloquant | Le Control Center se ferme quand il perd le focus |
 | Paramètres généraux | Super+I |
 | Paramètres | Super+, |
 | Terminal | Super+Enter |
@@ -439,6 +462,17 @@ dans SevenOS ou dans le système.
 seven-window controls-start
 seven-window controls-stop
 seven-window controls-toggle
+seven-window controls-effect toggle
+seven-window controls-effect off
+seven-window controls-items
+seven-window controls-item add settings
+seven-window controls-item add terminal
+seven-window controls-item custom browser Browser B firefox
+seven-window controls-item set daily
+seven-window controls-item set dev
+seven-window controls-item move terminal up
+seven-window controls-item remove settings
+seven-window controls-item clear
 seven-window controls-status
 seven-window layout-menu
 seven-window advanced-menu
@@ -446,6 +480,11 @@ seven-window controls-unlock
 seven-window controls-reset-hidden
 seven-window decor-status --json
 ```
+
+Le centre de notifications moderne est `seven-notification-center-native`.
+L'icône Waybar et Spotlight passent par `seven-waybar-notifications menu`.
+Le bouton fermer/effacer parle à SwayNC avec `swaync-client -C`, puis retombe
+sur `makoctl dismiss --all` si l'installation utilise Mako.
 
 ### Capture, couleur et enregistrement
 
@@ -579,7 +618,7 @@ accents, les priorités et les surfaces, pas le mode complet.
 Seven Terminal utilise le thème extrait du wallpaper quand il existe :
 
 - texte corrigé automatiquement pour garder le contraste ;
-- fond transparent par défaut avec bouton `Bg` ;
+- fond transparent par défaut avec bouton `◐` ;
 - `SEVENOS_TERMINAL_TRANSPARENT=0 seven-terminal` démarre en opaque ;
 - `SEVENOS_TERMINAL_ALPHA=0.70 seven-terminal` règle l'opacité.
 
@@ -736,12 +775,14 @@ seven store apps
 
 ### Seven Terminal
 
-Terminal natif SevenOS : onglets, splits, palette, recherche, session restore,
-actions mini OS, thème clair/sombre et fond wallpaper transparent.
+Terminal natif SevenOS avec identité Prism : par défaut il suit le mini OS actif,
+affiche le sommet actif dans la barre supérieure et garde les modes avancés dans
+une palette rangée par sections. Le prompt est minimal par défaut; le détail
+revient avec `SEVENOS_TERMINAL_PROMPT_DETAIL=1`.
 
 ```bash
-seven-terminal classic
-seven-terminal profile
+seven-terminal
+seven-terminal -- btop
 seven-terminal forge
 seven-terminal menu
 ```
@@ -756,6 +797,14 @@ Raccourcis internes :
 | Palette | Ctrl+Shift+P ou Ctrl+Shift+Space |
 | Transparent/opaque | Ctrl+Shift+B |
 | Zoom texte | Ctrl+Plus / Ctrl+Minus / Ctrl+0 |
+
+Variables utiles :
+
+```bash
+SEVENOS_TERMINAL_PROMPT_DETAIL=1 seven-terminal
+SEVENOS_TERMINAL_TRANSPARENT=0 seven-terminal
+SEVENOS_TERMINAL_CLEAN=0 seven-terminal
+```
 
 ### SevenAI
 
@@ -900,18 +949,44 @@ reste incohérent, lance `seven language doctor`, puis `seven language apply
 seven theme doctor
 seven-wallpaper status
 seven-wallpaper refresh
+seven-wallpaper collection-list
+seven-wallpaper collection prism-dawn
+seven-wallpaper rotation set 900 prism-dawn aurora-night terra-golden
+seven-wallpaper rotation preset day 900
+seven-wallpaper rotation preset calm 1800
+seven-wallpaper rotation status
+seven-wallpaper rotation off
 ./install.sh branding
 seven boot-splash status
 seven boot-splash doctor
+seven login-theme status
+seven login-theme doctor
 ./install.sh boot-splash
+./install.sh login-theme
 ```
 
 Le thème SevenOS synchronise GTK, Qt, terminal, Waybar, Rofi, Mako, wallpaper et
 icônes. Si seulement une application est incohérente, commence par `seven theme
 doctor`. Le splash de démarrage utilise le Seven Prism avec Plymouth; `seven
 boot-splash doctor` vérifie l'asset, le script animé et l'intégration ISO avant
-d'appliquer avec sudo. Si toute l'interface est incohérente, utilise `seven
-repair ux --apply`.
+d'appliquer avec sudo. Si toute l'interface est incohérente, utilise
+`seven repair ux --apply`.
+Le splash Plymouth est généré selon la langue système active (`fr` ou `en`) au
+moment de `seven boot-splash apply` ou `seven boot-splash theme`. Il injecte
+aussi le Mini OS actif dans la capsule de boot pour garder l'identité SevenOS
+cohérente dès le démarrage.
+L'écran de connexion SDDM SevenOS se règle avec `seven login-theme apply`; il
+reprend le Prism, Hyprland et la langue Qt active sans modifier les comptes ni
+les mots de passe.
+
+`seven-wallpaper collection-list` affiche les 45 fonds dynamiques SevenOS. Ils
+sont aussi disponibles dans Paramètres > Fond d’écran > Collection SevenOS.
+Dans cette galerie, active `Sélection rotation`, choisis plusieurs fonds, règle
+la durée puis lance la rotation. `seven-wallpaper rotation set 900 ...` garde la
+rotation persistante pour le mini OS actif, même après redémarrage; `rotation
+off` la désactive.
+Les presets `day`, `calm`, `focus`, `night` et `vivid` donnent une rotation
+cohérente sans composer la liste à la main.
 
 ### Waybar stable et verrouillage
 
@@ -949,6 +1024,9 @@ seven update install --yes
 seven update rollback
 seven upgrade --yes
 seven update --json
+seven release review
+seven release open
+seven release freeze --json
 seven quality
 seven quality doctor
 seven lifecycle
@@ -965,8 +1043,15 @@ disponibles dans Equinox pour l'admin système.
 Sur une machine publique, SevenOS vit dans `/opt/SevenOS`; `seven update install`
 crée un snapshot de rollback, met à jour ce dépôt, sauvegarde l'état protégé,
 rafraîchit les commandes et applique ensuite les mises à jour système/apps.
+Un rapport lisible est écrit dans
+`~/.local/state/sevenos/update/last-report.json`, puis SevenOS tente de
+rafraîchir Waybar, notifications et Dock sans forcer une reconnexion.
 `./install.sh system-install --yes` est la route qui place ou rafraîchit ce
 dépôt système et les commandes utilisables depuis partout.
+`seven release review` regroupe les fichiers modifiés/non suivis avant le gel
+public. `seven release open` ouvre la même revue dans une surface
+native, puis `seven release freeze --json` écrit le manifeste avec les chemins
+`git-status.txt` et `diff-stat.txt`.
 `seven quality doctor` rassemble les gates qui comptent pour une expérience
 publique : santé, surfaces natives, smoke, update, mini OS, Shell AGS,
 Server/Deploy et release freeze.
@@ -1319,7 +1404,7 @@ scripts/check.sh
 | Dépendances manquantes | `seven profile requirements all --apply --yes` |
 | Rootfs mini OS suspect | `seven profile-rootfs verify all` |
 | Windows Bridge pas prêt | `seven windows setup` |
-| Terminal illisible | `Ctrl+Shift+B`, bouton `Bg`, ou `SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal` |
+| Terminal illisible | `Ctrl+Shift+B`, bouton `◐`, ou `SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal` |
 | Avant push GitHub | `seven pre-push` |
 
 ## Système de fenêtres et raccourcis
@@ -1395,6 +1480,8 @@ seven core compact-bus --keep 5000 --json
 seven shell status --json
 seven shell doctor
 scripts/shell-ags-runtime.sh status --json
+scripts/shell-ags-runtime.sh report
+scripts/shell-ags-runtime.sh open
 ./install.sh shell-ags-runtime --yes
 ```
 
@@ -1414,6 +1501,9 @@ Règles importantes :
 - `seven deploy diagnose <projet-ou-domaine>` rassemble service, route, DNS, versions, score et prochaines actions.
 - Via Seven Server, les mêmes contrats sont disponibles avec `/deploy/domain`, `/deploy/dns-check`, `/deploy/route-check` et `/deploy/diagnose`.
 - AGS est explicite : Seven Shell utilise le paquet AUR `aylurs-gtk-shell`; ne pas installer le paquet AUR `ags` qui correspond à Adventure Game Studio.
+- La route AGS supporte `--dry-run`, `--yes`, `--json`, écrit
+  `~/.local/state/sevenos/shell/ags-runtime-report.json` et peut s'ouvrir dans
+  Seven Terminal avec `scripts/shell-ags-runtime.sh open`.
 - Un bind non local est refusé sans `SEVENOS_SERVER_EXPOSE_UNSAFE=1`, car auth/TLS/policy broker ne sont pas encore publics.
 - Seven Core doit annoncer `RUNTIME_READY` quand `seven-daemon.service` et `seven-context-observer.service` tournent.
 - Le bus SevenBus actuel reste un journal JSONL local; `seven core compact-bus` archive l'ancien journal et garde les derniers événements.
@@ -1546,6 +1636,8 @@ orchestrates profiles, windows, themes, dependencies and actions underneath.
 | Install/configure a new machine | `seven new` |
 | See global status | `seven status` |
 | Diagnose | `seven doctor` |
+| Check the felt identity | `seven identity experience` |
+| Open the native identity report | `seven identity open` |
 | Repair UI experience | `seven repair ux --apply` |
 | Open available actions | `seven actions` |
 | Search app/action/file | `seven spotlight index` then `Super+Space` |
@@ -1564,6 +1656,11 @@ SevenOS is organized as a personal OS with several layers:
 | Layer | Role |
 | --- | --- |
 | Shell Experience | visual coherence, feedback, animations, focus, events |
+
+The `seven identity experience` gate checks that SevenOS feels like a real OS:
+Prism, native surfaces, system language, light/dark themes, profiles, guided
+maintenance and no visible old screens. `seven identity open` shows the same
+signal as a native SevenOS surface.
 | Hyprland Lua Engine | window rules, workspaces, shortcuts, floating surfaces |
 | Action Registry | actions readable by Waybar, Spotlight, Hub, SevenAI and notifications |
 | Context Engine | active app, web service, current mini OS, workspace, media, security |
@@ -1603,6 +1700,14 @@ this map is the starting point.
 | Files menu | Super+Shift+E |
 | Active profile files | Super+Ctrl+E |
 | Dock | Super+D |
+| Repair / restart Dock | `seven-dock repair` |
+| Show Dock size and limits | `seven-dock limits` |
+| Force premium canvas Dock | `SEVENOS_DOCK_RENDERER=canvas seven-dock repair` |
+| Use fallback GTK Dock | `SEVENOS_DOCK_RENDERER=native seven-dock repair` |
+| Floating overlay Dock | The Dock no longer reserves layout space by default |
+| Reorder Dock | Drag a Dock icon |
+| App windows | Hover, scroll or right-click the app |
+| Folder stacks | Click Downloads/Home in the Dock |
 | Window overview | Super+Tab |
 | Window overview, alternative | Super+V |
 | Quick Settings | Super+N or Super+O |
@@ -1660,6 +1765,17 @@ language configured in SevenOS or in the system.
 seven-window controls-start
 seven-window controls-stop
 seven-window controls-toggle
+seven-window controls-effect toggle
+seven-window controls-effect off
+seven-window controls-items
+seven-window controls-item add settings
+seven-window controls-item add terminal
+seven-window controls-item custom browser Browser B firefox
+seven-window controls-item set daily
+seven-window controls-item set dev
+seven-window controls-item move terminal up
+seven-window controls-item remove settings
+seven-window controls-item clear
 seven-window controls-status
 seven-window layout-menu
 seven-window advanced-menu
@@ -1728,6 +1844,8 @@ seven-help search "Super+Shift"
 - Sound opens audio controls.
 - Battery opens power controls.
 - Control Center opens quick settings.
+- Notifications are integrated in Control Center, and the panel closes when it
+  loses focus so it does not block Settings or password prompts.
 
 Useful commands:
 
@@ -1799,7 +1917,7 @@ priorities and surfaces, not the complete mode.
 Seven Terminal uses the wallpaper-derived theme when available:
 
 - text is automatically corrected for contrast;
-- transparent background by default with the `Bg` button;
+- transparent background by default with the `◐` button;
 - `SEVENOS_TERMINAL_TRANSPARENT=0 seven-terminal` starts solid;
 - `SEVENOS_TERMINAL_ALPHA=0.70 seven-terminal` tunes opacity.
 
@@ -1973,12 +2091,14 @@ seven store apps
 
 ### Seven Terminal
 
-Native SevenOS terminal: tabs, splits, palette, search, session restore, mini OS
-actions, light/dark theme and transparent wallpaper background.
+Native SevenOS terminal with Prism identity: by default it follows the active
+mini OS, shows the active vertex in the top bar and keeps advanced modes inside
+a sectioned palette. The prompt is minimal by default; detailed context returns
+with `SEVENOS_TERMINAL_PROMPT_DETAIL=1`.
 
 ```bash
-seven-terminal classic
-seven-terminal profile
+seven-terminal
+seven-terminal -- btop
 seven-terminal forge
 seven-terminal menu
 ```
@@ -1993,6 +2113,14 @@ Internal shortcuts:
 | Palette | Ctrl+Shift+P or Ctrl+Shift+Space |
 | Transparent/solid | Ctrl+Shift+B |
 | Text zoom | Ctrl+Plus / Ctrl+Minus / Ctrl+0 |
+
+Useful variables:
+
+```bash
+SEVENOS_TERMINAL_PROMPT_DETAIL=1 seven-terminal
+SEVENOS_TERMINAL_TRANSPARENT=0 seven-terminal
+SEVENOS_TERMINAL_CLEAN=0 seven-terminal
+```
 
 ### SevenAI
 
@@ -2134,13 +2262,38 @@ language apply --live`.
 seven theme doctor
 seven-wallpaper status
 seven-wallpaper refresh
+seven-wallpaper collection-list
+seven-wallpaper collection prism-dawn
+seven-wallpaper rotation set 900 prism-dawn aurora-night terra-golden
+seven-wallpaper rotation preset day 900
+seven-wallpaper rotation preset calm 1800
+seven-wallpaper rotation status
+seven-wallpaper rotation off
 ./install.sh branding
+seven login-theme status
+seven login-theme doctor
 ./install.sh boot-splash
+./install.sh login-theme
 ```
 
 The SevenOS theme synchronizes GTK, Qt, terminal, Waybar, Rofi, Mako, wallpaper
 and icons. If only one app looks wrong, start with `seven theme doctor`. If the
 whole interface looks wrong, use `seven repair ux --apply`.
+The Plymouth splash is generated from the active system language (`fr` or `en`)
+when running `seven boot-splash apply` or `seven boot-splash theme`. It also
+injects the active Mini OS into the boot chip so SevenOS identity stays
+coherent from startup.
+The SevenOS SDDM login screen is configured with `seven login-theme apply`; it
+uses the Prism, Hyprland identity and active Qt locale without changing users or
+passwords.
+`seven-wallpaper collection-list` shows the 45 SevenOS dynamic wallpapers.
+They are also available in Settings > Wallpaper > SevenOS Collection.
+In that gallery, enable `Rotation selection`, choose multiple wallpapers, set
+the delay and start rotation. `seven-wallpaper rotation set 900 ...` keeps the
+rotation persistent for the active mini OS, including after reboot; `rotation
+off` disables it.
+The `day`, `calm`, `focus`, `night` and `vivid` presets provide a coherent
+rotation without building the list manually.
 
 ### Stable Waybar And Lock Screen
 
@@ -2178,6 +2331,9 @@ seven update install --yes
 seven update rollback
 seven upgrade --yes
 seven update --json
+seven release review
+seven release open
+seven release freeze --json
 seven quality
 seven quality doctor
 seven lifecycle
@@ -2194,8 +2350,15 @@ system administration.
 On public machines, SevenOS lives in `/opt/SevenOS`; `seven update install`
 creates a rollback snapshot, updates that tree, backs up protected state,
 refreshes commands and then applies system/app updates.
+A readable report is written to
+`~/.local/state/sevenos/update/last-report.json`, then SevenOS gently refreshes
+Waybar, notifications and Dock without forcing a new login.
 `./install.sh system-install --yes` is the route that places or refreshes this
 system tree and the commands available from anywhere.
+`seven release review` groups modified/untracked files before the public freeze.
+`seven release open` opens the same review as a native surface, then
+`seven release freeze --json` writes the manifest with `git-status.txt` and
+`diff-stat.txt` paths.
 `seven quality doctor` combines the gates that matter for a public experience:
 health, native surfaces, smoke, update, mini OS, Shell AGS, Server/Deploy and
 release freeze.
@@ -2545,7 +2708,7 @@ scripts/check.sh
 | Missing dependencies | `seven profile requirements all --apply --yes` |
 | Suspicious mini OS rootfs | `seven profile-rootfs verify all` |
 | Windows Bridge not ready | `seven windows setup` |
-| Terminal hard to read | `Ctrl+Shift+B`, `Bg` button, or `SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal` |
+| Terminal hard to read | `Ctrl+Shift+B`, `◐` button, or `SEVENOS_TERMINAL_ALPHA=0.75 seven-terminal` |
 | Before GitHub push | `seven pre-push` |
 
 ## Window System And Shortcuts
@@ -2623,6 +2786,8 @@ seven core compact-bus --keep 5000 --json
 seven shell status --json
 seven shell doctor
 scripts/shell-ags-runtime.sh status --json
+scripts/shell-ags-runtime.sh report
+scripts/shell-ags-runtime.sh open
 ./install.sh shell-ags-runtime --yes
 ```
 
@@ -2642,6 +2807,9 @@ Important rules:
 - `seven deploy diagnose <project-or-domain>` combines service, route, DNS, versions, score and next actions.
 - Through Seven Server, the same contracts are available at `/deploy/domain`, `/deploy/dns-check`, `/deploy/route-check` and `/deploy/diagnose`.
 - AGS is explicit: Seven Shell uses AUR package `aylurs-gtk-shell`; do not install AUR package `ags`, which is Adventure Game Studio.
+- The AGS route supports `--dry-run`, `--yes`, `--json`, writes
+  `~/.local/state/sevenos/shell/ags-runtime-report.json` and can open in Seven
+  Terminal with `scripts/shell-ags-runtime.sh open`.
 - A non-local bind is refused unless `SEVENOS_SERVER_EXPOSE_UNSAFE=1` is set, because auth/TLS/policy broker are not public yet.
 - Seven Core should report `RUNTIME_READY` when `seven-daemon.service` and `seven-context-observer.service` are running.
 - The current SevenBus remains a local JSONL journal; `seven core compact-bus` archives the old journal and keeps the latest events.
@@ -3429,7 +3597,7 @@ case "$selected" in
   "SevenOS Bar and Control Center"|"Barre SevenOS et panneau de contrôle") show_doc waybar ;;
   "Smart Window System") show_doc windows ;;
   "Terminal Classic"|"Terminal classique") seven-terminal classic ;;
-  "Terminal Dark"|"Terminal sombre") seven-terminal profile ;;
+  "Terminal Dark"|"Terminal sombre") seven-terminal ;;
   "Terminal Theme Menu"|"Menu du terminal") seven-terminal menu ;;
   "Open Files"|"Ouvrir Fichiers") seven-files ;;
   "Seven Files") show_doc files ;;

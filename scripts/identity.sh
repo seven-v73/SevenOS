@@ -27,6 +27,9 @@ Usage:
   seven identity icons --json
   seven identity visuals
   seven identity visuals install --yes
+  seven identity experience
+  seven identity experience --json
+  seven identity open
   seven identity activate <pack>
   seven identity plan
   seven identity doctor
@@ -627,6 +630,10 @@ status() {
 
 ACTION="${1:-status}"
 PACK_KEY="${2:-}"
+EXTRA_ARGS=()
+if [[ "$#" -gt 1 ]]; then
+  EXTRA_ARGS=("${@:2}")
+fi
 JSON_OUTPUT=0
 if [[ "${2:-}" == "--json" || "${2:-}" == "json" || "${3:-}" == "--json" || "${3:-}" == "json" ]]; then
   JSON_OUTPUT=1
@@ -681,6 +688,16 @@ case "$ACTION" in
     else
       icons_status
     fi
+    ;;
+  experience)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      "$ROOT_DIR/scripts/identity-experience.sh" json
+    else
+      "$ROOT_DIR/scripts/identity-experience.sh" status
+    fi
+    ;;
+  open)
+    "$ROOT_DIR/bin/seven-identity-native" "${EXTRA_ARGS[@]}"
     ;;
   activate)
     activate_pack "$PACK_KEY"

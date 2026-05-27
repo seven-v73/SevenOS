@@ -339,7 +339,8 @@ install_shell_hook() {
 reload_desktop_session() {
   if is_dry_run; then
     printf 'hyprctl reload\n'
-    printf 'systemctl --user start sevenos-session.target || seven-session\n'
+    printf 'systemctl --user try-restart sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-shell-experience.service\n'
+    printf 'pkill -x waybar swaync hyprpaper || true; seven-session\n'
     return 0
   fi
 
@@ -349,8 +350,22 @@ reload_desktop_session() {
 
   if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
     if command -v systemctl >/dev/null 2>&1; then
-      systemctl --user start sevenos-session.target >/dev/null 2>&1 || "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
+      systemctl --user daemon-reload >/dev/null 2>&1 || true
+      systemctl --user try-restart \
+        sevenos-waybar.service \
+        sevenos-notifications.service \
+        sevenos-wallpaper.service \
+        sevenos-shell-experience.service >/dev/null 2>&1 || true
+      systemctl --user start sevenos-session.target >/dev/null 2>&1 || true
     elif [[ -x "$ROOT_DIR/bin/seven-session" ]]; then
+      "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
+    fi
+    # Some installs launch shell surfaces outside systemd. Restart those
+    # directly so a light/dark switch cannot leave stale CSS in memory.
+    pkill -x waybar >/dev/null 2>&1 || true
+    pkill -x swaync >/dev/null 2>&1 || true
+    pkill -x hyprpaper >/dev/null 2>&1 || true
+    if [[ -x "$ROOT_DIR/bin/seven-session" ]]; then
       "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
     fi
     if command -v notify-send >/dev/null 2>&1; then

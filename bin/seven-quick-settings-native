@@ -64,7 +64,7 @@ BLUETOOTH_CACHE_FILE = STATE_DIR / "bluetooth-devices.json"
 SNAPSHOT_CACHE_FILE = STATE_DIR / "control-center-snapshot.json"
 QUICK_PID_FILE = STATE_DIR / "control-center.pid"
 QUICK_REQUEST_FILE = STATE_DIR / "control-center-request.json"
-PANEL_ORDER = ["system", "wifi", "bluetooth", "audio", "power"]
+PANEL_ORDER = ["system", "wifi", "bluetooth", "audio", "notifications", "power"]
 PANELS = {*PANEL_ORDER, "time"}
 
 
@@ -414,6 +414,59 @@ def toggle_focus() -> None:
     run_detached("seven-waybar-notifications", "toggle-dnd")
 
 
+def clear_notifications() -> None:
+    if command_available("swaync-client"):
+        subprocess.run(["timeout", "1s", "swaync-client", "-sw", "-C"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        subprocess.run(["timeout", "1s", "swaync-client", "-C"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    if command_available("makoctl"):
+        subprocess.run(["makoctl", "dismiss", "--all"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    notify("SevenOS Notifications", tr_text("Visible notifications cleared."))
+
+
+def notification_count() -> int:
+    if command_available("swaync-client"):
+        raw = command_output(["timeout", "0.8s", "swaync-client", "-sw", "-c"], timeout=1.0)
+        if raw.isdigit():
+            return int(raw)
+    if command_available("makoctl"):
+        raw = command_output(["makoctl", "list"], timeout=0.8)
+        if raw and raw not in {"[]", "{}"}:
+            try:
+                payload = json.loads(raw)
+                rows = []
+
+                def walk(value):
+                    if isinstance(value, dict):
+                        if value.get("summary") or value.get("body") or value.get("app-name") or value.get("app_name"):
+                            rows.append(value)
+                        for child in value.values():
+                            walk(child)
+                    elif isinstance(value, list):
+                        for child in value:
+                            walk(child)
+
+                walk(payload)
+                return len(rows)
+            except Exception:
+                return 1
+    return 0
+
+
+def notification_backend_label() -> str:
+    if command_available("swaync-client"):
+        return "SwayNC"
+    if command_available("makoctl"):
+        return "Mako"
+    return tr_text("Missing")
+
+
+def notification_state_label() -> str:
+    count = notification_count()
+    if count > 0:
+        return tr_text("{count} active", count=count)
+    return tr_text("No notifications")
+
+
 def nearby_wifi(limit: int = 5) -> list[tuple[str, str]]:
     if not command_available("nmcli"):
         return []
@@ -509,6 +562,10 @@ def known_wifi_connection(ssid: str) -> str:
 
 def wifi_password_dialog(Gtk, parent, ssid: str) -> str:
     try:
+        setattr(parent, "_sevenos_modal_open", True)
+    except Exception:
+        pass
+    try:
         parent.hide()
     except Exception:
         pass
@@ -540,6 +597,10 @@ def wifi_password_dialog(Gtk, parent, ssid: str) -> str:
     response = dialog.run()
     password = entry.get_text().strip() if response == Gtk.ResponseType.OK else ""
     dialog.destroy()
+    try:
+        setattr(parent, "_sevenos_modal_open", False)
+    except Exception:
+        pass
     return password
 
 
@@ -804,15 +865,16 @@ def run(panel: str = "system", action: str = "show") -> int:
     panel_width = min(384, max(330, screen_width - 44))
     if compact_mode:
         panel_width = min(356, max(318, screen_width - 32))
-    panel_height = min(500 if active_panel == "system" else 560, max(340, screen_height - 110))
+    panel_height = min(560, max(340, screen_height - 110))
     if compact_mode:
-        panel_height = min(456 if active_panel == "system" else 512, max(320, screen_height - 76))
+        panel_height = min(512, max(320, screen_height - 76))
 
     window = Gtk.Window(title=f"SevenOS {tr_text('Control Center')}")
     window.set_wmclass("SevenQuickSettingsNative", "SevenQuickSettingsNative")
     window.set_decorated(False)
     window.set_resizable(False)
-    window.set_keep_above(True)
+    if os.environ.get("SEVENOS_CONTROL_CENTER_KEEP_ABOVE") == "1":
+        window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.NONE)
     window.set_default_size(panel_width, panel_height)
     window.set_size_request(panel_width, min(panel_height, screen_height - 76))
@@ -830,7 +892,7 @@ def run(panel: str = "system", action: str = "show") -> int:
             GtkLayerShell.set_margin(window, GtkLayerShell.Edge.TOP, 58 if compact_mode else 74)
             GtkLayerShell.set_margin(window, GtkLayerShell.Edge.RIGHT, 14 if compact_mode else 28)
             GtkLayerShell.set_exclusive_zone(window, -1)
-            GtkLayerShell.set_keyboard_interactivity(window, True)
+            GtkLayerShell.set_keyboard_interactivity(window, os.environ.get("SEVENOS_CONTROL_CENTER_KEYBOARD") == "1")
             layer_shell_active = True
         except Exception:
             layer_shell_active = False
@@ -950,6 +1012,27 @@ def run(panel: str = "system", action: str = "show") -> int:
             pass
         return False
 
+    def on_drag(_window, event):
+        if layer_shell_active:
+            return False
+        if getattr(event, "button", 0) == 1 and getattr(event, "y", 999) <= 74:
+            try:
+                window.begin_move_drag(event.button, int(event.x_root), int(event.y_root), event.time)
+            except Exception:
+                pass
+        return False
+
+    def on_focus_out(*_args):
+        if getattr(window, "_sevenos_modal_open", False):
+            return False
+        if os.environ.get("SEVENOS_CONTROL_CENTER_STICKY") == "1":
+            return False
+        GLib.timeout_add(180, lambda: (Gtk.main_quit(), False)[1])
+        return False
+
+    window.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+    window.connect("button-press-event", on_drag)
+    window.connect("focus-out-event", on_focus_out)
     window.connect("realize", lambda widget: GLib.idle_add(place_window, widget))
     window.connect("destroy", Gtk.main_quit)
     panel_shortcuts = {
@@ -957,11 +1040,13 @@ def run(panel: str = "system", action: str = "show") -> int:
         Gdk.KEY_2: "wifi",
         Gdk.KEY_3: "bluetooth",
         Gdk.KEY_4: "audio",
-        Gdk.KEY_5: "power",
+        Gdk.KEY_5: "notifications",
+        Gdk.KEY_6: "power",
         Gdk.KEY_s: "system",
         Gdk.KEY_w: "wifi",
         Gdk.KEY_b: "bluetooth",
         Gdk.KEY_a: "audio",
+        Gdk.KEY_n: "notifications",
         Gdk.KEY_p: "power",
     }
 
@@ -1033,7 +1118,8 @@ def build_nav_strip(Gtk, active_panel: str, navigate):
         ("wifi", "󰤨", "2"),
         ("bluetooth", "󰂯", "3"),
         ("audio", "󰕾", "4"),
-        ("power", "󰐥", "5"),
+        ("notifications", "󰂚", "5"),
+        ("power", "󰐥", "6"),
     ]
     for panel, icon, shortcut in items:
         button = Gtk.Button(label=icon)
@@ -1054,6 +1140,7 @@ def build_header(Gtk, state: SystemSnapshot, active_panel: str, navigate=None, r
         "wifi": "Wi-Fi",
         "bluetooth": "Bluetooth",
         "audio": tr_text("Sound"),
+        "notifications": tr_text("Notifications"),
         "power": tr_text("Power"),
         "time": tr_text("Time"),
     }
@@ -1086,7 +1173,7 @@ def build_header(Gtk, state: SystemSnapshot, active_panel: str, navigate=None, r
     settings_button = Gtk.Button(label="󰒓")
     add_classes(settings_button, ["quick-pill", "quick-icon-pill"])
     settings_button.set_relief(Gtk.ReliefStyle.NONE)
-    settings_button.connect("clicked", lambda _button: run_detached("seven-settings"))
+    settings_button.connect("clicked", lambda _button: (run_detached("seven-settings"), Gtk.main_quit()))
     refresh_button = Gtk.Button(label="󰑐")
     add_classes(refresh_button, ["quick-pill", "quick-icon-pill"])
     refresh_button.set_relief(Gtk.ReliefStyle.NONE)
@@ -1107,8 +1194,10 @@ def build_primary_grid(Gtk, state: SystemSnapshot, refs: dict[str, object], navi
     controls = [
         ("wifi", "Wi-Fi", state.wifi, "󰤨", lambda: navigate("wifi"), ["connected" if state.wifi_enabled else "disabled"]),
         ("bluetooth", "Bluetooth", state.bluetooth, "󰂯", lambda: navigate("bluetooth"), ["connected" if state.bluetooth_enabled else "disabled"]),
+        ("notifications", tr_text("Notifications"), notification_state_label(), "󰂚", lambda: navigate("notifications"), ["active" if notification_count() > 0 else ""]),
         ("focus", tr_text("Focus"), tr_text("On") if DND_FILE.exists() else tr_text("Off"), "󰂛", toggle_focus, ["active" if DND_FILE.exists() else ""]),
-        ("brightness", tr_text("Brightness"), f"{state.brightness}%", "󰃠", lambda: run_detached("seven-settings", "display"), []),
+        ("brightness", tr_text("Brightness"), f"{state.brightness}%", "󰃠", lambda: (run_detached("seven-settings", "display"), Gtk.main_quit()), []),
+        ("power", tr_text("Power"), f"{state.battery_percent}%", "󰐥", lambda: navigate("power"), ["charging" if state.battery_charging else ""]),
     ]
     for index, item in enumerate(controls):
         grid.attach(build_tile(Gtk, *item, refs), index % 2, index // 2, 1, 1)
@@ -1155,7 +1244,12 @@ def build_context_card(Gtk, state: SystemSnapshot, refs: dict[str, object]):
         button = Gtk.Button(label="󰁔")
         add_classes(button, ["icon-action"])
         button.set_relief(Gtk.ReliefStyle.NONE)
-        button.connect("clicked", lambda _button: run_detached(*command))
+        def activate(_button, target=command):
+            run_detached(*target)
+            if target and target[0] == "seven-settings":
+                Gtk.main_quit()
+
+        button.connect("clicked", activate)
         card.pack_end(button, False, False, 0)
     refs["context_card"] = card
     refs["context_title"] = title_label
@@ -1245,7 +1339,9 @@ def apply_snapshot_to_refs(refs: dict[str, object], state: SystemSnapshot) -> No
         "wifi": (state.wifi, ["connected" if state.wifi_enabled else "disabled"]),
         "bluetooth": (state.bluetooth, ["connected" if state.bluetooth_enabled else "disabled"]),
         "focus": (tr_text("On") if DND_FILE.exists() else tr_text("Off"), ["active" if DND_FILE.exists() else ""]),
+        "notifications": (notification_state_label(), ["active" if notification_count() > 0 else ""]),
         "brightness": (f"{state.brightness}%", []),
+        "power": (f"{state.battery_percent}%", ["charging" if state.battery_charging else ""]),
     }
     for key, (label, classes) in updates.items():
         state_label = refs.get(f"{key}_state")
@@ -1318,6 +1414,22 @@ def detail_action(Gtk, label: str, command: tuple[str, ...], parent=None, danger
             if response != Gtk.ResponseType.OK:
                 return
         run_detached(*command)
+        if command and command[0] == "seven-settings":
+            Gtk.main_quit()
+
+    button.connect("clicked", activate)
+    return button
+
+
+def detail_callback_action(Gtk, label: str, callback, close_after: bool = False):
+    button = Gtk.Button(label=label)
+    button.set_relief(Gtk.ReliefStyle.NONE)
+    add_classes(button, ["detail-button"])
+
+    def activate(_button):
+        callback()
+        if close_after:
+            Gtk.main_quit()
 
     button.connect("clicked", activate)
     return button
@@ -1349,6 +1461,30 @@ def build_audio_panel(Gtk, state: SystemSnapshot):
     actions.pack_start(detail_action(Gtk, tr_text("Mute"), ("wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle")), True, True, 0)
     actions.pack_start(detail_action(Gtk, tr_text("Mixer"), ("pavucontrol",)), True, True, 0)
     body.pack_start(actions, False, False, 0)
+    return body
+
+
+def build_notifications_panel(Gtk):
+    body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    count = notification_count()
+    dnd = DND_FILE.exists()
+    body.pack_start(detail_row(Gtk, tr_text("Backend"), notification_backend_label()), False, False, 0)
+    body.pack_start(detail_row(Gtk, tr_text("Notifications"), tr_text("{count} active", count=count) if count else tr_text("No notifications")), False, False, 0)
+    body.pack_start(detail_row(Gtk, tr_text("Focus"), tr_text("On") if dnd else tr_text("Off")), False, False, 0)
+
+    actions = Gtk.Grid()
+    actions.set_column_spacing(8)
+    actions.set_row_spacing(8)
+    actions.attach(detail_action(Gtk, tr_text("Open Center"), ("seven-waybar-notifications", "menu")), 0, 0, 1, 1)
+    actions.attach(detail_callback_action(Gtk, tr_text("Clear"), clear_notifications), 1, 0, 1, 1)
+    actions.attach(detail_callback_action(Gtk, tr_text("Focus"), toggle_focus), 0, 1, 1, 1)
+    actions.attach(detail_action(Gtk, tr_text("Restart"), ("seven-waybar-notifications", "restart")), 1, 1, 1, 1)
+    body.pack_start(actions, False, False, 0)
+
+    hint = Gtk.Label(label=tr_text("Open the full center for notification history and detailed actions."), xalign=0)
+    hint.set_line_wrap(True)
+    hint.get_style_context().add_class("quick-context-note")
+    body.pack_start(hint, False, False, 0)
     return body
 
 
@@ -1543,6 +1679,7 @@ def build_detail_card(Gtk, parent, panel: str, state: SystemSnapshot, navigate=N
         "wifi": ("Wi-Fi", state.wifi),
         "bluetooth": ("Bluetooth", state.bluetooth),
         "audio": (tr_text("Sound"), f"{state.volume}%"),
+        "notifications": (tr_text("Notifications"), notification_state_label()),
         "power": (tr_text("Power"), f"{state.battery_percent}%"),
         "time": (tr_text("Time"), command_output(["date", "+%H:%M"]) or "--"),
     }
@@ -1563,6 +1700,8 @@ def build_detail_card(Gtk, parent, panel: str, state: SystemSnapshot, navigate=N
         populate_bluetooth_detail(Gtk, parent, body)
     elif panel == "audio":
         body.pack_start(build_audio_panel(Gtk, state), False, False, 0)
+    elif panel == "notifications":
+        body.pack_start(build_notifications_panel(Gtk), False, False, 0)
     elif panel == "power":
         actions = Gtk.Grid()
         actions.set_column_spacing(8)
@@ -1581,13 +1720,13 @@ def build_detail_card(Gtk, parent, panel: str, state: SystemSnapshot, navigate=N
 def build_footer(Gtk, navigate=None):
     footer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
     footer.get_style_context().add_class("footer-card")
-    hint = Gtk.Label(label="1-5 · ←/→ · r · Esc", xalign=0.5)
+    hint = Gtk.Label(label="1-6 · ←/→ · r · Esc", xalign=0.5)
     hint.get_style_context().add_class("footer-hint")
     row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     settings = Gtk.Button(label="󰒓  " + tr_text("Settings"))
     settings.set_relief(Gtk.ReliefStyle.NONE)
     settings.get_style_context().add_class("footer-button")
-    settings.connect("clicked", lambda _button: run_detached("seven-settings"))
+    settings.connect("clicked", lambda _button: (run_detached("seven-settings"), Gtk.main_quit()))
     power = Gtk.Button(label="󰐥  " + tr_text("Power"))
     power.set_relief(Gtk.ReliefStyle.NONE)
     power.get_style_context().add_class("footer-button")

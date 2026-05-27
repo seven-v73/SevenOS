@@ -17,6 +17,7 @@ SevenOS Release
 Usage:
   seven release status [--json]
   seven release plan [--json]
+  seven release review [--json]
   seven release freeze [--json]
   seven release doctor [--json]
 
@@ -49,6 +50,40 @@ git_dirty_count() {
   git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' '
 }
 
+git_dirty_summary_json() {
+  GIT_STATUS_RAW="$(git -C "$ROOT_DIR" status --short 2>/dev/null || true)" python - <<'PY'
+import json
+import os
+import sys
+
+counts = {"modified": 0, "added": 0, "deleted": 0, "renamed": 0, "untracked": 0, "other": 0}
+samples = []
+paths = []
+for raw in os.environ.get("GIT_STATUS_RAW", "").splitlines():
+    if not raw.strip():
+        continue
+    code = raw[:2]
+    path = raw[3:] if len(raw) > 3 else raw.strip()
+    if code == "??":
+        bucket = "untracked"
+    elif "R" in code:
+        bucket = "renamed"
+    elif "D" in code:
+        bucket = "deleted"
+    elif "A" in code:
+        bucket = "added"
+    elif "M" in code:
+        bucket = "modified"
+    else:
+        bucket = "other"
+    counts[bucket] += 1
+    paths.append(path)
+    if len(samples) < 24:
+        samples.append({"status": code.strip() or "?", "path": path})
+print(json.dumps({"counts": counts, "samples": samples, "paths": paths}, ensure_ascii=False))
+PY
+}
+
 doctor_release_json() {
   "$ROOT_DIR/scripts/doctor.sh" release --json 2>/dev/null || printf '{}'
 }
@@ -70,12 +105,13 @@ channel_status_json() {
 }
 
 release_status_json() {
-  local doctor installer windows channel dirty_count branch commit freeze_state freeze_path
+  local doctor installer windows channel dirty_count dirty_summary branch commit freeze_state freeze_path
   doctor="$(doctor_check_json)"
   installer="$(installer_release_json)"
   windows="$(windows_status_json)"
   channel="$(channel_status_json)"
   dirty_count="$(git_dirty_count)"
+  dirty_summary="$(git_dirty_summary_json)"
   branch="$(git_value unknown rev-parse --abbrev-ref HEAD)"
   commit="$(git_value unknown rev-parse --short HEAD)"
   freeze_state="MISS"
@@ -85,7 +121,7 @@ release_status_json() {
     freeze_path="$FREEZE_JSON"
   fi
   DOCTOR_JSON="$doctor" INSTALLER_JSON="$installer" WINDOWS_JSON="$windows" CHANNEL_JSON="$channel" \
-  DIRTY_COUNT="$dirty_count" BRANCH="$branch" COMMIT="$commit" \
+  DIRTY_COUNT="$dirty_count" DIRTY_SUMMARY="$dirty_summary" BRANCH="$branch" COMMIT="$commit" \
   FREEZE_STATE="$freeze_state" FREEZE_PATH="$freeze_path" ROOT_DIR="$ROOT_DIR" \
   python - <<'PY'
 import json
@@ -101,6 +137,7 @@ doctor = load("DOCTOR_JSON")
 installer = load("INSTALLER_JSON")
 windows = load("WINDOWS_JSON")
 channel = load("CHANNEL_JSON")
+dirty_summary = load("DIRTY_SUMMARY")
 dirty_count = int(os.environ.get("DIRTY_COUNT", "0") or 0)
 summary = doctor.get("summary", {})
 doctor_blocked = summary.get("critical", 1) > 0 or summary.get("high", 1) > 0
@@ -167,6 +204,12 @@ print(json.dumps({
         "dirty_count": dirty_count,
         "freeze_state": os.environ.get("FREEZE_STATE", "MISS"),
         "freeze_path": os.environ.get("FREEZE_PATH", ""),
+        "summary": dirty_summary,
+        "commands": {
+            "status": "git status --short",
+            "review": "seven release freeze --json",
+            "commit": "git add <files> && git commit",
+        },
     },
     "installer": {
         "state": installer.get("state", "unknown"),
@@ -237,6 +280,82 @@ print(json.dumps({
 PY
 }
 
+release_review_json() {
+  local status
+  status="$(release_status_json)"
+  STATUS_JSON="$status" ROOT_DIR="$ROOT_DIR" python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+data = json.loads(os.environ["STATUS_JSON"])
+worktree = data.get("worktree", {})
+summary = worktree.get("summary") if isinstance(worktree.get("summary"), dict) else {}
+samples = summary.get("samples") if isinstance(summary.get("samples"), list) else []
+all_paths = summary.get("paths") if isinstance(summary.get("paths"), list) else []
+counts = summary.get("counts") if isinstance(summary.get("counts"), dict) else {}
+
+groups = [
+    {
+        "key": "core-surfaces",
+        "title": "Surfaces utilisateur SevenOS",
+        "prefixes": ("bin/seven-", "bin/seven", "identity/", "hyprland", "branding/", "seven-shell/"),
+        "reason": "UI, helper, terminal, dock, settings, notifications and visible OS behavior.",
+    },
+    {
+        "key": "system-routes",
+        "title": "Routes système et qualité",
+        "prefixes": ("scripts/", "server/", "install.sh"),
+        "reason": "Update, release, quality gates, server/deploy and install routes.",
+    },
+    {
+        "key": "docs",
+        "title": "Documentation et helper",
+        "prefixes": ("docs/", "README", "progress.md"),
+        "reason": "Public guidance, helper references and release notes.",
+    },
+]
+
+paths = [str(path) for path in all_paths if path] or [item.get("path", "") for item in samples if isinstance(item, dict)]
+for group in groups:
+    group["sample_paths"] = [path for path in paths if path.startswith(group["prefixes"])][:8]
+    group["state"] = "PRESENT" if group["sample_paths"] else "QUIET"
+    group.pop("prefixes", None)
+
+print(json.dumps({
+    "schema": "sevenos.release-review.v1",
+    "state": "clean" if int(worktree.get("dirty_count", 0) or 0) == 0 else "needs-freeze",
+    "root": data.get("root") or os.environ["ROOT_DIR"],
+    "branch": data.get("branch"),
+    "commit": data.get("commit"),
+    "dirty_count": int(worktree.get("dirty_count", 0) or 0),
+    "counts": counts,
+    "samples": samples,
+    "groups": groups,
+    "files": {
+        "git_status": str(Path.home() / ".local/state/sevenos/release/git-status.txt"),
+        "diff_stat": str(Path.home() / ".local/state/sevenos/release/diff-stat.txt"),
+        "freeze_manifest": worktree.get("freeze_path") or str(Path.home() / ".local/state/sevenos/release/release-freeze.json"),
+    },
+    "commands": {
+        "status": "git status --short",
+        "freeze": "seven release freeze --json",
+        "review": "seven release review --json",
+        "identity": "seven identity experience",
+        "commit_all": "git add -A && git commit",
+        "release_doctor": "seven release doctor",
+        "quality": "seven quality doctor",
+    },
+    "guidance": [
+        "Review generated files before committing.",
+        "Keep the SevenOS identity gate green before tagging a public build.",
+        "Keep public release freeze separate from feature work when possible.",
+        "Run seven quality doctor after the commit.",
+    ],
+}, indent=2, ensure_ascii=False))
+PY
+}
+
 release_freeze_json() {
   mkdir -p "$STATE_DIR"
   git -C "$ROOT_DIR" status --short >"$GIT_STATUS_TXT" 2>/dev/null || true
@@ -255,6 +374,7 @@ import json
 import os
 
 status = json.loads(os.environ["STATUS_JSON"])
+worktree = status.get("worktree") or {}
 print(json.dumps({
     "schema": "sevenos.release-freeze.v1",
     "timestamp": os.environ["TIMESTAMP"],
@@ -262,6 +382,7 @@ print(json.dumps({
     "branch": os.environ["BRANCH"],
     "commit": os.environ["COMMIT"],
     "dirty_count": int(os.environ["DIRTY_COUNT"]),
+    "worktree": worktree,
     "git_status_path": os.environ["GIT_STATUS_TXT"],
     "diff_stat_path": os.environ["DIFF_STAT_TXT"],
     "daily_driver_ready": status.get("daily_driver_ready", False),
@@ -326,6 +447,38 @@ case "$ACTION" in
       printf '%s\n' "$payload"
     else
       print_plan_human "$payload"
+    fi
+    ;;
+  review)
+    payload="$(release_review_json)"
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      printf '%s\n' "$payload"
+    else
+      REVIEW_JSON="$payload" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["REVIEW_JSON"])
+print("SevenOS Release Review")
+print("======================")
+print(f"State:       {data.get('state')}")
+print(f"Dirty files: {data.get('dirty_count')}")
+print("Counts:")
+for key, value in (data.get("counts") or {}).items():
+    if value:
+        print(f"  - {key}: {value}")
+print()
+print("Groups:")
+for group in data.get("groups", []):
+    print(f"  - {group.get('state'):<7} {group.get('title')}")
+    for path in group.get("sample_paths", [])[:5]:
+        print(f"      {path}")
+print()
+print("Next:")
+for label, command in (data.get("commands") or {}).items():
+    if label in {"freeze", "commit_all", "quality"}:
+        print(f"  {command}")
+PY
     fi
     ;;
   freeze)

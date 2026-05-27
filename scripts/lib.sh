@@ -92,6 +92,10 @@ privileged_backend() {
     command -v "$SEVENOS_AUTH_BACKEND" >/dev/null 2>&1 && printf '%s' "$SEVENOS_AUTH_BACKEND"
     return 0
   fi
+  if [[ ! -t 0 ]] && command -v pkexec >/dev/null 2>&1 && polkit_agent_running; then
+    printf 'pkexec'
+    return 0
+  fi
   if command -v sudo >/dev/null 2>&1; then
     printf 'sudo'
   elif command -v pkexec >/dev/null 2>&1 && polkit_agent_running; then

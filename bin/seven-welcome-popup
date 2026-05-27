@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import pwd
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -120,20 +121,75 @@ def prism_logo_path() -> Path:
 
 
 def launch_help() -> None:
+    launch_first(
+        [
+            [str(ROOT / "bin/seven-help-native")],
+            ["seven-help-native"],
+            [str(ROOT / "bin/seven-help"), "mini-os"],
+            ["seven-help", "mini-os"],
+        ]
+    )
+
+
+def launch_first(candidates: list[list[str]]) -> None:
     candidates = [
-        [str(ROOT / "bin/seven-help-native")],
-        ["seven-help-native"],
-        [str(ROOT / "bin/seven-help"), "mini-os"],
-        ["seven-help", "mini-os"],
+        command
+        for command in candidates
+        if command and ("/" not in command[0] or Path(command[0]).exists())
     ]
     for command in candidates:
-        if "/" in command[0] and not Path(command[0]).exists():
-            continue
         try:
             subprocess.Popen(command, cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
             return
         except Exception:
             continue
+
+
+def launch_command(*command: str) -> None:
+    launch_first([[str(ROOT / "bin" / command[0]), *command[1:]], list(command)])
+
+
+def theme_mode() -> str:
+    for path in (
+        Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/theme.conf",
+        ROOT / "config/theme.conf",
+    ):
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        if "light" in text or "latte" in text:
+            return tr("clair", "light")
+        if "dark" in text or "mocha" in text:
+            return tr("sombre", "dark")
+    return tr("automatique", "auto")
+
+
+def update_summary() -> tuple[str, str]:
+    if not shutil.which("python3"):
+        return tr("Update : prêt", "Update: ready"), "ready"
+    command = [str(ROOT / "scripts/update.sh"), "json"] if (ROOT / "scripts/update.sh").exists() else ["seven", "update", "json"]
+    try:
+        result = subprocess.run(
+            command,
+            cwd=str(ROOT),
+            env={**os.environ, "SEVENOS_UPDATE_FAST": "1", "SEVENOS_ROOT": str(ROOT)},
+            text=True,
+            capture_output=True,
+            timeout=2.0,
+            check=False,
+        )
+        if result.returncode == 0:
+            payload = json.loads(result.stdout or "{}")
+            state = str(payload.get("state") or "ready")
+            score = payload.get("score")
+            if state == "updates-available":
+                return tr("Mises à jour disponibles", "Updates available"), "attention"
+            if state == "partial":
+                return tr(f"Update : à vérifier ({score}%)", f"Update: review ({score}%)"), "attention"
+            return tr("Update : prêt", "Update: ready"), "ready"
+    except Exception:
+        pass
+    return tr("Update : vérification rapide", "Update: quick check"), "neutral"
 
 
 def probe() -> int:
@@ -227,6 +283,29 @@ def main() -> int:
             header.pack_start(title_box, True, True, 0)
             outer.pack_start(header, False, False, 0)
 
+            status_text, status_class = update_summary()
+            status_strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            status_strip.get_style_context().add_class("status-strip")
+            status_items = [
+                (tr("Langue", "Language"), "FR" if LANG == "fr" else "EN", "ready"),
+                (tr("Thème", "Theme"), theme_mode(), "neutral"),
+                (tr("Mini OS", "Mini OS"), self.active_profile.title(), "active"),
+                (tr("Mises à jour", "Updates"), status_text.replace("Update : ", "").replace("Update: ", ""), status_class),
+            ]
+            for label, value, css_class in status_items:
+                pill = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+                pill.get_style_context().add_class("status-pill")
+                pill.get_style_context().add_class(css_class)
+                small = Gtk.Label(label=label, xalign=0)
+                small.get_style_context().add_class("status-label")
+                strong = Gtk.Label(label=value, xalign=0)
+                strong.set_ellipsize(3)
+                strong.get_style_context().add_class("status-value")
+                pill.pack_start(small, False, False, 0)
+                pill.pack_start(strong, False, False, 0)
+                status_strip.pack_start(pill, True, True, 0)
+            outer.pack_start(status_strip, False, False, 0)
+
             scroller = Gtk.ScrolledWindow()
             scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
             scroller.set_shadow_type(Gtk.ShadowType.NONE)
@@ -257,7 +336,19 @@ def main() -> int:
             help_btn = Gtk.Button(label=tr("Ouvrir l'aide (Super+H)", "Open Help (Super+H)"))
             help_btn.get_style_context().add_class("primary")
             help_btn.connect("clicked", lambda *_: launch_help())
+            settings_btn = Gtk.Button(label=tr("Réglages", "Settings"))
+            settings_btn.get_style_context().add_class("secondary")
+            settings_btn.connect("clicked", lambda *_: (launch_command("seven-settings", "general"), Gtk.main_quit()))
+            profiles_btn = Gtk.Button(label=tr("Espaces", "Spaces"))
+            profiles_btn.get_style_context().add_class("secondary")
+            profiles_btn.connect("clicked", lambda *_: (launch_command("seven-profile-center-native"), Gtk.main_quit()))
+            update_btn = Gtk.Button(label=tr("Mise à jour", "Update"))
+            update_btn.get_style_context().add_class("secondary")
+            update_btn.connect("clicked", lambda *_: (launch_command("seven-settings", "updates"), Gtk.main_quit()))
             actions.pack_start(close_btn, False, False, 0)
+            actions.pack_start(settings_btn, False, False, 0)
+            actions.pack_start(profiles_btn, False, False, 0)
+            actions.pack_start(update_btn, False, False, 0)
             actions.pack_start(help_btn, False, False, 0)
             outer.pack_start(actions, False, False, 0)
 
@@ -334,6 +425,24 @@ def main() -> int:
     .profile-grid {
       margin-top: 2px;
     }
+    .status-strip {
+      padding: 8px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.105);
+    }
+    .status-pill {
+      min-height: 42px;
+      padding: 7px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.060);
+      border: 1px solid rgba(255,255,255,0.095);
+    }
+    .status-pill.active { border-color: rgba(156,203,255,0.36); background: rgba(77,163,255,0.10); }
+    .status-pill.ready { border-color: rgba(126,231,188,0.24); }
+    .status-pill.attention { border-color: rgba(255,204,102,0.40); background: rgba(255,204,102,0.10); }
+    .status-label { color: rgba(245,247,250,0.54); font-size: 10px; font-weight: 700; }
+    .status-value { color: rgba(255,255,255,0.94); font-size: 12px; font-weight: 800; }
     .profile-card {
       min-height: 88px;
       padding: 10px;

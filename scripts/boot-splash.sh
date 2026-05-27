@@ -7,6 +7,7 @@ source "$ROOT_DIR/scripts/lib.sh"
 THEME_SRC="$ROOT_DIR/branding/plymouth/sevenos"
 THEME_DST="/usr/share/plymouth/themes/sevenos"
 PLYMOUTH_CONF="/etc/plymouth/plymouthd.conf"
+GENERATED_SCRIPT="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos/plymouth/sevenos.script"
 CMDLINE_ARGS=(
   quiet
   splash
@@ -29,6 +30,7 @@ Usage:
 
 This installs the SevenOS Plymouth theme, enables quiet kernel parameters
 for systemd-boot/GRUB when detected, and refreshes initramfs.
+The installed script is generated in the active SevenOS language when possible.
 EOF
 }
 
@@ -86,15 +88,142 @@ ensure_plymouth() {
   fi
 }
 
+boot_language() {
+  local language="${SEVENOS_LANGUAGE:-${LANG:-}}"
+  local file
+  for file in \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.conf" \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" \
+    /etc/locale.conf \
+    "$ROOT_DIR/archiso/profile/airootfs/etc/locale.conf"; do
+    if [[ -z "$language" && -r "$file" ]]; then
+      language="$(awk -F= '/^(SEVENOS_LANGUAGE|LANG)=/{gsub(/["\047]/, "", $2); print $2; exit}' "$file" 2>/dev/null || true)"
+    fi
+  done
+  case "$language" in
+    fr*) printf 'fr' ;;
+    *) printf 'en' ;;
+  esac
+}
+
+boot_profile_key() {
+  local key="${SEVENOS_ACTIVE_PROFILE:-${SEVENOS_PROFILE:-}}"
+  local file
+  for file in \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env" \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile-ui.json" \
+    "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.json"; do
+    if [[ -z "$key" && -r "$file" ]]; then
+      case "$file" in
+        *.env)
+          key="$(awk -F= '/^SEVENOS_ACTIVE_PROFILE=/{gsub(/["\047]/, "", $2); print tolower($2); exit}' "$file" 2>/dev/null || true)"
+          ;;
+        *.json)
+          key="$(python - "$file" <<'PY' 2>/dev/null || true
+import json, sys
+from pathlib import Path
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+print(str(data.get("profile") or data.get("key") or "").lower())
+PY
+)"
+          ;;
+      esac
+    fi
+  done
+  case "$key" in
+    equinox|baobab|forge|shield|studio|windows|pulse) printf '%s\n' "$key" ;;
+    *) printf 'equinox\n' ;;
+  esac
+}
+
+boot_profile_title() {
+  local key="${1:-$(boot_profile_key)}"
+  local title=""
+  if [[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env" ]]; then
+    title="$(awk -F= '/^SEVENOS_PROFILE_TITLE=/{gsub(/["\047]/, "", $2); print $2; exit}' "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile.env" 2>/dev/null || true)"
+  fi
+  if [[ -z "$title" && -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile-ui.json" ]]; then
+    title="$(python - "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/profile-ui.json" <<'PY' 2>/dev/null || true
+import json, sys
+from pathlib import Path
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+print(str(data.get("title") or ""))
+PY
+)"
+  fi
+  if [[ -z "$title" && -r "$ROOT_DIR/profiles/catalog.json" ]]; then
+    title="$(python - "$ROOT_DIR/profiles/catalog.json" "$key" <<'PY' 2>/dev/null || true
+import json, sys
+from pathlib import Path
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+key = sys.argv[2]
+print(str(data.get("profile_naming", {}).get(key) or data.get("profiles", {}).get(key, {}).get("title") or ""))
+PY
+)"
+  fi
+  printf '%s\n' "${title:-Equinox Balance}"
+}
+
+generate_localized_script() {
+  local lang="$1"
+  local profile_key="${2:-$(boot_profile_key)}"
+  local profile_title="${3:-$(boot_profile_title "$profile_key")}"
+  local source="$THEME_SRC/sevenos.script"
+  local target="$GENERATED_SCRIPT"
+  mkdir -p "$(dirname "$target")"
+  BOOT_LANG="$lang" BOOT_PROFILE_KEY="$profile_key" BOOT_PROFILE_TITLE="$profile_title" python - "$source" "$target" <<'PY'
+from pathlib import Path
+import os
+import sys
+
+source = Path(sys.argv[1])
+target = Path(sys.argv[2])
+text = source.read_text(encoding="utf-8")
+lang = os.environ.get("BOOT_LANG", "en")
+profile_title = os.environ.get("BOOT_PROFILE_TITLE") or "Equinox Balance"
+profile_key = os.environ.get("BOOT_PROFILE_KEY") or "equinox"
+translations = {
+    "fr": {
+        "Mini OS · Equinox Balance": f"Mini OS · {profile_title}",
+        "Preparing SevenOS workspace": "Préparation de l’espace SevenOS",
+        "Loading mini OS surfaces": "Chargement des mini OS",
+        "Synchronizing Prism identity": "Synchronisation du Prism",
+        "Personalizing active Mini OS": "Personnalisation du Mini OS actif",
+        "Kernel quiet mode": "Mode silencieux du noyau",
+        "Prism runtime": "Runtime Prism",
+        "Ready": "Prêt",
+        "Welcome back": "Bon retour",
+    },
+    "en": {
+        "Mini OS · Equinox Balance": f"Mini OS · {profile_title}",
+    },
+}
+for src, dst in translations.get(lang, {}).items():
+    text = text.replace(src, dst)
+if lang not in translations or "Mini OS · Equinox Balance" in text:
+    text = text.replace("Mini OS · Equinox Balance", f"Mini OS · {profile_title}")
+text = text.replace("BOOT_PROFILE_KEY=equinox", f"BOOT_PROFILE_KEY={profile_key}")
+target.write_text(text, encoding="utf-8")
+PY
+  printf '%s\n' "$target"
+}
+
 install_theme() {
   if [[ ! -d "$THEME_SRC" ]]; then
     log_error "Missing Plymouth theme source: $THEME_SRC"
     return 1
   fi
+  local lang profile_key profile_title generated_script
+  lang="$(boot_language)"
+  profile_key="$(boot_profile_key)"
+  profile_title="$(boot_profile_title "$profile_key")"
+  generated_script="$(generate_localized_script "$lang" "$profile_key" "$profile_title")"
   log_info "Installing SevenOS Plymouth theme"
+  log_info "Boot splash language: $lang"
+  log_info "Boot splash Mini OS: $profile_title"
   need_root_command install -d "$THEME_DST"
   need_root_command install -m 0644 "$THEME_SRC/sevenos.plymouth" "$THEME_DST/sevenos.plymouth"
-  need_root_command install -m 0644 "$THEME_SRC/sevenos.script" "$THEME_DST/sevenos.script"
+  need_root_command install -m 0644 "$generated_script" "$THEME_DST/sevenos.script"
   need_root_command install -m 0644 "$THEME_SRC/seven-prism.png" "$THEME_DST/seven-prism.png"
 }
 
@@ -363,9 +492,14 @@ update_kernel_cmdline_file() {
 }
 
 status() {
+  local profile_key profile_title
+  profile_key="$(boot_profile_key)"
+  profile_title="$(boot_profile_title "$profile_key")"
   printf 'SevenOS Boot Splash\n'
   printf 'Theme source: %s\n' "$([[ -d "$THEME_SRC" ]] && printf OK || printf MISS)"
   printf 'Prism asset:   %s\n' "$([[ -s "$THEME_SRC/seven-prism.png" ]] && printf OK || printf MISS)"
+  printf 'Language:      %s\n' "$(boot_language)"
+  printf 'Mini OS:       %s (%s)\n' "$profile_title" "$profile_key"
   printf 'Plymouth:     %s\n' "$(command -v plymouth >/dev/null 2>&1 && printf OK || printf MISS)"
   printf 'Theme active: '
   if command -v plymouth-set-default-theme >/dev/null 2>&1; then
@@ -455,6 +589,12 @@ doctor() {
   doctor_check_text "Script exposes a refresh callback" 'Plymouth.SetRefreshFunction' "$script_file" || failed=1
   doctor_check_text "Script exposes a ready callback" 'Plymouth.SetQuitFunction' "$script_file" || failed=1
   doctor_check_text "Script keeps SevenOS as boot brand" 'Image.Text("SevenOS"' "$script_file" || failed=1
+  doctor_check_text "Script cycles localized progress messages" 'Synchronizing Prism identity' "$script_file" || failed=1
+  doctor_check_text "Script exposes active Mini OS chip" 'Mini OS · Equinox Balance' "$script_file" || failed=1
+  doctor_check_text "Script exposes calm boot status rails" 'Kernel quiet mode' "$script_file" || failed=1
+  doctor_check_text "Installer generates localized Plymouth script" 'generate_localized_script' "$0" || failed=1
+  doctor_check_text "Installer detects boot language" 'boot_language' "$0" || failed=1
+  doctor_check_text "Installer injects active Mini OS identity" 'boot_profile_title' "$0" || failed=1
   doctor_check_text "Installer copies the Prism asset" 'seven-prism.png' "$0" || failed=1
   doctor_check_text "Installer explains non-interactive sudo" 'no interactive password prompt' "$0" || failed=1
   doctor_check_text "Installer writes zero splash delay" 'ShowDelay=0' "$0" || failed=1

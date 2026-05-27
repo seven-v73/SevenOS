@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F7FBFF"/>
+      <stop offset="46%" stop-color="#AEC2DB"/>
+      <stop offset="100%" stop-color="#526A8F"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="18%" cy="12%" r="76%">
+      <stop offset="0%" stop-color="#C48F73" stop-opacity="0.44"/>
+      <stop offset="55%" stop-color="#44D4B6" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#526A8F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="86%" cy="18%" r="60%">
+      <stop offset="0%" stop-color="#44D4B6" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#526A8F" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="34"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.74" numOctaves="2" seed="294"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 0.050"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#glowA)"/>
+  <rect width="1920" height="1080" fill="url(#glowB)"/>
+  <circle cx="1544" cy="174" r="109" fill="#8FC9FF" opacity="0.2" filter="url(#soft)"/>
+  <path d="M -80 538.2 C 190 594.9, 300 554.9, 460 658.4 C 730 644.2, 840 604.2, 1000 571.1 C 1270 536.5, 1380 496.5, 1540 586.5 C 1810 654.4, 1920 614.4, 2080 649.9 L 2020 1080 L -80 1080 Z" fill="#5D6E8C" opacity="0.800"/>
+<path d="M -80 660.3 C 190 724.2, 300 684.2, 460 726.5 C 730 664.3, 840 624.3, 1000 620.3 C 1270 653.1, 1380 613.1, 1540 719.1 C 1810 730.3, 1920 690.3, 2080 671.9 L 2020 1080 L -80 1080 Z" fill="#67718A" opacity="0.700"/>
+<path d="M -80 789.1 C 190 804.9, 300 764.9, 460 755.5 C 730 706.8, 840 666.8, 1000 723.6 C 1270 783.5, 1380 743.5, 1540 806.8 C 1810 762.5, 1920 722.5, 2080 709.5 L 2020 1080 L -80 1080 Z" fill="#707488" opacity="0.600"/>
+<path d="M -80 879.7 C 190 844.1, 300 804.1, 460 795.1 C 730 797.9, 840 757.9, 1000 848.8 C 1270 880.0, 1380 840.0, 1540 850.0 C 1810 798.7, 1920 758.7, 2080 794.4 L 2020 1080 L -80 1080 Z" fill="#797785" opacity="0.500"/>
+  <path d="M -80 769.4 C 190 806.7, 300 766.7, 460 848.3 C 730 839.0, 840 799.0, 1000 791.0 C 1270 768.3, 1380 728.3, 1540 801.1 C 1810 845.7, 1920 805.7, 2080 842.8 L 2020 1080 L -80 1080 Z" fill="#526A8F" opacity="0.32"/>
+  <path d="M100 880 C420 828,680 905,980 840 C1260 780,1510 850,1840 790" fill="none" stroke="#C48F73" stroke-opacity="0.16" stroke-width="3"/>
+
+    <g opacity="0.160">
+      <polygon points="1720.0,742.0 1787.5,781.0 1787.5,859.0 1720.0,898.0 1652.5,859.0 1652.5,781.0" fill="#FFFFFF" fill-opacity="0.030" stroke="#C48F73" stroke-opacity="0.45" stroke-width="2.4"/>
+      <line x1="1720" y1="820" x2="1720.0" y2="742.0" stroke="#44D4B6" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1787.5" y2="781.0" stroke="#44D4B6" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1787.5" y2="859.0" stroke="#44D4B6" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1720.0" y2="898.0" stroke="#44D4B6" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1652.5" y2="859.0" stroke="#44D4B6" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1652.5" y2="781.0" stroke="#44D4B6" stroke-opacity="0.061" stroke-width="2"/>
+      <circle cx="1720" cy="820" r="6" fill="#FFFFFF" fill-opacity="0.55"/>
+    </g>
+
+  <rect width="1920" height="1080" filter="url(#grain)" opacity="0.65"/>
+</svg>

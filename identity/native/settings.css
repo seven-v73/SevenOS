@@ -47,7 +47,7 @@
     .settings-dialog-content {
       color: @seven_text;
       background:
-        linear-gradient(135deg, alpha(@seven_panel, 0.96), alpha(@seven_panel_2, 0.88)),
+        linear-gradient(135deg, @seven_panel, @seven_panel_2),
         radial-gradient(circle at 90% 4%, alpha(@seven_accent, 0.10), transparent 34%);
       border: 1px solid @seven_border;
       border-radius: 22px;
@@ -62,9 +62,31 @@
     .settings-dialog.theme-light .settings-dialog-content {
       color: @seven_text;
       background:
-        radial-gradient(circle at 88% 0%, alpha(@seven_accent, 0.10), transparent 35%),
-        linear-gradient(135deg, @seven_panel, @seven_panel_2 58%, @seven_bg);
-      border-color: alpha(@seven_text, 0.11);
+        radial-gradient(circle at 88% 0%, alpha(@seven_accent, 0.055), transparent 34%),
+        linear-gradient(135deg, @seven_panel, @seven_bg);
+      border-color: alpha(@seven_border, 0.82);
+    }
+    .settings-dialog.theme-dark .account-dialog-content {
+      background:
+        radial-gradient(circle at 88% 0%, alpha(@seven_accent, 0.12), transparent 34%),
+        linear-gradient(135deg, alpha(@seven_panel, 0.76), alpha(@seven_bg, 0.74));
+      border-color: alpha(@seven_border, 0.72);
+    }
+    .settings-dialog.theme-light .account-dialog-content {
+      background:
+        radial-gradient(circle at 88% 0%, alpha(@seven_accent, 0.045), transparent 34%),
+        linear-gradient(135deg, @seven_panel, @seven_bg);
+      border-color: alpha(@seven_accent, 0.14);
+    }
+    .settings-dialog scrolledwindow,
+    .settings-dialog scrolledwindow viewport,
+    .settings-dialog viewport,
+    .settings-dialog list,
+    .settings-dialog list row,
+    .settings-dialog .view {
+      background: transparent;
+      background-color: transparent;
+      color: @seven_text;
     }
     .settings-dialog-actions {
       padding: 8px 12px 12px 12px;
@@ -192,16 +214,31 @@
     }
     .account-list {
       border-radius: 18px;
-      background: @seven_panel;
+      background: transparent;
       border: 1px solid @seven_border;
+    }
+    .account-list row,
+    .account-list row:selected,
+    .account-list row:hover {
+      background: transparent;
+      background-color: transparent;
+      color: @seven_text;
     }
     .account-row {
       min-height: 52px;
       padding: 9px 11px;
       border-bottom: 1px solid alpha(@seven_border, 0.66);
+      background: transparent;
     }
     .account-row:hover { background: @seven_hover; }
     row:last-child .account-row { border-bottom: 0; }
+    .account-dialog-content .account-list {
+      background: transparent;
+      border-color: alpha(@seven_border, 0.38);
+    }
+    .account-dialog-content .account-row {
+      background: transparent;
+    }
     .nav-button {
       min-height: 36px;
       padding: 0 10px;
@@ -573,14 +610,22 @@
     .settings-dialog.theme-dark .action-step-list,
     .settings-dialog.theme-dark .account-list,
     .settings-dialog.theme-dark .update-summary-panel {
-      background: alpha(@seven_panel_2, 0.82);
-      border-color: alpha(@seven_text, 0.10);
+      background:
+        linear-gradient(135deg, alpha(@seven_panel, 0.52), alpha(@seven_panel_2, 0.34)),
+        alpha(@seven_bg, 0.18);
+      border-color: alpha(@seven_border, 0.72);
     }
     .settings-dialog.theme-light .action-step-list,
     .settings-dialog.theme-light .account-list,
     .settings-dialog.theme-light .update-summary-panel {
-      background: alpha(@seven_panel, 0.82);
-      border-color: alpha(@seven_text, 0.09);
+      background:
+        radial-gradient(circle at 92% 0%, alpha(@seven_accent, 0.035), transparent 36%),
+        linear-gradient(135deg, @seven_panel, @seven_bg);
+      border-color: alpha(@seven_border, 0.52);
+    }
+    .settings-dialog.theme-light .account-dialog-content .account-list,
+    .settings-dialog.theme-dark .account-dialog-content .account-list {
+      background: transparent;
     }
     .action-step-state {
       color: @seven_muted;
@@ -593,13 +638,18 @@
     }
     .settings-dialog.theme-dark .update-row,
     .settings-dialog.theme-dark .account-row {
-      background: alpha(@seven_text, 0.015);
-      border-bottom-color: alpha(@seven_text, 0.08);
+      background: alpha(@seven_panel_2, 0.12);
+      border-bottom-color: alpha(@seven_border, 0.48);
     }
     .settings-dialog.theme-light .update-row,
     .settings-dialog.theme-light .account-row {
-      background: alpha(@seven_panel, 0.30);
-      border-bottom-color: alpha(@seven_text, 0.08);
+      background: transparent;
+      border-bottom-color: alpha(@seven_border, 0.40);
+    }
+    .settings-dialog.theme-light .account-dialog-content .account-row,
+    .settings-dialog.theme-dark .account-dialog-content .account-row {
+      background: transparent;
+      border-bottom-color: alpha(@seven_border, 0.30);
     }
     .update-row:hover {
       background: @seven_hover;
@@ -658,8 +708,7 @@
       padding: 11px 12px;
       border-radius: 17px;
       background:
-        linear-gradient(135deg, alpha(@seven_panel_2, 0.74), alpha(@seven_accent, 0.08)),
-        alpha(@seven_panel, 0.70);
+        linear-gradient(135deg, @seven_panel, alpha(@seven_accent, 0.06));
       border: 1px solid alpha(@seven_border, 0.86);
     }
     .update-total-value {

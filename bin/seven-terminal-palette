@@ -26,6 +26,11 @@ resolve_root() {
 
 ROOT_DIR="$(resolve_root)"
 
+lang_is_fr() {
+  local lang="${SEVENOS_LANGUAGE:-${LANG:-}}"
+  [[ "${lang,,}" == fr* ]]
+}
+
 last_history_command() {
   local history_file="${HISTFILE:-$HOME/.bash_history}"
   if [[ -r "$history_file" ]]; then
@@ -57,21 +62,39 @@ run_terminal() {
 }
 
 actions() {
-  cat <<'EOF'
+  if lang_is_fr; then
+    cat <<'EOF'
+Ouvrir le dossier courant	Ouvrir ce dossier dans Seven Files
+Copier le chemin courant	Copier le dossier de travail
+Copier la dernière commande	Copier la dernière commande shell
+Expliquer la dernière commande	Demander à SevenAI d’expliquer la commande ou l’erreur
+Doctor terminal	Afficher l’état de Seven Terminal
+Doctor système	Lancer les diagnostics SevenOS
+Basculer: Equinox	Ouvrir le terminal du mini OS actif
+Basculer: Forge	Ouvrir le terminal développement
+Basculer: Shield	Ouvrir le terminal sécurité et réseau
+Basculer: Focus	Ouvrir le terminal calme
+Basculer: Admin	Ouvrir le terminal système prudent
+Thème: Sombre	Appliquer le thème sombre SevenOS
+Thème: Clair	Appliquer le thème clair SevenOS
+EOF
+  else
+    cat <<'EOF'
 Open Current Folder	Open the current directory in Seven Files
 Copy Current Path	Copy the current working directory
 Copy Last Command	Copy the last shell history command
 Explain Last Command	Ask SevenAI to explain the last command or error
 Terminal Doctor	Show Seven Terminal status and checks
 System Doctor	Run SevenOS post-install diagnostics
-Switch: Classic	Open daily SevenOS terminal
+Switch: Equinox	Open the active mini OS terminal
 Switch: Forge	Open development terminal
-Switch: Cyber	Open security and network terminal
+Switch: Shield	Open security and network terminal
 Switch: Focus	Open quiet focus terminal
 Switch: Admin	Open cautious system-control terminal
 Theme: Dark	Apply SevenOS dark theme
 Theme: Light	Apply SevenOS light theme
 EOF
+  fi
 }
 
 choose_action() {
@@ -81,7 +104,10 @@ choose_action() {
   fi
 
   if command -v rofi >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
-    actions | rofi -dmenu -i -p "Seven Terminal" -mesg "Actions rapides pour le terminal" -theme "$ROOT_DIR/hyprland/rofi/spotlight.rasi" 2>/dev/null || true
+    local message
+    message="Quick actions for Seven Terminal"
+    lang_is_fr && message="Actions rapides pour Seven Terminal"
+    actions | rofi -dmenu -i -p "Seven Terminal" -mesg "$message" -theme "$ROOT_DIR/hyprland/rofi/spotlight.rasi" 2>/dev/null || true
   else
     actions
   fi
@@ -93,10 +119,10 @@ if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
 fi
 selection="$(choose_action)"
 case "$selection" in
-  "Open Current Folder"*) seven-files "${PWD:-$HOME}" ;;
-  "Copy Current Path"*) copy_text "${PWD:-$HOME}" ;;
-  "Copy Last Command"*) copy_text "$(last_history_command)" ;;
-  "Explain Last Command"*)
+  "Open Current Folder"*|"Ouvrir le dossier courant"*) seven-files "${PWD:-$HOME}" ;;
+  "Copy Current Path"*|"Copier le chemin courant"*) copy_text "${PWD:-$HOME}" ;;
+  "Copy Last Command"*|"Copier la dernière commande"*) copy_text "$(last_history_command)" ;;
+  "Explain Last Command"*|"Expliquer la dernière commande"*)
     last="$(last_history_command)"
     if [[ -n "$last" ]]; then
       run_terminal "SevenAI Terminal" "seven ai \"explique cette commande terminal et les risques possibles: $last\"; printf '\nPress Enter to close...'; read -r"
@@ -104,14 +130,14 @@ case "$selection" in
       run_terminal "SevenAI Terminal" "seven ai terminal; printf '\nPress Enter to close...'; read -r"
     fi
     ;;
-  "Terminal Doctor"*) run_terminal "Seven Terminal Doctor" "seven-terminal status; printf '\n'; seven identity visuals; printf '\nPress Enter to close...'; read -r" ;;
-  "System Doctor"*) run_terminal "SevenOS Doctor" "seven post-install; printf '\nPress Enter to close...'; read -r" ;;
-  "Switch: Classic"*) seven-terminal classic ;;
-  "Switch: Forge"*) seven-terminal forge ;;
-  "Switch: Cyber"*) seven-terminal cyber ;;
-  "Switch: Focus"*) seven-terminal focus ;;
-  "Switch: Admin"*) seven-terminal admin ;;
-  "Theme: Dark"*) "$ROOT_DIR/install.sh" theme dark ;;
-  "Theme: Light"*) "$ROOT_DIR/install.sh" theme light ;;
+  "Terminal Doctor"*|"Doctor terminal"*) run_terminal "Seven Terminal Doctor" "seven-terminal status; printf '\n'; seven identity visuals; printf '\nPress Enter to close...'; read -r" ;;
+  "System Doctor"*|"Doctor système"*) run_terminal "SevenOS Doctor" "seven post-install; printf '\nPress Enter to close...'; read -r" ;;
+  "Switch: Equinox"*|"Basculer: Equinox"*) seven-terminal ;;
+  "Switch: Forge"*|"Basculer: Forge"*) seven-terminal forge ;;
+  "Switch: Shield"*|"Switch: Cyber"*|"Basculer: Shield"*) seven-terminal cyber ;;
+  "Switch: Focus"*|"Basculer: Focus"*) seven-terminal focus ;;
+  "Switch: Admin"*|"Basculer: Admin"*) seven-terminal admin ;;
+  "Theme: Dark"*|"Thème: Sombre"*) "$ROOT_DIR/install.sh" theme dark ;;
+  "Theme: Light"*|"Thème: Clair"*) "$ROOT_DIR/install.sh" theme light ;;
   ""|*) exit 0 ;;
 esac

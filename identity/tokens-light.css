@@ -123,6 +123,30 @@
   --seven-folder-media: var(--cat-peach);
   --seven-folder-studio: #6A5CFF;
   --seven-folder-cloud: var(--cat-sky);
+
+  /* SevenOS Comfort Glass runtime layer.
+     Compatibility tokens above stay stable for older checks, while newer
+     light surfaces use these values to avoid both glare and flat grey panels. */
+  --comfort-light-bg: #F6F9FD;
+  --comfort-light-panel: #FAFCFF;
+  --comfort-light-panel-2: #F3F7FC;
+  --comfort-light-panel-3: #ECF3FC;
+  --comfort-light-sidebar: #F8FBFF;
+  --comfort-light-text: #20283A;
+  --comfort-light-muted: #667287;
+  --comfort-light-border: rgba(54, 76, 112, 0.12);
+  --comfort-light-shadow: rgba(50, 67, 98, 0.16);
+  --soft-latte-bg: var(--comfort-light-bg);
+  --soft-latte-panel: var(--comfort-light-panel);
+  --soft-latte-panel-2: var(--comfort-light-panel-2);
+  --soft-latte-panel-3: var(--comfort-light-panel-3);
+  --soft-latte-sidebar: var(--comfort-light-sidebar);
+  --soft-latte-text: var(--comfort-light-text);
+  --soft-latte-muted: var(--comfort-light-muted);
+  --soft-latte-border: var(--comfort-light-border);
+  --soft-latte-shadow: var(--comfort-light-shadow);
+  --soft-latte-blue: #4D7FE6;
+  --soft-latte-violet: #756CE0;
 }
 
 @keyframes breathe {

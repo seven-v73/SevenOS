@@ -7,10 +7,11 @@ import json
 import os
 import subprocess
 import sys
+import math
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-from seven_i18n import language_code, tr_text  # noqa: E402
+from seven_i18n import language_code, tr_text  # noqa: E402,F401
 import seven_theme  # noqa: E402
 LANG_CODE = language_code()
 
@@ -66,6 +67,15 @@ def load_catalog() -> dict:
         return {}
 
 
+def load_profile_themes() -> dict:
+    try:
+        data = json.loads((ROOT / "identity/profile-themes.json").read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    profiles = data.get("profiles", {}) if isinstance(data, dict) else {}
+    return profiles if isinstance(profiles, dict) else {}
+
+
 def compact_list(items, limit: int = 3) -> str:
     values = [str(item) for item in (items or []) if str(item).strip()]
     if not values:
@@ -103,13 +113,89 @@ def state_class(state: str) -> str:
     return {"OK": "good", "PART": "warn", "MISS": "bad"}.get(state, "warn")
 
 
-PUBLIC_PROFILE_NOTES = {
-    "equinox": t("Bureau quotidien, fichiers, apps et réglages.", "Daily desktop, files, apps and settings."),
-    "baobab": t("Culture, lecture, collections et mémoire locale.", "Culture, reading, collections and local memory."),
-    "studio": t("Images, vidéos, captures et exports.", "Pictures, videos, captures and exports."),
-    "windows": t("Applications Windows et dossiers partagés.", "Windows applications and shared folders."),
-    "pulse": t("Jeux, captures et confort de jeu.", "Games, captures and gaming comfort."),
+LOCALIZED_PROFILE_TEXT = {
+    "equinox": {
+        "title": t("Equinox Balance", "Equinox Balance"),
+        "short": t("Équilibre", "Balance"),
+        "note": t("Bureau quotidien, fichiers, applications et réglages.", "Daily desktop, files, applications and settings."),
+        "mood": t(
+            "Sommet central de SevenOS : il orchestre les réglages, les ressources partagées et le bureau de tous les jours.",
+            "SevenOS central vertex: it orchestrates settings, shared resources and the everyday desktop.",
+        ),
+    },
+    "baobab": {
+        "title": t("Baobab Culturel", "Baobab Cultural OS"),
+        "short": t("Culture", "Culture"),
+        "note": t("Culture, lecture, collections et mémoire locale.", "Culture, reading, collections and local memory."),
+        "mood": t(
+            "Espace calme pour lire, organiser, archiver et préserver les savoirs personnels ou communautaires.",
+            "A calm space for reading, organizing, archiving and preserving personal or community knowledge.",
+        ),
+    },
+    "forge": {
+        "title": t("Forge DevOps", "Forge DevOps"),
+        "short": t("DevOps", "DevOps"),
+        "note": t("Code, services locaux, conteneurs et déploiement.", "Code, local services, containers and deployment."),
+        "mood": t(
+            "Espace développeur pour construire, tester, héberger localement et publier les projets SevenOS.",
+            "Developer space for building, testing, hosting locally and publishing SevenOS projects.",
+        ),
+    },
+    "shield": {
+        "title": t("Shield Cybersécurité", "Shield Cybersecurity"),
+        "short": t("Sécurité", "Security"),
+        "note": t("Audit, défense, durcissement et outils cybersécurité.", "Auditing, defense, hardening and cybersecurity tools."),
+        "mood": t(
+            "Espace isolé pour les analyses sécurité, avec des outils explicites et un périmètre contrôlé.",
+            "An isolated space for security analysis, with explicit tools and a controlled perimeter.",
+        ),
+    },
+    "studio": {
+        "title": t("Studio Création", "Studio Creator"),
+        "short": t("Création", "Creation"),
+        "note": t("Images, vidéos, audio, captures et exports.", "Pictures, videos, audio, captures and exports."),
+        "mood": t(
+            "Espace créatif pour produire, capturer, éditer et retrouver les exports sans mélanger le bureau quotidien.",
+            "Creative space for producing, capturing, editing and finding exports without mixing the daily desktop.",
+        ),
+    },
+    "windows": {
+        "title": t("Windows", "Windows"),
+        "short": t("Compatibilité", "Compatibility"),
+        "note": t("Applications Windows, Wine/Proton et dossiers partagés.", "Windows applications, Wine/Proton and shared folders."),
+        "mood": t(
+            "Espace de compatibilité pour lancer les logiciels Windows et garder leurs données au bon endroit.",
+            "Compatibility space for launching Windows software and keeping its data in the right place.",
+        ),
+    },
+    "pulse": {
+        "title": t("Pulse Gaming", "Pulse Gaming"),
+        "short": t("Jeu", "Gaming"),
+        "note": t("Jeux, Proton, Vulkan, captures et confort de jeu.", "Games, Proton, Vulkan, captures and gaming comfort."),
+        "mood": t(
+            "Espace jeu pour les lanceurs, les performances, les overlays et les captures, séparé du reste.",
+            "Gaming space for launchers, performance, overlays and captures, separated from everything else.",
+        ),
+    },
 }
+
+
+def localized_profile_title(key: str, fallback: str | None = None) -> str:
+    values = LOCALIZED_PROFILE_TEXT.get(key, {})
+    return str(values.get("title") or fallback or key.title())
+
+
+def localized_profile_note(key: str, fallback: str | None = None) -> str:
+    values = LOCALIZED_PROFILE_TEXT.get(key, {})
+    return str(values.get("note") or fallback or "")
+
+
+def localized_profile_mood(key: str, fallback: str | None = None) -> str:
+    values = LOCALIZED_PROFILE_TEXT.get(key, {})
+    return str(values.get("mood") or fallback or localized_profile_note(key))
+
+
+PUBLIC_PROFILE_NOTES = {key: localized_profile_note(key) for key in LOCALIZED_PROFILE_TEXT}
 
 
 PUBLIC_PROFILE_DETAILS = {
@@ -155,7 +241,7 @@ def run() -> int:
     from gi.repository import Gdk, GLib, Gtk
 
     GLib.set_prgname("SevenProfileCenterNative")
-    GLib.set_application_name(tr_text("Espaces SevenOS"))
+    GLib.set_application_name(t("Espaces SevenOS", "SevenOS Spaces"))
     try:
         Gdk.set_program_class("SevenProfileCenterNative")
     except Exception:
@@ -288,6 +374,113 @@ def run() -> int:
       border: 1px solid rgba(255,255,255,0.09);
     }
     .icon-action:hover { background: rgba(255,255,255,0.14); }
+    .prism-panel {
+      padding: 14px;
+      border-radius: 20px;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(139,124,255,0.18), transparent 34%),
+        radial-gradient(circle at 20% 44%, rgba(166,227,161,0.10), transparent 28%),
+        radial-gradient(circle at 80% 48%, rgba(148,226,213,0.10), transparent 30%),
+        rgba(255,255,255,0.032);
+      border: 1px solid rgba(255,255,255,0.095);
+    }
+    .prism-title { color: @seven_text; font-size: 13px; font-weight: 500; }
+    .prism-note { color: @seven_muted; font-size: 11px; }
+    .prism-wordmark {
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: rgba(245,247,250,0.92);
+      background:
+        linear-gradient(135deg, rgba(77,163,255,0.20), rgba(122,92,255,0.16), rgba(0,212,255,0.14)),
+        rgba(255,255,255,0.045);
+      border: 1px solid rgba(137,180,250,0.24);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .prism-stage {
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.038), rgba(255,255,255,0.018)),
+        rgba(255,255,255,0.020);
+      border: 1px solid rgba(255,255,255,0.065);
+    }
+    .prism-node {
+      min-width: 138px;
+      min-height: 58px;
+      padding: 7px 10px;
+      border-radius: 16px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.082), rgba(255,255,255,0.040)),
+        rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.115);
+      color: @seven_text;
+    }
+    .prism-node:hover {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.058)),
+        rgba(255,255,255,0.060);
+      border-color: rgba(137,180,250,0.38);
+    }
+    .prism-node.active {
+      background:
+        linear-gradient(135deg, rgba(139,124,255,0.30), rgba(110,168,255,0.16)),
+        rgba(255,255,255,0.065);
+      border-color: rgba(139,124,255,0.55);
+    }
+    .prism-node.selected {
+      background:
+        linear-gradient(135deg, rgba(77,163,255,0.20), rgba(122,92,255,0.16), rgba(0,212,255,0.11)),
+        rgba(255,255,255,0.070);
+      border-color: rgba(77,163,255,0.48);
+    }
+    .prism-node.switching {
+      background:
+        radial-gradient(circle at 50% 50%, alpha(@seven_accent, 0.28), transparent 56%),
+        linear-gradient(135deg, rgba(77,163,255,0.28), rgba(122,92,255,0.20), rgba(0,212,255,0.16)),
+        rgba(255,255,255,0.080);
+      border-color: alpha(@seven_accent, 0.72);
+    }
+    .prism-node.equinox {
+      min-width: 166px;
+      min-height: 66px;
+      border-color: rgba(139,124,255,0.52);
+    }
+    .prism-node.baobab { border-color: rgba(166,227,161,0.36); }
+    .prism-node.forge { border-color: rgba(137,180,250,0.40); }
+    .prism-node.shield { border-color: rgba(148,226,213,0.38); }
+    .prism-node.studio { border-color: rgba(245,194,231,0.34); }
+    .prism-node.windows { border-color: rgba(116,199,236,0.34); }
+    .prism-node.pulse { border-color: rgba(166,227,161,0.34); }
+    .node-glyph { font-size: 20px; min-width: 24px; color: rgba(245,247,250,0.94); }
+    .node-title { font-size: 11px; font-weight: 500; color: @seven_text; }
+    .node-note { font-size: 10px; color: @seven_muted; }
+    .prism-inspector {
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.085);
+    }
+    .inspector-title { color: @seven_text; font-size: 13px; font-weight: 500; }
+    .inspector-note { color: @seven_muted; font-size: 11px; }
+    .inspector-actions { padding-top: 6px; }
+    .inspector-action {
+      min-height: 31px;
+      padding: 5px 10px;
+      border-radius: 10px;
+      color: @seven_text;
+      background: rgba(255,255,255,0.052);
+      border: 1px solid rgba(255,255,255,0.095);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .inspector-action:hover {
+      background: rgba(137,180,250,0.14);
+      border-color: rgba(137,180,250,0.26);
+    }
+    .inspector-action.primary {
+      background: linear-gradient(135deg, rgba(77,163,255,0.24), rgba(122,92,255,0.20));
+      border-color: rgba(137,180,250,0.32);
+    }
     """
     if seven_theme.current_theme_mode() == "light":
         css += """
@@ -300,17 +493,17 @@ def run() -> int:
         }
         .title, .section-title, .tile, .layer-name, .tile-title { color: rgba(28,31,38,0.96); }
         .subtitle, .section-note, .layer-value, .tile-note, .alias-note { color: rgba(28,31,38,0.58); }
-        .pill, .window-action, .icon-action {
+        .pill, .window-action, .icon-action, .inspector-action {
           color: rgba(28,31,38,0.86);
           background: rgba(255,255,255,0.66);
           border-color: rgba(28,31,38,0.08);
         }
-        .window-action:hover, .icon-action:hover {
+        .window-action:hover, .icon-action:hover, .inspector-action:hover {
           color: rgba(28,31,38,0.96);
           background: rgba(47,123,255,0.10);
           border-color: rgba(47,123,255,0.18);
         }
-        .section, .layer-card, .tile, .action-strip {
+        .section, .layer-card, .tile, .action-strip, .prism-panel, .prism-stage, .prism-inspector {
           background:
             linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.52)),
             rgba(255,255,255,0.50);
@@ -326,6 +519,12 @@ def run() -> int:
         }
         .alias-title, .danger-note { color: rgba(123,82,0,0.86); }
         .glyph { color: rgba(28,31,38,0.82); }
+        .node-glyph { color: rgba(28,31,38,0.84); }
+        .prism-wordmark {
+          color: rgba(28,31,38,0.90);
+          background: rgba(47,123,255,0.08);
+          border-color: rgba(47,123,255,0.16);
+        }
         """
     provider = Gtk.CssProvider()
     provider.load_from_data(css.encode("utf-8"))
@@ -336,15 +535,16 @@ def run() -> int:
     isolation = run_json("profile", "isolation", "status", "--json")
     migration = run_json("profile", "migrate-aliases", "--json")
     catalog = load_catalog()
+    theme_profiles = load_profile_themes()
     active = next((item for item in profiles if item.get("active")), None)
 
-    window = Gtk.Window(title=tr_text("Espaces SevenOS"))
+    window = Gtk.Window(title=t("Espaces SevenOS", "SevenOS Spaces"))
     window.set_wmclass("SevenProfileCenterNative", "SevenProfileCenterNative")
     window.set_decorated(False)
     window.set_resizable(False)
     window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(860, 640)
+    window.set_default_size(940, 650)
     window.get_style_context().add_class("profile-center-window")
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -355,26 +555,26 @@ def run() -> int:
     topbar.get_style_context().add_class("topbar")
     root.pack_start(topbar, False, False, 0)
 
-    title = Gtk.Label(label=tr_text("Espaces SevenOS"), xalign=0)
+    title = Gtk.Label(label=t("Espaces SevenOS", "SevenOS Spaces"), xalign=0)
     title.get_style_context().add_class("title")
     topbar.pack_start(title, True, True, 0)
     controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     topbar.pack_end(controls, False, False, 0)
-    count_pill = Gtk.Label(label=tr_text("{count} espaces", count=str(len(profiles))))
+    count_pill = Gtk.Label(label=t("{count} espaces", "{count} spaces").format(count=str(len(profiles))))
     count_pill.get_style_context().add_class("pill")
     controls.pack_start(count_pill, False, False, 0)
-    settings_button = Gtk.Button(label=tr_text("Réglages"))
+    settings_button = Gtk.Button(label=t("Réglages", "Settings"))
     settings_button.get_style_context().add_class("window-action")
     settings_button.connect("clicked", lambda _button: run_detached("seven-settings profiles"))
     controls.pack_start(settings_button, False, False, 0)
-    close_button = Gtk.Button(label=tr_text("Fermer"))
+    close_button = Gtk.Button(label=t("Fermer", "Close"))
     close_button.get_style_context().add_class("window-action")
     close_button.connect("clicked", lambda _button: Gtk.main_quit())
     controls.pack_start(close_button, False, False, 0)
 
-    active_label = active.get("title", tr_text("None")) if active else tr_text("None")
     active_key = str(active.get("key", "")) if active else ""
-    subtitle_text = tr_text("Espace actif: {profile}", profile=active_label)
+    active_label = localized_profile_title(active_key, str(active.get("title") or "")) if active else t("Aucun", "None")
+    subtitle_text = t("Espace actif : {profile}", "Active space: {profile}").format(profile=active_label)
     if active_key in PUBLIC_PROFILE_NOTES:
         subtitle_text += f" · {PUBLIC_PROFILE_NOTES[active_key]}"
     subtitle = Gtk.Label(label=subtitle_text, xalign=0)
@@ -384,60 +584,32 @@ def run() -> int:
     if isinstance(migration, dict) and int(migration.get("pending") or 0) > 0:
         root.pack_start(alias_migration_panel(Gtk, migration), False, False, 0)
 
-    if active_key in PUBLIC_PROFILE_DETAILS:
-        root.pack_start(public_profile_panel(Gtk, active_key), False, False, 0)
-    else:
-        composition = composition_panel(Gtk, runtime if isinstance(runtime, dict) else {}, isolation if isinstance(isolation, dict) else {})
-        root.pack_start(composition, False, False, 0)
-
-    if active and active_key not in PUBLIC_PROFILE_DETAILS:
-        active_catalog = (catalog.get("profiles", {}) or {}).get(active.get("key", ""), {})
-        layers = active_catalog.get("layers", {})
-        layers_box = Gtk.Grid()
-        layers_box.set_column_spacing(8)
-        layers_box.set_row_spacing(8)
-        layers_box.get_style_context().add_class("section")
-        for index, (name, values) in enumerate([
-            (t("Noyau", "Core"), layers.get("kernel")),
-            (t("Préparation", "Preparation"), layers.get("runtime")),
-            (t("Interface", "Interface"), layers.get("experience")),
-            (t("IA", "AI"), layers.get("intelligence")),
-        ]):
-            layers_box.attach(layer_card(Gtk, name, compact_list(values)), index % 4, index // 4, 1, 1)
-        root.pack_start(layers_box, False, False, 0)
-
-    grid = Gtk.Grid()
-    grid.set_column_spacing(10)
-    grid.set_row_spacing(10)
-    root.pack_start(grid, True, True, 0)
-
-    for index, profile in enumerate(profiles):
-        title_text = profile.get("title", profile.get("key", tr_text("Espace")))
-        state = profile.get("state", "MISS")
-        installed = profile.get("installed", 0)
-        total = profile.get("total", 0)
-        key = profile.get("key", "")
-        command = f"seven profile activate {key}"
-        role = profile.get("role") or key
-        if key in PUBLIC_PROFILE_NOTES:
-            note = tr_text("en cours") if profile.get("active") else PUBLIC_PROFILE_NOTES[key]
-        else:
-            note = tr_text("en cours · prêt") if profile.get("active") else f"{role} · {state} · {installed}/{total}"
-        glyph = profile.get("waybar_icon") or title_text[:1].upper()
-        button = profile_tile(Gtk, glyph, title_text, note, command, state_class(state), key, bool(profile.get("active")))
-        grid.attach(button, 0, index, 1, 1)
+    root.pack_start(
+        prism_panel(
+            Gtk,
+            GLib,
+            Gdk,
+            profiles if isinstance(profiles, list) else [],
+            catalog if isinstance(catalog, dict) else {},
+            theme_profiles,
+            active_key,
+        ),
+        True,
+        True,
+        0,
+    )
 
     actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     actions.set_halign(Gtk.Align.CENTER)
     actions.get_style_context().add_class("action-strip")
     root.pack_end(actions, False, False, 0)
     for glyph, tooltip, command in [
-        ("󰉋", tr_text("Ouvrir les fichiers"), "seven-files profile"),
-        ("󰡱", tr_text("Ouvrir l'espace actif"), f"seven profile center {active.get('key', '')}" if active else "seven profile center"),
-        ("󰀻", tr_text("Voir les applications"), "seven profile apps"),
-        ("󰁨", tr_text("Réparer cet espace"), "seven-settings profiles"),
-        ("󰞋", tr_text("Aide SevenOS"), "seven-help-native mini-os"),
-        ("󰒓", tr_text("Ouvrir le Hub"), "seven-hub-native open"),
+        ("󰉋", t("Ouvrir les fichiers", "Open files"), "seven-files profile"),
+        ("󰡱", t("Ouvrir l'espace actif", "Open active space"), f"seven profile center {active.get('key', '')}" if active else "seven profile center"),
+        ("󰀻", t("Voir les applications", "View applications"), "seven profile apps"),
+        ("󰁨", t("Réparer cet espace", "Repair this space"), "seven-settings profiles"),
+        ("󰞋", t("Aide SevenOS", "SevenOS Help"), "seven-help-native mini-os"),
+        ("󰒓", t("Ouvrir le Hub", "Open Hub"), "seven-hub-native open"),
     ]:
         button = Gtk.Button()
         button.get_style_context().add_class("icon-action")
@@ -465,15 +637,17 @@ def composition_panel(Gtk, runtime: dict, isolation: dict):
     active_count = isolation.get("active_package_count", 0)
     inactive_count = isolation.get("inactive_package_count", 0)
 
-    title = Gtk.Label(label=tr_text("Préparation de l’espace"), xalign=0)
+    title = Gtk.Label(label=t("Préparation de l’espace", "Space preparation"), xalign=0)
     title.get_style_context().add_class("section-title")
     panel.pack_start(title, False, False, 0)
 
     summary = Gtk.Label(
-        label=tr_text(
-            "Espace principal: {primary} · outils ajoutés: {injected} · éléments prêts: {active} / {inactive} en attente",
-            primary=primary.get("title") or composite.get("primary") or "unknown",
-            injected=", ".join(injected) if injected else tr_text("aucun"),
+        label=t(
+            "Espace principal : {primary} · outils ajoutés : {injected} · éléments prêts : {active} / {inactive} en attente",
+            "Primary space: {primary} · added tools: {injected} · ready items: {active} / {inactive} waiting",
+        ).format(
+            primary=localized_profile_title(str(primary.get("key") or composite.get("primary") or ""), str(primary.get("title") or composite.get("primary") or "unknown")),
+            injected=", ".join(injected) if injected else t("aucun", "none"),
             active=active_count,
             inactive=inactive_count,
         ),
@@ -483,12 +657,14 @@ def composition_panel(Gtk, runtime: dict, isolation: dict):
     panel.pack_start(summary, False, False, 0)
 
     details = Gtk.Label(
-        label=tr_text(
-            "Performance: {cpu} · mémoire: {ram} · éléments isolés: {services} · reprise: {snapshot}",
+        label=t(
+            "Performance : {cpu} · mémoire : {ram} · éléments isolés : {services} · reprise : {snapshot}",
+            "Performance: {cpu} · memory: {ram} · isolated items: {services} · resume: {snapshot}",
+        ).format(
             cpu=resource.get("cpu", {}).get("strategy", "unknown"),
             ram=resource.get("ram", {}).get("strategy", "unknown"),
             services=resource.get("isolation", {}).get("services", "unknown"),
-            snapshot=tr_text("prête") if any(item.get("name") == "criu" and item.get("state") == "OK" for item in doctor.get("checks", [])) else tr_text("prévue"),
+            snapshot=t("prête", "ready") if any(item.get("name") == "criu" and item.get("state") == "OK" for item in doctor.get("checks", [])) else t("prévue", "planned"),
         ),
         xalign=0,
     )
@@ -501,7 +677,7 @@ def public_profile_panel(Gtk, key: str):
     panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
     panel.get_style_context().add_class("section")
 
-    title = Gtk.Label(label=tr_text("Ce que cet espace prépare"), xalign=0)
+    title = Gtk.Label(label=t("Ce que cet espace prépare", "What this space prepares"), xalign=0)
     title.get_style_context().add_class("section-title")
     panel.pack_start(title, False, False, 0)
 
@@ -514,6 +690,399 @@ def public_profile_panel(Gtk, key: str):
     return panel
 
 
+def color_tuple(hex_color: str, alpha: float = 1.0) -> tuple[float, float, float, float]:
+    text = str(hex_color or "").strip().lstrip("#")
+    if len(text) != 6:
+        return (0.54, 0.49, 1.0, alpha)
+    try:
+        return (int(text[0:2], 16) / 255, int(text[2:4], 16) / 255, int(text[4:6], 16) / 255, alpha)
+    except Exception:
+        return (0.54, 0.49, 1.0, alpha)
+
+
+def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profiles: dict, active_key: str):
+    profile_by_key = {str(item.get("key", "")): item for item in profiles if isinstance(item, dict)}
+    naming = catalog.get("profile_naming", {}) if isinstance(catalog.get("profile_naming"), dict) else {}
+    profile_defs = catalog.get("profiles", {}) if isinstance(catalog.get("profiles"), dict) else {}
+    order = ["equinox", "baobab", "forge", "shield", "pulse", "windows", "studio"]
+    outer_order = ["baobab", "forge", "shield", "pulse", "windows", "studio"]
+    positions = {
+        "equinox": (242, 172, 176, 68),
+        "baobab": (257, 20, 146, 64),
+        "forge": (476, 96, 146, 64),
+        "shield": (476, 260, 146, 64),
+        "pulse": (257, 330, 146, 66),
+        "windows": (38, 260, 146, 64),
+        "studio": (38, 96, 146, 64),
+    }
+    centers = {key: (x + w / 2, y + h / 2) for key, (x, y, w, h) in positions.items()}
+    pulse = {"value": 0.0}
+
+    panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    panel.set_can_focus(True)
+    panel.add_events(Gdk.EventMask.KEY_PRESS_MASK)
+    panel.get_style_context().add_class("prism-panel")
+
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    header_title = Gtk.Label(label=t("Seven Prism · Mini OS", "Seven Prism · Mini OS"), xalign=0)
+    header_title.get_style_context().add_class("prism-title")
+    header_note = Gtk.Label(
+        label=t(
+            "Equinox est le centre. Les six sommets spécialisés gardent leur rôle et se relient à lui explicitement.",
+            "Equinox is the center. The six specialized vertices keep their role and link to it explicitly.",
+        ),
+        xalign=0,
+    )
+    header_note.set_line_wrap(True)
+    header_note.get_style_context().add_class("prism-note")
+    header_copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    header_copy.set_hexpand(True)
+    header_copy.pack_start(header_title, False, False, 0)
+    header_copy.pack_start(header_note, False, False, 0)
+    header.pack_start(header_copy, True, True, 0)
+    active_badge = Gtk.Label(label=t("Equinox Core", "Equinox Core"))
+    active_badge.get_style_context().add_class("pill")
+    header.pack_end(active_badge, False, False, 0)
+    wordmark = Gtk.Label(label="SevenOS Prism")
+    wordmark.get_style_context().add_class("prism-wordmark")
+    header.pack_end(wordmark, False, False, 0)
+    panel.pack_start(header, False, False, 0)
+
+    content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    panel.pack_start(content, True, True, 0)
+
+    stage = Gtk.Overlay()
+    stage.set_size_request(660, 414)
+    stage.get_style_context().add_class("prism-stage")
+    drawing = Gtk.DrawingArea()
+    drawing.set_size_request(660, 414)
+    fixed = Gtk.Fixed()
+    fixed.set_size_request(660, 414)
+
+    inspector = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    inspector.set_size_request(210, -1)
+    inspector.get_style_context().add_class("prism-inspector")
+    inspector_title = Gtk.Label(xalign=0)
+    inspector_title.get_style_context().add_class("inspector-title")
+    inspector_note = Gtk.Label(xalign=0)
+    inspector_note.set_line_wrap(True)
+    inspector_note.set_max_width_chars(28)
+    inspector_note.get_style_context().add_class("inspector-note")
+    inspector_role = Gtk.Label(xalign=0)
+    inspector_role.set_line_wrap(True)
+    inspector_role.set_max_width_chars(28)
+    inspector_role.get_style_context().add_class("danger-note")
+    inspector_actions = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    inspector_actions.get_style_context().add_class("inspector-actions")
+    action_open = Gtk.Button()
+    action_open.get_style_context().add_class("inspector-action")
+    action_open.get_style_context().add_class("primary")
+    action_activate = Gtk.Button()
+    action_activate.get_style_context().add_class("inspector-action")
+    action_files = Gtk.Button()
+    action_files.get_style_context().add_class("inspector-action")
+    inspector_actions.pack_start(action_open, False, False, 0)
+    inspector_actions.pack_start(action_activate, False, False, 0)
+    inspector_actions.pack_start(action_files, False, False, 0)
+    inspector.pack_start(inspector_title, False, False, 0)
+    inspector.pack_start(inspector_note, False, False, 0)
+    inspector.pack_start(inspector_role, False, False, 0)
+    inspector.pack_end(inspector_actions, False, False, 0)
+    selected_key = {"value": active_key if active_key in positions else "equinox"}
+    node_by_key = {}
+
+    def profile_title(key: str) -> str:
+        profile = profile_by_key.get(key, {})
+        theme = theme_profiles.get(key, {}) if isinstance(theme_profiles.get(key), dict) else {}
+        fallback = str(profile.get("title") or theme.get("label") or naming.get(key) or key.title())
+        return localized_profile_title(key, fallback)
+
+    def profile_icon(key: str) -> str:
+        profile = profile_by_key.get(key, {})
+        theme = theme_profiles.get(key, {}) if isinstance(theme_profiles.get(key), dict) else {}
+        return str(profile.get("waybar_icon") or theme.get("icon") or profile_title(key)[:1].upper())
+
+    def profile_note(key: str) -> str:
+        profile = profile_by_key.get(key, {})
+        if key == active_key:
+            return t("actif maintenant", "active now")
+        if key in PUBLIC_PROFILE_NOTES:
+            return PUBLIC_PROFILE_NOTES[key]
+        state = str(profile.get("state") or "MISS")
+        installed = profile.get("installed", 0)
+        total = profile.get("total", 0)
+        return f"{state} · {installed}/{total}"
+
+    def center_command(key: str) -> str:
+        if key == "equinox":
+            return "seven-settings profiles"
+        definition = profile_defs.get(key, {}) if isinstance(profile_defs.get(key), dict) else {}
+        surfaces = definition.get("profile_surfaces", {}) if isinstance(definition.get("profile_surfaces"), dict) else {}
+        return str(surfaces.get("center") or definition.get("center_command") or f"seven-mini-os-center {key}")
+
+    def run_selected(kind: str) -> None:
+        key = selected_key["value"]
+        if kind == "open":
+            run_detached(center_command(key))
+        elif kind == "activate":
+            action_activate.set_sensitive(False)
+            action_activate.set_label(t("Préparation…", "Preparing…"))
+            active_badge.set_text(t("Passage en cours", "Switching"))
+            wordmark.set_text(t("SevenOS prépare {profile}", "SevenOS is preparing {profile}").format(profile=profile_title(key)))
+            node = node_by_key.get(key)
+            if node is not None:
+                node.get_style_context().add_class("switching")
+            drawing.queue_draw()
+            run_detached(f"seven profile activate {key}")
+            GLib.timeout_add(1450, lambda: (Gtk.main_quit(), False)[1])
+        elif kind == "files":
+            run_detached(f"seven-files profile {key}")
+
+    def describe(key: str) -> None:
+        selected_key["value"] = key
+        profile = profile_by_key.get(key, {})
+        theme = theme_profiles.get(key, {}) if isinstance(theme_profiles.get(key), dict) else {}
+        definition = profile_defs.get(key, {}) if isinstance(profile_defs.get(key), dict) else {}
+        inspector_title.set_text(profile_title(key))
+        fallback_note = str(theme.get("ui_mood") or definition.get("purpose") or "")
+        inspector_note.set_text(localized_profile_mood(key, fallback_note) or PUBLIC_PROFILE_NOTES.get(key) or profile_note(key))
+        relation = (
+            t("Sommet central : host/admin, réglages et arbitrage des ressources.", "Central vertex: host/admin, settings and resource arbitration.")
+            if key == "equinox"
+            else t("Relié à Equinox par activation explicite, sans charger silencieusement les autres piles.", "Linked to Equinox through explicit activation, without silently loading other stacks.")
+        )
+        inspector_role.set_text(relation)
+        action_open.set_label(t("Ouvrir le centre", "Open center") if key != "equinox" else t("Ouvrir les réglages", "Open settings"))
+        action_activate.set_label(t("Actif", "Active") if key == active_key else t("Activer ce sommet", "Activate vertex"))
+        action_activate.set_sensitive(key != active_key)
+        action_files.set_label(t("Voir les fichiers", "View files"))
+        active_badge.set_text(t("Actif", "Active") if key == active_key else profile_note(key))
+        wordmark.set_text(profile_title(key))
+        for node_key, node in node_by_key.items():
+            context = node.get_style_context()
+            if node_key == key:
+                context.add_class("selected")
+            else:
+                context.remove_class("selected")
+        drawing.queue_draw()
+
+    action_open.connect("clicked", lambda _button: run_selected("open"))
+    action_activate.connect("clicked", lambda _button: run_selected("activate"))
+    action_files.connect("clicked", lambda _button: run_selected("files"))
+
+    key_targets = {
+        Gdk.KEY_1: "equinox",
+        Gdk.KEY_2: "baobab",
+        Gdk.KEY_3: "forge",
+        Gdk.KEY_4: "shield",
+        Gdk.KEY_5: "pulse",
+        Gdk.KEY_6: "windows",
+        Gdk.KEY_7: "studio",
+    }
+
+    def handle_key(_widget, event) -> bool:
+        if event.keyval in key_targets:
+            describe(key_targets[event.keyval])
+            return True
+        if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter}:
+            run_selected("open")
+            return True
+        if event.keyval in {Gdk.KEY_a, Gdk.KEY_A}:
+            if selected_key["value"] != active_key:
+                run_selected("activate")
+            return True
+        if event.keyval in {Gdk.KEY_f, Gdk.KEY_F}:
+            run_selected("files")
+            return True
+        return False
+
+    panel.connect("key-press-event", handle_key)
+
+    def draw_prism(_area, cr) -> bool:
+        phase = pulse["value"]
+        equinox_center = centers["equinox"]
+
+        outer_points = [centers[key] for key in outer_order]
+        inner_points = [
+            (
+                equinox_center[0] + (point[0] - equinox_center[0]) * 0.42,
+                equinox_center[1] + (point[1] - equinox_center[1]) * 0.42,
+            )
+            for point in outer_points
+        ]
+
+        for radius, alpha, width in ((168, 0.030, 18), (122, 0.042, 10)):
+            cr.set_source_rgba(0.30, 0.62, 1.0, alpha + 0.010 * math.sin(phase))
+            cr.set_line_width(width)
+            cr.arc(equinox_center[0], equinox_center[1], radius, 0, math.pi * 2)
+            cr.stroke()
+
+        for index, key in enumerate(outer_order):
+            a = outer_points[index]
+            b = outer_points[(index + 1) % len(outer_points)]
+            fill = color_tuple((theme_profiles.get(key, {}) or {}).get("accent"), 0.060 + 0.018 * math.sin(phase + index))
+            cr.set_source_rgba(*fill)
+            cr.move_to(*equinox_center)
+            cr.line_to(*a)
+            cr.line_to(*b)
+            cr.close_path()
+            cr.fill()
+
+        cr.set_source_rgba(0.05, 0.06, 0.10, 0.10)
+        cr.move_to(*inner_points[0])
+        for point in inner_points[1:]:
+            cr.line_to(*point)
+        cr.close_path()
+        cr.fill()
+
+        cr.set_line_width(1.4)
+        for index, key in enumerate(outer_order):
+            a = outer_points[index]
+            b = outer_points[(index + 1) % len(outer_points)]
+            edge = color_tuple((theme_profiles.get(key, {}) or {}).get("accent"), 0.22)
+            cr.set_source_rgba(*edge)
+            cr.move_to(*a)
+            cr.line_to(*b)
+            cr.stroke()
+
+        cr.set_line_width(1.0)
+        for index in range(len(inner_points)):
+            a = inner_points[index]
+            b = inner_points[(index + 1) % len(inner_points)]
+            cr.set_source_rgba(0.88, 0.93, 1.0, 0.16)
+            cr.move_to(*a)
+            cr.line_to(*b)
+            cr.stroke()
+
+        for index, key in enumerate(outer_order):
+            point = outer_points[index]
+            color = color_tuple((theme_profiles.get(key, {}) or {}).get("accent"), 0.30)
+            highlighted = key == selected_key.get("value")
+            cr.set_line_width(2.8 if highlighted else 1.5)
+            cr.set_source_rgba(*color)
+            cr.move_to(*equinox_center)
+            cr.line_to(*point)
+            cr.stroke()
+
+            inner = inner_points[index]
+            cr.set_line_width(2.4 if highlighted else (2.2 if key == active_key else 1.1))
+            cr.set_source_rgba(0.93, 0.96, 1.0, 0.34 if highlighted else (0.26 if key == active_key else 0.12))
+            cr.move_to(*inner)
+            cr.line_to(*point)
+            cr.stroke()
+
+            cr.arc(point[0], point[1], 5.2 if highlighted else (4.4 if key == active_key else 3.2), 0, math.pi * 2)
+            cr.set_source_rgba(*color_tuple((theme_profiles.get(key, {}) or {}).get("accent"), 0.72 if highlighted else (0.64 if key == active_key else 0.44)))
+            cr.fill()
+
+        cr.set_line_width(2.0)
+        cr.set_source_rgba(0.30, 0.64, 1.0, 0.28)
+        cr.move_to(*outer_points[0])
+        for point in outer_points[1:]:
+            cr.line_to(*point)
+        cr.close_path()
+        cr.stroke()
+
+        highlight_key = selected_key.get("value") or active_key
+        active_center = centers.get(highlight_key, centers["equinox"])
+        radius = 46 + math.sin(phase) * 5
+        color = color_tuple((theme_profiles.get(highlight_key, {}) or {}).get("accent"), 0.18)
+        cr.arc(active_center[0], active_center[1], radius, 0, math.pi * 2)
+        cr.set_source_rgba(*color)
+        cr.fill()
+
+        mark_radius = 44
+        mark_points = [
+            (
+                equinox_center[0] + math.cos(-math.pi / 2 + index * math.pi / 3) * mark_radius,
+                equinox_center[1] + math.sin(-math.pi / 2 + index * math.pi / 3) * mark_radius,
+            )
+            for index in range(6)
+        ]
+        cr.set_source_rgba(0.03, 0.04, 0.07, 0.16)
+        cr.move_to(*mark_points[0])
+        for point in mark_points[1:]:
+            cr.line_to(*point)
+        cr.close_path()
+        cr.fill()
+        cr.set_line_width(1.4)
+        for index, point in enumerate(mark_points):
+            cr.set_source_rgba(0.30, 0.64, 1.0, 0.32 if index % 2 == 0 else 0.22)
+            cr.move_to(*equinox_center)
+            cr.line_to(*point)
+            cr.stroke()
+        cr.set_source_rgba(0.48, 0.36, 1.0, 0.30)
+        cr.move_to(*mark_points[0])
+        for point in mark_points[1:]:
+            cr.line_to(*point)
+        cr.close_path()
+        cr.stroke()
+
+        cr.set_line_width(1.6)
+        cr.set_source_rgba(0.80, 0.88, 1.0, 0.34)
+        cr.arc(equinox_center[0], equinox_center[1], 62 + math.sin(phase * 0.8) * 4, 0, math.pi * 2)
+        cr.stroke()
+        return False
+
+    drawing.connect("draw", draw_prism)
+    stage.add(drawing)
+    stage.add_overlay(fixed)
+
+    for key in order:
+        if key not in positions:
+            continue
+        x, y, width, height = positions[key]
+        node = prism_node(Gtk, profile_icon(key), profile_title(key), profile_note(key), key, key == active_key)
+        node.set_size_request(width, height)
+        node_by_key[key] = node
+        node.connect("clicked", lambda _button, selected=key: describe(selected))
+        node.connect("enter-notify-event", lambda _button, _event, selected=key: (describe(selected), False)[1])
+        fixed.put(node, x, y)
+
+    describe(active_key if active_key in positions else "equinox")
+    content.pack_start(stage, True, True, 0)
+    content.pack_start(inspector, False, False, 0)
+
+    def tick() -> bool:
+        pulse["value"] = (pulse["value"] + 0.12) % (math.pi * 2)
+        drawing.queue_draw()
+        return True
+
+    GLib.timeout_add(48, tick)
+    GLib.idle_add(lambda: (panel.grab_focus(), False)[1])
+    return panel
+
+
+def prism_node(Gtk, glyph: str, title: str, note: str, key: str, active: bool):
+    button = Gtk.Button()
+    button.get_style_context().add_class("prism-node")
+    button.get_style_context().add_class(key)
+    if active:
+        button.get_style_context().add_class("active")
+    box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    box.set_valign(Gtk.Align.CENTER)
+    icon = Gtk.Label(label=glyph)
+    icon.get_style_context().add_class("node-glyph")
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    text.set_hexpand(True)
+    label = Gtk.Label(label=title)
+    label.set_xalign(0)
+    label.set_max_width_chars(16)
+    label.set_line_wrap(True)
+    label.get_style_context().add_class("node-title")
+    meta = Gtk.Label(label=note)
+    meta.set_xalign(0)
+    meta.set_max_width_chars(20)
+    meta.set_line_wrap(True)
+    meta.get_style_context().add_class("node-note")
+    text.pack_start(label, False, False, 0)
+    text.pack_start(meta, False, False, 0)
+    box.pack_start(icon, False, False, 0)
+    box.pack_start(text, True, True, 0)
+    button.add(box)
+    return button
+
+
 def alias_migration_panel(Gtk, migration: dict):
     count = int(migration.get("pending") or 0)
     panel = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -521,13 +1090,13 @@ def alias_migration_panel(Gtk, migration: dict):
 
     text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
     text_box.set_hexpand(True)
-    title = Gtk.Label(label=tr_text("Anciens noms à nettoyer"), xalign=0)
+    title = Gtk.Label(label=t("Anciens noms à nettoyer", "Old names to clean up"), xalign=0)
     title.get_style_context().add_class("alias-title")
     note = Gtk.Label(
-        label=tr_text(
+        label=t(
             "{count} ancien(s) repère(s) peuvent encore créer de la confusion. SevenOS peut les nettoyer.",
-            count=str(count),
-        ),
+            "{count} old marker(s) may still create confusion. SevenOS can clean them up.",
+        ).format(count=str(count)),
         xalign=0,
     )
     note.set_line_wrap(True)
@@ -536,7 +1105,7 @@ def alias_migration_panel(Gtk, migration: dict):
     text_box.pack_start(note, False, False, 0)
     panel.pack_start(text_box, True, True, 0)
 
-    button = Gtk.Button(label=tr_text("Nettoyer"))
+    button = Gtk.Button(label=t("Nettoyer", "Clean up"))
     button.get_style_context().add_class("alias-button")
     button.connect("clicked", lambda _button: run_detached("seven profile migrate-aliases --apply"))
     panel.pack_end(button, False, False, 0)
@@ -583,7 +1152,7 @@ def profile_tile(Gtk, glyph: str, title: str, note: str, command: str, css_class
     meta.get_style_context().add_class("tile-note")
     text_box.pack_start(label, False, False, 0)
     text_box.pack_start(meta, False, False, 0)
-    state_label = Gtk.Label(label=tr_text("Actif") if active else tr_text("Activer"))
+    state_label = Gtk.Label(label=t("Actif", "Active") if active else t("Activer", "Activate"))
     state_label.get_style_context().add_class("pill")
     box.pack_start(icon, False, False, 0)
     box.pack_start(text_box, True, True, 0)

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F2D8A8"/>
+      <stop offset="46%" stop-color="#724F49"/>
+      <stop offset="100%" stop-color="#2B2236"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="18%" cy="12%" r="76%">
+      <stop offset="0%" stop-color="#D4B961" stop-opacity="0.44"/>
+      <stop offset="55%" stop-color="#E27B9B" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#2B2236" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="86%" cy="18%" r="60%">
+      <stop offset="0%" stop-color="#E27B9B" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#2B2236" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="34"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.74" numOctaves="2" seed="182"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 0.050"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect width="1920" height="1080" fill="url(#glowA)"/>
+  <rect width="1920" height="1080" fill="url(#glowB)"/>
+  <circle cx="1642" cy="152" r="117" fill="#6EA8FF" opacity="0.2" filter="url(#soft)"/>
+  <rect x="0" y="0" width="28" height="1080" fill="#D4B961" opacity="0.050"/>
+<rect x="120" y="0" width="28" height="1080" fill="#E27B9B" opacity="0.050"/>
+<rect x="240" y="0" width="28" height="1080" fill="#D4B961" opacity="0.050"/>
+<rect x="360" y="0" width="28" height="1080" fill="#E27B9B" opacity="0.050"/>
+<rect x="480" y="0" width="28" height="1080" fill="#D4B961" opacity="0.050"/>
+<rect x="600" y="0" width="28" height="1080" fill="#E27B9B" opacity="0.050"/>
+<rect x="720" y="0" width="28" height="1080" fill="#D4B961" opacity="0.050"/>
+<rect x="840" y="0" width="28" height="1080" fill="#E27B9B" opacity="0.050"/>
+<rect x="960" y="0" width="28" height="1080" fill="#D4B961" opacity="0.050"/>
+<rect x="1080" y="0" width="28" height="1080" fill="#E27B9B" opacity="0.050"/>
+<rect x="1200" y="0" width="28" height="1080" fill="#D4B961" opacity="0.050"/>
+<rect x="1320" y="0" width="28" height="1080" fill="#E27B9B" opacity="0.050"/>
+<rect x="1440" y="0" width="28" height="1080" fill="#D4B961" opacity="0.050"/>
+<rect x="1560" y="0" width="28" height="1080" fill="#E27B9B" opacity="0.050"/>
+<rect x="1680" y="0" width="28" height="1080" fill="#D4B961" opacity="0.050"/>
+<rect x="1800" y="0" width="28" height="1080" fill="#E27B9B" opacity="0.050"/>
+<path d="M0 80 L1920 -40" stroke="#E27B9B" stroke-opacity="0.075" stroke-width="18"/>
+<path d="M0 230 L1920 110" stroke="#E27B9B" stroke-opacity="0.075" stroke-width="18"/>
+<path d="M0 380 L1920 260" stroke="#E27B9B" stroke-opacity="0.075" stroke-width="18"/>
+<path d="M0 530 L1920 410" stroke="#E27B9B" stroke-opacity="0.075" stroke-width="18"/>
+<path d="M0 680 L1920 560" stroke="#E27B9B" stroke-opacity="0.075" stroke-width="18"/>
+<path d="M0 830 L1920 710" stroke="#E27B9B" stroke-opacity="0.075" stroke-width="18"/>
+<path d="M0 980 L1920 860" stroke="#E27B9B" stroke-opacity="0.075" stroke-width="18"/>
+  <path d="M -80 801.1 C 190 845.7, 300 805.7, 460 842.7 C 730 796.2, 840 756.2, 1000 768.0 C 1270 795.8, 1380 755.8, 1540 842.5 C 1810 845.9, 1920 805.9, 2080 801.5 L 2020 1080 L -80 1080 Z" fill="#2B2236" opacity="0.56"/>
+  <path d="M100 880 C420 828,680 905,980 840 C1260 780,1510 850,1840 790" fill="none" stroke="#D4B961" stroke-opacity="0.16" stroke-width="3"/>
+
+    <g opacity="0.160">
+      <polygon points="1720.0,742.0 1787.5,781.0 1787.5,859.0 1720.0,898.0 1652.5,859.0 1652.5,781.0" fill="#FFFFFF" fill-opacity="0.030" stroke="#D4B961" stroke-opacity="0.45" stroke-width="2.4"/>
+      <line x1="1720" y1="820" x2="1720.0" y2="742.0" stroke="#E27B9B" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1787.5" y2="781.0" stroke="#E27B9B" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1787.5" y2="859.0" stroke="#E27B9B" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1720.0" y2="898.0" stroke="#E27B9B" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1652.5" y2="859.0" stroke="#E27B9B" stroke-opacity="0.061" stroke-width="2"/>
+<line x1="1720" y1="820" x2="1652.5" y2="781.0" stroke="#E27B9B" stroke-opacity="0.061" stroke-width="2"/>
+      <circle cx="1720" cy="820" r="6" fill="#FFFFFF" fill-opacity="0.55"/>
+    </g>
+
+  <rect width="1920" height="1080" filter="url(#grain)" opacity="0.65"/>
+</svg>

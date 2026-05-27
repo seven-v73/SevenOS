@@ -4,7 +4,7 @@
 }
 
 window {
-  background: rgba(9, 9, 11, 0.46);
+  background: rgba(8, 10, 18, 0.46);
 }
 
 button {
@@ -15,8 +15,8 @@ button {
   color: rgba(237, 237, 237, 0.94);
   background:
     linear-gradient(135deg, rgba(77, 163, 255, 0.12), rgba(122, 92, 255, 0.10)),
-    rgba(18, 19, 26, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+    rgba(13, 17, 29, 0.78);
+  border: 1px solid rgba(164, 190, 255, 0.11);
   border-radius: 28px;
   background-repeat: no-repeat;
   background-position: center 28px;

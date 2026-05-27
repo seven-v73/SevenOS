@@ -1,0 +1,16 @@
+[SddmGreeterTheme]
+Name=SevenOS
+Description=SevenOS Prism login experience for Hyprland
+Author=SevenOS
+Copyright=2026 SevenOS
+License=MIT
+Type=sddm-theme
+Version=1.0
+Website=https://sevenos.local
+Screenshot=
+MainScript=Main.qml
+ConfigFile=theme.conf
+TranslationsDirectory=
+Email=
+Theme-Id=sevenos
+Theme-API=2.0

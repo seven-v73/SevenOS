@@ -35,6 +35,8 @@ done
 
 require_arch
 require_command rsync
+"$ROOT_DIR/scripts/system-assets.sh" doctor >/dev/null
+"$ROOT_DIR/scripts/identity-assets.sh" doctor >/dev/null
 
 if ! is_dry_run; then
   if ! command -v mkarchiso >/dev/null 2>&1; then
@@ -82,6 +84,7 @@ log_info "Injecting SevenOS repository into live ISO profile..."
 run_cmd mkdir -p "$PROFILE_BUILD/airootfs/opt"
 run_cmd rsync -a \
   --exclude '.git' \
+  --exclude '__pycache__' \
   --exclude 'out' \
   "$ROOT_DIR"/ "$PROFILE_BUILD/airootfs/opt/SevenOS"/
 

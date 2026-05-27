@@ -171,6 +171,7 @@ install_user_command "$ROOT_DIR/bin/seven-help-native" seven-help-native
 install_user_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_user_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
 install_user_command "$ROOT_DIR/bin/seven-dock" seven-dock
+install_user_command "$ROOT_DIR/bin/seven-dock-canvas" seven-dock-canvas
 install_user_command "$ROOT_DIR/bin/seven-dock-native" seven-dock-native
 install_user_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_user_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings
@@ -209,6 +210,7 @@ install_user_command "$ROOT_DIR/bin/seven-mini-context-menu-native" seven-mini-c
 install_user_command "$ROOT_DIR/bin/seven-mini-os-center" seven-mini-os-center
 install_user_command "$ROOT_DIR/bin/seven-notification-center-native" seven-notification-center-native
 install_user_command "$ROOT_DIR/bin/seven-profile-center-native" seven-profile-center-native
+install_user_command "$ROOT_DIR/bin/seven-release-review-native" seven-release-review-native
 install_user_command "$ROOT_DIR/bin/seven-shield-center-native" seven-shield-center-native
 install_user_command "$ROOT_DIR/bin/seven-waybar-center-native" seven-waybar-center-native
 install_user_command "$ROOT_DIR/bin/seven-waybar-notifications" seven-waybar-notifications
@@ -253,6 +255,7 @@ install_system_command "$ROOT_DIR/bin/seven-help-native" seven-help-native
 install_system_command "$ROOT_DIR/bin/seven-apps" seven-apps
 install_system_command "$ROOT_DIR/bin/seven-launchpad-native" seven-launchpad-native
 install_system_command "$ROOT_DIR/bin/seven-dock" seven-dock
+install_system_command "$ROOT_DIR/bin/seven-dock-canvas" seven-dock-canvas
 install_system_command "$ROOT_DIR/bin/seven-dock-native" seven-dock-native
 install_system_command "$ROOT_DIR/bin/seven-overview" seven-overview
 install_system_command "$ROOT_DIR/bin/seven-quick-settings" seven-quick-settings

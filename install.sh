@@ -47,7 +47,9 @@ Targets:
   post-install     Check common post-install blockers
   status           Show SevenOS installation status
   branding         Apply SevenOS system branding
+  identity         Install SevenOS identity requirements, splash and login theme
   boot-splash      Apply SevenOS quiet boot/shutdown splash
+  login-theme      Apply SevenOS SDDM login screen
   cli              Install SevenOS CLI tools
   theme [dark|light]
                    Apply SevenOS visual theme
@@ -257,8 +259,16 @@ case "$TARGET" in
   branding)
     "$ROOT_DIR/branding/apply-branding.sh"
     ;;
+  identity)
+    install_package_file "$ROOT_DIR/scripts/packages-identity.txt"
+    "$ROOT_DIR/scripts/boot-splash.sh" apply "${TARGET_ARGS[@]}"
+    "$ROOT_DIR/scripts/login-theme.sh" apply "${TARGET_ARGS[@]}"
+    ;;
   boot-splash)
     "$ROOT_DIR/scripts/boot-splash.sh" apply "${TARGET_ARGS[@]}"
+    ;;
+  login-theme)
+    "$ROOT_DIR/scripts/login-theme.sh" apply "${TARGET_ARGS[@]}"
     ;;
   cli)
     "$ROOT_DIR/scripts/install-cli.sh"

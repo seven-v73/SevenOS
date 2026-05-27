@@ -1,0 +1,1156 @@
+#!/usr/bin/env python3
+"""SevenOS canvas dock.
+
+This dock draws the macOS-style surface itself instead of asking GTK widgets to
+resize and reflow. That keeps icons visually centered while allowing smooth
+neighbor magnification.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+import os
+import subprocess
+import sys
+import time
+import warnings
+from pathlib import Path
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python:
+            return
+        result = subprocess.run(
+            [str(system_python), "-c", "import gi"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+        if result.returncode == 0:
+            os.environ["SEVENOS_GI_PYTHON"] = "1"
+            os.execv(str(system_python), [str(system_python), *sys.argv])
+
+
+def resolve_root() -> Path:
+    env_root = os.environ.get("SEVENOS_ROOT")
+    if env_root and (Path(env_root) / "bin").is_dir():
+        return Path(env_root)
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "bin").is_dir():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin").is_dir():
+            return candidate
+    return Path.home()
+
+
+ROOT = resolve_root()
+CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
+CONFIG_PATH = CONFIG_HOME / "sevenos/dock.json"
+PROFILE_ENV_PATH = CONFIG_HOME / "sevenos/profile.env"
+PROFILE_UI_PATH = CONFIG_HOME / "sevenos/profile-ui.json"
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/sevenos-{os.getuid()}"))
+STATE_PATH = RUNTIME_DIR / "sevenos-dock-state.json"
+
+DOCK_HEIGHT = 64
+DOCK_MARGIN = 5
+BASE_TILE = 39
+BASE_ICON = 25
+MAX_TILE = 50
+MAX_ICON = 34
+PADDING_X = 16
+GAP = 5
+SEP = 13
+SIGMA = 54.0
+BOUNCE_DURATION = 0.58
+FRAME_MS = 16
+HIDDEN_PEEK = 16
+REVEAL_SPEED = 0.22
+HIDE_DELAY = 2.25
+PREVIEW_DELAY = 0.16
+SPRING_PULL = 0.095
+SPRING_DAMPING = 0.70
+
+PROFILE_PINNED = {
+    "equinox": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+    "baobab": ["files", "apps", "reader", "store", "terminal", "spotlight", "hub"],
+    "forge": ["files", "terminal", "browser", "apps", "hub", "settings"],
+    "shield": ["shield", "terminal", "files", "browser", "spotlight", "hub"],
+    "studio": ["files", "browser", "store", "recorder", "spotlight", "hub"],
+    "windows": ["windows", "files", "terminal", "browser", "settings", "hub"],
+    "pulse": ["browser", "terminal", "apps", "recorder", "settings", "hub"],
+}
+
+CLASS_TILE_HINTS = {
+    "code": "studio",
+    "codium": "studio",
+    "google-chrome": "browser",
+    "firefox": "browser",
+    "brave-browser": "browser",
+    "chromium": "browser",
+    "kitty": "terminal",
+    "seven-terminal-native": "terminal",
+    "seven-files-native": "files",
+    "org.gnome.nautilus": "files",
+    "nautilus": "files",
+    "seven-reader-native": "reader",
+    "seven-store-native": "store",
+    "virt-manager": "windows",
+}
+
+DEFAULT_CONFIG = {
+    "position": "bottom",
+    "size": "compact",
+    "magnification": True,
+    "autohide": True,
+    "reserve_space": False,
+    "pinned": ["files", "apps", "browser", "terminal", "spotlight", "hub"],
+    "profile_pins": {},
+    "folders": ["downloads", "home"],
+}
+
+DRAG_THRESHOLD = 8
+
+
+def command_available(command: str) -> bool:
+    return subprocess.run(["sh", "-lc", f"command -v {command}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+
+def run_action(command: list[str]) -> None:
+    if not command:
+        return
+    local = ROOT / "bin" / command[0]
+    resolved = [str(local), *command[1:]] if local.exists() else command
+    subprocess.Popen(resolved, cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def ui_language() -> str:
+    raw = " ".join(
+        value for value in (
+            os.environ.get("SEVENOS_LANG"),
+            os.environ.get("LANGUAGE"),
+            os.environ.get("LC_ALL"),
+            os.environ.get("LANG"),
+        )
+        if value
+    ).lower()
+    return "fr" if raw.startswith("fr") or ":fr" in raw else "en"
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if ui_language() == "fr" else en
+
+
+def load_config() -> dict[str, object]:
+    if not CONFIG_PATH.exists():
+        return dict(DEFAULT_CONFIG)
+    try:
+        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        data = {}
+    config = dict(DEFAULT_CONFIG)
+    config.update({key: value for key, value in data.items() if key in DEFAULT_CONFIG})
+    return config
+
+
+def save_config(config: dict[str, object]) -> None:
+    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH.write_text(json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def active_profile_key() -> str:
+    try:
+        for raw in PROFILE_ENV_PATH.read_text(encoding="utf-8").splitlines():
+            if raw.startswith("SEVENOS_ACTIVE_PROFILE="):
+                return raw.split("=", 1)[1].strip().strip('"') or "equinox"
+    except OSError:
+        pass
+    try:
+        data = json.loads(PROFILE_UI_PATH.read_text(encoding="utf-8"))
+        return str(data.get("profile") or "equinox")
+    except Exception:
+        return "equinox"
+
+
+def hyprland_clients() -> list[dict[str, object]]:
+    if not os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or not command_available("hyprctl"):
+        return []
+    try:
+        return json.loads(subprocess.run(["hyprctl", "clients", "-j"], text=True, capture_output=True, check=False, timeout=0.45).stdout or "[]")
+    except Exception:
+        return []
+
+
+def client_tile_id(client: dict[str, object]) -> str | None:
+    client_class = str(client.get("class") or client.get("initialClass") or "").casefold()
+    title = str(client.get("title") or "").casefold()
+    for key, tile_id in CLASS_TILE_HINTS.items():
+        if key in client_class:
+            return tile_id
+    if "seven files" in title:
+        return "files"
+    if "terminal" in title:
+        return "terminal"
+    return None
+
+
+def clients_by_tile(clients: list[dict[str, object]]) -> dict[str, list[dict[str, object]]]:
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for client in clients:
+        tile_id = client_tile_id(client)
+        if tile_id:
+            grouped.setdefault(tile_id, []).append(client)
+    return grouped
+
+
+def focus_client(client: dict[str, object]) -> bool:
+    address = str(client.get("address") or "").strip()
+    if not address or not command_available("hyprctl"):
+        return False
+    subprocess.run(["hyprctl", "dispatch", "focuswindow", f"address:{address}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    return True
+
+
+def close_client(client: dict[str, object]) -> bool:
+    address = str(client.get("address") or "").strip()
+    if not address or not command_available("hyprctl"):
+        return False
+    subprocess.run(["hyprctl", "dispatch", "closewindow", f"address:{address}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    return True
+
+
+def monitor_bounds() -> tuple[int, int]:
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and command_available("hyprctl"):
+        try:
+            monitors = json.loads(subprocess.run(["hyprctl", "monitors", "-j"], text=True, capture_output=True, check=False, timeout=0.5).stdout or "[]")
+            focused = next((item for item in monitors if item.get("focused")), monitors[0] if monitors else {})
+            return (
+                max(320, int(float(focused.get("width", 1920)) / float(focused.get("scale", 1) or 1))),
+                max(240, int(float(focused.get("height", 1080)) / float(focused.get("scale", 1) or 1))),
+            )
+        except Exception:
+            pass
+    return 1920, 1080
+
+
+def catalog() -> dict[str, dict[str, object]]:
+    return {
+        "files": {"id": "files", "title": "Files", "icon": "system-file-manager", "style": (0.12, 0.52, 0.88), "command": ["seven-files"], "kind": "app"},
+        "apps": {"id": "apps", "title": "Apps", "icon": "view-app-grid-symbolic", "style": (0.85, 0.88, 0.93), "command": ["seven-overview", "apps"], "kind": "system"},
+        "browser": {"id": "browser", "title": "Browser", "icon": "web-browser", "style": (0.16, 0.45, 0.90), "command": ["xdg-open", "https://www.google.com"], "kind": "app"},
+        "terminal": {"id": "terminal", "title": "Terminal", "icon": "utilities-terminal", "style": (0.14, 0.16, 0.22), "command": ["seven-terminal", "classic"], "kind": "app"},
+        "spotlight": {"id": "spotlight", "title": "Spotlight", "icon": "system-search", "style": (0.84, 0.90, 0.96), "command": ["seven-spotlight-native", "--mode", "all"], "kind": "system"},
+        "hub": {"id": "hub", "title": "Hub", "icon": "preferences-system", "style": (0.50, 0.36, 0.20), "command": ["seven", "hub"], "kind": "app"},
+        "settings": {"id": "settings", "title": "Settings", "icon": "emblem-system", "style": (0.58, 0.62, 0.68), "command": ["seven-settings"], "kind": "system"},
+        "reader": {"id": "reader", "title": "Reader", "icon": "x-office-document", "style": (0.72, 0.56, 0.34), "command": ["seven-reader"], "kind": "app"},
+        "store": {"id": "store", "title": "Store", "icon": "system-software-install", "style": (0.42, 0.32, 0.90), "command": ["seven-store"], "kind": "app"},
+        "shield": {"id": "shield", "title": "Shield", "icon": "security-high", "style": (0.04, 0.52, 0.45), "command": ["seven-shield-center-native"], "kind": "system"},
+        "windows": {"id": "windows", "title": "Windows", "icon": "computer", "style": (0.20, 0.46, 0.88), "command": ["seven-windows-assistant"], "kind": "system"},
+        "recorder": {"id": "recorder", "title": "Recorder", "icon": "media-record", "style": (0.78, 0.22, 0.25), "command": ["seven-recorder"], "kind": "system"},
+        "downloads": {"id": "downloads", "title": "Downloads", "icon": "folder-download", "style": (0.28, 0.60, 0.88), "command": ["xdg-open", str(Path.home() / "Downloads")], "kind": "folder"},
+        "home": {"id": "home", "title": "Home", "icon": "user-home", "style": (0.30, 0.62, 0.88), "command": ["xdg-open", str(Path.home())], "kind": "folder"},
+    }
+
+
+def effective_pinned(config: dict[str, object], profile: str) -> list[str]:
+    profile_pins = config.get("profile_pins", {})
+    if isinstance(profile_pins, dict) and isinstance(profile_pins.get(profile), list):
+        base = [str(item) for item in profile_pins.get(profile, [])]
+    else:
+        base = list(PROFILE_PINNED.get(profile, PROFILE_PINNED["equinox"]))
+    for item in config.get("pinned", []):
+        item = str(item)
+        if item not in base:
+            base.append(item)
+    return list(dict.fromkeys(base))
+
+
+def make_tiles(config: dict[str, object], profile: str, grouped: dict[str, list[dict[str, object]]]) -> list[dict[str, object]]:
+    items = catalog()
+    ids = [item for item in effective_pinned(config, profile) if item in items]
+    for live_id in grouped:
+        if live_id in items and live_id not in ids:
+            ids.append(live_id)
+    ids += ["|"]
+    ids += [item for item in config.get("folders", []) if item in items]
+    ids += ["|", "settings"]
+    tiles: list[dict[str, object]] = []
+    for tile_id in ids:
+        if tile_id == "|":
+            tiles.append({"id": "|", "separator": True})
+            continue
+        tile = dict(items[tile_id])
+        windows = grouped.get(tile_id, [])
+        tile["windows"] = windows
+        tile["window_count"] = len(windows)
+        tile["active"] = any(int(client.get("focusHistoryID", 9999) or 9999) == 0 for client in windows)
+        tiles.append(tile)
+    return tiles
+
+
+def write_state(pid: int, profile: str, width: int, height: int, layer_shell: bool, reserve_space: bool) -> None:
+    try:
+        RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+        STATE_PATH.write_text(json.dumps({
+            "schema": "sevenos.dock.runtime.v1",
+            "kind": "canvas",
+            "pid": pid,
+            "profile": profile,
+            "policy": "visible-on-all-workspaces-until-profile-change",
+            "layer_shell": layer_shell,
+            "reserve_space": reserve_space,
+            "width": width,
+            "height": height,
+            "exclusive_zone": height + DOCK_MARGIN if reserve_space else 0,
+        }, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def clear_state() -> None:
+    try:
+        STATE_PATH.unlink()
+    except OSError:
+        pass
+
+
+def probe() -> int:
+    ensure_gi_python()
+    try:
+        import cairo  # noqa: F401
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("GdkPixbuf", "2.0")
+        from gi.repository import Gtk  # noqa: F401
+    except Exception as exc:
+        print(f"MISS: {exc}", file=sys.stderr)
+        return 1
+    print("OK")
+    return 0
+
+
+def rounded_rect(cr, x: float, y: float, w: float, h: float, r: float) -> None:
+    r = min(r, w / 2, h / 2)
+    cr.new_sub_path()
+    cr.arc(x + w - r, y + r, r, -math.pi / 2, 0)
+    cr.arc(x + w - r, y + h - r, r, 0, math.pi / 2)
+    cr.arc(x + r, y + h - r, r, math.pi / 2, math.pi)
+    cr.arc(x + r, y + r, r, math.pi, 3 * math.pi / 2)
+    cr.close_path()
+
+
+def mix(color: tuple[float, float, float], amount: float) -> tuple[float, float, float]:
+    return tuple(min(1.0, c + (1.0 - c) * amount) for c in color)
+
+
+def darken(color: tuple[float, float, float], amount: float) -> tuple[float, float, float]:
+    return tuple(max(0.0, c * (1.0 - amount)) for c in color)
+
+
+def ease_out_cubic(value: float) -> float:
+    value = max(0.0, min(1.0, value))
+    return 1.0 - pow(1.0 - value, 3)
+
+
+class CanvasDock:
+    def __init__(self):
+        ensure_gi_python()
+        import gi
+
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
+        gi.require_version("GdkPixbuf", "2.0")
+        from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+
+        self.Gdk = Gdk
+        self.GdkPixbuf = GdkPixbuf
+        self.GLib = GLib
+        self.Gtk = Gtk
+        self.config = load_config()
+        self.profile = active_profile_key()
+        self.grouped = clients_by_tile(hyprland_clients())
+        self.tiles = make_tiles(self.config, self.profile, self.grouped)
+        self.pointer_x: float | None = None
+        self.scales = [0.0 for _ in self.tiles]
+        self.targets = [0.0 for _ in self.tiles]
+        self.velocities = [0.0 for _ in self.tiles]
+        self.rects: list[tuple[float, float, float, float]] = []
+        self.visual_rects: list[tuple[float, float, float, float]] = []
+        self.hover_index: int | None = None
+        self.hover_started = 0.0
+        self.hide_at: float | None = None
+        self.press_index: int | None = None
+        self.press_xy: tuple[float, float] | None = None
+        self.dragging = False
+        self.bounces: dict[int, float] = {}
+        self.preview = None
+        self.hover_label = None
+        self.tip_key: str | None = None
+        self.icon_cache: dict[tuple[str, int], object] = {}
+        self.theme = Gtk.IconTheme.get_default()
+        self.mon_w, self.mon_h = monitor_bounds()
+        self.width = self.compute_width()
+        self.height = DOCK_HEIGHT
+        self.layer_shell = False
+        self.reserve_space = bool(self.config.get("reserve_space", False))
+        self.autohide = bool(self.config.get("autohide", True))
+        self.layer_shell_api = None
+        self.revealed = not self.autohide
+        self.reveal_target = 1.0 if self.revealed else 0.0
+        self.reveal_progress = self.reveal_target
+
+        GLib.set_prgname("SevenDockCanvas")
+        GLib.set_application_name("Seven Dock")
+        try:
+            Gdk.set_program_class("SevenDockCanvas")
+        except Exception:
+            pass
+
+        self.window = Gtk.Window(title="Seven Dock")
+        self.window.set_decorated(False)
+        self.window.set_resizable(False)
+        self.window.set_default_size(self.width, self.height)
+        self.window.set_size_request(self.width, self.height)
+        self.window.set_app_paintable(True)
+        self.window.set_accept_focus(False)
+        self.window.set_focus_on_map(False)
+        self.window.set_keep_above(True)
+        self.window.set_skip_taskbar_hint(True)
+        self.window.set_skip_pager_hint(True)
+        self.window.set_wmclass("SevenDockCanvas", "SevenDockCanvas")
+        try:
+            visual = self.window.get_screen().get_rgba_visual()
+            if visual is not None:
+                self.window.set_visual(visual)
+        except Exception:
+            pass
+        self.install_css()
+
+        self.area = Gtk.DrawingArea()
+        self.area.set_size_request(self.width, self.height)
+        self.area.add_events(
+            Gdk.EventMask.POINTER_MOTION_MASK
+            | Gdk.EventMask.LEAVE_NOTIFY_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.BUTTON_RELEASE_MASK
+            | Gdk.EventMask.SCROLL_MASK
+            | Gdk.EventMask.ENTER_NOTIFY_MASK
+        )
+        self.area.connect("draw", self.on_draw)
+        self.area.connect("motion-notify-event", self.on_motion)
+        self.area.connect("enter-notify-event", self.on_enter)
+        self.area.connect("leave-notify-event", self.on_leave)
+        self.area.connect("button-press-event", self.on_button_press)
+        self.area.connect("button-release-event", self.on_button_release)
+        self.area.connect("scroll-event", self.on_scroll)
+        self.window.add(self.area)
+        self.place_window()
+        self.window.connect("destroy", lambda *_: (clear_state(), Gtk.main_quit()))
+        GLib.timeout_add(FRAME_MS, self.animate)
+        GLib.timeout_add_seconds(2, self.refresh_clients)
+
+    def compute_width(self) -> int:
+        tile_count = sum(1 for tile in self.tiles if not tile.get("separator"))
+        sep_count = sum(1 for tile in self.tiles if tile.get("separator"))
+        natural = PADDING_X * 2 + tile_count * BASE_TILE + max(0, tile_count - 1) * GAP + sep_count * SEP
+        return int(min(max(300, natural), self.mon_w - DOCK_MARGIN * 2))
+
+    def place_window(self) -> None:
+        try:
+            import gi as _gi
+
+            _gi.require_version("GtkLayerShell", "0.1")
+            from gi.repository import GtkLayerShell
+
+            self.layer_shell_api = GtkLayerShell
+            GtkLayerShell.init_for_window(self.window)
+            if hasattr(GtkLayerShell, "set_namespace"):
+                GtkLayerShell.set_namespace(self.window, "sevenos-dock")
+            GtkLayerShell.set_layer(self.window, GtkLayerShell.Layer.OVERLAY)
+            GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.BOTTOM, True)
+            GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.LEFT, False)
+            GtkLayerShell.set_anchor(self.window, GtkLayerShell.Edge.RIGHT, False)
+            GtkLayerShell.set_margin(self.window, GtkLayerShell.Edge.BOTTOM, DOCK_MARGIN)
+            GtkLayerShell.set_exclusive_zone(self.window, DOCK_HEIGHT + DOCK_MARGIN if self.reserve_space else 0)
+            GtkLayerShell.set_keyboard_interactivity(self.window, False)
+            self.layer_shell = True
+        except Exception:
+            self.window.move(max(0, int((self.mon_w - self.width) / 2)), max(0, self.mon_h - self.height - DOCK_MARGIN))
+
+    def run(self) -> int:
+        self.window.show_all()
+        if self.autohide:
+            self.set_revealed(False, immediate=True)
+        write_state(os.getpid(), self.profile, self.width, self.height, self.layer_shell, self.reserve_space)
+        self.Gtk.main()
+        return 0
+
+    def set_revealed(self, revealed: bool, immediate: bool = False) -> None:
+        self.revealed = revealed
+        self.reveal_target = 1.0 if revealed else 0.0
+        if immediate:
+            self.reveal_progress = self.reveal_target
+            self.apply_reveal()
+
+    def apply_reveal(self) -> None:
+        if self.layer_shell_api is not None:
+            try:
+                hidden_margin = -(DOCK_HEIGHT - HIDDEN_PEEK)
+                margin = int(hidden_margin + (DOCK_MARGIN - hidden_margin) * ease_out_cubic(self.reveal_progress))
+                self.layer_shell_api.set_margin(self.window, self.layer_shell_api.Edge.BOTTOM, margin)
+            except Exception:
+                pass
+        self.window.set_opacity(0.68 + 0.32 * ease_out_cubic(self.reveal_progress))
+
+    def refresh_clients(self) -> bool:
+        self.grouped = clients_by_tile(hyprland_clients())
+        old_ids = [tile.get("id") for tile in self.tiles]
+        self.tiles = make_tiles(self.config, self.profile, self.grouped)
+        if [tile.get("id") for tile in self.tiles] != old_ids:
+            self.scales = [0.0 for _ in self.tiles]
+            self.targets = [0.0 for _ in self.tiles]
+            self.velocities = [0.0 for _ in self.tiles]
+            self.visual_rects = []
+        self.area.queue_draw()
+        return True
+
+    def install_css(self) -> None:
+        provider = self.Gtk.CssProvider()
+        provider.load_from_data(
+            b"""
+            window.dock-canvas-tip {
+              background: rgba(20, 22, 32, 0.84);
+              color: rgba(247, 250, 255, 0.96);
+              border: 1px solid rgba(255, 255, 255, 0.14);
+              border-radius: 14px;
+            }
+            window.dock-canvas-tip label {
+              color: rgba(247, 250, 255, 0.96);
+              font-size: 12px;
+              font-weight: 500;
+            }
+            window.dock-canvas-tip button {
+              background: rgba(255, 255, 255, 0.08);
+              border: 1px solid rgba(255, 255, 255, 0.08);
+              border-radius: 9px;
+              color: rgba(247, 250, 255, 0.96);
+              padding: 7px 10px;
+            }
+            window.dock-canvas-tip button:hover {
+              background: rgba(95, 135, 255, 0.30);
+            }
+            """
+        )
+        self.Gtk.StyleContext.add_provider_for_screen(
+            self.Gdk.Screen.get_default(),
+            provider,
+            self.Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+    def draw_icon(self, cr, tile: dict[str, object], x: float, y: float, size: int) -> None:
+        key = (str(tile.get("icon", "")), size)
+        pixbuf = self.icon_cache.get(key)
+        if pixbuf is None:
+            try:
+                pixbuf = self.theme.load_icon(str(tile.get("icon", "")), size, 0)
+            except Exception:
+                pixbuf = None
+            self.icon_cache[key] = pixbuf
+        if pixbuf is not None:
+            self.Gdk.cairo_set_source_pixbuf(cr, pixbuf, x, y)
+            cr.paint()
+
+    def on_draw(self, _area, cr) -> bool:
+        dark = os.environ.get("SEVENOS_THEME_MODE", "").lower() != "light"
+        shell_y = 6
+        shell_h = self.height - 10
+        rounded_rect(cr, 3, shell_y + 4, self.width - 6, shell_h - 2, 26)
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.22 if dark else 0.12)
+        cr.fill()
+        rounded_rect(cr, 0.5, shell_y + 0.5, self.width - 1, shell_h - 1, 26)
+        if dark:
+            gradient = self.cairo_linear(cr, 0, shell_y, 0, shell_y + shell_h, [(0, (0.24, 0.26, 0.36, 0.78)), (0.48, (0.14, 0.15, 0.22, 0.72)), (1, (0.05, 0.06, 0.10, 0.76))])
+            cr.set_source(gradient)
+        else:
+            gradient = self.cairo_linear(cr, 0, shell_y, 0, shell_y + shell_h, [(0, (0.92, 0.95, 1.00, 0.86)), (0.52, (0.78, 0.85, 0.95, 0.72)), (1, (0.66, 0.74, 0.88, 0.70))])
+            cr.set_source(gradient)
+        cr.fill_preserve()
+        cr.set_source_rgba(*(0.95, 0.97, 1.0, 0.30) if dark else (0.12, 0.15, 0.22, 0.12))
+        cr.set_line_width(1)
+        cr.stroke()
+        if self.autohide and self.reveal_progress < 0.32:
+            handle_w = 74
+            handle_h = 4
+            rounded_rect(cr, self.width / 2 - handle_w / 2, 4, handle_w, handle_h, 2)
+            cr.set_source_rgba(*(0.85, 0.90, 1.0, 0.44) if dark else (0.15, 0.18, 0.26, 0.34))
+            cr.fill()
+
+        self.rects = []
+        self.visual_rects = []
+        x = PADDING_X
+        center_y = self.height / 2 + 2
+        for index, tile in enumerate(self.tiles):
+            if tile.get("separator"):
+                cr.set_source_rgba(*(0.95, 0.97, 1.0, 0.16) if dark else (0.12, 0.15, 0.22, 0.14))
+                cr.rectangle(x + SEP / 2, center_y - 17, 1, 34)
+                cr.fill()
+                self.rects.append((x, 0, SEP, self.height))
+                self.visual_rects.append((x, 0, SEP, self.height))
+                x += SEP
+                continue
+            scale = self.scales[index]
+            lifted = ease_out_cubic(scale)
+            bounce = self.bounce_offset(index)
+            tile_size = BASE_TILE + 2.5 * lifted
+            icon_size = int(BASE_ICON + (MAX_ICON - BASE_ICON) * lifted)
+            tile_x = x - (tile_size - BASE_TILE) / 2
+            tile_y = center_y - tile_size / 2 - 4 * lifted - bounce
+            icon_x = tile_x + (tile_size - icon_size) / 2
+            icon_y = tile_y + (tile_size - icon_size) / 2
+            color = tile.get("style", (0.4, 0.5, 0.7))
+            c1 = mix(color, 0.42 if not dark else 0.18)
+            c2 = darken(color, 0.16)
+
+            rounded_rect(cr, tile_x + 5, tile_y + tile_size - 5, tile_size - 10, 10, 5)
+            cr.set_source_rgba(0.0, 0.0, 0.0, 0.12 + 0.12 * lifted)
+            cr.fill()
+
+            if tile.get("active") or lifted > 0.18:
+                rounded_rect(cr, tile_x - 2, tile_y - 2, tile_size + 4, tile_size + 4, 15 + 5 * lifted)
+                cr.set_source_rgba(0.38, 0.55, 1.0, 0.16 + 0.12 * lifted)
+                cr.fill()
+            rounded_rect(cr, tile_x, tile_y, tile_size, tile_size, 13 + 5 * scale)
+            cr.set_source(self.cairo_linear(cr, tile_x, tile_y, tile_x, tile_y + tile_size, [(0, (*c1, 0.98)), (1, (*c2, 0.92))]))
+            cr.fill_preserve()
+            cr.set_source_rgba(1, 1, 1, 0.18 if dark else 0.30)
+            cr.set_line_width(1)
+            cr.stroke()
+            rounded_rect(cr, tile_x + 5, tile_y + 4, tile_size - 10, max(7, tile_size * 0.26), 9)
+            cr.set_source_rgba(1, 1, 1, (0.12 + 0.08 * lifted) if dark else (0.18 + 0.08 * lifted))
+            cr.fill()
+            self.draw_icon(cr, tile, icon_x, icon_y, icon_size)
+            if tile.get("window_count"):
+                self.draw_running_indicator(cr, tile_x + tile_size / 2, shell_y + shell_h - 9, int(tile.get("window_count", 1) or 1), dark)
+            if int(tile.get("window_count", 0) or 0) > 1:
+                self.draw_badge(cr, tile_x + tile_size - 9, tile_y + 5, str(min(99, int(tile["window_count"]))))
+            self.rects.append((x, 0, BASE_TILE, self.height))
+            self.visual_rects.append((tile_x, tile_y, tile_size, tile_size))
+            x += BASE_TILE + GAP
+        return False
+
+    def draw_running_indicator(self, cr, cx: float, cy: float, count: int, dark: bool) -> None:
+        count = max(1, min(3, count))
+        start = cx - ((count - 1) * 6) / 2
+        for idx in range(count):
+            cr.set_source_rgba(*(0.95, 0.97, 1.0, 0.88) if dark else (0.12, 0.15, 0.22, 0.72))
+            cr.arc(start + idx * 6, cy, 2.2, 0, math.tau)
+            cr.fill()
+
+    def draw_badge(self, cr, cx: float, cy: float, text: str) -> None:
+        radius = 8
+        cr.set_source_rgba(0.28, 0.50, 0.90, 0.96)
+        cr.arc(cx, cy, radius, 0, math.tau)
+        cr.fill()
+        cr.set_source_rgba(1, 1, 1, 0.96)
+        cr.select_font_face("Sans")
+        cr.set_font_size(9)
+        ext = cr.text_extents(text)
+        cr.move_to(cx - ext.width / 2 - ext.x_bearing, cy - ext.height / 2 - ext.y_bearing)
+        cr.show_text(text)
+
+    @staticmethod
+    def cairo_linear(cr, x0, y0, x1, y1, stops):
+        import cairo
+
+        gradient = cairo.LinearGradient(x0, y0, x1, y1)
+        for offset, color in stops:
+            gradient.add_color_stop_rgba(offset, *color)
+        return gradient
+
+    def tile_at(self, x: float, y: float) -> int | None:
+        for index, (rx, ry, rw, rh) in enumerate(self.rects):
+            if rx <= x <= rx + rw and ry <= y <= ry + rh and not self.tiles[index].get("separator"):
+                return index
+        return None
+
+    def update_targets(self, x_root: float) -> None:
+        for index, tile in enumerate(self.tiles):
+            if tile.get("separator"):
+                self.targets[index] = 0.0
+                continue
+            rx, _ry, rw, _rh = self.rects[index]
+            wx, _wy = self.widget_origin(self.area)
+            center = wx + rx + rw / 2
+            distance = abs(x_root - center)
+            scale = math.exp(-((distance * distance) / (2 * SIGMA * SIGMA)))
+            self.targets[index] = 0.0 if scale < 0.14 else scale
+
+    def animate(self) -> bool:
+        moving = False
+        now = time.monotonic()
+        if abs(self.reveal_progress - self.reveal_target) > 0.002:
+            self.reveal_progress += (self.reveal_target - self.reveal_progress) * REVEAL_SPEED
+            if abs(self.reveal_progress - self.reveal_target) < 0.01:
+                self.reveal_progress = self.reveal_target
+            self.apply_reveal()
+            moving = True
+        if self.hide_at is not None and now >= self.hide_at:
+            self.hide_at = None
+            if self.autohide:
+                self.set_revealed(False)
+                self.close_preview()
+                self.close_label()
+                moving = True
+        for index, started in list(self.bounces.items()):
+            if now - started >= BOUNCE_DURATION:
+                self.bounces.pop(index, None)
+                moving = True
+        for index, target in enumerate(self.targets):
+            current = self.scales[index]
+            velocity = (self.velocities[index] + (target - current) * SPRING_PULL) * SPRING_DAMPING
+            next_scale = current + velocity
+            if abs(next_scale - target) < 0.006 and abs(velocity) < 0.006:
+                next_scale = target
+                velocity = 0.0
+            if abs(next_scale - current) > 0.001:
+                moving = True
+            self.scales[index] = next_scale
+            self.velocities[index] = velocity
+        if moving or self.bounces:
+            self.area.queue_draw()
+        return True
+
+    def bounce_offset(self, index: int) -> float:
+        started = self.bounces.get(index)
+        if started is None:
+            return 0.0
+        progress = max(0.0, min(1.0, (time.monotonic() - started) / BOUNCE_DURATION))
+        return max(0.0, math.sin(progress * math.tau * 1.6) * (1.0 - progress) * 9.0)
+
+    def on_enter(self, *_args) -> bool:
+        self.hide_at = None
+        if self.autohide:
+            self.set_revealed(True)
+        return False
+
+    def on_motion(self, _area, event) -> bool:
+        self.update_targets(float(event.x_root))
+        index = self.tile_at(float(event.x), float(event.y))
+        if index != self.hover_index:
+            self.hover_index = index
+            self.hover_started = time.monotonic()
+            self.close_preview()
+            self.close_label()
+        if self.autohide and not self.revealed:
+            self.set_revealed(True)
+        self.hide_at = None
+        if self.press_index is not None and self.press_xy is not None:
+            dx = float(event.x) - self.press_xy[0]
+            dy = float(event.y) - self.press_xy[1]
+            if abs(dx) + abs(dy) > DRAG_THRESHOLD:
+                self.dragging = True
+                self.close_preview()
+                self.close_label()
+                return True
+        if index is not None:
+            if time.monotonic() - self.hover_started < PREVIEW_DELAY:
+                return False
+            tile = self.tiles[index]
+            windows = tile.get("windows", [])
+            if windows:
+                self.show_preview(tile, windows)
+            else:
+                self.show_label(tile)
+        return False
+
+    def on_leave(self, *_args) -> bool:
+        self.targets = [0.0 for _ in self.tiles]
+        self.hover_index = None
+        self.press_index = None
+        self.press_xy = None
+        self.dragging = False
+        if self.autohide:
+            self.hide_at = time.monotonic() + HIDE_DELAY
+        return False
+
+    def on_button_press(self, _area, event) -> bool:
+        index = self.tile_at(float(event.x), float(event.y))
+        if index is None:
+            return False
+        tile = self.tiles[index]
+        if int(getattr(event, "button", 0) or 0) == 1:
+            self.press_index = index
+            self.press_xy = (float(event.x), float(event.y))
+            self.dragging = False
+            return True
+        if int(getattr(event, "button", 0) or 0) == 2:
+            self.bounces[index] = time.monotonic()
+            run_action([str(part) for part in tile.get("command", [])])
+            return True
+        if int(getattr(event, "button", 0) or 0) == 3:
+            self.hover_index = index
+            self.show_context_menu(tile, tile.get("windows", []))
+            return True
+        return False
+
+    def on_button_release(self, _area, event) -> bool:
+        index = self.tile_at(float(event.x), float(event.y))
+        source_index = self.press_index
+        self.press_index = None
+        self.press_xy = None
+        if int(getattr(event, "button", 0) or 0) != 1 or source_index is None:
+            self.dragging = False
+            return False
+        if self.dragging:
+            self.dragging = False
+            if index is not None and index != source_index:
+                self.move_tile(source_index, index)
+            return True
+        self.dragging = False
+        if index is None:
+            return False
+        self.activate_tile(index)
+        return True
+
+    def activate_tile(self, index: int) -> None:
+        tile = self.tiles[index]
+        self.bounces[index] = time.monotonic()
+        self.area.queue_draw()
+        if tile.get("kind") == "folder":
+            self.show_folder_stack(tile)
+            return
+        windows = tile.get("windows", [])
+        if windows:
+            windows = sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))
+            focus_client(windows[0])
+            return
+        run_action([str(part) for part in tile.get("command", [])])
+
+    def on_scroll(self, _area, event) -> bool:
+        index = self.tile_at(float(event.x), float(event.y))
+        if index is None:
+            return False
+        windows = self.tiles[index].get("windows", [])
+        if not windows:
+            return False
+        windows = sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))
+        direction = getattr(event, "direction", None)
+        step = -1 if direction == self.Gdk.ScrollDirection.UP else 1
+        target = windows[step % len(windows)]
+        focus_client(target)
+        return True
+
+    def move_tile(self, source_index: int, target_index: int) -> None:
+        if source_index >= len(self.tiles) or target_index >= len(self.tiles):
+            return
+        source = self.tiles[source_index]
+        target = self.tiles[target_index]
+        if source.get("separator") or target.get("separator"):
+            return
+        source_id = str(source.get("id"))
+        target_id = str(target.get("id"))
+        config = load_config()
+        if source.get("kind") == "folder" and target.get("kind") == "folder":
+            folders = [str(item) for item in config.get("folders", DEFAULT_CONFIG["folders"])]
+            self.move_id(folders, source_id, target_id)
+            config["folders"] = folders
+        else:
+            current = [
+                str(tile.get("id"))
+                for tile in self.tiles
+                if not tile.get("separator") and tile.get("kind") != "folder" and str(tile.get("id")) != "settings"
+            ]
+            self.move_id(current, source_id, target_id)
+            profile_pins = config.get("profile_pins", {})
+            if not isinstance(profile_pins, dict):
+                profile_pins = {}
+            profile_pins[self.profile] = current
+            config["profile_pins"] = profile_pins
+        save_config(config)
+        self.config = load_config()
+        self.refresh_clients()
+
+    @staticmethod
+    def move_id(items: list[str], source_id: str, target_id: str) -> None:
+        if source_id not in items or target_id not in items:
+            return
+        item = items.pop(items.index(source_id))
+        items.insert(items.index(target_id), item)
+
+    def show_label(self, tile: dict[str, object]) -> None:
+        key = f"label:{tile.get('id')}"
+        if self.tip_key == key and self.hover_label is not None:
+            return
+        self.close_preview()
+        self.close_label()
+        self.tip_key = key
+        self.hover_label = self.tooltip_window(str(tile.get("title", "App")), self.hover_anchor())
+
+    def show_preview(self, tile: dict[str, object], windows: list[dict[str, object]], force: bool = False) -> None:
+        key = f"preview:{tile.get('id')}:{len(windows)}"
+        if self.tip_key == key and self.preview is not None:
+            return
+        self.close_label()
+        if not windows and not force:
+            return
+        self.close_preview()
+        self.tip_key = key
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=6)
+        box.get_style_context().add_class("dock-canvas-preview")
+        title = self.Gtk.Label(label=str(tile.get("title", "App")))
+        title.set_xalign(0)
+        box.pack_start(title, False, False, 0)
+        if not windows:
+            row = self.Gtk.Label(label=tr("Aucune fenêtre ouverte", "No open windows"))
+            row.set_xalign(0)
+            box.pack_start(row, False, False, 0)
+        for client in sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))[:6]:
+            label = str(client.get("title") or client.get("class") or tile.get("title", "Window"))
+            if len(label) > 46:
+                label = label[:43].rstrip() + "..."
+            row = self.Gtk.Button(label=label)
+            row.set_relief(self.Gtk.ReliefStyle.NONE)
+            row.get_child().set_xalign(0)
+            row.connect("clicked", lambda _row, selected=client: (focus_client(selected), self.close_preview()))
+            box.pack_start(row, False, False, 0)
+        self.preview = self.tooltip_window(box, self.hover_anchor())
+
+    def show_context_menu(self, tile: dict[str, object], windows: list[dict[str, object]]) -> None:
+        self.close_label()
+        self.close_preview()
+        self.tip_key = f"context:{tile.get('id')}:{len(windows)}"
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=7)
+        title = self.Gtk.Label(label=str(tile.get("title", "App")))
+        title.set_xalign(0)
+        box.pack_start(title, False, False, 0)
+
+        open_button = self.Gtk.Button(label=tr("Ouvrir", "Open"))
+        open_button.set_relief(self.Gtk.ReliefStyle.NONE)
+        open_button.get_child().set_xalign(0)
+        open_button.connect("clicked", lambda _button: (run_action([str(part) for part in tile.get("command", [])]), self.close_preview()))
+        box.pack_start(open_button, False, False, 0)
+
+        if windows:
+            focus_button = self.Gtk.Button(label=tr("Revenir à la dernière fenêtre", "Focus Last Window"))
+            focus_button.set_relief(self.Gtk.ReliefStyle.NONE)
+            focus_button.get_child().set_xalign(0)
+            focus_button.connect("clicked", lambda _button: (focus_client(sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))[0]), self.close_preview()))
+            box.pack_start(focus_button, False, False, 0)
+
+            for client in sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))[:5]:
+                label = str(client.get("title") or client.get("class") or tile.get("title", "Window"))
+                if len(label) > 42:
+                    label = label[:39].rstrip() + "..."
+                row = self.Gtk.Button(label=f"• {label}")
+                row.set_relief(self.Gtk.ReliefStyle.NONE)
+                row.get_child().set_xalign(0)
+                row.connect("clicked", lambda _row, selected=client: (focus_client(selected), self.close_preview()))
+                box.pack_start(row, False, False, 0)
+
+            close_button = self.Gtk.Button(label=tr("Fermer les fenêtres", "Close Windows"))
+            close_button.set_relief(self.Gtk.ReliefStyle.NONE)
+            close_button.get_child().set_xalign(0)
+            close_button.connect("clicked", lambda _button: (self.close_tile_windows(windows), self.close_preview()))
+            box.pack_start(close_button, False, False, 0)
+
+        self.preview = self.tooltip_window(box, self.hover_anchor())
+
+    def show_folder_stack(self, tile: dict[str, object]) -> None:
+        command = [str(part) for part in tile.get("command", [])]
+        folder = Path(command[1]).expanduser() if len(command) > 1 else Path.home()
+        key = f"folder:{folder}"
+        if self.tip_key == key and self.preview is not None:
+            return
+        self.close_label()
+        self.close_preview()
+        self.tip_key = key
+        box = self.Gtk.Box(orientation=self.Gtk.Orientation.VERTICAL, spacing=7)
+        title = self.Gtk.Label(label=str(tile.get("title", folder.name or "Folder")))
+        title.set_xalign(0)
+        box.pack_start(title, False, False, 0)
+
+        open_button = self.Gtk.Button(label=tr("Ouvrir dans Fichiers", "Open in Files"))
+        open_button.set_relief(self.Gtk.ReliefStyle.NONE)
+        open_button.get_child().set_xalign(0)
+        open_button.connect("clicked", lambda _button: (run_action(["xdg-open", str(folder)]), self.close_preview()))
+        box.pack_start(open_button, False, False, 0)
+
+        try:
+            entries = sorted(folder.iterdir(), key=lambda item: (not item.is_dir(), item.name.casefold()))[:7]
+        except OSError:
+            entries = []
+        for entry in entries:
+            label = f"{'▸' if entry.is_dir() else '•'} {entry.name}"
+            if len(label) > 42:
+                label = label[:39].rstrip() + "..."
+            row = self.Gtk.Button(label=label)
+            row.set_relief(self.Gtk.ReliefStyle.NONE)
+            row.get_child().set_xalign(0)
+            row.connect("clicked", lambda _row, selected=entry: (run_action(["xdg-open", str(selected)]), self.close_preview()))
+            box.pack_start(row, False, False, 0)
+        if not entries:
+            empty = self.Gtk.Label(label=tr("Dossier vide", "Empty folder"))
+            empty.set_xalign(0)
+            box.pack_start(empty, False, False, 0)
+
+        self.preview = self.tooltip_window(box, self.hover_anchor())
+
+    def close_tile_windows(self, windows: list[dict[str, object]]) -> None:
+        for client in windows:
+            close_client(client)
+
+    def hover_anchor(self) -> tuple[int, int] | None:
+        if self.hover_index is None or self.hover_index >= len(self.visual_rects):
+            return None
+        vx, vy, vw, _vh = self.visual_rects[self.hover_index]
+        wx, wy = self.widget_origin(self.area)
+        return int(wx + vx + vw / 2), int(wy + vy)
+
+    def tooltip_window(self, content, anchor: tuple[int, int] | None = None):
+        win = self.Gtk.Window(title="Seven Dock Tip")
+        win.set_decorated(False)
+        win.set_resizable(False)
+        win.set_accept_focus(False)
+        win.set_focus_on_map(False)
+        win.set_keep_above(True)
+        win.set_skip_taskbar_hint(True)
+        win.set_skip_pager_hint(True)
+        win.set_type_hint(self.Gdk.WindowTypeHint.TOOLTIP)
+        win.get_style_context().add_class("dock-canvas-tip")
+        if isinstance(content, str):
+            label = self.Gtk.Label(label=content)
+            label.set_margin_top(6)
+            label.set_margin_bottom(6)
+            label.set_margin_start(12)
+            label.set_margin_end(12)
+            win.add(label)
+        else:
+            content.set_margin_top(8)
+            content.set_margin_bottom(8)
+            content.set_margin_start(10)
+            content.set_margin_end(10)
+            win.add(content)
+        win.show_all()
+        wx, wy = self.widget_origin(self.area)
+        width = max(96, win.get_allocated_width() or 96)
+        height = max(30, win.get_allocated_height() or 30)
+        if anchor is None:
+            anchor = (int(wx + self.width / 2), int(wy))
+        px = int(anchor[0] - width / 2)
+        py = int(anchor[1] - height - 12)
+        win.move(max(8, px), max(8, py))
+        return win
+
+    def close_preview(self) -> None:
+        if self.preview is not None:
+            try:
+                self.preview.destroy()
+            except Exception:
+                pass
+            self.preview = None
+            self.tip_key = None
+
+    def close_label(self) -> None:
+        if self.hover_label is not None:
+            try:
+                self.hover_label.destroy()
+            except Exception:
+                pass
+            self.hover_label = None
+            self.tip_key = None
+
+    @staticmethod
+    def widget_origin(widget) -> tuple[int, int]:
+        try:
+            origin = widget.get_window().get_origin()
+            if len(origin) == 3:
+                return int(origin[1]), int(origin[2])
+            return int(origin[0]), int(origin[1])
+        except Exception:
+            return 0, 0
+
+
+def limits(json_output: bool) -> int:
+    config = load_config()
+    profile = active_profile_key()
+    grouped = clients_by_tile(hyprland_clients())
+    tiles = make_tiles(config, profile, grouped)
+    mon_w, mon_h = monitor_bounds()
+    tile_count = sum(1 for tile in tiles if not tile.get("separator"))
+    sep_count = sum(1 for tile in tiles if tile.get("separator"))
+    width = min(max(300, PADDING_X * 2 + tile_count * BASE_TILE + max(0, tile_count - 1) * GAP + sep_count * SEP), mon_w - DOCK_MARGIN * 2)
+    reserve_space = bool(config.get("reserve_space", False))
+    autohide = bool(config.get("autohide", True))
+    payload = {
+        "schema": "sevenos.dock.limits.v1",
+        "renderer": "canvas",
+        "monitor": {"width": mon_w, "height": mon_h},
+        "dock": {
+            "width": width,
+            "height": DOCK_HEIGHT,
+            "margin": DOCK_MARGIN,
+            "reserve_space": reserve_space,
+            "exclusive_zone": DOCK_HEIGHT + DOCK_MARGIN if reserve_space else 0,
+            "layout": "floating-overlay",
+            "effect": "magnetic-focus",
+            "autohide": autohide,
+            "hidden_margin": -(DOCK_HEIGHT - HIDDEN_PEEK) if autohide else DOCK_MARGIN,
+            "hidden_peek": HIDDEN_PEEK,
+        },
+        "tiles": {"total": tile_count, "separators": sep_count, "profile_pins": PROFILE_PINNED.get(profile, PROFILE_PINNED["equinox"])},
+        "live": {
+            "hyprland_clients": len(grouped),
+            "features": [
+                "canvas-draw",
+                "smooth-neighbor-magnification",
+                "magnetic-focus",
+                "icon-lift",
+                "launch-bounce",
+                "centered-icons",
+                "active-halo",
+                "multi-window-dots",
+                "anchored-window-preview",
+                "scroll-window-cycle",
+                "middle-click-new-instance",
+                "drag-reorder",
+                "folder-stacks",
+                "autohide-fade",
+                "smooth-slide-reveal",
+                "edge-handle",
+                "spring-motion",
+                "delayed-hide",
+                "hover-intent-preview",
+                "direct-native-spotlight",
+            ],
+        },
+    }
+    if json_output:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    else:
+        print(f"SevenOS Canvas Dock: {width}x{DOCK_HEIGHT}")
+    return 0
+
+
+def main() -> int:
+    if "--probe" in sys.argv:
+        return probe()
+    if "--limits" in sys.argv:
+        return limits("--json" in sys.argv)
+    return CanvasDock().run()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

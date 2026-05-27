@@ -13,6 +13,13 @@ halo_sprite.SetX(center_x - 180);
 halo_sprite.SetY(center_y - 236);
 halo_sprite.SetZ(2);
 
+halo_inner = Image(220, 220);
+halo_inner.Fill(0.40, 0.32, 1.00, 0.10);
+halo_inner_sprite = Sprite(halo_inner);
+halo_inner_sprite.SetX(center_x - 110);
+halo_inner_sprite.SetY(center_y - 166);
+halo_inner_sprite.SetZ(3);
+
 prism = Image("seven-prism.png");
 prism_sprite = Sprite(prism);
 prism_sprite.SetX(center_x - prism.GetWidth() / 2);
@@ -31,35 +38,73 @@ lane_b_sprite = Sprite(lane_b);
 lane_b_sprite.SetY(center_y - 64);
 lane_b_sprite.SetZ(8);
 
+lane_c = Image(180, 2);
+lane_c.Fill(1.00, 0.24, 0.30, 0.32);
+lane_c_sprite = Sprite(lane_c);
+lane_c_sprite.SetY(center_y - 44);
+lane_c_sprite.SetZ(8);
+
+lane_d = Image(148, 2);
+lane_d.Fill(0.12, 0.96, 0.62, 0.30);
+lane_d_sprite = Sprite(lane_d);
+lane_d_sprite.SetY(center_y - 34);
+lane_d_sprite.SetZ(8);
+
 brand = Image.Text("SevenOS", 0.94, 0.97, 1.00);
 brand_sprite = Sprite(brand);
 brand_sprite.SetX(center_x - brand.GetWidth() / 2);
 brand_sprite.SetY(center_y + 8);
 brand_sprite.SetZ(30);
 
-subtitle = Image.Text("Starting system workspace", 0.60, 0.67, 0.78);
+profile_chip = Image(238, 26);
+profile_chip.Fill(0.12, 0.16, 0.25, 0.54);
+profile_chip_sprite = Sprite(profile_chip);
+profile_chip_sprite.SetX(center_x - 119);
+profile_chip_sprite.SetY(center_y + 40);
+profile_chip_sprite.SetZ(22);
+
+profile_mark = Image(8, 8);
+profile_mark.Fill(0.34, 0.56, 1.00, 0.92);
+profile_mark_sprite = Sprite(profile_mark);
+profile_mark_sprite.SetX(center_x - 101);
+profile_mark_sprite.SetY(center_y + 49);
+profile_mark_sprite.SetZ(24);
+
+profile_label = Image.Text("Mini OS · Equinox Balance", 0.72, 0.78, 0.90);
+profile_label_sprite = Sprite(profile_label);
+profile_label_sprite.SetX(center_x - profile_label.GetWidth() / 2 + 6);
+profile_label_sprite.SetY(center_y + 44);
+profile_label_sprite.SetZ(25);
+
+subtitle = Image.Text("Preparing SevenOS workspace", 0.60, 0.67, 0.78);
 subtitle_sprite = Sprite(subtitle);
 subtitle_sprite.SetX(center_x - subtitle.GetWidth() / 2);
-subtitle_sprite.SetY(center_y + 52);
+subtitle_sprite.SetY(center_y + 76);
 subtitle_sprite.SetZ(30);
+
+detail = Image.Text("Loading mini OS surfaces", 0.42, 0.50, 0.65);
+detail_sprite = Sprite(detail);
+detail_sprite.SetX(center_x - detail.GetWidth() / 2);
+detail_sprite.SetY(center_y + 98);
+detail_sprite.SetZ(30);
 
 track = Image(320, 4);
 track.Fill(0.18, 0.21, 0.30, 0.58);
 track_sprite = Sprite(track);
 track_sprite.SetX(center_x - 160);
-track_sprite.SetY(center_y + 92);
+track_sprite.SetY(center_y + 120);
 track_sprite.SetZ(10);
 
 bar_a = Image(96, 4);
 bar_a.Fill(0.30, 0.64, 1.00, 0.98);
 bar_a_sprite = Sprite(bar_a);
-bar_a_sprite.SetY(center_y + 92);
+bar_a_sprite.SetY(center_y + 120);
 bar_a_sprite.SetZ(14);
 
 bar_b = Image(44, 4);
 bar_b.Fill(0.00, 0.83, 1.00, 0.72);
 bar_b_sprite = Sprite(bar_b);
-bar_b_sprite.SetY(center_y + 92);
+bar_b_sprite.SetY(center_y + 120);
 bar_b_sprite.SetZ(15);
 
 dot = Image(6, 6);
@@ -70,12 +115,28 @@ dot_3 = Sprite(dot);
 dot_1.SetX(center_x - 18);
 dot_2.SetX(center_x - 3);
 dot_3.SetX(center_x + 12);
-dot_1.SetY(center_y + 116);
-dot_2.SetY(center_y + 116);
-dot_3.SetY(center_y + 116);
+dot_1.SetY(center_y + 144);
+dot_2.SetY(center_y + 144);
+dot_3.SetY(center_y + 144);
 dot_1.SetZ(30);
 dot_2.SetZ(30);
 dot_3.SetZ(30);
+
+status_left = Image.Text("Kernel quiet mode", 0.32, 0.39, 0.54);
+status_right = Image.Text("Prism runtime", 0.32, 0.39, 0.54);
+status_left_sprite = Sprite(status_left);
+status_right_sprite = Sprite(status_right);
+status_left_sprite.SetX(center_x - 160);
+status_left_sprite.SetY(center_y + 164);
+status_right_sprite.SetX(center_x + 160 - status_right.GetWidth());
+status_right_sprite.SetY(center_y + 164);
+status_left_sprite.SetZ(24);
+status_right_sprite.SetZ(24);
+
+message_a = Image.Text("Preparing SevenOS workspace", 0.60, 0.67, 0.78);
+message_b = Image.Text("Loading mini OS surfaces", 0.60, 0.67, 0.78);
+message_c = Image.Text("Synchronizing Prism identity", 0.60, 0.67, 0.78);
+message_d = Image.Text("Personalizing active Mini OS", 0.60, 0.67, 0.78);
 
 tick = 0;
 
@@ -86,15 +147,49 @@ fun refresh_callback() {
   bar_b_offset = ((tick * 7) + 72) % 276;
   lane_a_offset = (tick * 3) % (screen_w + 160);
   lane_b_offset = ((tick * 2) + 180) % (screen_w + 120);
+  lane_c_offset = ((tick * 5) + 320) % (screen_w + 180);
+  lane_d_offset = ((tick * 4) + 520) % (screen_w + 148);
+  breath_phase = tick % 100;
+  if (breath_phase < 50) {
+    breath = breath_phase / 170;
+  } else {
+    breath = (100 - breath_phase) / 170;
+  }
+  chip_phase = tick % 90;
 
   bar_a_sprite.SetX(center_x - 160 + bar_a_offset);
   bar_b_sprite.SetX(center_x - 160 + bar_b_offset);
   lane_a_sprite.SetX(lane_a_offset - 160);
   lane_b_sprite.SetX(screen_w - lane_b_offset);
+  lane_c_sprite.SetX(lane_c_offset - 180);
+  lane_d_sprite.SetX(screen_w - lane_d_offset);
+  prism_sprite.SetY(center_y - 170 + ((tick % 32) / 16));
+  halo_sprite.SetOpacity(0.12 + breath);
+  halo_inner_sprite.SetOpacity(0.08 + breath);
+  profile_chip_sprite.SetOpacity(0.44 + breath);
+  profile_mark_sprite.SetOpacity(0.54 + (chip_phase / 190));
+  profile_label_sprite.SetOpacity(0.76 + (chip_phase / 380));
+  status_left_sprite.SetOpacity(0.34 + breath);
+  status_right_sprite.SetOpacity(0.34 + breath);
 
   dot_1.SetOpacity(0.24 + ((tick % 36) / 72));
   dot_2.SetOpacity(0.24 + (((tick + 12) % 36) / 72));
   dot_3.SetOpacity(0.24 + (((tick + 24) % 36) / 72));
+
+  phase = tick % 360;
+  if (phase < 90) {
+    subtitle_sprite.SetImage(message_a);
+    subtitle_sprite.SetX(center_x - message_a.GetWidth() / 2);
+  } else if (phase < 180) {
+    subtitle_sprite.SetImage(message_b);
+    subtitle_sprite.SetX(center_x - message_b.GetWidth() / 2);
+  } else if (phase < 270) {
+    subtitle_sprite.SetImage(message_c);
+    subtitle_sprite.SetX(center_x - message_c.GetWidth() / 2);
+  } else {
+    subtitle_sprite.SetImage(message_d);
+    subtitle_sprite.SetX(center_x - message_d.GetWidth() / 2);
+  }
 }
 
 Plymouth.SetRefreshFunction(refresh_callback);
@@ -103,8 +198,15 @@ fun quit_callback() {
   subtitle_ready = Image.Text("Ready", 0.68, 0.94, 0.86);
   subtitle_sprite.SetImage(subtitle_ready);
   subtitle_sprite.SetX(center_x - subtitle_ready.GetWidth() / 2);
+  detail_ready = Image.Text("Welcome back", 0.42, 0.68, 0.84);
+  detail_sprite.SetImage(detail_ready);
+  detail_sprite.SetX(center_x - detail_ready.GetWidth() / 2);
   bar_a_sprite.SetX(center_x - 48);
   bar_b_sprite.SetX(center_x + 28);
+  profile_chip_sprite.SetOpacity(0.72);
+  profile_mark_sprite.SetOpacity(1.00);
+  status_left_sprite.SetOpacity(0.50);
+  status_right_sprite.SetOpacity(0.50);
 }
 
 Plymouth.SetQuitFunction(quit_callback);

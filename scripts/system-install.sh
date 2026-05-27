@@ -37,6 +37,8 @@ if [[ "$YES" -ne 1 && ! is_dry_run ]]; then
 fi
 
 require_command rsync
+"$ROOT_DIR/scripts/system-assets.sh" doctor >/dev/null
+"$ROOT_DIR/scripts/identity-assets.sh" doctor >/dev/null
 if [[ -z "$(privileged_backend)" ]]; then
   log_error "System install needs sudo or a graphical Polkit prompt."
   exit 1
@@ -49,6 +51,7 @@ else
   run_privileged_cmd mkdir -p "$TARGET_DIR"
   run_privileged_cmd rsync -a --delete \
     --exclude out \
+    --exclude __pycache__ \
     --exclude work \
     --exclude iso \
     --exclude dist \

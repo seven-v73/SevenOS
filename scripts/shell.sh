@@ -253,7 +253,8 @@ doctor() {
   printf '[%s] typescript\n' "$(package_state typescript)"
   printf '[%s] gtk4\n' "$(package_state gtk4)"
   printf '[%s] gtk-layer-shell\n' "$(package_state gtk-layer-shell)"
-  [[ -x "$ROOT_DIR/bin/seven-dock-native" ]] && printf '[OK] native dock\n' || printf '[MISS] native dock\n'
+  [[ -x "$ROOT_DIR/bin/seven-dock-canvas" ]] && printf '[OK] canvas dock\n' || printf '[MISS] canvas dock\n'
+  [[ -x "$ROOT_DIR/bin/seven-dock-native" ]] && printf '[OK] native dock fallback\n' || printf '[MISS] native dock fallback\n'
   [[ -s "$ROOT_DIR/hyprland/waybar/config.jsonc" ]] && printf '[OK] waybar config\n' || printf '[MISS] waybar config\n'
   command -v ags >/dev/null 2>&1 && printf '[OK] ags\n' || printf '[AUR] ags runtime pending explicit workflow\n'
   "$ROOT_DIR/scripts/shell-ags-runtime.sh" status --json >/dev/null && printf '[OK] ags runtime contract\n' || { printf '[MISS] ags runtime contract\n'; failures=$((failures + 1)); }

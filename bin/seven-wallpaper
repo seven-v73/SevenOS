@@ -33,6 +33,8 @@ STATE_DIR="$CONFIG_HOME/sevenos"
 PROFILE_STATE_DIR="$STATE_DIR/profiles"
 PROFILE_WALLPAPER_DIR="$WALLPAPER_DIR/profiles"
 SOURCE_SVG="$ROOT_DIR/identity/assets/wallpaper-sevenos.svg"
+COLLECTION_DIR="$ROOT_DIR/identity/wallpaper/dynamic"
+COLLECTION_MANIFEST="$COLLECTION_DIR/manifest.json"
 TARGET_SVG="$WALLPAPER_DIR/wallpaper-sevenos.svg"
 TARGET_PNG="$WALLPAPER_DIR/wallpaper-sevenos-royal-kente.png"
 CUSTOM_WALLPAPER="$WALLPAPER_DIR/wallpaper-sevenos-custom.png"
@@ -81,6 +83,12 @@ profile_active_wallpaper() {
   local profile
   profile="$(normalize_profile_key "${1:-$(active_profile)}")"
   printf '%s/%s/wallpaper-active.png\n' "$PROFILE_WALLPAPER_DIR" "$profile"
+}
+
+profile_rotation_file() {
+  local profile
+  profile="$(normalize_profile_key "${1:-$(active_profile)}")"
+  printf '%s/%s/wallpaper-rotation.json\n' "$PROFILE_STATE_DIR" "$profile"
 }
 
 save_wallpaper_state() {
@@ -198,6 +206,19 @@ restore_persistent_wallpaper() {
       render_profile_wallpaper "${value:-equinox}"
       save_wallpaper_state profile "${value:-equinox}"
       return 0
+      ;;
+    collection)
+      if [[ -n "$value" ]]; then
+        render_collection_wallpaper "$value"
+        save_wallpaper_state collection "$value"
+        return 0
+      fi
+      ;;
+    rotation)
+      if wallpaper_rotation_enabled; then
+        rotate_wallpaper_once >/dev/null
+        return 0
+      fi
       ;;
     default)
       render_profile_wallpaper "$profile"
@@ -362,6 +383,269 @@ PY
   fi
 }
 
+collection_json() {
+  python - "$COLLECTION_MANIFEST" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    payload = {"schema": "sevenos.wallpaper.collection.v1", "count": 0, "items": []}
+items = payload.get("items") if isinstance(payload.get("items"), list) else []
+payload["count"] = len(items)
+payload["manifest"] = str(path)
+print(json.dumps(payload, ensure_ascii=False, indent=2))
+PY
+}
+
+collection_svg_for_slug() {
+  local slug="$1"
+  python - "$COLLECTION_MANIFEST" "$COLLECTION_DIR" "$slug" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest = Path(sys.argv[1])
+base = Path(sys.argv[2])
+slug = sys.argv[3]
+try:
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+for item in payload.get("items", []):
+    if isinstance(item, dict) and item.get("slug") == slug:
+        svg = base / str(item.get("svg") or "")
+        if svg.is_file():
+            print(svg)
+            raise SystemExit(0)
+raise SystemExit(1)
+PY
+}
+
+render_collection_wallpaper() {
+  local slug="${1:-}"
+  local source_svg target_png collection_target
+  if [[ -z "$slug" ]]; then
+    printf 'seven-wallpaper: missing collection slug\n' >&2
+    exit 1
+  fi
+  source_svg="$(collection_svg_for_slug "$slug" 2>/dev/null || true)"
+  if [[ -z "$source_svg" || ! -f "$source_svg" ]]; then
+    printf 'seven-wallpaper: unknown collection wallpaper: %s\n' "$slug" >&2
+    exit 1
+  fi
+  mkdir -p "$WALLPAPER_DIR/collection"
+  collection_target="$WALLPAPER_DIR/collection/$slug.svg"
+  target_png="$WALLPAPER_DIR/collection/$slug.png"
+  cp "$source_svg" "$collection_target"
+  rm -f "$target_png"
+  if command -v rsvg-convert >/dev/null 2>&1; then
+    rsvg-convert -w 1920 -h 1080 "$collection_target" -o "$target_png"
+  elif command -v magick >/dev/null 2>&1; then
+    magick "$collection_target" -resize 1920x1080! "$target_png"
+  else
+    printf 'seven-wallpaper: missing SVG renderer. Install librsvg or imagemagick.\n' >&2
+    exit 1
+  fi
+  cp "$target_png" "$ACTIVE_WALLPAPER"
+}
+
+wallpaper_rotation_enabled() {
+  local rotation_file
+  rotation_file="$(profile_rotation_file "$(active_profile)")"
+  [[ -s "$rotation_file" ]] || return 1
+  python - "$rotation_file" <<'PY'
+import json
+import sys
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+slugs = data.get("slugs") if isinstance(data.get("slugs"), list) else []
+raise SystemExit(0 if data.get("enabled") is True and len(slugs) > 0 else 1)
+PY
+}
+
+rotation_json() {
+  local rotation_file
+  rotation_file="$(profile_rotation_file "$(active_profile)")"
+  python - "$rotation_file" "$(active_profile)" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+profile = sys.argv[2]
+fallback = {
+    "schema": "sevenos.wallpaper.rotation.v1",
+    "profile": profile,
+    "enabled": False,
+    "interval": 900,
+    "index": 0,
+    "slugs": [],
+}
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        fallback.update(data)
+except Exception:
+    pass
+fallback["profile"] = profile
+fallback["path"] = str(path)
+print(json.dumps(fallback, ensure_ascii=False, indent=2))
+PY
+}
+
+set_wallpaper_rotation() {
+  local interval="${1:-900}"
+  shift || true
+  if [[ "$#" -lt 1 ]]; then
+    printf 'seven-wallpaper: rotation needs at least one collection slug\n' >&2
+    exit 1
+  fi
+  local rotation_file
+  rotation_file="$(profile_rotation_file "$(active_profile)")"
+  mkdir -p "$(dirname "$rotation_file")"
+  COLLECTION_MANIFEST="$COLLECTION_MANIFEST" ROTATION_FILE="$rotation_file" ROTATION_INTERVAL="$interval" python - "$@" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+manifest = Path(os.environ["COLLECTION_MANIFEST"])
+target = Path(os.environ["ROTATION_FILE"])
+try:
+    interval = max(30, int(float(os.environ.get("ROTATION_INTERVAL") or 900)))
+except Exception:
+    interval = 900
+requested = [slug for slug in sys.argv[1:] if slug.strip()]
+payload = json.loads(manifest.read_text(encoding="utf-8"))
+known = {item.get("slug") for item in payload.get("items", []) if isinstance(item, dict)}
+slugs = []
+for slug in requested:
+    if slug not in known:
+        print(f"seven-wallpaper: unknown collection wallpaper: {slug}", file=sys.stderr)
+        raise SystemExit(1)
+    if slug not in slugs:
+        slugs.append(slug)
+if not slugs:
+    print("seven-wallpaper: no valid wallpapers for rotation", file=sys.stderr)
+    raise SystemExit(1)
+data = {
+    "schema": "sevenos.wallpaper.rotation.v1",
+    "enabled": True,
+    "interval": interval,
+    "index": 0,
+    "slugs": slugs,
+}
+target.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+print(json.dumps(data, ensure_ascii=False))
+PY
+  save_wallpaper_state rotation "$rotation_file"
+}
+
+set_wallpaper_rotation_preset() {
+  local preset="${1:-day}"
+  local interval="${2:-900}"
+  case "$preset" in
+    day|daily|journee|journée)
+      set_wallpaper_rotation "$interval" prism-dawn aurora-morning orbit-noon terra-afternoon kente-golden prism-dusk aurora-night
+      ;;
+    calm|soft|calme)
+      set_wallpaper_rotation "$interval" terra-mist aurora-dawn prism-morning terra-golden orbit-dusk aurora-night
+      ;;
+    focus|work|travail)
+      set_wallpaper_rotation "$interval" prism-morning orbit-noon terra-afternoon prism-dusk orbit-night
+      ;;
+    night|nocturne|soir)
+      set_wallpaper_rotation "$interval" aurora-dusk prism-night orbit-midnight terra-night kente-midnight
+      ;;
+    vivid|energy|energie|énergie)
+      set_wallpaper_rotation "$interval" aurora-golden kente-noon orbit-afternoon prism-golden terra-dusk
+      ;;
+    *)
+      printf 'seven-wallpaper: unknown rotation preset: %s\n' "$preset" >&2
+      printf 'available presets: day calm focus night vivid\n' >&2
+      exit 1
+      ;;
+  esac
+}
+
+disable_wallpaper_rotation() {
+  local rotation_file
+  rotation_file="$(profile_rotation_file "$(active_profile)")"
+  mkdir -p "$(dirname "$rotation_file")"
+  python - "$rotation_file" "$(active_profile)" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+data = {
+    "schema": "sevenos.wallpaper.rotation.v1",
+    "profile": sys.argv[2],
+    "enabled": False,
+    "interval": 900,
+    "index": 0,
+    "slugs": [],
+}
+try:
+    old = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(old, dict):
+        data.update(old)
+        data["enabled"] = False
+except Exception:
+    pass
+path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+PY
+}
+
+rotation_interval_seconds() {
+  local rotation_file
+  rotation_file="$(profile_rotation_file "$(active_profile)")"
+  python - "$rotation_file" <<'PY'
+import json
+import sys
+try:
+    data = json.load(open(sys.argv[1], encoding="utf-8"))
+    print(max(30, int(data.get("interval") or 900)))
+except Exception:
+    print(900)
+PY
+}
+
+rotate_wallpaper_once() {
+  local rotation_file slug
+  rotation_file="$(profile_rotation_file "$(active_profile)")"
+  slug="$(python - "$rotation_file" <<'PY'
+import json
+import sys
+import time
+from pathlib import Path
+
+path = Path(sys.argv[1])
+data = json.loads(path.read_text(encoding="utf-8"))
+slugs = data.get("slugs") if isinstance(data.get("slugs"), list) else []
+if not data.get("enabled") or not slugs:
+    raise SystemExit(1)
+index = int(data.get("index") or 0) % len(slugs)
+slug = slugs[index]
+data["index"] = (index + 1) % len(slugs)
+data["last_slug"] = slug
+data["last_changed"] = int(time.time())
+path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+print(slug)
+PY
+)"
+  render_collection_wallpaper "$slug"
+  save_wallpaper_state rotation "$rotation_file"
+  write_config
+  printf '%s\n' "$slug"
+}
+
 render_all_profile_wallpapers() {
   local profile
   for profile in equinox baobab forge shield studio windows pulse; do
@@ -413,6 +697,15 @@ apply_live() {
     start_hyprpaper_detached
   fi
 
+  if command -v swww >/dev/null 2>&1; then
+    swww query >/dev/null 2>&1 || swww init >/dev/null 2>&1 || true
+    swww img "$ACTIVE_WALLPAPER" \
+      --transition-type grow \
+      --transition-pos 0.5,0.5 \
+      --transition-duration 1.15 \
+      --transition-fps 60 >/dev/null 2>&1 || true
+  fi
+
   if command -v hyprctl >/dev/null 2>&1; then
     hyprctl hyprpaper unload all >/dev/null 2>&1 || true
     hyprctl hyprpaper preload "$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
@@ -440,7 +733,18 @@ serve_hyprpaper() {
     hyprctl hyprpaper wallpaper ",$ACTIVE_WALLPAPER" >/dev/null 2>&1 || true
   fi
 
-  wait "$hyprpaper_pid"
+  while kill -0 "$hyprpaper_pid" >/dev/null 2>&1; do
+    if wallpaper_rotation_enabled; then
+      sleep "$(rotation_interval_seconds)"
+      if wallpaper_rotation_enabled; then
+        rotate_wallpaper_once >/dev/null || true
+        SEVENOS_WALLPAPER_NO_SYSTEMD=1 apply_live || true
+      fi
+    else
+      wait "$hyprpaper_pid"
+      return $?
+    fi
+  done
 }
 
 restart_hyprpaper() {
@@ -460,6 +764,7 @@ print_status() {
   printf 'SevenOS wallpaper status\n'
   printf '  profile:     %s\n' "$profile"
   printf '  repo svg:    %s\n' "$SOURCE_SVG"
+  printf '  collection:  %s\n' "$COLLECTION_MANIFEST"
   printf '  copied svg:  %s\n' "$TARGET_SVG"
   printf '  rendered png:%s\n' "$TARGET_PNG"
   printf '  custom png:  %s\n' "$profile_custom"
@@ -468,6 +773,7 @@ print_status() {
   printf '  hypr config: %s\n' "$HYPRPAPER_CONFIG"
   printf '  state file:  %s\n' "$profile_state"
   printf '  global last: %s\n' "$GLOBAL_STATE_FILE"
+  printf '  rotation:    %s\n' "$(profile_rotation_file "$profile")"
   if [[ -f "$profile_state" ]]; then
     printf '  state mode:  %s\n' "$(wallpaper_state_value mode 2>/dev/null || printf unknown)"
     printf '  state value: %s\n' "$(wallpaper_state_value value 2>/dev/null || printf unknown)"
@@ -501,6 +807,8 @@ print_status() {
     printf '\nCurrent hyprpaper config:\n'
     sed 's/^/  /' "$HYPRPAPER_CONFIG"
   fi
+  printf '\nRotation:\n'
+  rotation_json | sed 's/^/  /'
   if command -v pgrep >/dev/null 2>&1; then
     printf '\nProcesses:\n'
     pgrep -a hyprpaper 2>/dev/null | sed 's/^/  /' || printf '  hyprpaper not running\n'
@@ -547,6 +855,50 @@ case "${1:-refresh}" in
     restart_hyprpaper
     printf 'SevenOS profile wallpaper set: %s\n' "$ACTIVE_WALLPAPER"
     ;;
+  collection|pack|dynamic)
+    render_collection_wallpaper "${2:-}"
+    save_wallpaper_state collection "${2:-}"
+    generate_palette
+    restart_hyprpaper
+    printf 'SevenOS collection wallpaper set: %s\n' "$ACTIVE_WALLPAPER"
+    ;;
+  rotation)
+    case "${2:-status}" in
+      set)
+        shift 2 || true
+        set_wallpaper_rotation "$@"
+        rotate_wallpaper_once >/dev/null || true
+        generate_palette
+        restart_hyprpaper
+        ;;
+      preset)
+        set_wallpaper_rotation_preset "${3:-day}" "${4:-900}"
+        rotate_wallpaper_once >/dev/null || true
+        generate_palette
+        restart_hyprpaper
+        ;;
+      once|next)
+        rotate_wallpaper_once
+        generate_palette
+        restart_hyprpaper
+        ;;
+      off|disable|stop)
+        disable_wallpaper_rotation
+        restart_hyprpaper
+        printf 'SevenOS wallpaper rotation disabled\n'
+        ;;
+      status|json)
+        rotation_json
+        ;;
+      *)
+        printf 'Usage: seven-wallpaper rotation [set INTERVAL_SECONDS SLUG...|preset NAME [INTERVAL_SECONDS]|once|off|status]\n' >&2
+        exit 1
+        ;;
+    esac
+    ;;
+  collection-list|packs|list)
+    collection_json
+    ;;
   profiles)
     render_all_profile_wallpapers
     generate_palette
@@ -562,7 +914,7 @@ case "${1:-refresh}" in
     printf '%s\n' "$ACTIVE_WALLPAPER"
     ;;
   *)
-    printf 'Usage: seven-wallpaper [refresh|render|serve|status|path|set IMAGE|profile [PROFILE]|profiles]\n' >&2
+    printf 'Usage: seven-wallpaper [refresh|render|serve|status|path|set IMAGE|profile [PROFILE]|profiles|collection SLUG|collection-list|rotation ...]\n' >&2
     printf 'By default, set/reset/refresh are scoped to the active mini OS profile.\n' >&2
     exit 1
     ;;

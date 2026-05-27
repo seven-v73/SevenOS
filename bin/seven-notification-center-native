@@ -80,6 +80,14 @@ def run_notification_action(action: str) -> None:
     )
 
 
+def dismiss_all_notifications() -> None:
+    if command_available("swaync-client"):
+        subprocess.run(["timeout", "1s", "swaync-client", "-sw", "-C"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        subprocess.run(["timeout", "1s", "swaync-client", "-C"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+    if command_available("makoctl"):
+        subprocess.run(["makoctl", "dismiss", "--all"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+
+
 def dnd_enabled() -> bool:
     return DND_FILE.exists()
 
@@ -92,9 +100,15 @@ def mako_running() -> bool:
     return subprocess.run(["pgrep", "-x", "mako"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
 
 
+def swaync_running() -> bool:
+    return subprocess.run(["pgrep", "-x", "swaync"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+
 def backend_state() -> tuple[str, str]:
-    if not command_available("mako"):
+    if not command_available("mako") and not command_available("swaync"):
         return "missing", tr_text("Service missing")
+    if swaync_running():
+        return "running", tr_text("Ready")
     if mako_running():
         return "running", tr_text("Ready")
     return "inactive", tr_text("Service stopped")
@@ -115,6 +129,23 @@ def _walk_notifications(value: object, rows: list[Notification]) -> None:
 
 
 def load_notifications() -> list[Notification]:
+    if command_available("swaync-client"):
+        result = subprocess.run(
+            ["timeout", "0.8s", "swaync-client", "-sw", "-c"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        count = result.stdout.strip()
+        if count.isdigit() and int(count) > 0:
+            return [
+                Notification(
+                    app=tr_text("Notification Center"),
+                    title=tr_text("{count} active", count=int(count)),
+                    body=tr_text("Use the clear button to dismiss all visible notifications."),
+                )
+            ]
+
     if not command_available("makoctl"):
         return []
     result = subprocess.run(["makoctl", "list"], text=True, capture_output=True, check=False)
@@ -138,6 +169,14 @@ def load_notifications() -> list[Notification]:
         seen.add(key)
         unique.append(row)
     return unique[:7]
+
+
+def visible_notification_count(rows: list[Notification]) -> int:
+    if rows and rows[0].app == tr_text("Notification Center"):
+        match = re.search(r"\d+", rows[0].title)
+        if match:
+            return int(match.group(0))
+    return len(rows)
 
 def probe() -> int:
     ensure_gi_python()
@@ -172,8 +211,8 @@ def run() -> int:
     * { font-family: "SF Pro Display", "SF UI Display", "San Francisco", system-ui, sans-serif; }
     window.notification-center-window { background: transparent; }
     .notification-root {
-      padding: 16px;
-      border-radius: 28px;
+      padding: 18px;
+      border-radius: 30px;
       background:
         radial-gradient(ellipse at 14% 0%, alpha(@seven_wallpaper_accent, 0.14), transparent 42%),
         radial-gradient(ellipse at 86% 0%, alpha(@seven_wallpaper_secondary, 0.10), transparent 40%),
@@ -181,7 +220,7 @@ def run() -> int:
       border: 1px solid @seven_border;
     }
     .header {
-      padding: 4px 4px 12px 4px;
+      padding: 2px 2px 14px 2px;
     }
     .header-title {
       color: @seven_text;
@@ -193,8 +232,8 @@ def run() -> int:
       font-size: 12px;
     }
     .dnd-pill {
-      min-height: 28px;
-      padding: 0 11px;
+      min-height: 30px;
+      padding: 0 12px;
       border-radius: 999px;
       background: alpha(@seven_text, 0.065);
       border: 1px solid @seven_border;
@@ -202,11 +241,33 @@ def run() -> int:
       font-size: 11px;
       font-weight: 500;
     }
+    .header-action,
+    .close-action {
+      min-width: 34px;
+      min-height: 34px;
+      padding: 0;
+      border-radius: 999px;
+      background: alpha(@seven_text, 0.055);
+      border: 1px solid @seven_border;
+      color: @seven_text;
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .header-action:hover,
+    .close-action:hover {
+      background: alpha(@seven_accent, 0.12);
+      border-color: alpha(@seven_accent, 0.26);
+    }
+    .content-frame {
+      min-height: 338px;
+      margin-top: 2px;
+      margin-bottom: 10px;
+    }
     .notification-card {
-      min-height: 72px;
-      padding: 12px;
-      margin-bottom: 8px;
-      border-radius: 20px;
+      min-height: 84px;
+      padding: 13px;
+      margin-bottom: 9px;
+      border-radius: 22px;
       background: @seven_panel_2;
       border: 1px solid @seven_border;
     }
@@ -215,12 +276,12 @@ def run() -> int:
       border-color: alpha(@seven_accent, 0.28);
     }
     .notification-icon {
-      min-width: 40px;
-      min-height: 40px;
-      border-radius: 13px;
+      min-width: 42px;
+      min-height: 42px;
+      border-radius: 14px;
       background: alpha(@seven_accent, 0.12);
       color: @seven_accent;
-      font-size: 18px;
+      font-size: 17px;
     }
     .notification-title {
       color: @seven_text;
@@ -233,7 +294,7 @@ def run() -> int:
       font-size: 11px;
     }
     .empty-box {
-      min-height: 250px;
+      min-height: 320px;
       padding: 24px;
       border-radius: 24px;
       background: @seven_panel_2;
@@ -266,13 +327,13 @@ def run() -> int:
       background: rgba(255,255,255,0.94);
     }
     .action-strip {
-      padding-top: 12px;
+      padding-top: 2px;
     }
     .action-button {
-      min-width: 42px;
+      min-width: 52px;
       min-height: 42px;
       padding: 0;
-      border-radius: 999px;
+      border-radius: 16px;
       background: rgba(255,255,255,0.56);
       border: 1px solid rgba(255,255,255,0.76);
       color: rgba(24,39,49,0.86);
@@ -296,12 +357,12 @@ def run() -> int:
         }
         .header-title, .notification-title, .empty-title, .primary-action { color: rgba(245,247,250,0.96); }
         .header-subtitle, .notification-body, .notification-app, .empty-subtitle { color: rgba(245,247,250,0.60); }
-        .dnd-pill, .notification-card, .empty-box, .primary-action, .action-button {
+        .dnd-pill, .notification-card, .empty-box, .primary-action, .action-button, .header-action, .close-action {
           background: rgba(255,255,255,0.07);
           border-color: rgba(255,255,255,0.10);
           color: rgba(245,247,250,0.88);
         }
-        .notification-card:hover, .primary-action:hover, .action-button:hover {
+        .notification-card:hover, .primary-action:hover, .action-button:hover, .header-action:hover, .close-action:hover {
           background: rgba(77,163,255,0.13);
           border-color: rgba(77,163,255,0.24);
         }
@@ -313,14 +374,16 @@ def run() -> int:
 
     state_key, state_label = backend_state()
     notifications = load_notifications()
+    notification_count = visible_notification_count(notifications)
 
     window = Gtk.Window(title=f"SevenOS {tr_text('Notifications')}")
     window.set_wmclass("SevenNotificationCenterNative", "SevenNotificationCenterNative")
     window.set_decorated(False)
     window.set_resizable(False)
-    window.set_keep_above(True)
+    if os.environ.get("SEVENOS_NOTIFICATION_CENTER_KEEP_ABOVE") == "1":
+        window.set_keep_above(True)
     window.set_position(Gtk.WindowPosition.CENTER)
-    window.set_default_size(430, 500)
+    window.set_default_size(460, 540)
     window.get_style_context().add_class("notification-center-window")
 
     root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -335,7 +398,7 @@ def run() -> int:
     title = Gtk.Label(label=tr_text("Notifications"), xalign=0)
     title.get_style_context().add_class("header-title")
     title_stack.pack_start(title, False, False, 0)
-    subtitle_text = tr_text("{count} active", count=len(notifications)) if notifications else state_label
+    subtitle_text = tr_text("{count} active", count=notification_count) if notifications else state_label
     subtitle = Gtk.Label(label=subtitle_text, xalign=0)
     subtitle.get_style_context().add_class("header-subtitle")
     title_stack.pack_start(subtitle, False, False, 0)
@@ -345,11 +408,25 @@ def run() -> int:
     dnd.get_style_context().add_class("dnd-pill")
     header.pack_end(dnd, False, False, 0)
 
+    close_button = build_header_button(Gtk, "×", tr_text("Close"), lambda _button: window.destroy(), "close-action")
+    header.pack_end(close_button, False, False, 0)
+
+    if notifications:
+        clear_button = build_header_button(
+            Gtk,
+            "⌫",
+            tr_text("Dismiss visible notifications"),
+            lambda _button: on_action_clicked(window, GLib, "dismiss"),
+            "header-action",
+        )
+        header.pack_end(clear_button, False, False, 0)
+
     if notifications:
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroll.set_min_content_height(330)
-        scroll.set_max_content_height(330)
+        scroll.set_min_content_height(338)
+        scroll.set_max_content_height(338)
+        scroll.get_style_context().add_class("content-frame")
         list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         scroll.add(list_box)
         root.pack_start(scroll, True, True, 0)
@@ -365,10 +442,7 @@ def run() -> int:
 
     actions_model = [
         ("+", tr_text("Send test notification"), "test"),
-        ("▶", tr_text("Start notification service"), "start"),
-        ("⇣", tr_text("Install notification backend"), "install"),
         ("↺", tr_text("Restore last notification"), "restore"),
-        ("×", tr_text("Dismiss visible notifications"), "dismiss"),
         ("☾", tr_text("Toggle Do Not Disturb"), "toggle-dnd"),
         ("⟳", tr_text("Restart notification service"), "restart"),
     ]
@@ -379,14 +453,38 @@ def run() -> int:
         label = Gtk.Label(label=glyph)
         label.get_style_context().add_class("action-glyph")
         button.add(label)
-        button.connect("clicked", lambda _button, act=action: run_notification_action(act))
+        button.connect("clicked", lambda _button, act=action: on_action_clicked(window, GLib, act))
         actions.pack_start(button, False, False, 0)
 
     window.connect("destroy", Gtk.main_quit)
+    window.connect(
+        "focus-out-event",
+        lambda *_args: False if os.environ.get("SEVENOS_NOTIFICATION_CENTER_STICKY") == "1" else (GLib.timeout_add(180, lambda: (Gtk.main_quit(), False)[1]), False)[1],
+    )
     window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
     window.show_all()
     Gtk.main()
     return 0
+
+
+def build_header_button(Gtk, glyph: str, tooltip: str, callback, style_class: str):
+    button = Gtk.Button()
+    button.get_style_context().add_class(style_class)
+    button.set_tooltip_text(tooltip)
+    label = Gtk.Label(label=glyph)
+    label.get_style_context().add_class("action-glyph")
+    button.add(label)
+    button.connect("clicked", callback)
+    return button
+
+
+def on_action_clicked(window, GLib, action: str) -> None:
+    if action == "dismiss":
+        dismiss_all_notifications()
+    else:
+        run_notification_action(action)
+    if action in {"dismiss", "restore", "toggle-dnd", "start", "restart"}:
+        GLib.timeout_add(450, lambda: (window.destroy(), False)[1])
 
 
 def build_notification_card(Gtk, item: Notification):
@@ -408,6 +506,8 @@ def build_notification_card(Gtk, item: Notification):
     if item.body:
         body = Gtk.Label(label=item.body, xalign=0)
         body.set_ellipsize(3)
+        body.set_line_wrap(True)
+        body.set_max_width_chars(48)
         body.get_style_context().add_class("notification-body")
         text.pack_start(body, False, False, 0)
     card.pack_start(text, True, True, 0)
@@ -423,7 +523,7 @@ def build_empty_state(Gtk, state_key: str):
     if state_key == "missing":
         glyph_text = "!"
         title_text = tr_text("Notification backend missing")
-        subtitle_text = tr_text("Install Mako to receive alerts and make this center live.")
+        subtitle_text = tr_text("Install SwayNC or Mako to receive alerts and make this center live.")
         primary_label = tr_text("Install")
         primary_action = "install"
     elif state_key == "inactive":

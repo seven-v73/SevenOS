@@ -80,6 +80,24 @@ seven-window controls-toggle
 seven-window controls-enable
 seven-window controls-disable
 seven-window controls-status
+seven-window controls-effect on
+seven-window controls-effect off
+seven-window controls-effect toggle
+seven-window controls-items
+seven-window controls-item add settings
+seven-window controls-item custom browser Browser B firefox '#6EA8FF'
+seven-window controls-item add accessibility
+seven-window controls-item add apps
+seven-window controls-item add terminal
+seven-window controls-item add files
+seven-window controls-item add help
+seven-window controls-item add launchpad
+seven-window controls-item set daily
+seven-window controls-item set dev
+seven-window controls-item set clean
+seven-window controls-item move terminal up
+seven-window controls-item remove settings
+seven-window controls-item clear
 seven-window controls-reset-hidden
 seven-window decor-status
 seven-window decor-apply
@@ -146,7 +164,10 @@ Phase 2:
 - Prism visible labels and tooltips follow `SEVENOS_LANGUAGE`,
   `~/.config/sevenos/language.conf` or the system `LANG`;
 - discreet Prism indicators: mini OS accent color, halo for floating/fullscreen
-  targets, lower opacity when idle;
+  targets, lower opacity when idle, and optional electric Prism pulses from
+  vertices to the center through `seven-window controls-effect toggle`;
+- optional Prism items: up to 7 user-selected shortcuts become connected
+  vertices around the Prism center through `seven-window controls-item add ...`;
 - `Super+Alt+D` toggles the Prism on/off globally; `Super+Ctrl+Alt+D` opens the
   one-shot controls overlay;
 - when enabled, the Prism is a user session service, so it remains present

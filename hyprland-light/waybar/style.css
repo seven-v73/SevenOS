@@ -873,16 +873,16 @@ tooltip label {
   color: #FFFFFF;
 }
 
-/* SevenOS light contrast pass: keep glass, restore readability on bright wallpapers. */
+/* SevenOS light soft-latte pass: readable without the hard white strip. */
 window#waybar {
-  color: rgba(18, 24, 38, 0.94);
-  border-bottom: 1px solid rgba(18, 24, 38, 0.18);
+  color: rgba(32, 38, 52, 0.94);
+  border-bottom: 1px solid rgba(32, 38, 52, 0.16);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(235, 241, 250, 0.64)),
-    rgba(214, 224, 238, 0.70);
+    linear-gradient(180deg, rgba(224, 231, 242, 0.88), rgba(194, 207, 226, 0.78)),
+    rgba(176, 191, 214, 0.78);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.62),
-    0 12px 30px rgba(31, 42, 68, 0.18);
+    0 1px 0 rgba(255, 255, 255, 0.58),
+    0 8px 22px rgba(31, 42, 68, 0.16);
 }
 
 #custom-sevenos,
@@ -913,8 +913,8 @@ window#waybar {
 #custom-system-status,
 #clock,
 #custom-control-center {
-  color: rgba(18, 24, 38, 0.92);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+  color: rgba(32, 38, 52, 0.92);
+  text-shadow: none;
 }
 
 #custom-sevenos:hover,
@@ -981,7 +981,7 @@ window#waybar {
 #clock,
 #custom-control-center {
   border-color: rgba(18, 24, 38, 0.08);
-  background: rgba(255, 255, 255, 0.34);
+  background: rgba(224, 231, 242, 0.34);
 }
 
 #custom-profile.profile-equinox,
@@ -993,8 +993,8 @@ window#waybar {
   color: rgba(14, 29, 56, 0.98);
   border-color: rgba(47, 123, 255, 0.24);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(224, 233, 248, 0.44)),
-    rgba(47, 123, 255, 0.08);
+    linear-gradient(180deg, rgba(224, 231, 242, 0.50), rgba(199, 211, 229, 0.38)),
+    rgba(77, 127, 230, 0.08);
 }
 
 #custom-profile.profile-baobab,
@@ -1026,7 +1026,7 @@ window#waybar {
 
 #workspaces button {
   color: rgba(30, 38, 56, 0.70);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.42);
+  text-shadow: none;
 }
 
 #workspaces button:hover {
@@ -1038,11 +1038,11 @@ window#waybar {
   color: rgba(8, 13, 24, 0.98);
   border-color: rgba(47, 123, 255, 0.30);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(221, 232, 249, 0.52)),
-    rgba(47, 123, 255, 0.12);
+    linear-gradient(180deg, rgba(212, 222, 240, 0.70), rgba(187, 203, 228, 0.56)),
+    rgba(77, 127, 230, 0.13);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.62),
-    0 0 12px rgba(47, 123, 255, 0.12);
+    inset 0 1px 0 rgba(245, 248, 252, 0.42),
+    0 0 10px rgba(77, 127, 230, 0.12);
 }
 
 #custom-recorder.recording,
@@ -1104,7 +1104,7 @@ window#waybar {
 #custom-experience.profile-forge {
   color: #704909;
   border-color: rgba(191, 129, 32, 0.28);
-  background: linear-gradient(180deg, rgba(255, 214, 138, 0.46), rgba(255, 255, 255, 0.18));
+  background: linear-gradient(180deg, rgba(232, 190, 118, 0.34), rgba(214, 224, 240, 0.20));
 }
 
 #custom-profile.profile-shield,
@@ -1113,7 +1113,7 @@ window#waybar {
 #custom-vpn.active {
   color: #056553;
   border-color: rgba(3, 154, 127, 0.30);
-  background: linear-gradient(180deg, rgba(156, 239, 219, 0.44), rgba(255, 255, 255, 0.18));
+  background: linear-gradient(180deg, rgba(137, 214, 197, 0.32), rgba(214, 224, 240, 0.20));
 }
 
 #custom-profile.profile-studio,
@@ -1122,7 +1122,7 @@ window#waybar {
 #custom-recorder.recording {
   color: #8B3C6C;
   border-color: rgba(196, 93, 151, 0.28);
-  background: linear-gradient(180deg, rgba(255, 196, 226, 0.44), rgba(255, 255, 255, 0.18));
+  background: linear-gradient(180deg, rgba(223, 168, 205, 0.32), rgba(214, 224, 240, 0.20));
 }
 
 #custom-profile.profile-pulse,
@@ -1130,7 +1130,7 @@ window#waybar {
 #custom-experience.profile-pulse {
   color: #075F84;
   border-color: rgba(16, 157, 207, 0.32);
-  background: linear-gradient(180deg, rgba(168, 232, 255, 0.44), rgba(255, 255, 255, 0.18));
+  background: linear-gradient(180deg, rgba(145, 205, 228, 0.32), rgba(214, 224, 240, 0.20));
 }
 
 #custom-profile.profile-baobab,
@@ -1138,7 +1138,7 @@ window#waybar {
 #custom-experience.profile-baobab {
   color: #426B24;
   border-color: rgba(115, 160, 72, 0.30);
-  background: linear-gradient(180deg, rgba(219, 244, 188, 0.46), rgba(255, 255, 255, 0.18));
+  background: linear-gradient(180deg, rgba(187, 219, 154, 0.34), rgba(214, 224, 240, 0.20));
 }
 
 #custom-mini-context.signal-dev,

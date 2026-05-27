@@ -291,10 +291,11 @@ PY
 }
 
 release_payload() {
-  local doctor_json git_dirty design_state smoke_state surfaces_state quality_state ux_state installer_json windows_json profile_json profile_health_json profile_migration_json bridge_json status_json
+  local doctor_json git_dirty design_state identity_state smoke_state surfaces_state quality_state ux_state installer_json windows_json profile_json profile_health_json profile_migration_json bridge_json status_json
   doctor_json="$(SEVENOS_DOCTOR_AREA=all json_payload)"
   git_dirty="$(git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' ')"
   if timeout 30 "$ROOT_DIR/scripts/design-check.sh" >/dev/null 2>&1; then design_state="OK"; else design_state="PART"; fi
+  if timeout "${SEVENOS_RELEASE_IDENTITY_TIMEOUT:-45s}" "$ROOT_DIR/scripts/identity-experience.sh" json >/dev/null 2>&1; then identity_state="OK"; else identity_state="PART"; fi
   if timeout "${SEVENOS_RELEASE_SMOKE_TIMEOUT:-60s}" "$ROOT_DIR/scripts/smoke.sh" doctor >/dev/null 2>&1; then smoke_state="OK"; else smoke_state="PART"; fi
   if timeout "${SEVENOS_RELEASE_SURFACES_TIMEOUT:-40s}" "$ROOT_DIR/scripts/surfaces.sh" doctor >/dev/null 2>&1; then surfaces_state="OK"; else surfaces_state="PART"; fi
   if timeout "${SEVENOS_RELEASE_QUALITY_TIMEOUT:-180s}" "$ROOT_DIR/scripts/public-experience.sh" doctor >/dev/null 2>&1; then quality_state="OK"; else quality_state="PART"; fi
@@ -310,7 +311,7 @@ release_payload() {
   profile_migration_json="$("$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --json 2>/dev/null || printf '{}')"
   bridge_json="$("$ROOT_DIR/scripts/mini-os-relay.sh" doctor --json 2>/dev/null || printf '{}')"
   status_json="$("$ROOT_DIR/scripts/status.sh" --json 2>/dev/null || printf '{}')"
-  DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" DESIGN_STATE="$design_state" SMOKE_STATE="$smoke_state" SURFACES_STATE="$surfaces_state" QUALITY_STATE="$quality_state" UX_STATE="$ux_state" \
+  DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" DESIGN_STATE="$design_state" IDENTITY_STATE="$identity_state" SMOKE_STATE="$smoke_state" SURFACES_STATE="$surfaces_state" QUALITY_STATE="$quality_state" UX_STATE="$ux_state" \
   INSTALLER_JSON="$installer_json" WINDOWS_JSON="$windows_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" STATUS_JSON="$status_json" \
   python - <<'PY'
 import json
@@ -347,6 +348,7 @@ def add(key, state, title, detail, command, severity="medium"):
 summary = doctor.get("summary", {})
 add("doctor", "OK" if summary.get("critical", 1) == 0 and summary.get("high", 1) == 0 else "PART", "Seven Doctor clean", f"{summary.get('critical', 0)} critical, {summary.get('high', 0)} high issue(s)", "seven doctor check", "high")
 add("design-check", os.environ.get("DESIGN_STATE", "PART"), "Design coherence", "SevenOS design contract passes.", "scripts/design-check.sh", "high")
+add("identity-experience", os.environ.get("IDENTITY_STATE", "PART"), "SevenOS identity experience", "Prism, native surfaces, language, theme, update and release guidance stay coherent.", "seven identity experience", "high")
 add("smoke-check", os.environ.get("SMOKE_STATE", "PART"), "Fast product smoke gate", "SevenOS public contracts respond quickly.", "seven smoke doctor", "high")
 add("surfaces-check", os.environ.get("SURFACES_STATE", "PART"), "Native surfaces and old-screen guard", "SevenOS visible surfaces are native and legacy screens stay blocked.", "seven surfaces doctor", "high")
 add("public-quality", os.environ.get("QUALITY_STATE", "PART"), "Public experience aggregate", "Health, update, Shell, mini OS and Server/Deploy gates are coherent for users.", "seven quality doctor", "high")

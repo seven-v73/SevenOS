@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import subprocess
 import sys
@@ -58,19 +59,26 @@ CONFIG_PATH = CONFIG_HOME / "sevenos/dock.json"
 PROFILE_ENV_PATH = CONFIG_HOME / "sevenos/profile.env"
 PROFILE_UI_PATH = CONFIG_HOME / "sevenos/profile-ui.json"
 DOCK_STATE_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/sevenos-{os.getuid()}")) / "sevenos-dock-state.json"
-DOCK_HEIGHT = 82
-DOCK_MARGIN = 22
-DOCK_TILE_STEP = 61
+DOCK_HEIGHT = 74
+DOCK_MARGIN = 15
+DOCK_TILE_STEP = 52
 DOCK_SEPARATOR_STEP = 14
-DOCK_HORIZONTAL_PADDING = 22
+DOCK_HORIZONTAL_PADDING = 20
 LAUNCHING_TTL = 6.0
 LAUNCHING: dict[str, float] = {}
 DOCK_FADE_STEP_MS = 16
 DOCK_FADE_STEP = 0.08
+DOCK_MAGNIFY_STEP_MS = 16
 TILE_FEEDBACK_MS = 180
 SPRING_LOADED_DELAY_MS = 700
 SPRING_OPEN: dict[str, int] = {}
 PREVIEW_POPOVER = None
+PREVIEW_TILE_ID = None
+PREVIEW_CLOSE_SOURCE = 0
+HOVER_LABEL = None
+HOVER_LABEL_SOURCE = 0
+DOCK_WIDGETS: list[dict[str, object]] = []
+DOCK_MAGNIFY_SOURCE = 0
 DOCK_TILE_TARGET = "SEVENOS_DOCK_TILE"
 URI_LIST_TARGET = "text/uri-list"
 
@@ -428,7 +436,7 @@ def tile_catalog() -> dict[str, dict[str, object]]:
         "apps": {"id": "apps", "title": tr_text("Apps"), "icon": "view-app-grid-symbolic", "style": "apps", "command": ["seven-overview", "apps"], "processes": ["seven-launchpad-native"], "kind": "system"},
         "browser": {"id": "browser", "title": tr_text("Browser"), "icon": "web-browser", "style": "browser", "command": browser, "processes": ["firefox", "brave", "chromium", "google-chrome-stable"], "kind": "app"},
         "terminal": {"id": "terminal", "title": tr_text("Terminal"), "icon": "utilities-terminal", "style": "terminal", "command": ["seven-terminal", "classic"], "processes": ["seven-terminal-native", "kitty"], "kind": "app"},
-        "spotlight": {"id": "spotlight", "title": tr_text("Spotlight"), "icon": "system-search", "style": "spotlight", "command": ["seven-spotlight"], "processes": ["rofi"], "kind": "system"},
+        "spotlight": {"id": "spotlight", "title": tr_text("Spotlight"), "icon": "system-search", "style": "spotlight", "command": ["seven-spotlight-native", "--mode", "all"], "processes": ["seven-spotlight-native"], "kind": "system"},
         "hub": {"id": "hub", "title": tr_text("Hub"), "icon": "preferences-system", "style": "hub", "command": ["seven", "hub"], "processes": ["seven-hub-native"], "kind": "app"},
         "reader": {"id": "reader", "title": tr_text("Reader"), "icon": "x-office-document", "style": "reader", "command": ["seven-reader"], "processes": ["seven-reader-native", "foliate"], "kind": "app"},
         "store": {"id": "store", "title": tr_text("Store"), "icon": "system-software-install", "style": "store", "command": ["seven-store"], "processes": ["seven-store-native"], "kind": "app"},
@@ -532,66 +540,83 @@ def run_dock() -> int:
       background: transparent;
     }
     .dock-shell {
-      min-height: 78px;
-      padding: 6px 11px 5px 11px;
-      border-radius: 25px;
+      min-height: 68px;
+      padding: 5px 10px 4px 10px;
+      border-radius: 24px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.70), rgba(196,225,239,0.36)),
-        rgba(255,255,255,0.40);
-      border: 1px solid rgba(255,255,255,0.82);
-      transition: background 150ms ease-out, border-color 150ms ease-out;
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_wallpaper_accent, 0.14), transparent 42%),
+        radial-gradient(ellipse at 82% 0%, alpha(@seven_wallpaper_secondary, 0.10), transparent 40%),
+        linear-gradient(180deg, alpha(@seven_panel, 0.92), alpha(@seven_panel_2, 0.78)),
+        alpha(@seven_bg, 0.28);
+      border: 1px solid alpha(@seven_text, 0.10);
+      transition: background 160ms ease-out, border-color 160ms ease-out;
     }
     .dock-tile {
-      min-width: 56px;
-      min-height: 66px;
-      border-radius: 18px;
+      min-width: 50px;
+      min-height: 60px;
+      border-radius: 17px;
       background: transparent;
-      padding: 0;
-      transition: background 120ms ease-out, opacity 120ms ease-out;
+      padding: 1px 0 0 0;
+      transition: background 120ms ease-out, opacity 120ms ease-out, border-color 120ms ease-out;
     }
     .dock-tile:hover {
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.46), rgba(255,255,255,0.18)),
-        rgba(255,255,255,0.18);
+        linear-gradient(180deg, alpha(@seven_panel, 0.58), alpha(@seven_panel_2, 0.28)),
+        alpha(@seven_accent, 0.07);
+    }
+    .dock-tile.magnified {
+      background:
+        linear-gradient(180deg, alpha(@seven_panel, 0.64), alpha(@seven_panel_2, 0.34)),
+        alpha(@seven_accent, 0.09);
     }
     .dock-tile.running .dock-icon {
-      border-color: rgba(77,163,255,0.82);
+      border-color: alpha(@seven_accent, 0.52);
     }
     .dock-tile.active {
-      background: rgba(77,163,255,0.15);
+      background:
+        linear-gradient(180deg, alpha(@seven_accent, 0.14), alpha(@seven_secondary, 0.08)),
+        alpha(@seven_panel, 0.28);
     }
     .dock-tile.pressed {
       background:
-        linear-gradient(180deg, rgba(47,123,255,0.20), rgba(255,255,255,0.16)),
-        rgba(47,123,255,0.12);
+        linear-gradient(180deg, alpha(@seven_accent, 0.22), alpha(@seven_panel, 0.20)),
+        alpha(@seven_accent, 0.10);
     }
     .dock-tile.launching .dock-icon {
-      border-color: rgba(249,226,175,0.88);
+      border-color: alpha(@seven_warning, 0.78);
     }
     .dock-tile.launch-feedback .dock-icon {
-      border-color: rgba(249,226,175,0.96);
+      border-color: alpha(@seven_warning, 0.88);
       background:
-        linear-gradient(180deg, rgba(255,246,215,0.98), rgba(255,255,255,0.74)),
-        rgba(249,226,175,0.34);
+        linear-gradient(180deg, alpha(@seven_warning, 0.24), alpha(@seven_panel, 0.78)),
+        alpha(@seven_warning, 0.20);
     }
     .dock-tile.drag-target {
-      background: rgba(47,123,255,0.12);
+      background: alpha(@seven_accent, 0.12);
     }
     .dock-tile.spring-armed {
-      background: rgba(148,226,213,0.16);
+      background: alpha(@seven_success, 0.14);
     }
     .dock-tile.unavailable {
       opacity: 0.48;
     }
     .dock-icon {
-      min-width: 50px;
-      min-height: 50px;
-      border-radius: 15px;
+      min-width: 44px;
+      min-height: 44px;
+      border-radius: 13px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.98), rgba(230,241,247,0.78)),
-        rgba(255,255,255,0.76);
-      border: 1px solid rgba(255,255,255,0.78);
-      transition: min-width 115ms ease-out, min-height 115ms ease-out, border-color 140ms ease-out, background 140ms ease-out;
+        radial-gradient(circle at 32% 24%, alpha(@seven_panel, 0.92), transparent 38%),
+        linear-gradient(180deg, alpha(@seven_panel, 0.98), alpha(@seven_panel_2, 0.86)),
+        alpha(@seven_bg, 0.30);
+      border: 1px solid alpha(@seven_text, 0.12);
+      transition: min-width 115ms ease-out, min-height 115ms ease-out, border-radius 115ms ease-out, border-color 140ms ease-out, background 140ms ease-out;
+    }
+    .dock-tile.magnified .dock-icon {
+      border-color: alpha(@seven_accent, 0.38);
+    }
+    .dock-tile-overlay {
+      min-width: 50px;
+      min-height: 60px;
     }
     .dock-icon.files {
       background: linear-gradient(180deg, rgba(112,210,255,0.96), rgba(32,132,225,0.88));
@@ -636,11 +661,11 @@ def run_dock() -> int:
       background: linear-gradient(180deg, rgba(112,210,255,0.98), rgba(72,154,224,0.90));
     }
     .dock-dot {
-      min-width: 5px;
-      min-height: 5px;
+      min-width: 4px;
+      min-height: 4px;
       border-radius: 999px;
-      background: rgba(24, 36, 47, 0.82);
-      margin-top: 4px;
+      background: alpha(@seven_text, 0.78);
+      margin-bottom: 2px;
     }
     .dock-dot.idle {
       background: transparent;
@@ -651,11 +676,11 @@ def run_dock() -> int:
       border-radius: 999px;
       padding: 0 5px;
       color: white;
-      background: rgba(214, 58, 52, 0.96);
+      background: alpha(@seven_danger, 0.96);
       font-size: 10px;
       font-weight: 500;
-      margin-left: 36px;
-      margin-bottom: -18px;
+      margin-top: 0;
+      margin-right: 0;
     }
     .dock-instance-badge {
       min-width: 17px;
@@ -663,31 +688,47 @@ def run_dock() -> int:
       border-radius: 999px;
       padding: 0 5px;
       color: white;
-      background: rgba(47, 123, 255, 0.96);
+      background: alpha(@seven_accent, 0.96);
       font-size: 10px;
       font-weight: 500;
-      margin-left: 36px;
-      margin-bottom: -18px;
+      margin-top: 0;
+      margin-right: 0;
     }
     .dock-separator {
       min-width: 1px;
-      min-height: 40px;
-      margin: 9px 3px 0 3px;
-      background: rgba(34, 49, 59, 0.18);
+      min-height: 34px;
+      margin: 11px 3px 0 3px;
+      background: alpha(@seven_text, 0.14);
     }
     .dock-preview {
-      padding: 8px;
-      border-radius: 16px;
-      background: rgba(245,250,252,0.96);
-      border: 1px solid rgba(255,255,255,0.82);
+      padding: 9px;
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, alpha(@seven_panel, 0.96), alpha(@seven_panel_2, 0.88)),
+        alpha(@seven_bg, 0.28);
+      border: 1px solid alpha(@seven_text, 0.12);
+    }
+    window.dock-preview-window {
+      background: transparent;
+    }
+    .dock-hover-label {
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: @seven_text;
+      background:
+        linear-gradient(180deg, alpha(@seven_panel, 0.96), alpha(@seven_panel_2, 0.86)),
+        alpha(@seven_bg, 0.28);
+      border: 1px solid alpha(@seven_text, 0.12);
+      font-size: 11px;
+      font-weight: 500;
     }
     .dock-preview-title {
-      color: rgba(24,36,47,0.92);
+      color: @seven_text;
       font-size: 12px;
       font-weight: 500;
     }
     .dock-preview-meta {
-      color: rgba(78,95,107,0.86);
+      color: @seven_muted;
       font-size: 10px;
     }
     .dock-preview-row {
@@ -695,24 +736,26 @@ def run_dock() -> int:
       min-height: 30px;
       border-radius: 10px;
       padding: 4px 8px;
-      color: rgba(24,36,47,0.90);
+      color: @seven_text;
       background: transparent;
     }
     .dock-preview-row:hover,
     .dock-preview-row.active-window {
-      background: rgba(77,163,255,0.14);
+      background: alpha(@seven_accent, 0.14);
     }
     """
     if seven_theme.current_theme_mode() == "dark":
         css += """
         .dock-shell {
           background:
-            linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.045)),
-            rgba(15,18,26,0.72);
-          border-color: rgba(255,255,255,0.14);
+            radial-gradient(ellipse at 20% 0%, alpha(@seven_wallpaper_accent, 0.16), transparent 42%),
+            radial-gradient(ellipse at 80% 0%, alpha(@seven_wallpaper_secondary, 0.11), transparent 40%),
+            linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.045)),
+            rgba(12,14,20,0.74);
+          border-color: rgba(255,255,255,0.13);
         }
         .dock-tile:hover {
-          background: rgba(255,255,255,0.09);
+          background: rgba(255,255,255,0.085);
         }
         .dock-icon {
           background:
@@ -722,12 +765,31 @@ def run_dock() -> int:
         }
         .dock-dot { background: rgba(245,247,250,0.80); }
         .dock-separator { background: rgba(255,255,255,0.14); }
-        .dock-preview {
-          background: rgba(18,19,26,0.94);
-          border-color: rgba(255,255,255,0.12);
+        """
+    else:
+        css += """
+        .dock-shell {
+          background:
+            radial-gradient(ellipse at 18% 0%, rgba(77, 127, 230, 0.12), transparent 42%),
+            radial-gradient(ellipse at 82% 0%, rgba(117, 108, 224, 0.10), transparent 40%),
+            linear-gradient(180deg, rgba(226, 234, 246, 0.86), rgba(203, 216, 235, 0.72)),
+            rgba(198, 212, 232, 0.58);
+          border-color: rgba(32, 38, 52, 0.10);
         }
-        .dock-preview-title, .dock-preview-row { color: rgba(245,247,250,0.92); }
-        .dock-preview-meta { color: rgba(245,247,250,0.58); }
+        .dock-tile:hover {
+          background:
+            linear-gradient(180deg, rgba(232, 238, 248, 0.54), rgba(205, 217, 235, 0.30)),
+            rgba(77, 127, 230, 0.06);
+        }
+        .dock-icon {
+          background:
+            radial-gradient(circle at 32% 24%, rgba(246, 249, 253, 0.90), transparent 38%),
+            linear-gradient(180deg, rgba(238, 243, 250, 0.98), rgba(205, 217, 235, 0.84)),
+            rgba(224, 231, 242, 0.74);
+          border-color: rgba(32, 38, 52, 0.10);
+        }
+        .dock-dot { background: rgba(32, 38, 52, 0.74); }
+        .dock-separator { background: rgba(32, 38, 52, 0.13); }
         """
 
     provider = Gtk.CssProvider()
@@ -846,6 +908,7 @@ def run_dock() -> int:
 
     def render_shell() -> bool:
         nonlocal grouped_clients_state
+        DOCK_WIDGETS.clear()
         for child in shell.get_children():
             shell.remove(child)
         grouped_clients_state = clients_by_tile(hyprland_clients())
@@ -901,6 +964,7 @@ def run_dock() -> int:
 def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk, GLib, grouped_clients: dict[str, list[dict[str, object]]], compact: bool = False) -> None:
     event = Gtk.EventBox()
     event.set_visible_window(False)
+    event.set_above_child(True)
     window_count = int(tile.get("window_count", 0) or 0)
     tooltip_parts = [str(tile["title"])]
     if window_count:
@@ -910,12 +974,19 @@ def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk
     if not tile.get("available", True):
         tooltip_parts.append("unavailable")
     event.set_tooltip_text(" · ".join(tooltip_parts))
-    event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.KEY_PRESS_MASK)
+    event.add_events(
+        Gdk.EventMask.BUTTON_PRESS_MASK
+        | Gdk.EventMask.KEY_PRESS_MASK
+        | Gdk.EventMask.ENTER_NOTIFY_MASK
+        | Gdk.EventMask.LEAVE_NOTIFY_MASK
+        | Gdk.EventMask.POINTER_MOTION_MASK
+    )
     event.set_can_focus(True)
     event.connect("button-press-event", lambda widget, event_data, dock_tile=tile: on_tile_click(widget, event_data, dock_tile, config, Gtk, GLib, grouped_clients))
     event.connect("key-press-event", lambda widget, key_event, dock_tile=tile: on_tile_key(widget, key_event, dock_tile, config, Gtk, Gdk, GLib, grouped_clients))
     button_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     button_box.set_halign(Gtk.Align.CENTER)
+    button_box.set_valign(Gtk.Align.CENTER)
     button_box.get_style_context().add_class("dock-tile")
     event.dock_tile_box = button_box
     setup_tile_dnd(event, tile, config, Gtk, Gdk, GLib)
@@ -929,34 +1000,58 @@ def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk
     if not tile.get("available", True):
         button_box.get_style_context().add_class("unavailable")
 
-    icon_stack = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-    icon_stack.set_halign(Gtk.Align.CENTER)
+    tile_overlay = Gtk.Overlay()
+    tile_overlay.set_halign(Gtk.Align.CENTER)
+    tile_overlay.set_valign(Gtk.Align.CENTER)
+    tile_overlay.set_size_request(48 if compact else 50, 56 if compact else 60)
+    tile_overlay.get_style_context().add_class("dock-tile-overlay")
 
     badge_count = window_count if window_count > 1 else notification_count() if tile.get("id") == "hub" else 0
     if badge_count > 0:
         badge = Gtk.Label(label=str(min(badge_count, 99)))
         badge.set_halign(Gtk.Align.END)
+        badge.set_valign(Gtk.Align.START)
+        badge.set_margin_top(0)
+        badge.set_margin_end(0)
         badge.get_style_context().add_class("dock-instance-badge" if window_count > 1 else "dock-badge")
-        icon_stack.pack_start(badge, False, False, 0)
 
     icon_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     icon_box.set_halign(Gtk.Align.CENTER)
     icon_box.set_valign(Gtk.Align.CENTER)
+    icon_box.set_size_request(40 if compact else 44, 40 if compact else 44)
     icon_box.get_style_context().add_class("dock-icon")
     icon_box.get_style_context().add_class(str(tile.get("style", "default")))
     icon = Gtk.Image.new_from_icon_name(str(tile["icon"]), Gtk.IconSize.DIALOG)
-    icon.set_pixel_size(30 if compact else 34)
+    icon.set_pixel_size(25 if compact else 29)
+    icon.set_halign(Gtk.Align.CENTER)
+    icon.set_valign(Gtk.Align.CENTER)
     icon_box.pack_start(icon, True, True, 0)
-    icon_stack.pack_start(icon_box, False, False, 0)
+    tile_overlay.add(icon_box)
+    if badge_count > 0:
+        tile_overlay.add_overlay(badge)
 
-    event.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+    tile_widget = {
+        "event": event,
+        "box": button_box,
+        "icon": icon,
+        "icon_box": icon_box,
+        "compact": compact,
+        "scale": 0.0,
+        "target": 0.0,
+    }
+    DOCK_WIDGETS.append(tile_widget)
+
     event.connect(
         "enter-notify-event",
-        lambda widget, _event, image=icon, box=icon_box, dock_tile=tile: on_tile_hover(widget, image, box, dock_tile, grouped_clients, Gtk, True, compact),
+        lambda widget, event_data, image=icon, box=icon_box, dock_tile=tile: on_tile_hover(widget, event_data, image, box, dock_tile, grouped_clients, Gtk, Gdk, GLib, True, compact),
+    )
+    event.connect(
+        "motion-notify-event",
+        lambda widget, event_data, image=icon, box=icon_box, dock_tile=tile: on_tile_hover(widget, event_data, image, box, dock_tile, grouped_clients, Gtk, Gdk, GLib, True, compact),
     )
     event.connect(
         "leave-notify-event",
-        lambda widget, _event, image=icon, box=icon_box, dock_tile=tile: on_tile_hover(widget, image, box, dock_tile, grouped_clients, Gtk, False, compact),
+        lambda widget, event_data, image=icon, box=icon_box, dock_tile=tile: on_tile_hover(widget, event_data, image, box, dock_tile, grouped_clients, Gtk, Gdk, GLib, False, compact),
     )
 
     dot = Gtk.Box()
@@ -964,29 +1059,132 @@ def add_tile(shell, tile: dict[str, object], config: dict[str, object], Gtk, Gdk
     if not window_count and not tile_running(tile):
         dot.get_style_context().add_class("idle")
     dot.set_halign(Gtk.Align.CENTER)
+    dot.set_valign(Gtk.Align.END)
+    tile_overlay.add_overlay(dot)
 
-    button_box.pack_start(icon_stack, False, False, 0)
-    button_box.pack_start(dot, False, False, 0)
+    button_box.pack_start(tile_overlay, True, True, 0)
     event.add(button_box)
     shell.pack_start(event, False, False, 0)
 
 
+def magnification_sizes(scale: float, compact: bool = False) -> tuple[int, int]:
+    idle_icon = 25 if compact else 29
+    idle_box = 40 if compact else 44
+    max_icon = 33 if compact else 37
+    max_box = 50 if compact else 54
+    icon_size = int(round(idle_icon + (max_icon - idle_icon) * scale))
+    box_size = int(round(idle_box + (max_box - idle_box) * scale))
+    return icon_size, box_size
+
+
+def set_tile_scale(tile_widget: dict[str, object], scale: float) -> None:
+    icon = tile_widget.get("icon")
+    icon_box = tile_widget.get("icon_box")
+    compact = bool(tile_widget.get("compact", False))
+    if icon is None or icon_box is None:
+        return
+    scale = max(0.0, min(1.0, float(scale)))
+    tile_widget["scale"] = scale
+    icon_size, box_size = magnification_sizes(scale, compact)
+    icon.set_pixel_size(icon_size)
+    icon_box.set_size_request(box_size, box_size)
+
+
+def set_tile_target(tile_widget: dict[str, object], target: float) -> None:
+    tile_widget["target"] = max(0.0, min(1.0, float(target)))
+
+
 def magnify_tile(icon, icon_box, active: bool, compact: bool = False) -> bool:
-    idle_icon = 30 if compact else 34
-    active_icon = 35 if compact else 39
-    idle_box = 45 if compact else 50
-    active_box = 50 if compact else 56
-    icon.set_pixel_size(active_icon if active else idle_icon)
-    icon_box.set_size_request(active_box if active else idle_box, active_box if active else idle_box)
+    icon_size, box_size = magnification_sizes(1.0 if active else 0.0, compact)
+    icon.set_pixel_size(icon_size)
+    icon_box.set_size_request(box_size, box_size)
     return False
 
 
-def on_tile_hover(widget, icon, icon_box, tile: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]], Gtk, active: bool, compact: bool) -> bool:
-    magnify_tile(icon, icon_box, active, compact)
+def animate_dock_magnification() -> bool:
+    global DOCK_MAGNIFY_SOURCE
+    moving = False
+    for tile_widget in DOCK_WIDGETS:
+        current = float(tile_widget.get("scale", 0.0) or 0.0)
+        target = float(tile_widget.get("target", 0.0) or 0.0)
+        next_scale = current + (target - current) * 0.34
+        if abs(target - next_scale) < 0.015:
+            next_scale = target
+        if abs(next_scale - current) > 0.001:
+            moving = True
+        set_tile_scale(tile_widget, next_scale)
+    if not moving:
+        DOCK_MAGNIFY_SOURCE = 0
+        return False
+    return True
+
+
+def ensure_dock_magnification_animation(GLib) -> None:
+    global DOCK_MAGNIFY_SOURCE
+    if not DOCK_MAGNIFY_SOURCE:
+        DOCK_MAGNIFY_SOURCE = GLib.timeout_add(DOCK_MAGNIFY_STEP_MS, animate_dock_magnification)
+
+
+def reset_dock_magnification(GLib=None) -> None:
+    for tile_widget in DOCK_WIDGETS:
+        box = tile_widget.get("box")
+        if box is not None:
+            box.get_style_context().remove_class("magnified")
+        set_tile_target(tile_widget, 0.0)
+    if GLib is not None:
+        ensure_dock_magnification_animation(GLib)
+
+
+def apply_dock_magnification(pointer_x: float, GLib) -> None:
+    for tile_widget in DOCK_WIDGETS:
+        event = tile_widget.get("event")
+        box = tile_widget.get("box")
+        if event is None:
+            continue
+        x, _y = widget_origin(event)
+        width = max(1, event.get_allocated_width())
+        center = x + width / 2
+        distance = abs(pointer_x - center)
+        sigma = 60.0
+        scale = math.exp(-((distance * distance) / (2.0 * sigma * sigma)))
+        if scale < 0.16:
+            scale = 0.0
+        if box is not None:
+            style = box.get_style_context()
+            if scale >= 0.72:
+                style.add_class("magnified")
+            else:
+                style.remove_class("magnified")
+        set_tile_target(tile_widget, scale)
+    ensure_dock_magnification_animation(GLib)
+
+
+def on_tile_hover(widget, event_data, icon, icon_box, tile: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]], Gtk, Gdk, GLib, active: bool, compact: bool) -> bool:
+    box = getattr(widget, "dock_tile_box", None)
+    if box is not None:
+        style = box.get_style_context()
+        if active:
+            style.add_class("magnified")
+        else:
+            style.remove_class("magnified")
     if active:
-        show_window_preview(widget, tile, grouped_clients, Gtk)
+        pointer_x = float(getattr(event_data, "x_root", 0.0) or 0.0)
+        if pointer_x:
+            apply_dock_magnification(pointer_x, GLib)
+        else:
+            magnify_tile(icon, icon_box, True, compact)
     else:
-        close_window_preview()
+        reset_dock_magnification(GLib)
+    if active:
+        cancel_preview_close(GLib)
+        if grouped_clients.get(str(tile.get("id", "")), []):
+            close_hover_label()
+            show_window_preview(widget, tile, grouped_clients, Gtk, Gdk, GLib)
+        else:
+            show_hover_label(widget, tile, Gtk, Gdk, GLib)
+    else:
+        schedule_hover_label_close(GLib)
+        schedule_preview_close(GLib)
     return False
 
 
@@ -1020,32 +1218,149 @@ def animate_launch_feedback(tile_box, GLib) -> bool:
 
 
 def close_window_preview() -> bool:
-    global PREVIEW_POPOVER
+    global PREVIEW_POPOVER, PREVIEW_TILE_ID, PREVIEW_CLOSE_SOURCE
+    PREVIEW_CLOSE_SOURCE = 0
     if PREVIEW_POPOVER is not None:
         try:
-            PREVIEW_POPOVER.popdown()
+            if hasattr(PREVIEW_POPOVER, "popdown"):
+                PREVIEW_POPOVER.popdown()
+        except Exception:
+            pass
+        try:
             PREVIEW_POPOVER.destroy()
         except Exception:
             pass
         PREVIEW_POPOVER = None
+        PREVIEW_TILE_ID = None
     return False
 
 
-def show_window_preview(widget, tile: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]], Gtk) -> bool:
-    global PREVIEW_POPOVER
+def close_hover_label() -> bool:
+    global HOVER_LABEL, HOVER_LABEL_SOURCE
+    HOVER_LABEL_SOURCE = 0
+    if HOVER_LABEL is not None:
+        try:
+            HOVER_LABEL.destroy()
+        except Exception:
+            pass
+        HOVER_LABEL = None
+    return False
+
+
+def schedule_hover_label_close(GLib, delay_ms: int = 220) -> bool:
+    global HOVER_LABEL_SOURCE
+    if HOVER_LABEL_SOURCE:
+        try:
+            GLib.source_remove(HOVER_LABEL_SOURCE)
+        except Exception:
+            pass
+    HOVER_LABEL_SOURCE = GLib.timeout_add(delay_ms, close_hover_label)
+    return False
+
+
+def cancel_hover_label_close(GLib) -> bool:
+    global HOVER_LABEL_SOURCE
+    if HOVER_LABEL_SOURCE:
+        try:
+            GLib.source_remove(HOVER_LABEL_SOURCE)
+        except Exception:
+            pass
+        HOVER_LABEL_SOURCE = 0
+    return False
+
+
+def show_hover_label(widget, tile: dict[str, object], Gtk, Gdk, GLib) -> bool:
+    global HOVER_LABEL
+    cancel_hover_label_close(GLib)
+    close_hover_label()
+    label_window = Gtk.Window(title="Seven Dock Label")
+    label_window.set_decorated(False)
+    label_window.set_resizable(False)
+    label_window.set_accept_focus(False)
+    label_window.set_focus_on_map(False)
+    label_window.set_keep_above(True)
+    label_window.set_skip_taskbar_hint(True)
+    label_window.set_skip_pager_hint(True)
+    label_window.set_type_hint(Gdk.WindowTypeHint.TOOLTIP)
+    label = Gtk.Label(label=str(tile.get("title", tr_text("App"))))
+    label.get_style_context().add_class("dock-hover-label")
+    label_window.add(label)
+    label_window.show_all()
+    px, py = widget_origin(widget)
+    tile_width = max(1, widget.get_allocated_width())
+    label_width = max(72, label_window.get_allocated_width() or 72)
+    label_height = max(28, label_window.get_allocated_height() or 28)
+    label_window.move(max(8, px + int((tile_width - label_width) / 2)), max(8, py - label_height - 10))
+    HOVER_LABEL = label_window
+    return False
+
+
+def schedule_preview_close(GLib, delay_ms: int = 520) -> bool:
+    global PREVIEW_CLOSE_SOURCE
+    if PREVIEW_CLOSE_SOURCE:
+        try:
+            GLib.source_remove(PREVIEW_CLOSE_SOURCE)
+        except Exception:
+            pass
+    PREVIEW_CLOSE_SOURCE = GLib.timeout_add(delay_ms, close_window_preview)
+    return False
+
+
+def cancel_preview_close(GLib) -> bool:
+    global PREVIEW_CLOSE_SOURCE
+    if PREVIEW_CLOSE_SOURCE:
+        try:
+            GLib.source_remove(PREVIEW_CLOSE_SOURCE)
+        except Exception:
+            pass
+        PREVIEW_CLOSE_SOURCE = 0
+    return False
+
+
+def widget_origin(widget) -> tuple[int, int]:
+    try:
+        origin = widget.get_window().get_origin()
+        if isinstance(origin, tuple) and len(origin) == 3:
+            _ok, x, y = origin
+            return int(x), int(y)
+        if isinstance(origin, tuple) and len(origin) == 2:
+            x, y = origin
+            return int(x), int(y)
+    except Exception:
+        pass
+    return 0, 0
+
+
+def show_window_preview(widget, tile: dict[str, object], grouped_clients: dict[str, list[dict[str, object]]], Gtk, Gdk, GLib) -> bool:
+    global PREVIEW_POPOVER, PREVIEW_TILE_ID
     windows = grouped_clients.get(str(tile.get("id", "")), [])
     if not windows:
         close_window_preview()
         return False
 
+    tile_id = str(tile.get("id", ""))
+    if PREVIEW_POPOVER is not None and PREVIEW_TILE_ID == tile_id:
+        return False
+
     close_window_preview()
     windows = sorted(windows, key=lambda item: int(item.get("focusHistoryID", 9999) or 9999))
-    popover = Gtk.Popover(relative_to=widget)
-    popover.set_position(Gtk.PositionType.TOP)
-    popover.set_modal(False)
-    popover.get_style_context().add_class("dock-preview")
+    preview = Gtk.Window(title="Seven Dock Preview")
+    preview.set_decorated(False)
+    preview.set_resizable(False)
+    preview.set_accept_focus(False)
+    preview.set_focus_on_map(False)
+    preview.set_keep_above(True)
+    preview.set_skip_taskbar_hint(True)
+    preview.set_skip_pager_hint(True)
+    preview.set_type_hint(Gdk.WindowTypeHint.TOOLTIP)
+    preview.set_default_size(260, 92)
+    preview.get_style_context().add_class("dock-preview-window")
+    preview.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+    preview.connect("enter-notify-event", lambda *_args: cancel_preview_close(GLib))
+    preview.connect("leave-notify-event", lambda *_args: schedule_preview_close(GLib, 240))
 
     box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+    box.get_style_context().add_class("dock-preview")
     title = Gtk.Label(label=str(tile.get("title", tr_text("App"))))
     title.set_xalign(0)
     title.get_style_context().add_class("dock-preview-title")
@@ -1069,10 +1384,15 @@ def show_window_preview(widget, tile: dict[str, object], grouped_clients: dict[s
         row.connect("clicked", lambda _row, selected=client: (focus_client(selected), close_window_preview()))
         box.pack_start(row, False, False, 0)
 
-    popover.add(box)
-    popover.show_all()
-    popover.popup()
-    PREVIEW_POPOVER = popover
+    preview.add(box)
+    preview.show_all()
+    px, py = widget_origin(widget)
+    tile_width = max(1, widget.get_allocated_width())
+    preview_width = max(240, preview.get_allocated_width() or 240)
+    preview_height = max(86, preview.get_allocated_height() or 86)
+    preview.move(max(8, px + int((tile_width - preview_width) / 2)), max(8, py - preview_height - 12))
+    PREVIEW_POPOVER = preview
+    PREVIEW_TILE_ID = tile_id
     return False
 
 

@@ -22,8 +22,8 @@ Usage:
   seven setup new-device --yes
 
 Installs and applies the ergonomic defaults for a fresh SevenOS machine:
-base desktop, CLI, fonts, French/English language packs, visual layer, mini OS requirements, workspaces,
-profile isolation, rootfs metadata, boot splash, theme, post-install checks.
+base desktop, CLI, fonts, French/English language packs, visual identity, mini OS requirements, workspaces,
+profile isolation, rootfs metadata, boot splash, login theme, post-install checks.
 EOF
 }
 
@@ -107,6 +107,7 @@ setup_doctor() {
   local package_file script_file
   local package_files=(
     scripts/packages-base.txt
+    scripts/packages-identity.txt
     scripts/packages-network.txt
     scripts/packages-visual-aur.txt
     scripts/packages-dev.txt
@@ -125,6 +126,8 @@ setup_doctor() {
     bin/seven-waybar-language
     scripts/apply-theme.sh
     scripts/boot-splash.sh
+    scripts/login-theme.sh
+    scripts/identity-assets.sh
     scripts/post-install.sh
     scripts/system-profile.sh
     scripts/system-install.sh
@@ -189,6 +192,27 @@ setup_doctor() {
     doctor_ok "boot splash contract"
   else
     doctor_fail "boot splash contract failed"
+    failed=1
+  fi
+
+  if "$ROOT_DIR/scripts/login-theme.sh" doctor >/dev/null 2>&1; then
+    doctor_ok "login theme contract"
+  else
+    doctor_fail "login theme contract failed"
+    failed=1
+  fi
+
+  if SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/login-theme.sh" apply --yes >/dev/null 2>&1; then
+    doctor_ok "login theme dry-run apply"
+  else
+    doctor_fail "login theme dry-run apply failed"
+    failed=1
+  fi
+
+  if "$ROOT_DIR/scripts/identity-assets.sh" doctor >/dev/null 2>&1; then
+    doctor_ok "SevenOS identity assets contract"
+  else
+    doctor_fail "SevenOS identity assets contract failed"
     failed=1
   fi
 
@@ -258,6 +282,9 @@ step "preparing French and English language packs"
 step "installing visual polish packages when available"
 run_optional "$ROOT_DIR/scripts/visual-packages.sh" install "${yes_args[@]}"
 
+step "installing SevenOS identity packages for splash, login and graphical admin prompts"
+run_optional install_package_file "$ROOT_DIR/scripts/packages-identity.txt"
+
 step "installing required mini OS dependencies"
 run_logged "$ROOT_DIR/bin/seven-profile-requirements" ensure all --apply "${yes_args[@]}"
 
@@ -296,6 +323,9 @@ step "reapplying SevenOS theme and branding"
 
 step "applying quiet SevenOS boot and shutdown splash"
 run_optional "$ROOT_DIR/scripts/boot-splash.sh" apply
+
+step "applying SevenOS Prism login theme"
+run_optional "$ROOT_DIR/scripts/login-theme.sh" apply
 
 step "running post-install ergonomics check"
 "$ROOT_DIR/scripts/post-install.sh"

@@ -72,7 +72,10 @@ syntax_check() {
     "$ROOT_DIR/scripts/check.sh" \
     "$ROOT_DIR/scripts/ux-check.sh" \
     "$ROOT_DIR/scripts/design-check.sh" \
+    "$ROOT_DIR/scripts/system-assets.sh" \
+    "$ROOT_DIR/scripts/identity-assets.sh" \
     "$ROOT_DIR/scripts/distribution.sh" \
+    "$ROOT_DIR/scripts/identity-experience.sh" \
     "$ROOT_DIR/scripts/lifecycle.sh" \
     "$ROOT_DIR/bin/seven-windows-assistant" \
     "$ROOT_DIR/bin/seven-help" \
@@ -87,6 +90,7 @@ python_check() {
     "$ROOT_DIR/bin/seven-profile-run" \
     "$ROOT_DIR/bin/seven-waybar-context" \
     "$ROOT_DIR/bin/seven-help-native" \
+    "$ROOT_DIR/bin/seven-identity-native" \
     "$ROOT_DIR/bin/seven_waybar_app_profiles.py" \
     "$ROOT_DIR/scripts/seven_ai_agent.py" \
     "$ROOT_DIR/scripts/seven_ai_provider.py" \
@@ -98,6 +102,9 @@ json_check() {
   python -m json.tool "$ROOT_DIR/profiles/catalog.json" >/dev/null
   python -m json.tool "$ROOT_DIR/identity/profile-themes.json" >/dev/null
   python -m json.tool "$ROOT_DIR/identity/design-engine.json" >/dev/null
+  python -m json.tool "$ROOT_DIR/identity/wallpaper/dynamic/manifest.json" >/dev/null
+  "$ROOT_DIR/scripts/system-assets.sh" json | python -m json.tool >/dev/null
+  "$ROOT_DIR/scripts/identity-assets.sh" json | python -m json.tool >/dev/null
   if command -v jq >/dev/null 2>&1; then
     jq empty "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null
     jq empty "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null
@@ -116,6 +123,11 @@ smoke_check() {
 surfaces_check() {
   "$ROOT_DIR/bin/seven" surfaces json | python -m json.tool >/dev/null
   "$ROOT_DIR/bin/seven" surfaces doctor >/dev/null
+}
+
+identity_experience_check() {
+  "$ROOT_DIR/bin/seven" identity experience --json | python -m json.tool >/dev/null
+  "$ROOT_DIR/bin/seven" identity experience >/dev/null
 }
 
 public_quality_check() {
@@ -147,6 +159,7 @@ run_required "Python entrypoints" python_check
 run_required "JSON and JSONC contracts" json_check
 run_required "git diff whitespace" git -C "$ROOT_DIR" diff --check
 run_required "SevenOS design contract" "$ROOT_DIR/scripts/design-check.sh"
+run_required_timeout "${SEVENOS_PRE_PUSH_IDENTITY_TIMEOUT:-45s}" "SevenOS identity experience contract" identity_experience_check
 run_required_timeout "${SEVENOS_PRE_PUSH_SMOKE_TIMEOUT:-60s}" "SevenOS smoke contract" smoke_check
 run_required_timeout "${SEVENOS_PRE_PUSH_SURFACES_TIMEOUT:-30s}" "SevenOS native surfaces contract" surfaces_check
 run_required_timeout "${SEVENOS_PRE_PUSH_STATE_TIMEOUT:-90s}" "SevenOS state contract" state_check

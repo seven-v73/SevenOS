@@ -1,5 +1,6 @@
 # SevenOS Hyprland premium ecosystem layer
 hyprpaper
+swww
 hyprpicker
 hyprsunset
 matugen

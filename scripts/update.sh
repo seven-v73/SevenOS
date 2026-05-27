@@ -45,6 +45,7 @@ git_run() {
 
 UPDATE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/update"
 LAST_SNAPSHOT_LINK="$UPDATE_STATE_DIR/last-successful-tree"
+LAST_REPORT_FILE="$UPDATE_STATE_DIR/last-report.json"
 
 snapshot_excludes() {
   printf '%s\n' \
@@ -73,6 +74,81 @@ create_update_snapshot() {
   rsync -a --delete "${excludes[@]}" "$ROOT_DIR"/ "$target"/
   ln -sfn "$target" "$LAST_SNAPSHOT_LINK"
   printf '%s\n' "$target"
+}
+
+notify_update() {
+  local title="$1"
+  local message="$2"
+  if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v notify-send >/dev/null 2>&1; then
+    notify-send "$title" "$message" >/dev/null 2>&1 || true
+  fi
+}
+
+write_update_report() {
+  local status="$1"
+  local snapshot="${2:-}"
+  local message="${3:-}"
+  mkdir -p "$UPDATE_STATE_DIR"
+  SEVENOS_UPDATE_STATUS="$status" \
+  SEVENOS_UPDATE_SNAPSHOT="$snapshot" \
+  SEVENOS_UPDATE_MESSAGE="$message" \
+  SEVENOS_UPDATE_JSON="$(update_json)" \
+  SEVENOS_UPDATE_REPORT="$LAST_REPORT_FILE" \
+  python - <<'PY'
+import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
+
+payload = json.loads(os.environ.get("SEVENOS_UPDATE_JSON", "{}") or "{}")
+report = {
+    "schema": "sevenos.update-report.v1",
+    "created_at": datetime.now(timezone.utc).isoformat(),
+    "status": os.environ.get("SEVENOS_UPDATE_STATUS", "unknown"),
+    "message": os.environ.get("SEVENOS_UPDATE_MESSAGE", ""),
+    "snapshot": os.environ.get("SEVENOS_UPDATE_SNAPSHOT", ""),
+    "state": payload.get("state", "unknown"),
+    "score": payload.get("score", 0),
+    "pending_total": payload.get("pending_total"),
+    "rollback": payload.get("rollback") or {},
+    "repository": payload.get("repository") or {},
+    "commands": payload.get("commands") or {},
+}
+target = Path(os.environ["SEVENOS_UPDATE_REPORT"])
+target.parent.mkdir(parents=True, exist_ok=True)
+target.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+print(target)
+PY
+}
+
+restart_user_surfaces() {
+  if is_dry_run; then
+    printf 'hyprctl reload\n'
+    printf 'systemctl --user try-restart sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-dock.service sevenos-shell-experience.service\n'
+    printf 'pkill -x waybar swaync hyprpaper || true; seven-session\n'
+    return 0
+  fi
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+    systemctl --user try-restart \
+      sevenos-waybar.service \
+      sevenos-notifications.service \
+      sevenos-wallpaper.service \
+      sevenos-dock.service \
+      sevenos-shell-experience.service >/dev/null 2>&1 || true
+    systemctl --user start sevenos-session.target >/dev/null 2>&1 || true
+  fi
+  if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+    pkill -x waybar >/dev/null 2>&1 || true
+    pkill -x swaync >/dev/null 2>&1 || true
+    pkill -x hyprpaper >/dev/null 2>&1 || true
+    if [[ -x "$ROOT_DIR/bin/seven-session" ]]; then
+      "$ROOT_DIR/bin/seven-session" >/tmp/sevenos-session.log 2>&1 || true
+    fi
+  fi
 }
 
 restore_update_snapshot() {
@@ -327,12 +403,22 @@ if repo:
     pending = "yes" if data.get("repo_pending") else "no" if behind is not None else "unknown"
     print(f"SevenOS:  {repo.get('commit') or 'unknown'} on {repo.get('branch') or 'unknown'} · repo update: {pending}")
     print(f"Root:     {data.get('root')}")
+rollback = data.get("rollback") or {}
+print(f"Rollback: {'available' if rollback.get('available') else 'not available'} · {rollback.get('command', 'seven update rollback')}")
 print()
 for item in data.get("sources", []):
     pending = item.get("pending")
     pending_text = "unknown" if pending is None else str(pending)
     print(f"{item.get('state','MISS'):<4} {item.get('public_name')} · {pending_text} pending")
     print(f"     Foundation: {item.get('backend')} · route: {item.get('command')}")
+print()
+print("Next:")
+if data.get("state") == "updates-available":
+    print("  seven update plan")
+    print("  seven update install --yes")
+else:
+    print("  seven update check")
+print("  seven update rollback   # restore the last SevenOS tree snapshot")
 PY
 }
 
@@ -351,7 +437,9 @@ PY
 
 apply_updates() {
   local snapshot=""
+  local report_path=""
   log_info "Applying SevenOS update route"
+  notify_update "SevenOS Update" "Preparing update route and rollback snapshot."
   if is_dry_run; then
     repo_update_preview
     printf '%q ' "$ROOT_DIR/bin/sevenpkg" update
@@ -359,6 +447,7 @@ apply_updates() {
     if command -v flatpak >/dev/null 2>&1; then
       printf 'flatpak update --assumeyes\n'
     fi
+    write_update_report "dry-run" "" "Dry-run completed." >/dev/null || true
     return 0
   fi
 
@@ -373,12 +462,18 @@ apply_updates() {
         flatpak update || true
       fi
     fi
+    restart_user_surfaces
   ); then
     log_error "SevenOS update failed; attempting rollback."
     restore_update_snapshot "$snapshot" || true
+    report_path="$(write_update_report "failed" "$snapshot" "Update failed; rollback was attempted." | tail -n 1 || true)"
+    notify_update "SevenOS Update" "Update failed. Rollback was attempted."
     return 1
   fi
+  report_path="$(write_update_report "success" "$snapshot" "SevenOS update completed." | tail -n 1 || true)"
   log_success "SevenOS update route completed."
+  [[ -n "$report_path" ]] && log_info "Update report: $report_path"
+  notify_update "SevenOS Update" "Update completed. SevenOS surfaces were refreshed."
 }
 
 rollback_update() {

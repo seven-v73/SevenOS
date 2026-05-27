@@ -78,7 +78,14 @@ if [[ -s "$ROOT_DIR/branding/plymouth/sevenos/sevenos.plymouth" ]] &&
    grep -q 'ModuleName=script' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.plymouth" &&
    grep -q 'Image("seven-prism.png")' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
    grep -q 'Image.Text("SevenOS"' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
-   grep -q 'Starting system workspace' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
+   grep -q 'Preparing SevenOS workspace' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
+   grep -q 'Synchronizing Prism identity' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
+   grep -q 'Personalizing active Mini OS' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
+   grep -q 'Mini OS · Equinox Balance' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
+   grep -q 'Kernel quiet mode' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
+   grep -q 'generate_localized_script' "$ROOT_DIR/scripts/boot-splash.sh" &&
+   grep -q 'boot_language' "$ROOT_DIR/scripts/boot-splash.sh" &&
+   grep -q 'boot_profile_title' "$ROOT_DIR/scripts/boot-splash.sh" &&
    grep -q 'Plymouth.SetRefreshFunction' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
    grep -q 'Plymouth.SetQuitFunction' "$ROOT_DIR/branding/plymouth/sevenos/sevenos.script" &&
    grep -q 'seven-prism.png' "$ROOT_DIR/scripts/boot-splash.sh" &&
@@ -88,11 +95,45 @@ if [[ -s "$ROOT_DIR/branding/plymouth/sevenos/sevenos.plymouth" ]] &&
    grep -q 'doctor) doctor' "$ROOT_DIR/scripts/boot-splash.sh" &&
    grep -q 'no interactive password prompt' "$ROOT_DIR/scripts/boot-splash.sh" &&
    grep -q 'seven-prism.png' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
+   grep -q 'boot-splash.sh theme' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
    grep -q 'ShowDelay=0' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
    grep -q 'choices=("status", "doctor", "apply", "theme")' "$ROOT_DIR/bin/seven"; then
   ok "SevenOS boot splash uses the Seven Prism animated Plymouth contract"
 else
   fail "SevenOS boot splash should ship the Prism asset, animated Plymouth script and doctor route"
+fi
+
+if [[ -s "$ROOT_DIR/branding/sddm/sevenos/Main.qml" ]] &&
+   [[ -s "$ROOT_DIR/branding/sddm/sevenos/theme.conf" ]] &&
+   [[ -s "$ROOT_DIR/branding/sddm/sevenos/metadata.desktop" ]] &&
+   [[ -s "$ROOT_DIR/branding/sddm/sevenos/assets/seven-prism.png" ]] &&
+   grep -q 'Theme-Id=sevenos' "$ROOT_DIR/branding/sddm/sevenos/metadata.desktop" &&
+   grep -q 'SevenOS Sign In' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'Connexion SevenOS' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'Qt.locale' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'Hyprland' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'miniOsTitle' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'Prism prêt' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'color: "#141B2D"' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'focusColor: accent2' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'seven-prism.png' "$ROOT_DIR/branding/sddm/sevenos/Main.qml" &&
+   grep -q 'generate_theme_config' "$ROOT_DIR/scripts/login-theme.sh" &&
+   grep -q 'active_profile_key' "$ROOT_DIR/scripts/login-theme.sh" &&
+   grep -q 'active_profile_color' "$ROOT_DIR/scripts/login-theme.sh" &&
+   grep -q 'Current=sevenos' "$ROOT_DIR/scripts/login-theme.sh" &&
+   grep -q '^sddm$' "$ROOT_DIR/scripts/packages-identity.txt" &&
+   grep -q '^plymouth$' "$ROOT_DIR/scripts/packages-identity.txt" &&
+   grep -q '^polkit-kde-agent$' "$ROOT_DIR/scripts/packages-identity.txt" &&
+   grep -q '^sddm$' "$ROOT_DIR/archiso/profile/packages.x86_64" &&
+   grep -q 'systemctl enable sddm.service' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh" &&
+   grep -q 'identity-assets.sh' "$ROOT_DIR/scripts/build-iso.sh" &&
+   grep -q 'identity-assets.sh' "$ROOT_DIR/scripts/system-install.sh" &&
+   grep -q 'scripts/packages-identity.txt' "$ROOT_DIR/scripts/new-device.sh" &&
+   grep -q 'login-theme' "$ROOT_DIR/bin/seven" &&
+   grep -q 'login-theme.sh apply' "$ROOT_DIR/archiso/profile/airootfs/root/customize_airootfs.sh"; then
+  ok "SevenOS login screen exposes the Prism SDDM identity contract"
+else
+  fail "SevenOS login screen should ship a Prism SDDM theme, doctor route and ISO hook"
 fi
 
 if [[ -s "$ROOT_DIR/identity/DESIGN_ENGINE.md" ]] &&
@@ -136,6 +177,9 @@ fi
 
 if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
    [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
+   grep -q -- '--comfort-light-bg: #F6F9FD' "$ROOT_DIR/identity/tokens-light.css" &&
+   grep -q -- '--comfort-light-panel: #FAFCFF' "$ROOT_DIR/identity/tokens-light.css" &&
+   grep -q '"bg": "#F6F9FD"' "$ROOT_DIR/scripts/seven_theme.py" &&
    jq -e '."modules-left" == ["custom/sevenos","custom/recorder","hyprland/window","custom/app-file","custom/app-edit","custom/app-view","custom/app-extra","custom/app-more","custom/app-tools","custom/app-window","custom/app-help"] and ."hyprland/window".format == "{class}" and ."hyprland/window"."max-length" == 18 and ."custom/app-file".exec == "seven-waybar-status app-menu-item file" and ."custom/app-file"."on-click" == "seven-waybar-action app-file" and ."custom/app-edit"."on-click" == "seven-waybar-action app-edit" and ."custom/app-view"."on-click" == "seven-waybar-action app-view" and ."custom/app-extra"."on-click" == "seven-waybar-action app-extra" and ."custom/app-more".exec == "seven-waybar-status app-menu-more" and ."custom/app-more"."on-click" == "seven-waybar-action app-menu" and ."custom/app-tools"."on-click" == "seven-waybar-action app-tools" and ."custom/app-window"."on-click" == "seven-waybar-action app-window" and ."custom/app-help"."on-click" == "seven-waybar-action app-help" and ."custom/sevenos".exec == "seven-waybar-status sevenos" and ."custom/sevenos"."return-type" == "json" and ."custom/sevenos"."on-click-right" == "seven-profile-center-native" and ."custom/sevenos"."on-click-middle" == "seven-spotlight field" and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["custom/profile","custom/media","custom/system-status","custom/wifi","custom/bluetooth","custom/spotlight","clock","custom/control-center"] and .height == 30 and ."gtk-layer-shell" == true and ."custom/system-status".exec == "seven-waybar-status system-status" and ."custom/system-status"."return-type" == "json" and ."custom/spotlight".format == "󰍉" and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."custom/wifi".exec == "seven-waybar-status wifi" and ."custom/bluetooth".exec == "seven-waybar-status bluetooth" and (."custom/recorder".exec | contains("seven-waybar-status") and contains("recorder")) and ."custom/recorder".format == "{}" and ."custom/recorder".interval == 2 and ."custom/control-center".exec == "seven-waybar-status control-center"' "$ROOT_DIR/hyprland-light/waybar/config.jsonc" >/dev/null &&
    grep -q '@define-color seven_blue #2F7BFF' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
    grep -q 'window#waybar' "$ROOT_DIR/hyprland-light/waybar/style.css" &&
@@ -146,6 +190,23 @@ if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
   ok "SevenOS Light Mode exposes a clarity-first visual system"
 else
   fail "SevenOS Light Mode should expose charter, tokens, Waybar, GTK and terminal surfaces"
+fi
+
+if [[ -s "$ROOT_DIR/identity/wallpaper/dynamic/manifest.json" ]] &&
+   [[ "$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("count",0))' "$ROOT_DIR/identity/wallpaper/dynamic/manifest.json" 2>/dev/null || printf 0)" == "45" ]] &&
+   [[ "$(find "$ROOT_DIR/identity/wallpaper/dynamic" -maxdepth 1 -name '*.svg' | wc -l)" == "45" ]] &&
+   grep -q 'collection|pack|dynamic' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q 'collection-list|packs|list' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q 'set_wallpaper_rotation' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q 'set_wallpaper_rotation_preset' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q 'wallpaper_rotation_enabled' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -q '^swww$' "$ROOT_DIR/scripts/packages-base.txt" &&
+   grep -q 'wallpaper-choice' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'rotation_selection' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'set_rotation_preset' "$ROOT_DIR/bin/seven-settings-native"; then
+  ok "SevenOS exposes 45 dynamic wallpapers through Settings and seven-wallpaper"
+else
+  fail "SevenOS should expose 45 dynamic wallpapers through Settings and seven-wallpaper"
 fi
 
 if jq -e '."modules-left" == ["custom/sevenos","custom/recorder","hyprland/window","custom/app-file","custom/app-edit","custom/app-view","custom/app-extra","custom/app-more","custom/app-tools","custom/app-window","custom/app-help"] and ."hyprland/window".format == "{class}" and ."hyprland/window"."max-length" == 18 and ."custom/app-file".exec == "seven-waybar-status app-menu-item file" and ."custom/app-file"."on-click" == "seven-waybar-action app-file" and ."custom/app-edit"."on-click" == "seven-waybar-action app-edit" and ."custom/app-view"."on-click" == "seven-waybar-action app-view" and ."custom/app-extra"."on-click" == "seven-waybar-action app-extra" and ."custom/app-more".exec == "seven-waybar-status app-menu-more" and ."custom/app-more"."on-click" == "seven-waybar-action app-menu" and ."custom/app-tools"."on-click" == "seven-waybar-action app-tools" and ."custom/app-window"."on-click" == "seven-waybar-action app-window" and ."custom/app-help"."on-click" == "seven-waybar-action app-help" and ."custom/sevenos".exec == "seven-waybar-status sevenos" and ."custom/sevenos"."return-type" == "json" and ."custom/sevenos"."on-click-right" == "seven-profile-center-native" and ."custom/sevenos"."on-click-middle" == "seven-spotlight field" and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["custom/profile","custom/media","custom/system-status","custom/wifi","custom/bluetooth","custom/spotlight","clock","custom/control-center"] and .height == 30 and .spacing == 4 and ."margin-top" == 0 and ."margin-left" == 0 and ."margin-right" == 0 and ."gtk-layer-shell" == true and ."custom/system-status".exec == "seven-waybar-status system-status" and ."custom/system-status"."return-type" == "json" and ."custom/spotlight".format == "󰍉" and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and (."custom/recorder".exec | contains("seven-waybar-status") and contains("recorder")) and ."custom/recorder".format == "{}" and ."custom/recorder".interval == 2 and ."custom/control-center".exec == "seven-waybar-status control-center" and ."custom/control-center"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then
@@ -190,7 +251,16 @@ else
 fi
 
 if [[ -x "$ROOT_DIR/bin/seven-dock" ]] &&
+   [[ -x "$ROOT_DIR/bin/seven-dock-canvas" ]] &&
    [[ -x "$ROOT_DIR/bin/seven-dock-native" ]] &&
+   grep -q 'smooth-neighbor-magnification' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'magnetic-focus' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'smooth-slide-reveal' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'spring-motion' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'direct-native-spotlight' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'centered-icons' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'anchored-window-preview' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'folder-stacks' "$ROOT_DIR/bin/seven-dock-canvas" &&
    grep -q 'dock-shell' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'GtkLayerShell' "$ROOT_DIR/bin/seven-dock-native" &&
    grep -q 'dock_dimensions' "$ROOT_DIR/bin/seven-dock-native" &&
@@ -248,7 +318,7 @@ if grep -q 'class SevenShellPanel' "$ROOT_DIR/bin/seven-shell-panel" &&
    grep -q 'build_detail_card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'detail-card' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'icon-action' "$ROOT_DIR/bin/seven-quick-settings-native" &&
-   grep -q 'set_keyboard_interactivity(window, True)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
+   grep -Eq 'set_keyboard_interactivity\(window, (True|os\.environ\.get\("SEVENOS_CONTROL_CENTER_KEYBOARD"\) == "1")\)' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'control_center_css' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'context_signal' "$ROOT_DIR/bin/seven-quick-settings-native" &&
    grep -q 'SystemSnapshot' "$ROOT_DIR/bin/seven-quick-settings-native" &&
@@ -268,6 +338,15 @@ if grep -q 'SevenProfileCenterNative' "$ROOT_DIR/bin/seven-profile-center-native
    grep -q 'SevenShieldCenterNative' "$ROOT_DIR/bin/seven-shield-center-native" &&
    grep -q 'SevenWaybarCenterNative' "$ROOT_DIR/bin/seven-waybar-center-native" &&
    grep -q 'profile-root' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'prism-node.switching' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'Passage en cours' "$ROOT_DIR/bin/seven-profile-center-native" &&
+   grep -q 'def draw_prism' "$ROOT_DIR/bin/seven-passage-overlay" &&
+   grep -q 'def read_watch_status' "$ROOT_DIR/bin/seven-passage-overlay" &&
+   grep -q -- '--watch' "$ROOT_DIR/bin/seven-passage-overlay" &&
+   grep -q 'PROFILE_ORDER' "$ROOT_DIR/bin/seven-passage-overlay" &&
+   grep -q 'ease_out_cubic' "$ROOT_DIR/bin/seven-passage-overlay" &&
+   grep -q 'profile-passage-state.v1' "$ROOT_DIR/profiles/profile-manager.sh" &&
+   grep -q 'SEVENOS_PASSAGE_DURATION:-1550' "$ROOT_DIR/profiles/profile-manager.sh" &&
    grep -q 'shield-root' "$ROOT_DIR/bin/seven-shield-center-native" &&
    grep -q 'center-root' "$ROOT_DIR/bin/seven-waybar-center-native" &&
    grep -q '󰐃' "$ROOT_DIR/bin/seven-waybar-profile" &&
@@ -290,6 +369,11 @@ if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    grep -q 'content_width' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'sidebar_width' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'mark_action_running' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'def prism_settings_group' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'seven-window controls-effect off' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'nav("prism"' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'pages\["prism"\]' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.jump.prism' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'search_key' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'page_button' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'sevenos.settings.state.v1' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -328,6 +412,11 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    [[ -s "$ROOT_DIR/identity/native/settings-dark.css" ]] &&
    [[ -s "$ROOT_DIR/identity/native/files.css" ]] &&
 	   grep -q 'theme_preview_card' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'def theme_apply_command' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'def language_apply_command' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'def session_refresh_command' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'def repair_interface_command' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'def refresh_runtime_css' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'preview_mode' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'profile_combo' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'def settings_row' "$ROOT_DIR/bin/seven-settings-native" &&
@@ -417,6 +506,9 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
 	   grep -q 'deep_settings_enabled' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'Vérification à la demande' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'seven-wallpaper.*set' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven-wallpaper profile' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q 'seven-wallpaper.*collection-list' "$ROOT_DIR/bin/seven-settings-native" &&
+	   grep -q './install.sh theme current' "$ROOT_DIR/bin/seven-settings-native" &&
 	   grep -q 'seven_wallpaper_accent' "$ROOT_DIR/identity/native/settings.css" &&
 	   grep -q '.settings-row' "$ROOT_DIR/identity/native/settings.css" &&
 	   grep -q '.settings-group' "$ROOT_DIR/identity/native/settings.css" &&
@@ -438,6 +530,31 @@ if [[ -s "$ROOT_DIR/scripts/seven_theme.py" ]] &&
    grep -q 'seven_theme.gtk_app_css("doctor"' "$ROOT_DIR/bin/seven-doctor-native" &&
    grep -q 'seven_theme.gtk_app_css("shield-center"' "$ROOT_DIR/bin/seven-shield-center-native" &&
    grep -q 'seven_theme.gtk_app_css("window-controls"' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'def window_prism_motion_enabled' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'SEVENOS_WINDOW_CONTROLS_ANIMATION' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'SEVENOS_WINDOW_CONTROLS_EFFECT' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'def electric_prism_colors' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'def prism_items' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'def prism_items_cluster' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'link.add_color_stop_rgba(1, 1, 1, 1' "$ROOT_DIR/bin/seven-window-controls-native" &&
+   grep -q 'controls-effect' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'PRISM_ITEMS_MAX=7' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'Prism items JSON validity' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'controls-item set <daily|dev|clean>' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'controls-item move' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'controls-item custom' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'controls-item' "$ROOT_DIR/scripts/smart-window.sh" &&
+   grep -q 'settings.prism.items' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'prism-preview-card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'prism-order-row' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.prism.custom' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'prism-suggestion' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'prism-order-command' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.prism.test' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'command_status_text' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.prism.presets' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'controls-effect toggle' "$ROOT_DIR/bin/seven-help-native" &&
+   grep -q 'glint_angle' "$ROOT_DIR/bin/seven-window-controls-native" &&
    grep -q 'seven_theme.gtk_app_css("spotlight"' "$ROOT_DIR/bin/seven-spotlight-native" &&
    grep -q 'seven_theme.gtk_app_css("launchpad"' "$ROOT_DIR/bin/seven-launchpad-native" &&
    grep -q 'seven_theme.gtk_app_css("dock"' "$ROOT_DIR/bin/seven-dock-native" &&
@@ -460,6 +577,19 @@ if ! grep -R -E '#[0-9A-Fa-f]{3,8}|rgba?\(' "$ROOT_DIR/identity/native" >/dev/nu
   ok "Native app CSS uses Seven Design Engine tokens instead of hard-coded colors"
 else
   fail "Native app CSS should use @seven_* tokens instead of hard-coded colors"
+fi
+
+if grep -q 'pkill -x waybar' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'pkill -x swaync' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'pkill -x hyprpaper' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'sevenos-wallpaper.service' "$ROOT_DIR/scripts/apply-theme.sh" &&
+   grep -q 'pkill -x waybar' "$ROOT_DIR/scripts/update.sh" &&
+   grep -q 'pkill -x swaync' "$ROOT_DIR/scripts/update.sh" &&
+   grep -q 'pkill -x hyprpaper' "$ROOT_DIR/scripts/update.sh" &&
+   grep -q 'sevenos-wallpaper.service' "$ROOT_DIR/scripts/update.sh"; then
+  ok "Theme/update actions resync live shell surfaces"
+else
+  fail "Theme/update actions should resync Waybar, notifications and wallpaper"
 fi
 
 if [[ -s "$ROOT_DIR/scripts/theme-engine.sh" ]] &&
@@ -561,6 +691,9 @@ else
 fi
 
 if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--comfort-dark-bg: #080A12' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q -- '--comfort-dark-panel: rgba(13, 17, 29, 0.82)' "$ROOT_DIR/identity/tokens.css" &&
+   grep -q '"bg": "#080A12"' "$ROOT_DIR/scripts/seven_theme.py" &&
    grep -q 'gtk-application-prefer-dark-theme=true' "$ROOT_DIR/hyprland/gtk-3.0/settings.ini" &&
    grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" &&
    grep -q 'window.nautilus-window headerbar' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" &&
@@ -603,6 +736,38 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    grep -q 'screen_window_size' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'runtime_preview_visible' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'screen_compact' "$ROOT_DIR/bin/seven-files-native" &&
+   grep -q 'settings_local_css' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'profile_avatar_pack' "$ROOT_DIR/bin/seven-settings-native" &&
+   [[ "$(find "$ROOT_DIR/identity/profile-avatars" -maxdepth 1 -name '*.svg' 2>/dev/null | wc -l | tr -d ' ')" -ge 45 ]] &&
+   grep -q 'PROFILE_AVATAR_PREFS' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'show_avatar_picker' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'choose_gallery_avatar' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'normalize_gallery_avatar' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'GdkPixbuf' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'avatar-picker-grid' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'avatar-picker-frame' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Gtk.Grid' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'dialog.set_resizable(False)' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'avatar-selected-mark' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'avatar-edit-button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'account-hero-card' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'account-action-strip' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'account-strip-button' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'dialog.set_resizable(False)' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'account-dialog-content' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'list_box.set_size_request(-1, 72)' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'Final modal override' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q '.settings-dialog.theme-light .update-summary-panel' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q '.account-list row:selected' "$ROOT_DIR/identity/native/settings.css" &&
+   grep -q '.settings-dialog.theme-light .account-dialog-content' "$ROOT_DIR/identity/native/settings.css" &&
+   grep -q '.settings-dialog scrolledwindow viewport' "$ROOT_DIR/identity/native/settings.css" &&
+   grep -q 'linear-gradient(135deg, @seven_panel, @seven_bg)' "$ROOT_DIR/identity/native/settings.css" &&
+   grep -q 'settings.users.current_space' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.users.avatar_reset' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'user-avatar-account' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'user-avatar-picture-large' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'user-account-profile-badge' "$ROOT_DIR/bin/seven-settings-native" &&
+   grep -q 'settings.users.account_space' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'SevenTerminalNative' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'terminal-tool' "$ROOT_DIR/bin/seven-terminal-native" &&
    grep -q 'terminal-searchbar' "$ROOT_DIR/bin/seven-terminal-native" &&
@@ -630,6 +795,19 @@ if grep -q 'kente-band' "$ROOT_DIR/seven-hub/gui/src/index.html" &&
   ok "Seven Hub uses SevenOS v2 structural glow details"
 else
   fail "Seven Hub should expose SevenOS v2 structural glow details"
+fi
+
+if [[ -x "$ROOT_DIR/bin/seven-identity-native" ]] &&
+   grep -q 'SevenOS Signature' "$ROOT_DIR/bin/seven-identity-native" &&
+   grep -q 'symbol-seven-prism.svg' "$ROOT_DIR/bin/seven-identity-native" &&
+   grep -q 'identity-window' "$ROOT_DIR/bin/seven-identity-native" &&
+   grep -q 'Experience Guardrails' "$ROOT_DIR/bin/seven-identity-native" &&
+   grep -q 'seven identity open' "$ROOT_DIR/scripts/identity.sh" &&
+   grep -q 'identity.open' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'SevenOS Identity' "$ROOT_DIR/scripts/surfaces.sh"; then
+  ok "SevenOS identity report is a native Prism-first surface"
+else
+  fail "SevenOS identity report should be a native Prism-first surface"
 fi
 
 if [[ "$failures" -gt 0 ]]; then

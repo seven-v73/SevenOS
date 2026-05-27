@@ -27,6 +27,7 @@ pipewire-jack
 wireplumber
 hyprland
 hyprpaper
+swww
 hypridle
 hyprlock
 hyprpicker

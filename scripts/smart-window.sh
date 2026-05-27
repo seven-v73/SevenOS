@@ -8,6 +8,9 @@ MODE_ENV="$STATE_DIR/window-mode.env"
 MODE_JSON="$STATE_DIR/window-mode.json"
 WINDOW_MEMORY_JSON="$WINDOW_STATE_DIR/memory.json"
 CONTROLS_PREF="$STATE_DIR/window-controls-enabled.env"
+CONTROLS_EFFECT_PREF="$STATE_DIR/window-controls-effect.env"
+PRISM_ITEMS_JSON="$STATE_DIR/window-prism-items.json"
+PRISM_ITEMS_MAX=7
 DRY_RUN="${SEVENOS_DRY_RUN:-0}"
 
 usage() {
@@ -33,6 +36,14 @@ Usage:
   seven-window controls-enable
   seven-window controls-disable
   seven-window controls-status
+  seven-window controls-effect <on|off|toggle|status>
+  seven-window controls-items [--json]
+  seven-window controls-item add <settings|accessibility|apps|terminal|files|help|launchpad>
+  seven-window controls-item custom <key> <label> <icon> <command> [accent]
+  seven-window controls-item remove <key>
+  seven-window controls-item move <key> <up|down|first|last>
+  seven-window controls-item set <daily|dev|clean>
+  seven-window controls-item clear
   seven-window controls-reset-hidden
   seven-window remember
   seven-window memory [--json]
@@ -459,6 +470,238 @@ PY
   notify "SevenDecor Prism" "target lock cleared"
 }
 
+controls_effect_status() {
+  local value="on"
+  if [[ -r "$CONTROLS_EFFECT_PREF" ]]; then
+    # shellcheck disable=SC1090
+    source "$CONTROLS_EFFECT_PREF" || true
+    value="${SEVENOS_WINDOW_CONTROLS_EFFECT:-on}"
+  fi
+  case "$value" in
+    0|false|no|off) printf 'off\n' ;;
+    *) printf 'on\n' ;;
+  esac
+}
+
+controls_effect() {
+  local action="${1:-status}"
+  local current next
+  current="$(controls_effect_status)"
+  case "$action" in
+    on|enable)
+      next="on"
+      ;;
+    off|disable)
+      next="off"
+      ;;
+    toggle)
+      if [[ "$current" == "on" ]]; then
+        next="off"
+      else
+        next="on"
+      fi
+      ;;
+    status)
+      printf 'SevenDecor Prism electric effect: %s\n' "$current"
+      return 0
+      ;;
+    *)
+      printf 'seven-window: unknown controls effect action: %s\n' "$action" >&2
+      return 1
+      ;;
+  esac
+  ensure_state_dir
+  printf 'SEVENOS_WINDOW_CONTROLS_EFFECT=%s\n' "$next" >"$CONTROLS_EFFECT_PREF"
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl --user restart sevenos-window-controls.service >/dev/null 2>&1 || true
+  fi
+  notify "SevenDecor Prism" "electric effect: $next"
+  printf 'SevenDecor Prism electric effect: %s\n' "$next"
+}
+
+prism_item_presets_json() {
+  cat <<'JSON'
+{
+  "settings": {"key": "settings", "label": "Réglages", "label_en": "Settings", "icon": "⚙", "command": "seven-settings prism", "accent": "#6EA8FF"},
+  "accessibility": {"key": "accessibility", "label": "Accessibilité", "label_en": "Accessibility", "icon": "⌁", "command": "seven-settings general", "accent": "#33D6A6"},
+  "apps": {"key": "apps", "label": "Apps", "label_en": "Apps", "icon": "▦", "command": "seven-overview apps", "accent": "#A78BFA"},
+  "terminal": {"key": "terminal", "label": "Terminal", "label_en": "Terminal", "icon": "⌘", "command": "seven-terminal", "accent": "#F472B6"},
+  "files": {"key": "files", "label": "Fichiers", "label_en": "Files", "icon": "▣", "command": "seven-files", "accent": "#38BDF8"},
+  "help": {"key": "help", "label": "Aide", "label_en": "Help", "icon": "?", "command": "seven-help-native", "accent": "#FBBF24"},
+  "launchpad": {"key": "launchpad", "label": "Launchpad", "label_en": "Launchpad", "icon": "✦", "command": "seven-overview apps", "accent": "#FB7185"}
+}
+JSON
+}
+
+prism_items_json() {
+  python - "$PRISM_ITEMS_JSON" "$PRISM_ITEMS_MAX" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+max_items = int(sys.argv[2])
+try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    payload = {}
+items = payload.get("items") if isinstance(payload.get("items"), list) else []
+clean = []
+seen = set()
+for item in items:
+    if not isinstance(item, dict):
+        continue
+    key = str(item.get("key") or "").strip()
+    command = str(item.get("command") or "").strip()
+    if not key or not command or key in seen:
+        continue
+    seen.add(key)
+    clean.append({
+        "key": key,
+        "label": str(item.get("label") or key.title()),
+        "label_en": str(item.get("label_en") or item.get("label") or key.title()),
+        "icon": str(item.get("icon") or "•")[:2],
+        "command": command,
+        "accent": str(item.get("accent") or "#6EA8FF"),
+    })
+payload = {
+    "schema": "sevenos.window-prism-items.v1",
+    "max_items": max_items,
+    "count": min(len(clean), max_items),
+    "items": clean[:max_items],
+    "path": str(path),
+}
+print(json.dumps(payload, ensure_ascii=False, indent=2))
+PY
+}
+
+prism_items_write_python='
+import json
+import os
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+max_items = int(sys.argv[2])
+action = sys.argv[3]
+arg = sys.argv[4] if len(sys.argv) > 4 else ""
+arg2 = sys.argv[5] if len(sys.argv) > 5 else ""
+arg3 = sys.argv[6] if len(sys.argv) > 6 else ""
+arg4 = sys.argv[7] if len(sys.argv) > 7 else ""
+presets = json.loads(os.environ.get("SEVENOS_PRISM_PRESETS", "{}"))
+try:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    payload = {}
+items = payload.get("items") if isinstance(payload.get("items"), list) else []
+items = [item for item in items if isinstance(item, dict) and item.get("key")]
+
+def save(new_items):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "schema": "sevenos.window-prism-items.v1",
+        "max_items": max_items,
+        "items": new_items[:max_items],
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({"ok": True, "count": len(payload["items"]), "max_items": max_items}, ensure_ascii=False))
+
+if action == "add":
+    if arg not in presets:
+        print(json.dumps({"ok": False, "error": "unknown-preset", "preset": arg}, ensure_ascii=False))
+        raise SystemExit(1)
+    if any(item.get("key") == arg for item in items):
+        save(items)
+        raise SystemExit(0)
+    if len(items) >= max_items:
+        print(json.dumps({"ok": False, "error": "max-items", "max_items": max_items}, ensure_ascii=False))
+        raise SystemExit(2)
+    items.append(presets[arg])
+    save(items)
+elif action == "custom":
+    import re
+    key = re.sub(r"[^a-zA-Z0-9_.-]+", "-", arg.strip().lower()).strip("-")[:32]
+    label = arg2.strip()[:32]
+    icon = (arg3.strip() or "•")[:2]
+    command = arg4.strip()
+    accent = sys.argv[8].strip() if len(sys.argv) > 8 else "#6EA8FF"
+    if not key or not label or not command:
+        print(json.dumps({"ok": False, "error": "invalid-custom-item"}, ensure_ascii=False))
+        raise SystemExit(1)
+    if any(item.get("key") == key for item in items):
+        items = [item for item in items if item.get("key") != key]
+    if len(items) >= max_items:
+        print(json.dumps({"ok": False, "error": "max-items", "max_items": max_items}, ensure_ascii=False))
+        raise SystemExit(2)
+    items.append({
+        "key": key,
+        "label": label,
+        "label_en": label,
+        "icon": icon,
+        "command": command,
+        "accent": accent if accent.startswith("#") else "#6EA8FF",
+        "custom": True,
+    })
+    save(items)
+elif action == "remove":
+    save([item for item in items if item.get("key") != arg])
+elif action == "clear":
+    save([])
+elif action == "set":
+    recipes = {
+        "daily": ["settings", "terminal", "files", "apps", "help"],
+        "dev": ["terminal", "files", "apps", "settings", "help", "accessibility", "launchpad"],
+        "clean": ["settings", "terminal", "files"],
+    }
+    keys = recipes.get(arg)
+    if not keys:
+        print(json.dumps({"ok": False, "error": "unknown-recipe", "recipe": arg}, ensure_ascii=False))
+        raise SystemExit(1)
+    save([presets[key] for key in keys if key in presets])
+elif action == "move":
+    indexes = [idx for idx, item in enumerate(items) if item.get("key") == arg]
+    if not indexes:
+        save(items)
+        raise SystemExit(0)
+    index = indexes[0]
+    if arg2 in {"up", "left"} and index > 0:
+        items[index - 1], items[index] = items[index], items[index - 1]
+    elif arg2 in {"down", "right"} and index < len(items) - 1:
+        items[index + 1], items[index] = items[index], items[index + 1]
+    elif arg2 == "first":
+        items.insert(0, items.pop(index))
+    elif arg2 == "last":
+        items.append(items.pop(index))
+    save(items)
+else:
+    print(json.dumps({"ok": False, "error": "unknown-action"}, ensure_ascii=False))
+    raise SystemExit(1)
+'
+
+prism_item() {
+  local action="${1:-list}"
+  local key="${2:-}"
+  case "$action" in
+    list|status)
+      prism_items_json
+      ;;
+    presets)
+      prism_item_presets_json
+      ;;
+    add|remove|clear|set|move|custom)
+      ensure_state_dir
+      SEVENOS_PRISM_PRESETS="$(prism_item_presets_json)" \
+        python -c "$prism_items_write_python" "$PRISM_ITEMS_JSON" "$PRISM_ITEMS_MAX" "$action" "$key" "${3:-}" "${4:-}" "${5:-}" "${6:-}"
+      command -v systemctl >/dev/null 2>&1 && systemctl --user restart sevenos-window-controls.service >/dev/null 2>&1 || true
+      notify "SevenDecor Prism" "items updated"
+      ;;
+    *)
+      printf 'seven-window: unknown prism item action: %s\n' "$action" >&2
+      return 1
+      ;;
+  esac
+}
+
 controls_service() {
   local action="${1:-status}"
   case "$action" in
@@ -651,12 +894,16 @@ status_json() {
 	    "command": "seven-window controls",
 	    "advanced_menu": "seven-window advanced-menu",
 	    "unlock_target": "seven-window controls-unlock",
+	    "electric_effect": "seven-window controls-effect toggle",
 	    "daemon": "seven-window controls-start",
     "service": "sevenos-window-controls.service",
     "mode": "prism-collapsed-expand-on-click",
     "placement": "adaptive-active-window-top-left-or-manual",
     "state": $(json_string "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/window-controls.json"),
     "preference": $(json_string "$CONTROLS_PREF"),
+    "effect_preference": $(json_string "$CONTROLS_EFFECT_PREF"),
+    "effect": $(json_string "$(controls_effect_status)"),
+    "items": $(prism_items_json),
     "native": $([[ -x "$ROOT_DIR/bin/seven-window-controls-native" ]] && "$ROOT_DIR/bin/seven-window-controls-native" --probe >/dev/null 2>&1 && printf true || printf false)
   },
   "state_files": {
@@ -678,6 +925,8 @@ status_text() {
     printf 'Hyprland: MISS\n'
   fi
   printf '\nActions: controls, advanced-menu, toggle-float, smart-maximize, fullscreen, split-left, split-right, mosaic, layout-menu, remember, restore\n'
+  printf 'Prism effect: %s (seven-window controls-effect toggle)\n' "$(controls_effect_status)"
+  printf 'Prism items:  %s/%s (seven-window controls-items)\n' "$(prism_items_json | python -c 'import json,sys; print(json.load(sys.stdin).get("count",0))')" "$PRISM_ITEMS_MAX"
 }
 
 doctor() {
@@ -692,6 +941,13 @@ doctor() {
   grep -q 'SevenDecor phase 1' "$ROOT_DIR/hyprland/gtk-4.0/gtk.css" || { printf 'MISS GTK4 SevenDecor traffic CSS\n'; failed=1; }
   grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/gtk-4.0/settings.ini" || { printf 'MISS GTK decoration layout\n'; failed=1; }
   grep -q 'sevenos.window-memory.v1' "$ROOT_DIR/scripts/smart-window.sh" || { printf 'MISS window memory contract\n'; failed=1; }
+  grep -q 'PRISM_ITEMS_MAX=7' "$ROOT_DIR/scripts/smart-window.sh" || { printf 'MISS Prism item limit\n'; failed=1; }
+  grep -q 'link.add_color_stop_rgba(1, 1, 1, 1' "$ROOT_DIR/bin/seven-window-controls-native" || { printf 'MISS Prism link gradient guard\n'; failed=1; }
+  prism_items_json | python -m json.tool >/dev/null 2>&1 || { printf 'MISS Prism items JSON validity\n'; failed=1; }
+  prism_item_presets_json | python -m json.tool >/dev/null 2>&1 || { printf 'MISS Prism presets JSON validity\n'; failed=1; }
+  local prism_count
+  prism_count="$(prism_items_json | python -c 'import json,sys; p=json.load(sys.stdin); print(p.get("count", 0) if p.get("count", 0) <= p.get("max_items", 7) else "overflow")' 2>/dev/null || printf overflow)"
+  [[ "$prism_count" != "overflow" ]] || { printf 'MISS Prism items exceed max\n'; failed=1; }
   if [[ "$failed" == "0" ]]; then
     printf 'Seven Smart Window System: OK\n'
   else
@@ -727,6 +983,9 @@ main() {
     controls-toggle|overlay-toggle|toggle-controls|toggle-prism) controls_service toggle ;;
     controls-restart|overlay-restart) controls_service restart ;;
     controls-status|overlay-status) controls_service status ;;
+    controls-effect|prism-effect|effect) controls_effect "${1:-status}" ;;
+    controls-items|prism-items) prism_items_json ;;
+    controls-item|prism-item) prism_item "$@" ;;
     controls-reset-hidden|prism-reset-hidden) controls_reset_hidden ;;
     controls-unlock|prism-unlock|unlock-target) controls_unlock ;;
     remember) remember_window ;;

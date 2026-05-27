@@ -6,14 +6,17 @@ from __future__ import annotations
 import argparse
 import cairo
 import json
+import math
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
 CONTROL_STATE = CONFIG_DIR / "window-controls.json"
+PRISM_ITEMS = CONFIG_DIR / "window-prism-items.json"
 sys.path.insert(0, str(ROOT / "scripts"))
 try:
     import seven_theme
@@ -520,14 +523,24 @@ def hex_color(value: str) -> tuple[float, float, float]:
 
 def profile_accent() -> tuple[float, float, float]:
     profile = "equinox"
+    accent_value = ""
     profile_env = CONFIG_DIR / "profile.env"
     try:
         for line in profile_env.read_text(encoding="utf-8").splitlines():
-            if line.startswith("SEVENOS_PROFILE="):
-                profile = line.split("=", 1)[1].strip().strip('"').strip("'").lower()
-                break
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key == "SEVENOS_PROFILE_ACCENT_COLOR":
+                accent_value = value
+            elif key in {"SEVENOS_ACTIVE_PROFILE", "SEVENOS_PROFILE"}:
+                profile = value.lower()
     except Exception:
         pass
+    if accent_value.startswith("#") and len(accent_value.strip()) == 7:
+        try:
+            return hex_color(accent_value)
+        except Exception:
+            pass
     accents = {
         "equinox": "#4aa3ff",
         "baobab": "#33a06f",
@@ -538,6 +551,70 @@ def profile_accent() -> tuple[float, float, float]:
         "pulse": "#de7a35",
     }
     return hex_color(accents.get(profile, accents["equinox"]))
+
+
+def window_prism_motion_enabled() -> bool:
+    if os.environ.get("SEVENOS_WINDOW_CONTROLS_ANIMATION", "").lower() in {"0", "false", "no", "off"}:
+        return False
+    effect_env = CONFIG_DIR / "window-controls-effect.env"
+    try:
+        for line in effect_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key.strip() == "SEVENOS_WINDOW_CONTROLS_EFFECT":
+                return value.strip().strip('"').strip("'").lower() not in {"0", "false", "no", "off"}
+    except Exception:
+        pass
+    motion_env = CONFIG_DIR / "motion.conf"
+    try:
+        values = {}
+        for line in motion_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = line.partition("=")
+            if key:
+                values[key.strip()] = value.strip().strip('"').strip("'").lower()
+        if values.get("SEVENOS_MOTION_PRESET") == "off" or values.get("SEVENOS_MOTION_MODE") == "off":
+            return False
+        if values.get("SEVENOS_MOTION_PRESET") == "reduced" or values.get("SEVENOS_MOTION_MODE") == "reduced":
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def electric_prism_colors() -> list[tuple[float, float, float]]:
+    return [
+        (1.00, 0.20, 0.18),
+        (0.22, 0.78, 1.00),
+        (0.66, 0.42, 1.00),
+        (0.25, 1.00, 0.62),
+        (1.00, 0.72, 0.25),
+    ]
+
+
+def prism_items() -> list[dict]:
+    try:
+        payload = json.loads(PRISM_ITEMS.read_text(encoding="utf-8"))
+    except Exception:
+        payload = {}
+    items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    clean = []
+    seen = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("key") or "").strip()
+        command = str(item.get("command") or "").strip()
+        if not key or not command or key in seen:
+            continue
+        seen.add(key)
+        clean.append({
+            "key": key,
+            "label": str(item.get("label") or key.title()),
+            "label_en": str(item.get("label_en") or item.get("label") or key.title()),
+            "icon": str(item.get("icon") or "•")[:2],
+            "command": command,
+            "accent": str(item.get("accent") or "#6EA8FF"),
+        })
+    return clean[:7]
 
 
 def target_window_flags(target: dict) -> tuple[bool, bool]:
@@ -724,6 +801,8 @@ def drag_handle(window, target_state: dict):
 def prism_button(window, target_state: dict, activate, advanced=None):
     from gi.repository import Gdk, GLib, Gtk
 
+    animate = window_prism_motion_enabled()
+    started_at = time.monotonic()
     event_box = Gtk.EventBox()
     event_box.set_visible_window(False)
     event_box.set_above_child(True)
@@ -751,6 +830,7 @@ def prism_button(window, target_state: dict, activate, advanced=None):
         "button": 0,
         "start": (0, 0),
         "start_pos": (0, 0),
+        "pulse": 0.0,
     }
 
     def draw(widget, cr) -> bool:
@@ -758,29 +838,49 @@ def prism_button(window, target_state: dict, activate, advanced=None):
         cx = allocation.width / 2
         cy = allocation.height / 2
         r = min(allocation.width, allocation.height) / 2 - 3
+        elapsed = max(0.0, time.monotonic() - started_at)
+        phase = elapsed * 2 * math.pi
+        breath = 0.5 + 0.5 * math.sin(phase * 0.46)
+        slow = phase * 0.11
+        hover_lift = 1.0 if state["hover"] else 0.0
+        press_lift = 1.0 if state["press"] else 0.0
+        motion_lift = breath if animate else 0.35
+        scale = 1.0 + (0.025 * motion_lift if animate else 0) + 0.035 * hover_lift - 0.018 * press_lift
         cr.save()
+        cr.translate(cx, cy)
+        cr.scale(scale, scale)
+        cr.translate(-cx, -cy)
         accent = profile_accent()
         target = target_state.get("target") if isinstance(target_state.get("target"), dict) else {}
         floating, fullscreen = target_window_flags(target)
         locked = bool(target_state.get("locked"))
-        outside_alpha = 0.72 if state["hover"] else 0.36
+        outside_alpha = 0.68 if state["hover"] else 0.34 + (0.08 * motion_lift if animate else 0)
         if floating or fullscreen or locked:
-            cr.set_source_rgba(accent[0], accent[1], accent[2], 0.24 if state["hover"] else 0.15)
+            active_alpha = 0.25 if state["hover"] else 0.14 + (0.055 * motion_lift if animate else 0)
+            cr.set_source_rgba(accent[0], accent[1], accent[2], active_alpha)
             cr.arc(cx, cy, r + 4.4, 0, 6.28318)
             cr.fill()
-        cr.set_source_rgba(0.02, 0.03, 0.06, 0.58 if state["hover"] else 0.34)
+        if animate and not state["hover"]:
+            cr.set_source_rgba(accent[0], accent[1], accent[2], 0.035 + 0.035 * breath)
+            cr.arc(cx, cy, r + 5.2 + 1.2 * breath, 0, 6.28318)
+            cr.fill()
+        cr.set_source_rgba(0.02, 0.03, 0.06, 0.57 if state["hover"] else 0.34)
         cr.arc(cx, cy, r + 3, 0, 6.28318)
         cr.fill()
         cr.set_line_width(1.45)
         cr.set_line_join(1)
         points = [
-            (cx, cy - r),
-            (cx + r * 0.84, cy - r * 0.48),
-            (cx + r * 0.84, cy + r * 0.48),
-            (cx, cy + r),
-            (cx - r * 0.84, cy + r * 0.48),
-            (cx - r * 0.84, cy - r * 0.48),
+            (
+                cx + math.sin(slow + index * math.pi / 3) * (0.55 if animate else 0),
+                cy + offset + math.cos(slow + index * math.pi / 3) * (0.55 if animate else 0),
+            )
+            for index, offset in enumerate((-r, -r * 0.48, r * 0.48, r, r * 0.48, -r * 0.48))
         ]
+        points[1] = (cx + r * 0.84 + (math.sin(slow + 1) * 0.55 if animate else 0), cy - r * 0.48)
+        points[2] = (cx + r * 0.84, cy + r * 0.48 + (math.cos(slow + 2) * 0.55 if animate else 0))
+        points[4] = (cx - r * 0.84 + (math.sin(slow + 4) * 0.55 if animate else 0), cy + r * 0.48)
+        points[5] = (cx - r * 0.84, cy - r * 0.48 + (math.cos(slow + 5) * 0.55 if animate else 0))
+        inner_rotation = (slow * 0.75) if animate else 0.0
         gradient = cairo.LinearGradient(cx - r, cy - r, cx + r, cy + r)
         gradient.add_color_stop_rgba(0, max(accent[0], 0.18), max(accent[1], 0.42), 1.0, outside_alpha + 0.20)
         gradient.add_color_stop_rgba(0.52, 0.48, 0.36, 1.0, outside_alpha + 0.12)
@@ -794,9 +894,75 @@ def prism_button(window, target_state: dict, activate, advanced=None):
         cr.set_source(gradient)
         cr.stroke()
 
+        if animate:
+            glint_angle = (elapsed * 1.08) % (2 * math.pi)
+            gx = cx + math.cos(glint_angle) * r * 0.62
+            gy = cy + math.sin(glint_angle) * r * 0.62
+            glint = cairo.RadialGradient(gx, gy, 0.4, gx, gy, r * 0.45)
+            glint.add_color_stop_rgba(0, 1, 1, 1, 0.17 + 0.09 * hover_lift)
+            glint.add_color_stop_rgba(1, accent[0], accent[1], accent[2], 0)
+            cr.set_source(glint)
+            cr.arc(cx, cy, r * 0.95, 0, 6.28318)
+            cr.fill()
+
+            electric_colors = electric_prism_colors()
+            cycle_seconds = 0.98
+            color_index = int(elapsed / cycle_seconds) % len(electric_colors)
+            next_index = (color_index + 1) % len(electric_colors)
+            pulse_time = (elapsed % cycle_seconds) / cycle_seconds
+            color = electric_colors[color_index]
+            next_color = electric_colors[next_index]
+            fade_in = min(1.0, pulse_time / 0.22)
+            fade_out = min(1.0, (1.0 - pulse_time) / 0.28)
+            electric_alpha = min(fade_in, fade_out) * (0.42 + 0.16 * hover_lift)
+            if electric_alpha > 0.015:
+                for index, point in enumerate(points):
+                    stagger = (pulse_time + index * 0.105) % 1.0
+                    if stagger > 0.84:
+                        continue
+                    inner = min(0.96, stagger + 0.20)
+                    outer = max(0.0, stagger - 0.02)
+                    sx = point[0] + (cx - point[0]) * outer
+                    sy = point[1] + (cy - point[1]) * outer
+                    ex = point[0] + (cx - point[0]) * inner
+                    ey = point[1] + (cy - point[1]) * inner
+                    dx = cx - point[0]
+                    dy = cy - point[1]
+                    length = max(1.0, math.hypot(dx, dy))
+                    nx = -dy / length
+                    ny = dx / length
+                    jitter = math.sin(elapsed * 9.0 + index * 1.7) * 0.75
+                    mx = (sx + ex) / 2 + nx * jitter
+                    my = (sy + ey) / 2 + ny * jitter
+                    local_alpha = electric_alpha * (1.0 - max(0.0, stagger - 0.52) * 1.15)
+                    cr.set_line_width(1.28 + 0.42 * hover_lift)
+                    cr.set_line_cap(cairo.LINE_CAP_ROUND)
+                    cr.set_source_rgba(color[0], color[1], color[2], max(0.0, local_alpha))
+                    cr.move_to(sx, sy)
+                    cr.line_to(mx, my)
+                    cr.line_to(ex, ey)
+                    cr.stroke()
+                    cr.set_line_width(0.45)
+                    cr.set_source_rgba(1, 1, 1, max(0.0, local_alpha * 0.52))
+                    cr.move_to(mx, my)
+                    cr.line_to(ex, ey)
+                    cr.stroke()
+
+                if pulse_time > 0.78:
+                    cancel = min(1.0, (pulse_time - 0.78) / 0.22)
+                    cr.set_line_width(0.9)
+                    cr.set_source_rgba(color[0], color[1], color[2], (1.0 - cancel) * 0.32)
+                    cr.arc(cx, cy, 2.2 + cancel * 5.5, 0, 6.28318)
+                    cr.stroke()
+                if pulse_time < 0.16:
+                    reveal = pulse_time / 0.16
+                    cr.set_source_rgba(next_color[0], next_color[1], next_color[2], reveal * 0.18)
+                    cr.arc(cx, cy, 2.6 + reveal * 3.6, 0, 6.28318)
+                    cr.fill()
+
         if floating or fullscreen or locked:
             cr.set_line_width(1.0)
-            cr.set_source_rgba(accent[0], accent[1], accent[2], 0.76 if state["hover"] else 0.44)
+            cr.set_source_rgba(accent[0], accent[1], accent[2], 0.72 if state["hover"] else 0.38 + (0.12 * motion_lift if animate else 0))
             cr.arc(cx, cy, r + 1.4, 0, 6.28318)
             cr.stroke()
         if locked:
@@ -806,12 +972,18 @@ def prism_button(window, target_state: dict, activate, advanced=None):
 
         cr.set_source_rgba(1, 1, 1, 0.28 if state["hover"] else 0.18)
         cr.set_line_width(1.0)
-        cr.move_to(cx, cy - r * 0.82)
-        cr.line_to(cx, cy + r * 0.82)
-        cr.move_to(cx - r * 0.72, cy - r * 0.40)
-        cr.line_to(cx + r * 0.72, cy + r * 0.40)
-        cr.move_to(cx + r * 0.72, cy - r * 0.40)
-        cr.line_to(cx - r * 0.72, cy + r * 0.40)
+        spokes = [
+            (0, -r * 0.82, 0, r * 0.82),
+            (-r * 0.72, -r * 0.40, r * 0.72, r * 0.40),
+            (r * 0.72, -r * 0.40, -r * 0.72, r * 0.40),
+        ]
+        for x1, y1, x2, y2 in spokes:
+            ca = math.cos(inner_rotation)
+            sa = math.sin(inner_rotation)
+            rx1, ry1 = x1 * ca - y1 * sa, x1 * sa + y1 * ca
+            rx2, ry2 = x2 * ca - y2 * sa, x2 * sa + y2 * ca
+            cr.move_to(cx + rx1, cy + ry1)
+            cr.line_to(cx + rx2, cy + ry2)
         cr.stroke()
         cr.restore()
         return True
@@ -890,6 +1062,14 @@ def prism_button(window, target_state: dict, activate, advanced=None):
         return True
 
     area.connect("draw", draw)
+    if animate:
+        def tick() -> bool:
+            if not area.get_window():
+                return True
+            area.queue_draw()
+            return True
+
+        GLib.timeout_add(66, tick)
     event_box.connect("enter-notify-event", lambda *_: set_hover(True))
     event_box.connect("leave-notify-event", lambda *_: set_hover(False))
     event_box.connect("button-press-event", on_press)
@@ -944,6 +1124,260 @@ def collapse_button(callback):
     event_box.connect("enter-notify-event", lambda *_: set_hover(True))
     event_box.connect("leave-notify-event", lambda *_: set_hover(False))
     event_box.connect("button-press-event", lambda *_: callback() or True)
+    return event_box
+
+
+def prism_items_cluster(items: list[dict]):
+    from gi.repository import Gdk, GLib, Gtk
+
+    event_box = Gtk.EventBox()
+    event_box.set_visible_window(False)
+    event_box.set_above_child(True)
+    event_box.set_tooltip_text(tr(
+        "Éléments Prism. Clique un sommet actif pour ouvrir son raccourci.",
+        "Prism items. Click an active vertex to open its shortcut.",
+    ))
+    event_box.set_size_request(256, 108)
+    event_box.add_events(
+        Gdk.EventMask.BUTTON_PRESS_MASK
+        | Gdk.EventMask.POINTER_MOTION_MASK
+        | Gdk.EventMask.ENTER_NOTIFY_MASK
+        | Gdk.EventMask.LEAVE_NOTIFY_MASK
+    )
+    area = Gtk.DrawingArea()
+    area.set_size_request(256, 108)
+    event_box.add(area)
+    started_at = time.monotonic()
+    animate = window_prism_motion_enabled()
+    state = {"hover": False, "hover_index": -1, "timer": None}
+
+    def item_color(item: dict) -> tuple[float, float, float]:
+        try:
+            return hex_color(str(item.get("accent") or "#6EA8FF"))
+        except Exception:
+            return profile_accent()
+
+    def label_for(item: dict) -> str:
+        if language_code() == "fr":
+            return str(item.get("label") or item.get("key") or "")
+        return str(item.get("label_en") or item.get("label") or item.get("key") or "")
+
+    def points_for(width: int, height: int) -> list[tuple[float, float]]:
+        cx = width / 2
+        cy = height / 2 - 4
+        rx = max(58.0, width * 0.30)
+        ry = max(29.0, height * 0.30)
+        return [
+            (cx + math.cos(-math.pi / 2 + index * 2 * math.pi / 7) * rx,
+             cy + math.sin(-math.pi / 2 + index * 2 * math.pi / 7) * ry)
+            for index in range(7)
+        ]
+
+    def rounded_rect(cr, x: float, y: float, width: float, height: float, radius: float) -> None:
+        radius = min(radius, width / 2, height / 2)
+        cr.new_sub_path()
+        cr.arc(x + width - radius, y + radius, radius, -math.pi / 2, 0)
+        cr.arc(x + width - radius, y + height - radius, radius, 0, math.pi / 2)
+        cr.arc(x + radius, y + height - radius, radius, math.pi / 2, math.pi)
+        cr.arc(x + radius, y + radius, radius, math.pi, math.pi * 1.5)
+        cr.close_path()
+
+    def draw(widget, cr) -> bool:
+        allocation = widget.get_allocation()
+        width = allocation.width
+        height = allocation.height
+        cx = width / 2
+        cy = height / 2 - 4
+        points = points_for(width, height)
+        accent = profile_accent()
+        elapsed = max(0.0, time.monotonic() - started_at)
+        breath = 0.5 + 0.5 * math.sin(elapsed * 2.15)
+        active_count = min(len(items), 7)
+        hover = state["hover_index"]
+        cr.save()
+
+        panel = cairo.LinearGradient(0, 0, width, height)
+        panel.add_color_stop_rgba(0, accent[0], accent[1], accent[2], 0.18 if state["hover"] else 0.12)
+        panel.add_color_stop_rgba(0.48, 1, 1, 1, 0.06)
+        panel.add_color_stop_rgba(1, 0.015, 0.018, 0.04, 0.42)
+        cr.set_source(panel)
+        rounded_rect(cr, 2.0, 2.0, width - 4.0, height - 4.0, 18.0)
+        cr.fill()
+        cr.set_line_width(1.0)
+        cr.set_source_rgba(1, 1, 1, 0.13 if state["hover"] else 0.08)
+        rounded_rect(cr, 2.5, 2.5, width - 5.0, height - 5.0, 17.5)
+        cr.stroke()
+
+        prism_fill = cairo.RadialGradient(cx, cy, 1.0, cx, cy, 84.0)
+        prism_fill.add_color_stop_rgba(0, accent[0], accent[1], accent[2], 0.13)
+        prism_fill.add_color_stop_rgba(0.58, 1, 1, 1, 0.025)
+        prism_fill.add_color_stop_rgba(1, 0, 0, 0, 0)
+        cr.set_source(prism_fill)
+        cr.move_to(*points[0])
+        for point in points[1:]:
+            cr.line_to(*point)
+        cr.close_path()
+        cr.fill_preserve()
+        cr.set_line_width(1.0)
+        cr.set_source_rgba(1, 1, 1, 0.20)
+        cr.stroke()
+
+        for index, point in enumerate(points):
+            active = index < active_count
+            color = item_color(items[index]) if active else accent
+            alpha = 0.34 if active else 0.08
+            if active and hover == index:
+                alpha = 0.78
+            if animate and active:
+                alpha += 0.05 * breath
+            cr.set_line_width(1.25 if active else 0.65)
+            cr.set_line_cap(cairo.LINE_CAP_ROUND)
+            link = cairo.LinearGradient(point[0], point[1], cx, cy)
+            link.add_color_stop_rgba(0, color[0], color[1], color[2], alpha)
+            link.add_color_stop_rgba(0.76, color[0], color[1], color[2], alpha * 0.34)
+            link.add_color_stop_rgba(1, 1, 1, 1, 0.10 if active else 0.03)
+            cr.set_source(link)
+            cr.move_to(cx, cy)
+            cr.line_to(*point)
+            cr.stroke()
+
+        if animate and active_count:
+            electric_colors = electric_prism_colors()
+            pulse = (elapsed % 1.8) / 1.8
+            color = electric_colors[int(elapsed / 1.8) % len(electric_colors)]
+            for index, point in enumerate(points[:active_count]):
+                local = (pulse + index * 0.10) % 1.0
+                if local > 0.72:
+                    continue
+                sx = point[0] + (cx - point[0]) * local
+                sy = point[1] + (cy - point[1]) * local
+                ex = point[0] + (cx - point[0]) * min(0.98, local + 0.15)
+                ey = point[1] + (cy - point[1]) * min(0.98, local + 0.15)
+                alpha = (1.0 - local / 0.72) * (0.34 if state["hover"] else 0.22)
+                cr.set_line_width(1.15)
+                cr.set_source_rgba(color[0], color[1], color[2], alpha)
+                cr.move_to(sx, sy)
+                cr.line_to(ex, ey)
+                cr.stroke()
+
+        core = cairo.RadialGradient(cx, cy, 1.0, cx, cy, 17.0)
+        core.add_color_stop_rgba(0, 1, 1, 1, 0.86)
+        core.add_color_stop_rgba(0.34, accent[0], accent[1], accent[2], 0.42)
+        core.add_color_stop_rgba(1, accent[0], accent[1], accent[2], 0)
+        cr.set_source(core)
+        cr.arc(cx, cy, 17.0, 0, 6.28318)
+        cr.fill()
+        cr.set_source_rgba(0.03, 0.04, 0.09, 0.62)
+        cr.arc(cx, cy, 7.0, 0, 6.28318)
+        cr.fill_preserve()
+        cr.set_source_rgba(1, 1, 1, 0.36)
+        cr.set_line_width(0.9)
+        cr.stroke()
+        cr.set_source_rgba(1, 1, 1, 0.86)
+        cr.arc(cx, cy, 2.6, 0, 6.28318)
+        cr.fill()
+
+        cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        for index, (px, py) in enumerate(points):
+            active = index < active_count
+            color = item_color(items[index]) if active else accent
+            is_hover = hover == index
+            radius = 10.2 if active else 3.3
+            if is_hover:
+                radius = 12.2
+            cr.set_source_rgba(color[0], color[1], color[2], 0.26 if active else 0.08)
+            cr.arc(px, py, radius + 4.8, 0, 6.28318)
+            cr.fill()
+            node = cairo.RadialGradient(px - radius * 0.35, py - radius * 0.35, 1.0, px, py, radius * 1.4)
+            node.add_color_stop_rgba(0, 1, 1, 1, 0.18 if active else 0.06)
+            node.add_color_stop_rgba(0.48, 0.04, 0.05, 0.10, 0.78 if active else 0.40)
+            node.add_color_stop_rgba(1, color[0], color[1], color[2], 0.20 if active else 0.08)
+            cr.set_source(node)
+            sides = 6 if active else 7
+            for vertex in range(sides):
+                angle = -math.pi / 2 + vertex * 2 * math.pi / sides
+                x = px + math.cos(angle) * radius
+                y = py + math.sin(angle) * radius
+                if vertex == 0:
+                    cr.move_to(x, y)
+                else:
+                    cr.line_to(x, y)
+            cr.close_path()
+            cr.fill_preserve()
+            cr.set_source_rgba(color[0], color[1], color[2], 0.90 if active else 0.22)
+            cr.set_line_width(1.15 if active else 0.8)
+            cr.stroke()
+            if active:
+                icon = str(items[index].get("icon") or "•")[:2]
+                cr.set_font_size(9.2)
+                xb, yb, tw, th, _xa, _ya = cr.text_extents(icon)
+                cr.set_source_rgba(1, 1, 1, 0.82)
+                cr.move_to(px - tw / 2 - xb, py - th / 2 - yb)
+                cr.show_text(icon)
+        if 0 <= hover < active_count:
+            footer = label_for(items[hover])
+        elif active_count == 0:
+            footer = tr("Ajouter des sommets Prism", "Add Prism vertices")
+        else:
+            footer = tr("{count}/7 sommets Prism", "{count}/7 Prism vertices").format(count=active_count)
+        cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.set_font_size(8.6)
+        xb, yb, tw, th, _xa, _ya = cr.text_extents(footer)
+        footer_x = width / 2 - tw / 2 - xb
+        footer_y = height - 12
+        footer_bg_width = min(width - 18, tw + 22)
+        rounded_rect(cr, width / 2 - footer_bg_width / 2, height - 25, footer_bg_width, 17, 8.5)
+        cr.set_source_rgba(0.03, 0.04, 0.09, 0.34)
+        cr.fill()
+        cr.set_source_rgba(1, 1, 1, 0.70)
+        cr.move_to(footer_x, footer_y)
+        cr.show_text(footer)
+        cr.restore()
+        return True
+
+    def nearest_index(event) -> int:
+        allocation = area.get_allocation()
+        points = points_for(allocation.width, allocation.height)
+        best = -1
+        best_distance = 999.0
+        for index, (px, py) in enumerate(points[:len(items)]):
+            distance = math.hypot(float(event.x) - px, float(event.y) - py)
+            if distance < best_distance:
+                best = index
+                best_distance = distance
+        return best if best_distance <= 17.0 else -1
+
+    def on_motion(_widget, event) -> bool:
+        state["hover_index"] = nearest_index(event)
+        if state["hover_index"] >= 0:
+            event_box.set_tooltip_text(label_for(items[state["hover_index"]]))
+        area.queue_draw()
+        return True
+
+    def run_item(_widget, event) -> bool:
+        index = nearest_index(event)
+        if 0 <= index < len(items):
+            command = str(items[index].get("command") or "").strip()
+            if command:
+                subprocess.Popen(["bash", "-lc", command], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        elif not items:
+            subprocess.Popen(["bash", "-lc", "seven-settings prism"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        return True
+
+    def tick() -> bool:
+        if not animate:
+            return False
+        area.queue_draw()
+        return True
+
+    area.connect("draw", draw)
+    event_box.connect("motion-notify-event", on_motion)
+    event_box.connect("enter-notify-event", lambda *_: state.update({"hover": True}) or area.queue_draw())
+    event_box.connect("leave-notify-event", lambda *_: state.update({"hover": False, "hover_index": -1}) or area.queue_draw())
+    event_box.connect("button-press-event", run_item)
+    if animate:
+        state["timer"] = GLib.timeout_add(55, tick)
+        event_box.connect("destroy", lambda *_: state.get("timer") and GLib.source_remove(state["timer"]))
     return event_box
 
 
@@ -1148,7 +1582,9 @@ def show_controls(menu: bool = False, advanced: bool = False, daemon: bool = Fal
           def rebuild() -> None:
               for child in list(container.get_children()):
                   container.remove(child)
-              root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7 if target_state["expanded"] else 0)
+              items = prism_items()
+              root_orientation = Gtk.Orientation.VERTICAL if target_state["expanded"] else Gtk.Orientation.HORIZONTAL
+              root = Gtk.Box(orientation=root_orientation, spacing=7 if target_state["expanded"] else 0)
               root.get_style_context().add_class("compact-root")
               root.get_style_context().add_class("expanded-root" if target_state["expanded"] else "prism-root")
               container.pack_start(root, False, False, 0)
@@ -1157,19 +1593,24 @@ def show_controls(menu: bool = False, advanced: bool = False, daemon: bool = Fal
                   window.resize(38, 38)
                   GLib.idle_add(lambda: resize_controls(38, 38) or move_controls_to_target(target_window()) or False)
               else:
-                  root.pack_start(prism_button(window, target_state, collapse, open_advanced), False, False, 0)
-                  root.pack_start(traffic_button("close", tr("Fermer la fenêtre ciblée", "Close target window"), lambda: action_callback("close")), False, False, 0)
-                  root.pack_start(traffic_button("float", tr("Basculer flottant / tiling", "Toggle floating / tiling"), lambda: action_callback("float")), False, False, 0)
+                  controls_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)
+                  root.pack_start(controls_row, False, False, 0)
+                  controls_row.pack_start(prism_button(window, target_state, collapse, open_advanced), False, False, 0)
+                  controls_row.pack_start(traffic_button("close", tr("Fermer la fenêtre ciblée", "Close target window"), lambda: action_callback("close")), False, False, 0)
+                  controls_row.pack_start(traffic_button("float", tr("Basculer flottant / tiling", "Toggle floating / tiling"), lambda: action_callback("float")), False, False, 0)
                   max_button = traffic_button("max", tr("Smart maximize / double-clic plein écran", "Smart maximize / double-click fullscreen"))
                   max_button.connect("button-press-event", lambda _b, event: action_callback("fullscreen" if event.type == Gdk.EventType._2BUTTON_PRESS else "maximize") or True)
                   max_button.connect("button-release-event", lambda *_: True)
-                  root.pack_start(max_button, False, False, 0)
+                  controls_row.pack_start(max_button, False, False, 0)
                   chip, refresh_chip = target_chip(target_state, toggle_target_lock, cycle_prism_target)
                   target_state["refresh_chip"] = refresh_chip
-                  root.pack_start(chip, False, False, 0)
-                  root.pack_start(collapse_button(collapse), False, False, 0)
-                  window.resize(224, 38)
-                  GLib.idle_add(lambda: resize_controls(224, 38) or move_controls_to_target(effective_target()) or False)
+                  controls_row.pack_start(chip, False, False, 0)
+                  controls_row.pack_start(collapse_button(collapse), False, False, 0)
+                  expanded_width = 304
+                  expanded_height = 156
+                  root.pack_start(prism_items_cluster(items), False, False, 0)
+                  window.resize(expanded_width, expanded_height)
+                  GLib.idle_add(lambda width=expanded_width, height=expanded_height: resize_controls(width, height) or move_controls_to_target(effective_target()) or False)
               window.show_all()
 
           def expand() -> None:

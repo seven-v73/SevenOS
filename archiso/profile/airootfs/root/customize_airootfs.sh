@@ -5,6 +5,7 @@ ln -sf /usr/share/zoneinfo/UTC /etc/localtime
 systemctl enable NetworkManager.service
 systemctl enable ModemManager.service 2>/dev/null || true
 systemctl enable plymouth-quit.service 2>/dev/null || true
+systemctl enable sddm.service 2>/dev/null || true
 
 useradd -m -G wheel -s /bin/bash seven
 passwd -l seven
@@ -20,12 +21,15 @@ install -Dm755 /opt/SevenOS/bin/seven-waybar-profile /usr/local/bin/seven-waybar
 install -Dm755 /opt/SevenOS/bin/seven-waybar-security /usr/local/bin/seven-waybar-security
 install -Dm755 /opt/SevenOS/bin/sevenpkg /usr/local/bin/sevenpkg
 install -Dm755 /opt/SevenOS/scripts/boot-splash.sh /usr/local/bin/seven-boot-splash
+install -Dm755 /opt/SevenOS/scripts/login-theme.sh /usr/local/bin/seven-login-theme
 install -Dm755 /opt/SevenOS/scripts/network.sh /usr/local/bin/seven-network
 
-install -d /usr/share/plymouth/themes/sevenos
-install -m0644 /opt/SevenOS/branding/plymouth/sevenos/sevenos.plymouth /usr/share/plymouth/themes/sevenos/sevenos.plymouth
-install -m0644 /opt/SevenOS/branding/plymouth/sevenos/sevenos.script /usr/share/plymouth/themes/sevenos/sevenos.script
-install -m0644 /opt/SevenOS/branding/plymouth/sevenos/seven-prism.png /usr/share/plymouth/themes/sevenos/seven-prism.png
+SEVENOS_ROOT=/opt/SevenOS /opt/SevenOS/scripts/boot-splash.sh theme --yes || {
+  install -d /usr/share/plymouth/themes/sevenos
+  install -m0644 /opt/SevenOS/branding/plymouth/sevenos/sevenos.plymouth /usr/share/plymouth/themes/sevenos/sevenos.plymouth
+  install -m0644 /opt/SevenOS/branding/plymouth/sevenos/sevenos.script /usr/share/plymouth/themes/sevenos/sevenos.script
+  install -m0644 /opt/SevenOS/branding/plymouth/sevenos/seven-prism.png /usr/share/plymouth/themes/sevenos/seven-prism.png
+}
 install -d /etc/plymouth
 cat >/etc/plymouth/plymouthd.conf <<'EOF'
 [Daemon]
@@ -35,3 +39,12 @@ EOF
 if command -v plymouth-set-default-theme >/dev/null 2>&1; then
   plymouth-set-default-theme sevenos || true
 fi
+
+SEVENOS_ROOT=/opt/SevenOS /opt/SevenOS/scripts/login-theme.sh apply --yes || {
+  install -d /usr/share/sddm/themes/sevenos/assets /etc/sddm.conf.d
+  install -m0644 /opt/SevenOS/branding/sddm/sevenos/Main.qml /usr/share/sddm/themes/sevenos/Main.qml
+  install -m0644 /opt/SevenOS/branding/sddm/sevenos/theme.conf /usr/share/sddm/themes/sevenos/theme.conf
+  install -m0644 /opt/SevenOS/branding/sddm/sevenos/metadata.desktop /usr/share/sddm/themes/sevenos/metadata.desktop
+  install -m0644 /opt/SevenOS/branding/sddm/sevenos/assets/seven-prism.png /usr/share/sddm/themes/sevenos/assets/seven-prism.png
+  printf '[Theme]\nCurrent=sevenos\n' >/etc/sddm.conf.d/10-sevenos-theme.conf
+}

@@ -600,7 +600,7 @@ window#waybar label,
 .modules-left,
 .modules-center,
 .modules-right {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(224, 231, 242, 0.16);
   border-color: rgba(32, 38, 52, 0.065);
 }
 
@@ -625,7 +625,7 @@ window#waybar label,
 #custom-control-center {
   color: rgba(24, 31, 46, 0.94);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(221, 230, 244, 0.34)),
+    linear-gradient(180deg, rgba(224, 231, 242, 0.50), rgba(199, 211, 229, 0.38)),
     rgba(88, 122, 196, 0.075);
   border-color: rgba(88, 122, 196, 0.20);
 }

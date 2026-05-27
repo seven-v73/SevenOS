@@ -215,8 +215,8 @@ EOF
 animations {
     enabled = true
     bezier = sevenMotionReduced, 0.20, 0.00, 0.20, 1.00
-    animation = windows, 1, 2, sevenMotionReduced, fade
-    animation = windowsOut, 1, 2, sevenMotionReduced, fade
+    animation = windows, 1, 2, sevenMotionReduced
+    animation = windowsOut, 1, 2, sevenMotionReduced
     animation = border, 1, 2, sevenMotionReduced
     animation = fade, 1, 2, sevenMotionReduced
     animation = layers, 1, 2, sevenMotionReduced, fade
@@ -309,7 +309,7 @@ status_json() {
   cat <<EOF
 {
   "schema": "sevenos.motion.v1",
-  "state": "$([[ "$source_state" == "ready" && "$conf_state" == "ready" && "$enabled" != "false" ]] && printf ready || printf action-needed)",
+  "state": "$([[ "$source_state" == "ready" && "$conf_state" == "ready" && "$enabled" != "false" && -z "$errors" ]] && printf ready || printf action-needed)",
   "profile": "$(active_profile)",
   "preset": "$preset",
   "mode": "$mode",

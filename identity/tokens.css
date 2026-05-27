@@ -15,6 +15,12 @@
   --surface-1: rgba(18, 19, 26, 0.78);
   --surface-2: rgba(28, 31, 44, 0.72);
   --surface-3: rgba(39, 43, 61, 0.78);
+  --comfort-dark-bg: #080A12;
+  --comfort-dark-panel: rgba(13, 17, 29, 0.82);
+  --comfort-dark-panel-2: rgba(20, 27, 43, 0.76);
+  --comfort-dark-sidebar: rgba(11, 15, 26, 0.86);
+  --comfort-dark-muted: #9AA7BA;
+  --comfort-dark-border: rgba(164, 190, 255, 0.10);
   --surface-glass: rgba(255, 255, 255, 0.06);
   --surface-glass-2: rgba(255, 255, 255, 0.09);
   --surface-glass-3: rgba(255, 255, 255, 0.13);

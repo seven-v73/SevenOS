@@ -4,7 +4,7 @@
 }
 
 window {
-  background: rgba(245, 247, 250, 0.42);
+  background: rgba(230, 239, 251, 0.32);
 }
 
 button {
@@ -12,11 +12,12 @@ button {
   min-height: 112px;
   margin: 12px;
   padding: 18px;
-  color: rgba(28, 31, 38, 0.94);
+  color: rgba(32, 38, 52, 0.94);
   background:
-    linear-gradient(135deg, rgba(47, 123, 255, 0.10), rgba(106, 92, 255, 0.08)),
-    rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(28, 31, 38, 0.08);
+    radial-gradient(circle at 22% 0%, rgba(77, 127, 230, 0.09), transparent 36%),
+    linear-gradient(135deg, rgba(250, 252, 255, 0.86), rgba(239, 245, 253, 0.78)),
+    rgba(246, 250, 255, 0.74);
+  border: 1px solid rgba(54, 76, 112, 0.11);
   border-radius: 28px;
   background-repeat: no-repeat;
   background-position: center 28px;
@@ -25,9 +26,9 @@ button {
 
 button:hover,
 button:focus {
-  background-color: rgba(47, 123, 255, 0.16);
-  border-color: rgba(47, 123, 255, 0.34);
-  color: #1C1F26;
+  background-color: rgba(77, 127, 230, 0.16);
+  border-color: rgba(77, 127, 230, 0.34);
+  color: #202634;
 }
 
 #lock {

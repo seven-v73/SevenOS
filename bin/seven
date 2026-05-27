@@ -654,6 +654,20 @@ def handle_identity(args):
     run_script(args, "scripts/identity.sh", *extra)
 
 
+def handle_theme(args):
+    if args.action in {"doctor", "theme-doctor"}:
+        extra = ["doctor"]
+    elif args.action in {"status", "json"}:
+        extra = ["json" if args.json or args.action == "json" else "status"]
+    elif args.action == "apply":
+        extra = ["apply"]
+    else:
+        extra = [args.action]
+    if args.json and extra[-1] not in {"json", "--json"}:
+        extra.append("--json")
+    run_script(args, "scripts/theme-engine.sh", *extra)
+
+
 def handle_hypr(args):
     extra = [args.action, *args.extra]
     run_script(args, "scripts/hypr-ecosystem.sh", *extra)
@@ -889,6 +903,9 @@ def handle_repair(args):
 
 
 def handle_release(args):
+    if args.action in {"open", "ui"}:
+        run_script(args, "bin/seven-release-review-native")
+        return
     extra = [args.action]
     if args.json:
         extra.append("--json")
@@ -1058,7 +1075,7 @@ def main():
     baobab_parser.add_argument("extra", nargs=argparse.REMAINDER)
     baobab_parser.add_argument("--json", action="store_true", help="print machine-readable Baobab contract")
     window_parser = subparsers.add_parser("window", help="control the Seven Smart Window System")
-    window_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "mode", "apply", "toggle-float", "toggle-floating", "smart-maximize", "maximize", "fullscreen", "split-left", "split-right", "mosaic", "layout-menu", "menu", "decor-status", "decor-apply", "doctor"))
+    window_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "mode", "apply", "toggle-float", "toggle-floating", "smart-maximize", "maximize", "fullscreen", "split-left", "split-right", "mosaic", "layout-menu", "menu", "advanced-menu", "controls", "controls-start", "controls-stop", "controls-toggle", "controls-status", "controls-effect", "controls-items", "controls-item", "controls-unlock", "controls-reset-hidden", "decor-status", "decor-apply", "doctor"))
     window_parser.add_argument("extra", nargs=argparse.REMAINDER)
     window_parser.add_argument("--json", action="store_true", help="print machine-readable Smart Window state")
     context_parser = subparsers.add_parser("context", help="inspect SevenOS semantic user context")
@@ -1074,6 +1091,9 @@ def main():
     identity_parser.add_argument("action", nargs="?", default="status")
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
     identity_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    theme_parser = subparsers.add_parser("theme", help="inspect SevenOS light/dark runtime theme coherence")
+    theme_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "doctor", "theme-doctor", "apply"))
+    theme_parser.add_argument("--json", action="store_true", help="print machine-readable theme runtime state")
     hypr_parser = subparsers.add_parser("hypr", help="inspect or install the SevenOS window system layer")
     hypr_parser.add_argument("action", nargs="?", default="status", choices=("status", "install", "apply", "lua"))
     hypr_parser.add_argument("extra", nargs=argparse.REMAINDER)
@@ -1128,6 +1148,9 @@ def main():
     boot_splash_parser = subparsers.add_parser("boot-splash", help="configure SevenOS quiet boot and shutdown splash")
     boot_splash_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "apply", "theme"))
     boot_splash_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    login_theme_parser = subparsers.add_parser("login-theme", help="configure the SevenOS SDDM login screen")
+    login_theme_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "apply", "theme"))
+    login_theme_parser.add_argument("extra", nargs=argparse.REMAINDER)
     language_parser = subparsers.add_parser("language", help="inspect and apply SevenOS user language")
     language_parser.add_argument("action", nargs="?", default="status", choices=("status", "list", "set", "ensure", "menu", "apply", "doctor"))
     language_parser.add_argument("locale", nargs="?")
@@ -1188,7 +1211,7 @@ def main():
     repair_parser.add_argument("--yes", action="store_true", help="run supported installs non-interactively")
 
     release_parser = subparsers.add_parser("release", help="inspect public SevenOS release gates")
-    release_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "freeze", "doctor", "json"))
+    release_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "review", "open", "ui", "freeze", "doctor", "json"))
     release_parser.add_argument("--json", action="store_true", help="print machine-readable release status or plan")
     channel_parser = subparsers.add_parser("channel", help="inspect or set the SevenOS release channel")
     channel_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "set", "json"))
@@ -1387,6 +1410,8 @@ def main():
         handle_dynamic(args)
     elif args.command == "identity":
         handle_identity(args)
+    elif args.command == "theme":
+        handle_theme(args)
     elif args.command == "hypr":
         handle_hypr(args)
     elif args.command == "motion":
@@ -1417,6 +1442,8 @@ def main():
         handle_system_profile(args)
     elif args.command == "boot-splash":
         run_script(args, "scripts/boot-splash.sh", args.action, *args.extra)
+    elif args.command == "login-theme":
+        run_script(args, "scripts/login-theme.sh", args.action, *args.extra)
     elif args.command == "language":
         handle_language(args)
     elif args.command == "phase-gate":

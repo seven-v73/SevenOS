@@ -17,9 +17,9 @@ window.quick-window {
   border-radius: 28px;
   color: rgba(237, 237, 237, 0.94);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.035) 48%, rgba(137, 180, 250, 0.06)),
-    rgba(17, 17, 27, 0.90);
-  border: 1px solid rgba(205, 214, 244, 0.14);
+    linear-gradient(145deg, rgba(164, 190, 255, 0.12), rgba(255, 255, 255, 0.032) 48%, rgba(137, 180, 250, 0.07)),
+    rgba(11, 15, 26, 0.92);
+  border: 1px solid rgba(164, 190, 255, 0.13);
   animation: sevenControlIn 180ms ease-out;
 }
 
@@ -122,8 +122,8 @@ window.quick-window {
   padding: 10px;
   border-radius: 20px;
   color: rgba(237, 237, 237, 0.94);
-  background: rgba(255, 255, 255, 0.055);
-  border: 1px solid rgba(205, 214, 244, 0.08);
+  background: rgba(20, 27, 43, 0.62);
+  border: 1px solid rgba(164, 190, 255, 0.09);
 }
 
 .quick-root.compact .tile {
@@ -177,7 +177,7 @@ window.quick-window {
 
 .tile.disabled {
   color: rgba(186, 194, 222, 0.54);
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(13, 17, 29, 0.54);
 }
 
 .tile.critical {
@@ -217,8 +217,8 @@ window.quick-window {
 .footer-card {
   padding: 12px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid rgba(205, 214, 244, 0.075);
+  background: rgba(20, 27, 43, 0.56);
+  border: 1px solid rgba(164, 190, 255, 0.085);
 }
 
 .detail-scroll {

@@ -43,6 +43,8 @@ seven update check
 seven update install --yes
 seven update rollback
 seven quality doctor
+seven identity experience
+seven identity open
 seven upgrade --yes
 ```
 
@@ -50,7 +52,10 @@ This creates a SevenOS rollback snapshot, updates `/opt/SevenOS`, backs up
 protected user state, refreshes command wrappers and then applies package/app
 updates through the SevenOS route. `seven quality doctor` is the public
 experience gate for health, native surfaces, update, mini OS readiness, Shell
-runtime, Server/Deploy policy and release freeze.
+runtime, Server/Deploy policy, release freeze and the SevenOS identity
+experience. `seven identity experience` verifies the Prism-first OS signature:
+native surfaces, language, themes, mini OS context and guided maintenance.
+`seven identity open` shows the same signal as a native SevenOS surface.
 
 Optional extended setup:
 

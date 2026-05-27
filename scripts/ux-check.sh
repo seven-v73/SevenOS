@@ -228,6 +228,7 @@ require_executable "bin/sevenbus-probe"
 require_executable "bin/seven-apps"
 require_executable "bin/seven-launchpad-native"
 require_executable "bin/seven-dock"
+require_executable "bin/seven-dock-canvas"
 require_executable "bin/seven-dock-native"
 require_executable "bin/seven-files"
 require_executable "bin/seven-files-native"
@@ -838,8 +839,21 @@ fi
 
 if grep -q 'bind = $mod, D, exec, $dock' "$ROOT_DIR/hyprland/lua/rules/keybinds.lua" &&
    grep -q '$dock = seven-dock toggle' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'SevenDockNative' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'SevenDockCanvas|SevenDockNative' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
    ! grep -q 'SevenDockNative.*size 540 82' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'seven-dock-canvas' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'SEVENOS_DOCK_RENDERER=canvas|native' "$ROOT_DIR/bin/seven-dock" &&
+   grep -q 'smooth-neighbor-magnification' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'magnetic-focus' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'smooth-slide-reveal' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'spring-motion' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'direct-native-spotlight' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q '"command": \["seven-spotlight-native", "--mode", "all"\]' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'centered-icons' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'anchored-window-preview' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'scroll-window-cycle' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'folder-stacks' "$ROOT_DIR/bin/seven-dock-canvas" &&
+   grep -q 'drag-reorder' "$ROOT_DIR/bin/seven-dock-canvas" &&
    grep -q 'restart|repair|reopen' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'limits|doctor' "$ROOT_DIR/bin/seven-dock" &&
    grep -q 'active_profile()' "$ROOT_DIR/bin/seven-dock" &&
@@ -1731,7 +1745,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'initial_window_height 24c' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'wayland_titlebar_color #12131A' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
    grep -q 'map ctrl+shift+u kitten hints' "$ROOT_DIR/hyprland/kitty/dark.conf" &&
-   grep -q 'background #F8FAFD' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
+   grep -q 'background #E9EEF7' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    grep -q 'font_size 11.0' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    grep -q 'scrollback_lines 20000' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
    grep -q 'map ctrl+shift+space launch --type=overlay --cwd=current seven-terminal-palette' "$ROOT_DIR/hyprland-light/kitty/light.conf" &&
@@ -1742,7 +1756,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" focus | grep -q 'DRY-RUN > Terminal > Open focus' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" admin | grep -q 'DRY-RUN > Terminal > Open admin' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" windows | grep -q 'DRY-RUN > Terminal > Open windows' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal-palette" | grep -q 'Explain Last Command' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal-palette" | grep -Eq 'Explain Last Command|Expliquer la dernière commande' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" dark | grep -q 'DRY-RUN > Terminal > Open dark' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" light | grep -q 'DRY-RUN > Terminal > Open light' &&
    SEVENOS_DRY_RUN=1 SEVENOS_ACTIVE_PROFILE=shield "$ROOT_DIR/bin/seven-terminal" | grep -q 'DRY-RUN > Terminal > Open cyber' &&

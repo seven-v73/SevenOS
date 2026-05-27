@@ -1,0 +1,8 @@
+# SevenOS identity layer: boot splash, login greeter and graphical admin prompt
+plymouth
+sddm
+xorg-server
+xorg-xauth
+polkit-kde-agent
+qt5-declarative
+qt6-declarative
