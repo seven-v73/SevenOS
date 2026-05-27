@@ -1088,8 +1088,10 @@ L'écran de connexion SDDM SevenOS se règle avec `seven login-theme apply`; il
 reprend le Prism, Hyprland et la langue Qt active sans modifier les comptes ni
 les mots de passe.
 
-`seven-wallpaper collection-list` affiche les 45 fonds dynamiques SevenOS. Ils
-sont aussi disponibles dans Paramètres > Fond d’écran > Collection SevenOS.
+`seven-wallpaper collection-list` affiche les fonds dynamiques SevenOS : les 45
+fonds système et 49 fonds Mini OS, avec 7 variantes par espace. Chaque mini OS
+dispose de rendus clairs, neutres et sombres pour rester lisible selon le thème.
+Ils sont aussi disponibles dans Paramètres > Fond d’écran > Collection SevenOS.
 Dans cette galerie, active `Sélection rotation`, choisis plusieurs fonds, règle
 la durée puis lance la rotation. `seven-wallpaper rotation set 900 ...` garde la
 rotation persistante pour le mini OS actif, même après redémarrage; `rotation
@@ -2504,8 +2506,11 @@ coherent from startup.
 The SevenOS SDDM login screen is configured with `seven login-theme apply`; it
 uses the Prism, Hyprland identity and active Qt locale without changing users or
 passwords.
-`seven-wallpaper collection-list` shows the 45 SevenOS dynamic wallpapers.
-They are also available in Settings > Wallpaper > SevenOS Collection.
+`seven-wallpaper collection-list` shows the SevenOS dynamic wallpapers: 45
+system wallpapers and 49 Mini OS wallpapers, with 7 variants per space. Each
+mini OS includes light, neutral and dark moods so the wallpaper remains readable
+with the active theme. They are also available in Settings > Wallpaper > SevenOS
+Collection.
 In that gallery, enable `Rotation selection`, choose multiple wallpapers, set
 the delay and start rotation. `seven-wallpaper rotation set 900 ...` keeps the
 rotation persistent for the active mini OS, including after reboot; `rotation

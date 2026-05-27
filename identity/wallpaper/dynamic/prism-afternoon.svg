@@ -25,7 +25,7 @@
   <rect width="1920" height="1080" fill="url(#glowA)"/>
   <rect width="1920" height="1080" fill="url(#glowB)"/>
   <circle cx="1509" cy="199" r="104" fill="#DCA76E" opacity="0.2" filter="url(#soft)"/>
-
+  
     <g opacity="0.520">
       <polygon points="960.0,253.0 1172.2,375.5 1172.2,620.5 960.0,743.0 747.8,620.5 747.8,375.5" fill="#FFFFFF" fill-opacity="0.030" stroke="#8DA8D6" stroke-opacity="0.45" stroke-width="2.4"/>
       <line x1="960" y1="498" x2="960.0" y2="253.0" stroke="#9A84E5" stroke-opacity="0.198" stroke-width="2"/>
@@ -36,7 +36,7 @@
 <line x1="960" y1="498" x2="747.8" y2="375.5" stroke="#9A84E5" stroke-opacity="0.198" stroke-width="2"/>
       <circle cx="960" cy="498" r="18" fill="#FFFFFF" fill-opacity="0.55"/>
     </g>
-
+    
     <g opacity="0.240">
       <polygon points="1540.0,133.0 1637.0,189.0 1637.0,301.0 1540.0,357.0 1443.0,301.0 1443.0,189.0" fill="#FFFFFF" fill-opacity="0.030" stroke="#9A84E5" stroke-opacity="0.45" stroke-width="2.4"/>
       <line x1="1540" y1="245" x2="1540.0" y2="133.0" stroke="#8DA8D6" stroke-opacity="0.091" stroke-width="2"/>
@@ -47,10 +47,10 @@
 <line x1="1540" y1="245" x2="1443.0" y2="189.0" stroke="#8DA8D6" stroke-opacity="0.091" stroke-width="2"/>
       <circle cx="1540" cy="245" r="8" fill="#FFFFFF" fill-opacity="0.55"/>
     </g>
-
+    
   <path d="M -80 769.9 C 190 808.5, 300 768.5, 460 849.1 C 730 837.6, 840 797.6, 1000 789.4 C 1270 768.6, 1380 728.6, 1540 802.9 C 1810 846.7, 1920 806.7, 2080 841.6 L 2020 1080 L -80 1080 Z" fill="#2F4668" opacity="0.56"/>
   <path d="M100 880 C420 828,680 905,980 840 C1260 780,1510 850,1840 790" fill="none" stroke="#8DA8D6" stroke-opacity="0.16" stroke-width="3"/>
-
+  
     <g opacity="0.220">
       <polygon points="1720.0,742.0 1787.5,781.0 1787.5,859.0 1720.0,898.0 1652.5,859.0 1652.5,781.0" fill="#FFFFFF" fill-opacity="0.030" stroke="#8DA8D6" stroke-opacity="0.45" stroke-width="2.4"/>
       <line x1="1720" y1="820" x2="1720.0" y2="742.0" stroke="#9A84E5" stroke-opacity="0.084" stroke-width="2"/>
@@ -61,6 +61,6 @@
 <line x1="1720" y1="820" x2="1652.5" y2="781.0" stroke="#9A84E5" stroke-opacity="0.084" stroke-width="2"/>
       <circle cx="1720" cy="820" r="6" fill="#FFFFFF" fill-opacity="0.55"/>
     </g>
-
+    
   <rect width="1920" height="1080" filter="url(#grain)" opacity="0.65"/>
 </svg>

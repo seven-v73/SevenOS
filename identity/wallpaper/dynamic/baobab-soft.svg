@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F3F7FC"/>
+      <stop offset="48%" stop-color="#A5AFBE"/>
+      <stop offset="100%" stop-color="#3C4859"/>
+    </linearGradient>
+    <radialGradient id="profileGlow" cx="22%" cy="12%" r="76%">
+      <stop offset="0%" stop-color="#D0A95C" stop-opacity="0.40"/>
+      <stop offset="55%" stop-color="#44957E" stop-opacity="0.11"/>
+      <stop offset="100%" stop-color="#3C4859" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="signalGlow" cx="84%" cy="18%" r="58%">
+      <stop offset="0%" stop-color="#C94563" stop-opacity="0.26"/>
+      <stop offset="100%" stop-color="#3C4859" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="32"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="2" seed="1103"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 0.042"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#profileGlow)"/>
+  <rect width="1920" height="1080" fill="url(#signalGlow)"/>
+  <circle cx="1483" cy="173" r="158" fill="#C94563" opacity="0.14" filter="url(#soft)"/>
+  <ellipse cx="380" cy="249.9" rx="160" ry="72" fill="#44957E" opacity="0.11" filter="url(#soft)"/>
+<ellipse cx="570" cy="227.2" rx="188" ry="90" fill="#558B7B" opacity="0.11" filter="url(#soft)"/>
+<ellipse cx="760" cy="234.7" rx="216" ry="72" fill="#658177" opacity="0.11" filter="url(#soft)"/>
+<ellipse cx="950" cy="265.4" rx="160" ry="90" fill="#767774" opacity="0.11" filter="url(#soft)"/>
+<ellipse cx="1140" cy="291.2" rx="188" ry="72" fill="#866D70" opacity="0.11" filter="url(#soft)"/>
+<ellipse cx="1330" cy="288.3" rx="216" ry="90" fill="#97636D" opacity="0.11" filter="url(#soft)"/>
+<ellipse cx="1520" cy="259.4" rx="160" ry="72" fill="#A8596A" opacity="0.11" filter="url(#soft)"/>
+<path d="M300 210 C281.6197932407623 410,312.8661447314664 650,336 980" fill="none" stroke="#D0A95C" stroke-opacity="0.150" stroke-width="8" stroke-linecap="round"/>
+<path d="M465 210 C411.1895968503262 410,502.66728220477165 650,501 980" fill="none" stroke="#C2A75F" stroke-opacity="0.157" stroke-width="9" stroke-linecap="round"/>
+<path d="M630 210 C569.6352607307795 410,672.2553174884544 650,666 980" fill="none" stroke="#B4A563" stroke-opacity="0.164" stroke-width="10" stroke-linecap="round"/>
+<path d="M795 210 C760.4739875581556 410,819.1682087092911 650,831 980" fill="none" stroke="#A6A366" stroke-opacity="0.171" stroke-width="8" stroke-linecap="round"/>
+<path d="M960 210 C969.8401412886274 410,953.1119010979609 650,996 980" fill="none" stroke="#98A16A" stroke-opacity="0.178" stroke-width="9" stroke-linecap="round"/>
+<path d="M1125 210 C1173.925856139913 410,1090.7519007020608 650,1161 980" fill="none" stroke="#8A9F6D" stroke-opacity="0.185" stroke-width="10" stroke-linecap="round"/>
+<path d="M1290 210 C1351.7568673867652 410,1246.7701928292645 650,1326 980" fill="none" stroke="#7C9D70" stroke-opacity="0.192" stroke-width="8" stroke-linecap="round"/>
+<path d="M1455 210 C1496.4477687469125 410,1425.9865618771612 650,1491 980" fill="none" stroke="#6E9B74" stroke-opacity="0.199" stroke-width="9" stroke-linecap="round"/>
+<path d="M1620 210 C1618.896874676779 410,1620.7721877262547 650,1656 980" fill="none" stroke="#609977" stroke-opacity="0.206" stroke-width="10" stroke-linecap="round"/>
+  <path d="M -80 769.0 C 190 731.0, 300 691.0, 460 764.9 C 730 825.5, 840 785.5, 1000 832.2 C 1270 776.0, 1380 736.0, 1540 731.8 C 1810 758.5, 1920 718.5, 2080 820.5 L 2020 1080 L -80 1080 Z" fill="#3C4859" opacity="0.3"/>
+  <path d="M115 890 C480 820,760 910,1050 825 C1325 750,1540 842,1835 760" fill="none" stroke="#D0A95C" stroke-opacity="0.16" stroke-width="3"/>
+  <g opacity="0.52">
+    <line x1="960" y1="165" x2="960" y2="925" stroke="#C94563" stroke-opacity="0.055" stroke-width="1.4"/>
+    <line x1="180" y1="540" x2="1740" y2="540" stroke="#D0A95C" stroke-opacity="0.055" stroke-width="1.4"/>
+  </g>
+  <rect width="1920" height="1080" filter="url(#grain)" opacity="0.62"/>
+</svg>

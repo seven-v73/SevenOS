@@ -15,7 +15,21 @@ identity/assets/wallpaper-sevenos.svg
 out/design/wallpaper-sevenos.png
 ```
 
-Generated or commissioned bitmap wallpapers can be added later.
+The generated collection now includes:
+
+- 45 base dynamic SevenOS wallpapers;
+- 49 Mini OS wallpapers, grouped as 7 variants for each of Equinox, Baobab,
+  Forge, Shield, Studio, Atlas and Pulse;
+- light, neutral/balanced and dark tones for every Mini OS family.
+
+The collection is regenerated from:
+
+```bash
+python identity/wallpaper/generate-sevenos-wallpapers.py
+```
+
+`identity/wallpaper/dynamic/manifest.json` is the source of truth consumed by
+`seven-wallpaper collection-list`, Settings and wallpaper rotation.
 
 ## Profile Scope
 

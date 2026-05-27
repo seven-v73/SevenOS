@@ -6884,7 +6884,7 @@ def run(initial_page: str = "overview") -> int:
         wallpaper,
         tr("settings.desktop_picture", "Image du bureau"),
         [
-            settings_row("◈", tr("settings.wallpaper_collection", "Collection SevenOS"), tr("settings.wallpaper_collection.row_note", "Ouvrir les 45 fonds dynamiques SevenOS prêts pour clair, sombre et équilibré."), [callback_button(tr("settings.open", "Ouvrir"), "seven-wallpaper collection-list", show_wallpaper_collection_dialog)]),
+            settings_row("◈", tr("settings.wallpaper_collection", "Collection SevenOS"), tr("settings.wallpaper_collection.row_note", "Ouvrir les fonds dynamiques SevenOS et Mini OS prêts pour clair, sombre et équilibré."), [callback_button(tr("settings.open", "Ouvrir"), "seven-wallpaper collection-list", show_wallpaper_collection_dialog)]),
             settings_row("󰸉", tr("settings.choose_image", "Choisir une image"), tr("settings.choose_image.note", "Sélectionner une image et l’appliquer immédiatement au bureau SevenOS."), [file_wallpaper_button(tr("settings.choose", "Choisir"))]),
             settings_row("󰜉", tr("settings.refresh_wallpaper", "Actualiser le fond"), tr("settings.refresh_wallpaper.note", "Réappliquer le fond d’écran SevenOS enregistré."), [action_button(tr("settings.refresh", "Actualiser"), "seven-wallpaper refresh")]),
             settings_row("󰉋", tr("settings.wallpaper_folder", "Dossier des fonds"), tr("settings.wallpaper_folder.note", "Ouvrir le dossier des fonds d’écran SevenOS."), [action_button(tr("settings.open", "Ouvrir"), "xdg-open ~/.local/share/sevenos/wallpapers")]),

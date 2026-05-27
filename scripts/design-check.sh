@@ -193,10 +193,10 @@ else
 fi
 
 if [[ -s "$ROOT_DIR/identity/wallpaper/dynamic/manifest.json" ]] &&
-   [[ "$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("count",0))' "$ROOT_DIR/identity/wallpaper/dynamic/manifest.json" 2>/dev/null || printf 0)" == "45" ]] &&
-   [[ "$(find "$ROOT_DIR/identity/wallpaper/dynamic" -maxdepth 1 -name '*.svg' | wc -l)" == "45" ]] &&
-   grep -q 'collection|pack|dynamic' "$ROOT_DIR/bin/seven-wallpaper" &&
-   grep -q 'collection-list|packs|list' "$ROOT_DIR/bin/seven-wallpaper" &&
+   [[ "$(python -c 'import json,sys; data=json.load(open(sys.argv[1])); print(data.get("count",0) >= 94 and data.get("mini_os_count",0) == 49)' "$ROOT_DIR/identity/wallpaper/dynamic/manifest.json" 2>/dev/null || printf False)" == "True" ]] &&
+   [[ "$(find "$ROOT_DIR/identity/wallpaper/dynamic" -maxdepth 1 -name '*.svg' | wc -l)" -ge 94 ]] &&
+   grep -Eq 'collection|pack|dynamic' "$ROOT_DIR/bin/seven-wallpaper" &&
+   grep -Eq 'collection-list|packs|list' "$ROOT_DIR/bin/seven-wallpaper" &&
    grep -q 'set_wallpaper_rotation' "$ROOT_DIR/bin/seven-wallpaper" &&
    grep -q 'set_wallpaper_rotation_preset' "$ROOT_DIR/bin/seven-wallpaper" &&
    grep -q 'wallpaper_rotation_enabled' "$ROOT_DIR/bin/seven-wallpaper" &&
@@ -204,9 +204,9 @@ if [[ -s "$ROOT_DIR/identity/wallpaper/dynamic/manifest.json" ]] &&
    grep -q 'wallpaper-choice' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'rotation_selection' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'set_rotation_preset' "$ROOT_DIR/bin/seven-settings-native"; then
-  ok "SevenOS exposes 45 dynamic wallpapers through Settings and seven-wallpaper"
+  ok "SevenOS exposes 94 dynamic wallpapers including 49 Mini OS wallpapers through Settings and seven-wallpaper"
 else
-  fail "SevenOS should expose 45 dynamic wallpapers through Settings and seven-wallpaper"
+  fail "SevenOS should expose 94 dynamic wallpapers including 49 Mini OS wallpapers through Settings and seven-wallpaper"
 fi
 
 if jq -e '."modules-left" == ["custom/sevenos","custom/recorder","hyprland/window","custom/app-file","custom/app-edit","custom/app-view","custom/app-extra","custom/app-more","custom/app-tools","custom/app-window","custom/app-help"] and ."hyprland/window".format == "{class}" and ."hyprland/window"."max-length" == 18 and ."custom/app-file".exec == "seven-waybar-status app-menu-item file" and ."custom/app-file"."on-click" == "seven-waybar-action app-file" and ."custom/app-edit"."on-click" == "seven-waybar-action app-edit" and ."custom/app-view"."on-click" == "seven-waybar-action app-view" and ."custom/app-extra"."on-click" == "seven-waybar-action app-extra" and ."custom/app-more".exec == "seven-waybar-status app-menu-more" and ."custom/app-more"."on-click" == "seven-waybar-action app-menu" and ."custom/app-tools"."on-click" == "seven-waybar-action app-tools" and ."custom/app-window"."on-click" == "seven-waybar-action app-window" and ."custom/app-help"."on-click" == "seven-waybar-action app-help" and ."custom/sevenos".exec == "seven-waybar-status sevenos" and ."custom/sevenos"."return-type" == "json" and ."custom/sevenos"."on-click-right" == "seven-profile-center-native" and ."custom/sevenos"."on-click-middle" == "seven-spotlight field" and ."modules-center" == ["hyprland/workspaces"] and ."modules-right" == ["custom/profile","custom/media","custom/system-status","custom/wifi","custom/bluetooth","custom/spotlight","clock","custom/control-center"] and .height == 30 and .spacing == 4 and ."margin-top" == 0 and ."margin-left" == 0 and ."margin-right" == 0 and ."gtk-layer-shell" == true and ."custom/system-status".exec == "seven-waybar-status system-status" and ."custom/system-status"."return-type" == "json" and ."custom/spotlight".format == "󰍉" and (."custom/spotlight"."tooltip-format" | contains("Spotlight")) and ."custom/spotlight"."on-click" == "seven-spotlight field" and ."hyprland/workspaces".format == "{icon}" and ."hyprland/workspaces"."format-icons"."1" == "1" and (."custom/recorder".exec | contains("seven-waybar-status") and contains("recorder")) and ."custom/recorder".format == "{}" and ."custom/recorder".interval == 2 and ."custom/control-center".exec == "seven-waybar-status control-center" and ."custom/control-center"."return-type" == "json"' "$ROOT_DIR/hyprland/waybar/config.jsonc" >/dev/null; then

@@ -31,7 +31,7 @@
 <path d="M -80 795.1 C 190 844.1, 300 804.1, 460 879.7 C 730 854.4, 840 814.4, 1000 802.0 C 1270 792.2, 1380 752.2, 1540 838.0 C 1810 878.5, 1920 838.5, 2080 859.7 L 2020 1080 L -80 1080 Z" fill="#432C2E" opacity="0.500"/>
   <path d="M -80 842.0 C 190 795.1, 300 755.1, 460 768.0 C 730 796.8, 840 756.8, 1000 843.2 C 1270 845.4, 1380 805.4, 1540 800.4 C 1810 768.3, 1920 728.3, 2080 791.7 L 2020 1080 L -80 1080 Z" fill="#02040B" opacity="0.56"/>
   <path d="M100 880 C420 828,680 905,980 840 C1260 780,1510 850,1840 790" fill="none" stroke="#C27A73" stroke-opacity="0.16" stroke-width="3"/>
-
+  
     <g opacity="0.160">
       <polygon points="1720.0,742.0 1787.5,781.0 1787.5,859.0 1720.0,898.0 1652.5,859.0 1652.5,781.0" fill="#FFFFFF" fill-opacity="0.030" stroke="#C27A73" stroke-opacity="0.45" stroke-width="2.4"/>
       <line x1="1720" y1="820" x2="1720.0" y2="742.0" stroke="#43C6B6" stroke-opacity="0.061" stroke-width="2"/>
@@ -42,6 +42,6 @@
 <line x1="1720" y1="820" x2="1652.5" y2="781.0" stroke="#43C6B6" stroke-opacity="0.061" stroke-width="2"/>
       <circle cx="1720" cy="820" r="6" fill="#FFFFFF" fill-opacity="0.55"/>
     </g>
-
+    
   <rect width="1920" height="1080" filter="url(#grain)" opacity="0.65"/>
 </svg>

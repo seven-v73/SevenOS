@@ -60,7 +60,7 @@ json_report() {
     bin/seven-wallpaper; do
     [[ "$(asset_state "$required")" == OK ]] || state=MISS
   done
-  [[ "$dynamic_count" == 45 && "$manifest_items" == 45 && "$collection_state" == OK ]] || state=MISS
+  [[ "$dynamic_count" -ge 94 && "$manifest_items" -ge 94 && "$collection_state" == OK ]] || state=MISS
   package_contains hyprpaper scripts/packages-base.txt || state=MISS
   package_contains swww scripts/packages-base.txt || state=MISS
   package_contains librsvg scripts/packages-base.txt || state=MISS
@@ -84,8 +84,8 @@ for path in [
     full = pathlib.Path(root) / path
     checks.append({"path": path, "state": "OK" if full.is_file() and full.stat().st_size > 0 else "MISS"})
 checks.extend([
-    {"path": "identity/wallpaper/dynamic/*.svg", "state": "OK" if os.environ["DYNAMIC_COUNT"] == "45" else "MISS", "count": int(os.environ["DYNAMIC_COUNT"] or 0)},
-    {"path": "identity/wallpaper/dynamic/manifest.json count", "state": "OK" if os.environ["MANIFEST_ITEMS"] == "45" else "MISS", "count": int(os.environ["MANIFEST_ITEMS"] or 0)},
+    {"path": "identity/wallpaper/dynamic/*.svg", "state": "OK" if int(os.environ["DYNAMIC_COUNT"] or 0) >= 94 else "MISS", "count": int(os.environ["DYNAMIC_COUNT"] or 0)},
+    {"path": "identity/wallpaper/dynamic/manifest.json count", "state": "OK" if int(os.environ["MANIFEST_ITEMS"] or 0) >= 94 else "MISS", "count": int(os.environ["MANIFEST_ITEMS"] or 0)},
     {"path": "seven-wallpaper collection-list", "state": os.environ["COLLECTION_STATE"]},
     {"path": "scripts/packages-base.txt:hyprpaper", "state": "OK" if "hyprpaper\n" in pathlib.Path(root, "scripts/packages-base.txt").read_text() else "MISS"},
     {"path": "scripts/packages-base.txt:swww", "state": "OK" if "swww\n" in pathlib.Path(root, "scripts/packages-base.txt").read_text() else "MISS"},

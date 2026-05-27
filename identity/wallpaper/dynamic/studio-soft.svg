@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F3F7FC"/>
+      <stop offset="48%" stop-color="#A5AFBE"/>
+      <stop offset="100%" stop-color="#3C4859"/>
+    </linearGradient>
+    <radialGradient id="profileGlow" cx="22%" cy="12%" r="76%">
+      <stop offset="0%" stop-color="#E883BD" stop-opacity="0.40"/>
+      <stop offset="55%" stop-color="#AA95F5" stop-opacity="0.11"/>
+      <stop offset="100%" stop-color="#3C4859" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="signalGlow" cx="84%" cy="18%" r="58%">
+      <stop offset="0%" stop-color="#FBCFE8" stop-opacity="0.26"/>
+      <stop offset="100%" stop-color="#3C4859" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="32"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="2" seed="1376"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 0.042"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#profileGlow)"/>
+  <rect width="1920" height="1080" fill="url(#signalGlow)"/>
+  <circle cx="1576" cy="206" r="151" fill="#FBCFE8" opacity="0.14" filter="url(#soft)"/>
+  <path d="M-120 210 C420 60,850 417.9,2040 170" fill="none" stroke="#E883BD" stroke-opacity="0.220" stroke-width="34" filter="url(#soft)"/>
+<path d="M-90 298 C420 138,850 519.8,2040 238" fill="none" stroke="#DF86C5" stroke-opacity="0.202" stroke-width="32" filter="url(#soft)"/>
+<path d="M-60 386 C420 216,850 530.0,2040 306" fill="none" stroke="#D688CD" stroke-opacity="0.184" stroke-width="30" filter="url(#soft)"/>
+<path d="M-30 474 C420 294,850 439.0,2040 374" fill="none" stroke="#CD8BD5" stroke-opacity="0.166" stroke-width="28" filter="url(#soft)"/>
+<path d="M0 562 C420 372,850 330.6,2040 442" fill="none" stroke="#C58DDD" stroke-opacity="0.148" stroke-width="26" filter="url(#soft)"/>
+<path d="M30 650 C420 450,850 304.3,2040 510" fill="none" stroke="#BC90E5" stroke-opacity="0.130" stroke-width="24" filter="url(#soft)"/>
+<path d="M60 738 C420 528,850 384.4,2040 578" fill="none" stroke="#B392ED" stroke-opacity="0.112" stroke-width="22" filter="url(#soft)"/>
+  <path d="M -80 784.1 C 190 835.6, 300 795.6, 460 819.8 C 730 757.7, 840 717.7, 1000 732.0 C 1270 776.9, 1380 736.9, 1540 832.6 C 1810 824.9, 1920 784.9, 2080 764.1 L 2020 1080 L -80 1080 Z" fill="#3C4859" opacity="0.3"/>
+  <path d="M115 890 C480 820,760 910,1050 825 C1325 750,1540 842,1835 760" fill="none" stroke="#E883BD" stroke-opacity="0.16" stroke-width="3"/>
+  <g opacity="0.52">
+    <line x1="960" y1="165" x2="960" y2="925" stroke="#FBCFE8" stroke-opacity="0.055" stroke-width="1.4"/>
+    <line x1="180" y1="540" x2="1740" y2="540" stroke="#E883BD" stroke-opacity="0.055" stroke-width="1.4"/>
+  </g>
+  <rect width="1920" height="1080" filter="url(#grain)" opacity="0.62"/>
+</svg>

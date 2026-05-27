@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#C9D3E2"/>
+      <stop offset="48%" stop-color="#4D5B6F"/>
+      <stop offset="100%" stop-color="#242D3C"/>
+    </linearGradient>
+    <radialGradient id="profileGlow" cx="22%" cy="12%" r="76%">
+      <stop offset="0%" stop-color="#E37C37" stop-opacity="0.40"/>
+      <stop offset="55%" stop-color="#8B67ED" stop-opacity="0.11"/>
+      <stop offset="100%" stop-color="#242D3C" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="signalGlow" cx="84%" cy="18%" r="58%">
+      <stop offset="0%" stop-color="#22C55E" stop-opacity="0.26"/>
+      <stop offset="100%" stop-color="#242D3C" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="32"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="2" seed="1571"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="table" tableValues="0 0.042"/></feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#profileGlow)"/>
+  <rect width="1920" height="1080" fill="url(#signalGlow)"/>
+  <circle cx="1591" cy="161" r="136" fill="#22C55E" opacity="0.14" filter="url(#soft)"/>
+  <path d="M80 240 C310 150,440 340,660 240 S1010 150,1230 240 S1580 340,1840 240" fill="none" stroke="#E37C37" stroke-opacity="0.200" stroke-width="4"/>
+<path d="M80 324 C310 234,440 424,660 324 S1010 234,1230 324 S1580 424,1840 324" fill="none" stroke="#CB853C" stroke-opacity="0.185" stroke-width="5"/>
+<path d="M80 408 C310 318,440 508,660 408 S1010 318,1230 408 S1580 508,1840 408" fill="none" stroke="#B38E41" stroke-opacity="0.170" stroke-width="6"/>
+<path d="M80 492 C310 402,440 592,660 492 S1010 402,1230 492 S1580 592,1840 492" fill="none" stroke="#9B9746" stroke-opacity="0.155" stroke-width="7"/>
+<path d="M80 576 C310 486,440 676,660 576 S1010 486,1230 576 S1580 676,1840 576" fill="none" stroke="#82A04A" stroke-opacity="0.140" stroke-width="4"/>
+<path d="M80 660 C310 570,440 760,660 660 S1010 570,1230 660 S1580 760,1840 660" fill="none" stroke="#6AAA4F" stroke-opacity="0.125" stroke-width="5"/>
+<path d="M80 744 C310 654,440 844,660 744 S1010 654,1230 744 S1580 844,1840 744" fill="none" stroke="#52B354" stroke-opacity="0.110" stroke-width="6"/>
+<path d="M80 828 C310 738,440 928,660 828 S1010 738,1230 828 S1580 928,1840 828" fill="none" stroke="#3ABC59" stroke-opacity="0.095" stroke-width="7"/>
+    <g opacity="0.200">
+      <polygon points="1680.0,704.0 1745.8,742.0 1745.8,818.0 1680.0,856.0 1614.2,818.0 1614.2,742.0" fill="#FFFFFF" fill-opacity="0.030" stroke="#8B67ED" stroke-opacity="0.45" stroke-width="2.4"/>
+      <line x1="1680" y1="780" x2="1680.0" y2="704.0" stroke="#22C55E" stroke-opacity="0.076" stroke-width="2"/>
+<line x1="1680" y1="780" x2="1745.8" y2="742.0" stroke="#22C55E" stroke-opacity="0.076" stroke-width="2"/>
+<line x1="1680" y1="780" x2="1745.8" y2="818.0" stroke="#22C55E" stroke-opacity="0.076" stroke-width="2"/>
+<line x1="1680" y1="780" x2="1680.0" y2="856.0" stroke="#22C55E" stroke-opacity="0.076" stroke-width="2"/>
+<line x1="1680" y1="780" x2="1614.2" y2="818.0" stroke="#22C55E" stroke-opacity="0.076" stroke-width="2"/>
+<line x1="1680" y1="780" x2="1614.2" y2="742.0" stroke="#22C55E" stroke-opacity="0.076" stroke-width="2"/>
+      <circle cx="1680" cy="780" r="5" fill="#FFFFFF" fill-opacity="0.55"/>
+    </g>
+    
+  <path d="M -80 795.9 C 190 838.5, 300 798.5, 460 809.8 C 730 748.1, 840 708.1, 1000 735.5 C 1270 788.8, 1380 748.8, 1540 837.0 C 1810 816.0, 1920 776.0, 2080 753.7 L 2020 1080 L -80 1080 Z" fill="#242D3C" opacity="0.52"/>
+  <path d="M115 890 C480 820,760 910,1050 825 C1325 750,1540 842,1835 760" fill="none" stroke="#E37C37" stroke-opacity="0.16" stroke-width="3"/>
+  <g opacity="0.52">
+    <line x1="960" y1="165" x2="960" y2="925" stroke="#22C55E" stroke-opacity="0.055" stroke-width="1.4"/>
+    <line x1="180" y1="540" x2="1740" y2="540" stroke="#E37C37" stroke-opacity="0.055" stroke-width="1.4"/>
+  </g>
+  <rect width="1920" height="1080" filter="url(#grain)" opacity="0.62"/>
+</svg>
