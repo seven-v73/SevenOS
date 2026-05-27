@@ -27,11 +27,12 @@ seven-mini-doctor studio install
 seven-mini-doctor baobab optional
 seven-mini-doctor shield rootfs
 seven-mini-doctor pulse install
+seven atlas status
+seven atlas install --yes
 sevenpkg forge install code --source pacman
 sevenpkg studio install obs-studio --source pacman
 sevenpkg baobab install calibre --source pacman
 sevenpkg shield install burpsuite --source paru
-sevenpkg atlas install evince calibre marble --source pacman
 sevenpkg pulse install steam lutris --source pacman
 ```
 
@@ -53,3 +54,7 @@ sevenpkg pulse install steam lutris --source pacman
 3. Choose `Preparer` to install the required baseline.
 4. Add optional tools only when the user asks for that workflow.
 5. Use `sevenpkg <profile> install` for profile-private apps.
+
+For Atlas, the public path is `seven atlas status` and
+`seven atlas install --yes`. It prepares the native document, map, OCR and
+reference baseline without reintroducing a Windows/VM dependency.

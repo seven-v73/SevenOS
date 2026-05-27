@@ -296,7 +296,7 @@ Exigences actuelles :
 - Arch Linux ou système basé sur Arch pour la couche post-install actuelle.
 - `pacman`, `sudo` et une connexion internet.
 - 8 Go de RAM minimum, 16 Go recommandés.
-- Virtualisation CPU pour Atlas Explorer et les machines virtuelles.
+- Espace disque suffisant pour les rootfs mini OS, surtout Atlas et ses outils documents/cartes.
 
 État produit :
 
@@ -1604,7 +1604,7 @@ Current requirements:
 - Arch Linux or Arch-based host for the current post-install layer.
 - `pacman`, `sudo` and an internet connection.
 - 8 GB RAM minimum, 16 GB recommended.
-- CPU virtualization for Atlas Explorer and virtual machines.
+- Enough disk space for mini OS rootfs trees, especially Atlas and its document/map tools.
 
 Product state:
 

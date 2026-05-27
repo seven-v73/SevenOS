@@ -63,7 +63,7 @@ OPTIONAL_ACTIONS = {
     ],
     "atlas": [
         ("atlas.optional.research", "Installer les extras Atlas", "seven-profile-requirements status atlas --optional --apply --yes"),
-        ("atlas.private.docs", "Installer Calibre et outils documents dans Atlas", "sevenpkg atlas install calibre pdfarranger --source pacman"),
+        ("atlas.required.native", "Installer le socle documents, cartes et OCR Atlas", "seven atlas install --yes"),
     ],
     "pulse": [
         ("pulse.optional.gaming", "Installer les extras Pulse", "seven profile requirements pulse --optional --apply --yes"),

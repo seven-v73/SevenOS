@@ -462,6 +462,18 @@ def run() -> int:
     }
     .inspector-title { color: @seven_text; font-size: 13px; font-weight: 500; }
     .inspector-note { color: @seven_muted; font-size: 11px; }
+    .inspector-status {
+      padding: 8px 10px;
+      border-radius: 12px;
+      color: @seven_text;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.070), rgba(255,255,255,0.030)),
+        rgba(255,255,255,0.028);
+      border: 1px solid rgba(255,255,255,0.085);
+      font-size: 10px;
+    }
+    .inspector-status.ready { border-color: rgba(166,227,161,0.28); }
+    .inspector-status.warn { border-color: rgba(249,226,175,0.34); }
     .inspector-actions { padding-top: 6px; }
     .inspector-action {
       min-height: 31px;
@@ -704,6 +716,8 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
     profile_by_key = {str(item.get("key", "")): item for item in profiles if isinstance(item, dict)}
     naming = catalog.get("profile_naming", {}) if isinstance(catalog.get("profile_naming"), dict) else {}
     profile_defs = catalog.get("profiles", {}) if isinstance(catalog.get("profiles"), dict) else {}
+    atlas_payload = run_json("atlas", "status", "--json")
+    atlas_payload = atlas_payload if isinstance(atlas_payload, dict) else {}
     order = ["equinox", "baobab", "forge", "shield", "pulse", "atlas", "studio"]
     outer_order = ["baobab", "forge", "shield", "pulse", "atlas", "studio"]
     positions = {
@@ -772,6 +786,10 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
     inspector_role.set_line_wrap(True)
     inspector_role.set_max_width_chars(28)
     inspector_role.get_style_context().add_class("danger-note")
+    inspector_status = Gtk.Label(xalign=0)
+    inspector_status.set_line_wrap(True)
+    inspector_status.set_max_width_chars(28)
+    inspector_status.get_style_context().add_class("inspector-status")
     inspector_actions = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
     inspector_actions.get_style_context().add_class("inspector-actions")
     action_open = Gtk.Button()
@@ -781,12 +799,16 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
     action_activate.get_style_context().add_class("inspector-action")
     action_files = Gtk.Button()
     action_files.get_style_context().add_class("inspector-action")
+    action_prepare = Gtk.Button()
+    action_prepare.get_style_context().add_class("inspector-action")
     inspector_actions.pack_start(action_open, False, False, 0)
     inspector_actions.pack_start(action_activate, False, False, 0)
     inspector_actions.pack_start(action_files, False, False, 0)
+    inspector_actions.pack_start(action_prepare, False, False, 0)
     inspector.pack_start(inspector_title, False, False, 0)
     inspector.pack_start(inspector_note, False, False, 0)
     inspector.pack_start(inspector_role, False, False, 0)
+    inspector.pack_start(inspector_status, False, False, 0)
     inspector.pack_end(inspector_actions, False, False, 0)
     selected_key = {"value": active_key if active_key in positions else "equinox"}
     node_by_key = {}
@@ -804,6 +826,14 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
 
     def profile_note(key: str) -> str:
         profile = profile_by_key.get(key, {})
+        if key == "atlas":
+            summary = atlas_payload.get("summary", {}) if isinstance(atlas_payload.get("summary"), dict) else {}
+            required = int(summary.get("required", 0) or 0)
+            missing = int(summary.get("required_missing", 0) or 0)
+            ready_line = t("prêt", "ready") if bool(summary.get("ready")) and missing == 0 else t("à préparer", "needs setup")
+            if key == active_key:
+                return f"{t('actif', 'active')} · {ready_line} · {max(required - missing, 0)}/{required}"
+            return f"{ready_line} · {max(required - missing, 0)}/{required}"
         if key == active_key:
             return t("actif maintenant", "active now")
         if key in PUBLIC_PROFILE_NOTES:
@@ -819,6 +849,22 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
         definition = profile_defs.get(key, {}) if isinstance(profile_defs.get(key), dict) else {}
         surfaces = definition.get("profile_surfaces", {}) if isinstance(definition.get("profile_surfaces"), dict) else {}
         return str(surfaces.get("center") or definition.get("center_command") or f"seven-mini-os-center {key}")
+
+    def profile_status_line(key: str) -> tuple[str, str]:
+        if key == "atlas":
+            summary = atlas_payload.get("summary", {}) if isinstance(atlas_payload.get("summary"), dict) else {}
+            required = int(summary.get("required", 0) or 0)
+            missing = int(summary.get("required_missing", 0) or 0)
+            ready = bool(summary.get("ready")) and missing == 0
+            label = t("Atlas prêt", "Atlas ready") if ready else t("Atlas à préparer", "Atlas needs setup")
+            return f"{label} · {max(required - missing, 0)}/{required}", "ready" if ready else "warn"
+        profile = profile_by_key.get(key, {})
+        state = str(profile.get("state") or profile.get("runtime", {}).get("lifecycle") or "ready")
+        installed = profile.get("installed", 0)
+        total = profile.get("total", 0)
+        if key == active_key:
+            return f"{t('Actif maintenant', 'Active now')} · {installed}/{total}", "ready"
+        return f"{state} · {installed}/{total}", "ready" if str(state).upper() in {"OK", "READY", "ACTIVE"} else "warn"
 
     def run_selected(kind: str) -> None:
         key = selected_key["value"]
@@ -836,7 +882,10 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
             run_detached(f"seven profile activate {key}")
             GLib.timeout_add(1450, lambda: (Gtk.main_quit(), False)[1])
         elif kind == "files":
-            run_detached(f"seven-files profile {key}")
+            run_detached("seven profile open-folder atlas Documents" if key == "atlas" else f"seven-files profile {key}")
+        elif kind == "prepare":
+            command = "seven atlas install --yes" if key == "atlas" else f"seven-mini-doctor {key} install"
+            run_detached(command)
 
     def describe(key: str) -> None:
         selected_key["value"] = key
@@ -846,17 +895,33 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
         inspector_title.set_text(profile_title(key))
         fallback_note = str(theme.get("ui_mood") or definition.get("purpose") or "")
         inspector_note.set_text(localized_profile_mood(key, fallback_note) or PUBLIC_PROFILE_NOTES.get(key) or profile_note(key))
-        relation = (
-            t("Sommet central : host/admin, réglages et arbitrage des ressources.", "Central vertex: host/admin, settings and resource arbitration.")
-            if key == "equinox"
-            else t("Relié à Equinox par activation explicite, sans charger silencieusement les autres piles.", "Linked to Equinox through explicit activation, without silently loading other stacks.")
-        )
+        if key == "equinox":
+            relation = t("Sommet central : host/admin, réglages et arbitrage des ressources.", "Central vertex: host/admin, settings and resource arbitration.")
+        elif key == "atlas":
+            relation = t(
+                "Sommet natif : documents, cartes et OCR restent séparés, sans dépendre d'une VM.",
+                "Native vertex: documents, maps and OCR stay separated without depending on a VM.",
+            )
+        else:
+            relation = t("Relié à Equinox par activation explicite, sans charger silencieusement les autres piles.", "Linked to Equinox through explicit activation, without silently loading other stacks.")
         inspector_role.set_text(relation)
-        action_open.set_label(t("Ouvrir le centre", "Open center") if key != "equinox" else t("Ouvrir les réglages", "Open settings"))
+        action_open.set_label(t("Ouvrir Atlas", "Open Atlas") if key == "atlas" else (t("Ouvrir le centre", "Open center") if key != "equinox" else t("Ouvrir les réglages", "Open settings")))
         action_activate.set_label(t("Actif", "Active") if key == active_key else t("Activer ce sommet", "Activate vertex"))
         action_activate.set_sensitive(key != active_key)
-        action_files.set_label(t("Voir les fichiers", "View files"))
-        active_badge.set_text(t("Actif", "Active") if key == active_key else profile_note(key))
+        action_files.set_label(t("Documents & cartes", "Documents & maps") if key == "atlas" else t("Voir les fichiers", "View files"))
+        action_prepare.set_label(t("Préparer Atlas", "Prepare Atlas") if key == "atlas" else t("Vérifier / préparer", "Check / prepare"))
+        status_text, status_class = profile_status_line(key)
+        inspector_status.set_text(status_text)
+        status_context = inspector_status.get_style_context()
+        status_context.remove_class("ready")
+        status_context.remove_class("warn")
+        status_context.add_class(status_class)
+        if key == active_key:
+            active_badge.set_text(t("Actif", "Active"))
+        elif key == "atlas":
+            active_badge.set_text(profile_note(key))
+        else:
+            active_badge.set_text(localized_profile_title(key, key.title()).split()[0])
         wordmark.set_text(profile_title(key))
         for node_key, node in node_by_key.items():
             context = node.get_style_context()
@@ -869,6 +934,7 @@ def prism_panel(Gtk, GLib, Gdk, profiles: list[dict], catalog: dict, theme_profi
     action_open.connect("clicked", lambda _button: run_selected("open"))
     action_activate.connect("clicked", lambda _button: run_selected("activate"))
     action_files.connect("clicked", lambda _button: run_selected("files"))
+    action_prepare.connect("clicked", lambda _button: run_selected("prepare"))
 
     key_targets = {
         Gdk.KEY_1: "equinox",
