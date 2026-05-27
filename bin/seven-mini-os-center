@@ -117,6 +117,10 @@ def atlas_requirements() -> dict:
     return run_json("atlas", "status", "--json", fallback={})
 
 
+def profile_packs(key: str) -> dict:
+    return run_json("profile-packs", "status", key, "--json", fallback={})
+
+
 def mini_boundaries() -> dict:
     return run_json("mini-boundaries", "--json", fallback={})
 
@@ -160,6 +164,54 @@ def atlas_readiness_lines(payload: dict) -> list[str]:
         t(f"À installer: {preview}.", f"To install: {preview}."),
         "seven atlas install --yes",
     ]
+
+
+def pack_lines(payload: dict, key: str) -> list[str]:
+    profiles = payload.get("profiles", {}) if isinstance(payload.get("profiles"), dict) else {}
+    packs = profiles.get(key, []) if isinstance(profiles.get(key), list) else []
+    if not packs:
+        return [t("Aucun pack guidé.", "No guided pack.")]
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    key_summary = summary.get(key, {}) if isinstance(summary.get(key), dict) else {}
+    lines = []
+    ready = int(key_summary.get("ready", 0) or 0)
+    total = int(key_summary.get("packs", len(packs)) or len(packs))
+    recommended_missing = int(key_summary.get("recommended_missing", 0) or 0)
+    if recommended_missing:
+        lines.append(t(f"{ready}/{total} prêts · {recommended_missing} recommandé(s) à installer", f"{ready}/{total} ready · {recommended_missing} recommended missing"))
+    else:
+        lines.append(t(f"{ready}/{total} packs prêts", f"{ready}/{total} packs ready"))
+    impact_labels = {
+        "small": t("léger", "small"),
+        "medium": t("moyen", "medium"),
+        "large": t("large", "large"),
+        "huge": t("très large", "huge"),
+    }
+    sorted_packs = sorted(
+        packs,
+        key=lambda item: (
+            0 if item.get("recommended") and item.get("state") != "ready" else 1,
+            0 if item.get("state") != "ready" else 1,
+            str(item.get("id", "")),
+        ),
+    )
+    for pack in sorted_packs[:4]:
+        missing = pack.get("missing", []) if isinstance(pack.get("missing"), list) else []
+        state = t("prêt", "ready") if pack.get("state") == "ready" else t("guidé", "guided") if pack.get("state") == "action" else t(f"{len(missing)} manquant(s)", f"{len(missing)} missing")
+        marker = t("recommandé", "recommended") if pack.get("recommended") else t("option", "optional")
+        impact = impact_labels.get(str(pack.get("impact", "medium")), str(pack.get("impact", "medium")))
+        audience = str(pack.get("audience") or "")
+        label = f"{pack.get('title', pack.get('id'))}: {marker} · {impact} · {state}"
+        lines.append(label)
+        if audience:
+            lines.append(t(f"Usage: {audience}", f"For: {audience}"))
+    return lines
+
+
+def recommended_pack_missing_count(payload: dict, key: str) -> int:
+    summary = payload.get("summary", {}) if isinstance(payload.get("summary"), dict) else {}
+    key_summary = summary.get(key, {}) if isinstance(summary.get(key), dict) else {}
+    return int(key_summary.get("recommended_missing", 0) or 0)
 
 
 def bridge_status() -> dict:
@@ -505,6 +557,7 @@ def run() -> int:
     bridge_overview = bridge_status()
     session = bridge_session(key)
     atlas_runtime = atlas_requirements() if key == "atlas" else {}
+    packs_runtime = profile_packs(key)
 
     GLib.set_prgname("SevenMiniOSCenter")
     GLib.set_application_name(meta.get("title", "SevenOS Mini OS"))
@@ -739,11 +792,18 @@ def run() -> int:
         status_card = info_card(Gtk, t("État", "State"), compact(status_lines, 3))
         status_card.get_style_context().add_class("status-card")
         public_grid.attach(status_card, 0, 2, 2, 1)
+        public_grid.attach(
+            info_card(Gtk, t("Packs guidés", "Guided Packs"), compact(pack_lines(packs_runtime, key), 6)),
+            0,
+            3,
+            2,
+            1,
+        )
         if key in {"baobab", "atlas"}:
             public_grid.attach(
                 info_card(Gtk, t("Frontière Baobab / Atlas", "Baobab / Atlas Boundary"), compact(baobab_atlas_boundary_lines(boundary_report, key), 4)),
                 0,
-                3,
+                4,
                 2,
                 1,
             )
@@ -762,13 +822,18 @@ def run() -> int:
 
         footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         root.pack_end(footer, False, False, 0)
-        for label, command in [
+        footer_actions = [
             (t("Utiliser cet espace", "Use this space"), f"seven profile activate {key}"),
             (t("Applications", "Applications"), f"seven profile apps {key}"),
+            (t("Packs", "Packs"), f"seven profile-packs open {key}"),
+        ]
+        if recommended_pack_missing_count(packs_runtime, key):
+            footer_actions.append((t("Recommandés", "Recommended"), f"seven profile-packs open {key}"))
+        footer_actions.extend([
             (t("Frontière", "Boundary"), "seven mini-boundaries --open" if key in {"baobab", "atlas"} else "seven mini-os suggest"),
-            (t("Réglages", "Settings"), "seven-settings profiles"),
             (t("Aide", "Help"), "seven-help-native mini-os"),
-        ]:
+        ])
+        for label, command in footer_actions:
             button = Gtk.Button(label=label)
             button.get_style_context().add_class("pill")
             button.connect("clicked", lambda _button, cmd=command: run_detached(cmd))
@@ -877,10 +942,15 @@ def run() -> int:
         grid.attach(info_card(Gtk, "Borrow", compact([
             f"{item.get('profile')}: {item.get('label')}" for item in suggestions[:3] if isinstance(item, dict)
         ] or ["no suggested capability now"], 3)), 0, 7, 2, 1)
+    grid.attach(info_card(Gtk, t("Packs guidés", "Guided Packs"), compact(pack_lines(packs_runtime, key), 6)), 0, 9, 2, 1)
 
     actions_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     root.pack_start(actions_box, False, False, 0)
     action_rows = [(str(item.get("label", "")), str(item.get("description", "")), str(item.get("command", ""))) for item in home.get("actions", []) if isinstance(item, dict)] or profile_actions(key)
+    if recommended_pack_missing_count(packs_runtime, key):
+        action_rows = [
+            (t("Packs recommandés", "Recommended packs"), t("Ouvrir les packs guidés de cet espace", "Open guided packs for this space"), f"seven profile-packs open {key}")
+        ] + action_rows
     for label, tooltip, command in action_rows[:5]:
         button = Gtk.Button(label=label)
         button.get_style_context().add_class("pill")

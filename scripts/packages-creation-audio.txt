@@ -1,0 +1,6 @@
+# SevenOS Studio audio production pack
+ardour
+lmms
+calf
+lsp-plugins
+easyeffects

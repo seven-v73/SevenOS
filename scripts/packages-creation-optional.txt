@@ -1,3 +1,5 @@
 # SevenOS Studio optional creator tools
-# Keep larger or preference-driven tools outside the required baseline.
-libreoffice-fresh
+# Compatibility manifest kept for existing commands.
+# Use guided packs for precise installs:
+#   seven profile-packs list studio
+#   seven profile-packs install studio video --yes

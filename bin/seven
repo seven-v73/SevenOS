@@ -201,6 +201,23 @@ def handle_profile(args):
     run_script(args, "profiles/profile-manager.sh", *extra)
 
 
+def handle_profile_packs(args):
+    extra = [args.action]
+    if args.profile:
+        extra.append(args.profile)
+    if args.pack:
+        extra.append(args.pack)
+    if args.json:
+        extra.append("--json")
+    if args.yes:
+        extra.append("--yes")
+    if is_dry_run(args) or getattr(args, "pack_dry_run", False):
+        extra.append("--dry-run")
+        run_script_with_dry_env("bin/seven-profile-packs", *extra)
+        return
+    run_script(args, "bin/seven-profile-packs", *extra)
+
+
 def handle_mini_os(args):
     extra = [args.action, *args.items]
     if args.json:
@@ -1354,6 +1371,14 @@ def main():
     profile_parser.add_argument("--json", action="store_true", help="print machine-readable profile status for list/status")
     profile_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
+    profile_packs_parser = subparsers.add_parser("profile-packs", help="list or install guided mini OS packs")
+    profile_packs_parser.add_argument("action", nargs="?", default="list", choices=("list", "status", "doctor", "open", "install", "install-recommended"))
+    profile_packs_parser.add_argument("profile", nargs="?")
+    profile_packs_parser.add_argument("pack", nargs="?")
+    profile_packs_parser.add_argument("--json", action="store_true", help="print machine-readable mini OS pack state")
+    profile_packs_parser.add_argument("--yes", action="store_true", help="run supported pack installs non-interactively")
+    profile_packs_parser.add_argument("--dry-run", dest="pack_dry_run", action="store_true", help="preview install command")
+
     shield_parser = subparsers.add_parser("shield", help="security and cyber controls")
     shield_parser.add_argument("action", choices=("dashboard", "status", "plan", "enable", "audit", "lab", "bootstrap", "workspace", "open", "labs", "tools", "scope", "network", "evidence", "optional-tools", "toolchain", "bundles", "wrappers", "tool-doctor", "performance", "report", "persona", "personas", "session", "cleanup", "mode", "workspaces", "context", "layout", "hud"), nargs="?", default="dashboard")
     shield_parser.add_argument("--json", action="store_true", help="print machine-readable Shield posture or plan")
@@ -1630,6 +1655,8 @@ def main():
         run_script(args, "bin/seven-recorder", args.action)
     elif args.command == "profile":
         handle_profile(args)
+    elif args.command == "profile-packs":
+        handle_profile_packs(args)
     elif args.command == "shield":
         handle_shield(args)
     elif args.command == "vm":

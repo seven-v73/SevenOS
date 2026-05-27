@@ -1,0 +1,5 @@
+# SevenOS Studio video and capture pack
+kdenlive
+obs-studio
+handbrake
+yt-dlp

@@ -201,12 +201,15 @@ def payload() -> dict:
     required = package_file(REQUIRED_FILE)
     optional = package_file(OPTIONAL_FILE)
     installed = installed_packages()
+    private = rootfs_packages()
+    effective = installed | private
     missing_required = [pkg for pkg in required if pkg not in installed]
     missing_optional = [pkg for pkg in optional if pkg not in installed]
+    missing_required_effective = [pkg for pkg in required if pkg not in effective]
+    host_runtime_missing = [pkg for pkg in required if pkg not in installed and pkg in private]
     vendors = gpu_vendors()
     multilib = multilib_enabled()
     ready_rootfs = rootfs_ready()
-    private = rootfs_packages()
     private_status = {
         "steam": "steam" in private,
         "lutris": "lutris" in private,
@@ -218,8 +221,10 @@ def payload() -> dict:
     }
     blockers = []
     warnings = []
-    if missing_required:
+    if missing_required_effective:
         blockers.append("pulse-required-packages")
+    if host_runtime_missing:
+        warnings.append("pulse-host-runtime-missing")
     if not ready_rootfs:
         blockers.append("pulse-rootfs")
     if not vendors:
@@ -234,7 +239,8 @@ def payload() -> dict:
         "ready": ready,
         "summary": {
             "required": len(required),
-            "required_missing": len(missing_required),
+            "required_missing": len(missing_required_effective),
+            "host_runtime_missing": len(host_runtime_missing),
             "optional": len(optional),
             "optional_missing": len(missing_optional),
             "rootfs_ready": ready_rootfs,
@@ -247,7 +253,8 @@ def payload() -> dict:
         },
         "private_packages": private_status,
         "missing": {
-            "required": missing_required,
+            "required": missing_required_effective,
+            "host_runtime": host_runtime_missing,
             "optional": missing_optional,
         },
         "driver_hints": driver_hints(vendors, multilib),

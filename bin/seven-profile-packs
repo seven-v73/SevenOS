@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+ROOT = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent)).resolve()
+CATALOG = ROOT / "profiles/pack-catalog.json"
+
+
+def load_catalog() -> dict:
+    try:
+        return json.loads(CATALOG.read_text(encoding="utf-8"))
+    except Exception:
+        return {"schema": "sevenos.profile-packs.v1", "profiles": {}}
+
+
+def package_file(path: str) -> list[str]:
+    full = ROOT / path
+    if not full.is_file():
+        return []
+    packages = []
+    for raw in full.read_text(encoding="utf-8", errors="ignore").splitlines():
+        item = raw.split("#", 1)[0].strip()
+        if item:
+            packages.append(item)
+    return packages
+
+
+def host_home() -> Path:
+    raw = Path(os.environ.get("SEVENOS_HOST_HOME", os.environ.get("HOME", str(Path.home()))))
+    marker = "/.local/share/sevenos/profile-containers/"
+    text = str(raw)
+    if marker in text and text.endswith("/home"):
+        return Path(text.split(marker, 1)[0])
+    return raw
+
+
+def rootfs_packages(profile: str) -> set[str]:
+    local = host_home() / ".local/share/sevenos/profile-rootfs" / profile / "rootfs/var/lib/pacman/local"
+    packages = set()
+    if not local.is_dir():
+        return packages
+    for desc in local.glob("*/desc"):
+        try:
+            lines = desc.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except OSError:
+            continue
+        for index, line in enumerate(lines):
+            if line == "%NAME%" and index + 1 < len(lines):
+                packages.add(lines[index + 1].strip())
+                break
+    return packages
+
+
+def host_packages() -> set[str]:
+    try:
+        result = subprocess.run(
+            ["pacman", "-Qq"],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+    except OSError:
+        return set()
+    if result.returncode != 0:
+        return set()
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def pack_packages(pack: dict) -> list[str]:
+    if isinstance(pack.get("packages"), list):
+        return [str(item) for item in pack["packages"] if str(item).strip()]
+    if pack.get("package_file"):
+        return package_file(str(pack["package_file"]))
+    return []
+
+
+def detect_packages(pack: dict) -> list[str]:
+    if isinstance(pack.get("detect_packages"), list):
+        return [str(item) for item in pack["detect_packages"] if str(item).strip()]
+    return pack_packages(pack)
+
+
+def pack_status(profile: str, pack: dict) -> dict:
+    packages = pack_packages(pack)
+    detected = detect_packages(pack)
+    detect_scope = str(pack.get("detect_scope", "profile"))
+    installed = host_packages() if detect_scope == "host" else rootfs_packages(profile)
+    missing = [pkg for pkg in detected if pkg not in installed]
+    command = pack.get("command")
+    if not command and packages:
+        source = str(pack.get("source", "pacman"))
+        command = f"sevenpkg {profile} install {' '.join(packages)} --source {source}"
+    state = "action" if pack.get("command") and not detected else "ready" if not missing else "missing"
+    return {
+        "id": pack.get("id"),
+        "title": pack.get("title"),
+        "impact": pack.get("impact", "medium"),
+        "audience": pack.get("audience", ""),
+        "scope": pack.get("scope", "profile-rootfs"),
+        "recommended": bool(pack.get("recommended", False)),
+        "description": pack.get("description", ""),
+        "packages": packages,
+        "detect_packages": detected,
+        "detect_scope": detect_scope,
+        "missing": missing,
+        "state": state,
+        "requires": pack.get("requires", []),
+        "command": command,
+    }
+
+
+def profile_packs(profile: str) -> list[dict]:
+    data = load_catalog()
+    return list((data.get("profiles") or {}).get(profile, []))
+
+
+def payload(profile: str | None = None) -> dict:
+    data = load_catalog()
+    profiles = [profile] if profile else sorted((data.get("profiles") or {}).keys())
+    profile_payload = {
+        key: [pack_status(key, pack) for pack in profile_packs(key)]
+        for key in profiles
+        if key in (data.get("profiles") or {})
+    }
+    summary = {
+        key: {
+            "packs": len(packs),
+            "ready": sum(1 for pack in packs if pack.get("state") == "ready"),
+            "missing": sum(1 for pack in packs if pack.get("state") == "missing"),
+            "recommended_missing": sum(
+                1 for pack in packs if pack.get("recommended") and pack.get("state") == "missing"
+            ),
+        }
+        for key, packs in profile_payload.items()
+    }
+    return {
+        "schema": data.get("schema", "sevenos.profile-packs.v1"),
+        "summary": summary,
+        "profiles": profile_payload,
+    }
+
+
+def print_human(data: dict) -> None:
+    print("SevenOS Mini OS Packs")
+    print("=====================")
+    summaries = data.get("summary", {}) if isinstance(data.get("summary"), dict) else {}
+    for profile, packs in data.get("profiles", {}).items():
+        print(f"\n{profile}")
+        summary = summaries.get(profile, {}) if isinstance(summaries.get(profile), dict) else {}
+        if summary:
+            print(
+                f"  {summary.get('ready', 0)}/{summary.get('packs', len(packs))} ready"
+                f" · {summary.get('missing', 0)} missing"
+                f" · {summary.get('recommended_missing', 0)} recommended missing"
+            )
+        for pack in packs:
+            missing = len(pack.get("missing") or [])
+            state = pack.get("state")
+            if state == "ready":
+                state_text = "ready"
+            elif state == "action":
+                state_text = "guided"
+            else:
+                state_text = f"{missing} missing"
+            marker = "recommended" if pack.get("recommended") else "optional"
+            audience = pack.get("audience") or "general"
+            print(f"- {pack.get('id')} · {pack.get('impact')} · {state_text} · {marker}")
+            print(f"  For: {audience} · Scope: {pack.get('scope')}")
+            print(f"  {pack.get('description')}")
+            if missing:
+                print(f"  Missing: {', '.join(pack.get('missing') or [])}")
+            if pack.get("command"):
+                print(f"  {pack.get('command')}")
+
+
+def install_command(command: str, dry_run: bool) -> str:
+    if dry_run and command.startswith("sevenpkg ") and " --preview" not in command:
+        return f"{command} --preview"
+    return command
+
+
+def run(command: str, dry_run: bool) -> int:
+    command = install_command(command, dry_run)
+    if dry_run:
+        print(command)
+        return 0
+    return subprocess.run(["bash", "-lc", command], cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, check=False).returncode
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="seven-profile-packs")
+    parser.add_argument("action", nargs="?", default="list", choices=("list", "status", "open", "install", "install-recommended", "doctor"))
+    parser.add_argument("profile", nargs="?")
+    parser.add_argument("pack", nargs="?")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--yes", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+
+    if args.action == "open":
+        profile = args.profile or "studio"
+        if args.dry_run:
+            print(f"seven-profile-packs-native {profile}")
+            return 0
+        return subprocess.run([str(ROOT / "bin/seven-profile-packs-native"), profile], cwd=ROOT, env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, check=False).returncode
+
+    if args.action in {"list", "status", "doctor"}:
+        data = payload(args.profile)
+        if args.json:
+            print(json.dumps(data, indent=2, ensure_ascii=False))
+        else:
+            print_human(data)
+        return 0
+
+    if args.action == "install-recommended":
+        if not args.profile:
+            parser.error("install-recommended requires PROFILE")
+        selected = [
+            pack_status(args.profile, pack)
+            for pack in profile_packs(args.profile)
+            if bool(pack.get("recommended", False))
+        ]
+        commands = [
+            str(item.get("command"))
+            for item in selected
+            if item.get("command") and item.get("state") != "ready"
+        ]
+        if not commands:
+            print(f"Recommended packs are already ready for {args.profile}.")
+            return 0
+        if args.dry_run:
+            for command in commands:
+                print(install_command(command, True))
+            return 0
+        for command in commands:
+            if args.yes and "--yes" not in command and "sevenpkg " not in command:
+                command = f"{command} --yes"
+            result = run(command, False)
+            if result != 0:
+                return result
+        return 0
+
+    if not args.profile or not args.pack:
+        parser.error("install requires PROFILE and PACK")
+    packs = {str(pack.get("id")): pack for pack in profile_packs(args.profile)}
+    pack = packs.get(args.pack)
+    if not pack:
+        raise SystemExit(f"unknown pack for {args.profile}: {args.pack}")
+    status = pack_status(args.profile, pack)
+    command = status.get("command")
+    if not command:
+        print(f"Pack already ready or has no install command: {args.profile}/{args.pack}")
+        return 0
+    if args.yes and "--yes" not in command and "sevenpkg " not in command:
+        command = f"{command} --yes"
+    return run(command, args.dry_run)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

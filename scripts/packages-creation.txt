@@ -1,21 +1,10 @@
-# SevenOS CREATION profile
+# SevenOS Studio essential profile
+# Keep the base creator space fast and useful on a fresh machine.
+# Larger workflows live in guided Studio packs.
 gimp
 krita
 inkscape
-blender
-kdenlive
-obs-studio
 audacity
-ardour
-lmms
 pipewire-jack
-calf
-lsp-plugins
-easyeffects
-darktable
-rawtherapee
-scribus
 imagemagick
 ffmpeg
-handbrake
-yt-dlp

@@ -1,0 +1,2 @@
+# SevenOS Studio 3D production pack
+blender

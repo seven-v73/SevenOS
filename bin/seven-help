@@ -557,6 +557,14 @@ seven post-install
 seven repair ux --apply
 seven profile requirements all --json
 seven profile requirements forge --apply --yes
+seven profile-packs list studio
+seven profile-packs open studio
+seven profile-packs install studio video --dry-run
+seven profile-packs install-recommended studio --dry-run
+seven profile-packs list atlas
+seven profile-packs open atlas
+seven profile-packs install atlas aur-helper --dry-run
+seven profile-packs install-recommended atlas --dry-run
 seven profile-rootfs audit all
 seven profile-rootfs verify all
 seven actions
@@ -1948,6 +1956,14 @@ seven post-install
 seven repair ux --apply
 seven profile requirements all --json
 seven profile requirements forge --apply --yes
+seven profile-packs list studio
+seven profile-packs open studio
+seven profile-packs install studio video --dry-run
+seven profile-packs install-recommended studio --dry-run
+seven profile-packs list atlas
+seven profile-packs open atlas
+seven profile-packs install atlas aur-helper --dry-run
+seven profile-packs install-recommended atlas --dry-run
 seven profile-rootfs audit all
 seven profile-rootfs verify all
 seven actions

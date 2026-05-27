@@ -22,6 +22,8 @@
       "paths": [
         "bin/seven",
         "bin/seven-daemon",
+        "bin/seven-profile-packs",
+        "bin/seven-profile-packs-native",
         "bin/seven-wincompat",
         "bin/sevenbus-probe",
         "bin/sevenpkg",

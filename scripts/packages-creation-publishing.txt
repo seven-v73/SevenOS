@@ -1,0 +1,3 @@
+# SevenOS Studio publishing pack
+scribus
+libreoffice-fresh

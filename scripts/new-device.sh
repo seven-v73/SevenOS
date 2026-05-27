@@ -113,6 +113,11 @@ setup_doctor() {
     scripts/packages-dev.txt
     scripts/packages-cybersecurity.txt
     scripts/packages-creation.txt
+    scripts/packages-creation-video.txt
+    scripts/packages-creation-audio.txt
+    scripts/packages-creation-3d.txt
+    scripts/packages-creation-photo.txt
+    scripts/packages-creation-publishing.txt
     scripts/packages-atlas.txt
     scripts/packages-performance.txt
     scripts/packages-culture.txt
@@ -135,7 +140,10 @@ setup_doctor() {
     scripts/public-experience.sh
     scripts/shell-ags-runtime.sh
     profiles/profile-manager.sh
+    profiles/pack-catalog.json
     bin/seven-profile-requirements
+    bin/seven-profile-packs
+    bin/seven-profile-packs-native
     bin/seven-profile-rootfs
     bin/seven-profile-theme
   )

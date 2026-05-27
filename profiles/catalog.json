@@ -547,7 +547,12 @@
         "scripts/packages-creation.txt"
       ],
       "optional_package_files": [
-        "scripts/packages-creation-optional.txt"
+        "scripts/packages-creation-optional.txt",
+        "scripts/packages-creation-video.txt",
+        "scripts/packages-creation-audio.txt",
+        "scripts/packages-creation-3d.txt",
+        "scripts/packages-creation-photo.txt",
+        "scripts/packages-creation-publishing.txt"
       ],
       "waybar_modules": [
         "profile",

@@ -1,0 +1,208 @@
+{
+  "schema": "sevenos.profile-packs.v1",
+  "profiles": {
+    "forge": [
+      {
+        "id": "devops-services",
+        "title": "Forge DevOps services",
+        "impact": "medium",
+        "audience": "web apps, APIs, self-hosting",
+        "recommended": true,
+        "scope": "forge-rootfs",
+        "description": "Local hosting, reverse proxy, tunnel and deployment helpers.",
+        "package_file": "scripts/packages-server.txt"
+      },
+      {
+        "id": "comfort",
+        "title": "Forge comfort tools",
+        "impact": "small",
+        "audience": "daily development",
+        "recommended": false,
+        "scope": "forge-rootfs",
+        "description": "Developer conveniences that should not be required for every project.",
+        "package_file": "scripts/packages-dev-optional.txt"
+      }
+    ],
+    "shield": [
+      {
+        "id": "osint",
+        "title": "Shield OSINT",
+        "impact": "medium",
+        "audience": "authorized research",
+        "recommended": false,
+        "scope": "shield-rootfs",
+        "description": "Privacy-aware OSINT routing and note support.",
+        "package_file": "scripts/packages-shield-osint.txt"
+      },
+      {
+        "id": "devsecops",
+        "title": "Shield DevSecOps",
+        "impact": "small",
+        "audience": "code and dependency review",
+        "recommended": true,
+        "scope": "shield-rootfs",
+        "description": "Code, dependency and container security checks.",
+        "package_file": "scripts/packages-shield-devsecops.txt"
+      },
+      {
+        "id": "blackarch",
+        "title": "BlackArch catalog",
+        "impact": "huge",
+        "audience": "advanced authorized security labs",
+        "recommended": false,
+        "scope": "host-repository",
+        "description": "Optional large security repository bridge, never installed silently.",
+        "detect_scope": "host",
+        "detect_packages": [
+          "blackarch-keyring"
+        ],
+        "command": "seven shield toolchain blackarch-setup --yes"
+      }
+    ],
+    "studio": [
+      {
+        "id": "video",
+        "title": "Studio Video",
+        "impact": "large",
+        "audience": "editing, capture, publishing",
+        "recommended": true,
+        "scope": "studio-rootfs",
+        "description": "Kdenlive, OBS, HandBrake and download/export helpers.",
+        "package_file": "scripts/packages-creation-video.txt"
+      },
+      {
+        "id": "audio",
+        "title": "Studio Audio",
+        "impact": "large",
+        "audience": "music, podcast, sound design",
+        "recommended": false,
+        "scope": "studio-rootfs",
+        "description": "Ardour, LMMS, plugins and EasyEffects.",
+        "package_file": "scripts/packages-creation-audio.txt"
+      },
+      {
+        "id": "3d",
+        "title": "Studio 3D",
+        "impact": "large",
+        "audience": "3D assets and rendering",
+        "recommended": false,
+        "scope": "studio-rootfs",
+        "description": "Blender for modeling, rendering and 3D assets.",
+        "package_file": "scripts/packages-creation-3d.txt"
+      },
+      {
+        "id": "photo",
+        "title": "Studio Photo",
+        "impact": "medium",
+        "audience": "RAW photos and galleries",
+        "recommended": false,
+        "scope": "studio-rootfs",
+        "description": "RAW photo workflow with Darktable and RawTherapee.",
+        "package_file": "scripts/packages-creation-photo.txt"
+      },
+      {
+        "id": "publishing",
+        "title": "Studio Publishing",
+        "impact": "medium",
+        "audience": "layout and documents",
+        "recommended": false,
+        "scope": "studio-rootfs",
+        "description": "Scribus and LibreOffice for publication and layout.",
+        "package_file": "scripts/packages-creation-publishing.txt"
+      }
+    ],
+    "pulse": [
+      {
+        "id": "launchers",
+        "title": "Pulse Launchers",
+        "impact": "large",
+        "audience": "Steam/Lutris libraries",
+        "recommended": true,
+        "scope": "pulse-rootfs",
+        "description": "Steam and Lutris stay private to Pulse.",
+        "detect_packages": [
+          "steam",
+          "lutris"
+        ],
+        "command": "seven-pulse launchers"
+      },
+      {
+        "id": "hud",
+        "title": "Pulse HUD",
+        "impact": "medium",
+        "audience": "performance tuning",
+        "recommended": true,
+        "scope": "pulse-rootfs",
+        "description": "MangoHud and Gamescope for performance visibility and smoother sessions.",
+        "detect_packages": [
+          "mangohud",
+          "gamescope"
+        ],
+        "command": "seven-pulse hud"
+      },
+      {
+        "id": "windows-apps",
+        "title": "Windows app compatibility",
+        "impact": "medium",
+        "audience": ".exe and .msi files",
+        "recommended": false,
+        "scope": "host-shared",
+        "description": "Global Bottles/Wine/Lutris compatibility for .exe and .msi files.",
+        "detect_scope": "host",
+        "detect_packages": [
+          "wine",
+          "bottles",
+          "lutris"
+        ],
+        "command": "./install.sh windows-compat --yes"
+      }
+    ],
+    "atlas": [
+      {
+        "id": "aur-helper",
+        "title": "Atlas AUR helper",
+        "impact": "small",
+        "audience": "AUR-only research tools",
+        "recommended": true,
+        "scope": "atlas-rootfs",
+        "description": "Private paru helper for Atlas AUR-only research tools.",
+        "detect_packages": [
+          "paru"
+        ],
+        "command": "sevenpkg atlas helper paru"
+      },
+      {
+        "id": "gis",
+        "title": "Atlas GIS",
+        "impact": "large",
+        "audience": "maps and field projects",
+        "recommended": false,
+        "scope": "atlas-rootfs",
+        "description": "QGIS/JOSM/Viking for heavier map and GIS projects.",
+        "packages": ["qgis", "josm", "viking"]
+      },
+      {
+        "id": "ocr-pdf",
+        "title": "Atlas OCR PDF",
+        "impact": "medium",
+        "audience": "searchable scanned PDFs",
+        "recommended": true,
+        "scope": "atlas-rootfs",
+        "description": "OCRmyPDF from AUR for searchable PDF generation.",
+        "packages": ["ocrmypdf"],
+        "source": "paru",
+        "requires": ["aur-helper"]
+      },
+      {
+        "id": "reference",
+        "title": "Atlas Reference",
+        "impact": "medium",
+        "audience": "offline reference library",
+        "recommended": false,
+        "scope": "atlas-rootfs",
+        "description": "Zeal, Sigil, image viewers and broad offline reference tools.",
+        "package_file": "scripts/packages-atlas-optional.txt"
+      }
+    ]
+  }
+}

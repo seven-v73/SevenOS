@@ -37,11 +37,11 @@ PROFILE_ROOTFS_DIR = HOST_DATA_HOME / "sevenos/profile-rootfs"
 
 KEY_TOOLS = {
     "forge": ("git", "code", "nodejs", "python", "docker", "podman", "jq", "ripgrep", "caddy"),
-    "studio": ("gimp", "krita", "inkscape", "blender", "kdenlive", "obs-studio", "ffmpeg", "pipewire-jack"),
+    "studio": ("gimp", "krita", "inkscape", "audacity", "ffmpeg", "imagemagick", "pipewire-jack"),
     "baobab": ("foliate", "mpv", "espeak-ng", "translate-shell", "kiwix-desktop"),
     "shield": ("nmap", "wireshark-qt", "tcpdump", "sqlmap", "zaproxy", "metasploit", "firejail", "bubblewrap"),
     "atlas": ("evince", "calibre", "marble", "gnome-maps", "pdfarranger", "tesseract", "simple-scan", "paperwork", "recoll", "xournalpp"),
-    "pulse": ("gamemode", "vulkan-icd-loader", "vulkan-tools", "pipewire", "wireplumber", "alsa-utils", "gamescope", "mangohud"),
+    "pulse": ("gamemode", "vulkan-icd-loader", "vulkan-tools", "pipewire", "wireplumber", "alsa-utils"),
 }
 
 OPTIONAL_ACTIONS = {
@@ -50,8 +50,10 @@ OPTIONAL_ACTIONS = {
         ("forge.private.ide", "Installer VS Code dans Forge", "sevenpkg forge install code --source pacman"),
     ],
     "studio": [
-        ("studio.optional.creator", "Installer les extras Studio", "seven profile requirements studio --optional --apply --yes"),
-        ("studio.private.obs", "Installer OBS dans Studio", "sevenpkg studio install obs-studio --source pacman"),
+        ("studio.packs", "Choisir un pack Studio", "seven profile-packs list studio"),
+        ("studio.video", "Installer le pack Video Studio", "seven profile-packs install studio video --yes"),
+        ("studio.audio", "Installer le pack Audio Studio", "seven profile-packs install studio audio --yes"),
+        ("studio.3d", "Installer le pack 3D Studio", "seven profile-packs install studio 3d --yes"),
     ],
     "baobab": [
         ("baobab.optional.culture", "Installer la bibliotheque complete", "seven profile requirements baobab --optional --apply --yes"),
@@ -62,11 +64,13 @@ OPTIONAL_ACTIONS = {
         ("shield.private.burp", "Installer Burp Suite dans Shield", "sevenpkg shield install burpsuite --source paru"),
     ],
     "atlas": [
-        ("atlas.optional.research", "Installer les extras Atlas", "seven-profile-requirements install atlas --optional --apply --yes"),
+        ("atlas.packs", "Choisir un pack Atlas", "seven profile-packs list atlas"),
+        ("atlas.aur-helper", "Installer paru dans Atlas", "seven profile-packs install atlas aur-helper --yes"),
+        ("atlas.ocr-pdf", "Installer OCR PDF Atlas", "seven profile-packs install atlas ocr-pdf --yes"),
         ("atlas.required.native", "Installer le socle documents, cartes et OCR Atlas", "seven atlas install --yes"),
     ],
     "pulse": [
-        ("pulse.optional.gaming", "Installer les extras Pulse", "seven profile requirements pulse --optional --apply --yes"),
+        ("pulse.packs", "Choisir un pack Pulse", "seven profile-packs list pulse"),
         ("pulse.private.launchers", "Installer Steam et Lutris dans Pulse", "seven-pulse launchers"),
         ("pulse.private.hud", "Installer HUD et frame pacing", "seven-pulse hud"),
     ],
