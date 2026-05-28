@@ -460,6 +460,93 @@ def wifi_state() -> tuple[str, str]:
     return tr_text("On"), ssid or tr_text("Not connected")
 
 
+def wifi_networks(limit: int = 8) -> list[dict[str, str]]:
+    if not command_exists("nmcli"):
+        return []
+    lines = out(
+        ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "dev", "wifi", "list", "--rescan", "no"],
+        "",
+        timeout=1.2,
+    ).splitlines()
+    networks: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for line in lines:
+        parts = line.split(":")
+        if len(parts) < 4:
+            continue
+        active, ssid, signal, security = parts[0], parts[1], parts[2], ":".join(parts[3:])
+        ssid = ssid.strip()
+        if not ssid or ssid in seen:
+            continue
+        seen.add(ssid)
+        networks.append(
+            {
+                "active": "yes" if active.strip() == "*" else "no",
+                "ssid": ssid,
+                "signal": signal.strip() or "?",
+                "security": security.strip() or tr("settings.open_network", "Ouvert"),
+            }
+        )
+        if len(networks) >= limit:
+            break
+    return networks
+
+
+def audio_routes() -> list[dict[str, str]]:
+    if not command_exists("wpctl"):
+        return []
+    raw = out(["wpctl", "status"], "", timeout=0.8)
+    routes: list[dict[str, str]] = []
+    section = ""
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if "Sinks:" in stripped:
+            section = "sink"
+            continue
+        if "Sources:" in stripped:
+            section = "source"
+            continue
+        if stripped.startswith(("├", "└", "│")) and section in {"sink", "source"}:
+            clean = re.sub(r"^[├└│─*\\s]+", "", stripped).strip()
+            clean = re.sub(r"^\\*\\s*", "", clean)
+            if clean and "." in clean:
+                routes.append({"kind": section, "label": clean[:120]})
+        if len(routes) >= 8:
+            break
+    return routes
+
+
+def firewall_state() -> tuple[str, str]:
+    if command_exists("ufw"):
+        raw = out(["bash", "-lc", "ufw status 2>/dev/null | head -n 1"], "", timeout=0.8)
+        if raw:
+            return "UFW", raw
+    if command_exists("firewall-cmd"):
+        raw = out(["bash", "-lc", "firewall-cmd --state 2>/dev/null"], "", timeout=0.8)
+        if raw:
+            return "firewalld", raw
+    return tr("settings.security_firewall", "Pare-feu"), tr("settings.not_configured", "Non configuré")
+
+
+def backup_last_state() -> tuple[str, str]:
+    candidates = [
+        STATE_DIR / "recovery-last.json",
+        CACHE_DIR / "recovery-last.json",
+        Path.home() / ".local/share/sevenos/recovery/last-backup.json",
+    ]
+    for path in candidates:
+        if path.exists():
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                stamp = str(payload.get("created_at") or payload.get("date") or path.stat().st_mtime)
+                return tr("settings.backup_last", "Dernière sauvegarde"), stamp
+            except Exception:
+                return tr("settings.backup_last", "Dernière sauvegarde"), path.name
+    return tr("settings.backup_last", "Dernière sauvegarde"), tr("settings.no_backup_seen", "Aucune sauvegarde visible")
+
+
 def battery_state() -> tuple[str, str]:
     bats = list(Path("/sys/class/power_supply").glob("BAT*"))
     if not bats:
@@ -853,6 +940,347 @@ def settings_local_css() -> str:
       padding: 0;
     }
 
+    .sidebar-section-label {
+      margin: 10px 13px 2px 13px;
+      color: alpha(@seven_muted, 0.82);
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .settings-insight-card {
+      padding: 11px 13px;
+      border-radius: 16px;
+      background:
+        radial-gradient(ellipse at 10% 0%, alpha(@seven_accent, 0.15), transparent 48%),
+        alpha(@seven_panel, 0.52);
+      border: 1px solid alpha(@seven_border, 0.70);
+    }
+
+    .settings-row {
+      transition: 140ms ease-out;
+    }
+
+    .settings-row.actionable-row {
+      background-image:
+        linear-gradient(90deg, alpha(@seven_accent, 0.045), transparent 38%);
+    }
+
+    .settings-insight-card:hover,
+    .status-card:hover,
+    .settings-row:hover,
+    .account-row:hover {
+      background:
+        radial-gradient(ellipse at 9% 0%, alpha(@seven_accent, 0.13), transparent 44%),
+        alpha(@seven_panel, 0.62);
+      border-color: alpha(@seven_accent, 0.28);
+    }
+
+    .status-card:focus {
+      background:
+        radial-gradient(ellipse at 9% 0%, alpha(@seven_accent, 0.16), transparent 44%),
+        alpha(@seven_panel, 0.64);
+      border-color: alpha(@seven_accent, 0.46);
+    }
+
+    .settings-row:focus {
+      border-color: alpha(@seven_accent, 0.44);
+      background:
+        radial-gradient(ellipse at 9% 0%, alpha(@seven_accent, 0.15), transparent 44%),
+        alpha(@seven_panel, 0.60);
+    }
+
+    .settings-row.actionable-row:focus {
+      border-color: alpha(@seven_accent, 0.62);
+      box-shadow: inset 3px 0 alpha(@seven_accent, 0.72);
+    }
+
+    .page-frame:focus {
+      outline-style: none;
+    }
+
+    .settings-topbar {
+      min-height: 44px;
+      padding: 8px 12px 6px 12px;
+      background: alpha(@seven_bg, 0.04);
+      border-bottom: 1px solid alpha(@seven_border, 0.18);
+    }
+
+    .settings-search {
+      min-height: 34px;
+      border-radius: 999px;
+      padding: 0 12px;
+      background: alpha(@seven_panel, 0.46);
+      border: 1px solid alpha(@seven_border, 0.50);
+      color: @seven_text;
+    }
+
+    .settings-search:focus {
+      background: alpha(@seven_panel, 0.62);
+      border-color: alpha(@seven_accent, 0.46);
+    }
+
+    .search-results {
+      padding: 6px 12px 4px 12px;
+      background: alpha(@seven_bg, 0.02);
+    }
+
+    button.search-result-button {
+      min-height: 46px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      color: @seven_text;
+      background: alpha(@seven_panel, 0.46);
+      border: 1px solid alpha(@seven_border, 0.52);
+      box-shadow: none;
+    }
+
+    button.search-result-button:hover,
+    button.search-result-button:focus {
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_accent, 0.16), transparent 42%),
+        alpha(@seven_panel, 0.62);
+      border-color: alpha(@seven_accent, 0.36);
+    }
+
+    .search-empty-card {
+      padding: 10px 12px;
+      border-radius: 15px;
+      color: @seven_text;
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_accent, 0.12), transparent 44%),
+        alpha(@seven_panel, 0.50);
+      border: 1px solid alpha(@seven_border, 0.50);
+    }
+
+    .feedback-banner {
+      margin: 6px 12px 0 12px;
+      padding: 8px 12px;
+      border-radius: 14px;
+      color: @seven_text;
+      background:
+        radial-gradient(ellipse at 6% 0%, alpha(@seven_accent, 0.18), transparent 44%),
+        alpha(@seven_panel, 0.58);
+      border: 1px solid alpha(@seven_accent, 0.26);
+    }
+
+    .feedback-banner.feedback-success {
+      background:
+        radial-gradient(ellipse at 6% 0%, alpha(@seven_success, 0.18), transparent 44%),
+        alpha(@seven_panel, 0.58);
+      border-color: alpha(@seven_success, 0.32);
+    }
+
+    .feedback-banner.feedback-warning {
+      background:
+        radial-gradient(ellipse at 6% 0%, alpha(@seven_warning, 0.18), transparent 44%),
+        alpha(@seven_panel, 0.58);
+      border-color: alpha(@seven_warning, 0.34);
+    }
+
+    .feedback-banner.feedback-error {
+      background:
+        radial-gradient(ellipse at 6% 0%, alpha(@seven_error, 0.20), transparent 44%),
+        alpha(@seven_panel, 0.60);
+      border-color: alpha(@seven_error, 0.38);
+    }
+
+    button.nav-button {
+      min-height: 36px;
+      margin: 0 8px;
+      padding: 0 10px;
+      border-radius: 13px;
+      color: @seven_text;
+      background: transparent;
+      border: 1px solid transparent;
+      box-shadow: none;
+    }
+
+    button.nav-button:hover {
+      background: alpha(@seven_panel, 0.42);
+      border-color: alpha(@seven_border, 0.42);
+    }
+
+    button.nav-button:focus {
+      border-color: alpha(@seven_accent, 0.42);
+    }
+
+    button.nav-button.active {
+      background:
+        radial-gradient(ellipse at 10% 0%, alpha(@seven_accent, 0.18), transparent 42%),
+        alpha(@seven_accent, 0.10);
+      border-color: alpha(@seven_accent, 0.30);
+    }
+
+    button.nav-history-button {
+      min-width: 34px;
+      min-height: 34px;
+      padding: 0;
+      font-size: 18px;
+    }
+
+    button.nav-history-button:disabled {
+      opacity: 0.34;
+      background: alpha(@seven_panel, 0.20);
+      border-color: alpha(@seven_border, 0.24);
+    }
+
+    .settings-page-context {
+      min-width: 92px;
+      color: @seven_muted;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .settings-page-position {
+      min-width: 42px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: alpha(@seven_text, 0.86);
+      background: alpha(@seven_panel, 0.42);
+      border: 1px solid alpha(@seven_border, 0.42);
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .settings-page-hint {
+      margin: 0 12px 6px 12px;
+      padding: 0 8px;
+      color: alpha(@seven_muted, 0.90);
+      font-size: 11px;
+    }
+
+    .settings-action-flow {
+      background: transparent;
+    }
+
+    .settings-action-flow flowboxchild {
+      padding: 0;
+      background: transparent;
+      border: 0;
+    }
+
+    .settings-row-controls {
+      background: transparent;
+    }
+
+    .settings-row-controls flowboxchild {
+      padding: 0;
+      background: transparent;
+      border: 0;
+    }
+
+    .settings-workflow-row {
+      padding: 9px 10px;
+      border-radius: 13px;
+      background: alpha(@seven_text, 0.045);
+      border: 1px solid alpha(@seven_border, 0.52);
+    }
+
+    .settings-workflow-row:hover {
+      background: alpha(@seven_accent, 0.085);
+      border-color: alpha(@seven_accent, 0.26);
+    }
+
+    .settings-workflow-row:focus {
+      background:
+        radial-gradient(ellipse at 6% 0%, alpha(@seven_accent, 0.14), transparent 42%),
+        alpha(@seven_panel, 0.60);
+      border-color: alpha(@seven_accent, 0.44);
+    }
+
+    .settings-workflow-row:first-child {
+      background:
+        radial-gradient(ellipse at 6% 0%, alpha(@seven_accent, 0.12), transparent 42%),
+        alpha(@seven_text, 0.052);
+    }
+
+    .settings-workflow-index {
+      min-width: 22px;
+      min-height: 22px;
+      border-radius: 11px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.18);
+      border: 1px solid alpha(@seven_accent, 0.30);
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .settings-workflow-row:hover .settings-workflow-index {
+      background: alpha(@seven_accent, 0.26);
+      border-color: alpha(@seven_accent, 0.48);
+    }
+
+    button.action-button {
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background:
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_text, 0.055), transparent 42%),
+        alpha(@seven_panel, 0.48);
+      border: 1px solid alpha(@seven_border, 0.62);
+      color: @seven_text;
+      box-shadow: none;
+      transition: 120ms ease-out;
+    }
+
+    button.action-button:hover {
+      background:
+        radial-gradient(ellipse at 20% 0%, alpha(@seven_accent, 0.16), transparent 46%),
+        alpha(@seven_panel, 0.66);
+      border-color: alpha(@seven_accent, 0.38);
+    }
+
+    button.action-button:focus {
+      border-color: alpha(@seven_accent, 0.56);
+    }
+
+    button.action-button:disabled {
+      color: alpha(@seven_muted, 0.72);
+      background: alpha(@seven_panel, 0.30);
+      border-color: alpha(@seven_border, 0.42);
+    }
+
+    button.action-button.busy {
+      color: @seven_text;
+      background:
+        radial-gradient(ellipse at 22% 0%, alpha(@seven_accent, 0.24), transparent 44%),
+        alpha(@seven_accent, 0.12);
+      border-color: alpha(@seven_accent, 0.42);
+    }
+
+    button.primary-action,
+    button.suggested-action {
+      background:
+        radial-gradient(ellipse at 20% 0%, alpha(#ffffff, 0.16), transparent 42%),
+        linear-gradient(135deg, alpha(@seven_accent, 0.72), alpha(@seven_secondary, 0.54));
+      border-color: alpha(@seven_accent, 0.70);
+      color: #ffffff;
+    }
+
+    button.primary-action:hover,
+    button.suggested-action:hover {
+      background:
+        radial-gradient(ellipse at 20% 0%, alpha(#ffffff, 0.22), transparent 44%),
+        linear-gradient(135deg, alpha(@seven_accent, 0.82), alpha(@seven_secondary, 0.62));
+      border-color: alpha(@seven_accent, 0.86);
+    }
+
+    button.destructive-action {
+      color: @seven_text;
+      background:
+        radial-gradient(ellipse at 20% 0%, alpha(#ff6b6b, 0.18), transparent 42%),
+        alpha(@seven_panel, 0.50);
+      border-color: alpha(#ff6b6b, 0.40);
+    }
+
+    button.destructive-action:hover {
+      background:
+        radial-gradient(ellipse at 20% 0%, alpha(#ff6b6b, 0.28), transparent 44%),
+        alpha(#ff6b6b, 0.13);
+      border-color: alpha(#ff6b6b, 0.62);
+    }
+
     button.prism-item-choice {
       min-width: 210px;
       min-height: 42px;
@@ -1038,6 +1466,13 @@ def settings_local_css() -> str:
       border-color: alpha(@seven_accent, 0.46);
       color: @seven_text;
       font-weight: 600;
+    }
+
+    button.wallpaper-filter:focus {
+      border-color: alpha(@seven_accent, 0.54);
+      background:
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_accent, 0.16), transparent 46%),
+        alpha(@seven_panel, 0.58);
     }
 
     .wallpaper-tool-row {
@@ -1342,6 +1777,20 @@ def run(initial_page: str = "overview") -> int:
     content.get_style_context().add_class("content")
     topbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     topbar.get_style_context().add_class("settings-topbar")
+    back_button = Gtk.Button(label="‹")
+    back_button.get_style_context().add_class("action-button")
+    back_button.get_style_context().add_class("nav-history-button")
+    back_button.set_tooltip_text(tr("settings.nav.back", "Revenir à la page précédente"))
+    forward_button = Gtk.Button(label="›")
+    forward_button.get_style_context().add_class("action-button")
+    forward_button.get_style_context().add_class("nav-history-button")
+    forward_button.set_tooltip_text(tr("settings.nav.forward", "Aller à la page suivante"))
+    page_context = Gtk.Label(label="")
+    page_context.set_xalign(0)
+    page_context.get_style_context().add_class("settings-page-context")
+    page_position = Gtk.Label(label="")
+    page_position.set_xalign(0.5)
+    page_position.get_style_context().add_class("settings-page-position")
     search_entry = Gtk.SearchEntry()
     search_entry.set_hexpand(True)
     search_entry.set_placeholder_text(tr("settings.search.placeholder", "Rechercher réglages, apps, langue, Wi-Fi…"))
@@ -1349,9 +1798,18 @@ def run(initial_page: str = "overview") -> int:
     live_refresh_button = Gtk.Button(label=tr("settings.refresh_live", "Actualiser"))
     live_refresh_button.get_style_context().add_class("action-button")
     live_refresh_button.set_tooltip_text(tr("settings.refresh_live.tooltip", "Rafraîchir la page active avec les informations live."))
+    topbar.pack_start(back_button, False, False, 0)
+    topbar.pack_start(forward_button, False, False, 0)
+    topbar.pack_start(page_context, False, False, 0)
+    topbar.pack_start(page_position, False, False, 0)
     topbar.pack_start(search_entry, True, True, 0)
     topbar.pack_start(live_refresh_button, False, False, 0)
     content.pack_start(topbar, False, False, 0)
+    page_hint = Gtk.Label(label="")
+    page_hint.set_xalign(0)
+    page_hint.set_line_wrap(True)
+    page_hint.get_style_context().add_class("settings-page-hint")
+    content.pack_start(page_hint, False, False, 0)
     search_results = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
     search_results.set_no_show_all(True)
     search_results.get_style_context().add_class("search-results")
@@ -1359,9 +1817,15 @@ def run(initial_page: str = "overview") -> int:
     feedback_banner = Gtk.Label(label="")
     feedback_banner.set_xalign(0)
     feedback_banner.set_line_wrap(True)
-    feedback_banner.set_no_show_all(True)
     feedback_banner.get_style_context().add_class("feedback-banner")
-    content.pack_start(feedback_banner, False, False, 0)
+    feedback_revealer = Gtk.Revealer()
+    feedback_revealer.set_transition_type(Gtk.RevealerTransitionType.SLIDE_DOWN)
+    feedback_revealer.set_transition_duration(160)
+    feedback_revealer.set_reveal_child(False)
+    feedback_revealer.add(feedback_banner)
+    feedback_revealer.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+    feedback_revealer.connect("button-press-event", lambda _widget, _event: (feedback_revealer.set_reveal_child(False), True)[1])
+    content.pack_start(feedback_revealer, False, False, 0)
     content.pack_start(stack, True, True, 0)
 
     body.pack_start(sidebar, False, False, 0)
@@ -1370,13 +1834,19 @@ def run(initial_page: str = "overview") -> int:
 
     nav_buttons: list[Gtk.Button] = []
     nav_by_target: dict[str, Gtk.Button] = {}
+    nav_titles: dict[str, str] = {}
     current_page = initial_page
+    page_back_stack: list[str] = []
+    page_forward_stack: list[str] = []
+    scroll_positions: dict[str, float] = {}
+    feedback_state = {"token": 0}
 
     def page(title: str, subtitle: str) -> tuple[Gtk.Box, Gtk.ScrolledWindow]:
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         outer.set_halign(Gtk.Align.START)
         outer.set_valign(Gtk.Align.START)
         outer.set_size_request(content_width, -1)
+        outer.set_can_focus(True)
         outer.get_style_context().add_class("page-frame")
         title_label = Gtk.Label(label=title)
         title_label.set_xalign(0)
@@ -1387,6 +1857,7 @@ def run(initial_page: str = "overview") -> int:
         subtitle_label.get_style_context().add_class("page-subtitle")
         outer.pack_start(title_label, False, False, 0)
         outer.pack_start(subtitle_label, False, False, 0)
+        outer.sevenos_subtitle = subtitle
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         viewport = Gtk.Viewport()
@@ -1394,25 +1865,119 @@ def run(initial_page: str = "overview") -> int:
         scrolled.add(viewport)
         return outer, scrolled
 
-    def activate_page(name: str, button: Gtk.Button) -> None:
+    def update_history_buttons() -> None:
+        back_button.set_sensitive(bool(page_back_stack))
+        forward_button.set_sensitive(bool(page_forward_stack))
+        if page_back_stack:
+            back_button.set_tooltip_text(tr("settings.nav.back_to_shortcut", "Retour à {page} · Alt+←", page=nav_titles.get(page_back_stack[-1], page_back_stack[-1])))
+        else:
+            back_button.set_tooltip_text(tr("settings.nav.back", "Revenir à la page précédente · Alt+←"))
+        if page_forward_stack:
+            forward_button.set_tooltip_text(tr("settings.nav.forward_to_shortcut", "Avancer vers {page} · Alt+→", page=nav_titles.get(page_forward_stack[-1], page_forward_stack[-1])))
+        else:
+            forward_button.set_tooltip_text(tr("settings.nav.forward", "Aller à la page suivante · Alt+→"))
+
+    def page_title(name: str) -> str:
+        return nav_titles.get(name, name.title())
+
+    def page_subtitle(name: str) -> str:
+        if name in pages:
+            value = getattr(pages[name][0], "sevenos_subtitle", "")
+            if isinstance(value, str):
+                return value
+        return ""
+
+    def page_opened_message(name: str) -> str:
+        return tr("settings.page.opened_named", "{page} ouverte.", page=page_title(name))
+
+    def save_current_scroll() -> None:
+        if current_page in pages:
+            adjustment = pages[current_page][1].get_vadjustment()
+            scroll_positions[current_page] = adjustment.get_value()
+
+    def focus_page_frame(name: str) -> bool:
+        if name in pages and not search_entry.has_focus():
+            pages[name][0].grab_focus()
+        return False
+
+    def activate_page(name: str, button: Gtk.Button | None = None, record: bool = True) -> None:
         nonlocal current_page
+        if name not in pages:
+            return
+        restore_scroll = not record and name in scroll_positions
+        if name != current_page:
+            save_current_scroll()
+        if record and name != current_page:
+            page_back_stack.append(current_page)
+            del page_back_stack[:-24]
+            page_forward_stack.clear()
         current_page = name
+        page_context.set_text(page_title(name))
+        page_context.set_tooltip_text(page_title(name))
+        page_hint.set_text(page_subtitle(name))
+        page_hint.set_tooltip_text(page_subtitle(name) or page_title(name))
+        live_refresh_button.set_tooltip_text(tr("settings.refresh_live.page_tooltip", "Actualiser {page} avec les informations live.", page=page_title(name)))
+        targets = list(nav_by_target.keys())
+        if name in targets:
+            page_index = targets.index(name) + 1
+            page_position.set_text(f"{page_index}/{len(targets)}")
+            page_position.set_tooltip_text(tr("settings.nav.position", "Page {index} sur {total}", index=page_index, total=len(targets)))
         stack.set_visible_child_name(name)
         for item in nav_buttons:
             item.get_style_context().remove_class("active")
-        button.get_style_context().add_class("active")
+        target_button = button or nav_by_target.get(name)
+        if target_button:
+            target_button.get_style_context().add_class("active")
+        search_results.hide()
+        if name in pages:
+            scrolled = pages[name][1]
+            target_scroll = scroll_positions.get(name, 0.0) if restore_scroll else 0.0
+            GLib.idle_add(lambda: (scrolled.get_vadjustment().set_value(target_scroll), False)[1])
+        if search_entry.has_focus():
+            window.grab_focus()
+        GLib.idle_add(lambda page_name=name: focus_page_frame(page_name))
+        update_history_buttons()
 
-    def show_feedback(message: str) -> None:
+    def go_back() -> None:
+        if not page_back_stack:
+            show_feedback(tr("settings.nav.no_back", "Aucune page précédente."), "warning")
+            return
+        previous = page_back_stack.pop()
+        page_forward_stack.append(current_page)
+        activate_page(previous, nav_by_target.get(previous), record=False)
+        show_feedback(tr("settings.nav.back_done_named", "Retour à {page}.", page=page_title(previous)))
+
+    def go_forward() -> None:
+        if not page_forward_stack:
+            show_feedback(tr("settings.nav.no_forward", "Aucune page suivante."), "warning")
+            return
+        next_page = page_forward_stack.pop()
+        page_back_stack.append(current_page)
+        del page_back_stack[:-24]
+        activate_page(next_page, nav_by_target.get(next_page), record=False)
+        show_feedback(tr("settings.nav.forward_done_named", "Avance vers {page}.", page=page_title(next_page)))
+
+    def show_feedback(message: str, kind: str = "info") -> None:
+        feedback_state["token"] += 1
+        token = feedback_state["token"]
+        context = feedback_banner.get_style_context()
+        for css_class in ("feedback-info", "feedback-success", "feedback-warning", "feedback-error"):
+            context.remove_class(css_class)
+        context.add_class(f"feedback-{kind if kind in {'info', 'success', 'warning', 'error'} else 'info'}")
         feedback_banner.set_text(message)
         feedback_banner.show()
+        feedback_revealer.set_reveal_child(True)
 
         def hide_feedback() -> bool:
-            feedback_banner.hide()
+            if feedback_state["token"] == token:
+                feedback_revealer.set_reveal_child(False)
             return False
 
         GLib.timeout_add_seconds(4, hide_feedback)
 
     def refresh_current_page() -> None:
+        show_feedback(tr("settings.refresh_live.started", "Actualisation de cette page…"))
+        page_context.set_text(tr("settings.refresh_live.context", "{page} · live", page=nav_titles.get(current_page, current_page.title())))
         env = {**os.environ, "SEVENOS_ROOT": str(ROOT), "SEVENOS_SETTINGS_DEEP": "1"}
         subprocess.Popen(
             [str(ROOT / "bin/seven-settings-native"), current_page],
@@ -1424,7 +1989,102 @@ def run(initial_page: str = "overview") -> int:
         )
         window.close()
 
-    live_refresh_button.connect("clicked", lambda _button: refresh_current_page())
+    live_refresh_button.connect(
+        "clicked",
+        lambda _button: (
+            _button.get_style_context().add_class("busy"),
+            _button.set_sensitive(False),
+            refresh_current_page(),
+        ),
+    )
+    back_button.connect("clicked", lambda _button: go_back())
+    forward_button.connect("clicked", lambda _button: go_forward())
+    update_history_buttons()
+
+    def handle_window_keys(_window, event) -> bool:
+        state = event.state
+        ctrl = bool(state & Gdk.ModifierType.CONTROL_MASK)
+        alt = bool(state & Gdk.ModifierType.MOD1_MASK)
+        if ctrl and event.keyval in {Gdk.KEY_f, Gdk.KEY_F, Gdk.KEY_l, Gdk.KEY_L, Gdk.KEY_k, Gdk.KEY_K}:
+            search_entry.grab_focus()
+            search_entry.select_region(0, -1)
+            show_feedback(tr("settings.search.focused", "Recherche prête."))
+            return True
+        if event.keyval == Gdk.KEY_slash and not search_entry.has_focus():
+            search_entry.grab_focus()
+            search_entry.select_region(0, -1)
+            show_feedback(tr("settings.search.focused", "Recherche prête."))
+            return True
+        if ctrl and event.keyval in {Gdk.KEY_r, Gdk.KEY_R}:
+            refresh_current_page()
+            return True
+        if ctrl and event.keyval == Gdk.KEY_0 and "overview" in nav_by_target:
+            activate_page("overview", nav_by_target["overview"])
+            show_feedback(page_opened_message("overview"))
+            return True
+        ctrl_digits = {
+            Gdk.KEY_1: 0,
+            Gdk.KEY_2: 1,
+            Gdk.KEY_3: 2,
+            Gdk.KEY_4: 3,
+            Gdk.KEY_5: 4,
+            Gdk.KEY_6: 5,
+            Gdk.KEY_7: 6,
+            Gdk.KEY_8: 7,
+            Gdk.KEY_9: 8,
+        }
+        if ctrl and event.keyval in ctrl_digits:
+            targets = list(nav_by_target.keys())
+            index = ctrl_digits[event.keyval]
+            if index < len(targets):
+                target = targets[index]
+                activate_page(target, nav_by_target[target])
+                show_feedback(page_opened_message(target))
+                return True
+        if event.keyval == Gdk.KEY_F1 or (ctrl and event.keyval in {Gdk.KEY_question, Gdk.KEY_slash}):
+            show_shortcuts_overview()
+            return True
+        if alt and event.keyval == Gdk.KEY_Left:
+            go_back()
+            return True
+        if alt and event.keyval == Gdk.KEY_Right:
+            go_forward()
+            return True
+        if event.keyval == Gdk.KEY_Home and "overview" in nav_by_target:
+            activate_page("overview", nav_by_target["overview"])
+            show_feedback(tr("settings.overview.opened", "Vue d’ensemble ouverte."))
+            return True
+        if ctrl and event.keyval in {Gdk.KEY_Home, Gdk.KEY_End}:
+            targets = list(nav_by_target.keys())
+            if targets:
+                target = targets[0 if event.keyval == Gdk.KEY_Home else -1]
+                activate_page(target, nav_by_target[target])
+                show_feedback(page_opened_message(target))
+                return True
+        if event.keyval in {Gdk.KEY_Page_Down, Gdk.KEY_Page_Up} and current_page in nav_by_target:
+            targets = list(nav_by_target.keys())
+            if current_page in targets:
+                index = targets.index(current_page)
+                delta = 1 if event.keyval == Gdk.KEY_Page_Down else -1
+                next_index = max(0, min(len(targets) - 1, index + delta))
+                if next_index != index:
+                    target = targets[next_index]
+                    activate_page(target, nav_by_target[target])
+                    show_feedback(page_opened_message(target))
+                return True
+        if event.keyval == Gdk.KEY_Escape:
+            if search_results.get_visible() or search_entry.get_text():
+                search_entry.set_text("")
+                search_results.hide()
+                window.grab_focus()
+                show_feedback(tr("settings.search.closed", "Recherche fermée."))
+                return True
+            if feedback_revealer.get_reveal_child():
+                feedback_revealer.set_reveal_child(False)
+                return True
+            Gtk.main_quit()
+            return True
+        return False
 
     def style_dialog(dialog: Gtk.Dialog) -> Gtk.Box:
         dialog.set_decorated(False)
@@ -1446,6 +2106,10 @@ def run(initial_page: str = "overview") -> int:
             dialog.get_child().get_style_context().add_class("settings-dialog-frame")
         except Exception:
             pass
+        dialog.connect(
+            "key-press-event",
+            lambda _dialog, event: (_dialog.response(Gtk.ResponseType.CLOSE), True)[1] if event.keyval == Gdk.KEY_Escape else False,
+        )
         return box
 
     def display_user_name(username: str | None = None) -> str:
@@ -2012,7 +2676,6 @@ def run(initial_page: str = "overview") -> int:
     def info_dialog(title_text: str, note_text: str, rows: list[tuple[str, str, str, str | None]], width: int = 560, height: int = 460) -> None:
         dialog = Gtk.Dialog(title=title_text, transient_for=window, flags=Gtk.DialogFlags.MODAL)
         dialog.set_default_size(min(width, max(460, int(screen_width * 0.48))), min(height, max(320, int(screen_height * 0.54))))
-        dialog.add_button(tr("settings.close", "Fermer"), Gtk.ResponseType.CLOSE)
         box = style_dialog(dialog)
         box.set_spacing(12)
         box.set_border_width(16)
@@ -2029,6 +2692,37 @@ def run(initial_page: str = "overview") -> int:
 
         list_box = Gtk.ListBox()
         list_box.get_style_context().add_class("account-list")
+        list_box.set_selection_mode(Gtk.SelectionMode.SINGLE)
+
+        def rows_as_text() -> str:
+            lines = [title_text, note_text, ""]
+            for _icon, row_title, row_note, badge_text in rows:
+                suffix = f" [{badge_text}]" if badge_text else ""
+                lines.append(f"{row_title}{suffix}")
+                if row_note:
+                    lines.append(f"  {row_note}")
+            return "\n".join(lines).strip()
+
+        def copy_summary(_button=None) -> None:
+            clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+            clipboard.set_text(rows_as_text(), -1)
+            clipboard.store()
+            show_feedback(tr("settings.summary_copied", "Résumé copié."), "success")
+
+        def copy_row(row: Gtk.ListBoxRow | None) -> None:
+            if row is None:
+                copy_summary()
+                return
+            index = row.get_index()
+            if not (0 <= index < len(rows)):
+                return
+            _icon, row_title, row_note, badge_text = rows[index]
+            suffix = f" [{badge_text}]" if badge_text else ""
+            clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+            clipboard.set_text(f"{row_title}{suffix}\n{row_note}".strip(), -1)
+            clipboard.store()
+            show_feedback(tr("settings.row_copied", "Ligne copiée."), "success")
+
         for icon, row_title, row_note, badge_text in rows:
             row = Gtk.ListBoxRow()
             wrapper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -2042,7 +2736,8 @@ def run(initial_page: str = "overview") -> int:
             title_label.get_style_context().add_class("settings-row-title")
             note_label = Gtk.Label(label=row_note)
             note_label.set_xalign(0)
-            note_label.set_ellipsize(Pango.EllipsizeMode.END)
+            note_label.set_line_wrap(True)
+            note_label.set_max_width_chars(76)
             note_label.get_style_context().add_class("settings-row-note")
             labels.pack_start(title_label, False, False, 0)
             labels.pack_start(note_label, False, False, 0)
@@ -2052,13 +2747,46 @@ def run(initial_page: str = "overview") -> int:
                 badge = Gtk.Label(label=badge_text)
                 badge.get_style_context().add_class("update-summary-chip")
                 wrapper.pack_start(badge, False, False, 0)
+            row.set_selectable(True)
+            row.set_activatable(True)
+            row.set_tooltip_text(tr("settings.info_row.tooltip", "Entrée ou double-clic pour copier cette ligne."))
             row.add(wrapper)
             list_box.add(row)
+
+        list_box.connect("row-activated", lambda _list_box, row: copy_row(row))
 
         scroller = Gtk.ScrolledWindow()
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scroller.add(list_box)
         box.pack_start(scroller, True, True, 0)
+
+        action_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        action_row.set_halign(Gtk.Align.END)
+        copy_button = Gtk.Button(label=tr("settings.copy", "Copier"))
+        copy_button.get_style_context().add_class("action-button")
+        copy_button.set_tooltip_text(tr("settings.copy_summary.tooltip", "Copier tout le résumé."))
+        copy_button.connect("clicked", copy_summary)
+        close_button = Gtk.Button(label=tr("settings.close", "Fermer"))
+        close_button.get_style_context().add_class("action-button")
+        close_button.connect("clicked", lambda _button: dialog.response(Gtk.ResponseType.CLOSE))
+        action_row.pack_start(copy_button, False, False, 0)
+        action_row.pack_start(close_button, False, False, 0)
+        box.pack_start(action_row, False, False, 0)
+
+        def info_dialog_key(_dialog, event) -> bool:
+            ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
+            if ctrl and event.keyval in {Gdk.KEY_c, Gdk.KEY_C}:
+                selected = list_box.get_selected_row()
+                copy_row(selected)
+                return True
+            if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter}:
+                selected = list_box.get_selected_row()
+                if selected is not None:
+                    copy_row(selected)
+                    return True
+            return False
+
+        dialog.connect("key-press-event", info_dialog_key)
         dialog.connect("response", lambda _dialog, _response: dialog.destroy())
         dialog.show_all()
 
@@ -2338,6 +3066,7 @@ def run(initial_page: str = "overview") -> int:
         list_box = Gtk.ListBox()
         list_box.get_style_context().add_class("account-list")
         apply_buttons: dict[str, Gtk.Button] = {}
+        idle_values: list[str] = [value for value, _preset_title, _preset_note in presets]
 
         def refresh_choice_buttons() -> None:
             current = idle_policy_status()
@@ -2376,15 +3105,26 @@ def run(initial_page: str = "overview") -> int:
             labels.pack_start(note_label, False, False, 0)
             apply = Gtk.Button(label=tr("settings.apply", "Appliquer"))
             apply.get_style_context().add_class("action-button")
+            apply.set_tooltip_text(tr("settings.idle_apply.tooltip", "Appliquer ce délai de veille automatique."))
             apply_buttons[value] = apply
             apply.connect("clicked", lambda _button, selected=value: apply_idle_choice(selected))
             wrapper.pack_start(glyph, False, False, 0)
             wrapper.pack_start(labels, True, True, 0)
             wrapper.pack_start(apply, False, False, 0)
+            row.set_selectable(True)
+            row.set_activatable(True)
+            row.set_tooltip_text(tr("settings.idle_row.tooltip", "Double-clic ou Entrée pour appliquer ce choix."))
             row.add(wrapper)
             list_box.add(row)
         box.pack_start(list_box, True, True, 0)
         refresh_choice_buttons()
+
+        def on_idle_row_activated(_list_box, row) -> None:
+            index = row.get_index()
+            if 0 <= index < len(idle_values):
+                apply_idle_choice(idle_values[index])
+
+        list_box.connect("row-activated", on_idle_row_activated)
 
         custom_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         custom_box.get_style_context().add_class("settings-card")
@@ -2409,8 +3149,10 @@ def run(initial_page: str = "overview") -> int:
         custom_spin.set_value(min(max(custom_default, 1), 240))
         custom_spin.set_numeric(True)
         custom_spin.set_width_chars(4)
+        custom_spin.set_tooltip_text(tr("settings.idle_custom.spin.tooltip", "Choisir un délai personnalisé en minutes."))
         custom_apply = Gtk.Button(label=tr("settings.apply", "Appliquer"))
         custom_apply.get_style_context().add_class("action-button")
+        custom_apply.set_tooltip_text(tr("settings.idle_custom.apply.tooltip", "Appliquer ce délai personnalisé."))
         custom_apply.connect("clicked", lambda _button: apply_idle_choice(str(custom_spin.get_value_as_int())))
         custom_box.pack_start(custom_icon, False, False, 0)
         custom_box.pack_start(custom_labels, True, True, 0)
@@ -2423,6 +3165,7 @@ def run(initial_page: str = "overview") -> int:
         button_row.set_halign(Gtk.Align.END)
         reset = Gtk.Button(label=tr("settings.reset", "Réinitialiser"))
         reset.get_style_context().add_class("action-button")
+        reset.set_tooltip_text(tr("settings.idle_reset.tooltip", "Revenir au comportement SevenOS standard."))
         reset.connect("clicked", lambda _button: (reset_idle_policy(), update_status(), refresh_choice_buttons()))
         close = Gtk.Button(label=tr("settings.close", "Fermer"))
         close.get_style_context().add_class("action-button")
@@ -2431,6 +3174,24 @@ def run(initial_page: str = "overview") -> int:
         button_row.pack_start(close, False, False, 0)
         box.pack_start(button_row, False, False, 0)
 
+        def idle_dialog_key(_dialog, event) -> bool:
+            key_map = {
+                Gdk.KEY_1: "5",
+                Gdk.KEY_2: "15",
+                Gdk.KEY_3: "30",
+                Gdk.KEY_4: "60",
+                Gdk.KEY_5: "120",
+                Gdk.KEY_6: "never",
+            }
+            if event.keyval in key_map:
+                apply_idle_choice(key_map[event.keyval])
+                return True
+            if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter} and custom_spin.has_focus():
+                apply_idle_choice(str(custom_spin.get_value_as_int()))
+                return True
+            return False
+
+        dialog.connect("key-press-event", idle_dialog_key)
         dialog.connect("response", lambda _dialog, _response: dialog.destroy())
         dialog.show_all()
 
@@ -2451,8 +3212,7 @@ def run(initial_page: str = "overview") -> int:
         )
         dialog = Gtk.Dialog(title=tr("settings.energy", "Énergie"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
         dialog.set_default_size(560, 520)
-        dialog.get_style_context().add_class("settings-dialog")
-        box = dialog.get_content_area()
+        box = style_dialog(dialog)
         box.set_spacing(14)
         box.set_border_width(18)
 
@@ -2468,6 +3228,24 @@ def run(initial_page: str = "overview") -> int:
 
         list_box = Gtk.ListBox()
         list_box.get_style_context().add_class("account-list")
+        mode_badge = Gtk.Label()
+        power_buttons: dict[str, Gtk.Button] = {}
+
+        def refresh_power_buttons() -> None:
+            current = current_power_profile()
+            mode_badge.set_text(label_map.get(current, current or tr("settings.unavailable", "Indisponible")))
+            for profile, button in power_buttons.items():
+                if profile == current:
+                    button.get_style_context().add_class("suggested-action")
+                    button.set_label(tr("settings.active_named", "{name} actif", name=label_map.get(profile, profile)))
+                else:
+                    button.get_style_context().remove_class("suggested-action")
+                    button.set_label(label_map.get(profile, profile))
+
+        def apply_power_profile(profile: str) -> None:
+            set_power_profile(profile)
+            refresh_power_buttons()
+
         for icon, row_title, row_note, badge_text in rows:
             row = Gtk.ListBoxRow()
             wrapper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -2481,14 +3259,17 @@ def run(initial_page: str = "overview") -> int:
             title_label.get_style_context().add_class("settings-row-title")
             note_label = Gtk.Label(label=row_note)
             note_label.set_xalign(0)
-            note_label.set_ellipsize(Pango.EllipsizeMode.END)
+            note_label.set_line_wrap(True)
+            note_label.set_max_width_chars(76)
             note_label.get_style_context().add_class("settings-row-note")
             labels.pack_start(title_label, False, False, 0)
             labels.pack_start(note_label, False, False, 0)
             wrapper.pack_start(glyph, False, False, 0)
             wrapper.pack_start(labels, True, True, 0)
             if badge_text:
-                badge = Gtk.Label(label=badge_text)
+                badge = mode_badge if row_title == tr("settings.power_mode", "Mode d’énergie") else Gtk.Label(label=badge_text)
+                if row_title == tr("settings.power_mode", "Mode d’énergie"):
+                    badge.set_text(label_map.get(active, active or tr("settings.unavailable", "Indisponible")))
                 badge.get_style_context().add_class("update-summary-chip")
                 wrapper.pack_start(badge, False, False, 0)
             row.add(wrapper)
@@ -2500,17 +3281,255 @@ def run(initial_page: str = "overview") -> int:
         for profile in available_power_profiles():
             button = Gtk.Button(label=label_map.get(profile, profile))
             button.get_style_context().add_class("action-button")
-            if profile == active:
-                button.get_style_context().add_class("suggested-action")
-            button.connect("clicked", lambda _button, selected=profile: (set_power_profile(selected), dialog.destroy()))
+            button.set_tooltip_text(tr("settings.power_profile_apply.tooltip", "Appliquer le mode {mode}.", mode=label_map.get(profile, profile)))
+            power_buttons[profile] = button
+            button.connect("clicked", lambda _button, selected=profile: apply_power_profile(selected))
             button_row.pack_start(button, False, False, 0)
         close_button = Gtk.Button(label=tr("settings.close", "Fermer"))
         close_button.get_style_context().add_class("action-button")
-        close_button.connect("clicked", lambda _button: dialog.destroy())
         button_row.pack_start(close_button, False, False, 0)
         box.pack_start(button_row, False, False, 0)
+        refresh_power_buttons()
+
+        def power_dialog_key(_dialog, event) -> bool:
+            key_map = {
+                Gdk.KEY_1: "power-saver",
+                Gdk.KEY_2: "balanced",
+                Gdk.KEY_3: "performance",
+            }
+            if event.keyval in key_map and key_map[event.keyval] in power_buttons:
+                apply_power_profile(key_map[event.keyval])
+                return True
+            return False
+
+        dialog.connect("key-press-event", power_dialog_key)
         dialog.connect("response", lambda _dialog, _response: dialog.destroy())
         dialog.show_all()
+
+    def show_appearance_overview() -> None:
+        rows = [
+            ("󰔎", tr("settings.theme", "Thème"), current_theme_mode(), tr("settings.active", "Actif")),
+            ("󰐃", tr("settings.active_mini_os", "Mini OS actif"), profile_name, profile_status),
+            ("󰸉", tr("settings.wallpaper", "Fond d’écran"), tr("settings.wallpaper_dynamic_note", "Fond, palette et surfaces restent synchronisés."), None),
+            ("󰃣", tr("settings.dock", "Dock"), tr("settings.dock.appearance_note", "Dock SevenOS avec présence discrète et autohide."), None),
+            ("󰇄", tr("settings.shell_bar", "Barre de menu"), tr("settings.shell_bar.note", "Réparer et relancer la barre de menu SevenOS."), None),
+            ("󰆍", tr("settings.terminal_style", "Style du terminal"), tr("settings.terminal_style.note", "Le terminal suit l’identité du mini OS actif."), None),
+        ]
+        info_dialog(
+            tr("settings.visual_system", "Système visuel"),
+            tr("settings.appearance_overview.public_note", "Résumé des éléments qui donnent l’identité SevenOS : thème, mini OS, fond, Dock, barre et terminal."),
+            rows,
+            width=660,
+            height=520,
+        )
+
+    def show_motion_overview() -> None:
+        rows = [
+            ("󰜉", tr("settings.motion_auto", "Automatique"), tr("settings.motion_auto.note", "Laisse chaque mini OS choisir sa vitesse et son style d’animation."), tr("settings.recommended", "Recommandé")),
+            ("󰇄", tr("settings.motion_premium", "Premium"), tr("settings.motion_premium.note", "Active une animation SevenOS plus visible, fluide et expressive."), None),
+            ("󰌾", tr("settings.motion_reduced", "Réduit"), tr("settings.motion_reduced.note", "Réduit les animations pour le confort, l’accessibilité et les machines plus modestes."), None),
+            ("󰐃", tr("settings.profile_switching", "Changement de mini OS demandé."), tr("settings.motion_profile_note", "L’animation Prism accompagne le chargement réel des surfaces."), None),
+        ]
+        info_dialog(
+            tr("settings.motion_mode", "Animations"),
+            tr("settings.motion_overview.public_note", "SevenOS utilise le mouvement pour masquer les latences utiles sans devenir intrusif."),
+            rows,
+            width=640,
+            height=500,
+        )
+
+    def show_profile_workflow() -> None:
+        catalog = profile_catalog()
+        profile_defs = catalog.get("profiles", {}) if isinstance(catalog.get("profiles"), dict) else {}
+        naming = catalog.get("profile_naming", {}) if isinstance(catalog.get("profile_naming"), dict) else {}
+        current_key = active_profile_key()
+        profile_icons = {
+            "equinox": "󰐃",
+            "baobab": "󰣇",
+            "forge": "󰅩",
+            "shield": "󰒃",
+            "studio": "󰏗",
+            "atlas": "󰙅",
+            "pulse": "󰊴",
+        }
+        rows: list[tuple[str, str, str, str | None]] = []
+        for key in ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"]:
+            data = profile_defs.get(key, {}) if isinstance(profile_defs.get(key), dict) else {}
+            title = str(data.get("title") or naming.get(key) or key.title())
+            purpose = str(data.get("purpose") or data.get("description") or "")
+            rows.append((profile_icons.get(key, "󰐃"), title, purpose, tr("settings.active", "Actif") if key == current_key else None))
+        info_dialog(
+            tr("settings.mini_os_profiles", "Mini OS"),
+            tr("settings.profile_workflow.public_note", "Chaque mini OS a un objectif clair. Le changement applique l’espace, recharge les surfaces et garde les données séparées."),
+            rows,
+            width=700,
+            height=560,
+        )
+
+    def show_network_overview() -> None:
+        wifi_radio, wifi_detail = wifi_state()
+        rows: list[tuple[str, str, str, str | None]] = [
+            ("󰤨", "Wi-Fi", f"{wifi_radio} · {wifi_detail}", tr("settings.active", "Actif") if wifi_radio.lower() in {"on", "activé"} else None),
+        ]
+        for network in wifi_networks():
+            badge = tr("settings.connected", "Connecté") if network["active"] == "yes" else f"{network['signal']}%"
+            rows.append(("󰖩", network["ssid"], network["security"], badge))
+        if len(rows) == 1:
+            rows.append(("󰄬", tr("settings.network_scan_empty", "Aucun réseau listé"), tr("settings.network_scan_empty.note", "Ouvre le centre réseau pour rescanner ou entrer un mot de passe."), None))
+        info_dialog(
+            tr("settings.network", "Wi-Fi et réseau"),
+            tr("settings.network_overview.public_note", "Vue lisible de la connexion actuelle et des réseaux proches. Les mots de passe restent demandés dans le panneau réseau SevenOS."),
+            rows,
+            width=660,
+            height=520,
+        )
+
+    def show_sound_overview() -> None:
+        rows: list[tuple[str, str, str, str | None]] = [
+            ("󰕾", tr("settings.output_volume", "Volume de sortie"), f"{volume_state()}%", tr("settings.active", "Actif")),
+        ]
+        for route in audio_routes():
+            rows.append(("󰕾" if route["kind"] == "sink" else "󰍬", tr("settings.audio_output", "Sortie") if route["kind"] == "sink" else tr("settings.audio_input", "Entrée"), route["label"], None))
+        if len(rows) == 1:
+            rows.append(("󰄬", tr("settings.audio_status", "Sorties et entrées"), tr("settings.audio_status.unavailable", "Aucun périphérique détaillé reçu de PipeWire pour le moment."), None))
+        info_dialog(
+            tr("settings.sound", "Son"),
+            tr("settings.sound_overview.public_note", "Vue simple des sorties, entrées et du volume. Les réglages avancés restent accessibles si une app en a besoin."),
+            rows,
+            width=640,
+            height=500,
+        )
+
+    def show_display_overview() -> None:
+        rows: list[tuple[str, str, str, str | None]] = [
+            ("󰃠", tr("settings.brightness", "Luminosité"), f"{brightness_state()}%", tr("settings.active", "Actif")),
+        ]
+        for monitor in monitors_state():
+            rows.append(
+                (
+                    "󰍹",
+                    str(monitor.get("name") or tr("settings.all_monitors", "Tous les écrans")),
+                    str(monitor.get("label") or monitor.get("resolution") or "preferred"),
+                    f"{monitor.get('scale', '1')}x",
+                )
+            )
+        info_dialog(
+            tr("settings.displays", "Écrans"),
+            tr("settings.display_overview.public_note", "Vue claire des écrans détectés, de la résolution et de l’échelle avant toute modification."),
+            rows,
+            width=660,
+            height=500,
+        )
+
+    def show_keyboard_overview() -> None:
+        payload = run_json_timeout([str(ROOT / "bin/seven"), "keyboard", "status", "--json"], {}, timeout=0.8)
+        rows = [
+            ("󰌌", tr("settings.layouts", "Langues du clavier"), str(payload.get("layouts") or "us,fr"), tr("settings.ready", "Prêt") if payload.get("ready") else None),
+            ("󰜉", tr("settings.keyboard_switch", "Bascule clavier"), str(payload.get("switch") or "Alt+Shift"), None),
+            ("󰉋", tr("settings.keyboard_source", "Source SevenOS"), str(payload.get("path") or "keyboard.conf"), None),
+            ("󰄬", tr("settings.shortcut_audit", "Vérifier les raccourcis"), tr("settings.shortcut_audit.note", "Les raccourcis sont régénérés par SevenOS et restent visibles dans Aide."), None),
+        ]
+        info_dialog(
+            tr("settings.keyboard", "Clavier"),
+            tr("settings.keyboard_overview.public_note", "Résumé de l’entrée clavier sans ouvrir de fichier de configuration."),
+            rows,
+            width=640,
+            height=500,
+        )
+
+    def show_shortcuts_overview() -> None:
+        rows = [
+            ("⌘", "Ctrl + F / Ctrl + L", tr("settings.shortcut.settings_search.note", "Chercher rapidement une page de réglages."), tr("settings.settings_app", "Paramètres")),
+            ("⌘", "Ctrl + R", tr("settings.shortcut.settings_refresh.note", "Actualiser la page active avec les informations live."), tr("settings.settings_app", "Paramètres")),
+            ("⌘", "Alt + ← / Alt + →", tr("settings.shortcut.settings_history.note", "Naviguer dans l’historique des pages ouvertes."), tr("settings.settings_app", "Paramètres")),
+            ("⌘", "PageUp / PageDown", tr("settings.shortcut.settings_pages.note", "Passer à la page précédente ou suivante de la barre latérale."), tr("settings.settings_app", "Paramètres")),
+            ("⌘", "Ctrl + 0…9", tr("settings.shortcut.settings_direct.note", "Ouvrir la vue d’ensemble ou directement les premières pages de réglages."), tr("settings.settings_app", "Paramètres")),
+            ("⌘", "Ctrl + Home / End", tr("settings.shortcut.settings_edges.note", "Aller au début ou à la fin des pages de réglages."), tr("settings.settings_app", "Paramètres")),
+            ("⌘", "Entrée / Espace", tr("settings.shortcut.settings_row.note", "Lancer l’action principale de la ligne sélectionnée."), tr("settings.settings_app", "Paramètres")),
+            ("⌘", "F1 / Ctrl + ?", tr("settings.shortcut.settings_help.note", "Afficher ce résumé des raccourcis."), tr("settings.settings_app", "Paramètres")),
+            ("⌘", "Super + H", tr("settings.shortcut.help.note", "Ouvrir l’aide SevenOS et les commandes utiles."), tr("settings.recommended", "Recommandé")),
+            ("⌘", "Super + E", tr("settings.shortcut.files.note", "Ouvrir Seven Files."), None),
+            ("⌘", "Super + Space", tr("settings.shortcut.spotlight.note", "Ouvrir Spotlight SevenOS."), None),
+            ("⌘", "Super + Enter", tr("settings.shortcut.terminal.note", "Ouvrir Seven Terminal dans l’espace actif."), None),
+            ("⌘", "Super + Shift + P", tr("settings.shortcut.prism.note", "Activer ou masquer le Prism flottant."), None),
+            ("⌘", "Super + Shift + R", tr("settings.shortcut.reload.note", "Rafraîchir la session quand l’interface est décalée."), None),
+        ]
+        info_dialog(
+            tr("settings.shortcuts", "Raccourcis"),
+            tr("settings.shortcuts_overview.public_note", "Les raccourcis essentiels restent simples et visibles. Les raccourcis avancés sont documentés dans l’aide."),
+            rows,
+            width=660,
+            height=520,
+        )
+
+    def show_security_dashboard() -> None:
+        shield_percent, shield_posture = shield_state()
+        firewall_name, firewall_detail = firewall_state()
+        rows = [
+            ("󰒃", "Shield", f"{shield_percent} · {shield_posture}", tr("settings.ready", "Prêt")),
+            ("󰞀", firewall_name, firewall_detail, None),
+            ("󰈙", tr("settings.sandbox", "Isolation"), tr("settings.sandbox.note", "Les apps mini OS utilisent leur espace quand elles passent par SevenOS."), tr("settings.ready", "Prêt")),
+            ("󰚰", tr("settings.security_updates", "Mises à jour sécurité"), tr("settings.security_updates.note", "SevenOS passe par le moteur de mise à jour protégé."), None),
+            ("󰌾", tr("settings.permissions", "Permissions"), tr("settings.permissions.note", "Micro, caméra, notifications et historique sont regroupés dans Confidentialité."), None),
+        ]
+        info_dialog(
+            tr("settings.security", "Sécurité"),
+            tr("settings.security_dashboard.public_note", "Résumé grand public des protections actives, sans ouvrir de terminal."),
+            rows,
+            width=660,
+            height=520,
+        )
+
+    def show_privacy_dashboard() -> None:
+        notification_backend, notification_backend_status = notification_backend_state()
+        spotlight_label, spotlight_detail = spotlight_privacy_state()
+        rows = [
+            ("󰂚", tr("settings.notifications", "Notifications"), f"{notification_backend} · {notification_backend_status}", notification_count_state()),
+            ("󰌾", tr("settings.focus_mode", "Mode focus"), notification_focus_state(), None),
+            ("󰚰", tr("settings.spotlight_history", "Historique Spotlight"), f"{spotlight_label} · {spotlight_detail}", None),
+            ("󰍬", tr("settings.microphone_camera", "Microphone et caméra"), tr("settings.permissions.visible_note", "Contrôle visible via Son et les portails de session."), None),
+            ("󰌾", tr("settings.local_ai_data", "Données SevenAI"), tr("settings.local_ai_default", "Local par défaut"), tr("settings.private", "Local")),
+        ]
+        info_dialog(
+            tr("settings.privacy", "Confidentialité"),
+            tr("settings.privacy_dashboard.public_note", "Vue simple des données locales, notifications et permissions sensibles."),
+            rows,
+            width=660,
+            height=520,
+        )
+
+    def show_apps_dashboard() -> None:
+        store_label, store_detail = store_state()
+        rows = [
+            ("󰏗", "SevenStore", store_detail, tr("settings.ready", "Prêt") if store_label == "SevenStore" else None),
+            ("󰀻", tr("settings.desktop_launchers", "Lanceurs système"), desktop_launcher_count(), None),
+            ("󰈙", "Flatpak", flatpak_app_count(), None),
+            ("󰒓", tr("settings.default_apps", "Apps par défaut"), tr("settings.default_apps.public_note", "Fichiers, liens, médias, images, mail et archives."), None),
+            ("󰆴", tr("settings.package_remove.title", "Supprimer une application"), tr("settings.package_remove.row_note", "Suppression avec prévisualisation et choix du mini OS."), None),
+        ]
+        info_dialog(
+            tr("settings.apps", "Apps"),
+            tr("settings.apps_dashboard.public_note", "Résumé public des apps installées, sources et actions sûres."),
+            rows,
+            width=660,
+            height=520,
+        )
+
+    def show_backup_wizard() -> None:
+        last_title, last_detail = backup_last_state()
+        rows = [
+            ("1", tr("settings.backup_step.choose", "Choisir quoi protéger"), tr("settings.backup_step.choose.note", "Configuration SevenOS, mini OS, préférences utilisateur et état d’installation."), None),
+            ("2", tr("settings.backup_step.destination", "Choisir une destination"), tr("settings.backup_step.destination.note", "Local maintenant; SevenCloud reste guidé tant que la synchronisation publique n’est pas finalisée."), None),
+            ("3", tr("settings.backup_step.run", "Créer la sauvegarde"), tr("settings.backup_step.run.note", "SevenOS lance l’opération dans un suivi graphique avec compte rendu."), None),
+            ("󰄬", last_title, last_detail, None),
+        ]
+        info_dialog(
+            tr("settings.backup_restore", "Sauvegarde et restauration"),
+            tr("settings.backup_wizard.public_note", "Parcours lisible avant de lancer une sauvegarde ou une restauration."),
+            rows,
+            width=660,
+            height=520,
+        )
 
     def show_ai_overview() -> None:
         provider = tr("settings.ai_local", "Local")
@@ -2662,6 +3681,18 @@ def run(initial_page: str = "overview") -> int:
         if stripped.startswith("journalctl"):
             show_alerts_overview()
             return True
+        if stripped.startswith("hyprctl monitors"):
+            show_display_overview()
+            return True
+        if stripped.startswith("seven keyboard status"):
+            show_keyboard_overview()
+            return True
+        if stripped in {"seven-wifi connect", "seven-waybar-center-native network"} or stripped.startswith("nm-connection-editor"):
+            show_network_overview()
+            return True
+        if stripped in {"seven-waybar-center-native audio", "pavucontrol || wpctl status"} or stripped.startswith("wpctl status"):
+            show_sound_overview()
+            return True
         if stripped.startswith("seven fonts status"):
             show_fonts_overview()
             return True
@@ -2670,6 +3701,9 @@ def run(initial_page: str = "overview") -> int:
             return True
         if stripped.startswith("seven ai provider"):
             show_ai_overview()
+            return True
+        if stripped.startswith(("seven-waybar-notifications", "seven-quick-settings notifications", "seven-spotlight history")):
+            show_privacy_dashboard()
             return True
         if stripped.startswith("seven cloud plan"):
             show_plan_overview(
@@ -2685,7 +3719,16 @@ def run(initial_page: str = "overview") -> int:
                 [str(ROOT / "bin/seven"), "manifest", "restore-plan"],
             )
             return True
-        if stripped.startswith("seven shield audit"):
+        if stripped.startswith(("seven shield audit", "seven shield enable")):
+            show_security_dashboard()
+            return True
+        if stripped.startswith("seven recovery plan") or stripped.startswith("seven cloud plan"):
+            show_backup_wizard()
+            return True
+        if stripped.startswith("seven recovery backup"):
+            show_command_output(stripped, tr("settings.create_backup", "Créer une sauvegarde SevenOS"))
+            return True
+        if stripped.startswith("seven shield mode"):
             show_security_overview()
             return True
         if stripped.startswith("seven hypr lua audit"):
@@ -2698,6 +3741,7 @@ def run(initial_page: str = "overview") -> int:
 
     def mark_action_running(button: Gtk.Button, message: str | None = None) -> None:
         old_label = button.get_label() or ""
+        button.sevenos_old_label = old_label
         if old_label:
             button.set_label(tr("settings.running", "En cours…"))
         button.get_style_context().add_class("busy")
@@ -2714,21 +3758,55 @@ def run(initial_page: str = "overview") -> int:
 
         GLib.timeout_add(760, restore)
 
+    def mark_action_done(button: Gtk.Button) -> None:
+        old_label = getattr(button, "sevenos_old_label", None)
+        if isinstance(old_label, str) and old_label:
+            button.set_label(old_label)
+        button.get_style_context().remove_class("busy")
+        button.set_sensitive(True)
+
+    def pulse_button(button: Gtk.Button, duration: int = 260) -> None:
+        button.get_style_context().add_class("busy")
+
+        def restore() -> bool:
+            button.get_style_context().remove_class("busy")
+            return False
+
+        GLib.timeout_add(duration, restore)
+
+    def button_recently_triggered(button: Gtk.Button, window_ms: int = 650) -> bool:
+        now = time.monotonic() * 1000
+        last = getattr(button, "sevenos_last_click_ms", None)
+        if isinstance(last, (int, float)) and now - float(last) < window_ms:
+            return True
+        button.sevenos_last_click_ms = now
+        return False
+
     def nav(name: str, icon: str, label: str, target: str) -> None:
         button = Gtk.Button()
         button.get_style_context().add_class("nav-button")
+        button.set_tooltip_text(tr("settings.nav.tooltip", "Ouvrir {page}", page=label))
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=11)
         glyph = Gtk.Label(label=icon)
         text = Gtk.Label(label=label)
         text.set_xalign(0)
         text.set_hexpand(True)
+        text.set_ellipsize(Pango.EllipsizeMode.END)
+        text.set_max_width_chars(18 if compact_screen else 22)
         row.pack_start(glyph, False, False, 0)
         row.pack_start(text, True, True, 0)
         button.add(row)
         button.connect("clicked", lambda clicked: activate_page(target, clicked))
         nav_buttons.append(button)
         nav_by_target[target] = button
+        nav_titles[target] = label
         sidebar.pack_start(button, False, False, 0)
+
+    def sidebar_section(label: str) -> None:
+        section_label = Gtk.Label(label=label.upper())
+        section_label.set_xalign(0)
+        section_label.get_style_context().add_class("sidebar-section-label")
+        sidebar.pack_start(section_label, False, False, 0)
 
     def section(container: Gtk.Box, text: str) -> None:
         label = Gtk.Label(label=text.upper())
@@ -2741,19 +3819,29 @@ def run(initial_page: str = "overview") -> int:
         grid.set_column_spacing(10)
         grid.set_row_spacing(10)
         grid.set_halign(Gtk.Align.START)
+        columns = 2 if content_width < 620 else 3
+        status_width = max(150, int((content_width - (10 * (columns - 1))) / columns))
         for index, (value, label) in enumerate(items):
             card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            card.set_can_focus(True)
+            card.set_tooltip_text(f"{label}: {value}")
+            card.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+            card.connect("button-press-event", lambda widget, _event: (widget.grab_focus(), False)[1])
             card.get_style_context().add_class("status-card")
             value_label = Gtk.Label(label=value)
             value_label.set_xalign(0)
+            value_label.set_ellipsize(Pango.EllipsizeMode.END)
+            value_label.set_max_width_chars(22)
             value_label.get_style_context().add_class("status-value")
             note = Gtk.Label(label=label)
             note.set_xalign(0)
+            note.set_line_wrap(True)
+            note.set_max_width_chars(28)
             note.get_style_context().add_class("status-label")
             card.pack_start(value_label, False, False, 0)
             card.pack_start(note, False, False, 0)
-            card.set_size_request(118, -1)
-            grid.attach(card, index % 3, index // 3, 1, 1)
+            card.set_size_request(status_width, -1)
+            grid.attach(card, index % columns, index // columns, 1, 1)
         container.pack_start(grid, False, False, 0)
 
     def card_grid(container: Gtk.Box, cards: list[Gtk.Widget], columns: int = 2) -> None:
@@ -2766,6 +3854,19 @@ def run(initial_page: str = "overview") -> int:
             card.set_size_request(card_width if columns > 1 else content_width, -1)
             grid.attach(card, index % columns, index // columns, 1, 1)
         container.pack_start(grid, False, False, 0)
+
+    def action_flow(actions: list[Gtk.Widget]) -> Gtk.FlowBox:
+        flow = Gtk.FlowBox()
+        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        flow.set_halign(Gtk.Align.START)
+        flow.set_valign(Gtk.Align.CENTER)
+        flow.set_column_spacing(8)
+        flow.set_row_spacing(8)
+        flow.set_max_children_per_line(4)
+        flow.get_style_context().add_class("settings-action-flow")
+        for action in actions:
+            flow.add(action)
+        return flow
 
     def hero_card(title: str, note: str, actions: list[Gtk.Widget] | None = None) -> Gtk.Box:
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
@@ -2781,12 +3882,47 @@ def run(initial_page: str = "overview") -> int:
         card.pack_start(title_label, False, False, 0)
         card.pack_start(note_label, False, False, 0)
         if actions:
-            action_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-            action_row.set_halign(Gtk.Align.START)
-            action_row.set_margin_top(8)
-            for action in actions:
-                action_row.pack_start(action, False, False, 0)
-            card.pack_start(action_row, False, False, 0)
+            flow = action_flow(actions)
+            flow.set_margin_top(8)
+            card.pack_start(flow, False, False, 0)
+        return card
+
+    def workflow_card(title: str, note: str, steps: list[tuple[str, str]], actions: list[Gtk.Widget] | None = None) -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("settings-insight-card")
+        title_label = Gtk.Label(label=title)
+        title_label.set_xalign(0)
+        title_label.get_style_context().add_class("hero-title")
+        note_label = Gtk.Label(label=note)
+        note_label.set_xalign(0)
+        note_label.set_line_wrap(True)
+        note_label.get_style_context().add_class("hero-note")
+        card.pack_start(title_label, False, False, 0)
+        card.pack_start(note_label, False, False, 0)
+        for index, (step_title, step_note) in enumerate(steps, start=1):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            row.set_can_focus(True)
+            row.set_tooltip_text(f"{step_title}\n{step_note}")
+            row.get_style_context().add_class("settings-workflow-row")
+            badge = Gtk.Label(label=str(index))
+            badge.get_style_context().add_class("settings-workflow-index")
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            labels.set_hexpand(True)
+            step = Gtk.Label(label=step_title)
+            step.set_xalign(0)
+            step.get_style_context().add_class("settings-row-title")
+            detail = Gtk.Label(label=step_note)
+            detail.set_xalign(0)
+            detail.set_line_wrap(True)
+            detail.get_style_context().add_class("settings-row-note")
+            labels.pack_start(step, False, False, 0)
+            labels.pack_start(detail, False, False, 0)
+            row.pack_start(badge, False, False, 0)
+            row.pack_start(labels, True, True, 0)
+            card.pack_start(row, False, False, 0)
+        if actions:
+            card.pack_start(action_flow(actions), False, False, 0)
         return card
 
     output_action_prefixes = (
@@ -3472,6 +4608,11 @@ def run(initial_page: str = "overview") -> int:
         dialog.set_default_size(min(760, max(560, int(screen_width * 0.52))), min(460, max(340, int(screen_height * 0.52))))
         close_button = dialog.add_button(tr("settings.close", "Fermer"), Gtk.ResponseType.CLOSE)
         cancel_button = dialog.add_button(tr("settings.cancel", "Annuler"), Gtk.ResponseType.CANCEL)
+        close_button.get_style_context().add_class("action-button")
+        cancel_button.get_style_context().add_class("destructive-action")
+        close_button.set_tooltip_text(tr("settings.close_when_done", "Fermer quand l’action est terminée."))
+        cancel_button.set_tooltip_text(tr("settings.cancel_running_action", "Interrompre l’action en cours."))
+        close_button.set_sensitive(False)
         box = style_dialog(dialog)
         box.set_spacing(10)
         box.set_border_width(14)
@@ -3627,29 +4768,36 @@ def run(initial_page: str = "overview") -> int:
             clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
             clipboard.set_text(last_output.get("text") or ui_command, -1)
             clipboard.store()
-            show_feedback(tr("settings.command_output.copied", "Compte rendu copié."))
+            show_feedback(tr("settings.command_output.copied", "Compte rendu copié."), "success")
 
         copy_button = Gtk.Button(label=tr("settings.copy_details", "Copier le compte rendu"))
         copy_button.get_style_context().add_class("action-button")
+        copy_button.set_tooltip_text(tr("settings.copy_details.tooltip", "Copier le compte rendu disponible dans le presse-papiers."))
+        copy_button.set_sensitive(False)
         copy_button.connect("clicked", copy_details)
         dialog.get_action_area().pack_start(copy_button, False, False, 0)
         copy_button.show()
 
         def on_response(_dialog: Gtk.Dialog, response: int) -> None:
             process = process_ref.get("process")
-            if response == Gtk.ResponseType.CANCEL and process and process.poll() is None:
-                process.terminate()
-                status.set_text(tr("settings.command_output.cancelled", "Action annulée."))
-                set_action_state("error")
-                set_step(len(step_labels) - 1, "error", tr("settings.operation_result.cancelled", "Annulé"))
-                activity_label.set_text(tr("settings.command_output.cancelled", "Action annulée."))
-                cancel_button.set_sensitive(False)
+            if process and process.poll() is None:
+                if response == Gtk.ResponseType.CANCEL:
+                    process.terminate()
+                    status.set_text(tr("settings.command_output.cancelled", "Action annulée."))
+                    set_action_state("error")
+                    set_step(len(step_labels) - 1, "error", tr("settings.operation_result.cancelled", "Annulé"))
+                    activity_label.set_text(tr("settings.command_output.cancelled", "Action annulée."))
+                    cancel_button.set_sensitive(False)
+                    close_button.set_sensitive(True)
+                    copy_button.set_sensitive(True)
+                    return
+                show_feedback(tr("settings.command_output.still_running", "Action en cours. Utilise Annuler pour l’interrompre."), "warning")
                 return
             dialog.destroy()
 
         dialog.connect("response", on_response)
         dialog.show_all()
-        close_button.set_sensitive(True)
+        close_button.set_sensitive(False)
         if command.strip() == "seven status":
             about = system_about()
             rows = [
@@ -3665,6 +4813,7 @@ def run(initial_page: str = "overview") -> int:
             summary = "\n".join(rows)
             buffer.set_text(summary)
             last_output["text"] = f"$ seven status\n\n{summary}\n\nexit=0"
+            copy_button.set_sensitive(True)
             status.set_text(tr("settings.command_output.done", "Terminé."))
             set_action_state("success")
             complete_steps(True)
@@ -3673,6 +4822,7 @@ def run(initial_page: str = "overview") -> int:
             progress.set_show_text(True)
             progress.set_text("OK")
             cancel_button.set_sensitive(False)
+            close_button.set_sensitive(True)
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
             with SETTINGS_ACTION_LOG.open("a", encoding="utf-8") as handle:
                 handle.write(f"\n--- SevenOS Settings action ---\n$ seven status\nexit=0\n{summary}\n")
@@ -3690,6 +4840,7 @@ def run(initial_page: str = "overview") -> int:
                     return False
                 line_count["value"] += 1
                 last_output["text"] = f"$ {ui_command}\n\n" + "\n".join(output_lines[-500:])
+                copy_button.set_sensitive(True)
                 stage = operation_stage(line)
                 set_step(min(1 if line_count["value"] < 4 else 2, len(step_labels) - 1), "running", stage)
                 activity_label.set_text(stage)
@@ -3777,6 +4928,8 @@ def run(initial_page: str = "overview") -> int:
                 progress.set_show_text(True)
                 progress.set_text("OK" if code == 0 else tr("settings.needs_attention", "À vérifier"))
                 cancel_button.set_sensitive(False)
+                close_button.set_sensitive(True)
+                copy_button.set_sensitive(True)
                 CACHE_DIR.mkdir(parents=True, exist_ok=True)
                 with SETTINGS_ACTION_LOG.open("a", encoding="utf-8") as handle:
                     handle.write(f"\n--- SevenOS Settings action ---\n$ {ui_command}\nexit={code}\n{clean_output[-4000:]}\n")
@@ -3859,7 +5012,11 @@ def run(initial_page: str = "overview") -> int:
                     (
                         "✓" if success else "!",
                         friendly_command_name(command),
-                        tr("settings.action_history.success_note", "Action terminée correctement.") if success else tr("settings.action_history.failed_note", "Action non terminée. Le compte rendu peut être copié."),
+                        (
+                            tr("settings.action_history.success_note", "Action terminée correctement.")
+                            if success
+                            else f"{tr('settings.action_history.failed_note', 'Action non terminée. Le compte rendu peut être copié.')} · {command or tr('settings.unknown', 'Inconnu')}"
+                        ),
                         tr("settings.done", "Terminé") if success else tr("settings.needs_attention", "À vérifier"),
                     )
                 )
@@ -3886,7 +5043,8 @@ def run(initial_page: str = "overview") -> int:
             row_title_label.get_style_context().add_class("settings-row-title")
             row_note_label = Gtk.Label(label=row_note)
             row_note_label.set_xalign(0)
-            row_note_label.set_ellipsize(Pango.EllipsizeMode.END)
+            row_note_label.set_line_wrap(True)
+            row_note_label.set_max_width_chars(78)
             row_note_label.get_style_context().add_class("settings-row-note")
             labels.pack_start(row_title_label, False, False, 0)
             labels.pack_start(row_note_label, False, False, 0)
@@ -3907,7 +5065,7 @@ def run(initial_page: str = "overview") -> int:
             clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
             clipboard.set_text(payload, -1)
             clipboard.store()
-            show_feedback(tr("settings.action_history.copied", "Historique copié."))
+            show_feedback(tr("settings.action_history.copied", "Historique copié."), "success")
 
         def clear_history(_button: Gtk.Button) -> None:
             nonlocal raw_history
@@ -3935,7 +5093,7 @@ def run(initial_page: str = "overview") -> int:
             empty_row.add(wrapper)
             action_list.add(empty_row)
             action_list.show_all()
-            show_feedback(tr("settings.action_history.cleared", "Historique vidé."))
+            show_feedback(tr("settings.action_history.cleared", "Historique vidé."), "success")
 
         copy_button = Gtk.Button(label=tr("settings.copy", "Copier"))
         copy_button.get_style_context().add_class("action-button")
@@ -3955,35 +5113,107 @@ def run(initial_page: str = "overview") -> int:
 
     def action_button(label: str, command: str, feedback: str | None = None) -> Gtk.Button:
         button = Gtk.Button(label=label)
+        button.set_can_focus(True)
         button.get_style_context().add_class("action-button")
         button.set_tooltip_text(tr("settings.action.tooltip", "Lancer cette action SevenOS"))
 
+        def sensitive_action(command_text: str) -> tuple[str, str, str] | None:
+            stripped = command_text.strip()
+            if stripped.startswith("seven-power lock"):
+                return (
+                    tr("settings.confirm.lock.title", "Verrouiller la session ?"),
+                    tr("settings.confirm.lock.note", "Les apps restent ouvertes, mais tu devras entrer ton mot de passe pour revenir."),
+                    tr("settings.lock", "Verrouiller"),
+                )
+            if stripped.startswith("seven profile migrate-aliases"):
+                return (
+                    tr("settings.confirm.aliases.title", "Nettoyer les anciens noms ?"),
+                    tr("settings.confirm.aliases.note", "SevenOS retirera les anciens alias de profils pour éviter les confusions dans les mini OS."),
+                    tr("settings.repair", "Réparer"),
+                )
+            if stripped.startswith("seven profile requirements") and "--apply" in stripped:
+                return (
+                    tr("settings.confirm.requirements.title", "Installer les besoins essentiels ?"),
+                    tr("settings.confirm.requirements.note", "SevenOS peut installer des paquets manquants pour rendre les mini OS complets sur cette machine."),
+                    tr("settings.install", "Installer"),
+                )
+            if stripped.startswith("seven migrate backup"):
+                return (
+                    tr("settings.confirm.backup.title", "Créer une sauvegarde maintenant ?"),
+                    tr("settings.confirm.backup.note", "SevenOS va préparer une sauvegarde de migration et afficher le résultat dans Paramètres."),
+                    tr("settings.create", "Créer"),
+                )
+            return None
+
+        def confirm_sensitive(command_text: str) -> bool:
+            payload = sensitive_action(command_text)
+            if not payload:
+                return True
+            title_text, note_text, accept_label = payload
+            dialog = Gtk.MessageDialog(
+                transient_for=window,
+                flags=Gtk.DialogFlags.MODAL,
+                message_type=Gtk.MessageType.QUESTION,
+                buttons=Gtk.ButtonsType.NONE,
+                text=title_text,
+            )
+            dialog.get_style_context().add_class("settings-dialog")
+            dialog.format_secondary_text(note_text)
+            dialog.add_button(tr("settings.cancel", "Annuler"), Gtk.ResponseType.CANCEL)
+            continue_button = dialog.add_button(accept_label, Gtk.ResponseType.ACCEPT)
+            continue_button.get_style_context().add_class("suggested-action")
+            response = dialog.run()
+            dialog.destroy()
+            return response == Gtk.ResponseType.ACCEPT
+
         def clicked(_button, cmd=command, feedback_text=feedback) -> None:
-            mark_action_running(_button, feedback_text or tr("settings.action_started", "Action lancée."))
+            if button_recently_triggered(_button):
+                pulse_button(_button, 160)
+                return
+            if not confirm_sensitive(cmd):
+                pulse_button(_button, 180)
+                show_feedback(tr("settings.action_cancelled", "Action annulée."), "warning")
+                return
             if cmd.strip().startswith("seven update"):
+                pulse_button(_button)
+                if feedback_text:
+                    show_feedback(feedback_text)
                 GLib.idle_add(lambda: (show_update_manager(), False)[1])
                 return
             if handle_graphical_action(cmd):
+                pulse_button(_button)
+                if feedback_text:
+                    show_feedback(feedback_text)
                 return
+            mark_action_running(_button, feedback_text or tr("settings.action_started", "Action lancée."))
             if should_show_output(cmd):
                 GLib.idle_add(lambda: (show_command_output(cmd, _button.get_label()), False)[1])
             else:
                 GLib.idle_add(lambda: (run_detached(cmd), False)[1])
 
         button.connect("clicked", clicked)
+        sensitive = sensitive_action(command)
+        if sensitive:
+            button.set_tooltip_text(f"{sensitive[0]} · {sensitive[2]}")
         return button
 
     def callback_button(label: str, tooltip: str, callback, feedback: str | None = None) -> Gtk.Button:
         button = Gtk.Button(label=label)
+        button.set_can_focus(True)
         button.get_style_context().add_class("action-button")
         button.set_tooltip_text(tooltip)
 
         def clicked(_button) -> None:
-            mark_action_running(_button, feedback or tr("settings.action_started", "Action lancée."))
+            if button_recently_triggered(_button):
+                pulse_button(_button, 160)
+                return
+            pulse_button(_button)
+            if feedback:
+                show_feedback(feedback)
             try:
                 callback()
             except Exception as exc:
-                show_feedback(tr("settings.action_failed", "Action impossible pour le moment."))
+                show_feedback(tr("settings.action_failed", "Action impossible pour le moment."), "error")
 
         button.connect("clicked", clicked)
         return button
@@ -3993,7 +5223,7 @@ def run(initial_page: str = "overview") -> int:
             label,
             f"settings:{target}",
             lambda page_name=target: activate_page(page_name, nav_by_target[page_name]),
-            tr("settings.search.opened", "Page ouverte."),
+            page_opened_message(target),
         )
 
     def copy_system_summary() -> None:
@@ -4012,7 +5242,7 @@ def run(initial_page: str = "overview") -> int:
         clipboard.set_text(summary, -1)
         clipboard.store()
         notify("Réglages SevenOS", tr("settings.system_summary_copied", "Résumé copié."))
-        show_feedback(tr("settings.system_info_copied", "Résumé copié."))
+        show_feedback(tr("settings.system_info_copied", "Résumé copié."), "success")
 
     def quick_dot(icon: str, tooltip: str, command: str) -> Gtk.Button:
         button = Gtk.Button(label=icon)
@@ -4023,7 +5253,15 @@ def run(initial_page: str = "overview") -> int:
             parts = cmd.strip().split()
             if len(parts) == 2 and parts[0] in {"seven-settings", "seven-settings-native"} and parts[1] in nav_by_target:
                 activate_page(parts[1], nav_by_target[parts[1]])
-                show_feedback(tr("settings.search.opened", "Page ouverte."))
+                show_feedback(page_opened_message(parts[1]))
+                return
+            if cmd.strip().startswith("seven update"):
+                show_update_manager()
+                return
+            if handle_graphical_action(cmd):
+                return
+            if should_show_output(cmd):
+                show_command_output(cmd, tooltip)
                 return
             run_detached(cmd)
 
@@ -4164,6 +5402,7 @@ def run(initial_page: str = "overview") -> int:
         rotation_panel.set_hexpand(True)
         rotation_toggle = Gtk.ToggleButton(label=tr("settings.wallpaper.rotation_select", "Sélection rotation"))
         rotation_toggle.get_style_context().add_class("wallpaper-filter")
+        rotation_toggle.set_tooltip_text(tr("settings.wallpaper.rotation_select.tooltip", "Activer le mode de sélection des fonds à faire tourner."))
         rotation_count = Gtk.Label(label=tr("settings.wallpaper.rotation_count", "{count} sélectionné(s)", count=0))
         rotation_count.set_xalign(0)
         rotation_count.get_style_context().add_class("wallpaper-collection-note")
@@ -4188,12 +5427,16 @@ def run(initial_page: str = "overview") -> int:
         rotation_apply.get_style_context().add_class("primary-action")
         rotation_next = Gtk.Button(label=tr("settings.wallpaper.rotation_next", "Suivant"))
         rotation_next.get_style_context().add_class("action-button")
+        rotation_next.set_tooltip_text(tr("settings.wallpaper.rotation_next.tooltip", "Passer au fond suivant de la rotation."))
         rotation_visible = Gtk.Button(label=tr("settings.wallpaper.rotation_visible", "Sélectionner visibles"))
         rotation_visible.get_style_context().add_class("action-button")
+        rotation_visible.set_tooltip_text(tr("settings.wallpaper.rotation_visible.tooltip", "Ajouter tous les fonds visibles à la rotation."))
         rotation_clear = Gtk.Button(label=tr("settings.clear", "Effacer"))
         rotation_clear.get_style_context().add_class("action-button")
+        rotation_clear.set_tooltip_text(tr("settings.wallpaper.rotation_clear.tooltip", "Retirer tous les fonds sélectionnés pour la rotation."))
         rotation_stop = Gtk.Button(label=tr("settings.wallpaper.rotation_stop", "Désactiver"))
         rotation_stop.get_style_context().add_class("action-button")
+        rotation_stop.set_tooltip_text(tr("settings.wallpaper.rotation_stop.tooltip", "Désactiver la rotation automatique des fonds."))
         rotation_panel.pack_start(rotation_toggle, False, False, 0)
         rotation_panel.pack_start(rotation_count, True, True, 0)
         rotation_panel.pack_start(rotation_status, True, True, 0)
@@ -4243,6 +5486,9 @@ def run(initial_page: str = "overview") -> int:
                 preview_title.set_text(tr("settings.wallpaper.no_selection", "Aucun fond sélectionné"))
                 preview_meta.set_text("")
                 preview_image.clear()
+                apply_button.set_sensitive(False)
+                apply_button.set_label(tr("settings.set_wallpaper", "Définir le fond"))
+                apply_button.set_tooltip_text(tr("settings.wallpaper.no_selection", "Aucun fond sélectionné"))
                 return
             title_text = str(item.get("title") or item.get("slug") or "")
             tone = str(item.get("tone") or "")
@@ -4251,6 +5497,10 @@ def run(initial_page: str = "overview") -> int:
             family = str(item.get("family") or "")
             preview_title.set_text(title_text)
             preview_meta.set_text(f"{tone} · {family} · {moment}\n{style}\n{tr('settings.wallpaper.double_click_hint', 'Astuce : double-clic sur une miniature pour appliquer rapidement.')}")
+            short_title = title_text if len(title_text) <= 22 else f"{title_text[:21]}…"
+            apply_button.set_sensitive(True)
+            apply_button.set_label(tr("settings.set_wallpaper_named", "Définir {name}", name=short_title))
+            apply_button.set_tooltip_text(tr("settings.set_wallpaper_named_full", "Définir “{name}” comme fond d’écran.", name=title_text))
             pixbuf = scaled_wallpaper_pixbuf(item, 290, 164)
             if pixbuf is not None:
                 preview_image.set_from_pixbuf(pixbuf)
@@ -4269,6 +5519,12 @@ def run(initial_page: str = "overview") -> int:
         def refresh_rotation_count() -> None:
             rotation_count.set_text(tr("settings.wallpaper.rotation_count", "{count} sélectionné(s)", count=len(rotation_selection)))
             seconds = int(interval_spin.get_value())
+            rotation_apply.set_sensitive(len(rotation_selection) >= 2)
+            rotation_apply.set_tooltip_text(
+                tr("settings.wallpaper.rotation_apply_ready", "Activer la rotation avec {count} fonds.", count=len(rotation_selection))
+                if len(rotation_selection) >= 2
+                else tr("settings.wallpaper.rotation_apply_disabled", "Sélectionne au moins deux fonds pour activer la rotation.")
+            )
             if rotation_mode["enabled"]:
                 rotation_status.set_text(tr("settings.wallpaper.rotation_active", "Rotation active · {count} fonds · {seconds}s", count=len(rotation_selection), seconds=seconds))
             else:
@@ -4348,7 +5604,10 @@ def run(initial_page: str = "overview") -> int:
             content.pack_start(title_label, False, False, 0)
             content.pack_start(meta, False, False, 0)
             button.add(content)
-            button.set_tooltip_text(slug)
+            button.set_tooltip_text(
+                f"{label}\n{tone} · {style}\n"
+                + tr("settings.wallpaper.choice.tooltip", "Clic pour prévisualiser, double-clic pour appliquer.")
+            )
             button.connect("clicked", lambda _button, item_payload=item: choose_item(item_payload))
 
             def on_button_press(_button, event, item_payload=item) -> bool:
@@ -4505,6 +5764,7 @@ def run(initial_page: str = "overview") -> int:
         ):
             preset_button = Gtk.Button(label=preset_name)
             preset_button.get_style_context().add_class("wallpaper-filter")
+            preset_button.set_tooltip_text(tr("settings.wallpaper.rotation_preset.tooltip", "Préparer une rotation {name}.", name=preset_name))
             preset_button.connect("clicked", lambda _button, label=preset_name, delay=seconds, picks=slugs: set_rotation_preset(label, delay, picks))
             preset_row.pack_start(preset_button, False, False, 0)
 
@@ -4523,6 +5783,7 @@ def run(initial_page: str = "overview") -> int:
         ):
             filter_button = Gtk.Button(label=f"{label} · {tone_counts.get(tone, 0)}")
             filter_button.get_style_context().add_class("wallpaper-filter")
+            filter_button.set_tooltip_text(tr("settings.wallpaper.filter_tone", "Filtrer les fonds par ambiance : {tone}", tone=label))
             filter_button.connect("clicked", lambda _button, item_tone=tone: set_tone_filter(item_tone))
             tone_buttons[tone] = filter_button
             tone_bar.pack_start(filter_button, False, False, 0)
@@ -4538,6 +5799,7 @@ def run(initial_page: str = "overview") -> int:
             label = tr("settings.all", "Tous") if family == "all" else family.title()
             filter_button = Gtk.Button(label=f"{label} · {family_counts.get(family, 0)}")
             filter_button.get_style_context().add_class("wallpaper-filter")
+            filter_button.set_tooltip_text(tr("settings.wallpaper.filter_family", "Filtrer les fonds par famille : {family}", family=label))
             filter_button.connect("clicked", lambda _button, item_family=family: set_family_filter(item_family))
             family_buttons[family] = filter_button
             family_bar.pack_start(filter_button, False, False, 0)
@@ -4567,6 +5829,21 @@ def run(initial_page: str = "overview") -> int:
         set_tone_filter("all")
         set_family_filter("all")
         refresh_rotation_count()
+
+        def wallpaper_dialog_key(_dialog, event) -> bool:
+            ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
+            if ctrl and event.keyval in {Gdk.KEY_f, Gdk.KEY_F, Gdk.KEY_l, Gdk.KEY_L, Gdk.KEY_k, Gdk.KEY_K}:
+                search_entry.grab_focus()
+                search_entry.select_region(0, -1)
+                show_feedback(tr("settings.search.ready", "Recherche prête."))
+                return True
+            if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter} and not search_entry.has_focus():
+                apply_selected()
+                return True
+            return False
+
+        dialog.connect("key-press-event", wallpaper_dialog_key)
+        dialog.connect("response", lambda _dialog, _response: dialog.destroy())
         dialog.show_all()
 
     def import_fonts_button(label: str) -> Gtk.Button:
@@ -4627,7 +5904,11 @@ def run(initial_page: str = "overview") -> int:
 
     def settings_row(icon: str, title: str, note: str, controls: list[Gtk.Widget]) -> Gtk.Box:
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.set_can_focus(True)
+        row.set_tooltip_text(f"{title}\n{note}")
         row.get_style_context().add_class("settings-row")
+        if controls:
+            row.get_style_context().add_class("actionable-row")
         glyph = Gtk.Label(label=icon)
         glyph.set_halign(Gtk.Align.CENTER)
         glyph.set_valign(Gtk.Align.CENTER)
@@ -4636,20 +5917,60 @@ def run(initial_page: str = "overview") -> int:
         labels.set_hexpand(True)
         title_label = Gtk.Label(label=title)
         title_label.set_xalign(0)
+        title_label.set_ellipsize(Pango.EllipsizeMode.END)
+        title_label.set_max_width_chars(42)
         title_label.get_style_context().add_class("settings-row-title")
         note_label = Gtk.Label(label=note)
         note_label.set_xalign(0)
-        note_label.set_ellipsize(Pango.EllipsizeMode.END)
+        note_label.set_line_wrap(True)
+        note_label.set_max_width_chars(72)
         note_label.get_style_context().add_class("settings-row-note")
         labels.pack_start(title_label, False, False, 0)
         labels.pack_start(note_label, False, False, 0)
-        control_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        control_box = Gtk.FlowBox()
+        control_box.set_selection_mode(Gtk.SelectionMode.NONE)
+        control_box.set_halign(Gtk.Align.END)
         control_box.set_valign(Gtk.Align.CENTER)
+        control_box.set_column_spacing(8)
+        control_box.set_row_spacing(6)
+        control_box.set_max_children_per_line(3)
+        control_box.get_style_context().add_class("settings-row-controls")
         for control in controls:
-            control_box.pack_start(control, False, False, 0)
+            control_box.add(control)
+        if controls:
+            row.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+            row.set_tooltip_text(
+                f"{title}\n{note}\n"
+                + tr("settings.row.action_hint", "Entrée, Espace ou double-clic pour lancer l’action principale.")
+            )
         row.pack_start(glyph, False, False, 0)
         row.pack_start(labels, True, True, 0)
         row.pack_start(control_box, False, False, 0)
+
+        def activate_default_control() -> bool:
+            for control in controls:
+                if isinstance(control, Gtk.Button) and control.get_sensitive():
+                    control.clicked()
+                    return True
+                if isinstance(control, Gtk.Switch) and control.get_sensitive():
+                    control.set_active(not control.get_active())
+                    return True
+            return False
+
+        def key_press(_row, event) -> bool:
+            if event.keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_space):
+                return activate_default_control()
+            return False
+
+        def button_press(_row, event) -> bool:
+            if event.button == 1:
+                row.grab_focus()
+            if event.button == 1 and event.type == Gdk.EventType.DOUBLE_BUTTON_PRESS:
+                return activate_default_control()
+            return False
+
+        row.connect("key-press-event", key_press)
+        row.connect("button-press-event", button_press)
         return row
 
     def settings_group(container: Gtk.Box, title: str, rows: list[Gtk.Widget]) -> Gtk.Box:
@@ -4676,7 +5997,6 @@ def run(initial_page: str = "overview") -> int:
             flags=Gtk.DialogFlags.MODAL,
         )
         dialog.set_default_size(560, 430)
-        dialog.add_button(tr("settings.close", "Fermer"), Gtk.ResponseType.CLOSE)
         box = style_dialog(dialog)
         box.set_spacing(12)
         box.set_border_width(16)
@@ -4706,11 +6026,13 @@ def run(initial_page: str = "overview") -> int:
             if key == active_key:
                 active_index = index
         profile_combo.set_active(active_index)
+        profile_combo.set_tooltip_text(tr("settings.package_remove.profile.tooltip", "Choisir l’espace SevenOS où le paquet sera retiré."))
 
         package_entry = Gtk.Entry()
         package_entry.set_placeholder_text(tr("settings.package_remove.placeholder", "Nom du paquet, ex. htop"))
         package_entry.get_style_context().add_class("settings-entry")
         package_entry.set_hexpand(True)
+        package_entry.set_tooltip_text(tr("settings.package_remove.entry.tooltip", "Tape un nom de paquet ou choisis-le dans la liste. Entrée prévisualise."))
         controls.pack_start(profile_combo, False, False, 0)
         controls.pack_start(package_entry, True, True, 0)
 
@@ -4742,11 +6064,17 @@ def run(initial_page: str = "overview") -> int:
         button_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         preview_button = Gtk.Button(label=tr("settings.preview", "Prévisualiser"))
         preview_button.get_style_context().add_class("action-button")
+        preview_button.set_tooltip_text(tr("settings.package_remove.preview.tooltip", "Afficher l’impact avant suppression."))
         inventory_button = Gtk.Button(label=tr("settings.package_remove.inventory", "Voir les paquets"))
         inventory_button.get_style_context().add_class("action-button")
+        inventory_button.set_tooltip_text(tr("settings.package_remove.inventory.tooltip", "Ouvrir la liste complète des paquets de cet espace."))
         remove_button = Gtk.Button(label=tr("settings.delete", "Supprimer"))
         remove_button.get_style_context().add_class("action-button")
         remove_button.get_style_context().add_class("destructive-action")
+        remove_button.set_tooltip_text(tr("settings.package_remove.delete.tooltip", "Disponible après une prévisualisation sans blocage."))
+        close_button = Gtk.Button(label=tr("settings.close", "Fermer"))
+        close_button.get_style_context().add_class("action-button")
+        close_button.connect("clicked", lambda _button: dialog.destroy())
 
         def selected_profile() -> str:
             return profile_combo.get_active_id() or active_key or "equinox"
@@ -4783,7 +6111,8 @@ def run(initial_page: str = "overview") -> int:
             title_label.get_style_context().add_class("settings-row-title")
             note_label = Gtk.Label(label=description or tr("settings.package_remove.installed", "Installé"))
             note_label.set_xalign(0)
-            note_label.set_ellipsize(Pango.EllipsizeMode.END)
+            note_label.set_line_wrap(True)
+            note_label.set_max_width_chars(70)
             note_label.get_style_context().add_class("settings-row-note")
             wrapper.pack_start(title_label, False, False, 0)
             wrapper.pack_start(note_label, False, False, 0)
@@ -4792,8 +6121,14 @@ def run(initial_page: str = "overview") -> int:
             def choose_package(_button: Gtk.Button, package: str = name) -> None:
                 package_entry.set_text(package)
                 status.set_text(tr("settings.package_remove.selected", "{package} sélectionné.", package=package))
+                package_entry.grab_focus()
+                package_entry.set_position(-1)
+                show_feedback(tr("settings.package_remove.selected", "{package} sélectionné.", package=package))
 
             button.connect("clicked", choose_package)
+            row.set_selectable(True)
+            row.set_activatable(True)
+            row.set_tooltip_text(tr("settings.package_remove.row.tooltip", "Choisir ce paquet pour le prévisualiser."))
             row.add(button)
             package_list.add(row)
 
@@ -4933,23 +6268,48 @@ def run(initial_page: str = "overview") -> int:
                 status.set_text(tr("settings.package_remove.preview_required", "Prévisualise ce paquet avant de le supprimer."))
                 remove_button.set_sensitive(False)
                 return
-            confirm = Gtk.MessageDialog(
+            confirm = Gtk.Dialog(
+                title=tr("settings.package_remove.confirm", "Supprimer {package} ?", package=package),
                 transient_for=dialog,
                 flags=Gtk.DialogFlags.MODAL,
-                message_type=Gtk.MessageType.WARNING,
-                buttons=Gtk.ButtonsType.NONE,
-                text=tr("settings.package_remove.confirm", "Supprimer {package} ?", package=package),
             )
-            confirm.format_secondary_text(
-                tr(
+            confirm.set_default_size(430, 230)
+            confirm_box = style_dialog(confirm)
+            confirm_box.set_spacing(12)
+            confirm_box.set_border_width(18)
+            confirm_title = Gtk.Label(label=tr("settings.package_remove.confirm", "Supprimer {package} ?", package=package))
+            confirm_title.set_xalign(0)
+            confirm_title.get_style_context().add_class("hero-title")
+            confirm_note = Gtk.Label(
+                label=tr(
                     "settings.package_remove.confirm_note",
                     "SevenOS retirera ce paquet de {profile}. L’opération sera suivie dans une fenêtre graphique.",
                     profile=profile,
                 )
             )
-            confirm.add_button(tr("settings.cancel", "Annuler"), Gtk.ResponseType.CANCEL)
-            delete_button = confirm.add_button(tr("settings.delete", "Supprimer"), Gtk.ResponseType.ACCEPT)
+            confirm_note.set_xalign(0)
+            confirm_note.set_line_wrap(True)
+            confirm_note.get_style_context().add_class("hero-note")
+            confirm_hint = Gtk.Label(label=tr("settings.package_remove.confirm_hint", "La suppression ne démarre qu’après cette confirmation."))
+            confirm_hint.set_xalign(0)
+            confirm_hint.get_style_context().add_class("settings-inline-status")
+            confirm_actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            confirm_actions.set_halign(Gtk.Align.END)
+            cancel_button = Gtk.Button(label=tr("settings.cancel", "Annuler"))
+            cancel_button.get_style_context().add_class("action-button")
+            cancel_button.connect("clicked", lambda _button: confirm.response(Gtk.ResponseType.CANCEL))
+            delete_button = Gtk.Button(label=tr("settings.delete", "Supprimer"))
+            delete_button.get_style_context().add_class("action-button")
             delete_button.get_style_context().add_class("destructive-action")
+            delete_button.connect("clicked", lambda _button: confirm.response(Gtk.ResponseType.ACCEPT))
+            confirm_actions.pack_start(cancel_button, False, False, 0)
+            confirm_actions.pack_start(delete_button, False, False, 0)
+            confirm_box.pack_start(confirm_title, False, False, 0)
+            confirm_box.pack_start(confirm_note, False, False, 0)
+            confirm_box.pack_start(confirm_hint, False, False, 0)
+            confirm_box.pack_end(confirm_actions, False, False, 0)
+            confirm.connect("response", lambda _dialog, _response: confirm.hide())
+            confirm.show_all()
             response = confirm.run()
             confirm.destroy()
             if response != Gtk.ResponseType.ACCEPT:
@@ -4962,11 +6322,34 @@ def run(initial_page: str = "overview") -> int:
         preview_button.connect("clicked", preview_remove)
         inventory_button.connect("clicked", show_inventory)
         remove_button.connect("clicked", run_remove)
+        close_button.connect("clicked", lambda _button: dialog.destroy())
+        package_entry.connect("activate", lambda _entry: preview_remove(preview_button))
         package_entry.connect("changed", refresh_package_results)
         profile_combo.connect("changed", refresh_package_results)
+
+        def package_row_activated(_list_box, row) -> None:
+            child = row.get_child()
+            if isinstance(child, Gtk.Button):
+                child.clicked()
+                preview_remove(preview_button)
+
+        package_list.connect("row-activated", package_row_activated)
+
+        def package_remove_key(_dialog, event) -> bool:
+            ctrl = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
+            if ctrl and event.keyval in {Gdk.KEY_i, Gdk.KEY_I}:
+                show_inventory(inventory_button)
+                return True
+            if ctrl and event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter} and remove_button.get_sensitive():
+                run_remove(remove_button)
+                return True
+            return False
+
+        dialog.connect("key-press-event", package_remove_key)
         button_row.pack_start(preview_button, False, False, 0)
         button_row.pack_start(inventory_button, False, False, 0)
         button_row.pack_start(remove_button, False, False, 0)
+        button_row.pack_start(close_button, False, False, 0)
 
         box.pack_start(title, False, False, 0)
         box.pack_start(note, False, False, 0)
@@ -5401,6 +6784,7 @@ def run(initial_page: str = "overview") -> int:
                     tr("settings.prism.preset_named", "Preset appliqué : {name}", name=label),
                 )
                 refresh_all_buttons()
+                show_feedback(tr("settings.prism.recipe_ready", "Prism ajusté : {name}", name=label), "success")
 
             def move_local(key: str, direction: str) -> None:
                 if key not in selected_order:
@@ -5471,13 +6855,17 @@ def run(initial_page: str = "overview") -> int:
                 custom_note.get_style_context().add_class("dialog-note")
                 label_entry = Gtk.Entry()
                 label_entry.set_placeholder_text(tr("settings.prism.custom.label", "Nom affiché"))
+                label_entry.set_tooltip_text(tr("settings.prism.custom.label.tooltip", "Nom court affiché sur le sommet du Prism."))
                 icon_entry = Gtk.Entry()
                 icon_entry.set_placeholder_text(tr("settings.prism.custom.icon", "Icône courte"))
+                icon_entry.set_tooltip_text(tr("settings.prism.custom.icon.tooltip", "Un symbole ou deux lettres maximum."))
                 command_entry = Gtk.Entry()
                 command_entry.set_placeholder_text(tr("settings.prism.custom.command", "Commande, ex: firefox"))
+                command_entry.set_tooltip_text(tr("settings.prism.custom.command.tooltip", "Commande lancée quand ce sommet est cliqué."))
                 accent_entry = Gtk.Entry()
                 accent_entry.set_placeholder_text("#6EA8FF")
                 accent_entry.set_text("#6EA8FF")
+                accent_entry.set_tooltip_text(tr("settings.prism.custom.accent.tooltip", "Couleur du sommet, au format hexadécimal."))
                 status = Gtk.Label()
                 status.set_xalign(0)
                 status.get_style_context().add_class("prism-preview-note")
@@ -5532,6 +6920,8 @@ def run(initial_page: str = "overview") -> int:
                     icon_entry.set_text(icon)
                     command_entry.set_text(command)
                     accent_entry.set_text(accent)
+                    command_entry.grab_focus()
+                    command_entry.select_region(0, -1)
                     refresh_custom_status()
 
                 for label, icon, command, accent in (
@@ -5592,8 +6982,23 @@ def run(initial_page: str = "overview") -> int:
                 label_entry.connect("changed", refresh_custom_status)
                 command_entry.connect("changed", refresh_custom_status)
                 accent_entry.connect("changed", refresh_custom_status)
+                icon_entry.connect("changed", refresh_custom_status)
+                for entry in (label_entry, icon_entry, command_entry, accent_entry):
+                    entry.connect("activate", lambda _entry: add_custom(add_button) if add_button.get_sensitive() else refresh_custom_status())
                 for widget in (custom_title, custom_note, suggestion_row, label_entry, icon_entry, command_entry, accent_entry, swatch_row, status, buttons_row):
                     custom_box.pack_start(widget, False, False, 0)
+
+                def custom_dialog_key(_dialog, event) -> bool:
+                    if event.keyval == Gdk.KEY_Escape:
+                        custom.response(Gtk.ResponseType.CLOSE)
+                        return True
+                    if event.keyval in {Gdk.KEY_Return, Gdk.KEY_KP_Enter} and add_button.get_sensitive():
+                        add_custom(add_button)
+                        return True
+                    return False
+
+                custom.connect("key-press-event", custom_dialog_key)
+                custom.connect("response", lambda _dialog, _response: custom.destroy())
                 refresh_custom_status()
                 custom.show_all()
 
@@ -5608,6 +7013,7 @@ def run(initial_page: str = "overview") -> int:
                 button.get_style_context().add_class("action-button")
                 button.get_style_context().add_class("prism-item-choice")
                 set_button_state(button, key, f"{icon} {label}")
+                button.set_tooltip_text(tr("settings.prism.choice.tooltip", "Ajouter ou retirer {item} du Prism.", item=label))
                 button.connect("clicked", lambda _button, item_key=key, item_label=label: toggle_item(item_key, item_label))
                 buttons[key] = (button, f"{icon} {label}")
                 grid.attach(button, index % 2, index // 2, 1, 1)
@@ -5624,6 +7030,29 @@ def run(initial_page: str = "overview") -> int:
             box.pack_start(order_box, False, False, 0)
             box.pack_end(close_button, False, False, 0)
             refresh_all_buttons()
+
+            def prism_items_key(_dialog, event) -> bool:
+                key_map = {
+                    Gdk.KEY_1: "daily",
+                    Gdk.KEY_2: "dev",
+                    Gdk.KEY_3: "clean",
+                }
+                if event.keyval in key_map:
+                    recipe = key_map[event.keyval]
+                    label = {
+                        "daily": tr("settings.prism.preset.daily", "Quotidien"),
+                        "dev": tr("settings.prism.preset.dev", "Dev"),
+                        "clean": tr("settings.prism.preset.clean", "Compact"),
+                    }.get(recipe, recipe)
+                    apply_recipe(recipe, label)
+                    return True
+                if event.keyval in {Gdk.KEY_plus, Gdk.KEY_KP_Add, Gdk.KEY_a, Gdk.KEY_A}:
+                    show_custom_item_dialog()
+                    return True
+                return False
+
+            dialog.connect("key-press-event", prism_items_key)
+            dialog.connect("response", lambda _dialog, _response: dialog.destroy())
             dialog.show_all()
 
         preview_items = prism_items if prism_items else [preset_map[key] for key in ("settings", "terminal", "files") if key in preset_map]
@@ -5848,7 +7277,8 @@ def run(initial_page: str = "overview") -> int:
             row_title.get_style_context().add_class("settings-row-title")
             row_note = Gtk.Label(label=summary or str(data.get("purpose") or ""))
             row_note.set_xalign(0)
-            row_note.set_ellipsize(Pango.EllipsizeMode.END)
+            row_note.set_line_wrap(True)
+            row_note.set_max_width_chars(70)
             row_note.get_style_context().add_class("settings-row-note")
             labels.pack_start(row_title, False, False, 0)
             labels.pack_start(row_note, False, False, 0)
@@ -6446,22 +7876,27 @@ def run(initial_page: str = "overview") -> int:
     for name, (_box, scrolled) in pages.items():
         stack.add_named(scrolled, name)
 
+    sidebar_section(tr("settings.nav.essential", "Essentiel"))
     nav("overview", "󰕮", tr("settings.overview", "Vue d’ensemble"), "overview")
     nav("general", "󰒓", tr("settings.general", "Général"), "general")
+    nav("profiles", "󰐃", tr("settings.profiles", "Mini OS"), "profiles")
+    nav("power", "󰁹", tr("settings.power", "Énergie"), "power")
+    sidebar_section(tr("settings.nav.personalization", "Personnalisation"))
     nav("prism", "◈", tr("settings.prism.page", "Prism"), "prism")
     nav("appearance", "󰸉", tr("settings.appearance", "Apparence"), "appearance")
     nav("wallpaper", "󰸉", tr("settings.wallpaper", "Fond d’écran"), "wallpaper")
+    nav("fonts", "󰛖", tr("settings.fonts", "Polices"), "fonts")
+    sidebar_section(tr("settings.nav.devices", "Appareils"))
     nav("display", "󰍹", tr("settings.displays", "Écrans"), "display")
     nav("network", "󰤨", "Wi-Fi", "network")
     nav("sound", "󰕾", tr("settings.sound", "Son"), "sound")
     nav("keyboard", "󰌌", tr("settings.keyboard", "Clavier"), "keyboard")
-    nav("fonts", "󰛖", tr("settings.fonts", "Polices"), "fonts")
-    nav("security", "󰒃", tr("settings.security", "Sécurité"), "security")
-    nav("profiles", "󰐃", tr("settings.profiles", "Mini OS"), "profiles")
-    nav("power", "󰁹", tr("settings.power", "Énergie"), "power")
+    sidebar_section(tr("settings.nav.apps_data", "Apps et données"))
     nav("defaults", "󰒓", tr("settings.default_apps", "Apps par défaut"), "defaults")
     nav("apps", "󰀻", tr("settings.apps", "Apps"), "apps")
     nav("privacy", "󰌾", tr("settings.privacy", "Confidentialité"), "privacy")
+    nav("security", "󰒃", tr("settings.security", "Sécurité"), "security")
+    sidebar_section(tr("settings.nav.maintenance", "Maintenance"))
     nav("backup", "󰁯", tr("settings.backup_restore", "Sauvegarde"), "backup")
     nav("shortcuts", "󰌌", tr("settings.shortcuts", "Raccourcis"), "shortcuts")
     nav("system", "󰒓", tr("settings.system", "Système"), "system")
@@ -6498,9 +7933,9 @@ def run(initial_page: str = "overview") -> int:
             page_title = pages[target][0].get_children()[0].get_text().lower()
             if query in terms or query in page_title:
                 activate_page(target, nav_by_target[target])
-                show_feedback(tr("settings.search.opened", "Page ouverte."))
+                show_feedback(page_opened_message(target))
                 return
-        show_feedback(tr("settings.search.no_result", "Aucune page ne correspond à “{query}”.", query=query))
+        show_feedback(tr("settings.search.no_result", "Aucune page ne correspond à “{query}”.", query=query), "warning")
 
     search_entry.connect("activate", search_settings)
 
@@ -6509,10 +7944,10 @@ def run(initial_page: str = "overview") -> int:
             search_entry.set_text("")
             search_results.hide()
             return True
-        if event.keyval in {Gdk.KEY_Down, Gdk.KEY_Tab} and search_results.get_visible():
+        if event.keyval in {Gdk.KEY_Down, Gdk.KEY_Tab, Gdk.KEY_Up} and search_results.get_visible():
             children = [child for child in search_results.get_children() if isinstance(child, Gtk.Button)]
             if children:
-                children[0].grab_focus()
+                children[-1 if event.keyval == Gdk.KEY_Up else 0].grab_focus()
                 return True
         return False
 
@@ -6544,13 +7979,32 @@ def run(initial_page: str = "overview") -> int:
             if query in haystack:
                 matches.append((icon, title, note, target))
         if not matches:
-            label = Gtk.Label(label=tr("settings.search.no_result", "No Settings page matched “{query}”.", query=query))
-            label.set_xalign(0)
-            label.get_style_context().add_class("card-note")
-            search_results.pack_start(label, False, False, 0)
+            empty = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            empty.get_style_context().add_class("search-empty-card")
+            glyph = Gtk.Label(label="󰍉")
+            text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            title_label = Gtk.Label(label=tr("settings.search.no_result_title", "Aucun réglage trouvé"))
+            title_label.set_xalign(0)
+            title_label.get_style_context().add_class("card-title")
+            note_label = Gtk.Label(label=tr("settings.search.no_result", "Aucune page ne correspond à “{query}”.", query=query))
+            note_label.set_xalign(0)
+            note_label.set_line_wrap(True)
+            note_label.get_style_context().add_class("card-note")
+            hint_label = Gtk.Label(label=tr("settings.search.no_result_hint", "Essaie “Wi-Fi”, “Mini OS”, “thème”, “veille” ou reviens à la vue d’ensemble."))
+            hint_label.set_xalign(0)
+            hint_label.set_line_wrap(True)
+            hint_label.get_style_context().add_class("card-note")
+            text_box.pack_start(title_label, False, False, 0)
+            text_box.pack_start(note_label, False, False, 0)
+            text_box.pack_start(hint_label, False, False, 0)
+            empty.pack_start(glyph, False, False, 0)
+            empty.pack_start(text_box, True, True, 0)
+            search_results.pack_start(empty, False, False, 0)
         for icon, title, note, target in matches[:6]:
             button = Gtk.Button()
             button.get_style_context().add_class("search-result-button")
+            button.set_can_focus(True)
+            button.set_tooltip_text(tr("settings.search.open_page", "Ouvrir {page}", page=title))
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
             glyph = Gtk.Label(label=icon)
             labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
@@ -6566,7 +8020,36 @@ def run(initial_page: str = "overview") -> int:
             row.pack_start(glyph, False, False, 0)
             row.pack_start(labels, True, True, 0)
             button.add(row)
-            button.connect("clicked", lambda _button, page_name=target: (activate_page(page_name, nav_by_target[page_name]), search_results.hide()))
+            def result_key(_button, event) -> bool:
+                children = [child for child in search_results.get_children() if isinstance(child, Gtk.Button)]
+                if event.keyval == Gdk.KEY_Escape:
+                    search_entry.set_text("")
+                    search_results.hide()
+                    search_entry.grab_focus()
+                    return True
+                if event.keyval in {Gdk.KEY_Down, Gdk.KEY_Tab, Gdk.KEY_Up} and children:
+                    try:
+                        index = children.index(_button)
+                    except ValueError:
+                        index = 0
+                    if event.keyval == Gdk.KEY_Up and index == 0:
+                        search_entry.grab_focus()
+                    else:
+                        delta = -1 if event.keyval == Gdk.KEY_Up else 1
+                        children[(index + delta) % len(children)].grab_focus()
+                    return True
+                return False
+
+            button.connect("key-press-event", result_key)
+            button.connect(
+                "clicked",
+                lambda _button, page_name=target: (
+                    activate_page(page_name, nav_by_target[page_name]),
+                    search_entry.set_text(""),
+                    search_results.hide(),
+                    show_feedback(page_opened_message(page_name)),
+                ),
+            )
             search_results.pack_start(button, False, False, 0)
         search_results.show_all()
 
@@ -6593,14 +8076,33 @@ def run(initial_page: str = "overview") -> int:
     )
     overview.pack_start(hero_card(tr("settings.hero.title", "Ajuster SevenOS simplement"), tr("settings.hero.note", "Les réglages essentiels sont ici, avec des actions visibles et sans console.")), False, False, 0)
     overview.pack_start(
+        workflow_card(
+            tr("settings.overview.recommended.title", "Parcours recommandé"),
+            tr("settings.overview.recommended.note", "Commence par l’essentiel, puis affine l’identité et les apps sans passer par le terminal."),
+            [
+                (tr("settings.overview.step.check", "Vérifier l’état"), tr("settings.overview.step.check.note", "Santé, session, réseau, énergie et mini OS actif.")),
+                (tr("settings.overview.step.personalize", "Personnaliser"), tr("settings.overview.step.personalize.note", "Thème, Prism, fond d’écran et polices SevenOS.")),
+                (tr("settings.overview.step.protect", "Protéger"), tr("settings.overview.step.protect.note", "Sauvegarde, confidentialité et sécurité avant les gros changements.")),
+            ],
+            [
+                page_button(tr("settings.open", "Ouvrir"), "general"),
+                page_button(tr("settings.privacy", "Confidentialité"), "privacy"),
+                page_button(tr("settings.system", "Système"), "system"),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
+    overview.pack_start(
         quick_strip(
             [
                 ("󰸉", tr("settings.wallpaper", "Fond d’écran"), "seven-settings wallpaper"),
-                ("󰤨", "Wi-Fi", "seven-waybar-center-native network"),
-                ("󰕾", tr("settings.sound", "Son"), "seven-waybar-center-native audio"),
+                ("󰤨", "Wi-Fi", "seven-settings network"),
+                ("󰕾", tr("settings.sound", "Son"), "seven-settings sound"),
                 ("󰃠", tr("settings.displays", "Écran"), "seven-settings display"),
                 ("󰚰", tr("settings.update", "Mettre à jour"), "seven update"),
-                ("󰒃", "Shield", "seven-shield-center-native"),
+                ("󰒃", "Shield", "seven-settings security"),
             ]
         ),
         False,
@@ -6645,6 +8147,25 @@ def run(initial_page: str = "overview") -> int:
                 "settings.general.hero.note",
                 "Change la langue, les formats, les apps par défaut et l’identité SevenOS depuis un seul endroit calme.",
             ),
+        ),
+        False,
+        False,
+        0,
+    )
+    general.pack_start(
+        workflow_card(
+            tr("settings.general.workflow.title", "Commencer par les bons réglages"),
+            tr("settings.general.workflow.note", "Cette page rassemble les décisions qui changent vraiment l’usage quotidien. Les détails restent dans les pages dédiées."),
+            [
+                (tr("settings.general.step.identity", "Identifier l’espace"), tr("settings.general.step.identity.note", "Choisis le mini OS selon l’activité du moment.")),
+                (tr("settings.general.step.comfort", "Ajuster le confort"), tr("settings.general.step.comfort.note", "Langue, région, thème, animations et fichiers personnels.")),
+                (tr("settings.general.step.maintenance", "Garder le système sain"), tr("settings.general.step.maintenance.note", "Vérification, mises à jour, sauvegarde et historique des actions.")),
+            ],
+            [
+                page_button(tr("settings.mini_os", "Mini OS"), "profiles"),
+                page_button(tr("settings.appearance", "Apparence"), "appearance"),
+                page_button(tr("settings.system", "Système"), "system"),
+            ],
         ),
         False,
         False,
@@ -6732,15 +8253,15 @@ def run(initial_page: str = "overview") -> int:
         general,
         tr("settings.quick_backup", "Sauvegarde rapide"),
         [
-            settings_row("󰁯", tr("settings.create_backup", "Créer une sauvegarde SevenOS"), tr("settings.create_backup.note", "Crée une sauvegarde locale protégée de la configuration et de l’état SevenOS."), [action_button(tr("settings.create", "Créer"), "seven recovery backup")]),
-            settings_row("󰕒", tr("settings.restore_readiness", "Voir le plan de restauration"), tr("settings.restore_readiness.note", "Affiche ce qui sera protégé ou restauré avant une intervention importante."), [action_button(tr("settings.open", "Ouvrir"), "seven recovery plan")]),
+            settings_row("󰁯", tr("settings.backup_guide", "Assistant de sauvegarde"), tr("settings.backup_guide.note", "Voir quoi protéger, où sauvegarder et comment restaurer avant de lancer une action."), [callback_button(tr("settings.open", "Ouvrir"), "backup:wizard", show_backup_wizard)]),
+            settings_row("󰕒", tr("settings.restore_readiness", "Voir le plan de restauration"), tr("settings.restore_readiness.note", "Affiche ce qui sera protégé ou restauré avant une intervention importante."), [callback_button(tr("settings.open", "Ouvrir"), "backup:wizard", show_backup_wizard)]),
         ],
     )
     general_targets["motion"] = settings_group(
         general,
         tr("settings.motion_mode", "Animations"),
         [
-            settings_row("󰜉", tr("settings.motion_auto", "Automatique"), tr("settings.motion_auto.note", "Laisse chaque mini OS choisir sa vitesse et son style d’animation."), [action_button(tr("settings.apply", "Appliquer"), "seven motion set auto")]),
+            settings_row("󰜉", tr("settings.motion_auto", "Automatique"), tr("settings.motion_auto.note", "Laisse chaque mini OS choisir sa vitesse et son style d’animation."), [callback_button(tr("settings.summary", "Résumé"), "motion:overview", show_motion_overview), action_button(tr("settings.apply", "Appliquer"), "seven motion set auto")]),
             settings_row("󰇄", tr("settings.motion_premium", "Premium"), tr("settings.motion_premium.note", "Active une animation SevenOS plus visible, fluide et expressive."), [action_button(tr("settings.apply", "Appliquer"), "seven motion premium")]),
             settings_row("󰌾", tr("settings.motion_reduced", "Réduit"), tr("settings.motion_reduced.note", "Réduit les animations pour le confort, l’accessibilité et les machines plus modestes."), [action_button(tr("settings.apply", "Appliquer"), "seven motion reduced")]),
         ],
@@ -6848,6 +8369,24 @@ def run(initial_page: str = "overview") -> int:
     appearance = pages["appearance"][0]
     section(appearance, tr("settings.visual_system", "Système visuel"))
     appearance.pack_start(theme_preview_card(), False, False, 0)
+    appearance.pack_start(
+        workflow_card(
+            tr("settings.appearance.workflow.title", "Identité visuelle cohérente"),
+            tr("settings.appearance.workflow.note", "SevenOS applique le thème comme un ensemble : palette, Dock, barre, terminal, fonds et mini OS actif."),
+            [
+                (tr("settings.appearance.step.mode", "Choisir l’ambiance"), tr("settings.appearance.step.mode.note", "Sombre pour immersion, clair adouci pour lecture, profil actif pour l’accent.")),
+                (tr("settings.appearance.step.surface", "Synchroniser les surfaces"), tr("settings.appearance.step.surface.note", "Waybar, Dock, Prism, Terminal et fenêtres reprennent les mêmes tokens.")),
+                (tr("settings.appearance.step.comfort", "Ajuster le confort"), tr("settings.appearance.step.comfort.note", "Réduis le mouvement ou relance l’interface si un élément semble décalé.")),
+            ],
+            [
+                callback_button(tr("settings.summary", "Résumé"), "appearance:overview", show_appearance_overview),
+                callback_button(tr("settings.motion_mode", "Animations"), "motion:overview", show_motion_overview),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(
         appearance,
         "",
@@ -6894,14 +8433,29 @@ def run(initial_page: str = "overview") -> int:
     # Display
     display = pages["display"][0]
     section(display, tr("settings.screen", "Écran"))
+    display.pack_start(
+        workflow_card(
+            tr("settings.display.workflow.title", "Ajuster sans perdre l’affichage"),
+            tr("settings.display.workflow.note", "SevenOS te montre d’abord l’état détecté, puis applique les changements visibles sans te forcer à éditer un fichier."),
+            [
+                (tr("settings.display.step.observe", "Observer"), tr("settings.display.step.observe.note", "Écran actif, résolution, échelle et luminosité.")),
+                (tr("settings.display.step.adjust", "Ajuster"), tr("settings.display.step.adjust.note", "Modifie luminosité, disposition ou résolution depuis une vue dédiée.")),
+                (tr("settings.display.step.confirm", "Confirmer"), tr("settings.display.step.confirm.note", "Recharge la session seulement si la configuration doit être appliquée.")),
+            ],
+            [callback_button(tr("settings.summary", "Résumé"), "display:overview", show_display_overview)],
+        ),
+        False,
+        False,
+        0,
+    )
     display.pack_start(slider_card("󰃠", tr("settings.brightness", "Luminosité"), f"{brightness_state()}%", brightness_state(), set_brightness), False, False, 0)
     display.pack_start(monitor_resolution_card(), False, False, 0)
     settings_group(
         display,
         tr("settings.display_tools", "Outils d’affichage"),
         [
-            settings_row("󰍹", tr("settings.display_layout", "Disposition des écrans"), tr("settings.display_layout.note", "Ouvrir l’outil graphique pour organiser les écrans."), [action_button(tr("settings.open", "Ouvrir"), "wdisplays || nwg-displays || arandr || hyprctl monitors")]),
-            settings_row("󰌢", tr("settings.monitor_config", "Réglage précis"), tr("settings.monitor_config.note", "Ajuster l’écran manuellement si l’outil graphique ne suffit pas."), [action_button(tr("settings.edit", "Modifier"), "xdg-open ~/.config/hypr/conf/monitor.conf")]),
+            settings_row("󰍹", tr("settings.display_layout", "Disposition des écrans"), tr("settings.display_layout.note", "Voir les écrans détectés, l’échelle et la résolution dans une vue lisible."), [callback_button(tr("settings.summary", "Résumé"), "display:overview", show_display_overview)]),
+            settings_row("󰌢", tr("settings.monitor_config", "Diagnostic affichage"), tr("settings.monitor_config.note", "Voir l’état détecté des écrans avant d’ouvrir un réglage avancé."), [action_button(tr("settings.status", "Voir"), "hyprctl monitors")]),
             settings_row("󰜉", tr("settings.reload_session", "Appliquer l’affichage"), tr("settings.reload_session.note", "Appliquer la configuration d’écran actuelle."), [action_button(tr("settings.reload", "Actualiser"), session_refresh_command())]),
         ],
     )
@@ -6912,6 +8466,21 @@ def run(initial_page: str = "overview") -> int:
         hero_card(
             tr("settings.defaults.hero.title", "Toujours ouvrir la bonne app"),
             tr("settings.defaults.hero.note", "SevenOS garde les liens et fichiers prévisibles pour un usage quotidien."),
+        ),
+        False,
+        False,
+        0,
+    )
+    defaults.pack_start(
+        workflow_card(
+            tr("settings.defaults.workflow.title", "Parcours conseillé"),
+            tr("settings.defaults.workflow.note", "Associe les rôles essentiels une fois, SevenOS se charge ensuite de garder les ouvertures cohérentes."),
+            [
+                (tr("settings.defaults.step.role", "Choisir un rôle"), tr("settings.defaults.step.role.note", "Fichiers, terminal, documents, navigateur, médias ou archives.")),
+                (tr("settings.defaults.step.apply", "Appliquer l’app"), tr("settings.defaults.step.apply.note", "Le changement est écrit dans les associations utilisateur.")),
+                (tr("settings.defaults.step.verify", "Vérifier"), tr("settings.defaults.step.verify.note", "Ouvre un fichier courant pour confirmer que le bon outil démarre.")),
+            ],
+            [callback_button(tr("settings.apps.summary", "Résumé apps"), "apps:dashboard", show_apps_dashboard)],
         ),
         False,
         False,
@@ -6935,21 +8504,51 @@ def run(initial_page: str = "overview") -> int:
 
     # Network
     network = pages["network"][0]
+    network.pack_start(
+        workflow_card(
+            tr("settings.network.workflow.title", "Connexion prévisible"),
+            tr("settings.network.workflow.note", "Le réseau doit rester simple : voir l’état, choisir une connexion, relancer seulement si nécessaire."),
+            [
+                (tr("settings.network.step.status", "Voir l’état"), tr("settings.network.step.status.note", "SSID actif, signal, sécurité et réseaux proches.")),
+                (tr("settings.network.step.connect", "Se connecter"), tr("settings.network.step.connect.note", "Le mot de passe est demandé par le panneau réseau SevenOS.")),
+                (tr("settings.network.step.repair", "Réparer"), tr("settings.network.step.repair.note", "Relance le réseau seulement quand la connexion est bloquée.")),
+            ],
+            [callback_button(tr("settings.summary", "Résumé"), "network:overview", show_network_overview)],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(network, tr("settings.connectivity", "Connectivité"), [
-        settings_row("󰤨", "Wi-Fi", f"{wifi_radio} · {wifi_detail}", [action_button(tr("settings.connect", "Connecter"), "seven-wifi connect"), action_button(tr("settings.panel", "Détails"), "seven-waybar-center-native network")]),
+        settings_row("󰤨", "Wi-Fi", f"{wifi_radio} · {wifi_detail}", [callback_button(tr("settings.summary", "Résumé"), "network:overview", show_network_overview), action_button(tr("settings.connect", "Connecter"), "seven-wifi connect")]),
         settings_row("󰂯", "Bluetooth", tr("settings.bluetooth.note", "Associer écouteurs, claviers, téléphones et appareils proches."), [action_button(tr("settings.panel", "Détails"), "seven-waybar-center-native bluetooth"), action_button(tr("settings.manager", "Gérer"), "seven-bluetooth manager")]),
-        settings_row("󰖩", tr("settings.network_settings", "Réglages réseau"), tr("settings.network_settings.note", "Ouvrir l’éditeur réseau SevenOS."), [action_button(tr("settings.open", "Ouvrir"), "nm-connection-editor || seven-wifi settings")]),
+        settings_row("󰖩", tr("settings.network_settings", "Réglages réseau"), tr("settings.network_settings.note", "Voir les réseaux proches, la connexion active et les actions recommandées."), [callback_button(tr("settings.summary", "Résumé"), "network:overview", show_network_overview)]),
         settings_row("󰜉", tr("settings.restart_network", "Relancer le réseau"), tr("settings.restart_network.note", "Relancer le réseau SevenOS quand la connexion est bloquée."), [action_button(tr("settings.restart", "Relancer"), "seven-wifi restart")]),
     ])
 
     # Sound
     sound = pages["sound"][0]
     section(sound, tr("settings.audio", "Audio"))
+    sound.pack_start(
+        workflow_card(
+            tr("settings.sound.workflow.title", "Audio clair, entrées visibles"),
+            tr("settings.sound.workflow.note", "SevenOS sépare le volume courant, les sorties, les entrées et les permissions sensibles."),
+            [
+                (tr("settings.sound.step.volume", "Régler le volume"), tr("settings.sound.step.volume.note", "Change le niveau sans ouvrir de mélangeur externe.")),
+                (tr("settings.sound.step.routes", "Voir les périphériques"), tr("settings.sound.step.routes.note", "Sorties, entrées et appareils PipeWire détectés.")),
+                (tr("settings.sound.step.privacy", "Contrôler le sensible"), tr("settings.sound.step.privacy.note", "Micro et caméra restent liés à la confidentialité.")),
+            ],
+            [callback_button(tr("settings.summary", "Résumé"), "sound:overview", show_sound_overview), page_button(tr("settings.privacy", "Confidentialité"), "privacy")],
+        ),
+        False,
+        False,
+        0,
+    )
     sound.pack_start(slider_card("󰕾", tr("settings.output_volume", "Volume de sortie"), f"{volume}%", volume, set_volume), False, False, 0)
     settings_group(sound, "", [
-        settings_row("󰕾", tr("settings.mixer", "Contrôle audio"), tr("settings.mixer.note", "Ouvrir les réglages audio complets."), [action_button(tr("settings.open", "Ouvrir"), "pavucontrol || wpctl status")]),
+        settings_row("󰕾", tr("settings.mixer", "Contrôle audio"), tr("settings.mixer.note", "Voir les sorties, entrées et périphériques audio sans quitter Settings."), [callback_button(tr("settings.summary", "Résumé"), "sound:overview", show_sound_overview)]),
         settings_row("󰖁", tr("settings.mute", "Sourdine"), tr("settings.mute.note", "Couper ou réactiver la sortie audio par défaut."), [action_button(tr("settings.toggle", "Basculer"), "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")]),
-        settings_row("󰄬", tr("settings.audio_status", "Sorties et entrées"), tr("settings.audio_status.note", "Voir les périphériques audio disponibles."), [action_button(tr("settings.status", "Voir"), "seven-waybar-center-native audio")]),
+        settings_row("󰄬", tr("settings.audio_status", "Sorties et entrées"), tr("settings.audio_status.note", "Voir les périphériques audio disponibles."), [callback_button(tr("settings.summary", "Résumé"), "sound:overview", show_sound_overview)]),
     ])
 
     # Keyboard
@@ -6957,9 +8556,27 @@ def run(initial_page: str = "overview") -> int:
     kbd = {"layouts": "us,fr", "switch": "grp:alt_shift_toggle", "ready": False}
     if deep_settings_enabled():
         kbd = run_json_timeout([str(ROOT / "bin/seven"), "keyboard", "status", "--json"], kbd, timeout=0.45)
+    keyboard.pack_start(
+        workflow_card(
+            tr("settings.keyboard.workflow.title", "Entrée simple et fiable"),
+            tr("settings.keyboard.workflow.note", "SevenOS garde les langues, la bascule et les raccourcis visibles sans demander d’éditer une configuration."),
+            [
+                (tr("settings.keyboard.step.layout", "Choisir les langues"), tr("settings.keyboard.step.layout.note", "Les dispositions actives restent lisibles dans le résumé.")),
+                (tr("settings.keyboard.step.switch", "Retenir la bascule"), tr("settings.keyboard.step.switch.note", "Alt+Shift ou la règle SevenOS active change de langue sans ouvrir Settings.")),
+                (tr("settings.keyboard.step.verify", "Vérifier"), tr("settings.keyboard.step.verify.note", "Le diagnostic montre la source générée et l’état appliqué.")),
+            ],
+            [
+                callback_button(tr("settings.summary", "Résumé"), "keyboard:overview", show_keyboard_overview),
+                callback_button(tr("settings.shortcuts", "Raccourcis"), "shortcuts:overview", show_shortcuts_overview),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(keyboard, tr("settings.input", "Entrée"), [
         settings_row("󰌌", tr("settings.layouts", "Langues du clavier"), tr("settings.layouts.note", "{layouts} · Alt+Shift pour changer", layouts=kbd.get("layouts", "us,fr")), [action_button(tr("settings.apply", "Appliquer"), "seven keyboard apply")]),
-        settings_row("󰌢", tr("settings.keyboard_override", "Réglage avancé"), tr("settings.keyboard_override.note", "Ouvrir le fichier de réglage seulement si nécessaire."), [action_button(tr("settings.edit", "Modifier"), "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
+        settings_row("󰌢", tr("settings.keyboard_override", "Diagnostic clavier"), tr("settings.keyboard_override.note", "Voir l’état clavier détecté avant de toucher aux réglages avancés."), [callback_button(tr("settings.summary", "Résumé"), "keyboard:overview", show_keyboard_overview)]),
         settings_row("󰜉", tr("settings.reload_keyboard", "Appliquer le clavier"), tr("settings.reload_keyboard.note", "Actualiser les entrées après changement."), [action_button(tr("settings.reload", "Actualiser"), session_refresh_command())]),
     ])
 
@@ -6979,6 +8596,21 @@ def run(initial_page: str = "overview") -> int:
         ],
     )
     fonts.pack_start(hero_card(tr("settings.fonts.hero.title", "Polices disponibles partout"), tr("settings.fonts.hero.note", "SevenOS applique les polices à l’interface, aux apps et aux nouvelles fenêtres.")), False, False, 0)
+    fonts.pack_start(
+        workflow_card(
+            tr("settings.fonts.workflow.title", "Changer sans casser la lisibilité"),
+            tr("settings.fonts.workflow.note", "Les polices sont organisées par rôle pour éviter les mélanges hasardeux entre interface, texte et terminal."),
+            [
+                (tr("settings.fonts.step.import", "Importer"), tr("settings.fonts.step.import.note", "Ajoute les familles personnelles à la bibliothèque SevenOS.")),
+                (tr("settings.fonts.step.roles", "Affecter les rôles"), tr("settings.fonts.step.roles.note", "Interface, texte, monospace, marque et usage cyber restent séparés.")),
+                (tr("settings.fonts.step.refresh", "Actualiser"), tr("settings.fonts.step.refresh.note", "Reconstruit le cache avant de relancer les surfaces ouvertes.")),
+            ],
+            [action_button(tr("settings.status", "Voir"), "seven fonts status")],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(fonts, tr("settings.font_management", "Gestion des polices"), [
         settings_row("󰛖", tr("settings.apply_default_roles", "Restaurer les polices SevenOS"), tr("settings.apply_default_roles.note", "Réappliquer les polices recommandées pour l’interface et le texte."), [action_button(tr("settings.apply", "Appliquer"), "seven fonts apply-default")]),
         settings_row("󰈙", tr("settings.import_font_files", "Importer des polices"), tr("settings.import_font_files.note", "Ajouter des fichiers de police à la bibliothèque SevenOS."), [import_fonts_button(tr("settings.import", "Importer"))]),
@@ -6990,10 +8622,25 @@ def run(initial_page: str = "overview") -> int:
 
     # Security
     security = pages["security"][0]
+    security.pack_start(
+        workflow_card(
+            tr("settings.security.workflow.title", "Sécurité lisible"),
+            tr("settings.security.workflow.note", "SevenOS doit montrer ce qui protège, ce qui est optionnel et ce qui demande une intention claire."),
+            [
+                (tr("settings.security.step.posture", "Voir la posture"), tr("settings.security.step.posture.note", "Shield, pare-feu, isolation et mises à jour sécurité.")),
+                (tr("settings.security.step.review", "Examiner l’impact"), tr("settings.security.step.review.note", "Les protections fortes sont expliquées avant activation.")),
+                (tr("settings.security.step.specialize", "Passer à Shield"), tr("settings.security.step.specialize.note", "Les outils cyber avancés restent dans le mini OS dédié.")),
+            ],
+            [callback_button(tr("settings.summary", "Résumé"), "security:dashboard", show_security_dashboard)],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(security, tr("settings.trust", "Confiance"), [
-        settings_row("󰒃", "Shield", f"{shield_percent} · {shield_posture}", [action_button(tr("settings.open", "Ouvrir"), "seven-shield-center-native")]),
-        settings_row("󰞀", tr("settings.enable_protection", "Activer la protection"), tr("settings.enable_protection.note", "Appliquer les protections recommandées."), [action_button(tr("settings.enable", "Activer"), "seven shield enable")]),
-        settings_row("󰄬", tr("settings.audit", "Vérifier la sécurité"), tr("settings.audit.note", "Contrôler les points de confiance et les protections actives."), [action_button(tr("settings.audit", "Vérifier"), "seven shield audit")]),
+        settings_row("󰒃", "Shield", f"{shield_percent} · {shield_posture}", [callback_button(tr("settings.summary", "Résumé"), "security:dashboard", show_security_dashboard), action_button(tr("settings.center", "Ouvrir"), "seven-shield-center-native")]),
+        settings_row("󰞀", tr("settings.enable_protection", "Activer la protection"), tr("settings.enable_protection.note", "Afficher d’abord les protections et leurs impacts avant application."), [callback_button(tr("settings.review", "Examiner"), "security:dashboard", show_security_dashboard)]),
+        settings_row("󰄬", tr("settings.audit", "Vérifier la sécurité"), tr("settings.audit.note", "Contrôler les points de confiance et les protections actives."), [callback_button(tr("settings.audit", "Vérifier"), "security:dashboard", show_security_dashboard)]),
         settings_row("󱗼", "CyberSpace", tr("settings.cyberspace.note", "Ouvrir l’espace spécialisé de cybersécurité."), [action_button(tr("settings.open", "Ouvrir"), "seven shield mode")]),
     ])
 
@@ -7029,6 +8676,24 @@ def run(initial_page: str = "overview") -> int:
                 "settings.profiles.hero.note",
             "Chaque espace garde ses données et ses habitudes. Tu peux ajouter des outils explicitement, sans mélange silencieux.",
             ),
+        ),
+        False,
+        False,
+        0,
+    )
+    profiles.pack_start(
+        workflow_card(
+            tr("settings.profiles.workflow.title", "Changer d’espace sans friction"),
+            tr("settings.profiles.workflow.note", "Le changement de mini OS suit un ordre visible : intention, préparation, animation Prism, puis surfaces prêtes."),
+            [
+                (tr("settings.profiles.step.choose", "Choisir le rôle"), tr("settings.profiles.step.choose.note", "Chaque mini OS a ses apps, dossiers et paquets adaptés.")),
+                (tr("settings.profiles.step.load", "Charger l’espace"), tr("settings.profiles.step.load.note", "SevenOS prépare la session et garde l’animation jusqu’à la fin réelle du chargement.")),
+                (tr("settings.profiles.step.confirm", "Confirmer"), tr("settings.profiles.step.confirm.note", "Le badge Mini OS, le Prism, la barre et les dossiers reflètent l’espace actif.")),
+            ],
+            [
+                callback_button(tr("settings.summary", "Résumé"), "profiles:workflow", show_profile_workflow),
+                action_button(tr("settings.open", "Ouvrir"), "seven-profile-center-native"),
+            ],
         ),
         False,
         False,
@@ -7093,9 +8758,27 @@ def run(initial_page: str = "overview") -> int:
         callback_button(tr("settings.configure", "Configurer"), "idle:configure", show_idle_policy_dialog),
         callback_button(tr("settings.idle_never", "Jamais"), "idle:never", lambda: set_idle_policy("never"), tr("settings.idle_applying", "Réglage de la veille automatique.")),
     ]
+    power.pack_start(
+        workflow_card(
+            tr("settings.power.workflow.title", "Autonomie, confort et veille"),
+            tr("settings.power.workflow.note", "Les réglages énergie doivent être prévisibles : performance quand tu travailles, silence quand tu lis, jamais seulement quand tu le demandes."),
+            [
+                (tr("settings.power.step.profile", "Choisir le profil"), tr("settings.power.step.profile.note", "Économie, équilibré ou performance selon le contexte.")),
+                (tr("settings.power.step.idle", "Régler la veille"), tr("settings.power.step.idle.note", "Définis un délai clair ou Jamais pour garder l’écran actif.")),
+                (tr("settings.power.step.verify", "Vérifier l’effet"), tr("settings.power.step.verify.note", "Le résumé indique le profil actif et la politique d’inactivité.")),
+            ],
+            [
+                callback_button(tr("settings.summary", "Résumé"), "power:overview", show_power_overview),
+                callback_button(tr("settings.configure", "Configurer"), "idle:configure", show_idle_policy_dialog),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(power, tr("settings.energy", "Énergie"), [
-        settings_row("󰁹", tr("settings.battery", "Batterie"), f"{battery} · {battery_status}", [action_button(tr("settings.panel", "Détails"), "seven-waybar-center-native power")]),
-        settings_row("󰈐", tr("settings.power_profile", "Mode d’énergie"), tr("settings.power_profile.note", "Voir ou changer le comportement énergie/performance."), [action_button(tr("settings.open", "Ouvrir"), "powerprofilesctl")]),
+        settings_row("󰁹", tr("settings.battery", "Batterie"), f"{battery} · {battery_status}", [callback_button(tr("settings.summary", "Résumé"), "power:overview", show_power_overview), action_button(tr("settings.panel", "Détails"), "seven-waybar-center-native power")]),
+        settings_row("󰈐", tr("settings.power_profile", "Mode d’énergie"), tr("settings.power_profile.note", "Voir ou changer le comportement énergie/performance."), [callback_button(tr("settings.summary", "Résumé"), "power:overview", show_power_overview)]),
         settings_row("󰾅", tr("settings.power_saver", "Économie"), tr("settings.power_saver.note", "Réduit la consommation et privilégie l’autonomie."), [callback_button(tr("settings.apply", "Appliquer"), "power:power-saver", lambda: set_power_profile("power-saver"))]),
         settings_row("󰁹", tr("settings.power_balanced", "Équilibré"), tr("settings.power_balanced.note", "Garde le comportement recommandé pour l’usage quotidien."), [callback_button(tr("settings.apply", "Appliquer"), "power:balanced", lambda: set_power_profile("balanced"))]),
         settings_row("󰓅", tr("settings.power_performance", "Performance"), tr("settings.power_performance.note", "Privilégie la réactivité quand la machine le permet."), [callback_button(tr("settings.apply", "Appliquer"), "power:performance", lambda: set_power_profile("performance"))]),
@@ -7112,6 +8795,21 @@ def run(initial_page: str = "overview") -> int:
     notification_backend, notification_backend_status = notification_backend_state()
     spotlight_label, spotlight_detail = spotlight_privacy_state()
     privacy.pack_start(hero_card(tr("settings.privacy.hero.title", "Local par défaut"), tr("settings.privacy.hero.note", "SevenOS doit montrer clairement ce qu’il garde, ce qu’il indexe et quelles apps peuvent utiliser les appareils sensibles.")), False, False, 0)
+    privacy.pack_start(
+        workflow_card(
+            tr("settings.privacy.workflow.title", "Comprendre avant d’autoriser"),
+            tr("settings.privacy.workflow.note", "SevenOS privilégie les données locales et les actions visibles. Les réglages sensibles restent regroupés au même endroit."),
+            [
+                (tr("settings.privacy.step.observe", "Voir ce qui existe"), tr("settings.privacy.step.observe.note", "Notifications, historique Spotlight, entrées audio et données SevenAI.")),
+                (tr("settings.privacy.step.control", "Contrôler"), tr("settings.privacy.step.control.note", "Efface l’historique, ouvre les permissions ou vérifie les appareils actifs.")),
+                (tr("settings.privacy.step.confirm", "Confirmer"), tr("settings.privacy.step.confirm.note", "Chaque action sensible donne un retour visible et reste réversible quand c’est possible.")),
+            ],
+            [callback_button(tr("settings.summary", "Résumé"), "privacy:dashboard", show_privacy_dashboard)],
+        ),
+        False,
+        False,
+        0,
+    )
     status_grid(
         privacy,
         [
@@ -7124,20 +8822,35 @@ def run(initial_page: str = "overview") -> int:
         ],
     )
     settings_group(privacy, tr("settings.privacy", "Confidentialité"), [
-        settings_row("󰂚", tr("settings.notifications", "Notifications"), tr("settings.notifications.note", "Ouvrir l’historique, le mode Ne pas déranger et les contrôles de notifications."), [action_button(tr("settings.open", "Ouvrir"), "seven-waybar-notifications menu")]),
+        settings_row("󰂚", tr("settings.notifications", "Notifications"), tr("settings.notifications.note", "Voir l’historique, le mode Ne pas déranger et les contrôles de notifications."), [callback_button(tr("settings.summary", "Résumé"), "privacy:dashboard", show_privacy_dashboard)]),
         settings_row("󰆴", tr("settings.clear_notifications", "Effacer les notifications"), tr("settings.clear_notifications.note", "Nettoyer l’historique affiché par le centre de notifications SevenOS."), [action_button(tr("settings.clear", "Effacer"), "seven-waybar-notifications dismiss")]),
-        settings_row("󰂚", tr("settings.notification_controls", "Contrôles notifications"), tr("settings.notification_controls.note", "Ouvrir le panneau rapide directement sur les notifications et le mode focus."), [action_button(tr("settings.open", "Ouvrir"), "seven-quick-settings notifications")]),
+        settings_row("󰂚", tr("settings.notification_controls", "Contrôles notifications"), tr("settings.notification_controls.note", "Voir les contrôles de notifications et le mode focus."), [callback_button(tr("settings.summary", "Résumé"), "privacy:dashboard", show_privacy_dashboard)]),
         settings_row("󰌾", tr("settings.local_ai_data", "Données SevenAI"), tr("settings.local_ai_data.note", "Voir ce que SevenAI garde localement et comment il protège la confidentialité."), [action_button(tr("settings.open", "Ouvrir"), "seven ai provider")]),
-        settings_row("󰍬", tr("settings.microphone_camera", "Microphone et caméra"), tr("settings.microphone_camera.note", "Ouvrir les appareils audio et les surfaces de permission disponibles."), [action_button(tr("settings.open", "Ouvrir"), "pavucontrol || wpctl status")]),
-        settings_row("󰚰", tr("settings.spotlight_history", "Historique Spotlight"), tr("settings.spotlight_history.note", "Voir ou effacer l’historique récent de recherche."), [action_button(tr("settings.open", "Ouvrir"), "seven-spotlight history")]),
+        settings_row("󰍬", tr("settings.microphone_camera", "Microphone et caméra"), tr("settings.microphone_camera.note", "Voir les entrées audio et les surfaces de permission disponibles."), [callback_button(tr("settings.summary", "Résumé"), "sound:overview", show_sound_overview)]),
+        settings_row("󰚰", tr("settings.spotlight_history", "Historique Spotlight"), tr("settings.spotlight_history.note", "Voir ou effacer l’historique récent de recherche."), [callback_button(tr("settings.summary", "Résumé"), "privacy:dashboard", show_privacy_dashboard)]),
     ])
 
     # Backup and restore
     backup = pages["backup"][0]
     backup.pack_start(hero_card(tr("settings.backup.hero.title", "Protéger avant de changer"), tr("settings.backup.hero.note", "SevenOS peut sauvegarder l’état, préparer une restauration et protéger les réglages avant une grosse modification.")), False, False, 0)
+    backup.pack_start(
+        workflow_card(
+            tr("settings.backup.workflow.title", "Sauvegarde compréhensible"),
+            tr("settings.backup.workflow.note", "Avant une grosse modification, SevenOS doit te dire quoi protéger, où le placer et comment revenir en arrière."),
+            [
+                (tr("settings.backup.step.scope", "Choisir le périmètre"), tr("settings.backup.step.scope.note", "Réglages SevenOS, profils, mini OS, apps et fichiers de configuration.")),
+                (tr("settings.backup.step.destination", "Choisir la destination"), tr("settings.backup.step.destination.note", "Local maintenant, SevenCloud guidé quand la synchronisation publique est prête.")),
+                (tr("settings.backup.step.restore", "Préparer la restauration"), tr("settings.backup.step.restore.note", "Le plan explique ce qui sera restauré avant toute action.")),
+            ],
+            [callback_button(tr("settings.summary", "Résumé"), "backup:wizard", show_backup_wizard)],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(backup, tr("settings.backup_restore", "Sauvegarde et restauration"), [
-        settings_row("󰁯", tr("settings.export_state", "Exporter un résumé"), tr("settings.export_state.note", "Créer un résumé lisible de SevenOS pour l’aide ou la migration."), [action_button(tr("settings.open", "Ouvrir"), "seven state --json")]),
-        settings_row("󰕒", tr("settings.restore_plan", "Plan de restauration"), tr("settings.restore_plan.note", "Voir ce qui sera protégé avant de modifier le système."), [action_button(tr("settings.open", "Ouvrir"), "seven manifest restore-plan")]),
+        settings_row("󰁯", tr("settings.backup_guide", "Assistant de sauvegarde"), tr("settings.backup_guide.note", "Voir quoi protéger, où sauvegarder et comment restaurer avant de lancer une action."), [callback_button(tr("settings.summary", "Résumé"), "backup:wizard", show_backup_wizard)]),
+        settings_row("󰕒", tr("settings.restore_plan", "Plan de restauration"), tr("settings.restore_plan.note", "Voir ce qui sera protégé avant de modifier le système."), [callback_button(tr("settings.summary", "Résumé"), "backup:wizard", show_backup_wizard)]),
         settings_row("󰄬", tr("settings.migration_backup", "Sauvegarde de migration"), tr("settings.migration_backup.note", "Créer une sauvegarde protégée de la configuration SevenOS."), [action_button(tr("settings.run", "Lancer"), "seven migrate backup")]),
         settings_row("󰒋", "SevenCloud", tr("settings.sevencloud.note", "Voir la préparation de sauvegarde locale."), [action_button(tr("settings.open", "Ouvrir"), "seven cloud plan")]),
     ])
@@ -7145,16 +8858,49 @@ def run(initial_page: str = "overview") -> int:
     # Shortcuts
     shortcuts = pages["shortcuts"][0]
     shortcuts.pack_start(hero_card(tr("settings.shortcuts.hero.title", "Tout a un chemin visible"), tr("settings.shortcuts.hero.note", "Les raccourcis importants sont dans Aide, et Settings garde les actions accessibles sans console.")), False, False, 0)
+    shortcuts.pack_start(
+        workflow_card(
+            tr("settings.shortcuts.workflow.title", "Mémoriser peu, agir vite"),
+            tr("settings.shortcuts.workflow.note", "SevenOS expose les raccourcis essentiels, vérifie les conflits et reconstruit les bindings quand nécessaire."),
+            [
+                (tr("settings.shortcuts.step.learn", "Voir les essentiels"), tr("settings.shortcuts.step.learn.note", "Aide, fichiers, terminal, Spotlight, Prism et rafraîchissement session.")),
+                (tr("settings.shortcuts.step.audit", "Vérifier"), tr("settings.shortcuts.step.audit.note", "SevenOS contrôle que les raccourcis générés sont cohérents.")),
+                (tr("settings.shortcuts.step.rebuild", "Reconstruire"), tr("settings.shortcuts.step.rebuild.note", "Les bindings sont régénérés sans modifier les préférences personnelles inutiles.")),
+            ],
+            [
+                callback_button(tr("settings.summary", "Résumé"), "shortcuts:overview", show_shortcuts_overview),
+                action_button(tr("settings.open", "Ouvrir"), "seven-help-native"),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(shortcuts, tr("settings.shortcuts", "Raccourcis"), [
-        settings_row("󰩂", tr("settings.help_center", "Aide SevenOS"), tr("settings.help_center.note", "Ouvrir la documentation Super+H avec les commandes utiles et les mini OS."), [action_button(tr("settings.open", "Ouvrir"), "seven-help-native")]),
+        settings_row("󰩂", tr("settings.help_center", "Aide SevenOS"), tr("settings.help_center.note", "Ouvrir la documentation Super+H avec les commandes utiles et les mini OS."), [callback_button(tr("settings.summary", "Résumé"), "shortcuts:overview", show_shortcuts_overview), action_button(tr("settings.open", "Ouvrir"), "seven-help-native")]),
         settings_row("󰄬", tr("settings.shortcut_audit", "Vérifier les raccourcis"), tr("settings.shortcut_audit.note", "Contrôler que les raccourcis SevenOS sont bien générés."), [action_button(tr("settings.check", "Vérifier"), "seven hypr lua audit")]),
         settings_row("󰜉", tr("settings.regenerate_shortcuts", "Reconstruire les raccourcis"), tr("settings.regenerate_shortcuts.note", "Reconstruire les raccourcis SevenOS et rafraîchir l’interface."), [action_button(tr("settings.apply", "Appliquer"), "seven hypr lua apply")]),
-        settings_row("󰌢", tr("settings.keyboard_override", "Réglage clavier avancé"), tr("settings.keyboard_override.note", "Ouvrir le réglage clavier manuel si nécessaire."), [action_button(tr("settings.edit", "Modifier"), "xdg-open ~/.config/hypr/conf/keyboard.conf")]),
+        settings_row("󰌢", tr("settings.keyboard_override", "Diagnostic clavier"), tr("settings.keyboard_override.note", "Voir l’état clavier et les sources générées par SevenOS."), [action_button(tr("settings.status", "Voir"), "seven keyboard status --json")]),
     ])
 
     # Apps
     apps = pages["apps"][0]
     store_label, store_detail = store_state()
+    apps.pack_start(
+        workflow_card(
+            tr("settings.apps.workflow.title", "Installer sans polluer les espaces"),
+            tr("settings.apps.workflow.note", "SevenOS distingue les apps système, Flatpak, paquets externes et outils propres aux mini OS."),
+            [
+                (tr("settings.apps.step.find", "Trouver"), tr("settings.apps.step.find.note", "SevenStore et Launchpad montrent les apps disponibles et installées.")),
+                (tr("settings.apps.step.scope", "Choisir l’espace"), tr("settings.apps.step.scope.note", "Un outil peut rester dans Forge, Shield, Studio, Pulse, Atlas ou Baobab.")),
+                (tr("settings.apps.step.review", "Prévisualiser"), tr("settings.apps.step.review.note", "Les suppressions et installations importantes passent par un résumé.")),
+            ],
+            [callback_button(tr("settings.summary", "Résumé"), "apps:dashboard", show_apps_dashboard)],
+        ),
+        False,
+        False,
+        0,
+    )
     status_grid(
         apps,
         [
@@ -7167,10 +8913,10 @@ def run(initial_page: str = "overview") -> int:
         ],
     )
     settings_group(apps, tr("settings.software", "Applications"), [
-        settings_row("󰀻", "Launchpad", tr("settings.launchpad.apps.note", "Parcourir les applications installées."), [action_button(tr("settings.open", "Ouvrir"), "seven-overview apps")]),
-        settings_row("󰏗", tr("settings.sevenpkg_public", "Applications installées"), tr("settings.sevenpkg.note", "Voir et installer les apps graphiquement."), [action_button(tr("settings.status", "Voir"), "seven-store")]),
+        settings_row("󰀻", "Launchpad", tr("settings.launchpad.apps.note", "Parcourir les applications installées."), [callback_button(tr("settings.summary", "Résumé"), "apps:dashboard", show_apps_dashboard), action_button(tr("settings.launch", "Lancer"), "seven-overview apps")]),
+        settings_row("󰏗", tr("settings.sevenpkg_public", "Applications installées"), tr("settings.sevenpkg.note", "Voir et installer les apps graphiquement."), [callback_button(tr("settings.summary", "Résumé"), "apps:dashboard", show_apps_dashboard), action_button(tr("settings.open", "Ouvrir"), "seven-store")]),
         settings_row("󰈙", tr("settings.software_sources", "Sources d’apps"), tr("settings.software_sources.note", "Voir les sources d’applications utilisées par SevenOS."), [action_button(tr("settings.status", "Voir"), "seven flatpak status || flatpak list")]),
-        settings_row("󰉋", tr("settings.applications_folder", "Dossier Applications"), tr("settings.applications_folder.note", "Ouvrir les lanceurs d’applications."), [action_button(tr("settings.open", "Ouvrir"), "xdg-open /usr/share/applications")]),
+        settings_row("󰉋", tr("settings.applications_folder", "Applications visibles"), tr("settings.applications_folder.note", "Ouvrir la vue SevenOS des applications installées."), [callback_button(tr("settings.open", "Ouvrir"), "apps:dashboard", show_apps_dashboard)]),
     ])
 
     # System
@@ -7188,6 +8934,43 @@ def run(initial_page: str = "overview") -> int:
             (about_system["kernel"], tr("settings.system_base", "Base système")),
         ],
     )
+    system.pack_start(
+        workflow_card(
+            tr("settings.system.workflow.title", "Entretien guidé"),
+            tr("settings.system.workflow.note", "Les opérations système sensibles passent par des vues guidées avec progression, résultat et détails consultables."),
+            [
+                (tr("settings.system.step.check", "Vérifier"), tr("settings.system.step.check.note", "Contrôle santé, interface, mini OS, paquets et surfaces.")),
+                (tr("settings.system.step.update", "Mettre à jour"), tr("settings.system.step.update.note", "Prépare les changements, installe, puis relance seulement ce qui est nécessaire.")),
+                (tr("settings.system.step.recover", "Revenir en arrière"), tr("settings.system.step.recover.note", "Utilise sauvegarde ou rollback quand une opération doit être annulée.")),
+            ],
+            [
+                action_button(tr("settings.check", "Vérifier"), "seven doctor"),
+                action_button(tr("settings.update", "Mettre à jour"), "seven update"),
+                page_button(tr("settings.backup", "Sauvegarde"), "backup"),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
+    system.pack_start(
+        workflow_card(
+            tr("settings.system.levels.title", "Choisir le bon niveau d’action"),
+            tr("settings.system.levels.note", "Pour éviter les interventions trop fortes, SevenOS sépare les contrôles légers, les mises à jour, les réparations et les diagnostics."),
+            [
+                (tr("settings.system.level.check", "Contrôle léger"), tr("settings.system.level.check.note", "Vérifie l’état sans modifier la machine.")),
+                (tr("settings.system.level.update", "Mise à jour"), tr("settings.system.level.update.note", "Installe les changements avec suivi et résumé.")),
+                (tr("settings.system.level.repair", "Réparation ciblée"), tr("settings.system.level.repair.note", "Réapplique seulement les surfaces et services nécessaires.")),
+            ],
+            [
+                action_button(tr("settings.check", "Vérifier"), "seven smoke doctor"),
+                action_button(tr("settings.repair", "Réparer"), repair_interface_command()),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
     settings_group(system, tr("settings.maintenance", "Maintenance"), [
         settings_row("󰚰", tr("settings.system_updates", "Mises à jour"), tr("settings.system_updates.note", "Mettre à jour SevenOS et les applications."), [action_button(tr("settings.update", "Mettre à jour"), "seven update")]),
         settings_row("󰏗", tr("settings.package_status", "Applications"), tr("settings.package_status.note", "Ouvrir SevenStore pour gérer les apps."), [action_button(tr("settings.open", "Ouvrir"), "seven-store")]),
@@ -7203,9 +8986,21 @@ def run(initial_page: str = "overview") -> int:
         nav_by_target[initial_page].get_style_context().add_class("active")
     elif nav_buttons:
         nav_buttons[0].get_style_context().add_class("active")
+    page_context.set_text(nav_titles.get(initial_page, initial_page.title()))
+    page_context.set_tooltip_text(page_title(initial_page))
+    page_hint.set_text(page_subtitle(initial_page))
+    page_hint.set_tooltip_text(page_subtitle(initial_page) or page_title(initial_page))
+    initial_targets = list(nav_by_target.keys())
+    if initial_page in initial_targets:
+        page_position.set_text(f"{initial_targets.index(initial_page) + 1}/{len(initial_targets)}")
+        page_position.set_tooltip_text(tr("settings.nav.position", "Page {index} sur {total}", index=initial_targets.index(initial_page) + 1, total=len(initial_targets)))
+    live_refresh_button.set_tooltip_text(tr("settings.refresh_live.page_tooltip", "Actualiser {page} avec les informations live.", page=page_title(initial_page)))
+    update_history_buttons()
     window.connect("destroy", Gtk.main_quit)
-    window.connect("key-press-event", lambda _w, event: Gtk.main_quit() if event.keyval == Gdk.KEY_Escape else False)
+    window.connect("key-press-event", handle_window_keys)
     window.show_all()
+    if os.environ.get("SEVENOS_SETTINGS_SMOKE_OPEN") == "1":
+        GLib.timeout_add(320, lambda: (window.destroy(), False)[1])
     Gtk.main()
     return 0
 
@@ -7213,6 +9008,8 @@ def run(initial_page: str = "overview") -> int:
 def main() -> int:
     if "--probe" in sys.argv:
         return probe()
+    if "--smoke-open" in sys.argv:
+        os.environ["SEVENOS_SETTINGS_SMOKE_OPEN"] = "1"
     page = next((arg for arg in sys.argv[1:] if not arg.startswith("-")), "overview")
     return run(page)
 
