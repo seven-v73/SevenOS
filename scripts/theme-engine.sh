@@ -33,15 +33,19 @@ ensure_runtime_paths() {
 }
 
 theme_mode() {
+  local persisted=""
+  if [[ -r "$THEME_CONF" ]]; then
+    persisted="$(awk -F= 'tolower($1) ~ /^(mode|theme_mode|sevenos_theme_mode)$/ {gsub(/[[:space:]"]/, "", $2); print tolower($2); exit}' "$THEME_CONF" 2>/dev/null || true)"
+  fi
+  if [[ "$persisted" == "dark" || "$persisted" == "light" ]]; then
+    printf '%s' "$persisted"
+    return 0
+  fi
   if [[ "${SEVENOS_THEME_MODE:-}" == "dark" || "${SEVENOS_THEME_MODE:-}" == "light" ]]; then
     printf '%s' "$SEVENOS_THEME_MODE"
     return 0
   fi
-  if [[ -r "$THEME_CONF" ]]; then
-    # shellcheck disable=SC1090
-    source "$THEME_CONF" || true
-  fi
-  printf '%s' "${SEVENOS_THEME_MODE:-dark}"
+  printf 'dark'
 }
 
 toolkit_value() {
@@ -210,6 +214,14 @@ gtk = toolkits.get("gtk_theme", "")
 icons = toolkits.get("icon_theme", "")
 qt6 = toolkits.get("qt6_icon_theme", "")
 kvantum = toolkits.get("kvantum_theme", "")
+theme_session = {}
+try:
+    import subprocess
+    result = subprocess.run([str(root / "scripts" / "theme-session.sh"), "doctor"], capture_output=True, text=True, check=False, timeout=2)
+    if result.stdout.strip():
+        theme_session = json.loads(result.stdout)
+except Exception as exc:
+    warnings.append(f"Theme session doctor unavailable: {exc}")
 if not gtk:
     warnings.append("GTK theme not resolved in active user config")
 if not icons:
@@ -220,6 +232,10 @@ if mode == "light" and kvantum and "latte" not in kvantum.lower() and "light" no
     warnings.append(f"Light mode Kvantum does not look light-specific: {kvantum}")
 if mode == "dark" and kvantum and all(token not in kvantum.lower() for token in ("mocha", "dark", "arc", "mojave")):
     warnings.append(f"Dark mode Kvantum does not look dark-specific: {kvantum}")
+if theme_session.get("state") == "attention":
+    warnings.append("Theme session environment is drifting; run: scripts/theme-session.sh sync")
+if theme_session.get("state") not in {"ok", "attention", None}:
+    warnings.append("Theme session returned an unexpected state")
 
 tokens_light = (root / "identity" / "tokens-light.css").read_text(encoding="utf-8")
 for token in ("--ease-cinematic", "--glow-blue", "--glass-border-2", "@media (prefers-reduced-motion"):
@@ -232,6 +248,7 @@ print(json.dumps({
     "state": state,
     "mode": mode,
     "runtime": runtime,
+    "session": theme_session,
     "errors": errors,
     "warnings": warnings,
 }, indent=2))
@@ -241,12 +258,19 @@ PY
 
 status() {
   write_runtime
-  python - "$RUNTIME_JSON" <<'PY'
+  python - "$RUNTIME_JSON" "$ROOT_DIR/scripts/theme-session.sh" <<'PY'
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+session = {}
+try:
+    result = subprocess.run([sys.argv[2], "doctor"], capture_output=True, text=True, check=False, timeout=2)
+    session = json.loads(result.stdout) if result.stdout.strip() else {}
+except Exception:
+    session = {}
 print("SevenOS Theme Engine")
 print("====================")
 print()
@@ -258,14 +282,21 @@ print(f"Cursor:    {toolkits.get('cursor_theme') or 'MISS'}")
 print(f"Qt5 icon:  {toolkits.get('qt5_icon_theme') or 'MISS'}")
 print(f"Qt6 icon:  {toolkits.get('qt6_icon_theme') or 'MISS'}")
 print(f"Kvantum:   {toolkits.get('kvantum_theme') or 'MISS'}")
+print(f"Session:   {session.get('state', 'unknown')}")
 print()
 print("Doctor:")
 print("  seven theme doctor")
 print("  seven identity theme-doctor")
+print("  seven theme sync")
 print("Apply:")
 print("  ./install.sh theme dark")
 print("  ./install.sh theme light")
 PY
+}
+
+sync_session() {
+  "$ROOT_DIR/scripts/theme-session.sh" sync
+  write_runtime
 }
 
 case "${1:-status}" in
@@ -273,5 +304,6 @@ case "${1:-status}" in
   json|--json) json_status ;;
   doctor) doctor ;;
   apply) write_runtime ;;
-  *) printf 'Usage: theme-engine.sh [status|json|doctor|apply]\n' >&2; exit 2 ;;
+  sync|repair|session) sync_session ;;
+  *) printf 'Usage: theme-engine.sh [status|json|doctor|apply|sync]\n' >&2; exit 2 ;;
 esac

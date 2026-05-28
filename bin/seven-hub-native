@@ -46,8 +46,6 @@ def current_theme_mode() -> str:
     if seven_theme:
         return seven_theme.current_theme_mode()
     config_dir = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
-    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
-        return str(os.environ["SEVENOS_THEME_MODE"])
     theme_file = config_dir / "theme.conf"
     if theme_file.exists():
         for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -56,6 +54,8 @@ def current_theme_mode() -> str:
                 value = value.strip().strip("'\"").lower()
                 if value in {"dark", "light"}:
                     return value
+    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
+        return str(os.environ["SEVENOS_THEME_MODE"])
     return "dark"
 
 

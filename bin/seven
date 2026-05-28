@@ -1177,7 +1177,7 @@ def main():
     identity_parser.add_argument("--json", action="store_true", help="print machine-readable identity contract")
     identity_parser.add_argument("extra", nargs=argparse.REMAINDER)
     theme_parser = subparsers.add_parser("theme", help="inspect SevenOS light/dark runtime theme coherence")
-    theme_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "doctor", "theme-doctor", "apply"))
+    theme_parser.add_argument("action", nargs="?", default="status", choices=("status", "json", "doctor", "theme-doctor", "apply", "sync", "repair", "session"))
     theme_parser.add_argument("--json", action="store_true", help="print machine-readable theme runtime state")
     hypr_parser = subparsers.add_parser("hypr", help="inspect or install the SevenOS window system layer")
     hypr_parser.add_argument("action", nargs="?", default="status", choices=("status", "install", "apply", "lua"))

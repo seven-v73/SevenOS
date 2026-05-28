@@ -326,9 +326,6 @@ def write_json(path: Path, data) -> None:
 
 
 def current_theme_mode() -> str:
-    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
-    if env_mode in {"dark", "light"}:
-        return env_mode
     try:
         for raw in THEME_CONF.read_text(encoding="utf-8", errors="replace").splitlines():
             if "=" not in raw or raw.strip().startswith("#"):
@@ -338,6 +335,9 @@ def current_theme_mode() -> str:
                 return value
     except OSError:
         pass
+    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
+    if env_mode in {"dark", "light"}:
+        return env_mode
     return "dark"
 
 
@@ -859,6 +859,19 @@ def log_launch(message: str) -> None:
 
 def launch_environment() -> dict:
     env = os.environ.copy()
+    runtime_env = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/theme-runtime.env"
+    if runtime_env.exists():
+        for raw in runtime_env.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            key = key.strip()
+            if not key.startswith("SEVENOS_") or not value:
+                continue
+            env[key] = value.strip().strip("'\"")
+    if env.get("SEVENOS_GTK_THEME"):
+        env["GTK_THEME"] = env["SEVENOS_GTK_THEME"]
+    env.setdefault("QT_QPA_PLATFORMTHEME", "qt6ct")
+    env.setdefault("QT_STYLE_OVERRIDE", "kvantum")
+    env.setdefault("ELECTRON_OZONE_PLATFORM_HINT", "auto")
     user_bin = str(Path.home() / ".local/bin")
     repo_bin = str(ROOT_DIR / "bin")
     path_parts = [user_bin, repo_bin]

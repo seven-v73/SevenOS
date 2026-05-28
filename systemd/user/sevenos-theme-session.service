@@ -1,0 +1,12 @@
+[Unit]
+Description=SevenOS theme session synchronizer
+PartOf=sevenos-session.target
+Before=sevenos-waybar.service sevenos-notifications.service sevenos-wallpaper.service sevenos-shell-experience.service
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env sh -lc 'root="${SEVENOS_ROOT:-/opt/SevenOS}"; exec "$root/scripts/theme-session.sh" sync'
+
+[Install]
+WantedBy=sevenos-session.target

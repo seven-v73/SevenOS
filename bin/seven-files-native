@@ -93,8 +93,9 @@ TRASH_INFO_DIR = Path.home() / ".local/share/Trash/info"
 PROFILE_UI_FILE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/profile-ui.json"
 RECENTS_SENTINEL = Path("__sevenos_recent__")
 RENDER_LIMIT = 620
-DEFAULT_WINDOW_SIZE = (980, 660)
-MIN_WINDOW_SIZE = (680, 460)
+DEFAULT_WINDOW_SIZE = (700, 500)
+COMFORT_WINDOW_SIZE = (980, 620)
+MIN_WINDOW_SIZE = (620, 440)
 INDEX_LIMIT = 5000
 OPERATION_CANCELLED = "__sevenos_cancelled__"
 URI_LIST_TARGET = "text/uri-list"
@@ -159,8 +160,6 @@ except Exception:  # pragma: no cover - fallback for standalone probes
 
 
 def read_theme_mode() -> str:
-    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
-        return os.environ["SEVENOS_THEME_MODE"]
     config_dir = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
     config = config_dir / "theme.conf"
     if config.exists():
@@ -170,6 +169,8 @@ def read_theme_mode() -> str:
                 value = value.strip().strip("'\"").lower()
                 if value in {"dark", "light"}:
                     return value
+    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
+        return os.environ["SEVENOS_THEME_MODE"]
     return "dark"
 
 
@@ -272,23 +273,27 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       background:
         linear-gradient(180deg, alpha(@files_sidebar, 0.96), alpha(@files_sidebar, 0.78));
       border-right: 1px solid alpha(@files_border, 0.90);
-      padding: 12px 10px;
+      padding: 8px 7px;
+    }}
+    .files-sidebar-scroll {{
+      background: transparent;
+      border: 0;
     }}
     .traffic-row {{
-      margin-bottom: 14px;
+      margin-bottom: 8px;
     }}
     .files-identity-card {{
       border-radius: 14px;
-      padding: 10px;
-      margin: 0 0 12px 0;
+      padding: 7px;
+      margin: 0 0 7px 0;
       background:
         radial-gradient(circle at 16% 12%, alpha({accent}, 0.28), transparent 34%),
         linear-gradient(135deg, alpha(@files_bg, 0.38), alpha(@files_panel, 0.34));
       border: 1px solid alpha({accent}, 0.26);
     }}
     .files-prism-badge {{
-      min-width: 34px;
-      min-height: 34px;
+      min-width: 30px;
+      min-height: 30px;
       border-radius: 12px;
       background: linear-gradient(135deg, alpha({accent}, 0.30), alpha({secondary}, 0.22));
       border: 1px solid alpha({accent}, 0.42);
@@ -310,12 +315,12 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       color: alpha(@files_muted, 0.78);
       font-size: 10px;
       font-weight: 500;
-      margin: 12px 8px 4px 8px;
+      margin: 7px 7px 3px 7px;
     }}
     .sidebar-row {{
-      min-height: 34px;
+      min-height: 28px;
       border-radius: 9px;
-      padding: 0 10px;
+      padding: 0 8px;
       color: alpha(@files_text, 0.88);
       background: transparent;
       border: 1px solid transparent;
@@ -348,20 +353,20 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       background: alpha(@files_panel, 0.58);
     }}
     .files-toolbar {{
-      min-height: 34px;
-      padding: 3px 7px;
+      min-height: 36px;
+      padding: 4px 6px;
       border-bottom: 1px solid alpha(@files_border, 0.82);
       background: alpha(@files_panel, 0.66);
     }}
     .files-tabbar {{
-      min-height: 34px;
-      padding: 4px 8px 2px 8px;
+      min-height: 28px;
+      padding: 3px 8px 0 8px;
       border-bottom: 1px solid alpha(@files_border, 0.54);
       background: alpha(@files_panel, 0.46);
     }}
     .files-context-strip {{
-      min-height: 42px;
-      padding: 7px 12px;
+      min-height: 32px;
+      padding: 4px 9px;
       border-bottom: 1px solid alpha(@files_border, 0.46);
       background:
         linear-gradient(90deg, alpha({accent}, 0.10), alpha(@files_panel, 0.40));
@@ -405,8 +410,8 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
     }}
     .toolbar-button,
     .files-sort {{
-      min-width: 24px;
-      min-height: 24px;
+      min-width: 25px;
+      min-height: 25px;
       border-radius: 6px;
       background: transparent;
       border: 1px solid transparent;
@@ -454,6 +459,10 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       border-color: alpha({accent}, 0.58);
       background: alpha(@files_bg, 0.42);
     }}
+    .files-search.search-active {{
+      border-color: alpha({accent}, 0.72);
+      background: alpha({accent}, 0.14);
+    }}
     .location-entry {{
       min-height: 24px;
       border-radius: 7px;
@@ -463,7 +472,7 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       color: @files_text;
     }}
     .files-grid {{
-      padding: 18px;
+      padding: 10px;
       background: alpha(@files_bg, 0.16);
     }}
     .files-split {{
@@ -487,8 +496,8 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       border-top: 1px solid alpha(@files_border, 0.46);
     }}
     .selection-bar {{
-      min-height: 42px;
-      padding: 6px 10px;
+      min-height: 38px;
+      padding: 5px 8px;
       background:
         radial-gradient(circle at 4% 50%, alpha({accent}, 0.18), transparent 26%),
         linear-gradient(90deg, alpha({accent}, 0.14), alpha(@files_bg, 0.22));
@@ -496,9 +505,9 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       border-bottom: 1px solid alpha(@files_border, 0.38);
     }}
     .selection-action {{
-      min-height: 26px;
+      min-height: 24px;
       border-radius: 999px;
-      padding: 2px 10px;
+      padding: 1px 8px;
       color: @files_text;
       background: alpha(@files_panel, 0.48);
       border: 1px solid alpha(@files_border, 0.52);
@@ -513,9 +522,9 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       border-radius: 12px;
     }}
     .file-tile-box {{
-      border-radius: 12px;
+      border-radius: 11px;
       border: 1px solid transparent;
-      padding: 8px;
+      padding: 6px;
       background: transparent;
     }}
     .file-tile:hover .file-tile-box {{
@@ -544,7 +553,7 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
     }}
     .file-name {{
       color: @files_text;
-      font-size: 12px;
+      font-size: 11px;
     }}
     .file-meta {{
       color: alpha(@files_muted, 0.88);
@@ -585,7 +594,7 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       font-size: 10px;
     }}
     .files-preview {{
-      padding: 18px 16px;
+      padding: 14px 13px;
       background:
         linear-gradient(180deg, alpha(@files_panel, 0.88), alpha(@files_bg, 0.56));
       border-left: 1px solid alpha(@files_border, 0.84);
@@ -1017,8 +1026,21 @@ def run_files(start_path: str) -> int:
     screen = Gdk.Screen.get_default()
     screen_width = screen.get_width() if screen else 1280
     screen_height = screen.get_height() if screen else 720
-    screen_compact = screen_width < 1100 or screen_height < 680
-    screen_tiny = screen_width < 820 or screen_height < 560
+    workarea_width = screen_width
+    workarea_height = screen_height
+    try:
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() if display else None
+        if monitor is None and display is not None:
+            monitor = display.get_monitor_at_point(0, 0)
+        if monitor is not None:
+            workarea = monitor.get_workarea()
+            workarea_width = max(MIN_WINDOW_SIZE[0], int(workarea.width))
+            workarea_height = max(MIN_WINDOW_SIZE[1], int(workarea.height))
+    except Exception:
+        pass
+    screen_compact = workarea_width < 920 or workarea_height < 620
+    screen_tiny = workarea_width < 700 or workarea_height < 500
     runtime_sidebar_visible = sidebar_visible_pref and not screen_tiny
     runtime_preview_visible = preview_visible_pref and not screen_compact
     if screen_tiny and prefs.get("view_mode") is None:
@@ -1026,8 +1048,19 @@ def run_files(start_path: str) -> int:
 
     def screen_window_size() -> tuple[int, int]:
         return (
-            min(DEFAULT_WINDOW_SIZE[0], max(MIN_WINDOW_SIZE[0], int(screen_width * 0.78))),
-            min(DEFAULT_WINDOW_SIZE[1], max(MIN_WINDOW_SIZE[1], int(screen_height * 0.76))),
+            min(DEFAULT_WINDOW_SIZE[0], max(MIN_WINDOW_SIZE[0], min(workarea_width - 40, int(workarea_width * 0.70)))),
+            min(DEFAULT_WINDOW_SIZE[1], max(MIN_WINDOW_SIZE[1], min(workarea_height - 56, int(workarea_height * 0.68)))),
+        )
+
+    def compact_window_size(width: int | None = None, height: int | None = None) -> tuple[int, int]:
+        target_width, target_height = screen_window_size()
+        requested_width = target_width if width is None else int(width)
+        requested_height = target_height if height is None else int(height)
+        max_width = min(DEFAULT_WINDOW_SIZE[0], max(MIN_WINDOW_SIZE[0], workarea_width - 40))
+        max_height = min(DEFAULT_WINDOW_SIZE[1], max(MIN_WINDOW_SIZE[1], workarea_height - 56))
+        return (
+            min(max(MIN_WINDOW_SIZE[0], requested_width), max_width),
+            min(max(MIN_WINDOW_SIZE[1], requested_height), max_height),
         )
 
     window = Gtk.Window(title=f"Seven Files · {profile_title(active_profile, profile_ui)}")
@@ -1044,7 +1077,8 @@ def run_files(start_path: str) -> int:
 
     sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
     sidebar.get_style_context().add_class("files-sidebar")
-    sidebar.set_size_request(150 if screen_compact else 168, -1)
+    sidebar.set_no_show_all(True)
+    sidebar.set_size_request(104 if screen_compact else 116, -1)
     root.pack_start(sidebar, False, False, 0)
 
     traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
@@ -1134,13 +1168,21 @@ def run_files(start_path: str) -> int:
     identity_card.pack_start(identity_text, True, True, 0)
     sidebar.pack_start(identity_card, False, False, 0)
 
+    sidebar_scroller = Gtk.ScrolledWindow()
+    sidebar_scroller.get_style_context().add_class("files-sidebar-scroll")
+    sidebar_scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    sidebar_scroller.set_overlay_scrolling(True)
+    sidebar_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    sidebar_scroller.add(sidebar_content)
+    sidebar.pack_start(sidebar_scroller, True, True, 0)
+
     sidebar_buttons = []
 
     def add_heading(label: str):
         heading = Gtk.Label(label=label)
         heading.set_xalign(0)
         heading.get_style_context().add_class("sidebar-heading")
-        sidebar.pack_start(heading, False, False, 0)
+        sidebar_content.pack_start(heading, False, False, 0)
 
     def setup_place_drop_target(widget, target: Path | str):
         uri_target = Gtk.TargetEntry.new(URI_LIST_TARGET, 0, 1)
@@ -1161,7 +1203,7 @@ def run_files(start_path: str) -> int:
         style_class: str = "",
         ensure_dir: bool = False,
     ):
-        target_container = container or sidebar
+        target_container = container or sidebar_content
         row = Gtk.Button()
         row.set_relief(Gtk.ReliefStyle.NONE)
         row.get_style_context().add_class("sidebar-row")
@@ -1581,7 +1623,7 @@ def run_files(start_path: str) -> int:
     add_place("Applications", "applications-system", Path("/usr/share/applications"))
     add_heading(t("Ressources", "Resources"))
     resources_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-    sidebar.pack_start(resources_box, False, False, 0)
+    sidebar_content.pack_start(resources_box, False, False, 0)
     resource_rows: list[Gtk.Button] = []
 
     def render_resource_rows() -> None:
@@ -1608,7 +1650,7 @@ def run_files(start_path: str) -> int:
     add_heading(t("Favoris", "Favorites"))
     favorite_rows: list[Gtk.Button] = []
     favorites_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-    sidebar.pack_start(favorites_box, False, False, 0)
+    sidebar_content.pack_start(favorites_box, False, False, 0)
 
     def render_favorite_rows() -> None:
         for row in list(favorite_rows):
@@ -1624,7 +1666,7 @@ def run_files(start_path: str) -> int:
     render_favorite_rows()
     add_heading("Mini OS")
     mini_os_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-    sidebar.pack_start(mini_os_box, False, False, 0)
+    sidebar_content.pack_start(mini_os_box, False, False, 0)
     mini_os_rows: list[Gtk.Button] = []
 
     def render_mini_os_rows() -> None:
@@ -1652,7 +1694,7 @@ def run_files(start_path: str) -> int:
     render_mini_os_rows()
     add_heading(t("Emplacements", "Locations"))
     locations_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-    sidebar.pack_start(locations_box, False, False, 0)
+    sidebar_content.pack_start(locations_box, False, False, 0)
     location_rows: list[Gtk.Button] = []
 
     def render_location_rows() -> None:
@@ -1685,7 +1727,7 @@ def run_files(start_path: str) -> int:
 
     main = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
     main.get_style_context().add_class("files-main")
-    main.set_size_request(300, -1)
+    main.set_size_request(240, -1)
     root.pack_start(main, True, True, 0)
 
     toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
@@ -1697,17 +1739,19 @@ def run_files(start_path: str) -> int:
     nav_group.get_style_context().add_class("toolbar-group")
     actions_group = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=1)
     actions_group.get_style_context().add_class("toolbar-group")
+    actions_group.set_no_show_all(True)
     view_group = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=1)
     view_group.get_style_context().add_class("toolbar-group")
+    view_group.set_no_show_all(True)
 
     def toolbar_button(icon: str, callback):
         button = Gtk.Button()
         button.set_relief(Gtk.ReliefStyle.NONE)
         button.get_style_context().add_class("toolbar-button")
         image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.MENU)
-        image.set_pixel_size(15)
+        image.set_pixel_size(13)
         button.add(image)
-        button.set_size_request(24, 24)
+        button.set_size_request(25, 25)
         button.connect("clicked", callback)
         button.connect("pressed", lambda widget: press_feedback(widget))
         button.connect("released", lambda widget: release_feedback(widget))
@@ -1715,8 +1759,11 @@ def run_files(start_path: str) -> int:
 
     back_btn = toolbar_button("go-previous-symbolic", lambda *_: go_back())
     forward_btn = toolbar_button("go-next-symbolic", lambda *_: go_forward())
+    sidebar_btn = toolbar_button("sidebar-show-symbolic", lambda *_: toggle_sidebar_visibility())
+    sidebar_btn.set_tooltip_text(t("Afficher ou masquer la barre latérale", "Show or hide sidebar"))
     nav_group.pack_start(back_btn, False, False, 0)
     nav_group.pack_start(forward_btn, False, False, 0)
+    nav_group.pack_start(sidebar_btn, False, False, 0)
     toolbar.pack_start(nav_group, False, False, 0)
 
     breadcrumb_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
@@ -1728,30 +1775,30 @@ def run_files(start_path: str) -> int:
     location_entry.set_hexpand(False)
     location_entry.set_no_show_all(True)
     location_entry.set_width_chars(24)
-    location_entry.set_max_width_chars(34)
-    location_entry.set_size_request(220, 24)
+    location_entry.set_max_width_chars(28)
+    location_entry.set_size_request(150 if screen_compact else 180, 24)
     location_entry.hide()
     toolbar.pack_start(location_entry, False, False, 5)
 
     search_entry = Gtk.Entry()
-    search_entry.set_placeholder_text("")
+    search_entry.set_placeholder_text(t("Rechercher", "Search"))
     search_entry.get_style_context().add_class("files-search")
-    search_entry.set_tooltip_text(tr_text("Search current folder. Prefix with / for global search. Filters: type:image date:week size:large tag:Focus."))
+    search_entry.set_tooltip_text(t("Recherche dans le dossier. Préfixe / pour global. Filtres: type:image date:week size:large tag:Focus.", "Search current folder. Prefix with / for global search. Filters: type:image date:week size:large tag:Focus."))
     search_entry.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "edit-find-symbolic")
     search_entry.set_icon_from_icon_name(Gtk.EntryIconPosition.SECONDARY, "edit-clear-symbolic")
     search_entry.set_icon_sensitive(Gtk.EntryIconPosition.SECONDARY, False)
     search_entry.set_width_chars(5)
     search_entry.set_max_width_chars(8)
-    search_entry.set_size_request(76, 22)
+    search_entry.set_size_request(58 if screen_compact else 68, 22)
     toolbar.pack_start(search_entry, False, False, 0)
 
-    sort_labels = {"name": "A-Z", "modified": tr_text("Date"), "size": tr_text("Size"), "kind": tr_text("Type")}
+    sort_labels = {"name": "A-Z", "modified": t("Date", "Date"), "size": t("Taille", "Size"), "kind": t("Type", "Type")}
     sort_order = ["name", "modified", "size", "kind"]
     sort_button = Gtk.Button(label=sort_labels.get(sort_mode, "A-Z"))
     sort_button.set_relief(Gtk.ReliefStyle.NONE)
     sort_button.get_style_context().add_class("files-sort")
-    sort_button.set_tooltip_text(tr_text("Sort files: A-Z, Date, Size, Type"))
-    sort_button.set_size_request(38, 24)
+    sort_button.set_tooltip_text(t("Trier: A-Z, date, taille, type", "Sort files: A-Z, Date, Size, Type"))
+    sort_button.set_size_request(34, 24)
     toolbar.pack_start(sort_button, False, False, 0)
 
     copy_btn = toolbar_button("edit-copy-symbolic", lambda *_: copy_selected())
@@ -1765,15 +1812,15 @@ def run_files(start_path: str) -> int:
     refresh_btn = toolbar_button("view-refresh-symbolic", lambda *_: refresh_current())
     reindex_btn = toolbar_button("edit-find-symbolic", lambda *_: reindex_now())
     system_btn = toolbar_button("open-menu-symbolic", lambda widget: show_system_actions_menu(widget))
-    compress_btn.set_tooltip_text(tr_text("Compress selected item"))
-    ai_btn.set_tooltip_text(tr_text("Ask SevenAI about selection"))
-    new_folder_btn.set_tooltip_text(tr_text("New folder"))
-    new_file_btn.set_tooltip_text(tr_text("New file"))
-    go_path_btn.set_tooltip_text(tr_text("Go to folder"))
-    hash_btn.set_tooltip_text(tr_text("Copy SHA256"))
-    refresh_btn.set_tooltip_text(tr_text("Refresh folder"))
-    reindex_btn.set_tooltip_text(tr_text("Refresh search index"))
-    system_btn.set_tooltip_text(tr_text("System actions"))
+    compress_btn.set_tooltip_text(t("Compresser la sélection", "Compress selected item"))
+    ai_btn.set_tooltip_text(t("Demander à SevenAI", "Ask SevenAI about selection"))
+    new_folder_btn.set_tooltip_text(t("Nouveau dossier", "New folder"))
+    new_file_btn.set_tooltip_text(t("Nouveau fichier", "New file"))
+    go_path_btn.set_tooltip_text(t("Aller à un dossier", "Go to folder"))
+    hash_btn.set_tooltip_text(t("Copier SHA256", "Copy SHA256"))
+    refresh_btn.set_tooltip_text(t("Actualiser le dossier", "Refresh folder"))
+    reindex_btn.set_tooltip_text(t("Actualiser l'index de recherche", "Refresh search index"))
+    system_btn.set_tooltip_text(t("Actions et réglages Seven Files", "Seven Files actions and settings"))
     for button in (new_folder_btn, new_file_btn, copy_btn, paste_btn, compress_btn, ai_btn, hash_btn, go_path_btn, refresh_btn, reindex_btn):
         actions_group.pack_start(button, False, False, 0)
     toolbar.pack_start(actions_group, False, False, 0)
@@ -1795,15 +1842,15 @@ def run_files(start_path: str) -> int:
     list_btn = toolbar_button("view-list-symbolic", lambda *_: set_view_mode("list"))
     compact_btn = toolbar_button("view-column-symbolic", lambda *_: set_view_mode("compact"))
     split_btn = toolbar_button("view-dual-symbolic", lambda *_: toggle_split_view())
-    grid_btn.set_tooltip_text(tr_text("Grid view"))
-    list_btn.set_tooltip_text(tr_text("List view"))
-    compact_btn.set_tooltip_text(tr_text("Compact view"))
-    split_btn.set_tooltip_text(tr_text("Split view"))
+    grid_btn.set_tooltip_text(t("Vue grille", "Grid view"))
+    list_btn.set_tooltip_text(t("Vue liste", "List view"))
+    compact_btn.set_tooltip_text(t("Vue compacte", "Compact view"))
+    split_btn.set_tooltip_text(t("Vue scindée", "Split view"))
     for button in (grid_btn, list_btn, compact_btn, split_btn):
         view_group.pack_start(button, False, False, 0)
 
     hidden_btn = toolbar_button("view-visible-symbolic", lambda *_: toggle_hidden())
-    hidden_btn.set_tooltip_text(tr_text("Show hidden files"))
+    hidden_btn.set_tooltip_text(t("Afficher les fichiers masqués", "Show hidden files"))
     view_group.pack_start(hidden_btn, False, False, 0)
     toolbar.pack_start(view_group, False, False, 0)
 
@@ -1822,11 +1869,13 @@ def run_files(start_path: str) -> int:
     context_text.pack_start(context_subtitle, False, False, 0)
     context_strip.pack_start(context_text, True, True, 0)
     context_chips = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+    context_chips.set_no_show_all(True)
     context_strip.pack_end(context_chips, False, False, 0)
     main.pack_start(context_strip, False, False, 0)
 
     tabbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
     tabbar.get_style_context().add_class("files-tabbar")
+    tabbar.set_no_show_all(True)
     main.pack_start(tabbar, False, False, 0)
 
     scroller = Gtk.ScrolledWindow()
@@ -1885,7 +1934,7 @@ def run_files(start_path: str) -> int:
     split_box.set_size_request(320, -1)
     split_header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
     split_header.get_style_context().add_class("split-header")
-    split_title = Gtk.Label(label="Split")
+    split_title = Gtk.Label(label=t("Split", "Split"))
     split_title.set_xalign(0)
     split_title.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
     split_title.get_style_context().add_class("split-title")
@@ -1893,9 +1942,9 @@ def run_files(start_path: str) -> int:
     split_copy_btn = toolbar_button("edit-copy-symbolic", lambda *_: copy_selected_to_split(False))
     split_move_btn = toolbar_button("go-next-symbolic", lambda *_: copy_selected_to_split(True))
     split_close_btn = toolbar_button("window-close-symbolic", lambda *_: toggle_split_view(False))
-    split_copy_btn.set_tooltip_text(tr_text("Copy selection to split folder"))
-    split_move_btn.set_tooltip_text(tr_text("Move selection to split folder"))
-    split_close_btn.set_tooltip_text(tr_text("Close split view"))
+    split_copy_btn.set_tooltip_text(t("Copier la sélection vers le split", "Copy selection to split folder"))
+    split_move_btn.set_tooltip_text(t("Déplacer la sélection vers le split", "Move selection to split folder"))
+    split_close_btn.set_tooltip_text(t("Fermer la vue scindée", "Close split view"))
     for button in (split_copy_btn, split_move_btn, split_close_btn):
         split_header.pack_start(button, False, False, 0)
     split_box.pack_start(split_header, False, False, 0)
@@ -1920,28 +1969,29 @@ def run_files(start_path: str) -> int:
     selection_bar.hide()
     selection_label = Gtk.Label(label="")
     selection_label.set_xalign(0)
+    selection_label.set_single_line_mode(True)
+    selection_label.set_ellipsize(Pango.EllipsizeMode.END)
     selection_label.get_style_context().add_class("files-status-label")
     selection_bar.pack_start(selection_label, True, True, 0)
 
-    def selection_action(label: str, callback):
+    def selection_action(label: str, callback, tooltip: str = ""):
         button = Gtk.Button(label=label)
         button.set_relief(Gtk.ReliefStyle.NONE)
         button.get_style_context().add_class("selection-action")
+        if tooltip:
+            button.set_tooltip_text(tooltip)
         button.connect("clicked", lambda *_: callback())
         button.connect("pressed", lambda widget: press_feedback(widget))
         button.connect("released", lambda widget: release_feedback(widget))
         selection_bar.pack_start(button, False, False, 0)
         return button
 
-    selection_action(t("Ouvrir", "Open"), lambda: open_selected())
-    selection_action(t("Aperçu", "Preview"), lambda: open_quicklook_preview(selected_path()) if selected_path() and is_previewable(selected_path()) else update_preview(selected_path() or current))
-    selection_action(t("Copier", "Copy"), lambda: copy_selected())
-    selection_action(t("Déplacer", "Move"), lambda: copy_selected_to_split(True) if split_visible else cut_selected())
-    selection_action(t("Compresser", "Compress"), lambda: compress_selected())
-    selection_action("AI", lambda: sevenai_selected())
-    selection_action(t("Infos", "Info"), lambda: properties_dialog(selected_path() or current))
-    selection_action(t("Corbeille", "Trash"), lambda: trash_selected())
-    selection_action(t("Effacer", "Clear"), lambda: (flow.unselect_all(), selection_changed(flow))[0])
+    selection_primary_buttons = [
+        selection_action(t("Ouvrir", "Open"), lambda: open_selected(), t("Ouvrir la sélection", "Open selection")),
+        selection_action(t("Copier", "Copy"), lambda: copy_selected(), t("Copier la sélection", "Copy selection")),
+        selection_action(t("Effacer", "Clear"), lambda: (flow.unselect_all(), selection_changed(flow))[0], t("Effacer la sélection", "Clear selection")),
+    ]
+    selection_more_btn = selection_action("...", lambda: show_selection_actions_menu(selection_more_btn), t("Plus d'actions", "More actions"))
     main.pack_start(selection_bar, False, False, 0)
 
     operation_queue = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -1985,6 +2035,7 @@ def run_files(start_path: str) -> int:
 
     preview = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
     preview.get_style_context().add_class("files-preview")
+    preview.set_no_show_all(True)
     preview.set_size_request(188 if screen_compact else 210, -1)
     root.pack_start(preview, False, False, 0)
 
@@ -2068,6 +2119,10 @@ def run_files(start_path: str) -> int:
     def render_tabs() -> None:
         for child in tabbar.get_children():
             tabbar.remove(child)
+        if len(tabs) <= 1 and window.get_size()[0] < 900:
+            tabbar.set_visible(False)
+            return
+        tabbar.set_visible(True)
         for index, tab in enumerate(tabs):
             label = tab_title(tab.get("path", Path.home()), str(tab.get("virtual", "")))
             button = Gtk.Button(label=label)
@@ -2537,16 +2592,7 @@ def run_files(start_path: str) -> int:
         return None
 
     def clamp_window_size(width: int, height: int) -> tuple[int, int]:
-        screen = Gdk.Screen.get_default()
-        if screen:
-            max_width = max(MIN_WINDOW_SIZE[0], min(1180, int(screen.get_width() * 0.86)))
-            max_height = max(MIN_WINDOW_SIZE[1], min(780, int(screen.get_height() * 0.82)))
-        else:
-            max_width, max_height = DEFAULT_WINDOW_SIZE
-        return (
-            min(max(MIN_WINDOW_SIZE[0], int(width)), max_width),
-            min(max(MIN_WINDOW_SIZE[1], int(height)), max_height),
-        )
+        return compact_window_size(width, height)
 
     def recent_paths() -> list[Path]:
         data = load_json(RECENTS_CACHE, [])
@@ -2857,8 +2903,12 @@ def run_files(start_path: str) -> int:
             hidden_ctx.remove_class("active")
 
     def current_grid_columns() -> int:
-        width = max(640, scroller.get_allocated_width() or window.get_size()[0] - 492)
-        return max(3, min(7, int(width / 154)))
+        sidebar_cost = 120 if sidebar.get_visible() else 24
+        preview_cost = 210 if preview.get_visible() else 0
+        fallback_width = window.get_size()[0] - sidebar_cost - preview_cost
+        width = max(320, scroller.get_allocated_width() or fallback_width)
+        minimum = 2 if width < 430 else 3
+        return max(minimum, min(7, int(width / 98)))
 
     def render_split() -> None:
         for child in split_flow.get_children():
@@ -3031,8 +3081,8 @@ def run_files(start_path: str) -> int:
             columns = current_grid_columns()
             flow.set_min_children_per_line(columns)
             flow.set_max_children_per_line(columns)
-            flow.set_column_spacing(22)
-            flow.set_row_spacing(30)
+            flow.set_column_spacing(12)
+            flow.set_row_spacing(18)
             flow.set_homogeneous(True)
         elif view_mode == "list":
             flow.set_min_children_per_line(1)
@@ -3123,12 +3173,12 @@ def run_files(start_path: str) -> int:
             child.get_style_context().add_class("file-tile")
             if view_mode == "list":
                 child.get_style_context().add_class("list-view")
-                child.set_size_request(560, 48)
+                child.set_size_request(420, 44)
             elif view_mode == "compact":
                 child.get_style_context().add_class("compact-view")
-                child.set_size_request(250, 40)
+                child.set_size_request(210, 38)
             else:
-                child.set_size_request(120, 124)
+                child.set_size_request(82, 98)
             child.path = path
             tile_event = Gtk.EventBox()
             tile_event.set_visible_window(False)
@@ -3141,14 +3191,14 @@ def run_files(start_path: str) -> int:
             box.set_halign(Gtk.Align.FILL if view_mode != "grid" else Gtk.Align.CENTER)
             box.set_valign(Gtk.Align.CENTER)
             if view_mode == "list":
-                box.set_size_request(560, 48)
+                box.set_size_request(420, 44)
             elif view_mode == "compact":
-                box.set_size_request(250, 40)
+                box.set_size_request(210, 38)
             else:
-                box.set_size_request(120, 124)
+                box.set_size_request(82, 98)
             box.get_style_context().add_class("file-tile-box")
             image = Gtk.Image.new_from_icon_name(folder_icon(path), Gtk.IconSize.DIALOG)
-            image_size = 68 if view_mode == "grid" else 26
+            image_size = 44 if view_mode == "grid" else 24
             thumb = tile_thumbnail(path, image_size)
             if thumb:
                 image.set_from_pixbuf(thumb)
@@ -3156,8 +3206,8 @@ def run_files(start_path: str) -> int:
                 image.set_pixel_size(image_size)
             label = Gtk.Label(label=path.name)
             label.set_xalign(0 if view_mode != "grid" else 0.5)
-            label.set_width_chars(13 if view_mode == "grid" else 34)
-            label.set_max_width_chars(13 if view_mode == "grid" else 34)
+            label.set_width_chars(9 if view_mode == "grid" else 30)
+            label.set_max_width_chars(9 if view_mode == "grid" else 30)
             label.set_line_wrap(False)
             label.set_single_line_mode(True)
             label.set_ellipsize(Pango.EllipsizeMode.END)
@@ -3223,11 +3273,26 @@ def run_files(start_path: str) -> int:
         mode_label = theme_mode.title()
         location = "Recents" if virtual_location == "recent" else str(current)
         scope = "Global" if global_query else "Tags" if tag_query else "Local"
-        status_label.set_text(
-            f"{len(limited_entries)} of {total_entries} item(s)  |  {scope} · {mode_label} · {profile_title(active_profile, profile_ui)}  |  Click selects · Double-click opens"
-            if not selected_count
-            else f"{selected_count} selected  |  {location}"
-        )
+        width, _height = window.get_size()
+        if selected_count:
+            selected_text = t("{count} sélectionné", "{count} selected", count=selected_count)
+            status_label.set_text(
+                f"{selected_text} · {Path(location).name or location}" if width < 760 else f"{selected_text}  |  {location}"
+            )
+        else:
+            count_text = t(
+                "{visible}/{total} élément",
+                "{visible}/{total} item(s)",
+                visible=len(limited_entries),
+                total=total_entries,
+            )
+            if width < 760:
+                status_label.set_text(f"{count_text} · {scope} · {profile_title(active_profile, profile_ui)}")
+            else:
+                status_label.set_text(
+                    f"{count_text}  |  {scope} · {mode_label} · {profile_title(active_profile, profile_ui)}  |  "
+                    + t("Clic sélectionne · Double-clic ouvre", "Click selects · Double-click opens")
+                )
         if not operation_active:
             operation_label.set_text(profile_title(active_profile, profile_ui))
         update_sidebar()
@@ -4026,9 +4091,11 @@ def run_files(start_path: str) -> int:
 
     def copy_path(path: Path):
         Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(str(path), -1)
+        set_status(t("Chemin copié", "Path copied"))
 
     def copy_text(text: str):
         Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(text, -1)
+        set_status(t("Texte copié", "Text copied"))
 
     def clipboard_file_payload(paths: list[Path], cut: bool = False) -> str:
         action = "cut" if cut else "copy"
@@ -4113,6 +4180,24 @@ def run_files(start_path: str) -> int:
     def selected_paths() -> list[Path]:
         return [child.path for child in flow.get_selected_children()]
 
+    def focus_path_after_render(path: Path, message: str = "") -> None:
+        def apply_focus() -> bool:
+            for child in flow.get_children():
+                if getattr(child, "path", None) == path:
+                    flow.unselect_all()
+                    flow.select_child(child)
+                    child.grab_focus()
+                    update_preview(path)
+                    ensure_child_visible(child)
+                    if message:
+                        set_status(message)
+                    return False
+            if message:
+                set_status(message)
+            return False
+
+        GLib.timeout_add(90, apply_focus)
+
     def decorate_dialog(dialog, title_text: str, subtitle: str = "", icon_name: str = "system-file-manager") -> Gtk.Box:
         content = dialog.get_content_area()
         content.set_spacing(10)
@@ -4149,7 +4234,14 @@ def run_files(start_path: str) -> int:
         file_clipboard_cut = cut
         if file_clipboard:
             publish_file_clipboard(file_clipboard, cut)
-            status_label.set_text(f"{'Cut' if cut else 'Copied'} {len(file_clipboard)} file item(s)")
+            set_status(
+                t(
+                    "{action} {count} élément(s)",
+                    "{action} {count} item(s)",
+                    action=t("Coupé", "Cut") if cut else t("Copié", "Copied"),
+                    count=len(file_clipboard),
+                )
+            )
 
     def copy_selected():
         paths = selected_paths()
@@ -4311,14 +4403,14 @@ def run_files(start_path: str) -> int:
         if not file_clipboard:
             file_clipboard, file_clipboard_cut = read_system_file_clipboard()
             if not file_clipboard:
-                status_label.set_text("Nothing to paste")
+                set_status(t("Rien à coller", "Nothing to paste"))
                 return
         sources = list(file_clipboard)
         cut_mode = file_clipboard_cut
         destination_dir = current
         conflict_policy = conflict_policy_for(sources, destination_dir)
         if conflict_policy == "cancel":
-            set_status("Paste cancelled")
+            set_status(t("Collage annulé", "Paste cancelled"))
             return
 
         def worker(cancelled, report):
@@ -4426,7 +4518,7 @@ def run_files(start_path: str) -> int:
         return value
 
     def create_folder():
-        name = ask_name("New Folder", "Untitled Folder")
+        name = ask_name(t("Nouveau dossier", "New Folder"), t("Dossier sans titre", "Untitled Folder"))
         if not name:
             return
         destination = unique_destination(current, name)
@@ -4434,12 +4526,12 @@ def run_files(start_path: str) -> int:
             destination.mkdir()
             record_undo(f"Create {destination.name}", "created", [str(destination)])
             render()
-            status_label.set_text(f"Created {destination.name}")
+            focus_path_after_render(destination, t("Dossier créé: {name}", "Folder created: {name}", name=destination.name))
         except OSError as exc:
-            status_label.set_text(f"New folder failed: {exc}")
+            set_status(t("Création du dossier impossible: {error}", "New folder failed: {error}", error=exc))
 
     def create_file():
-        name = ask_name("New File", "Untitled.txt")
+        name = ask_name(t("Nouveau fichier", "New File"), "Untitled.txt")
         if not name:
             return
         destination = unique_destination(current, name)
@@ -4447,12 +4539,12 @@ def run_files(start_path: str) -> int:
             destination.touch(exist_ok=False)
             record_undo(f"Create {destination.name}", "created", [str(destination)])
             render()
-            set_status(f"Created {destination.name}")
+            focus_path_after_render(destination, t("Fichier créé: {name}", "File created: {name}", name=destination.name))
         except OSError as exc:
-            set_status(f"New file failed: {exc}")
+            set_status(t("Création du fichier impossible: {error}", "New file failed: {error}", error=exc))
 
     def rename_path(path: Path):
-        name = ask_name("Rename", path.name)
+        name = ask_name(t("Renommer", "Rename"), path.name)
         if not name or name == path.name:
             return
         destination = unique_destination(path.parent, name)
@@ -4460,9 +4552,9 @@ def run_files(start_path: str) -> int:
             path.rename(destination)
             record_undo(f"Rename {destination.name}", "renamed", [(str(path), str(destination))])
             render()
-            status_label.set_text(f"Renamed to {destination.name}")
+            focus_path_after_render(destination, t("Renommé: {name}", "Renamed: {name}", name=destination.name))
         except OSError as exc:
-            status_label.set_text(f"Rename failed: {exc}")
+            set_status(t("Renommage impossible: {error}", "Rename failed: {error}", error=exc))
 
     def batch_rename_selected():
         paths = selected_paths()
@@ -4530,9 +4622,9 @@ def run_files(start_path: str) -> int:
                 shutil.copy2(path, destination)
             record_undo(f"Duplicate {destination.name}", "duplicated", [str(destination)])
             render()
-            status_label.set_text(f"Duplicated {path.name}")
+            focus_path_after_render(destination, t("Copie créée: {name}", "Copy created: {name}", name=destination.name))
         except OSError as exc:
-            status_label.set_text(f"Duplicate failed: {exc}")
+            set_status(t("Duplication impossible: {error}", "Duplicate failed: {error}", error=exc))
 
     def trash_path(path: Path, render_after: bool = True) -> bool:
         if shutil.which("gio"):
@@ -4987,21 +5079,21 @@ def run_files(start_path: str) -> int:
         title.get_style_context().add_class("preview-title")
         box.pack_start(title, False, False, 0)
         guide_items = [
-            ("Mini OS", "Use the colored sidebar section to jump into Baobab, Forge, Shield, Studio, Atlas, Pulse or SevenOS folders."),
-            ("Resources", "Downloads, Documents, Code, Music, Pictures and Videos follow the active mini OS by default. Use shared resources from the system menu if you want one global library."),
-            ("Actions", "Press Ctrl+K to search every file action. Use Ctrl+G for favorites, recents and network places."),
-            ("Files", "Double-click opens, Space previews, F2 renames, Ctrl+Z undoes supported actions."),
-            ("Volumes", "Windows partitions and removable drives appear in Locations. Right-click a volume to mount, unmount or eject."),
-            ("Operations", "Copy, move, compress and size calculation run in the background with pause, cancel and progress."),
-            ("Safety", "Risky files get Safe Open. Permissions and ownership helpers live in Properties."),
+            (t("Mini OS", "Mini OS"), t("La section colorée permet d'ouvrir les dossiers Baobab, Forge, Shield, Studio, Atlas, Pulse ou SevenOS.", "Use the colored sidebar section to jump into Baobab, Forge, Shield, Studio, Atlas, Pulse or SevenOS folders.")),
+            (t("Ressources", "Resources"), t("Téléchargements, Documents, Code, Musique, Images et Vidéos suivent le Mini OS actif par défaut. Les ressources partagées restent disponibles dans le menu système.", "Downloads, Documents, Code, Music, Pictures and Videos follow the active mini OS by default. Use shared resources from the system menu if you want one global library.")),
+            (t("Actions", "Actions"), t("Ctrl+K recherche toutes les actions. Ctrl+G ouvre les favoris, récents et emplacements réseau.", "Press Ctrl+K to search every file action. Use Ctrl+G for favorites, recents and network places.")),
+            (t("Fichiers", "Files"), t("Double-clic ouvre, Espace prévisualise, F2 renomme, Ctrl+Z annule les actions compatibles.", "Double-click opens, Space previews, F2 renames, Ctrl+Z undoes supported actions.")),
+            (t("Volumes", "Volumes"), t("Les partitions Windows et disques amovibles apparaissent dans Emplacements. Clic droit pour monter, démonter ou éjecter.", "Windows partitions and removable drives appear in Locations. Right-click a volume to mount, unmount or eject.")),
+            (t("Opérations", "Operations"), t("Copie, déplacement, compression et calcul de taille tournent en arrière-plan avec pause, annulation et progression.", "Copy, move, compress and size calculation run in the background with pause, cancel and progress.")),
+            (t("Sécurité", "Safety"), t("Les fichiers risqués proposent une ouverture isolée. Permissions et propriétaire sont dans Informations.", "Risky files get Safe Open. Permissions and ownership helpers live in Properties.")),
         ]
         for heading_text, body_text in guide_items:
             card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             card.get_style_context().add_class("inspector-card")
-            heading = Gtk.Label(label=tr_text(heading_text))
+            heading = Gtk.Label(label=heading_text)
             heading.set_xalign(0)
             heading.get_style_context().add_class("preview-heading")
-            body = Gtk.Label(label=tr_text(body_text))
+            body = Gtk.Label(label=body_text)
             body.set_xalign(0)
             body.set_line_wrap(True)
             body.get_style_context().add_class("preview-value")
@@ -5028,18 +5120,18 @@ def run_files(start_path: str) -> int:
         try:
             stat = path.stat()
             rows = [
-                ("Kind", "Folder" if path.is_dir() else (path.suffix.upper().lstrip(".") or "File")),
-                ("Path", str(path)),
-                ("Size", format_size(stat.st_size) if path.is_file() else file_row_meta(path)),
-                ("Modified", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime))),
-                ("Permissions", human_mode(path)),
-                ("Owner", human_owner(path)),
+                (t("Type", "Kind"), t("Dossier", "Folder") if path.is_dir() else (path.suffix.upper().lstrip(".") or t("Fichier", "File"))),
+                (t("Chemin", "Path"), str(path)),
+                (t("Taille", "Size"), format_size(stat.st_size) if path.is_file() else file_row_meta(path)),
+                (t("Modifié", "Modified"), time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime))),
+                (t("Permissions", "Permissions"), human_mode(path)),
+                (t("Propriétaire", "Owner"), human_owner(path)),
             ]
             usage = filesystem_usage(path if path.is_dir() else path.parent)
             if usage:
-                rows.extend([("Available", usage[0]), ("Volume", usage[1])])
+                rows.extend([(t("Disponible", "Available"), usage[0]), (t("Volume", "Volume"), usage[1])])
         except OSError as exc:
-            rows = [("Error", str(exc))]
+            rows = [(t("Erreur", "Error"), str(exc))]
         for key, value in rows:
             card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
             card.get_style_context().add_class("inspector-card")
@@ -5055,21 +5147,21 @@ def run_files(start_path: str) -> int:
             card.pack_start(v, False, False, 0)
             box.pack_start(card, False, False, 0)
         actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        copy_button = Gtk.Button(label="Copy Path")
+        copy_button = Gtk.Button(label=t("Copier le chemin", "Copy Path"))
         copy_button.connect("clicked", lambda *_: copy_path(path))
         actions.pack_start(copy_button, False, False, 0)
-        permissions_button = Gtk.Button(label="Edit Permissions")
+        permissions_button = Gtk.Button(label=t("Modifier permissions", "Edit Permissions"))
         permissions_button.connect("clicked", lambda *_: set_permissions_dialog(path))
         actions.pack_start(permissions_button, False, False, 0)
-        owner_button = Gtk.Button(label="Copy Owner Fix")
+        owner_button = Gtk.Button(label=t("Copier correction propriétaire", "Copy Owner Fix"))
         owner_button.connect("clicked", lambda *_: copy_owner_command(path))
         actions.pack_start(owner_button, False, False, 0)
         if path.is_dir():
-            size_button = Gtk.Button(label="Calculate Size")
+            size_button = Gtk.Button(label=t("Calculer la taille", "Calculate Size"))
             size_button.connect("clicked", lambda *_: calculate_size_for_path(path))
             actions.pack_start(size_button, False, False, 0)
         if path.is_file():
-            hash_button = Gtk.Button(label="Copy SHA256")
+            hash_button = Gtk.Button(label=t("Copier SHA256", "Copy SHA256"))
             hash_button.connect("clicked", lambda *_: hash_selected())
             actions.pack_start(hash_button, False, False, 0)
         box.pack_start(actions, False, False, 4)
@@ -5081,6 +5173,38 @@ def run_files(start_path: str) -> int:
         item = Gtk.MenuItem(label=label)
         item.connect("activate", lambda *_: callback())
         menu.append(item)
+
+    def show_selection_actions_menu(button) -> bool:
+        paths = selected_paths()
+        target = paths[0] if paths else selected_path()
+        single = len(paths) == 1 and target is not None
+        multiple = len(paths) > 1
+        menu = Gtk.Menu()
+        if single:
+            add_menu_item(menu, t("Aperçu", "Preview"), lambda: open_quicklook_preview(target) if target and is_previewable(target) else update_preview(target or current))
+            if target and is_windows_app_file(target):
+                add_menu_item(menu, t("Ouvrir via Windows", "Open with Windows compatibility"), lambda: open_windows_compat(target))
+            if target and is_risky_file(target):
+                add_menu_item(menu, t("Ouvrir isolé", "Safe Open"), lambda: safe_open_path(target))
+            add_menu_item(menu, t("Informations", "Get Info"), lambda: properties_dialog(target or current))
+            add_menu_item(menu, t("Copier le chemin", "Copy Path"), lambda: copy_path(target))
+        elif multiple:
+            add_menu_item(menu, t("Aperçu groupé", "Group Preview"), lambda: update_preview_multiple(paths))
+            add_menu_item(menu, t("Copier les chemins", "Copy Paths"), lambda: copy_text("\n".join(str(path) for path in paths)))
+        add_menu_item(menu, t("Déplacer", "Move"), lambda: copy_selected_to_split(True) if split_visible else cut_selected())
+        add_menu_item(menu, t("Compresser", "Compress"), compress_selected)
+        add_menu_item(menu, "SevenAI", sevenai_selected)
+        menu.append(Gtk.SeparatorMenuItem())
+        if single:
+            add_menu_item(menu, t("Renommer", "Rename"), lambda: rename_path(target) if target else None)
+            add_menu_item(menu, t("Dupliquer", "Duplicate"), lambda: duplicate_path(target) if target else None)
+        add_menu_item(menu, t("Corbeille", "Trash"), trash_selected)
+        menu.show_all()
+        try:
+            menu.popup_at_widget(button, Gdk.Gravity.SOUTH_WEST, Gdk.Gravity.NORTH_WEST, None)
+        except Exception:
+            menu.popup(None, None, None, None, 0, Gtk.get_current_event_time())
+        return True
 
     def confirm_dialog(title_text: str, body: str, action: str = "Continue") -> bool:
         dialog = Gtk.Dialog(title=title_text, transient_for=window, flags=Gtk.DialogFlags.MODAL)
@@ -5127,31 +5251,31 @@ def run_files(start_path: str) -> int:
             submenu.append(item)
         if not seen:
             return
-        parent = Gtk.MenuItem(label=tr_text("Open With"))
+        parent = Gtk.MenuItem(label=t("Ouvrir avec", "Open With"))
         parent.set_submenu(submenu)
         menu.append(parent)
 
     def show_system_actions_menu(button) -> bool:
         menu = Gtk.Menu()
-        add_menu_item(menu, tr_text("Seven Files Guide"), show_files_guide)
-        add_menu_item(menu, tr_text("Refresh Folder"), refresh_current)
-        add_menu_item(menu, tr_text("Undo Last Action"), undo_last_action)
-        add_menu_item(menu, tr_text("Go to Recent Location"), show_go_panel)
-        add_menu_item(menu, tr_text("Open Terminal Here"), lambda: open_terminal_here(current))
-        add_menu_item(menu, tr_text("Copy Current Path"), lambda: copy_path(current))
-        add_menu_item(menu, tr_text("Go to Path"), show_location_entry)
-        add_menu_item(menu, tr_text("Connect to Server"), connect_to_server)
+        add_menu_item(menu, t("Guide Seven Files", "Seven Files Guide"), show_files_guide)
+        add_menu_item(menu, t("Actualiser le dossier", "Refresh Folder"), refresh_current)
+        add_menu_item(menu, t("Annuler la dernière action", "Undo Last Action"), undo_last_action)
+        add_menu_item(menu, t("Aller à un emplacement", "Go to Recent Location"), show_go_panel)
+        add_menu_item(menu, t("Ouvrir le terminal ici", "Open Terminal Here"), lambda: open_terminal_here(current))
+        add_menu_item(menu, t("Copier le chemin actuel", "Copy Current Path"), lambda: copy_path(current))
+        add_menu_item(menu, t("Aller à un chemin", "Go to Path"), show_location_entry)
+        add_menu_item(menu, t("Se connecter à un serveur", "Connect to Server"), connect_to_server)
         menu.append(Gtk.SeparatorMenuItem())
         add_menu_item(
             menu,
-            tr_text("Use Mini OS Resources") if grouped_resources else tr_text("Use Shared Resources"),
+            t("Utiliser les ressources Mini OS", "Use Mini OS Resources") if grouped_resources else t("Utiliser les ressources partagées", "Use Shared Resources"),
             toggle_grouped_resources,
         )
-        add_menu_item(menu, tr_text("Toggle Hidden Files"), toggle_hidden)
-        add_menu_item(menu, tr_text("Refresh Search Index"), reindex_now)
-        add_menu_item(menu, tr_text("Clean Thumbnail Cache"), clean_thumbnail_cache)
-        add_menu_item(menu, tr_text("Reset Saved Session"), reset_saved_session)
-        add_menu_item(menu, tr_text("Properties"), lambda: properties_dialog(current))
+        add_menu_item(menu, t("Afficher/masquer les fichiers cachés", "Toggle Hidden Files"), toggle_hidden)
+        add_menu_item(menu, t("Actualiser l'index de recherche", "Refresh Search Index"), reindex_now)
+        add_menu_item(menu, t("Nettoyer le cache des aperçus", "Clean Thumbnail Cache"), clean_thumbnail_cache)
+        add_menu_item(menu, t("Réinitialiser la session enregistrée", "Reset Saved Session"), reset_saved_session)
+        add_menu_item(menu, t("Informations", "Properties"), lambda: properties_dialog(current))
         menu.show_all()
         try:
             menu.popup_at_widget(button, Gdk.Gravity.SOUTH_WEST, Gdk.Gravity.NORTH_WEST, None)
@@ -5168,7 +5292,7 @@ def run_files(start_path: str) -> int:
         ejectable = bool(getattr(row, "place_ejectable", False))
         target_text = str(target)
         menu = Gtk.Menu()
-        add_menu_item(menu, tr_text("Open"), lambda: navigate_uri_or_path(target))
+        add_menu_item(menu, t("Ouvrir", "Open"), lambda: navigate_uri_or_path(target))
         if isinstance(target, Path):
             add_menu_item(menu, tr_text("Open in Terminal"), lambda: open_terminal_here(target))
             add_menu_item(menu, tr_text("Copy Path"), lambda: copy_path(target))
@@ -5454,6 +5578,15 @@ def run_files(start_path: str) -> int:
             selection_anchor = path
             update_preview(path)
             show_context_menu(path, event)
+            return True
+        if getattr(event, "button", 0) == 2:
+            flash_tile(child)
+            if path.is_dir():
+                new_tab(path)
+            elif is_previewable(path):
+                open_quicklook_preview(path)
+            else:
+                open_file(path)
             return True
         if getattr(event, "button", 0) == 1:
             flash_tile(child)
@@ -5755,6 +5888,7 @@ def run_files(start_path: str) -> int:
         nonlocal search_query
         search_query = entry.get_text().strip()
         entry.set_icon_sensitive(Gtk.EntryIconPosition.SECONDARY, bool(search_query))
+        entry.get_style_context().add_class("search-active") if search_query else entry.get_style_context().remove_class("search-active")
         if search_render_state["id"]:
             GLib.source_remove(search_render_state["id"])
 
@@ -5808,13 +5942,13 @@ def run_files(start_path: str) -> int:
         return True
 
     def show_go_panel() -> bool:
-        dialog = Gtk.Dialog(title=tr_text("Go"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog = Gtk.Dialog(title=t("Aller", "Go"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
         dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
         dialog.set_default_size(560, 520)
         box = decorate_dialog(dialog, t("Aller", "Go"), t("Favoris, récents, Mini OS et emplacements réseau.", "Favorites, recents, Mini OS and network locations."), "go-jump-symbolic")
         entry = Gtk.Entry()
         entry.get_style_context().add_class("files-dialog-entry")
-        entry.set_placeholder_text(tr_text("Search places, favorites, recents or network"))
+        entry.set_placeholder_text(t("Rechercher lieux, favoris, récents ou réseau", "Search places, favorites, recents or network"))
         entry.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "edit-find-symbolic")
         box.pack_start(entry, False, False, 0)
         scroller = Gtk.ScrolledWindow()
@@ -5831,14 +5965,14 @@ def run_files(start_path: str) -> int:
         if not grouped_resources and active_profile != "equinox":
             places.extend(
                 [
-                    ("Shared Home", str(Path.home()), Path.home()),
-                    ("Shared Downloads", str(Path.home() / "Downloads"), Path.home() / "Downloads"),
-                    ("Shared Documents", str(Path.home() / "Documents"), Path.home() / "Documents"),
+                    (t("Accueil partagé", "Shared Home"), str(Path.home()), Path.home()),
+                    (t("Téléchargements partagés", "Shared Downloads"), str(Path.home() / "Downloads"), Path.home() / "Downloads"),
+                    (t("Documents partagés", "Shared Documents"), str(Path.home() / "Documents"), Path.home() / "Documents"),
                 ]
             )
-        places.extend((f"Favorite · {path.name}", str(path), path) for path in favorite_paths())
-        places.extend((f"Recent · {path.name}", str(path), path) for path in recent_paths()[:20])
-        places.extend((f"Network · {network_label(uri)}", uri, uri) for uri in network_places())
+        places.extend((f"{t('Favori', 'Favorite')} · {path.name}", str(path), path) for path in favorite_paths())
+        places.extend((f"{t('Récent', 'Recent')} · {path.name}", str(path), path) for path in recent_paths()[:20])
+        places.extend((f"{t('Réseau', 'Network')} · {network_label(uri)}", uri, uri) for uri in network_places())
 
         def open_place(target: Path | str) -> None:
             dialog.destroy()
@@ -5852,7 +5986,7 @@ def run_files(start_path: str) -> int:
             if not matches:
                 row = Gtk.ListBoxRow()
                 row.set_selectable(False)
-                label = Gtk.Label(label=tr_text("No matching places"))
+                label = Gtk.Label(label=t("Aucun emplacement correspondant", "No matching places"))
                 label.get_style_context().add_class("preview-hint")
                 label.set_margin_top(18)
                 label.set_margin_bottom(18)
@@ -5908,61 +6042,61 @@ def run_files(start_path: str) -> int:
             if enabled:
                 actions.append((title, subtitle, callback))
 
-        add("Open", "Open selected item", lambda: open_selected(), bool(target))
-        add("Quick Look", "Preview selected file", lambda: open_quicklook_preview(target), bool(target and is_previewable(target)))
-        add("Open Windows App", "Run selected .exe/.msi through Bottles, Wine or Lutris", lambda: open_windows_compat(target), bool(target and is_windows_app_file(target)))
-        add("Open Windows App with Bottles", "Use Bottles for a friendlier Windows app bottle flow", lambda: open_windows_compat(target, "bottles"), bool(target and is_windows_app_file(target)))
-        add("Open Windows App with Wine", "Use Wine directly for installers and portable apps", lambda: open_windows_compat(target, "wine"), bool(target and is_windows_app_file(target)))
-        add("Open Windows App with Lutris", "Use Lutris for game or DirectX-heavy installers", lambda: open_windows_compat(target, "lutris"), bool(target and is_windows_app_file(target)))
-        add("Open With", "Use the default system app", lambda: open_externally(target), bool(target and target.is_file()))
-        add("Rename", "Rename selected item", lambda: rename_path(target), bool(target))
-        add("Properties", "Inspect selected item or current folder", lambda: properties_dialog(target or current))
-        add("Seven Files Guide", "Learn core shortcuts, mini OS folders and volume actions", show_files_guide)
-        add("Copy", "Copy selected item(s)", copy_selected, bool(paths))
-        add("Cut", "Cut selected item(s)", cut_selected, bool(paths))
-        add("Paste", "Paste clipboard item(s) here", paste_items)
-        add("Move to Trash", "Send selected item(s) to Trash", trash_selected, bool(paths))
-        add("Undo Last Action", "Reverse the last supported file action", undo_last_action, bool(undo_stack))
-        add("Go", "Open recents, favorites and network places", show_go_panel)
-        add("New Folder", "Create a folder in the current location", create_folder)
-        add("New File", "Create a file in the current location", create_file)
-        add("Open Terminal Here", "Launch Seven Terminal in this folder", lambda: open_terminal_here(current))
-        add("Go to Path", "Type a filesystem path", show_location_entry)
-        add("Connect to Server", "Open SMB, SFTP, WebDAV or FTP", connect_to_server)
+        add(t("Ouvrir", "Open"), t("Ouvrir l'élément sélectionné", "Open selected item"), lambda: open_selected(), bool(target))
+        add("Quick Look", t("Prévisualiser le fichier sélectionné", "Preview selected file"), lambda: open_quicklook_preview(target), bool(target and is_previewable(target)))
+        add(t("Ouvrir app Windows", "Open Windows App"), t("Lancer .exe/.msi via Bottles, Wine ou Lutris", "Run selected .exe/.msi through Bottles, Wine or Lutris"), lambda: open_windows_compat(target), bool(target and is_windows_app_file(target)))
+        add(t("Ouvrir Windows avec Bottles", "Open Windows App with Bottles"), t("Utiliser Bottles pour une expérience Windows plus guidée", "Use Bottles for a friendlier Windows app bottle flow"), lambda: open_windows_compat(target, "bottles"), bool(target and is_windows_app_file(target)))
+        add(t("Ouvrir Windows avec Wine", "Open Windows App with Wine"), t("Utiliser Wine directement pour installateurs et apps portables", "Use Wine directly for installers and portable apps"), lambda: open_windows_compat(target, "wine"), bool(target and is_windows_app_file(target)))
+        add(t("Ouvrir Windows avec Lutris", "Open Windows App with Lutris"), t("Utiliser Lutris pour jeux ou installateurs DirectX", "Use Lutris for game or DirectX-heavy installers"), lambda: open_windows_compat(target, "lutris"), bool(target and is_windows_app_file(target)))
+        add(t("Ouvrir avec", "Open With"), t("Utiliser l'application système par défaut", "Use the default system app"), lambda: open_externally(target), bool(target and target.is_file()))
+        add(t("Renommer", "Rename"), t("Renommer l'élément sélectionné", "Rename selected item"), lambda: rename_path(target), bool(target))
+        add(t("Informations", "Properties"), t("Inspecter l'élément ou le dossier courant", "Inspect selected item or current folder"), lambda: properties_dialog(target or current))
+        add(t("Guide Seven Files", "Seven Files Guide"), t("Raccourcis, dossiers Mini OS et volumes", "Learn core shortcuts, mini OS folders and volume actions"), show_files_guide)
+        add(t("Copier", "Copy"), t("Copier la sélection", "Copy selected item(s)"), copy_selected, bool(paths))
+        add(t("Couper", "Cut"), t("Couper la sélection", "Cut selected item(s)"), cut_selected, bool(paths))
+        add(t("Coller", "Paste"), t("Coller ici les éléments du presse-papiers", "Paste clipboard item(s) here"), paste_items)
+        add(t("Mettre à la corbeille", "Move to Trash"), t("Envoyer la sélection à la corbeille", "Send selected item(s) to Trash"), trash_selected, bool(paths))
+        add(t("Annuler dernière action", "Undo Last Action"), t("Annuler la dernière action compatible", "Reverse the last supported file action"), undo_last_action, bool(undo_stack))
+        add(t("Aller", "Go"), t("Ouvrir récents, favoris et réseau", "Open recents, favorites and network places"), show_go_panel)
+        add(t("Nouveau dossier", "New Folder"), t("Créer un dossier ici", "Create a folder in the current location"), create_folder)
+        add(t("Nouveau fichier", "New File"), t("Créer un fichier ici", "Create a file in the current location"), create_file)
+        add(t("Ouvrir le terminal ici", "Open Terminal Here"), t("Lancer Seven Terminal dans ce dossier", "Launch Seven Terminal in this folder"), lambda: open_terminal_here(current))
+        add(t("Aller à un chemin", "Go to Path"), t("Saisir un chemin du système de fichiers", "Type a filesystem path"), show_location_entry)
+        add(t("Se connecter à un serveur", "Connect to Server"), t("Ouvrir SMB, SFTP, WebDAV ou FTP", "Open SMB, SFTP, WebDAV or FTP"), connect_to_server)
         add(
-            "Use Shared Resources" if not grouped_resources else "Use Mini OS Resources",
-            "Switch between global folders and active mini OS folders",
+            t("Utiliser les ressources partagées", "Use Shared Resources") if not grouped_resources else t("Utiliser les ressources Mini OS", "Use Mini OS Resources"),
+            t("Basculer entre bibliothèque globale et dossiers Mini OS", "Switch between global folders and active mini OS folders"),
             toggle_grouped_resources,
         )
-        add("Toggle Hidden Files", "Show or hide dotfiles", toggle_hidden)
-        add("Toggle Sidebar", "Show or hide the left navigation sidebar", toggle_sidebar_visibility)
-        add("Toggle Preview", "Show or hide the right inspector panel", toggle_preview_visibility)
-        add("Refresh Folder", "Reload current folder and volumes", refresh_current)
-        add("Refresh Search Index", "Rebuild local search cache", reindex_now)
-        add("Clean Thumbnail Cache", "Clear generated image, PDF and video previews", clean_thumbnail_cache)
-        add("Reset Saved Session", "Clear saved tabs and window size", reset_saved_session)
-        add("Calculate Size", "Measure selected folder or current folder", lambda: calculate_size_for_path(target or current))
-        add("Split View", "Toggle side-by-side file view", toggle_split_view)
-        add("Copy to Split", "Copy selected item(s) to split pane", lambda: copy_selected_to_split(False), bool(paths and split_visible))
-        add("Move to Split", "Move selected item(s) to split pane", lambda: copy_selected_to_split(True), bool(paths and split_visible))
-        add("Compress", "Create an archive from selection", compress_selected, bool(paths))
-        add("Copy SHA256", "Hash selected file", hash_selected, bool(target and target.is_file()))
-        add("Ask SevenAI", "Analyze selection with SevenAI", sevenai_selected, bool(paths))
-        add("Grid View", "Switch to grid layout", lambda: set_view_mode("grid"))
-        add("List View", "Switch to list layout", lambda: set_view_mode("list"))
-        add("Compact View", "Switch to compact layout", lambda: set_view_mode("compact"))
+        add(t("Afficher fichiers cachés", "Toggle Hidden Files"), t("Afficher ou masquer les fichiers point", "Show or hide dotfiles"), toggle_hidden)
+        add(t("Afficher barre latérale", "Toggle Sidebar"), t("Afficher ou masquer la navigation gauche", "Show or hide the left navigation sidebar"), toggle_sidebar_visibility)
+        add(t("Afficher inspecteur", "Toggle Preview"), t("Afficher ou masquer le panneau d'inspection", "Show or hide the right inspector panel"), toggle_preview_visibility)
+        add(t("Actualiser le dossier", "Refresh Folder"), t("Recharger dossier et volumes", "Reload current folder and volumes"), refresh_current)
+        add(t("Actualiser index recherche", "Refresh Search Index"), t("Reconstruire le cache de recherche local", "Rebuild local search cache"), reindex_now)
+        add(t("Nettoyer cache aperçus", "Clean Thumbnail Cache"), t("Supprimer les aperçus générés", "Clear generated image, PDF and video previews"), clean_thumbnail_cache)
+        add(t("Réinitialiser session", "Reset Saved Session"), t("Effacer onglets et taille enregistrés", "Clear saved tabs and window size"), reset_saved_session)
+        add(t("Calculer la taille", "Calculate Size"), t("Mesurer dossier sélectionné ou courant", "Measure selected folder or current folder"), lambda: calculate_size_for_path(target or current))
+        add(t("Vue scindée", "Split View"), t("Activer/désactiver la vue côte à côte", "Toggle side-by-side file view"), toggle_split_view)
+        add(t("Copier vers split", "Copy to Split"), t("Copier la sélection vers le panneau split", "Copy selected item(s) to split pane"), lambda: copy_selected_to_split(False), bool(paths and split_visible))
+        add(t("Déplacer vers split", "Move to Split"), t("Déplacer la sélection vers le panneau split", "Move selected item(s) to split pane"), lambda: copy_selected_to_split(True), bool(paths and split_visible))
+        add(t("Compresser", "Compress"), t("Créer une archive depuis la sélection", "Create an archive from selection"), compress_selected, bool(paths))
+        add(t("Copier SHA256", "Copy SHA256"), t("Calculer l'empreinte du fichier", "Hash selected file"), hash_selected, bool(target and target.is_file()))
+        add(t("Demander à SevenAI", "Ask SevenAI"), t("Analyser la sélection avec SevenAI", "Analyze selection with SevenAI"), sevenai_selected, bool(paths))
+        add(t("Vue grille", "Grid View"), t("Passer en disposition grille", "Switch to grid layout"), lambda: set_view_mode("grid"))
+        add(t("Vue liste", "List View"), t("Passer en disposition liste", "Switch to list layout"), lambda: set_view_mode("list"))
+        add(t("Vue compacte", "Compact View"), t("Passer en disposition compacte", "Switch to compact layout"), lambda: set_view_mode("compact"))
         for mode in sort_order:
-            add(f"Sort by {sort_labels.get(mode, mode.title())}", "Change current folder ordering", lambda selected=mode: set_sort_mode(selected))
+            add(t("Trier par {label}", "Sort by {label}", label=sort_labels.get(mode, mode.title())), t("Changer l'ordre du dossier courant", "Change current folder ordering"), lambda selected=mode: set_sort_mode(selected))
         return actions
 
     def show_command_palette() -> bool:
-        dialog = Gtk.Dialog(title=tr_text("Seven Files Actions"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog = Gtk.Dialog(title=t("Actions Seven Files", "Seven Files Actions"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
         dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
         dialog.set_default_size(520, 520)
-        box = decorate_dialog(dialog, tr_text("Seven Files Actions"), t("Recherche rapide des commandes utiles.", "Fast search for useful commands."), "open-menu-symbolic")
+        box = decorate_dialog(dialog, t("Actions Seven Files", "Seven Files Actions"), t("Recherche rapide des commandes utiles.", "Fast search for useful commands."), "open-menu-symbolic")
         entry = Gtk.Entry()
         entry.get_style_context().add_class("files-dialog-entry")
-        entry.set_placeholder_text(tr_text("Search actions"))
+        entry.set_placeholder_text(t("Rechercher une action", "Search actions"))
         entry.set_icon_from_icon_name(Gtk.EntryIconPosition.PRIMARY, "edit-find-symbolic")
         box.pack_start(entry, False, False, 0)
         scroller = Gtk.ScrolledWindow()
@@ -5988,7 +6122,7 @@ def run_files(start_path: str) -> int:
             if not matches:
                 row = Gtk.ListBoxRow()
                 row.set_selectable(False)
-                label = Gtk.Label(label=tr_text("No matching actions"))
+                label = Gtk.Label(label=t("Aucune action correspondante", "No matching actions"))
                 label.get_style_context().add_class("preview-hint")
                 label.set_margin_top(18)
                 label.set_margin_bottom(18)
@@ -6062,9 +6196,33 @@ def run_files(start_path: str) -> int:
             parts.append(format_size(total))
         if len(paths) == 1:
             parts.append(kind_label(paths[0]))
-        parts.append(t("actions prêtes", "actions ready"))
+        parts.append(t("actions dans ...", "actions in ..."))
         selection_label.set_text(" · ".join(parts))
         selection_bar.show_all()
+        if len(paths) == 1 and paths[0].is_dir():
+            selection_primary_buttons[0].set_label(t("Ouvrir", "Open"))
+            selection_primary_buttons[0].set_tooltip_text(t("Ouvrir le dossier", "Open folder"))
+            selection_primary_buttons[1].set_label(t("Copier", "Copy"))
+            selection_primary_buttons[1].set_tooltip_text(t("Copier le dossier", "Copy folder"))
+        elif len(paths) == 1 and is_windows_app_file(paths[0]):
+            selection_primary_buttons[0].set_label(t("Windows", "Windows"))
+            selection_primary_buttons[0].set_tooltip_text(t("Lancer via Wine, Bottles ou Lutris", "Run through Wine, Bottles or Lutris"))
+            selection_primary_buttons[1].set_label(t("Copier", "Copy"))
+            selection_primary_buttons[1].set_tooltip_text(t("Copier le fichier", "Copy file"))
+        elif len(paths) == 1:
+            selection_primary_buttons[0].set_label(t("Aperçu", "Preview") if is_previewable(paths[0]) else t("Ouvrir", "Open"))
+            selection_primary_buttons[0].set_tooltip_text(t("Prévisualiser ou ouvrir", "Preview or open"))
+            selection_primary_buttons[1].set_label(t("Copier", "Copy"))
+            selection_primary_buttons[1].set_tooltip_text(t("Copier le fichier", "Copy file"))
+        else:
+            selection_primary_buttons[0].set_label(t("Ouvrir", "Open"))
+            selection_primary_buttons[0].set_tooltip_text(t("Ouvrir le premier élément", "Open first item"))
+            selection_primary_buttons[1].set_label(t("Copier", "Copy"))
+            selection_primary_buttons[1].set_tooltip_text(t("Copier la sélection", "Copy selection"))
+        width = window.get_size()[0]
+        for button in selection_primary_buttons:
+            button.set_visible(width >= 560)
+        selection_more_btn.set_visible(True)
         selection_bar.show()
 
     def selection_changed(flow_box):
@@ -6074,9 +6232,14 @@ def run_files(start_path: str) -> int:
         location = "Recents" if virtual_location == "recent" else str(current)
         if len(selected) > 1:
             update_preview_multiple(selected_paths_for_bar)
-            status_label.set_text(f"{len(selected)} selected  |  {location}")
+            width = window.get_size()[0]
+            selected_text = t("{count} sélectionnés", "{count} selected", count=len(selected))
+            status_label.set_text(
+                f"{selected_text} · {Path(location).name or location}" if width < 760 else f"{selected_text}  |  {location}"
+            )
         elif selected:
             update_preview(selected[0].path)
+            status_label.set_text(t("Sélection · {name}", "Selected · {name}", name=selected[0].path.name or str(selected[0].path)))
         else:
             update_preview_multiple(recent_paths()) if virtual_location == "recent" else update_preview(current)
 
@@ -6085,6 +6248,8 @@ def run_files(start_path: str) -> int:
         sidebar_visible_pref = not sidebar_visible_pref
         runtime_sidebar_visible = sidebar_visible_pref
         sidebar.set_visible(runtime_sidebar_visible)
+        if runtime_sidebar_visible and window.get_size()[0] < 900:
+            window.resize(COMFORT_WINDOW_SIZE[0], max(DEFAULT_WINDOW_SIZE[1], window.get_size()[1]))
         save_preferences()
         set_status(tr_text("Sidebar shown") if sidebar_visible_pref else tr_text("Sidebar hidden"))
         return True
@@ -6111,6 +6276,44 @@ def run_files(start_path: str) -> int:
         )
         return True
 
+    def start_inline_search(event) -> bool:
+        if event.state & (
+            Gdk.ModifierType.CONTROL_MASK
+            | Gdk.ModifierType.MOD1_MASK
+            | Gdk.ModifierType.SUPER_MASK
+            | Gdk.ModifierType.META_MASK
+        ):
+            return False
+        if event.keyval in (
+            Gdk.KEY_Return,
+            Gdk.KEY_KP_Enter,
+            Gdk.KEY_space,
+            Gdk.KEY_Tab,
+            Gdk.KEY_BackSpace,
+            Gdk.KEY_Delete,
+            Gdk.KEY_Escape,
+            Gdk.KEY_Left,
+            Gdk.KEY_Right,
+            Gdk.KEY_Up,
+            Gdk.KEY_Down,
+            Gdk.KEY_Home,
+            Gdk.KEY_End,
+            Gdk.KEY_Page_Up,
+            Gdk.KEY_Page_Down,
+        ):
+            return False
+        codepoint = Gdk.keyval_to_unicode(event.keyval)
+        if not codepoint:
+            return False
+        char = chr(codepoint)
+        if not char.isprintable() or char.isspace():
+            return False
+        search_entry.grab_focus()
+        search_entry.set_text(char)
+        search_entry.set_position(-1)
+        set_status(t("Recherche instantanée", "Instant search"))
+        return True
+
     def on_key(_window, event):
         if entry_has_focus():
             if event.state & Gdk.ModifierType.CONTROL_MASK:
@@ -6132,13 +6335,30 @@ def run_files(start_path: str) -> int:
                     return True
             return False
         if event.keyval == Gdk.KEY_Escape:
+            if flow.get_selected_children():
+                flow.unselect_all()
+                update_selection_bar([])
+                render()
+                flow.grab_focus()
+                return True
+            if search_query:
+                clear_search()
+                flow.grab_focus()
+                return True
             window.close()
             return True
         if event.keyval == Gdk.KEY_BackSpace:
             go_back()
             return True
         if event.keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
+            if event.state & Gdk.ModifierType.CONTROL_MASK:
+                target = selected_path()
+                if target and target.is_dir():
+                    new_tab(target)
+                    return True
             open_selected()
+            return True
+        if start_inline_search(event):
             return True
         if event.keyval == Gdk.KEY_Delete:
             trash_selected()
@@ -6163,7 +6383,16 @@ def run_files(start_path: str) -> int:
             if target:
                 show_context_menu(target, event)
                 return True
-        if event.keyval in (Gdk.KEY_Left, Gdk.KEY_Right, Gdk.KEY_Up, Gdk.KEY_Down):
+        if event.keyval in (
+            Gdk.KEY_Left,
+            Gdk.KEY_Right,
+            Gdk.KEY_Up,
+            Gdk.KEY_Down,
+            Gdk.KEY_Home,
+            Gdk.KEY_End,
+            Gdk.KEY_Page_Up,
+            Gdk.KEY_Page_Down,
+        ):
             move_keyboard_selection(event.keyval)
             return True
         if event.state & Gdk.ModifierType.CONTROL_MASK:
@@ -6234,11 +6463,19 @@ def run_files(start_path: str) -> int:
         width = getattr(event, "width", DEFAULT_WINDOW_SIZE[0])
         height = getattr(event, "height", DEFAULT_WINDOW_SIZE[1])
         compact = width < 760 or height < 420
-        actions_group.set_visible(not compact)
-        view_group.set_visible(not compact)
+        actions_group.set_visible(width >= 900 and not compact)
+        view_group.set_visible(width >= 960 and not compact)
+        context_chips.set_visible(width >= 960)
         search_entry.set_visible(width >= 620)
         sort_button.set_visible(width >= 620)
-        if width < 720:
+        for button in selection_primary_buttons:
+            button.set_visible(width >= 560)
+        selection_more_btn.set_visible(bool(flow.get_selected_children()))
+        if len(tabs) <= 1 and width < 900:
+            tabbar.set_visible(False)
+        elif tabs:
+            tabbar.set_visible(True)
+        if width < 900:
             sidebar.set_visible(False)
             preview.set_visible(False)
             search_entry.set_size_request(52, 22)
@@ -6258,6 +6495,23 @@ def run_files(start_path: str) -> int:
             sort_button.set_size_request(38, 24)
         return False
 
+    def ensure_child_visible(child) -> bool:
+        if not child:
+            return False
+        adjustment = scroller.get_vadjustment()
+        allocation = child.get_allocation()
+        child_top = allocation.y
+        child_bottom = allocation.y + allocation.height
+        visible_top = adjustment.get_value()
+        visible_bottom = visible_top + adjustment.get_page_size()
+        padding = 18
+        if child_top < visible_top + padding:
+            adjustment.set_value(max(adjustment.get_lower(), child_top - padding))
+        elif child_bottom > visible_bottom - padding:
+            max_value = max(adjustment.get_lower(), adjustment.get_upper() - adjustment.get_page_size())
+            adjustment.set_value(min(max_value, max(adjustment.get_lower(), child_bottom - adjustment.get_page_size() + padding)))
+        return False
+
     def move_keyboard_selection(keyval: int):
         children = flow.get_children()
         if not children:
@@ -6268,7 +6522,15 @@ def run_files(start_path: str) -> int:
         else:
             index = 0
         columns = 1 if view_mode == "list" else 2 if view_mode == "compact" else max(1, min(current_grid_columns(), len(children)))
-        if keyval == Gdk.KEY_Left:
+        if keyval == Gdk.KEY_Home:
+            index = 0
+        elif keyval == Gdk.KEY_End:
+            index = len(children) - 1
+        elif keyval == Gdk.KEY_Page_Up:
+            index = max(0, index - max(columns * 3, 1))
+        elif keyval == Gdk.KEY_Page_Down:
+            index = min(len(children) - 1, index + max(columns * 3, 1))
+        elif keyval == Gdk.KEY_Left:
             index = max(0, index - 1)
         elif keyval == Gdk.KEY_Right:
             index = min(len(children) - 1, index + 1)
@@ -6280,6 +6542,7 @@ def run_files(start_path: str) -> int:
         flow.select_child(child)
         child.grab_focus()
         update_preview(child.path)
+        GLib.idle_add(lambda: ensure_child_visible(child))
 
     def rects_intersect(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> bool:
         ax, ay, aw, ah = a
@@ -6402,12 +6665,29 @@ def run_files(start_path: str) -> int:
     if not tabs:
         tabs.append({"path": current, "virtual": virtual_location, "history": [], "future": []})
     render()
+    sidebar.set_visible(False)
+    actions_group.set_visible(False)
+    view_group.set_visible(False)
+    context_chips.set_visible(False)
+    preview.set_visible(False)
+    if len(tabs) <= 1:
+        tabbar.set_visible(False)
     window.show_all()
-    initial_size = restored_size or screen_window_size()
+    sidebar.set_visible(False)
+    actions_group.set_visible(False)
+    view_group.set_visible(False)
+    context_chips.set_visible(False)
+    preview.set_visible(False)
+    if len(tabs) <= 1:
+        tabbar.set_visible(False)
+    initial_size = compact_window_size(*(restored_size or screen_window_size()))
+    window.unfullscreen()
+    window.unmaximize()
     window.resize(*initial_size)
     adapt_layout(window, type("SevenFilesInitialLayout", (), {"width": initial_size[0], "height": initial_size[1]})())
     GLib.idle_add(lambda: enforce_compact_window(window))
     GLib.timeout_add(220, lambda: enforce_compact_window(window))
+    GLib.timeout_add(900, lambda: enforce_compact_window(window))
     if restored_size:
         set_status(tr_text("Restored previous Seven Files session"))
     Gtk.main()
@@ -6417,6 +6697,7 @@ def run_files(start_path: str) -> int:
 def enforce_compact_window(window) -> bool:
     window.present()
     try:
+        window.unfullscreen()
         window.unmaximize()
         window.resize(*DEFAULT_WINDOW_SIZE)
     except Exception:
@@ -6432,7 +6713,7 @@ def enforce_compact_window(window) -> bool:
             )
             address = ""
             floating = False
-            fullscreen = False
+            fullscreen = 0
             if clients.returncode == 0 and clients.stdout.strip():
                 for item in json.loads(clients.stdout):
                     klass = str(item.get("class") or item.get("initialClass") or "")
@@ -6440,7 +6721,63 @@ def enforce_compact_window(window) -> bool:
                     if klass == "SevenFilesNative" or title.startswith("Seven Files"):
                         address = str(item.get("address") or "")
                         floating = bool(item.get("floating"))
-                        fullscreen = bool(item.get("fullscreen"))
+                        fullscreen = int(item.get("fullscreen") or 0)
+                        break
+            commands: list[list[str]] = []
+            if address:
+                commands.append(["hyprctl", "dispatch", "focuswindow", f"address:{address}"])
+            # Hyprland may remember a previous green-button fullscreen/maximize state.
+            # Toggle it off once, then let GTK own the exact compact size. Pixel-resize
+            # dispatches are intentionally avoided here because some Hyprland builds
+            # treat them as deltas while fullscreen state is settling.
+            if fullscreen:
+                commands.append(["hyprctl", "dispatch", "fullscreen", "0"])
+            if not floating:
+                commands.append(["hyprctl", "dispatch", "togglefloating", "active"])
+            commands.append(["hyprctl", "dispatch", "centerwindow"])
+            for command in commands:
+                subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.6)
+            time.sleep(0.08)
+            window.unfullscreen()
+            window.unmaximize()
+            window.resize(*DEFAULT_WINDOW_SIZE)
+        except Exception:
+            pass
+    return False
+
+
+def toggle_zoom_or_tile(window) -> None:
+    window.present()
+    target_width, target_height = COMFORT_WINDOW_SIZE
+    try:
+        screen = Gdk.Screen.get_default()
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() if display else None
+        if monitor is None and display is not None:
+            monitor = display.get_monitor_at_point(0, 0)
+        if monitor is not None:
+            workarea = monitor.get_workarea()
+            target_width = min(COMFORT_WINDOW_SIZE[0], max(DEFAULT_WINDOW_SIZE[0], workarea.width - 96))
+            target_height = min(COMFORT_WINDOW_SIZE[1], max(DEFAULT_WINDOW_SIZE[1], workarea.height - 104))
+        elif screen is not None:
+            target_width = min(COMFORT_WINDOW_SIZE[0], max(DEFAULT_WINDOW_SIZE[0], screen.get_width() - 96))
+            target_height = min(COMFORT_WINDOW_SIZE[1], max(DEFAULT_WINDOW_SIZE[1], screen.get_height() - 104))
+    except Exception:
+        pass
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
+        try:
+            clients = subprocess.run(["hyprctl", "-j", "clients"], text=True, capture_output=True, check=False, timeout=0.8)
+            address = ""
+            floating = False
+            fullscreen = 0
+            if clients.returncode == 0 and clients.stdout.strip():
+                for item in json.loads(clients.stdout):
+                    klass = str(item.get("class") or item.get("initialClass") or "")
+                    title = str(item.get("title") or "")
+                    if klass == "SevenFilesNative" or title.startswith("Seven Files"):
+                        address = str(item.get("address") or "")
+                        floating = bool(item.get("floating"))
+                        fullscreen = int(item.get("fullscreen") or 0)
                         break
             commands: list[list[str]] = []
             if address:
@@ -6449,30 +6786,24 @@ def enforce_compact_window(window) -> bool:
                 commands.append(["hyprctl", "dispatch", "fullscreen", "0"])
             if not floating:
                 commands.append(["hyprctl", "dispatch", "togglefloating", "active"])
-            commands.extend(
-                [
-                    ["hyprctl", "dispatch", "resizeactive", "exact", str(DEFAULT_WINDOW_SIZE[0]), str(DEFAULT_WINDOW_SIZE[1])],
-                    ["hyprctl", "dispatch", "centerwindow"],
-                ]
-            )
+            commands.append(["hyprctl", "dispatch", "centerwindow"])
             for command in commands:
                 subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.6)
+            time.sleep(0.08)
+            window.unfullscreen()
+            window.unmaximize()
+            window.resize(target_width, target_height)
+            if address:
+                return
         except Exception:
             pass
-    return False
-
-
-def toggle_zoom_or_tile(window) -> None:
-    window.present()
-    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        result = subprocess.run(["hyprctl", "dispatch", "togglefloating", "active"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
-        if result.returncode == 0:
-            return
-    if window.is_maximized():
-        window.unmaximize()
+    width, _height = window.get_size()
+    if width >= target_width - 20:
         window.resize(*DEFAULT_WINDOW_SIZE)
     else:
-        window.maximize()
+        window.unmaximize()
+        window.resize(target_width, target_height)
+    window.set_position(Gtk.WindowPosition.CENTER)
 
 
 def minimize_window(window) -> None:

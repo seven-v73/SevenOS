@@ -20,6 +20,7 @@ import subprocess
 import sys
 import threading
 import time
+import unicodedata
 from pathlib import Path
 
 
@@ -58,6 +59,7 @@ CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) 
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
 HUB_STATE_CACHE = CACHE_DIR / "hub-state.json"
 SETTINGS_ACTION_LOG = CACHE_DIR / "settings-actions.log"
+SETTINGS_RECENT_PAGES = CACHE_DIR / "settings-recent-pages.json"
 REGION_PREFS = CONFIG_DIR / "region.conf"
 REGION_ENV = CONFIG_DIR / "region.env"
 PROFILE_AVATAR_PREFS = CONFIG_DIR / "profile-avatar.json"
@@ -71,6 +73,22 @@ import seven_theme  # noqa: E402
 STATE_CACHE: dict | None = None
 PROFILE_STATUS_CACHE: list[dict] | None = None
 LANGUAGE_CACHE: dict | None = None
+
+
+def append_settings_action_log(command: str, code: int | str, detail: str = "") -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        with SETTINGS_ACTION_LOG.open("a", encoding="utf-8") as handle:
+            handle.write(
+                "\n--- SevenOS Settings action ---\n"
+                f"time={stamp}\n"
+                f"$ {command}\n"
+                f"exit={code}\n"
+                f"{detail.strip()}\n"
+            )
+    except Exception:
+        pass
 
 
 def deep_settings_enabled() -> bool:
@@ -157,6 +175,7 @@ def state_snapshot() -> dict:
 def run_detached(command: str) -> None:
     if command.strip() == "seven doctor open":
         command = "seven-doctor-native"
+    append_settings_action_log(command, "started", "Action lancée en arrière-plan depuis Paramètres.")
     subprocess.Popen(
         ["bash", "-lc", command],
         cwd=ROOT,
@@ -188,14 +207,15 @@ def repair_interface_command() -> str:
     return root_shell("seven repair ux --apply && ./install.sh theme current && seven-waybar repair")
 
 
+def repair_experience_command() -> str:
+    return "seven repair ux --apply && ./install.sh theme current && seven theme sync && seven-waybar repair && seven hypr lua apply"
+
+
 def command_exists(command: str) -> bool:
     return shutil.which(command) is not None
 
 
 def current_theme_mode() -> str:
-    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
-    if env_mode in {"dark", "light"}:
-        return env_mode
     theme_file = CONFIG_DIR / "theme.conf"
     if theme_file.exists():
         for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -204,6 +224,9 @@ def current_theme_mode() -> str:
                 value = value.strip().strip('"').strip("'").lower()
                 if value in {"dark", "light"}:
                     return value
+    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
+    if env_mode in {"dark", "light"}:
+        return env_mode
     return "dark"
 
 
@@ -957,13 +980,30 @@ def settings_local_css() -> str:
       border: 1px solid alpha(@seven_border, 0.70);
     }
 
+    .settings-group {
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_text, 0.030), transparent 42%),
+        alpha(@seven_panel, 0.34);
+      border: 1px solid alpha(@seven_border, 0.42);
+    }
+
     .settings-row {
+      min-height: 58px;
+      padding: 9px 11px;
+      border-bottom: 1px solid alpha(@seven_border, 0.34);
+      color: @seven_text;
+      background: transparent;
       transition: 140ms ease-out;
+    }
+
+    .settings-row.last-row {
+      border-bottom: 0;
     }
 
     .settings-row.actionable-row {
       background-image:
-        linear-gradient(90deg, alpha(@seven_accent, 0.045), transparent 38%);
+        radial-gradient(ellipse at 3% 50%, alpha(@seven_accent, 0.055), transparent 32%);
     }
 
     .settings-insight-card:hover,
@@ -1161,13 +1201,27 @@ def settings_local_css() -> str:
     }
 
     .settings-row-controls {
+      min-width: 118px;
+      padding: 0;
       background: transparent;
     }
 
-    .settings-row-controls flowboxchild {
-      padding: 0;
-      background: transparent;
-      border: 0;
+    .settings-row-controls.multi {
+      min-width: 126px;
+    }
+
+    .settings-row-controls button.action-button {
+      min-width: 92px;
+      min-height: 28px;
+      padding: 0 10px;
+    }
+
+    .settings-row-controls.multi button.action-button {
+      min-width: 104px;
+    }
+
+    .settings-row-controls switch {
+      margin: 2px 0;
     }
 
     .settings-workflow-row {
@@ -1211,6 +1265,307 @@ def settings_local_css() -> str:
       border-color: alpha(@seven_accent, 0.48);
     }
 
+    .solution-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 10% 0%, alpha(@seven_accent, 0.14), transparent 48%),
+        alpha(@seven_panel, 0.42);
+      border: 1px solid alpha(@seven_border, 0.58);
+    }
+
+    button.solution-tile {
+      min-height: 66px;
+      padding: 8px 10px;
+      border-radius: 15px;
+      color: @seven_text;
+      background:
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_text, 0.035), transparent 44%),
+        alpha(@seven_panel, 0.46);
+      border: 1px solid alpha(@seven_border, 0.50);
+      box-shadow: none;
+    }
+
+    button.solution-tile:hover,
+    button.solution-tile:focus {
+      background:
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_accent, 0.16), transparent 46%),
+        alpha(@seven_panel, 0.62);
+      border-color: alpha(@seven_accent, 0.36);
+    }
+
+    .solution-tile-icon {
+      min-width: 26px;
+      color: @seven_accent;
+      font-size: 17px;
+    }
+
+    .solution-tile-title {
+      color: @seven_text;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .solution-tile-note {
+      color: @seven_muted;
+      font-size: 10px;
+    }
+
+    .first-aid-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_warning, 0.12), transparent 46%),
+        radial-gradient(ellipse at 92% 0%, alpha(@seven_accent, 0.10), transparent 42%),
+        alpha(@seven_panel, 0.42);
+      border: 1px solid alpha(@seven_border, 0.56);
+    }
+
+    .first-aid-row {
+      padding: 10px;
+      border-radius: 15px;
+      background:
+        radial-gradient(ellipse at 4% 50%, alpha(@seven_text, 0.032), transparent 34%),
+        alpha(@seven_panel, 0.40);
+      border: 1px solid alpha(@seven_border, 0.44);
+    }
+
+    .first-aid-row.primary {
+      background:
+        radial-gradient(ellipse at 5% 50%, alpha(@seven_accent, 0.16), transparent 36%),
+        alpha(@seven_panel, 0.48);
+      border-color: alpha(@seven_accent, 0.34);
+    }
+
+    .first-aid-index {
+      min-width: 28px;
+      min-height: 28px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.18);
+      border: 1px solid alpha(@seven_accent, 0.32);
+      font-size: 11px;
+    }
+
+    .first-aid-actions {
+      margin-left: 38px;
+      margin-top: 4px;
+    }
+
+    .trust-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_success, 0.11), transparent 46%),
+        alpha(@seven_panel, 0.40);
+      border: 1px solid alpha(@seven_border, 0.56);
+    }
+
+    .trust-chip {
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_panel, 0.46);
+      border: 1px solid alpha(@seven_border, 0.46);
+    }
+
+    .trust-chip.good {
+      background:
+        radial-gradient(ellipse at 16% 0%, alpha(@seven_success, 0.16), transparent 44%),
+        alpha(@seven_panel, 0.48);
+      border-color: alpha(@seven_success, 0.30);
+    }
+
+    .trust-chip.warn {
+      background:
+        radial-gradient(ellipse at 16% 0%, alpha(@seven_warning, 0.16), transparent 44%),
+        alpha(@seven_panel, 0.48);
+      border-color: alpha(@seven_warning, 0.32);
+    }
+
+    .recommendation-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_secondary, 0.12), transparent 46%),
+        alpha(@seven_panel, 0.40);
+      border: 1px solid alpha(@seven_border, 0.56);
+    }
+
+    .recommendation-row {
+      min-height: 52px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: alpha(@seven_panel, 0.38);
+      border: 1px solid alpha(@seven_border, 0.42);
+    }
+
+    .recommendation-row.attention {
+      background:
+        radial-gradient(ellipse at 5% 50%, alpha(@seven_warning, 0.16), transparent 34%),
+        alpha(@seven_panel, 0.44);
+      border-color: alpha(@seven_warning, 0.30);
+    }
+
+    .recommendation-row.good {
+      background:
+        radial-gradient(ellipse at 5% 50%, alpha(@seven_success, 0.13), transparent 34%),
+        alpha(@seven_panel, 0.42);
+      border-color: alpha(@seven_success, 0.26);
+    }
+
+    .recommendation-icon {
+      min-width: 28px;
+      color: @seven_accent;
+      font-size: 16px;
+    }
+
+    .verdict-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 10% 0%, alpha(@seven_success, 0.12), transparent 46%),
+        alpha(@seven_panel, 0.42);
+      border: 1px solid alpha(@seven_border, 0.56);
+    }
+
+    .verdict-card.attention {
+      background:
+        radial-gradient(ellipse at 10% 0%, alpha(@seven_warning, 0.16), transparent 46%),
+        alpha(@seven_panel, 0.44);
+      border-color: alpha(@seven_warning, 0.32);
+    }
+
+    .verdict-glyph {
+      min-width: 42px;
+      min-height: 42px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.18);
+      border: 1px solid alpha(@seven_accent, 0.34);
+      font-size: 18px;
+    }
+
+    .verdict-chip {
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: @seven_muted;
+      background: alpha(@seven_panel, 0.42);
+      border: 1px solid alpha(@seven_border, 0.40);
+      font-size: 10px;
+    }
+
+    .guide-dialog-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_accent, 0.14), transparent 46%),
+        alpha(@seven_panel, 0.46);
+      border: 1px solid alpha(@seven_border, 0.58);
+    }
+
+    .guide-step {
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: alpha(@seven_panel, 0.38);
+      border: 1px solid alpha(@seven_border, 0.40);
+    }
+
+    .guide-step-index {
+      min-width: 22px;
+      min-height: 22px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_accent, 0.18);
+      border: 1px solid alpha(@seven_accent, 0.32);
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .continue-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_accent, 0.10), transparent 46%),
+        alpha(@seven_panel, 0.36);
+      border: 1px solid alpha(@seven_border, 0.50);
+    }
+
+    button.continue-pill {
+      min-height: 34px;
+      padding: 0 11px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_panel, 0.46);
+      border: 1px solid alpha(@seven_border, 0.48);
+      box-shadow: none;
+    }
+
+    button.continue-pill:hover,
+    button.continue-pill:focus {
+      background:
+        radial-gradient(ellipse at 20% 0%, alpha(@seven_accent, 0.15), transparent 44%),
+        alpha(@seven_panel, 0.62);
+      border-color: alpha(@seven_accent, 0.34);
+    }
+
+    .safe-action-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_success, 0.10), transparent 46%),
+        alpha(@seven_panel, 0.38);
+      border: 1px solid alpha(@seven_border, 0.52);
+    }
+
+    .safe-action-row {
+      min-height: 56px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: alpha(@seven_panel, 0.38);
+      border: 1px solid alpha(@seven_border, 0.42);
+    }
+
+    .safe-action-row.primary {
+      min-height: 66px;
+      background:
+        radial-gradient(ellipse at 8% 20%, alpha(@seven_accent, 0.20), transparent 42%),
+        linear-gradient(135deg, alpha(@seven_panel, 0.68), alpha(@seven_panel, 0.42));
+      border-color: alpha(@seven_accent, 0.34);
+    }
+
+    .safe-action-row.primary .safe-action-icon {
+      min-width: 34px;
+      color: @seven_accent;
+      font-size: 19px;
+    }
+
+    .safe-action-icon {
+      min-width: 28px;
+      color: @seven_success;
+      font-size: 16px;
+    }
+
+    .support-card {
+      padding: 12px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_accent, 0.10), transparent 46%),
+        alpha(@seven_panel, 0.38);
+      border: 1px solid alpha(@seven_border, 0.52);
+    }
+
+    .support-note {
+      padding: 8px 10px;
+      border-radius: 13px;
+      color: @seven_muted;
+      background: alpha(@seven_panel, 0.34);
+      border: 1px solid alpha(@seven_border, 0.38);
+      font-size: 10px;
+    }
+
     button.action-button {
       min-height: 30px;
       padding: 0 12px;
@@ -1246,6 +1601,107 @@ def settings_local_css() -> str:
       background:
         radial-gradient(ellipse at 22% 0%, alpha(@seven_accent, 0.24), transparent 44%),
         alpha(@seven_accent, 0.12);
+      border-color: alpha(@seven_accent, 0.42);
+    }
+
+    .theme-preview-card {
+      padding: 12px;
+      border-radius: 20px;
+      background:
+        radial-gradient(ellipse at 10% 0%, alpha(@seven_accent, 0.16), transparent 48%),
+        linear-gradient(135deg, alpha(@seven_panel, 0.58), alpha(@seven_panel_2, 0.36));
+      border: 1px solid alpha(@seven_border, 0.68);
+    }
+
+    .theme-preview-window {
+      min-height: 148px;
+      padding: 9px;
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_wallpaper_accent, 0.20), transparent 48%),
+        radial-gradient(ellipse at 86% 14%, alpha(@seven_secondary, 0.14), transparent 44%),
+        alpha(@seven_bg, 0.30);
+      border: 1px solid alpha(@seven_border, 0.58);
+    }
+
+    .theme-preview-toolbar {
+      min-height: 30px;
+      border-radius: 12px;
+      color: @seven_text;
+      background: alpha(@seven_panel, 0.62);
+      border: 1px solid alpha(@seven_border, 0.46);
+    }
+
+    .theme-preview-sidebar {
+      min-width: 118px;
+      padding: 8px;
+      border-radius: 14px;
+      background: alpha(@seven_sidebar, 0.64);
+      border: 1px solid alpha(@seven_border, 0.40);
+    }
+
+    .theme-preview-content {
+      padding: 8px;
+      border-radius: 14px;
+      background: alpha(@seven_panel, 0.48);
+      border: 1px solid alpha(@seven_border, 0.42);
+    }
+
+    .theme-preview-pill {
+      min-height: 18px;
+      border-radius: 999px;
+      background: alpha(@seven_accent, 0.18);
+      border: 1px solid alpha(@seven_accent, 0.18);
+    }
+
+    .theme-preview-pill.alt {
+      background: alpha(@seven_secondary, 0.16);
+      border-color: alpha(@seven_secondary, 0.18);
+    }
+
+    .theme-swatch-row {
+      min-height: 28px;
+    }
+
+    .theme-swatch {
+      min-width: 18px;
+      min-height: 18px;
+      border-radius: 999px;
+      border: 1px solid alpha(@seven_border, 0.70);
+    }
+
+    .theme-swatch.swatch-accent { background: @seven_accent; }
+    .theme-swatch.swatch-secondary { background: @seven_secondary; }
+    .theme-swatch.swatch-wallpaper { background: @seven_wallpaper_accent; }
+    .theme-swatch.swatch-cyan { background: @seven_wallpaper_cyan; }
+
+    .theme-sync-strip {
+      min-height: 34px;
+      padding: 7px 10px;
+      border-radius: 14px;
+      color: @seven_text;
+      background: alpha(@seven_panel, 0.44);
+      border: 1px solid alpha(@seven_border, 0.54);
+    }
+
+    .theme-sync-strip.active {
+      background:
+        radial-gradient(ellipse at 4% 50%, alpha(@seven_success, 0.18), transparent 28%),
+        alpha(@seven_panel, 0.48);
+      border-color: alpha(@seven_success, 0.34);
+    }
+
+    .theme-sync-strip.preview {
+      background:
+        radial-gradient(ellipse at 4% 50%, alpha(@seven_warning, 0.16), transparent 28%),
+        alpha(@seven_panel, 0.48);
+      border-color: alpha(@seven_warning, 0.34);
+    }
+
+    .theme-sync-strip.running {
+      background:
+        radial-gradient(ellipse at 4% 50%, alpha(@seven_accent, 0.20), transparent 30%),
+        alpha(@seven_panel, 0.54);
       border-color: alpha(@seven_accent, 0.42);
     }
 
@@ -1670,6 +2126,61 @@ def settings_local_css() -> str:
     .settings-dialog.theme-dark .view {
       background-color: @seven_bg;
     }
+
+    /* Runtime safety net: GTK can inherit black text/backgrounds from the
+       system theme in nested widgets. Keep Settings readable in both modes. */
+    window.settings-window,
+    window.settings-window .settings-shell,
+    window.settings-window .content,
+    window.settings-window .sidebar,
+    window.settings-window label,
+    window.settings-window button,
+    window.settings-window entry,
+    window.settings-window textview,
+    window.settings-window list,
+    window.settings-window row {
+      color: @seven_text;
+    }
+
+    window.settings-window.theme-dark,
+    window.settings-window.theme-dark .settings-shell,
+    window.settings-window.theme-dark .content,
+    window.settings-window.theme-dark scrolledwindow,
+    window.settings-window.theme-dark scrolledwindow viewport,
+    window.settings-window.theme-dark viewport,
+    window.settings-window.theme-dark list,
+    window.settings-window.theme-dark row,
+    window.settings-window.theme-dark flowbox,
+    window.settings-window.theme-dark flowboxchild {
+      background-color: @seven_bg;
+      color: @seven_text;
+    }
+
+    window.settings-window.theme-dark .settings-row,
+    window.settings-window.theme-dark .settings-card,
+    window.settings-window.theme-dark .status-card,
+    window.settings-window.theme-dark .settings-group,
+    window.settings-window.theme-dark .settings-insight-card,
+    window.settings-window.theme-dark .settings-workflow-row {
+      color: @seven_text;
+      background-color: alpha(@seven_panel, 0.48);
+    }
+
+    window.settings-window.theme-dark .settings-row-note,
+    window.settings-window.theme-dark .card-note,
+    window.settings-window.theme-dark .status-label,
+    window.settings-window.theme-dark .page-subtitle,
+    window.settings-window.theme-dark .settings-page-hint,
+    window.settings-window.theme-dark .section-label,
+    window.settings-window.theme-dark .sidebar-section-label {
+      color: @seven_muted;
+    }
+
+    .settings-sidebar-scroll {
+      background: transparent;
+      background-color: transparent;
+      border: 0;
+    }
     """
 
 
@@ -1703,14 +2214,27 @@ def run(initial_page: str = "overview") -> int:
     screen = Gdk.Screen.get_default()
     screen_width = screen.get_width() if screen else 1280
     screen_height = screen.get_height() if screen else 720
-    compact_screen = screen_width < 1180 or screen_height < 720
-    default_width = min(1000, max(760, int(screen_width * 0.76)))
-    default_height = min(680, max(520, int(screen_height * 0.72)))
-    min_width = 720 if compact_screen else 860
-    min_height = 500 if compact_screen else 560
+    workarea_width = screen_width
+    workarea_height = screen_height
+    try:
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() if display else None
+        if monitor is None and display is not None:
+            monitor = display.get_monitor_at_point(0, 0)
+        if monitor is not None:
+            workarea = monitor.get_workarea()
+            workarea_width = max(720, int(workarea.width))
+            workarea_height = max(520, int(workarea.height))
+    except Exception:
+        pass
+    compact_screen = workarea_width < 1180 or workarea_height < 720
+    default_width = min(workarea_width - 56, min(920, max(720, int(workarea_width * 0.68))))
+    default_height = min(workarea_height - 64, min(600, max(480, int(workarea_height * 0.66))))
+    min_width = min(default_width, 680 if compact_screen else 780)
+    min_height = min(default_height, 440 if compact_screen else 500)
     sidebar_width = 188 if compact_screen else 220
-    content_width = min(850, max(520, default_width - sidebar_width - 54))
-    card_width = max(250, int((content_width - 12) / 2))
+    content_width = min(820, max(440, default_width - sidebar_width - 50))
+    card_width = max(220, int((content_width - 12) / 2))
     window.set_default_size(default_width, default_height)
     geometry = Gdk.Geometry()
     geometry.min_width = min_width
@@ -1743,15 +2267,22 @@ def run(initial_page: str = "overview") -> int:
         if window.is_maximized():
             window.unmaximize()
         width, _height = window.get_size()
-        if width >= 1120:
+        zoom_width = min(workarea_width - 56, max(default_width, min(1040, int(workarea_width * 0.78))))
+        zoom_height = min(workarea_height - 64, max(default_height, min(680, int(workarea_height * 0.76))))
+        if width >= zoom_width - 24:
             window.resize(default_width, default_height)
         else:
-            window.resize(min(1160, max(default_width, int(screen_width * 0.82))), min(760, max(default_height, int(screen_height * 0.78))))
+            window.resize(zoom_width, zoom_height)
         window.set_position(Gtk.WindowPosition.CENTER)
 
     sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
     sidebar.set_size_request(sidebar_width, -1)
     sidebar.get_style_context().add_class("sidebar")
+    sidebar_scroller = Gtk.ScrolledWindow()
+    sidebar_scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    sidebar_scroller.set_size_request(sidebar_width, -1)
+    sidebar_scroller.get_style_context().add_class("settings-sidebar-scroll")
+    sidebar_scroller.add(sidebar)
 
     traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     traffic.get_style_context().add_class("traffic")
@@ -1793,7 +2324,7 @@ def run(initial_page: str = "overview") -> int:
     page_position.get_style_context().add_class("settings-page-position")
     search_entry = Gtk.SearchEntry()
     search_entry.set_hexpand(True)
-    search_entry.set_placeholder_text(tr("settings.search.placeholder", "Rechercher réglages, apps, langue, Wi-Fi…"))
+    search_entry.set_placeholder_text(tr("settings.search.placeholder", "Rechercher un souci: internet, écran, son, veille, thème…"))
     search_entry.get_style_context().add_class("settings-search")
     live_refresh_button = Gtk.Button(label=tr("settings.refresh_live", "Actualiser"))
     live_refresh_button.get_style_context().add_class("action-button")
@@ -1828,7 +2359,7 @@ def run(initial_page: str = "overview") -> int:
     content.pack_start(feedback_revealer, False, False, 0)
     content.pack_start(stack, True, True, 0)
 
-    body.pack_start(sidebar, False, False, 0)
+    body.pack_start(sidebar_scroller, False, False, 0)
     body.pack_start(content, True, True, 0)
     shell.pack_start(body, True, True, 0)
 
@@ -1890,6 +2421,26 @@ def run(initial_page: str = "overview") -> int:
     def page_opened_message(name: str) -> str:
         return tr("settings.page.opened_named", "{page} ouverte.", page=page_title(name))
 
+    def recent_pages() -> list[str]:
+        try:
+            payload = json.loads(SETTINGS_RECENT_PAGES.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+        if not isinstance(payload, list):
+            return []
+        return [str(item) for item in payload if str(item) in pages and str(item) != "overview"][:8]
+
+    def remember_page(name: str) -> None:
+        if name == "overview" or name not in pages:
+            return
+        items = [item for item in recent_pages() if item != name]
+        items.insert(0, name)
+        try:
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            SETTINGS_RECENT_PAGES.write_text(json.dumps(items[:8], ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+
     def save_current_scroll() -> None:
         if current_page in pages:
             adjustment = pages[current_page][1].get_vadjustment()
@@ -1911,6 +2462,7 @@ def run(initial_page: str = "overview") -> int:
             page_back_stack.append(current_page)
             del page_back_stack[:-24]
             page_forward_stack.clear()
+            remember_page(name)
         current_page = name
         page_context.set_text(page_title(name))
         page_context.set_tooltip_text(page_title(name))
@@ -3306,9 +3858,187 @@ def run(initial_page: str = "overview") -> int:
         dialog.connect("response", lambda _dialog, _response: dialog.destroy())
         dialog.show_all()
 
+    def theme_session_status() -> dict[str, str]:
+        payload = run_json_timeout([str(ROOT / "scripts/theme-session.sh"), "doctor"], {}, timeout=1.0)
+        if not isinstance(payload, dict) or payload.get("schema") != "sevenos.theme-session.v1":
+            return {
+                "state": "unknown",
+                "title": tr("settings.theme_session.unknown", "À vérifier"),
+                "note": tr("settings.theme_session.unknown_note", "SevenOS n’a pas encore reçu l’état complet du thème de session."),
+            }
+        state = str(payload.get("state") or "unknown")
+        preferred = str(payload.get("preferred") or current_theme_mode())
+        runtime = str(payload.get("runtime") or "unknown")
+        checks = payload.get("checks", {}) if isinstance(payload.get("checks"), dict) else {}
+        ok_count = sum(1 for value in checks.values() if bool(value))
+        total_count = len(checks)
+        if state == "ok":
+            return {
+                "state": state,
+                "title": tr("settings.theme_session.ready", "Cohérent"),
+                "note": tr(
+                    "settings.theme_session.ready_note",
+                    "{mode} actif · {ok}/{total} contrôles alignés pour les prochaines fenêtres.",
+                    mode=preferred,
+                    ok=ok_count,
+                    total=total_count,
+                ),
+            }
+        return {
+            "state": state,
+            "title": tr("settings.theme_session.attention", "À resynchroniser"),
+            "note": tr(
+                "settings.theme_session.attention_note",
+                "Préférence {preferred}, runtime {runtime}. Resynchronise pour les apps et navigateurs.",
+                preferred=preferred,
+                runtime=runtime,
+            ),
+        }
+
+    def show_theme_session_dashboard(auto_sync: bool = False) -> None:
+        dialog = Gtk.Dialog(title=tr("settings.theme_session", "Session thème"), transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.set_default_size(min(680, max(520, int(screen_width * 0.50))), min(560, max(380, int(screen_height * 0.58))))
+        box = style_dialog(dialog)
+        box.set_spacing(12)
+        box.set_border_width(16)
+
+        title = Gtk.Label(label=tr("settings.theme_session", "Session thème"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(label=tr("settings.theme_session.panel_note", "SevenOS vérifie que le mode clair/sombre est aligné entre les apps, la session, Hyprland, GTK, Qt et les navigateurs."))
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        status = Gtk.Label()
+        status.set_xalign(0)
+        status.set_line_wrap(True)
+        status.get_style_context().add_class("settings-inline-status")
+        list_box = Gtk.ListBox()
+        list_box.get_style_context().add_class("account-list")
+        list_box.set_selection_mode(Gtk.SelectionMode.NONE)
+
+        check_labels = {
+            "runtime_matches_preference": tr("settings.theme_check.runtime", "Préférence et runtime"),
+            "gsettings_color_scheme": tr("settings.theme_check.gsettings", "Préférence système GTK"),
+            "gtk_settings_match_runtime": tr("settings.theme_check.gtk", "Thème GTK des applications"),
+            "hyprland_env_matches_runtime": tr("settings.theme_check.hyprland", "Apps lancées par Hyprland"),
+            "electron_hint_ready": tr("settings.theme_check.electron", "Navigateurs et apps Electron"),
+        }
+        check_notes = {
+            "runtime_matches_preference": tr("settings.theme_check.runtime.note", "Le thème enregistré et le runtime SevenOS disent la même chose."),
+            "gsettings_color_scheme": tr("settings.theme_check.gsettings.note", "Les apps GTK/libadwaita reçoivent prefer-light ou prefer-dark."),
+            "gtk_settings_match_runtime": tr("settings.theme_check.gtk.note", "Les fichiers GTK suivent le thème SevenOS actif."),
+            "hyprland_env_matches_runtime": tr("settings.theme_check.hyprland.note", "Les nouvelles fenêtres lancées par raccourci ou Launchpad héritent du bon thème."),
+            "electron_hint_ready": tr("settings.theme_check.electron.note", "Les navigateurs Chromium/Electron reçoivent le hint Wayland/Ozone attendu."),
+        }
+
+        def clear_list() -> None:
+            for child in list(list_box.get_children()):
+                list_box.remove(child)
+
+        def add_check_row(icon: str, row_title: str, row_note: str, badge_text: str | None = None) -> None:
+            row = Gtk.ListBoxRow()
+            wrapper = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            wrapper.get_style_context().add_class("account-row")
+            glyph = Gtk.Label(label=icon)
+            glyph.get_style_context().add_class("settings-row-icon")
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            labels.set_hexpand(True)
+            title_label = Gtk.Label(label=row_title)
+            title_label.set_xalign(0)
+            title_label.get_style_context().add_class("settings-row-title")
+            note_label = Gtk.Label(label=row_note)
+            note_label.set_xalign(0)
+            note_label.set_line_wrap(True)
+            note_label.get_style_context().add_class("settings-row-note")
+            labels.pack_start(title_label, False, False, 0)
+            labels.pack_start(note_label, False, False, 0)
+            wrapper.pack_start(glyph, False, False, 0)
+            wrapper.pack_start(labels, True, True, 0)
+            if badge_text:
+                badge = Gtk.Label(label=badge_text)
+                badge.get_style_context().add_class("update-summary-chip")
+                wrapper.pack_start(badge, False, False, 0)
+            row.add(wrapper)
+            list_box.add(row)
+
+        def load_payload() -> dict:
+            return run_json_timeout([str(ROOT / "scripts/theme-session.sh"), "doctor"], {}, timeout=1.4)
+
+        def render(payload: dict | None = None) -> None:
+            data = payload if isinstance(payload, dict) else load_payload()
+            clear_list()
+            state = str(data.get("state") or "unknown")
+            preferred = str(data.get("preferred") or current_theme_mode())
+            runtime = str(data.get("runtime") or "unknown")
+            color = str(data.get("gsettings_color_scheme") or "unknown")
+            if state == "ok":
+                status.set_text(tr("settings.theme_session.panel_ready", "Cohérent · les prochaines fenêtres utiliseront {mode}.", mode=preferred))
+                status.get_style_context().remove_class("action-state-error")
+                status.get_style_context().add_class("action-state-success")
+            else:
+                status.set_text(tr("settings.theme_session.panel_attention", "À resynchroniser · préférence {preferred}, runtime {runtime}.", preferred=preferred, runtime=runtime))
+                status.get_style_context().remove_class("action-state-success")
+                status.get_style_context().add_class("action-state-error")
+            add_check_row("󰔎", tr("settings.theme", "Thème"), tr("settings.theme_session.mode_detail", "Préférence {preferred} · runtime {runtime} · système {color}", preferred=preferred, runtime=runtime, color=color), tr("settings.active", "Actif") if state == "ok" else tr("settings.attention", "Attention"))
+            checks = data.get("checks", {}) if isinstance(data.get("checks"), dict) else {}
+            for key, label in check_labels.items():
+                ok = bool(checks.get(key))
+                add_check_row("✓" if ok else "!", label, check_notes.get(key, ""), tr("settings.ok", "OK") if ok else tr("settings.repair", "Réparer"))
+            list_box.show_all()
+
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroller.add(list_box)
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_halign(Gtk.Align.END)
+        resync_button = Gtk.Button(label=tr("settings.resync", "Resynchroniser"))
+        resync_button.get_style_context().add_class("action-button")
+        close_button = Gtk.Button(label=tr("settings.close", "Fermer"))
+        close_button.get_style_context().add_class("action-button")
+        close_button.connect("clicked", lambda _button: dialog.response(Gtk.ResponseType.CLOSE))
+
+        def do_resync(_button=None) -> None:
+            resync_button.set_sensitive(False)
+            resync_button.get_style_context().add_class("busy")
+            status.set_text(tr("settings.theme_session.syncing", "Resynchronisation de la session thème…"))
+
+            def worker() -> None:
+                subprocess.run([str(ROOT / "bin/seven"), "theme", "sync"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                payload = load_payload()
+
+                def done() -> bool:
+                    resync_button.set_sensitive(True)
+                    resync_button.get_style_context().remove_class("busy")
+                    render(payload)
+                    show_feedback(tr("settings.theme_session.synced", "Thème de session resynchronisé."), "success")
+                    return False
+
+                GLib.idle_add(done)
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        resync_button.connect("clicked", do_resync)
+        actions.pack_start(resync_button, False, False, 0)
+        actions.pack_start(close_button, False, False, 0)
+
+        box.pack_start(title, False, False, 0)
+        box.pack_start(note, False, False, 0)
+        box.pack_start(status, False, False, 0)
+        box.pack_start(scroller, True, True, 0)
+        box.pack_start(actions, False, False, 0)
+        render()
+        dialog.connect("response", lambda _dialog, _response: dialog.destroy())
+        dialog.show_all()
+        if auto_sync:
+            GLib.timeout_add(220, lambda: (do_resync(), False)[1])
+
     def show_appearance_overview() -> None:
+        theme_status = theme_session_status()
         rows = [
             ("󰔎", tr("settings.theme", "Thème"), current_theme_mode(), tr("settings.active", "Actif")),
+            ("󰜉", tr("settings.theme_session", "Session thème"), theme_status["title"], theme_status["note"]),
             ("󰐃", tr("settings.active_mini_os", "Mini OS actif"), profile_name, profile_status),
             ("󰸉", tr("settings.wallpaper", "Fond d’écran"), tr("settings.wallpaper_dynamic_note", "Fond, palette et surfaces restent synchronisés."), None),
             ("󰃣", tr("settings.dock", "Dock"), tr("settings.dock.appearance_note", "Dock SevenOS avec présence discrète et autohide."), None),
@@ -3696,6 +4426,12 @@ def run(initial_page: str = "overview") -> int:
         if stripped.startswith("seven fonts status"):
             show_fonts_overview()
             return True
+        if stripped in {"seven theme doctor", "seven theme status"}:
+            show_theme_session_dashboard(False)
+            return True
+        if stripped in {"seven theme sync", "seven theme repair", "seven theme session"}:
+            show_theme_session_dashboard(True)
+            return True
         if stripped.startswith("powerprofilesctl"):
             show_power_overview()
             return True
@@ -3923,6 +4659,660 @@ def run(initial_page: str = "overview") -> int:
             card.pack_start(row, False, False, 0)
         if actions:
             card.pack_start(action_flow(actions), False, False, 0)
+        return card
+
+    def solution_button(icon: str, title: str, note: str, callback) -> Gtk.Button:
+        button = Gtk.Button()
+        button.set_can_focus(True)
+        button.set_tooltip_text(f"{title}\n{note}")
+        button.get_style_context().add_class("solution-tile")
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
+        glyph = Gtk.Label(label=icon)
+        glyph.set_halign(Gtk.Align.CENTER)
+        glyph.get_style_context().add_class("solution-tile-icon")
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        labels.set_hexpand(True)
+        title_label = Gtk.Label(label=title)
+        title_label.set_xalign(0)
+        title_label.set_ellipsize(Pango.EllipsizeMode.END)
+        title_label.get_style_context().add_class("solution-tile-title")
+        note_label = Gtk.Label(label=note)
+        note_label.set_xalign(0)
+        note_label.set_line_wrap(True)
+        note_label.set_max_width_chars(34)
+        note_label.get_style_context().add_class("solution-tile-note")
+        labels.pack_start(title_label, False, False, 0)
+        labels.pack_start(note_label, False, False, 0)
+        row.pack_start(glyph, False, False, 0)
+        row.pack_start(labels, True, True, 0)
+        button.add(row)
+
+        def clicked(_button) -> None:
+            if button_recently_triggered(_button):
+                pulse_button(_button, 160)
+                return
+            pulse_button(_button)
+            callback()
+            show_feedback(tr("settings.solution.opened", "Aide ouverte : {topic}", topic=title))
+
+        button.connect("clicked", clicked)
+        return button
+
+    def show_solution_guide(
+        icon: str,
+        title_text: str,
+        note_text: str,
+        steps: list[tuple[str, str]],
+        page_name: str,
+        summary_callback=None,
+    ) -> None:
+        dialog = Gtk.Dialog(title=title_text, transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.set_default_size(min(560, max(460, int(workarea_width * 0.42))), min(430, max(320, int(workarea_height * 0.50))))
+        box = style_dialog(dialog)
+        box.set_spacing(12)
+        box.set_border_width(15)
+
+        hero = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        hero.get_style_context().add_class("guide-dialog-card")
+        glyph = Gtk.Label(label=icon)
+        glyph.get_style_context().add_class("action-hero-glyph")
+        copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        copy.set_hexpand(True)
+        title_label = Gtk.Label(label=title_text)
+        title_label.set_xalign(0)
+        title_label.get_style_context().add_class("action-hero-title")
+        note_label = Gtk.Label(label=note_text)
+        note_label.set_xalign(0)
+        note_label.set_line_wrap(True)
+        note_label.get_style_context().add_class("action-hero-note")
+        copy.pack_start(title_label, False, False, 0)
+        copy.pack_start(note_label, False, False, 0)
+        hero.pack_start(glyph, False, False, 0)
+        hero.pack_start(copy, True, True, 0)
+        box.pack_start(hero, False, False, 0)
+
+        for index, (step_title, step_note) in enumerate(steps, start=1):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            row.get_style_context().add_class("guide-step")
+            badge = Gtk.Label(label=str(index))
+            badge.get_style_context().add_class("guide-step-index")
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            labels.set_hexpand(True)
+            label = Gtk.Label(label=step_title)
+            label.set_xalign(0)
+            label.get_style_context().add_class("settings-row-title")
+            detail = Gtk.Label(label=step_note)
+            detail.set_xalign(0)
+            detail.set_line_wrap(True)
+            detail.get_style_context().add_class("settings-row-note")
+            labels.pack_start(label, False, False, 0)
+            labels.pack_start(detail, False, False, 0)
+            row.pack_start(badge, False, False, 0)
+            row.pack_start(labels, True, True, 0)
+            box.pack_start(row, False, False, 0)
+
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_halign(Gtk.Align.END)
+        close_button = Gtk.Button(label=tr("settings.close", "Fermer"))
+        close_button.get_style_context().add_class("action-button")
+        close_button.connect("clicked", lambda _button: dialog.response(Gtk.ResponseType.CLOSE))
+        if summary_callback:
+            summary_button = Gtk.Button(label=tr("settings.summary", "Résumé"))
+            summary_button.get_style_context().add_class("action-button")
+            summary_button.connect("clicked", lambda _button: (dialog.response(Gtk.ResponseType.CLOSE), GLib.idle_add(lambda: (summary_callback(), False)[1])))
+            actions.pack_start(summary_button, False, False, 0)
+        open_button = Gtk.Button(label=tr("settings.open_panel", "Ouvrir le panneau"))
+        open_button.get_style_context().add_class("primary-action")
+        open_button.connect(
+            "clicked",
+            lambda _button: (
+                dialog.response(Gtk.ResponseType.CLOSE),
+                activate_page(page_name, nav_by_target[page_name]),
+                show_feedback(page_opened_message(page_name)),
+            ),
+        )
+        actions.pack_start(close_button, False, False, 0)
+        actions.pack_start(open_button, False, False, 0)
+        box.pack_start(actions, False, False, 0)
+        dialog.connect("response", lambda _dialog, _response: dialog.destroy())
+        dialog.show_all()
+
+    def solution_guide_callback(
+        icon: str,
+        title_text: str,
+        note_text: str,
+        page_name: str,
+        steps: list[tuple[str, str]],
+        summary_callback=None,
+    ):
+        return lambda: show_solution_guide(icon, title_text, note_text, steps, page_name, summary_callback)
+
+    def solution_center_card() -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("solution-card")
+        title = Gtk.Label(label=tr("settings.solution.title", "Que veux-tu régler maintenant ?"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(label=tr("settings.solution.note", "Choisis une situation : SevenOS t’amène directement au bon panneau, avec résumé et action claire."))
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+        grid = Gtk.Grid()
+        grid.set_column_spacing(9)
+        grid.set_row_spacing(9)
+        columns = 2 if content_width < 660 else 3
+        tile_width = max(170, int((content_width - 24 - (9 * (columns - 1))) / columns))
+
+        tiles = [
+            ("󰤨", tr("settings.solution.network", "Internet ou Wi-Fi"), tr("settings.solution.network.note", "Connexion, réseaux proches, relance."), "network", show_network_overview, [(tr("settings.guide.network.step1", "Vérifier l’état actuel"), tr("settings.guide.network.step1.note", "SevenOS affiche la radio Wi-Fi et le réseau connecté.")), (tr("settings.guide.network.step2", "Reconnecter si besoin"), tr("settings.guide.network.step2.note", "Le panneau réseau demande le mot de passe sans bloquer le reste de l’OS."))]),
+            ("󰕾", tr("settings.solution.sound", "Son ou micro"), tr("settings.solution.sound.note", "Volume, entrée, sortie, permissions."), "sound", show_sound_overview, [(tr("settings.guide.sound.step1", "Regarder sortie et entrée"), tr("settings.guide.sound.step1.note", "Vérifie le volume, la sourdine, le casque et le micro.")), (tr("settings.guide.sound.step2", "Contrôler les apps"), tr("settings.guide.sound.step2.note", "Les réglages avancés restent disponibles si une app garde son propre volume."))]),
+            ("󰍹", tr("settings.solution.display", "Écran"), tr("settings.solution.display.note", "Résolution, échelle, disposition."), "display", show_display_overview, [(tr("settings.guide.display.step1", "Lire la configuration détectée"), tr("settings.guide.display.step1.note", "SevenOS montre les écrans et l’échelle avant toute modification.")), (tr("settings.guide.display.step2", "Appliquer avec retour"), tr("settings.guide.display.step2.note", "Une configuration précédente peut être restaurée si le rendu ne convient pas."))]),
+            ("󰔎", tr("settings.solution.theme", "Thème ou rendu"), tr("settings.solution.theme.note", "Clair/sombre, surfaces, cohérence."), "appearance", show_appearance_overview, [(tr("settings.guide.theme.step1", "Prévisualiser"), tr("settings.guide.theme.step1.note", "Choisis clair/sombre et vérifie les couleurs SevenOS.")), (tr("settings.guide.theme.step2", "Synchroniser"), tr("settings.guide.theme.step2.note", "Resynchronise si une app ouverte garde l’ancien thème."))]),
+            ("◈", tr("settings.solution.prism", "Prism ou fenêtres"), tr("settings.solution.prism.note", "Activer, calmer, réinitialiser."), "prism", None, [(tr("settings.guide.prism.step1", "Vérifier l’état"), tr("settings.guide.prism.step1.note", "Le panneau Prism affiche service, effet, cible et pastilles.")), (tr("settings.guide.prism.step2", "Ajuster sans quitter"), tr("settings.guide.prism.step2.note", "Active, désactive, réduit ou réinitialise depuis les contrôles visibles."))]),
+            ("󰐃", tr("settings.solution.profile", "Mini OS"), tr("settings.solution.profile.note", "Changer d’espace ou vérifier les rôles."), "profiles", show_mini_os_overview, [(tr("settings.guide.profile.step1", "Comparer les espaces"), tr("settings.guide.profile.step1.note", "Equinox, Forge, Shield, Studio, Atlas, Pulse et Baobab gardent leurs rôles.")), (tr("settings.guide.profile.step2", "Changer calmement"), tr("settings.guide.profile.step2.note", "Le changement passe par l’animation et le chargement complet du profil."))]),
+            ("󰀻", tr("settings.solution.apps", "Applications"), tr("settings.solution.apps.note", "Installer, ouvrir, sources et défauts."), "apps", show_apps_dashboard, [(tr("settings.guide.apps.step1", "Voir les sources"), tr("settings.guide.apps.step1.note", "SevenStore et les apps externes restent visibles séparément.")), (tr("settings.guide.apps.step2", "Installer ou retirer"), tr("settings.guide.apps.step2.note", "Les suppressions sensibles passent par prévisualisation."))]),
+            ("󰁯", tr("settings.solution.backup", "Sauvegarde"), tr("settings.solution.backup.note", "Protéger avant de modifier."), "backup", show_backup_wizard, [(tr("settings.guide.backup.step1", "Choisir quoi protéger"), tr("settings.guide.backup.step1.note", "SevenOS explique fichiers, configs et état système.")), (tr("settings.guide.backup.step2", "Restaurer si nécessaire"), tr("settings.guide.backup.step2.note", "Le plan de restauration évite d’agir à l’aveugle."))]),
+            ("󰩂", tr("settings.solution.system", "Système lent ou instable"), tr("settings.solution.system.note", "Diagnostic, mise à jour, réparation."), "system", show_system_overview, [(tr("settings.guide.system.step1", "Contrôle léger"), tr("settings.guide.system.step1.note", "Commence par un diagnostic sans modifier la machine.")), (tr("settings.guide.system.step2", "Réparer ciblé"), tr("settings.guide.system.step2.note", "SevenOS sépare mise à jour, réparation UI et alertes récentes."))]),
+        ]
+        for index, (icon, tile_title, tile_note, page_name, summary_callback, steps) in enumerate(tiles):
+            callback = solution_guide_callback(icon, tile_title, tile_note, page_name, steps, summary_callback)
+            tile = solution_button(icon, tile_title, tile_note, callback)
+            tile.set_size_request(tile_width, -1)
+            grid.attach(tile, index % columns, index // columns, 1, 1)
+        card.pack_start(grid, False, False, 0)
+        return card
+
+    def first_aid_card() -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("first-aid-card")
+        title = Gtk.Label(label=tr("settings.first_aid.title", "Premiers secours SevenOS"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(
+            label=tr(
+                "settings.first_aid.note",
+                "Quand quelque chose paraît incohérent, suis ces étapes courtes. Elles privilégient les contrôles lisibles et les réparations non destructives.",
+            )
+        )
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+
+        rows = [
+            (
+                "1",
+                tr("settings.first_aid.interface", "Interface incohérente"),
+                tr(
+                    "settings.first_aid.interface.note",
+                    "Barre, thème, Prism ou raccourcis ne suivent pas l’état actuel ? Répare l’expérience complète d’abord.",
+                ),
+                [
+                    action_button(tr("settings.repair", "Réparer"), repair_experience_command()),
+                    callback_button(tr("settings.appearance", "Apparence"), "appearance:open", lambda: activate_page("appearance", nav_by_target["appearance"])),
+                ],
+                True,
+            ),
+            (
+                "2",
+                tr("settings.first_aid.connectivity", "Connexion ou périphériques"),
+                tr(
+                    "settings.first_aid.connectivity.note",
+                    "Vérifie Wi-Fi, son et écran depuis les panneaux natifs avant de modifier le système.",
+                ),
+                [
+                    callback_button("Wi-Fi", "network:open", lambda: (activate_page("network", nav_by_target["network"]), show_network_overview())),
+                    callback_button(tr("settings.sound", "Son"), "sound:open", lambda: (activate_page("sound", nav_by_target["sound"]), show_sound_overview())),
+                    callback_button(tr("settings.displays", "Écran"), "display:open", lambda: (activate_page("display", nav_by_target["display"]), show_display_overview())),
+                ],
+                False,
+            ),
+            (
+                "3",
+                tr("settings.first_aid.system", "Santé et historique"),
+                tr(
+                    "settings.first_aid.system.note",
+                    "Lance un contrôle léger, relis les actions récentes et copie un résumé si tu dois demander de l’aide.",
+                ),
+                [
+                    action_button(tr("settings.check", "Vérifier"), "seven smoke doctor"),
+                    callback_button(tr("settings.history", "Historique"), "settings:history", show_settings_action_history),
+                    callback_button(tr("settings.copy_summary", "Copier le résumé"), "settings:copy-summary", copy_system_summary),
+                ],
+                False,
+            ),
+        ]
+
+        for number, row_title, row_note, actions, primary in rows:
+            row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            row.get_style_context().add_class("first-aid-row")
+            if primary:
+                row.get_style_context().add_class("primary")
+            top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            badge = Gtk.Label(label=number)
+            badge.set_halign(Gtk.Align.CENTER)
+            badge.set_valign(Gtk.Align.START)
+            badge.get_style_context().add_class("first-aid-index")
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            labels.set_hexpand(True)
+            title_label = Gtk.Label(label=row_title)
+            title_label.set_xalign(0)
+            title_label.get_style_context().add_class("settings-row-title")
+            note_label = Gtk.Label(label=row_note)
+            note_label.set_xalign(0)
+            note_label.set_line_wrap(True)
+            note_label.set_max_width_chars(68)
+            note_label.get_style_context().add_class("settings-row-note")
+            labels.pack_start(title_label, False, False, 0)
+            labels.pack_start(note_label, False, False, 0)
+            top.pack_start(badge, False, False, 0)
+            top.pack_start(labels, True, True, 0)
+            row.pack_start(top, False, False, 0)
+            action_row = action_flow(actions)
+            action_row.get_style_context().add_class("first-aid-actions")
+            row.pack_start(action_row, False, False, 0)
+            card.pack_start(row, False, False, 0)
+        return card
+
+    def trust_center_card() -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("trust-card")
+        title = Gtk.Label(label=tr("settings.trust.title", "Centre de confiance"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(
+            label=tr(
+                "settings.trust.note",
+                "Les actions importantes passent par confirmation, historique et résumé. Si quelque chose semble étrange, commence ici.",
+            )
+        )
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+
+        chips = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        chips.set_halign(Gtk.Align.START)
+        chip_data = [
+            ("✓", tr("settings.trust.no_terminal", "Sans terminal obligatoire"), "good"),
+            ("󰋚", tr("settings.trust.history", "Historique consultable"), "good" if SETTINGS_ACTION_LOG.exists() else "warn"),
+            ("󰁯", tr("settings.trust.backup_first", "Sauvegarde avant gros changement"), "warn"),
+        ]
+        for icon, label, css_class in chip_data:
+            chip = Gtk.Label(label=f"{icon} {label}")
+            chip.get_style_context().add_class("trust-chip")
+            chip.get_style_context().add_class(css_class)
+            chips.pack_start(chip, False, False, 0)
+        card.pack_start(chips, False, False, 0)
+
+        actions = action_flow(
+            [
+                callback_button(tr("settings.history", "Historique"), "settings:action-history", show_settings_action_history),
+                callback_button(tr("settings.backup", "Sauvegarde"), "backup:wizard", show_backup_wizard),
+                action_button(tr("settings.check", "Vérifier"), "seven smoke doctor"),
+                action_button(tr("settings.help", "Aide"), "seven-help-native"),
+            ]
+        )
+        card.pack_start(actions, False, False, 0)
+        return card
+
+    def recommendation_card() -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("recommendation-card")
+        title = Gtk.Label(label=tr("settings.recommendations.title", "Recommandé maintenant"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(label=tr("settings.recommendations.note", "SevenOS lit l’état actuel et propose les raccourcis les plus utiles. Rien n’est appliqué sans action de ta part."))
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+
+        recommendations: list[tuple[str, str, str, str, Gtk.Button]] = []
+
+        def add(icon: str, title_text: str, note_text: str, state: str, button: Gtk.Button) -> None:
+            if len(recommendations) < 4:
+                recommendations.append((icon, title_text, note_text, state, button))
+
+        wifi_radio_now, wifi_detail_now = wifi_state()
+        if wifi_radio_now.lower() in {"off", "disabled"} or "not connected" in wifi_detail_now.lower() or "non connecté" in wifi_detail_now.lower():
+            add(
+                "󰤨",
+                tr("settings.recommendation.network.title", "Reconnecter le réseau"),
+                tr("settings.recommendation.network.note", "La connexion n’est pas claire. Ouvre le panneau Wi-Fi avant de lancer une action système."),
+                "attention",
+                callback_button(tr("settings.open", "Ouvrir"), "network:overview", lambda: (activate_page("network", nav_by_target["network"]), show_network_overview())),
+            )
+
+        battery_value, battery_note = battery_state()
+        try:
+            battery_percent = int(str(battery_value).strip().rstrip("%"))
+        except Exception:
+            battery_percent = 100
+        if battery_percent <= 25 and "charg" not in battery_note.lower() and battery_value != "AC":
+            add(
+                "󰁹",
+                tr("settings.recommendation.power.title", "Préserver la batterie"),
+                tr("settings.recommendation.power.note", "La batterie est basse. Passe en économie ou ajuste la veille."),
+                "attention",
+                callback_button(tr("settings.open", "Ouvrir"), "power:overview", lambda: (activate_page("power", nav_by_target["power"]), show_power_overview())),
+            )
+
+        shield_value, shield_note = shield_state()
+        if not str(shield_value).startswith(("100", "OK")):
+            add(
+                "󰒃",
+                tr("settings.recommendation.security.title", "Vérifier la protection"),
+                tr("settings.recommendation.security.note", "Shield indique un état à confirmer. Lance un résumé avant les changements importants."),
+                "attention",
+                callback_button(tr("settings.summary", "Résumé"), "security:dashboard", show_security_dashboard),
+            )
+
+        if SETTINGS_ACTION_LOG.exists():
+            add(
+                "󰋚",
+                tr("settings.recommendation.history.title", "Relire les dernières actions"),
+                tr("settings.recommendation.history.note", "Un historique existe. Utile si un changement récent a modifié l’interface."),
+                "good",
+                callback_button(tr("settings.open", "Ouvrir"), "settings:action-history", show_settings_action_history),
+            )
+
+        add(
+            "󰄬",
+            tr("settings.recommendation.quick_check.title", "Faire un contrôle léger"),
+            tr("settings.recommendation.quick_check.note", "Vérifie rapidement l’état SevenOS sans modifier la machine."),
+            "good",
+            action_button(tr("settings.check", "Vérifier"), "seven smoke doctor"),
+        )
+        add(
+            "󰔎",
+            tr("settings.recommendation.theme.title", "Resynchroniser le thème"),
+            tr("settings.recommendation.theme.note", "À utiliser si une app reste en clair/sombre après un changement."),
+            "good",
+            action_button(tr("settings.resync", "Resynchroniser"), "seven theme sync"),
+        )
+
+        for icon, row_title, row_note, state, button in recommendations:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            row.get_style_context().add_class("recommendation-row")
+            row.get_style_context().add_class(state)
+            glyph = Gtk.Label(label=icon)
+            glyph.get_style_context().add_class("recommendation-icon")
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            labels.set_hexpand(True)
+            title_label = Gtk.Label(label=row_title)
+            title_label.set_xalign(0)
+            title_label.set_ellipsize(Pango.EllipsizeMode.END)
+            title_label.get_style_context().add_class("settings-row-title")
+            note_label = Gtk.Label(label=row_note)
+            note_label.set_xalign(0)
+            note_label.set_line_wrap(True)
+            note_label.set_max_width_chars(62)
+            note_label.get_style_context().add_class("settings-row-note")
+            labels.pack_start(title_label, False, False, 0)
+            labels.pack_start(note_label, False, False, 0)
+            button.set_halign(Gtk.Align.END)
+            button.set_valign(Gtk.Align.CENTER)
+            row.pack_start(glyph, False, False, 0)
+            row.pack_start(labels, True, True, 0)
+            row.pack_start(button, False, False, 0)
+            card.pack_start(row, False, False, 0)
+        return card
+
+    def instant_verdict_card() -> Gtk.Box:
+        checks: list[tuple[str, str, bool]] = []
+        wifi_radio_now, wifi_detail_now = wifi_state()
+        wifi_ok = wifi_radio_now.lower() not in {"off", "disabled"} and "not connected" not in wifi_detail_now.lower() and "non connecté" not in wifi_detail_now.lower()
+        checks.append((tr("settings.verdict.network", "Réseau"), wifi_detail_now, wifi_ok))
+        shield_value, shield_note = shield_state()
+        shield_ok = str(shield_value).startswith(("100", "OK"))
+        checks.append(("Shield", f"{shield_value} · {shield_note}", shield_ok))
+        battery_value, battery_note = battery_state()
+        try:
+            battery_percent = int(str(battery_value).strip().rstrip("%"))
+        except Exception:
+            battery_percent = 100
+        power_ok = battery_value == "AC" or battery_percent > 20 or "charg" in battery_note.lower()
+        checks.append((tr("settings.power", "Énergie"), f"{battery_value} · {battery_note}", power_ok))
+        recent_ok = SETTINGS_ACTION_LOG.exists()
+        checks.append((tr("settings.history", "Historique"), tr("settings.available", "Disponible") if recent_ok else tr("settings.empty", "Vide"), True))
+        issues = [item for item in checks if not item[2]]
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("verdict-card")
+        if issues:
+            card.get_style_context().add_class("attention")
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        glyph = Gtk.Label(label="!" if issues else "✓")
+        glyph.set_halign(Gtk.Align.CENTER)
+        glyph.set_valign(Gtk.Align.CENTER)
+        glyph.get_style_context().add_class("verdict-glyph")
+        copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        copy.set_hexpand(True)
+        title = Gtk.Label(
+            label=(
+                tr("settings.verdict.attention_title", "À vérifier en premier")
+                if issues
+                else tr("settings.verdict.ready_title", "SevenOS semble prêt")
+            )
+        )
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(
+            label=(
+                tr("settings.verdict.attention_note", "Commence par le point signalé ci-dessous avant les changements importants.")
+                if issues
+                else tr("settings.verdict.ready_note", "Les signaux essentiels sont cohérents. Tu peux personnaliser ou lancer une action sûre.")
+            )
+        )
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        copy.pack_start(title, False, False, 0)
+        copy.pack_start(note, False, False, 0)
+        header.pack_start(glyph, False, False, 0)
+        header.pack_start(copy, True, True, 0)
+        if issues and issues[0][0] == tr("settings.verdict.network", "Réseau"):
+            header.pack_start(callback_button(tr("settings.open", "Ouvrir"), "network:overview", lambda: activate_page("network", nav_by_target["network"])), False, False, 0)
+        elif issues and issues[0][0] == "Shield":
+            header.pack_start(callback_button(tr("settings.summary", "Résumé"), "security:dashboard", show_security_dashboard), False, False, 0)
+        elif issues:
+            header.pack_start(callback_button(tr("settings.open", "Ouvrir"), "power:overview", lambda: activate_page("power", nav_by_target["power"])), False, False, 0)
+        else:
+            header.pack_start(action_button(tr("settings.check", "Vérifier"), "seven smoke doctor"), False, False, 0)
+        card.pack_start(header, False, False, 0)
+
+        chips = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        for label, detail, ok in checks:
+            chip = Gtk.Label(label=f"{'✓' if ok else '!'} {label}")
+            chip.set_tooltip_text(detail)
+            chip.get_style_context().add_class("verdict-chip")
+            chips.pack_start(chip, False, False, 0)
+        card.pack_start(chips, False, False, 0)
+        return card
+
+    def continue_card() -> Gtk.Box | None:
+        items = recent_pages()[:5]
+        if not items:
+            return None
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("continue-card")
+        title = Gtk.Label(label=tr("settings.continue.title", "Reprendre rapidement"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(label=tr("settings.continue.note", "Les dernières sections consultées restent accessibles ici pour revenir à un réglage sans chercher."))
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        for item in items:
+            button = Gtk.Button(label=page_title(item))
+            button.get_style_context().add_class("continue-pill")
+            button.set_tooltip_text(page_subtitle(item) or page_title(item))
+            button.connect(
+                "clicked",
+                lambda _button, page_name=item: (
+                    activate_page(page_name, nav_by_target[page_name]),
+                    show_feedback(page_opened_message(page_name)),
+                ),
+            )
+            row.pack_start(button, False, False, 0)
+        clear_button = Gtk.Button(label=tr("settings.clear", "Effacer"))
+        clear_button.get_style_context().add_class("action-button")
+        clear_button.set_tooltip_text(tr("settings.continue.clear", "Effacer les pages récentes des Paramètres."))
+
+        def clear_recent(_button=None) -> None:
+            try:
+                SETTINGS_RECENT_PAGES.unlink(missing_ok=True)
+            except Exception:
+                pass
+            card.hide()
+            show_feedback(tr("settings.continue.cleared", "Pages récentes effacées."), "success")
+
+        clear_button.connect("clicked", clear_recent)
+        row.pack_end(clear_button, False, False, 0)
+        card.pack_start(row, False, False, 0)
+        return card
+
+    def safe_actions_card() -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("safe-action-card")
+        title = Gtk.Label(label=tr("settings.safe_actions.title", "Actions sûres"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(
+            label=tr(
+                "settings.safe_actions.note",
+                "Ces actions ne suppriment rien : elles vérifient, resynchronisent ou relancent doucement les surfaces SevenOS.",
+            )
+        )
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+
+        actions = [
+            (
+                "󰜉",
+                tr("settings.safe_actions.experience", "Réparer l’expérience SevenOS"),
+                tr(
+                    "settings.safe_actions.experience.note",
+                    "Réapplique thème, barre, raccourcis et surfaces sans toucher aux fichiers personnels.",
+                ),
+                action_button(tr("settings.repair", "Réparer"), repair_experience_command()),
+                True,
+            ),
+            (
+                "󰄬",
+                tr("settings.safe_actions.check", "Contrôle léger"),
+                tr("settings.safe_actions.check.note", "Vérifie l’état courant sans modifier la machine."),
+                action_button(tr("settings.check", "Vérifier"), "seven smoke doctor"),
+                False,
+            ),
+            (
+                "󰔎",
+                tr("settings.safe_actions.theme", "Resynchroniser le thème"),
+                tr("settings.safe_actions.theme.note", "Réapplique le clair/sombre aux surfaces SevenOS et aux nouvelles apps."),
+                action_button(tr("settings.resync", "Resynchroniser"), "seven theme sync"),
+                False,
+            ),
+            (
+                "󰇄",
+                tr("settings.safe_actions.shell", "Réparer la barre"),
+                tr("settings.safe_actions.shell.note", "Relance la barre SevenOS si elle affiche une ancienne couleur ou un ancien état."),
+                action_button(tr("settings.repair", "Réparer"), "seven-waybar repair"),
+                False,
+            ),
+            (
+                "󰌌",
+                tr("settings.safe_actions.shortcuts", "Reconstruire les raccourcis"),
+                tr("settings.safe_actions.shortcuts.note", "Réapplique les raccourcis Hyprland générés par SevenOS."),
+                action_button(tr("settings.apply", "Appliquer"), "seven hypr lua apply"),
+                False,
+            ),
+        ]
+        for icon, row_title, row_note, button, is_primary in actions:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            row.get_style_context().add_class("safe-action-row")
+            if is_primary:
+                row.get_style_context().add_class("primary")
+            glyph = Gtk.Label(label=icon)
+            glyph.get_style_context().add_class("safe-action-icon")
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            labels.set_hexpand(True)
+            title_label = Gtk.Label(label=row_title)
+            title_label.set_xalign(0)
+            title_label.get_style_context().add_class("settings-row-title")
+            note_label = Gtk.Label(label=row_note)
+            note_label.set_xalign(0)
+            note_label.set_line_wrap(True)
+            note_label.set_max_width_chars(58)
+            note_label.get_style_context().add_class("settings-row-note")
+            labels.pack_start(title_label, False, False, 0)
+            labels.pack_start(note_label, False, False, 0)
+            button.set_halign(Gtk.Align.END)
+            button.set_valign(Gtk.Align.CENTER)
+            row.pack_start(glyph, False, False, 0)
+            row.pack_start(labels, True, True, 0)
+            row.pack_start(button, False, False, 0)
+            card.pack_start(row, False, False, 0)
+        return card
+
+    def support_card() -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("support-card")
+        title = Gtk.Label(label=tr("settings.support.title", "Obtenir de l’aide"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(
+            label=tr(
+                "settings.support.note",
+                "Quand un souci persiste, SevenOS peut préparer les informations utiles sans exposer tes fichiers personnels.",
+            )
+        )
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+
+        privacy = Gtk.Label(
+            label=tr(
+                "settings.support.privacy",
+                "Le résumé copié contient seulement : version SevenOS, appareil, noyau, session, mini OS actif et état général.",
+            )
+        )
+        privacy.set_xalign(0)
+        privacy.set_line_wrap(True)
+        privacy.get_style_context().add_class("support-note")
+        card.pack_start(privacy, False, False, 0)
+
+        actions = action_flow(
+            [
+                callback_button(tr("settings.copy_summary", "Copier le résumé"), "copy SevenOS system summary", copy_system_summary),
+                callback_button(tr("settings.alerts", "Alertes"), "alerts:overview", show_alerts_overview),
+                callback_button(tr("settings.history", "Historique"), "settings:action-history", show_settings_action_history),
+                action_button(tr("settings.help", "Aide"), "seven-help-native"),
+            ]
+        )
+        card.pack_start(actions, False, False, 0)
         return card
 
     output_action_prefixes = (
@@ -4823,9 +6213,7 @@ def run(initial_page: str = "overview") -> int:
             progress.set_text("OK")
             cancel_button.set_sensitive(False)
             close_button.set_sensitive(True)
-            CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            with SETTINGS_ACTION_LOG.open("a", encoding="utf-8") as handle:
-                handle.write(f"\n--- SevenOS Settings action ---\n$ seven status\nexit=0\n{summary}\n")
+            append_settings_action_log("seven status", 0, summary)
             return
         pulse_source = GLib.timeout_add(120, pulse)
         heartbeat_source = GLib.timeout_add_seconds(2, heartbeat)
@@ -4930,9 +6318,7 @@ def run(initial_page: str = "overview") -> int:
                 cancel_button.set_sensitive(False)
                 close_button.set_sensitive(True)
                 copy_button.set_sensitive(True)
-                CACHE_DIR.mkdir(parents=True, exist_ok=True)
-                with SETTINGS_ACTION_LOG.open("a", encoding="utf-8") as handle:
-                    handle.write(f"\n--- SevenOS Settings action ---\n$ {ui_command}\nexit={code}\n{clean_output[-4000:]}\n")
+                append_settings_action_log(ui_command, code, clean_output[-4000:])
                 GLib.source_remove(pulse_source)
                 GLib.source_remove(heartbeat_source)
                 return False
@@ -5005,19 +6391,36 @@ def run(initial_page: str = "overview") -> int:
                         command = clean[2:].strip()
                     elif clean.startswith("exit="):
                         code = clean.split("=", 1)[1].strip()
+                    elif clean.startswith("time="):
+                        continue
                     elif clean and not first_detail:
                         first_detail = clean
                 success = code == "0"
+                started = code in {"started", "running", "pending"}
+                if success:
+                    icon = "✓"
+                    note_text = tr("settings.action_history.success_note", "Action terminée correctement.")
+                    badge = tr("settings.done", "Terminé")
+                elif started:
+                    icon = "…"
+                    note_text = first_detail or tr(
+                        "settings.action_history.started_note",
+                        "Action lancée en arrière-plan. Elle peut ouvrir ou actualiser une surface SevenOS.",
+                    )
+                    badge = tr("settings.started", "Lancé")
+                else:
+                    icon = "!"
+                    note_text = (
+                        f"{tr('settings.action_history.failed_note', 'Action non terminée. Le compte rendu peut être copié.')}"
+                        f" · {command or tr('settings.unknown', 'Inconnu')}"
+                    )
+                    badge = tr("settings.needs_attention", "À vérifier")
                 rows.append(
                     (
-                        "✓" if success else "!",
+                        icon,
                         friendly_command_name(command),
-                        (
-                            tr("settings.action_history.success_note", "Action terminée correctement.")
-                            if success
-                            else f"{tr('settings.action_history.failed_note', 'Action non terminée. Le compte rendu peut être copié.')} · {command or tr('settings.unknown', 'Inconnu')}"
-                        ),
-                        tr("settings.done", "Terminé") if success else tr("settings.needs_attention", "À vérifier"),
+                        note_text,
+                        badge,
                     )
                 )
             return rows
@@ -5927,16 +7330,21 @@ def run(initial_page: str = "overview") -> int:
         note_label.get_style_context().add_class("settings-row-note")
         labels.pack_start(title_label, False, False, 0)
         labels.pack_start(note_label, False, False, 0)
-        control_box = Gtk.FlowBox()
-        control_box.set_selection_mode(Gtk.SelectionMode.NONE)
+        multi_controls = len(controls) > 1
+        control_orientation = Gtk.Orientation.VERTICAL if multi_controls else Gtk.Orientation.HORIZONTAL
+        control_box = Gtk.Box(orientation=control_orientation, spacing=6)
         control_box.set_halign(Gtk.Align.END)
         control_box.set_valign(Gtk.Align.CENTER)
-        control_box.set_column_spacing(8)
-        control_box.set_row_spacing(6)
-        control_box.set_max_children_per_line(3)
+        control_box.set_size_request(126 if multi_controls else 112, -1)
         control_box.get_style_context().add_class("settings-row-controls")
+        if multi_controls:
+            control_box.get_style_context().add_class("multi")
         for control in controls:
-            control_box.add(control)
+            control.set_halign(Gtk.Align.FILL if isinstance(control, Gtk.Button) else Gtk.Align.END)
+            control.set_valign(Gtk.Align.CENTER)
+            if isinstance(control, Gtk.Button):
+                control.set_size_request(104 if multi_controls else 92, 28)
+            control_box.pack_start(control, False, False, 0)
         if controls:
             row.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
             row.set_tooltip_text(
@@ -6384,6 +7792,17 @@ def run(initial_page: str = "overview") -> int:
                 show_feedback(tr("settings.general_jump_pending", "{section} sera prêt dans un instant.", section=label))
                 return
             target.grab_focus()
+            scrolled = pages.get("general", (None, None))[1]
+            if scrolled is not None:
+                def scroll_to_target() -> bool:
+                    adjustment = scrolled.get_vadjustment()
+                    allocation = target.get_allocation()
+                    target_y = max(0, allocation.y - 12)
+                    upper = max(adjustment.get_lower(), adjustment.get_upper() - adjustment.get_page_size())
+                    adjustment.set_value(min(target_y, upper))
+                    return False
+
+                GLib.idle_add(scroll_to_target)
             show_feedback(tr("settings.general_jump", "Section ouverte : {section}", section=label))
 
         for icon, label, key in entries:
@@ -7677,6 +9096,18 @@ def run(initial_page: str = "overview") -> int:
         header.pack_start(apply_button, False, False, 0)
         card.pack_start(header, False, False, 0)
 
+        sync_strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        sync_strip.get_style_context().add_class("theme-sync-strip")
+        sync_icon = Gtk.Label(label="●")
+        sync_icon.get_style_context().add_class("settings-row-icon")
+        sync_status = Gtk.Label()
+        sync_status.set_xalign(0)
+        sync_status.set_line_wrap(True)
+        sync_status.get_style_context().add_class("card-note")
+        sync_strip.pack_start(sync_icon, False, False, 0)
+        sync_strip.pack_start(sync_status, True, True, 0)
+        card.pack_start(sync_strip, False, False, 0)
+
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         controls.set_halign(Gtk.Align.START)
         dark_button = Gtk.Button(label=tr("settings.dark_mode", "Mode sombre"))
@@ -7753,9 +9184,12 @@ def run(initial_page: str = "overview") -> int:
             palette = contract.get("palette", {}) if isinstance(contract.get("palette"), dict) else {}
             wallpaper = contract.get("wallpaper", {}) if isinstance(contract.get("wallpaper"), dict) else {}
             toolkits = contract.get("toolkits", {}) if isinstance(contract.get("toolkits"), dict) else {}
+            transition = contract.get("transition", {}) if isinstance(contract.get("transition"), dict) else {}
             wallpaper_image = str(wallpaper.get("image") or "")
             wallpaper_name = Path(wallpaper_image).name if wallpaper_image else tr("settings.wallpaper_dynamic", "dynamic wallpaper")
             profile_title = str(contract.get("profile_title") or selected["profile"].title())
+            active_mode = current_theme_mode()
+            active_profile = active_profile_key()
             note.set_text(
                 tr(
                     "settings.theme_preview.note",
@@ -7785,6 +9219,33 @@ def run(initial_page: str = "overview") -> int:
                     wallpaper=wallpaper_name,
                 )
             )
+            for css_class in ("active", "preview", "running"):
+                sync_strip.get_style_context().remove_class(css_class)
+            transition_state = str(transition.get("state") or "")
+            if transition_state == "running":
+                sync_strip.get_style_context().add_class("running")
+                sync_icon.set_text("●")
+                sync_status.set_text(
+                    tr(
+                        "settings.theme_sync.running",
+                        "Synchronisation en cours: {stage}. Les surfaces SevenOS se réalignent.",
+                        stage=str(transition.get("stage") or tr("settings.operation.running", "En cours")),
+                    )
+                )
+            elif selected["mode"] == active_mode and selected["profile"] == active_profile:
+                sync_strip.get_style_context().add_class("active")
+                sync_icon.set_text("✓")
+                sync_status.set_text(tr("settings.theme_sync.active", "Actif sur ce système. Les apps ouvertes au prochain lancement suivront ce thème."))
+            else:
+                sync_strip.get_style_context().add_class("preview")
+                sync_icon.set_text("◌")
+                sync_status.set_text(
+                    tr(
+                        "settings.theme_sync.preview",
+                        "Aperçu seulement. Le système reste en {mode} jusqu’à l’application.",
+                        mode=active_mode,
+                    )
+                )
             if apply_css:
                 provider.load_from_data(
                     (
@@ -7831,17 +9292,42 @@ def run(initial_page: str = "overview") -> int:
                 show_feedback(tr("settings.wallpaper_preview_requested", "Fond d’écran demandé. L’aperçu utilisera la nouvelle palette après préparation."))
 
         def apply_theme_selection(_button) -> None:
+            apply_button.set_sensitive(False)
+            apply_button.get_style_context().add_class("busy")
+            sync_strip.get_style_context().remove_class("active")
+            sync_strip.get_style_context().remove_class("preview")
+            sync_strip.get_style_context().add_class("running")
+            sync_icon.set_text("●")
+            sync_status.set_text(tr("settings.theme_sync.launching", "Préparation du changement de thème…"))
             profile = shlex.quote(selected["profile"])
             mode = shlex.quote(selected["mode"])
             command = (
+                f"SEVENOS_THEME_MODE={mode} ./install.sh theme {mode} && "
                 f"seven profile activate {profile} && "
                 f"seven-wallpaper profile {profile} && "
                 "seven-profile-theme apply && "
-                "seven language apply --live && "
-                f"./install.sh theme {mode}"
+                "seven language apply --live"
             )
             show_command_output(root_shell(command), tr("settings.theme_apply", "Appliquer le thème"))
             show_feedback(tr("settings.theme_apply_requested", "Theme, profile and wallpaper changes are being applied."))
+
+            def poll_theme_transition(count: int = 0) -> bool:
+                refresh_preview(apply_css=False)
+                transition = seven_theme.resolved_theme(
+                    "settings",
+                    selected["mode"],
+                    profile_override=profile_override(selected["profile"]),
+                ).get("transition", {})
+                state = str(transition.get("state") or "") if isinstance(transition, dict) else ""
+                if state in {"success", "failed"} or count >= 18:
+                    apply_button.set_sensitive(True)
+                    apply_button.get_style_context().remove_class("busy")
+                    refresh_preview(apply_css=False)
+                    return False
+                GLib.timeout_add_seconds(1, lambda: poll_theme_transition(count + 1))
+                return False
+
+            GLib.timeout_add_seconds(1, poll_theme_transition)
 
         dark_button.connect("clicked", lambda _button: preview_mode("dark"))
         light_button.connect("clicked", lambda _button: preview_mode("light"))
@@ -7903,35 +9389,39 @@ def run(initial_page: str = "overview") -> int:
     initial_page = initial_page if initial_page in pages else "overview"
 
     settings_search_index = {
-        "general": "general language langue region région formats about a propos clavier keyboard essential essentiel mini os collaboration capabilities capacités injection fonctionnalités entretien maintenance vérifier installer supprimer suppression désinstaller desinstaller paquets update mise à jour réparer atlas bridge sauvegarde backup animations motion usage quotidien développement création sécurité gaming culture",
-        "prism": "prism sevencor sevenDecor window controls smart window pastilles fenêtre rouge jaune vert electric électrique cible target lock flottant tiling maximize fullscreen",
-        "appearance": "appearance theme thème dark light glass dock terminal visual design",
-        "wallpaper": "wallpaper fond écran hyprpaper matugen wallust image collection dynamique clair sombre équilibré sevenos",
-        "display": "display screen écran monitor brightness luminosité hyprland",
-        "network": "wifi wi-fi network réseau ethernet internet nmcli connection",
-        "sound": "sound audio volume microphone pipewire pavucontrol son",
-        "keyboard": "keyboard clavier layout raccourcis shortcuts alt shift",
-        "fonts": "fonts police typography typographie import sf pro mono",
-        "security": "security sécurité shield firewall ufw sandbox apparmor",
-        "profiles": "profile profil mini os equinox forge devops baobab shield studio pulse atlas composition compare comparer aliases alias migration horizon",
-        "power": "power batterie battery sleep lock energy énergie hypridle hyprlock",
-        "defaults": "default apps applications par défaut navigateur browser terminal files fichiers reader pdf epub media image mail archive",
-        "apps": "apps store app applications flatpak launchpad installed updates supprimer suppression désinstaller desinstaller paquets",
-        "privacy": "privacy confidentialité permissions notifications ai history historique microphone camera caméra local",
-        "backup": "backup sauvegarde restore restauration export migration cloud state état",
-        "shortcuts": "shortcuts raccourcis clavier hotkeys keybinds super help aide",
-        "system": "system système aide alertes updates mise jour état réparation",
-        "overview": "overview accueil résumé dashboard control center",
+        "general": "general language langue region région formats about a propos clavier keyboard essential essentiel mini os collaboration capabilities capacités injection fonctionnalités entretien maintenance vérifier installer supprimer suppression désinstaller desinstaller paquets update mise à jour réparer atlas bridge sauvegarde backup animations motion usage quotidien développement création sécurité gaming culture compte utilisateur avatar profil image",
+        "prism": "prism sevencor sevenDecor window controls smart window pastilles fenêtre fenetre rouge jaune vert electric électrique electrique cible target lock flottant tiling maximize fullscreen deplacer déplacer fermer agrandir reduire réduire bouton fenetre",
+        "appearance": "appearance theme thème theme dark light clair sombre glass dock terminal visual design rendu interface trop clair trop sombre navigateur noir app noire app sombre coherence cohérence couleurs",
+        "wallpaper": "wallpaper fond écran ecran hyprpaper matugen wallust image collection dynamique clair sombre équilibré equilibre sevenos rotation fond change image bureau",
+        "display": "display screen écran ecran monitor brightness luminosité luminosite hyprland résolution resolution echelle échelle trop grand trop petit agrandir texte flou",
+        "network": "wifi wi-fi network réseau reseau ethernet internet nmcli connection connexion connecté connecte deconnecte déconnecté coupe coupé pas internet mot de passe wifi",
+        "sound": "sound audio volume microphone pipewire pavucontrol son muet sourdine casque haut parleur micro entrée entree sortie",
+        "keyboard": "keyboard clavier layout raccourcis shortcuts alt shift touche langue frappe azerty qwerty raccourci ne marche pas",
+        "fonts": "fonts police typography typographie import sf pro mono texte taille lecture lisibilite lisibilité caracteres caractères",
+        "security": "security sécurité securite shield firewall ufw sandbox apparmor protection audit danger blackarch scan",
+        "profiles": "profile profil mini os equinox forge devops baobab shield studio pulse atlas composition compare comparer aliases alias migration horizon espace changer mode travail os mini-os",
+        "power": "power batterie battery sleep lock energy énergie energie hypridle hyprlock veille jamais ecran actif écran actif suspendre sommeil verrouillage autonomie performance lent chauffe",
+        "defaults": "default apps applications par défaut par defaut navigateur browser terminal files fichiers reader pdf epub media image mail archive ouvrir avec association",
+        "apps": "apps store app applications flatpak launchpad installed updates supprimer suppression désinstaller desinstaller paquets installer logiciel programme exe msi windows wine bottles lutris",
+        "privacy": "privacy confidentialité confidentialite permissions notifications ai history historique microphone camera caméra local effacer données donnees messages notifiés notifies",
+        "backup": "backup sauvegarde restore restauration export migration cloud state état etat revenir arrière arriere rollback protéger proteger",
+        "shortcuts": "shortcuts raccourcis clavier hotkeys keybinds super help aide commande super h super+h ne marche pas",
+        "system": "system système systeme aide alertes updates mise jour état etat réparation reparation pc lent bug cassé casse plante health doctor logs diagnostic reparer",
+        "overview": "overview accueil résumé resume dashboard control center centre solution probleme problème refuge aide que faire",
     }
 
+    def search_norm(value: str) -> str:
+        normalized = unicodedata.normalize("NFKD", value or "")
+        return "".join(ch for ch in normalized if not unicodedata.combining(ch)).lower()
+
     def search_settings(_entry=None) -> None:
-        query = search_entry.get_text().strip().lower()
+        query = search_norm(search_entry.get_text().strip())
         if not query:
             search_results.hide()
             return
         for target, terms in settings_search_index.items():
-            page_title = pages[target][0].get_children()[0].get_text().lower()
-            if query in terms or query in page_title:
+            page_title = search_norm(pages[target][0].get_children()[0].get_text())
+            if query in search_norm(terms) or query in page_title:
                 activate_page(target, nav_by_target[target])
                 show_feedback(page_opened_message(target))
                 return
@@ -7954,6 +9444,16 @@ def run(initial_page: str = "overview") -> int:
     search_entry.connect("key-press-event", search_key)
 
     search_items = [
+        ("󰩂", tr("settings.search.problem", "Je cherche une solution"), tr("settings.search.problem.note", "Retourner au centre de résolution et aux recommandations SevenOS."), "overview"),
+        ("󰤨", tr("settings.search.internet_problem", "Internet ne marche pas"), tr("settings.search.internet_problem.note", "Wi-Fi, connexion, mot de passe réseau et relance."), "network"),
+        ("󰍹", tr("settings.search.display_problem", "L’écran est mal ajusté"), tr("settings.search.display_problem.note", "Luminosité, résolution, échelle et affichage trop grand ou trop petit."), "display"),
+        ("󰕾", tr("settings.search.sound_problem", "Je n’ai plus de son"), tr("settings.search.sound_problem.note", "Volume, sourdine, casque, micro et périphériques audio."), "sound"),
+        ("󰔎", tr("settings.search.theme_problem", "Le thème ne suit pas"), tr("settings.search.theme_problem.note", "Mode clair/sombre, cohérence des apps et resynchronisation."), "appearance"),
+        ("󰁹", tr("settings.search.sleep_problem", "Veille et batterie"), tr("settings.search.sleep_problem.note", "Temps avant veille, jamais, énergie et performance."), "power"),
+        ("󰐃", tr("settings.search.profile_problem", "Changer de Mini OS"), tr("settings.search.profile_problem.note", "Equinox, Forge, Baobab, Shield, Studio, Atlas et Pulse."), "profiles"),
+        ("◈", tr("settings.search.prism_problem", "Prism ou fenêtres"), tr("settings.search.prism_problem.note", "Boutons fenêtre, déplacement, effet, cible et désactivation."), "prism"),
+        ("󰀻", tr("settings.search.install_problem", "Installer ou supprimer une app"), tr("settings.search.install_problem.note", "SevenStore, paquets, apps externes, .exe, Wine et Bottles."), "apps"),
+        ("󰁯", tr("settings.search.backup_problem", "Revenir en arrière"), tr("settings.search.backup_problem.note", "Sauvegarde, restauration, rollback et migration."), "backup"),
         ("󰒓", tr("settings.general", "Général"), tr("settings.general.subtitle", "Langue, région, thèmes et comportement quotidien de SevenOS."), "general"),
         ("󰤨", "Wi-Fi", tr("settings.network.subtitle", "Se connecter et gérer le réseau SevenOS."), "network"),
         ("󰂯", "Bluetooth", tr("settings.bluetooth.note", "Associer écouteurs, claviers, téléphones et appareils proches."), "network"),
@@ -7969,13 +9469,13 @@ def run(initial_page: str = "overview") -> int:
     def rebuild_search_results(_entry=None) -> None:
         for child in list(search_results.get_children()):
             search_results.remove(child)
-        query = search_entry.get_text().strip().lower()
+        query = search_norm(search_entry.get_text().strip())
         if len(query) < 2:
             search_results.hide()
             return
         matches = []
         for icon, title, note, target in search_items:
-            haystack = f"{title} {note} {settings_search_index.get(target, '')}".lower()
+            haystack = search_norm(f"{title} {note} {settings_search_index.get(target, '')}")
             if query in haystack:
                 matches.append((icon, title, note, target))
         if not matches:
@@ -7990,13 +9490,31 @@ def run(initial_page: str = "overview") -> int:
             note_label.set_xalign(0)
             note_label.set_line_wrap(True)
             note_label.get_style_context().add_class("card-note")
-            hint_label = Gtk.Label(label=tr("settings.search.no_result_hint", "Essaie “Wi-Fi”, “Mini OS”, “thème”, “veille” ou reviens à la vue d’ensemble."))
+            hint_label = Gtk.Label(label=tr("settings.search.no_result_hint", "Essaie “internet”, “écran”, “son”, “veille”, “thème”, “lent”, “installer” ou “sauvegarde”."))
             hint_label.set_xalign(0)
             hint_label.set_line_wrap(True)
             hint_label.get_style_context().add_class("card-note")
             text_box.pack_start(title_label, False, False, 0)
             text_box.pack_start(note_label, False, False, 0)
             text_box.pack_start(hint_label, False, False, 0)
+            actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            overview_button = Gtk.Button(label=tr("settings.overview", "Vue d’ensemble"))
+            overview_button.get_style_context().add_class("action-button")
+            overview_button.connect(
+                "clicked",
+                lambda _button: (
+                    activate_page("overview", nav_by_target["overview"]),
+                    search_entry.set_text(""),
+                    search_results.hide(),
+                    show_feedback(page_opened_message("overview")),
+                ),
+            )
+            help_button = Gtk.Button(label=tr("settings.help", "Aide"))
+            help_button.get_style_context().add_class("action-button")
+            help_button.connect("clicked", lambda _button: run_detached("seven-help-native"))
+            actions.pack_start(overview_button, False, False, 0)
+            actions.pack_start(help_button, False, False, 0)
+            text_box.pack_start(actions, False, False, 0)
             empty.pack_start(glyph, False, False, 0)
             empty.pack_start(text_box, True, True, 0)
             search_results.pack_start(empty, False, False, 0)
@@ -8075,6 +9593,16 @@ def run(initial_page: str = "overview") -> int:
         ],
     )
     overview.pack_start(hero_card(tr("settings.hero.title", "Ajuster SevenOS simplement"), tr("settings.hero.note", "Les réglages essentiels sont ici, avec des actions visibles et sans console.")), False, False, 0)
+    overview.pack_start(instant_verdict_card(), False, False, 0)
+    overview_continue = continue_card()
+    if overview_continue is not None:
+        overview.pack_start(overview_continue, False, False, 0)
+    overview.pack_start(recommendation_card(), False, False, 0)
+    overview.pack_start(first_aid_card(), False, False, 0)
+    overview.pack_start(trust_center_card(), False, False, 0)
+    overview.pack_start(safe_actions_card(), False, False, 0)
+    overview.pack_start(solution_center_card(), False, False, 0)
+    overview.pack_start(support_card(), False, False, 0)
     overview.pack_start(
         workflow_card(
             tr("settings.overview.recommended.title", "Parcours recommandé"),
@@ -8171,6 +9699,16 @@ def run(initial_page: str = "overview") -> int:
         False,
         0,
     )
+    general.pack_start(instant_verdict_card(), False, False, 0)
+    general_continue = continue_card()
+    if general_continue is not None:
+        general.pack_start(general_continue, False, False, 0)
+    general.pack_start(recommendation_card(), False, False, 0)
+    general.pack_start(first_aid_card(), False, False, 0)
+    general.pack_start(solution_center_card(), False, False, 0)
+    general.pack_start(safe_actions_card(), False, False, 0)
+    general.pack_start(trust_center_card(), False, False, 0)
+    general.pack_start(support_card(), False, False, 0)
     general_targets: dict[str, Gtk.Widget] = {}
     general.pack_start(general_jump_strip(general_targets), False, False, 0)
     general_targets["usage"] = settings_group(
@@ -8387,10 +9925,12 @@ def run(initial_page: str = "overview") -> int:
         False,
         0,
     )
+    appearance_theme_status = theme_session_status()
     settings_group(
         appearance,
         "",
         [
+            settings_row("󰜉", tr("settings.theme_session", "Session thème"), f"{appearance_theme_status['title']} · {appearance_theme_status['note']}", [action_button(tr("settings.status", "Voir"), "seven theme doctor"), action_button(tr("settings.resync", "Resynchroniser"), "seven theme sync")]),
             settings_row("󰔎", tr("settings.dark_mode", "Mode sombre"), tr("settings.dark_mode.note", "Ambiance immersive SevenOS pour la nuit, la création et le focus."), [action_button(tr("settings.apply", "Appliquer"), theme_apply_command("dark"))]),
             settings_row("󰔎", tr("settings.light_mode", "Mode clair"), tr("settings.light_mode.note", "Espace SevenOS lisible pour lecture, productivité et usage en journée."), [action_button(tr("settings.apply", "Appliquer"), theme_apply_command("light"))]),
             settings_row("󰏘", tr("settings.design_engine", "Style SevenOS"), tr("settings.design_engine.note", "Voir les couleurs, icônes et préférences visuelles actives."), [action_button(tr("settings.open", "Ouvrir"), "seven identity design")]),

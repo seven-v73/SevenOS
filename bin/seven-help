@@ -632,6 +632,7 @@ accents, les priorités et les surfaces, pas le mode complet.
 | Appliquer le thème clair | `./install.sh theme light` |
 | Appliquer le thème sombre | `./install.sh theme dark` |
 | Vérifier l'état thème | `seven theme doctor` |
+| Resynchroniser le thème de session | `seven theme sync` |
 | Réparer l'UX visuelle | `seven repair ux --apply` |
 | Recharger Hyprland/Waybar | `seven hypr apply` |
 | Terminal transparent/opaque | `Ctrl+Shift+B` dans Seven Terminal |
@@ -2044,6 +2045,7 @@ priorities and surfaces, not the complete mode.
 | Apply light theme | `./install.sh theme light` |
 | Apply dark theme | `./install.sh theme dark` |
 | Check theme state | `seven theme doctor` |
+| Resync session theme | `seven theme sync` |
 | Repair visual UX | `seven repair ux --apply` |
 | Reload Hyprland/Waybar | `seven hypr apply` |
 | Terminal transparent/solid | `Ctrl+Shift+B` inside Seven Terminal |

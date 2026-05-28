@@ -419,6 +419,7 @@ SECTIONS = [
             ("./install.sh theme light", t("Appliquer clair", "Apply light")),
             ("./install.sh theme dark", t("Appliquer sombre", "Apply dark")),
             ("seven theme doctor", t("Vérifier les thèmes", "Check themes")),
+            ("seven theme sync", t("Resynchroniser la session", "Resync session")),
             ("seven boot-splash status", t("Etat du splash", "Splash status")),
             ("seven boot-splash doctor", t("Vérifier le splash", "Check splash")),
             ("seven login-theme status", t("Etat de l'écran de connexion", "Login screen status")),

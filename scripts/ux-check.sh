@@ -746,8 +746,8 @@ if grep -q 'gtk-decoration-layout=close,minimize,maximize:' "$ROOT_DIR/hyprland/
    grep -q 'screen_window_size' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'runtime_sidebar_visible' "$ROOT_DIR/bin/seven-files-native" &&
    grep -q 'runtime_preview_visible' "$ROOT_DIR/bin/seven-files-native" &&
-   grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 680 460' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
-   grep -q 'windowrule = match:title ^(Seven Files)$, float on, center on, size 680 460' "$ROOT_DIR/hyprland/lua/rules/windows.lua"; then
+   grep -q 'windowrule = match:class ^(SevenFilesNative)$, float on, center on, size 700 500' "$ROOT_DIR/hyprland/lua/rules/windows.lua" &&
+   grep -q 'windowrule = match:title ^(Seven Files)$, float on, center on, size 700 500' "$ROOT_DIR/hyprland/lua/rules/windows.lua"; then
   ok "Seven Files is shaped as a native SevenOS file surface"
 else
   fail "Seven Files shell integration is incomplete"
@@ -1437,9 +1437,11 @@ else
   fail "SevenOS Hypr Lua Engine should expose audit, generated conf and safe fallback"
 fi
 
-if grep -q 'env = GTK_THEME,adw-gtk3' "$ROOT_DIR/hyprland/hyprland.conf" &&
-   grep -q 'env = QT_QPA_PLATFORMTHEME,qt6ct' "$ROOT_DIR/hyprland/hyprland.conf"; then
-  ok "Hyprland exports GTK and Qt theme hints"
+if grep -q 'source = ~/.config/hypr/conf/sevenos-theme-env.conf' "$ROOT_DIR/hyprland/hyprland.conf" &&
+   [[ -s "$ROOT_DIR/hyprland/conf/sevenos-theme-env.conf" ]] &&
+   grep -q 'env = GTK_THEME' "$ROOT_DIR/hyprland/conf/sevenos-theme-env.conf" &&
+   grep -q 'env = QT_QPA_PLATFORMTHEME,qt6ct' "$ROOT_DIR/hyprland/conf/sevenos-theme-env.conf"; then
+  ok "Hyprland exports dynamic GTK and Qt theme hints"
 else
   fail "Hyprland missing GTK/Qt theme environment"
 fi
@@ -1831,6 +1833,10 @@ if grep -q -- '--seven-blue: #4DA3FF' "$ROOT_DIR/identity/tokens.css" &&
    ! grep -R -E '#[0-9A-Fa-f]{3,8}|rgba?\(' "$ROOT_DIR/identity/native" >/dev/null 2>&1 &&
    grep -q 'theme-engine.sh' "$ROOT_DIR/scripts/apply-theme.sh" &&
    "$ROOT_DIR/scripts/theme-engine.sh" doctor >/dev/null 2>&1 &&
+   [[ -s "$ROOT_DIR/scripts/theme-session.sh" ]] &&
+   "$ROOT_DIR/scripts/theme-session.sh" doctor >/dev/null 2>&1 &&
+   [[ -s "$ROOT_DIR/systemd/user/sevenos-theme-session.service" ]] &&
+   grep -q 'sevenos-theme-session.service' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'region_selector_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'default_app_card' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'copy_system_summary' "$ROOT_DIR/bin/seven-settings-native" &&

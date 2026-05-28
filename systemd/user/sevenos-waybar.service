@@ -1,7 +1,7 @@
 [Unit]
 Description=SevenOS Waybar shell
 PartOf=sevenos-session.target
-After=graphical-session.target
+After=graphical-session.target sevenos-theme-session.service
 
 [Service]
 Type=simple

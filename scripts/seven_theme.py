@@ -54,9 +54,6 @@ def repo_root() -> Path:
 
 
 def current_theme_mode(default: str = "dark") -> str:
-    env = os.environ.get("SEVENOS_THEME_MODE")
-    if env in {"dark", "light"}:
-        return env
     theme_file = seven_config_dir() / "theme.conf"
     if theme_file.exists():
         for line in theme_file.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -65,6 +62,13 @@ def current_theme_mode(default: str = "dark") -> str:
                 value = value.strip().strip("'\"").lower()
                 if value in {"dark", "light"}:
                     return value
+    runtime = read_json(seven_config_dir() / "theme-runtime.json", {})
+    runtime_mode = str(runtime.get("mode") or "").strip().lower() if isinstance(runtime, dict) else ""
+    if runtime_mode in {"dark", "light"}:
+        return runtime_mode
+    env = os.environ.get("SEVENOS_THEME_MODE")
+    if env in {"dark", "light"}:
+        return env
     return default
 
 
@@ -81,6 +85,15 @@ def runtime_state() -> dict:
         seven_config_dir() / "theme-runtime.json",
         {"schema": "sevenos.theme-runtime.v1", "mode": current_theme_mode(), "toolkits": {}},
     )
+
+
+def transition_state() -> dict:
+    payload = read_json(seven_config_dir() / "theme-transition.json", {})
+    if not isinstance(payload, dict):
+        return {}
+    if payload.get("schema") != "sevenos.theme-transition.v1":
+        return {}
+    return payload
 
 
 def profile_state() -> dict:
@@ -379,6 +392,7 @@ def resolved_theme(
             "image": str(wallpaper.get("image") or ""),
         },
         "toolkits": toolkits,
+        "transition": transition_state(),
     }
 
 

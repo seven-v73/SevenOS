@@ -130,11 +130,24 @@ warmup_shell_experience() {
   fi
 }
 
+sync_theme_session() {
+  if [[ -x "$ROOT_DIR/scripts/theme-session.sh" ]]; then
+    if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+      log "DRY-RUN sync theme session"
+    else
+      log "syncing SevenOS theme session"
+      "$ROOT_DIR/scripts/theme-session.sh" sync >/tmp/sevenos-theme-session.log 2>&1 || true
+    fi
+  fi
+}
+
+sync_theme_session
+
 if command -v dbus-update-activation-environment >/dev/null 2>&1; then
   if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
     log "DRY-RUN update dbus activation environment"
   else
-    dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE >/dev/null 2>&1 || true
+    dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE SEVENOS_THEME_MODE GTK_THEME QT_QPA_PLATFORMTHEME QT_STYLE_OVERRIDE >/dev/null 2>&1 || true
   fi
 fi
 

@@ -270,9 +270,6 @@ window.seven-app-menu {
 def current_theme_mode() -> str:
     if seven_theme:
         return seven_theme.current_theme_mode()
-    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
-    if env_mode in {"dark", "light"}:
-        return env_mode
     config = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos/theme.conf"
     try:
         for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -283,6 +280,9 @@ def current_theme_mode() -> str:
                     return value
     except OSError:
         pass
+    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
+    if env_mode in {"dark", "light"}:
+        return env_mode
     return "dark"
 
 

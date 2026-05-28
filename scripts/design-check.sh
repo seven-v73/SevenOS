@@ -594,7 +594,11 @@ else
 fi
 
 if [[ -s "$ROOT_DIR/scripts/theme-engine.sh" ]] &&
+   [[ -s "$ROOT_DIR/scripts/theme-session.sh" ]] &&
    "$ROOT_DIR/scripts/theme-engine.sh" doctor >/dev/null 2>&1 &&
+   "$ROOT_DIR/scripts/theme-session.sh" doctor >/dev/null 2>&1 &&
+   [[ -s "$ROOT_DIR/systemd/user/sevenos-theme-session.service" ]] &&
+   grep -q 'sevenos-theme-session.service' "$ROOT_DIR/scripts/apply-theme.sh" &&
    grep -q 'seven identity theme-doctor' "$ROOT_DIR/scripts/identity.sh"; then
   ok "SevenOS theme runtime doctor is available"
 else

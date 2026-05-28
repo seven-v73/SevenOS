@@ -148,9 +148,6 @@ def write_json(path: Path, data) -> None:
 
 
 def current_theme_mode() -> str:
-    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
-    if env_mode in {"dark", "light"}:
-        return env_mode
     try:
         for raw in THEME_CONF.read_text(encoding="utf-8", errors="replace").splitlines():
             if "=" not in raw or raw.strip().startswith("#"):
@@ -160,6 +157,9 @@ def current_theme_mode() -> str:
                 return value
     except OSError:
         pass
+    env_mode = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
+    if env_mode in {"dark", "light"}:
+        return env_mode
     return "dark"
 
 

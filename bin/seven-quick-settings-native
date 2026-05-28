@@ -177,8 +177,6 @@ def claim_single_instance(panel: str, action: str = "show") -> bool:
 
 
 def current_theme_mode() -> str:
-    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
-        return str(os.environ["SEVENOS_THEME_MODE"])
     config_dir = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
     theme_file = config_dir / "theme.conf"
     if theme_file.exists():
@@ -188,6 +186,8 @@ def current_theme_mode() -> str:
                 value = value.strip().strip("'\"").lower()
                 if value in {"dark", "light"}:
                     return value
+    if os.environ.get("SEVENOS_THEME_MODE") in {"dark", "light"}:
+        return str(os.environ["SEVENOS_THEME_MODE"])
     return "dark"
 
 

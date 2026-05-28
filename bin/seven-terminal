@@ -91,17 +91,17 @@ active_profile() {
 
 current_theme_mode() {
   local theme_conf="$CONFIG_HOME/sevenos/theme.conf"
+  if [[ -r "$theme_conf" ]]; then
+    local persisted
+    persisted="$(awk -F= 'tolower($1) ~ /^(mode|theme_mode|sevenos_theme_mode)$/ {gsub(/[[:space:]"]/, "", $2); print tolower($2); exit}' "$theme_conf" 2>/dev/null || true)"
+    if [[ "$persisted" == "dark" || "$persisted" == "light" ]]; then
+      printf '%s\n' "$persisted"
+      return 0
+    fi
+  fi
   if [[ "${SEVENOS_THEME_MODE:-}" == "dark" || "${SEVENOS_THEME_MODE:-}" == "light" ]]; then
     printf '%s\n' "$SEVENOS_THEME_MODE"
     return 0
-  fi
-  if [[ -r "$theme_conf" ]]; then
-    # shellcheck disable=SC1090
-    source "$theme_conf" >/dev/null 2>&1 || true
-    if [[ "${SEVENOS_THEME_MODE:-}" == "dark" || "${SEVENOS_THEME_MODE:-}" == "light" ]]; then
-      printf '%s\n' "$SEVENOS_THEME_MODE"
-      return 0
-    fi
   fi
   printf 'dark\n'
 }
