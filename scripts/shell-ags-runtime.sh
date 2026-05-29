@@ -66,8 +66,8 @@ if not helper:
     })
 if not ready:
     next_steps.append({
-        "command": "./install.sh shell-ags-runtime --yes",
-        "reason": "Install Aylur's Gtk Shell runtime after reviewing the AUR route.",
+        "command": "scripts/shell-ags-runtime.sh open",
+        "reason": "Open the guided terminal route for Aylur's Gtk Shell runtime after reviewing the AUR route.",
     })
 
 print(json.dumps({
@@ -82,8 +82,9 @@ print(json.dumps({
     "install_mode": "graphical-admin-prompt" if auth_backend == "pkexec" else "sudo" if auth_backend == "sudo" else "missing-admin-prompt",
     "report": str(report),
     "report_available": report.exists(),
-    "safe_install_command": "./install.sh shell-ags-runtime --yes",
-    "terminal_install_command": "seven-terminal forge -- bash -lc './install.sh shell-ags-runtime --yes; read -r'",
+    "safe_install_command": "scripts/shell-ags-runtime.sh open",
+    "direct_install_command": "./install.sh shell-ags-runtime --yes",
+    "terminal_install_command": "seven-terminal forge -- bash -lc 'SEVENOS_AGS_TERMINAL=1 ./install.sh shell-ags-runtime --yes; read -r'",
     "readiness": "native-runtime-ready" if ready else "installable-with-aur-helper" if helper else "needs-aur-helper",
     "checks": [
         {"key": "ags-command", "state": runtime},
@@ -160,7 +161,7 @@ notify_shell_runtime() {
 }
 
 open_install_terminal() {
-  local command="./install.sh shell-ags-runtime --yes"
+  local command="SEVENOS_AGS_TERMINAL=1 ./install.sh shell-ags-runtime --yes"
   if is_dry_run; then
     printf 'seven-terminal forge -- bash -lc %q\n' "$command; read -r"
     return 0
@@ -178,6 +179,14 @@ open_install_terminal() {
 install_runtime() {
   local helper
   helper="$(helper_state)"
+
+  if [[ ! -t 0 && "${SEVENOS_AGS_TERMINAL:-0}" != "1" && "${SEVENOS_AGS_FORCE_DIRECT:-0}" != "1" ]]; then
+    log_warn "AGS runtime install needs an interactive terminal for AUR build prompts."
+    log_info "Opening the guided Seven Terminal route instead of failing on non-interactive sudo."
+    write_report "opened-terminal" "AGS runtime install was moved to an interactive Seven Terminal route." >/dev/null || true
+    open_install_terminal
+    return 0
+  fi
 
   install_package_file "$ROOT_DIR/scripts/packages-shell-ags.txt"
 
