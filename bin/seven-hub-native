@@ -1182,7 +1182,7 @@ def run_gui() -> int:
             stack.set_vexpand(True)
             stack.add_css_class("seven-content")
 
-            refresh = Gtk.Button(label="Refresh")
+            refresh = Gtk.Button(label=tr("Actualiser", "Refresh"))
             refresh.add_css_class("pill")
 
             sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)

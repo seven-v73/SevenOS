@@ -37,6 +37,9 @@ experience.device_continuity	System	Device Continuity	seven device-continuity	sa
 experience.rescue	System	SevenOS Rescue Mode	seven experience-center rescue	safe	Show the guided rescue route for theme, Waybar, Prism, network and diagnostics.
 experience.time_machine	System	SevenOS Time Machine	seven experience-center time-machine	safe	Show local backups, restore plan and rollback route.
 experience.timeline	System	Activity Timeline	seven experience-center timeline	safe	Show recent SevenOS events and Settings actions.
+quality.public_studio	System	Public Readiness Studio	seven public-studio --gui	safe	Open fresh-install and visual consistency readiness studio.
+quality.first_run	System	Fresh Install Verifier	seven first-run verify	safe	Verify commands, assets, desktop entries, wallpapers and install scripts for a new machine.
+quality.visual_gate	System	Visual Consistency Gate	seven visual-gate	safe	Scan design gate, public surfaces and suspicious UI patterns.
 experience.permissions	System	Permissions Center	seven experience-center permissions	safe	Show portals, Flatpak, microphone, camera and privacy routes.
 experience.journeys	Desktop	Focus Journeys	seven experience-center journeys	safe	Show profile-aware journeys for code, creation, study, gaming, culture and security.
 startup.audit	Desktop	Startup Performance Audit	./scripts/startup-audit.sh	safe	Check that public SevenOS apps open from cache and do not block on deep audits.

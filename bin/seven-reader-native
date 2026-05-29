@@ -586,8 +586,8 @@ class ReaderWindow(Gtk.ApplicationWindow):
     def __init__(self, app: Gtk.Application, initial: Path | None = None):
         super().__init__(application=app, title="Seven Reader")
         self.set_wmclass(APP_ID, APP_ID)
-        self.set_default_size(1220, 760)
-        self.set_size_request(940, 620)
+        self.set_default_size(980, 640)
+        self.set_size_request(760, 500)
         self.get_style_context().add_class("seven-reader")
         self.document: Document | None = None
         self.page = 0
@@ -1328,7 +1328,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
                 image.set_valign(Gtk.Align.CENTER)
                 box.pack_start(image, True, True, 0)
             else:
-                box.pack_start(Gtk.Label(label="Install poppler to render PDF pages."), True, True, 0)
+                box.pack_start(Gtk.Label(label=tr_text("Installe poppler pour afficher les pages PDF.", "Install poppler to render PDF pages.")), True, True, 0)
         elif self.document.kind == "image":
             try:
                 page_path = self.document.pages[max(0, min(page_index, len(self.document.pages) - 1))]

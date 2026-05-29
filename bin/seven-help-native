@@ -136,6 +136,9 @@ SECTIONS = [
             ("seven privacy-report", t("Voir le rapport confidentialité", "Show privacy report")),
             ("seven learning", t("Aide contextuelle en langage naturel", "Plain-language contextual help")),
             ("seven device-continuity", t("Voir la préparation multi-appareil", "Show multi-device readiness")),
+            ("seven public-studio --gui", t("Studio qualité: installation fraîche et cohérence visuelle", "Quality studio: fresh install and visual consistency")),
+            ("seven first-run verify", t("Vérifier qu'une nouvelle machine reçoit bien les commandes, assets et entrées desktop", "Verify a new machine receives commands, assets and desktop entries")),
+            ("seven visual-gate", t("Scanner les risques UI: anciens écrans, tailles fixes, couleurs et libellés", "Scan UI risks: legacy screens, fixed sizes, colors and labels")),
             ("seven experience-center rescue", "Rescue Mode"),
             ("seven rescue", t("Raccourci direct vers Rescue Mode", "Direct shortcut to Rescue Mode")),
             ("seven time-machine", t("Raccourci direct vers Time Machine", "Direct shortcut to Time Machine")),
@@ -145,7 +148,7 @@ SECTIONS = [
             ("seven experience-center journeys", t("Parcours focus", "Focus journeys")),
             ("seven experience-center memory", t("Mémoire de travail", "Workspace memory")),
         ],
-        "actions": [("◇", "Experience", "seven experience-center --gui"), ("󰃭", "Briefing", "seven briefing"), ("󰓎", t("Plan", "Plan"), "seven care"), ("󰘳", t("Intentions", "Intents"), "seven intent"), ("󰌵", t("Aide guidée", "Guided help"), "seven learning"), ("󰀂", t("Appareils", "Devices"), "seven device-continuity"), ("󰜉", "Rescue", "seven experience-center rescue")],
+        "actions": [("◇", "Experience", "seven experience-center --gui"), ("󰃭", "Briefing", "seven briefing"), ("󰓎", t("Plan", "Plan"), "seven care"), ("󰘳", t("Intentions", "Intents"), "seven intent"), ("󰌵", t("Aide guidée", "Guided help"), "seven learning"), ("󰀂", t("Appareils", "Devices"), "seven device-continuity"), ("󰄬", t("Qualité", "Quality"), "seven public-studio --gui"), ("󰜉", "Rescue", "seven experience-center rescue")],
     },
     {
         "id": "architecture",

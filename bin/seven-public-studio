@@ -1,0 +1,844 @@
+#!/usr/bin/env python3
+"""SevenOS Public Readiness Studio.
+
+Quality gates for fresh installs and visible UI consistency.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python3")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python.resolve():
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.execve(str(system_python), [str(system_python), str(Path(__file__).resolve()), *sys.argv[1:]], {**os.environ, "SEVENOS_GI_PYTHON": "1"})
+
+
+def resolve_root() -> Path:
+    env = os.environ.get("SEVENOS_ROOT")
+    if env and (Path(env) / "bin/seven").exists():
+        return Path(env).resolve()
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "bin/seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme  # noqa: E402
+except Exception:  # pragma: no cover
+    seven_theme = None
+
+
+def language_code() -> str:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "en_US.UTF-8")
+    config = CONFIG_DIR / "language.conf"
+    if not os.environ.get("SEVENOS_LANGUAGE") and config.exists():
+        for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip() in {"SEVENOS_LANGUAGE", "LANG"}:
+                language = value.strip().strip("'\"")
+                break
+    return "fr" if language.lower().startswith("fr") else "en"
+
+
+LANG = language_code()
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if LANG == "fr" else en
+
+
+def state_label(state: str) -> str:
+    return {
+        "OK": tr("Prêt", "Ready"),
+        "WARN": tr("Attention", "Review"),
+        "INFO": tr("Info", "Info"),
+        "MISS": tr("Manquant", "Missing"),
+        "SKIP": tr("Ignoré", "Skipped"),
+    }.get(state, state)
+
+
+def state_class(state: str) -> str:
+    if state == "OK":
+        return "ok"
+    if state in {"WARN", "INFO"}:
+        return "warn"
+    if state == "MISS":
+        return "miss"
+    return "info"
+
+
+def theme_mode() -> str:
+    if seven_theme:
+        return seven_theme.current_theme_mode()
+    value = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
+    return value if value in {"dark", "light"} else "dark"
+
+
+def active_profile() -> str:
+    if seven_theme:
+        return seven_theme.active_profile_key()
+    profile_file = CONFIG_DIR / "profile.env"
+    if profile_file.exists():
+        for raw in profile_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip() == "SEVENOS_ACTIVE_PROFILE":
+                return value.strip().strip("'\"") or "equinox"
+    return os.environ.get("SEVENOS_ACTIVE_PROFILE", "equinox")
+
+
+def studio_css() -> str:
+    mode = theme_mode()
+    base = seven_theme.gtk_app_css("public-studio", mode) if seven_theme else ""
+    if mode == "light":
+        shell_bg = "radial-gradient(ellipse at 0% 0%, alpha(@seven_accent, 0.16), transparent 42%), alpha(@seven_panel, 0.94)"
+        hero_bg = "linear-gradient(135deg, alpha(@seven_accent, 0.16), alpha(@seven_wallpaper_cyan, 0.08))"
+        card_bg = "alpha(@seven_panel_2, 0.74)"
+        action_bg = "alpha(@seven_panel_2, 0.62)"
+        note_color = "alpha(@seven_muted, 0.92)"
+        score_bg = "radial-gradient(circle, alpha(@seven_accent, 0.26), alpha(@seven_wallpaper_cyan, 0.10))"
+    else:
+        shell_bg = "radial-gradient(ellipse at 0% 0%, alpha(@seven_accent, 0.26), transparent 42%), alpha(@seven_panel, 0.96)"
+        hero_bg = "linear-gradient(135deg, alpha(@seven_accent, 0.22), alpha(@seven_wallpaper_cyan, 0.10))"
+        card_bg = "alpha(@seven_panel_2, 0.72)"
+        action_bg = "alpha(@seven_panel_2, 0.52)"
+        note_color = "alpha(@seven_text, 0.70)"
+        score_bg = "radial-gradient(circle, alpha(@seven_accent, 0.42), alpha(@seven_wallpaper_cyan, 0.13))"
+    return base + f"""
+    .studio-root {{
+      background: transparent;
+      color: @seven_text;
+    }}
+    .studio-shell {{
+      padding: 16px;
+      border-radius: 28px;
+      background: {shell_bg};
+      border: 1px solid @seven_border;
+    }}
+    .studio-hero {{
+      padding: 16px;
+      border-radius: 22px;
+      background: {hero_bg};
+      border: 1px solid @seven_border;
+    }}
+    .studio-title {{
+      font-size: 22px;
+      font-weight: 500;
+      color: @seven_text;
+    }}
+    .studio-note {{
+      font-size: 12px;
+      color: {note_color};
+    }}
+    .studio-card {{
+      padding: 12px;
+      border-radius: 18px;
+      background: {card_bg};
+      border: 1px solid @seven_border;
+    }}
+    .studio-card.warn {{
+      border-color: alpha(@seven_warning, 0.42);
+      background: alpha(@seven_warning, 0.10);
+    }}
+    .studio-card.ok {{
+      border-color: alpha(@seven_success, 0.26);
+    }}
+    .studio-card.miss {{
+      border-color: alpha(@seven_danger, 0.42);
+      background: alpha(@seven_danger, 0.10);
+    }}
+    .studio-card.summary {{
+      background: linear-gradient(135deg, alpha(@seven_accent, 0.14), alpha(@seven_wallpaper_cyan, 0.055));
+    }}
+    .studio-section {{
+      font-size: 13px;
+      font-weight: 500;
+      color: @seven_text;
+    }}
+    .studio-pill {{
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: alpha(@seven_panel_2, 0.72);
+      color: @seven_text;
+      border: 1px solid @seven_border;
+    }}
+    .studio-pill.primary {{
+      background: linear-gradient(135deg, alpha(@seven_accent, 0.44), alpha(@seven_wallpaper_cyan, 0.18));
+      border-color: alpha(@seven_accent, 0.34);
+    }}
+    .studio-pill.ok {{
+      background: alpha(@seven_success, 0.12);
+      border-color: alpha(@seven_success, 0.30);
+    }}
+    .studio-pill.warn {{
+      background: alpha(@seven_warning, 0.12);
+      border-color: alpha(@seven_warning, 0.32);
+    }}
+    .studio-pill.miss {{
+      background: alpha(@seven_danger, 0.12);
+      border-color: alpha(@seven_danger, 0.32);
+    }}
+    .studio-score {{
+      min-width: 82px;
+      min-height: 82px;
+      border-radius: 999px;
+      background: {score_bg};
+      border: 1px solid alpha(@seven_accent, 0.34);
+      color: @seven_text;
+      font-size: 22px;
+      font-weight: 500;
+    }}
+    .studio-metric {{
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: {action_bg};
+      border: 1px solid @seven_border;
+    }}
+    .studio-metric-value {{
+      font-size: 20px;
+      font-weight: 500;
+      color: @seven_text;
+    }}
+    .studio-metric-label {{
+      font-size: 11px;
+      color: {note_color};
+    }}
+    .studio-actions {{
+      padding: 10px;
+      border-radius: 20px;
+      background: {action_bg};
+      border: 1px solid @seven_border;
+    }}
+    """
+
+
+def run_json(command: list[str], fallback: dict | None = None, timeout: float = 8.0) -> dict:
+    try:
+        result = subprocess.run(command, cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, text=True, capture_output=True, check=False, timeout=timeout)
+        return json.loads(result.stdout or "{}") if result.stdout.strip() else (fallback or {})
+    except Exception:
+        return fallback or {}
+
+
+def command_exists(command: str) -> bool:
+    if (ROOT / "bin" / command).exists():
+        return True
+    return shutil.which(command) is not None
+
+
+def file_ok(path: str) -> bool:
+    full = ROOT / path
+    return full.exists() and (full.is_dir() or full.stat().st_size > 0)
+
+
+def check(
+    state: str,
+    title: str,
+    detail: str,
+    command: str = "",
+    group: str = "system",
+    severity: str = "medium",
+    findings: list[str] | None = None,
+) -> dict:
+    item = {"state": state, "title": title, "detail": detail, "command": command, "group": group, "severity": severity}
+    if findings:
+        item["findings"] = findings
+    return item
+
+
+def first_run_checks() -> list[dict]:
+    checks: list[dict] = []
+    required_commands = [
+        "seven", "seven-settings-native", "seven-experience-center", "seven-help-native", "seven-hub-native",
+        "seven-files", "seven-store", "seven-wallpaper", "seven-waybar", "seven-profile-run",
+        "seven-profile-rootfs", "seven-public-studio",
+    ]
+    for command in required_commands:
+        checks.append(check("OK" if command_exists(command) else "MISS", command, tr("Commande publique disponible.", "Public command is available."), f"command -v {command}", "commands", "high"))
+
+    required_assets = [
+        "identity/assets/logo-sevenos.svg",
+        "identity/assets/symbol-seven-prism.svg",
+        "identity/assets/symbol-seven-prism-mark.svg",
+        "branding/plymouth/sevenos/seven-prism.png",
+        "branding/sddm/sevenos/assets/seven-prism.png",
+        "identity/wallpaper/dynamic/manifest.json",
+        "seven-hub/seven-experience-center.desktop",
+        "seven-hub/seven-public-studio.desktop",
+    ]
+    for path in required_assets:
+        checks.append(check("OK" if file_ok(path) else "MISS", path, tr("Asset système livré avec SevenOS.", "System asset shipped with SevenOS."), "", "assets", "high"))
+
+    dynamic_count = len(list((ROOT / "identity/wallpaper/dynamic").glob("*.svg"))) if (ROOT / "identity/wallpaper/dynamic").is_dir() else 0
+    checks.append(check("OK" if dynamic_count >= 94 else "MISS", tr("Fonds dynamiques", "Dynamic wallpapers"), tr(f"{dynamic_count} fond(s) disponible(s).", f"{dynamic_count} wallpaper(s) available."), "seven-wallpaper collection-list", "assets", "high"))
+
+    desktop_entries = [
+        "seven-experience-center.desktop",
+        "seven-public-studio.desktop",
+        "seven-store.desktop",
+        "seven-terminal.desktop",
+        "seven-doctor.desktop",
+    ]
+    for entry in desktop_entries:
+        repo_entry = list((ROOT / "seven-hub").glob(entry))
+        user_entry = Path.home() / ".local/share/applications" / entry
+        state = "OK" if repo_entry and repo_entry[0].exists() else "MISS"
+        detail = tr("Entrée desktop prête dans le dépôt.", "Desktop entry ready in repository.")
+        if state == "OK" and user_entry.exists():
+            detail = tr("Entrée desktop prête et installée pour l’utilisateur.", "Desktop entry ready and installed for the user.")
+        checks.append(check(state, entry, detail, "", "desktop", "medium"))
+
+    state_scripts = [
+        ("scripts/install-cli.sh", tr("Installation CLI", "CLI installation")),
+        ("scripts/apply-theme.sh", tr("Application thème", "Theme application")),
+        ("scripts/system-install.sh", tr("Installation /opt/SevenOS", "/opt/SevenOS installation")),
+        ("scripts/system-assets.sh", tr("Assets système", "System assets")),
+        ("scripts/design-check.sh", tr("Design gate", "Design gate")),
+    ]
+    for path, title in state_scripts:
+        checks.append(check("OK" if file_ok(path) else "MISS", title, path, "", "install", "high"))
+
+    assets = run_json([str(ROOT / "scripts/system-assets.sh"), "json"], {}, timeout=12)
+    if assets:
+        checks.append(check("OK" if assets.get("state") == "OK" else "MISS", tr("Contrat assets système", "System assets contract"), tr(f"État: {assets.get('state')}", f"State: {assets.get('state')}"), "scripts/system-assets.sh doctor", "install", "high"))
+
+    return checks
+
+
+def iter_scan_files(base: Path):
+    skip_dirs = {"node_modules", ".git", "__pycache__", "dist", "build", ".venv", "out", "pkg", "src"}
+    allowed_suffixes = {".py", ".sh", ".css", ".scss", ".js", ".ts", ".json", ".jsonc", ".qml", ".ui", ".conf", ".desktop", ""}
+    for root, dirs, files in os.walk(base):
+        dirs[:] = [item for item in dirs if item not in skip_dirs and not item.startswith(".cache")]
+        for name in files:
+            path = Path(root) / name
+            if path.suffix.lower() not in allowed_suffixes:
+                continue
+            yield path
+
+
+def visual_checks() -> list[dict]:
+    checks: list[dict] = []
+    design = subprocess.run([str(ROOT / "scripts/design-check.sh")], cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, text=True, capture_output=True, check=False, timeout=60)
+    checks.append(check("OK" if design.returncode == 0 else "WARN", tr("Design coherence gate", "Design coherence gate"), tr("Le gate design est vert.", "Design gate passed.") if design.returncode == 0 else design.stdout[-300:], "scripts/design-check.sh", "visual", "high"))
+
+    surfaces = run_json([str(ROOT / "scripts/surfaces.sh"), "json"], {"score": 0, "summary": {}}, timeout=12)
+    surface_score = int(surfaces.get("score", 0) or 0)
+    legacy = int((surfaces.get("summary") or {}).get("legacy_blockers", 0) or 0)
+    checks.append(check("OK" if surface_score >= 85 and legacy == 0 else "INFO", tr("Surfaces publiques", "Public surfaces"), tr(f"Score {surface_score}% · anciens écrans bloquants {legacy}.", f"Score {surface_score}% · legacy blockers {legacy}."), "seven surfaces doctor", "visual", "high"))
+
+    scan_targets = [
+        ROOT / "bin",
+        ROOT / "seven-hub",
+        ROOT / "hyprland",
+    ]
+    hardcoded_black = 0
+    overflowing_windows = 0
+    old_screen_terms = 0
+    untranslated_visible = 0
+    finding_limit = 6
+    hardcoded_black_findings: list[str] = []
+    overflowing_window_findings: list[str] = []
+    old_screen_findings: list[str] = []
+    untranslated_findings: list[str] = []
+    black_re = re.compile(r"(color\s*:\s*#?000(?:000)?\b|#[0]{6}\b|rgba?\(\s*0\s*,\s*0\s*,\s*0\s*(?:,\s*1(?:\.0)?)?\s*\))", re.I)
+    size_re = re.compile(r"set_default_size\(\s*(1[2-9]\d{2}|[2-9]\d{3})\s*,|min-width\s*:\s*(1[2-9]\d{2}|[2-9]\d{3})px", re.I)
+    old_re = re.compile(r"\b(rofi\s+-|zenity\s+--|yad\s+--)\b", re.I)
+    visible_en_re = re.compile(r"(?:Gtk\.(?:Button|Label)\([^)]*label\s*=\s*|(?<![A-Za-z0-9_])label\s*=\s*)['\"](?:Open|Close|Refresh|Settings|Install|Cancel|Run|Apply)\b")
+    for base in scan_targets:
+        if not base.exists():
+            continue
+        for path in iter_scan_files(base):
+            try:
+                text = path.read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                continue
+            rel = str(path.relative_to(ROOT))
+            for line_no, line in enumerate(text.splitlines(), start=1):
+                stripped = line.strip()
+                if black_re.search(stripped):
+                    if "normalize_hex" not in stripped and "box-shadow" not in stripped and "text-shadow" not in stripped:
+                        hardcoded_black += len(black_re.findall(stripped))
+                        if len(hardcoded_black_findings) < finding_limit:
+                            hardcoded_black_findings.append(f"{rel}:{line_no} {stripped[:96]}")
+                if size_re.search(stripped):
+                    if "fullscreen()" not in text and "set_resizable(False)" not in text:
+                        overflowing_windows += len(size_re.findall(stripped))
+                        if len(overflowing_window_findings) < finding_limit:
+                            overflowing_window_findings.append(f"{rel}:{line_no} {stripped[:96]}")
+                if old_re.search(stripped):
+                    old_screen_terms += len(old_re.findall(stripped))
+                    if len(old_screen_findings) < finding_limit:
+                        old_screen_findings.append(f"{rel}:{line_no} {stripped[:96]}")
+                if visible_en_re.search(stripped):
+                    untranslated_visible += len(visible_en_re.findall(stripped))
+                    if len(untranslated_findings) < finding_limit:
+                        untranslated_findings.append(f"{rel}:{line_no} {stripped[:96]}")
+
+    def detail(count: int, fr: str, en: str, findings: list[str]) -> str:
+        base = tr(fr.format(count=count), en.format(count=count))
+        if not findings:
+            return base
+        return base + "\n" + "\n".join(f"  - {item}" for item in findings)
+
+    checks.append(check(
+        "OK" if hardcoded_black == 0 else "WARN",
+        tr("Texte noir dur dans les surfaces", "Hard-coded black text in surfaces"),
+        detail(hardcoded_black, "{count} occurrence(s) suspecte(s).", "{count} suspicious occurrence(s).", hardcoded_black_findings),
+        "seven visual-gate --json",
+        "visual",
+        "medium",
+    ))
+    checks.append(check(
+        "OK" if overflowing_windows <= 2 else "WARN",
+        tr("Tailles fixes trop larges", "Over-wide fixed sizes"),
+        detail(overflowing_windows, "{count} occurrence(s) à surveiller.", "{count} occurrence(s) to review.", overflowing_window_findings),
+        "seven visual-gate --json",
+        "visual",
+        "medium",
+    ))
+    legacy_state = "OK" if legacy == 0 else "WARN"
+    legacy_detail = detail(old_screen_terms, "{count} appel(s) rofi/zenity/yad visible(s).", "{count} visible rofi/zenity/yad call(s).", old_screen_findings)
+    if old_screen_terms and legacy == 0:
+        legacy_detail = tr(
+            f"Aucun ancien écran bloquant dans les surfaces actives. {old_screen_terms} fallback(s) interne(s) conservé(s).",
+            f"No blocking legacy screen in active surfaces. {old_screen_terms} internal fallback(s) kept.",
+        )
+    checks.append(check(
+        legacy_state,
+        tr("Anciens écrans publics", "Legacy public screens"),
+        legacy_detail,
+        "seven surfaces doctor",
+        "visual",
+        "high",
+        old_screen_findings,
+    ))
+    checks.append(check(
+        "OK" if untranslated_visible <= 10 else "INFO",
+        tr("Libellés possiblement non traduits", "Possibly untranslated labels"),
+        detail(untranslated_visible, "{count} libellé(s) anglais brut(s) à vérifier.", "{count} raw English label(s) to review.", untranslated_findings),
+        "seven visual-gate --json",
+        "visual",
+        "low",
+    ))
+    return checks
+
+
+def recommendations(data: dict) -> list[dict]:
+    """Human-level next actions for the graphical studio."""
+    summary = data.get("summary") or {}
+    visual_state = (data.get("visual_gate") or {}).get("state", "SKIP")
+    fresh_state = (data.get("fresh_install") or {}).get("state", "SKIP")
+    items: list[dict] = []
+    if summary.get("missing", 0):
+        items.append({
+            "title": tr("Réparer l’installation système", "Repair system installation"),
+            "detail": tr("Des commandes ou assets publics manquent. Relance l’installation CLI et le contrat assets.", "Some public commands or assets are missing. Re-run CLI installation and the asset contract."),
+            "command": "seven first-run verify",
+        })
+    if visual_state == "WARN":
+        items.append({
+            "title": tr("Nettoyer la cohérence visuelle", "Clean visual consistency"),
+            "detail": tr("Des surfaces publiques ont encore des risques UI. Lance le gate détaillé puis corrige les lignes signalées.", "Public surfaces still have UI risks. Run the detailed gate and fix the flagged lines."),
+            "command": "seven visual-gate",
+        })
+    if fresh_state == "OK" and visual_state in {"OK", "SKIP"} and not items:
+        items.append({
+            "title": tr("Expérience publique prête", "Public experience ready"),
+            "detail": tr("Les commandes, assets, wallpapers, surfaces et règles visuelles sont alignés.", "Commands, assets, wallpapers, surfaces and visual rules are aligned."),
+            "command": "seven help experience-center",
+        })
+    items.append({
+        "title": tr("Ouvrir le centre d’expérience", "Open Experience Center"),
+        "detail": tr("Accède aux parcours secours, setup, permissions, timeline et continuité.", "Open rescue, setup, permissions, timeline and continuity journeys."),
+        "command": "seven experience-center --gui",
+    })
+    return items[:4]
+
+
+def payload(section: str = "status") -> dict:
+    install = first_run_checks() if section in {"status", "fresh-install", "verify", "json"} else []
+    visual = visual_checks() if section in {"status", "visual", "json"} else []
+    all_checks = install + visual
+    ok = sum(1 for item in all_checks if item["state"] == "OK")
+    warn = sum(1 for item in all_checks if item["state"] in {"WARN", "INFO"})
+    miss = sum(1 for item in all_checks if item["state"] == "MISS")
+    score = round((ok + warn * 0.35) / max(1, len(all_checks)) * 100)
+    state = "public-ready" if miss == 0 and score >= 92 else "daily-ready" if miss == 0 and score >= 78 else "needs-attention"
+    data = {
+        "schema": "sevenos.public-studio.v1",
+        "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "state": state,
+        "score": score,
+        "summary": {"ok": ok, "attention": warn, "missing": miss, "total": len(all_checks)},
+        "context": {
+            "root": str(ROOT),
+            "theme": theme_mode(),
+            "language": LANG,
+            "profile": active_profile(),
+        },
+        "fresh_install": {"state": "OK" if install and all(item["state"] != "MISS" for item in install) else "SKIP" if not install else "MISS", "checks": install},
+        "visual_gate": {"state": "OK" if visual and all(item["state"] != "WARN" for item in visual) else "SKIP" if not visual else "WARN", "checks": visual},
+        "commands": {
+            "studio": "seven public-studio --gui",
+            "fresh_install": "seven first-run verify",
+            "visual_gate": "seven visual-gate",
+        },
+    }
+    data["recommendations"] = recommendations(data)
+    return data
+
+
+def print_human(data: dict, section: str) -> None:
+    print("SevenOS Public Readiness Studio")
+    print("================================")
+    print(f"{tr('État', 'State')}: {state_label('OK') if data['state'] == 'public-ready' else data['state']} · {data['score']}%")
+    print(f"{tr('Résumé', 'Summary')}: OK {data['summary']['ok']} · attention {data['summary']['attention']} · missing {data['summary']['missing']}")
+    context = data.get("context") or {}
+    print(f"{tr('Contexte', 'Context')}: {context.get('profile', 'equinox')} · {context.get('theme', 'dark')} · {context.get('language', LANG)} · {context.get('root', ROOT)}")
+    if data.get("recommendations"):
+        print()
+        print(tr("Actions recommandées", "Recommended actions"))
+        for item in data["recommendations"]:
+            print(f"  - {item['title']}: {item['detail']}")
+            if item.get("command"):
+                print(f"    {item['command']}")
+    groups = []
+    if section in {"status", "fresh-install", "verify"}:
+        groups.append((tr("Installation fraîche", "Fresh install"), data["fresh_install"]["checks"]))
+    if section in {"status", "visual"}:
+        groups.append((tr("Cohérence visuelle", "Visual consistency"), data["visual_gate"]["checks"]))
+    for title, items in groups:
+        print()
+        print(title)
+        actionable = [item for item in items if item["state"] != "OK"]
+        if section == "status" and not actionable:
+            print(f"  OK    {tr('Tout est aligné', 'Everything is aligned')} · {len(items)} {tr('vérification(s)', 'check(s)')}")
+            continue
+        for item in items:
+            if item["state"] != "OK" or section != "status":
+                print(f"  {item['state']:<5} {item['title']}: {item['detail']}")
+
+
+def show_gui(data: dict, section: str) -> int:
+    ensure_gi_python()
+    import gi
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, Gtk
+
+    provider = Gtk.CssProvider()
+    css = studio_css().encode("utf-8")
+    provider.load_from_data(css)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title="SevenOS Public Readiness Studio")
+    window.set_default_size(900, 620)
+    window.set_size_request(720, 500)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.get_style_context().add_class("studio-root")
+    window.connect("destroy", Gtk.main_quit)
+
+    root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    root.set_border_width(12)
+    root.get_style_context().add_class("studio-shell")
+    window.add(root)
+
+    hero = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    hero.get_style_context().add_class("studio-hero")
+    copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    copy.set_hexpand(True)
+    title = Gtk.Label(label="SevenOS Public Readiness")
+    title.set_xalign(0)
+    title.get_style_context().add_class("studio-title")
+    note = Gtk.Label(label=tr("Vérifie l’installation fraîche et la cohérence visuelle avant une expérience publique.", "Checks fresh installs and visual consistency before a public experience."))
+    note.set_xalign(0)
+    note.set_line_wrap(True)
+    note.get_style_context().add_class("studio-note")
+    copy.pack_start(title, False, False, 0)
+    copy.pack_start(note, False, False, 0)
+    hero.pack_start(copy, True, True, 0)
+    score = Gtk.Label(label=f"{data['score']}%")
+    score.get_style_context().add_class("studio-score")
+    hero.pack_start(score, False, False, 0)
+    root.pack_start(hero, False, False, 0)
+
+    metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    root.pack_start(metrics, False, False, 0)
+
+    def add_metric(value: str, label: str, style: str = "ok") -> None:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        card.get_style_context().add_class("studio-metric")
+        card.get_style_context().add_class(style)
+        value_label = Gtk.Label(label=value)
+        value_label.set_xalign(0)
+        value_label.get_style_context().add_class("studio-metric-value")
+        label_widget = Gtk.Label(label=label)
+        label_widget.set_xalign(0)
+        label_widget.get_style_context().add_class("studio-metric-label")
+        card.pack_start(value_label, False, False, 0)
+        card.pack_start(label_widget, False, False, 0)
+        metrics.pack_start(card, True, True, 0)
+
+    summary = data.get("summary") or {}
+    add_metric(str(summary.get("ok", 0)), tr("contrôles prêts", "ready checks"), "ok")
+    add_metric(str(summary.get("attention", 0)), tr("à revoir", "to review"), "warn" if summary.get("attention", 0) else "ok")
+    add_metric(str(summary.get("missing", 0)), tr("manquants", "missing"), "miss" if summary.get("missing", 0) else "ok")
+
+    context = data.get("context") or {}
+    context_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    context_bar.get_style_context().add_class("studio-actions")
+    context_items = [
+        tr(f"Mini OS {context.get('profile', 'equinox')}", f"Mini OS {context.get('profile', 'equinox')}"),
+        tr(f"Thème {context.get('theme', 'dark')}", f"Theme {context.get('theme', 'dark')}"),
+        tr(f"Langue {context.get('language', LANG)}", f"Language {context.get('language', LANG)}"),
+    ]
+    for item in context_items:
+        pill = Gtk.Label(label=item)
+        pill.get_style_context().add_class("studio-pill")
+        context_bar.pack_start(pill, False, False, 0)
+    generated = Gtk.Label(label=tr(f"Vérifié à {data.get('generated_at', '')[-13:-5]}", f"Checked at {data.get('generated_at', '')[-13:-5]}"))
+    generated.get_style_context().add_class("studio-pill")
+    context_bar.pack_end(generated, False, False, 0)
+    root.pack_start(context_bar, False, False, 0)
+
+    def launch(command: str) -> None:
+        env = {**os.environ, "SEVENOS_ROOT": str(ROOT)}
+        if "--gui" in command or command.startswith("xdg-open "):
+            subprocess.Popen(["bash", "-lc", command], cwd=str(ROOT), env=env)
+            return
+        terminal = shutil.which("seven-terminal")
+        if terminal:
+            wrapped = f"{command}; printf '\\n'; printf '{tr('Appuie sur Entrée pour fermer...', 'Press Enter to close...')}'; read -r"
+            subprocess.Popen([terminal, "focus", "--", "bash", "-lc", wrapped], cwd=str(ROOT), env=env)
+            return
+        subprocess.Popen(["bash", "-lc", command], cwd=str(ROOT), env=env)
+
+    copy_button_ref: dict[str, Gtk.Button] = {}
+
+    def copy_report() -> None:
+        text = json.dumps(data, ensure_ascii=False, indent=2)
+        clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+        clipboard.set_text(text, -1)
+        clipboard.store()
+        button = copy_button_ref.get("button")
+        if button:
+            original = tr("Copier rapport", "Copy report")
+            button.set_label(tr("Copié", "Copied"))
+            try:
+                from gi.repository import GLib
+                GLib.timeout_add(1500, lambda: (button.set_label(original), False)[1])
+            except Exception:
+                pass
+
+    actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    actions.get_style_context().add_class("studio-actions")
+    root.pack_start(actions, False, False, 0)
+    quick_actions = [
+        (tr("Nouvelle machine", "Fresh install"), "seven first-run verify", True),
+        (tr("Cohérence visuelle", "Visual gate"), "seven visual-gate", True),
+        (tr("Réparer UX", "Repair UX"), "seven repair ux --apply", False),
+        (tr("Aide", "Help"), "seven help experience-center", False),
+    ]
+    for label_text, command, primary in quick_actions:
+        button = Gtk.Button(label=label_text)
+        button.get_style_context().add_class("studio-pill")
+        if primary:
+            button.get_style_context().add_class("primary")
+        button.connect("clicked", lambda _b, cmd=command: launch(cmd))
+        actions.pack_start(button, False, False, 0)
+    copy_button = Gtk.Button(label=tr("Copier rapport", "Copy report"))
+    copy_button.get_style_context().add_class("studio-pill")
+    copy_button_ref["button"] = copy_button
+    copy_button.connect("clicked", lambda _b: copy_report())
+    actions.pack_end(copy_button, False, False, 0)
+
+    scroller = Gtk.ScrolledWindow()
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+    content.set_border_width(2)
+    scroller.add(content)
+    root.pack_start(scroller, True, True, 0)
+
+    def add_row(item: dict) -> None:
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        row.get_style_context().add_class("studio-card")
+        row.get_style_context().add_class(state_class(item["state"]))
+        badge = Gtk.Label(label=state_label(item["state"]))
+        badge.get_style_context().add_class("studio-pill")
+        badge.get_style_context().add_class(state_class(item["state"]))
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        labels.set_hexpand(True)
+        heading = Gtk.Label(label=item["title"])
+        heading.set_xalign(0)
+        heading.get_style_context().add_class("studio-section")
+        detail = Gtk.Label(label=item["detail"])
+        detail.set_xalign(0)
+        detail.set_line_wrap(True)
+        detail.get_style_context().add_class("studio-note")
+        labels.pack_start(heading, False, False, 0)
+        labels.pack_start(detail, False, False, 0)
+        row.pack_start(badge, False, False, 0)
+        row.pack_start(labels, True, True, 0)
+        if item.get("command"):
+            btn = Gtk.Button(label=tr("Ouvrir", "Open"))
+            btn.get_style_context().add_class("studio-pill")
+            btn.connect("clicked", lambda _b, cmd=item["command"]: launch(cmd))
+            row.pack_start(btn, False, False, 0)
+        content.pack_start(row, False, False, 0)
+
+    def show_details_dialog(title_text: str, rows: list[dict]) -> None:
+        dialog = Gtk.Dialog(title=title_text, transient_for=window, flags=0)
+        dialog.set_default_size(700, 500)
+        dialog.get_style_context().add_class("studio-root")
+        area = dialog.get_content_area()
+        area.set_border_width(12)
+        shell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        shell.get_style_context().add_class("studio-shell")
+        area.add(shell)
+        heading = Gtk.Label(label=title_text)
+        heading.set_xalign(0)
+        heading.get_style_context().add_class("studio-title")
+        shell.pack_start(heading, False, False, 0)
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        list_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        scroll.add(list_box)
+        shell.pack_start(scroll, True, True, 0)
+
+        def add_dialog_row(item: dict) -> None:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            row.get_style_context().add_class("studio-card")
+            row.get_style_context().add_class(state_class(item["state"]))
+            badge = Gtk.Label(label=state_label(item["state"]))
+            badge.get_style_context().add_class("studio-pill")
+            badge.get_style_context().add_class(state_class(item["state"]))
+            labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+            labels.set_hexpand(True)
+            title_label = Gtk.Label(label=item["title"])
+            title_label.set_xalign(0)
+            title_label.get_style_context().add_class("studio-section")
+            detail_label = Gtk.Label(label=item["detail"])
+            detail_label.set_xalign(0)
+            detail_label.set_line_wrap(True)
+            detail_label.get_style_context().add_class("studio-note")
+            labels.pack_start(title_label, False, False, 0)
+            labels.pack_start(detail_label, False, False, 0)
+            row.pack_start(badge, False, False, 0)
+            row.pack_start(labels, True, True, 0)
+            list_box.pack_start(row, False, False, 0)
+
+        for item in rows:
+            add_dialog_row(item)
+        dialog.add_button(tr("Fermer", "Close"), Gtk.ResponseType.CLOSE)
+        dialog.connect("response", lambda dlg, _response: dlg.destroy())
+        dialog.show_all()
+
+    def add_group_summary(title_text: str, rows: list[dict], command: str) -> None:
+        ok_count = sum(1 for item in rows if item["state"] == "OK")
+        attention_count = sum(1 for item in rows if item["state"] in {"WARN", "INFO"})
+        missing_count = sum(1 for item in rows if item["state"] == "MISS")
+        state = "OK" if attention_count == 0 and missing_count == 0 else "WARN" if missing_count == 0 else "MISS"
+        detail = tr(
+            f"{ok_count} OK · {attention_count} attention · {missing_count} manquant. Les détails restent accessibles à la demande.",
+            f"{ok_count} OK · {attention_count} attention · {missing_count} missing. Details remain available on demand.",
+        )
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        row.get_style_context().add_class("studio-card")
+        row.get_style_context().add_class("summary")
+        row.get_style_context().add_class(state_class(state))
+        badge = Gtk.Label(label=state_label(state))
+        badge.get_style_context().add_class("studio-pill")
+        badge.get_style_context().add_class(state_class(state))
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+        labels.set_hexpand(True)
+        heading = Gtk.Label(label=title_text)
+        heading.set_xalign(0)
+        heading.get_style_context().add_class("studio-section")
+        detail_label = Gtk.Label(label=detail)
+        detail_label.set_xalign(0)
+        detail_label.set_line_wrap(True)
+        detail_label.get_style_context().add_class("studio-note")
+        labels.pack_start(heading, False, False, 0)
+        labels.pack_start(detail_label, False, False, 0)
+        row.pack_start(badge, False, False, 0)
+        row.pack_start(labels, True, True, 0)
+        button = Gtk.Button(label=tr("Détails", "Details"))
+        button.get_style_context().add_class("studio-pill")
+        button.connect("clicked", lambda _b, title=title_text, detail_rows=rows: show_details_dialog(title, detail_rows))
+        row.pack_start(button, False, False, 0)
+        content.pack_start(row, False, False, 0)
+
+    recommendation_title = Gtk.Label(label=tr("Actions recommandées", "Recommended actions"))
+    recommendation_title.set_xalign(0)
+    recommendation_title.get_style_context().add_class("studio-title")
+    content.pack_start(recommendation_title, False, False, 4)
+    for item in data.get("recommendations", []):
+        add_row({"state": "OK", **item})
+
+    sections = []
+    if section in {"status", "fresh-install", "verify"}:
+        sections.append((tr("Installation fraîche", "Fresh install"), data["fresh_install"]["checks"]))
+    if section in {"status", "visual"}:
+        sections.append((tr("Cohérence visuelle", "Visual consistency"), data["visual_gate"]["checks"]))
+    for section_title, rows in sections:
+        label = Gtk.Label(label=section_title)
+        label.set_xalign(0)
+        label.get_style_context().add_class("studio-title")
+        content.pack_start(label, False, False, 4)
+        actionable = [item for item in rows if item["state"] != "OK"]
+        if section == "status" and not actionable:
+            command = "seven first-run verify" if "Installation" in section_title or "Fresh" in section_title else "seven visual-gate"
+            add_group_summary(section_title, rows, command)
+            continue
+        for item in rows:
+            add_row(item)
+
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    section = next((item for item in args if item in {"status", "fresh-install", "verify", "visual", "json"}), "status")
+    if "--probe" in args:
+        print(json.dumps({"schema": "sevenos.public-studio.probe.v1", "state": "OK", "root": str(ROOT)}, ensure_ascii=False))
+        return 0
+    data = payload(section)
+    if "--json" in args or "json" in args:
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return 0
+    if "--gui" in args and (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")):
+        return show_gui(data, section)
+    print_human(data, section)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

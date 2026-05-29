@@ -19,6 +19,15 @@ except Exception:  # pragma: no cover
     seven_theme = None
 
 
+def lang_is_fr() -> bool:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "")
+    return language.lower().startswith("fr")
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if lang_is_fr() else en
+
+
 def load_doctor():
     result = subprocess.run(
         [str(ROOT / "bin" / "seven"), "doctor", "check", "--json"],
@@ -32,8 +41,8 @@ def load_doctor():
             "summary": {"issues": 1},
             "issues": [
                 {
-                    "title": "Seven Doctor failed",
-                    "detail": result.stderr.strip() or "Unable to read system diagnostics.",
+                    "title": tr("Seven Doctor a échoué", "Seven Doctor failed"),
+                    "detail": result.stderr.strip() or tr("Impossible de lire les diagnostics système.", "Unable to read system diagnostics."),
                     "command": "seven doctor check",
                     "severity": "high",
                 }
@@ -128,7 +137,7 @@ class DoctorWindow(Gtk.Window):
 
         header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         title_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-        title = Gtk.Label(label="Seven Doctor", xalign=0)
+        title = Gtk.Label(label=tr("Seven Doctor", "Seven Doctor"), xalign=0)
         title.get_style_context().add_class("title")
         summary = self.data.get("summary", {})
         subtitle = Gtk.Label(
@@ -140,7 +149,7 @@ class DoctorWindow(Gtk.Window):
         title_box.pack_start(subtitle, False, False, 0)
         header.pack_start(title_box, True, True, 0)
 
-        refresh = Gtk.Button(label="Refresh")
+        refresh = Gtk.Button(label=tr("Actualiser", "Refresh"))
         refresh.connect("clicked", lambda *_: self.reload())
         header.pack_end(refresh, False, False, 0)
         outer.pack_start(header, False, False, 0)
@@ -163,8 +172,8 @@ class DoctorWindow(Gtk.Window):
         issues = self.data.get("issues") or []
         items = issues if issues else [
             {
-                "title": "System looks ready",
-                "detail": "No hard issue detected by Seven Doctor.",
+                    "title": tr("Le système semble prêt", "System looks ready"),
+                    "detail": tr("Aucun problème dur détecté par Seven Doctor.", "No hard issue detected by Seven Doctor."),
                 "command": "seven daily",
                 "severity": "low",
             }
@@ -180,7 +189,7 @@ class DoctorWindow(Gtk.Window):
 
         row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
-        title = Gtk.Label(label=item.get("title", "Issue"), xalign=0)
+        title = Gtk.Label(label=item.get("title", tr("Point à vérifier", "Issue")), xalign=0)
         title.get_style_context().add_class("label-title")
         detail = Gtk.Label(label=item.get("detail", ""), xalign=0)
         detail.set_line_wrap(True)
@@ -190,7 +199,7 @@ class DoctorWindow(Gtk.Window):
         row.pack_start(labels, True, True, 0)
 
         command = item.get("command", "seven doctor check")
-        btn = Gtk.Button(label="Open")
+        btn = Gtk.Button(label=tr("Ouvrir", "Open"))
         btn.connect("clicked", lambda *_: subprocess.Popen([str(ROOT / "bin" / "seven-terminal"), "--", "sh", "-lc", command]))
         row.pack_end(btn, False, False, 0)
         box.pack_start(row, False, False, 0)

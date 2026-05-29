@@ -802,6 +802,15 @@ def handle_quality(args):
     run_script(args, "scripts/public-experience.sh", *extra)
 
 
+def handle_public_studio(args):
+    extra = [args.action, *args.extra]
+    if args.json:
+        extra.append("--json")
+    if args.gui:
+        extra.append("--gui")
+    run_script(args, "bin/seven-public-studio", *extra)
+
+
 def handle_adaptive(args):
     extra = [args.action]
     if args.json:
@@ -1240,6 +1249,20 @@ def main():
     public_experience_parser = subparsers.add_parser("public-experience", help="alias for SevenOS public quality gates")
     public_experience_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     public_experience_parser.add_argument("--json", action="store_true", help="print machine-readable public quality gate")
+    public_studio_parser = subparsers.add_parser("public-studio", help="open fresh-install and visual consistency readiness studio")
+    public_studio_parser.add_argument("action", nargs="?", default="status", choices=("status", "fresh-install", "verify", "visual", "json"))
+    public_studio_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    public_studio_parser.add_argument("--json", action="store_true", help="print machine-readable public readiness studio")
+    public_studio_parser.add_argument("--gui", action="store_true", help="open graphical public readiness studio")
+    for shortcut_name, action_name, shortcut_help in (
+        ("first-run", "verify", "verify fresh-install readiness"),
+        ("visual-gate", "visual", "scan visual consistency for public UI"),
+    ):
+        shortcut_parser = subparsers.add_parser(shortcut_name, help=shortcut_help)
+        shortcut_parser.add_argument("action", nargs="?", default=action_name, choices=(action_name, "json"))
+        shortcut_parser.add_argument("extra", nargs=argparse.REMAINDER)
+        shortcut_parser.add_argument("--json", action="store_true", help="print machine-readable result")
+        shortcut_parser.add_argument("--gui", action="store_true", help="open graphical result")
     control_parser = subparsers.add_parser("control", help="show prioritized SevenOS control plane actions")
     control_parser.add_argument("action", nargs="?", default="plan", choices=("plan", "apply"))
     control_parser.add_argument("--json", action="store_true", help="print machine-readable control plane")
@@ -1574,6 +1597,13 @@ def main():
         handle_experience_shortcut(args, shortcut_sections.get(args.command, args.command))
     elif args.command in ("quality", "public-experience"):
         handle_quality(args)
+    elif args.command == "public-studio":
+        handle_public_studio(args)
+    elif args.command == "first-run":
+        args.action = "fresh-install" if args.action == "verify" else args.action
+        handle_public_studio(args)
+    elif args.command == "visual-gate":
+        handle_public_studio(args)
     elif args.command == "control":
         handle_control(args)
     elif args.command == "events":

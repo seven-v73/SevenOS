@@ -42,6 +42,7 @@ def resolve_root() -> Path:
 ROOT = resolve_root()
 sys.path.insert(0, str(ROOT / "scripts"))
 import seven_theme  # noqa: E402
+from seven_i18n import tr_text  # noqa: E402
 
 
 def run_json(command: list[str], fallback):
@@ -360,7 +361,7 @@ def row_card(Gtk, title: str, note: str, command: str):
     text.pack_start(title_label, False, False, 0)
     text.pack_start(note_label, False, False, 0)
     row.pack_start(text, True, True, 0)
-    pill = Gtk.Label(label="Open")
+    pill = Gtk.Label(label=tr_text("Ouvrir", "Open"))
     pill.get_style_context().add_class("pill")
     row.pack_end(pill, False, False, 0)
     button.add(row)

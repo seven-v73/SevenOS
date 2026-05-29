@@ -3101,7 +3101,7 @@ class BaobabNative:
         window = self.Gtk.Window(title="Baobab OS")
         self.window = window
         window.get_style_context().add_class("seven-window")
-        window.set_default_size(1280, 820)
+        window.set_default_size(1040, 680)
         window.connect("destroy", self.Gtk.main_quit)
         root = self.Gtk.Box(orientation=self.Gtk.Orientation.HORIZONTAL, spacing=0)
         root.get_style_context().add_class("root")

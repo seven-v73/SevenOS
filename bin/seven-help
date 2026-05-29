@@ -992,6 +992,9 @@ seven intent "theme light"
 seven privacy-report
 seven learning
 seven device-continuity
+seven public-studio --gui
+seven first-run verify
+seven visual-gate
 seven experience-center rescue
 seven rescue
 seven time-machine
@@ -2452,6 +2455,9 @@ seven intent "theme light"
 seven privacy-report
 seven learning
 seven device-continuity
+seven public-studio --gui
+seven first-run verify
+seven visual-gate
 seven experience-center rescue
 seven rescue
 seven time-machine

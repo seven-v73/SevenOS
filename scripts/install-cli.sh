@@ -163,6 +163,7 @@ install_user_command "$ROOT_DIR/bin/seven-welcome-popup" seven-welcome-popup
 install_user_command "$ROOT_DIR/bin/seven-installer" seven-installer
 install_user_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_user_command "$ROOT_DIR/bin/seven-experience-center" seven-experience-center
+install_user_command "$ROOT_DIR/bin/seven-public-studio" seven-public-studio
 install_user_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_user_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_user_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native
@@ -249,6 +250,7 @@ install_system_command "$ROOT_DIR/bin/seven-welcome-popup" seven-welcome-popup
 install_system_command "$ROOT_DIR/bin/seven-installer" seven-installer
 install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_system_command "$ROOT_DIR/bin/seven-experience-center" seven-experience-center
+install_system_command "$ROOT_DIR/bin/seven-public-studio" seven-public-studio
 install_system_command "$ROOT_DIR/bin/seven-settings" seven-settings
 install_system_command "$ROOT_DIR/bin/seven-settings-native" seven-settings-native
 install_system_command "$ROOT_DIR/bin/seven-doctor-native" seven-doctor-native

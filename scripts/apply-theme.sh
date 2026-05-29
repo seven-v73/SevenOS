@@ -537,7 +537,7 @@ configure_file_experience() {
     printf 'xdg-user-dirs-update\n'
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'install Seven Files desktop entry\n'
-    printf 'install SevenOS Spotlight, AI, Reader, Recorder, Terminal and Experience Center desktop entries\n'
+    printf 'install SevenOS Spotlight, AI, Reader, Recorder, Terminal, Experience Center and Public Readiness desktop entries\n'
     printf 'install SevenOS Mini OS Boundaries desktop entry\n'
     printf 'write SevenOS default terminal contract\n'
     printf 'write xdg-terminal-exec preference\n'
@@ -568,6 +568,7 @@ configure_file_experience() {
   cp "$ROOT_DIR/seven-hub/seven-terminal.desktop" "$HOME/.local/share/applications/seven-terminal.desktop"
   cp "$ROOT_DIR/seven-hub/seven-doctor.desktop" "$HOME/.local/share/applications/seven-doctor.desktop"
   cp "$ROOT_DIR/seven-hub/seven-experience-center.desktop" "$HOME/.local/share/applications/seven-experience-center.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-public-studio.desktop" "$HOME/.local/share/applications/seven-public-studio.desktop"
 
   mkdir -p "$CONFIG_HOME/sevenos"
   {

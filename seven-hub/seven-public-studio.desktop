@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS Public Readiness
+Comment=Fresh install verifier and visual consistency gate
+Exec=seven public-studio --gui
+Icon=sevenos
+Terminal=false
+Categories=System;
+Keywords=sevenos;quality;visual;install;fresh;public;readiness;
+StartupNotify=true
