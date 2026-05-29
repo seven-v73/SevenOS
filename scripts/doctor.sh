@@ -3,6 +3,25 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/scripts/lib.sh"
+SOURCE_ROOT="${SEVENOS_SOURCE_ROOT:-$HOME/Code/OS/SevenOS}"
+
+release_git_root() {
+  if [[ "$ROOT_DIR" == "/opt/SevenOS" && -d "$SOURCE_ROOT/.git" ]]; then
+    printf '%s\n' "$SOURCE_ROOT"
+  else
+    printf '%s\n' "$ROOT_DIR"
+  fi
+}
+
+release_git_scope() {
+  if [[ "$ROOT_DIR" == "/opt/SevenOS" && -d "$SOURCE_ROOT/.git" ]]; then
+    printf 'source-repository'
+  elif [[ "$ROOT_DIR" == "/opt/SevenOS" ]]; then
+    printf 'installed-tree'
+  else
+    printf 'repository'
+  fi
+}
 
 AREA="${1:-all}"
 JSON_OUTPUT=0
@@ -287,9 +306,15 @@ PY
 }
 
 release_payload() {
-  local doctor_json git_dirty design_state identity_state smoke_state surfaces_state quality_state ux_state installer_json atlas_json profile_json profile_health_json profile_migration_json bridge_json status_json
+  local doctor_json git_dirty design_state identity_state smoke_state surfaces_state quality_state ux_state installer_json atlas_json profile_json profile_health_json profile_migration_json bridge_json status_json git_root git_scope
   doctor_json="$(SEVENOS_DOCTOR_AREA=all json_payload)"
-  git_dirty="$(git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' ')"
+  git_root="$(release_git_root)"
+  git_scope="$(release_git_scope)"
+  if [[ "$git_scope" == "installed-tree" ]]; then
+    git_dirty=0
+  else
+    git_dirty="$(git -C "$git_root" status --short 2>/dev/null | wc -l | tr -d ' ')"
+  fi
   if timeout 30 "$ROOT_DIR/scripts/design-check.sh" >/dev/null 2>&1; then design_state="OK"; else design_state="PART"; fi
   if timeout "${SEVENOS_RELEASE_IDENTITY_TIMEOUT:-45s}" "$ROOT_DIR/scripts/identity-experience.sh" json >/dev/null 2>&1; then identity_state="OK"; else identity_state="PART"; fi
   if timeout "${SEVENOS_RELEASE_SMOKE_TIMEOUT:-60s}" "$ROOT_DIR/scripts/smoke.sh" doctor >/dev/null 2>&1; then smoke_state="OK"; else smoke_state="PART"; fi
@@ -307,7 +332,7 @@ release_payload() {
   profile_migration_json="$("$ROOT_DIR/profiles/profile-manager.sh" migrate-aliases --json 2>/dev/null || printf '{}')"
   bridge_json="$("$ROOT_DIR/scripts/mini-os-relay.sh" doctor --json 2>/dev/null || printf '{}')"
   status_json="$("$ROOT_DIR/scripts/status.sh" --json 2>/dev/null || printf '{}')"
-  DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" DESIGN_STATE="$design_state" IDENTITY_STATE="$identity_state" SMOKE_STATE="$smoke_state" SURFACES_STATE="$surfaces_state" QUALITY_STATE="$quality_state" UX_STATE="$ux_state" \
+  DOCTOR_JSON="$doctor_json" GIT_DIRTY="$git_dirty" GIT_ROOT="$git_root" GIT_SCOPE="$git_scope" DESIGN_STATE="$design_state" IDENTITY_STATE="$identity_state" SMOKE_STATE="$smoke_state" SURFACES_STATE="$surfaces_state" QUALITY_STATE="$quality_state" UX_STATE="$ux_state" \
   INSTALLER_JSON="$installer_json" ATLAS_JSON="$atlas_json" PROFILE_JSON="$profile_json" PROFILE_HEALTH_JSON="$profile_health_json" PROFILE_MIGRATION_JSON="$profile_migration_json" BRIDGE_JSON="$bridge_json" STATUS_JSON="$status_json" \
   python - <<'PY'
 import json
@@ -329,6 +354,8 @@ profile_migration = load("PROFILE_MIGRATION_JSON", {})
 bridge = load("BRIDGE_JSON", {})
 status = load("STATUS_JSON", {})
 git_dirty = int(os.environ.get("GIT_DIRTY", "0") or 0)
+git_root = os.environ.get("GIT_ROOT", "")
+git_scope = os.environ.get("GIT_SCOPE", "repository")
 
 checks = []
 def add(key, state, title, detail, command, severity="medium"):
@@ -351,7 +378,7 @@ add("public-quality", os.environ.get("QUALITY_STATE", "PART"), "Public experienc
 ux_state = os.environ.get("UX_STATE", "PART")
 ux_detail = "Full developer UX audit passed." if ux_state == "OK" else ("Set SEVENOS_RELEASE_DEEP=1 to run the full developer UX audit." if ux_state == "SKIP" else "Full developer UX audit failed or timed out.")
 add("ux-check", ux_state, "Deep UX coherence", ux_detail, "SEVENOS_RELEASE_DEEP=1 scripts/ux-check.sh", "medium")
-add("worktree-freeze", "OK" if git_dirty == 0 else "PART", "Release worktree freeze", f"{git_dirty} uncommitted path(s)", "git status --short", "high")
+add("worktree-freeze", "OK" if git_dirty == 0 else "PART", "Release worktree freeze", f"{git_dirty} uncommitted path(s) in {git_scope}", f"git -C {git_root} status --short" if git_root else "git status --short", "high")
 installer_state = installer.get("state", "unknown")
 add("installer", "OK" if installer_state == "graphical-ready" else "PART", "Graphical installer release", installer_state, "seven installer release", "high")
 missing_atlas = atlas.get("missing_required") or []

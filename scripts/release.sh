@@ -35,6 +35,28 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/release"
 FREEZE_JSON="$STATE_DIR/release-freeze.json"
 GIT_STATUS_TXT="$STATE_DIR/git-status.txt"
 DIFF_STAT_TXT="$STATE_DIR/diff-stat.txt"
+SOURCE_ROOT="${SEVENOS_SOURCE_ROOT:-$HOME/Code/OS/SevenOS}"
+
+release_git_root() {
+  if [[ "$ROOT_DIR" == "/opt/SevenOS" && -d "$SOURCE_ROOT/.git" ]]; then
+    printf '%s\n' "$SOURCE_ROOT"
+  else
+    printf '%s\n' "$ROOT_DIR"
+  fi
+}
+
+release_git_scope() {
+  if [[ "$ROOT_DIR" == "/opt/SevenOS" && -d "$SOURCE_ROOT/.git" ]]; then
+    printf 'source-repository'
+  elif [[ "$ROOT_DIR" == "/opt/SevenOS" ]]; then
+    printf 'installed-tree'
+  else
+    printf 'repository'
+  fi
+}
+
+RELEASE_GIT_ROOT="$(release_git_root)"
+RELEASE_GIT_SCOPE="$(release_git_scope)"
 
 json_escape() {
   python -c 'import json,sys; print(json.dumps(sys.stdin.read().rstrip("\n")))'
@@ -43,15 +65,25 @@ json_escape() {
 git_value() {
   local fallback="$1"
   shift
-  git -C "$ROOT_DIR" "$@" 2>/dev/null || printf '%s\n' "$fallback"
+  git -C "$RELEASE_GIT_ROOT" "$@" 2>/dev/null || printf '%s\n' "$fallback"
 }
 
 git_dirty_count() {
-  git -C "$ROOT_DIR" status --short 2>/dev/null | wc -l | tr -d ' '
+  if [[ "$RELEASE_GIT_SCOPE" == "installed-tree" ]]; then
+    printf '0\n'
+    return 0
+  fi
+  git -C "$RELEASE_GIT_ROOT" status --short 2>/dev/null | wc -l | tr -d ' '
 }
 
 git_dirty_summary_json() {
-  GIT_STATUS_RAW="$(git -C "$ROOT_DIR" status --short 2>/dev/null || true)" python - <<'PY'
+  local raw
+  if [[ "$RELEASE_GIT_SCOPE" == "installed-tree" ]]; then
+    raw=""
+  else
+    raw="$(git -C "$RELEASE_GIT_ROOT" status --short 2>/dev/null || true)"
+  fi
+  GIT_STATUS_RAW="$raw" python - <<'PY'
 import json
 import os
 import sys
@@ -122,7 +154,7 @@ release_status_json() {
   fi
   DOCTOR_JSON="$doctor" INSTALLER_JSON="$installer" ATLAS_JSON="$atlas" CHANNEL_JSON="$channel" \
   DIRTY_COUNT="$dirty_count" DIRTY_SUMMARY="$dirty_summary" BRANCH="$branch" COMMIT="$commit" \
-  FREEZE_STATE="$freeze_state" FREEZE_PATH="$freeze_path" ROOT_DIR="$ROOT_DIR" \
+  FREEZE_STATE="$freeze_state" FREEZE_PATH="$freeze_path" ROOT_DIR="$ROOT_DIR" RELEASE_GIT_ROOT="$RELEASE_GIT_ROOT" RELEASE_GIT_SCOPE="$RELEASE_GIT_SCOPE" \
   python - <<'PY'
 import json
 import os
@@ -139,6 +171,8 @@ atlas = load("ATLAS_JSON")
 channel = load("CHANNEL_JSON")
 dirty_summary = load("DIRTY_SUMMARY")
 dirty_count = int(os.environ.get("DIRTY_COUNT", "0") or 0)
+git_scope = os.environ.get("RELEASE_GIT_SCOPE", "repository")
+git_root = os.environ.get("RELEASE_GIT_ROOT") or os.environ.get("ROOT_DIR")
 summary = doctor.get("summary", {})
 doctor_blocked = summary.get("critical", 1) > 0 or summary.get("high", 1) > 0
 daily_ready = not doctor_blocked
@@ -169,8 +203,8 @@ release_actions = [
         "key": "freeze-worktree",
         "state": "OK" if dirty_count == 0 else "PENDING",
         "title": "Figer le dépôt avec un commit propre",
-        "detail": f"{dirty_count} fichier(s) modifié(s) ou non suivis.",
-        "command": "git status --short && git add <files> && git commit",
+        "detail": f"{dirty_count} fichier(s) modifié(s) ou non suivis dans {git_scope}.",
+        "command": f"git -C {git_root} status --short && git -C {git_root} add <files> && git -C {git_root} commit",
     },
     {
         "key": "calamares-iso",
@@ -201,14 +235,17 @@ print(json.dumps({
     "daily_driver_ready": daily_ready,
     "public_release_ready": public_ready,
     "worktree": {
+        "scope": git_scope,
+        "inspected_root": git_root,
+        "installed_root": os.environ.get("ROOT_DIR"),
         "dirty_count": dirty_count,
         "freeze_state": os.environ.get("FREEZE_STATE", "MISS"),
         "freeze_path": os.environ.get("FREEZE_PATH", ""),
         "summary": dirty_summary,
         "commands": {
-            "status": "git status --short",
+            "status": f"git -C {git_root} status --short",
             "review": "seven release freeze --json",
-            "commit": "git add <files> && git commit",
+            "commit": f"git -C {git_root} add <files> && git -C {git_root} commit",
         },
     },
     "installer": {
@@ -358,8 +395,13 @@ PY
 
 release_freeze_json() {
   mkdir -p "$STATE_DIR"
-  git -C "$ROOT_DIR" status --short >"$GIT_STATUS_TXT" 2>/dev/null || true
-  git -C "$ROOT_DIR" diff --stat >"$DIFF_STAT_TXT" 2>/dev/null || true
+  if [[ "$RELEASE_GIT_SCOPE" == "installed-tree" ]]; then
+    : >"$GIT_STATUS_TXT"
+    : >"$DIFF_STAT_TXT"
+  else
+    git -C "$RELEASE_GIT_ROOT" status --short >"$GIT_STATUS_TXT" 2>/dev/null || true
+    git -C "$RELEASE_GIT_ROOT" diff --stat >"$DIFF_STAT_TXT" 2>/dev/null || true
+  fi
 
   local status dirty_count branch commit timestamp
   status="$(release_status_json)"
@@ -368,7 +410,7 @@ release_freeze_json() {
   commit="$(git_value unknown rev-parse --short HEAD)"
   timestamp="$(date -Is)"
   STATUS_JSON="$status" DIRTY_COUNT="$dirty_count" BRANCH="$branch" COMMIT="$commit" \
-  TIMESTAMP="$timestamp" ROOT_DIR="$ROOT_DIR" GIT_STATUS_TXT="$GIT_STATUS_TXT" DIFF_STAT_TXT="$DIFF_STAT_TXT" \
+  TIMESTAMP="$timestamp" ROOT_DIR="$ROOT_DIR" RELEASE_GIT_ROOT="$RELEASE_GIT_ROOT" RELEASE_GIT_SCOPE="$RELEASE_GIT_SCOPE" GIT_STATUS_TXT="$GIT_STATUS_TXT" DIFF_STAT_TXT="$DIFF_STAT_TXT" \
   python - <<'PY' >"$FREEZE_JSON"
 import json
 import os
@@ -379,6 +421,8 @@ print(json.dumps({
     "schema": "sevenos.release-freeze.v1",
     "timestamp": os.environ["TIMESTAMP"],
     "root": os.environ["ROOT_DIR"],
+    "git_scope": os.environ["RELEASE_GIT_SCOPE"],
+    "inspected_root": os.environ["RELEASE_GIT_ROOT"],
     "branch": os.environ["BRANCH"],
     "commit": os.environ["COMMIT"],
     "dirty_count": int(os.environ["DIRTY_COUNT"]),
