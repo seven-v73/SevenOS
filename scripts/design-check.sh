@@ -175,6 +175,67 @@ else
   fail "Seven Design Engine should expose Mocha/Latte palettes, optional Catppuccin icons and Papirus fallback"
 fi
 
+if [[ -s "$ROOT_DIR/identity/INTERACTION_CONTRACT.md" ]] &&
+   [[ -s "$ROOT_DIR/identity/interaction-contract.json" ]] &&
+   jq -e '.schema == "sevenos.interaction-contract.v1" and .required_patterns.feedback[0] == "initial_state" and .required_patterns.motion[2] == "reduced" and .public_commands.quality_public == "seven quality mode public"' "$ROOT_DIR/identity/interaction-contract.json" >/dev/null &&
+   grep -q 'seven interaction-gate' "$ROOT_DIR/bin/seven-help" &&
+   grep -q 'seven accessibility-gate' "$ROOT_DIR/bin/seven-help" &&
+   grep -q 'quality.public_mode' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'interaction-contract.sh' "$ROOT_DIR/bin/seven" &&
+   grep -q 'keyboard-focus-visible' "$ROOT_DIR/scripts/interaction-contract.sh"; then
+  ok "SevenOS exposes the public interaction, accessibility and motion contract"
+else
+  fail "SevenOS should expose the public interaction, accessibility and motion contract"
+fi
+
+if [[ -s "$ROOT_DIR/identity/WORKFLOW_CONTRACT.md" ]] &&
+   [[ -s "$ROOT_DIR/identity/workflow-contract.json" ]] &&
+   jq -e '.schema == "sevenos.workflow-contract.v1" and .required_workflows.update.command == "seven update" and .required_workflows.quality_public.command == "seven quality mode public" and .public_gate == "seven workflow-gate"' "$ROOT_DIR/identity/workflow-contract.json" >/dev/null &&
+   grep -q 'workflow-gate' "$ROOT_DIR/bin/seven" &&
+   grep -q 'profile-switch-workflow.sh' "$ROOT_DIR/bin/seven" &&
+   grep -q 'seven-passage-overlay' "$ROOT_DIR/scripts/profile-switch-workflow.sh" &&
+   grep -q 'quality.workflow_gate' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'quality.public_mode_gui' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven quality mode public --gui' "$ROOT_DIR/bin/seven-help" &&
+   grep -q 'seven workflow-gate' "$ROOT_DIR/bin/seven-help"; then
+  ok "SevenOS exposes the public workflow contract"
+else
+  fail "SevenOS should expose the public workflow contract"
+fi
+
+if [[ -s "$ROOT_DIR/identity/LAYOUT_CONTRACT.md" ]] &&
+   [[ -s "$ROOT_DIR/identity/layout-contract.json" ]] &&
+   jq -e '.schema == "sevenos.layout-contract.v1" and .minimum_display.width == 1024 and .public_gate == "seven layout-gate"' "$ROOT_DIR/identity/layout-contract.json" >/dev/null &&
+   grep -q 'layout-gate' "$ROOT_DIR/bin/seven" &&
+   grep -q 'quality.layout_gate' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven layout-gate' "$ROOT_DIR/bin/seven-help"; then
+  ok "SevenOS exposes the public layout and overflow contract"
+else
+  fail "SevenOS should expose the public layout and overflow contract"
+fi
+
+if [[ -s "$ROOT_DIR/identity/PERFORMANCE_CONTRACT.md" ]] &&
+   [[ -s "$ROOT_DIR/identity/performance-contract.json" ]] &&
+   jq -e '.schema == "sevenos.performance-contract.v1" and .targets.click_feedback_ms == 200 and .public_gate == "seven performance-gate"' "$ROOT_DIR/identity/performance-contract.json" >/dev/null &&
+   grep -q 'performance-gate' "$ROOT_DIR/bin/seven" &&
+   grep -q 'quality.performance_gate' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven performance-gate' "$ROOT_DIR/bin/seven-help"; then
+  ok "SevenOS exposes the public performance and responsiveness contract"
+else
+  fail "SevenOS should expose the public performance and responsiveness contract"
+fi
+
+if [[ -s "$ROOT_DIR/identity/NATIVE_FALLBACK_CONTRACT.md" ]] &&
+   [[ -s "$ROOT_DIR/identity/native-fallback-contract.json" ]] &&
+   jq -e '.schema == "sevenos.native-fallback-contract.v1" and (.required_routes | length) >= 6 and .public_blocker_policy == "legacy fallback is not a blocker when a native route is probed first"' "$ROOT_DIR/identity/native-fallback-contract.json" >/dev/null &&
+   grep -q 'native-fallback-gate' "$ROOT_DIR/bin/seven" &&
+   grep -q 'quality.native_fallback_gate' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'seven native-fallback-gate' "$ROOT_DIR/bin/seven-help"; then
+  ok "SevenOS exposes the native-first fallback contract"
+else
+  fail "SevenOS should expose a native-first fallback contract for public routes"
+fi
+
 if [[ -s "$ROOT_DIR/identity/CHARTER_LIGHT.md" ]] &&
    [[ -s "$ROOT_DIR/identity/assets/wallpaper-sevenos-light.svg" ]] &&
    grep -q -- '--comfort-light-bg: #F6F9FD' "$ROOT_DIR/identity/tokens-light.css" &&

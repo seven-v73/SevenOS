@@ -195,6 +195,12 @@ def print_primary_human(payload):
 
 
 def handle_profile(args):
+    if args.name == "activate" and args.extra:
+        extra = [args.extra[0], *args.extra[1:]]
+        if args.json:
+            extra.append("--json")
+        run_script(args, "scripts/profile-switch-workflow.sh", *extra)
+        return
     extra = [args.name, *args.extra]
     if args.json:
         extra.append("--json")
@@ -796,17 +802,102 @@ def handle_experience_shortcut(args, section):
 
 
 def handle_quality(args):
-    extra = [args.action]
-    if args.json:
+    raw_extra = list(getattr(args, "extra", []))
+    gui_requested = getattr(args, "gui", False) or "--gui" in raw_extra
+    json_requested = getattr(args, "json", False) or "--json" in raw_extra
+    extra_args = [item for item in raw_extra if item not in {"--gui", "--json"}]
+    if gui_requested:
+        section = "status"
+        if args.action == "mode":
+            section = "status"
+        elif args.action in {"doctor", "status", "plan", "json"}:
+            section = "status"
+        run_script(args, "bin/seven-public-studio", section, "--gui")
+        return
+    extra = [args.action, *extra_args]
+    if json_requested:
         extra.append("--json")
     run_script(args, "scripts/public-experience.sh", *extra)
 
 
-def handle_public_studio(args):
-    extra = [args.action, *args.extra]
-    if args.json:
+def handle_interaction_gate(args, action="status"):
+    raw_extra = list(getattr(args, "extra", []))
+    gui_requested = getattr(args, "gui", False) or "--gui" in raw_extra
+    json_requested = getattr(args, "json", False) or "--json" in raw_extra
+    extra_args = [item for item in raw_extra if item not in {"--gui", "--json"}]
+    if gui_requested:
+        run_script(args, "bin/seven-public-studio", "workflow", "--gui")
+        return
+    extra = [action, *extra_args]
+    if json_requested:
         extra.append("--json")
-    if args.gui:
+    run_script(args, "scripts/interaction-contract.sh", *extra)
+
+
+def handle_workflow_gate(args):
+    raw_extra = list(getattr(args, "extra", []))
+    gui_requested = getattr(args, "gui", False) or "--gui" in raw_extra
+    json_requested = getattr(args, "json", False) or "--json" in raw_extra
+    extra_args = [item for item in raw_extra if item not in {"--gui", "--json"}]
+    if gui_requested:
+        run_script(args, "bin/seven-public-studio", "workflow", "--gui")
+        return
+    extra = [*extra_args]
+    if json_requested:
+        extra.append("--json")
+    run_script(args, "scripts/workflow-gate.sh", *extra)
+
+
+def handle_layout_gate(args):
+    raw_extra = list(getattr(args, "extra", []))
+    gui_requested = getattr(args, "gui", False) or "--gui" in raw_extra
+    json_requested = getattr(args, "json", False) or "--json" in raw_extra
+    extra_args = [item for item in raw_extra if item not in {"--gui", "--json"}]
+    if gui_requested:
+        run_script(args, "bin/seven-public-studio", "layout", "--gui")
+        return
+    extra = [*extra_args]
+    if json_requested:
+        extra.append("--json")
+    run_script(args, "scripts/layout-gate.sh", *extra)
+
+
+def handle_performance_gate(args):
+    raw_extra = list(getattr(args, "extra", []))
+    gui_requested = getattr(args, "gui", False) or "--gui" in raw_extra
+    json_requested = getattr(args, "json", False) or "--json" in raw_extra
+    extra_args = [item for item in raw_extra if item not in {"--gui", "--json"}]
+    if gui_requested:
+        run_script(args, "bin/seven-public-studio", "performance", "--gui")
+        return
+    extra = [*extra_args]
+    if json_requested:
+        extra.append("--json")
+    run_script(args, "scripts/performance-gate.sh", *extra)
+
+
+def handle_native_fallback_gate(args):
+    raw_extra = list(getattr(args, "extra", []))
+    gui_requested = getattr(args, "gui", False) or "--gui" in raw_extra
+    json_requested = getattr(args, "json", False) or "--json" in raw_extra
+    extra_args = [item for item in raw_extra if item not in {"--gui", "--json"}]
+    if gui_requested:
+        run_script(args, "bin/seven-public-studio", "visual", "--gui")
+        return
+    extra = [*extra_args]
+    if json_requested:
+        extra.append("--json")
+    run_script(args, "scripts/native-fallback-gate.sh", *extra)
+
+
+def handle_public_studio(args):
+    raw_extra = list(getattr(args, "extra", []))
+    gui_requested = getattr(args, "gui", False) or "--gui" in raw_extra
+    json_requested = getattr(args, "json", False) or "--json" in raw_extra
+    extra = [args.action, *[item for item in raw_extra if item not in {"--gui", "--json"}]]
+    if json_requested:
+        extra.append("--json")
+    if gui_requested:
         extra.append("--gui")
     run_script(args, "bin/seven-public-studio", *extra)
 
@@ -1019,6 +1110,13 @@ def handle_release(args):
     if args.json:
         extra.append("--json")
     run_script(args, "scripts/release.sh", *extra)
+
+
+def handle_public_readiness(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/readiness-decisions.sh", *extra)
 
 
 def handle_actions(args):
@@ -1244,13 +1342,17 @@ def main():
         shortcut_parser.add_argument("--json", action="store_true", help="print machine-readable Experience Center contract")
         shortcut_parser.add_argument("--gui", action="store_true", help="force graphical Experience Center")
     quality_parser = subparsers.add_parser("quality", help="inspect SevenOS public user-experience quality gates")
-    quality_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    quality_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json", "mode"))
     quality_parser.add_argument("--json", action="store_true", help="print machine-readable public quality gate")
+    quality_parser.add_argument("--gui", action="store_true", help="open graphical public readiness studio")
+    quality_parser.add_argument("extra", nargs=argparse.REMAINDER)
     public_experience_parser = subparsers.add_parser("public-experience", help="alias for SevenOS public quality gates")
-    public_experience_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    public_experience_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json", "mode"))
     public_experience_parser.add_argument("--json", action="store_true", help="print machine-readable public quality gate")
+    public_experience_parser.add_argument("--gui", action="store_true", help="open graphical public readiness studio")
+    public_experience_parser.add_argument("extra", nargs=argparse.REMAINDER)
     public_studio_parser = subparsers.add_parser("public-studio", help="open fresh-install and visual consistency readiness studio")
-    public_studio_parser.add_argument("action", nargs="?", default="status", choices=("status", "fresh-install", "verify", "visual", "json"))
+    public_studio_parser.add_argument("action", nargs="?", default="status", choices=("status", "fresh-install", "verify", "visual", "workflow", "layout", "performance", "readiness", "json"))
     public_studio_parser.add_argument("extra", nargs=argparse.REMAINDER)
     public_studio_parser.add_argument("--json", action="store_true", help="print machine-readable public readiness studio")
     public_studio_parser.add_argument("--gui", action="store_true", help="open graphical public readiness studio")
@@ -1263,6 +1365,31 @@ def main():
         shortcut_parser.add_argument("extra", nargs=argparse.REMAINDER)
         shortcut_parser.add_argument("--json", action="store_true", help="print machine-readable result")
         shortcut_parser.add_argument("--gui", action="store_true", help="open graphical result")
+    for shortcut_name, contract_action, shortcut_help in (
+        ("interaction-gate", "status", "validate SevenOS public interaction contract"),
+        ("accessibility-gate", "accessibility", "validate SevenOS accessibility and readable UI contract"),
+    ):
+        contract_parser = subparsers.add_parser(shortcut_name, help=shortcut_help)
+        contract_parser.add_argument("--json", action="store_true", help="print machine-readable contract gate")
+        contract_parser.add_argument("--gui", action="store_true", help="open graphical contract gate")
+        contract_parser.add_argument("extra", nargs=argparse.REMAINDER)
+        contract_parser.set_defaults(contract_action=contract_action)
+    workflow_parser = subparsers.add_parser("workflow-gate", help="validate public workflow guidance, confirmation and recovery contract")
+    workflow_parser.add_argument("--json", action="store_true", help="print machine-readable workflow gate")
+    workflow_parser.add_argument("--gui", action="store_true", help="open graphical workflow gate")
+    workflow_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    layout_parser = subparsers.add_parser("layout-gate", help="validate public window sizes, scrolling and overflow risk")
+    layout_parser.add_argument("--json", action="store_true", help="print machine-readable layout gate")
+    layout_parser.add_argument("--gui", action="store_true", help="open graphical layout gate")
+    layout_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    performance_parser = subparsers.add_parser("performance-gate", help="validate public responsiveness, feedback and bounded action risk")
+    performance_parser.add_argument("--json", action="store_true", help="print machine-readable performance gate")
+    performance_parser.add_argument("--gui", action="store_true", help="open graphical performance gate")
+    performance_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    native_fallback_parser = subparsers.add_parser("native-fallback-gate", help="validate native-first routes before legacy fallback menus")
+    native_fallback_parser.add_argument("--json", action="store_true", help="print machine-readable native fallback gate")
+    native_fallback_parser.add_argument("--gui", action="store_true", help="open graphical visual gate")
+    native_fallback_parser.add_argument("extra", nargs=argparse.REMAINDER)
     control_parser = subparsers.add_parser("control", help="show prioritized SevenOS control plane actions")
     control_parser.add_argument("action", nargs="?", default="plan", choices=("plan", "apply"))
     control_parser.add_argument("--json", action="store_true", help="print machine-readable control plane")
@@ -1365,6 +1492,9 @@ def main():
     release_parser = subparsers.add_parser("release", help="inspect public SevenOS release gates")
     release_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "review", "open", "ui", "freeze", "doctor", "json"))
     release_parser.add_argument("--json", action="store_true", help="print machine-readable release status or plan")
+    public_readiness_parser = subparsers.add_parser("public-readiness", help="explain daily vs public release readiness decisions")
+    public_readiness_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    public_readiness_parser.add_argument("--json", action="store_true", help="print machine-readable readiness decisions")
     channel_parser = subparsers.add_parser("channel", help="inspect or set the SevenOS release channel")
     channel_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "set", "json"))
     channel_parser.add_argument("channel", nargs="?", choices=("dev", "testing", "stable"), help="channel to set when action is 'set'")
@@ -1597,6 +1727,16 @@ def main():
         handle_experience_shortcut(args, shortcut_sections.get(args.command, args.command))
     elif args.command in ("quality", "public-experience"):
         handle_quality(args)
+    elif args.command in ("interaction-gate", "accessibility-gate"):
+        handle_interaction_gate(args, getattr(args, "contract_action", "status"))
+    elif args.command == "workflow-gate":
+        handle_workflow_gate(args)
+    elif args.command == "layout-gate":
+        handle_layout_gate(args)
+    elif args.command == "performance-gate":
+        handle_performance_gate(args)
+    elif args.command == "native-fallback-gate":
+        handle_native_fallback_gate(args)
     elif args.command == "public-studio":
         handle_public_studio(args)
     elif args.command == "first-run":
@@ -1670,6 +1810,8 @@ def main():
         handle_repair(args)
     elif args.command == "release":
         handle_release(args)
+    elif args.command == "public-readiness":
+        handle_public_readiness(args)
     elif args.command == "channel":
         handle_channel(args)
     elif args.command == "autonomy":

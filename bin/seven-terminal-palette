@@ -49,6 +49,21 @@ copy_text() {
   fi
 }
 
+native_actions() {
+  local native="$ROOT_DIR/bin/seven-actions-native"
+  [[ "${SEVENOS_TERMINAL_PALETTE_LEGACY:-0}" != "1" ]] || return 1
+  [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]] || return 1
+  if [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
+    setsid -f "$native" --query terminal --category Desktop --title "Seven Terminal" >/tmp/sevenos-terminal-palette.log 2>&1 || true
+    return 0
+  fi
+  if command -v seven-actions-native >/dev/null 2>&1 && seven-actions-native --probe >/dev/null 2>&1; then
+    setsid -f seven-actions-native --query terminal --category Desktop --title "Seven Terminal" >/tmp/sevenos-terminal-palette.log 2>&1 || true
+    return 0
+  fi
+  return 1
+}
+
 run_terminal() {
   local title="$1"
   local command="$2"
@@ -103,6 +118,10 @@ choose_action() {
     return 0
   fi
 
+  if native_actions; then
+    return 1
+  fi
+
   if command -v rofi >/dev/null 2>&1 && [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]]; then
     local message
     message="Quick actions for Seven Terminal"
@@ -117,7 +136,7 @@ if [[ "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
   actions
   exit 0
 fi
-selection="$(choose_action)"
+selection="$(choose_action || true)"
 case "$selection" in
   "Open Current Folder"*|"Ouvrir le dossier courant"*) seven-files "${PWD:-$HOME}" ;;
   "Copy Current Path"*|"Copier le chemin courant"*) copy_text "${PWD:-$HOME}" ;;

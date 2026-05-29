@@ -1,0 +1,53 @@
+{
+  "schema": "sevenos.workflow-contract.v1",
+  "updated": "2026-05-29",
+  "goal": "Turn SevenOS commands into calm, reversible, public workflows.",
+  "workflow_shape": [
+    "intent",
+    "impact",
+    "preparation",
+    "progress",
+    "result",
+    "details",
+    "recovery"
+  ],
+  "required_workflows": {
+    "update": {
+      "command": "seven update",
+      "required": ["check", "backup_or_snapshot", "progress", "surface_refresh", "rollback", "report"]
+    },
+    "repair": {
+      "command": "seven repair ux",
+      "required": ["diagnose", "explain", "apply", "verify", "details"]
+    },
+    "mini_os_switch": {
+      "command": "seven profile activate",
+      "required": ["prepare", "prism_passage", "apply_profile", "wait_ready", "confirm_state"]
+    },
+    "backup": {
+      "command": "seven recovery backup",
+      "required": ["scope", "destination", "create", "verify", "restore_plan"]
+    },
+    "permissions": {
+      "command": "seven permissions",
+      "required": ["show_access", "explain_risk", "open_controls", "record_changes"]
+    },
+    "app_install": {
+      "command": "seven-store",
+      "required": ["source", "impact", "progress", "details", "final_state", "uninstall_route"]
+    },
+    "quality_public": {
+      "command": "seven quality mode public",
+      "required": ["interaction", "accessibility", "visual", "surfaces", "release_state", "next_actions"]
+    }
+  },
+  "sensitive_actions": [
+    "rollback",
+    "backup",
+    "repair",
+    "package_install",
+    "profile_switch",
+    "permission_change"
+  ],
+  "public_gate": "seven workflow-gate"
+}

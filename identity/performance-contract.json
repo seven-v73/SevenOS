@@ -1,0 +1,19 @@
+{
+  "schema": "sevenos.performance-contract.v1",
+  "updated": "2026-05-29",
+  "goal": "Keep SevenOS public surfaces responsive, bounded and reassuring.",
+  "targets": {
+    "click_feedback_ms": 200,
+    "hover_preview_ms": 180,
+    "long_action_requires_feedback": true,
+    "public_gates_require_timeouts": true,
+    "sleep_max_seconds": 0.5
+  },
+  "required_patterns": {
+    "feedback": ["show_feedback", "Gtk.ProgressBar", "notify", "timeout_add"],
+    "async": ["threading.Thread", "subprocess.Popen", "GLib.timeout_add"],
+    "bounded_checks": ["timeout="],
+    "recovery": ["cancel", "rollback", "details"]
+  },
+  "public_gate": "seven performance-gate"
+}

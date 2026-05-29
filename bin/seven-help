@@ -373,7 +373,7 @@ Fichiers de référence :
 ## Raccourcis essentiels
 
 Dans SevenOS, `Super` désigne la touche Windows/Command du clavier. Ces
-raccourcis sont la base commune du profil Hyprland SevenOS. Les mini OS peuvent
+raccourcis sont la base commune de la session SevenOS. Les mini OS peuvent
 ajouter des actions contextuelles, mais cette carte reste le point de départ.
 
 ### Lancement et navigation
@@ -503,9 +503,9 @@ sur `makoctl dismiss --all` si l'installation utilise Mako.
 
 | Action | Raccourci |
 | --- | --- |
-| Recharger Hyprland | Super+Alt+R |
+| Recharger la session SevenOS | Super+Alt+R |
 | Informations système | Super+Shift+I |
-| Statut Hyprland SevenOS | Super+Shift+U |
+| Statut session SevenOS | Super+Shift+U |
 | Augmenter volume | Touche volume + |
 | Baisser volume | Touche volume - |
 | Mute audio | Touche mute |
@@ -995,6 +995,17 @@ seven device-continuity
 seven public-studio --gui
 seven first-run verify
 seven visual-gate
+seven interaction-gate
+seven accessibility-gate
+seven workflow-gate
+seven workflow-gate --gui
+seven layout-gate
+seven layout-gate --gui
+seven performance-gate
+seven performance-gate --gui
+seven public-readiness
+seven quality mode public
+seven quality mode public --gui
 seven experience-center rescue
 seven rescue
 seven time-machine
@@ -1177,6 +1188,17 @@ seven release open
 seven release freeze --json
 seven quality
 seven quality doctor
+seven quality mode public
+seven interaction-gate
+seven accessibility-gate
+seven workflow-gate
+seven workflow-gate --gui
+seven layout-gate
+seven layout-gate --gui
+seven performance-gate
+seven performance-gate --gui
+seven native-fallback-gate
+seven public-readiness
 seven lifecycle
 seven health
 seven recovery
@@ -1203,6 +1225,24 @@ native, puis `seven release freeze --json` écrit le manifeste avec les chemins
 `seven quality doctor` rassemble les gates qui comptent pour une expérience
 publique : santé, surfaces natives, smoke, update, mini OS, Shell AGS,
 Server/Deploy et release freeze.
+`seven quality mode public` ajoute le contrat d'interaction SevenOS : feedback
+au clic, navigation sans rupture, accessibilité, motion system et cohérence
+visuelle. `seven interaction-gate` et `seven accessibility-gate` permettent de
+tester ces deux couches séparément.
+`seven workflow-gate` vérifie que les grosses actions publiques sont des
+parcours guidés avec intention, impact, progression, résultat, détails et
+retour arrière quand c'est nécessaire.
+`seven layout-gate` vérifie les tailles de fenêtres, régions scrollables et
+risques de débordement pour garder SevenOS utilisable sur un écran portable.
+`seven performance-gate` vérifie la réactivité perçue : feedback visible,
+actions longues en arrière-plan, checks bornés, progressions et attentes
+courtes.
+`seven public-readiness` explique la différence entre prêt au quotidien et prêt
+release publique, puis propose le prochain geste clair : revue release ou AGS.
+Ajoute `--gui` à `seven quality mode public`, `seven workflow-gate`,
+`seven layout-gate`, `seven performance-gate`, `seven interaction-gate` ou
+`seven accessibility-gate` pour ouvrir la surface Public Studio au lieu d’un
+rapport terminal.
 
 ### Sauvegarde et migration
 
@@ -1879,7 +1919,7 @@ this map is the starting point.
 | Action | Shortcut |
 | --- | --- |
 | Close window | Super+Q |
-| Exit Hyprland session | Super+M |
+| Exit SevenOS session | Super+M |
 | Fullscreen | Super+F |
 | Smart maximize | Super+Shift+F |
 | Toggle floating/tiling | Super+Alt+Space |
@@ -1952,9 +1992,9 @@ seven-window decor-status --json
 
 | Action | Shortcut |
 | --- | --- |
-| Reload Hyprland | Super+Alt+R |
+| Reload SevenOS session | Super+Alt+R |
 | System information | Super+Shift+I |
-| SevenOS Hyprland status | Super+Shift+U |
+| SevenOS session status | Super+Shift+U |
 | Raise volume | Volume up key |
 | Lower volume | Volume down key |
 | Mute audio | Mute key |
@@ -2083,7 +2123,7 @@ priorities and surfaces, not the complete mode.
 | Check theme state | `seven theme doctor` |
 | Resync session theme | `seven theme sync` |
 | Repair visual UX | `seven repair ux --apply` |
-| Reload Hyprland/Waybar | `seven hypr apply` |
+| Resync SevenOS shell | `seven hypr apply` |
 | Terminal transparent/solid | `Ctrl+Shift+B` inside Seven Terminal |
 
 Seven Terminal uses the wallpaper-derived theme when available:

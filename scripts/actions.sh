@@ -40,6 +40,16 @@ experience.timeline	System	Activity Timeline	seven experience-center timeline	sa
 quality.public_studio	System	Public Readiness Studio	seven public-studio --gui	safe	Open fresh-install and visual consistency readiness studio.
 quality.first_run	System	Fresh Install Verifier	seven first-run verify	safe	Verify commands, assets, desktop entries, wallpapers and install scripts for a new machine.
 quality.visual_gate	System	Visual Consistency Gate	seven visual-gate	safe	Scan design gate, public surfaces and suspicious UI patterns.
+quality.interaction_gate	System	Interaction Contract Gate	seven interaction-gate	safe	Validate SevenOS public interaction, motion, localization and feedback contract.
+quality.accessibility_gate	System	Accessibility Gate	seven accessibility-gate	safe	Validate accessible labels, readable colors, localized copy and native public UI gates.
+quality.workflow_gate	System	Workflow Gate	seven workflow-gate	safe	Validate guided workflows, confirmation, progress, recovery and public next actions.
+quality.workflow_gate_gui	System	Workflow Gate UI	seven workflow-gate --gui	safe	Open the graphical public workflow gate in SevenOS Public Studio.
+quality.layout_gate	System	Layout Gate	seven layout-gate	safe	Validate public window sizes, scrolling and overflow risk.
+quality.layout_gate_gui	System	Layout Gate UI	seven layout-gate --gui	safe	Open the graphical layout and overflow gate in SevenOS Public Studio.
+quality.performance_gate	System	Performance UX Gate	seven performance-gate	safe	Validate public responsiveness, feedback and bounded action risk.
+quality.performance_gate_gui	System	Performance UX Gate UI	seven performance-gate --gui	safe	Open the graphical responsiveness gate in SevenOS Public Studio.
+quality.native_fallback_gate	System	Native Fallback Gate	seven native-fallback-gate	safe	Validate native-first public routes before legacy fallback menus.
+quality.readiness	System	Readiness Decisions	seven public-readiness	safe	Explain daily-driver readiness, public-release freeze and AGS finalization as clear next actions.
 experience.permissions	System	Permissions Center	seven experience-center permissions	safe	Show portals, Flatpak, microphone, camera and privacy routes.
 experience.journeys	Desktop	Focus Journeys	seven experience-center journeys	safe	Show profile-aware journeys for code, creation, study, gaming, culture and security.
 startup.audit	Desktop	Startup Performance Audit	./scripts/startup-audit.sh	safe	Check that public SevenOS apps open from cache and do not block on deep audits.
@@ -72,6 +82,8 @@ smoke.status	System	SevenOS Smoke Gate	seven smoke	safe	Run the fast public-prod
 smoke.doctor	System	Smoke Doctor	seven smoke doctor	safe	Validate state, product, identity, distribution and health contracts with strict timeouts.
 smoke.json	System	Smoke Gate JSON	seven smoke --json	safe	Expose the fast SevenOS distribution smoke contract for Hub, Settings and release surfaces.
 quality.status	System	Public Quality Gate	seven quality	safe	Show the product-quality aggregate for health, surfaces, update, mini OS, Shell, Server/Deploy and release freeze.
+quality.public_mode	System	Public Quality Mode	seven quality mode public	safe	Validate the public release interaction contract with quality, visual and accessibility gates.
+quality.public_mode_gui	System	Public Quality Mode UI	seven quality mode public --gui	safe	Open the graphical public quality mode with installation, visual and workflow readiness.
 quality.doctor	System	Public Quality Doctor	seven quality doctor	safe	Validate the user-experience gates before public release or a major phase claim.
 quality.json	System	Public Quality JSON	seven quality json	safe	Expose the public-quality aggregate to Hub, Settings and future Shell surfaces.
 release.review	System	Release Freeze Review	seven release review	safe	Show grouped dirty-worktree guidance before freezing or committing a public release.

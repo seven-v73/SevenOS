@@ -1,0 +1,24 @@
+{
+  "schema": "sevenos.layout-contract.v1",
+  "updated": "2026-05-29",
+  "minimum_display": {
+    "width": 1024,
+    "height": 600,
+    "source": "GNOME HIG adaptive layout baseline"
+  },
+  "public_targets": {
+    "settings": {"max_default_width": 1180, "max_default_height": 760, "requires_scroll": true},
+    "files": {"max_default_width": 980, "max_default_height": 640, "requires_scroll": true},
+    "store": {"max_default_width": 1100, "max_default_height": 720, "requires_scroll": true},
+    "public_studio": {"max_default_width": 980, "max_default_height": 680, "requires_scroll": true},
+    "experience_center": {"max_default_width": 1080, "max_default_height": 720, "requires_scroll": true}
+  },
+  "rules": [
+    "avoid_fullscreen_default",
+    "avoid_unbounded_fixed_width",
+    "scroll_dense_content",
+    "keep_dialogs_compact",
+    "fit_1024x600_or_explain_exception"
+  ],
+  "public_gate": "seven layout-gate"
+}

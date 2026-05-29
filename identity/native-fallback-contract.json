@@ -1,0 +1,44 @@
+{
+  "schema": "sevenos.native-fallback-contract.v1",
+  "state": "ready",
+  "required_routes": [
+    {
+      "key": "apps",
+      "script": "bin/seven-apps",
+      "native": "bin/seven-launchpad-native",
+      "required_patterns": ["seven-launchpad-native", "--probe"]
+    },
+    {
+      "key": "spotlight",
+      "script": "bin/seven-spotlight",
+      "native": "bin/seven-spotlight-native",
+      "required_patterns": ["seven-spotlight-native", "--probe"]
+    },
+    {
+      "key": "quick-settings",
+      "script": "bin/seven-quick-settings",
+      "native": "bin/seven-quick-settings-native",
+      "required_patterns": ["resolve_native_quick", "--probe"]
+    },
+    {
+      "key": "wifi",
+      "script": "bin/seven-wifi",
+      "native": "bin/seven-quick-settings-native",
+      "required_patterns": ["open_native_wifi_panel", "SEVENOS_WIFI_LEGACY_MENU"]
+    },
+    {
+      "key": "power",
+      "script": "bin/seven-power",
+      "native": "bin/seven-quick-settings-native",
+      "required_patterns": ["SEVENOS_POWER_NATIVE", "seven-quick-settings-native"]
+    },
+    {
+      "key": "terminal-palette",
+      "script": "bin/seven-terminal-palette",
+      "native": "bin/seven-actions-native",
+      "required_patterns": ["native_actions", "SEVENOS_TERMINAL_PALETTE_LEGACY", "seven-actions-native"]
+    }
+  ],
+  "allowed_fallbacks": ["rofi", "terminal", "text"],
+  "public_blocker_policy": "legacy fallback is not a blocker when a native route is probed first"
+}

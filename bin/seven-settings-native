@@ -9,6 +9,7 @@ people who already know they are changing system behavior.
 from __future__ import annotations
 
 import json
+import math
 import os
 import platform
 import pwd
@@ -1921,7 +1922,7 @@ def settings_local_css() -> str:
       background: alpha(@seven_accent, 0.16);
       border-color: alpha(@seven_accent, 0.46);
       color: @seven_text;
-      font-weight: 600;
+      font-weight: 500;
     }
 
     button.wallpaper-filter:focus {
@@ -2181,6 +2182,526 @@ def settings_local_css() -> str:
       background-color: transparent;
       border: 0;
     }
+
+    /* SevenOS Control Prism refresh.
+       This final layer keeps Settings compact, readable and identifiably SevenOS
+       even when the host GTK theme tries to leak grey panes or dark text. */
+    window.settings-window {
+      background: transparent;
+      background-color: transparent;
+    }
+
+    window.settings-window .settings-shell {
+      margin: 10px;
+      border-radius: 30px;
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_accent, 0.18), transparent 36%),
+        radial-gradient(ellipse at 92% 0%, alpha(@seven_secondary, 0.12), transparent 38%),
+        linear-gradient(135deg, alpha(@seven_bg, 0.96), alpha(@seven_panel, 0.88));
+      border: 1px solid alpha(@seven_border, 0.68);
+      box-shadow: 0 24px 56px alpha(#000000, 0.24);
+    }
+
+    window.settings-window.theme-light .settings-shell {
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_accent, 0.14), transparent 36%),
+        radial-gradient(ellipse at 92% 0%, alpha(@seven_secondary, 0.10), transparent 38%),
+        linear-gradient(135deg, alpha(@seven_bg, 0.98), alpha(@seven_panel, 0.92));
+      box-shadow: 0 20px 44px alpha(#263044, 0.18);
+    }
+
+    window.settings-window .sidebar {
+      padding: 12px 9px;
+      background:
+        linear-gradient(180deg, alpha(@seven_panel, 0.50), alpha(@seven_bg, 0.16)),
+        radial-gradient(ellipse at 50% 0%, alpha(@seven_accent, 0.12), transparent 46%);
+      border-right: 1px solid alpha(@seven_border, 0.54);
+    }
+
+    .settings-sidebar-area {
+      background:
+        linear-gradient(180deg, alpha(@seven_panel, 0.50), alpha(@seven_bg, 0.16)),
+        radial-gradient(ellipse at 50% 0%, alpha(@seven_accent, 0.12), transparent 46%);
+      border-right: 1px solid alpha(@seven_border, 0.54);
+    }
+
+    window.settings-window .settings-sidebar-area .sidebar {
+      background: transparent;
+      border-right: 0;
+    }
+
+    .settings-sidebar-footer {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border-top: 0;
+    }
+
+    button.settings-footer-button {
+      min-height: 34px;
+      padding: 5px 8px;
+      border-radius: 14px;
+      color: @seven_text;
+      background: alpha(@seven_panel, 0.34);
+      border: 1px solid alpha(@seven_border, 0.44);
+      box-shadow: none;
+    }
+
+    button.settings-footer-button:hover,
+    button.settings-footer-button:focus {
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_accent, 0.16), transparent 42%),
+        alpha(@seven_panel, 0.60);
+      border-color: alpha(@seven_accent, 0.34);
+    }
+
+    .settings-footer-icon {
+      min-width: 18px;
+      color: @seven_accent;
+      font-size: 12px;
+    }
+
+    .settings-footer-label {
+      color: @seven_text;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .settings-recent-pages {
+      margin: 0 8px 6px 8px;
+      padding: 7px;
+      border-radius: 16px;
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_accent, 0.10), transparent 42%),
+        alpha(@seven_panel, 0.30);
+      border: 1px solid alpha(@seven_border, 0.36);
+    }
+
+    button.recent-page-button {
+      min-height: 28px;
+      padding: 4px 7px;
+      border-radius: 12px;
+      color: @seven_text;
+      background: alpha(@seven_bg, 0.12);
+      border: 1px solid alpha(@seven_border, 0.30);
+      box-shadow: none;
+    }
+
+    button.recent-page-button:hover,
+    button.recent-page-button:focus {
+      background:
+        radial-gradient(ellipse at 10% 0%, alpha(@seven_accent, 0.15), transparent 42%),
+        alpha(@seven_panel, 0.52);
+      border-color: alpha(@seven_accent, 0.30);
+    }
+
+    .recent-page-dot {
+      min-width: 12px;
+      color: @seven_accent;
+      font-size: 13px;
+    }
+
+    .recent-page-label {
+      color: @seven_text;
+      font-size: 10px;
+    }
+
+    window.settings-window .content {
+      background:
+        radial-gradient(ellipse at 50% 0%, alpha(@seven_accent, 0.070), transparent 48%),
+        transparent;
+    }
+
+    .settings-prism-brand {
+      min-height: 58px;
+      margin: 4px 8px 8px 8px;
+      padding: 9px 10px;
+      border-radius: 20px;
+      background:
+        radial-gradient(ellipse at 18% 0%, alpha(@seven_accent, 0.22), transparent 48%),
+        radial-gradient(ellipse at 92% 0%, alpha(@seven_secondary, 0.13), transparent 42%),
+        alpha(@seven_panel, 0.56);
+      border: 1px solid alpha(@seven_accent, 0.24);
+    }
+
+    .settings-prism-brand-mark {
+      min-width: 34px;
+      min-height: 34px;
+      border-radius: 17px;
+      color: @seven_text;
+      background:
+        radial-gradient(circle at 50% 36%, alpha(@seven_text, 0.34), transparent 18%),
+        radial-gradient(circle at 50% 50%, alpha(@seven_accent, 0.56), transparent 42%),
+        alpha(@seven_bg, 0.78);
+      border: 1px solid alpha(@seven_accent, 0.42);
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .settings-prism-brand-title {
+      color: @seven_text;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .settings-prism-brand-note {
+      color: @seven_muted;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    window.settings-window .settings-topbar {
+      min-height: 48px;
+      margin: 12px 14px 4px 14px;
+      padding: 7px 10px;
+      border-radius: 24px;
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_accent, 0.10), transparent 44%),
+        alpha(@seven_panel, 0.54);
+      border: 1px solid alpha(@seven_border, 0.54);
+      box-shadow: none;
+    }
+
+    window.settings-window .settings-search {
+      min-height: 34px;
+      background: alpha(@seven_bg, 0.30);
+      border-color: alpha(@seven_border, 0.52);
+    }
+
+    .settings-identity-strip {
+      min-height: 42px;
+      margin: 4px 14px 4px 14px;
+      padding: 6px 9px;
+      border-radius: 21px;
+      background:
+        linear-gradient(90deg, alpha(@seven_accent, 0.10), alpha(@seven_panel, 0.36), alpha(@seven_secondary, 0.08)),
+        alpha(@seven_bg, 0.18);
+      border: 1px solid alpha(@seven_border, 0.46);
+    }
+
+    .settings-strip-prism {
+      min-width: 30px;
+      min-height: 30px;
+      border-radius: 15px;
+      background: alpha(@seven_panel, 0.44);
+      border: 1px solid alpha(@seven_accent, 0.24);
+    }
+
+    .settings-identity-chip {
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      color: @seven_text;
+      background: alpha(@seven_panel, 0.38);
+      border: 1px solid alpha(@seven_border, 0.42);
+      font-size: 10px;
+    }
+
+    .settings-identity-chip.mission {
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_accent, 0.12), transparent 42%),
+        alpha(@seven_panel, 0.46);
+      border-color: alpha(@seven_accent, 0.24);
+    }
+
+    .settings-identity-chip.impact-low {
+      background: alpha(@seven_success, 0.10);
+      border-color: alpha(@seven_success, 0.24);
+    }
+
+    .settings-identity-chip.impact-medium {
+      background: alpha(@seven_warning, 0.12);
+      border-color: alpha(@seven_warning, 0.28);
+    }
+
+    .settings-identity-chip.impact-high {
+      background: alpha(@seven_error, 0.11);
+      border-color: alpha(@seven_error, 0.30);
+    }
+
+    .settings-next-strip {
+      margin: 0 14px 5px 14px;
+      padding: 0;
+      background: transparent;
+    }
+
+    button.settings-next-action {
+      min-height: 48px;
+      padding: 7px 10px;
+      border-radius: 17px;
+      color: @seven_text;
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_accent, 0.10), transparent 42%),
+        alpha(@seven_panel, 0.34);
+      border: 1px solid alpha(@seven_border, 0.46);
+      box-shadow: none;
+    }
+
+    button.settings-next-action:hover,
+    button.settings-next-action:focus {
+      background:
+        radial-gradient(ellipse at 10% 0%, alpha(@seven_accent, 0.18), transparent 42%),
+        alpha(@seven_panel, 0.60);
+      border-color: alpha(@seven_accent, 0.36);
+    }
+
+    .settings-next-title {
+      color: @seven_text;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .settings-next-note {
+      color: @seven_muted;
+      font-size: 9px;
+    }
+
+    window.settings-window .settings-page-hint,
+    window.settings-window .feedback-banner,
+    window.settings-window .search-results {
+      margin-left: 14px;
+      margin-right: 14px;
+    }
+
+    window.settings-window .page-frame {
+      padding: 10px 14px 20px 14px;
+      background: transparent;
+      color: @seven_text;
+    }
+
+    .settings-page-hero {
+      min-height: 44px;
+      padding: 4px 0 8px 0;
+      border-radius: 0;
+      background: transparent;
+      border: 0;
+    }
+
+    .settings-prism-spine {
+      background:
+        linear-gradient(180deg, transparent, alpha(@seven_accent, 0.10), transparent),
+        alpha(@seven_bg, 0.06);
+      border-right: 1px solid alpha(@seven_border, 0.28);
+      border-left: 1px solid alpha(@seven_border, 0.18);
+    }
+
+    .settings-spine-node {
+      min-width: 18px;
+      min-height: 18px;
+      border-radius: 9px;
+      color: alpha(@seven_muted, 0.48);
+      font-size: 8px;
+    }
+
+    .settings-spine-node.active {
+      color: @seven_accent;
+    }
+
+    .settings-spine-node.node-baobab.active { color: #38b66f; }
+    .settings-spine-node.node-forge.active { color: #ff8c3d; }
+    .settings-spine-node.node-shield.active { color: #43f0d0; }
+    .settings-spine-node.node-studio.active { color: #d772ef; }
+    .settings-spine-node.node-pulse.active { color: #ffad3d; }
+    .settings-spine-node.node-atlas.active { color: #77c7ff; }
+
+    .settings-constellation-card {
+      padding: 13px;
+      border-radius: 24px;
+      background:
+        radial-gradient(ellipse at 11% 20%, alpha(@seven_accent, 0.18), transparent 42%),
+        radial-gradient(ellipse at 94% 0%, alpha(@seven_secondary, 0.10), transparent 44%),
+        alpha(@seven_panel, 0.46);
+      border: 1px solid alpha(@seven_border, 0.56);
+    }
+
+    .settings-constellation-prism-zone {
+      min-width: 138px;
+      padding: 6px 4px;
+    }
+
+    .settings-constellation-prism {
+      min-width: 92px;
+      min-height: 92px;
+      border-radius: 46px;
+      background:
+        radial-gradient(circle at 50% 50%, alpha(@seven_accent, 0.18), transparent 46%),
+        alpha(@seven_bg, 0.32);
+      border: 1px solid alpha(@seven_accent, 0.24);
+    }
+
+    .settings-constellation-title {
+      color: @seven_text;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .settings-constellation-note {
+      color: @seven_muted;
+      font-size: 10px;
+    }
+
+    .settings-constellation-actions flowboxchild {
+      padding: 0;
+      background: transparent;
+      border: 0;
+    }
+
+    button.settings-constellation-button {
+      min-height: 58px;
+      padding: 8px 9px;
+      border-radius: 16px;
+      color: @seven_text;
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_text, 0.030), transparent 42%),
+        alpha(@seven_bg, 0.20);
+      border: 1px solid alpha(@seven_border, 0.48);
+      box-shadow: none;
+    }
+
+    button.settings-constellation-button:hover,
+    button.settings-constellation-button:focus {
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_accent, 0.16), transparent 44%),
+        alpha(@seven_panel, 0.60);
+      border-color: alpha(@seven_accent, 0.36);
+    }
+
+    .settings-constellation-icon {
+      min-width: 24px;
+      color: @seven_accent;
+      font-size: 16px;
+    }
+
+    .settings-constellation-action-title {
+      color: @seven_text;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .settings-constellation-action-note {
+      color: @seven_muted;
+      font-size: 9px;
+    }
+
+    window.settings-window .page-title {
+      color: @seven_text;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    window.settings-window .page-subtitle {
+      color: alpha(@seven_muted, 0.96);
+      font-size: 11px;
+    }
+
+    window.settings-window .settings-group,
+    window.settings-window .settings-insight-card,
+    window.settings-window .settings-card,
+    window.settings-window .status-card,
+    window.settings-window .solution-card,
+    window.settings-window .first-aid-card,
+    window.settings-window .trust-card,
+    window.settings-window .recommendation-card,
+    window.settings-window .verdict-card {
+      background:
+        radial-gradient(ellipse at 8% 0%, alpha(@seven_text, 0.030), transparent 42%),
+        alpha(@seven_panel, 0.46);
+      border: 1px solid alpha(@seven_border, 0.54);
+      color: @seven_text;
+    }
+
+    window.settings-window .settings-row {
+      min-height: 54px;
+      padding: 9px 10px;
+      background: transparent;
+      color: @seven_text;
+    }
+
+    window.settings-window .settings-row-controls {
+      min-width: 0;
+      margin-left: 8px;
+    }
+
+    window.settings-window .settings-row-controls button.action-button {
+      min-width: 68px;
+      min-height: 28px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 10px;
+    }
+
+    window.settings-window .settings-row-controls.multi button.action-button {
+      min-width: 76px;
+    }
+
+    window.settings-window button.action-button,
+    window.settings-window button.nav-button,
+    window.settings-window button.search-result-button {
+      color: @seven_text;
+      background:
+        linear-gradient(180deg, alpha(@seven_panel, 0.70), alpha(@seven_bg, 0.18));
+      border: 1px solid alpha(@seven_border, 0.58);
+      box-shadow: none;
+    }
+
+    window.settings-window button.action-button:hover,
+    window.settings-window button.action-button:focus,
+    window.settings-window button.nav-button:hover,
+    window.settings-window button.nav-button:focus,
+    window.settings-window button.search-result-button:hover,
+    window.settings-window button.search-result-button:focus {
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_accent, 0.16), transparent 44%),
+        alpha(@seven_panel, 0.64);
+      border-color: alpha(@seven_accent, 0.38);
+    }
+
+    window.settings-window button.nav-button {
+      margin: 0 6px;
+    }
+
+    window.settings-window button.nav-button.active {
+      background:
+        radial-gradient(ellipse at 12% 0%, alpha(@seven_accent, 0.22), transparent 45%),
+        alpha(@seven_accent, 0.14);
+      border-color: alpha(@seven_accent, 0.42);
+    }
+
+    window.settings-window .settings-row-title,
+    window.settings-window .card-title,
+    window.settings-window .status-title,
+    window.settings-window .solution-tile-title {
+      color: @seven_text;
+    }
+
+    window.settings-window .settings-row-note,
+    window.settings-window .card-note,
+    window.settings-window .status-label,
+    window.settings-window .solution-tile-note {
+      color: @seven_muted;
+    }
+
+    window.settings-window.theme-light scrolledwindow,
+    window.settings-window.theme-light scrolledwindow viewport,
+    window.settings-window.theme-light viewport,
+    window.settings-window.theme-light list,
+    window.settings-window.theme-light row,
+    window.settings-window.theme-light flowbox,
+    window.settings-window.theme-light flowboxchild {
+      background-color: transparent;
+      color: @seven_text;
+    }
+
+    window.settings-window.theme-dark scrolledwindow,
+    window.settings-window.theme-dark scrolledwindow viewport,
+    window.settings-window.theme-dark viewport,
+    window.settings-window.theme-dark list,
+    window.settings-window.theme-dark row,
+    window.settings-window.theme-dark flowbox,
+    window.settings-window.theme-dark flowboxchild {
+      background-color: transparent;
+      color: @seven_text;
+    }
     """
 
 
@@ -2228,12 +2749,12 @@ def run(initial_page: str = "overview") -> int:
     except Exception:
         pass
     compact_screen = workarea_width < 1180 or workarea_height < 720
-    default_width = min(workarea_width - 56, min(920, max(720, int(workarea_width * 0.68))))
-    default_height = min(workarea_height - 64, min(600, max(480, int(workarea_height * 0.66))))
+    default_width = min(workarea_width - 72, min(900, max(720, int(workarea_width * 0.62))))
+    default_height = min(workarea_height - 72, min(640, max(500, int(workarea_height * 0.68))))
     min_width = min(default_width, 680 if compact_screen else 780)
     min_height = min(default_height, 440 if compact_screen else 500)
     sidebar_width = 188 if compact_screen else 220
-    content_width = min(820, max(440, default_width - sidebar_width - 50))
+    content_width = min(760, max(440, default_width - sidebar_width - 54))
     card_width = max(220, int((content_width - 12) / 2))
     window.set_default_size(default_width, default_height)
     geometry = Gdk.Geometry()
@@ -2263,6 +2784,60 @@ def run(initial_page: str = "overview") -> int:
 
     body = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
 
+    profile_colors = {
+        "equinox": (0.38, 0.54, 1.00),
+        "baobab": (0.23, 0.72, 0.45),
+        "forge": (1.00, 0.55, 0.25),
+        "shield": (0.32, 0.95, 0.82),
+        "studio": (0.84, 0.45, 0.95),
+        "pulse": (1.00, 0.68, 0.24),
+        "atlas": (0.46, 0.78, 1.00),
+    }
+
+    def active_profile_color() -> tuple[float, float, float]:
+        return profile_colors.get(active_profile_key(), profile_colors["equinox"])
+
+    def prism_canvas(size: int = 48, thin: bool = False) -> Gtk.DrawingArea:
+        area = Gtk.DrawingArea()
+        area.set_size_request(size, size)
+
+        def draw(widget, cr) -> bool:
+            width = max(1, widget.get_allocated_width())
+            height = max(1, widget.get_allocated_height())
+            cx, cy = width / 2.0, height / 2.0
+            radius = min(width, height) * (0.34 if thin else 0.36)
+            accent = active_profile_color()
+            nodes = []
+            for index in range(6):
+                angle = -math.pi / 2 + index * (math.pi * 2 / 6)
+                nodes.append((cx + math.cos(angle) * radius, cy + math.sin(angle) * radius))
+            cr.set_line_width(1.15 if thin else 1.45)
+            for idx, (x, y) in enumerate(nodes):
+                blend = 0.40 + idx * 0.08
+                cr.set_source_rgba(accent[0], accent[1] * min(1.0, blend + 0.35), accent[2], 0.34)
+                cr.move_to(cx, cy)
+                cr.line_to(x, y)
+                cr.stroke()
+            cr.set_line_width(1.0)
+            for idx, (x, y) in enumerate(nodes):
+                x2, y2 = nodes[(idx + 1) % len(nodes)]
+                cr.set_source_rgba(accent[0], accent[1], accent[2], 0.20)
+                cr.move_to(x, y)
+                cr.line_to(x2, y2)
+                cr.stroke()
+            cr.arc(cx, cy, max(3.0, size * 0.085), 0, math.pi * 2)
+            cr.set_source_rgba(accent[0], accent[1], accent[2], 0.92)
+            cr.fill()
+            for idx, (x, y) in enumerate(nodes):
+                node_radius = max(2.2, size * (0.052 if thin else 0.062))
+                cr.arc(x, y, node_radius, 0, math.pi * 2)
+                cr.set_source_rgba(accent[0], accent[1], accent[2], 0.82 if idx == 0 else 0.55)
+                cr.fill()
+            return False
+
+        area.connect("draw", draw)
+        return area
+
     def toggle_zoom() -> None:
         if window.is_maximized():
             window.unmaximize()
@@ -2283,6 +2858,13 @@ def run(initial_page: str = "overview") -> int:
     sidebar_scroller.set_size_request(sidebar_width, -1)
     sidebar_scroller.get_style_context().add_class("settings-sidebar-scroll")
     sidebar_scroller.add(sidebar)
+    sidebar_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    sidebar_area.set_size_request(sidebar_width, -1)
+    sidebar_area.get_style_context().add_class("settings-sidebar-area")
+    sidebar_area.pack_start(sidebar_scroller, True, True, 0)
+    sidebar_footer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    sidebar_footer.get_style_context().add_class("settings-sidebar-footer")
+    sidebar_area.pack_end(sidebar_footer, False, False, 0)
 
     traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     traffic.get_style_context().add_class("traffic")
@@ -2294,10 +2876,25 @@ def run(initial_page: str = "overview") -> int:
         traffic.pack_start(button, False, False, 0)
     sidebar.pack_start(traffic, False, False, 0)
 
-    brand = Gtk.Label(label=tr("settings.title", "Réglages SevenOS"))
-    brand.set_xalign(0)
-    brand.get_style_context().add_class("brand")
-    sidebar.pack_start(brand, False, False, 0)
+    brand_card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    brand_card.get_style_context().add_class("settings-prism-brand")
+    brand_mark = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    brand_mark.get_style_context().add_class("settings-prism-brand-mark")
+    brand_mark.pack_start(prism_canvas(34, thin=True), True, True, 0)
+    brand_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+    brand_title = Gtk.Label(label=tr("settings.title", "Réglages SevenOS"))
+    brand_title.set_xalign(0)
+    brand_title.set_ellipsize(Pango.EllipsizeMode.END)
+    brand_title.get_style_context().add_class("settings-prism-brand-title")
+    brand_note = Gtk.Label(label=tr("settings.control_prism.note", "Centre Prism · réglages vivants"))
+    brand_note.set_xalign(0)
+    brand_note.set_ellipsize(Pango.EllipsizeMode.END)
+    brand_note.get_style_context().add_class("settings-prism-brand-note")
+    brand_text.pack_start(brand_title, False, False, 0)
+    brand_text.pack_start(brand_note, False, False, 0)
+    brand_card.pack_start(brand_mark, False, False, 0)
+    brand_card.pack_start(brand_text, True, True, 0)
+    sidebar.pack_start(brand_card, False, False, 0)
 
     stack = Gtk.Stack()
     stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
@@ -2336,11 +2933,53 @@ def run(initial_page: str = "overview") -> int:
     topbar.pack_start(search_entry, True, True, 0)
     topbar.pack_start(live_refresh_button, False, False, 0)
     content.pack_start(topbar, False, False, 0)
+    identity_strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    identity_strip.get_style_context().add_class("settings-identity-strip")
+    strip_prism = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+    strip_prism.get_style_context().add_class("settings-strip-prism")
+    strip_prism.pack_start(prism_canvas(30, thin=True), True, True, 0)
+    strip_title, strip_state = active_profile()
+    strip_profile = Gtk.Label(label=tr("settings.identity.profile", "{space} · espace actif", space=strip_title))
+    strip_profile.set_xalign(0)
+    strip_profile.set_ellipsize(Pango.EllipsizeMode.END)
+    strip_profile.get_style_context().add_class("settings-identity-chip")
+    strip_mission = Gtk.Label(label=tr("settings.identity.mission", "Mission système"))
+    strip_mission.set_ellipsize(Pango.EllipsizeMode.END)
+    strip_mission.get_style_context().add_class("settings-identity-chip")
+    strip_mission.get_style_context().add_class("mission")
+    strip_impact = Gtk.Label(label=tr("settings.identity.impact", "Impact faible"))
+    strip_impact.set_tooltip_text(tr("settings.identity.impact.tooltip", "Niveau d’impact des actions courantes de cette page."))
+    strip_impact.get_style_context().add_class("settings-identity-chip")
+    strip_impact.get_style_context().add_class("impact-low")
+    strip_theme = Gtk.Label(label=tr("settings.identity.theme", "Thème {mode}", mode=current_theme_mode()))
+    strip_theme.get_style_context().add_class("settings-identity-chip")
+    strip_ready = Gtk.Label(label=tr("settings.identity.ready", "Contrôles prêts"))
+    strip_ready.get_style_context().add_class("settings-identity-chip")
+    identity_strip.pack_start(strip_prism, False, False, 0)
+    identity_strip.pack_start(strip_profile, True, True, 0)
+    identity_strip.pack_start(strip_mission, False, False, 0)
+    identity_strip.pack_start(strip_ready, False, False, 0)
+    content.pack_start(identity_strip, False, False, 0)
+    identity_strip.set_no_show_all(True)
+    identity_strip.hide()
+    next_action_strip = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)
+    next_action_strip.get_style_context().add_class("settings-next-strip")
+    next_action_buttons: list[Gtk.Button] = []
+    for _index in range(3):
+        action = Gtk.Button()
+        action.get_style_context().add_class("settings-next-action")
+        action.connect("clicked", lambda button: activate_page(getattr(button, "sevenos_target", "overview"), nav_by_target.get(getattr(button, "sevenos_target", "overview"))))
+        next_action_buttons.append(action)
+        next_action_strip.pack_start(action, True, True, 0)
+    next_action_strip.set_no_show_all(True)
+    next_action_strip.hide()
     page_hint = Gtk.Label(label="")
     page_hint.set_xalign(0)
     page_hint.set_line_wrap(True)
     page_hint.get_style_context().add_class("settings-page-hint")
     content.pack_start(page_hint, False, False, 0)
+    page_hint.set_no_show_all(True)
+    page_hint.hide()
     search_results = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
     search_results.set_no_show_all(True)
     search_results.get_style_context().add_class("search-results")
@@ -2359,7 +2998,25 @@ def run(initial_page: str = "overview") -> int:
     content.pack_start(feedback_revealer, False, False, 0)
     content.pack_start(stack, True, True, 0)
 
-    body.pack_start(sidebar_scroller, False, False, 0)
+    body.pack_start(sidebar_area, False, False, 0)
+    prism_spine = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    prism_spine.set_size_request(34, -1)
+    prism_spine.set_valign(Gtk.Align.FILL)
+    prism_spine.get_style_context().add_class("settings-prism-spine")
+    spine_top = Gtk.Box()
+    spine_top.set_vexpand(True)
+    spine_bottom = Gtk.Box()
+    spine_bottom.set_vexpand(True)
+    prism_spine.pack_start(spine_top, True, True, 0)
+    for index, key in enumerate(["equinox", "baobab", "forge", "shield", "studio", "pulse", "atlas"]):
+        node = Gtk.Label(label="●")
+        node.set_tooltip_text(profile_catalog().get("profile_naming", {}).get(key, key.title()))
+        node.get_style_context().add_class("settings-spine-node")
+        if key == active_profile_key():
+            node.get_style_context().add_class("active")
+        node.get_style_context().add_class(f"node-{key}")
+        prism_spine.pack_start(node, False, False, 0)
+    prism_spine.pack_start(spine_bottom, True, True, 0)
     body.pack_start(content, True, True, 0)
     shell.pack_start(body, True, True, 0)
 
@@ -2374,20 +3031,27 @@ def run(initial_page: str = "overview") -> int:
 
     def page(title: str, subtitle: str) -> tuple[Gtk.Box, Gtk.ScrolledWindow]:
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        outer.set_halign(Gtk.Align.START)
+        outer.set_halign(Gtk.Align.CENTER)
         outer.set_valign(Gtk.Align.START)
         outer.set_size_request(content_width, -1)
         outer.set_can_focus(True)
         outer.get_style_context().add_class("page-frame")
+        hero = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        hero.get_style_context().add_class("settings-page-hero")
+        hero_copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
         title_label = Gtk.Label(label=title)
         title_label.set_xalign(0)
+        title_label.set_ellipsize(Pango.EllipsizeMode.END)
         title_label.get_style_context().add_class("page-title")
         subtitle_label = Gtk.Label(label=subtitle)
         subtitle_label.set_xalign(0)
         subtitle_label.set_line_wrap(True)
+        subtitle_label.set_max_width_chars(84)
         subtitle_label.get_style_context().add_class("page-subtitle")
-        outer.pack_start(title_label, False, False, 0)
-        outer.pack_start(subtitle_label, False, False, 0)
+        hero_copy.pack_start(title_label, False, False, 0)
+        hero_copy.pack_start(subtitle_label, False, False, 0)
+        hero.pack_start(hero_copy, True, True, 0)
+        outer.pack_start(hero, False, False, 0)
         outer.sevenos_subtitle = subtitle
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -2417,6 +3081,186 @@ def run(initial_page: str = "overview") -> int:
             if isinstance(value, str):
                 return value
         return ""
+
+    def page_family(name: str) -> str:
+        families = {
+            "overview": tr("settings.family.home", "Pilotage"),
+            "general": tr("settings.family.home", "Pilotage"),
+            "experience": tr("settings.family.home", "Pilotage"),
+            "profiles": tr("settings.family.spaces", "Espaces"),
+            "power": tr("settings.family.system", "Système"),
+            "prism": tr("settings.family.identity", "Identité"),
+            "appearance": tr("settings.family.identity", "Identité"),
+            "wallpaper": tr("settings.family.identity", "Identité"),
+            "fonts": tr("settings.family.identity", "Identité"),
+            "display": tr("settings.family.devices", "Appareils"),
+            "network": tr("settings.family.devices", "Appareils"),
+            "sound": tr("settings.family.devices", "Appareils"),
+            "keyboard": tr("settings.family.devices", "Appareils"),
+            "defaults": tr("settings.family.apps", "Apps"),
+            "apps": tr("settings.family.apps", "Apps"),
+            "privacy": tr("settings.family.trust", "Confiance"),
+            "security": tr("settings.family.trust", "Confiance"),
+            "backup": tr("settings.family.maintenance", "Maintenance"),
+            "shortcuts": tr("settings.family.system", "Système"),
+            "system": tr("settings.family.maintenance", "Maintenance"),
+        }
+        return families.get(name, tr("settings.family.settings", "Réglages"))
+
+    def page_mission(name: str) -> str:
+        missions = {
+            "overview": tr("settings.mission.overview", "Vue claire de l’état SevenOS"),
+            "general": tr("settings.mission.general", "Comportement quotidien"),
+            "experience": tr("settings.mission.experience", "Parcours guidés"),
+            "profiles": tr("settings.mission.profiles", "Changer d’espace sans friction"),
+            "power": tr("settings.mission.power", "Veille et performance"),
+            "prism": tr("settings.mission.prism", "Contrôle flottant SevenOS"),
+            "appearance": tr("settings.mission.appearance", "Style et confort visuel"),
+            "wallpaper": tr("settings.mission.wallpaper", "Ambiances dynamiques"),
+            "fonts": tr("settings.mission.fonts", "Lecture et typographie"),
+            "display": tr("settings.mission.display", "Écrans et luminosité"),
+            "network": tr("settings.mission.network", "Connexion et Wi‑Fi"),
+            "sound": tr("settings.mission.sound", "Audio et entrées"),
+            "keyboard": tr("settings.mission.keyboard", "Saisie et raccourcis"),
+            "defaults": tr("settings.mission.defaults", "Apps par défaut"),
+            "apps": tr("settings.mission.apps", "Installer et gérer"),
+            "privacy": tr("settings.mission.privacy", "Données et permissions"),
+            "security": tr("settings.mission.security", "Protection Shield"),
+            "backup": tr("settings.mission.backup", "Restaurer et migrer"),
+            "shortcuts": tr("settings.mission.shortcuts", "Gestes rapides"),
+            "system": tr("settings.mission.system", "Santé et mises à jour"),
+        }
+        return missions.get(name, page_subtitle(name) or page_title(name))
+
+    def page_impact(name: str) -> tuple[str, str, str]:
+        if name in {"privacy", "security", "backup", "system"}:
+            return (
+                tr("settings.impact.high", "Impact sensible"),
+                "impact-high",
+                tr("settings.impact.high.note", "Cette section peut toucher à la sécurité, aux données, aux sauvegardes ou aux réparations."),
+            )
+        if name in {"profiles", "power", "prism", "appearance", "wallpaper", "display", "network", "sound", "keyboard", "defaults", "apps", "shortcuts"}:
+            return (
+                tr("settings.impact.medium", "Impact système"),
+                "impact-medium",
+                tr("settings.impact.medium.note", "Cette section change le comportement ou l’apparence de SevenOS, avec retour guidé."),
+            )
+        return (
+            tr("settings.impact.low", "Impact faible"),
+            "impact-low",
+            tr("settings.impact.low.note", "Cette section sert surtout à comprendre, parcourir ou ouvrir des réglages sûrs."),
+        )
+
+    def next_actions_for(name: str) -> list[tuple[str, str, str]]:
+        actions = {
+            "overview": [
+                ("general", tr("settings.next.general", "Ajuster l’essentiel"), tr("settings.next.general.note", "Langue, comportement et état courant.")),
+                ("prism", tr("settings.next.prism", "Configurer le Prism"), tr("settings.next.prism.note", "Cible, effets et raccourcis flottants.")),
+                ("system", tr("settings.next.system", "Vérifier le système"), tr("settings.next.system.note", "Santé, update et réparation.")),
+            ],
+            "general": [
+                ("appearance", tr("settings.next.appearance", "Personnaliser"), tr("settings.next.appearance.note", "Thème, fonds et confort visuel.")),
+                ("profiles", tr("settings.next.profiles", "Choisir un Mini OS"), tr("settings.next.profiles.note", "Adapter SevenOS à ton usage.")),
+                ("privacy", tr("settings.next.privacy", "Protéger les données"), tr("settings.next.privacy.note", "Permissions et historique.")),
+            ],
+            "experience": [
+                ("system", tr("settings.next.repair", "Réparer"), tr("settings.next.repair.note", "Diagnostics et actions guidées.")),
+                ("backup", tr("settings.next.backup", "Sauvegarder"), tr("settings.next.backup.note", "Préparer un retour arrière.")),
+                ("shortcuts", tr("settings.next.shortcuts", "Accélérer"), tr("settings.next.shortcuts.note", "Raccourcis et gestes SevenOS.")),
+            ],
+            "profiles": [
+                ("prism", tr("settings.next.prism", "Configurer le Prism"), tr("settings.next.prism.note", "Suivre le Mini OS actif.")),
+                ("apps", tr("settings.next.apps", "Installer les apps"), tr("settings.next.apps.note", "Compléter l’espace choisi.")),
+                ("system", tr("settings.next.system", "Vérifier le système"), tr("settings.next.system.note", "Préparation et santé.")),
+            ],
+            "prism": [
+                ("appearance", tr("settings.next.appearance", "Harmoniser le style"), tr("settings.next.appearance.note", "Accent, transparence et mouvement.")),
+                ("shortcuts", tr("settings.next.shortcuts", "Raccourcis"), tr("settings.next.shortcuts.note", "Activer ou masquer vite le Prism.")),
+                ("profiles", tr("settings.next.profiles", "Lien Mini OS"), tr("settings.next.profiles.note", "Faire suivre l’espace actif.")),
+            ],
+            "appearance": [
+                ("wallpaper", tr("settings.next.wallpaper", "Choisir une ambiance"), tr("settings.next.wallpaper.note", "Fonds fixes, dynamiques ou rotation.")),
+                ("fonts", tr("settings.next.fonts", "Ajuster la lecture"), tr("settings.next.fonts.note", "Polices et lisibilité.")),
+                ("prism", tr("settings.next.prism", "Accorder le Prism"), tr("settings.next.prism.note", "Effets et présence à l’écran.")),
+            ],
+            "wallpaper": [
+                ("appearance", tr("settings.next.appearance", "Revenir au thème"), tr("settings.next.appearance.note", "Palette, mode clair/sombre.")),
+                ("profiles", tr("settings.next.profiles", "Ambiance par Mini OS"), tr("settings.next.profiles.note", "Relier fonds et espaces.")),
+                ("system", tr("settings.next.system", "Synchroniser"), tr("settings.next.system.note", "Réappliquer les surfaces.")),
+            ],
+            "display": [
+                ("power", tr("settings.next.power", "Veille écran"), tr("settings.next.power.note", "Temps d’inactivité et énergie.")),
+                ("appearance", tr("settings.next.appearance", "Confort visuel"), tr("settings.next.appearance.note", "Clair, sombre et contraste.")),
+                ("system", tr("settings.next.system", "Réparer l’interface"), tr("settings.next.system.note", "Waybar, thème et surfaces.")),
+            ],
+            "network": [
+                ("security", tr("settings.next.security", "Sécuriser"), tr("settings.next.security.note", "Shield et posture réseau.")),
+                ("apps", tr("settings.next.apps", "Sources apps"), tr("settings.next.apps.note", "Store, Flatpak et paquets.")),
+                ("system", tr("settings.next.system", "Diagnostic"), tr("settings.next.system.note", "Santé et connectivité.")),
+            ],
+            "sound": [
+                ("privacy", tr("settings.next.privacy", "Micro et données"), tr("settings.next.privacy.note", "Permissions audio sensibles.")),
+                ("apps", tr("settings.next.apps", "Apps audio"), tr("settings.next.apps.note", "Outils et sources.")),
+                ("system", tr("settings.next.system", "Diagnostic"), tr("settings.next.system.note", "Services et session.")),
+            ],
+            "keyboard": [
+                ("shortcuts", tr("settings.next.shortcuts", "Raccourcis"), tr("settings.next.shortcuts.note", "Gestes système et navigation.")),
+                ("fonts", tr("settings.next.fonts", "Lisibilité"), tr("settings.next.fonts.note", "Texte et confort.")),
+                ("profiles", tr("settings.next.profiles", "Par espace"), tr("settings.next.profiles.note", "Adapter au Mini OS.")),
+            ],
+            "security": [
+                ("privacy", tr("settings.next.privacy", "Permissions"), tr("settings.next.privacy.note", "Données, caméra, micro.")),
+                ("backup", tr("settings.next.backup", "Sauvegarder"), tr("settings.next.backup.note", "Avant action sensible.")),
+                ("profiles", tr("settings.next.profiles", "Ouvrir Shield"), tr("settings.next.profiles.note", "Espace cybersécurité.")),
+            ],
+            "privacy": [
+                ("security", tr("settings.next.security", "Vérifier Shield"), tr("settings.next.security.note", "Posture et audit.")),
+                ("apps", tr("settings.next.apps", "Apps installées"), tr("settings.next.apps.note", "Sources et désinstallation.")),
+                ("backup", tr("settings.next.backup", "Préserver"), tr("settings.next.backup.note", "Sauvegarde et migration.")),
+            ],
+            "backup": [
+                ("system", tr("settings.next.system", "Maintenance"), tr("settings.next.system.note", "Update, repair et logs.")),
+                ("privacy", tr("settings.next.privacy", "Données"), tr("settings.next.privacy.note", "Ce qui est conservé.")),
+                ("overview", tr("settings.next.overview", "Retour au centre"), tr("settings.next.overview.note", "État général SevenOS.")),
+            ],
+            "system": [
+                ("backup", tr("settings.next.backup", "Sauvegarder"), tr("settings.next.backup.note", "Avant mise à jour ou réparation.")),
+                ("security", tr("settings.next.security", "Contrôler Shield"), tr("settings.next.security.note", "Protection et audit.")),
+                ("overview", tr("settings.next.overview", "Retour au centre"), tr("settings.next.overview.note", "Vue claire de l’état.")),
+            ],
+        }
+        return actions.get(
+            name,
+            [
+                ("overview", tr("settings.next.overview", "Retour au centre"), tr("settings.next.overview.note", "Vue claire de l’état.")),
+                ("system", tr("settings.next.system", "Vérifier le système"), tr("settings.next.system.note", "Santé, update et réparation.")),
+                ("privacy", tr("settings.next.privacy", "Protéger les données"), tr("settings.next.privacy.note", "Permissions et historique.")),
+            ],
+        )
+
+    def rebuild_next_action_button(button: Gtk.Button, target: str, label: str, note: str) -> None:
+        for child in button.get_children():
+            button.remove(child)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+        title = Gtk.Label(label=label)
+        title.set_xalign(0)
+        title.set_ellipsize(Pango.EllipsizeMode.END)
+        title.get_style_context().add_class("settings-next-title")
+        detail = Gtk.Label(label=note)
+        detail.set_xalign(0)
+        detail.set_ellipsize(Pango.EllipsizeMode.END)
+        detail.get_style_context().add_class("settings-next-note")
+        box.pack_start(title, False, False, 0)
+        box.pack_start(detail, False, False, 0)
+        button.add(box)
+        button.set_tooltip_text(f"{label}\n{note}")
+        button.sevenos_target = target
+        button.show_all()
+
+    def update_next_actions(name: str) -> None:
+        actions = next_actions_for(name)
+        for button, (target, label, note) in zip(next_action_buttons, actions):
+            rebuild_next_action_button(button, target, label, note)
 
     def page_opened_message(name: str) -> str:
         return tr("settings.page.opened_named", "{page} ouverte.", page=page_title(name))
@@ -2463,11 +3307,27 @@ def run(initial_page: str = "overview") -> int:
             del page_back_stack[:-24]
             page_forward_stack.clear()
             remember_page(name)
+            try:
+                rebuild_recent_pages()
+            except NameError:
+                pass
         current_page = name
         page_context.set_text(page_title(name))
         page_context.set_tooltip_text(page_title(name))
         page_hint.set_text(page_subtitle(name))
         page_hint.set_tooltip_text(page_subtitle(name) or page_title(name))
+        strip_mission.set_text(f"{page_family(name)} · {page_mission(name)}")
+        strip_mission.set_tooltip_text(page_subtitle(name) or page_mission(name))
+        strip_ready.set_text(tr("settings.identity.page_ready", "{page} prêt", page=page_title(name)))
+        strip_ready.set_tooltip_text(page_subtitle(name) or page_title(name))
+        strip_theme.set_text(tr("settings.identity.theme", "Thème {mode}", mode=current_theme_mode()))
+        impact_label, impact_class, impact_note = page_impact(name)
+        strip_impact.set_text(impact_label)
+        strip_impact.set_tooltip_text(impact_note)
+        for css_class in ("impact-low", "impact-medium", "impact-high"):
+            strip_impact.get_style_context().remove_class(css_class)
+        strip_impact.get_style_context().add_class(impact_class)
+        update_next_actions(name)
         live_refresh_button.set_tooltip_text(tr("settings.refresh_live.page_tooltip", "Actualiser {page} avec les informations live.", page=page_title(name)))
         targets = list(nav_by_target.keys())
         if name in targets:
@@ -2552,6 +3412,54 @@ def run(initial_page: str = "overview") -> int:
     back_button.connect("clicked", lambda _button: go_back())
     forward_button.connect("clicked", lambda _button: go_forward())
     update_history_buttons()
+
+    def sidebar_footer_button(icon: str, label: str, callback, tooltip: str) -> Gtk.Button:
+        button = Gtk.Button()
+        button.get_style_context().add_class("settings-footer-button")
+        button.set_tooltip_text(tooltip)
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        glyph = Gtk.Label(label=icon)
+        glyph.get_style_context().add_class("settings-footer-icon")
+        text = Gtk.Label(label=label)
+        text.set_xalign(0)
+        text.set_ellipsize(Pango.EllipsizeMode.END)
+        text.get_style_context().add_class("settings-footer-label")
+        row.pack_start(glyph, False, False, 0)
+        row.pack_start(text, True, True, 0)
+        button.add(row)
+        button.connect("clicked", lambda _button: callback())
+        return button
+
+    def open_help_center() -> None:
+        show_feedback(tr("settings.footer.help_opening", "Ouverture de l’aide SevenOS…"))
+        run_detached("seven-help-native")
+
+    def open_rescue_center() -> None:
+        show_feedback(tr("settings.footer.rescue_opening", "Ouverture du mode secours SevenOS…"))
+        run_detached("seven rescue --gui")
+
+    def open_update_center() -> None:
+        show_feedback(tr("settings.footer.update_opening", "Préparation des mises à jour…"))
+        GLib.idle_add(lambda: (show_update_manager(), False)[1])
+
+    def open_history_center() -> None:
+        show_feedback(tr("settings.footer.history_opening", "Ouverture de l’historique des actions…"))
+        GLib.idle_add(lambda: (show_settings_action_history(), False)[1])
+
+    sidebar_footer.pack_start(
+        sidebar_footer_button("?", tr("settings.help", "Aide"), open_help_center, tr("settings.footer.help.tooltip", "Ouvrir l’aide SevenOS · Super+H")),
+        False,
+        False,
+        0,
+    )
+    sidebar_footer.pack_start(
+        sidebar_footer_button("󰜉", "Rescue", open_rescue_center, tr("settings.footer.rescue.tooltip", "Réparer sans toucher aux fichiers personnels")),
+        False,
+        False,
+        0,
+    )
+    sidebar_footer.set_no_show_all(True)
+    sidebar_footer.hide()
 
     def handle_window_keys(_window, event) -> bool:
         state = event.state
@@ -3224,6 +4132,16 @@ def run(initial_page: str = "overview") -> int:
         return button
 
     sidebar.pack_start(user_account_button(), False, False, 0)
+    recent_section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+    recent_section.set_no_show_all(True)
+    recent_section.get_style_context().add_class("settings-recent-pages")
+    recent_title = Gtk.Label(label=tr("settings.recent_pages", "RÉCENT"))
+    recent_title.set_xalign(0)
+    recent_title.get_style_context().add_class("sidebar-section-label")
+    recent_items = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+    recent_section.pack_start(recent_title, False, False, 0)
+    recent_section.pack_start(recent_items, False, False, 0)
+    recent_section.hide()
 
     def info_dialog(title_text: str, note_text: str, rows: list[tuple[str, str, str, str | None]], width: int = 560, height: int = 460) -> None:
         dialog = Gtk.Dialog(title=title_text, transient_for=window, flags=Gtk.DialogFlags.MODAL)
@@ -4518,7 +5436,7 @@ def run(initial_page: str = "overview") -> int:
         button.sevenos_last_click_ms = now
         return False
 
-    def nav(name: str, icon: str, label: str, target: str) -> None:
+    def nav(name: str, icon: str, label: str, target: str, visible: bool = True) -> None:
         button = Gtk.Button()
         button.get_style_context().add_class("nav-button")
         button.set_tooltip_text(tr("settings.nav.tooltip", "Ouvrir {page}", page=label))
@@ -4533,16 +5451,44 @@ def run(initial_page: str = "overview") -> int:
         row.pack_start(text, True, True, 0)
         button.add(row)
         button.connect("clicked", lambda clicked: activate_page(target, clicked))
-        nav_buttons.append(button)
         nav_by_target[target] = button
         nav_titles[target] = label
-        sidebar.pack_start(button, False, False, 0)
+        if visible:
+            nav_buttons.append(button)
+            sidebar.pack_start(button, False, False, 0)
 
     def sidebar_section(label: str) -> None:
         section_label = Gtk.Label(label=label.upper())
         section_label.set_xalign(0)
         section_label.get_style_context().add_class("sidebar-section-label")
         sidebar.pack_start(section_label, False, False, 0)
+
+    def rebuild_recent_pages() -> None:
+        recent_section.hide()
+        return
+        for child in recent_items.get_children():
+            recent_items.remove(child)
+        recent = [page for page in recent_pages() if page in nav_by_target][:3]
+        if not recent:
+            recent_section.hide()
+            return
+        for page_name in recent:
+            button = Gtk.Button()
+            button.get_style_context().add_class("recent-page-button")
+            button.set_tooltip_text(page_subtitle(page_name) or page_title(page_name))
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7)
+            dot = Gtk.Label(label="◦")
+            dot.get_style_context().add_class("recent-page-dot")
+            label = Gtk.Label(label=page_title(page_name))
+            label.set_xalign(0)
+            label.set_ellipsize(Pango.EllipsizeMode.END)
+            label.get_style_context().add_class("recent-page-label")
+            row.pack_start(dot, False, False, 0)
+            row.pack_start(label, True, True, 0)
+            button.add(row)
+            button.connect("clicked", lambda clicked, target=page_name: activate_page(target, nav_by_target[target]))
+            recent_items.pack_start(button, False, False, 0)
+        recent_section.show_all()
 
     def section(container: Gtk.Box, text: str) -> None:
         label = Gtk.Label(label=text.upper())
@@ -4672,6 +5618,7 @@ def run(initial_page: str = "overview") -> int:
         glyph.get_style_context().add_class("solution-tile-icon")
         labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
         labels.set_hexpand(True)
+        labels.set_size_request(0, -1)
         title_label = Gtk.Label(label=title)
         title_label.set_xalign(0)
         title_label.set_ellipsize(Pango.EllipsizeMode.END)
@@ -5133,13 +6080,6 @@ def run(initial_page: str = "overview") -> int:
             header.pack_start(action_button(tr("settings.check", "Vérifier"), "seven smoke doctor"), False, False, 0)
         card.pack_start(header, False, False, 0)
 
-        chips = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        for label, detail, ok in checks:
-            chip = Gtk.Label(label=f"{'✓' if ok else '!'} {label}")
-            chip.set_tooltip_text(detail)
-            chip.get_style_context().add_class("verdict-chip")
-            chips.pack_start(chip, False, False, 0)
-        card.pack_start(chips, False, False, 0)
         return card
 
     def continue_card() -> Gtk.Box | None:
@@ -6688,6 +7628,70 @@ def run(initial_page: str = "overview") -> int:
             page_opened_message(target),
         )
 
+    def control_constellation_card() -> Gtk.Box:
+        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        card.get_style_context().add_class("settings-constellation-card")
+        prism_zone = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+        prism_zone.set_halign(Gtk.Align.CENTER)
+        prism_zone.get_style_context().add_class("settings-constellation-prism-zone")
+        prism_frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        prism_frame.get_style_context().add_class("settings-constellation-prism")
+        prism_frame.pack_start(prism_canvas(82), True, True, 0)
+        prism_title = Gtk.Label(label=tr("settings.constellation.title", "Control Prism"))
+        prism_title.get_style_context().add_class("settings-constellation-title")
+        prism_note = Gtk.Label(label=tr("settings.constellation.note", "Sept axes pour piloter SevenOS sans terminal."))
+        prism_note.set_line_wrap(True)
+        prism_note.set_max_width_chars(24)
+        prism_note.get_style_context().add_class("settings-constellation-note")
+        prism_zone.pack_start(prism_frame, False, False, 0)
+        prism_zone.pack_start(prism_title, False, False, 0)
+        prism_zone.pack_start(prism_note, False, False, 0)
+
+        actions = Gtk.FlowBox()
+        actions.set_selection_mode(Gtk.SelectionMode.NONE)
+        actions.set_max_children_per_line(2 if compact_screen else 3)
+        actions.set_min_children_per_line(1)
+        actions.set_column_spacing(7)
+        actions.set_row_spacing(7)
+        actions.set_homogeneous(True)
+        actions.get_style_context().add_class("settings-constellation-actions")
+        for icon, label, note, target in [
+            ("◈", tr("settings.prism.page", "Prism"), tr("settings.constellation.prism", "Contrôles flottants, cible et effets."), "prism"),
+            ("󰐃", tr("settings.profiles", "Mini OS"), tr("settings.constellation.minios", "Changer d’espace et préparer ses outils."), "profiles"),
+            ("󰸉", tr("settings.appearance", "Apparence"), tr("settings.constellation.appearance", "Thème, fonds, polices et confort visuel."), "appearance"),
+            ("󰍹", tr("settings.displays", "Écrans"), tr("settings.constellation.devices", "Écran, Wi-Fi, son et clavier."), "display"),
+            ("󰒃", tr("settings.security", "Sécurité"), tr("settings.constellation.security", "Shield, permissions et confidentialité."), "security"),
+            ("󰁹", tr("settings.power", "Énergie"), tr("settings.constellation.power", "Veille, batterie et performance."), "power"),
+            ("󰚰", tr("settings.system", "Système"), tr("settings.constellation.system", "Mises à jour, sauvegarde et réparation."), "system"),
+        ]:
+            button = Gtk.Button()
+            button.get_style_context().add_class("settings-constellation-button")
+            button.set_tooltip_text(f"{label}\n{note}")
+            inner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            glyph = Gtk.Label(label=icon)
+            glyph.get_style_context().add_class("settings-constellation-icon")
+            text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
+            title = Gtk.Label(label=label)
+            title.set_xalign(0)
+            title.set_ellipsize(Pango.EllipsizeMode.END)
+            title.get_style_context().add_class("settings-constellation-action-title")
+            detail = Gtk.Label(label=note)
+            detail.set_xalign(0)
+            detail.set_line_wrap(True)
+            detail.set_max_width_chars(28)
+            detail.get_style_context().add_class("settings-constellation-action-note")
+            text.pack_start(title, False, False, 0)
+            text.pack_start(detail, False, False, 0)
+            inner.pack_start(glyph, False, False, 0)
+            inner.pack_start(text, True, True, 0)
+            button.add(inner)
+            button.connect("clicked", lambda _button, page_name=target: activate_page(page_name, nav_by_target[page_name]))
+            actions.add(button)
+
+        card.pack_start(prism_zone, False, False, 0)
+        card.pack_start(actions, True, True, 0)
+        return card
+
     def copy_system_summary() -> None:
         about = system_about()
         summary = "\n".join(
@@ -6785,7 +7789,7 @@ def run(initial_page: str = "overview") -> int:
         payload = run_json_timeout([str(ROOT / "bin/seven-wallpaper"), "collection-list"], {}, timeout=1.2)
         items = payload.get("items") if isinstance(payload.get("items"), list) else []
         dialog = Gtk.Dialog(title=tr("settings.wallpaper_collection", "Collection SevenOS"), transient_for=window, modal=True)
-        dialog.set_default_size(840, 700)
+        dialog.set_default_size(760, 540)
         box = style_dialog(dialog)
         hero = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
         hero.get_style_context().add_class("wallpaper-hero")
@@ -6825,7 +7829,7 @@ def run(initial_page: str = "overview") -> int:
         search_entry.get_style_context().add_class("wallpaper-search")
         scroller = Gtk.ScrolledWindow()
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroller.set_size_request(700, 338)
+        scroller.set_size_request(620, 220)
         grid = Gtk.Grid(column_spacing=10, row_spacing=10)
         grid.set_margin_top(4)
         grid.set_margin_bottom(8)
@@ -7380,12 +8384,12 @@ def run(initial_page: str = "overview") -> int:
         title_label = Gtk.Label(label=title)
         title_label.set_xalign(0)
         title_label.set_ellipsize(Pango.EllipsizeMode.END)
-        title_label.set_max_width_chars(42)
+        title_label.set_max_width_chars(36)
         title_label.get_style_context().add_class("settings-row-title")
         note_label = Gtk.Label(label=note)
         note_label.set_xalign(0)
         note_label.set_line_wrap(True)
-        note_label.set_max_width_chars(72)
+        note_label.set_max_width_chars(58)
         note_label.get_style_context().add_class("settings-row-note")
         labels.pack_start(title_label, False, False, 0)
         labels.pack_start(note_label, False, False, 0)
@@ -7394,7 +8398,7 @@ def run(initial_page: str = "overview") -> int:
         control_box = Gtk.Box(orientation=control_orientation, spacing=6)
         control_box.set_halign(Gtk.Align.END)
         control_box.set_valign(Gtk.Align.CENTER)
-        control_box.set_size_request(126 if multi_controls else 112, -1)
+        control_box.set_size_request(108 if multi_controls else 94, -1)
         control_box.get_style_context().add_class("settings-row-controls")
         if multi_controls:
             control_box.get_style_context().add_class("multi")
@@ -7402,7 +8406,7 @@ def run(initial_page: str = "overview") -> int:
             control.set_halign(Gtk.Align.FILL if isinstance(control, Gtk.Button) else Gtk.Align.END)
             control.set_valign(Gtk.Align.CENTER)
             if isinstance(control, Gtk.Button):
-                control.set_size_request(104 if multi_controls else 92, 28)
+                control.set_size_request(86 if multi_controls else 78, 28)
             control_box.pack_start(control, False, False, 0)
         if controls:
             row.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
@@ -9425,28 +10429,29 @@ def run(initial_page: str = "overview") -> int:
     sidebar_section(tr("settings.nav.essential", "Essentiel"))
     nav("overview", "󰕮", tr("settings.overview", "Vue d’ensemble"), "overview")
     nav("general", "󰒓", tr("settings.general", "Général"), "general")
-    nav("experience", "◈", tr("settings.experience_center.nav", "Expérience"), "experience")
+    nav("experience", "◈", tr("settings.experience_center.nav", "Expérience"), "experience", visible=False)
     nav("profiles", "󰐃", tr("settings.profiles", "Mini OS"), "profiles")
     nav("power", "󰁹", tr("settings.power", "Énergie"), "power")
     sidebar_section(tr("settings.nav.personalization", "Personnalisation"))
     nav("prism", "◈", tr("settings.prism.page", "Prism"), "prism")
     nav("appearance", "󰸉", tr("settings.appearance", "Apparence"), "appearance")
     nav("wallpaper", "󰸉", tr("settings.wallpaper", "Fond d’écran"), "wallpaper")
-    nav("fonts", "󰛖", tr("settings.fonts", "Polices"), "fonts")
+    nav("fonts", "󰛖", tr("settings.fonts", "Polices"), "fonts", visible=False)
     sidebar_section(tr("settings.nav.devices", "Appareils"))
     nav("display", "󰍹", tr("settings.displays", "Écrans"), "display")
     nav("network", "󰤨", "Wi-Fi", "network")
     nav("sound", "󰕾", tr("settings.sound", "Son"), "sound")
-    nav("keyboard", "󰌌", tr("settings.keyboard", "Clavier"), "keyboard")
+    nav("keyboard", "󰌌", tr("settings.keyboard", "Clavier"), "keyboard", visible=False)
     sidebar_section(tr("settings.nav.apps_data", "Apps et données"))
-    nav("defaults", "󰒓", tr("settings.default_apps", "Apps par défaut"), "defaults")
+    nav("defaults", "󰒓", tr("settings.default_apps", "Apps par défaut"), "defaults", visible=False)
     nav("apps", "󰀻", tr("settings.apps", "Apps"), "apps")
     nav("privacy", "󰌾", tr("settings.privacy", "Confidentialité"), "privacy")
     nav("security", "󰒃", tr("settings.security", "Sécurité"), "security")
     sidebar_section(tr("settings.nav.maintenance", "Maintenance"))
-    nav("backup", "󰁯", tr("settings.backup_restore", "Sauvegarde"), "backup")
-    nav("shortcuts", "󰌌", tr("settings.shortcuts", "Raccourcis"), "shortcuts")
+    nav("backup", "󰁯", tr("settings.backup_restore", "Sauvegarde"), "backup", visible=False)
+    nav("shortcuts", "󰌌", tr("settings.shortcuts", "Raccourcis"), "shortcuts", visible=False)
     nav("system", "󰒓", tr("settings.system", "Système"), "system")
+    rebuild_recent_pages()
     initial_page = initial_page if initial_page in pages else "overview"
 
     settings_search_index = {
@@ -9482,7 +10487,7 @@ def run(initial_page: str = "overview") -> int:
             search_results.hide()
             return
         for target, terms in settings_search_index.items():
-            page_title = search_norm(pages[target][0].get_children()[0].get_text())
+            page_title = search_norm(nav_titles.get(target, target))
             if query in search_norm(terms) or query in page_title:
                 activate_page(target, nav_by_target[target])
                 show_feedback(page_opened_message(target))
@@ -9648,69 +10653,12 @@ def run(initial_page: str = "overview") -> int:
         overview,
         [
             (profile_name, f"{tr('settings.active_space', 'Espace actif')} · {profile_status}"),
-            (shield_percent, f"Shield · {shield_posture}"),
-            (session_percent, f"Session · {session_mode}"),
             (wifi_radio, wifi_detail),
-            (f"{volume}%", tr("settings.sound", "Son")),
             (battery, f"{tr('settings.power', 'Énergie')} · {battery_status}"),
+            (shield_percent, f"Shield · {shield_posture}"),
         ],
     )
-    overview.pack_start(hero_card(tr("settings.hero.title", "Ajuster SevenOS simplement"), tr("settings.hero.note", "Les réglages essentiels sont ici, avec des actions visibles et sans console.")), False, False, 0)
     overview.pack_start(instant_verdict_card(), False, False, 0)
-    overview_continue = continue_card()
-    if overview_continue is not None:
-        overview.pack_start(overview_continue, False, False, 0)
-    overview.pack_start(recommendation_card(), False, False, 0)
-    overview.pack_start(first_aid_card(), False, False, 0)
-    overview.pack_start(trust_center_card(), False, False, 0)
-    overview.pack_start(safe_actions_card(), False, False, 0)
-    overview.pack_start(experience_center_card(), False, False, 0)
-    overview.pack_start(solution_center_card(), False, False, 0)
-    overview.pack_start(support_card(), False, False, 0)
-    overview.pack_start(
-        workflow_card(
-            tr("settings.overview.recommended.title", "Parcours recommandé"),
-            tr("settings.overview.recommended.note", "Commence par l’essentiel, puis affine l’identité et les apps sans passer par le terminal."),
-            [
-                (tr("settings.overview.step.check", "Vérifier l’état"), tr("settings.overview.step.check.note", "Santé, session, réseau, énergie et mini OS actif.")),
-                (tr("settings.overview.step.personalize", "Personnaliser"), tr("settings.overview.step.personalize.note", "Thème, Prism, fond d’écran et polices SevenOS.")),
-                (tr("settings.overview.step.protect", "Protéger"), tr("settings.overview.step.protect.note", "Sauvegarde, confidentialité et sécurité avant les gros changements.")),
-            ],
-            [
-                page_button(tr("settings.open", "Ouvrir"), "general"),
-                page_button(tr("settings.privacy", "Confidentialité"), "privacy"),
-                page_button(tr("settings.system", "Système"), "system"),
-            ],
-        ),
-        False,
-        False,
-        0,
-    )
-    overview.pack_start(
-        quick_strip(
-            [
-                ("󰸉", tr("settings.wallpaper", "Fond d’écran"), "seven-settings wallpaper"),
-                ("󰤨", "Wi-Fi", "seven-settings network"),
-                ("󰕾", tr("settings.sound", "Son"), "seven-settings sound"),
-                ("󰃠", tr("settings.displays", "Écran"), "seven-settings display"),
-                ("󰚰", tr("settings.update", "Mettre à jour"), "seven update"),
-                ("󰒃", "Shield", "seven-settings security"),
-            ]
-        ),
-        False,
-        False,
-        0,
-    )
-    section(overview, tr("settings.shortcuts", "Raccourcis"))
-    card_grid(overview, [
-        setting_card("󰒓", tr("settings.general_card", "Réglages généraux"), tr("settings.general_card.note", "Langue, thèmes et comportement quotidien de SevenOS."), [page_button(tr("settings.open", "Ouvrir"), "general")]),
-        setting_card("◈", tr("settings.experience_center.title", "Experience Center"), tr("settings.experience_center.card_note", "Secours, Time Machine, permissions, timeline et parcours focus."), [page_button(tr("settings.open", "Ouvrir"), "experience")]),
-        setting_card("◈", tr("settings.prism.page", "Prism"), tr("settings.prism.page.subtitle", "Gérer le Prism SevenDecor, ses effets, sa cible et les actions fenêtre."), [page_button(tr("settings.open", "Ouvrir"), "prism")]),
-        setting_card("󰮍", tr("settings.capability_collaboration", "Outils d’autres espaces"), tr("settings.capability_injection.note", "Ajouter quelques outils utiles sans quitter l’espace actuel."), [page_button(tr("settings.open", "Ouvrir"), "general")]),
-        setting_card("󰀻", tr("settings.launchpad", "Launchpad"), tr("settings.launchpad.note", "Ouvrir la grille des apps SevenOS."), [action_button(tr("settings.open", "Ouvrir"), "seven-overview apps")]),
-        setting_card("󰉋", tr("settings.files", "Fichiers"), tr("settings.files.note", "Ouvrir Seven Files."), [action_button(tr("settings.open", "Ouvrir"), "seven-files")]),
-        setting_card("󰖟", tr("settings.spotlight", "Spotlight"), tr("settings.spotlight.note", "Rechercher apps, fichiers, actions et réglages."), [action_button(tr("settings.open", "Ouvrir"), "seven-spotlight")]),
-    ])
 
     experience = pages["experience"][0]
     experience.pack_start(
@@ -10653,6 +11601,17 @@ def run(initial_page: str = "overview") -> int:
     page_context.set_tooltip_text(page_title(initial_page))
     page_hint.set_text(page_subtitle(initial_page))
     page_hint.set_tooltip_text(page_subtitle(initial_page) or page_title(initial_page))
+    strip_mission.set_text(f"{page_family(initial_page)} · {page_mission(initial_page)}")
+    strip_mission.set_tooltip_text(page_subtitle(initial_page) or page_mission(initial_page))
+    strip_ready.set_text(tr("settings.identity.page_ready", "{page} prêt", page=page_title(initial_page)))
+    strip_ready.set_tooltip_text(page_subtitle(initial_page) or page_title(initial_page))
+    initial_impact_label, initial_impact_class, initial_impact_note = page_impact(initial_page)
+    strip_impact.set_text(initial_impact_label)
+    strip_impact.set_tooltip_text(initial_impact_note)
+    for css_class in ("impact-low", "impact-medium", "impact-high"):
+        strip_impact.get_style_context().remove_class(css_class)
+    strip_impact.get_style_context().add_class(initial_impact_class)
+    update_next_actions(initial_page)
     initial_targets = list(nav_by_target.keys())
     if initial_page in initial_targets:
         page_position.set_text(f"{initial_targets.index(initial_page) + 1}/{len(initial_targets)}")

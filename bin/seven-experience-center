@@ -49,6 +49,11 @@ SETTINGS_ACTION_LOG = CACHE_DIR / "settings-actions.log"
 MIGRATION_DIR = DATA_DIR / "migrations"
 WORKSPACE_MEMORY = STATE_DIR / "workspace-memory.json"
 THEME_PREFS = CONFIG_DIR / "theme-preferences.json"
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    import seven_theme  # noqa: E402
+except Exception:  # pragma: no cover
+    seven_theme = None
 
 
 def language_code() -> str:
@@ -68,6 +73,13 @@ LANG = language_code()
 
 def tr(fr: str, en: str) -> str:
     return fr if LANG == "fr" else en
+
+
+def theme_mode() -> str:
+    if seven_theme:
+        return seven_theme.current_theme_mode()
+    value = os.environ.get("SEVENOS_THEME_MODE", "").strip().lower()
+    return value if value in {"dark", "light"} else "dark"
 
 
 def current_context() -> dict:
@@ -967,7 +979,8 @@ def main() -> int:
     gi.require_version("Gdk", "3.0")
     from gi.repository import Gdk, GLib, Gtk
 
-    css = b"""
+    css_prefix = seven_theme.gtk_app_css("experience-center", theme_mode()) if seven_theme else ""
+    css = (css_prefix + """
     .experience-root { background: rgba(8, 10, 20, 0.92); color: #f7f9ff; }
     .experience-shell {
       padding: 14px;
@@ -1092,7 +1105,7 @@ def main() -> int:
       background: rgba(139,124,255,0.15);
       border-color: rgba(139,124,255,0.48);
     }
-    """
+    """).encode("utf-8")
     provider = Gtk.CssProvider()
     provider.load_from_data(css)
     Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)

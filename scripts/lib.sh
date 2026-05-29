@@ -34,6 +34,8 @@ package_alternatives() {
     code) printf '%s\n' visual-studio-code-bin vscodium-bin vscodium ;;
     p7zip) printf '%s\n' 7zip ;;
     7zip) printf '%s\n' p7zip ;;
+    swww) printf '%s\n' awww ;;
+    awww) printf '%s\n' swww ;;
   esac
 }
 

@@ -192,7 +192,7 @@ class SevenStore(Gtk.Application):
         self.window.set_name("seven-store")
         self.window.get_style_context().add_class("seven-store")
         self.window.set_title("SevenStore")
-        self.window.set_default_size(1180, 740)
+        self.window.set_default_size(1080, 680)
         self.window.set_wmclass("SevenStoreNative", "SevenStoreNative")
 
         root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)

@@ -33,6 +33,8 @@ ALTERNATIVES = {
     "code": ("visual-studio-code-bin", "vscodium-bin", "vscodium"),
     "p7zip": ("7zip",),
     "7zip": ("p7zip",),
+    "swww": ("awww",),
+    "awww": ("swww",),
 }
 
 

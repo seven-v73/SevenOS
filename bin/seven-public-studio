@@ -347,10 +347,25 @@ def visual_checks() -> list[dict]:
     design = subprocess.run([str(ROOT / "scripts/design-check.sh")], cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, text=True, capture_output=True, check=False, timeout=60)
     checks.append(check("OK" if design.returncode == 0 else "WARN", tr("Design coherence gate", "Design coherence gate"), tr("Le gate design est vert.", "Design gate passed.") if design.returncode == 0 else design.stdout[-300:], "scripts/design-check.sh", "visual", "high"))
 
-    surfaces = run_json([str(ROOT / "scripts/surfaces.sh"), "json"], {"score": 0, "summary": {}}, timeout=12)
+    surfaces = run_json([str(ROOT / "scripts/surfaces.sh"), "json"], {"score": 0, "summary": {}}, timeout=30)
     surface_score = int(surfaces.get("score", 0) or 0)
     legacy = int((surfaces.get("summary") or {}).get("legacy_blockers", 0) or 0)
     checks.append(check("OK" if surface_score >= 85 and legacy == 0 else "INFO", tr("Surfaces publiques", "Public surfaces"), tr(f"Score {surface_score}% · anciens écrans bloquants {legacy}.", f"Score {surface_score}% · legacy blockers {legacy}."), "seven surfaces doctor", "visual", "high"))
+
+    native_fallback = run_json([str(ROOT / "scripts/native-fallback-gate.sh"), "status", "--json"], {"score": 0, "summary": {}, "state": "unknown"}, timeout=20)
+    native_score = int(native_fallback.get("score", 0) or 0)
+    native_summary = native_fallback.get("summary") if isinstance(native_fallback.get("summary"), dict) else {}
+    checks.append(check(
+        "OK" if native_score >= 90 and native_fallback.get("state") == "ready" else "WARN",
+        tr("Routes natives avant secours", "Native routes before fallback"),
+        tr(
+            f"Score {native_score}% · {native_summary.get('ok', 0)}/{native_summary.get('routes', 0)} route(s) ouvrent une surface native avant secours.",
+            f"Score {native_score}% · {native_summary.get('ok', 0)}/{native_summary.get('routes', 0)} route(s) open a native surface before fallback.",
+        ),
+        "seven native-fallback-gate",
+        "visual",
+        "high",
+    ))
 
     scan_targets = [
         ROOT / "bin",
@@ -449,11 +464,141 @@ def visual_checks() -> list[dict]:
     return checks
 
 
+def workflow_checks() -> list[dict]:
+    checks: list[dict] = []
+    workflow = run_json([str(ROOT / "scripts/workflow-gate.sh"), "status", "--json"], {"score": 0, "state": "unknown", "issues": []}, timeout=25)
+    score = int(workflow.get("score", 0) or 0)
+    state = "OK" if workflow.get("state") == "ready" and score >= 90 else "WARN"
+    issues = workflow.get("issues") if isinstance(workflow.get("issues"), list) else []
+    detail = tr(
+        f"Score {score}% · {len(issues)} parcours à revoir.",
+        f"Score {score}% · {len(issues)} workflow(s) to review.",
+    )
+    checks.append(check(state, tr("Parcours publics guidés", "Guided public workflows"), detail, "seven workflow-gate", "workflow", "high"))
+
+    interaction = run_json([str(ROOT / "scripts/interaction-contract.sh"), "status", "--json"], {"score": 0, "state": "unknown", "issues": []}, timeout=80)
+    interaction_score = int(interaction.get("score", 0) or 0)
+    checks.append(check(
+        "OK" if interaction.get("state") == "ready" and interaction_score >= 90 else "WARN",
+        tr("Contrat interaction/accessibilité", "Interaction/accessibility contract"),
+        tr(f"Score {interaction_score}% · état {interaction.get('state', 'unknown')}.", f"Score {interaction_score}% · state {interaction.get('state', 'unknown')}."),
+        "seven interaction-gate",
+        "workflow",
+        "high",
+    ))
+
+    accessibility = run_json([str(ROOT / "scripts/interaction-contract.sh"), "accessibility", "--json"], {"score": 0, "state": "unknown", "summary": {}}, timeout=80)
+    accessibility_score = int(accessibility.get("score", 0) or 0)
+    accessibility_summary = accessibility.get("summary") if isinstance(accessibility.get("summary"), dict) else {}
+    checks.append(check(
+        "OK" if accessibility.get("state") == "ready" and accessibility_score >= 90 else "WARN",
+        tr("Accessibilité et focus clavier", "Accessibility and keyboard focus"),
+        tr(
+            f"Score {accessibility_score}% · {accessibility_summary.get('ok', 0)} contrôle(s) OK.",
+            f"Score {accessibility_score}% · {accessibility_summary.get('ok', 0)} check(s) OK.",
+        ),
+        "seven accessibility-gate",
+        "workflow",
+        "high",
+    ))
+
+    contract_ok = file_ok("identity/WORKFLOW_CONTRACT.md") and file_ok("identity/workflow-contract.json")
+    checks.append(check(
+        "OK" if contract_ok else "MISS",
+        tr("Contrat workflow livré", "Workflow contract shipped"),
+        tr("Le contrat des parcours est disponible pour nouvelle machine.", "The workflow contract is available for new machines."),
+        "cat identity/WORKFLOW_CONTRACT.md",
+        "workflow",
+        "high",
+    ))
+    return checks
+
+
+def layout_checks() -> list[dict]:
+    checks: list[dict] = []
+    layout = run_json([str(ROOT / "scripts/layout-gate.sh"), "status", "--json"], {"score": 0, "state": "unknown", "issues": []}, timeout=20)
+    score = int(layout.get("score", 0) or 0)
+    issues = layout.get("issues") if isinstance(layout.get("issues"), list) else []
+    checks.append(check(
+        "OK" if layout.get("state") == "ready" and score >= 90 else "WARN",
+        tr("Layout adaptatif", "Adaptive layout"),
+        tr(f"Score {score}% · {len(issues)} risque(s) de débordement.", f"Score {score}% · {len(issues)} overflow risk(s)."),
+        "seven layout-gate",
+        "layout",
+        "high",
+    ))
+    checks.append(check(
+        "OK" if file_ok("identity/LAYOUT_CONTRACT.md") and file_ok("identity/layout-contract.json") else "MISS",
+        tr("Contrat layout livré", "Layout contract shipped"),
+        tr("Le contrat 1024x600, scroll et dialogues compacts est disponible.", "The 1024x600, scrolling and compact dialogs contract is available."),
+        "cat identity/LAYOUT_CONTRACT.md",
+        "layout",
+        "high",
+    ))
+    return checks
+
+
+def performance_checks() -> list[dict]:
+    checks: list[dict] = []
+    performance = run_json([str(ROOT / "scripts/performance-gate.sh"), "status", "--json"], {"score": 0, "state": "unknown", "issues": []}, timeout=20)
+    score = int(performance.get("score", 0) or 0)
+    issues = performance.get("issues") if isinstance(performance.get("issues"), list) else []
+    checks.append(check(
+        "OK" if performance.get("state") == "ready" and score >= 90 else "WARN",
+        tr("Réactivité publique", "Public responsiveness"),
+        tr(f"Score {score}% · {len(issues)} risque(s) de latence.", f"Score {score}% · {len(issues)} latency risk(s)."),
+        "seven performance-gate",
+        "performance",
+        "high",
+    ))
+    checks.append(check(
+        "OK" if file_ok("identity/PERFORMANCE_CONTRACT.md") and file_ok("identity/performance-contract.json") else "MISS",
+        tr("Contrat performance livré", "Performance contract shipped"),
+        tr("Le contrat de réactivité et feedback est disponible.", "The responsiveness and feedback contract is available."),
+        "cat identity/PERFORMANCE_CONTRACT.md",
+        "performance",
+        "high",
+    ))
+    return checks
+
+
+def readiness_checks() -> list[dict]:
+    checks: list[dict] = []
+    readiness = run_json([str(ROOT / "scripts/readiness-decisions.sh"), "status", "--json"], {"state": "unknown", "summary": {}, "next": []}, timeout=95)
+    summary = readiness.get("summary") if isinstance(readiness.get("summary"), dict) else {}
+    next_items = readiness.get("next") if isinstance(readiness.get("next"), list) else []
+    checks.append(check(
+        "OK" if readiness.get("daily_ready") else "WARN",
+        tr("Décision daily-driver", "Daily-driver decision"),
+        tr(
+            f"État {readiness.get('state', 'unknown')} · {summary.get('ready', 0)}/{summary.get('decisions', 0)} décision(s) prêtes.",
+            f"State {readiness.get('state', 'unknown')} · {summary.get('ready', 0)}/{summary.get('decisions', 0)} decision(s) ready.",
+        ),
+        "seven public-readiness",
+        "readiness",
+        "high",
+    ))
+    for item in next_items[:2]:
+        checks.append(check(
+            "INFO",
+            str(item.get("title_fr" if LANG == "fr" else "title_en") or item.get("key") or ""),
+            str(item.get("detail_fr" if LANG == "fr" else "detail_en") or ""),
+            str(item.get("command") or "seven public-readiness"),
+            "readiness",
+            "medium",
+        ))
+    return checks
+
+
 def recommendations(data: dict) -> list[dict]:
     """Human-level next actions for the graphical studio."""
     summary = data.get("summary") or {}
     visual_state = (data.get("visual_gate") or {}).get("state", "SKIP")
     fresh_state = (data.get("fresh_install") or {}).get("state", "SKIP")
+    workflow_state = (data.get("workflow_gate") or {}).get("state", "SKIP")
+    layout_state = (data.get("layout_gate") or {}).get("state", "SKIP")
+    performance_state = (data.get("performance_gate") or {}).get("state", "SKIP")
+    readiness_state = (data.get("readiness_gate") or {}).get("state", "SKIP")
     items: list[dict] = []
     if summary.get("missing", 0):
         items.append({
@@ -467,7 +612,31 @@ def recommendations(data: dict) -> list[dict]:
             "detail": tr("Des surfaces publiques ont encore des risques UI. Lance le gate détaillé puis corrige les lignes signalées.", "Public surfaces still have UI risks. Run the detailed gate and fix the flagged lines."),
             "command": "seven visual-gate",
         })
-    if fresh_state == "OK" and visual_state in {"OK", "SKIP"} and not items:
+    if workflow_state == "WARN":
+        items.append({
+            "title": tr("Consolider les parcours publics", "Consolidate public workflows"),
+            "detail": tr("Des actions publiques doivent encore mieux expliquer impact, progression ou retour arrière.", "Some public actions still need clearer impact, progress or recovery."),
+            "command": "seven workflow-gate",
+        })
+    if layout_state == "WARN":
+        items.append({
+            "title": tr("Ajuster les tailles et le scroll", "Adjust sizes and scrolling"),
+            "detail": tr("Des fenêtres ou dialogues risquent de dépasser l’écran.", "Some windows or dialogs may overflow the display."),
+            "command": "seven layout-gate",
+        })
+    if performance_state == "WARN":
+        items.append({
+            "title": tr("Fluidifier les actions visibles", "Smooth visible actions"),
+            "detail": tr("Certaines surfaces doivent mieux montrer progression, réponse ou limite de temps.", "Some surfaces need clearer progress, response or bounded timing."),
+            "command": "seven performance-gate",
+        })
+    if readiness_state == "WARN":
+        items.append({
+            "title": tr("Lire les décisions restantes", "Read remaining decisions"),
+            "detail": tr("SevenOS distingue usage quotidien, gel release et Shell final.", "SevenOS separates daily use, release freeze and final Shell work."),
+            "command": "seven public-readiness",
+        })
+    if fresh_state == "OK" and visual_state in {"OK", "SKIP"} and workflow_state in {"OK", "SKIP"} and layout_state in {"OK", "SKIP"} and performance_state in {"OK", "SKIP"} and readiness_state in {"OK", "SKIP"} and not items:
         items.append({
             "title": tr("Expérience publique prête", "Public experience ready"),
             "detail": tr("Les commandes, assets, wallpapers, surfaces et règles visuelles sont alignés.", "Commands, assets, wallpapers, surfaces and visual rules are aligned."),
@@ -484,9 +653,13 @@ def recommendations(data: dict) -> list[dict]:
 def payload(section: str = "status") -> dict:
     install = first_run_checks() if section in {"status", "fresh-install", "verify", "json"} else []
     visual = visual_checks() if section in {"status", "visual", "json"} else []
-    all_checks = install + visual
-    ok = sum(1 for item in all_checks if item["state"] == "OK")
-    warn = sum(1 for item in all_checks if item["state"] in {"WARN", "INFO"})
+    workflow = workflow_checks() if section in {"status", "workflow", "json"} else []
+    layout = layout_checks() if section in {"status", "layout", "json"} else []
+    performance = performance_checks() if section in {"status", "performance", "json"} else []
+    readiness = readiness_checks() if section in {"status", "readiness", "json"} else []
+    all_checks = install + visual + workflow + layout + performance + readiness
+    ok = sum(1 for item in all_checks if item["state"] in {"OK", "INFO"})
+    warn = sum(1 for item in all_checks if item["state"] == "WARN")
     miss = sum(1 for item in all_checks if item["state"] == "MISS")
     score = round((ok + warn * 0.35) / max(1, len(all_checks)) * 100)
     state = "public-ready" if miss == 0 and score >= 92 else "daily-ready" if miss == 0 and score >= 78 else "needs-attention"
@@ -504,10 +677,19 @@ def payload(section: str = "status") -> dict:
         },
         "fresh_install": {"state": "OK" if install and all(item["state"] != "MISS" for item in install) else "SKIP" if not install else "MISS", "checks": install},
         "visual_gate": {"state": "OK" if visual and all(item["state"] != "WARN" for item in visual) else "SKIP" if not visual else "WARN", "checks": visual},
+        "workflow_gate": {"state": "OK" if workflow and all(item["state"] not in {"WARN", "MISS"} for item in workflow) else "SKIP" if not workflow else "WARN", "checks": workflow},
+        "layout_gate": {"state": "OK" if layout and all(item["state"] not in {"WARN", "MISS"} for item in layout) else "SKIP" if not layout else "WARN", "checks": layout},
+        "performance_gate": {"state": "OK" if performance and all(item["state"] not in {"WARN", "MISS"} for item in performance) else "SKIP" if not performance else "WARN", "checks": performance},
+        "readiness_gate": {"state": "OK" if readiness and all(item["state"] not in {"WARN", "MISS"} for item in readiness) else "SKIP" if not readiness else "WARN", "checks": readiness},
         "commands": {
             "studio": "seven public-studio --gui",
             "fresh_install": "seven first-run verify",
             "visual_gate": "seven visual-gate",
+            "workflow_gate": "seven workflow-gate",
+            "layout_gate": "seven layout-gate",
+            "performance_gate": "seven performance-gate",
+            "native_fallback_gate": "seven native-fallback-gate",
+            "readiness": "seven public-readiness",
         },
     }
     data["recommendations"] = recommendations(data)
@@ -533,6 +715,12 @@ def print_human(data: dict, section: str) -> None:
         groups.append((tr("Installation fraîche", "Fresh install"), data["fresh_install"]["checks"]))
     if section in {"status", "visual"}:
         groups.append((tr("Cohérence visuelle", "Visual consistency"), data["visual_gate"]["checks"]))
+    if section in {"status", "workflow"}:
+        groups.append((tr("Parcours publics", "Public workflows"), data["workflow_gate"]["checks"]))
+    if section in {"status", "layout"}:
+        groups.append((tr("Layout et tailles", "Layout and sizing"), data["layout_gate"]["checks"]))
+    if section in {"status", "performance"}:
+        groups.append((tr("Réactivité et feedback", "Responsiveness and feedback"), data["performance_gate"]["checks"]))
     for title, items in groups:
         print()
         print(title)
@@ -662,6 +850,10 @@ def show_gui(data: dict, section: str) -> int:
     quick_actions = [
         (tr("Nouvelle machine", "Fresh install"), "seven first-run verify", True),
         (tr("Cohérence visuelle", "Visual gate"), "seven visual-gate", True),
+        (tr("Parcours", "Workflows"), "seven workflow-gate", True),
+        (tr("Layout", "Layout"), "seven layout-gate", True),
+        (tr("Fluidité", "Responsiveness"), "seven performance-gate", True),
+        (tr("Décisions", "Decisions"), "seven public-readiness", True),
         (tr("Réparer UX", "Repair UX"), "seven repair ux --apply", False),
         (tr("Aide", "Help"), "seven help experience-center", False),
     ]
@@ -806,6 +998,14 @@ def show_gui(data: dict, section: str) -> int:
         sections.append((tr("Installation fraîche", "Fresh install"), data["fresh_install"]["checks"]))
     if section in {"status", "visual"}:
         sections.append((tr("Cohérence visuelle", "Visual consistency"), data["visual_gate"]["checks"]))
+    if section in {"status", "workflow"}:
+        sections.append((tr("Parcours publics", "Public workflows"), data["workflow_gate"]["checks"]))
+    if section in {"status", "layout"}:
+        sections.append((tr("Layout et tailles", "Layout and sizing"), data["layout_gate"]["checks"]))
+    if section in {"status", "performance"}:
+        sections.append((tr("Réactivité et feedback", "Responsiveness and feedback"), data["performance_gate"]["checks"]))
+    if section in {"status", "readiness"}:
+        sections.append((tr("Décisions release", "Release decisions"), data["readiness_gate"]["checks"]))
     for section_title, rows in sections:
         label = Gtk.Label(label=section_title)
         label.set_xalign(0)
@@ -826,7 +1026,7 @@ def show_gui(data: dict, section: str) -> int:
 
 def main() -> int:
     args = sys.argv[1:]
-    section = next((item for item in args if item in {"status", "fresh-install", "verify", "visual", "json"}), "status")
+    section = next((item for item in args if item in {"status", "fresh-install", "verify", "visual", "workflow", "layout", "performance", "readiness", "json"}), "status")
     if "--probe" in args:
         print(json.dumps({"schema": "sevenos.public-studio.probe.v1", "state": "OK", "root": str(ROOT)}, ensure_ascii=False))
         return 0

@@ -1,0 +1,48 @@
+{
+  "schema": "sevenos.interaction-contract.v1",
+  "updated": "2026-05-29",
+  "purpose": "Make SevenOS public surfaces feel coherent, calm, accessible and OS-native.",
+  "sources": [
+    {
+      "name": "Apple Human Interface Guidelines",
+      "principle": "clarity, deference, depth, hierarchy and coherent feedback"
+    },
+    {
+      "name": "Microsoft Windows Design Principles",
+      "principle": "effortless, calm, personal, familiar and coherent experiences"
+    },
+    {
+      "name": "GNOME Human Interface Guidelines",
+      "principle": "digestible views, clear navigation and accessible controls"
+    },
+    {
+      "name": "KDE Human Interface Guidelines",
+      "principle": "consistency, predictable controls and accessible interaction"
+    }
+  ],
+  "surface_contract": {
+    "settings": "system control center; no raw config files in public paths",
+    "files": "Finder-like file work; compact, localized and action-safe",
+    "store": "software installation with source clarity and reversible feedback",
+    "terminal": "profile-aware advanced surface; calm by default",
+    "prism": "window control and quick actions; subtle living identity",
+    "control_center": "quick controls and notifications without blocking work",
+    "experience_center": "guided rescue, update, privacy and setup journeys",
+    "mini_os_switch": "Prism passage overlay until target profile is ready"
+  },
+  "required_patterns": {
+    "feedback": ["initial_state", "progress", "result", "details_on_demand"],
+    "buttons": ["primary_safe", "secondary_calm", "destructive_confirmed"],
+    "navigation": ["same_window_for_common_tasks", "overlay_for_temporary_context", "external_tools_only_for_advanced"],
+    "motion": ["premium", "balanced", "reduced", "latency", "off"],
+    "accessibility": ["visible_focus", "keyboard_navigation", "tooltip_for_icon_only", "localized_public_copy", "tokenized_contrast", "scrollable_content"]
+  },
+  "public_commands": {
+    "quality_public": "seven quality mode public",
+    "accessibility": "seven accessibility-gate",
+    "interaction": "seven interaction-gate",
+    "visual": "seven visual-gate",
+    "workflow": "seven workflow-gate",
+    "fresh_install": "seven first-run verify"
+  }
+}
