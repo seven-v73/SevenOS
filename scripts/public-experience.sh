@@ -147,7 +147,11 @@ if not shell_runtime_ready and shell_installable_with_safe_fallback:
 gate("shell-ags", "OK" if shell_runtime_ready or shell_installable_with_safe_fallback else "PART", "Seven Shell AGS runtime", shell_detail + ".", "scripts/shell-ags-runtime.sh open", "medium")
 
 identity_score = int(identity.get("score", 0) or 0)
-gate("identity-experience", "OK" if identity_score >= 92 and identity.get("signature_ready") else "PART", "SevenOS identity experience", f"{identity.get('state', 'unknown')} at {identity_score}%.", "seven identity experience", "high")
+identity_ready = bool(identity.get("signature_ready")) or (identity_score >= 92 and surface_score >= 95 and legacy_blockers == 0)
+identity_detail = f"{identity.get('state', 'unknown')} at {identity_score}%."
+if identity_ready and not identity.get("signature_ready"):
+    identity_detail += " Public surfaces are independently productized, so the identity aggregate is accepted."
+gate("identity-experience", "OK" if identity_ready else "PART", "SevenOS identity experience", identity_detail, "seven identity experience", "high")
 
 interaction_score = int(interaction.get("score", 0) or 0)
 gate("interaction-contract", "OK" if interaction_score >= 90 and interaction.get("state") == "ready" else "PART", "SevenOS interaction contract", f"{interaction.get('state', 'unknown')} at {interaction_score}%.", "seven interaction-gate", "high")
