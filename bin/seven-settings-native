@@ -5315,6 +5315,65 @@ def run(initial_page: str = "overview") -> int:
         card.pack_start(actions, False, False, 0)
         return card
 
+    def experience_center_state() -> dict:
+        data = run_json_timeout([str(ROOT / "bin/seven-experience-center"), "--json"], {}, timeout=1.4)
+        return data if isinstance(data, dict) else {}
+
+    def experience_center_card() -> Gtk.Box:
+        data = experience_center_state()
+        state = str(data.get("state") or "ready")
+        profile = str(data.get("active_profile_title") or active_profile()[0])
+        trust = data.get("trust", {}) if isinstance(data.get("trust"), dict) else {}
+        trust_score = str(trust.get("score", "—"))
+        trust_label = str(trust.get("label") or tr("settings.ready", "Prêt"))
+        backups = data.get("time_machine", {}).get("backup_count", 0) if isinstance(data.get("time_machine"), dict) else 0
+        events = data.get("timeline", {}).get("events", []) if isinstance(data.get("timeline"), dict) else []
+        event_count = len(events) if isinstance(events, list) else 0
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.set_size_request(content_width, -1)
+        card.get_style_context().add_class("trust-card")
+        title = Gtk.Label(label=tr("settings.experience_center.title", "Experience Center"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("hero-title")
+        note = Gtk.Label(
+            label=tr(
+                "settings.experience_center.note",
+                "Le centre de confiance SevenOS regroupe secours, Time Machine, historique, permissions, parcours focus et mémoire de travail.",
+            )
+        )
+        note.set_xalign(0)
+        note.set_line_wrap(True)
+        note.get_style_context().add_class("hero-note")
+        card.pack_start(title, False, False, 0)
+        card.pack_start(note, False, False, 0)
+        chips = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        for value, label in (
+            (f"{trust_score}%", trust_label),
+            (state, tr("settings.state", "État")),
+            (profile, tr("settings.active_space", "Espace actif")),
+            (str(backups), "Time Machine"),
+            (str(event_count), tr("settings.events", "Événements")),
+        ):
+            chip = Gtk.Label(label=f"{value} · {label}")
+            chip.get_style_context().add_class("verdict-chip")
+            chips.pack_start(chip, False, False, 0)
+        card.pack_start(chips, False, False, 0)
+        card.pack_start(
+            action_flow(
+                [
+                    action_button(tr("settings.open", "Ouvrir"), "seven experience-center --gui"),
+                    action_button("Rescue", "seven rescue"),
+                    action_button("Time Machine", "seven time-machine"),
+                    action_button(tr("settings.permissions", "Permissions"), "seven permissions"),
+                    action_button(tr("settings.history", "Historique"), "seven timeline"),
+                ]
+            ),
+            False,
+            False,
+            0,
+        )
+        return card
+
     output_action_prefixes = (
         "seven daily",
         "seven doctor check",
@@ -9341,6 +9400,7 @@ def run(initial_page: str = "overview") -> int:
     pages = {
         "overview": page(tr("settings.title", "Réglages SevenOS"), tr("settings.subtitle", "Un centre clair pour le bureau, la sécurité, les mini OS, les appareils et l’entretien.")),
         "general": page(tr("settings.general", "Général"), tr("settings.general.subtitle", "Langue, région, thèmes et comportement quotidien de SevenOS.")),
+        "experience": page(tr("settings.experience_center.title", "Experience Center"), tr("settings.experience_center.subtitle", "Secours, Time Machine, timeline, permissions, parcours focus et mémoire de travail.")),
         "prism": page(tr("settings.prism.page", "Prism"), tr("settings.prism.page.subtitle", "Gérer le Prism SevenDecor, ses effets, sa cible et les actions fenêtre.")),
         "appearance": page(tr("settings.appearance", "Apparence"), tr("settings.appearance.subtitle", "Verre liquide, Dock, terminal et identité visuelle SevenOS.")),
         "wallpaper": page(tr("settings.wallpaper", "Fond d’écran"), tr("settings.wallpaper.subtitle", "Choisir une image et l’appliquer au bureau SevenOS.")),
@@ -9365,6 +9425,7 @@ def run(initial_page: str = "overview") -> int:
     sidebar_section(tr("settings.nav.essential", "Essentiel"))
     nav("overview", "󰕮", tr("settings.overview", "Vue d’ensemble"), "overview")
     nav("general", "󰒓", tr("settings.general", "Général"), "general")
+    nav("experience", "◈", tr("settings.experience_center.nav", "Expérience"), "experience")
     nav("profiles", "󰐃", tr("settings.profiles", "Mini OS"), "profiles")
     nav("power", "󰁹", tr("settings.power", "Énergie"), "power")
     sidebar_section(tr("settings.nav.personalization", "Personnalisation"))
@@ -9390,6 +9451,7 @@ def run(initial_page: str = "overview") -> int:
 
     settings_search_index = {
         "general": "general language langue region région formats about a propos clavier keyboard essential essentiel mini os collaboration capabilities capacités injection fonctionnalités entretien maintenance vérifier installer supprimer suppression désinstaller desinstaller paquets update mise à jour réparer atlas bridge sauvegarde backup animations motion usage quotidien développement création sécurité gaming culture compte utilisateur avatar profil image",
+        "experience": "experience center expérience centre secours rescue time machine timeline historique permissions focus journeys parcours mémoire workspace memory restaurer revenir arrière confiance comprendre changé changement diagnostic",
         "prism": "prism sevencor sevenDecor window controls smart window pastilles fenêtre fenetre rouge jaune vert electric électrique electrique cible target lock flottant tiling maximize fullscreen deplacer déplacer fermer agrandir reduire réduire bouton fenetre",
         "appearance": "appearance theme thème theme dark light clair sombre glass dock terminal visual design rendu interface trop clair trop sombre navigateur noir app noire app sombre coherence cohérence couleurs",
         "wallpaper": "wallpaper fond écran ecran hyprpaper matugen wallust image collection dynamique clair sombre équilibré equilibre sevenos rotation fond change image bureau",
@@ -9445,6 +9507,7 @@ def run(initial_page: str = "overview") -> int:
 
     search_items = [
         ("󰩂", tr("settings.search.problem", "Je cherche une solution"), tr("settings.search.problem.note", "Retourner au centre de résolution et aux recommandations SevenOS."), "overview"),
+        ("◈", tr("settings.experience_center.title", "Experience Center"), tr("settings.experience_center.search_note", "Secours, Time Machine, permissions, historique et parcours focus."), "experience"),
         ("󰤨", tr("settings.search.internet_problem", "Internet ne marche pas"), tr("settings.search.internet_problem.note", "Wi-Fi, connexion, mot de passe réseau et relance."), "network"),
         ("󰍹", tr("settings.search.display_problem", "L’écran est mal ajusté"), tr("settings.search.display_problem.note", "Luminosité, résolution, échelle et affichage trop grand ou trop petit."), "display"),
         ("󰕾", tr("settings.search.sound_problem", "Je n’ai plus de son"), tr("settings.search.sound_problem.note", "Volume, sourdine, casque, micro et périphériques audio."), "sound"),
@@ -9601,6 +9664,7 @@ def run(initial_page: str = "overview") -> int:
     overview.pack_start(first_aid_card(), False, False, 0)
     overview.pack_start(trust_center_card(), False, False, 0)
     overview.pack_start(safe_actions_card(), False, False, 0)
+    overview.pack_start(experience_center_card(), False, False, 0)
     overview.pack_start(solution_center_card(), False, False, 0)
     overview.pack_start(support_card(), False, False, 0)
     overview.pack_start(
@@ -9640,12 +9704,71 @@ def run(initial_page: str = "overview") -> int:
     section(overview, tr("settings.shortcuts", "Raccourcis"))
     card_grid(overview, [
         setting_card("󰒓", tr("settings.general_card", "Réglages généraux"), tr("settings.general_card.note", "Langue, thèmes et comportement quotidien de SevenOS."), [page_button(tr("settings.open", "Ouvrir"), "general")]),
+        setting_card("◈", tr("settings.experience_center.title", "Experience Center"), tr("settings.experience_center.card_note", "Secours, Time Machine, permissions, timeline et parcours focus."), [page_button(tr("settings.open", "Ouvrir"), "experience")]),
         setting_card("◈", tr("settings.prism.page", "Prism"), tr("settings.prism.page.subtitle", "Gérer le Prism SevenDecor, ses effets, sa cible et les actions fenêtre."), [page_button(tr("settings.open", "Ouvrir"), "prism")]),
         setting_card("󰮍", tr("settings.capability_collaboration", "Outils d’autres espaces"), tr("settings.capability_injection.note", "Ajouter quelques outils utiles sans quitter l’espace actuel."), [page_button(tr("settings.open", "Ouvrir"), "general")]),
         setting_card("󰀻", tr("settings.launchpad", "Launchpad"), tr("settings.launchpad.note", "Ouvrir la grille des apps SevenOS."), [action_button(tr("settings.open", "Ouvrir"), "seven-overview apps")]),
         setting_card("󰉋", tr("settings.files", "Fichiers"), tr("settings.files.note", "Ouvrir Seven Files."), [action_button(tr("settings.open", "Ouvrir"), "seven-files")]),
         setting_card("󰖟", tr("settings.spotlight", "Spotlight"), tr("settings.spotlight.note", "Rechercher apps, fichiers, actions et réglages."), [action_button(tr("settings.open", "Ouvrir"), "seven-spotlight")]),
     ])
+
+    experience = pages["experience"][0]
+    experience.pack_start(
+        hero_card(
+            tr("settings.experience_center.hero.title", "Le filet de sécurité SevenOS"),
+            tr(
+                "settings.experience_center.hero.note",
+                "Quand tu veux réparer, revenir en arrière, comprendre ce qui a changé ou reprendre ton travail, tout part d’ici.",
+            ),
+            [
+                action_button(tr("settings.open", "Ouvrir"), "seven experience-center --gui"),
+                action_button("Rescue", "seven rescue"),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
+    experience.pack_start(experience_center_card(), False, False, 0)
+    experience.pack_start(
+        workflow_card(
+            tr("settings.experience_center.workflow.title", "Une expérience qui accompagne"),
+            tr("settings.experience_center.workflow.note", "SevenOS doit expliquer, protéger et guider avant de lancer une action importante."),
+            [
+                (tr("settings.experience_center.step.rescue", "Réparer sans effacer"), tr("settings.experience_center.step.rescue.note", "Rescue Mode cible thème, barre, Prism, réseau et diagnostics non destructifs.")),
+                (tr("settings.experience_center.step.rollback", "Revenir en arrière"), tr("settings.experience_center.step.rollback.note", "Time Machine affiche les sauvegardes et le chemin de restauration.")),
+                (tr("settings.experience_center.step.context", "Reprendre le contexte"), tr("settings.experience_center.step.context.note", "Focus Journeys et Workspace Memory gardent le lien entre mini OS et activité.")),
+            ],
+            [
+                action_button("Time Machine", "seven time-machine"),
+                action_button(tr("settings.timeline", "Timeline"), "seven timeline"),
+                action_button(tr("settings.journeys", "Parcours"), "seven journeys"),
+            ],
+        ),
+        False,
+        False,
+        0,
+    )
+    settings_group(
+        experience,
+        tr("settings.experience_center.sections", "Parcours de confiance"),
+        [
+            settings_row("󰃭", tr("settings.experience_center.briefing.title", "Briefing quotidien"), tr("settings.experience_center.briefing.note", "Résumé calme : espace actif, réseau, énergie, sauvegarde, confidentialité et prochaine action utile."), [action_button(tr("settings.open", "Ouvrir"), "seven briefing --gui"), action_button(tr("settings.status", "Voir"), "seven briefing")]),
+            settings_row("󰓎", tr("settings.experience_center.care.title", "Plan de soin"), tr("settings.experience_center.care.note", "Priorise ce qui compte maintenant, ce qui peut attendre et ce qui est déjà sain."), [action_button(tr("settings.open", "Ouvrir"), "seven care --gui"), action_button(tr("settings.status", "Voir"), "seven care")]),
+            settings_row("󰄬", tr("settings.experience_center.trust.title", "Rapport de confiance"), tr("settings.experience_center.trust.note", "Voir le score SevenOS, les points prêts et les éléments à compléter."), [action_button(tr("settings.open", "Ouvrir"), "seven trust --gui"), action_button(tr("settings.status", "Voir"), "seven trust")]),
+            settings_row("󰒓", tr("settings.experience_center.setup.title", "Configuration personnelle"), tr("settings.experience_center.setup.note", "Langue, thème, mini OS, Prism, sauvegarde, mémoire et aide dans un parcours lisible."), [action_button(tr("settings.open", "Ouvrir"), "seven personal-setup --gui"), action_button(tr("settings.status", "Voir"), "seven personal-setup")]),
+            settings_row("󰘳", tr("settings.experience_center.intent.title", "Palette d’intentions"), tr("settings.experience_center.intent.note", "Partir d’un besoin simple comme wifi, thème, sauvegarde, fichiers, apps ou confidentialité."), [action_button(tr("settings.open", "Ouvrir"), "seven intent --gui"), action_button(tr("settings.status", "Voir"), "seven intent")]),
+            settings_row("󰌵", tr("settings.experience_center.learning.title", "Aide guidée"), tr("settings.experience_center.learning.note", "Choisir un problème en langage naturel: thème incohérent, réseau, rollback, confidentialité ou fluidité."), [action_button(tr("settings.open", "Ouvrir"), "seven learning --gui"), action_button(tr("settings.status", "Voir"), "seven learning")]),
+            settings_row("󰀂", tr("settings.experience_center.device.title", "Continuité appareils"), tr("settings.experience_center.device.note", "Préparer transfert, sauvegarde portable, réseau local et synchronisation opt-in sans partage automatique."), [action_button(tr("settings.open", "Ouvrir"), "seven device-continuity --gui"), action_button(tr("settings.status", "Voir"), "seven device-continuity")]),
+            settings_row("󰜉", "Rescue Mode", tr("settings.experience_center.rescue.note", "Réparer l’interface, le réseau, le Prism ou les contrôles sans toucher aux fichiers personnels."), [action_button(tr("settings.open", "Ouvrir"), "seven rescue --gui"), action_button(tr("settings.status", "Voir"), "seven rescue")]),
+            settings_row("󰁯", "Time Machine", tr("settings.experience_center.time_machine.note", "Voir les sauvegardes locales, le plan de restauration et le rollback après update."), [action_button(tr("settings.open", "Ouvrir"), "seven time-machine --gui"), action_button(tr("settings.status", "Voir"), "seven time-machine")]),
+            settings_row("󰌢", tr("settings.timeline", "Timeline"), tr("settings.experience_center.timeline.note", "Comprendre les changements récents: thème, mini OS, app, update, réparation ou action Settings."), [action_button(tr("settings.open", "Ouvrir"), "seven timeline --gui"), action_button(tr("settings.status", "Voir"), "seven timeline")]),
+            settings_row("󰌾", tr("settings.permissions", "Permissions"), tr("settings.experience_center.permissions.note", "Vérifier portails, Flatpak, micro, caméra et routes de confidentialité."), [action_button(tr("settings.open", "Ouvrir"), "seven permissions --gui"), page_button(tr("settings.privacy", "Confidentialité"), "privacy")]),
+            settings_row("󰒃", "Privacy Report", tr("settings.experience_center.privacy_report.note", "Résumé des permissions, services actifs, événements sensibles, Shield et SevenAI."), [action_button(tr("settings.open", "Ouvrir"), "seven privacy-report --gui"), action_button(tr("settings.status", "Voir"), "seven privacy-report")]),
+            settings_row("󰐃", tr("settings.journeys", "Parcours focus"), tr("settings.experience_center.journeys.note", "Lancer un parcours adapté à Forge, Studio, Pulse, Atlas, Baobab, Shield ou Equinox."), [action_button(tr("settings.open", "Ouvrir"), "seven journeys --gui"), page_button(tr("settings.mini_os", "Mini OS"), "profiles")]),
+            settings_row("󰒓", tr("settings.workspace_memory", "Mémoire de travail"), tr("settings.experience_center.memory.note", "Retrouver le dernier contexte utile d’un mini OS après un redémarrage ou un changement d’espace."), [action_button(tr("settings.open", "Ouvrir"), "seven memory --gui"), action_button(tr("settings.status", "Voir"), "seven memory")]),
+        ],
+    )
 
     prism_page = pages["prism"][0]
     prism_page.pack_start(

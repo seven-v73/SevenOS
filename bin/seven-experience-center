@@ -1,0 +1,1702 @@
+#!/usr/bin/env python3
+"""SevenOS Experience Center: Rescue, Time Machine, Timeline and Focus Journeys."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+def ensure_gi_python() -> None:
+    if os.environ.get("SEVENOS_GI_PYTHON") == "1":
+        return
+    try:
+        import gi  # noqa: F401
+        return
+    except Exception:
+        system_python = Path("/usr/bin/python3")
+        if not system_python.exists() or Path(sys.executable).resolve() == system_python.resolve():
+            return
+        result = subprocess.run([str(system_python), "-c", "import gi"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        if result.returncode == 0:
+            os.execve(str(system_python), [str(system_python), str(Path(__file__).resolve()), *sys.argv[1:]], {**os.environ, "SEVENOS_GI_PYTHON": "1"})
+
+
+def resolve_root() -> Path:
+    env = os.environ.get("SEVENOS_ROOT")
+    if env and (Path(env) / "bin/seven").exists():
+        return Path(env).resolve()
+    here = Path(__file__).resolve()
+    if (here.parent.parent / "bin/seven").exists():
+        return here.parent.parent
+    for candidate in (Path("/opt/SevenOS"), Path.home() / "Code/OS/SevenOS", Path.home() / "SevenOS"):
+        if (candidate / "bin/seven").exists():
+            return candidate
+    return Path.cwd()
+
+
+ROOT = resolve_root()
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache")))
+DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "sevenos"
+EVENT_FILE = STATE_DIR / "events.jsonl"
+SETTINGS_ACTION_LOG = CACHE_DIR / "settings-actions.log"
+MIGRATION_DIR = DATA_DIR / "migrations"
+WORKSPACE_MEMORY = STATE_DIR / "workspace-memory.json"
+THEME_PREFS = CONFIG_DIR / "theme-preferences.json"
+
+
+def language_code() -> str:
+    language = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "en_US.UTF-8")
+    config = CONFIG_DIR / "language.conf"
+    if not os.environ.get("SEVENOS_LANGUAGE") and config.exists():
+        for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip() in {"SEVENOS_LANGUAGE", "LANG"}:
+                language = value.strip().strip("'\"")
+                break
+    return "fr" if language.lower().startswith("fr") else "en"
+
+
+LANG = language_code()
+
+
+def tr(fr: str, en: str) -> str:
+    return fr if LANG == "fr" else en
+
+
+def current_context() -> dict:
+    raw_lang = os.environ.get("SEVENOS_LANGUAGE") or os.environ.get("LANG", "en_US.UTF-8")
+    config = CONFIG_DIR / "language.conf"
+    if not os.environ.get("SEVENOS_LANGUAGE") and config.exists():
+        for raw in config.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, value = raw.partition("=")
+            if key.strip() in {"SEVENOS_LANGUAGE", "LANG"}:
+                raw_lang = value.strip().strip("'\"")
+                break
+    active_lang = "fr" if raw_lang.lower().startswith("fr") else "en"
+    timezone = os.environ.get("TZ", "")
+    try:
+        result = subprocess.run(["timedatectl", "show", "-p", "Timezone", "--value"], text=True, capture_output=True, check=False, timeout=0.8)
+        timezone = result.stdout.strip() or timezone
+    except Exception:
+        pass
+    timezone = timezone or "local"
+    hour = int(time.strftime("%H"))
+    if 5 <= hour < 12:
+        moment = "Matin" if active_lang == "fr" else "Morning"
+        greeting = "Bonjour" if active_lang == "fr" else "Good morning"
+    elif 12 <= hour < 18:
+        moment = "Après-midi" if active_lang == "fr" else "Afternoon"
+        greeting = "Bon après-midi" if active_lang == "fr" else "Good afternoon"
+    elif 18 <= hour < 23:
+        moment = "Soir" if active_lang == "fr" else "Evening"
+        greeting = "Bonsoir" if active_lang == "fr" else "Good evening"
+    else:
+        moment = "Nuit" if active_lang == "fr" else "Night"
+        greeting = "Bonne nuit" if active_lang == "fr" else "Good night"
+    return {
+        "language": active_lang,
+        "language_raw": raw_lang,
+        "language_label": "Français" if active_lang == "fr" else "English",
+        "time": time.strftime("%H:%M"),
+        "date": time.strftime("%Y-%m-%d"),
+        "timezone": timezone,
+        "moment": moment,
+        "greeting": greeting,
+    }
+
+
+PROFILES = {
+    "equinox": ("Equinox", tr("Bureau quotidien et équilibre système.", "Daily desktop and system balance."), "󰐃", "#8B7CFF"),
+    "baobab": ("Baobab", tr("Culture, mémoire, langues et transmission.", "Culture, memory, languages and transmission."), "󰣇", "#A6E3A1"),
+    "forge": ("Forge", tr("Code, services, livraison et projets web.", "Code, services, deployment and web projects."), "󰅩", "#F9E2AF"),
+    "shield": ("Shield", tr("Protection, audit autorisé et confiance.", "Protection, authorized audit and trust."), "󰒃", "#00FFB3"),
+    "studio": ("Studio", tr("Création visuelle, son, vidéo et assets.", "Visual creation, sound, video and assets."), "󰏗", "#CBA6F7"),
+    "atlas": ("Atlas", tr("Documents, cartes, OCR et références.", "Documents, maps, OCR and references."), "󰙅", "#5AD7B7"),
+    "pulse": ("Pulse", tr("Jeux, captures et performance fluide.", "Gaming, capture and smooth performance."), "󰊴", "#00D4FF"),
+}
+
+
+def run_json(command: list[str], fallback: dict | None = None, timeout: float = 3.5) -> dict:
+    try:
+        result = subprocess.run(command, cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, text=True, capture_output=True, check=False, timeout=timeout)
+        return json.loads(result.stdout or "{}") if result.stdout.strip() else (fallback or {})
+    except Exception:
+        return fallback or {}
+
+
+def command_exists(command: str) -> bool:
+    return any((Path(item) / command).exists() for item in os.environ.get("PATH", "").split(os.pathsep) if item)
+
+
+def simple_out(command: list[str], fallback: str = "", timeout: float = 1.0) -> str:
+    try:
+        result = subprocess.run(command, cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, text=True, capture_output=True, check=False, timeout=timeout)
+        return result.stdout.strip() or fallback
+    except Exception:
+        return fallback
+
+
+def active_profile() -> str:
+    data = run_json([str(ROOT / "bin/seven"), "profile", "current", "--json"], timeout=2.0)
+    key = str(data.get("key") or data.get("profile") or "equinox").lower()
+    return key if key in PROFILES else "equinox"
+
+
+def migration_count() -> int:
+    if not MIGRATION_DIR.is_dir():
+        return 0
+    return len([item for item in MIGRATION_DIR.iterdir() if item.is_dir()])
+
+
+def recent_events(limit: int = 8) -> list[dict]:
+    events: list[dict] = []
+    if EVENT_FILE.exists():
+        for raw in EVENT_FILE.read_text(encoding="utf-8", errors="ignore").splitlines()[-limit:]:
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict):
+                events.append(payload)
+    if SETTINGS_ACTION_LOG.exists() and len(events) < limit:
+        blocks = SETTINGS_ACTION_LOG.read_text(encoding="utf-8", errors="ignore").split("--- SevenOS Settings action ---")
+        for block in blocks[-limit:]:
+            lines = [line.strip() for line in block.splitlines() if line.strip()]
+            command = next((line[2:] for line in lines if line.startswith("$ ")), "")
+            stamp = next((line.partition("=")[2] for line in lines if line.startswith("time=")), "")
+            state = next((line.partition("=")[2] for line in lines if line.startswith("exit=")), "started")
+            if command:
+                events.append({"timestamp": stamp, "source": "settings", "type": "action", "state": state, "message": command, "command": command})
+    return events[-limit:]
+
+
+def workspace_memory() -> dict:
+    if WORKSPACE_MEMORY.exists():
+        try:
+            data = json.loads(WORKSPACE_MEMORY.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
+def current_theme() -> str:
+    if THEME_PREFS.exists():
+        try:
+            data = json.loads(THEME_PREFS.read_text(encoding="utf-8"))
+            value = str(data.get("mode") or data.get("preferred") or "").lower()
+            if value in {"light", "dark"}:
+                return value
+        except Exception:
+            pass
+    value = f"{os.environ.get('SEVENOS_THEME', '')} {os.environ.get('GTK_THEME', '')}".lower()
+    return "light" if "light" in value else "dark"
+
+
+def permissions_state() -> list[dict]:
+    flatpak_ready = command_exists("flatpak")
+    portal_ready = command_exists("xdg-desktop-portal") or Path("/usr/lib/xdg-desktop-portal").exists()
+    microphone = Path("/dev/snd").exists()
+    camera = any(Path("/dev").glob("video*"))
+    return [
+        {"key": "portal", "title": tr("Portails système", "System portals"), "state": "OK" if portal_ready else "WARN", "detail": tr("Demandes caméra, écran, fichiers et permissions via portail.", "Camera, screen, files and permissions through portal."), "command": "seven settings privacy"},
+        {"key": "flatpak", "title": "Flatpak", "state": "OK" if flatpak_ready else "WARN", "detail": tr("Permissions applicatives vérifiables pour les apps sandboxées.", "Inspectable app permissions for sandboxed apps."), "command": "seven store"},
+        {"key": "microphone", "title": tr("Micro", "Microphone"), "state": "OK" if microphone else "INFO", "detail": tr("Contrôle via Son et Confidentialité.", "Controlled through Sound and Privacy."), "command": "seven settings sound"},
+        {"key": "camera", "title": tr("Caméra", "Camera"), "state": "OK" if camera else "INFO", "detail": tr("Accès visible seulement si un périphérique existe.", "Access is visible only when a device exists."), "command": "seven settings privacy"},
+    ]
+
+
+def journey_rows() -> list[dict]:
+    rows = []
+    for key, (title, note, icon, accent) in PROFILES.items():
+        intent = {
+            "equinox": tr("Me recentrer", "Recenter"),
+            "baobab": tr("Explorer une mémoire", "Explore memory"),
+            "forge": tr("Coder et livrer", "Code and deploy"),
+            "shield": tr("Vérifier prudemment", "Verify safely"),
+            "studio": tr("Créer un rendu", "Create output"),
+            "atlas": tr("Étudier et classer", "Study and classify"),
+            "pulse": tr("Jouer sans friction", "Play smoothly"),
+        }.get(key, title)
+        rows.append({"key": key, "title": title, "intent": intent, "note": note, "icon": icon, "accent": accent, "command": f"seven profile activate {key}", "open": f"seven experience focus {key}"})
+    return rows
+
+
+def trust_report(backups: int, events: list[dict], memory: dict, permissions: list[dict], profile: str) -> dict:
+    checks = {
+        "rescue": True,
+        "backup": backups > 0,
+        "timeline": bool(events),
+        "permissions": all(item.get("state") != "WARN" for item in permissions),
+        "workspace_memory": bool(memory),
+        "profile_context": profile in PROFILES,
+    }
+    score = round(sum(1 for ok in checks.values() if ok) / max(1, len(checks)) * 100)
+    if score >= 86:
+        label = tr("Très rassurant", "Very reassuring")
+        state = "ready"
+    elif score >= 66:
+        label = tr("Bon, à compléter", "Good, can improve")
+        state = "attention"
+    else:
+        label = tr("À préparer", "Needs setup")
+        state = "setup"
+    return {
+        "score": score,
+        "label": label,
+        "state": state,
+        "checks": checks,
+    }
+
+
+def recommended_actions(report: dict, backups: int, events: list[dict], memory: dict) -> list[dict]:
+    actions: list[dict] = []
+    if backups <= 0:
+        actions.append({
+            "title": tr("Créer un premier point de retour", "Create a first return point"),
+            "detail": tr("Time Machine devient vraiment utile dès qu’une sauvegarde locale existe.", "Time Machine becomes truly useful once a local backup exists."),
+            "command": "seven recovery backup",
+            "confirm": True,
+            "priority": 1,
+        })
+    if not events:
+        actions.append({
+            "title": tr("Activer la lecture de la timeline", "Open the timeline"),
+            "detail": tr("SevenOS affichera ici les actions importantes et les changements récents.", "SevenOS will show important actions and recent changes here."),
+            "command": "seven events list",
+            "confirm": False,
+            "priority": 2,
+        })
+    if not memory:
+        actions.append({
+            "title": tr("Préparer la mémoire de travail", "Prepare workspace memory"),
+            "detail": tr("Chaque mini OS pourra reprendre son contexte utile après un changement d’espace.", "Each Mini OS can resume useful context after switching spaces."),
+            "command": "seven experience workspace",
+            "confirm": False,
+            "priority": 3,
+        })
+    if report.get("score", 0) < 100:
+        actions.append({
+            "title": tr("Faire un contrôle léger", "Run a light check"),
+            "detail": tr("Vérifie l’état sans modifier la machine.", "Checks state without modifying the machine."),
+            "command": "seven smoke doctor",
+            "confirm": False,
+            "priority": 4,
+        })
+    if not actions:
+        actions.append({
+            "title": tr("Tout est calme", "Everything is calm"),
+            "detail": tr("Tu peux ouvrir les parcours focus ou continuer ton activité.", "You can open focus journeys or continue your activity."),
+            "command": "seven journeys",
+            "confirm": False,
+            "priority": 1,
+        })
+    return actions[:4]
+
+
+def personal_setup_state(profile: str, backups: int, memory: dict) -> dict:
+    language = language_code()
+    theme = current_theme()
+    profile_title = PROFILES.get(profile, PROFILES["equinox"])[0]
+    steps = [
+        {"key": "language", "title": tr("Langue système", "System language"), "state": "OK", "detail": language.upper(), "command": "seven settings general"},
+        {"key": "theme", "title": tr("Thème", "Theme"), "state": "OK", "detail": theme, "command": "seven settings appearance"},
+        {"key": "profile", "title": "Mini OS", "state": "OK" if profile in PROFILES else "WARN", "detail": profile_title, "command": "seven settings profiles"},
+        {"key": "prism", "title": "Prism", "state": "OK", "detail": tr("Réglable depuis Paramètres.", "Configurable from Settings."), "command": "seven settings prism"},
+        {"key": "backup", "title": "Time Machine", "state": "OK" if backups else "INFO", "detail": tr(f"{backups} sauvegarde(s).", f"{backups} backup set(s)."), "command": "seven recovery backup"},
+        {"key": "memory", "title": tr("Mémoire de travail", "Workspace memory"), "state": "OK" if memory else "INFO", "detail": tr("Contexte prêt." if memory else "À préparer.", "Context ready." if memory else "Can be prepared."), "command": "seven experience workspace"},
+        {"key": "help", "title": tr("Aide", "Help"), "state": "OK", "detail": "Super+H · seven help", "command": "seven-help-native"},
+    ]
+    ready = sum(1 for item in steps if item["state"] == "OK")
+    return {"title": "SevenOS Personal Setup", "ready": ready, "total": len(steps), "percent": round(ready / max(1, len(steps)) * 100), "steps": steps}
+
+
+def privacy_report_state(permissions: list[dict], events: list[dict]) -> dict:
+    user_services = simple_out(["systemctl", "--user", "--no-pager", "--plain", "--type=service", "--state=running", "list-units"], "", timeout=1.2)
+    running_services = max(0, len([line for line in user_services.splitlines() if ".service" in line]))
+    recent_sensitive = [
+        event for event in events
+        if any(word in str(event.get("message", "")).lower() for word in ("sudo", "install", "update", "permission", "privacy", "shield", "flatpak"))
+    ]
+    checks = [
+        {"title": tr("Permissions apps", "App permissions"), "state": "OK" if all(item.get("state") != "WARN" for item in permissions) else "WARN", "detail": tr("Portails, Flatpak, micro et caméra inspectables.", "Portals, Flatpak, microphone and camera are inspectable."), "command": "seven permissions"},
+        {"title": tr("Services utilisateur", "User services"), "state": "OK", "detail": tr(f"{running_services} service(s) utilisateur actifs.", f"{running_services} active user service(s)."), "command": "systemctl --user --type=service --state=running"},
+        {"title": tr("Événements sensibles", "Sensitive events"), "state": "INFO" if recent_sensitive else "OK", "detail": tr(f"{len(recent_sensitive)} événement(s) à relire.", f"{len(recent_sensitive)} event(s) to review."), "command": "seven timeline"},
+        {"title": "Shield", "state": "OK", "detail": tr("Audit accessible depuis Shield.", "Audit available through Shield."), "command": "seven shield audit"},
+        {"title": "SevenAI", "state": "OK", "detail": tr("Données locales et provider visibles.", "Local data and provider are visible."), "command": "seven ai provider"},
+    ]
+    return {"title": "SevenOS Privacy Report", "checks": checks, "running_user_services": running_services, "sensitive_events": len(recent_sensitive)}
+
+
+def daily_briefing_state(profile: str, trust: dict, setup: dict, privacy_report: dict, device: dict, events: list[dict], backups: int, context: dict) -> dict:
+    connectivity = simple_out(["nmcli", "-t", "-f", "CONNECTIVITY", "general"], "", timeout=0.8) if command_exists("nmcli") else ""
+    network_state = "OK" if connectivity in {"full", "limited", "portal"} else ("INFO" if not connectivity else "WARN")
+    battery_status = simple_out(["bash", "-lc", "for b in /sys/class/power_supply/BAT*/capacity; do [ -r \"$b\" ] && cat \"$b\" && exit 0; done"], "", timeout=0.8)
+    battery_note = tr("Secteur ou batterie non détectée.", "AC power or battery not detected.")
+    battery_state = "OK"
+    if battery_status.isdigit():
+        pct = int(battery_status)
+        battery_note = tr(f"{pct}% disponible.", f"{pct}% available.")
+        battery_state = "WARN" if pct < 20 else "OK"
+    profile_title = PROFILES.get(profile, PROFILES["equinox"])[0]
+    trust_score = int(trust.get("score", 0) or 0)
+    setup_percent = int(setup.get("percent", 0) or 0)
+    privacy_sensitive = int(privacy_report.get("sensitive_events", 0) or 0)
+    device_ready = int(device.get("ready_count", 0) or 0)
+    device_total = int(device.get("total", 0) or 0)
+    checks = [
+        {
+            "key": "context",
+            "title": tr("Temps et langue", "Time and language"),
+            "state": "OK",
+            "detail": tr(
+                f"{context.get('time')} · {context.get('language_label')} · {context.get('timezone')}",
+                f"{context.get('time')} · {context.get('language_label')} · {context.get('timezone')}",
+            ),
+            "command": "seven settings general",
+        },
+        {
+            "key": "profile",
+            "title": tr("Espace actif", "Active space"),
+            "state": "OK",
+            "detail": tr(f"{profile_title} est prêt pour le contexte actuel.", f"{profile_title} is ready for the current context."),
+            "command": "seven settings profiles",
+        },
+        {
+            "key": "trust",
+            "title": tr("Confiance système", "System trust"),
+            "state": "OK" if trust_score >= 86 else "INFO",
+            "detail": tr(f"{trust_score}% · {trust.get('label', '')}", f"{trust_score}% · {trust.get('label', '')}"),
+            "command": "seven trust --gui",
+        },
+        {
+            "key": "setup",
+            "title": tr("Configuration personnelle", "Personal setup"),
+            "state": "OK" if setup_percent >= 85 else "INFO",
+            "detail": tr(f"{setup_percent}% configuré.", f"{setup_percent}% configured."),
+            "command": "seven personal-setup --gui",
+        },
+        {
+            "key": "network",
+            "title": tr("Réseau", "Network"),
+            "state": network_state,
+            "detail": tr(f"Connectivité: {connectivity or 'non vérifiée'}.", f"Connectivity: {connectivity or 'not checked'}."),
+            "command": "seven settings network",
+        },
+        {
+            "key": "power",
+            "title": tr("Énergie", "Power"),
+            "state": battery_state,
+            "detail": battery_note,
+            "command": "seven settings power",
+        },
+        {
+            "key": "backup",
+            "title": "Time Machine",
+            "state": "OK" if backups else "INFO",
+            "detail": tr(f"{backups} point(s) de retour local.", f"{backups} local return point(s)."),
+            "command": "seven time-machine --gui",
+        },
+        {
+            "key": "privacy",
+            "title": tr("Confidentialité", "Privacy"),
+            "state": "INFO" if privacy_sensitive else "OK",
+            "detail": tr(f"{privacy_sensitive} événement(s) sensible(s) récent(s).", f"{privacy_sensitive} recent sensitive event(s)."),
+            "command": "seven privacy-report --gui",
+        },
+        {
+            "key": "devices",
+            "title": tr("Continuité appareils", "Device continuity"),
+            "state": "OK" if device_ready == device_total else "INFO",
+            "detail": tr(f"{device_ready}/{device_total} bases prêtes.", f"{device_ready}/{device_total} foundations ready."),
+            "command": "seven device-continuity --gui",
+        },
+    ]
+    attention = [item for item in checks if item["state"] != "OK"]
+    headline = (
+        tr(f"{context.get('greeting')}. SevenOS est prêt.", f"{context.get('greeting')}. SevenOS is ready.")
+        if not attention
+        else tr(f"{context.get('greeting')}. SevenOS est prêt, avec quelques points à revoir.", f"{context.get('greeting')}. SevenOS is ready, with a few points to review.")
+    )
+    next_actions = [
+        {"title": item["title"], "detail": item["detail"], "command": item["command"], "confirm": item["key"] == "backup"}
+        for item in attention[:3]
+    ]
+    if not next_actions:
+        next_actions = [
+            {"title": tr("Ouvrir les parcours focus", "Open focus journeys"), "detail": tr("Choisir un rythme adapté à l’activité du moment.", "Choose a rhythm for the current activity."), "command": "seven journeys --gui", "confirm": False},
+            {"title": tr("Ouvrir la palette d’intentions", "Open intent palette"), "detail": tr("Chercher une action par besoin humain.", "Search actions by human need."), "command": "seven intent --gui", "confirm": False},
+        ]
+    return {
+        "title": "SevenOS Daily Briefing",
+        "headline": headline,
+        "context": context,
+        "profile": profile,
+        "profile_title": profile_title,
+        "event_count": len(events),
+        "checks": checks,
+        "next_actions": next_actions,
+    }
+
+
+def care_plan_state(briefing: dict, recommendations: list[dict], setup: dict) -> dict:
+    checks = briefing.get("checks", []) if isinstance(briefing.get("checks"), list) else []
+    now = [
+        {
+            "title": item.get("title", ""),
+            "detail": item.get("detail", ""),
+            "command": item.get("command", "seven briefing --gui"),
+            "confirm": item.get("key") == "backup",
+            "state": item.get("state", "INFO"),
+        }
+        for item in checks
+        if item.get("state") == "WARN"
+    ]
+    if not now:
+        now = [
+            {
+                "title": item.get("title", ""),
+                "detail": item.get("detail", ""),
+                "command": item.get("command", "seven briefing --gui"),
+                "confirm": bool(item.get("confirm")),
+                "state": "INFO",
+            }
+            for item in briefing.get("next_actions", [])[:2]
+        ]
+    next_items = [
+        {
+            "title": item.get("title", ""),
+            "detail": item.get("detail", ""),
+            "command": item.get("command", "seven experience-center --gui"),
+            "confirm": bool(item.get("confirm")),
+            "state": "INFO",
+        }
+        for item in recommendations[:3]
+    ]
+    setup_steps = setup.get("steps", []) if isinstance(setup.get("steps"), list) else []
+    if len(next_items) < 3:
+        for step in setup_steps:
+            if step.get("state") != "OK":
+                next_items.append({
+                    "title": step.get("title", ""),
+                    "detail": step.get("detail", ""),
+                    "command": step.get("command", "seven personal-setup --gui"),
+                    "confirm": step.get("key") == "backup",
+                    "state": step.get("state", "INFO"),
+                })
+            if len(next_items) >= 3:
+                break
+    healthy = [
+        {
+            "title": item.get("title", ""),
+            "detail": item.get("detail", ""),
+            "command": item.get("command", "seven briefing --gui"),
+            "state": "OK",
+            "confirm": False,
+        }
+        for item in checks
+        if item.get("state") == "OK"
+    ][:5]
+    if not now:
+        now = [{
+            "title": tr("Tout est stable maintenant", "Everything is stable now"),
+            "detail": tr("Aucune action urgente. Tu peux continuer ou ouvrir les parcours focus.", "No urgent action. You can continue or open focus journeys."),
+            "command": "seven journeys --gui",
+            "confirm": False,
+            "state": "OK",
+        }]
+    return {
+        "title": "SevenOS Care Plan",
+        "now": now[:3],
+        "next": next_items[:4],
+        "healthy": healthy,
+    }
+
+
+def learning_layer_state(profile: str) -> dict:
+    profile_title = PROFILES.get(profile, PROFILES["equinox"])[0]
+    guides = [
+        {
+            "key": "theme",
+            "title": tr("Le thème n’est pas cohérent partout", "Theme is not consistent everywhere"),
+            "intent": tr("Réappliquer le thème, synchroniser GTK/Waybar/Hyprland et vérifier l’état.", "Reapply theme, sync GTK/Waybar/Hyprland and verify state."),
+            "command": "seven theme sync && seven-waybar repair && hyprctl reload",
+            "safe": True,
+            "confirm": True,
+        },
+        {
+            "key": "network",
+            "title": tr("Mon Wi‑Fi ou réseau ne répond pas", "Wi‑Fi or network is not responding"),
+            "intent": tr("Ouvrir le centre réseau puis garder le diagnostic à portée.", "Open the network center and keep diagnostics nearby."),
+            "command": "seven settings network",
+            "safe": True,
+            "confirm": False,
+        },
+        {
+            "key": "profile",
+            "title": tr("Je veux changer d’espace sans perdre le contexte", "I want to switch spaces without losing context"),
+            "intent": tr(f"Préparer la mémoire de travail puis choisir le Mini OS adapté. Actuel : {profile_title}.", f"Prepare workspace memory then choose the right Mini OS. Current: {profile_title}."),
+            "command": "seven experience workspace && seven settings profiles",
+            "safe": True,
+            "confirm": False,
+        },
+        {
+            "key": "rollback",
+            "title": tr("Je veux pouvoir revenir en arrière", "I want to be able to go back"),
+            "intent": tr("Créer un point de retour local avant une mise à jour ou un grand changement.", "Create a local return point before an update or major change."),
+            "command": "seven recovery backup",
+            "safe": False,
+            "confirm": True,
+        },
+        {
+            "key": "privacy",
+            "title": tr("Je veux vérifier ce qui a accès à quoi", "I want to check what can access what"),
+            "intent": tr("Lire permissions, services actifs, événements sensibles, Shield et SevenAI.", "Review permissions, active services, sensitive events, Shield and SevenAI."),
+            "command": "seven privacy-report --gui",
+            "safe": True,
+            "confirm": False,
+        },
+        {
+            "key": "slow",
+            "title": tr("SevenOS semble moins fluide", "SevenOS feels less smooth"),
+            "intent": tr("Lancer un contrôle léger et rouvrir les recommandations sans modification destructive.", "Run a light check and reopen recommendations without destructive changes."),
+            "command": "seven smoke doctor && seven experience-center --gui",
+            "safe": True,
+            "confirm": False,
+        },
+    ]
+    return {"title": "SevenOS Learning Layer", "profile": profile, "profile_title": profile_title, "guides": guides}
+
+
+def device_continuity_state(profile: str) -> dict:
+    hostname = simple_out(["hostname"], "SevenOS", timeout=0.8)
+    network_ready = command_exists("nmcli")
+    ssh_ready = command_exists("ssh") and command_exists("scp")
+    rsync_ready = command_exists("rsync")
+    avahi_ready = command_exists("avahi-browse") or Path("/usr/lib/systemd/system/avahi-daemon.service").exists()
+    syncthing_ready = command_exists("syncthing")
+    sevencloud_ready = (ROOT / "bin/seven-cloud").exists() or (ROOT / "scripts/seven-cloud.sh").exists()
+    checks = [
+        {
+            "key": "identity",
+            "title": tr("Identité de l’appareil", "Device identity"),
+            "state": "OK" if hostname else "WARN",
+            "detail": tr(f"Nom local: {hostname}", f"Local name: {hostname}"),
+            "command": "hostnamectl",
+        },
+        {
+            "key": "network",
+            "title": tr("Réseau local", "Local network"),
+            "state": "OK" if network_ready else "WARN",
+            "detail": tr("Le réseau peut être inspecté avant tout partage.", "Network can be inspected before any sharing."),
+            "command": "seven settings network",
+        },
+        {
+            "key": "nearby",
+            "title": tr("Découverte d’appareils proches", "Nearby device discovery"),
+            "state": "OK" if avahi_ready else "INFO",
+            "detail": tr("Découverte locale disponible si l’utilisateur l’active.", "Local discovery is available if the user enables it."),
+            "command": "systemctl status avahi-daemon",
+        },
+        {
+            "key": "transfer",
+            "title": tr("Transfert sécurisé", "Secure transfer"),
+            "state": "OK" if ssh_ready or rsync_ready else "INFO",
+            "detail": tr("SSH/SCP ou rsync peuvent transporter des fichiers explicitement choisis.", "SSH/SCP or rsync can carry explicitly chosen files."),
+            "command": "seven files",
+        },
+        {
+            "key": "sync",
+            "title": tr("Synchronisation continue", "Continuous sync"),
+            "state": "OK" if syncthing_ready or sevencloud_ready else "INFO",
+            "detail": tr("Syncthing ou SevenCloud peuvent devenir le chemin opt-in.", "Syncthing or SevenCloud can become the opt-in path."),
+            "command": "seven settings backup",
+        },
+    ]
+    actions = [
+        {
+            "title": tr("Voir l’état réseau", "Show network state"),
+            "command": "seven settings network",
+            "detail": tr("Ouvre les réglages réseau avant tout partage.", "Opens network settings before any sharing."),
+            "confirm": False,
+        },
+        {
+            "title": tr("Préparer une sauvegarde portable", "Prepare a portable backup"),
+            "command": "seven recovery backup",
+            "detail": tr("Crée un point de retour local transportable.", "Creates a portable local return point."),
+            "confirm": True,
+        },
+        {
+            "title": tr("Ouvrir les fichiers", "Open files"),
+            "command": "seven files",
+            "detail": tr("Choisir explicitement ce qui doit être déplacé.", "Explicitly choose what should be moved."),
+            "confirm": False,
+        },
+        {
+            "title": tr("Consulter SevenCloud", "Review SevenCloud"),
+            "command": "seven cloud status",
+            "detail": tr("Vérifie la disponibilité cloud sans activer de synchronisation forcée.", "Checks cloud availability without forcing sync."),
+            "confirm": False,
+        },
+    ]
+    return {
+        "title": "SevenOS Device Continuity",
+        "profile": profile,
+        "device": hostname,
+        "ready_count": sum(1 for item in checks if item.get("state") == "OK"),
+        "total": len(checks),
+        "checks": checks,
+        "actions": actions,
+    }
+
+
+def intent_palette_state(profile: str) -> dict:
+    profile_title = PROFILES.get(profile, PROFILES["equinox"])[0]
+    intents = [
+        {
+            "key": "fix-theme",
+            "title": tr("Rendre le thème cohérent partout", "Make the theme consistent everywhere"),
+            "aliases": ["theme", "clair", "sombre", "waybar", "gtk", "dark", "light", "appearance"],
+            "detail": tr("Synchronise thème, Waybar, GTK et Hyprland.", "Syncs theme, Waybar, GTK and Hyprland."),
+            "command": "seven theme sync && seven-waybar repair && hyprctl reload",
+            "confirm": True,
+        },
+        {
+            "key": "internet",
+            "title": tr("Réparer ou configurer Internet", "Fix or configure internet"),
+            "aliases": ["wifi", "wi-fi", "internet", "network", "réseau", "connexion", "dns"],
+            "detail": tr("Ouvre le centre réseau avec le diagnostic à portée.", "Opens the network center with diagnostics nearby."),
+            "command": "seven settings network",
+            "confirm": False,
+        },
+        {
+            "key": "rollback",
+            "title": tr("Revenir en arrière ou sauvegarder", "Go back or back up"),
+            "aliases": ["rollback", "sauvegarde", "backup", "restore", "restaurer", "time machine", "retour"],
+            "detail": tr("Crée un point de retour local ou ouvre Time Machine.", "Creates a local return point or opens Time Machine."),
+            "command": "seven time-machine --gui",
+            "confirm": False,
+        },
+        {
+            "key": "privacy",
+            "title": tr("Contrôler confidentialité et permissions", "Check privacy and permissions"),
+            "aliases": ["privacy", "confidentialité", "permission", "micro", "camera", "caméra", "flatpak", "shield"],
+            "detail": tr("Montre permissions, services actifs, événements sensibles et Shield.", "Shows permissions, active services, sensitive events and Shield."),
+            "command": "seven privacy-report --gui",
+            "confirm": False,
+        },
+        {
+            "key": "mini-os",
+            "title": tr("Changer de Mini OS proprement", "Switch Mini OS cleanly"),
+            "aliases": ["mini os", "profil", "profile", "forge", "baobab", "atlas", "studio", "pulse", "shield", "equinox"],
+            "detail": tr(f"Prépare la mémoire puis ouvre le choix des espaces. Actuel : {profile_title}.", f"Prepares memory then opens space selection. Current: {profile_title}."),
+            "command": "seven experience workspace && seven settings profiles",
+            "confirm": False,
+        },
+        {
+            "key": "apps",
+            "title": tr("Installer ou gérer des applications", "Install or manage apps"),
+            "aliases": ["app", "apps", "logiciel", "store", "installer", "désinstaller", "install"],
+            "detail": tr("Ouvre SevenStore et les réglages d’apps.", "Opens SevenStore and app settings."),
+            "command": "seven store",
+            "confirm": False,
+        },
+        {
+            "key": "files",
+            "title": tr("Retrouver, déplacer ou ouvrir des fichiers", "Find, move or open files"),
+            "aliases": ["file", "files", "fichier", "fichiers", "dossier", "documents", "exe", "msi"],
+            "detail": tr("Ouvre Seven Files avec les emplacements et actions sûres.", "Opens Seven Files with locations and safe actions."),
+            "command": "seven files",
+            "confirm": False,
+        },
+        {
+            "key": "faster",
+            "title": tr("Rendre SevenOS plus fluide", "Make SevenOS smoother"),
+            "aliases": ["lent", "slow", "fluide", "performance", "lag", "ram", "cpu"],
+            "detail": tr("Lance un contrôle léger puis affiche les recommandations.", "Runs a light check then shows recommendations."),
+            "command": "seven smoke doctor && seven experience-center --gui",
+            "confirm": False,
+        },
+    ]
+    return {"title": "SevenOS Intent Palette", "profile": profile, "profile_title": profile_title, "items": intents}
+
+
+def resolve_intent(data: dict, query: str) -> dict:
+    query_norm = " ".join(query.lower().strip().split())
+    intents = (data.get("intent_palette") or {}).get("items", [])
+    if not query_norm:
+        return {"query": query, "match": None, "items": intents[:5]}
+    scored: list[tuple[int, dict]] = []
+    for item in intents:
+        haystack = " ".join([str(item.get("title", "")), str(item.get("detail", "")), " ".join(item.get("aliases", []))]).lower()
+        score = 0
+        for word in query_norm.split():
+            if word in haystack:
+                score += 3 if word in " ".join(item.get("aliases", [])).lower() else 1
+        if query_norm in haystack:
+            score += 5
+        if score:
+            scored.append((score, item))
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    match = scored[0][1] if scored else None
+    return {"query": query, "match": match, "items": [item for _score, item in scored[:5]] or intents[:5]}
+
+
+def payload() -> dict:
+    context = current_context()
+    profile = active_profile()
+    profile_title = PROFILES[profile][0]
+    backups = migration_count()
+    events = recent_events(10)
+    memory = workspace_memory()
+    permissions = permissions_state()
+    report = trust_report(backups, events, memory, permissions, profile)
+    personal_setup = personal_setup_state(profile, backups, memory)
+    privacy_report = privacy_report_state(permissions, events)
+    learning = learning_layer_state(profile)
+    device_continuity = device_continuity_state(profile)
+    daily_briefing = daily_briefing_state(profile, report, personal_setup, privacy_report, device_continuity, events, backups, context)
+    intent_palette = intent_palette_state(profile)
+    recommendations = recommended_actions(report, backups, events, memory)
+    care_plan = care_plan_state(daily_briefing, recommendations, personal_setup)
+    rescue_checks = [
+        {"title": tr("Interface", "Interface"), "state": "OK", "detail": tr("Réparation non destructive disponible.", "Non-destructive repair available."), "command": "seven repair ux --apply && seven theme sync && seven-waybar repair"},
+        {"title": tr("Réseau", "Network"), "state": "OK" if command_exists("nmcli") else "WARN", "detail": tr("Panneau Wi-Fi et diagnostic réseau.", "Wi-Fi panel and network diagnostics."), "command": "seven settings network"},
+        {"title": tr("Sauvegarde", "Backup"), "state": "OK" if backups else "INFO", "detail": tr(f"{backups} sauvegarde(s) trouvée(s).", f"{backups} backup set(s) found."), "command": "seven recovery backup"},
+        {"title": "Prism", "state": "OK", "detail": tr("Contrôle fenêtre et identité SevenOS.", "Window control and SevenOS identity."), "command": "seven settings prism"},
+    ]
+    return {
+        "schema": "sevenos.experience-center.v1",
+        "state": "ready",
+        "context": context,
+        "active_profile": profile,
+        "active_profile_title": profile_title,
+        "trust": report,
+        "briefing": daily_briefing,
+        "care_plan": care_plan,
+        "recommendations": recommendations,
+        "setup": personal_setup,
+        "privacy_report": privacy_report,
+        "sections": ["briefing", "care", "trust", "setup", "intent", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory"],
+        "learning": learning,
+        "intent_palette": intent_palette,
+        "device_continuity": device_continuity,
+        "rescue": {"title": "SevenOS Rescue Mode", "checks": rescue_checks},
+        "time_machine": {
+            "title": "SevenOS Time Machine",
+            "backup_count": backups,
+            "path": str(MIGRATION_DIR),
+            "commands": ["seven recovery backup", "seven manifest restore-plan", "seven update rollback"],
+        },
+        "timeline": {"title": "SevenOS Activity Timeline", "events": events, "path": str(EVENT_FILE)},
+        "permissions": {"title": "SevenOS Permissions Center", "checks": permissions},
+        "journeys": {"title": "SevenOS Focus Journeys", "items": journey_rows()},
+        "continuity": {
+            "title": "SevenOS App Continuity",
+            "routes": [
+                {"from": "atlas", "to": "studio", "intent": tr("éditer un document ou une image", "edit a document or image"), "command": "seven bridge send --from atlas --to studio <file>"},
+                {"from": "atlas", "to": "baobab", "intent": tr("archiver une source culturelle", "archive a cultural source"), "command": "seven bridge send --from atlas --to baobab <file>"},
+                {"from": "forge", "to": "shield", "intent": tr("analyser un artefact ou paquet", "analyze an artifact or package"), "command": "seven bridge send --from forge --to shield <file>"},
+                {"from": "studio", "to": "pulse", "intent": tr("préparer capture ou média de jeu", "prepare capture or gaming media"), "command": "seven bridge send --from studio --to pulse <file>"},
+            ],
+        },
+        "memory": {
+            "title": "SevenOS Workspace Memory",
+            "path": str(WORKSPACE_MEMORY),
+            "state": "OK" if memory else "INFO",
+            "profiles": memory.get("profiles", {}) if isinstance(memory.get("profiles"), dict) else {},
+            "command": "seven-window memory --json",
+        },
+    }
+
+
+def emit_event(message: str, command: str = "") -> None:
+    try:
+        subprocess.run([str(ROOT / "scripts/events.sh"), "log", "--source", "experience-center", "--type", "ui", "--message", message, "--command", command, "--state", "OK"], cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, check=False, timeout=2)
+    except Exception:
+        pass
+
+
+def run_detached(command: str) -> None:
+    emit_event(tr("Action lancée depuis Experience Center.", "Action launched from Experience Center."), command)
+    subprocess.Popen(["bash", "-lc", command], cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def print_human(data: dict, section: str = "status") -> None:
+    context = data.get("context", {}) if isinstance(data.get("context"), dict) else {}
+    print("SevenOS Experience Center")
+    print("=========================")
+    print(f"{tr('Profil actif', 'Active profile')}: {data.get('active_profile_title')}")
+    if context:
+        print(f"{tr('Contexte', 'Context')}: {context.get('time')} · {context.get('language_label')} · {context.get('timezone')}")
+    print(f"{tr('État', 'State')}: {data.get('state')}")
+    trust = data.get("trust", {}) if isinstance(data.get("trust"), dict) else {}
+    if trust:
+        print(f"{tr('Confiance', 'Trust')}: {trust.get('score', 0)}% · {trust.get('label', '')}")
+    print()
+    if section == "status" and data.get("recommendations"):
+        print(tr("Actions recommandées", "Recommended Actions"))
+        for item in data["recommendations"][:3]:
+            print(f"  - {item.get('title')}: {item.get('detail')}")
+        print()
+    if section in {"briefing"}:
+        briefing = data.get("briefing", {}) if isinstance(data.get("briefing"), dict) else {}
+        print(tr("Briefing quotidien", "Daily Briefing"))
+        print(f"  {briefing.get('headline', '')}")
+        for item in briefing.get("checks", []):
+            print(f"  {item.get('state', 'INFO'):<4} {item.get('title')}: {item.get('detail')}")
+        print()
+        print(tr("À faire ensuite", "Next actions"))
+        for item in briefing.get("next_actions", []):
+            print(f"  - {item.get('title')}: {item.get('command')}")
+    if section in {"care"}:
+        care = data.get("care_plan", {}) if isinstance(data.get("care_plan"), dict) else {}
+        print("SevenOS Care Plan")
+        for label, key in ((tr("Maintenant", "Now"), "now"), (tr("Ensuite", "Next"), "next"), (tr("Déjà sain", "Healthy"), "healthy")):
+            print(label)
+            for item in care.get(key, []):
+                print(f"  {item.get('state', 'INFO'):<4} {item.get('title')}: {item.get('detail')}")
+                print(f"      {item.get('command')}")
+    if section in {"trust"} and trust:
+        print(tr("Rapport de confiance", "Trust Report"))
+        checks = trust.get("checks", {}) if isinstance(trust.get("checks"), dict) else {}
+        for key, ok in checks.items():
+            marker = "OK" if ok else "INFO"
+            print(f"  {marker:<4} {key.replace('_', ' ')}")
+    if section in {"setup"}:
+        setup = data.get("setup", {}) if isinstance(data.get("setup"), dict) else {}
+        print(tr("Configuration personnelle", "Personal Setup"))
+        print(f"  {setup.get('percent', 0)}% · {setup.get('ready', 0)}/{setup.get('total', 0)}")
+        for item in setup.get("steps", []):
+            print(f"  {item.get('state', 'INFO'):<4} {item.get('title')}: {item.get('detail')}")
+    if section in {"privacy-report"}:
+        report = data.get("privacy_report", {}) if isinstance(data.get("privacy_report"), dict) else {}
+        print("Privacy Report")
+        for item in report.get("checks", []):
+            print(f"  {item.get('state', 'INFO'):<4} {item.get('title')}: {item.get('detail')}")
+    if section in {"learning"}:
+        learning = data.get("learning", {}) if isinstance(data.get("learning"), dict) else {}
+        print(tr("Aide contextuelle", "Context Help"))
+        for item in learning.get("guides", []):
+            print(f"  - {item.get('title')}: {item.get('intent')}")
+            print(f"    {item.get('command')}")
+    if section in {"device-continuity"}:
+        continuity_state = data.get("device_continuity", {}) if isinstance(data.get("device_continuity"), dict) else {}
+        print(tr("Continuité appareils", "Device Continuity"))
+        print(f"  {continuity_state.get('ready_count', 0)}/{continuity_state.get('total', 0)} · {continuity_state.get('device', '')}")
+        for item in continuity_state.get("checks", []):
+            print(f"  {item.get('state', 'INFO'):<4} {item.get('title')}: {item.get('detail')}")
+    if section in {"intent"}:
+        intent = data.get("intent_result") if isinstance(data.get("intent_result"), dict) else {}
+        if intent.get("query"):
+            print(f"{tr('Intention', 'Intent')}: {intent.get('query')}")
+        match = intent.get("match") if isinstance(intent.get("match"), dict) else None
+        if match:
+            print(f"  {tr('Meilleur parcours', 'Best route')}: {match.get('title')}")
+            print(f"  {match.get('detail')}")
+            print(f"  {match.get('command')}")
+        else:
+            print(tr("Intentions disponibles", "Available intents"))
+            palette = data.get("intent_palette", {}) if isinstance(data.get("intent_palette"), dict) else {}
+            for item in palette.get("items", [])[:8]:
+                print(f"  - {item.get('title')}: {item.get('detail')}")
+    if section in {"status", "rescue"}:
+        print("Rescue")
+        for item in data["rescue"]["checks"]:
+            print(f"  {item['state']:<4} {item['title']}: {item['detail']}")
+    if section in {"status", "time-machine"}:
+        print(f"\nTime Machine: {data['time_machine']['backup_count']} backup(s)")
+    if section in {"status", "timeline"}:
+        print("\nTimeline")
+        for item in data["timeline"]["events"][-5:]:
+            print(f"  {item.get('timestamp', '')} {item.get('source', 'sevenos')}: {item.get('message', '')}")
+    if section in {"status", "permissions"}:
+        print("\nPermissions")
+        for item in data["permissions"]["checks"]:
+            print(f"  {item['state']:<4} {item['title']}: {item['detail']}")
+    if section in {"status", "journeys"}:
+        print("\nFocus Journeys")
+        for item in data["journeys"]["items"]:
+            print(f"  {item['icon']} {item['title']}: {item['intent']}")
+    if section in {"status", "continuity"}:
+        print("\nApp Continuity")
+        for item in data["continuity"]["routes"]:
+            print(f"  {item['from']} -> {item['to']}: {item['intent']}")
+            print(f"    {item['command']}")
+    if section in {"status", "memory"}:
+        print("\nWorkspace Memory")
+        print(f"  {data['memory']['state']}: {data['memory']['path']}")
+        print(f"  command: {data['memory']['command']}")
+
+
+def main() -> int:
+    args = sys.argv[1:]
+    if "--probe" in args:
+        print(json.dumps({"schema": "sevenos.experience-center.probe.v1", "state": "OK", "root": str(ROOT)}, ensure_ascii=False))
+        return 0
+    data = payload()
+    intent_query = ""
+    if "intent" in args:
+        try:
+            idx = args.index("intent")
+            intent_query = " ".join(item for item in args[idx + 1:] if not item.startswith("--"))
+        except ValueError:
+            intent_query = ""
+        data["intent_result"] = resolve_intent(data, intent_query)
+    if "--json" in args or "json" in args:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        return 0
+    section = next((item for item in args if item in {"status", "briefing", "care", "trust", "setup", "personal-setup", "intent", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory"}), "status")
+    if section == "personal-setup":
+        section = "setup"
+    if "--gui" not in args or not (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")):
+        print_human(data, section)
+        return 0
+
+    ensure_gi_python()
+    import gi
+
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gdk, GLib, Gtk
+
+    css = b"""
+    .experience-root { background: rgba(8, 10, 20, 0.92); color: #f7f9ff; }
+    .experience-shell {
+      padding: 14px;
+      border-radius: 28px;
+      background: radial-gradient(ellipse at 15% 0%, rgba(124, 104, 255, 0.24), transparent 42%),
+                  radial-gradient(ellipse at 90% 5%, rgba(83, 220, 255, 0.16), transparent 38%),
+                  rgba(13, 16, 29, 0.94);
+      border: 1px solid rgba(168, 184, 255, 0.28);
+    }
+    .experience-sidebar {
+      padding: 12px;
+      border-radius: 24px;
+      background: rgba(4, 7, 17, 0.42);
+      border: 1px solid rgba(190,205,255,0.14);
+    }
+    .experience-title { font-size: 22px; font-weight: 500; color: #ffffff; }
+    .experience-note { color: rgba(235, 240, 255, 0.72); font-size: 12px; }
+    .experience-eyebrow { color: rgba(190,205,255,0.64); font-size: 10px; letter-spacing: 0; }
+    .experience-hero {
+      padding: 14px;
+      border-radius: 23px;
+      background: linear-gradient(135deg, rgba(124,104,255,0.24), rgba(58,205,255,0.11), rgba(166,227,161,0.08));
+      border: 1px solid rgba(170,190,255,0.25);
+    }
+    .experience-card {
+      padding: 12px;
+      border-radius: 19px;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(190,205,255,0.16);
+    }
+    .experience-card.primary {
+      background: radial-gradient(ellipse at 5% 0%, rgba(124,104,255,0.24), transparent 46%), rgba(255,255,255,0.065);
+      border-color: rgba(139,124,255,0.34);
+    }
+    .experience-metric {
+      padding: 11px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.052);
+      border: 1px solid rgba(190,205,255,0.15);
+    }
+    .experience-metric-value { font-size: 17px; font-weight: 500; color: #ffffff; }
+    .experience-score {
+      min-width: 76px;
+      min-height: 76px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(139,124,255,0.38), rgba(83,220,255,0.12) 64%, rgba(255,255,255,0.05));
+      border: 1px solid rgba(185,200,255,0.32);
+      color: #ffffff;
+      font-size: 20px;
+      font-weight: 500;
+    }
+    .experience-section { font-size: 13px; font-weight: 500; color: #ffffff; }
+    .experience-small { font-size: 10px; color: rgba(235,240,255,0.62); }
+    .experience-pill {
+      min-height: 30px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.075);
+      color: #f7f9ff;
+      border: 1px solid rgba(190,205,255,0.20);
+    }
+    .experience-pill:hover { background: rgba(139,124,255,0.24); border-color: rgba(139,124,255,0.42); }
+    .experience-pill.primary { background: rgba(139,124,255,0.32); border-color: rgba(139,124,255,0.56); }
+    .experience-nav {
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 15px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: rgba(245,248,255,0.78);
+    }
+    .experience-nav:hover { background: rgba(255,255,255,0.07); border-color: rgba(190,205,255,0.14); }
+    .experience-nav.active { background: rgba(139,124,255,0.22); border-color: rgba(139,124,255,0.44); color: #ffffff; }
+    .experience-glyph {
+      min-width: 38px;
+      min-height: 38px;
+      border-radius: 999px;
+      background: rgba(139,124,255,0.20);
+      border: 1px solid rgba(139,124,255,0.34);
+      font-size: 18px;
+    }
+    .experience-row {
+      padding: 10px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.040);
+      border: 1px solid rgba(190,205,255,0.12);
+    }
+    .experience-route {
+      padding: 9px 10px;
+      border-radius: 15px;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(190,205,255,0.12);
+    }
+    .experience-timeline-dot {
+      min-width: 10px;
+      min-height: 10px;
+      border-radius: 999px;
+      background: #8b7cff;
+      border: 1px solid rgba(255,255,255,0.45);
+    }
+    .experience-footer {
+      padding: 8px 10px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.045);
+      border: 1px solid rgba(190,205,255,0.12);
+    }
+    .experience-recommendation {
+      padding: 10px;
+      border-radius: 17px;
+      background: linear-gradient(135deg, rgba(139,124,255,0.16), rgba(255,255,255,0.045));
+      border: 1px solid rgba(139,124,255,0.24);
+    }
+    .experience-entry {
+      min-height: 42px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.075);
+      color: #f7f9ff;
+      border: 1px solid rgba(190,205,255,0.20);
+    }
+    .experience-entry:focus {
+      background: rgba(139,124,255,0.15);
+      border-color: rgba(139,124,255,0.48);
+    }
+    """
+    provider = Gtk.CssProvider()
+    provider.load_from_data(css)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+    window = Gtk.Window(title="SevenOS Experience Center")
+    window.set_default_size(960, 620)
+    window.set_size_request(760, 500)
+    window.set_position(Gtk.WindowPosition.CENTER)
+    window.get_style_context().add_class("experience-root")
+    window.connect("destroy", Gtk.main_quit)
+
+    root = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    root.set_border_width(12)
+    root.get_style_context().add_class("experience-shell")
+    window.add(root)
+
+    nav_buttons: dict[str, Gtk.Button] = {}
+    stack = Gtk.Stack()
+    stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+    stack.set_transition_duration(180)
+
+    sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=7)
+    sidebar.set_size_request(210, -1)
+    sidebar.get_style_context().add_class("experience-sidebar")
+    root.pack_start(sidebar, False, False, 0)
+
+    brand = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+    prism = Gtk.Label(label="◇")
+    prism.get_style_context().add_class("experience-glyph")
+    brand_copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    brand_title = Gtk.Label(label="SevenOS")
+    brand_title.set_xalign(0)
+    brand_title.get_style_context().add_class("experience-section")
+    brand_note = Gtk.Label(label=tr("Centre de confiance", "Trust center"))
+    brand_note.set_xalign(0)
+    brand_note.get_style_context().add_class("experience-small")
+    brand_copy.pack_start(brand_title, False, False, 0)
+    brand_copy.pack_start(brand_note, False, False, 0)
+    brand.pack_start(prism, False, False, 0)
+    brand.pack_start(brand_copy, True, True, 0)
+    sidebar.pack_start(brand, False, False, 0)
+
+    content_shell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+    content_shell.set_hexpand(True)
+    content_shell.set_vexpand(True)
+    root.pack_start(content_shell, True, True, 0)
+
+    header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    header.get_style_context().add_class("experience-hero")
+    header_copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=3)
+    header_copy.set_hexpand(True)
+    eyebrow = Gtk.Label(label=tr("SEVENOS EXPERIENCE", "SEVENOS EXPERIENCE"))
+    eyebrow.set_xalign(0)
+    eyebrow.get_style_context().add_class("experience-eyebrow")
+    title = Gtk.Label(label="Experience Center")
+    title.set_xalign(0)
+    title.get_style_context().add_class("experience-title")
+    note = Gtk.Label(label=tr("Secours, Time Machine, permissions, parcours et mémoire de travail réunis dans une surface calme.", "Rescue, Time Machine, permissions, journeys and workspace memory in one calm surface."))
+    note.set_xalign(0)
+    note.set_line_wrap(True)
+    note.get_style_context().add_class("experience-note")
+    header_copy.pack_start(eyebrow, False, False, 0)
+    header_copy.pack_start(title, False, False, 0)
+    header_copy.pack_start(note, False, False, 0)
+    header.pack_start(header_copy, True, True, 0)
+    context = data.get("context", {}) if isinstance(data.get("context"), dict) else {}
+    context_label = Gtk.Label(label=f"{context.get('time', '')} · {context.get('language_label', '')}")
+    context_label.get_style_context().add_class("experience-pill")
+    context_label.set_tooltip_text(f"{context.get('date', '')} · {context.get('timezone', '')} · {context.get('language_raw', '')}")
+    header.pack_start(context_label, False, False, 0)
+    trust = data.get("trust", {}) if isinstance(data.get("trust"), dict) else {}
+    score = int(trust.get("score", 0) or 0)
+    score_label = Gtk.Label(label=f"{score}%")
+    score_label.get_style_context().add_class("experience-score")
+    score_label.set_tooltip_text(str(trust.get("label") or ""))
+    header.pack_start(score_label, False, False, 0)
+    content_shell.pack_start(header, False, False, 0)
+
+    metrics = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    content_shell.pack_start(metrics, False, False, 0)
+
+    def metric(value: str, label: str) -> tuple[Gtk.Label, Gtk.Label]:
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        card.get_style_context().add_class("experience-metric")
+        card.set_hexpand(True)
+        value_label = Gtk.Label(label=value)
+        value_label.set_xalign(0)
+        value_label.get_style_context().add_class("experience-metric-value")
+        label_widget = Gtk.Label(label=label)
+        label_widget.set_xalign(0)
+        label_widget.get_style_context().add_class("experience-small")
+        card.pack_start(value_label, False, False, 0)
+        card.pack_start(label_widget, False, False, 0)
+        metrics.pack_start(card, True, True, 0)
+        return value_label, label_widget
+
+    event_count = len(data["timeline"].get("events", []))
+    metric(str(trust.get("label") or tr("Prêt", "Ready")), tr("confiance", "trust"))
+    moment_value, time_value = metric(str(context.get("moment") or tr("Maintenant", "Now")), str(context.get("time") or "--:--"))
+    metric(str(data.get("active_profile_title") or "Equinox"), tr("Mini OS actif", "Active Mini OS"))
+    metric(str(data["time_machine"].get("backup_count", 0)), "Time Machine")
+    metric(str(len(data["journeys"].get("items", []))), tr("parcours", "journeys"))
+
+    def refresh_context_labels() -> bool:
+        live_context = current_context()
+        context_label.set_text(f"{live_context.get('time', '')} · {live_context.get('language_label', '')}")
+        context_label.set_tooltip_text(f"{live_context.get('date', '')} · {live_context.get('timezone', '')} · {live_context.get('language_raw', '')}")
+        moment_value.set_text(str(live_context.get("moment") or tr("Maintenant", "Now")))
+        time_value.set_text(str(live_context.get("time") or "--:--"))
+        return True
+
+    GLib.timeout_add_seconds(30, refresh_context_labels)
+
+    scroller = Gtk.ScrolledWindow()
+    scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+    scroller.add(stack)
+    content_shell.pack_start(scroller, True, True, 0)
+
+    footer = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    footer.get_style_context().add_class("experience-footer")
+    footer_label = Gtk.Label(label=tr("Les actions sensibles sont guidées et n’effacent pas les fichiers personnels sans confirmation.", "Sensitive actions are guided and do not delete personal files without confirmation."))
+    footer_label.set_xalign(0)
+    footer_label.get_style_context().add_class("experience-small")
+    footer.pack_start(footer_label, True, True, 0)
+    content_shell.pack_start(footer, False, False, 0)
+
+    def confirm_and_run(command: str, title_text: str, detail: str = "") -> None:
+        dialog = Gtk.Dialog(title=title_text, transient_for=window, flags=Gtk.DialogFlags.MODAL)
+        dialog.set_default_size(520, 260)
+        box = dialog.get_content_area()
+        box.set_border_width(16)
+        box.set_spacing(10)
+        box.get_style_context().add_class("experience-shell")
+        heading = Gtk.Label(label=title_text)
+        heading.set_xalign(0)
+        heading.get_style_context().add_class("experience-section")
+        text = Gtk.Label(label=detail or tr("SevenOS va lancer cette action en arrière-plan.", "SevenOS will launch this action in the background."))
+        text.set_xalign(0)
+        text.set_line_wrap(True)
+        text.get_style_context().add_class("experience-note")
+        command_label = Gtk.Label(label=command)
+        command_label.set_xalign(0)
+        command_label.set_selectable(True)
+        command_label.get_style_context().add_class("experience-small")
+        actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        actions.set_halign(Gtk.Align.END)
+        cancel = Gtk.Button(label=tr("Annuler", "Cancel"))
+        cancel.get_style_context().add_class("experience-pill")
+        launch = Gtk.Button(label=tr("Lancer", "Run"))
+        launch.get_style_context().add_class("experience-pill")
+        launch.get_style_context().add_class("primary")
+        cancel.connect("clicked", lambda _button: dialog.response(Gtk.ResponseType.CANCEL))
+        launch.connect("clicked", lambda _button: (run_detached(command), dialog.response(Gtk.ResponseType.OK)))
+        actions.pack_start(cancel, False, False, 0)
+        actions.pack_start(launch, False, False, 0)
+        box.pack_start(heading, False, False, 0)
+        box.pack_start(text, False, False, 0)
+        box.pack_start(command_label, False, False, 0)
+        box.pack_end(actions, False, False, 0)
+        dialog.connect("response", lambda _dialog, _response: dialog.destroy())
+        dialog.show_all()
+
+    def button(label: str, command: str, detail: str = "", primary: bool = False, confirm: bool = False) -> Gtk.Button:
+        item = Gtk.Button(label=label)
+        item.get_style_context().add_class("experience-pill")
+        if primary:
+            item.get_style_context().add_class("primary")
+        item.set_tooltip_text(command)
+        item.connect("clicked", lambda _button: confirm_and_run(command, label, detail) if confirm else run_detached(command))
+        return item
+
+    def page_box(name: str) -> Gtk.Box:
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        box.set_border_width(2)
+        stack.add_named(box, name)
+        return box
+
+    def add_nav(name: str, icon: str, label: str) -> None:
+        nav = Gtk.Button(label=f"{icon}  {label}")
+        nav.get_style_context().add_class("experience-nav")
+        nav.set_halign(Gtk.Align.FILL)
+        nav.connect("clicked", lambda clicked: activate(name))
+        nav_buttons[name] = nav
+        sidebar.pack_start(nav, False, False, 0)
+
+    def activate(name: str) -> None:
+        stack.set_visible_child_name(name)
+        for key, nav in nav_buttons.items():
+            if key == name:
+                nav.get_style_context().add_class("active")
+            else:
+                nav.get_style_context().remove_class("active")
+
+    def action_row(parent: Gtk.Box, title_text: str, note_text: str, actions: list[tuple[str, str, str, bool]], glyph: str = "•", primary: bool = False) -> None:
+        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=11)
+        card.get_style_context().add_class("experience-card")
+        if primary:
+            card.get_style_context().add_class("primary")
+        icon = Gtk.Label(label=glyph)
+        icon.get_style_context().add_class("experience-glyph")
+        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        labels.set_hexpand(True)
+        title_label = Gtk.Label(label=title_text)
+        title_label.set_xalign(0)
+        title_label.get_style_context().add_class("experience-section")
+        note_label = Gtk.Label(label=note_text)
+        note_label.set_xalign(0)
+        note_label.set_line_wrap(True)
+        note_label.get_style_context().add_class("experience-small")
+        labels.pack_start(title_label, False, False, 0)
+        labels.pack_start(note_label, False, False, 0)
+        flow = Gtk.FlowBox()
+        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(4)
+        flow.set_column_spacing(8)
+        flow.set_row_spacing(8)
+        for action_label, command, action_detail, needs_confirm in actions:
+            flow.add(button(action_label, command, action_detail, primary=False, confirm=needs_confirm))
+        labels.pack_start(flow, False, False, 4)
+        card.pack_start(icon, False, False, 0)
+        card.pack_start(labels, True, True, 0)
+        parent.pack_start(card, False, False, 0)
+
+    def recommendation_strip(parent: Gtk.Box) -> None:
+        wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        wrapper.get_style_context().add_class("experience-recommendation")
+        title_text = Gtk.Label(label=tr("Prochaines actions recommandées", "Recommended next actions"))
+        title_text.set_xalign(0)
+        title_text.get_style_context().add_class("experience-section")
+        note_text = Gtk.Label(label=tr("SevenOS priorise ce qui augmente la confiance sans te forcer à ouvrir un terminal.", "SevenOS prioritizes what increases trust without forcing you to open a terminal."))
+        note_text.set_xalign(0)
+        note_text.set_line_wrap(True)
+        note_text.get_style_context().add_class("experience-small")
+        wrapper.pack_start(title_text, False, False, 0)
+        wrapper.pack_start(note_text, False, False, 0)
+        flow = Gtk.FlowBox()
+        flow.set_selection_mode(Gtk.SelectionMode.NONE)
+        flow.set_max_children_per_line(2)
+        flow.set_column_spacing(8)
+        flow.set_row_spacing(8)
+        for item in data.get("recommendations", [])[:4]:
+            flow.add(button(str(item.get("title") or ""), str(item.get("command") or ""), str(item.get("detail") or ""), confirm=bool(item.get("confirm"))))
+        wrapper.pack_start(flow, False, False, 0)
+        parent.pack_start(wrapper, False, False, 0)
+
+    overview = page_box("overview")
+    briefing_page = page_box("briefing")
+    care_page = page_box("care")
+    trust_page = page_box("trust")
+    setup_page = page_box("setup")
+    intent_page = page_box("intent")
+    learning_page = page_box("learning")
+    device_page = page_box("device-continuity")
+    rescue = page_box("rescue")
+    time_machine = page_box("time-machine")
+    continuity = page_box("continuity")
+    privacy = page_box("privacy")
+    privacy_report_page = page_box("privacy-report")
+    timeline = page_box("timeline")
+
+    for name, icon, label in (
+        ("overview", "◇", tr("Vue d’ensemble", "Overview")),
+        ("briefing", "󰃭", tr("Briefing", "Briefing")),
+        ("care", "󰓎", tr("Plan", "Plan")),
+        ("trust", "󰄬", tr("Confiance", "Trust")),
+        ("setup", "󰒓", tr("Configuration", "Setup")),
+        ("intent", "󰘳", tr("Intentions", "Intents")),
+        ("learning", "󰌵", tr("Aide guidée", "Guided help")),
+        ("device-continuity", "󰀂", tr("Appareils", "Devices")),
+        ("rescue", "󰜉", "Rescue"),
+        ("time-machine", "󰁯", "Time Machine"),
+        ("continuity", "󰐃", tr("Parcours", "Journeys")),
+        ("privacy", "󰌾", tr("Permissions", "Permissions")),
+        ("privacy-report", "󰒃", tr("Rapport privé", "Privacy report")),
+        ("timeline", "󰋚", "Timeline"),
+    ):
+        add_nav(name, icon, label)
+
+    recommendation_strip(overview)
+    briefing = data.get("briefing", {}) if isinstance(data.get("briefing"), dict) else {}
+    action_row(
+        briefing_page,
+        tr("Briefing quotidien", "Daily briefing"),
+        str(briefing.get("headline") or ""),
+        [(tr("Actualiser", "Refresh"), "seven briefing --gui", "", False), (tr("Intentions", "Intents"), "seven intent --gui", "", False)],
+        "󰃭",
+        True,
+    )
+    for item in briefing.get("checks", []):
+        action_row(
+            briefing_page,
+            str(item.get("title", "")),
+            f"{item.get('state', 'INFO')} · {item.get('detail', '')}",
+            [(tr("Ouvrir", "Open"), str(item.get("command", "seven experience-center --gui")), str(item.get("detail", "")), False)],
+            "●",
+            item.get("state") == "OK",
+        )
+    action_row(
+        briefing_page,
+        tr("À faire ensuite", "Next actions"),
+        tr("SevenOS ne pousse que les actions utiles maintenant, dans l’ordre le plus calme.", "SevenOS only suggests useful actions now, in the calmest order."),
+        [(str(item.get("title", "")), str(item.get("command", "")), str(item.get("detail", "")), bool(item.get("confirm"))) for item in briefing.get("next_actions", [])],
+        "◇",
+        True,
+    )
+    care = data.get("care_plan", {}) if isinstance(data.get("care_plan"), dict) else {}
+    action_row(
+        care_page,
+        "SevenOS Care Plan",
+        tr("Une lecture simple : ce qui compte maintenant, ce qui peut attendre, et ce qui est déjà sain.", "A simple reading: what matters now, what can wait, and what is already healthy."),
+        [(tr("Briefing", "Briefing"), "seven briefing --gui", "", False), (tr("Intentions", "Intents"), "seven intent --gui", "", False)],
+        "󰓎",
+        True,
+    )
+    for title_text, key, glyph in (
+        (tr("Maintenant", "Now"), "now", "󰐃"),
+        (tr("Ensuite", "Next"), "next", "󰁔"),
+        (tr("Déjà sain", "Healthy"), "healthy", "󰄬"),
+    ):
+        action_row(
+            care_page,
+            title_text,
+            tr("Actions et états organisés pour éviter la surcharge.", "Actions and states organized to avoid overload."),
+            [(str(item.get("title", "")), str(item.get("command", "")), str(item.get("detail", "")), bool(item.get("confirm"))) for item in care.get(key, [])],
+            glyph,
+            key == "now",
+        )
+    checks = trust.get("checks", {}) if isinstance(trust.get("checks"), dict) else {}
+    action_row(
+        trust_page,
+        tr("Score de confiance", "Trust score"),
+        tr(
+            "SevenOS mesure ici les éléments qui rassurent au quotidien : secours, sauvegarde, timeline, permissions, mémoire et contexte mini OS.",
+            "SevenOS measures the daily trust elements here: rescue, backup, timeline, permissions, memory and Mini OS context.",
+        ),
+        [(tr("Actualiser", "Refresh"), "seven trust --gui", "", False), (tr("Contrôle léger", "Light check"), "seven smoke doctor", "", False)],
+        "󰄬",
+        True,
+    )
+    for key, ok in checks.items():
+        labels = {
+            "rescue": tr("Secours disponible", "Rescue available"),
+            "backup": tr("Sauvegarde locale", "Local backup"),
+            "timeline": tr("Timeline active", "Timeline active"),
+            "permissions": tr("Permissions lisibles", "Readable permissions"),
+            "workspace_memory": tr("Mémoire de travail", "Workspace memory"),
+            "profile_context": tr("Contexte Mini OS", "Mini OS context"),
+        }
+        notes = {
+            "rescue": tr("Les réparations non destructives sont prêtes.", "Non-destructive repairs are ready."),
+            "backup": tr("Au moins un point de retour local existe.", "At least one local return point exists."),
+            "timeline": tr("Les changements récents peuvent être relus.", "Recent changes can be reviewed."),
+            "permissions": tr("Les routes micro, caméra, portails et apps sont inspectables.", "Microphone, camera, portal and app routes are inspectable."),
+            "workspace_memory": tr("SevenOS peut reprendre un contexte de travail.", "SevenOS can resume a working context."),
+            "profile_context": tr("Le mini OS actif est reconnu et contextualisé.", "The active Mini OS is recognized and contextualized."),
+        }
+        action_row(trust_page, labels.get(key, key), ("OK · " if ok else "À compléter · ") + notes.get(key, ""), [(tr("Ouvrir", "Open"), "seven experience-center --gui", "", False)], "●", bool(ok))
+    setup = data.get("setup", {}) if isinstance(data.get("setup"), dict) else {}
+    action_row(
+        setup_page,
+        tr("Configuration personnelle SevenOS", "SevenOS Personal Setup"),
+        tr(
+            f"{setup.get('percent', 0)}% prêt · {setup.get('ready', 0)}/{setup.get('total', 0)} étapes configurées.",
+            f"{setup.get('percent', 0)}% ready · {setup.get('ready', 0)}/{setup.get('total', 0)} steps configured.",
+        ),
+        [(tr("Ouvrir Paramètres", "Open Settings"), "seven settings general", "", False), (tr("Aide", "Help"), "seven-help-native", "", False)],
+        "󰒓",
+        True,
+    )
+    for item in setup.get("steps", []):
+        action_row(setup_page, str(item.get("title", "")), f"{item.get('state', 'INFO')} · {item.get('detail', '')}", [(tr("Ajuster", "Adjust"), str(item.get("command", "seven settings")), "", item.get("key") in {"backup"})], "●", item.get("state") == "OK")
+    intent_palette = data.get("intent_palette", {}) if isinstance(data.get("intent_palette"), dict) else {}
+    intent_result = data.get("intent_result", {}) if isinstance(data.get("intent_result"), dict) else {}
+    action_row(
+        intent_page,
+        tr("Palette d’intentions SevenOS", "SevenOS Intent Palette"),
+        tr(
+            "Choisis ce que tu veux faire. SevenOS lance le parcours adapté sans t’obliger à connaître la commande.",
+            "Choose what you want to do. SevenOS launches the right route without requiring command knowledge.",
+        ),
+        [(tr("Aide guidée", "Guided help"), "seven learning --gui", "", False), (tr("Rapport de confiance", "Trust report"), "seven trust --gui", "", False)],
+        "󰘳",
+        True,
+    )
+    intent_search_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=9)
+    intent_search_card.get_style_context().add_class("experience-card")
+    intent_label = Gtk.Label(label=tr("Recherche d’intention", "Intent search"))
+    intent_label.set_xalign(0)
+    intent_label.get_style_context().add_class("experience-section")
+    intent_hint = Gtk.Label(label=tr("Exemples : wifi, thème clair, sauvegarde, fichiers exe, confidentialité, SevenOS lent.", "Examples: wifi, light theme, backup, exe files, privacy, SevenOS slow."))
+    intent_hint.set_xalign(0)
+    intent_hint.set_line_wrap(True)
+    intent_hint.get_style_context().add_class("experience-small")
+    intent_entry = Gtk.Entry()
+    intent_entry.set_placeholder_text(tr("Que veux-tu faire ?", "What do you want to do?"))
+    intent_entry.get_style_context().add_class("experience-entry")
+    intent_result_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+    intent_search_card.pack_start(intent_label, False, False, 0)
+    intent_search_card.pack_start(intent_hint, False, False, 0)
+    intent_search_card.pack_start(intent_entry, False, False, 0)
+    intent_search_card.pack_start(intent_result_box, False, False, 0)
+    intent_page.pack_start(intent_search_card, False, False, 0)
+
+    def render_intent_result(query: str) -> None:
+        for child in list(intent_result_box.get_children()):
+            intent_result_box.remove(child)
+        result = resolve_intent(data, query)
+        match_item = result.get("match") if isinstance(result.get("match"), dict) else None
+        if match_item:
+            action_row(
+                intent_result_box,
+                tr("Meilleur parcours", "Best route"),
+                f"{match_item.get('title', '')} · {match_item.get('detail', '')}",
+                [(tr("Lancer", "Run"), str(match_item.get("command", "")), str(match_item.get("detail", "")), bool(match_item.get("confirm")))],
+                "◇",
+                True,
+            )
+        elif query.strip():
+            action_row(
+                intent_result_box,
+                tr("Aucun parcours exact", "No exact route"),
+                tr("Essaie avec des mots comme wifi, thème, sauvegarde, apps, fichiers, privacy ou performance.", "Try words like wifi, theme, backup, apps, files, privacy or performance."),
+                [(tr("Aide guidée", "Guided help"), "seven learning --gui", "", False)],
+                "󰌵",
+            )
+        intent_result_box.show_all()
+
+    intent_entry.connect("changed", lambda entry: render_intent_result(entry.get_text()))
+    initial_intent_query = str(intent_result.get("query") or "")
+    if initial_intent_query:
+        intent_entry.set_text(initial_intent_query)
+    else:
+        render_intent_result("")
+    for item in intent_palette.get("items", []):
+        action_row(
+            intent_page,
+            str(item.get("title", "")),
+            str(item.get("detail", "")),
+            [(tr("Lancer", "Run"), str(item.get("command", "")), str(item.get("detail", "")), bool(item.get("confirm")))],
+            "●",
+        )
+    learning = data.get("learning", {}) if isinstance(data.get("learning"), dict) else {}
+    action_row(
+        learning_page,
+        tr("Décrire le besoin, pas la commande", "Describe the need, not the command"),
+        tr(
+            "SevenOS transforme les problèmes courants en parcours sûrs : réparer, vérifier, revenir en arrière, changer d’espace ou lire les accès sensibles.",
+            "SevenOS turns common problems into safe journeys: repair, verify, roll back, switch spaces or review sensitive access.",
+        ),
+        [(tr("Rapport de confiance", "Trust report"), "seven trust --gui", "", False), (tr("Aide complète", "Full help"), "seven-help-native", "", False)],
+        "󰌵",
+        True,
+    )
+    for item in learning.get("guides", []):
+        action_row(
+            learning_page,
+            str(item.get("title", "")),
+            str(item.get("intent", "")),
+            [(tr("Lancer le parcours", "Start journey"), str(item.get("command", "")), str(item.get("intent", "")), bool(item.get("confirm")))],
+            "◇" if item.get("safe") else "󰁯",
+            bool(item.get("safe")),
+        )
+    device = data.get("device_continuity", {}) if isinstance(data.get("device_continuity"), dict) else {}
+    action_row(
+        device_page,
+        tr("Continuité sans surprise", "Continuity without surprises"),
+        tr(
+            f"{device.get('ready_count', 0)}/{device.get('total', 0)} bases prêtes sur {device.get('device', 'SevenOS')}. Rien n’est partagé sans action explicite.",
+            f"{device.get('ready_count', 0)}/{device.get('total', 0)} foundations ready on {device.get('device', 'SevenOS')}. Nothing is shared without an explicit action.",
+        ),
+        [(tr("Réseau", "Network"), "seven settings network", "", False), (tr("Sauvegarder", "Back up"), "seven recovery backup", "", True), ("SevenCloud", "seven cloud status", "", False)],
+        "󰀂",
+        True,
+    )
+    for item in device.get("checks", []):
+        action_row(
+            device_page,
+            str(item.get("title", "")),
+            f"{item.get('state', 'INFO')} · {item.get('detail', '')}",
+            [(tr("Ouvrir", "Open"), str(item.get("command", "seven settings")), str(item.get("detail", "")), False)],
+            "●",
+            item.get("state") == "OK",
+        )
+    for item in device.get("actions", []):
+        action_row(
+            device_page,
+            str(item.get("title", "")),
+            str(item.get("detail", "")),
+            [(tr("Lancer", "Run"), str(item.get("command", "")), str(item.get("detail", "")), bool(item.get("confirm")))],
+            "◇",
+        )
+    action_row(
+        overview,
+        "Rescue Mode",
+        tr("Réparer sans toucher aux fichiers personnels : thème, barre, Prism, réseau et diagnostic.", "Repair without touching personal files: theme, bar, Prism, network and diagnostics."),
+        [
+            (tr("Réparer l’interface", "Repair interface"), "seven repair ux --apply && seven theme sync && seven-waybar repair", tr("Réapplique les surfaces SevenOS sans supprimer tes données.", "Reapplies SevenOS surfaces without deleting your data."), True),
+            ("Wi-Fi", "seven settings network", tr("Ouvre le panneau réseau.", "Opens the network panel."), False),
+            (tr("Sauvegarder", "Back up"), "seven recovery backup", tr("Crée une sauvegarde locale SevenOS.", "Creates a local SevenOS backup."), True),
+        ],
+        "󰜉",
+        True,
+    )
+    action_row(
+        overview,
+        "Time Machine",
+        tr(f"{data['time_machine']['backup_count']} sauvegarde(s) locale(s). Prévisualise, sauvegarde ou prépare un rollback.", f"{data['time_machine']['backup_count']} local backup set(s). Preview, back up or prepare rollback."),
+        [
+            (tr("Créer sauvegarde", "Create backup"), "seven recovery backup", tr("Crée un point de retour local.", "Creates a local return point."), True),
+            (tr("Plan restauration", "Restore plan"), "seven manifest restore-plan", "", False),
+            ("Rollback", "seven update rollback", tr("Prépare un retour arrière après mise à jour.", "Prepares rollback after an update."), True),
+        ],
+        "󰁯",
+    )
+
+    action_row(
+        time_machine,
+        tr("Sauvegardes locales", "Local backups"),
+        tr(
+            f"{data['time_machine']['backup_count']} sauvegarde(s) disponible(s) dans {data['time_machine']['path']}.",
+            f"{data['time_machine']['backup_count']} backup set(s) available in {data['time_machine']['path']}.",
+        ),
+        [
+            (tr("Créer sauvegarde", "Create backup"), "seven recovery backup", tr("Crée un nouveau point de retour.", "Creates a new return point."), True),
+            (tr("Plan restauration", "Restore plan"), "seven manifest restore-plan", tr("Montre ce qui serait restauré avant action.", "Shows what would be restored before action."), False),
+        ],
+        "󰁯",
+        True,
+    )
+    action_row(
+        time_machine,
+        tr("Rollback après mise à jour", "Post-update rollback"),
+        tr("Préparer un retour arrière si une mise à jour rend l’expérience instable.", "Prepare a rollback if an update makes the experience unstable."),
+        [
+            ("Rollback", "seven update rollback", tr("Action sensible: SevenOS demande confirmation avant lancement.", "Sensitive action: SevenOS asks for confirmation before launch."), True),
+            (tr("Historique", "History"), "seven timeline", "", False),
+        ],
+        "󰕒",
+    )
+    action_row(
+        time_machine,
+        tr("Mémoire de configuration", "Configuration memory"),
+        tr("Conserver les réglages SevenOS, mini OS, thème, Prism et préférences avant les gros changements.", "Keep SevenOS settings, Mini OS, theme, Prism and preferences before major changes."),
+        [
+            (tr("Sauvegarde migration", "Migration backup"), "seven migrate backup", "", True),
+            (tr("État système", "System state"), "seven status", "", False),
+        ],
+        "󰒓",
+    )
+
+    for item in data["rescue"]["checks"]:
+        action_row(rescue, item["title"], item["detail"], [(tr("Ouvrir", "Open"), item["command"], item["detail"], item["title"] in {tr("Interface", "Interface"), tr("Sauvegarde", "Backup")})], "󰄬", item["state"] == "WARN")
+
+    action_row(
+        rescue,
+        tr("Premiers secours complets", "Complete first aid"),
+        tr("Contrôle léger, réparation UX, thème, barre et raccourcis dans le bon ordre.", "Light check, UX repair, theme, bar and shortcuts in the right order."),
+        [
+            (tr("Vérifier", "Check"), "seven smoke doctor", "", False),
+            (tr("Réparer expérience", "Repair experience"), "seven repair ux --apply && seven theme sync && seven-waybar repair && seven hypr lua apply", tr("Répare les surfaces principales puis reconstruit les raccourcis.", "Repairs main surfaces then rebuilds shortcuts."), True),
+        ],
+        "󰩂",
+        True,
+    )
+
+    for item in data["journeys"]["items"]:
+        action_row(continuity, item["title"], f"{item['intent']} · {item['note']}", [(tr("Préparer", "Prepare"), item["open"], item["note"], False), (tr("Activer", "Activate"), item["command"], item["note"], True)], item["icon"], item["key"] == data.get("active_profile"))
+    for route in data["continuity"]["routes"]:
+        action_row(continuity, f"{route['from'].title()} → {route['to'].title()}", route["intent"], [(tr("Voir le pont", "Show bridge"), "seven bridge graph", "", False), (tr("Boîte d’envoi", "Outbox"), "seven bridge outbox", "", False)], "󰁔")
+
+    for item in data["permissions"]["checks"]:
+        action_row(privacy, item["title"], f"{item['state']} · {item['detail']}", [(tr("Ouvrir", "Open"), item["command"], item["detail"], False)], "󰌾", item["state"] == "WARN")
+    action_row(privacy, "Privacy Report", tr("Rapport simple des permissions, services actifs, accès et recommandations Shield.", "Simple report of permissions, active services, access and Shield recommendations."), [(tr("Ouvrir rapport", "Open report"), "seven privacy-report --gui", "", False), (tr("Confidentialité", "Privacy"), "seven settings privacy", "", False)], "󰒃")
+    privacy_report = data.get("privacy_report", {}) if isinstance(data.get("privacy_report"), dict) else {}
+    action_row(
+        privacy_report_page,
+        "Privacy Report",
+        tr(
+            f"{privacy_report.get('running_user_services', 0)} service(s) utilisateur actif(s) · {privacy_report.get('sensitive_events', 0)} événement(s) sensible(s) récents.",
+            f"{privacy_report.get('running_user_services', 0)} active user service(s) · {privacy_report.get('sensitive_events', 0)} recent sensitive event(s).",
+        ),
+        [(tr("Confidentialité", "Privacy"), "seven settings privacy", "", False), ("Shield", "seven shield audit", "", False), ("SevenAI", "seven ai provider", "", False)],
+        "󰒃",
+        True,
+    )
+    for item in privacy_report.get("checks", []):
+        action_row(privacy_report_page, str(item.get("title", "")), f"{item.get('state', 'INFO')} · {item.get('detail', '')}", [(tr("Ouvrir", "Open"), str(item.get("command", "seven permissions")), "", False)], "󰌾", item.get("state") == "WARN")
+
+    if data["timeline"]["events"]:
+        for event in data["timeline"]["events"][-10:]:
+            title_text = str(event.get("source") or event.get("type") or "SevenOS")
+            detail = f"{event.get('timestamp', '')} · {event.get('message', '')}".strip(" ·")
+            action_row(timeline, title_text, detail, [(tr("Événements", "Events"), "seven events list", "", False)], "●")
+    else:
+        action_row(timeline, tr("Aucun événement récent", "No recent event"), tr("SevenOS affichera ici les changements importants dès qu’ils existent.", "SevenOS will show important changes here when they exist."), [(tr("Actualiser", "Refresh"), "seven events list", "", False)], "󰋚")
+    action_row(timeline, "Workspace Memory", tr("Retrouver ou restaurer le contexte utile des mini OS.", "Recover or restore useful Mini OS context."), [(tr("Voir mémoire", "Show memory"), "seven-window memory --json", "", False), (tr("Restaurer", "Restore"), "seven-window restore", "", True), (tr("Préparer continuité", "Prepare continuity"), "seven experience workspace", "", False)], "󰘳")
+
+    section_aliases = {"journeys": "continuity", "continuity": "continuity", "permissions": "privacy", "memory": "timeline"}
+    activate(section if section in nav_buttons else section_aliases.get(section, "overview"))
+
+    window.show_all()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

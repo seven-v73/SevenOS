@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS Experience Center
+Comment=Rescue, Time Machine, Activity Timeline, Permissions and Focus Journeys
+Exec=seven experience-center --gui
+Icon=sevenos
+Terminal=false
+Categories=Utility;System;
+Keywords=sevenos;rescue;backup;timeline;permissions;focus;journeys;memory;
+StartupNotify=true

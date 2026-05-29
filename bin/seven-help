@@ -966,12 +966,45 @@ comporte pas comme prévu.
 | Besoin | Surface | Commande |
 | --- | --- | --- |
 | Paramètres généraux | SevenOS Settings | `seven settings` |
+| Secours, timeline, permissions | Experience Center | `seven experience-center --gui` |
 | Supprimer une app sans terminal | Réglages > Suppression | `seven settings` |
 | Installer une app | SevenStore | `seven store` |
 | Lancer une app ou action | Spotlight | `seven spotlight` |
 | Voir les mini OS | SevenOS Home | `seven home` |
 | Changer de mini OS | Profile Center | `seven profile center` |
 | Aide locale | Help Center | `seven-help-native` |
+
+### Experience Center
+
+Experience Center regroupe les parcours qui rendent SevenOS plus rassurant au
+quotidien : Rescue Mode, Time Machine, Activity Timeline, Permissions Center,
+Focus Journeys, App Continuity et Workspace Memory.
+
+```bash
+seven experience-center --gui
+seven experience-center --json
+seven briefing
+seven care
+seven trust
+seven personal-setup
+seven intent "wifi"
+seven intent "theme light"
+seven privacy-report
+seven learning
+seven device-continuity
+seven experience-center rescue
+seven rescue
+seven time-machine
+seven experience-center time-machine
+seven experience-center timeline
+seven timeline
+seven experience-center permissions
+seven permissions
+seven experience-center journeys
+seven journeys
+seven experience-center memory
+seven memory
+```
 
 ### Réseau et Wi-Fi
 
@@ -2393,12 +2426,45 @@ so users do not need to search the web when part of the system is unclear.
 | Need | Surface | Command |
 | --- | --- | --- |
 | General settings | SevenOS Settings | `seven settings` |
+| Rescue, timeline, permissions | Experience Center | `seven experience-center --gui` |
 | Remove an app without terminal | Settings > Removal | `seven settings` |
 | Install an app | SevenStore | `seven store` |
 | Launch an app or action | Spotlight | `seven spotlight` |
 | See mini OS profiles | SevenOS Home | `seven home` |
 | Switch mini OS | Profile Center | `seven profile center` |
 | Local help | Help Center | `seven-help-native` |
+
+### Experience Center
+
+Experience Center gathers the daily trust flows that make SevenOS feel safer:
+Rescue Mode, Time Machine, Activity Timeline, Permissions Center, Focus
+Journeys, App Continuity and Workspace Memory.
+
+```bash
+seven experience-center --gui
+seven experience-center --json
+seven briefing
+seven care
+seven trust
+seven personal-setup
+seven intent "wifi"
+seven intent "theme light"
+seven privacy-report
+seven learning
+seven device-continuity
+seven experience-center rescue
+seven rescue
+seven time-machine
+seven experience-center time-machine
+seven experience-center timeline
+seven timeline
+seven experience-center permissions
+seven permissions
+seven experience-center journeys
+seven journeys
+seven experience-center memory
+seven memory
+```
 
 ### Network And Wi-Fi
 

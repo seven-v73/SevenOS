@@ -777,6 +777,24 @@ def handle_experience(args):
     run_script(args, "scripts/experience.sh", *extra)
 
 
+def handle_experience_center(args):
+    extra = [args.action, *args.extra]
+    if args.json:
+        extra.append("--json")
+    if args.gui:
+        extra.append("--gui")
+    run_script(args, "bin/seven-experience-center", *extra)
+
+
+def handle_experience_shortcut(args, section):
+    extra = [section, *args.extra]
+    if getattr(args, "json", False):
+        extra.append("--json")
+    if getattr(args, "gui", False):
+        extra.append("--gui")
+    run_script(args, "bin/seven-experience-center", *extra)
+
+
 def handle_quality(args):
     extra = [args.action]
     if args.json:
@@ -1190,6 +1208,32 @@ def main():
     experience_parser.add_argument("action", nargs="?", default="audit", choices=("audit", "status", "json", "score", "apply", "doctor", "launch", "focus", "workspace", "notify", "warmup", "events", "recommend"))
     experience_parser.add_argument("extra", nargs=argparse.REMAINDER)
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
+    experience_center_parser = subparsers.add_parser("experience-center", help="open SevenOS Rescue, Time Machine, Timeline and Focus Journeys")
+    experience_center_parser.add_argument("action", nargs="?", default="status", choices=("status", "briefing", "care", "trust", "setup", "personal-setup", "intent", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory", "json"))
+    experience_center_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    experience_center_parser.add_argument("--json", action="store_true", help="print machine-readable Experience Center contract")
+    experience_center_parser.add_argument("--gui", action="store_true", help="force graphical Experience Center")
+    experience_shortcuts = {
+        "rescue": ("rescue", "show SevenOS Rescue Mode"),
+        "time-machine": ("time-machine", "show SevenOS Time Machine"),
+        "timeline": ("timeline", "show SevenOS Activity Timeline"),
+        "permissions": ("permissions", "show SevenOS Permissions Center"),
+        "journeys": ("journeys", "show SevenOS Focus Journeys"),
+        "memory": ("memory", "show SevenOS Workspace Memory"),
+        "briefing": ("briefing", "show SevenOS daily briefing"),
+        "care": ("care", "show SevenOS care plan"),
+        "trust": ("trust", "show SevenOS trust report"),
+        "personal-setup": ("setup", "show SevenOS personal setup"),
+        "intent": ("intent", "resolve a plain-language SevenOS intent"),
+        "privacy-report": ("privacy-report", "show SevenOS privacy report"),
+        "learning": ("learning", "show contextual SevenOS help"),
+        "device-continuity": ("device-continuity", "show SevenOS device continuity"),
+    }
+    for shortcut_name, (_section, shortcut_help) in experience_shortcuts.items():
+        shortcut_parser = subparsers.add_parser(shortcut_name, help=shortcut_help)
+        shortcut_parser.add_argument("extra", nargs=argparse.REMAINDER)
+        shortcut_parser.add_argument("--json", action="store_true", help="print machine-readable Experience Center contract")
+        shortcut_parser.add_argument("--gui", action="store_true", help="force graphical Experience Center")
     quality_parser = subparsers.add_parser("quality", help="inspect SevenOS public user-experience quality gates")
     quality_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     quality_parser.add_argument("--json", action="store_true", help="print machine-readable public quality gate")
@@ -1523,6 +1567,11 @@ def main():
         handle_motion(args)
     elif args.command == "experience":
         handle_experience(args)
+    elif args.command == "experience-center":
+        handle_experience_center(args)
+    elif args.command in {"rescue", "time-machine", "timeline", "permissions", "journeys", "memory", "briefing", "care", "trust", "personal-setup", "intent", "privacy-report", "learning", "device-continuity"}:
+        shortcut_sections = {"personal-setup": "setup"}
+        handle_experience_shortcut(args, shortcut_sections.get(args.command, args.command))
     elif args.command in ("quality", "public-experience"):
         handle_quality(args)
     elif args.command == "control":

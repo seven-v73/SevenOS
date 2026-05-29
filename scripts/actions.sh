@@ -25,6 +25,20 @@ action_rows() {
 home.open	Desktop	Open SevenOS Home	seven home	safe	Open the public SevenOS Home surface for mini OS, settings, store, backup and recent actions.
 hub.open	Desktop	Open Seven Hub	seven hub	safe	Open the SevenOS Control Center.
 actions.open	Desktop	Open Action Center	seven actions open	safe	Open the graphical SevenOS action center for normal users.
+experience.center	Desktop	Open Experience Center	seven experience-center --gui	safe	Open Rescue Mode, Time Machine, Timeline, Permissions, Focus Journeys and Workspace Memory.
+experience.briefing	System	Daily Briefing	seven briefing	safe	Show the calm daily SevenOS readiness summary and next actions.
+experience.care	System	Care Plan	seven care	safe	Show the prioritized SevenOS care plan: now, next and healthy.
+experience.trust	System	SevenOS Trust Report	seven trust	safe	Show the SevenOS trust score and what can improve daily confidence.
+experience.personal_setup	System	Personal Setup	seven personal-setup	safe	Show the personal SevenOS setup path: language, theme, Mini OS, Prism, backup and help.
+experience.intent	System	Intent Palette	seven intent	safe	Show plain-language routes for common SevenOS needs.
+experience.privacy_report	System	Privacy Report	seven privacy-report	safe	Show privacy posture: permissions, services, sensitive events, Shield and SevenAI.
+experience.learning	System	Contextual Help	seven learning	safe	Show plain-language SevenOS repair and guidance routes.
+experience.device_continuity	System	Device Continuity	seven device-continuity	safe	Show multi-device readiness, transfer routes and opt-in sync foundations.
+experience.rescue	System	SevenOS Rescue Mode	seven experience-center rescue	safe	Show the guided rescue route for theme, Waybar, Prism, network and diagnostics.
+experience.time_machine	System	SevenOS Time Machine	seven experience-center time-machine	safe	Show local backups, restore plan and rollback route.
+experience.timeline	System	Activity Timeline	seven experience-center timeline	safe	Show recent SevenOS events and Settings actions.
+experience.permissions	System	Permissions Center	seven experience-center permissions	safe	Show portals, Flatpak, microphone, camera and privacy routes.
+experience.journeys	Desktop	Focus Journeys	seven experience-center journeys	safe	Show profile-aware journeys for code, creation, study, gaming, culture and security.
 startup.audit	Desktop	Startup Performance Audit	./scripts/startup-audit.sh	safe	Check that public SevenOS apps open from cache and do not block on deep audits.
 hub.status	Desktop	Hub Status	seven hub status	safe	Show whether Seven Hub is ready as the default product control surface.
 hub.plan	Desktop	Hub Product Plan	seven hub plan	safe	Show missing Hub productization work before changing the desktop.
