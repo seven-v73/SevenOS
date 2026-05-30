@@ -12,6 +12,12 @@ window.seven-reader {
   background: @seven_panel;
   border-bottom: 1px solid @seven_border;
 }
+.reader-os-button {
+  min-width: 34px;
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 5px 8px;
+}
 .reader-search {
   min-height: 38px;
   border-radius: 999px;
@@ -22,14 +28,14 @@ window.seven-reader {
 }
 .reader-section-title {
   color: @seven_text;
-  font: 500 18px "SF Pro Text", "Inter", system-ui, sans-serif;
+  font: 500 15px "SF Pro Text", "Inter", system-ui, sans-serif;
 }
 .library-card {
   background: @seven_panel;
   border: 1px solid @seven_border;
-  border-radius: 22px;
-  padding: 16px;
-  box-shadow: 0 18px 40px @seven_paper_shadow;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 12px 28px @seven_paper_shadow;
 }
 .library-card:hover {
   background: @seven_hover;
@@ -40,14 +46,14 @@ window.seven-reader {
     linear-gradient(135deg, alpha(@seven_accent, 0.20), alpha(@seven_secondary, 0.14)),
     @seven_panel;
   border: 1px solid @seven_border;
-  border-radius: 28px;
-  padding: 24px;
+  border-radius: 18px;
+  padding: 16px;
 }
 .shelf-card {
   background: @seven_panel;
   border: 1px solid @seven_border;
-  border-radius: 20px;
-  padding: 14px;
+  border-radius: 14px;
+  padding: 10px;
 }
 .favorite-pill {
   border-radius: 999px;
@@ -81,8 +87,8 @@ window.seven-reader {
     linear-gradient(180deg, alpha(@seven_panel, 0.35), alpha(@seven_bg, 0.34)),
     @seven_panel;
   border: 1px solid @seven_border;
-  border-radius: 30px;
-  padding: 14px;
+  border-radius: 22px;
+  padding: 12px;
 }
 .reader-stage-scroll {
   background: transparent;
@@ -92,9 +98,9 @@ window.seven-reader {
   background: transparent;
 }
 .reader-sidebar {
-  min-width: 292px;
-  padding: 14px;
-  border-radius: 24px;
+  min-width: 270px;
+  padding: 12px;
+  border-radius: 18px;
   background: @seven_sidebar;
   border: 1px solid @seven_border;
 }
@@ -174,11 +180,20 @@ window.seven-reader {
   background: @seven_panel;
   border: 1px solid @seven_border;
   border-radius: 999px;
-  padding: 6px;
+  padding: 5px;
+}
+.reader-current-state {
+  color: @seven_text;
+  font: 500 12px "SF Pro Text", "Inter", system-ui, sans-serif;
 }
 .reader-nav-button {
   min-width: 36px;
   min-height: 32px;
+}
+.reader-secondary-button {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 0 14px;
 }
 .page-curl {
   min-width: 96px;

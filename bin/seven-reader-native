@@ -108,6 +108,7 @@ def state_payload() -> dict:
         "modes": ["library", "reader", "double-page", "book", "flipbook", "inspect", "focus", "night"],
         "ux": {
             "library": "cover cards, recents, progress memory",
+            "os_surface": "calm header, focused reading defaults, advanced tools grouped away from the primary path",
             "professional": "document search with next/previous, bookmarks, colored notes, metadata and study sidebar",
             "book_mode": "double page spread with spine and paper texture",
             "flipbook": "animated premium page transition foundation",
@@ -635,7 +636,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
         return bucket
 
     def build_header(self) -> None:
-        header = Gtk.HeaderBar(title="Seven Reader", subtitle=tr_text("Immersive reading for SevenOS"))
+        header = Gtk.HeaderBar(title="Seven Reader", subtitle=tr_text("Read, annotate, resume"))
         header.set_show_close_button(True)
         header.get_style_context().add_class("reader-header")
         self.set_titlebar(header)
@@ -653,32 +654,32 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.title_label = Gtk.Label(label=tr_text("Library"))
         header.set_custom_title(self.title_label)
 
-        for label, mode in (("Read", "reader"), ("Book", "book"), ("Flip", "flip")):
-            button = Gtk.Button(label=tr_text(label))
-            button.get_style_context().add_class("mode-pill")
-            button.connect("clicked", self.set_mode, mode)
-            self.mode_buttons[mode] = button
-            header.pack_end(button)
-
-        ai_button = Gtk.Button(label=tr_text("Study"))
-        ai_button.connect("clicked", lambda *_: self.show_ai("summary"))
-        header.pack_end(ai_button)
-
         sidebar_button = Gtk.Button.new_from_icon_name("sidebar-show-symbolic", Gtk.IconSize.BUTTON)
-        sidebar_button.set_tooltip_text(tr_text("Toggle reading sidebar"))
+        sidebar_button.get_style_context().add_class("reader-os-button")
+        sidebar_button.set_tooltip_text(tr_text("Notes and search"))
         sidebar_button.connect("clicked", lambda *_: self.toggle_sidebar())
         header.pack_end(sidebar_button)
 
+        study_button = Gtk.Button.new_from_icon_name("system-search-symbolic", Gtk.IconSize.BUTTON)
+        study_button.get_style_context().add_class("reader-os-button")
+        study_button.set_tooltip_text(tr_text("Reading companion"))
+        study_button.connect("clicked", lambda *_: self.show_ai("summary"))
+        header.pack_end(study_button)
+
         menu_button = Gtk.MenuButton()
-        menu_button.set_label(tr_text("More"))
+        menu_button.get_style_context().add_class("reader-os-button")
+        menu_button.set_tooltip_text(tr_text("View and actions"))
+        menu_button.set_image(Gtk.Image.new_from_icon_name("open-menu-symbolic", Gtk.IconSize.BUTTON))
         menu = Gtk.Menu()
         for label, callback in (
+            ("Simple reading", lambda: self.set_mode(None, "reader")),
+            ("Book", lambda: self.set_mode(None, "book")),
             ("Double page", lambda: self.set_mode(None, "double")),
             ("Inspect", lambda: self.set_mode(None, "inspect")),
-            ("Zoom in", lambda: self.adjust_zoom(0.10)),
-            ("Zoom out", lambda: self.adjust_zoom(-0.10)),
+            ("Zoom +", lambda: self.adjust_zoom(0.10)),
+            ("Zoom -", lambda: self.adjust_zoom(-0.10)),
             ("Add note", self.add_note_dialog),
-            ("Focus", self.toggle_focus),
+            ("Focus mode", self.toggle_focus),
             ("Favorite", self.toggle_favorite),
             ("Export notes", self.export_notes),
         ):
@@ -692,23 +693,26 @@ class ReaderWindow(Gtk.ApplicationWindow):
     def build_library(self) -> None:
         scroller = Gtk.ScrolledWindow()
         scroller.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-        outer.set_margin_top(28)
-        outer.set_margin_bottom(28)
-        outer.set_margin_start(34)
-        outer.set_margin_end(34)
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        outer.set_margin_top(22)
+        outer.set_margin_bottom(22)
+        outer.set_margin_start(26)
+        outer.set_margin_end(26)
         scroller.add(outer)
 
-        hero = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
+        hero = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
         hero.get_style_context().add_class("library-hero")
         hero_copy = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         hero_title = Gtk.Label()
-        hero_title.set_markup(f"<span size='30000' weight='500'>Seven Reader</span>\n<span foreground='#AAB4C2'>{self.profile.title()} shelf · Book Mode · Study Companion</span>")
+        hero_title.set_markup(
+            f"<span size='22000' weight='500'>{tr_text('Readings')}</span>\n"
+            f"<span foreground='#AAB4C2'>{self.profile.title()} · {tr_text('resume, search, annotate')}</span>"
+        )
         hero_title.set_xalign(0)
         hero_copy.pack_start(hero_title, False, False, 0)
         hero_copy.pack_start(Gtk.Label(label=self.profile_guidance()), False, False, 0)
         hero.pack_start(hero_copy, True, True, 0)
-        hero_badge = Gtk.Label(label=tr_text("Premium Reading"))
+        hero_badge = Gtk.Label(label=tr_text("Library"))
         hero_badge.get_style_context().add_class("favorite-pill")
         hero.pack_start(hero_badge, False, False, 0)
         outer.pack_start(hero, False, False, 0)
@@ -722,12 +726,13 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.shelf_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
         outer.pack_start(self.shelf_row, False, False, 0)
 
-        continue_label = Gtk.Label(label=tr_text("Continue Reading"))
+        continue_label = Gtk.Label(label=tr_text("Continue"))
         continue_label.set_xalign(0)
         continue_label.get_style_context().add_class("reader-section-title")
         outer.pack_start(continue_label, False, False, 0)
 
-        refresh = Gtk.Button(label=tr_text("Refresh Library"))
+        refresh = Gtk.Button(label=tr_text("Refresh"))
+        refresh.get_style_context().add_class("reader-secondary-button")
         refresh.connect("clicked", lambda *_: self.refresh_library())
         outer.pack_start(refresh, False, False, 0)
 
@@ -744,12 +749,12 @@ class ReaderWindow(Gtk.ApplicationWindow):
 
     def profile_guidance(self) -> str:
         return {
-            "baobab": "Culture, languages and learning materials are prioritized for Baobab.",
-            "forge": "Technical documentation, Markdown and PDFs are prioritized for Forge.",
-            "studio": "Visual documents, magazines and asset references are prioritized for Studio.",
-            "shield": "Forensics notes, reports and technical PDFs stay easy to inspect.",
-            "equinox": "Balanced reading for books, docs and everyday learning.",
-        }.get(self.profile, "Balanced reading for books, docs and study.")
+            "baobab": tr_text("Languages, stories, archives and cultural material first."),
+            "forge": tr_text("Technical docs, Markdown and PDFs stay first."),
+            "studio": tr_text("Visual references, magazines and creative documents."),
+            "shield": tr_text("Reports, forensic notes and technical PDFs stay easy to inspect."),
+            "equinox": tr_text("Balanced reading for books, docs and learning."),
+        }.get(self.profile, tr_text("Calm reading for books, docs and study."))
 
     def on_library_search(self, entry: Gtk.SearchEntry) -> None:
         self.library_query = entry.get_text().strip().casefold()
@@ -866,11 +871,11 @@ class ReaderWindow(Gtk.ApplicationWindow):
         return card
 
     def build_reader(self) -> None:
-        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        page.set_margin_top(18)
-        page.set_margin_bottom(18)
-        page.set_margin_start(22)
-        page.set_margin_end(22)
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        page.set_margin_top(14)
+        page.set_margin_bottom(14)
+        page.set_margin_start(18)
+        page.set_margin_end(18)
 
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         toolbar.get_style_context().add_class("reader-toolbar")
@@ -886,6 +891,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.progress_label = Gtk.Label(label=f"{tr_text('Page')} 0 / 0")
         self.progress_label.set_hexpand(True)
         self.progress_label.set_xalign(0.5)
+        self.progress_label.get_style_context().add_class("reader-current-state")
         toolbar.pack_start(prev_button, False, False, 0)
         toolbar.pack_start(self.progress_label, True, True, 0)
         toolbar.pack_start(next_button, False, False, 0)
@@ -1328,7 +1334,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
                 image.set_valign(Gtk.Align.CENTER)
                 box.pack_start(image, True, True, 0)
             else:
-                box.pack_start(Gtk.Label(label=tr_text("Installe poppler pour afficher les pages PDF.", "Install poppler to render PDF pages.")), True, True, 0)
+                box.pack_start(Gtk.Label(label=tr_text("Install poppler to render PDF pages.")), True, True, 0)
         elif self.document.kind == "image":
             try:
                 page_path = self.document.pages[max(0, min(page_index, len(self.document.pages) - 1))]
