@@ -473,6 +473,36 @@ def packages_plan_payload() -> dict:
         return {"schema": "sevenos.packages-plan.v1", "summary": {}, "next": []}
 
 
+def packages_strategy_payload() -> dict:
+    value = state_value("packages_strategy", {})
+    if value:
+        return value
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "strategy", "--json"))
+    except Exception:
+        return {"schema": "sevenos.sevenpkg-strategy.v1", "profiles": [], "engine_states": {}}
+
+
+def packages_catalog_payload() -> dict:
+    value = state_value("packages_catalog", {})
+    if value:
+        return value
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "catalog", "--json"))
+    except Exception:
+        return {"schema": "sevenos.app-catalog.v1", "count": 0, "domains": {}, "items": []}
+
+
+def packages_footprint_payload() -> dict:
+    value = state_value("packages_footprint", {})
+    if value:
+        return value
+    try:
+        return json.loads(run_text(str(ROOT / "bin" / "sevenpkg"), "footprint", "--fast", "--json"))
+    except Exception:
+        return {"schema": "sevenos.sevenpkg-footprint.v1", "summary": {}, "rootfs": [], "duplication": {}, "catalog": {}}
+
+
 def control_payload() -> dict:
     value = state_value("control", {})
     if value:
@@ -1505,6 +1535,9 @@ def run_gui() -> int:
                 installer = installer_payload()
                 installer_plan = installer_plan_payload()
                 packages_plan = packages_plan_payload()
+                packages_strategy = packages_strategy_payload()
+                packages_catalog = packages_catalog_payload()
+                packages_footprint = packages_footprint_payload()
                 control = control_payload()
                 events = events_payload()
                 insights = insights_payload()
@@ -1520,6 +1553,18 @@ def run_gui() -> int:
                 active_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "active")
                 preview_modules = sum(1 for item in ecosystem.get("modules", []) if item.get("state") == "preview")
                 next_stack = ", ".join(stack.get("next_focus", [])[:2]) or "Seven Shell AGS, seven-daemon Rust"
+                package_profiles = packages_strategy.get("profiles") or []
+                package_engines = packages_strategy.get("engine_states") or {}
+                package_catalog_domains = packages_catalog.get("domains") or {}
+                footprint_summary = packages_footprint.get("summary") or {}
+                footprint_catalog = packages_footprint.get("catalog") or {}
+                footprint_duplication = packages_footprint.get("duplication") or {}
+                rootfs_rows = packages_footprint.get("rootfs") or []
+                ready_rootfs = footprint_summary.get("ready_rootfs", sum(1 for item in rootfs_rows if item.get("ready")))
+                total_rootfs = footprint_summary.get("mini_os", len(rootfs_rows))
+                catalog_count = packages_catalog.get("count", footprint_summary.get("catalog_apps", 0))
+                catalog_domain_count = len(package_catalog_domains or footprint_catalog.get("domains", {}) or {})
+                duplicated_count = footprint_duplication.get("packages", footprint_summary.get("duplicated_packages", 0))
 
                 heading(dashboard, "SevenOS Dashboard", "System state, readiness and common repair paths from native GTK.")
 
@@ -1567,6 +1612,9 @@ def run_gui() -> int:
                     ("Installer", f"{installer.get('mode', 'foundation')} · ready: {str(installer.get('ready', False)).lower()}"),
                     ("Installer plan", f"{installer_plan.get('summary', {}).get('total', 0)} distribution actions · first: {(installer_plan.get('next') or [{}])[0].get('title', 'none')}"),
                     ("Software plan", f"{packages_plan.get('summary', {}).get('total', 0)} app actions · first: {(packages_plan.get('next') or [{}])[0].get('title', 'none')}"),
+                    ("Software strategy", f"{len(package_profiles)} scopes · host={package_engines.get('host', 'ready')} · mini OS={package_engines.get('mini_os', 'ready')}"),
+                    ("Software catalog", f"{catalog_count} curated apps · {catalog_domain_count} domains covered"),
+                    ("RootFS footprint", f"{ready_rootfs}/{total_rootfs} ready · {duplicated_count} duplicated base packages tracked"),
                     ("Control Plane", f"{control.get('overall', 0)}% · {control.get('summary', {}).get('total', 0)} prioritized actions"),
                     ("Events", f"{events.get('total', 0)} recorded · {events.get('last', {}).get('type', 'none') if events.get('last') else 'no local history yet'}"),
                     ("Insights", f"phase {insights.get('phase', 'unknown')} · {insights.get('summary', {}).get('total', 0)} open product items"),
@@ -1851,6 +1899,25 @@ def run_gui() -> int:
                     dashboard.append(installer_group)
 
                 package_actions = packages_plan.get("next") or []
+                software_strategy_group = Adw.PreferencesGroup(title="Software strategy")
+                software_strategy_group.add(make_row(
+                    "One package model",
+                    f"{packages_strategy.get('user_contract', 'seven install <app>')} · Equinox stays minimal, mini OS profiles receive domain apps.",
+                ))
+                software_strategy_group.add(make_row(
+                    "Catalog coverage",
+                    f"{catalog_count} apps · domains: {', '.join(sorted((package_catalog_domains or footprint_catalog.get('domains', {}) or {}).keys())) or 'none'}",
+                ))
+                software_strategy_group.add(make_row(
+                    "RootFS readiness",
+                    f"{ready_rootfs}/{total_rootfs} mini OS ready · fast scan · full audit: sevenpkg footprint --json",
+                ))
+                software_strategy_group.add(make_row(
+                    "Duplication watch",
+                    f"{duplicated_count} shared package names tracked · expected for base packages, audited for growth.",
+                ))
+                dashboard.append(software_strategy_group)
+
                 if package_actions:
                     packages_group = Adw.PreferencesGroup(title="Software plan")
                     for item in package_actions[:5]:

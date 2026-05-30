@@ -2065,6 +2065,10 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def installer_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Installer plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def packages_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def packages_strategy_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def packages_catalog_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def packages_footprint_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Software strategy' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Software plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Phase Gate' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def b3_payload' "$ROOT_DIR/bin/seven-hub-native" &&
