@@ -414,6 +414,9 @@ warmup_experience() {
     run_warmup 12 "$ROOT_DIR/scripts/interaction-contract.sh" status --json --refresh
     run_warmup 8 "$ROOT_DIR/scripts/differentiators.sh" json --refresh
     run_warmup 10 "$ROOT_DIR/scripts/universes.sh" json --refresh
+    run_warmup 5 "$ROOT_DIR/bin/seven-mini-doctor" all doctor --json --refresh
+    run_warmup 6 "$ROOT_DIR/bin/seven-profile-rootfs" audit all --json --refresh
+    run_warmup 4 "$ROOT_DIR/bin/seven-profile-rootfs" verify all --json --refresh
     run_warmup 3 "$ROOT_DIR/scripts/motion.sh" status --json
     run_warmup 3 "$ROOT_DIR/scripts/theme-session.sh" status --json
     prewarm_waybar_status

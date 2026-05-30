@@ -17,6 +17,8 @@ from pathlib import Path
 ROOT_DIR = Path(os.environ.get("SEVENOS_ROOT", Path(__file__).resolve().parent.parent))
 STATE_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
 DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "sevenos"
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "sevenos"
+CACHE_TTL = float(os.environ.get("SEVENOS_PROFILE_ROOTFS_CACHE_TTL", "300"))
 ROOTFS_DIR = DATA_DIR / "profile-rootfs"
 MANIFEST_DIR = DATA_DIR / "profile-rootfs-manifests"
 PODMAN_ROOT = DATA_DIR / "profile-rootfs-podman"
@@ -29,6 +31,48 @@ def load_json(path: Path) -> dict:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+
+def cache_path(action: str, profile: str | None) -> Path:
+    key = profile or "all"
+    return CACHE_DIR / f"profile-rootfs-{action}-{key}.json"
+
+
+def cache_read(action: str, profile: str | None, refresh: bool) -> dict | None:
+    if refresh or os.environ.get("SEVENOS_PROFILE_ROOTFS_REFRESH") == "1":
+        return None
+    path = cache_path(action, profile)
+    try:
+        if time.time() - path.stat().st_mtime > CACHE_TTL:
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def cache_write(action: str, profile: str | None, data: dict) -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        path = cache_path(action, profile)
+        tmp = path.with_suffix(f".tmp.{os.getpid()}")
+        tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        json.loads(tmp.read_text(encoding="utf-8"))
+        tmp.replace(path)
+    except Exception:
+        try:
+            tmp.unlink()  # type: ignore[name-defined]
+        except Exception:
+            pass
+
+
+def cached_payload(action: str, profile: str | None, refresh: bool, builder) -> dict:
+    cached = cache_read(action, profile, refresh)
+    if cached is not None:
+        return cached
+    data = builder()
+    cache_write(action, profile, data)
+    return data
 
 
 def read_packages(paths: list[str]) -> list[str]:
@@ -580,6 +624,7 @@ def main() -> int:
     flag_json = False
     flag_apply = False
     flag_yes = False
+    flag_refresh = False
     cleaned: list[str] = []
     for item in argv:
         if item == "--json":
@@ -591,6 +636,9 @@ def main() -> int:
         if item == "--yes":
             flag_yes = True
             continue
+        if item in {"--refresh", "--no-cache"}:
+            flag_refresh = True
+            continue
         cleaned.append(item)
     parser = argparse.ArgumentParser(prog="seven-profile-rootfs")
     parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "prepare", "build", "exec", "doctor", "audit", "seal", "verify"))
@@ -599,10 +647,12 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--yes", action="store_true")
+    parser.add_argument("--refresh", "--no-cache", action="store_true", dest="refresh")
     args = parser.parse_args(cleaned)
     args.json = args.json or flag_json
     args.apply = args.apply or flag_apply
     args.yes = args.yes or flag_yes
+    args.refresh = args.refresh or flag_refresh
 
     all_profiles = known_profiles()
     profile = args.profile or active_profile()
@@ -611,7 +661,8 @@ def main() -> int:
         return 2
 
     if args.action in {"status", "plan", "doctor"}:
-        payload = status_payload(None if args.action == "doctor" or profile == "all" else profile if args.profile else None)
+        selected_profile = None if args.action == "doctor" or profile == "all" else profile if args.profile else None
+        payload = cached_payload("status" if args.action != "plan" else "plan-status", selected_profile, args.refresh, lambda: status_payload(selected_profile))
         if args.action == "plan":
             payload["next"] = [
                 {"title": f"Prepare {profile} rootfs metadata", "command": f"seven profile-rootfs prepare {profile} --apply --yes", "impact": "safe"},
@@ -620,7 +671,8 @@ def main() -> int:
         print(json.dumps(payload, indent=2) if args.json or args.action in {"plan", "doctor"} else human_status(payload))
         return 0
     if args.action == "audit":
-        payload = audit_payload(None if profile == "all" else profile if args.profile else None)
+        selected_profile = None if profile == "all" else profile if args.profile else None
+        payload = cached_payload("audit", selected_profile, args.refresh, lambda: audit_payload(selected_profile))
         print(json.dumps(payload, indent=2) if args.json else human_audit(payload))
         return 0
     if args.action == "seal":
@@ -628,7 +680,8 @@ def main() -> int:
         print(json.dumps(payload, indent=2) if args.json else human_seal(payload))
         return 0
     if args.action == "verify":
-        payload = verify_payload(None if profile == "all" else profile if args.profile else None)
+        selected_profile = None if profile == "all" else profile if args.profile else None
+        payload = cached_payload("verify", selected_profile, args.refresh, lambda: verify_payload(selected_profile))
         print(json.dumps(payload, indent=2) if args.json else human_verify(payload))
         return 0
     if args.action == "prepare":

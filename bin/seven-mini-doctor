@@ -33,6 +33,8 @@ def host_home() -> Path:
 HOST_HOME = host_home()
 HOST_DATA_HOME = Path(os.environ.get("SEVENOS_HOST_DATA_HOME", str(HOST_HOME / ".local/share")))
 PROFILE_ROOTFS_DIR = HOST_DATA_HOME / "sevenos/profile-rootfs"
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(HOST_HOME / ".cache"))) / "sevenos"
+CACHE_TTL = float(os.environ.get("SEVENOS_MINI_DOCTOR_CACHE_TTL", "300"))
 
 
 KEY_TOOLS = {
@@ -259,22 +261,77 @@ def run(command: list[str], dry_run: bool) -> int:
     return subprocess.run(command, cwd=ROOT, check=False).returncode
 
 
+def cache_path(profile: str, action: str) -> Path:
+    return CACHE_DIR / f"mini-doctor-{profile}-{action}.json"
+
+
+def cache_read(profile: str, action: str, refresh: bool) -> dict | None:
+    if refresh or os.environ.get("SEVENOS_MINI_DOCTOR_REFRESH") == "1":
+        return None
+    path = cache_path(profile, action)
+    try:
+        if time.time() - path.stat().st_mtime > CACHE_TTL:
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def cache_write(profile: str, action: str, data: dict) -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        path = cache_path(profile, action)
+        tmp = path.with_suffix(f".tmp.{os.getpid()}")
+        tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        json.loads(tmp.read_text(encoding="utf-8"))
+        tmp.replace(path)
+    except Exception:
+        try:
+            tmp.unlink()  # type: ignore[name-defined]
+        except Exception:
+            pass
+
+
+def cached_payload(profile_key: str, action: str, refresh: bool, builder) -> dict:
+    cached = cache_read(profile_key, action, refresh)
+    if cached is not None:
+        return cached
+    data = builder()
+    cache_write(profile_key, action, data)
+    return data
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="seven-mini-doctor")
     parser.add_argument("profile", nargs="?", default="all", choices=("all", *PROFILES))
     parser.add_argument("action", nargs="?", default="doctor", choices=("doctor", "status", "json", "plan", "install", "optional", "rootfs", "open", "activate", "packages", "limits"))
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--refresh", "--no-cache", action="store_true", dest="refresh")
     args = parser.parse_args()
 
     profiles = list(PROFILES) if args.profile == "all" else [args.profile]
     if args.action in {"doctor", "status", "json", "plan"}:
-        data = set_payload(profiles) if len(profiles) > 1 else profile_payload(profiles[0])
+        profile_key = "all" if len(profiles) > 1 else profiles[0]
+        data = cached_payload(
+            profile_key,
+            args.action,
+            args.refresh,
+            lambda: set_payload(profiles) if len(profiles) > 1 else profile_payload(profiles[0]),
+        )
         if args.action == "plan":
+            plan_data = cached_payload(
+                profile_key,
+                "plan-actions",
+                args.refresh,
+                lambda: set_payload(profiles) if len(profiles) > 1 else profile_payload(profiles[0]),
+            )
+            plan_profiles = plan_data.get("profiles", {}) if plan_data.get("schema") == "sevenos.mini-os.doctor-set.v1" else {profiles[0]: plan_data}
             plan = {
                 "schema": "sevenos.mini-os.plan.v1",
                 "profiles": profiles,
-                "actions": [action for profile in profiles for action in profile_payload(profile)["plan"]],
+                "actions": [action for item in plan_profiles.values() for action in item.get("plan", [])],
             }
             print(json.dumps(plan, indent=2) if args.json else "\n".join(f"{item['label']}: {item['command']}" for item in plan["actions"]))
             return 0
