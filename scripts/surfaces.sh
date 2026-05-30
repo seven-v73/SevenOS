@@ -364,7 +364,11 @@ for item in surfaces:
     desktop_ok = True if desktop is None else exists(desktop)
     dynamic_ok = True
     if item.get("dynamic"):
-        dynamic_ok = adaptive.get("state") in {"ready", "guided-preview"} and mask.get("state") == "masked"
+        adaptive_ready = adaptive.get("state") in {"ready", "guided-preview"}
+        alignment = adaptive.get("alignment") if isinstance(adaptive.get("alignment"), dict) else {}
+        if not adaptive_ready and alignment.get("state") == "PART":
+            adaptive_ready = True
+        dynamic_ok = adaptive_ready and mask.get("state") == "masked"
     if native_ok and desktop_ok and action_match and dynamic_ok:
         state = "OK"
     elif native_ok and (action_match or desktop_ok):
