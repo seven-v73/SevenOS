@@ -4,6 +4,11 @@ set -Eeuo pipefail
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 source "$ROOT_DIR/scripts/lib.sh"
 
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+STORE_CACHE="$CACHE_DIR/store.json"
+STORE_CACHE_TTL="${SEVENOS_STORE_CACHE_TTL:-300}"
+REFRESH_CACHE="${SEVENOS_STORE_REFRESH:-0}"
+
 usage() {
   cat <<'EOF'
 SevenStore Preview
@@ -26,7 +31,47 @@ install explicitly.
 EOF
 }
 
-payload_json() {
+for arg in "$@"; do
+  case "$arg" in
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
+  esac
+done
+
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1"
+  local ttl="$2"
+  local now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1"
+  local tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+clear_store_cache() {
+  rm -f "$STORE_CACHE" 2>/dev/null || true
+}
+
+payload_json_uncached() {
   ROOT_DIR="$ROOT_DIR" python - <<'PY'
 import json
 import os
@@ -339,6 +384,18 @@ payload = {
 }
 print(json.dumps(payload, indent=2))
 PY
+}
+
+payload_json() {
+  if cache_is_fresh "$STORE_CACHE" "$STORE_CACHE_TTL"; then
+    cat "$STORE_CACHE"
+    return 0
+  fi
+
+  local payload
+  payload="$(payload_json_uncached)"
+  printf '%s\n' "$payload" | write_json_cache "$STORE_CACHE" || true
+  printf '%s\n' "$payload"
 }
 
 search_json() {
@@ -1510,6 +1567,7 @@ record_store_activity() {
   local status="${4:-ok}"
   local profile="${5:-}"
   local state_home activity_file
+  clear_store_cache
   state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
   activity_file="$state_home/sevenos/store-activity.json"
   mkdir -p "$(dirname "$activity_file")"

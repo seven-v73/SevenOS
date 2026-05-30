@@ -6,6 +6,10 @@ source "$ROOT_DIR/scripts/lib.sh"
 
 ACTION="${1:-status}"
 JSON_OUTPUT=0
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+SHELL_STATUS_CACHE="$CACHE_DIR/shell-status.json"
+SHELL_STATUS_CACHE_TTL="${SEVENOS_SHELL_STATUS_CACHE_TTL:-120}"
+REFRESH_CACHE="${SEVENOS_SHELL_REFRESH:-0}"
 
 usage() {
   cat <<'EOF'
@@ -26,9 +30,40 @@ EOF
 for arg in "$@"; do
   case "$arg" in
     --json|json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     -h|--help|help) usage; exit 0 ;;
   esac
 done
+
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1"
+  local ttl="$2"
+  local now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1"
+  local tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
 
 command_state() {
   command -v "$1" >/dev/null 2>&1 && printf OK || printf MISS
@@ -83,7 +118,7 @@ core_health_json() {
   fi
 }
 
-status_json() {
+status_json_uncached() {
   local runtime health
   runtime="$(runtime_state)"
   health="$(core_health_json)"
@@ -115,6 +150,18 @@ status_json() {
   printf '"profile_gates":{"deploy":{"required_profile":"forge","blocked_contract":"sevenos.profile-gate.v1","fallback_commands":["seven profile activate forge","seven-terminal forge"]}},'
   printf '"commands":{"install":"./install.sh shell-ags","runtime":"./install.sh shell-ags-runtime --yes","runtime_status":"scripts/shell-ags-runtime.sh status --json","plan":"seven shell plan","preview":"seven shell preview"}'
   printf '}\n'
+}
+
+status_json() {
+  if cache_is_fresh "$SHELL_STATUS_CACHE" "$SHELL_STATUS_CACHE_TTL"; then
+    cat "$SHELL_STATUS_CACHE"
+    return 0
+  fi
+
+  local payload
+  payload="$(status_json_uncached)"
+  printf '%s\n' "$payload" | write_json_cache "$SHELL_STATUS_CACHE" || true
+  printf '%s\n' "$payload"
 }
 
 plan_json() {

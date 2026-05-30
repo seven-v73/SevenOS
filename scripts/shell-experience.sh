@@ -401,6 +401,9 @@ warmup_experience() {
     run_warmup 5 "$ROOT_DIR/bin/seven-store-native" --json
     run_warmup 5 "$ROOT_DIR/profiles/profile-manager.sh" list --json
     run_warmup 4 "$ROOT_DIR/bin/seven-home-native" --json
+    run_warmup 4 "$ROOT_DIR/scripts/shell.sh" status --json --refresh
+    run_warmup 5 "$ROOT_DIR/scripts/store.sh" json --refresh
+    run_warmup 5 "$ROOT_DIR/scripts/surfaces.sh" json --refresh
     run_warmup 3 "$ROOT_DIR/scripts/motion.sh" status --json
     run_warmup 3 "$ROOT_DIR/scripts/theme-session.sh" status --json
     prewarm_waybar_status

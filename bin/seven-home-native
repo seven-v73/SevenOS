@@ -129,7 +129,7 @@ QUICK_ACTIONS = [
 
 CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 HOME_CACHE = CACHE_HOME / "sevenos/home-native.json"
-HOME_CACHE_TTL = float(os.environ.get("SEVENOS_HOME_CACHE_TTL", "45"))
+HOME_CACHE_TTL = float(os.environ.get("SEVENOS_HOME_CACHE_TTL", "180"))
 
 
 def run_json(*args: str, fallback=None, timeout: float = 3.0, extra_env: dict[str, str] | None = None):
