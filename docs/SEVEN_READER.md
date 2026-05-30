@@ -42,7 +42,7 @@ Professional reading features:
 - Persistent bookmarks and page notes per document.
 - Centered book navigation with first, previous, next and last page controls.
 - Spread-aware page labels such as `2 - 3 / 14` in Book and Flipbook modes.
-- Progress slider, page memory and zoom controls.
+- Progress slider, page memory, Fit Page, Actual Size and zoom controls.
 - Fit-visible page sizing at `100%` in Book and Flipbook modes.
 - Adaptive reading: Book and Flipbook keep a two-page spread on wide windows,
   then fall back to a single visible page on compact windows.

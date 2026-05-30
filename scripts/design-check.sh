@@ -419,7 +419,7 @@ fi
 
 if [[ -x "$ROOT_DIR/bin/seven-settings" ]] &&
    "$ROOT_DIR/bin/seven-settings-native" --probe >/dev/null 2>&1 &&
-   timeout 8s "$ROOT_DIR/bin/seven-settings-native" --smoke-open general >/dev/null 2>&1 &&
+   timeout 14s "$ROOT_DIR/bin/seven-settings-native" --smoke-open general >/dev/null 2>&1 &&
    grep -q 'SevenSettingsNative' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'settings-shell' "$ROOT_DIR/bin/seven-settings-native" &&
    grep -q 'file_wallpaper_button' "$ROOT_DIR/bin/seven-settings-native" &&

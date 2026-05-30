@@ -681,6 +681,8 @@ class ReaderWindow(Gtk.ApplicationWindow):
             ("Book", lambda: self.set_mode(None, "book")),
             ("Double page", lambda: self.set_mode(None, "double")),
             ("Inspect", lambda: self.set_mode(None, "inspect")),
+            ("Fit page", self.fit_page),
+            ("Actual size", self.actual_size),
             ("Zoom +", lambda: self.adjust_zoom(0.10)),
             ("Zoom -", lambda: self.adjust_zoom(-0.10)),
             ("Add note", self.add_note_dialog),
@@ -1271,6 +1273,14 @@ class ReaderWindow(Gtk.ApplicationWindow):
 
     def adjust_zoom(self, delta: float) -> None:
         self.zoom = max(0.72, min(2.20, self.zoom + delta))
+        self.render_current()
+
+    def fit_page(self) -> None:
+        self.zoom = 1.0
+        self.render_current()
+
+    def actual_size(self) -> None:
+        self.zoom = 1.28 if self.mode in {"double", "book", "flip"} else 1.0
         self.render_current()
 
     def on_progress_changed(self, scale: Gtk.Scale) -> None:

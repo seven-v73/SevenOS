@@ -751,6 +751,8 @@ TEXT_TRANSLATIONS = {
         "Simple reading": "Lecture simple",
         "Book": "Livre",
         "Inspect": "Inspecter",
+        "Fit page": "Ajuster la page",
+        "Actual size": "Taille réelle",
         "Add note": "Ajouter une note",
         "Focus mode": "Mode focus",
         "Export notes": "Exporter les notes",
