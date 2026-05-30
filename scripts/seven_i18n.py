@@ -750,6 +750,7 @@ TEXT_TRANSLATIONS = {
         "End of document": "Fin du document",
         "Simple reading": "Lecture simple",
         "Book": "Livre",
+        "Flipbook": "Livre animé",
         "Inspect": "Inspecter",
         "Fit page": "Ajuster la page",
         "Actual size": "Taille réelle",

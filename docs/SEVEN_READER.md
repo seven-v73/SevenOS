@@ -51,7 +51,8 @@ Professional reading features:
 - Native page turning from the document surface: click page edges or scroll to
   move through pages without aiming at toolbar controls.
 - Focus mode with `F11`.
-- Keyboard shortcuts: `Ctrl+F` search, `Ctrl+B` bookmark, `Ctrl+N` note.
+- Keyboard shortcuts: `Ctrl+F` search, `Ctrl+B` bookmark, `Ctrl+N` note,
+  `Ctrl+0` fit page, `Ctrl+1` actual size, `Home` and `End`.
 - Lightweight PDF preloading for nearby pages and text extraction.
 
 ## SevenOS Integration

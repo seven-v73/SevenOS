@@ -679,6 +679,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
         for label, callback in (
             ("Simple reading", lambda: self.set_mode(None, "reader")),
             ("Book", lambda: self.set_mode(None, "book")),
+            ("Flipbook", lambda: self.set_mode(None, "flip")),
             ("Double page", lambda: self.set_mode(None, "double")),
             ("Inspect", lambda: self.set_mode(None, "inspect")),
             ("Fit page", self.fit_page),
@@ -1624,11 +1625,23 @@ class ReaderWindow(Gtk.ApplicationWindow):
             if key in {"minus", "KP_Subtract"}:
                 self.adjust_zoom(-0.10)
                 return True
+            if key in {"0", "KP_0"}:
+                self.fit_page()
+                return True
+            if key in {"1", "KP_1"}:
+                self.actual_size()
+                return True
         if key in {"Right", "space", "Page_Down"}:
             self.turn_page(1)
             return True
         if key in {"Left", "BackSpace", "Page_Up"}:
             self.turn_page(-1)
+            return True
+        if key == "Home":
+            self.goto_page(0)
+            return True
+        if key == "End" and self.document:
+            self.goto_page(self.document.page_count - 1)
             return True
         if key == "Escape":
             self.show_library()
