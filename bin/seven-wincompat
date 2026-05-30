@@ -17,8 +17,18 @@ WINDOWS_MIME_TYPES=(
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/wincompat"
 LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos/wincompat"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+STATUS_CACHE="$CACHE_DIR/wincompat-status.json"
+STATUS_CACHE_TTL="${SEVENOS_WINCOMPAT_STATUS_CACHE_TTL:-300}"
+REFRESH_CACHE="${SEVENOS_WINCOMPAT_REFRESH:-0}"
 DEFAULT_WINEPREFIX="${WINEPREFIX:-$HOME/.local/share/sevenos/windows/prefixes/default}"
 HOST_ARCH="$(uname -m)"
+
+for arg in "$@"; do
+  case "$arg" in
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
+  esac
+done
 
 usage() {
   cat <<'EOF'
@@ -49,6 +59,40 @@ desktop_escape() {
 
 have() {
   command -v "$1" >/dev/null 2>&1
+}
+
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1"
+  local ttl="$2"
+  local now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1"
+  local tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+clear_status_cache() {
+  rm -f "$STATUS_CACHE" 2>/dev/null || true
 }
 
 flatpak_has() {
@@ -326,7 +370,7 @@ print(json.dumps({
 PY
 }
 
-status_json() {
+status_json_uncached() {
   local engines_json missing_json base_missing_json multilib_missing_json bottle_count preferred
   engines_json="$(available_engines_json $(available_engines))"
   missing_json="$(missing_recommended_packages_json)"
@@ -362,6 +406,18 @@ status_json() {
   "install_hint": "Run ./install.sh windows-compat. For 32-bit and gaming apps, enable Arch multilib first; SevenOS will install the lib32 runtime automatically."
 }
 JSON
+}
+
+status_json() {
+  if cache_is_fresh "$STATUS_CACHE" "$STATUS_CACHE_TTL"; then
+    cat "$STATUS_CACHE"
+    return 0
+  fi
+
+  local payload
+  payload="$(status_json_uncached)"
+  printf '%s\n' "$payload" | write_json_cache "$STATUS_CACHE" || true
+  printf '%s\n' "$payload"
 }
 
 requirements_json() {
@@ -708,6 +764,7 @@ case "$ACTION" in
     fi
     ;;
   integrate)
+    clear_status_cache
     integrate_desktop
     if [[ " $* " == *" --json "* ]]; then
       integration_json
@@ -737,9 +794,11 @@ case "$ACTION" in
     plan_json "$(realpath -m "$file")" "$engine"
     ;;
   run)
+    clear_status_cache
     run_file "$@"
     ;;
   pin)
+    clear_status_cache
     pin_file "$@"
     ;;
   logs)

@@ -20,17 +20,56 @@ EOF
 
 ACTION="status"
 JSON_OUTPUT=0
+REFRESH_CACHE="${SEVENOS_RECOVERY_REFRESH:-0}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+RECOVERY_CACHE="$CACHE_DIR/recovery.json"
+RECOVERY_CACHE_TTL="${SEVENOS_RECOVERY_CACHE_TTL:-300}"
 for arg in "$@"; do
   case "$arg" in
     status|plan|doctor|backup|json) ACTION="$arg" ;;
     --json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown recovery option: $arg"; usage; exit 1 ;;
   esac
 done
 [[ "$ACTION" == "json" ]] && JSON_OUTPUT=1
 
-recovery_json() {
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1"
+  local ttl="$2"
+  local now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1"
+  local tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+clear_recovery_cache() {
+  rm -f "$RECOVERY_CACHE" 2>/dev/null || true
+}
+
+recovery_json_uncached() {
   local tmp
   local fast_mode=0
   [[ "${SEVENOS_RECOVERY_FAST:-0}" == "1" ]] && fast_mode=1
@@ -206,6 +245,20 @@ PY
   rm -rf "$tmp"
 }
 
+recovery_json() {
+  if [[ "$ACTION" != "backup" ]] && cache_is_fresh "$RECOVERY_CACHE" "$RECOVERY_CACHE_TTL"; then
+    cat "$RECOVERY_CACHE"
+    return 0
+  fi
+
+  local payload
+  payload="$(recovery_json_uncached)"
+  if [[ "$ACTION" != "backup" ]]; then
+    printf '%s\n' "$payload" | write_json_cache "$RECOVERY_CACHE" || true
+  fi
+  printf '%s\n' "$payload"
+}
+
 print_human() {
   RECOVERY_JSON="$1" python - <<'PY'
 import json
@@ -237,9 +290,9 @@ for item in data.get("routes", []):
 PY
 }
 
-payload="$(recovery_json)"
 case "$ACTION" in
   status|json)
+    payload="$(recovery_json)"
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       printf '%s\n' "$payload"
     else
@@ -247,6 +300,7 @@ case "$ACTION" in
     fi
     ;;
   plan)
+    payload="$(recovery_json)"
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       printf '%s\n' "$payload"
     else
@@ -254,6 +308,7 @@ case "$ACTION" in
     fi
     ;;
   doctor)
+    payload="$(recovery_json)"
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       printf '%s\n' "$payload"
     else
@@ -266,6 +321,7 @@ sys.exit(0 if data.get("score", 0) >= 90 else 1)
 PY
     ;;
   backup)
+    clear_recovery_cache
     "$ROOT_DIR/scripts/migrate.sh" backup
     ;;
 esac

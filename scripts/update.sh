@@ -21,10 +21,15 @@ EOF
 ACTION="status"
 JSON_OUTPUT=0
 YES=0
+REFRESH_CACHE="${SEVENOS_UPDATE_REFRESH:-0}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+UPDATE_CACHE="$CACHE_DIR/update.json"
+UPDATE_CACHE_TTL="${SEVENOS_UPDATE_CACHE_TTL:-300}"
 for arg in "$@"; do
   case "$arg" in
     status|check|plan|doctor|apply|install|rollback|json) ACTION="$arg" ;;
     --json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     --dry-run) export SEVENOS_DRY_RUN=1 ;;
     --yes|-y) YES=1 ;;
     -h|--help|help) usage; exit 0 ;;
@@ -46,6 +51,40 @@ git_run() {
 UPDATE_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/update"
 LAST_SNAPSHOT_LINK="$UPDATE_STATE_DIR/last-successful-tree"
 LAST_REPORT_FILE="$UPDATE_STATE_DIR/last-report.json"
+
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1"
+  local ttl="$2"
+  local now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1"
+  local tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+clear_update_cache() {
+  rm -f "$UPDATE_CACHE" 2>/dev/null || true
+}
 
 snapshot_excludes() {
   printf '%s\n' \
@@ -199,7 +238,7 @@ apply_repo_update() {
   env SEVENOS_ROOT="$ROOT_DIR" "$ROOT_DIR/install.sh" post-install || true
 }
 
-update_json() {
+update_json_uncached() {
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
 import json
 import os
@@ -386,6 +425,20 @@ print(json.dumps({
 PY
 }
 
+update_json() {
+  if [[ "$ACTION" != "apply" && "$ACTION" != "rollback" ]] && cache_is_fresh "$UPDATE_CACHE" "$UPDATE_CACHE_TTL"; then
+    cat "$UPDATE_CACHE"
+    return 0
+  fi
+
+  local payload
+  payload="$(update_json_uncached)"
+  if [[ "$ACTION" != "apply" && "$ACTION" != "rollback" ]]; then
+    printf '%s\n' "$payload" | write_json_cache "$UPDATE_CACHE" || true
+  fi
+  printf '%s\n' "$payload"
+}
+
 print_human() {
   UPDATE_JSON="$1" python - <<'PY'
 import json
@@ -438,6 +491,7 @@ PY
 apply_updates() {
   local snapshot=""
   local report_path=""
+  clear_update_cache
   log_info "Applying SevenOS update route"
   notify_update "SevenOS Update" "Preparing update route and rollback snapshot."
   if is_dry_run; then
@@ -478,15 +532,16 @@ apply_updates() {
 
 rollback_update() {
   local snapshot="${1:-}"
+  clear_update_cache
   if [[ -z "$snapshot" && -L "$LAST_SNAPSHOT_LINK" ]]; then
     snapshot="$(readlink -f "$LAST_SNAPSHOT_LINK")"
   fi
   restore_update_snapshot "$snapshot"
 }
 
-payload="$(update_json)"
 case "$ACTION" in
   status|json)
+    payload="$(update_json)"
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       printf '%s\n' "$payload"
     else
@@ -494,6 +549,7 @@ case "$ACTION" in
     fi
     ;;
   plan)
+    payload="$(update_json)"
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       printf '%s\n' "$payload"
     else
@@ -501,6 +557,7 @@ case "$ACTION" in
     fi
     ;;
   doctor)
+    payload="$(update_json)"
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       printf '%s\n' "$payload"
     else

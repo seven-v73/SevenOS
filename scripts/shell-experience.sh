@@ -405,6 +405,9 @@ warmup_experience() {
     run_warmup 5 "$ROOT_DIR/scripts/store.sh" json --refresh
     run_warmup 5 "$ROOT_DIR/scripts/surfaces.sh" json --refresh
     run_warmup 15 "$ROOT_DIR/scripts/public-experience.sh" json --refresh
+    run_warmup 14 "$ROOT_DIR/scripts/update.sh" json --refresh
+    run_warmup 6 "$ROOT_DIR/scripts/recovery.sh" json --refresh
+    run_warmup 8 "$ROOT_DIR/bin/seven-wincompat" status --json --refresh
     run_warmup 3 "$ROOT_DIR/scripts/motion.sh" status --json
     run_warmup 3 "$ROOT_DIR/scripts/theme-session.sh" status --json
     prewarm_waybar_status
