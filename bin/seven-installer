@@ -8,7 +8,7 @@ usage() {
 SevenOS graphical installer launcher
 
 Usage:
-  seven-installer [open|status|portal|guide] [--json]
+  seven-installer [open|gui|status|portal|guide] [--json]
 
 This launcher prefers Calamares when it is available in the live ISO. When the
 graphical runtime is missing, it falls back to the SevenOS guided installer
@@ -172,6 +172,11 @@ open_installer() {
     return 0
   fi
 
+  if [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" && -x "$ROOT_DIR/bin/seven-installer-native" ]]; then
+    run_or_print "$ROOT_DIR/bin/seven-installer-native"
+    return 0
+  fi
+
   if command -v calamares >/dev/null 2>&1; then
     if command -v pkexec >/dev/null 2>&1; then
       run_or_print pkexec calamares -d
@@ -194,6 +199,7 @@ open_installer() {
 
 case "${1:-open}" in
   open) open_installer ;;
+  gui) "$ROOT_DIR/bin/seven-installer-native" ;;
   status) status ;;
   portal) portal ;;
   guide) "$ROOT_DIR/bin/seven" installer guide ;;

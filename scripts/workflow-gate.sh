@@ -124,6 +124,21 @@ check(
     "seven update",
 )
 
+installer_experience = read("scripts/installer-experience.sh")
+installer_native = read("bin/seven-installer-native")
+check(
+    "installer-experience-flow",
+    all(token in installer_experience for token in ("Modern graphical installer", "Automatic hardware detection", "GPU driver guidance", "Preset profiles", "Post-install assistant"))
+    and all(token in installer_native for token in ("Start graphical installation", "Starting profiles", "Post-install assistant", "GPU guidance"))
+    and all(token in actions for token in ("installer.gui", "installer.experience", "installer.experience_plan")),
+    "Installation guidée complète",
+    "Complete guided installation",
+    "L’installation publique relie installateur graphique, matériel, pilotes GPU, profils et assistant post-install.",
+    "The public installation connects graphical installer, hardware, GPU drivers, presets and post-install assistant.",
+    "high",
+    "seven installer experience",
+)
+
 check(
     "mini-os-switch-flow",
     all(token in read("scripts/profile-switch-workflow.sh") for token in ("seven-passage-overlay", "watch", "profile-manager.sh", "ready"))
@@ -157,6 +172,44 @@ check(
     "Privacy and permissions are grouped into visible journeys.",
     "high",
     "seven permissions --gui",
+)
+
+check(
+    "equinox-mission-flow",
+    all(token in experience for token in ("mission_flow_state", "Equinox Mission Planner", "ready_steps", "handoffs", "Sortie attendue"))
+    and all(token in actions for token in ("experience.missions", "experience.mission.direct", "experience.mission.mali_game", "experience.mission.publish_web")),
+    "Missions Equinox orchestrées",
+    "Orchestrated Equinox missions",
+    "Les intentions longues deviennent des parcours multi-mini-OS avec étapes, sorties attendues et préparation visible.",
+    "Broad intents become multi-mini-OS routes with steps, expected outputs and visible readiness.",
+    "high",
+    "seven missions",
+)
+
+check(
+    "differentiator-flow",
+    all(token in experience for token in ("differentiators", "Les 10 piliers SevenOS", "seven differentiators plan"))
+    and all(token in actions for token in ("quality.differentiators", "quality.differentiators_center", "quality.differentiators_plan")),
+    "Différenciation visible",
+    "Visible differentiation",
+    "Les piliers produit SevenOS sont lisibles dans le terminal, l’aide et l’Experience Center.",
+    "SevenOS product pillars are readable in terminal, help and Experience Center.",
+    "high",
+    "seven experience-center differentiators",
+)
+
+universes = read("scripts/universes.sh")
+check(
+    "universe-model",
+    all(token in universes for token in ("SevenOS Core", "Equinox", "Forge", "Shield", "Baobab", "Pulse", "Studio", "Atlas", "Equinox AI"))
+    and all(token in experience for token in ("universes", "Architecture vivante SevenOS", "seven universes", "seven missions"))
+    and all(token in actions for token in ("architecture.universes", "architecture.universes_center", "architecture.universes_plan")),
+    "Univers SevenOS lisibles",
+    "Readable SevenOS universes",
+    "Core, Equinox et les sept univers spécialisés sont exposés comme un modèle produit vérifiable.",
+    "Core, Equinox and the seven specialized universes are exposed as a verifiable product model.",
+    "high",
+    "seven universes",
 )
 
 check(

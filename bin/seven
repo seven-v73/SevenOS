@@ -286,6 +286,20 @@ def handle_platform(args):
     run_script(args, "scripts/platform.sh", *extra)
 
 
+def handle_differentiators(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/differentiators.sh", *extra)
+
+
+def handle_universes(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/universes.sh", *extra)
+
+
 def handle_mask(args):
     extra = [args.action]
     if args.json:
@@ -534,6 +548,17 @@ def handle_windows(args):
         return
     print(f"seven: unknown windows compatibility action: {action}", file=sys.stderr)
     sys.exit(1)
+
+
+def handle_usb(args):
+    action = args.action
+    extra = list(args.extra)
+    wants_json = getattr(args, "json", False) or "--json" in extra
+    extra = [item for item in extra if item != "--json"]
+    payload = [action, *extra]
+    if wants_json and action in {"status", "devices", "plan"} and "--json" not in payload:
+        payload.append("--json")
+    run_script(args, "bin/seven-usb-writer", *payload)
 
 
 def handle_server(args):
@@ -1316,7 +1341,7 @@ def main():
     experience_parser.add_argument("extra", nargs=argparse.REMAINDER)
     experience_parser.add_argument("--json", action="store_true", help="print machine-readable experience audit")
     experience_center_parser = subparsers.add_parser("experience-center", help="open SevenOS Rescue, Time Machine, Timeline and Focus Journeys")
-    experience_center_parser.add_argument("action", nargs="?", default="status", choices=("status", "briefing", "care", "trust", "setup", "personal-setup", "intent", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory", "json"))
+    experience_center_parser.add_argument("action", nargs="?", default="status", choices=("status", "briefing", "care", "trust", "differentiators", "universes", "setup", "personal-setup", "intent", "missions", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory", "json"))
     experience_center_parser.add_argument("extra", nargs=argparse.REMAINDER)
     experience_center_parser.add_argument("--json", action="store_true", help="print machine-readable Experience Center contract")
     experience_center_parser.add_argument("--gui", action="store_true", help="force graphical Experience Center")
@@ -1332,6 +1357,8 @@ def main():
         "trust": ("trust", "show SevenOS trust report"),
         "personal-setup": ("setup", "show SevenOS personal setup"),
         "intent": ("intent", "resolve a plain-language SevenOS intent"),
+        "missions": ("missions", "show Equinox multi-mini-OS mission planner"),
+        "mission": ("missions", "show one Equinox mission by key or intent"),
         "privacy-report": ("privacy-report", "show SevenOS privacy report"),
         "learning": ("learning", "show contextual SevenOS help"),
         "device-continuity": ("device-continuity", "show SevenOS device continuity"),
@@ -1505,6 +1532,12 @@ def main():
     platform_parser = subparsers.add_parser("platform", help="show SevenOS public platform layers and hidden backends")
     platform_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "json"))
     platform_parser.add_argument("--json", action="store_true", help="print machine-readable platform facade")
+    differentiators_parser = subparsers.add_parser("differentiators", help="show how SevenOS differentiates itself from a plain Arch install")
+    differentiators_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    differentiators_parser.add_argument("--json", action="store_true", help="print machine-readable differentiator contract")
+    universes_parser = subparsers.add_parser("universes", help="show SevenOS Core, Equinox and the seven work universes")
+    universes_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    universes_parser.add_argument("--json", action="store_true", help="print machine-readable universe contract")
     mask_parser = subparsers.add_parser("mask", help="check whether public SevenOS surfaces hide backend details")
     mask_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     mask_parser.add_argument("--json", action="store_true", help="print machine-readable public masking contract")
@@ -1599,6 +1632,11 @@ def main():
     windows_parser.add_argument("action", nargs="?", default="status", choices=("status", "catalog", "apps", "guide", "open", "bottles", "plan", "resolve", "run", "install", "setup", "prepare"))
     windows_parser.add_argument("--json", action="store_true", help="print machine-readable Windows compatibility state")
     windows_parser.add_argument("extra", nargs=argparse.REMAINDER)
+
+    usb_parser = subparsers.add_parser("usb", help="write ISO/IMG files to USB drives through SevenOS")
+    usb_parser.add_argument("action", nargs="?", default="status", choices=("status", "devices", "open", "plan", "write", "rufus"))
+    usb_parser.add_argument("--json", action="store_true", help="print machine-readable USB writer state")
+    usb_parser.add_argument("extra", nargs=argparse.REMAINDER)
 
     run_parser = subparsers.add_parser("run", help="run an app through the SevenOS compatibility resolver")
     run_parser.add_argument("target", help="app name or Windows executable path")
@@ -1722,8 +1760,8 @@ def main():
         handle_experience(args)
     elif args.command == "experience-center":
         handle_experience_center(args)
-    elif args.command in {"rescue", "time-machine", "timeline", "permissions", "journeys", "memory", "briefing", "care", "trust", "personal-setup", "intent", "privacy-report", "learning", "device-continuity"}:
-        shortcut_sections = {"personal-setup": "setup"}
+    elif args.command in {"rescue", "time-machine", "timeline", "permissions", "journeys", "memory", "briefing", "care", "trust", "personal-setup", "intent", "missions", "mission", "privacy-report", "learning", "device-continuity"}:
+        shortcut_sections = {"personal-setup": "setup", "mission": "missions"}
         handle_experience_shortcut(args, shortcut_sections.get(args.command, args.command))
     elif args.command in ("quality", "public-experience"):
         handle_quality(args)
@@ -1818,6 +1856,10 @@ def main():
         handle_autonomy(args)
     elif args.command == "platform":
         handle_platform(args)
+    elif args.command == "differentiators":
+        handle_differentiators(args)
+    elif args.command == "universes":
+        handle_universes(args)
     elif args.command == "mask":
         handle_mask(args)
     elif args.command == "surfaces":
@@ -1893,6 +1935,8 @@ def main():
         run_script(args, "bin/seven-pulse", *extra)
     elif args.command == "windows":
         handle_windows(args)
+    elif args.command == "usb":
+        handle_usb(args)
     elif args.command == "run":
         handle_run(args)
     elif args.command == "server":

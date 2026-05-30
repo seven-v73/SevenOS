@@ -5,9 +5,20 @@ ACTION="${1:-status}"
 shift || true
 
 WINDOWS_SUFFIXES_RE='\.((exe)|(msi)|(msp)|(bat)|(cmd)|(com)|(scr)|(lnk))$'
+WINDOWS_MIME_TYPES=(
+  application/x-ms-dos-executable
+  application/x-msdownload
+  application/x-msi
+  application/x-ms-installer
+  application/x-ms-shortcut
+  application/x-msdos-program
+  application/vnd.microsoft.portable-executable
+)
+ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos/wincompat"
 LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos/wincompat"
 DEFAULT_WINEPREFIX="${WINEPREFIX:-$HOME/.local/share/sevenos/windows/prefixes/default}"
+HOST_ARCH="$(uname -m)"
 
 usage() {
   cat <<'EOF'
@@ -15,8 +26,12 @@ SevenOS Windows App Compatibility
 
 Usage:
   seven-wincompat status [--json]
+  seven-wincompat requirements [--json]
+  seven-wincompat integrate [--json]
   seven-wincompat plan FILE [--json]
   seven-wincompat run FILE [--engine auto|wine|bottles|lutris] [--dry-run]
+  seven-wincompat pin FILE [--name NAME] [--engine auto|wine|bottles|lutris]
+  seven-wincompat logs
   seven-wincompat open-bottles [FILE]
 
 Runs Windows app files through app-first compatibility layers: Bottles, Wine and
@@ -26,6 +41,10 @@ EOF
 
 json_escape() {
   python -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
+desktop_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
 have() {
@@ -64,6 +83,170 @@ engine_available() {
   esac
 }
 
+package_installed() {
+  command -v pacman >/dev/null 2>&1 && pacman -Q "$1" >/dev/null 2>&1
+}
+
+multilib_enabled() {
+  command -v pacman-conf >/dev/null 2>&1 && pacman-conf --repo-list 2>/dev/null | grep -qx multilib
+}
+
+base_recommended_packages() {
+  printf '%s\n' \
+    wine wine-mono wine-gecko winetricks lutris protontricks cabextract icoutils \
+    vulkan-tools gamemode libpulse alsa-lib alsa-plugins openal mpg123 giflib \
+    libpng libjpeg-turbo sqlite sdl2 freetype2 gst-plugins-base-libs \
+    gst-plugins-base gst-plugins-good
+}
+
+multilib_recommended_packages() {
+  printf '%s\n' \
+    lib32-vulkan-icd-loader lib32-mesa lib32-gnutls lib32-libpulse \
+    lib32-alsa-lib lib32-alsa-plugins lib32-openal lib32-mpg123 lib32-giflib \
+    lib32-libpng lib32-libjpeg-turbo lib32-sqlite lib32-sdl2-compat \
+    lib32-freetype2 lib32-gamemode
+}
+
+missing_base_packages_json() {
+  local missing=()
+  local pkg
+  while IFS= read -r pkg; do
+    package_installed "$pkg" || missing+=("$pkg")
+  done < <(base_recommended_packages)
+  available_engines_json "${missing[@]}"
+}
+
+missing_multilib_packages_json() {
+  local missing=()
+  local pkg
+  while IFS= read -r pkg; do
+    package_installed "$pkg" || missing+=("$pkg")
+  done < <(multilib_recommended_packages)
+  available_engines_json "${missing[@]}"
+}
+
+missing_recommended_packages_json() {
+  local missing=()
+  local pkg
+  while IFS= read -r pkg; do
+    package_installed "$pkg" || missing+=("$pkg")
+  done < <(base_recommended_packages)
+  if multilib_enabled; then
+    while IFS= read -r pkg; do
+      package_installed "$pkg" || missing+=("$pkg")
+    done < <(multilib_recommended_packages)
+  else
+    while IFS= read -r pkg; do
+      missing+=("$pkg")
+    done < <(multilib_recommended_packages)
+  fi
+  available_engines_json "${missing[@]}"
+}
+
+flatpak_bottles_available() {
+  flatpak_has com.usebottles.bottles
+}
+
+bottles_engine_kind() {
+  if have bottles; then
+    printf 'native\n'
+  elif flatpak_bottles_available; then
+    printf 'flatpak\n'
+  else
+    printf 'missing\n'
+  fi
+}
+
+bottles_list_json() {
+  if have bottles-cli; then
+    bottles-cli --json list bottles 2>/dev/null || true
+  elif flatpak_bottles_available; then
+    flatpak run --command=bottles-cli com.usebottles.bottles --json list bottles 2>/dev/null || true
+  fi
+}
+
+preferred_bottle() {
+  local requested="${SEVENOS_BOTTLE:-${BOTTLES_BOTTLE:-}}"
+  local payload
+  payload="$(bottles_list_json)"
+  python - "$requested" "$payload" <<'PY'
+import json, sys
+requested = sys.argv[1].strip()
+try:
+    data = json.loads(sys.argv[2] or "{}")
+except Exception:
+    data = {}
+if not isinstance(data, dict) or not data:
+    raise SystemExit(1)
+keys = list(data)
+if requested and requested in data:
+    print(requested)
+else:
+    print(keys[0])
+PY
+}
+
+bottles_count() {
+  local payload
+  payload="$(bottles_list_json)"
+  python - "$payload" <<'PY'
+import json, sys
+try:
+    data = json.loads(sys.argv[1] or "{}")
+except Exception:
+    data = {}
+print(len(data) if isinstance(data, dict) else 0)
+PY
+}
+
+file_architecture() {
+  local file="$1"
+  local info
+  info="$(file -b "$file" 2>/dev/null || true)"
+  case "$info" in
+    *ARM64*|*Aarch64*|*aarch64*) printf 'arm64' ;;
+    *x86-64*|*x86_64*|*PE32+*) printf 'x86_64' ;;
+    *80386*|*"Intel 80386"*|*PE32*) printf 'x86' ;;
+    *) printf 'unknown' ;;
+  esac
+}
+
+architecture_blocker() {
+  local file="$1"
+  local arch
+  arch="$(file_architecture "$file")"
+  case "$arch" in
+    arm64)
+      case "$HOST_ARCH" in
+        aarch64|arm64) return 1 ;;
+        *)
+          printf 'This Windows app is ARM64, but this SevenOS machine is %s. Download the x64/x86 Windows version instead.' "$HOST_ARCH"
+          return 0
+          ;;
+      esac
+      ;;
+  esac
+  return 1
+}
+
+known_app_blocker() {
+  local file="$1"
+  local name
+  name="$(basename -- "$file")"
+  name="${name,,}"
+  case "$name" in
+    *rufus*)
+      printf 'Rufus is a low-level USB imaging tool and is not a good Wine/Bottles target. Use the native SevenOS USB Writer instead: seven-usb-writer open /path/to/image.iso or ./install.sh usb-writer --yes.'
+      return 0
+      ;;
+    *driver*|*firmware*|*bios*|*uefi*)
+      printf 'Driver, firmware and BIOS tools usually need real Windows hardware access. SevenOS blocks this path to avoid a silent unsafe failure.'
+      return 0
+      ;;
+  esac
+  return 1
+}
+
 available_engines_json() {
   python - "$@" <<'PY'
 import json, sys
@@ -79,9 +262,78 @@ available_engines() {
   printf '%s\n' "${engines[@]}"
 }
 
+desktop_file_path() {
+  printf '%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}/applications/seven-wincompat.desktop"
+}
+
+write_desktop_entry() {
+  local target="$1"
+  mkdir -p "$(dirname -- "$target")"
+  cat > "$target" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=SevenOS Windows Apps
+Name[fr]=Applications Windows SevenOS
+Comment=Run Windows app files through SevenOS compatibility layers
+Comment[fr]=Exécuter les applications Windows via les couches de compatibilité SevenOS
+Exec=seven-wincompat run %f
+Icon=applications-system
+Terminal=false
+Categories=Utility;
+MimeType=application/x-ms-dos-executable;application/x-msdownload;application/x-msi;application/x-ms-installer;application/x-ms-shortcut;application/x-msdos-program;application/vnd.microsoft.portable-executable;
+StartupNotify=true
+EOF
+}
+
+integrate_desktop() {
+  local target
+  target="$(desktop_file_path)"
+  write_desktop_entry "$target"
+  if have xdg-mime; then
+    local mime
+    for mime in "${WINDOWS_MIME_TYPES[@]}"; do
+      xdg-mime default seven-wincompat.desktop "$mime" >/dev/null 2>&1 || true
+    done
+  fi
+  if have update-desktop-database; then
+    update-desktop-database "$(dirname -- "$target")" >/dev/null 2>&1 || true
+  fi
+}
+
+integration_json() {
+  local desktop defaults=()
+  desktop="$(desktop_file_path)"
+  local mime current
+  for mime in "${WINDOWS_MIME_TYPES[@]}"; do
+    current="$(xdg-mime query default "$mime" 2>/dev/null || true)"
+    defaults+=("$mime=$current")
+  done
+  python - "$desktop" "$([[ -f "$desktop" ]] && printf true || printf false)" "${defaults[@]}" <<'PY'
+import json, sys
+desktop = sys.argv[1]
+installed = sys.argv[2] == "true"
+defaults = {}
+for item in sys.argv[3:]:
+    key, _, value = item.partition("=")
+    defaults[key] = value
+print(json.dumps({
+    "schema": "sevenos.wincompat.integration.v1",
+    "state": "ready" if installed and all(v == "seven-wincompat.desktop" for v in defaults.values()) else "needs-integration",
+    "desktop_entry": desktop,
+    "desktop_installed": installed,
+    "mime_defaults": defaults,
+}, ensure_ascii=False, indent=2))
+PY
+}
+
 status_json() {
-  local engines_json
+  local engines_json missing_json base_missing_json multilib_missing_json bottle_count preferred
   engines_json="$(available_engines_json $(available_engines))"
+  missing_json="$(missing_recommended_packages_json)"
+  base_missing_json="$(missing_base_packages_json)"
+  multilib_missing_json="$(missing_multilib_packages_json)"
+  bottle_count="$(bottles_count)"
+  preferred="$(preferred_bottle 2>/dev/null || true)"
   cat <<JSON
 {
   "schema": "sevenos.wincompat.status.v1",
@@ -96,8 +348,94 @@ status_json() {
     "lutris": $(engine_available lutris && printf true || printf false)
   },
   "available_engines": $engines_json,
+  "engine_details": {
+    "bottles": "$(bottles_engine_kind)",
+    "bottles_count": $bottle_count,
+    "preferred_bottle": $(json_escape "$preferred"),
+    "host_arch": "$HOST_ARCH",
+    "multilib_enabled": $(multilib_enabled && printf true || printf false),
+    "missing_recommended_packages": $missing_json,
+    "missing_base_packages": $base_missing_json,
+    "missing_multilib_packages": $multilib_missing_json
+  },
   "wineprefix": $(json_escape "$DEFAULT_WINEPREFIX"),
-  "install_hint": "Install Bottles from Flatpak or Wine/Lutris from SevenStore."
+  "install_hint": "Run ./install.sh windows-compat. For 32-bit and gaming apps, enable Arch multilib first; SevenOS will install the lib32 runtime automatically."
+}
+JSON
+}
+
+requirements_json() {
+  local base_json multilib_json base_missing_json multilib_missing_json state
+  base_json="$(available_engines_json $(base_recommended_packages))"
+  multilib_json="$(available_engines_json $(multilib_recommended_packages))"
+  base_missing_json="$(missing_base_packages_json)"
+  multilib_missing_json="$(missing_multilib_packages_json)"
+  state="needs-install"
+  if [[ "$base_missing_json" == "[]" && "$(multilib_enabled && printf yes || printf no)" == "yes" && "$multilib_missing_json" == "[]" ]]; then
+    state="ready"
+  fi
+  cat <<JSON
+{
+  "schema": "sevenos.wincompat.requirements.v1",
+  "state": "$state",
+  "base_packages": $base_json,
+  "multilib_packages": $multilib_json,
+  "missing_base_packages": $base_missing_json,
+  "missing_multilib_packages": $multilib_missing_json,
+  "multilib_enabled": $(multilib_enabled && printf true || printf false),
+  "commands": {
+    "install_base": "./install.sh windows-compat",
+    "enable_multilib_note": "Uncomment [multilib] and its Include line in /etc/pacman.conf, then run sudo pacman -Syu && ./install.sh windows-compat"
+  }
+}
+JSON
+}
+
+doctor_json() {
+  local engines_json missing_json base_missing_json multilib_missing_json bottle_count preferred wine_probe_state wine_probe_detail
+  engines_json="$(available_engines_json $(available_engines))"
+  missing_json="$(missing_recommended_packages_json)"
+  base_missing_json="$(missing_base_packages_json)"
+  multilib_missing_json="$(missing_multilib_packages_json)"
+  bottle_count="$(bottles_count)"
+  preferred="$(preferred_bottle 2>/dev/null || true)"
+  wine_probe_state="missing"
+  wine_probe_detail="wine command not found"
+  if have wine; then
+    mkdir -p "$DEFAULT_WINEPREFIX" "$LOG_DIR"
+    if WINEPREFIX="$DEFAULT_WINEPREFIX" timeout 12 wineboot -u >"$LOG_DIR/wineboot.log" 2>&1; then
+      wine_probe_state="ready"
+      wine_probe_detail="wineboot completed"
+    else
+      wine_probe_state="needs-attention"
+      wine_probe_detail="$(tail -20 "$LOG_DIR/wineboot.log" 2>/dev/null | tr '\n' ' ' | sed 's/[[:space:]]\\+/ /g')"
+    fi
+  fi
+  cat <<JSON
+{
+  "schema": "sevenos.wincompat.doctor.v1",
+  "state": "$([[ "$engines_json" != "[]" && "$wine_probe_state" != "missing" ]] && printf ready || printf needs-attention)",
+  "global": true,
+  "engines": {
+    "available": $engines_json,
+    "bottles_kind": "$(bottles_engine_kind)",
+    "bottles_count": $bottle_count,
+    "preferred_bottle": $(json_escape "$preferred"),
+    "wine_probe": "$wine_probe_state",
+    "wine_probe_detail": $(json_escape "$wine_probe_detail")
+  },
+  "system": {
+    "host_arch": "$HOST_ARCH",
+    "multilib_enabled": $(multilib_enabled && printf true || printf false),
+    "missing_recommended_packages": $missing_json,
+    "missing_base_packages": $base_missing_json,
+    "missing_multilib_packages": $multilib_missing_json
+  },
+  "guidance": [
+    "Wine can run many desktop apps, but drivers, USB flashers, firmware tools and some launchers require native Linux tools or a real Windows environment.",
+    "If a 32-bit app or game fails, enable multilib and install the missing lib32 packages.",
+    "Use x64/x86 Windows downloads on x86_64 SevenOS; ARM64 Windows apps will not run here."
+  ]
 }
 JSON
 }
@@ -123,12 +461,21 @@ choose_engine() {
 plan_json() {
   local file="$1"
   local requested="${2:-auto}"
-  local kind engine engines_json state blocker
+  local kind engine engines_json state blocker arch architecture_issue known_issue
   kind="$(file_kind "$file")"
+  arch="$(file_architecture "$file")"
   engines_json="$(available_engines_json $(available_engines))"
   if ! is_windows_file "$file"; then
     state="unsupported"
     blocker="File extension is not a known Windows app format."
+    engine=""
+  elif architecture_issue="$(architecture_blocker "$file")"; then
+    state="unsupported-architecture"
+    blocker="$architecture_issue"
+    engine=""
+  elif known_issue="$(known_app_blocker "$file")"; then
+    state="native-required"
+    blocker="$known_issue"
     engine=""
   elif engine="$(choose_engine "$file" "$requested" 2>/dev/null)"; then
     state="ready"
@@ -144,6 +491,8 @@ plan_json() {
   "state": "$state",
   "file": $(json_escape "$file"),
   "kind": "$kind",
+  "architecture": "$arch",
+  "host_arch": "$HOST_ARCH",
   "selected_engine": $(json_escape "$engine"),
   "requested_engine": $(json_escape "$requested"),
   "available_engines": $engines_json,
@@ -162,29 +511,69 @@ run_with_wine() {
   local file="$1"
   mkdir -p "$DEFAULT_WINEPREFIX" "$LOG_DIR"
   export WINEPREFIX="$DEFAULT_WINEPREFIX"
+  if [[ ! -d "$DEFAULT_WINEPREFIX" ]]; then
+    export WINEARCH=win64
+  fi
   case "${file##*.}" in
     msi|MSI)
-      setsid -f wine msiexec /i "$file" >"$LOG_DIR/wine-msi.log" 2>&1
+      run_logged_background "Wine" "$file" "$LOG_DIR/wine-msi.log" wine msiexec /i "$file"
       ;;
     msp|MSP)
-      setsid -f wine msiexec /p "$file" >"$LOG_DIR/wine-msp.log" 2>&1
+      run_logged_background "Wine" "$file" "$LOG_DIR/wine-msp.log" wine msiexec /p "$file"
       ;;
     bat|BAT|cmd|CMD)
-      setsid -f wine cmd /c "$file" >"$LOG_DIR/wine-cmd.log" 2>&1
+      run_logged_background "Wine" "$file" "$LOG_DIR/wine-cmd.log" wine cmd /c "$file"
       ;;
     *)
-      setsid -f wine "$file" >"$LOG_DIR/wine.log" 2>&1
+      run_logged_background "Wine" "$file" "$LOG_DIR/wine.log" wine "$file"
       ;;
   esac
 }
 
+notify_launch_failure() {
+  local engine="$1" file="$2" log="$3"
+  command -v notify-send >/dev/null 2>&1 || return 0
+  notify-send "SevenOS Windows Apps" "Launch failed with $engine: $(basename "$file"). See $log" >/dev/null 2>&1 || true
+}
+
+notify_launch_started() {
+  local engine="$1" file="$2"
+  command -v notify-send >/dev/null 2>&1 || return 0
+  notify-send "SevenOS Windows Apps" "Started $(basename "$file") with $engine" >/dev/null 2>&1 || true
+}
+
+run_logged_background() {
+  local engine="$1" file="$2" log="$3"
+  shift 3
+  (
+    "$@" >"$log" 2>&1
+    code=$?
+    if [[ "$code" -ne 0 ]]; then
+      notify_launch_failure "$engine" "$file" "$log"
+    fi
+    exit "$code"
+  ) &
+}
+
 run_with_bottles() {
   local file="$1"
+  local parent bottle
+  parent="$(dirname -- "$file")"
   mkdir -p "$LOG_DIR"
-  if have bottles; then
-    setsid -f bottles "$file" >"$LOG_DIR/bottles.log" 2>&1
+  bottle="$(preferred_bottle 2>/dev/null || true)"
+  if [[ -z "$bottle" ]]; then
+    if have bottles; then
+      setsid -f bottles >"$LOG_DIR/bottles.log" 2>&1
+    else
+      setsid -f flatpak run com.usebottles.bottles >"$LOG_DIR/bottles-flatpak.log" 2>&1
+    fi
+    printf 'seven-wincompat: create a Bottles bottle first, then run the Windows app again.\n' >&2
+    return 1
+  fi
+  if have bottles-cli; then
+    run_logged_background "Bottles" "$file" "$LOG_DIR/bottles-cli.log" bottles-cli run -b "$bottle" -e "$file"
   else
-    setsid -f flatpak run com.usebottles.bottles "$file" >"$LOG_DIR/bottles-flatpak.log" 2>&1
+    run_logged_background "Bottles" "$file" "$LOG_DIR/bottles-cli-flatpak.log" flatpak run --filesystem="$parent:ro" --filesystem="$HOME/.local/share/sevenos/windows:create" --command=bottles-cli com.usebottles.bottles run -b "$bottle" -e "$file"
   fi
 }
 
@@ -193,7 +582,7 @@ run_with_lutris() {
   mkdir -p "$LOG_DIR"
   # Lutris' GUI handles Windows installers best from its add/install flow, so
   # launch the app and keep the selected file in recents for the user.
-  setsid -f lutris "$file" >"$LOG_DIR/lutris.log" 2>&1 || setsid -f lutris >"$LOG_DIR/lutris.log" 2>&1
+  run_logged_background "Lutris" "$file" "$LOG_DIR/lutris.log" lutris "$file"
 }
 
 remember_recent() {
@@ -229,6 +618,16 @@ run_file() {
   file="$(realpath -m "$file")"
   [[ -e "$file" ]] || { printf 'seven-wincompat: file not found: %s\n' "$file" >&2; return 1; }
   is_windows_file "$file" || { printf 'seven-wincompat: unsupported Windows file: %s\n' "$file" >&2; return 1; }
+  local architecture_issue
+  if architecture_issue="$(architecture_blocker "$file")"; then
+    printf 'seven-wincompat: %s\n' "$architecture_issue" >&2
+    return 1
+  fi
+  local known_issue
+  if known_issue="$(known_app_blocker "$file")"; then
+    printf 'seven-wincompat: %s\n' "$known_issue" >&2
+    return 1
+  fi
   local selected
   selected="$(choose_engine "$file" "$engine")" || {
     printf 'seven-wincompat: Bottles, Wine or Lutris is required.\n' >&2
@@ -241,11 +640,53 @@ run_file() {
   fi
   remember_recent "$file" "$selected"
   case "$selected" in
-    bottles) run_with_bottles "$file" ;;
-    wine) run_with_wine "$file" ;;
-    lutris) run_with_lutris "$file" ;;
+    bottles) run_with_bottles "$file" || return 1 ;;
+    wine) run_with_wine "$file" || return 1 ;;
+    lutris) run_with_lutris "$file" || return 1 ;;
   esac
+  notify_launch_started "$selected" "$file"
   printf 'SevenOS Windows compatibility launched %s with %s\n' "$file" "$selected"
+}
+
+pin_file() {
+  local file="" engine="auto" name=""
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --engine) engine="${2:-auto}"; shift 2 ;;
+      --name) name="${2:-}"; shift 2 ;;
+      *) file="${file:-$1}"; shift ;;
+    esac
+  done
+  [[ -n "$file" ]] || { usage >&2; return 2; }
+  file="$(realpath -m "$file")"
+  [[ -e "$file" ]] || { printf 'seven-wincompat: file not found: %s\n' "$file" >&2; return 1; }
+  is_windows_file "$file" || { printf 'seven-wincompat: unsupported Windows file: %s\n' "$file" >&2; return 1; }
+  [[ -n "$name" ]] || name="${file##*/}"
+  name="${name%.*}"
+  local app_dir app_id app_file escaped_file escaped_name
+  app_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+  mkdir -p "$app_dir"
+  app_id="$(printf '%s' "$file" | sha256sum | awk '{print substr($1,1,16)}')"
+  app_file="$app_dir/seven-wincompat-${app_id}.desktop"
+  escaped_file="$(desktop_escape "$file")"
+  escaped_name="$(desktop_escape "$name")"
+  cat > "$app_file" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$escaped_name
+Comment=Windows app managed by SevenOS
+Exec=seven-wincompat run --engine $engine "$escaped_file"
+Icon=applications-system
+Terminal=false
+Categories=Utility;
+StartupNotify=true
+X-SevenOS-WindowsApp=true
+X-SevenOS-WindowsFile=$escaped_file
+EOF
+  if have update-desktop-database; then
+    update-desktop-database "$app_dir" >/dev/null 2>&1 || true
+  fi
+  printf 'SevenOS pinned Windows app: %s\n' "$app_file"
 }
 
 case "$ACTION" in
@@ -256,7 +697,30 @@ case "$ACTION" in
     if [[ " $* " == *" --json "* ]]; then
       status_json
     else
-      status_json | python -c 'import json,sys; data=json.load(sys.stdin); engines=", ".join(data.get("available_engines", [])) or "none"; print("SevenOS Windows App Compatibility: {}".format(data.get("state", "unknown"))); print("Available engines: {}".format(engines)); print("Scope: global, all mini OS")'
+      status_json | python -c 'import json,sys; data=json.load(sys.stdin); engines=", ".join(data.get("available_engines", [])) or "none"; details=data.get("engine_details", {}); missing=details.get("missing_recommended_packages", []); print("SevenOS Windows App Compatibility: {}".format(data.get("state", "unknown"))); print("Available engines: {}".format(engines)); print("Scope: global, all mini OS"); print("Multilib: {}".format("enabled" if details.get("multilib_enabled") else "disabled")); print("Missing recommended packages: {}".format(", ".join(missing) if missing else "none"))'
+    fi
+    ;;
+  requirements)
+    if [[ " $* " == *" --json "* ]]; then
+      requirements_json
+    else
+      requirements_json | python -c 'import json,sys; data=json.load(sys.stdin); print("SevenOS Windows requirements: {}".format(data.get("state"))); print("Missing base packages: {}".format(", ".join(data.get("missing_base_packages", [])) or "none")); print("Missing multilib packages: {}".format(", ".join(data.get("missing_multilib_packages", [])) or "none")); print("Multilib: {}".format("enabled" if data.get("multilib_enabled") else "disabled")); print("Install: {}".format(data.get("commands", {}).get("install_base")))'
+    fi
+    ;;
+  integrate)
+    integrate_desktop
+    if [[ " $* " == *" --json "* ]]; then
+      integration_json
+    else
+      printf 'SevenOS Windows Apps integration: ready\n'
+      printf 'Desktop entry: %s\n' "$(desktop_file_path)"
+    fi
+    ;;
+  doctor|check)
+    if [[ " $* " == *" --json "* ]]; then
+      doctor_json
+    else
+      doctor_json | python -c 'import json,sys; data=json.load(sys.stdin); print("SevenOS Windows Apps: {}".format(data.get("state"))); print("Engines: {}".format(", ".join(data["engines"].get("available", [])) or "none")); print("Wine: {}".format(data["engines"].get("wine_probe"))); print("Missing recommended packages: {}".format(", ".join(data["system"].get("missing_recommended_packages", [])) or "none"))'
     fi
     ;;
   plan)
@@ -274,6 +738,17 @@ case "$ACTION" in
     ;;
   run)
     run_file "$@"
+    ;;
+  pin)
+    pin_file "$@"
+    ;;
+  logs)
+    mkdir -p "$LOG_DIR"
+    if have xdg-open; then
+      xdg-open "$LOG_DIR" >/dev/null 2>&1 &
+    else
+      printf '%s\n' "$LOG_DIR"
+    fi
     ;;
   open-bottles)
     if [[ "$#" -gt 0 ]]; then

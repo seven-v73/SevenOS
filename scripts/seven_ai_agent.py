@@ -130,6 +130,7 @@ MESSAGES = {
         "recommendations": "Recommendations",
         "shortcuts": "Useful shortcuts",
         "workflow": "Workspace and focus tips",
+        "mission": "Equinox mission plan",
         "sevenos": "SevenOS in plain words",
         "pillars": "Key ideas",
         "web_disabled": "Web access is off by default for privacy.",
@@ -165,6 +166,7 @@ MESSAGES = {
         "recommendations": "Recommandations",
         "shortcuts": "Raccourcis utiles",
         "workflow": "Conseils pour les espaces et le focus",
+        "mission": "Mission Equinox",
         "sevenos": "SevenOS simplement",
         "pillars": "Idées clés",
         "web_disabled": "L’accès web est désactivé par défaut pour protéger la confidentialité.",
@@ -418,6 +420,9 @@ def parse_intent(text: str) -> Intent:
     if any(token in raw for token in ("optimise mon workspace", "optimise mon travail", "organise mon travail", "prepare mon espace", "prépare mon espace", "prepare my workspace", "optimize my workspace", "optimize my workflow")):
         return Intent("OPTIMIZE_WORKFLOW", "workspace", 0.84, "SAFE", False, "User asked for workspace and workflow guidance.")
 
+    if any(token in raw for token in ("jeu vidéo", "jeu video", "histoire du mali", "empire du mali", "mali", "publish web", "publier une solution web", "site web", "déployer", "deployer", "mission")):
+        return Intent("PLAN_MISSION", raw, 0.86, "SAFE", False, "User asked Equinox to plan a multi-mini-OS mission.")
+
     if any(token in raw for token in ("raccourcis", "shortcuts", "keybinds", "clavier", "hotkeys")):
         return Intent("SHOW_SHORTCUTS", "keyboard", 0.86, "SAFE", False, "User asked for SevenOS keyboard shortcuts.")
 
@@ -451,6 +456,21 @@ def run(command: list[str], *, apply: bool, cwd: Path | None = None) -> dict[str
         "stdout": result.stdout.strip(),
         "stderr": result.stderr.strip(),
     }
+
+
+def mission_plan(query: str, *, apply: bool) -> dict[str, Any]:
+    command = [str(ROOT_DIR / "bin/seven"), "experience-center", "intent", query, "--json"]
+    result = subprocess.run(command, cwd=str(ROOT_DIR), env={**os.environ, "SEVENOS_ROOT": str(ROOT_DIR)}, text=True, capture_output=True, check=False)
+    plan: dict[str, Any] = {}
+    if result.returncode == 0 and result.stdout.strip():
+        try:
+            data = json.loads(result.stdout)
+            plan = data.get("intent_result", {}) if isinstance(data.get("intent_result"), dict) else {}
+        except json.JSONDecodeError:
+            plan = {}
+    launch_command = f"seven experience-center intent {shlex.quote(query)} --gui"
+    launched = run(["bash", "-lc", launch_command], apply=apply, cwd=ROOT_DIR) if apply else {"applied": False, "command": launch_command, "returncode": 0, "stdout": "", "stderr": ""}
+    return {"applied": bool(launched.get("applied")), "command": launch_command, "plan": plan, "returncode": result.returncode, "stderr": result.stderr.strip()}
 
 
 def confirmation_contract(intent: Intent, *, language: str | None = None) -> dict[str, Any]:
@@ -1032,6 +1052,9 @@ def execute_intent(intent: Intent, text: str, *, apply: bool) -> dict[str, Any]:
     elif intent.intent == "OPTIMIZE_WORKFLOW":
         result["action"] = {"type": "optimize_workflow", "target": "workspace"}
         result["result"] = {"applied": False, "workflow": workflow_plan()}
+    elif intent.intent == "PLAN_MISSION":
+        result["action"] = {"type": "plan_mission", "target": intent.target, "command": f"seven experience-center intent {shlex.quote(intent.target)} --gui"}
+        result["result"] = mission_plan(intent.target, apply=effective_apply and apply)
     elif intent.intent == "WEB_QUERY":
         result["action"] = {"type": "web_query", "target": intent.target}
         result["result"] = web_query(intent.target, enabled=False)
@@ -1106,6 +1129,8 @@ def print_human(data: dict[str, Any]) -> None:
         print(msg("shortcuts", language))
     elif action_type == "optimize_workflow":
         print(msg("workflow", language))
+    elif action_type == "plan_mission":
+        print(msg("mission", language))
     else:
         print(msg("guidance", language))
 
@@ -1132,6 +1157,16 @@ def print_human(data: dict[str, Any]) -> None:
     elif isinstance(result, dict) and result.get("workflow"):
         for item in result["workflow"].get("tips", [])[:6]:
             print(f"- {item}")
+    elif isinstance(result, dict) and result.get("plan"):
+        plan = result.get("plan") or {}
+        match = plan.get("match") if isinstance(plan.get("match"), dict) else {}
+        if match:
+            print(match.get("title", ""))
+            print(match.get("detail", ""))
+            for index, step_item in enumerate(match.get("steps", []) if isinstance(match.get("steps"), list) else [], 1):
+                print(f"{index}. {step_item.get('profile_title')}: {step_item.get('title')}")
+                if step_item.get("output"):
+                    print(f"   -> {step_item.get('output')}")
     elif isinstance(result, dict) and result.get("diagnostics"):
         diag = result["diagnostics"]
         print(msg("memory", language, value=diag.get("memory", {}).get("used_percent")))

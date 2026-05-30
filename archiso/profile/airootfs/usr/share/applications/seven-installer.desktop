@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=Install SevenOS
-Comment=Open the SevenOS graphical installer or guided install readiness path
+Comment=Open the SevenOS graphical installer portal
 Exec=seven-installer
-Icon=system-software-install
+Icon=seven-installer
 Terminal=false
 Categories=System;Settings;

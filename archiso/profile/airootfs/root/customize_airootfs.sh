@@ -14,6 +14,7 @@ install -Dm755 /opt/SevenOS/bin/sevenosctl /usr/local/bin/sevenosctl
 install -Dm755 /opt/SevenOS/bin/seven /usr/local/bin/seven
 install -Dm755 /opt/SevenOS/bin/seven-country /usr/local/bin/seven-country
 install -Dm755 /opt/SevenOS/bin/seven-installer /usr/local/bin/seven-installer
+install -Dm755 /opt/SevenOS/bin/seven-installer-native /usr/local/bin/seven-installer-native
 install -Dm755 /opt/SevenOS/bin/seven-power /usr/local/bin/seven-power
 install -Dm755 /opt/SevenOS/bin/seven-wifi /usr/local/bin/seven-wifi
 install -Dm755 /opt/SevenOS/bin/seven-welcome /usr/local/bin/seven-welcome
@@ -23,6 +24,7 @@ install -Dm755 /opt/SevenOS/bin/sevenpkg /usr/local/bin/sevenpkg
 install -Dm755 /opt/SevenOS/scripts/boot-splash.sh /usr/local/bin/seven-boot-splash
 install -Dm755 /opt/SevenOS/scripts/login-theme.sh /usr/local/bin/seven-login-theme
 install -Dm755 /opt/SevenOS/scripts/network.sh /usr/local/bin/seven-network
+install -Dm644 /opt/SevenOS/identity/assets/icon-installer.svg /usr/share/icons/hicolor/scalable/apps/seven-installer.svg
 
 SEVENOS_ROOT=/opt/SevenOS /opt/SevenOS/scripts/boot-splash.sh theme --yes || {
   install -d /usr/share/plymouth/themes/sevenos

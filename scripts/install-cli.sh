@@ -161,6 +161,7 @@ install_user_command "$ROOT_DIR/bin/seven-power" seven-power
 install_user_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
 install_user_command "$ROOT_DIR/bin/seven-welcome-popup" seven-welcome-popup
 install_user_command "$ROOT_DIR/bin/seven-installer" seven-installer
+install_user_command "$ROOT_DIR/bin/seven-installer-native" seven-installer-native
 install_user_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_user_command "$ROOT_DIR/bin/seven-experience-center" seven-experience-center
 install_user_command "$ROOT_DIR/bin/seven-public-studio" seven-public-studio
@@ -188,6 +189,8 @@ install_user_command "$ROOT_DIR/bin/seven-terminal-palette" seven-terminal-palet
 install_user_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
 install_user_command "$ROOT_DIR/bin/seven-files" seven-files
 install_user_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
+install_user_command "$ROOT_DIR/bin/seven-wincompat" seven-wincompat
+install_user_command "$ROOT_DIR/bin/seven-usb-writer" seven-usb-writer
 install_user_command "$ROOT_DIR/bin/seven-reader" seven-reader
 install_user_command "$ROOT_DIR/bin/seven-reader-native" seven-reader-native
 install_user_command "$ROOT_DIR/bin/seven-store" seven-store
@@ -248,6 +251,7 @@ install_system_command "$ROOT_DIR/bin/seven-power" seven-power
 install_system_command "$ROOT_DIR/bin/seven-welcome" seven-welcome
 install_system_command "$ROOT_DIR/bin/seven-welcome-popup" seven-welcome-popup
 install_system_command "$ROOT_DIR/bin/seven-installer" seven-installer
+install_system_command "$ROOT_DIR/bin/seven-installer-native" seven-installer-native
 install_system_command "$ROOT_DIR/bin/seven-hub-native" seven-hub-native
 install_system_command "$ROOT_DIR/bin/seven-experience-center" seven-experience-center
 install_system_command "$ROOT_DIR/bin/seven-public-studio" seven-public-studio
@@ -275,6 +279,8 @@ install_system_command "$ROOT_DIR/bin/seven-terminal-palette" seven-terminal-pal
 install_system_command "$ROOT_DIR/bin/seven-terminal-shell" seven-terminal-shell
 install_system_command "$ROOT_DIR/bin/seven-files" seven-files
 install_system_command "$ROOT_DIR/bin/seven-files-native" seven-files-native
+install_system_command "$ROOT_DIR/bin/seven-wincompat" seven-wincompat
+install_system_command "$ROOT_DIR/bin/seven-usb-writer" seven-usb-writer
 install_system_command "$ROOT_DIR/bin/seven-reader" seven-reader
 install_system_command "$ROOT_DIR/bin/seven-reader-native" seven-reader-native
 install_system_command "$ROOT_DIR/bin/seven-store" seven-store

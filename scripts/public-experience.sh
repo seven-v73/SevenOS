@@ -90,6 +90,19 @@ def gate(key, state, title, detail, command, severity="medium"):
 
 health = run_json([str(root / "scripts/health.sh"), "json"], {"score": 0, "state": "unknown"}, env={"SEVENOS_HEALTH_FAST": "1"})
 surfaces = run_json([str(root / "scripts/surfaces.sh"), "json"], {"score": 0, "summary": {}}, timeout=20)
+surface_score_fast = int(surfaces.get("score", 0) or 0) if isinstance(surfaces, dict) else 0
+surface_summary_fast = surfaces.get("summary") if isinstance(surfaces.get("summary"), dict) else {}
+if surface_score_fast < 95 or int(surface_summary_fast.get("legacy_blockers", 0) or 0) > 0:
+    surface_candidates = [surfaces]
+    surface_candidates.append(run_json([str(root / "scripts/surfaces.sh"), "json"], {"score": 0, "summary": {}}, timeout=45))
+    surface_candidates.append(run_json([str(root / "scripts/surfaces.sh"), "doctor", "--json"], {"score": 0, "summary": {}}, timeout=45))
+
+    def surface_rank(item):
+        summary = item.get("summary") if isinstance(item.get("summary"), dict) else {}
+        blockers = int(summary.get("legacy_blockers", 0) or 0)
+        return (int(item.get("score", 0) or 0), -blockers, int(summary.get("dynamic", 0) or 0))
+
+    surfaces = max(surface_candidates, key=surface_rank)
 smoke = run_json([str(root / "scripts/smoke.sh"), "json"], {"score": 0, "state": "unknown"}, timeout=70)
 release = run_json([str(root / "scripts/release.sh"), "status", "--json"], {"state": "unknown", "worktree": {}}, timeout=80)
 update = run_json([str(root / "scripts/update.sh"), "json"], {"score": 0, "state": "unknown"}, env={"SEVENOS_UPDATE_FAST": "1"})
@@ -97,6 +110,8 @@ shell = run_json([str(root / "scripts/shell-ags-runtime.sh"), "status", "--json"
 identity = run_json([str(root / "scripts/identity-experience.sh"), "json"], {"score": 0, "state": "unknown"}, timeout=25)
 interaction = run_json([str(root / "scripts/interaction-contract.sh"), "public", "--json"], {"score": 0, "state": "unknown"}, timeout=90)
 workflow = run_json([str(root / "scripts/workflow-gate.sh"), "status", "--json"], {"score": 0, "state": "unknown"}, timeout=25)
+experience = run_json([str(root / "bin/seven-experience-center"), "missions", "--json"], {"missions": {}}, timeout=25)
+differentiators = run_json([str(root / "scripts/differentiators.sh"), "json"], {"score": 0, "state": "unknown"}, timeout=55, env={"SEVENOS_DIFFERENTIATORS_FROM_PUBLIC": "1"})
 layout = run_json([str(root / "scripts/layout-gate.sh"), "status", "--json"], {"score": 0, "state": "unknown"}, timeout=20)
 performance = run_json([str(root / "scripts/performance-gate.sh"), "status", "--json"], {"score": 0, "state": "unknown"}, timeout=20)
 native_fallback = run_json([str(root / "scripts/native-fallback-gate.sh"), "status", "--json"], {"score": 0, "state": "unknown"}, timeout=20)
@@ -158,6 +173,45 @@ gate("interaction-contract", "OK" if interaction_score >= 90 and interaction.get
 
 workflow_score = int(workflow.get("score", 0) or 0)
 gate("workflow-contract", "OK" if workflow_score >= 90 and workflow.get("state") == "ready" else "PART", "SevenOS workflow contract", f"{workflow.get('state', 'unknown')} at {workflow_score}%.", "seven workflow-gate", "high")
+
+missions = experience.get("missions") if isinstance(experience.get("missions"), dict) else {}
+mission_items = missions.get("items") if isinstance(missions.get("items"), list) else []
+mission_total = len(mission_items)
+mission_ready = sum(
+    1
+    for item in mission_items
+    if isinstance(item, dict)
+    and int(item.get("ready_steps", 0) or 0) >= int(item.get("total_steps", 1) or 1)
+)
+mission_profiles_ready = int(missions.get("ready_profiles", 0) or 0)
+mission_profiles_total = int(missions.get("total_profiles", 0) or 0)
+mission_bridge_ready = missions.get("bridge_state") == "ready"
+mission_ok = (
+    mission_total >= 5
+    and mission_ready == mission_total
+    and mission_profiles_total >= 7
+    and mission_profiles_ready >= mission_profiles_total
+    and mission_bridge_ready
+)
+gate(
+    "equinox-missions",
+    "OK" if mission_ok else "PART",
+    "Equinox Mission Planner",
+    f"{mission_ready}/{mission_total} mission(s) ready; profiles={mission_profiles_ready}/{mission_profiles_total}; bridge={missions.get('bridge_state', 'unknown')}.",
+    "seven missions",
+    "high",
+)
+
+differentiator_score = int(differentiators.get("score", 0) or 0)
+differentiator_summary = differentiators.get("summary") if isinstance(differentiators.get("summary"), dict) else {}
+gate(
+    "differentiators",
+    "OK" if differentiator_score >= 80 else "PART",
+    "SevenOS public differentiators",
+    f"{differentiators.get('state', 'unknown')} at {differentiator_score}%; {differentiator_summary.get('ok', 0)}/{differentiator_summary.get('pillars', 0)} pillar(s) ready.",
+    "seven differentiators",
+    "high",
+)
 
 layout_score = int(layout.get("score", 0) or 0)
 gate("layout-contract", "OK" if layout_score >= 90 and layout.get("state") == "ready" else "PART", "SevenOS layout contract", f"{layout.get('state', 'unknown')} at {layout_score}%.", "seven layout-gate", "high")

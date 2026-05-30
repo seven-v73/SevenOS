@@ -44,6 +44,9 @@ repositories or through the SevenOS local archiso repository.
 Useful commands:
 
 ```bash
+seven installer experience
+seven installer experience --json
+seven installer experience plan
 seven installer runtime
 seven installer iso-runtime
 seven installer iso-runtime --json
@@ -61,6 +64,21 @@ injects that repository into the temporary archiso profile.
 
 SevenOS should not claim `public-release-ready` until the graphical ISO runtime
 is actually available and the release doctor is clean.
+
+## Public Install Experience
+
+`seven installer experience` is the public contract for a new machine. It
+connects five parts that must feel like one OS flow:
+
+- modern graphical installer route;
+- automatic hardware detection;
+- GPU driver guidance;
+- preset profiles for developer, gamer, creator, server and balanced use;
+- post-install assistant through `seven setup new-device --yes`,
+  `seven first-run verify` and `seven post-install`.
+
+The command is intentionally safe: it reports and recommends. Package changes
+stay behind explicit commands and installer confirmations.
 
 ## Options Under Review
 

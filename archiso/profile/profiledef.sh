@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 iso_name="sevenos"
-iso_label="SEVENOS_$(date +%Y%m)"
+iso_label="SEVENOS_$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y%m)"
 iso_publisher="SevenOS <https://github.com/seven-v73/SevenOS>"
 iso_application="SevenOS Live ISO"
-iso_version="$(date +%Y.%m.%d)"
+iso_version="$(date --date="@${SOURCE_DATE_EPOCH:-$(date +%s)}" +%Y.%m.%d)"
 install_dir="arch"
 buildmodes=("iso")
-bootmodes=("bios.syslinux.mbr" "bios.syslinux.eltorito" "uefi-x64.systemd-boot.esp" "uefi-x64.systemd-boot.eltorito")
+bootmodes=("bios.syslinux" "uefi.systemd-boot")
 arch="x86_64"
 pacman_conf="pacman.conf"
 airootfs_image_type="squashfs"

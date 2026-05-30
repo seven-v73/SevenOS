@@ -31,6 +31,10 @@ experience.care	System	Care Plan	seven care	safe	Show the prioritized SevenOS ca
 experience.trust	System	SevenOS Trust Report	seven trust	safe	Show the SevenOS trust score and what can improve daily confidence.
 experience.personal_setup	System	Personal Setup	seven personal-setup	safe	Show the personal SevenOS setup path: language, theme, Mini OS, Prism, backup and help.
 experience.intent	System	Intent Palette	seven intent	safe	Show plain-language routes for common SevenOS needs.
+experience.missions	System	Equinox Mission Planner	seven experience-center missions	safe	Show multi-mini-OS missions that turn broad goals into guided SevenOS routes.
+experience.mission.direct	System	Open Equinox Mission	seven mission mali-game	safe	Open a single mission by key or intent, with steps, handoffs and expected outputs.
+experience.mission.mali_game	System	Mali History Game Mission	seven experience-center intent "créer un jeu vidéo sur l'histoire du Mali"	safe	Plan a Baobab, Atlas, Forge, Studio, Pulse and Shield route for a cultural game prototype.
+experience.mission.publish_web	System	Publish Web Mission	seven experience-center intent "publier une solution web"	safe	Plan a Forge-first deployment route with Shield review, Atlas documentation and Equinox monitoring.
 experience.privacy_report	System	Privacy Report	seven privacy-report	safe	Show privacy posture: permissions, services, sensitive events, Shield and SevenAI.
 experience.learning	System	Contextual Help	seven learning	safe	Show plain-language SevenOS repair and guidance routes.
 experience.device_continuity	System	Device Continuity	seven device-continuity	safe	Show multi-device readiness, transfer routes and opt-in sync foundations.
@@ -84,6 +88,12 @@ smoke.json	System	Smoke Gate JSON	seven smoke --json	safe	Expose the fast SevenO
 quality.status	System	Public Quality Gate	seven quality	safe	Show the product-quality aggregate for health, surfaces, update, mini OS, Shell, Server/Deploy and release freeze.
 quality.public_mode	System	Public Quality Mode	seven quality mode public	safe	Validate the public release interaction contract with quality, visual and accessibility gates.
 quality.public_mode_gui	System	Public Quality Mode UI	seven quality mode public --gui	safe	Open the graphical public quality mode with installation, visual and workflow readiness.
+quality.differentiators	System	SevenOS Differentiators	seven differentiators	safe	Show the ten product pillars that differentiate SevenOS from a plain Arch install.
+quality.differentiators_center	System	Differentiators Center	seven experience-center differentiators --gui	safe	Open the SevenOS product pillars inside Experience Center.
+quality.differentiators_plan	System	Differentiator Plan	seven differentiators plan	safe	Show remaining actions for installer, system management, security, AI, Forge, Pulse, Cloud, UI, Store and original concepts.
+architecture.universes	System	SevenOS Universes	seven universes	safe	Show SevenOS Core, Equinox and the seven specialized work universes.
+architecture.universes_center	System	Universes Center	seven experience-center universes --gui	safe	Open Core, Equinox and the seven work universes inside Experience Center.
+architecture.universes_plan	System	Universe Plan	seven universes plan	safe	Show remaining readiness actions for SevenOS universes.
 quality.doctor	System	Public Quality Doctor	seven quality doctor	safe	Validate the user-experience gates before public release or a major phase claim.
 quality.json	System	Public Quality JSON	seven quality json	safe	Expose the public-quality aggregate to Hub, Settings and future Shell surfaces.
 release.review	System	Release Freeze Review	seven release review	safe	Show grouped dirty-worktree guidance before freezing or committing a public release.
@@ -406,9 +416,12 @@ deploy.remove	Server	Remove Hosted App	seven deploy remove .	changes	Forge only:
 deploy.services	Server	Hosting Services	seven deploy services	safe	Forge only: show active SevenOS hosted services.
 deploy.panel	Server	Hosting Panel	seven deploy panel	safe	Forge only: show the local deployment management panel contract.
 installer.status	Installer	Installer Status	seven installer status	safe	Check Calamares and ISO foundations.
+installer.gui	Installer	Graphical Installer Portal	seven-installer gui	safe	Open the SevenOS graphical installation portal for normal users.
 installer.plan	Installer	Installer Plan	seven installer plan	safe	Show prioritized installer and ISO actions.
 installer.release	Installer	Installer Release Readiness	seven installer release	safe	Show public-ISO release readiness, required checks and graphical installer gap.
 installer.graphical	Installer	Graphical Installer Route	seven installer graphical	safe	Show the Calamares graphical installer route, launcher and live ISO entrypoint readiness.
+installer.experience	Installer	Installer Experience	seven installer experience	safe	Show modern graphical installer, hardware detection, GPU driver hints, preset profiles and post-install assistant.
+installer.experience_plan	Installer	Installer Experience Plan	seven installer experience plan	safe	Show remaining installation-experience actions and recommended profile presets.
 installer.runtime	Installer	Calamares Runtime Policy	seven installer runtime	safe	Show whether Calamares is installed, officially available or declared as a trusted AUR/downstream ISO runtime.
 installer.portal	Installer	Installer Portal	seven-installer portal	safe	Show the user-facing SevenOS installer portal and safe route for this machine.
 installer.guide	Installer	Installer Guide	seven installer guide	safe	Show the normal-user install path SevenOS exposes today.

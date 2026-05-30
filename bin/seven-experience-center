@@ -135,9 +135,9 @@ PROFILES = {
 }
 
 
-def run_json(command: list[str], fallback: dict | None = None, timeout: float = 3.5) -> dict:
+def run_json(command: list[str], fallback: dict | None = None, timeout: float = 3.5, env_extra: dict | None = None) -> dict:
     try:
-        result = subprocess.run(command, cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, text=True, capture_output=True, check=False, timeout=timeout)
+        result = subprocess.run(command, cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT), **(env_extra or {})}, text=True, capture_output=True, check=False, timeout=timeout)
         return json.loads(result.stdout or "{}") if result.stdout.strip() else (fallback or {})
     except Exception:
         return fallback or {}
@@ -740,13 +740,193 @@ def intent_palette_state(profile: str) -> dict:
     return {"title": "SevenOS Intent Palette", "profile": profile, "profile_title": profile_title, "items": intents}
 
 
+def mission_flow_state(profile: str, profile_health: dict | None = None, bridge_graph: dict | None = None) -> dict:
+    profile_title = PROFILES.get(profile, PROFILES["equinox"])[0]
+    profiles = {}
+    if isinstance(profile_health, dict):
+        for item in profile_health.get("profiles", []):
+            if isinstance(item, dict) and item.get("key"):
+                profiles[str(item["key"])] = item
+    bridge_ready = {}
+    if isinstance(bridge_graph, dict):
+        for item in bridge_graph.get("nodes", []):
+            if isinstance(item, dict) and item.get("id"):
+                bridge_ready[str(item["id"])] = bool(item.get("ready"))
+
+    def step(profile_key: str, title: str, detail: str, command: str, output: str = "", handoff: str = "") -> dict:
+        profile_data = PROFILES.get(profile_key, PROFILES["equinox"])
+        profile_state = profiles.get(profile_key, {})
+        ready = profile_state.get("state") in {"OK", "READY", "ready"} if profile_state else True
+        bridge = bridge_ready.get(profile_key, True)
+        return {
+            "profile": profile_key,
+            "profile_title": profile_data[0],
+            "icon": profile_data[2],
+            "accent": profile_data[3],
+            "title": title,
+            "detail": detail,
+            "command": command,
+            "output": output,
+            "handoff": handoff,
+            "ready": bool(ready and bridge),
+            "state": "OK" if ready and bridge else "INFO",
+            "profile_state": str(profile_state.get("state", "OK" if ready else "INFO")),
+            "bridge_ready": bool(bridge),
+        }
+
+    missions = [
+        {
+            "key": "mali-game",
+            "title": tr("Créer un jeu sur l’histoire du Mali", "Create a game about Mali history"),
+            "aliases": [
+                "jeu mali",
+                "jeu video mali",
+                "jeu vidéo mali",
+                "histoire du mali",
+                "empire du mali",
+                "mandingue",
+                "mansa musa",
+                "game mali",
+                "history game",
+                "video game history",
+                "create game",
+            ],
+            "detail": tr(
+                "Equinox orchestre Baobab, Atlas, Forge, Studio, Pulse puis Shield pour passer de la recherche au prototype testé.",
+                "Equinox orchestrates Baobab, Atlas, Forge, Studio, Pulse then Shield from research to a tested prototype.",
+            ),
+            "command": "seven profile activate baobab && seven baobab",
+            "confirm": True,
+            "steps": [
+                step("baobab", tr("Collecter la mémoire culturelle", "Collect cultural memory"), tr("Récits, langues, lieux, garde-fous de sensibilité et sources publiques.", "Stories, languages, places, sensitivity rules and public sources."), "seven profile activate baobab && seven baobab", tr("brief culturel validable", "reviewable cultural brief"), "baobab → atlas"),
+                step("atlas", tr("Classer les sources", "Classify sources"), tr("Cartes, documents, références, OCR et notes de recherche.", "Maps, documents, references, OCR and research notes."), "seven profile activate atlas && seven atlas", tr("dossier de recherche", "research pack"), "atlas → forge"),
+                step("forge", tr("Construire le prototype", "Build the prototype"), tr("Projet, moteur, Git, conteneurs et boucle de développement.", "Project, engine, Git, containers and development loop."), "seven profile activate forge", tr("prototype jouable", "playable prototype"), "forge → studio"),
+                step("studio", tr("Créer les assets", "Create assets"), tr("Images, sons, cinématiques, voix, interfaces et exports.", "Images, sounds, cinematics, voices, interfaces and exports."), "seven profile activate studio", tr("pack d’assets", "asset pack"), "studio → pulse"),
+                step("pulse", tr("Tester le confort de jeu", "Test gameplay comfort"), tr("Performance, capture, manette, audio et fluidité.", "Performance, capture, controller, audio and smoothness."), "seven profile activate pulse", tr("retour performance", "performance feedback"), "pulse → shield"),
+                step("shield", tr("Auditer avant partage", "Audit before sharing"), tr("Vérifier dépendances, licences, paquets et exposition réseau.", "Check dependencies, licenses, packages and network exposure."), "seven profile activate shield", tr("rapport de partage", "sharing report"), "shield → forge"),
+            ],
+        },
+        {
+            "key": "publish-web",
+            "title": tr("Publier une solution web", "Publish a web solution"),
+            "aliases": ["site web", "publier web", "deploy", "déployer", "server", "hosting", "domain", "domaine", "tunnel", "caddy"],
+            "detail": tr(
+                "Forge prépare le build, Shield vérifie l’exposition, Atlas conserve la documentation et Equinox suit l’état.",
+                "Forge prepares the build, Shield reviews exposure, Atlas keeps documentation and Equinox tracks state.",
+            ),
+            "command": "seven profile activate forge && seven deploy panel",
+            "confirm": True,
+            "steps": [
+                step("forge", tr("Préparer le build persistant", "Prepare persistent build"), tr("Projet, logs, service, tunnel ou domaine personnalisé.", "Project, logs, service, tunnel or custom domain."), "seven profile activate forge && seven deploy panel", tr("build versionné", "versioned build"), "forge → shield"),
+                step("shield", tr("Vérifier l’exposition", "Review exposure"), tr("Ports, permissions, TLS, surface publique et secrets.", "Ports, permissions, TLS, public surface and secrets."), "seven profile activate shield && seven shield audit", tr("avis d’exposition", "exposure review"), "shield → atlas"),
+                step("atlas", tr("Documenter la livraison", "Document delivery"), tr("Notes, runbook, changelog et ressources de référence.", "Notes, runbook, changelog and reference resources."), "seven profile activate atlas", tr("runbook", "runbook"), "atlas → equinox"),
+                step("equinox", tr("Surveiller depuis le centre", "Monitor from the center"), tr("Santé, mises à jour, sauvegarde et retour arrière.", "Health, updates, backup and rollback."), "seven experience-center --gui", tr("suivi système", "system follow-up"), ""),
+            ],
+        },
+        {
+            "key": "secure-machine",
+            "title": tr("Sécuriser mon ordinateur", "Secure my computer"),
+            "aliases": ["sécuriser", "secure", "security", "audit", "pare-feu", "firewall", "privacy", "confidentialité", "coffre"],
+            "detail": tr(
+                "Shield analyse, Permissions Center clarifie les accès, Time Machine prépare un retour arrière.",
+                "Shield analyzes, Permissions Center clarifies access, Time Machine prepares rollback.",
+            ),
+            "command": "seven profile activate shield && seven shield audit",
+            "confirm": False,
+            "steps": [
+                step("shield", tr("Audit autorisé", "Authorized audit"), tr("Contrôles locaux, exposition, services et recommandations.", "Local checks, exposure, services and recommendations."), "seven profile activate shield && seven shield audit", tr("rapport de posture", "posture report"), "shield → equinox"),
+                step("equinox", tr("Permissions lisibles", "Readable permissions"), tr("Micro, caméra, portails, apps et données sensibles.", "Microphone, camera, portals, apps and sensitive data."), "seven permissions --gui", tr("carte de permissions", "permission map"), ""),
+                step("equinox", tr("Point de retour", "Return point"), tr("Créer une sauvegarde locale avant les changements importants.", "Create a local backup before important changes."), "seven time-machine --gui", tr("snapshot local", "local snapshot"), ""),
+            ],
+        },
+        {
+            "key": "creator-project",
+            "title": tr("Lancer un projet créatif complet", "Start a complete creative project"),
+            "aliases": ["vidéo", "video", "montage", "streaming", "design", "audio", "animation", "création", "creator"],
+            "detail": tr(
+                "Studio devient l’atelier principal, Atlas garde les références, Baobab peut apporter narration et patrimoine.",
+                "Studio becomes the main workshop, Atlas keeps references, Baobab can bring narrative and heritage.",
+            ),
+            "command": "seven profile activate studio",
+            "confirm": False,
+            "steps": [
+                step("studio", tr("Créer et exporter", "Create and export"), tr("Vidéo, audio, image, capture et formats finaux.", "Video, audio, image, capture and final formats."), "seven profile activate studio", tr("export créatif", "creative export"), "studio → atlas"),
+                step("atlas", tr("Structurer les références", "Structure references"), tr("Documents, sources, moodboards et notes.", "Documents, sources, moodboards and notes."), "seven profile activate atlas", tr("carnet de références", "reference notebook"), "atlas → baobab"),
+                step("baobab", tr("Ajouter la profondeur culturelle", "Add cultural depth"), tr("Récits, langues, symboles et sensibilité culturelle.", "Stories, languages, symbols and cultural sensitivity."), "seven profile activate baobab", tr("note de transmission", "transmission note"), "baobab → forge"),
+                step("forge", tr("Publier si besoin", "Publish if needed"), tr("Portfolio, page web, dépôt et automatisation.", "Portfolio, web page, repository and automation."), "seven profile activate forge", tr("surface publiée", "published surface"), ""),
+            ],
+        },
+        {
+            "key": "research-learning",
+            "title": tr("Étudier un sujet en profondeur", "Study a topic deeply"),
+            "aliases": ["étudier", "etudier", "learn", "recherche", "research", "documenter", "knowledge", "veille", "science"],
+            "detail": tr(
+                "Atlas organise la connaissance, Baobab enrichit les dimensions culturelles, Equinox conserve la mémoire de travail.",
+                "Atlas organizes knowledge, Baobab enriches cultural dimensions, Equinox keeps working memory.",
+            ),
+            "command": "seven profile activate atlas",
+            "confirm": False,
+            "steps": [
+                step("atlas", tr("Collecter et annoter", "Collect and annotate"), tr("Recherche, cartes, OCR, documents et veille.", "Search, maps, OCR, documents and monitoring."), "seven profile activate atlas", tr("dossier d’étude", "study pack"), "atlas → baobab"),
+                step("baobab", tr("Contextualiser humainement", "Add human context"), tr("Langues, héritages, récits et précautions de transmission.", "Languages, heritage, stories and transmission precautions."), "seven profile activate baobab", tr("contexte culturel", "cultural context"), "baobab → equinox"),
+                step("equinox", tr("Mémoriser le contexte", "Remember context"), tr("Reprendre plus tard sans perdre le fil.", "Resume later without losing the thread."), "seven experience workspace", tr("mémoire de travail", "workspace memory"), ""),
+            ],
+        },
+        {
+            "key": "gaming-session",
+            "title": tr("Préparer une session de jeu fluide", "Prepare a smooth gaming session"),
+            "aliases": ["gaming", "jeu", "jouer", "steam", "proton", "fps", "manette", "performance jeu", "game mode"],
+            "detail": tr(
+                "Pulse optimise la session, Equinox garde l’énergie cohérente et Studio peut capturer sans friction.",
+                "Pulse optimizes the session, Equinox keeps power coherent and Studio can capture smoothly.",
+            ),
+            "command": "seven profile activate pulse",
+            "confirm": False,
+            "steps": [
+                step("pulse", tr("Activer le confort de jeu", "Enable gaming comfort"), tr("Performance, audio, capture, Proton et manette.", "Performance, audio, capture, Proton and controller."), "seven profile activate pulse", tr("session optimisée", "optimized session"), "pulse → studio"),
+                step("equinox", tr("Stabiliser énergie et notifications", "Stabilize power and notifications"), tr("Évite les interruptions pendant la session.", "Avoid interruptions during the session."), "seven settings energy", tr("profil énergie", "power profile"), ""),
+                step("studio", tr("Capturer ou monter", "Capture or edit"), tr("Enregistrement, clips, overlays et exports.", "Recording, clips, overlays and exports."), "seven profile activate studio", tr("clip final", "final clip"), ""),
+            ],
+        },
+    ]
+    for mission in missions:
+        steps = mission.get("steps", [])
+        ready_steps = sum(1 for item in steps if item.get("ready"))
+        mission["ready_steps"] = ready_steps
+        mission["total_steps"] = len(steps)
+        mission["state"] = "OK" if ready_steps == len(steps) else "INFO"
+        mission["route"] = [str(item.get("profile")) for item in steps]
+        mission["handoffs"] = [str(item.get("handoff")) for item in steps if item.get("handoff")]
+    return {
+        "title": "Equinox Mission Planner",
+        "profile": profile,
+        "profile_title": profile_title,
+        "summary": tr(
+            "Décris un objectif. Equinox le transforme en parcours lisible entre les mini OS, sans automatisation opaque.",
+            "Describe a goal. Equinox turns it into a readable Mini OS route, without opaque automation.",
+        ),
+        "bridge_state": "ready" if bridge_graph else "unknown",
+        "ready_profiles": sum(1 for item in profiles.values() if item.get("state") == "OK"),
+        "total_profiles": len(profiles) or len(PROFILES),
+        "items": missions,
+    }
+
+
 def resolve_intent(data: dict, query: str) -> dict:
     query_norm = " ".join(query.lower().strip().split())
     intents = (data.get("intent_palette") or {}).get("items", [])
+    missions = (data.get("missions") or {}).get("items", [])
+    candidates = [
+        {**item, "kind": "mission", "weight": 2}
+        for item in missions
+    ] + [
+        {**item, "kind": "intent", "weight": 1}
+        for item in intents
+    ]
     if not query_norm:
-        return {"query": query, "match": None, "items": intents[:5]}
+        return {"query": query, "match": None, "items": missions[:3] + intents[:3]}
     scored: list[tuple[int, dict]] = []
-    for item in intents:
+    for item in candidates:
         haystack = " ".join([str(item.get("title", "")), str(item.get("detail", "")), " ".join(item.get("aliases", []))]).lower()
         score = 0
         for word in query_norm.split():
@@ -754,11 +934,43 @@ def resolve_intent(data: dict, query: str) -> dict:
                 score += 3 if word in " ".join(item.get("aliases", [])).lower() else 1
         if query_norm in haystack:
             score += 5
+        score *= int(item.get("weight", 1))
         if score:
             scored.append((score, item))
     scored.sort(key=lambda pair: pair[0], reverse=True)
     match = scored[0][1] if scored else None
-    return {"query": query, "match": match, "items": [item for _score, item in scored[:5]] or intents[:5]}
+    return {"query": query, "match": match, "items": [item for _score, item in scored[:5]] or missions[:3] + intents[:3]}
+
+
+def resolve_mission(data: dict, query: str) -> dict:
+    query_norm = " ".join(query.lower().strip().split())
+    missions = (data.get("missions") or {}).get("items", [])
+    if not query_norm:
+        return {"query": query, "match": None, "items": missions}
+    scored: list[tuple[int, dict]] = []
+    for item in missions:
+        haystack = " ".join([
+            str(item.get("key", "")),
+            str(item.get("title", "")),
+            str(item.get("detail", "")),
+            " ".join(item.get("aliases", [])),
+        ]).lower()
+        score = 0
+        if query_norm == str(item.get("key", "")).lower():
+            score += 20
+        if query_norm in haystack:
+            score += 8
+        for word in query_norm.split():
+            if word in haystack:
+                score += 3 if word in " ".join(item.get("aliases", [])).lower() else 1
+        if score:
+            scored.append((score, item))
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return {
+        "query": query,
+        "match": scored[0][1] if scored else None,
+        "items": [item for _score, item in scored[:5]] or missions,
+    }
 
 
 def payload() -> dict:
@@ -776,6 +988,21 @@ def payload() -> dict:
     device_continuity = device_continuity_state(profile)
     daily_briefing = daily_briefing_state(profile, report, personal_setup, privacy_report, device_continuity, events, backups, context)
     intent_palette = intent_palette_state(profile)
+    profile_health = run_json([str(ROOT / "bin/seven"), "profile", "health", "--json"], {}, timeout=3.5)
+    bridge_graph = run_json([str(ROOT / "bin/seven"), "bridge", "graph", "--json"], {}, timeout=3.5)
+    missions = mission_flow_state(profile, profile_health, bridge_graph)
+    differentiators = run_json(
+        [str(ROOT / "scripts/differentiators.sh"), "json"],
+        {"checks": [], "summary": {}, "score": 0, "state": "unknown"},
+        timeout=10,
+        env_extra={"SEVENOS_DIFFERENTIATORS_FROM_PUBLIC": "1"},
+    )
+    universes = run_json(
+        [str(ROOT / "scripts/universes.sh"), "json"],
+        {"universes": [], "summary": {}, "score": 0, "state": "unknown"},
+        timeout=10,
+        env_extra={"SEVENOS_UNIVERSES_FROM_EXPERIENCE": "1"},
+    )
     recommendations = recommended_actions(report, backups, events, memory)
     care_plan = care_plan_state(daily_briefing, recommendations, personal_setup)
     rescue_checks = [
@@ -796,9 +1023,12 @@ def payload() -> dict:
         "recommendations": recommendations,
         "setup": personal_setup,
         "privacy_report": privacy_report,
-        "sections": ["briefing", "care", "trust", "setup", "intent", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory"],
+        "sections": ["briefing", "care", "trust", "differentiators", "universes", "setup", "intent", "missions", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory"],
         "learning": learning,
         "intent_palette": intent_palette,
+        "missions": missions,
+        "differentiators": differentiators,
+        "universes": universes,
         "device_continuity": device_continuity,
         "rescue": {"title": "SevenOS Rescue Mode", "checks": rescue_checks},
         "time_machine": {
@@ -882,6 +1112,27 @@ def print_human(data: dict, section: str = "status") -> None:
         for key, ok in checks.items():
             marker = "OK" if ok else "INFO"
             print(f"  {marker:<4} {key.replace('_', ' ')}")
+    if section in {"differentiators"}:
+        differentiators = data.get("differentiators", {}) if isinstance(data.get("differentiators"), dict) else {}
+        summary = differentiators.get("summary", {}) if isinstance(differentiators.get("summary"), dict) else {}
+        print("SevenOS Differentiators")
+        print(f"  {differentiators.get('state', 'unknown')} · {differentiators.get('score', 0)}% · {summary.get('ok', 0)}/{summary.get('pillars', 0)}")
+        for item in differentiators.get("checks", []):
+            print(f"  {item.get('state', 'PART'):<4} {item.get('title')}: {item.get('goal')}")
+            print(f"      {item.get('ready', 0)}/{item.get('total', 0)} · {item.get('command', '')}")
+    if section in {"universes"}:
+        universes = data.get("universes", {}) if isinstance(data.get("universes"), dict) else {}
+        summary = universes.get("summary", {}) if isinstance(universes.get("summary"), dict) else {}
+        print("SevenOS Universes")
+        print(f"  {universes.get('state', 'unknown')} · {universes.get('score', 0)}% · {summary.get('ready', 0)}/{summary.get('universes', 0)}")
+        core = universes.get("core", {}) if isinstance(universes.get("core"), dict) else {}
+        if core:
+            print(f"  {'OK' if core.get('ready') else 'PART':<4} {core.get('title')}: {core.get('role')}")
+        for item in universes.get("universes", []):
+            active = " · actif" if item.get("active") else ""
+            caps = ", ".join(str(cap) for cap in item.get("capabilities", [])[:3])
+            print(f"  {item.get('state', 'PART'):<4} {item.get('title')}: {item.get('role')}{active}")
+            print(f"      {item.get('installed', 0)}/{item.get('total', 0)} · {caps}")
     if section in {"setup"}:
         setup = data.get("setup", {}) if isinstance(data.get("setup"), dict) else {}
         print(tr("Configuration personnelle", "Personal Setup"))
@@ -914,11 +1165,42 @@ def print_human(data: dict, section: str = "status") -> None:
             print(f"  {tr('Meilleur parcours', 'Best route')}: {match.get('title')}")
             print(f"  {match.get('detail')}")
             print(f"  {match.get('command')}")
+            for index, step_item in enumerate(match.get("steps", []) if isinstance(match.get("steps"), list) else [], 1):
+                print(f"    {index}. {step_item.get('profile_title')}: {step_item.get('title')}")
+                print(f"       {step_item.get('detail')}")
+                if step_item.get("output"):
+                    print(f"       {tr('Sortie attendue', 'Expected output')}: {step_item.get('output')}")
         else:
             print(tr("Intentions disponibles", "Available intents"))
             palette = data.get("intent_palette", {}) if isinstance(data.get("intent_palette"), dict) else {}
             for item in palette.get("items", [])[:8]:
                 print(f"  - {item.get('title')}: {item.get('detail')}")
+    if section in {"status", "missions"}:
+        print("\nEquinox Mission Planner")
+        missions = data.get("missions", {}) if isinstance(data.get("missions"), dict) else {}
+        mission_result = data.get("mission_result") if isinstance(data.get("mission_result"), dict) else {}
+        mission_match = mission_result.get("match") if isinstance(mission_result.get("match"), dict) else None
+        print(f"  {missions.get('summary', '')}")
+        print(f"  {tr('Préparation', 'Readiness')}: {missions.get('ready_profiles', 0)}/{missions.get('total_profiles', 0)} · bridge={missions.get('bridge_state', 'unknown')}")
+        visible_missions = [mission_match] if mission_match else missions.get("items", [])[:6]
+        if mission_result.get("query") and not mission_match:
+            print(f"  {tr('Aucune mission exacte, suggestions', 'No exact mission, suggestions')}: {mission_result.get('query')}")
+            visible_missions = mission_result.get("items", [])[:5]
+        for item in visible_missions:
+            print(f"  - {item.get('title')}: {item.get('detail')}")
+            print(f"    {item.get('state', 'INFO')} · {item.get('ready_steps', 0)}/{item.get('total_steps', 0)} {tr('étapes prêtes', 'ready steps')}")
+            steps = item.get("steps", []) if isinstance(item.get("steps"), list) else []
+            if steps:
+                print("    " + " -> ".join(str(step_item.get("profile_title", "")) for step_item in steps))
+                for index, step_item in enumerate(steps, 1):
+                    print(f"      {index}. {step_item.get('profile_title')}: {step_item.get('title')}")
+                    print(f"         {step_item.get('detail')}")
+                    if step_item.get("output"):
+                        print(f"         {tr('Sortie attendue', 'Expected output')}: {step_item.get('output')}")
+                    if step_item.get("handoff"):
+                        print(f"         {tr('Passage', 'Handoff')}: {step_item.get('handoff')}")
+            if item.get("command"):
+                print(f"    {tr('Démarrer', 'Start')}: {item.get('command')}")
     if section in {"status", "rescue"}:
         print("Rescue")
         for item in data["rescue"]["checks"]:
@@ -962,10 +1244,18 @@ def main() -> int:
         except ValueError:
             intent_query = ""
         data["intent_result"] = resolve_intent(data, intent_query)
+    if "mission" in args or "missions" in args:
+        marker = "mission" if "mission" in args else "missions"
+        try:
+            idx = args.index(marker)
+            mission_query = " ".join(item for item in args[idx + 1:] if not item.startswith("--"))
+        except ValueError:
+            mission_query = ""
+        data["mission_result"] = resolve_mission(data, mission_query)
     if "--json" in args or "json" in args:
         print(json.dumps(data, indent=2, ensure_ascii=False))
         return 0
-    section = next((item for item in args if item in {"status", "briefing", "care", "trust", "setup", "personal-setup", "intent", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory"}), "status")
+    section = next((item for item in args if item in {"status", "briefing", "care", "trust", "differentiators", "universes", "setup", "personal-setup", "intent", "missions", "learning", "device-continuity", "privacy-report", "rescue", "time-machine", "timeline", "permissions", "journeys", "continuity", "memory"}), "status")
     if section == "personal-setup":
         section = "setup"
     if "--gui" not in args or not (os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY")):
@@ -1355,8 +1645,11 @@ def main() -> int:
     briefing_page = page_box("briefing")
     care_page = page_box("care")
     trust_page = page_box("trust")
+    differentiators_page = page_box("differentiators")
+    universes_page = page_box("universes")
     setup_page = page_box("setup")
     intent_page = page_box("intent")
+    missions_page = page_box("missions")
     learning_page = page_box("learning")
     device_page = page_box("device-continuity")
     rescue = page_box("rescue")
@@ -1371,8 +1664,11 @@ def main() -> int:
         ("briefing", "󰃭", tr("Briefing", "Briefing")),
         ("care", "󰓎", tr("Plan", "Plan")),
         ("trust", "󰄬", tr("Confiance", "Trust")),
+        ("differentiators", "󰚩", tr("Piliers", "Pillars")),
+        ("universes", "◇", tr("Univers", "Universes")),
         ("setup", "󰒓", tr("Configuration", "Setup")),
         ("intent", "󰘳", tr("Intentions", "Intents")),
+        ("missions", "󰐃", tr("Missions", "Missions")),
         ("learning", "󰌵", tr("Aide guidée", "Guided help")),
         ("device-continuity", "󰀂", tr("Appareils", "Devices")),
         ("rescue", "󰜉", "Rescue"),
@@ -1463,6 +1759,70 @@ def main() -> int:
             "profile_context": tr("Le mini OS actif est reconnu et contextualisé.", "The active Mini OS is recognized and contextualized."),
         }
         action_row(trust_page, labels.get(key, key), ("OK · " if ok else "À compléter · ") + notes.get(key, ""), [(tr("Ouvrir", "Open"), "seven experience-center --gui", "", False)], "●", bool(ok))
+    differentiators = data.get("differentiators", {}) if isinstance(data.get("differentiators"), dict) else {}
+    diff_summary = differentiators.get("summary", {}) if isinstance(differentiators.get("summary"), dict) else {}
+    action_row(
+        differentiators_page,
+        tr("Les 10 piliers SevenOS", "The 10 SevenOS pillars"),
+        tr(
+            f"{differentiators.get('state', 'unknown')} · {differentiators.get('score', 0)}% · {diff_summary.get('ok', 0)}/{diff_summary.get('pillars', 0)} piliers prêts.",
+            f"{differentiators.get('state', 'unknown')} · {differentiators.get('score', 0)}% · {diff_summary.get('ok', 0)}/{diff_summary.get('pillars', 0)} pillars ready.",
+        ),
+        [(tr("Rapport complet", "Full report"), "seven differentiators", "", False), (tr("Plan", "Plan"), "seven differentiators plan", "", False)],
+        "󰚩",
+        True,
+    )
+    for item in differentiators.get("checks", []):
+        signal_note = f"{item.get('state', 'PART')} · {item.get('ready', 0)}/{item.get('total', 0)} · {item.get('goal', '')}"
+        actions = [(tr("Ouvrir", "Open"), str(item.get("command", "seven differentiators")), str(item.get("goal", "")), False)]
+        if item.get("next"):
+            actions.append((tr("Améliorer", "Improve"), str(item.get("next")), str(item.get("goal", "")), False))
+        action_row(
+            differentiators_page,
+            str(item.get("title", "")),
+            signal_note,
+            actions,
+            "◇" if item.get("state") == "OK" else "󰁔",
+            item.get("state") == "OK",
+        )
+    universes = data.get("universes", {}) if isinstance(data.get("universes"), dict) else {}
+    universe_summary = universes.get("summary", {}) if isinstance(universes.get("summary"), dict) else {}
+    core = universes.get("core", {}) if isinstance(universes.get("core"), dict) else {}
+    action_row(
+        universes_page,
+        tr("Architecture vivante SevenOS", "SevenOS living architecture"),
+        tr(
+            f"Core + Equinox + 7 univers · {universes.get('state', 'unknown')} · {universes.get('score', 0)}% · actif: {universe_summary.get('active', 'equinox')}",
+            f"Core + Equinox + 7 universes · {universes.get('state', 'unknown')} · {universes.get('score', 0)}% · active: {universe_summary.get('active', 'equinox')}",
+        ),
+        [(tr("Rapport", "Report"), "seven universes", "", False), (tr("Missions", "Missions"), "seven missions", "", False), ("Bridge", "seven bridge graph", "", False)],
+        "◇",
+        universes.get("state") == "ready",
+    )
+    if core:
+        action_row(
+            universes_page,
+            str(core.get("title", "SevenOS Core")),
+            f"{'OK' if core.get('ready') else 'PART'} · {core.get('role', '')}\n" + " · ".join(str(cap) for cap in core.get("capabilities", [])[:4]),
+            [(tr("État Core", "Core status"), "seven core status", "", False), (tr("Santé", "Health"), "seven health", "", False), (tr("Installation", "Install"), "seven first-run verify", "", False)],
+            "●",
+            bool(core.get("ready")),
+        )
+    for item in universes.get("universes", []):
+        caps = " · ".join(str(cap) for cap in item.get("capabilities", [])[:4])
+        active_note = tr("Actif", "Active") if item.get("active") else tr("Disponible", "Available")
+        commands = item.get("commands", []) if isinstance(item.get("commands"), list) else []
+        row_actions = [(tr("Activer", "Activate"), f"seven profile activate {item.get('key')}", str(item.get("role", "")), True)]
+        if commands:
+            row_actions.append((tr("Ouvrir", "Open"), str(commands[-1]), str(item.get("role", "")), False))
+        action_row(
+            universes_page,
+            f"{item.get('title', '')} · {active_note}",
+            f"{item.get('state', 'PART')} · {item.get('installed', 0)}/{item.get('total', 0)} · {item.get('role', '')}\n{caps}",
+            row_actions,
+            "◇" if item.get("active") else "●",
+            item.get("state") == "OK",
+        )
     setup = data.get("setup", {}) if isinstance(data.get("setup"), dict) else {}
     action_row(
         setup_page,
@@ -1478,6 +1838,7 @@ def main() -> int:
     for item in setup.get("steps", []):
         action_row(setup_page, str(item.get("title", "")), f"{item.get('state', 'INFO')} · {item.get('detail', '')}", [(tr("Ajuster", "Adjust"), str(item.get("command", "seven settings")), "", item.get("key") in {"backup"})], "●", item.get("state") == "OK")
     intent_palette = data.get("intent_palette", {}) if isinstance(data.get("intent_palette"), dict) else {}
+    missions = data.get("missions", {}) if isinstance(data.get("missions"), dict) else {}
     intent_result = data.get("intent_result", {}) if isinstance(data.get("intent_result"), dict) else {}
     action_row(
         intent_page,
@@ -1495,7 +1856,7 @@ def main() -> int:
     intent_label = Gtk.Label(label=tr("Recherche d’intention", "Intent search"))
     intent_label.set_xalign(0)
     intent_label.get_style_context().add_class("experience-section")
-    intent_hint = Gtk.Label(label=tr("Exemples : wifi, thème clair, sauvegarde, fichiers exe, confidentialité, SevenOS lent.", "Examples: wifi, light theme, backup, exe files, privacy, SevenOS slow."))
+    intent_hint = Gtk.Label(label=tr("Exemples : wifi, thème clair, sauvegarde, jeu sur l’histoire du Mali, publier un site, confidentialité.", "Examples: wifi, light theme, backup, game about Mali history, publish a site, privacy."))
     intent_hint.set_xalign(0)
     intent_hint.set_line_wrap(True)
     intent_hint.get_style_context().add_class("experience-small")
@@ -1515,14 +1876,27 @@ def main() -> int:
         result = resolve_intent(data, query)
         match_item = result.get("match") if isinstance(result.get("match"), dict) else None
         if match_item:
+            kind_label = tr("Mission Equinox", "Equinox mission") if match_item.get("kind") == "mission" or match_item.get("steps") else tr("Meilleur parcours", "Best route")
             action_row(
                 intent_result_box,
-                tr("Meilleur parcours", "Best route"),
+                kind_label,
                 f"{match_item.get('title', '')} · {match_item.get('detail', '')}",
                 [(tr("Lancer", "Run"), str(match_item.get("command", "")), str(match_item.get("detail", "")), bool(match_item.get("confirm")))],
                 "◇",
                 True,
             )
+            for index, step_item in enumerate(match_item.get("steps", []) if isinstance(match_item.get("steps"), list) else [], 1):
+                note = str(step_item.get("detail", ""))
+                if step_item.get("output"):
+                    note = f"{note}\n{tr('Sortie attendue', 'Expected output')}: {step_item.get('output')}"
+                action_row(
+                    intent_result_box,
+                    f"{index}. {step_item.get('profile_title', '')} · {step_item.get('title', '')}",
+                    note,
+                    [(tr("Ouvrir cette étape", "Open this step"), str(step_item.get("command", "")), str(step_item.get("detail", "")), False)],
+                    str(step_item.get("icon", "●")),
+                    step_item.get("ready") is True,
+                )
         elif query.strip():
             action_row(
                 intent_result_box,
@@ -1547,6 +1921,35 @@ def main() -> int:
             [(tr("Lancer", "Run"), str(item.get("command", "")), str(item.get("detail", "")), bool(item.get("confirm")))],
             "●",
         )
+
+        action_row(
+            missions_page,
+            str(missions.get("title") or "Equinox Mission Planner"),
+            f"{missions.get('summary') or ''}\n{tr('Préparation', 'Readiness')}: {missions.get('ready_profiles', 0)}/{missions.get('total_profiles', 0)} · bridge={missions.get('bridge_state', 'unknown')}",
+            [(tr("Rechercher une intention", "Search an intent"), "seven intent --gui", "", False), (tr("Mémoire de travail", "Workspace memory"), "seven experience workspace", "", False)],
+            "󰐃",
+            True,
+    )
+    for item in missions.get("items", []):
+        steps = item.get("steps", []) if isinstance(item.get("steps"), list) else []
+        route = " → ".join(str(step_item.get("profile_title", "")) for step_item in steps[:6])
+        action_row(
+            missions_page,
+            str(item.get("title", "")),
+            f"{item.get('state', 'INFO')} · {item.get('ready_steps', 0)}/{item.get('total_steps', 0)} {tr('étapes prêtes', 'ready steps')}\n{item.get('detail', '')}\n{route}",
+            [(tr("Commencer", "Start"), str(item.get("command", "")), str(item.get("detail", "")), bool(item.get("confirm"))), (tr("Chercher similaire", "Search similar"), f"seven experience-center intent {item.get('title', '')!r} --gui", "", False)],
+            "◇",
+            item.get("key") in {"mali-game", "publish-web"},
+        )
+        for index, step_item in enumerate(steps[:4], 1):
+            action_row(
+                missions_page,
+                f"{index}. {step_item.get('profile_title', '')}",
+                f"{step_item.get('state', 'INFO')} · {step_item.get('title', '')} · {step_item.get('detail', '')}\n{tr('Sortie attendue', 'Expected output')}: {step_item.get('output', '')}",
+                [(tr("Ouvrir", "Open"), str(step_item.get("command", "")), str(step_item.get("detail", "")), False)],
+                str(step_item.get("icon", "●")),
+                step_item.get("ready") is True,
+            )
     learning = data.get("learning", {}) if isinstance(data.get("learning"), dict) else {}
     action_row(
         learning_page,
@@ -1703,7 +2106,7 @@ def main() -> int:
         action_row(timeline, tr("Aucun événement récent", "No recent event"), tr("SevenOS affichera ici les changements importants dès qu’ils existent.", "SevenOS will show important changes here when they exist."), [(tr("Actualiser", "Refresh"), "seven events list", "", False)], "󰋚")
     action_row(timeline, "Workspace Memory", tr("Retrouver ou restaurer le contexte utile des mini OS.", "Recover or restore useful Mini OS context."), [(tr("Voir mémoire", "Show memory"), "seven-window memory --json", "", False), (tr("Restaurer", "Restore"), "seven-window restore", "", True), (tr("Préparer continuité", "Prepare continuity"), "seven experience workspace", "", False)], "󰘳")
 
-    section_aliases = {"journeys": "continuity", "continuity": "continuity", "permissions": "privacy", "memory": "timeline"}
+    section_aliases = {"journeys": "continuity", "continuity": "continuity", "missions": "missions", "differentiators": "differentiators", "universes": "universes", "permissions": "privacy", "memory": "timeline"}
     activate(section if section in nav_buttons else section_aliases.get(section, "overview"))
 
     window.show_all()

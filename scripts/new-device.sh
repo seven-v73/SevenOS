@@ -123,6 +123,8 @@ setup_doctor() {
     scripts/packages-culture.txt
     scripts/packages-runtime-optional.txt
     scripts/packages-windows-compat.txt
+    scripts/packages-windows-compat-multilib.txt
+    scripts/packages-usb-writer.txt
   )
   local script_files=(
     bootstrap.sh
@@ -135,6 +137,7 @@ setup_doctor() {
     scripts/login-theme.sh
     scripts/identity-assets.sh
     scripts/post-install.sh
+    scripts/installer-experience.sh
     scripts/system-profile.sh
     scripts/system-install.sh
     scripts/public-experience.sh
@@ -146,6 +149,8 @@ setup_doctor() {
     bin/seven-profile-packs-native
     bin/seven-profile-rootfs
     bin/seven-profile-theme
+    bin/seven-installer
+    bin/seven-installer-native
   )
 
   printf 'SevenOS New Device Doctor\n'

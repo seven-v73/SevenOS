@@ -88,11 +88,14 @@ RECENTS_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) /
 GLOBAL_INDEX_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos/files-index.json"
 GLOBAL_INDEX_DB = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos/files-index.sqlite3"
 THUMB_CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos/file-thumbnails"
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
+PROFILE_AVATAR_PREFS = CONFIG_DIR / "profile-avatar.json"
 TRASH_FILES_DIR = Path.home() / ".local/share/Trash/files"
 TRASH_INFO_DIR = Path.home() / ".local/share/Trash/info"
 PROFILE_UI_FILE = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos/profile-ui.json"
 RECENTS_SENTINEL = Path("__sevenos_recent__")
 RENDER_LIMIT = 620
+SCAN_SOFT_LIMIT = 5200
 DEFAULT_WINDOW_SIZE = (700, 500)
 COMFORT_WINDOW_SIZE = (980, 620)
 MIN_WINDOW_SIZE = (620, 440)
@@ -131,6 +134,15 @@ def is_windows_app_file(path: Path) -> bool:
     return path.is_file() and path.suffix.lower() in WINDOWS_APP_SUFFIXES
 
 
+def display_user_name(username: str | None = None) -> str:
+    username = username or os.environ.get("USER") or os.environ.get("LOGNAME") or "seven"
+    try:
+        gecos = pwd.getpwnam(username).pw_gecos.split(",", 1)[0].strip()
+        return gecos or username
+    except Exception:
+        return username
+
+
 def resolve_root() -> Path | None:
     env_root = os.environ.get("SEVENOS_ROOT")
     if env_root and (Path(env_root) / "bin").is_dir():
@@ -157,6 +169,27 @@ except Exception:  # pragma: no cover - fallback for standalone probes
     def tr_text(text: str, **values: object) -> str:
         return text.format(**values) if values else text
     seven_theme = None
+
+
+def read_profile_avatar() -> dict[str, str]:
+    fallback = {"kind": "pack", "key": "aura", "path": "identity/profile-avatars/aura.svg"}
+    try:
+        payload = json.loads(PROFILE_AVATAR_PREFS.read_text(encoding="utf-8"))
+        if isinstance(payload, dict):
+            return {**fallback, **{str(k): str(v) for k, v in payload.items() if v is not None}}
+    except Exception:
+        pass
+    return fallback
+
+
+def profile_avatar_path() -> Path | None:
+    raw = read_profile_avatar().get("path", "")
+    if not raw:
+        return None
+    path = Path(raw).expanduser()
+    if not path.is_absolute() and ROOT_DIR is not None:
+        path = ROOT_DIR / path
+    return path if path.exists() else None
 
 
 def read_theme_mode() -> str:
@@ -299,6 +332,26 @@ def profile_css(theme_mode: str, profile_ui: dict) -> str:
       border: 1px solid alpha({accent}, 0.42);
       color: @files_text;
       font-size: 16px;
+      font-weight: 500;
+    }}
+    .files-user-avatar-frame {{
+      min-width: 30px;
+      min-height: 30px;
+      border-radius: 12px;
+      padding: 2px;
+      background:
+        radial-gradient(circle at 42% 30%, alpha({accent}, 0.28), transparent 52%),
+        linear-gradient(135deg, alpha(@files_panel, 0.72), alpha(@files_bg, 0.38));
+      border: 1px solid alpha({accent}, 0.34);
+    }}
+    .files-user-avatar-initial {{
+      min-width: 30px;
+      min-height: 30px;
+      border-radius: 12px;
+      color: @files_text;
+      background: linear-gradient(135deg, alpha({accent}, 0.26), alpha({secondary}, 0.20));
+      border: 1px solid alpha({accent}, 0.38);
+      font-size: 13px;
       font-weight: 500;
     }}
     .files-identity-title {{
@@ -1001,6 +1054,12 @@ def run_files(start_path: str) -> int:
     search_query = ""
     show_hidden = bool(prefs.get("show_hidden", False))
     sidebar_visible_pref = bool(prefs.get("sidebar_visible", True))
+    # The sidebar is part of the file manager's core navigation contract:
+    # disks, removable media and network locations must stay discoverable.
+    # Older preferences could persist a hidden sidebar and make external
+    # drives look "undetected", so restore the public default at launch.
+    if prefs.get("sidebar_visible") is False:
+        sidebar_visible_pref = True
     preview_visible_pref = bool(prefs.get("preview_visible", True))
     operation_active = False
     operation_cancel_requested = False
@@ -1012,7 +1071,9 @@ def run_files(start_path: str) -> int:
     hover_preview_state = {"id": 0}
     search_render_state = {"id": 0}
     folder_monitor_state = {"monitor": None, "path": None, "render_id": 0}
+    render_restore_state = {"scroll": 0.0, "selected": set()}
     render_limit_state = {"limit": RENDER_LIMIT, "signature": ""}
+    feedback_state = {"toast_id": 0, "flash_id": 0, "cursor_id": 0}
     split_current = Path.home()
     split_visible = False
     operation_history: list[str] = []
@@ -1077,8 +1138,7 @@ def run_files(start_path: str) -> int:
 
     sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
     sidebar.get_style_context().add_class("files-sidebar")
-    sidebar.set_no_show_all(True)
-    sidebar.set_size_request(104 if screen_compact else 116, -1)
+    sidebar.set_size_request(132 if screen_compact else 150, -1)
     root.pack_start(sidebar, False, False, 0)
 
     traffic = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
@@ -1148,23 +1208,40 @@ def run_files(start_path: str) -> int:
     traffic.pack_start(dot("#febc2e", "#d9a023", "min", lambda: minimize_window(window)), False, False, 0)
     traffic.pack_start(dot("#28c840", "#1fa334", "max", lambda: toggle_zoom_or_tile(window)), False, False, 0)
 
+    def account_avatar_widget(label: str, size: int = 30) -> Gtk.Widget:
+        path = profile_avatar_path()
+        if path is not None:
+            frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+            frame.set_halign(Gtk.Align.CENTER)
+            frame.set_valign(Gtk.Align.CENTER)
+            frame.get_style_context().add_class("files-user-avatar-frame")
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), size, size, True)
+                image = Gtk.Image.new_from_pixbuf(pixbuf)
+            except Exception:
+                image = Gtk.Image.new_from_file(str(path))
+            frame.pack_start(image, True, True, 0)
+            return frame
+        avatar = Gtk.Label(label=(label[:1] or "S").upper())
+        avatar.set_halign(Gtk.Align.CENTER)
+        avatar.set_valign(Gtk.Align.CENTER)
+        avatar.get_style_context().add_class("files-user-avatar-initial")
+        return avatar
+
+    account_name = display_user_name()
     identity_card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=9)
     identity_card.get_style_context().add_class("files-identity-card")
-    prism_badge = Gtk.Label(label="◇")
-    prism_badge.set_halign(Gtk.Align.CENTER)
-    prism_badge.set_valign(Gtk.Align.CENTER)
-    prism_badge.get_style_context().add_class("files-prism-badge")
     identity_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-    identity_title = Gtk.Label(label="Seven Files")
+    identity_title = Gtk.Label(label=account_name)
     identity_title.set_xalign(0)
+    identity_title.set_single_line_mode(True)
+    identity_title.set_ellipsize(Pango.EllipsizeMode.END)
+    identity_title.set_width_chars(1)
+    identity_title.set_max_width_chars(14)
     identity_title.get_style_context().add_class("files-identity-title")
-    identity_subtitle = Gtk.Label(label=f"{profile_title(active_profile, profile_ui)} · {profile_role(active_profile)}")
-    identity_subtitle.set_xalign(0)
-    identity_subtitle.set_ellipsize(Pango.EllipsizeMode.END)
-    identity_subtitle.get_style_context().add_class("files-identity-subtitle")
+    identity_card.set_tooltip_text(f"{profile_title(active_profile, profile_ui)} · {profile_role(active_profile)}")
     identity_text.pack_start(identity_title, False, False, 0)
-    identity_text.pack_start(identity_subtitle, False, False, 0)
-    identity_card.pack_start(prism_badge, False, False, 0)
+    identity_card.pack_start(account_avatar_widget(account_name), False, False, 0)
     identity_card.pack_start(identity_text, True, True, 0)
     sidebar.pack_start(identity_card, False, False, 0)
 
@@ -1216,6 +1293,10 @@ def run_files(start_path: str) -> int:
         image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.MENU)
         text = Gtk.Label(label=label)
         text.set_xalign(0)
+        text.set_single_line_mode(True)
+        text.set_ellipsize(Pango.EllipsizeMode.END)
+        text.set_width_chars(1)
+        text.set_max_width_chars(13 if screen_compact else 15)
         content.pack_start(image, False, False, 0)
         content.pack_start(text, True, True, 0)
         row.add(content)
@@ -1442,8 +1523,8 @@ def run_files(start_path: str) -> int:
             if fstype in {"ntfs", "ntfs3"}:
                 if not mounts and size_to_gib(size) < 1:
                     continue
-                icon = "drive-harddisk"
-                if not title.lower().startswith("windows"):
+                icon = "drive-removable-media" if ejectable else "drive-harddisk"
+                if not ejectable and not title.lower().startswith("windows"):
                     title = f"Windows · {title}"
             elif fstype in {"exfat", "vfat", "fat32"}:
                 if not mounts and size_to_gib(size) < 1:
@@ -1696,32 +1777,97 @@ def run_files(start_path: str) -> int:
     locations_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
     sidebar_content.pack_start(locations_box, False, False, 0)
     location_rows: list[Gtk.Button] = []
+    add_heading(t("Disques", "Drives"))
+    drives_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    sidebar_content.pack_start(drives_box, False, False, 0)
+    drive_rows: list[Gtk.Button] = []
+    drive_scan_state = {"loaded": False, "pending": 0}
+    drive_error_state = {"title": "", "message": "", "detail": ""}
 
-    def render_location_rows() -> None:
+    def schedule_drive_scan(delay_ms: int = 360) -> None:
+        if drive_scan_state.get("pending"):
+            return
+
+        def run_scan() -> bool:
+            drive_scan_state["pending"] = 0
+            render_location_rows(True)
+            return False
+
+        drive_scan_state["pending"] = GLib.timeout_add(delay_ms, run_scan)
+
+    def render_location_rows(load_drives: bool = False) -> None:
         for row in list(location_rows):
             if row in sidebar_buttons:
                 sidebar_buttons.remove(row)
             locations_box.remove(row)
+        for row in list(drive_rows):
+            if row in sidebar_buttons:
+                sidebar_buttons.remove(row)
+            drives_box.remove(row)
         location_rows.clear()
+        drive_rows.clear()
         for label, icon, target, tooltip, device, mounted_path, ejectable in [
             (Path.home().name, "user-home", Path.home(), "", "", str(Path.home()), False),
             ("SevenOS", "drive-harddisk", Path("/"), "", "", "/", False),
-            *mounted_locations(),
             *[(network_label(uri), "network-server", uri, uri, "", "", False) for uri in network_places()],
             (t("Connecter un serveur", "Connect to Server"), "network-server", "seven://connect-server", "", "", "", False),
         ]:
             row = add_place(label, icon, target, locations_box, tooltip, device, mounted_path, ejectable)
             location_rows.append(row)
+        drive_locations = []
+        if load_drives:
+            drive_scan_state["loaded"] = True
+            drive_locations = mounted_locations()
+        for label, icon, target, tooltip, device, mounted_path, ejectable in drive_locations:
+            row = add_place(label, icon, target, drives_box, tooltip, device, mounted_path, ejectable)
+            drive_rows.append(row)
+        if not load_drives and not drive_scan_state.get("loaded"):
+            row = add_place(
+                t("Recherche de disques", "Scanning drives"),
+                "view-refresh-symbolic",
+                "seven://refresh-volumes",
+                drives_box,
+                t("Seven Files affiche d'abord la fenêtre, puis charge les disques.", "Seven Files shows the window first, then loads drives."),
+                "",
+                "",
+                False,
+            )
+            drive_rows.append(row)
+            schedule_drive_scan()
+        elif not drive_locations:
+            row = add_place(
+                t("Actualiser les disques", "Refresh drives"),
+                "view-refresh-symbolic",
+                "seven://refresh-volumes",
+                drives_box,
+                t("Branche un disque puis actualise la liste.", "Plug a drive, then refresh the list."),
+                "",
+                "",
+                False,
+            )
+            drive_rows.append(row)
+        panel_row = add_place(
+            t("Gérer les disques", "Manage drives"),
+            "drive-harddisk-symbolic",
+            "seven://drive-panel",
+            drives_box,
+            t("Monter, ouvrir, éjecter ou diagnostiquer les volumes externes.", "Mount, open, eject, or diagnose external volumes."),
+            "",
+            "",
+            False,
+        )
+        drive_rows.append(panel_row)
         locations_box.show_all()
+        drives_box.show_all()
 
-    render_location_rows()
+    render_location_rows(False)
     try:
         volume_monitor = Gio.VolumeMonitor.get()
-        volume_monitor.connect("mount-added", lambda *_: GLib.idle_add(render_location_rows))
-        volume_monitor.connect("mount-removed", lambda *_: GLib.idle_add(render_location_rows))
-        volume_monitor.connect("volume-added", lambda *_: GLib.idle_add(render_location_rows))
-        volume_monitor.connect("volume-removed", lambda *_: GLib.idle_add(render_location_rows))
-        volume_monitor.connect("volume-changed", lambda *_: GLib.idle_add(render_location_rows))
+        volume_monitor.connect("mount-added", lambda *_: GLib.idle_add(lambda: render_location_rows(True) or False))
+        volume_monitor.connect("mount-removed", lambda *_: GLib.idle_add(lambda: render_location_rows(True) or False))
+        volume_monitor.connect("volume-added", lambda *_: GLib.idle_add(lambda: render_location_rows(True) or False))
+        volume_monitor.connect("volume-removed", lambda *_: GLib.idle_add(lambda: render_location_rows(True) or False))
+        volume_monitor.connect("volume-changed", lambda *_: GLib.idle_add(lambda: render_location_rows(True) or False))
     except Exception:
         pass
 
@@ -1965,8 +2111,8 @@ def run_files(start_path: str) -> int:
 
     selection_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     selection_bar.get_style_context().add_class("selection-bar")
-    selection_bar.set_no_show_all(True)
-    selection_bar.hide()
+    selection_bar.set_no_show_all(False)
+    selection_bar.set_size_request(-1, 38)
     selection_label = Gtk.Label(label="")
     selection_label.set_xalign(0)
     selection_label.set_single_line_mode(True)
@@ -1992,6 +2138,9 @@ def run_files(start_path: str) -> int:
         selection_action(t("Effacer", "Clear"), lambda: (flow.unselect_all(), selection_changed(flow))[0], t("Effacer la sélection", "Clear selection")),
     ]
     selection_more_btn = selection_action("...", lambda: show_selection_actions_menu(selection_more_btn), t("Plus d'actions", "More actions"))
+    for button in selection_primary_buttons + [selection_more_btn]:
+        button.set_no_show_all(True)
+        button.hide()
     main.pack_start(selection_bar, False, False, 0)
 
     operation_queue = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -2011,6 +2160,8 @@ def run_files(start_path: str) -> int:
     status_label.set_xalign(0)
     status_label.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
     status_label.set_single_line_mode(True)
+    status_label.set_width_chars(1)
+    status_label.set_max_width_chars(28)
     status_label.get_style_context().add_class("files-status-label")
     statusbar.pack_start(status_label, True, True, 0)
     operation_progress = Gtk.ProgressBar()
@@ -2269,34 +2420,52 @@ def run_files(start_path: str) -> int:
         cursor = Gdk.Cursor.new_from_name(display, "progress") or Gdk.Cursor.new_from_name(display, "watch")
         if cursor:
             gdk_window.set_cursor(cursor)
+            if feedback_state["cursor_id"]:
+                try:
+                    GLib.source_remove(feedback_state["cursor_id"])
+                except Exception:
+                    pass
 
             def clear_cursor() -> bool:
+                feedback_state["cursor_id"] = 0
                 if window.get_window():
                     window.get_window().set_cursor(None)
                 return False
 
-            GLib.timeout_add(duration_ms, clear_cursor)
+            feedback_state["cursor_id"] = GLib.timeout_add(duration_ms, clear_cursor)
 
     def flash_status() -> bool:
+        if feedback_state["flash_id"]:
+            try:
+                GLib.source_remove(feedback_state["flash_id"])
+            except Exception:
+                pass
         statusbar.get_style_context().add_class("status-flash")
 
         def clear_flash() -> bool:
+            feedback_state["flash_id"] = 0
             statusbar.get_style_context().remove_class("status-flash")
             return False
 
-        GLib.timeout_add(STATUS_FLASH_MS, clear_flash)
+        feedback_state["flash_id"] = GLib.timeout_add(STATUS_FLASH_MS, clear_flash)
         return False
 
     def set_status(message: str) -> None:
         status_label.set_text(message)
         toast_label.set_text(message)
         toast_revealer.set_reveal_child(True)
+        if feedback_state["toast_id"]:
+            try:
+                GLib.source_remove(feedback_state["toast_id"])
+            except Exception:
+                pass
 
         def hide_toast() -> bool:
+            feedback_state["toast_id"] = 0
             toast_revealer.set_reveal_child(False)
             return False
 
-        GLib.timeout_add(1900, hide_toast)
+        feedback_state["toast_id"] = GLib.timeout_add(1900, hide_toast)
         flash_status()
 
     def record_undo(label: str, action: str, payload: object) -> None:
@@ -3006,7 +3175,7 @@ def run_files(start_path: str) -> int:
             render()
             return False
 
-        folder_monitor_state["render_id"] = GLib.timeout_add(220, apply_refresh)
+        folder_monitor_state["render_id"] = GLib.timeout_add(520, apply_refresh)
 
     def update_folder_monitor() -> None:
         watched = folder_monitor_state.get("path")
@@ -3036,19 +3205,44 @@ def run_files(start_path: str) -> int:
             folder_monitor_state.update({"monitor": None, "path": current})
 
     def refresh_current() -> bool:
-        render_location_rows()
+        render_location_rows(True)
         render()
         set_status(tr_text("Folder refreshed"))
         return True
 
     def render():
-        previous_size = window.get_size()
         focused_entry = window.get_focus() if isinstance(window.get_focus(), Gtk.Entry) else None
         focused_position = focused_entry.get_position() if focused_entry else -1
+        selected_before = {child.path for child in flow.get_selected_children() if hasattr(child, "path")}
+        try:
+            scroll_before = scroller.get_vadjustment().get_value()
+        except Exception:
+            scroll_before = 0.0
+        render_restore_state["selected"] = selected_before
+        render_restore_state["scroll"] = scroll_before
         render_signature = f"{virtual_location}|{current}|{search_query}|{show_hidden}|{sort_mode}|{view_mode}"
         if render_limit_state.get("signature") != render_signature:
             render_limit_state["signature"] = render_signature
             render_limit_state["limit"] = RENDER_LIMIT
+        directory_scan_truncated = False
+
+        def local_directory_entries(path: Path) -> tuple[list[Path], bool]:
+            entries: list[Path] = []
+            truncated = False
+            try:
+                with os.scandir(path) as iterator:
+                    for index, entry in enumerate(iterator):
+                        if index >= SCAN_SOFT_LIMIT:
+                            truncated = True
+                            break
+                        try:
+                            entries.append(Path(entry.path))
+                        except OSError:
+                            continue
+            except OSError:
+                return [], False
+            return entries, truncated
+
         sync_current_tab()
         update_folder_monitor()
         update_breadcrumbs()
@@ -3065,7 +3259,10 @@ def run_files(start_path: str) -> int:
             entries = [Path(path) for path, tag in tags.items() if fuzzy_match(tag_name, tag)]
         else:
             try:
-                entries = recent_paths() if virtual_location == "recent" else list(current.iterdir())
+                if virtual_location == "recent":
+                    entries = recent_paths()
+                else:
+                    entries, directory_scan_truncated = local_directory_entries(current)
             except OSError:
                 entries = []
             if not show_hidden:
@@ -3075,6 +3272,14 @@ def run_files(start_path: str) -> int:
         entries = sort_entries(entries)
         total_entries = len(entries)
         update_context_strip(total_entries, global_query, tag_query)
+        if directory_scan_truncated:
+            set_status(
+                t(
+                    "Très grand dossier : les {count} premiers éléments sont affichés pour garder Seven Files fluide.",
+                    "Very large folder: showing the first {count} items to keep Seven Files responsive.",
+                    count=SCAN_SOFT_LIMIT,
+                )
+            )
         current_render_limit = int(render_limit_state.get("limit", RENDER_LIMIT))
         limited_entries = entries[:current_render_limit]
         if view_mode == "grid":
@@ -3099,10 +3304,17 @@ def run_files(start_path: str) -> int:
         render_queue = list(limited_entries)
 
         def add_empty_state() -> None:
+            # A single empty-state card must not keep the grid's multi-column
+            # minimum, otherwise GTK asks Hyprland for a nearly full-screen
+            # floating window when opening an empty drive.
+            flow.set_min_children_per_line(1)
+            flow.set_max_children_per_line(1)
+            flow.set_column_spacing(0)
+            flow.set_homogeneous(False)
             child = Gtk.FlowBoxChild()
             child.set_can_focus(False)
             child.path = current
-            child.set_size_request(420, 190)
+            child.set_size_request(320, 190)
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
             box.set_halign(Gtk.Align.CENTER)
             box.set_valign(Gtk.Align.CENTER)
@@ -3113,6 +3325,9 @@ def run_files(start_path: str) -> int:
             title.get_style_context().add_class("empty-title")
             hint_text = t("Essaie une autre recherche ou retire les filtres.", "Try another search or remove filters.") if search_query else t("Dépose des fichiers ici, colle des éléments ou crée un nouveau dossier.", "Drop files here, paste items, or create a new folder.")
             hint = Gtk.Label(label=hint_text)
+            hint.set_line_wrap(True)
+            hint.set_max_width_chars(30)
+            hint.set_justify(Gtk.Justification.CENTER)
             hint.get_style_context().add_class("preview-hint")
             actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             actions.set_halign(Gtk.Align.CENTER)
@@ -3144,7 +3359,7 @@ def run_files(start_path: str) -> int:
                 return
             child = Gtk.FlowBoxChild()
             child.set_can_focus(False)
-            child.set_size_request(420, 120)
+            child.set_size_request(82 if view_mode == "grid" else 420, 98 if view_mode == "grid" else 120)
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
             box.set_halign(Gtk.Align.CENTER)
             box.set_valign(Gtk.Align.CENTER)
@@ -3254,17 +3469,35 @@ def run_files(start_path: str) -> int:
             child.add(tile_event)
             flow.add(child)
 
+        def restore_render_state() -> None:
+            selected = render_restore_state.get("selected", set())
+            if selected:
+                for child in flow.get_children():
+                    if getattr(child, "path", None) in selected:
+                        flow.select_child(child)
+            try:
+                adjustment = scroller.get_vadjustment()
+                target = float(render_restore_state.get("scroll", 0.0) or 0.0)
+                max_value = max(adjustment.get_lower(), adjustment.get_upper() - adjustment.get_page_size())
+                adjustment.set_value(min(max(adjustment.get_lower(), target), max_value))
+            except Exception:
+                pass
+
         def render_chunk() -> bool:
             if not render_queue and not limited_entries:
                 add_empty_state()
                 flow.show_all()
+                restore_render_state()
                 return False
             for _index in range(min(RENDER_CHUNK_SIZE, len(render_queue))):
                 add_entry(render_queue.pop(0))
             if not render_queue:
                 add_load_more_state()
             flow.show_all()
-            return bool(render_queue)
+            keep_rendering = bool(render_queue)
+            if not keep_rendering:
+                restore_render_state()
+            return keep_rendering
 
         render_chunk()
         selected_count = len(flow.get_selected_children())
@@ -3308,26 +3541,12 @@ def run_files(start_path: str) -> int:
         if focused_entry:
             focused_entry.grab_focus()
             focused_entry.set_position(focused_position)
-        else:
-            flow.grab_focus()
-        if previous_size != (1, 1):
-            GLib.idle_add(lambda: restore_window_size(previous_size))
-
-    def restore_window_size(size: tuple[int, int]) -> bool:
-        width, height = size
-        if width > 0 and height > 0:
-            window.resize(width, height)
-        return False
-
     def file_row_meta(path: Path) -> str:
         try:
             stat = path.stat()
             modified = time.strftime("%b %d, %H:%M", time.localtime(stat.st_mtime))
             if path.is_dir():
-                try:
-                    size = t("{count} éléments", "{count} items", count=len(list(path.iterdir())))
-                except OSError:
-                    size = t("Dossier", "Folder")
+                size = t("Dossier", "Folder")
             else:
                 size = format_size(stat.st_size)
             kind = kind_label(path)
@@ -3989,7 +4208,8 @@ def run_files(start_path: str) -> int:
         if plan.get("state") not in {"ready"}:
             blocker = plan.get("blocker") or t("Installe Bottles, Wine ou Lutris depuis SevenStore.", "Install Bottles, Wine or Lutris from SevenStore.")
             status_label.set_text(t("Compatibilité Windows indisponible: {blocker}", "Windows compatibility unavailable: {blocker}", blocker=blocker))
-            set_status(t("Installe Bottles, Wine ou Lutris pour ouvrir ce fichier.", "Install Bottles, Wine or Lutris to open this file."))
+            set_status(str(blocker))
+            notify_system(t("App Windows non lancée", "Windows app not launched"), str(blocker))
             update_preview(path)
             return
         selected = str(plan.get("selected_engine") or "auto")
@@ -5310,7 +5530,7 @@ def run_files(start_path: str) -> int:
                 add_menu_item(menu, tr_text("Eject Volume"), lambda: eject_device_and_refresh(device, label, mounted_path))
             add_menu_item(menu, tr_text("Copy Device Path"), lambda: copy_text(device))
         menu.append(Gtk.SeparatorMenuItem())
-        add_menu_item(menu, tr_text("Refresh Volumes"), render_location_rows)
+        add_menu_item(menu, tr_text("Refresh Volumes"), lambda: render_location_rows(True))
         if target_text == "seven://connect-server":
             add_menu_item(menu, tr_text("Connect to Server"), connect_to_server)
         menu.show_all()
@@ -5642,15 +5862,51 @@ def run_files(start_path: str) -> int:
         else:
             open_file(target)
 
+    def remember_drive_error(title: str, message: str, detail: str = "") -> None:
+        drive_error_state.update({"title": title, "message": message, "detail": detail})
+        set_status(message)
+        notify_system(title, message)
+        if detail:
+            print(f"Seven Files drive error: {detail}", file=sys.stderr)
+
+    def show_drive_error_details() -> bool:
+        detail = drive_error_state.get("detail", "") or drive_error_state.get("message", "")
+        dialog = Gtk.Dialog(title=drive_error_state.get("title") or t("Détails du disque", "Drive details"), transient_for=window, modal=True)
+        dialog.set_default_size(520, 320)
+        dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
+        box = decorate_dialog(
+            dialog,
+            drive_error_state.get("title") or t("Problème de disque", "Drive issue"),
+            drive_error_state.get("message") or t("Aucun détail récent.", "No recent details."),
+            "dialog-warning-symbolic",
+        )
+        text = Gtk.TextView()
+        text.set_editable(False)
+        text.set_cursor_visible(False)
+        text.get_style_context().add_class("files-detail-log")
+        text.get_buffer().set_text(detail or t("Aucun détail disponible.", "No detail available."))
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scroller.add(text)
+        box.pack_start(scroller, True, True, 0)
+        copy_btn = Gtk.Button(label=t("Copier les détails", "Copy Details"))
+        copy_btn.get_style_context().add_class("selection-action")
+        copy_btn.connect("clicked", lambda *_: copy_text(detail))
+        box.pack_start(copy_btn, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+        return True
+
     def mount_device_and_open(uri: str) -> None:
         parsed = urllib.parse.urlparse(uri)
         params = urllib.parse.parse_qs(parsed.query)
         device = urllib.parse.unquote(params.get("device", [""])[0])
         label = urllib.parse.unquote(params.get("label", [""])[0])
         if not device.startswith("/dev/"):
-            status_label.set_text(tr_text("Cannot mount this device"))
+            remember_drive_error(tr_text("Drive issue"), tr_text("Cannot mount this device"), device)
             return
-        status_label.set_text(tr_text("Mounting {name}...", name=label or device))
+        set_status(tr_text("Mounting {name}...", name=label or device))
 
         def worker() -> None:
             mountpoint = ""
@@ -5697,18 +5953,18 @@ def run_files(start_path: str) -> int:
 
             def finish() -> bool:
                 if mountpoint and Path(mountpoint).exists():
-                    render_location_rows()
+                    render_location_rows(True)
                     navigate(Path(mountpoint))
-                    status_label.set_text(tr_text("Mounted {name}", name=label or Path(mountpoint).name))
+                    drive_error_state.update({"title": "", "message": "", "detail": ""})
+                    set_status(tr_text("Mounted {name}", name=label or Path(mountpoint).name))
                 else:
                     if "NotAuthorized" in error or "authentication agent" in error:
-                        status_label.set_text(tr_text("Mount needs authorization. SevenOS started Polkit; click the disk again."))
+                        message = tr_text("Mount needs authorization. SevenOS started Polkit; click the disk again.")
                     elif "hibernated" in error.lower() or "unsafe state" in error.lower() or "fast startup" in error.lower():
-                        status_label.set_text(tr_text("Windows left this disk locked. Disable Fast Startup or shut Windows down fully."))
+                        message = tr_text("Windows left this disk locked. Disable Fast Startup or shut Windows down fully.")
                     else:
-                        status_label.set_text(tr_text("Mount failed. Install/enable udisks2 or check Windows fast startup."))
-                    if error:
-                        print(f"Seven Files mount error for {device}: {error}", file=sys.stderr)
+                        message = tr_text("Mount failed. Install/enable udisks2 or check Windows fast startup.")
+                    remember_drive_error(tr_text("Mount failed"), message, error or device)
                 return False
 
             GLib.idle_add(finish)
@@ -5717,9 +5973,9 @@ def run_files(start_path: str) -> int:
 
     def unmount_device_and_refresh(device: str, label: str = "", mounted_path: str = "") -> None:
         if not device.startswith("/dev/"):
-            status_label.set_text(tr_text("Cannot unmount this device"))
+            remember_drive_error(tr_text("Drive issue"), tr_text("Cannot unmount this device"), device)
             return
-        status_label.set_text(tr_text("Unmounting {name}...", name=label or device))
+        set_status(tr_text("Unmounting {name}...", name=label or device))
 
         def worker() -> None:
             error = ""
@@ -5745,21 +6001,21 @@ def run_files(start_path: str) -> int:
                 error = tr_text("udisksctl is not installed.")
 
             def finish() -> bool:
-                render_location_rows()
+                render_location_rows(True)
                 if ok:
                     if mounted_path and str(current).startswith(str(Path(mounted_path))):
                         navigate(Path.home())
-                    status_label.set_text(tr_text("Unmounted {name}", name=label or device))
+                    drive_error_state.update({"title": "", "message": "", "detail": ""})
+                    set_status(tr_text("Unmounted {name}", name=label or device))
                     notify_system(tr_text("Volume unmounted"), label or device)
                 else:
                     if "busy" in error.lower():
-                        status_label.set_text(tr_text("Unmount failed. Close files or terminals using this volume."))
+                        message = tr_text("Unmount failed. Close files or terminals using this volume.")
                     elif "NotAuthorized" in error or "authentication agent" in error:
-                        status_label.set_text(tr_text("Unmount needs authorization. SevenOS started Polkit; try again."))
+                        message = tr_text("Unmount needs authorization. SevenOS started Polkit; try again.")
                     else:
-                        status_label.set_text(tr_text("Unmount failed."))
-                    if error:
-                        print(f"Seven Files unmount error for {device}: {error}", file=sys.stderr)
+                        message = tr_text("Unmount failed.")
+                    remember_drive_error(tr_text("Unmount failed"), message, error or device)
                 return False
 
             GLib.idle_add(finish)
@@ -5768,7 +6024,7 @@ def run_files(start_path: str) -> int:
 
     def eject_device_and_refresh(device: str, label: str = "", mounted_path: str = "") -> None:
         if not device.startswith("/dev/"):
-            status_label.set_text(tr_text("Cannot eject this device"))
+            remember_drive_error(tr_text("Drive issue"), tr_text("Cannot eject this device"), device)
             return
         if not confirm_dialog(
             tr_text("Eject Volume"),
@@ -5776,7 +6032,7 @@ def run_files(start_path: str) -> int:
             tr_text("Eject"),
         ):
             return
-        status_label.set_text(tr_text("Ejecting {name}...", name=label or device))
+        set_status(tr_text("Ejecting {name}...", name=label or device))
 
         def worker() -> None:
             error = ""
@@ -5810,26 +6066,135 @@ def run_files(start_path: str) -> int:
                 error = tr_text("udisksctl is not installed.")
 
             def finish() -> bool:
-                render_location_rows()
+                render_location_rows(True)
                 if ok:
                     if mounted_path and str(current).startswith(str(Path(mounted_path))):
                         navigate(Path.home())
-                    status_label.set_text(tr_text("Ejected {name}", name=label or device))
+                    drive_error_state.update({"title": "", "message": "", "detail": ""})
+                    set_status(tr_text("Ejected {name}", name=label or device))
                     notify_system(tr_text("Volume ejected"), label or device)
                 else:
                     if "busy" in error.lower():
-                        status_label.set_text(tr_text("Eject failed. Close files or terminals using this volume."))
+                        message = tr_text("Eject failed. Close files or terminals using this volume.")
                     elif "NotAuthorized" in error or "authentication" in error:
-                        status_label.set_text(tr_text("Eject needs authorization. SevenOS started Polkit; try again."))
+                        message = tr_text("Eject needs authorization. SevenOS started Polkit; try again.")
                     else:
-                        status_label.set_text(tr_text("Eject failed."))
-                    if error:
-                        print(f"Seven Files eject error for {device}: {error}", file=sys.stderr)
+                        message = tr_text("Eject failed.")
+                    remember_drive_error(tr_text("Eject failed"), message, error or device)
                 return False
 
             GLib.idle_add(finish)
 
         threading.Thread(target=worker, daemon=True).start()
+
+    def show_drive_panel() -> bool:
+        render_location_rows(True)
+        dialog = Gtk.Dialog(title=t("Disques", "Drives"), transient_for=window, modal=True)
+        dialog.set_default_size(460, 360)
+        dialog.add_button(t("Fermer", "Close"), Gtk.ResponseType.CLOSE)
+        content = dialog.get_content_area()
+        content.set_spacing(10)
+        content.set_margin_top(14)
+        content.set_margin_bottom(12)
+        content.set_margin_start(14)
+        content.set_margin_end(14)
+        title = Gtk.Label(label=t("Volumes externes", "External volumes"))
+        title.set_xalign(0)
+        title.get_style_context().add_class("dialog-title")
+        hint = Gtk.Label(
+            label=t(
+                "Branche un disque, puis monte-le ou éjecte-le depuis ici. Les erreurs restent visibles sans casser la fenêtre.",
+                "Plug a drive, then mount or eject it here. Errors stay visible without breaking the window.",
+            )
+        )
+        hint.set_xalign(0)
+        hint.set_line_wrap(True)
+        hint.get_style_context().add_class("dialog-subtitle")
+        content.pack_start(title, False, False, 0)
+        content.pack_start(hint, False, False, 0)
+        if drive_error_state.get("message"):
+            error_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            error_row.get_style_context().add_class("inspector-card")
+            error_icon = Gtk.Image.new_from_icon_name("dialog-warning-symbolic", Gtk.IconSize.MENU)
+            error_icon.set_pixel_size(18)
+            error_text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            error_title = Gtk.Label(label=drive_error_state.get("title") or t("Dernier problème", "Last issue"))
+            error_title.set_xalign(0)
+            error_title.get_style_context().add_class("preview-value")
+            error_message = Gtk.Label(label=drive_error_state.get("message") or "")
+            error_message.set_xalign(0)
+            error_message.set_line_wrap(True)
+            error_message.get_style_context().add_class("preview-hint")
+            error_text.pack_start(error_title, False, False, 0)
+            error_text.pack_start(error_message, False, False, 0)
+            details_btn = Gtk.Button(label=t("Détails", "Details"))
+            details_btn.get_style_context().add_class("selection-action")
+            details_btn.connect("clicked", lambda *_: show_drive_error_details())
+            error_row.pack_start(error_icon, False, False, 0)
+            error_row.pack_start(error_text, True, True, 0)
+            error_row.pack_start(details_btn, False, False, 0)
+            content.pack_start(error_row, False, False, 0)
+        rows = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content.pack_start(rows, True, True, 4)
+        drive_locations = mounted_locations()
+        if not drive_locations:
+            empty = Gtk.Label(label=t("Aucun volume externe détecté pour l'instant.", "No external volume detected yet."))
+            empty.set_xalign(0)
+            empty.get_style_context().add_class("preview-hint")
+            rows.pack_start(empty, False, False, 12)
+        for label, icon, target, tooltip, device, mounted_path, ejectable in drive_locations:
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+            row.get_style_context().add_class("inspector-card")
+            image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.MENU)
+            image.set_pixel_size(18)
+            text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+            name = Gtk.Label(label=label)
+            name.set_xalign(0)
+            name.get_style_context().add_class("preview-value")
+            detail = Gtk.Label(label=mounted_path or device or tooltip)
+            detail.set_xalign(0)
+            detail.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            detail.get_style_context().add_class("preview-hint")
+            text_box.pack_start(name, False, False, 0)
+            text_box.pack_start(detail, False, False, 0)
+            row.pack_start(image, False, False, 0)
+            row.pack_start(text_box, True, True, 0)
+
+            if str(target).startswith("seven://mount"):
+                button = Gtk.Button(label=t("Monter", "Mount"))
+                button.connect("clicked", lambda _button, uri=str(target): (dialog.destroy(), mount_device_and_open(uri)))
+            else:
+                button = Gtk.Button(label=t("Ouvrir", "Open"))
+                button.connect("clicked", lambda _button, path=target: (dialog.destroy(), navigate_uri_or_path(path)))
+            button.get_style_context().add_class("selection-action")
+            row.pack_start(button, False, False, 0)
+            if device and mounted_path:
+                unmount_btn = Gtk.Button(label=t("Démonter", "Unmount"))
+                unmount_btn.get_style_context().add_class("selection-action")
+                unmount_btn.connect(
+                    "clicked",
+                    lambda _button, dev=device, name_label=label, mount_path=mounted_path: (
+                        dialog.destroy(),
+                        unmount_device_and_refresh(dev, name_label, mount_path),
+                    ),
+                )
+                row.pack_start(unmount_btn, False, False, 0)
+            if ejectable and device:
+                eject_btn = Gtk.Button(label=t("Éjecter", "Eject"))
+                eject_btn.get_style_context().add_class("selection-action")
+                eject_btn.connect(
+                    "clicked",
+                    lambda _button, dev=device, name_label=label, mount_path=mounted_path: (
+                        dialog.destroy(),
+                        eject_device_and_refresh(dev, name_label, mount_path),
+                    ),
+                )
+                row.pack_start(eject_btn, False, False, 0)
+            rows.pack_start(row, False, False, 0)
+        dialog.show_all()
+        dialog.run()
+        dialog.destroy()
+        return True
 
     def navigate_uri_or_path(target: Path | str):
         if isinstance(target, Path):
@@ -5843,6 +6208,11 @@ def run_files(start_path: str) -> int:
             status_label.set_text(f"Opening network location {uri}")
         elif uri.startswith("seven://mount"):
             mount_device_and_open(uri)
+        elif uri == "seven://refresh-volumes":
+            render_location_rows(True)
+            set_status(tr_text("Drive list refreshed"))
+        elif uri == "seven://drive-panel":
+            show_drive_panel()
         elif uri == "seven://connect-server":
             connect_to_server()
         else:
@@ -6177,7 +6547,10 @@ def run_files(start_path: str) -> int:
 
     def update_selection_bar(paths: list[Path]) -> None:
         if not paths:
-            selection_bar.hide()
+            selection_label.set_text(t("Aucune sélection", "No selection"))
+            for button in selection_primary_buttons + [selection_more_btn]:
+                button.hide()
+            selection_bar.show()
             return
         files = [path for path in paths if path.is_file()]
         folders = [path for path in paths if path.is_dir()]
@@ -6198,7 +6571,7 @@ def run_files(start_path: str) -> int:
             parts.append(kind_label(paths[0]))
         parts.append(t("actions dans ...", "actions in ..."))
         selection_label.set_text(" · ".join(parts))
-        selection_bar.show_all()
+        selection_bar.show()
         if len(paths) == 1 and paths[0].is_dir():
             selection_primary_buttons[0].set_label(t("Ouvrir", "Open"))
             selection_primary_buttons[0].set_tooltip_text(t("Ouvrir le dossier", "Open folder"))
@@ -6247,9 +6620,10 @@ def run_files(start_path: str) -> int:
         nonlocal sidebar_visible_pref, runtime_sidebar_visible
         sidebar_visible_pref = not sidebar_visible_pref
         runtime_sidebar_visible = sidebar_visible_pref
+        if runtime_sidebar_visible:
+            sidebar.show_all()
         sidebar.set_visible(runtime_sidebar_visible)
-        if runtime_sidebar_visible and window.get_size()[0] < 900:
-            window.resize(COMFORT_WINDOW_SIZE[0], max(DEFAULT_WINDOW_SIZE[1], window.get_size()[1]))
+        adapt_layout(window, type("SevenFilesLayoutEvent", (), {"width": window.get_size()[0], "height": window.get_size()[1]})())
         save_preferences()
         set_status(tr_text("Sidebar shown") if sidebar_visible_pref else tr_text("Sidebar hidden"))
         return True
@@ -6258,9 +6632,21 @@ def run_files(start_path: str) -> int:
         nonlocal preview_visible_pref, runtime_preview_visible
         preview_visible_pref = not preview_visible_pref
         runtime_preview_visible = preview_visible_pref
-        preview.set_visible(runtime_preview_visible)
+        width, height = window.get_size()
+        if runtime_preview_visible and width < 960:
+            window.unmaximize()
+            window.resize(max(COMFORT_WINDOW_SIZE[0], width), max(height, DEFAULT_WINDOW_SIZE[1]))
+            preview.set_visible(True)
+            set_status(t("Inspecteur ouvert avec plus d'espace", "Inspector opened with more room"))
+        else:
+            preview.set_visible(runtime_preview_visible)
+            set_status(tr_text("Preview shown") if preview_visible_pref else tr_text("Preview hidden"))
+        next_width, next_height = window.get_size()
+        layout_width = COMFORT_WINDOW_SIZE[0] if runtime_preview_visible and width < 960 else max(width, next_width)
+        adapt_layout(window, type("SevenFilesLayoutEvent", (), {"width": layout_width, "height": max(height, next_height)})())
+        if runtime_preview_visible:
+            preview.set_visible(True)
         save_preferences()
-        set_status(tr_text("Preview shown") if preview_visible_pref else tr_text("Preview hidden"))
         return True
 
     def toggle_grouped_resources() -> bool:
@@ -6466,8 +6852,8 @@ def run_files(start_path: str) -> int:
         actions_group.set_visible(width >= 900 and not compact)
         view_group.set_visible(width >= 960 and not compact)
         context_chips.set_visible(width >= 960)
-        search_entry.set_visible(width >= 620)
-        sort_button.set_visible(width >= 620)
+        search_entry.set_visible(width >= 920)
+        sort_button.set_visible(width >= 760)
         for button in selection_primary_buttons:
             button.set_visible(width >= 560)
         selection_more_btn.set_visible(bool(flow.get_selected_children()))
@@ -6475,20 +6861,25 @@ def run_files(start_path: str) -> int:
             tabbar.set_visible(False)
         elif tabs:
             tabbar.set_visible(True)
-        if width < 900:
+        def apply_sidebar_visibility(visible: bool) -> None:
+            if visible:
+                sidebar.show_all()
+            sidebar.set_visible(visible)
+
+        if width < MIN_WINDOW_SIZE[0]:
             sidebar.set_visible(False)
             preview.set_visible(False)
             search_entry.set_size_request(52, 22)
             location_entry.set_size_request(130, 24)
             sort_button.set_size_request(34, 24)
         elif width < 960:
-            sidebar.set_visible(runtime_sidebar_visible)
+            apply_sidebar_visibility(runtime_sidebar_visible)
             preview.set_visible(False)
             search_entry.set_size_request(58, 22)
             location_entry.set_size_request(150, 24)
             sort_button.set_size_request(36, 24)
         else:
-            sidebar.set_visible(runtime_sidebar_visible)
+            apply_sidebar_visibility(runtime_sidebar_visible)
             preview.set_visible(runtime_preview_visible)
             search_entry.set_size_request(76, 22)
             location_entry.set_size_request(220, 24)
@@ -6664,86 +7055,31 @@ def run_files(start_path: str) -> int:
     restored_size = restore_session(explicit_start)
     if not tabs:
         tabs.append({"path": current, "virtual": virtual_location, "history": [], "future": []})
+    requested_size = restored_size or screen_window_size()
+    if runtime_sidebar_visible and requested_size[0] < DEFAULT_WINDOW_SIZE[0]:
+        requested_size = (DEFAULT_WINDOW_SIZE[0], requested_size[1])
+    initial_size = compact_window_size(*requested_size)
+    window.set_default_size(*initial_size)
+    window.resize(*initial_size)
     render()
-    sidebar.set_visible(False)
+    root.show_all()
+    sidebar.set_visible(runtime_sidebar_visible)
     actions_group.set_visible(False)
     view_group.set_visible(False)
     context_chips.set_visible(False)
     preview.set_visible(False)
     if len(tabs) <= 1:
         tabbar.set_visible(False)
-    window.show_all()
-    sidebar.set_visible(False)
-    actions_group.set_visible(False)
-    view_group.set_visible(False)
-    context_chips.set_visible(False)
-    preview.set_visible(False)
-    if len(tabs) <= 1:
-        tabbar.set_visible(False)
-    initial_size = compact_window_size(*(restored_size or screen_window_size()))
+    window.set_position(Gtk.WindowPosition.CENTER)
     window.unfullscreen()
     window.unmaximize()
     window.resize(*initial_size)
     adapt_layout(window, type("SevenFilesInitialLayout", (), {"width": initial_size[0], "height": initial_size[1]})())
-    GLib.idle_add(lambda: enforce_compact_window(window))
-    GLib.timeout_add(220, lambda: enforce_compact_window(window))
-    GLib.timeout_add(900, lambda: enforce_compact_window(window))
+    window.show()
     if restored_size:
         set_status(tr_text("Restored previous Seven Files session"))
     Gtk.main()
     return 0
-
-
-def enforce_compact_window(window) -> bool:
-    window.present()
-    try:
-        window.unfullscreen()
-        window.unmaximize()
-        window.resize(*DEFAULT_WINDOW_SIZE)
-    except Exception:
-        pass
-    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"):
-        try:
-            clients = subprocess.run(
-                ["hyprctl", "-j", "clients"],
-                text=True,
-                capture_output=True,
-                check=False,
-                timeout=0.8,
-            )
-            address = ""
-            floating = False
-            fullscreen = 0
-            if clients.returncode == 0 and clients.stdout.strip():
-                for item in json.loads(clients.stdout):
-                    klass = str(item.get("class") or item.get("initialClass") or "")
-                    title = str(item.get("title") or "")
-                    if klass == "SevenFilesNative" or title.startswith("Seven Files"):
-                        address = str(item.get("address") or "")
-                        floating = bool(item.get("floating"))
-                        fullscreen = int(item.get("fullscreen") or 0)
-                        break
-            commands: list[list[str]] = []
-            if address:
-                commands.append(["hyprctl", "dispatch", "focuswindow", f"address:{address}"])
-            # Hyprland may remember a previous green-button fullscreen/maximize state.
-            # Toggle it off once, then let GTK own the exact compact size. Pixel-resize
-            # dispatches are intentionally avoided here because some Hyprland builds
-            # treat them as deltas while fullscreen state is settling.
-            if fullscreen:
-                commands.append(["hyprctl", "dispatch", "fullscreen", "0"])
-            if not floating:
-                commands.append(["hyprctl", "dispatch", "togglefloating", "active"])
-            commands.append(["hyprctl", "dispatch", "centerwindow"])
-            for command in commands:
-                subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.6)
-            time.sleep(0.08)
-            window.unfullscreen()
-            window.unmaximize()
-            window.resize(*DEFAULT_WINDOW_SIZE)
-        except Exception:
-            pass
-    return False
 
 
 def toggle_zoom_or_tile(window) -> None:
@@ -6764,46 +7100,12 @@ def toggle_zoom_or_tile(window) -> None:
             target_height = min(COMFORT_WINDOW_SIZE[1], max(DEFAULT_WINDOW_SIZE[1], screen.get_height() - 104))
     except Exception:
         pass
-    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
-        try:
-            clients = subprocess.run(["hyprctl", "-j", "clients"], text=True, capture_output=True, check=False, timeout=0.8)
-            address = ""
-            floating = False
-            fullscreen = 0
-            if clients.returncode == 0 and clients.stdout.strip():
-                for item in json.loads(clients.stdout):
-                    klass = str(item.get("class") or item.get("initialClass") or "")
-                    title = str(item.get("title") or "")
-                    if klass == "SevenFilesNative" or title.startswith("Seven Files"):
-                        address = str(item.get("address") or "")
-                        floating = bool(item.get("floating"))
-                        fullscreen = int(item.get("fullscreen") or 0)
-                        break
-            commands: list[list[str]] = []
-            if address:
-                commands.append(["hyprctl", "dispatch", "focuswindow", f"address:{address}"])
-            if fullscreen:
-                commands.append(["hyprctl", "dispatch", "fullscreen", "0"])
-            if not floating:
-                commands.append(["hyprctl", "dispatch", "togglefloating", "active"])
-            commands.append(["hyprctl", "dispatch", "centerwindow"])
-            for command in commands:
-                subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False, timeout=0.6)
-            time.sleep(0.08)
-            window.unfullscreen()
-            window.unmaximize()
-            window.resize(target_width, target_height)
-            if address:
-                return
-        except Exception:
-            pass
     width, _height = window.get_size()
     if width >= target_width - 20:
         window.resize(*DEFAULT_WINDOW_SIZE)
     else:
         window.unmaximize()
         window.resize(target_width, target_height)
-    window.set_position(Gtk.WindowPosition.CENTER)
 
 
 def minimize_window(window) -> None:

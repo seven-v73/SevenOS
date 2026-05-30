@@ -1,0 +1,7 @@
+# SevenOS native USB image writer stack
+gnome-disk-utility
+isoimagewriter
+ddrescue
+dosfstools
+exfatprogs
+ntfs-3g

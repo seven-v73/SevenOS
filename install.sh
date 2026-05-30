@@ -27,6 +27,7 @@ Targets:
                    Install Aylur's Gtk Shell runtime from the explicit AUR route
   runtime-tools    Install optional runtime orchestration tools such as CRIU
   windows-compat   Install global Windows app compatibility tools
+  usb-writer       Install native Rufus-like USB image writer tools
   network          Prepare and repair Wi-Fi/NetworkManager stack
   language         Prepare and inspect French/English language packs
   system-profile   Ensure Equinox is the host-system/admin side
@@ -115,6 +116,40 @@ export SEVENOS_ROOT="$ROOT_DIR"
 export SEVENOS_DRY_RUN="$DRY_RUN"
 export SEVENOS_YES="$YES"
 
+multilib_enabled() {
+  command -v pacman-conf >/dev/null 2>&1 && pacman-conf --repo-list 2>/dev/null | grep -qx multilib
+}
+
+ensure_multilib_repo() {
+  multilib_enabled && return 0
+  if [[ ! -f /etc/pacman.conf ]] || ! grep -Eq '^#?\[multilib\]$' /etc/pacman.conf; then
+    log_warn "Arch multilib section was not found in /etc/pacman.conf."
+    return 1
+  fi
+
+  log_info "Enabling Arch multilib repository for Windows app compatibility."
+  if is_dry_run; then
+    printf '%q sh -c %q\n' "$(privileged_backend_label)" 'cp /etc/pacman.conf /etc/pacman.conf.sevenos-wincompat.bak && enable [multilib]'
+    printf '%q pacman -Sy --noconfirm\n' "$(privileged_backend_label)"
+    return 0
+  fi
+
+  run_privileged_cmd sh -c '
+    set -eu
+    cp /etc/pacman.conf /etc/pacman.conf.sevenos-wincompat.bak
+    tmp="$(mktemp)"
+    awk "
+      /^#\\[multilib\\]$/ { print \"[multilib]\"; in_multilib=1; next }
+      /^\\[multilib\\]$/ { print; in_multilib=1; next }
+      in_multilib && /^#Include = \\/etc\\/pacman.d\\/mirrorlist$/ { print \"Include = /etc/pacman.d/mirrorlist\"; in_multilib=0; next }
+      { print }
+    " /etc/pacman.conf > "$tmp"
+    install -m 0644 "$tmp" /etc/pacman.conf
+    rm -f "$tmp"
+  ' || return 1
+  run_privileged_cmd pacman -Sy --noconfirm
+}
+
 if [[ "$TARGET" != "doctor" && "$TARGET" != "status" && "$TARGET" != "language" && "$TARGET" != "languages" && "$TARGET" != "locale" && "$TARGET" != "migrate-plan" && "$TARGET" != "migrate-backup" && "$TARGET" != "calamares-runtime" ]]; then
   require_arch
   if [[ -z "$(privileged_backend)" ]]; then
@@ -172,7 +207,17 @@ case "$TARGET" in
     install_package_file "$ROOT_DIR/scripts/packages-runtime-optional.txt"
     ;;
   windows-compat|wincompat|windows-apps)
+    ensure_multilib_repo || log_warn "Continuing with the 64-bit compatibility base only."
     install_package_file "$ROOT_DIR/scripts/packages-windows-compat.txt"
+    if multilib_enabled; then
+      install_package_file "$ROOT_DIR/scripts/packages-windows-compat-multilib.txt"
+    else
+      log_warn "Arch multilib is not enabled; 32-bit Windows apps and many games may still fail."
+      log_info "Enable the [multilib] repository in /etc/pacman.conf, then run:"
+      log_info "  sudo pacman -Syu"
+      log_info "  ./install.sh windows-compat"
+      log_info "SevenOS installed the safe 64-bit compatibility base and will add lib32 packages automatically once multilib is enabled."
+    fi
     "$ROOT_DIR/scripts/flatpak.sh" setup
     if command -v flatpak >/dev/null 2>&1; then
       if is_dry_run; then
@@ -181,7 +226,12 @@ case "$TARGET" in
         flatpak install --noninteractive --or-update -y flathub com.usebottles.bottles
       fi
     fi
-    "$ROOT_DIR/bin/seven-wincompat" status
+    "$ROOT_DIR/bin/seven-wincompat" integrate
+    "$ROOT_DIR/bin/seven-wincompat" doctor
+    ;;
+  usb-writer|usb-flasher|iso-writer)
+    install_package_file "$ROOT_DIR/scripts/packages-usb-writer.txt"
+    "$ROOT_DIR/bin/seven-usb-writer" status
     ;;
   network)
     "$ROOT_DIR/scripts/network.sh" bootstrap "${TARGET_ARGS[@]}"

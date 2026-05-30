@@ -1,0 +1,275 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ACTION="${1:-status}"
+shift || true
+
+ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+LOG_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos/usb-writer"
+WINDOWS_IMAGE_RE='\.((iso)|(img)|(raw))$'
+
+usage() {
+  cat <<'EOF'
+SevenOS USB Writer
+
+Usage:
+  seven-usb-writer status [--json]
+  seven-usb-writer devices [--json]
+  seven-usb-writer open [IMAGE]
+  seven-usb-writer plan IMAGE DEVICE [--json]
+  seven-usb-writer write IMAGE DEVICE --yes
+  seven-usb-writer rufus [FILE]
+
+Native Rufus-like USB image writing for SevenOS. Prefer the graphical route
+for public use; the write command is deliberately explicit and destructive.
+EOF
+}
+
+have() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+json_escape() {
+  python -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
+tool_json() {
+  python - "$@" <<'PY'
+import json, shutil, sys
+tools = sys.argv[1:]
+print(json.dumps({tool: bool(shutil.which(tool)) for tool in tools}, ensure_ascii=False))
+PY
+}
+
+is_image_file() {
+  [[ "${1,,}" =~ $WINDOWS_IMAGE_RE ]]
+}
+
+devices_json() {
+  if ! have lsblk; then
+    printf '{"schema":"sevenos.usb_writer.devices.v1","devices":[],"error":"lsblk missing"}\n'
+    return 0
+  fi
+  local payload
+  payload="$(lsblk -J -o NAME,PATH,TYPE,SIZE,MODEL,TRAN,RM,RO,MOUNTPOINTS,FSTYPE,LABEL 2>/dev/null || printf '{}')"
+  python - "$payload" <<'PY'
+import json, sys
+try:
+    data = json.loads(sys.argv[1])
+except Exception:
+    data = {"blockdevices": []}
+devices = []
+for item in data.get("blockdevices", []):
+    if item.get("type") != "disk":
+        continue
+    removable = str(item.get("rm", "0")) in {"1", "true", "True"}
+    transport = item.get("tran") or ""
+    if not removable and transport not in {"usb", "mmc"}:
+        continue
+    devices.append({
+        "name": item.get("name"),
+        "path": item.get("path"),
+        "size": item.get("size"),
+        "model": item.get("model") or "USB drive",
+        "transport": transport,
+        "removable": removable,
+        "readonly": str(item.get("ro", "0")) in {"1", "true", "True"},
+        "mountpoints": item.get("mountpoints") or [],
+        "fstype": item.get("fstype") or "",
+        "label": item.get("label") or "",
+    })
+print(json.dumps({"schema": "sevenos.usb_writer.devices.v1", "devices": devices}, ensure_ascii=False, indent=2))
+PY
+}
+
+device_info_json() {
+  local device="$1"
+  local payload
+  payload="$(lsblk -J -o NAME,PATH,TYPE,SIZE,MODEL,TRAN,RM,RO,MOUNTPOINTS "$device" 2>/dev/null || printf '{}')"
+  python - "$device" "$payload" <<'PY'
+import json, sys
+device = sys.argv[1]
+try:
+    data = json.loads(sys.argv[2])
+except Exception:
+    data = {"blockdevices": []}
+items = data.get("blockdevices", [])
+item = items[0] if items else {}
+print(json.dumps({
+    "path": item.get("path") or device,
+    "type": item.get("type") or "",
+    "size": item.get("size") or "",
+    "model": item.get("model") or "",
+    "transport": item.get("tran") or "",
+    "removable": str(item.get("rm", "0")) in {"1", "true", "True"},
+    "readonly": str(item.get("ro", "0")) in {"1", "true", "True"},
+    "mountpoints": item.get("mountpoints") or [],
+}, ensure_ascii=False))
+PY
+}
+
+status_json() {
+  local tools devices
+  tools="$(tool_json gnome-disks isoimagewriter ddrescue udisksctl lsblk pkexec)"
+  devices="$(devices_json)"
+  cat <<JSON
+{
+  "schema": "sevenos.usb_writer.status.v1",
+  "state": "$([[ "$tools" == *'"lsblk": true'* && "$tools" == *'"udisksctl": true'* && "$tools" == *'"ddrescue": true'* && ( "$tools" == *'"isoimagewriter": true'* || "$tools" == *'"gnome-disks": true'* ) ]] && printf ready || printf needs-install)",
+  "tools": $tools,
+  "devices": $(printf '%s' "$devices" | python -c 'import json,sys; print(json.dumps(json.load(sys.stdin).get("devices", []), ensure_ascii=False))'),
+  "install": "./install.sh usb-writer --yes"
+}
+JSON
+}
+
+open_writer() {
+  local image="${1:-}"
+  if [[ -n "$image" ]]; then
+    image="$(realpath -m "$image")"
+    if [[ ! -f "$image" || ! "$(is_image_file "$image" && printf yes)" == "yes" ]]; then
+      printf 'seven-usb-writer: expected an ISO/IMG image: %s\n' "$image" >&2
+      return 1
+    fi
+  fi
+
+  mkdir -p "$LOG_DIR"
+  if have isoimagewriter; then
+    if [[ -n "$image" ]]; then
+      setsid -f isoimagewriter "$image" >"$LOG_DIR/isoimagewriter.log" 2>&1 || true
+    else
+      setsid -f isoimagewriter >"$LOG_DIR/isoimagewriter.log" 2>&1 || true
+    fi
+    return 0
+  fi
+  if have gnome-disks; then
+    setsid -f gnome-disks >"$LOG_DIR/gnome-disks.log" 2>&1 || true
+    return 0
+  fi
+  printf 'seven-usb-writer: graphical writer missing. Run: ./install.sh usb-writer --yes\n' >&2
+  return 1
+}
+
+plan_json() {
+  local image="$1" device="$2" info reason state image_size
+  image="$(realpath -m "$image")"
+  state="ready"
+  reason=""
+  if [[ ! -f "$image" ]]; then
+    state="blocked"
+    reason="Image file not found."
+  elif ! is_image_file "$image"; then
+    state="blocked"
+    reason="Only ISO/IMG/RAW images are accepted."
+  elif [[ ! -b "$device" ]]; then
+    state="blocked"
+    reason="Target is not a block device."
+  fi
+  info="$(device_info_json "$device")"
+  if [[ "$state" == "ready" ]]; then
+    if ! printf '%s' "$info" | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("type") == "disk" else 1)'; then
+      state="blocked"; reason="Target must be a whole disk, not a partition."
+    elif printf '%s' "$info" | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("readonly") else 1)'; then
+      state="blocked"; reason="Target disk is read-only."
+    elif ! printf '%s' "$info" | python -c 'import json,sys; d=json.load(sys.stdin); raise SystemExit(0 if d.get("removable") or d.get("transport") in ("usb", "mmc") else 1)'; then
+      state="blocked"; reason="Target does not look removable/USB. SevenOS blocks it by default."
+    fi
+  fi
+  image_size="$(stat -c '%s' "$image" 2>/dev/null || printf 0)"
+  cat <<JSON
+{
+  "schema": "sevenos.usb_writer.plan.v1",
+  "state": "$state",
+  "image": $(json_escape "$image"),
+  "image_size_bytes": $image_size,
+  "target": $info,
+  "destructive": true,
+  "tool": "$([[ "$(have ddrescue && printf yes)" == "yes" ]] && printf ddrescue || printf missing)",
+  "reason": $(json_escape "$reason")
+}
+JSON
+}
+
+unmount_children() {
+  local device="$1"
+  lsblk -ln -o PATH "$device" 2>/dev/null | tail -n +2 | while IFS= read -r child; do
+    [[ -n "$child" ]] || continue
+    udisksctl unmount -b "$child" >/dev/null 2>&1 || true
+  done
+}
+
+write_image() {
+  local image="" device="" yes=0
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      --yes) yes=1; shift ;;
+      *) if [[ -z "$image" ]]; then image="$1"; else device="$1"; fi; shift ;;
+    esac
+  done
+  [[ -n "$image" && -n "$device" ]] || { usage >&2; return 2; }
+  local plan state
+  plan="$(plan_json "$image" "$device")"
+  state="$(printf '%s' "$plan" | python -c 'import json,sys; print(json.load(sys.stdin).get("state"))')"
+  if [[ "$state" != "ready" ]]; then
+    printf '%s\n' "$plan"
+    return 1
+  fi
+  [[ "$yes" == "1" ]] || {
+    printf 'seven-usb-writer: refusing destructive write without --yes\n' >&2
+    printf '%s\n' "$plan"
+    return 2
+  }
+  have ddrescue || { printf 'seven-usb-writer: ddrescue missing. Run ./install.sh usb-writer --yes\n' >&2; return 1; }
+  have pkexec || { printf 'seven-usb-writer: pkexec missing for safe admin prompt.\n' >&2; return 1; }
+  mkdir -p "$LOG_DIR"
+  unmount_children "$device"
+  pkexec ddrescue -D --force "$image" "$device" "$LOG_DIR/ddrescue.map"
+  sync
+  udisksctl power-off -b "$device" >/dev/null 2>&1 || true
+}
+
+rufus_help() {
+  local file="${1:-}"
+  cat <<EOF
+SevenOS ne lance pas Rufus via Wine, parce que Rufus écrit directement sur les disques USB.
+
+Alternative native SevenOS:
+  seven-usb-writer open /chemin/image.iso
+  seven-usb-writer devices
+  seven-usb-writer write /chemin/image.iso /dev/sdX --yes
+
+Installe le support complet:
+  ./install.sh usb-writer --yes
+
+Fichier reçu: ${file:-aucun}
+EOF
+}
+
+case "$ACTION" in
+  -h|--help|help)
+    usage
+    ;;
+  status)
+    if [[ " $* " == *" --json "* ]]; then status_json; else status_json | python -m json.tool; fi
+    ;;
+  devices)
+    if [[ " $* " == *" --json "* ]]; then devices_json; else devices_json | python -m json.tool; fi
+    ;;
+  open)
+    open_writer "${1:-}"
+    ;;
+  plan)
+    [[ "$#" -ge 2 ]] || { usage >&2; exit 2; }
+    plan_json "$1" "$2"
+    ;;
+  write)
+    write_image "$@"
+    ;;
+  rufus)
+    rufus_help "${1:-}"
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

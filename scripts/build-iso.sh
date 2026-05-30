@@ -51,6 +51,18 @@ if [[ ! -d "$PROFILE_SOURCE" ]]; then
   exit 1
 fi
 
+if [[ ! -d "$PROFILE_SOURCE/syslinux" ]]; then
+  log_error "Archiso profile is missing syslinux boot files: $PROFILE_SOURCE/syslinux"
+  log_info "Copy a current Archiso template or run the SevenOS profile repair before building."
+  exit 1
+fi
+
+if [[ ! -d "$PROFILE_SOURCE/efiboot/loader/entries" ]]; then
+  log_error "Archiso profile is missing UEFI loader entries: $PROFILE_SOURCE/efiboot/loader/entries"
+  log_info "Copy a current Archiso template or run the SevenOS profile repair before building."
+  exit 1
+fi
+
 log_info "Preparing SevenOS archiso profile..."
 run_cmd rm -rf "$PROFILE_BUILD"
 run_cmd mkdir -p "$PROFILE_BUILD" "$WORK_DIR" "$OUT_DIR"

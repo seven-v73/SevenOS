@@ -538,6 +538,7 @@ configure_file_experience() {
     printf 'mkdir -p %q %q %q %q %q %q\n' "$HOME/Documents" "$HOME/Downloads" "$HOME/Pictures" "$HOME/Videos" "$HOME/Music" "$HOME/Projects"
     printf 'install Seven Files desktop entry\n'
     printf 'install SevenOS Spotlight, AI, Reader, Recorder, Terminal, Experience Center and Public Readiness desktop entries\n'
+    printf 'install SevenOS Windows Apps and USB Writer desktop entries and MIME defaults\n'
     printf 'install SevenOS Mini OS Boundaries desktop entry\n'
     printf 'write SevenOS default terminal contract\n'
     printf 'write xdg-terminal-exec preference\n'
@@ -569,6 +570,8 @@ configure_file_experience() {
   cp "$ROOT_DIR/seven-hub/seven-doctor.desktop" "$HOME/.local/share/applications/seven-doctor.desktop"
   cp "$ROOT_DIR/seven-hub/seven-experience-center.desktop" "$HOME/.local/share/applications/seven-experience-center.desktop"
   cp "$ROOT_DIR/seven-hub/seven-public-studio.desktop" "$HOME/.local/share/applications/seven-public-studio.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-wincompat.desktop" "$HOME/.local/share/applications/seven-wincompat.desktop"
+  cp "$ROOT_DIR/seven-hub/seven-usb-writer.desktop" "$HOME/.local/share/applications/seven-usb-writer.desktop"
 
   mkdir -p "$CONFIG_HOME/sevenos"
   {
@@ -588,6 +591,15 @@ configure_file_experience() {
     xdg-mime default seven-reader.desktop application/epub+zip >/dev/null 2>&1 || true
     xdg-mime default seven-reader.desktop text/markdown >/dev/null 2>&1 || true
     xdg-mime default seven-reader.desktop application/x-cbz >/dev/null 2>&1 || true
+    xdg-mime default seven-wincompat.desktop application/x-ms-dos-executable >/dev/null 2>&1 || true
+    xdg-mime default seven-wincompat.desktop application/x-msdownload >/dev/null 2>&1 || true
+    xdg-mime default seven-wincompat.desktop application/x-msi >/dev/null 2>&1 || true
+    xdg-mime default seven-wincompat.desktop application/x-ms-installer >/dev/null 2>&1 || true
+    xdg-mime default seven-wincompat.desktop application/x-ms-shortcut >/dev/null 2>&1 || true
+    xdg-mime default seven-wincompat.desktop application/x-msdos-program >/dev/null 2>&1 || true
+    xdg-mime default seven-wincompat.desktop application/vnd.microsoft.portable-executable >/dev/null 2>&1 || true
+    xdg-mime default seven-usb-writer.desktop application/x-cd-image >/dev/null 2>&1 || true
+    xdg-mime default seven-usb-writer.desktop application/x-raw-disk-image >/dev/null 2>&1 || true
   fi
 
   local nautilus_scripts_dir="$HOME/.local/share/nautilus/scripts"

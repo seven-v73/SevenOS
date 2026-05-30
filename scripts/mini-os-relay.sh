@@ -26,7 +26,7 @@ OBJECTS_DIR = DATA_HOME / "sevenos" / "objects"
 RELATIONS_PATH = RELAY_DIR / "relations.json"
 SWITCHER_PATH = RELAY_DIR / "switcher.json"
 GRAPH_PATH = RELAY_DIR / "graph.json"
-PROFILES = ["equinox", "baobab", "forge", "shield", "studio", "windows", "pulse"]
+PROFILES = ["equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"]
 ALIASES = {"horizon": "forge"}
 
 RELATIONS = [
@@ -85,6 +85,22 @@ RELATIONS = [
         "objects": ["scan", "map", "reference-image", "ocr-text"],
         "phrase": "Atlas remet un scan, une carte ou un texte OCR pour production Studio.",
         "protected_boundary": "Studio recoit l'asset, pas l'index de recherche Atlas.",
+    },
+    {
+        "from": "baobab",
+        "to": "atlas",
+        "channel": "memory-to-research",
+        "objects": ["oral-note", "heritage-topic", "language-term", "place", "source-request"],
+        "phrase": "Baobab confie un sujet culturel a Atlas pour recherche, carte ou classement documentaire.",
+        "protected_boundary": "Atlas traite la reference comme piste documentaire; Baobab garde le contexte sensible.",
+    },
+    {
+        "from": "atlas",
+        "to": "forge",
+        "channel": "research-to-build",
+        "objects": ["brief", "dataset", "map", "reference-pack", "technical-note"],
+        "phrase": "Atlas remet a Forge un dossier de recherche exploitable pour construire un prototype.",
+        "protected_boundary": "Forge recoit un brief declare, pas toute la bibliotheque Atlas.",
     },
     {
         "from": "pulse",

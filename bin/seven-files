@@ -6,13 +6,14 @@ usage() {
 Seven Files
 
 Usage:
-  seven-files [open|menu|profile|read|reader|wallpaper|windows|home|downloads|documents|code|projects|pictures|videos|music|trash|recent] [path]
+  seven-files [open|menu|profile|read|reader|wallpaper|windows|doctor|home|downloads|documents|code|projects|pictures|videos|music|trash|recent] [path]
   seven-files resources [status|mini|shared|toggle]
 
 Seven Files opens the preferred graphical file manager with SevenOS fallbacks.
 Use "seven-files reader" to open Seven Reader, or "seven-files reader DOCUMENT" to open a document.
 Use "seven-files wallpaper IMAGE" to set a Hyprland/SevenOS wallpaper from a file manager action.
 Use "seven-files windows FILE" to launch .exe/.msi files through Bottles, Wine or Lutris.
+Use "seven-files doctor --json" to check native runtime, window rules and storage helpers.
 EOF
 }
 
@@ -151,33 +152,6 @@ resource_path() {
   esac
 }
 
-settle_native_window() {
-  command -v hyprctl >/dev/null 2>&1 || return 0
-  command -v jq >/dev/null 2>&1 || return 0
-  (
-    sleep 1
-    local payload address fullscreen floating
-    payload="$(hyprctl -j clients 2>/dev/null || true)"
-    address="$(
-      printf '%s\n' "$payload" |
-        jq -r '[.[] | select(.class=="SevenFilesNative" or .initialClass=="SevenFilesNative" or ((.title // "") | startswith("Seven Files")))] | sort_by(.pid // 0) | last | .address // ""'
-    )"
-    [[ -n "$address" && "$address" != "null" ]] || exit 0
-    fullscreen="$(printf '%s\n' "$payload" | jq -r --arg address "$address" '.[] | select(.address==$address) | (.fullscreen // 0)')"
-    floating="$(printf '%s\n' "$payload" | jq -r --arg address "$address" '.[] | select(.address==$address) | (.floating // false)')"
-    hyprctl dispatch focuswindow "address:$address" >/dev/null 2>&1 || true
-    if [[ "${fullscreen:-0}" != "0" ]]; then
-      hyprctl dispatch fullscreen 0 >/dev/null 2>&1 || true
-      sleep 0.2
-    fi
-    if [[ "$floating" != "true" ]]; then
-      hyprctl dispatch togglefloating active >/dev/null 2>&1 || true
-      sleep 0.1
-    fi
-    hyprctl dispatch centerwindow >/dev/null 2>&1 || true
-  ) >/dev/null 2>&1 &
-}
-
 open_path() {
   local target="$1"
   local manager native
@@ -191,7 +165,6 @@ open_path() {
 
   if [[ -x "$native" ]] && "$native" --probe >/dev/null 2>&1; then
     setsid -f "$native" "$target" >/tmp/sevenos-files.log 2>&1
-    settle_native_window
     return 0
   fi
 
@@ -461,6 +434,115 @@ run_windows_file() {
   fi
 }
 
+doctor_command() {
+  local format=""
+  local deep="0"
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --json) format="--json" ;;
+      --deep) deep="1" ;;
+    esac
+  done
+  local root native prefs hypr_user hypr_repo wrapper
+  root="$(resolve_root || true)"
+  native="$root/bin/seven-files-native"
+  prefs="$(files_prefs_path)"
+  hypr_user="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/conf/sevenos-lua-generated.conf"
+  hypr_repo="$root/hyprland/conf/sevenos-lua-generated.conf"
+  wrapper="${BASH_SOURCE[0]}"
+
+  python - "$format" "$deep" "$root" "$native" "$prefs" "$hypr_user" "$hypr_repo" "$wrapper" <<'PY'
+import json, os, subprocess, sys
+from pathlib import Path
+
+fmt, deep, root, native, prefs, hypr_user, hypr_repo, wrapper = sys.argv[1:9]
+
+def cmd_ok(command):
+    return subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False).returncode == 0
+
+checks = []
+native_path = Path(native)
+wrapper_text = Path(wrapper).read_text(encoding="utf-8", errors="ignore") if Path(wrapper).exists() else ""
+hypr_text = ""
+for item in (hypr_user, hypr_repo):
+    path = Path(item)
+    if path.exists():
+        hypr_text += "\n" + path.read_text(encoding="utf-8", errors="ignore")
+
+checks.append({"key": "root", "ok": bool(root) and Path(root).exists(), "detail": root or "missing"})
+checks.append({"key": "native", "ok": native_path.exists() and os.access(native_path, os.X_OK), "detail": str(native_path)})
+checks.append({"key": "native-probe", "ok": native_path.exists() and cmd_ok([str(native_path), "--probe"]), "detail": "seven-files-native --probe"})
+checks.append({"key": "window-rule", "ok": "SevenFilesNative" in hypr_text and "size 700 500" in hypr_text and "center" in hypr_text, "detail": "Hyprland floating centered rule"})
+settle_name = "settle_native_" + "window"
+checks.append({
+    "key": "no-delayed-wrapper-center",
+    "ok": f"{settle_name}() {{" not in wrapper_text and f"\n    {settle_name}" not in wrapper_text,
+    "detail": "wrapper does not move window after launch",
+})
+checks.append({"key": "udisks", "ok": cmd_ok(["sh", "-lc", "command -v udisksctl >/dev/null 2>&1"]), "detail": "external disk mount helper"})
+checks.append({"key": "gvfs", "ok": cmd_ok(["sh", "-lc", "command -v gio >/dev/null 2>&1"]), "detail": "GIO/GVFS file operations"})
+native_text = native_path.read_text(encoding="utf-8", errors="ignore") if native_path.exists() else ""
+checks.append({
+    "key": "deferred-drive-scan",
+    "ok": "schedule_drive_scan" in native_text and "render_location_rows(False)" in native_text,
+    "detail": "drive scan is deferred after the first paint",
+})
+checks.append({
+    "key": "stable-selection-bar",
+    "ok": "No selection" in native_text and "selection_bar.set_size_request(-1, 38)" in native_text,
+    "detail": "selection controls keep a stable bottom band",
+})
+checks.append({
+    "key": "large-folder-soft-limit",
+    "ok": "SCAN_SOFT_LIMIT" in native_text and "os.scandir" in native_text,
+    "detail": "large folders use a bounded first scan",
+})
+checks.append({
+    "key": "drive-error-feedback",
+    "ok": "drive_error_state" in native_text and "show_drive_error_details" in native_text,
+    "detail": "drive failures keep visible details in the drive panel",
+})
+
+prefs_state = "missing"
+try:
+    data = json.loads(Path(prefs).read_text(encoding="utf-8"))
+    prefs_state = "sidebar visible" if data.get("sidebar_visible", True) is not False else "sidebar hidden"
+    checks.append({"key": "sidebar-default", "ok": data.get("sidebar_visible", True) is not False, "detail": prefs_state})
+except Exception:
+    checks.append({"key": "sidebar-default", "ok": True, "detail": prefs_state})
+
+if deep == "1":
+    geometry = "not-running"
+    geometry_ok = True
+    try:
+        result = subprocess.run(["hyprctl", "-j", "clients"], text=True, capture_output=True, check=False, timeout=2)
+        clients = json.loads(result.stdout or "[]") if result.returncode == 0 else []
+        matches = [item for item in clients if item.get("class") == "SevenFilesNative" or "Seven Files" in str(item.get("title", ""))]
+        if matches:
+            item = matches[-1]
+            size = item.get("size") or []
+            at = item.get("at") or []
+            floating = bool(item.get("floating"))
+            geometry = f"at={at} size={size} floating={floating}"
+            geometry_ok = floating and len(size) == 2 and int(size[0]) >= 500 and int(size[1]) >= 430
+    except Exception as exc:
+        geometry = f"unknown: {exc}"
+        geometry_ok = True
+    checks.append({"key": "live-geometry", "ok": geometry_ok, "detail": geometry})
+
+ok = all(item["ok"] for item in checks)
+payload = {"schema": "sevenos.files.doctor.v1", "ready": ok, "state": "ready" if ok else "needs-attention", "deep": deep == "1", "checks": checks}
+if fmt == "--json":
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+else:
+    print(f"Seven Files: {payload['state']}")
+    for item in checks:
+        print(f"[{'OK' if item['ok'] else 'MISS'}] {item['key']}: {item['detail']}")
+raise SystemExit(0 if ok else 1)
+PY
+}
+
 ensure_dirs
 
 action="${1:-open}"
@@ -481,6 +563,9 @@ case "$action" in
     ;;
   windows|win|exe|msi)
     run_windows_file "$target"
+    ;;
+  doctor|check)
+    doctor_command "${@:2}"
     ;;
   read|reader|book)
     read_document "$target"

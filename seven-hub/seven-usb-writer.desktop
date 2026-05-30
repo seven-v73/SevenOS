@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS USB Writer
+Name[fr]=Créateur USB SevenOS
+Comment=Write ISO and IMG images to USB drives with SevenOS safety checks
+Comment[fr]=Écrire des images ISO et IMG sur USB avec les protections SevenOS
+Exec=seven-usb-writer open %f
+Icon=drive-removable-media-usb
+Terminal=false
+Categories=Utility;
+MimeType=application/x-cd-image;application/x-raw-disk-image;application/octet-stream;
+StartupNotify=true

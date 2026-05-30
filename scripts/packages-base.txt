@@ -85,6 +85,7 @@ firejail
 bubblewrap
 flatpak
 fastfetch
+pciutils
 btop
 pavucontrol
 inter-font

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=SevenOS Windows Apps
+Name[fr]=Applications Windows SevenOS
+Comment=Run Windows app files through SevenOS compatibility layers
+Comment[fr]=Exécuter les applications Windows via les couches de compatibilité SevenOS
+Exec=seven-wincompat run %f
+Icon=applications-system
+Terminal=false
+Categories=Utility;
+MimeType=application/x-ms-dos-executable;application/x-msdownload;application/x-msi;application/x-ms-installer;application/x-ms-shortcut;application/x-msdos-program;application/vnd.microsoft.portable-executable;
+StartupNotify=true

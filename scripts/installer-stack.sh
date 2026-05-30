@@ -9,7 +9,7 @@ usage() {
 SevenOS installer stack
 
 Usage:
-  ./scripts/installer-stack.sh [status|install|doctor|plan|guide|release|graphical|runtime|iso-runtime] [--json]
+  ./scripts/installer-stack.sh [status|install|doctor|plan|guide|release|graphical|runtime|iso-runtime|experience] [--json]
 
 Actions:
   status   Show installer tooling state
@@ -27,6 +27,8 @@ Actions:
   runtime  Show Calamares runtime source/readiness policy
   iso-runtime
            Show or build the Calamares package source used by the ISO
+  experience
+           Show the public install experience: hardware, GPU, presets and post-install
 EOF
 }
 
@@ -204,7 +206,7 @@ json_string() {
 
 release_json() {
   local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_postinstall_state
-  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state live_desktop_state calamares_branding_state installer_portal_state calamares_source_state
+  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state native_launcher_state live_desktop_state live_native_state calamares_branding_state installer_portal_state calamares_source_state local_repo_db_state local_repo_pkg_state
 
   archinstall_state="$(state archinstall)"
   calamares_state="$(state calamares)"
@@ -214,14 +216,18 @@ release_json() {
   calamares_module_state="$(file_state installer/calamares/modules/sevenos.conf)"
   calamares_postinstall_state="$(contains_state installer/calamares/modules/sevenos.conf "/opt/SevenOS/install.sh base")"
   graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
+  native_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer-native" ]] && printf OK || printf MISS)"
   installer_portal_state="$("$ROOT_DIR/bin/seven-installer" status --json 2>/dev/null | grep -q 'sevenos.installer-portal.v1' && printf OK || printf MISS)"
   live_desktop_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Exec=seven-installer")"
   calamares_branding_state="$(file_state installer/calamares/branding/sevenos/branding.desc)"
   archiso_state="$(dir_state archiso/profile)"
   build_state="$([[ -x "$ROOT_DIR/scripts/build-iso.sh" ]] && printf OK || printf MISS)"
   packages_state="$(file_state archiso/profile/packages.x86_64)"
-  repo_injection_state="$(contains_state scripts/build-iso.sh "/opt/SevenOS")"
+  repo_injection_state="$(contains_state scripts/build-iso.sh "sevenos-local")"
   live_cli_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/opt/SevenOS/bin/seven")"
+  live_native_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "seven-installer-native")"
+  local_repo_db_state="$([[ -s "$ROOT_DIR/archiso/localrepo/x86_64/sevenos-local.db.tar.gz" ]] && printf OK || printf MISS)"
+  local_repo_pkg_state="$(find "$ROOT_DIR/archiso/localrepo/x86_64" -maxdepth 1 -name 'calamares-*.pkg.tar.*' -print -quit 2>/dev/null | grep -q . && printf OK || printf MISS)"
 
   ARCHINSTALL_STATE="$archinstall_state" \
   CALAMARES_STATE="$calamares_state" \
@@ -231,14 +237,18 @@ release_json() {
   CALAMARES_MODULE_STATE="$calamares_module_state" \
   CALAMARES_POSTINSTALL_STATE="$calamares_postinstall_state" \
   GRAPHICAL_LAUNCHER_STATE="$graphical_launcher_state" \
+  NATIVE_LAUNCHER_STATE="$native_launcher_state" \
   INSTALLER_PORTAL_STATE="$installer_portal_state" \
   LIVE_DESKTOP_STATE="$live_desktop_state" \
+  LIVE_NATIVE_STATE="$live_native_state" \
   CALAMARES_BRANDING_STATE="$calamares_branding_state" \
   ARCHISO_STATE="$archiso_state" \
   BUILD_STATE="$build_state" \
   PACKAGES_STATE="$packages_state" \
   REPO_INJECTION_STATE="$repo_injection_state" \
   LIVE_CLI_STATE="$live_cli_state" \
+  LOCAL_REPO_DB_STATE="$local_repo_db_state" \
+  LOCAL_REPO_PKG_STATE="$local_repo_pkg_state" \
   python - <<'PY'
 import json
 import os
@@ -311,6 +321,13 @@ checks = [
         "command": "seven installer graphical",
     },
     {
+        "key": "native-installer-portal",
+        "state": os.environ["NATIVE_LAUNCHER_STATE"],
+        "required": True,
+        "title": "Native SevenOS installer portal",
+        "command": "seven-installer gui",
+    },
+    {
         "key": "installer-portal",
         "state": os.environ["INSTALLER_PORTAL_STATE"],
         "required": True,
@@ -323,6 +340,13 @@ checks = [
         "required": True,
         "title": "Live ISO installer desktop entry",
         "command": "seven installer graphical",
+    },
+    {
+        "key": "live-native-portal",
+        "state": os.environ["LIVE_NATIVE_STATE"],
+        "required": True,
+        "title": "Live ISO native installer portal",
+        "command": "seven-installer gui",
     },
     {
         "key": "calamares-branding",
@@ -358,6 +382,20 @@ checks = [
         "required": True,
         "title": "SevenOS repository injection",
         "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "local-calamares-package",
+        "state": os.environ["LOCAL_REPO_PKG_STATE"],
+        "required": True,
+        "title": "Local Calamares package for ISO",
+        "command": "seven installer iso-runtime --json",
+    },
+    {
+        "key": "local-calamares-repo-db",
+        "state": os.environ["LOCAL_REPO_DB_STATE"],
+        "required": True,
+        "title": "Local ISO repository database",
+        "command": "seven installer iso-runtime --json",
     },
     {
         "key": "live-cli",
@@ -845,7 +883,7 @@ for arg in "$@"; do
     --json|json) JSON_OUTPUT=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *)
-      if [[ "$action" == "iso-runtime" || "$action" == "calamares-iso" ]]; then
+      if [[ "$action" == "iso-runtime" || "$action" == "calamares-iso" || "$action" == "experience" || "$action" == "modern" || "$action" == "hardware" || "$action" == "profiles" || "$action" == "post-install" ]]; then
         PASSTHROUGH_ARGS+=("$arg")
       else
         log_error "Unknown installer option: $arg"; usage; exit 1
@@ -863,6 +901,13 @@ case "$action" in
   graphical) graphical ;;
   runtime|calamares) runtime ;;
   iso-runtime|calamares-iso) iso_runtime "${PASSTHROUGH_ARGS[@]}" ;;
+  experience|modern|hardware|profiles|post-install)
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      "$ROOT_DIR/scripts/installer-experience.sh" "${PASSTHROUGH_ARGS[@]}" --json
+    else
+      "$ROOT_DIR/scripts/installer-experience.sh" "${PASSTHROUGH_ARGS[@]}"
+    fi
+    ;;
   -h|--help|help) usage ;;
   *) log_error "Unknown installer stack action: $action"; usage; exit 1 ;;
 esac
