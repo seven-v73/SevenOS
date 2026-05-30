@@ -732,10 +732,15 @@ class SevenStore(Gtk.Application):
         installed = int(summary.get("installed_apps") or len(self.payload.get("installed_library", [])))
         flatpak_ready = bool(summary.get("flatpak_ready"))
         activity = int(summary.get("activity") or len(self.payload.get("recent_activity", [])))
+        rootfs_ready = int(summary.get("rootfs_ready") or 0)
+        rootfs_total = int(summary.get("rootfs_total") or 0)
+        duplicates = int(summary.get("rootfs_duplicates") or 0)
         rows = [
             (self.tx("Catalog", "Catalogue"), f"{modules_ready}/{modules}" if modules else self.tx("Ready", "Prêt"), self.tx("SevenOS bundles", "bundles SevenOS"), "view-grid"),
             (self.tx("Library", "Bibliothèque"), str(installed), self.tx("visible apps", "apps visibles"), "emblem-default"),
             (self.tx("Sandbox", "Sandbox"), self.tx("Ready", "Prête") if flatpak_ready else self.tx("Setup", "À configurer"), self.tx("Flatpak source", "source Flatpak"), "security-high"),
+            (self.tx("RootFS", "RootFS"), f"{rootfs_ready}/{rootfs_total}" if rootfs_total else self.tx("Ready", "Prêt"), self.tx("mini OS ready", "mini OS prêts"), "drive-harddisk"),
+            (self.tx("Duplication", "Duplication"), str(duplicates), self.tx("tracked packages", "paquets suivis"), "view-list"),
             (self.tx("Activity", "Activité"), str(activity), self.tx("recent actions", "actions récentes"), "document-open-recent"),
         ]
         flow = Gtk.FlowBox()

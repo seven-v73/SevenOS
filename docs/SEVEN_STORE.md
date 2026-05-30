@@ -84,6 +84,7 @@ The current machine contract is:
 sevenpkg strategy --json
 sevenpkg catalog --json
 sevenpkg resolve <app> --json
+sevenpkg footprint --fast --json
 ```
 
 SevenStore search should rank `sevenpkg/apps.json` catalog entries before raw
@@ -100,6 +101,11 @@ resolved: blender -> studio -> pacman -> profile-rootfs
 
 This prevents the UI from presenting backend names too early while still making
 the action auditable.
+
+SevenStore also consumes the fast footprint audit so the UI can show whether
+the six mini OS rootfs views are ready, whether catalog domains are covered, and
+whether package duplication needs release attention. Full byte-size scans remain
+manual through `sevenpkg footprint --json`.
 
 ### Pacman
 

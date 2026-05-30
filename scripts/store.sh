@@ -227,6 +227,10 @@ app_catalog_payload = run_json(
     [str(root / "bin" / "sevenpkg"), "catalog", "--json"],
     {"items": []},
 )
+footprint_payload = run_json(
+    [str(root / "bin" / "sevenpkg"), "footprint", "--fast", "--json"],
+    {"summary": {}, "rootfs": []},
+)
 try:
     activity_payload = json.loads(activity_path.read_text(encoding="utf-8"))
     recent_activity = activity_payload.get("events", [])
@@ -355,6 +359,7 @@ payload = {
     "engine": {
         "schema": "sevenos.package-engine.v1",
         "strategy": strategy_payload,
+        "footprint": footprint_payload,
         "sources": [
             {"key": "pacman", "priority": 1, "trust": "official Arch/SevenOS repositories", "install": "seven store install-app pacman <package>"},
             {"key": "flatpak", "priority": 2, "trust": "sandboxed Flathub applications", "install": "seven store install-app flatpak <app-id>"},
@@ -373,6 +378,7 @@ payload = {
     },
     "profile_collections": PROFILE_COLLECTIONS,
     "app_catalog": app_catalog_payload,
+    "profile_footprint": footprint_payload,
     "summary": {
         "modules": len(modules),
         "modules_ready": sum(1 for item in modules if item["state"] == "OK"),
@@ -383,6 +389,9 @@ payload = {
         "installed_apps": len(installed_library),
         "actions": len(catalog_actions),
         "catalog_apps": len(app_catalog_payload.get("items", [])),
+        "rootfs_ready": footprint_payload.get("summary", {}).get("ready_rootfs", 0),
+        "rootfs_total": footprint_payload.get("summary", {}).get("mini_os", 0),
+        "rootfs_duplicates": footprint_payload.get("summary", {}).get("duplicated_packages", 0),
         "activity": len(recent_activity),
         "profile_apps": sum(len(items) for items in profile_apps.values()),
     },
@@ -1342,7 +1351,13 @@ install_app() {
         command=(bash -lc "${helper_cmd}&& ${install_cmd}")
       fi
       ;;
-    flatpak) command=(flatpak install flathub "$app_id") ;;
+    flatpak)
+      if [[ -n "$profile" ]]; then
+        command=("$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source flatpak)
+      else
+        command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source flatpak --global)
+      fi
+      ;;
     profile) command=(seven profile apps "$app_id") ;;
     *) log_error "Unknown source: $source"; return 1 ;;
   esac
