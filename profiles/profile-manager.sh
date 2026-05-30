@@ -29,6 +29,7 @@ HOST_DATA_HOME="${SEVENOS_HOST_DATA_HOME:-$HOST_HOME/.local/share}"
 STATE_DIR="$HOST_CONFIG_HOME/sevenos"
 STATE_FILE="$STATE_DIR/profile.env"
 STATE_JSON="$STATE_DIR/profile.json"
+PROFILE_LIST_CACHE="$STATE_DIR/profile-list.json"
 LOCK_FILE="$STATE_DIR/profile.lock"
 INSTALLED_PACKAGES_READY=0
 declare -A INSTALLED_PACKAGES=()
@@ -88,6 +89,8 @@ json_escape() {
   value="${value//$'\n'/\\n}"
   value="${value//$'\r'/\\r}"
   value="${value//$'\t'/\\t}"
+  value="${value//$'\b'/\\b}"
+  value="${value//$'\f'/\\f}"
   printf '"%s"\n' "$value"
 }
 
@@ -2250,7 +2253,24 @@ for item in data.get("next", []):
 PY
 }
 
-status_json() {
+profile_list_cache_valid() {
+  [[ "${SEVENOS_PROFILE_REFRESH:-0}" != "1" && -s "$PROFILE_LIST_CACHE" ]] || return 1
+  local dep
+  for dep in \
+    "$STATE_FILE" \
+    "$STATE_DIR/profile-isolation.json" \
+    "$STATE_DIR/profile-services.json" \
+    "$STATE_DIR/inactive-packages.json"; do
+    [[ ! -e "$dep" || "$PROFILE_LIST_CACHE" -nt "$dep" ]] || return 1
+  done
+  if command -v stat >/dev/null 2>&1; then
+    local age
+    age=$(( $(date +%s) - $(stat -c %Y "$PROFILE_LIST_CACHE" 2>/dev/null || printf 0) ))
+    [[ "$age" -le "${SEVENOS_PROFILE_LIST_CACHE_TTL:-600}" ]] || return 1
+  fi
+}
+
+status_json_generate() {
   local first=1
   local active
   active="$(active_profile)"
@@ -2261,6 +2281,22 @@ status_json() {
     profile_json_object "$key"
   done < <(profile_keys)
   printf ']\n'
+}
+
+status_json() {
+  if profile_list_cache_valid; then
+    cat "$PROFILE_LIST_CACHE"
+    printf '\n'
+    return 0
+  fi
+
+  local tmp
+  mkdir -p "$STATE_DIR"
+  tmp="$(mktemp "$STATE_DIR/profile-list.XXXXXX")"
+  status_json_generate >"$tmp"
+  mv "$tmp" "$PROFILE_LIST_CACHE"
+  cat "$PROFILE_LIST_CACHE"
+  printf '\n'
 }
 
 health_json() {
