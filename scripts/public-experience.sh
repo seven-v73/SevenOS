@@ -7,6 +7,10 @@ source "$ROOT_DIR/scripts/lib.sh"
 ACTION="status"
 MODE_TARGET=""
 JSON_OUTPUT=0
+REFRESH_CACHE="${SEVENOS_PUBLIC_EXPERIENCE_REFRESH:-0}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+PUBLIC_EXPERIENCE_CACHE="$CACHE_DIR/public-experience.json"
+PUBLIC_EXPERIENCE_CACHE_TTL="${SEVENOS_PUBLIC_EXPERIENCE_CACHE_TTL:-300}"
 
 usage() {
   cat <<'EOF'
@@ -30,6 +34,7 @@ for arg in "$@"; do
     mode) ACTION="mode" ;;
     public) MODE_TARGET="public" ;;
     --json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown public experience option: $arg"; usage; exit 1 ;;
   esac
@@ -40,7 +45,37 @@ if [[ "$ACTION" == "mode" && "${MODE_TARGET:-public}" != "public" ]]; then
   exit 1
 fi
 
-public_experience_json() {
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1"
+  local ttl="$2"
+  local now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1"
+  local tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+public_experience_json_uncached() {
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
 import json
 import os
@@ -290,6 +325,18 @@ print(json.dumps({
     },
 }, indent=2))
 PY
+}
+
+public_experience_json() {
+  if cache_is_fresh "$PUBLIC_EXPERIENCE_CACHE" "$PUBLIC_EXPERIENCE_CACHE_TTL"; then
+    cat "$PUBLIC_EXPERIENCE_CACHE"
+    return 0
+  fi
+
+  local payload
+  payload="$(public_experience_json_uncached)"
+  printf '%s\n' "$payload" | write_json_cache "$PUBLIC_EXPERIENCE_CACHE" || true
+  printf '%s\n' "$payload"
 }
 
 print_status() {

@@ -62,7 +62,7 @@ state_cache_valid() {
   state_cache_json_valid || return 1
   local age
   age="$(state_cache_age)" || return 1
-  [[ "$age" -le "${SEVENOS_STATE_CACHE_TTL:-20}" ]] || return 1
+  [[ "$age" -le "${SEVENOS_STATE_CACHE_TTL:-180}" ]] || return 1
 }
 
 if state_cache_valid; then
@@ -73,7 +73,7 @@ fi
 
 if [[ "$REFRESH_CACHE" -eq 0 && "${SEVENOS_STATE_REFRESH:-0}" != "1" && -s "$STATE_CACHE" ]]; then
   age="$(state_cache_age 2>/dev/null || printf 999999)"
-  if [[ "$age" -le "${SEVENOS_STATE_STALE_TTL:-300}" ]] && state_cache_json_valid; then
+  if [[ "$age" -le "${SEVENOS_STATE_STALE_TTL:-900}" ]] && state_cache_json_valid; then
     if mkdir "$STATE_CACHE_LOCK" 2>/dev/null; then
       (
         trap 'rmdir "$STATE_CACHE_LOCK" 2>/dev/null || true' EXIT
