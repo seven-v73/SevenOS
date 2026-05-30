@@ -32,6 +32,14 @@ STATE_JSON="$STATE_DIR/profile.json"
 LOCK_FILE="$STATE_DIR/profile.lock"
 INSTALLED_PACKAGES_READY=0
 declare -A INSTALLED_PACKAGES=()
+PROFILE_REQUIREMENTS_COUNTS_READY=0
+declare -A PROFILE_REQUIREMENTS_COUNTS=()
+declare -A PROFILE_COUNTS_CACHE=()
+declare -A PROFILE_APP_STATE_CACHE=()
+declare -A PROFILE_RUNTIME_CACHE=()
+FLATPAK_APPS_READY=0
+declare -A FLATPAK_APPS=()
+ACTIVE_PROFILE_CACHE=""
 
 normalize_profile_key() {
   case "$1" in
@@ -417,36 +425,44 @@ profile_app_command() {
 
 profile_app_state() {
   local app="$1"
+  if [[ -n "${PROFILE_APP_STATE_CACHE[$app]+x}" ]]; then
+    printf '%s' "${PROFILE_APP_STATE_CACHE[$app]}"
+    return 0
+  fi
+
+  local state
   case "$app" in
-    "seven hub") [[ -x "$ROOT_DIR/seven-hub/bin/seven-hub" || -x "$ROOT_DIR/bin/seven" ]] && printf 'OK' || printf 'MISS' ;;
-    "seven baobab") [[ -x "$ROOT_DIR/bin/seven" && -x "$ROOT_DIR/scripts/baobab.sh" ]] && printf 'OK' || printf 'MISS' ;;
-    "seven baobab modules") [[ -x "$ROOT_DIR/bin/seven" && -x "$ROOT_DIR/scripts/baobab.sh" ]] && printf 'OK' || printf 'MISS' ;;
-    "seven files") [[ -x "$ROOT_DIR/bin/seven-files" ]] && printf 'OK' || printf 'MISS' ;;
-    "seven reader") [[ -x "$ROOT_DIR/bin/seven-reader" ]] && printf 'OK' || printf 'MISS' ;;
+    "seven hub") [[ -x "$ROOT_DIR/seven-hub/bin/seven-hub" || -x "$ROOT_DIR/bin/seven" ]] && state='OK' || state='MISS' ;;
+    "seven baobab") [[ -x "$ROOT_DIR/bin/seven" && -x "$ROOT_DIR/scripts/baobab.sh" ]] && state='OK' || state='MISS' ;;
+    "seven baobab modules") [[ -x "$ROOT_DIR/bin/seven" && -x "$ROOT_DIR/scripts/baobab.sh" ]] && state='OK' || state='MISS' ;;
+    "seven files") [[ -x "$ROOT_DIR/bin/seven-files" ]] && state='OK' || state='MISS' ;;
+    "seven reader") [[ -x "$ROOT_DIR/bin/seven-reader" ]] && state='OK' || state='MISS' ;;
     bottles)
-      if command -v flatpak >/dev/null 2>&1 && flatpak info com.usebottles.bottles >/dev/null 2>&1; then
-        printf 'OK'
+      if flatpak_app_installed com.usebottles.bottles; then
+        state='OK'
       else
-        printf 'MISS'
+        state='MISS'
       fi
       ;;
     gimp)
-      command -v gimp >/dev/null 2>&1 || flatpak_app_installed org.gimp.GIMP && printf 'OK' || printf 'MISS'
+      command -v gimp >/dev/null 2>&1 || flatpak_app_installed org.gimp.GIMP && state='OK' || state='MISS'
       ;;
     krita)
-      command -v krita >/dev/null 2>&1 || flatpak_app_installed org.kde.krita && printf 'OK' || printf 'MISS'
+      command -v krita >/dev/null 2>&1 || flatpak_app_installed org.kde.krita && state='OK' || state='MISS'
       ;;
     inkscape)
-      command -v inkscape >/dev/null 2>&1 || flatpak_app_installed org.inkscape.Inkscape && printf 'OK' || printf 'MISS'
+      command -v inkscape >/dev/null 2>&1 || flatpak_app_installed org.inkscape.Inkscape && state='OK' || state='MISS'
       ;;
     blender)
-      command -v blender >/dev/null 2>&1 || flatpak_app_installed org.blender.Blender && printf 'OK' || printf 'MISS'
+      command -v blender >/dev/null 2>&1 || flatpak_app_installed org.blender.Blender && state='OK' || state='MISS'
       ;;
     kdenlive)
-      command -v kdenlive >/dev/null 2>&1 || flatpak_app_installed org.kde.kdenlive && printf 'OK' || printf 'MISS'
+      command -v kdenlive >/dev/null 2>&1 || flatpak_app_installed org.kde.kdenlive && state='OK' || state='MISS'
       ;;
-    *) command -v "$app" >/dev/null 2>&1 && printf 'OK' || printf 'MISS' ;;
+    *) command -v "$app" >/dev/null 2>&1 && state='OK' || state='MISS' ;;
   esac
+  PROFILE_APP_STATE_CACHE["$app"]="$state"
+  printf '%s' "$state"
 }
 
 profile_missing_packages() {
@@ -610,10 +626,14 @@ profile_bootstrap_state() {
 
 profile_runtime_summary_json() {
   local key="$1"
+  if [[ -n "${PROFILE_RUNTIME_CACHE[$key]+x}" ]]; then
+    printf '%s\n' "${PROFILE_RUNTIME_CACHE[$key]}"
+    return 0
+  fi
   local isolation_file="$STATE_DIR/profile-isolation.json"
   local services_file="$STATE_DIR/profile-services.json"
   local inactive_file="$STATE_DIR/inactive-packages.json"
-  python - "$key" "$isolation_file" "$services_file" "$inactive_file" "$(active_profile)" <<'PY'
+  PROFILE_RUNTIME_CACHE["$key"]="$(python - "$key" "$isolation_file" "$services_file" "$inactive_file" "$(active_profile)" <<'PY'
 import json
 import os
 import sys
@@ -695,9 +715,15 @@ payload = {
 }
 print(json.dumps(payload, separators=(",", ":")))
 PY
+)"
+  printf '%s\n' "${PROFILE_RUNTIME_CACHE[$key]}"
 }
 
 active_profile() {
+  if [[ -n "$ACTIVE_PROFILE_CACHE" ]]; then
+    printf '%s\n' "$ACTIVE_PROFILE_CACHE"
+    return 0
+  fi
   local key
   if [[ -f "$STATE_FILE" ]]; then
     # shellcheck disable=SC1090
@@ -706,7 +732,8 @@ active_profile() {
   else
     key="equinox"
   fi
-  normalize_profile_key "$key"
+  ACTIVE_PROFILE_CACHE="$(normalize_profile_key "$key")"
+  printf '%s\n' "$ACTIVE_PROFILE_CACHE"
 }
 
 profile_migration_json() {
@@ -977,7 +1004,22 @@ package_alternatives() {
 
 flatpak_app_installed() {
   local app_id="$1"
-  command -v flatpak >/dev/null 2>&1 && flatpak info "$app_id" >/dev/null 2>&1
+  if [[ "$FLATPAK_APPS_READY" -eq 0 ]]; then
+    FLATPAK_APPS_READY=1
+    if command -v flatpak >/dev/null 2>&1; then
+      local app
+      while IFS= read -r app; do
+        [[ -n "$app" ]] && FLATPAK_APPS["$app"]=1
+      done < <(
+        if command -v timeout >/dev/null 2>&1; then
+          timeout 1.2 flatpak list --app --columns=application 2>/dev/null || true
+        else
+          flatpak list --app --columns=application 2>/dev/null || true
+        fi
+      )
+    fi
+  fi
+  [[ -n "${FLATPAK_APPS[$app_id]+x}" ]]
 }
 
 package_flatpak_equivalent() {
@@ -997,18 +1039,48 @@ package_flatpak_equivalent() {
   esac
 }
 
+ensure_profile_requirements_counts() {
+  [[ "$PROFILE_REQUIREMENTS_COUNTS_READY" -eq 1 ]] && return 0
+  PROFILE_REQUIREMENTS_COUNTS_READY=1
+
+  local line key installed total
+  while IFS=$'\t' read -r key installed total; do
+    [[ -n "${key:-}" && "$installed" =~ ^[0-9]+$ && "$total" =~ ^[0-9]+$ ]] || continue
+    PROFILE_REQUIREMENTS_COUNTS["$key"]="$installed $total"
+  done < <(
+    "$ROOT_DIR/bin/seven-profile-requirements" status all --json 2>/dev/null |
+      python -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    raise SystemExit(0)
+profiles = data.get("profiles") or {}
+for key, item in profiles.items():
+    summary = item.get("summary") or {}
+    total = int(summary.get("required") or 0)
+    missing = int(summary.get("required_missing") or 0)
+    print(f"{key}\t{total - missing}\t{total}")
+' 2>/dev/null || true
+  )
+}
+
 profile_counts() {
   local key="$1"
   local installed=0
   local total=0
   local package package_file
 
+  if [[ -n "${PROFILE_COUNTS_CACHE[$key]+x}" ]]; then
+    printf '%s\n' "${PROFILE_COUNTS_CACHE[$key]}"
+    return 0
+  fi
+
   if [[ -x "$ROOT_DIR/bin/seven-profile-requirements" ]]; then
-    local counts
-    counts="$("$ROOT_DIR/bin/seven-profile-requirements" status "$key" --json 2>/dev/null |
-      python -c 'import json,sys; data=json.load(sys.stdin); s=data.get("summary") or {}; total=int(s.get("required") or 0); missing=int(s.get("required_missing") or 0); print(f"{total - missing} {total}")' 2>/dev/null || true)"
-    if [[ "$counts" =~ ^[0-9]+[[:space:]][0-9]+$ ]]; then
-      printf '%s\n' "$counts"
+    ensure_profile_requirements_counts
+    if [[ -n "${PROFILE_REQUIREMENTS_COUNTS[$key]+x}" ]]; then
+      PROFILE_COUNTS_CACHE["$key"]="${PROFILE_REQUIREMENTS_COUNTS[$key]}"
+      printf '%s\n' "${PROFILE_COUNTS_CACHE[$key]}"
       return 0
     fi
   fi
@@ -1024,6 +1096,7 @@ profile_counts() {
     done < "$package_file"
   done < <(profile_package_files "$key")
 
+  PROFILE_COUNTS_CACHE["$key"]="$installed $total"
   printf '%s %s\n' "$installed" "$total"
 }
 
