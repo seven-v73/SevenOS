@@ -10,6 +10,7 @@ RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/sevenos"
 EXPERIENCE_DIR="$CONFIG_HOME/sevenos"
 EXPERIENCE_STATE="$EXPERIENCE_DIR/shell-experience.json"
 EXPERIENCE_EVENTS="$STATE_HOME/sevenos/shell-experience-events.jsonl"
+EXPERIENCE_WARMUP_STAMP="$RUNTIME_DIR/shell-experience-warmup.stamp"
 
 usage() {
   cat <<'EOF'
@@ -361,15 +362,39 @@ warmup_experience() {
     printf 'DRY-RUN > Experience > Warmup Spotlight, apps, motion and state caches\n'
     return 0
   fi
-  event_log warmup "SevenOS Shell" "cache refresh"
   mkdir -p "$RUNTIME_DIR"
+  if [[ -f "$EXPERIENCE_WARMUP_STAMP" ]] &&
+     [[ $(( $(date +%s) - $(stat -c %Y "$EXPERIENCE_WARMUP_STAMP" 2>/dev/null || printf 0) )) -lt 45 ]]; then
+    write_state >/dev/null 2>&1 || true
+    return 0
+  fi
+  : >"$EXPERIENCE_WARMUP_STAMP"
+  event_log warmup "SevenOS Shell" "cache refresh"
   {
-    "$ROOT_DIR/bin/seven-spotlight" index >/dev/null 2>&1 || true
-    "$ROOT_DIR/bin/seven-apps" json >/dev/null 2>&1 || true
-    "$ROOT_DIR/scripts/motion.sh" status --json >/dev/null 2>&1 || true
+    run_warmup() {
+      if command -v timeout >/dev/null 2>&1; then
+        timeout "${1:-5}" "${@:2}" >/dev/null 2>&1 || true
+      else
+        "${@:2}" >/dev/null 2>&1 || true
+      fi
+    }
+    if command -v ionice >/dev/null 2>&1; then
+      renice 10 "$$" >/dev/null 2>&1 || true
+      ionice -c 3 -p "$$" >/dev/null 2>&1 || true
+    fi
+    run_warmup 6 "$ROOT_DIR/bin/seven-spotlight" index
+    run_warmup 4 "$ROOT_DIR/bin/seven-apps" json
+    run_warmup 4 "$ROOT_DIR/bin/seven-launchpad-native" --doctor --json
+    run_warmup 5 "$ROOT_DIR/bin/seven-store-native" --json
+    run_warmup 5 "$ROOT_DIR/profiles/profile-manager.sh" list --json
+    run_warmup 4 "$ROOT_DIR/bin/seven-home-native" --json
+    run_warmup 3 "$ROOT_DIR/scripts/motion.sh" status --json
+    run_warmup 3 "$ROOT_DIR/scripts/theme-session.sh" status --json
     write_state >/dev/null 2>&1 || true
   } &
-  notify_user "SevenOS Experience" "Search, apps and shell state are warming up."
+  if [[ "${SEVENOS_EXPERIENCE_SILENT_WARMUP:-0}" != "1" ]]; then
+    notify_user "SevenOS Experience" "Search, apps, profiles and Store are warming up."
+  fi
 }
 
 doctor() {

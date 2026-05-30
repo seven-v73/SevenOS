@@ -5,6 +5,7 @@ After=sevenos-wallpaper.service sevenos-waybar.service
 
 [Service]
 Type=oneshot
+Environment=SEVENOS_EXPERIENCE_SILENT_WARMUP=1
 ExecStart=%h/.local/bin/seven experience warmup
 
 [Install]

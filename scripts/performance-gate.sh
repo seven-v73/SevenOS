@@ -90,6 +90,7 @@ surface_paths = {
     "public_studio": "bin/seven-public-studio",
 }
 surfaces = {key: read(path) for key, path in surface_paths.items()}
+shell_experience = read("scripts/shell-experience.sh")
 
 feedback_missing = []
 for key, body in surfaces.items():
@@ -194,6 +195,28 @@ check(
     f"{progress_sources}/5 surfaces expose ProgressBar or Spinner.",
     "medium",
     "seven performance-gate",
+)
+
+warmup_targets = {
+    "spotlight": "bin/seven-spotlight",
+    "apps": "bin/seven-apps",
+    "launchpad": "bin/seven-launchpad-native",
+    "store": "bin/seven-store-native",
+    "profiles": "profiles/profile-manager.sh",
+    "home": "bin/seven-home-native",
+    "motion": "scripts/motion.sh",
+    "theme": "scripts/theme-session.sh",
+}
+missing_warmup = [name for name, token in warmup_targets.items() if token not in shell_experience]
+check(
+    "session-warmup-coverage",
+    not missing_warmup and "SEVENOS_EXPERIENCE_SILENT_WARMUP" in read("bin/seven-session") and "SEVENOS_EXPERIENCE_SILENT_WARMUP" in read("systemd/user/sevenos-shell-experience.service"),
+    "Préchauffage de session complet",
+    "Complete session warmup",
+    f"Cibles manquantes: {', '.join(missing_warmup) if missing_warmup else 'aucune'}.",
+    f"Missing targets: {', '.join(missing_warmup) if missing_warmup else 'none'}.",
+    "high",
+    "seven experience warmup",
 )
 
 issues = [item for item in checks if not item["ok"]]

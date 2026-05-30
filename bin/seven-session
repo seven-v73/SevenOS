@@ -126,7 +126,7 @@ warmup_shell_experience() {
   fi
   if [[ -x "$ROOT_DIR/scripts/shell-experience.sh" ]]; then
     log "warming Shell Experience"
-    "$ROOT_DIR/scripts/shell-experience.sh" warmup >/tmp/sevenos-shell-experience.log 2>&1 || true
+    SEVENOS_EXPERIENCE_SILENT_WARMUP=1 "$ROOT_DIR/scripts/shell-experience.sh" warmup >/tmp/sevenos-shell-experience.log 2>&1 || true
   fi
 }
 
