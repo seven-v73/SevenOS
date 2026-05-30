@@ -145,6 +145,12 @@ deadlocks. If the cache is missing or stale, SevenStore falls back to direct
 SevenPkg commands and the next state refresh will publish the unified package
 view again.
 
+The Store doctor enforces the same contract. It must fail if the payload loses
+the SevenPkg strategy schema, drops one of the seven domains, exposes fewer than
+the expected catalog entries, or reports fewer than six ready mini OS rootfs
+views. This keeps Store, Hub, Settings and first-run checks aligned on one
+software model.
+
 ### Pacman
 
 Official repositories have the highest trust rank.

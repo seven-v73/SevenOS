@@ -1317,6 +1317,7 @@ PY
 
 doctor() {
   local failures=0
+  local payload_file
   printf 'SevenStore Doctor\n'
   printf '=================\n'
 
@@ -1333,7 +1334,74 @@ doctor() {
     fi
   done
 
-  payload_json | python -m json.tool >/dev/null || failures=$((failures + 1))
+  payload_file="$(mktemp)"
+  if payload_json >"$payload_file" && python -m json.tool "$payload_file" >/dev/null; then
+    printf '[OK] store payload is valid JSON\n'
+  else
+    printf '[MISS] store payload is not valid JSON\n'
+    failures=$((failures + 1))
+  fi
+
+  if python - "$payload_file" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+failures = []
+
+expected_domains = {"equinox", "forge", "studio", "shield", "atlas", "baobab", "pulse"}
+
+if payload.get("schema") != "sevenos.store.v1":
+    failures.append("store schema")
+
+strategy = payload.get("engine", {}).get("strategy") or {}
+strategy_profiles = strategy.get("profiles") or []
+strategy_domains = {item.get("profile") for item in strategy_profiles if isinstance(item, dict)}
+if strategy.get("schema") != "sevenos.sevenpkg-strategy.v1" or strategy_domains != expected_domains:
+    failures.append("SevenPkg strategy domains")
+
+catalog = payload.get("app_catalog") or {}
+catalog_items = catalog.get("items") or []
+catalog_domains = {item.get("domain") for item in catalog_items if isinstance(item, dict)}
+if catalog.get("schema") != "sevenos.app-catalog.v1":
+    failures.append("app catalog schema")
+if int(catalog.get("count", 0) or 0) < 12 or len(catalog_items) < 12:
+    failures.append("app catalog count")
+if catalog_domains != expected_domains:
+    failures.append("app catalog domains")
+
+footprint = payload.get("profile_footprint") or {}
+footprint_summary = footprint.get("summary") or {}
+rootfs = footprint.get("rootfs") or []
+if footprint.get("schema") != "sevenos.sevenpkg-footprint.v1":
+    failures.append("profile footprint schema")
+if int(footprint_summary.get("mini_os", 0) or 0) != 6 or int(footprint_summary.get("ready_rootfs", 0) or 0) != 6:
+    failures.append("profile rootfs readiness")
+if len(rootfs) != 6:
+    failures.append("profile rootfs list")
+
+summary = payload.get("summary") or {}
+if int(summary.get("catalog_apps", 0) or 0) < 12:
+    failures.append("store summary catalog")
+if int(summary.get("rootfs_ready", 0) or 0) != 6 or int(summary.get("rootfs_total", 0) or 0) != 6:
+    failures.append("store summary rootfs")
+
+if failures:
+    for item in failures:
+        print(f"[MISS] {item}")
+    raise SystemExit(1)
+
+print("[OK] SevenPkg strategy exposes Equinox + 6 mini OS domains")
+print(f"[OK] SevenPkg app catalog exposes {len(catalog_items)} routed apps")
+print("[OK] SevenPkg footprint reports 6/6 mini OS rootfs ready")
+print("[OK] SevenStore summary matches shared package state")
+PY
+  then
+    :
+  else
+    failures=$((failures + 1))
+  fi
+  rm -f "$payload_file"
 
   if [[ "$failures" -gt 0 ]]; then
     log_error "SevenStore preview has $failures issue(s)."
