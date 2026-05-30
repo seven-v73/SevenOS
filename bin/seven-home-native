@@ -154,12 +154,25 @@ def run_detached(command: str) -> None:
 
 
 def home_payload() -> dict:
-    current = run_json("profile", "current", "--json", fallback={}, timeout=1.5)
-    health = run_json("health", "status", "--json", fallback={}, timeout=2.0, extra_env={"SEVENOS_HEALTH_FAST": "1"})
-    bridge = run_json("bridge", "status", "--json", fallback={}, timeout=2.0)
-    motion = run_json("motion", "status", "--json", fallback={}, timeout=1.5)
-    shell_experience = run_json("experience", "status", "--json", fallback={}, timeout=1.5)
-    atlas = run_json("atlas", "status", "--json", fallback={}, timeout=2.0)
+    state = run_json("state", "--json", fallback={}, timeout=1.0)
+    current = state.get("active_profile") if isinstance(state.get("active_profile"), dict) else {}
+    if not current:
+        current = run_json("profile", "current", "--json", fallback={}, timeout=1.0)
+    health = state.get("health") if isinstance(state.get("health"), dict) else {}
+    if not health:
+        health = run_json("health", "status", "--json", fallback={}, timeout=1.2, extra_env={"SEVENOS_HEALTH_FAST": "1"})
+    bridge = state.get("bridge") if isinstance(state.get("bridge"), dict) else {}
+    if not bridge:
+        bridge = run_json("bridge", "status", "--json", fallback={}, timeout=1.2)
+    shell_experience = state.get("shell_experience") if isinstance(state.get("shell_experience"), dict) else {}
+    if not shell_experience:
+        shell_experience = run_json("experience", "status", "--json", fallback={}, timeout=1.0)
+    motion = shell_experience.get("motion") if isinstance(shell_experience.get("motion"), dict) else {}
+    if not motion:
+        motion = run_json("motion", "status", "--json", fallback={}, timeout=1.0)
+    atlas = state.get("atlas") if isinstance(state.get("atlas"), dict) else {}
+    if not atlas:
+        atlas = run_json("atlas", "status", "--json", fallback={}, timeout=1.2)
     atlas_summary = atlas.get("summary", {}) if isinstance(atlas.get("summary"), dict) else {}
     return {
         "schema": "sevenos.home.v1",

@@ -33,7 +33,10 @@ from seven_i18n import language_code, tr_text  # noqa: E402
 import seven_theme  # noqa: E402
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "sevenos"
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos"
 PROFILE_UI_FILE = CONFIG_DIR / "profile-ui.json"
+STORE_CACHE_FILE = CACHE_DIR / "store-native.json"
+STORE_CACHE_TTL = int(os.environ.get("SEVENOS_STORE_NATIVE_CACHE_TTL", "300"))
 
 
 def read_profile_ui() -> dict:
@@ -98,6 +101,35 @@ def run_json(command: list[str], fallback):
         return json.loads(result.stdout)
     except Exception:
         return fallback
+
+
+def cache_age(path: Path) -> float:
+    try:
+        return max(0.0, dt.datetime.now().timestamp() - path.stat().st_mtime)
+    except Exception:
+        return 999999.0
+
+
+def cached_store_payload(refresh: bool = False) -> dict:
+    fallback = {"schema": "sevenos.store.v1", "state": "MISS", "summary": {}, "modules": [], "apps": [], "profile_collections": {}}
+    if not refresh and os.environ.get("SEVENOS_STORE_REFRESH") != "1" and STORE_CACHE_FILE.is_file() and cache_age(STORE_CACHE_FILE) <= STORE_CACHE_TTL:
+        try:
+            data = json.loads(STORE_CACHE_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            pass
+    payload = run_json([str(ROOT / "scripts/store.sh"), "json"], fallback)
+    if isinstance(payload, dict):
+        try:
+            CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            tmp = STORE_CACHE_FILE.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            tmp.replace(STORE_CACHE_FILE)
+        except Exception:
+            pass
+        return payload
+    return fallback
 
 
 def run_text(command: list[str]) -> str:
@@ -171,6 +203,7 @@ class SevenStore(Gtk.Application):
         self.current_view = "home"
         self.nav_buttons: dict[str, Gtk.Button] = {}
         self.active_nav = "discover"
+        self._profiles_cache: list[dict] | None = None
 
     def tx(self, en: str, fr: str, **values: object) -> str:
         text = fr if language_code().startswith("fr") else en
@@ -186,7 +219,7 @@ class SevenStore(Gtk.Application):
         provider.load_from_data(css.encode("utf-8"))
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
-        self.payload = run_json([str(ROOT / "scripts/store.sh"), "json"], {"summary": {}, "modules": [], "apps": [], "profile_collections": {}})
+        self.payload = cached_store_payload()
 
         self.window = Gtk.ApplicationWindow(application=self)
         self.window.set_name("seven-store")
@@ -418,18 +451,24 @@ class SevenStore(Gtk.Application):
         profile = self.active_profile_key()
         if not profile:
             return "EQX"
-        profiles = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
+        profiles = self.profiles_payload()
         for item in profiles if isinstance(profiles, list) else []:
             if item.get("key") == profile:
                 return str(item.get("short_label") or item.get("key") or "EQX").upper()
         return "EQX"
 
     def active_profile_key(self) -> str:
-        profiles = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
+        profiles = self.profiles_payload()
         for item in profiles if isinstance(profiles, list) else []:
             if item.get("active"):
                 return str(item.get("key") or "equinox")
         return "equinox"
+
+    def profiles_payload(self) -> list[dict]:
+        if self._profiles_cache is None:
+            payload = run_json([str(ROOT / "bin/seven"), "profile", "status", "--json"], [])
+            self._profiles_cache = payload if isinstance(payload, list) else []
+        return self._profiles_cache
 
     def clear(self, box: Gtk.Box | None = None) -> None:
         target = box or self.content
@@ -450,7 +489,7 @@ class SevenStore(Gtk.Application):
 
     def refresh_worker(self) -> None:
         run_text([str(ROOT / "scripts/store.sh"), "refresh"])
-        payload = run_json([str(ROOT / "scripts/store.sh"), "json"], {"summary": {}, "modules": [], "apps": [], "profile_collections": {}})
+        payload = cached_store_payload(refresh=True)
         GLib.idle_add(self.finish_refresh, payload)
 
     def finish_refresh(self, payload: dict) -> bool:
@@ -1659,7 +1698,7 @@ def main() -> int:
     if args.probe:
         return probe()
     if args.json:
-        payload = run_json([str(ROOT / "scripts/store.sh"), "json"], {"schema": "sevenos.store.v1", "state": "MISS"})
+        payload = cached_store_payload()
         available, error = gtk_available()
         print(json.dumps({"schema": "sevenos.store-native.v1", "native": available, "error": error, "store": payload}, indent=2))
         return 0

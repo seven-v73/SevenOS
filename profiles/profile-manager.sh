@@ -2255,14 +2255,7 @@ PY
 
 profile_list_cache_valid() {
   [[ "${SEVENOS_PROFILE_REFRESH:-0}" != "1" && -s "$PROFILE_LIST_CACHE" ]] || return 1
-  local dep
-  for dep in \
-    "$STATE_FILE" \
-    "$STATE_DIR/profile-isolation.json" \
-    "$STATE_DIR/profile-services.json" \
-    "$STATE_DIR/inactive-packages.json"; do
-    [[ ! -e "$dep" || "$PROFILE_LIST_CACHE" -nt "$dep" ]] || return 1
-  done
+  [[ ! -e "$STATE_FILE" || "$PROFILE_LIST_CACHE" -nt "$STATE_FILE" ]] || return 1
   if command -v stat >/dev/null 2>&1; then
     local age
     age=$(( $(date +%s) - $(stat -c %Y "$PROFILE_LIST_CACHE" 2>/dev/null || printf 0) ))
