@@ -107,6 +107,7 @@ surface_natives = {
     "mini-os-boundaries": "bin/seven-mini-boundaries-native",
     "quick-settings": "bin/seven-quick-settings-native",
     "shield-center": "bin/seven-shield-center-native",
+    "atlas-center": "bin/seven-mini-os-center",
     "windows-bridge": "bin/seven-windows-assistant",
     "doctor": "bin/seven-doctor-native",
     "window-controls": "bin/seven-window-controls-native",
@@ -224,9 +225,9 @@ routes = [
     {
         "intent": "atlas-workflow",
         "label": "Explore documents, maps and OCR",
-        "surface": "atlas-explorer",
-        "action_id": "atlas.status",
-        "command": "seven atlas status",
+        "surface": "atlas-center",
+        "action_id": "atlas.open",
+        "command": "seven atlas open",
         "backend": "Atlas requirements, documents, maps, OCR",
     },
     {
@@ -282,6 +283,7 @@ state = "routed" if score >= 90 else "partial-routes" if score >= 75 else "backe
 
 print(json.dumps({
     "schema": "sevenos.routes.v1",
+    "root": str(root.resolve()),
     "state": state,
     "score": score,
     "rule": "User intent -> SevenOS route -> backend implementation.",
@@ -300,7 +302,19 @@ PY
 
 json_cache_valid() {
   [[ -s "$1" ]] || return 1
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {

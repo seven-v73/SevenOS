@@ -126,6 +126,7 @@ all_ready = bool(core["ready"] and ready_universes == len(universes))
 
 print(json.dumps({
     "schema": "sevenos.universes.v1",
+    "root": str(root.resolve()),
     "state": "ready" if all_ready else "attention",
     "score": round((ready_universes + (1 if core["ready"] else 0)) / 8 * 100),
     "core": core,
@@ -158,7 +159,21 @@ PY
 }
 
 json_cache_valid() {
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+if int(data.get("score", 0) or 0) < 90:
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {

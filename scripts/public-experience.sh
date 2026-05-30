@@ -11,6 +11,7 @@ REFRESH_CACHE="${SEVENOS_PUBLIC_EXPERIENCE_REFRESH:-0}"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
 PUBLIC_EXPERIENCE_CACHE="$CACHE_DIR/public-experience.json"
 PUBLIC_EXPERIENCE_CACHE_TTL="${SEVENOS_PUBLIC_EXPERIENCE_CACHE_TTL:-300}"
+PUBLIC_EXPERIENCE_CACHE_VERSION="2026-05-public-quality-v2"
 
 usage() {
   cat <<'EOF'
@@ -47,7 +48,23 @@ fi
 
 json_cache_valid() {
   [[ -s "$1" ]] || return 1
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$PUBLIC_EXPERIENCE_CACHE_VERSION" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    with Path(sys.argv[1]).open(encoding="utf-8") as handle:
+        data = json.load(handle)
+except Exception:
+    raise SystemExit(1)
+if data.get("cache_version") != sys.argv[2]:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[3]).resolve()):
+    raise SystemExit(1)
+if int(data.get("score", 0) or 0) < 90:
+    raise SystemExit(1)
+PY
 }
 
 cache_is_fresh() {
@@ -76,7 +93,7 @@ write_json_cache() {
 }
 
 public_experience_json_uncached() {
-  SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
+  SEVENOS_ROOT="$ROOT_DIR" SEVENOS_PUBLIC_EXPERIENCE_CACHE_VERSION="$PUBLIC_EXPERIENCE_CACHE_VERSION" python - <<'PY'
 import json
 import os
 import subprocess
@@ -294,6 +311,8 @@ daily_ready = not any(item["severity"] in {"critical", "high"} and item["key"] n
 
 print(json.dumps({
     "schema": "sevenos.public-experience.v1",
+    "cache_version": os.environ.get("SEVENOS_PUBLIC_EXPERIENCE_CACHE_VERSION", "unknown"),
+    "root": str(root.resolve()),
     "state": "public-quality-ready" if public_ready else "daily-quality-ready" if daily_ready else "quality-needs-attention",
     "score": score,
     "daily_quality_ready": daily_ready,

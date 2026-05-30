@@ -54,7 +54,19 @@ LAST_REPORT_FILE="$UPDATE_STATE_DIR/last-report.json"
 
 json_cache_valid() {
   [[ -s "$1" ]] || return 1
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {
@@ -357,7 +369,7 @@ print(json.dumps({
     "repo_pending": repo_pending,
     "pending_known": len(known_pending) == 3,
     "fast_mode": fast_mode,
-    "root": str(root),
+    "root": str(root.resolve()),
     "preferred_root": "/opt/SevenOS",
     "repository": {
         "state": "OK" if is_git and upstream else "PART" if is_git else "MISS",

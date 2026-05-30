@@ -271,6 +271,7 @@ state = "differentiated" if score >= 90 else "needs-polish" if score >= 70 else 
 
 print(json.dumps({
     "schema": "sevenos.differentiators.v1",
+    "root": str(root.resolve()),
     "state": state,
     "score": score,
     "summary": {
@@ -294,7 +295,21 @@ PY
 }
 
 json_cache_valid() {
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+if int(data.get("score", 0) or 0) < 80:
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {

@@ -252,7 +252,7 @@ for path in ("bin/seven-settings-native", "bin/seven-experience-center"):
     raw_external.extend(f"{path}:{item}" for item in matches)
 check(
     "raw-external-contained",
-    len(raw_external) <= 4,
+    len(raw_external) == 0,
     "Sorties externes contenues",
     "Contained external escapes",
     f"{len(raw_external)} ouvertures directes de fichiers/dossiers détectées.",

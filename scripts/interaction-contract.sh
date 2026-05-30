@@ -284,6 +284,7 @@ state = "ready" if not issues else "attention"
 print(json.dumps({
     "schema": "sevenos.interaction-gate.v1",
     "action": action,
+    "root": str(root.resolve()),
     "state": state,
     "score": score,
     "summary": {"checks": len(selected), "ok": ok_count, "issues": len(issues)},
@@ -301,7 +302,26 @@ PY
 }
 
 json_cache_valid() {
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+if data.get("state") != "ready":
+    raise SystemExit(1)
+if int(data.get("score", 0) or 0) < 90:
+    raise SystemExit(1)
+issues = data.get("issues")
+if isinstance(issues, list) and issues:
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {

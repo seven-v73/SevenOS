@@ -8,7 +8,7 @@ usage() {
 SevenOS graphical installer launcher
 
 Usage:
-  seven-installer [open|gui|status|portal|guide] [--json]
+  seven-installer [open|gui|status|portal|guide|live-status|live-notify|live-reset|live-retry] [--json]
 
 This launcher prefers Calamares when it is available in the live ISO. When the
 graphical runtime is missing, it falls back to the SevenOS guided installer
@@ -61,6 +61,7 @@ status_json() {
   python - <<'PY'
 import json
 import os
+import time
 
 calamares = os.environ.get("CALAMARES_STATE", "MISS")
 archinstall = os.environ.get("ARCHINSTALL_STATE", "MISS")
@@ -106,6 +107,663 @@ print(json.dumps({
     "next": runtime_next,
 }, indent=2))
 PY
+}
+
+live_status_json() {
+  local live_state_dir live_cache_dir started_marker ready_marker log_file status_file live_session first_screen log_tail live_ready_payload
+  local nm_state nm_wifi nm_connectivity
+  local storage_payload
+  live_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+  live_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+  started_marker="$live_state_dir/live-first-screen-started"
+  ready_marker="$live_state_dir/live-installer-opened"
+  log_file="$live_cache_dir/live-ready.log"
+  status_file="$live_state_dir/live-status.json"
+  [[ -n "${SEVENOS_LIVE_SESSION:-}" ]] && live_session=true || live_session=false
+  if [[ -e "$ready_marker" ]]; then
+    first_screen="opened"
+  elif [[ -e "$started_marker" ]]; then
+    first_screen="started"
+  else
+    first_screen="not-started"
+  fi
+  if [[ -r "$log_file" ]]; then
+    log_tail="$(tail -n 12 "$log_file" | python -c 'import json,sys; print(json.dumps(sys.stdin.read().splitlines()))')"
+  else
+    log_tail="[]"
+  fi
+  if [[ -r "$status_file" ]]; then
+    live_ready_payload="$(python -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1]))))' "$status_file" 2>/dev/null || printf '{}')"
+  else
+    live_ready_payload="{}"
+  fi
+  if command -v nmcli >/dev/null 2>&1; then
+    nm_state="$(nmcli -t -f STATE general 2>/dev/null | head -n 1 || printf unknown)"
+    nm_wifi="$(nmcli radio wifi 2>/dev/null || printf unknown)"
+    nm_connectivity="$(nmcli -t -f CONNECTIVITY general 2>/dev/null | head -n 1 || printf unknown)"
+  else
+    nm_state="unavailable"
+    nm_wifi="unknown"
+    nm_connectivity="unknown"
+  fi
+  if command -v lsblk >/dev/null 2>&1; then
+    storage_payload="$(lsblk -J -b -o NAME,TYPE,RM,SIZE,MODEL,TRAN,MOUNTPOINTS 2>/dev/null || printf '{}')"
+  else
+    storage_payload="{}"
+  fi
+  LIVE_SESSION="$live_session" \
+  FIRST_SCREEN="$first_screen" \
+  LOG_FILE="$log_file" \
+  LOG_TAIL="$log_tail" \
+  LIVE_READY_PAYLOAD="$live_ready_payload" \
+  NM_STATE="$nm_state" \
+  NM_WIFI="$nm_wifi" \
+  NM_CONNECTIVITY="$nm_connectivity" \
+  STORAGE_PAYLOAD="$storage_payload" \
+  PORTAL_JSON="$(status_json)" \
+  python - <<'PY'
+import json
+import os
+import time
+
+try:
+    portal = json.loads(os.environ.get("PORTAL_JSON", "{}"))
+except json.JSONDecodeError:
+    portal = {}
+try:
+    log_tail = json.loads(os.environ.get("LOG_TAIL", "[]"))
+except json.JSONDecodeError:
+    log_tail = []
+try:
+    live_ready = json.loads(os.environ.get("LIVE_READY_PAYLOAD", "{}"))
+except json.JSONDecodeError:
+    live_ready = {}
+try:
+    storage_payload = json.loads(os.environ.get("STORAGE_PAYLOAD", "{}"))
+except json.JSONDecodeError:
+    storage_payload = {}
+
+def flatten_devices(items):
+    result = []
+    for item in items or []:
+        result.append(item)
+        result.extend(flatten_devices(item.get("children", [])))
+    return result
+
+def lang():
+    value = " ".join([
+        os.environ.get("SEVENOS_LANGUAGE", ""),
+        os.environ.get("LANGUAGE", ""),
+        os.environ.get("LC_MESSAGES", ""),
+        os.environ.get("LANG", ""),
+    ]).lower()
+    return "fr" if "fr" in value else "en"
+
+def tr(fr, en):
+    return fr if lang() == "fr" else en
+
+first_screen = os.environ.get("FIRST_SCREEN", "not-started")
+session_id = live_ready.get("session_id") or ""
+state = live_ready.get("state") or ("ready" if first_screen == "opened" else ("starting" if first_screen == "started" else "idle"))
+progress = live_ready.get("progress")
+if progress is None:
+    progress = 100 if state == "ready" else (35 if state == "starting" else 0)
+updated_at = live_ready.get("updated_at")
+started_at = live_ready.get("started_at")
+now = int(time.time())
+try:
+    status_age_seconds = max(0, now - int(updated_at)) if updated_at else None
+except (TypeError, ValueError):
+    status_age_seconds = None
+try:
+    elapsed_seconds = max(0, now - int(started_at)) if started_at else live_ready.get("elapsed_seconds")
+except (TypeError, ValueError):
+    elapsed_seconds = live_ready.get("elapsed_seconds")
+status_fresh = status_age_seconds is None or status_age_seconds <= 30 or state in {"ready", "closed", "error", "idle"}
+pid = live_ready.get("pid")
+pid_alive = None
+if pid:
+    try:
+        os.kill(int(pid), 0)
+        pid_alive = True
+    except (OSError, ValueError):
+        pid_alive = False
+        if state == "ready":
+            state = "closed"
+nm_state = os.environ.get("NM_STATE", "unknown")
+nm_wifi = os.environ.get("NM_WIFI", "unknown")
+nm_connectivity = os.environ.get("NM_CONNECTIVITY", "unknown")
+network_connected = nm_state == "connected" or nm_connectivity == "full"
+devices = flatten_devices(storage_payload.get("blockdevices", []))
+disks = [
+    item for item in devices
+    if item.get("type") == "disk"
+    and not str(item.get("name", "")).startswith(("zram", "loop", "ram"))
+]
+removable = [item for item in disks if bool(item.get("rm"))]
+install_targets = [
+    item for item in disks
+    if not bool(item.get("rm")) and int(item.get("size") or 0) >= 16 * 1024 * 1024 * 1024
+]
+mem_total_kib = 0
+try:
+    with open("/proc/meminfo", encoding="utf-8") as handle:
+        for line in handle:
+            if line.startswith("MemTotal:"):
+                mem_total_kib = int(line.split()[1])
+                break
+except OSError:
+    mem_total_kib = 0
+mem_total_gib = round(mem_total_kib / 1024 / 1024, 1) if mem_total_kib else 0
+power_supplies = []
+ac_online = None
+battery_percent = None
+battery_status = "unknown"
+power_root = "/sys/class/power_supply"
+try:
+    for name in os.listdir(power_root):
+        base = os.path.join(power_root, name)
+        try:
+            with open(os.path.join(base, "type"), encoding="utf-8") as handle:
+                supply_type = handle.read().strip()
+        except OSError:
+            continue
+        if supply_type in {"Mains", "USB", "USB_C", "USB_PD"}:
+            try:
+                with open(os.path.join(base, "online"), encoding="utf-8") as handle:
+                    online = handle.read().strip() == "1"
+                    ac_online = online if ac_online is None else ac_online or online
+            except OSError:
+                pass
+        if supply_type == "Battery":
+            try:
+                with open(os.path.join(base, "capacity"), encoding="utf-8") as handle:
+                    battery_percent = int(handle.read().strip())
+            except OSError:
+                pass
+            try:
+                with open(os.path.join(base, "status"), encoding="utf-8") as handle:
+                    battery_status = handle.read().strip().lower()
+            except OSError:
+                pass
+        power_supplies.append({"name": name, "type": supply_type})
+except OSError:
+    pass
+if ac_online is None:
+    ac_online = battery_percent is None
+power_safe = bool(ac_online) or battery_percent is None or battery_percent >= 35
+memory_ready = mem_total_kib >= 2 * 1024 * 1024
+if state in {"starting", "opening"}:
+    recommended_action = "wait"
+elif state == "ready" and pid_alive is not False:
+    recommended_action = "continue"
+elif state in {"closed", "error"}:
+    recommended_action = "retry"
+elif not network_connected and os.environ.get("LIVE_SESSION") == "true":
+    recommended_action = "connect-network"
+elif os.environ.get("LIVE_SESSION") == "true" and not install_targets:
+    recommended_action = "inspect-storage"
+elif os.environ.get("LIVE_SESSION") == "true" and not power_safe:
+    recommended_action = "connect-power"
+elif first_screen == "not-started":
+    recommended_action = "open"
+else:
+    recommended_action = "inspect"
+issues = []
+if os.environ.get("LIVE_SESSION") == "true" and not network_connected:
+    issues.append({
+        "key": "network",
+        "severity": "warning",
+        "title": tr("Le réseau n’est pas connecté", "Network is not connected"),
+        "action": "seven-wifi",
+    })
+if os.environ.get("LIVE_SESSION") == "true" and not install_targets:
+    issues.append({
+        "key": "storage",
+        "severity": "blocker",
+        "title": tr("Aucun disque d’installation clair n’a été détecté", "No clear installation target disk detected"),
+        "action": "gnome-disks",
+    })
+if not memory_ready:
+    issues.append({
+        "key": "memory",
+        "severity": "warning",
+        "title": tr("La mémoire est sous le seuil confortable d’installation", "Memory is below the comfortable installation baseline"),
+        "action": "seven-installer live-status",
+    })
+if os.environ.get("LIVE_SESSION") == "true" and not power_safe:
+    issues.append({
+        "key": "power",
+        "severity": "warning",
+        "title": tr("La batterie est faible ; branche l’alimentation avant d’installer", "Battery is low; connect power before installing"),
+        "action": "seven-installer live-status",
+    })
+if state == "closed":
+    issues.append({
+        "key": "installer-window",
+        "severity": "info",
+        "title": tr("Le portail d’installation a été lancé puis fermé", "Installer portal was launched and is no longer running"),
+        "action": "seven-installer live-retry",
+    })
+if not status_fresh:
+    issues.append({
+        "key": "live-helper-stale",
+        "severity": "warning",
+        "title": tr("La progression de l’installation live ne s’actualise plus", "Live installer progress has not updated recently"),
+        "action": "seven-installer live-retry",
+    })
+readiness_state = "ready"
+if any(item["severity"] == "blocker" for item in issues):
+    readiness_state = "blocked"
+elif issues:
+    readiness_state = "attention"
+elif state in {"starting", "opening"}:
+    readiness_state = "starting"
+current_step = live_ready.get("step", "")
+timeline_specs = [
+    ("graphical-session", tr("Session graphique", "Graphical session"), 10),
+    ("environment", tr("Environnement SevenOS", "SevenOS environment"), 24),
+    ("dbus", tr("Bus de session", "Session bus"), 36),
+    ("services", tr("Services utilisateur", "User services"), 48),
+    ("user-folders", tr("Dossiers utilisateur", "User folders"), 58),
+    ("network", tr("Réseau", "Network"), 68),
+    ("theme", tr("Synchronisation du thème", "Theme sync"), 78),
+    ("welcome", tr("Accueil", "Welcome"), 86),
+    ("installer", tr("Portail d’installation", "Installer portal"), 94),
+]
+current_index = next((idx for idx, item in enumerate(timeline_specs) if item[0] == current_step), -1)
+if state in {"ready", "closed"}:
+    current_index = len(timeline_specs) - 1
+timeline = []
+for idx, (key, title, expected_progress) in enumerate(timeline_specs):
+    if state == "idle":
+        item_state = "pending"
+    elif state in {"ready", "closed"} or progress >= expected_progress + 4 or idx < current_index:
+        item_state = "done"
+    elif idx == current_index or (current_index < 0 and idx == 0):
+        item_state = "active"
+    else:
+        item_state = "pending"
+    if state in {"error"} and idx >= max(current_index, 0):
+        item_state = "blocked" if idx == max(current_index, 0) else "pending"
+    if state == "closed" and key == "installer":
+        item_state = "closed"
+    timeline.append({
+        "key": key,
+        "title": title,
+        "state": item_state,
+        "progress": expected_progress,
+    })
+active_step = next((item for item in timeline if item["state"] in {"active", "blocked", "closed"}), None)
+next_step = next((item for item in timeline if item["state"] == "pending"), None)
+done_steps = sum(1 for item in timeline if item["state"] == "done")
+confidence = 100
+if readiness_state == "blocked":
+    confidence = 45
+elif readiness_state == "attention":
+    confidence = 70
+elif readiness_state == "starting":
+    confidence = 82
+if not status_fresh:
+    confidence = min(confidence, 55)
+if state == "closed":
+    confidence = min(confidence, 65)
+action_labels = {
+    "wait": tr("Patienter", "Wait"),
+    "continue": tr("Continuer", "Continue"),
+    "retry": tr("Relancer", "Retry"),
+    "open": tr("Ouvrir l’installation", "Open installation"),
+    "connect-network": tr("Connecter le réseau", "Connect network"),
+    "inspect-storage": tr("Vérifier les disques", "Inspect disks"),
+    "connect-power": tr("Brancher l’alimentation", "Connect power"),
+    "inspect": tr("Voir l’état", "Inspect status"),
+}
+if readiness_state == "blocked":
+    ui_subtitle = tr("Une étape demande ton attention avant de continuer.", "One step needs attention before continuing.")
+elif readiness_state == "attention":
+    ui_subtitle = tr("SevenOS peut continuer, mais recommande une vérification.", "SevenOS can continue, but recommends a check.")
+elif readiness_state == "starting":
+    ui_subtitle = tr("SevenOS prépare l’environnement d’installation.", "SevenOS is preparing the installation environment.")
+else:
+    ui_subtitle = tr("Tout est prêt pour poursuivre l’installation.", "Everything is ready to continue installation.")
+status_cards = [
+    {
+        "key": "network",
+        "title": tr("Réseau", "Network"),
+        "state": "ok" if network_connected else "attention",
+        "value": tr("Connecté", "Connected") if network_connected else tr("À connecter", "Connect"),
+        "detail": f"{nm_state} · Wi-Fi {nm_wifi} · {nm_connectivity}",
+        "action": "seven-wifi",
+    },
+    {
+        "key": "storage",
+        "title": tr("Disques", "Disks"),
+        "state": "ok" if install_targets else "blocked",
+        "value": tr(f"{len(install_targets)} cible(s)", f"{len(install_targets)} target(s)"),
+        "detail": tr(f"{len(disks)} disque(s), {len(removable)} amovible(s)", f"{len(disks)} disk(s), {len(removable)} removable"),
+        "action": "gnome-disks",
+    },
+    {
+        "key": "memory",
+        "title": tr("Mémoire", "Memory"),
+        "state": "ok" if memory_ready else "attention",
+        "value": f"{mem_total_gib} GiB",
+        "detail": tr("Confortable pour l’installation", "Comfortable for installation") if memory_ready else tr("Sous le seuil recommandé", "Below recommended baseline"),
+        "action": "seven-installer live-status",
+    },
+    {
+        "key": "power",
+        "title": tr("Alimentation", "Power"),
+        "state": "ok" if power_safe else "attention",
+        "value": tr("Secteur", "AC") if ac_online else tr(f"Batterie {battery_percent if battery_percent is not None else '?'}%", f"Battery {battery_percent if battery_percent is not None else '?'}%"),
+        "detail": tr("Installation sûre", "Safe to install") if power_safe else tr("Branche l’alimentation", "Connect power"),
+        "action": "seven-installer live-status",
+    },
+]
+priority_order = {"blocked": 0, "attention": 1, "ok": 2}
+priority_card = sorted(status_cards, key=lambda item: priority_order.get(item["state"], 3))[0] if status_cards else None
+can_continue = readiness_state in {"ready", "attention"} and state not in {"closed", "error"} and status_fresh
+safety_level = "safe" if readiness_state == "ready" and confidence >= 90 else "review" if can_continue else "blocked"
+if safety_level == "safe":
+    user_message = {
+        "tone": "ready",
+        "headline": tr("SevenOS est prêt à installer", "SevenOS is ready to install"),
+        "body": tr(
+            "Les vérifications essentielles sont bonnes. Tu peux continuer vers l’installation graphique.",
+            "Essential checks are good. You can continue to the graphical installation.",
+        ),
+    }
+elif safety_level == "review":
+    user_message = {
+        "tone": "review",
+        "headline": tr("SevenOS recommande une vérification", "SevenOS recommends a quick review"),
+        "body": tr(
+            "L’installation peut avancer, mais un point mérite ton attention avant de modifier le disque.",
+            "Installation can continue, but one point deserves attention before changing the disk.",
+        ),
+    }
+else:
+    user_message = {
+        "tone": "blocked",
+        "headline": tr("SevenOS attend une action", "SevenOS is waiting for an action"),
+        "body": tr(
+            "Corrige le point prioritaire affiché, puis relance ou continue l’installation.",
+            "Fix the priority item shown, then retry or continue installation.",
+        ),
+    }
+estimated_remaining_seconds = None
+pace_state = "idle"
+if state in {"ready", "closed", "error"}:
+    estimated_remaining_seconds = 0
+    pace_state = "complete" if state == "ready" else state
+elif not status_fresh:
+    pace_state = "stale"
+elif isinstance(elapsed_seconds, int) and elapsed_seconds > 0 and 0 < progress < 100:
+    estimated_total = max(elapsed_seconds, round(elapsed_seconds * 100 / max(progress, 1)))
+    estimated_remaining_seconds = max(0, estimated_total - elapsed_seconds)
+    pace_state = "steady"
+elif state in {"starting", "opening"}:
+    pace_state = "starting"
+recommended_command = {
+    "wait": "seven-installer live-status",
+    "continue": "seven-installer open",
+    "retry": "seven-installer live-retry",
+    "open": "seven-installer open",
+    "connect-network": "seven-wifi",
+    "inspect-storage": "gnome-disks",
+    "connect-power": "seven-installer live-status",
+    "inspect": "seven-installer live-status",
+}.get(recommended_action, "seven-installer live-status")
+secondary_actions = [
+    {
+        "key": "status",
+        "label": tr("État détaillé", "Detailed status"),
+        "command": "seven-installer live-status",
+    },
+    {
+        "key": "retry",
+        "label": tr("Relancer la préparation", "Retry preparation"),
+        "command": "seven-installer live-retry",
+    },
+    {
+        "key": "disks",
+        "label": tr("Disques", "Disks"),
+        "command": "gnome-disks",
+    },
+]
+attention_items = [
+    {
+        "key": item.get("key", "issue"),
+        "severity": item.get("severity", "info"),
+        "title": item.get("title", ""),
+        "action": item.get("action", "seven-installer live-status"),
+    }
+    for item in issues[:3]
+]
+if not attention_items:
+    attention_items = [{
+        "key": "ready",
+        "severity": "ok",
+        "title": tr("Aucun point bloquant détecté", "No blocking issue detected"),
+        "action": "seven-installer open",
+    }]
+print(json.dumps({
+    "schema": "sevenos.installer-live.v1",
+    "session_id": session_id,
+    "state": state,
+    "step": live_ready.get("step", ""),
+    "detail": live_ready.get("detail", ""),
+    "hint": live_ready.get("hint", ""),
+    "progress": progress,
+    "started_at": started_at,
+    "updated_at": updated_at,
+    "elapsed_seconds": elapsed_seconds,
+    "status_age_seconds": status_age_seconds,
+    "status_fresh": status_fresh,
+    "pid": pid,
+    "pid_alive": pid_alive,
+    "live_session": os.environ.get("LIVE_SESSION") == "true",
+    "first_screen": first_screen,
+    "portal_state": portal.get("state", "unknown"),
+    "portal_route": portal.get("route", "unknown"),
+    "network": {
+        "state": nm_state,
+        "wifi": nm_wifi,
+        "connectivity": nm_connectivity,
+        "connected": network_connected,
+    },
+    "storage": {
+        "disks": len(disks),
+        "removable": len(removable),
+        "install_targets": len(install_targets),
+        "ready": len(install_targets) > 0,
+        "items": [
+            {
+                "name": item.get("name"),
+                "size": item.get("size"),
+                "model": item.get("model"),
+                "transport": item.get("tran"),
+                "removable": bool(item.get("rm")),
+            }
+            for item in disks[:8]
+        ],
+    },
+    "system": {
+        "memory_gib": mem_total_gib,
+        "memory_ready": memory_ready,
+        "power_safe": power_safe,
+        "ac_online": ac_online,
+        "battery_percent": battery_percent,
+        "battery_status": battery_status,
+        "power_supplies": power_supplies[:6],
+    },
+    "readiness": {
+        "state": readiness_state,
+        "issues": issues,
+        "summary": {
+            "network": network_connected,
+            "storage": len(install_targets) > 0,
+            "memory": memory_ready,
+            "power": power_safe,
+        },
+    },
+    "timeline": timeline,
+    "ui": {
+        "language": lang(),
+        "session_id": session_id,
+        "title": tr("Installation SevenOS", "SevenOS Installation"),
+        "subtitle": ui_subtitle,
+        "progress_label": tr(f"{progress}% prêt", f"{progress}% ready"),
+        "primary_action": recommended_action,
+        "primary_action_label": action_labels.get(recommended_action, tr("Voir l’état", "Inspect status")),
+        "primary_command": recommended_command,
+        "secondary_actions": secondary_actions,
+        "attention_items": attention_items,
+        "active_step": active_step,
+        "next_step": next_step,
+        "status_cards": status_cards,
+        "priority_card": priority_card,
+        "user_message": user_message,
+        "can_continue": can_continue,
+        "safety_level": safety_level,
+        "pace_state": pace_state,
+        "estimated_remaining_seconds": estimated_remaining_seconds,
+        "done_steps": done_steps,
+        "total_steps": len(timeline),
+        "confidence": confidence,
+    },
+    "recommended_action": recommended_action,
+    "log_file": os.environ.get("LOG_FILE", ""),
+    "log_tail": log_tail,
+    "commands": {
+        "open": "seven-installer open",
+        "reset": "seven-installer live-reset",
+        "retry": "seven-installer live-retry",
+        "status": "seven-installer live-status --json",
+        "recommended": recommended_command,
+    },
+}, indent=2))
+PY
+}
+
+live_status() {
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    live_status_json
+    return 0
+  fi
+  LIVE_JSON="$(live_status_json)" python - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["LIVE_JSON"])
+print("SevenOS Live Installer")
+print("======================")
+if data.get("session_id"):
+    print(f"session:      {data.get('session_id')}")
+print(f"state:        {data.get('state')}")
+print(f"progress:     {data.get('progress', 0)}%")
+if data.get("step"):
+    print(f"step:         {data.get('step')}")
+if data.get("detail"):
+    print(f"detail:       {data.get('detail')}")
+if data.get("hint"):
+    print(f"hint:         {data.get('hint')}")
+if data.get("elapsed_seconds") is not None:
+    print(f"elapsed:      {data.get('elapsed_seconds')}s")
+if data.get("status_age_seconds") is not None:
+    freshness = "fresh" if data.get("status_fresh") else "stale"
+    print(f"freshness:    {freshness} · {data.get('status_age_seconds')}s")
+if data.get("pid"):
+    print(f"process:      {data.get('pid')} · {'running' if data.get('pid_alive') else 'not running'}")
+print(f"live session: {data.get('live_session')}")
+print(f"first screen: {data.get('first_screen')}")
+print(f"portal:       {data.get('portal_state')} · {data.get('portal_route')}")
+network = data.get("network", {})
+print(f"network:      {network.get('state')} · wifi {network.get('wifi')} · {network.get('connectivity')}")
+storage = data.get("storage", {})
+print(f"storage:      {storage.get('install_targets', 0)} target(s) · {storage.get('disks', 0)} disk(s) · {storage.get('removable', 0)} removable")
+system = data.get("system", {})
+power = "AC" if system.get("ac_online") else f"battery {system.get('battery_percent', 'unknown')}%"
+print(f"system:       {system.get('memory_gib', 0)} GiB RAM · {power}")
+readiness = data.get("readiness", {})
+print(f"readiness:    {readiness.get('state', 'unknown')} · {len(readiness.get('issues', []))} issue(s)")
+timeline = data.get("timeline", [])
+if timeline:
+    active = next((item for item in timeline if item.get("state") in {"active", "blocked", "closed"}), None)
+    done = sum(1 for item in timeline if item.get("state") == "done")
+    print(f"timeline:     {done}/{len(timeline)} done" + (f" · {active.get('title')} ({active.get('state')})" if active else ""))
+ui = data.get("ui", {})
+if ui:
+    print(f"ui:           {ui.get('primary_action_label')} · confidence {ui.get('confidence')}%")
+    cards = ui.get("status_cards", [])
+    if cards:
+        ok_cards = sum(1 for item in cards if item.get("state") == "ok")
+        print(f"cards:        {ok_cards}/{len(cards)} ok")
+    print(f"decision:     {ui.get('safety_level')} · can_continue={ui.get('can_continue')}")
+    print(f"pace:         {ui.get('pace_state')} · eta={ui.get('estimated_remaining_seconds')}")
+print(f"next:         {data.get('recommended_action')} · {data.get('commands', {}).get('recommended')}")
+for item in readiness.get("issues", [])[:4]:
+    print(f"  - {item.get('severity')}: {item.get('title')} · {item.get('action')}")
+print(f"log:          {data.get('log_file')}")
+if data.get("log_tail"):
+    print()
+    print("Recent log:")
+    for line in data.get("log_tail", [])[-6:]:
+        print(f"  {line}")
+PY
+}
+
+live_notify_status() {
+  local payload title body state step detail first_screen
+  payload="$(live_status_json)"
+  state="$(printf '%s\n' "$payload" | python -c 'import json,sys; print(json.load(sys.stdin).get("state","unknown"))' 2>/dev/null || printf unknown)"
+  step="$(printf '%s\n' "$payload" | python -c 'import json,sys; print(json.load(sys.stdin).get("step",""))' 2>/dev/null || true)"
+  detail="$(printf '%s\n' "$payload" | python -c 'import json,sys; print(json.load(sys.stdin).get("detail",""))' 2>/dev/null || true)"
+  progress="$(printf '%s\n' "$payload" | python -c 'import json,sys; print(json.load(sys.stdin).get("progress",0))' 2>/dev/null || printf 0)"
+  first_screen="$(printf '%s\n' "$payload" | python -c 'import json,sys; print(json.load(sys.stdin).get("first_screen","unknown"))' 2>/dev/null || printf unknown)"
+  title="SevenOS Installer · $state · ${progress}%"
+  body="${detail:-first screen: $first_screen}"
+  [[ -n "$step" ]] && body="$step · $body"
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send -a "SevenOS Installer" -i seven-installer "$title" "$body" >/dev/null 2>&1 || true
+  else
+    printf '%s\n%s\n' "$title" "$body"
+  fi
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    printf '%s\n' "$payload"
+  fi
+}
+
+live_reset() {
+  local live_state_dir
+  live_state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/sevenos"
+  rm -f "$live_state_dir/live-first-screen-started" "$live_state_dir/live-installer-opened" "$live_state_dir/live-status.json"
+  rmdir "$live_state_dir/live-ready.lock" 2>/dev/null || true
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    printf '{"schema":"sevenos.installer-live-reset.v1","state":"OK","next":"seven-installer open"}\n'
+    return 0
+  fi
+  printf 'SevenOS live installer state reset.\n'
+  printf 'Run: seven-installer open\n'
+}
+
+live_retry() {
+  live_reset >/dev/null
+  if command -v sevenos-live-ready >/dev/null 2>&1; then
+    sevenos-live-ready &
+    if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+      printf '{"schema":"sevenos.installer-live-retry.v1","state":"OK","command":"sevenos-live-ready"}\n'
+    else
+      printf 'SevenOS live installer retry started.\n'
+    fi
+    return 0
+  fi
+  if [[ "$JSON_OUTPUT" -eq 1 ]]; then
+    printf '{"schema":"sevenos.installer-live-retry.v1","state":"FALLBACK","command":"seven-installer open"}\n'
+  else
+    printf 'SevenOS live helper is unavailable; opening installer directly.\n'
+  fi
+  open_installer
 }
 
 status() {
@@ -203,6 +861,10 @@ case "${1:-open}" in
   status) status ;;
   portal) portal ;;
   guide) "$ROOT_DIR/bin/seven" installer guide ;;
+  live-status) live_status ;;
+  live-notify) live_notify_status ;;
+  live-reset) live_reset ;;
+  live-retry) live_retry ;;
   -h|--help|help) usage ;;
   *)
     printf 'seven-installer: unknown action: %s\n' "$1" >&2

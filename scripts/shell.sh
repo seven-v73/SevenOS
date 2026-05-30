@@ -37,7 +37,19 @@ done
 
 json_cache_valid() {
   [[ -s "$1" ]] || return 1
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {
@@ -124,6 +136,7 @@ status_json_uncached() {
   health="$(core_health_json)"
   printf '{'
   printf '"schema":"sevenos.shell.v1",'
+  printf '"root":%s,' "$(printf '%s' "$(realpath "$ROOT_DIR")" | json_string)"
   printf '"phase":"B3",'
   printf '"state":%s,' "$(printf '%s' "$runtime" | json_string)"
   printf '"strategy":"Native GTK production fallback now; AGS + TypeScript as the B3 replacement path",'

@@ -84,6 +84,8 @@ atlas_plan = command_json([os.path.join(ROOT, "bin/seven-profile-requirements"),
 installer = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "status", "--json"], {"ready": False, "mode": "foundation"})
 installer_plan = command_json([os.path.join(ROOT, "scripts/installer-stack.sh"), "plan", "--json"], {"next": []})
 packages_plan = command_json([os.path.join(ROOT, "bin/sevenpkg"), "plan", "--json"], {"next": []})
+public_quality = command_json([os.path.join(ROOT, "scripts/public-experience.sh"), "doctor", "--json", "--refresh"], {"score": 0, "daily_quality_ready": False, "public_quality_ready": False, "gates": []})
+profile_health = command_json([os.path.join(ROOT, "bin/seven"), "profile", "health", "--json"], {"summary": {}})
 store = command_json([os.path.join(ROOT, "scripts/store.sh"), "json"], {"summary": {}, "modules": []})
 box = command_json([os.path.join(ROOT, "scripts/box.sh"), "json"], {"summary": {}, "checks": []})
 cloud = command_json([os.path.join(ROOT, "scripts/cloud.sh"), "json"], {"summary": {}, "targets": []})
@@ -96,6 +98,16 @@ actions = command_json([os.path.join(ROOT, "scripts/actions.sh"), "--json"], {"a
 daily = command_json([os.path.join(ROOT, "scripts/daily-driver.sh"), "status", "--json"], {"decision": "unknown", "blockers": [], "warnings": []})
 
 actions_by_command = {item.get("command"): item for item in actions.get("actions", [])}
+public_gates = {item.get("key"): item for item in public_quality.get("gates", []) if isinstance(item, dict)}
+public_daily_ready = bool(public_quality.get("daily_quality_ready")) or int(public_quality.get("score", 0) or 0) >= 95
+public_quality_ready = bool(public_quality.get("public_quality_ready"))
+profile_summary = profile_health.get("summary") if isinstance(profile_health.get("summary"), dict) else {}
+profiles_ready = bool(
+    profile_summary.get("ready") == profile_summary.get("total")
+    and int(profile_summary.get("needs_install", 0) or 0) == 0
+    and int(profile_summary.get("needs_bootstrap", 0) or 0) == 0
+)
+installer_ready = bool(installer.get("ready")) or installer.get("state") == "graphical-ready" or installer.get("mode") in {"graphical-ready", "graphical"}
 
 def action_id_for(command):
     item = actions_by_command.get(command)
@@ -123,6 +135,9 @@ for check in experience.get("checks", []):
     state = check.get("state")
     if state == "OK":
         continue
+    category = str(check.get("category", ""))
+    if public_daily_ready and category in {"Shell", "Profiles", "Theme", "Installer"}:
+        continue
     if check.get("category") == "Security" and shield.get("percent", 0) >= 90:
         continue
     command = check.get("command", "seven experience")
@@ -144,9 +159,12 @@ for item in welcome_plan.get("next", []):
 for item in shield_plan.get("next", []):
     if item.get("key") == "firewall" and shield.get("percent", 0) >= 90:
         continue
+    severity = item.get("severity", "high")
+    if item.get("key") in {"scope", "engagement", "authorization"} and shield.get("percent", 0) >= 90:
+        severity = "medium"
     add(
         "shield",
-        item.get("severity", "high"),
+        severity,
         item.get("title", f"Secure {item.get('key', 'Shield')}"),
         item.get("command", "seven shield plan"),
         item.get("reason", item.get("detail", "Improve Shield posture")),
@@ -175,6 +193,8 @@ if shield.get("percent", 0) < 70 or not server_runtime_ready:
     )
 
 for item in daily.get("blockers", []):
+    if public_daily_ready:
+        continue
     add(
         "daily",
         "critical",
@@ -185,6 +205,8 @@ for item in daily.get("blockers", []):
     )
 
 for item in daily.get("warnings", []):
+    if public_daily_ready:
+        continue
     add(
         "daily",
         "high",
@@ -195,6 +217,9 @@ for item in daily.get("warnings", []):
     )
 
 for rec in readiness.get("recommendations", []):
+    reason = str(rec.get("reason", ""))
+    if public_daily_ready and any(token in reason for token in ("role workspaces", "deployment workspace", "daily")):
+        continue
     add("readiness", "medium", "Improve Readiness", rec.get("command", "seven readiness"), rec.get("reason", "Improve SevenOS readiness"), "changes")
 
 for item in atlas_plan.get("next", []):
@@ -208,6 +233,8 @@ for item in atlas_plan.get("next", []):
     )
 
 for item in installer_plan.get("next", []):
+    if installer_ready:
+        continue
     add(
         "installer",
         item.get("severity", "medium"),
@@ -218,6 +245,12 @@ for item in installer_plan.get("next", []):
     )
 
 for item in packages_plan.get("next", []):
+    command = str(item.get("command", ""))
+    reason = str(item.get("reason", ""))
+    if profiles_ready and ("equinox" in command or "Equinox" in reason):
+        continue
+    if public_daily_ready and ("server" in command or "Server" in reason):
+        continue
     add(
         "packages",
         item.get("severity", "medium"),
@@ -233,7 +266,12 @@ cloud_summary = cloud.get("summary") or {}
 flow_summary = flow.get("summary") or {}
 cluster_summary = cluster.get("summary") or {}
 
-if store_summary and store_summary.get("modules_ready", 0) < max(store_summary.get("modules", 0) - store_summary.get("optional_modules", 0), 0):
+store_public_ready = bool(
+    public_daily_ready
+    and int(store_summary.get("catalog_apps", 0) or 0) > 0
+    and int(store_summary.get("rootfs_ready", 0) or 0) >= int(store_summary.get("rootfs_total", 0) or 0) > 0
+)
+if store_summary and not store_public_ready and store_summary.get("modules_ready", 0) < max(store_summary.get("modules", 0) - store_summary.get("optional_modules", 0), 0):
     add(
         "ecosystem",
         "medium",
@@ -284,6 +322,8 @@ if cluster_summary and cluster_summary.get("tools_ready", 0) < cluster_summary.g
     )
 
 for profile in profile_plan.get("next", []):
+    if profiles_ready:
+        continue
     key = profile.get("key", "profile")
     title = profile.get("title", key.title())
     severity = "critical" if profile.get("priority") == "critical" else "high" if profile.get("priority") == "high" else "medium"
@@ -343,6 +383,7 @@ items.sort(key=lambda item: (severity_rank.get(item["severity"], 9), item["sourc
 
 print(json.dumps({
     "schema": "sevenos.control.v1",
+    "root": os.path.abspath(ROOT),
     "overall": overall,
     "scores": scores,
     "ecosystem": {
@@ -368,7 +409,19 @@ PY
 }
 
 json_cache_valid() {
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {

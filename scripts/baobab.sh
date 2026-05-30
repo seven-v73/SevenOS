@@ -117,7 +117,19 @@ done
 
 json_cache_valid() {
   [[ -s "$1" ]] || return 1
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {
@@ -458,6 +470,7 @@ score = round((ready_paths / len(paths)) * 100)
 
 print(json.dumps({
     "schema": "sevenos.baobab.v1",
+    "root": str(Path(os.environ["SEVENOS_ROOT"]).resolve()),
     "state": "ready" if core_ready else "needs-bootstrap",
     "score": score,
     "name": "Baobab",
@@ -6986,6 +6999,7 @@ if protocols.get("state") != "pass":
 state = "ready" if not issues else "ready-with-actions" if base.get("state") == "ready" else "needs-bootstrap"
 print(json.dumps({
     "schema": "sevenos.baobab.doctor.v1",
+    "root": base.get("root"),
     "state": state,
     "base_state": base.get("state"),
     "tool_state": tools.get("state"),

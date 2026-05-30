@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=SevenOS Live
+Comment=SevenOS graphical live session
+Exec=/usr/local/bin/sevenos-live-session
+Type=Application
+DesktopNames=SevenOS;Hyprland

@@ -84,7 +84,19 @@ active_ssid() {
 
 json_cache_valid() {
   [[ -s "$1" ]] || return 1
-  python -m json.tool "$1" >/dev/null 2>&1
+  python - "$1" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[2]).resolve()):
+    raise SystemExit(1)
+raise SystemExit(0)
+PY
 }
 
 cache_is_fresh() {
@@ -128,13 +140,15 @@ status_json() {
   device="$(wifi_device)"
   ssid="$(active_ssid)"
   local payload
-  payload="$(python - "$nmcli_state" "$nmtui_state" "$editor_state" "$nm_state" "$modem_state" "$radio" "$device" "$ssid" <<'PY'
+  payload="$(python - "$ROOT_DIR" "$nmcli_state" "$nmtui_state" "$editor_state" "$nm_state" "$modem_state" "$radio" "$device" "$ssid" <<'PY'
 import json
 import sys
+from pathlib import Path
 
 keys = ("nmcli", "nmtui", "nm_connection_editor", "networkmanager", "modemmanager", "wifi_radio", "wifi_device", "ssid")
-payload = dict(zip(keys, sys.argv[1:]))
+payload = dict(zip(keys, sys.argv[2:]))
 payload["schema"] = "sevenos.network.v1"
+payload["root"] = str(Path(sys.argv[1]).resolve())
 payload["ready"] = payload["nmcli"] == "OK" and payload["networkmanager"] == "RUN"
 print(json.dumps(payload))
 PY

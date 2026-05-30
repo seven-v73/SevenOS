@@ -206,7 +206,9 @@ json_string() {
 
 release_json() {
   local archinstall_state calamares_state planner_state calamares_settings_state calamares_module_state calamares_postinstall_state
-  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state native_launcher_state live_desktop_state live_native_state calamares_branding_state installer_portal_state calamares_source_state local_repo_db_state local_repo_pkg_state
+  local archiso_state build_state packages_state repo_injection_state live_cli_state graphical_launcher_state native_launcher_state native_live_ui_state live_desktop_state live_native_state calamares_branding_state installer_portal_state calamares_source_state local_repo_db_state local_repo_pkg_state
+  local live_session_state live_autologin_state live_ready_state live_tty_fallback_state live_user_config_state live_network_state live_graphical_target_state
+  local live_feedback_state live_services_state live_user_dirs_state live_status_state
 
   archinstall_state="$(state archinstall)"
   calamares_state="$(state calamares)"
@@ -217,6 +219,7 @@ release_json() {
   calamares_postinstall_state="$(contains_state installer/calamares/modules/sevenos.conf "/opt/SevenOS/install.sh base")"
   graphical_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer" ]] && printf OK || printf MISS)"
   native_launcher_state="$([[ -x "$ROOT_DIR/bin/seven-installer-native" ]] && printf OK || printf MISS)"
+  native_live_ui_state="$([[ $(contains_state bin/seven-installer-native "live-status") == OK && $(contains_state bin/seven-installer-native "status_cards") == OK && $(contains_state bin/seven-installer-native "installer-progress") == OK && $(contains_state bin/seven-installer-native "timeline_card") == OK && $(contains_state bin/seven-installer-native "GLib.timeout_add_seconds") == OK && $(contains_state bin/seven-installer-native "active_step_label") == OK && $(contains_state bin/seven-installer-native "decision_label") == OK && $(contains_state bin/seven-installer-native "attention_label") == OK && $(contains_state bin/seven-installer-native "primary_live_action") == OK && $(contains_state bin/seven-installer-native "secondary_action_buttons") == OK && $(contains_state bin/seven-installer "user_message") == OK && $(contains_state bin/seven-installer "primary_command") == OK && $(contains_state bin/seven-installer "secondary_actions") == OK && $(contains_state bin/seven-installer "attention_items") == OK ]] && printf OK || printf MISS)"
   installer_portal_state="$("$ROOT_DIR/bin/seven-installer" status --json 2>/dev/null | grep -q 'sevenos.installer-portal.v1' && printf OK || printf MISS)"
   live_desktop_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Exec=seven-installer")"
   calamares_branding_state="$(file_state installer/calamares/branding/sevenos/branding.desc)"
@@ -226,6 +229,35 @@ release_json() {
   repo_injection_state="$(contains_state scripts/build-iso.sh "sevenos-local")"
   live_cli_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/opt/SevenOS/bin/seven")"
   live_native_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "seven-installer-native")"
+  live_session_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-session" ]] && contains_state archiso/profile/airootfs/usr/share/wayland-sessions/sevenos-live.desktop "sevenos-live-session")"
+  live_autologin_state="$(contains_state archiso/profile/airootfs/etc/sddm.conf.d/20-sevenos-live.conf "Session=sevenos-live.desktop")"
+  live_ready_state="$([[ -x "$ROOT_DIR/archiso/profile/airootfs/usr/local/bin/sevenos-live-ready" ]] && contains_state archiso/profile/airootfs/root/customize_airootfs.sh "sevenos-live-ready")"
+  live_tty_fallback_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "agetty --autologin seven")"
+  live_user_config_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "/home/seven/.config/hypr/hyprland.conf")"
+  live_network_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl enable NetworkManager.service")"
+  live_graphical_target_state="$(contains_state archiso/profile/airootfs/root/customize_airootfs.sh "systemctl set-default graphical.target")"
+  live_feedback_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "notify-send")"
+  live_services_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "sevenos-session.target")"
+  live_user_dirs_state="$([[ $(contains_state archiso/profile/packages.x86_64 "xdg-user-dirs") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "xdg-user-dirs-update") == OK ]] && printf OK || printf MISS)"
+  live_status_state="$("$ROOT_DIR/bin/seven-installer" live-status --json 2>/dev/null | grep -q 'sevenos.installer-live.v1' && printf OK || printf MISS)"
+  local live_retry_state live_status_persist_state live_lock_state live_pid_state live_lock_expiry_state live_notify_status_state live_progress_state live_recommended_state live_desktop_i18n_state live_network_status_state live_storage_status_state live_system_status_state live_readiness_summary_state live_process_guard_state live_freshness_state live_timeline_state live_ui_i18n_state
+  live_retry_state="$(contains_state bin/seven-installer "live-retry")"
+  live_status_persist_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "live-status.json")"
+  live_lock_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "live-ready.lock")"
+  live_pid_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "installer_pid")"
+  live_lock_expiry_state="$(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "lock_age")"
+  live_notify_status_state="$(contains_state bin/seven-installer "live-notify")"
+  live_progress_state="$([[ $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "progress") == OK && $(contains_state bin/seven-installer "progress") == OK ]] && printf OK || printf MISS)"
+  live_recommended_state="$(contains_state bin/seven-installer "recommended_action")"
+  live_desktop_i18n_state="$(contains_state archiso/profile/airootfs/usr/share/applications/seven-installer.desktop "Name[fr]")"
+  live_network_status_state="$([[ $(contains_state bin/seven-installer "NM_STATE") == OK && $(contains_state bin/seven-installer "connect-network") == OK ]] && printf OK || printf MISS)"
+  live_storage_status_state="$([[ $(contains_state bin/seven-installer "install_targets") == OK && $(contains_state archiso/profile/packages.x86_64 "gnome-disk-utility") == OK ]] && printf OK || printf MISS)"
+  live_system_status_state="$([[ $(contains_state bin/seven-installer "memory_ready") == OK && $(contains_state bin/seven-installer "power_safe") == OK ]] && printf OK || printf MISS)"
+  live_readiness_summary_state="$([[ $(contains_state bin/seven-installer "readiness_state") == OK && $(contains_state bin/seven-installer "issues") == OK ]] && printf OK || printf MISS)"
+  live_process_guard_state="$([[ $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "confirm_installer_window") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "Installer portal closed before it became interactive") == OK ]] && printf OK || printf MISS)"
+  live_freshness_state="$([[ $(contains_state bin/seven-installer "status_age_seconds") == OK && $(contains_state bin/seven-installer "live-helper-stale") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "elapsed_seconds") == OK ]] && printf OK || printf MISS)"
+  live_timeline_state="$([[ $(contains_state bin/seven-installer "timeline_specs") == OK && $(contains_state bin/seven-installer '"timeline": timeline') == OK ]] && printf OK || printf MISS)"
+  live_ui_i18n_state="$([[ $(contains_state bin/seven-installer '"ui":') == OK && $(contains_state bin/seven-installer "primary_action_label") == OK && $(contains_state bin/seven-installer "primary_command") == OK && $(contains_state bin/seven-installer "secondary_actions") == OK && $(contains_state bin/seven-installer "attention_items") == OK && $(contains_state bin/seven-installer "Aucun point bloquant détecté") == OK && $(contains_state bin/seven-installer "État détaillé") == OK && $(contains_state bin/seven-installer "Session graphique") == OK && $(contains_state bin/seven-installer "confidence") == OK && $(contains_state bin/seven-installer "next_step") == OK && $(contains_state bin/seven-installer "status_cards") == OK && $(contains_state bin/seven-installer "priority_card") == OK && $(contains_state bin/seven-installer "user_message") == OK && $(contains_state bin/seven-installer "SevenOS est prêt à installer") == OK && $(contains_state bin/seven-installer "can_continue") == OK && $(contains_state bin/seven-installer "safety_level") == OK && $(contains_state bin/seven-installer "pace_state") == OK && $(contains_state bin/seven-installer "estimated_remaining_seconds") == OK && $(contains_state bin/seven-installer "session_id") == OK && $(contains_state archiso/profile/airootfs/usr/local/bin/sevenos-live-ready "uuid.uuid4") == OK ]] && printf OK || printf MISS)"
   local_repo_db_state="$([[ -s "$ROOT_DIR/archiso/localrepo/x86_64/sevenos-local.db.tar.gz" ]] && printf OK || printf MISS)"
   local_repo_pkg_state="$(find "$ROOT_DIR/archiso/localrepo/x86_64" -maxdepth 1 -name 'calamares-*.pkg.tar.*' -print -quit 2>/dev/null | grep -q . && printf OK || printf MISS)"
 
@@ -238,6 +270,7 @@ release_json() {
   CALAMARES_POSTINSTALL_STATE="$calamares_postinstall_state" \
   GRAPHICAL_LAUNCHER_STATE="$graphical_launcher_state" \
   NATIVE_LAUNCHER_STATE="$native_launcher_state" \
+  NATIVE_LIVE_UI_STATE="$native_live_ui_state" \
   INSTALLER_PORTAL_STATE="$installer_portal_state" \
   LIVE_DESKTOP_STATE="$live_desktop_state" \
   LIVE_NATIVE_STATE="$live_native_state" \
@@ -247,6 +280,34 @@ release_json() {
   PACKAGES_STATE="$packages_state" \
   REPO_INJECTION_STATE="$repo_injection_state" \
   LIVE_CLI_STATE="$live_cli_state" \
+  LIVE_SESSION_STATE="$live_session_state" \
+  LIVE_AUTOLOGIN_STATE="$live_autologin_state" \
+  LIVE_READY_STATE="$live_ready_state" \
+  LIVE_TTY_FALLBACK_STATE="$live_tty_fallback_state" \
+  LIVE_USER_CONFIG_STATE="$live_user_config_state" \
+  LIVE_NETWORK_STATE="$live_network_state" \
+  LIVE_GRAPHICAL_TARGET_STATE="$live_graphical_target_state" \
+  LIVE_FEEDBACK_STATE="$live_feedback_state" \
+  LIVE_SERVICES_STATE="$live_services_state" \
+  LIVE_USER_DIRS_STATE="$live_user_dirs_state" \
+  LIVE_STATUS_STATE="$live_status_state" \
+  LIVE_RETRY_STATE="$live_retry_state" \
+  LIVE_STATUS_PERSIST_STATE="$live_status_persist_state" \
+  LIVE_LOCK_STATE="$live_lock_state" \
+  LIVE_PID_STATE="$live_pid_state" \
+  LIVE_LOCK_EXPIRY_STATE="$live_lock_expiry_state" \
+  LIVE_NOTIFY_STATUS_STATE="$live_notify_status_state" \
+  LIVE_PROGRESS_STATE="$live_progress_state" \
+  LIVE_RECOMMENDED_STATE="$live_recommended_state" \
+  LIVE_DESKTOP_I18N_STATE="$live_desktop_i18n_state" \
+  LIVE_NETWORK_STATUS_STATE="$live_network_status_state" \
+  LIVE_STORAGE_STATUS_STATE="$live_storage_status_state" \
+  LIVE_SYSTEM_STATUS_STATE="$live_system_status_state" \
+  LIVE_READINESS_SUMMARY_STATE="$live_readiness_summary_state" \
+  LIVE_PROCESS_GUARD_STATE="$live_process_guard_state" \
+  LIVE_FRESHNESS_STATE="$live_freshness_state" \
+  LIVE_TIMELINE_STATE="$live_timeline_state" \
+  LIVE_UI_I18N_STATE="$live_ui_i18n_state" \
   LOCAL_REPO_DB_STATE="$local_repo_db_state" \
   LOCAL_REPO_PKG_STATE="$local_repo_pkg_state" \
   python - <<'PY'
@@ -328,6 +389,13 @@ checks = [
         "command": "seven-installer gui",
     },
     {
+        "key": "native-installer-live-ui",
+        "state": os.environ["NATIVE_LIVE_UI_STATE"],
+        "required": True,
+        "title": "Native installer consumes live status UI data",
+        "command": "seven-installer gui",
+    },
+    {
         "key": "installer-portal",
         "state": os.environ["INSTALLER_PORTAL_STATE"],
         "required": True,
@@ -403,6 +471,202 @@ checks = [
         "required": True,
         "title": "Live CLI bootstrap",
         "command": "seven installer doctor",
+    },
+    {
+        "key": "live-sevenos-session",
+        "state": os.environ["LIVE_SESSION_STATE"],
+        "required": True,
+        "title": "SevenOS Live Wayland session",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-autologin",
+        "state": os.environ["LIVE_AUTOLOGIN_STATE"],
+        "required": True,
+        "title": "SDDM autologin into SevenOS Live",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-first-screen",
+        "state": os.environ["LIVE_READY_STATE"],
+        "required": True,
+        "title": "Graphical first-screen installer portal",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-tty-fallback",
+        "state": os.environ["LIVE_TTY_FALLBACK_STATE"],
+        "required": True,
+        "title": "TTY fallback starts SevenOS session",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-user-config",
+        "state": os.environ["LIVE_USER_CONFIG_STATE"],
+        "required": True,
+        "title": "SevenOS user configs preseeded",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-network",
+        "state": os.environ["LIVE_NETWORK_STATE"],
+        "required": True,
+        "title": "NetworkManager enabled in live ISO",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-graphical-target",
+        "state": os.environ["LIVE_GRAPHICAL_TARGET_STATE"],
+        "required": True,
+        "title": "Graphical target is default",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-feedback",
+        "state": os.environ["LIVE_FEEDBACK_STATE"],
+        "required": True,
+        "title": "Live session progress feedback",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-session-services",
+        "state": os.environ["LIVE_SERVICES_STATE"],
+        "required": True,
+        "title": "SevenOS session services start in live ISO",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-user-dirs",
+        "state": os.environ["LIVE_USER_DIRS_STATE"],
+        "required": True,
+        "title": "User folders are prepared in live ISO",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-status-contract",
+        "state": os.environ["LIVE_STATUS_STATE"],
+        "required": True,
+        "title": "Live installer status contract",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-status-persistence",
+        "state": os.environ["LIVE_STATUS_PERSIST_STATE"],
+        "required": True,
+        "title": "Live first-screen state persistence",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-retry-command",
+        "state": os.environ["LIVE_RETRY_STATE"],
+        "required": True,
+        "title": "Live installer retry command",
+        "command": "seven-installer live-retry",
+    },
+    {
+        "key": "live-singleton-lock",
+        "state": os.environ["LIVE_LOCK_STATE"],
+        "required": True,
+        "title": "Live first-screen avoids duplicate launches",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-installer-process-state",
+        "state": os.environ["LIVE_PID_STATE"],
+        "required": True,
+        "title": "Live installer process state is tracked",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-stale-lock-recovery",
+        "state": os.environ["LIVE_LOCK_EXPIRY_STATE"],
+        "required": True,
+        "title": "Live first-screen recovers stale locks",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-status-notification",
+        "state": os.environ["LIVE_NOTIFY_STATUS_STATE"],
+        "required": True,
+        "title": "Live installer status is visible from desktop actions",
+        "command": "seven-installer live-notify",
+    },
+    {
+        "key": "live-progress-state",
+        "state": os.environ["LIVE_PROGRESS_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes progress",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-recommended-action",
+        "state": os.environ["LIVE_RECOMMENDED_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes the next action",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-desktop-i18n",
+        "state": os.environ["LIVE_DESKTOP_I18N_STATE"],
+        "required": True,
+        "title": "Live installer desktop actions are localized",
+        "command": "./install.sh iso --dry-run",
+    },
+    {
+        "key": "live-network-status",
+        "state": os.environ["LIVE_NETWORK_STATUS_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes network readiness",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-storage-status",
+        "state": os.environ["LIVE_STORAGE_STATUS_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes storage readiness",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-system-status",
+        "state": os.environ["LIVE_SYSTEM_STATUS_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes power and memory readiness",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-readiness-summary",
+        "state": os.environ["LIVE_READINESS_SUMMARY_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes a public readiness summary",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-process-guard",
+        "state": os.environ["LIVE_PROCESS_GUARD_STATE"],
+        "required": True,
+        "title": "Live first-screen detects installer windows that close too early",
+        "command": "seven-installer live-retry",
+    },
+    {
+        "key": "live-freshness",
+        "state": os.environ["LIVE_FRESHNESS_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes elapsed time and stale progress detection",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-timeline",
+        "state": os.environ["LIVE_TIMELINE_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes a graphical startup timeline",
+        "command": "seven-installer live-status --json",
+    },
+    {
+        "key": "live-ui-i18n",
+        "state": os.environ["LIVE_UI_I18N_STATE"],
+        "required": True,
+        "title": "Live first-screen exposes localized UI labels",
+        "command": "seven-installer live-status --json",
     },
 ]
 

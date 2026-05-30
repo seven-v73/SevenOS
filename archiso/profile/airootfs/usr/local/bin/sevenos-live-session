@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export SEVENOS_ROOT="${SEVENOS_ROOT:-/opt/SevenOS}"
+export SEVENOS_LIVE_SESSION=1
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-Hyprland}"
+export XDG_SESSION_DESKTOP="${XDG_SESSION_DESKTOP:-SevenOS}"
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-wayland}"
+export TERMINAL="${TERMINAL:-seven-terminal}"
+export SEVENOS_TERMINAL="${SEVENOS_TERMINAL:-seven-terminal}"
+
+if [[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]]; then
+  # shellcheck disable=SC1091
+  . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"
+fi
+
+if command -v dbus-update-activation-environment >/dev/null 2>&1; then
+  dbus-update-activation-environment --systemd \
+    SEVENOS_ROOT SEVENOS_LIVE_SESSION XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE \
+    LANG LANGUAGE LC_MESSAGES TERMINAL SEVENOS_TERMINAL >/dev/null 2>&1 || true
+fi
+
+exec Hyprland

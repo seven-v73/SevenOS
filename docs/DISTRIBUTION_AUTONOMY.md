@@ -270,6 +270,11 @@ The goal is simple: each common workflow needs a SevenOS-native entrance before
 the user ever has to know about Rofi, Hyprland, pacman, libvirt, systemctl or
 raw shell scripts.
 
+The surfaces contract is cached for responsiveness, but the cache is
+versioned. A new interaction, theme, profile or surface contract must be able
+to invalidate stale reports automatically so `seven surfaces` reflects the
+current OS state instead of yesterday's degraded snapshot.
+
 ## User Routes Contract
 
 `seven routes` maps human intentions to SevenOS actions and surfaces:

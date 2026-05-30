@@ -35,18 +35,28 @@ done
 SURFACES_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
 SURFACES_CACHE="$SURFACES_CACHE_DIR/surfaces.json"
 SURFACES_CACHE_TTL="${SEVENOS_SURFACES_CACHE_TTL:-300}"
+SURFACES_CACHE_VERSION="2026-05-public-surfaces-v2"
 
 cache_json_valid() {
   [[ -s "$SURFACES_CACHE" ]] || return 1
-  python - "$SURFACES_CACHE" >/dev/null 2>&1 <<'PY'
+  python - "$SURFACES_CACHE" "$SURFACES_CACHE_VERSION" "$ROOT_DIR" >/dev/null 2>&1 <<'PY'
 import json
 import sys
 from pathlib import Path
 
 try:
     with Path(sys.argv[1]).open(encoding="utf-8") as handle:
-        json.load(handle)
+        data = json.load(handle)
 except Exception:
+    raise SystemExit(1)
+if data.get("cache_version") != sys.argv[2]:
+    raise SystemExit(1)
+if data.get("root") != str(Path(sys.argv[3]).resolve()):
+    raise SystemExit(1)
+if int(data.get("score", 0) or 0) < 95:
+    raise SystemExit(1)
+summary = data.get("summary") if isinstance(data.get("summary"), dict) else {}
+if int(summary.get("legacy_blockers", 0) or 0) > 0:
     raise SystemExit(1)
 PY
 }
@@ -61,7 +71,7 @@ cache_fresh() {
 }
 
 surfaces_json() {
-  SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
+  SEVENOS_ROOT="$ROOT_DIR" SEVENOS_SURFACES_CACHE_VERSION="$SURFACES_CACHE_VERSION" python - <<'PY'
 import json
 import os
 import subprocess
@@ -100,10 +110,10 @@ def run_json(parts, fallback, timeout=6):
         return fallback
 
 
-actions = run_json(["scripts/actions.sh", "--json"], {"actions": []})
+actions = run_json(["scripts/actions.sh", "--json"], {"actions": []}, timeout=12)
 action_ids = {item.get("id") for item in actions.get("actions", []) if isinstance(item, dict)}
-mask = run_json(["scripts/mask.sh", "json"], {})
-adaptive = run_json(["scripts/adaptive-ui.sh", "json"], {})
+mask = run_json(["scripts/mask.sh", "json"], {}, timeout=12)
+adaptive = run_json(["scripts/adaptive-ui.sh", "json"], {}, timeout=20)
 
 
 def text(rel):
@@ -395,8 +405,9 @@ for item in surfaces:
     dynamic_ok = True
     if item.get("dynamic"):
         adaptive_ready = adaptive.get("state") in {"ready", "guided-preview"}
+        adaptive_score = int(adaptive.get("percent", adaptive.get("score", 0)) or 0)
         alignment = adaptive.get("alignment") if isinstance(adaptive.get("alignment"), dict) else {}
-        if not adaptive_ready and alignment.get("state") == "PART":
+        if not adaptive_ready and (alignment.get("state") == "PART" or adaptive_score >= 90):
             adaptive_ready = True
         dynamic_ok = adaptive_ready and mask.get("state") == "masked"
     if native_ok and desktop_ok and action_match and dynamic_ok:
@@ -419,6 +430,8 @@ state = "legacy-screens-detected" if legacy_blockers else "productized" if score
 
 print(json.dumps({
     "schema": "sevenos.surfaces.v1",
+    "cache_version": os.environ.get("SEVENOS_SURFACES_CACHE_VERSION", "unknown"),
+    "root": str(root.resolve()),
     "state": state,
     "score": score,
     "summary": {

@@ -1,8 +1,21 @@
 [Desktop Entry]
 Type=Application
 Name=Install SevenOS
+Name[fr]=Installer SevenOS
 Comment=Open the SevenOS graphical installer portal
+Comment[fr]=Ouvrir le portail graphique d’installation SevenOS
 Exec=seven-installer
 Icon=seven-installer
 Terminal=false
 Categories=System;Settings;
+Actions=Status;Retry;
+
+[Desktop Action Status]
+Name=Installer Status
+Name[fr]=Statut de l’installation
+Exec=seven-installer live-notify
+
+[Desktop Action Retry]
+Name=Retry Installer
+Name[fr]=Relancer l’installation
+Exec=seven-installer live-retry

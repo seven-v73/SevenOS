@@ -11,11 +11,125 @@ top of an Arch-compatible foundation:
 docs/TEST_MACHINE.md
 ```
 
-The current ISO is a live environment that contains the SevenOS repository at:
+The current ISO is a graphical SevenOS live environment. It contains the
+SevenOS repository at:
 
 ```text
 /opt/SevenOS
 ```
+
+On boot, the ISO should not drop the user into an Arch prompt. The expected
+public path is:
+
+1. SDDM autologins as the live `seven` user.
+2. The `SevenOS Live` Wayland session starts Hyprland.
+3. NetworkManager is enabled immediately.
+4. SevenOS user configs and command wrappers are already present.
+5. `sevenos-live-ready` imports the session environment, prepares user
+   folders, starts SevenOS user services, shows progress feedback and opens the
+   graphical installer portal.
+
+If SDDM fails, TTY1 autologins to `seven` and starts the same SevenOS live
+session as a recovery fallback. This keeps the ISO usable without asking a
+normal user to understand the Arch live command shell.
+
+The first screen should feel alive but calm: network preparation, installer
+opening and recovery hints are reported through native notifications and the
+live-ready log at `~/.cache/sevenos/live-ready.log`.
+
+For diagnostics or a manual retry from the live session:
+
+```bash
+seven-installer live-status
+seven-installer live-status --json
+seven-installer live-notify
+seven-installer live-reset
+seven-installer live-retry
+seven-installer open
+```
+
+`live-status` reads the persisted first-screen state from
+`~/.local/state/sevenos/live-status.json`, so the Hub or Helper can show the
+current step, progress percentage, network readiness, storage readiness and
+power/memory readiness plus the recommended next action without scraping shell
+output. It also exposes a public `readiness` summary so graphical surfaces can
+show "ready", "attention" or "blocked" without reimplementing installer logic.
+The status includes elapsed time and freshness metadata; if progress stops
+updating during startup, SevenOS can surface the issue as `live-helper-stale`
+and offer a retry instead of leaving the first screen motionless.
+It also exposes a `timeline` array for graphical surfaces. Each live startup
+step is marked as `pending`, `active`, `done`, `blocked` or `closed`, so the
+installer card can animate a real sequence instead of guessing from a single
+percentage.
+For the public UI, `live-status --json` also includes localized `ui` labels:
+title, subtitle, progress text and primary action label. That keeps the Helper,
+Hub or installer card aligned with the active system language without each
+surface rebuilding its own wording.
+The same `ui` block exposes `active_step`, `next_step`, step counts and a
+simple confidence score. This lets the first-screen card stay calm and useful:
+show what SevenOS is doing now, what comes next, and whether the current state
+is trustworthy enough to continue.
+It also provides compact `status_cards` for network, disks, memory and power.
+Those cards are localized and already reduced to `ok`, `attention` or
+`blocked`, so graphical surfaces can render stable status tiles without
+duplicating hardware-readiness logic.
+For decision-making, the same block includes `priority_card`, `can_continue`
+and `safety_level`. A public UI can therefore highlight the one thing that
+matters most and decide whether to show a calm continue button, a review state
+or a blocked state.
+It also includes a localized `user_message` with a headline, body and tone.
+This is the user-facing decision layer: the screen says clearly whether
+SevenOS is ready, recommends a review, or waits for a required action.
+The `primary_command` travels with `primary_action_label`, so the native portal
+can expose one contextual button: open the installer, retry the live flow,
+connect Wi-Fi or inspect disks depending on the current state.
+The UI block also provides `secondary_actions` for calm recovery: detailed
+status, retry and disk inspection. These actions are intentionally stable so a
+new user always has a safe way to understand or recover the live session.
+`attention_items` gives the same screen a short, readable list of what matters
+now. If nothing blocks the flow, it reports that no blocking issue was found;
+if something is wrong, it names the first few issues without requiring log
+reading.
+For motion and pacing, `ui` also exposes `pace_state` and
+`estimated_remaining_seconds`. These values are intentionally soft hints for
+animation and copy, not strict install-time promises.
+Each live startup attempt also carries a short `session_id`. Graphical
+surfaces can use it to ignore stale state from a previous retry and keep
+animations tied to the current live-start attempt.
+
+The native SevenOS installer portal consumes this same `live-status` contract:
+its header, progress bar and live readiness cards come from the public UI
+payload instead of duplicating separate status logic.
+It also renders the live `timeline` directly, so the first graphical screen
+shows the actual SevenOS startup sequence: session, environment, network,
+storage, services and installer portal. This keeps the user oriented during
+slower boots without exposing Arch shell details.
+The same screen refreshes the live progress, active step, next step and
+priority hint every few seconds. The installer therefore feels responsive
+during hardware detection or network warm-up without spawning extra windows.
+Its main status card uses `user_message`, so the first thing the user reads is
+the SevenOS decision, not an internal status code.
+Its primary button follows `primary_command`, keeping the next action in one
+stable place instead of scattering recovery and install actions across the UI.
+Secondary recovery buttons stay beside it, giving access to status, retry and
+disk inspection without turning the first screen into a troubleshooting page.
+The summary also renders `attention_items`, so the user sees the real concerns
+in one compact line before touching disk operations.
+
+The live-ready helper also uses a lightweight lock and stores the installer
+process id when possible. That prevents duplicate installer windows during
+session startup and lets `live-status` report when the portal was launched but
+has since been closed.
+
+After launching the portal, the helper waits briefly for the installer window
+to stay alive before marking the first screen as ready. If it closes too early,
+SevenOS records `state: closed`, shows a native notification and recommends
+`seven-installer live-retry` instead of leaving the user with a silent failure.
+
+The lock is self-healing: if a live startup is interrupted, a stale lock older
+than the short startup window is cleared automatically. The desktop action
+"Installer Status" uses `live-notify`, so it produces visible feedback even
+when launched from a graphical menu without a terminal.
 
 The current installer implementation is a non-destructive planning and script
 generation flow:
@@ -63,7 +177,8 @@ seven installer iso-runtime build-local-repo --yes
 injects that repository into the temporary archiso profile.
 
 SevenOS should not claim `public-release-ready` until the graphical ISO runtime
-is actually available and the release doctor is clean.
+is actually available, the live session starts SevenOS-first, and the release
+doctor is clean.
 
 ## Public Install Experience
 

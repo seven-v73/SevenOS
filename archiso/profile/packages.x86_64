@@ -19,6 +19,7 @@ vim
 networkmanager
 network-manager-applet
 nm-connection-editor
+gnome-disk-utility
 wpa_supplicant
 iwd
 iw
@@ -50,6 +51,14 @@ sddm
 xorg-server
 xorg-xauth
 polkit-kde-agent
+polkit
+gtk3
+gtk4
+libadwaita
+python-gobject
+xdg-utils
+xdg-user-dirs
+desktop-file-utils
 qt6-declarative
 grim
 slurp
