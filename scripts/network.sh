@@ -22,11 +22,16 @@ EOF
 JSON_OUTPUT=0
 YES="${SEVENOS_YES:-0}"
 ACTION="${1:-status}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+NETWORK_CACHE="$CACHE_DIR/network-status.json"
+NETWORK_CACHE_TTL="${SEVENOS_NETWORK_CACHE_TTL:-30}"
+REFRESH_CACHE="${SEVENOS_NETWORK_REFRESH:-0}"
 shift || true
 
 for arg in "$@"; do
   case "$arg" in
     --json|json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     --yes|-y) YES=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown network option: $arg"; usage; exit 1 ;;
@@ -77,7 +82,42 @@ active_ssid() {
   nmcli -t -f ACTIVE,SSID device wifi 2>/dev/null | awk -F: '$1 == "yes" { print $2; exit }' || true
 }
 
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1" ttl="$2" now mtime
+  [[ "$REFRESH_CACHE" == "1" ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1" tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+clear_network_cache() {
+  rm -f "$NETWORK_CACHE" 2>/dev/null || true
+}
+
 status_json() {
+  if cache_is_fresh "$NETWORK_CACHE" "$NETWORK_CACHE_TTL"; then
+    cat "$NETWORK_CACHE"
+    return 0
+  fi
   local nmcli_state nmtui_state editor_state nm_state modem_state radio device ssid
   nmcli_state="$(command_state nmcli)"
   nmtui_state="$(command_state nmtui)"
@@ -87,7 +127,8 @@ status_json() {
   radio="$(wifi_radio)"
   device="$(wifi_device)"
   ssid="$(active_ssid)"
-  python - "$nmcli_state" "$nmtui_state" "$editor_state" "$nm_state" "$modem_state" "$radio" "$device" "$ssid" <<'PY'
+  local payload
+  payload="$(python - "$nmcli_state" "$nmtui_state" "$editor_state" "$nm_state" "$modem_state" "$radio" "$device" "$ssid" <<'PY'
 import json
 import sys
 
@@ -97,6 +138,9 @@ payload["schema"] = "sevenos.network.v1"
 payload["ready"] = payload["nmcli"] == "OK" and payload["networkmanager"] == "RUN"
 print(json.dumps(payload))
 PY
+)"
+  printf '%s\n' "$payload" | write_json_cache "$NETWORK_CACHE" || true
+  printf '%s\n' "$payload"
 }
 
 status_human() {
@@ -143,6 +187,7 @@ unblock_wifi() {
 }
 
 bootstrap_network() {
+  clear_network_cache
   log_info "Preparing SevenOS network stack..."
   require_interactive_admin
   install_package_file "$ROOT_DIR/scripts/packages-network.txt"
@@ -152,6 +197,7 @@ bootstrap_network() {
 }
 
 repair_network() {
+  clear_network_cache
   log_info "Repairing SevenOS network stack..."
   require_interactive_admin
   enable_network_services

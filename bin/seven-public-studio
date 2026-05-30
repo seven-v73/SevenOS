@@ -46,6 +46,8 @@ def resolve_root() -> Path:
 
 ROOT = resolve_root()
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "sevenos"
+PAYLOAD_CACHE_TTL = float(os.environ.get("SEVENOS_PUBLIC_STUDIO_CACHE_TTL", "300"))
 sys.path.insert(0, str(ROOT / "scripts"))
 try:
     import seven_theme  # noqa: E402
@@ -696,6 +698,60 @@ def payload(section: str = "status") -> dict:
     return data
 
 
+def payload_cache_path(section: str) -> Path:
+    safe = re.sub(r"[^a-zA-Z0-9_.-]+", "-", section or "status")
+    return CACHE_DIR / f"public-studio-{safe}.json"
+
+
+def read_payload_cache(section: str) -> dict | None:
+    if os.environ.get("SEVENOS_PUBLIC_STUDIO_REFRESH") == "1" or "--refresh" in sys.argv or "--no-cache" in sys.argv:
+        return None
+    path = payload_cache_path(section)
+    try:
+        if time.time() - path.stat().st_mtime > PAYLOAD_CACHE_TTL:
+            return None
+        data = json.loads(path.read_text(encoding="utf-8") or "{}")
+    except Exception:
+        return None
+    if not isinstance(data, dict) or data.get("schema") != "sevenos.public-studio.v1":
+        return None
+    context = data.setdefault("context", {})
+    expected_context = {
+        "root": str(ROOT),
+        "theme": theme_mode(),
+        "language": LANG,
+        "profile": active_profile(),
+    }
+    for key, value in expected_context.items():
+        if context.get(key) != value:
+            return None
+    return data
+
+
+def write_payload_cache(section: str, data: dict) -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        path = payload_cache_path(section)
+        tmp = path.with_suffix(f".tmp.{os.getpid()}")
+        tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        json.loads(tmp.read_text(encoding="utf-8"))
+        tmp.replace(path)
+    except Exception:
+        try:
+            tmp.unlink()  # type: ignore[name-defined]
+        except Exception:
+            pass
+
+
+def cached_payload(section: str = "status") -> dict:
+    cached = read_payload_cache(section)
+    if cached is not None:
+        return cached
+    data = payload(section)
+    write_payload_cache(section, data)
+    return data
+
+
 def print_human(data: dict, section: str) -> None:
     print("SevenOS Public Readiness Studio")
     print("================================")
@@ -1030,7 +1086,7 @@ def main() -> int:
     if "--probe" in args:
         print(json.dumps({"schema": "sevenos.public-studio.probe.v1", "state": "OK", "root": str(ROOT)}, ensure_ascii=False))
         return 0
-    data = payload(section)
+    data = cached_payload(section)
     if "--json" in args or "json" in args:
         print(json.dumps(data, ensure_ascii=False, indent=2))
         return 0
