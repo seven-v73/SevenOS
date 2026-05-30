@@ -382,6 +382,8 @@ warmup_experience() {
       renice 10 "$$" >/dev/null 2>&1 || true
       ionice -c 3 -p "$$" >/dev/null 2>&1 || true
     fi
+    run_warmup 12 "$ROOT_DIR/scripts/state.sh" --json --refresh &
+    state_warmup_pid=$!
     run_warmup 6 "$ROOT_DIR/bin/seven-spotlight" index
     run_warmup 4 "$ROOT_DIR/bin/seven-apps" json
     run_warmup 4 "$ROOT_DIR/bin/seven-launchpad-native" --doctor --json
@@ -390,6 +392,7 @@ warmup_experience() {
     run_warmup 4 "$ROOT_DIR/bin/seven-home-native" --json
     run_warmup 3 "$ROOT_DIR/scripts/motion.sh" status --json
     run_warmup 3 "$ROOT_DIR/scripts/theme-session.sh" status --json
+    wait "$state_warmup_pid" 2>/dev/null || true
     write_state >/dev/null 2>&1 || true
   } &
   if [[ "${SEVENOS_EXPERIENCE_SILENT_WARMUP:-0}" != "1" ]]; then

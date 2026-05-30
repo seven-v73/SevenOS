@@ -18,9 +18,11 @@ EOF
 }
 
 JSON_OUTPUT=0
+REFRESH_CACHE=0
 for arg in "$@"; do
   case "$arg" in
     --json) JSON_OUTPUT=1 ;;
+    --refresh|refresh) REFRESH_CACHE=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown state option: $arg"; usage; exit 1 ;;
   esac
@@ -29,6 +31,43 @@ done
 if [[ "$JSON_OUTPUT" -ne 1 ]]; then
   usage
   exit 0
+fi
+
+STATE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+STATE_CACHE="$STATE_CACHE_DIR/state.json"
+STATE_CACHE_LOCK="$STATE_CACHE.lock"
+
+state_cache_age() {
+  command -v stat >/dev/null 2>&1 || return 1
+  printf '%s\n' "$(( $(date +%s) - $(stat -c %Y "$STATE_CACHE" 2>/dev/null || printf 0) ))"
+}
+
+state_cache_valid() {
+  [[ "$REFRESH_CACHE" -eq 0 && "${SEVENOS_STATE_REFRESH:-0}" != "1" && -s "$STATE_CACHE" ]] || return 1
+  local age
+  age="$(state_cache_age)" || return 1
+  [[ "$age" -le "${SEVENOS_STATE_CACHE_TTL:-20}" ]] || return 1
+}
+
+if state_cache_valid; then
+  cat "$STATE_CACHE"
+  printf '\n'
+  exit 0
+fi
+
+if [[ "$REFRESH_CACHE" -eq 0 && "${SEVENOS_STATE_REFRESH:-0}" != "1" && -s "$STATE_CACHE" ]]; then
+  age="$(state_cache_age 2>/dev/null || printf 999999)"
+  if [[ "$age" -le "${SEVENOS_STATE_STALE_TTL:-300}" ]]; then
+    if mkdir "$STATE_CACHE_LOCK" 2>/dev/null; then
+      (
+        trap 'rmdir "$STATE_CACHE_LOCK" 2>/dev/null || true' EXIT
+        SEVENOS_STATE_REFRESH=1 "$0" --json >/dev/null 2>&1 || true
+      ) &
+    fi
+    cat "$STATE_CACHE"
+    printf '\n'
+    exit 0
+  fi
 fi
 
 json_or_null() {
@@ -64,7 +103,24 @@ json_string() {
 }
 
 STATE_TMP="$(mktemp -d)"
-trap 'rm -rf "$STATE_TMP"' EXIT
+mkdir -p "$STATE_CACHE_DIR"
+if ! mkdir "$STATE_CACHE_LOCK" 2>/dev/null; then
+  if [[ -s "$STATE_CACHE" ]]; then
+    cat "$STATE_CACHE"
+    printf '\n'
+    exit 0
+  fi
+  for _ in {1..120}; do
+    sleep 0.1
+    if [[ -s "$STATE_CACHE" ]]; then
+      cat "$STATE_CACHE"
+      printf '\n'
+      exit 0
+    fi
+  done
+else
+  trap 'rm -rf "$STATE_TMP"; rmdir "$STATE_CACHE_LOCK" 2>/dev/null || true' EXIT
+fi
 
 json_to_file "$STATE_TMP/status.json" "$ROOT_DIR/bin/seven" status --json &
 pid_status=$!
@@ -577,6 +633,8 @@ PY
 
 ensure_public_contracts
 
+STATE_OUTPUT="$(mktemp "$STATE_CACHE_DIR/state.XXXXXX")"
+{
 printf '{'
 printf '"schema":"sevenos.state.v1",'
 printf '"generated_at":%s,' "$(date -u +%Y-%m-%dT%H:%M:%SZ | json_string)"
@@ -796,3 +854,6 @@ else
 fi
 printf '}'
 printf '}\n'
+} > "$STATE_OUTPUT"
+mv "$STATE_OUTPUT" "$STATE_CACHE"
+cat "$STATE_CACHE"

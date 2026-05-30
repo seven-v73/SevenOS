@@ -206,6 +206,7 @@ warmup_targets = {
     "home": "bin/seven-home-native",
     "motion": "scripts/motion.sh",
     "theme": "scripts/theme-session.sh",
+    "state": "scripts/state.sh",
 }
 missing_warmup = [name for name, token in warmup_targets.items() if token not in shell_experience]
 check(
