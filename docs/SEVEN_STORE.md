@@ -57,6 +57,7 @@ seven store search blender --json
 seven store detail creation
 seven store install creation
 seven store install-app pacman blender --dry-run
+seven store install-app pacman blender --dry-run --json
 seven store install-app flatpak org.blender.Blender --dry-run
 ```
 
@@ -101,6 +102,17 @@ resolved: blender -> studio -> pacman -> profile-rootfs
 
 This prevents the UI from presenting backend names too early while still making
 the action auditable.
+
+The CLI preview has two layers:
+
+```bash
+seven store install-app pacman blender --profile studio --dry-run
+seven store install-app pacman blender --profile studio --dry-run --json
+```
+
+The text output is for humans. The JSON output is the SevenPkg transaction plan
+with `resolved_sources`, `commands`, `warnings` and `blockers`, so graphical
+surfaces can preview safely before executing.
 
 SevenStore also consumes the fast footprint audit so the UI can show whether
 the six mini OS rootfs views are ready, whether catalog domains are covered, and

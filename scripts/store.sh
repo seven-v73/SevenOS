@@ -18,7 +18,7 @@ Usage:
   seven store search <query> [--json]
   seven store detail <id> [--json]
   seven store install <module>
-  seven store install-app <source> <id> [--profile <profile>] [--dry-run]
+  seven store install-app <source> <id> [--profile <profile>] [--dry-run] [--json]
   seven store open-app <source> <id>
   seven store remove-app <source> <id>
   seven store repair-app <source> <id>
@@ -1307,10 +1307,12 @@ install_app() {
   local app_id="${2:-}"
   shift 2 || true
   local dry_run=0
+  local json_output=0
   local profile=""
   while [[ "$#" -gt 0 ]]; do
     case "$1" in
       --dry-run) dry_run=1 ;;
+      --json) json_output=1 ;;
       --profile)
         profile="${2:-}"
         shift
@@ -1326,12 +1328,15 @@ install_app() {
     return 1
   fi
   local command=()
+  local preview_command=()
   case "$source" in
     pacman)
       if [[ -n "$profile" ]]; then
         command=("$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source pacman)
+        preview_command=("$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source pacman --preview --json)
       else
         command=($(pacman_install_command "$app_id"))
+        preview_command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source pacman --global --preview --json)
       fi
       ;;
     aur)
@@ -1340,33 +1345,84 @@ install_app() {
         printf -v helper_cmd '%q ' "$ROOT_DIR/bin/sevenpkg" "$profile" helper paru
         printf -v install_cmd '%q ' "$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source aur
         command=(bash -lc "${helper_cmd}&& ${install_cmd}")
+        preview_command=("$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source aur --preview --json)
       elif command -v paru >/dev/null 2>&1; then
         command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source paru --global)
+        preview_command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source paru --global --preview --json)
       elif command -v yay >/dev/null 2>&1; then
         command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source yay --global)
+        preview_command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source yay --global --preview --json)
       else
         local helper_cmd install_cmd
         printf -v helper_cmd '%q ' "$ROOT_DIR/install.sh" aur-helpers --yes
         printf -v install_cmd '%q ' "$ROOT_DIR/bin/sevenpkg" install "$app_id" --source aur --global
         command=(bash -lc "${helper_cmd}&& ${install_cmd}")
+        preview_command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source aur --global --preview --json)
       fi
       ;;
     flatpak)
       if [[ -n "$profile" ]]; then
         command=("$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source flatpak)
+        preview_command=("$ROOT_DIR/bin/sevenpkg" "$profile" install "$app_id" --source flatpak --preview --json)
       else
         command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source flatpak --global)
+        preview_command=("$ROOT_DIR/bin/sevenpkg" install "$app_id" --source flatpak --global --preview --json)
       fi
       ;;
-    profile) command=(seven profile apps "$app_id") ;;
+    profile)
+      command=(seven profile apps "$app_id")
+      preview_command=(printf '%s\n' "{\"schema\":\"sevenos.store-install-plan.v1\",\"source\":\"profile\",\"id\":\"$app_id\",\"commands\":[\"seven profile apps $app_id\"],\"warnings\":[],\"blockers\":[]}")
+      ;;
     *) log_error "Unknown source: $source"; return 1 ;;
   esac
   if [[ "$dry_run" == "1" || "${SEVENOS_DRY_RUN:-0}" == "1" ]]; then
+    if [[ "$json_output" == "1" ]]; then
+      "${preview_command[@]}"
+      return $?
+    fi
     printf 'SevenStore install plan\n'
     printf 'source: %s\n' "$source"
     printf 'target: %s\n' "$app_id"
     [[ -n "$profile" ]] && printf 'profile: %s\n' "$profile"
     printf 'command: %s\n' "${command[*]}"
+    if [[ "${#preview_command[@]}" -gt 0 ]]; then
+      printf 'preview: %s\n' "${preview_command[*]}"
+      local plan_json
+      if plan_json="$("${preview_command[@]}" 2>/dev/null)"; then
+        PLAN_JSON="$plan_json" python - <<'PY' || true
+import json
+import os
+import sys
+
+try:
+    payload = json.loads(os.environ.get("PLAN_JSON", "{}"))
+except Exception:
+    sys.exit(0)
+
+routes = payload.get("resolved_sources") or []
+if routes:
+    print("route:")
+    for item in routes:
+        print(
+            "  {query} -> {profile} -> {source} -> {scope}".format(
+                query=item.get("query", item.get("package", "")),
+                profile=item.get("profile", ""),
+                source=item.get("source", ""),
+                scope=item.get("scope", ""),
+            )
+        )
+impact = payload.get("impact")
+if impact:
+    print(f"impact: {impact}")
+for key in ("warnings", "blockers"):
+    values = payload.get(key) or []
+    if values:
+        print(f"{key}:")
+        for value in values:
+            print(f"  - {value}")
+PY
+      fi
+    fi
     return 0
   fi
   if [[ "$source" == "pacman" ]] && command -v pacman >/dev/null 2>&1 && package_is_satisfied "$app_id"; then
