@@ -144,15 +144,15 @@ window.seven-reader {
     radial-gradient(circle at 50% 4%, alpha(@seven_text, 0.07), transparent 34%),
     linear-gradient(90deg, alpha(@seven_paper_shadow, 0.10), alpha(@seven_text, 0.025), alpha(@seven_paper_shadow, 0.10));
   border-radius: 20px;
-  padding: 18px;
-  box-shadow: inset 0 1px alpha(@seven_text, 0.06), 0 24px 58px @seven_paper_shadow;
+  padding: 12px;
+  box-shadow: inset 0 1px alpha(@seven_text, 0.06), 0 18px 44px @seven_paper_shadow;
 }
 .book-spread-two-page {
   background:
     linear-gradient(90deg, transparent, alpha(@seven_paper_shadow, 0.18) 49%, alpha(@seven_text, 0.08) 50%, alpha(@seven_paper_shadow, 0.18) 51%, transparent),
     linear-gradient(180deg, alpha(@seven_paper, 0.12), transparent 42%),
     alpha(@seven_panel, 0.20);
-  padding: 16px;
+  padding: 12px;
 }
 .paper-page {
   background:
@@ -164,7 +164,7 @@ window.seven-reader {
   border-radius: 7px;
   border: 1px solid @seven_paper_edge;
   box-shadow: 0 16px 38px @seven_paper_shadow, inset 0 0 28px alpha(@seven_paper_edge, 0.52);
-  padding: 28px;
+  padding: 18px;
 }
 .paper-left {
   border-radius: 8px 2px 2px 8px;
@@ -231,13 +231,13 @@ window.seven-reader {
   padding: 0 14px;
 }
 .page-curl {
-  min-width: 76px;
-  border-radius: 22px;
+  min-width: 24px;
+  border-radius: 18px;
   background:
-    linear-gradient(90deg, alpha(@seven_paper, 0.06), alpha(@seven_paper, 0.86), alpha(@seven_paper_edge, 0.88)),
-    radial-gradient(circle at 20% 45%, alpha(@seven_text, 0.30), transparent 42%);
+    linear-gradient(90deg, alpha(@seven_paper, 0.02), alpha(@seven_paper, 0.92), alpha(@seven_paper_edge, 0.90)),
+    radial-gradient(circle at 24% 42%, alpha(@seven_text, 0.22), transparent 44%);
   border: 1px solid alpha(@seven_paper_edge, 0.52);
-  box-shadow: -14px 0 34px @seven_paper_shadow, 14px 0 38px @seven_paper_shadow, inset -12px 0 20px alpha(@seven_paper_edge, 0.84);
+  box-shadow: -12px 0 30px @seven_paper_shadow, 12px 0 34px @seven_paper_shadow, inset -14px 0 24px alpha(@seven_paper_edge, 0.88);
 }
 .flip-forward .page-curl {
   background:
@@ -248,6 +248,33 @@ window.seven-reader {
   background:
     linear-gradient(270deg, alpha(@seven_paper, 0.02), alpha(@seven_paper, 0.86), alpha(@seven_paper_edge, 0.94)),
     radial-gradient(circle at 88% 35%, alpha(@seven_text, 0.68), transparent 38%);
+}
+.page-curl-phase-0 {
+  opacity: 0.62;
+  box-shadow: -4px 0 14px alpha(@seven_paper_shadow, 0.58), inset -8px 0 18px alpha(@seven_paper_edge, 0.72);
+}
+.page-curl-phase-1 {
+  opacity: 0.78;
+  box-shadow: -12px 0 26px alpha(@seven_paper_shadow, 0.76), 10px 0 28px alpha(@seven_paper_shadow, 0.50), inset -14px 0 24px alpha(@seven_paper_edge, 0.82);
+}
+.page-curl-phase-2,
+.page-curl-phase-3 {
+  opacity: 0.96;
+  box-shadow: -20px 0 42px @seven_paper_shadow, 20px 0 46px alpha(@seven_paper_shadow, 0.80), inset -20px 0 30px alpha(@seven_paper_edge, 0.92);
+}
+.page-curl-phase-4 {
+  opacity: 0.84;
+  box-shadow: -14px 0 30px alpha(@seven_paper_shadow, 0.74), 14px 0 36px alpha(@seven_paper_shadow, 0.64), inset 16px 0 24px alpha(@seven_paper_edge, 0.82);
+}
+.page-curl-phase-5 {
+  opacity: 0.52;
+  box-shadow: 4px 0 16px alpha(@seven_paper_shadow, 0.58), inset 8px 0 18px alpha(@seven_paper_edge, 0.70);
+}
+.page-curl-forward {
+  margin-left: -4px;
+}
+.page-curl-back {
+  margin-right: -4px;
 }
 .mode-pill {
   border-radius: 999px;

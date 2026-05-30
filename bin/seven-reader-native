@@ -607,6 +607,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.focus_mode = False
         self.turn_direction = 1
         self.flip_animating = False
+        self.flip_phase = 0
         self.initial_document = initial
 
         self.root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -1282,6 +1283,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.turn_direction = 1 if page >= self.page else -1
         self.page = max(0, min(self.document.page_count - 1, page))
         self.flip_animating = self.mode == "flip"
+        self.flip_phase = 0
         self.render_current()
 
     def spread_pages(self) -> tuple[int, int]:
@@ -1337,16 +1339,12 @@ class ReaderWindow(Gtk.ApplicationWindow):
             left_page, right_page = self.spread_pages()
             spread.pack_start(self.page_widget(left_page, "left"), True, True, 0)
             if self.mode == "flip" and self.flip_animating and self.turn_direction < 0:
-                curl = Gtk.Box()
-                curl.get_style_context().add_class("page-curl")
-                spread.pack_start(curl, False, False, 0)
+                spread.pack_start(self.page_curl_widget(), False, False, 0)
             spine = Gtk.Box()
             spine.get_style_context().add_class("spine")
             spread.pack_start(spine, False, False, 0)
             if self.mode == "flip" and self.flip_animating and self.turn_direction >= 0:
-                curl = Gtk.Box()
-                curl.get_style_context().add_class("page-curl")
-                spread.pack_start(curl, False, False, 0)
+                spread.pack_start(self.page_curl_widget(), False, False, 0)
             if right_page > left_page:
                 spread.pack_start(self.page_widget(right_page, "right"), True, True, 0)
             else:
@@ -1356,17 +1354,24 @@ class ReaderWindow(Gtk.ApplicationWindow):
         if self.mode == "flip" and self.flip_animating:
             spread.get_style_context().add_class("flip-active")
             spread.get_style_context().add_class("flip-forward" if self.turn_direction >= 0 else "flip-back")
-            GLib.timeout_add(640, self.finish_flip_animation)
+            spread.get_style_context().add_class(f"flip-phase-{self.flip_phase}")
+            GLib.timeout_add(86, self.advance_flip_animation)
         self.reader_stage.pack_start(spread, True, True, 0)
         self.reader_stage.show_all()
         self.refresh_sidebar()
         GLib.idle_add(lambda: (self.document.preload_pages(self.page + 1, self.zoom), False)[1] if self.document else False)
         self.save_position()
 
+    def page_metrics(self) -> tuple[int, int, int, int]:
+        if self.mode == "inspect":
+            return (820, 700, 760, 980)
+        if self.mode in {"double", "book", "flip"}:
+            return (320, 430, 276, 356)
+        return (520, 640, 460, 560)
+
     def page_widget(self, page_index: int, side: str = "single") -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        base_width = 430 if self.mode != "inspect" else 820
-        base_height = 590 if self.mode != "inspect" else 700
+        base_width, base_height, render_width, render_height = self.page_metrics()
         box.set_size_request(int(base_width * self.zoom), int(base_height * self.zoom))
         box.get_style_context().add_class("paper-page")
         box.get_style_context().add_class(f"paper-{side}")
@@ -1380,8 +1385,8 @@ class ReaderWindow(Gtk.ApplicationWindow):
                 try:
                     pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
                         str(png),
-                        int((760 if self.mode == "inspect" else 390) * self.zoom),
-                        int((980 if self.mode == "inspect" else 500) * self.zoom),
+                        int(render_width * self.zoom),
+                        int(render_height * self.zoom),
                         True,
                     )
                     image = Gtk.Image.new_from_pixbuf(pixbuf)
@@ -1397,8 +1402,8 @@ class ReaderWindow(Gtk.ApplicationWindow):
                 page_path = self.document.pages[max(0, min(page_index, len(self.document.pages) - 1))]
                 pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
                     str(page_path),
-                    int((760 if self.mode == "inspect" else 390) * self.zoom),
-                    int((980 if self.mode == "inspect" else 500) * self.zoom),
+                    int(render_width * self.zoom),
+                    int(render_height * self.zoom),
                     True,
                 )
                 image = Gtk.Image.new_from_pixbuf(pixbuf)
@@ -1438,8 +1443,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
 
     def blank_page_widget(self, side: str = "right") -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        base_width = 430 if self.mode != "inspect" else 820
-        base_height = 590 if self.mode != "inspect" else 700
+        base_width, base_height, _render_width, _render_height = self.page_metrics()
         box.set_size_request(int(base_width * self.zoom), int(base_height * self.zoom))
         box.get_style_context().add_class("paper-page")
         box.get_style_context().add_class(f"paper-{side}")
@@ -1451,18 +1455,36 @@ class ReaderWindow(Gtk.ApplicationWindow):
         box.pack_start(marker, True, True, 0)
         return box
 
+    def page_curl_widget(self) -> Gtk.Widget:
+        curl = Gtk.Box()
+        curl.get_style_context().add_class("page-curl")
+        curl.get_style_context().add_class(f"page-curl-phase-{self.flip_phase}")
+        curl.get_style_context().add_class("page-curl-forward" if self.turn_direction >= 0 else "page-curl-back")
+        widths = (22, 58, 112, 152, 88, 28)
+        base_width, base_height, _render_width, _render_height = self.page_metrics()
+        width = widths[min(self.flip_phase, len(widths) - 1)]
+        curl.set_size_request(int(width * self.zoom), int((base_height - 16) * self.zoom))
+        return curl
+
     def turn_page(self, delta: int) -> None:
         if not self.document:
             return
         self.turn_direction = 1 if delta >= 0 else -1
         self.flip_animating = self.mode == "flip"
+        self.flip_phase = 0
         step = 2 if self.mode in {"double", "book", "flip"} else 1
         self.page = max(0, min(self.document.page_count - 1, self.page + delta * step))
         self.render_current()
 
-    def finish_flip_animation(self) -> bool:
-        if self.flip_animating:
+    def advance_flip_animation(self) -> bool:
+        if not self.flip_animating:
+            return False
+        if self.flip_phase < 5:
+            self.flip_phase += 1
+            self.render_current()
+        else:
             self.flip_animating = False
+            self.flip_phase = 0
             self.render_current()
         return False
 
