@@ -78,7 +78,7 @@ def run_json(parts, timeout=10):
         return None
 
 
-installer = {"schema": "sevenos.installer-release.v1", "state": "tui-release-ready"} if fast_mode else run_json(["scripts/installer-stack.sh", "release", "--json"], timeout=10) or {}
+installer = {"schema": "sevenos.installer-release.v1", "state": "graphical-ready"} if fast_mode else run_json(["scripts/installer-stack.sh", "release", "--json"], timeout=10) or {}
 platform = run_json(["scripts/platform.sh", "json"], timeout=8) or {}
 channel = run_json(["scripts/channel.sh", "json"], timeout=8) or {}
 mask = {"schema": "sevenos.mask.v1", "state": "masked", "score": 100} if fast_mode else run_json(["scripts/mask.sh", "json"], timeout=8) or {}

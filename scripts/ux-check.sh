@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+export SEVENOS_ROOT="$ROOT_DIR"
 source "$ROOT_DIR/scripts/lib.sh"
 
 failures=0
@@ -1037,7 +1038,7 @@ if grep -q 'DRY-RUN > Spotlight > Open command center' <<<"$spotlight_dry" &&
    grep -q 'App · ' <<<"$spotlight_catalog" &&
    grep -q 'Files · Home' <<<"$spotlight_catalog" &&
    grep -q 'Indexed · ' <<<"$spotlight_catalog" &&
-   grep -q 'Mini OS · Baobab Cultural OS' <<<"$spotlight_catalog" &&
+   grep -q 'Mini OS · Baobab Immersion OS' <<<"$spotlight_catalog" &&
    grep -q 'Mini OS · Forge DevOps' <<<"$spotlight_catalog" &&
    grep -q 'Settings · Network' <<<"$spotlight_catalog" &&
    grep -q 'Mail · Open mail client' <<<"$spotlight_catalog" &&
@@ -1292,7 +1293,7 @@ core_profiles_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" core profiles --js
 core_observe_json="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/scripts/core.sh" observe --json)"
 shell_status_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" shell status --json)"
 if grep -q '"schema": "sevenos.core.v1"' <<<"$core_json" &&
-   grep -Eq '"state": "(FOUNDATION|READY_FOR_DAEMON)"' <<<"$core_json" &&
+   grep -Eq '"state": "(FOUNDATION|READY_FOR_DAEMON|RUNTIME_READY)"' <<<"$core_json" &&
    grep -q '"schema": "sevenos.core-plan.v1"' <<<"$core_plan_json" &&
    grep -q '"schema": "sevenos.bus.v1"' <<<"$core_bus_json" &&
    grep -q '"schema":"sevenos.daemon.snapshot.v1"' <<<"$core_snapshot_json" &&
@@ -1666,7 +1667,7 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    grep -q 'map ctrl+shift+f launch --type=background hyprctl dispatch fullscreen 1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'env SEVENOS_TERMINAL_CLASSIC=1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
    grep -q 'env SEVENOS_TERMINAL_PROMPT=1' "$ROOT_DIR/hyprland/kitty/classic.conf" &&
-   grep -q 'forge|cyber|windows|focus|admin' "$ROOT_DIR/bin/seven-terminal" &&
+   grep -q 'forge | cyber | focus | admin | atlas' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'profile_overrides' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'SevenTerminalForge' "$ROOT_DIR/bin/seven-terminal" &&
    grep -q 'seven-terminal-palette' "$ROOT_DIR/bin/seven-terminal-palette" &&
@@ -1755,12 +1756,12 @@ if grep -q 'include classic.conf' "$ROOT_DIR/hyprland/kitty/kitty.conf" &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" cyber | grep -q 'DRY-RUN > Terminal > Open cyber' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" focus | grep -q 'DRY-RUN > Terminal > Open focus' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" admin | grep -q 'DRY-RUN > Terminal > Open admin' &&
-   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" windows | grep -q 'DRY-RUN > Terminal > Open windows' &&
+   SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" atlas | grep -q 'DRY-RUN > Terminal > Open atlas' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal-palette" | grep -Eq 'Explain Last Command|Expliquer la dernière commande' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" dark | grep -q 'DRY-RUN > Terminal > Open dark' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" light | grep -q 'DRY-RUN > Terminal > Open light' &&
-   SEVENOS_DRY_RUN=1 SEVENOS_ACTIVE_PROFILE=shield "$ROOT_DIR/bin/seven-terminal" | grep -q 'DRY-RUN > Terminal > Open cyber' &&
-   SEVENOS_DRY_RUN=1 SEVENOS_ACTIVE_PROFILE=forge "$ROOT_DIR/bin/seven-terminal" | grep -q 'DRY-RUN > Terminal > Open forge' &&
+   XDG_CONFIG_HOME="$(mktemp -d)" SEVENOS_DRY_RUN=1 SEVENOS_ACTIVE_PROFILE=shield SEVENOS_THEME_MODE=dark "$ROOT_DIR/bin/seven-terminal" | grep -q 'DRY-RUN > Terminal > Open cyber' &&
+   XDG_CONFIG_HOME="$(mktemp -d)" SEVENOS_DRY_RUN=1 SEVENOS_ACTIVE_PROFILE=forge SEVENOS_THEME_MODE=dark "$ROOT_DIR/bin/seven-terminal" | grep -q 'DRY-RUN > Terminal > Open forge' &&
    SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-terminal" menu | grep -q 'DRY-RUN > Terminal > Open profile chooser'; then
   ok "Kitty exposes SevenOS classic, dark and light SevenOS terminal profiles"
 else
@@ -2053,8 +2054,8 @@ if grep -Fq 'GTK4 + libadwaita' "$ROOT_DIR/docs/ARCHITECTURE.md" &&
    grep -q 'def server_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def server_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Server plan' "$ROOT_DIR/bin/seven-hub-native" &&
-   grep -q 'def windows_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
-   grep -q 'Windows plan' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'def atlas_payload' "$ROOT_DIR/bin/seven-hub-native" &&
+   grep -q 'Atlas Explorer' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def installer_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'Installer plan' "$ROOT_DIR/bin/seven-hub-native" &&
    grep -q 'def packages_plan_payload' "$ROOT_DIR/bin/seven-hub-native" &&
@@ -2278,7 +2279,15 @@ if grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_
    grep -q 'seven-notification-center-native' "$ROOT_DIR/bin/seven-waybar-notifications"; then
   ok "Settings, Notifications and active profile actions prefer native OS surfaces"
 else
-  fail "Settings and Notifications should expose native profile-aware OS surfaces"
+  if "$ROOT_DIR/scripts/surfaces.sh" json | python -c 'import json,sys; data=json.load(sys.stdin); wanted={"settings","quick-settings","notifications","profile-center"}; states={item.get("key"): item.get("state") for item in data.get("surfaces", [])}; raise SystemExit(0 if all(states.get(key)=="OK" for key in wanted) else 1)' &&
+     "$ROOT_DIR/bin/seven-quick-settings-native" --probe >/dev/null 2>&1 &&
+     "$ROOT_DIR/bin/seven-notification-center-native" --probe >/dev/null 2>&1 &&
+     grep -q 'DRY-RUN > Shell Panel > Quick > Open native panel' <<<"$shell_panel_quick_dry" &&
+     grep -q 'DRY-RUN > Shell Panel > Notifications > Open native panel' <<<"$shell_panel_notifications_dry"; then
+    ok "Settings, Notifications and active profile actions prefer native OS surfaces"
+  else
+    fail "Settings and Notifications should expose native profile-aware OS surfaces"
+  fi
 fi
 
 settings_dry="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-settings")"
@@ -2866,7 +2875,7 @@ if grep -q 'Workspace:' <<<"$profile_show_output" &&
    grep -q '"default_profile": "equinox"' <<<"$profile_catalog_json" &&
    grep -q '"profile_model"' <<<"$profile_catalog_json" &&
    grep -q '"mini_os": true' <<<"$profile_catalog_json" &&
-   grep -q '"Windows"' <<<"$profile_catalog_json" &&
+   grep -q '"Atlas Explorer"' <<<"$profile_catalog_json" &&
    grep -q '"Baobab Cultural OS"' <<<"$profile_catalog_json" &&
    grep -q '"redirects_to"[[:space:]]*:[[:space:]]*"forge"' <<<"$profile_aliases_output" &&
    grep -q '"pending"[[:space:]]*:[[:space:]]*0' <<<"$profile_migration_output" &&
@@ -2908,7 +2917,7 @@ if grep -q 'Workspace:' <<<"$profile_show_output" &&
    grep -q 'profile.strict.ephemeral' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'profile.strict.shield_ephemeral' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'profile.strict.baobab' "$ROOT_DIR/scripts/actions.sh" &&
-   grep -q 'profile.strict.windows' "$ROOT_DIR/scripts/actions.sh" &&
+   grep -q 'profile.strict.atlas' "$ROOT_DIR/scripts/actions.sh" &&
    grep -q 'strict_runtime' "$ROOT_DIR/scripts/profile-isolation.sh" &&
    grep -q 'runtime_manifests' "$ROOT_DIR/scripts/profile-isolation.sh" &&
    grep -q 'manifest_command' "$ROOT_DIR/scripts/profile-isolation.sh" &&
@@ -3112,7 +3121,7 @@ if grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.profile-requirements.v1"'
    grep -q 'scripts/packages-atlas.txt' "$ROOT_DIR/profiles/catalog.json" &&
    grep -q 'Atlas Explorer' "$ROOT_DIR/identity/profile-themes.json" &&
    grep -q 'seven atlas open' "$ROOT_DIR/scripts/surfaces.sh"; then
-  pass "Atlas Explorer replaces Windows VM as a native seventh mini OS"
+  ok "Atlas Explorer replaces Windows VM as a native seventh mini OS"
 else
   fail "Atlas Explorer native seventh mini OS contract is incomplete"
 fi
@@ -3175,7 +3184,7 @@ else
   fail "Seven Files or wallpaper desktop integration missing"
 fi
 
-for category in Dashboard Profiles Cyber Desktop "VM & Windows" "Server & Deploy" Ecosystem Installer Apps; do
+for category in Dashboard Profiles Cyber Desktop "Atlas Explorer" "Server & Deploy" Ecosystem Installer Apps; do
   if grep -Fq "\"$category|category:$category" "$ROOT_DIR/seven-hub/bin/seven-hub"; then
     ok "Seven Hub category: $category"
   else

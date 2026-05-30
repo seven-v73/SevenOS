@@ -6,7 +6,7 @@ After=graphical-session.target sevenos-theme-session.service
 [Service]
 Type=simple
 ExecStartPre=-/usr/bin/pkill -x waybar
-ExecStart=/usr/bin/env sh -lc 'root="${SEVENOS_ROOT:-/opt/SevenOS}"; if [ -x "$root/bin/seven-waybar" ]; then exec "$root/bin/seven-waybar" run; fi; exec "$HOME/.local/bin/seven-waybar" run'
+ExecStart=/usr/bin/env sh -lc 'if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env" ]; then . "${XDG_CONFIG_HOME:-$HOME/.config}/sevenos/language.env"; fi; root="${SEVENOS_ROOT:-/opt/SevenOS}"; if [ -x "$root/bin/seven-waybar" ]; then exec "$root/bin/seven-waybar" run; fi; exec "$HOME/.local/bin/seven-waybar" run'
 Restart=on-failure
 RestartSec=2
 

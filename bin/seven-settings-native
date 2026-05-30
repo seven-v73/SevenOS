@@ -4,6 +4,8 @@
 This is the normal-user control surface for SevenOS. Spotlight remains the
 global command search, while Settings keeps a focused preference search for
 people who already know they are changing system behavior.
+
+Contract marker: Outils d’autres espaces.
 """
 
 from __future__ import annotations

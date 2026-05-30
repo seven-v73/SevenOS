@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Retired native surface; language/i18n is handled by the delegated assistant.
+# seven_i18n
+
 if [[ "${1:-}" == "--probe" ]]; then
   printf 'retired\n'
   exit 0
