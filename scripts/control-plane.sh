@@ -10,6 +10,10 @@ APPLY=0
 YES=0
 SAFE_ONLY=0
 LIMIT=6
+REFRESH_CACHE="${SEVENOS_CONTROL_REFRESH:-0}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+CONTROL_CACHE="$CACHE_DIR/control-plane.json"
+CONTROL_CACHE_TTL="${SEVENOS_CONTROL_CACHE_TTL:-300}"
 
 usage() {
   cat <<'EOF'
@@ -32,6 +36,7 @@ while [[ "$#" -gt 0 ]]; do
   case "$arg" in
     plan|apply) ACTION="$arg" ;;
     --json|json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     --apply) APPLY=1 ;;
     --yes) YES=1 ;;
     --safe-only) SAFE_ONLY=1 ;;
@@ -362,14 +367,54 @@ print(json.dumps({
 PY
 }
 
+json_cache_valid() {
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1" ttl="$2" now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  [[ -s "$path" ]] || return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  [[ $(( now - mtime )) -lt "$ttl" ]]
+}
+
+write_json_cache() {
+  local path="$1" tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$path.tmp.$$"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+control_payload() {
+  local data
+  if [[ "$ACTION" != "apply" || "$APPLY" -eq 0 ]] && cache_is_fresh "$CONTROL_CACHE" "$CONTROL_CACHE_TTL"; then
+    cat "$CONTROL_CACHE"
+    return 0
+  fi
+  data="$(payload)"
+  if [[ "$ACTION" != "apply" || "$APPLY" -eq 0 ]]; then
+    printf '%s\n' "$data" | write_json_cache "$CONTROL_CACHE" || true
+  fi
+  printf '%s\n' "$data"
+}
+
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
-  payload
+  control_payload
   exit 0
 fi
 
 execute_plan() {
   local control_payload command_count=0
-  control_payload="$(payload)"
+  control_payload="$(control_payload)"
 
   printf 'SevenOS Control Apply\n'
   printf '=====================\n'
@@ -442,7 +487,7 @@ if [[ "$ACTION" == "apply" ]]; then
   exit 0
 fi
 
-CONTROL_PAYLOAD="$(payload)" python - <<'PY'
+CONTROL_PAYLOAD="$(control_payload)" python - <<'PY'
 import json
 import os
 import sys

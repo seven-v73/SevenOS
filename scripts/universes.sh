@@ -6,6 +6,10 @@ source "$ROOT_DIR/scripts/lib.sh"
 
 ACTION="${1:-status}"
 JSON_OUTPUT=0
+REFRESH_CACHE="${SEVENOS_UNIVERSES_REFRESH:-0}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+UNIVERSES_CACHE="$CACHE_DIR/universes-${ACTION}.json"
+UNIVERSES_CACHE_TTL="${SEVENOS_UNIVERSES_CACHE_TTL:-300}"
 
 usage() {
   cat <<'EOF'
@@ -23,10 +27,13 @@ for arg in "$@"; do
   case "$arg" in
     status|doctor|plan|json) ACTION="$arg" ;;
     --json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     -h|--help|help) usage; exit 0 ;;
   esac
 done
+[[ "$ACTION" == "--json" || "$ACTION" == "--refresh" || "$ACTION" == "--no-cache" ]] && ACTION="status"
 [[ "$ACTION" == "json" ]] && JSON_OUTPUT=1
+UNIVERSES_CACHE="$CACHE_DIR/universes-${ACTION}.json"
 
 payload_json() {
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
@@ -150,6 +157,44 @@ print(json.dumps({
 PY
 }
 
+json_cache_valid() {
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1" ttl="$2" now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  [[ -s "$path" ]] || return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  [[ $(( now - mtime )) -lt "$ttl" ]]
+}
+
+write_json_cache() {
+  local path="$1" tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$path.tmp.$$"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+cached_payload_json() {
+  local data
+  if cache_is_fresh "$UNIVERSES_CACHE" "$UNIVERSES_CACHE_TTL"; then
+    cat "$UNIVERSES_CACHE"
+    return 0
+  fi
+  data="$(payload_json)"
+  printf '%s\n' "$data" | write_json_cache "$UNIVERSES_CACHE" || true
+  printf '%s\n' "$data"
+}
+
 print_status() {
   PAYLOAD="$1" python - <<'PY'
 import json
@@ -188,7 +233,7 @@ if all(item.get("ready") for item in data.get("universes", [])) and data.get("co
 PY
 }
 
-payload="$(payload_json)"
+payload="$(cached_payload_json)"
 case "$ACTION" in
   status|json)
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then printf '%s\n' "$payload"; else print_status "$payload"; fi

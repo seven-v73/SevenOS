@@ -4,10 +4,17 @@ set -Eeuo pipefail
 ROOT_DIR="${SEVENOS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
 ACTION="${1:-status}"
 JSON_OUTPUT=0
+REFRESH_CACHE="${SEVENOS_INTERACTION_GATE_REFRESH:-0}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+INTERACTION_CACHE="$CACHE_DIR/interaction-${ACTION}.json"
+INTERACTION_CACHE_TTL="${SEVENOS_INTERACTION_GATE_CACHE_TTL:-300}"
 
 for arg in "$@"; do
   [[ "$arg" == "--json" || "$arg" == "json" ]] && JSON_OUTPUT=1
+  [[ "$arg" == "--refresh" || "$arg" == "--no-cache" ]] && REFRESH_CACHE=1
 done
+[[ "$ACTION" == "--json" || "$ACTION" == "--refresh" || "$ACTION" == "--no-cache" ]] && ACTION="status"
+INTERACTION_CACHE="$CACHE_DIR/interaction-${ACTION}.json"
 
 usage() {
   cat <<'EOF'
@@ -293,7 +300,45 @@ print(json.dumps({
 PY
 }
 
-data="$(payload)"
+json_cache_valid() {
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1" ttl="$2" now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  [[ -s "$path" ]] || return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  [[ $(( now - mtime )) -lt "$ttl" ]]
+}
+
+write_json_cache() {
+  local path="$1" tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$path.tmp.$$"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+cached_payload() {
+  local data
+  if cache_is_fresh "$INTERACTION_CACHE" "$INTERACTION_CACHE_TTL"; then
+    cat "$INTERACTION_CACHE"
+    return 0
+  fi
+  data="$(payload)"
+  printf '%s\n' "$data" | write_json_cache "$INTERACTION_CACHE" || true
+  printf '%s\n' "$data"
+}
+
+data="$(cached_payload)"
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   printf '%s\n' "$data"
 else

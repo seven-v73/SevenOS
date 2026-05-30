@@ -410,6 +410,10 @@ warmup_experience() {
     run_warmup 8 "$ROOT_DIR/bin/seven-wincompat" status --json --refresh
     run_warmup 10 "$ROOT_DIR/scripts/baobab.sh" doctor --json --refresh
     run_warmup 8 "$ROOT_DIR/bin/seven-experience-center" json --refresh
+    run_warmup 16 "$ROOT_DIR/scripts/control-plane.sh" plan --json --refresh
+    run_warmup 12 "$ROOT_DIR/scripts/interaction-contract.sh" status --json --refresh
+    run_warmup 8 "$ROOT_DIR/scripts/differentiators.sh" json --refresh
+    run_warmup 10 "$ROOT_DIR/scripts/universes.sh" json --refresh
     run_warmup 3 "$ROOT_DIR/scripts/motion.sh" status --json
     run_warmup 3 "$ROOT_DIR/scripts/theme-session.sh" status --json
     prewarm_waybar_status
