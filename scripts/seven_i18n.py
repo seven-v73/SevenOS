@@ -746,6 +746,7 @@ TEXT_TRANSLATIONS = {
         "Previous page": "Page précédente",
         "Next page": "Page suivante",
         "Last page": "Dernière page",
+        "Adaptive page": "Page adaptée",
         "End of document": "Fin du document",
         "Simple reading": "Lecture simple",
         "Book": "Livre",

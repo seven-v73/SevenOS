@@ -608,11 +608,15 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.turn_direction = 1
         self.flip_animating = False
         self.flip_phase = 0
+        self.rendering_spread = False
+        self.adaptive_single_page = False
+        self.resize_refresh_pending = False
         self.initial_document = initial
 
         self.root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.root.get_style_context().add_class("reader-root")
         self.add(self.root)
+        self.connect("configure-event", self.on_window_configure)
         self.build_header()
         self.stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, transition_duration=220)
         self.root.pack_start(self.stack, True, True, 0)
@@ -1286,10 +1290,34 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.flip_phase = 0
         self.render_current()
 
-    def spread_pages(self) -> tuple[int, int]:
+    def on_window_configure(self, *_args) -> bool:
+        if not self.document or self.mode not in {"double", "book", "flip"} or self.resize_refresh_pending:
+            return False
+        next_adaptive = not self.should_show_spread()
+        if next_adaptive != self.adaptive_single_page:
+            self.resize_refresh_pending = True
+            GLib.timeout_add(120, self.refresh_after_resize)
+        return False
+
+    def refresh_after_resize(self) -> bool:
+        self.resize_refresh_pending = False
+        if self.document:
+            self.render_current()
+        return False
+
+    def should_show_spread(self) -> bool:
+        if self.mode not in {"double", "book", "flip"}:
+            return False
+        allocated_width = self.get_allocated_width() or self.get_default_size()[0]
+        allocated_height = self.get_allocated_height() or self.get_default_size()[1]
+        return allocated_width >= 900 and allocated_height >= 560
+
+    def spread_pages(self, display_spread: bool | None = None) -> tuple[int, int]:
         if not self.document:
             return (0, 0)
-        if self.mode in {"double", "book", "flip"}:
+        if display_spread is None:
+            display_spread = self.should_show_spread()
+        if display_spread:
             left_page = self.page if self.page % 2 == 0 else self.page - 1
             right_page = min(left_page + 1, self.document.page_count - 1)
             return (left_page, right_page)
@@ -1300,13 +1328,15 @@ class ReaderWindow(Gtk.ApplicationWindow):
             self.spread_label.set_text("0 / 0")
             self.progress_label.set_text(tr_text("Ready to read"))
             return
-        left_page, right_page = self.spread_pages()
-        if self.mode in {"double", "book", "flip"} and right_page > left_page:
+        display_spread = self.should_show_spread()
+        left_page, right_page = self.spread_pages(display_spread)
+        if display_spread and right_page > left_page:
             label = f"{left_page + 1} - {right_page + 1} / {self.document.page_count}"
         else:
             label = f"{self.page + 1} / {self.document.page_count}"
         self.spread_label.set_text(label)
-        self.progress_label.set_text(f"{self.document.title} · {self.mode.title()} · {int(self.zoom * 100)}%")
+        adaptive = f" · {tr_text('Adaptive page')}" if self.adaptive_single_page else ""
+        self.progress_label.set_text(f"{self.document.title} · {self.mode.title()}{adaptive} · {int(self.zoom * 100)}%")
         can_previous = self.page > 0
         can_next = self.page < self.document.page_count - 1
         self.first_button.set_sensitive(can_previous)
@@ -1323,10 +1353,13 @@ class ReaderWindow(Gtk.ApplicationWindow):
             return
         self.clear_stage()
         self.update_mode_buttons()
+        display_spread = self.should_show_spread()
+        self.adaptive_single_page = self.mode in {"double", "book", "flip"} and not display_spread
+        self.rendering_spread = display_spread
         self.update_page_nav()
         self.progress_scale.handler_block_by_func(self.on_progress_changed)
         self.progress_scale.set_range(1, max(1, self.document.page_count))
-        self.progress_scale.set_increments(1, 2 if self.mode in {"double", "book", "flip"} else 1)
+        self.progress_scale.set_increments(1, 2 if display_spread else 1)
         self.progress_scale.set_value(self.page + 1)
         self.progress_scale.handler_unblock_by_func(self.on_progress_changed)
         spread = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
@@ -1334,9 +1367,9 @@ class ReaderWindow(Gtk.ApplicationWindow):
         spread.set_halign(Gtk.Align.CENTER)
         spread.set_valign(Gtk.Align.CENTER)
 
-        if self.mode in {"double", "book", "flip"}:
+        if display_spread:
             spread.get_style_context().add_class("book-spread-two-page")
-            left_page, right_page = self.spread_pages()
+            left_page, right_page = self.spread_pages(display_spread)
             spread.pack_start(self.page_widget(left_page, "left"), True, True, 0)
             if self.mode == "flip" and self.flip_animating and self.turn_direction < 0:
                 spread.pack_start(self.page_curl_widget(), False, False, 0)
@@ -1350,6 +1383,8 @@ class ReaderWindow(Gtk.ApplicationWindow):
             else:
                 spread.pack_start(self.blank_page_widget("right"), True, True, 0)
         else:
+            if self.adaptive_single_page:
+                spread.get_style_context().add_class("book-spread-adaptive")
             spread.pack_start(self.page_widget(self.page, "single"), True, True, 0)
         if self.mode == "flip" and self.flip_animating:
             spread.get_style_context().add_class("flip-active")
@@ -1365,9 +1400,9 @@ class ReaderWindow(Gtk.ApplicationWindow):
     def page_metrics(self) -> tuple[int, int, int, int]:
         if self.mode == "inspect":
             return (820, 700, 760, 980)
-        if self.mode in {"double", "book", "flip"}:
-            return (320, 430, 276, 356)
-        return (520, 640, 460, 560)
+        if self.rendering_spread:
+            return (300, 405, 258, 330)
+        return (420, 520, 364, 450)
 
     def page_widget(self, page_index: int, side: str = "single") -> Gtk.Widget:
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -1472,7 +1507,7 @@ class ReaderWindow(Gtk.ApplicationWindow):
         self.turn_direction = 1 if delta >= 0 else -1
         self.flip_animating = self.mode == "flip"
         self.flip_phase = 0
-        step = 2 if self.mode in {"double", "book", "flip"} else 1
+        step = 2 if self.should_show_spread() else 1
         self.page = max(0, min(self.document.page_count - 1, self.page + delta * step))
         self.render_current()
 

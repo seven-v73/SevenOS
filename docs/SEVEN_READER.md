@@ -44,6 +44,8 @@ Professional reading features:
 - Spread-aware page labels such as `2 - 3 / 14` in Book and Flipbook modes.
 - Progress slider, page memory and zoom controls.
 - Fit-visible page sizing at `100%` in Book and Flipbook modes.
+- Adaptive reading: Book and Flipbook keep a two-page spread on wide windows,
+  then fall back to a single visible page on compact windows.
 - Real two-page spread styling with page sides, spine shadow and blank end page.
 - Multi-phase page curl animation for a clearer page-turning effect.
 - Focus mode with `F11`.
