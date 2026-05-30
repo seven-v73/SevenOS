@@ -201,6 +201,25 @@ Seven Store consumes `sevenpkg strategy --json`, `sevenpkg catalog --json` and
 `sevenpkg resolve <app> --json`. It should treat `sevenpkg/apps.json` as the
 first source of truth for curated apps, then fall back to repository adapters.
 
+## Shared State Contract
+
+SevenPkg routing is now part of the global SevenOS state snapshot so the Hub,
+Helper, Settings, Store and future surfaces can read the same package truth
+without starting their own rootfs scans.
+
+`seven state --json` exposes:
+
+- `packages`: current SevenPkg status;
+- `packages_plan`: public package plan and policy summary;
+- `packages_strategy`: the 1 host + 6 mini OS engine strategy;
+- `packages_catalog`: curated app-domain catalog;
+- `packages_footprint`: fast rootfs readiness, duplication and coverage audit.
+
+Surfaces should prefer these state fields for dashboards and only call
+`sevenpkg footprint --json` when the user explicitly asks for a full byte-size
+audit. This keeps Equinox responsive while preserving one authoritative package
+model.
+
 ## Footprint And Duplication
 
 Because mini OS rootfs views are intentionally specialized, SevenOS must track

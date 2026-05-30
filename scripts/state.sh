@@ -51,8 +51,12 @@ from pathlib import Path
 
 try:
     with Path(sys.argv[1]).open(encoding="utf-8") as handle:
-        json.load(handle)
+        data = json.load(handle)
 except Exception:
+    raise SystemExit(1)
+
+required = {"packages_strategy", "packages_catalog", "packages_footprint"}
+if not required.issubset(data):
     raise SystemExit(1)
 PY
 }
@@ -242,6 +246,12 @@ json_to_file "$STATE_TMP/packages.json" "$ROOT_DIR/bin/sevenpkg" status --json &
 pid_packages=$!
 json_to_file "$STATE_TMP/packages_plan.json" "$ROOT_DIR/bin/sevenpkg" plan --json &
 pid_packages_plan=$!
+json_to_file "$STATE_TMP/packages_strategy.json" "$ROOT_DIR/bin/sevenpkg" strategy --json &
+pid_packages_strategy=$!
+json_to_file "$STATE_TMP/packages_catalog.json" "$ROOT_DIR/bin/sevenpkg" catalog --json &
+pid_packages_catalog=$!
+json_to_file "$STATE_TMP/packages_footprint.json" "$ROOT_DIR/bin/sevenpkg" footprint --fast --json &
+pid_packages_footprint=$!
 json_to_file "$STATE_TMP/store.json" "$ROOT_DIR/scripts/store.sh" json &
 pid_store=$!
 json_to_file "$STATE_TMP/box.json" "$ROOT_DIR/scripts/box.sh" json &
@@ -304,7 +314,7 @@ json_to_file "$STATE_TMP/distribution.json" env SEVENOS_DISTRIBUTION_FAST=1 "$RO
 pid_distribution=$!
 
 wait "$pid_status" "$pid_welcome" "$pid_welcome_plan" "$pid_session" "$pid_identity" "$pid_design" "$pid_icons" "$pid_profiles" "$pid_profile_gaps" "$pid_profile_plan" "$pid_profile_health" "$pid_active_profile" "$pid_profile_run" "$pid_profile_runtime_manifest" "$pid_profile_runtime_manifests" "$pid_atlas" "$pid_atlas_plan" "$pid_shield" "$pid_shield_plan" "$pid_cyberspace" "$pid_cyberspace_plan" \
-  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_installer_portal" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_health" "$pid_support" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_manifest" "$pid_ecosystem" \
+  "$pid_server" "$pid_server_plan" "$pid_installer" "$pid_installer_plan" "$pid_installer_portal" "$pid_channel" "$pid_about" "$pid_lifecycle" "$pid_update" "$pid_recovery" "$pid_health" "$pid_support" "$pid_product" "$pid_foundations" "$pid_readiness" "$pid_packages" "$pid_packages_plan" "$pid_packages_strategy" "$pid_packages_catalog" "$pid_packages_footprint" "$pid_manifest" "$pid_ecosystem" \
   "$pid_store" "$pid_box" "$pid_cloud" "$pid_flow" "$pid_cluster" "$pid_stack" "$pid_shell" "$pid_core" "$pid_core_snapshot" "$pid_core_health" "$pid_scheduler" "$pid_runtime" "$pid_context" "$pid_experience" "$pid_shell_experience" "$pid_control" "$pid_b3" "$pid_daily" "$pid_events" "$pid_actions" "$pid_architecture" "$pid_adaptive" "$pid_autonomy" "$pid_platform" "$pid_mask" "$pid_surfaces" "$pid_routes" "$pid_distribution" || true
 
 ensure_public_contracts() {
@@ -771,6 +781,15 @@ cat "$STATE_TMP/packages.json"
 printf ','
 printf '"packages_plan":'
 cat "$STATE_TMP/packages_plan.json"
+printf ','
+printf '"packages_strategy":'
+cat "$STATE_TMP/packages_strategy.json"
+printf ','
+printf '"packages_catalog":'
+cat "$STATE_TMP/packages_catalog.json"
+printf ','
+printf '"packages_footprint":'
+cat "$STATE_TMP/packages_footprint.json"
 printf ','
 printf '"store":'
 cat "$STATE_TMP/store.json"

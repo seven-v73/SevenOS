@@ -2487,6 +2487,9 @@ routes_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" routes --json)"
 distribution_json="$(SEVENOS_DISTRIBUTION_FAST=1 SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" distribution --json)"
 installer_open_output="$(SEVENOS_DRY_RUN=1 "$ROOT_DIR/bin/seven-installer" open)"
 packages_plan_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" plan --json)"
+packages_strategy_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" strategy --json)"
+packages_catalog_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" catalog --json)"
+packages_footprint_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" footprint --fast --json)"
 package_sources_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" sources --json)"
 profile_limits_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-limits --json)"
 forge_limits_json="$(SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/sevenpkg" profile-limits forge --json)"
@@ -2667,8 +2670,11 @@ core_json_contract_state="MISS"
 if python -m json.tool <<<"$state_fast_json" >/dev/null &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.core.v1"' <<<"$core_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.packages-plan.v1"' <<<"$packages_plan_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.sevenpkg-strategy.v1"' <<<"$packages_strategy_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.app-catalog.v1"' <<<"$packages_catalog_json" &&
+   grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.sevenpkg-footprint.v1"' <<<"$packages_footprint_json" &&
    grep -Eq '"schema"[[:space:]]*:[[:space:]]*"sevenos.runtime-orchestrator.v1"' <<<"$runtime_json" &&
-   python -c 'import json,sys; data=json.load(sys.stdin); required={"welcome","session","identity","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","shield","cyberspace","server","installer","packages","packages_plan","store","ecosystem","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","events","adaptive","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}; raise SystemExit(0 if required.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; then
+   python -c 'import json,sys; data=json.load(sys.stdin); required={"welcome","session","identity","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","shield","cyberspace","server","installer","packages","packages_plan","packages_strategy","packages_catalog","packages_footprint","store","ecosystem","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","events","adaptive","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}; raise SystemExit(0 if required.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; then
   core_json_contract_state="OK"
 fi
 if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/bin/seven" status --json | python -m json.tool >/dev/null &&
@@ -2852,7 +2858,7 @@ if [[ "$core_json_contract_state" == "OK" ]] || { SEVENOS_DRY_RUN=0 "$ROOT_DIR/b
    grep -q 'SevenOS Ecosystem Maturity' <<<"$ecosystem_maturity" &&
    python -m json.tool <<<"$sevenpkg_status_json" >/dev/null &&
    python -m json.tool <<<"$manifest_summary_json" >/dev/null &&
-   python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","atlas_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; }; then
+   python -c 'import json,sys; data=json.load(sys.stdin); raise SystemExit(0 if {"welcome","welcome_plan","session","identity","design","icons","manifest","active_profile","profile_run","profile_runtime_manifest","profile_runtime_manifests","profile_gaps","profile_plan","profile_health","atlas","atlas_plan","shield","shield_plan","cyberspace","cyberspace_plan","server","server_plan","installer","installer_plan","packages","packages_plan","packages_strategy","packages_catalog","packages_footprint","store","box","cloud","flow","cluster","ecosystem","stack","shell","core","core_snapshot","core_health","context","scheduler","runtime","experience","control","b3","daily","events","adaptive","autonomy","about","lifecycle","update","recovery","health","smoke","support","product","foundations","platform","mask","surfaces","routes","distribution"}.issubset(data) and data.get("smoke",{}).get("schema")=="sevenos.smoke.v1" else 1)' <<<"$state_fast_json"; }; then
   ok "SevenOS core commands expose stable JSON for the Hub"
 else
   fail "SevenOS core commands must expose JSON for GUI integration"

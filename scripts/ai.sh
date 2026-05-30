@@ -117,7 +117,8 @@ control = as_dict(load_file("control.json", {"overall": 0, "actions": [], "summa
 daily = state.get("daily") or {}
 daily_summary = daily.get("summary") or {}
 decision = daily.get("decision") or "unknown"
-readiness = daily_summary.get("readiness", state.get("readiness", {}).get("percent", 0))
+readiness_state = state.get("readiness") or {}
+readiness = daily_summary.get("readiness", readiness_state.get("percent", 0))
 
 recommendations = []
 
@@ -165,11 +166,11 @@ elif shell_state == "NATIVE_READY":
 if not installer.get("ready"):
     add("installer", "Prepare installer path", "seven installer plan", "SevenOS should stay installable for normal users, not only repaired after install.", "safe", "medium")
 
-store_summary = store.get("summary", {})
-box_summary = box.get("summary", {})
-cloud_summary = cloud.get("summary", {})
-flow_summary = flow.get("summary", {})
-cluster_summary = cluster.get("summary", {})
+store_summary = store.get("summary") or {}
+box_summary = box.get("summary") or {}
+cloud_summary = cloud.get("summary") or {}
+flow_summary = flow.get("summary") or {}
+cluster_summary = cluster.get("summary") or {}
 ecosystem_maturity = (ecosystem.get("maturity") or {})
 ecosystem_maturity_summary = ecosystem_maturity.get("summary") or {}
 ecosystem_maturity_modules = ecosystem_maturity.get("modules") or []

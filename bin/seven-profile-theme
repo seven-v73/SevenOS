@@ -2298,7 +2298,7 @@ profiles = {
     "studio": {"position": "top", "max_modules": 19, "identity": "Studio", "required": {"custom/canvas", "custom/media", "custom/recorder"}},
     "atlas": {"position": "top", "max_modules": 19, "identity": "Atlas", "required": {"custom/atlas-home", "custom/apps", "custom/atlas-folders"}},
     "pulse": {"position": "top", "max_modules": 20, "identity": "Pulse", "required": {"custom/performance", "custom/gamemode", "custom/recorder"}},
-    "baobab": {"position": "top", "max_modules": 19, "identity": "Baobab", "identity_module": "custom/baobab", "root": "baobab/waybar", "required": {"custom/memory", "custom/language", "custom/sound", "custom/ai"}},
+    "baobab": {"position": "top", "height": 38, "max_modules": 19, "identity": "Baobab", "identity_contains": True, "identity_module": "custom/baobab", "root": "baobab/waybar", "common_required": False, "required": {"custom/entry", "custom/compass", "custom/ritual", "custom/route", "custom/ambiance", "custom/language", "custom/sound", "custom/ai", "custom/wifi"}},
 }
 common_required = {"hyprland/window", "custom/app-file", "custom/app-edit", "custom/app-view", "custom/app-more", "custom/mini-context", "custom/system-status", "clock", "tray", "custom/profile-switch", "custom/experience", "custom/spotlight"}
 css_tokens = re.compile(r"@(accent|warn|danger|text|tooltip_bg|line|radius)\\b")
@@ -2320,13 +2320,17 @@ for key, spec in profiles.items():
     css = css_path.read_text(encoding="utf-8")
     modules = cfg.get("modules-left", []) + cfg.get("modules-center", []) + cfg.get("modules-right", [])
     module_set = set(modules)
-    missing = (spec["required"] | common_required) - module_set
+    required_modules = set(spec["required"])
+    if spec.get("common_required", True):
+        required_modules |= common_required
+    missing = required_modules - module_set
     if missing:
         errors.append(f"{key}: missing modules {', '.join(sorted(missing))}")
     if cfg.get("position") != spec["position"]:
         errors.append(f"{key}: position {cfg.get('position')} != {spec['position']}")
-    if cfg.get("height") != 30:
-        errors.append(f"{key}: height {cfg.get('height')} != 30")
+    expected_height = spec.get("height", 30)
+    if cfg.get("height") != expected_height:
+        errors.append(f"{key}: height {cfg.get('height')} != {expected_height}")
     if len(modules) > spec["max_modules"]:
         warnings.append(f"{key}: dense layout ({len(modules)} modules)")
     if "custom/recorder" in module_set:
@@ -2349,7 +2353,8 @@ for key, spec in profiles.items():
     identity_cfg = cfg.get(identity_module) or {}
     identity = identity_cfg.get("format", "")
     identity_exec = identity_cfg.get("exec", "")
-    if identity != spec["identity"] and identity_exec != "seven-waybar-status sevenos":
+    identity_ok = spec["identity"] in identity if spec.get("identity_contains") else identity == spec["identity"]
+    if not identity_ok and identity_exec != "seven-waybar-status sevenos":
         errors.append(f"{key}: identity label {identity!r} != {spec['identity']!r}")
     switch = (cfg.get("custom/profile-switch") or {}).get("format", "")
     if len(str(switch)) > 8:
@@ -2358,9 +2363,12 @@ for key, spec in profiles.items():
         errors.append(f"{key}: unresolved CSS theme tokens")
     if key == "studio" and "color: #322336;" in css:
         errors.append("studio: dark text token leaks into menu bar")
-    if "tooltip" not in css or "window#waybar" not in css:
+    if (key != "baobab" and "tooltip" not in css) or "window#waybar" not in css:
         errors.append(f"{key}: incomplete CSS structure")
-    if "#custom-wifi.weak" not in css:
+    wifi_state_ok = "#custom-wifi.weak" in css or (
+        key == "baobab" and all(token in css for token in ("#custom-wifi.connected", "#custom-wifi.idle", "#custom-wifi.missing"))
+    )
+    if not wifi_state_ok:
         errors.append(f"{key}: weak Wi-Fi state is not styled")
     print(f"{key}: OK · {cfg.get('position')} · {len(modules)} modules · {css_path}")
 

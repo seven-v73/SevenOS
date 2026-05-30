@@ -125,6 +125,18 @@ the six mini OS rootfs views are ready, whether catalog domains are covered, and
 whether package duplication needs release attention. Full byte-size scans remain
 manual through `sevenpkg footprint --json`.
 
+For dashboards and passive refreshes, SevenStore should read the shared state
+snapshot first:
+
+```bash
+seven state --json
+```
+
+The package fields `packages_strategy`, `packages_catalog` and
+`packages_footprint` carry the same routing model used by SevenPkg. Direct
+SevenPkg calls stay reserved for install previews, explicit refreshes and deep
+audits.
+
 ### Pacman
 
 Official repositories have the highest trust rank.
