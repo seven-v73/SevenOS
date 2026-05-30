@@ -42,8 +42,24 @@ state_cache_age() {
   printf '%s\n' "$(( $(date +%s) - $(stat -c %Y "$STATE_CACHE" 2>/dev/null || printf 0) ))"
 }
 
+state_cache_json_valid() {
+  [[ -s "$STATE_CACHE" ]] || return 1
+  python - "$STATE_CACHE" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    with Path(sys.argv[1]).open(encoding="utf-8") as handle:
+        json.load(handle)
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
 state_cache_valid() {
   [[ "$REFRESH_CACHE" -eq 0 && "${SEVENOS_STATE_REFRESH:-0}" != "1" && -s "$STATE_CACHE" ]] || return 1
+  state_cache_json_valid || return 1
   local age
   age="$(state_cache_age)" || return 1
   [[ "$age" -le "${SEVENOS_STATE_CACHE_TTL:-20}" ]] || return 1
@@ -57,7 +73,7 @@ fi
 
 if [[ "$REFRESH_CACHE" -eq 0 && "${SEVENOS_STATE_REFRESH:-0}" != "1" && -s "$STATE_CACHE" ]]; then
   age="$(state_cache_age 2>/dev/null || printf 999999)"
-  if [[ "$age" -le "${SEVENOS_STATE_STALE_TTL:-300}" ]]; then
+  if [[ "$age" -le "${SEVENOS_STATE_STALE_TTL:-300}" ]] && state_cache_json_valid; then
     if mkdir "$STATE_CACHE_LOCK" 2>/dev/null; then
       (
         trap 'rmdir "$STATE_CACHE_LOCK" 2>/dev/null || true' EXIT
@@ -105,14 +121,14 @@ json_string() {
 STATE_TMP="$(mktemp -d)"
 mkdir -p "$STATE_CACHE_DIR"
 if ! mkdir "$STATE_CACHE_LOCK" 2>/dev/null; then
-  if [[ -s "$STATE_CACHE" ]]; then
+  if state_cache_json_valid; then
     cat "$STATE_CACHE"
     printf '\n'
     exit 0
   fi
   for _ in {1..120}; do
     sleep 0.1
-    if [[ -s "$STATE_CACHE" ]]; then
+    if state_cache_json_valid; then
       cat "$STATE_CACHE"
       printf '\n'
       exit 0

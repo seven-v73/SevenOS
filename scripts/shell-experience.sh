@@ -363,8 +363,19 @@ warmup_experience() {
     return 0
   fi
   mkdir -p "$RUNTIME_DIR"
+  prewarm_waybar_status() {
+    local module
+    for module in sevenos profile mini-context experience control-center system-status wifi bluetooth; do
+      if command -v timeout >/dev/null 2>&1; then
+        timeout 3 "$ROOT_DIR/bin/seven-waybar-status" "$module" >/dev/null 2>&1 || true
+      else
+        "$ROOT_DIR/bin/seven-waybar-status" "$module" >/dev/null 2>&1 || true
+      fi
+    done
+  }
   if [[ -f "$EXPERIENCE_WARMUP_STAMP" ]] &&
      [[ $(( $(date +%s) - $(stat -c %Y "$EXPERIENCE_WARMUP_STAMP" 2>/dev/null || printf 0) )) -lt 45 ]]; then
+    prewarm_waybar_status
     write_state >/dev/null 2>&1 || true
     return 0
   fi
@@ -392,6 +403,7 @@ warmup_experience() {
     run_warmup 4 "$ROOT_DIR/bin/seven-home-native" --json
     run_warmup 3 "$ROOT_DIR/scripts/motion.sh" status --json
     run_warmup 3 "$ROOT_DIR/scripts/theme-session.sh" status --json
+    prewarm_waybar_status
     wait "$state_warmup_pid" 2>/dev/null || true
     write_state >/dev/null 2>&1 || true
   } &

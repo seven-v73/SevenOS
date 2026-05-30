@@ -21,6 +21,8 @@ from seven_waybar_app_profiles import (
 
 
 STATE_HOME = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+CACHE_DIR = CACHE_HOME / "sevenos/waybar-status"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "sevenos"
 CONTEXT_FILE = RUNTIME_DIR / "waybar-context.json"
 RECORDER_PID = STATE_HOME / "sevenos/recorder/recorder.pid"
@@ -72,6 +74,56 @@ def read_json(command: list[str]) -> dict:
         return {}
 
 
+def _safe_cache_key(key: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in {"-", "_", "."} else "_" for ch in key)[:120]
+
+
+def _cache_path(key: str) -> Path:
+    return CACHE_DIR / f"{_safe_cache_key(key)}.json"
+
+
+def _read_cache(key: str, ttl: float) -> dict | None:
+    if os.environ.get("SEVENOS_WAYBAR_STATUS_REFRESH") == "1":
+        return None
+    path = _cache_path(key)
+    try:
+        if ttl <= 0 or time.time() - path.stat().st_mtime > ttl:
+            return None
+        return json.loads(path.read_text(encoding="utf-8") or "{}")
+    except Exception:
+        return None
+
+
+def _write_cache(key: str, payload: dict) -> None:
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        path = _cache_path(key)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(path)
+    except Exception:
+        pass
+
+
+def read_json_cached(key: str, command: list[str], ttl: float = 2.0) -> dict:
+    cached = _read_cache(key, ttl)
+    if isinstance(cached, dict):
+        return cached
+    data = read_json(command)
+    if data:
+        _write_cache(key, data)
+    return data
+
+
+def run_cached(key: str, command: list[str], ttl: float = 2.0) -> str:
+    cached = _read_cache(key, ttl)
+    if isinstance(cached, dict) and isinstance(cached.get("value"), str):
+        return str(cached.get("value") or "")
+    value = run(command)
+    _write_cache(key, {"value": value})
+    return value
+
+
 def current_profile() -> dict:
     root = Path(__file__).resolve().parent.parent
     manager = root / "profiles/profile-manager.sh"
@@ -82,7 +134,7 @@ def current_profile() -> dict:
         "state": "MISS",
         "ui_mood": "balanced global SevenOS profile",
     }
-    data = read_json([str(manager), "current", "--json"]) if manager.exists() else {}
+    data = read_json_cached("profile-current", [str(manager), "current", "--json"], ttl=4.0) if manager.exists() else {}
     if not data:
         data = fallback
     try:
@@ -103,14 +155,14 @@ def current_profile() -> dict:
 def wifi_data() -> dict:
     helper = shutil.which("seven-wifi") or str(Path(__file__).resolve().with_name("seven-wifi"))
     if Path(helper).exists() or shutil.which("seven-wifi"):
-        return read_json([helper, "status-json"])
+        return read_json_cached("wifi-status", [helper, "status-json"], ttl=4.0)
     return {}
 
 
 def bluetooth_data() -> dict:
     helper = shutil.which("seven-bluetooth") or str(Path(__file__).resolve().with_name("seven-bluetooth"))
     if Path(helper).exists() or shutil.which("seven-bluetooth"):
-        return read_json([helper, "status-json"])
+        return read_json_cached("bluetooth-status", [helper, "status-json"], ttl=4.0)
     return {}
 
 
@@ -144,7 +196,11 @@ def volume_data() -> tuple[str, bool]:
 def active_vpn_name() -> str:
     if not shutil.which("nmcli"):
         return ""
-    return run(["bash", "--noprofile", "--norc", "-c", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"])
+    return run_cached(
+        "vpn-active",
+        ["bash", "--noprofile", "--norc", "-c", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"],
+        ttl=4.0,
+    )
 
 
 def recorder_is_active() -> bool:
@@ -234,7 +290,7 @@ def bluetooth() -> int:
 def vpn() -> int:
     if not shutil.which("nmcli"):
         return emit("", "VPN tools missing", "hidden")
-    active = run(["bash", "--noprofile", "--norc", "-c", "nmcli -t -f NAME,TYPE connection show --active | awk -F: '$2 ~ /vpn/ {print $1; exit}'"])
+    active = active_vpn_name()
     if active:
         return emit("󰖂", f"VPN active · {active}", "active", "active")
     return emit("", "VPN inactive", "hidden", "idle")
@@ -414,8 +470,6 @@ def media() -> int:
 
 
 def profile() -> int:
-    root = Path(__file__).resolve().parent.parent
-    manager = root / "profiles/profile-manager.sh"
     fallback = {
         "key": "equinox",
         "title": "Equinox",
@@ -426,10 +480,7 @@ def profile() -> int:
         "ui_mood": "balanced global SevenOS profile",
         "waybar_modules": "profile,spotlight,wifi,audio,battery,ai",
     }
-    if manager.exists():
-        data = read_json([str(manager), "current", "--json"]) or fallback
-    else:
-        data = fallback
+    data = current_profile() or fallback
     key = str(data.get("key") or "equinox").lower()
     icon = str(data.get("waybar_icon") or "󰐃")
     short = str(data.get("short_label") or key[:3].upper())
@@ -742,13 +793,29 @@ def app_menu_more() -> int:
     return emit("…", tooltip, css, density)
 
 
+def lightweight_experience_score(data: dict) -> tuple[str, int]:
+    surfaces = data.get("surfaces") if isinstance(data.get("surfaces"), dict) else {}
+    ready = sum(1 for value in surfaces.values() if value == "ready")
+    total = max(len(surfaces), 1)
+    checks = [
+        bool(data.get("motion", {}).get("grammar") == "seven-motion-system") if isinstance(data.get("motion"), dict) else False,
+        bool(data.get("continuity", {}).get("launch_feedback")) if isinstance(data.get("continuity"), dict) else False,
+        bool(data.get("window_policy", {}).get("front_door") == "seven-window") if isinstance(data.get("window_policy"), dict) else False,
+        bool(data.get("feedback", {}).get("notify_command") == "seven experience notify") if isinstance(data.get("feedback"), dict) else False,
+        len(data.get("mini_os", {})) >= 6 if isinstance(data.get("mini_os"), dict) else False,
+        ready >= max(6, total - 1),
+        bool(data.get("accessibility", {}).get("keyboard_first")) if isinstance(data.get("accessibility"), dict) else False,
+    ]
+    percent = round(sum(1 for ok in checks if ok) * 100 / max(len(checks), 1))
+    return ("ready" if percent >= 90 else "partial", percent)
+
+
 def experience() -> int:
     root = Path(__file__).resolve().parent.parent
     helper = root / "scripts/shell-experience.sh"
     if not helper.exists():
         return emit("󰐃", "Interface SevenOS indisponible", "missing", "missing")
-    data = read_json([str(helper), "status", "--json"])
-    score = read_json([str(helper), "score"])
+    data = read_json_cached("shell-experience-status", [str(helper), "status", "--json"], ttl=10.0)
     if not data:
         return emit("󰐃", "Interface SevenOS indisponible", "missing", "missing")
     profile = str(data.get("profile") or "equinox")
@@ -756,8 +823,8 @@ def experience() -> int:
     recent = data.get("recent_events") if isinstance(data.get("recent_events"), list) else []
     last = recent[-1] if recent else {}
     recommendation = data.get("recommendation") if isinstance(data.get("recommendation"), dict) else {}
-    state = str(score.get("state") or data.get("state") or "ready")
-    percent = int(score.get("score") or 0)
+    state, percent = lightweight_experience_score(data)
+    state = str(data.get("state") or state)
     css = f"profile-{profile} "
     css += "experience-ready" if state == "ready" and percent >= 90 else "experience-warn"
     title = str(recommendation.get("title") or "").strip()

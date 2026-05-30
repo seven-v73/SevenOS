@@ -207,6 +207,7 @@ warmup_targets = {
     "motion": "scripts/motion.sh",
     "theme": "scripts/theme-session.sh",
     "state": "scripts/state.sh",
+    "waybar_status": "seven-waybar-status",
 }
 missing_warmup = [name for name, token in warmup_targets.items() if token not in shell_experience]
 check(
