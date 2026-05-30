@@ -129,7 +129,7 @@ QUICK_ACTIONS = [
 
 CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
 HOME_CACHE = CACHE_HOME / "sevenos/home-native.json"
-HOME_CACHE_TTL = float(os.environ.get("SEVENOS_HOME_CACHE_TTL", "180"))
+HOME_CACHE_TTL = float(os.environ.get("SEVENOS_HOME_CACHE_TTL", "300"))
 
 
 def run_json(*args: str, fallback=None, timeout: float = 3.0, extra_env: dict[str, str] | None = None):
@@ -159,7 +159,7 @@ def run_detached(command: str) -> None:
 
 
 def read_home_cache() -> dict:
-    if os.environ.get("SEVENOS_HOME_REFRESH") == "1":
+    if os.environ.get("SEVENOS_HOME_REFRESH") == "1" or "--refresh" in sys.argv or "--no-cache" in sys.argv:
         return {}
     try:
         if time.time() - HOME_CACHE.stat().st_mtime > HOME_CACHE_TTL:

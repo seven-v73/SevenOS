@@ -418,6 +418,8 @@ warmup_experience() {
     run_warmup 6 "$ROOT_DIR/bin/seven-profile-rootfs" audit all --json --refresh
     run_warmup 4 "$ROOT_DIR/bin/seven-profile-rootfs" verify all --json --refresh
     run_warmup 8 "$ROOT_DIR/scripts/routes.sh" json --refresh
+    run_warmup 4 "$ROOT_DIR/bin/seven-files" doctor --json --refresh
+    run_warmup 4 "$ROOT_DIR/bin/seven-home-native" --json --refresh
     run_warmup 3 "$ROOT_DIR/scripts/motion.sh" status --json
     run_warmup 3 "$ROOT_DIR/scripts/theme-session.sh" status --json
     prewarm_waybar_status

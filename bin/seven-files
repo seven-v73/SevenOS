@@ -17,6 +17,11 @@ Use "seven-files doctor --json" to check native runtime, window rules and storag
 EOF
 }
 
+FILES_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+FILES_DOCTOR_CACHE="$FILES_CACHE_DIR/files-doctor.json"
+FILES_DOCTOR_CACHE_TTL="${SEVENOS_FILES_DOCTOR_CACHE_TTL:-300}"
+FILES_DOCTOR_REFRESH="${SEVENOS_FILES_DOCTOR_REFRESH:-0}"
+
 resolve_root() {
   if [[ -n "${SEVENOS_ROOT:-}" && -x "$SEVENOS_ROOT/bin/seven" ]]; then
     printf '%s\n' "$SEVENOS_ROOT"
@@ -442,8 +447,20 @@ doctor_command() {
     case "$arg" in
       --json) format="--json" ;;
       --deep) deep="1" ;;
+      --refresh|--no-cache) FILES_DOCTOR_REFRESH=1 ;;
     esac
   done
+  if [[ "$format" == "--json" && "$deep" != "1" && "$FILES_DOCTOR_REFRESH" != "1" ]] &&
+     [[ -s "$FILES_DOCTOR_CACHE" ]] &&
+     python -m json.tool "$FILES_DOCTOR_CACHE" >/dev/null 2>&1; then
+    local now mtime
+    now="$(date +%s)"
+    mtime="$(stat -c %Y "$FILES_DOCTOR_CACHE" 2>/dev/null || printf 0)"
+    if (( now - mtime < FILES_DOCTOR_CACHE_TTL )); then
+      cat "$FILES_DOCTOR_CACHE"
+      return 0
+    fi
+  fi
   local root native prefs hypr_user hypr_repo wrapper
   root="$(resolve_root || true)"
   native="$root/bin/seven-files-native"
@@ -452,7 +469,9 @@ doctor_command() {
   hypr_repo="$root/hyprland/conf/sevenos-lua-generated.conf"
   wrapper="${BASH_SOURCE[0]}"
 
-  python - "$format" "$deep" "$root" "$native" "$prefs" "$hypr_user" "$hypr_repo" "$wrapper" <<'PY'
+  local payload rc
+  set +e
+  payload="$(python - "$format" "$deep" "$root" "$native" "$prefs" "$hypr_user" "$hypr_repo" "$wrapper" <<'PY'
 import json, os, subprocess, sys
 from pathlib import Path
 
@@ -541,6 +560,22 @@ else:
         print(f"[{'OK' if item['ok'] else 'MISS'}] {item['key']}: {item['detail']}")
 raise SystemExit(0 if ok else 1)
 PY
+)"
+  rc=$?
+  set -e
+  if [[ "$format" == "--json" && "$deep" != "1" && "$rc" -eq 0 ]]; then
+    mkdir -p "$FILES_CACHE_DIR"
+    local tmp
+    tmp="$(mktemp "${FILES_DOCTOR_CACHE}.XXXXXX")"
+    printf '%s\n' "$payload" >"$tmp"
+    if python -m json.tool "$tmp" >/dev/null 2>&1; then
+      mv -f "$tmp" "$FILES_DOCTOR_CACHE"
+    else
+      rm -f "$tmp"
+    fi
+  fi
+  printf '%s\n' "$payload"
+  return "$rc"
 }
 
 ensure_dirs
