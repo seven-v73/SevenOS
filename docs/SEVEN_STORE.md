@@ -56,6 +56,8 @@ seven store search blender
 seven store search blender --json
 seven store detail creation
 seven store install creation
+seven store plan-app pacman blender --profile studio
+seven store plan-app pacman blender --profile studio --json
 seven store install-app pacman blender --dry-run
 seven store install-app pacman blender --dry-run --json
 seven store install-app flatpak org.blender.Blender --dry-run
@@ -106,13 +108,17 @@ the action auditable.
 The CLI preview has two layers:
 
 ```bash
+seven store plan-app pacman blender --profile studio
+seven store plan-app pacman blender --profile studio --json
 seven store install-app pacman blender --profile studio --dry-run
 seven store install-app pacman blender --profile studio --dry-run --json
 ```
 
-The text output is for humans. The JSON output is the SevenPkg transaction plan
-with `resolved_sources`, `commands`, `warnings` and `blockers`, so graphical
-surfaces can preview safely before executing.
+`plan-app` is the preferred read-only API for Helper and native UI surfaces.
+`install-app --dry-run` stays as a compatibility path. The text output is for
+humans. The JSON output is the SevenPkg transaction plan with
+`resolved_sources`, `commands`, `warnings` and `blockers`, so graphical surfaces
+can preview safely before executing.
 
 SevenStore also consumes the fast footprint audit so the UI can show whether
 the six mini OS rootfs views are ready, whether catalog domains are covered, and

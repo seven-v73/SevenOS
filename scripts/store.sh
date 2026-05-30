@@ -18,6 +18,7 @@ Usage:
   seven store search <query> [--json]
   seven store detail <id> [--json]
   seven store install <module>
+  seven store plan-app <source> <id> [--profile <profile>] [--json]
   seven store install-app <source> <id> [--profile <profile>] [--dry-run] [--json]
   seven store open-app <source> <id>
   seven store remove-app <source> <id>
@@ -1780,6 +1781,22 @@ pacman_remove_command() {
   return 1
 }
 
+plan_app() {
+  local has_dry_run=0
+  local args=("$@")
+  for arg in "${args[@]}"; do
+    if [[ "$arg" == "--dry-run" ]]; then
+      has_dry_run=1
+      break
+    fi
+  done
+  if [[ "$has_dry_run" == "1" ]]; then
+    install_app "${args[@]}"
+  else
+    install_app "${args[@]}" --dry-run
+  fi
+}
+
 explain_install_failure() {
   local source="$1"
   local app_id="$2"
@@ -1867,6 +1884,7 @@ case "$action" in
   doctor) doctor ;;
   refresh) refresh ;;
   install) shift; install_module "${1:-}" ;;
+  plan-app) shift; plan_app "$@" ;;
   install-app) shift; install_app "$@" ;;
   open-app) shift; open_app "$@" ;;
   remove-app) shift; remove_app "$@" ;;

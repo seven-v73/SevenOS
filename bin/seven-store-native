@@ -432,7 +432,7 @@ class SevenStore(Gtk.Application):
         if not command:
             return ""
         if " install-app " in f" {command} " and "--dry-run" not in command:
-            return f"{command} --dry-run"
+            return command.replace(" install-app ", " plan-app ", 1)
         text = f"SevenStore action preview\\n\\nCommand:\\n{command}\\n"
         return f"printf '%s\\n' {shlex.quote(text)}"
 
