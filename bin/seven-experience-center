@@ -43,6 +43,8 @@ ROOT = resolve_root()
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "sevenos"
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "sevenos"
 CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache")))
+PAYLOAD_CACHE = CACHE_DIR / "sevenos/experience-center.json"
+PAYLOAD_CACHE_TTL = float(os.environ.get("SEVENOS_EXPERIENCE_CENTER_CACHE_TTL", "120"))
 DATA_DIR = Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "sevenos"
 EVENT_FILE = STATE_DIR / "events.jsonl"
 SETTINGS_ACTION_LOG = CACHE_DIR / "settings-actions.log"
@@ -1059,6 +1061,53 @@ def payload() -> dict:
     }
 
 
+def read_payload_cache() -> dict | None:
+    if os.environ.get("SEVENOS_EXPERIENCE_CENTER_REFRESH") == "1" or "--refresh" in sys.argv or "--no-cache" in sys.argv:
+        return None
+    try:
+        if time.time() - PAYLOAD_CACHE.stat().st_mtime > PAYLOAD_CACHE_TTL:
+            return None
+        data = json.loads(PAYLOAD_CACHE.read_text(encoding="utf-8") or "{}")
+        if not isinstance(data, dict) or data.get("schema") != "sevenos.experience-center.v1":
+            return None
+        live_profile = active_profile()
+        if data.get("active_profile") != live_profile:
+            return None
+        live_context = current_context()
+        data["context"] = live_context
+        briefing = data.get("briefing")
+        if isinstance(briefing, dict):
+            briefing["context"] = live_context
+            headline = briefing.get("headline", "")
+            if isinstance(headline, str) and ". " in headline:
+                briefing["headline"] = f"{live_context.get('greeting')}. {headline.split('. ', 1)[1]}"
+            for item in briefing.get("checks", []) if isinstance(briefing.get("checks"), list) else []:
+                if isinstance(item, dict) and item.get("key") == "context":
+                    item["detail"] = f"{live_context.get('time')} · {live_context.get('language_label')} · {live_context.get('timezone')}"
+        return data
+    except Exception:
+        return None
+
+
+def write_payload_cache(data: dict) -> None:
+    try:
+        PAYLOAD_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = PAYLOAD_CACHE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(PAYLOAD_CACHE)
+    except Exception:
+        pass
+
+
+def cached_payload() -> dict:
+    cached = read_payload_cache()
+    if cached is not None:
+        return cached
+    data = payload()
+    write_payload_cache(data)
+    return data
+
+
 def emit_event(message: str, command: str = "") -> None:
     try:
         subprocess.run([str(ROOT / "scripts/events.sh"), "log", "--source", "experience-center", "--type", "ui", "--message", message, "--command", command, "--state", "OK"], cwd=str(ROOT), env={**os.environ, "SEVENOS_ROOT": str(ROOT)}, check=False, timeout=2)
@@ -1235,7 +1284,7 @@ def main() -> int:
     if "--probe" in args:
         print(json.dumps({"schema": "sevenos.experience-center.probe.v1", "state": "OK", "root": str(ROOT)}, ensure_ascii=False))
         return 0
-    data = payload()
+    data = cached_payload()
     intent_query = ""
     if "intent" in args:
         try:

@@ -62,6 +62,9 @@ SEARCH_QUERY=""
 PACK_TARGET=""
 COUNTRY_QUERY=""
 VIEW_TARGET=""
+REFRESH_CACHE="${SEVENOS_BAOBAB_REFRESH:-0}"
+BAOBAB_DOCTOR_CACHE="$CACHE_HOME/sevenos/baobab-doctor.json"
+BAOBAB_DOCTOR_CACHE_TTL="${SEVENOS_BAOBAB_DOCTOR_CACHE_TTL:-300}"
 
 usage() {
   cat <<'EOF'
@@ -86,6 +89,7 @@ for arg in "$@"; do
       fi
       ;;
     --json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     --view) VIEW_TARGET="__next__" ;;
     -h|--help|help) usage; exit 0 ;;
     *)
@@ -110,6 +114,40 @@ for arg in "$@"; do
   esac
 done
 [[ "$ACTION" == "json" ]] && JSON_OUTPUT=1
+
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1"
+  local ttl="$2"
+  local now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1"
+  local tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+clear_baobab_cache() {
+  rm -f "$BAOBAB_DOCTOR_CACHE" 2>/dev/null || true
+}
 
 module_rows() {
   cat <<'EOF'
@@ -6877,7 +6915,7 @@ doctor() {
   [[ "$state" == "ready" && "$tools_state" == "ready" ]]
 }
 
-doctor_json() {
+doctor_json_uncached() {
   local payload tools_json config_json_payload service_json_payload app_json_payload capability_json_payload protocol_json_payload
   payload="$(baobab_json)"
   tools_json="$(JSON_OUTPUT=1 print_tools)"
@@ -6974,6 +7012,18 @@ print(json.dumps({
 PY
 }
 
+doctor_json() {
+  if cache_is_fresh "$BAOBAB_DOCTOR_CACHE" "$BAOBAB_DOCTOR_CACHE_TTL"; then
+    cat "$BAOBAB_DOCTOR_CACHE"
+    return 0
+  fi
+
+  local payload
+  payload="$(doctor_json_uncached)"
+  printf '%s\n' "$payload" | write_json_cache "$BAOBAB_DOCTOR_CACHE" || true
+  printf '%s\n' "$payload"
+}
+
 case "$ACTION" in
   status)
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
@@ -6996,6 +7046,7 @@ case "$ACTION" in
     fi
     ;;
   bootstrap)
+    clear_baobab_cache
     bootstrap_baobab
     if [[ "$JSON_OUTPUT" -eq 1 ]]; then
       baobab_json
@@ -7004,9 +7055,11 @@ case "$ACTION" in
     fi
     ;;
   install-core)
+    clear_baobab_cache
     install_core
     ;;
   install-optional)
+    clear_baobab_cache
     install_optional
     ;;
   capabilities)
@@ -7031,6 +7084,7 @@ case "$ACTION" in
     print_app_doctor
     ;;
   apply-config)
+    clear_baobab_cache
     apply_config
     ;;
   sound)
@@ -7147,6 +7201,7 @@ case "$ACTION" in
     print_trail
     ;;
   remember)
+    clear_baobab_cache
     remember_trail "$SEARCH_QUERY"
     ;;
   shell)
@@ -7207,27 +7262,34 @@ case "$ACTION" in
     audit_packs
     ;;
   seed-packs)
+    clear_baobab_cache
     seed_curated_packs
     ;;
   enrich-packs)
+    clear_baobab_cache
     enrich_packs
     ;;
   evidence-packs)
+    clear_baobab_cache
     evidence_packs
     ;;
   validation-kit)
+    clear_baobab_cache
     validation_kit
     ;;
   validation-doctor)
     validation_doctor
     ;;
   sample-fieldwork)
+    clear_baobab_cache
     sample_fieldwork
     ;;
   scaffold-pack)
+    clear_baobab_cache
     scaffold_pack "$PACK_TARGET"
     ;;
   import-pack)
+    clear_baobab_cache
     import_pack "$PACK_TARGET"
     ;;
   modules)
