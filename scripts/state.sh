@@ -58,6 +58,20 @@ except Exception:
 required = {"packages_strategy", "packages_catalog", "packages_footprint"}
 if not required.issubset(data):
     raise SystemExit(1)
+
+schema_checks = {
+    "packages_strategy": "sevenos.sevenpkg-strategy.v1",
+    "packages_catalog": "sevenos.app-catalog.v1",
+    "packages_footprint": "sevenos.sevenpkg-footprint.v1",
+}
+for key, schema in schema_checks.items():
+    value = data.get(key)
+    if not isinstance(value, dict) or value.get("schema") != schema:
+        raise SystemExit(1)
+
+catalog = data.get("packages_catalog") or {}
+if int(catalog.get("count", 0) or 0) < 12:
+    raise SystemExit(1)
 PY
 }
 

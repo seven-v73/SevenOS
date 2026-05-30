@@ -220,6 +220,11 @@ Surfaces should prefer these state fields for dashboards and only call
 audit. This keeps Equinox responsive while preserving one authoritative package
 model.
 
+The state cache treats this contract as semantic, not just syntactic: a cached
+snapshot without the package strategy schemas or with an empty curated catalog
+is considered stale and is regenerated. This prevents Store, Hub and Helper from
+showing old package truth after a SevenOS upgrade.
+
 ## Footprint And Duplication
 
 Because mini OS rootfs views are intentionally specialized, SevenOS must track
