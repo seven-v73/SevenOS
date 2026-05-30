@@ -219,6 +219,14 @@ actions_payload = run_json(
     [str(root / "scripts" / "actions.sh"), "--json"],
     {"actions": []},
 )
+strategy_payload = run_json(
+    [str(root / "bin" / "sevenpkg"), "strategy", "--json"],
+    {"profiles": []},
+)
+app_catalog_payload = run_json(
+    [str(root / "bin" / "sevenpkg"), "catalog", "--json"],
+    {"items": []},
+)
 try:
     activity_payload = json.loads(activity_path.read_text(encoding="utf-8"))
     recent_activity = activity_payload.get("events", [])
@@ -346,6 +354,7 @@ payload = {
     "writer": "scripts/store.sh",
     "engine": {
         "schema": "sevenos.package-engine.v1",
+        "strategy": strategy_payload,
         "sources": [
             {"key": "pacman", "priority": 1, "trust": "official Arch/SevenOS repositories", "install": "seven store install-app pacman <package>"},
             {"key": "flatpak", "priority": 2, "trust": "sandboxed Flathub applications", "install": "seven store install-app flatpak <app-id>"},
@@ -363,6 +372,7 @@ payload = {
         "privileged": "use the SevenStore installer, which prefers Polkit and falls back to sudo only when no graphical agent is active",
     },
     "profile_collections": PROFILE_COLLECTIONS,
+    "app_catalog": app_catalog_payload,
     "summary": {
         "modules": len(modules),
         "modules_ready": sum(1 for item in modules if item["state"] == "OK"),
@@ -372,6 +382,7 @@ payload = {
         "flatpak_total": flatpak.get("total", len(apps)),
         "installed_apps": len(installed_library),
         "actions": len(catalog_actions),
+        "catalog_apps": len(app_catalog_payload.get("items", [])),
         "activity": len(recent_activity),
         "profile_apps": sum(len(items) for items in profile_apps.values()),
     },
@@ -417,6 +428,7 @@ from pathlib import Path
 
 query = os.environ["QUERY"].strip()
 DRY_RUN = os.environ.get("SEVENOS_DRY_RUN") == "1"
+ROOT = Path(os.environ["ROOT_DIR"])
 
 
 SEARCH_SYNONYMS = {
@@ -713,6 +725,56 @@ CURATED_APPS = [
 ]
 
 
+def catalog_results():
+    catalog_path = ROOT / "sevenpkg" / "apps.json"
+    try:
+        payload = json.loads(catalog_path.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    items = []
+    for index, item in enumerate(payload.get("apps", [])):
+        haystack = ascii_fold(" ".join(str(item.get(key, "")) for key in ("id", "name", "domain", "summary", "recommended_source")))
+        matches = sum(1 for token in TOKENS if token in haystack)
+        if not matches:
+            continue
+        source = str(item.get("recommended_source") or "pacman")
+        app_id = str(item.get("id") or "")
+        install_id = app_id
+        if source == "flatpak":
+            for alternative in item.get("alternatives", []) or []:
+                if isinstance(alternative, dict) and alternative.get("source") == "flatpak" and alternative.get("id"):
+                    install_id = alternative["id"]
+                    break
+        elif source == "aur":
+            for alternative in item.get("alternatives", []) or []:
+                if isinstance(alternative, dict) and alternative.get("source") in {"aur", "paru", "yay"} and alternative.get("id"):
+                    install_id = alternative["id"]
+                    break
+        profile = str(item.get("domain") or "equinox")
+        installed = flatpak_installed(install_id) if source == "flatpak" else pacman_installed(install_id)
+        items.append(enrich({
+            "id": install_id,
+            "catalog_id": app_id,
+            "name": item.get("name") or app_id,
+            "source": source,
+            "summary": item.get("summary", ""),
+            "kind_hint": "graphical",
+            "badges": ["CATALOG", profile.upper()],
+            "profile": profile,
+            "domain": profile,
+            "engine": profile.title() + " Engine" if profile != "equinox" else "SevenPkg Host Engine",
+            "risk": item.get("risk", "unknown"),
+            "permissions": item.get("permissions", []),
+            "icon": icon_for(item.get("name") or app_id, install_id, source),
+            "installed": installed,
+            "install_command": f"seven store install-app {source} {install_id} --profile {profile}",
+            "open_command": f"seven store open-app {source} {install_id}",
+            "score": 150 + matches * 10 - index,
+            "curated": True,
+        }))
+    return items
+
+
 def curated_results():
     tokens = TOKENS
     if not tokens:
@@ -869,7 +931,7 @@ def flatpak_results():
     return items
 
 
-results = curated_results() + pacman_results() + flatpak_results() + aur_results()
+results = catalog_results() + curated_results() + pacman_results() + flatpak_results() + aur_results()
 seen = set()
 deduped = []
 for item in sorted(results, key=lambda row: (-row.get("score", 0), row.get("source", ""), row.get("name", ""))):
@@ -889,7 +951,7 @@ print(json.dumps({
         "flatpak": bool(shutil.which("flatpak")),
         "aur_rpc": True,
     },
-    "ranking": ["official repositories", "sandboxed Flatpak", "trusted/high-signal AUR"],
+    "ranking": ["SevenPkg app catalog", "official repositories", "sandboxed Flatpak", "trusted/high-signal AUR"],
     "suggestions": [
         {"label": "Web", "query": "browser"},
         {"label": "Office", "query": "office document"},

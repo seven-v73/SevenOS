@@ -45,6 +45,7 @@ def resolve_root():
 
 ROOT_DIR = resolve_root()
 MANIFEST_PATH = ROOT_DIR / "sevenpkg" / "metapackages.json"
+APP_CATALOG_PATH = ROOT_DIR / "sevenpkg" / "apps.json"
 ALIASES = {
     "horizon": "forge",
     "vscode": "code",
@@ -261,6 +262,154 @@ def load_manifest():
         return {}
     with MANIFEST_PATH.open("r", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def load_app_catalog():
+    if not APP_CATALOG_PATH.is_file():
+        return {"schema": "sevenos.app-catalog.v1", "apps": []}
+    try:
+        with APP_CATALOG_PATH.open("r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return {"schema": "sevenos.app-catalog.v1", "apps": []}
+    data.setdefault("schema", "sevenos.app-catalog.v1")
+    data.setdefault("apps", [])
+    return data
+
+
+def app_catalog_items():
+    items = []
+    for item in load_app_catalog().get("apps", []):
+        if isinstance(item, dict) and item.get("id"):
+            items.append(item)
+    return items
+
+
+def app_catalog_map():
+    mapping = {}
+    for item in app_catalog_items():
+        app_id = str(item.get("id", "")).strip()
+        if app_id:
+            mapping[app_id] = item
+        for alternative in item.get("alternatives", []) or []:
+            alt_id = str(alternative.get("id", "")).strip() if isinstance(alternative, dict) else ""
+            if alt_id:
+                mapping.setdefault(alt_id, item)
+    return mapping
+
+
+def catalog_entry(name):
+    return app_catalog_map().get(normalize_name(name))
+
+
+def source_available_for_profile(profile, source):
+    profile = normalize_profile(profile)
+    if source == "flatpak":
+        return command_exists("flatpak") and flathub_present()
+    if source == "pacman":
+        return command_exists("pacman") if profile == SYSTEM_PROFILE else profile_rootfs_ready(profile)
+    if source in {"aur", "paru", "yay"}:
+        if profile == SYSTEM_PROFILE:
+            if source == "aur":
+                return command_exists("paru") or command_exists("yay")
+            return command_exists(source)
+        if source == "aur":
+            return helper_available_for_profile(profile, "paru") or helper_available_for_profile(profile, "yay")
+        return helper_available_for_profile(profile, source)
+    return False
+
+
+def flatpak_id_for(entry):
+    if not entry:
+        return None
+    if entry.get("recommended_source") == "flatpak":
+        for alternative in entry.get("alternatives", []) or []:
+            if isinstance(alternative, dict) and alternative.get("source") == "flatpak" and alternative.get("id"):
+                return alternative["id"]
+        return entry.get("id")
+    for alternative in entry.get("alternatives", []) or []:
+        if isinstance(alternative, dict) and alternative.get("source") == "flatpak" and alternative.get("id"):
+            return alternative["id"]
+    return None
+
+
+def app_install_id(entry, source=None):
+    if not entry:
+        return None
+    source = source or entry.get("recommended_source", "pacman")
+    if source == "flatpak":
+        return flatpak_id_for(entry) or entry.get("id")
+    if source == "aur":
+        for alternative in entry.get("alternatives", []) or []:
+            if isinstance(alternative, dict) and alternative.get("source") in {"aur", "paru", "yay"} and alternative.get("id"):
+                return alternative["id"]
+    if source in {"pacman", "paru", "yay"}:
+        for alternative in entry.get("alternatives", []) or []:
+            if isinstance(alternative, dict) and alternative.get("source") == source and alternative.get("id"):
+                return alternative["id"]
+    return entry.get("id")
+
+
+def resolve_app_payload(name, requested_profile=None, requested_source="auto"):
+    normalized = normalize_name(name)
+    entry = catalog_entry(normalized)
+    if not entry:
+        fallback_profile = normalize_profile(requested_profile) if requested_profile else active_profile()
+        if fallback_profile not in PROFILE_KEYS:
+            fallback_profile = SYSTEM_PROFILE
+        source = requested_source if requested_source != "auto" else "pacman"
+        return {
+            "schema": "sevenos.app-resolution.v1",
+            "state": "MISS",
+            "query": name,
+            "id": normalized,
+            "profile": fallback_profile,
+            "source": source,
+            "install_id": normalized,
+            "known": False,
+            "reason": "not in SevenPkg app catalog; falling back to explicit package lookup",
+            "warnings": ["SevenPkg cannot infer the natural mini OS yet."],
+            "commands": {
+                "preview": f"sevenpkg install {normalized} --preview",
+            },
+        }
+    profile = normalize_profile(requested_profile) if requested_profile else str(entry.get("domain") or SYSTEM_PROFILE)
+    source = str(entry.get("recommended_source") or "pacman") if requested_source == "auto" else requested_source
+    install_id = app_install_id(entry, source) or normalized
+    warnings = []
+    if source == "flatpak":
+        warnings.append("Flatpak installs are user-global today; SevenOS records profile intent but does not fully isolate Flatpak per mini OS yet.")
+    if profile == SYSTEM_PROFILE and entry.get("domain") != SYSTEM_PROFILE:
+        warnings.append("This app naturally belongs to a mini OS; Equinox installs should stay minimal.")
+    if source in {"aur", "paru", "yay"}:
+        warnings.append("AUR is community-maintained and should remain opt-in.")
+    if source == "nix-lab":
+        warnings.append("Nix lab engine is planned for explicit Shield labs and is not installed by default.")
+    return {
+        "schema": "sevenos.app-resolution.v1",
+        "state": "OK" if source_available_for_profile(profile, source) else "WARN",
+        "query": name,
+        "id": str(entry.get("id")),
+        "name": str(entry.get("name") or entry.get("id")),
+        "profile": profile,
+        "domain": str(entry.get("domain") or profile),
+        "engine": engine_policy(profile)["engine"],
+        "source": source,
+        "install_id": install_id,
+        "known": True,
+        "available": source_available_for_profile(profile, source),
+        "alternatives": entry.get("alternatives", []),
+        "size": entry.get("size", "unknown"),
+        "risk": entry.get("risk", "unknown"),
+        "permissions": entry.get("permissions", []),
+        "summary": entry.get("summary", ""),
+        "warnings": warnings,
+        "commands": {
+            "preview": f"sevenpkg install {install_id} --profile {profile} --source {source} --preview",
+            "install": f"sevenpkg install {install_id} --profile {profile} --source {source}",
+            "store": f"seven store install-app {source} {install_id} --profile {profile}",
+        },
+    }
 
 
 def normalize_name(name):
@@ -1022,6 +1171,7 @@ def transaction_commands(action, packages, source="auto", include_optional=False
     meta_targets = []
     warnings = []
     blockers = []
+    resolved_sources = []
 
     if action == "install" and normalized and normalized[0] in manifest:
         name = normalized[0]
@@ -1046,11 +1196,18 @@ def transaction_commands(action, packages, source="auto", include_optional=False
     elif action == "install":
         pacman_packages = []
         aur_packages = []
+        flatpak_apps_to_install = []
         for package in normalized:
             validate_package_name(package)
+            original_package = package
+            entry = catalog_entry(package)
             selected_source = source
             if selected_source == "auto":
-                if pacman_has(package):
+                resolution = resolve_app_payload(package)
+                if resolution.get("known") and resolution.get("source") != "auto":
+                    selected_source = str(resolution.get("source"))
+                    package = str(resolution.get("install_id") or package)
+                elif pacman_has(package):
                     selected_source = "pacman"
                 elif paru_has(package):
                     selected_source = "paru"
@@ -1059,8 +1216,17 @@ def transaction_commands(action, packages, source="auto", include_optional=False
                 else:
                     blockers.append(f"package not found in pacman repos or AUR helpers: {package}")
                     continue
+            elif entry:
+                package = str(app_install_id(entry, selected_source) or package)
             if selected_source == "pacman":
                 pacman_packages.append(package)
+            elif selected_source == "flatpak":
+                if not command_exists("flatpak"):
+                    blockers.append("flatpak is required for Flatpak installs")
+                elif not flathub_present():
+                    blockers.append("Flathub is required for Flatpak installs")
+                else:
+                    flatpak_apps_to_install.append(package)
             elif selected_source in {"aur", "paru", "yay"}:
                 helper = "paru" if selected_source == "aur" else selected_source
                 if selected_source == "aur" and not command_exists(helper) and command_exists("yay"):
@@ -1073,14 +1239,25 @@ def transaction_commands(action, packages, source="auto", include_optional=False
                 blockers.append("SevenRepo is planned but not enabled yet")
             else:
                 blockers.append(f"unknown source: {selected_source}")
+                continue
+            resolved_sources.append({
+                "query": original_package,
+                "package": package,
+                "source": selected_source,
+                "profile": SYSTEM_PROFILE,
+                "scope": "global-system",
+            })
         if pacman_packages:
             commands.append(["sudo", "pacman", "-S", "--needed", *pacman_packages])
+        if flatpak_apps_to_install:
+            commands.append(["flatpak", "install", "-y", "flathub", *flatpak_apps_to_install])
+            warnings.append("Flatpak installs are user-global today; SevenOS does not fully isolate Flatpak per mini OS yet.")
         if aur_packages:
             for helper in ("paru", "yay"):
                 helper_packages = [package for item_helper, package in aur_packages if item_helper == helper]
                 if helper_packages:
                     commands.append([helper, "-S", "--needed", *helper_packages])
-        resolved_packages.extend(pacman_packages + [package for _, package in aur_packages])
+        resolved_packages.extend(pacman_packages + flatpak_apps_to_install + [package for _, package in aur_packages])
     elif action == "remove":
         owners = package_owner_map(manifest)
         protected = {}
@@ -1141,6 +1318,7 @@ def transaction_commands(action, packages, source="auto", include_optional=False
         "action": action,
         "items": normalized,
         "source": source,
+        "resolved_sources": resolved_sources,
         "include_optional": include_optional,
         "force": force,
         "impact": impact,
@@ -1162,6 +1340,7 @@ def profile_transaction_commands(profile, packages, source="auto", include_optio
     warnings = []
     blockers = []
     resolved = []
+    resolved_sources = []
     grouped = {"pacman": [], "paru": [], "yay": []}
 
     for package in normalized:
@@ -1169,6 +1348,11 @@ def profile_transaction_commands(profile, packages, source="auto", include_optio
 
     if profile == SYSTEM_PROFILE:
         system_commands = []
+        natural_mismatches = []
+        for package in normalized:
+            entry = catalog_entry(package)
+            if entry and entry.get("domain") not in {SYSTEM_PROFILE, profile}:
+                natural_mismatches.append(f"{package} belongs to {entry.get('domain')}")
         if source in {"paru", "yay"}:
             helper_packages = []
             for package in normalized:
@@ -1180,11 +1364,24 @@ def profile_transaction_commands(profile, packages, source="auto", include_optio
                 system_commands.append([source, "-S", "--needed", *helper_packages])
         else:
             selected_source = "aur" if source == "aur" else source
+            if selected_source == "auto":
+                entry = catalog_entry(normalized[0]) if len(normalized) == 1 else None
+                if entry:
+                    selected_source = str(entry.get("recommended_source") or "auto")
+                    normalized = [str(app_install_id(entry, selected_source) or normalized[0])]
+            elif len(normalized) == 1:
+                entry = catalog_entry(normalized[0])
+                if entry:
+                    normalized = [str(app_install_id(entry, selected_source) or normalized[0])]
             base = transaction_commands("install", normalized, source=selected_source, include_optional=include_optional)
             system_commands.extend(base.get("commands", []))
             blockers.extend(base.get("blockers", []))
             warnings.extend(base.get("warnings", []))
             resolved.extend(base.get("items", normalized))
+            resolved_sources.extend(base.get("resolved_sources", []))
+        if natural_mismatches:
+            warnings.append("Equinox minimal policy: " + "; ".join(natural_mismatches))
+            blockers.append("installing domain apps into Equinox requires choosing the natural mini OS or using --global with a concrete package outside the catalog")
         return {
             "schema": "sevenos.profile-package-transaction.v1",
             "action": "install",
@@ -1193,6 +1390,7 @@ def profile_transaction_commands(profile, packages, source="auto", include_optio
             "visibility": "global; available to mini OS package views when exposed by profile policy",
             "items": normalized,
             "source": source,
+            "resolved_sources": resolved_sources,
             "impact": "global-system-packages",
             "rootfs": "host-system",
             "rootfs_ready": True,
@@ -1209,12 +1407,37 @@ def profile_transaction_commands(profile, packages, source="auto", include_optio
         warnings.append(f"{profile} rootfs is not ready yet; SevenPkg will build it before package installation.")
 
     for package in normalized:
+        original_package = package
+        entry = catalog_entry(package)
         selected = select_profile_source(package, source)
+        if source == "auto" and entry:
+            selected = str(entry.get("recommended_source") or "pacman")
+            package = str(app_install_id(entry, selected) or package)
+        elif entry and selected:
+            package = str(app_install_id(entry, selected) or package)
         if selected is None:
             blockers.append(f"package not found in pacman repos or AUR helpers: {package}")
             continue
         if selected == "sevenrepo":
             blockers.append("SevenRepo is planned but not enabled yet")
+            continue
+        if selected == "flatpak":
+            if not command_exists("flatpak"):
+                blockers.append("flatpak is required for Flatpak installs")
+                continue
+            if not flathub_present():
+                blockers.append("Flathub is required for Flatpak installs")
+                continue
+            commands.append(["flatpak", "install", "-y", "flathub", package])
+            warnings.append("Flatpak installs are user-global today; SevenOS records profile intent but does not fully isolate Flatpak per mini OS yet.")
+            resolved.append(package)
+            resolved_sources.append({
+                "query": original_package,
+                "package": package,
+                "source": selected,
+                "profile": profile,
+                "scope": "user-global-flatpak",
+            })
             continue
         if selected in {"paru", "yay"} and not helper_available_for_profile(profile, selected):
             blockers.append(
@@ -1223,6 +1446,13 @@ def profile_transaction_commands(profile, packages, source="auto", include_optio
             continue
         grouped[selected].append(package)
         resolved.append(package)
+        resolved_sources.append({
+            "query": original_package,
+            "package": package,
+            "source": selected,
+            "profile": profile,
+            "scope": "profile-rootfs",
+        })
 
     runner = str(ROOT_DIR / "bin" / "seven-profile-run")
     if not rootfs_was_ready and not blockers:
@@ -1248,6 +1478,7 @@ def profile_transaction_commands(profile, packages, source="auto", include_optio
         "visibility": f"private to {profile}; not exposed to other mini OS package views",
         "items": normalized,
         "source": source,
+        "resolved_sources": resolved_sources,
         "impact": "profile-rootfs-packages",
         "rootfs": str(rootfs),
         "rootfs_ready": profile_rootfs_ready(profile),
@@ -1696,6 +1927,7 @@ def install_packages(args):
     original_first = args.packages[0]
     first_package = normalize_name(original_first)
     alias_notice(original_first, first_package)
+    first_entry = catalog_entry(first_package)
 
     if getattr(args, "profile", None):
         payload = profile_transaction_commands(
@@ -1704,6 +1936,26 @@ def install_packages(args):
             source=args.source,
             include_optional=getattr(args, "optional", False),
         )
+        if getattr(args, "preview", False):
+            print_transaction(payload, getattr(args, "json", False))
+            return
+        sys.exit(apply_transaction(payload, args))
+
+    if (
+        first_entry
+        and first_entry.get("domain") in PROFILE_KEYS
+        and not getattr(args, "global_install", False)
+        and first_entry.get("domain") != SYSTEM_PROFILE
+        and len(args.packages) == 1
+    ):
+        target_profile = str(first_entry.get("domain"))
+        payload = profile_transaction_commands(
+            target_profile,
+            args.packages,
+            source=args.source,
+            include_optional=getattr(args, "optional", False),
+        )
+        payload["default_profile_source"] = "app-catalog"
         if getattr(args, "preview", False):
             print_transaction(payload, getattr(args, "json", False))
             return
@@ -1861,6 +2113,8 @@ def search_package(query, args):
     validate_package_name(query)
     manifest = load_manifest()
     query = normalize_name(query)
+    for item in catalog_payload(query).get("items", [])[:12]:
+        print(f"sevenos-app/{item['id']} [{item['domain']}:{item['recommended_source']}] - {item.get('summary', '')}")
 
     for name, meta in manifest.items():
         if query.lower() in name.lower() or query.lower() in meta.get("description", "").lower():
@@ -2115,7 +2369,28 @@ def show_plan(args):
 
 def show_info(name, args):
     validate_package_name(name)
+    name = normalize_name(name)
     manifest = load_manifest()
+    entry = catalog_entry(name)
+
+    if entry:
+        payload = resolve_app_payload(name)
+        if getattr(args, "json", False):
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+            return
+        print(f"Name:        {payload.get('name', name)}")
+        print(f"Description: {payload.get('summary', '')}")
+        print(f"Domain:      {payload.get('domain')} · {payload.get('engine')}")
+        print(f"Source:      {payload.get('source')} ({payload.get('install_id')})")
+        print(f"Size/Risk:   {payload.get('size')} / {payload.get('risk')}")
+        if payload.get("permissions"):
+            print("Permissions: " + ", ".join(payload["permissions"]))
+        if payload.get("warnings"):
+            print("Warnings:")
+            for warning in payload["warnings"]:
+                print(f"  - {warning}")
+        print(f"Preview:     {payload.get('commands', {}).get('preview', '')}")
+        return
 
     if name in manifest:
         meta = manifest[name]
@@ -2200,6 +2475,19 @@ def strategy_payload():
         "equinox_rule": "Equinox is the host platform, not a dumping ground for heavy user apps.",
         "mini_os_rule": "Mini OS packages install into private rootfs views by default and are resealed after maintenance.",
         "source_rule": "Pacman stays the baseline; Flatpak, AUR helpers and future Nix/lab engines are used only where the domain benefits.",
+        "catalog": {
+            "schema": load_app_catalog().get("schema"),
+            "path": str(APP_CATALOG_PATH),
+            "apps": len(app_catalog_items()),
+            "domains": sorted({str(item.get("domain") or SYSTEM_PROFILE) for item in app_catalog_items()}),
+            "command": "sevenpkg catalog --json",
+        },
+        "engine_states": {
+            "flatpak": "OK" if command_exists("flatpak") and flathub_present() else "MISS",
+            "host_aur": "OK" if command_exists("paru") or command_exists("yay") else "MISS",
+            "profile_aur": "OK" if any(helper_available_for_profile(profile, "paru") or helper_available_for_profile(profile, "yay") for profile in PROFILE_KEYS - {SYSTEM_PROFILE}) else "MISS",
+            "nix_lab": "PLANNED",
+        },
         "profiles": profiles,
         "next_steps": [
             "Expand the SevenPkg app catalog with domain ownership for common apps.",
@@ -2225,6 +2513,80 @@ def show_strategy(args):
         print(f"{item['profile']:<8} {item['engine']:<20} {item['scope']:<15} {item['role']}")
     print()
     print("Rule:", payload["source_rule"])
+
+
+def catalog_payload(query=None):
+    query_text = (query or "").strip().lower()
+    items = []
+    for item in app_catalog_items():
+        haystack = " ".join(str(item.get(key, "")) for key in ("id", "name", "domain", "summary", "recommended_source")).lower()
+        if query_text and query_text not in haystack:
+            continue
+        profile = str(item.get("domain") or SYSTEM_PROFILE)
+        source = str(item.get("recommended_source") or "pacman")
+        items.append({
+            "id": item.get("id"),
+            "name": item.get("name", item.get("id")),
+            "domain": profile,
+            "engine": engine_policy(profile)["engine"] if profile in PROFILE_KEYS else "SevenPkg",
+            "recommended_source": source,
+            "install_id": app_install_id(item, source),
+            "alternatives": item.get("alternatives", []),
+            "size": item.get("size", "unknown"),
+            "risk": item.get("risk", "unknown"),
+            "permissions": item.get("permissions", []),
+            "summary": item.get("summary", ""),
+            "available": source_available_for_profile(profile, source) if profile in PROFILE_KEYS else False,
+            "commands": {
+                "resolve": f"sevenpkg resolve {item.get('id')}",
+                "preview": f"sevenpkg install {item.get('id')} --preview",
+                "install": f"sevenpkg install {item.get('id')}",
+                "store": f"seven store install-app {source} {app_install_id(item, source)} --profile {profile}",
+            },
+        })
+    return {
+        "schema": "sevenos.app-catalog.v1",
+        "path": str(APP_CATALOG_PATH),
+        "query": query or "",
+        "count": len(items),
+        "domains": sorted({item["domain"] for item in items}),
+        "items": sorted(items, key=lambda row: (row["domain"], row["name"])),
+    }
+
+
+def show_catalog(args):
+    payload = catalog_payload(getattr(args, "query", None))
+    if getattr(args, "json", False):
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg App Catalog")
+    print("====================")
+    print(f"Apps: {payload['count']} · Domains: {', '.join(payload['domains'])}")
+    print()
+    print(f"{'App':<26} {'Domain':<8} {'Source':<8} {'Risk':<7} Summary")
+    print(f"{'---':<26} {'------':<8} {'------':<8} {'----':<7} -------")
+    for item in payload["items"]:
+        print(f"{item['name']:<26} {item['domain']:<8} {item['recommended_source']:<8} {item['risk']:<7} {item['summary']}")
+
+
+def show_resolve(args):
+    payload = resolve_app_payload(args.name, getattr(args, "profile", None), getattr(args, "source", "auto"))
+    if getattr(args, "json", False):
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg App Resolution")
+    print("=======================")
+    print(f"State:   {payload['state']}")
+    print(f"App:     {payload.get('name', payload.get('id'))}")
+    print(f"Domain:  {payload.get('domain', payload.get('profile'))} · {payload.get('engine', 'SevenPkg')}")
+    print(f"Source:  {payload.get('source')} · install id: {payload.get('install_id')}")
+    if payload.get("summary"):
+        print(f"Why:     {payload['summary']}")
+    if payload.get("warnings"):
+        print("Warnings:")
+        for warning in payload["warnings"]:
+            print(f"- {warning}")
+    print(f"Preview: {payload.get('commands', {}).get('preview', '')}")
 
 
 def profile_sources_payload(profile):
@@ -2728,6 +3090,16 @@ def doctor_payload():
         "Equinox host plus six mini OS package engines are declared",
         "sevenpkg strategy",
     )
+    catalog = load_app_catalog()
+    catalog_domains = {str(item.get("domain") or "") for item in app_catalog_items()}
+    add_check(
+        "app-catalog",
+        "SevenPkg app catalog",
+        catalog.get("schema") == "sevenos.app-catalog.v1" and required_profiles <= catalog_domains and len(app_catalog_items()) >= 12,
+        "high",
+        f"{len(app_catalog_items())} app route(s), domains: {', '.join(sorted(catalog_domains))}",
+        "sevenpkg catalog",
+    )
     add_check("pacman", "pacman source", command_exists("pacman"), "critical", "required Arch package source", "sevenpkg sources")
     add_check("flatpak", "Flatpak source", command_exists("flatpak"), "medium", "used for mainstream apps", "seven flatpak setup")
     add_check("flathub", "Flathub remote", flathub_present(), "medium", "default Flatpak application source", "seven flatpak setup")
@@ -2881,7 +3253,7 @@ def main():
 
     install_parser = subparsers.add_parser("install", help="install a package or SevenOS meta-package")
     install_parser.add_argument("packages", nargs="+")
-    install_parser.add_argument("--source", choices=("auto", "pacman", "aur", "paru", "yay", "sevenrepo"), default="auto")
+    install_parser.add_argument("--source", choices=("auto", "pacman", "flatpak", "aur", "paru", "yay", "sevenrepo"), default="auto")
     install_parser.add_argument("--profile", choices=sorted(PROFILE_KEYS), help="install into one SevenOS profile; mini OS profiles use their private rootfs, Equinox uses the global system")
     install_parser.add_argument("--global", dest="global_install", action="store_true", help="force the global Equinox/system package scope even when a mini OS is active")
     install_parser.add_argument("--optional", action="store_true", help="include optional packages declared for this SevenOS layer")
@@ -2925,7 +3297,7 @@ def main():
     transaction_parser = subparsers.add_parser("transaction", help="preview or apply a guarded SevenOS package transaction")
     transaction_parser.add_argument("tx_action", choices=("install", "remove", "update"))
     transaction_parser.add_argument("items", nargs="*")
-    transaction_parser.add_argument("--source", choices=("auto", "pacman", "aur", "paru", "yay", "sevenrepo"), default="auto")
+    transaction_parser.add_argument("--source", choices=("auto", "pacman", "flatpak", "aur", "paru", "yay", "sevenrepo"), default="auto")
     transaction_parser.add_argument("--optional", action="store_true", help="include optional packages for meta-package installs")
     transaction_parser.add_argument("--force", action="store_true", help="allow guarded removals")
     transaction_parser.add_argument("--apply", action="store_true", help="execute the transaction")
@@ -2940,6 +3312,14 @@ def main():
     sources_parser.add_argument("--json", action="store_true", help="print machine-readable package sources")
     strategy_parser = subparsers.add_parser("strategy", help="show the SevenPkg host and mini OS source strategy")
     strategy_parser.add_argument("--json", action="store_true", help="print machine-readable SevenPkg strategy")
+    catalog_parser = subparsers.add_parser("catalog", help="show the SevenPkg app catalog and natural mini OS ownership")
+    catalog_parser.add_argument("query", nargs="?", help="filter catalog apps")
+    catalog_parser.add_argument("--json", action="store_true", help="print machine-readable app catalog")
+    resolve_parser = subparsers.add_parser("resolve", help="resolve an app to its natural SevenOS domain and source")
+    resolve_parser.add_argument("name")
+    resolve_parser.add_argument("--profile", choices=sorted(PROFILE_KEYS), help="override target profile for the resolution")
+    resolve_parser.add_argument("--source", choices=("auto", "pacman", "flatpak", "aur", "paru", "yay", "sevenrepo", "nix-lab"), default="auto")
+    resolve_parser.add_argument("--json", action="store_true", help="print machine-readable app resolution")
     global_policy_parser = subparsers.add_parser("global-policy", help="show Equinox host package exposure policy for mini OS package views")
     global_policy_parser.add_argument("package", nargs="?", help="show one package policy")
     global_policy_parser.add_argument("--json", action="store_true")
@@ -3005,7 +3385,7 @@ def main():
     profile_install_parser = subparsers.add_parser("profile-install", help="install packages into a specific SevenOS profile rootfs")
     profile_install_parser.add_argument("profile", choices=sorted(PROFILE_KEYS))
     profile_install_parser.add_argument("packages", nargs="+")
-    profile_install_parser.add_argument("--source", choices=("auto", "pacman", "aur", "paru", "yay", "sevenrepo"), default="auto")
+    profile_install_parser.add_argument("--source", choices=("auto", "pacman", "flatpak", "aur", "paru", "yay", "sevenrepo"), default="auto")
     profile_install_parser.add_argument("--preview", action="store_true", help="preview the profile-scoped transaction")
     profile_install_parser.add_argument("--json", action="store_true", help="print machine-readable profile transaction")
     profile_remove_parser = subparsers.add_parser("profile-remove", help="remove packages from a specific SevenOS profile rootfs")
@@ -3020,7 +3400,7 @@ def main():
         shortcut_sub = shortcut.add_subparsers(dest="profile_action")
         shortcut_install = shortcut_sub.add_parser("install", help=f"install packages into {profile_name}")
         shortcut_install.add_argument("packages", nargs="+")
-        shortcut_install.add_argument("--source", choices=("auto", "pacman", "aur", "paru", "yay", "sevenrepo"), default="auto")
+        shortcut_install.add_argument("--source", choices=("auto", "pacman", "flatpak", "aur", "paru", "yay", "sevenrepo"), default="auto")
         shortcut_install.add_argument("--preview", action="store_true")
         shortcut_install.add_argument("--json", action="store_true")
         shortcut_remove = shortcut_sub.add_parser("remove", help=f"remove packages from {profile_name}")
@@ -3131,6 +3511,10 @@ def main():
         show_sources(args)
     elif args.command == "strategy":
         show_strategy(args)
+    elif args.command == "catalog":
+        show_catalog(args)
+    elif args.command == "resolve":
+        show_resolve(args)
     elif args.command == "global-policy":
         show_global_policy(args)
     elif args.command == "global-expose":

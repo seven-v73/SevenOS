@@ -1,0 +1,254 @@
+{
+  "schema": "sevenos.app-catalog.v1",
+  "apps": [
+    {
+      "id": "blender",
+      "name": "Blender",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.blender.Blender"}
+      ],
+      "size": "large",
+      "risk": "low",
+      "permissions": ["files", "gpu"],
+      "summary": "3D creation, animation and rendering for Studio."
+    },
+    {
+      "id": "krita",
+      "name": "Krita",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.kde.krita"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "tablet"],
+      "summary": "Digital painting and illustration for Studio."
+    },
+    {
+      "id": "kdenlive",
+      "name": "Kdenlive",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.kde.kdenlive"}
+      ],
+      "size": "large",
+      "risk": "low",
+      "permissions": ["files", "gpu", "audio"],
+      "summary": "Video editing and export pipeline for Studio."
+    },
+    {
+      "id": "obs-studio",
+      "name": "OBS Studio",
+      "domain": "studio",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.obsproject.Studio"}
+      ],
+      "size": "large",
+      "risk": "medium",
+      "permissions": ["screen-capture", "audio", "camera"],
+      "summary": "Recording and streaming surface for Studio."
+    },
+    {
+      "id": "code",
+      "name": "Visual Studio Code",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "aur", "id": "visual-studio-code-bin"},
+        {"source": "pacman", "id": "vscodium"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["files", "network", "extensions"],
+      "summary": "Code editor for Forge development workflows."
+    },
+    {
+      "id": "docker",
+      "name": "Docker",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "pacman", "id": "podman"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["containers", "network", "services"],
+      "summary": "Container runtime for Forge services and builds."
+    },
+    {
+      "id": "git",
+      "name": "Git",
+      "domain": "forge",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files", "network"],
+      "summary": "Version control foundation for Forge."
+    },
+    {
+      "id": "wireshark-qt",
+      "name": "Wireshark",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "high",
+      "permissions": ["network-capture", "admin"],
+      "summary": "Network analysis for authorized Shield workflows."
+    },
+    {
+      "id": "nmap",
+      "name": "Nmap",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "small",
+      "risk": "high",
+      "permissions": ["network-scan", "authorized-scope"],
+      "summary": "Network discovery for authorized Shield audits."
+    },
+    {
+      "id": "hashcat",
+      "name": "Hashcat",
+      "domain": "shield",
+      "recommended_source": "pacman",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "high",
+      "permissions": ["gpu", "authorized-scope"],
+      "summary": "Password recovery tool for scoped defensive work."
+    },
+    {
+      "id": "calibre",
+      "name": "Calibre",
+      "domain": "atlas",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.calibre_ebook.calibre"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "library"],
+      "summary": "Library and ebook management for Atlas."
+    },
+    {
+      "id": "ocrmypdf",
+      "name": "OCRmyPDF",
+      "domain": "atlas",
+      "recommended_source": "aur",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["files", "ocr"],
+      "summary": "Searchable PDF generation for Atlas scans."
+    },
+    {
+      "id": "zotero-bin",
+      "name": "Zotero",
+      "domain": "atlas",
+      "recommended_source": "aur",
+      "alternatives": [],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["files", "network", "references"],
+      "summary": "Research references and bibliography management for Atlas."
+    },
+    {
+      "id": "foliate",
+      "name": "Foliate",
+      "domain": "baobab",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.github.johnfactotum.Foliate"}
+      ],
+      "size": "small",
+      "risk": "low",
+      "permissions": ["files", "reading"],
+      "summary": "Reading surface for Baobab cultural documents."
+    },
+    {
+      "id": "anki",
+      "name": "Anki",
+      "domain": "baobab",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "net.ankiweb.Anki"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["files", "learning"],
+      "summary": "Spaced repetition for languages and cultural learning."
+    },
+    {
+      "id": "steam",
+      "name": "Steam",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.valvesoftware.Steam"}
+      ],
+      "size": "large",
+      "risk": "medium",
+      "permissions": ["network", "gpu", "controllers", "multilib"],
+      "summary": "Gaming library and Proton runtime for Pulse."
+    },
+    {
+      "id": "lutris",
+      "name": "Lutris",
+      "domain": "pulse",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "net.lutris.Lutris"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["network", "wine", "games"],
+      "summary": "Game launcher and compatibility manager for Pulse."
+    },
+    {
+      "id": "heroic-games-launcher-bin",
+      "name": "Heroic Games Launcher",
+      "domain": "pulse",
+      "recommended_source": "aur",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.heroicgameslauncher.hgl"}
+      ],
+      "size": "medium",
+      "risk": "medium",
+      "permissions": ["network", "games"],
+      "summary": "Epic, GOG and Amazon game library launcher for Pulse."
+    },
+    {
+      "id": "firefox",
+      "name": "Firefox",
+      "domain": "equinox",
+      "recommended_source": "pacman",
+      "alternatives": [
+        {"source": "flatpak", "id": "org.mozilla.firefox"}
+      ],
+      "size": "medium",
+      "risk": "low",
+      "permissions": ["network", "files"],
+      "summary": "General web browser for Equinox."
+    },
+    {
+      "id": "bottles",
+      "name": "Bottles",
+      "domain": "equinox",
+      "recommended_source": "flatpak",
+      "alternatives": [
+        {"source": "flatpak", "id": "com.usebottles.bottles"}
+      ],
+      "size": "large",
+      "risk": "medium",
+      "permissions": ["windows-compat", "files", "network"],
+      "summary": "Windows app compatibility manager for SevenOS."
+    }
+  ]
+}

@@ -100,8 +100,13 @@ sevenpkg global-policy <package>
 
 ## SevenPkg Catalog Direction
 
-The next step is a domain catalog. Each app should declare a natural owner and
-preferred sources:
+SevenPkg now has a first app-domain catalog in:
+
+```text
+sevenpkg/apps.json
+```
+
+Each app declares a natural owner and preferred sources:
 
 ```yaml
 name: blender
@@ -137,6 +142,79 @@ Install into Studio? yes/no
 
 This keeps SevenOS public-friendly while preserving technical control.
 
+The current command contract is:
+
+```bash
+sevenpkg catalog
+sevenpkg catalog --json
+sevenpkg catalog blender
+sevenpkg resolve blender
+sevenpkg resolve blender --json
+seven install blender --preview
+seven install blender
+```
+
+Machine-readable install previews must expose both the user request and the
+effective routing decision. For example, a public request can keep
+`source: auto`, while `resolved_sources` says:
+
+```json
+[
+  {
+    "query": "blender",
+    "package": "blender",
+    "source": "pacman",
+    "profile": "studio",
+    "scope": "profile-rootfs"
+  }
+]
+```
+
+Seven Store and graphical installers should display the effective routing, not
+raw backend guesses.
+
+The catalog starts intentionally small. It should grow through curated entries,
+not by blindly mirroring every package repository. Every entry must explain:
+
+- natural SevenOS domain
+- recommended source
+- alternatives
+- size level
+- risk level
+- permissions or sensitive capabilities
+- short user-facing reason
+
+## Store Integration
+
+Seven Store must consume the same catalog instead of maintaining a parallel
+truth. Search results can still include pacman, Flatpak and AUR entries, but
+catalog entries rank first because they carry SevenOS intent:
+
+```text
+catalog result -> natural mini OS -> source -> preview -> install
+```
+
+When a catalog app belongs to a mini OS, the public install path should target
+that mini OS by default.
+
+Seven Store consumes `sevenpkg strategy --json`, `sevenpkg catalog --json` and
+`sevenpkg resolve <app> --json`. It should treat `sevenpkg/apps.json` as the
+first source of truth for curated apps, then fall back to repository adapters.
+
+## Known Limits To Track
+
+Flatpak is still user-global today. SevenPkg can record profile intent and
+Seven Store can show the intended mini OS, but Flatpak isolation per mini OS is
+not complete yet.
+
+Shield's `nix-lab` source is declared as planned. It should stay invisible as a
+ready source until there is a real explicit lab workflow.
+
+Equinox installs remain possible for system work, but cataloged domain apps
+should prefer their natural mini OS. If the user tries to force a cataloged
+domain app into Equinox, SevenPkg must warn or block unless the intent is made
+explicit.
+
 ## Commands
 
 Use these commands to inspect the current strategy:
@@ -144,6 +222,8 @@ Use these commands to inspect the current strategy:
 ```bash
 sevenpkg strategy
 sevenpkg strategy --json
+sevenpkg catalog --json
+sevenpkg resolve blender --json
 sevenpkg profile-limits
 sevenpkg profile-sources forge
 sevenpkg forge sources
@@ -161,4 +241,3 @@ sevenpkg forge install code --source pacman
 
 The ideal long-term public UI is Seven Store. It should call the same SevenPkg
 strategy and present engines as SevenOS concepts, not raw backend names.
-

@@ -78,6 +78,29 @@ If an app belongs to a mini OS, the default install target is that mini OS
 rootfs, not Equinox. Equinox installs are for system components, core apps and
 shared runtimes only.
 
+The current machine contract is:
+
+```bash
+sevenpkg strategy --json
+sevenpkg catalog --json
+sevenpkg resolve <app> --json
+```
+
+SevenStore search should rank `sevenpkg/apps.json` catalog entries before raw
+repository results because they include domain, risk, permissions and source
+intent.
+
+Install previews should preserve the user's requested source while also showing
+the effective route from SevenPkg:
+
+```text
+requested: auto
+resolved: blender -> studio -> pacman -> profile-rootfs
+```
+
+This prevents the UI from presenting backend names too early while still making
+the action auditable.
+
 ### Pacman
 
 Official repositories have the highest trust rank.

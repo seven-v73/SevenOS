@@ -67,6 +67,8 @@ sevenpkg install blender
 sevenpkg remove blender
 sevenpkg update
 sevenpkg search blender
+sevenpkg catalog blender
+sevenpkg resolve blender
 sevenpkg info forge
 sevenpkg meta
 sevenpkg status
@@ -189,6 +191,30 @@ sevenpkg plan --json
 
 SevenOS uses this plan to guide app installation without making users reason
 about pacman, AUR, Flatpak or future SevenRepo internals.
+
+## App Catalog
+
+SevenPkg uses `sevenpkg/apps.json` to map common apps to their natural SevenOS
+domain:
+
+```bash
+sevenpkg catalog
+sevenpkg catalog blender
+sevenpkg resolve blender
+seven install blender --preview
+```
+
+Example: `blender` resolves to Studio, `wireshark-qt` resolves to Shield, and
+`steam` resolves to Pulse. This makes public commands simple while keeping
+Equinox stable.
+
+JSON previews include `resolved_sources` so graphical surfaces can show the
+real route:
+
+```text
+blender -> studio -> pacman -> profile-rootfs
+bottles -> equinox -> flatpak -> global-system
+```
 
 Install multiple ordinary packages:
 
