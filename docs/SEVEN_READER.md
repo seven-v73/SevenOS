@@ -40,7 +40,10 @@ Professional reading features:
 - In-document search with page results.
 - Reading sidebar for outline, search results, bookmarks and notes.
 - Persistent bookmarks and page notes per document.
+- Centered book navigation with first, previous, next and last page controls.
+- Spread-aware page labels such as `2 - 3 / 14` in Book and Flipbook modes.
 - Progress slider, page memory and zoom controls.
+- Real two-page spread styling with page sides, spine shadow and blank end page.
 - Focus mode with `F11`.
 - Keyboard shortcuts: `Ctrl+F` search, `Ctrl+B` bookmark, `Ctrl+N` note.
 - Lightweight PDF preloading for nearby pages and text extraction.
