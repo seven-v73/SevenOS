@@ -586,6 +586,47 @@ def rootfs_package_count(profile):
     return sum(1 for item in local.iterdir() if item.is_dir())
 
 
+def directory_size(path):
+    path = Path(path)
+    if not path.exists():
+        return 0
+    if command_exists("du"):
+        try:
+            result = subprocess.run(
+                ["du", "-sb", str(path)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return int(result.stdout.split()[0])
+        except (OSError, subprocess.SubprocessError, ValueError):
+            pass
+    total = 0
+    for root, dirs, files in os.walk(path, topdown=True):
+        dirs[:] = [item for item in dirs if not Path(root, item).is_symlink()]
+        for filename in files:
+            item = Path(root, filename)
+            try:
+                if not item.is_symlink():
+                    total += item.stat().st_size
+            except OSError:
+                continue
+    return total
+
+
+def human_size(size):
+    units = ["B", "KiB", "MiB", "GiB", "TiB"]
+    value = float(size)
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(value)} {unit}"
+            return f"{value:.1f} {unit}"
+        value /= 1024
+
+
 def parse_pacman_local(local_dir):
     packages = []
     if not local_dir.is_dir():
@@ -2482,6 +2523,11 @@ def strategy_payload():
             "domains": sorted({str(item.get("domain") or SYSTEM_PROFILE) for item in app_catalog_items()}),
             "command": "sevenpkg catalog --json",
         },
+        "footprint": {
+            "schema": "sevenos.sevenpkg-footprint.v1",
+            "command": "sevenpkg footprint --json",
+            "purpose": "audit rootfs size, package duplication and catalog coverage before release bundles",
+        },
         "engine_states": {
             "flatpak": "OK" if command_exists("flatpak") and flathub_present() else "MISS",
             "host_aur": "OK" if command_exists("paru") or command_exists("yay") else "MISS",
@@ -2492,6 +2538,7 @@ def strategy_payload():
         "next_steps": [
             "Expand the SevenPkg app catalog with domain ownership for common apps.",
             "Route Seven Store installs through the same domain/source policy.",
+            "Track rootfs footprint and duplication with sevenpkg footprint.",
             "Keep Equinox installs guarded and expose host commands to mini OS only through global-policy.",
             "Add optional lab engines such as Nix only behind explicit profile actions, not as host defaults.",
         ],
@@ -2936,6 +2983,142 @@ def show_profile_packages(args):
             print(f"  ... {profile['package_count'] - len(profile['packages'])} more")
 
 
+def footprint_payload(include_sizes=True):
+    mini_profiles = sorted(PROFILE_KEYS - {SYSTEM_PROFILE})
+    rootfs_items = []
+    package_sets = {}
+    total_size = 0
+    for profile in mini_profiles:
+        rootfs = profile_rootfs(profile)
+        ready = profile_rootfs_ready(profile)
+        packages = rootfs_package_names(profile) if ready else set()
+        size = directory_size(rootfs) if include_sizes and rootfs.exists() else 0
+        total_size += size
+        package_sets[profile] = packages
+        warnings = []
+        if not ready:
+            warnings.append("rootfs-missing")
+        if size >= 10 * 1024 ** 3:
+            warnings.append("large-rootfs")
+        if len(packages) >= 1200:
+            warnings.append("large-package-set")
+        rootfs_items.append({
+            "profile": profile,
+            "rootfs": str(rootfs),
+            "ready": ready,
+            "size_bytes": size,
+            "size": human_size(size),
+            "size_scanned": include_sizes and rootfs.exists(),
+            "package_count": len(packages),
+            "aur_helpers": {
+                "paru": helper_available_for_profile(profile, "paru"),
+                "yay": helper_available_for_profile(profile, "yay"),
+            },
+            "warnings": warnings,
+        })
+
+    package_owners = {}
+    for profile, packages in package_sets.items():
+        for package in packages:
+            package_owners.setdefault(package, []).append(profile)
+    duplicated = {
+        package: sorted(owners)
+        for package, owners in package_owners.items()
+        if len(owners) >= 2
+    }
+    top_duplicates = [
+        {"package": package, "profiles": owners, "count": len(owners)}
+        for package, owners in sorted(duplicated.items(), key=lambda item: (-len(item[1]), item[0]))[:25]
+    ]
+
+    catalog_by_domain = {}
+    for item in app_catalog_items():
+        domain = str(item.get("domain") or SYSTEM_PROFILE)
+        catalog_by_domain[domain] = catalog_by_domain.get(domain, 0) + 1
+    missing_catalog_domains = sorted(PROFILE_KEYS - set(catalog_by_domain))
+
+    warnings = []
+    if missing_catalog_domains:
+        warnings.append("catalog-missing-domain")
+    if any(item["warnings"] for item in rootfs_items):
+        warnings.append("rootfs-attention")
+    if len(duplicated) > 900:
+        warnings.append("high-duplication")
+    return {
+        "schema": "sevenos.sevenpkg-footprint.v1",
+        "state": "ready" if not warnings else "attention",
+        "root": str(ROOT_DIR),
+        "profile_rootfs_dir": str(PROFILE_ROOTFS_DIR),
+        "summary": {
+            "mini_os": len(mini_profiles),
+            "ready_rootfs": sum(1 for item in rootfs_items if item["ready"]),
+            "total_rootfs_size_bytes": total_size,
+            "total_rootfs_size": human_size(total_size),
+            "size_scanned": include_sizes,
+            "unique_packages": len(package_owners),
+            "duplicated_packages": len(duplicated),
+            "catalog_apps": len(app_catalog_items()),
+            "catalog_domains": catalog_by_domain,
+            "warnings": warnings,
+        },
+        "rootfs": sorted(rootfs_items, key=lambda item: item["profile"]),
+        "duplication": {
+            "packages": len(duplicated),
+            "top": top_duplicates,
+            "note": "Shared base packages are expected; this audit highlights growth, not an error by itself.",
+        },
+        "catalog": {
+            "domains": catalog_by_domain,
+            "missing_domains": missing_catalog_domains,
+            "command": "sevenpkg catalog --json",
+        },
+        "recommendations": [
+            "Keep Equinox minimal and route user apps through their natural mini OS.",
+            "Prefer curated catalog entries over blind repository installs for public UI flows.",
+            "Review large rootfs growth before release images or fresh-install bundles.",
+            "Use Flatpak intentionally while it remains user-global rather than fully profile-isolated.",
+        ],
+    }
+
+
+def show_footprint(args):
+    payload = footprint_payload(include_sizes=not getattr(args, "fast", False))
+    if getattr(args, "json", False):
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    summary = payload["summary"]
+    print("SevenPkg Footprint Audit")
+    print("========================")
+    print(
+        f"State: {payload['state']} · RootFS ready: {summary['ready_rootfs']}/{summary['mini_os']} · "
+        f"Total: {summary['total_rootfs_size']} · Unique packages: {summary['unique_packages']} · "
+        f"Duplicated: {summary['duplicated_packages']}"
+    )
+    print()
+    print(f"{'Profile':<8} {'Ready':<6} {'Size':<10} {'Packages':<8} {'AUR':<9} Warnings")
+    print(f"{'-------':<8} {'-----':<6} {'----':<10} {'--------':<8} {'---':<9} --------")
+    for item in payload["rootfs"]:
+        helpers = []
+        if item["aur_helpers"]["paru"]:
+            helpers.append("paru")
+        if item["aur_helpers"]["yay"]:
+            helpers.append("yay")
+        print(
+            f"{item['profile']:<8} {'yes' if item['ready'] else 'no':<6} "
+            f"{item['size']:<10} {item['package_count']:<8} "
+            f"{','.join(helpers) or '-':<9} {', '.join(item['warnings']) or '-'}"
+        )
+    print()
+    print("Catalog domains:")
+    for domain, count in sorted(summary["catalog_domains"].items()):
+        print(f"- {domain}: {count}")
+    if payload["duplication"]["top"]:
+        print()
+        print("Top duplicated packages:")
+        for item in payload["duplication"]["top"][:10]:
+            print(f"- {item['package']}: {item['count']} profiles")
+
+
 def owner_payload(packages):
     manifest = load_manifest()
     owners = package_owner_map(manifest)
@@ -3170,6 +3353,15 @@ def doctor_payload():
         "missing rootfs: " + ", ".join(missing_rootfs) if missing_rootfs else "all mini OS rootfs targets are ready",
         "sevenpkg profile-limits",
     )
+    footprint = footprint_payload(include_sizes=False)
+    add_check(
+        "rootfs-footprint",
+        "Mini OS rootfs footprint",
+        footprint.get("schema") == "sevenos.sevenpkg-footprint.v1" and footprint.get("summary", {}).get("ready_rootfs", 0) >= 6,
+        "medium",
+        f"{footprint.get('summary', {}).get('ready_rootfs', 0)}/{footprint.get('summary', {}).get('mini_os', 0)} rootfs ready; {footprint.get('summary', {}).get('duplicated_packages', 0)} duplicated package names; run footprint for size scan",
+        "sevenpkg footprint",
+    )
     add_check(
         "optional-visibility",
         "Optional software visibility",
@@ -3320,6 +3512,9 @@ def main():
     resolve_parser.add_argument("--profile", choices=sorted(PROFILE_KEYS), help="override target profile for the resolution")
     resolve_parser.add_argument("--source", choices=("auto", "pacman", "flatpak", "aur", "paru", "yay", "sevenrepo", "nix-lab"), default="auto")
     resolve_parser.add_argument("--json", action="store_true", help="print machine-readable app resolution")
+    footprint_parser = subparsers.add_parser("footprint", help="audit rootfs size, duplication and catalog coverage")
+    footprint_parser.add_argument("--fast", action="store_true", help="skip rootfs byte-size scans and report package/catalog structure only")
+    footprint_parser.add_argument("--json", action="store_true", help="print machine-readable rootfs footprint audit")
     global_policy_parser = subparsers.add_parser("global-policy", help="show Equinox host package exposure policy for mini OS package views")
     global_policy_parser.add_argument("package", nargs="?", help="show one package policy")
     global_policy_parser.add_argument("--json", action="store_true")
@@ -3515,6 +3710,8 @@ def main():
         show_catalog(args)
     elif args.command == "resolve":
         show_resolve(args)
+    elif args.command == "footprint":
+        show_footprint(args)
     elif args.command == "global-policy":
         show_global_policy(args)
     elif args.command == "global-expose":

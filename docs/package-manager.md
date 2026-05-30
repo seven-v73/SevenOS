@@ -202,6 +202,8 @@ sevenpkg catalog
 sevenpkg catalog blender
 sevenpkg resolve blender
 seven install blender --preview
+sevenpkg footprint
+sevenpkg footprint --fast
 ```
 
 Example: `blender` resolves to Studio, `wireshark-qt` resolves to Shield, and
@@ -215,6 +217,12 @@ real route:
 blender -> studio -> pacman -> profile-rootfs
 bottles -> equinox -> flatpak -> global-system
 ```
+
+Use `sevenpkg footprint --json` before release or ISO preparation to see rootfs
+size, duplication and catalog coverage. Use `sevenpkg footprint --fast --json`
+inside quick checks when package structure matters more than byte-size scans.
+It keeps the six mini OS views powerful without letting them silently become
+heavy.
 
 Install multiple ordinary packages:
 

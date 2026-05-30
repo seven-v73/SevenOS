@@ -201,6 +201,29 @@ Seven Store consumes `sevenpkg strategy --json`, `sevenpkg catalog --json` and
 `sevenpkg resolve <app> --json`. It should treat `sevenpkg/apps.json` as the
 first source of truth for curated apps, then fall back to repository adapters.
 
+## Footprint And Duplication
+
+Because mini OS rootfs views are intentionally specialized, SevenOS must track
+their growth instead of discovering bloat at release time. The audit command is:
+
+```bash
+sevenpkg footprint
+sevenpkg footprint --fast
+sevenpkg footprint --json
+```
+
+It reports:
+
+- rootfs readiness and size per mini OS (`--fast` skips byte-size scans);
+- package count per mini OS;
+- AUR helper availability inside each rootfs;
+- duplicated package names across mini OS rootfs views;
+- catalog coverage per SevenOS domain.
+
+Duplication is not automatically an error because shared base packages are
+normal. It is a release signal: if a mini OS grows too much, move large tools to
+guided packs or keep them cataloged but optional.
+
 ## Known Limits To Track
 
 Flatpak is still user-global today. SevenPkg can record profile intent and
@@ -224,6 +247,7 @@ sevenpkg strategy
 sevenpkg strategy --json
 sevenpkg catalog --json
 sevenpkg resolve blender --json
+sevenpkg footprint --json
 sevenpkg profile-limits
 sevenpkg profile-sources forge
 sevenpkg forge sources
