@@ -1502,6 +1502,12 @@ def main():
     software_parser.add_argument("extra", nargs=argparse.REMAINDER)
     pkg_parser = subparsers.add_parser("pkg", help="alias for SevenOS software management")
     pkg_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    install_parser = subparsers.add_parser("install", help="natural SevenPkg install shortcut")
+    install_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    remove_parser = subparsers.add_parser("remove", help="natural SevenPkg remove shortcut")
+    remove_parser.add_argument("extra", nargs=argparse.REMAINDER)
+    search_parser = subparsers.add_parser("search", help="natural SevenPkg search shortcut")
+    search_parser.add_argument("extra", nargs=argparse.REMAINDER)
     subparsers.add_parser("post-install", help="check common post-install blockers")
     readiness_parser = subparsers.add_parser("readiness", help="score SevenOS against OS choice criteria")
     readiness_parser.add_argument("--json", action="store_true", help="print machine-readable score output")
@@ -1828,6 +1834,8 @@ def main():
         handle_launchpad(args)
     elif args.command in ("software", "pkg"):
         sevenpkg(args, *args.extra)
+    elif args.command in ("install", "remove", "search"):
+        sevenpkg(args, args.command, *args.extra)
     elif args.command == "post-install":
         install_target("post-install", args)
     elif args.command == "readiness":

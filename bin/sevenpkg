@@ -54,6 +54,71 @@ ALIASES = {
 }
 PROFILE_KEYS = {"equinox", "baobab", "forge", "shield", "studio", "atlas", "pulse"}
 SYSTEM_PROFILE = "equinox"
+ENGINE_POLICY = {
+    "equinox": {
+        "title": "Equinox Host",
+        "role": "stable host, orchestration and system recovery",
+        "engine": "SevenPkg Host Engine",
+        "recommended_sources": ["pacman", "flatpak"],
+        "optional_sources": ["paru", "yay"],
+        "scope": "global-system",
+        "rule": "Keep Equinox minimal. Install only system components, core apps and shared runtimes here.",
+    },
+    "forge": {
+        "title": "Forge DevOps",
+        "role": "development, containers, services and deployment",
+        "engine": "Forge Engine",
+        "recommended_sources": ["pacman", "paru", "yay"],
+        "optional_sources": ["profile-service"],
+        "scope": "profile-rootfs",
+        "rule": "Use fresh Arch-compatible toolchains privately inside Forge; expose services explicitly.",
+    },
+    "studio": {
+        "title": "Studio Creator",
+        "role": "video, audio, graphics, 3D and publishing",
+        "engine": "Studio Engine",
+        "recommended_sources": ["pacman", "flatpak"],
+        "optional_sources": ["appimage", "manual-vendor"],
+        "scope": "profile-rootfs",
+        "rule": "Prefer stable creative packages and Flatpak where it improves plugin/runtime compatibility.",
+    },
+    "shield": {
+        "title": "Shield Cybersecurity",
+        "role": "authorized audit, forensics, labs and defensive monitoring",
+        "engine": "Shield Engine",
+        "recommended_sources": ["pacman"],
+        "optional_sources": ["nix-lab", "paru", "yay", "blackarch-opt-in"],
+        "scope": "profile-rootfs",
+        "rule": "Keep intrusive tools scoped to Shield. Reproducible labs are optional and explicit.",
+    },
+    "atlas": {
+        "title": "Atlas Explorer",
+        "role": "documents, OCR, maps, research and knowledge navigation",
+        "engine": "Atlas Engine",
+        "recommended_sources": ["pacman", "flatpak"],
+        "optional_sources": ["paru", "yay"],
+        "scope": "profile-rootfs",
+        "rule": "Favor reliable document and research tools over bleeding-edge packages.",
+    },
+    "baobab": {
+        "title": "Baobab Cultural OS",
+        "role": "African heritage, languages, education and cultural memory",
+        "engine": "Baobab Engine",
+        "recommended_sources": ["sevenos-content", "pacman", "flatpak"],
+        "optional_sources": ["paru", "yay"],
+        "scope": "profile-rootfs",
+        "rule": "Prioritize validated cultural content, language packs and offline-first resources over package novelty.",
+    },
+    "pulse": {
+        "title": "Pulse Gaming",
+        "role": "gaming, Proton, low latency, capture and performance",
+        "engine": "Pulse Engine",
+        "recommended_sources": ["pacman", "paru", "yay"],
+        "optional_sources": ["flatpak", "proton-community"],
+        "scope": "profile-rootfs",
+        "rule": "Keep gaming runtimes current and private to Pulse unless the user explicitly shares them.",
+    },
+}
 
 
 def host_home() -> Path:
@@ -314,6 +379,10 @@ def normalize_profile(profile):
         error(f"unknown SevenOS profile: {profile}")
         sys.exit(2)
     return normalized
+
+
+def engine_policy(profile):
+    return ENGINE_POLICY.get(profile, ENGINE_POLICY[SYSTEM_PROFILE])
 
 
 def normalize_profile_list(raw_profiles):
@@ -2099,12 +2168,76 @@ def show_sources(_args):
         print(f"{item['key']:<9} {item['state']:<7} {item['scope']:<15} {item['detail']}")
 
 
+def strategy_payload():
+    profiles = []
+    for profile in ["equinox", "forge", "studio", "shield", "atlas", "baobab", "pulse"]:
+        policy = engine_policy(profile)
+        profiles.append({
+            "profile": profile,
+            "title": policy["title"],
+            "role": policy["role"],
+            "engine": policy["engine"],
+            "scope": policy["scope"],
+            "recommended_sources": policy["recommended_sources"],
+            "optional_sources": policy["optional_sources"],
+            "rule": policy["rule"],
+            "commands": {
+                "sources": f"sevenpkg {profile} sources" if profile != SYSTEM_PROFILE else "sevenpkg equinox sources",
+                "limits": f"sevenpkg {profile} limits" if profile != SYSTEM_PROFILE else "sevenpkg equinox limits",
+                "install": f"sevenpkg {profile} install <package>",
+            },
+        })
+    return {
+        "schema": "sevenos.sevenpkg-strategy.v1",
+        "state": "ready",
+        "principle": "One user-facing installer, profile-scoped engines, stable Equinox host.",
+        "user_contract": {
+            "install": "seven install <app> / sevenpkg install <app>",
+            "remove": "sevenpkg remove <app>",
+            "update": "seven update / sevenpkg update",
+            "store": "Seven Store uses the same catalog and source rules.",
+        },
+        "equinox_rule": "Equinox is the host platform, not a dumping ground for heavy user apps.",
+        "mini_os_rule": "Mini OS packages install into private rootfs views by default and are resealed after maintenance.",
+        "source_rule": "Pacman stays the baseline; Flatpak, AUR helpers and future Nix/lab engines are used only where the domain benefits.",
+        "profiles": profiles,
+        "next_steps": [
+            "Expand the SevenPkg app catalog with domain ownership for common apps.",
+            "Route Seven Store installs through the same domain/source policy.",
+            "Keep Equinox installs guarded and expose host commands to mini OS only through global-policy.",
+            "Add optional lab engines such as Nix only behind explicit profile actions, not as host defaults.",
+        ],
+    }
+
+
+def show_strategy(args):
+    payload = strategy_payload()
+    if getattr(args, "json", False):
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return
+    print("SevenPkg Strategy")
+    print("=================")
+    print(payload["principle"])
+    print()
+    print(f"{'Profile':<8} {'Engine':<20} {'Scope':<15} Role")
+    print(f"{'-------':<8} {'------':<20} {'-----':<15} ----")
+    for item in payload["profiles"]:
+        print(f"{item['profile']:<8} {item['engine']:<20} {item['scope']:<15} {item['role']}")
+    print()
+    print("Rule:", payload["source_rule"])
+
+
 def profile_sources_payload(profile):
     profile = normalize_profile(profile)
+    policy = engine_policy(profile)
     if profile == SYSTEM_PROFILE:
         return {
             "schema": "sevenos.profile-package-sources.v1",
             "profile": profile,
+            "engine": policy["engine"],
+            "recommended_sources": policy["recommended_sources"],
+            "optional_sources": policy["optional_sources"],
+            "policy": policy["rule"],
             "scope": "global-system",
             "visibility": "global; Equinox installs on the host Arch system",
             "rootfs": "host-system",
@@ -2159,6 +2292,10 @@ def profile_sources_payload(profile):
     return {
         "schema": "sevenos.profile-package-sources.v1",
         "profile": profile,
+        "engine": policy["engine"],
+        "recommended_sources": policy["recommended_sources"],
+        "optional_sources": policy["optional_sources"],
+        "policy": policy["rule"],
         "scope": "profile-rootfs",
         "visibility": f"private to {profile}; installs do not leak to other mini OS profiles",
         "rootfs": str(rootfs),
@@ -2207,7 +2344,10 @@ def show_profile_sources(args):
     print("SevenPkg Profile Sources")
     print("========================")
     print(f"Profile:    {payload['profile']} · {payload['scope']}")
+    print(f"Engine:     {payload.get('engine', 'SevenPkg')}")
     print(f"Visibility: {payload['visibility']}")
+    if payload.get("policy"):
+        print(f"Policy:     {payload['policy']}")
     print(f"RootFS:     {payload['rootfs']}")
     print(f"Ready:      {'yes' if payload['rootfs_ready'] else 'no'}")
     print()
@@ -2232,8 +2372,12 @@ def profile_limits_payload(profile_filter=None):
         if profile_filter and profile != profile_filter:
             continue
         if profile == SYSTEM_PROFILE:
+            policy = engine_policy(profile)
             profiles.append({
                 "profile": profile,
+                "engine": policy["engine"],
+                "recommended_sources": policy["recommended_sources"],
+                "policy": policy["rule"],
                 "scope": "global-system",
                 "visibility": "global; mini OS can receive exposed commands through package-view policy",
                 "rootfs": "host-system",
@@ -2257,6 +2401,7 @@ def profile_limits_payload(profile_filter=None):
             })
             continue
 
+        policy = engine_policy(profile)
         rootfs = profile_rootfs(profile)
         ready = profile_rootfs_ready(profile)
         has_paru = helper_available_for_profile(profile, "paru")
@@ -2271,6 +2416,9 @@ def profile_limits_payload(profile_filter=None):
             next_actions.append("sevenpkg profile-helper-all paru --preview")
         profiles.append({
             "profile": profile,
+            "engine": policy["engine"],
+            "recommended_sources": policy["recommended_sources"],
+            "policy": policy["rule"],
             "scope": "profile-rootfs",
             "visibility": f"private to {profile}; not visible to other mini OS package views by default",
             "rootfs": str(rootfs),
@@ -2319,12 +2467,12 @@ def show_profile_limits(args):
     print("===============================")
     print(f"System profile: {payload['system_profile']} · Active: {payload['active_profile']}")
     print()
-    print(f"{'Profile':<8} {'Scope':<15} {'RootFS':<8} {'pacman':<6} {'paru':<5} {'yay':<5}")
-    print(f"{'-------':<8} {'-----':<15} {'------':<8} {'------':<6} {'----':<5} {'---':<5}")
+    print(f"{'Profile':<8} {'Engine':<18} {'Scope':<15} {'RootFS':<8} {'pacman':<6} {'paru':<5} {'yay':<5}")
+    print(f"{'-------':<8} {'------':<18} {'-----':<15} {'------':<8} {'------':<6} {'----':<5} {'---':<5}")
     for item in payload["profiles"]:
         sources = item["install_sources"]
         print(
-            f"{item['profile']:<8} {item['scope']:<15} "
+            f"{item['profile']:<8} {item.get('engine', 'SevenPkg'):<18} {item['scope']:<15} "
             f"{'ready' if item['rootfs_ready'] else 'missing':<8} "
             f"{'yes' if sources.get('pacman') else 'no':<6} "
             f"{'yes' if sources.get('paru') else 'no':<5} "
@@ -2333,6 +2481,10 @@ def show_profile_limits(args):
     if len(payload["profiles"]) == 1:
         item = payload["profiles"][0]
         print()
+        if item.get("engine"):
+            print(f"Engine:     {item['engine']}")
+        if item.get("policy"):
+            print(f"Policy:     {item['policy']}")
         print(f"Visibility: {item['visibility']}")
         print(f"RootFS:     {item['rootfs']}")
         print("Commands:")
@@ -2566,6 +2718,16 @@ def doctor_payload():
         "missing: " + ", ".join(missing_profiles) if missing_profiles else "all core mini OS layers are declared",
         "sevenpkg meta",
     )
+    strategy = strategy_payload()
+    strategy_profiles = {item.get("profile") for item in strategy.get("profiles", [])}
+    add_check(
+        "engine-strategy",
+        "SevenPkg engine strategy",
+        strategy.get("schema") == "sevenos.sevenpkg-strategy.v1" and required_profiles <= strategy_profiles,
+        "critical",
+        "Equinox host plus six mini OS package engines are declared",
+        "sevenpkg strategy",
+    )
     add_check("pacman", "pacman source", command_exists("pacman"), "critical", "required Arch package source", "sevenpkg sources")
     add_check("flatpak", "Flatpak source", command_exists("flatpak"), "medium", "used for mainstream apps", "seven flatpak setup")
     add_check("flathub", "Flathub remote", flathub_present(), "medium", "default Flatpak application source", "seven flatpak setup")
@@ -2776,6 +2938,8 @@ def main():
     history_parser.add_argument("--limit", type=int, default=12, help="maximum events to show")
     sources_parser = subparsers.add_parser("sources", help="show package sources")
     sources_parser.add_argument("--json", action="store_true", help="print machine-readable package sources")
+    strategy_parser = subparsers.add_parser("strategy", help="show the SevenPkg host and mini OS source strategy")
+    strategy_parser.add_argument("--json", action="store_true", help="print machine-readable SevenPkg strategy")
     global_policy_parser = subparsers.add_parser("global-policy", help="show Equinox host package exposure policy for mini OS package views")
     global_policy_parser.add_argument("package", nargs="?", help="show one package policy")
     global_policy_parser.add_argument("--json", action="store_true")
@@ -2965,6 +3129,8 @@ def main():
         show_history(args)
     elif args.command == "sources":
         show_sources(args)
+    elif args.command == "strategy":
+        show_strategy(args)
     elif args.command == "global-policy":
         show_global_policy(args)
     elif args.command == "global-expose":

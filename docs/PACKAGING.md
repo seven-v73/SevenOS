@@ -1,6 +1,17 @@
 # SevenOS Packaging Strategy
 
-SevenOS uses three package channels with clear boundaries.
+SevenOS uses clear package channels and profile scopes. The full product
+strategy for Equinox, SevenPkg and mini OS package engines lives in
+`docs/SEVENPKG_STRATEGY.md`.
+
+The short rule:
+
+```text
+Do not mix many distro package managers into the host.
+Keep Equinox coherent.
+Route domain apps through SevenPkg into the right mini OS.
+Use extra engines only as explicit profile capabilities.
+```
 
 ## SevenOS Component Packages
 
@@ -40,7 +51,9 @@ boundaries concrete before publishing a real SevenOS repository.
 
 ## Official Pacman Repositories
 
-Default for system packages, desktop components, profiles, ISO tooling, security tools, and VM tooling.
+Default for system packages, desktop components, profiles, ISO tooling,
+security tools, Pulse gaming packages, Forge toolchains and most mini OS rootfs
+installs.
 
 Package manifests live in:
 
@@ -56,15 +69,15 @@ Current Flatpak use:
 
 - Bottles: `com.usebottles.bottles`
 
-Recommended external download:
-
-- Windows VirtIO driver ISO for Windows VM installs
-
-SevenOS configures Flathub in the Windows compatibility layer.
+SevenOS configures Flathub in the Windows compatibility layer for Bottles and
+other app-first compatibility flows. Full Windows VM support is not a SevenOS
+identity; it remains an advanced compatibility fallback only.
 
 ## AUR Or Manual Packages
 
-Optional only. SevenOS does not automate AUR installation yet.
+AUR is optional and should be profile-scoped when possible. SevenPkg can prepare
+private `paru` or `yay` helpers inside mini OS rootfs views, so AUR use in
+Forge or Pulse does not become a global Equinox habit.
 
 Expected future candidates:
 
@@ -74,7 +87,9 @@ Expected future candidates:
 
 ## Rule
 
-Core installation must remain usable with official repositories only. Flatpak is allowed for user apps. AUR must remain opt-in and documented.
+Core installation must remain usable with official repositories only. Flatpak is
+allowed for user apps. AUR must remain opt-in and documented. Nix or other lab
+engines may be added only behind explicit profile actions, not as host defaults.
 
 ## Test Machine Install Order
 
@@ -85,7 +100,7 @@ For a normal test machine, install in this order:
 ./install.sh dev --yes
 ./install.sh cybersecurity core --yes
 ./install.sh cybersecurity sandbox --yes
-./install.sh windows --yes
+./install.sh windows --yes  # compatibility layer, not a mini OS identity
 ./install.sh server --yes
 seven phase-gate
 ```

@@ -18,6 +18,10 @@ SevenStore combines:
 - Windows Compatibility apps
 - future SevenCloud recommendations
 
+SevenStore must follow `docs/SEVENPKG_STRATEGY.md`: Equinox stays the stable
+host, mini OS profiles receive domain apps, and SevenPkg remains the single
+source of truth for install scope and source selection.
+
 The store must make installation feel:
 
 - safe
@@ -34,10 +38,10 @@ The store must make installation feel:
 │             SevenStore UI            │
 │  Tauri + React + SevenOS glass UI    │
 ├──────────────────────────────────────┤
-│        Seven Package Engine API      │
+│      SevenPkg Strategy + Store API   │
 │ search, metadata, install plans      │
 ├──────────────────────────────────────┤
-│ Pacman │ AppStream │ AUR │ Flatpak │ VM │
+│ Pacman │ AppStream │ AUR │ Flatpak │ Wine │
 ├──────────────────────────────────────┤
 │              Arch Linux              │
 └──────────────────────────────────────┘
@@ -59,6 +63,20 @@ seven store install-app flatpak org.blender.Blender --dry-run
 ## Seven Package Engine
 
 The engine has adapters for each software source.
+
+Before choosing an adapter, SevenStore must resolve the natural SevenOS domain:
+
+```text
+Blender   -> Studio Engine
+Wireshark -> Shield Engine
+Steam     -> Pulse Engine
+VS Code   -> Forge Engine
+Reader    -> Atlas or Baobab depending on content intent
+```
+
+If an app belongs to a mini OS, the default install target is that mini OS
+rootfs, not Equinox. Equinox installs are for system components, core apps and
+shared runtimes only.
 
 ### Pacman
 
@@ -135,7 +153,8 @@ Permissions panel.
 
 Windows apps should not be mixed silently with Linux apps. They appear under
 the Windows Compatibility source and open app-first flows: Wine, Bottles,
-Lutris and Proton first, then full Windows VM only when the app really needs it.
+Lutris and Proton first. Full Windows VM use is an advanced fallback, not a
+SevenOS mini OS identity.
 
 Install/run plan:
 
@@ -168,10 +187,10 @@ SevenStore is profile-aware. Each mini OS gets a curated store surface.
 | Forge | editors, SDKs, containers, Git and local services |
 | Shield | authorized audit, forensics, sandboxing and reporting |
 | Studio | design, video, audio, 3D, capture and export |
-| Windows | app-first Windows compatibility helpers with VM fallback |
 | Forge DevOps | code, deploy, reverse proxy, containers, logs and endpoints |
 | Pulse | Linux gaming, Proton, overlays, controllers and latency tools |
 | Baobab | African heritage, languages, stories, sound, maps, fashion, food, wisdom and offline memory |
+| Atlas | documents, OCR, maps, references, archives and research |
 
 The store must recommend by profile without polluting other profiles. A profile
 collection is a curated path, not a forced global install.
@@ -189,7 +208,7 @@ Every result should show trust information before installation.
 | COMMUNITY | non-official maintainer |
 | VERIFIED | curated by SevenOS |
 | PROFILE | part of a SevenOS mini OS bundle |
-| VM | Windows Bridge/VM flow |
+| COMPAT | Windows compatibility flow |
 | AI OPTIMIZED | recommended by SevenAI for current profile/context |
 
 ## UI/UX Direction
@@ -372,7 +391,7 @@ Recommended implementation:
 | Motion | transform/opacity animation library |
 | Backend | Rust |
 | Metadata cache | SQLite |
-| Source adapters | pacman, AppStream, AUR RPC, Flatpak, Windows Bridge |
+| Source adapters | pacman, AppStream, AUR RPC, Flatpak, Windows Compatibility |
 | Auth | polkit/pkexec or SevenOS package daemon |
 
 ## Product Rule

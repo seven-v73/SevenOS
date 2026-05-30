@@ -140,6 +140,10 @@ Rules:
 - `sevenpkg plan --json` is the software readiness contract. It links
   SevenOS meta-packages, Flatpak, Flathub and future SevenRepo work into one
   app installation plan.
+- `sevenpkg strategy --json` is the host and mini OS package-engine contract.
+  It keeps Equinox stable and minimal, declares the domain engine for each mini
+  OS, and prevents SevenOS from becoming a fragile mixture of visible package
+  managers.
 - Seven Server may observe and orchestrate, but remote control stays local-only
   until authentication, TLS and audit logging exist.
 - `install.sh` remains the compatibility layer for direct script targets.

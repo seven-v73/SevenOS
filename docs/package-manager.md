@@ -12,11 +12,12 @@ The vocabulary and product rules for these commands live in:
 - `docs/VISION.md`
 - `docs/PRODUCT_STRATEGY.md`
 - `docs/VOCABULARY.md`
+- `docs/SEVENPKG_STRATEGY.md`
 
 ## seven
 
-`seven` orchestrates SevenOS profiles, security, VM helpers, status checks, and
-high-level automation.
+`seven` orchestrates SevenOS profiles, security, Windows app compatibility,
+status checks, and high-level automation.
 
 Examples:
 
@@ -30,15 +31,29 @@ seven profile shield
 seven profile studio
 seven shield enable
 seven shield audit
-seven vm start windows
+seven windows run setup.exe
+seven install blender --profile studio
 ```
 
 ## sevenpkg
 
-`sevenpkg` is a SevenOS layer over:
+`sevenpkg` is the SevenOS package brain. It exposes one public install/remove
+language while keeping Equinox and the mini OS profiles on the right side of the
+stability boundary.
+
+The rule is:
+
+```text
+Equinox stays stable and minimal.
+Mini OS profiles receive specialized packages in private rootfs views.
+SevenPkg chooses and explains the source instead of exposing backend chaos.
+```
+
+`sevenpkg` is currently a SevenOS layer over:
 
 - `pacman`
-- `paru`, when available
+- `paru` or `yay`, when available
+- Flatpak app flows
 - SevenOS meta-packages
 - future SevenRepo packages
 
@@ -65,6 +80,8 @@ sevenpkg transaction install forge --apply --yes
 sevenpkg transaction remove blender
 sevenpkg history
 sevenpkg sources
+sevenpkg strategy
+sevenpkg strategy --json
 seven software transaction install forge
 seven pkg optional
 ```
@@ -104,13 +121,13 @@ Current meta-packages:
 
 | Name | Role |
 | --- | --- |
-| `equinox` | balanced general SevenOS mini OS |
+| `equinox` | stable host/admin platform for Seven Core, Settings, Store, Files, update and recovery |
 | `forge` | DevOps mini OS for code, toolchains, containers, services and deploys |
 | `shield` | cybersecurity mini OS for authorized audit, forensics and sandboxing |
 | `studio` | creator mini OS for logo, video, audio, 3D and design tools |
-| `windows` | Windows Bridge mini OS for VM-first compatibility with Wine/Bottles fallback |
 | `baobab` | African cultural mini OS for heritage, languages, stories, sound, map, fashion, food, wisdom and offline memory |
 | `pulse` | Linux gaming mini OS for Proton, low latency, overlays and performance |
+| `atlas` | documents, OCR, maps, references, archives and travel mini OS |
 | `griot` | documentation and knowledge toolkit |
 
 Examples:
@@ -119,8 +136,8 @@ Examples:
 sevenpkg install forge
 sevenpkg install shield
 sevenpkg install studio
-sevenpkg install windows
 sevenpkg install pulse
+sevenpkg install atlas
 sevenpkg install griot
 sevenpkg install baobab --optional
 sevenpkg status
@@ -182,8 +199,8 @@ sevenpkg transaction remove nmap hashcat
 
 Removal is guarded. If a package belongs to a SevenOS mini OS layer, SevenPkg
 shows the owning profile and blocks the real removal unless `--force` is used.
-This prevents accidental damage to Forge, Shield, Studio, Windows, Pulse,
-Baobab or Equinox.
+This prevents accidental damage to Forge, Shield, Studio, Atlas, Pulse, Baobab
+or Equinox.
 
 Pass profile-specific arguments to a SevenOS meta-package:
 
@@ -234,8 +251,9 @@ sevenpkg profile-sources forge
 sevenpkg profile-packages forge --query htop
 ```
 
-Equinox is the system/admin profile, so its installs use the normal global Arch
-system. Other mini OS profiles install into their own rootfs with
+Equinox is the system/admin host profile, so its installs use the normal global
+Arch-compatible system. This scope should stay small and guarded. Other mini OS
+profiles install into their own rootfs with
 `seven-profile-run --rootfs-writable`, then verify and reseal the rootfs. Those
 packages are private to the target mini OS and are not visible to other mini OS
 package views by default.
