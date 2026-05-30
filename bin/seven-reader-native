@@ -1391,11 +1391,41 @@ class ReaderWindow(Gtk.ApplicationWindow):
             spread.get_style_context().add_class("flip-forward" if self.turn_direction >= 0 else "flip-back")
             spread.get_style_context().add_class(f"flip-phase-{self.flip_phase}")
             GLib.timeout_add(86, self.advance_flip_animation)
-        self.reader_stage.pack_start(spread, True, True, 0)
+        stage_event = Gtk.EventBox()
+        stage_event.get_style_context().add_class("reader-page-turn-zone")
+        stage_event.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.SCROLL_MASK)
+        stage_event.connect("button-press-event", self.on_page_press)
+        stage_event.connect("scroll-event", self.on_page_scroll)
+        stage_event.add(spread)
+        self.reader_stage.pack_start(stage_event, True, True, 0)
         self.reader_stage.show_all()
         self.refresh_sidebar()
         GLib.idle_add(lambda: (self.document.preload_pages(self.page + 1, self.zoom), False)[1] if self.document else False)
         self.save_position()
+
+    def on_page_press(self, widget: Gtk.Widget, event: Gdk.EventButton) -> bool:
+        if not self.document or event.button != 1:
+            return False
+        width = max(1, widget.get_allocated_width())
+        edge = width * 0.18
+        if event.x <= edge:
+            self.turn_page(-1)
+            return True
+        if event.x >= width - edge:
+            self.turn_page(1)
+            return True
+        return False
+
+    def on_page_scroll(self, _widget: Gtk.Widget, event: Gdk.EventScroll) -> bool:
+        if not self.document:
+            return False
+        if event.direction in {Gdk.ScrollDirection.RIGHT, Gdk.ScrollDirection.DOWN}:
+            self.turn_page(1)
+            return True
+        if event.direction in {Gdk.ScrollDirection.LEFT, Gdk.ScrollDirection.UP}:
+            self.turn_page(-1)
+            return True
+        return False
 
     def page_metrics(self) -> tuple[int, int, int, int]:
         if self.mode == "inspect":

@@ -94,6 +94,9 @@ window.seven-reader {
   background: transparent;
   border: 0;
 }
+.reader-page-turn-zone {
+  background: transparent;
+}
 .reader-body {
   background: transparent;
 }

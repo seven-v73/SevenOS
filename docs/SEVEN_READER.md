@@ -48,6 +48,8 @@ Professional reading features:
   then fall back to a single visible page on compact windows.
 - Real two-page spread styling with page sides, spine shadow and blank end page.
 - Multi-phase page curl animation for a clearer page-turning effect.
+- Native page turning from the document surface: click page edges or scroll to
+  move through pages without aiming at toolbar controls.
 - Focus mode with `F11`.
 - Keyboard shortcuts: `Ctrl+F` search, `Ctrl+B` bookmark, `Ctrl+N` note.
 - Lightweight PDF preloading for nearby pages and text extraction.
