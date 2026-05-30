@@ -20,15 +20,22 @@ EOF
 
 ACTION="status"
 JSON_OUTPUT=0
+REFRESH_CACHE="${SEVENOS_ROUTES_REFRESH:-0}"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+ROUTES_CACHE="$CACHE_DIR/routes.json"
+ROUTES_CACHE_TTL="${SEVENOS_ROUTES_CACHE_TTL:-300}"
 for arg in "$@"; do
   case "$arg" in
     status|doctor|plan|json) ACTION="$arg" ;;
     --json) JSON_OUTPUT=1 ;;
+    --refresh|--no-cache) REFRESH_CACHE=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown routes option: $arg"; usage; exit 1 ;;
   esac
 done
+[[ "$ACTION" == "--json" || "$ACTION" == "--refresh" || "$ACTION" == "--no-cache" ]] && ACTION="status"
 [[ "$ACTION" == "json" ]] && JSON_OUTPUT=1
+ROUTES_CACHE="$CACHE_DIR/routes.json"
 
 routes_json() {
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
@@ -105,6 +112,7 @@ surface_natives = {
     "window-controls": "bin/seven-window-controls-native",
     "welcome": "bin/seven-welcome",
 }
+
 mask_ready_global = mask.get("state") == "masked" or executable("scripts/mask.sh")
 dynamic_ready_global = dynamic.get("state") in {"ready", "guided-preview"} or executable("scripts/adaptive-ui.sh")
 
@@ -290,6 +298,44 @@ print(json.dumps({
 PY
 }
 
+json_cache_valid() {
+  [[ -s "$1" ]] || return 1
+  python -m json.tool "$1" >/dev/null 2>&1
+}
+
+cache_is_fresh() {
+  local path="$1" ttl="$2" now mtime
+  [[ "$REFRESH_CACHE" == 1 ]] && return 1
+  json_cache_valid "$path" || return 1
+  now="$(date +%s)"
+  mtime="$(stat -c %Y "$path" 2>/dev/null || printf 0)"
+  (( now - mtime < ttl ))
+}
+
+write_json_cache() {
+  local path="$1" tmp
+  mkdir -p "$(dirname "$path")"
+  tmp="$(mktemp "${path}.XXXXXX")"
+  cat >"$tmp"
+  if json_cache_valid "$tmp"; then
+    mv -f "$tmp" "$path"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+cached_routes_json() {
+  local data
+  if cache_is_fresh "$ROUTES_CACHE" "$ROUTES_CACHE_TTL"; then
+    cat "$ROUTES_CACHE"
+    return 0
+  fi
+  data="$(routes_json)"
+  printf '%s\n' "$data" | write_json_cache "$ROUTES_CACHE" || true
+  printf '%s\n' "$data"
+}
+
 print_human() {
   ROUTES_JSON="$1" python - <<'PY'
 import json
@@ -328,7 +374,7 @@ for item in data.get("next", []):
 PY
 }
 
-payload="$(routes_json)"
+payload="$(cached_routes_json)"
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   printf '%s\n' "$payload"
   exit 0
