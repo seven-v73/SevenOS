@@ -797,10 +797,14 @@ store_navigator_json="$("$ROOT_DIR/scripts/store.sh" search navigateur --json)"
 store_music_json="$("$ROOT_DIR/scripts/store.sh" search musique --json)"
 store_games_json="$("$ROOT_DIR/scripts/store.sh" search jeux --json)"
 store_pacman_profile_plan="$("$ROOT_DIR/scripts/store.sh" install-app pacman firefox --profile forge --dry-run)"
+store_pacman_profile_plan_json="$("$ROOT_DIR/scripts/store.sh" plan-app pacman firefox --profile forge --json)"
 store_aur_profile_plan="$("$ROOT_DIR/scripts/store.sh" install-app aur visual-studio-bin --profile forge --dry-run)"
+store_aur_profile_plan_json="$("$ROOT_DIR/scripts/store.sh" plan-app aur visual-studio-bin --profile forge --json)"
 
 if grep -q 'SevenStoreNative' "$ROOT_DIR/bin/seven-store-native" &&
    grep -q 'sevenos.package-engine.v1' "$ROOT_DIR/scripts/store.sh" &&
+   grep -q 'plan-app)' "$ROOT_DIR/scripts/store.sh" &&
+   grep -q ' plan-app ' "$ROOT_DIR/bin/seven-store-native" &&
    grep -q 'CURATED_APPS' "$ROOT_DIR/scripts/store.sh" &&
    grep -q 'curated_results' "$ROOT_DIR/scripts/store.sh" &&
    grep -q '"suggestions"' "$ROOT_DIR/scripts/store.sh" &&
@@ -823,9 +827,11 @@ if grep -q 'SevenStoreNative' "$ROOT_DIR/bin/seven-store-native" &&
    grep -Eq '"name": "VLC"|"name": "Spotify"' <<<"$store_music_json" &&
    grep -Eq '"name": "Steam"|"name": "Lutris"' <<<"$store_games_json" &&
    grep -q 'profile: forge' <<<"$store_pacman_profile_plan" &&
+   grep -q 'profile-rootfs' <<<"$store_pacman_profile_plan_json" &&
    grep -q 'sevenpkg forge install firefox --source pacman' <<<"$store_pacman_profile_plan" &&
    grep -q 'sevenpkg forge helper paru' <<<"$store_aur_profile_plan" &&
    grep -q 'sevenpkg forge install visual-studio-bin --source aur' <<<"$store_aur_profile_plan" &&
+   grep -Eq '"source"[[:space:]]*:[[:space:]]*"(paru|yay|aur)"' <<<"$store_aur_profile_plan_json" &&
    grep -q 'install_user_command "$ROOT_DIR/bin/seven-store" seven-store' "$ROOT_DIR/scripts/install-cli.sh" &&
    grep -q 'install_user_command "$ROOT_DIR/bin/seven-store-native" seven-store-native' "$ROOT_DIR/scripts/install-cli.sh" &&
    grep -q 'write_command_wrapper "$BIN_HOME/seven-store" "$ROOT_DIR/bin/seven-store"' "$ROOT_DIR/seven-hub/install.sh" &&

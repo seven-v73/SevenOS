@@ -524,6 +524,8 @@ SEVENOS_DRY_RUN=1 "$ROOT_DIR/security/shield-workspace.sh" bootstrap >/dev/null
 "$ROOT_DIR/bin/sevenpkg" meta --json >/dev/null
 "$ROOT_DIR/bin/sevenpkg" plan --json | python -m json.tool >/dev/null
 "$ROOT_DIR/bin/sevenpkg" sources --json | python -m json.tool >/dev/null
+"$ROOT_DIR/scripts/store.sh" plan-app pacman blender --profile studio --json |
+  python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-transaction.v1"; assert d["profile"] == "studio"; assert d["resolved_sources"][0]["scope"] == "profile-rootfs"'
 "$ROOT_DIR/bin/sevenpkg" profile-limits --json |
   python -c 'import json,sys; d=json.load(sys.stdin); assert d["schema"] == "sevenos.profile-package-limits.v1"; assert d["system_profile"] == "equinox"; assert any(i["profile"] == "equinox" and i["scope"] == "global-system" for i in d["profiles"]); assert any(i["profile"] == "forge" and i["scope"] == "profile-rootfs" for i in d["profiles"])'
 "$ROOT_DIR/bin/sevenpkg" profile-limits forge --json |

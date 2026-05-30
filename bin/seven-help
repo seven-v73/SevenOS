@@ -880,6 +880,8 @@ profilées.
 seven-store
 seven store search vlc
 seven store detail vlc
+seven store plan-app pacman blender --profile studio
+seven store plan-app pacman blender --profile studio --json
 seven store apps
 ```
 
@@ -2384,6 +2386,8 @@ SevenOS store to install, open, verify and discover apps by mini OS. It uses
 seven-store
 seven store search vlc
 seven store detail vlc
+seven store plan-app pacman blender --profile studio
+seven store plan-app pacman blender --profile studio --json
 seven store apps
 ```
 
