@@ -84,6 +84,7 @@ config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
 state_home = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
 activity_path = state_home / "sevenos" / "store-activity.json"
 profile_apps_dir = config_home / "sevenos" / "profile-apps"
+state_cache_path = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos" / "state.json"
 
 
 def run_json(command, fallback):
@@ -100,6 +101,36 @@ def run_json(command, fallback):
         return json.loads(result.stdout)
     except json.JSONDecodeError:
         return fallback
+
+
+def shared_package_state():
+    try:
+        data = json.loads(state_cache_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+
+    strategy = data.get("packages_strategy")
+    catalog = data.get("packages_catalog")
+    footprint = data.get("packages_footprint")
+    if not isinstance(strategy, dict) or strategy.get("schema") != "sevenos.sevenpkg-strategy.v1":
+        return {}
+    if not isinstance(catalog, dict) or catalog.get("schema") != "sevenos.app-catalog.v1":
+        return {}
+    try:
+        catalog_count = int(catalog.get("count", 0) or 0)
+    except (TypeError, ValueError):
+        catalog_count = 0
+    if catalog_count < 12:
+        return {}
+    if not isinstance(footprint, dict) or footprint.get("schema") != "sevenos.sevenpkg-footprint.v1":
+        return {}
+    return {
+        "packages_strategy": strategy,
+        "packages_catalog": catalog,
+        "packages_footprint": footprint,
+    }
 
 
 def module_sort_key(item):
@@ -220,18 +251,35 @@ actions_payload = run_json(
     [str(root / "scripts" / "actions.sh"), "--json"],
     {"actions": []},
 )
-strategy_payload = run_json(
+package_state = shared_package_state()
+strategy_payload = package_state.get("packages_strategy") or run_json(
     [str(root / "bin" / "sevenpkg"), "strategy", "--json"],
     {"profiles": []},
 )
-app_catalog_payload = run_json(
+app_catalog_payload = package_state.get("packages_catalog") or run_json(
     [str(root / "bin" / "sevenpkg"), "catalog", "--json"],
     {"items": []},
 )
-footprint_payload = run_json(
+footprint_payload = package_state.get("packages_footprint") or run_json(
     [str(root / "bin" / "sevenpkg"), "footprint", "--fast", "--json"],
     {"summary": {}, "rootfs": []},
 )
+if not isinstance(manifest, dict):
+    manifest = {}
+if not isinstance(status, list):
+    status = []
+if not isinstance(flatpak, dict):
+    flatpak = {"ready": False, "apps": [], "installed": 0, "total": 0}
+if not isinstance(desktop_apps, dict):
+    desktop_apps = {"apps": []}
+if not isinstance(actions_payload, dict):
+    actions_payload = {"actions": []}
+if not isinstance(strategy_payload, dict):
+    strategy_payload = {"profiles": []}
+if not isinstance(app_catalog_payload, dict):
+    app_catalog_payload = {"items": []}
+if not isinstance(footprint_payload, dict):
+    footprint_payload = {"summary": {}, "rootfs": []}
 try:
     activity_payload = json.loads(activity_path.read_text(encoding="utf-8"))
     recent_activity = activity_payload.get("events", [])
@@ -709,6 +757,29 @@ def recommendations_for(name):
     return groups.get(key, [])
 
 
+def shared_catalog_payload():
+    cache_path = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "sevenos" / "state.json"
+    try:
+        state = json.loads(cache_path.read_text(encoding="utf-8"))
+        catalog = state.get("packages_catalog")
+    except Exception:
+        catalog = None
+    if isinstance(catalog, dict) and catalog.get("schema") == "sevenos.app-catalog.v1":
+        try:
+            catalog_count = int(catalog.get("count", 0) or 0)
+        except (TypeError, ValueError):
+            catalog_count = 0
+        if catalog_count >= 12 and isinstance(catalog.get("items"), list):
+            return {"apps": catalog.get("items", []), "source": "state-cache"}
+
+    catalog_path = ROOT / "sevenpkg" / "apps.json"
+    try:
+        payload = json.loads(catalog_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"apps": [], "source": "missing"}
+    return {"apps": payload.get("apps", []), "source": "file"}
+
+
 CURATED_APPS = [
     {"id": "firefox", "name": "Firefox", "source": "pacman", "summary": "Fast private web browser", "tags": "browser web internet essential equinox"},
     {"id": "chromium", "name": "Chromium", "source": "pacman", "summary": "Open source web browser", "tags": "browser web internet"},
@@ -736,11 +807,7 @@ CURATED_APPS = [
 
 
 def catalog_results():
-    catalog_path = ROOT / "sevenpkg" / "apps.json"
-    try:
-        payload = json.loads(catalog_path.read_text(encoding="utf-8"))
-    except Exception:
-        return []
+    payload = shared_catalog_payload()
     items = []
     for index, item in enumerate(payload.get("apps", [])):
         haystack = ascii_fold(" ".join(str(item.get(key, "")) for key in ("id", "name", "domain", "summary", "recommended_source")))
@@ -749,7 +816,7 @@ def catalog_results():
             continue
         source = str(item.get("recommended_source") or "pacman")
         app_id = str(item.get("id") or "")
-        install_id = app_id
+        install_id = str(item.get("install_id") or app_id)
         if source == "flatpak":
             for alternative in item.get("alternatives", []) or []:
                 if isinstance(alternative, dict) and alternative.get("source") == "flatpak" and alternative.get("id"):

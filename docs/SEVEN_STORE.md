@@ -125,8 +125,8 @@ the six mini OS rootfs views are ready, whether catalog domains are covered, and
 whether package duplication needs release attention. Full byte-size scans remain
 manual through `sevenpkg footprint --json`.
 
-For dashboards and passive refreshes, SevenStore should read the shared state
-snapshot first:
+For dashboards and passive refreshes, SevenStore should consume the shared
+state snapshot first:
 
 ```bash
 seven state --json
@@ -136,6 +136,14 @@ The package fields `packages_strategy`, `packages_catalog` and
 `packages_footprint` carry the same routing model used by SevenPkg. Direct
 SevenPkg calls stay reserved for install previews, explicit refreshes and deep
 audits.
+
+Inside the Store engine itself there is one important guardrail: SevenStore may
+read the cached state file when it exists, but it must not call `seven state
+--json` while building the Store payload. The state generator also embeds Store
+health, so recursive state generation would make refreshes slower and risk
+deadlocks. If the cache is missing or stale, SevenStore falls back to direct
+SevenPkg commands and the next state refresh will publish the unified package
+view again.
 
 ### Pacman
 
