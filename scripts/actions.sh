@@ -54,6 +54,8 @@ quality.performance_gate	System	Performance UX Gate	seven performance-gate	safe	
 quality.performance_gate_gui	System	Performance UX Gate UI	seven performance-gate --gui	safe	Open the graphical responsiveness gate in SevenOS Public Studio.
 quality.native_fallback_gate	System	Native Fallback Gate	seven native-fallback-gate	safe	Validate native-first public routes before legacy fallback menus.
 quality.readiness	System	Readiness Decisions	seven public-readiness	safe	Explain daily-driver readiness, public-release freeze and AGS finalization as clear next actions.
+quality.production	System	Production Readiness	seven production	safe	Separate public beta readiness from large-scale production claims with ISO, update, support, hardware and trust checks.
+quality.production_plan	System	Production Hardening Plan	seven production plan	safe	Show the hardware matrix, signing policy and support work required before wide public deployment.
 experience.permissions	System	Permissions Center	seven experience-center permissions	safe	Show portals, Flatpak, microphone, camera and privacy routes.
 experience.journeys	Desktop	Focus Journeys	seven experience-center journeys	safe	Show profile-aware journeys for code, creation, study, gaming, culture and security.
 startup.audit	Desktop	Startup Performance Audit	./scripts/startup-audit.sh	safe	Check that public SevenOS apps open from cache and do not block on deep audits.

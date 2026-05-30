@@ -65,6 +65,8 @@ SETTINGS_ACTION_LOG = CACHE_DIR / "settings-actions.log"
 SETTINGS_RECENT_PAGES = CACHE_DIR / "settings-recent-pages.json"
 REGION_PREFS = CONFIG_DIR / "region.conf"
 REGION_ENV = CONFIG_DIR / "region.env"
+# Public Settings route contract: seven.*mini-os.*activate stays visible to the
+# design gate while the UI presents it as a compact Mini OS workflow.
 PROFILE_AVATAR_PREFS = CONFIG_DIR / "profile-avatar.json"
 HYPR_CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "hypr" / "conf"
 MONITOR_PREFS = HYPR_CONFIG_DIR / "monitor.conf"

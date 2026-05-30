@@ -91,6 +91,21 @@ Core installation must remain usable with official repositories only. Flatpak is
 allowed for user apps. AUR must remain opt-in and documented. Nix or other lab
 engines may be added only behind explicit profile actions, not as host defaults.
 
+## Public Trust And Signing Policy
+
+For a public beta, SevenOS must publish release artifacts with clear integrity
+signals:
+
+- ISO checksums next to every image;
+- package repository metadata generated from the local SevenOS repo;
+- release channel shown as `dev`, `testing` or `stable`;
+- support bundles kept local-first and reviewed by the user before sharing;
+- update reports written locally before and after `seven update`.
+
+For large-scale production, checksums are not enough: SevenOS should add signed
+ISO manifests and signed repository metadata before calling a build stable for
+unattended public distribution.
+
 ## Test Machine Install Order
 
 For a normal test machine, install in this order:

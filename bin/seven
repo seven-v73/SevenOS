@@ -328,6 +328,13 @@ def handle_distribution(args):
     run_script(args, "scripts/distribution.sh", *extra)
 
 
+def handle_production(args):
+    extra = [args.action]
+    if args.json:
+        extra.append("--json")
+    run_script(args, "scripts/production-readiness.sh", *extra)
+
+
 def handle_about(args):
     extra = [args.action]
     if args.json:
@@ -1559,6 +1566,12 @@ def main():
     distro_parser = subparsers.add_parser("distro", help="alias for SevenOS distribution readiness")
     distro_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
     distro_parser.add_argument("--json", action="store_true", help="print machine-readable distribution contract")
+    production_parser = subparsers.add_parser("production", help="inspect SevenOS public beta and large-scale readiness")
+    production_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    production_parser.add_argument("--json", action="store_true", help="print machine-readable production readiness contract")
+    beta_parser = subparsers.add_parser("beta", help="alias for SevenOS public beta readiness")
+    beta_parser.add_argument("action", nargs="?", default="status", choices=("status", "doctor", "plan", "json"))
+    beta_parser.add_argument("--json", action="store_true", help="print machine-readable public beta readiness contract")
     about_parser = subparsers.add_parser("about", help="show public SevenOS identity and edition")
     about_parser.add_argument("action", nargs="?", default="status", choices=("status", "plan", "doctor", "json"))
     about_parser.add_argument("--json", action="store_true", help="print machine-readable SevenOS about contract")
@@ -1876,6 +1889,8 @@ def main():
         handle_routes(args)
     elif args.command in ("distribution", "distro"):
         handle_distribution(args)
+    elif args.command in ("production", "beta"):
+        handle_production(args)
     elif args.command == "about":
         handle_about(args)
     elif args.command == "lifecycle":

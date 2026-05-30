@@ -251,9 +251,10 @@ autonomy_ready = (
     and surfaces.get("state") == "productized"
     and routes.get("state") == "routed"
 )
+installer_runtime_ready = installer_runtime.get("state") in {"installed", "iso-runtime-ready"}
 release_ready = (
     installer_release.get("state") == "graphical-ready"
-    and installer_runtime.get("state") == "installed"
+    and installer_runtime_ready
     and dirty == 0
 )
 
@@ -347,7 +348,7 @@ checks = [
     },
     {
         "key": "calamares-runtime",
-        "state": "OK" if installer_runtime.get("state") == "installed" else "PART",
+        "state": "OK" if installer_runtime_ready else "PART",
         "title": "Graphical installer runtime",
         "detail": f"Graphical installer runtime: {installer_runtime.get('state', 'unknown')}.",
         "command": "seven installer runtime",

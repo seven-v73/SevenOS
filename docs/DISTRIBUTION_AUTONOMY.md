@@ -373,6 +373,8 @@ SevenOS becomes a public distribution only when:
 - `seven smoke doctor` passes quickly;
 - `seven release doctor` is public-release-ready;
 - `seven distribution doctor` is public-release-candidate;
+- `seven production doctor` reports at least a public beta candidate and keeps
+  large-scale production separate from local gates;
 - `seven autonomy doctor` passes at distribution-layer level;
 - the repository is frozen/committed;
 - the graphical ISO installer path is present;
