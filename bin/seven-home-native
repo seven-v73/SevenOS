@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -126,6 +127,10 @@ QUICK_ACTIONS = [
     ("Actions", "Toutes les actions SevenOS en graphique.", "seven actions open"),
 ]
 
+CACHE_HOME = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+HOME_CACHE = CACHE_HOME / "sevenos/home-native.json"
+HOME_CACHE_TTL = float(os.environ.get("SEVENOS_HOME_CACHE_TTL", "45"))
+
 
 def run_json(*args: str, fallback=None, timeout: float = 3.0, extra_env: dict[str, str] | None = None):
     fallback = {} if fallback is None else fallback
@@ -153,7 +158,28 @@ def run_detached(command: str) -> None:
     )
 
 
-def home_payload() -> dict:
+def read_home_cache() -> dict:
+    if os.environ.get("SEVENOS_HOME_REFRESH") == "1":
+        return {}
+    try:
+        if time.time() - HOME_CACHE.stat().st_mtime > HOME_CACHE_TTL:
+            return {}
+        return json.loads(HOME_CACHE.read_text(encoding="utf-8") or "{}")
+    except Exception:
+        return {}
+
+
+def write_home_cache(payload: dict) -> None:
+    try:
+        HOME_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        tmp = HOME_CACHE.with_suffix(".tmp")
+        tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(HOME_CACHE)
+    except Exception:
+        pass
+
+
+def build_home_payload() -> dict:
     state = run_json("state", "--json", fallback={}, timeout=1.0)
     current = state.get("active_profile") if isinstance(state.get("active_profile"), dict) else {}
     if not current:
@@ -207,6 +233,15 @@ def home_payload() -> dict:
         "profiles": PROFILES,
         "quick_actions": [{"title": title, "description": desc, "command": command} for title, desc, command in QUICK_ACTIONS],
     }
+
+
+def home_payload() -> dict:
+    cached = read_home_cache()
+    if cached.get("schema") == "sevenos.home.v1":
+        return cached
+    payload = build_home_payload()
+    write_home_cache(payload)
+    return payload
 
 
 def probe() -> int:

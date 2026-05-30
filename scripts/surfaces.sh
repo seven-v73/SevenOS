@@ -20,15 +20,45 @@ EOF
 
 ACTION="status"
 JSON_OUTPUT=0
+REFRESH_CACHE=0
 for arg in "$@"; do
   case "$arg" in
     status|doctor|plan|json) ACTION="$arg" ;;
     --json) JSON_OUTPUT=1 ;;
+    --refresh|refresh) REFRESH_CACHE=1 ;;
     -h|--help|help) usage; exit 0 ;;
     *) log_error "Unknown surfaces option: $arg"; usage; exit 1 ;;
   esac
 done
 [[ "$ACTION" == "json" ]] && JSON_OUTPUT=1
+
+SURFACES_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/sevenos"
+SURFACES_CACHE="$SURFACES_CACHE_DIR/surfaces.json"
+SURFACES_CACHE_TTL="${SEVENOS_SURFACES_CACHE_TTL:-300}"
+
+cache_json_valid() {
+  [[ -s "$SURFACES_CACHE" ]] || return 1
+  python - "$SURFACES_CACHE" >/dev/null 2>&1 <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    with Path(sys.argv[1]).open(encoding="utf-8") as handle:
+        json.load(handle)
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
+cache_fresh() {
+  [[ "$REFRESH_CACHE" -eq 0 ]] || return 1
+  cache_json_valid || return 1
+  command -v stat >/dev/null 2>&1 || return 1
+  local age
+  age="$(( $(date +%s) - $(stat -c %Y "$SURFACES_CACHE" 2>/dev/null || printf 0) ))"
+  [[ "$age" -le "$SURFACES_CACHE_TTL" ]]
+}
 
 surfaces_json() {
   SEVENOS_ROOT="$ROOT_DIR" python - <<'PY'
@@ -460,7 +490,19 @@ for item in data.get("next", []):
 PY
 }
 
-payload="$(surfaces_json)"
+if cache_fresh; then
+  payload="$(cat "$SURFACES_CACHE")"
+else
+  payload="$(surfaces_json)"
+  mkdir -p "$SURFACES_CACHE_DIR"
+  tmp_cache="$(mktemp "$SURFACES_CACHE_DIR/surfaces.XXXXXX")"
+  printf '%s\n' "$payload" >"$tmp_cache"
+  if python -m json.tool "$tmp_cache" >/dev/null 2>&1; then
+    mv "$tmp_cache" "$SURFACES_CACHE"
+  else
+    rm -f "$tmp_cache"
+  fi
+fi
 if [[ "$JSON_OUTPUT" -eq 1 ]]; then
   printf '%s\n' "$payload"
   exit 0
